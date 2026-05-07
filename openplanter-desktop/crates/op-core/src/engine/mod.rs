@@ -1124,6 +1124,15 @@ fn objective_requires_auto_recursion(objective: &str) -> bool {
     .iter()
     .any(|needle| lower.contains(needle));
     if !multi_surface {
+        let words: Vec<&str> = lower
+            .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
+            .filter(|word| !word.is_empty())
+            .collect();
+        multi_surface = words
+            .windows(4)
+            .any(|window| window[0] == "dataset" && window[2] == "and");
+    }
+    if !multi_surface {
         let pathlike_tokens = objective
             .split_whitespace()
             .filter(|token| token.contains('/') || token.contains('\\') || token.contains('.'))
@@ -3033,6 +3042,9 @@ mod tests {
         ));
         assert!(objective_requires_auto_recursion(
             "analyze frontend and backend and then implement the fix"
+        ));
+        assert!(objective_requires_auto_recursion(
+            "analyze dataset alpha and beta then implement fixes"
         ));
     }
 
