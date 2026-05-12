@@ -17,11 +17,23 @@ from io import StringIO
 # Add scripts directory to path to import the module
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
-import fetch_epa_echo
+import fetch_epa_echo  # noqa: E402
 
 
 class TestEpaEchoFetch(unittest.TestCase):
     """Test suite for EPA ECHO data acquisition."""
+
+    def _skip_if_echo_external_blocker(self, response):
+        if not isinstance(response, dict):
+            return
+        error = response.get("Error")
+        if isinstance(error, dict):
+            message = str(error.get("ErrorMessage") or "")
+        else:
+            message = str(error or "")
+        normalized = message.lower()
+        if "robotic" in normalized or "programmed query" in normalized or "blocked" in normalized:
+            self.skipTest(f"EPA ECHO blocked live API access: {message}")
 
     def test_build_query_params_state(self):
         """Test building query parameters with state filter."""
@@ -122,6 +134,19 @@ class TestEpaEchoFetch(unittest.TestCase):
 
         self.assertEqual(len(facilities), 0)
 
+    def test_echo_external_blocker_response_is_skipped(self):
+        response = {
+            "Error": {
+                "ErrorMessage": (
+                    "Your query has been identified as a robotic or programmed query "
+                    "and has been blocked."
+                )
+            }
+        }
+
+        with self.assertRaises(unittest.SkipTest):
+            self._skip_if_echo_external_blocker(response)
+
     @unittest.skipUnless(
         os.environ.get('RUN_LIVE_TESTS') or True,  # Always run by default
         "Skipping live API test"
@@ -145,6 +170,7 @@ class TestEpaEchoFetch(unittest.TestCase):
 
         try:
             response = fetch_epa_echo.fetch_facilities(params)
+            self._skip_if_echo_external_blocker(response)
 
             # Verify response structure
             self.assertIn("Results", response)
@@ -197,6 +223,7 @@ class TestEpaEchoFetch(unittest.TestCase):
 
         try:
             response = fetch_epa_echo.fetch_facilities(params)
+            self._skip_if_echo_external_blocker(response)
 
             # Verify response structure
             self.assertIn("Results", response)

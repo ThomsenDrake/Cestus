@@ -11,7 +11,15 @@ from unittest.mock import patch
 from conftest import _tc
 from agent.chrome_mcp import ChromeMcpCallResult
 from agent.config import AgentConfig
-from agent.engine import RLMEngine, TurnSummary
+from agent.engine import (
+    AttemptFingerprint,
+    RLMEngine,
+    TurnSummary,
+    _compute_marginal_evidence_yield,
+    _record_attempt_yield,
+    _should_block_repeated_attempt,
+    _target_claim_from_args_or_packet,
+)
 from agent.prompts import build_system_prompt as _build_system_prompt
 from agent.model import Conversation, ModelError, ModelTurn, ScriptedModel, ToolResult
 from agent.tools import WorkspaceTools
@@ -29,6 +37,18 @@ def _investigation_report(*, strategic: bool = False) -> str:
         "## Supported Findings\n- supported-1: Evidence-backed finding.",
         "## Contested Findings\n- None.",
         "## Unresolved Findings\n- None.",
+        (
+            "## Conclusion Cards\n"
+            "- Claim: cl_1\n"
+            "  Status: supported\n"
+            "  Confidence: medium\n"
+            "  Evidence used: ev_1\n"
+            "  Limiting evidence: none\n"
+            "  What was attempted: typed evidence review\n"
+            "  Why stopping now: terminal claim status assigned\n"
+            "  Next best action: none\n"
+            "  Human/PRR needed: no"
+        ),
     ])
     return "\n\n".join(sections)
 
@@ -309,6 +329,183 @@ class EngineTests(unittest.TestCase):
                 "expected policy block observation in context",
             )
 
+    def test_claim_run_blocks_repeated_attempt_fingerprint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / "source.txt").write_text("same evidence\n", encoding="utf-8")
+            cfg = AgentConfig(workspace=root, max_depth=1, max_steps_per_call=6, acceptance_criteria=False)
+            tools = WorkspaceTools(root=root)
+            model = ScriptedModel(
+                scripted_turns=[
+                    ModelTurn(tool_calls=[_tc("read_file", path="source.txt")]),
+                    ModelTurn(tool_calls=[_tc("read_file", path="source.txt")]),
+                    ModelTurn(tool_calls=[_tc("read_file", path="source.txt")]),
+                    ModelTurn(text=_investigation_report(), stop_reason="end_turn"),
+                ]
+            )
+            packet = {
+                "reasoning_mode": "question_centric",
+                "focus_question_ids": ["q_1"],
+                "unresolved_questions": [{"id": "q_1", "question": "Open question", "claim_ids": ["cl_1"]}],
+                "findings": {
+                    "supported": [],
+                    "contested": [],
+                    "unsupported_after_available_sources": [],
+                    "blocked_external": [],
+                    "needs_human_or_prr": [],
+                    "unresolved": [{"id": "cl_1", "claim": "Needs decision"}],
+                },
+                "contradictions": [],
+                "evidence_index": {},
+                "candidate_actions": [
+                    {
+                        "id": "ca_q_q_1",
+                        "action_type": "verify_claim",
+                        "status": "proposed",
+                        "target_claim_ids": ["cl_1"],
+                    }
+                ],
+            }
+
+            engine = RLMEngine(model=model, tools=tools, config=cfg)
+            result, ctx = engine.solve_with_context("Investigate the subject", question_reasoning_packet=packet)
+
+            self.assertEqual(result, _investigation_report())
+            self.assertTrue(
+                any("repeated attempt fingerprint reached the stop condition" in obs for obs in ctx.observations),
+                "expected claim-run repeated attempt stop observation",
+            )
+
+    def test_repeated_attempt_stop_depends_on_low_yield_attempts(self) -> None:
+        fingerprint = AttemptFingerprint(
+            source="ocpa",
+            tool="browser_search",
+            tactic="browser_search",
+            query="1016 n mills",
+            target_claim="cl_1",
+        )
+        counts: dict[str, int] = {}
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=True,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertFalse(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=False,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertFalse(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=False,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertTrue(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=True,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertFalse(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=False,
+            attempt_low_yield_counts=counts,
+        )
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=False,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertTrue(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {"source=city|tool=fetch_url|tactic=direct_api|query=new|target_claim=cl_2"},
+            claim_relevant_delta=True,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertTrue(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=True,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertFalse(_should_block_repeated_attempt(fingerprint, counts))
+
+    def test_attempt_fingerprint_target_claim_uses_unambiguous_packet_claim(self) -> None:
+        packet = {
+            "candidate_actions": [
+                {
+                    "id": "ca_1",
+                    "description": "Gather OCPA evidence for 1016 N Mills",
+                    "target_claim_ids": ["cl_1"],
+                }
+            ]
+        }
+
+        claim_id = _target_claim_from_args_or_packet({"query": "OCPA 1016 N Mills"}, packet)
+
+        self.assertEqual(claim_id, "cl_1")
+
+    def test_attempt_fingerprint_target_claim_matches_candidate_action_text(self) -> None:
+        packet = {
+            "candidate_actions": [
+                {
+                    "id": "ca_1",
+                    "description": "Gather OCPA evidence for 1016 N Mills",
+                    "target_claim_ids": ["cl_1"],
+                },
+                {
+                    "id": "ca_2",
+                    "description": "Gather Clerk instruments for 1024 N Mills",
+                    "target_claim_ids": ["cl_2"],
+                },
+            ]
+        }
+
+        claim_id = _target_claim_from_args_or_packet({"query": "1024 N Mills"}, packet)
+
+        self.assertEqual(claim_id, "cl_2")
+
+    def test_attempt_fingerprint_target_claim_stays_unknown_when_ambiguous(self) -> None:
+        packet = {
+            "candidate_actions": [
+                {
+                    "id": "ca_1",
+                    "description": "Gather OCPA evidence for 1016 N Mills",
+                    "target_claim_ids": ["cl_1"],
+                },
+                {
+                    "id": "ca_2",
+                    "description": "Gather Clerk instruments for 1024 N Mills",
+                    "target_claim_ids": ["cl_2"],
+                },
+            ]
+        }
+
+        claim_id = _target_claim_from_args_or_packet({"query": "Orange County public records"}, packet)
+
+        self.assertEqual(claim_id, "unknown")
+
+    def test_marginal_evidence_yield_tolerates_non_mapping_evidence_index(self) -> None:
+        payload = {
+            "evidence_index": ["legacy", "shape"],
+            "findings": {"supported": [], "contested": [], "unresolved": []},
+        }
+
+        yield_payload = _compute_marginal_evidence_yield(payload, payload)
+
+        self.assertEqual(yield_payload["new_evidence_ids_added"], [])
+        self.assertFalse(yield_payload["claim_relevant_delta"])
+
     def test_meta_text_not_accepted_as_final_answer(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -469,7 +666,8 @@ class REPLPromptTests(unittest.TestCase):
         self.assertIn("A final answer is a deliverable, not a progress note", prompt)
         self.assertIn("For trivial direct questions, answer directly", prompt)
         self.assertIn("QUESTION-CENTRIC REASONING", prompt)
-        self.assertIn("supported / contested / unresolved", prompt)
+        self.assertIn("supported / contested / unsupported_after_available_sources", prompt)
+        self.assertIn("blocked_external / needs_human_or_prr", prompt)
         self.assertIn("Key Judgments", prompt)
         self.assertIn("Strategic Implications", prompt)
         self.assertIn("Supported Findings", prompt)
