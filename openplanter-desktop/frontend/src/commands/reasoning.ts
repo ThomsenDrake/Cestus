@@ -3,7 +3,7 @@ import { saveSettings, updateConfig } from "../api/invoke";
 import { appState } from "../state/store";
 import type { CommandResult } from "./model";
 
-const VALID_LEVELS = ["low", "medium", "high", "off"];
+const VALID_LEVELS = ["low", "medium", "high", "xhigh", "off"];
 
 /** Handle /reasoning [args]. */
 export async function handleReasoningCommand(args: string): Promise<CommandResult> {

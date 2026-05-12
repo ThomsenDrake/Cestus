@@ -92,15 +92,17 @@ def _build_splash() -> str:
         art = "   OpenPlanter"
     lines = art.splitlines()
     # Strip common leading whitespace so the plants align flush
-    min_indent = min((len(l) - len(l.lstrip()) for l in lines if l.strip()), default=0)
-    stripped = [l[min_indent:] for l in lines]
-    max_w = max(len(l) for l in stripped)
-    padded = [l.ljust(max_w) for l in stripped]
+    min_indent = min(
+        (len(line) - len(line.lstrip()) for line in lines if line.strip()), default=0
+    )
+    stripped = [line[min_indent:] for line in lines]
+    max_w = max(len(line) for line in stripped)
+    padded = [line.ljust(max_w) for line in stripped]
 
     # Pad plant art to match the number of text lines (bottom-align plants)
     n = len(padded)
-    pw_l = max(len(l) for l in _PLANT_LEFT)
-    pw_r = max(len(l) for l in _PLANT_RIGHT)
+    pw_l = max(len(line) for line in _PLANT_LEFT)
+    pw_r = max(len(line) for line in _PLANT_RIGHT)
     left = [" " * pw_l] * (n - len(_PLANT_LEFT)) + _PLANT_LEFT if n > len(_PLANT_LEFT) else _PLANT_LEFT[-n:]
     right = [" " * pw_r] * (n - len(_PLANT_RIGHT)) + _PLANT_RIGHT if n > len(_PLANT_RIGHT) else _PLANT_RIGHT[-n:]
 
@@ -117,7 +119,7 @@ HELP_LINES: list[str] = [
     "  /model <name>       Switch model (e.g. /model opus, /model gpt5)",
     "  /model <name> --save  Switch and persist as default",
     "  /model list [all]   List available models",
-    "  /reasoning [low|medium|high|off]  Change reasoning effort",
+    "  /reasoning [low|medium|high|xhigh|off]  Change reasoning effort",
     "  /embeddings [voyage|mistral] [--save]  Change retrieval embeddings provider",
     "  /chrome status|on|off|auto|url <endpoint>|channel <stable|beta|dev|canary> [--save]",
     "  /status  /clear  /quit  /exit  /help",
@@ -130,12 +132,14 @@ MODEL_ALIASES: dict[str, str] = {
     "sonnet4.6": "anthropic-foundry/claude-sonnet-4-6",
     "haiku": "anthropic-foundry/claude-haiku-4-5",
     "haiku4.5": "anthropic-foundry/claude-haiku-4-5",
-    "gpt5": "azure-foundry/gpt-5.4",
-    "gpt-5": "azure-foundry/gpt-5.4",
+    "gpt5": "azure-foundry/gpt-5.5",
+    "gpt-5": "azure-foundry/gpt-5.5",
     "gpt5.3": "azure-foundry/gpt-5.3-codex",
     "gpt-5.3": "azure-foundry/gpt-5.3-codex",
     "gpt5.4": "azure-foundry/gpt-5.4",
     "gpt-5.4": "azure-foundry/gpt-5.4",
+    "gpt5.5": "azure-foundry/gpt-5.5",
+    "gpt-5.5": "azure-foundry/gpt-5.5",
     "kimi": "azure-foundry/Kimi-K2.5",
     "gpt4": "gpt-4.1",
     "gpt4.1": "gpt-4.1",
@@ -325,7 +329,7 @@ def handle_reasoning_command(args: str, ctx: ChatContext) -> list[str]:
         effort = ctx.cfg.reasoning_effort or "(off)"
         return [
             f"Current reasoning effort: {effort}",
-            "Usage: /reasoning <low|medium|high|off> [--save]",
+            "Usage: /reasoning <low|medium|high|xhigh|off> [--save]",
         ]
 
     value = parts[0].lower()
@@ -333,10 +337,10 @@ def handle_reasoning_command(args: str, ctx: ChatContext) -> list[str]:
 
     if value in {"off", "none", "disable", "disabled"}:
         ctx.cfg.reasoning_effort = None
-    elif value in {"low", "medium", "high"}:
+    elif value in {"low", "medium", "high", "xhigh"}:
         ctx.cfg.reasoning_effort = value
     else:
-        return [f"Invalid effort '{value}'. Use: low, medium, high, off"]
+        return [f"Invalid effort '{value}'. Use: low, medium, high, xhigh, off"]
 
     # Rebuild engine with new reasoning effort.
     try:
@@ -379,20 +383,20 @@ def _get_mode_label(cfg: AgentConfig) -> str:
 def _format_chrome_status(ctx: ChatContext) -> list[str]:
     status = ctx.runtime.engine.tools.chrome_mcp_status()
     attach_mode = (
-        f"browser_url={ctx.cfg.chrome_mcp_browser_url}"
+        f"BU_CDP_URL={ctx.cfg.chrome_mcp_browser_url}"
         if ctx.cfg.chrome_mcp_browser_url
-        else ("auto-connect" if ctx.cfg.chrome_mcp_auto_connect else "manual-disabled")
+        else ("auto-discovery" if ctx.cfg.chrome_mcp_auto_connect else "manual-disabled")
     )
     lines = [
         (
-            "Chrome MCP: "
+            "Browser Harness: "
             f"enabled={ctx.cfg.chrome_mcp_enabled} | attach={attach_mode} | "
-            f"channel={ctx.cfg.chrome_mcp_channel}"
+            f"legacy_channel={ctx.cfg.chrome_mcp_channel}"
         ),
         f"Runtime status: {status.status} | {status.detail}",
     ]
     if status.tool_count:
-        lines.append(f"Discovered Chrome tools: {status.tool_count}")
+        lines.append(f"Discovered Browser Harness tools: {status.tool_count}")
     return lines
 
 
@@ -475,7 +479,7 @@ def handle_chrome_command(args: str, ctx: ChatContext) -> list[str]:
             return ["Usage: /chrome channel <stable|beta|dev|canary> [--save]"]
         channel = parts[1].strip().lower()
         if channel not in {"stable", "beta", "dev", "canary"}:
-            return [f"Invalid Chrome channel '{channel}'. Use: stable, beta, dev, canary"]
+            return [f"Invalid legacy Chrome channel '{channel}'. Use: stable, beta, dev, canary"]
         ctx.cfg.chrome_mcp_channel = channel
     else:
         return [
@@ -486,7 +490,7 @@ def handle_chrome_command(args: str, ctx: ChatContext) -> list[str]:
     try:
         ctx.runtime.engine = build_engine(ctx.cfg)
     except ModelError as exc:
-        return [f"Failed to apply Chrome MCP change: {exc}"]
+        return [f"Failed to apply Browser Harness change: {exc}"]
 
     lines = _format_chrome_status(ctx)
     if save:

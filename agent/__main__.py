@@ -36,7 +36,7 @@ from .settings import (
 from .tui import ChatContext, _clip_event, _get_model_display_name, dispatch_slash_command, run_rich_repl
 from .workspace_resolution import WorkspaceResolutionError, resolve_startup_workspace
 
-VALID_REASONING_FLAGS = ["low", "medium", "high", "none"]
+VALID_REASONING_FLAGS = ["low", "medium", "high", "xhigh", "none"]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -58,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--reasoning-effort",
         choices=VALID_REASONING_FLAGS,
-        help="Per-run reasoning effort override.",
+        help="Per-run reasoning effort override: low, medium, high, xhigh, or none.",
     )
     parser.add_argument(
         "--default-model",
@@ -132,34 +132,34 @@ def build_parser() -> argparse.ArgumentParser:
         "--chrome-mcp",
         dest="chrome_mcp_enabled",
         action="store_true",
-        help="Enable native Chrome DevTools MCP tools for this run.",
+        help="Enable Browser Harness browser tools for this run (legacy flag name).",
     )
     parser.add_argument(
         "--no-chrome-mcp",
         dest="chrome_mcp_enabled",
         action="store_false",
-        help="Disable native Chrome DevTools MCP tools for this run.",
+        help="Disable Browser Harness browser tools for this run.",
     )
     parser.add_argument(
         "--chrome-auto-connect",
         dest="chrome_auto_connect",
         action="store_true",
-        help="Ask the Chrome DevTools MCP server to auto-connect to a running Chrome instance.",
+        help="Let Browser Harness auto-discover a running Chrome instance.",
     )
     parser.add_argument(
         "--no-chrome-auto-connect",
         dest="chrome_auto_connect",
         action="store_false",
-        help="Disable Chrome MCP auto-connect and rely on --chrome-browser-url instead.",
+        help="Disable Browser Harness auto-discovery and rely on --chrome-browser-url/BU_CDP_URL instead.",
     )
     parser.add_argument(
         "--chrome-browser-url",
-        help="Remote debugging browser URL for Chrome DevTools MCP (preferred over auto-connect).",
+        help="Remote debugging HTTP endpoint used as BU_CDP_URL for Browser Harness.",
     )
     parser.add_argument(
         "--chrome-channel",
         choices=["stable", "beta", "dev", "canary"],
-        help="Chrome channel to target when Chrome MCP auto-connect is used.",
+        help="Legacy Chrome channel setting retained for compatibility; Browser Harness auto-discovers Chrome.",
     )
     parser.set_defaults(chrome_mcp_enabled=None, chrome_auto_connect=None)
     parser.add_argument("--voyage-api-key", help="Voyage API key override.")
@@ -926,7 +926,7 @@ def main() -> None:
     if cfg.reasoning_effort:
         startup_info["Reasoning"] = cfg.reasoning_effort
     startup_info["Mode"] = "recursive" if cfg.recursive else "flat"
-    startup_info["ChromeMCP"] = f"{chrome_status.status}: {chrome_status.detail}"
+    startup_info["BrowserHarness"] = f"{chrome_status.status}: {chrome_status.detail}"
     startup_info["Retrieval"] = embeddings_status.detail
     startup_info["Workspace"] = str(cfg.workspace)
     startup_info["WorkspaceSource"] = workspace_resolution.source

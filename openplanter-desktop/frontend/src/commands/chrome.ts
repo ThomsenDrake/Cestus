@@ -34,15 +34,15 @@ function applyChromeConfig(config: ConfigView): void {
 
 function describeAttachMode(state: ChromeStatusSource): string {
   if (state.chromeMcpBrowserUrl) {
-    return `browser_url=${state.chromeMcpBrowserUrl}`;
+    return `BU_CDP_URL=${state.chromeMcpBrowserUrl}`;
   }
-  return state.chromeMcpAutoConnect ? "auto-connect" : "manual-disabled";
+  return state.chromeMcpAutoConnect ? "auto-discovery" : "manual-disabled";
 }
 
 export function formatChromeStatusLines(state: ChromeStatusSource): string[] {
   return [
-    `Chrome MCP: enabled=${state.chromeMcpEnabled} | attach=${describeAttachMode(state)} | channel=${state.chromeMcpChannel}`,
-    `Chrome runtime: ${state.chromeMcpStatus} | ${state.chromeMcpStatusDetail}`,
+    `Browser Harness: enabled=${state.chromeMcpEnabled} | attach=${describeAttachMode(state)} | legacy_channel=${state.chromeMcpChannel}`,
+    `Browser runtime: ${state.chromeMcpStatus} | ${state.chromeMcpStatusDetail}`,
   ];
 }
 
@@ -99,7 +99,7 @@ export async function handleChromeCommand(args: string): Promise<CommandResult> 
       if (!VALID_CHROME_CHANNELS.includes(channel as (typeof VALID_CHROME_CHANNELS)[number])) {
         return {
           action: "handled",
-          lines: [`Invalid Chrome channel "${channel}". Expected: ${VALID_CHROME_CHANNELS.join(", ")}`],
+          lines: [`Invalid legacy Chrome channel "${channel}". Expected: ${VALID_CHROME_CHANNELS.join(", ")}`],
         };
       }
       partial = { chrome_mcp_channel: channel };
@@ -132,7 +132,7 @@ export async function handleChromeCommand(args: string): Promise<CommandResult> 
   } catch (e) {
     return {
       action: "handled",
-      lines: [`Failed to update Chrome MCP settings: ${e}`],
+      lines: [`Failed to update Browser Harness settings: ${e}`],
     };
   }
 }

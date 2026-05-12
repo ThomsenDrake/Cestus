@@ -77,7 +77,7 @@ class EngineTests(unittest.TestCase):
                 return_value=ChromeMcpCallResult(content="Navigated to https://example.com"),
             ) as mocked:
                 engine = RLMEngine(model=model, tools=tools, config=cfg)
-                result = engine.solve("navigate using Chrome MCP")
+                result = engine.solve("navigate using Browser Harness")
             self.assertEqual(result, "done")
             mocked.assert_called_once()
 

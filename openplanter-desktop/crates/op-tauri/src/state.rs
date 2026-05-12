@@ -481,21 +481,21 @@ impl AppState {
         } else if !key.enabled {
             ChromeMcpStatus {
                 status: "disabled".into(),
-                detail: "Chrome DevTools MCP is disabled.".into(),
+                detail: "Browser Harness is disabled.".into(),
                 tool_count: 0,
                 last_refresh_ms: None,
             }
         } else if key.browser_url.is_none() && !key.auto_connect {
             ChromeMcpStatus {
                 status: "unavailable".into(),
-                detail: "Chrome DevTools MCP is enabled but cannot attach: set `chrome_mcp_browser_url` or enable `chrome_mcp_auto_connect`.".into(),
+                detail: "Browser Harness is enabled but cannot attach: set `chrome_mcp_browser_url` (used as BU_CDP_URL) or enable `chrome_mcp_auto_connect`.".into(),
                 tool_count: 0,
                 last_refresh_ms: None,
             }
         } else {
             ChromeMcpStatus {
                 status: "ready".into(),
-                detail: "Chrome DevTools MCP will initialize on the next solve.".into(),
+                detail: "Browser Harness will initialize on the next solve.".into(),
                 tool_count: 0,
                 last_refresh_ms: None,
             }

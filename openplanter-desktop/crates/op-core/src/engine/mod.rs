@@ -25,7 +25,9 @@ use crate::config::{AgentConfig, normalize_model_alias};
 use crate::events::{
     CompletionMeta, DeltaEvent, DeltaKind, LoopMetrics, LoopPhase, StepEvent, TokenUsage,
 };
-use crate::model::{BaseModel, Message, ModelTurn, RateLimitError, ToolCall};
+use crate::model::{
+    BaseModel, Message, ModelTurn, ProviderTransientError, RateLimitError, ToolCall,
+};
 use crate::prompts::build_system_prompt;
 use crate::retrieval::build_retrieval_packet;
 use crate::tools::defs::build_tool_defs;
@@ -420,16 +422,46 @@ fn compute_rate_limit_delay_sec(
     retry_count: usize,
     err: &RateLimitError,
 ) -> f64 {
+    compute_retry_delay_sec(config, retry_count, err.retry_after_sec)
+}
+
+fn compute_transient_delay_sec(
+    config: &AgentConfig,
+    retry_count: usize,
+    err: &ProviderTransientError,
+) -> f64 {
+    compute_retry_delay_sec(config, retry_count, err.retry_after_sec)
+}
+
+fn compute_retry_delay_sec(
+    config: &AgentConfig,
+    retry_count: usize,
+    retry_after_sec: Option<f64>,
+) -> f64 {
     let retry_after_cap = config.rate_limit_retry_after_cap_sec.max(0.0);
     let backoff_max = config.rate_limit_backoff_max_sec.max(0.0);
-    let delay = err
-        .retry_after_sec
+    let delay = retry_after_sec
         .map(|value| value.max(0.0).min(retry_after_cap))
         .unwrap_or_else(|| {
             let base = config.rate_limit_backoff_base_sec.max(0.0);
             base * 2_f64.powi((retry_count.saturating_sub(1)) as i32)
         });
     delay.min(backoff_max)
+}
+
+enum RetryableModelError<'a> {
+    RateLimit(&'a RateLimitError),
+    ProviderTransient(&'a ProviderTransientError),
+}
+
+fn retryable_model_error(err: &anyhow::Error) -> Option<RetryableModelError<'_>> {
+    if let Some(rate_limit) = err.downcast_ref::<RateLimitError>() {
+        return Some(RetryableModelError::RateLimit(rate_limit));
+    }
+    if let Some(transient) = err.downcast_ref::<ProviderTransientError>() {
+        return Some(RetryableModelError::ProviderTransient(transient));
+    }
+    None
 }
 
 async fn chat_stream_with_rate_limit_retries(
@@ -457,19 +489,36 @@ async fn chat_stream_with_rate_limit_retries(
         {
             Ok(turn) => return Ok(turn),
             Err(err) => {
-                if let Some(rate_limit) = err.downcast_ref::<RateLimitError>() {
+                if let Some(retryable) = retryable_model_error(&err) {
                     if retries >= max_retries {
                         return Err(err);
                     }
                     retries += 1;
-                    let delay_sec = compute_rate_limit_delay_sec(config, retries, rate_limit);
-                    let provider_code = rate_limit
-                        .provider_code
-                        .as_deref()
-                        .map(|code| format!(" ({code})"))
-                        .unwrap_or_default();
+                    let (label, delay_sec) = match retryable {
+                        RetryableModelError::RateLimit(rate_limit) => {
+                            let provider_code = rate_limit
+                                .provider_code
+                                .as_deref()
+                                .map(|code| format!(" ({code})"))
+                                .unwrap_or_default();
+                            (
+                                format!("rate limited{provider_code}"),
+                                compute_rate_limit_delay_sec(config, retries, rate_limit),
+                            )
+                        }
+                        RetryableModelError::ProviderTransient(transient) => {
+                            let status = transient
+                                .status_code
+                                .map(|status| format!(" (HTTP {status})"))
+                                .unwrap_or_default();
+                            (
+                                format!("provider transient error{status}"),
+                                compute_transient_delay_sec(config, retries, transient),
+                            )
+                        }
+                    };
                     emitter.emit_trace(&format!(
-                        "{trace_prefix} rate limited{provider_code}. Sleeping {delay_sec:.1}s before retry {retries}/{max_retries}..."
+                        "{trace_prefix} {label}. Sleeping {delay_sec:.1}s before retry {retries}/{max_retries}..."
                     ));
                     if delay_sec > 0.0 {
                         tokio::select! {
@@ -2324,28 +2373,50 @@ async fn solve_frame(
         {
             Ok(turn) => turn,
             Err(err) => {
+                let provider_transient = err.downcast_ref::<ProviderTransientError>().is_some();
                 let msg = err.to_string();
+                if msg == "Cancelled" {
+                    tools.cleanup();
+                    loop_metrics.termination_reason = "cancelled".into();
+                    flush_pending_curator_checkpoint(
+                        &mut pending_curator_deltas,
+                        "cancelled",
+                        config,
+                        &cancel,
+                        emitter,
+                    )
+                    .await;
+                    return SolveFrameOutcome::cancelled(Some(loop_metrics));
+                }
+                if provider_transient {
+                    loop_metrics.termination_reason = "model_transient_exhausted".into();
+                    emitter.emit_trace(&format!(
+                        "{step_prefix} provider transient error exhausted retry budget; preserving completed work for continuation: {msg}"
+                    ));
+                    return finalize_partial_outcome(
+                        objective,
+                        &mut tools,
+                        &mut pending_curator_deltas,
+                        "model_transient_exhausted",
+                        loop_metrics,
+                        &step_records,
+                        active_step_budget,
+                        config,
+                        &cancel,
+                        emitter,
+                    )
+                    .await;
+                }
                 tools.cleanup();
-                loop_metrics.termination_reason = if msg == "Cancelled" {
-                    "cancelled".into()
-                } else {
-                    "model_error".into()
-                };
+                loop_metrics.termination_reason = "model_error".into();
                 flush_pending_curator_checkpoint(
                     &mut pending_curator_deltas,
-                    if msg == "Cancelled" {
-                        "cancelled"
-                    } else {
-                        "model_error"
-                    },
+                    "model_error",
                     config,
                     &cancel,
                     emitter,
                 )
                 .await;
-                if msg == "Cancelled" {
-                    return SolveFrameOutcome::cancelled(Some(loop_metrics));
-                }
                 return SolveFrameOutcome::error(msg, Some(loop_metrics));
             }
         };
@@ -2962,7 +3033,7 @@ pub async fn solve_with_initial_context(
     .await;
 }
 
-/// Real solve flow with optional initial structured context and shared Chrome MCP manager.
+/// Real solve flow with optional initial structured context and shared browser manager.
 pub async fn solve_with_initial_context_and_chrome_mcp(
     objective: &str,
     config: &AgentConfig,
@@ -3111,6 +3182,140 @@ mod tests {
                 .unwrap()
                 .push(RecordedEvent::Error(message.to_string()));
         }
+    }
+
+    struct TransientThenSuccessModel {
+        attempts: Arc<Mutex<usize>>,
+        failures_before_success: usize,
+    }
+
+    impl TransientThenSuccessModel {
+        fn new(failures_before_success: usize) -> Self {
+            Self {
+                attempts: Arc::new(Mutex::new(0)),
+                failures_before_success,
+            }
+        }
+
+        fn attempts(&self) -> usize {
+            *self.attempts.lock().unwrap()
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl BaseModel for TransientThenSuccessModel {
+        async fn chat(
+            &self,
+            messages: &[Message],
+            tools: &[serde_json::Value],
+        ) -> anyhow::Result<ModelTurn> {
+            let cancel = CancellationToken::new();
+            self.chat_stream(messages, tools, &|_| {}, &cancel).await
+        }
+
+        async fn chat_stream(
+            &self,
+            _messages: &[Message],
+            _tools: &[serde_json::Value],
+            _on_delta: &(dyn Fn(DeltaEvent) + Send + Sync),
+            _cancel: &CancellationToken,
+        ) -> anyhow::Result<ModelTurn> {
+            let mut attempts = self.attempts.lock().unwrap();
+            *attempts += 1;
+            if *attempts <= self.failures_before_success {
+                return Err(anyhow::Error::new(ProviderTransientError {
+                    message: "HTTP 500 calling https://foundry-proxy.example/openai/v1/responses: Internal Server Error".to_string(),
+                    status_code: Some(500),
+                    provider: Some("openai".to_string()),
+                    provider_code: Some("internal_server_error".to_string()),
+                    body: String::new(),
+                    retry_after_sec: Some(0.0),
+                }));
+            }
+            Ok(ModelTurn {
+                text: "recovered".to_string(),
+                ..ModelTurn::default()
+            })
+        }
+
+        fn model_name(&self) -> &str {
+            "gpt-5.5"
+        }
+
+        fn provider_name(&self) -> &str {
+            "openai"
+        }
+    }
+
+    #[tokio::test]
+    async fn test_chat_stream_retries_provider_transient_errors() {
+        let model = TransientThenSuccessModel::new(1);
+        let emitter = TestEmitter::new();
+        let cancel = CancellationToken::new();
+        let config = AgentConfig {
+            rate_limit_max_retries: 1,
+            rate_limit_backoff_base_sec: 0.0,
+            rate_limit_backoff_max_sec: 0.0,
+            rate_limit_retry_after_cap_sec: 0.0,
+            ..Default::default()
+        };
+
+        let turn = chat_stream_with_rate_limit_retries(
+            &model,
+            &[],
+            &[],
+            &|_| {},
+            &cancel,
+            &config,
+            &emitter,
+            1,
+            "[test]",
+        )
+        .await
+        .expect("transient provider error should retry and recover");
+
+        assert_eq!(turn.text, "recovered");
+        assert_eq!(model.attempts(), 2);
+        let events = emitter.events();
+        assert!(events.iter().any(|event| {
+            matches!(
+                event,
+                RecordedEvent::Trace(message)
+                    if message.contains("provider transient error (HTTP 500)")
+                        && message.contains("retry 1/1")
+            )
+        }));
+    }
+
+    #[tokio::test]
+    async fn test_chat_stream_exhausts_provider_transient_retry_budget() {
+        let model = TransientThenSuccessModel::new(2);
+        let emitter = TestEmitter::new();
+        let cancel = CancellationToken::new();
+        let config = AgentConfig {
+            rate_limit_max_retries: 1,
+            rate_limit_backoff_base_sec: 0.0,
+            rate_limit_backoff_max_sec: 0.0,
+            rate_limit_retry_after_cap_sec: 0.0,
+            ..Default::default()
+        };
+
+        let error = chat_stream_with_rate_limit_retries(
+            &model,
+            &[],
+            &[],
+            &|_| {},
+            &cancel,
+            &config,
+            &emitter,
+            1,
+            "[test]",
+        )
+        .await
+        .expect_err("transient provider errors should stop after retry budget");
+
+        assert_eq!(model.attempts(), 2);
+        assert!(error.downcast_ref::<ProviderTransientError>().is_some());
     }
 
     #[tokio::test]

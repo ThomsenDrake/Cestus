@@ -178,7 +178,7 @@ class AgentConfigFromEnvTests(unittest.TestCase):
             cfg = AgentConfig.from_env("/tmp/test-ws")
         self.assertEqual(cfg.provider, "auto")
         self.assertEqual(cfg.model, "anthropic-foundry/claude-opus-4-6")
-        self.assertEqual(cfg.reasoning_effort, "high")
+        self.assertEqual(cfg.reasoning_effort, "xhigh")
         self.assertEqual(cfg.max_depth, 4)
         self.assertEqual(cfg.max_steps_per_call, 100)
         self.assertTrue(cfg.budget_extension_enabled)
@@ -386,7 +386,7 @@ class ResolveModelNameTests(unittest.TestCase):
 
     def test_empty_model_uses_provider_default(self) -> None:
         cfg = AgentConfig(workspace=Path("/tmp"), provider="openai", model="")
-        self.assertEqual(_resolve_model_name(cfg), "azure-foundry/gpt-5.4")
+        self.assertEqual(_resolve_model_name(cfg), "azure-foundry/gpt-5.5")
 
     def test_empty_model_anthropic_default(self) -> None:
         cfg = AgentConfig(workspace=Path("/tmp"), provider="anthropic", model="")
@@ -559,6 +559,7 @@ class NormalizeReasoningEffortEdgeCasesTests(unittest.TestCase):
         self.assertEqual(normalize_reasoning_effort("HIGH"), "high")
         self.assertEqual(normalize_reasoning_effort("Medium"), "medium")
         self.assertEqual(normalize_reasoning_effort("low"), "low")
+        self.assertEqual(normalize_reasoning_effort("XHIGH"), "xhigh")
 
     def test_invalid_raises_valueerror(self) -> None:
         with self.assertRaises(ValueError):

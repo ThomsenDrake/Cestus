@@ -309,7 +309,7 @@ mod tests {
     fn test_infer_openai() {
         assert_eq!(infer_provider_for_model("gpt-5.2"), Some("openai"));
         assert_eq!(
-            infer_provider_for_model("azure-foundry/gpt-5.4"),
+            infer_provider_for_model("azure-foundry/gpt-5.5"),
             Some("openai")
         );
         assert_eq!(infer_provider_for_model("o1-preview"), Some("openai"));
@@ -415,7 +415,7 @@ mod tests {
             provider: "openai".into(),
             ..Default::default()
         };
-        assert_eq!(resolve_model_name(&cfg).unwrap(), "azure-foundry/gpt-5.4");
+        assert_eq!(resolve_model_name(&cfg).unwrap(), "azure-foundry/gpt-5.5");
     }
 
     // ── resolve_provider ──

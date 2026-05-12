@@ -13,7 +13,7 @@ use crate::obsidian::{
     normalize_obsidian_export_subdir,
 };
 
-const VALID_REASONING_EFFORTS: &[&str] = &["low", "medium", "high"];
+const VALID_REASONING_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh"];
 
 /// Normalize and validate a reasoning effort value.
 pub fn normalize_reasoning_effort(value: Option<&str>) -> Result<Option<String>, String> {
@@ -368,6 +368,10 @@ mod tests {
             normalize_reasoning_effort(Some("Medium")),
             Ok(Some("medium".into()))
         );
+        assert_eq!(
+            normalize_reasoning_effort(Some("XHIGH")),
+            Ok(Some("xhigh".into()))
+        );
     }
 
     #[test]
@@ -554,7 +558,7 @@ mod tests {
         );
         assert_eq!(
             normalized.default_model_openai,
-            Some("azure-foundry/gpt-5.4".into())
+            Some("azure-foundry/gpt-5.5".into())
         );
     }
 }

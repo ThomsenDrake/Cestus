@@ -1,19 +1,19 @@
 use std::env;
 use std::process::Stdio;
-use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context, anyhow};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
-use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
+use tokio::process::Command;
 use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
 use crate::config::{AgentConfig, normalize_chrome_mcp_browser_url, normalize_chrome_mcp_channel};
+
+const RESULT_PREFIX: &str = "__OPENPLANTER_BROWSER_HARNESS_RESULT__";
+const DEFAULT_HARNESS_NAME: &str = "openplanter";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChromeMcpConfigKey {
@@ -58,7 +58,7 @@ impl ChromeMcpStatus {
     fn disabled() -> Self {
         Self {
             status: "disabled".into(),
-            detail: "Chrome DevTools MCP is disabled.".into(),
+            detail: "Browser Harness is disabled.".into(),
             tool_count: 0,
             last_refresh_ms: None,
         }
@@ -67,7 +67,7 @@ impl ChromeMcpStatus {
     fn pending() -> Self {
         Self {
             status: "ready".into(),
-            detail: "Chrome DevTools MCP will initialize on the next solve.".into(),
+            detail: "Browser Harness will initialize on the next solve.".into(),
             tool_count: 0,
             last_refresh_ms: None,
         }
@@ -75,12 +75,6 @@ impl ChromeMcpStatus {
 }
 
 struct ChromeMcpInner {
-    child: Option<Child>,
-    stdin: Option<ChildStdin>,
-    stdout: Option<Lines<BufReader<ChildStdout>>>,
-    stderr_task: Option<JoinHandle<()>>,
-    stderr_tail: Arc<Mutex<Vec<String>>>,
-    next_request_id: u64,
     tools: Vec<ChromeMcpToolDef>,
     last_refresh_ms: Option<i64>,
     status: ChromeMcpStatus,
@@ -89,12 +83,6 @@ struct ChromeMcpInner {
 impl ChromeMcpInner {
     fn new(enabled: bool) -> Self {
         Self {
-            child: None,
-            stdin: None,
-            stdout: None,
-            stderr_task: None,
-            stderr_tail: Arc::new(Mutex::new(Vec::new())),
-            next_request_id: 1,
             tools: Vec::new(),
             last_refresh_ms: None,
             status: if enabled {
@@ -104,6 +92,15 @@ impl ChromeMcpInner {
             },
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct HarnessPayload {
+    ok: bool,
+    #[serde(default)]
+    content: Option<Value>,
+    #[serde(default)]
+    error: Option<String>,
 }
 
 pub struct ChromeMcpManager {
@@ -128,47 +125,59 @@ impl ChromeMcpManager {
         if !self.config.enabled {
             return Ok(Vec::new());
         }
-        let mut last_error: Option<anyhow::Error> = None;
-        for attempt in 0..2 {
-            let mut inner = self.inner.lock().await;
-            match self.list_tools_locked(&mut inner, force_refresh).await {
-                Ok(tools) => return Ok(tools),
-                Err(err) => {
-                    last_error = Some(err);
-                    self.shutdown_locked(&mut inner).await;
-                    if attempt == 0 {
-                        continue;
-                    }
-                }
-            }
-        }
-        Err(last_error.unwrap_or_else(|| anyhow!("Chrome DevTools MCP tools/list failed")))
+        let mut inner = self.inner.lock().await;
+        self.list_tools_locked(&mut inner, force_refresh).await
     }
 
     pub async fn call_tool(&self, name: &str, arguments: &Value) -> anyhow::Result<String> {
         if !self.config.enabled {
-            return Err(anyhow!("Chrome DevTools MCP is disabled."));
+            return Err(anyhow!("Browser Harness is disabled."));
         }
-        let mut last_error: Option<anyhow::Error> = None;
-        for attempt in 0..2 {
-            let mut inner = self.inner.lock().await;
-            match self.call_tool_locked(&mut inner, name, arguments).await {
-                Ok(result) => return Ok(result),
-                Err(err) => {
-                    last_error = Some(err);
-                    self.shutdown_locked(&mut inner).await;
-                    if attempt == 0 {
-                        continue;
-                    }
+        let mut inner = self.inner.lock().await;
+        let tools = if inner.tools.is_empty() {
+            self.list_tools_locked(&mut inner, false).await?
+        } else {
+            inner.tools.clone()
+        };
+        if !tools.iter().any(|tool| tool.name == name) {
+            return Err(anyhow!("Unknown Browser Harness tool `{name}`."));
+        }
+        let script = build_harness_script(name, arguments)?;
+        match self
+            .run_harness_script(&script, self.config.rpc_timeout_sec)
+            .await
+        {
+            Ok(payload) => {
+                if payload.ok {
+                    Ok(format_harness_content(payload.content.as_ref()))
+                } else {
+                    let detail = payload
+                        .error
+                        .unwrap_or_else(|| "Browser Harness tool failed.".into());
+                    inner.status = ChromeMcpStatus {
+                        status: "unavailable".into(),
+                        detail: self.status_detail_from_error(&detail),
+                        tool_count: inner.tools.len(),
+                        last_refresh_ms: inner.last_refresh_ms,
+                    };
+                    Err(anyhow!(detail))
                 }
             }
+            Err(err) => {
+                let detail = self.status_detail_from_error(&err.to_string());
+                inner.status = ChromeMcpStatus {
+                    status: "unavailable".into(),
+                    detail: detail.clone(),
+                    tool_count: inner.tools.len(),
+                    last_refresh_ms: inner.last_refresh_ms,
+                };
+                Err(anyhow!(detail))
+            }
         }
-        Err(last_error.unwrap_or_else(|| anyhow!("Chrome DevTools MCP tools/call failed")))
     }
 
     pub async fn shutdown(&self) {
-        let mut inner = self.inner.lock().await;
-        self.shutdown_locked(&mut inner).await;
+        // Browser Harness owns its daemon. OpenPlanter only invokes short commands.
     }
 
     async fn list_tools_locked(
@@ -180,59 +189,16 @@ impl ChromeMcpManager {
             return Ok(inner.tools.clone());
         }
         self.ensure_connected_locked(inner).await?;
-        let mut tools = Vec::new();
-        let mut cursor: Option<String> = None;
-        loop {
-            let mut params = serde_json::Map::new();
-            if let Some(current) = cursor.as_deref() {
-                params.insert("cursor".into(), Value::String(current.to_string()));
-            }
-            let result = self
-                .request_locked(
-                    inner,
-                    "tools/list",
-                    Value::Object(params),
-                    self.config.rpc_timeout_sec,
-                )
-                .await?;
-            if let Some(items) = result.get("tools").and_then(|value| value.as_array()) {
-                for item in items {
-                    let Some(name) = item.get("name").and_then(|value| value.as_str()) else {
-                        continue;
-                    };
-                    let description = item
-                        .get("description")
-                        .and_then(|value| value.as_str())
-                        .unwrap_or_default()
-                        .to_string();
-                    let parameters = item
-                        .get("inputSchema")
-                        .cloned()
-                        .unwrap_or_else(|| json!({"type":"object","properties":{},"required":[]}));
-                    tools.push(ChromeMcpToolDef {
-                        name: name.to_string(),
-                        description,
-                        parameters,
-                    });
-                }
-            }
-            cursor = result
-                .get("nextCursor")
-                .and_then(|value| value.as_str())
-                .map(str::to_string);
-            if cursor.is_none() {
-                break;
-            }
-        }
+        let tools = browser_harness_tool_defs();
         let status = ChromeMcpStatus {
             status: "ready".into(),
             detail: format!(
-                "Chrome DevTools MCP ready with {} tool(s) via {}.",
+                "Browser Harness ready with {} tool(s) via {}.",
                 tools.len(),
                 if self.config.browser_url.is_some() {
-                    "browser_url"
+                    "BU_CDP_URL"
                 } else {
-                    "auto-connect"
+                    "auto-discovery"
                 }
             ),
             tool_count: tools.len(),
@@ -244,40 +210,13 @@ impl ChromeMcpManager {
         Ok(tools)
     }
 
-    async fn call_tool_locked(
-        &self,
-        inner: &mut ChromeMcpInner,
-        name: &str,
-        arguments: &Value,
-    ) -> anyhow::Result<String> {
-        self.ensure_connected_locked(inner).await?;
-        if inner.tools.is_empty() {
-            let _ = self.list_tools_locked(inner, false).await?;
-        }
-        let result = self
-            .request_locked(
-                inner,
-                "tools/call",
-                json!({
-                    "name": name,
-                    "arguments": arguments,
-                }),
-                self.config.rpc_timeout_sec,
-            )
-            .await?;
-        Ok(parse_call_result(&result))
-    }
-
     async fn ensure_connected_locked(&self, inner: &mut ChromeMcpInner) -> anyhow::Result<()> {
         if !self.config.enabled {
             inner.status = ChromeMcpStatus::disabled();
             return Ok(());
         }
-        if inner.child.is_some() && inner.stdin.is_some() && inner.stdout.is_some() {
-            return Ok(());
-        }
         if self.config.browser_url.is_none() && !self.config.auto_connect {
-            let detail = "Chrome DevTools MCP is enabled but cannot attach: set `chrome_mcp_browser_url` or enable `chrome_mcp_auto_connect`.".to_string();
+            let detail = "Browser Harness is enabled but cannot attach: set `chrome_mcp_browser_url` (used as BU_CDP_URL) or enable `chrome_mcp_auto_connect`.".to_string();
             inner.status = ChromeMcpStatus {
                 status: "unavailable".into(),
                 detail: detail.clone(),
@@ -286,309 +225,517 @@ impl ChromeMcpManager {
             };
             return Err(anyhow!(detail));
         }
-        self.spawn_locked(inner).await?;
-        if let Err(err) = self
-            .request_locked(
-                inner,
-                "initialize",
-                json!({
-                    "protocolVersion": "2025-11-25",
-                    "capabilities": {},
-                    "clientInfo": { "name": "openplanter-desktop", "version": "1.0" }
-                }),
-                self.config.connect_timeout_sec,
+        let script = build_harness_script("browser_page_info", &json!({}))?;
+        match self
+            .run_harness_script(
+                &script,
+                self.config
+                    .connect_timeout_sec
+                    .max(self.config.rpc_timeout_sec),
             )
             .await
         {
-            let detail = self.status_detail_from_error(&err, inner).await;
-            inner.status = ChromeMcpStatus {
-                status: "unavailable".into(),
-                detail: detail.clone(),
-                tool_count: inner.tools.len(),
-                last_refresh_ms: inner.last_refresh_ms,
-            };
-            return Err(anyhow!(detail));
-        }
-        self.notify_locked(inner, "notifications/initialized", json!({}))
-            .await?;
-        inner.status = ChromeMcpStatus::pending();
-        Ok(())
-    }
-
-    async fn request_locked(
-        &self,
-        inner: &mut ChromeMcpInner,
-        method: &str,
-        params: Value,
-        timeout_sec: i64,
-    ) -> anyhow::Result<Value> {
-        let request_id = inner.next_request_id;
-        inner.next_request_id += 1;
-        let payload = json!({
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "method": method,
-            "params": params,
-        });
-        let stdin = inner
-            .stdin
-            .as_mut()
-            .ok_or_else(|| anyhow!("Chrome DevTools MCP stdin is unavailable"))?;
-        stdin
-            .write_all(format!("{}\n", payload).as_bytes())
-            .await
-            .with_context(|| format!("failed to write Chrome DevTools MCP request {method}"))?;
-        stdin.flush().await?;
-
-        let stdout = inner
-            .stdout
-            .as_mut()
-            .ok_or_else(|| anyhow!("Chrome DevTools MCP stdout is unavailable"))?;
-        let response = timeout(Duration::from_secs(timeout_sec.max(1) as u64), async {
-            loop {
-                let maybe_line = stdout.next_line().await?;
-                let line =
-                    maybe_line.ok_or_else(|| anyhow!("Chrome DevTools MCP closed stdout"))?;
-                let Ok(payload): Result<Value, _> = serde_json::from_str(&line) else {
-                    continue;
-                };
-                let Some(id) = payload.get("id").and_then(|value| value.as_u64()) else {
-                    continue;
-                };
-                if id == request_id {
-                    return Ok::<Value, anyhow::Error>(payload);
-                }
+            Ok(payload) if payload.ok => {
+                inner.status = ChromeMcpStatus::pending();
+                Ok(())
             }
-        })
-        .await
-        .map_err(|_| anyhow!("Timed out waiting for Chrome DevTools MCP {method} response."))??;
-
-        if let Some(err) = response.get("error") {
-            return Err(anyhow!(format_protocol_error(err)));
+            Ok(payload) => {
+                let detail = self.status_detail_from_error(
+                    payload
+                        .error
+                        .as_deref()
+                        .unwrap_or("Browser Harness probe failed."),
+                );
+                inner.status = ChromeMcpStatus {
+                    status: "unavailable".into(),
+                    detail: detail.clone(),
+                    tool_count: inner.tools.len(),
+                    last_refresh_ms: inner.last_refresh_ms,
+                };
+                Err(anyhow!(detail))
+            }
+            Err(err) => {
+                let detail = self.status_detail_from_error(&err.to_string());
+                inner.status = ChromeMcpStatus {
+                    status: "unavailable".into(),
+                    detail: detail.clone(),
+                    tool_count: inner.tools.len(),
+                    last_refresh_ms: inner.last_refresh_ms,
+                };
+                Err(anyhow!(detail))
+            }
         }
-
-        Ok(response.get("result").cloned().unwrap_or(Value::Null))
     }
 
-    async fn notify_locked(
+    async fn run_harness_script(
         &self,
-        inner: &mut ChromeMcpInner,
-        method: &str,
-        params: Value,
-    ) -> anyhow::Result<()> {
-        let stdin = inner
-            .stdin
-            .as_mut()
-            .ok_or_else(|| anyhow!("Chrome DevTools MCP stdin is unavailable"))?;
-        let payload = json!({
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params,
-        });
-        stdin
-            .write_all(format!("{}\n", payload).as_bytes())
-            .await
-            .with_context(|| {
-                format!("failed to write Chrome DevTools MCP notification {method}")
-            })?;
-        stdin.flush().await?;
-        Ok(())
-    }
-
-    async fn spawn_locked(&self, inner: &mut ChromeMcpInner) -> anyhow::Result<()> {
-        self.shutdown_locked(inner).await;
-        let command = env::var("OPENPLANTER_CHROME_MCP_COMMAND").unwrap_or_else(|_| "npx".into());
-        let package = env::var("OPENPLANTER_CHROME_MCP_PACKAGE")
-            .unwrap_or_else(|_| "chrome-devtools-mcp@latest".into());
-        let mut args = vec!["-y".to_string(), package];
-        if let Some(browser_url) = self.config.browser_url.as_deref() {
-            args.push(format!("--browserUrl={browser_url}"));
-        } else {
-            args.push("--autoConnect".into());
-            args.push(format!("--channel={}", self.config.channel));
+        script: &str,
+        timeout_sec: i64,
+    ) -> anyhow::Result<HarnessPayload> {
+        let command_name = env::var("OPENPLANTER_BROWSER_HARNESS_COMMAND")
+            .unwrap_or_else(|_| "browser-harness".into());
+        let mut command = Command::new(&command_name);
+        if let Ok(extra_args) = env::var("OPENPLANTER_BROWSER_HARNESS_EXTRA_ARGS") {
+            command.args(extra_args.split_whitespace());
         }
-        if let Ok(extra_args) = env::var("OPENPLANTER_CHROME_MCP_EXTRA_ARGS") {
-            args.extend(extra_args.split_whitespace().map(str::to_string));
-        }
-        let mut child = Command::new(&command)
-            .args(&args)
-            .stdin(Stdio::piped())
+        command
+            .arg("-c")
+            .arg(script)
+            .stdin(Stdio::null())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .with_context(|| {
-                format!(
-                    "failed to spawn Chrome DevTools MCP command `{}`. Install Node.js/npm so `npx` is available locally.",
-                    command
-                )
-            })?;
+            .stderr(Stdio::piped());
 
-        let stdin = child
-            .stdin
-            .take()
-            .ok_or_else(|| anyhow!("Chrome DevTools MCP stdin pipe is unavailable"))?;
-        let stdout = child
-            .stdout
-            .take()
-            .ok_or_else(|| anyhow!("Chrome DevTools MCP stdout pipe is unavailable"))?;
-        let stderr = child
-            .stderr
-            .take()
-            .ok_or_else(|| anyhow!("Chrome DevTools MCP stderr pipe is unavailable"))?;
-        let stderr_tail = inner.stderr_tail.clone();
-        inner.stderr_task = Some(tokio::spawn(async move {
-            let _ = read_stderr(stderr, stderr_tail).await;
-        }));
-        inner.stdin = Some(stdin);
-        inner.stdout = Some(BufReader::new(stdout).lines());
-        inner.child = Some(child);
-        Ok(())
+        let harness_name = env::var("OPENPLANTER_BROWSER_HARNESS_NAME")
+            .unwrap_or_else(|_| DEFAULT_HARNESS_NAME.into());
+        command.env("BU_NAME", harness_name);
+        if let Some(browser_url) = self
+            .config
+            .browser_url
+            .as_deref()
+            .filter(|value| !value.trim().is_empty())
+            .map(str::to_string)
+            .or_else(|| env::var("OPENPLANTER_BROWSER_HARNESS_CDP_URL").ok())
+        {
+            command.env("BU_CDP_URL", browser_url);
+        }
+        if let Ok(cdp_ws) = env::var("OPENPLANTER_BROWSER_HARNESS_CDP_WS") {
+            if !cdp_ws.trim().is_empty() {
+                command.env("BU_CDP_WS", cdp_ws);
+            }
+        }
+
+        let output = timeout(
+            Duration::from_secs(timeout_sec.max(1) as u64),
+            command.output(),
+        )
+        .await
+        .map_err(|_| anyhow!("Timed out waiting for Browser Harness after {timeout_sec}s."))?
+        .with_context(|| format!("failed to run Browser Harness command `{}`", command_name))?;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        extract_harness_payload(&stdout, &stderr, output.status.code())
     }
 
-    async fn shutdown_locked(&self, inner: &mut ChromeMcpInner) {
-        if let Some(task) = inner.stderr_task.take() {
-            task.abort();
+    fn status_detail_from_error(&self, error: &str) -> String {
+        let mut detail = error.trim().to_string();
+        if detail.is_empty() {
+            detail = "Browser Harness failed.".into();
         }
-        inner.stdin = None;
-        inner.stdout = None;
-        if let Some(mut child) = inner.child.take() {
-            let _ = child.kill().await;
-            let _ = child.wait().await;
+        let lower = detail.to_lowercase();
+        if lower.contains("not found")
+            || lower.contains("no such file")
+            || lower.contains("failed to run")
+            || lower.contains("not installed")
+        {
+            detail.push_str(
+                " Install Browser Harness so `browser-harness` is on PATH (for example: `uv tool install -e <browser-harness checkout>`).",
+            );
         }
-    }
-
-    async fn status_detail_from_error(
-        &self,
-        error: &anyhow::Error,
-        inner: &ChromeMcpInner,
-    ) -> String {
-        let mut detail = error.to_string();
-        let stderr_tail = inner.stderr_tail.lock().await.clone();
-        let stderr_text = stderr_tail
-            .iter()
-            .rev()
-            .take(4)
-            .cloned()
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect::<Vec<_>>()
-            .join(" ");
-        let lower = format!("{detail} {stderr_text}").to_lowercase();
-        if !stderr_text.trim().is_empty() {
-            detail = format!("{detail} stderr: {stderr_text}");
-        }
-        if lower.contains("timed out") || lower.contains("timeout") {
+        if lower.contains("timed out") || lower.contains("timeout") || lower.contains("unreachable")
+        {
             if self.config.browser_url.is_some() {
-                detail.push_str(" Confirm the configured browser URL is reachable.");
+                detail.push_str(" Confirm the configured endpoint is reachable as BU_CDP_URL.");
             } else {
                 detail.push_str(
-                    " Enable Chrome remote debugging at chrome://inspect/#remote-debugging and allow the connection prompt in Chrome.",
+                    " Enable Chrome remote debugging at chrome://inspect/#remote-debugging and click Allow if Chrome prompts for Browser Harness access.",
                 );
             }
         }
-        if lower.contains("no such file") || lower.contains("not found") || lower.contains("spawn")
+        if lower.contains("devtoolsactiveport")
+            || lower.contains("remote-debugging")
+            || lower.contains("allow")
         {
-            detail.push_str(" Install Node.js/npm so `npx` is available locally.");
-        }
-        if self.config.browser_url.is_none() && !lower.contains("inspect/#remote-debugging") {
             detail.push_str(
-                " Chrome 144+ must have remote debugging enabled at chrome://inspect/#remote-debugging.",
+                " Browser Harness connects through Chrome remote debugging; use chrome://inspect/#remote-debugging or set BU_CDP_URL for a dedicated browser.",
             );
         }
         detail
     }
 }
 
-async fn read_stderr(stderr: ChildStderr, sink: Arc<Mutex<Vec<String>>>) -> anyhow::Result<()> {
-    let mut lines = BufReader::new(stderr).lines();
-    while let Some(line) = lines.next_line().await? {
-        let mut sink = sink.lock().await;
-        sink.push(line);
-        if sink.len() > 20 {
-            let excess = sink.len() - 20;
-            sink.drain(0..excess);
-        }
-    }
-    Ok(())
+fn schema(properties: Value, required: Vec<&str>) -> Value {
+    json!({
+        "type": "object",
+        "properties": properties,
+        "required": required,
+        "additionalProperties": false,
+    })
 }
 
-fn format_protocol_error(error: &Value) -> String {
-    let message = error
-        .get("message")
-        .and_then(|value| value.as_str())
-        .unwrap_or("Unknown MCP error");
-    match error.get("code").and_then(|value| value.as_i64()) {
-        Some(code) => format!("{message} (code {code})"),
-        None => message.to_string(),
-    }
+fn browser_harness_tool_defs() -> Vec<ChromeMcpToolDef> {
+    vec![
+        ChromeMcpToolDef {
+            name: "browser_page_info".into(),
+            description: "Return the current Browser Harness tab URL, title, viewport, scroll position, and page dimensions.".into(),
+            parameters: schema(json!({}), vec![]),
+        },
+        ChromeMcpToolDef {
+            name: "browser_new_tab".into(),
+            description: "Open a URL in a new browser tab through Browser Harness and return page info.".into(),
+            parameters: schema(
+                json!({
+                    "url": { "type": "string", "description": "URL to open. Defaults to about:blank." },
+                    "wait_for_load": { "type": "boolean", "description": "Wait for document.readyState=complete before returning.", "default": true }
+                }),
+                vec!["url"],
+            ),
+        },
+        ChromeMcpToolDef {
+            name: "browser_capture_screenshot".into(),
+            description: "Capture a Browser Harness screenshot of the current tab.".into(),
+            parameters: schema(
+                json!({
+                    "full": { "type": "boolean", "description": "Capture beyond the viewport.", "default": false },
+                    "max_dim": { "type": "integer", "description": "Optional maximum image dimension after resizing.", "minimum": 1 }
+                }),
+                vec![],
+            ),
+        },
+        ChromeMcpToolDef {
+            name: "browser_click_at_xy".into(),
+            description: "Click visible page coordinates using Browser Harness compositor-level input.".into(),
+            parameters: schema(
+                json!({
+                    "x": { "type": "number", "description": "Viewport x coordinate." },
+                    "y": { "type": "number", "description": "Viewport y coordinate." },
+                    "button": { "type": "string", "enum": ["left", "middle", "right"], "default": "left" },
+                    "clicks": { "type": "integer", "minimum": 1, "default": 1 }
+                }),
+                vec!["x", "y"],
+            ),
+        },
+        ChromeMcpToolDef {
+            name: "browser_type_text".into(),
+            description: "Insert text at the focused browser element through Browser Harness.".into(),
+            parameters: schema(
+                json!({ "text": { "type": "string", "description": "Text to type." } }),
+                vec!["text"],
+            ),
+        },
+        ChromeMcpToolDef {
+            name: "browser_press_key".into(),
+            description: "Press a key in the current browser tab through Browser Harness.".into(),
+            parameters: schema(
+                json!({
+                    "key": { "type": "string", "description": "Key name, such as Enter, Tab, Escape, ArrowDown, Backspace, or a single character." },
+                    "modifiers": { "type": "integer", "description": "Browser Harness modifier bitfield: 1=Alt, 2=Ctrl, 4=Meta/Cmd, 8=Shift.", "default": 0 }
+                }),
+                vec!["key"],
+            ),
+        },
+        ChromeMcpToolDef {
+            name: "browser_scroll".into(),
+            description: "Scroll at a viewport coordinate using Browser Harness mouse wheel input.".into(),
+            parameters: schema(
+                json!({
+                    "x": { "type": "number", "description": "Viewport x coordinate." },
+                    "y": { "type": "number", "description": "Viewport y coordinate." },
+                    "dy": { "type": "number", "description": "Vertical wheel delta.", "default": -300 },
+                    "dx": { "type": "number", "description": "Horizontal wheel delta.", "default": 0 }
+                }),
+                vec!["x", "y"],
+            ),
+        },
+        ChromeMcpToolDef {
+            name: "browser_wait_for_load".into(),
+            description: "Wait for the current document to finish loading and return whether it completed.".into(),
+            parameters: schema(
+                json!({ "timeout": { "type": "number", "description": "Maximum seconds to wait.", "default": 15 } }),
+                vec![],
+            ),
+        },
+        ChromeMcpToolDef {
+            name: "browser_js".into(),
+            description: "Evaluate JavaScript in the current Browser Harness tab and return the JSON-serializable result.".into(),
+            parameters: schema(
+                json!({ "expression": { "type": "string", "description": "JavaScript expression or snippet." } }),
+                vec!["expression"],
+            ),
+        },
+        ChromeMcpToolDef {
+            name: "browser_cdp".into(),
+            description: "Send a raw Chrome DevTools Protocol method through Browser Harness.".into(),
+            parameters: schema(
+                json!({
+                    "method": { "type": "string", "description": "CDP method, for example Page.navigate." },
+                    "params": { "type": "object", "description": "CDP params object.", "default": {} },
+                    "session_id": { "type": "string", "description": "Optional CDP session id." }
+                }),
+                vec!["method"],
+            ),
+        },
+    ]
 }
 
-fn parse_call_result(result: &Value) -> String {
-    let mut content_parts: Vec<String> = Vec::new();
-    if let Some(content) = result.get("content").and_then(|value| value.as_array()) {
-        for item in content {
-            if let Some(text) = item.as_str() {
-                if !text.trim().is_empty() {
-                    content_parts.push(text.trim().to_string());
-                }
-                continue;
-            }
-            let item_type = item
-                .get("type")
-                .and_then(|value| value.as_str())
-                .unwrap_or_default()
-                .to_lowercase();
-            match item_type.as_str() {
-                "text" => {
-                    if let Some(text) = item.get("text").and_then(|value| value.as_str()) {
-                        if !text.trim().is_empty() {
-                            content_parts.push(text.trim().to_string());
-                        }
-                    }
-                }
-                "image" => {
-                    let media_type = item
-                        .get("mimeType")
-                        .or_else(|| item.get("mediaType"))
-                        .and_then(|value| value.as_str())
-                        .unwrap_or("image");
-                    content_parts.push(format!("[{media_type} attached]"));
-                }
-                _ => {
-                    if let Some(uri) = item
-                        .get("uri")
-                        .or_else(|| item.get("url"))
-                        .and_then(|value| value.as_str())
-                    {
-                        let label = item
-                            .get("name")
-                            .and_then(|value| value.as_str())
-                            .unwrap_or("resource");
-                        content_parts.push(format!("{label}: {uri}"));
-                    }
-                }
-            }
+fn build_harness_script(name: &str, arguments: &Value) -> anyhow::Result<String> {
+    let name_literal = serde_json::to_string(name)?;
+    let args_json = serde_json::to_string(arguments)?;
+    let args_literal = serde_json::to_string(&args_json)?;
+    let prefix_literal = serde_json::to_string(RESULT_PREFIX)?;
+    let script = r#"
+import base64, json
+
+_OPENPLANTER_RESULT_PREFIX = __PREFIX_LITERAL__
+_OPENPLANTER_TOOL = __NAME_LITERAL__
+_OPENPLANTER_ARGS = json.loads(__ARGS_LITERAL__)
+if not isinstance(_OPENPLANTER_ARGS, dict):
+    raise TypeError("Browser Harness arguments must be an object")
+
+def _openplanter_emit(ok, content=None, error=None):
+    print(_OPENPLANTER_RESULT_PREFIX + json.dumps({"ok": ok, "content": content, "error": error}, ensure_ascii=True))
+
+try:
+    if _OPENPLANTER_TOOL == "browser_page_info":
+        ensure_real_tab()
+        _openplanter_emit(True, page_info())
+    elif _OPENPLANTER_TOOL == "browser_new_tab":
+        target_id = new_tab(str(_OPENPLANTER_ARGS.get("url") or "about:blank"))
+        if _OPENPLANTER_ARGS.get("wait_for_load", True):
+            wait_for_load(float(_OPENPLANTER_ARGS.get("timeout") or 15))
+        _openplanter_emit(True, {"target_id": target_id, "page": page_info()})
+    elif _OPENPLANTER_TOOL == "browser_capture_screenshot":
+        ensure_real_tab()
+        path = capture_screenshot(
+            full=bool(_OPENPLANTER_ARGS.get("full", False)),
+            max_dim=_OPENPLANTER_ARGS.get("max_dim"),
+        )
+        with open(path, "rb") as fh:
+            image_base64 = base64.b64encode(fh.read()).decode("ascii")
+        _openplanter_emit(True, {
+            "path": path,
+            "media_type": "image/png",
+            "image_base64": image_base64,
+            "page": page_info(),
+        })
+    elif _OPENPLANTER_TOOL == "browser_click_at_xy":
+        ensure_real_tab()
+        click_at_xy(
+            float(_OPENPLANTER_ARGS["x"]),
+            float(_OPENPLANTER_ARGS["y"]),
+            button=str(_OPENPLANTER_ARGS.get("button") or "left"),
+            clicks=int(_OPENPLANTER_ARGS.get("clicks") or 1),
+        )
+        _openplanter_emit(True, {"action": "clicked", "page": page_info()})
+    elif _OPENPLANTER_TOOL == "browser_type_text":
+        ensure_real_tab()
+        type_text(str(_OPENPLANTER_ARGS.get("text") or ""))
+        _openplanter_emit(True, {"action": "typed", "page": page_info()})
+    elif _OPENPLANTER_TOOL == "browser_press_key":
+        ensure_real_tab()
+        press_key(str(_OPENPLANTER_ARGS["key"]), modifiers=int(_OPENPLANTER_ARGS.get("modifiers") or 0))
+        _openplanter_emit(True, {"action": "pressed", "page": page_info()})
+    elif _OPENPLANTER_TOOL == "browser_scroll":
+        ensure_real_tab()
+        scroll(
+            float(_OPENPLANTER_ARGS["x"]),
+            float(_OPENPLANTER_ARGS["y"]),
+            dy=float(_OPENPLANTER_ARGS.get("dy", -300)),
+            dx=float(_OPENPLANTER_ARGS.get("dx", 0)),
+        )
+        _openplanter_emit(True, {"action": "scrolled", "page": page_info()})
+    elif _OPENPLANTER_TOOL == "browser_wait_for_load":
+        ensure_real_tab()
+        completed = wait_for_load(float(_OPENPLANTER_ARGS.get("timeout") or 15))
+        _openplanter_emit(True, {"completed": bool(completed), "page": page_info()})
+    elif _OPENPLANTER_TOOL == "browser_js":
+        ensure_real_tab()
+        _openplanter_emit(True, js(str(_OPENPLANTER_ARGS["expression"])))
+    elif _OPENPLANTER_TOOL == "browser_cdp":
+        params = _OPENPLANTER_ARGS.get("params") or {}
+        if not isinstance(params, dict):
+            raise TypeError("params must be an object")
+        _openplanter_emit(True, cdp(str(_OPENPLANTER_ARGS["method"]), session_id=_OPENPLANTER_ARGS.get("session_id"), **params))
+    else:
+        raise ValueError(f"Unknown Browser Harness tool: {_OPENPLANTER_TOOL}")
+except BaseException as exc:
+    _openplanter_emit(False, error=f"{type(exc).__name__}: {exc}")
+"#;
+    Ok(script
+        .replace("__PREFIX_LITERAL__", &prefix_literal)
+        .replace("__NAME_LITERAL__", &name_literal)
+        .replace("__ARGS_LITERAL__", &args_literal))
+}
+
+fn extract_harness_payload(
+    stdout: &str,
+    stderr: &str,
+    exit_code: Option<i32>,
+) -> anyhow::Result<HarnessPayload> {
+    for line in stdout.lines().rev() {
+        let trimmed = line.trim();
+        if let Some(payload) = trimmed.strip_prefix(RESULT_PREFIX) {
+            return serde_json::from_str(payload)
+                .with_context(|| "failed to parse Browser Harness result marker");
         }
     }
-    if content_parts.is_empty() {
-        if let Some(structured) = result.get("structuredContent") {
-            content_parts.push(
-                serde_json::to_string_pretty(structured).unwrap_or_else(|_| structured.to_string()),
-            );
+    let stderr = stderr.trim();
+    let stdout = stdout.trim();
+    if let Some(code) = exit_code {
+        if code != 0 {
+            let detail = if !stderr.is_empty() {
+                stderr
+            } else if !stdout.is_empty() {
+                stdout
+            } else {
+                "no output"
+            };
+            return Err(anyhow!("Browser Harness exited with code {code}. {detail}"));
         }
     }
-    let mut content = if content_parts.is_empty() {
-        "Chrome DevTools MCP tool completed with no textual output.".to_string()
-    } else {
-        content_parts.join("\n")
+    Err(anyhow!(
+        "Browser Harness did not return an OpenPlanter result marker."
+    ))
+}
+
+fn format_harness_content(content: Option<&Value>) -> String {
+    let Some(content) = content else {
+        return "Browser Harness tool completed with no textual output.".into();
     };
-    if result
-        .get("isError")
-        .and_then(|value| value.as_bool())
-        .unwrap_or(false)
-    {
-        content = format!("Chrome DevTools MCP tool error: {content}");
+    if let Some(text) = content.as_str() {
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            return "Browser Harness tool completed with no textual output.".into();
+        }
+        return trimmed.to_string();
     }
-    content
+    if let Some(object) = content.as_object() {
+        let mut display = object.clone();
+        let has_image = display.remove("image_base64").is_some();
+        let media_type = display
+            .get("media_type")
+            .and_then(Value::as_str)
+            .unwrap_or("image/png")
+            .to_string();
+        let path = display
+            .get("path")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        let rendered = serde_json::to_string_pretty(&Value::Object(display))
+            .unwrap_or_else(|_| content.to_string());
+        if has_image {
+            let mut suffix = format!("\n[{media_type} screenshot attached");
+            if let Some(path) = path {
+                suffix.push_str(&format!(" from {path}"));
+            }
+            suffix.push(']');
+            return format!("{rendered}{suffix}");
+        }
+        return rendered;
+    }
+    serde_json::to_string_pretty(content).unwrap_or_else(|_| content.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::sync::{LazyLock, Mutex};
+
+    static ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+    fn write_fake_harness(dir: &tempfile::TempDir) -> String {
+        let path = dir.path().join("browser-harness");
+        fs::write(
+            &path,
+            format!(
+                r#"#!/bin/sh
+if [ "$1" != "-c" ]; then
+  echo "expected -c" >&2
+  exit 2
+fi
+script="$2"
+if printf '%s' "$script" | grep -q '_OPENPLANTER_TOOL = "browser_capture_screenshot"'; then
+  printf '%s{{"ok":true,"content":{{"path":"/tmp/openplanter-shot.png","media_type":"image/png","image_base64":"ZmFrZQ=="}},"error":null}}\n' '{}'
+else
+  printf '%s{{"ok":true,"content":{{"url":"https://example.com","title":"Example","bu_cdp_url":"%s","bu_name":"%s"}},"error":null}}\n' '{}' "$BU_CDP_URL" "$BU_NAME"
+fi
+"#,
+                RESULT_PREFIX, RESULT_PREFIX
+            ),
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&path, permissions).unwrap();
+        path.to_string_lossy().to_string()
+    }
+
+    fn manager_with_url(browser_url: Option<&str>) -> ChromeMcpManager {
+        ChromeMcpManager::new(ChromeMcpConfigKey {
+            enabled: true,
+            auto_connect: browser_url.is_none(),
+            browser_url: browser_url.map(str::to_string),
+            channel: "stable".into(),
+            connect_timeout_sec: 3,
+            rpc_timeout_sec: 3,
+        })
+    }
+
+    #[tokio::test]
+    async fn list_tools_probes_browser_harness_and_uses_browser_url_as_cdp_url() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let tempdir = tempfile::tempdir().unwrap();
+        let fake_harness = write_fake_harness(&tempdir);
+        unsafe {
+            env::set_var("OPENPLANTER_BROWSER_HARNESS_COMMAND", &fake_harness);
+            env::set_var("OPENPLANTER_BROWSER_HARNESS_NAME", "test-openplanter");
+        }
+        let manager = manager_with_url(Some("http://127.0.0.1:9222"));
+
+        let tools = manager.list_tools(true).await.unwrap();
+        assert!(tools.iter().any(|tool| tool.name == "browser_page_info"));
+        assert!(tools.iter().any(|tool| tool.name == "browser_cdp"));
+
+        let content = manager
+            .call_tool("browser_page_info", &json!({}))
+            .await
+            .unwrap();
+        assert!(content.contains("\"bu_cdp_url\": \"http://127.0.0.1:9222\""));
+        assert!(content.contains("\"bu_name\": \"test-openplanter\""));
+        unsafe {
+            env::remove_var("OPENPLANTER_BROWSER_HARNESS_COMMAND");
+            env::remove_var("OPENPLANTER_BROWSER_HARNESS_NAME");
+        }
+    }
+
+    #[tokio::test]
+    async fn screenshot_result_omits_base64_from_text_content() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let tempdir = tempfile::tempdir().unwrap();
+        let fake_harness = write_fake_harness(&tempdir);
+        unsafe {
+            env::set_var("OPENPLANTER_BROWSER_HARNESS_COMMAND", &fake_harness);
+        }
+        let manager = manager_with_url(None);
+
+        let content = manager
+            .call_tool("browser_capture_screenshot", &json!({}))
+            .await
+            .unwrap();
+        assert!(content.contains("screenshot attached"));
+        assert!(content.contains("/tmp/openplanter-shot.png"));
+        assert!(!content.contains("ZmFrZQ"));
+        unsafe {
+            env::remove_var("OPENPLANTER_BROWSER_HARNESS_COMMAND");
+        }
+    }
+
+    #[tokio::test]
+    async fn manual_disabled_without_browser_url_is_unavailable() {
+        let manager = ChromeMcpManager::new(ChromeMcpConfigKey {
+            enabled: true,
+            auto_connect: false,
+            browser_url: None,
+            channel: "stable".into(),
+            connect_timeout_sec: 1,
+            rpc_timeout_sec: 1,
+        });
+
+        let err = manager.list_tools(true).await.unwrap_err();
+        assert!(err.to_string().contains("cannot attach"));
+        let status = manager.status_snapshot().await;
+        assert_eq!(status.status, "unavailable");
+        assert!(status.detail.contains("BU_CDP_URL"));
+    }
 }

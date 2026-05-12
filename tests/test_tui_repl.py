@@ -6,8 +6,6 @@ import threading
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from agent.chrome_mcp import ChromeMcpStatus
 from agent.config import AgentConfig
 from agent.settings import SettingsStore
@@ -340,13 +338,13 @@ class TestChromeSlashCommand:
         ctx.cfg.chrome_mcp_channel = "stable"
         ctx.runtime.engine.tools.chrome_mcp_status.return_value = ChromeMcpStatus(
             status="ready",
-            detail="Chrome DevTools MCP ready with 2 tool(s).",
+            detail="Browser Harness ready with 2 tool(s).",
             tool_count=2,
         )
         lines: list[str] = []
         result = dispatch_slash_command("/chrome status", ctx, emit=lines.append)
         assert result == "handled"
-        assert any("Chrome MCP:" in line for line in lines)
+        assert any("Browser Harness:" in line for line in lines)
         assert any("ready" in line for line in lines)
 
     def test_auto_rebuilds_engine_and_persists(self, tmp_path):
@@ -354,7 +352,7 @@ class TestChromeSlashCommand:
         rebuilt_engine = MagicMock()
         rebuilt_engine.tools.chrome_mcp_status.return_value = ChromeMcpStatus(
             status="ready",
-            detail="Chrome DevTools MCP ready with 3 tool(s).",
+            detail="Browser Harness ready with 3 tool(s).",
             tool_count=3,
         )
         lines: list[str] = []

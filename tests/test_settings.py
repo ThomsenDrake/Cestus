@@ -84,6 +84,7 @@ class SettingsTests(unittest.TestCase):
     def test_normalize_reasoning_effort(self) -> None:
         self.assertEqual(normalize_reasoning_effort("LOW"), "low")
         self.assertEqual(normalize_reasoning_effort(" medium "), "medium")
+        self.assertEqual(normalize_reasoning_effort(" XHIGH "), "xhigh")
         self.assertIsNone(normalize_reasoning_effort(""))
         with self.assertRaises(ValueError):
             normalize_reasoning_effort("extreme")
@@ -253,7 +254,7 @@ class InferProviderTests(unittest.TestCase):
         self.assertEqual(infer_provider_for_model("gpt-4.1-mini"), "openai")
         self.assertEqual(infer_provider_for_model("GPT-4o"), "openai")
         self.assertEqual(
-            infer_provider_for_model("azure-foundry/gpt-5.4"),
+            infer_provider_for_model("azure-foundry/gpt-5.5"),
             "openai",
         )
 

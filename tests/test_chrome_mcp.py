@@ -15,87 +15,68 @@ from agent.chrome_mcp import (
 )
 
 
-FAKE_MCP_SERVER = """#!/usr/bin/env python3
-import json
+FAKE_BROWSER_HARNESS = """#!/usr/bin/env python3
+import os
 import sys
+from pathlib import Path
 
-TOOLS = [
-    {
-        "name": "navigate_page",
-        "description": "Navigate the page",
-        "inputSchema": {
-            "type": "object",
-            "properties": {"url": {"type": "string"}},
-            "required": ["url"],
-            "additionalProperties": False,
-        },
-    },
-    {
-        "name": "take_screenshot",
-        "description": "Take a screenshot",
-        "inputSchema": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-            "additionalProperties": False,
-        },
-    },
-]
+def ensure_real_tab():
+    return {"url": "https://example.com", "title": "Example"}
 
-for raw_line in sys.stdin:
-    line = raw_line.strip()
-    if not line:
-        continue
-    payload = json.loads(line)
-    method = payload.get("method")
-    request_id = payload.get("id")
-    if method == "initialize" and request_id is not None:
-        sys.stdout.write(json.dumps({
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "result": {
-                "protocolVersion": "2025-11-25",
-                "serverInfo": {"name": "fake-chrome-mcp", "version": "1.0"},
-            },
-        }) + "\\n")
-        sys.stdout.flush()
-        continue
-    if method == "tools/list" and request_id is not None:
-        sys.stdout.write(json.dumps({
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "result": {"tools": TOOLS},
-        }) + "\\n")
-        sys.stdout.flush()
-        continue
-    if method == "tools/call" and request_id is not None:
-        params = payload.get("params") or {}
-        name = params.get("name")
-        if name == "take_screenshot":
-            result = {
-                "content": [
-                    {"type": "text", "text": "Screenshot captured."},
-                    {"type": "image", "data": "ZmFrZS1pbWFnZQ==", "mimeType": "image/png"},
-                ]
-            }
-        else:
-            result = {
-                "content": [
-                    {"type": "text", "text": f"Called {name}"},
-                ]
-            }
-        sys.stdout.write(json.dumps({
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "result": result,
-        }) + "\\n")
-        sys.stdout.flush()
+def page_info():
+    return {
+        "url": "https://example.com",
+        "title": "Example",
+        "w": 1200,
+        "h": 800,
+        "sx": 0,
+        "sy": 0,
+        "pw": 1200,
+        "ph": 1600,
+        "bu_name": os.environ.get("BU_NAME"),
+        "bu_cdp_url": os.environ.get("BU_CDP_URL"),
+    }
+
+def new_tab(url="about:blank"):
+    return "target-1"
+
+def wait_for_load(timeout=15.0):
+    return True
+
+def capture_screenshot(path=None, full=False, max_dim=None):
+    path = path or str(Path(os.environ["FAKE_BROWSER_HARNESS_TMP"]) / "shot.png")
+    Path(path).write_bytes(b"fake-image")
+    return path
+
+def click_at_xy(x, y, button="left", clicks=1):
+    return None
+
+def type_text(text):
+    return None
+
+def press_key(key, modifiers=0):
+    return None
+
+def scroll(x, y, dy=-300, dx=0):
+    return None
+
+def js(expression):
+    return {"expression": expression, "value": 42}
+
+def cdp(method, session_id=None, **params):
+    return {"method": method, "session_id": session_id, "params": params}
+
+args = sys.argv[1:]
+if "-c" not in args:
+    raise SystemExit("expected -c")
+code = args[args.index("-c") + 1]
+exec(code, globals())
 """
 
 
 def _write_fake_launcher(tmpdir: str) -> Path:
-    launcher = Path(tmpdir) / "fake_npx.py"
-    launcher.write_text(FAKE_MCP_SERVER, encoding="utf-8")
+    launcher = Path(tmpdir) / "browser-harness"
+    launcher.write_text(FAKE_BROWSER_HARNESS, encoding="utf-8")
     launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR)
     return launcher
 
@@ -110,8 +91,8 @@ class ChromeMcpManagerTests(unittest.TestCase):
             with patch.dict(
                 os.environ,
                 {
-                    "OPENPLANTER_CHROME_MCP_COMMAND": str(launcher),
-                    "OPENPLANTER_CHROME_MCP_PACKAGE": "ignored-package",
+                    "OPENPLANTER_BROWSER_HARNESS_COMMAND": str(launcher),
+                    "FAKE_BROWSER_HARNESS_TMP": tmpdir,
                 },
                 clear=False,
             ):
@@ -124,10 +105,11 @@ class ChromeMcpManagerTests(unittest.TestCase):
                     rpc_timeout_sec=3,
                 )
                 tools = manager.list_tools(force_refresh=True)
-                self.assertEqual([tool.name for tool in tools], ["navigate_page", "take_screenshot"])
+                self.assertIn("browser_new_tab", [tool.name for tool in tools])
+                self.assertIn("browser_capture_screenshot", [tool.name for tool in tools])
 
-                result = manager.call_tool("navigate_page", {"url": "https://example.com"})
-                self.assertIn("Called navigate_page", result.content)
+                result = manager.call_tool("browser_new_tab", {"url": "https://example.com"})
+                self.assertIn('"target_id": "target-1"', result.content)
                 self.assertFalse(result.is_error)
                 manager.shutdown()
 
@@ -137,8 +119,8 @@ class ChromeMcpManagerTests(unittest.TestCase):
             with patch.dict(
                 os.environ,
                 {
-                    "OPENPLANTER_CHROME_MCP_COMMAND": str(launcher),
-                    "OPENPLANTER_CHROME_MCP_PACKAGE": "ignored-package",
+                    "OPENPLANTER_BROWSER_HARNESS_COMMAND": str(launcher),
+                    "FAKE_BROWSER_HARNESS_TMP": tmpdir,
                 },
                 clear=False,
             ):
@@ -150,12 +132,37 @@ class ChromeMcpManagerTests(unittest.TestCase):
                     connect_timeout_sec=3,
                     rpc_timeout_sec=3,
                 )
-                result = manager.call_tool("take_screenshot", {})
-                self.assertIn("Screenshot captured.", result.content)
+                result = manager.call_tool("browser_capture_screenshot", {})
+                self.assertIn("screenshot attached", result.content)
                 self.assertIsNotNone(result.image)
                 assert result.image is not None
                 self.assertEqual(result.image.media_type, "image/png")
                 self.assertEqual(result.image.base64_data, "ZmFrZS1pbWFnZQ==")
+                manager.shutdown()
+
+    def test_browser_url_maps_to_bu_cdp_url(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            launcher = _write_fake_launcher(tmpdir)
+            with patch.dict(
+                os.environ,
+                {
+                    "OPENPLANTER_BROWSER_HARNESS_COMMAND": str(launcher),
+                    "FAKE_BROWSER_HARNESS_TMP": tmpdir,
+                    "OPENPLANTER_BROWSER_HARNESS_NAME": "test-openplanter",
+                },
+                clear=False,
+            ):
+                manager = ChromeMcpManager(
+                    enabled=True,
+                    auto_connect=False,
+                    browser_url="http://127.0.0.1:9222",
+                    channel="stable",
+                    connect_timeout_sec=3,
+                    rpc_timeout_sec=3,
+                )
+                result = manager.call_tool("browser_page_info", {})
+                self.assertIn('"bu_cdp_url": "http://127.0.0.1:9222"', result.content)
+                self.assertIn('"bu_name": "test-openplanter"', result.content)
                 manager.shutdown()
 
     def test_missing_attach_mode_reports_unavailable(self) -> None:
@@ -179,8 +186,8 @@ class ChromeMcpManagerTests(unittest.TestCase):
             with patch.dict(
                 os.environ,
                 {
-                    "OPENPLANTER_CHROME_MCP_COMMAND": str(launcher),
-                    "OPENPLANTER_CHROME_MCP_PACKAGE": "ignored-package",
+                    "OPENPLANTER_BROWSER_HARNESS_COMMAND": str(launcher),
+                    "FAKE_BROWSER_HARNESS_TMP": tmpdir,
                 },
                 clear=False,
             ):

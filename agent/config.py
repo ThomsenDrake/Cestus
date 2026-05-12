@@ -32,7 +32,7 @@ VALID_OBSIDIAN_EXPORT_MODES: set[str] = {"fresh_vault", "existing_vault_folder"}
 DEFAULT_OBSIDIAN_EXPORT_SUBDIR = "OpenPlanter"
 
 PROVIDER_DEFAULT_MODELS: dict[str, str] = {
-    "openai": "azure-foundry/gpt-5.4",
+    "openai": "azure-foundry/gpt-5.5",
     "anthropic": "anthropic-foundry/claude-opus-4-6",
     "openrouter": "anthropic/claude-sonnet-4-5",
     "cerebras": "qwen-3-235b-a22b-instruct-2507",
@@ -165,7 +165,7 @@ class AgentConfig:
     workspace: Path
     provider: str = "auto"
     model: str = "anthropic-foundry/claude-opus-4-6"
-    reasoning_effort: str | None = "high"
+    reasoning_effort: str | None = "xhigh"
     base_url: str = FOUNDRY_OPENAI_BASE_URL  # Legacy alias for OpenAI-compatible base URL.
     api_key: str | None = None  # Legacy alias for OpenAI key.
     openai_base_url: str = FOUNDRY_OPENAI_BASE_URL
@@ -361,7 +361,7 @@ class AgentConfig:
             workspace=ws,
             provider=os.getenv("OPENPLANTER_PROVIDER", "auto").strip().lower() or "auto",
             model=os.getenv("OPENPLANTER_MODEL", PROVIDER_DEFAULT_MODELS["anthropic"]),
-            reasoning_effort=(os.getenv("OPENPLANTER_REASONING_EFFORT", "high").strip().lower() or None),
+            reasoning_effort=(os.getenv("OPENPLANTER_REASONING_EFFORT", "xhigh").strip().lower() or None),
             base_url=openai_base_url,
             api_key=openai_api_key,
             openai_base_url=openai_base_url,
