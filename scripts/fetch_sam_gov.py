@@ -44,7 +44,7 @@ class SAMGovClient:
         """Make HTTP GET request and return response."""
         try:
             req = urllib.request.Request(url)
-            req.add_header('User-Agent', 'OpenPlanter-SAM-Fetcher/1.0')
+            req.add_header('User-Agent', 'Cestus-SAM-Fetcher/1.0')
             req.add_header('Accept', 'application/json, application/zip')
 
             with urllib.request.urlopen(req, timeout=30) as response:

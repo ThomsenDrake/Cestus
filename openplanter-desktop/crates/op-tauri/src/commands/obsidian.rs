@@ -236,10 +236,10 @@ mod tests {
 
     #[test]
     fn obsidian_uri_encodes_absolute_path() {
-        let uri = obsidian_open_uri_for_path(Path::new("/tmp/My Vault/OpenPlanter/Home.md"));
+        let uri = obsidian_open_uri_for_path(Path::new("/tmp/My Vault/Cestus/Home.md"));
         assert_eq!(
             uri,
-            "obsidian://open?path=%2Ftmp%2FMy%20Vault%2FOpenPlanter%2FHome.md"
+            "obsidian://open?path=%2Ftmp%2FMy%20Vault%2FCestus%2FHome.md"
         );
     }
 
@@ -258,7 +258,7 @@ mod tests {
         assert!(config.enabled);
         assert_eq!(config.root, Some(PathBuf::from("/tmp/Vault")));
         assert_eq!(config.mode, "fresh_vault");
-        assert_eq!(config.subdir, "OpenPlanter");
+        assert_eq!(config.subdir, "Cestus");
         assert!(!config.generate_canvas);
     }
 

@@ -32,7 +32,7 @@ findings = {
         "generated": "2026-02-19T23:44:00Z",
         "investigation_period_contracts": "FY2019-FY2026",
         "investigation_period_finance": "2019-2025",
-        "analyst": "OpenPlanter",
+        "analyst": "Cestus",
         "classification": "Evidence-backed preliminary findings"
     },
     "data_summary": {

@@ -5,7 +5,7 @@ Status: Draft for frontend-safe scaffolding
 
 ## Context
 
-`docs/session-trace-deepdive-2026-03-23.md` identified the current graph-level "new this session" experience as a strong UX seed but still a presentation-only diff. `VISION.md` sets a higher bar: OpenPlanter should be ontology-first, provenance-aware, and able to reuse the same semantic change model across graph, overview, replay, timeline, and future action surfaces.
+`docs/session-trace-deepdive-2026-03-23.md` identified the current graph-level "new this session" experience as a strong UX seed but still a presentation-only diff. `VISION.md` sets a higher bar: Cestus should be ontology-first, provenance-aware, and able to reuse the same semantic change model across graph, overview, replay, timeline, and future action surfaces.
 
 Today the graph session feature works like this:
 

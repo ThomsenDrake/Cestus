@@ -21,7 +21,7 @@ from urllib.error import HTTPError, URLError
 
 
 # SEC requires a User-Agent header to identify automated requests
-USER_AGENT = "OpenPlanter edgar-fetcher/1.0 (research@openplanter.org)"
+USER_AGENT = "Cestus edgar-fetcher/1.0 (research@openplanter.org)"
 
 # Base URLs for SEC EDGAR API
 TICKER_LOOKUP_URL = "https://www.sec.gov/files/company_tickers.json"

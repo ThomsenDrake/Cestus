@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Record an asciinema demo of the OpenPlanter TUI.
+"""Record an asciinema demo of the Cestus TUI.
 
 Launches the agent in demo mode, types a prompt with realistic keystroke
 timing, waits for the agent to finish, then exits. The result is saved
@@ -75,7 +75,7 @@ def _wait_for_marker(child: pexpect.spawn, marker: str, timeout: int) -> bool:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Record an OpenPlanter demo.")
+    parser = argparse.ArgumentParser(description="Record an Cestus demo.")
     parser.add_argument("-o", "--output", default="demo.cast", help="Output .cast file path.")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Prompt to type into the TUI.")
     parser.add_argument("--cols", type=int, default=120, help="Terminal width.")

@@ -1,7 +1,7 @@
 {
-  "productName": "OpenPlanter",
+  "productName": "Cestus",
   "version": "0.1.0",
-  "identifier": "com.openplanter.desktop",
+  "identifier": "com.cestus.desktop",
   "build": {
     "frontendDist": "../../frontend/dist",
     "devUrl": "http://localhost:5173",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "OpenPlanter",
+        "title": "Cestus",
         "width": 1400,
         "height": 900,
         "resizable": true,

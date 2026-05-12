@@ -1,6 +1,6 @@
 # Data Sources Wiki
 
-Reference documentation for every dataset OpenPlanter can ingest. Each entry follows a [standardized template](template.md) so agents and contributors can quickly understand access methods, schema, and cross-reference potential.
+Reference documentation for every dataset Cestus can ingest. Each entry follows a [standardized template](template.md) so agents and contributors can quickly understand access methods, schema, and cross-reference potential.
 
 ## Sources by Category
 

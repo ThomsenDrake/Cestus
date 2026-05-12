@@ -282,14 +282,14 @@ mod tests {
         let mut cfg = AgentConfig::default();
         let settings = PersistentSettings {
             obsidian_export_mode: Some("fresh-vault".into()),
-            obsidian_export_subdir: Some("/Research/OpenPlanter/".into()),
+            obsidian_export_subdir: Some("/Research/Cestus/".into()),
             ..Default::default()
         };
 
         apply_settings_to_config(&mut cfg, &settings);
 
         assert_eq!(cfg.obsidian_export_mode, "fresh_vault");
-        assert_eq!(cfg.obsidian_export_subdir, "Research/OpenPlanter");
+        assert_eq!(cfg.obsidian_export_subdir, "Research/Cestus");
 
         unsafe {
             match saved_mode {

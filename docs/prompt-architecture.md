@@ -1,6 +1,6 @@
-# OpenPlanter Prompt Architecture
+# Cestus Prompt Architecture
 
-OpenPlanter has two runtime prompt stacks: the Python agent runtime and the Rust
+Cestus has two runtime prompt stacks: the Python agent runtime and the Rust
 desktop core. Shared prompt contracts should stay aligned, while runtime-specific
 sections may differ when the available tools or recursion behavior differ.
 

@@ -61,7 +61,7 @@ class SettingsTests(unittest.TestCase):
                 obsidian_export_enabled=True,
                 obsidian_export_root="/Users/example/Vault",
                 obsidian_export_mode="fresh-vault",
-                obsidian_export_subdir="Research/OpenPlanter",
+                obsidian_export_subdir="Research/Cestus",
                 obsidian_generate_canvas=False,
             )
             store.save(settings)
@@ -69,7 +69,7 @@ class SettingsTests(unittest.TestCase):
             self.assertTrue(loaded.obsidian_export_enabled)
             self.assertEqual(loaded.obsidian_export_root, "/Users/example/Vault")
             self.assertEqual(loaded.obsidian_export_mode, "fresh_vault")
-            self.assertEqual(loaded.obsidian_export_subdir, "Research/OpenPlanter")
+            self.assertEqual(loaded.obsidian_export_subdir, "Research/Cestus")
             self.assertFalse(loaded.obsidian_generate_canvas)
 
     def test_embeddings_provider_roundtrip(self) -> None:

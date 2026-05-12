@@ -1,4 +1,4 @@
-"""Textual-based TUI for OpenPlanter with wiki knowledge graph panel.
+"""Textual-based TUI for Cestus with wiki knowledge graph panel.
 
 Provides a widget-based layout with:
 - Chat pane (message log, activity indicator, prompt input)
@@ -343,11 +343,11 @@ class WikiGraphCanvas(Widget):
 
 
 # ---------------------------------------------------------------------------
-# OpenPlanter Textual App
+# Cestus Textual App
 # ---------------------------------------------------------------------------
 
-class OpenPlanterApp(App):
-    """Textual App for OpenPlanter with chat pane and wiki graph panel."""
+class CestusApp(App):
+    """Textual App for Cestus with chat pane and wiki graph panel."""
 
     CSS = """
     #main-container {
@@ -792,5 +792,5 @@ class OpenPlanterApp(App):
 
 def run_textual_app(ctx: ChatContext, startup_info: dict[str, str] | None = None) -> None:
     """Launch the Textual TUI."""
-    app = OpenPlanterApp(ctx, startup_info=startup_info)
+    app = CestusApp(ctx, startup_info=startup_info)
     app.run()

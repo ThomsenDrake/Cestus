@@ -87,9 +87,9 @@ def _build_splash() -> str:
     """Generate the startup ASCII art banner with potted plants."""
     try:
         import pyfiglet
-        art = pyfiglet.figlet_format("OpenPlanter", font="standard").rstrip()
+        art = pyfiglet.figlet_format("Cestus", font="standard").rstrip()
     except Exception:
-        art = "   OpenPlanter"
+        art = "   Cestus"
     lines = art.splitlines()
     # Strip common leading whitespace so the plants align flush
     min_indent = min(

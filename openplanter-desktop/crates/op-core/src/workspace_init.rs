@@ -413,7 +413,7 @@ where
         rewrite_summary,
         restart_required: true,
         restart_message: format!(
-            "Migration completed. Restart OpenPlanter with OPENPLANTER_WORKSPACE={} to use the new Desktop workspace.",
+            "Migration completed. Restart Cestus with OPENPLANTER_WORKSPACE={} to use the new Desktop workspace.",
             target.display()
         ),
         warnings,

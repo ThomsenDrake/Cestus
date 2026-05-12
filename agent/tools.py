@@ -949,7 +949,7 @@ class WorkspaceTools:
             else "all"
         )
         lines = [
-            "<!-- OpenPlanter document_ocr artifact -->",
+            "<!-- Cestus document_ocr artifact -->",
             f"<!-- source: {rel_path} -->",
             f"<!-- model: {model} -->",
             f"<!-- pages: {page_label} -->",
@@ -1591,7 +1591,7 @@ class WorkspaceTools:
         file_bytes: bytes,
         media_type: str,
     ) -> tuple[bytes, str]:
-        boundary = f"----OpenPlanter{uuid.uuid4().hex}"
+        boundary = f"----Cestus{uuid.uuid4().hex}"
         chunks: list[bytes] = []
         for key, value in fields:
             chunks.append(f"--{boundary}\r\n".encode("utf-8"))
@@ -2785,7 +2785,7 @@ class WorkspaceTools:
             url=url,
             headers={
                 "Accept": "text/html,application/xhtml+xml,application/json,text/plain;q=0.9,*/*;q=0.8",
-                "User-Agent": "OpenPlanter/1.0",
+                "User-Agent": "Cestus/1.0",
             },
             method="GET",
         )

@@ -9,7 +9,7 @@ import { appState } from "../state/store";
 import type { CommandResult } from "./model";
 
 export const OBSIDIAN_USAGE =
-  "/obsidian status|enable <vault-path> [--mode fresh-vault|existing-vault-folder] [--subdir OpenPlanter] [--canvas|--no-canvas]|disable|export|open";
+  "/obsidian status|enable <vault-path> [--mode fresh-vault|existing-vault-folder] [--subdir Cestus] [--canvas|--no-canvas]|disable|export|open";
 
 function tokenizeArgs(input: string): string[] {
   const tokens: string[] = [];
@@ -118,7 +118,7 @@ async function handleObsidianCommandInner(args: string): Promise<CommandResult> 
     if (!root) {
       return {
         action: "handled",
-        lines: ["Usage: /obsidian enable <vault-path> [--mode fresh-vault|existing-vault-folder] [--subdir OpenPlanter] [--no-canvas]"],
+        lines: ["Usage: /obsidian enable <vault-path> [--mode fresh-vault|existing-vault-folder] [--subdir Cestus] [--no-canvas]"],
       };
     }
     const request: ConfigureObsidianExportRequest = {

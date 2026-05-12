@@ -1,10 +1,10 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ThomsenDrake/OpenPlanter)
 
-# OpenPlanter
+# Cestus
 
-A recursive-language-model investigation agent with a desktop GUI and terminal interface. OpenPlanter ingests heterogeneous datasets — corporate registries, campaign finance records, lobbying disclosures, government contracts, and more — resolves entities across them, and surfaces non-obvious connections through evidence-backed analysis. It operates autonomously with file I/O, shell execution, web search, and recursive sub-agent delegation.
+A recursive-language-model investigation agent with a desktop GUI and terminal interface. Cestus ingests heterogeneous datasets — corporate registries, campaign finance records, lobbying disclosures, government contracts, and more — resolves entities across them, and surfaces non-obvious connections through evidence-backed analysis. It operates autonomously with file I/O, shell execution, web search, and recursive sub-agent delegation.
 
-![OpenPlanter Desktop](screenshot.png)
+![Cestus Desktop](screenshot.png)
 
 ## Download
 
@@ -50,7 +50,7 @@ cargo tauri build
 
 Requires: Rust stable, Node.js 20+, the Tauri CLI, and platform-specific Tauri dependencies ([see Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)).
 
-If you want the desktop app to control a live browser, install Browser Harness so `browser-harness` is available on `PATH`. OpenPlanter invokes that thin CDP harness at runtime and reuses its daemon; it does not bundle Browser Harness or launch Chrome for you.
+If you want the desktop app to control a live browser, install Browser Harness so `browser-harness` is available on `PATH`. Cestus invokes that thin CDP harness at runtime and reuses its daemon; it does not bundle Browser Harness or launch Chrome for you.
 
 ## CLI Agent
 
@@ -63,19 +63,19 @@ The Python CLI agent can be used independently of the desktop app.
 pip install -e .
 
 # Configure API keys (interactive prompt)
-openplanter-agent --configure-keys
+cestus-agent --configure-keys
 
-# In this repo, point OpenPlanter at the live workspace from the repo-root .env
+# In this repo, point Cestus at the live workspace from the repo-root .env
 echo 'OPENPLANTER_WORKSPACE=workspace' >> .env
 
 # Launch the TUI
-openplanter-agent
+cestus-agent
 ```
 
 Or run a single task headlessly:
 
 ```bash
-openplanter-agent --task "Cross-reference vendor payments against lobbying disclosures and flag overlaps" --workspace ./data
+cestus-agent --task "Cross-reference vendor payments against lobbying disclosures and flag overlaps" --workspace ./data
 ```
 
 Browser Harness support in the CLI/TUI uses the same local `browser-harness` command, so install it before enabling browser tools there.
@@ -112,9 +112,9 @@ For OpenAI-compatible access, you can authenticate with either a standard API ke
 [Ollama](https://ollama.com) runs models locally with no API key. Install Ollama, pull a model (`ollama pull llama3.2`), then:
 
 ```bash
-openplanter-agent --provider ollama
-openplanter-agent --provider ollama --model mistral
-openplanter-agent --provider ollama --list-models
+cestus-agent --provider ollama
+cestus-agent --provider ollama --model mistral
+cestus-agent --provider ollama --list-models
 ```
 
 The base URL defaults to `http://localhost:11434/v1` and can be overridden with `OPENPLANTER_OLLAMA_BASE_URL` or `--base-url`. The first request may be slow while Ollama loads the model into memory; a 120-second first-byte timeout is used automatically.
@@ -135,7 +135,7 @@ export OPENPLANTER_ZAI_PLAN=paygo   # or coding
 Or per run:
 
 ```bash
-openplanter-agent --provider zai --model glm-5 --zai-plan coding
+cestus-agent --provider zai --model glm-5 --zai-plan coding
 ```
 
 Advanced overrides:
@@ -149,7 +149,7 @@ export OPENPLANTER_ZAI_CODING_BASE_URL=https://api.z.ai/api/coding/paas/v4
 
 ### Z.AI Reliability Tuning
 
-Z.AI rate limits (`HTTP 429`, code `1302`) are retried with capped backoff and jitter. For Z.AI streaming connection issues, OpenPlanter also retries up to `OPENPLANTER_ZAI_STREAM_MAX_RETRIES` times.
+Z.AI rate limits (`HTTP 429`, code `1302`) are retried with capped backoff and jitter. For Z.AI streaming connection issues, Cestus also retries up to `OPENPLANTER_ZAI_STREAM_MAX_RETRIES` times.
 
 ```bash
 export OPENPLANTER_RATE_LIMIT_MAX_RETRIES=12
@@ -163,7 +163,7 @@ Additional service keys: `EXA_API_KEY`, `FIRECRAWL_API_KEY`, `BRAVE_API_KEY`, `T
 
 ### Embeddings Retrieval
 
-OpenPlanter can build local semantic indexes for the runtime wiki, workspace research docs, and session evidence or artifacts. At the start of top-level solves it can retrieve relevant chunks and inject them into the initial prompt as a retrieval packet. Retrieval is additive: if the selected embeddings provider is not configured, the agent still runs and status surfaces explain why retrieval is disabled.
+Cestus can build local semantic indexes for the runtime wiki, workspace research docs, and session evidence or artifacts. At the start of top-level solves it can retrieve relevant chunks and inject them into the initial prompt as a retrieval packet. Retrieval is additive: if the selected embeddings provider is not configured, the agent still runs and status surfaces explain why retrieval is disabled.
 
 The embeddings provider defaults to `voyage`. If you were thinking of "Voyager", use the internal provider name `voyage` in config, CLI flags, slash commands, and saved settings.
 
@@ -171,18 +171,18 @@ Configure it with:
 
 ```bash
 export OPENPLANTER_EMBEDDINGS_PROVIDER=voyage   # or mistral
-openplanter-agent --embeddings-provider mistral
+cestus-agent --embeddings-provider mistral
 ```
 
 When `mistral` is selected, embeddings use the shared `MISTRAL_API_KEY`. That same shared key can also be used by Mistral Document AI/OCR and, when `MISTRAL_TRANSCRIPTION_API_KEY` is not set, by audio transcription as well.
 
-OpenPlanter stores embeddings indexes locally under `.openplanter/embeddings/workspace/` and `.openplanter/sessions/<session_id>/embeddings/`. The desktop app and TUI both support `/embeddings [voyage|mistral] [--save]`, and `/status` shows the active embeddings provider plus retrieval availability.
+Cestus stores embeddings indexes locally under `.openplanter/embeddings/workspace/` and `.openplanter/sessions/<session_id>/embeddings/`. The desktop app and TUI both support `/embeddings [voyage|mistral] [--save]`, and `/status` shows the active embeddings provider plus retrieval availability.
 
 ### Audio Transcription
 
-OpenPlanter includes an `audio_transcribe` tool backed by Mistral's offline transcription API. It uploads local workspace audio files to `POST /v1/audio/transcriptions`, defaults to `voxtral-mini-latest`, and returns transcript text plus any timestamp or diarization metadata that Mistral includes.
+Cestus includes an `audio_transcribe` tool backed by Mistral's offline transcription API. It uploads local workspace audio files to `POST /v1/audio/transcriptions`, defaults to `voxtral-mini-latest`, and returns transcript text plus any timestamp or diarization metadata that Mistral includes.
 
-Long-form recordings can now be chunked automatically. When `chunking` is left at its default of `auto`, OpenPlanter keeps the current single-upload path for smaller files and switches to overlapping chunked transcription when the upload would exceed the configured Mistral size cap. `chunking: "force"` always chunks, and `chunking: "off"` keeps the single-upload path.
+Long-form recordings can now be chunked automatically. When `chunking` is left at its default of `auto`, Cestus keeps the current single-upload path for smaller files and switches to overlapping chunked transcription when the upload would exceed the configured Mistral size cap. `chunking: "force"` always chunks, and `chunking: "off"` keeps the single-upload path.
 
 Configure it with:
 
@@ -242,11 +242,11 @@ The agent has access to 20 tools, organized around its investigation workflow:
 
 In **recursive mode** (the default), the agent spawns sub-agents via `subtask` and `execute` to parallelize entity resolution, cross-dataset linking, and evidence-chain construction across large investigations.
 
-When Browser Harness is enabled, OpenPlanter probes the harness at solve start and appends Browser Harness actions natively to the built-in tool set for the main agent, recursive subtasks, and execute flows.
+When Browser Harness is enabled, Cestus probes the harness at solve start and appends Browser Harness actions natively to the built-in tool set for the main agent, recursive subtasks, and execute flows.
 
 ## Browser Harness
 
-OpenPlanter can attach to Browser Harness and reuse an active Chrome debugging session. The integration is native in both runtimes, while Browser Harness itself remains an external command that you install and keep on `PATH`.
+Cestus can attach to Browser Harness and reuse an active Chrome debugging session. The integration is native in both runtimes, while Browser Harness itself remains an external command that you install and keep on `PATH`.
 
 ### Requirements
 
@@ -263,13 +263,13 @@ uv tool install -e .
 command -v browser-harness
 ```
 
-### How OpenPlanter Connects
+### How Cestus Connects
 
-- Auto-discovery mode: OpenPlanter invokes `browser-harness -c ...`; Browser Harness auto-starts its daemon and discovers a running Chrome session after remote debugging is enabled and you approve Chrome's debugging prompt.
-- Browser URL mode: OpenPlanter maps `chrome_mcp_browser_url` and `--chrome-browser-url` to `BU_CDP_URL` for a dedicated remote debugging endpoint, such as `http://127.0.0.1:9222`. This takes precedence over auto-discovery when configured.
+- Auto-discovery mode: Cestus invokes `browser-harness -c ...`; Browser Harness auto-starts its daemon and discovers a running Chrome session after remote debugging is enabled and you approve Chrome's debugging prompt.
+- Browser URL mode: Cestus maps `chrome_mcp_browser_url` and `--chrome-browser-url` to `BU_CDP_URL` for a dedicated remote debugging endpoint, such as `http://127.0.0.1:9222`. This takes precedence over auto-discovery when configured.
 - Channel selection is retained only as a compatibility setting for existing `chrome_mcp_*` configuration. Browser Harness discovers Chrome through `chrome://inspect/#remote-debugging`, `BU_CDP_URL`, or `BU_CDP_WS`.
 
-If Browser Harness cannot start because it is not installed, Chrome remote debugging is disabled, or Chrome is not available, OpenPlanter keeps running with its built-in tools and reports Browser Harness as `unavailable`.
+If Browser Harness cannot start because it is not installed, Chrome remote debugging is disabled, or Chrome is not available, Cestus keeps running with its built-in tools and reports Browser Harness as `unavailable`.
 
 ### Desktop Usage
 
@@ -291,9 +291,9 @@ The sidebar and `/status` output both show the current Browser Harness runtime s
 Use per-run flags:
 
 ```bash
-openplanter-agent --chrome-mcp --chrome-auto-connect
-openplanter-agent --chrome-mcp --chrome-browser-url http://127.0.0.1:9222
-openplanter-agent --chrome-mcp --chrome-channel beta
+cestus-agent --chrome-mcp --chrome-auto-connect
+cestus-agent --chrome-mcp --chrome-browser-url http://127.0.0.1:9222
+cestus-agent --chrome-mcp --chrome-channel beta
 ```
 
 The TUI also supports `/chrome status|on|off|auto|url <endpoint>|channel <stable|beta|dev|canary> [--save]`.
@@ -301,7 +301,7 @@ The TUI also supports `/chrome status|on|off|auto|url <endpoint>|channel <stable
 ## CLI Reference
 
 ```
-openplanter-agent [options]
+cestus-agent [options]
 ```
 
 ### Workspace & Session
@@ -322,7 +322,7 @@ Startup resolves the runtime workspace in this order:
 3. `OPENPLANTER_WORKSPACE` from the nearest ancestor `.env`
 4. Entry-point fallback, followed by repo-root guardrails
 
-Both the CLI and the desktop app refuse to operate directly in repo root. If startup would land on repo root and `<repo>/workspace` exists, OpenPlanter redirects there. Otherwise it exits with an actionable error.
+Both the CLI and the desktop app refuse to operate directly in repo root. If startup would land on repo root and `<repo>/workspace` exists, Cestus redirects there. Otherwise it exits with an actionable error.
 
 For this repository, the intended local setup is:
 
@@ -379,7 +379,7 @@ Keys are resolved in this priority order (highest wins):
 4. Workspace credential store (`.openplanter/credentials.json`)
 5. User credential store (`~/.openplanter/credentials.json`)
 
-All runtime settings can also be set via `OPENPLANTER_*` environment variables (e.g. `OPENPLANTER_MAX_DEPTH=8`).
+All runtime settings can also be set via legacy-compatible `OPENPLANTER_*` environment variables (e.g. `OPENPLANTER_MAX_DEPTH=8`). See [`docs/branding-compatibility.md`](docs/branding-compatibility.md) for the retained identifiers that keep existing workspaces and scripts working under the Cestus brand.
 
 ## Project Structure
 

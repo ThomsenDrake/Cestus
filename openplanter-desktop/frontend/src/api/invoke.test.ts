@@ -90,9 +90,9 @@ describe("invoke wrappers", () => {
       enabled: true,
       configured: true,
       root: "/tmp/Vault",
-      target_root: "/tmp/Vault/OpenPlanter",
+      target_root: "/tmp/Vault/Cestus",
       mode: "existing_vault_folder",
-      subdir: "OpenPlanter",
+      subdir: "Cestus",
       generate_canvas: true,
       warnings: [],
     }));
@@ -103,9 +103,9 @@ describe("invoke wrappers", () => {
         enabled: true,
         configured: true,
         root: "/tmp/Vault",
-        target_root: "/tmp/Vault/OpenPlanter",
+        target_root: "/tmp/Vault/Cestus",
         mode: "existing_vault_folder",
-        subdir: "OpenPlanter",
+        subdir: "Cestus",
         generate_canvas: false,
         warnings: [],
       };
@@ -114,10 +114,10 @@ describe("invoke wrappers", () => {
       expect(sessionId).toBe("session-1");
       return {
         exported: true,
-        root_path: "/tmp/Vault/OpenPlanter",
-        investigation_dir: "/tmp/Vault/OpenPlanter/Investigations/demo",
-        home_path: "/tmp/Vault/OpenPlanter/Investigations/demo/Home.md",
-        manifest_path: "/tmp/Vault/OpenPlanter/Investigations/demo/Manifest.json",
+        root_path: "/tmp/Vault/Cestus",
+        investigation_dir: "/tmp/Vault/Cestus/Investigations/demo",
+        home_path: "/tmp/Vault/Cestus/Investigations/demo/Home.md",
+        manifest_path: "/tmp/Vault/Cestus/Investigations/demo/Manifest.json",
         files_written: [],
         warnings: [],
       };
@@ -126,13 +126,13 @@ describe("invoke wrappers", () => {
       expect(sessionId).toBe("session-1");
       return {
         opened: true,
-        uri: "obsidian://open?path=%2Ftmp%2FVault%2FOpenPlanter%2FHome.md",
+        uri: "obsidian://open?path=%2Ftmp%2FVault%2FCestus%2FHome.md",
         export: {
           exported: true,
-          root_path: "/tmp/Vault/OpenPlanter",
-          investigation_dir: "/tmp/Vault/OpenPlanter/Investigations/demo",
-          home_path: "/tmp/Vault/OpenPlanter/Investigations/demo/Home.md",
-          manifest_path: "/tmp/Vault/OpenPlanter/Investigations/demo/Manifest.json",
+          root_path: "/tmp/Vault/Cestus",
+          investigation_dir: "/tmp/Vault/Cestus/Investigations/demo",
+          home_path: "/tmp/Vault/Cestus/Investigations/demo/Home.md",
+          manifest_path: "/tmp/Vault/Cestus/Investigations/demo/Manifest.json",
           files_written: [],
           warnings: [],
         },
