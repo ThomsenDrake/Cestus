@@ -694,14 +694,14 @@ impl WorkspaceTools {
                         Ok(tools) if tools.iter().any(|tool| tool.name == name) => {
                             match manager.call_tool(name, &args).await {
                                 Ok(content) => ToolResult::ok(content),
-                                Err(err) => ToolResult::error(format!(
-                                    "Chrome DevTools MCP unavailable: {err}"
-                                )),
+                                Err(err) => {
+                                    ToolResult::error(format!("Browser Harness unavailable: {err}"))
+                                }
                             }
                         }
                         Ok(_) => ToolResult::error(format!("Unknown tool: {name}")),
                         Err(err) => {
-                            ToolResult::error(format!("Chrome DevTools MCP unavailable: {err}"))
+                            ToolResult::error(format!("Browser Harness unavailable: {err}"))
                         }
                     }
                 } else {

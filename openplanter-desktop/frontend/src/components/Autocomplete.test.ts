@@ -145,7 +145,7 @@ describe("AutocompleteController", () => {
     const values = Array.from(items).map(
       (i) => i.querySelector(".autocomplete-value")!.textContent,
     );
-    expect(values).toEqual(["low", "medium", "high", "off"]);
+    expect(values).toEqual(["low", "medium", "high", "xhigh", "off"]);
   });
 
   // ── Keyboard navigation ──

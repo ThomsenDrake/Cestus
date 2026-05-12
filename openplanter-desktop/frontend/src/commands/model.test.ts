@@ -68,11 +68,11 @@ describe("MODEL_ALIASES", () => {
   });
 
   it("gpt5 alias", () => {
-    expect(MODEL_ALIASES["gpt5"]).toBe("azure-foundry/gpt-5.4");
+    expect(MODEL_ALIASES["gpt5"]).toBe("azure-foundry/gpt-5.5");
   });
 
   it("gpt-5 alias", () => {
-    expect(MODEL_ALIASES["gpt-5"]).toBe("azure-foundry/gpt-5.4");
+    expect(MODEL_ALIASES["gpt-5"]).toBe("azure-foundry/gpt-5.5");
   });
 
   it("gpt-5.3 alias", () => {
@@ -85,6 +85,14 @@ describe("MODEL_ALIASES", () => {
 
   it("gpt5.4 alias", () => {
     expect(MODEL_ALIASES["gpt5.4"]).toBe("azure-foundry/gpt-5.4");
+  });
+
+  it("gpt-5.5 alias", () => {
+    expect(MODEL_ALIASES["gpt-5.5"]).toBe("azure-foundry/gpt-5.5");
+  });
+
+  it("gpt5.5 alias", () => {
+    expect(MODEL_ALIASES["gpt5.5"]).toBe("azure-foundry/gpt-5.5");
   });
 
   it("zai alias", () => {
@@ -159,13 +167,13 @@ describe("handleModelCommand", () => {
     expect(appState.get().zaiPlan).toBe("coding");
   });
 
-  it("gpt5 alias switches to gpt-5.4", async () => {
+  it("gpt5 alias switches to gpt-5.5", async () => {
     __setHandler("update_config", ({ partial }: { partial: Record<string, string> }) => {
-      expect(partial.model).toBe("azure-foundry/gpt-5.4");
+      expect(partial.model).toBe("azure-foundry/gpt-5.5");
       expect(partial.provider).toBe("openai");
       return {
         provider: "openai",
-        model: "azure-foundry/gpt-5.4",
+        model: "azure-foundry/gpt-5.5",
         zai_plan: "paygo",
         workspace: ".",
         session_id: null,
@@ -179,8 +187,8 @@ describe("handleModelCommand", () => {
     });
 
     const result = await handleModelCommand("gpt5");
-    expect(result.lines).toContain("Switched to openai/azure-foundry/gpt-5.4");
+    expect(result.lines).toContain("Switched to openai/azure-foundry/gpt-5.5");
     expect(appState.get().provider).toBe("openai");
-    expect(appState.get().model).toBe("azure-foundry/gpt-5.4");
+    expect(appState.get().model).toBe("azure-foundry/gpt-5.5");
   });
 });

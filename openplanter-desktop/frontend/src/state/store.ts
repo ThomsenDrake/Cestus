@@ -155,7 +155,7 @@ export const appState = new Store<AppState>({
   chromeMcpConnectTimeoutSec: 15,
   chromeMcpRpcTimeoutSec: 45,
   chromeMcpStatus: "disabled",
-  chromeMcpStatusDetail: "Chrome DevTools MCP is disabled.",
+  chromeMcpStatusDetail: "Browser Harness is disabled.",
   obsidianExportEnabled: false,
   obsidianExportRoot: null,
   obsidianExportMode: "existing_vault_folder",

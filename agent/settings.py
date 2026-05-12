@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
-VALID_REASONING_EFFORTS: set[str] = {"low", "medium", "high"}
+VALID_REASONING_EFFORTS: set[str] = {"low", "medium", "high", "xhigh"}
 VALID_CHROME_MCP_CHANNELS: set[str] = {"stable", "beta", "dev", "canary"}
 VALID_EMBEDDINGS_PROVIDERS: set[str] = {"voyage", "mistral"}
 VALID_OBSIDIAN_EXPORT_MODES: set[str] = {"fresh_vault", "existing_vault_folder"}
@@ -49,7 +49,7 @@ def normalize_chrome_mcp_channel(value: str | None) -> str | None:
         return None
     if cleaned not in VALID_CHROME_MCP_CHANNELS:
         raise ValueError(
-            f"Invalid Chrome MCP channel '{value}'. Expected one of: "
+            f"Invalid legacy Chrome channel '{value}'. Expected one of: "
             f"{', '.join(sorted(VALID_CHROME_MCP_CHANNELS))}"
         )
     return cleaned

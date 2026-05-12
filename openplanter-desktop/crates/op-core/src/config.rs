@@ -40,7 +40,7 @@ pub const CHROME_MCP_RPC_TIMEOUT_SEC: i64 = 45;
 pub static PROVIDER_DEFAULT_MODELS: LazyLock<HashMap<&'static str, &'static str>> =
     LazyLock::new(|| {
         HashMap::from([
-            ("openai", "azure-foundry/gpt-5.4"),
+            ("openai", "azure-foundry/gpt-5.5"),
             ("anthropic", "anthropic-foundry/claude-opus-4-6"),
             ("openrouter", "anthropic/claude-sonnet-4-5"),
             ("cerebras", "qwen-3-235b-a22b-instruct-2507"),
@@ -138,7 +138,8 @@ pub fn normalize_model_alias(value: &str) -> String {
         "opus" | "opus-4" | "opus4.6" => "anthropic-foundry/claude-opus-4-6".to_string(),
         "sonnet" | "sonnet-4" | "sonnet4.6" => "anthropic-foundry/claude-sonnet-4-6".to_string(),
         "haiku" | "haiku-4" | "haiku4.5" => "anthropic-foundry/claude-haiku-4-5".to_string(),
-        "gpt5" | "gpt-5" | "gpt5.4" | "gpt-5.4" => "azure-foundry/gpt-5.4".to_string(),
+        "gpt5" | "gpt-5" | "gpt5.5" | "gpt-5.5" => "azure-foundry/gpt-5.5".to_string(),
+        "gpt5.4" | "gpt-5.4" => "azure-foundry/gpt-5.4".to_string(),
         "gpt5.3" | "gpt-5.3" => "azure-foundry/gpt-5.3-codex".to_string(),
         "kimi" => "azure-foundry/Kimi-K2.5".to_string(),
         "gpt4o" | "gpt-4o" => "gpt-4o".to_string(),
@@ -366,7 +367,7 @@ impl Default for AgentConfig {
             workspace: PathBuf::from("."),
             provider: "auto".into(),
             model: "anthropic-foundry/claude-opus-4-6".into(),
-            reasoning_effort: Some("high".into()),
+            reasoning_effort: Some("xhigh".into()),
             base_url: FOUNDRY_OPENAI_BASE_URL.into(),
             openai_base_url: FOUNDRY_OPENAI_BASE_URL.into(),
             anthropic_base_url: FOUNDRY_ANTHROPIC_BASE_URL.into(),
@@ -504,7 +505,7 @@ impl AgentConfig {
             resolve_openai_api_key(openai_api_key, &openai_base_url, openai_oauth_token.clone());
         let anthropic_api_key = resolve_anthropic_api_key(anthropic_api_key, &anthropic_base_url);
 
-        let reasoning_effort_raw = env_or("OPENPLANTER_REASONING_EFFORT", "high")
+        let reasoning_effort_raw = env_or("OPENPLANTER_REASONING_EFFORT", "xhigh")
             .trim()
             .to_lowercase();
         let reasoning_effort = if reasoning_effort_raw.is_empty() {
@@ -733,7 +734,7 @@ mod tests {
         let cfg = AgentConfig::default();
         assert_eq!(cfg.provider, "auto");
         assert_eq!(cfg.model, "anthropic-foundry/claude-opus-4-6");
-        assert_eq!(cfg.reasoning_effort, Some("high".into()));
+        assert_eq!(cfg.reasoning_effort, Some("xhigh".into()));
         assert_eq!(cfg.openai_base_url, FOUNDRY_OPENAI_BASE_URL);
         assert_eq!(cfg.anthropic_base_url, FOUNDRY_ANTHROPIC_BASE_URL);
         assert_eq!(
@@ -793,7 +794,7 @@ mod tests {
     fn test_provider_default_models() {
         assert_eq!(
             PROVIDER_DEFAULT_MODELS.get("openai"),
-            Some(&"azure-foundry/gpt-5.4")
+            Some(&"azure-foundry/gpt-5.5")
         );
         assert_eq!(
             PROVIDER_DEFAULT_MODELS.get("anthropic"),
@@ -920,7 +921,7 @@ mod tests {
         let cfg = AgentConfig::from_env("/tmp");
         assert_eq!(cfg.provider, "auto");
         assert_eq!(cfg.model, "anthropic-foundry/claude-opus-4-6");
-        assert_eq!(cfg.reasoning_effort, Some("high".into()));
+        assert_eq!(cfg.reasoning_effort, Some("xhigh".into()));
         assert_eq!(cfg.max_depth, 4);
         assert!(cfg.budget_extension_enabled);
         assert_eq!(cfg.budget_extension_block_steps, 20);

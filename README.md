@@ -50,7 +50,7 @@ cargo tauri build
 
 Requires: Rust stable, Node.js 20+, the Tauri CLI, and platform-specific Tauri dependencies ([see Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)).
 
-If you want the desktop app to control a live Chrome session through Chrome DevTools MCP, keep a local Node/npm install available at runtime. OpenPlanter shells out to `npx -y chrome-devtools-mcp@latest`; it does not bundle the server or launch Chrome for you.
+If you want the desktop app to control a live browser, install Browser Harness so `browser-harness` is available on `PATH`. OpenPlanter invokes that thin CDP harness at runtime and reuses its daemon; it does not bundle Browser Harness or launch Chrome for you.
 
 ## CLI Agent
 
@@ -78,7 +78,7 @@ Or run a single task headlessly:
 openplanter-agent --task "Cross-reference vendor payments against lobbying disclosures and flag overlaps" --workspace ./data
 ```
 
-Chrome DevTools MCP support in the CLI/TUI also uses local `npx`, so install Node.js 20+ if you want to enable Chrome tools there.
+Browser Harness support in the CLI/TUI uses the same local `browser-harness` command, so install it before enabling browser tools there.
 
 ### Docker
 
@@ -93,7 +93,7 @@ The container mounts `./workspace` as the agent's working directory.
 
 | Provider | Default Model | Env Var |
 |----------|---------------|---------|
-| OpenAI | `azure-foundry/gpt-5.4` | `OPENAI_API_KEY` or `OPENAI_OAUTH_TOKEN` |
+| OpenAI | `azure-foundry/gpt-5.5` | `OPENAI_API_KEY` or `OPENAI_OAUTH_TOKEN` |
 | Anthropic | `anthropic-foundry/claude-opus-4-6` | `ANTHROPIC_API_KEY` |
 | OpenRouter | `anthropic/claude-sonnet-4-5` | `OPENROUTER_API_KEY` |
 | Cerebras | `qwen-3-235b-a22b-instruct-2507` | `CEREBRAS_API_KEY` |
@@ -242,25 +242,34 @@ The agent has access to 20 tools, organized around its investigation workflow:
 
 In **recursive mode** (the default), the agent spawns sub-agents via `subtask` and `execute` to parallelize entity resolution, cross-dataset linking, and evidence-chain construction across large investigations.
 
-When Chrome DevTools MCP is enabled, OpenPlanter discovers Chrome's published MCP tools at solve start and appends them natively to the built-in tool set for the main agent, recursive subtasks, and execute flows.
+When Browser Harness is enabled, OpenPlanter probes the harness at solve start and appends Browser Harness actions natively to the built-in tool set for the main agent, recursive subtasks, and execute flows.
 
-## Chrome DevTools MCP
+## Browser Harness
 
-OpenPlanter can attach to the official Chrome DevTools MCP server and reuse an active Chrome debugging session. The integration is native in both runtimes, but the server itself is still the upstream package started locally through `npx`.
+OpenPlanter can attach to Browser Harness and reuse an active Chrome debugging session. The integration is native in both runtimes, while Browser Harness itself remains an external command that you install and keep on `PATH`.
 
 ### Requirements
 
-- Node.js and npm available on your `PATH`
+- Browser Harness installed and available as `browser-harness`
 - Chrome 144 or newer
 - Remote debugging enabled in Chrome at `chrome://inspect/#remote-debugging`
 
+Install Browser Harness from a durable checkout, then expose its command globally:
+
+```bash
+git clone https://github.com/browser-use/browser-harness ~/Developer/browser-harness
+cd ~/Developer/browser-harness
+uv tool install -e .
+command -v browser-harness
+```
+
 ### How OpenPlanter Connects
 
-- Auto-connect mode: OpenPlanter starts `chrome-devtools-mcp` with `--autoConnect` and reuses a running Chrome session after you approve Chrome's debugging prompt.
-- Browser URL mode: OpenPlanter passes `--browserUrl <endpoint>` to attach to an existing remote debugging endpoint. This takes precedence over auto-connect when configured.
-- Channel selection: `stable` is the default channel; you can switch to `beta`, `dev`, or `canary` when needed.
+- Auto-discovery mode: OpenPlanter invokes `browser-harness -c ...`; Browser Harness auto-starts its daemon and discovers a running Chrome session after remote debugging is enabled and you approve Chrome's debugging prompt.
+- Browser URL mode: OpenPlanter maps `chrome_mcp_browser_url` and `--chrome-browser-url` to `BU_CDP_URL` for a dedicated remote debugging endpoint, such as `http://127.0.0.1:9222`. This takes precedence over auto-discovery when configured.
+- Channel selection is retained only as a compatibility setting for existing `chrome_mcp_*` configuration. Browser Harness discovers Chrome through `chrome://inspect/#remote-debugging`, `BU_CDP_URL`, or `BU_CDP_WS`.
 
-If Chrome MCP cannot start because Node/npm is missing, Chrome remote debugging is disabled, or Chrome is not available, OpenPlanter keeps running with its built-in tools and reports Chrome MCP as `unavailable`.
+If Browser Harness cannot start because it is not installed, Chrome remote debugging is disabled, or Chrome is not available, OpenPlanter keeps running with its built-in tools and reports Browser Harness as `unavailable`.
 
 ### Desktop Usage
 
@@ -275,7 +284,7 @@ Use the desktop slash command:
 /chrome channel beta --save
 ```
 
-The sidebar and `/status` output both show the current Chrome MCP runtime state.
+The sidebar and `/status` output both show the current Browser Harness runtime state. The `/chrome` command name is kept for compatibility.
 
 ### CLI Usage
 
@@ -330,11 +339,11 @@ OPENPLANTER_WORKSPACE=workspace
 | `--embeddings-provider NAME` | Embeddings retrieval backend: `voyage` or `mistral` |
 | `--openai-oauth-token TOKEN` | ChatGPT Plus/Teams/Pro OAuth bearer token for OpenAI-compatible models |
 | `--zai-plan PLAN` | Z.AI endpoint plan: `paygo` or `coding` |
-| `--reasoning-effort LEVEL` | `low`, `medium`, `high`, or `none` |
-| `--chrome-mcp` / `--no-chrome-mcp` | Enable or disable native Chrome DevTools MCP tools |
-| `--chrome-auto-connect` / `--no-chrome-auto-connect` | Use Chrome MCP auto-connect or require an explicit browser URL |
-| `--chrome-browser-url URL` | Attach Chrome MCP to an existing remote debugging browser URL |
-| `--chrome-channel CHANNEL` | Chrome release channel for auto-connect: `stable`, `beta`, `dev`, `canary` |
+| `--reasoning-effort LEVEL` | `low`, `medium`, `high`, `xhigh`, or `none` |
+| `--chrome-mcp` / `--no-chrome-mcp` | Enable or disable Browser Harness tools (legacy flag name) |
+| `--chrome-auto-connect` / `--no-chrome-auto-connect` | Use Browser Harness auto-discovery or require an explicit BU_CDP_URL |
+| `--chrome-browser-url URL` | Attach Browser Harness to an existing remote debugging HTTP endpoint via BU_CDP_URL |
+| `--chrome-channel CHANNEL` | Legacy compatibility setting; Browser Harness ignores release channels |
 | `--list-models` | Fetch available models from the provider API |
 
 ### Execution
@@ -358,7 +367,7 @@ OPENPLANTER_WORKSPACE=workspace
 
 ### Persistent Defaults
 
-Use `--default-model`, `--default-reasoning-effort`, `--embeddings-provider`, `/embeddings ... --save`, Chrome MCP slash commands with `--save`, or per-provider variants like `--default-model-openai` to save workspace defaults to `.openplanter/settings.json`. View them with `--show-settings`.
+Use `--default-model`, `--default-reasoning-effort`, `--embeddings-provider`, `/embeddings ... --save`, Browser Harness slash commands with `--save`, or per-provider variants like `--default-model-openai` to save workspace defaults to `.openplanter/settings.json`. View them with `--show-settings`.
 
 ## Configuration
 

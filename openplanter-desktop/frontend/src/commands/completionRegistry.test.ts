@@ -77,13 +77,13 @@ describe("completionRegistry", () => {
     expect(opusChild.children![0].value).toBe("--save");
   });
 
-  it("/reasoning has low, medium, high, off children", () => {
+  it("/reasoning has low, medium, high, xhigh, off children", () => {
     const reasoningCmd = COMMAND_COMPLETIONS.find((c) => c.value === "/reasoning");
     expect(reasoningCmd).toBeDefined();
     expect(reasoningCmd!.children).toBeDefined();
 
     const childValues = reasoningCmd!.children!.map((c) => c.value);
-    expect(childValues).toEqual(["low", "medium", "high", "off"]);
+    expect(childValues).toEqual(["low", "medium", "high", "xhigh", "off"]);
   });
 
   it("/web-search has exa, firecrawl, brave, and tavily children", () => {

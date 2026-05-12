@@ -19,6 +19,18 @@ pub struct RateLimitError {
     pub retry_after_sec: Option<f64>,
 }
 
+/// Structured model error for retryable provider-side failures.
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("{message}")]
+pub struct ProviderTransientError {
+    pub message: String,
+    pub status_code: Option<u16>,
+    pub provider: Option<String>,
+    pub provider_code: Option<String>,
+    pub body: String,
+    pub retry_after_sec: Option<f64>,
+}
+
 /// A single tool call returned by the model.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCall {

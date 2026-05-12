@@ -57,11 +57,8 @@ class ChromeMcpStatus:
     last_refresh_at: float | None = None
 
 
-@dataclass
-class _PendingRequest:
-    event: threading.Event
-    result: dict[str, Any] | None = None
-    error: Exception | None = None
+_RESULT_PREFIX = "__OPENPLANTER_BROWSER_HARNESS_RESULT__"
+_DEFAULT_HARNESS_NAME = "openplanter"
 
 
 def _env_text(name: str, default: str) -> str:
@@ -69,45 +66,300 @@ def _env_text(name: str, default: str) -> str:
     return value or default
 
 
-def _format_protocol_error(error: object) -> str:
-    if isinstance(error, dict):
-        message = str(error.get("message") or "Unknown MCP error").strip()
-        code = error.get("code")
-        if code is None:
-            return message
-        return f"{message} (code {code})"
-    return str(error or "Unknown MCP error")
-
-
-def _status_detail_from_exception(
-    exc: Exception,
-    *,
-    browser_url: str | None,
-    stderr_tail: list[str],
-) -> str:
+def _status_detail_from_exception(exc: Exception, *, browser_url: str | None) -> str:
     detail = str(exc).strip() or type(exc).__name__
-    stderr_text = " ".join(line.strip() for line in stderr_tail[-4:] if line.strip())
-    lower = f"{detail} {stderr_text}".lower()
+    lower = detail.lower()
     hints: list[str] = []
-    if "npx" in lower and ("not found" in lower or "no such file" in lower):
-        hints.append("Install Node.js/npm so `npx` is available locally.")
-    if "timed out" in lower or "timeout" in lower:
+    if "not installed" in lower or "not on path" in lower or "no such file" in lower:
+        hints.append(
+            "Install Browser Harness so `browser-harness` is on PATH "
+            "(for example: `uv tool install -e <browser-harness checkout>`)."
+        )
+    if "timed out" in lower or "timeout" in lower or "unreachable" in lower:
         if browser_url:
-            hints.append("Confirm the remote debugging endpoint is reachable.")
+            hints.append("Confirm the configured endpoint is reachable as BU_CDP_URL.")
         else:
             hints.append(
                 "Enable Chrome remote debugging at chrome://inspect/#remote-debugging "
-                "and allow the Chrome DevTools MCP connection prompt."
+                "and click Allow if Chrome prompts for Browser Harness access."
             )
-    if "inspect/#remote-debugging" not in lower and browser_url is None:
+    if "devtoolsactiveport" in lower or "remote-debugging" in lower or "allow" in lower:
         hints.append(
-            "Chrome 144+ must have remote debugging enabled at chrome://inspect/#remote-debugging."
+            "Browser Harness connects through Chrome remote debugging; use Way 1 "
+            "in chrome://inspect/#remote-debugging or set BU_CDP_URL for a dedicated browser."
         )
-    if stderr_text:
-        detail = f"{detail} stderr: {stderr_text}"
     if hints:
         detail = f"{detail} {' '.join(hints)}"
     return detail.strip()
+
+
+def _schema(
+    properties: dict[str, Any] | None = None,
+    required: list[str] | None = None,
+) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": properties or {},
+        "required": required or [],
+        "additionalProperties": False,
+    }
+
+
+def _browser_harness_tool_defs() -> list[ChromeMcpToolDef]:
+    return [
+        ChromeMcpToolDef(
+            name="browser_page_info",
+            description=(
+                "Return the current Browser Harness tab URL, title, viewport, scroll position, "
+                "and page dimensions."
+            ),
+            parameters=_schema(),
+        ),
+        ChromeMcpToolDef(
+            name="browser_new_tab",
+            description="Open a URL in a new browser tab through Browser Harness and return page info.",
+            parameters=_schema(
+                {
+                    "url": {"type": "string", "description": "URL to open. Defaults to about:blank."},
+                    "wait_for_load": {
+                        "type": "boolean",
+                        "description": "Wait for document.readyState=complete before returning.",
+                        "default": True,
+                    },
+                },
+                ["url"],
+            ),
+        ),
+        ChromeMcpToolDef(
+            name="browser_capture_screenshot",
+            description="Capture a Browser Harness screenshot of the current tab.",
+            parameters=_schema(
+                {
+                    "full": {"type": "boolean", "description": "Capture beyond the viewport.", "default": False},
+                    "max_dim": {
+                        "type": "integer",
+                        "description": "Optional maximum image dimension after resizing.",
+                        "minimum": 1,
+                    },
+                }
+            ),
+        ),
+        ChromeMcpToolDef(
+            name="browser_click_at_xy",
+            description="Click visible page coordinates using Browser Harness compositor-level input.",
+            parameters=_schema(
+                {
+                    "x": {"type": "number", "description": "Viewport x coordinate."},
+                    "y": {"type": "number", "description": "Viewport y coordinate."},
+                    "button": {
+                        "type": "string",
+                        "enum": ["left", "middle", "right"],
+                        "default": "left",
+                    },
+                    "clicks": {"type": "integer", "minimum": 1, "default": 1},
+                },
+                ["x", "y"],
+            ),
+        ),
+        ChromeMcpToolDef(
+            name="browser_type_text",
+            description="Insert text at the focused browser element through Browser Harness.",
+            parameters=_schema(
+                {"text": {"type": "string", "description": "Text to type."}},
+                ["text"],
+            ),
+        ),
+        ChromeMcpToolDef(
+            name="browser_press_key",
+            description="Press a key in the current browser tab through Browser Harness.",
+            parameters=_schema(
+                {
+                    "key": {
+                        "type": "string",
+                        "description": "Key name, such as Enter, Tab, Escape, ArrowDown, Backspace, or a single character.",
+                    },
+                    "modifiers": {
+                        "type": "integer",
+                        "description": "Browser Harness modifier bitfield: 1=Alt, 2=Ctrl, 4=Meta/Cmd, 8=Shift.",
+                        "default": 0,
+                    },
+                },
+                ["key"],
+            ),
+        ),
+        ChromeMcpToolDef(
+            name="browser_scroll",
+            description="Scroll at a viewport coordinate using Browser Harness mouse wheel input.",
+            parameters=_schema(
+                {
+                    "x": {"type": "number", "description": "Viewport x coordinate."},
+                    "y": {"type": "number", "description": "Viewport y coordinate."},
+                    "dy": {"type": "number", "description": "Vertical wheel delta.", "default": -300},
+                    "dx": {"type": "number", "description": "Horizontal wheel delta.", "default": 0},
+                },
+                ["x", "y"],
+            ),
+        ),
+        ChromeMcpToolDef(
+            name="browser_wait_for_load",
+            description="Wait for the current document to finish loading and return whether it completed.",
+            parameters=_schema(
+                {
+                    "timeout": {
+                        "type": "number",
+                        "description": "Maximum seconds to wait.",
+                        "default": 15,
+                    }
+                }
+            ),
+        ),
+        ChromeMcpToolDef(
+            name="browser_js",
+            description="Evaluate JavaScript in the current Browser Harness tab and return the JSON-serializable result.",
+            parameters=_schema(
+                {"expression": {"type": "string", "description": "JavaScript expression or snippet."}},
+                ["expression"],
+            ),
+        ),
+        ChromeMcpToolDef(
+            name="browser_cdp",
+            description="Send a raw Chrome DevTools Protocol method through Browser Harness.",
+            parameters=_schema(
+                {
+                    "method": {"type": "string", "description": "CDP method, for example Page.navigate."},
+                    "params": {"type": "object", "description": "CDP params object.", "default": {}},
+                    "session_id": {
+                        "type": "string",
+                        "description": "Optional CDP session id.",
+                    },
+                },
+                ["method"],
+            ),
+        ),
+    ]
+
+
+def _build_harness_script(name: str, arguments: dict[str, Any]) -> str:
+    name_literal = json.dumps(name, ensure_ascii=True)
+    args_json = json.dumps(arguments or {}, ensure_ascii=True)
+    args_literal = json.dumps(args_json, ensure_ascii=True)
+    prefix_literal = json.dumps(_RESULT_PREFIX, ensure_ascii=True)
+    return f"""
+import base64, json, tempfile, traceback
+
+_OPENPLANTER_RESULT_PREFIX = {prefix_literal}
+_OPENPLANTER_TOOL = {name_literal}
+_OPENPLANTER_ARGS = json.loads({args_literal})
+
+def _openplanter_emit(ok, content=None, error=None):
+    print(_OPENPLANTER_RESULT_PREFIX + json.dumps({{"ok": ok, "content": content, "error": error}}, ensure_ascii=True))
+
+try:
+    if _OPENPLANTER_TOOL == "browser_page_info":
+        ensure_real_tab()
+        _openplanter_emit(True, page_info())
+    elif _OPENPLANTER_TOOL == "browser_new_tab":
+        target_id = new_tab(str(_OPENPLANTER_ARGS.get("url") or "about:blank"))
+        if _OPENPLANTER_ARGS.get("wait_for_load", True):
+            wait_for_load(float(_OPENPLANTER_ARGS.get("timeout") or 15))
+        _openplanter_emit(True, {{"target_id": target_id, "page": page_info()}})
+    elif _OPENPLANTER_TOOL == "browser_capture_screenshot":
+        ensure_real_tab()
+        path = capture_screenshot(
+            full=bool(_OPENPLANTER_ARGS.get("full", False)),
+            max_dim=_OPENPLANTER_ARGS.get("max_dim"),
+        )
+        with open(path, "rb") as fh:
+            image_base64 = base64.b64encode(fh.read()).decode("ascii")
+        _openplanter_emit(True, {{
+            "path": path,
+            "media_type": "image/png",
+            "image_base64": image_base64,
+            "page": page_info(),
+        }})
+    elif _OPENPLANTER_TOOL == "browser_click_at_xy":
+        ensure_real_tab()
+        click_at_xy(
+            float(_OPENPLANTER_ARGS["x"]),
+            float(_OPENPLANTER_ARGS["y"]),
+            button=str(_OPENPLANTER_ARGS.get("button") or "left"),
+            clicks=int(_OPENPLANTER_ARGS.get("clicks") or 1),
+        )
+        _openplanter_emit(True, {{"action": "clicked", "page": page_info()}})
+    elif _OPENPLANTER_TOOL == "browser_type_text":
+        ensure_real_tab()
+        type_text(str(_OPENPLANTER_ARGS.get("text") or ""))
+        _openplanter_emit(True, {{"action": "typed", "page": page_info()}})
+    elif _OPENPLANTER_TOOL == "browser_press_key":
+        ensure_real_tab()
+        press_key(str(_OPENPLANTER_ARGS["key"]), modifiers=int(_OPENPLANTER_ARGS.get("modifiers") or 0))
+        _openplanter_emit(True, {{"action": "pressed", "page": page_info()}})
+    elif _OPENPLANTER_TOOL == "browser_scroll":
+        ensure_real_tab()
+        scroll(
+            float(_OPENPLANTER_ARGS["x"]),
+            float(_OPENPLANTER_ARGS["y"]),
+            dy=float(_OPENPLANTER_ARGS.get("dy", -300)),
+            dx=float(_OPENPLANTER_ARGS.get("dx", 0)),
+        )
+        _openplanter_emit(True, {{"action": "scrolled", "page": page_info()}})
+    elif _OPENPLANTER_TOOL == "browser_wait_for_load":
+        ensure_real_tab()
+        completed = wait_for_load(float(_OPENPLANTER_ARGS.get("timeout") or 15))
+        _openplanter_emit(True, {{"completed": bool(completed), "page": page_info()}})
+    elif _OPENPLANTER_TOOL == "browser_js":
+        ensure_real_tab()
+        _openplanter_emit(True, js(str(_OPENPLANTER_ARGS["expression"])))
+    elif _OPENPLANTER_TOOL == "browser_cdp":
+        params = _OPENPLANTER_ARGS.get("params") or {{}}
+        if not isinstance(params, dict):
+            raise TypeError("params must be an object")
+        _openplanter_emit(True, cdp(str(_OPENPLANTER_ARGS["method"]), session_id=_OPENPLANTER_ARGS.get("session_id"), **params))
+    else:
+        raise ValueError(f"Unknown Browser Harness tool: {{_OPENPLANTER_TOOL}}")
+except BaseException as exc:
+    _openplanter_emit(False, error=f"{{type(exc).__name__}}: {{exc}}")
+"""
+
+
+def _extract_marker(stdout: str) -> dict[str, Any]:
+    for raw_line in reversed(stdout.splitlines()):
+        line = raw_line.strip()
+        if not line.startswith(_RESULT_PREFIX):
+            continue
+        payload = line[len(_RESULT_PREFIX) :]
+        parsed = json.loads(payload)
+        if isinstance(parsed, dict):
+            return parsed
+        break
+    raise ChromeMcpError("Browser Harness did not return an OpenPlanter result marker.")
+
+
+def _format_content(content: Any) -> str:
+    if isinstance(content, str):
+        return content.strip() or "Browser Harness tool completed with no textual output."
+    if isinstance(content, dict):
+        display = dict(content)
+        image_base64 = display.pop("image_base64", None)
+        media_type = display.get("media_type") or "image/png"
+        path = display.get("path")
+        try:
+            rendered = json.dumps(display, indent=2, ensure_ascii=True)
+        except TypeError:
+            rendered = str(display)
+        if image_base64:
+            suffix = f"\n[{media_type} screenshot attached"
+            if path:
+                suffix += f" from {path}"
+            suffix += "]"
+            return f"{rendered}{suffix}".strip()
+        return rendered
+    if content is None:
+        return "Browser Harness tool completed with no textual output."
+    try:
+        return json.dumps(content, indent=2, ensure_ascii=True)
+    except TypeError:
+        return str(content)
 
 
 class ChromeMcpManager:
@@ -127,397 +379,152 @@ class ChromeMcpManager:
         self.channel = normalize_chrome_mcp_channel(channel or CHROME_MCP_DEFAULT_CHANNEL)
         self.connect_timeout_sec = max(1, int(connect_timeout_sec))
         self.rpc_timeout_sec = max(1, int(rpc_timeout_sec))
-        self._lock = threading.RLock()
-        self._proc: subprocess.Popen[str] | None = None
-        self._reader_thread: threading.Thread | None = None
-        self._stderr_thread: threading.Thread | None = None
-        self._pending: dict[int, _PendingRequest] = {}
-        self._next_id = 1
         self._tools: list[ChromeMcpToolDef] = []
         self._last_refresh_at: float | None = None
         self._status = ChromeMcpStatus(
             status="disabled" if not self.enabled else "ready",
             detail=(
-                "Chrome DevTools MCP is disabled."
+                "Browser Harness is disabled."
                 if not self.enabled
-                else "Chrome DevTools MCP will initialize on the next solve."
+                else "Browser Harness will initialize on the next solve."
             ),
             tool_count=0,
         )
-        self._stderr_tail: list[str] = []
 
     def status_snapshot(self) -> ChromeMcpStatus:
-        with self._lock:
-            return ChromeMcpStatus(
-                status=self._status.status,
-                detail=self._status.detail,
-                tool_count=self._status.tool_count,
-                last_refresh_at=self._status.last_refresh_at,
-            )
+        return ChromeMcpStatus(
+            status=self._status.status,
+            detail=self._status.detail,
+            tool_count=self._status.tool_count,
+            last_refresh_at=self._status.last_refresh_at,
+        )
 
     def ensure_connected(self) -> None:
         if not self.enabled:
-            with self._lock:
-                self._status = ChromeMcpStatus(
-                    status="disabled",
-                    detail="Chrome DevTools MCP is disabled.",
-                    tool_count=len(self._tools),
-                    last_refresh_at=self._last_refresh_at,
-                )
-            return
-        with self._lock:
-            if self._proc is not None and self._proc.poll() is None and self._reader_thread is not None:
-                return
-            if not self.browser_url and not self.auto_connect:
-                detail = (
-                    "Chrome DevTools MCP is enabled but cannot attach: set "
-                    "`chrome_mcp_browser_url` or enable `chrome_mcp_auto_connect`."
-                )
-                self._status = ChromeMcpStatus(
-                    status="unavailable",
-                    detail=detail,
-                    tool_count=len(self._tools),
-                    last_refresh_at=self._last_refresh_at,
-                )
-                raise ChromeMcpError(detail)
-            self._start_process_locked()
-        try:
-            self._initialize_handshake()
-        except Exception as exc:
-            detail = _status_detail_from_exception(
-                exc,
-                browser_url=self.browser_url,
-                stderr_tail=self._stderr_tail,
+            self._status = ChromeMcpStatus(
+                status="disabled",
+                detail="Browser Harness is disabled.",
+                tool_count=len(self._tools),
+                last_refresh_at=self._last_refresh_at,
             )
-            with self._lock:
-                self._status = ChromeMcpStatus(
-                    status="unavailable",
-                    detail=detail,
-                    tool_count=len(self._tools),
-                    last_refresh_at=self._last_refresh_at,
-                )
-            self.shutdown()
+            return
+        if not self.browser_url and not self.auto_connect:
+            detail = (
+                "Browser Harness is enabled but cannot attach: set `chrome_mcp_browser_url` "
+                "(used as BU_CDP_URL) or enable `chrome_mcp_auto_connect`."
+            )
+            self._status = ChromeMcpStatus(
+                status="unavailable",
+                detail=detail,
+                tool_count=len(self._tools),
+                last_refresh_at=self._last_refresh_at,
+            )
+            raise ChromeMcpError(detail)
+        try:
+            self._run_harness_script(
+                _build_harness_script("browser_page_info", {}),
+                timeout_sec=max(self.connect_timeout_sec, self.rpc_timeout_sec),
+            )
+        except Exception as exc:
+            detail = _status_detail_from_exception(exc, browser_url=self.browser_url)
+            self._status = ChromeMcpStatus(
+                status="unavailable",
+                detail=detail,
+                tool_count=len(self._tools),
+                last_refresh_at=self._last_refresh_at,
+            )
             raise ChromeMcpError(detail) from exc
 
     def list_tools(self, *, force_refresh: bool = False) -> list[ChromeMcpToolDef]:
         if not self.enabled:
             return []
-        self.ensure_connected()
-        with self._lock:
-            if self._tools and not force_refresh:
-                return list(self._tools)
-        tools: list[ChromeMcpToolDef] = []
-        cursor: str | None = None
-        while True:
-            params: dict[str, Any] = {}
-            if cursor:
-                params["cursor"] = cursor
-            result = self._request_with_reconnect(
-                "tools/list",
-                params=params,
-                timeout_sec=self.rpc_timeout_sec,
-            )
-            raw_tools = result.get("tools")
-            if isinstance(raw_tools, list):
-                for item in raw_tools:
-                    if not isinstance(item, dict):
-                        continue
-                    name = str(item.get("name") or "").strip()
-                    if not name:
-                        continue
-                    description = str(item.get("description") or "").strip()
-                    parameters = item.get("inputSchema")
-                    if not isinstance(parameters, dict):
-                        parameters = {"type": "object", "properties": {}, "required": []}
-                    tools.append(
-                        ChromeMcpToolDef(
-                            name=name,
-                            description=description,
-                            parameters=parameters,
-                        )
-                    )
-            raw_cursor = result.get("nextCursor")
-            cursor = str(raw_cursor).strip() if raw_cursor else None
-            if not cursor:
-                break
-        now = time.time()
-        with self._lock:
-            self._tools = tools
-            self._last_refresh_at = now
-            self._status = ChromeMcpStatus(
-                status="ready",
-                detail=(
-                    f"Chrome DevTools MCP ready with {len(tools)} tool(s) "
-                    f"via {'browser_url' if self.browser_url else 'auto-connect'}."
-                ),
-                tool_count=len(tools),
-                last_refresh_at=now,
-            )
+        if self._tools and not force_refresh:
             return list(self._tools)
+        self.ensure_connected()
+        tools = _browser_harness_tool_defs()
+        now = time.time()
+        self._tools = tools
+        self._last_refresh_at = now
+        self._status = ChromeMcpStatus(
+            status="ready",
+            detail=(
+                f"Browser Harness ready with {len(tools)} tool(s) via "
+                f"{'BU_CDP_URL' if self.browser_url else 'auto-discovery'}."
+            ),
+            tool_count=len(tools),
+            last_refresh_at=now,
+        )
+        return list(self._tools)
 
     def call_tool(self, name: str, arguments: dict[str, Any]) -> ChromeMcpCallResult:
         if not self.enabled:
-            raise ChromeMcpError("Chrome DevTools MCP is disabled.")
-        self.ensure_connected()
-        result = self._request_with_reconnect(
-            "tools/call",
-            params={"name": name, "arguments": arguments},
+            raise ChromeMcpError("Browser Harness is disabled.")
+        known_names = {tool.name for tool in self.list_tools()}
+        if name not in known_names:
+            raise ChromeMcpError(f"Unknown Browser Harness tool `{name}`.")
+        payload = self._run_harness_script(
+            _build_harness_script(name, arguments),
             timeout_sec=self.rpc_timeout_sec,
         )
-        return self._parse_call_result(result)
+        if not payload.get("ok"):
+            raise ChromeMcpError(str(payload.get("error") or "Browser Harness tool failed."))
+        content = payload.get("content")
+        image: ChromeMcpImage | None = None
+        if isinstance(content, dict):
+            image_base64 = content.get("image_base64")
+            media_type = content.get("media_type") or "image/png"
+            if isinstance(image_base64, str) and image_base64.strip():
+                image = ChromeMcpImage(
+                    base64_data=image_base64.strip(),
+                    media_type=str(media_type),
+                )
+        return ChromeMcpCallResult(content=_format_content(content), is_error=False, image=image)
 
     def shutdown(self) -> None:
-        with self._lock:
-            self._shutdown_locked()
+        # Browser Harness owns its long-lived daemon. OpenPlanter only invokes short commands.
+        return
 
-    def _request_with_reconnect(
-        self,
-        method: str,
-        *,
-        params: dict[str, Any],
-        timeout_sec: int,
-    ) -> dict[str, Any]:
-        last_error: Exception | None = None
-        for attempt in range(2):
-            try:
-                return self._request(method, params=params, timeout_sec=timeout_sec)
-            except Exception as exc:
-                last_error = exc
-                with self._lock:
-                    self._shutdown_locked()
-                    self._status = ChromeMcpStatus(
-                        status="unavailable",
-                        detail=_status_detail_from_exception(
-                            exc,
-                            browser_url=self.browser_url,
-                            stderr_tail=self._stderr_tail,
-                        ),
-                        tool_count=len(self._tools),
-                        last_refresh_at=self._last_refresh_at,
-                    )
-                if attempt == 0:
-                    self.ensure_connected()
-                    continue
-                break
-        raise ChromeMcpError(str(last_error or "Chrome DevTools MCP request failed"))
-
-    def _initialize_handshake(self) -> None:
-        init_params = {
-            "protocolVersion": "2025-11-25",
-            "capabilities": {},
-            "clientInfo": {"name": "openplanter-agent", "version": "1.0"},
-        }
-        self._request("initialize", params=init_params, timeout_sec=self.connect_timeout_sec)
-        self._notify("notifications/initialized", {})
-
-    def _request(
-        self,
-        method: str,
-        *,
-        params: dict[str, Any],
-        timeout_sec: int,
-    ) -> dict[str, Any]:
-        with self._lock:
-            proc = self._proc
-            if proc is None or proc.poll() is not None or proc.stdin is None:
-                raise ChromeMcpError("Chrome DevTools MCP process is not running.")
-            request_id = self._next_id
-            self._next_id += 1
-            pending = _PendingRequest(event=threading.Event())
-            self._pending[request_id] = pending
-            payload = {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "method": method,
-                "params": params,
-            }
-            try:
-                proc.stdin.write(json.dumps(payload, ensure_ascii=True) + "\n")
-                proc.stdin.flush()
-            except Exception as exc:
-                self._pending.pop(request_id, None)
-                raise ChromeMcpError(f"Failed to send MCP request {method}: {exc}") from exc
-        if not pending.event.wait(timeout_sec):
-            with self._lock:
-                self._pending.pop(request_id, None)
-            raise ChromeMcpError(f"Timed out waiting for Chrome DevTools MCP {method} response.")
-        if pending.error is not None:
-            raise ChromeMcpError(str(pending.error))
-        return pending.result or {}
-
-    def _notify(self, method: str, params: dict[str, Any]) -> None:
-        with self._lock:
-            proc = self._proc
-            if proc is None or proc.poll() is not None or proc.stdin is None:
-                raise ChromeMcpError("Chrome DevTools MCP process is not running.")
-            payload = {"jsonrpc": "2.0", "method": method, "params": params}
-            proc.stdin.write(json.dumps(payload, ensure_ascii=True) + "\n")
-            proc.stdin.flush()
-
-    def _start_process_locked(self) -> None:
-        self._shutdown_locked()
-        command = _env_text("OPENPLANTER_CHROME_MCP_COMMAND", "npx")
+    def _run_harness_script(self, script: str, *, timeout_sec: int) -> dict[str, Any]:
+        command = _env_text("OPENPLANTER_BROWSER_HARNESS_COMMAND", "browser-harness")
         if shutil.which(command) is None:
             raise ChromeMcpError(f"`{command}` is not installed or not on PATH.")
-        package = _env_text("OPENPLANTER_CHROME_MCP_PACKAGE", "chrome-devtools-mcp@latest")
-        args = [command, "-y", package]
-        if self.browser_url:
-            args.append(f"--browserUrl={self.browser_url}")
-        else:
-            args.append("--autoConnect")
-            args.append(f"--channel={self.channel}")
-        extra_args = (os.getenv("OPENPLANTER_CHROME_MCP_EXTRA_ARGS") or "").strip()
+        args = [command]
+        extra_args = (os.getenv("OPENPLANTER_BROWSER_HARNESS_EXTRA_ARGS") or "").strip()
         if extra_args:
             args.extend(shlex.split(extra_args))
-        self._proc = subprocess.Popen(
-            args,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            bufsize=1,
-            start_new_session=True,
-        )
-        self._reader_thread = threading.Thread(
-            target=self._reader_loop,
-            name="openplanter-chrome-mcp-reader",
-            daemon=True,
-        )
-        self._stderr_thread = threading.Thread(
-            target=self._stderr_loop,
-            name="openplanter-chrome-mcp-stderr",
-            daemon=True,
-        )
-        self._reader_thread.start()
-        self._stderr_thread.start()
-
-    def _reader_loop(self) -> None:
-        proc = self._proc
-        if proc is None or proc.stdout is None:
-            return
+        args.extend(["-c", script])
+        env = os.environ.copy()
+        env.setdefault("BU_NAME", _env_text("OPENPLANTER_BROWSER_HARNESS_NAME", _DEFAULT_HARNESS_NAME))
+        if cdp_url := (self.browser_url or (os.getenv("OPENPLANTER_BROWSER_HARNESS_CDP_URL") or "").strip()):
+            env["BU_CDP_URL"] = cdp_url
+        if cdp_ws := (os.getenv("OPENPLANTER_BROWSER_HARNESS_CDP_WS") or "").strip():
+            env["BU_CDP_WS"] = cdp_ws
         try:
-            for raw_line in proc.stdout:
-                line = raw_line.strip()
-                if not line:
-                    continue
-                try:
-                    payload = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if not isinstance(payload, dict):
-                    continue
-                request_id = payload.get("id")
-                if not isinstance(request_id, int):
-                    continue
-                with self._lock:
-                    pending = self._pending.pop(request_id, None)
-                if pending is None:
-                    continue
-                if "error" in payload:
-                    pending.error = ChromeMcpError(_format_protocol_error(payload.get("error")))
-                else:
-                    result = payload.get("result")
-                    pending.result = result if isinstance(result, dict) else {}
-                pending.event.set()
-        finally:
-            exit_code = proc.poll()
-            error = ChromeMcpError(
-                f"Chrome DevTools MCP process exited unexpectedly"
-                + (f" with code {exit_code}." if exit_code is not None else ".")
+            completed = subprocess.run(
+                args,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=max(1, int(timeout_sec)),
+                env=env,
             )
-            with self._lock:
-                pending = list(self._pending.values())
-                self._pending.clear()
-            for item in pending:
-                item.error = error
-                item.event.set()
-
-    def _stderr_loop(self) -> None:
-        proc = self._proc
-        if proc is None or proc.stderr is None:
-            return
-        for raw_line in proc.stderr:
-            line = raw_line.strip()
-            if not line:
-                continue
-            with self._lock:
-                self._stderr_tail.append(line)
-                self._stderr_tail = self._stderr_tail[-20:]
-
-    def _shutdown_locked(self) -> None:
-        proc = self._proc
-        self._proc = None
-        self._reader_thread = None
-        self._stderr_thread = None
-        pending = list(self._pending.values())
-        self._pending.clear()
-        for item in pending:
-            item.error = ChromeMcpError("Chrome DevTools MCP shut down before responding.")
-            item.event.set()
-        if proc is None:
-            return
+        except subprocess.TimeoutExpired as exc:
+            raise ChromeMcpError(f"Timed out waiting for Browser Harness after {timeout_sec}s.") from exc
+        except OSError as exc:
+            raise ChromeMcpError(f"Failed to run Browser Harness command `{command}`: {exc}") from exc
         try:
-            proc.terminate()
-            proc.wait(timeout=2)
-        except Exception:
-            try:
-                proc.kill()
-            except Exception:
-                pass
-
-    def _parse_call_result(self, result: dict[str, Any]) -> ChromeMcpCallResult:
-        content_parts: list[str] = []
-        image: ChromeMcpImage | None = None
-        raw_content = result.get("content")
-        if isinstance(raw_content, list):
-            for item in raw_content:
-                if isinstance(item, str):
-                    if item.strip():
-                        content_parts.append(item.strip())
-                    continue
-                if not isinstance(item, dict):
-                    continue
-                item_type = str(item.get("type") or "").strip().lower()
-                if item_type == "text":
-                    text = item.get("text")
-                    if isinstance(text, str) and text.strip():
-                        content_parts.append(text.strip())
-                    continue
-                if item_type == "image":
-                    data = item.get("data")
-                    media_type = item.get("mimeType") or item.get("mediaType")
-                    if (
-                        image is None
-                        and isinstance(data, str)
-                        and data.strip()
-                        and isinstance(media_type, str)
-                        and media_type.strip()
-                    ):
-                        image = ChromeMcpImage(
-                            base64_data=data.strip(),
-                            media_type=media_type.strip(),
-                        )
-                    media_text = media_type.strip() if isinstance(media_type, str) else "image"
-                    content_parts.append(f"[{media_text} attached]")
-                    continue
-                uri = item.get("uri") or item.get("url")
-                if isinstance(uri, str) and uri.strip():
-                    label = str(item.get("name") or item_type or "resource").strip()
-                    content_parts.append(f"{label}: {uri.strip()}")
-        structured = result.get("structuredContent")
-        if not content_parts and structured is not None:
-            try:
-                content_parts.append(json.dumps(structured, indent=2, ensure_ascii=True))
-            except TypeError:
-                content_parts.append(str(structured))
-        content = "\n".join(part for part in content_parts if part).strip()
-        if not content:
-            content = "Chrome DevTools MCP tool completed with no textual output."
-        is_error = bool(result.get("isError"))
-        if is_error:
-            content = f"Chrome DevTools MCP tool error: {content}"
-        return ChromeMcpCallResult(content=content, is_error=is_error, image=image)
+            payload = _extract_marker(completed.stdout or "")
+        except Exception as exc:
+            stderr = (completed.stderr or "").strip()
+            stdout = (completed.stdout or "").strip()
+            detail = stderr or stdout or str(exc)
+            if completed.returncode:
+                detail = f"Browser Harness exited with code {completed.returncode}. {detail}"
+            raise ChromeMcpError(detail) from exc
+        if not payload.get("ok"):
+            raise ChromeMcpError(str(payload.get("error") or "Browser Harness tool failed."))
+        return payload
 
 
 _SHARED_MANAGERS: dict[tuple[Any, ...], ChromeMcpManager] = {}
@@ -542,9 +549,11 @@ def acquire_shared_manager(
         normalize_chrome_mcp_channel(channel),
         max(1, int(connect_timeout_sec)),
         max(1, int(rpc_timeout_sec)),
-        _env_text("OPENPLANTER_CHROME_MCP_COMMAND", "npx"),
-        _env_text("OPENPLANTER_CHROME_MCP_PACKAGE", "chrome-devtools-mcp@latest"),
-        (os.getenv("OPENPLANTER_CHROME_MCP_EXTRA_ARGS") or "").strip(),
+        _env_text("OPENPLANTER_BROWSER_HARNESS_COMMAND", "browser-harness"),
+        (os.getenv("OPENPLANTER_BROWSER_HARNESS_EXTRA_ARGS") or "").strip(),
+        _env_text("OPENPLANTER_BROWSER_HARNESS_NAME", _DEFAULT_HARNESS_NAME),
+        (os.getenv("OPENPLANTER_BROWSER_HARNESS_CDP_URL") or "").strip(),
+        (os.getenv("OPENPLANTER_BROWSER_HARNESS_CDP_WS") or "").strip(),
     )
     with _SHARED_LOCK:
         manager = _SHARED_MANAGERS.get(key)

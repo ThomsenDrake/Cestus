@@ -259,7 +259,7 @@ test.describe("Autocomplete", () => {
     const values = await popup
       .locator(".autocomplete-value")
       .allTextContents();
-    expect(values).toEqual(["low", "medium", "high", "off"]);
+    expect(values).toEqual(["low", "medium", "high", "xhigh", "off"]);
 
     await page.screenshot({
       path: "e2e/screenshots/44-autocomplete-reasoning.png",

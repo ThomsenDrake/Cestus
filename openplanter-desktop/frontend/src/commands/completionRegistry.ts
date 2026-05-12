@@ -33,6 +33,7 @@ const REASONING_LEVELS: CompletionItem[] = [
   { value: "low", description: "Low reasoning effort", children: SAVE_FLAG },
   { value: "medium", description: "Medium reasoning effort", children: SAVE_FLAG },
   { value: "high", description: "High reasoning effort", children: SAVE_FLAG },
+  { value: "xhigh", description: "Extra-high reasoning effort", children: SAVE_FLAG },
   { value: "off", description: "Disable reasoning", children: SAVE_FLAG },
 ];
 
@@ -206,12 +207,12 @@ export const COMMAND_COMPLETIONS: CompletionItem[] = [
   },
   {
     value: "/chrome",
-    description: "Show or configure Chrome DevTools MCP",
+    description: "Show or configure Browser Harness",
     children: [
-      { value: "status", description: "Show Chrome MCP status" },
-      { value: "on", description: "Enable Chrome MCP", children: SAVE_FLAG },
-      { value: "off", description: "Disable Chrome MCP", children: SAVE_FLAG },
-      { value: "auto", description: "Enable auto-connect mode", children: SAVE_FLAG },
+      { value: "status", description: "Show Browser Harness status" },
+      { value: "on", description: "Enable Browser Harness", children: SAVE_FLAG },
+      { value: "off", description: "Disable Browser Harness", children: SAVE_FLAG },
+      { value: "auto", description: "Enable Browser Harness auto-discovery", children: SAVE_FLAG },
       {
         value: "url",
         description: "Set an explicit Chrome browser URL",

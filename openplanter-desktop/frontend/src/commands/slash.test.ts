@@ -101,11 +101,11 @@ describe("dispatchSlashCommand", () => {
     expect(result!.lines.some((l) => l.includes("Z.AI plan:"))).toBe(true);
   });
 
-  it("status shows chrome mcp state", async () => {
+  it("status shows Browser Harness state", async () => {
     const result = await dispatchSlashCommand("/status");
     expect(result).not.toBeNull();
-    expect(result!.lines.some((l) => l.includes("Chrome MCP:"))).toBe(true);
-    expect(result!.lines.some((l) => l.includes("Chrome runtime:"))).toBe(true);
+    expect(result!.lines.some((l) => l.includes("Browser Harness:"))).toBe(true);
+    expect(result!.lines.some((l) => l.includes("Browser runtime:"))).toBe(true);
   });
 
   it("status shows DocAI key mode", async () => {
@@ -336,7 +336,7 @@ describe("dispatchSlashCommand", () => {
     const result = await dispatchSlashCommand("/chrome");
     expect(result).not.toBeNull();
     expect(result!.action).toBe("handled");
-    expect(result!.lines.some((l) => l.includes("Chrome MCP:"))).toBe(true);
+    expect(result!.lines.some((l) => l.includes("Browser Harness:"))).toBe(true);
   });
 
   it("mistral dispatches", async () => {

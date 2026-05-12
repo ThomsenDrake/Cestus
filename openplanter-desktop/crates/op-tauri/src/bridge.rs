@@ -70,6 +70,21 @@ fn classify_error(message: &str) -> FailureInfo {
     if lowered == "cancelled" || lowered.contains("cancelled") {
         return FailureInfo::cancelled("Task cancelled.");
     }
+    if let Some(status) = transient_http_status(&lowered) {
+        return FailureInfo {
+            code: "provider_transient".to_string(),
+            category: "transient".to_string(),
+            phase: "model_completion".to_string(),
+            retryable: true,
+            message: message.to_string(),
+            details: serde_json::json!({}),
+            resumable: Some(true),
+            user_visible: Some(true),
+            provider: None,
+            provider_code: Some(status.to_string()),
+            http_status: Some(status),
+        };
+    }
     if lowered.contains("429")
         || lowered.contains("rate limit")
         || lowered.contains("too many requests")
@@ -116,6 +131,27 @@ fn classify_error(message: &str) -> FailureInfo {
         provider_code: None,
         http_status: None,
     }
+}
+
+fn transient_http_status(lowered: &str) -> Option<u16> {
+    for status in [500_u16, 502, 503, 504] {
+        if lowered.contains(&format!("http {status}")) {
+            return Some(status);
+        }
+    }
+    if lowered.contains("internal server error") {
+        return Some(500);
+    }
+    if lowered.contains("bad gateway") {
+        return Some(502);
+    }
+    if lowered.contains("service unavailable") {
+        return Some(503);
+    }
+    if lowered.contains("gateway timeout") {
+        return Some(504);
+    }
+    None
 }
 
 fn degraded_failure(result: &str, completion: Option<&CompletionMeta>) -> FailureInfo {
@@ -1787,5 +1823,32 @@ mod tests {
         let events = std::fs::read_to_string(tmp.path().join("events.jsonl")).unwrap();
         assert!(events.contains("\"event_type\":\"turn.failed\""));
         assert!(events.contains("\"failure_code\":\"rate_limit\""));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_emit_error_classifies_provider_500_as_resumable_transient() {
+        let tmp = tempdir().unwrap();
+        let replay = ReplayLogger::new(tmp.path());
+        let emitter =
+            LoggingEmitter::new(NullEmitter, replay, tmp.path().to_path_buf(), None, None);
+
+        emitter.emit_error(
+            "HTTP 500 calling https://foundry-proxy.example/openai/v1/responses: Internal Server Error",
+        );
+
+        let snapshot = emitter.take_terminal_snapshot().expect("error snapshot");
+        assert!(matches!(snapshot.status, TerminalStatus::Error));
+        let failure = snapshot.failure.as_ref().expect("failure info");
+        assert_eq!(failure.code, "provider_transient");
+        assert_eq!(failure.category, "transient");
+        assert_eq!(failure.phase, "model_completion");
+        assert!(failure.retryable);
+        assert_eq!(failure.resumable, Some(true));
+        assert_eq!(failure.http_status, Some(500));
+
+        let events = std::fs::read_to_string(tmp.path().join("events.jsonl")).unwrap();
+        assert!(events.contains("\"event_type\":\"turn.failed\""));
+        assert!(events.contains("\"failure_code\":\"provider_transient\""));
+        assert!(events.contains("\"http_status\":500"));
     }
 }

@@ -73,6 +73,28 @@ describe("handleReasoningCommand", () => {
     expect(result.lines.some((l) => l.includes("high"))).toBe(true);
   });
 
+  it("valid level xhigh", async () => {
+    __setHandler("update_config", ({ partial }: any) => {
+      expect(partial.reasoning_effort).toBe("xhigh");
+      return {
+        provider: "anthropic",
+        model: "claude-opus-4-6",
+        zai_plan: "coding",
+        reasoning_effort: "xhigh",
+        workspace: ".",
+        session_id: null,
+        recursive: true,
+        max_depth: 4,
+        max_steps_per_call: 100,
+        demo: false,
+      };
+    });
+
+    const result = await handleReasoningCommand("xhigh");
+    expect(result.action).toBe("handled");
+    expect(result.lines.some((l) => l.includes("xhigh"))).toBe(true);
+  });
+
   it("off sends empty string", async () => {
     __setHandler("update_config", ({ partial }: any) => {
       expect(partial.reasoning_effort).toBe("");
@@ -154,6 +176,7 @@ describe("handleReasoningCommand", () => {
           l.includes("low") &&
           l.includes("medium") &&
           l.includes("high") &&
+          l.includes("xhigh") &&
           l.includes("off")
       )
     ).toBe(true);

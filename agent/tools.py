@@ -20,12 +20,10 @@ import uuid
 import re as _re
 import zlib
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
-
-_MAX_WALK_ENTRIES = 50_000
 
 from .chrome_mcp import (
     ChromeMcpCallResult,
@@ -42,6 +40,7 @@ from .patching import (
     parse_agent_patch,
 )
 
+_MAX_WALK_ENTRIES = 50_000
 _WS_RE = _re.compile(r"\s+")
 _HASHLINE_PREFIX_RE = _re.compile(r"^\d+:[0-9a-f]{2}\|")
 _HEREDOC_RE = _re.compile(r"<<-?\s*['\"]?\w+['\"]?")
@@ -376,7 +375,7 @@ class WorkspaceTools:
         if not self.chrome_mcp_enabled or self._chrome_mcp is None:
             return ChromeMcpStatus(
                 status="disabled",
-                detail="Chrome DevTools MCP is disabled.",
+                detail="Browser Harness is disabled.",
             )
         return self._chrome_mcp.status_snapshot()
 
@@ -402,7 +401,7 @@ class WorkspaceTools:
             known_names = {tool.name for tool in self._chrome_mcp.list_tools()}
         except ChromeMcpError as exc:
             return ChromeMcpCallResult(
-                content=f"Chrome DevTools MCP unavailable: {exc}",
+                content=f"Browser Harness unavailable: {exc}",
                 is_error=True,
             )
         if name not in known_names:
@@ -411,7 +410,7 @@ class WorkspaceTools:
             return self._chrome_mcp.call_tool(name, arguments)
         except ChromeMcpError as exc:
             return ChromeMcpCallResult(
-                content=f"Chrome DevTools MCP unavailable: {exc}",
+                content=f"Browser Harness unavailable: {exc}",
                 is_error=True,
             )
 

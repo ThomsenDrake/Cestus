@@ -12,7 +12,7 @@ use reqwest_eventsource::{Event, RequestBuilderExt};
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
-use super::{BaseModel, Message, ModelTurn, RateLimitError, ToolCall};
+use super::{BaseModel, Message, ModelTurn, ProviderTransientError, RateLimitError, ToolCall};
 use crate::config::strip_foundry_model_prefix;
 use crate::events::{DeltaEvent, DeltaKind};
 
@@ -40,6 +40,13 @@ pub struct OpenAIModel {
     stream_max_retries: usize,
     fallback_base_urls: Vec<String>,
     active_base_url: Arc<RwLock<String>>,
+    responses_state: Arc<RwLock<Option<ResponsesState>>>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct ResponsesState {
+    response_id: String,
+    tool_call_ids: Vec<String>,
 }
 
 impl OpenAIModel {
@@ -63,6 +70,7 @@ impl OpenAIModel {
             stream_max_retries: 1,
             fallback_base_urls: Vec::new(),
             active_base_url: Arc::new(RwLock::new(base_url)),
+            responses_state: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -115,6 +123,22 @@ impl OpenAIModel {
         strip_foundry_model_prefix(&self.model)
     }
 
+    fn has_reasoning_effort(&self) -> bool {
+        self.reasoning_effort
+            .as_deref()
+            .is_some_and(|value| !value.trim().is_empty())
+    }
+
+    fn should_use_responses_api(&self, tools: &[serde_json::Value]) -> bool {
+        if self.provider != "openai" || tools.is_empty() || !self.has_reasoning_effort() {
+            return false;
+        }
+        self.request_model_name()
+            .trim()
+            .to_lowercase()
+            .starts_with("gpt-5.5")
+    }
+
     fn convert_messages(messages: &[Message]) -> Vec<serde_json::Value> {
         messages
             .iter()
@@ -165,6 +189,144 @@ impl OpenAIModel {
             .collect()
     }
 
+    fn convert_messages_for_responses(messages: &[Message]) -> Vec<serde_json::Value> {
+        let mut items = Vec::new();
+        for msg in messages {
+            match msg {
+                Message::System { content } => items.push(serde_json::json!({
+                    "role": "system",
+                    "content": content,
+                })),
+                Message::User { content } => items.push(serde_json::json!({
+                    "role": "user",
+                    "content": content,
+                })),
+                Message::Assistant {
+                    content,
+                    tool_calls,
+                } => {
+                    if !content.trim().is_empty() {
+                        items.push(serde_json::json!({
+                            "role": "assistant",
+                            "content": content,
+                        }));
+                    }
+                    if let Some(tcs) = tool_calls {
+                        for tc in tcs {
+                            items.push(serde_json::json!({
+                                "type": "function_call",
+                                "call_id": tc.id,
+                                "name": tc.name,
+                                "arguments": tc.arguments,
+                            }));
+                        }
+                    }
+                }
+                Message::Tool {
+                    tool_call_id,
+                    content,
+                } => items.push(serde_json::json!({
+                    "type": "function_call_output",
+                    "call_id": tool_call_id,
+                    "output": content,
+                })),
+            }
+        }
+        items
+    }
+
+    fn convert_tools_for_responses(tools: &[serde_json::Value]) -> Vec<serde_json::Value> {
+        tools
+            .iter()
+            .map(|tool| {
+                if tool.get("type").and_then(|value| value.as_str()) != Some("function") {
+                    return tool.clone();
+                }
+
+                let Some(function) = tool.get("function").and_then(|value| value.as_object())
+                else {
+                    return tool.clone();
+                };
+
+                let mut converted = serde_json::Map::new();
+                converted.insert("type".to_string(), serde_json::json!("function"));
+                for key in ["name", "description", "parameters", "strict"] {
+                    if let Some(value) = function.get(key) {
+                        converted.insert(key.to_string(), value.clone());
+                    }
+                }
+                serde_json::Value::Object(converted)
+            })
+            .collect()
+    }
+
+    fn response_state(&self) -> Option<ResponsesState> {
+        self.responses_state
+            .read()
+            .ok()
+            .and_then(|guard| guard.clone())
+    }
+
+    fn set_response_state(&self, response_id: Option<String>, tool_calls: &[ToolCall]) {
+        let Some(response_id) = response_id.filter(|id| !id.trim().is_empty()) else {
+            return;
+        };
+        let tool_call_ids = tool_calls
+            .iter()
+            .map(|tool_call| tool_call.id.clone())
+            .filter(|id| !id.trim().is_empty())
+            .collect::<Vec<_>>();
+
+        if let Ok(mut guard) = self.responses_state.write() {
+            *guard = Some(ResponsesState {
+                response_id,
+                tool_call_ids,
+            });
+        }
+    }
+
+    fn trailing_response_tool_outputs(
+        messages: &[Message],
+        state: Option<&ResponsesState>,
+    ) -> Option<Vec<serde_json::Value>> {
+        let state = state?;
+        if state.response_id.trim().is_empty() || state.tool_call_ids.is_empty() {
+            return None;
+        }
+
+        let mut tail = Vec::new();
+        let mut tail_ids = Vec::new();
+        for msg in messages.iter().rev() {
+            match msg {
+                Message::Tool {
+                    tool_call_id,
+                    content,
+                } => {
+                    if !state.tool_call_ids.iter().any(|id| id == tool_call_id) {
+                        return None;
+                    }
+                    tail_ids.push(tool_call_id.clone());
+                    tail.push(serde_json::json!({
+                        "type": "function_call_output",
+                        "call_id": tool_call_id,
+                        "output": content,
+                    }));
+                }
+                _ => break,
+            }
+        }
+
+        if tail.is_empty() {
+            return None;
+        }
+        tail.reverse();
+        tail_ids.reverse();
+        if tail_ids != state.tool_call_ids {
+            return None;
+        }
+        Some(tail)
+    }
+
     fn build_payload(
         &self,
         messages: &[Message],
@@ -201,6 +363,51 @@ impl OpenAIModel {
             let value = thinking_type.trim().to_lowercase();
             if matches!(value.as_str(), "enabled" | "disabled") {
                 payload["thinking"] = serde_json::json!({ "type": value });
+            }
+        }
+
+        payload
+    }
+
+    fn build_responses_payload(
+        &self,
+        messages: &[Message],
+        tools: &[serde_json::Value],
+        stream: bool,
+    ) -> serde_json::Value {
+        let state = self.response_state();
+        let continuation_input = Self::trailing_response_tool_outputs(messages, state.as_ref());
+        let mut payload = serde_json::json!({
+            "model": self.request_model_name(),
+            "input": continuation_input
+                .clone()
+                .unwrap_or_else(|| Self::convert_messages_for_responses(messages)),
+        });
+
+        if let (Some(input), Some(state)) = (continuation_input, state.as_ref()) {
+            if !input.is_empty() {
+                payload["previous_response_id"] = serde_json::json!(state.response_id);
+            }
+        }
+
+        if stream {
+            payload["stream"] = serde_json::json!(true);
+            payload["stream_options"] = serde_json::json!({ "include_obfuscation": false });
+        }
+
+        if !tools.is_empty() {
+            payload["tools"] = serde_json::Value::Array(Self::convert_tools_for_responses(tools));
+            payload["tool_choice"] = serde_json::json!("auto");
+        }
+
+        if !self.is_reasoning_model() {
+            payload["temperature"] = serde_json::json!(0.0);
+        }
+
+        if let Some(ref effort) = self.reasoning_effort {
+            let effort_lower = effort.trim().to_lowercase();
+            if !effort_lower.is_empty() {
+                payload["reasoning"] = serde_json::json!({ "effort": effort_lower });
             }
         }
 
@@ -367,6 +574,50 @@ impl OpenAIModel {
         text.contains("rate limit") || text.contains("too many requests")
     }
 
+    fn is_retryable_http_status(status_code: u16) -> bool {
+        matches!(status_code, 500 | 502 | 503 | 504)
+    }
+
+    fn is_retryable_transport_text(message: &str) -> bool {
+        let text = message.to_lowercase();
+        text.contains("internal server error")
+            || text.contains("bad gateway")
+            || text.contains("service unavailable")
+            || text.contains("gateway timeout")
+            || text.contains("connection")
+            || text.contains("timed out")
+            || text.contains("timeout")
+            || text.contains("stream ended")
+            || text.contains("broken pipe")
+            || text.contains("transport")
+            || text.contains("http 500")
+            || text.contains("http 502")
+            || text.contains("http 503")
+            || text.contains("http 504")
+    }
+
+    fn promote_retryable_attempt_error(&self, error: anyhow::Error) -> anyhow::Error {
+        if error.downcast_ref::<RateLimitError>().is_some()
+            || error.downcast_ref::<ProviderTransientError>().is_some()
+        {
+            return error;
+        }
+
+        let message = error.to_string();
+        if !Self::is_retryable_transport_text(&message) {
+            return error;
+        }
+
+        anyhow::Error::new(ProviderTransientError {
+            message,
+            status_code: None,
+            provider: Some(self.provider.clone()),
+            provider_code: None,
+            body: String::new(),
+            retry_after_sec: None,
+        })
+    }
+
     fn classify_stream_payload_error(payload: &serde_json::Value) -> Option<anyhow::Error> {
         let is_error_type = payload
             .get("type")
@@ -455,6 +706,26 @@ impl OpenAIModel {
                     detail
                 ),
                 status_code: Some(status.as_u16()),
+                provider_code,
+                body,
+                retry_after_sec: retry_after,
+            });
+        }
+
+        if Self::is_retryable_http_status(status.as_u16()) {
+            return anyhow::Error::new(ProviderTransientError {
+                message: format!(
+                    "HTTP {} calling {}: {}",
+                    status.as_u16(),
+                    if response_url.as_str().is_empty() {
+                        url
+                    } else {
+                        response_url.as_str()
+                    },
+                    detail
+                ),
+                status_code: Some(status.as_u16()),
+                provider: Some(self.provider.clone()),
                 provider_code,
                 body,
                 retry_after_sec: retry_after,
@@ -659,6 +930,329 @@ impl OpenAIModel {
             output_tokens,
         })
     }
+
+    async fn responses_stream_once(
+        &self,
+        base_url: &str,
+        messages: &[Message],
+        tools: &[serde_json::Value],
+        on_delta: &(dyn Fn(DeltaEvent) + Send + Sync),
+        cancel: &CancellationToken,
+    ) -> Result<ModelTurn, StreamAttemptError> {
+        let url = format!("{}/responses", base_url.trim_end_matches('/'));
+        let payload = self.build_responses_payload(messages, tools, true);
+        let request = self.build_request(&url, &payload);
+        let mut es = request.eventsource().map_err(|e| StreamAttemptError {
+            error: anyhow!("Failed to open SSE stream: {e}"),
+            saw_output: false,
+        })?;
+
+        let mut text = String::new();
+        let mut thinking = String::new();
+        let mut tool_calls_by_index: HashMap<usize, (String, String, String)> = HashMap::new();
+        let mut response_id: Option<String> = None;
+        let mut input_tokens: u64 = 0;
+        let mut output_tokens: u64 = 0;
+        let mut saw_output = false;
+
+        use futures::StreamExt;
+        loop {
+            if cancel.is_cancelled() {
+                es.close();
+                return Err(StreamAttemptError {
+                    error: anyhow!("Cancelled"),
+                    saw_output,
+                });
+            }
+
+            let event = tokio::select! {
+                _ = cancel.cancelled() => {
+                    es.close();
+                    return Err(StreamAttemptError {
+                        error: anyhow!("Cancelled"),
+                        saw_output,
+                    });
+                }
+                ev = es.next() => ev,
+            };
+
+            let event = match event {
+                Some(Ok(ev)) => ev,
+                Some(Err(reqwest_eventsource::Error::StreamEnded)) => break,
+                Some(Err(e)) => {
+                    es.close();
+                    let error = self.classify_sse_error(&url, e).await;
+                    return Err(StreamAttemptError { error, saw_output });
+                }
+                None => break,
+            };
+
+            match event {
+                Event::Open => {}
+                Event::Message(msg) => {
+                    if msg.data == "[DONE]" {
+                        break;
+                    }
+
+                    let chunk: serde_json::Value = serde_json::from_str(&msg.data)
+                        .with_context(|| format!("Failed to parse SSE chunk: {}", &msg.data))
+                        .map_err(|error| StreamAttemptError { error, saw_output })?;
+
+                    if let Some(error) = Self::classify_stream_payload_error(&chunk) {
+                        return Err(StreamAttemptError { error, saw_output });
+                    }
+
+                    if let Some(id) = chunk.get("response_id").and_then(|value| value.as_str()) {
+                        if !id.trim().is_empty() {
+                            response_id = Some(id.to_string());
+                        }
+                    }
+                    if let Some(id) = chunk
+                        .get("response")
+                        .and_then(|response| response.get("id"))
+                        .and_then(|value| value.as_str())
+                    {
+                        if !id.trim().is_empty() {
+                            response_id = Some(id.to_string());
+                        }
+                    }
+
+                    if let Some(response) = chunk.get("response") {
+                        if let Some(usage) = response.get("usage") {
+                            if let Some(pt) = usage.get("input_tokens").and_then(|v| v.as_u64()) {
+                                input_tokens = pt;
+                            }
+                            if let Some(ot) = usage.get("output_tokens").and_then(|v| v.as_u64()) {
+                                output_tokens = ot;
+                            }
+                        }
+                    }
+
+                    let event_type = chunk
+                        .get("type")
+                        .and_then(|value| value.as_str())
+                        .unwrap_or_default();
+
+                    if matches!(event_type, "response.failed" | "response.incomplete") {
+                        let message = chunk
+                            .get("response")
+                            .and_then(|response| response.get("error"))
+                            .and_then(|error| error.get("message"))
+                            .and_then(|value| value.as_str())
+                            .or_else(|| {
+                                chunk
+                                    .get("response")
+                                    .and_then(|response| response.get("incomplete_details"))
+                                    .and_then(|details| details.get("reason"))
+                                    .and_then(|value| value.as_str())
+                            })
+                            .unwrap_or("Responses API stream failed");
+                        return Err(StreamAttemptError {
+                            error: anyhow!("Stream error: {message}"),
+                            saw_output,
+                        });
+                    }
+
+                    if event_type == "response.output_text.delta" {
+                        if let Some(delta) = chunk.get("delta").and_then(|value| value.as_str()) {
+                            if !delta.is_empty() {
+                                saw_output = true;
+                                text.push_str(delta);
+                                on_delta(DeltaEvent {
+                                    kind: DeltaKind::Text,
+                                    text: delta.to_string(),
+                                    conversation_path: None,
+                                });
+                            }
+                        }
+                    } else if event_type.starts_with("response.reasoning")
+                        && event_type.ends_with(".delta")
+                    {
+                        if let Some(delta) = chunk.get("delta").and_then(|value| value.as_str()) {
+                            if !delta.is_empty() {
+                                saw_output = true;
+                                thinking.push_str(delta);
+                                on_delta(DeltaEvent {
+                                    kind: DeltaKind::Thinking,
+                                    text: delta.to_string(),
+                                    conversation_path: None,
+                                });
+                            }
+                        }
+                    } else if event_type == "response.output_item.added" {
+                        let idx = chunk
+                            .get("output_index")
+                            .and_then(|value| value.as_u64())
+                            .unwrap_or(0) as usize;
+                        if let Some(item) = chunk.get("item") {
+                            if item.get("type").and_then(|value| value.as_str())
+                                == Some("function_call")
+                            {
+                                let entry = tool_calls_by_index.entry(idx).or_insert_with(|| {
+                                    (String::new(), String::new(), String::new())
+                                });
+                                if let Some(call_id) =
+                                    item.get("call_id").and_then(|value| value.as_str())
+                                {
+                                    entry.0 = call_id.to_string();
+                                } else if let Some(id) =
+                                    item.get("id").and_then(|value| value.as_str())
+                                {
+                                    entry.0 = id.to_string();
+                                }
+                                if let Some(name) =
+                                    item.get("name").and_then(|value| value.as_str())
+                                {
+                                    if !name.is_empty() {
+                                        saw_output = true;
+                                        entry.1 = name.to_string();
+                                        on_delta(DeltaEvent {
+                                            kind: DeltaKind::ToolCallStart,
+                                            text: name.to_string(),
+                                            conversation_path: None,
+                                        });
+                                    }
+                                }
+                                if let Some(arguments) =
+                                    item.get("arguments").and_then(|value| value.as_str())
+                                {
+                                    entry.2 = arguments.to_string();
+                                }
+                            }
+                        }
+                    } else if event_type == "response.function_call_arguments.delta" {
+                        let idx = chunk
+                            .get("output_index")
+                            .and_then(|value| value.as_u64())
+                            .unwrap_or(0) as usize;
+                        let entry = tool_calls_by_index
+                            .entry(idx)
+                            .or_insert_with(|| (String::new(), String::new(), String::new()));
+                        if let Some(delta) = chunk.get("delta").and_then(|value| value.as_str()) {
+                            if !delta.is_empty() {
+                                saw_output = true;
+                                entry.2.push_str(delta);
+                                on_delta(DeltaEvent {
+                                    kind: DeltaKind::ToolCallArgs,
+                                    text: delta.to_string(),
+                                    conversation_path: None,
+                                });
+                            }
+                        }
+                    } else if event_type == "response.function_call_arguments.done" {
+                        let idx = chunk
+                            .get("output_index")
+                            .and_then(|value| value.as_u64())
+                            .unwrap_or(0) as usize;
+                        let entry = tool_calls_by_index
+                            .entry(idx)
+                            .or_insert_with(|| (String::new(), String::new(), String::new()));
+                        if let Some(arguments) =
+                            chunk.get("arguments").and_then(|value| value.as_str())
+                        {
+                            entry.2 = arguments.to_string();
+                        }
+                    } else if event_type == "response.output_item.done" {
+                        let idx = chunk
+                            .get("output_index")
+                            .and_then(|value| value.as_u64())
+                            .unwrap_or(0) as usize;
+                        if let Some(item) = chunk.get("item") {
+                            if item.get("type").and_then(|value| value.as_str())
+                                == Some("function_call")
+                            {
+                                let entry = tool_calls_by_index.entry(idx).or_insert_with(|| {
+                                    (String::new(), String::new(), String::new())
+                                });
+                                if let Some(call_id) =
+                                    item.get("call_id").and_then(|value| value.as_str())
+                                {
+                                    entry.0 = call_id.to_string();
+                                } else if let Some(id) =
+                                    item.get("id").and_then(|value| value.as_str())
+                                {
+                                    entry.0 = id.to_string();
+                                }
+                                if let Some(name) =
+                                    item.get("name").and_then(|value| value.as_str())
+                                {
+                                    entry.1 = name.to_string();
+                                }
+                                if let Some(arguments) =
+                                    item.get("arguments").and_then(|value| value.as_str())
+                                {
+                                    entry.2 = arguments.to_string();
+                                }
+                            }
+                        }
+                    } else if matches!(event_type, "response.completed" | "response.done") {
+                        if let Some(response) = chunk.get("response") {
+                            if text.is_empty() {
+                                if let Some(output) =
+                                    response.get("output").and_then(|value| value.as_array())
+                                {
+                                    for item in output {
+                                        if item.get("type").and_then(|value| value.as_str())
+                                            == Some("message")
+                                        {
+                                            if let Some(content) = item
+                                                .get("content")
+                                                .and_then(|value| value.as_array())
+                                            {
+                                                for part in content {
+                                                    if part
+                                                        .get("type")
+                                                        .and_then(|value| value.as_str())
+                                                        == Some("output_text")
+                                                    {
+                                                        if let Some(part_text) = part
+                                                            .get("text")
+                                                            .and_then(|value| value.as_str())
+                                                        {
+                                                            text.push_str(part_text);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut tool_calls: Vec<ToolCall> = Vec::new();
+        let mut indices: Vec<usize> = tool_calls_by_index.keys().copied().collect();
+        indices.sort();
+        for idx in indices {
+            let (id, name, arguments) = tool_calls_by_index.remove(&idx).unwrap();
+            if name.is_empty() {
+                continue;
+            }
+            tool_calls.push(ToolCall {
+                id,
+                name,
+                arguments,
+            });
+        }
+
+        self.set_response_state(response_id, &tool_calls);
+
+        Ok(ModelTurn {
+            text,
+            thinking: if thinking.is_empty() {
+                None
+            } else {
+                Some(thinking)
+            },
+            tool_calls,
+            input_tokens,
+            output_tokens,
+        })
+    }
 }
 
 #[async_trait::async_trait]
@@ -686,13 +1280,19 @@ impl BaseModel for OpenAIModel {
             1
         };
         let mut last_error: Option<anyhow::Error> = None;
+        let use_responses_api = self.should_use_responses_api(tools);
 
         for attempt in 0..max_attempts {
             for base_url in self.candidate_base_urls() {
-                match self
-                    .chat_stream_once(&base_url, messages, tools, on_delta, cancel)
-                    .await
-                {
+                let result = if use_responses_api {
+                    self.responses_stream_once(&base_url, messages, tools, on_delta, cancel)
+                        .await
+                } else {
+                    self.chat_stream_once(&base_url, messages, tools, on_delta, cancel)
+                        .await
+                };
+
+                match result {
                     Ok(turn) => {
                         self.set_active_base_url(&base_url);
                         return Ok(turn);
@@ -700,7 +1300,12 @@ impl BaseModel for OpenAIModel {
                     Err(err) => {
                         let should_try_next = self.should_try_next_zai_base_url(&err.error);
                         let should_retry = self.should_retry_zai_error(&err);
-                        last_error = Some(err.error);
+                        let saw_output = err.saw_output;
+                        last_error = Some(if saw_output {
+                            err.error
+                        } else {
+                            self.promote_retryable_attempt_error(err.error)
+                        });
 
                         if should_try_next {
                             continue;
@@ -881,6 +1486,99 @@ mod tests {
         let payload = model.build_payload(&msgs, &[], true);
         assert!(payload.get("tools").is_none());
         assert!(payload.get("tool_choice").is_none());
+    }
+
+    #[test]
+    fn test_gpt55_tool_reasoning_uses_responses_api() {
+        let model = make_model("azure-foundry/gpt-5.5", Some("xhigh"));
+        let tools = vec![serde_json::json!({"type": "function", "function": {"name": "test"}})];
+        assert!(model.should_use_responses_api(&tools));
+        assert!(!model.should_use_responses_api(&[]));
+
+        let openrouter_model = OpenAIModel::new(
+            "gpt-5.5".to_string(),
+            "openrouter".to_string(),
+            "https://openrouter.ai/api/v1".to_string(),
+            "sk-test".to_string(),
+            Some("xhigh".to_string()),
+            HashMap::new(),
+        );
+        assert!(!openrouter_model.should_use_responses_api(&tools));
+    }
+
+    #[test]
+    fn test_responses_payload_flattens_tools_and_nests_reasoning() {
+        let model = make_model("azure-foundry/gpt-5.5", Some("xhigh"));
+        let msgs = vec![Message::User {
+            content: "Hi".to_string(),
+        }];
+        let tools = vec![serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "read_file",
+                "description": "Read a file",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"}
+                    },
+                    "required": ["path"],
+                    "additionalProperties": false
+                },
+                "strict": true
+            }
+        })];
+        let payload = model.build_responses_payload(&msgs, &tools, true);
+
+        assert_eq!(payload["model"], "gpt-5.5");
+        assert!(payload.get("messages").is_none());
+        assert_eq!(payload["input"][0]["role"], "user");
+        assert_eq!(payload["reasoning"]["effort"], "xhigh");
+        assert_eq!(payload["tool_choice"], "auto");
+        assert_eq!(payload["stream"], true);
+        assert_eq!(payload["stream_options"]["include_obfuscation"], false);
+        assert_eq!(payload["tools"][0]["type"], "function");
+        assert_eq!(payload["tools"][0]["name"], "read_file");
+        assert_eq!(payload["tools"][0]["strict"], true);
+        assert!(payload["tools"][0].get("function").is_none());
+    }
+
+    #[test]
+    fn test_responses_payload_continues_with_previous_response_id_for_tool_outputs() {
+        let model = make_model("gpt-5.5", Some("xhigh"));
+        model.set_response_state(
+            Some("resp_123".to_string()),
+            &[ToolCall {
+                id: "call_abc".to_string(),
+                name: "read_file".to_string(),
+                arguments: r#"{"path":"test.txt"}"#.to_string(),
+            }],
+        );
+        let msgs = vec![
+            Message::User {
+                content: "Read it".to_string(),
+            },
+            Message::Assistant {
+                content: "".to_string(),
+                tool_calls: Some(vec![ToolCall {
+                    id: "call_abc".to_string(),
+                    name: "read_file".to_string(),
+                    arguments: r#"{"path":"test.txt"}"#.to_string(),
+                }]),
+            },
+            Message::Tool {
+                tool_call_id: "call_abc".to_string(),
+                content: "file contents".to_string(),
+            },
+        ];
+        let payload = model.build_responses_payload(&msgs, &[], true);
+
+        assert_eq!(payload["previous_response_id"], "resp_123");
+        let input = payload["input"].as_array().unwrap();
+        assert_eq!(input.len(), 1);
+        assert_eq!(input[0]["type"], "function_call_output");
+        assert_eq!(input[0]["call_id"], "call_abc");
+        assert_eq!(input[0]["output"], "file contents");
     }
 
     #[test]

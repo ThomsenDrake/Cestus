@@ -23,7 +23,7 @@ function makeChromeConfig(overrides: Record<string, unknown> = {}) {
     chrome_mcp_connect_timeout_sec: 15,
     chrome_mcp_rpc_timeout_sec: 45,
     chrome_mcp_status: "ready",
-    chrome_mcp_status_detail: "Connected to Chrome.",
+    chrome_mcp_status_detail: "Browser Harness ready.",
     workspace: ".",
     session_id: null,
     recursive: true,
@@ -45,7 +45,7 @@ describe("handleChromeCommand", () => {
       chromeMcpBrowserUrl: null,
       chromeMcpChannel: "stable",
       chromeMcpStatus: "disabled",
-      chromeMcpStatusDetail: "Chrome DevTools MCP is disabled.",
+      chromeMcpStatusDetail: "Browser Harness is disabled.",
     });
   });
 
@@ -56,12 +56,12 @@ describe("handleChromeCommand", () => {
 
   it("shows current status with usage when called without args", async () => {
     const result = await handleChromeCommand("");
-    expect(result.lines[0]).toContain("Chrome MCP:");
-    expect(result.lines[1]).toContain("Chrome runtime:");
+    expect(result.lines[0]).toContain("Browser Harness:");
+    expect(result.lines[1]).toContain("Browser runtime:");
     expect(result.lines).toContain(CHROME_USAGE);
   });
 
-  it("updates auto-connect mode", async () => {
+  it("updates auto-discovery mode", async () => {
     __setHandler("update_config", ({ partial }: { partial: Record<string, unknown> }) => {
       expect(partial.chrome_mcp_enabled).toBe(true);
       expect(partial.chrome_mcp_auto_connect).toBe(true);
@@ -70,7 +70,7 @@ describe("handleChromeCommand", () => {
     });
 
     const result = await handleChromeCommand("auto");
-    expect(result.lines[0]).toContain("attach=auto-connect");
+    expect(result.lines[0]).toContain("attach=auto-discovery");
     expect(appState.get().chromeMcpEnabled).toBe(true);
     expect(appState.get().chromeMcpAutoConnect).toBe(true);
     expect(appState.get().chromeMcpBrowserUrl).toBeNull();
@@ -95,30 +95,30 @@ describe("handleChromeCommand", () => {
     });
 
     const result = await handleChromeCommand("url http://127.0.0.1:9222 --save");
-    expect(result.lines[0]).toContain("browser_url=http://127.0.0.1:9222");
+    expect(result.lines[0]).toContain("BU_CDP_URL=http://127.0.0.1:9222");
     expect(result.lines).toContain("(Settings saved)");
     expect(appState.get().chromeMcpBrowserUrl).toBe("http://127.0.0.1:9222");
   });
 
-  it("updates the Chrome channel", async () => {
+  it("updates the legacy Chrome channel", async () => {
     __setHandler("update_config", ({ partial }: { partial: Record<string, unknown> }) => {
       expect(partial.chrome_mcp_channel).toBe("beta");
       return makeChromeConfig({
         chrome_mcp_channel: "beta",
         chrome_mcp_status: "unavailable",
-        chrome_mcp_status_detail: "Chrome Beta is not running.",
+        chrome_mcp_status_detail: "Browser Harness could not attach to Chrome Beta.",
       });
     });
 
     const result = await handleChromeCommand("channel beta");
-    expect(result.lines[0]).toContain("channel=beta");
+    expect(result.lines[0]).toContain("legacy_channel=beta");
     expect(result.lines[1]).toContain("unavailable");
     expect(appState.get().chromeMcpChannel).toBe("beta");
   });
 
   it("rejects invalid channels", async () => {
     const result = await handleChromeCommand("channel nightly");
-    expect(result.lines[0]).toContain("Invalid Chrome channel");
+    expect(result.lines[0]).toContain("Invalid legacy Chrome channel");
   });
 
   it("shows url usage when endpoint is missing", async () => {

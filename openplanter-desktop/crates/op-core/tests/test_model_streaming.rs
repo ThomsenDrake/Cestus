@@ -16,7 +16,7 @@ use tokio_util::sync::CancellationToken;
 use op_core::events::{DeltaEvent, DeltaKind, StepEvent};
 use op_core::model::anthropic::AnthropicModel;
 use op_core::model::openai::OpenAIModel;
-use op_core::model::{BaseModel, Message, RateLimitError};
+use op_core::model::{BaseModel, Message, ProviderTransientError, RateLimitError};
 
 // ─── Helpers ───
 
@@ -227,6 +227,111 @@ async fn test_openai_stream_tool_call() {
         .map(|d| d.text.as_str())
         .collect();
     assert_eq!(tool_start, vec!["read_file"]);
+}
+
+const OPENAI_RESPONSES_SSE_TOOL_CALL: &str = "\
+data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_123\",\"usage\":null}}\n\n\
+data: {\"type\":\"response.output_item.added\",\"response_id\":\"resp_123\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_123\",\"call_id\":\"call_abc\",\"name\":\"read_file\",\"arguments\":\"\"}}\n\n\
+data: {\"type\":\"response.function_call_arguments.delta\",\"response_id\":\"resp_123\",\"item_id\":\"fc_123\",\"output_index\":0,\"delta\":\"{\\\"pa\"}\n\n\
+data: {\"type\":\"response.function_call_arguments.delta\",\"response_id\":\"resp_123\",\"item_id\":\"fc_123\",\"output_index\":0,\"delta\":\"th\\\":\\\"test.txt\\\"}\"}\n\n\
+data: {\"type\":\"response.function_call_arguments.done\",\"response_id\":\"resp_123\",\"item_id\":\"fc_123\",\"output_index\":0,\"arguments\":\"{\\\"path\\\":\\\"test.txt\\\"}\"}\n\n\
+data: {\"type\":\"response.output_item.done\",\"response_id\":\"resp_123\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_123\",\"call_id\":\"call_abc\",\"name\":\"read_file\",\"arguments\":\"{\\\"path\\\":\\\"test.txt\\\"}\"}}\n\n\
+data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_123\",\"usage\":{\"input_tokens\":21,\"output_tokens\":6},\"output\":[]}}\n\n";
+
+#[tokio::test]
+async fn test_openai_responses_stream_tool_call_for_gpt55_reasoning() {
+    let _test_guard = MODEL_STREAMING_TEST_LOCK.lock().await;
+    let addr = start_mock_sse_server(OPENAI_RESPONSES_SSE_TOOL_CALL).await;
+    let model = OpenAIModel::new(
+        "gpt-5.5".to_string(),
+        "openai".to_string(),
+        format!("http://{addr}"),
+        "test-key".to_string(),
+        Some("xhigh".to_string()),
+        HashMap::new(),
+    );
+    let tools = vec![serde_json::json!({
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "parameters": {
+                "type": "object",
+                "properties": {"path": {"type": "string"}},
+                "required": ["path"],
+                "additionalProperties": false
+            }
+        }
+    })];
+
+    let collector = DeltaCollector::new();
+    let c = collector.clone();
+    let cancel = CancellationToken::new();
+    let turn = model
+        .chat_stream(&simple_messages(), &tools, &move |d| c.push(d), &cancel)
+        .await
+        .expect("chat_stream should parse Responses API tool calls");
+
+    assert_eq!(turn.input_tokens, 21);
+    assert_eq!(turn.output_tokens, 6);
+    assert_eq!(turn.tool_calls.len(), 1);
+    assert_eq!(turn.tool_calls[0].id, "call_abc");
+    assert_eq!(turn.tool_calls[0].name, "read_file");
+    assert_eq!(turn.tool_calls[0].arguments, "{\"path\":\"test.txt\"}");
+
+    let deltas = collector.events();
+    let tool_start: Vec<&str> = deltas
+        .iter()
+        .filter(|d| matches!(d.kind, DeltaKind::ToolCallStart))
+        .map(|d| d.text.as_str())
+        .collect();
+    assert_eq!(tool_start, vec!["read_file"]);
+    let tool_args = deltas
+        .iter()
+        .filter(|d| matches!(d.kind, DeltaKind::ToolCallArgs))
+        .map(|d| d.text.as_str())
+        .collect::<Vec<_>>()
+        .join("");
+    assert_eq!(tool_args, "{\"path\":\"test.txt\"}");
+}
+
+#[tokio::test]
+async fn test_openai_responses_http_500_is_structured_transient_error() {
+    let _test_guard = MODEL_STREAMING_TEST_LOCK.lock().await;
+    let addr = start_error_server(
+        500,
+        r#"{"error":{"message":"Internal Server Error","code":"internal_server_error"}}"#,
+    )
+    .await;
+    let model = OpenAIModel::new(
+        "gpt-5.5".to_string(),
+        "openai".to_string(),
+        format!("http://{addr}"),
+        "test-key".to_string(),
+        Some("xhigh".to_string()),
+        HashMap::new(),
+    );
+    let tools = vec![serde_json::json!({
+        "type": "function",
+        "function": {"name": "read_file", "parameters": {"type": "object"}}
+    })];
+
+    let cancel = CancellationToken::new();
+    let error = model
+        .chat_stream(&simple_messages(), &tools, &|_| {}, &cancel)
+        .await
+        .expect_err("responses 500 should fail as a structured transient error");
+
+    let transient = error
+        .downcast_ref::<ProviderTransientError>()
+        .expect("expected ProviderTransientError");
+    assert_eq!(transient.status_code, Some(500));
+    assert_eq!(transient.provider.as_deref(), Some("openai"));
+    assert_eq!(
+        transient.provider_code.as_deref(),
+        Some("internal_server_error")
+    );
+    assert!(transient.message.contains("/responses"));
+    assert!(transient.message.contains("Internal Server Error"));
 }
 
 #[tokio::test]

@@ -252,6 +252,7 @@ pub async fn update_config(
 fn known_models_for_provider(provider: &str) -> Vec<ModelInfo> {
     let models: Vec<(&str, &str)> = match provider {
         "openai" => vec![
+            ("azure-foundry/gpt-5.5", "GPT-5.5 (Foundry)"),
             ("azure-foundry/gpt-5.4", "GPT-5.4 (Foundry)"),
             ("azure-foundry/gpt-5.3-codex", "GPT-5.3 Codex (Foundry)"),
             ("azure-foundry/Kimi-K2.5", "Kimi K2.5 (Foundry)"),
