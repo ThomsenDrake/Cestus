@@ -2,9 +2,9 @@
 
 ## Summary
 
-OpenPlanter already behaves like a serious long-form investigation system, not a toy chat app. The trace corpus shows users running deep, multi-turn research sessions with heavy file reads, long synthesis writes, curator updates, and resumable session histories. The main gap is not lack of telemetry. It is that the telemetry is split across two incompatible session contracts and only a thin slice is surfaced in the UI.
+Cestus already behaves like a serious long-form investigation system, not a toy chat app. The trace corpus shows users running deep, multi-turn research sessions with heavy file reads, long synthesis writes, curator updates, and resumable session histories. The main gap is not lack of telemetry. It is that the telemetry is split across two incompatible session contracts and only a thin slice is surfaced in the UI.
 
-That matters because `VISION.md` promises an ontology-first platform with shared graphs, maps, timelines, grounded AI, audit logging, and provenance. Today, OpenPlanter has the raw ingredients for that promise, but the session layer is still closer to "logs plus post-hoc summaries" than "ontology as the universal API."
+That matters because `VISION.md` promises an ontology-first platform with shared graphs, maps, timelines, grounded AI, audit logging, and provenance. Today, Cestus has the raw ingredients for that promise, but the session layer is still closer to "logs plus post-hoc summaries" than "ontology as the universal API."
 
 ## Corpus Snapshot
 
@@ -27,7 +27,7 @@ The strongest sessions are not short prompts. They are deep evidence-gathering l
 - Session `20260226-210523-84c1ba` logged 2664 events and 321 replay lines.
 - Session `20260220-191025-f2b099` logged 1178 events and 157 replay lines.
 
-Interpretation: OpenPlanter is already being used more like an investigative workbench than a terminal wrapper. The product should lean into durability, handoffs, and evidence navigation instead of optimizing only for single-turn polish.
+Interpretation: Cestus is already being used more like an investigative workbench than a terminal wrapper. The product should lean into durability, handoffs, and evidence navigation instead of optimizing only for single-turn polish.
 
 ### 2. The product has split into two trace eras
 
@@ -38,7 +38,7 @@ Legacy sessions and desktop sessions record different metadata and different not
 - Legacy Python replay logger writes `header` and `call` records with conversation IDs and exact provider payload context: `agent/replay_log.py:38-46`, `agent/replay_log.py:90-116`.
 - Desktop Rust replay logger writes `ReplayEntry` records with roles like `user`, `step-summary`, `assistant`, and `curator`: `openplanter-desktop/crates/op-core/src/session/replay.rs:11-38`.
 
-Interpretation: OpenPlanter currently has two incompatible ideas of what a session trace is. That weakens continuity, observability, and tooling.
+Interpretation: Cestus currently has two incompatible ideas of what a session trace is. That weakens continuity, observability, and tooling.
 
 ### 3. Reliability failures hit even trivial tasks
 
@@ -48,7 +48,7 @@ The earliest sample sessions failed on a one-line objective.
 
 Interpretation: users will judge trust long before they appreciate the ontology model. Reliability and graceful degradation are product features here, not just infra hygiene.
 
-### 4. OpenPlanter already captures richer state than the UI reveals
+### 4. Cestus already captures richer state than the UI reveals
 
 The session system stores session metadata, state, investigation state, events, replay, and artifacts.
 
@@ -78,7 +78,7 @@ Interpretation: this is a strong UX seed. It hints at a powerful product directi
 
 ## What The Traces Say About Actual Use
 
-### OpenPlanter is being used as an investigation memory engine
+### Cestus is being used as an investigation memory engine
 
 The most valuable thing in the traces is continuity. Sessions are not just execution logs. They are the skeleton of a durable investigation narrative. The replay history shows repeated synthesis, recursive review, wiki updates, and follow-up objectives that build on prior work.
 
@@ -88,11 +88,11 @@ The later sessions center on `step-summary` and `curator` entries rather than lo
 
 ### Users are performing analysis across artifacts, not just asking questions
 
-The trace corpus repeatedly shows reading many files, generating large markdown outputs, updating wiki pages, and persisting patch artifacts. This supports the idea that OpenPlanter should present investigations as evolving evidence graphs with outputs, not just chats with attachments.
+The trace corpus repeatedly shows reading many files, generating large markdown outputs, updating wiki pages, and persisting patch artifacts. This supports the idea that Cestus should present investigations as evolving evidence graphs with outputs, not just chats with attachments.
 
 ## Where Current Behavior Misses The Vision
 
-`VISION.md` says OpenPlanter should win through integration: ontology, visualization, grounded AI, actions, audit logging, and provenance all operating through one semantic layer.
+`VISION.md` says Cestus should win through integration: ontology, visualization, grounded AI, actions, audit logging, and provenance all operating through one semantic layer.
 
 - The vision calls for a unified semantic layer and exploration through graphs, maps, and timelines: `VISION.md:27-31`
 - It explicitly states "Ontology-First" and requires audit logging and data provenance from day one: `VISION.md:141-148`
@@ -106,7 +106,7 @@ Current mismatch:
 - Session diffing exists only as a frontend baseline, not as ontology-level change tracking.
 - The reasoning packet is rich, but it is mainly used to synthesize the overview rather than drive the full end-to-end session model.
 
-Inference: OpenPlanter is closest to the vision when it behaves like a durable investigative operating system. It is furthest from the vision when it behaves like a terminal session recorder with clever summaries on top.
+Inference: Cestus is closest to the vision when it behaves like a durable investigative operating system. It is furthest from the vision when it behaves like a terminal session recorder with clever summaries on top.
 
 ## Highest-Leverage Improvements
 
@@ -153,7 +153,7 @@ The vision wants ontology as the universal API. That should include the investig
 
 ### Bet 4: Handoffs are a differentiator
 
-The corpus already looks like investigative baton-passing. If OpenPlanter can make a session checkpoint portable, reviewable, and resumable, it starts to feel like a true intelligence operating system.
+The corpus already looks like investigative baton-passing. If Cestus can make a session checkpoint portable, reviewable, and resumable, it starts to feel like a true intelligence operating system.
 
 ## Evidence Map
 

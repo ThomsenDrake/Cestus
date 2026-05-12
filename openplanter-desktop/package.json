@@ -1,5 +1,5 @@
 {
-  "name": "openplanter-desktop",
+  "name": "cestus-desktop",
   "private": true,
   "scripts": {
     "dev": "npm --prefix frontend run dev",

@@ -98,7 +98,7 @@ const OBSIDIAN_ENABLE_ARGS: CompletionItem[] = [
     description: "Path to a fresh vault or existing vault root",
     children: [
       { value: "--mode", description: "Choose the export mode", children: OBSIDIAN_MODES },
-      { value: "--subdir", description: "Folder name inside an existing vault", children: [{ value: "OpenPlanter", description: "Default export folder" }] },
+      { value: "--subdir", description: "Folder name inside an existing vault", children: [{ value: "Cestus", description: "Default export folder" }] },
       { value: "--no-canvas", description: "Skip JSON Canvas generation" },
     ],
   },

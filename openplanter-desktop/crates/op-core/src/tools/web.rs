@@ -203,7 +203,7 @@ async fn fetch_direct_page(url: &str, timeout_sec: u64) -> serde_json::Value {
             "Accept",
             "text/html,application/xhtml+xml,application/json,text/plain;q=0.9,*/*;q=0.8",
         )
-        .header("User-Agent", "OpenPlanter/1.0")
+        .header("User-Agent", "Cestus/1.0")
         .timeout(Duration::from_secs(timeout_sec))
         .send()
         .await

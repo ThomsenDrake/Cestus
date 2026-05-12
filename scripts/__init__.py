@@ -1,1 +1,1 @@
-"""Data acquisition and analysis helpers bundled with OpenPlanter."""
+"""Data acquisition and analysis helpers bundled with Cestus."""

@@ -145,7 +145,7 @@ class ReplayLogger:
             "actor": {
                 "kind": "runtime",
                 "id": self.conversation_id,
-                "display": "OpenPlanter",
+                "display": "Cestus",
                 "runtime_family": "python",
                 "provider": provider,
                 "model": model,
@@ -215,7 +215,7 @@ class ReplayLogger:
                 "actor": {
                     "kind": "assistant",
                     "id": self.conversation_id,
-                    "display": "OpenPlanter",
+                    "display": "Cestus",
                     "runtime_family": "python",
                     "provider": self._provider,
                     "model": self._model,

@@ -9,7 +9,7 @@ VALID_REASONING_EFFORTS: set[str] = {"low", "medium", "high", "xhigh"}
 VALID_CHROME_MCP_CHANNELS: set[str] = {"stable", "beta", "dev", "canary"}
 VALID_EMBEDDINGS_PROVIDERS: set[str] = {"voyage", "mistral"}
 VALID_OBSIDIAN_EXPORT_MODES: set[str] = {"fresh_vault", "existing_vault_folder"}
-DEFAULT_OBSIDIAN_EXPORT_SUBDIR = "OpenPlanter"
+DEFAULT_OBSIDIAN_EXPORT_SUBDIR = "Cestus"
 
 
 def normalize_reasoning_effort(value: str | None) -> str | None:

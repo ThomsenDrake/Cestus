@@ -539,7 +539,7 @@ class SessionStore:
             "actor": {
                 "kind": "runtime",
                 "id": "python-runtime",
-                "display": "OpenPlanter Python Runtime",
+                "display": "Cestus Python Runtime",
                 "runtime_family": "python",
             },
             "failure": failure,

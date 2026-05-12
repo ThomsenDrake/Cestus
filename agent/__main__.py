@@ -41,8 +41,8 @@ VALID_REASONING_FLAGS = ["low", "medium", "high", "xhigh", "none"]
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="openplanter-agent",
-        description="OpenPlanter coding agent with terminal UI.",
+        prog="cestus-agent",
+        description="Cestus investigation agent with terminal UI.",
     )
     parser.set_defaults(command=None)
 
@@ -236,7 +236,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def build_defrag_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="openplanter-agent defrag",
+        prog="cestus-agent defrag",
         description="Workspace defragmentation: deduplicate files, sync wiki, merge ontologies.",
     )
     parser.set_defaults(command="defrag")
@@ -574,7 +574,7 @@ def run_plain_repl(ctx: ChatContext) -> None:
     def _out(text: str) -> None:
         print(censor_fn(text) if censor_fn else text)
 
-    _out("OpenPlanter Agent (plain mode). Type /quit to exit.")
+    _out("Cestus Agent (plain mode). Type /quit to exit.")
     while True:
         try:
             objective = input("you> ").strip()
@@ -972,7 +972,7 @@ def main() -> None:
         from .textual_tui import run_textual_app
     except ImportError:
         if args.textual:
-            print("Textual TUI requires extra dependencies: pip install openplanter-agent[textual]")
+            print("Textual TUI requires extra dependencies: pip install cestus-agent[textual]")
             raise SystemExit(1)
         run_textual_app = None  # type: ignore[assignment]
 

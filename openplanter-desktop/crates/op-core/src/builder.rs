@@ -253,7 +253,7 @@ pub fn build_model(cfg: &AgentConfig) -> Result<Box<dyn BaseModel>, ModelError> 
                     "HTTP-Referer".to_string(),
                     "https://github.com/openplanter".to_string(),
                 );
-                extra_headers.insert("X-Title".to_string(), "OpenPlanter".to_string());
+                extra_headers.insert("X-Title".to_string(), "Cestus".to_string());
             }
             if provider == "zai" {
                 extra_headers.insert("Accept-Language".to_string(), "en-US,en".to_string());

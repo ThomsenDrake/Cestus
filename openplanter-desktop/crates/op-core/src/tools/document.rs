@@ -365,7 +365,7 @@ fn render_document_ocr_markdown(
         .filter(|label| !label.is_empty())
         .unwrap_or_else(|| "all".to_string());
     let mut lines = vec![
-        "<!-- OpenPlanter document_ocr artifact -->".to_string(),
+        "<!-- Cestus document_ocr artifact -->".to_string(),
         format!("<!-- source: {rel_source_path} -->"),
         format!("<!-- model: {model} -->"),
         format!("<!-- pages: {page_label} -->"),

@@ -444,7 +444,7 @@ mod tests {
             obsidian_export_enabled: Some(true),
             obsidian_export_root: Some("/Users/example/Vault".into()),
             obsidian_export_mode: Some("fresh-vault".into()),
-            obsidian_export_subdir: Some("Research/OpenPlanter".into()),
+            obsidian_export_subdir: Some("Research/Cestus".into()),
             obsidian_generate_canvas: Some(false),
             ..Default::default()
         };
@@ -458,7 +458,7 @@ mod tests {
         assert_eq!(loaded.obsidian_export_mode, Some("fresh_vault".into()));
         assert_eq!(
             loaded.obsidian_export_subdir,
-            Some("Research/OpenPlanter".into())
+            Some("Research/Cestus".into())
         );
         assert_eq!(loaded.obsidian_generate_canvas, Some(false));
     }

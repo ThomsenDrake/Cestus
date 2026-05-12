@@ -162,7 +162,7 @@ export function createWorkspaceInitGate(): HTMLElement {
     const input = document.createElement("input");
     input.type = "text";
     input.value = draft.path;
-    input.placeholder = "/path/to/openplanter-workspace-or-research-dir";
+    input.placeholder = "/path/to/cestus-workspace-or-research-dir";
     input.disabled = stateBusy;
     input.addEventListener("input", () => {
       sources[index] = { path: input.value, inspection: null };

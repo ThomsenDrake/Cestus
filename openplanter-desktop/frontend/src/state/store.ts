@@ -159,7 +159,7 @@ export const appState = new Store<AppState>({
   obsidianExportEnabled: false,
   obsidianExportRoot: null,
   obsidianExportMode: "existing_vault_folder",
-  obsidianExportSubdir: "OpenPlanter",
+  obsidianExportSubdir: "Cestus",
   obsidianGenerateCanvas: true,
   sessionId: null,
   activeInvestigationId: null,

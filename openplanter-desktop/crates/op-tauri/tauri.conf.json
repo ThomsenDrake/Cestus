@@ -1,5 +1,5 @@
 {
-  "productName": "OpenPlanter",
+  "productName": "Cestus",
   "version": "0.1.0",
   "identifier": "com.openplanter.desktop",
   "build": {
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "OpenPlanter",
+        "title": "Cestus",
         "width": 1400,
         "height": 900,
         "resizable": true,

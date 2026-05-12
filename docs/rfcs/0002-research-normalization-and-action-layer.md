@@ -1,7 +1,7 @@
 # RFC 0002: Research Normalization and Action Planning Extensions to `InvestigationState`
 
 - **Status:** Proposed
-- **Authors:** OpenPlanter contributors
+- **Authors:** Cestus contributors
 - **Created:** 2026-03-13
 - **Last Updated:** 2026-03-13
 - **Depends On:** RFC 0001 (`Typed InvestigationState`)
