@@ -987,9 +987,9 @@ fn truncate_objective(objective: &str) -> String {
 fn actor_payload(actor_kind: &str) -> Value {
     let (id, display) = match actor_kind {
         "user" => ("user", "User"),
-        "assistant" => ("default-agent", "OpenPlanter"),
+        "assistant" => ("default-agent", "Cestus"),
         "curator" => ("curator", "Curator"),
-        _ => ("desktop-runtime", "OpenPlanter"),
+        _ => ("desktop-runtime", "Cestus"),
     };
     serde_json::json!({
         "kind": actor_kind,

@@ -1,7 +1,7 @@
 # RFC 0001: Typed `InvestigationState` (Ontology-First Session Memory)
 
 - **Status:** Proposed
-- **Authors:** OpenPlanter team
+- **Authors:** Cestus team
 - **Created:** 2026-03-13
 - **Target release:** staged rollout over 3 milestones
 - **Scope:** session persistence (`state.json` successor), event/replay projection, runtime APIs for Python + Rust

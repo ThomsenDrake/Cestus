@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "openplanter-agent"
+name = "cestus-agent"
 version = "0.1.0"
-description = "A recursive-language-model coding agent with a terminal UI."
+description = "A recursive-language-model investigation agent with a terminal UI."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -28,6 +28,7 @@ textual = [
 ]
 
 [project.scripts]
+cestus-agent = "agent.__main__:main"
 openplanter-agent = "agent.__main__:main"
 
 [tool.setuptools.packages.find]

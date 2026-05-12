@@ -44,7 +44,7 @@ class TestAudioTranscribeTool:
                 "clip.wav",
                 diarize=True,
                 timestamp_granularities=["segment"],
-                context_bias=["OpenPlanter", "Mistral"],
+                context_bias=["Cestus", "Mistral"],
                 model="voxtral-mini-latest",
                 temperature=0.2,
             )
@@ -55,7 +55,7 @@ class TestAudioTranscribeTool:
         assert parsed["text"] == "hello world"
         assert parsed["options"]["diarize"] is True
         assert parsed["options"]["timestamp_granularities"] == ["segment"]
-        assert parsed["options"]["context_bias"] == ["OpenPlanter", "Mistral"]
+        assert parsed["options"]["context_bias"] == ["Cestus", "Mistral"]
         assert parsed["response"]["chunks"][0]["text"] == "hello world"
 
     def test_audio_transcribe_requires_key(self, tmp_path: Path) -> None:

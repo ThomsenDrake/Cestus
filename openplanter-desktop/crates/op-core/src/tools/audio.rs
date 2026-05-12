@@ -1276,7 +1276,7 @@ mod tests {
             "clip.wav",
             Some(true),
             Some(&["segment".to_string()]),
-            Some(&["OpenPlanter".to_string()]),
+            Some(&["Cestus".to_string()]),
             None,
             None,
             Some(0.2),

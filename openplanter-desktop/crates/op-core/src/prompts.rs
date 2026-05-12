@@ -3,7 +3,7 @@
 /// Keep shared prompt contracts aligned with `agent/prompts.py` unless a
 /// runtime has intentionally different tool or recursion behavior.
 
-pub const SYSTEM_PROMPT_BASE: &str = r#"You are OpenPlanter, an analysis and investigation agent operating through a terminal session.
+pub const SYSTEM_PROMPT_BASE: &str = r#"You are Cestus, an analysis and investigation agent operating through a terminal session.
 
 You ingest heterogeneous datasets — corporate registries, campaign finance records,
 lobbying disclosures, property records, government contracts, and more — resolve
@@ -559,7 +559,7 @@ mod tests {
     #[test]
     fn test_build_system_prompt_base_only() {
         let prompt = build_system_prompt(false, false, false);
-        assert!(prompt.contains("You are OpenPlanter"));
+        assert!(prompt.contains("You are Cestus"));
         assert!(prompt.contains("OBJECTIVE AND COMPLETION CONTRACT"));
         assert!(prompt.contains("A final answer is a deliverable, not a progress note"));
         assert!(prompt.contains("SESSION LOGS AND TRANSCRIPTS"));
@@ -585,7 +585,7 @@ mod tests {
     #[test]
     fn test_build_system_prompt_all_sections() {
         let prompt = build_system_prompt(true, true, true);
-        assert!(prompt.contains("You are OpenPlanter"));
+        assert!(prompt.contains("You are Cestus"));
         assert!(prompt.contains("REPL STRUCTURE"));
         assert!(prompt.contains("SUBTASK DELEGATION"));
         assert!(prompt.contains("RECURSION CONTRACT"));
@@ -605,7 +605,7 @@ mod tests {
     #[test]
     fn test_prompt_section_ordering() {
         let prompt = build_system_prompt(true, true, true);
-        let base_pos = prompt.find("You are OpenPlanter").unwrap();
+        let base_pos = prompt.find("You are Cestus").unwrap();
         let session_pos = prompt.find("SESSION LOGS AND TRANSCRIPTS").unwrap();
         let turn_pos = prompt.find("TURN HISTORY").unwrap();
         let question_pos = prompt.find("QUESTION-CENTRIC REASONING").unwrap();

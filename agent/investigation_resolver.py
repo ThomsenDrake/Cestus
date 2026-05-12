@@ -15,7 +15,7 @@ from typing import Any, Callable
 
 
 INVESTIGATION_RESOLVER_SYSTEM_PROMPT = """\
-You classify whether a user objective belongs to an existing OpenPlanter investigation.
+You classify whether a user objective belongs to an existing Cestus investigation.
 
 Return JSON only. Do not include markdown, prose outside JSON, or extra keys.
 Use only investigation IDs provided in the user message. Do not invent IDs.

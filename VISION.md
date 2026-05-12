@@ -1,4 +1,4 @@
-# OpenPlanter: Vision Document
+# Cestus: Vision Document
 
 **An Open-Source Intelligence & Data Operations Platform**
 
@@ -14,7 +14,7 @@
 4. [Mission Statement](#4-mission-statement)
 5. [Core Feature Set](#5-core-feature-set)
 6. [Architecture Ideas](#6-architecture-ideas)
-7. [What Makes OpenPlanter Different](#7-what-makes-openplanter-different)
+7. [What Makes Cestus Different](#7-what-makes-cestus-different)
 8. [Potential Use Cases](#8-potential-use-cases)
 9. [Phased Roadmap](#9-phased-roadmap)
 10. [Existing Open-Source Building Blocks](#10-existing-open-source-building-blocks)
@@ -28,7 +28,7 @@ Palantir Technologies has built a multi-billion dollar business around a decepti
 
 Palantir's moat is not any single algorithm. It is the *integration* -- the ontology layer that turns raw tables into entities and relationships, the visualization tools that let analysts explore those relationships across graphs, maps, and timelines, the action framework that lets decisions flow back into operational systems, and the deployment machinery that makes all of this work in sensitive, air-gapped environments.
 
-No single open-source project replicates this today. But the building blocks exist. **OpenPlanter** is a vision for composing those building blocks into a coherent, open-source platform that delivers Palantir-class capabilities to organizations that cannot afford Palantir, do not want vendor lock-in, or need the transparency that only open source provides.
+No single open-source project replicates this today. But the building blocks exist. **Cestus** is a vision for composing those building blocks into a coherent, open-source platform that delivers Palantir-class capabilities to organizations that cannot afford Palantir, do not want vendor lock-in, or need the transparency that only open source provides.
 
 ---
 
@@ -134,9 +134,9 @@ Today, solving this problem requires either (a) paying millions for Palantir, (b
 
 ### The Mission
 
-**OpenPlanter is a free, open-source data operations platform that unifies data integration, semantic modeling, entity resolution, visual analysis, AI reasoning, and operational action into a single coherent system.**
+**Cestus is a free, open-source data operations platform that unifies data integration, semantic modeling, entity resolution, visual analysis, AI reasoning, and operational action into a single coherent system.**
 
-OpenPlanter makes it possible for any organization -- investigative journalists, humanitarian NGOs, academic researchers, mid-sized enterprises, local governments, open-source intelligence analysts -- to turn fragmented data into an entity-relationship model of their domain, explore it visually, reason over it with AI, and take action.
+Cestus makes it possible for any organization -- investigative journalists, humanitarian NGOs, academic researchers, mid-sized enterprises, local governments, open-source intelligence analysts -- to turn fragmented data into an entity-relationship model of their domain, explore it visually, reason over it with AI, and take action.
 
 ### Core Principles
 
@@ -168,7 +168,7 @@ OpenPlanter makes it possible for any organization -- investigative journalists,
 
 **Goal**: Provide a semantic layer that maps raw data to real-world entities and relationships.
 
-This is the heart of OpenPlanter and the primary differentiator from "just another data tool."
+This is the heart of Cestus and the primary differentiator from "just another data tool."
 
 | Capability | Description | Priority |
 |-----------|-------------|----------|
@@ -308,7 +308,7 @@ Link (instance)
 
 ```
 +------------------------------------------------------------------+
-|                        OpenPlanter Platform                       |
+|                        Cestus Platform                       |
 +------------------------------------------------------------------+
 |                                                                    |
 |  +-------------------+  +-------------------+  +----------------+ |
@@ -434,11 +434,11 @@ Rather than hardcoding LLM providers:
 
 ---
 
-## 7. What Makes OpenPlanter Different
+## 7. What Makes Cestus Different
 
 ### 7.1 vs. Palantir
 
-| Dimension | Palantir | OpenPlanter |
+| Dimension | Palantir | Cestus |
 |-----------|----------|-------------|
 | **Cost** | Millions per year | Free (self-hosted) |
 | **Transparency** | Proprietary black box | Full source code visibility |
@@ -450,7 +450,7 @@ Rather than hardcoding LLM providers:
 
 ### 7.2 vs. Other Open-Source Tools
 
-| Dimension | Typical OSS Stack | OpenPlanter |
+| Dimension | Typical OSS Stack | Cestus |
 |-----------|-------------------|-------------|
 | **Integration** | Assemble 10+ tools yourself, build glue code | Integrated platform with shared ontology |
 | **Ontology** | Each tool has its own data model | Single semantic ontology layer across all features |
@@ -461,7 +461,7 @@ Rather than hardcoding LLM providers:
 
 ### 7.3 The Core Differentiator
 
-**OpenPlanter's differentiator is the ontology as the universal API.** Every feature -- ingestion, search, visualization, AI, actions, security -- speaks the language of entities and relationships, not tables and columns. This is what makes Palantir powerful, and it is what no open-source project currently provides as a unified, integrated experience.
+**Cestus's differentiator is the ontology as the universal API.** Every feature -- ingestion, search, visualization, AI, actions, security -- speaks the language of entities and relationships, not tables and columns. This is what makes Palantir powerful, and it is what no open-source project currently provides as a unified, integrated experience.
 
 ---
 
@@ -469,37 +469,37 @@ Rather than hardcoding LLM providers:
 
 ### 8.1 Investigative Journalism
 
-Journalists investigating financial crime, political corruption, or corporate misconduct need to connect entities (people, companies, addresses, bank accounts) from leaked documents, public records, and proprietary databases. OpenPlanter would provide the graph analysis, entity resolution, and document ingestion to do this -- capabilities currently available only through expensive tools or manual effort.
+Journalists investigating financial crime, political corruption, or corporate misconduct need to connect entities (people, companies, addresses, bank accounts) from leaked documents, public records, and proprietary databases. Cestus would provide the graph analysis, entity resolution, and document ingestion to do this -- capabilities currently available only through expensive tools or manual effort.
 
-*Example: A newsroom integrates Panama Papers data, corporate registries, and political donation records. OpenPlanter resolves entities across sources and reveals hidden ownership networks.*
+*Example: A newsroom integrates Panama Papers data, corporate registries, and political donation records. Cestus resolves entities across sources and reveals hidden ownership networks.*
 
 ### 8.2 Humanitarian & NGO Operations
 
-Organizations like the UNHCR, Red Cross, or Doctors Without Borders manage operations across fragmented data systems -- beneficiary registries, supply chain databases, field reports, geospatial data. OpenPlanter could unify this into a coherent operational picture.
+Organizations like the UNHCR, Red Cross, or Doctors Without Borders manage operations across fragmented data systems -- beneficiary registries, supply chain databases, field reports, geospatial data. Cestus could unify this into a coherent operational picture.
 
 *Example: An NGO integrates refugee registration data, supply depot inventories, and field incident reports to optimize resource allocation and identify underserved areas.*
 
 ### 8.3 Open-Source Intelligence (OSINT)
 
-OSINT analysts -- whether in journalism, civil society, or academic research -- need to collect, structure, and analyze publicly available information. OpenPlanter would provide the entity resolution, link analysis, and geospatial tools that are currently locked in expensive proprietary platforms.
+OSINT analysts -- whether in journalism, civil society, or academic research -- need to collect, structure, and analyze publicly available information. Cestus would provide the entity resolution, link analysis, and geospatial tools that are currently locked in expensive proprietary platforms.
 
 *Example: Researchers tracking the spread of disinformation map social media accounts, websites, and funding sources to reveal coordinated influence networks.*
 
 ### 8.4 Academic & Scientific Research
 
-Researchers studying complex systems (epidemiology, climate, social networks, supply chains) need to integrate diverse datasets and explore relationships. OpenPlanter's ontology and visualization tools would serve as a research platform.
+Researchers studying complex systems (epidemiology, climate, social networks, supply chains) need to integrate diverse datasets and explore relationships. Cestus's ontology and visualization tools would serve as a research platform.
 
 *Example: Epidemiologists integrate hospital records, genomic data, and mobility data to model disease transmission networks.*
 
 ### 8.5 Small/Medium Enterprise Operations
 
-Mid-sized companies that cannot afford Palantir but need to connect their CRM, ERP, supply chain, and financial systems into a coherent view. OpenPlanter could serve as the "data operating system" for companies with 100-10,000 employees.
+Mid-sized companies that cannot afford Palantir but need to connect their CRM, ERP, supply chain, and financial systems into a coherent view. Cestus could serve as the "data operating system" for companies with 100-10,000 employees.
 
 *Example: A manufacturing company connects their ERP, IoT sensor data, supplier database, and quality control system to get end-to-end visibility into production issues.*
 
 ### 8.6 Local Government & Public Sector
 
-City and county governments managing public safety, infrastructure, permits, and social services across disconnected systems. OpenPlanter could provide the unified view that large federal agencies get from Palantir.
+City and county governments managing public safety, infrastructure, permits, and social services across disconnected systems. Cestus could provide the unified view that large federal agencies get from Palantir.
 
 *Example: A city government integrates building permits, code violations, fire inspections, and 311 complaints to identify properties that pose safety risks.*
 
@@ -507,7 +507,7 @@ City and county governments managing public safety, infrastructure, permits, and
 
 Financial institutions, insurance companies, and regulatory bodies that need to detect complex fraud patterns across entity networks.
 
-*Example: A credit union integrates transaction data, account records, and external watchlists. OpenPlanter's entity resolution links related accounts, and graph analysis reveals suspicious transaction patterns.*
+*Example: A credit union integrates transaction data, account records, and external watchlists. Cestus's entity resolution links related accounts, and graph analysis reveals suspicious transaction patterns.*
 
 ---
 
@@ -618,7 +618,7 @@ Financial institutions, insurance companies, and regulatory bodies that need to 
 - [ ] **Edge Deployment**: Lightweight deployment for resource-constrained environments
 - [ ] **Plugin Marketplace**: Community-contributed connectors, visualizations, AI agents
 - [ ] **Multi-Tenancy**: Shared infrastructure with isolated ontologies
-- [ ] **Federated Ontologies**: Connect multiple OpenPlanter instances while respecting access boundaries
+- [ ] **Federated Ontologies**: Connect multiple Cestus instances while respecting access boundaries
 - [ ] **Compliance Frameworks**: FedRAMP, SOC 2, GDPR compliance tooling
 - [ ] **Mobile UI**: Responsive interface for field use
 - [ ] **Real-Time Collaboration**: Google Docs-style concurrent editing of canvases and annotations
@@ -641,11 +641,11 @@ The following operational metrics are tracked continuously across all phases:
 
 ## 10. Existing Open-Source Building Blocks
 
-One of OpenPlanter's strategic advantages is that it does not need to build everything from scratch. The following projects can serve as foundations:
+One of Cestus's strategic advantages is that it does not need to build everything from scratch. The following projects can serve as foundations:
 
 ### 10.1 Data Integration & Pipeline
 
-| Project | What It Provides | How OpenPlanter Uses It | License |
+| Project | What It Provides | How Cestus Uses It | License |
 |---------|------------------|------------------------|---------|
 | **Airbyte** | 300+ pre-built data connectors | Data ingestion from any source | Elv2 (core) / MIT |
 | **Apache Airflow** | Workflow orchestration, DAGs, scheduling | Pipeline orchestration for batch ingestion | Apache 2.0 |
@@ -656,7 +656,7 @@ One of OpenPlanter's strategic advantages is that it does not need to build ever
 
 ### 10.2 Storage & Search
 
-| Project | What It Provides | How OpenPlanter Uses It | License |
+| Project | What It Provides | How Cestus Uses It | License |
 |---------|------------------|------------------------|---------|
 | **PostgreSQL** | Relational database | Primary store for ontology objects and metadata | PostgreSQL |
 | **Apache AGE** | Graph query extension for PostgreSQL | Graph traversal queries within Postgres | Apache 2.0 |
@@ -668,7 +668,7 @@ One of OpenPlanter's strategic advantages is that it does not need to build ever
 
 ### 10.3 Entity Resolution & Knowledge Graphs
 
-| Project | What It Provides | How OpenPlanter Uses It | License |
+| Project | What It Provides | How Cestus Uses It | License |
 |---------|------------------|------------------------|---------|
 | **Zingg** | ML-based entity resolution at scale | Deduplication and entity matching across sources | AGPL-3.0 |
 | **Splink** | Probabilistic record linkage | Scalable entity resolution (Python, multiple backends) | MIT |
@@ -677,7 +677,7 @@ One of OpenPlanter's strategic advantages is that it does not need to build ever
 
 ### 10.4 Visualization
 
-| Project | What It Provides | How OpenPlanter Uses It | License |
+| Project | What It Provides | How Cestus Uses It | License |
 |---------|------------------|------------------------|---------|
 | **Sigma.js** | WebGL graph rendering for the web | Link analysis / graph exploration canvas | MIT |
 | **Cytoscape.js** | Graph theory library for visualization | Alternative graph renderer with rich layout algorithms | MIT |
@@ -690,7 +690,7 @@ One of OpenPlanter's strategic advantages is that it does not need to build ever
 
 ### 10.5 AI & ML
 
-| Project | What It Provides | How OpenPlanter Uses It | License |
+| Project | What It Provides | How Cestus Uses It | License |
 |---------|------------------|------------------------|---------|
 | **LangChain** | LLM application framework | RAG pipeline, agent framework, tool integration | MIT |
 | **LlamaIndex** | Data indexing and retrieval for LLMs | Ontology-aware indexing for AI queries | MIT |
@@ -701,7 +701,7 @@ One of OpenPlanter's strategic advantages is that it does not need to build ever
 
 ### 10.6 Security & Auth
 
-| Project | What It Provides | How OpenPlanter Uses It | License |
+| Project | What It Provides | How Cestus Uses It | License |
 |---------|------------------|------------------------|---------|
 | **Keycloak** | Identity and access management, SSO | Authentication (SAML, OIDC, LDAP) | Apache 2.0 |
 | **Casbin** | Authorization library (RBAC, ABAC) | Fine-grained policy enforcement | Apache 2.0 |
@@ -710,7 +710,7 @@ One of OpenPlanter's strategic advantages is that it does not need to build ever
 
 ### 10.7 Deployment & Operations
 
-| Project | What It Provides | How OpenPlanter Uses It | License |
+| Project | What It Provides | How Cestus Uses It | License |
 |---------|------------------|------------------------|---------|
 | **Kubernetes** | Container orchestration | Deployment platform | Apache 2.0 |
 | **Helm** | Kubernetes package manager | Deployment packaging | Apache 2.0 |
@@ -766,4 +766,4 @@ One of OpenPlanter's strategic advantages is that it does not need to build ever
 
 ---
 
-*This document is a living artifact. It represents the initial vision for OpenPlanter and should be revised as the project evolves, the community grows, and real-world usage reveals what matters most.*
+*This document is a living artifact. It represents the initial vision for Cestus and should be revised as the project evolves, the community grows, and real-world usage reveals what matters most.*

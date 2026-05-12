@@ -72,7 +72,7 @@ def download_file(url: str, output_path: Path, verbose: bool = True) -> bool:
         # Create a request with a user agent to avoid 403 errors
         req = urllib.request.Request(
             url,
-            headers={'User-Agent': 'Mozilla/5.0 (compatible; OpenPlanter OFAC fetcher)'}
+            headers={'User-Agent': 'Mozilla/5.0 (compatible; Cestus OFAC fetcher)'}
         )
 
         with urllib.request.urlopen(req, timeout=30) as response:
