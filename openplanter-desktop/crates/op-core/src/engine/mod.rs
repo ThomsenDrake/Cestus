@@ -1715,6 +1715,33 @@ fn blocked_repeated_attempt_result(
     ))
 }
 
+fn should_block_repeated_attempt(
+    fingerprint: &AttemptFingerprint,
+    attempt_low_yield_counts: &HashMap<String, u32>,
+) -> bool {
+    attempt_low_yield_counts
+        .get(&fingerprint.signature())
+        .copied()
+        .unwrap_or(0)
+        >= 2
+}
+
+fn record_attempt_yield(
+    attempt_signatures: &HashSet<String>,
+    claim_relevant_delta: bool,
+    attempt_low_yield_counts: &mut HashMap<String, u32>,
+) {
+    for signature in attempt_signatures {
+        if claim_relevant_delta {
+            attempt_low_yield_counts.remove(signature);
+        } else {
+            *attempt_low_yield_counts
+                .entry(signature.clone())
+                .or_insert(0) += 1;
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ClaimSnapshot {
     evidence_ids: HashSet<String>,
@@ -1752,6 +1779,27 @@ fn collect_evidence_ids_from_value(value: Option<&Value>, ids: &mut HashSet<Stri
             if !text.trim().is_empty() {
                 ids.insert(text);
             }
+        }
+        _ => {}
+    }
+}
+
+fn collect_blocker_ids_from_value(value: Option<&Value>, ids: &mut HashSet<String>) {
+    match value {
+        Some(Value::String(text)) if !text.trim().is_empty() => {
+            ids.insert(text.trim().to_string());
+        }
+        Some(Value::Array(items)) => {
+            for item in items {
+                collect_blocker_ids_from_value(Some(item), ids);
+            }
+        }
+        Some(Value::Object(map)) => {
+            for key in ["gap_id", "id"] {
+                collect_blocker_ids_from_value(map.get(key), ids);
+            }
+            collect_blocker_ids_from_value(map.get("evidence_gap_refs"), ids);
+            collect_blocker_ids_from_value(map.get("blocking_gap_ids"), ids);
         }
         _ => {}
     }
@@ -1826,7 +1874,7 @@ fn packet_claim_snapshot(packet: Option<&Value>) -> ClaimSnapshot {
             if !action_signature.is_empty() {
                 snapshot.next_actions.insert(action_signature);
             }
-            collect_evidence_ids_from_value(obj.get("evidence_gap_refs"), &mut snapshot.blockers);
+            collect_blocker_ids_from_value(obj.get("evidence_gap_refs"), &mut snapshot.blockers);
         }
     }
 
@@ -1868,7 +1916,7 @@ fn compute_marginal_evidence_yield(before: Option<&Value>, after: Option<&Value>
 
 fn decision_closure_checkpoint_message(yield_payload: &Value) -> String {
     format!(
-        "Mandatory synthesis checkpoint: two consecutive tool batches produced no claim-relevant marginal evidence yield.\n\nLatest marginal evidence yield:\n{}\n\nRequired deliverable structure:\n## Key Judgments\n## Supported Findings\n## Contested Findings\n## Unresolved Findings\n## Conclusion Cards\n\nStop expanding the same search pattern. Synthesize decision closure now: assign each claim one of supported, contested, unsupported_after_available_sources, blocked_external, or needs_human_or_prr; write Conclusion Cards; and create at most three successor tasks marked agent_ready, human_required, or prr_required.",
+        "Mandatory synthesis checkpoint: two consecutive tool batches produced no claim-relevant marginal evidence yield.\n\nLatest marginal evidence yield:\n{}\n\nRequired deliverable structure:\n## Key Judgments\n## Strategic Implications\n## Supported Findings\n## Contested Findings\n## Unresolved Findings\n## Conclusion Cards\n\nStop expanding the same search pattern. Synthesize decision closure now: assign each claim one of supported, contested, unsupported_after_available_sources, blocked_external, or needs_human_or_prr; write Conclusion Cards; and create at most three successor tasks marked agent_ready, human_required, or prr_required.",
         serde_json::to_string_pretty(yield_payload).unwrap_or_else(|_| "{}".to_string())
     )
 }
@@ -2804,6 +2852,7 @@ async fn solve_frame(
     let mut synthesis_checkpoint_sent = false;
     let mut claim_no_delta_streak = 0u32;
     let mut attempt_counts: HashMap<String, u32> = HashMap::new();
+    let mut attempt_low_yield_counts: HashMap<String, u32> = HashMap::new();
     let mut attempt_blockers: HashMap<String, HashSet<String>> = HashMap::new();
     let mut active_step_budget = config.max_steps_per_call.max(1) as usize;
     let max_total_steps = active_step_budget
@@ -3173,6 +3222,7 @@ async fn solve_frame(
 
         let mut indexed_observations: Vec<(usize, String, String, String, String, bool)> =
             Vec::new();
+        let mut executed_attempt_signatures: HashSet<String> = HashSet::new();
         let mut delegated = Vec::new();
         for tc in turn.tool_calls.iter().cloned().enumerate() {
             let (index, tool_call) = tc;
@@ -3205,11 +3255,7 @@ async fn solve_frame(
                 .as_ref()
                 .and_then(|packet| attempt_fingerprint(&tool_call, Some(packet)));
             let result = if let Some(fingerprint) = fingerprint.as_ref() {
-                let attempt_count = attempt_counts
-                    .get(&fingerprint.signature())
-                    .copied()
-                    .unwrap_or(0);
-                if attempt_count >= 2 {
+                if should_block_repeated_attempt(fingerprint, &attempt_low_yield_counts) {
                     emitter.emit_trace(&format!(
                         "{} blocked repeated attempt fingerprint: {}",
                         step_prefix,
@@ -3217,6 +3263,7 @@ async fn solve_frame(
                     ));
                     blocked_repeated_attempt_result(&tool_call, fingerprint)
                 } else {
+                    executed_attempt_signatures.insert(fingerprint.signature());
                     tools.execute(&tool_call.name, &tool_call.arguments).await
                 }
             } else {
@@ -3385,6 +3432,11 @@ async fn solve_frame(
                 .get("claim_relevant_delta")
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
+            record_attempt_yield(
+                &executed_attempt_signatures,
+                has_delta,
+                &mut attempt_low_yield_counts,
+            );
             if has_delta {
                 claim_no_delta_streak = 0;
             } else {
@@ -5104,5 +5156,76 @@ mod tests {
         assert!(message.contains("## Key Judgments"));
         assert!(message.contains("## Strategic Implications"));
         assert!(message.contains("What is the strongest defensible judgment?"));
+    }
+
+    #[test]
+    fn test_decision_closure_checkpoint_mentions_strategic_implications() {
+        let message = decision_closure_checkpoint_message(&serde_json::json!({
+            "claim_relevant_delta": false
+        }));
+
+        assert!(message.contains("## Strategic Implications"));
+    }
+
+    #[test]
+    fn test_repeated_attempt_stop_depends_on_low_yield_attempts() {
+        let fingerprint = AttemptFingerprint {
+            source: "ocpa".to_string(),
+            tool: "browser_search".to_string(),
+            tactic: "browser_search".to_string(),
+            query: "1016 n mills".to_string(),
+            target_claim: "cl_1".to_string(),
+        };
+        let signature = fingerprint.signature();
+        let mut signatures = HashSet::new();
+        signatures.insert(signature);
+        let mut counts = HashMap::new();
+
+        record_attempt_yield(&signatures, true, &mut counts);
+        assert!(!should_block_repeated_attempt(&fingerprint, &counts));
+
+        record_attempt_yield(&signatures, false, &mut counts);
+        assert!(!should_block_repeated_attempt(&fingerprint, &counts));
+
+        record_attempt_yield(&signatures, false, &mut counts);
+        assert!(should_block_repeated_attempt(&fingerprint, &counts));
+
+        record_attempt_yield(&signatures, true, &mut counts);
+        assert!(!should_block_repeated_attempt(&fingerprint, &counts));
+    }
+
+    #[test]
+    fn test_marginal_evidence_yield_tracks_gap_id_blocker_resolution() {
+        let before = serde_json::json!({
+            "candidate_actions": [
+                {
+                    "id": "ca_1",
+                    "action_type": "verify_claim",
+                    "evidence_gap_refs": [
+                        {
+                            "gap_id": "gap:claim:cl_1:missing_evidence",
+                            "kind": "missing_evidence"
+                        }
+                    ]
+                }
+            ]
+        });
+        let after = serde_json::json!({
+            "candidate_actions": [
+                {
+                    "id": "ca_1",
+                    "action_type": "verify_claim",
+                    "evidence_gap_refs": []
+                }
+            ]
+        });
+
+        let yield_payload = compute_marginal_evidence_yield(Some(&before), Some(&after));
+
+        assert_eq!(yield_payload["blocker_resolved"], serde_json::json!(true));
+        assert_eq!(
+            yield_payload["claim_relevant_delta"],
+            serde_json::json!(true)
+        );
     }
 }
