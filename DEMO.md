@@ -1,8 +1,8 @@
-# OpenPlanter: User Journeys & Demo Scenarios
+# Cestus: User Journeys & Demo Scenarios
 
 **The pitch: What if Palantir's power was accessed through conversation, not training manuals?**
 
-Palantir requires forward-deployed engineers and weeks of onboarding. OpenPlanter flips this: **the agent is the interface**. You describe what you need in plain language, and the agent ingests data, builds the ontology, resolves entities, generates visualizations, and takes action -- all grounded in a structured knowledge graph you own and control.
+Palantir requires forward-deployed engineers and weeks of onboarding. Cestus flips this: **the agent is the interface**. You describe what you need in plain language, and the agent ingests data, builds the ontology, resolves entities, generates visualizations, and takes action -- all grounded in a structured knowledge graph you own and control.
 
 ---
 
@@ -267,7 +267,7 @@ Across all four demos, the pattern is the same:
 For a live demo or pitch, here's a streamlined version that hits the key beats in 5 minutes:
 
 ### Setup (30 seconds)
-*"Let me show you OpenPlanter. I have three CSV files -- one is a company registry, one is a list of financial transactions, and one is a list of people with their addresses. These could come from any source -- databases, APIs, documents -- but for this demo I'll keep it simple."*
+*"Let me show you Cestus. I have three CSV files -- one is a company registry, one is a list of financial transactions, and one is a list of people with their addresses. These could come from any source -- databases, APIs, documents -- but for this demo I'll keep it simple."*
 
 ### Act 1: Ingestion + Ontology (60 seconds)
 *"I drag the files in and tell the agent: 'These are companies, transactions, and people. Connect them.'"*
@@ -289,7 +289,7 @@ The agent parses the files, infers the schema, creates entity types (Person, Com
 *"I say: 'Flag Sarah Liu's network for review and set up an alert if any new transactions appear.' Done. The agent creates the flag, sets up a persistent monitoring agent, and logs it to the audit trail. If new data comes in tomorrow that touches this network, I'll know."*
 
 ### Close (15 seconds)
-*"That's OpenPlanter. From raw files to a structured knowledge graph, entity resolution, visual exploration, AI-powered analysis, and operational action -- all through conversation. Open source, self-hosted, your data stays yours."*
+*"That's Cestus. From raw files to a structured knowledge graph, entity resolution, visual exploration, AI-powered analysis, and operational action -- all through conversation. Open source, self-hosted, your data stays yours."*
 
 ---
 
@@ -297,7 +297,7 @@ The agent parses the files, infers the schema, creates entity types (Person, Com
 
 The question will come up. Here's the answer:
 
-| | ChatGPT + Database | OpenPlanter |
+| | ChatGPT + Database | Cestus |
 |---|---|---|
 | **Data model** | None -- LLM sees raw tables | Structured ontology with entity types, relationships, and provenance |
 | **Entity resolution** | None -- "Robert Smith" and "R. Smith" are different strings | Built-in ML-powered ER with confidence scores and lineage |
@@ -309,4 +309,4 @@ The question will come up. Here's the answer:
 | **Collaboration** | Share a chat transcript | Shared ontology with RBAC, annotations, and workspaces |
 | **Monitoring** | Ask the same question again tomorrow | Persistent agents watching the ontology 24/7 |
 
-The ontology is the difference. ChatGPT can answer questions about data. OpenPlanter *understands* the domain -- entities, relationships, confidence, provenance -- and that understanding persists, grows, and can be acted upon.
+The ontology is the difference. ChatGPT can answer questions about data. Cestus *understands* the domain -- entities, relationships, confidence, provenance -- and that understanding persists, grows, and can be acted upon.

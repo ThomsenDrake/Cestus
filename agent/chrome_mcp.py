@@ -332,7 +332,7 @@ def _extract_marker(stdout: str) -> dict[str, Any]:
         if isinstance(parsed, dict):
             return parsed
         break
-    raise ChromeMcpError("Browser Harness did not return an OpenPlanter result marker.")
+    raise ChromeMcpError("Browser Harness did not return a Cestus result marker.")
 
 
 def _format_content(content: Any) -> str:
@@ -481,7 +481,7 @@ class ChromeMcpManager:
         return ChromeMcpCallResult(content=_format_content(content), is_error=False, image=image)
 
     def shutdown(self) -> None:
-        # Browser Harness owns its long-lived daemon. OpenPlanter only invokes short commands.
+        # Browser Harness owns its long-lived daemon. Cestus only invokes short commands.
         return
 
     def _run_harness_script(self, script: str, *, timeout_sec: int) -> dict[str, Any]:

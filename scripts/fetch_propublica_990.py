@@ -42,7 +42,7 @@ def fetch_json(url: str) -> dict[str, Any]:
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "OpenPlanter/1.0 (Investigation Research Tool)",
+            "User-Agent": "Cestus/1.0 (Investigation Research Tool)",
             "Accept": "application/json",
         }
     )

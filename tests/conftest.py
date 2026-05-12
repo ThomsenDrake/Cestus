@@ -1,4 +1,4 @@
-"""Shared test helpers and fixtures for the OpenPlanter agent test suite."""
+"""Shared test helpers and fixtures for the Cestus agent test suite."""
 
 from __future__ import annotations
 

@@ -29,7 +29,7 @@ CHROME_MCP_RPC_TIMEOUT_SEC = 45
 VALID_CHROME_MCP_CHANNELS: set[str] = {"stable", "beta", "dev", "canary"}
 VALID_EMBEDDINGS_PROVIDERS: set[str] = {"voyage", "mistral"}
 VALID_OBSIDIAN_EXPORT_MODES: set[str] = {"fresh_vault", "existing_vault_folder"}
-DEFAULT_OBSIDIAN_EXPORT_SUBDIR = "OpenPlanter"
+DEFAULT_OBSIDIAN_EXPORT_SUBDIR = "Cestus"
 
 PROVIDER_DEFAULT_MODELS: dict[str, str] = {
     "openai": "azure-foundry/gpt-5.5",
@@ -238,7 +238,7 @@ class AgentConfig:
     obsidian_export_enabled: bool = False
     obsidian_export_root: Path | None = None
     obsidian_export_mode: str = "existing_vault_folder"
-    obsidian_export_subdir: str = "OpenPlanter"
+    obsidian_export_subdir: str = "Cestus"
     obsidian_generate_canvas: bool = True
     max_persisted_observations: int = 400
     max_solve_seconds: int = 0

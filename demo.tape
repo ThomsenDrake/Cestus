@@ -1,4 +1,4 @@
-# OpenPlanter demo recording — captures the TUI through the agent's
+# Cestus demo recording — captures the TUI through the agent's
 # working phase (thinking spinner, tool calls) but stops before the
 # final answer renders.
 #

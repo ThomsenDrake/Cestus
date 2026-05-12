@@ -40,7 +40,7 @@ Read docs/session-trace-deepdive-2026-03-23.md and VISION.md.
 
 You are not alone in the repo. Only edit the file listed below. Do not implement code yet.
 
-Create a concrete v2 session trace spec for OpenPlanter.
+Create a concrete v2 session trace spec for Cestus.
 
 Own only:
 - docs/session-trace-v2-spec.md

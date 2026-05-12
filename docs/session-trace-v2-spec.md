@@ -1,4 +1,4 @@
-# OpenPlanter Session Trace v2 Spec
+# Cestus Session Trace v2 Spec
 
 **Status:** Draft v2 implementation spec  
 **Last updated:** 2026-03-23  
@@ -6,7 +6,7 @@
 
 ## 1. Purpose
 
-This document defines the additive, backwards-compatible v2 session trace contract for OpenPlanter.
+This document defines the additive, backwards-compatible v2 session trace contract for Cestus.
 
 The goal is to give Python, Rust, and frontend implementations one concrete session model for:
 
@@ -269,7 +269,7 @@ Each line is one JSON object matching the canonical envelope below.
   "actor": {
     "kind": "assistant",
     "id": "default-agent",
-    "display": "OpenPlanter",
+    "display": "Cestus",
     "runtime_family": "desktop",
     "provider": "openai",
     "model": "gpt-5.2-codex"
@@ -355,7 +355,7 @@ Each line is one JSON object matching the canonical envelope below.
 {
   "kind": "assistant",
   "id": "default-agent",
-  "display": "OpenPlanter",
+  "display": "Cestus",
   "runtime_family": "python",
   "provider": "openai",
   "model": "gpt-5.2-codex"
@@ -1110,4 +1110,4 @@ Session Trace v2 standardizes:
 - one explicit failure taxonomy,
 - and one additive compatibility path across legacy Python and newer desktop sessions.
 
-That is the minimum session contract required for OpenPlanter to treat sessions as durable investigative evidence rather than loosely related logs.
+That is the minimum session contract required for Cestus to treat sessions as durable investigative evidence rather than loosely related logs.

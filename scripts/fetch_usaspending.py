@@ -27,7 +27,7 @@ from datetime import datetime
 
 
 API_BASE = "https://api.usaspending.gov/api/v2"
-USER_AGENT = "OpenPlanter-USASpending-Fetcher/1.0"
+USER_AGENT = "Cestus-USASpending-Fetcher/1.0"
 
 
 def make_api_request(endpoint, method="GET", data=None):

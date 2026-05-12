@@ -188,7 +188,7 @@ def build_model_factory(cfg: AgentConfig) -> ModelFactory | None:
                 reasoning_effort=effort,
                 extra_headers={
                     "HTTP-Referer": "https://github.com/openplanter",
-                    "X-Title": "OpenPlanter",
+                    "X-Title": "Cestus",
                 },
             )
         if provider == "cerebras" and cfg.cerebras_api_key:
@@ -306,7 +306,7 @@ def build_engine(cfg: AgentConfig) -> RLMEngine:
             reasoning_effort=cfg.reasoning_effort,
             extra_headers={
                 "HTTP-Referer": "https://github.com/openplanter",
-                "X-Title": "OpenPlanter",
+                "X-Title": "Cestus",
             },
         )
     elif cfg.provider == "cerebras" and cfg.cerebras_api_key:

@@ -261,7 +261,7 @@ pub fn strip_foundry_model_prefix(model: &str) -> String {
     trimmed.to_string()
 }
 
-/// Central configuration for the OpenPlanter agent.
+/// Central configuration for the Cestus agent.
 ///
 /// Mirrors the Python `AgentConfig` dataclass field-for-field.
 #[derive(Debug, Clone, Serialize, Deserialize)]

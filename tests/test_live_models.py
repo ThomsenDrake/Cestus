@@ -152,7 +152,7 @@ class OpenRouterLiveTests(unittest.TestCase):
             strict_tools=False,
             extra_headers={
                 "HTTP-Referer": "https://github.com/openplanter",
-                "X-Title": "OpenPlanter",
+                "X-Title": "Cestus",
             },
         )
         conv = model.create_conversation(

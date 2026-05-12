@@ -177,7 +177,7 @@ impl ChromeMcpManager {
     }
 
     pub async fn shutdown(&self) {
-        // Browser Harness owns its daemon. OpenPlanter only invokes short commands.
+        // Browser Harness owns its daemon. Cestus only invokes short commands.
     }
 
     async fn list_tools_locked(
@@ -583,7 +583,7 @@ fn extract_harness_payload(
         }
     }
     Err(anyhow!(
-        "Browser Harness did not return an OpenPlanter result marker."
+            "Browser Harness did not return a Cestus result marker."
     ))
 }
 

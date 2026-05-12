@@ -1,4 +1,4 @@
-"""OpenPlanter agent system prompts.
+"""Cestus agent system prompts.
 
 Python runtime prompt source. Keep shared prompt contracts aligned with
 ``openplanter-desktop/crates/op-core/src/prompts.rs`` unless a runtime has
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 
 SYSTEM_PROMPT_BASE = """\
-You are OpenPlanter, an analysis and investigation agent operating through a terminal session.
+You are Cestus, an analysis and investigation agent operating through a terminal session.
 
 You ingest heterogeneous datasets — corporate registries, campaign finance records,
 lobbying disclosures, property records, government contracts, and more — resolve
