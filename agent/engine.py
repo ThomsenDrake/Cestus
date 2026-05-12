@@ -560,11 +560,11 @@ def _record_attempt_yield(
     claim_relevant_delta: bool,
     attempt_low_yield_counts: dict[str, int],
 ) -> None:
+    if claim_relevant_delta:
+        attempt_low_yield_counts.clear()
+        return
     for signature in attempt_signatures:
-        if claim_relevant_delta:
-            attempt_low_yield_counts.pop(signature, None)
-        else:
-            attempt_low_yield_counts[signature] = attempt_low_yield_counts.get(signature, 0) + 1
+        attempt_low_yield_counts[signature] = attempt_low_yield_counts.get(signature, 0) + 1
 
 
 def _looks_like_failed_tool_result(name: str, result: ToolResult) -> bool:
@@ -780,7 +780,10 @@ def _packet_claim_snapshot(packet: dict[str, Any] | None) -> dict[str, Any]:
             "action_signatures": set(),
         }
     findings = packet.get("findings", {}) if isinstance(packet.get("findings"), dict) else {}
-    evidence_ids = set(str(item) for item in packet.get("evidence_index", {}).keys())
+    evidence_index = packet.get("evidence_index", {})
+    if not isinstance(evidence_index, dict):
+        evidence_index = {}
+    evidence_ids = set(str(item) for item in evidence_index.keys())
     status_by_claim: dict[str, str] = {}
     confidence_by_claim: dict[str, str] = {}
     for status, items in findings.items():

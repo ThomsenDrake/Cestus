@@ -15,6 +15,7 @@ from agent.engine import (
     AttemptFingerprint,
     RLMEngine,
     TurnSummary,
+    _compute_marginal_evidence_yield,
     _record_attempt_yield,
     _should_block_repeated_attempt,
 )
@@ -411,6 +412,36 @@ class EngineTests(unittest.TestCase):
             attempt_low_yield_counts=counts,
         )
         self.assertFalse(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=False,
+            attempt_low_yield_counts=counts,
+        )
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=False,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertTrue(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {"source=city|tool=fetch_url|tactic=direct_api|query=new|target_claim=cl_2"},
+            claim_relevant_delta=True,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertFalse(_should_block_repeated_attempt(fingerprint, counts))
+
+    def test_marginal_evidence_yield_tolerates_non_mapping_evidence_index(self) -> None:
+        payload = {
+            "evidence_index": ["legacy", "shape"],
+            "findings": {"supported": [], "contested": [], "unresolved": []},
+        }
+
+        yield_payload = _compute_marginal_evidence_yield(payload, payload)
+
+        self.assertEqual(yield_payload["new_evidence_ids_added"], [])
+        self.assertFalse(yield_payload["claim_relevant_delta"])
 
     def test_meta_text_not_accepted_as_final_answer(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

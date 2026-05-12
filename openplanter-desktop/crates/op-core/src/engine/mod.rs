@@ -1731,14 +1731,14 @@ fn record_attempt_yield(
     claim_relevant_delta: bool,
     attempt_low_yield_counts: &mut HashMap<String, u32>,
 ) {
+    if claim_relevant_delta {
+        attempt_low_yield_counts.clear();
+        return;
+    }
     for signature in attempt_signatures {
-        if claim_relevant_delta {
-            attempt_low_yield_counts.remove(signature);
-        } else {
-            *attempt_low_yield_counts
-                .entry(signature.clone())
-                .or_insert(0) += 1;
-        }
+        *attempt_low_yield_counts
+            .entry(signature.clone())
+            .or_insert(0) += 1;
     }
 }
 
@@ -5191,6 +5191,17 @@ mod tests {
         assert!(should_block_repeated_attempt(&fingerprint, &counts));
 
         record_attempt_yield(&signatures, true, &mut counts);
+        assert!(!should_block_repeated_attempt(&fingerprint, &counts));
+
+        record_attempt_yield(&signatures, false, &mut counts);
+        record_attempt_yield(&signatures, false, &mut counts);
+        assert!(should_block_repeated_attempt(&fingerprint, &counts));
+
+        let mut other_signatures = HashSet::new();
+        other_signatures.insert(
+            "source=city|tool=fetch_url|tactic=direct_api|query=new|target_claim=cl_2".to_string(),
+        );
+        record_attempt_yield(&other_signatures, true, &mut counts);
         assert!(!should_block_repeated_attempt(&fingerprint, &counts));
     }
 
