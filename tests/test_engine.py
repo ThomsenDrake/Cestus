@@ -11,7 +11,13 @@ from unittest.mock import patch
 from conftest import _tc
 from agent.chrome_mcp import ChromeMcpCallResult
 from agent.config import AgentConfig
-from agent.engine import RLMEngine, TurnSummary
+from agent.engine import (
+    AttemptFingerprint,
+    RLMEngine,
+    TurnSummary,
+    _record_attempt_yield,
+    _should_block_repeated_attempt,
+)
 from agent.prompts import build_system_prompt as _build_system_prompt
 from agent.model import Conversation, ModelError, ModelTurn, ScriptedModel, ToolResult
 from agent.tools import WorkspaceTools
@@ -367,6 +373,44 @@ class EngineTests(unittest.TestCase):
                 any("repeated attempt fingerprint reached the stop condition" in obs for obs in ctx.observations),
                 "expected claim-run repeated attempt stop observation",
             )
+
+    def test_repeated_attempt_stop_depends_on_low_yield_attempts(self) -> None:
+        fingerprint = AttemptFingerprint(
+            source="ocpa",
+            tool="browser_search",
+            tactic="browser_search",
+            query="1016 n mills",
+            target_claim="cl_1",
+        )
+        counts: dict[str, int] = {}
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=True,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertFalse(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=False,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertFalse(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=False,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertTrue(_should_block_repeated_attempt(fingerprint, counts))
+
+        _record_attempt_yield(
+            {fingerprint.signature},
+            claim_relevant_delta=True,
+            attempt_low_yield_counts=counts,
+        )
+        self.assertFalse(_should_block_repeated_attempt(fingerprint, counts))
 
     def test_meta_text_not_accepted_as_final_answer(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

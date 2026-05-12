@@ -547,6 +547,26 @@ def _blocked_repeated_attempt_result(tool_call: ToolCall, fingerprint: AttemptFi
     )
 
 
+def _should_block_repeated_attempt(
+    fingerprint: AttemptFingerprint,
+    attempt_low_yield_counts: dict[str, int],
+) -> bool:
+    return attempt_low_yield_counts.get(fingerprint.signature, 0) >= 2
+
+
+def _record_attempt_yield(
+    attempt_signatures: set[str],
+    *,
+    claim_relevant_delta: bool,
+    attempt_low_yield_counts: dict[str, int],
+) -> None:
+    for signature in attempt_signatures:
+        if claim_relevant_delta:
+            attempt_low_yield_counts.pop(signature, None)
+        else:
+            attempt_low_yield_counts[signature] = attempt_low_yield_counts.get(signature, 0) + 1
+
+
 def _looks_like_failed_tool_result(name: str, result: ToolResult) -> bool:
     if result.is_error:
         return True
@@ -847,6 +867,7 @@ def _decision_closure_checkpoint_message(yield_payload: dict[str, Any]) -> str:
         "or prr_required. Do not repeat the same source/tool/query tactic unless the next tactic is materially different.\n\n"
         "Required deliverable structure:\n"
         "## Key Judgments\n"
+        "## Strategic Implications\n"
         "## Supported Findings\n"
         "## Contested Findings\n"
         "## Unresolved Findings\n"
@@ -1245,9 +1266,9 @@ class RLMEngine:
                 return f"Markdown deliverable has an empty `## {heading}` section"
 
         conclusion_body = _markdown_section_body(stripped, "Conclusion Cards")
-        for field in _CONCLUSION_CARD_MARKDOWN_FIELDS:
-            if not re.search(rf"(?im)\b{re.escape(field)}\s*:", conclusion_body):
-                return f"Conclusion Cards section is missing `{field}:`"
+        for card_field in _CONCLUSION_CARD_MARKDOWN_FIELDS:
+            if not re.search(rf"(?im)\b{re.escape(card_field)}\s*:", conclusion_body):
+                return f"Conclusion Cards section is missing `{card_field}:`"
 
         ordered_sections = self._investigation_required_sections(objective)
         for left, right in zip(ordered_sections, ordered_sections[1:]):
@@ -1756,6 +1777,7 @@ class RLMEngine:
         synthesis_checkpoint_sent = False
         claim_no_delta_streak = 0
         attempt_counts: dict[str, int] = {}
+        attempt_low_yield_counts: dict[str, int] = {}
         attempt_blockers: dict[str, set[str]] = {}
         active_step_budget = self.config.max_steps_per_call
         max_total_steps = self.config.max_steps_per_call + (
@@ -2186,6 +2208,7 @@ class RLMEngine:
                 parallel = []
 
             indexed_results: dict[int, tuple[ToolResult, bool]] = {}
+            executed_attempt_signatures: set[str] = set()
 
             for idx, tc in sequential:
                 fingerprint = (
@@ -2193,7 +2216,10 @@ class RLMEngine:
                     if current_question_reasoning_packet is not None
                     else None
                 )
-                if fingerprint is not None and attempt_counts.get(fingerprint.signature, 0) >= 2:
+                if fingerprint is not None and _should_block_repeated_attempt(
+                    fingerprint,
+                    attempt_low_yield_counts,
+                ):
                     result_entry = _blocked_repeated_attempt_result(tc, fingerprint)
                     is_final_entry = False
                 else:
@@ -2204,6 +2230,7 @@ class RLMEngine:
                         replay_logger=replay_logger,
                     )
                     if fingerprint is not None:
+                        executed_attempt_signatures.add(fingerprint.signature)
                         attempt_counts[fingerprint.signature] = attempt_counts.get(fingerprint.signature, 0) + 1
                         attempt_blockers.setdefault(fingerprint.signature, set()).add(
                             _attempt_blocker_type(result_entry)
@@ -2223,7 +2250,10 @@ class RLMEngine:
                         if current_question_reasoning_packet is not None
                         else None
                     )
-                    if fingerprint is not None and attempt_counts.get(fingerprint.signature, 0) >= 2:
+                    if fingerprint is not None and _should_block_repeated_attempt(
+                        fingerprint,
+                        attempt_low_yield_counts,
+                    ):
                         indexed_results[idx] = (_blocked_repeated_attempt_result(tc, fingerprint), False)
                     else:
                         runnable_parallel.append((idx, tc, fingerprint))
@@ -2250,6 +2280,7 @@ class RLMEngine:
                             result_entry, is_final_entry = future.result()
                             indexed_results[idx] = (result_entry, is_final_entry)
                             if fingerprint is not None:
+                                executed_attempt_signatures.add(fingerprint.signature)
                                 attempt_counts[fingerprint.signature] = attempt_counts.get(fingerprint.signature, 0) + 1
                                 attempt_blockers.setdefault(fingerprint.signature, set()).add(
                                     _attempt_blocker_type(result_entry)
@@ -2408,6 +2439,11 @@ class RLMEngine:
                 )
                 step_record.marginal_evidence_yield = yield_payload
                 loop_metrics["last_marginal_evidence_yield"] = yield_payload
+                _record_attempt_yield(
+                    executed_attempt_signatures,
+                    claim_relevant_delta=bool(yield_payload["claim_relevant_delta"]),
+                    attempt_low_yield_counts=attempt_low_yield_counts,
+                )
                 if yield_payload["claim_relevant_delta"]:
                     claim_no_delta_streak = 0
                 else:
