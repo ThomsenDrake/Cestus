@@ -40,23 +40,40 @@ jobs:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
         run: |
           if [ -z "$MISTRAL_API_KEY" ]; then
-            echo "::error::MISTRAL_API_KEY repository secret is required for Mistral Vibe PR reviews."
+            echo "::error::MISTRAL_API_KEY repository or environment secret is required for Mistral Vibe PR reviews."
             exit 1
           fi
 
+      - name: Check out Mistral Vibe runtime
+        uses: actions/checkout@v4
+        with:
+          repository: mistralai/mistral-vibe
+          ref: 71f373c60c6278ad478235930a90cd279130f2de # v2.9.3
+          path: .mistral-vibe
+          persist-credentials: false
+
+      - name: Set up Mistral Vibe Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version-file: .mistral-vibe/.python-version
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7
+
+      - name: Install Mistral Vibe
+        working-directory: .mistral-vibe
+        run: uv sync --locked --all-extras --dev
+
       - name: Run Mistral Vibe review
-        uses: mistralai/mistral-vibe@71f373c60c6278ad478235930a90cd279130f2de # v2.9.3
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          REVIEW_MARKER: ${{ env.MISTRAL_VIBE_REVIEW_MARKER }}
-        with:
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-          prompt: |
+          PROMPT_INPUT: |
             You are the required Mistral Vibe reviewer for this pull request.
 
             Repository: ${{ github.repository }}
@@ -92,3 +109,5 @@ jobs:
                `gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file /tmp/mistral-vibe-pr-review.md`
 
             The separate Mistral Vibe Review Gate workflow requires the marker and exact head SHA to pass.
+          REVIEW_MARKER: ${{ env.MISTRAL_VIBE_REVIEW_MARKER }}
+        run: uv run --directory .mistral-vibe vibe --trust -p "$PROMPT_INPUT"
