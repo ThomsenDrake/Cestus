@@ -247,6 +247,51 @@ class SettingsTests(unittest.TestCase):
                 self.assertEqual(cfg.embeddings_model, "env-embed")
                 self.assertEqual(cfg.embeddings_base_url, "https://embeddings.example.test")
 
+    def test_llm_env_overrides_preserve_profile_side_fields(self) -> None:
+        settings = PersistentSettings(
+            active_profiles={"llm": "zai-coding"},
+            profiles={
+                "llm": {
+                    "zai-coding": ProviderProfile(
+                        provider="zai",
+                        model="glm-4.6",
+                        base_url="https://profile-zai.example/v4",
+                        options={
+                            "reasoning_effort": "high",
+                            "zai_plan": "coding",
+                        },
+                    )
+                }
+            },
+        ).normalized()
+        args = Namespace(provider=None, model=None, embeddings_provider=None)
+        cfg = AgentConfig(
+            workspace=Path("/tmp/workspace"),
+            provider="auto",
+            model="default-model",
+            reasoning_effort="low",
+            zai_plan="paygo",
+            zai_base_url="https://env-zai.example/v4",
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "OPENPLANTER_REASONING_EFFORT": "low",
+                "OPENPLANTER_ZAI_PLAN": "paygo",
+                "OPENPLANTER_ZAI_BASE_URL": "https://env-zai.example/v4",
+            },
+            clear=True,
+        ):
+            _apply_active_profiles_to_config(cfg, settings, args)
+
+        self.assertEqual(cfg.llm_profile_id, "zai-coding")
+        self.assertEqual(cfg.provider, "zai")
+        self.assertEqual(cfg.model, "glm-4.6")
+        self.assertEqual(cfg.reasoning_effort, "low")
+        self.assertEqual(cfg.zai_plan, "paygo")
+        self.assertEqual(cfg.zai_base_url, "https://env-zai.example/v4")
+
     def test_legacy_profile_migration_refreshes_changed_defaults(self) -> None:
         settings = PersistentSettings(default_model_openai="azure-foundry/gpt-5.5").normalized()
         self.assertEqual(

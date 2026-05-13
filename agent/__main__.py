@@ -625,12 +625,29 @@ def _profile_option_float(profile: ProviderProfile, key: str, fallback: float) -
         return fallback
 
 
+def _has_env_value(*keys: str) -> bool:
+    return any((os.getenv(key) or "").strip() for key in keys)
+
+
+def _llm_base_url_env_keys(provider: str) -> tuple[str, ...]:
+    return {
+        "openai": ("OPENPLANTER_OPENAI_BASE_URL", "OPENPLANTER_BASE_URL"),
+        "anthropic": ("OPENPLANTER_ANTHROPIC_BASE_URL",),
+        "openrouter": ("OPENPLANTER_OPENROUTER_BASE_URL",),
+        "cerebras": ("OPENPLANTER_CEREBRAS_BASE_URL",),
+        "zai": ("OPENPLANTER_ZAI_BASE_URL",),
+        "ollama": ("OPENPLANTER_OLLAMA_BASE_URL",),
+    }.get(provider, ())
+
+
 def _apply_llm_profile_to_config(cfg: AgentConfig, profile_id: str, profile: ProviderProfile) -> None:
     cfg.llm_profile_id = profile_id
     cfg.llm_profile_name = profile.name
-    cfg.provider = profile.provider or cfg.provider
-    cfg.model = profile.model or cfg.model
-    if profile.base_url:
+    if not _has_env_value("OPENPLANTER_PROVIDER"):
+        cfg.provider = profile.provider or cfg.provider
+    if not _has_env_value("OPENPLANTER_MODEL"):
+        cfg.model = profile.model or cfg.model
+    if profile.base_url and not _has_env_value(*_llm_base_url_env_keys(profile.provider)):
         if profile.provider == "openai":
             cfg.openai_base_url = profile.base_url
             cfg.base_url = profile.base_url
@@ -644,16 +661,20 @@ def _apply_llm_profile_to_config(cfg: AgentConfig, profile_id: str, profile: Pro
             cfg.zai_base_url = profile.base_url
         elif profile.provider == "ollama":
             cfg.ollama_base_url = profile.base_url
-    if profile.options.get("reasoning_effort") is not None:
+    if profile.options.get("reasoning_effort") is not None and not _has_env_value(
+        "OPENPLANTER_REASONING_EFFORT"
+    ):
         effort = str(profile.options.get("reasoning_effort") or "").strip().lower()
         cfg.reasoning_effort = None if effort in {"", "none", "off"} else effort
     if profile.options.get("zai_plan") is not None:
-        cfg.zai_plan = normalize_zai_plan(str(profile.options.get("zai_plan")))
-        cfg.zai_base_url = resolve_zai_base_url(
-            cfg.zai_plan,
-            paygo_base_url=cfg.zai_paygo_base_url,
-            coding_base_url=cfg.zai_coding_base_url,
-        )
+        if not _has_env_value("OPENPLANTER_ZAI_PLAN"):
+            cfg.zai_plan = normalize_zai_plan(str(profile.options.get("zai_plan")))
+        if not _has_env_value("OPENPLANTER_ZAI_BASE_URL"):
+            cfg.zai_base_url = resolve_zai_base_url(
+                cfg.zai_plan,
+                paygo_base_url=cfg.zai_paygo_base_url,
+                coding_base_url=cfg.zai_coding_base_url,
+            )
 
 
 def _apply_embedding_profile_to_config(

@@ -103,48 +103,72 @@ fn profile_option_f64(profile: &ProviderProfile, key: &str, fallback: f64) -> f6
         .max(0.0)
 }
 
+fn llm_base_url_env_keys(provider: &str) -> &'static [&'static str] {
+    match provider {
+        "openai" => &["OPENPLANTER_OPENAI_BASE_URL", "OPENPLANTER_BASE_URL"],
+        "anthropic" => &["OPENPLANTER_ANTHROPIC_BASE_URL"],
+        "openrouter" => &["OPENPLANTER_OPENROUTER_BASE_URL"],
+        "cerebras" => &["OPENPLANTER_CEREBRAS_BASE_URL"],
+        "zai" => &["OPENPLANTER_ZAI_BASE_URL"],
+        "ollama" => &["OPENPLANTER_OLLAMA_BASE_URL"],
+        _ => &[],
+    }
+}
+
 pub fn apply_llm_profile(cfg: &mut AgentConfig, profile_id: &str, profile: &ProviderProfile) {
     cfg.llm_profile_id = Some(profile_id.to_string());
     cfg.llm_profile_name = profile.name.clone();
-    cfg.provider = profile.provider.clone();
-    cfg.model = profile.model.clone();
+    if !has_env_value(&["OPENPLANTER_PROVIDER"]) {
+        cfg.provider = profile.provider.clone();
+    }
+    if !has_env_value(&["OPENPLANTER_MODEL"]) {
+        cfg.model = profile.model.clone();
+    }
     if let Some(base_url) = profile.base_url.as_deref() {
-        match profile.provider.as_str() {
-            "openai" => {
-                cfg.openai_base_url = base_url.to_string();
-                cfg.base_url = base_url.to_string();
+        if !has_env_value(llm_base_url_env_keys(&profile.provider)) {
+            match profile.provider.as_str() {
+                "openai" => {
+                    cfg.openai_base_url = base_url.to_string();
+                    cfg.base_url = base_url.to_string();
+                }
+                "anthropic" => cfg.anthropic_base_url = base_url.to_string(),
+                "openrouter" => cfg.openrouter_base_url = base_url.to_string(),
+                "cerebras" => cfg.cerebras_base_url = base_url.to_string(),
+                "zai" => cfg.zai_base_url = base_url.to_string(),
+                "ollama" => cfg.ollama_base_url = base_url.to_string(),
+                _ => {}
             }
-            "anthropic" => cfg.anthropic_base_url = base_url.to_string(),
-            "openrouter" => cfg.openrouter_base_url = base_url.to_string(),
-            "cerebras" => cfg.cerebras_base_url = base_url.to_string(),
-            "zai" => cfg.zai_base_url = base_url.to_string(),
-            "ollama" => cfg.ollama_base_url = base_url.to_string(),
-            _ => {}
         }
     }
     if let Some(value) = profile.options.get("reasoning_effort") {
-        let effort = value
-            .as_str()
-            .unwrap_or_default()
-            .trim()
-            .to_ascii_lowercase();
-        cfg.reasoning_effort = if effort.is_empty() || effort == "none" || effort == "off" {
-            None
-        } else {
-            Some(effort)
-        };
+        if !has_env_value(&["OPENPLANTER_REASONING_EFFORT"]) {
+            let effort = value
+                .as_str()
+                .unwrap_or_default()
+                .trim()
+                .to_ascii_lowercase();
+            cfg.reasoning_effort = if effort.is_empty() || effort == "none" || effort == "off" {
+                None
+            } else {
+                Some(effort)
+            };
+        }
     }
     if let Some(value) = profile
         .options
         .get("zai_plan")
         .and_then(|value| value.as_str())
     {
-        cfg.zai_plan = normalize_zai_plan(Some(value));
-        cfg.zai_base_url = resolve_zai_base_url(
-            &cfg.zai_plan,
-            &cfg.zai_paygo_base_url,
-            &cfg.zai_coding_base_url,
-        );
+        if !has_env_value(&["OPENPLANTER_ZAI_PLAN"]) {
+            cfg.zai_plan = normalize_zai_plan(Some(value));
+        }
+        if !has_env_value(&["OPENPLANTER_ZAI_BASE_URL"]) {
+            cfg.zai_base_url = resolve_zai_base_url(
+                &cfg.zai_plan,
+                &cfg.zai_paygo_base_url,
+                &cfg.zai_coding_base_url,
+            );
+        }
     }
 }
 
@@ -515,6 +539,83 @@ mod tests {
             match saved_base_url {
                 Some(value) => env::set_var("OPENPLANTER_EMBEDDINGS_BASE_URL", value),
                 None => env::remove_var("OPENPLANTER_EMBEDDINGS_BASE_URL"),
+            }
+        }
+    }
+
+    #[test]
+    fn apply_settings_to_config_preserves_llm_env_side_overrides() {
+        let _env_guard = crate::config::ENV_TEST_LOCK.lock().unwrap();
+        let saved_provider = env::var("OPENPLANTER_PROVIDER").ok();
+        let saved_model = env::var("OPENPLANTER_MODEL").ok();
+        let saved_reasoning = env::var("OPENPLANTER_REASONING_EFFORT").ok();
+        let saved_zai_plan = env::var("OPENPLANTER_ZAI_PLAN").ok();
+        let saved_zai_base_url = env::var("OPENPLANTER_ZAI_BASE_URL").ok();
+        unsafe {
+            env::remove_var("OPENPLANTER_PROVIDER");
+            env::remove_var("OPENPLANTER_MODEL");
+            env::set_var("OPENPLANTER_REASONING_EFFORT", "low");
+            env::set_var("OPENPLANTER_ZAI_PLAN", "paygo");
+            env::set_var("OPENPLANTER_ZAI_BASE_URL", "https://env-zai.example/v4");
+        }
+
+        let mut llm_pool = BTreeMap::new();
+        llm_pool.insert(
+            "zai-coding".to_string(),
+            ProviderProfile {
+                provider: "zai".into(),
+                model: "glm-4.6".into(),
+                base_url: Some("https://profile-zai.example/v4".into()),
+                options: BTreeMap::from([
+                    ("reasoning_effort".to_string(), serde_json::json!("high")),
+                    ("zai_plan".to_string(), serde_json::json!("coding")),
+                ]),
+                ..Default::default()
+            },
+        );
+        let settings = PersistentSettings {
+            active_profiles: BTreeMap::from([("llm".to_string(), "zai-coding".to_string())]),
+            profiles: BTreeMap::from([("llm".to_string(), llm_pool)]),
+            ..Default::default()
+        };
+        let mut cfg = AgentConfig {
+            provider: "auto".into(),
+            model: "default-model".into(),
+            reasoning_effort: Some("low".into()),
+            zai_plan: "paygo".into(),
+            zai_base_url: "https://env-zai.example/v4".into(),
+            ..Default::default()
+        };
+
+        apply_settings_to_config(&mut cfg, &settings);
+
+        assert_eq!(cfg.llm_profile_id.as_deref(), Some("zai-coding"));
+        assert_eq!(cfg.provider, "zai");
+        assert_eq!(cfg.model, "glm-4.6");
+        assert_eq!(cfg.reasoning_effort.as_deref(), Some("low"));
+        assert_eq!(cfg.zai_plan, "paygo");
+        assert_eq!(cfg.zai_base_url, "https://env-zai.example/v4");
+
+        unsafe {
+            match saved_provider {
+                Some(value) => env::set_var("OPENPLANTER_PROVIDER", value),
+                None => env::remove_var("OPENPLANTER_PROVIDER"),
+            }
+            match saved_model {
+                Some(value) => env::set_var("OPENPLANTER_MODEL", value),
+                None => env::remove_var("OPENPLANTER_MODEL"),
+            }
+            match saved_reasoning {
+                Some(value) => env::set_var("OPENPLANTER_REASONING_EFFORT", value),
+                None => env::remove_var("OPENPLANTER_REASONING_EFFORT"),
+            }
+            match saved_zai_plan {
+                Some(value) => env::set_var("OPENPLANTER_ZAI_PLAN", value),
+                None => env::remove_var("OPENPLANTER_ZAI_PLAN"),
+            }
+            match saved_zai_base_url {
+                Some(value) => env::set_var("OPENPLANTER_ZAI_BASE_URL", value),
+                None => env::remove_var("OPENPLANTER_ZAI_BASE_URL"),
             }
         }
     }
