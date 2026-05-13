@@ -247,6 +247,13 @@ def _apply_llm_profile(ctx: ChatContext, profile_id: str, profile: ProviderProfi
         ctx.cfg.reasoning_effort = None if effort in {"off", "none"} else effort
 
 
+def _clear_llm_profile(ctx: ChatContext) -> None:
+    ctx.cfg.llm_profile_id = None
+    ctx.cfg.llm_profile_name = None
+    ctx.runtime.engine.config.llm_profile_id = None
+    ctx.runtime.engine.config.llm_profile_name = None
+
+
 def _apply_embedding_profile(ctx: ChatContext, profile_id: str, profile: ProviderProfile) -> None:
     ctx.cfg.embedding_profile_id = profile_id
     ctx.cfg.embedding_profile_name = profile.name
@@ -262,6 +269,13 @@ def _apply_embedding_profile(ctx: ChatContext, profile_id: str, profile: Provide
     ctx.runtime.engine.config.embeddings_provider = ctx.cfg.embeddings_provider
     ctx.runtime.engine.config.embeddings_model = ctx.cfg.embeddings_model
     ctx.runtime.engine.config.embeddings_base_url = ctx.cfg.embeddings_base_url
+
+
+def _clear_embedding_profile(ctx: ChatContext) -> None:
+    ctx.cfg.embedding_profile_id = None
+    ctx.cfg.embedding_profile_name = None
+    ctx.runtime.engine.config.embedding_profile_id = None
+    ctx.runtime.engine.config.embedding_profile_name = None
 
 
 def _profile_option_int(profile: ProviderProfile, key: str, fallback: int) -> int:
@@ -333,6 +347,13 @@ def _apply_stt_profile(ctx: ChatContext, profile_id: str, profile: ProviderProfi
     ctx.runtime.engine.config.mistral_transcription_request_timeout_sec = (
         ctx.cfg.mistral_transcription_request_timeout_sec
     )
+
+
+def _clear_stt_profile(ctx: ChatContext) -> None:
+    ctx.cfg.stt_profile_id = None
+    ctx.cfg.stt_profile_name = None
+    ctx.runtime.engine.config.stt_profile_id = None
+    ctx.runtime.engine.config.stt_profile_name = None
 
 
 def handle_model_command(args: str, ctx: ChatContext) -> list[str]:
@@ -427,6 +448,8 @@ def handle_model_command(args: str, ctx: ChatContext) -> list[str]:
     except ModelError as exc:
         return [f"Failed to switch model: {exc}"]
     ctx.runtime.engine = new_engine
+    if not save:
+        _clear_llm_profile(ctx)
 
     alias_note = f" (alias: {raw_model})" if raw_model.lower() in MODEL_ALIASES else ""
     lines = [f"Switched to model: {new_model}{alias_note}"]
@@ -606,7 +629,8 @@ def handle_embeddings_command(args: str, ctx: ChatContext) -> list[str]:
     ctx.runtime.engine.config.embeddings_provider = provider
     ctx.runtime.engine.config.embeddings_model = ctx.cfg.embeddings_model
     ctx.runtime.engine.config.embeddings_base_url = ctx.cfg.embeddings_base_url
-    lines = _format_embeddings_status(ctx)
+    if not save:
+        _clear_embedding_profile(ctx)
     if save:
         settings = ctx.settings_store.load()
         profile_id = _slugify_profile_id(provider, ctx.cfg.embeddings_model)
@@ -623,6 +647,10 @@ def handle_embeddings_command(args: str, ctx: ChatContext) -> list[str]:
         ctx.settings_store.save(settings)
         ctx.cfg.embedding_profile_id = profile_id
         ctx.cfg.embedding_profile_name = f"{provider.title()} embeddings"
+        ctx.runtime.engine.config.embedding_profile_id = profile_id
+        ctx.runtime.engine.config.embedding_profile_name = f"{provider.title()} embeddings"
+    lines = _format_embeddings_status(ctx)
+    if save:
         lines.append(f"Saved as workspace embedding profile: {profile_id}")
     return lines
 
@@ -667,6 +695,8 @@ def handle_stt_command(args: str, ctx: ChatContext) -> list[str]:
 
     ctx.cfg.mistral_transcription_model = model
     ctx.runtime.engine.config.mistral_transcription_model = model
+    if not save:
+        _clear_stt_profile(ctx)
     lines = [f"Audio/STT model set to: {model}"]
     if save:
         settings = ctx.settings_store.load()
@@ -692,6 +722,8 @@ def handle_stt_command(args: str, ctx: ChatContext) -> list[str]:
         ctx.settings_store.save(settings)
         ctx.cfg.stt_profile_id = profile_id
         ctx.cfg.stt_profile_name = profile_name
+        ctx.runtime.engine.config.stt_profile_id = profile_id
+        ctx.runtime.engine.config.stt_profile_name = profile_name
         lines.append(f"Saved as workspace STT profile: {profile_id}")
     return lines
 
