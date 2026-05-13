@@ -65,6 +65,7 @@ jobs:
         run: uv sync --locked --all-extras --dev
 
       - name: Run Mistral Vibe review
+        timeout-minutes: 20
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -110,4 +111,35 @@ jobs:
 
             The separate Mistral Vibe Review Gate workflow requires the marker and exact head SHA to pass.
           REVIEW_MARKER: ${{ env.MISTRAL_VIBE_REVIEW_MARKER }}
-        run: uv run --directory .mistral-vibe vibe --trust -p "$PROMPT_INPUT"
+        run: |
+          set -uo pipefail
+
+          find_existing_review() {
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --paginate \
+              --jq ".[] | select(.user.login == \"github-actions[bot]\") | select(.body | contains(\"$REVIEW_MARKER\")) | select(.body | contains(\"Head SHA: $PR_HEAD_SHA\")) | .html_url" \
+              | head -n 1
+          }
+
+          for attempt in 1 2 3; do
+            echo "::group::Mistral Vibe attempt $attempt"
+            if uv run --directory .mistral-vibe vibe --trust -p "$PROMPT_INPUT"; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            status=$?
+            echo "::endgroup::"
+
+            existing_review_url="$(find_existing_review || true)"
+            if [ -n "$existing_review_url" ]; then
+              echo "Mistral Vibe posted the required review before exiting: $existing_review_url"
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              exit "$status"
+            fi
+
+            sleep_seconds=$((attempt * 30))
+            echo "Mistral Vibe attempt $attempt failed; retrying in ${sleep_seconds}s."
+            sleep "$sleep_seconds"
+          done
