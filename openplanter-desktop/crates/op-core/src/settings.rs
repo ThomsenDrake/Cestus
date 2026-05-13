@@ -22,6 +22,14 @@ use crate::obsidian::{
 };
 
 const VALID_REASONING_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh"];
+const VALID_LLM_PROVIDERS: &[&str] = &[
+    "openai",
+    "anthropic",
+    "openrouter",
+    "cerebras",
+    "zai",
+    "ollama",
+];
 
 /// Normalize and validate a reasoning effort value.
 pub fn normalize_reasoning_effort(value: Option<&str>) -> Result<Option<String>, String> {
@@ -173,7 +181,7 @@ impl ProviderProfile {
             if provider.is_empty() {
                 provider = "mistral".to_string();
             }
-        } else if provider.is_empty() {
+        } else if provider.is_empty() || !VALID_LLM_PROVIDERS.contains(&provider.as_str()) {
             provider = infer_llm_provider(&self.model);
         }
 
@@ -249,23 +257,42 @@ impl ProviderProfile {
 
 fn normalize_profile_pools(
     pools: &BTreeMap<String, BTreeMap<String, ProviderProfile>>,
-) -> BTreeMap<String, BTreeMap<String, ProviderProfile>> {
+) -> (
+    BTreeMap<String, BTreeMap<String, ProviderProfile>>,
+    BTreeMap<String, BTreeMap<String, String>>,
+) {
     let mut normalized: BTreeMap<String, BTreeMap<String, ProviderProfile>> = BTreeMap::new();
+    let mut id_map: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
     for modality in PROFILE_MODALITIES {
         let mut pool = BTreeMap::new();
+        let mut modality_id_map = BTreeMap::new();
         if let Some(raw_pool) = pools.get(modality) {
             for (raw_id, profile) in raw_pool {
                 let normalized_profile = profile.normalized(modality);
                 if normalized_profile.model.is_empty() && modality != "embedding" {
                     continue;
                 }
-                let profile_id = slugify_profile_id(&[raw_id]);
+                let mut profile_id = slugify_profile_id(&[raw_id]);
+                if pool.contains_key(&profile_id) {
+                    let base_id = profile_id.clone();
+                    let mut counter = 2;
+                    loop {
+                        let candidate = format!("{base_id}-{counter}");
+                        if !pool.contains_key(&candidate) {
+                            profile_id = candidate;
+                            break;
+                        }
+                        counter += 1;
+                    }
+                }
+                modality_id_map.insert(raw_id.clone(), profile_id.clone());
                 pool.insert(profile_id, normalized_profile);
             }
         }
         normalized.insert(modality.to_string(), pool);
+        id_map.insert(modality.to_string(), modality_id_map);
     }
-    normalized
+    (normalized, id_map)
 }
 
 fn upsert_profile(
@@ -367,26 +394,27 @@ fn migrate_legacy_profiles(settings: &mut PersistentSettings) {
         );
     }
 
+    let mut options = BTreeMap::new();
+    if let Some(value) = settings.mistral_transcription_max_bytes {
+        options.insert("max_bytes".to_string(), Value::from(value));
+    }
+    if let Some(value) = settings.mistral_transcription_chunk_max_seconds {
+        options.insert("chunk_max_seconds".to_string(), Value::from(value));
+    }
+    if let Some(value) = settings.mistral_transcription_chunk_overlap_seconds {
+        options.insert("chunk_overlap_seconds".to_string(), Value::from(value));
+    }
+    if let Some(value) = settings.mistral_transcription_max_chunks {
+        options.insert("max_chunks".to_string(), Value::from(value));
+    }
+    if let Some(value) = settings.mistral_transcription_request_timeout_sec {
+        options.insert("request_timeout_sec".to_string(), Value::from(value));
+    }
     if settings.mistral_transcription_model.is_some()
         || settings.mistral_transcription_base_url.is_some()
+        || !options.is_empty()
     {
         let make_active = !settings.active_profiles.contains_key("stt");
-        let mut options = BTreeMap::new();
-        if let Some(value) = settings.mistral_transcription_max_bytes {
-            options.insert("max_bytes".to_string(), Value::from(value));
-        }
-        if let Some(value) = settings.mistral_transcription_chunk_max_seconds {
-            options.insert("chunk_max_seconds".to_string(), Value::from(value));
-        }
-        if let Some(value) = settings.mistral_transcription_chunk_overlap_seconds {
-            options.insert("chunk_overlap_seconds".to_string(), Value::from(value));
-        }
-        if let Some(value) = settings.mistral_transcription_max_chunks {
-            options.insert("max_chunks".to_string(), Value::from(value));
-        }
-        if let Some(value) = settings.mistral_transcription_request_timeout_sec {
-            options.insert("request_timeout_sec".to_string(), Value::from(value));
-        }
         upsert_profile(
             &mut settings.profiles,
             &mut settings.active_profiles,
@@ -531,20 +559,25 @@ impl PersistentSettings {
 
     /// Return a normalized copy with trimmed/validated values.
     pub fn normalized(&self) -> Result<Self, String> {
+        let (profiles, profile_id_map) = normalize_profile_pools(&self.profiles);
         let active_profiles = self
             .active_profiles
             .iter()
             .filter_map(|(key, value)| {
                 let key = key.trim().to_ascii_lowercase();
-                let value = value.trim().to_string();
-                if PROFILE_MODALITIES.contains(&key.as_str()) && !value.is_empty() {
+                let raw_value = value.trim();
+                if PROFILE_MODALITIES.contains(&key.as_str()) && !raw_value.is_empty() {
+                    let value = profile_id_map
+                        .get(&key)
+                        .and_then(|pool| pool.get(raw_value))
+                        .cloned()
+                        .unwrap_or_else(|| slugify_profile_id(&[raw_value]));
                     Some((key, value))
                 } else {
                     None
                 }
             })
             .collect::<BTreeMap<_, _>>();
-        let profiles = normalize_profile_pools(&self.profiles);
         let model = self
             .default_model
             .as_deref()
@@ -1171,6 +1204,78 @@ mod tests {
                 .get("chunk_max_seconds"),
             Some(&Value::from(600))
         );
+    }
+
+    #[test]
+    fn test_option_only_stt_settings_migrate_to_profile() {
+        let settings = PersistentSettings {
+            mistral_transcription_max_chunks: Some(12),
+            mistral_transcription_request_timeout_sec: Some(240),
+            ..Default::default()
+        };
+        let normalized = settings.normalized().unwrap();
+
+        assert_eq!(
+            normalized.active_profiles.get("stt"),
+            Some(&"mistral-voxtral".to_string())
+        );
+        let profile = &normalized.profiles["stt"]["mistral-voxtral"];
+        assert_eq!(profile.model, "voxtral-mini-latest");
+        assert_eq!(profile.options.get("max_chunks"), Some(&Value::from(12)));
+        assert_eq!(
+            profile.options.get("request_timeout_sec"),
+            Some(&Value::from(240))
+        );
+    }
+
+    #[test]
+    fn test_profile_id_collisions_get_unique_ids() {
+        let mut llm_pool = BTreeMap::new();
+        llm_pool.insert(
+            "OpenAI GPT 4".to_string(),
+            ProviderProfile {
+                provider: "openai".into(),
+                model: "gpt-4o".into(),
+                ..Default::default()
+            },
+        );
+        llm_pool.insert(
+            "OpenAI_GPT_4".to_string(),
+            ProviderProfile {
+                provider: "openai".into(),
+                model: "gpt-4.1-mini".into(),
+                ..Default::default()
+            },
+        );
+        let settings = PersistentSettings {
+            active_profiles: BTreeMap::from([("llm".to_string(), "OpenAI_GPT_4".to_string())]),
+            profiles: BTreeMap::from([("llm".to_string(), llm_pool)]),
+            ..Default::default()
+        };
+        let normalized = settings.normalized().unwrap();
+
+        assert!(normalized.profiles["llm"].contains_key("openai-gpt-4"));
+        assert!(normalized.profiles["llm"].contains_key("openai-gpt-4-2"));
+        assert_eq!(
+            normalized.active_profiles.get("llm"),
+            Some(&"openai-gpt-4-2".to_string())
+        );
+        assert_eq!(
+            normalized.profiles["llm"]["openai-gpt-4-2"].model,
+            "gpt-4.1-mini"
+        );
+    }
+
+    #[test]
+    fn test_invalid_llm_profile_provider_is_inferred_from_model() {
+        let profile = ProviderProfile {
+            provider: "not-a-provider".into(),
+            model: "azure-foundry/gpt-5.5".into(),
+            ..Default::default()
+        }
+        .normalized("llm");
+
+        assert_eq!(profile.provider, "openai");
     }
 
     #[test]
