@@ -4,13 +4,15 @@ import type { PersistentSettings } from "../api/types";
 import { appState } from "../state/store";
 import type { CommandResult } from "./model";
 
-const DEFAULT_STT_BASE_URL = "https://api.mistral.ai";
-
 function profileIdFor(provider: string, model: string): string {
   return `${provider}-${model}`
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "") || "stt-default";
+}
+
+function titleCaseProvider(provider: string): string {
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
 }
 
 function formatSttProfiles(settings: PersistentSettings): string[] {
@@ -99,7 +101,7 @@ export async function handleSttCommand(args: string): Promise<CommandResult> {
     const lines = [`STT model set to: ${config.stt_model}`];
     if (save) {
       const profileId = profileIdFor(config.stt_provider, config.stt_model);
-      const profileName = `Mistral ${config.stt_model} STT`;
+      const profileName = `${titleCaseProvider(config.stt_provider)} ${config.stt_model} STT`;
       await saveSettings({
         active_profiles: { stt: profileId },
         profiles: {
@@ -109,19 +111,25 @@ export async function handleSttCommand(args: string): Promise<CommandResult> {
               provider: config.stt_provider,
               adapter: "speech-to-text",
               model: config.stt_model,
-              base_url: DEFAULT_STT_BASE_URL,
-              auth_ref: "mistral",
+              base_url: config.stt_base_url,
+              auth_ref: config.stt_provider,
               options: {
-                max_bytes: 104857600,
-                chunk_max_seconds: 900,
-                chunk_overlap_seconds: 2,
-                max_chunks: 48,
-                request_timeout_sec: 180,
+                max_bytes: config.stt_max_bytes,
+                chunk_max_seconds: config.stt_chunk_max_seconds,
+                chunk_overlap_seconds: config.stt_chunk_overlap_seconds,
+                max_chunks: config.stt_max_chunks,
+                request_timeout_sec: config.stt_request_timeout_sec,
               },
             },
           },
         },
+        mistral_transcription_base_url: config.stt_base_url,
         mistral_transcription_model: config.stt_model,
+        mistral_transcription_max_bytes: config.stt_max_bytes,
+        mistral_transcription_chunk_max_seconds: config.stt_chunk_max_seconds,
+        mistral_transcription_chunk_overlap_seconds: config.stt_chunk_overlap_seconds,
+        mistral_transcription_max_chunks: config.stt_max_chunks,
+        mistral_transcription_request_timeout_sec: config.stt_request_timeout_sec,
       });
       appState.update((s) => ({
         ...s,
