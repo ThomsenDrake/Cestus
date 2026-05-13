@@ -24,6 +24,7 @@ jobs:
   mistral-vibe-pr-review:
     name: Mistral Vibe PR Review
     runs-on: ubuntu-latest
+    environment: MISTRAL_API_KEY
     if: ${{ github.event.pull_request.draft == false }}
 
     steps:
