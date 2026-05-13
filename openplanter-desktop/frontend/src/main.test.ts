@@ -158,6 +158,27 @@ describe("main queue handling", () => {
     });
   });
 
+  it("seeds the Cestus splash art", async () => {
+    const { appState } = await import("./state/store");
+    const expected = [
+      "      \\\\     //       ____ _____ ____ _____ _   _ ____       \\\\     //",
+      "   \\\\  \\\\   //  //   / ___| ____/ ___|_   _| | | / ___|   \\\\  \\\\   //  //",
+      "    \\\\  .---.  //   | |   |  _| \\___ \\ | | | | | \\___ \\    \\\\  .---.  //",
+      "        ( o )       | |___| |___ ___) || | | |_| |___) |       ( o )",
+      "        `-+-'        \\____|_____|____/ |_|  \\___/|____/        `-+-'",
+      "         / \\                                                    / \\",
+      "        /___\\                                                  /___\\",
+    ].join("\n");
+
+    await import("./main");
+
+    await vi.waitFor(() => {
+      const splash = appState.get().messages.find((msg) => msg.role === "splash");
+      expect(splash?.content).toBe(expected);
+      expect(splash?.content).not.toContain("OpenPlanter");
+    });
+  });
+
   it("still processes queued objectives after successful completion", async () => {
     const queuedSubmitSpy = vi.fn();
     window.addEventListener("queued-submit", queuedSubmitSpy as EventListener);

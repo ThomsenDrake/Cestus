@@ -64,53 +64,14 @@ def _make_left_markdown():
 
 _LeftMarkdown = _make_left_markdown()
 
-_PLANT_LEFT = [
-    " .oOo.  ",
-    "oO.|.Oo ",
-    "Oo.|.oO ",
-    "  .|.   ",
-    "[=====] ",
-    " \\___/  ",
-]
-
-_PLANT_RIGHT = [
-    "  .oOo. ",
-    " oO.|.Oo",
-    " Oo.|.oO",
-    "   .|.  ",
-    " [=====]",
-    "  \\___/ ",
-]
-
-
-def _build_splash() -> str:
-    """Generate the startup ASCII art banner with potted plants."""
-    try:
-        import pyfiglet
-        art = pyfiglet.figlet_format("Cestus", font="standard").rstrip()
-    except Exception:
-        art = "   Cestus"
-    lines = art.splitlines()
-    # Strip common leading whitespace so the plants align flush
-    min_indent = min(
-        (len(line) - len(line.lstrip()) for line in lines if line.strip()), default=0
-    )
-    stripped = [line[min_indent:] for line in lines]
-    max_w = max(len(line) for line in stripped)
-    padded = [line.ljust(max_w) for line in stripped]
-
-    # Pad plant art to match the number of text lines (bottom-align plants)
-    n = len(padded)
-    pw_l = max(len(line) for line in _PLANT_LEFT)
-    pw_r = max(len(line) for line in _PLANT_RIGHT)
-    left = [" " * pw_l] * (n - len(_PLANT_LEFT)) + _PLANT_LEFT if n > len(_PLANT_LEFT) else _PLANT_LEFT[-n:]
-    right = [" " * pw_r] * (n - len(_PLANT_RIGHT)) + _PLANT_RIGHT if n > len(_PLANT_RIGHT) else _PLANT_RIGHT[-n:]
-
-    framed = "\n".join(f"{left[i]}  {padded[i]}  {right[i]}" for i in range(n))
-    return framed
-
-
-SPLASH_ART = _build_splash()
+SPLASH_ART = r"""      \\     //       ____ _____ ____ _____ _   _ ____       \\     //
+   \\  \\   //  //   / ___| ____/ ___|_   _| | | / ___|   \\  \\   //  //
+    \\  .---.  //   | |   |  _| \___ \ | | | | | \___ \    \\  .---.  //
+        ( o )       | |___| |___ ___) || | | |_| |___) |       ( o )
+        `-+-'        \____|_____|____/ |_|  \___/|____/        `-+-'
+         / \                                                    / \
+        /___\                                                  /___\
+""".rstrip("\n")
 
 # Short aliases for common models.  Keys are lowered before lookup.
 HELP_LINES: list[str] = [

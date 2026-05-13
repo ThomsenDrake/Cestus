@@ -75,6 +75,16 @@ class DemoCensorEdgeCases(unittest.TestCase):
         result = c.censor_text(SPLASH_ART)
         # Structure (newlines) must be intact
         self.assertEqual(SPLASH_ART.count("\n"), result.count("\n"))
+        expected = r"""      \\     //       ____ _____ ____ _____ _   _ ____       \\     //
+   \\  \\   //  //   / ___| ____/ ___|_   _| | | / ___|   \\  \\   //  //
+    \\  .---.  //   | |   |  _| \___ \ | | | | | \___ \    \\  .---.  //
+        ( o )       | |___| |___ ___) || | | |_| |___) |       ( o )
+        `-+-'        \____|_____|____/ |_|  \___/|____/        `-+-'
+         / \                                                    / \
+        /___\                                                  /___\
+""".rstrip("\n")
+        self.assertEqual(SPLASH_ART, expected)
+        self.assertNotIn("OpenPlanter", SPLASH_ART)
 
 
 class DemoCensorRichTextTests(unittest.TestCase):
