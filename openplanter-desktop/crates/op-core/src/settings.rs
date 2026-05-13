@@ -302,14 +302,14 @@ fn upsert_profile(
     profile: ProviderProfile,
     profile_id: &str,
     make_active: bool,
+    replace: bool,
 ) {
     let normalized = profile.normalized(modality);
     let selected_id = slugify_profile_id(&[profile_id]);
-    pools
-        .entry(modality.to_string())
-        .or_default()
-        .entry(selected_id.clone())
-        .or_insert(normalized);
+    let pool = pools.entry(modality.to_string()).or_default();
+    if replace || !pool.contains_key(&selected_id) {
+        pool.insert(selected_id.clone(), normalized);
+    }
     if make_active || !active.contains_key(modality) {
         active.insert(modality.to_string(), selected_id);
     }
@@ -349,6 +349,7 @@ fn migrate_legacy_profiles(settings: &mut PersistentSettings) {
             },
             &format!("{provider}-default"),
             false,
+            true,
         );
     }
 
@@ -370,6 +371,7 @@ fn migrate_legacy_profiles(settings: &mut PersistentSettings) {
             },
             "workspace-default",
             make_active,
+            true,
         );
     }
 
@@ -391,6 +393,7 @@ fn migrate_legacy_profiles(settings: &mut PersistentSettings) {
             },
             &format!("{provider}-default"),
             make_active,
+            true,
         );
     }
 
@@ -436,6 +439,7 @@ fn migrate_legacy_profiles(settings: &mut PersistentSettings) {
             },
             "mistral-voxtral",
             make_active,
+            true,
         );
     }
 
@@ -1203,6 +1207,38 @@ mod tests {
                 .options
                 .get("chunk_max_seconds"),
             Some(&Value::from(600))
+        );
+    }
+
+    #[test]
+    fn test_legacy_profile_migration_refreshes_changed_defaults() {
+        let mut llm_pool = BTreeMap::new();
+        llm_pool.insert(
+            "openai-default".to_string(),
+            ProviderProfile {
+                name: Some("openai default".into()),
+                provider: "openai".into(),
+                model: "old-model".into(),
+                auth_ref: Some("openai".into()),
+                ..Default::default()
+            },
+        );
+        let settings = PersistentSettings {
+            active_profiles: BTreeMap::from([("llm".to_string(), "openai-default".to_string())]),
+            profiles: BTreeMap::from([("llm".to_string(), llm_pool)]),
+            default_model_openai: Some("azure-foundry/gpt-5.5".into()),
+            ..Default::default()
+        };
+
+        let normalized = settings.normalized().unwrap();
+
+        assert_eq!(
+            normalized.profiles["llm"]["openai-default"].model,
+            "azure-foundry/gpt-5.5"
+        );
+        assert_eq!(
+            normalized.active_profiles.get("llm"),
+            Some(&"openai-default".to_string())
         );
     }
 

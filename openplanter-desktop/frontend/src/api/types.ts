@@ -246,6 +246,12 @@ export interface ConfigView {
   stt_profile_name: string | null;
   stt_provider: string;
   stt_model: string;
+  stt_base_url: string;
+  stt_max_bytes: number;
+  stt_chunk_max_seconds: number;
+  stt_chunk_overlap_seconds: number;
+  stt_max_chunks: number;
+  stt_request_timeout_sec: number;
   continuity_mode: string;
   mistral_document_ai_use_shared_key: boolean;
   chrome_mcp_enabled: boolean;

@@ -205,7 +205,12 @@ pub fn apply_settings_to_config(cfg: &mut AgentConfig, settings: &PersistentSett
         }
     }
 
-    if !has_env_value(&["OPENPLANTER_EMBEDDINGS_PROVIDER"]) {
+    let embeddings_env_overrides = [
+        "OPENPLANTER_EMBEDDINGS_PROVIDER",
+        "OPENPLANTER_EMBEDDINGS_MODEL",
+        "OPENPLANTER_EMBEDDINGS_BASE_URL",
+    ];
+    if !has_env_value(&embeddings_env_overrides) {
         if let Some(profile_id) = settings.active_profiles.get("embedding") {
             if let Some(profile) = settings.active_profile("embedding") {
                 apply_embedding_profile(cfg, profile_id, profile);
@@ -255,7 +260,7 @@ pub fn apply_settings_to_config(cfg: &mut AgentConfig, settings: &PersistentSett
         }
     }
 
-    if !has_env_value(&["OPENPLANTER_EMBEDDINGS_PROVIDER"]) && cfg.embedding_profile_id.is_none() {
+    if !has_env_value(&embeddings_env_overrides) && cfg.embedding_profile_id.is_none() {
         if let Some(provider) = settings.embeddings_provider.as_deref() {
             cfg.embeddings_provider = normalize_embeddings_provider(Some(provider));
             cfg.embeddings_model = default_embeddings_model(Some(&cfg.embeddings_provider));
@@ -391,7 +396,7 @@ fn has_env_value(keys: &[&str]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
+    use std::{collections::BTreeMap, env};
 
     #[test]
     fn apply_settings_to_config_sets_continuity_when_env_missing() {
@@ -449,6 +454,67 @@ mod tests {
             match saved_subdir {
                 Some(value) => env::set_var("OPENPLANTER_OBSIDIAN_EXPORT_SUBDIR", value),
                 None => env::remove_var("OPENPLANTER_OBSIDIAN_EXPORT_SUBDIR"),
+            }
+        }
+    }
+
+    #[test]
+    fn apply_settings_to_config_preserves_embeddings_env_overrides() {
+        let _env_guard = crate::config::ENV_TEST_LOCK.lock().unwrap();
+        let saved_provider = env::var("OPENPLANTER_EMBEDDINGS_PROVIDER").ok();
+        let saved_model = env::var("OPENPLANTER_EMBEDDINGS_MODEL").ok();
+        let saved_base_url = env::var("OPENPLANTER_EMBEDDINGS_BASE_URL").ok();
+        unsafe {
+            env::remove_var("OPENPLANTER_EMBEDDINGS_PROVIDER");
+            env::set_var("OPENPLANTER_EMBEDDINGS_MODEL", "env-embed");
+            env::remove_var("OPENPLANTER_EMBEDDINGS_BASE_URL");
+        }
+
+        let mut embedding_pool = BTreeMap::new();
+        embedding_pool.insert(
+            "mistral-default".to_string(),
+            ProviderProfile {
+                provider: "mistral".into(),
+                model: "mistral-embed".into(),
+                base_url: Some("https://api.mistral.ai/v1".into()),
+                ..Default::default()
+            },
+        );
+        let settings = PersistentSettings {
+            active_profiles: BTreeMap::from([(
+                "embedding".to_string(),
+                "mistral-default".to_string(),
+            )]),
+            profiles: BTreeMap::from([("embedding".to_string(), embedding_pool)]),
+            embeddings_provider: Some("mistral".into()),
+            ..Default::default()
+        };
+        let mut cfg = AgentConfig {
+            embeddings_provider: "voyage".into(),
+            embeddings_model: "env-embed".into(),
+            embeddings_base_url: "https://env.example/v1".into(),
+            ..Default::default()
+        };
+
+        apply_settings_to_config(&mut cfg, &settings);
+
+        assert_eq!(cfg.embeddings_provider, "voyage");
+        assert_eq!(cfg.embeddings_model, "env-embed");
+        assert_eq!(cfg.embeddings_base_url, "https://env.example/v1");
+        assert!(cfg.embedding_profile_id.is_none());
+
+        unsafe {
+            match saved_provider {
+                Some(value) => env::set_var("OPENPLANTER_EMBEDDINGS_PROVIDER", value),
+                None => env::remove_var("OPENPLANTER_EMBEDDINGS_PROVIDER"),
+            }
+            match saved_model {
+                Some(value) => env::set_var("OPENPLANTER_EMBEDDINGS_MODEL", value),
+                None => env::remove_var("OPENPLANTER_EMBEDDINGS_MODEL"),
+            }
+            match saved_base_url {
+                Some(value) => env::set_var("OPENPLANTER_EMBEDDINGS_BASE_URL", value),
+                None => env::remove_var("OPENPLANTER_EMBEDDINGS_BASE_URL"),
             }
         }
     }
