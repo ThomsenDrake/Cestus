@@ -1,6 +1,6 @@
 /** /model slash command handler. */
 import { getSettings, listModels, saveSettings, updateConfig } from "../api/invoke";
-import type { PersistentSettings } from "../api/types";
+import type { PersistentSettings, ProviderProfile } from "../api/types";
 import { appState } from "../state/store";
 
 /** Aliases mapping short names to full model identifiers. */
@@ -55,22 +55,27 @@ export function inferProvider(model: string): string | null {
 function buildProviderDefaultModelSettings(
   provider: string,
   model: string,
+  existingProfile?: ProviderProfile | null,
 ): PersistentSettings {
   const profileId = profileIdFor(provider, model);
   const profileName = `${provider} ${model}`;
+  const profile: ProviderProfile = {
+    name: existingProfile?.name ?? profileName,
+    provider,
+    adapter: existingProfile?.adapter ?? defaultAdapterFor(provider),
+    model,
+    auth_ref: existingProfile?.auth_ref === undefined ? provider : existingProfile.auth_ref,
+    options: existingProfile?.options ? { ...existingProfile.options } : {},
+  };
+  if (existingProfile?.base_url !== undefined) {
+    profile.base_url = existingProfile.base_url;
+  }
   const base: PersistentSettings = {
     default_model: model,
     active_profiles: { llm: profileId },
     profiles: {
       llm: {
-        [profileId]: {
-          name: profileName,
-          provider,
-          adapter: provider === "anthropic" ? "anthropic" : "openai-compatible",
-          model,
-          auth_ref: provider,
-          options: {},
-        },
+        [profileId]: profile,
       },
     },
   };
@@ -90,6 +95,29 @@ function buildProviderDefaultModelSettings(
     default:
       return base;
   }
+}
+
+function defaultAdapterFor(provider: string): string {
+  return provider === "anthropic" ? "anthropic" : "openai-compatible";
+}
+
+function findExistingLlmProfile(
+  settings: PersistentSettings,
+  profileId: string,
+  provider: string,
+  model: string,
+): ProviderProfile | null {
+  const pool = settings.profiles?.llm ?? {};
+  const direct = pool[profileId];
+  if (direct) return direct;
+
+  const activeId = settings.active_profiles?.llm;
+  const active = activeId ? pool[activeId] : null;
+  if (active?.provider === provider && active.model === model) return active;
+
+  return Object.values(pool).find(
+    (profile) => profile.provider === provider && profile.model === model,
+  ) ?? null;
 }
 
 function profileIdFor(provider: string, model: string): string {
@@ -169,6 +197,7 @@ export async function handleModelCommand(args: string): Promise<CommandResult> {
         ...s,
         provider: config.provider,
         model: config.model,
+        reasoningEffort: config.reasoning_effort,
         llmProfileId: config.llm_profile_id,
         llmProfileName: config.llm_profile_name,
         zaiPlan: config.zai_plan,
@@ -234,6 +263,7 @@ export async function handleModelCommand(args: string): Promise<CommandResult> {
       ...s,
       provider: config.provider,
       model: config.model,
+      reasoningEffort: config.reasoning_effort,
       llmProfileId: config.llm_profile_id,
       llmProfileName: config.llm_profile_name,
       zaiPlan: config.zai_plan,
@@ -241,16 +271,33 @@ export async function handleModelCommand(args: string): Promise<CommandResult> {
 
     const lines = [`Switched to ${config.provider}/${config.model}`];
     if (save) {
-      const saved = buildProviderDefaultModelSettings(config.provider, config.model);
+      const profileId = profileIdFor(config.provider, config.model);
+      let existingProfile: ProviderProfile | null = null;
+      try {
+        const settings = await getSettings();
+        existingProfile = findExistingLlmProfile(
+          settings,
+          profileId,
+          config.provider,
+          config.model,
+        );
+      } catch {
+        existingProfile = null;
+      }
+      const saved = buildProviderDefaultModelSettings(
+        config.provider,
+        config.model,
+        existingProfile,
+      );
       await saveSettings(saved);
-      const profileId = saved.active_profiles?.llm ?? "";
+      const savedProfileId = saved.active_profiles?.llm ?? "";
       appState.update((s) => ({
         ...s,
-        llmProfileId: profileId,
-        llmProfileName: saved.profiles?.llm?.[profileId]?.name ?? null,
+        llmProfileId: savedProfileId,
+        llmProfileName: saved.profiles?.llm?.[savedProfileId]?.name ?? null,
       }));
       lines.push("(Settings saved)");
-      lines.push(`(Saved LLM profile: ${profileId})`);
+      lines.push(`(Saved LLM profile: ${savedProfileId})`);
     }
 
     return { action: "handled", lines };
