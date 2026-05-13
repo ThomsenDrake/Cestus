@@ -425,6 +425,8 @@ impl EmbeddingsClient {
     fn endpoint(&self) -> String {
         if self.base_url.ends_with("/embeddings") {
             self.base_url.clone()
+        } else if self.base_url.ends_with("/v1") {
+            format!("{}/embeddings", self.base_url)
         } else {
             format!("{}/v1/embeddings", self.base_url)
         }
@@ -3507,6 +3509,37 @@ mod tests {
     use std::collections::VecDeque;
     use std::sync::{Arc, Mutex};
     use tempfile::tempdir;
+
+    #[test]
+    fn test_embeddings_client_accepts_versioned_base_url() {
+        let root_client =
+            EmbeddingsClient::new("voyage", "test-key", "voyage-4", "https://api.voyageai.com");
+        let versioned_client = EmbeddingsClient::new(
+            "voyage",
+            "test-key",
+            "voyage-4",
+            "https://api.voyageai.com/v1",
+        );
+        let endpoint_client = EmbeddingsClient::new(
+            "voyage",
+            "test-key",
+            "voyage-4",
+            "https://api.voyageai.com/v1/embeddings",
+        );
+
+        assert_eq!(
+            root_client.endpoint(),
+            "https://api.voyageai.com/v1/embeddings"
+        );
+        assert_eq!(
+            versioned_client.endpoint(),
+            "https://api.voyageai.com/v1/embeddings"
+        );
+        assert_eq!(
+            endpoint_client.endpoint(),
+            "https://api.voyageai.com/v1/embeddings"
+        );
+    }
 
     #[test]
     fn test_documents_from_file_ignores_junk_files() {
