@@ -168,6 +168,51 @@ class SettingsTests(unittest.TestCase):
             600,
         )
 
+    def test_option_only_stt_settings_migrate_to_profile(self) -> None:
+        settings = PersistentSettings(
+            mistral_transcription_max_chunks=12,
+            mistral_transcription_request_timeout_sec=240,
+        ).normalized()
+
+        self.assertEqual(settings.active_profiles["stt"], "mistral-voxtral")
+        profile = settings.profiles["stt"]["mistral-voxtral"]
+        self.assertEqual(profile.model, "voxtral-mini-latest")
+        self.assertEqual(profile.options["max_chunks"], 12)
+        self.assertEqual(profile.options["request_timeout_sec"], 240)
+
+    def test_profile_id_collisions_get_unique_ids(self) -> None:
+        settings = PersistentSettings(
+            active_profiles={"llm": "OpenAI_GPT_4"},
+            profiles={
+                "llm": {
+                    "OpenAI GPT 4": ProviderProfile(
+                        provider="openai",
+                        model="gpt-4o",
+                    ),
+                    "OpenAI_GPT_4": ProviderProfile(
+                        provider="openai",
+                        model="gpt-4.1-mini",
+                    ),
+                }
+            },
+        ).normalized()
+
+        self.assertIn("openai-gpt-4", settings.profiles["llm"])
+        self.assertIn("openai-gpt-4-2", settings.profiles["llm"])
+        self.assertEqual(settings.active_profiles["llm"], "openai-gpt-4-2")
+        self.assertEqual(
+            settings.profiles["llm"]["openai-gpt-4-2"].model,
+            "gpt-4.1-mini",
+        )
+
+    def test_invalid_llm_profile_provider_is_inferred_from_model(self) -> None:
+        profile = ProviderProfile(
+            provider="not-a-provider",
+            model="azure-foundry/gpt-5.5",
+        ).normalized("llm")
+
+        self.assertEqual(profile.provider, "openai")
+
     def test_normalize_reasoning_effort(self) -> None:
         self.assertEqual(normalize_reasoning_effort("LOW"), "low")
         self.assertEqual(normalize_reasoning_effort(" medium "), "medium")

@@ -11,6 +11,14 @@ VALID_REASONING_EFFORTS: set[str] = {"low", "medium", "high", "xhigh"}
 VALID_CHROME_MCP_CHANNELS: set[str] = {"stable", "beta", "dev", "canary"}
 VALID_EMBEDDINGS_PROVIDERS: set[str] = {"voyage", "mistral"}
 VALID_OBSIDIAN_EXPORT_MODES: set[str] = {"fresh_vault", "existing_vault_folder"}
+VALID_LLM_PROVIDERS: set[str] = {
+    "openai",
+    "anthropic",
+    "openrouter",
+    "cerebras",
+    "zai",
+    "ollama",
+}
 DEFAULT_OBSIDIAN_EXPORT_SUBDIR = "Cestus"
 PROFILE_MODALITIES: tuple[str, ...] = ("llm", "embedding", "stt")
 DEFAULT_LLM_BASE_URLS: dict[str, str] = {
@@ -183,6 +191,8 @@ class ProviderProfile:
             provider = provider or "mistral"
         else:
             provider = provider or _infer_llm_provider(self.model)
+            if provider not in VALID_LLM_PROVIDERS:
+                provider = _infer_llm_provider(self.model)
 
         adapter = (self.adapter or "").strip().lower()
         if not adapter:
@@ -246,12 +256,13 @@ class ProviderProfile:
 
 def _normalize_profile_pools(
     pools: dict[str, dict[str, ProviderProfile | dict[str, Any]]] | None,
-) -> dict[str, dict[str, ProviderProfile]]:
+) -> tuple[dict[str, dict[str, ProviderProfile]], dict[str, dict[str, str]]]:
     normalized: dict[str, dict[str, ProviderProfile]] = {
         modality: {} for modality in PROFILE_MODALITIES
     }
+    id_map: dict[str, dict[str, str]] = {modality: {} for modality in PROFILE_MODALITIES}
     if not isinstance(pools, dict):
-        return normalized
+        return normalized, id_map
     for modality in PROFILE_MODALITIES:
         raw_pool = pools.get(modality)
         if not isinstance(raw_pool, dict):
@@ -270,8 +281,15 @@ def _normalize_profile_pools(
             profile_id = _slugify_profile_id(str(raw_id)) or _slugify_profile_id(
                 profile.provider, profile.model
             )
+            if profile_id in normalized[modality]:
+                base_id = profile_id
+                counter = 2
+                while f"{base_id}-{counter}" in normalized[modality]:
+                    counter += 1
+                profile_id = f"{base_id}-{counter}"
+            id_map[modality][str(raw_id)] = profile_id
             normalized[modality][profile_id] = profile
-    return normalized
+    return normalized, id_map
 
 
 def _upsert_profile(
@@ -372,7 +390,11 @@ def _migrate_legacy_profiles(
         "max_chunks": settings.mistral_transcription_max_chunks,
         "request_timeout_sec": settings.mistral_transcription_request_timeout_sec,
     }
-    if settings.mistral_transcription_model or settings.mistral_transcription_base_url:
+    if (
+        settings.mistral_transcription_model
+        or settings.mistral_transcription_base_url
+        or any(value is not None for value in stt_options.values())
+    ):
         _upsert_profile(
             pools,
             active,
@@ -469,12 +491,15 @@ class PersistentSettings:
     def normalized(self) -> "PersistentSettings":
         model = (self.default_model or "").strip() or None
         effort = normalize_reasoning_effort(self.default_reasoning_effort)
+        profiles, profile_id_map = _normalize_profile_pools(self.profiles)
         active_profiles = {
-            modality: (self.active_profiles.get(modality, "") or "").strip()
+            modality: profile_id_map.get(modality, {}).get(
+                (self.active_profiles.get(modality, "") or "").strip(),
+                _slugify_profile_id((self.active_profiles.get(modality, "") or "").strip()),
+            )
             for modality in PROFILE_MODALITIES
             if (self.active_profiles.get(modality, "") or "").strip()
         }
-        profiles = _normalize_profile_pools(self.profiles)
         normalized_settings = PersistentSettings(
             active_profiles=active_profiles,
             profiles=profiles,
@@ -649,7 +674,6 @@ class PersistentSettings:
             if str(key).strip().lower() in PROFILE_MODALITIES and str(value).strip()
         }
         raw_profiles = payload.get("profiles")
-        profiles = _normalize_profile_pools(raw_profiles if isinstance(raw_profiles, dict) else {})
 
         def get_int(key: str) -> int | None:
             value = payload.get(key)
@@ -665,7 +689,7 @@ class PersistentSettings:
 
         return cls(
             active_profiles=active_profiles,
-            profiles=profiles,
+            profiles=raw_profiles if isinstance(raw_profiles, dict) else {},
             default_model=(str(payload.get("default_model", "")).strip() or None),
             default_reasoning_effort=(
                 str(payload.get("default_reasoning_effort", "")).strip() or None
