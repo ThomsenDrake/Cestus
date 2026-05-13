@@ -712,7 +712,14 @@ def _apply_active_profiles_to_config(
         if active_id and profile:
             _apply_llm_profile_to_config(cfg, active_id, profile)
 
-    if args.embeddings_provider is None and not os.getenv("OPENPLANTER_EMBEDDINGS_PROVIDER"):
+    if args.embeddings_provider is None and not any(
+        os.getenv(key)
+        for key in (
+            "OPENPLANTER_EMBEDDINGS_PROVIDER",
+            "OPENPLANTER_EMBEDDINGS_MODEL",
+            "OPENPLANTER_EMBEDDINGS_BASE_URL",
+        )
+    ):
         active_id = settings.active_profiles.get("embedding")
         profile = settings.active_profile("embedding")
         if active_id and profile:
