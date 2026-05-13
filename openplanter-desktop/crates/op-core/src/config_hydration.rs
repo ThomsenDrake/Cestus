@@ -1,13 +1,14 @@
 use std::env;
 
 use crate::config::{
-    AgentConfig, FOUNDRY_OPENAI_API_KEY_PLACEHOLDER, normalize_continuity_mode,
-    normalize_embeddings_provider, normalize_recursion_policy, normalize_web_search_provider,
-    normalize_zai_plan, resolve_openai_api_key, resolve_zai_base_url,
+    AgentConfig, FOUNDRY_OPENAI_API_KEY_PLACEHOLDER, default_embeddings_base_url,
+    default_embeddings_model, normalize_continuity_mode, normalize_embeddings_provider,
+    normalize_recursion_policy, normalize_web_search_provider, normalize_zai_plan,
+    resolve_openai_api_key, resolve_zai_base_url,
 };
 use crate::credentials::CredentialBundle;
 use crate::obsidian::{normalize_obsidian_export_mode, normalize_obsidian_export_subdir};
-use crate::settings::PersistentSettings;
+use crate::settings::{PersistentSettings, ProviderProfile};
 
 /// Merge credentials into an AgentConfig.
 /// Priority: existing config value > env_creds > file_creds.
@@ -80,7 +81,154 @@ pub fn merge_credentials_into_config(
     merge!(mistral_transcription_api_key);
 }
 
+fn profile_option_i64(profile: &ProviderProfile, key: &str, fallback: i64) -> i64 {
+    profile
+        .options
+        .get(key)
+        .and_then(|value| {
+            value
+                .as_i64()
+                .or_else(|| value.as_u64().map(|value| value as i64))
+        })
+        .unwrap_or(fallback)
+        .max(1)
+}
+
+fn profile_option_f64(profile: &ProviderProfile, key: &str, fallback: f64) -> f64 {
+    profile
+        .options
+        .get(key)
+        .and_then(|value| value.as_f64())
+        .unwrap_or(fallback)
+        .max(0.0)
+}
+
+pub fn apply_llm_profile(cfg: &mut AgentConfig, profile_id: &str, profile: &ProviderProfile) {
+    cfg.llm_profile_id = Some(profile_id.to_string());
+    cfg.llm_profile_name = profile.name.clone();
+    cfg.provider = profile.provider.clone();
+    cfg.model = profile.model.clone();
+    if let Some(base_url) = profile.base_url.as_deref() {
+        match profile.provider.as_str() {
+            "openai" => {
+                cfg.openai_base_url = base_url.to_string();
+                cfg.base_url = base_url.to_string();
+            }
+            "anthropic" => cfg.anthropic_base_url = base_url.to_string(),
+            "openrouter" => cfg.openrouter_base_url = base_url.to_string(),
+            "cerebras" => cfg.cerebras_base_url = base_url.to_string(),
+            "zai" => cfg.zai_base_url = base_url.to_string(),
+            "ollama" => cfg.ollama_base_url = base_url.to_string(),
+            _ => {}
+        }
+    }
+    if let Some(value) = profile.options.get("reasoning_effort") {
+        let effort = value
+            .as_str()
+            .unwrap_or_default()
+            .trim()
+            .to_ascii_lowercase();
+        cfg.reasoning_effort = if effort.is_empty() || effort == "none" || effort == "off" {
+            None
+        } else {
+            Some(effort)
+        };
+    }
+    if let Some(value) = profile
+        .options
+        .get("zai_plan")
+        .and_then(|value| value.as_str())
+    {
+        cfg.zai_plan = normalize_zai_plan(Some(value));
+        cfg.zai_base_url = resolve_zai_base_url(
+            &cfg.zai_plan,
+            &cfg.zai_paygo_base_url,
+            &cfg.zai_coding_base_url,
+        );
+    }
+}
+
+pub fn apply_embedding_profile(cfg: &mut AgentConfig, profile_id: &str, profile: &ProviderProfile) {
+    cfg.embedding_profile_id = Some(profile_id.to_string());
+    cfg.embedding_profile_name = profile.name.clone();
+    cfg.embeddings_provider = normalize_embeddings_provider(Some(&profile.provider));
+    cfg.embeddings_model = if profile.model.trim().is_empty() {
+        default_embeddings_model(Some(&cfg.embeddings_provider))
+    } else {
+        profile.model.clone()
+    };
+    cfg.embeddings_base_url = profile
+        .base_url
+        .clone()
+        .unwrap_or_else(|| default_embeddings_base_url(Some(&cfg.embeddings_provider)));
+}
+
+pub fn apply_stt_profile(cfg: &mut AgentConfig, profile_id: &str, profile: &ProviderProfile) {
+    cfg.stt_profile_id = Some(profile_id.to_string());
+    cfg.stt_profile_name = profile.name.clone();
+    if profile.provider != "mistral" {
+        return;
+    }
+    if !profile.model.trim().is_empty() {
+        cfg.mistral_transcription_model = profile.model.clone();
+    }
+    if let Some(base_url) = profile.base_url.as_deref() {
+        cfg.mistral_transcription_base_url = base_url.to_string();
+    }
+    cfg.mistral_transcription_max_bytes =
+        profile_option_i64(profile, "max_bytes", cfg.mistral_transcription_max_bytes);
+    cfg.mistral_transcription_chunk_max_seconds = profile_option_i64(
+        profile,
+        "chunk_max_seconds",
+        cfg.mistral_transcription_chunk_max_seconds,
+    );
+    cfg.mistral_transcription_chunk_overlap_seconds = profile_option_f64(
+        profile,
+        "chunk_overlap_seconds",
+        cfg.mistral_transcription_chunk_overlap_seconds,
+    );
+    cfg.mistral_transcription_max_chunks =
+        profile_option_i64(profile, "max_chunks", cfg.mistral_transcription_max_chunks);
+    cfg.mistral_transcription_request_timeout_sec = profile_option_i64(
+        profile,
+        "request_timeout_sec",
+        cfg.mistral_transcription_request_timeout_sec,
+    );
+}
+
 pub fn apply_settings_to_config(cfg: &mut AgentConfig, settings: &PersistentSettings) {
+    if !has_env_value(&["OPENPLANTER_PROVIDER"]) && !has_env_value(&["OPENPLANTER_MODEL"]) {
+        if let Some(profile_id) = settings.active_profiles.get("llm") {
+            if let Some(profile) = settings.active_profile("llm") {
+                apply_llm_profile(cfg, profile_id, profile);
+            }
+        }
+    }
+
+    if !has_env_value(&["OPENPLANTER_EMBEDDINGS_PROVIDER"]) {
+        if let Some(profile_id) = settings.active_profiles.get("embedding") {
+            if let Some(profile) = settings.active_profile("embedding") {
+                apply_embedding_profile(cfg, profile_id, profile);
+            }
+        }
+    }
+
+    if !has_env_value(&[
+        "OPENPLANTER_MISTRAL_TRANSCRIPTION_MODEL",
+        "OPENPLANTER_MISTRAL_TRANSCRIPTION_BASE_URL",
+        "OPENPLANTER_MISTRAL_TRANSCRIPTION_MAX_BYTES",
+        "OPENPLANTER_MISTRAL_TRANSCRIPTION_CHUNK_MAX_SECONDS",
+        "OPENPLANTER_MISTRAL_TRANSCRIPTION_CHUNK_OVERLAP_SECONDS",
+        "OPENPLANTER_MISTRAL_TRANSCRIPTION_MAX_CHUNKS",
+        "OPENPLANTER_MISTRAL_TRANSCRIPTION_REQUEST_TIMEOUT_SEC",
+    ]) {
+        if let Some(profile_id) = settings.active_profiles.get("stt") {
+            if let Some(profile) = settings.active_profile("stt") {
+                apply_stt_profile(cfg, profile_id, profile);
+            }
+        }
+    }
+
     if !has_env_value(&["OPENPLANTER_REASONING_EFFORT"]) {
         if let Some(reasoning_effort) = settings.default_reasoning_effort.clone() {
             cfg.reasoning_effort = Some(reasoning_effort);
@@ -107,9 +255,11 @@ pub fn apply_settings_to_config(cfg: &mut AgentConfig, settings: &PersistentSett
         }
     }
 
-    if !has_env_value(&["OPENPLANTER_EMBEDDINGS_PROVIDER"]) {
+    if !has_env_value(&["OPENPLANTER_EMBEDDINGS_PROVIDER"]) && cfg.embedding_profile_id.is_none() {
         if let Some(provider) = settings.embeddings_provider.as_deref() {
             cfg.embeddings_provider = normalize_embeddings_provider(Some(provider));
+            cfg.embeddings_model = default_embeddings_model(Some(&cfg.embeddings_provider));
+            cfg.embeddings_base_url = default_embeddings_base_url(Some(&cfg.embeddings_provider));
         }
     }
 
@@ -215,7 +365,7 @@ pub fn apply_settings_to_config(cfg: &mut AgentConfig, settings: &PersistentSett
         }
     }
 
-    if !has_env_value(&["OPENPLANTER_MODEL"]) {
+    if !has_env_value(&["OPENPLANTER_MODEL"]) && cfg.llm_profile_id.is_none() {
         let saved_model = if cfg.provider == "auto" {
             settings.default_model.as_deref()
         } else {

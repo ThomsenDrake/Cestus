@@ -10,6 +10,7 @@ from agent.credentials import CredentialBundle
 from agent.model import ModelError
 from agent.settings import (
     PersistentSettings,
+    ProviderProfile,
     SettingsStore,
     normalize_chrome_mcp_channel,
     normalize_embeddings_provider,
@@ -80,6 +81,92 @@ class SettingsTests(unittest.TestCase):
             store.save(settings)
             loaded = store.load()
             self.assertEqual(loaded.embeddings_provider, "mistral")
+
+    def test_provider_profiles_roundtrip_separate_pools(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            store = SettingsStore(workspace=root, session_root_dir=".openplanter")
+            settings = PersistentSettings(
+                active_profiles={
+                    "llm": "azure-foundry",
+                    "embedding": "mistral-embed",
+                    "stt": "mistral-voxtral",
+                },
+                profiles={
+                    "llm": {
+                        "azure-foundry": ProviderProfile(
+                            name="Azure Foundry GPT",
+                            provider="openai",
+                            adapter="openai-compatible",
+                            model="azure-foundry/gpt-5.5",
+                            base_url="https://example.test/openai/v1",
+                            auth_ref="openai",
+                        )
+                    },
+                    "embedding": {
+                        "mistral-embed": ProviderProfile(
+                            name="Mistral embeddings",
+                            provider="mistral",
+                            adapter="embedding",
+                            model="mistral-embed",
+                            base_url="https://api.mistral.ai",
+                            auth_ref="mistral",
+                        )
+                    },
+                    "stt": {
+                        "mistral-voxtral": ProviderProfile(
+                            name="Mistral Voxtral STT",
+                            provider="mistral",
+                            adapter="speech-to-text",
+                            model="voxtral-mini-latest",
+                            base_url="https://api.mistral.ai",
+                            auth_ref="mistral",
+                            options={"chunk_max_seconds": 600},
+                        )
+                    },
+                },
+            )
+            store.save(settings)
+            loaded = store.load()
+            self.assertEqual(loaded.active_profiles["llm"], "azure-foundry")
+            self.assertEqual(loaded.active_profiles["embedding"], "mistral-embed")
+            self.assertEqual(loaded.active_profiles["stt"], "mistral-voxtral")
+            self.assertEqual(
+                loaded.profiles["llm"]["azure-foundry"].model,
+                "azure-foundry/gpt-5.5",
+            )
+            self.assertEqual(
+                loaded.profiles["embedding"]["mistral-embed"].model,
+                "mistral-embed",
+            )
+            self.assertEqual(
+                loaded.profiles["stt"]["mistral-voxtral"].options["chunk_max_seconds"],
+                600,
+            )
+
+    def test_legacy_settings_migrate_to_provider_profiles(self) -> None:
+        settings = PersistentSettings(
+            default_model_openai="azure-foundry/gpt-5.5",
+            embeddings_provider="mistral",
+            mistral_transcription_model="voxtral-mini-latest",
+            mistral_transcription_chunk_max_seconds=600,
+        ).normalized()
+
+        self.assertEqual(settings.active_profiles["llm"], "openai-default")
+        self.assertEqual(settings.active_profiles["embedding"], "mistral-default")
+        self.assertEqual(settings.active_profiles["stt"], "mistral-voxtral")
+        self.assertEqual(
+            settings.profiles["llm"]["openai-default"].model,
+            "azure-foundry/gpt-5.5",
+        )
+        self.assertEqual(
+            settings.profiles["embedding"]["mistral-default"].model,
+            "mistral-embed",
+        )
+        self.assertEqual(
+            settings.profiles["stt"]["mistral-voxtral"].options["chunk_max_seconds"],
+            600,
+        )
 
     def test_normalize_reasoning_effort(self) -> None:
         self.assertEqual(normalize_reasoning_effort("LOW"), "low")

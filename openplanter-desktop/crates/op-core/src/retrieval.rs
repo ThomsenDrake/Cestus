@@ -294,18 +294,33 @@ struct EmbeddingsClient {
     provider: String,
     model: String,
     api_key: String,
+    base_url: String,
     limits: EmbeddingsProviderLimits,
     http: Client,
 }
 
 impl EmbeddingsClient {
-    fn new(provider: &str, api_key: &str) -> Self {
+    fn new(provider: &str, api_key: &str, model: &str, base_url: &str) -> Self {
         let normalized = normalize_embeddings_provider(Some(provider));
-        let model = embedding_model_for_provider(&normalized).to_string();
+        let model = if model.trim().is_empty() {
+            embedding_model_for_provider(&normalized).to_string()
+        } else {
+            model.trim().to_string()
+        };
+        let base_url = if base_url.trim().is_empty() {
+            if normalized == "voyage" {
+                "https://api.voyageai.com".to_string()
+            } else {
+                "https://api.mistral.ai".to_string()
+            }
+        } else {
+            base_url.trim().trim_end_matches('/').to_string()
+        };
         Self {
             provider: normalized,
             model,
             api_key: api_key.trim().to_string(),
+            base_url,
             limits: provider_limits(provider),
             http: Client::new(),
         }
@@ -407,11 +422,11 @@ impl EmbeddingsClient {
         Ok(all)
     }
 
-    fn endpoint(&self) -> &'static str {
-        if self.provider == "voyage" {
-            "https://api.voyageai.com/v1/embeddings"
+    fn endpoint(&self) -> String {
+        if self.base_url.ends_with("/embeddings") {
+            self.base_url.clone()
         } else {
-            "https://api.mistral.ai/v1/embeddings"
+            format!("{}/v1/embeddings", self.base_url)
         }
     }
 }
@@ -477,11 +492,16 @@ pub fn embedding_model_for_provider(provider: &str) -> &'static str {
 
 pub fn build_embeddings_status(
     provider: &str,
+    embeddings_model: Option<&str>,
     voyage_api_key: Option<&str>,
     mistral_api_key: Option<&str>,
 ) -> RetrievalStatus {
     let normalized = normalize_embeddings_provider(Some(provider));
-    let model = embedding_model_for_provider(&normalized).to_string();
+    let model = embeddings_model
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+        .unwrap_or_else(|| embedding_model_for_provider(&normalized).to_string());
     let has_key = if normalized == "voyage" {
         has_text(voyage_api_key)
     } else {
@@ -526,6 +546,7 @@ where
 {
     let status = build_embeddings_status(
         &config.embeddings_provider,
+        Some(&config.embeddings_model),
         config.voyage_api_key.as_deref(),
         config.mistral_api_key.as_deref(),
     );
@@ -541,7 +562,12 @@ where
     } else {
         config.mistral_api_key.as_deref().unwrap_or_default()
     };
-    let client = EmbeddingsClient::new(&status.provider, api_key);
+    let client = EmbeddingsClient::new(
+        &status.provider,
+        api_key,
+        &status.model,
+        &config.embeddings_base_url,
+    );
     let retry_policy = EmbeddingsRetryPolicy::from_config(config);
     build_retrieval_packet_with_backend(
         &config.workspace,
