@@ -294,6 +294,8 @@ class EmbeddingsClient:
     def _endpoint(self) -> str:
         if self.base_url.endswith("/embeddings"):
             return self.base_url
+        if self.base_url.endswith("/v1"):
+            return f"{self.base_url}/embeddings"
         return f"{self.base_url}/v1/embeddings"
 
     def _embed(self, texts: list[str], *, input_type: str) -> list[list[float]]:
