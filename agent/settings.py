@@ -300,6 +300,7 @@ def _upsert_profile(
     *,
     profile_id: str | None = None,
     make_active: bool = False,
+    replace: bool = False,
 ) -> str:
     normalized = profile.normalized(modality)
     selected_id = _slugify_profile_id(
@@ -307,7 +308,8 @@ def _upsert_profile(
         "" if profile_id else normalized.model,
     )
     pools.setdefault(modality, {})
-    pools[modality].setdefault(selected_id, normalized)
+    if replace or selected_id not in pools[modality]:
+        pools[modality][selected_id] = normalized
     if make_active or not active.get(modality):
         active[modality] = selected_id
     return selected_id
@@ -346,6 +348,7 @@ def _migrate_legacy_profiles(
             ),
             profile_id=f"{provider}-default",
             make_active=False,
+            replace=True,
         )
 
     if settings.default_model:
@@ -363,6 +366,7 @@ def _migrate_legacy_profiles(
             ),
             profile_id="workspace-default",
             make_active=not active.get("llm"),
+            replace=True,
         )
 
     if settings.embeddings_provider:
@@ -381,6 +385,7 @@ def _migrate_legacy_profiles(
             ),
             profile_id=f"{provider}-default",
             make_active=not active.get("embedding"),
+            replace=True,
         )
 
     stt_options = {
@@ -415,6 +420,7 @@ def _migrate_legacy_profiles(
             ),
             profile_id="mistral-voxtral",
             make_active=not active.get("stt"),
+            replace=True,
         )
 
 

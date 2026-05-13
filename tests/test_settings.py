@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from argparse import Namespace
 from pathlib import Path
+from unittest.mock import patch
 
-from agent.__main__ import _resolve_provider
+from agent.__main__ import _apply_active_profiles_to_config, _resolve_provider
 from agent.builder import _validate_model_provider, infer_provider_for_model
+from agent.config import AgentConfig
 from agent.credentials import CredentialBundle
 from agent.model import ModelError
 from agent.settings import (
@@ -212,6 +215,53 @@ class SettingsTests(unittest.TestCase):
         ).normalized("llm")
 
         self.assertEqual(profile.provider, "openai")
+
+    def test_embedding_env_overrides_skip_active_profile(self) -> None:
+        settings = PersistentSettings(
+            active_profiles={"embedding": "mistral-embed"},
+            profiles={
+                "embedding": {
+                    "mistral-embed": ProviderProfile(
+                        provider="mistral",
+                        model="mistral-embed",
+                        base_url="https://api.mistral.ai",
+                    )
+                }
+            },
+        ).normalized()
+        args = Namespace(provider=None, model=None, embeddings_provider=None)
+
+        for env_key in ("OPENPLANTER_EMBEDDINGS_MODEL", "OPENPLANTER_EMBEDDINGS_BASE_URL"):
+            with self.subTest(env_key=env_key):
+                cfg = AgentConfig(
+                    workspace=Path("/tmp/workspace"),
+                    embeddings_provider="voyage",
+                    embeddings_model="env-embed",
+                    embeddings_base_url="https://embeddings.example.test",
+                )
+                with patch.dict("os.environ", {env_key: "1"}, clear=True):
+                    _apply_active_profiles_to_config(cfg, settings, args)
+
+                self.assertIsNone(cfg.embedding_profile_id)
+                self.assertEqual(cfg.embeddings_provider, "voyage")
+                self.assertEqual(cfg.embeddings_model, "env-embed")
+                self.assertEqual(cfg.embeddings_base_url, "https://embeddings.example.test")
+
+    def test_legacy_profile_migration_refreshes_changed_defaults(self) -> None:
+        settings = PersistentSettings(default_model_openai="azure-foundry/gpt-5.5").normalized()
+        self.assertEqual(
+            settings.profiles["llm"]["openai-default"].model,
+            "azure-foundry/gpt-5.5",
+        )
+
+        settings.default_model_openai = "azure-foundry/gpt-5.6"
+        refreshed = settings.normalized()
+
+        self.assertEqual(
+            refreshed.profiles["llm"]["openai-default"].model,
+            "azure-foundry/gpt-5.6",
+        )
+        self.assertEqual(refreshed.default_model_for_provider("openai"), "azure-foundry/gpt-5.6")
 
     def test_normalize_reasoning_effort(self) -> None:
         self.assertEqual(normalize_reasoning_effort("LOW"), "low")
