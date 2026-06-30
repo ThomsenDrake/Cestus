@@ -1,6 +1,6 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FileBlobStore } from "../src/blob-store.js";
 
@@ -22,6 +22,8 @@ describe("FileBlobStore", () => {
 
     expect(saved.contentHash).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(saved.sizeBytes).toBe(13);
+    const digest = saved.contentHash.replace("sha256:", "");
+    expect(relative(dir, saved.path)).toBe(join("sha256", digest.slice(0, 2), digest));
     expect(loaded.toString("utf8")).toBe("public record");
   });
 
@@ -40,5 +42,17 @@ describe("FileBlobStore", () => {
     writeFileSync(saved.path, Buffer.from("tampered public record"));
 
     await expect(store.get(saved.contentHash)).rejects.toThrow(/hash mismatch/i);
+  });
+
+  it.each([
+    ["wrong prefix", "sha-256:9f2c8b7a5f4e3d2c1b0a99887766554433221100ffeeddccbbaa998877665544"],
+    ["short hash", "sha256:9f2c8b7a"],
+    ["uppercase hash", "sha256:9F2C8B7A5F4E3D2C1B0A99887766554433221100FFEEDDCCBBAA998877665544"],
+    ["non-hex hash", "sha256:zf2c8b7a5f4e3d2c1b0a99887766554433221100ffeeddccbbaa998877665544"],
+    ["traversal-shaped hash", "sha256:../../../../etc/passwd"]
+  ])("rejects malformed content hash with %s", async (_label, contentHash) => {
+    const store = new FileBlobStore(dir);
+
+    await expect(store.get(contentHash as `sha256:${string}`)).rejects.toThrow("Invalid blob content hash");
   });
 });

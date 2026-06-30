@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+const contentHashPattern = /^sha256:[a-f0-9]{64}$/;
+
 export interface StoredBlob {
   contentHash: `sha256:${string}`;
   sizeBytes: number;
@@ -31,6 +33,10 @@ export class FileBlobStore {
   }
 
   async get(contentHash: `sha256:${string}`): Promise<Buffer> {
+    if (!contentHashPattern.test(contentHash)) {
+      throw new Error("Invalid blob content hash");
+    }
+
     const digest = contentHash.replace("sha256:", "");
     const path = join(this.rootDir, "sha256", digest.slice(0, 2), digest);
     const content = readFileSync(path);
