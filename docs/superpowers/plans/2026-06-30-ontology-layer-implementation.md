@@ -2613,7 +2613,7 @@ Observed command evidence:
 ```text
 typecheck passed
 Test Files  11 passed (11)
-Tests  50 passed (50)
+Tests  55 passed (55)
 tests passed
 factory-readiness passed
 ```
