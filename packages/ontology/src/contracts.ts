@@ -4,7 +4,7 @@ export const actorRefSchema = z.object({
   id: z.string().min(3),
   kind: z.enum(["human", "extractor", "system"]),
   label: z.string().min(1)
-});
+}).strict();
 
 export const eventContextSchema = z.object({
   actor: actorRefSchema,
@@ -13,7 +13,7 @@ export const eventContextSchema = z.object({
   correlationId: z.string().min(3),
   coreVersion: z.string().min(1),
   packVersions: z.record(z.string(), z.string())
-});
+}).strict();
 
 export const sourceRefSchema = z.object({
   kind: z.enum(["file", "url", "dataset", "message", "annotation", "manual"]),
@@ -222,7 +222,7 @@ const knowledgeEventBaseSchema = z.object({
   sequence: z.number().int().positive(),
   context: eventContextSchema,
   payload: z.record(z.string(), z.unknown())
-});
+}).strict();
 
 function serializableIssue(issue: z.ZodIssue): Record<string, unknown> {
   return JSON.parse(JSON.stringify(issue)) as Record<string, unknown>;

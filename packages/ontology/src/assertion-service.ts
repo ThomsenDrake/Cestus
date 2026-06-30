@@ -30,6 +30,11 @@ export class AssertionService {
   constructor(private readonly dependencies: AssertionServiceDependencies) {}
 
   async propose(input: AssertionProposalInput): Promise<KnowledgeEventOf<"assertion.proposed">> {
+    const evidence = await this.findIngestedEvidence(input.evidenceId);
+    if (!evidence) {
+      throw new Error(`Cannot propose assertion ${input.assertionId} without evidence ${input.evidenceId}`);
+    }
+
     const payload: AppendableKnowledgeEvent<"assertion.proposed">["payload"] = {
       assertionId: input.assertionId,
       evidenceId: input.evidenceId,
@@ -46,6 +51,7 @@ export class AssertionService {
       context: {
         actor: input.actor,
         occurredAt: new Date().toISOString(),
+        causationId: evidence.id,
         correlationId: `corr_${input.assertionId}`,
         coreVersion: "0.1.0",
         packVersions: { core: "0.1.0" }
@@ -104,5 +110,13 @@ export class AssertionService {
 
   private streamId(assertionId: string): string {
     return `assertion_${assertionId}`;
+  }
+
+  private async findIngestedEvidence(evidenceId: string): Promise<KnowledgeEventOf<"evidence.ingested"> | undefined> {
+    const streamEvents = await this.dependencies.ledger.readStream(`evidence_${evidenceId}`);
+    return streamEvents.find(
+      (event): event is KnowledgeEventOf<"evidence.ingested"> =>
+        event.type === "evidence.ingested" && event.payload.evidenceId === evidenceId
+    );
   }
 }

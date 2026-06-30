@@ -71,6 +71,41 @@ describe("event contracts", () => {
     }
   });
 
+  it("rejects uncontracted event envelope and context fields", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_000000000000000000000006",
+      type: "evidence.ingested",
+      version: 1,
+      streamId: "evidence_ev_006",
+      sequence: 1,
+      context: {
+        ...context,
+        actor: {
+          ...context.actor,
+          uncontractedActorField: true
+        },
+        uncontractedContextField: true
+      },
+      payload: {
+        evidenceId: "ev_006",
+        source: { kind: "file", label: "invoice.pdf" },
+        contentHash: "sha256:9f2c8b7a5f4e3d2c1b0a99887766554433221100ffeeddccbbaa998877665544",
+        mediaType: "application/pdf",
+        sizeBytes: 128
+      },
+      uncontractedEventField: true
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join(".")).sort()).toEqual([
+        "",
+        "context",
+        "context.actor"
+      ]);
+    }
+  });
+
   it("rejects an assertion without provenance", () => {
     const result = validateKnowledgeEvent({
       id: "evt_000000000000000000000002",

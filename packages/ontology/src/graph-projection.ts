@@ -34,13 +34,15 @@ export interface GraphProjection {
 }
 
 export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphProjection {
+  const proposedAssertions = new Map<string, ProjectedAssertion>();
   const assertions = new Map<string, ProjectedAssertion>();
   const entities = new Map<string, ProjectedEntity>();
+  const entityCandidates: ProjectedEntity[] = [];
 
   for (const event of events) {
     switch (event.type) {
       case "assertion.proposed":
-        assertions.set(event.payload.assertionId, {
+        proposedAssertions.set(event.payload.assertionId, {
           assertionId: event.payload.assertionId,
           reviewState: "proposed",
           evidenceId: event.payload.evidenceId,
@@ -52,16 +54,19 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
         break;
 
       case "assertion.accepted": {
-        const assertion = assertions.get(event.payload.assertionId);
+        const assertion = proposedAssertions.get(event.payload.assertionId);
         if (assertion) {
-          assertion.reviewState = "accepted";
-          assertion.acceptedByEventId = event.id;
+          assertions.set(event.payload.assertionId, {
+            ...assertion,
+            reviewState: "accepted",
+            acceptedByEventId: event.id
+          });
         }
         break;
       }
 
       case "entity.resolved":
-        entities.set(event.payload.entityId, {
+        entityCandidates.push({
           entityId: event.payload.entityId,
           canonicalLabel: event.payload.canonicalLabel,
           entityType: event.payload.entityType,
@@ -71,6 +76,15 @@ export function buildGraphProjection(events: readonly KnowledgeEvent[]): GraphPr
 
       default:
         break;
+    }
+  }
+
+  for (const entity of entityCandidates) {
+    const supportedByAcceptedAssertions = entity.assertionIds.every(
+      (assertionId) => assertions.get(assertionId)?.reviewState === "accepted"
+    );
+    if (supportedByAcceptedAssertions) {
+      entities.set(entity.entityId, entity);
     }
   }
 

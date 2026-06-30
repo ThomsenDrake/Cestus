@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -34,6 +35,17 @@ describe("FileBlobStore", () => {
 
     expect(second.contentHash).toBe(first.contentHash);
     expect(second.path).toBe(first.path);
+  });
+
+  it("rejects an existing blob path when the stored bytes do not match the requested hash", async () => {
+    const store = new FileBlobStore(dir);
+    const content = Buffer.from("verified body");
+    const digest = createHash("sha256").update(content).digest("hex");
+    const existingDir = join(dir, "sha256", digest.slice(0, 2));
+    mkdirSync(existingDir, { recursive: true });
+    writeFileSync(join(existingDir, digest), Buffer.from("corrupt body"));
+
+    await expect(store.put(content)).rejects.toThrow(/hash mismatch/i);
   });
 
   it("rejects corrupted content on readback", async () => {

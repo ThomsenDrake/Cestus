@@ -23,14 +23,16 @@ export function exportGraphToJsonLd(graph: GraphProjection): JsonLdDocument {
         "cestus:label": entity.canonicalLabel,
         "cestus:supportedBy": [...entity.assertionIds]
       })),
-      ...[...graph.assertions.values()].map((assertion) => ({
-        "@id": assertion.assertionId,
-        "@type": "cestus:Assertion",
-        "cestus:predicate": assertion.predicate,
-        "cestus:object": assertion.object,
-        "cestus:evidence": assertion.evidenceId,
-        "cestus:reviewState": assertion.reviewState
-      }))
+      ...[...graph.assertions.values()]
+        .filter((assertion) => assertion.reviewState === "accepted")
+        .map((assertion) => ({
+          "@id": assertion.assertionId,
+          "@type": "cestus:Assertion",
+          "cestus:predicate": assertion.predicate,
+          "cestus:object": assertion.object,
+          "cestus:evidence": assertion.evidenceId,
+          "cestus:reviewState": assertion.reviewState
+        }))
     ]
   };
 }

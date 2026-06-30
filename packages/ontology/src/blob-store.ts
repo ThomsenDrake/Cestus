@@ -27,6 +27,11 @@ export class FileBlobStore {
       if (nodeError.code !== "EEXIST") {
         throw error;
       }
+      const existingContent = readFileSync(path);
+      const existingDigest = createHash("sha256").update(existingContent).digest("hex");
+      if (existingDigest !== digest) {
+        throw new Error(`Existing blob hash mismatch for ${contentHash}`);
+      }
     }
 
     return { contentHash, sizeBytes: content.byteLength, path };
