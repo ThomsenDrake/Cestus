@@ -19,7 +19,7 @@ export const sourceRefSchema = z.object({
   kind: z.enum(["file", "url", "dataset", "message", "annotation", "manual"]),
   label: z.string().min(1),
   uri: z.string().optional()
-});
+}).strict();
 
 const evidenceIngestedPayloadSchema = z.object({
   evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/),
@@ -27,7 +27,7 @@ const evidenceIngestedPayloadSchema = z.object({
   contentHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   mediaType: z.string().min(1),
   sizeBytes: z.number().int().nonnegative()
-});
+}).strict();
 
 const assertionProposedPayloadSchema = z.object({
   assertionId: z.string().regex(/^as_[a-zA-Z0-9_-]+$/),
@@ -37,20 +37,20 @@ const assertionProposedPayloadSchema = z.object({
   object: z.union([z.string(), z.number(), z.boolean(), z.null()]),
   confidence: z.number().min(0).max(1),
   reviewState: z.literal("proposed")
-});
+}).strict();
 
 const assertionAcceptedPayloadSchema = z.object({
   assertionId: z.string().regex(/^as_[a-zA-Z0-9_-]+$/),
   acceptedBy: z.string().min(3),
   rationale: z.string().min(1)
-});
+}).strict();
 
 const entityResolvedPayloadSchema = z.object({
   entityId: z.string().regex(/^ent_[a-zA-Z0-9_-]+$/),
   assertionIds: z.array(z.string().regex(/^as_[a-zA-Z0-9_-]+$/)).min(1),
   canonicalLabel: z.string().min(1),
   entityType: z.string().min(1)
-});
+}).strict();
 
 const relationshipAcceptedPayloadSchema = z.object({
   relationshipId: z.string().regex(/^rel_[a-zA-Z0-9_-]+$/),
@@ -58,13 +58,13 @@ const relationshipAcceptedPayloadSchema = z.object({
   toEntityId: z.string().regex(/^ent_[a-zA-Z0-9_-]+$/),
   relationshipType: z.string().min(1),
   assertionIds: z.array(z.string().regex(/^as_[a-zA-Z0-9_-]+$/)).min(1)
-});
+}).strict();
 
 const claimCreatedPayloadSchema = z.object({
   claimId: z.string().regex(/^cl_[a-zA-Z0-9_-]+$/),
   investigationId: z.string().regex(/^inv_[a-zA-Z0-9_-]+$/),
   statement: z.string().min(1)
-});
+}).strict();
 
 const diagnosticRecordedPayloadSchema = z.object({
   diagnosticId: z.string().regex(/^diag_[a-zA-Z0-9_-]+$/),
@@ -75,20 +75,20 @@ const diagnosticRecordedPayloadSchema = z.object({
     contract: z.string().min(1),
     violatedPath: z.string().min(1),
     allowedActions: z.array(z.string().min(1)).min(1)
-  })
-});
+  }).strict()
+}).strict();
 
 const ontologyPackInstalledPayloadSchema = z.object({
   packName: z.string().min(1),
   packVersion: z.string().min(1),
   scope: z.enum(["core", "org", "investigation"])
-});
+}).strict();
 
 const projectionCheckpointedPayloadSchema = z.object({
   projectionName: z.string().min(1),
   highWaterMark: z.number().int().nonnegative(),
   status: z.enum(["ready", "rebuilding", "failed"])
-});
+}).strict();
 
 export const payloadSchemas = {
   "evidence.ingested": evidenceIngestedPayloadSchema,
@@ -114,9 +114,18 @@ export interface EventContract {
   description: string;
   agentGuidance: string;
   invariants: string[];
+  examples?: unknown[];
+  counterexamples?: unknown[];
+  allowedTransitions?: string[];
+  migrations?: string[];
+  queryExamples?: string[];
 }
 
-export const eventContracts: Record<KnowledgeEventType, EventContract> = {
+type EventContractMap = {
+  [Type in KnowledgeEventType]: EventContract & { type: Type };
+};
+
+export const eventContracts = {
   "evidence.ingested": {
     type: "evidence.ingested",
     version: 1,
@@ -180,7 +189,7 @@ export const eventContracts: Record<KnowledgeEventType, EventContract> = {
     agentGuidance: "Use to make projection state inspectable and rebuildable from the ledger.",
     invariants: ["highWaterMark cannot be negative"]
   }
-};
+} satisfies EventContractMap;
 
 interface KnowledgeEventBase<Type extends KnowledgeEventType> {
   id: string;
@@ -196,6 +205,11 @@ export type KnowledgeEvent = {
   [Type in KnowledgeEventType]: KnowledgeEventBase<Type>;
 }[KnowledgeEventType];
 
+export type KnowledgeEventOf<Type extends KnowledgeEventType> = Extract<KnowledgeEvent, { type: Type }>;
+
+export type AppendableKnowledgeEvent<Type extends KnowledgeEventType = KnowledgeEventType> =
+  Type extends KnowledgeEventType ? Omit<KnowledgeEventOf<Type>, "id" | "sequence"> : never;
+
 const knowledgeEventBaseSchema = z.object({
   id: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
   type: z.custom<KnowledgeEventType>((value) => typeof value === "string" && value in payloadSchemas),
@@ -205,6 +219,19 @@ const knowledgeEventBaseSchema = z.object({
   context: eventContextSchema,
   payload: z.record(z.string(), z.unknown())
 });
+
+function payloadIssueParams(issue: z.ZodIssue): Record<string, unknown> {
+  const params: Record<string, unknown> = { originalCode: issue.code };
+  const issueDetails = issue as unknown as Record<string, unknown>;
+
+  for (const key of ["expected", "minimum", "maximum", "inclusive", "origin", "format", "pattern", "keys"] as const) {
+    if (key in issueDetails) {
+      params[key] = issueDetails[key];
+    }
+  }
+
+  return params;
+}
 
 export const knowledgeEventSchema = knowledgeEventBaseSchema
   .superRefine((event, ctx) => {
@@ -216,7 +243,8 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
         ctx.addIssue({
           code: "custom",
           message: issue.message,
-          path: ["payload", ...issue.path]
+          path: ["payload", ...issue.path],
+          params: payloadIssueParams(issue)
         });
       }
     }
