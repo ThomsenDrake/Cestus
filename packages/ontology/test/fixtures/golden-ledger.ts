@@ -29,7 +29,7 @@ export const goldenLedgerEvents: KnowledgeEvent[] = [
     type: "assertion.proposed",
     version: 1,
     streamId: "assertion_as_agency_name",
-    sequence: 2,
+    sequence: 1,
     context: {
       ...baseContext,
       actor: { id: "extractor_pdf", kind: "extractor", label: "PDF text extractor" },
@@ -49,7 +49,7 @@ export const goldenLedgerEvents: KnowledgeEvent[] = [
     type: "assertion.accepted",
     version: 1,
     streamId: "assertion_as_agency_name",
-    sequence: 3,
+    sequence: 2,
     context: {
       ...baseContext,
       actor: { id: "human_reviewer", kind: "human", label: "Human reviewer" },
@@ -66,7 +66,7 @@ export const goldenLedgerEvents: KnowledgeEvent[] = [
     type: "entity.resolved",
     version: 1,
     streamId: "entity_ent_example_agency",
-    sequence: 4,
+    sequence: 1,
     context: {
       ...baseContext,
       actor: { id: "human_reviewer", kind: "human", label: "Human reviewer" },
@@ -76,7 +76,7 @@ export const goldenLedgerEvents: KnowledgeEvent[] = [
       entityId: "ent_example_agency",
       assertionIds: ["as_agency_name"],
       canonicalLabel: "Example Agency",
-      entityType: "agency"
+      entityType: "GovernmentAgency"
     }
   }
 ];

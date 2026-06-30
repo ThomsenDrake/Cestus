@@ -22,7 +22,7 @@ describe("graph projection", () => {
     expect(projection.entities.get("ent_example_agency")).toEqual({
       entityId: "ent_example_agency",
       canonicalLabel: "Example Agency",
-      entityType: "agency",
+      entityType: "GovernmentAgency",
       assertionIds: ["as_agency_name"]
     });
 
