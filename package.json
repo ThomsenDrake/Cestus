@@ -1,0 +1,20 @@
+{
+  "name": "cestus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run && echo 'tests passed'",
+    "typecheck": "tsc --noEmit && echo 'typecheck passed'",
+    "factory:check": "node scripts/check-agent-readiness.mjs",
+    "verify": "npm run typecheck && npm test && npm run factory:check"
+  },
+  "dependencies": {
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  }
+}
