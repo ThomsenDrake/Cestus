@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "vitest run && echo 'tests passed'",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit && echo 'typecheck passed'",
     "factory:check": "node scripts/check-agent-readiness.mjs",
-    "verify": "npm run typecheck && npm test && npm run factory:check"
+    "verify": "npm run typecheck && npm test && echo 'tests passed' && npm run factory:check"
   },
   "dependencies": {
     "zod": "^4.2.0"
