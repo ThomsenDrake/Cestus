@@ -5,3 +5,4 @@ export * from "./sqlite-event-ledger.js";
 export * from "./blob-store.js";
 export * from "./domain-packs.js";
 export * from "./evidence-service.js";
+export * from "./assertion-service.js";
