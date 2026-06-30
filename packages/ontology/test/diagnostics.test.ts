@@ -9,9 +9,9 @@ describe("recordValidationDiagnostic", () => {
 
     const event = await recordValidationDiagnostic(ledger, {
       diagnosticId: "diag_missing_evidence",
-      message: "Accepted assertion requires evidence provenance.",
-      contract: "assertion.accepted",
-      violatedPath: "payload.assertionId",
+      message: "Assertion proposal did not include evidenceId.",
+      contract: "assertion.proposed",
+      violatedPath: "payload.evidenceId",
       actor: systemActor
     });
 
@@ -33,10 +33,10 @@ describe("recordValidationDiagnostic", () => {
         diagnosticId: "diag_missing_evidence",
         severity: "error",
         category: "validation",
-        message: "Accepted assertion requires evidence provenance.",
+        message: "Assertion proposal did not include evidenceId.",
         repairHint: {
-          contract: "assertion.accepted",
-          violatedPath: "payload.assertionId",
+          contract: "assertion.proposed",
+          violatedPath: "payload.evidenceId",
           allowedActions: ["add evidenceId", "reject assertion proposal", "request human review"]
         }
       }

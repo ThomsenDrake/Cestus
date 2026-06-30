@@ -4,23 +4,26 @@ import type { EventLedger } from "./event-ledger.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
 
-export interface ValidationDiagnosticInput {
+export interface MissingEvidenceValidationDiagnosticInput {
   diagnosticId: string;
   message: string;
-  contract: string;
-  violatedPath: string;
+  contract: "assertion.proposed";
+  violatedPath: "payload.evidenceId";
   actor: ActorRef;
 }
 
-const validationDiagnosticAllowedActions = [
+const missingEvidenceValidationAllowedActions = [
   "add evidenceId",
   "reject assertion proposal",
   "request human review"
 ] as const;
 
+/**
+ * Records the narrow validation diagnostic used when an assertion proposal lacks evidence provenance.
+ */
 export async function recordValidationDiagnostic(
   ledger: EventLedger,
-  input: ValidationDiagnosticInput
+  input: MissingEvidenceValidationDiagnosticInput
 ): Promise<KnowledgeEventOf<"diagnostic.recorded">> {
   const event: AppendableKnowledgeEvent<"diagnostic.recorded"> = {
     type: "diagnostic.recorded",
@@ -41,7 +44,7 @@ export async function recordValidationDiagnostic(
       repairHint: {
         contract: input.contract,
         violatedPath: input.violatedPath,
-        allowedActions: [...validationDiagnosticAllowedActions]
+        allowedActions: [...missingEvidenceValidationAllowedActions]
       }
     }
   };
