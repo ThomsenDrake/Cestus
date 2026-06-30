@@ -123,10 +123,10 @@ export class SQLiteEventLedger implements EventLedger {
 
   private nextSequence(streamId: string): number {
     const row = this.db
-      .prepare("SELECT COUNT(*) AS count FROM ontology_events WHERE stream_id = ?")
-      .get(streamId) as { count: number | bigint } | undefined;
+      .prepare("SELECT COALESCE(MAX(stream_sequence), 0) + 1 AS next_sequence FROM ontology_events WHERE stream_id = ?")
+      .get(streamId) as { next_sequence: number | bigint } | undefined;
 
-    return Number(row?.count ?? 0) + 1;
+    return Number(row?.next_sequence ?? 1);
   }
 
   private eventFromRow(row: StoredEventRow): KnowledgeEvent {
