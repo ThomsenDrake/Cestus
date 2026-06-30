@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
 const requiredFiles = [
@@ -11,26 +12,75 @@ const requiredFiles = [
   "docs/superpowers/plans/2026-06-30-ontology-layer-implementation.md"
 ];
 
-const forbiddenWords = [
-  "T" + "BD",
-  "TO" + "DO",
-  "FIX" + "ME",
-  "implement " + "later",
-  "fill in " + "details",
-  "add " + "appropriate",
-  "similar to " + "Task"
+const allowToken = "agent-readiness-allow";
+const unfinishedMarkerPattern = new RegExp(
+  [
+    `\\b${"TO" + "DO"}\\b`,
+    `\\b${"FIX" + "ME"}\\b`,
+    `\\b${"T" + "BD"}\\b`,
+    `${"implement"}\\s+${"later"}`,
+    `${"fill"}\\s+${"in"}\\s+${"details"}`,
+    `${"add"}\\s+${"appropriate"}`,
+    `${"similar"}\\s+${"to"}\\s+${"Task"}`
+  ].join("|"),
+  "i"
+);
+
+const excludedExactPaths = new Set(["package-lock.json"]);
+const excludedPrefixes = [
+  ".git/",
+  "coverage/",
+  "dist/",
+  "node_modules/"
 ];
-const forbidden = new RegExp(`\\b(${forbiddenWords.join("|")})\\b`, "i");
+const excludedExtensions = new Set([
+  ".7z",
+  ".avif",
+  ".bmp",
+  ".bz2",
+  ".db",
+  ".gif",
+  ".gz",
+  ".ico",
+  ".jpeg",
+  ".jpg",
+  ".pdf",
+  ".png",
+  ".rar",
+  ".sqlite",
+  ".svg",
+  ".tar",
+  ".tgz",
+  ".tif",
+  ".tiff",
+  ".webp",
+  ".xz",
+  ".zip"
+]);
 const failures = [];
+const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 
 for (const file of requiredFiles) {
   if (!existsSync(file)) {
     failures.push(`missing ${file}`);
+  }
+}
+
+for (const file of trackedTextFiles()) {
+  const text = readTrackedUtf8File(file);
+  if (text === undefined) {
     continue;
   }
-  const text = readFileSync(file, "utf8");
-  if (forbidden.test(text)) {
-    failures.push(`forbidden unfinished marker in ${file}`);
+
+  const lines = text.split(/\r?\n/);
+  for (const [index, line] of lines.entries()) {
+    if (line.includes(allowToken)) {
+      continue;
+    }
+    const match = line.match(unfinishedMarkerPattern);
+    if (match) {
+      failures.push(`${file}:${index + 1} unfinished marker "${match[0]}"`);
+    }
   }
 }
 
@@ -40,3 +90,33 @@ if (failures.length > 0) {
 }
 
 console.log("factory-readiness passed");
+
+function trackedTextFiles() {
+  return execFileSync("git", ["ls-files"], { encoding: "utf8" })
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .filter((file) => !isExcludedPath(file));
+}
+
+function isExcludedPath(file) {
+  if (excludedExactPaths.has(file)) {
+    return true;
+  }
+  if (excludedPrefixes.some((prefix) => file.startsWith(prefix))) {
+    return true;
+  }
+  const lowerFile = file.toLowerCase();
+  return [...excludedExtensions].some((extension) => lowerFile.endsWith(extension));
+}
+
+function readTrackedUtf8File(file) {
+  try {
+    const bytes = readFileSync(file);
+    if (bytes.includes(0)) {
+      return undefined;
+    }
+    return utf8Decoder.decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
