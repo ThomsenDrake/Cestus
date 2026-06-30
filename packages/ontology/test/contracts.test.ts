@@ -94,6 +94,23 @@ describe("event contracts", () => {
     }
   });
 
+  it("returns validation failure for inherited event type names", () => {
+    let result: ReturnType<typeof validateKnowledgeEvent> | undefined;
+
+    expect(() => {
+      result = validateKnowledgeEvent({
+        id: "evt_000000000000000000000005",
+        type: "toString",
+        version: 1,
+        streamId: "event_to_string",
+        sequence: 1,
+        context,
+        payload: {}
+      });
+    }).not.toThrow();
+    expect(result?.success).toBe(false);
+  });
+
   it("preserves payload validation details for diagnostics", () => {
     const result = validateKnowledgeEvent({
       id: "evt_000000000000000000000004",
@@ -117,7 +134,14 @@ describe("event contracts", () => {
       const issue = result.error.issues.find((candidate) => candidate.path.join(".") === "payload.confidence");
       expect(issue).toMatchObject({
         code: "custom",
-        params: { originalCode: "too_big" }
+        params: {
+          originalCode: "too_big",
+          originalIssue: {
+            code: "too_big",
+            maximum: 1,
+            path: ["confidence"]
+          }
+        }
       });
     }
   });

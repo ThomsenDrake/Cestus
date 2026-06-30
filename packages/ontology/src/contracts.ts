@@ -210,9 +210,13 @@ export type KnowledgeEventOf<Type extends KnowledgeEventType> = Extract<Knowledg
 export type AppendableKnowledgeEvent<Type extends KnowledgeEventType = KnowledgeEventType> =
   Type extends KnowledgeEventType ? Omit<KnowledgeEventOf<Type>, "id" | "sequence"> : never;
 
+function isKnowledgeEventType(value: unknown): value is KnowledgeEventType {
+  return typeof value === "string" && Object.hasOwn(payloadSchemas, value);
+}
+
 const knowledgeEventBaseSchema = z.object({
   id: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
-  type: z.custom<KnowledgeEventType>((value) => typeof value === "string" && value in payloadSchemas),
+  type: z.custom<KnowledgeEventType>(isKnowledgeEventType),
   version: z.literal(1),
   streamId: z.string().min(3),
   sequence: z.number().int().positive(),
@@ -220,8 +224,16 @@ const knowledgeEventBaseSchema = z.object({
   payload: z.record(z.string(), z.unknown())
 });
 
+function serializableIssue(issue: z.ZodIssue): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(issue)) as Record<string, unknown>;
+}
+
 function payloadIssueParams(issue: z.ZodIssue): Record<string, unknown> {
-  const params: Record<string, unknown> = { originalCode: issue.code };
+  const originalIssue = serializableIssue(issue);
+  const params: Record<string, unknown> = {
+    originalCode: issue.code,
+    originalIssue
+  };
   const issueDetails = issue as unknown as Record<string, unknown>;
 
   for (const key of ["expected", "minimum", "maximum", "inclusive", "origin", "format", "pattern", "keys"] as const) {
