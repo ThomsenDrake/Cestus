@@ -2590,7 +2590,7 @@ git commit -m "ci: add ontology verification gate"
 - Modify: `docs/agentic/software-factory.md`
 - Modify: `docs/superpowers/plans/2026-06-30-ontology-layer-implementation.md`
 
-- [ ] **Step 1: Run the final verification command**
+- [x] **Step 1: Run the final verification command**
 
 Run:
 
@@ -2606,7 +2606,19 @@ tests passed
 factory-readiness passed
 ```
 
-- [ ] **Step 2: Perform reviewer pass**
+Recorded 2026-06-30 in worktree `/home/drake/Projects/Cestus/.worktrees/ontology-layer-factory` on branch `codex/ontology-layer-factory`.
+
+Observed command evidence:
+
+```text
+typecheck passed
+Test Files  11 passed (11)
+Tests  50 passed (50)
+tests passed
+factory-readiness passed
+```
+
+- [x] **Step 2: Perform reviewer pass**
 
 Use `docs/agentic/review-template.md` and verify:
 
@@ -2619,7 +2631,21 @@ The JSON-LD export is derived from the projection, not used as source of truth.
 Factory readiness passes without forbidden unfinished markers.
 ```
 
-- [ ] **Step 3: Commit final review adjustments**
+Review decision: approved.
+
+Findings: none recorded during the final readiness pass.
+
+Verification evidence:
+
+- Zod contract coverage is in `packages/ontology/src/contracts.ts` and `packages/ontology/test/contracts.test.ts`.
+- Accepted assertion provenance is covered by `packages/ontology/src/assertion-service.ts` and `packages/ontology/test/assertion-service.test.ts`.
+- Ledger append, replay, concurrency, and immutable snapshot behavior are covered by `packages/ontology/test/ledger-contract.test-helper.ts`.
+- SQLite persistence and stream sequence uniqueness are covered by `packages/ontology/src/sqlite-event-ledger.ts` and `packages/ontology/test/sqlite-event-ledger.test.ts`.
+- Projection rebuild is covered by `packages/ontology/test/fixtures/golden-ledger.ts` and `packages/ontology/test/graph-projection.test.ts`.
+- JSON-LD export is covered by `packages/ontology/src/jsonld-export.ts` and `packages/ontology/test/jsonld-export.test.ts`, which exports from a graph projection built from ledger events.
+- Factory readiness is covered by `scripts/check-agent-readiness.mjs` through `npm run verify`.
+
+- [x] **Step 3: Commit final review adjustments**
 
 ```bash
 git add package.json docs/agentic/software-factory.md docs/superpowers/plans/2026-06-30-ontology-layer-implementation.md

@@ -35,3 +35,34 @@ Concurrent workers claim tasks in repo-local files so the assignment survives ch
 ## Stop Conditions
 
 Stop when a dependency is unavailable, a verifier fails after two focused repair attempts, a schema choice conflicts with the ontology spec, a storage change risks data loss, or a task needs credentials or unavailable external services.
+
+## Ontology Layer Final Readiness
+
+The ontology foundation reached factory readiness on 2026-06-30 in worktree
+`/home/drake/Projects/Cestus/.worktrees/ontology-layer-factory` on branch
+`codex/ontology-layer-factory`.
+
+Final gate command:
+
+```bash
+npm run verify
+```
+
+Observed command evidence:
+
+```text
+typecheck passed
+Test Files  11 passed (11)
+Tests  50 passed (50)
+tests passed
+factory-readiness passed
+```
+
+Reviewer checklist evidence:
+
+- Zod event contracts: `packages/ontology/src/contracts.ts` defines all event payload schemas, `eventContracts`, and `validateKnowledgeEvent`; `packages/ontology/test/contracts.test.ts` verifies guided contracts, strict payload rejection, provenance validation, inherited-name rejection, diagnostic issue details, and payload-correlated append typing.
+- Evidence-backed assertions: `packages/ontology/src/assertion-service.ts` requires `evidenceId` on proposal and accepts only after a proposal exists; `packages/ontology/test/assertion-service.test.ts` verifies proposal provenance, acceptance causation, reused correlation, and rejection without a proposal.
+- Append-only ledger and SQLite durability: `packages/ontology/test/ledger-contract.test-helper.ts` exercises stream sequencing, global order, stream reads, optimistic concurrency, invalid append rollback, and immutable read snapshots for ledger implementations. `packages/ontology/test/sqlite-event-ledger.test.ts` verifies persisted reopen, stored max sequence allocation, read-time validation, and SQLite stream sequence uniqueness at the constraint layer.
+- Rebuildable projection: `packages/ontology/test/fixtures/golden-ledger.ts` is the replayable event fixture; `packages/ontology/test/graph-projection.test.ts` validates all fixture events and rebuilds accepted assertions, resolved entities, and assertion provenance from those ledger events.
+- JSON-LD boundary export: `packages/ontology/src/jsonld-export.ts` exports from the graph projection, and `packages/ontology/test/jsonld-export.test.ts` builds the projection from golden ledger events before exporting accepted graph state with provenance references.
+- Factory gate: `scripts/check-agent-readiness.mjs` is run by `npm run verify` through `npm run factory:check` and reported `factory-readiness passed`, confirming the tracked text files contain no forbidden unfinished markers outside the explicit allow convention.
