@@ -6,3 +6,4 @@ export * from "./blob-store.js";
 export * from "./domain-packs.js";
 export * from "./evidence-service.js";
 export * from "./assertion-service.js";
+export * from "./graph-projection.js";
