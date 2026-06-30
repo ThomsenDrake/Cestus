@@ -1,26 +1,54 @@
 import { z } from "zod";
 
+function textSchema(minLength: number): z.ZodString {
+  return z.string().trim().min(minLength);
+}
+
 const entityTypeSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().min(10)
+  name: textSchema(1),
+  description: textSchema(10)
 }).strict();
 
 const relationshipTypeSchema = z.object({
-  name: z.string().min(1),
-  from: z.string().min(1),
-  to: z.string().min(1),
-  description: z.string().min(10)
+  name: textSchema(1),
+  from: textSchema(1),
+  to: textSchema(1),
+  description: textSchema(10)
 }).strict();
 
 export const domainPackSchema = z.object({
-  name: z.string().min(1),
-  version: z.string().min(1),
+  name: textSchema(1),
+  version: textSchema(1),
   scope: z.enum(["core", "org", "investigation"]),
-  description: z.string().min(20),
-  agentGuide: z.string().min(20),
+  description: textSchema(20),
+  agentGuide: textSchema(20),
   entityTypes: z.array(entityTypeSchema),
   relationshipTypes: z.array(relationshipTypeSchema)
-}).strict();
+}).strict().superRefine((pack, ctx) => {
+  const entityTypeNames = new Set<string>();
+  pack.entityTypes.forEach((entityType, index) => {
+    if (entityTypeNames.has(entityType.name)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["entityTypes", index, "name"],
+        message: `Duplicate entity type name "${entityType.name}".`
+      });
+    }
+    entityTypeNames.add(entityType.name);
+  });
+
+  const relationshipTypeNames = new Set<string>();
+  pack.relationshipTypes.forEach((relationshipType, index) => {
+    if (relationshipTypeNames.has(relationshipType.name)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["relationshipTypes", index, "name"],
+        message: `Duplicate relationship type name "${relationshipType.name}".`
+      });
+    }
+    relationshipTypeNames.add(relationshipType.name);
+  });
+});
 
 export type DomainPack = z.infer<typeof domainPackSchema>;
 
