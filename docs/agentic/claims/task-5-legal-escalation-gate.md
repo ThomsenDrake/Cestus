@@ -29,3 +29,13 @@
 ## Concerns
 
 - None. The gate accepts the current Task 4 `CitedRule[]` shape with `jurisdictionPack` rather than weakening cited-rule metadata, and stalling detection always returns `confirmedStalling: false`.
+
+## Review Fix Evidence
+
+- Review-fix targeted red command: `npm test -- packages/prr/test/escalation-gate.test.ts packages/prr/test/stalling.test.ts`
+- Review-fix targeted red result: failed as expected before validation. Vitest reported `Test Files 1 failed | 1 passed (2)`, `Tests 3 failed | 11 passed (14)`, with malformed evidence IDs and cited-rule fields not throwing.
+- Review-fix targeted green command: `npm test -- packages/prr/test/escalation-gate.test.ts packages/prr/test/stalling.test.ts`
+- Review-fix targeted green result: `Test Files 2 passed (2)`, `Tests 14 passed (14)`.
+- Review-fix full verification command: `npm run verify`
+- Review-fix full verification result: `typecheck passed`; `Test Files 17 passed (17)`; `Tests 128 passed (128)`; `tests passed`; `factory-readiness passed`.
+- Review-fix concerns: none. Legal escalation gate readiness now throws clear errors for malformed `ev_...` evidence IDs, empty cited-rule labels/citations, and empty cited-rule jurisdiction pack refs.

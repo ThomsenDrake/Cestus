@@ -115,6 +115,8 @@ export function evaluateLegalEscalationGate(
   input: LegalEscalationGateInput
 ): LegalEscalationGateResult {
   validatePrrRequestId(input.prrRequestId);
+  validateCitedRules(input.citedRules);
+  validateEvidenceIds(input.evidenceIds);
 
   const missing: string[] = [];
 
@@ -137,6 +139,32 @@ export function evaluateLegalEscalationGate(
 function validatePrrRequestId(prrRequestId: string): void {
   if (!/^prr_[a-zA-Z0-9_-]+$/.test(prrRequestId)) {
     throw new Error(`Invalid prrRequestId: ${prrRequestId}`);
+  }
+}
+
+function validateCitedRules(citedRules: CitedRule[]): void {
+  citedRules.forEach((rule, index) => {
+    validateNonEmptyString(`citedRules[${index}].jurisdictionPack.name`, rule.jurisdictionPack.name);
+    validateNonEmptyString(
+      `citedRules[${index}].jurisdictionPack.version`,
+      rule.jurisdictionPack.version
+    );
+    validateNonEmptyString(`citedRules[${index}].label`, rule.label);
+    validateNonEmptyString(`citedRules[${index}].citation`, rule.citation);
+  });
+}
+
+function validateEvidenceIds(evidenceIds: string[]): void {
+  evidenceIds.forEach((evidenceId, index) => {
+    if (!/^ev_[a-zA-Z0-9_-]+$/.test(evidenceId)) {
+      throw new Error(`Invalid evidenceIds[${index}]: ${evidenceId}`);
+    }
+  });
+}
+
+function validateNonEmptyString(fieldName: string, value: string): void {
+  if (value.length === 0) {
+    throw new Error(`Invalid ${fieldName}: must be non-empty`);
   }
 }
 
