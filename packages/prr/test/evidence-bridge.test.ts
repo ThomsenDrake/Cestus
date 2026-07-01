@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,9 +10,21 @@ const actor = { id: "actor_system", kind: "system" as const, label: "PRR evidenc
 
 function createBridge() {
   const ledger = new InMemoryEventLedger();
-  const blobStore = new FileBlobStore(join(mkdtempSync(join(tmpdir(), "prr-bridge-")), "blobs"));
+  const blobRoot = join(mkdtempSync(join(tmpdir(), "prr-bridge-")), "blobs");
+  const blobStore = new FileBlobStore(blobRoot);
   const bridge = new PrrEvidenceBridge({ ledger, blobStore, actor });
-  return { bridge, blobStore, ledger };
+  return { blobRoot, blobStore, bridge, ledger };
+}
+
+function listFiles(rootDir: string): string[] {
+  if (!existsSync(rootDir)) {
+    return [];
+  }
+
+  return readdirSync(rootDir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(rootDir, entry.name);
+    return entry.isDirectory() ? listFiles(path) : [path];
+  });
 }
 
 describe("PrrEvidenceBridge", () => {
@@ -119,5 +131,55 @@ describe("PrrEvidenceBridge", () => {
       await expect(bridge.ingestProductionArtifact(input), label).rejects.toThrow(error);
       await expect(ledger.readAll(), label).resolves.toEqual([]);
     }
+  });
+
+  it("rejects unsafe production filenames before blob storage or ledger append", async () => {
+    const unsafeFilenames = [
+      "../appeal.pdf",
+      "folder/contracts.pdf",
+      "folder\\contracts.pdf",
+      "contract.pdf#v2",
+      "contract.pdf?x=y",
+      ".",
+      "..",
+      "contract\u0000.pdf",
+      "contract\u001f.pdf",
+      "   "
+    ];
+
+    for (const filename of unsafeFilenames) {
+      const { blobRoot, bridge, ledger } = createBridge();
+
+      await expect(
+        bridge.ingestProductionArtifact({
+          prrRequestId: "prr_req_001",
+          evidenceId: "ev_prr_production_004",
+          filename,
+          mediaType: "application/pdf",
+          content: Buffer.from("contract bytes")
+        }),
+        filename
+      ).rejects.toThrow(/filename/);
+      await expect(ledger.readAll(), filename).resolves.toEqual([]);
+      expect(listFiles(blobRoot), filename).toEqual([]);
+    }
+  });
+
+  it("rejects an invalid actor before blob storage or ledger append", async () => {
+    const ledger = new InMemoryEventLedger();
+    const blobRoot = join(mkdtempSync(join(tmpdir(), "prr-bridge-")), "blobs");
+    const blobStore = new FileBlobStore(blobRoot);
+
+    expect(
+      () =>
+        new PrrEvidenceBridge({
+          ledger,
+          blobStore,
+          actor: { id: "x", kind: "system", label: "" } as never
+        })
+    ).toThrow(/actor/);
+
+    await expect(ledger.readAll()).resolves.toEqual([]);
+    expect(listFiles(blobRoot)).toEqual([]);
   });
 });

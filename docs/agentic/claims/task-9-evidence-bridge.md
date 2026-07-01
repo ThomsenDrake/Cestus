@@ -28,6 +28,13 @@
 - Full verification: `npm run verify` passed: typecheck passed, 22 test files passed with 190 tests, and factory-readiness passed.
 - Commit: export coverage follow-up commit follows this evidence update.
 
+## Code-Quality Follow-Up Evidence
+
+- Red targeted test: `npm test -- packages/prr/test/evidence-bridge.test.ts packages/prr/test/extraction-queue.test.ts` failed with 2 failures proving unsafe filenames could ingest and invalid actors were not rejected at bridge construction.
+- Green targeted test: `npm test -- packages/prr/test/evidence-bridge.test.ts packages/prr/test/extraction-queue.test.ts` passed with 2 test files and 10 tests.
+- Full verification: `npm run verify` passed: typecheck passed, 22 test files passed with 192 tests, and factory-readiness passed.
+- Commit: code-quality follow-up commit follows this evidence update.
+
 ## Self-Review
 
 - Scope stayed within the allowed Task 9 files.
@@ -36,3 +43,4 @@
 - Bridge input validation rejects bad PRR IDs, bad evidence IDs, blank filenames, blank media types, and empty content before ingesting.
 - Extraction queue validates schema, rejects duplicate queue item IDs, and returns clones from `list`.
 - Export follow-up verifies Task 9 bridge and queue contracts through `packages/prr/src/index.ts`.
+- Code-quality follow-up validates bridge actor dependencies before ingest and rejects unsafe production filenames before blob storage or ledger append.

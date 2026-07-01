@@ -27,9 +27,16 @@ const prrRequestIdPattern = /^prr_[a-zA-Z0-9_-]+$/;
 const evidenceIdPattern = /^ev_[a-zA-Z0-9_-]+$/;
 
 export class PrrEvidenceBridge {
+  private readonly actor: ActorRef;
   private readonly evidenceService: EvidenceService;
 
-  constructor(private readonly dependencies: PrrEvidenceBridgeDependencies) {
+  constructor(dependencies: PrrEvidenceBridgeDependencies) {
+    const actor = actorRefSchema.safeParse(dependencies.actor);
+    if (!actor.success) {
+      throw new Error(`Invalid PRR evidence bridge actor: ${actor.error.message}`);
+    }
+
+    this.actor = actor.data;
     this.evidenceService = new EvidenceService({
       ledger: dependencies.ledger,
       blobStore: dependencies.blobStore
@@ -45,7 +52,7 @@ export class PrrEvidenceBridge {
       evidenceId: artifact.evidenceId,
       content: artifact.content,
       mediaType: artifact.mediaType,
-      actor: this.dependencies.actor,
+      actor: this.actor,
       source: {
         kind: "file",
         label: `PRR production ${artifact.filename}`,
@@ -66,6 +73,9 @@ export class PrrEvidenceBridge {
     if (filename.length === 0) {
       throw new Error("Production artifact filename is required");
     }
+    if (this.isUnsafeFilename(filename)) {
+      throw new Error("Production artifact filename is unsafe for PRR source URI");
+    }
 
     const mediaType = input.mediaType.trim();
     if (mediaType.length === 0) {
@@ -81,5 +91,14 @@ export class PrrEvidenceBridge {
       filename,
       mediaType
     };
+  }
+
+  private isUnsafeFilename(filename: string): boolean {
+    return (
+      filename === "." ||
+      filename === ".." ||
+      /[\/\\#?]/.test(filename) ||
+      /[\u0000-\u001f\u007f]/u.test(filename)
+    );
   }
 }
