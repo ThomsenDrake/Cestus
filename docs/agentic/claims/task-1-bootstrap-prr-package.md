@@ -19,4 +19,15 @@ Owned files:
 - `packages/prr/test/smoke.test.ts`
 - `tsconfig.json`
 
-Status: `claimed`
+Status: `ready-for-review`
+
+## Handoff / Verification
+
+- Red targeted command: `npm test -- packages/prr/test/smoke.test.ts`
+- Expected red failure before `packages/prr/src/index.ts` existed: `Failed to resolve import "../src/index.js"`
+- Green targeted command: `npm test -- packages/prr/test/smoke.test.ts`
+- Green result: passed with 1 test.
+- Full verification command: `npm run verify`
+- Full verification result: passed with `typecheck passed`, 12 test files / 56 tests, `tests passed`, and `factory-readiness passed`.
+- Implementation commit: `966da7b`
+- Concerns: none.
