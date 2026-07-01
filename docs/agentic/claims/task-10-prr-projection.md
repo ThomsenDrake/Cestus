@@ -34,6 +34,9 @@
 - Runtime-map review-fix green targeted test: `npm test -- packages/prr/test/projection.test.ts`
   - Result: passed after runtime read-only map wrapper.
   - Key output: `Test Files  1 passed (1)`, `Tests  19 passed (19)`
+- Status-prefix coverage review-fix targeted test: `npm test -- packages/prr/test/projection.test.ts`
+  - Result: passed after adding prefix replay coverage for `sent` and `acknowledged`.
+  - Key output: `Test Files  1 passed (1)`, `Tests  21 passed (21)`
 - Full verification: `npm run verify`
   - Result: passed.
   - Key output: `typecheck passed`, `Test Files  23 passed (23)`, `Tests  202 passed (202)`, `tests passed`, `factory-readiness passed`
@@ -43,6 +46,9 @@
 - Runtime-map review-fix full verification: `npm run verify`
   - Result: passed.
   - Key output: `typecheck passed`, `Test Files  23 passed (23)`, `Tests  211 passed (211)`, `tests passed`, `factory-readiness passed`
+- Status-prefix coverage review-fix full verification: `npm run verify`
+  - Result: passed.
+  - Key output: `typecheck passed`, `Test Files  23 passed (23)`, `Tests  213 passed (213)`, `tests passed`, `factory-readiness passed`
 
 ## Notes
 
@@ -56,3 +62,4 @@
 - Concern retained: `awaitingProduction` after `prr.production.received` reads oddly, but the implementation intentionally follows the plan-compatible status transition.
 - Review-fix self-review: defensive boundaries now freeze cloned request models, nested active deadlines, production evidence arrays, and returned timeline entries; status-bearing denial, appeal, and close events update the read model.
 - Runtime-map review-fix self-review: `projection.requests` now uses a runtime read-only wrapper that preserves read and iteration methods while explicitly rejecting `set`, `delete`, and `clear`.
+- Status-prefix coverage review-fix self-review: added direct golden-ledger prefix tests for `prr.request.sent -> sent` and `prr.correspondence.received -> acknowledged`; no production change was needed.

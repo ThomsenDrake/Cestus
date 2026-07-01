@@ -37,6 +37,18 @@ describe("buildPrrProjection", () => {
     });
   });
 
+  it("projects sent status after replaying created and sent events", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents.slice(0, 2));
+
+    expect(projection.requests.get("prr_req_001")?.status).toBe("sent");
+  });
+
+  it("projects acknowledged status after replaying received correspondence", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents.slice(0, 4));
+
+    expect(projection.requests.get("prr_req_001")?.status).toBe("acknowledged");
+  });
+
   it("keeps timeline entries in event replay order for the request", () => {
     const projection = buildPrrProjection(goldenPrrLedgerEvents);
 
