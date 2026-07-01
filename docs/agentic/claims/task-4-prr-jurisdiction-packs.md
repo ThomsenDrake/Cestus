@@ -66,3 +66,15 @@
 - Full verification command: `npm run verify`
 - Full verification result: `typecheck passed`; `Test Files 15 passed (15)`; `Tests 108 passed (108)`; `tests passed`; `factory-readiness passed`.
 - Concerns: none. Date-only and impossible-date rejection remain covered.
+
+## Florida Acknowledgement Fix Handoff
+
+- Florida acknowledgement fix recorded-at UTC: `2026-07-01T16:59:38Z`
+- Florida acknowledgement implementation commit: `e28dd48`
+- Targeted red command: `npm test -- packages/prr/test/jurisdiction-packs.test.ts packages/prr/test/deadlines.test.ts`
+- Targeted red result: failed as expected with two deadline failures showing Florida acknowledgement still used the production estimate and did not require the acknowledgement rule ID.
+- Targeted green command: `npm test -- packages/prr/test/jurisdiction-packs.test.ts packages/prr/test/deadlines.test.ts`
+- Targeted green result: `Test Files 2 passed (2)`, `Tests 22 passed (22)`.
+- Full verification command: `npm run verify`
+- Full verification result: `typecheck passed`; `Test Files 15 passed (15)`; `Tests 110 passed (110)`; `tests passed`; `factory-readiness passed`.
+- Concerns: none. The Florida acknowledgement date is an internal workflow estimate only; the production review estimate remains the default Florida behavior.
