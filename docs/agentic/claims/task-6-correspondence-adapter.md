@@ -33,9 +33,19 @@
 - Full verification:
   - Command: `npm run verify`
   - Result: `typecheck passed`; 18 test files passed with 139 tests; `factory-readiness passed`.
+- Review-fix red targeted test:
+  - Command: `npm test -- packages/prr/test/correspondence-adapter.test.ts`
+  - Result: failed with 9 expected failures covering leaked sync-message mutation and missing exported `assertApprovedMessageInput`.
+- Review-fix green targeted test:
+  - Command: `npm test -- packages/prr/test/correspondence-adapter.test.ts`
+  - Result: passed, 1 test file and 20 tests.
+- Review-fix full verification:
+  - Command: `npm run verify`
+  - Result: `typecheck passed`; 18 test files passed with 148 tests; `factory-readiness passed`.
 
 ## Self-Review
 
 - No provider implementations, correspondence service, ontology contracts, lifecycle service, or unrelated files were modified.
 - The fake adapter has no live credential or network path and exposes only `sendApprovedMessage` for outbound send behavior.
 - Validation now returns clear local errors for blank send inputs and missing or blank human approval.
+- Review fix exported the approved-send validator for provider wrappers, made fake sync input snapshotting deterministic, and changed credential-mode mapping to an exhaustive provider switch.

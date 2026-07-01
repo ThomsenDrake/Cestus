@@ -74,7 +74,7 @@ export class FakeCorrespondenceAdapter implements CorrespondenceAdapter {
 
   constructor(options: FakeCorrespondenceAdapterOptions) {
     this.provider = options.provider;
-    this.syncedMessages = options.syncedMessages ?? [];
+    this.syncedMessages = (options.syncedMessages ?? []).map(cloneFakeSyncedMessage);
   }
 
   async capabilities(): Promise<AdapterCapabilities> {
@@ -88,7 +88,7 @@ export class FakeCorrespondenceAdapter implements CorrespondenceAdapter {
   }
 
   async sendApprovedMessage(input: ApprovedMessageInput): Promise<SentMessageResult> {
-    validateApprovedMessageInput(input);
+    assertApprovedMessageInput(input);
 
     return {
       provider: this.provider,
@@ -143,19 +143,24 @@ export class FakeCorrespondenceAdapter implements CorrespondenceAdapter {
 }
 
 function credentialModeForProvider(provider: CorrespondenceProvider): CredentialMode {
-  if (provider === "gmail") {
-    return "cestus-oauth";
+  switch (provider) {
+    case "gmail":
+      return "cestus-oauth";
+    case "imap-smtp":
+      return "external-secret";
+    case "himalaya":
+      return "external-config";
+    default:
+      return assertNever(provider);
   }
-  if (provider === "himalaya") {
-    return "external-config";
-  }
-  return "external-secret";
 }
 
-function validateApprovedMessageInput(input: ApprovedMessageInput): void {
+export function assertApprovedMessageInput(
+  input: Partial<ApprovedMessageInput>
+): asserts input is ApprovedMessageInput {
   requireNonBlank(input.idempotencyKey, "idempotencyKey is required");
   requireNonBlank(input.from, "from is required");
-  if (input.to.length === 0) {
+  if (input.to === undefined || input.to.length === 0) {
     throw new Error("to must include at least one recipient");
   }
   input.to.forEach((recipient, index) => {
@@ -166,8 +171,40 @@ function validateApprovedMessageInput(input: ApprovedMessageInput): void {
   requireNonBlank(input.approvedBy, "approvedBy is required for one-click send");
 }
 
+function cloneFakeSyncedMessage(message: FakeSyncedMessage): FakeSyncedMessage {
+  const cloned: FakeSyncedMessage = {
+    providerMessageId: message.providerMessageId,
+    from: message.from,
+    to: [...message.to],
+    subject: message.subject,
+    receivedAt: message.receivedAt
+  };
+
+  if (message.providerThreadId !== undefined) {
+    cloned.providerThreadId = message.providerThreadId;
+  }
+  if (message.cc !== undefined) {
+    cloned.cc = [...message.cc];
+  }
+  if (message.body !== undefined) {
+    cloned.body = message.body;
+  }
+  if (message.attachmentRefs !== undefined) {
+    cloned.attachmentRefs = message.attachmentRefs.map((attachment) => ({ ...attachment }));
+  }
+  if (message.rawMetadata !== undefined) {
+    cloned.rawMetadata = { ...message.rawMetadata };
+  }
+
+  return cloned;
+}
+
 function requireNonBlank(value: string | undefined, message: string): void {
   if (value === undefined || value.trim().length === 0) {
     throw new Error(message);
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled correspondence provider: ${value}`);
 }
