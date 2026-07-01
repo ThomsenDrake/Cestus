@@ -41,3 +41,15 @@
 - Full verification command: `npm run verify`
 - Full verification result: `typecheck passed`; `Test Files 15 passed (15)`; `Tests 102 passed (102)`; `tests passed`; `factory-readiness passed`.
 - Concerns: none. The fix keeps Florida output as workflow estimates and adds no later-task legal escalation behavior.
+
+## Re-Review Fix Handoff
+
+- Re-review-fix recorded-at UTC: `2026-07-01T16:40:36Z`
+- Re-review-fix implementation commit: `fd7db7f`
+- Targeted red command: `npm test -- packages/prr/test/jurisdiction-packs.test.ts packages/prr/test/deadlines.test.ts`
+- Targeted red result: failed as expected with four deadline failures covering unsupported starter pack version, missing federal deadline rule ID, non-round-tripping `receivedAt`, and date-only `receivedAt`.
+- Targeted green command: `npm test -- packages/prr/test/jurisdiction-packs.test.ts packages/prr/test/deadlines.test.ts`
+- Targeted green result: `Test Files 2 passed (2)`, `Tests 18 passed (18)`.
+- Full verification command: `npm run verify`
+- Full verification result: `typecheck passed`; `Test Files 15 passed (15)`; `Tests 106 passed (106)`; `tests passed`; `factory-readiness passed`.
+- Concerns: none. The fix keeps prior holiday, citation provenance, cloned citation, unsupported-pack, and Florida workflow-estimate behavior intact.
