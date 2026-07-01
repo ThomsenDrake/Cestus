@@ -199,3 +199,76 @@ describe("event contracts", () => {
     expect(appendableEvidenceEvent.payload.evidenceId).toBe("ev_typed");
   });
 });
+
+describe("public records request event contracts", () => {
+  it("validates a prr.request.created event", () => {
+    const event = {
+      id: "evt_prr_created_001",
+      type: "prr.request.created",
+      version: 1,
+      streamId: "prr_req_001",
+      sequence: 1,
+      context,
+      payload: {
+        prrRequestId: "prr_req_001",
+        jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+        agency: { name: "Example Agency", email: "foia@example.gov" },
+        requester: { name: "Investigator", email: "investigator@example.org" },
+        requestText: "Please provide contracts with Example Vendor from 2024.",
+        status: "draft"
+      }
+    };
+
+    expect(validateKnowledgeEvent(event).success).toBe(true);
+  });
+
+  it("rejects unknown keys in PRR payloads", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_prr_created_002",
+      type: "prr.request.created",
+      version: 1,
+      streamId: "prr_req_002",
+      sequence: 1,
+      context,
+      payload: {
+        prrRequestId: "prr_req_002",
+        jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+        agency: { name: "Example Agency" },
+        requester: { name: "Investigator" },
+        requestText: "Please provide records.",
+        status: "draft",
+        secretToken: "never-store-this"
+      }
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("payload");
+    }
+  });
+
+  it("requires human approval before a prr.followup.sent event", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_prr_followup_001",
+      type: "prr.followup.sent",
+      version: 1,
+      streamId: "prr_req_001",
+      sequence: 2,
+      context,
+      payload: {
+        prrRequestId: "prr_req_001",
+        correspondenceId: "corr_prr_001",
+        provider: "gmail",
+        providerMessageId: "msg_123",
+        subject: "Follow-up",
+        bodyHash: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        sentAt: "2026-07-01T16:00:00.000Z"
+      }
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("payload.approvedBy");
+    }
+  });
+});
