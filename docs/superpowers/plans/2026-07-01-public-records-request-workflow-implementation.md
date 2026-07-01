@@ -843,7 +843,7 @@ describe("deadline calculators", () => {
       receivedAt: "2026-07-01T12:00:00.000Z"
     });
 
-    expect(result.deadlineDate).toBe("2026-07-29");
+    expect(result.deadlineDate).toBe("2026-07-30");
     expect(result.confidence).toBe("statutory");
     expect(result.citedRules[0]?.citation).toContain("5 U.S.C. 552");
   });
@@ -861,7 +861,7 @@ describe("deadline calculators", () => {
   it("prefers confirmed deadlines over estimates", () => {
     expect(
       chooseActiveDeadline({
-        estimated: { deadlineDate: "2026-07-29", source: "estimated" },
+        estimated: { deadlineDate: "2026-07-30", source: "estimated" },
         confirmed: { deadlineDate: "2026-07-25", source: "confirmed" }
       })
     ).toEqual({ deadlineDate: "2026-07-25", source: "confirmed" });
@@ -977,6 +977,8 @@ export const floridaPublicRecordsPack: JurisdictionPack = jurisdictionPackSchema
 ```
 
 - [ ] **Step 5: Create deadline calculators**
+
+Federal FOIA working-day estimates exclude Saturdays, Sundays, and legal public holidays.
 
 Create `packages/prr/src/deadlines.ts`:
 

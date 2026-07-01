@@ -8,9 +8,13 @@ export interface DeadlineCalculationInput {
 }
 
 export interface CitedRule {
+  jurisdictionPack: {
+    name: string;
+    version: string;
+  };
   label: string;
   citation: string;
-  url: string;
+  url?: string;
 }
 
 export interface EstimatedDeadline {
@@ -30,25 +34,32 @@ export function calculateEstimatedDeadline(
   pack: JurisdictionPack,
   input: DeadlineCalculationInput
 ): EstimatedDeadline {
-  const rule = firstRule(pack);
+  const receivedAt = parseReceivedAt(input.receivedAt);
 
   if (pack.name === "us-federal-foia") {
+    const rule = firstRule(pack);
     return {
       prrRequestId: input.prrRequestId,
-      deadlineDate: addWorkingDays(input.receivedAt, 20),
+      deadlineDate: addFederalWorkingDays(receivedAt, 20),
       confidence: "statutory",
-      explanation: "Federal FOIA determination estimate based on 20 working days after receipt.",
-      citedRules: rule.citations
+      explanation:
+        "Federal FOIA determination estimate based on 20 working days after receipt, excluding Saturdays, Sundays, and observed federal legal public holidays.",
+      citedRules: citedRulesFor(pack, rule)
     };
   }
 
+  if (pack.name !== "florida-public-records") {
+    throw new Error(`Unsupported jurisdiction pack ${pack.name}@${pack.version}`);
+  }
+
+  const rule = firstRule(pack);
   return {
     prrRequestId: input.prrRequestId,
-    deadlineDate: addCalendarDays(input.receivedAt, 10),
+    deadlineDate: addCalendarDays(receivedAt, 10),
     confidence: "workflow",
     explanation:
       "Florida estimate is an operational review date, not a fixed statutory response-day deadline.",
-    citedRules: rule.citations
+    citedRules: citedRulesFor(pack, rule)
   };
 }
 
@@ -67,23 +78,127 @@ function firstRule(pack: JurisdictionPack): JurisdictionPack["rules"][number] {
   return rule;
 }
 
-function addCalendarDays(isoDateTime: string, days: number): string {
-  const date = new Date(isoDateTime);
+function citedRulesFor(pack: JurisdictionPack, rule: JurisdictionPack["rules"][number]): CitedRule[] {
+  return rule.citations.map((citation) => ({
+    jurisdictionPack: { name: pack.name, version: pack.version },
+    label: citation.label,
+    citation: citation.citation,
+    url: citation.url
+  }));
+}
+
+function parseReceivedAt(receivedAt: string): Date {
+  const date = new Date(receivedAt);
+  if (!Number.isFinite(date.getTime())) {
+    throw new Error(`Invalid receivedAt: ${receivedAt}`);
+  }
+  return date;
+}
+
+function addCalendarDays(inputDate: Date, days: number): string {
+  const date = new Date(inputDate.getTime());
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
 
-function addWorkingDays(isoDateTime: string, days: number): string {
-  const date = new Date(isoDateTime);
+function addFederalWorkingDays(inputDate: Date, days: number): string {
+  const date = new Date(inputDate.getTime());
   let remaining = days;
 
   while (remaining > 0) {
     date.setUTCDate(date.getUTCDate() + 1);
-    const dayOfWeek = date.getUTCDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+    if (isFederalWorkingDay(date)) {
       remaining -= 1;
     }
   }
 
+  return date.toISOString().slice(0, 10);
+}
+
+function isFederalWorkingDay(date: Date): boolean {
+  const dayOfWeek = date.getUTCDay();
+  return dayOfWeek !== 0 && dayOfWeek !== 6 && !isObservedFederalHoliday(date);
+}
+
+const observedHolidayCache = new Map<number, Set<string>>();
+
+function isObservedFederalHoliday(date: Date): boolean {
+  const year = date.getUTCFullYear();
+  const dateKey = toDateKey(date);
+  return (
+    observedFederalHolidayKeys(year - 1).has(dateKey) ||
+    observedFederalHolidayKeys(year).has(dateKey) ||
+    observedFederalHolidayKeys(year + 1).has(dateKey)
+  );
+}
+
+function observedFederalHolidayKeys(year: number): Set<string> {
+  const cached = observedHolidayCache.get(year);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const holidayKeys = new Set<string>([
+    observedFixedHolidayKey(year, 0, 1),
+    toDateKey(nthWeekdayOfMonth(year, 0, 1, 3)),
+    toDateKey(nthWeekdayOfMonth(year, 1, 1, 3)),
+    toDateKey(lastWeekdayOfMonth(year, 4, 1)),
+    observedFixedHolidayKey(year, 5, 19),
+    observedFixedHolidayKey(year, 6, 4),
+    toDateKey(nthWeekdayOfMonth(year, 8, 1, 1)),
+    toDateKey(nthWeekdayOfMonth(year, 9, 1, 2)),
+    observedFixedHolidayKey(year, 10, 11),
+    toDateKey(nthWeekdayOfMonth(year, 10, 4, 4)),
+    observedFixedHolidayKey(year, 11, 25)
+  ]);
+
+  observedHolidayCache.set(year, holidayKeys);
+  return holidayKeys;
+}
+
+function observedFixedHolidayKey(year: number, monthIndex: number, dayOfMonth: number): string {
+  const date = utcDate(year, monthIndex, dayOfMonth);
+  const dayOfWeek = date.getUTCDay();
+
+  if (dayOfWeek === 6) {
+    date.setUTCDate(date.getUTCDate() - 1);
+  } else if (dayOfWeek === 0) {
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+
+  return toDateKey(date);
+}
+
+function nthWeekdayOfMonth(
+  year: number,
+  monthIndex: number,
+  dayOfWeek: number,
+  occurrence: number
+): Date {
+  const date = utcDate(year, monthIndex, 1);
+
+  while (date.getUTCDay() !== dayOfWeek) {
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+
+  date.setUTCDate(date.getUTCDate() + 7 * (occurrence - 1));
+  return date;
+}
+
+function lastWeekdayOfMonth(year: number, monthIndex: number, dayOfWeek: number): Date {
+  const date = utcDate(year, monthIndex + 1, 0);
+
+  while (date.getUTCDay() !== dayOfWeek) {
+    date.setUTCDate(date.getUTCDate() - 1);
+  }
+
+  return date;
+}
+
+function utcDate(year: number, monthIndex: number, dayOfMonth: number): Date {
+  return new Date(Date.UTC(year, monthIndex, dayOfMonth));
+}
+
+function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
