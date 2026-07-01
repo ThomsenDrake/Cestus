@@ -56,6 +56,7 @@ describe("PRR read API DTOs", () => {
 function projectionFromRequests(requests: readonly PrrRequestReadModel[]): PrrProjection {
   return {
     requests: new Map(requests.map((request) => [request.prrRequestId, request])),
+    diagnostics: [],
     timelineForRequest() {
       return [];
     }

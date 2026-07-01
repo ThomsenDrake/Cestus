@@ -1,4 +1,5 @@
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { createPrrDiagnostic, type PrrDiagnostic } from "./diagnostics.js";
 import type { PrrStatus } from "./types.js";
 
 export interface PrrDeadlineReadModel {
@@ -24,6 +25,7 @@ export interface PrrTimelineEntry {
 
 export interface PrrProjection {
   requests: ReadonlyMap<string, PrrRequestReadModel>;
+  diagnostics: readonly PrrDiagnostic[];
   timelineForRequest(prrRequestId: string): PrrTimelineEntry[];
 }
 
@@ -40,6 +42,7 @@ interface MutablePrrRequestReadModel {
 export function buildPrrProjection(events: readonly KnowledgeEvent[]): PrrProjection {
   const requests = new Map<string, MutablePrrRequestReadModel>();
   const timelines = new Map<string, PrrTimelineEntry[]>();
+  const diagnostics: PrrDiagnostic[] = [];
 
   for (const event of events) {
     const prrRequestId = requestIdFromPrrEvent(event);
@@ -62,6 +65,7 @@ export function buildPrrProjection(events: readonly KnowledgeEvent[]): PrrProjec
 
     const request = requests.get(prrRequestId);
     if (!request) {
+      diagnostics.push(createUncreatedRequestDiagnostic(event, prrRequestId));
       continue;
     }
 
@@ -71,10 +75,23 @@ export function buildPrrProjection(events: readonly KnowledgeEvent[]): PrrProjec
 
   return {
     requests: cloneRequests(requests),
+    diagnostics: cloneDiagnostics(diagnostics),
     timelineForRequest(prrRequestId) {
       return (timelines.get(prrRequestId) ?? []).map(cloneTimelineEntry);
     }
   };
+}
+
+function createUncreatedRequestDiagnostic(event: KnowledgeEvent, prrRequestId: string): PrrDiagnostic {
+  return createPrrDiagnostic({
+    diagnosticId: `diag_prr_projection_${event.id}`,
+    prrRequestId,
+    eventId: event.id,
+    category: "projection",
+    message: `Cannot project ${event.type} before prr.request.created`,
+    violatedPath: "prr.request.created",
+    allowedActions: ["replay a ledger containing prr.request.created before dependent PRR events"]
+  });
 }
 
 function applyPrrEvent(request: MutablePrrRequestReadModel, event: KnowledgeEvent): void {
@@ -239,6 +256,24 @@ function cloneDeadline(deadline: PrrDeadlineReadModel): PrrDeadlineReadModel {
   return Object.freeze({
     deadlineDate: deadline.deadlineDate,
     source: deadline.source
+  });
+}
+
+function cloneDiagnostics(diagnostics: readonly PrrDiagnostic[]): readonly PrrDiagnostic[] {
+  return Object.freeze(diagnostics.map(cloneDiagnostic));
+}
+
+function cloneDiagnostic(diagnostic: PrrDiagnostic): PrrDiagnostic {
+  return Object.freeze({
+    diagnosticId: diagnostic.diagnosticId,
+    prrRequestId: diagnostic.prrRequestId,
+    ...(diagnostic.eventId === undefined ? {} : { eventId: diagnostic.eventId }),
+    category: diagnostic.category,
+    message: diagnostic.message,
+    repairHint: Object.freeze({
+      violatedPath: diagnostic.repairHint.violatedPath,
+      allowedActions: Object.freeze([...diagnostic.repairHint.allowedActions])
+    })
   });
 }
 

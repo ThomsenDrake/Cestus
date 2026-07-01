@@ -127,7 +127,57 @@ describe("buildPrrProjection", () => {
 
     expect(projection.requests.has("prr_missing_001")).toBe(false);
     expect(projection.timelineForRequest("prr_missing_001")).toEqual([]);
+    expect(projection.diagnostics).toEqual([
+      {
+        diagnosticId: "diag_prr_projection_evt_prr_missing_001_sent",
+        prrRequestId: "prr_missing_001",
+        eventId: "evt_prr_missing_001_sent",
+        category: "projection",
+        message: "Cannot project prr.request.sent before prr.request.created",
+        repairHint: {
+          violatedPath: "prr.request.created",
+          allowedActions: ["replay a ledger containing prr.request.created before dependent PRR events"]
+        }
+      }
+    ]);
     expect(projection.requests.has("prr_req_001")).toBe(true);
+  });
+
+  it("protects projection diagnostics from caller mutation", () => {
+    const projection = buildPrrProjection([
+      sentEventForUncreatedRequest(),
+      ...goldenPrrLedgerEvents
+    ]);
+
+    try {
+      (projection.diagnostics as unknown as unknown[]).pop();
+    } catch {
+      // Frozen diagnostics are acceptable; the later read must still be unchanged.
+    }
+    try {
+      (projection.diagnostics[0] as { message: string }).message = "mutated";
+    } catch {
+      // Frozen diagnostics are acceptable; the later read must still be unchanged.
+    }
+    try {
+      (projection.diagnostics[0]!.repairHint.allowedActions as unknown as string[]).push("mutated");
+    } catch {
+      // Frozen diagnostics are acceptable; the later read must still be unchanged.
+    }
+
+    expect(projection.diagnostics).toEqual([
+      {
+        diagnosticId: "diag_prr_projection_evt_prr_missing_001_sent",
+        prrRequestId: "prr_missing_001",
+        eventId: "evt_prr_missing_001_sent",
+        category: "projection",
+        message: "Cannot project prr.request.sent before prr.request.created",
+        repairHint: {
+          violatedPath: "prr.request.created",
+          allowedActions: ["replay a ledger containing prr.request.created before dependent PRR events"]
+        }
+      }
+    ]);
   });
 
   it("updates possible and confirmed stalling flags from replayed events", () => {

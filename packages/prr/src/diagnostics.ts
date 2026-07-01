@@ -13,6 +13,7 @@ export type PrrDiagnosticCategory = (typeof prrDiagnosticCategories)[number];
 export interface PrrDiagnosticInput {
   diagnosticId: string;
   prrRequestId: string;
+  eventId?: string;
   category: PrrDiagnosticCategory;
   message: string;
   violatedPath: string;
@@ -20,13 +21,14 @@ export interface PrrDiagnosticInput {
 }
 
 export interface PrrDiagnostic {
-  diagnosticId: string;
-  prrRequestId: string;
-  category: PrrDiagnosticCategory;
-  message: string;
-  repairHint: {
-    violatedPath: string;
-    allowedActions: string[];
+  readonly diagnosticId: string;
+  readonly prrRequestId: string;
+  readonly eventId?: string;
+  readonly category: PrrDiagnosticCategory;
+  readonly message: string;
+  readonly repairHint: {
+    readonly violatedPath: string;
+    readonly allowedActions: readonly string[];
   };
 }
 
@@ -35,6 +37,9 @@ const secretTextPattern =
 
 export function createPrrDiagnostic(input: PrrDiagnosticInput): PrrDiagnostic {
   assertNoSecretText(input.message);
+  if (input.eventId !== undefined) {
+    assertNoSecretText(input.eventId);
+  }
   assertNoSecretText(input.violatedPath);
   for (const action of input.allowedActions) {
     assertNoSecretText(action);
@@ -43,6 +48,7 @@ export function createPrrDiagnostic(input: PrrDiagnosticInput): PrrDiagnostic {
   return {
     diagnosticId: input.diagnosticId,
     prrRequestId: input.prrRequestId,
+    ...(input.eventId === undefined ? {} : { eventId: input.eventId }),
     category: input.category,
     message: input.message,
     repairHint: {
