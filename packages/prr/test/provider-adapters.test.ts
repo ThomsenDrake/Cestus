@@ -770,6 +770,82 @@ describe("provider correspondence adapters", () => {
       "himalaya sync message[0] attachmentRefs[0].contentHash is required"
     );
   });
+
+  it("rejects malformed Himalaya sync thread id aliases instead of omitting them", async () => {
+    const threadIdAdapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async () => ({
+        stdout: JSON.stringify({
+          checkpoint: "himalaya_checkpoint_009",
+          messages: [
+            {
+              id: "himalaya_inbound_006",
+              threadId: 42,
+              from: "foia@example.gov",
+              to: ["investigator@example.org"],
+              subject: "Acknowledgement",
+              receivedAt: "2026-07-01T17:00:00.000Z"
+            }
+          ]
+        }),
+        stderr: ""
+      })
+    });
+
+    await expect(threadIdAdapter.syncSince("checkpoint_001")).rejects.toThrow(
+      "himalaya sync message[0] providerThreadId is required"
+    );
+
+    const providerThreadIdAdapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async () => ({
+        stdout: JSON.stringify({
+          checkpoint: "himalaya_checkpoint_010",
+          messages: [
+            {
+              id: "himalaya_inbound_007",
+              providerThreadId: 42,
+              from: "foia@example.gov",
+              to: ["investigator@example.org"],
+              subject: "Acknowledgement",
+              receivedAt: "2026-07-01T17:00:00.000Z"
+            }
+          ]
+        }),
+        stderr: ""
+      })
+    });
+
+    await expect(providerThreadIdAdapter.syncSince("checkpoint_001")).rejects.toThrow(
+      "himalaya sync message[0] providerThreadId is required"
+    );
+  });
+
+  it("rejects malformed Himalaya sync body instead of omitting it", async () => {
+    const adapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async () => ({
+        stdout: JSON.stringify({
+          checkpoint: "himalaya_checkpoint_011",
+          messages: [
+            {
+              id: "himalaya_inbound_008",
+              from: "foia@example.gov",
+              to: ["investigator@example.org"],
+              subject: "Acknowledgement",
+              receivedAt: "2026-07-01T17:00:00.000Z",
+              body: 42
+            }
+          ]
+        }),
+        stderr: ""
+      })
+    });
+
+    await expect(adapter.syncSince("checkpoint_001")).rejects.toThrow(
+      "himalaya sync message[0] body is required"
+    );
+  });
 });
 
 function syncResultWithRawMetadata(

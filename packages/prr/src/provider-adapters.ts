@@ -239,9 +239,10 @@ function parseHimalayaMessages(values: unknown[]): unknown[] {
     if (providerMessageId !== undefined) {
       message.providerMessageId = providerMessageId;
     }
-    const providerThreadId = stringValue(value.providerThreadId) ?? stringValue(value.threadId);
-    if (providerThreadId !== undefined) {
-      message.providerThreadId = providerThreadId;
+    if ("providerThreadId" in value) {
+      message.providerThreadId = value.providerThreadId;
+    } else if ("threadId" in value) {
+      message.providerThreadId = value.threadId;
     }
     const from = stringValue(value.from);
     if (from !== undefined) {
@@ -258,9 +259,8 @@ function parseHimalayaMessages(values: unknown[]): unknown[] {
     if (receivedAt !== undefined) {
       message.receivedAt = receivedAt;
     }
-    const body = stringValue(value.body);
-    if (body !== undefined) {
-      message.body = body;
+    if ("body" in value) {
+      message.body = value.body;
     }
     if ("attachmentRefs" in value) {
       message.attachmentRefs = value.attachmentRefs;
