@@ -6,7 +6,7 @@
 - Branch: `codex/prr-workflow-design`
 - Worktree: `/home/drake/.codex/worktrees/836b/Cestus`
 - Claimed at: 2026-07-01T18:29:58Z
-- Status: in-progress
+- Status: ready-for-review
 - Owned files:
   - `packages/prr/src/correspondence-service.ts`
   - `packages/prr/test/correspondence-service.test.ts`
@@ -15,7 +15,14 @@
 
 ## Evidence
 
-- Red targeted test: pending
-- Green targeted test: pending
-- Full verification: pending
-- Commit: pending
+- Red targeted test: `npm test -- packages/prr/test/correspondence-service.test.ts` failed as expected because `../src/correspondence-service.js` did not exist.
+- Green targeted test: `npm test -- packages/prr/test/correspondence-service.test.ts` passed with 1 test file and 6 tests.
+- Full verification: `npm run verify` passed: typecheck passed, 20 test files passed with 180 tests, and factory-readiness passed.
+- Commit: task completion commit follows this evidence update.
+
+## Self-Review
+
+- Scope stayed within the allowed files.
+- The service uses `sendApprovedMessage` and relies on adapter/shared approved-send validation.
+- Ledger recording is delegated to `PrrLifecycleService.markRequestSent`, preserving lifecycle duplicate protection.
+- No inbound sync or uncertain-match review behavior was added.
