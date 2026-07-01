@@ -49,7 +49,7 @@ export class PrrLifecycleService {
       }
     };
 
-    return this.appendTyped(event, "prr.request.created");
+    return this.appendTyped(event, "prr.request.created", 1);
   }
 
   async markRequestSent(input: MarkRequestSentInput): Promise<KnowledgeEventOf<"prr.request.sent">> {
@@ -58,6 +58,11 @@ export class PrrLifecycleService {
 
     if (!created) {
       throw new Error(`Cannot send request ${input.prrRequestId} before it is created`);
+    }
+
+    const sent = events.find((event) => event.type === "prr.request.sent");
+    if (sent) {
+      throw new Error(`Cannot send request ${input.prrRequestId} more than once`);
     }
 
     const event: AppendableKnowledgeEvent<"prr.request.sent"> = {
