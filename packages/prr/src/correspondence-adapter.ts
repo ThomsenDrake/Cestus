@@ -11,6 +11,7 @@ export interface AdapterCapabilities {
 }
 
 export interface ApprovedMessageAttachment {
+  evidenceId?: string;
   filename: string;
   contentHash: string;
 }
@@ -172,6 +173,13 @@ export function assertApprovedMessageInput(
   requireNonBlank(input.subject, "subject is required");
   requireNonBlank(input.body, "body is required");
   requireNonBlank(input.approvedBy, "approvedBy is required for one-click send");
+  input.attachments?.forEach((attachment, index) => {
+    requireNonBlank(attachment.filename, `attachments[${index}].filename is required`);
+    requireNonBlank(attachment.contentHash, `attachments[${index}].contentHash is required`);
+    if (attachment.evidenceId !== undefined && !/^ev_[a-zA-Z0-9_-]+$/.test(attachment.evidenceId)) {
+      throw new Error(`attachments[${index}].evidenceId is invalid`);
+    }
+  });
 }
 
 function cloneFakeSyncedMessage(message: FakeSyncedMessage): FakeSyncedMessage {

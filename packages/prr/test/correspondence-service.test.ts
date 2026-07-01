@@ -33,6 +33,8 @@ const initialSendInput = {
   approvedBy: "actor_investigator"
 };
 
+const attachmentContentHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
 describe("PrrCorrespondenceService", () => {
   it("one-click sends after human approval and records a request sent event", async () => {
     const ledger = await ledgerWithCreatedRequest();
@@ -50,11 +52,41 @@ describe("PrrCorrespondenceService", () => {
       correspondenceId: "corr_req_001",
       provider: "gmail",
       providerMessageId: "fake_msg_send_prr_req_001_corr_req_001",
+      providerThreadId: "fake_thread_send_prr_req_001_corr_req_001",
+      idempotencyKey: "send_prr_req_001_corr_req_001",
       subject: "Records Request",
       bodyHash: "sha256:a287a8dc2603ddfe9fdef494238ebd54741c9e2dc811a88f3ffe1cf3fb1e37fe",
+      attachmentEvidenceIds: [],
       sentAt: "2026-07-01T16:00:00.000Z",
-      approvedBy: "actor_investigator"
+      approvedBy: "actor_investigator",
+      rawMetadata: {
+        approvedBy: "actor_investigator",
+        idempotencyKey: "send_prr_req_001_corr_req_001",
+        provider: "gmail"
+      }
     });
+  });
+
+  it("records attachment evidence IDs in the sent request event", async () => {
+    const ledger = await ledgerWithCreatedRequest();
+    const service = new PrrCorrespondenceService({
+      ledger,
+      actor,
+      adapters: { gmail: new FakeCorrespondenceAdapter({ provider: "gmail" }) }
+    });
+
+    const event = await service.sendInitialRequest({
+      ...initialSendInput,
+      attachments: [
+        {
+          evidenceId: "ev_prr_attachment_001",
+          filename: "request-exhibit.pdf",
+          contentHash: attachmentContentHash
+        }
+      ]
+    });
+
+    expect(event.payload.attachmentEvidenceIds).toEqual(["ev_prr_attachment_001"]);
   });
 
   it("passes a deterministic idempotency key into the adapter result", async () => {

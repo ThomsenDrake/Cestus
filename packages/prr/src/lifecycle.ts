@@ -28,10 +28,14 @@ interface MarkRequestSentInput {
   correspondenceId: string;
   provider: CorrespondenceProvider;
   providerMessageId: string;
+  providerThreadId?: string;
+  idempotencyKey: string;
   subject: string;
   bodyHash: string;
+  attachmentEvidenceIds: string[];
   sentAt: string;
   approvedBy: string;
+  rawMetadata: Record<string, string>;
 }
 
 export class PrrLifecycleService {

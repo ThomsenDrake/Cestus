@@ -130,10 +130,14 @@ const prrRequestSentPayloadSchema = z.object({
   correspondenceId: z.string().regex(/^corr_[a-zA-Z0-9_-]+$/),
   provider: correspondenceProviderSchema,
   providerMessageId: z.string().min(1),
+  providerThreadId: z.string().min(1).optional(),
+  idempotencyKey: z.string().min(1),
   subject: z.string().min(1),
   bodyHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  attachmentEvidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/)),
   sentAt: z.string().datetime(),
-  approvedBy: z.string().min(3)
+  approvedBy: z.string().min(3),
+  rawMetadata: z.record(z.string().min(1), z.string())
 }).strict();
 
 const prrCorrespondenceReceivedPayloadSchema = z.object({
@@ -413,8 +417,13 @@ export const eventContracts = {
     type: "prr.request.sent",
     version: 1,
     description: "Records the human-approved initial send of a public records request through a correspondence provider.",
-    agentGuidance: "Use after a person approves the rendered request body and the provider returns a message identifier.",
-    invariants: ["approvedBy is required", "bodyHash records the rendered body"]
+    agentGuidance: "Use after a person approves the rendered request body and the provider returns message identifiers.",
+    invariants: [
+      "approvedBy is required",
+      "bodyHash records the rendered body",
+      "idempotencyKey records the provider send attempt",
+      "attachmentEvidenceIds links reviewed outbound attachments when present"
+    ]
   },
   "prr.correspondence.received": {
     type: "prr.correspondence.received",

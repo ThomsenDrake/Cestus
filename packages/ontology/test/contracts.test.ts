@@ -228,10 +228,17 @@ const validPrrPayloadExamples = [
       correspondenceId: "corr_prr_request_001",
       provider: "gmail",
       providerMessageId: "msg_request_001",
+      providerThreadId: "thread_request_001",
+      idempotencyKey: "send_prr_req_001_corr_prr_request_001",
       subject: "Records request",
       bodyHash: validHash,
+      attachmentEvidenceIds: ["ev_prr_attachment_001"],
       sentAt: "2026-07-01T16:00:00.000Z",
-      approvedBy: "actor_investigator"
+      approvedBy: "actor_investigator",
+      rawMetadata: {
+        accountEmail: "investigator@example.org",
+        provider: "gmail"
+      }
     }
   },
   {

@@ -17,10 +17,17 @@ const sentRequestInput = {
   correspondenceId: "corr_prr_001",
   provider: "gmail" as const,
   providerMessageId: "msg_123",
+  providerThreadId: "thread_123",
+  idempotencyKey: "send_prr_req_001_corr_prr_001",
   subject: "Records Request",
   bodyHash: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  attachmentEvidenceIds: ["ev_prr_attachment_001"],
   sentAt: "2026-07-01T16:00:00.000Z",
-  approvedBy: "actor_investigator"
+  approvedBy: "actor_investigator",
+  rawMetadata: {
+    accountEmail: "investigator@example.org",
+    provider: "gmail"
+  }
 };
 
 describe("PrrLifecycleService", () => {

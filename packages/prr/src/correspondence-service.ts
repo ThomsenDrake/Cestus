@@ -41,8 +41,9 @@ export class PrrCorrespondenceService {
       throw new Error(`No correspondence adapter configured for ${input.provider}`);
     }
 
+    const idempotencyKey = `send_${input.prrRequestId}_${input.correspondenceId}`;
     const approvedMessageInput = {
-      idempotencyKey: `send_${input.prrRequestId}_${input.correspondenceId}`,
+      idempotencyKey,
       from: input.from,
       to: input.to,
       ...(input.cc === undefined ? {} : { cc: input.cc }),
@@ -65,10 +66,16 @@ export class PrrCorrespondenceService {
       correspondenceId: input.correspondenceId,
       provider: input.provider,
       providerMessageId: sent.providerMessageId,
+      ...(sent.providerThreadId === undefined ? {} : { providerThreadId: sent.providerThreadId }),
+      idempotencyKey,
       subject: input.subject,
       bodyHash: sha256(input.body),
+      attachmentEvidenceIds: approvedMessageInput.attachments.flatMap((attachment) =>
+        attachment.evidenceId === undefined ? [] : [attachment.evidenceId]
+      ),
       sentAt: sent.sentAt,
-      approvedBy: input.approvedBy
+      approvedBy: input.approvedBy,
+      rawMetadata: { ...sent.rawMetadata }
     });
   }
 

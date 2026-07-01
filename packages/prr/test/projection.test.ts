@@ -384,10 +384,17 @@ function sentEventForUncreatedRequest(): KnowledgeEventOf<"prr.request.sent"> {
       correspondenceId: "corr_prr_missing_001",
       provider: "gmail",
       providerMessageId: "provider-message-missing-001",
+      providerThreadId: "provider-thread-missing-001",
+      idempotencyKey: "send_prr_missing_001_corr_prr_missing_001",
       subject: "Orphan request",
       bodyHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      attachmentEvidenceIds: [],
       sentAt: "2026-07-03T12:00:00.000Z",
-      approvedBy: "actor_prr_test"
+      approvedBy: "actor_prr_test",
+      rawMetadata: {
+        accountEmail: "requester@example.org",
+        provider: "gmail"
+      }
     }
   };
 }

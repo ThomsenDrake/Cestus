@@ -45,10 +45,17 @@ export const goldenPrrLedgerEvents: KnowledgeEvent[] = [
       correspondenceId: "corr_prr_req_001_sent",
       provider: "gmail",
       providerMessageId: "provider-message-001",
+      providerThreadId: "provider-thread-001",
+      idempotencyKey: "send_prr_req_001_corr_prr_req_001_sent",
       subject: "FOIA request for public meeting notices",
       bodyHash,
+      attachmentEvidenceIds: [],
       sentAt: "2026-07-01T12:05:00.000Z",
-      approvedBy: "actor_prr_test"
+      approvedBy: "actor_prr_test",
+      rawMetadata: {
+        accountEmail: "requester@example.org",
+        provider: "gmail"
+      }
     }
   },
   {
