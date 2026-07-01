@@ -147,6 +147,8 @@ describe("PrrEvidenceBridge", () => {
       "a;b.pdf",
       "a=b.pdf",
       "[draft].pdf",
+      " contracts.pdf",
+      "contracts.pdf ",
       ".",
       "..",
       "contract\u0000.pdf",

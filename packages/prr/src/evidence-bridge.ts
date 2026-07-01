@@ -70,11 +70,10 @@ export class PrrEvidenceBridge {
       throw new Error("Invalid evidence ID");
     }
 
-    const filename = input.filename.trim();
-    if (filename.length === 0) {
+    if (input.filename.trim().length === 0) {
       throw new Error("Production artifact filename is required");
     }
-    if (this.isUnsafeFilename(filename)) {
+    if (this.isUnsafeFilename(input.filename)) {
       throw new Error("Production artifact filename is unsafe for PRR source URI");
     }
 
@@ -89,7 +88,6 @@ export class PrrEvidenceBridge {
 
     return {
       ...input,
-      filename,
       mediaType
     };
   }
