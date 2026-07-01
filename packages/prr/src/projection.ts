@@ -150,12 +150,73 @@ function appendTimelineEntry(
 function cloneRequests(
   requests: Map<string, MutablePrrRequestReadModel>
 ): ReadonlyMap<string, PrrRequestReadModel> {
-  return new Map(
+  return new RuntimeReadonlyMap(
     [...requests.entries()].map(([prrRequestId, request]) => [
       prrRequestId,
       cloneRequest(request)
     ])
   );
+}
+
+class RuntimeReadonlyMap<Key, Value> implements ReadonlyMap<Key, Value> {
+  private readonly valuesByKey: Map<Key, Value>;
+
+  constructor(entries: Iterable<readonly [Key, Value]>) {
+    this.valuesByKey = new Map(entries);
+  }
+
+  get size(): number {
+    return this.valuesByKey.size;
+  }
+
+  get [Symbol.toStringTag](): string {
+    return "Map";
+  }
+
+  get(key: Key): Value | undefined {
+    return this.valuesByKey.get(key);
+  }
+
+  has(key: Key): boolean {
+    return this.valuesByKey.has(key);
+  }
+
+  keys(): MapIterator<Key> {
+    return this.valuesByKey.keys();
+  }
+
+  values(): MapIterator<Value> {
+    return this.valuesByKey.values();
+  }
+
+  entries(): MapIterator<[Key, Value]> {
+    return this.valuesByKey.entries();
+  }
+
+  forEach(
+    callbackfn: (value: Value, key: Key, map: ReadonlyMap<Key, Value>) => void,
+    thisArg?: unknown
+  ): void {
+    for (const [key, value] of this.valuesByKey) {
+      callbackfn.call(thisArg, value, key, this);
+    }
+  }
+
+  [Symbol.iterator](): MapIterator<[Key, Value]> {
+    return this.entries();
+  }
+
+  set(): never {
+    throw new TypeError("PrrProjection.requests is read-only; rebuild the projection from ledger events instead.");
+  }
+
+  delete(): never {
+    throw new TypeError("PrrProjection.requests is read-only; rebuild the projection from ledger events instead.");
+  }
+
+  clear(): never {
+    throw new TypeError("PrrProjection.requests is read-only; rebuild the projection from ledger events instead.");
+  }
 }
 
 function cloneRequest(request: MutablePrrRequestReadModel): PrrRequestReadModel {

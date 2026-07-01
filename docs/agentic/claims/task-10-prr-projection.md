@@ -22,18 +22,27 @@
 - Review-fix red targeted test: `npm test -- packages/prr/test/projection.test.ts`
   - Result: failed as expected before review fix.
   - Key output: `5 failed | 10 passed`; failures covered request model mutation leakage, timeline entry mutation leakage, and missing `denied`, `appealed`, and `closed` status transitions.
+- Runtime-map review-fix red targeted test: `npm test -- packages/prr/test/projection.test.ts`
+  - Result: failed as expected before runtime read-only map fix.
+  - Key output: `3 failed | 16 passed`; failures showed `set`, `delete`, and `clear` changed `projection.requests.size`.
 - Green targeted test: `npm test -- packages/prr/test/projection.test.ts`
   - Result: passed after implementation.
   - Key output: `Test Files  1 passed (1)`, `Tests  10 passed (10)`
 - Review-fix green targeted test: `npm test -- packages/prr/test/projection.test.ts`
   - Result: passed after review fix.
   - Key output: `Test Files  1 passed (1)`, `Tests  15 passed (15)`
+- Runtime-map review-fix green targeted test: `npm test -- packages/prr/test/projection.test.ts`
+  - Result: passed after runtime read-only map wrapper.
+  - Key output: `Test Files  1 passed (1)`, `Tests  19 passed (19)`
 - Full verification: `npm run verify`
   - Result: passed.
   - Key output: `typecheck passed`, `Test Files  23 passed (23)`, `Tests  202 passed (202)`, `tests passed`, `factory-readiness passed`
 - Review-fix full verification: `npm run verify`
   - Result: passed.
   - Key output: `typecheck passed`, `Test Files  23 passed (23)`, `Tests  207 passed (207)`, `tests passed`, `factory-readiness passed`
+- Runtime-map review-fix full verification: `npm run verify`
+  - Result: passed.
+  - Key output: `typecheck passed`, `Test Files  23 passed (23)`, `Tests  211 passed (211)`, `tests passed`, `factory-readiness passed`
 
 ## Notes
 
@@ -46,3 +55,4 @@
 - No defects found in the projection replay logic during self-review.
 - Concern retained: `awaitingProduction` after `prr.production.received` reads oddly, but the implementation intentionally follows the plan-compatible status transition.
 - Review-fix self-review: defensive boundaries now freeze cloned request models, nested active deadlines, production evidence arrays, and returned timeline entries; status-bearing denial, appeal, and close events update the read model.
+- Runtime-map review-fix self-review: `projection.requests` now uses a runtime read-only wrapper that preserves read and iteration methods while explicitly rejecting `set`, `delete`, and `clear`.

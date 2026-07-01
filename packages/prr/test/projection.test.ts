@@ -5,7 +5,7 @@ import {
   type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
 import { buildPrrProjection as exportedBuildPrrProjection } from "../src/index.js";
-import { buildPrrProjection } from "../src/projection.js";
+import { buildPrrProjection, type PrrRequestReadModel } from "../src/projection.js";
 import { goldenPrrLedgerEvents } from "./fixtures/golden-prr-ledger.js";
 
 const systemContext = {
@@ -172,6 +172,77 @@ describe("buildPrrProjection", () => {
       deadlineDate: "2026-07-25",
       source: "confirmed"
     });
+  });
+
+  it("preserves readonly request map read and iteration behavior", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents);
+
+    expect(projection.requests.size).toBe(1);
+    expect(projection.requests.has("prr_req_001")).toBe(true);
+    expect(projection.requests.get("prr_req_001")?.agencyName).toBe("Example Agency");
+    expect([...projection.requests.keys()]).toEqual(["prr_req_001"]);
+    expect([...projection.requests.values()].map((request) => request.prrRequestId)).toEqual([
+      "prr_req_001"
+    ]);
+    expect([...projection.requests.entries()].map(([prrRequestId]) => prrRequestId)).toEqual([
+      "prr_req_001"
+    ]);
+    expect([...projection.requests].map(([prrRequestId]) => prrRequestId)).toEqual([
+      "prr_req_001"
+    ]);
+
+    const forEachRequestIds: string[] = [];
+    projection.requests.forEach((request, prrRequestId, map) => {
+      forEachRequestIds.push(`${prrRequestId}:${request.prrRequestId}:${map.size}`);
+    });
+
+    expect(forEachRequestIds).toEqual(["prr_req_001:prr_req_001:1"]);
+  });
+
+  it("prevents runtime set calls from mutating the request map", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents);
+    const mutableRequests = projection.requests as unknown as Map<string, PrrRequestReadModel>;
+
+    try {
+      mutableRequests.set("prr_req_mutated", fakeRequestReadModel("prr_req_mutated"));
+    } catch {
+      // Explicit runtime read-only errors are acceptable; later reads must be unchanged.
+    }
+
+    expect(projection.requests.size).toBe(1);
+    expect(projection.requests.has("prr_req_mutated")).toBe(false);
+    expect([...projection.requests.keys()]).toEqual(["prr_req_001"]);
+  });
+
+  it("prevents runtime delete calls from mutating the request map", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents);
+    const mutableRequests = projection.requests as unknown as Map<string, PrrRequestReadModel>;
+
+    try {
+      mutableRequests.delete("prr_req_001");
+    } catch {
+      // Explicit runtime read-only errors are acceptable; later reads must be unchanged.
+    }
+
+    expect(projection.requests.size).toBe(1);
+    expect(projection.requests.has("prr_req_001")).toBe(true);
+    expect(projection.requests.get("prr_req_001")?.status).toBe("awaitingProduction");
+  });
+
+  it("prevents runtime clear calls from mutating the request map", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents);
+    const mutableRequests = projection.requests as unknown as Map<string, PrrRequestReadModel>;
+
+    try {
+      mutableRequests.clear();
+    } catch {
+      // Explicit runtime read-only errors are acceptable; later reads must be unchanged.
+    }
+
+    expect(projection.requests.size).toBe(1);
+    expect([...projection.requests.values()].map((request) => request.prrRequestId)).toEqual([
+      "prr_req_001"
+    ]);
   });
 
   it("protects timeline entries from caller mutation", () => {
@@ -424,5 +495,16 @@ function requestClosedEvent(): KnowledgeEventOf<"prr.request.closed"> {
       closedBy: "actor_prr_test",
       reason: "fulfilled"
     }
+  };
+}
+
+function fakeRequestReadModel(prrRequestId: string): PrrRequestReadModel {
+  return {
+    prrRequestId,
+    status: "draft",
+    agencyName: "Mutated Agency",
+    possibleStalling: false,
+    confirmedStalling: false,
+    productionEvidenceIds: []
   };
 }
