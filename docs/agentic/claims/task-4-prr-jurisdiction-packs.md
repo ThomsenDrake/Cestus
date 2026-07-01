@@ -53,3 +53,16 @@
 - Full verification command: `npm run verify`
 - Full verification result: `typecheck passed`; `Test Files 15 passed (15)`; `Tests 106 passed (106)`; `tests passed`; `factory-readiness passed`.
 - Concerns: none. The fix keeps prior holiday, citation provenance, cloned citation, unsupported-pack, and Florida workflow-estimate behavior intact.
+
+## Final Re-Review Fix Handoff
+
+- Final re-review-fix recorded-at UTC: `2026-07-01T16:51:01Z`
+- Final re-review-fix implementation commit: `178e428`
+- Contract check: local Zod `z.string().datetime()` accepts `2026-07-01T12:00:00Z` and `2026-07-01T12:00:00.123456Z`, while rejecting date-only and impossible dates.
+- Targeted red command: `npm test -- packages/prr/test/jurisdiction-packs.test.ts packages/prr/test/deadlines.test.ts`
+- Targeted red result: failed as expected with two deadline failures for valid UTC datetimes without fractional seconds and with higher-precision fractional seconds.
+- Targeted green command: `npm test -- packages/prr/test/jurisdiction-packs.test.ts packages/prr/test/deadlines.test.ts`
+- Targeted green result: `Test Files 2 passed (2)`, `Tests 20 passed (20)`.
+- Full verification command: `npm run verify`
+- Full verification result: `typecheck passed`; `Test Files 15 passed (15)`; `Tests 108 passed (108)`; `tests passed`; `factory-readiness passed`.
+- Concerns: none. Date-only and impossible-date rejection remain covered.
