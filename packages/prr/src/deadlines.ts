@@ -32,6 +32,20 @@ export interface ActiveDeadlineCandidate {
   source: "estimated" | "confirmed";
 }
 
+export interface LegalEscalationGateInput {
+  prrRequestId: string;
+  hasConfirmedDeadlineBasis: boolean;
+  hasUserConfirmedStalling: boolean;
+  citedRules: CitedRule[];
+  evidenceIds: string[];
+  userConfirmedEscalation: boolean;
+}
+
+export interface LegalEscalationGateResult {
+  ready: boolean;
+  missing: string[];
+}
+
 const supportedPackVersions = {
   "florida-public-records": "0.1.0",
   "us-federal-foia": "0.1.0"
@@ -95,6 +109,29 @@ export function chooseActiveDeadline(input: {
   confirmed?: ActiveDeadlineCandidate;
 }): ActiveDeadlineCandidate | undefined {
   return input.confirmed ?? input.estimated;
+}
+
+export function evaluateLegalEscalationGate(
+  input: LegalEscalationGateInput
+): LegalEscalationGateResult {
+  validatePrrRequestId(input.prrRequestId);
+
+  const missing: string[] = [];
+
+  if (!input.hasConfirmedDeadlineBasis && !input.hasUserConfirmedStalling) {
+    missing.push("confirmedDeadlineOrStallingBasis");
+  }
+  if (input.citedRules.length === 0) {
+    missing.push("citedRules");
+  }
+  if (input.evidenceIds.length === 0) {
+    missing.push("evidenceIds");
+  }
+  if (!input.userConfirmedEscalation) {
+    missing.push("userConfirmedEscalation");
+  }
+
+  return { ready: missing.length === 0, missing };
 }
 
 function validatePrrRequestId(prrRequestId: string): void {

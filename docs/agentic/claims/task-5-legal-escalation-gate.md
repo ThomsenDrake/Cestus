@@ -6,7 +6,7 @@
 - Branch: `codex/prr-workflow-design`
 - Worktree path: `/home/drake/.codex/worktrees/836b/Cestus`
 - Claimed-at UTC: `2026-07-01T17:21:08Z`
-- Status: `in-progress`
+- Status: `ready-for-review`
 
 ## Owned Files
 
@@ -19,10 +19,13 @@
 
 ## Evidence
 
-- Red targeted command: pending.
-- Green targeted command: pending.
-- Full verification command: pending.
+- Red targeted command: `npm test -- packages/prr/test/escalation-gate.test.ts packages/prr/test/stalling.test.ts`
+- Red targeted result: failed as expected before implementation. Vitest reported `Test Files 2 failed (2)`, with `Cannot find module '../src/stalling.js'` for the stalling tests and `TypeError: evaluateLegalEscalationGate is not a function` for the escalation gate tests.
+- Green targeted command: `npm test -- packages/prr/test/escalation-gate.test.ts packages/prr/test/stalling.test.ts`
+- Green targeted result: `Test Files 2 passed (2)`, `Tests 11 passed (11)`.
+- Full verification command: `npm run verify`
+- Full verification result: `typecheck passed`; `Test Files 17 passed (17)`; `Tests 125 passed (125)`; `tests passed`; `factory-readiness passed`.
 
 ## Concerns
 
-- Pending implementation.
+- None. The gate accepts the current Task 4 `CitedRule[]` shape with `jurisdictionPack` rather than weakening cited-rule metadata, and stalling detection always returns `confirmedStalling: false`.
