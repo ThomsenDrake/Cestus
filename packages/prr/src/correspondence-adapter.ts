@@ -166,6 +166,9 @@ export function assertApprovedMessageInput(
   input.to.forEach((recipient, index) => {
     requireNonBlank(recipient, `to[${index}] is required`);
   });
+  input.cc?.forEach((recipient, index) => {
+    requireNonBlank(recipient, `cc[${index}] is required`);
+  });
   requireNonBlank(input.subject, "subject is required");
   requireNonBlank(input.body, "body is required");
   requireNonBlank(input.approvedBy, "approvedBy is required for one-click send");

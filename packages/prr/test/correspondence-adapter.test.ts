@@ -166,6 +166,7 @@ describe("CorrespondenceAdapter", () => {
     ["from", { from: "" }, "from is required"],
     ["to", { to: [] }, "to must include at least one recipient"],
     ["blank recipient", { to: ["records@example.gov", " "] }, "to[1] is required"],
+    ["blank cc recipient", { cc: ["records@example.gov", " "] }, "cc[1] is required"],
     ["subject", { subject: " " }, "subject is required"],
     ["body", { body: "" }, "body is required"],
     ["approvedBy", { approvedBy: " " }, "approvedBy is required for one-click send"]

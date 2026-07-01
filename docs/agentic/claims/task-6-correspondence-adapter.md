@@ -42,6 +42,15 @@
 - Review-fix full verification:
   - Command: `npm run verify`
   - Result: `typecheck passed`; 18 test files passed with 148 tests; `factory-readiness passed`.
+- CC-recipient red targeted test:
+  - Command: `npm test -- packages/prr/test/correspondence-adapter.test.ts`
+  - Result: failed because `assertApprovedMessageInput` accepted `cc: ["records@example.gov", " "]`.
+- CC-recipient green targeted test:
+  - Command: `npm test -- packages/prr/test/correspondence-adapter.test.ts`
+  - Result: passed, 1 test file and 21 tests.
+- CC-recipient full verification:
+  - Command: `npm run verify`
+  - Result: `typecheck passed`; 18 test files passed with 149 tests; `factory-readiness passed`.
 
 ## Self-Review
 
@@ -49,3 +58,4 @@
 - The fake adapter has no live credential or network path and exposes only `sendApprovedMessage` for outbound send behavior.
 - Validation now returns clear local errors for blank send inputs and missing or blank human approval.
 - Review fix exported the approved-send validator for provider wrappers, made fake sync input snapshotting deterministic, and changed credential-mode mapping to an exhaustive provider switch.
+- CC-recipient fix keeps omitted `cc` valid while rejecting blank entries as `cc[index] is required`.
