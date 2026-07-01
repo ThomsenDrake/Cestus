@@ -146,7 +146,7 @@ const prrCorrespondenceReceivedPayloadSchema = z.object({
   from: prrContactSchema,
   receivedAt: z.string().datetime(),
   bodyHash: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(),
-  evidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/)).default([])
+  evidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/))
 }).strict();
 
 const prrRequestRefSchema = z.object({
@@ -193,7 +193,7 @@ const prrDeadlineConfirmedPayloadSchema = prrRequestRefSchema.extend({
 
 const prrFeeEstimatedPayloadSchema = prrRequestRefSchema.extend({
   amountCents: z.number().int().nonnegative(),
-  currency: z.string().length(3),
+  currency: z.string().regex(/^[A-Z]{3}$/),
   sourceEvidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/).optional()
 }).strict();
 
@@ -456,7 +456,7 @@ export const eventContracts = {
     version: 1,
     description: "Records an agency fee estimate or fee amount associated with a public records request.",
     agentGuidance: "Use sourceEvidenceId when the estimate came from correspondence or an attachment ingested as evidence.",
-    invariants: ["amountCents cannot be negative", "currency must be a three-letter code"]
+    invariants: ["amountCents cannot be negative", "currency must be an uppercase three-letter code"]
   },
   "prr.fee.challenged": {
     type: "prr.fee.challenged",
