@@ -32,8 +32,10 @@ describe("PRR diagnostics", () => {
   it.each([
     ["message token", { message: "OAuth token expired" }],
     ["message password", { message: "Mailbox password was rejected" }],
+    ["message private key", { message: "-----BEGIN PRIVATE KEY-----" }],
     ["action client secret", { allowedActions: ["rotate client secret"] }],
     ["action refresh secret", { allowedActions: ["replace refresh secret"] }],
+    ["action session secret", { allowedActions: ["replace session secret"] }],
     ["path token", { violatedPath: "adapter.oauth.token" }],
     ["path password", { violatedPath: "adapter.credentials.password" }]
   ])("rejects secret-bearing %s text", (_caseName, override) => {
