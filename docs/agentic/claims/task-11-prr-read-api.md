@@ -23,3 +23,4 @@ This task adds UI-facing DTO builders from PRR projections while preserving proj
 
 - Red targeted command: `npm test -- packages/prr/test/read-api.test.ts` failed because `../src/read-api.js` was missing.
 - Green targeted command: `npm test -- packages/prr/test/read-api.test.ts` passed with 1 test file and 3 tests.
+- Full verification command: `npm run verify` passed with `typecheck passed`, 24 test files passed, 216 tests passed, `tests passed`, and `factory-readiness passed`.
