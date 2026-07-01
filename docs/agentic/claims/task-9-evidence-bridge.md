@@ -22,6 +22,12 @@
 - Full verification: `npm run verify` passed: typecheck passed, 22 test files passed with 189 tests, and factory-readiness passed.
 - Commit: task completion commit follows this evidence update.
 
+## Export Coverage Follow-Up Evidence
+
+- Targeted test: `npm test -- packages/prr/test/evidence-bridge.test.ts packages/prr/test/extraction-queue.test.ts` passed with 2 test files and 8 tests, including package-index export coverage.
+- Full verification: `npm run verify` passed: typecheck passed, 22 test files passed with 190 tests, and factory-readiness passed.
+- Commit: export coverage follow-up commit follows this evidence update.
+
 ## Self-Review
 
 - Scope stayed within the allowed Task 9 files.
@@ -29,3 +35,4 @@
 - Evidence bridge emits only `evidence.ingested` with PRR file source metadata; it does not create assertions or projection state.
 - Bridge input validation rejects bad PRR IDs, bad evidence IDs, blank filenames, blank media types, and empty content before ingesting.
 - Extraction queue validates schema, rejects duplicate queue item IDs, and returns clones from `list`.
+- Export follow-up verifies Task 9 bridge and queue contracts through `packages/prr/src/index.ts`.

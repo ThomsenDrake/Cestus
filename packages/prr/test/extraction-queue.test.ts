@@ -4,6 +4,12 @@ import {
   InMemoryAssertionExtractionQueue,
   type AssertionExtractionQueueItem
 } from "../src/extraction-queue.js";
+import { PrrEvidenceBridge } from "../src/evidence-bridge.js";
+import {
+  assertionExtractionQueueItemSchema as exportedAssertionExtractionQueueItemSchema,
+  InMemoryAssertionExtractionQueue as ExportedInMemoryAssertionExtractionQueue,
+  PrrEvidenceBridge as ExportedPrrEvidenceBridge
+} from "../src/index.js";
 
 function queueItem(overrides: Partial<AssertionExtractionQueueItem> = {}): AssertionExtractionQueueItem {
   return {
@@ -18,6 +24,12 @@ function queueItem(overrides: Partial<AssertionExtractionQueueItem> = {}): Asser
 }
 
 describe("AssertionExtractionQueue", () => {
+  it("exports Task 9 bridge and queue contracts from the package index", () => {
+    expect(ExportedPrrEvidenceBridge).toBe(PrrEvidenceBridge);
+    expect(ExportedInMemoryAssertionExtractionQueue).toBeDefined();
+    expect(exportedAssertionExtractionQueueItemSchema.parse(queueItem())).toEqual(queueItem());
+  });
+
   it("queues production evidence for future assertion extraction", async () => {
     const queue = new InMemoryAssertionExtractionQueue();
 
