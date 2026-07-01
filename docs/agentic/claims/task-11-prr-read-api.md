@@ -6,7 +6,7 @@
 - Branch: `codex/prr-workflow-design`
 - Worktree path: `/home/drake/.codex/worktrees/836b/Cestus`
 - Claimed at: `2026-07-01T19:53:52Z`
-- Status: `claimed`
+- Status: `ready-for-review`
 
 ## Owned Files
 
@@ -18,3 +18,8 @@
 ## Notes
 
 This task adds UI-facing DTO builders from PRR projections while preserving projection rebuildability and avoiding UI/business logic in the backend contract.
+
+## Verification Handoff
+
+- Red targeted command: `npm test -- packages/prr/test/read-api.test.ts` failed because `../src/read-api.js` was missing.
+- Green targeted command: `npm test -- packages/prr/test/read-api.test.ts` passed with 1 test file and 3 tests.

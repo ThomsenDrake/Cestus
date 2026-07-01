@@ -10,3 +10,4 @@ export * from "./correspondence-service.js";
 export * from "./evidence-bridge.js";
 export * from "./extraction-queue.js";
 export * from "./projection.js";
+export * from "./read-api.js";
