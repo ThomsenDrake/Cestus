@@ -36,6 +36,8 @@ describe("PRR diagnostics", () => {
     ["action client secret", { allowedActions: ["rotate client secret"] }],
     ["action refresh secret", { allowedActions: ["replace refresh secret"] }],
     ["action session secret", { allowedActions: ["replace session secret"] }],
+    ["action imap_password", { allowedActions: ["rotate imap_password"] }],
+    ["path access_token", { violatedPath: "adapter.oauth.access_token" }],
     ["path token", { violatedPath: "adapter.oauth.token" }],
     ["path password", { violatedPath: "adapter.credentials.password" }]
   ])("rejects secret-bearing %s text", (_caseName, override) => {

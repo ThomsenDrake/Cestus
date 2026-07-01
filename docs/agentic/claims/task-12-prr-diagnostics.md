@@ -26,3 +26,9 @@ Credential-safety review fix evidence:
 - Red targeted command: `npm test -- packages/prr/test/diagnostics.test.ts` failed with 2 failed tests and 10 passed tests because `-----BEGIN PRIVATE KEY-----` and `session secret` diagnostic text did not throw.
 - Green targeted command: `npm test -- packages/prr/test/diagnostics.test.ts` passed with 1 test file and 12 tests.
 - Full verification command: `npm run verify` passed with `typecheck passed`, 25 test files, 228 tests, `tests passed`, and `factory-readiness passed`.
+
+Credential-safety underscore review fix evidence:
+
+- Red targeted command: `npm test -- packages/prr/test/diagnostics.test.ts` failed with 2 failed tests and 12 passed tests because `imap_password` and `access_token` diagnostic text did not throw.
+- Green targeted command: `npm test -- packages/prr/test/diagnostics.test.ts` passed with 1 test file and 14 tests.
+- Full verification command: `npm run verify` passed with `typecheck passed`, 25 test files, 230 tests, `tests passed`, and `factory-readiness passed`.

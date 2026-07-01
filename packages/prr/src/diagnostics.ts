@@ -31,7 +31,7 @@ export interface PrrDiagnostic {
 }
 
 const secretTextPattern =
-  /\b(?:token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret)\b/i;
+  /(?:^|[^a-z0-9])(?:token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret)(?:$|[^a-z0-9])/i;
 
 export function createPrrDiagnostic(input: PrrDiagnosticInput): PrrDiagnostic {
   assertNoSecretText(input.message);
