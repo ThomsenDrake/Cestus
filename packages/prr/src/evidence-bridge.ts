@@ -25,6 +25,7 @@ export interface ProductionArtifactInput {
 
 const prrRequestIdPattern = /^prr_[a-zA-Z0-9_-]+$/;
 const evidenceIdPattern = /^ev_[a-zA-Z0-9_-]+$/;
+const safeFilenamePattern = /^[a-zA-Z0-9._-]+$/;
 
 export class PrrEvidenceBridge {
   private readonly actor: ActorRef;
@@ -97,8 +98,7 @@ export class PrrEvidenceBridge {
     return (
       filename === "." ||
       filename === ".." ||
-      /[\/\\#?]/.test(filename) ||
-      /[\u0000-\u001f\u007f]/u.test(filename)
+      !safeFilenamePattern.test(filename)
     );
   }
 }

@@ -57,11 +57,12 @@ describe("PrrEvidenceBridge", () => {
     const event = await bridge.ingestProductionArtifact({
       prrRequestId: "prr_req_001",
       evidenceId: "ev_prr_production_002",
-      filename: "responsive-records.txt",
+      filename: "contracts_2024-final.pdf",
       mediaType: "text/plain",
       content
     });
 
+    expect(event.payload.source.uri).toBe("cestus:prr/prr_req_001/productions/contracts_2024-final.pdf");
     const contentHash = event.payload.contentHash as `sha256:${string}`;
     await expect(blobStore.get(contentHash)).resolves.toEqual(content);
   });
@@ -140,6 +141,12 @@ describe("PrrEvidenceBridge", () => {
       "folder\\contracts.pdf",
       "contract.pdf#v2",
       "contract.pdf?x=y",
+      "contract%2Ffinal.pdf",
+      "a:b.pdf",
+      "a@b.pdf",
+      "a;b.pdf",
+      "a=b.pdf",
+      "[draft].pdf",
       ".",
       "..",
       "contract\u0000.pdf",
