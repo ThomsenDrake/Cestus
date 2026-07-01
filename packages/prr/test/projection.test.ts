@@ -140,6 +140,76 @@ describe("buildPrrProjection", () => {
     expect(projection.timelineForRequest("prr_req_001")).toHaveLength(5);
   });
 
+  it("protects request read models from caller mutation", () => {
+    const projection = buildPrrProjection([
+      ...goldenPrrLedgerEvents,
+      confirmedDeadlineEvent("2026-07-25")
+    ]);
+    const request = projection.requests.get("prr_req_001");
+    expect(request).toBeDefined();
+
+    const mutableRequest = request as unknown as {
+      productionEvidenceIds: string[];
+      activeDeadline: { deadlineDate: string; source: "estimated" | "confirmed" };
+    };
+
+    try {
+      mutableRequest.productionEvidenceIds.push("ev_mutated");
+    } catch {
+      // Frozen read models are acceptable; the later read must still be unchanged.
+    }
+    try {
+      mutableRequest.activeDeadline.deadlineDate = "2099-01-01";
+    } catch {
+      // Frozen read models are acceptable; the later read must still be unchanged.
+    }
+
+    expect(projection.requests.get("prr_req_001")?.productionEvidenceIds).toEqual([
+      "ev_prr_production_001",
+      "ev_prr_production_002"
+    ]);
+    expect(projection.requests.get("prr_req_001")?.activeDeadline).toEqual({
+      deadlineDate: "2026-07-25",
+      source: "confirmed"
+    });
+  });
+
+  it("protects timeline entries from caller mutation", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents);
+    const firstEntry = projection.timelineForRequest("prr_req_001")[0];
+    expect(firstEntry).toBeDefined();
+
+    try {
+      (firstEntry as { eventId: string }).eventId = "evt_mutated";
+    } catch {
+      // Frozen timeline entries are acceptable; the later read must still be unchanged.
+    }
+
+    expect(projection.timelineForRequest("prr_req_001")[0]).toEqual({
+      eventId: "evt_prr_req_001_created",
+      type: "prr.request.created",
+      occurredAt: "2026-07-01T12:00:00.000Z"
+    });
+  });
+
+  it("updates status when a denial is recorded", () => {
+    const projection = buildPrrProjection([...goldenPrrLedgerEvents, denialRecordedEvent()]);
+
+    expect(projection.requests.get("prr_req_001")?.status).toBe("denied");
+  });
+
+  it("updates status when an appeal is created", () => {
+    const projection = buildPrrProjection([...goldenPrrLedgerEvents, appealCreatedEvent()]);
+
+    expect(projection.requests.get("prr_req_001")?.status).toBe("appealed");
+  });
+
+  it("updates status when a request is closed", () => {
+    const projection = buildPrrProjection([...goldenPrrLedgerEvents, requestClosedEvent()]);
+
+    expect(projection.requests.get("prr_req_001")?.status).toBe("closed");
+  });
+
   it("exports the projection builder from the package entrypoint", () => {
     expect(exportedBuildPrrProjection).toBe(buildPrrProjection);
   });
@@ -281,6 +351,78 @@ function stallingConfirmedEvent(): KnowledgeEventOf<"prr.stalling.confirmed"> {
       confirmedBy: "actor_prr_test",
       rationale: "Requester reviewed the signal and agreed it indicates stalling.",
       signalKinds: ["deadline-breached"]
+    }
+  };
+}
+
+function denialRecordedEvent(): KnowledgeEventOf<"prr.denial.recorded"> {
+  return {
+    id: "evt_prr_req_001_denial_recorded",
+    type: "prr.denial.recorded",
+    version: 1,
+    streamId: "prr_req_001",
+    sequence: 6,
+    context: {
+      ...systemContext,
+      occurredAt: "2026-07-20T12:00:00.000Z",
+      causationId: "evt_prr_req_001_correspondence_received"
+    },
+    payload: {
+      prrRequestId: "prr_req_001",
+      denialId: "denial_prr_req_001",
+      receivedAt: "2026-07-20T12:00:00.000Z",
+      reason: "Agency denied the request in full.",
+      sourceEvidenceId: "ev_prr_correspondence_001"
+    }
+  };
+}
+
+function appealCreatedEvent(): KnowledgeEventOf<"prr.appeal.created"> {
+  return {
+    id: "evt_prr_req_001_appeal_created",
+    type: "prr.appeal.created",
+    version: 1,
+    streamId: "prr_req_001",
+    sequence: 6,
+    context: {
+      ...systemContext,
+      occurredAt: "2026-07-21T12:00:00.000Z",
+      causationId: "evt_prr_req_001_denial_recorded"
+    },
+    payload: {
+      prrRequestId: "prr_req_001",
+      appealId: "appeal_prr_req_001",
+      correspondenceId: "corr_prr_req_001_appeal",
+      filedAt: "2026-07-21T12:00:00.000Z",
+      approvedBy: "actor_prr_test",
+      citedRules: [
+        {
+          jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+          label: "FOIA administrative appeal",
+          citation: "5 U.S.C. 552(a)(6)(A)(i)"
+        }
+      ]
+    }
+  };
+}
+
+function requestClosedEvent(): KnowledgeEventOf<"prr.request.closed"> {
+  return {
+    id: "evt_prr_req_001_closed",
+    type: "prr.request.closed",
+    version: 1,
+    streamId: "prr_req_001",
+    sequence: 6,
+    context: {
+      ...systemContext,
+      occurredAt: "2026-07-22T12:00:00.000Z",
+      causationId: "evt_prr_req_001_production_received"
+    },
+    payload: {
+      prrRequestId: "prr_req_001",
+      closedAt: "2026-07-22T12:00:00.000Z",
+      closedBy: "actor_prr_test",
+      reason: "fulfilled"
     }
   };
 }

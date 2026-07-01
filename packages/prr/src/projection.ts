@@ -2,11 +2,32 @@ import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { PrrStatus } from "./types.js";
 
 export interface PrrDeadlineReadModel {
-  deadlineDate: string;
-  source: "estimated" | "confirmed";
+  readonly deadlineDate: string;
+  readonly source: "estimated" | "confirmed";
 }
 
 export interface PrrRequestReadModel {
+  readonly prrRequestId: string;
+  readonly status: PrrStatus;
+  readonly agencyName: string;
+  readonly activeDeadline?: PrrDeadlineReadModel;
+  readonly possibleStalling: boolean;
+  readonly confirmedStalling: boolean;
+  readonly productionEvidenceIds: readonly string[];
+}
+
+export interface PrrTimelineEntry {
+  readonly eventId: string;
+  readonly type: KnowledgeEvent["type"];
+  readonly occurredAt: string;
+}
+
+export interface PrrProjection {
+  requests: ReadonlyMap<string, PrrRequestReadModel>;
+  timelineForRequest(prrRequestId: string): PrrTimelineEntry[];
+}
+
+interface MutablePrrRequestReadModel {
   prrRequestId: string;
   status: PrrStatus;
   agencyName: string;
@@ -16,19 +37,8 @@ export interface PrrRequestReadModel {
   productionEvidenceIds: string[];
 }
 
-export interface PrrTimelineEntry {
-  eventId: string;
-  type: KnowledgeEvent["type"];
-  occurredAt: string;
-}
-
-export interface PrrProjection {
-  requests: Map<string, PrrRequestReadModel>;
-  timelineForRequest(prrRequestId: string): PrrTimelineEntry[];
-}
-
 export function buildPrrProjection(events: readonly KnowledgeEvent[]): PrrProjection {
-  const requests = new Map<string, PrrRequestReadModel>();
+  const requests = new Map<string, MutablePrrRequestReadModel>();
   const timelines = new Map<string, PrrTimelineEntry[]>();
 
   for (const event of events) {
@@ -62,12 +72,12 @@ export function buildPrrProjection(events: readonly KnowledgeEvent[]): PrrProjec
   return {
     requests: cloneRequests(requests),
     timelineForRequest(prrRequestId) {
-      return [...(timelines.get(prrRequestId) ?? [])];
+      return (timelines.get(prrRequestId) ?? []).map(cloneTimelineEntry);
     }
   };
 }
 
-function applyPrrEvent(request: PrrRequestReadModel, event: KnowledgeEvent): void {
+function applyPrrEvent(request: MutablePrrRequestReadModel, event: KnowledgeEvent): void {
   switch (event.type) {
     case "prr.request.sent":
       request.status = "sent";
@@ -98,6 +108,18 @@ function applyPrrEvent(request: PrrRequestReadModel, event: KnowledgeEvent): voi
       request.productionEvidenceIds.push(...event.payload.evidenceIds);
       break;
 
+    case "prr.denial.recorded":
+      request.status = "denied";
+      break;
+
+    case "prr.appeal.created":
+      request.status = "appealed";
+      break;
+
+    case "prr.request.closed":
+      request.status = "closed";
+      break;
+
     case "prr.stalling.detected":
       request.possibleStalling = true;
       break;
@@ -125,7 +147,9 @@ function appendTimelineEntry(
   timelines.set(prrRequestId, timeline);
 }
 
-function cloneRequests(requests: Map<string, PrrRequestReadModel>): Map<string, PrrRequestReadModel> {
+function cloneRequests(
+  requests: Map<string, MutablePrrRequestReadModel>
+): ReadonlyMap<string, PrrRequestReadModel> {
   return new Map(
     [...requests.entries()].map(([prrRequestId, request]) => [
       prrRequestId,
@@ -134,23 +158,35 @@ function cloneRequests(requests: Map<string, PrrRequestReadModel>): Map<string, 
   );
 }
 
-function cloneRequest(request: PrrRequestReadModel): PrrRequestReadModel {
-  return {
+function cloneRequest(request: MutablePrrRequestReadModel): PrrRequestReadModel {
+  return Object.freeze({
     prrRequestId: request.prrRequestId,
     status: request.status,
     agencyName: request.agencyName,
     ...(request.activeDeadline === undefined
       ? {}
       : {
-          activeDeadline: {
-            deadlineDate: request.activeDeadline.deadlineDate,
-            source: request.activeDeadline.source
-          }
+          activeDeadline: cloneDeadline(request.activeDeadline)
         }),
     possibleStalling: request.possibleStalling,
     confirmedStalling: request.confirmedStalling,
-    productionEvidenceIds: [...request.productionEvidenceIds]
-  };
+    productionEvidenceIds: Object.freeze([...request.productionEvidenceIds])
+  });
+}
+
+function cloneDeadline(deadline: PrrDeadlineReadModel): PrrDeadlineReadModel {
+  return Object.freeze({
+    deadlineDate: deadline.deadlineDate,
+    source: deadline.source
+  });
+}
+
+function cloneTimelineEntry(entry: PrrTimelineEntry): PrrTimelineEntry {
+  return Object.freeze({
+    eventId: entry.eventId,
+    type: entry.type,
+    occurredAt: entry.occurredAt
+  });
 }
 
 function requestIdFromPrrEvent(event: KnowledgeEvent): string | undefined {

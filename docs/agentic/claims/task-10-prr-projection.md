@@ -19,12 +19,21 @@
 - Red targeted test: `npm test -- packages/prr/test/projection.test.ts`
   - Result: failed as expected before implementation.
   - Key output: `Error: Cannot find module '../src/projection.js' imported from packages/prr/test/projection.test.ts`
+- Review-fix red targeted test: `npm test -- packages/prr/test/projection.test.ts`
+  - Result: failed as expected before review fix.
+  - Key output: `5 failed | 10 passed`; failures covered request model mutation leakage, timeline entry mutation leakage, and missing `denied`, `appealed`, and `closed` status transitions.
 - Green targeted test: `npm test -- packages/prr/test/projection.test.ts`
   - Result: passed after implementation.
   - Key output: `Test Files  1 passed (1)`, `Tests  10 passed (10)`
+- Review-fix green targeted test: `npm test -- packages/prr/test/projection.test.ts`
+  - Result: passed after review fix.
+  - Key output: `Test Files  1 passed (1)`, `Tests  15 passed (15)`
 - Full verification: `npm run verify`
   - Result: passed.
   - Key output: `typecheck passed`, `Test Files  23 passed (23)`, `Tests  202 passed (202)`, `tests passed`, `factory-readiness passed`
+- Review-fix full verification: `npm run verify`
+  - Result: passed.
+  - Key output: `typecheck passed`, `Test Files  23 passed (23)`, `Tests  207 passed (207)`, `tests passed`, `factory-readiness passed`
 
 ## Notes
 
@@ -36,3 +45,4 @@
 - Checked the diff against the allowed file list; changes are limited to Task 10 files.
 - No defects found in the projection replay logic during self-review.
 - Concern retained: `awaitingProduction` after `prr.production.received` reads oddly, but the implementation intentionally follows the plan-compatible status transition.
+- Review-fix self-review: defensive boundaries now freeze cloned request models, nested active deadlines, production evidence arrays, and returned timeline entries; status-bearing denial, appeal, and close events update the read model.
