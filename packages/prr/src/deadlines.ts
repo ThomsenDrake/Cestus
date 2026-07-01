@@ -179,12 +179,16 @@ function addFederalWorkingDays(inputDate: Date, days: number): string {
 
 function isFederalWorkingDay(date: Date): boolean {
   const dayOfWeek = date.getUTCDay();
-  return dayOfWeek !== 0 && dayOfWeek !== 6 && !isObservedFederalHoliday(date);
+  return dayOfWeek !== 0 && dayOfWeek !== 6 && !isFederalLegalPublicHoliday(date);
 }
 
 const observedHolidayCache = new Map<number, Set<string>>();
 
-function isObservedFederalHoliday(date: Date): boolean {
+function isFederalLegalPublicHoliday(date: Date): boolean {
+  return isObservedAnnualFederalHoliday(date) || isInaugurationDay(date);
+}
+
+function isObservedAnnualFederalHoliday(date: Date): boolean {
   const year = date.getUTCFullYear();
   const dateKey = toDateKey(date);
   return (
@@ -229,6 +233,11 @@ function observedFixedHolidayKey(year: number, monthIndex: number, dayOfMonth: n
   }
 
   return toDateKey(date);
+}
+
+function isInaugurationDay(date: Date): boolean {
+  const year = date.getUTCFullYear();
+  return year >= 1965 && (year - 1965) % 4 === 0 && date.getUTCMonth() === 0 && date.getUTCDate() === 20;
 }
 
 function nthWeekdayOfMonth(

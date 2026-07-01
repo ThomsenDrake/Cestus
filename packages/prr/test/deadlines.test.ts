@@ -23,6 +23,15 @@ describe("deadline calculators", () => {
     expect(result.citedRules[0]?.citation).toContain("5 U.S.C. 552");
   });
 
+  it("excludes Inauguration Day in applicable federal FOIA working-day estimates", () => {
+    const result = calculateEstimatedDeadline(usFederalFoiaPack, {
+      prrRequestId: "prr_req_001",
+      receivedAt: "2033-01-18T12:00:00.000Z"
+    });
+
+    expect(result.deadlineDate).toBe("2033-02-16");
+  });
+
   it("accepts valid UTC datetimes without fractional seconds", () => {
     const result = calculateEstimatedDeadline(usFederalFoiaPack, {
       prrRequestId: "prr_req_001",
