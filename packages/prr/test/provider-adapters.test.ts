@@ -745,7 +745,7 @@ describe("provider correspondence adapters", () => {
     );
   });
 
-  it("rejects malformed Himalaya sync attachment refs instead of omitting them", async () => {
+  it("rejects null Himalaya sync raw metadata instead of treating it as omitted", async () => {
     const adapter = new HimalayaCliAdapter({
       profile: "records",
       runCommand: async () => ({
@@ -754,6 +754,32 @@ describe("provider correspondence adapters", () => {
           messages: [
             {
               id: "himalaya_inbound_005",
+              from: "foia@example.gov",
+              to: ["investigator@example.org"],
+              subject: "Acknowledgement",
+              receivedAt: "2026-07-01T17:00:00.000Z",
+              rawMetadata: null
+            }
+          ]
+        }),
+        stderr: ""
+      })
+    });
+
+    await expect(adapter.syncSince("checkpoint_001")).rejects.toThrow(
+      "himalaya sync message[0] rawMetadata must be an object"
+    );
+  });
+
+  it("rejects malformed Himalaya sync attachment refs instead of omitting them", async () => {
+    const adapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async () => ({
+        stdout: JSON.stringify({
+          checkpoint: "himalaya_checkpoint_009",
+          messages: [
+            {
+              id: "himalaya_inbound_006",
               from: "foia@example.gov",
               to: ["investigator@example.org"],
               subject: "Acknowledgement",
@@ -776,10 +802,10 @@ describe("provider correspondence adapters", () => {
       profile: "records",
       runCommand: async () => ({
         stdout: JSON.stringify({
-          checkpoint: "himalaya_checkpoint_009",
+          checkpoint: "himalaya_checkpoint_010",
           messages: [
             {
-              id: "himalaya_inbound_006",
+              id: "himalaya_inbound_007",
               threadId: 42,
               from: "foia@example.gov",
               to: ["investigator@example.org"],
@@ -800,10 +826,10 @@ describe("provider correspondence adapters", () => {
       profile: "records",
       runCommand: async () => ({
         stdout: JSON.stringify({
-          checkpoint: "himalaya_checkpoint_010",
+          checkpoint: "himalaya_checkpoint_011",
           messages: [
             {
-              id: "himalaya_inbound_007",
+              id: "himalaya_inbound_008",
               providerThreadId: 42,
               from: "foia@example.gov",
               to: ["investigator@example.org"],
@@ -826,10 +852,10 @@ describe("provider correspondence adapters", () => {
       profile: "records",
       runCommand: async () => ({
         stdout: JSON.stringify({
-          checkpoint: "himalaya_checkpoint_011",
+          checkpoint: "himalaya_checkpoint_012",
           messages: [
             {
-              id: "himalaya_inbound_008",
+              id: "himalaya_inbound_009",
               from: "foia@example.gov",
               to: ["investigator@example.org"],
               subject: "Acknowledgement",

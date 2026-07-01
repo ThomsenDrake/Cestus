@@ -30,6 +30,9 @@ Status: ready-for-review
 - Himalaya optional-string re-review red targeted test: `npm test -- packages/prr/test/provider-adapters.test.ts` failed with 2 failing tests covering dropped malformed `threadId`/`providerThreadId` and `body`.
 - Himalaya optional-string re-review green targeted test: `npm test -- packages/prr/test/provider-adapters.test.ts` passed with 1 test file and 24 tests.
 - Himalaya optional-string re-review full verification: `npm run verify` passed with `typecheck passed`, 19 test files and 173 tests, `tests passed`, and `factory-readiness passed`.
+- Himalaya nullable metadata re-review red targeted test: `npm test -- packages/prr/test/provider-adapters.test.ts` failed with 1 failing test covering `rawMetadata: null` being treated as omitted.
+- Himalaya nullable metadata re-review green targeted test: `npm test -- packages/prr/test/provider-adapters.test.ts` passed with 1 test file and 25 tests.
+- Himalaya nullable metadata re-review full verification: `npm run verify` passed with `typecheck passed`, 19 test files and 174 tests, `tests passed`, and `factory-readiness passed`.
 
 ## Self-Review
 
@@ -38,3 +41,4 @@ Status: ready-for-review
 - Review fix: added shared sync normalization for all provider adapters, hardened Himalaya sync shape errors, and replaced brittle send-argument insertion with explicit ordered pushes.
 - Re-review fix: preserved Himalaya provider-supplied optional sync fields into shared normalization so unsafe or malformed metadata, cc, and attachment refs are rejected instead of dropped.
 - Optional-string re-review fix: preserved present Himalaya thread id aliases and body values into shared optional-string validation so non-string values reject instead of being omitted.
+- Nullable metadata re-review fix: defaulted Himalaya sync raw metadata only when omitted, preserving present `null` for shared malformed-shape rejection.

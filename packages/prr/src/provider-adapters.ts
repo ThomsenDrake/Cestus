@@ -232,7 +232,7 @@ function parseHimalayaMessages(values: unknown[]): unknown[] {
     const message: Record<string, unknown> = {
       provider: "himalaya",
       to: value.to,
-      rawMetadata: value.rawMetadata ?? { provider: "himalaya" }
+      rawMetadata: "rawMetadata" in value ? value.rawMetadata : { provider: "himalaya" }
     };
 
     const providerMessageId = stringValue(value.providerMessageId) ?? stringValue(value.id);
