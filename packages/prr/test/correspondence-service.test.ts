@@ -100,6 +100,25 @@ describe("PrrCorrespondenceService", () => {
     await expect(sentEventCount(ledger)).resolves.toBe(0);
   });
 
+  it("rejects missing approval before calling the adapter or appending a sent event", async () => {
+    const ledger = await ledgerWithCreatedRequest();
+    const adapter = new RecordingAdapter("gmail");
+    const service = new PrrCorrespondenceService({
+      ledger,
+      actor,
+      adapters: { gmail: adapter }
+    });
+    const { approvedBy: _approvedBy, ...inputWithoutApproval } = initialSendInput;
+
+    await expect(
+      service.sendInitialRequest(
+        inputWithoutApproval as Parameters<PrrCorrespondenceService["sendInitialRequest"]>[0]
+      )
+    ).rejects.toThrow("approvedBy is required for one-click send");
+    expect(adapter.sendCalls).toBe(0);
+    await expect(sentEventCount(ledger)).resolves.toBe(0);
+  });
+
   it("blocks duplicate initial sends through lifecycle duplicate protection", async () => {
     const ledger = await ledgerWithCreatedRequest();
     const service = new PrrCorrespondenceService({
@@ -152,6 +171,7 @@ function sha256(value: string): string {
 
 class RecordingAdapter implements CorrespondenceAdapter {
   lastInput?: ApprovedMessageInput;
+  sendCalls = 0;
 
   constructor(private readonly provider: CorrespondenceProvider) {}
 
@@ -166,6 +186,7 @@ class RecordingAdapter implements CorrespondenceAdapter {
   }
 
   async sendApprovedMessage(input: ApprovedMessageInput): Promise<SentMessageResult> {
+    this.sendCalls += 1;
     this.lastInput = {
       ...input,
       to: [...input.to],

@@ -2,7 +2,11 @@ import { createHash } from "node:crypto";
 import type { z } from "zod";
 import { actorRefSchema, type KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
-import type { ApprovedMessageAttachment, CorrespondenceAdapter } from "./correspondence-adapter.js";
+import {
+  assertApprovedMessageInput,
+  type ApprovedMessageAttachment,
+  type CorrespondenceAdapter
+} from "./correspondence-adapter.js";
 import { PrrLifecycleService } from "./lifecycle.js";
 import type { CorrespondenceProvider } from "./types.js";
 
@@ -37,7 +41,7 @@ export class PrrCorrespondenceService {
       throw new Error(`No correspondence adapter configured for ${input.provider}`);
     }
 
-    const sent = await adapter.sendApprovedMessage({
+    const approvedMessageInput = {
       idempotencyKey: `send_${input.prrRequestId}_${input.correspondenceId}`,
       from: input.from,
       to: input.to,
@@ -46,7 +50,10 @@ export class PrrCorrespondenceService {
       body: input.body,
       approvedBy: input.approvedBy,
       attachments: input.attachments ?? []
-    });
+    };
+    assertApprovedMessageInput(approvedMessageInput);
+
+    const sent = await adapter.sendApprovedMessage(approvedMessageInput);
 
     const lifecycle = new PrrLifecycleService({
       ledger: this.dependencies.ledger,
