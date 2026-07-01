@@ -27,6 +27,13 @@
 - Full verification: `npm run verify` passed: typecheck passed, 20 test files passed with 181 tests, and factory-readiness passed.
 - Commit: review follow-up commit follows this evidence update.
 
+## Code-Quality Review Follow-Up Evidence
+
+- Red targeted test: `npm test -- packages/prr/test/correspondence-service.test.ts` failed with 2 failures proving duplicate and missing-stream sends called the adapter before lifecycle preconditions.
+- Green targeted test: `npm test -- packages/prr/test/correspondence-service.test.ts` passed with 1 test file and 8 tests.
+- Full verification: `npm run verify` passed: typecheck passed, 20 test files passed with 182 tests, and factory-readiness passed.
+- Commit: code-quality follow-up commit follows this evidence update.
+
 ## Self-Review
 
 - Scope stayed within the allowed files.
@@ -34,3 +41,4 @@
 - Ledger recording is delegated to `PrrLifecycleService.markRequestSent`, preserving lifecycle duplicate protection.
 - No inbound sync or uncertain-match review behavior was added.
 - Review follow-up keeps missing/blank approval rejection in the shared approved-send validator and prevents adapter side effects before validation.
+- Code-quality follow-up adds a pre-send ledger guard for missing request streams and duplicate sends while preserving lifecycle checks after provider send.

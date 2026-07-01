@@ -52,6 +52,7 @@ export class PrrCorrespondenceService {
       attachments: input.attachments ?? []
     };
     assertApprovedMessageInput(approvedMessageInput);
+    await this.assertRequestCanBeSent(input.prrRequestId);
 
     const sent = await adapter.sendApprovedMessage(approvedMessageInput);
 
@@ -69,6 +70,19 @@ export class PrrCorrespondenceService {
       sentAt: sent.sentAt,
       approvedBy: input.approvedBy
     });
+  }
+
+  private async assertRequestCanBeSent(prrRequestId: string): Promise<void> {
+    const events = await this.dependencies.ledger.readStream(prrRequestId);
+    const created = events.find((event) => event.type === "prr.request.created");
+    if (created === undefined) {
+      throw new Error(`Cannot send request ${prrRequestId} before it is created`);
+    }
+
+    const sent = events.find((event) => event.type === "prr.request.sent");
+    if (sent !== undefined) {
+      throw new Error(`Cannot send request ${prrRequestId} more than once`);
+    }
   }
 }
 

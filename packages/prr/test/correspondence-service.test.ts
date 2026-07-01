@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import {
@@ -52,7 +51,7 @@ describe("PrrCorrespondenceService", () => {
       provider: "gmail",
       providerMessageId: "fake_msg_send_prr_req_001_corr_req_001",
       subject: "Records Request",
-      bodyHash: sha256("Please provide records."),
+      bodyHash: "sha256:a287a8dc2603ddfe9fdef494238ebd54741c9e2dc811a88f3ffe1cf3fb1e37fe",
       sentAt: "2026-07-01T16:00:00.000Z",
       approvedBy: "actor_investigator"
     });
@@ -121,18 +120,37 @@ describe("PrrCorrespondenceService", () => {
 
   it("blocks duplicate initial sends through lifecycle duplicate protection", async () => {
     const ledger = await ledgerWithCreatedRequest();
+    const adapter = new RecordingAdapter("gmail");
     const service = new PrrCorrespondenceService({
       ledger,
       actor,
-      adapters: { gmail: new FakeCorrespondenceAdapter({ provider: "gmail" }) }
+      adapters: { gmail: adapter }
     });
 
     await service.sendInitialRequest(initialSendInput);
+    const sentEventsBeforeDuplicate = await sentEventCount(ledger);
 
     await expect(service.sendInitialRequest(initialSendInput)).rejects.toThrow(
       "Cannot send request prr_req_001 more than once"
     );
-    await expect(sentEventCount(ledger)).resolves.toBe(1);
+    expect(adapter.sendCalls).toBe(1);
+    await expect(sentEventCount(ledger)).resolves.toBe(sentEventsBeforeDuplicate);
+  });
+
+  it("rejects missing request streams before calling the adapter or appending a sent event", async () => {
+    const ledger = new InMemoryEventLedger();
+    const adapter = new RecordingAdapter("gmail");
+    const service = new PrrCorrespondenceService({
+      ledger,
+      actor,
+      adapters: { gmail: adapter }
+    });
+
+    await expect(service.sendInitialRequest(initialSendInput)).rejects.toThrow(
+      "Cannot send request prr_req_001 before it is created"
+    );
+    expect(adapter.sendCalls).toBe(0);
+    await expect(sentEventCount(ledger)).resolves.toBe(0);
   });
 
   it("passes optional cc through to the configured adapter", async () => {
@@ -163,10 +181,6 @@ async function ledgerWithCreatedRequest(): Promise<InMemoryEventLedger> {
 async function sentEventCount(ledger: EventLedger): Promise<number> {
   const events = await ledger.readAll();
   return events.filter((event) => event.type === "prr.request.sent").length;
-}
-
-function sha256(value: string): string {
-  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
 
 class RecordingAdapter implements CorrespondenceAdapter {
