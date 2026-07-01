@@ -6,7 +6,7 @@ Worker identity: Codex GPT-5 implementation worker
 Branch: `codex/prr-workflow-design`
 Worktree path: `/home/drake/.codex/worktrees/836b/Cestus`
 Claimed at: `2026-07-01T20:06:12Z`
-Status: `claimed`
+Status: `ready-for-review`
 
 Owned files:
 

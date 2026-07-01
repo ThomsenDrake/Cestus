@@ -11,3 +11,4 @@ export * from "./evidence-bridge.js";
 export * from "./extraction-queue.js";
 export * from "./projection.js";
 export * from "./read-api.js";
+export * from "./diagnostics.js";
