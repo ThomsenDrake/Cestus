@@ -104,6 +104,10 @@ const prrStatusSchema = z.enum([
 ]);
 
 const correspondenceProviderSchema = z.enum(["gmail", "imap-smtp", "himalaya"]);
+const rawMetadataKeySchema = z.string().min(1).refine((key) => !/token|secret|password|oauth|credential|config/i.test(key), {
+  message: "rawMetadata keys must not reference secrets or credentials"
+});
+const rawMetadataSchema = z.record(rawMetadataKeySchema, z.string());
 
 const jurisdictionPackRefSchema = z.object({
   name: z.string().min(1),
@@ -137,7 +141,7 @@ const prrRequestSentPayloadSchema = z.object({
   attachmentEvidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/)),
   sentAt: z.string().datetime(),
   approvedBy: z.string().min(3),
-  rawMetadata: z.record(z.string().min(1), z.string())
+  rawMetadata: rawMetadataSchema
 }).strict();
 
 const prrCorrespondenceReceivedPayloadSchema = z.object({

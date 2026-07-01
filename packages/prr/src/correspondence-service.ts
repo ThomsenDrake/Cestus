@@ -75,7 +75,7 @@ export class PrrCorrespondenceService {
       ),
       sentAt: sent.sentAt,
       approvedBy: input.approvedBy,
-      rawMetadata: { ...sent.rawMetadata }
+      rawMetadata: validateSentRawMetadata(sent.rawMetadata)
     });
   }
 
@@ -95,4 +95,15 @@ export class PrrCorrespondenceService {
 
 function sha256(value: string): string {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function validateSentRawMetadata(rawMetadata: Record<string, string>): Record<string, string> {
+  const metadata: Record<string, string> = {};
+  for (const [key, value] of Object.entries(rawMetadata)) {
+    if (/token|secret|password|oauth|credential|config/i.test(key)) {
+      throw new Error(`Sent message rawMetadata key ${key} is not allowed`);
+    }
+    metadata[key] = value;
+  }
+  return metadata;
 }

@@ -506,6 +506,26 @@ describe("public records request event contracts", () => {
     }
   });
 
+  it("rejects secret-looking raw metadata keys on prr.request.sent payloads", () => {
+    const sentPayload = validPrrPayloadExamples.find((example) => example.type === "prr.request.sent")!
+      .payload;
+    const result = validateKnowledgeEvent(
+      prrEvent("prr.request.sent", {
+        ...sentPayload,
+        rawMetadata: {
+          oauthToken: "never-store-this"
+        }
+      })
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain(
+        "payload.rawMetadata.oauthToken"
+      );
+    }
+  });
+
   it("requires human approval before a prr.followup.sent event", () => {
     const result = validateKnowledgeEvent({
       id: "evt_prr_followup_001",

@@ -201,6 +201,21 @@ describe("PrrCorrespondenceService", () => {
 
     expect(adapter.lastInput?.cc).toEqual(["records@example.gov", "custodian@example.gov"]);
   });
+
+  it("rejects secret-looking adapter raw metadata before appending a sent event", async () => {
+    const ledger = await ledgerWithCreatedRequest();
+    const adapter = new RecordingAdapter("gmail", { oauthToken: "never-store-this" });
+    const service = new PrrCorrespondenceService({
+      ledger,
+      actor,
+      adapters: { gmail: adapter }
+    });
+
+    await expect(service.sendInitialRequest(initialSendInput)).rejects.toThrow(
+      "Sent message rawMetadata key oauthToken is not allowed"
+    );
+    await expect(sentEventCount(ledger)).resolves.toBe(0);
+  });
 });
 
 async function ledgerWithCreatedRequest(): Promise<InMemoryEventLedger> {
@@ -219,7 +234,10 @@ class RecordingAdapter implements CorrespondenceAdapter {
   lastInput?: ApprovedMessageInput;
   sendCalls = 0;
 
-  constructor(private readonly provider: CorrespondenceProvider) {}
+  constructor(
+    private readonly provider: CorrespondenceProvider,
+    private readonly rawMetadata: Record<string, string> = {}
+  ) {}
 
   async capabilities(): Promise<AdapterCapabilities> {
     return {
@@ -245,7 +263,7 @@ class RecordingAdapter implements CorrespondenceAdapter {
       provider: this.provider,
       providerMessageId: `recorded_${input.idempotencyKey}`,
       sentAt: "2026-07-01T16:00:00.000Z",
-      rawMetadata: {}
+      rawMetadata: this.rawMetadata
     };
   }
 

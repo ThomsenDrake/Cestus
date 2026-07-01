@@ -28,4 +28,6 @@ Verification evidence:
 - Projection diagnostics green targeted command: `npm test -- packages/prr/test/projection.test.ts packages/prr/test/read-api.test.ts packages/prr/test/diagnostics.test.ts` passed with 3 test files and 39 tests.
 - Evidence bridge red targeted command: `npm test -- packages/prr/test/evidence-bridge.test.ts` failed because `ingestMessageArtifact` and `ingestAttachmentArtifact` were missing.
 - Evidence bridge green targeted command: `npm test -- packages/prr/test/evidence-bridge.test.ts` passed with 1 test file and 8 tests.
-- Full verification command: `npm run verify` passed with `typecheck passed`, 25 test files, 235 tests, `tests passed`, and `factory-readiness passed`.
+- Outbound metadata red targeted command: `npm test -- packages/ontology/test/contracts.test.ts packages/prr/test/correspondence-service.test.ts` failed because `rawMetadata.oauthToken` validated and was appended.
+- Outbound metadata green targeted command: `npm test -- packages/ontology/test/contracts.test.ts packages/prr/test/correspondence-service.test.ts` passed with 2 test files and 46 tests.
+- Full verification command: `npm run verify` passed with `typecheck passed`, 25 test files, 237 tests, `tests passed`, and `factory-readiness passed`.
