@@ -90,3 +90,16 @@
 - Full verification command: `npm run verify`
 - Full verification result: `typecheck passed`; `Test Files 15 passed (15)`; `Tests 113 passed (113)`; `tests passed`; `factory-readiness passed`.
 - Concerns: none. Estimated deadline outputs now validate against the existing `prr.deadline.estimated` event contract, including `prrRequestId` and `citedRules`.
+
+## Federal Inauguration Day Fix Handoff
+
+- Federal Inauguration Day fix recorded-at UTC: `2026-07-01T17:13:56Z`
+- Federal Inauguration Day implementation commit: `cffdb70`
+- Source check: 5 U.S.C. 6103(c) names Inauguration Day on January 20 of each fourth year after 1965; OPM guidance distinguishes Inauguration Day from normal in-lieu holiday treatment.
+- Targeted red command: `npm test -- packages/prr/test/jurisdiction-packs.test.ts packages/prr/test/deadlines.test.ts`
+- Targeted red result: failed as expected with one federal deadline failure: `2033-01-18T12:00:00.000Z` returned `2033-02-15` instead of `2033-02-16`.
+- Targeted green command: `npm test -- packages/prr/test/jurisdiction-packs.test.ts packages/prr/test/deadlines.test.ts`
+- Targeted green result: `Test Files 2 passed (2)`, `Tests 26 passed (26)`.
+- Full verification command: `npm run verify`
+- Full verification result: `typecheck passed`; `Test Files 15 passed (15)`; `Tests 114 passed (114)`; `tests passed`; `factory-readiness passed`.
+- Concerns: none. Existing observed annual holiday behavior remains unchanged.
