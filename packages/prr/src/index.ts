@@ -9,3 +9,4 @@ export * from "./provider-adapters.js";
 export * from "./correspondence-service.js";
 export * from "./evidence-bridge.js";
 export * from "./extraction-queue.js";
+export * from "./projection.js";
