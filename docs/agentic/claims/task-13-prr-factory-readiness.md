@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/836b/Cestus`
 
 Claimed at: `2026-07-01T20:30:00Z`
 
-Status: `claimed`
+Status: `ready-for-review`
 
 Owned files:
 
@@ -24,3 +24,5 @@ Owned files:
 Verification:
 
 - Baseline `npm run factory:check`: passed before readiness wiring.
+- Targeted `npm run factory:check`: passed after the PRR spec and plan were added to `requiredFiles`.
+- Full `npm run verify`: passed with typecheck, 25 test files, 230 tests, and factory readiness.

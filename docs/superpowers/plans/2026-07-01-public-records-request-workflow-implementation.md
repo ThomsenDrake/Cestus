@@ -2882,7 +2882,7 @@ git commit -m "feat: add prr diagnostics"
 - Modify: `docs/agentic/software-factory.md`
 - Modify: `docs/superpowers/plans/2026-07-01-public-records-request-workflow-implementation.md`
 
-- [ ] **Step 1: Write the failing readiness expectation**
+- [x] **Step 1: Write the failing readiness expectation**
 
 Modify `scripts/check-agent-readiness.mjs` by adding the PRR spec and plan to `requiredFiles`:
 
@@ -2905,7 +2905,16 @@ factory-readiness passed
 
 This check should pass because both files exist by this point.
 
-- [ ] **Step 2: Record PRR factory readiness evidence**
+Recorded 2026-07-01 in worktree `/home/drake/.codex/worktrees/836b/Cestus` on branch `codex/prr-workflow-design`.
+
+Observed command evidence:
+
+```text
+npm run factory:check
+factory-readiness passed
+```
+
+- [x] **Step 2: Record PRR factory readiness evidence**
 
 Append a `Public Records Workflow Plan Readiness` section to `docs/agentic/software-factory.md`:
 
@@ -2922,7 +2931,7 @@ Required design and plan files:
 Factory scope remains backend/domain work. UI design and build decisions require direct user collaboration.
 ```
 
-- [ ] **Step 3: Run full verification**
+- [x] **Step 3: Run full verification**
 
 Run:
 
@@ -2938,7 +2947,20 @@ tests passed
 factory-readiness passed
 ```
 
-- [ ] **Step 4: Commit**
+Recorded 2026-07-01 in worktree `/home/drake/.codex/worktrees/836b/Cestus` on branch `codex/prr-workflow-design`.
+
+Observed command evidence:
+
+```text
+npm run verify
+typecheck passed
+Test Files  25 passed (25)
+Tests  230 passed (230)
+tests passed
+factory-readiness passed
+```
+
+- [x] **Step 4: Commit**
 
 Run:
 

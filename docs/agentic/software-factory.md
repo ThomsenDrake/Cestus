@@ -66,3 +66,23 @@ Reviewer checklist evidence:
 - Rebuildable projection: `packages/ontology/test/fixtures/golden-ledger.ts` is the replayable event fixture; `packages/ontology/test/graph-projection.test.ts` validates all fixture events and rebuilds accepted assertions, resolved entities, and assertion provenance from those ledger events.
 - JSON-LD boundary export: `packages/ontology/src/jsonld-export.ts` exports from the graph projection, and `packages/ontology/test/jsonld-export.test.ts` builds the projection from golden ledger events before exporting accepted graph state with provenance references.
 - Factory gate: `scripts/check-agent-readiness.mjs` is run by `npm run verify` through `npm run factory:check` and reported `factory-readiness passed`, confirming the tracked text files contain no forbidden unfinished markers outside the explicit allow convention.
+
+## Public Records Workflow Plan Readiness
+
+The PRR workflow plan was prepared from the approved design spec on 2026-07-01.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-01-public-records-request-workflow-design.md`
+- `docs/superpowers/plans/2026-07-01-public-records-request-workflow-implementation.md`
+
+Factory readiness now checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded command evidence:
+
+```text
+npm run factory:check
+factory-readiness passed
+```
+
+Factory scope remains backend/domain work. UI design and build decisions require direct user collaboration.
