@@ -22,6 +22,24 @@ describe("deadline calculators", () => {
     expect(result.citedRules[0]?.citation).toContain("5 U.S.C. 552");
   });
 
+  it("accepts valid UTC datetimes without fractional seconds", () => {
+    const result = calculateEstimatedDeadline(usFederalFoiaPack, {
+      prrRequestId: "prr_req_001",
+      receivedAt: "2026-07-01T12:00:00Z"
+    });
+
+    expect(result.deadlineDate).toBe("2026-07-30");
+  });
+
+  it("accepts valid UTC datetimes with higher-precision fractional seconds", () => {
+    const result = calculateEstimatedDeadline(usFederalFoiaPack, {
+      prrRequestId: "prr_req_001",
+      receivedAt: "2026-07-01T12:00:00.123456Z"
+    });
+
+    expect(result.deadlineDate).toBe("2026-07-30");
+  });
+
   it("includes jurisdiction pack references in cited rules", () => {
     const result = calculateEstimatedDeadline(usFederalFoiaPack, {
       prrRequestId: "prr_req_001",

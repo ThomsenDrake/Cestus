@@ -109,13 +109,13 @@ function citedRulesFor(pack: JurisdictionPack, rule: JurisdictionPack["rules"][n
 
 function parseReceivedAt(receivedAt: string): Date {
   const match = receivedAt.match(
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})Z$/
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?Z$/
   );
   if (match === null) {
     throw new Error(`Invalid receivedAt: ${receivedAt}`);
   }
 
-  const [, yearText, monthText, dayText, hourText, minuteText, secondText, millisecondText] = match;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
   const date = new Date(receivedAt);
   if (
     !Number.isFinite(date.getTime()) ||
@@ -124,8 +124,7 @@ function parseReceivedAt(receivedAt: string): Date {
     date.getUTCDate() !== Number(dayText) ||
     date.getUTCHours() !== Number(hourText) ||
     date.getUTCMinutes() !== Number(minuteText) ||
-    date.getUTCSeconds() !== Number(secondText) ||
-    date.getUTCMilliseconds() !== Number(millisecondText)
+    date.getUTCSeconds() !== Number(secondText)
   ) {
     throw new Error(`Invalid receivedAt: ${receivedAt}`);
   }
