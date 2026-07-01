@@ -62,7 +62,7 @@ export class GmailCorrespondenceAdapter implements CorrespondenceAdapter {
   }
 
   async syncSince(checkpoint?: string): Promise<SyncResult> {
-    return this.options.client.syncSince(checkpoint);
+    return normalizeSyncResult("gmail", await this.options.client.syncSince(checkpoint));
   }
 }
 
@@ -102,7 +102,7 @@ export class ImapSmtpCorrespondenceAdapter implements CorrespondenceAdapter {
   }
 
   async syncSince(checkpoint?: string): Promise<SyncResult> {
-    return this.options.imap.syncSince(checkpoint);
+    return normalizeSyncResult("imap-smtp", await this.options.imap.syncSince(checkpoint));
   }
 }
 
@@ -158,35 +158,23 @@ export class HimalayaCliAdapter implements CorrespondenceAdapter {
       "--output",
       "json"
     ]);
-    const parsed = parseHimalayaSyncOutput(result.stdout);
-    return {
-      checkpoint: parsed.checkpoint ?? checkpoint,
-      messages: parsed.messages
-    };
+    return normalizeSyncResult("himalaya", parseHimalayaSyncOutput(result.stdout, checkpoint));
   }
 
   private buildSendArgs(input: ApprovedMessageInput): string[] {
-    const args = [
-      "--account",
-      this.options.profile,
-      "message",
-      "send",
-      "--from",
-      input.from,
-      "--to",
-      input.to.join(","),
-      "--subject",
-      input.subject,
-      "--body",
-      input.body,
-      "--output",
-      "json"
-    ];
+    const args: string[] = [];
+    args.push("--account", this.options.profile);
+    args.push("message", "send");
+    args.push("--from", input.from);
+    args.push("--to", input.to.join(","));
 
     if (input.cc !== undefined && input.cc.length > 0) {
-      args.splice(10, 0, "--cc", input.cc.join(","));
+      args.push("--cc", input.cc.join(","));
     }
 
+    args.push("--subject", input.subject);
+    args.push("--body", input.body);
+    args.push("--output", "json");
     return args;
   }
 }
@@ -218,70 +206,132 @@ function parseHimalayaSendOutput(stdout: string): {
   return result;
 }
 
-function parseHimalayaSyncOutput(stdout: string): { checkpoint?: string; messages: SyncedMessage[] } {
+function parseHimalayaSyncOutput(stdout: string, fallbackCheckpoint: string): SyncResult {
   const parsed = parseJson(stdout || "[]", "Himalaya sync output was not valid JSON");
 
-  if (Array.isArray(parsed)) {
-    return { messages: parseSyncedMessages(parsed) };
+  if (!isRecord(parsed) || !Array.isArray(parsed.messages)) {
+    throw new Error("Himalaya sync output must include a messages array");
   }
 
-  if (isRecord(parsed)) {
-    const messages = Array.isArray(parsed.messages) ? parseSyncedMessages(parsed.messages) : [];
-    const checkpoint = stringValue(parsed.checkpoint);
-    return checkpoint === undefined ? { messages } : { checkpoint, messages };
-  }
-
-  return { messages: [] };
+  const checkpoint = stringValue(parsed.checkpoint) ?? fallbackCheckpoint;
+  return {
+    checkpoint,
+    messages: parseHimalayaMessages(parsed.messages)
+  };
 }
 
-function parseSyncedMessages(values: unknown[]): SyncedMessage[] {
-  const messages: SyncedMessage[] = [];
-  for (const value of values) {
+function parseHimalayaMessages(values: unknown[]): SyncedMessage[] {
+  return values.map((value, index) => {
     if (!isRecord(value)) {
-      continue;
+      throw new Error(`himalaya sync message[${index}] must be an object`);
     }
 
-    const providerMessageId = stringValue(value.providerMessageId) ?? stringValue(value.id);
-    const from = stringValue(value.from);
-    const subject = stringValue(value.subject);
-    const receivedAt = stringValue(value.receivedAt) ?? stringValue(value.date);
-    const to = stringArrayValue(value.to);
-    if (
-      providerMessageId === undefined ||
-      from === undefined ||
-      to === undefined ||
-      subject === undefined ||
-      receivedAt === undefined
-    ) {
-      continue;
-    }
-
-    const message: SyncedMessage = {
+    const message: Partial<SyncedMessage> = {
       provider: "himalaya",
-      providerMessageId,
-      from,
-      to,
-      subject,
-      receivedAt,
+      to: stringArrayValue(value.to) ?? [],
       rawMetadata: { provider: "himalaya" }
     };
 
+    const providerMessageId = stringValue(value.providerMessageId) ?? stringValue(value.id);
+    if (providerMessageId !== undefined) {
+      message.providerMessageId = providerMessageId;
+    }
     const providerThreadId = stringValue(value.providerThreadId) ?? stringValue(value.threadId);
     if (providerThreadId !== undefined) {
       message.providerThreadId = providerThreadId;
     }
+    const from = stringValue(value.from);
+    if (from !== undefined) {
+      message.from = from;
+    }
     const cc = stringArrayValue(value.cc);
     if (cc !== undefined) {
       message.cc = cc;
+    }
+    const subject = stringValue(value.subject);
+    if (subject !== undefined) {
+      message.subject = subject;
+    }
+    const receivedAt = stringValue(value.receivedAt) ?? stringValue(value.date);
+    if (receivedAt !== undefined) {
+      message.receivedAt = receivedAt;
     }
     const body = stringValue(value.body);
     if (body !== undefined) {
       message.body = body;
     }
 
-    messages.push(message);
+    return message as SyncedMessage;
+  });
+}
+
+function normalizeSyncResult(
+  provider: AdapterCapabilities["provider"],
+  result: unknown
+): SyncResult {
+  if (!isRecord(result)) {
+    throw new Error(`${provider} sync result must be an object`);
   }
-  return messages;
+
+  const checkpoint = stringValue(result.checkpoint);
+  if (checkpoint === undefined) {
+    throw new Error(`${provider} sync checkpoint is required`);
+  }
+
+  if (!Array.isArray(result.messages)) {
+    throw new Error(`${provider} sync messages must be an array`);
+  }
+
+  return {
+    checkpoint,
+    messages: result.messages.map((message, index) => normalizeSyncedMessage(provider, message, index))
+  };
+}
+
+function normalizeSyncedMessage(
+  provider: AdapterCapabilities["provider"],
+  value: unknown,
+  index: number
+): SyncedMessage {
+  if (!isRecord(value)) {
+    throw new Error(`${provider} sync message[${index}] must be an object`);
+  }
+
+  const prefix = `${provider} sync message[${index}]`;
+  const providerMessageId = requiredString(value.providerMessageId, `${prefix} providerMessageId is required`);
+  const from = requiredString(value.from, `${prefix} from is required`);
+  const subject = requiredString(value.subject, `${prefix} subject is required`);
+  const receivedAt = requiredString(value.receivedAt, `${prefix} receivedAt is required`);
+  const to = requiredRecipientArray(value.to, `${prefix} to`);
+
+  const message: SyncedMessage = {
+    provider,
+    providerMessageId,
+    from,
+    to,
+    subject,
+    receivedAt,
+    rawMetadata: normalizeRawMetadata(provider, value.rawMetadata, index)
+  };
+
+  const providerThreadId = optionalString(value.providerThreadId, `${prefix} providerThreadId is required`);
+  if (providerThreadId !== undefined) {
+    message.providerThreadId = providerThreadId;
+  }
+  const cc = optionalStringArray(value.cc, `${prefix} cc`);
+  if (cc !== undefined) {
+    message.cc = cc;
+  }
+  const body = optionalString(value.body, `${prefix} body is required`);
+  if (body !== undefined) {
+    message.body = body;
+  }
+  const attachmentRefs = normalizeAttachmentRefs(value.attachmentRefs, prefix);
+  if (attachmentRefs !== undefined) {
+    message.attachmentRefs = attachmentRefs;
+  }
+
+  return message;
 }
 
 function parseJson(stdout: string, message: string): unknown {
@@ -307,3 +357,85 @@ function stringArrayValue(value: unknown): string[] | undefined {
   return [...value] as string[];
 }
 
+function requiredString(value: unknown, message: string): string {
+  const normalized = stringValue(typeof value === "string" ? value.trim() : value);
+  if (normalized === undefined) {
+    throw new Error(message);
+  }
+  return normalized;
+}
+
+function optionalString(value: unknown, message: string): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return requiredString(value, message);
+}
+
+function requiredStringArray(value: unknown, label: string): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be an array`);
+  }
+  return value.map((item, index) => requiredString(item, `${label}[${index}] is required`));
+}
+
+function requiredRecipientArray(value: unknown, label: string): string[] {
+  const recipients = requiredStringArray(value, label);
+  if (recipients.length === 0) {
+    throw new Error(`${label} must include at least one recipient`);
+  }
+  return recipients;
+}
+
+function optionalStringArray(value: unknown, label: string): string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return requiredStringArray(value, label);
+}
+
+function normalizeAttachmentRefs(value: unknown, prefix: string): SyncedMessage["attachmentRefs"] {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error(`${prefix} attachmentRefs must be an array`);
+  }
+  return value.map((attachment, index) => {
+    if (!isRecord(attachment)) {
+      throw new Error(`${prefix} attachmentRefs[${index}] must be an object`);
+    }
+    return {
+      filename: requiredString(attachment.filename, `${prefix} attachmentRefs[${index}].filename is required`),
+      contentHash: requiredString(
+        attachment.contentHash,
+        `${prefix} attachmentRefs[${index}].contentHash is required`
+      )
+    };
+  });
+}
+
+function normalizeRawMetadata(
+  provider: AdapterCapabilities["provider"],
+  value: unknown,
+  index: number
+): Record<string, string> {
+  if (value === undefined) {
+    return {};
+  }
+  if (!isRecord(value)) {
+    throw new Error(`${provider} sync message[${index}] rawMetadata must be an object`);
+  }
+
+  const metadata: Record<string, string> = {};
+  for (const [key, metadataValue] of Object.entries(value)) {
+    if (/token|secret|password|oauth|credential|config/i.test(key)) {
+      throw new Error(`${provider} sync message[${index}] rawMetadata key ${key} is not allowed`);
+    }
+    if (typeof metadataValue !== "string") {
+      throw new Error(`${provider} sync message[${index}] rawMetadata key ${key} must be a string`);
+    }
+    metadata[key] = metadataValue;
+  }
+  return metadata;
+}

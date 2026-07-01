@@ -31,12 +31,15 @@ describe("provider correspondence adapters", () => {
       checkpoint: "gmail_checkpoint_001",
       messages: [
         {
-          provider: "gmail",
+          provider: "imap-smtp",
           providerMessageId: "gmail_inbound_001",
+          providerThreadId: "gmail_thread_001",
           from: "foia@example.gov",
           to: ["investigator@example.org"],
+          cc: ["records@example.gov"],
           subject: "Acknowledgement",
           receivedAt: "2026-07-01T15:00:00.000Z",
+          attachmentRefs: [{ filename: "ack.pdf", contentHash: "sha256:ack" }],
           rawMetadata: { providerLabel: "gmail" }
         }
       ]
@@ -78,9 +81,134 @@ describe("provider correspondence adapters", () => {
       sentAt: "2026-07-01T16:00:00.000Z",
       rawMetadata: { accountEmail: "investigator@example.org" }
     });
-    expect(synced).toBe(syncResult);
+    expect(synced).toEqual({
+      checkpoint: "gmail_checkpoint_001",
+      messages: [
+        {
+          provider: "gmail",
+          providerMessageId: "gmail_inbound_001",
+          providerThreadId: "gmail_thread_001",
+          from: "foia@example.gov",
+          to: ["investigator@example.org"],
+          cc: ["records@example.gov"],
+          subject: "Acknowledgement",
+          receivedAt: "2026-07-01T15:00:00.000Z",
+          attachmentRefs: [{ filename: "ack.pdf", contentHash: "sha256:ack" }],
+          rawMetadata: { providerLabel: "gmail" }
+        }
+      ]
+    });
+    expect(synced).not.toBe(syncResult);
+    expect(synced.messages).not.toBe(syncResult.messages);
+    expect(synced.messages[0]).not.toBe(syncResult.messages[0]);
+    expect(synced.messages[0]!.to).not.toBe(syncResult.messages[0]!.to);
+    expect(synced.messages[0]!.cc).not.toBe(syncResult.messages[0]!.cc);
+    expect(synced.messages[0]!.attachmentRefs).not.toBe(syncResult.messages[0]!.attachmentRefs);
+    expect(synced.messages[0]!.rawMetadata).not.toBe(syncResult.messages[0]!.rawMetadata);
     expect(syncSince).toHaveBeenCalledWith("gmail_checkpoint_000");
     expect(JSON.stringify({ capabilities, sent })).not.toContain("refresh_secret_never_expose");
+  });
+
+  it("protects Gmail sync results from upstream and returned-result mutation", async () => {
+    const syncResult: SyncResult = {
+      checkpoint: "gmail_checkpoint_001",
+      messages: [
+        {
+          provider: "imap-smtp",
+          providerMessageId: "gmail_inbound_001",
+          providerThreadId: "gmail_thread_001",
+          from: "foia@example.gov",
+          to: ["investigator@example.org"],
+          cc: ["records@example.gov"],
+          subject: "Acknowledgement",
+          receivedAt: "2026-07-01T15:00:00.000Z",
+          attachmentRefs: [{ filename: "ack.pdf", contentHash: "sha256:ack" }],
+          rawMetadata: { tracking: "original" }
+        }
+      ]
+    };
+    const adapter = new GmailCorrespondenceAdapter({
+      accountEmail: "investigator@example.org",
+      client: {
+        async send() {
+          throw new Error("send should not be called");
+        },
+        async syncSince() {
+          return syncResult;
+        }
+      }
+    });
+
+    const synced = await adapter.syncSince("gmail_checkpoint_000");
+    syncResult.messages[0]!.to.push("upstream-mutated@example.org");
+    syncResult.messages[0]!.cc!.push("upstream-cc@example.org");
+    syncResult.messages[0]!.attachmentRefs![0]!.contentHash = "sha256:mutated";
+    syncResult.messages[0]!.rawMetadata.tracking = "upstream-mutated";
+
+    expect(synced.messages[0]).toMatchObject({
+      provider: "gmail",
+      to: ["investigator@example.org"],
+      cc: ["records@example.gov"],
+      attachmentRefs: [{ filename: "ack.pdf", contentHash: "sha256:ack" }],
+      rawMetadata: { tracking: "original" }
+    });
+
+    const stableSyncResult: SyncResult = {
+      checkpoint: "gmail_checkpoint_002",
+      messages: [
+        {
+          provider: "imap-smtp",
+          providerMessageId: "gmail_inbound_002",
+          from: "foia@example.gov",
+          to: ["investigator@example.org"],
+          subject: "Second Acknowledgement",
+          receivedAt: "2026-07-01T16:00:00.000Z",
+          rawMetadata: { tracking: "stable" }
+        }
+      ]
+    };
+    const stableAdapter = new GmailCorrespondenceAdapter({
+      accountEmail: "investigator@example.org",
+      client: {
+        async send() {
+          throw new Error("send should not be called");
+        },
+        async syncSince() {
+          return stableSyncResult;
+        }
+      }
+    });
+    const first = await stableAdapter.syncSince();
+    first.messages[0]!.to.push("returned-mutated@example.org");
+    first.messages[0]!.rawMetadata.tracking = "returned-mutated";
+
+    await expect(stableAdapter.syncSince()).resolves.toMatchObject({
+      messages: [
+        {
+          provider: "gmail",
+          to: ["investigator@example.org"],
+          rawMetadata: { tracking: "stable" }
+        }
+      ]
+    });
+  });
+
+  it("rejects Gmail sync raw metadata with secret-looking keys", async () => {
+    const adapter = new GmailCorrespondenceAdapter({
+      accountEmail: "investigator@example.org",
+      client: {
+        async send() {
+          throw new Error("send should not be called");
+        },
+        async syncSince() {
+          return syncResultWithRawMetadata("gmail", { oauthToken: "never-store-this" });
+        }
+      }
+    });
+
+    await expect(adapter.syncSince()).rejects.toThrow(
+      "gmail sync message[0] rawMetadata key oauthToken is not allowed"
+    );
   });
 
   it("rejects missing Gmail approval before client send", async () => {
@@ -103,7 +231,20 @@ describe("provider correspondence adapters", () => {
   });
 
   it("wraps IMAP and SMTP ports with external-secret credential mode", async () => {
-    const syncResult: SyncResult = { checkpoint: "imap_checkpoint_001", messages: [] };
+    const syncResult: SyncResult = {
+      checkpoint: "imap_checkpoint_001",
+      messages: [
+        {
+          provider: "gmail",
+          providerMessageId: "imap_inbound_001",
+          from: "foia@example.gov",
+          to: ["investigator@example.org"],
+          subject: "Acknowledgement",
+          receivedAt: "2026-07-01T15:00:00.000Z",
+          rawMetadata: { providerLabel: "imap" }
+        }
+      ]
+    };
     const send = vi.fn(async (input: ApprovedMessageInput) => {
       expect(input.subject).toBe("Records Request");
       return {
@@ -143,9 +284,134 @@ describe("provider correspondence adapters", () => {
       sentAt: "2026-07-01T16:00:00.000Z",
       rawMetadata: { accountEmail: "investigator@example.org" }
     });
-    expect(synced).toBe(syncResult);
+    expect(synced).toEqual({
+      checkpoint: "imap_checkpoint_001",
+      messages: [
+        {
+          provider: "imap-smtp",
+          providerMessageId: "imap_inbound_001",
+          from: "foia@example.gov",
+          to: ["investigator@example.org"],
+          subject: "Acknowledgement",
+          receivedAt: "2026-07-01T15:00:00.000Z",
+          rawMetadata: { providerLabel: "imap" }
+        }
+      ]
+    });
+    expect(synced).not.toBe(syncResult);
+    expect(synced.messages).not.toBe(syncResult.messages);
+    expect(synced.messages[0]).not.toBe(syncResult.messages[0]);
+    expect(synced.messages[0]!.to).not.toBe(syncResult.messages[0]!.to);
+    expect(synced.messages[0]!.rawMetadata).not.toBe(syncResult.messages[0]!.rawMetadata);
     expect(syncSince).toHaveBeenCalledWith("imap_checkpoint_000");
     expect(JSON.stringify({ capabilities, sent })).not.toContain("secret_never_expose");
+  });
+
+  it("protects IMAP sync results from upstream and returned-result mutation", async () => {
+    const syncResult: SyncResult = {
+      checkpoint: "imap_checkpoint_001",
+      messages: [
+        {
+          provider: "gmail",
+          providerMessageId: "imap_inbound_001",
+          from: "foia@example.gov",
+          to: ["investigator@example.org"],
+          cc: ["records@example.gov"],
+          subject: "Acknowledgement",
+          receivedAt: "2026-07-01T15:00:00.000Z",
+          attachmentRefs: [{ filename: "ack.pdf", contentHash: "sha256:ack" }],
+          rawMetadata: { tracking: "original" }
+        }
+      ]
+    };
+    const adapter = new ImapSmtpCorrespondenceAdapter({
+      accountEmail: "investigator@example.org",
+      smtp: {
+        async send() {
+          throw new Error("send should not be called");
+        }
+      },
+      imap: {
+        async syncSince() {
+          return syncResult;
+        }
+      }
+    });
+
+    const synced = await adapter.syncSince("imap_checkpoint_000");
+    syncResult.messages[0]!.to.push("upstream-mutated@example.org");
+    syncResult.messages[0]!.cc!.push("upstream-cc@example.org");
+    syncResult.messages[0]!.attachmentRefs![0]!.contentHash = "sha256:mutated";
+    syncResult.messages[0]!.rawMetadata.tracking = "upstream-mutated";
+
+    expect(synced.messages[0]).toMatchObject({
+      provider: "imap-smtp",
+      to: ["investigator@example.org"],
+      cc: ["records@example.gov"],
+      attachmentRefs: [{ filename: "ack.pdf", contentHash: "sha256:ack" }],
+      rawMetadata: { tracking: "original" }
+    });
+
+    const stableSyncResult: SyncResult = {
+      checkpoint: "imap_checkpoint_002",
+      messages: [
+        {
+          provider: "gmail",
+          providerMessageId: "imap_inbound_002",
+          from: "foia@example.gov",
+          to: ["investigator@example.org"],
+          subject: "Second Acknowledgement",
+          receivedAt: "2026-07-01T16:00:00.000Z",
+          rawMetadata: { tracking: "stable" }
+        }
+      ]
+    };
+    const stableAdapter = new ImapSmtpCorrespondenceAdapter({
+      accountEmail: "investigator@example.org",
+      smtp: {
+        async send() {
+          throw new Error("send should not be called");
+        }
+      },
+      imap: {
+        async syncSince() {
+          return stableSyncResult;
+        }
+      }
+    });
+    const first = await stableAdapter.syncSince();
+    first.messages[0]!.to.push("returned-mutated@example.org");
+    first.messages[0]!.rawMetadata.tracking = "returned-mutated";
+
+    await expect(stableAdapter.syncSince()).resolves.toMatchObject({
+      messages: [
+        {
+          provider: "imap-smtp",
+          to: ["investigator@example.org"],
+          rawMetadata: { tracking: "stable" }
+        }
+      ]
+    });
+  });
+
+  it("rejects IMAP sync raw metadata with secret-looking keys", async () => {
+    const adapter = new ImapSmtpCorrespondenceAdapter({
+      accountEmail: "investigator@example.org",
+      smtp: {
+        async send() {
+          throw new Error("send should not be called");
+        }
+      },
+      imap: {
+        async syncSince() {
+          return syncResultWithRawMetadata("imap-smtp", { smtpPassword: "never-store-this" });
+        }
+      }
+    });
+
+    await expect(adapter.syncSince()).rejects.toThrow(
+      "imap-smtp sync message[0] rawMetadata key smtpPassword is not allowed"
+    );
   });
 
   it("rejects malformed IMAP/SMTP recipients before SMTP send", async () => {
@@ -198,8 +464,7 @@ describe("provider correspondence adapters", () => {
     });
     expect(commands[0]).toEqual({ command: "himalaya", args: ["--version"] });
     expect(commands[1]?.command).toBe("himalaya");
-    expect(commands[1]?.args).toEqual(
-      expect.arrayContaining([
+    expect(commands[1]?.args).toEqual([
         "--account",
         "records",
         "message",
@@ -216,8 +481,7 @@ describe("provider correspondence adapters", () => {
         "Please provide records.",
         "--output",
         "json"
-      ])
-    );
+      ]);
     expect(sent).toEqual({
       provider: "himalaya",
       providerMessageId: "himalaya_msg_001",
@@ -261,6 +525,45 @@ describe("provider correspondence adapters", () => {
       "approvedBy is required for one-click send"
     );
     expect(runCommand).not.toHaveBeenCalled();
+  });
+
+  it("sends Himalaya messages without cc using exact ordered arguments", async () => {
+    const commands: Array<{ command: string; args: string[] }> = [];
+    const adapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async (command, args) => {
+        commands.push({ command, args });
+        return {
+          stdout: JSON.stringify({ id: "himalaya_msg_002", sentAt: "2026-07-01T16:00:00.000Z" }),
+          stderr: ""
+        };
+      }
+    });
+    const { cc: _cc, ...withoutCc } = approvedMessage;
+
+    await adapter.sendApprovedMessage(withoutCc);
+
+    expect(commands).toEqual([
+      {
+        command: "himalaya",
+        args: [
+          "--account",
+          "records",
+          "message",
+          "send",
+          "--from",
+          "investigator@example.org",
+          "--to",
+          "foia@example.gov",
+          "--subject",
+          "Records Request",
+          "--body",
+          "Please provide records.",
+          "--output",
+          "json"
+        ]
+      }
+    ]);
   });
 
   it("syncs straightforward Himalaya JSON through the injected runner", async () => {
@@ -325,4 +628,62 @@ describe("provider correspondence adapters", () => {
       "Himalaya sync output was not valid JSON"
     );
   });
+
+  it("rejects valid Himalaya sync JSON without a compatible messages array", async () => {
+    const adapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async () => ({
+        stdout: JSON.stringify({ checkpoint: "himalaya_checkpoint_003", envelopes: [] }),
+        stderr: ""
+      })
+    });
+
+    await expect(adapter.syncSince("checkpoint_001")).rejects.toThrow(
+      "Himalaya sync output must include a messages array"
+    );
+  });
+
+  it("rejects malformed Himalaya sync message entries with indexed errors", async () => {
+    const adapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async () => ({
+        stdout: JSON.stringify({
+          checkpoint: "himalaya_checkpoint_004",
+          messages: [
+            {
+              from: "foia@example.gov",
+              to: ["investigator@example.org"],
+              subject: "Acknowledgement",
+              receivedAt: "2026-07-01T17:00:00.000Z"
+            }
+          ]
+        }),
+        stderr: ""
+      })
+    });
+
+    await expect(adapter.syncSince("checkpoint_001")).rejects.toThrow(
+      "himalaya sync message[0] providerMessageId is required"
+    );
+  });
 });
+
+function syncResultWithRawMetadata(
+  provider: SyncResult["messages"][number]["provider"],
+  rawMetadata: Record<string, string>
+): SyncResult {
+  return {
+    checkpoint: "checkpoint_001",
+    messages: [
+      {
+        provider,
+        providerMessageId: "inbound_001",
+        from: "foia@example.gov",
+        to: ["investigator@example.org"],
+        subject: "Acknowledgement",
+        receivedAt: "2026-07-01T15:00:00.000Z",
+        rawMetadata
+      }
+    ]
+  };
+}
