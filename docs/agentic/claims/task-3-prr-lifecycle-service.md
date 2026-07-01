@@ -19,4 +19,66 @@ Owned files:
 - `packages/prr/src/index.ts`
 - `docs/agentic/claims/task-3-prr-lifecycle-service.md`
 
-Status: `claimed`
+Status: `ready-for-review`
+
+## Handoff
+
+Implemented Task 3 only.
+
+Changed files:
+
+- `packages/prr/src/lifecycle.ts`
+- `packages/prr/test/lifecycle.test.ts`
+- `packages/prr/src/index.ts`
+- `docs/agentic/claims/task-3-prr-lifecycle-service.md`
+
+Implementation commit: `febc5a1f812b1918d312c89ce755ca93115964dc`
+
+## Verification
+
+Red test command:
+
+```bash
+npm test -- packages/prr/test/lifecycle.test.ts
+```
+
+Red result: failed as expected before implementation.
+
+```text
+Error: Cannot find module '../src/lifecycle.js'
+Test Files  1 failed (1)
+Tests  no tests
+```
+
+Green test command:
+
+```bash
+npm test -- packages/prr/test/lifecycle.test.ts
+```
+
+Green result:
+
+```text
+Test Files  1 passed (1)
+Tests  2 passed (2)
+```
+
+Full verification command:
+
+```bash
+npm run verify
+```
+
+Full verification result:
+
+```text
+typecheck passed
+Test Files  13 passed (13)
+Tests  85 passed (85)
+tests passed
+factory-readiness passed
+```
+
+## Concerns
+
+None.
