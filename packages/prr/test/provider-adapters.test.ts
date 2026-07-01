@@ -666,6 +666,110 @@ describe("provider correspondence adapters", () => {
       "himalaya sync message[0] providerMessageId is required"
     );
   });
+
+  it("rejects Himalaya sync raw metadata with secret-looking keys", async () => {
+    const adapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async () => ({
+        stdout: JSON.stringify({
+          checkpoint: "himalaya_checkpoint_005",
+          messages: [
+            {
+              id: "himalaya_inbound_002",
+              from: "foia@example.gov",
+              to: ["investigator@example.org"],
+              subject: "Acknowledgement",
+              receivedAt: "2026-07-01T17:00:00.000Z",
+              rawMetadata: { configPath: "/home/user/.config/himalaya/config.toml" }
+            }
+          ]
+        }),
+        stderr: ""
+      })
+    });
+
+    await expect(adapter.syncSince("checkpoint_001")).rejects.toThrow(
+      "himalaya sync message[0] rawMetadata key configPath is not allowed"
+    );
+  });
+
+  it("rejects malformed Himalaya sync cc instead of omitting it", async () => {
+    const adapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async () => ({
+        stdout: JSON.stringify({
+          checkpoint: "himalaya_checkpoint_006",
+          messages: [
+            {
+              id: "himalaya_inbound_003",
+              from: "foia@example.gov",
+              to: ["investigator@example.org"],
+              cc: ["records@example.gov", 42],
+              subject: "Acknowledgement",
+              receivedAt: "2026-07-01T17:00:00.000Z"
+            }
+          ]
+        }),
+        stderr: ""
+      })
+    });
+
+    await expect(adapter.syncSince("checkpoint_001")).rejects.toThrow(
+      "himalaya sync message[0] cc must be an array of strings"
+    );
+  });
+
+  it("rejects malformed Himalaya sync raw metadata shape", async () => {
+    const adapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async () => ({
+        stdout: JSON.stringify({
+          checkpoint: "himalaya_checkpoint_007",
+          messages: [
+            {
+              id: "himalaya_inbound_004",
+              from: "foia@example.gov",
+              to: ["investigator@example.org"],
+              subject: "Acknowledgement",
+              receivedAt: "2026-07-01T17:00:00.000Z",
+              rawMetadata: "not-an-object"
+            }
+          ]
+        }),
+        stderr: ""
+      })
+    });
+
+    await expect(adapter.syncSince("checkpoint_001")).rejects.toThrow(
+      "himalaya sync message[0] rawMetadata must be an object"
+    );
+  });
+
+  it("rejects malformed Himalaya sync attachment refs instead of omitting them", async () => {
+    const adapter = new HimalayaCliAdapter({
+      profile: "records",
+      runCommand: async () => ({
+        stdout: JSON.stringify({
+          checkpoint: "himalaya_checkpoint_008",
+          messages: [
+            {
+              id: "himalaya_inbound_005",
+              from: "foia@example.gov",
+              to: ["investigator@example.org"],
+              subject: "Acknowledgement",
+              receivedAt: "2026-07-01T17:00:00.000Z",
+              attachmentRefs: [{ filename: "ack.pdf", contentHash: 42 }]
+            }
+          ]
+        }),
+        stderr: ""
+      })
+    });
+
+    await expect(adapter.syncSince("checkpoint_001")).rejects.toThrow(
+      "himalaya sync message[0] attachmentRefs[0].contentHash is required"
+    );
+  });
 });
 
 function syncResultWithRawMetadata(

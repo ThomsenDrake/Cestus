@@ -206,7 +206,10 @@ function parseHimalayaSendOutput(stdout: string): {
   return result;
 }
 
-function parseHimalayaSyncOutput(stdout: string, fallbackCheckpoint: string): SyncResult {
+function parseHimalayaSyncOutput(stdout: string, fallbackCheckpoint: string): {
+  checkpoint: string;
+  messages: unknown[];
+} {
   const parsed = parseJson(stdout || "[]", "Himalaya sync output was not valid JSON");
 
   if (!isRecord(parsed) || !Array.isArray(parsed.messages)) {
@@ -220,16 +223,16 @@ function parseHimalayaSyncOutput(stdout: string, fallbackCheckpoint: string): Sy
   };
 }
 
-function parseHimalayaMessages(values: unknown[]): SyncedMessage[] {
+function parseHimalayaMessages(values: unknown[]): unknown[] {
   return values.map((value, index) => {
     if (!isRecord(value)) {
       throw new Error(`himalaya sync message[${index}] must be an object`);
     }
 
-    const message: Partial<SyncedMessage> = {
+    const message: Record<string, unknown> = {
       provider: "himalaya",
-      to: stringArrayValue(value.to) ?? [],
-      rawMetadata: { provider: "himalaya" }
+      to: value.to,
+      rawMetadata: value.rawMetadata ?? { provider: "himalaya" }
     };
 
     const providerMessageId = stringValue(value.providerMessageId) ?? stringValue(value.id);
@@ -244,9 +247,8 @@ function parseHimalayaMessages(values: unknown[]): SyncedMessage[] {
     if (from !== undefined) {
       message.from = from;
     }
-    const cc = stringArrayValue(value.cc);
-    if (cc !== undefined) {
-      message.cc = cc;
+    if ("cc" in value) {
+      message.cc = value.cc;
     }
     const subject = stringValue(value.subject);
     if (subject !== undefined) {
@@ -260,8 +262,11 @@ function parseHimalayaMessages(values: unknown[]): SyncedMessage[] {
     if (body !== undefined) {
       message.body = body;
     }
+    if ("attachmentRefs" in value) {
+      message.attachmentRefs = value.attachmentRefs;
+    }
 
-    return message as SyncedMessage;
+    return message;
   });
 }
 
@@ -350,13 +355,6 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-function stringArrayValue(value: unknown): string[] | undefined {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-    return undefined;
-  }
-  return [...value] as string[];
-}
-
 function requiredString(value: unknown, message: string): string {
   const normalized = stringValue(typeof value === "string" ? value.trim() : value);
   if (normalized === undefined) {
@@ -390,6 +388,9 @@ function requiredRecipientArray(value: unknown, label: string): string[] {
 function optionalStringArray(value: unknown, label: string): string[] | undefined {
   if (value === undefined) {
     return undefined;
+  }
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+    throw new Error(`${label} must be an array of strings`);
   }
   return requiredStringArray(value, label);
 }

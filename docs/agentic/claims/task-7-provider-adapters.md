@@ -24,9 +24,13 @@ Status: ready-for-review
 - Review-fix red targeted test: `npm test -- packages/prr/test/provider-adapters.test.ts` failed with 9 failing tests covering sync pass-through, shared references, secret raw metadata, brittle Himalaya CC ordering, and silent Himalaya sync shape handling.
 - Review-fix green targeted test: `npm test -- packages/prr/test/provider-adapters.test.ts` passed with 1 test file and 18 tests.
 - Review-fix full verification: `npm run verify` passed with `typecheck passed`, 19 test files and 167 tests, `tests passed`, and `factory-readiness passed`.
+- Himalaya sync re-review red targeted test: `npm test -- packages/prr/test/provider-adapters.test.ts` failed with 4 failing tests covering dropped `rawMetadata`, malformed `cc`, malformed `rawMetadata`, and malformed `attachmentRefs`.
+- Himalaya sync re-review green targeted test: `npm test -- packages/prr/test/provider-adapters.test.ts` passed with 1 test file and 22 tests.
+- Himalaya sync re-review full verification: `npm run verify` passed with `typecheck passed`, 19 test files and 171 tests, `tests passed`, and `factory-readiness passed`.
 
 ## Self-Review
 
 - Findings: none.
 - Concern: Himalaya CLI argument shape is an offline adapter contract for injected runners; live CLI compatibility remains outside Task 7 and should be validated in a future integration slice before using real profiles.
 - Review fix: added shared sync normalization for all provider adapters, hardened Himalaya sync shape errors, and replaced brittle send-argument insertion with explicit ordered pushes.
+- Re-review fix: preserved Himalaya provider-supplied optional sync fields into shared normalization so unsafe or malformed metadata, cc, and attachment refs are rejected instead of dropped.
