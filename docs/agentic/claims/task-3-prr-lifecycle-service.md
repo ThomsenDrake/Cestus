@@ -82,3 +82,59 @@ factory-readiness passed
 ## Concerns
 
 None.
+
+## Review Fix Evidence
+
+Review fix commit: `95415f8`
+
+Addressed review findings:
+
+- `createRequest()` now appends with `expectedNextSequence: 1`, so duplicate create events for a request stream are rejected by the ledger concurrency guard.
+- `markRequestSent()` now rejects a stream that already contains `prr.request.sent`.
+- Lifecycle tests now cover duplicate create rejection, successful sent event sequence/causation/correlation/payload, and duplicate sent rejection.
+
+Review red test command:
+
+```bash
+npm test -- packages/prr/test/lifecycle.test.ts
+```
+
+Review red result before fix:
+
+```text
+Test Files  1 failed (1)
+Tests  2 failed | 3 passed (5)
+prevents duplicate request creation for the same request stream: promise resolved instead of rejecting
+prevents duplicate request sent events for the same request stream: promise resolved instead of rejecting
+```
+
+Review green test command:
+
+```bash
+npm test -- packages/prr/test/lifecycle.test.ts
+```
+
+Review green result:
+
+```text
+Test Files  1 passed (1)
+Tests  5 passed (5)
+```
+
+Review full verification command:
+
+```bash
+npm run verify
+```
+
+Review full verification result:
+
+```text
+typecheck passed
+Test Files  13 passed (13)
+Tests  88 passed (88)
+tests passed
+factory-readiness passed
+```
+
+Review-fix concerns: none.
