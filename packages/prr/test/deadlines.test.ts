@@ -3,6 +3,7 @@ import {
   calculateEstimatedDeadline,
   chooseActiveDeadline
 } from "../src/deadlines.js";
+import { validateKnowledgeEvent } from "../../ontology/src/contracts.js";
 import { calculateEstimatedDeadline as exportedCalculateEstimatedDeadline } from "../src/index.js";
 import {
   floridaPublicRecordsPack,
@@ -52,6 +53,31 @@ describe("deadline calculators", () => {
         citation: expect.stringContaining("5 U.S.C. 552")
       })
     );
+  });
+
+  it("produces estimated deadline payloads that validate against the PRR event contract", () => {
+    const result = calculateEstimatedDeadline(usFederalFoiaPack, {
+      prrRequestId: "prr_req_001",
+      receivedAt: "2026-07-01T12:00:00.000Z"
+    });
+
+    expect(
+      validateKnowledgeEvent({
+        id: "evt_prr_deadline_estimated_test",
+        type: "prr.deadline.estimated",
+        version: 1,
+        streamId: "prr_req_001",
+        sequence: 1,
+        context: {
+          actor: { id: "actor_system", kind: "system", label: "test runner" },
+          occurredAt: "2026-07-01T12:00:00.000Z",
+          correlationId: "corr_prr_deadline_test",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0", "us-federal-foia": "0.1.0" }
+        },
+        payload: result
+      }).success
+    ).toBe(true);
   });
 
   it("returns cited rule copies so one calculation cannot mutate later calculations", () => {
@@ -161,6 +187,25 @@ describe("deadline calculators", () => {
         receivedAt: "2026-07-01T12:00:00.000Z"
       })
     ).toThrow("Unsupported jurisdiction pack unsupported-public-records@0.1.0");
+  });
+
+  it("throws a clear error for invalid prrRequestId values", () => {
+    expect(() =>
+      calculateEstimatedDeadline(usFederalFoiaPack, {
+        prrRequestId: "request_001",
+        receivedAt: "2026-07-01T12:00:00.000Z"
+      })
+    ).toThrow("Invalid prrRequestId");
+  });
+
+  it("throws a clear error for invalid prrRequestId values on Florida acknowledgement estimates", () => {
+    expect(() =>
+      calculateEstimatedDeadline(floridaPublicRecordsPack, {
+        prrRequestId: "request_002",
+        receivedAt: "2026-07-01T12:00:00.000Z",
+        estimateKind: "acknowledgement"
+      })
+    ).toThrow("Invalid prrRequestId");
   });
 
   it("throws a clear error for unsupported starter pack versions", () => {

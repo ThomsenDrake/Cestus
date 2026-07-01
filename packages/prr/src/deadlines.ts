@@ -49,6 +49,7 @@ export function calculateEstimatedDeadline(
   pack: JurisdictionPack,
   input: DeadlineCalculationInput
 ): EstimatedDeadline {
+  validatePrrRequestId(input.prrRequestId);
   const receivedAt = parseReceivedAt(input.receivedAt);
 
   assertSupportedPack(pack);
@@ -94,6 +95,12 @@ export function chooseActiveDeadline(input: {
   confirmed?: ActiveDeadlineCandidate;
 }): ActiveDeadlineCandidate | undefined {
   return input.confirmed ?? input.estimated;
+}
+
+function validatePrrRequestId(prrRequestId: string): void {
+  if (!/^prr_[a-zA-Z0-9_-]+$/.test(prrRequestId)) {
+    throw new Error(`Invalid prrRequestId: ${prrRequestId}`);
+  }
 }
 
 function assertSupportedPack(pack: JurisdictionPack): asserts pack is JurisdictionPack & {
