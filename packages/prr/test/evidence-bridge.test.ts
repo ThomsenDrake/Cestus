@@ -28,6 +28,52 @@ function listFiles(rootDir: string): string[] {
 }
 
 describe("PrrEvidenceBridge", () => {
+  it("ingests a correspondence message as evidence with PRR source metadata", async () => {
+    const { bridge } = createBridge();
+
+    const event = await bridge.ingestMessageArtifact({
+      prrRequestId: "prr_req_001",
+      correspondenceId: "corr_prr_message_001",
+      evidenceId: "ev_prr_message_001",
+      filename: "sent-request.eml",
+      mediaType: "message/rfc822",
+      content: Buffer.from("raw message bytes")
+    });
+
+    expect(event.type).toBe("evidence.ingested");
+    expect(event.payload.evidenceId).toBe("ev_prr_message_001");
+    expect(event.payload.source).toEqual({
+      kind: "file",
+      label: "PRR message sent-request.eml",
+      uri: "cestus:prr/prr_req_001/correspondence/corr_prr_message_001/messages/sent-request.eml"
+    });
+    expect(event.payload.mediaType).toBe("message/rfc822");
+    expect(event.payload.sizeBytes).toBe(Buffer.byteLength("raw message bytes"));
+  });
+
+  it("ingests a correspondence attachment as evidence with PRR source metadata", async () => {
+    const { bridge } = createBridge();
+
+    const event = await bridge.ingestAttachmentArtifact({
+      prrRequestId: "prr_req_001",
+      correspondenceId: "corr_prr_received_001",
+      evidenceId: "ev_prr_attachment_001",
+      filename: "invoice.pdf",
+      mediaType: "application/pdf",
+      content: Buffer.from("attachment bytes")
+    });
+
+    expect(event.type).toBe("evidence.ingested");
+    expect(event.payload.evidenceId).toBe("ev_prr_attachment_001");
+    expect(event.payload.source).toEqual({
+      kind: "file",
+      label: "PRR attachment invoice.pdf",
+      uri: "cestus:prr/prr_req_001/correspondence/corr_prr_received_001/attachments/invoice.pdf"
+    });
+    expect(event.payload.mediaType).toBe("application/pdf");
+    expect(event.payload.sizeBytes).toBe(Buffer.byteLength("attachment bytes"));
+  });
+
   it("ingests a production file as evidence with PRR source metadata", async () => {
     const { bridge } = createBridge();
 
@@ -131,6 +177,49 @@ describe("PrrEvidenceBridge", () => {
 
       await expect(bridge.ingestProductionArtifact(input), label).rejects.toThrow(error);
       await expect(ledger.readAll(), label).resolves.toEqual([]);
+    }
+  });
+
+  it("rejects invalid correspondence artifact inputs before ingestion", async () => {
+    const invalidInputs = [
+      {
+        label: "bad correspondence ID for message",
+        method: "message" as const,
+        input: {
+          prrRequestId: "prr_req_001",
+          correspondenceId: "message-001",
+          evidenceId: "ev_prr_message_002",
+          filename: "message.eml",
+          mediaType: "message/rfc822",
+          content: Buffer.from("message bytes")
+        },
+        error: /Invalid correspondence ID/
+      },
+      {
+        label: "bad correspondence ID for attachment",
+        method: "attachment" as const,
+        input: {
+          prrRequestId: "prr_req_001",
+          correspondenceId: "attachment-001",
+          evidenceId: "ev_prr_attachment_002",
+          filename: "attachment.pdf",
+          mediaType: "application/pdf",
+          content: Buffer.from("attachment bytes")
+        },
+        error: /Invalid correspondence ID/
+      }
+    ];
+
+    for (const { error, input, label, method } of invalidInputs) {
+      const { blobRoot, bridge, ledger } = createBridge();
+
+      if (method === "message") {
+        await expect(bridge.ingestMessageArtifact(input), label).rejects.toThrow(error);
+      } else {
+        await expect(bridge.ingestAttachmentArtifact(input), label).rejects.toThrow(error);
+      }
+      await expect(ledger.readAll(), label).resolves.toEqual([]);
+      expect(listFiles(blobRoot), label).toEqual([]);
     }
   });
 

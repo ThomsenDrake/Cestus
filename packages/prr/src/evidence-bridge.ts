@@ -23,7 +23,12 @@ export interface ProductionArtifactInput {
   content: Buffer;
 }
 
+export interface CorrespondenceArtifactInput extends ProductionArtifactInput {
+  correspondenceId: string;
+}
+
 const prrRequestIdPattern = /^prr_[a-zA-Z0-9_-]+$/;
+const correspondenceIdPattern = /^corr_[a-zA-Z0-9_-]+$/;
 const evidenceIdPattern = /^ev_[a-zA-Z0-9_-]+$/;
 const safeFilenamePattern = /^[a-zA-Z0-9._-]+$/;
 
@@ -44,11 +49,43 @@ export class PrrEvidenceBridge {
     });
   }
 
+  async ingestMessageArtifact(
+    input: CorrespondenceArtifactInput
+  ): Promise<KnowledgeEventOf<"evidence.ingested">> {
+    const artifact = this.validateCorrespondenceArtifact(input, "Message artifact");
+
+    return this.ingestArtifact(artifact, {
+      label: `PRR message ${artifact.filename}`,
+      uri: `cestus:prr/${artifact.prrRequestId}/correspondence/${artifact.correspondenceId}/messages/${artifact.filename}`
+    });
+  }
+
+  async ingestAttachmentArtifact(
+    input: CorrespondenceArtifactInput
+  ): Promise<KnowledgeEventOf<"evidence.ingested">> {
+    const artifact = this.validateCorrespondenceArtifact(input, "Attachment artifact");
+
+    return this.ingestArtifact(artifact, {
+      label: `PRR attachment ${artifact.filename}`,
+      uri: `cestus:prr/${artifact.prrRequestId}/correspondence/${artifact.correspondenceId}/attachments/${artifact.filename}`
+    });
+  }
+
   async ingestProductionArtifact(
     input: ProductionArtifactInput
   ): Promise<KnowledgeEventOf<"evidence.ingested">> {
-    const artifact = this.validateProductionArtifact(input);
+    const artifact = this.validateArtifact(input, "Production artifact");
 
+    return this.ingestArtifact(artifact, {
+      label: `PRR production ${artifact.filename}`,
+      uri: `cestus:prr/${artifact.prrRequestId}/productions/${artifact.filename}`
+    });
+  }
+
+  private async ingestArtifact(
+    artifact: ProductionArtifactInput,
+    source: { label: string; uri: string }
+  ): Promise<KnowledgeEventOf<"evidence.ingested">> {
     return this.evidenceService.ingest({
       evidenceId: artifact.evidenceId,
       content: artifact.content,
@@ -56,13 +93,28 @@ export class PrrEvidenceBridge {
       actor: this.actor,
       source: {
         kind: "file",
-        label: `PRR production ${artifact.filename}`,
-        uri: `cestus:prr/${artifact.prrRequestId}/productions/${artifact.filename}`
+        label: source.label,
+        uri: source.uri
       }
     });
   }
 
-  private validateProductionArtifact(input: ProductionArtifactInput): ProductionArtifactInput {
+  private validateCorrespondenceArtifact(
+    input: CorrespondenceArtifactInput,
+    label: string
+  ): CorrespondenceArtifactInput {
+    const artifact = this.validateArtifact(input, label);
+    if (!correspondenceIdPattern.test(input.correspondenceId)) {
+      throw new Error("Invalid correspondence ID");
+    }
+
+    return {
+      ...artifact,
+      correspondenceId: input.correspondenceId
+    };
+  }
+
+  private validateArtifact(input: ProductionArtifactInput, label: string): ProductionArtifactInput {
     if (!prrRequestIdPattern.test(input.prrRequestId)) {
       throw new Error("Invalid PRR request ID");
     }
@@ -71,19 +123,19 @@ export class PrrEvidenceBridge {
     }
 
     if (input.filename.trim().length === 0) {
-      throw new Error("Production artifact filename is required");
+      throw new Error(`${label} filename is required`);
     }
     if (this.isUnsafeFilename(input.filename)) {
-      throw new Error("Production artifact filename is unsafe for PRR source URI");
+      throw new Error(`${label} filename is unsafe for PRR source URI`);
     }
 
     const mediaType = input.mediaType.trim();
     if (mediaType.length === 0) {
-      throw new Error("Production artifact media type is required");
+      throw new Error(`${label} media type is required`);
     }
 
     if (!Buffer.isBuffer(input.content) || input.content.byteLength === 0) {
-      throw new Error("Production artifact content must be a non-empty Buffer");
+      throw new Error(`${label} content must be a non-empty Buffer`);
     }
 
     return {
