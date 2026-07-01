@@ -78,3 +78,15 @@
 - Full verification command: `npm run verify`
 - Full verification result: `typecheck passed`; `Test Files 15 passed (15)`; `Tests 110 passed (110)`; `tests passed`; `factory-readiness passed`.
 - Concerns: none. The Florida acknowledgement date is an internal workflow estimate only; the production review estimate remains the default Florida behavior.
+
+## PRR Request ID Contract Fix Handoff
+
+- PRR request ID fix recorded-at UTC: `2026-07-01T17:06:03Z`
+- PRR request ID implementation commit: `fb6ce62`
+- Targeted red command: `npm test -- packages/prr/test/jurisdiction-packs.test.ts packages/prr/test/deadlines.test.ts`
+- Targeted red result: failed as expected with two deadline failures showing invalid `prrRequestId` values were accepted for federal and Florida acknowledgement estimates.
+- Targeted green command: `npm test -- packages/prr/test/jurisdiction-packs.test.ts packages/prr/test/deadlines.test.ts`
+- Targeted green result: `Test Files 2 passed (2)`, `Tests 25 passed (25)`.
+- Full verification command: `npm run verify`
+- Full verification result: `typecheck passed`; `Test Files 15 passed (15)`; `Tests 113 passed (113)`; `tests passed`; `factory-readiness passed`.
+- Concerns: none. Estimated deadline outputs now validate against the existing `prr.deadline.estimated` event contract, including `prrRequestId` and `citedRules`.
