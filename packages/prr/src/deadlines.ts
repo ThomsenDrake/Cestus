@@ -1,10 +1,12 @@
 import type { JurisdictionPack } from "./jurisdiction-packs.js";
 
 export type DeadlineConfidence = "statutory" | "workflow";
+export type DeadlineEstimateKind = "acknowledgement" | "productionReview";
 
 export interface DeadlineCalculationInput {
   prrRequestId: string;
   receivedAt: string;
+  estimateKind?: DeadlineEstimateKind;
 }
 
 export interface CitedRule {
@@ -36,7 +38,10 @@ const supportedPackVersions = {
 } as const;
 
 const requiredRuleIds = {
-  "florida-public-records": "florida-prompt-response-workflow-estimate",
+  "florida-public-records": {
+    acknowledgement: "florida-acknowledgement-workflow-estimate",
+    productionReview: "florida-prompt-response-workflow-estimate"
+  },
   "us-federal-foia": "federal-determination-20-working-days"
 } as const;
 
@@ -60,7 +65,20 @@ export function calculateEstimatedDeadline(
     };
   }
 
-  const rule = findRequiredRule(pack, requiredRuleIds["florida-public-records"]);
+  const floridaEstimateKind = input.estimateKind ?? "productionReview";
+  const rule = findRequiredRule(pack, requiredRuleIds["florida-public-records"][floridaEstimateKind]);
+
+  if (floridaEstimateKind === "acknowledgement") {
+    return {
+      prrRequestId: input.prrRequestId,
+      deadlineDate: addCalendarDays(receivedAt, 3),
+      confidence: "workflow",
+      explanation:
+        "Florida acknowledgement workflow estimate is an internal operational review date, not a fixed statutory response-day deadline.",
+      citedRules: citedRulesFor(pack, rule)
+    };
+  }
+
   return {
     prrRequestId: input.prrRequestId,
     deadlineDate: addCalendarDays(receivedAt, 10),

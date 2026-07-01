@@ -85,6 +85,51 @@ describe("deadline calculators", () => {
     expect(result.explanation).toContain("not a fixed statutory response-day deadline");
   });
 
+  it("calculates Florida acknowledgement as a separate workflow estimate", () => {
+    const productionEstimate = calculateEstimatedDeadline(floridaPublicRecordsPack, {
+      prrRequestId: "prr_req_002",
+      receivedAt: "2026-07-01T12:00:00.000Z"
+    });
+    const acknowledgementEstimate = calculateEstimatedDeadline(floridaPublicRecordsPack, {
+      prrRequestId: "prr_req_002",
+      receivedAt: "2026-07-01T12:00:00.000Z",
+      estimateKind: "acknowledgement"
+    });
+
+    expect(productionEstimate.deadlineDate).toBe("2026-07-11");
+    expect(acknowledgementEstimate.deadlineDate).toBe("2026-07-04");
+    expect(acknowledgementEstimate.confidence).toBe("workflow");
+    expect(acknowledgementEstimate.explanation).toContain("acknowledgement workflow estimate");
+    expect(acknowledgementEstimate.explanation).toContain(
+      "not a fixed statutory response-day deadline"
+    );
+    expect(acknowledgementEstimate.citedRules[0]).toEqual(
+      expect.objectContaining({
+        jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+        citation: "Fla. Stat. 119.07"
+      })
+    );
+  });
+
+  it("throws a clear error when the Florida acknowledgement rule ID is missing", () => {
+    const packWithoutAcknowledgementRule = jurisdictionPackSchema.parse({
+      ...floridaPublicRecordsPack,
+      rules: floridaPublicRecordsPack.rules.filter(
+        (rule) => rule.id !== "florida-acknowledgement-workflow-estimate"
+      )
+    });
+
+    expect(() =>
+      calculateEstimatedDeadline(packWithoutAcknowledgementRule, {
+        prrRequestId: "prr_req_002",
+        receivedAt: "2026-07-01T12:00:00.000Z",
+        estimateKind: "acknowledgement"
+      })
+    ).toThrow(
+      "Jurisdiction pack florida-public-records@0.1.0 is missing rule florida-acknowledgement-workflow-estimate"
+    );
+  });
+
   it("prefers confirmed deadlines over estimates", () => {
     expect(
       chooseActiveDeadline({

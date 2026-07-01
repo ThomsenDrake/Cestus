@@ -87,6 +87,27 @@ export const floridaPublicRecordsPack: JurisdictionPack = jurisdictionPackSchema
       ],
       agentWarning:
         "Label Florida dates as workflow estimates unless a human confirms a specific legal basis."
+    },
+    {
+      id: "florida-acknowledgement-workflow-estimate",
+      label: "Acknowledgement workflow estimate",
+      kind: "deadline",
+      description:
+        "Cestus uses this internal acknowledgement review date to prompt early request tracking without treating it as a statutory response deadline.",
+      citations: [
+        {
+          label: "Florida Statutes 119.07",
+          citation: "Fla. Stat. 119.07",
+          url: "https://www.flsenate.gov/laws/statutes/2025/119.07"
+        },
+        {
+          label: "Florida Attorney General public records guide",
+          citation: "Florida Attorney General public records citizen guide",
+          url: "https://www.myfloridalegal.com/open-government/citizens"
+        }
+      ],
+      agentWarning:
+        "Use acknowledgement dates only as internal workflow estimates, not fixed statutory response-day deadlines."
     }
   ]
 });
