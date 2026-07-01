@@ -14,3 +14,9 @@ Owned files:
 - `packages/prr/test/diagnostics.test.ts`
 - `packages/prr/src/index.ts`
 - `docs/agentic/claims/task-12-prr-diagnostics.md`
+
+Verification evidence:
+
+- Red targeted command: `npm test -- packages/prr/test/diagnostics.test.ts` failed because `../src/diagnostics.js` was missing.
+- Green targeted command: `npm test -- packages/prr/test/diagnostics.test.ts` passed with 1 test file and 10 tests.
+- Full verification command: `npm run verify` passed with `typecheck passed`, 25 test files, 226 tests, `tests passed`, and `factory-readiness passed`.
