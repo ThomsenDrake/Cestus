@@ -100,11 +100,64 @@ describe("deadline calculators", () => {
     ).toThrow("Unsupported jurisdiction pack unsupported-public-records@0.1.0");
   });
 
+  it("throws a clear error for unsupported starter pack versions", () => {
+    const unsupportedVersionPack = jurisdictionPackSchema.parse({
+      ...usFederalFoiaPack,
+      version: "9.9.9"
+    });
+
+    expect(() =>
+      calculateEstimatedDeadline(unsupportedVersionPack, {
+        prrRequestId: "prr_req_004",
+        receivedAt: "2026-07-01T12:00:00.000Z"
+      })
+    ).toThrow("Unsupported jurisdiction pack us-federal-foia@9.9.9");
+  });
+
+  it("throws a clear error when the federal deadline rule ID is missing", () => {
+    const packWithMissingDeadlineRule = jurisdictionPackSchema.parse({
+      ...usFederalFoiaPack,
+      rules: [
+        {
+          ...usFederalFoiaPack.rules[0],
+          id: "not-the-deadline-rule"
+        }
+      ]
+    });
+
+    expect(() =>
+      calculateEstimatedDeadline(packWithMissingDeadlineRule, {
+        prrRequestId: "prr_req_005",
+        receivedAt: "2026-07-01T12:00:00.000Z"
+      })
+    ).toThrow(
+      "Jurisdiction pack us-federal-foia@0.1.0 is missing rule federal-determination-20-working-days"
+    );
+  });
+
   it("throws a clear error for invalid receivedAt values", () => {
     expect(() =>
       calculateEstimatedDeadline(usFederalFoiaPack, {
-        prrRequestId: "prr_req_004",
+        prrRequestId: "prr_req_006",
         receivedAt: "not-a-date"
+      })
+    ).toThrow("Invalid receivedAt");
+  });
+
+  it("throws a clear error for non-round-tripping receivedAt dates", () => {
+    expect(() =>
+      calculateEstimatedDeadline(usFederalFoiaPack, {
+        prrRequestId: "prr_req_007",
+        receivedAt: "2026-02-30T12:00:00.000Z"
+      })
+    ).toThrow("Invalid receivedAt");
+  });
+
+  it("throws a clear error for date-only receivedAt values", () => {
+    expect(() =>
+      calculateEstimatedDeadline(usFederalFoiaPack, {
+        prrRequestId: "prr_req_008",
+        receivedAt: "2026-07-01"
       })
     ).toThrow("Invalid receivedAt");
   });

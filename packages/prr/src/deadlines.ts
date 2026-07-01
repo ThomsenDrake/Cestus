@@ -30,14 +30,26 @@ export interface ActiveDeadlineCandidate {
   source: "estimated" | "confirmed";
 }
 
+const supportedPackVersions = {
+  "florida-public-records": "0.1.0",
+  "us-federal-foia": "0.1.0"
+} as const;
+
+const requiredRuleIds = {
+  "florida-public-records": "florida-prompt-response-workflow-estimate",
+  "us-federal-foia": "federal-determination-20-working-days"
+} as const;
+
 export function calculateEstimatedDeadline(
   pack: JurisdictionPack,
   input: DeadlineCalculationInput
 ): EstimatedDeadline {
   const receivedAt = parseReceivedAt(input.receivedAt);
 
+  assertSupportedPack(pack);
+
   if (pack.name === "us-federal-foia") {
-    const rule = firstRule(pack);
+    const rule = findRequiredRule(pack, requiredRuleIds["us-federal-foia"]);
     return {
       prrRequestId: input.prrRequestId,
       deadlineDate: addFederalWorkingDays(receivedAt, 20),
@@ -48,11 +60,7 @@ export function calculateEstimatedDeadline(
     };
   }
 
-  if (pack.name !== "florida-public-records") {
-    throw new Error(`Unsupported jurisdiction pack ${pack.name}@${pack.version}`);
-  }
-
-  const rule = firstRule(pack);
+  const rule = findRequiredRule(pack, requiredRuleIds["florida-public-records"]);
   return {
     prrRequestId: input.prrRequestId,
     deadlineDate: addCalendarDays(receivedAt, 10),
@@ -70,10 +78,22 @@ export function chooseActiveDeadline(input: {
   return input.confirmed ?? input.estimated;
 }
 
-function firstRule(pack: JurisdictionPack): JurisdictionPack["rules"][number] {
-  const rule = pack.rules[0];
+function assertSupportedPack(pack: JurisdictionPack): asserts pack is JurisdictionPack & {
+  name: keyof typeof supportedPackVersions;
+} {
+  const expectedVersion = supportedPackVersions[pack.name as keyof typeof supportedPackVersions];
+  if (expectedVersion === undefined || pack.version !== expectedVersion) {
+    throw new Error(`Unsupported jurisdiction pack ${pack.name}@${pack.version}`);
+  }
+}
+
+function findRequiredRule(
+  pack: JurisdictionPack,
+  ruleId: string
+): JurisdictionPack["rules"][number] {
+  const rule = pack.rules.find((candidate) => candidate.id === ruleId);
   if (rule === undefined) {
-    throw new Error(`Jurisdiction pack ${pack.name} has no rules`);
+    throw new Error(`Jurisdiction pack ${pack.name}@${pack.version} is missing rule ${ruleId}`);
   }
   return rule;
 }
@@ -88,10 +108,28 @@ function citedRulesFor(pack: JurisdictionPack, rule: JurisdictionPack["rules"][n
 }
 
 function parseReceivedAt(receivedAt: string): Date {
-  const date = new Date(receivedAt);
-  if (!Number.isFinite(date.getTime())) {
+  const match = receivedAt.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})Z$/
+  );
+  if (match === null) {
     throw new Error(`Invalid receivedAt: ${receivedAt}`);
   }
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, millisecondText] = match;
+  const date = new Date(receivedAt);
+  if (
+    !Number.isFinite(date.getTime()) ||
+    date.getUTCFullYear() !== Number(yearText) ||
+    date.getUTCMonth() !== Number(monthText) - 1 ||
+    date.getUTCDate() !== Number(dayText) ||
+    date.getUTCHours() !== Number(hourText) ||
+    date.getUTCMinutes() !== Number(minuteText) ||
+    date.getUTCSeconds() !== Number(secondText) ||
+    date.getUTCMilliseconds() !== Number(millisecondText)
+  ) {
+    throw new Error(`Invalid receivedAt: ${receivedAt}`);
+  }
+
   return date;
 }
 
