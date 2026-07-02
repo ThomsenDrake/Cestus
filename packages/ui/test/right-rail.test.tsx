@@ -1,0 +1,29 @@
+/** @vitest-environment jsdom */
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { App } from "../src/App.js";
+
+describe("right context rail", () => {
+  it("defaults to the agent brief", () => {
+    render(<App />);
+
+    const rail = screen.getByRole("complementary", { name: "Context rail" });
+    expect(within(rail).getByRole("heading", { name: "Agent brief" })).toBeInTheDocument();
+    expect(within(rail).getByText("What Cestus is watching")).toBeInTheDocument();
+  });
+
+  it("switches to selected item detail and can return to the brief", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Select Miami-Dade Aviation Department stalling signal" }));
+
+    const rail = screen.getByRole("complementary", { name: "Context rail" });
+    expect(
+      within(rail).getByRole("heading", { name: "Miami-Dade Aviation Department stalling signal" })
+    ).toBeInTheDocument();
+    expect(within(rail).getByText("Prepare escalation")).toBeInTheDocument();
+
+    fireEvent.click(within(rail).getByRole("button", { name: "Back to agent brief" }));
+    expect(within(rail).getByRole("heading", { name: "Agent brief" })).toBeInTheDocument();
+  });
+});

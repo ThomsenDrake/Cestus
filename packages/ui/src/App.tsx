@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { buildCommandBoardViewModel } from "./workspace/command-model.js";
+import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/command-model.js";
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
 import { CommandDashboard } from "./workspace/CommandDashboard.js";
 import { OpsShell } from "./workspace/OpsShell.js";
+import { RightContextRail } from "./workspace/RightContextRail.js";
 import { workspaceModules } from "./workspace/workspace-nav.js";
 
 export function App() {
@@ -14,6 +15,7 @@ export function App() {
     () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds }),
     [reviewedItemIds]
   );
+  const selectedItem = getSelectedCommandItem(model, selectedItemId);
 
   return (
     <OpsShell
@@ -33,9 +35,11 @@ export function App() {
         />
       }
       contextRail={
-        <aside aria-label="Context rail" className="p-4">
-          Agent brief
-        </aside>
+        <RightContextRail
+          agentBrief={model.agentBrief}
+          selectedItem={selectedItem}
+          onClearSelection={() => setSelectedItemId(undefined)}
+        />
       }
     />
   );
