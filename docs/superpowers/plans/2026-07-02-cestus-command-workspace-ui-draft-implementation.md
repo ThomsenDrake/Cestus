@@ -22,6 +22,16 @@
 - ui.sh design skill guidance: dark-first, dashboard density, restrained surfaces, accessible controls, mobile-first responsiveness
 - ui.sh ideas skill guidance: `data-uidotsh-pick`, `data-uidotsh-option`, `contents`, exactly one visible option per decision, and one picker script in `index.html`
 
+## Required UI Skills
+
+Workers implementing this plan must use the ui.sh skills named by the user:
+
+- Use `$design` from `/home/drake/.agents/skills/design/SKILL.md` before UI implementation tasks that create or modify visual structure, layout, components, Tailwind classes, responsive behavior, or interaction states. This applies to Tasks 1, 3, 4, 5, and 6.
+- Use `$ideas` from `/home/drake/.agents/skills/ideas/SKILL.md` before Task 7, because Task 7 adds picker decision points, injects the ui.sh picker toolbar, prepares visible variants, and stops for user selection.
+- Use `$ideas` again for the follow-up cleanup plan after the user chooses variants, because cleanup must remove unselected variants, picker-only attributes, and the picker script when comparison is finished.
+
+If an execution environment cannot invoke named skills directly, the worker must read the matching `SKILL.md` files and apply their rules before editing task files.
+
 ## Scope Boundary
 
 This plan creates a working UI draft and a visual comparison surface. It does not finalize picker choices. After Task 7, stop and ask the user to choose:
