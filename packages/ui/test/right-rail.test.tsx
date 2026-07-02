@@ -9,7 +9,7 @@ describe("right context rail", () => {
 
     const rail = screen.getByRole("complementary", { name: "Context rail" });
     expect(within(rail).getByRole("heading", { name: "Agent brief" })).toBeInTheDocument();
-    expect(within(rail).getByText("What Cestus is watching")).toBeInTheDocument();
+    expect(within(rail).getAllByText("What Cestus is watching").length).toBeGreaterThan(0);
   });
 
   it("switches to selected item detail and can return to the brief", () => {
@@ -21,7 +21,7 @@ describe("right context rail", () => {
     expect(
       within(rail).getByRole("heading", { name: "Miami-Dade Aviation Department stalling signal" })
     ).toBeInTheDocument();
-    expect(within(rail).getByText("Prepare escalation")).toBeInTheDocument();
+    expect(within(rail).getAllByText("Prepare escalation").length).toBeGreaterThan(0);
 
     fireEvent.click(within(rail).getByRole("button", { name: "Back to agent brief" }));
     expect(within(rail).getByRole("heading", { name: "Agent brief" })).toBeInTheDocument();

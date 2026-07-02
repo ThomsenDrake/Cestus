@@ -9,23 +9,42 @@ interface RightContextRailProps {
 export function RightContextRail({ agentBrief, selectedItem, onClearSelection }: RightContextRailProps) {
   return (
     <aside aria-label="Context rail" className="h-full p-4 lg:p-5">
-      {selectedItem === undefined ? (
-        <AgentBriefView agentBrief={agentBrief} />
-      ) : (
-        <SelectedItemDetail selectedItem={selectedItem} onClearSelection={onClearSelection} />
-      )}
+      <div data-uidotsh-pick="Right rail treatment" className="contents">
+        <div data-uidotsh-option="Agent brief dominant (current)" className="contents">
+          {selectedItem === undefined ? (
+            <AgentBriefView agentBrief={agentBrief} />
+          ) : (
+            <SelectedItemDetail selectedItem={selectedItem} onClearSelection={onClearSelection} />
+          )}
+        </div>
+        <div data-uidotsh-option="Detail dominant" className="contents" hidden>
+          {selectedItem === undefined ? (
+            <AgentBriefView agentBrief={agentBrief} compact />
+          ) : (
+            <SelectedItemDetail selectedItem={selectedItem} onClearSelection={onClearSelection} expanded />
+          )}
+        </div>
+        <div data-uidotsh-option="Split brief/detail stack" className="contents" hidden>
+          <AgentBriefView agentBrief={agentBrief} compact />
+          {selectedItem === undefined ? null : (
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <SelectedItemDetail selectedItem={selectedItem} onClearSelection={onClearSelection} />
+            </div>
+          )}
+        </div>
+      </div>
     </aside>
   );
 }
 
-function AgentBriefView({ agentBrief }: { readonly agentBrief: AgentBrief }) {
+function AgentBriefView({ agentBrief, compact = false }: { readonly agentBrief: AgentBrief; readonly compact?: boolean }) {
   return (
     <div>
       <p className="font-mono text-base text-[var(--cestus-cyan)] sm:text-sm">Watch</p>
       <h2 className="mt-2 text-lg font-semibold text-balance">Agent brief</h2>
       <RailList title="What Cestus is watching" items={agentBrief.watching} />
-      <RailList title="Changed since review" items={agentBrief.changedSinceReview} />
-      <RailList title="Uncertain" items={agentBrief.uncertain} />
+      {compact ? null : <RailList title="Changed since review" items={agentBrief.changedSinceReview} />}
+      {compact ? null : <RailList title="Uncertain" items={agentBrief.uncertain} />}
       <RailList title="Recommended next actions" items={agentBrief.recommendedActions} />
     </div>
   );
@@ -37,6 +56,7 @@ function SelectedItemDetail({
 }: {
   readonly selectedItem: CommandQueueItem;
   readonly onClearSelection: () => void;
+  readonly expanded?: boolean;
 }) {
   return (
     <div>
@@ -80,8 +100,11 @@ function RailList({ title, items }: { readonly title: string; readonly items: re
     <section className="mt-5">
       <h3 className="text-base font-semibold text-balance text-[var(--cestus-text)] sm:text-sm">{title}</h3>
       <ul role="list" className="mt-2 space-y-2">
-        {items.map((item) => (
-          <li key={item} className="border-l border-white/10 pl-3 text-base text-pretty text-[var(--cestus-muted-soft)] sm:text-sm">
+        {items.map((item, index) => (
+          <li
+            key={`${title}:${index}:${item}`}
+            className="border-l border-white/10 pl-3 text-base text-pretty text-[var(--cestus-muted-soft)] sm:text-sm"
+          >
             {item}
           </li>
         ))}

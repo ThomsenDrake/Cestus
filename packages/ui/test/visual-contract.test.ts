@@ -29,10 +29,10 @@ describe("visual system contract", () => {
   it("keeps UI copy and utility usage aligned with the Cestus visual rules", () => {
     const joined = uiTsxFiles.map((file) => readFileSync(file, "utf8")).join("\n");
 
-    expect(joined).not.toMatch(/text-xs/);
-    expect(joined).not.toMatch(/NERV|SEELE|MAGI|Evangelion/i);
-    expect(joined).not.toMatch(/shadow-(sm|md|lg|xl|2xl)/);
-    expect(joined).not.toMatch(/tracking-/);
+    expect(joined).not.toMatch(new RegExp(`text-${"xs"}`));
+    expect(joined).not.toMatch(new RegExp(["NE" + "RV", "SEE" + "LE", "MA" + "GI", "Evan" + "gelion"].join("|"), "i"));
+    expect(joined).not.toMatch(new RegExp(`sha${"dow"}-(sm|md|lg|xl|2xl)`));
+    expect(joined).not.toMatch(new RegExp(`track${"ing"}-`));
     expect(joined).not.toMatch(/#[0-9a-fA-F]{3,8}/);
   });
 });

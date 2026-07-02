@@ -21,7 +21,7 @@ describe("CommandDashboard", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Command" })).toBeInTheDocument();
-    expect(screen.getByText("Open requests")).toBeInTheDocument();
+    expect(screen.getAllByText("Open requests").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Signals" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Select Miami-Dade Aviation Department stalling signal" })

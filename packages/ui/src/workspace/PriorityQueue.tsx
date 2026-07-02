@@ -24,7 +24,46 @@ export function PriorityQueue({ items, selectedItemId, onSelectItem, onMarkRevie
   }
 
   return (
-    <div className="space-y-2" role="list" aria-label="Priority queue">
+    <div data-uidotsh-pick="Queue density" className="contents">
+      <div data-uidotsh-option="Compact table (current)" className="contents">
+        <QueueList
+          items={items}
+          selectedItemId={selectedItemId}
+          onSelectItem={onSelectItem}
+          onMarkReviewed={onMarkReviewed}
+          mode="compact"
+        />
+      </div>
+      <div data-uidotsh-option="Split row" className="contents" hidden>
+        <QueueList
+          items={items}
+          selectedItemId={selectedItemId}
+          onSelectItem={onSelectItem}
+          onMarkReviewed={onMarkReviewed}
+          mode="split"
+        />
+      </div>
+      <div data-uidotsh-option="Grouped by severity" className="contents" hidden>
+        <GroupedQueueList
+          items={items}
+          selectedItemId={selectedItemId}
+          onSelectItem={onSelectItem}
+          onMarkReviewed={onMarkReviewed}
+        />
+      </div>
+    </div>
+  );
+}
+
+function QueueList({
+  items,
+  selectedItemId,
+  onSelectItem,
+  onMarkReviewed,
+  mode
+}: PriorityQueueProps & { readonly mode: "compact" | "split" }) {
+  return (
+    <div className={mode === "compact" ? "space-y-2" : "grid gap-3"} role="list" aria-label="Priority queue">
       {items.map((item) => (
         <QueueRow
           key={item.id}
@@ -32,8 +71,42 @@ export function PriorityQueue({ items, selectedItemId, onSelectItem, onMarkRevie
           selected={item.id === selectedItemId}
           onSelectItem={onSelectItem}
           onMarkReviewed={onMarkReviewed}
+          mode={mode}
         />
       ))}
+    </div>
+  );
+}
+
+function GroupedQueueList({ items, selectedItemId, onSelectItem, onMarkReviewed }: PriorityQueueProps) {
+  const groups = ["critical", "high", "medium", "low"] as const;
+
+  return (
+    <div className="space-y-4">
+      {groups.map((severity) => {
+        const groupItems = items.filter((item) => item.severity === severity);
+        if (groupItems.length === 0) {
+          return null;
+        }
+
+        return (
+          <section key={severity} aria-label={`${severity} priority`}>
+            <h3 className="mb-2 font-mono text-base text-[var(--cestus-muted-strong)] sm:text-sm">{severity}</h3>
+            <div className="space-y-2" role="list" aria-label={`${severity} priority queue`}>
+              {groupItems.map((item) => (
+                <QueueRow
+                  key={item.id}
+                  item={item}
+                  selected={item.id === selectedItemId}
+                  onSelectItem={onSelectItem}
+                  onMarkReviewed={onMarkReviewed}
+                  mode="compact"
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -42,18 +115,22 @@ function QueueRow({
   item,
   selected,
   onSelectItem,
-  onMarkReviewed
+  onMarkReviewed,
+  mode
 }: {
   readonly item: CommandQueueItem;
   readonly selected: boolean;
   readonly onSelectItem: (itemId: string) => void;
   readonly onMarkReviewed: (itemId: string) => void;
+  readonly mode: "compact" | "split";
 }) {
   return (
     <div
       role="listitem"
       className={[
-        "grid gap-3 border p-3 md:grid-cols-[7rem_minmax(0,1fr)_9rem_9rem]",
+        mode === "compact"
+          ? "grid gap-3 border p-3 md:grid-cols-[7rem_minmax(0,1fr)_9rem_9rem]"
+          : "grid gap-4 border border-l-4 p-4 md:grid-cols-[minmax(0,1fr)_10rem]",
         selected ? "border-[var(--cestus-cyan)]/70 bg-[var(--cestus-cyan)]/10" : "border-white/10 bg-white/[0.03]"
       ].join(" ")}
     >
