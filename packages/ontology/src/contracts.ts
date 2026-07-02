@@ -90,6 +90,208 @@ const projectionCheckpointedPayloadSchema = z.object({
   status: z.enum(["ready", "rebuilding", "failed"])
 }).strict();
 
+const prrStatusSchema = z.enum([
+  "draft",
+  "sent",
+  "acknowledged",
+  "inNegotiation",
+  "awaitingProduction",
+  "partiallyProduced",
+  "produced",
+  "denied",
+  "appealed",
+  "closed"
+]);
+
+const correspondenceProviderSchema = z.enum(["gmail", "imap-smtp", "himalaya"]);
+const rawMetadataKeySchema = z.string().min(1).refine((key) => !/token|secret|password|oauth|credential|config/i.test(key), {
+  message: "rawMetadata keys must not reference secrets or credentials"
+});
+const rawMetadataSchema = z.record(rawMetadataKeySchema, z.string());
+
+const jurisdictionPackRefSchema = z.object({
+  name: z.string().min(1),
+  version: z.string().min(1)
+}).strict();
+
+const prrContactSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email().optional(),
+  phone: z.string().min(3).optional()
+}).strict();
+
+const prrRequestCreatedPayloadSchema = z.object({
+  prrRequestId: z.string().regex(/^prr_[a-zA-Z0-9_-]+$/),
+  jurisdictionPack: jurisdictionPackRefSchema,
+  agency: prrContactSchema,
+  requester: prrContactSchema,
+  requestText: z.string().min(1),
+  status: z.literal("draft")
+}).strict();
+
+const prrRequestSentPayloadSchema = z.object({
+  prrRequestId: z.string().regex(/^prr_[a-zA-Z0-9_-]+$/),
+  correspondenceId: z.string().regex(/^corr_[a-zA-Z0-9_-]+$/),
+  provider: correspondenceProviderSchema,
+  providerMessageId: z.string().min(1),
+  providerThreadId: z.string().min(1).optional(),
+  idempotencyKey: z.string().min(1),
+  subject: z.string().min(1),
+  bodyHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  attachmentEvidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/)),
+  sentAt: z.string().datetime(),
+  approvedBy: z.string().min(3),
+  rawMetadata: rawMetadataSchema
+}).strict();
+
+const prrCorrespondenceReceivedPayloadSchema = z.object({
+  prrRequestId: z.string().regex(/^prr_[a-zA-Z0-9_-]+$/),
+  correspondenceId: z.string().regex(/^corr_[a-zA-Z0-9_-]+$/),
+  provider: correspondenceProviderSchema,
+  providerMessageId: z.string().min(1),
+  providerThreadId: z.string().min(1).optional(),
+  subject: z.string().min(1),
+  from: prrContactSchema,
+  receivedAt: z.string().datetime(),
+  bodyHash: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(),
+  evidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/))
+}).strict();
+
+const prrRequestRefSchema = z.object({
+  prrRequestId: z.string().regex(/^prr_[a-zA-Z0-9_-]+$/)
+}).strict();
+
+const citedRuleSchema = z.object({
+  jurisdictionPack: jurisdictionPackRefSchema,
+  label: z.string().min(1),
+  citation: z.string().min(1),
+  url: z.string().url().optional()
+}).strict();
+
+const prrFollowupDraftedPayloadSchema = prrRequestRefSchema.extend({
+  correspondenceId: z.string().regex(/^corr_[a-zA-Z0-9_-]+$/),
+  subject: z.string().min(1),
+  bodyHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  citedRules: z.array(citedRuleSchema)
+}).strict();
+
+const prrFollowupSentPayloadSchema = prrRequestRefSchema.extend({
+  correspondenceId: z.string().regex(/^corr_[a-zA-Z0-9_-]+$/),
+  provider: correspondenceProviderSchema,
+  providerMessageId: z.string().min(1),
+  subject: z.string().min(1),
+  bodyHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  sentAt: z.string().datetime(),
+  approvedBy: z.string().min(3)
+}).strict();
+
+const prrDeadlineEstimatedPayloadSchema = prrRequestRefSchema.extend({
+  deadlineDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  confidence: z.enum(["statutory", "workflow"]),
+  explanation: z.string().min(1),
+  citedRules: z.array(citedRuleSchema).min(1)
+}).strict();
+
+const prrDeadlineConfirmedPayloadSchema = prrRequestRefSchema.extend({
+  deadlineDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  confirmedBy: z.string().min(3),
+  rationale: z.string().min(1),
+  citedRules: z.array(citedRuleSchema).min(1)
+}).strict();
+
+const prrFeeEstimatedPayloadSchema = prrRequestRefSchema.extend({
+  amountCents: z.number().int().nonnegative(),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  sourceEvidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/).optional()
+}).strict();
+
+const prrFeeChallengedPayloadSchema = prrRequestRefSchema.extend({
+  feeChallengeId: z.string().regex(/^fee_challenge_[a-zA-Z0-9_-]+$/),
+  amountCents: z.number().int().nonnegative(),
+  rationale: z.string().min(1),
+  approvedBy: z.string().min(3),
+  citedRules: z.array(citedRuleSchema)
+}).strict();
+
+const prrScopeNarrowingProposedPayloadSchema = prrRequestRefSchema.extend({
+  narrowingId: z.string().regex(/^narrow_[a-zA-Z0-9_-]+$/),
+  proposedScope: z.string().min(1),
+  proposedBy: z.string().min(3),
+  sourceEvidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/).optional()
+}).strict();
+
+const prrScopeNarrowingAcceptedPayloadSchema = prrRequestRefSchema.extend({
+  narrowingId: z.string().regex(/^narrow_[a-zA-Z0-9_-]+$/),
+  acceptedScope: z.string().min(1),
+  acceptedBy: z.string().min(3),
+  rationale: z.string().min(1)
+}).strict();
+
+const prrProductionReceivedPayloadSchema = prrRequestRefSchema.extend({
+  productionId: z.string().regex(/^prod_[a-zA-Z0-9_-]+$/),
+  label: z.string().min(1),
+  receivedAt: z.string().datetime(),
+  evidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/)).min(1)
+}).strict();
+
+const prrExemptionClaimedPayloadSchema = prrRequestRefSchema.extend({
+  exemptionId: z.string().regex(/^exemption_[a-zA-Z0-9_-]+$/),
+  claimedBy: z.string().min(1),
+  citedRules: z.array(citedRuleSchema).min(1),
+  sourceEvidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/).optional()
+}).strict();
+
+const prrDenialRecordedPayloadSchema = prrRequestRefSchema.extend({
+  denialId: z.string().regex(/^denial_[a-zA-Z0-9_-]+$/),
+  receivedAt: z.string().datetime(),
+  reason: z.string().min(1),
+  sourceEvidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/).optional()
+}).strict();
+
+const prrAppealCreatedPayloadSchema = prrRequestRefSchema.extend({
+  appealId: z.string().regex(/^appeal_[a-zA-Z0-9_-]+$/),
+  correspondenceId: z.string().regex(/^corr_[a-zA-Z0-9_-]+$/),
+  filedAt: z.string().datetime(),
+  approvedBy: z.string().min(3),
+  citedRules: z.array(citedRuleSchema)
+}).strict();
+
+const stallingSignalSchema = z.object({
+  kind: z.enum([
+    "deadline-breached",
+    "repeated-vague-delays",
+    "high-fee-estimate",
+    "silence-after-followup",
+    "narrowing-pressure",
+    "exemption-review-needed"
+  ]),
+  explanation: z.string().min(1)
+}).strict();
+
+const prrStallingDetectedPayloadSchema = prrRequestRefSchema.extend({
+  detectedAt: z.string().datetime(),
+  signals: z.array(stallingSignalSchema).min(1)
+}).strict();
+
+const prrStallingConfirmedPayloadSchema = prrRequestRefSchema.extend({
+  confirmedBy: z.string().min(3),
+  rationale: z.string().min(1),
+  signalKinds: z.array(stallingSignalSchema.shape.kind).min(1)
+}).strict();
+
+const prrLegalEscalationConfirmedPayloadSchema = prrRequestRefSchema.extend({
+  confirmedBy: z.string().min(3),
+  rationale: z.string().min(1),
+  citedRules: z.array(citedRuleSchema).min(1),
+  evidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/)).min(1)
+}).strict();
+
+const prrRequestClosedPayloadSchema = prrRequestRefSchema.extend({
+  closedAt: z.string().datetime(),
+  closedBy: z.string().min(3),
+  reason: z.enum(["fulfilled", "withdrawn", "abandoned", "denied-final", "merged"])
+}).strict();
+
 export const payloadSchemas = {
   "evidence.ingested": evidenceIngestedPayloadSchema,
   "assertion.proposed": assertionProposedPayloadSchema,
@@ -99,7 +301,26 @@ export const payloadSchemas = {
   "claim.created": claimCreatedPayloadSchema,
   "diagnostic.recorded": diagnosticRecordedPayloadSchema,
   "ontology.pack.installed": ontologyPackInstalledPayloadSchema,
-  "projection.checkpointed": projectionCheckpointedPayloadSchema
+  "projection.checkpointed": projectionCheckpointedPayloadSchema,
+  "prr.request.created": prrRequestCreatedPayloadSchema,
+  "prr.request.sent": prrRequestSentPayloadSchema,
+  "prr.correspondence.received": prrCorrespondenceReceivedPayloadSchema,
+  "prr.followup.drafted": prrFollowupDraftedPayloadSchema,
+  "prr.followup.sent": prrFollowupSentPayloadSchema,
+  "prr.deadline.estimated": prrDeadlineEstimatedPayloadSchema,
+  "prr.deadline.confirmed": prrDeadlineConfirmedPayloadSchema,
+  "prr.fee.estimated": prrFeeEstimatedPayloadSchema,
+  "prr.fee.challenged": prrFeeChallengedPayloadSchema,
+  "prr.scope.narrowing.proposed": prrScopeNarrowingProposedPayloadSchema,
+  "prr.scope.narrowing.accepted": prrScopeNarrowingAcceptedPayloadSchema,
+  "prr.production.received": prrProductionReceivedPayloadSchema,
+  "prr.exemption.claimed": prrExemptionClaimedPayloadSchema,
+  "prr.denial.recorded": prrDenialRecordedPayloadSchema,
+  "prr.appeal.created": prrAppealCreatedPayloadSchema,
+  "prr.stalling.detected": prrStallingDetectedPayloadSchema,
+  "prr.stalling.confirmed": prrStallingConfirmedPayloadSchema,
+  "prr.legal-escalation.confirmed": prrLegalEscalationConfirmedPayloadSchema,
+  "prr.request.closed": prrRequestClosedPayloadSchema
 } as const;
 
 export type KnowledgeEventType = keyof typeof payloadSchemas;
@@ -188,6 +409,144 @@ export const eventContracts = {
     description: "Records projection high-water mark and rebuild status.",
     agentGuidance: "Use to make projection state inspectable and rebuildable from the ledger.",
     invariants: ["highWaterMark cannot be negative"]
+  },
+  "prr.request.created": {
+    type: "prr.request.created",
+    version: 1,
+    description: "Records creation of a draft public records request with jurisdiction, agency, requester, and request text.",
+    agentGuidance: "Use only for initial request drafts. Keep status draft and preserve enough metadata for replayable lifecycle projections.",
+    invariants: ["status must be draft", "prrRequestId must be stable", "jurisdictionPack is required"]
+  },
+  "prr.request.sent": {
+    type: "prr.request.sent",
+    version: 1,
+    description: "Records the human-approved initial send of a public records request through a correspondence provider.",
+    agentGuidance: "Use after a person approves the rendered request body and the provider returns message identifiers.",
+    invariants: [
+      "approvedBy is required",
+      "bodyHash records the rendered body",
+      "idempotencyKey records the provider send attempt",
+      "attachmentEvidenceIds links reviewed outbound attachments when present"
+    ]
+  },
+  "prr.correspondence.received": {
+    type: "prr.correspondence.received",
+    version: 1,
+    description: "Records inbound correspondence matched to a public records request with provider identifiers and optional evidence links.",
+    agentGuidance: "Use for confident inbound matches. Uncertain mailbox matches should enter review in later workflow services instead.",
+    invariants: ["providerMessageId is required", "receivedAt must be an ISO datetime", "evidenceIds must reference evidence events when present"]
+  },
+  "prr.followup.drafted": {
+    type: "prr.followup.drafted",
+    version: 1,
+    description: "Records a drafted follow-up message for a public records request before provider send occurs.",
+    agentGuidance: "Use for reviewable draft state. Do not treat a draft as evidence that correspondence was sent.",
+    invariants: ["bodyHash records the rendered body", "correspondenceId must be stable"]
+  },
+  "prr.followup.sent": {
+    type: "prr.followup.sent",
+    version: 1,
+    description: "Records a human-approved follow-up message sent through a configured correspondence provider.",
+    agentGuidance: "Use only after a person approves the follow-up and the provider returns durable message metadata.",
+    invariants: ["approvedBy is required", "bodyHash records the rendered body"]
+  },
+  "prr.deadline.estimated": {
+    type: "prr.deadline.estimated",
+    version: 1,
+    description: "Records an estimated public records deadline produced from jurisdiction pack rules or workflow heuristics.",
+    agentGuidance: "Use for reminder and queue prioritization projections. Do not unlock legal escalation from estimates alone.",
+    invariants: ["citedRules cannot be empty", "confidence must distinguish statutory from workflow"]
+  },
+  "prr.deadline.confirmed": {
+    type: "prr.deadline.confirmed",
+    version: 1,
+    description: "Records a user-reviewed public records deadline confirmation or override with rationale and cited rules.",
+    agentGuidance: "Use when a human confirms the deadline basis. Confirmed deadlines take precedence over estimates in projections.",
+    invariants: ["confirmedBy is required", "citedRules cannot be empty", "rationale is required"]
+  },
+  "prr.fee.estimated": {
+    type: "prr.fee.estimated",
+    version: 1,
+    description: "Records an agency fee estimate or fee amount associated with a public records request.",
+    agentGuidance: "Use sourceEvidenceId when the estimate came from correspondence or an attachment ingested as evidence.",
+    invariants: ["amountCents cannot be negative", "currency must be an uppercase three-letter code"]
+  },
+  "prr.fee.challenged": {
+    type: "prr.fee.challenged",
+    version: 1,
+    description: "Records a human-approved challenge to a fee estimate for a public records request.",
+    agentGuidance: "Use after human review of the challenge rationale. Cite jurisdiction guidance where applicable.",
+    invariants: ["approvedBy is required", "amountCents cannot be negative", "rationale is required"]
+  },
+  "prr.scope.narrowing.proposed": {
+    type: "prr.scope.narrowing.proposed",
+    version: 1,
+    description: "Records a proposed narrowing of a public records request scope before the requester accepts it.",
+    agentGuidance: "Use for agency or requester proposals that need review. Do not replace request text until accepted.",
+    invariants: ["narrowingId must be stable", "proposedScope is required", "proposedBy is required"]
+  },
+  "prr.scope.narrowing.accepted": {
+    type: "prr.scope.narrowing.accepted",
+    version: 1,
+    description: "Records accepted narrowed scope language for a public records request with rationale.",
+    agentGuidance: "Use only after a person accepts the narrowed scope and records why the change preserves intent.",
+    invariants: ["narrowingId must reference a proposal", "acceptedBy is required", "rationale is required"]
+  },
+  "prr.production.received": {
+    type: "prr.production.received",
+    version: 1,
+    description: "Records receipt of a production batch and the evidence artifacts linked to that production.",
+    agentGuidance: "Use after production files or metadata have evidence identifiers. Do not store large production content directly in payloads.",
+    invariants: ["evidenceIds cannot be empty", "receivedAt must be an ISO datetime"]
+  },
+  "prr.exemption.claimed": {
+    type: "prr.exemption.claimed",
+    version: 1,
+    description: "Records an exemption claimed by an agency in a public records request response.",
+    agentGuidance: "Use citations and source evidence where available so reviewers can evaluate the claimed exemption.",
+    invariants: ["citedRules cannot be empty", "claimedBy is required"]
+  },
+  "prr.denial.recorded": {
+    type: "prr.denial.recorded",
+    version: 1,
+    description: "Records a denial or final refusal associated with a public records request.",
+    agentGuidance: "Use sourceEvidenceId when denial correspondence or attachments have been ingested as evidence.",
+    invariants: ["denialId must be stable", "reason is required", "receivedAt must be an ISO datetime"]
+  },
+  "prr.appeal.created": {
+    type: "prr.appeal.created",
+    version: 1,
+    description: "Records creation or filing of an appeal for a public records request denial or inadequate response.",
+    agentGuidance: "Use only after human approval. Preserve cited rules and correspondence linkage for auditability.",
+    invariants: ["approvedBy is required", "correspondenceId is required", "filedAt must be an ISO datetime"]
+  },
+  "prr.stalling.detected": {
+    type: "prr.stalling.detected",
+    version: 1,
+    description: "Records possible stalling signals detected from deadlines, silence, fees, narrowing pressure, or exemption review needs.",
+    agentGuidance: "Use as inspectable possible-stalling state only. Do not treat detection as a legal conclusion.",
+    invariants: ["signals cannot be empty", "detectedAt must be an ISO datetime"]
+  },
+  "prr.stalling.confirmed": {
+    type: "prr.stalling.confirmed",
+    version: 1,
+    description: "Records a human confirmation that one or more possible stalling signals are meaningful for a request.",
+    agentGuidance: "Use only after a person reviews the signals and records a rationale for treating them as confirmed.",
+    invariants: ["confirmedBy is required", "signalKinds cannot be empty", "rationale is required"]
+  },
+  "prr.legal-escalation.confirmed": {
+    type: "prr.legal-escalation.confirmed",
+    version: 1,
+    description: "Records human confirmation that legal-escalation language is appropriate for a public records request.",
+    agentGuidance: "Use only with user confirmation, cited rules, and evidence of correspondence history. Never create this autonomously.",
+    invariants: ["confirmedBy is required", "citedRules cannot be empty", "legal escalation is never autonomous"]
+  },
+  "prr.request.closed": {
+    type: "prr.request.closed",
+    version: 1,
+    description: "Records closure of a public records request with the closeout actor, timestamp, and reason.",
+    agentGuidance: "Use to end active workflow state while preserving all prior events for replay and audit.",
+    invariants: ["closedBy is required", "reason must be an allowed closeout reason", "closedAt must be an ISO datetime"]
   }
 } satisfies EventContractMap;
 
