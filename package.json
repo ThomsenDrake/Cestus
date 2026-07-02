@@ -4,17 +4,33 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "ui:build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "typecheck": "tsc --noEmit && echo 'typecheck passed'",
     "factory:check": "node scripts/check-agent-readiness.mjs",
-    "verify": "npm run typecheck && npm test && echo 'tests passed' && npm run factory:check"
+    "verify": "npm run typecheck && npm test && echo 'tests passed' && npm run ui:build && npm run factory:check"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
+    "@heroicons/react": "^2.2.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "zod": "^4.2.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^26.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4.3.2",
     "typescript": "^5.9.0",
+    "vite": "^8.1.3",
     "vitest": "^4.0.0"
   }
 }
