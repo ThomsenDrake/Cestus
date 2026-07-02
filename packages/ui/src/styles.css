@@ -8,7 +8,10 @@
   --cestus-panel-raised: #171a1f;
   --cestus-line: rgba(243, 239, 231, 0.12);
   --cestus-muted: #8f887d;
+  --cestus-muted-strong: #b8afa3;
+  --cestus-muted-soft: #c8c2b8;
   --cestus-text: #f3efe7;
+  --cestus-ink: #120d05;
   --cestus-amber: #ffb84d;
   --cestus-red: #ff5a5f;
   --cestus-green: #80e08f;
@@ -34,7 +37,11 @@
 body {
   min-width: 320px;
   margin: 0;
-  background: var(--cestus-bg);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    var(--cestus-bg);
+  background-size: 32px 32px;
 }
 
 button,

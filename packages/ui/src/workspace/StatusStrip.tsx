@@ -9,7 +9,7 @@ const toneClasses: Record<StatusMetric["tone"], string> = {
   red: "text-[var(--cestus-red)]",
   green: "text-[var(--cestus-green)]",
   cyan: "text-[var(--cestus-cyan)]",
-  neutral: "text-[#c8c2b8]"
+  neutral: "text-[var(--cestus-muted-soft)]"
 };
 
 export function StatusStrip({ metrics }: StatusStripProps) {
@@ -22,7 +22,7 @@ export function StatusStrip({ metrics }: StatusStripProps) {
             className="border-t border-white/10 py-3 first:border-t-0 @lg:border-l @lg:border-t-0 @lg:px-4 @lg:first:border-l-0"
           >
             <div className={`font-mono text-2xl tabular-nums ${toneClasses[metric.tone]}`}>{metric.value}</div>
-            <div className="truncate text-base text-[#b8afa3] sm:text-sm">{metric.label}</div>
+            <div className="truncate text-base text-[var(--cestus-muted-strong)] sm:text-sm">{metric.label}</div>
           </div>
         ))}
       </div>

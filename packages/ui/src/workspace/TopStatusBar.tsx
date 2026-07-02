@@ -47,13 +47,13 @@ export function TopStatusBar({ workspaceName, syncLabel, onNewRequest, onOpenMen
           <button
             type="button"
             onClick={onNewRequest}
-            className="relative flex min-h-10 items-center justify-center gap-2 border border-[var(--cestus-amber)] bg-[var(--cestus-amber)] py-2 pl-2 pr-3 text-base font-semibold text-[#120d05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cestus-cyan)] sm:min-h-9 sm:text-sm"
+            className="relative flex min-h-10 items-center justify-center gap-2 border border-[var(--cestus-amber)] bg-[var(--cestus-amber)] py-2 pl-2 pr-3 text-base font-semibold text-[var(--cestus-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cestus-cyan)] sm:min-h-9 sm:text-sm"
           >
             <span
               aria-hidden="true"
               className="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2"
             />
-            <PlusIcon aria-hidden="true" className="size-4 shrink-0 fill-[#120d05]" />
+            <PlusIcon aria-hidden="true" className="size-4 shrink-0 fill-[var(--cestus-ink)]" />
             New request
           </button>
         </div>

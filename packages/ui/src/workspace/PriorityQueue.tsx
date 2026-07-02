@@ -11,13 +11,13 @@ const severityClasses: Record<CommandQueueItem["severity"], string> = {
   critical: "border-[var(--cestus-red)]/60 text-[var(--cestus-red)]",
   high: "border-[var(--cestus-amber)]/60 text-[var(--cestus-amber)]",
   medium: "border-[var(--cestus-cyan)]/50 text-[var(--cestus-cyan)]",
-  low: "border-white/20 text-[#c8c2b8]"
+  low: "border-white/20 text-[var(--cestus-muted-soft)]"
 };
 
 export function PriorityQueue({ items, selectedItemId, onSelectItem, onMarkReviewed }: PriorityQueueProps) {
   if (items.length === 0) {
     return (
-      <div className="border border-white/10 p-5 text-base text-pretty text-[#b8afa3]">
+      <div className="border border-white/10 p-5 text-base text-pretty text-[var(--cestus-muted-strong)]">
         No urgent work is waiting in this filter.
       </div>
     );
@@ -71,9 +71,9 @@ function QueueRow({
           className="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2"
         />
         <div className="truncate text-base font-medium text-[var(--cestus-text)]">{item.title}</div>
-        <div className="mt-1 truncate text-base text-[#b8afa3] sm:text-sm">{item.context}</div>
+        <div className="mt-1 truncate text-base text-[var(--cestus-muted-strong)] sm:text-sm">{item.context}</div>
       </button>
-      <div className="font-mono text-base text-[#c8c2b8] sm:text-sm">{item.state}</div>
+      <div className="font-mono text-base text-[var(--cestus-muted-soft)] sm:text-sm">{item.state}</div>
       <button
         type="button"
         aria-label={`Mark ${item.title} reviewed`}

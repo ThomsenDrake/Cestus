@@ -36,7 +36,7 @@ export function ModuleLink({ module, active }: { readonly module: WorkspaceModul
         "flex min-h-9 items-center justify-between gap-2 border px-3 py-2 text-base sm:text-sm",
         active
           ? "border-[var(--cestus-cyan)]/40 bg-[var(--cestus-cyan)]/10 text-[var(--cestus-text)]"
-          : "border-transparent text-[#b8afa3] hover:border-white/10 hover:bg-white/5 hover:text-[var(--cestus-text)]",
+          : "border-transparent text-[var(--cestus-muted-strong)] hover:border-white/10 hover:bg-white/5 hover:text-[var(--cestus-text)]",
         module.preview ? "opacity-60" : ""
       ].join(" ")}
     >

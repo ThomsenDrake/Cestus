@@ -52,15 +52,15 @@ function SelectedItemDetail({
       <dl className="mt-5 space-y-4">
         <div>
           <dt className="text-base font-medium text-[var(--cestus-text)] sm:text-sm">State</dt>
-          <dd className="mt-1 text-base text-[#c8c2b8] sm:text-sm">{selectedItem.state}</dd>
+          <dd className="mt-1 text-base text-[var(--cestus-muted-soft)] sm:text-sm">{selectedItem.state}</dd>
         </div>
         <div>
           <dt className="text-base font-medium text-[var(--cestus-text)] sm:text-sm">Basis</dt>
-          <dd className="mt-1 text-base text-[#c8c2b8] sm:text-sm">{selectedItem.detail.basis}</dd>
+          <dd className="mt-1 text-base text-[var(--cestus-muted-soft)] sm:text-sm">{selectedItem.detail.basis}</dd>
         </div>
         <div>
           <dt className="text-base font-medium text-[var(--cestus-text)] sm:text-sm">Recommended action</dt>
-          <dd className="mt-1 text-base text-[#c8c2b8] sm:text-sm">{selectedItem.actionLabel}</dd>
+          <dd className="mt-1 text-base text-[var(--cestus-muted-soft)] sm:text-sm">{selectedItem.actionLabel}</dd>
         </div>
         <div>
           <dt className="text-base font-medium text-[var(--cestus-text)] sm:text-sm">Provenance</dt>
@@ -81,7 +81,7 @@ function RailList({ title, items }: { readonly title: string; readonly items: re
       <h3 className="text-base font-semibold text-balance text-[var(--cestus-text)] sm:text-sm">{title}</h3>
       <ul role="list" className="mt-2 space-y-2">
         {items.map((item) => (
-          <li key={item} className="border-l border-white/10 pl-3 text-base text-pretty text-[#c8c2b8] sm:text-sm">
+          <li key={item} className="border-l border-white/10 pl-3 text-base text-pretty text-[var(--cestus-muted-soft)] sm:text-sm">
             {item}
           </li>
         ))}

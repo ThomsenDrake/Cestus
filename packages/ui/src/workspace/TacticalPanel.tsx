@@ -9,7 +9,7 @@ const toneClasses: Record<TacticalPanelModel["items"][number]["tone"], string> =
   red: "text-[var(--cestus-red)]",
   green: "text-[var(--cestus-green)]",
   cyan: "text-[var(--cestus-cyan)]",
-  neutral: "text-[#c8c2b8]"
+  neutral: "text-[var(--cestus-muted-soft)]"
 };
 
 export function TacticalPanel({ panel }: TacticalPanelProps) {
