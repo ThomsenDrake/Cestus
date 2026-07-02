@@ -1,0 +1,91 @@
+import type { CommandQueueItem } from "./command-types.js";
+
+interface PriorityQueueProps {
+  readonly items: readonly CommandQueueItem[];
+  readonly selectedItemId: string | undefined;
+  readonly onSelectItem: (itemId: string) => void;
+  readonly onMarkReviewed: (itemId: string) => void;
+}
+
+const severityClasses: Record<CommandQueueItem["severity"], string> = {
+  critical: "border-[var(--cestus-red)]/60 text-[var(--cestus-red)]",
+  high: "border-[var(--cestus-amber)]/60 text-[var(--cestus-amber)]",
+  medium: "border-[var(--cestus-cyan)]/50 text-[var(--cestus-cyan)]",
+  low: "border-white/20 text-[#c8c2b8]"
+};
+
+export function PriorityQueue({ items, selectedItemId, onSelectItem, onMarkReviewed }: PriorityQueueProps) {
+  if (items.length === 0) {
+    return (
+      <div className="border border-white/10 p-5 text-base text-pretty text-[#b8afa3]">
+        No urgent work is waiting in this filter.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2" role="list" aria-label="Priority queue">
+      {items.map((item) => (
+        <QueueRow
+          key={item.id}
+          item={item}
+          selected={item.id === selectedItemId}
+          onSelectItem={onSelectItem}
+          onMarkReviewed={onMarkReviewed}
+        />
+      ))}
+    </div>
+  );
+}
+
+function QueueRow({
+  item,
+  selected,
+  onSelectItem,
+  onMarkReviewed
+}: {
+  readonly item: CommandQueueItem;
+  readonly selected: boolean;
+  readonly onSelectItem: (itemId: string) => void;
+  readonly onMarkReviewed: (itemId: string) => void;
+}) {
+  return (
+    <div
+      role="listitem"
+      className={[
+        "grid gap-3 border p-3 md:grid-cols-[7rem_minmax(0,1fr)_9rem_9rem]",
+        selected ? "border-[var(--cestus-cyan)]/70 bg-[var(--cestus-cyan)]/10" : "border-white/10 bg-white/[0.03]"
+      ].join(" ")}
+    >
+      <div className={`w-fit border px-2 py-1 font-mono text-base sm:text-sm ${severityClasses[item.severity]}`}>
+        {item.severity}
+      </div>
+      <button
+        type="button"
+        aria-label={`Select ${item.title}`}
+        onClick={() => onSelectItem(item.id)}
+        className="relative min-w-0 text-left"
+      >
+        <span
+          aria-hidden="true"
+          className="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2"
+        />
+        <div className="truncate text-base font-medium text-[var(--cestus-text)]">{item.title}</div>
+        <div className="mt-1 truncate text-base text-[#b8afa3] sm:text-sm">{item.context}</div>
+      </button>
+      <div className="font-mono text-base text-[#c8c2b8] sm:text-sm">{item.state}</div>
+      <button
+        type="button"
+        aria-label={`Mark ${item.title} reviewed`}
+        onClick={() => onMarkReviewed(item.id)}
+        className="relative min-h-9 justify-self-start border border-white/10 px-3 py-2 text-base text-[var(--cestus-amber)] hover:border-white/20 hover:bg-white/5 sm:text-sm md:justify-self-end"
+      >
+        <span
+          aria-hidden="true"
+          className="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2"
+        />
+        {item.reviewed ? "Reviewed" : "Mark reviewed"}
+      </button>
+    </div>
+  );
+}

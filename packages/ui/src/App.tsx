@@ -1,11 +1,20 @@
+import { useMemo, useState } from "react";
 import { buildCommandBoardViewModel } from "./workspace/command-model.js";
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
+import type { QueueFilter } from "./workspace/command-types.js";
+import { CommandDashboard } from "./workspace/CommandDashboard.js";
 import { OpsShell } from "./workspace/OpsShell.js";
 import { workspaceModules } from "./workspace/workspace-nav.js";
 
-const model = buildCommandBoardViewModel(commandWorkspaceFixture);
-
 export function App() {
+  const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
+  const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
+  const [reviewedItemIds, setReviewedItemIds] = useState<readonly string[]>([]);
+  const model = useMemo(
+    () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds }),
+    [reviewedItemIds]
+  );
+
   return (
     <OpsShell
       modules={workspaceModules}
@@ -14,12 +23,14 @@ export function App() {
       syncLabel="Local ledger synced"
       onNewRequest={() => undefined}
       main={
-        <section>
-          <h1 className="text-2xl font-semibold text-balance">Command</h1>
-          <p className="mt-2 text-base text-pretty text-[#c8c2b8] sm:text-sm">
-            {model.queueItems.length} signals ready for review.
-          </p>
-        </section>
+        <CommandDashboard
+          model={model}
+          activeFilter={activeFilter}
+          selectedItemId={selectedItemId}
+          onFilterChange={setActiveFilter}
+          onSelectItem={setSelectedItemId}
+          onMarkReviewed={(itemId) => setReviewedItemIds((current) => [...new Set([...current, itemId])])}
+        />
       }
       contextRail={
         <aside aria-label="Context rail" className="p-4">
