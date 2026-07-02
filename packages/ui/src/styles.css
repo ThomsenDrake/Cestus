@@ -3,6 +3,16 @@
 
 :root {
   color-scheme: dark;
+  --cestus-bg: #08090b;
+  --cestus-panel: #111317;
+  --cestus-panel-raised: #171a1f;
+  --cestus-line: rgba(243, 239, 231, 0.12);
+  --cestus-muted: #8f887d;
+  --cestus-text: #f3efe7;
+  --cestus-amber: #ffb84d;
+  --cestus-red: #ff5a5f;
+  --cestus-green: #80e08f;
+  --cestus-cyan: #60d5ff;
   background: #08090b;
   color: #f3efe7;
   font-family:
@@ -24,7 +34,7 @@
 body {
   min-width: 320px;
   margin: 0;
-  background: #08090b;
+  background: var(--cestus-bg);
 }
 
 button,
