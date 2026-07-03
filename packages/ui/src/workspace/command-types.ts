@@ -5,6 +5,8 @@ export type QueueFilter = "all" | "deadline" | "signal" | "evidence" | "diagnost
 export type CommandItemKind = Exclude<QueueFilter, "all">;
 export type CommandSeverity = "critical" | "high" | "medium" | "low";
 export type MetricTone = "amber" | "red" | "green" | "cyan" | "neutral";
+export type DecisionVoteId = "legal-risk" | "factual-confidence" | "cost-pressure";
+export type DecisionVoteState = "go" | "review" | "watch" | "blocked" | "needs-evidence" | "human-decision-required";
 
 export interface EvidenceAlert {
   readonly evidenceId: string;
@@ -21,11 +23,25 @@ export interface StatusMetric {
   readonly tone: MetricTone;
 }
 
+export interface DecisionVote {
+  readonly id: DecisionVoteId;
+  readonly label: string;
+  readonly state: DecisionVoteState;
+  readonly tone: MetricTone;
+  readonly summary: string;
+}
+
+export interface DecisionRailModel {
+  readonly modeLabel: string;
+  readonly defaultVotes: readonly DecisionVote[];
+}
+
 export interface CommandItemDetail {
   readonly summary: string;
   readonly basis: string;
   readonly recommendedAction: string;
   readonly provenanceRefs: readonly string[];
+  readonly decisionVotes: readonly DecisionVote[];
 }
 
 export interface CommandQueueItem {
@@ -68,6 +84,7 @@ export interface CommandBoardViewModel {
   readonly queueItems: readonly CommandQueueItem[];
   readonly tacticalPanels: readonly TacticalPanelModel[];
   readonly agentBrief: AgentBrief;
+  readonly decisionRail: DecisionRailModel;
 }
 
 export interface CommandBoardInput {
