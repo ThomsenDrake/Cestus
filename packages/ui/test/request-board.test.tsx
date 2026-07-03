@@ -7,7 +7,15 @@ import { RequestWorkspace } from "../src/requests/RequestWorkspace.js";
 
 describe("RequestWorkspace", () => {
   it("renders the signal operations board lanes and cards", () => {
-    render(<RequestWorkspace fixture={prrWorkspaceFixture} onOpenBuilder={() => undefined} />);
+    render(
+      <RequestWorkspace
+        fixture={prrWorkspaceFixture}
+        selectedRequestId="prr_req_001"
+        onOpenBuilder={() => undefined}
+        onSelectRequest={() => undefined}
+        onSelectedRequestChange={() => undefined}
+      />
+    );
 
     expect(screen.getByRole("heading", { name: "Requests" })).toBeInTheDocument();
     for (const laneLabel of [
@@ -26,7 +34,15 @@ describe("RequestWorkspace", () => {
   });
 
   it("applies a saved PRR view while keeping board mode pressed", () => {
-    render(<RequestWorkspace fixture={prrWorkspaceFixture} onOpenBuilder={() => undefined} />);
+    render(
+      <RequestWorkspace
+        fixture={prrWorkspaceFixture}
+        selectedRequestId="prr_req_001"
+        onOpenBuilder={() => undefined}
+        onSelectRequest={() => undefined}
+        onSelectedRequestChange={() => undefined}
+      />
+    );
 
     fireEvent.change(screen.getByLabelText("Saved PRR view"), { target: { value: "florida-fees" } });
 
@@ -36,7 +52,9 @@ describe("RequestWorkspace", () => {
   });
 
   it("exposes selected request card state when a request is selected", () => {
-    render(<RequestWorkspace fixture={prrWorkspaceFixture} onOpenBuilder={() => undefined} />);
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Select Transit authority denial appeal" }));
 
@@ -44,9 +62,9 @@ describe("RequestWorkspace", () => {
       "aria-pressed",
       "true"
     );
-    expect(within(screen.getByRole("status", { name: "Selected request" })).getByText(
-      "Transit authority denial appeal"
-    )).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("complementary", { name: "Request detail rail" })).getByText("Confirm escalation basis")
+    ).toBeInTheDocument();
   });
 
   it("keeps App Requests mode to one request detail rail landmark", () => {

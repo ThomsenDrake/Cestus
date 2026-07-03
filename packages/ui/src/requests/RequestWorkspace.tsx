@@ -1,22 +1,34 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { buildPrrWorkspaceViewModel } from "./request-model.js";
-import type { PrrViewMode, PrrWorkspaceFixture } from "./request-types.js";
+import type { PrrDetailModel, PrrViewMode, PrrWorkspaceFixture } from "./request-types.js";
 import { RequestBoard } from "./RequestBoard.js";
 import { RequestCommandBar } from "./RequestCommandBar.js";
 
 interface RequestWorkspaceProps {
   readonly fixture: PrrWorkspaceFixture;
   readonly onOpenBuilder: () => void;
+  readonly selectedRequestId: string | undefined;
+  readonly onSelectRequest: (prrRequestId: string) => void;
+  readonly onSelectedRequestChange: (selectedRequest: PrrDetailModel | undefined) => void;
 }
 
-export function RequestWorkspace({ fixture, onOpenBuilder }: RequestWorkspaceProps) {
+export function RequestWorkspace({
+  fixture,
+  onOpenBuilder,
+  selectedRequestId,
+  onSelectRequest,
+  onSelectedRequestChange
+}: RequestWorkspaceProps) {
   const [savedViewId, setSavedViewId] = useState("all-active");
   const [viewMode, setViewMode] = useState<PrrViewMode | undefined>(undefined);
-  const [selectedRequestId, setSelectedRequestId] = useState<string | undefined>("prr_req_001");
   const model = useMemo(
     () => buildPrrWorkspaceViewModel(fixture, { savedViewId, selectedRequestId, viewMode }),
     [fixture, savedViewId, selectedRequestId, viewMode]
   );
+
+  useEffect(() => {
+    onSelectedRequestChange(model.selectedRequest);
+  }, [model.selectedRequest, onSelectedRequestChange]);
 
   function handleSavedViewChange(nextSavedViewId: string) {
     setSavedViewId(nextSavedViewId);
@@ -49,10 +61,7 @@ export function RequestWorkspace({ fixture, onOpenBuilder }: RequestWorkspacePro
         onSavedViewChange={handleSavedViewChange}
         onViewModeChange={setViewMode}
       />
-      <RequestBoard lanes={model.lanes} selectedRequestId={selectedRequestId} onSelectRequest={setSelectedRequestId} />
-      <div role="status" aria-label="Selected request" className="sr-only">
-        {model.selectedRequest?.title ?? "No request selected"}
-      </div>
+      <RequestBoard lanes={model.lanes} selectedRequestId={selectedRequestId} onSelectRequest={onSelectRequest} />
     </section>
   );
 }
