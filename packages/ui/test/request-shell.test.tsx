@@ -17,4 +17,14 @@ describe("requests workspace shell", () => {
     );
     expect(screen.getByRole("button", { name: "New request" })).toBeInTheDocument();
   });
+
+  it("keeps Requests active when unsupported modules are selected", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    fireEvent.click(screen.getByRole("link", { name: "Evidence" }));
+
+    expect(screen.getByRole("link", { name: "Requests" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("heading", { name: "Requests" })).toBeInTheDocument();
+  });
 });
