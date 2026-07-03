@@ -8,6 +8,7 @@ const sourceFiles = [
   "packages/ui/src/workspace/PriorityQueue.tsx",
   "packages/ui/src/workspace/DecisionRail.tsx",
   "packages/ui/src/requests/RequestWorkspace.tsx",
+  "packages/ui/src/requests/request-adapter.ts",
   "packages/ui/src/requests/RequestBoard.tsx",
   "packages/ui/src/requests/RequestDetailRail.tsx",
   "packages/ui/src/requests/RequestSignalMap.tsx",

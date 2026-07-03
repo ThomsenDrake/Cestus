@@ -42,15 +42,16 @@ describe("RequestBuilder", () => {
     expect(screen.getByDisplayValue("US Federal FOIA")).toBeInTheDocument();
   });
 
-  it("moves focus into the dialog and restores it after Escape closes the builder", () => {
+  it("moves focus into the dialog and restores it after Escape closes the builder", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    await screen.findByRole("heading", { name: "Requests" });
     const newRequestButton = screen.getByRole("button", { name: "New request" });
     newRequestButton.focus();
     fireEvent.click(newRequestButton);
 
-    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+    expect(await screen.findByRole("button", { name: "Close" })).toHaveFocus();
 
     fireEvent.keyDown(screen.getByRole("dialog", { name: "Guided request builder" }), { key: "Escape" });
 
@@ -73,13 +74,14 @@ describe("RequestBuilder", () => {
     expect(packSuggestion).toHaveFocus();
   });
 
-  it("opens the guided request builder from the Requests shell action", () => {
+  it("opens the guided request builder from the Requests shell action", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    await screen.findByRole("heading", { name: "Requests" });
     fireEvent.click(screen.getByRole("button", { name: "New request" }));
 
-    expect(screen.getByRole("dialog", { name: "Guided request builder" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Guided request builder" })).toBeInTheDocument();
     expect(screen.getByText("Review/send gate")).toBeInTheDocument();
   });
 

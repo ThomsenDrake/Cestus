@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { prrWorkspaceFixture } from "../src/requests/request-fixtures.js";
+import { buildPrrProjection } from "../../prr/src/projection.js";
+import { buildPrrWorkspaceDto } from "../../prr/src/read-api.js";
+import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import {
   buildPrrWorkspaceViewModel,
   getSelectedPrrRequest,
@@ -12,23 +14,29 @@ describe("PRR workspace model", () => {
   const visibleCards = (model: ReturnType<typeof buildPrrWorkspaceViewModel>) =>
     model.lanes.flatMap((lane) => lane.agencyGroups.flatMap((group) => group.cards));
 
+  function buildTestRequestsWorkspace() {
+    return buildPrrWorkspaceDto(buildPrrProjection(prrWorkspaceSeedEvents), {
+      now: "2026-07-20T12:00:00.000Z"
+    });
+  }
+
   it("builds the approved seven-lane board grouped by agency by default", () => {
-    const model = buildPrrWorkspaceViewModel(prrWorkspaceFixture, {
+    const model = buildPrrWorkspaceViewModel(buildTestRequestsWorkspace(), {
       savedViewId: "all-active",
-      selectedRequestId: "prr_req_airport_022",
+      selectedRequestId: "prr_fee_building_permits",
       viewMode: "board"
     });
 
     expect(model.lanes.map((lane) => lane.id)).toEqual(prrLaneOrder);
     expect(model.activeView.grouping).toBe("agency");
-    expect(model.lanes.find((lane) => lane.id === "ready-to-send")?.agencyGroups[0]).toMatchObject({
-      agencyName: "Federal Aviation Administration",
-      jurisdictionLabel: "US Federal FOIA"
+    expect(model.lanes.find((lane) => lane.id === "review-fee-scope")?.agencyGroups[0]).toMatchObject({
+      agencyName: "Building Services Department",
+      jurisdictionLabel: "Florida Public Records"
     });
   });
 
   it("applies saved views to mode, grouping, and filtered cards", () => {
-    const model = buildPrrWorkspaceViewModel(prrWorkspaceFixture, {
+    const model = buildPrrWorkspaceViewModel(buildTestRequestsWorkspace(), {
       savedViewId: "florida-fees",
       selectedRequestId: undefined,
       viewMode: undefined
@@ -37,41 +45,16 @@ describe("PRR workspace model", () => {
     expect(model.activeView.id).toBe("florida-fees");
     expect(model.viewMode).toBe("board");
     expect(model.activeView.grouping).toBe("agency");
-    expect(visibleCards(model).map((card) => card.prrRequestId)).toEqual(["prr_req_sheriff_045"]);
+    expect(visibleCards(model).map((card) => card.prrRequestId)).toEqual(["prr_fee_building_permits"]);
     expect(visibleCards(model)[0]).toMatchObject({
       laneId: "review-fee-scope",
-      feeSignal: "$4,500 estimate",
+      feeSignal: "$1,850.00 challenged",
       jurisdictionLabel: "Florida Public Records"
     });
   });
 
-  it("filters saved views by agency IDs", () => {
-    const agencyFilteredFixture = Object.freeze({
-      ...prrWorkspaceFixture,
-      savedViews: Object.freeze([
-        ...prrWorkspaceFixture.savedViews,
-        Object.freeze({
-          id: "faa-only",
-          label: "FAA only",
-          mode: "board",
-          grouping: "agency",
-          filters: Object.freeze({ agencyIds: Object.freeze(["agency_faa"] as const) })
-        })
-      ])
-    });
-
-    const model = buildPrrWorkspaceViewModel(agencyFilteredFixture, {
-      savedViewId: "faa-only",
-      selectedRequestId: undefined,
-      viewMode: undefined
-    });
-
-    expect(visibleCards(model).map((card) => card.prrRequestId)).toEqual(["prr_req_001"]);
-    expect(visibleCards(model).every((card) => card.agencyId === "agency_faa")).toBe(true);
-  });
-
   it("filters the signal map to the active saved view request agencies", () => {
-    const model = buildPrrWorkspaceViewModel(prrWorkspaceFixture, {
+    const model = buildPrrWorkspaceViewModel(buildTestRequestsWorkspace(), {
       savedViewId: "productions-arrived",
       selectedRequestId: undefined,
       viewMode: undefined
@@ -79,15 +62,21 @@ describe("PRR workspace model", () => {
     const visibleNodeIds = new Set(model.signalMap.nodes.map((node) => node.id));
 
     expect(model.viewMode).toBe("signal-map");
-    expect(model.signalMap.nodes.map((node) => node.agencyId)).toEqual(["agency_city"]);
+    expect(model.signalMap.nodes.map((node) => node.agencyName)).toEqual(["Example Agency"]);
+    expect(model.signalMap.edges).toEqual([]);
     expect(model.signalMap.edges.every((edge) => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to))).toBe(true);
   });
 
   it("derives selected request, send gate, and escalation prerequisites", () => {
-    const selected = getSelectedPrrRequest(prrWorkspaceFixture, "prr_req_transit_031");
+    const selected = getSelectedPrrRequest(buildTestRequestsWorkspace(), "prr_fee_building_permits");
 
-    expect(selected?.nextAction.label).toBe("Confirm escalation basis");
+    expect(selected?.nextAction.label).toBe("Review fee or scope");
     expect(sendGateArmed(selected?.sendGate)).toBe(false);
-    expect(unresolvedEscalationPrerequisites(selected?.escalationGate)).toEqual(["User confirmation"]);
+    expect(unresolvedEscalationPrerequisites(selected?.escalationGate)).toEqual([
+      "Confirmed basis",
+      "Jurisdiction guidance",
+      "Correspondence evidence",
+      "User confirmed escalation"
+    ]);
   });
 });

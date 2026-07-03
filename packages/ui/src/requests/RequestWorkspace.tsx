@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildPrrWorkspaceViewModel } from "./request-model.js";
-import type { PrrDetailModel, PrrViewMode, PrrWorkspaceFixture } from "./request-types.js";
+import type { PrrDetailModel, PrrViewMode, PrrWorkspaceData } from "./request-types.js";
 import { RequestBoard } from "./RequestBoard.js";
 import { RequestCommandBar } from "./RequestCommandBar.js";
 import { RequestSignalMap } from "./RequestSignalMap.js";
 
 interface RequestWorkspaceProps {
-  readonly fixture: PrrWorkspaceFixture;
+  readonly workspace: PrrWorkspaceData;
   readonly onOpenBuilder: () => void;
   readonly selectedRequestId: string | undefined;
   readonly onSelectRequest: (prrRequestId: string) => void;
@@ -14,7 +14,7 @@ interface RequestWorkspaceProps {
 }
 
 export function RequestWorkspace({
-  fixture,
+  workspace,
   onOpenBuilder,
   selectedRequestId,
   onSelectRequest,
@@ -23,8 +23,8 @@ export function RequestWorkspace({
   const [savedViewId, setSavedViewId] = useState("all-active");
   const [viewMode, setViewMode] = useState<PrrViewMode | undefined>(undefined);
   const model = useMemo(
-    () => buildPrrWorkspaceViewModel(fixture, { savedViewId, selectedRequestId, viewMode }),
-    [fixture, savedViewId, selectedRequestId, viewMode]
+    () => buildPrrWorkspaceViewModel(workspace, { savedViewId, selectedRequestId, viewMode }),
+    [workspace, savedViewId, selectedRequestId, viewMode]
   );
 
   useEffect(() => {
