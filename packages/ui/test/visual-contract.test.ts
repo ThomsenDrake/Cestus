@@ -15,15 +15,31 @@ const uiTsxFiles = [
 ];
 
 describe("visual system contract", () => {
-  it("defines dark-first Cestus design tokens", () => {
+  it("defines tactical command console design tokens", () => {
     const css = readFileSync("packages/ui/src/styles.css", "utf8");
 
-    expect(css).toContain("--cestus-bg");
-    expect(css).toContain("--cestus-panel");
-    expect(css).toContain("--cestus-amber");
-    expect(css).toContain("--cestus-red");
-    expect(css).toContain("--cestus-green");
-    expect(css).toContain("--cestus-cyan");
+    for (const token of [
+      "--command-black",
+      "--console-void",
+      "--signal-red",
+      "--signal-orange",
+      "--signal-amber",
+      "--signal-green",
+      "--signal-cyan",
+      "--paper-light",
+      "--muted-amber"
+    ]) {
+      expect(css).toContain(token);
+    }
+
+    expect(css).toContain(".cestus-scan-layer");
+    expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(css).toContain(
+      "--cestus-muted-strong: color-mix(in srgb, var(--muted-amber) 72%, var(--paper-light));"
+    );
+    expect(css).toContain(
+      "--cestus-muted-soft: color-mix(in srgb, var(--muted-amber) 42%, var(--paper-light));"
+    );
   });
 
   it("keeps UI copy and utility usage aligned with the Cestus visual rules", () => {
