@@ -35,7 +35,18 @@ export const commandWorkspaceFixture = Object.freeze({
       productionCount: 0
     }
   ]),
-  diagnostics: Object.freeze([]),
+  diagnostics: Object.freeze([
+    {
+      diagnosticId: "diag_projection_gap_001",
+      prrRequestId: "prr_req_airport_022",
+      category: "projection",
+      message: "Projection lag detected for accepted request event",
+      repairHint: {
+        violatedPath: "prr.projection.highWaterMark",
+        allowedActions: Object.freeze(["Replay PRR projection from the append-only ledger"])
+      }
+    }
+  ]),
   evidenceAlerts: Object.freeze([
     {
       evidenceId: "ev_prr_production_003",

@@ -95,4 +95,22 @@ describe("CommandBoardViewModel", () => {
     ]);
     expect(getSelectedCommandItem(model, "missing")).toBeUndefined();
   });
+
+  it("adds decision votes to the default rail and selected queue details", () => {
+    const model = buildCommandBoardViewModel(commandWorkspaceFixture);
+    const stalled = getSelectedCommandItem(model, "signal:prr_req_airport_022");
+
+    expect(model.decisionRail.defaultVotes.map((vote) => [vote.id, vote.state])).toStrictEqual([
+      ["legal-risk", "review"],
+      ["factual-confidence", "watch"],
+      ["cost-pressure", "review"]
+    ]);
+
+    expect(stalled?.detail.decisionVotes.map((vote) => [vote.id, vote.state])).toStrictEqual([
+      ["legal-risk", "human-decision-required"],
+      ["factual-confidence", "review"],
+      ["cost-pressure", "watch"]
+    ]);
+    expect(stalled?.detail.provenanceRefs).toContain("prr_req_airport_022");
+  });
 });

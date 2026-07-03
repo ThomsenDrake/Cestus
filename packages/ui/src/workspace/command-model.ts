@@ -5,12 +5,15 @@ import type {
   CommandBoardInput,
   CommandBoardViewModel,
   CommandQueueItem,
+  DecisionVote,
   EvidenceAlert,
   MetricTone,
   QueueFilter,
   StatusMetric,
   TacticalPanelModel
 } from "./command-types.js";
+
+type UnreviewedCommandQueueItem = Omit<CommandQueueItem, "reviewed">;
 
 const severityRank: Record<CommandQueueItem["severity"], number> = {
   critical: 0,
@@ -22,9 +25,9 @@ const severityRank: Record<CommandQueueItem["severity"], number> = {
 export function buildCommandBoardViewModel(input: CommandBoardInput): CommandBoardViewModel {
   const reviewedItemIds = new Set(input.reviewedItemIds);
   const queueItems = [
-    ...input.requestRows.flatMap((row) => itemsFromRequest(row, input.todayIso)),
-    ...input.diagnostics.map((diagnostic) => itemFromDiagnostic(diagnostic)),
-    ...input.evidenceAlerts.map((alert) => itemFromEvidenceAlert(alert))
+    ...input.requestRows.flatMap((row) => itemsFromRequest(row, input.todayIso).map(withVotes)),
+    ...input.diagnostics.map((diagnostic) => withVotes(itemFromDiagnostic(diagnostic))),
+    ...input.evidenceAlerts.map((alert) => withVotes(itemFromEvidenceAlert(alert)))
   ]
     .map((item) => freezeQueueItem({ ...item, reviewed: reviewedItemIds.has(item.id) }))
     .sort(compareQueueItems);
@@ -50,6 +53,10 @@ export function buildCommandBoardViewModel(input: CommandBoardInput): CommandBoa
         "Stalling signals remain recommendations until confirmed by review"
       ]),
       recommendedActions: Object.freeze(queueItems.slice(0, 3).map((item) => item.actionLabel))
+    }),
+    decisionRail: Object.freeze({
+      modeLabel: "Advisory decision model",
+      defaultVotes: buildDefaultDecisionVotes(input)
     })
   });
 }
@@ -75,6 +82,108 @@ export function getSelectedCommandItem(
 
   return model.queueItems.find((item) => item.id === selectedItemId);
 }
+
+function buildDefaultDecisionVotes(input: CommandBoardInput): readonly DecisionVote[] {
+  const hasConfirmedStalling = input.requestRows.some((row) => row.confirmedStalling);
+  const hasEvidence = input.evidenceAlerts.length > 0;
+  const hasFeeOrDeadlinePressure = input.requestRows.some(
+    (row) => row.possibleStalling || row.deadlineDate !== undefined
+  );
+
+  return Object.freeze([
+    Object.freeze({
+      id: "legal-risk",
+      label: "Legal risk",
+      state: hasConfirmedStalling ? "review" : "watch",
+      tone: hasConfirmedStalling ? "amber" : "cyan",
+      summary: hasConfirmedStalling
+        ? "Escalation language needs human review before sending."
+        : "No legal threat is queued without human confirmation."
+    }),
+    Object.freeze({
+      id: "factual-confidence",
+      label: "Factual confidence",
+      state: hasEvidence ? "watch" : "needs-evidence",
+      tone: hasEvidence ? "cyan" : "amber",
+      summary: hasEvidence ? "Evidence signals are present and awaiting classification." : "Evidence support is thin."
+    }),
+    Object.freeze({
+      id: "cost-pressure",
+      label: "Cost pressure",
+      state: hasFeeOrDeadlinePressure ? "review" : "go",
+      tone: hasFeeOrDeadlinePressure ? "amber" : "green",
+      summary: hasFeeOrDeadlinePressure
+        ? "Fee and deadline posture should be checked before the next send."
+        : "No cost-pressure signal is active."
+    })
+  ]);
+}
+
+function votesForQueueItem(item: Omit<CommandQueueItem, "reviewed">): readonly DecisionVote[] {
+  if (item.kind === "signal" && item.severity === "critical") {
+    return Object.freeze([
+      vote(
+        "legal-risk",
+        "Legal risk",
+        "human-decision-required",
+        "red",
+        "Threatening legal action requires human confirmation."
+      ),
+      vote(
+        "factual-confidence",
+        "Factual confidence",
+        "review",
+        "amber",
+        "Review the stalling basis and correspondence chain."
+      ),
+      vote("cost-pressure", "Cost pressure", "watch", "amber", "Cost pressure may rise if scope is not narrowed.")
+    ]);
+  }
+
+  if (item.kind === "diagnostic") {
+    return Object.freeze([
+      vote("legal-risk", "Legal risk", "blocked", "amber", "Legal posture is blocked until the diagnostic is repaired."),
+      vote(
+        "factual-confidence",
+        "Factual confidence",
+        "needs-evidence",
+        "red",
+        "Projection state needs repair before claims are trusted."
+      ),
+      vote("cost-pressure", "Cost pressure", "watch", "cyan", "Cost impact is unknown until the diagnostic is resolved.")
+    ]);
+  }
+
+  return Object.freeze([
+    vote("legal-risk", "Legal risk", "watch", "cyan", "No autonomous legal escalation is queued."),
+    vote("factual-confidence", "Factual confidence", "review", "amber", "Evidence and provenance should be reviewed."),
+    vote(
+      "cost-pressure",
+      "Cost pressure",
+      item.kind === "deadline" ? "review" : "watch",
+      item.kind === "deadline" ? "amber" : "cyan",
+      "Check whether narrowing can reduce cost or delay."
+    )
+  ]);
+}
+
+function vote(
+  id: DecisionVote["id"],
+  label: string,
+  state: DecisionVote["state"],
+  tone: DecisionVote["tone"],
+  summary: string
+): DecisionVote {
+  return Object.freeze({ id, label, state, tone, summary });
+}
+
+const withVotes = (item: Omit<CommandQueueItem, "reviewed">): Omit<CommandQueueItem, "reviewed"> => ({
+  ...item,
+  detail: {
+    ...item.detail,
+    decisionVotes: votesForQueueItem(item)
+  }
+});
 
 function buildStatusMetrics(input: CommandBoardInput): StatusMetric[] {
   const dueSoon = input.requestRows.filter(
@@ -116,8 +225,8 @@ function buildStatusMetrics(input: CommandBoardInput): StatusMetric[] {
   ];
 }
 
-function itemsFromRequest(row: RequestQueueRow, todayIso: string): CommandQueueItem[] {
-  const items: CommandQueueItem[] = [];
+function itemsFromRequest(row: RequestQueueRow, todayIso: string): UnreviewedCommandQueueItem[] {
+  const items: UnreviewedCommandQueueItem[] = [];
 
   if (row.confirmedStalling || row.possibleStalling) {
     items.push({
@@ -129,14 +238,14 @@ function itemsFromRequest(row: RequestQueueRow, todayIso: string): CommandQueueI
       state: row.confirmedStalling ? "Confirmed" : "Possible",
       sourceLabel: "stalling model",
       actionLabel: row.confirmedStalling ? "Prepare escalation" : "Review agency posture",
-      reviewed: false,
       detail: {
         summary: `${row.agencyName} may be delaying production.`,
         basis: row.confirmedStalling ? "Human-confirmed stalling event" : "Internal estimate from PRR events",
         recommendedAction: row.confirmedStalling
           ? "Review legal escalation language before sending."
           : "Check correspondence before escalating.",
-        provenanceRefs: [row.prrRequestId]
+        provenanceRefs: [row.prrRequestId],
+        decisionVotes: Object.freeze([])
       }
     });
   }
@@ -152,13 +261,13 @@ function itemsFromRequest(row: RequestQueueRow, todayIso: string): CommandQueueI
       state: `Due ${row.deadlineDate}`,
       sourceLabel: `${row.deadlineSource ?? "estimated"} deadline`,
       actionLabel: "Review deadline",
-      reviewed: false,
       deadlineDate: row.deadlineDate,
       detail: {
         summary: `${row.agencyName} has an active response deadline.`,
         basis: `${row.deadlineSource ?? "estimated"} deadline from PRR read model`,
         recommendedAction: "Check request scope, fee posture, and next correspondence.",
-        provenanceRefs: [row.prrRequestId]
+        provenanceRefs: [row.prrRequestId],
+        decisionVotes: Object.freeze([])
       }
     });
   }
@@ -173,12 +282,12 @@ function itemsFromRequest(row: RequestQueueRow, todayIso: string): CommandQueueI
       state: "Needs review",
       sourceLabel: "production intake",
       actionLabel: "Review production",
-      reviewed: false,
       detail: {
         summary: "A production is linked to this request and should be reviewed for assertions.",
         basis: "Production count from PRR projection",
         recommendedAction: "Open evidence intake and decide what becomes assertions.",
-        provenanceRefs: [row.prrRequestId]
+        provenanceRefs: [row.prrRequestId],
+        decisionVotes: Object.freeze([])
       }
     });
   }
@@ -186,7 +295,7 @@ function itemsFromRequest(row: RequestQueueRow, todayIso: string): CommandQueueI
   return items;
 }
 
-function itemFromDiagnostic(diagnostic: PrrDiagnostic): CommandQueueItem {
+function itemFromDiagnostic(diagnostic: PrrDiagnostic): UnreviewedCommandQueueItem {
   return {
     id: `diagnostic:${diagnostic.diagnosticId}`,
     kind: "diagnostic",
@@ -196,17 +305,17 @@ function itemFromDiagnostic(diagnostic: PrrDiagnostic): CommandQueueItem {
     state: diagnostic.category,
     sourceLabel: "projection diagnostic",
     actionLabel: "Repair diagnostic",
-    reviewed: false,
     detail: {
       summary: diagnostic.message,
       basis: diagnostic.repairHint.violatedPath,
       recommendedAction: diagnostic.repairHint.allowedActions[0] ?? "Review diagnostic state.",
-      provenanceRefs: [diagnostic.diagnosticId]
+      provenanceRefs: [diagnostic.diagnosticId],
+      decisionVotes: Object.freeze([])
     }
   };
 }
 
-function itemFromEvidenceAlert(alert: EvidenceAlert): CommandQueueItem {
+function itemFromEvidenceAlert(alert: EvidenceAlert): UnreviewedCommandQueueItem {
   return {
     id: `evidence:${alert.evidenceId}`,
     kind: "evidence",
@@ -216,13 +325,13 @@ function itemFromEvidenceAlert(alert: EvidenceAlert): CommandQueueItem {
     state: "New",
     sourceLabel: alert.sourceLabel,
     actionLabel: "Review evidence",
-    reviewed: false,
     occurredAt: alert.receivedAt,
     detail: {
       summary: alert.title,
       basis: alert.sourceLabel,
       recommendedAction: "Classify the evidence and decide whether it supports new assertions.",
-      provenanceRefs: [alert.evidenceId]
+      provenanceRefs: [alert.evidenceId],
+      decisionVotes: Object.freeze([])
     }
   };
 }
@@ -305,7 +414,8 @@ function freezeQueueItem(item: CommandQueueItem): CommandQueueItem {
     ...item,
     detail: Object.freeze({
       ...item.detail,
-      provenanceRefs: Object.freeze([...item.detail.provenanceRefs])
+      provenanceRefs: Object.freeze([...item.detail.provenanceRefs]),
+      decisionVotes: Object.freeze([...item.detail.decisionVotes])
     })
   });
 }
