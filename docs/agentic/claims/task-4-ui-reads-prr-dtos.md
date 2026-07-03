@@ -27,6 +27,15 @@
 - `packages/ui/test/visual-contract.test.ts`
 - `packages/ui/test/ui-picker.test.tsx`
 
+## Status History
+
+- `2026-07-03T21:55:56Z`: Claim created with status `claimed`.
+- `78f3ec8 chore: claim task 4`: Committed the initial claim file with status `claimed`.
+- After `78f3ec8` and before implementation, the working-tree claim file was updated to status `in-progress`.
+- The `in-progress` transition was not committed separately before implementation began. This deviated from the task sequencing requirement to commit the claim, then set status to `in-progress`, then later set status to `ready-for-review`.
+- `e309c0c feat: read requests workspace from prr dtos`: Committed the implementation and final claim update with current status `ready-for-review`.
+- Current status remains `ready-for-review`; this follow-up records the actual lifecycle without rewriting Git history.
+
 ## Plan
 
 1. Update this claim to `in-progress`.
