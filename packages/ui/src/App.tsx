@@ -22,7 +22,10 @@ export function App() {
       modules={workspaceModules}
       activeModuleId="command"
       workspaceName="Cestus Local"
-      syncLabel="Local ledger synced"
+      modeLabel="Command"
+      ledgerLabel="Ledger synced"
+      syncLabel="Local sync live"
+      deploymentLabel="Solo laptop"
       onNewRequest={() => undefined}
       main={
         <CommandDashboard
@@ -34,7 +37,7 @@ export function App() {
           onMarkReviewed={(itemId) => setReviewedItemIds((current) => [...new Set([...current, itemId])])}
         />
       }
-      contextRail={
+      decisionRail={
         <RightContextRail
           agentBrief={model.agentBrief}
           selectedItem={selectedItem}
