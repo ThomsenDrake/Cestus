@@ -3,6 +3,7 @@ import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
 import { prrWorkspaceFixture } from "./requests/request-fixtures.js";
+import { RequestBuilder } from "./requests/RequestBuilder.js";
 import { RequestDetailRail } from "./requests/RequestDetailRail.js";
 import { RequestWorkspace } from "./requests/RequestWorkspace.js";
 import type { PrrDetailModel } from "./requests/request-types.js";
@@ -20,6 +21,7 @@ export function App() {
   const [reviewedItemIds, setReviewedItemIds] = useState<readonly string[]>([]);
   const [selectedPrrRequestId, setSelectedPrrRequestId] = useState<string | undefined>("prr_req_001");
   const [selectedPrrRequest, setSelectedPrrRequest] = useState<PrrDetailModel | undefined>();
+  const [requestBuilderOpen, setRequestBuilderOpen] = useState(false);
   const model = useMemo(
     () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds }),
     [reviewedItemIds]
@@ -40,7 +42,7 @@ export function App() {
     <RequestWorkspace
       fixture={prrWorkspaceFixture}
       selectedRequestId={selectedPrrRequestId}
-      onOpenBuilder={() => undefined}
+      onOpenBuilder={() => setRequestBuilderOpen(true)}
       onSelectRequest={setSelectedPrrRequestId}
       onSelectedRequestChange={setSelectedPrrRequest}
     />
@@ -59,27 +61,38 @@ export function App() {
     }
   }
 
+  function handleNewRequest() {
+    if (requestsActive) {
+      setRequestBuilderOpen(true);
+    }
+  }
+
   return (
-    <OpsShell
-      modules={workspaceModules}
-      activeModuleId={activeModuleId}
-      workspaceName="Cestus Local"
-      modeLabel={requestsActive ? "Requests" : "Command"}
-      ledgerLabel="Ledger synced"
-      syncLabel={requestsActive ? "PRR sync local" : "Local sync live"}
-      deploymentLabel="Solo laptop"
-      searchLabel={requestsActive ? "Requests search" : "Command search"}
-      searchPlaceholder={
-        requestsActive
-          ? "Search requests, agencies, evidence, and correspondence"
-          : "Search requests, evidence, agencies, and assertions"
-      }
-      mainId={requestsActive ? "requests" : "command"}
-      mainLabel={requestsActive ? "Requests workspace" : "Command workspace"}
-      onNewRequest={() => undefined}
-      onModuleSelect={handleModuleSelect}
-      main={requestsActive ? requestsMain : commandMain}
-      decisionRail={requestsActive ? <RequestDetailRail selectedRequest={selectedPrrRequest} /> : commandDecisionRail}
-    />
+    <>
+      <OpsShell
+        modules={workspaceModules}
+        activeModuleId={activeModuleId}
+        workspaceName="Cestus Local"
+        modeLabel={requestsActive ? "Requests" : "Command"}
+        ledgerLabel="Ledger synced"
+        syncLabel={requestsActive ? "PRR sync local" : "Local sync live"}
+        deploymentLabel="Solo laptop"
+        searchLabel={requestsActive ? "Requests search" : "Command search"}
+        searchPlaceholder={
+          requestsActive
+            ? "Search requests, agencies, evidence, and correspondence"
+            : "Search requests, evidence, agencies, and assertions"
+        }
+        mainId={requestsActive ? "requests" : "command"}
+        mainLabel={requestsActive ? "Requests workspace" : "Command workspace"}
+        onNewRequest={handleNewRequest}
+        onModuleSelect={handleModuleSelect}
+        main={requestsActive ? requestsMain : commandMain}
+        decisionRail={requestsActive ? <RequestDetailRail selectedRequest={selectedPrrRequest} /> : commandDecisionRail}
+      />
+      {requestsActive && requestBuilderOpen ? (
+        <RequestBuilder builder={prrWorkspaceFixture.builder} onClose={() => setRequestBuilderOpen(false)} />
+      ) : null}
+    </>
   );
 }
