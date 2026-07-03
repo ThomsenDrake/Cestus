@@ -1,9 +1,60 @@
 import { describe, expect, it } from "vitest";
 import { buildPrrProjection, type PrrProjection, type PrrRequestReadModel } from "../src/projection.js";
-import { buildRequestQueueRows } from "../src/read-api.js";
+import { buildPrrWorkspaceDto, buildRequestQueueRows } from "../src/read-api.js";
 import { goldenPrrLedgerEvents } from "./fixtures/golden-prr-ledger.js";
 
 describe("PRR read API DTOs", () => {
+  it("builds a rich workspace DTO from the golden projection", () => {
+    const workspace = buildPrrWorkspaceDto(buildPrrProjection(goldenPrrLedgerEvents), {
+      now: "2026-07-20T12:00:00.000Z"
+    });
+
+    expect(workspace.savedViews.map((view) => view.id)).toEqual([
+      "all-active",
+      "overdue",
+      "florida-fees",
+      "productions-arrived"
+    ]);
+    expect(workspace.laneOrder).toEqual([
+      "drafting",
+      "ready-to-send",
+      "awaiting-agency",
+      "needs-follow-up",
+      "review-fee-scope",
+      "production-arrived",
+      "appeal-escalation"
+    ]);
+    expect(workspace.cards.map((card) => card.prrRequestId)).toContain("prr_fee_building_permits");
+    expect(workspace.requestDetails.map((detail) => detail.prrRequestId)).toContain("prr_req_001");
+    expect(workspace.signalMap.edges).toEqual([]);
+    expect(workspace.builder.steps.every((step) => step.suggestedFills.length === 0)).toBe(true);
+  });
+
+  it("derives deterministic lane and gate posture from replayed events", () => {
+    const workspace = buildPrrWorkspaceDto(buildPrrProjection(goldenPrrLedgerEvents), {
+      now: "2026-07-20T12:00:00.000Z"
+    });
+
+    expect(cardById(workspace, "prr_draft_city_budget")).toMatchObject({
+      laneId: "drafting",
+      severity: "low",
+      deadlineSource: "estimated"
+    });
+    expect(cardById(workspace, "prr_fee_building_permits")).toMatchObject({
+      laneId: "review-fee-scope",
+      severity: "high",
+      feeSignal: "$1,850.00 challenged"
+    });
+    expect(cardById(workspace, "prr_stalling_vendor_emails")).toMatchObject({
+      laneId: "appeal-escalation",
+      severity: "critical"
+    });
+
+    const stallingDetail = detailById(workspace, "prr_stalling_vendor_emails");
+    expect(stallingDetail.escalationGate.some((check) => check.id === "user-confirmed-escalation")).toBe(true);
+    expect(stallingDetail.escalationGate.every((check) => typeof check.detail === "string")).toBe(true);
+  });
+
   it("builds request queue rows without UI business logic", () => {
     const projection = buildPrrProjection(goldenPrrLedgerEvents);
 
@@ -60,6 +111,22 @@ function projectionFromRequests(requests: readonly PrrRequestReadModel[]): PrrPr
       return [];
     }
   };
+}
+
+function cardById(workspace: ReturnType<typeof buildPrrWorkspaceDto>, prrRequestId: string) {
+  const card = workspace.cards.find((candidate) => candidate.prrRequestId === prrRequestId);
+  if (card === undefined) {
+    throw new Error(`Missing workspace card ${prrRequestId}`);
+  }
+  return card;
+}
+
+function detailById(workspace: ReturnType<typeof buildPrrWorkspaceDto>, prrRequestId: string) {
+  const detail = workspace.requestDetails.find((candidate) => candidate.prrRequestId === prrRequestId);
+  if (detail === undefined) {
+    throw new Error(`Missing workspace detail ${prrRequestId}`);
+  }
+  return detail;
 }
 
 function requestReadModel(
