@@ -368,7 +368,7 @@ export function buildPrrWorkspaceDto(
 }
 
 export function buildRequestQueueRows(projection: PrrProjection): RequestQueueRow[] {
-  return [...buildPrrWorkspaceDto(projection).queueRows];
+  return [...buildQueueRowsFromRequests([...projection.requests.values()])];
 }
 
 function buildCard(request: PrrRequestReadModel, today: string): PrrWorkspaceDtoCard {
@@ -1052,7 +1052,7 @@ function formatFeeSignal(feeEstimate: PrrFeeEstimateReadModel): string {
 }
 
 function signalNodeId(agencyName: string): string {
-  return `agency:${agencyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+  return `agency:${utf8Hex(agencyName)}`;
 }
 
 function toDiagnosticDto(diagnostic: PrrDiagnostic): PrrWorkspaceDtoDiagnostic {
@@ -1078,7 +1078,7 @@ function toTimelineDto(
     eventId: entry.eventId,
     type: entry.type,
     occurredAt: entry.occurredAt,
-    payload: entry.payload
+    payload: deepFreezeClone(entry.payload)
   });
 }
 
@@ -1104,9 +1104,9 @@ function freezeRequestDetail(
   return Object.freeze({
     prrRequestId: detail.prrRequestId,
     agencyName: detail.agencyName,
-    jurisdictionPack: Object.freeze({ ...detail.jurisdictionPack }),
-    agency: Object.freeze({ ...detail.agency }),
-    requester: Object.freeze({ ...detail.requester }),
+    jurisdictionPack: deepFreezeClone(detail.jurisdictionPack),
+    agency: deepFreezeClone(detail.agency),
+    requester: deepFreezeClone(detail.requester),
     requestText: detail.requestText,
     status: detail.status,
     laneId: detail.laneId,
@@ -1117,19 +1117,19 @@ function freezeRequestDetail(
     escalationGate: Object.freeze([...detail.escalationGate]),
     diagnostics: Object.freeze([...detail.diagnostics]),
     timeline: Object.freeze([...detail.timeline]),
-    stallingSignals: Object.freeze([...detail.stallingSignals]),
-    productionBatches: Object.freeze([...detail.productionBatches]),
+    stallingSignals: deepFreezeClone(detail.stallingSignals),
+    productionBatches: deepFreezeClone(detail.productionBatches),
     ...(detail.latestOutboundCorrespondence === undefined
       ? {}
-      : { latestOutboundCorrespondence: detail.latestOutboundCorrespondence }),
+      : { latestOutboundCorrespondence: deepFreezeClone(detail.latestOutboundCorrespondence) }),
     ...(detail.latestInboundCorrespondence === undefined
       ? {}
-      : { latestInboundCorrespondence: detail.latestInboundCorrespondence }),
-    ...(detail.activeDeadline === undefined ? {} : { activeDeadline: detail.activeDeadline }),
-    ...(detail.feeEstimate === undefined ? {} : { feeEstimate: detail.feeEstimate }),
-    ...(detail.scopeNarrowing === undefined ? {} : { scopeNarrowing: detail.scopeNarrowing }),
-    ...(detail.denial === undefined ? {} : { denial: detail.denial }),
-    ...(detail.appeal === undefined ? {} : { appeal: detail.appeal })
+      : { latestInboundCorrespondence: deepFreezeClone(detail.latestInboundCorrespondence) }),
+    ...(detail.activeDeadline === undefined ? {} : { activeDeadline: deepFreezeClone(detail.activeDeadline) }),
+    ...(detail.feeEstimate === undefined ? {} : { feeEstimate: deepFreezeClone(detail.feeEstimate) }),
+    ...(detail.scopeNarrowing === undefined ? {} : { scopeNarrowing: deepFreezeClone(detail.scopeNarrowing) }),
+    ...(detail.denial === undefined ? {} : { denial: deepFreezeClone(detail.denial) }),
+    ...(detail.appeal === undefined ? {} : { appeal: deepFreezeClone(detail.appeal) })
   });
 }
 
@@ -1176,4 +1176,26 @@ function freezeBuilderStep(
     detail: step.detail,
     suggestedFills: Object.freeze([...(step.suggestedFills ?? [])])
   });
+}
+
+function utf8Hex(value: string): string {
+  return [...new TextEncoder().encode(value)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function deepFreezeClone<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return Object.freeze(value.map((item) => deepFreezeClone(item))) as T;
+  }
+
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value).map(([key, entryValue]) => [
+      key,
+      deepFreezeClone(entryValue)
+    ]);
+    return Object.freeze(Object.fromEntries(entries)) as T;
+  }
+
+  return value;
 }

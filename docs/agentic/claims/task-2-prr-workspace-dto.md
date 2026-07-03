@@ -39,3 +39,11 @@
 
 - Review status: Ready for review.
 - Concerns: None recorded.
+
+## Review Fix
+
+- Review-fix status: `ready-for-review`
+- Review-fix red command/result: `npm test -- packages/prr/test/read-api.test.ts` failed as expected. Vitest reported 3 failed tests: nested DTO data mutated through projection aliases, `buildRequestQueueRows` called `timelineForRequest`, and signal-map node IDs collided for `A/B`, `A B`, and `A--B`.
+- Review-fix green command/result: `npm test -- packages/prr/test/read-api.test.ts` passed. Vitest reported 1 test file passed and 9 tests passed.
+- Review-fix full verification result: `npm run verify` passed. Output included `typecheck passed`, Vitest `38 passed (38)` test files and `290 passed (290)` tests, `tests passed`, Vite production build success, and `factory-readiness passed`.
+- Review-fix concerns: None recorded.
