@@ -69,27 +69,29 @@ export function App() {
 
   return (
     <>
-      <OpsShell
-        modules={workspaceModules}
-        activeModuleId={activeModuleId}
-        workspaceName="Cestus Local"
-        modeLabel={requestsActive ? "Requests" : "Command"}
-        ledgerLabel="Ledger synced"
-        syncLabel={requestsActive ? "PRR sync local" : "Local sync live"}
-        deploymentLabel="Solo laptop"
-        searchLabel={requestsActive ? "Requests search" : "Command search"}
-        searchPlaceholder={
-          requestsActive
-            ? "Search requests, agencies, evidence, and correspondence"
-            : "Search requests, evidence, agencies, and assertions"
-        }
-        mainId={requestsActive ? "requests" : "command"}
-        mainLabel={requestsActive ? "Requests workspace" : "Command workspace"}
-        onNewRequest={handleNewRequest}
-        onModuleSelect={handleModuleSelect}
-        main={requestsActive ? requestsMain : commandMain}
-        decisionRail={requestsActive ? <RequestDetailRail selectedRequest={selectedPrrRequest} /> : commandDecisionRail}
-      />
+      <div aria-hidden={requestsActive && requestBuilderOpen ? "true" : undefined}>
+        <OpsShell
+          modules={workspaceModules}
+          activeModuleId={activeModuleId}
+          workspaceName="Cestus Local"
+          modeLabel={requestsActive ? "Requests" : "Command"}
+          ledgerLabel="Ledger synced"
+          syncLabel={requestsActive ? "PRR sync local" : "Local sync live"}
+          deploymentLabel="Solo laptop"
+          searchLabel={requestsActive ? "Requests search" : "Command search"}
+          searchPlaceholder={
+            requestsActive
+              ? "Search requests, agencies, evidence, and correspondence"
+              : "Search requests, evidence, agencies, and assertions"
+          }
+          mainId={requestsActive ? "requests" : "command"}
+          mainLabel={requestsActive ? "Requests workspace" : "Command workspace"}
+          onNewRequest={handleNewRequest}
+          onModuleSelect={handleModuleSelect}
+          main={requestsActive ? requestsMain : commandMain}
+          decisionRail={requestsActive ? <RequestDetailRail selectedRequest={selectedPrrRequest} /> : commandDecisionRail}
+        />
+      </div>
       {requestsActive && requestBuilderOpen ? (
         <RequestBuilder builder={prrWorkspaceFixture.builder} onClose={() => setRequestBuilderOpen(false)} />
       ) : null}
