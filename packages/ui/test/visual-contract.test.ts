@@ -23,6 +23,12 @@ const uiTsxFiles = [
   "packages/ui/src/requests/RequestBuilder.tsx"
 ];
 
+const finalRequestsContractFiles = [
+  "packages/ui/src/requests/request-adapter.ts",
+  "packages/ui/src/requests/RequestWorkspace.tsx",
+  "packages/ui/src/requests/RequestBuilder.tsx"
+];
+
 describe("visual system contract", () => {
   it("defines tactical command console design tokens", () => {
     const css = readFileSync("packages/ui/src/styles.css", "utf8");
@@ -69,5 +75,43 @@ describe("visual system contract", () => {
     expect(joined).toContain("Signal operations board");
     expect(joined).toContain("Legal escalation locked");
     expect(joined).toContain("Guided request builder");
+  });
+
+  it("keeps final Requests workspace contracts dimensioned, sparse, and multi-signal", () => {
+    const adapterSource = readFileSync("packages/ui/src/requests/request-adapter.ts", "utf8");
+    const workspaceSource = readFileSync("packages/ui/src/requests/RequestWorkspace.tsx", "utf8");
+    const builderSource = readFileSync("packages/ui/src/requests/RequestBuilder.tsx", "utf8");
+    const requestSurfaceSource = finalRequestsContractFiles
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+
+    expect(adapterSource).toContain("createLocalReplayRequestsAdapter");
+    expect(adapterSource).toContain("buildPrrWorkspaceDto(buildPrrProjection(events)");
+    expect(adapterSource).toContain("Object.freeze");
+    expect(adapterSource).not.toContain("className=");
+
+    expect(workspaceSource).toContain("min-h-10");
+    expect(workspaceSource).toContain("w-fit");
+    expect(builderSource).toContain("min-h-[calc(100dvh-2rem)]");
+    expect(builderSource).toContain("max-w-6xl");
+    expect(builderSource).toContain("lg:grid-cols-[22rem_minmax(0,1fr)]");
+    expect(builderSource).toContain("min-h-11");
+    expect(builderSource).toContain("min-h-32");
+
+    expect(requestSurfaceSource).not.toMatch(/rounded-(?:sm|md|lg|xl|2xl|3xl|full)/);
+    expect(requestSurfaceSource).not.toMatch(/bg-gradient|from-\[|via-\[|to-\[/);
+    expect(requestSurfaceSource).not.toMatch(/shadow-(?:sm|md|lg|xl|2xl)/);
+
+    const signalPalette = new Set(
+      [...requestSurfaceSource.matchAll(/var\(--(signal-[a-z]+)\)/g)].map((match) => match[1])
+    );
+    expect([...signalPalette]).toEqual(
+      expect.arrayContaining(["signal-amber", "signal-cyan", "signal-green", "signal-red"])
+    );
+    expect(signalPalette.size).toBeGreaterThanOrEqual(4);
+
+    for (const neutralToken of ["command-black", "console-line", "console-panel", "console-void", "paper-light"]) {
+      expect(requestSurfaceSource).toContain(`var(--${neutralToken})`);
+    }
   });
 });

@@ -12,7 +12,7 @@ Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
 
 Claimed at: `2026-07-03T23:06:47Z`
 
-Status: `in-progress`
+Status: `ready-for-review`
 
 Started at: `2026-07-03T23:06:47Z`
 
@@ -34,7 +34,7 @@ Red command:
 npm test -- packages/ui/test/visual-contract.test.ts packages/ui/test/ui-picker.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx
 ```
 
-Red result: not run yet
+Red result: command failed as expected in `packages/ui/test/request-data-boundary.test.ts` because `scripts/check-agent-readiness.mjs` did not yet require `docs/superpowers/specs/2026-07-03-ledger-backed-prr-workspace-design.md`. Summary: 3 test files passed, 1 failed; 15 tests passed, 1 failed.
 
 Green command:
 
@@ -42,7 +42,7 @@ Green command:
 npm test -- packages/ui/test/visual-contract.test.ts packages/ui/test/ui-picker.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx
 ```
 
-Green result: not run yet
+Green result: passed after readiness update and focused smoke-test wait repair. Summary: 4 test files passed, 16 tests passed.
 
 Factory readiness command:
 
@@ -50,7 +50,7 @@ Factory readiness command:
 npm run factory:check
 ```
 
-Factory readiness result: not run yet
+Factory readiness result: passed with `factory-readiness passed`.
 
 Full verification command:
 
@@ -58,10 +58,10 @@ Full verification command:
 npm run verify
 ```
 
-Full verification result: not run yet
+Full verification result: passed. Summary: `typecheck passed`; 40 test files passed; 318 tests passed; `tests passed`; Vite build succeeded; `factory-readiness passed`.
 
 Preview status: pending controller preview gate
 
-Review status: not requested
+Review status: ready for review as of `2026-07-03T23:13:05Z`
 
-Concerns: none recorded yet
+Concerns: preview server and human visual approval were not run by this worker per controller note. An initial `npm run verify` attempt exposed a synchronous detail-rail assertion in the new smoke coverage; the test now awaits the rail update and the final full verification passes.
