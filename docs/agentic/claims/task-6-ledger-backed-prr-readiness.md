@@ -60,7 +60,25 @@ npm run verify
 
 Full verification result: passed. Summary: `typecheck passed`; 40 test files passed; 318 tests passed; `tests passed`; Vite build succeeded; `factory-readiness passed`.
 
-Preview status: pending controller preview gate
+Preview status: preview server reachable; human approval pending
+
+Preview server command:
+
+```bash
+npm run dev -- --port 5174 --strictPort
+```
+
+Preview server result: Vite started successfully on `http://localhost:5174/`, `http://192.168.1.178:5174/`, and `http://100.126.143.105:5174/`.
+
+Preview reachability command:
+
+```bash
+curl -I http://127.0.0.1:5174/ && curl -I --max-time 5 http://100.126.143.105:5174/
+```
+
+Preview reachability result: both URLs returned `HTTP/1.1 200 OK`.
+
+Human preview approval: pending.
 
 Review status: ready for review as of `2026-07-03T23:13:05Z`
 
