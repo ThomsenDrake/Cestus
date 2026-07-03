@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/command-model.js";
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
+import { prrWorkspaceFixture } from "./requests/request-fixtures.js";
+import { RequestWorkspace } from "./requests/RequestWorkspace.js";
 import { CommandDashboard } from "./workspace/CommandDashboard.js";
 import { DecisionRail } from "./workspace/DecisionRail.js";
 import { OpsShell } from "./workspace/OpsShell.js";
@@ -30,17 +32,7 @@ export function App() {
       onMarkReviewed={(itemId) => setReviewedItemIds((current) => [...new Set([...current, itemId])])}
     />
   );
-  const requestsMain = (
-    <section aria-label="PRR signal operations board" className="space-y-5">
-      <div>
-        <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">Signal operations board</p>
-        <h1 className="mt-1 text-2xl font-semibold text-balance text-[var(--paper-light)]">Requests</h1>
-      </div>
-      <p className="max-w-3xl text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
-        PRR board shell ready for lanes, saved views, signal map, and request detail.
-      </p>
-    </section>
-  );
+  const requestsMain = <RequestWorkspace fixture={prrWorkspaceFixture} onOpenBuilder={() => undefined} />;
   const commandDecisionRail = (
     <DecisionRail
       agentBrief={model.agentBrief}
