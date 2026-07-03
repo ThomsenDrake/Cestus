@@ -32,6 +32,47 @@ describe("RequestBuilder", () => {
     expect(screen.getByDisplayValue("US Federal FOIA")).toBeInTheDocument();
   });
 
+  it("keeps edited suggested fills when switching away from a step", () => {
+    render(<RequestBuilder builder={prrWorkspaceFixture.builder} onClose={() => undefined} />);
+
+    fireEvent.change(screen.getByLabelText("Pack suggestion"), { target: { value: "US Federal FOIA" } });
+    fireEvent.click(screen.getByRole("button", { name: "Open Agency/contact" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open Jurisdiction pack" }));
+
+    expect(screen.getByDisplayValue("US Federal FOIA")).toBeInTheDocument();
+  });
+
+  it("moves focus into the dialog and restores it after Escape closes the builder", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    const newRequestButton = screen.getByRole("button", { name: "New request" });
+    newRequestButton.focus();
+    fireEvent.click(newRequestButton);
+
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Guided request builder" }), { key: "Escape" });
+
+    expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
+    expect(newRequestButton).toHaveFocus();
+  });
+
+  it("keeps Tab focus cycling inside the dialog", () => {
+    render(<RequestBuilder builder={prrWorkspaceFixture.builder} onClose={() => undefined} />);
+
+    const dialog = screen.getByRole("dialog", { name: "Guided request builder" });
+    const closeButton = screen.getByRole("button", { name: "Close" });
+    const packSuggestion = screen.getByLabelText("Pack suggestion");
+
+    packSuggestion.focus();
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(closeButton).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true });
+    expect(packSuggestion).toHaveFocus();
+  });
+
   it("opens the guided request builder from the Requests shell action", () => {
     render(<App />);
 
@@ -40,5 +81,13 @@ describe("RequestBuilder", () => {
 
     expect(screen.getByRole("dialog", { name: "Guided request builder" })).toBeInTheDocument();
     expect(screen.getByText("Review/send gate")).toBeInTheDocument();
+  });
+
+  it("does not open the guided request builder from the Command shell action", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "New request" }));
+
+    expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
   });
 });
