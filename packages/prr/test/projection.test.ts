@@ -258,11 +258,42 @@ describe("buildPrrProjection", () => {
         eventId: "evt_prr_scope_missing_proposal_accepted",
         category: "projection",
         message:
-          "Cannot project prr.scope.narrowing.accepted accepted scope before prr.scope.narrowing.proposed",
+          "Cannot project prr.scope.narrowing.accepted accepted scope for narrow_missing_proposal before matching prr.scope.narrowing.proposed",
         repairHint: {
           violatedPath: "prr.scope.narrowing.proposed",
           allowedActions: [
-            "replay prr.scope.narrowing.proposed before prr.scope.narrowing.accepted"
+            "replay a matching prr.scope.narrowing.proposed before prr.scope.narrowing.accepted"
+          ]
+        }
+      }
+    ]);
+  });
+
+  it("does not merge accepted scope into a different proposed narrowing", () => {
+    const projection = buildPrrProjection([
+      createdRequestEvent("prr_scope_mismatched_narrowing"),
+      scopeProposalEvent("prr_scope_mismatched_narrowing", "narrow_a"),
+      scopeAcceptanceEvent("prr_scope_mismatched_narrowing", "narrow_b")
+    ]);
+
+    expect(projection.requests.get("prr_scope_mismatched_narrowing")?.scopeNarrowing).toEqual({
+      narrowingId: "narrow_a",
+      proposedScope: "Proposal for narrow_a",
+      proposedBy: "Agency Records Office",
+      sourceEvidenceId: "ev_scope_narrow_a"
+    });
+    expect(projection.diagnostics).toEqual([
+      {
+        diagnosticId: "diag_prr_projection_evt_prr_scope_mismatched_narrowing_narrow_b_accepted",
+        prrRequestId: "prr_scope_mismatched_narrowing",
+        eventId: "evt_prr_scope_mismatched_narrowing_narrow_b_accepted",
+        category: "projection",
+        message:
+          "Cannot project prr.scope.narrowing.accepted accepted scope for narrow_b before matching prr.scope.narrowing.proposed",
+        repairHint: {
+          violatedPath: "prr.scope.narrowing.proposed",
+          allowedActions: [
+            "replay a matching prr.scope.narrowing.proposed before prr.scope.narrowing.accepted"
           ]
         }
       }
@@ -722,6 +753,54 @@ function scopeAcceptanceWithoutProposalEvent(): KnowledgeEventOf<"prr.scope.narr
       acceptedScope: "Accepted scope without a projected proposal",
       acceptedBy: "actor_prr_test",
       rationale: "Requester accepted a scope that must have a proposal first."
+    }
+  };
+}
+
+function scopeProposalEvent(
+  prrRequestId: string,
+  narrowingId: string
+): KnowledgeEventOf<"prr.scope.narrowing.proposed"> {
+  return {
+    id: `evt_${prrRequestId}_${narrowingId}_proposed`,
+    type: "prr.scope.narrowing.proposed",
+    version: 1,
+    streamId: prrRequestId,
+    sequence: 2,
+    context: {
+      ...systemContext,
+      causationId: `evt_${prrRequestId}_created`
+    },
+    payload: {
+      prrRequestId,
+      narrowingId,
+      proposedScope: `Proposal for ${narrowingId}`,
+      proposedBy: "Agency Records Office",
+      sourceEvidenceId: `ev_scope_${narrowingId}`
+    }
+  };
+}
+
+function scopeAcceptanceEvent(
+  prrRequestId: string,
+  narrowingId: string
+): KnowledgeEventOf<"prr.scope.narrowing.accepted"> {
+  return {
+    id: `evt_${prrRequestId}_${narrowingId}_accepted`,
+    type: "prr.scope.narrowing.accepted",
+    version: 1,
+    streamId: prrRequestId,
+    sequence: 3,
+    context: {
+      ...systemContext,
+      causationId: `evt_${prrRequestId}_${narrowingId}_proposed`
+    },
+    payload: {
+      prrRequestId,
+      narrowingId,
+      acceptedScope: `Accepted scope for ${narrowingId}`,
+      acceptedBy: "actor_prr_test",
+      rationale: "Requester accepted the proposed narrowing."
     }
   };
 }
