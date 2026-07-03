@@ -114,4 +114,44 @@ describe("visual system contract", () => {
       expect(requestSurfaceSource).toContain(`var(--${neutralToken})`);
     }
   });
+
+  it("keeps page-scale Requests surfaces from becoming nested card-like wrappers", () => {
+    const workspaceSource = readFileSync("packages/ui/src/requests/RequestWorkspace.tsx", "utf8");
+    const builderSource = readFileSync("packages/ui/src/requests/RequestBuilder.tsx", "utf8");
+    const guardedWrappers = [
+      openingTagContaining(workspaceSource, 'aria-label="Requests workspace"'),
+      openingTagContaining(builderSource, 'role="dialog"'),
+      openingTagContaining(builderSource, 'className="mx-auto grid min-h-[calc(100dvh-2rem)]'),
+      openingTagContaining(builderSource, 'className="min-w-0 space-y-5"'),
+      openingTagContaining(builderSource, 'aria-label="Draft request fields"'),
+      openingTagContaining(builderSource, 'aria-label="Active builder step"')
+    ];
+
+    for (const wrapper of guardedWrappers) {
+      expect(wrapper).toBeDefined();
+      expect(isCardLikeSurface(wrapper ?? "")).toBe(false);
+    }
+  });
 });
+
+function openingTagContaining(source: string, marker: string): string | undefined {
+  const markerIndex = source.indexOf(marker);
+  if (markerIndex === -1) {
+    return undefined;
+  }
+
+  const openIndex = source.lastIndexOf("<", markerIndex);
+  const closeIndex = source.indexOf(">", markerIndex);
+  if (openIndex === -1 || closeIndex === -1) {
+    return undefined;
+  }
+
+  return source.slice(openIndex, closeIndex + 1);
+}
+
+function isCardLikeSurface(openingTag: string): boolean {
+  return (
+    /\bborder\b/.test(openingTag) &&
+    /bg-\[var\(--(?:console-panel|console-void|console-panel-raised)\)\]/.test(openingTag)
+  );
+}
