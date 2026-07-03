@@ -1,9 +1,25 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import type { RequestsCreateDraftInput } from "./request-adapter.js";
 import type { PrrBuilderModel, PrrBuilderStep, PrrSuggestedFill } from "./request-types.js";
 
 interface RequestBuilderProps {
   readonly builder: PrrBuilderModel;
   readonly onClose: () => void;
+  readonly onSubmit: (input: RequestsCreateDraftInput) => void | Promise<void>;
+  readonly submitting?: boolean;
+  readonly diagnosticMessage?: string | undefined;
+}
+
+interface DraftFormState {
+  readonly jurisdictionPackValue: string;
+  readonly agencyName: string;
+  readonly agencyEmail: string;
+  readonly agencyPhone: string;
+  readonly requesterName: string;
+  readonly requesterEmail: string;
+  readonly requesterPhone: string;
+  readonly requestText: string;
+  readonly receivedAt: string;
 }
 
 const stateLabels: Record<PrrBuilderStep["state"], string> = {
@@ -18,8 +34,19 @@ const stateClasses: Record<PrrBuilderStep["state"], string> = {
   ready: "border-[var(--signal-cyan)] text-[var(--signal-cyan)]"
 };
 
-export function RequestBuilder({ builder, onClose }: RequestBuilderProps) {
+const fallbackJurisdictionPackValue = "florida-public-records@0.1.0";
+const fieldClassName =
+  "mt-2 min-h-11 w-full border border-[var(--console-line)] bg-[var(--command-black)] px-3 py-2 font-mono text-base text-[var(--paper-light)] outline-none focus-visible:-outline-offset-1 focus-visible:outline-2 focus-visible:outline-[var(--signal-cyan)] disabled:cursor-wait disabled:text-[var(--muted-amber)] sm:min-h-9 sm:text-sm";
+
+export function RequestBuilder({
+  builder,
+  onClose,
+  onSubmit,
+  submitting = false,
+  diagnosticMessage
+}: RequestBuilderProps) {
   const [activeStepId, setActiveStepId] = useState(builder.steps[0]?.id ?? "");
+  const [draftForm, setDraftForm] = useState<DraftFormState>(() => getInitialDraftForm(builder));
   const [suggestedFillValues, setSuggestedFillValues] = useState<Record<string, string>>(() =>
     getInitialSuggestedFillValues(builder)
   );
@@ -44,6 +71,19 @@ export function RequestBuilder({ builder, onClose }: RequestBuilderProps) {
 
   function handleSuggestedFillChange(fillId: string, value: string) {
     setSuggestedFillValues((current) => ({ ...current, [fillId]: value }));
+  }
+
+  function handleDraftFieldChange<Field extends keyof DraftFormState>(field: Field, value: DraftFormState[Field]) {
+    setDraftForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting) {
+      return;
+    }
+
+    void onSubmit(toCreateDraftInput(draftForm));
   }
 
   function handleDialogKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -146,18 +186,162 @@ export function RequestBuilder({ builder, onClose }: RequestBuilderProps) {
         </aside>
 
         <main className="min-w-0 border border-[var(--console-line)] bg-[var(--console-panel)]/86 p-4 lg:p-5">
-          {activeStep === undefined ? (
-            <p className="text-base text-pretty text-[var(--muted-amber)] sm:text-sm">No checklist steps are available.</p>
-          ) : (
-            <ActiveStepPanel
-              step={activeStep}
-              suggestedFillValues={suggestedFillValues}
-              onSuggestedFillChange={handleSuggestedFillChange}
+          <form className="min-w-0 space-y-5" onSubmit={handleSubmit}>
+            {diagnosticMessage === undefined ? null : (
+              <div role="alert" className="border border-[var(--signal-red)] bg-[var(--command-black)]/72 p-3">
+                <p className="text-base text-pretty text-[var(--paper-light)] sm:text-sm">{diagnosticMessage}</p>
+              </div>
+            )}
+            <DraftRequestFields
+              builder={builder}
+              form={draftForm}
+              onFieldChange={handleDraftFieldChange}
+              disabled={submitting}
             />
-          )}
+            {activeStep === undefined ? (
+              <p className="text-base text-pretty text-[var(--muted-amber)] sm:text-sm">No checklist steps are available.</p>
+            ) : (
+              <ActiveStepPanel
+                step={activeStep}
+                suggestedFillValues={suggestedFillValues}
+                onSuggestedFillChange={handleSuggestedFillChange}
+              />
+            )}
+            <div className="flex justify-end border-t border-[var(--console-line)] pt-4">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="relative min-h-11 border border-[var(--signal-amber)] bg-[var(--signal-amber)]/12 px-4 py-2 text-base font-semibold text-[var(--paper-light)] hover:bg-[var(--signal-amber)]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--signal-cyan)] disabled:cursor-wait disabled:border-[var(--console-line)] disabled:text-[var(--muted-amber)] sm:min-h-10 sm:text-sm"
+              >
+                <span
+                  aria-hidden="true"
+                  className="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2"
+                />
+                {submitting ? "Creating draft" : "Create draft"}
+              </button>
+            </div>
+          </form>
         </main>
       </div>
     </div>
+  );
+}
+
+function DraftRequestFields({
+  builder,
+  form,
+  onFieldChange,
+  disabled
+}: {
+  readonly builder: PrrBuilderModel;
+  readonly form: DraftFormState;
+  readonly onFieldChange: <Field extends keyof DraftFormState>(field: Field, value: DraftFormState[Field]) => void;
+  readonly disabled: boolean;
+}) {
+  const jurisdictionOptions = jurisdictionPackOptions(builder);
+
+  return (
+    <section aria-label="Draft request fields" className="min-w-0 border-b border-[var(--console-line)] pb-5">
+      <div className="grid min-w-0 gap-4 md:grid-cols-2">
+        <label className="block min-w-0">
+          <span className="block text-base font-medium text-[var(--paper-light)] sm:text-sm">Jurisdiction pack</span>
+          <select
+            value={form.jurisdictionPackValue}
+            disabled={disabled}
+            onChange={(event) => onFieldChange("jurisdictionPackValue", event.target.value)}
+            className={fieldClassName}
+          >
+            {jurisdictionOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <DraftTextField
+          label="Agency name"
+          value={form.agencyName}
+          disabled={disabled}
+          onChange={(value) => onFieldChange("agencyName", value)}
+        />
+        <DraftTextField
+          label="Agency email"
+          type="email"
+          value={form.agencyEmail}
+          disabled={disabled}
+          onChange={(value) => onFieldChange("agencyEmail", value)}
+        />
+        <DraftTextField
+          label="Agency phone"
+          type="tel"
+          value={form.agencyPhone}
+          disabled={disabled}
+          onChange={(value) => onFieldChange("agencyPhone", value)}
+        />
+        <DraftTextField
+          label="Requester name"
+          value={form.requesterName}
+          disabled={disabled}
+          onChange={(value) => onFieldChange("requesterName", value)}
+        />
+        <DraftTextField
+          label="Requester email"
+          type="email"
+          value={form.requesterEmail}
+          disabled={disabled}
+          onChange={(value) => onFieldChange("requesterEmail", value)}
+        />
+        <DraftTextField
+          label="Requester phone"
+          type="tel"
+          value={form.requesterPhone}
+          disabled={disabled}
+          onChange={(value) => onFieldChange("requesterPhone", value)}
+        />
+        <DraftTextField
+          label="Received timestamp"
+          value={form.receivedAt}
+          disabled={disabled}
+          onChange={(value) => onFieldChange("receivedAt", value)}
+        />
+        <label className="block min-w-0 md:col-span-2">
+          <span className="block text-base font-medium text-[var(--paper-light)] sm:text-sm">Request text</span>
+          <textarea
+            value={form.requestText}
+            disabled={disabled}
+            onChange={(event) => onFieldChange("requestText", event.target.value)}
+            className={`${fieldClassName} min-h-32 resize-y`}
+          />
+        </label>
+      </div>
+    </section>
+  );
+}
+
+function DraftTextField({
+  label,
+  value,
+  onChange,
+  disabled,
+  type = "text"
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+  readonly disabled: boolean;
+  readonly type?: "email" | "tel" | "text";
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="block text-base font-medium text-[var(--paper-light)] sm:text-sm">{label}</span>
+      <input
+        type={type}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        className={fieldClassName}
+      />
+    </label>
   );
 }
 
@@ -171,7 +355,7 @@ function ActiveStepPanel({
   readonly onSuggestedFillChange: (fillId: string, value: string) => void;
 }) {
   return (
-    <section aria-labelledby="request-builder-active-step" className="min-w-0">
+    <section aria-label="Active builder step" className="min-w-0">
       <div className="flex min-w-0 flex-col gap-3 border-b border-[var(--console-line)] pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="font-mono text-base text-[var(--muted-amber)] sm:text-sm">Active step</p>
@@ -235,6 +419,85 @@ function getInitialSuggestedFillValues(builder: PrrBuilderModel): Record<string,
   return Object.fromEntries(
     builder.steps.flatMap((step) => step.suggestedFills.map((fill) => [fill.id, fill.value]))
   );
+}
+
+function getInitialDraftForm(builder: PrrBuilderModel): DraftFormState {
+  return {
+    jurisdictionPackValue: jurisdictionPackOptions(builder)[0]?.value ?? fallbackJurisdictionPackValue,
+    agencyName: "",
+    agencyEmail: "",
+    agencyPhone: "",
+    requesterName: "",
+    requesterEmail: "",
+    requesterPhone: "",
+    requestText: "",
+    receivedAt: ""
+  };
+}
+
+function jurisdictionPackOptions(builder: PrrBuilderModel): readonly { readonly value: string; readonly label: string }[] {
+  const options =
+    builder.jurisdictionPacks?.map((pack) =>
+      Object.freeze({
+        value: jurisdictionPackValue(pack.name, pack.version),
+        label: `${pack.jurisdiction} (${pack.name}@${pack.version})`
+      })
+    ) ?? [];
+
+  if (options.length > 0) {
+    return Object.freeze(options);
+  }
+
+  return Object.freeze([
+    Object.freeze({
+      value: fallbackJurisdictionPackValue,
+      label: "Florida Public Records (florida-public-records@0.1.0)"
+    })
+  ]);
+}
+
+function toCreateDraftInput(form: DraftFormState): RequestsCreateDraftInput {
+  const receivedAt = optionalTrimmedValue(form.receivedAt);
+
+  return {
+    jurisdictionPack: parseJurisdictionPackValue(form.jurisdictionPackValue),
+    agency: contactInput(form.agencyName, form.agencyEmail, form.agencyPhone),
+    requester: contactInput(form.requesterName, form.requesterEmail, form.requesterPhone),
+    requestText: form.requestText.trim(),
+    ...(receivedAt === undefined ? {} : { receivedAt })
+  };
+}
+
+function parseJurisdictionPackValue(value: string): RequestsCreateDraftInput["jurisdictionPack"] {
+  const separatorIndex = value.lastIndexOf("@");
+  if (separatorIndex < 1 || separatorIndex === value.length - 1) {
+    return { name: "florida-public-records", version: "0.1.0" };
+  }
+
+  return {
+    name: value.slice(0, separatorIndex),
+    version: value.slice(separatorIndex + 1)
+  };
+}
+
+function jurisdictionPackValue(name: string, version: string): string {
+  return `${name}@${version}`;
+}
+
+function contactInput(name: string, email: string, phone: string): RequestsCreateDraftInput["agency"] {
+  const trimmedEmail = optionalTrimmedValue(email);
+  const trimmedPhone = optionalTrimmedValue(phone);
+
+  return {
+    name: name.trim(),
+    ...(trimmedEmail === undefined ? {} : { email: trimmedEmail }),
+    ...(trimmedPhone === undefined ? {} : { phone: trimmedPhone })
+  };
+}
+
+function optionalTrimmedValue(value: string): string | undefined {
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
 }
 
 function getFocusableDialogControls(dialog: HTMLElement | null): HTMLElement[] {

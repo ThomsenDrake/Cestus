@@ -6,7 +6,7 @@ Worker: Codex
 Branch: `codex/prr-ledger-backed-workspace-design`
 Worktree: `/home/drake/.codex/worktrees/3ea1/Cestus`
 Claimed at: `2026-07-03T22:34:52Z`
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -25,11 +25,31 @@ None.
 
 ## Command Evidence
 
-- Red targeted command: pending.
-- Green targeted command: pending.
-- Full verification: pending.
+- Red targeted command:
+
+```bash
+npm test -- packages/ui/test/request-builder.test.tsx packages/ui/test/app-smoke.test.tsx packages/ui/test/request-data-boundary.test.ts
+```
+
+Result: failed as expected before production changes. After fixing a test self-scan issue, the intended red run had 5 failing tests: missing `Agency name` field, missing `Create draft` action, and missing `adapter.createDraftRequest`.
+
+- Green targeted command:
+
+```bash
+npm test -- packages/ui/test/request-builder.test.tsx packages/ui/test/app-smoke.test.tsx packages/ui/test/request-data-boundary.test.ts
+```
+
+Result: passed. Vitest reported 3 test files passed and 17 tests passed.
+
+- Full verification:
+
+```bash
+npm run verify
+```
+
+Result: passed. Typecheck passed; Vitest reported 40 test files passed and 311 tests passed; UI build completed; factory-readiness passed.
 
 ## Review
 
-- Review status: pending.
+- Review status: ready for reviewer.
 - Concerns: none recorded.

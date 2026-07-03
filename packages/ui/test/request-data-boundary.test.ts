@@ -3,6 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("Requests data boundary", () => {
+  const prrRuntimeImport = "../../prr/src/" + "runtime";
+  const prrRuntimeImportWithExtension = "../../prr/src/" + "runtime.js";
+
   it("keeps product Requests code off local card fixtures and Node-only runtime imports", () => {
     const productFiles = [
       "packages/ui/src/App.tsx",
@@ -18,6 +21,15 @@ describe("Requests data boundary", () => {
       expect(source).not.toContain("node:sqlite");
       expect(source).not.toContain("SQLiteEventLedger");
       expect(source).not.toContain("../../../prr/src/runtime");
+      expect(source).not.toContain("../../../prr/src/runtime.js");
+    }
+  });
+
+  it("keeps UI tests off the Node-only PRR runtime module", () => {
+    for (const file of listRequestSourceFiles("packages/ui/test").filter((path) => !path.endsWith("request-data-boundary.test.ts"))) {
+      const source = readFileSync(file, "utf8");
+      expect(source).not.toContain(prrRuntimeImport);
+      expect(source).not.toContain(prrRuntimeImportWithExtension);
     }
   });
 });

@@ -1,26 +1,244 @@
-import type { KnowledgeEvent } from "../../../ontology/src/contracts.js";
+import {
+  validateKnowledgeEvent,
+  type AppendableKnowledgeEvent,
+  type KnowledgeEvent
+} from "../../../ontology/src/contracts.js";
+import {
+  buildDraftRequestEvents,
+  type ActorRef,
+  type ContactRef,
+  type DeadlineEstimateKind,
+  type JurisdictionPackRef
+} from "../../../prr/src/draft-events.js";
 import { buildPrrProjection } from "../../../prr/src/projection.js";
 import { buildPrrWorkspaceDto, type PrrWorkspaceDto } from "../../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../../prr/src/workspace-seed.js";
 
-export interface RequestsWorkspaceAdapter {
-  loadRequestsWorkspace(): Promise<PrrWorkspaceDto>;
+export type RequestsAdapterNow = string | (() => string);
+
+export interface RequestsCreateDraftInput {
+  readonly jurisdictionPack: JurisdictionPackRef;
+  readonly agency: ContactRef;
+  readonly requester: ContactRef;
+  readonly requestText: string;
+  readonly receivedAt?: string;
+  readonly deadlineEstimateKind?: DeadlineEstimateKind;
 }
 
-export function createLocalReplayRequestsAdapter(seedEvents: readonly KnowledgeEvent[]): RequestsWorkspaceAdapter {
+export type RequestsCreateDraftFailedStep =
+  | "validate-input"
+  | "append-request"
+  | "estimate-deadline"
+  | "append-deadline";
+
+export interface RequestsDraftDiagnostic {
+  readonly message: string;
+  readonly allowedRepairActions: readonly string[];
+}
+
+export type RequestsCreateDraftResult =
+  | {
+      readonly ok: true;
+      readonly prrRequestId: string;
+      readonly committedEventIds: readonly string[];
+      readonly workspace: PrrWorkspaceDto;
+    }
+  | {
+      readonly ok: false;
+      readonly failedStep: RequestsCreateDraftFailedStep;
+      readonly committedEventIds: readonly string[];
+      readonly diagnostic: RequestsDraftDiagnostic;
+      readonly workspace: PrrWorkspaceDto;
+    };
+
+export interface RequestsWorkspaceAdapter {
+  loadRequestsWorkspace(): Promise<PrrWorkspaceDto>;
+  createDraftRequest(input: RequestsCreateDraftInput): Promise<RequestsCreateDraftResult>;
+}
+
+export interface LocalReplayRequestsAdapter extends RequestsWorkspaceAdapter {
+  readEventsForTest(): readonly KnowledgeEvent[];
+}
+
+export interface LocalReplayRequestsAdapterOptions {
+  readonly actor?: ActorRef;
+  readonly now?: RequestsAdapterNow;
+  readonly requestIdFactory?: () => string;
+  readonly idFactory?: () => string;
+}
+
+export interface StaticRequestsAdapterOptions {
+  readonly createDraftResult?:
+    | RequestsCreateDraftResult
+    | ((input: RequestsCreateDraftInput) => RequestsCreateDraftResult | Promise<RequestsCreateDraftResult>);
+}
+
+const defaultActor: ActorRef = Object.freeze({
+  id: "actor_ui_local",
+  kind: "human",
+  label: "Local UI user"
+});
+
+export function createLocalReplayRequestsAdapter(
+  seedEvents: readonly KnowledgeEvent[],
+  options: LocalReplayRequestsAdapterOptions = {}
+): LocalReplayRequestsAdapter {
   const events = seedEvents.map((event) => structuredClone(event));
+  const usedEventIds = new Set(events.map((event) => event.id));
+  const now = options.now ?? (() => new Date().toISOString());
+  const actor = options.actor ?? defaultActor;
+  let nextGeneratedRequestId = 1;
+  const requestIdFactory =
+    options.requestIdFactory ??
+    (() => {
+      const requestNumber = nextGeneratedRequestId;
+      nextGeneratedRequestId += 1;
+      return `prr_draft_${normalizeIdentifierPart(currentTimestamp(now))}_${requestNumber}`;
+    });
+
+  function buildWorkspace(generatedAt: string): PrrWorkspaceDto {
+    return buildPrrWorkspaceDto(buildPrrProjection(events), { now: generatedAt });
+  }
+
+  async function createDraftRequest(input: RequestsCreateDraftInput): Promise<RequestsCreateDraftResult> {
+    const occurredAt = currentTimestamp(now);
+    const receivedAt = normalizeOptionalInput(input.receivedAt) ?? occurredAt;
+    const prrRequestId = requestIdFactory();
+    let appendableEvents: {
+      readonly requestCreated: AppendableKnowledgeEvent<"prr.request.created">;
+      readonly deadlineEstimated: AppendableKnowledgeEvent<"prr.deadline.estimated">;
+    };
+
+    try {
+      appendableEvents = buildDraftRequestEvents({
+        ...input,
+        prrRequestId,
+        actor,
+        occurredAt,
+        receivedAt
+      });
+    } catch (error) {
+      return createFailure(
+        "estimate-deadline",
+        [],
+        safeDiagnostic(error, ["review jurisdiction pack selection", "retry deadline estimate"]),
+        occurredAt
+      );
+    }
+
+    let committedCreated: KnowledgeEvent;
+    try {
+      committedCreated = commitAppendableEvent(
+        appendableEvents.requestCreated,
+        reserveEventId(options.idFactory, usedEventIds),
+        nextStreamSequence(events, prrRequestId)
+      );
+    } catch (error) {
+      return createFailure("validate-input", [], safeDiagnostic(error, ["review draft request input"]), occurredAt);
+    }
+
+    try {
+      const committedDeadline = commitAppendableEvent(
+        {
+          ...appendableEvents.deadlineEstimated,
+          context: {
+            ...appendableEvents.deadlineEstimated.context,
+            causationId: committedCreated.id
+          }
+        },
+        reserveEventId(options.idFactory, usedEventIds),
+        nextStreamSequence(events, prrRequestId)
+      );
+
+      return Object.freeze({
+        ok: true,
+        prrRequestId,
+        committedEventIds: Object.freeze([committedCreated.id, committedDeadline.id]),
+        workspace: buildWorkspace(occurredAt)
+      });
+    } catch (error) {
+      return createFailure(
+        "append-deadline",
+        [committedCreated.id],
+        safeDiagnostic(error, ["reload workspace", "retry deadline estimate"]),
+        occurredAt
+      );
+    }
+  }
+
+  function commitAppendableEvent(
+    appendable: AppendableKnowledgeEvent,
+    id: string,
+    sequence: number
+  ): KnowledgeEvent {
+    const committed = {
+      ...appendable,
+      id,
+      sequence
+    } as KnowledgeEvent;
+    const validation = validateKnowledgeEvent(committed);
+    if (!validation.success) {
+      throw new Error(validation.error.message);
+    }
+
+    events.push(structuredClone(committed));
+    return committed;
+  }
+
+  function createFailure(
+    failedStep: RequestsCreateDraftFailedStep,
+    committedEventIds: readonly string[],
+    diagnostic: RequestsDraftDiagnostic,
+    generatedAt: string
+  ): RequestsCreateDraftResult {
+    return Object.freeze({
+      ok: false,
+      failedStep,
+      committedEventIds: Object.freeze([...committedEventIds]),
+      diagnostic,
+      workspace: buildWorkspace(generatedAt)
+    });
+  }
 
   return Object.freeze({
     async loadRequestsWorkspace() {
-      return buildPrrWorkspaceDto(buildPrrProjection(events));
+      return buildWorkspace(currentTimestamp(now));
+    },
+    createDraftRequest,
+    readEventsForTest() {
+      return Object.freeze(events.map((event) => structuredClone(event)));
     }
   });
 }
 
-export function createStaticRequestsAdapter(workspace: PrrWorkspaceDto): RequestsWorkspaceAdapter {
+export function createStaticRequestsAdapter(
+  workspace: PrrWorkspaceDto,
+  options: StaticRequestsAdapterOptions = {}
+): RequestsWorkspaceAdapter {
+  let currentWorkspace = workspace;
+
   return Object.freeze({
     async loadRequestsWorkspace() {
-      return workspace;
+      return currentWorkspace;
+    },
+    async createDraftRequest(input: RequestsCreateDraftInput) {
+      const result =
+        typeof options.createDraftResult === "function"
+          ? await options.createDraftResult(input)
+          : options.createDraftResult ??
+            Object.freeze({
+              ok: false,
+              failedStep: "append-request",
+              committedEventIds: Object.freeze([]),
+              diagnostic: Object.freeze({
+                message: "This Requests adapter cannot create draft requests.",
+                allowedRepairActions: Object.freeze(["use a replay-capable Requests adapter"])
+              }),
+              workspace: currentWorkspace
+            });
+
+      currentWorkspace = result.workspace;
+      return result;
     }
   });
 }
@@ -29,4 +247,68 @@ export const localReplayRequestsAdapter = createLocalReplayRequestsAdapter(prrWo
 
 export function loadRequestsWorkspace(): Promise<PrrWorkspaceDto> {
   return localReplayRequestsAdapter.loadRequestsWorkspace();
+}
+
+function nextStreamSequence(events: readonly KnowledgeEvent[], streamId: string): number {
+  return events.filter((event) => event.streamId === streamId).length + 1;
+}
+
+function reserveEventId(idFactory: (() => string) | undefined, usedEventIds: Set<string>): string {
+  const baseId = normalizeEventId(idFactory?.() ?? randomEventId());
+  let candidate = baseId;
+  let suffix = 2;
+
+  while (usedEventIds.has(candidate)) {
+    candidate = `${baseId}_${suffix}`;
+    suffix += 1;
+  }
+
+  usedEventIds.add(candidate);
+  return candidate;
+}
+
+function randomEventId(): string {
+  const randomUUID = globalThis.crypto?.randomUUID;
+  if (randomUUID !== undefined) {
+    return `evt_${randomUUID.call(globalThis.crypto)}`;
+  }
+
+  return `evt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+function normalizeEventId(id: string): string {
+  return id.startsWith("evt_") ? id : `evt_${id}`;
+}
+
+function normalizeIdentifierPart(value: string): string {
+  return value.replaceAll(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+function normalizeOptionalInput(value: string | undefined): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
+}
+
+function currentTimestamp(now: RequestsAdapterNow): string {
+  return typeof now === "function" ? now() : now;
+}
+
+function safeDiagnostic(error: unknown, allowedRepairActions: readonly string[]): RequestsDraftDiagnostic {
+  return Object.freeze({
+    message: safeMessage(error),
+    allowedRepairActions: Object.freeze([...allowedRepairActions])
+  });
+}
+
+function safeMessage(error: unknown): string {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  if (/token|secret|password|oauth|credential|authorization|bearer|api_key|private_key|session/i.test(rawMessage)) {
+    return "Draft creation diagnostic was redacted because the failure referenced sensitive material.";
+  }
+
+  return rawMessage;
 }
