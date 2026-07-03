@@ -26,6 +26,17 @@ describe("RequestDetailRail", () => {
     expect(within(rail).getByText("Human review required.")).toBeInTheDocument();
   });
 
+  it("exposes text status for complete and incomplete gate checks", () => {
+    render(<RequestDetailRail selectedRequest={getSelectedPrrRequest(prrWorkspaceFixture, "prr_req_001")} />);
+
+    const rail = screen.getByRole("complementary", { name: "Request detail rail" });
+    const draftRow = gateRow(rail, "Draft body");
+    const riskRow = gateRow(rail, "Risk flags");
+
+    expect(within(draftRow).getByText("Complete")).toBeInTheDocument();
+    expect(within(riskRow).getByText("Needs review")).toBeInTheDocument();
+  });
+
   it("shows locked legal escalation prerequisites", () => {
     render(<RequestDetailRail selectedRequest={getSelectedPrrRequest(prrWorkspaceFixture, "prr_req_transit_031")} />);
 
@@ -36,3 +47,9 @@ describe("RequestDetailRail", () => {
     expect(within(rail).getByText("Not confirmed.")).toBeInTheDocument();
   });
 });
+
+function gateRow(rail: HTMLElement, label: string): HTMLElement {
+  const row = within(rail).getByText(label).closest("li");
+  expect(row).not.toBeNull();
+  return row as HTMLElement;
+}
