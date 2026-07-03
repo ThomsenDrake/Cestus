@@ -8,7 +8,7 @@
 - Branch: `codex/prr-ledger-backed-workspace-design`
 - Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
 - Claimed at UTC: `2026-07-03T21:34:42Z`
-- Status: `claimed`
+- Status: `ready-for-review`
 
 ## Owned Files
 
@@ -32,11 +32,11 @@
 
 ## Command Evidence
 
-- Red command/result: Not run yet.
-- Green command/result: Not run yet.
-- Full verification result: Not run yet.
+- Red command/result: `npm test -- packages/prr/test/runtime.test.ts` failed as expected. Vitest reported 1 failed suite and 0 tests run because `../src/runtime.js` could not be found from `packages/prr/test/runtime.test.ts`.
+- Green command/result: `npm test -- packages/prr/test/runtime.test.ts` passed. Vitest reported 1 test file passed and 7 tests passed.
+- Full verification result: `npm run verify` passed. Output included `typecheck passed`, Vitest `39 passed (39)` test files and `297 passed (297)` tests, `tests passed`, Vite production build success, and `factory-readiness passed`.
 
 ## Review
 
-- Review status: Not requested yet.
+- Review status: Ready for review.
 - Concerns: None recorded.

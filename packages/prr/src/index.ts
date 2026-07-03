@@ -12,4 +12,6 @@ export * from "./extraction-queue.js";
 export * from "./projection.js";
 export * from "./workspace-seed.js";
 export * from "./read-api.js";
+export * from "./draft-events.js";
+export * from "./runtime.js";
 export * from "./diagnostics.js";
