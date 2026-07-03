@@ -8,7 +8,7 @@
 - Branch: `codex/prr-ledger-backed-workspace-design`
 - Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
 - Claimed at UTC: `2026-07-03T21:14:40Z`
-- Status: `claimed`
+- Status: `ready-for-review`
 
 ## Owned Files
 
@@ -31,11 +31,11 @@
 
 ## Command Evidence
 
-- Red command/result: Not run yet.
-- Green command/result: Not run yet.
-- Full verification result: Not run yet.
+- Red command/result: `npm test -- packages/prr/test/read-api.test.ts` failed as expected. Vitest reported 2 failed DTO tests (`TypeError: buildPrrWorkspaceDto is not a function`) and 3 passing existing queue-row tests.
+- Green command/result: `npm test -- packages/prr/test/read-api.test.ts` passed. Vitest reported 1 test file passed and 5 tests passed.
+- Full verification result: `npm run verify` passed. Output included `typecheck passed`, Vitest `38 passed (38)` test files and `286 passed (286)` tests, `tests passed`, Vite production build success, and `factory-readiness passed`.
 
 ## Review
 
-- Review status: Not requested.
-- Concerns: None recorded yet.
+- Review status: Ready for review.
+- Concerns: None recorded.
