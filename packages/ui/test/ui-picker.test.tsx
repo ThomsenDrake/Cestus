@@ -1,20 +1,20 @@
-/** @vitest-environment jsdom */
 import { readFileSync } from "node:fs";
-import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { App } from "../src/App.js";
 
-describe("ui.sh picker scaffolding", () => {
-  it("does not expose a remaining picker decision point in the React workspace", () => {
-    const { container } = render(<App />);
-    const picks = [...container.querySelectorAll("[data-uidotsh-pick]")];
+const sourceFiles = [
+  "index.html",
+  "packages/ui/src/workspace/CommandDashboard.tsx",
+  "packages/ui/src/workspace/SignalStrip.tsx",
+  "packages/ui/src/workspace/PriorityQueue.tsx",
+  "packages/ui/src/workspace/DecisionRail.tsx"
+];
 
-    expect(picks).toHaveLength(0);
-  });
+describe("ui picker cleanup", () => {
+  it("removes old comparison scaffolding after the tactical direction is approved", () => {
+    const source = sourceFiles.map((file) => readFileSync(file, "utf8")).join("\n");
 
-  it("injects the ui.sh picker toolbar once in the Vite root document", () => {
-    const html = readFileSync("index.html", "utf8");
-
-    expect(html.match(/https:\/\/ui\.sh\/ui-picker\.js/g)).toHaveLength(1);
+    expect(source).not.toContain("ui-picker.js");
+    expect(source).not.toContain("data-uidotsh-pick");
+    expect(source).not.toContain("data-uidotsh-option");
   });
 });

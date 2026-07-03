@@ -50,5 +50,11 @@ describe("visual system contract", () => {
     expect(joined).not.toMatch(new RegExp(`sha${"dow"}-(sm|md|lg|xl|2xl)`));
     expect(joined).not.toMatch(new RegExp(`track${"ing"}-`));
     expect(joined).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+    expect(joined).not.toContain("data-uidotsh-pick");
+    expect(joined).not.toContain("data-uidotsh-option");
+    expect(joined).not.toMatch(/var\(--cestus-/);
+    expect(joined).toContain("var(--signal-orange)");
+    expect(joined).toContain("var(--signal-red)");
+    expect(joined).toContain("var(--console-line)");
   });
 });
