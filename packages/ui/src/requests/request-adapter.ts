@@ -79,6 +79,25 @@ const defaultActor: ActorRef = Object.freeze({
   label: "Local UI user"
 });
 
+const draftDiagnostics: Record<RequestsCreateDraftFailedStep, RequestsDraftDiagnostic> = Object.freeze({
+  "validate-input": Object.freeze({
+    message: "Draft creation input did not match the request event contract. Review the required fields and try again.",
+    allowedRepairActions: Object.freeze(["review draft request input"])
+  }),
+  "append-request": Object.freeze({
+    message: "Draft creation could not start because the request stream already exists. Reload Requests and try again.",
+    allowedRepairActions: Object.freeze(["reload Requests", "create a new draft"])
+  }),
+  "estimate-deadline": Object.freeze({
+    message: "Draft creation could not estimate a deadline for the selected jurisdiction pack.",
+    allowedRepairActions: Object.freeze(["select a supported jurisdiction pack", "retry deadline estimate"])
+  }),
+  "append-deadline": Object.freeze({
+    message: "Draft was created, but the deadline estimate could not be committed. Reload Requests to inspect the draft.",
+    allowedRepairActions: Object.freeze(["reload Requests", "retry deadline estimate"])
+  })
+});
+
 export function createLocalReplayRequestsAdapter(
   seedEvents: readonly KnowledgeEvent[],
   options: LocalReplayRequestsAdapterOptions = {}
@@ -104,6 +123,10 @@ export function createLocalReplayRequestsAdapter(
     const occurredAt = currentTimestamp(now);
     const receivedAt = normalizeOptionalInput(input.receivedAt) ?? occurredAt;
     const prrRequestId = requestIdFactory();
+    if (nextStreamSequence(events, prrRequestId) !== 1) {
+      return createFailure("append-request", [], diagnosticForStep("append-request"), occurredAt);
+    }
+
     let appendableEvents: {
       readonly requestCreated: AppendableKnowledgeEvent<"prr.request.created">;
       readonly deadlineEstimated: AppendableKnowledgeEvent<"prr.deadline.estimated">;
@@ -121,7 +144,7 @@ export function createLocalReplayRequestsAdapter(
       return createFailure(
         "estimate-deadline",
         [],
-        safeDiagnostic(error, ["review jurisdiction pack selection", "retry deadline estimate"]),
+        diagnosticForStep("estimate-deadline"),
         occurredAt
       );
     }
@@ -131,10 +154,10 @@ export function createLocalReplayRequestsAdapter(
       committedCreated = commitAppendableEvent(
         appendableEvents.requestCreated,
         reserveEventId(options.idFactory, usedEventIds),
-        nextStreamSequence(events, prrRequestId)
+        1
       );
     } catch (error) {
-      return createFailure("validate-input", [], safeDiagnostic(error, ["review draft request input"]), occurredAt);
+      return createFailure("validate-input", [], diagnosticForStep("validate-input"), occurredAt);
     }
 
     try {
@@ -147,7 +170,7 @@ export function createLocalReplayRequestsAdapter(
           }
         },
         reserveEventId(options.idFactory, usedEventIds),
-        nextStreamSequence(events, prrRequestId)
+        2
       );
 
       return Object.freeze({
@@ -160,7 +183,7 @@ export function createLocalReplayRequestsAdapter(
       return createFailure(
         "append-deadline",
         [committedCreated.id],
-        safeDiagnostic(error, ["reload workspace", "retry deadline estimate"]),
+        diagnosticForStep("append-deadline"),
         occurredAt
       );
     }
@@ -171,6 +194,13 @@ export function createLocalReplayRequestsAdapter(
     id: string,
     sequence: number
   ): KnowledgeEvent {
+    const nextSequence = nextStreamSequence(events, appendable.streamId);
+    if (nextSequence !== sequence) {
+      throw new Error(
+        `Concurrency conflict for ${appendable.streamId}: expected sequence ${sequence}, next sequence ${nextSequence}`
+      );
+    }
+
     const committed = {
       ...appendable,
       id,
@@ -297,18 +327,11 @@ function currentTimestamp(now: RequestsAdapterNow): string {
   return typeof now === "function" ? now() : now;
 }
 
-function safeDiagnostic(error: unknown, allowedRepairActions: readonly string[]): RequestsDraftDiagnostic {
+function diagnosticForStep(failedStep: RequestsCreateDraftFailedStep): RequestsDraftDiagnostic {
+  const diagnostic = draftDiagnostics[failedStep];
+
   return Object.freeze({
-    message: safeMessage(error),
-    allowedRepairActions: Object.freeze([...allowedRepairActions])
+    message: diagnostic.message,
+    allowedRepairActions: Object.freeze([...diagnostic.allowedRepairActions])
   });
-}
-
-function safeMessage(error: unknown): string {
-  const rawMessage = error instanceof Error ? error.message : String(error);
-  if (/token|secret|password|oauth|credential|authorization|bearer|api_key|private_key|session/i.test(rawMessage)) {
-    return "Draft creation diagnostic was redacted because the failure referenced sensitive material.";
-  }
-
-  return rawMessage;
 }
