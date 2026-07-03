@@ -18,6 +18,7 @@ export function RequestCard({ card, selected, onSelectRequest }: RequestCardProp
     <button
       type="button"
       aria-label={`Select ${card.title}`}
+      aria-pressed={selected}
       onClick={() => onSelectRequest(card.prrRequestId)}
       className={[
         "relative grid min-h-64 w-full grid-rows-[auto_1fr_auto] border bg-[var(--console-void)]/72 p-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--signal-cyan)]",
