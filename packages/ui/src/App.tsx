@@ -3,7 +3,9 @@ import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
 import { prrWorkspaceFixture } from "./requests/request-fixtures.js";
+import { RequestDetailRail } from "./requests/RequestDetailRail.js";
 import { RequestWorkspace } from "./requests/RequestWorkspace.js";
+import type { PrrDetailModel } from "./requests/request-types.js";
 import { CommandDashboard } from "./workspace/CommandDashboard.js";
 import { DecisionRail } from "./workspace/DecisionRail.js";
 import { OpsShell } from "./workspace/OpsShell.js";
@@ -16,6 +18,8 @@ export function App() {
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
   const [reviewedItemIds, setReviewedItemIds] = useState<readonly string[]>([]);
+  const [selectedPrrRequestId, setSelectedPrrRequestId] = useState<string | undefined>("prr_req_001");
+  const [selectedPrrRequest, setSelectedPrrRequest] = useState<PrrDetailModel | undefined>();
   const model = useMemo(
     () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds }),
     [reviewedItemIds]
@@ -32,7 +36,15 @@ export function App() {
       onMarkReviewed={(itemId) => setReviewedItemIds((current) => [...new Set([...current, itemId])])}
     />
   );
-  const requestsMain = <RequestWorkspace fixture={prrWorkspaceFixture} onOpenBuilder={() => undefined} />;
+  const requestsMain = (
+    <RequestWorkspace
+      fixture={prrWorkspaceFixture}
+      selectedRequestId={selectedPrrRequestId}
+      onOpenBuilder={() => undefined}
+      onSelectRequest={setSelectedPrrRequestId}
+      onSelectedRequestChange={setSelectedPrrRequest}
+    />
+  );
   const commandDecisionRail = (
     <DecisionRail
       agentBrief={model.agentBrief}
@@ -40,11 +52,6 @@ export function App() {
       selectedItem={selectedItem}
       onClearSelection={() => setSelectedItemId(undefined)}
     />
-  );
-  const requestsDecisionRail = (
-    <aside aria-label="Request detail rail" className="h-full p-4 lg:p-5">
-      Select a request to inspect next action.
-    </aside>
   );
   function handleModuleSelect(moduleId: string) {
     if (implementedModuleIds.has(moduleId)) {
@@ -72,7 +79,7 @@ export function App() {
       onNewRequest={() => undefined}
       onModuleSelect={handleModuleSelect}
       main={requestsActive ? requestsMain : commandMain}
-      decisionRail={requestsActive ? requestsDecisionRail : commandDecisionRail}
+      decisionRail={requestsActive ? <RequestDetailRail selectedRequest={selectedPrrRequest} /> : commandDecisionRail}
     />
   );
 }
