@@ -7,6 +7,8 @@ import { DecisionRail } from "./workspace/DecisionRail.js";
 import { OpsShell } from "./workspace/OpsShell.js";
 import { workspaceModules } from "./workspace/workspace-nav.js";
 
+const implementedModuleIds = new Set(["command", "requests"]);
+
 export function App() {
   const [activeModuleId, setActiveModuleId] = useState("command");
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
@@ -52,6 +54,11 @@ export function App() {
       Select a request to inspect next action.
     </aside>
   );
+  function handleModuleSelect(moduleId: string) {
+    if (implementedModuleIds.has(moduleId)) {
+      setActiveModuleId(moduleId);
+    }
+  }
 
   return (
     <OpsShell
@@ -71,7 +78,7 @@ export function App() {
       mainId={requestsActive ? "requests" : "command"}
       mainLabel={requestsActive ? "Requests workspace" : "Command workspace"}
       onNewRequest={() => undefined}
-      onModuleSelect={setActiveModuleId}
+      onModuleSelect={handleModuleSelect}
       main={requestsActive ? requestsMain : commandMain}
       decisionRail={requestsActive ? requestsDecisionRail : commandDecisionRail}
     />
