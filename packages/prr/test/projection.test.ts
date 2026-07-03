@@ -26,14 +26,91 @@ describe("buildPrrProjection", () => {
   it("rebuilds request state from golden PRR ledger events", () => {
     const projection = buildPrrProjection(goldenPrrLedgerEvents);
 
-    expect(projection.requests.get("prr_req_001")).toEqual({
+    expect(projection.requests.get("prr_req_001")).toMatchObject({
       prrRequestId: "prr_req_001",
       status: "awaitingProduction",
       agencyName: "Example Agency",
+      jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+      agency: { name: "Example Agency", email: "foia@example.gov" },
+      requester: { name: "Example Requester", email: "requester@example.org" },
+      requestText: "Please provide records concerning public meeting notices.",
       activeDeadline: { deadlineDate: "2026-07-30", source: "estimated" },
+      latestOutboundCorrespondence: {
+        correspondenceId: "corr_prr_req_001_sent",
+        provider: "gmail",
+        providerMessageId: "provider-message-001",
+        providerThreadId: "provider-thread-001",
+        subject: "FOIA request for public meeting notices",
+        occurredAt: "2026-07-01T12:05:00.000Z",
+        bodyHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        evidenceIds: []
+      },
+      latestInboundCorrespondence: {
+        correspondenceId: "corr_prr_req_001_ack",
+        provider: "gmail",
+        providerMessageId: "provider-message-ack-001",
+        providerThreadId: "provider-thread-001",
+        subject: "Re: FOIA request for public meeting notices",
+        occurredAt: "2026-07-02T14:00:00.000Z",
+        bodyHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        evidenceIds: ["ev_prr_correspondence_001"]
+      },
       possibleStalling: false,
       confirmedStalling: false,
-      productionEvidenceIds: ["ev_prr_production_001", "ev_prr_production_002"]
+      stallingSignals: [],
+      productionEvidenceIds: ["ev_prr_production_001", "ev_prr_production_002"],
+      productionBatches: [
+        {
+          productionId: "prod_prr_req_001",
+          label: "Initial production",
+          receivedAt: "2026-07-15T16:00:00.000Z",
+          evidenceIds: ["ev_prr_production_001", "ev_prr_production_002"]
+        }
+      ]
+    });
+  });
+
+  it("rebuilds rich request state from golden PRR seed events", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents);
+
+    expect([...projection.requests.keys()].sort()).toEqual([
+      "prr_ack_florida_records",
+      "prr_appeal_personnel",
+      "prr_denial_personnel",
+      "prr_draft_city_budget",
+      "prr_fee_building_permits",
+      "prr_req_001",
+      "prr_scope_vendor_contracts",
+      "prr_sent_police_logs",
+      "prr_stalling_vendor_emails"
+    ]);
+
+    expect(projection.requests.get("prr_fee_building_permits")).toMatchObject({
+      prrRequestId: "prr_fee_building_permits",
+      status: "inNegotiation",
+      agencyName: "Building Services Department",
+      feeEstimate: {
+        amountCents: 185000,
+        currency: "USD",
+        challenged: true,
+        challengeId: "fee_challenge_building_permits"
+      }
+    });
+
+    expect(projection.requests.get("prr_scope_vendor_contracts")).toMatchObject({
+      scopeNarrowing: {
+        narrowingId: "narrow_vendor_contracts",
+        proposedScope: "Contracts active between 2024-01-01 and 2026-06-30",
+        acceptedScope: "Contracts active between 2025-01-01 and 2026-06-30"
+      }
+    });
+
+    expect(projection.requests.get("prr_stalling_vendor_emails")).toMatchObject({
+      possibleStalling: true,
+      confirmedStalling: true,
+      legalEscalation: {
+        confirmedBy: "investigator@example.org"
+      }
     });
   });
 
@@ -52,7 +129,7 @@ describe("buildPrrProjection", () => {
   it("keeps timeline entries in event replay order for the request", () => {
     const projection = buildPrrProjection(goldenPrrLedgerEvents);
 
-    expect(projection.timelineForRequest("prr_req_001")).toEqual([
+    expect(projection.timelineForRequest("prr_req_001")).toMatchObject([
       {
         eventId: "evt_prr_req_001_created",
         type: "prr.request.created",
@@ -87,7 +164,7 @@ describe("buildPrrProjection", () => {
       confirmedDeadlineEvent("2026-07-25")
     ]);
 
-    expect(projection.requests.get("prr_req_001")?.activeDeadline).toEqual({
+    expect(projection.requests.get("prr_req_001")?.activeDeadline).toMatchObject({
       deadlineDate: "2026-07-25",
       source: "confirmed"
     });
@@ -100,7 +177,7 @@ describe("buildPrrProjection", () => {
       estimatedDeadlineEvent("2026-08-01")
     ]);
 
-    expect(projection.requests.get("prr_req_001")?.activeDeadline).toEqual({
+    expect(projection.requests.get("prr_req_001")?.activeDeadline).toMatchObject({
       deadlineDate: "2026-07-25",
       source: "confirmed"
     });
@@ -113,9 +190,11 @@ describe("buildPrrProjection", () => {
       evidenceIngestedEvent("evt_evidence_ignored_after", 6)
     ]);
 
-    expect(projection.requests.size).toBe(1);
+    expect(projection.requests.size).toBe(9);
     expect(projection.timelineForRequest("prr_req_001").map((entry) => entry.type)).toEqual(
-      goldenPrrLedgerEvents.map((event) => event.type)
+      goldenPrrLedgerEvents
+        .filter((event) => event.streamId === "prr_req_001")
+        .map((event) => event.type)
     );
   });
 
@@ -230,35 +309,131 @@ describe("buildPrrProjection", () => {
       "ev_prr_production_001",
       "ev_prr_production_002"
     ]);
-    expect(projection.requests.get("prr_req_001")?.activeDeadline).toEqual({
+    expect(projection.requests.get("prr_req_001")?.activeDeadline).toMatchObject({
       deadlineDate: "2026-07-25",
       source: "confirmed"
+    });
+  });
+
+  it("protects rich nested request fields from caller mutation", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents);
+    const req001 = mutableRequest(projection, "prr_req_001");
+    const draft = mutableRequest(projection, "prr_draft_city_budget");
+    const sent = mutableRequest(projection, "prr_sent_police_logs");
+    const fee = mutableRequest(projection, "prr_fee_building_permits");
+    const scope = mutableRequest(projection, "prr_scope_vendor_contracts");
+    const denial = mutableRequest(projection, "prr_denial_personnel");
+    const appeal = mutableRequest(projection, "prr_appeal_personnel");
+    const stalling = mutableRequest(projection, "prr_stalling_vendor_emails");
+
+    attemptMutation(() => {
+      req001.agency.email = "mutated@example.org";
+    });
+    attemptMutation(() => {
+      draft.activeDeadline.citedRules[0].citation = "mutated";
+    });
+    attemptMutation(() => {
+      sent.latestOutboundCorrespondence.rawMetadata.provider = "mutated";
+    });
+    attemptMutation(() => {
+      fee.feeEstimate.amountCents = 1;
+    });
+    attemptMutation(() => {
+      scope.scopeNarrowing.acceptedScope = "mutated";
+    });
+    attemptMutation(() => {
+      req001.productionBatches[0].evidenceIds.push("ev_mutated");
+    });
+    attemptMutation(() => {
+      denial.denial.reason = "mutated";
+    });
+    attemptMutation(() => {
+      appeal.appeal.citedRules[0].label = "mutated";
+    });
+    attemptMutation(() => {
+      stalling.stallingSignals[0].explanation = "mutated";
+    });
+    attemptMutation(() => {
+      stalling.legalEscalation.evidenceIds.push("ev_mutated");
+    });
+
+    expect(projection.requests.get("prr_req_001")).toMatchObject({
+      agency: { email: "foia@example.gov" },
+      productionBatches: [
+        {
+          evidenceIds: ["ev_prr_production_001", "ev_prr_production_002"]
+        }
+      ]
+    });
+    expect(projection.requests.get("prr_draft_city_budget")?.activeDeadline).toMatchObject({
+      citedRules: [{ citation: "Fla. Stat. sec. 119.07(1)(a)" }]
+    });
+    expect(projection.requests.get("prr_sent_police_logs")?.latestOutboundCorrespondence).toMatchObject({
+      rawMetadata: { provider: "gmail" }
+    });
+    expect(projection.requests.get("prr_fee_building_permits")?.feeEstimate).toMatchObject({
+      amountCents: 185000
+    });
+    expect(projection.requests.get("prr_scope_vendor_contracts")?.scopeNarrowing).toMatchObject({
+      acceptedScope: "Contracts active between 2025-01-01 and 2026-06-30"
+    });
+    expect(projection.requests.get("prr_denial_personnel")?.denial).toMatchObject({
+      reason: "Personnel privacy exemption asserted for the requested file."
+    });
+    expect(projection.requests.get("prr_appeal_personnel")?.appeal).toMatchObject({
+      citedRules: [{ label: "FOIA administrative appeal" }]
+    });
+    expect(projection.requests.get("prr_stalling_vendor_emails")).toMatchObject({
+      stallingSignals: expect.arrayContaining([
+        expect.objectContaining({
+          explanation: "The active deadline passed without a substantive response."
+        })
+      ]),
+      legalEscalation: {
+        evidenceIds: ["ev_vendor_emails_followup", "ev_vendor_emails_delay"]
+      }
+    });
+  });
+
+  it("protects timeline entries from nested caller mutation", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents);
+    const timeline = projection.timelineForRequest("prr_fee_building_permits") as unknown as Array<{
+      eventId: string;
+      payload: { citedRules?: Array<{ citation: string }> };
+    }>;
+
+    attemptMutation(() => {
+      timeline[2]!.payload.citedRules![0]!.citation = "mutated";
+    });
+
+    expect(projection.timelineForRequest("prr_fee_building_permits")[2]).toMatchObject({
+      payload: {
+        citedRules: [{ citation: "Fla. Stat. sec. 119.07(4)" }]
+      }
     });
   });
 
   it("preserves readonly request map read and iteration behavior", () => {
     const projection = buildPrrProjection(goldenPrrLedgerEvents);
 
-    expect(projection.requests.size).toBe(1);
+    expect(projection.requests.size).toBe(9);
     expect(projection.requests.has("prr_req_001")).toBe(true);
     expect(projection.requests.get("prr_req_001")?.agencyName).toBe("Example Agency");
-    expect([...projection.requests.keys()]).toEqual(["prr_req_001"]);
-    expect([...projection.requests.values()].map((request) => request.prrRequestId)).toEqual([
+    expect([...projection.requests.keys()][0]).toBe("prr_req_001");
+    expect([...projection.requests.values()].map((request) => request.prrRequestId)).toContain(
       "prr_req_001"
-    ]);
-    expect([...projection.requests.entries()].map(([prrRequestId]) => prrRequestId)).toEqual([
+    );
+    expect([...projection.requests.entries()].map(([prrRequestId]) => prrRequestId)).toContain(
       "prr_req_001"
-    ]);
-    expect([...projection.requests].map(([prrRequestId]) => prrRequestId)).toEqual([
-      "prr_req_001"
-    ]);
+    );
+    expect([...projection.requests].map(([prrRequestId]) => prrRequestId)).toContain("prr_req_001");
 
     const forEachRequestIds: string[] = [];
     projection.requests.forEach((request, prrRequestId, map) => {
       forEachRequestIds.push(`${prrRequestId}:${request.prrRequestId}:${map.size}`);
     });
 
-    expect(forEachRequestIds).toEqual(["prr_req_001:prr_req_001:1"]);
+    expect(forEachRequestIds).toContain("prr_req_001:prr_req_001:9");
   });
 
   it("prevents runtime set calls from mutating the request map", () => {
@@ -271,9 +446,9 @@ describe("buildPrrProjection", () => {
       // Explicit runtime read-only errors are acceptable; later reads must be unchanged.
     }
 
-    expect(projection.requests.size).toBe(1);
+    expect(projection.requests.size).toBe(9);
     expect(projection.requests.has("prr_req_mutated")).toBe(false);
-    expect([...projection.requests.keys()]).toEqual(["prr_req_001"]);
+    expect([...projection.requests.keys()]).toContain("prr_req_001");
   });
 
   it("prevents runtime delete calls from mutating the request map", () => {
@@ -286,7 +461,7 @@ describe("buildPrrProjection", () => {
       // Explicit runtime read-only errors are acceptable; later reads must be unchanged.
     }
 
-    expect(projection.requests.size).toBe(1);
+    expect(projection.requests.size).toBe(9);
     expect(projection.requests.has("prr_req_001")).toBe(true);
     expect(projection.requests.get("prr_req_001")?.status).toBe("awaitingProduction");
   });
@@ -301,10 +476,10 @@ describe("buildPrrProjection", () => {
       // Explicit runtime read-only errors are acceptable; later reads must be unchanged.
     }
 
-    expect(projection.requests.size).toBe(1);
-    expect([...projection.requests.values()].map((request) => request.prrRequestId)).toEqual([
+    expect(projection.requests.size).toBe(9);
+    expect([...projection.requests.values()].map((request) => request.prrRequestId)).toContain(
       "prr_req_001"
-    ]);
+    );
   });
 
   it("protects timeline entries from caller mutation", () => {
@@ -318,7 +493,7 @@ describe("buildPrrProjection", () => {
       // Frozen timeline entries are acceptable; the later read must still be unchanged.
     }
 
-    expect(projection.timelineForRequest("prr_req_001")[0]).toEqual({
+    expect(projection.timelineForRequest("prr_req_001")[0]).toMatchObject({
       eventId: "evt_prr_req_001_created",
       type: "prr.request.created",
       occurredAt: "2026-07-01T12:00:00.000Z"
@@ -401,6 +576,23 @@ function confirmedDeadlineEvent(deadlineDate: string): KnowledgeEventOf<"prr.dea
       ]
     }
   };
+}
+
+function mutableRequest(
+  projection: ReturnType<typeof buildPrrProjection>,
+  prrRequestId: string
+): Record<string, any> {
+  const request = projection.requests.get(prrRequestId);
+  expect(request).toBeDefined();
+  return request as unknown as Record<string, any>;
+}
+
+function attemptMutation(mutator: () => void): void {
+  try {
+    mutator();
+  } catch {
+    // Frozen nested read models are acceptable; later reads must still be unchanged.
+  }
 }
 
 function evidenceIngestedEvent(id: string, sequence: number): KnowledgeEventOf<"evidence.ingested"> {
