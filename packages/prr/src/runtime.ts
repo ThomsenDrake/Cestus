@@ -75,8 +75,14 @@ export interface PrrRuntime {
 
 export function createPrrRuntime(dependencies: PrrRuntimeDependencies): PrrRuntime {
   const now = dependencies.now ?? (() => new Date().toISOString());
+  let nextGeneratedRequestId = 1;
   const requestIdFactory =
-    dependencies.requestIdFactory ?? (() => `prr_draft_${currentTimestamp(now).replaceAll(/[^a-zA-Z0-9]/g, "_")}`);
+    dependencies.requestIdFactory ??
+    (() => {
+      const requestNumber = nextGeneratedRequestId;
+      nextGeneratedRequestId += 1;
+      return `prr_draft_${currentTimestamp(now).replaceAll(/[^a-zA-Z0-9]/g, "_")}_${requestNumber}`;
+    });
   const deadlineCalculator = dependencies.deadlineCalculator ?? calculateEstimatedDeadline;
 
   async function loadWorkspace(): Promise<PrrWorkspaceDto> {
@@ -87,6 +93,17 @@ export function createPrrRuntime(dependencies: PrrRuntimeDependencies): PrrRunti
     const occurredAt = currentTimestamp(now);
     const prrRequestId = requestIdFactory();
     const correlationId = draftRequestCorrelationId({ prrRequestId, occurredAt });
+    let jurisdictionPack: JurisdictionPack;
+    try {
+      jurisdictionPack = resolveJurisdictionPack(input.jurisdictionPack);
+    } catch {
+      return failure(
+        "validate-input",
+        [],
+        safeDiagnostic("Unsupported jurisdiction pack", ["choose a supported jurisdiction pack"])
+      );
+    }
+
     const requestCreated = buildDraftRequestCreatedEvent({
       ...input,
       prrRequestId,
@@ -109,7 +126,7 @@ export function createPrrRuntime(dependencies: PrrRuntimeDependencies): PrrRunti
 
     let estimate: EstimatedDeadline;
     try {
-      estimate = deadlineCalculator(resolveJurisdictionPack(input.jurisdictionPack), {
+      estimate = deadlineCalculator(jurisdictionPack, {
         prrRequestId,
         receivedAt: input.receivedAt,
         ...(input.deadlineEstimateKind === undefined ? {} : { estimateKind: input.deadlineEstimateKind })
@@ -170,8 +187,9 @@ export function createPrrRuntime(dependencies: PrrRuntimeDependencies): PrrRunti
       }
 
       const committedIdsByFixtureId = new Map<string, string>();
+      const fixtureIds = new Set(events.map((event) => event.id));
       for (const event of events) {
-        const appendable = appendableSeedEvent(event, committedIdsByFixtureId);
+        const appendable = appendableSeedEvent(event, committedIdsByFixtureId, fixtureIds);
         const committed = await dependencies.ledger.append(appendable);
         committedIdsByFixtureId.set(event.id, committed.id);
       }
@@ -191,10 +209,10 @@ function buildWorkspace(events: readonly KnowledgeEvent[], now: string): PrrWork
 
 function appendableSeedEvent(
   event: KnowledgeEvent,
-  committedIdsByFixtureId: ReadonlyMap<string, string>
+  committedIdsByFixtureId: ReadonlyMap<string, string>,
+  fixtureIds: ReadonlySet<string>
 ): AppendableKnowledgeEvent {
-  const rewrittenCausationId =
-    event.context.causationId === undefined ? undefined : committedIdsByFixtureId.get(event.context.causationId);
+  const rewrittenCausationId = rewriteSeedCausationId(event, committedIdsByFixtureId, fixtureIds);
   const context = {
     ...event.context,
     ...(rewrittenCausationId === undefined ? {} : { causationId: rewrittenCausationId })
@@ -205,6 +223,32 @@ function appendableSeedEvent(
   };
 
   return appendable;
+}
+
+function rewriteSeedCausationId(
+  event: KnowledgeEvent,
+  committedIdsByFixtureId: ReadonlyMap<string, string>,
+  fixtureIds: ReadonlySet<string>
+): string | undefined {
+  const fixtureCausationId = event.context.causationId;
+  if (fixtureCausationId === undefined) {
+    return undefined;
+  }
+
+  if (!fixtureIds.has(fixtureCausationId)) {
+    throw new Error(
+      `Cannot seed ${event.id}: causationId ${fixtureCausationId} is not present in the seed fixture set`
+    );
+  }
+
+  const committedCausationId = committedIdsByFixtureId.get(fixtureCausationId);
+  if (committedCausationId === undefined) {
+    throw new Error(
+      `Cannot seed ${event.id}: causationId ${fixtureCausationId} has not been committed earlier in seed order`
+    );
+  }
+
+  return committedCausationId;
 }
 
 function validateAppendableEvent(
@@ -237,5 +281,14 @@ function safeDiagnostic(error: unknown, allowedRepairActions: readonly string[])
 
 function safeMessage(error: unknown): string {
   const rawMessage = error instanceof Error ? error.message : String(error);
-  return rawMessage.replaceAll(/token|secret|password|oauth|credential/gi, "[redacted]");
+  if (containsSecretTerm(rawMessage)) {
+    return "Runtime diagnostic redacted because the failure message referenced sensitive material.";
+  }
+  return rawMessage;
+}
+
+function containsSecretTerm(message: string): boolean {
+  return /token|secret|password|oauth|credential|authorization|bearer|api_key|private_key|session/i.test(
+    message
+  );
 }

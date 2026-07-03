@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPrrRuntime } from "../src/runtime.js";
@@ -140,6 +141,80 @@ describe("PRR local runtime", () => {
     expect(await ledger.readAll()).toEqual([]);
   });
 
+  it("does not append a draft event for an unsupported jurisdiction pack", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createPrrRuntime({
+      ledger,
+      actor: investigatorActor,
+      now: fixedNow,
+      requestIdFactory: () => "prr_unsupported_pack"
+    });
+
+    const result = await runtime.createDraftRequest({
+      jurisdictionPack: { name: "unsupported-public-records", version: "9.9.9" },
+      agency: { name: "City Clerk", email: "clerk@example.gov" },
+      requester: { name: "Avery Investigator", email: "avery@example.org" },
+      requestText: "All budget amendment memos from January 2026.",
+      receivedAt: "2026-07-03T12:00:00.000Z"
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("expected unsupported jurisdiction pack to fail before append");
+    }
+    expect(result.failedStep).toBe("validate-input");
+    expect(result.committedEventIds).toEqual([]);
+    expect(result.diagnostic.message).not.toContain("9.9.9");
+    expect(await ledger.readAll()).toEqual([]);
+  });
+
+  it("redacts secret values from runtime diagnostics", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createPrrRuntime({
+      ledger,
+      actor: investigatorActor,
+      now: fixedNow,
+      requestIdFactory: () => "prr_redacted_failure",
+      deadlineCalculator() {
+        throw new Error("authorization: Bearer abc123 password=hunter2 api_key=sk_test");
+      }
+    });
+
+    const result = await runtime.createDraftRequest({
+      jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+      agency: { name: "City Clerk", email: "clerk@example.gov" },
+      requester: { name: "Avery Investigator", email: "avery@example.org" },
+      requestText: "All budget amendment memos from January 2026.",
+      receivedAt: "2026-07-03T12:00:00.000Z"
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("expected injected deadline failure to return a diagnostic");
+    }
+    expect(result.diagnostic.message).not.toContain("abc123");
+    expect(result.diagnostic.message).not.toContain("hunter2");
+    expect(result.diagnostic.message).not.toContain("sk_test");
+    expect(result.diagnostic.message).not.toMatch(/Bearer\s+\S+/i);
+  });
+
+  it("creates unique default request ids when now is stable", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createPrrRuntime({ ledger, actor: investigatorActor, now: fixedNow });
+
+    const first = await runtime.createDraftRequest(draftInput("City Clerk"));
+    const second = await runtime.createDraftRequest(draftInput("County Clerk"));
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    const requestIds = (await ledger.readAll())
+      .filter((event) => event.type === "prr.request.created")
+      .map((event) => event.payload.prrRequestId);
+    expect(requestIds).toHaveLength(2);
+    expect(new Set(requestIds).size).toBe(2);
+    expect(requestIds.every((requestId) => /^prr_[a-zA-Z0-9_-]+$/.test(requestId))).toBe(true);
+  });
+
   it("rewrites seeded fixture causation ids to committed predecessor ids", async () => {
     const ledger = new InMemoryEventLedger();
     const runtime = createPrrRuntime({ ledger, actor: investigatorActor, now: fixedNow });
@@ -153,6 +228,31 @@ describe("PRR local runtime", () => {
     expect(created?.id).not.toBe("evt_prr_draft_city_budget_created");
     expect(deadline?.context.causationId).toBe(created?.id);
     expect(deadline?.context.causationId).not.toBe("evt_prr_draft_city_budget_created");
+  });
+
+  it("rejects seed events with unknown or future causation ids before appending that event", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createPrrRuntime({ ledger, actor: investigatorActor, now: fixedNow });
+    const [created, deadline] = goldenPrrLedgerEvents.filter(
+      (event) => event.streamId === "prr_draft_city_budget"
+    );
+    const invalidDeadline = {
+      ...requiredEvent(deadline),
+      context: {
+        ...requiredEvent(deadline).context,
+        causationId: "evt_future_not_yet_committed"
+      }
+    } satisfies KnowledgeEvent;
+
+    await expect(runtime.seedIfEmpty([requiredEvent(created), invalidDeadline])).rejects.toThrow(
+      /causation/i
+    );
+
+    const committedEvents = await ledger.readAll();
+    expect(committedEvents).toHaveLength(1);
+    expect(committedEvents.every((event) => event.context.causationId?.startsWith("evt_prr_") !== true)).toBe(
+      true
+    );
   });
 
   it("exposes committed events for diagnostics", async () => {
@@ -176,4 +276,21 @@ function tempDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "cestus-prr-"));
   tempDirs.push(dir);
   return dir;
+}
+
+function draftInput(agencyName: string) {
+  return {
+    jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+    agency: { name: agencyName, email: "clerk@example.gov" },
+    requester: { name: "Avery Investigator", email: "avery@example.org" },
+    requestText: "All budget amendment memos from January 2026.",
+    receivedAt: "2026-07-03T12:00:00.000Z"
+  } as const;
+}
+
+function requiredEvent(event: KnowledgeEvent | undefined): KnowledgeEvent {
+  if (event === undefined) {
+    throw new Error("missing runtime test fixture event");
+  }
+  return event;
 }
