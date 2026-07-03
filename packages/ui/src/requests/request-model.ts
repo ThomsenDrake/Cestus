@@ -18,6 +18,7 @@ import {
   type PrrGrouping,
   type PrrLaneId,
   type PrrLaneModel,
+  type PrrProvider,
   type PrrRequestCard,
   type PrrSavedView,
   type PrrSavedViewFilters,
@@ -460,8 +461,8 @@ function deadlinePosture(detail: PrrWorkspaceDtoRequestDetail): string {
   return `${label} ${detail.activeDeadline.deadlineDate}. ${explanation}`;
 }
 
-function correspondenceProvider(detail: PrrWorkspaceDtoRequestDetail) {
-  return (detail.latestInboundCorrespondence ?? detail.latestOutboundCorrespondence)?.provider ?? "gmail";
+function correspondenceProvider(detail: PrrWorkspaceDtoRequestDetail): PrrProvider {
+  return (detail.latestInboundCorrespondence ?? detail.latestOutboundCorrespondence)?.provider ?? "none";
 }
 
 function correspondenceSyncState(detail: PrrWorkspaceDtoRequestDetail): string {
@@ -486,6 +487,8 @@ function correspondenceLabel(
 
 function providerDisplayName(provider: string): string {
   switch (provider) {
+    case "none":
+      return "No provider event";
     case "gmail":
       return "Gmail";
     case "imap-smtp":

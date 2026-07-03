@@ -60,6 +60,20 @@
 - `packages/ui/test/request-builder.test.tsx`: `npm run verify` exposed stale synchronous builder-open assertions through `App`. Updated only the two App-driven builder tests to await the loaded Requests route/dialog. Focus-trap component tests remain unchanged.
 - Supporting command/result: `npm test -- packages/ui/test/request-shell.test.tsx packages/ui/test/request-builder.test.tsx` passed with 2 test files and 9 tests.
 
+## Code Quality Review Fix
+
+- Review-fix status: `ready-for-review`.
+- Findings addressed:
+  1. Draft-only DTOs without correspondence now retain an explicit `none` provider state instead of fabricating Gmail.
+  2. Requests reloads when the `requestsAdapter` prop changes after an initial DTO has loaded.
+  3. The Requests data-boundary test now scans all product Requests source files under `packages/ui/src/requests/**/*.{ts,tsx}` except `request-fixtures.ts`, plus `packages/ui/src/App.tsx`.
+  4. Optional minor fix included: clicking `New request` while Requests is still loading does not queue a builder dialog to open after load completes.
+- Supporting review-fix edits:
+  - `packages/ui/src/requests/RequestDetailRail.tsx`: approved narrow supporting edit because quality review found fabricated Gmail provider for draft-only DTOs and the provider label map lives in `RequestDetailRail.tsx`.
+- Review-fix red command/result: `npm test -- packages/ui/test/request-model.test.ts packages/ui/test/app-smoke.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/request-detail-rail.test.tsx` failed as expected before production fixes. Vitest reported 4 failing tests: draft-only provider expected `none` but received `gmail`; the detail rail could not find `No provider event`; rerendering `App` with a new static adapter kept stale `Building Services Department` data; and the loading-time `New request` click opened a queued dialog after load.
+- Review-fix green command/result: `npm test -- packages/ui/test/request-model.test.ts packages/ui/test/app-smoke.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/request-detail-rail.test.tsx` passed with 4 test files and 15 tests.
+- Review-fix full verification result: `npm run verify` passed. Output included `typecheck passed`, Vitest `40 passed (40)` test files and `306 passed (306)` tests, Vite production build success, and `factory-readiness passed`.
+
 ## Review
 
 - Review status: Ready for review.

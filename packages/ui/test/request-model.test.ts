@@ -79,4 +79,13 @@ describe("PRR workspace model", () => {
       "User confirmed escalation"
     ]);
   });
+
+  it("does not fabricate a provider for draft-only requests without correspondence", () => {
+    const selected = getSelectedPrrRequest(buildTestRequestsWorkspace(), "prr_draft_city_budget");
+
+    expect(selected?.correspondence.provider).toBe("none");
+    expect(selected?.correspondence.syncState).toBe("No provider event in replayed DTO.");
+    expect(selected?.correspondence.latestInbound).toBe("No inbound correspondence in replayed events.");
+    expect(selected?.correspondence.latestOutbound).toBe("No outbound correspondence in replayed events.");
+  });
 });

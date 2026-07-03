@@ -1,9 +1,35 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { buildPrrProjection } from "../../prr/src/projection.js";
+import { buildPrrWorkspaceDto, type PrrWorkspaceDto } from "../../prr/src/read-api.js";
+import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { App } from "../src/App.js";
+import { createStaticRequestsAdapter, type RequestsWorkspaceAdapter } from "../src/requests/request-adapter.js";
 
 describe("Cestus UI bootstrap", () => {
+  function buildTestRequestsWorkspace() {
+    return buildPrrWorkspaceDto(buildPrrProjection(prrWorkspaceSeedEvents), {
+      now: "2026-07-20T12:00:00.000Z"
+    });
+  }
+
+  function replaceCardAgency(
+    workspace: PrrWorkspaceDto,
+    prrRequestId: string,
+    agencyName: string
+  ): PrrWorkspaceDto {
+    return {
+      ...workspace,
+      cards: workspace.cards.map((card) =>
+        card.prrRequestId === prrRequestId ? { ...card, agencyName } : card
+      ),
+      requestDetails: workspace.requestDetails.map((detail) =>
+        detail.prrRequestId === prrRequestId ? { ...detail, agencyName } : detail
+      )
+    };
+  }
+
   it("renders the Command workspace entry point", async () => {
     render(<App />);
 
@@ -29,5 +55,51 @@ describe("Cestus UI bootstrap", () => {
     expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
     expect(screen.getByText("Building Services Department")).toBeInTheDocument();
     expect(screen.getByText("$1,850.00 challenged")).toBeInTheDocument();
+  });
+
+  it("reloads Requests when the adapter prop changes", async () => {
+    const firstWorkspace = buildTestRequestsWorkspace();
+    const secondWorkspace = replaceCardAgency(
+      firstWorkspace,
+      "prr_fee_building_permits",
+      "Records Replacement Office"
+    );
+    const firstAdapter = createStaticRequestsAdapter(firstWorkspace);
+    const secondAdapter = createStaticRequestsAdapter(secondWorkspace);
+    const { rerender } = render(<App requestsAdapter={firstAdapter} />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+
+    expect(await screen.findByText("Building Services Department")).toBeInTheDocument();
+
+    rerender(<App requestsAdapter={secondAdapter} />);
+
+    expect(await screen.findByText("Records Replacement Office")).toBeInTheDocument();
+    expect(screen.queryByText("Building Services Department")).not.toBeInTheDocument();
+  });
+
+  it("does not open a queued builder after Requests finishes loading", async () => {
+    const workspace = buildTestRequestsWorkspace();
+    let resolveWorkspace: (workspace: PrrWorkspaceDto) => void = () => undefined;
+    const delayedAdapter: RequestsWorkspaceAdapter = {
+      loadRequestsWorkspace: () =>
+        new Promise((resolve) => {
+          resolveWorkspace = resolve;
+        })
+    };
+
+    render(<App requestsAdapter={delayedAdapter} />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    fireEvent.click(screen.getByRole("button", { name: "New request" }));
+
+    expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveWorkspace(workspace);
+    });
+
+    expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
   });
 });

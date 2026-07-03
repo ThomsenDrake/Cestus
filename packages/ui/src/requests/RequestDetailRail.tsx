@@ -15,6 +15,7 @@ const toneClasses: Record<PrrSignalTone, string> = {
 };
 
 const providerLabels: Record<PrrDetailModel["correspondence"]["provider"], string> = {
+  none: "No provider event",
   gmail: "Gmail",
   "imap-smtp": "IMAP/SMTP",
   himalaya: "Himalaya"
