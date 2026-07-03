@@ -50,9 +50,9 @@ export function RequestWorkspace({ fixture, onOpenBuilder }: RequestWorkspacePro
         onViewModeChange={setViewMode}
       />
       <RequestBoard lanes={model.lanes} selectedRequestId={selectedRequestId} onSelectRequest={setSelectedRequestId} />
-      <aside aria-label="Request detail rail" className="sr-only">
+      <div role="status" aria-label="Selected request" className="sr-only">
         {model.selectedRequest?.title ?? "No request selected"}
-      </aside>
+      </div>
     </section>
   );
 }

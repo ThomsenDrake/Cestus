@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { App } from "../src/App.js";
 import { prrWorkspaceFixture } from "../src/requests/request-fixtures.js";
 import { RequestWorkspace } from "../src/requests/RequestWorkspace.js";
 
@@ -34,13 +35,25 @@ describe("RequestWorkspace", () => {
     expect(screen.queryByText("Federal Aviation Administration")).not.toBeInTheDocument();
   });
 
-  it("updates the hidden request detail rail when a request is selected", () => {
+  it("exposes selected request card state when a request is selected", () => {
     render(<RequestWorkspace fixture={prrWorkspaceFixture} onOpenBuilder={() => undefined} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Select Transit authority denial appeal" }));
 
-    expect(within(screen.getByRole("complementary", { name: "Request detail rail" })).getByText(
+    expect(screen.getByRole("button", { name: "Select Transit authority denial appeal" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(within(screen.getByRole("status", { name: "Selected request" })).getByText(
       "Transit authority denial appeal"
     )).toBeInTheDocument();
+  });
+
+  it("keeps App Requests mode to one request detail rail landmark", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+
+    expect(screen.getAllByRole("complementary", { name: "Request detail rail" })).toHaveLength(1);
   });
 });
