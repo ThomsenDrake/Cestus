@@ -20,11 +20,16 @@ describe("CommandDashboard", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Command" })).toBeInTheDocument();
-    expect(screen.getAllByText("Open requests").length).toBeGreaterThan(0);
+    expect(screen.getByRole("region", { name: "Central tactical field" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Command signal strip" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Priority queue" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Signals" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Diagnostics" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Select Miami-Dade Aviation Department stalling signal" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Select Projection lag detected for accepted request event" })
     ).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Active investigations" })).toBeInTheDocument();
   });

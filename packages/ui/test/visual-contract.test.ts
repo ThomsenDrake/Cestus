@@ -7,7 +7,7 @@ const uiTsxFiles = [
   "packages/ui/src/workspace/CommandBand.tsx",
   "packages/ui/src/workspace/ModuleRail.tsx",
   "packages/ui/src/workspace/CommandDashboard.tsx",
-  "packages/ui/src/workspace/StatusStrip.tsx",
+  "packages/ui/src/workspace/SignalStrip.tsx",
   "packages/ui/src/workspace/QueueFilters.tsx",
   "packages/ui/src/workspace/PriorityQueue.tsx",
   "packages/ui/src/workspace/TacticalPanel.tsx",

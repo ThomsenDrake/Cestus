@@ -5,15 +5,11 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.js";
 
 describe("ui.sh picker scaffolding", () => {
-  it("exposes the approved picker decision points with one visible option each", () => {
+  it("exposes the remaining picker decision point with one visible option", () => {
     const { container } = render(<App />);
     const picks = [...container.querySelectorAll("[data-uidotsh-pick]")];
 
-    expect(picks.map((pick) => pick.getAttribute("data-uidotsh-pick"))).toStrictEqual([
-      "Status strip treatment",
-      "Queue density",
-      "Right rail treatment"
-    ]);
+    expect(picks.map((pick) => pick.getAttribute("data-uidotsh-pick"))).toStrictEqual(["Right rail treatment"]);
 
     for (const pick of picks) {
       const options = [...pick.querySelectorAll("[data-uidotsh-option]")];

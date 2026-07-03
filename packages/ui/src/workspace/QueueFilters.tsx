@@ -25,8 +25,8 @@ export function QueueFilters({ activeFilter, onFilterChange }: QueueFiltersProps
           className={[
             "relative min-h-9 shrink-0 border px-3 py-2 text-base sm:text-sm",
             activeFilter === filter.value
-              ? "border-[var(--cestus-cyan)]/50 bg-[var(--cestus-cyan)]/10 text-[var(--cestus-text)]"
-              : "border-white/10 text-[var(--cestus-muted-strong)] hover:border-white/20 hover:bg-white/5 hover:text-[var(--cestus-text)]"
+              ? "border-[var(--signal-orange)] bg-[var(--signal-orange)]/12 text-[var(--paper-light)]"
+              : "border-[var(--console-line)] text-[var(--muted-amber)] hover:border-[var(--signal-amber)] hover:bg-[var(--console-panel)] hover:text-[var(--paper-light)]"
           ].join(" ")}
         >
           <span
