@@ -181,7 +181,19 @@ function GateChecklist({ checks }: { readonly checks: readonly PrrGateCheck[] })
             ].join(" ")}
           />
           <div className="min-w-0">
-            <div className="text-base font-medium text-[var(--paper-light)] sm:text-sm">{check.label}</div>
+            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-base font-medium text-[var(--paper-light)] sm:text-sm">{check.label}</div>
+              <div
+                className={[
+                  "w-fit shrink-0 border px-2 py-1 font-mono text-base sm:text-sm",
+                  check.complete
+                    ? "border-[var(--signal-green)] text-[var(--signal-green)]"
+                    : "border-[var(--signal-red)] text-[var(--signal-red)]"
+                ].join(" ")}
+              >
+                {check.complete ? "Complete" : "Needs review"}
+              </div>
+            </div>
             <div className="mt-1 text-base text-pretty text-[var(--muted-amber)] sm:text-sm">{check.detail}</div>
           </div>
         </li>
