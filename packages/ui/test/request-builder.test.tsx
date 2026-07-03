@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildPrrProjection } from "../../prr/src/projection.js";
 import { buildPrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
@@ -78,6 +78,38 @@ describe("RequestBuilder", () => {
     expect(screen.getByLabelText("Received timestamp")).toHaveValue("");
   });
 
+  it("does not submit an empty builder draft and shows validation guidance", () => {
+    const workspace = buildTestRequestsWorkspace();
+    const onSubmit = vi.fn();
+
+    render(<RequestBuilder builder={buildPrrBuilderModel(workspace)} onClose={() => undefined} onSubmit={onSubmit} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText("Agency name is required.")).toBeInTheDocument();
+    expect(screen.getByText("Requester name is required.")).toBeInTheDocument();
+    expect(screen.getByText("Request text is required.")).toBeInTheDocument();
+  });
+
+  it("does not submit a builder draft with an invalid received timestamp", () => {
+    const workspace = buildTestRequestsWorkspace();
+    const onSubmit = vi.fn();
+
+    render(<RequestBuilder builder={buildPrrBuilderModel(workspace)} onClose={() => undefined} onSubmit={onSubmit} />);
+
+    fireEvent.change(screen.getByLabelText("Agency name"), { target: { value: "City Clerk" } });
+    fireEvent.change(screen.getByLabelText("Requester name"), { target: { value: "Avery Investigator" } });
+    fireEvent.change(screen.getByLabelText("Request text"), {
+      target: { value: "All budget amendment memos from January 2026." }
+    });
+    fireEvent.change(screen.getByLabelText("Received timestamp"), { target: { value: "tomorrow morning" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText("Received timestamp must be an ISO 8601 datetime.")).toBeInTheDocument();
+  });
+
   it("moves focus into the dialog and restores it after Escape closes the builder", async () => {
     render(<App />);
 
@@ -147,6 +179,11 @@ describe("RequestBuilder", () => {
     render(<App requestsAdapter={adapter} />);
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     fireEvent.click(await screen.findByRole("button", { name: "New request" }));
+    fireEvent.change(screen.getByLabelText("Agency name"), { target: { value: "City Clerk" } });
+    fireEvent.change(screen.getByLabelText("Requester name"), { target: { value: "Avery Investigator" } });
+    fireEvent.change(screen.getByLabelText("Request text"), {
+      target: { value: "All budget amendment memos from January 2026." }
+    });
     fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
 
     expect(screen.getByRole("dialog", { name: "Guided request builder" })).toBeInTheDocument();

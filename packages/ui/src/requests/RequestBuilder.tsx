@@ -47,6 +47,7 @@ export function RequestBuilder({
 }: RequestBuilderProps) {
   const [activeStepId, setActiveStepId] = useState(builder.steps[0]?.id ?? "");
   const [draftForm, setDraftForm] = useState<DraftFormState>(() => getInitialDraftForm(builder));
+  const [validationMessages, setValidationMessages] = useState<readonly string[]>([]);
   const [suggestedFillValues, setSuggestedFillValues] = useState<Record<string, string>>(() =>
     getInitialSuggestedFillValues(builder)
   );
@@ -74,6 +75,10 @@ export function RequestBuilder({
   }
 
   function handleDraftFieldChange<Field extends keyof DraftFormState>(field: Field, value: DraftFormState[Field]) {
+    if (validationMessages.length > 0) {
+      setValidationMessages([]);
+    }
+
     setDraftForm((current) => ({ ...current, [field]: value }));
   }
 
@@ -83,6 +88,13 @@ export function RequestBuilder({
       return;
     }
 
+    const draftValidationMessages = validateDraftForm(draftForm);
+    if (draftValidationMessages.length > 0) {
+      setValidationMessages(draftValidationMessages);
+      return;
+    }
+
+    setValidationMessages([]);
     void onSubmit(toCreateDraftInput(draftForm));
   }
 
@@ -190,6 +202,18 @@ export function RequestBuilder({
             {diagnosticMessage === undefined ? null : (
               <div role="alert" className="border border-[var(--signal-red)] bg-[var(--command-black)]/72 p-3">
                 <p className="text-base text-pretty text-[var(--paper-light)] sm:text-sm">{diagnosticMessage}</p>
+              </div>
+            )}
+            {validationMessages.length === 0 ? null : (
+              <div role="alert" className="border border-[var(--signal-amber)] bg-[var(--command-black)]/72 p-3">
+                <p className="text-base font-semibold text-[var(--paper-light)] sm:text-sm">Review required draft fields.</p>
+                <ul className="mt-2 space-y-1">
+                  {validationMessages.map((message) => (
+                    <li key={message} className="text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
+                      {message}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
             <DraftRequestFields
@@ -466,6 +490,49 @@ function toCreateDraftInput(form: DraftFormState): RequestsCreateDraftInput {
     requestText: form.requestText.trim(),
     ...(receivedAt === undefined ? {} : { receivedAt })
   };
+}
+
+function validateDraftForm(form: DraftFormState): readonly string[] {
+  const messages: string[] = [];
+  if (missingRequiredText(form.agencyName)) {
+    messages.push("Agency name is required.");
+  }
+  if (missingRequiredText(form.requesterName)) {
+    messages.push("Requester name is required.");
+  }
+  if (missingRequiredText(form.requestText)) {
+    messages.push("Request text is required.");
+  }
+
+  const receivedAt = optionalTrimmedValue(form.receivedAt);
+  if (receivedAt !== undefined && !isValidReceivedTimestamp(receivedAt)) {
+    messages.push("Received timestamp must be an ISO 8601 datetime.");
+  }
+
+  return Object.freeze(messages);
+}
+
+function missingRequiredText(value: string): boolean {
+  return value.trim().length === 0;
+}
+
+function isValidReceivedTimestamp(value: string): boolean {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/);
+  if (match === null) {
+    return false;
+  }
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
+  const date = new Date(value);
+  return (
+    Number.isFinite(date.getTime()) &&
+    date.getUTCFullYear() === Number(yearText) &&
+    date.getUTCMonth() === Number(monthText) - 1 &&
+    date.getUTCDate() === Number(dayText) &&
+    date.getUTCHours() === Number(hourText) &&
+    date.getUTCMinutes() === Number(minuteText) &&
+    date.getUTCSeconds() === Number(secondText)
+  );
 }
 
 function parseJurisdictionPackValue(value: string): RequestsCreateDraftInput["jurisdictionPack"] {

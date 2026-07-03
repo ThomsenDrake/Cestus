@@ -168,4 +168,55 @@ describe("Cestus UI bootstrap", () => {
       laneId: "drafting"
     });
   });
+
+  it("rejects a duplicate generated request stream without appending local replay events", async () => {
+    const adapter = createLocalReplayRequestsAdapter(prrWorkspaceSeedEvents, {
+      idFactory: () => "evt_duplicate_draft",
+      now: () => "2026-07-03T18:00:00.000Z",
+      requestIdFactory: () => "prr_draft_city_budget"
+    });
+    const beforeEvents = adapter.readEventsForTest();
+
+    const result = await adapter.createDraftRequest({
+      jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+      agency: { name: "City Clerk", email: "clerk@example.gov" },
+      requester: { name: "Avery Investigator", email: "avery@example.org" },
+      requestText: "All budget amendment memos from January 2026."
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.committedEventIds).toEqual([]);
+    if (!result.ok) {
+      expect(result.failedStep).toBe("append-request");
+      expect(result.diagnostic.message).toBe(
+        "Draft creation could not start because the request stream already exists. Reload Requests and try again."
+      );
+    }
+    expect(adapter.readEventsForTest()).toEqual(beforeEvents);
+  });
+
+  it("returns a fixed safe diagnostic for unsupported local replay draft failures", async () => {
+    const adapter = createLocalReplayRequestsAdapter([], {
+      idFactory: () => "evt_invalid_draft",
+      now: () => "2026-07-03T18:00:00.000Z",
+      requestIdFactory: () => "prr_draft_invalid_jurisdiction"
+    });
+
+    const result = await adapter.createDraftRequest({
+      jurisdictionPack: { name: "secret-token-pack", version: "0.1.0" },
+      agency: { name: "City Clerk", email: "clerk@example.gov" },
+      requester: { name: "Avery Investigator", email: "avery@example.org" },
+      requestText: "All budget amendment memos from January 2026. Bearer abc123"
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.failedStep).toBe("estimate-deadline");
+      expect(result.diagnostic.message).toBe(
+        "Draft creation could not estimate a deadline for the selected jurisdiction pack."
+      );
+      expect(result.diagnostic.message).not.toMatch(/secret-token-pack|Bearer|Zod|schema/i);
+    }
+    expect(adapter.readEventsForTest()).toEqual([]);
+  });
 });
