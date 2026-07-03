@@ -6,7 +6,7 @@
 - Branch: `codex/prr-ledger-backed-workspace-design`
 - Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
 - Claimed-at UTC: `2026-07-03T20:47:01Z`
-- Status: claimed
+- Status: ready-for-review
 - Owned files:
   - `docs/agentic/claims/task-1-rich-prr-projection.md`
   - `packages/prr/src/workspace-seed.ts`
@@ -14,8 +14,10 @@
   - `packages/prr/test/projection.test.ts`
   - `packages/prr/src/projection.ts`
   - `packages/prr/src/index.ts`
-- Red command/result: pending
-- Green command/result: pending
-- Full verification result: pending
-- Review status: pending
-- Concerns: none recorded yet
+  - `packages/prr/test/read-api.test.ts` (verifier-required expectation update for expanded golden seed)
+  - `packages/ui/test/command-model.test.ts` (verifier-required expectation update for expanded golden seed)
+- Red command/result: `npm test -- packages/prr/test/projection.test.ts` failed as expected; 1 test file failed, 9 failed / 16 passed. Failures showed missing rich projected fields and only `prr_req_001` present in the golden seed.
+- Green command/result: `npm test -- packages/prr/test/projection.test.ts` passed; 1 test file / 25 tests passed.
+- Full verification result: `npm run verify` passed; typecheck passed, 38 test files / 280 tests passed, UI build passed, factory-readiness passed.
+- Review status: ready for reviewer
+- Concerns: Full verification required updating two downstream tests outside the original allowed file list because they imported `goldenPrrLedgerEvents` and asserted the old single-request fixture cardinality. No read-api, runtime, UI production code, package metadata, or readiness scripts were changed.

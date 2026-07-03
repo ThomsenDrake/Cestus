@@ -21,23 +21,23 @@ describe("CommandBoardViewModel", () => {
     expect(model.statusMetrics).toContainEqual({
       id: "open-requests",
       label: "Open requests",
-      value: "1",
+      value: "9",
       tone: "cyan"
     });
     expect(model.statusMetrics).toContainEqual({
       id: "due-soon",
       label: "Due soon",
-      value: "1",
+      value: "3",
       tone: "amber"
     });
-    expect(model.queueItems[0]).toMatchObject({
+    expect(model.queueItems).toContainEqual(expect.objectContaining({
       id: "deadline:prr_req_001",
       kind: "deadline",
       severity: "medium",
       title: "Example Agency response window",
       sourceLabel: "estimated deadline",
       actionLabel: "Review deadline"
-    });
+    }));
   });
 
   it("prioritizes confirmed stalling before routine deadline items", () => {

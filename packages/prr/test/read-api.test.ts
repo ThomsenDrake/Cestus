@@ -7,18 +7,17 @@ describe("PRR read API DTOs", () => {
   it("builds request queue rows without UI business logic", () => {
     const projection = buildPrrProjection(goldenPrrLedgerEvents);
 
-    expect(buildRequestQueueRows(projection)).toStrictEqual([
-      {
-        prrRequestId: "prr_req_001",
-        agencyName: "Example Agency",
-        status: "awaitingProduction",
-        deadlineDate: "2026-07-30",
-        deadlineSource: "estimated",
-        possibleStalling: false,
-        confirmedStalling: false,
-        productionCount: 2
-      }
-    ]);
+    expect(buildRequestQueueRows(projection)).toHaveLength(9);
+    expect(buildRequestQueueRows(projection)).toContainEqual({
+      prrRequestId: "prr_req_001",
+      agencyName: "Example Agency",
+      status: "awaitingProduction",
+      deadlineDate: "2026-07-30",
+      deadlineSource: "estimated",
+      possibleStalling: false,
+      confirmedStalling: false,
+      productionCount: 2
+    });
   });
 
   it("sorts request queue rows by request id", () => {
