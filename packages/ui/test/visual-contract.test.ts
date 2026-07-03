@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 const uiTsxFiles = [
   "packages/ui/src/App.tsx",
   "packages/ui/src/workspace/OpsShell.tsx",
-  "packages/ui/src/workspace/LeftRail.tsx",
-  "packages/ui/src/workspace/TopStatusBar.tsx",
+  "packages/ui/src/workspace/CommandBand.tsx",
+  "packages/ui/src/workspace/ModuleRail.tsx",
   "packages/ui/src/workspace/CommandDashboard.tsx",
   "packages/ui/src/workspace/StatusStrip.tsx",
   "packages/ui/src/workspace/QueueFilters.tsx",
