@@ -2,7 +2,7 @@ import { filterQueueItems } from "./command-model.js";
 import type { CommandBoardViewModel, QueueFilter } from "./command-types.js";
 import { PriorityQueue } from "./PriorityQueue.js";
 import { QueueFilters } from "./QueueFilters.js";
-import { StatusStrip } from "./StatusStrip.js";
+import { SignalStrip } from "./SignalStrip.js";
 import { TacticalPanel } from "./TacticalPanel.js";
 
 interface CommandDashboardProps {
@@ -25,15 +25,15 @@ export function CommandDashboard({
   const visibleItems = filterQueueItems(model.queueItems, activeFilter);
 
   return (
-    <div className="space-y-5">
-      <div>
-        <p className="font-mono text-base text-[var(--cestus-cyan)] sm:text-sm">Daily command center</p>
-        <h1 className="mt-1 text-2xl font-semibold text-balance">Command</h1>
+    <section aria-label="Central tactical field" className="space-y-5">
+      <div className="border-b border-[var(--console-line)] pb-4">
+        <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">Public records operations</p>
+        <h1 className="mt-1 text-2xl font-semibold text-balance text-[var(--paper-light)]">Command</h1>
       </div>
-      <StatusStrip metrics={model.statusMetrics} />
+      <SignalStrip metrics={model.statusMetrics} />
       <section className="space-y-3" aria-labelledby="priority-queue-heading">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <h2 id="priority-queue-heading" className="text-lg font-semibold text-balance">
+          <h2 id="priority-queue-heading" className="text-lg font-semibold text-balance text-[var(--paper-light)]">
             Priority queue
           </h2>
           <QueueFilters activeFilter={activeFilter} onFilterChange={onFilterChange} />
@@ -50,6 +50,6 @@ export function CommandDashboard({
           <TacticalPanel key={panel.id} panel={panel} />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
