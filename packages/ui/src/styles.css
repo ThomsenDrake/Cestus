@@ -3,21 +3,37 @@
 
 :root {
   color-scheme: dark;
-  --cestus-bg: #08090b;
-  --cestus-panel: #111317;
-  --cestus-panel-raised: #171a1f;
-  --cestus-line: rgba(243, 239, 231, 0.12);
-  --cestus-muted: #8f887d;
-  --cestus-muted-strong: #b8afa3;
-  --cestus-muted-soft: #c8c2b8;
-  --cestus-text: #f3efe7;
-  --cestus-ink: #120d05;
-  --cestus-amber: #ffb84d;
-  --cestus-red: #ff5a5f;
-  --cestus-green: #80e08f;
-  --cestus-cyan: #60d5ff;
-  background: #08090b;
-  color: #f3efe7;
+  --command-black: #080302;
+  --console-void: #120504;
+  --console-panel: #190806;
+  --console-panel-raised: #220d08;
+  --console-line: rgba(255, 179, 56, 0.18);
+  --console-line-strong: rgba(255, 86, 56, 0.48);
+  --signal-red: #ff5638;
+  --signal-orange: #d93620;
+  --signal-amber: #ffb338;
+  --signal-green: #70f0a7;
+  --signal-cyan: #4ea2ff;
+  --paper-light: #f8ead0;
+  --muted-amber: #c9a46d;
+  --console-ink: #090302;
+
+  --cestus-bg: var(--command-black);
+  --cestus-panel: var(--console-panel);
+  --cestus-panel-raised: var(--console-panel-raised);
+  --cestus-line: var(--console-line);
+  --cestus-muted: var(--muted-amber);
+  --cestus-muted-strong: color-mix(in srgb, var(--muted-amber) 72%, var(--paper-light));
+  --cestus-muted-soft: color-mix(in srgb, var(--muted-amber) 42%, var(--paper-light));
+  --cestus-text: var(--paper-light);
+  --cestus-ink: var(--console-ink);
+  --cestus-amber: var(--signal-amber);
+  --cestus-red: var(--signal-red);
+  --cestus-green: var(--signal-green);
+  --cestus-cyan: var(--signal-cyan);
+
+  background: var(--command-black);
+  color: var(--paper-light);
   font-family:
     InterVariable, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -37,14 +53,30 @@
 body {
   min-width: 320px;
   margin: 0;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    var(--cestus-bg);
-  background-size: 32px 32px;
+  background: var(--command-black);
 }
 
 button,
 input {
   font: inherit;
+}
+
+.cestus-scan-layer {
+  background:
+    linear-gradient(rgba(255, 179, 56, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 179, 56, 0.045) 1px, transparent 1px),
+    radial-gradient(circle at 58% 38%, rgba(112, 240, 167, 0.11) 0 1px, transparent 2px),
+    radial-gradient(circle at 58% 38%, transparent 0 5rem, rgba(78, 162, 255, 0.09) 5.05rem 5.12rem, transparent 5.2rem),
+    radial-gradient(circle at 58% 38%, transparent 0 10rem, rgba(78, 162, 255, 0.07) 10.05rem 10.12rem, transparent 10.2rem);
+  background-size: 34px 34px, 34px 34px, auto, auto, auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
 }
