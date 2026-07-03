@@ -22,7 +22,7 @@ export function CommandBand({
   const signals = [
     { label: "Ledger", value: ledgerLabel, className: "text-[var(--signal-green)]" },
     { label: "Sync", value: syncLabel, className: "text-[var(--signal-cyan)]" },
-    { label: "Mode", value: deploymentLabel, className: "text-[var(--signal-amber)]" }
+    { label: "Node", value: deploymentLabel, className: "text-[var(--signal-amber)]" }
   ];
 
   return (
@@ -44,7 +44,7 @@ export function CommandBand({
             />
             <Bars3Icon aria-hidden="true" className="size-4 shrink-0 fill-[var(--paper-light)]" />
           </button>
-          <a href="/" aria-label="Homepage" className="shrink-0 font-mono text-base text-[var(--signal-red)] sm:text-sm">
+          <a href="/" aria-label="Cestus home" className="shrink-0 font-mono text-base text-[var(--signal-red)] sm:text-sm">
             CESTUS
           </a>
           <div className="min-w-0 border-l border-[var(--console-line)] pl-3">
