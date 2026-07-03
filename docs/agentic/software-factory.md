@@ -86,3 +86,35 @@ factory-readiness passed
 ```
 
 Factory scope remains backend/domain work. UI design and build decisions require direct user collaboration.
+
+## Ledger-Backed PRR Workspace Plan Readiness
+
+The ledger-backed Requests workspace plan was prepared from the approved design spec on 2026-07-03.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-03-ledger-backed-prr-workspace-design.md`
+- `docs/superpowers/plans/2026-07-03-ledger-backed-prr-workspace-implementation.md`
+
+Factory readiness now checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded command evidence:
+
+```text
+npm test -- packages/ui/test/visual-contract.test.ts packages/ui/test/ui-picker.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx
+Test Files  4 passed (4)
+Tests  16 passed (16)
+
+npm run factory:check
+factory-readiness passed
+
+npm run verify
+typecheck passed
+Test Files  40 passed (40)
+Tests  318 passed (318)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Preview evidence: pending controller preview gate

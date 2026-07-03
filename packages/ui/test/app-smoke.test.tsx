@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { buildPrrProjection } from "../../prr/src/projection.js";
 import { buildPrrWorkspaceDto, type PrrWorkspaceDto } from "../../prr/src/read-api.js";
@@ -43,6 +43,16 @@ describe("Cestus UI bootstrap", () => {
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Signal operations board" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Saved PRR view"), { target: { value: "florida-fees" } });
+    const feeCard = screen.getByRole("button", {
+      name: /Select Please provide building permit inspection records for the riverfront project/i
+    });
+    expect(feeCard).toBeInTheDocument();
+    fireEvent.click(feeCard);
+    expect(
+      await within(screen.getByLabelText("Request detail rail")).findByText(/Building Services Department/)
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Signal map" }));
     expect(screen.getByRole("region", { name: "PRR signal map" })).toBeInTheDocument();
@@ -137,6 +147,7 @@ describe("Cestus UI bootstrap", () => {
 
     expect(await screen.findByText("City Clerk")).toBeInTheDocument();
     expect(screen.getAllByText(/budget amendment memos/i).length).toBeGreaterThan(0);
+    expect(await within(screen.getByLabelText("Request detail rail")).findByText(/City Clerk/)).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
   });
 
