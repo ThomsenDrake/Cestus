@@ -4,12 +4,12 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.js";
 
 describe("requests workspace shell", () => {
-  it("routes to the interim Requests workspace shell", () => {
+  it("routes to the interim Requests workspace shell", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
 
-    expect(screen.getByRole("heading", { name: "Requests" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Requests" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("searchbox", { name: "Requests search" })).toHaveAttribute(
       "placeholder",
@@ -18,13 +18,13 @@ describe("requests workspace shell", () => {
     expect(screen.getByRole("button", { name: "New request" })).toBeInTheDocument();
   });
 
-  it("keeps Requests active when unsupported modules are selected", () => {
+  it("keeps Requests active when unsupported modules are selected", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     fireEvent.click(screen.getByRole("link", { name: "Evidence" }));
 
     expect(screen.getByRole("link", { name: "Requests" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("heading", { name: "Requests" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
   });
 });

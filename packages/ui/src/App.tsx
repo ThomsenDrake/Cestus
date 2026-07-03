@@ -1,12 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/command-model.js";
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
-import { prrWorkspaceFixture } from "./requests/request-fixtures.js";
+import { localReplayRequestsAdapter, type RequestsWorkspaceAdapter } from "./requests/request-adapter.js";
 import { RequestBuilder } from "./requests/RequestBuilder.js";
 import { RequestDetailRail } from "./requests/RequestDetailRail.js";
+import { buildPrrBuilderModel } from "./requests/request-model.js";
 import { RequestWorkspace } from "./requests/RequestWorkspace.js";
-import type { PrrDetailModel } from "./requests/request-types.js";
+import type { PrrDetailModel, PrrWorkspaceData } from "./requests/request-types.js";
 import { CommandDashboard } from "./workspace/CommandDashboard.js";
 import { DecisionRail } from "./workspace/DecisionRail.js";
 import { OpsShell } from "./workspace/OpsShell.js";
@@ -14,7 +15,11 @@ import { workspaceModules } from "./workspace/workspace-nav.js";
 
 const implementedModuleIds = new Set(["command", "requests"]);
 
-export function App() {
+interface AppProps {
+  readonly requestsAdapter?: RequestsWorkspaceAdapter;
+}
+
+export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps = {}) {
   const [activeModuleId, setActiveModuleId] = useState("command");
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
@@ -22,12 +27,52 @@ export function App() {
   const [selectedPrrRequestId, setSelectedPrrRequestId] = useState<string | undefined>("prr_req_001");
   const [selectedPrrRequest, setSelectedPrrRequest] = useState<PrrDetailModel | undefined>();
   const [requestBuilderOpen, setRequestBuilderOpen] = useState(false);
+  const [requestsWorkspace, setRequestsWorkspace] = useState<PrrWorkspaceData | undefined>();
+  const [requestsLoadState, setRequestsLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [requestsLoadError, setRequestsLoadError] = useState<string | undefined>();
+  const [requestsReloadKey, setRequestsReloadKey] = useState(0);
   const model = useMemo(
     () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds }),
     [reviewedItemIds]
   );
   const selectedItem = getSelectedCommandItem(model, selectedItemId);
   const requestsActive = activeModuleId === "requests";
+
+  useEffect(() => {
+    if (!requestsActive || requestsWorkspace !== undefined) {
+      return;
+    }
+
+    let canceled = false;
+    setRequestsLoadState("loading");
+    setRequestsLoadError(undefined);
+
+    requestsAdapter
+      .loadRequestsWorkspace()
+      .then((workspace) => {
+        if (canceled) {
+          return;
+        }
+
+        setRequestsWorkspace(workspace);
+        setRequestsLoadState("loaded");
+      })
+      .catch((error: unknown) => {
+        if (canceled) {
+          return;
+        }
+
+        setRequestsWorkspace(undefined);
+        setSelectedPrrRequest(undefined);
+        setRequestsLoadState("error");
+        setRequestsLoadError(error instanceof Error ? error.message : "Requests workspace could not be loaded.");
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [requestsActive, requestsAdapter, requestsReloadKey, requestsWorkspace]);
+
   const commandMain = (
     <CommandDashboard
       model={model}
@@ -38,15 +83,19 @@ export function App() {
       onMarkReviewed={(itemId) => setReviewedItemIds((current) => [...new Set([...current, itemId])])}
     />
   );
-  const requestsMain = (
-    <RequestWorkspace
-      fixture={prrWorkspaceFixture}
-      selectedRequestId={selectedPrrRequestId}
-      onOpenBuilder={() => setRequestBuilderOpen(true)}
-      onSelectRequest={setSelectedPrrRequestId}
-      onSelectedRequestChange={setSelectedPrrRequest}
-    />
-  );
+  const requestsMain = renderRequestsMain({
+    requestsWorkspace,
+    requestsLoadState,
+    requestsLoadError,
+    selectedPrrRequestId,
+    onOpenBuilder: () => setRequestBuilderOpen(true),
+    onSelectRequest: setSelectedPrrRequestId,
+    onSelectedRequestChange: setSelectedPrrRequest,
+    onRetry: () => {
+      setRequestsWorkspace(undefined);
+      setRequestsReloadKey((current) => current + 1);
+    }
+  });
   const commandDecisionRail = (
     <DecisionRail
       agentBrief={model.agentBrief}
@@ -92,9 +141,72 @@ export function App() {
           decisionRail={requestsActive ? <RequestDetailRail selectedRequest={selectedPrrRequest} /> : commandDecisionRail}
         />
       </div>
-      {requestsActive && requestBuilderOpen ? (
-        <RequestBuilder builder={prrWorkspaceFixture.builder} onClose={() => setRequestBuilderOpen(false)} />
+      {requestsActive && requestBuilderOpen && requestsWorkspace !== undefined ? (
+        <RequestBuilder builder={buildPrrBuilderModel(requestsWorkspace)} onClose={() => setRequestBuilderOpen(false)} />
       ) : null}
     </>
+  );
+}
+
+function renderRequestsMain({
+  requestsWorkspace,
+  requestsLoadState,
+  requestsLoadError,
+  selectedPrrRequestId,
+  onOpenBuilder,
+  onSelectRequest,
+  onSelectedRequestChange,
+  onRetry
+}: {
+  readonly requestsWorkspace: PrrWorkspaceData | undefined;
+  readonly requestsLoadState: "idle" | "loading" | "loaded" | "error";
+  readonly requestsLoadError: string | undefined;
+  readonly selectedPrrRequestId: string | undefined;
+  readonly onOpenBuilder: () => void;
+  readonly onSelectRequest: (prrRequestId: string) => void;
+  readonly onSelectedRequestChange: (selectedRequest: PrrDetailModel | undefined) => void;
+  readonly onRetry: () => void;
+}) {
+  if (requestsWorkspace !== undefined) {
+    return (
+      <RequestWorkspace
+        workspace={requestsWorkspace}
+        selectedRequestId={selectedPrrRequestId}
+        onOpenBuilder={onOpenBuilder}
+        onSelectRequest={onSelectRequest}
+        onSelectedRequestChange={onSelectedRequestChange}
+      />
+    );
+  }
+
+  if (requestsLoadState === "error") {
+    return (
+      <section aria-label="Requests load error" className="border border-[var(--signal-red)] bg-[var(--console-panel)]/72 p-4">
+        <p className="font-mono text-base text-[var(--signal-red)] sm:text-sm">Requests unavailable</p>
+        <p className="mt-3 text-base text-pretty text-[var(--paper-light)] sm:text-sm">
+          {requestsLoadError ?? "The replayed PRR workspace DTO could not be loaded."}
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="relative mt-4 min-h-10 border border-[var(--console-line)] px-3 py-2 text-base text-[var(--signal-amber)] hover:border-[var(--signal-amber)] hover:bg-[var(--console-panel)] hover:text-[var(--paper-light)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--signal-cyan)] sm:text-sm"
+        >
+          <span
+            aria-hidden="true"
+            className="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2"
+          />
+          Retry loading Requests
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-label="Requests loading state" className="border border-[var(--console-line)] bg-[var(--console-panel)]/72 p-4">
+      <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">Loading Requests workspace</p>
+      <p className="mt-3 text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
+        Replaying local PRR ledger seed events into the workspace DTO.
+      </p>
+    </section>
   );
 }

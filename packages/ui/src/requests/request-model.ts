@@ -1,17 +1,34 @@
+import type {
+  PrrWorkspaceDtoActionPacket,
+  PrrWorkspaceDtoCard,
+  PrrWorkspaceDtoGateCheck,
+  PrrWorkspaceDtoRequestDetail,
+  PrrWorkspaceDtoSavedView,
+  PrrWorkspaceDtoSeverity,
+  PrrWorkspaceDtoSignalMapEdge,
+  PrrWorkspaceDtoSignalMapNode
+} from "../../../prr/src/read-api.js";
 import {
   prrLaneOrder,
   type PrrAgencyGroup,
+  type PrrBuilderModel,
+  type PrrBuilderStep,
   type PrrDetailModel,
   type PrrGateCheck,
+  type PrrGrouping,
   type PrrLaneId,
   type PrrLaneModel,
   type PrrRequestCard,
   type PrrSavedView,
+  type PrrSavedViewFilters,
   type PrrSeverity,
+  type PrrSignalMapEdge,
   type PrrSignalMapModel,
+  type PrrSignalMapNode,
   type PrrSignalTone,
+  type PrrSuggestedFill,
   type PrrViewMode,
-  type PrrWorkspaceFixture,
+  type PrrWorkspaceData,
   type PrrWorkspaceViewModel
 } from "./request-types.js";
 
@@ -40,33 +57,73 @@ const severityRank: Record<PrrSeverity, number> = Object.freeze({
   low: 3
 });
 
+const savedViewDefaults: Record<
+  string,
+  {
+    readonly mode: PrrViewMode;
+    readonly grouping: PrrGrouping;
+    readonly filters: PrrSavedViewFilters;
+  }
+> = Object.freeze({
+  "all-active": Object.freeze({ mode: "board", grouping: "agency", filters: Object.freeze({}) }),
+  overdue: Object.freeze({ mode: "board", grouping: "agency", filters: Object.freeze({}) }),
+  "florida-fees": Object.freeze({ mode: "board", grouping: "agency", filters: Object.freeze({}) }),
+  "productions-arrived": Object.freeze({ mode: "signal-map", grouping: "agency", filters: Object.freeze({}) })
+});
+
+const signalPositions: readonly { readonly x: number; readonly y: number }[] = Object.freeze([
+  { x: 18, y: 24 },
+  { x: 48, y: 18 },
+  { x: 76, y: 28 },
+  { x: 25, y: 58 },
+  { x: 55, y: 52 },
+  { x: 82, y: 66 },
+  { x: 36, y: 82 },
+  { x: 66, y: 84 }
+]);
+
 export function buildPrrWorkspaceViewModel(
-  fixture: PrrWorkspaceFixture,
+  workspace: PrrWorkspaceData,
   options: BuildPrrWorkspaceOptions
 ): PrrWorkspaceViewModel {
-  const activeView = getSavedView(fixture, options.savedViewId);
-  const visibleCards = fixture.cards.filter((card) => cardMatchesView(card, activeView));
+  const savedViews = Object.freeze(workspace.savedViews.map(toSavedView));
+  const activeView = getSavedView(savedViews, options.savedViewId);
+  const detailByRequestId = new Map(workspace.requestDetails.map((detail) => [detail.prrRequestId, detail]));
+  const cards = Object.freeze(workspace.cards.map((card) => toRequestCard(card, detailByRequestId.get(card.prrRequestId))));
+  const visibleCards = cards.filter((card) => cardMatchesView(card, activeView));
 
   return Object.freeze({
-    savedViews: fixture.savedViews,
+    savedViews,
     activeView,
     viewMode: options.viewMode ?? activeView.mode,
     lanes: Object.freeze(prrLaneOrder.map((laneId) => buildLane(laneId, visibleCards))),
-    selectedRequest: getSelectedPrrRequest(fixture, options.selectedRequestId),
-    signalMap: buildSignalMap(fixture.signalMap, visibleCards),
-    builder: fixture.builder
+    selectedRequest: getSelectedPrrRequest(workspace, options.selectedRequestId),
+    signalMap: buildSignalMap(workspace.signalMap.nodes, workspace.signalMap.edges, visibleCards),
+    builder: buildPrrBuilderModel(workspace)
+  });
+}
+
+export function buildPrrBuilderModel(workspace: PrrWorkspaceData): PrrBuilderModel {
+  return Object.freeze({
+    steps: Object.freeze(workspace.builder.steps.map(toBuilderStep))
   });
 }
 
 export function getSelectedPrrRequest(
-  fixture: PrrWorkspaceFixture,
+  workspace: PrrWorkspaceData,
   selectedRequestId: string | undefined
 ): PrrDetailModel | undefined {
-  if (selectedRequestId === undefined) {
-    return fixture.requestDetails[0];
+  const detail =
+    selectedRequestId === undefined
+      ? workspace.requestDetails[0]
+      : workspace.requestDetails.find((requestDetail) => requestDetail.prrRequestId === selectedRequestId);
+
+  if (detail === undefined) {
+    return undefined;
   }
 
-  return fixture.requestDetails.find((detail) => detail.prrRequestId === selectedRequestId);
+  const card = workspace.cards.find((candidate) => candidate.prrRequestId === detail.prrRequestId);
+  return toDetailModel(detail, card);
 }
 
 export function sendGateArmed(gate: readonly PrrGateCheck[] | undefined): boolean {
@@ -77,10 +134,127 @@ export function unresolvedEscalationPrerequisites(gate: readonly PrrGateCheck[] 
   return Object.freeze((gate ?? []).filter((check) => !check.complete).map((check) => check.label));
 }
 
-function getSavedView(fixture: PrrWorkspaceFixture, savedViewId: string): PrrSavedView {
-  const activeView = fixture.savedViews.find((view) => view.id === savedViewId) ?? fixture.savedViews[0];
+function toSavedView(view: PrrWorkspaceDtoSavedView): PrrSavedView {
+  const defaults = savedViewDefaults[view.id] ?? savedViewDefaults["all-active"];
+  if (defaults === undefined) {
+    throw new Error("Requests workspace saved view defaults are unavailable.");
+  }
+
+  return Object.freeze({
+    id: view.id,
+    label: view.label,
+    mode: defaults.mode,
+    grouping: defaults.grouping,
+    filters: defaults.filters,
+    cardIds: Object.freeze([...view.cardIds])
+  });
+}
+
+function toRequestCard(
+  card: PrrWorkspaceDtoCard,
+  detail: PrrWorkspaceDtoRequestDetail | undefined
+): PrrRequestCard {
+  const agencyId = stableAgencyId(card.agencyName);
+  return Object.freeze({
+    id: `card_${card.prrRequestId}`,
+    prrRequestId: card.prrRequestId,
+    title: card.title,
+    agencyId,
+    agencyName: card.agencyName,
+    jurisdictionId: card.jurisdictionPackName,
+    jurisdictionLabel: jurisdictionLabel(card.jurisdictionPackName),
+    investigationId: "none",
+    investigationLabel: "No investigation link",
+    laneId: card.laneId,
+    severity: card.severity,
+    deadlineLabel: card.deadlineLabel ?? "No deadline",
+    deadlineSource: card.deadlineSource ?? "none",
+    providerLabel: providerLabelForDetail(detail),
+    stallingState: stallingStateForCard(card),
+    feeSignal: card.feeSignal ?? "No fee issue",
+    productionCount: card.productionCount,
+    diagnosticCount: detail?.diagnostics.length ?? 0,
+    ownerLabel: "Local replay",
+    nextActionLabel: card.actionLabel
+  });
+}
+
+function toDetailModel(detail: PrrWorkspaceDtoRequestDetail, card: PrrWorkspaceDtoCard | undefined): PrrDetailModel {
+  const actionPacket = detail.actionPackets[0] ?? fallbackActionPacket(detail);
+
+  return Object.freeze({
+    prrRequestId: detail.prrRequestId,
+    title: card?.title ?? deriveTitle(detail.requestText),
+    agencyName: detail.agencyName,
+    nextAction: Object.freeze({
+      label: actionPacket.label,
+      summary: actionPacket.detail,
+      risk: severityToTone(actionPacket.severity),
+      primaryActionLabel: actionPacket.label,
+      requiredHumanDecision: requiredHumanDecision(actionPacket),
+      explanation: Object.freeze([actionPacket.detail])
+    }),
+    sendGate: Object.freeze(detail.sendGate.map(toGateCheck)),
+    escalationGate: Object.freeze(detail.escalationGate.map(toGateCheck)),
+    deadlinePosture: deadlinePosture(detail),
+    correspondence: Object.freeze({
+      provider: correspondenceProvider(detail),
+      syncState: correspondenceSyncState(detail),
+      latestInbound: correspondenceLabel(detail.latestInboundCorrespondence, "No inbound correspondence in replayed events."),
+      latestOutbound: correspondenceLabel(detail.latestOutboundCorrespondence, "No outbound correspondence in replayed events.")
+    }),
+    evidencePackets: Object.freeze(detail.evidencePackets.map(toEvidencePacket)),
+    diagnostics: Object.freeze(detail.diagnostics.map((diagnostic) => diagnostic.message)),
+    timeline: Object.freeze(detail.timeline.map((entry) => `${entry.type} at ${entry.occurredAt}`))
+  });
+}
+
+function toGateCheck(check: PrrWorkspaceDtoGateCheck): PrrGateCheck {
+  return Object.freeze({
+    id: check.id,
+    label: check.id === "risk-review" ? "Risk flags" : check.label,
+    complete: check.ready,
+    detail: check.detail
+  });
+}
+
+function toEvidencePacket(packet: PrrWorkspaceDtoRequestDetail["evidencePackets"][number]) {
+  return Object.freeze({
+    evidenceId: packet.id,
+    title: packet.label,
+    sourceArtifact: packet.evidenceIds.length > 0 ? packet.evidenceIds.join(", ") : "No evidence IDs",
+    fileCount: packet.evidenceIds.length,
+    hashState: packet.evidenceIds.length > 0 ? "Evidence references recorded" : "No hash reference",
+    extractionState: packet.evidenceIds.length > 0 ? "Queued for extraction review" : "No extraction queued",
+    classificationState: "Needs classification"
+  });
+}
+
+function toBuilderStep(step: PrrWorkspaceData["builder"]["steps"][number]): PrrBuilderStep {
+  return Object.freeze({
+    id: step.id,
+    label: step.label,
+    state: step.status === "locked" ? "needs-review" : "ready",
+    suggestedFills: Object.freeze(step.suggestedFills.map(toSuggestedFill))
+  });
+}
+
+function toSuggestedFill(fill: PrrWorkspaceData["builder"]["steps"][number]["suggestedFills"][number]): PrrSuggestedFill {
+  return Object.freeze({
+    id: fill.fieldId,
+    fieldLabel: fill.label,
+    value: fill.value,
+    provenance:
+      fill.evidenceIds.length > 0
+        ? `Suggested from evidence ${fill.evidenceIds.join(", ")}`
+        : "No event-backed suggestion provenance yet."
+  });
+}
+
+function getSavedView(savedViews: readonly PrrSavedView[], savedViewId: string): PrrSavedView {
+  const activeView = savedViews.find((view) => view.id === savedViewId) ?? savedViews[0];
   if (activeView === undefined) {
-    throw new Error("PRR workspace fixture must include at least one saved view.");
+    throw new Error("PRR workspace DTO must include at least one saved view.");
   }
 
   return activeView;
@@ -137,11 +311,19 @@ function heatForCards(cards: readonly PrrRequestCard[]): PrrSignalTone {
   return "neutral";
 }
 
-function buildSignalMap(signalMap: PrrSignalMapModel, cards: readonly PrrRequestCard[]): PrrSignalMapModel {
-  const visibleAgencyIds = new Set(cards.map((card) => card.agencyId));
-  const nodes = signalMap.nodes.filter((node) => visibleAgencyIds.has(node.agencyId));
+function buildSignalMap(
+  dtoNodes: readonly PrrWorkspaceDtoSignalMapNode[],
+  dtoEdges: readonly PrrWorkspaceDtoSignalMapEdge[],
+  cards: readonly PrrRequestCard[]
+): PrrSignalMapModel {
+  const visibleRequestIds = new Set(cards.map((card) => card.prrRequestId));
+  const nodes = dtoNodes
+    .filter((node) => node.prrRequestIds.some((prrRequestId) => visibleRequestIds.has(prrRequestId)))
+    .map(toSignalMapNode);
   const visibleNodeIds = new Set(nodes.map((node) => node.id));
-  const edges = signalMap.edges.filter((edge) => visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to));
+  const edges = dtoEdges
+    .filter((edge) => visibleNodeIds.has(edge.sourceNodeId) && visibleNodeIds.has(edge.targetNodeId))
+    .map(toSignalMapEdge);
 
   return Object.freeze({
     nodes: Object.freeze(nodes),
@@ -149,7 +331,38 @@ function buildSignalMap(signalMap: PrrSignalMapModel, cards: readonly PrrRequest
   });
 }
 
+function toSignalMapNode(node: PrrWorkspaceDtoSignalMapNode, index: number): PrrSignalMapNode {
+  const position = signalPositions[index % signalPositions.length] ?? signalPositions[0];
+  if (position === undefined) {
+    throw new Error("Requests signal map positions are unavailable.");
+  }
+
+  return Object.freeze({
+    id: node.id,
+    agencyId: node.id,
+    agencyName: node.agencyName,
+    tone: severityToTone(node.tone),
+    x: position.x,
+    y: position.y,
+    summary: node.summary
+  });
+}
+
+function toSignalMapEdge(edge: PrrWorkspaceDtoSignalMapEdge): PrrSignalMapEdge {
+  return Object.freeze({
+    id: edge.id,
+    from: edge.sourceNodeId,
+    to: edge.targetNodeId,
+    label: edge.label,
+    tone: "neutral"
+  });
+}
+
 function cardMatchesView(card: PrrRequestCard, view: PrrSavedView): boolean {
+  if (view.cardIds !== undefined && !view.cardIds.includes(card.prrRequestId)) {
+    return false;
+  }
+
   if (
     view.filters.jurisdiction !== undefined &&
     card.jurisdictionId !== view.filters.jurisdiction &&
@@ -175,4 +388,139 @@ function cardMatchesView(card: PrrRequestCard, view: PrrSavedView): boolean {
   }
 
   return true;
+}
+
+function jurisdictionLabel(jurisdictionPackName: string): string {
+  switch (jurisdictionPackName) {
+    case "us-federal-foia":
+      return "US Federal FOIA";
+    case "florida-public-records":
+      return "Florida Public Records";
+    default:
+      return jurisdictionPackName;
+  }
+}
+
+function providerLabelForDetail(detail: PrrWorkspaceDtoRequestDetail | undefined): string {
+  const correspondence = detail?.latestInboundCorrespondence ?? detail?.latestOutboundCorrespondence;
+  if (correspondence === undefined) {
+    return "No provider event";
+  }
+
+  return `${providerDisplayName(correspondence.provider)} replayed`;
+}
+
+function stallingStateForCard(card: PrrWorkspaceDtoCard): string {
+  if (card.flags.includes("confirmed stalling")) {
+    return "Confirmed stalling";
+  }
+  if (card.flags.includes("possible stalling")) {
+    return "Possible stalling";
+  }
+  if (card.flags.includes("fee challenged")) {
+    return "Fee challenge";
+  }
+  if (card.flags.includes("fee estimate")) {
+    return "Fee estimate";
+  }
+  if (card.flags.includes("production arrived")) {
+    return "Production received";
+  }
+  return "No stalling";
+}
+
+function fallbackActionPacket(detail: PrrWorkspaceDtoRequestDetail): PrrWorkspaceDtoActionPacket {
+  return Object.freeze({
+    id: `${detail.prrRequestId}:review`,
+    prrRequestId: detail.prrRequestId,
+    kind: "review-draft",
+    label: "Review request",
+    detail: "No action packet was supplied by the workspace DTO.",
+    severity: detail.severity
+  });
+}
+
+function requiredHumanDecision(packet: PrrWorkspaceDtoActionPacket): string {
+  if (packet.kind === "legal-review") {
+    return "A human must confirm any legal escalation language before use.";
+  }
+  if (packet.kind === "intake-production") {
+    return "A human should classify received evidence before downstream use.";
+  }
+  return "A human review gate must be satisfied before send or escalation.";
+}
+
+function deadlinePosture(detail: PrrWorkspaceDtoRequestDetail): string {
+  if (detail.activeDeadline === undefined) {
+    return "No event-backed deadline estimate is available.";
+  }
+
+  const label = detail.activeDeadline.source === "confirmed" ? "Confirmed deadline" : "Estimated deadline";
+  const explanation = detail.activeDeadline.explanation ?? detail.activeDeadline.rationale ?? "No deadline explanation recorded.";
+  return `${label} ${detail.activeDeadline.deadlineDate}. ${explanation}`;
+}
+
+function correspondenceProvider(detail: PrrWorkspaceDtoRequestDetail) {
+  return (detail.latestInboundCorrespondence ?? detail.latestOutboundCorrespondence)?.provider ?? "gmail";
+}
+
+function correspondenceSyncState(detail: PrrWorkspaceDtoRequestDetail): string {
+  const correspondence = detail.latestInboundCorrespondence ?? detail.latestOutboundCorrespondence;
+  if (correspondence === undefined) {
+    return "No provider event in replayed DTO.";
+  }
+
+  return `${providerDisplayName(correspondence.provider)} correspondence replayed from ledger events.`;
+}
+
+function correspondenceLabel(
+  correspondence: PrrWorkspaceDtoRequestDetail["latestInboundCorrespondence"],
+  emptyLabel: string
+): string {
+  if (correspondence === undefined) {
+    return emptyLabel;
+  }
+
+  return `${correspondence.subject} (${correspondence.occurredAt.slice(0, 10)})`;
+}
+
+function providerDisplayName(provider: string): string {
+  switch (provider) {
+    case "gmail":
+      return "Gmail";
+    case "imap-smtp":
+      return "IMAP/SMTP";
+    case "himalaya":
+      return "Himalaya";
+    default:
+      return provider;
+  }
+}
+
+function severityToTone(severity: PrrWorkspaceDtoSeverity): PrrSignalTone {
+  switch (severity) {
+    case "critical":
+      return "red";
+    case "high":
+      return "amber";
+    case "medium":
+      return "cyan";
+    case "low":
+      return "neutral";
+  }
+}
+
+function deriveTitle(requestText: string): string {
+  const trimmed = requestText.trim();
+  if (trimmed.length <= 80) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, 77)}...`;
+}
+
+function stableAgencyId(agencyName: string): string {
+  return `agency:${[...new TextEncoder().encode(agencyName)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")}`;
 }

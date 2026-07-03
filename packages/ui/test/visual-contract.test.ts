@@ -13,6 +13,7 @@ const uiTsxFiles = [
   "packages/ui/src/workspace/TacticalPanel.tsx",
   "packages/ui/src/workspace/DecisionRail.tsx",
   "packages/ui/src/requests/RequestWorkspace.tsx",
+  "packages/ui/src/requests/request-adapter.ts",
   "packages/ui/src/requests/RequestCommandBar.tsx",
   "packages/ui/src/requests/RequestBoard.tsx",
   "packages/ui/src/requests/RequestLane.tsx",

@@ -1,17 +1,12 @@
-export const prrLaneOrder = Object.freeze([
-  "drafting",
-  "ready-to-send",
-  "awaiting-agency",
-  "needs-follow-up",
-  "review-fee-scope",
-  "production-arrived",
-  "appeal-escalation"
-] as const);
+import { prrWorkspaceDtoLaneOrder, type PrrWorkspaceDto, type PrrWorkspaceDtoLaneId, type PrrWorkspaceDtoSeverity } from "../../../prr/src/read-api.js";
 
-export type PrrLaneId = (typeof prrLaneOrder)[number];
+export const prrLaneOrder = prrWorkspaceDtoLaneOrder;
+
+export type PrrWorkspaceData = PrrWorkspaceDto;
+export type PrrLaneId = PrrWorkspaceDtoLaneId;
 export type PrrViewMode = "board" | "signal-map";
 export type PrrGrouping = "agency" | "jurisdiction" | "investigation" | "none";
-export type PrrSeverity = "critical" | "high" | "medium" | "low";
+export type PrrSeverity = PrrWorkspaceDtoSeverity;
 export type PrrSignalTone = "red" | "amber" | "green" | "cyan" | "neutral";
 export type PrrProvider = "gmail" | "imap-smtp" | "himalaya";
 export type PrrDeadlineSource = "estimated" | "confirmed" | "none";
@@ -30,6 +25,7 @@ export interface PrrSavedView {
   readonly mode: PrrViewMode;
   readonly grouping: PrrGrouping;
   readonly filters: PrrSavedViewFilters;
+  readonly cardIds?: readonly string[];
 }
 
 export interface PrrRequestCard {
