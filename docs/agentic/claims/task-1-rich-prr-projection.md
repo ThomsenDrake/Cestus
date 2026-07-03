@@ -30,3 +30,12 @@
 - Full verification result: `npm run verify` passed; typecheck passed, 38 test files / 283 tests passed, UI build passed, factory-readiness passed.
 - Review status: ready for reviewer
 - Concerns: Full verification required a test-only supporting edit in `packages/prr/test/read-api.test.ts` so its helper constructs `PrrRequestReadModel` with the now-required created-request fields. No production read-api, runtime, UI, package metadata, or readiness scripts were changed.
+
+## Second Review Fix: Scope Narrowing ID Match
+
+- Status: ready-for-review
+- Red command/result: `npm test -- packages/prr/test/projection.test.ts` failed as expected; 1 test file failed, 1 failed / 28 passed. Failure showed `prr.scope.narrowing.accepted` for `narrow_b` merged accepted fields into the prior `narrow_a` proposal.
+- Green command/result: `npm test -- packages/prr/test/projection.test.ts` passed; 1 test file / 29 tests passed.
+- Full verification result: `npm run verify` passed; typecheck passed, 38 test files / 284 tests passed, UI build passed, factory-readiness passed.
+- Review status: ready for reviewer
+- Concerns: none recorded

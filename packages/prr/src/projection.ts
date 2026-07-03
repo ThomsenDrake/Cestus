@@ -375,14 +375,17 @@ function applyPrrEvent(
       break;
 
     case "prr.scope.narrowing.accepted":
-      if (request.scopeNarrowing === undefined) {
+      if (
+        request.scopeNarrowing === undefined ||
+        request.scopeNarrowing.narrowingId !== event.payload.narrowingId
+      ) {
         diagnostics.push(
           createMissingPriorEventDiagnostic(
             event,
             request.prrRequestId,
             "prr.scope.narrowing.proposed",
-            "Cannot project prr.scope.narrowing.accepted accepted scope before prr.scope.narrowing.proposed",
-            ["replay prr.scope.narrowing.proposed before prr.scope.narrowing.accepted"]
+            `Cannot project prr.scope.narrowing.accepted accepted scope for ${event.payload.narrowingId} before matching prr.scope.narrowing.proposed`,
+            ["replay a matching prr.scope.narrowing.proposed before prr.scope.narrowing.accepted"]
           )
         );
         break;
