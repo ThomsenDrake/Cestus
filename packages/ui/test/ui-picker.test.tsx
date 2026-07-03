@@ -6,7 +6,12 @@ const sourceFiles = [
   "packages/ui/src/workspace/CommandDashboard.tsx",
   "packages/ui/src/workspace/SignalStrip.tsx",
   "packages/ui/src/workspace/PriorityQueue.tsx",
-  "packages/ui/src/workspace/DecisionRail.tsx"
+  "packages/ui/src/workspace/DecisionRail.tsx",
+  "packages/ui/src/requests/RequestWorkspace.tsx",
+  "packages/ui/src/requests/RequestBoard.tsx",
+  "packages/ui/src/requests/RequestDetailRail.tsx",
+  "packages/ui/src/requests/RequestSignalMap.tsx",
+  "packages/ui/src/requests/RequestBuilder.tsx"
 ];
 
 describe("ui picker cleanup", () => {

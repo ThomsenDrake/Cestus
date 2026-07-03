@@ -11,7 +11,15 @@ const uiTsxFiles = [
   "packages/ui/src/workspace/QueueFilters.tsx",
   "packages/ui/src/workspace/PriorityQueue.tsx",
   "packages/ui/src/workspace/TacticalPanel.tsx",
-  "packages/ui/src/workspace/DecisionRail.tsx"
+  "packages/ui/src/workspace/DecisionRail.tsx",
+  "packages/ui/src/requests/RequestWorkspace.tsx",
+  "packages/ui/src/requests/RequestCommandBar.tsx",
+  "packages/ui/src/requests/RequestBoard.tsx",
+  "packages/ui/src/requests/RequestLane.tsx",
+  "packages/ui/src/requests/RequestCard.tsx",
+  "packages/ui/src/requests/RequestDetailRail.tsx",
+  "packages/ui/src/requests/RequestSignalMap.tsx",
+  "packages/ui/src/requests/RequestBuilder.tsx"
 ];
 
 describe("visual system contract", () => {
@@ -55,6 +63,10 @@ describe("visual system contract", () => {
     expect(joined).not.toMatch(/var\(--cestus-/);
     expect(joined).toContain("var(--signal-orange)");
     expect(joined).toContain("var(--signal-red)");
+    expect(joined).toContain("var(--signal-green)");
     expect(joined).toContain("var(--console-line)");
+    expect(joined).toContain("Signal operations board");
+    expect(joined).toContain("Legal escalation locked");
+    expect(joined).toContain("Guided request builder");
   });
 });
