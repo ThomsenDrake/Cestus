@@ -124,23 +124,23 @@ export interface PrrRequestReadModel {
   readonly prrRequestId: string;
   readonly status: PrrStatus;
   readonly agencyName: string;
-  readonly jurisdictionPack?: PrrJurisdictionPackRef;
-  readonly agency?: PrrContactReadModel;
-  readonly requester?: PrrContactReadModel;
-  readonly requestText?: string;
+  readonly jurisdictionPack: PrrJurisdictionPackRef;
+  readonly agency: PrrContactReadModel;
+  readonly requester: PrrContactReadModel;
+  readonly requestText: string;
   readonly activeDeadline?: PrrDeadlineReadModel;
   readonly latestOutboundCorrespondence?: PrrCorrespondenceSummaryReadModel;
   readonly latestInboundCorrespondence?: PrrCorrespondenceSummaryReadModel;
   readonly feeEstimate?: PrrFeeEstimateReadModel;
   readonly scopeNarrowing?: PrrScopeNarrowingReadModel;
-  readonly productionBatches?: readonly PrrProductionBatchReadModel[];
+  readonly productionBatches: readonly PrrProductionBatchReadModel[];
   readonly productionEvidenceIds: readonly string[];
-  readonly exemptions?: readonly PrrExemptionReadModel[];
+  readonly exemptions: readonly PrrExemptionReadModel[];
   readonly denial?: PrrDenialReadModel;
   readonly appeal?: PrrAppealReadModel;
   readonly possibleStalling: boolean;
   readonly confirmedStalling: boolean;
-  readonly stallingSignals?: readonly PrrStallingSignalReadModel[];
+  readonly stallingSignals: readonly PrrStallingSignalReadModel[];
   readonly stallingConfirmation?: PrrStallingConfirmationReadModel;
   readonly legalEscalation?: PrrLegalEscalationReadModel;
 }
@@ -221,7 +221,7 @@ export function buildPrrProjection(events: readonly KnowledgeEvent[]): PrrProjec
     }
 
     appendTimelineEntry(timelines, prrRequestId, event);
-    applyPrrEvent(request, event);
+    applyPrrEvent(request, event, diagnostics);
   }
 
   return {
@@ -245,7 +245,29 @@ function createUncreatedRequestDiagnostic(event: KnowledgeEvent, prrRequestId: s
   });
 }
 
-function applyPrrEvent(request: MutablePrrRequestReadModel, event: KnowledgeEvent): void {
+function createMissingPriorEventDiagnostic(
+  event: KnowledgeEvent,
+  prrRequestId: string,
+  violatedPath: string,
+  message: string,
+  allowedActions: readonly string[]
+): PrrDiagnostic {
+  return createPrrDiagnostic({
+    diagnosticId: `diag_prr_projection_${event.id}`,
+    prrRequestId,
+    eventId: event.id,
+    category: "projection",
+    message,
+    violatedPath,
+    allowedActions
+  });
+}
+
+function applyPrrEvent(
+  request: MutablePrrRequestReadModel,
+  event: KnowledgeEvent,
+  diagnostics: PrrDiagnostic[]
+): void {
   switch (event.type) {
     case "prr.request.created":
       break;
@@ -316,11 +338,23 @@ function applyPrrEvent(request: MutablePrrRequestReadModel, event: KnowledgeEven
       break;
 
     case "prr.fee.challenged":
+      if (request.feeEstimate === undefined) {
+        diagnostics.push(
+          createMissingPriorEventDiagnostic(
+            event,
+            request.prrRequestId,
+            "prr.fee.estimated",
+            "Cannot project prr.fee.challenged fee challenge state before prr.fee.estimated",
+            ["replay prr.fee.estimated before prr.fee.challenged"]
+          )
+        );
+        break;
+      }
       request.status = "inNegotiation";
       request.feeEstimate = freezeFeeEstimate({
-        amountCents: request.feeEstimate?.amountCents ?? event.payload.amountCents,
-        currency: request.feeEstimate?.currency ?? "USD",
-        sourceEvidenceId: request.feeEstimate?.sourceEvidenceId,
+        amountCents: request.feeEstimate.amountCents,
+        currency: request.feeEstimate.currency,
+        sourceEvidenceId: request.feeEstimate.sourceEvidenceId,
         challenged: true,
         challengeId: event.payload.feeChallengeId,
         challengeAmountCents: event.payload.amountCents,
@@ -341,11 +375,23 @@ function applyPrrEvent(request: MutablePrrRequestReadModel, event: KnowledgeEven
       break;
 
     case "prr.scope.narrowing.accepted":
+      if (request.scopeNarrowing === undefined) {
+        diagnostics.push(
+          createMissingPriorEventDiagnostic(
+            event,
+            request.prrRequestId,
+            "prr.scope.narrowing.proposed",
+            "Cannot project prr.scope.narrowing.accepted accepted scope before prr.scope.narrowing.proposed",
+            ["replay prr.scope.narrowing.proposed before prr.scope.narrowing.accepted"]
+          )
+        );
+        break;
+      }
       request.status = "inNegotiation";
       request.scopeNarrowing = freezeScopeNarrowing({
         narrowingId: event.payload.narrowingId,
-        proposedScope: request.scopeNarrowing?.proposedScope ?? "",
-        proposedBy: request.scopeNarrowing?.proposedBy ?? "",
+        proposedScope: request.scopeNarrowing.proposedScope,
+        proposedBy: request.scopeNarrowing.proposedBy,
         sourceEvidenceId: request.scopeNarrowing?.sourceEvidenceId,
         acceptedScope: event.payload.acceptedScope,
         acceptedBy: event.payload.acceptedBy,

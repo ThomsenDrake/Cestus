@@ -222,6 +222,86 @@ describe("buildPrrProjection", () => {
     expect(projection.requests.has("prr_req_001")).toBe(true);
   });
 
+  it("does not invent fee estimate state when a fee challenge has no prior estimate", () => {
+    const projection = buildPrrProjection([
+      createdRequestEvent("prr_fee_missing_estimate"),
+      feeChallengeWithoutEstimateEvent()
+    ]);
+
+    expect(projection.requests.get("prr_fee_missing_estimate")?.feeEstimate).toBeUndefined();
+    expect(projection.diagnostics).toEqual([
+      {
+        diagnosticId: "diag_prr_projection_evt_prr_fee_missing_estimate_challenged",
+        prrRequestId: "prr_fee_missing_estimate",
+        eventId: "evt_prr_fee_missing_estimate_challenged",
+        category: "projection",
+        message: "Cannot project prr.fee.challenged fee challenge state before prr.fee.estimated",
+        repairHint: {
+          violatedPath: "prr.fee.estimated",
+          allowedActions: ["replay prr.fee.estimated before prr.fee.challenged"]
+        }
+      }
+    ]);
+  });
+
+  it("does not invent scope narrowing state when an acceptance has no prior proposal", () => {
+    const projection = buildPrrProjection([
+      createdRequestEvent("prr_scope_missing_proposal"),
+      scopeAcceptanceWithoutProposalEvent()
+    ]);
+
+    expect(projection.requests.get("prr_scope_missing_proposal")?.scopeNarrowing).toBeUndefined();
+    expect(projection.diagnostics).toEqual([
+      {
+        diagnosticId: "diag_prr_projection_evt_prr_scope_missing_proposal_accepted",
+        prrRequestId: "prr_scope_missing_proposal",
+        eventId: "evt_prr_scope_missing_proposal_accepted",
+        category: "projection",
+        message:
+          "Cannot project prr.scope.narrowing.accepted accepted scope before prr.scope.narrowing.proposed",
+        repairHint: {
+          violatedPath: "prr.scope.narrowing.proposed",
+          allowedActions: [
+            "replay prr.scope.narrowing.proposed before prr.scope.narrowing.accepted"
+          ]
+        }
+      }
+    ]);
+  });
+
+  it("projects created-request fields as required read model state", () => {
+    const projection = buildPrrProjection(goldenPrrLedgerEvents);
+    const request = projection.requests.get("prr_req_001");
+    expect(request).toBeDefined();
+
+    const createdFields: Pick<
+      PrrRequestReadModel,
+      | "jurisdictionPack"
+      | "agency"
+      | "requester"
+      | "requestText"
+      | "productionBatches"
+      | "productionEvidenceIds"
+      | "exemptions"
+      | "stallingSignals"
+    > = request!;
+
+    expect(createdFields).toMatchObject({
+      jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+      agency: { name: "Example Agency", email: "foia@example.gov" },
+      requester: { name: "Example Requester", email: "requester@example.org" },
+      requestText: "Please provide records concerning public meeting notices.",
+      productionBatches: [
+        {
+          productionId: "prod_prr_req_001"
+        }
+      ],
+      productionEvidenceIds: ["ev_prr_production_001", "ev_prr_production_002"],
+      exemptions: [],
+      stallingSignals: []
+    });
+  });
+
   it("protects projection diagnostics from caller mutation", () => {
     const projection = buildPrrProjection([
       sentEventForUncreatedRequest(),
@@ -578,6 +658,74 @@ function confirmedDeadlineEvent(deadlineDate: string): KnowledgeEventOf<"prr.dea
   };
 }
 
+function createdRequestEvent(prrRequestId: string): KnowledgeEventOf<"prr.request.created"> {
+  return {
+    id: `evt_${prrRequestId}_created`,
+    type: "prr.request.created",
+    version: 1,
+    streamId: prrRequestId,
+    sequence: 1,
+    context: systemContext,
+    payload: {
+      prrRequestId,
+      jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+      agency: { name: "Example Agency", email: "foia@example.gov" },
+      requester: { name: "Example Requester", email: "requester@example.org" },
+      requestText: "Please provide records.",
+      status: "draft"
+    }
+  };
+}
+
+function feeChallengeWithoutEstimateEvent(): KnowledgeEventOf<"prr.fee.challenged"> {
+  return {
+    id: "evt_prr_fee_missing_estimate_challenged",
+    type: "prr.fee.challenged",
+    version: 1,
+    streamId: "prr_fee_missing_estimate",
+    sequence: 2,
+    context: {
+      ...systemContext,
+      causationId: "evt_prr_fee_missing_estimate_created"
+    },
+    payload: {
+      prrRequestId: "prr_fee_missing_estimate",
+      feeChallengeId: "fee_challenge_missing_estimate",
+      amountCents: 42500,
+      rationale: "Requester challenged an unsupported fee demand.",
+      approvedBy: "actor_prr_test",
+      citedRules: [
+        {
+          jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+          label: "FOIA fee limits",
+          citation: "5 U.S.C. 552(a)(4)(A)"
+        }
+      ]
+    }
+  };
+}
+
+function scopeAcceptanceWithoutProposalEvent(): KnowledgeEventOf<"prr.scope.narrowing.accepted"> {
+  return {
+    id: "evt_prr_scope_missing_proposal_accepted",
+    type: "prr.scope.narrowing.accepted",
+    version: 1,
+    streamId: "prr_scope_missing_proposal",
+    sequence: 2,
+    context: {
+      ...systemContext,
+      causationId: "evt_prr_scope_missing_proposal_created"
+    },
+    payload: {
+      prrRequestId: "prr_scope_missing_proposal",
+      narrowingId: "narrow_missing_proposal",
+      acceptedScope: "Accepted scope without a projected proposal",
+      acceptedBy: "actor_prr_test",
+      rationale: "Requester accepted a scope that must have a proposal first."
+    }
+  };
+}
+
 function mutableRequest(
   projection: ReturnType<typeof buildPrrProjection>,
   prrRequestId: string
@@ -764,8 +912,15 @@ function fakeRequestReadModel(prrRequestId: string): PrrRequestReadModel {
     prrRequestId,
     status: "draft",
     agencyName: "Mutated Agency",
+    jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+    agency: { name: "Mutated Agency" },
+    requester: { name: "Mutated Requester" },
+    requestText: "Mutated request text",
     possibleStalling: false,
     confirmedStalling: false,
-    productionEvidenceIds: []
+    stallingSignals: [],
+    productionBatches: [],
+    productionEvidenceIds: [],
+    exemptions: []
   };
 }

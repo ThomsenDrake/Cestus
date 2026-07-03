@@ -21,3 +21,12 @@
 - Full verification result: `npm run verify` passed; typecheck passed, 38 test files / 280 tests passed, UI build passed, factory-readiness passed.
 - Review status: ready for reviewer
 - Concerns: Full verification required updating two downstream tests outside the original allowed file list because they imported `goldenPrrLedgerEvents` and asserted the old single-request fixture cardinality. No read-api, runtime, UI production code, package metadata, or readiness scripts were changed.
+
+## Review Fix: Projection Predecessor Diagnostics
+
+- Status: ready-for-review
+- Red command/result: `npm test -- packages/prr/test/projection.test.ts` failed as expected; 1 test file failed, 2 failed / 26 passed. Failures showed `prr.fee.challenged` created a fallback fee estimate with `currency: "USD"` and `prr.scope.narrowing.accepted` created empty proposal fields without prior predecessor events.
+- Green command/result: `npm test -- packages/prr/test/projection.test.ts` passed; 1 test file / 28 tests passed.
+- Full verification result: `npm run verify` passed; typecheck passed, 38 test files / 283 tests passed, UI build passed, factory-readiness passed.
+- Review status: ready for reviewer
+- Concerns: Full verification required a test-only supporting edit in `packages/prr/test/read-api.test.ts` so its helper constructs `PrrRequestReadModel` with the now-required created-request fields. No production read-api, runtime, UI, package metadata, or readiness scripts were changed.
