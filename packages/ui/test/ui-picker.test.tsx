@@ -5,18 +5,11 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.js";
 
 describe("ui.sh picker scaffolding", () => {
-  it("exposes the remaining picker decision point with one visible option", () => {
+  it("does not expose a remaining picker decision point in the React workspace", () => {
     const { container } = render(<App />);
     const picks = [...container.querySelectorAll("[data-uidotsh-pick]")];
 
-    expect(picks.map((pick) => pick.getAttribute("data-uidotsh-pick"))).toStrictEqual(["Right rail treatment"]);
-
-    for (const pick of picks) {
-      const options = [...pick.querySelectorAll("[data-uidotsh-option]")];
-      expect(options).toHaveLength(3);
-      expect(options.filter((option) => !option.hasAttribute("hidden"))).toHaveLength(1);
-      expect(options.every((option) => option.classList.contains("contents"))).toBe(true);
-    }
+    expect(picks).toHaveLength(0);
   });
 
   it("injects the ui.sh picker toolbar once in the Vite root document", () => {

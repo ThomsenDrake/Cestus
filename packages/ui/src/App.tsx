@@ -3,8 +3,8 @@ import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
 import { CommandDashboard } from "./workspace/CommandDashboard.js";
+import { DecisionRail } from "./workspace/DecisionRail.js";
 import { OpsShell } from "./workspace/OpsShell.js";
-import { RightContextRail } from "./workspace/RightContextRail.js";
 import { workspaceModules } from "./workspace/workspace-nav.js";
 
 export function App() {
@@ -38,8 +38,9 @@ export function App() {
         />
       }
       decisionRail={
-        <RightContextRail
+        <DecisionRail
           agentBrief={model.agentBrief}
+          defaultVotes={model.decisionRail.defaultVotes}
           selectedItem={selectedItem}
           onClearSelection={() => setSelectedItemId(undefined)}
         />

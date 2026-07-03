@@ -11,7 +11,7 @@ const uiTsxFiles = [
   "packages/ui/src/workspace/QueueFilters.tsx",
   "packages/ui/src/workspace/PriorityQueue.tsx",
   "packages/ui/src/workspace/TacticalPanel.tsx",
-  "packages/ui/src/workspace/RightContextRail.tsx"
+  "packages/ui/src/workspace/DecisionRail.tsx"
 ];
 
 describe("visual system contract", () => {
