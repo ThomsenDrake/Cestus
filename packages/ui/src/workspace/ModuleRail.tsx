@@ -3,9 +3,10 @@ import type { WorkspaceModule } from "./workspace-nav.js";
 interface ModuleRailProps {
   readonly modules: readonly WorkspaceModule[];
   readonly activeModuleId: string;
+  readonly onModuleSelect?: ((moduleId: string) => void) | undefined;
 }
 
-export function ModuleRail({ modules, activeModuleId }: ModuleRailProps) {
+export function ModuleRail({ modules, activeModuleId, onModuleSelect }: ModuleRailProps) {
   return (
     <nav
       aria-label="Cestus tactical modules"
@@ -20,7 +21,7 @@ export function ModuleRail({ modules, activeModuleId }: ModuleRailProps) {
       <ul role="list" className="space-y-1 px-2">
         {modules.map((module) => (
           <li key={module.id}>
-            <ModuleLink module={module} active={module.id === activeModuleId} />
+            <ModuleLink module={module} active={module.id === activeModuleId} onModuleSelect={onModuleSelect} />
           </li>
         ))}
       </ul>
@@ -28,8 +29,16 @@ export function ModuleRail({ modules, activeModuleId }: ModuleRailProps) {
   );
 }
 
-export function ModuleLink({ module, active }: { readonly module: WorkspaceModule; readonly active: boolean }) {
-  const label = module.preview ? module.label.replace(/\sPreview$/, "") : module.label;
+export function ModuleLink({
+  module,
+  active,
+  onModuleSelect
+}: {
+  readonly module: WorkspaceModule;
+  readonly active: boolean;
+  readonly onModuleSelect?: ((moduleId: string) => void) | undefined;
+}) {
+  const label = module.label.replace(/\sPreview$/, "");
 
   return (
     <a
@@ -37,6 +46,14 @@ export function ModuleLink({ module, active }: { readonly module: WorkspaceModul
       aria-label={module.label}
       aria-current={active ? "page" : undefined}
       aria-disabled={module.preview ? "true" : undefined}
+      onClick={(event) => {
+        if (module.preview) {
+          event.preventDefault();
+          return;
+        }
+
+        onModuleSelect?.(module.id);
+      }}
       className={[
         "group flex min-h-10 items-center justify-between gap-3 border px-3 py-2 font-mono text-base sm:min-h-9 sm:text-sm",
         active

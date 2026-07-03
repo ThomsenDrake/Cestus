@@ -15,7 +15,12 @@ describe("operator shell", () => {
         ledgerLabel="Ledger synced"
         syncLabel="Local sync live"
         deploymentLabel="Solo laptop"
+        searchLabel="Command search"
+        searchPlaceholder="Search requests, evidence, agencies, and assertions"
+        mainId="command"
+        mainLabel="Command workspace"
         onNewRequest={vi.fn()}
+        onModuleSelect={vi.fn()}
         main={<h1>Command</h1>}
         decisionRail={<aside aria-label="Decision rail">Agent brief</aside>}
       />
@@ -43,6 +48,8 @@ describe("operator shell", () => {
         ledgerLabel="Ledger synced"
         syncLabel="Local sync live"
         deploymentLabel="Solo laptop"
+        mainId="command"
+        mainLabel="Command workspace"
         onNewRequest={vi.fn()}
         main={<h1>Command</h1>}
         decisionRail={<aside aria-label="Decision rail">Agent brief</aside>}
