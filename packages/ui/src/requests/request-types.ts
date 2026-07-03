@@ -1,4 +1,10 @@
-import { prrWorkspaceDtoLaneOrder, type PrrWorkspaceDto, type PrrWorkspaceDtoLaneId, type PrrWorkspaceDtoSeverity } from "../../../prr/src/read-api.js";
+import {
+  prrWorkspaceDtoLaneOrder,
+  type PrrWorkspaceDto,
+  type PrrWorkspaceDtoBuilderPackOption,
+  type PrrWorkspaceDtoLaneId,
+  type PrrWorkspaceDtoSeverity
+} from "../../../prr/src/read-api.js";
 
 export const prrLaneOrder = prrWorkspaceDtoLaneOrder;
 
@@ -152,6 +158,7 @@ export interface PrrBuilderStep {
 
 export interface PrrBuilderModel {
   readonly steps: readonly PrrBuilderStep[];
+  readonly jurisdictionPacks?: readonly PrrWorkspaceDtoBuilderPackOption[];
 }
 
 export interface PrrWorkspaceFixture {

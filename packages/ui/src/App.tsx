@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/command-model.js";
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
-import { localReplayRequestsAdapter, type RequestsWorkspaceAdapter } from "./requests/request-adapter.js";
+import {
+  localReplayRequestsAdapter,
+  type RequestsCreateDraftInput,
+  type RequestsWorkspaceAdapter
+} from "./requests/request-adapter.js";
 import { RequestBuilder } from "./requests/RequestBuilder.js";
 import { RequestDetailRail } from "./requests/RequestDetailRail.js";
 import { buildPrrBuilderModel } from "./requests/request-model.js";
@@ -32,6 +36,8 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
   const [requestsLoadState, setRequestsLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [requestsLoadError, setRequestsLoadError] = useState<string | undefined>();
   const [requestsReloadKey, setRequestsReloadKey] = useState(0);
+  const [requestBuilderSubmitting, setRequestBuilderSubmitting] = useState(false);
+  const [requestBuilderDiagnostic, setRequestBuilderDiagnostic] = useState<string | undefined>();
   const model = useMemo(
     () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds }),
     [reviewedItemIds]
@@ -120,7 +126,32 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
 
   function handleNewRequest() {
     if (requestsActive && requestsWorkspace !== undefined && requestsLoadState === "loaded") {
+      setRequestBuilderDiagnostic(undefined);
       setRequestBuilderOpen(true);
+    }
+  }
+
+  async function handleCreateDraftRequest(input: RequestsCreateDraftInput) {
+    setRequestBuilderSubmitting(true);
+    setRequestBuilderDiagnostic(undefined);
+
+    try {
+      const result = await requestsAdapter.createDraftRequest(input);
+      setRequestsWorkspace(result.workspace);
+      setLoadedRequestsAdapter(requestsAdapter);
+      setRequestsLoadState("loaded");
+
+      if (result.ok) {
+        setSelectedPrrRequestId(result.prrRequestId);
+        setRequestBuilderOpen(false);
+        return;
+      }
+
+      setRequestBuilderDiagnostic(result.diagnostic.message);
+    } catch {
+      setRequestBuilderDiagnostic("Draft creation failed. Reload the Requests workspace and try again.");
+    } finally {
+      setRequestBuilderSubmitting(false);
     }
   }
 
@@ -150,7 +181,19 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
         />
       </div>
       {requestsActive && requestBuilderOpen && requestsWorkspace !== undefined ? (
-        <RequestBuilder builder={buildPrrBuilderModel(requestsWorkspace)} onClose={() => setRequestBuilderOpen(false)} />
+        <RequestBuilder
+          builder={{
+            ...buildPrrBuilderModel(requestsWorkspace),
+            jurisdictionPacks: requestsWorkspace.builder.jurisdictionPacks
+          }}
+          onClose={() => {
+            setRequestBuilderOpen(false);
+            setRequestBuilderDiagnostic(undefined);
+          }}
+          onSubmit={handleCreateDraftRequest}
+          submitting={requestBuilderSubmitting}
+          diagnosticMessage={requestBuilderDiagnostic}
+        />
       ) : null}
     </>
   );

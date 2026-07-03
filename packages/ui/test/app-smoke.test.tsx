@@ -5,7 +5,11 @@ import { buildPrrProjection } from "../../prr/src/projection.js";
 import { buildPrrWorkspaceDto, type PrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { App } from "../src/App.js";
-import { createStaticRequestsAdapter, type RequestsWorkspaceAdapter } from "../src/requests/request-adapter.js";
+import {
+  createLocalReplayRequestsAdapter,
+  createStaticRequestsAdapter,
+  type RequestsWorkspaceAdapter
+} from "../src/requests/request-adapter.js";
 
 describe("Cestus UI bootstrap", () => {
   function buildTestRequestsWorkspace() {
@@ -85,7 +89,19 @@ describe("Cestus UI bootstrap", () => {
       loadRequestsWorkspace: () =>
         new Promise((resolve) => {
           resolveWorkspace = resolve;
-        })
+        }),
+      async createDraftRequest() {
+        return {
+          ok: false,
+          failedStep: "append-request",
+          committedEventIds: [],
+          diagnostic: {
+            message: "Delayed test adapter does not create drafts.",
+            allowedRepairActions: ["use a replay adapter"]
+          },
+          workspace
+        };
+      }
     };
 
     render(<App requestsAdapter={delayedAdapter} />);
@@ -101,5 +117,55 @@ describe("Cestus UI bootstrap", () => {
 
     expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
+  });
+
+  it("submits a builder draft through the Requests adapter and reloads the board", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    fireEvent.click(await screen.findByRole("button", { name: "New request" }));
+
+    fireEvent.change(screen.getByLabelText("Agency name"), { target: { value: "City Clerk" } });
+    fireEvent.change(screen.getByLabelText("Agency email"), { target: { value: "clerk@example.gov" } });
+    fireEvent.change(screen.getByLabelText("Requester name"), { target: { value: "Avery Investigator" } });
+    fireEvent.change(screen.getByLabelText("Requester email"), { target: { value: "avery@example.org" } });
+    fireEvent.change(screen.getByLabelText("Request text"), {
+      target: { value: "All budget amendment memos from January 2026." }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
+
+    expect(await screen.findByText("City Clerk")).toBeInTheDocument();
+    expect(screen.getAllByText(/budget amendment memos/i).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
+  });
+
+  it("stores two local replay events for a successful builder draft submit", async () => {
+    const adapter = createLocalReplayRequestsAdapter([], {
+      idFactory: () => "evt_draft_test_created",
+      now: () => "2026-07-03T18:00:00.000Z",
+      requestIdFactory: () => "prr_draft_test_city_clerk"
+    });
+
+    const result = await adapter.createDraftRequest({
+      jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+      agency: { name: "City Clerk", email: "clerk@example.gov" },
+      requester: { name: "Avery Investigator", email: "avery@example.org" },
+      requestText: "All budget amendment memos from January 2026."
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.committedEventIds).toEqual(["evt_draft_test_created", "evt_draft_test_created_2"]);
+    expect(adapter.readEventsForTest().map((event) => event.type)).toEqual([
+      "prr.request.created",
+      "prr.deadline.estimated"
+    ]);
+    expect(adapter.readEventsForTest().map((event) => event.sequence)).toEqual([1, 2]);
+    expect(adapter.readEventsForTest()[1]?.context.causationId).toBe("evt_draft_test_created");
+    expect(result.workspace.cards.map((card) => card.prrRequestId)).toContain("prr_draft_test_city_clerk");
+    expect(result.workspace.cards.find((card) => card.prrRequestId === "prr_draft_test_city_clerk")).toMatchObject({
+      agencyName: "City Clerk",
+      laneId: "drafting"
+    });
   });
 });
