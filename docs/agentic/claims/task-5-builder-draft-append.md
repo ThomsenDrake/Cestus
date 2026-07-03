@@ -6,7 +6,7 @@ Worker: Codex
 Branch: `codex/prr-ledger-backed-workspace-design`
 Worktree: `/home/drake/.codex/worktrees/3ea1/Cestus`
 Claimed at: `2026-07-03T22:34:52Z`
-Status: `claimed`
+Status: `in-progress`
 
 ## Owned Files
 
