@@ -1,0 +1,21 @@
+# Task 1 Claim: Rich PRR Projection And Ledger Seed
+
+- Plan path: `docs/superpowers/specs/2026-07-03-ledger-backed-prr-workspace-design.md`
+- Task heading: Rich PRR Projection And Ledger Seed
+- Worker identity: Codex worker subagent
+- Branch: `codex/prr-ledger-backed-workspace-design`
+- Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
+- Claimed-at UTC: `2026-07-03T20:47:01Z`
+- Status: claimed
+- Owned files:
+  - `docs/agentic/claims/task-1-rich-prr-projection.md`
+  - `packages/prr/src/workspace-seed.ts`
+  - `packages/prr/test/fixtures/golden-prr-ledger.ts`
+  - `packages/prr/test/projection.test.ts`
+  - `packages/prr/src/projection.ts`
+  - `packages/prr/src/index.ts`
+- Red command/result: pending
+- Green command/result: pending
+- Full verification result: pending
+- Review status: pending
+- Concerns: none recorded yet
