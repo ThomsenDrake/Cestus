@@ -8,7 +8,7 @@ export type PrrViewMode = "board" | "signal-map";
 export type PrrGrouping = "agency" | "jurisdiction" | "investigation" | "none";
 export type PrrSeverity = PrrWorkspaceDtoSeverity;
 export type PrrSignalTone = "red" | "amber" | "green" | "cyan" | "neutral";
-export type PrrProvider = "gmail" | "imap-smtp" | "himalaya";
+export type PrrProvider = "none" | "gmail" | "imap-smtp" | "himalaya";
 export type PrrDeadlineSource = "estimated" | "confirmed" | "none";
 
 export interface PrrSavedViewFilters {

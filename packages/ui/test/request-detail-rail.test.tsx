@@ -60,6 +60,15 @@ describe("RequestDetailRail", () => {
     expect(within(rail).getByText("Missing: User confirmed escalation")).toBeInTheDocument();
     expect(within(rail).getByText("Legal escalation requires an explicit user confirmation event.")).toBeInTheDocument();
   });
+
+  it("renders a safe provider label when no correspondence provider exists", () => {
+    render(<RequestDetailRail selectedRequest={getSelectedPrrRequest(buildTestRequestsWorkspace(), "prr_draft_city_budget")} />);
+
+    const rail = screen.getByRole("complementary", { name: "Request detail rail" });
+
+    expect(within(rail).getByText("No provider event")).toBeInTheDocument();
+    expect(within(rail).queryByText("Gmail")).not.toBeInTheDocument();
+  });
 });
 
 function gateRow(rail: HTMLElement, label: string): HTMLElement {

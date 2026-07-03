@@ -28,6 +28,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
   const [selectedPrrRequest, setSelectedPrrRequest] = useState<PrrDetailModel | undefined>();
   const [requestBuilderOpen, setRequestBuilderOpen] = useState(false);
   const [requestsWorkspace, setRequestsWorkspace] = useState<PrrWorkspaceData | undefined>();
+  const [loadedRequestsAdapter, setLoadedRequestsAdapter] = useState<RequestsWorkspaceAdapter | undefined>();
   const [requestsLoadState, setRequestsLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [requestsLoadError, setRequestsLoadError] = useState<string | undefined>();
   const [requestsReloadKey, setRequestsReloadKey] = useState(0);
@@ -39,7 +40,11 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
   const requestsActive = activeModuleId === "requests";
 
   useEffect(() => {
-    if (!requestsActive || requestsWorkspace !== undefined) {
+    if (!requestsActive) {
+      return;
+    }
+
+    if (requestsWorkspace !== undefined && loadedRequestsAdapter === requestsAdapter) {
       return;
     }
 
@@ -55,6 +60,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
         }
 
         setRequestsWorkspace(workspace);
+        setLoadedRequestsAdapter(requestsAdapter);
         setRequestsLoadState("loaded");
       })
       .catch((error: unknown) => {
@@ -63,6 +69,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
         }
 
         setRequestsWorkspace(undefined);
+        setLoadedRequestsAdapter(undefined);
         setSelectedPrrRequest(undefined);
         setRequestsLoadState("error");
         setRequestsLoadError(error instanceof Error ? error.message : "Requests workspace could not be loaded.");
@@ -71,7 +78,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
     return () => {
       canceled = true;
     };
-  }, [requestsActive, requestsAdapter, requestsReloadKey, requestsWorkspace]);
+  }, [loadedRequestsAdapter, requestsActive, requestsAdapter, requestsReloadKey, requestsWorkspace]);
 
   const commandMain = (
     <CommandDashboard
@@ -93,6 +100,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
     onSelectedRequestChange: setSelectedPrrRequest,
     onRetry: () => {
       setRequestsWorkspace(undefined);
+      setLoadedRequestsAdapter(undefined);
       setRequestsReloadKey((current) => current + 1);
     }
   });
@@ -111,7 +119,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
   }
 
   function handleNewRequest() {
-    if (requestsActive) {
+    if (requestsActive && requestsWorkspace !== undefined && requestsLoadState === "loaded") {
       setRequestBuilderOpen(true);
     }
   }
