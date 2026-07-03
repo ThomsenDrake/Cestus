@@ -12,7 +12,7 @@ export function ModuleRail({ modules, activeModuleId }: ModuleRailProps) {
       className="hidden border-r border-[var(--console-line)] bg-[var(--console-void)] lg:block"
     >
       <div className="px-3 py-4">
-        <a href="/" aria-label="Homepage" className="font-mono text-base text-[var(--signal-red)] sm:text-sm">
+        <a href="/" aria-label="Cestus home" className="font-mono text-base text-[var(--signal-red)] sm:text-sm">
           CESTUS
         </a>
         <div className="mt-1 font-mono text-base text-[var(--muted-amber)] sm:text-sm">NEO</div>

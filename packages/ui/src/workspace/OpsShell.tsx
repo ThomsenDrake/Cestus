@@ -1,5 +1,5 @@
 import { XMarkIcon } from "@heroicons/react/16/solid";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { CommandBand } from "./CommandBand.js";
 import { ModuleLink, ModuleRail } from "./ModuleRail.js";
 import type { WorkspaceModule } from "./workspace-nav.js";
@@ -30,17 +30,84 @@ export function OpsShell({
   decisionRail
 }: OpsShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const focusReturnRef = useRef<HTMLElement | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const wasMobileMenuOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      wasMobileMenuOpenRef.current = true;
+      closeButtonRef.current?.focus();
+      return;
+    }
+
+    if (wasMobileMenuOpenRef.current) {
+      wasMobileMenuOpenRef.current = false;
+      const fallbackButton = document.querySelector<HTMLButtonElement>('button[aria-label="Open module menu"]');
+      (focusReturnRef.current ?? fallbackButton)?.focus();
+      focusReturnRef.current = null;
+    }
+  }, [mobileMenuOpen]);
+
+  function openMobileMenu() {
+    focusReturnRef.current =
+      document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
+    setMobileMenuOpen(true);
+  }
+
+  function closeMobileMenu() {
+    setMobileMenuOpen(false);
+  }
+
+  function handleMobileMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMobileMenu();
+      return;
+    }
+
+    if (event.key !== "Tab") {
+      return;
+    }
+
+    const focusable = getFocusableMenuItems(menuRef.current);
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (first === undefined || last === undefined) {
+      return;
+    }
+
+    if (event.shiftKey && (document.activeElement === first || !menuRef.current?.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+      return;
+    }
+
+    if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   const mobileMenu = (
-    <div className="fixed inset-0 z-50 bg-[var(--command-black)]/95 p-4 lg:hidden">
+    <div
+      ref={menuRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Cestus tactical modules"
+      onKeyDown={handleMobileMenuKeyDown}
+      className="fixed inset-0 z-50 bg-[var(--command-black)]/95 p-4 lg:hidden"
+    >
       <div className="flex items-center justify-between gap-4 border-b border-[var(--console-line)] pb-4">
-        <a href="/" aria-label="Homepage" className="font-mono text-base text-[var(--signal-red)] sm:text-sm">
+        <a href="/" aria-label="Cestus home" className="font-mono text-base text-[var(--signal-red)] sm:text-sm">
           CESTUS
         </a>
         <button
+          ref={closeButtonRef}
           type="button"
           aria-label="Close module menu"
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={closeMobileMenu}
           className="relative flex min-h-10 items-center border border-[var(--console-line)] px-2 py-2 text-base sm:min-h-9 sm:text-sm"
         >
           <span
@@ -75,7 +142,7 @@ export function OpsShell({
             syncLabel={syncLabel}
             deploymentLabel={deploymentLabel}
             onNewRequest={onNewRequest}
-            onOpenMenu={() => setMobileMenuOpen(true)}
+            onOpenMenu={openMobileMenu}
           />
           <main id="command" className="min-w-0 px-4 py-4 lg:px-5">
             {main}
@@ -87,5 +154,17 @@ export function OpsShell({
       </div>
       {mobileMenuOpen ? mobileMenu : null}
     </div>
+  );
+}
+
+function getFocusableMenuItems(menu: HTMLElement | null): HTMLElement[] {
+  if (menu === null) {
+    return [];
+  }
+
+  return Array.from(
+    menu.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
   );
 }

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { OpsShell } from "../src/workspace/OpsShell.js";
 import { workspaceModules } from "../src/workspace/workspace-nav.js";
@@ -28,7 +28,41 @@ describe("operator shell", () => {
     expect(screen.getByText("Ledger synced")).toBeInTheDocument();
     expect(screen.getByText("Solo laptop")).toBeInTheDocument();
     expect(screen.getByText("Command")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Cestus home" })).toHaveLength(2);
     expect(screen.getByRole("link", { name: "Command" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Agents Preview" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("opens the mobile module menu as a focus-managed dialog", () => {
+    render(
+      <OpsShell
+        modules={workspaceModules}
+        activeModuleId="command"
+        workspaceName="Cestus Local"
+        modeLabel="Command"
+        ledgerLabel="Ledger synced"
+        syncLabel="Local sync live"
+        deploymentLabel="Solo laptop"
+        onNewRequest={vi.fn()}
+        main={<h1>Command</h1>}
+        decisionRail={<aside aria-label="Decision rail">Agent brief</aside>}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open module menu" }));
+
+    const menu = screen.getByRole("dialog", { name: "Cestus tactical modules" });
+    const closeButton = within(menu).getByRole("button", { name: "Close module menu" });
+    const homeLink = within(menu).getByRole("link", { name: "Cestus home" });
+    expect(closeButton).toHaveFocus();
+    expect(homeLink).toBeInTheDocument();
+
+    homeLink.focus();
+    fireEvent.keyDown(homeLink, { key: "Tab", shiftKey: true });
+    expect(within(menu).getByRole("link", { name: "Settings" })).toHaveFocus();
+
+    fireEvent.keyDown(menu, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Cestus tactical modules" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open module menu" })).toHaveFocus();
   });
 });
