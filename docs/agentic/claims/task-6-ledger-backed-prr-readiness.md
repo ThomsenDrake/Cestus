@@ -12,7 +12,9 @@ Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
 
 Claimed at: `2026-07-03T23:06:47Z`
 
-Status: `claimed`
+Status: `in-progress`
+
+Started at: `2026-07-03T23:06:47Z`
 
 Owned files:
 
