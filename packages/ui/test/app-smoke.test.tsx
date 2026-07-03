@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.js";
 
@@ -9,5 +9,8 @@ describe("Cestus UI bootstrap", () => {
 
     expect(screen.getByRole("heading", { name: "Command" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New request" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    expect(screen.getByRole("heading", { name: "Requests" })).toBeInTheDocument();
   });
 });

@@ -6,6 +6,8 @@ interface CommandBandProps {
   readonly ledgerLabel: string;
   readonly syncLabel: string;
   readonly deploymentLabel: string;
+  readonly searchLabel?: string | undefined;
+  readonly searchPlaceholder?: string | undefined;
   readonly onOpenMenu: () => void;
   readonly onNewRequest: () => void;
 }
@@ -16,6 +18,8 @@ export function CommandBand({
   ledgerLabel,
   syncLabel,
   deploymentLabel,
+  searchLabel = "Command search",
+  searchPlaceholder = "Search requests, evidence, agencies, and assertions",
   onOpenMenu,
   onNewRequest
 }: CommandBandProps) {
@@ -53,12 +57,12 @@ export function CommandBand({
           </div>
         </div>
         <label className="min-w-0">
-          <span className="sr-only">Command search</span>
+          <span className="sr-only">{searchLabel}</span>
           <input
             name="command-search"
             type="search"
-            aria-label="Command search"
-            placeholder="Search requests, evidence, agencies, and assertions"
+            aria-label={searchLabel}
+            placeholder={searchPlaceholder}
             className="min-h-11 w-full border border-[var(--console-line)] bg-[var(--command-black)] px-3 py-2 font-mono text-base text-[var(--paper-light)] outline-none placeholder:text-[var(--muted-amber)] focus-visible:-outline-offset-1 focus-visible:outline-2 focus-visible:outline-[var(--signal-cyan)] sm:min-h-9 sm:text-sm"
           />
         </label>

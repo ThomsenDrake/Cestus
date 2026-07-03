@@ -12,7 +12,12 @@ interface OpsShellProps {
   readonly ledgerLabel: string;
   readonly syncLabel: string;
   readonly deploymentLabel: string;
+  readonly searchLabel?: string | undefined;
+  readonly searchPlaceholder?: string | undefined;
+  readonly mainId: string;
+  readonly mainLabel: string;
   readonly onNewRequest: () => void;
+  readonly onModuleSelect?: ((moduleId: string) => void) | undefined;
   readonly main: ReactNode;
   readonly decisionRail: ReactNode;
 }
@@ -25,7 +30,12 @@ export function OpsShell({
   ledgerLabel,
   syncLabel,
   deploymentLabel,
+  searchLabel,
+  searchPlaceholder,
+  mainId,
+  mainLabel,
   onNewRequest,
+  onModuleSelect,
   main,
   decisionRail
 }: OpsShellProps) {
@@ -58,6 +68,11 @@ export function OpsShell({
 
   function closeMobileMenu() {
     setMobileMenuOpen(false);
+  }
+
+  function handleMobileModuleSelect(moduleId: string) {
+    onModuleSelect?.(moduleId);
+    closeMobileMenu();
   }
 
   function handleMobileMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -121,7 +136,7 @@ export function OpsShell({
         <ul role="list" className="space-y-2">
           {modules.map((module) => (
             <li key={module.id}>
-              <ModuleLink module={module} active={module.id === activeModuleId} />
+              <ModuleLink module={module} active={module.id === activeModuleId} onModuleSelect={handleMobileModuleSelect} />
             </li>
           ))}
         </ul>
@@ -133,7 +148,7 @@ export function OpsShell({
     <div className="isolate min-h-dvh bg-[var(--command-black)] text-[var(--paper-light)] antialiased">
       <div aria-hidden="true" className="cestus-scan-layer pointer-events-none fixed inset-0 opacity-80" />
       <div className="relative grid min-h-dvh lg:grid-cols-[12rem_minmax(0,1fr)_22rem]">
-        <ModuleRail modules={modules} activeModuleId={activeModuleId} />
+        <ModuleRail modules={modules} activeModuleId={activeModuleId} onModuleSelect={onModuleSelect} />
         <div className="min-w-0">
           <CommandBand
             workspaceName={workspaceName}
@@ -141,10 +156,12 @@ export function OpsShell({
             ledgerLabel={ledgerLabel}
             syncLabel={syncLabel}
             deploymentLabel={deploymentLabel}
+            searchLabel={searchLabel}
+            searchPlaceholder={searchPlaceholder}
             onNewRequest={onNewRequest}
             onOpenMenu={openMobileMenu}
           />
-          <main id="command" className="min-w-0 px-4 py-4 lg:px-5">
+          <main id={mainId} aria-label={mainLabel} className="min-w-0 px-4 py-4 lg:px-5">
             {main}
           </main>
         </div>

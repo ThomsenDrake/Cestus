@@ -1,0 +1,20 @@
+/** @vitest-environment jsdom */
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { App } from "../src/App.js";
+
+describe("requests workspace shell", () => {
+  it("routes to the interim Requests workspace shell", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+
+    expect(screen.getByRole("heading", { name: "Requests" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Requests" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("searchbox", { name: "Requests search" })).toHaveAttribute(
+      "placeholder",
+      "Search requests, agencies, evidence, and correspondence"
+    );
+    expect(screen.getByRole("button", { name: "New request" })).toBeInTheDocument();
+  });
+});
