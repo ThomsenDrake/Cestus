@@ -3,6 +3,7 @@ import { buildPrrWorkspaceViewModel } from "./request-model.js";
 import type { PrrDetailModel, PrrViewMode, PrrWorkspaceFixture } from "./request-types.js";
 import { RequestBoard } from "./RequestBoard.js";
 import { RequestCommandBar } from "./RequestCommandBar.js";
+import { RequestSignalMap } from "./RequestSignalMap.js";
 
 interface RequestWorkspaceProps {
   readonly fixture: PrrWorkspaceFixture;
@@ -61,7 +62,11 @@ export function RequestWorkspace({
         onSavedViewChange={handleSavedViewChange}
         onViewModeChange={setViewMode}
       />
-      <RequestBoard lanes={model.lanes} selectedRequestId={selectedRequestId} onSelectRequest={onSelectRequest} />
+      {model.viewMode === "signal-map" ? (
+        <RequestSignalMap map={model.signalMap} />
+      ) : (
+        <RequestBoard lanes={model.lanes} selectedRequestId={selectedRequestId} onSelectRequest={onSelectRequest} />
+      )}
     </section>
   );
 }
