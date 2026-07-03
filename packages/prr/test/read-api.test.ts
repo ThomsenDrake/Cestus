@@ -69,9 +69,16 @@ function requestReadModel(
     prrRequestId: overrides.prrRequestId,
     status: overrides.status ?? "sent",
     agencyName: overrides.agencyName ?? "Example Agency",
+    jurisdictionPack: overrides.jurisdictionPack ?? { name: "us-federal-foia", version: "0.1.0" },
+    agency: overrides.agency ?? { name: overrides.agencyName ?? "Example Agency" },
+    requester: overrides.requester ?? { name: "Example Requester" },
+    requestText: overrides.requestText ?? "Please provide records.",
     possibleStalling: overrides.possibleStalling ?? false,
     confirmedStalling: overrides.confirmedStalling ?? false,
+    stallingSignals: overrides.stallingSignals ?? [],
+    productionBatches: overrides.productionBatches ?? [],
     productionEvidenceIds: overrides.productionEvidenceIds ?? [],
+    exemptions: overrides.exemptions ?? [],
     ...(overrides.activeDeadline === undefined ? {} : { activeDeadline: overrides.activeDeadline })
   };
 }
