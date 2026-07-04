@@ -118,3 +118,29 @@ factory-readiness passed
 ```
 
 Preview evidence: pending controller preview gate
+
+## Requests Detail Modal Plan Readiness
+
+The Requests detail modal plan was prepared from the approved design spec on 2026-07-04.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-04-requests-detail-modal-design.md`
+- `docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md`
+
+Factory readiness now checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded command evidence:
+
+```text
+npm test -- packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx
+Test Files  2 passed (2)
+
+npm run verify
+typecheck passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Preview evidence: pending final controller preview gate.
