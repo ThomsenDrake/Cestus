@@ -26,9 +26,14 @@ Status: `ready-for-review`
 
 ## Preview
 
-- Preview evidence: pending controller preview gate
+- Preview server: `npm run dev -- --host 0.0.0.0 --port 5175 --strictPort`
+- Local URL: `http://127.0.0.1:5175/`
+- Tailnet URL: `http://100.126.143.105:5175/`
+- Local reachability: `curl -I http://127.0.0.1:5175/` returned `HTTP/1.1 200 OK` on 2026-07-04T14:27:15Z.
+- Tailnet reachability: `curl -I --max-time 5 http://100.126.143.105:5175/` returned `HTTP/1.1 200 OK` on 2026-07-04T14:27:15Z.
+- Human preview gate: pending user review of the Requests detail modal and Workspace Intelligence rail.
 
 ## Review
 
-- Review status: ready for review as of 2026-07-04T14:25:46Z
-- Concerns: preview server and human preview evidence intentionally left pending for the controller preview gate.
+- Review status: ready for review as of 2026-07-04T14:27:15Z
+- Concerns: human preview gate remains pending user review.
