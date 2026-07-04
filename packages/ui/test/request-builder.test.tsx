@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { buildPrrProjection } from "../../prr/src/projection.js";
 import { buildPrrWorkspaceDto } from "../../prr/src/read-api.js";
@@ -151,6 +151,23 @@ describe("RequestBuilder", () => {
 
     expect(await screen.findByRole("dialog", { name: "Guided request builder" })).toBeInTheDocument();
     expect(screen.getByText("Review/send gate")).toBeInTheDocument();
+  });
+
+  it("opens the guided builder after a request detail modal has been closed", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    const card = await screen.findByRole("button", {
+      name: "Select Please provide building permit inspection records for the riverfront project."
+    });
+    fireEvent.click(card);
+    const detailModal = await screen.findByRole("dialog", { name: /Request investigation detail/i });
+    fireEvent.click(within(detailModal).getByRole("button", { name: "Close request detail" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "New request" }));
+
+    expect(await screen.findByRole("dialog", { name: "Guided request builder" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /Request investigation detail/i })).not.toBeInTheDocument();
   });
 
   it("does not open the guided request builder from the Command shell action", () => {

@@ -21,6 +21,7 @@ const uiTsxFiles = [
   "packages/ui/src/requests/RequestDetailSections.tsx",
   "packages/ui/src/requests/RequestDetailModal.tsx",
   "packages/ui/src/requests/RequestDetailRail.tsx",
+  "packages/ui/src/requests/RequestWorkspaceIntelligenceRail.tsx",
   "packages/ui/src/requests/RequestSignalMap.tsx",
   "packages/ui/src/requests/RequestBuilder.tsx"
 ];
@@ -28,6 +29,9 @@ const uiTsxFiles = [
 const finalRequestsContractFiles = [
   "packages/ui/src/requests/request-adapter.ts",
   "packages/ui/src/requests/RequestWorkspace.tsx",
+  "packages/ui/src/requests/RequestDetailSections.tsx",
+  "packages/ui/src/requests/RequestDetailModal.tsx",
+  "packages/ui/src/requests/RequestWorkspaceIntelligenceRail.tsx",
   "packages/ui/src/requests/RequestBuilder.tsx"
 ];
 
@@ -133,6 +137,18 @@ describe("visual system contract", () => {
       expect(wrapper).toBeDefined();
       expect(isCardLikeSurface(wrapper ?? "")).toBe(false);
     }
+  });
+
+  it("keeps request detail modal full-screen and page-scale", () => {
+    const modalSource = readFileSync("packages/ui/src/requests/RequestDetailModal.tsx", "utf8");
+
+    expect(modalSource).toContain("fixed inset-0");
+    expect(modalSource).toContain("min-h-[calc(100dvh-2rem)]");
+    expect(modalSource).toContain("max-w-7xl");
+    expect(modalSource).toContain('role="dialog"');
+    expect(modalSource).toContain('aria-modal="true"');
+    expect(modalSource).not.toMatch(/rounded-(?:sm|md|lg|xl|2xl|3xl|full)/);
+    expect(modalSource).not.toMatch(/shadow-(?:sm|md|lg|xl|2xl)/);
   });
 });
 
