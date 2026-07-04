@@ -139,14 +139,21 @@ describe("visual system contract", () => {
     }
   });
 
-  it("keeps request detail modal full-screen and page-scale", () => {
+  it("keeps request detail modal floating over the workspace", () => {
     const modalSource = readFileSync("packages/ui/src/requests/RequestDetailModal.tsx", "utf8");
 
     expect(modalSource).toContain("fixed inset-0");
-    expect(modalSource).toContain("min-h-[calc(100dvh-2rem)]");
-    expect(modalSource).toContain("max-w-7xl");
+    expect(modalSource).toContain("bg-[var(--command-black)]/58");
+    expect(modalSource).toContain("max-h-[calc(100dvh-1.5rem)]");
+    expect(modalSource).toContain("sm:max-h-[calc(100dvh-2.5rem)]");
+    expect(modalSource).toContain("lg:max-h-[calc(100dvh-4rem)]");
+    expect(modalSource).toContain("overflow-hidden");
+    expect(modalSource).toContain('data-request-detail-modal-body="true"');
+    expect(modalSource).toContain("overflow-y-auto");
+    expect(modalSource).toContain("shadow-[0_24px_80px_rgba(0,0,0,0.72)]");
     expect(modalSource).toContain('role="dialog"');
     expect(modalSource).toContain('aria-modal="true"');
+    expect(modalSource).not.toContain("min-h-[calc(100dvh-2rem)]");
     expect(modalSource).not.toMatch(/rounded-(?:sm|md|lg|xl|2xl|3xl|full)/);
     expect(modalSource).not.toMatch(/shadow-(?:sm|md|lg|xl|2xl)/);
   });
