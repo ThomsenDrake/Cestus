@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/prr-ledger-backed-workspace-design`
 Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
 Claimed at: 2026-07-04T13:19:36Z
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -18,9 +18,10 @@ Status: `in-progress`
 
 ## Evidence
 
-- Red command: pending
-- Green command: pending
-- Full verification: pending
+- Red command: `npm test -- packages/ui/test/request-detail-modal.test.tsx packages/ui/test/request-detail-rail.test.tsx` failed as expected because `../src/requests/RequestDetailModal.js` does not exist. Existing `request-detail-rail.test.tsx` passed in the same run.
+- Green command: `npm test -- packages/ui/test/request-detail-modal.test.tsx packages/ui/test/request-detail-rail.test.tsx` passed with 2 test files and 9 tests.
+- Full verification: `npm run verify` passed: typecheck passed, 41 test files and 324 tests passed, Vite build succeeded, and factory-readiness passed.
+- Supporting edit: `packages/ui/test/visual-contract.test.ts` was updated after full verification exposed its static UI source list still pointed at the pre-extraction rail copy location.
 
 ## Review
 
