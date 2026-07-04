@@ -43,13 +43,14 @@ describe("Cestus UI bootstrap", () => {
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Signal operations board" })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Requests workspace intelligence" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Request detail rail" })).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Saved PRR view"), { target: { value: "florida-fees" } });
     const feeCard = screen.getByRole("button", {
       name: /Select Please provide building permit inspection records for the riverfront project/i
     });
     expect(feeCard).toBeInTheDocument();
-    expect(screen.getByRole("complementary", { name: "Requests workspace intelligence" })).toBeInTheDocument();
     fireEvent.click(feeCard);
     const detailModal = await screen.findByRole("dialog", { name: /Request investigation detail/i });
     expect(within(detailModal).getByText(/Building Services Department/)).toBeInTheDocument();

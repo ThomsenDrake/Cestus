@@ -13,7 +13,9 @@ const requiredFiles = [
   "docs/superpowers/specs/2026-07-01-public-records-request-workflow-design.md",
   "docs/superpowers/plans/2026-07-01-public-records-request-workflow-implementation.md",
   "docs/superpowers/specs/2026-07-03-ledger-backed-prr-workspace-design.md",
-  "docs/superpowers/plans/2026-07-03-ledger-backed-prr-workspace-implementation.md"
+  "docs/superpowers/plans/2026-07-03-ledger-backed-prr-workspace-implementation.md",
+  "docs/superpowers/specs/2026-07-04-requests-detail-modal-design.md",
+  "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md"
 ];
 
 const allowToken = "agent-readiness-allow";

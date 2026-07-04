@@ -7,6 +7,8 @@ describe("Requests data boundary", () => {
   const prrRuntimeImportWithExtension = "../../prr/src/" + "runtime.js";
   const ledgerBackedSpecPath = "docs/superpowers/specs/2026-07-03-ledger-backed-prr-workspace-design.md";
   const ledgerBackedPlanPath = "docs/superpowers/plans/2026-07-03-ledger-backed-prr-workspace-implementation.md";
+  const requestModalSpecPath = "docs/superpowers/specs/2026-07-04-requests-detail-modal-design.md";
+  const requestModalPlanPath = "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md";
   const productUiBoundaryFiles = listSourceFiles("packages/ui/src");
 
   it("scans every product UI source file for browser boundary drift", () => {
@@ -48,6 +50,7 @@ describe("Requests data boundary", () => {
     const requiredFiles = stringArrayInitializer(readinessScript, "requiredFiles");
 
     expect(requiredFiles).toEqual(expect.arrayContaining([ledgerBackedSpecPath, ledgerBackedPlanPath]));
+    expect(requiredFiles).toEqual(expect.arrayContaining([requestModalSpecPath, requestModalPlanPath]));
   });
 });
 
