@@ -18,6 +18,7 @@ describe("RequestSignalMap", () => {
       <RequestWorkspace
         workspace={buildTestRequestsWorkspace()}
         onOpenBuilder={() => undefined}
+        onOpenRequestDetail={() => undefined}
         selectedRequestId="prr_req_001"
         onSelectRequest={() => undefined}
         onSelectedRequestChange={() => undefined}
@@ -36,6 +37,7 @@ describe("RequestSignalMap", () => {
       <RequestWorkspace
         workspace={buildTestRequestsWorkspace()}
         onOpenBuilder={() => undefined}
+        onOpenRequestDetail={() => undefined}
         selectedRequestId="prr_req_001"
         onSelectRequest={() => undefined}
         onSelectedRequestChange={() => undefined}
@@ -55,6 +57,7 @@ describe("RequestSignalMap", () => {
       <RequestWorkspace
         workspace={buildTestRequestsWorkspace()}
         onOpenBuilder={() => undefined}
+        onOpenRequestDetail={() => undefined}
         selectedRequestId="prr_req_001"
         onSelectRequest={() => undefined}
         onSelectedRequestChange={() => undefined}
@@ -72,6 +75,7 @@ describe("RequestSignalMap", () => {
       <RequestWorkspace
         workspace={buildTestRequestsWorkspace()}
         onOpenBuilder={() => undefined}
+        onOpenRequestDetail={() => undefined}
         selectedRequestId="prr_req_001"
         onSelectRequest={() => undefined}
         onSelectedRequestChange={() => undefined}

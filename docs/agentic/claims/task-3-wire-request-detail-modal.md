@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/prr-ledger-backed-workspace-design`
 Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
 Claimed at: 2026-07-04T13:57:43Z
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -20,11 +20,12 @@ Status: `in-progress`
 
 ## Evidence
 
-- Red command: pending
-- Green command: pending
-- Full verification: pending
+- Red command: `npm test -- packages/ui/test/request-board.test.tsx packages/ui/test/app-smoke.test.tsx` failed as expected with 2 test files failed and 4 assertions failing because App still rendered `Request detail rail` and no `Requests workspace intelligence` rail or request detail modal was present.
+- Green command: `npm test -- packages/ui/test/request-board.test.tsx packages/ui/test/app-smoke.test.tsx` passed with 2 test files and 12 tests.
+- Full verification: `npm run verify` passed after the supporting edit: typecheck passed, 42 test files and 328 tests passed, Vite build succeeded, and factory-readiness passed. First attempt stopped at typecheck because `packages/ui/test/request-signal-map.test.tsx` directly rendered `RequestWorkspace` without the new `onOpenRequestDetail` prop.
+- Supporting edit: `packages/ui/test/request-signal-map.test.tsx` was updated with no-op `onOpenRequestDetail` callbacks after full verification exposed the typecheck-only prop requirement.
 
 ## Review
 
-- Review status: pending
+- Review status: ready for review
 - Concerns: none recorded

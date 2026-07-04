@@ -20,6 +20,7 @@ describe("RequestWorkspace", () => {
         workspace={buildTestRequestsWorkspace()}
         selectedRequestId="prr_req_001"
         onOpenBuilder={() => undefined}
+        onOpenRequestDetail={() => undefined}
         onSelectRequest={() => undefined}
         onSelectedRequestChange={() => undefined}
       />
@@ -52,6 +53,7 @@ describe("RequestWorkspace", () => {
         workspace={buildTestRequestsWorkspace()}
         selectedRequestId="prr_req_001"
         onOpenBuilder={() => undefined}
+        onOpenRequestDetail={() => undefined}
         onSelectRequest={() => undefined}
         onSelectedRequestChange={() => undefined}
       />
@@ -64,33 +66,39 @@ describe("RequestWorkspace", () => {
     expect(screen.queryByText("Example Agency")).not.toBeInTheDocument();
   });
 
-  it("exposes selected request card state when a request is selected", async () => {
+  it("opens the request detail modal immediately when a request card is selected", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Requests workspace intelligence" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Request detail rail" })).not.toBeInTheDocument();
 
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Select Please provide building permit inspection records for the riverfront project."
-      })
-    );
+    const card = screen.getByRole("button", {
+      name: "Select Please provide building permit inspection records for the riverfront project."
+    });
+    card.focus();
+    fireEvent.click(card);
 
-    expect(
-      screen.getByRole("button", {
-        name: "Select Please provide building permit inspection records for the riverfront project."
-      })
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(
-      within(screen.getByRole("complementary", { name: "Request detail rail" })).getByText("Review fee or scope")
-    ).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog", { name: /Request investigation detail/i });
+    expect(within(dialog).getByText("Building Services Department")).toBeInTheDocument();
+    expect(within(dialog).getByText("Review fee or scope")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close request detail" }));
+
+    expect(screen.queryByRole("dialog", { name: /Request investigation detail/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Requests workspace intelligence" })).toBeInTheDocument();
+    expect(card).toHaveAttribute("aria-pressed", "true");
+    expect(card).toHaveFocus();
   });
 
-  it("keeps App Requests mode to one request detail rail landmark", async () => {
+  it("keeps App Requests mode to one workspace intelligence rail landmark", async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
 
     await screen.findByRole("heading", { name: "Requests" });
-    expect(screen.getAllByRole("complementary", { name: "Request detail rail" })).toHaveLength(1);
+    expect(screen.getAllByRole("complementary", { name: "Requests workspace intelligence" })).toHaveLength(1);
+    expect(screen.queryByRole("complementary", { name: "Request detail rail" })).not.toBeInTheDocument();
   });
 });

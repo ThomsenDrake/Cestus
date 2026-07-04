@@ -8,6 +8,7 @@ import { RequestSignalMap } from "./RequestSignalMap.js";
 interface RequestWorkspaceProps {
   readonly workspace: PrrWorkspaceData;
   readonly onOpenBuilder: () => void;
+  readonly onOpenRequestDetail: () => void;
   readonly selectedRequestId: string | undefined;
   readonly onSelectRequest: (prrRequestId: string) => void;
   readonly onSelectedRequestChange: (selectedRequest: PrrDetailModel | undefined) => void;
@@ -16,6 +17,7 @@ interface RequestWorkspaceProps {
 export function RequestWorkspace({
   workspace,
   onOpenBuilder,
+  onOpenRequestDetail,
   selectedRequestId,
   onSelectRequest,
   onSelectedRequestChange
@@ -34,6 +36,11 @@ export function RequestWorkspace({
   function handleSavedViewChange(nextSavedViewId: string) {
     setSavedViewId(nextSavedViewId);
     setViewMode(undefined);
+  }
+
+  function handleSelectRequest(prrRequestId: string) {
+    onSelectRequest(prrRequestId);
+    onOpenRequestDetail();
   }
 
   return (
@@ -65,7 +72,7 @@ export function RequestWorkspace({
       {model.viewMode === "signal-map" ? (
         <RequestSignalMap map={model.signalMap} />
       ) : (
-        <RequestBoard lanes={model.lanes} selectedRequestId={selectedRequestId} onSelectRequest={onSelectRequest} />
+        <RequestBoard lanes={model.lanes} selectedRequestId={selectedRequestId} onSelectRequest={handleSelectRequest} />
       )}
     </section>
   );
