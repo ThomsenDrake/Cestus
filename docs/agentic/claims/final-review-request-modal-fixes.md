@@ -9,7 +9,7 @@ Worker identity: Codex
 Branch: `codex/prr-ledger-backed-workspace-design`
 Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
 Claimed at: `2026-07-04T14:44:22Z`
-Status: `claimed`
+Status: `in-progress`
 
 ## Final-Review Findings
 
