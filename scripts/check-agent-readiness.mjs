@@ -15,7 +15,9 @@ const requiredFiles = [
   "docs/superpowers/specs/2026-07-03-ledger-backed-prr-workspace-design.md",
   "docs/superpowers/plans/2026-07-03-ledger-backed-prr-workspace-implementation.md",
   "docs/superpowers/specs/2026-07-04-requests-detail-modal-design.md",
-  "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md"
+  "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md",
+  "docs/superpowers/specs/2026-07-04-requests-detail-floating-modal-design.md",
+  "docs/superpowers/plans/2026-07-04-requests-detail-floating-modal-implementation.md"
 ];
 
 const allowToken = "agent-readiness-allow";

@@ -74,10 +74,10 @@ export function RequestDetailModal({ selectedRequest, onClose }: RequestDetailMo
       aria-modal="true"
       aria-label={`Request investigation detail: ${title}`}
       onKeyDown={handleDialogKeyDown}
-      className="fixed inset-0 z-50 overflow-y-auto bg-[var(--command-black)]/92 p-4"
+      className="fixed inset-0 z-50 overflow-hidden bg-[var(--command-black)]/58 p-3 sm:p-5 lg:p-8"
     >
-      <div className="mx-auto min-h-[calc(100dvh-2rem)] max-w-7xl border border-[var(--console-line)] bg-[var(--console-void)]/96 p-4 lg:p-5">
-        <header className="flex min-w-0 flex-col gap-3 border-b border-[var(--console-line)] pb-4 md:flex-row md:items-start md:justify-between">
+      <div className="mx-auto flex max-h-[calc(100dvh-1.5rem)] max-w-7xl flex-col overflow-hidden border border-[var(--console-line)] bg-[var(--console-void)]/96 shadow-[0_24px_80px_rgba(0,0,0,0.72)] sm:max-h-[calc(100dvh-2.5rem)] lg:max-h-[calc(100dvh-4rem)]">
+        <header className="flex min-w-0 shrink-0 flex-col gap-3 border-b border-[var(--console-line)] p-4 md:flex-row md:items-start md:justify-between lg:p-5">
           <div className="min-w-0">
             <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">
               {selectedRequest === undefined ? (
@@ -105,7 +105,7 @@ export function RequestDetailModal({ selectedRequest, onClose }: RequestDetailMo
             Close request detail
           </button>
         </header>
-        <div className="mt-5">
+        <div data-request-detail-modal-body="true" className="min-h-0 overflow-y-auto p-4 lg:p-5">
           {selectedRequest === undefined ? (
             <p className="text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
               The selected request detail is unavailable. Close this modal and select another request.

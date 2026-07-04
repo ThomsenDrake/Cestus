@@ -18,15 +18,32 @@ describe("RequestDetailModal", () => {
     return detail!;
   }
 
-  it("renders selected request details in a full-screen investigation dialog", () => {
+  it("renders selected request details in a floating investigation dialog", () => {
     render(<RequestDetailModal selectedRequest={selectedRequest()} onClose={() => undefined} />);
 
     const dialog = screen.getByRole("dialog", { name: /Request investigation detail/i });
     const surface = dialog.firstElementChild;
+    const detailBody = surface?.querySelector('[data-request-detail-modal-body="true"]');
 
     expect(dialog).toHaveAttribute("aria-modal", "true");
-    expect(dialog).toHaveClass("fixed", "inset-0");
-    expect(surface).toHaveClass("min-h-[calc(100dvh-2rem)]", "max-w-7xl");
+    expect(dialog).toHaveClass("fixed", "inset-0", "overflow-hidden", "bg-[var(--command-black)]/58");
+    expect(surface).toHaveClass(
+      "mx-auto",
+      "flex",
+      "max-h-[calc(100dvh-1.5rem)]",
+      "max-w-7xl",
+      "flex-col",
+      "overflow-hidden",
+      "border",
+      "border-[var(--console-line)]",
+      "bg-[var(--console-void)]/96",
+      "shadow-[0_24px_80px_rgba(0,0,0,0.72)]",
+      "sm:max-h-[calc(100dvh-2.5rem)]",
+      "lg:max-h-[calc(100dvh-4rem)]"
+    );
+    expect(surface).not.toHaveClass("min-h-[calc(100dvh-2rem)]");
+    expect(detailBody).not.toBeNull();
+    expect(detailBody).toHaveClass("min-h-0", "overflow-y-auto");
     expect(within(dialog).getByText("Building Services Department")).toBeInTheDocument();
     expect(within(dialog).getByText("Review fee or scope")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Review to send" })).toBeDisabled();
