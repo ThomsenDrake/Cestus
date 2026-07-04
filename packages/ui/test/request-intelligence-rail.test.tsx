@@ -25,6 +25,22 @@ describe("RequestWorkspaceIntelligenceRail", () => {
     expect(within(rail).queryByText("Next action packet")).not.toBeInTheDocument();
   });
 
+  it("renders the active saved view and visible request count", () => {
+    render(
+      <RequestWorkspaceIntelligenceRail
+        workspace={buildTestRequestsWorkspace()}
+        savedViewId="florida-fees"
+        viewMode="board"
+      />
+    );
+
+    const rail = screen.getByRole("complementary", { name: "Requests workspace intelligence" });
+
+    expect(within(rail).getByText("1 visible request in Florida fees.")).toBeInTheDocument();
+    expect(within(rail).getByText("Review fee/scope")).toBeInTheDocument();
+    expect(within(rail).getByText("1 request needs fee or scope review.")).toBeInTheDocument();
+  });
+
   it("renders a sparse loading state without request fixtures", () => {
     render(<RequestWorkspaceIntelligenceRail workspace={undefined} />);
 

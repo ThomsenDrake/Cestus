@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildPrrWorkspaceViewModel } from "./request-model.js";
-import type { PrrDetailModel, PrrViewMode, PrrWorkspaceData } from "./request-types.js";
+import type { PrrDetailModel, PrrViewMode, PrrWorkspaceData, PrrWorkspaceViewContext } from "./request-types.js";
 import { RequestBoard } from "./RequestBoard.js";
 import { RequestCommandBar } from "./RequestCommandBar.js";
 import { RequestSignalMap } from "./RequestSignalMap.js";
@@ -12,6 +12,7 @@ interface RequestWorkspaceProps {
   readonly selectedRequestId: string | undefined;
   readonly onSelectRequest: (prrRequestId: string) => void;
   readonly onSelectedRequestChange: (selectedRequest: PrrDetailModel | undefined) => void;
+  readonly onActiveViewChange?: (context: PrrWorkspaceViewContext) => void;
 }
 
 export function RequestWorkspace({
@@ -20,7 +21,8 @@ export function RequestWorkspace({
   onOpenRequestDetail,
   selectedRequestId,
   onSelectRequest,
-  onSelectedRequestChange
+  onSelectedRequestChange,
+  onActiveViewChange
 }: RequestWorkspaceProps) {
   const [savedViewId, setSavedViewId] = useState("all-active");
   const [viewMode, setViewMode] = useState<PrrViewMode | undefined>(undefined);
@@ -32,6 +34,10 @@ export function RequestWorkspace({
   useEffect(() => {
     onSelectedRequestChange(model.selectedRequest);
   }, [model.selectedRequest, onSelectedRequestChange]);
+
+  useEffect(() => {
+    onActiveViewChange?.({ savedViewId: model.activeView.id, viewMode: model.viewMode });
+  }, [model.activeView.id, model.viewMode, onActiveViewChange]);
 
   function handleSavedViewChange(nextSavedViewId: string) {
     setSavedViewId(nextSavedViewId);

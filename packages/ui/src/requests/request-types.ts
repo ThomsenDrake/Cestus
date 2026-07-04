@@ -178,6 +178,8 @@ export interface PrrWorkspaceIntelligenceNextWork {
 
 export interface PrrWorkspaceIntelligenceModel {
   readonly activeRequestCount: number;
+  readonly activeViewLabel: string;
+  readonly visibleRequestCount: number;
   readonly generatedAt: string;
   readonly healthSignals: readonly PrrWorkspaceIntelligenceSignal[];
   readonly nextWork: readonly PrrWorkspaceIntelligenceNextWork[];
@@ -199,4 +201,9 @@ export interface PrrWorkspaceViewModel {
   readonly selectedRequest: PrrDetailModel | undefined;
   readonly signalMap: PrrSignalMapModel;
   readonly builder: PrrBuilderModel;
+}
+
+export interface PrrWorkspaceViewContext {
+  readonly savedViewId: string;
+  readonly viewMode: PrrViewMode | undefined;
 }

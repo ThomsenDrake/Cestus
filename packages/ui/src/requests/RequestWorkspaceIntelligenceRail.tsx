@@ -1,8 +1,10 @@
 import { buildPrrWorkspaceIntelligenceModel } from "./request-model.js";
-import type { PrrSignalTone, PrrWorkspaceData, PrrWorkspaceIntelligenceModel } from "./request-types.js";
+import type { PrrSignalTone, PrrViewMode, PrrWorkspaceData, PrrWorkspaceIntelligenceModel } from "./request-types.js";
 
 interface RequestWorkspaceIntelligenceRailProps {
   readonly workspace: PrrWorkspaceData | undefined;
+  readonly savedViewId?: string | undefined;
+  readonly viewMode?: PrrViewMode | undefined;
 }
 
 const toneClasses: Record<PrrSignalTone, string> = {
@@ -13,7 +15,7 @@ const toneClasses: Record<PrrSignalTone, string> = {
   neutral: "border-[var(--console-line)] text-[var(--muted-amber)]"
 };
 
-export function RequestWorkspaceIntelligenceRail({ workspace }: RequestWorkspaceIntelligenceRailProps) {
+export function RequestWorkspaceIntelligenceRail({ workspace, savedViewId, viewMode }: RequestWorkspaceIntelligenceRailProps) {
   if (workspace === undefined) {
     return (
       <aside aria-label="Requests workspace intelligence" className="h-full p-4 lg:p-5">
@@ -23,7 +25,7 @@ export function RequestWorkspaceIntelligenceRail({ workspace }: RequestWorkspace
     );
   }
 
-  return <IntelligenceRailContent model={buildPrrWorkspaceIntelligenceModel(workspace)} />;
+  return <IntelligenceRailContent model={buildPrrWorkspaceIntelligenceModel(workspace, { savedViewId, viewMode })} />;
 }
 
 function IntelligenceRailContent({ model }: { readonly model: PrrWorkspaceIntelligenceModel }) {
@@ -32,7 +34,8 @@ function IntelligenceRailContent({ model }: { readonly model: PrrWorkspaceIntell
       <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">PRR sync local</p>
       <h2 className="mt-2 text-lg font-semibold text-balance text-[var(--paper-light)]">Workspace intelligence</h2>
       <p className="mt-3 text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
-        {model.activeRequestCount} active request{model.activeRequestCount === 1 ? "" : "s"} from replayed PRR DTOs.
+        {model.visibleRequestCount} visible request{model.visibleRequestCount === 1 ? "" : "s"} in{" "}
+        {model.activeViewLabel}.
       </p>
 
       <section className="mt-5 border-t border-[var(--console-line)] pt-5">

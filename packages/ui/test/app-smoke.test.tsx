@@ -47,6 +47,7 @@ describe("Cestus UI bootstrap", () => {
     expect(screen.queryByRole("complementary", { name: "Request detail rail" })).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Saved PRR view"), { target: { value: "florida-fees" } });
+    expect(screen.getByText("1 visible request in Florida fees.")).toBeInTheDocument();
     const feeCard = screen.getByRole("button", {
       name: /Select Please provide building permit inspection records for the riverfront project/i
     });
@@ -93,6 +94,42 @@ describe("Cestus UI bootstrap", () => {
 
     expect(await screen.findByText("Records Replacement Office")).toBeInTheDocument();
     expect(screen.queryByText("Building Services Department")).not.toBeInTheDocument();
+  });
+
+  it("removes the request detail modal and shows the load error when Requests reload fails", async () => {
+    const workspace = buildTestRequestsWorkspace();
+    const firstAdapter = createStaticRequestsAdapter(workspace);
+    const failingAdapter: RequestsWorkspaceAdapter = {
+      async loadRequestsWorkspace() {
+        throw new Error("Requests reload failed for test.");
+      },
+      async createDraftRequest() {
+        return {
+          ok: false,
+          failedStep: "append-request",
+          committedEventIds: [],
+          diagnostic: {
+            message: "Failing test adapter does not create drafts.",
+            allowedRepairActions: ["reload Requests"]
+          },
+          workspace
+        };
+      }
+    };
+    const { rerender } = render(<App requestsAdapter={firstAdapter} />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    const card = await screen.findByRole("button", {
+      name: "Select Please provide building permit inspection records for the riverfront project."
+    });
+    fireEvent.click(card);
+    expect(await screen.findByRole("dialog", { name: /Request investigation detail/i })).toBeInTheDocument();
+
+    rerender(<App requestsAdapter={failingAdapter} />);
+
+    const errorRegion = await screen.findByRole("region", { name: "Requests load error" });
+    expect(within(errorRegion).getByText("Requests reload failed for test.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /Request investigation detail/i })).not.toBeInTheDocument();
   });
 
   it("does not open a queued builder after Requests finishes loading", async () => {
