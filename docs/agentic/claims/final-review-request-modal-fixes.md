@@ -36,6 +36,8 @@ Status: `ready-for-review`
 - Green command: `npm test -- packages/ui/test/request-model.test.ts packages/ui/test/request-intelligence-rail.test.tsx packages/ui/test/request-board.test.tsx packages/ui/test/app-smoke.test.tsx`
 - Green result: passed. Vitest reported `Test Files 4 passed (4)` and `Tests 23 passed (23)`.
 - Full verification: `npm run verify` passed. Output included `typecheck passed`, `Test Files 42 passed (42)`, `Tests 334 passed (334)`, `tests passed`, Vite build success, and `factory-readiness passed`.
+- Post-fix local preview reachability: `curl -I --max-time 5 http://127.0.0.1:5175/` returned `HTTP/1.1 200 OK` on 2026-07-04T14:52:18Z.
+- Post-fix tailnet preview reachability: `curl -I --max-time 5 http://100.126.143.105:5175/` returned `HTTP/1.1 200 OK` on 2026-07-04T14:52:18Z.
 
 ## Review
 
