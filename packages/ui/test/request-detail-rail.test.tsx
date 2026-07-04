@@ -14,6 +14,15 @@ describe("RequestDetailRail", () => {
     });
   }
 
+  it("preserves the empty state when no request is selected", () => {
+    render(<RequestDetailRail selectedRequest={undefined} />);
+
+    const rail = screen.getByRole("complementary", { name: "Request detail rail" });
+
+    expect(within(rail).getByText("Select a request to inspect its next action.")).toBeInTheDocument();
+    expect(within(rail).queryByText("Next action packet")).not.toBeInTheDocument();
+  });
+
   it("renders the selected request action packet", () => {
     render(<RequestDetailRail selectedRequest={getSelectedPrrRequest(buildTestRequestsWorkspace(), "prr_fee_building_permits")} />);
 

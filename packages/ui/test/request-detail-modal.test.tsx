@@ -22,7 +22,11 @@ describe("RequestDetailModal", () => {
     render(<RequestDetailModal selectedRequest={selectedRequest()} onClose={() => undefined} />);
 
     const dialog = screen.getByRole("dialog", { name: /Request investigation detail/i });
+    const surface = dialog.firstElementChild;
+
     expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveClass("fixed", "inset-0");
+    expect(surface).toHaveClass("min-h-[calc(100dvh-2rem)]", "max-w-7xl");
     expect(within(dialog).getByText("Building Services Department")).toBeInTheDocument();
     expect(within(dialog).getByText("Review fee or scope")).toBeInTheDocument();
     expect(within(dialog).getByText("Legal escalation locked")).toBeInTheDocument();
