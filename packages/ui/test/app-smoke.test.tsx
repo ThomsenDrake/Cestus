@@ -60,6 +60,7 @@ describe("Cestus UI bootstrap", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "New request" }));
     expect(screen.getByRole("dialog", { name: "Guided request builder" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /Request investigation detail/i })).not.toBeInTheDocument();
   });
 
   it("renders Requests from backend-derived PRR DTOs", async () => {

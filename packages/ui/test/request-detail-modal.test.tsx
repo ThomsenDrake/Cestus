@@ -33,6 +33,14 @@ describe("RequestDetailModal", () => {
     expect(within(dialog).getByText("Legal escalation locked")).toBeInTheDocument();
   });
 
+  it("renders a safe empty detail state", () => {
+    render(<RequestDetailModal selectedRequest={undefined} onClose={() => undefined} />);
+
+    const dialog = screen.getByRole("dialog", { name: /Request investigation detail/i });
+    expect(within(dialog).getByText("Request detail unavailable")).toBeInTheDocument();
+    expect(within(dialog).getByText(/selected request detail is unavailable/i)).toBeInTheDocument();
+  });
+
   it("closes from the close button and Escape key", () => {
     const onClose = vi.fn();
     render(<RequestDetailModal selectedRequest={selectedRequest()} onClose={onClose} />);

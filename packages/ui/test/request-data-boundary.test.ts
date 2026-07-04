@@ -13,6 +13,9 @@ describe("Requests data boundary", () => {
     expect(productUiBoundaryFiles).toContain("packages/ui/src/workspace/CommandBand.tsx");
     expect(productUiBoundaryFiles).toContain("packages/ui/src/workspace/workspace-nav.ts");
     expect(productUiBoundaryFiles).toContain("packages/ui/src/main.tsx");
+    expect(productUiBoundaryFiles).toContain("packages/ui/src/requests/RequestDetailSections.tsx");
+    expect(productUiBoundaryFiles).toContain("packages/ui/src/requests/RequestDetailModal.tsx");
+    expect(productUiBoundaryFiles).toContain("packages/ui/src/requests/RequestWorkspaceIntelligenceRail.tsx");
   });
 
   it("keeps product Requests code off local card fixtures and Node-only runtime imports", () => {
