@@ -144,6 +144,9 @@ describe("visual system contract", () => {
 
     expect(modalSource).toContain("fixed inset-0");
     expect(modalSource).toContain("bg-[var(--command-black)]/58");
+    expect(modalSource).toContain("p-3");
+    expect(modalSource).toContain("sm:p-5");
+    expect(modalSource).toContain("lg:p-8");
     expect(modalSource).toContain("max-h-[calc(100dvh-1.5rem)]");
     expect(modalSource).toContain("sm:max-h-[calc(100dvh-2.5rem)]");
     expect(modalSource).toContain("lg:max-h-[calc(100dvh-4rem)]");
