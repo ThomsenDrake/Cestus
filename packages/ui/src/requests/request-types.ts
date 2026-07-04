@@ -161,6 +161,28 @@ export interface PrrBuilderModel {
   readonly jurisdictionPacks?: readonly PrrWorkspaceDtoBuilderPackOption[];
 }
 
+export interface PrrWorkspaceIntelligenceSignal {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string;
+  readonly tone: PrrSignalTone;
+  readonly detail: string;
+}
+
+export interface PrrWorkspaceIntelligenceNextWork {
+  readonly id: string;
+  readonly label: string;
+  readonly detail: string;
+  readonly tone: PrrSignalTone;
+}
+
+export interface PrrWorkspaceIntelligenceModel {
+  readonly activeRequestCount: number;
+  readonly generatedAt: string;
+  readonly healthSignals: readonly PrrWorkspaceIntelligenceSignal[];
+  readonly nextWork: readonly PrrWorkspaceIntelligenceNextWork[];
+}
+
 export interface PrrWorkspaceFixture {
   readonly savedViews: readonly PrrSavedView[];
   readonly cards: readonly PrrRequestCard[];
