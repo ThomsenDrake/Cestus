@@ -49,10 +49,11 @@ describe("Cestus UI bootstrap", () => {
       name: /Select Please provide building permit inspection records for the riverfront project/i
     });
     expect(feeCard).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Requests workspace intelligence" })).toBeInTheDocument();
     fireEvent.click(feeCard);
-    expect(
-      await within(screen.getByLabelText("Request detail rail")).findByText(/Building Services Department/)
-    ).toBeInTheDocument();
+    const detailModal = await screen.findByRole("dialog", { name: /Request investigation detail/i });
+    expect(within(detailModal).getByText(/Building Services Department/)).toBeInTheDocument();
+    fireEvent.click(within(detailModal).getByRole("button", { name: "Close request detail" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Signal map" }));
     expect(screen.getByRole("region", { name: "PRR signal map" })).toBeInTheDocument();
@@ -147,7 +148,8 @@ describe("Cestus UI bootstrap", () => {
 
     expect(await screen.findByText("City Clerk")).toBeInTheDocument();
     expect(screen.getAllByText(/budget amendment memos/i).length).toBeGreaterThan(0);
-    expect(await within(screen.getByLabelText("Request detail rail")).findByText(/City Clerk/)).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Requests workspace intelligence" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Request detail rail" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
   });
 
