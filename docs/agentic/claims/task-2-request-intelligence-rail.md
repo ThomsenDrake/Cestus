@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/prr-ledger-backed-workspace-design`
 Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
 Claimed at: 2026-07-04T13:44:50Z
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -18,9 +18,9 @@ Status: `in-progress`
 
 ## Evidence
 
-- Red command: pending
-- Green command: pending
-- Full verification: pending
+- Red command: `npm test -- packages/ui/test/request-model.test.ts packages/ui/test/request-intelligence-rail.test.tsx` failed as expected because `buildPrrWorkspaceIntelligenceModel` is not exported and `../src/requests/RequestWorkspaceIntelligenceRail.js` does not exist.
+- Green command: `npm test -- packages/ui/test/request-model.test.ts packages/ui/test/request-intelligence-rail.test.tsx` passed with 2 test files and 8 tests.
+- Full verification: `npm run verify` passed: typecheck passed, 42 test files and 328 tests passed, Vite build succeeded, and factory-readiness passed.
 
 ## Review
 

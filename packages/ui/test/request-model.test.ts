@@ -3,6 +3,7 @@ import { buildPrrProjection } from "../../prr/src/projection.js";
 import { buildPrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import {
+  buildPrrWorkspaceIntelligenceModel,
   buildPrrWorkspaceViewModel,
   getSelectedPrrRequest,
   prrLaneOrder,
@@ -87,5 +88,18 @@ describe("PRR workspace model", () => {
     expect(selected?.correspondence.syncState).toBe("No provider event in replayed DTO.");
     expect(selected?.correspondence.latestInbound).toBe("No inbound correspondence in replayed events.");
     expect(selected?.correspondence.latestOutbound).toBe("No outbound correspondence in replayed events.");
+  });
+
+  it("summarizes workspace intelligence from backend-derived PRR DTOs", () => {
+    const workspace = buildTestRequestsWorkspace();
+    const intelligence = buildPrrWorkspaceIntelligenceModel(workspace);
+
+    expect(intelligence.activeRequestCount).toBeGreaterThanOrEqual(9);
+    expect(intelligence.healthSignals.map((signal) => signal.label)).toEqual(
+      expect.arrayContaining(["Review fee/scope", "Appeal/escalation", "Diagnostics"])
+    );
+    expect(intelligence.nextWork.map((item) => item.label)).toEqual(
+      expect.arrayContaining(["Review fee and scope signals", "Inspect escalation candidates"])
+    );
   });
 });

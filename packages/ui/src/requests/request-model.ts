@@ -30,6 +30,9 @@ import {
   type PrrSuggestedFill,
   type PrrViewMode,
   type PrrWorkspaceData,
+  type PrrWorkspaceIntelligenceModel,
+  type PrrWorkspaceIntelligenceNextWork,
+  type PrrWorkspaceIntelligenceSignal,
   type PrrWorkspaceViewModel
 } from "./request-types.js";
 
@@ -107,6 +110,80 @@ export function buildPrrWorkspaceViewModel(
 export function buildPrrBuilderModel(workspace: PrrWorkspaceData): PrrBuilderModel {
   return Object.freeze({
     steps: Object.freeze(workspace.builder.steps.map(toBuilderStep))
+  });
+}
+
+export function buildPrrWorkspaceIntelligenceModel(workspace: PrrWorkspaceData): PrrWorkspaceIntelligenceModel {
+  const feeScopeCount = workspace.cards.filter((card) => card.laneId === "review-fee-scope").length;
+  const escalationCount = workspace.cards.filter((card) => card.laneId === "appeal-escalation").length;
+  const overdueCount = workspace.cards.filter((card) => card.dueState === "overdue").length;
+  const diagnosticCount = workspace.diagnostics.length;
+  const draftCount = workspace.cards.filter((card) => card.laneId === "drafting").length;
+
+  const healthSignals: PrrWorkspaceIntelligenceSignal[] = [
+    {
+      id: "active-requests",
+      label: "Active requests",
+      value: String(workspace.cards.length),
+      tone: "cyan",
+      detail: "Requests currently projected from the local PRR ledger."
+    },
+    {
+      id: "review-fee-scope",
+      label: "Review fee/scope",
+      value: String(feeScopeCount),
+      tone: feeScopeCount > 0 ? "amber" : "neutral",
+      detail: "Fee estimates and scope narrowing need human review before action."
+    },
+    {
+      id: "appeal-escalation",
+      label: "Appeal/escalation",
+      value: String(escalationCount),
+      tone: escalationCount > 0 ? "red" : "neutral",
+      detail: "Appeals and legal escalation candidates stay locked behind explicit approval."
+    },
+    {
+      id: "deadlines",
+      label: "Deadline pressure",
+      value: String(overdueCount),
+      tone: overdueCount > 0 ? "red" : "green",
+      detail: "Overdue requests based on replayed deadline state."
+    },
+    {
+      id: "diagnostics",
+      label: "Diagnostics",
+      value: String(diagnosticCount),
+      tone: diagnosticCount > 0 ? "amber" : "green",
+      detail: "Open projection or workflow diagnostics tied to PRR events."
+    }
+  ];
+
+  const nextWork: PrrWorkspaceIntelligenceNextWork[] = [
+    {
+      id: "review-drafts",
+      label: "Review draft queue",
+      detail: `${draftCount} draft request${draftCount === 1 ? "" : "s"} can be checked before send approval.`,
+      tone: draftCount > 0 ? "cyan" : "neutral"
+    },
+    {
+      id: "review-fee-scope-work",
+      label: "Review fee and scope signals",
+      detail: `${feeScopeCount} request${feeScopeCount === 1 ? "" : "s"} need fee or scope review.`,
+      tone: feeScopeCount > 0 ? "amber" : "neutral"
+    },
+    {
+      id: "inspect-escalation",
+      label: "Inspect escalation candidates",
+      detail: `${escalationCount} request${escalationCount === 1 ? "" : "s"} sit in appeal or escalation lanes.`,
+      tone: escalationCount > 0 ? "red" : "neutral"
+    }
+  ];
+
+  return Object.freeze({
+    activeRequestCount: workspace.cards.length,
+    generatedAt: workspace.generatedAt,
+    healthSignals: Object.freeze(healthSignals.map((signal) => Object.freeze(signal))),
+    nextWork: Object.freeze(nextWork.map((item) => Object.freeze(item)))
   });
 }
 
