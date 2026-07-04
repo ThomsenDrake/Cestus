@@ -26,7 +26,15 @@ describe("RequestDetailModal", () => {
     const detailBody = surface?.querySelector('[data-request-detail-modal-body="true"]');
 
     expect(dialog).toHaveAttribute("aria-modal", "true");
-    expect(dialog).toHaveClass("fixed", "inset-0", "overflow-hidden", "bg-[var(--command-black)]/58");
+    expect(dialog).toHaveClass(
+      "fixed",
+      "inset-0",
+      "overflow-hidden",
+      "bg-[var(--command-black)]/58",
+      "p-3",
+      "sm:p-5",
+      "lg:p-8"
+    );
     expect(surface).toHaveClass(
       "mx-auto",
       "flex",
