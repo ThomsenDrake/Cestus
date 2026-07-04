@@ -54,6 +54,11 @@ export interface BuildPrrWorkspaceOptions {
   readonly viewMode: PrrViewMode | undefined;
 }
 
+export interface BuildPrrWorkspaceIntelligenceOptions {
+  readonly savedViewId?: string | undefined;
+  readonly viewMode?: PrrViewMode | undefined;
+}
+
 const severityRank: Record<PrrSeverity, number> = Object.freeze({
   critical: 0,
   high: 1,
@@ -113,20 +118,33 @@ export function buildPrrBuilderModel(workspace: PrrWorkspaceData): PrrBuilderMod
   });
 }
 
-export function buildPrrWorkspaceIntelligenceModel(workspace: PrrWorkspaceData): PrrWorkspaceIntelligenceModel {
-  const feeScopeCount = workspace.cards.filter((card) => card.laneId === "review-fee-scope").length;
-  const escalationCount = workspace.cards.filter((card) => card.laneId === "appeal-escalation").length;
-  const overdueCount = workspace.cards.filter((card) => card.dueState === "overdue").length;
-  const diagnosticCount = workspace.diagnostics.length;
-  const draftCount = workspace.cards.filter((card) => card.laneId === "drafting").length;
+export function buildPrrWorkspaceIntelligenceModel(
+  workspace: PrrWorkspaceData,
+  options: BuildPrrWorkspaceIntelligenceOptions = {}
+): PrrWorkspaceIntelligenceModel {
+  const defaultSavedViewId = workspace.savedViews[0]?.id ?? "all-active";
+  const viewModel = buildPrrWorkspaceViewModel(workspace, {
+    savedViewId: options.savedViewId ?? defaultSavedViewId,
+    selectedRequestId: undefined,
+    viewMode: options.viewMode
+  });
+  const visibleCards = viewModel.lanes.flatMap((lane) => lane.agencyGroups.flatMap((group) => group.cards));
+  const visibleRequestIds = new Set(visibleCards.map((card) => card.prrRequestId));
+  const visibleDtoCards = workspace.cards.filter((card) => visibleRequestIds.has(card.prrRequestId));
+  const feeScopeCount = visibleCards.filter((card) => card.laneId === "review-fee-scope").length;
+  const escalationCount = visibleCards.filter((card) => card.laneId === "appeal-escalation").length;
+  const overdueCount = visibleDtoCards.filter((card) => card.dueState === "overdue").length;
+  const diagnosticCount = visibleCards.reduce((total, card) => total + card.diagnosticCount, 0);
+  const draftCount = visibleCards.filter((card) => card.laneId === "drafting").length;
+  const visibleRequestCount = visibleCards.length;
 
   const healthSignals: PrrWorkspaceIntelligenceSignal[] = [
     {
       id: "active-requests",
-      label: "Active requests",
-      value: String(workspace.cards.length),
+      label: "Visible requests",
+      value: String(visibleRequestCount),
       tone: "cyan",
-      detail: "Requests currently projected from the local PRR ledger."
+      detail: `Requests visible in the ${viewModel.activeView.label} saved view.`
     },
     {
       id: "review-fee-scope",
@@ -168,23 +186,29 @@ export function buildPrrWorkspaceIntelligenceModel(workspace: PrrWorkspaceData):
     {
       id: "review-fee-scope-work",
       label: "Review fee and scope signals",
-      detail: `${feeScopeCount} request${feeScopeCount === 1 ? "" : "s"} need fee or scope review.`,
+      detail: `${feeScopeCount} ${requestNoun(feeScopeCount)} ${feeScopeCount === 1 ? "needs" : "need"} fee or scope review.`,
       tone: feeScopeCount > 0 ? "amber" : "neutral"
     },
     {
       id: "inspect-escalation",
       label: "Inspect escalation candidates",
-      detail: `${escalationCount} request${escalationCount === 1 ? "" : "s"} sit in appeal or escalation lanes.`,
+      detail: `${escalationCount} ${requestNoun(escalationCount)} ${escalationCount === 1 ? "sits" : "sit"} in appeal or escalation lanes.`,
       tone: escalationCount > 0 ? "red" : "neutral"
     }
   ];
 
   return Object.freeze({
     activeRequestCount: workspace.cards.length,
+    activeViewLabel: viewModel.activeView.label,
+    visibleRequestCount,
     generatedAt: workspace.generatedAt,
     healthSignals: Object.freeze(healthSignals.map((signal) => Object.freeze(signal))),
     nextWork: Object.freeze(nextWork.map((item) => Object.freeze(item)))
   });
+}
+
+function requestNoun(count: number): string {
+  return `request${count === 1 ? "" : "s"}`;
 }
 
 export function getSelectedPrrRequest(

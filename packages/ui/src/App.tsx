@@ -12,7 +12,7 @@ import { RequestDetailModal } from "./requests/RequestDetailModal.js";
 import { buildPrrBuilderModel, getSelectedPrrRequest } from "./requests/request-model.js";
 import { RequestWorkspace } from "./requests/RequestWorkspace.js";
 import { RequestWorkspaceIntelligenceRail } from "./requests/RequestWorkspaceIntelligenceRail.js";
-import type { PrrDetailModel, PrrWorkspaceData } from "./requests/request-types.js";
+import type { PrrDetailModel, PrrWorkspaceData, PrrWorkspaceViewContext } from "./requests/request-types.js";
 import { CommandDashboard } from "./workspace/CommandDashboard.js";
 import { DecisionRail } from "./workspace/DecisionRail.js";
 import { OpsShell } from "./workspace/OpsShell.js";
@@ -33,6 +33,10 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
   const [, setSelectedPrrRequest] = useState<PrrDetailModel | undefined>();
   const [requestBuilderOpen, setRequestBuilderOpen] = useState(false);
   const [requestDetailModalOpen, setRequestDetailModalOpen] = useState(false);
+  const [requestsViewContext, setRequestsViewContext] = useState<PrrWorkspaceViewContext>({
+    savedViewId: "all-active",
+    viewMode: undefined
+  });
   const [requestsWorkspace, setRequestsWorkspace] = useState<PrrWorkspaceData | undefined>();
   const [loadedRequestsAdapter, setLoadedRequestsAdapter] = useState<RequestsWorkspaceAdapter | undefined>();
   const [requestsLoadState, setRequestsLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
@@ -50,6 +54,10 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
     () => (requestsWorkspace === undefined ? undefined : getSelectedPrrRequest(requestsWorkspace, selectedPrrRequestId)),
     [requestsWorkspace, selectedPrrRequestId]
   );
+  const requestBuilderVisible =
+    requestsActive && requestBuilderOpen && requestsWorkspace !== undefined && requestsLoadState === "loaded";
+  const requestDetailModalVisible =
+    requestsActive && requestDetailModalOpen && requestsWorkspace !== undefined && requestsLoadState === "loaded";
 
   useEffect(() => {
     if (!requestsActive) {
@@ -61,6 +69,8 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
     }
 
     let canceled = false;
+    setRequestDetailModalOpen(false);
+    setSelectedPrrRequest(undefined);
     setRequestsLoadState("loading");
     setRequestsLoadError(undefined);
 
@@ -83,6 +93,8 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
         setRequestsWorkspace(undefined);
         setLoadedRequestsAdapter(undefined);
         setSelectedPrrRequest(undefined);
+        setSelectedPrrRequestId(undefined);
+        setRequestDetailModalOpen(false);
         setRequestsLoadState("error");
         setRequestsLoadError(error instanceof Error ? error.message : "Requests workspace could not be loaded.");
       });
@@ -111,9 +123,13 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
     onOpenRequestDetail: () => setRequestDetailModalOpen(true),
     onSelectRequest: setSelectedPrrRequestId,
     onSelectedRequestChange: setSelectedPrrRequest,
+    onActiveViewChange: setRequestsViewContext,
     onRetry: () => {
       setRequestsWorkspace(undefined);
       setLoadedRequestsAdapter(undefined);
+      setSelectedPrrRequest(undefined);
+      setSelectedPrrRequestId(undefined);
+      setRequestDetailModalOpen(false);
       setRequestsReloadKey((current) => current + 1);
     }
   });
@@ -167,7 +183,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
 
   return (
     <>
-      <div aria-hidden={requestsActive && (requestBuilderOpen || requestDetailModalOpen) ? "true" : undefined}>
+      <div aria-hidden={requestBuilderVisible || requestDetailModalVisible ? "true" : undefined}>
         <OpsShell
           modules={workspaceModules}
           activeModuleId={activeModuleId}
@@ -188,11 +204,19 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
           onModuleSelect={handleModuleSelect}
           main={requestsActive ? requestsMain : commandMain}
           decisionRail={
-            requestsActive ? <RequestWorkspaceIntelligenceRail workspace={requestsWorkspace} /> : commandDecisionRail
+            requestsActive ? (
+              <RequestWorkspaceIntelligenceRail
+                workspace={requestsWorkspace}
+                savedViewId={requestsViewContext.savedViewId}
+                viewMode={requestsViewContext.viewMode}
+              />
+            ) : (
+              commandDecisionRail
+            )
           }
         />
       </div>
-      {requestsActive && requestBuilderOpen && requestsWorkspace !== undefined ? (
+      {requestBuilderVisible ? (
         <RequestBuilder
           builder={{
             ...buildPrrBuilderModel(requestsWorkspace),
@@ -207,7 +231,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
           diagnosticMessage={requestBuilderDiagnostic}
         />
       ) : null}
-      {requestsActive && requestDetailModalOpen ? (
+      {requestDetailModalVisible ? (
         <RequestDetailModal selectedRequest={selectedPrrModalRequest} onClose={() => setRequestDetailModalOpen(false)} />
       ) : null}
     </>
@@ -223,6 +247,7 @@ function renderRequestsMain({
   onOpenRequestDetail,
   onSelectRequest,
   onSelectedRequestChange,
+  onActiveViewChange,
   onRetry
 }: {
   readonly requestsWorkspace: PrrWorkspaceData | undefined;
@@ -233,6 +258,7 @@ function renderRequestsMain({
   readonly onOpenRequestDetail: () => void;
   readonly onSelectRequest: (prrRequestId: string) => void;
   readonly onSelectedRequestChange: (selectedRequest: PrrDetailModel | undefined) => void;
+  readonly onActiveViewChange: (context: PrrWorkspaceViewContext) => void;
   readonly onRetry: () => void;
 }) {
   if (requestsWorkspace !== undefined) {
@@ -244,6 +270,7 @@ function renderRequestsMain({
         onOpenRequestDetail={onOpenRequestDetail}
         onSelectRequest={onSelectRequest}
         onSelectedRequestChange={onSelectedRequestChange}
+        onActiveViewChange={onActiveViewChange}
       />
     );
   }

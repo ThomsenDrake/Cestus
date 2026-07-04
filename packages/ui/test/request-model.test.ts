@@ -102,4 +102,21 @@ describe("PRR workspace model", () => {
       expect.arrayContaining(["Review fee and scope signals", "Inspect escalation candidates"])
     );
   });
+
+  it("summarizes workspace intelligence for the active saved view", () => {
+    const workspace = buildTestRequestsWorkspace();
+    const intelligence = buildPrrWorkspaceIntelligenceModel(workspace, {
+      savedViewId: "florida-fees",
+      viewMode: "board"
+    });
+
+    expect(intelligence.activeViewLabel).toBe("Florida fees");
+    expect(intelligence.visibleRequestCount).toBe(1);
+    expect(intelligence.healthSignals.find((signal) => signal.id === "active-requests")).toMatchObject({
+      value: "1"
+    });
+    expect(intelligence.nextWork.find((item) => item.id === "review-fee-scope-work")).toMatchObject({
+      detail: "1 request needs fee or scope review."
+    });
+  });
 });

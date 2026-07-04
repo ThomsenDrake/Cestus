@@ -9,7 +9,7 @@ Worker identity: Codex
 Branch: `codex/prr-ledger-backed-workspace-design`
 Worktree path: `/home/drake/.codex/worktrees/3ea1/Cestus`
 Claimed at: `2026-07-04T14:44:22Z`
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Final-Review Findings
 
@@ -31,13 +31,13 @@ Status: `in-progress`
 
 ## Evidence
 
-- Red command: not run yet
-- Red result: not recorded yet
-- Green command: not run yet
-- Green result: not recorded yet
-- Full verification: not run yet
+- Red command: `npm test -- packages/ui/test/request-model.test.ts packages/ui/test/request-intelligence-rail.test.tsx packages/ui/test/request-board.test.tsx packages/ui/test/app-smoke.test.tsx`
+- Red result: failed as expected. `request-model.test.ts` received `undefined` for `activeViewLabel` instead of `Florida fees`; `request-intelligence-rail.test.tsx` and `app-smoke.test.tsx` could not find `1 visible request in Florida fees.` because the rail still showed global counts; `app-smoke.test.tsx` could not find the accessible `Requests load error` region after a reload failure because the still-open detail modal kept the app background `aria-hidden`.
+- Green command: `npm test -- packages/ui/test/request-model.test.ts packages/ui/test/request-intelligence-rail.test.tsx packages/ui/test/request-board.test.tsx packages/ui/test/app-smoke.test.tsx`
+- Green result: passed. Vitest reported `Test Files 4 passed (4)` and `Tests 23 passed (23)`.
+- Full verification: `npm run verify` passed. Output included `typecheck passed`, `Test Files 42 passed (42)`, `Tests 334 passed (334)`, `tests passed`, Vite build success, and `factory-readiness passed`.
 
 ## Review
 
-- Review status: pending
+- Review status: ready-for-review
 - Concerns: none recorded
