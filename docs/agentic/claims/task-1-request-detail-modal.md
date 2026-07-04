@@ -24,8 +24,11 @@ Status: `ready-for-review`
 - Supporting edit: `packages/ui/test/visual-contract.test.ts` was updated after full verification exposed its static UI source list still pointed at the pre-extraction rail copy location.
 - Review follow-up targeted command: `npm test -- packages/ui/test/request-detail-modal.test.tsx packages/ui/test/request-detail-rail.test.tsx` passed with 2 test files and 10 tests after adding rail empty-state coverage and modal layout contract assertions.
 - Review follow-up full verification: `npm run verify` passed: typecheck passed, 41 test files and 325 tests passed, Vite build succeeded, and factory-readiness passed.
+- Code-quality follow-up red command: `npm test -- packages/ui/test/request-detail-modal.test.tsx packages/ui/test/request-detail-rail.test.tsx` failed as expected because modal `Review to send` was not natively disabled and Shift+Tab could focus it.
+- Code-quality follow-up targeted command: `npm test -- packages/ui/test/request-detail-modal.test.tsx packages/ui/test/request-detail-rail.test.tsx` passed with 2 test files and 10 tests after removing the modal override.
+- Code-quality follow-up full verification: `npm run verify` passed: typecheck passed, 41 test files and 325 tests passed, Vite build succeeded, and factory-readiness passed.
 
 ## Review
 
-- Review status: follow-up addressed
+- Review status: code-quality follow-up addressed
 - Concerns: none recorded

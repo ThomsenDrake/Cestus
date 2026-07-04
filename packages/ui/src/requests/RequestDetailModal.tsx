@@ -112,7 +112,7 @@ export function RequestDetailModal({ selectedRequest, onClose }: RequestDetailMo
             </p>
           ) : (
             <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-              <RequestDetailSections selectedRequest={selectedRequest} disableUnavailableAction={false} />
+              <RequestDetailSections selectedRequest={selectedRequest} />
             </div>
           )}
         </div>

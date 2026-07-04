@@ -29,6 +29,7 @@ describe("RequestDetailModal", () => {
     expect(surface).toHaveClass("min-h-[calc(100dvh-2rem)]", "max-w-7xl");
     expect(within(dialog).getByText("Building Services Department")).toBeInTheDocument();
     expect(within(dialog).getByText("Review fee or scope")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Review to send" })).toBeDisabled();
     expect(within(dialog).getByText("Legal escalation locked")).toBeInTheDocument();
   });
 
@@ -43,19 +44,18 @@ describe("RequestDetailModal", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
-  it("traps Tab focus inside the modal", () => {
+  it("traps Tab focus inside the modal when only the close button is enabled", () => {
     render(<RequestDetailModal selectedRequest={selectedRequest()} onClose={() => undefined} />);
 
     const dialog = screen.getByRole("dialog", { name: /Request investigation detail/i });
     const closeButton = screen.getByRole("button", { name: "Close request detail" });
-    const reviewButton = screen.getByRole("button", { name: "Review to send" });
 
-    reviewButton.focus();
+    closeButton.focus();
     fireEvent.keyDown(dialog, { key: "Tab" });
     expect(closeButton).toHaveFocus();
 
     fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true });
-    expect(reviewButton).toHaveFocus();
+    expect(closeButton).toHaveFocus();
   });
 
   it("restores focus to the opener when closed", async () => {
