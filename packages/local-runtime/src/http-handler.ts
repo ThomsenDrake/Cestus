@@ -1,5 +1,9 @@
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
-import type { ActorRef, CreateDraftRequestInput } from "../../prr/src/draft-events.js";
+import {
+  resolveJurisdictionPack,
+  type ActorRef,
+  type CreateDraftRequestInput
+} from "../../prr/src/draft-events.js";
 import type { DeadlineCalculator, PrrRuntimeNow } from "../../prr/src/runtime.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import type { ResolvedLocalRuntimeConfig } from "./config.js";
@@ -160,10 +164,18 @@ function jurisdictionPackRefFromBody(
     return undefined;
   }
 
-  return {
+  const ref = {
     name: value.name,
     version: value.version
   };
+
+  try {
+    resolveJurisdictionPack(ref);
+  } catch {
+    return undefined;
+  }
+
+  return ref;
 }
 
 function contactRefFromBody(value: unknown): CreateDraftRequestInput["agency"] | undefined {
@@ -171,7 +183,7 @@ function contactRefFromBody(value: unknown): CreateDraftRequestInput["agency"] |
     !isJsonObject(value) ||
     !isNonEmptyString(value.name) ||
     (value.email !== undefined && !isPlausibleEmail(value.email)) ||
-    (value.phone !== undefined && typeof value.phone !== "string")
+    (value.phone !== undefined && !isValidPhone(value.phone))
   ) {
     return undefined;
   }
@@ -203,6 +215,10 @@ function isPlausibleEmail(value: unknown): value is string {
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) &&
     !/[<>]/.test(value)
   );
+}
+
+function isValidPhone(value: unknown): value is string {
+  return typeof value === "string" && value.length >= 3;
 }
 
 function isValidReceivedAt(value: unknown): value is string {

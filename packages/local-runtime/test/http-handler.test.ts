@@ -206,6 +206,68 @@ describe("createLocalRuntimeHttpHandler", () => {
       )
     ).toBe(false);
   });
+
+  it("rejects unsupported jurisdiction packs without persisting a draft", async () => {
+    const handler = testHandler({
+      config: resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }),
+      actor,
+      now: fixedNow,
+      requestIdFactory: () => "prr_bad_pack"
+    });
+
+    const response = await handler({
+      method: "POST",
+      url: "/api/requests/drafts",
+      body: JSON.stringify({
+        jurisdictionPack: { name: "unsupported-public-records", version: "9.9.9" },
+        agency: { name: "City Clerk", email: "clerk@example.gov" },
+        requester: { name: "Avery Investigator", email: "avery@example.org" },
+        requestText: "All budget amendment memos from January 2026.",
+        receivedAt: "2026-07-05T12:00:00.000Z"
+      })
+    });
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.body)).toEqual(invalidDraftRequestBodyDiagnostic());
+
+    const workspace = await handler({ method: "GET", url: "/api/requests/workspace" });
+    expect(
+      JSON.parse(workspace.body).cards.some(
+        (card: { prrRequestId: string }) => card.prrRequestId === "prr_bad_pack"
+      )
+    ).toBe(false);
+  });
+
+  it("rejects short agency phone values without persisting a draft", async () => {
+    const handler = testHandler({
+      config: resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }),
+      actor,
+      now: fixedNow,
+      requestIdFactory: () => "prr_bad_phone"
+    });
+
+    const response = await handler({
+      method: "POST",
+      url: "/api/requests/drafts",
+      body: JSON.stringify({
+        jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+        agency: { name: "City Clerk", email: "clerk@example.gov", phone: "x" },
+        requester: { name: "Avery Investigator", email: "avery@example.org" },
+        requestText: "All budget amendment memos from January 2026.",
+        receivedAt: "2026-07-05T12:00:00.000Z"
+      })
+    });
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.body)).toEqual(invalidDraftRequestBodyDiagnostic());
+
+    const workspace = await handler({ method: "GET", url: "/api/requests/workspace" });
+    expect(
+      JSON.parse(workspace.body).cards.some(
+        (card: { prrRequestId: string }) => card.prrRequestId === "prr_bad_phone"
+      )
+    ).toBe(false);
+  });
 });
 
 function tempDir(): string {
