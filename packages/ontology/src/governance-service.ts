@@ -784,6 +784,10 @@ export class GovernanceService {
   }
 
   private async assertGeneratedArtifactAllowed(input: RecordGeneratedArtifactInput): Promise<void> {
+    if (input.causationId === undefined) {
+      throw new Error("Generated exports and reports require explicit causation");
+    }
+
     if (input.sensitiveOptIns.length > 0 && this.actor.kind !== "human") {
       throw new Error("Sensitive export and report opt-ins require a human service actor");
     }

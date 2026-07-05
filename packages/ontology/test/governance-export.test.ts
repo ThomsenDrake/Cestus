@@ -178,6 +178,42 @@ describe("governed exports and reports", () => {
     });
   });
 
+  it("rejects generated exports without explicit causation before append", async () => {
+    const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordExportGenerated({
+        exportId: "exp_missing_causation_001",
+        policy,
+        includedEvidenceIds: ["ev_source_public"],
+        includedContentHashes: [publicContentHash],
+        sensitiveOptIns: [],
+        defaultPublicSafeOnly: true
+      })
+    ).rejects.toThrow("Generated exports and reports require explicit causation");
+
+    expect(await ledger.readStream("export_exp_missing_causation_001")).toHaveLength(0);
+  });
+
+  it("rejects generated reports without explicit causation before append", async () => {
+    const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordReportGenerated({
+        reportId: "report_missing_causation_001",
+        policy,
+        includedEvidenceIds: ["ev_source_public"],
+        includedContentHashes: [publicContentHash],
+        sensitiveOptIns: [],
+        defaultPublicSafeOnly: true
+      })
+    ).rejects.toThrow("Generated exports and reports require explicit causation");
+
+    expect(await ledger.readStream("report_report_missing_causation_001")).toHaveLength(0);
+  });
+
   it("rejects restricted evidence without all required opt-ins when blocked IDs are omitted", async () => {
     const ledger = new RecordingLedger(governanceEventsWithoutPrivateQuarantine);
     const service = new GovernanceService({ ledger, actor: humanActor });
@@ -195,7 +231,8 @@ describe("governed exports and reports", () => {
             rationale: "Included for private attorney review."
           }
         ],
-        defaultPublicSafeOnly: false
+        defaultPublicSafeOnly: false,
+        causationId: "evt_review_governance_private"
       })
     ).rejects.toThrow("Cannot generate export or report outside the governed export plan");
 
@@ -213,7 +250,8 @@ describe("governed exports and reports", () => {
         includedEvidenceIds: ["ev_source_public"],
         includedContentHashes: [unrelatedContentHash],
         sensitiveOptIns: [],
-        defaultPublicSafeOnly: true
+        defaultPublicSafeOnly: true,
+        causationId: "evt_review_governance_public"
       })
     ).rejects.toThrow("Generated artifact content hashes must match included evidence");
 
@@ -231,7 +269,8 @@ describe("governed exports and reports", () => {
         includedEvidenceIds: ["ev_source_public"],
         includedContentHashes: [],
         sensitiveOptIns: [],
-        defaultPublicSafeOnly: true
+        defaultPublicSafeOnly: true,
+        causationId: "evt_review_governance_public"
       })
     ).rejects.toThrow("Generated artifact content hashes must match included evidence");
 
@@ -260,7 +299,8 @@ describe("governed exports and reports", () => {
             rationale: "Included for non-public source review."
           }
         ],
-        defaultPublicSafeOnly: false
+        defaultPublicSafeOnly: false,
+        causationId: "evt_review_governance_private"
       })
     ).rejects.toThrow("Cannot generate export or report outside the governed export plan");
 
@@ -278,7 +318,8 @@ describe("governed exports and reports", () => {
         includedEvidenceIds: ["ev_source_removed"],
         includedContentHashes: ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
         sensitiveOptIns: [],
-        defaultPublicSafeOnly: false
+        defaultPublicSafeOnly: false,
+        causationId: "evt_tombstone_governance_removed"
       })
     ).rejects.toThrow("Cannot generate export or report outside the governed export plan");
 
@@ -296,7 +337,8 @@ describe("governed exports and reports", () => {
         includedEvidenceIds: ["ev_missing"],
         includedContentHashes: [unrelatedContentHash],
         sensitiveOptIns: [],
-        defaultPublicSafeOnly: false
+        defaultPublicSafeOnly: false,
+        causationId: "evt_review_governance_public"
       })
     ).rejects.toThrow("Cannot generate export or report outside the governed export plan");
 
@@ -320,7 +362,8 @@ describe("governed exports and reports", () => {
             rationale: "System attempted sensitive export."
           }
         ],
-        defaultPublicSafeOnly: false
+        defaultPublicSafeOnly: false,
+        causationId: "evt_review_governance_private"
       })
     ).rejects.toThrow("Sensitive export and report opt-ins require a human service actor");
 
@@ -344,7 +387,8 @@ describe("governed exports and reports", () => {
             rationale: "Editor approved this inclusion."
           }
         ],
-        defaultPublicSafeOnly: false
+        defaultPublicSafeOnly: false,
+        causationId: "evt_review_governance_private"
       })
     ).rejects.toThrow("Sensitive opt-in approvedBy must match the service actor");
 
@@ -368,7 +412,8 @@ describe("governed exports and reports", () => {
             rationale: "Included after finding access_token=abc123."
           }
         ],
-        defaultPublicSafeOnly: false
+        defaultPublicSafeOnly: false,
+        causationId: "evt_review_governance_private"
       })
     ).rejects.toThrow("Governance text must not contain secrets");
 
