@@ -5,6 +5,7 @@ import {
   type AppendableKnowledgeEvent,
   type KnowledgeEvent
 } from "../src/contracts.js";
+import { defaultGovernancePolicy } from "../src/governance-policy.js";
 
 const context = {
   actor: { id: "actor_system", kind: "system", label: "test runner" },
@@ -581,20 +582,7 @@ describe("governance event contracts", () => {
         version: "0.1.0",
         installedBy: "actor_investigator",
         confidenceThreshold: 0.9,
-        tags: [
-          {
-            tag: "public_record",
-            description: "Evidence obtained from public records or public proceedings.",
-            defaultExportBehavior: "exclude-unless-opted-in",
-            unlocksNormalWorkflowsAtHighConfidence: true
-          },
-          {
-            tag: "public_safe",
-            description: "Evidence safe for default export under the active policy.",
-            defaultExportBehavior: "include-by-default",
-            unlocksNormalWorkflowsAtHighConfidence: true
-          }
-        ]
+        tags: defaultGovernancePolicy.tags
       }
     },
     {
@@ -687,6 +675,56 @@ describe("governance event contracts", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("rejects incomplete, unsafe, or default-inverted governance policy events", () => {
+    const incompletePolicy = validateKnowledgeEvent({
+      id: "evt_governance_policy_incomplete",
+      type: "governance.policy.installed",
+      version: 1,
+      streamId: "governance_policy_gov_policy_default",
+      sequence: 1,
+      context: baseContext,
+      payload: {
+        policyId: "gov_policy_default",
+        version: "0.1.0",
+        installedBy: "actor_investigator",
+        confidenceThreshold: 0.9,
+        tags: defaultGovernancePolicy.tags.slice(0, 2)
+      }
+    });
+    const lowThresholdPolicy = validateKnowledgeEvent({
+      id: "evt_governance_policy_low_threshold",
+      type: "governance.policy.installed",
+      version: 1,
+      streamId: "governance_policy_gov_policy_default",
+      sequence: 1,
+      context: baseContext,
+      payload: {
+        ...defaultGovernancePolicy,
+        installedBy: "actor_investigator",
+        confidenceThreshold: 0.1
+      }
+    });
+    const defaultInvertedPolicy = validateKnowledgeEvent({
+      id: "evt_governance_policy_default_inverted",
+      type: "governance.policy.installed",
+      version: 1,
+      streamId: "governance_policy_gov_policy_default",
+      sequence: 1,
+      context: baseContext,
+      payload: {
+        ...defaultGovernancePolicy,
+        installedBy: "actor_investigator",
+        tags: defaultGovernancePolicy.tags.map((entry) =>
+          entry.tag === "contains_pii" ? { ...entry, defaultExportBehavior: "include-by-default" as const } : entry
+        )
+      }
+    });
+
+    expect(incompletePolicy.success).toBe(false);
+    expect(lowThresholdPolicy.success).toBe(false);
+    expect(defaultInvertedPolicy.success).toBe(false);
   });
 
   it.each([

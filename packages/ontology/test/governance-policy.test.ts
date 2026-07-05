@@ -28,6 +28,12 @@ describe("governance policy helpers", () => {
     expect(isHighConfidence(0.79, defaultGovernancePolicy)).toBe(false);
   });
 
+  it("rejects governance policies with low-confidence thresholds", () => {
+    expect(() => validateGovernancePolicy({ ...defaultGovernancePolicy, confidenceThreshold: 0.1 })).toThrow(
+      "Governance policy confidenceThreshold must stay high enough for automatic workflow unlocks"
+    );
+  });
+
   it("treats non-finite and out-of-range confidence values as low confidence", () => {
     expect(isHighConfidence(1.5, defaultGovernancePolicy)).toBe(false);
     expect(isHighConfidence(-0.1, defaultGovernancePolicy)).toBe(false);

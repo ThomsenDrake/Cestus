@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import { actorRefSchema, type AppendableKnowledgeEvent, type KnowledgeEventOf } from "./contracts.js";
 import type { EventLedger } from "./event-ledger.js";
-import { assertSecretSafeText, type GovernanceTag } from "./governance-policy.js";
+import { assertSecretSafeText, validateGovernancePolicy, type GovernancePolicy, type GovernanceTag } from "./governance-policy.js";
 import { buildGovernanceProjection } from "./governance-projection.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
@@ -23,6 +23,35 @@ export interface ClassifyEvidenceInput {
     tool?: string;
   };
   tags: Array<{ tag: GovernanceTag; confidence: number; rationale: string }>;
+}
+
+export interface InstallPolicyInput {
+  policy: GovernancePolicy;
+  installedBy: string;
+  causationId?: string;
+}
+
+export interface ApplyEvidenceRedactionInput {
+  evidenceId: string;
+  redactionId: string;
+  appliedBy: string;
+  rationale: string;
+  redactedContentHash?: `sha256:${string}`;
+}
+
+export interface QuarantineEvidenceInput {
+  evidenceId: string;
+  quarantineId: string;
+  quarantinedBy: string;
+  reason: string;
+  lockLevel: "workflow" | "export" | "all";
+}
+
+export interface TombstoneEvidenceInput {
+  evidenceId: string;
+  tombstoneId: string;
+  tombstonedBy: string;
+  reason: string;
 }
 
 export interface ReviewEvidenceGovernanceInput {
@@ -62,6 +91,12 @@ export interface EnableNetworkExposureInput {
   policy: PolicyRef;
 }
 
+export interface DisableNetworkExposureInput {
+  exposureId: string;
+  disabledBy: string;
+  reason: string;
+}
+
 export interface ApproveDeviceSessionInput {
   sessionId: string;
   deviceLabel: string;
@@ -69,6 +104,12 @@ export interface ApproveDeviceSessionInput {
   exposureId: string;
   capabilities: readonly ("read" | "write")[];
   policy: PolicyRef;
+}
+
+export interface RevokeDeviceSessionInput {
+  sessionId: string;
+  revokedBy: string;
+  reason: string;
 }
 
 type IncidentSeverity = "info" | "warning" | "error" | "critical";
@@ -107,6 +148,41 @@ export class GovernanceService {
     }
 
     this.actor = actor.data;
+  }
+
+  async installPolicy(input: InstallPolicyInput): Promise<KnowledgeEventOf<"governance.policy.installed">> {
+    this.assertHumanActor("Governance policy installation");
+
+    if (input.installedBy !== this.actor.id) {
+      throw new Error("Governance policy installedBy must match the service actor");
+    }
+
+    const policy = validateGovernancePolicy(input.policy);
+    const streamId = `governance_policy_${policy.policyId}`;
+    const streamEvents = await this.dependencies.ledger.readStream(streamId);
+    const event: AppendableKnowledgeEvent<"governance.policy.installed"> = {
+      type: "governance.policy.installed",
+      version: 1,
+      streamId,
+      context: this.context(`corr_governance_policy_${policy.policyId}`, input.causationId),
+      payload: {
+        policyId: policy.policyId,
+        version: policy.version,
+        installedBy: input.installedBy,
+        confidenceThreshold: policy.confidenceThreshold,
+        tags: policy.tags.map((tag) => ({ ...tag }))
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
+
+    if (appended.type !== "governance.policy.installed") {
+      throw new Error(`Unexpected event type appended for governance policy installation: ${appended.type}`);
+    }
+
+    return appended;
   }
 
   async classifyEvidence(input: ClassifyEvidenceInput): Promise<KnowledgeEventOf<"evidence.governance.classified">> {
@@ -221,6 +297,109 @@ export class GovernanceService {
     return appended;
   }
 
+  async applyEvidenceRedaction(
+    input: ApplyEvidenceRedactionInput
+  ): Promise<KnowledgeEventOf<"evidence.redaction.applied">> {
+    this.assertHumanActor("Evidence redaction");
+
+    if (input.appliedBy !== this.actor.id) {
+      throw new Error("Evidence redaction appliedBy must match the service actor");
+    }
+
+    const streamEvents = await this.dependencies.ledger.readStream(this.evidenceStreamId(input.evidenceId));
+    const causation = this.findLatestEvidenceCausation(input.evidenceId, streamEvents);
+    const event: AppendableKnowledgeEvent<"evidence.redaction.applied"> = {
+      type: "evidence.redaction.applied",
+      version: 1,
+      streamId: this.evidenceStreamId(input.evidenceId),
+      context: this.context(causation.context.correlationId, causation.id),
+      payload: {
+        evidenceId: input.evidenceId,
+        redactionId: input.redactionId,
+        appliedBy: input.appliedBy,
+        rationale: assertSecretSafeText(input.rationale),
+        ...(input.redactedContentHash === undefined ? {} : { redactedContentHash: input.redactedContentHash })
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
+
+    if (appended.type !== "evidence.redaction.applied") {
+      throw new Error(`Unexpected event type appended for evidence redaction: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
+  async quarantineEvidence(input: QuarantineEvidenceInput): Promise<KnowledgeEventOf<"evidence.quarantined">> {
+    this.assertHumanActor("Evidence quarantine");
+
+    if (input.quarantinedBy !== this.actor.id) {
+      throw new Error("Evidence quarantine quarantinedBy must match the service actor");
+    }
+
+    const streamEvents = await this.dependencies.ledger.readStream(this.evidenceStreamId(input.evidenceId));
+    const causation = this.findLatestEvidenceCausation(input.evidenceId, streamEvents);
+    const event: AppendableKnowledgeEvent<"evidence.quarantined"> = {
+      type: "evidence.quarantined",
+      version: 1,
+      streamId: this.evidenceStreamId(input.evidenceId),
+      context: this.context(causation.context.correlationId, causation.id),
+      payload: {
+        evidenceId: input.evidenceId,
+        quarantineId: input.quarantineId,
+        quarantinedBy: input.quarantinedBy,
+        reason: assertSecretSafeText(input.reason),
+        lockLevel: input.lockLevel
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
+
+    if (appended.type !== "evidence.quarantined") {
+      throw new Error(`Unexpected event type appended for evidence quarantine: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
+  async tombstoneEvidence(input: TombstoneEvidenceInput): Promise<KnowledgeEventOf<"evidence.tombstoned">> {
+    this.assertHumanActor("Evidence tombstone");
+
+    if (input.tombstonedBy !== this.actor.id) {
+      throw new Error("Evidence tombstone tombstonedBy must match the service actor");
+    }
+
+    const streamEvents = await this.dependencies.ledger.readStream(this.evidenceStreamId(input.evidenceId));
+    const causation = this.findLatestEvidenceCausation(input.evidenceId, streamEvents);
+    const event: AppendableKnowledgeEvent<"evidence.tombstoned"> = {
+      type: "evidence.tombstoned",
+      version: 1,
+      streamId: this.evidenceStreamId(input.evidenceId),
+      context: this.context(causation.context.correlationId, causation.id),
+      payload: {
+        evidenceId: input.evidenceId,
+        tombstoneId: input.tombstoneId,
+        tombstonedBy: input.tombstonedBy,
+        reason: assertSecretSafeText(input.reason)
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
+
+    if (appended.type !== "evidence.tombstoned") {
+      throw new Error(`Unexpected event type appended for evidence tombstone: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
   async recordExportGenerated(input: RecordExportGeneratedInput): Promise<KnowledgeEventOf<"export.generated">> {
     await this.assertGeneratedArtifactAllowed(input);
 
@@ -327,6 +506,45 @@ export class GovernanceService {
     return appended;
   }
 
+  async disableNetworkExposure(
+    input: DisableNetworkExposureInput
+  ): Promise<KnowledgeEventOf<"network.exposure.disabled">> {
+    this.assertHumanActor("Network exposure disable");
+
+    if (input.disabledBy !== this.actor.id) {
+      throw new Error("Network exposure disabledBy must match the service actor");
+    }
+
+    const streamId = `network_exposure_${input.exposureId}`;
+    const streamEvents = await this.dependencies.ledger.readStream(streamId);
+    const activeExposure = this.findLatestNetworkExposure(input.exposureId, streamEvents);
+    if (activeExposure?.type !== "network.exposure.enabled") {
+      throw new Error(`Cannot disable network exposure without an active network exposure ${input.exposureId}`);
+    }
+    const event: AppendableKnowledgeEvent<"network.exposure.disabled"> = {
+      type: "network.exposure.disabled",
+      version: 1,
+      streamId,
+      context: this.context(activeExposure.context.correlationId, activeExposure.id),
+      payload: {
+        exposureId: input.exposureId,
+        disabledBy: input.disabledBy,
+        disabledAt: new Date().toISOString(),
+        reason: assertSecretSafeText(input.reason)
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
+
+    if (appended.type !== "network.exposure.disabled") {
+      throw new Error(`Unexpected event type appended for network exposure disable: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
   async approveDeviceSession(input: ApproveDeviceSessionInput): Promise<KnowledgeEventOf<"device.session.approved">> {
     this.assertHumanActor("Device session approval");
 
@@ -358,6 +576,51 @@ export class GovernanceService {
 
     if (appended.type !== "device.session.approved") {
       throw new Error(`Unexpected event type appended for device session approval: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
+  async revokeDeviceSession(input: RevokeDeviceSessionInput): Promise<KnowledgeEventOf<"device.session.revoked">> {
+    this.assertHumanActor("Device session revocation");
+
+    if (input.revokedBy !== this.actor.id) {
+      throw new Error("Device session revokedBy must match the service actor");
+    }
+
+    const streamId = `device_session_${input.sessionId}`;
+    const streamEvents = await this.dependencies.ledger.readStream(streamId);
+    const latestSessionEvent = streamEvents.findLast(
+      (
+        event
+      ): event is KnowledgeEventOf<"device.session.approved"> | KnowledgeEventOf<"device.session.revoked"> =>
+        (event.type === "device.session.approved" || event.type === "device.session.revoked") &&
+        event.payload.sessionId === input.sessionId
+    );
+
+    if (latestSessionEvent?.type !== "device.session.approved") {
+      throw new Error(`Cannot revoke missing or already revoked device session ${input.sessionId}`);
+    }
+
+    const event: AppendableKnowledgeEvent<"device.session.revoked"> = {
+      type: "device.session.revoked",
+      version: 1,
+      streamId,
+      context: this.context(latestSessionEvent.context.correlationId, latestSessionEvent.id),
+      payload: {
+        sessionId: input.sessionId,
+        revokedBy: input.revokedBy,
+        revokedAt: new Date().toISOString(),
+        reason: assertSecretSafeText(input.reason)
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
+
+    if (appended.type !== "device.session.revoked") {
+      throw new Error(`Unexpected event type appended for device session revocation: ${appended.type}`);
     }
 
     return appended;
@@ -468,19 +731,26 @@ export class GovernanceService {
     exposureId: string
   ): Promise<KnowledgeEventOf<"network.exposure.enabled">> {
     const streamEvents = await this.dependencies.ledger.readStream(`network_exposure_${exposureId}`);
-    const latestExposureEvent = streamEvents.findLast(
-      (
-        event
-      ): event is KnowledgeEventOf<"network.exposure.enabled"> | KnowledgeEventOf<"network.exposure.disabled"> =>
-        (event.type === "network.exposure.enabled" || event.type === "network.exposure.disabled") &&
-        event.payload.exposureId === exposureId
-    );
+    const latestExposureEvent = this.findLatestNetworkExposure(exposureId, streamEvents);
 
     if (latestExposureEvent?.type !== "network.exposure.enabled") {
       throw new Error(`Cannot approve device session without an active network exposure ${exposureId}`);
     }
 
     return latestExposureEvent;
+  }
+
+  private findLatestNetworkExposure(
+    exposureId: string,
+    streamEvents: Awaited<ReturnType<EventLedger["readStream"]>>
+  ): KnowledgeEventOf<"network.exposure.enabled"> | KnowledgeEventOf<"network.exposure.disabled"> | undefined {
+    return streamEvents.findLast(
+      (
+        event
+      ): event is KnowledgeEventOf<"network.exposure.enabled"> | KnowledgeEventOf<"network.exposure.disabled"> =>
+        (event.type === "network.exposure.enabled" || event.type === "network.exposure.disabled") &&
+        event.payload.exposureId === exposureId
+    );
   }
 
   private findIngestedEvidence(
@@ -491,6 +761,18 @@ export class GovernanceService {
       (event): event is KnowledgeEventOf<"evidence.ingested"> =>
         event.type === "evidence.ingested" && event.payload.evidenceId === evidenceId
     );
+  }
+
+  private findLatestEvidenceCausation(
+    evidenceId: string,
+    streamEvents: Awaited<ReturnType<EventLedger["readStream"]>>
+  ): Awaited<ReturnType<EventLedger["readStream"]>>[number] {
+    const evidence = this.findIngestedEvidence(evidenceId, streamEvents);
+    if (evidence === undefined) {
+      throw new Error(`Cannot govern evidence ${evidenceId} without evidence.ingested`);
+    }
+
+    return streamEvents[streamEvents.length - 1] ?? evidence;
   }
 
   private evidenceStreamId(evidenceId: string): string {
@@ -523,6 +805,14 @@ export class GovernanceService {
     if (plan.blockedEvidence.length > 0 || !sameSortedValues(plan.includedEvidenceIds, input.includedEvidenceIds)) {
       throw new Error("Cannot generate export or report outside the governed export plan");
     }
+
+    const expectedContentHashes = expectedEvidenceContentHashes(
+      input.includedEvidenceIds,
+      await this.dependencies.ledger.readAll()
+    );
+    if (!sameSortedValues(expectedContentHashes, input.includedContentHashes)) {
+      throw new Error("Generated artifact content hashes must match included evidence");
+    }
   }
 
   private assertHumanActor(action: string): void {
@@ -548,4 +838,18 @@ function sameSortedValues(left: readonly string[], right: readonly string[]): bo
   const sortedRight = [...right].sort();
 
   return sortedLeft.length === sortedRight.length && sortedLeft.every((value, index) => value === sortedRight[index]);
+}
+
+function expectedEvidenceContentHashes(
+  evidenceIds: readonly string[],
+  events: Awaited<ReturnType<EventLedger["readAll"]>>
+): string[] {
+  const hashesByEvidenceId = new Map<string, string>();
+  for (const event of events) {
+    if (event.type === "evidence.ingested") {
+      hashesByEvidenceId.set(event.payload.evidenceId, event.payload.contentHash);
+    }
+  }
+
+  return evidenceIds.map((evidenceId) => hashesByEvidenceId.get(evidenceId)).filter((hash): hash is string => hash !== undefined);
 }

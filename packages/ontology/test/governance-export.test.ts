@@ -8,7 +8,9 @@ import { goldenGovernanceLedgerEvents } from "./fixtures/golden-governance-ledge
 const humanActor = { id: "actor_investigator", kind: "human" as const, label: "Investigator" };
 const systemActor = { id: "actor_system", kind: "system" as const, label: "System export worker" };
 const policy = { policyId: "gov_policy_default", version: "0.1.0" };
-const contentHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
+const publicContentHash = "sha256:1111111111111111111111111111111111111111111111111111111111111111" as const;
+const privateContentHash = "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const;
+const unrelatedContentHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
 const governanceEventsWithoutPrivateQuarantine = goldenGovernanceLedgerEvents.filter(
   (event) => event.id !== "evt_quarantine_governance_private"
 );
@@ -93,7 +95,7 @@ describe("governed exports and reports", () => {
       exportId: "exp_report_001",
       policy,
       includedEvidenceIds: ["ev_source_public"],
-      includedContentHashes: [contentHash],
+      includedContentHashes: [publicContentHash],
       sensitiveOptIns: [],
       defaultPublicSafeOnly: true,
       causationId: "evt_review_governance_private"
@@ -115,7 +117,7 @@ describe("governed exports and reports", () => {
       generatedBy: "actor_investigator",
       policy,
       includedEvidenceIds: ["ev_source_public"],
-      includedContentHashes: [contentHash],
+      includedContentHashes: [publicContentHash],
       sensitiveOptIns: [],
       defaultPublicSafeOnly: true
     });
@@ -129,7 +131,7 @@ describe("governed exports and reports", () => {
       reportId: "report_private_review_001",
       policy,
       includedEvidenceIds: ["ev_source_private"],
-      includedContentHashes: [contentHash],
+      includedContentHashes: [privateContentHash],
       sensitiveOptIns: [
         {
           tag: "contains_pii",
@@ -159,7 +161,7 @@ describe("governed exports and reports", () => {
       generatedBy: "actor_investigator",
       policy,
       includedEvidenceIds: ["ev_source_private"],
-      includedContentHashes: [contentHash],
+      includedContentHashes: [privateContentHash],
       sensitiveOptIns: [
         {
           tag: "contains_pii",
@@ -185,7 +187,7 @@ describe("governed exports and reports", () => {
         exportId: "exp_missing_restricted_opt_in_001",
         policy,
         includedEvidenceIds: ["ev_source_private"],
-        includedContentHashes: [contentHash],
+        includedContentHashes: [privateContentHash],
         sensitiveOptIns: [
           {
             tag: "contains_pii",
@@ -200,6 +202,42 @@ describe("governed exports and reports", () => {
     expect(await ledger.readStream("export_exp_missing_restricted_opt_in_001")).toHaveLength(0);
   });
 
+  it("rejects exports whose content hashes do not match included evidence", async () => {
+    const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordExportGenerated({
+        exportId: "exp_wrong_hash_001",
+        policy,
+        includedEvidenceIds: ["ev_source_public"],
+        includedContentHashes: [unrelatedContentHash],
+        sensitiveOptIns: [],
+        defaultPublicSafeOnly: true
+      })
+    ).rejects.toThrow("Generated artifact content hashes must match included evidence");
+
+    expect(await ledger.readStream("export_exp_wrong_hash_001")).toHaveLength(0);
+  });
+
+  it("rejects reports whose content hash count differs from included evidence", async () => {
+    const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordReportGenerated({
+        reportId: "report_missing_hash_001",
+        policy,
+        includedEvidenceIds: ["ev_source_public"],
+        includedContentHashes: [],
+        sensitiveOptIns: [],
+        defaultPublicSafeOnly: true
+      })
+    ).rejects.toThrow("Generated artifact content hashes must match included evidence");
+
+    expect(await ledger.readStream("report_report_missing_hash_001")).toHaveLength(0);
+  });
+
   it("rejects quarantined evidence even with all restricted opt-ins when blocked IDs are omitted", async () => {
     const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
     const service = new GovernanceService({ ledger, actor: humanActor });
@@ -209,7 +247,7 @@ describe("governed exports and reports", () => {
         exportId: "exp_quarantined_001",
         policy,
         includedEvidenceIds: ["ev_source_private"],
-        includedContentHashes: [contentHash],
+        includedContentHashes: [privateContentHash],
         sensitiveOptIns: [
           {
             tag: "contains_pii",
@@ -238,7 +276,7 @@ describe("governed exports and reports", () => {
         exportId: "exp_tombstoned_001",
         policy,
         includedEvidenceIds: ["ev_source_removed"],
-        includedContentHashes: [contentHash],
+        includedContentHashes: ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
         sensitiveOptIns: [],
         defaultPublicSafeOnly: false
       })
@@ -256,7 +294,7 @@ describe("governed exports and reports", () => {
         reportId: "report_missing_evidence_001",
         policy,
         includedEvidenceIds: ["ev_missing"],
-        includedContentHashes: [contentHash],
+        includedContentHashes: [unrelatedContentHash],
         sensitiveOptIns: [],
         defaultPublicSafeOnly: false
       })
@@ -274,7 +312,7 @@ describe("governed exports and reports", () => {
         exportId: "exp_sensitive_system_001",
         policy,
         includedEvidenceIds: ["ev_source_private"],
-        includedContentHashes: [contentHash],
+        includedContentHashes: [privateContentHash],
         sensitiveOptIns: [
           {
             tag: "contains_pii",
@@ -298,7 +336,7 @@ describe("governed exports and reports", () => {
         reportId: "report_wrong_approver_001",
         policy,
         includedEvidenceIds: ["ev_source_private"],
-        includedContentHashes: [contentHash],
+        includedContentHashes: [privateContentHash],
         sensitiveOptIns: [
           {
             tag: "private_correspondence",
@@ -322,7 +360,7 @@ describe("governed exports and reports", () => {
         exportId: "exp_secret_opt_in_001",
         policy,
         includedEvidenceIds: ["ev_source_private"],
-        includedContentHashes: [contentHash],
+        includedContentHashes: [privateContentHash],
         sensitiveOptIns: [
           {
             tag: "contains_pii",

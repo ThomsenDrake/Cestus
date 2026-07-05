@@ -1,5 +1,10 @@
 import type { KnowledgeEvent, KnowledgeEventOf } from "./contracts.js";
-import { defaultGovernancePolicy, restrictedExportTags, type GovernanceTag } from "./governance-policy.js";
+import {
+  defaultGovernancePolicy,
+  restrictedExportTags,
+  validateGovernancePolicy,
+  type GovernanceTag
+} from "./governance-policy.js";
 
 type MutatingMapMethod<Key, Value> = {
   set(key: Key, value: Value): never;
@@ -126,7 +131,12 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
   for (const event of events) {
     switch (event.type) {
       case "governance.policy.installed":
-        activeConfidenceThreshold = event.payload.confidenceThreshold;
+        try {
+          const { installedBy: _installedBy, ...policy } = event.payload;
+          activeConfidenceThreshold = validateGovernancePolicy(policy).confidenceThreshold;
+        } catch {
+          activeConfidenceThreshold = defaultGovernancePolicy.confidenceThreshold;
+        }
         break;
       case "evidence.ingested":
         ensureState(mutableStates, event.payload.evidenceId);
@@ -287,7 +297,8 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
       return restrictedExportTags.some((tag) => hasActiveTag(state, tag));
     },
     isSessionApproved(sessionId: string) {
-      return deviceSessions.get(sessionId)?.approved === true;
+      const session = deviceSessions.get(sessionId);
+      return session?.approved === true && networkExposure.activeExposure?.exposureId === session.exposureId;
     },
     openIncidentIds() {
       return Object.freeze(

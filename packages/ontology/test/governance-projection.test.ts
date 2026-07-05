@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { KnowledgeEvent } from "../src/contracts.js";
 import { buildGovernanceProjection } from "../src/governance-projection.js";
 import { validateKnowledgeEvent } from "../src/contracts.js";
 import { goldenGovernanceLedgerEvents } from "./fixtures/golden-governance-ledger.js";
@@ -73,6 +74,65 @@ describe("governance projection", () => {
       confidence: 0.85,
       source: "ai"
     });
+  });
+
+  it("ignores invalid installed policy events during replay", () => {
+    const invalidPolicy = {
+      id: "evt_install_governance_policy_invalid_threshold",
+      type: "governance.policy.installed",
+      version: 1,
+      streamId: "governance_policy_gov_policy_default",
+      sequence: 1,
+      context: {
+        actor: { id: "actor_investigator", kind: "human", label: "Investigator" },
+        occurredAt: "2026-07-05T15:30:00.000Z",
+        correlationId: "corr_invalid_policy",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0" }
+      },
+      payload: {
+        policyId: "gov_policy_default",
+        version: "0.3.0",
+        installedBy: "actor_investigator",
+        confidenceThreshold: 0.1,
+        tags: []
+      }
+    } as unknown as KnowledgeEvent;
+    const borderlineClassification = {
+      id: "evt_classify_invalid_policy_borderline",
+      type: "evidence.governance.classified",
+      version: 1,
+      streamId: "evidence_ev_source_policy_threshold",
+      sequence: 3,
+      context: {
+        actor: { id: "actor_ai_classifier", kind: "extractor", label: "Governance classifier" },
+        occurredAt: "2026-07-05T15:31:00.000Z",
+        causationId: "evt_install_governance_policy_invalid_threshold",
+        correlationId: "corr_invalid_policy",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0" }
+      },
+      payload: {
+        evidenceId: "ev_source_policy_threshold",
+        evidenceEventId: "evt_ingest_governance_policy_threshold",
+        contentHash: "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        policy: { policyId: "gov_policy_default", version: "0.3.0" },
+        classifier: {
+          actorId: "actor_ai_classifier",
+          kind: "ai",
+          label: "Cestus governance classifier"
+        },
+        tags: [{ tag: "contains_pii", confidence: 0.2, rationale: "Invalid policy should not lower threshold." }]
+      }
+    } as unknown as KnowledgeEvent;
+
+    const projection = buildGovernanceProjection([
+      ...goldenGovernanceLedgerEvents,
+      invalidPolicy,
+      borderlineClassification
+    ]);
+
+    expect(projection.evidenceGovernance.get("ev_source_policy_threshold")?.currentTags.get("contains_pii")).toBeUndefined();
   });
 
   it("projects human affirm and supersede decisions as human active tags", () => {
