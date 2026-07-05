@@ -684,6 +684,7 @@ describe("ingestion event contracts", () => {
       }),
       ingestionEvent("evt_ing_parse_created", "ingestion.parse.job.created", {
         parseJobId: "parse_001",
+        sourceCollectionId: "src_drive_001",
         importBatchId: "imp_001",
         evidenceId: "ev_ingested_001",
         lane: "local",
@@ -692,12 +693,25 @@ describe("ingestion event contracts", () => {
       }),
       ingestionEvent("evt_ing_parse_completed", "ingestion.parse.completed", {
         parseJobId: "parse_001",
+        sourceCollectionId: "src_drive_001",
+        importBatchId: "imp_001",
         evidenceId: "ev_ingested_001",
         lane: "local",
         parser: { name: "local-text", version: "0.1.0" },
         outputHash: validHash,
         outputMediaType: "text/plain",
         completedAt: "2026-07-05T12:05:00.000Z"
+      }),
+      ingestionEvent("evt_ing_parse_failed", "ingestion.parse.failed", {
+        parseJobId: "parse_002",
+        sourceCollectionId: "src_drive_001",
+        importBatchId: "imp_001",
+        evidenceId: "ev_ingested_001",
+        lane: "provider",
+        parser: { name: "mistral-document-ai", version: "0.1.0" },
+        failedAt: "2026-07-05T12:05:30.000Z",
+        message: "provider rejected unsupported media type",
+        retryable: false
       }),
       ingestionEvent("evt_ing_provider_approved", "ingestion.provider.approved", {
         providerJobId: "provider_001",

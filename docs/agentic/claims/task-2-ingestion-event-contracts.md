@@ -24,5 +24,9 @@ Verification evidence:
 - `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/smoke.test.ts` passed: 2 files, 39 tests.
 - First `npm run verify` found TypeScript-only issues in the intentionally invalid ingestion payload test helper; fixed with an `unknown` cast while preserving runtime strict unknown-key validation.
 - Final `npm run verify` passed: typecheck, 43 test files / 337 tests, UI build, factory readiness.
+- Spec review fix: added valid `ingestion.parse.failed` coverage and required `sourceCollectionId` plus `importBatchId` on parse terminal events.
+- `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/smoke.test.ts` passed after spec-review fixes: 2 files, 39 tests.
+- `npm run verify` passed after spec-review fixes: typecheck, 43 test files / 337 tests, UI build, factory readiness.
+- `git diff --check` passed after spec-review fixes.
 
 Status: ready-for-review
