@@ -5,7 +5,7 @@ const requiredFiles = [
   "AGENTS.md",
   "CLAUDE.md",
   ".opencode/AGENTS.md",
-  ".codex/skills/cestus-software-factory/SKILL.md",
+  ".agents/skills/cestus-software-factory/SKILL.md",
   "docs/agentic/software-factory.md",
   "docs/agentic/task-template.md",
   "docs/agentic/review-template.md",
@@ -19,6 +19,10 @@ const requiredFiles = [
   "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md",
   "docs/superpowers/specs/2026-07-04-requests-detail-floating-modal-design.md",
   "docs/superpowers/plans/2026-07-04-requests-detail-floating-modal-implementation.md"
+];
+const forbiddenSkillLocations = [
+  ".factory/skills/cestus-software-factory/SKILL.md",
+  ".codex/skills/cestus-software-factory/SKILL.md"
 ];
 
 const allowToken = "agent-readiness-allow";
@@ -72,6 +76,12 @@ const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 for (const file of requiredFiles) {
   if (!existsSync(file)) {
     failures.push(`missing ${file}`);
+  }
+}
+
+for (const file of forbiddenSkillLocations) {
+  if (existsSync(file)) {
+    failures.push(`move ${file} to .agents/skills/cestus-software-factory/SKILL.md`);
   }
 }
 

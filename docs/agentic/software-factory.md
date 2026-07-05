@@ -4,23 +4,23 @@ Cestus uses an autonomous software-factory workflow.
 
 ## Canonical Project Skill
 
-The compact operating playbook lives at `.codex/skills/cestus-software-factory/SKILL.md`.
+The compact operating playbook lives at `.agents/skills/cestus-software-factory/SKILL.md`.
 
-- Codex-style agents should treat it as the repo-local skill for Cestus.
-- Claude Code, Opencode, Factory/Droid-style agents, and other generic agents should read it through the pointer in `AGENTS.md`.
+- OpenAI Codex is the harness. Codex discovers repo-local skills from `.agents/skills`.
+- Claude Code, Opencode, and other generic agents should read it through the pointer in `AGENTS.md`.
 - Child-thread prompts should name this skill instead of repeating the full factory contract.
 - This document remains the deeper reference for durable claims, prior readiness evidence, and factory history.
 
 The skill and this document must stay aligned. If the workflow changes, update both and run:
 
 ```bash
-uv run --with pyyaml python /home/drake/.codex/skills/.system/skill-creator/scripts/quick_validate.py .codex/skills/cestus-software-factory
+uv run --with pyyaml python /home/drake/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/cestus-software-factory
 npm run factory:check
 ```
 
 ## Operating Basis
 
-Cestus follows a hybrid of Steipete-style tight agent feedback loops and Factory-style mission execution.
+Cestus follows a hybrid of Steipete-style tight agent feedback loops and Factory-inspired mission execution, implemented through OpenAI Codex conventions rather than Factory's harness.
 
 - Keep reusable context in repo files rather than long one-off prompts.
 - Break broad work into focused units a fresh agent can hold in context.
@@ -35,7 +35,8 @@ Reference material:
 - Steipete, "My Current AI Dev Workflow": https://steipete.me/posts/2025/optimal-ai-development-workflow
 - Factory, "How Missions Work": https://factory.ai/news/missions-architecture
 - Factory, "Planning & Validation": https://docs.factory.ai/features/missions/planning
-- Factory, "Skills": https://docs.factory.ai/cli/configuration/skills
+- OpenAI Codex, "Agent Skills": https://developers.openai.com/codex/skills
+- OpenAI Codex, "Customization": https://developers.openai.com/codex/concepts/customization
 
 ## Roles
 
