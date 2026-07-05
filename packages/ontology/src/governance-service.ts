@@ -50,7 +50,12 @@ export class GovernanceService {
   }
 
   async classifyEvidence(input: ClassifyEvidenceInput): Promise<KnowledgeEventOf<"evidence.governance.classified">> {
-    const evidence = await this.findIngestedEvidence(input.evidenceId);
+    if (input.classifier.actorId !== this.actor.id) {
+      throw new Error("Governance classifier actorId must match the service actor");
+    }
+
+    const streamEvents = await this.dependencies.ledger.readStream(this.evidenceStreamId(input.evidenceId));
+    const evidence = this.findIngestedEvidence(input.evidenceId, streamEvents);
 
     if (evidence === undefined) {
       throw new Error(`Cannot classify evidence ${input.evidenceId} without evidence.ingested`);
@@ -83,7 +88,9 @@ export class GovernanceService {
       }
     };
 
-    const appended = await this.dependencies.ledger.append(event);
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
 
     if (appended.type !== "evidence.governance.classified") {
       throw new Error(`Unexpected event type appended for governance classification: ${appended.type}`);
@@ -99,6 +106,10 @@ export class GovernanceService {
       throw new Error("Governance review requires a human service actor");
     }
 
+    if (input.reviewedBy !== this.actor.id) {
+      throw new Error("Governance reviewedBy must match the service actor");
+    }
+
     const streamEvents = await this.dependencies.ledger.readStream(this.evidenceStreamId(input.evidenceId));
     const causation = streamEvents.findLast(
       (event) => event.type === "evidence.governance.classified" || event.type === "evidence.governance.reviewed"
@@ -106,6 +117,19 @@ export class GovernanceService {
 
     if (causation === undefined) {
       throw new Error(`Cannot review evidence ${input.evidenceId} without governance classification`);
+    }
+
+    const governanceEventIds = new Set(
+      streamEvents
+        .filter((event) => event.type === "evidence.governance.classified" || event.type === "evidence.governance.reviewed")
+        .map((event) => event.id)
+    );
+    if (
+      input.decisions.some(
+        (decision) => decision.supersedesEventId !== undefined && !governanceEventIds.has(decision.supersedesEventId)
+      )
+    ) {
+      throw new Error("Governance supersedesEventId must reference an earlier governance event in the evidence stream");
     }
 
     const event: AppendableKnowledgeEvent<"evidence.governance.reviewed"> = {
@@ -137,9 +161,10 @@ export class GovernanceService {
     return appended;
   }
 
-  private async findIngestedEvidence(evidenceId: string): Promise<KnowledgeEventOf<"evidence.ingested"> | undefined> {
-    const streamEvents = await this.dependencies.ledger.readStream(this.evidenceStreamId(evidenceId));
-
+  private findIngestedEvidence(
+    evidenceId: string,
+    streamEvents: Awaited<ReturnType<EventLedger["readStream"]>>
+  ): KnowledgeEventOf<"evidence.ingested"> | undefined {
     return streamEvents.find(
       (event): event is KnowledgeEventOf<"evidence.ingested"> =>
         event.type === "evidence.ingested" && event.payload.evidenceId === evidenceId
