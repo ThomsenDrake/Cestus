@@ -26,5 +26,14 @@ Status: `ready-for-review`
 
 ## Review
 
-- Review status: pending
-- Concerns: DONE_WITH_CONCERNS because the targeted Task 4 test command passed immediately, indicating Task 3 pre-satisfied the behavior under test.
+- Review status: ready-for-review
+- Concerns: DONE_WITH_CONCERNS because the initial targeted Task 4 test command passed immediately, indicating Task 3 pre-satisfied the behavior under test.
+
+## Code Quality Review Fix
+
+- Finding: code quality review found Task 4's test-only lock-in did not explicitly pin auth for `/api/dev/*` routes under non-loopback exposure, seed skipping over a non-empty ledger, or representative compact/send/legal-escalation route classes.
+- Fix: `packages/local-runtime/test/auth-and-seed.test.ts` now covers non-loopback dev-route auth with missing, wrong, and correct bearer tokens; explicit seed skipping after a draft has already made the ledger non-empty; and additional destructive-looking routes (`/api/dev/truncate`, `/api/ledger/compact`, `/api/requests/send`, `/api/requests/legal-escalation`). Handler cleanup now uses `try/finally` so temp directories are still removed if close fails.
+- Green command: `npm test -- packages/local-runtime/test/auth-and-seed.test.ts packages/local-runtime/test/http-handler.test.ts`
+  - Result: passed, `2` test files passed, `15` tests passed.
+- Full verification: `npm run verify`
+  - Result: passed after fix: `typecheck passed`; `Test Files  45 passed (45)`, `Tests  361 passed (361)`; `tests passed`; `vite build` succeeded; `factory-readiness passed`.

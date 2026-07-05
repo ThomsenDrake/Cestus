@@ -19,12 +19,14 @@ const tempDirs: string[] = [];
 const handlers: LocalRuntimeHttpHandler[] = [];
 
 afterEach(() => {
-  for (const handler of handlers.splice(0)) {
-    handler.close();
-  }
-
-  for (const dir of tempDirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
+  try {
+    for (const handler of handlers.splice(0)) {
+      handler.close();
+    }
+  } finally {
+    for (const dir of tempDirs.splice(0)) {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }
 });
 
@@ -92,6 +94,39 @@ describe("local runtime auth and explicit seed", () => {
     expect(JSON.parse(response.body).diagnostic.message).toBe("PRR seed endpoint is disabled.");
   });
 
+  it("requires bearer auth for non-loopback dev routes", async () => {
+    const handler = testHandler({
+      config: resolveLocalRuntimeConfig({
+        cwd: tempDir(),
+        env: {
+          CESTUS_LOCAL_BIND: "tailnet",
+          CESTUS_LOCAL_HOST: "100.126.143.105",
+          CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
+        }
+      }),
+      actor,
+      now: fixedNow
+    });
+
+    const rejected = await handler({ method: "POST", url: "/api/dev/seed-prr" });
+    expect(rejected.status).toBe(401);
+
+    const wrongToken = await handler({
+      method: "POST",
+      url: "/api/dev/seed-prr",
+      headers: { authorization: "Bearer wrong-token" }
+    });
+    expect(wrongToken.status).toBe(401);
+
+    const accepted = await handler({
+      method: "POST",
+      url: "/api/dev/seed-prr",
+      headers: { authorization: "Bearer secret-local-token" }
+    });
+    expect(accepted.status).toBe(404);
+    expect(JSON.parse(accepted.body).diagnostic.message).toBe("PRR seed endpoint is disabled.");
+  });
+
   it("seeds golden PRR events only when explicitly enabled and the ledger is empty", async () => {
     const handler = testHandler({
       config: resolveLocalRuntimeConfig({
@@ -112,6 +147,39 @@ describe("local runtime auth and explicit seed", () => {
     expect(JSON.parse(second.body).seed).toEqual({ appendedCount: 0, skipped: true });
   });
 
+  it("does not seed over a non-empty ledger", async () => {
+    const handler = testHandler({
+      config: resolveLocalRuntimeConfig({
+        cwd: tempDir(),
+        env: { CESTUS_DEV_SEED_PRR: "true" }
+      }),
+      actor,
+      now: fixedNow,
+      requestIdFactory: () => "prr_existing_draft"
+    });
+
+    const created = await handler({
+      method: "POST",
+      url: "/api/requests/drafts",
+      body: JSON.stringify({
+        jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+        agency: { name: "City Clerk", email: "clerk@example.gov" },
+        requester: { name: "Avery Investigator", email: "avery@example.org" },
+        requestText: "All budget amendment memos from January 2026.",
+        receivedAt: "2026-07-05T13:00:00.000Z"
+      })
+    });
+    expect(created.status).toBe(200);
+
+    const seed = await handler({ method: "POST", url: "/api/dev/seed-prr" });
+
+    expect(seed.status).toBe(200);
+    expect(JSON.parse(seed.body).seed).toEqual({ appendedCount: 0, skipped: true });
+    expect(JSON.parse(seed.body).workspace.cards.map((card: { prrRequestId: string }) => card.prrRequestId)).toEqual([
+      "prr_existing_draft"
+    ]);
+  });
+
   it("does not expose destructive ledger routes", async () => {
     const handler = testHandler({
       config: resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }),
@@ -119,7 +187,15 @@ describe("local runtime auth and explicit seed", () => {
       now: fixedNow
     });
 
-    for (const url of ["/api/dev/reset", "/api/requests/delete", "/api/ledger/truncate"]) {
+    for (const url of [
+      "/api/dev/reset",
+      "/api/dev/truncate",
+      "/api/requests/delete",
+      "/api/requests/send",
+      "/api/requests/legal-escalation",
+      "/api/ledger/truncate",
+      "/api/ledger/compact"
+    ]) {
       const response = await handler({ method: "POST", url });
       expect(response.status).toBe(404);
     }
