@@ -24,3 +24,6 @@ The coordinator/user explicitly confirmed in this thread: "This is currently an 
 - Red: `npm test -- packages/ui/test/ingestion-app-integration.test.tsx` failed with 1 failed test because the app could not find heading `Ingestion` after clicking the current `Ingestion Preview` link.
 - Green: `npm test -- packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx packages/ui/test/request-data-boundary.test.ts` passed with 3 test files and 14 tests.
 - Verify: `npm run verify` passed: typecheck passed, 55 test files and 392 tests passed, `vite build` succeeded, and factory-readiness passed.
+- Code-quality repair red: `npm test -- packages/ui/test/ingestion-app-integration.test.tsx` failed with 2 failed regression tests covering builder leakage across Ingestion navigation and Ingestion `New request` routing.
+- Code-quality repair green: `npm test -- packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/ui-picker.test.tsx` passed with 4 test files and 18 tests.
+- Code-quality repair verify: `npm run verify` passed: typecheck passed, 55 test files and 394 tests passed, `vite build` succeeded, and factory-readiness passed.
