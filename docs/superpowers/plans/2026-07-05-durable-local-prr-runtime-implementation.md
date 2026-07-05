@@ -58,16 +58,18 @@ Workers must also read every source and test file listed in their task before ed
 
 Local runtime package:
 
-- `packages/local-runtime/src/config.ts`: resolves storage, bind, auth, dev seed, static UI, and log configuration from env/CLI input.
+- `packages/local-runtime/src/config.ts`: resolves storage, bind, auth, dev seed, static UI, and log configuration from deterministic config files plus env/CLI input.
+- `packages/local-runtime/src/config-file.ts`: reads and writes ignored local runtime config files, generates local auth tokens, and redacts secret material for diagnostics.
 - `packages/local-runtime/src/runtime-factory.ts`: constructs `SQLiteEventLedger` and `createPrrRuntime` from resolved local runtime config.
 - `packages/local-runtime/src/http-handler.ts`: testable HTTP-like request handler for `/api/health`, `/api/requests/workspace`, `/api/requests/drafts`, and `/api/dev/seed-prr`.
 - `packages/local-runtime/src/static-files.ts`: safe static file response helpers for serving the built Vite UI from `dist`.
 - `packages/local-runtime/src/server.ts`: Node `http` server wrapper around the handler and static file helpers.
-- `packages/local-runtime/src/cli.ts`: `serve`, `seed-prr`, `health`, and `config` commands for local runtime operation.
+- `packages/local-runtime/src/cli.ts`: `serve`, `seed-prr`, `health`, `config`, and `configure` commands for local runtime operation and onboarding.
 - `packages/local-runtime/test/config.test.ts`: config defaults, repo-local storage, explicit path, app-data strategy, tailnet/LAN auth, and dev seed tests.
+- `packages/local-runtime/test/config-file.test.ts`: deterministic config path, generated auth token, file permissions, config-file loading, and env override tests.
 - `packages/local-runtime/test/http-handler.test.ts`: route contract, empty workspace, create draft, SQLite reopen, safe diagnostics, and partial failure tests.
 - `packages/local-runtime/test/auth-and-seed.test.ts`: auth enforcement and explicit seed endpoint tests.
-- `packages/local-runtime/test/cli.test.ts`: CLI command dispatch and script contract tests.
+- `packages/local-runtime/test/cli.test.ts`: CLI command dispatch, generated config onboarding, and script contract tests.
 - `packages/local-runtime/test/static-files.test.ts`: built UI serving and path traversal protection tests.
 
 PRR runtime compatibility:
@@ -1703,6 +1705,385 @@ Expected: commit succeeds.
 
 ---
 
+## Task 5A: Config File And Auth Onboarding
+
+**Outcome:** Tailnet and LAN defaults can be created through a deterministic ignored local config file, the CLI generates local auth material when exposure requires it, env vars override config-file defaults, and safe diagnostics never print the token.
+
+**Files:**
+
+- Create: `docs/agentic/claims/task-5a-local-runtime-onboarding-config.md`
+- Create: `packages/local-runtime/src/config-file.ts`
+- Create: `packages/local-runtime/test/config-file.test.ts`
+- Modify: `packages/local-runtime/src/config.ts`
+- Modify: `packages/local-runtime/src/cli.ts`
+- Modify: `packages/local-runtime/test/config.test.ts`
+- Modify: `packages/local-runtime/test/cli.test.ts`
+- Modify: `package.json`
+
+- [ ] **Step 1: Claim and start the task**
+
+Create and commit `docs/agentic/claims/task-5a-local-runtime-onboarding-config.md` with status `claimed`, then update it to `in-progress` and commit that transition before editing source files.
+
+Use commit messages:
+
+```bash
+git commit -m "chore: claim task 5a local runtime onboarding config"
+git commit -m "chore: start task 5a local runtime onboarding config"
+```
+
+Expected: both commits succeed.
+
+- [ ] **Step 2: Write failing config-file tests**
+
+Create `packages/local-runtime/test/config-file.test.ts`:
+
+```ts
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { resolveLocalRuntimeConfig } from "../src/config.js";
+import {
+  readLocalRuntimeConfigFile,
+  redactLocalRuntimeConfigFile,
+  resolveLocalRuntimeConfigFilePath,
+  writeLocalRuntimeOnboardingConfig
+} from "../src/config-file.js";
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+describe("local runtime config files", () => {
+  it("writes deterministic ignored config with generated tailnet auth", () => {
+    const cwd = tempDir();
+
+    const written = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "tailnet",
+      host: "100.126.143.105",
+      port: 8790
+    });
+
+    expect(written.path).toBe(join(cwd, ".cestus/local/runtime.config.json"));
+    expect(existsSync(written.path)).toBe(true);
+    expect(statSync(written.path).mode & 0o777).toBe(0o600);
+
+    const file = JSON.parse(readFileSync(written.path, "utf8")) as {
+      readonly http: { readonly bindMode: string; readonly host: string; readonly port: number; readonly authToken: string };
+    };
+    expect(file.http).toMatchObject({
+      bindMode: "tailnet",
+      host: "100.126.143.105",
+      port: 8790
+    });
+    expect(file.http.authToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+
+    const resolved = resolveLocalRuntimeConfig({ cwd, env: {} });
+    expect(resolved.http).toMatchObject({
+      bindMode: "tailnet",
+      host: "100.126.143.105",
+      port: 8790,
+      authRequired: true,
+      authToken: file.http.authToken
+    });
+  });
+
+  it("preserves existing generated auth unless rotation is requested", () => {
+    const cwd = tempDir();
+
+    const first = writeLocalRuntimeOnboardingConfig({ cwd, env: {}, bindMode: "lan" });
+    const second = writeLocalRuntimeOnboardingConfig({ cwd, env: {}, bindMode: "lan" });
+    const rotated = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "lan",
+      rotateAuthToken: true
+    });
+
+    expect(second.config.http?.authToken).toBe(first.config.http?.authToken);
+    expect(rotated.config.http?.authToken).not.toBe(first.config.http?.authToken);
+  });
+
+  it("lets env vars override config-file defaults", () => {
+    const cwd = tempDir();
+    writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "tailnet",
+      host: "100.126.143.105",
+      port: 8790
+    });
+
+    const resolved = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_BIND: "lan",
+        CESTUS_LOCAL_HOST: "0.0.0.0",
+        CESTUS_LOCAL_PORT: "8791",
+        CESTUS_LOCAL_AUTH_TOKEN: "env-token"
+      }
+    });
+
+    expect(resolved.http).toMatchObject({
+      bindMode: "lan",
+      host: "0.0.0.0",
+      port: 8791,
+      authRequired: true,
+      authToken: "env-token"
+    });
+  });
+
+  it("supports explicit config path overrides and redacts auth material", () => {
+    const cwd = tempDir();
+    const configPath = join(cwd, "custom-runtime.json");
+
+    const written = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: { CESTUS_LOCAL_CONFIG_PATH: configPath },
+      bindMode: "tailnet"
+    });
+    const file = readLocalRuntimeConfigFile({ cwd, env: { CESTUS_LOCAL_CONFIG_PATH: configPath } });
+    const redacted = redactLocalRuntimeConfigFile(file);
+
+    expect(resolveLocalRuntimeConfigFilePath({ cwd, env: { CESTUS_LOCAL_CONFIG_PATH: configPath } })).toBe(configPath);
+    expect(written.path).toBe(configPath);
+    expect(JSON.stringify(redacted)).not.toContain(file?.http?.authToken ?? "missing-token");
+    expect(redacted?.http?.authToken).toBe("[redacted]");
+  });
+});
+
+function tempDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "cestus-local-config-file-"));
+  tempDirs.push(dir);
+  return dir;
+}
+```
+
+- [ ] **Step 3: Add failing CLI onboarding tests**
+
+Add these tests to `packages/local-runtime/test/cli.test.ts`:
+
+```ts
+  it("writes generated tailnet config without printing the auth token", async () => {
+    const stdout: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(
+      ["configure", "--bind", "tailnet", "--host", "100.126.143.105", "--port", "8790"],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: () => undefined
+      }
+    );
+
+    const file = JSON.parse(readFileSync(join(tempDir, ".cestus/local/runtime.config.json"), "utf8")) as {
+      readonly http: { readonly bindMode: string; readonly host: string; readonly port: number; readonly authToken: string };
+    };
+    const output = stdout.join("\n");
+
+    expect(exitCode).toBe(0);
+    expect(file.http.bindMode).toBe("tailnet");
+    expect(file.http.host).toBe("100.126.143.105");
+    expect(file.http.port).toBe(8790);
+    expect(file.http.authToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(output).toContain('"authToken": "[redacted]"');
+    expect(output).not.toContain(file.http.authToken);
+  });
+
+  it("uses written config for later config diagnostics", async () => {
+    const stdout: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    expect(
+      await runLocalRuntimeCli(["configure", "--bind", "lan"], {
+        cwd: tempDir,
+        env: {},
+        stdout: () => undefined,
+        stderr: () => undefined
+      })
+    ).toBe(0);
+
+    const exitCode = await runLocalRuntimeCli(["config"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: () => undefined
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stdout.join("\n")).toContain('"bindMode": "lan"');
+    expect(stdout.join("\n")).toContain('"authRequired": true');
+    expect(stdout.join("\n")).toContain('"authToken": "[redacted]"');
+  });
+```
+
+Update the `node:fs` import at the top of `packages/local-runtime/test/cli.test.ts` so it includes `readFileSync`.
+
+- [ ] **Step 4: Run the targeted red command**
+
+Run:
+
+```bash
+npm test -- packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/config.test.ts packages/local-runtime/test/cli.test.ts
+```
+
+Expected: Vitest fails because `../src/config-file.js` cannot be resolved and `runLocalRuntimeCli(["configure", ...])` is not implemented.
+
+- [ ] **Step 5: Implement the config-file module**
+
+Create `packages/local-runtime/src/config-file.ts` with these exported contracts:
+
+```ts
+export interface LocalRuntimeConfigFile {
+  readonly storage?: {
+    readonly strategy?: "repo-local" | "explicit-path" | "app-data";
+    readonly sqlitePath?: string;
+    readonly appDataDir?: string;
+  };
+  readonly http?: {
+    readonly host?: string;
+    readonly port?: number;
+    readonly bindMode?: "loopback" | "tailnet" | "lan";
+    readonly authToken?: string;
+    readonly devSeedEnabled?: boolean;
+  };
+  readonly staticUi?: {
+    readonly distDir?: string;
+  };
+  readonly logs?: {
+    readonly dir?: string;
+  };
+}
+
+export interface WriteLocalRuntimeOnboardingConfigInput {
+  readonly cwd?: string;
+  readonly env?: Record<string, string | undefined>;
+  readonly bindMode: "loopback" | "tailnet" | "lan";
+  readonly host?: string;
+  readonly port?: number;
+  readonly storageStrategy?: "repo-local" | "explicit-path" | "app-data";
+  readonly sqlitePath?: string;
+  readonly appDataDir?: string;
+  readonly distDir?: string;
+  readonly logDir?: string;
+  readonly devSeedEnabled?: boolean;
+  readonly rotateAuthToken?: boolean;
+}
+```
+
+Implement these functions:
+
+- `resolveLocalRuntimeConfigFilePath({ cwd, env })`: return `CESTUS_LOCAL_CONFIG_PATH` when set, otherwise `<cwd>/.cestus/local/runtime.config.json`.
+- `readLocalRuntimeConfigFile({ cwd, env })`: return `undefined` when the file does not exist; otherwise parse JSON and validate only the fields from `LocalRuntimeConfigFile`. Reject invalid JSON, invalid bind modes, invalid storage strategies, invalid port values, and non-string token/path fields with clear local errors.
+- `writeLocalRuntimeOnboardingConfig(input)`: merge existing file settings with the new input, generate `randomBytes(32).toString("base64url")` when `bindMode` is `tailnet` or `lan` and no token exists, preserve the existing token unless `rotateAuthToken` is true, remove `authToken` for `loopback`, create the parent directory recursively, and write pretty JSON with mode `0o600`.
+- `redactLocalRuntimeConfigFile(config)`: return a copy with `http.authToken` replaced by `"[redacted]"` when present.
+
+Do not print or log the generated auth token from this module.
+
+- [ ] **Step 6: Wire config-file defaults into config resolution**
+
+Modify `packages/local-runtime/src/config.ts` so `resolveLocalRuntimeConfig()` reads `readLocalRuntimeConfigFile({ cwd, env })` and uses config-file values as defaults before environment variables:
+
+- Env always wins over config file.
+- Config file wins over hard-coded defaults.
+- `CESTUS_LOCAL_STORAGE` overrides `storage.strategy`.
+- `CESTUS_LOCAL_SQLITE_PATH` overrides `storage.sqlitePath`.
+- `CESTUS_APP_DATA_DIR` overrides `storage.appDataDir`.
+- `CESTUS_LOCAL_BIND`, `CESTUS_LOCAL_HOST`, `CESTUS_LOCAL_PORT`, `CESTUS_LOCAL_AUTH_TOKEN`, `CESTUS_DEV_SEED_PRR`, `CESTUS_UI_DIST_DIR`, and `CESTUS_LOCAL_LOG_DIR` override matching config-file values.
+- `devSeedEnabled` is true only when the env var is exactly `"true"` or the config file value is `true`; non-loopback exposure alone must not enable dev seed.
+- Non-loopback bind without a token from either env or config file must still throw `Auth is required for non-loopback local runtime exposure`.
+
+- [ ] **Step 7: Implement CLI configure command and script**
+
+Modify `packages/local-runtime/src/cli.ts`:
+
+- Add a `configure` command.
+- Parse only these flags: `--bind`, `--host`, `--port`, `--storage`, `--sqlite-path`, `--app-data-dir`, `--ui-dist-dir`, `--log-dir`, `--dev-seed`, `--no-dev-seed`, and `--rotate-auth-token`.
+- Reject unknown flags with exit code `1`.
+- Require `--bind` to be one of `loopback`, `tailnet`, or `lan`; default to `loopback` when omitted.
+- Call `writeLocalRuntimeOnboardingConfig()` and print JSON containing `ok: true`, `configPath`, and the redacted config file.
+- Do not print the generated raw auth token.
+
+Modify `package.json` scripts:
+
+```json
+"local:runtime:configure": "tsx packages/local-runtime/src/cli.ts configure"
+```
+
+Keep the existing local runtime scripts unchanged.
+
+- [ ] **Step 8: Run the targeted green command**
+
+Run:
+
+```bash
+npm test -- packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/config.test.ts packages/local-runtime/test/cli.test.ts
+```
+
+Expected: listed tests pass.
+
+- [ ] **Step 9: Run onboarding smoke checks**
+
+Run:
+
+```bash
+npm run --silent local:runtime:configure -- --bind tailnet --host 100.126.143.105 --port 8790
+```
+
+Expected: command prints redacted JSON and creates `.cestus/local/runtime.config.json` under the current repo-local worktree. Do not commit `.cestus/`.
+
+Run:
+
+```bash
+npm run local:runtime:config
+```
+
+Expected: command prints redacted config and does not print any raw auth token.
+
+Run:
+
+```bash
+git status --ignored --short .cestus
+rm -rf .cestus
+```
+
+Expected: status prints `!! .cestus/` before removal. Only remove `.cestus/` after confirming it is ignored and local to this worktree.
+
+- [ ] **Step 10: Run full verification**
+
+Run:
+
+```bash
+npm run verify
+```
+
+Expected: typecheck, all tests, UI build, and factory readiness pass.
+
+- [ ] **Step 11: Commit the task**
+
+Update the claim with command evidence and status `ready-for-review`, then run:
+
+```bash
+git add docs/agentic/claims/task-5a-local-runtime-onboarding-config.md packages/local-runtime/src/config-file.ts packages/local-runtime/test/config-file.test.ts packages/local-runtime/src/config.ts packages/local-runtime/src/cli.ts packages/local-runtime/test/config.test.ts packages/local-runtime/test/cli.test.ts package.json
+git commit -m "feat: add local runtime onboarding config"
+```
+
+Expected: commit succeeds.
+
+**Rollback:** Revert this task commit. Remove any `.cestus/` smoke state only after confirming it is ignored and belongs to this worktree.
+
+**Escalate:** Stop if config-file parsing can silently accept invalid exposure modes, if a non-loopback config can start without auth, if the CLI prints raw auth tokens, or if config-file defaults make dev seed enabled without explicit config.
+
+---
+
 ## Task 6: Browser-Safe HTTP Requests Adapter
 
 **Outcome:** The UI has a browser-safe HTTP `RequestsWorkspaceAdapter` implementation that maps local runtime JSON to existing Requests UI result types without importing Node-only modules.
@@ -2329,6 +2710,9 @@ Expected: commit succeeds.
 
 - `packages/local-runtime` resolves repo-local storage, explicit path storage, app-data strategy, loopback default, non-loopback auth, dev seed, static UI, and logs.
 - `.cestus/` local state is ignored.
+- Deterministic local config files under `.cestus/local/` can store repo-local runtime defaults without being committed.
+- Tailnet/LAN onboarding through CLI/config file generates local auth material, redacts it from diagnostics, and preserves it unless explicitly rotated.
+- Env vars override config-file defaults so dev/test and packaged hosts can inject settings without rewriting local files.
 - `PrrRuntime.createDraftRequest()` success results include `prrRequestId`.
 - Local HTTP `GET /api/requests/workspace` returns an empty workspace from an empty SQLite ledger without seeding.
 - Local HTTP `POST /api/requests/drafts` appends draft and deadline events through `createPrrRuntime`.
@@ -2346,4 +2730,4 @@ Expected: commit succeeds.
 
 ## Execution Handoff
 
-Run this plan task-by-task. Use `superpowers:subagent-driven-development` when available so implementation workers and reviewers have separate context. Use `superpowers:executing-plans` for inline execution if subagents are unavailable. Do not start Task 2 until Task 1 is committed and reviewed, and continue that sequencing through Task 8.
+Run this plan task-by-task. Use `superpowers:subagent-driven-development` when available so implementation workers and reviewers have separate context. Use `superpowers:executing-plans` for inline execution if subagents are unavailable. Do not start Task 2 until Task 1 is committed and reviewed, and continue that sequencing through Task 5, Task 5A, Task 6, Task 7, and Task 8.
