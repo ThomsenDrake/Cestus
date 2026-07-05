@@ -100,6 +100,33 @@ describe("zip archive expansion", () => {
     ]);
   });
 
+  it("rejects Windows drive-root internal paths before occurrence creation", async () => {
+    writeFileSync(join(root, "bad-windows-path.zip"), zipSync({
+      "C:/escape.txt": strToU8("nope")
+    }));
+    const ledger = new InMemoryEventLedger();
+    const scanner = new LocalFilesystemScanner({
+      ledger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+
+    const result = await scanner.scan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_zip_003",
+      rootDir: root
+    });
+
+    expect(result.occurrences).toHaveLength(0);
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      category: "ingestion",
+      message: expect.stringMatching(/unsafe archive path/)
+    }));
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "ingestion.scan.started",
+      "ingestion.scan.completed"
+    ]);
+  });
+
   it("enforces configured zip entry count and expansion byte limits", () => {
     const archive = Buffer.from(zipSync({
       "a.txt": strToU8("alpha"),
