@@ -10,6 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit && echo 'typecheck passed'",
     "factory:check": "node scripts/check-agent-readiness.mjs",
+    "ingestion:help": "node packages/ingestion/bin/cestus-ingest.mjs --help",
     "verify": "npm run typecheck && npm test && echo 'tests passed' && npm run ui:build && npm run factory:check"
   },
   "dependencies": {
