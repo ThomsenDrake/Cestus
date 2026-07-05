@@ -28,5 +28,11 @@ Verification evidence:
 - `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/smoke.test.ts` passed after spec-review fixes: 2 files, 39 tests.
 - `npm run verify` passed after spec-review fixes: typecheck, 43 test files / 337 tests, UI build, factory readiness.
 - `git diff --check` passed after spec-review fixes.
+- Code-quality fix: restricted `ingestion.parse.job.created` to initial states, enforced all-or-none archive occurrence provenance, and reconciled Task 9 parser examples with source/import identity requirements.
+- Red test evidence: `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/smoke.test.ts` failed before schema fixes because terminal parse job state and partial archive provenance were still accepted.
+- `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/smoke.test.ts` passed after code-quality fixes: 2 files, 41 tests.
+- `npm run verify` passed after code-quality fixes: typecheck, 43 test files / 339 tests, UI build, factory readiness.
+- `git diff --check` passed after code-quality fixes.
+- `npm run factory:check` passed after code-quality fixes.
 
 Status: ready-for-review

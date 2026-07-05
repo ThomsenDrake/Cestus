@@ -647,6 +647,20 @@ describe("ingestion event contracts", () => {
         observedAt: "2026-07-05T12:01:00.000Z",
         status: "new"
       }),
+      ingestionEvent("evt_ing_archive_occurrence_observed", "ingestion.occurrence.observed", {
+        occurrenceId: "occ_archive_001",
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        contentHash: validHash,
+        sourcePath: "/source/contracts/archive.zip",
+        sizeBytes: 11,
+        observedAt: "2026-07-05T12:01:30.000Z",
+        status: "new",
+        containerPath: "/source/contracts/archive.zip",
+        containerHash: validHash,
+        internalPath: "contracts/a.pdf",
+        archiveAdapter: { name: "zip", version: "0.1.0" }
+      }),
       ingestionEvent("evt_ing_scan_completed", "ingestion.scan.completed", {
         scanBatchId: "scan_001",
         sourceCollectionId: "src_drive_001",
@@ -749,6 +763,36 @@ describe("ingestion event contracts", () => {
     } as unknown as Extract<KnowledgeEvent, { type: "ingestion.scan.completed" }>["payload"];
 
     const event = ingestionEvent("evt_ing_bad_scan", "ingestion.scan.completed", badPayload);
+
+    expect(validateKnowledgeEvent(event).success).toBe(false);
+  });
+
+  it("rejects terminal states when ingestion parse jobs are created", () => {
+    const event = ingestionEvent("evt_ing_parse_created_terminal", "ingestion.parse.job.created", {
+      parseJobId: "parse_003",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      evidenceId: "ev_ingested_001",
+      lane: "local",
+      parser: { name: "local-text", version: "0.1.0" },
+      state: "succeeded"
+    } as unknown as Extract<KnowledgeEvent, { type: "ingestion.parse.job.created" }>["payload"]);
+
+    expect(validateKnowledgeEvent(event).success).toBe(false);
+  });
+
+  it("rejects partial archive occurrence provenance", () => {
+    const event = ingestionEvent("evt_ing_partial_archive_occurrence", "ingestion.occurrence.observed", {
+      occurrenceId: "occ_partial_archive",
+      scanBatchId: "scan_001",
+      sourceCollectionId: "src_drive_001",
+      contentHash: validHash,
+      sourcePath: "/source/contracts/archive.zip",
+      sizeBytes: 11,
+      observedAt: "2026-07-05T12:01:00.000Z",
+      status: "new",
+      containerPath: "/source/contracts/archive.zip"
+    });
 
     expect(validateKnowledgeEvent(event).success).toBe(false);
   });

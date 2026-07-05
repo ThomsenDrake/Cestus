@@ -132,6 +132,8 @@ const ingestionScanStartedPayloadSchema = z.object({
   startedAt: z.string().datetime()
 }).strict();
 
+const archiveOccurrenceFields = ["containerPath", "containerHash", "internalPath", "archiveAdapter"] as const;
+
 const ingestionOccurrenceObservedPayloadSchema = z.object({
   occurrenceId: occurrenceIdSchema,
   scanBatchId: scanBatchIdSchema,
@@ -146,7 +148,17 @@ const ingestionOccurrenceObservedPayloadSchema = z.object({
   containerHash: contentHashSchema.optional(),
   internalPath: z.string().min(1).optional(),
   archiveAdapter: ingestionAdapterRefSchema.optional()
-}).strict();
+}).strict().superRefine((occurrence, ctx) => {
+  const presentArchiveFields = archiveOccurrenceFields.filter((field) => occurrence[field] !== undefined);
+
+  if (presentArchiveFields.length > 0 && presentArchiveFields.length < archiveOccurrenceFields.length) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["containerPath"],
+      message: "archive occurrence provenance fields must be provided together"
+    });
+  }
+});
 
 const ingestionScanCompletedPayloadSchema = z.object({
   scanBatchId: scanBatchIdSchema,
@@ -187,7 +199,7 @@ const ingestionParseJobCreatedPayloadSchema = z.object({
   evidenceId: evidenceIdSchema,
   lane: z.enum(["local", "provider"]),
   parser: ingestionAdapterRefSchema,
-  state: z.enum(["queued", "running", "succeeded", "failed", "skipped"])
+  state: z.enum(["queued", "running"])
 }).strict();
 
 const ingestionParseCompletedPayloadSchema = z.object({
@@ -583,7 +595,12 @@ export const eventContracts = {
     version: 1,
     description: "Records one source occurrence observed during dry-run scanning, including duplicate or container provenance when applicable.",
     agentGuidance: "Use for path and archive-child observations. Preserve source context without treating folders as investigations.",
-    invariants: ["contentHash must be sha256", "occurrenceId must be stable", "observations do not delete prior evidence"]
+    invariants: [
+      "contentHash must be sha256",
+      "occurrenceId must be stable",
+      "archive child provenance fields must be all present or all absent",
+      "observations do not delete prior evidence"
+    ]
   },
   "ingestion.import.approved": {
     type: "ingestion.import.approved",
@@ -611,7 +628,12 @@ export const eventContracts = {
     version: 1,
     description: "Records creation of a local or provider parse job for imported evidence.",
     agentGuidance: "Use for queued or running parsing work. Parse output is derivative material, not accepted ontology fact.",
-    invariants: ["parseJobId is required", "sourceCollectionId and importBatchId are required", "lane must be local or provider"]
+    invariants: [
+      "parseJobId is required",
+      "sourceCollectionId and importBatchId are required",
+      "state must be queued or running",
+      "lane must be local or provider"
+    ]
   },
   "ingestion.parse.completed": {
     type: "ingestion.parse.completed",
