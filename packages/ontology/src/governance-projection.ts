@@ -40,12 +40,35 @@ export interface ExportPlan {
   }>;
 }
 
+export interface NetworkExposureState {
+  readonly activeExposure?: {
+    readonly exposureId: string;
+    readonly mode: "lan" | "tailnet";
+    readonly bindScope: "lan" | "tailnet";
+    readonly visibleWarning: true;
+    readonly eventId: string;
+  };
+}
+
+export interface DeviceSessionState {
+  readonly sessionId: string;
+  readonly deviceLabel: string;
+  readonly approved: boolean;
+  readonly exposureId: string;
+  readonly capabilities: readonly ("read" | "write")[];
+  readonly approvalEventId: string;
+  readonly revocationEventId?: string;
+}
+
 export interface GovernanceProjection {
   readonly evidenceGovernance: ImmutableMap<string, EvidenceGovernanceState>;
+  readonly networkExposure: NetworkExposureState;
+  readonly deviceSessions: ImmutableMap<string, DeviceSessionState>;
   publicSafeEvidenceIds(): readonly string[];
   buildDefaultExportEvidenceIds(): readonly string[];
   planExport(input: ExportPlanInput): ExportPlan;
   requiresExportOptIn(evidenceId: string): boolean;
+  isSessionApproved(sessionId: string): boolean;
 }
 
 interface MutableEvidenceGovernanceState {
@@ -57,9 +80,23 @@ interface MutableEvidenceGovernanceState {
   tombstoned: boolean;
 }
 
+type ActiveNetworkExposure = NonNullable<NetworkExposureState["activeExposure"]>;
+
+interface MutableDeviceSessionState {
+  sessionId: string;
+  deviceLabel: string;
+  approved: boolean;
+  exposureId: string;
+  capabilities: ("read" | "write")[];
+  approvalEventId: string;
+  revocationEventId?: string;
+}
+
 export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): GovernanceProjection {
   const mutableStates = new Map<string, MutableEvidenceGovernanceState>();
+  const mutableDeviceSessions = new Map<string, MutableDeviceSessionState>();
   let activeConfidenceThreshold = defaultGovernancePolicy.confidenceThreshold;
+  let activeNetworkExposure: ActiveNetworkExposure | undefined;
 
   for (const event of events) {
     switch (event.type) {
@@ -81,6 +118,38 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
       case "evidence.tombstoned":
         ensureState(mutableStates, event.payload.evidenceId).tombstoned = true;
         break;
+      case "network.exposure.enabled":
+        activeNetworkExposure = Object.freeze({
+          exposureId: event.payload.exposureId,
+          mode: event.payload.mode,
+          bindScope: event.payload.bindScope,
+          visibleWarning: event.payload.visibleWarning,
+          eventId: event.id
+        });
+        break;
+      case "network.exposure.disabled":
+        if (activeNetworkExposure?.exposureId === event.payload.exposureId) {
+          activeNetworkExposure = undefined;
+        }
+        break;
+      case "device.session.approved":
+        mutableDeviceSessions.set(event.payload.sessionId, {
+          sessionId: event.payload.sessionId,
+          deviceLabel: event.payload.deviceLabel,
+          approved: true,
+          exposureId: event.payload.exposureId,
+          capabilities: [...event.payload.capabilities],
+          approvalEventId: event.id
+        });
+        break;
+      case "device.session.revoked": {
+        const session = mutableDeviceSessions.get(event.payload.sessionId);
+        if (session !== undefined) {
+          session.approved = false;
+          session.revocationEventId = event.id;
+        }
+        break;
+      }
       default:
         break;
     }
@@ -90,9 +159,16 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
     new Map([...mutableStates.entries()].map(([evidenceId, state]) => [evidenceId, freezeState(state)])),
     "GovernanceProjection.evidenceGovernance is read-only"
   );
+  const networkExposure = freezeNetworkExposure(activeNetworkExposure);
+  const deviceSessions = readOnlyMap(
+    new Map([...mutableDeviceSessions.entries()].map(([sessionId, state]) => [sessionId, freezeDeviceSession(state)])),
+    "GovernanceProjection.deviceSessions is read-only"
+  );
 
   return Object.freeze({
     evidenceGovernance,
+    networkExposure,
+    deviceSessions,
     publicSafeEvidenceIds() {
       return Object.freeze(
         [...evidenceGovernance.values()]
@@ -152,6 +228,9 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
       }
 
       return restrictedExportTags.some((tag) => hasActiveTag(state, tag));
+    },
+    isSessionApproved(sessionId: string) {
+      return deviceSessions.get(sessionId)?.approved === true;
     }
   });
 }
@@ -225,6 +304,28 @@ function freezeState(state: MutableEvidenceGovernanceState): EvidenceGovernanceS
     reviewedEventIds: Object.freeze([...state.reviewedEventIds]),
     quarantined: state.quarantined,
     tombstoned: state.tombstoned
+  });
+}
+
+function freezeNetworkExposure(activeExposure: ActiveNetworkExposure | undefined): NetworkExposureState {
+  if (activeExposure === undefined) {
+    return Object.freeze({});
+  }
+
+  return Object.freeze({
+    activeExposure
+  });
+}
+
+function freezeDeviceSession(state: MutableDeviceSessionState): DeviceSessionState {
+  return Object.freeze({
+    sessionId: state.sessionId,
+    deviceLabel: state.deviceLabel,
+    approved: state.approved,
+    exposureId: state.exposureId,
+    capabilities: Object.freeze([...state.capabilities]),
+    approvalEventId: state.approvalEventId,
+    ...(state.revocationEventId === undefined ? {} : { revocationEventId: state.revocationEventId })
   });
 }
 

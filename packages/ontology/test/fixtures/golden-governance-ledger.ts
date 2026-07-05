@@ -494,5 +494,70 @@ export const goldenGovernanceLedgerEvents: KnowledgeEvent[] = [
         }
       ]
     }
+  },
+  {
+    id: "evt_network_tailnet_enabled",
+    type: "network.exposure.enabled",
+    version: 1,
+    streamId: "network_exposure_netexp_tailnet_001",
+    sequence: 1,
+    context: reviewerContext,
+    payload: {
+      exposureId: "netexp_tailnet_001",
+      mode: "tailnet",
+      bindScope: "tailnet",
+      enabledBy: "actor_investigator",
+      enabledAt: "2026-07-05T15:10:00.000Z",
+      visibleWarning: true,
+      policy
+    }
+  },
+  {
+    id: "evt_device_laptop_approved",
+    type: "device.session.approved",
+    version: 1,
+    streamId: "device_session_devsess_reporter_laptop",
+    sequence: 1,
+    context: { ...reviewerContext, causationId: "evt_network_tailnet_enabled" },
+    payload: {
+      sessionId: "devsess_reporter_laptop",
+      deviceLabel: "Reporter laptop",
+      approvedBy: "actor_investigator",
+      approvedAt: "2026-07-05T15:12:00.000Z",
+      exposureId: "netexp_tailnet_001",
+      capabilities: ["read", "write"],
+      policy
+    }
+  },
+  {
+    id: "evt_device_tablet_approved",
+    type: "device.session.approved",
+    version: 1,
+    streamId: "device_session_devsess_revoked_tablet",
+    sequence: 1,
+    context: { ...reviewerContext, causationId: "evt_network_tailnet_enabled" },
+    payload: {
+      sessionId: "devsess_revoked_tablet",
+      deviceLabel: "Reporter tablet",
+      approvedBy: "actor_investigator",
+      approvedAt: "2026-07-05T15:13:00.000Z",
+      exposureId: "netexp_tailnet_001",
+      capabilities: ["read"],
+      policy
+    }
+  },
+  {
+    id: "evt_device_tablet_revoked",
+    type: "device.session.revoked",
+    version: 1,
+    streamId: "device_session_devsess_revoked_tablet",
+    sequence: 2,
+    context: { ...reviewerContext, causationId: "evt_device_tablet_approved" },
+    payload: {
+      sessionId: "devsess_revoked_tablet",
+      revokedBy: "actor_investigator",
+      revokedAt: "2026-07-05T15:14:00.000Z",
+      reason: "Reporter tablet approval withdrawn during local review."
+    }
   }
 ];
