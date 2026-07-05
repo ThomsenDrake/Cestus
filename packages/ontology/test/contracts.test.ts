@@ -200,6 +200,246 @@ describe("event contracts", () => {
   });
 });
 
+describe("governance event contracts", () => {
+  const baseContext = {
+    actor: { id: "actor_investigator", kind: "human" as const, label: "Investigator" },
+    occurredAt: "2026-07-05T12:00:00.000Z",
+    causationId: "evt_evidence_source",
+    correlationId: "corr_governance_001",
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0" }
+  };
+
+  const contentHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const policy = { policyId: "gov_policy_default", version: "0.1.0" };
+
+  it("validates an AI governance classification with independent tags", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_governance_classified_001",
+      type: "evidence.governance.classified",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 2,
+      context: {
+        ...baseContext,
+        actor: { id: "actor_ai_classifier", kind: "extractor", label: "Governance classifier" }
+      },
+      payload: {
+        evidenceId: "ev_source_001",
+        evidenceEventId: "evt_evidence_source",
+        contentHash,
+        policy,
+        classifier: {
+          actorId: "actor_ai_classifier",
+          kind: "ai",
+          label: "Cestus governance classifier",
+          model: "local-fixture-model"
+        },
+        tags: [
+          {
+            tag: "public_record",
+            confidence: 0.97,
+            rationale: "The document was produced by a public agency."
+          },
+          {
+            tag: "contains_pii",
+            confidence: 0.88,
+            rationale: "The document includes person names and email addresses."
+          },
+          {
+            tag: "public_safe",
+            confidence: 0.91,
+            rationale: "The public record excerpt is safe for default reports."
+          }
+        ]
+      }
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("requires human identity on governance review", () => {
+    const validReview = validateKnowledgeEvent({
+      id: "evt_governance_review_001",
+      type: "evidence.governance.reviewed",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 3,
+      context: baseContext,
+      payload: {
+        evidenceId: "ev_source_001",
+        reviewedBy: "actor_editor",
+        policy,
+        decisions: [
+          {
+            tag: "public_safe",
+            action: "add",
+            rationale: "Editor verified the selected evidence can appear in default public reports.",
+            supersedesEventId: "evt_governance_classified_001"
+          }
+        ]
+      }
+    });
+
+    const missingReviewer = validateKnowledgeEvent({
+      id: "evt_governance_review_002",
+      type: "evidence.governance.reviewed",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 4,
+      context: baseContext,
+      payload: {
+        evidenceId: "ev_source_001",
+        policy,
+        decisions: [
+          {
+            tag: "public_safe",
+            action: "affirm",
+            rationale: "Human review affirmed the public-safe classification."
+          }
+        ]
+      }
+    });
+
+    const nonHumanReview = validateKnowledgeEvent({
+      id: "evt_governance_review_003",
+      type: "evidence.governance.reviewed",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 5,
+      context: {
+        ...baseContext,
+        actor: { id: "actor_ai_classifier", kind: "extractor", label: "Governance classifier" }
+      },
+      payload: {
+        evidenceId: "ev_source_001",
+        reviewedBy: "actor_ai_classifier",
+        policy,
+        decisions: [
+          {
+            tag: "public_safe",
+            action: "affirm",
+            rationale: "AI classification attempted to stand in for human review."
+          }
+        ]
+      }
+    });
+
+    expect(validReview.success).toBe(true);
+    expect(missingReviewer.success).toBe(false);
+    expect(nonHumanReview.success).toBe(false);
+  });
+
+  it("rejects secret-looking governance payload text", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_governance_secret_001",
+      type: "evidence.governance.classified",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 2,
+      context: {
+        ...baseContext,
+        actor: { id: "actor_ai_classifier", kind: "extractor", label: "Governance classifier" }
+      },
+      payload: {
+        evidenceId: "ev_source_001",
+        evidenceEventId: "evt_evidence_source",
+        contentHash,
+        policy,
+        classifier: {
+          actorId: "actor_ai_classifier",
+          kind: "ai",
+          label: "Cestus governance classifier"
+        },
+        tags: [
+          {
+            tag: "credential_risk",
+            confidence: 0.99,
+            rationale: "The note includes access_token=abc123."
+          }
+        ]
+      }
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("validates network exposure and device approval audit events", () => {
+    const exposure = validateKnowledgeEvent({
+      id: "evt_network_exposure_001",
+      type: "network.exposure.enabled",
+      version: 1,
+      streamId: "network_exposure_local",
+      sequence: 1,
+      context: { ...baseContext, causationId: undefined },
+      payload: {
+        exposureId: "netexp_local_001",
+        mode: "tailnet",
+        bindScope: "tailnet",
+        enabledBy: "actor_investigator",
+        enabledAt: "2026-07-05T12:00:00.000Z",
+        visibleWarning: true,
+        policy
+      }
+    });
+
+    const approval = validateKnowledgeEvent({
+      id: "evt_device_approval_001",
+      type: "device.session.approved",
+      version: 1,
+      streamId: "device_session_dev_local_phone",
+      sequence: 1,
+      context: { ...baseContext, causationId: "evt_network_exposure_001" },
+      payload: {
+        sessionId: "devsess_local_phone",
+        deviceLabel: "Reporter's laptop",
+        approvedBy: "actor_investigator",
+        approvedAt: "2026-07-05T12:05:00.000Z",
+        exposureId: "netexp_local_001",
+        capabilities: ["read", "write"],
+        policy
+      }
+    });
+
+    expect(exposure.success).toBe(true);
+    expect(approval.success).toBe(true);
+  });
+
+  it("validates export opt-in audit events", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_export_generated_001",
+      type: "export.generated",
+      version: 1,
+      streamId: "export_exp_report_001",
+      sequence: 1,
+      context: baseContext,
+      payload: {
+        exportId: "exp_report_001",
+        generatedBy: "actor_investigator",
+        generatedAt: "2026-07-05T12:30:00.000Z",
+        policy,
+        includedEvidenceIds: ["ev_source_001"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [
+          {
+            tag: "contains_pii",
+            approvedBy: "actor_investigator",
+            rationale: "The report is for private attorney review."
+          },
+          {
+            tag: "private_correspondence",
+            approvedBy: "actor_investigator",
+            rationale: "The private message is included for non-public source review."
+          }
+        ],
+        defaultPublicSafeOnly: false
+      }
+    });
+
+    expect(result.success).toBe(true);
+  });
+});
+
 const prrRequestId = "prr_req_001";
 const validHash = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const prrCitedRule = {
