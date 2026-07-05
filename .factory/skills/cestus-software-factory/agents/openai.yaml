@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cestus Software Factory"
+  short_description: "Run Cestus work through the repo software-factory workflow."
+  default_prompt: "Use the Cestus software factory skill for this Cestus task."

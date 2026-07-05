@@ -2,6 +2,41 @@
 
 Cestus uses an autonomous software-factory workflow.
 
+## Canonical Project Skill
+
+The compact operating playbook lives at `.factory/skills/cestus-software-factory/SKILL.md`.
+
+- Factory/Droid-style agents can discover it as a workspace skill.
+- Codex, Claude Code, Opencode, and other generic agents should read it through the pointer in `AGENTS.md`.
+- Child-thread prompts should name this skill instead of repeating the full factory contract.
+- This document remains the deeper reference for durable claims, prior readiness evidence, and factory history.
+
+The skill and this document must stay aligned. If the workflow changes, update both and run:
+
+```bash
+uv run --with pyyaml python /home/drake/.codex/skills/.system/skill-creator/scripts/quick_validate.py .factory/skills/cestus-software-factory
+npm run factory:check
+```
+
+## Operating Basis
+
+Cestus follows a hybrid of Steipete-style tight agent feedback loops and Factory-style mission execution.
+
+- Keep reusable context in repo files rather than long one-off prompts.
+- Break broad work into focused units a fresh agent can hold in context.
+- Define validation contracts before implementation when practical.
+- Use fresh review contexts because implementers are biased toward confirming their own changes.
+- Make local commands scriptable and modest enough for agents to run repeatedly.
+- Record proof in commits, claims, specs, plans, or final handoffs.
+
+Reference material:
+
+- Steipete, "Just Talk To It": https://steipete.me/posts/just-talk-to-it
+- Steipete, "My Current AI Dev Workflow": https://steipete.me/posts/2025/optimal-ai-development-workflow
+- Factory, "How Missions Work": https://factory.ai/news/missions-architecture
+- Factory, "Planning & Validation": https://docs.factory.ai/features/missions/planning
+- Factory, "Skills": https://docs.factory.ai/cli/configuration/skills
+
 ## Roles
 
 - Worker: implements one task from the active plan.
