@@ -146,4 +146,38 @@ describe("runLocalRuntimeCli", () => {
     expect(stdout.join("\n")).toContain('"authRequired": true');
     expect(stdout.join("\n")).toContain('"authToken": "[redacted]"');
   });
+
+  it("rejects configure flags that would write an unusable exposed loopback config", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(["configure", "--host", "0.0.0.0"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("Loopback local runtime config cannot use a non-loopback host");
+  });
+
+  it("rejects configure explicit-path storage without a SQLite path", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(["configure", "--storage", "explicit-path"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("explicit-path storage requires a sqlitePath");
+  });
 });
