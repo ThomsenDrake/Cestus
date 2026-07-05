@@ -2,6 +2,7 @@ import type { z } from "zod";
 import { actorRefSchema, type AppendableKnowledgeEvent, type KnowledgeEventOf } from "./contracts.js";
 import type { EventLedger } from "./event-ledger.js";
 import { assertSecretSafeText, type GovernanceTag } from "./governance-policy.js";
+import { buildGovernanceProjection } from "./governance-projection.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
 type PolicyRef = { policyId: string; version: string };
@@ -43,7 +44,6 @@ export interface RecordGeneratedArtifactInput {
   sensitiveOptIns: readonly { tag: GovernanceTag; approvedBy: string; rationale: string }[];
   defaultPublicSafeOnly: boolean;
   causationId?: string;
-  blockedEvidenceIds?: readonly string[];
 }
 
 export interface RecordExportGeneratedInput extends RecordGeneratedArtifactInput {
@@ -180,7 +180,7 @@ export class GovernanceService {
   }
 
   async recordExportGenerated(input: RecordExportGeneratedInput): Promise<KnowledgeEventOf<"export.generated">> {
-    this.assertGeneratedArtifactAllowed(input);
+    await this.assertGeneratedArtifactAllowed(input);
 
     const event: AppendableKnowledgeEvent<"export.generated"> = {
       type: "export.generated",
@@ -215,7 +215,7 @@ export class GovernanceService {
   }
 
   async recordReportGenerated(input: RecordReportGeneratedInput): Promise<KnowledgeEventOf<"report.generated">> {
-    this.assertGeneratedArtifactAllowed(input);
+    await this.assertGeneratedArtifactAllowed(input);
 
     const event: AppendableKnowledgeEvent<"report.generated"> = {
       type: "report.generated",
@@ -263,13 +263,7 @@ export class GovernanceService {
     return `evidence_${evidenceId}`;
   }
 
-  private assertGeneratedArtifactAllowed(input: RecordGeneratedArtifactInput): void {
-    const blocked = new Set(input.blockedEvidenceIds ?? []);
-    const includedBlocked = [...new Set(input.includedEvidenceIds.filter((evidenceId) => blocked.has(evidenceId)))].sort();
-    if (includedBlocked.length > 0) {
-      throw new Error(`Cannot generate export or report with blocked evidence: ${includedBlocked.join(", ")}`);
-    }
-
+  private async assertGeneratedArtifactAllowed(input: RecordGeneratedArtifactInput): Promise<void> {
     if (input.sensitiveOptIns.length > 0 && this.actor.kind !== "human") {
       throw new Error("Sensitive export and report opt-ins require a human service actor");
     }
@@ -280,6 +274,16 @@ export class GovernanceService {
       }
 
       assertSecretSafeText(optIn.rationale);
+    }
+
+    const projection = buildGovernanceProjection(await this.dependencies.ledger.readAll());
+    const plan = projection.planExport({
+      requestedEvidenceIds: input.includedEvidenceIds,
+      sensitiveOptInTags: input.sensitiveOptIns.map((optIn) => optIn.tag)
+    });
+
+    if (plan.blockedEvidence.length > 0 || !sameSortedValues(plan.includedEvidenceIds, input.includedEvidenceIds)) {
+      throw new Error("Cannot generate export or report outside the governed export plan");
     }
   }
 
@@ -293,4 +297,11 @@ export class GovernanceService {
       packVersions: { core: "0.1.0" }
     };
   }
+}
+
+function sameSortedValues(left: readonly string[], right: readonly string[]): boolean {
+  const sortedLeft = [...left].sort();
+  const sortedRight = [...right].sort();
+
+  return sortedLeft.length === sortedRight.length && sortedLeft.every((value, index) => value === sortedRight[index]);
 }

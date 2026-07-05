@@ -17,17 +17,22 @@ class RecordingLedger implements EventLedger {
   private readonly ledger = new InMemoryEventLedger();
   readonly appendOptions: AppendOptions[] = [];
 
+  constructor(private readonly seededEvents: readonly KnowledgeEvent[] = []) {}
+
   async append(event: AppendableKnowledgeEvent, options: AppendOptions = {}): Promise<KnowledgeEvent> {
     this.appendOptions.push(options);
     return this.ledger.append(event, options);
   }
 
   async readStream(streamId: string): Promise<KnowledgeEvent[]> {
-    return this.ledger.readStream(streamId);
+    return [
+      ...this.seededEvents.filter((event) => event.streamId === streamId),
+      ...(await this.ledger.readStream(streamId))
+    ];
   }
 
   async readAll(): Promise<KnowledgeEvent[]> {
-    return this.ledger.readAll();
+    return [...this.seededEvents, ...(await this.ledger.readAll())];
   }
 }
 
@@ -81,22 +86,16 @@ describe("governed exports and reports", () => {
   });
 
   it("records generated exports with human opt-ins and explicit governance causation", async () => {
-    const ledger = new RecordingLedger();
+    const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
     const service = new GovernanceService({ ledger, actor: humanActor });
 
     const event = await service.recordExportGenerated({
       exportId: "exp_report_001",
       policy,
-      includedEvidenceIds: ["ev_source_public", "ev_source_private"],
+      includedEvidenceIds: ["ev_source_public"],
       includedContentHashes: [contentHash],
-      sensitiveOptIns: [
-        {
-          tag: "contains_pii",
-          approvedBy: "actor_investigator",
-          rationale: "Included for private attorney review."
-        }
-      ],
-      defaultPublicSafeOnly: false,
+      sensitiveOptIns: [],
+      defaultPublicSafeOnly: true,
       causationId: "evt_review_governance_private"
     });
 
@@ -115,21 +114,15 @@ describe("governed exports and reports", () => {
       exportId: "exp_report_001",
       generatedBy: "actor_investigator",
       policy,
-      includedEvidenceIds: ["ev_source_public", "ev_source_private"],
+      includedEvidenceIds: ["ev_source_public"],
       includedContentHashes: [contentHash],
-      sensitiveOptIns: [
-        {
-          tag: "contains_pii",
-          approvedBy: "actor_investigator",
-          rationale: "Included for private attorney review."
-        }
-      ],
-      defaultPublicSafeOnly: false
+      sensitiveOptIns: [],
+      defaultPublicSafeOnly: true
     });
   });
 
   it("records generated reports with matching human opt-in approvals", async () => {
-    const ledger = new RecordingLedger();
+    const ledger = new RecordingLedger(governanceEventsWithoutPrivateQuarantine);
     const service = new GovernanceService({ ledger, actor: humanActor });
 
     const event = await service.recordReportGenerated({
@@ -138,6 +131,11 @@ describe("governed exports and reports", () => {
       includedEvidenceIds: ["ev_source_private"],
       includedContentHashes: [contentHash],
       sensitiveOptIns: [
+        {
+          tag: "contains_pii",
+          approvedBy: "actor_investigator",
+          rationale: "Included for private attorney review."
+        },
         {
           tag: "private_correspondence",
           approvedBy: "actor_investigator",
@@ -164,6 +162,11 @@ describe("governed exports and reports", () => {
       includedContentHashes: [contentHash],
       sensitiveOptIns: [
         {
+          tag: "contains_pii",
+          approvedBy: "actor_investigator",
+          rationale: "Included for private attorney review."
+        },
+        {
           tag: "private_correspondence",
           approvedBy: "actor_investigator",
           rationale: "Included for non-public source review."
@@ -171,6 +174,95 @@ describe("governed exports and reports", () => {
       ],
       defaultPublicSafeOnly: false
     });
+  });
+
+  it("rejects restricted evidence without all required opt-ins when blocked IDs are omitted", async () => {
+    const ledger = new RecordingLedger(governanceEventsWithoutPrivateQuarantine);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordExportGenerated({
+        exportId: "exp_missing_restricted_opt_in_001",
+        policy,
+        includedEvidenceIds: ["ev_source_private"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [
+          {
+            tag: "contains_pii",
+            approvedBy: "actor_investigator",
+            rationale: "Included for private attorney review."
+          }
+        ],
+        defaultPublicSafeOnly: false
+      })
+    ).rejects.toThrow("Cannot generate export or report outside the governed export plan");
+
+    expect(await ledger.readStream("export_exp_missing_restricted_opt_in_001")).toHaveLength(0);
+  });
+
+  it("rejects quarantined evidence even with all restricted opt-ins when blocked IDs are omitted", async () => {
+    const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordExportGenerated({
+        exportId: "exp_quarantined_001",
+        policy,
+        includedEvidenceIds: ["ev_source_private"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [
+          {
+            tag: "contains_pii",
+            approvedBy: "actor_investigator",
+            rationale: "Included for private attorney review."
+          },
+          {
+            tag: "private_correspondence",
+            approvedBy: "actor_investigator",
+            rationale: "Included for non-public source review."
+          }
+        ],
+        defaultPublicSafeOnly: false
+      })
+    ).rejects.toThrow("Cannot generate export or report outside the governed export plan");
+
+    expect(await ledger.readStream("export_exp_quarantined_001")).toHaveLength(0);
+  });
+
+  it("rejects tombstoned evidence before append", async () => {
+    const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordExportGenerated({
+        exportId: "exp_tombstoned_001",
+        policy,
+        includedEvidenceIds: ["ev_source_removed"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [],
+        defaultPublicSafeOnly: false
+      })
+    ).rejects.toThrow("Cannot generate export or report outside the governed export plan");
+
+    expect(await ledger.readStream("export_exp_tombstoned_001")).toHaveLength(0);
+  });
+
+  it("rejects missing evidence for reports before append", async () => {
+    const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordReportGenerated({
+        reportId: "report_missing_evidence_001",
+        policy,
+        includedEvidenceIds: ["ev_missing"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [],
+        defaultPublicSafeOnly: false
+      })
+    ).rejects.toThrow("Cannot generate export or report outside the governed export plan");
+
+    expect(await ledger.readStream("report_report_missing_evidence_001")).toHaveLength(0);
   });
 
   it("rejects sensitive opt-ins when the service actor is not human before append", async () => {
@@ -219,31 +311,6 @@ describe("governed exports and reports", () => {
     ).rejects.toThrow("Sensitive opt-in approvedBy must match the service actor");
 
     expect(await ledger.readStream("report_report_wrong_approver_001")).toHaveLength(0);
-  });
-
-  it("rejects explicitly blocked quarantined or tombstoned evidence before append", async () => {
-    const ledger = new RecordingLedger();
-    const service = new GovernanceService({ ledger, actor: humanActor });
-
-    await expect(
-      service.recordExportGenerated({
-        exportId: "exp_blocked_001",
-        policy,
-        includedEvidenceIds: ["ev_source_private"],
-        includedContentHashes: [contentHash],
-        sensitiveOptIns: [
-          {
-            tag: "private_correspondence",
-            approvedBy: "actor_investigator",
-            rationale: "Included for non-public source review."
-          }
-        ],
-        defaultPublicSafeOnly: false,
-        blockedEvidenceIds: ["ev_source_private"]
-      })
-    ).rejects.toThrow("Cannot generate export or report with blocked evidence: ev_source_private");
-
-    expect(await ledger.readStream("export_exp_blocked_001")).toHaveLength(0);
   });
 
   it("rejects secret-bearing opt-in rationale before append", async () => {
