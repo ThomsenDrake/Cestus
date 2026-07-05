@@ -6,7 +6,7 @@
 - Branch: `codex/public-ingestion-pipeline-design`
 - Worktree path: `/home/drake/.codex/worktrees/aee0/Cestus`
 - Claimed at: `2026-07-05T15:09:04Z`
-- Status: claimed
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -17,8 +17,8 @@
 
 ## Evidence
 
-- Red: pending.
-- Green: pending.
-- Verify: pending.
+- Red: `npm test -- packages/ingestion/test/local-filesystem.test.ts` failed as expected before implementation with `Cannot find module '../src/local-filesystem.js'`.
+- Green: `npm test -- packages/ingestion/test/local-filesystem.test.ts` passed after adding the local filesystem scanner: 1 test file, 1 test.
+- Verify: `npm run verify` passed with typecheck, 46 test files / 343 tests, UI build, and factory readiness.
 
-Status: claimed
+Status: ready-for-review
