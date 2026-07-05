@@ -106,4 +106,123 @@ describe("LocalParseService", () => {
     expect(failed.payload.message).not.toMatch(/secret-123|hunter2|token|password|Provider error/i);
     expect((await ledger.readAll()).every((event) => validateKnowledgeEvent(event).success)).toBe(true);
   });
+
+  it("allows a retryable failed local parse job to later complete on the same deterministic job stream", async () => {
+    const ledger = new InMemoryEventLedger();
+    const derivatives = new FileBlobStore(dir);
+    const parser = new LocalParseService({
+      ledger,
+      derivativeStore: derivatives,
+      actor
+    });
+    const input = {
+      parseJobId: "parse_003",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      evidenceId: "ev_ing_003",
+      parser: parserRef
+    };
+
+    const created = await parser.createLocalParseJob(input);
+    const failed = await parser.failParseJob({
+      ...input,
+      retryable: true,
+      message: "temporary extraction tool failure"
+    });
+    const completed = await parser.completeTextParse({
+      ...input,
+      text: "retried text"
+    });
+
+    expect(completed.context.causationId).toBe(failed.id);
+    expect(completed.sequence).toBe(3);
+    expect(completed.payload.outputHash).toMatch(/^sha256:/);
+    await expect(derivatives.get(completed.payload.outputHash as `sha256:${string}`)).resolves.toEqual(
+      Buffer.from("retried text")
+    );
+
+    const events = await ledger.readAll();
+    const projection = buildIngestionProjection(events);
+    expect(events.map((event) => event.type)).toEqual([
+      "ingestion.parse.job.created",
+      "ingestion.parse.failed",
+      "ingestion.parse.completed"
+    ]);
+    expect(created.sequence).toBe(1);
+    expect(failed.sequence).toBe(2);
+    expect(events.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+    expect(projection.parseJobs.get("parse_003")).toMatchObject({
+      parseJobId: "parse_003",
+      state: "succeeded",
+      outputHash: completed.payload.outputHash,
+      outputMediaType: "text/plain"
+    });
+  });
+
+  it("keeps completeTextParse idempotent after a local parse already completed", async () => {
+    const ledger = new InMemoryEventLedger();
+    const parser = new LocalParseService({
+      ledger,
+      derivativeStore: new FileBlobStore(dir),
+      actor
+    });
+    const input = {
+      parseJobId: "parse_004",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      evidenceId: "ev_ing_004",
+      parser: parserRef
+    };
+
+    await parser.createLocalParseJob(input);
+    const firstCompleted = await parser.completeTextParse({
+      ...input,
+      text: "first extracted text"
+    });
+    const retryCompleted = await parser.completeTextParse({
+      ...input,
+      text: "different text should not create another completion"
+    });
+
+    const events = await ledger.readAll();
+    expect(retryCompleted).toEqual(firstCompleted);
+    expect(events.filter((event) => event.type === "ingestion.parse.completed")).toHaveLength(1);
+    expect(events).toHaveLength(2);
+  });
+
+  it("does not allow a non-retryable local parse failure to later complete", async () => {
+    const ledger = new InMemoryEventLedger();
+    const parser = new LocalParseService({
+      ledger,
+      derivativeStore: new FileBlobStore(dir),
+      actor
+    });
+    const input = {
+      parseJobId: "parse_005",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      evidenceId: "ev_ing_005",
+      parser: parserRef
+    };
+
+    await parser.createLocalParseJob(input);
+    await parser.failParseJob({
+      ...input,
+      retryable: false,
+      message: "unsupported file type"
+    });
+
+    await expect(
+      parser.completeTextParse({
+        ...input,
+        text: "should not be written"
+      })
+    ).rejects.toThrow(/non-retryable/i);
+
+    const events = await ledger.readAll();
+    expect(events.map((event) => event.type)).toEqual([
+      "ingestion.parse.job.created",
+      "ingestion.parse.failed"
+    ]);
+  });
 });

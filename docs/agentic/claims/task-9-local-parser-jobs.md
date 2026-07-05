@@ -21,6 +21,9 @@
 - Red targeted test: `npm test -- packages/ingestion/test/parser.test.ts` failed as expected because `../src/parser.js` could not be resolved.
 - Green targeted test: `npm test -- packages/ingestion/test/parser.test.ts` passed with 1 test file and 2 tests.
 - Full verification: `npm run verify` passed with `typecheck passed`, 51 test files and 371 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
+- Spec review fix red targeted test: `npm test -- packages/ingestion/test/parser.test.ts` failed with 3 regression failures proving retryable failures could not complete, completed jobs were not idempotent, and non-retryable failure handling was not explicit.
+- Spec review fix green targeted test: `npm test -- packages/ingestion/test/parser.test.ts` passed with 1 test file and 5 tests.
+- Spec review fix full verification: `npm run verify` passed with `typecheck passed`, 51 test files and 374 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
 
 ## Self-Review
 
@@ -29,3 +32,4 @@
 - Derivative text output is stored as UTF-8 bytes in the derivative blob store and referenced by content hash; it is not raw evidence or an accepted ontology fact.
 - Completion and failure events require a matching created local parse job and carry causation back to that creation event.
 - Failure events use a generic secret-safe message instead of writing raw parser/provider errors into the ledger.
+- Spec review fix: retryable failed local parse jobs can append a later completion on the same deterministic parse job stream, non-retryable failures remain terminal, and completed jobs return the existing completion instead of appending duplicate parse result records.

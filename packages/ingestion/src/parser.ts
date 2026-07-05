@@ -65,6 +65,17 @@ export interface FailParseJobInput extends CreateLocalParseJobInput {
   failedAt?: string;
 }
 
+interface LocalParseJobStreamState {
+  created: KnowledgeEventOf<"ingestion.parse.job.created">;
+  completed?: KnowledgeEventOf<"ingestion.parse.completed">;
+  latestFailed?: KnowledgeEventOf<"ingestion.parse.failed">;
+  latestEvent:
+    | KnowledgeEventOf<"ingestion.parse.job.created">
+    | KnowledgeEventOf<"ingestion.parse.completed">
+    | KnowledgeEventOf<"ingestion.parse.failed">;
+  nextSequence: number;
+}
+
 export class LocalParseService {
   constructor(private readonly dependencies: LocalParseServiceDependencies) {
     const actor = actorRefSchema.safeParse(dependencies.actor);
@@ -103,14 +114,23 @@ export class LocalParseService {
 
   async completeTextParse(input: CompleteTextParseInput): Promise<KnowledgeEventOf<"ingestion.parse.completed">> {
     const parsed = this.parseInput(completeTextParseInputSchema, input, "text parse completion");
-    const created = await this.requireCreatedJob(parsed);
+    const state = await this.readJobState(parsed);
+
+    if (state.completed !== undefined) {
+      return state.completed;
+    }
+
+    if (state.latestFailed?.payload.retryable === false) {
+      throw new Error(`Local parse job ${parsed.parseJobId} has a non-retryable failure and cannot be completed`);
+    }
+
     const content = Buffer.from(parsed.text, "utf8");
     const stored = await this.dependencies.derivativeStore.put(content);
     const event: AppendableKnowledgeEvent<"ingestion.parse.completed"> = {
       type: "ingestion.parse.completed",
       version: 1,
       streamId: this.parseStreamId(parsed),
-      context: this.context(parsed.parseJobId, created.id),
+      context: this.context(parsed.parseJobId, state.latestEvent.id),
       payload: {
         parseJobId: parsed.parseJobId,
         sourceCollectionId: parsed.sourceCollectionId,
@@ -124,7 +144,7 @@ export class LocalParseService {
       }
     };
 
-    const appended = await this.dependencies.ledger.append(event, { expectedNextSequence: 2 });
+    const appended = await this.dependencies.ledger.append(event, { expectedNextSequence: state.nextSequence });
 
     if (appended.type !== "ingestion.parse.completed") {
       throw new Error(`Unexpected event type appended for local parse completion: ${appended.type}`);
@@ -135,12 +155,21 @@ export class LocalParseService {
 
   async failParseJob(input: FailParseJobInput): Promise<KnowledgeEventOf<"ingestion.parse.failed">> {
     const parsed = this.parseInput(failParseJobInputSchema, input, "parse failure");
-    const created = await this.requireCreatedJob(parsed);
+    const state = await this.readJobState(parsed);
+
+    if (state.completed !== undefined) {
+      throw new Error(`Local parse job ${parsed.parseJobId} already completed and cannot be failed`);
+    }
+
+    if (state.latestFailed?.payload.retryable === false) {
+      throw new Error(`Local parse job ${parsed.parseJobId} already has a non-retryable failure`);
+    }
+
     const event: AppendableKnowledgeEvent<"ingestion.parse.failed"> = {
       type: "ingestion.parse.failed",
       version: 1,
       streamId: this.parseStreamId(parsed),
-      context: this.context(parsed.parseJobId, created.id),
+      context: this.context(parsed.parseJobId, state.latestEvent.id),
       payload: {
         parseJobId: parsed.parseJobId,
         sourceCollectionId: parsed.sourceCollectionId,
@@ -154,7 +183,7 @@ export class LocalParseService {
       }
     };
 
-    const appended = await this.dependencies.ledger.append(event, { expectedNextSequence: 2 });
+    const appended = await this.dependencies.ledger.append(event, { expectedNextSequence: state.nextSequence });
 
     if (appended.type !== "ingestion.parse.failed") {
       throw new Error(`Unexpected event type appended for local parse failure: ${appended.type}`);
@@ -175,9 +204,9 @@ export class LocalParseService {
     return result.data;
   }
 
-  private async requireCreatedJob(
+  private async readJobState(
     input: CreateLocalParseJobInput
-  ): Promise<KnowledgeEventOf<"ingestion.parse.job.created">> {
+  ): Promise<LocalParseJobStreamState> {
     const events = await this.dependencies.ledger.readStream(this.parseStreamId(input));
     const created = events.find(
       (event): event is KnowledgeEventOf<"ingestion.parse.job.created"> =>
@@ -193,11 +222,33 @@ export class LocalParseService {
       throw new Error(`Local parse job ${input.parseJobId} must be created before it can be completed or failed`);
     }
 
-    if (events.some((event) => event.type === "ingestion.parse.completed" || event.type === "ingestion.parse.failed")) {
-      throw new Error(`Local parse job ${input.parseJobId} already has a terminal event`);
-    }
+    const completed = events.findLast(
+      (event): event is KnowledgeEventOf<"ingestion.parse.completed"> =>
+        event.type === "ingestion.parse.completed" &&
+        event.payload.lane === "local" &&
+        event.payload.parseJobId === input.parseJobId &&
+        event.payload.sourceCollectionId === input.sourceCollectionId &&
+        event.payload.importBatchId === input.importBatchId &&
+        event.payload.evidenceId === input.evidenceId
+    );
+    const latestFailed = events.findLast(
+      (event): event is KnowledgeEventOf<"ingestion.parse.failed"> =>
+        event.type === "ingestion.parse.failed" &&
+        event.payload.lane === "local" &&
+        event.payload.parseJobId === input.parseJobId &&
+        event.payload.sourceCollectionId === input.sourceCollectionId &&
+        event.payload.importBatchId === input.importBatchId &&
+        event.payload.evidenceId === input.evidenceId
+    );
+    const latestEvent = completed ?? latestFailed ?? created;
 
-    return created;
+    return {
+      created,
+      ...(completed === undefined ? {} : { completed }),
+      ...(latestFailed === undefined ? {} : { latestFailed }),
+      latestEvent,
+      nextSequence: events.length + 1
+    };
   }
 
   private secretSafeFailureMessage(_message: string | undefined): string {
