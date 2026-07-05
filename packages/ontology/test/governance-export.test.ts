@@ -9,6 +9,9 @@ const humanActor = { id: "actor_investigator", kind: "human" as const, label: "I
 const systemActor = { id: "actor_system", kind: "system" as const, label: "System export worker" };
 const policy = { policyId: "gov_policy_default", version: "0.1.0" };
 const contentHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
+const governanceEventsWithoutPrivateQuarantine = goldenGovernanceLedgerEvents.filter(
+  (event) => event.id !== "evt_quarantine_governance_private"
+);
 
 class RecordingLedger implements EventLedger {
   private readonly ledger = new InMemoryEventLedger();
@@ -35,7 +38,7 @@ describe("governed exports and reports", () => {
   });
 
   it("requires opt-in tags before restricted evidence can be included", () => {
-    const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
+    const projection = buildGovernanceProjection(governanceEventsWithoutPrivateQuarantine);
     const result = projection.planExport({
       requestedEvidenceIds: ["ev_source_public", "ev_source_private"],
       sensitiveOptInTags: []
@@ -51,7 +54,7 @@ describe("governed exports and reports", () => {
   });
 
   it("includes restricted evidence when every active restricted tag is opted in", () => {
-    const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
+    const projection = buildGovernanceProjection(governanceEventsWithoutPrivateQuarantine);
     const result = projection.planExport({
       requestedEvidenceIds: ["ev_source_private"],
       sensitiveOptInTags: ["contains_pii", "private_correspondence"]
@@ -59,6 +62,22 @@ describe("governed exports and reports", () => {
 
     expect(result.includedEvidenceIds).toEqual(["ev_source_private"]);
     expect(result.blockedEvidence).toEqual([]);
+  });
+
+  it("blocks quarantined evidence even when every active restricted tag is opted in", () => {
+    const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
+    const result = projection.planExport({
+      requestedEvidenceIds: ["ev_source_private"],
+      sensitiveOptInTags: ["contains_pii", "private_correspondence"]
+    });
+
+    expect(result.includedEvidenceIds).toEqual([]);
+    expect(result.blockedEvidence).toEqual([
+      {
+        evidenceId: "ev_source_private",
+        requiredOptInTags: []
+      }
+    ]);
   });
 
   it("records generated exports with human opt-ins and explicit governance causation", async () => {
