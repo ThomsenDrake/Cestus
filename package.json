@@ -10,7 +10,11 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit && echo 'typecheck passed'",
     "factory:check": "node scripts/check-agent-readiness.mjs",
-    "verify": "npm run typecheck && npm test && echo 'tests passed' && npm run ui:build && npm run factory:check"
+    "verify": "npm run typecheck && npm test && echo 'tests passed' && npm run ui:build && npm run factory:check",
+    "local:runtime": "tsx packages/local-runtime/src/cli.ts serve",
+    "local:runtime:config": "tsx packages/local-runtime/src/cli.ts config",
+    "local:runtime:health": "tsx packages/local-runtime/src/cli.ts health",
+    "prr:seed-local": "tsx packages/local-runtime/src/cli.ts seed-prr"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
@@ -29,6 +33,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.3.2",
+    "tsx": "^4.23.0",
     "typescript": "^5.9.0",
     "vite": "^8.1.3",
     "vitest": "^4.0.0"
