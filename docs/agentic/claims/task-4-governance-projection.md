@@ -6,7 +6,7 @@ Worker: Codex GPT-5
 Branch: `codex/security-governance-design`
 Worktree: `/home/drake/.codex/worktrees/c3c1/Cestus`
 Claimed-at: 2026-07-05T15:09:56Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/ontology/src/governance-projection.ts`
@@ -18,3 +18,14 @@ Owned files:
 Required commands:
 - `npm test -- packages/ontology/test/governance-projection.test.ts`
 - `npm run verify`
+
+Command evidence:
+- Red: `npm test -- packages/ontology/test/governance-projection.test.ts` failed because `../src/governance-projection.js` did not exist.
+- Green: `npm test -- packages/ontology/test/governance-projection.test.ts` passed with 1 test file and 8 tests passing.
+- Verify repair: `npm run verify` initially failed at typecheck because the immutable-map proxy cast and intentional mutation tests needed explicit TypeScript casts.
+- Final green: `npm test -- packages/ontology/test/governance-projection.test.ts` passed with 1 test file and 8 tests passing after the typecheck repair.
+- Verify: `npm run verify` passed with typecheck passed, 45 test files and 392 tests passing, UI build succeeded, and factory-readiness passed.
+- Self-review green: `npm test -- packages/ontology/test/governance-projection.test.ts` passed with 1 test file and 8 tests passing after the read-only map proxy receiver polish.
+- Self-review verify: `npm run verify` passed with typecheck passed, 45 test files and 392 tests passing, UI build succeeded, and factory-readiness passed.
+
+Ready-for-review-at: 2026-07-05T15:15:05Z

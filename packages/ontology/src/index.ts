@@ -11,3 +11,4 @@ export * from "./diagnostics.js";
 export * from "./jsonld-export.js";
 export * from "./governance-policy.js";
 export * from "./governance-service.js";
+export * from "./governance-projection.js";
