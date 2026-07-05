@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/durable-local-runtime-design`
 Worktree path: `/home/drake/.codex/worktrees/ea09/Cestus`
 Claimed at UTC: 2026-07-05T13:16:10Z
-Status: `claimed`
+Status: `in-progress`
 
 ## Owned Files
 
