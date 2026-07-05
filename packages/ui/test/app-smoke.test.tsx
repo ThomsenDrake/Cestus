@@ -91,6 +91,25 @@ describe("Cestus UI bootstrap", () => {
     }
   });
 
+  it("shows a safe Requests runtime error when the default HTTP adapter cannot load", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ message: "Bearer raw-token" }), {
+        status: 503,
+        headers: { "content-type": "application/json" }
+      })) as typeof fetch;
+
+    try {
+      render(<App />);
+      fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+      const errorRegion = await screen.findByRole("region", { name: "Requests load error" });
+      expect(errorRegion).toHaveTextContent("Requests runtime returned HTTP 503.");
+      expect(errorRegion).not.toHaveTextContent("Bearer raw-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("reloads Requests when the adapter prop changes", async () => {
     const firstWorkspace = buildTestRequestsWorkspace();
     const secondWorkspace = replaceCardAgency(
