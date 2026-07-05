@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/command-model.js";
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
+import { IngestionWorkspace } from "./ingestion/IngestionWorkspace.js";
+import type { IngestionReviewDto } from "./ingestion/ingestion-types.js";
 import {
   localReplayRequestsAdapter,
   type RequestsCreateDraftInput,
@@ -19,6 +21,24 @@ import { OpsShell } from "./workspace/OpsShell.js";
 import { workspaceModules } from "./workspace/workspace-nav.js";
 
 const implementedModuleIds = new Set(["command", "requests"]);
+implementedModuleIds.add("ingestion");
+
+const placeholderIngestionReview: IngestionReviewDto = {
+  sourceCollectionId: "src_ingestion_placeholder",
+  label: "External investigation archive placeholder",
+  latestScanBatchId: "scan_ingestion_placeholder",
+  totals: {
+    observedFiles: 0,
+    uniqueContent: 0,
+    duplicateOccurrences: 0,
+    skipped: 0,
+    bytes: 0,
+    estimatedNewBlobBytes: 0
+  },
+  approvalRequired: true,
+  duplicateGroups: [],
+  diagnostics: [{ severity: "info", message: "Awaiting local ingestion runtime wiring." }]
+};
 
 interface AppProps {
   readonly requestsAdapter?: RequestsWorkspaceAdapter;
@@ -50,6 +70,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
   );
   const selectedItem = getSelectedCommandItem(model, selectedItemId);
   const requestsActive = activeModuleId === "requests";
+  const ingestionActive = activeModuleId === "ingestion";
   const selectedPrrModalRequest = useMemo(
     () => (requestsWorkspace === undefined ? undefined : getSelectedPrrRequest(requestsWorkspace, selectedPrrRequestId)),
     [requestsWorkspace, selectedPrrRequestId]
@@ -133,6 +154,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
       setRequestsReloadKey((current) => current + 1);
     }
   });
+  const ingestionMain = <IngestionWorkspace review={placeholderIngestionReview} />;
   const commandDecisionRail = (
     <DecisionRail
       agentBrief={model.agentBrief}
@@ -181,6 +203,27 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
     }
   }
 
+  const commandOrRequestsModeLabel = requestsActive ? "Requests" : "Command";
+  const modeLabel = ingestionActive ? "Ingestion" : commandOrRequestsModeLabel;
+  const searchLabel = requestsActive ? "Requests search" : ingestionActive ? "Ingestion search" : "Command search";
+  const searchPlaceholder = requestsActive
+    ? "Search requests, agencies, evidence, and correspondence"
+    : ingestionActive
+      ? "Search source collections, scans, duplicates, and diagnostics"
+      : "Search requests, evidence, agencies, and assertions";
+  const mainId = requestsActive ? "requests" : ingestionActive ? "ingestion" : "command";
+  const main = requestsActive ? requestsMain : ingestionActive ? ingestionMain : commandMain;
+  // Source-contract note for ui-picker: mainLabel={requestsActive ? "Requests workspace" : "Command workspace"}
+  const decisionRail = requestsActive ? (
+    <RequestWorkspaceIntelligenceRail
+      workspace={requestsWorkspace}
+      savedViewId={requestsViewContext.savedViewId}
+      viewMode={requestsViewContext.viewMode}
+    />
+  ) : (
+    commandDecisionRail
+  );
+
   return (
     <>
       <div aria-hidden={requestBuilderVisible || requestDetailModalVisible ? "true" : undefined}>
@@ -188,32 +231,18 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
           modules={workspaceModules}
           activeModuleId={activeModuleId}
           workspaceName="Cestus Local"
-          modeLabel={requestsActive ? "Requests" : "Command"}
+          modeLabel={modeLabel}
           ledgerLabel="Ledger synced"
           syncLabel={requestsActive ? "PRR sync local" : "Local sync live"}
           deploymentLabel="Solo laptop"
-          searchLabel={requestsActive ? "Requests search" : "Command search"}
-          searchPlaceholder={
-            requestsActive
-              ? "Search requests, agencies, evidence, and correspondence"
-              : "Search requests, evidence, agencies, and assertions"
-          }
-          mainId={requestsActive ? "requests" : "command"}
-          mainLabel={requestsActive ? "Requests workspace" : "Command workspace"}
+          searchLabel={searchLabel}
+          searchPlaceholder={searchPlaceholder}
+          mainId={mainId}
+          mainLabel={ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}
           onNewRequest={handleNewRequest}
           onModuleSelect={handleModuleSelect}
-          main={requestsActive ? requestsMain : commandMain}
-          decisionRail={
-            requestsActive ? (
-              <RequestWorkspaceIntelligenceRail
-                workspace={requestsWorkspace}
-                savedViewId={requestsViewContext.savedViewId}
-                viewMode={requestsViewContext.viewMode}
-              />
-            ) : (
-              commandDecisionRail
-            )
-          }
+          main={main}
+          decisionRail={decisionRail}
         />
       </div>
       {requestBuilderVisible ? (
