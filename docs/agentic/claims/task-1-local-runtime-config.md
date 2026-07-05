@@ -12,6 +12,7 @@ Status: `fixes-ready-for-review`
 
 - `packages/local-runtime/src/config.ts`
 - `packages/local-runtime/test/config.test.ts`
+- `.gitignore`
 - `docs/agentic/claims/task-1-local-runtime-config.md`
 
 ## Evidence
