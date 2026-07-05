@@ -554,6 +554,7 @@ export class GovernanceService {
 
     const deviceLabel = assertSecretSafeText(input.deviceLabel);
     const activeExposure = await this.findActiveNetworkExposure(input.exposureId);
+    const streamEvents = await this.dependencies.ledger.readStream(`device_session_${input.sessionId}`);
     const event: AppendableKnowledgeEvent<"device.session.approved"> = {
       type: "device.session.approved",
       version: 1,
@@ -571,7 +572,7 @@ export class GovernanceService {
     };
 
     const appended = await this.dependencies.ledger.append(event, {
-      expectedNextSequence: 1
+      expectedNextSequence: streamEvents.length + 1
     });
 
     if (appended.type !== "device.session.approved") {
@@ -800,7 +801,13 @@ export class GovernanceService {
       assertSecretSafeText(optIn.rationale);
     }
 
-    const projection = buildGovernanceProjection(await this.dependencies.ledger.readAll());
+    const allEvents = await this.dependencies.ledger.readAll();
+    const causationEvent = allEvents.find((event) => event.id === input.causationId);
+    if (causationEvent === undefined) {
+      throw new Error("Generated exports and reports require causation to reference an existing event");
+    }
+
+    const projection = buildGovernanceProjection(allEvents);
     const plan = projection.planExport({
       requestedEvidenceIds: input.includedEvidenceIds,
       sensitiveOptInTags: input.sensitiveOptIns.map((optIn) => optIn.tag)
@@ -812,10 +819,19 @@ export class GovernanceService {
 
     const expectedContentHashes = expectedEvidenceContentHashes(
       input.includedEvidenceIds,
-      await this.dependencies.ledger.readAll()
+      allEvents
     );
     if (!sameSortedValues(expectedContentHashes, input.includedContentHashes)) {
       throw new Error("Generated artifact content hashes must match included evidence");
+    }
+
+    if (!eventReferencesAnyEvidence(causationEvent, input.includedEvidenceIds)) {
+      throw new Error("Generated exports and reports require causation to reference included evidence");
+    }
+
+    const expectedDefaultPublicSafeOnly = input.sensitiveOptIns.length === 0;
+    if (input.defaultPublicSafeOnly !== expectedDefaultPublicSafeOnly) {
+      throw new Error("Generated artifact defaultPublicSafeOnly must match sensitive opt-in state");
     }
   }
 
@@ -856,4 +872,25 @@ function expectedEvidenceContentHashes(
   }
 
   return evidenceIds.map((evidenceId) => hashesByEvidenceId.get(evidenceId)).filter((hash): hash is string => hash !== undefined);
+}
+
+function eventReferencesAnyEvidence(
+  event: Awaited<ReturnType<EventLedger["readAll"]>>[number],
+  evidenceIds: readonly string[]
+): boolean {
+  const includedEvidenceIds = new Set(evidenceIds);
+  const payload = event.payload as Record<string, unknown>;
+  const evidenceId = payload.evidenceId;
+  if (typeof evidenceId === "string" && includedEvidenceIds.has(evidenceId)) {
+    return true;
+  }
+
+  for (const field of ["evidenceIds", "includedEvidenceIds", "relatedEvidenceIds"] as const) {
+    const values = payload[field];
+    if (Array.isArray(values) && values.some((value) => typeof value === "string" && includedEvidenceIds.has(value))) {
+      return true;
+    }
+  }
+
+  return false;
 }

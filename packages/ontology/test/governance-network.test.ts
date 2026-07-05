@@ -262,6 +262,58 @@ describe("network exposure and device approval governance", () => {
     ]);
   });
 
+  it("allows a revoked device session to be freshly approved for a re-enabled exposure", async () => {
+    const ledger = new RecordingLedger();
+    const service = new GovernanceService({ ledger, actor });
+    const firstExposure = await service.enableNetworkExposure({
+      exposureId: "netexp_tailnet_002",
+      mode: "tailnet",
+      bindScope: "tailnet",
+      enabledBy: "actor_investigator",
+      policy
+    });
+    const firstApproval = await service.approveDeviceSession({
+      sessionId: "devsess_reporter_phone",
+      deviceLabel: "Reporter phone",
+      approvedBy: "actor_investigator",
+      exposureId: "netexp_tailnet_002",
+      capabilities: ["read"],
+      policy
+    });
+    await service.revokeDeviceSession({
+      sessionId: "devsess_reporter_phone",
+      revokedBy: "actor_investigator",
+      reason: "Reporter phone approval withdrawn."
+    });
+    await service.disableNetworkExposure({
+      exposureId: "netexp_tailnet_002",
+      disabledBy: "actor_investigator",
+      reason: "Tailnet sharing closed after review."
+    });
+    const secondExposure = await service.enableNetworkExposure({
+      exposureId: "netexp_tailnet_002",
+      mode: "tailnet",
+      bindScope: "tailnet",
+      enabledBy: "actor_investigator",
+      policy
+    });
+
+    const secondApproval = await service.approveDeviceSession({
+      sessionId: "devsess_reporter_phone",
+      deviceLabel: "Reporter phone",
+      approvedBy: "actor_investigator",
+      exposureId: "netexp_tailnet_002",
+      capabilities: ["read", "write"],
+      policy
+    });
+
+    expect(firstExposure.id).not.toBe(secondExposure.id);
+    expect(secondApproval.sequence).toBe(3);
+    expect(secondApproval.context.causationId).toBe(secondExposure.id);
+    expect(secondApproval.id).not.toBe(firstApproval.id);
+    expect(ledger.appendOptions.at(-1)).toEqual({ expectedNextSequence: 3 });
+  });
+
   it("rejects disabling missing exposure and revoking missing sessions before append", async () => {
     const ledger = new InMemoryEventLedger();
     const service = new GovernanceService({ ledger, actor });
