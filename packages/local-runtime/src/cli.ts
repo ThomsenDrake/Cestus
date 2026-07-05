@@ -4,6 +4,11 @@ import {
   type LocalRuntimeConfigInput,
   type ResolvedLocalRuntimeConfig
 } from "./config.js";
+import {
+  redactLocalRuntimeConfigFile,
+  writeLocalRuntimeOnboardingConfig,
+  type WriteLocalRuntimeOnboardingConfigInput
+} from "./config-file.js";
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
 import { startLocalRuntimeServer } from "./server.js";
 
@@ -25,6 +30,25 @@ export async function runLocalRuntimeCli(
   const stderr = dependencies.stderr ?? ((line: string) => console.error(line));
 
   try {
+    if (command === "configure") {
+      const written = writeLocalRuntimeOnboardingConfig({
+        ...configInputFrom(dependencies),
+        ...parseConfigureArgs(argv.slice(1))
+      });
+      stdout(
+        JSON.stringify(
+          {
+            ok: true,
+            configPath: written.path,
+            config: redactLocalRuntimeConfigFile(written.config)
+          },
+          null,
+          2
+        )
+      );
+      return 0;
+    }
+
     if (command === "config") {
       stdout(JSON.stringify(redactedConfig(dependencies), null, 2));
       return 0;
@@ -127,6 +151,144 @@ function configInputFrom(dependencies: LocalRuntimeCliDependencies): LocalRuntim
     ...(dependencies.cwd === undefined ? {} : { cwd: dependencies.cwd }),
     ...(dependencies.env === undefined ? {} : { env: dependencies.env })
   };
+}
+
+type ConfigureFlags = Omit<WriteLocalRuntimeOnboardingConfigInput, "cwd" | "env">;
+
+function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
+  const options: {
+    bindMode: ConfigureFlags["bindMode"];
+    host?: string;
+    port?: number;
+    storageStrategy?: ConfigureFlags["storageStrategy"];
+    sqlitePath?: string;
+    appDataDir?: string;
+    distDir?: string;
+    logDir?: string;
+    devSeedEnabled?: boolean;
+    rotateAuthToken?: boolean;
+  } = {
+    bindMode: "loopback"
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === undefined) {
+      continue;
+    }
+    if (arg === "--dev-seed") {
+      options.devSeedEnabled = true;
+      continue;
+    }
+    if (arg === "--no-dev-seed") {
+      options.devSeedEnabled = false;
+      continue;
+    }
+    if (arg === "--rotate-auth-token") {
+      options.rotateAuthToken = true;
+      continue;
+    }
+
+    if (arg === "--bind") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.bindMode = parseConfigureBindMode(value);
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--host") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.host = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--port") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.port = parseConfigurePort(value);
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--storage") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.storageStrategy = parseConfigureStorageStrategy(value);
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--sqlite-path") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.sqlitePath = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--app-data-dir") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.appDataDir = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--ui-dist-dir") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.distDir = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--log-dir") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.logDir = value;
+      index = nextIndex;
+      continue;
+    }
+
+    throw new Error(
+      arg.startsWith("--") ? `Unknown configure flag: ${arg}` : `Unexpected configure argument: ${arg}`
+    );
+  }
+
+  return {
+    bindMode: options.bindMode,
+    ...(options.host === undefined ? {} : { host: options.host }),
+    ...(options.port === undefined ? {} : { port: options.port }),
+    ...(options.storageStrategy === undefined ? {} : { storageStrategy: options.storageStrategy }),
+    ...(options.sqlitePath === undefined ? {} : { sqlitePath: options.sqlitePath }),
+    ...(options.appDataDir === undefined ? {} : { appDataDir: options.appDataDir }),
+    ...(options.distDir === undefined ? {} : { distDir: options.distDir }),
+    ...(options.logDir === undefined ? {} : { logDir: options.logDir }),
+    ...(options.devSeedEnabled === undefined ? {} : { devSeedEnabled: options.devSeedEnabled }),
+    ...(options.rotateAuthToken === undefined ? {} : { rotateAuthToken: options.rotateAuthToken })
+  };
+}
+
+function readFlagValue(
+  argv: readonly string[],
+  index: number,
+  flag: string
+): { readonly value: string; readonly nextIndex: number } {
+  const value = argv[index + 1];
+  if (value === undefined || value.startsWith("--")) {
+    throw new Error(`Missing value for ${flag}`);
+  }
+  return { value, nextIndex: index + 1 };
+}
+
+function parseConfigureBindMode(value: string): ConfigureFlags["bindMode"] {
+  if (value === "loopback" || value === "tailnet" || value === "lan") {
+    return value;
+  }
+  throw new Error("Configure --bind must be one of loopback, tailnet, or lan");
+}
+
+function parseConfigureStorageStrategy(value: string): ConfigureFlags["storageStrategy"] {
+  if (value === "repo-local" || value === "explicit-path" || value === "app-data") {
+    return value;
+  }
+  throw new Error("Configure --storage must be one of repo-local, explicit-path, or app-data");
+}
+
+function parseConfigurePort(value: string): number {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid configure port: ${value}`);
+  }
+  return port;
 }
 
 type RedactedLocalRuntimeConfig = Omit<ResolvedLocalRuntimeConfig, "http"> & {
