@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -86,5 +86,64 @@ describe("runLocalRuntimeCli", () => {
     expect(exitCode).toBe(0);
     expect(body.ok).toBe(true);
     expect(stdout.join("\n")).not.toContain("secret-token");
+  });
+
+  it("writes generated tailnet config without printing the auth token", async () => {
+    const stdout: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(
+      ["configure", "--bind", "tailnet", "--host", "100.126.143.105", "--port", "8790"],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: () => undefined
+      }
+    );
+
+    const file = JSON.parse(readFileSync(join(tempDir, ".cestus/local/runtime.config.json"), "utf8")) as {
+      readonly http: {
+        readonly bindMode: string;
+        readonly host: string;
+        readonly port: number;
+        readonly authToken: string;
+      };
+    };
+    const output = stdout.join("\n");
+
+    expect(exitCode).toBe(0);
+    expect(file.http.bindMode).toBe("tailnet");
+    expect(file.http.host).toBe("100.126.143.105");
+    expect(file.http.port).toBe(8790);
+    expect(file.http.authToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(output).toContain('"authToken": "[redacted]"');
+    expect(output).not.toContain(file.http.authToken);
+  });
+
+  it("uses written config for later config diagnostics", async () => {
+    const stdout: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    expect(
+      await runLocalRuntimeCli(["configure", "--bind", "lan"], {
+        cwd: tempDir,
+        env: {},
+        stdout: () => undefined,
+        stderr: () => undefined
+      })
+    ).toBe(0);
+
+    const exitCode = await runLocalRuntimeCli(["config"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: () => undefined
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stdout.join("\n")).toContain('"bindMode": "lan"');
+    expect(stdout.join("\n")).toContain('"authRequired": true');
+    expect(stdout.join("\n")).toContain('"authToken": "[redacted]"');
   });
 });

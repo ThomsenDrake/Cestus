@@ -12,6 +12,7 @@
     "factory:check": "node scripts/check-agent-readiness.mjs",
     "verify": "npm run typecheck && npm test && echo 'tests passed' && npm run ui:build && npm run factory:check",
     "local:runtime": "tsx packages/local-runtime/src/cli.ts serve",
+    "local:runtime:configure": "tsx packages/local-runtime/src/cli.ts configure",
     "local:runtime:config": "tsx packages/local-runtime/src/cli.ts config",
     "local:runtime:health": "tsx packages/local-runtime/src/cli.ts health",
     "prr:seed-local": "tsx packages/local-runtime/src/cli.ts seed-prr"

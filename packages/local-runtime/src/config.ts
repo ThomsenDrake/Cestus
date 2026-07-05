@@ -1,6 +1,7 @@
 import { isIP } from "node:net";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
+import { readLocalRuntimeConfigFile, type LocalRuntimeConfigFile } from "./config-file.js";
 
 export type LocalRuntimeStorageStrategy = "repo-local" | "explicit-path" | "app-data";
 export type LocalRuntimeBindMode = "loopback" | "tailnet" | "lan";
@@ -37,9 +38,10 @@ export function resolveLocalRuntimeConfig(
 ): ResolvedLocalRuntimeConfig {
   const cwd = resolve(input.cwd ?? process.cwd());
   const env = input.env ?? process.env;
-  const bindMode = parseBindMode(env.CESTUS_LOCAL_BIND);
-  const host = resolveHost(bindMode, env);
-  const authToken = normalizeOptional(env.CESTUS_LOCAL_AUTH_TOKEN);
+  const configFile = readLocalRuntimeConfigFile({ cwd, env });
+  const bindMode = parseBindMode(normalizeOptional(env.CESTUS_LOCAL_BIND) ?? configFile?.http?.bindMode);
+  const host = resolveHost(bindMode, env, configFile);
+  const authToken = normalizeOptional(env.CESTUS_LOCAL_AUTH_TOKEN) ?? configFile?.http?.authToken;
   const authRequired = bindMode !== "loopback" || !isLoopbackHost(host);
 
   if (authRequired && authToken === undefined) {
@@ -48,20 +50,23 @@ export function resolveLocalRuntimeConfig(
 
   const config = {
     cwd,
-    storage: resolveStorage(cwd, env),
+    storage: resolveStorage(cwd, env, configFile),
     http: {
       host,
-      port: parsePort(env.CESTUS_LOCAL_PORT),
+      port: parsePort(normalizeOptional(env.CESTUS_LOCAL_PORT) ?? configFile?.http?.port),
       bindMode,
       authRequired,
       ...(authToken === undefined ? {} : { authToken }),
-      devSeedEnabled: env.CESTUS_DEV_SEED_PRR === "true"
+      devSeedEnabled: resolveDevSeedEnabled(env, configFile)
     },
     staticUi: {
-      distDir: resolvePath(cwd, normalizeOptional(env.CESTUS_UI_DIST_DIR) ?? "dist")
+      distDir: resolvePath(cwd, normalizeOptional(env.CESTUS_UI_DIST_DIR) ?? configFile?.staticUi?.distDir ?? "dist")
     },
     logs: {
-      dir: resolvePath(cwd, normalizeOptional(env.CESTUS_LOCAL_LOG_DIR) ?? ".cestus/local/logs")
+      dir: resolvePath(
+        cwd,
+        normalizeOptional(env.CESTUS_LOCAL_LOG_DIR) ?? configFile?.logs?.dir ?? ".cestus/local/logs"
+      )
     }
   } satisfies ResolvedLocalRuntimeConfig;
 
@@ -70,9 +75,12 @@ export function resolveLocalRuntimeConfig(
 
 function resolveStorage(
   cwd: string,
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
+  configFile: LocalRuntimeConfigFile | undefined
 ): ResolvedLocalRuntimeConfig["storage"] {
-  const strategy = parseStorageStrategy(env.CESTUS_LOCAL_STORAGE);
+  const strategy = parseStorageStrategy(
+    normalizeOptional(env.CESTUS_LOCAL_STORAGE) ?? configFile?.storage?.strategy
+  );
 
   if (strategy === "repo-local") {
     return Object.freeze({
@@ -82,7 +90,7 @@ function resolveStorage(
   }
 
   if (strategy === "explicit-path") {
-    const sqlitePath = normalizeOptional(env.CESTUS_LOCAL_SQLITE_PATH);
+    const sqlitePath = normalizeOptional(env.CESTUS_LOCAL_SQLITE_PATH) ?? configFile?.storage?.sqlitePath;
     if (sqlitePath === undefined) {
       throw new Error("CESTUS_LOCAL_SQLITE_PATH is required for explicit-path storage");
     }
@@ -94,7 +102,9 @@ function resolveStorage(
 
   const appDataDir = resolvePath(
     cwd,
-    normalizeOptional(env.CESTUS_APP_DATA_DIR) ?? join(homedir(), ".local/share/cestus")
+    normalizeOptional(env.CESTUS_APP_DATA_DIR) ??
+      configFile?.storage?.appDataDir ??
+      join(homedir(), ".local/share/cestus")
   );
   return Object.freeze({
     strategy,
@@ -124,9 +134,10 @@ function parseBindMode(value: string | undefined): LocalRuntimeBindMode {
 
 function resolveHost(
   bindMode: LocalRuntimeBindMode,
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
+  configFile: LocalRuntimeConfigFile | undefined
 ): string {
-  const explicitHost = normalizeOptional(env.CESTUS_LOCAL_HOST);
+  const explicitHost = normalizeOptional(env.CESTUS_LOCAL_HOST) ?? configFile?.http?.host;
   if (explicitHost !== undefined) {
     return explicitHost;
   }
@@ -144,7 +155,7 @@ function isLoopbackHost(host: string): boolean {
   return normalized === "::1" || normalized === "0:0:0:0:0:0:0:1";
 }
 
-function parsePort(value: string | undefined): number {
+function parsePort(value: string | number | undefined): number {
   if (value === undefined) {
     return 8787;
   }
@@ -153,6 +164,17 @@ function parsePort(value: string | undefined): number {
     throw new Error(`Invalid local runtime port: ${value}`);
   }
   return parsed;
+}
+
+function resolveDevSeedEnabled(
+  env: Record<string, string | undefined>,
+  configFile: LocalRuntimeConfigFile | undefined
+): boolean {
+  const envValue = normalizeOptional(env.CESTUS_DEV_SEED_PRR);
+  if (envValue !== undefined) {
+    return envValue === "true";
+  }
+  return configFile?.http?.devSeedEnabled === true;
 }
 
 function resolvePath(cwd: string, path: string): string {
