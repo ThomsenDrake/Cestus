@@ -18,7 +18,9 @@ const requiredFiles = [
   "docs/superpowers/specs/2026-07-04-requests-detail-modal-design.md",
   "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md",
   "docs/superpowers/specs/2026-07-04-requests-detail-floating-modal-design.md",
-  "docs/superpowers/plans/2026-07-04-requests-detail-floating-modal-implementation.md"
+  "docs/superpowers/plans/2026-07-04-requests-detail-floating-modal-implementation.md",
+  "docs/superpowers/specs/2026-07-05-security-threat-model-data-governance-design.md",
+  "docs/superpowers/plans/2026-07-05-security-threat-model-data-governance-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
