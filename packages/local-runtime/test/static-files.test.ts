@@ -1,15 +1,20 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { readStaticUiFile } from "../src/static-files.js";
 
 let dir: string | undefined;
+let outsideDir: string | undefined;
 
 afterEach(() => {
   if (dir !== undefined) {
     rmSync(dir, { recursive: true, force: true });
     dir = undefined;
+  }
+  if (outsideDir !== undefined) {
+    rmSync(outsideDir, { recursive: true, force: true });
+    outsideDir = undefined;
   }
 });
 
@@ -44,6 +49,19 @@ describe("readStaticUiFile", () => {
     writeFileSync(join(dir, "index.html"), "<main>Cestus</main>");
 
     expect(readStaticUiFile(dir, "/../package.json")).toEqual({
+      status: 404,
+      contentType: "text/plain; charset=utf-8",
+      body: Buffer.from("Not found")
+    });
+  });
+
+  it("does not follow symlinks outside the static root", () => {
+    dir = mkdtempSync(join(tmpdir(), "cestus-static-"));
+    outsideDir = mkdtempSync(join(tmpdir(), "cestus-static-outside-"));
+    writeFileSync(join(outsideDir, "secret.txt"), "not for static serving");
+    symlinkSync(join(outsideDir, "secret.txt"), join(dir, "linked-secret.txt"));
+
+    expect(readStaticUiFile(dir, "/linked-secret.txt")).toEqual({
       status: 404,
       contentType: "text/plain; charset=utf-8",
       body: Buffer.from("Not found")

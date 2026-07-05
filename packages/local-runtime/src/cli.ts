@@ -93,7 +93,13 @@ async function seedLocalPrr(dependencies: LocalRuntimeCliDependencies): Promise<
   });
 
   try {
-    const response = await handler({ method: "POST", url: "/api/dev/seed-prr" });
+    const response = await handler({
+      method: "POST",
+      url: "/api/dev/seed-prr",
+      ...(config.http.authToken === undefined
+        ? {}
+        : { headers: { authorization: `Bearer ${config.http.authToken}` } })
+    });
     return JSON.parse(response.body) as unknown;
   } finally {
     handler.close();
