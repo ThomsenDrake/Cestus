@@ -364,6 +364,40 @@ describe("governance event contracts", () => {
     expect(result.success).toBe(false);
   });
 
+  it("allows safe governance tag names in payload text", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_governance_credential_risk_text_001",
+      type: "evidence.governance.classified",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 2,
+      context: {
+        ...baseContext,
+        actor: { id: "actor_ai_classifier", kind: "extractor", label: "Governance classifier" }
+      },
+      payload: {
+        evidenceId: "ev_source_001",
+        evidenceEventId: "evt_evidence_source",
+        contentHash,
+        policy,
+        classifier: {
+          actorId: "actor_ai_classifier",
+          kind: "ai",
+          label: "Cestus governance classifier"
+        },
+        tags: [
+          {
+            tag: "credential_risk",
+            confidence: 0.76,
+            rationale: "The tag credential_risk applies."
+          }
+        ]
+      }
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("validates network exposure and device approval audit events", () => {
     const exposure = validateKnowledgeEvent({
       id: "evt_network_exposure_001",
@@ -433,6 +467,31 @@ describe("governance event contracts", () => {
           }
         ],
         defaultPublicSafeOnly: false
+      }
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("validates incident repair audit events with incident fields", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_incident_repair_001",
+      type: "incident.repair.recorded",
+      version: 1,
+      streamId: "incident_incident_export_001",
+      sequence: 2,
+      context: baseContext,
+      payload: {
+        incidentId: "incident_export_001",
+        repairId: "repair_export_001",
+        severity: "warning",
+        category: "export",
+        repairedBy: "actor_investigator",
+        repairedAt: "2026-07-05T13:00:00.000Z",
+        action: "Removed restricted evidence from the generated export.",
+        relatedEvidenceIds: ["ev_source_001"],
+        relatedEventIds: ["evt_export_generated_001"],
+        closesIncident: true
       }
     });
 

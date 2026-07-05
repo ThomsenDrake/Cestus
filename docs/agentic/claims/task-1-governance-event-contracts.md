@@ -23,3 +23,6 @@ Command evidence:
 - Additional red: `npm test -- packages/ontology/test/contracts.test.ts` failed with the non-human governance review test proving extractor actors were still accepted for human review events.
 - Green: `npm test -- packages/ontology/test/contracts.test.ts` passed with 1 test file and 41 tests passing.
 - Verify: `npm run verify` passed with typecheck passed, 42 test files and 339 tests passing, UI build succeeded, and factory-readiness passed.
+- Spec-review fix red: `npm test -- packages/ontology/test/contracts.test.ts` failed with 2 tests proving `credential_risk` rationale text was rejected and `incident.repair.recorded` rejected required incident fields.
+- Spec-review fix green: `npm test -- packages/ontology/test/contracts.test.ts` passed with 1 test file and 43 tests passing.
+- Spec-review fix verify: `npm run verify` passed with typecheck passed, 42 test files and 341 tests passing, UI build succeeded, and factory-readiness passed.
