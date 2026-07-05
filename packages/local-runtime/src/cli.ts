@@ -92,8 +92,8 @@ export async function runLocalRuntimeCli(
       stdout(
         `Cestus local runtime listening on http://${started.config.http.host}:${started.config.http.port}`
       );
-      if (started.sessionBootstrapUrl !== undefined) {
-        stdout(`Cestus browser session URL: ${started.sessionBootstrapUrl}`);
+      for (const sessionUrl of started.sessionBootstrapUrls ?? []) {
+        stdout(`Cestus browser session URL: ${sessionUrl}`);
       }
       return 0;
     }

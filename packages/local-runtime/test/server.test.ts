@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import type { AddressInfo } from "node:net";
-import { tmpdir } from "node:os";
+import { tmpdir, type NetworkInterfaceInfo } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "../src/config.js";
@@ -94,6 +94,19 @@ describe("startLocalRuntimeServer", () => {
     expect(await authenticated.json()).toMatchObject({ cards: [] });
   });
 
+  it("uses a non-loopback browser session URL for wildcard LAN binds", async () => {
+    const handle = await startLocalRuntimeServer({
+      config: authRequiredWildcardLanConfig(),
+      networkInterfaces: () => fakeLanInterfaces("192.0.2.42")
+    });
+    handles.push(handle);
+
+    expect(handle.sessionBootstrapUrl).toMatch(/^http:\/\/192\.0\.2\.42:\d+\/api\/local-session\?code=/);
+    expect(handle.sessionBootstrapUrl).not.toContain("127.0.0.1");
+    expect(handle.sessionBootstrapUrl).not.toContain("secret-local-token");
+    expect(handle.sessionBootstrapUrls).toContain(handle.sessionBootstrapUrl);
+  });
+
   it("can be closed more than once without closing the runtime twice", async () => {
     const handle = await startTestServer(loopbackConfig());
     handles.splice(handles.indexOf(handle), 1);
@@ -114,6 +127,18 @@ function authRequiredConfig(): ResolvedLocalRuntimeConfig {
       env: {
         CESTUS_LOCAL_BIND: "tailnet",
         CESTUS_LOCAL_HOST: "127.0.0.1",
+        CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
+      }
+    })
+  );
+}
+
+function authRequiredWildcardLanConfig(): ResolvedLocalRuntimeConfig {
+  return configWithPortZero(
+    resolveLocalRuntimeConfig({
+      cwd: tempDir(),
+      env: {
+        CESTUS_LOCAL_BIND: "lan",
         CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
       }
     })
@@ -158,6 +183,21 @@ function tempDir(): string {
 
 function cookieHeaderFromSetCookie(setCookie: string): string {
   return setCookie.split(";")[0] ?? "";
+}
+
+function fakeLanInterfaces(address: string): NodeJS.Dict<NetworkInterfaceInfo[]> {
+  return {
+    eth0: [
+      {
+        address,
+        netmask: "255.255.255.0",
+        family: "IPv4",
+        mac: "00:00:00:00:00:00",
+        internal: false,
+        cidr: `${address}/24`
+      }
+    ]
+  };
 }
 
 function responseFrom(request: ReturnType<typeof httpRequest>): Promise<{
