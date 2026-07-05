@@ -1,6 +1,11 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { join } from "node:path";
+import {
+  authorizedLocalRuntimeRequest,
+  createLocalRuntimeSessionBootstrapCode,
+  localRuntimeSessionSetCookie
+} from "./auth.js";
 import type { ActorRef } from "../../prr/src/draft-events.js";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "./config.js";
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
@@ -16,6 +21,7 @@ export interface StartLocalRuntimeServerInput {
 export interface LocalRuntimeServerHandle {
   readonly config: ResolvedLocalRuntimeConfig;
   readonly server: Server;
+  readonly sessionBootstrapUrl?: string;
   close(): Promise<void>;
 }
 
@@ -40,13 +46,21 @@ export async function startLocalRuntimeServer(
   const handler = createLocalRuntimeHttpHandler({ config, actor });
   mkdirSync(config.logs.dir, { recursive: true });
   let closed = false;
+  const sessionBootstrapCode = config.http.authRequired
+    ? createLocalRuntimeSessionBootstrapCode()
+    : undefined;
 
   const server = createServer(async (request, response) => {
     try {
       const path = pathnameFromRequestUrl(request.url);
+      if (request.method === "GET" && path === "/api/local-session") {
+        writeLocalSessionResponse(config, sessionBootstrapCode, request, response);
+        return;
+      }
+
       if (path?.startsWith("/api/") === true) {
         const headers = headersFrom(request);
-        if (isProtectedApiPath(path) && !authorized(config, headers)) {
+        if (isProtectedApiPath(path) && !authorizedLocalRuntimeRequest(config, headers)) {
           writeJsonDiagnostic(response, 401, "Authentication is required for this local runtime route.", [
             "provide the configured local runtime auth token"
           ]);
@@ -104,6 +118,9 @@ export async function startLocalRuntimeServer(
   return Object.freeze({
     config,
     server,
+    ...(sessionBootstrapCode === undefined
+      ? {}
+      : { sessionBootstrapUrl: buildSessionBootstrapUrl(config, server, sessionBootstrapCode) }),
     async close() {
       if (closed) {
         return;
@@ -176,26 +193,95 @@ function isProtectedApiPath(path: string): boolean {
   return path.startsWith("/api/") && path !== "/api/health";
 }
 
-function authorized(
+function writeLocalSessionResponse(
   config: ResolvedLocalRuntimeConfig,
-  headers: Record<string, string | undefined>
-): boolean {
+  sessionBootstrapCode: string | undefined,
+  request: IncomingMessage,
+  response: ServerResponse
+): void {
   if (!config.http.authRequired) {
-    return true;
+    writeRedirect(response, "/", {});
+    return;
   }
 
-  return config.http.authToken !== undefined && headers.authorization === `Bearer ${config.http.authToken}`;
+  const actualCode = sessionCodeFrom(request.url);
+  if (
+    sessionBootstrapCode === undefined ||
+    actualCode === undefined ||
+    actualCode !== sessionBootstrapCode
+  ) {
+    writeJsonDiagnostic(response, 401, "Local runtime browser session could not be established.", [
+      "open the current local runtime session URL from the server output"
+    ]);
+    return;
+  }
+
+  const setCookie = localRuntimeSessionSetCookie(config);
+  if (setCookie === undefined) {
+    writeJsonDiagnostic(response, 500, "Local runtime session configuration is unavailable.", [
+      "restart the local runtime"
+    ]);
+    return;
+  }
+
+  writeRedirect(response, "/", {
+    "cache-control": "no-store",
+    "set-cookie": setCookie
+  });
+}
+
+function sessionCodeFrom(url: string | undefined): string | undefined {
+  if (url === undefined) {
+    return undefined;
+  }
+  try {
+    return new URL(url, "http://localhost").searchParams.get("code") ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function buildSessionBootstrapUrl(
+  config: ResolvedLocalRuntimeConfig,
+  server: Server,
+  code: string
+): string {
+  const address = server.address();
+  const port = typeof address === "object" && address !== null ? address.port : config.http.port;
+  return `http://${browserHostFor(config.http.host)}:${port}/api/local-session?code=${encodeURIComponent(code)}`;
+}
+
+function browserHostFor(host: string): string {
+  return host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host;
 }
 
 function writeResponse(
   response: ServerResponse,
   status: number,
   contentType: string | undefined,
-  body: Buffer
+  body: Buffer,
+  headers: Record<string, string> = {}
 ): void {
   response.statusCode = status;
+  for (const [name, value] of Object.entries(headers)) {
+    response.setHeader(name, value);
+  }
   response.setHeader("content-type", contentType ?? "application/octet-stream");
   response.end(body);
+}
+
+function writeRedirect(
+  response: ServerResponse,
+  location: string,
+  headers: Record<string, string>
+): void {
+  response.statusCode = 303;
+  response.setHeader("location", location);
+  for (const [name, value] of Object.entries(headers)) {
+    response.setHeader(name, value);
+  }
+  response.setHeader("content-type", "text/plain; charset=utf-8");
+  response.end("");
 }
 
 function writeJsonDiagnostic(
@@ -263,7 +349,7 @@ function redactSecretMaterial(message: string): string {
   return message
     .replaceAll(/bearer\s+[a-z0-9._~+/=-]+/gi, "Bearer [redacted]")
     .replaceAll(
-      /(token|secret|password|authorization|api_key)(["'\s:=]+)[^\s"',;}]*/gi,
+      /(token|secret|password|authorization|api_key|oauth|credential|private_key|session)(["'\s:=]+)[^\s"',;}]*/gi,
       "$1$2[redacted]"
     );
 }

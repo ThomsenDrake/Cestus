@@ -49,6 +49,7 @@ export type RequestsCreateDraftResult =
       readonly committedEventIds: readonly string[];
       readonly diagnostic: RequestsDraftDiagnostic;
       readonly workspace: PrrWorkspaceDto;
+      readonly workspaceStale?: true;
     };
 
 export interface RequestsWorkspaceAdapter {
@@ -76,6 +77,7 @@ export interface StaticRequestsAdapterOptions {
 export interface HttpRequestsAdapterOptions {
   readonly baseUrl?: string;
   readonly authToken?: string;
+  readonly credentials?: RequestCredentials;
   readonly fetcher?: typeof fetch;
 }
 
@@ -283,6 +285,7 @@ export function createHttpRequestsAdapter(
   options: HttpRequestsAdapterOptions = {}
 ): RequestsWorkspaceAdapter {
   const baseUrl = options.baseUrl ?? "";
+  const credentials = options.credentials ?? "same-origin";
   const fetcher = options.fetcher ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
 
   return Object.freeze({
@@ -290,6 +293,7 @@ export function createHttpRequestsAdapter(
       let response: Response;
       try {
         response = await fetcher(`${baseUrl}/api/requests/workspace`, {
+          credentials,
           headers: authHeaders(options.authToken),
           method: "GET"
         });
@@ -301,9 +305,17 @@ export function createHttpRequestsAdapter(
       }
 
       try {
-        return (await response.json()) as PrrWorkspaceDto;
+        const workspace = workspaceDtoFromJson(await response.json());
+        if (workspace === undefined) {
+          throw new Error("invalid workspace payload");
+        }
+        return workspace;
       } catch (error) {
-        throw new Error("Requests runtime returned invalid workspace JSON.");
+        throw new Error(
+          error instanceof SyntaxError
+            ? "Requests runtime returned invalid workspace JSON."
+            : "Requests runtime returned invalid workspace payload."
+        );
       }
     },
     async createDraftRequest(input: RequestsCreateDraftInput) {
@@ -311,6 +323,7 @@ export function createHttpRequestsAdapter(
       try {
         response = await fetcher(`${baseUrl}/api/requests/drafts`, {
           body: JSON.stringify(input),
+          credentials,
           headers: {
             ...authHeaders(options.authToken),
             "content-type": "application/json"
@@ -326,7 +339,11 @@ export function createHttpRequestsAdapter(
       }
 
       try {
-        return sanitizeCreateDraftResult((await response.json()) as RequestsCreateDraftResult);
+        const result = createDraftResultFromJson(await response.json());
+        if (result === undefined) {
+          return httpFailure("invalid draft result", await safeWorkspaceFallback());
+        }
+        return sanitizeCreateDraftResult(result);
       } catch (error) {
         return httpFailure("invalid JSON", await safeWorkspaceFallback());
       }
@@ -359,7 +376,8 @@ async function httpFailure(reason: string, workspace: PrrWorkspaceDto): Promise<
       message: `Requests runtime returned ${reason}.`,
       allowedRepairActions: Object.freeze(["reload Requests", "check the local runtime"])
     }),
-    workspace
+    workspace,
+    workspaceStale: true
   });
 }
 
@@ -375,6 +393,119 @@ function sanitizeCreateDraftResult(result: RequestsCreateDraftResult): RequestsC
       allowedRepairActions: Object.freeze(["retry request creation"])
     })
   });
+}
+
+function createDraftResultFromJson(value: unknown): RequestsCreateDraftResult | undefined {
+  if (!isJsonObject(value)) {
+    return undefined;
+  }
+
+  const workspace = workspaceDtoFromJson(value.workspace);
+  const committedEventIds = stringArrayFromJson(value.committedEventIds);
+  if (workspace === undefined || committedEventIds === undefined) {
+    return undefined;
+  }
+
+  if (value.ok === true) {
+    if (!isNonEmptyString(value.prrRequestId)) {
+      return undefined;
+    }
+    return Object.freeze({
+      ok: true,
+      prrRequestId: value.prrRequestId,
+      committedEventIds: Object.freeze(committedEventIds),
+      workspace
+    });
+  }
+
+  if (value.ok !== false || !isFailedStep(value.failedStep)) {
+    return undefined;
+  }
+
+  const diagnostic = diagnosticFromJson(value.diagnostic);
+  if (diagnostic === undefined) {
+    return undefined;
+  }
+
+  return Object.freeze({
+    ok: false,
+    failedStep: value.failedStep,
+    committedEventIds: Object.freeze(committedEventIds),
+    diagnostic,
+    workspace
+  });
+}
+
+function workspaceDtoFromJson(value: unknown): PrrWorkspaceDto | undefined {
+  if (!isJsonObject(value)) {
+    return undefined;
+  }
+
+  if (
+    !isNonEmptyString(value.generatedAt) ||
+    !Array.isArray(value.savedViews) ||
+    !Array.isArray(value.laneOrder) ||
+    !Array.isArray(value.lanes) ||
+    !Array.isArray(value.cards) ||
+    !Array.isArray(value.requestDetails) ||
+    !Array.isArray(value.gates) ||
+    !Array.isArray(value.actionPackets) ||
+    !Array.isArray(value.evidencePackets) ||
+    !Array.isArray(value.diagnostics) ||
+    !Array.isArray(value.timeline) ||
+    !isSignalMap(value.signalMap) ||
+    !isBuilderModel(value.builder) ||
+    !Array.isArray(value.queueRows)
+  ) {
+    return undefined;
+  }
+
+  return value as unknown as PrrWorkspaceDto;
+}
+
+function diagnosticFromJson(value: unknown): RequestsDraftDiagnostic | undefined {
+  if (!isJsonObject(value) || !isNonEmptyString(value.message)) {
+    return undefined;
+  }
+
+  const allowedRepairActions = stringArrayFromJson(value.allowedRepairActions);
+  if (allowedRepairActions === undefined) {
+    return undefined;
+  }
+
+  return Object.freeze({
+    message: value.message,
+    allowedRepairActions: Object.freeze(allowedRepairActions)
+  });
+}
+
+function isSignalMap(value: unknown): value is PrrWorkspaceDto["signalMap"] {
+  return isJsonObject(value) && Array.isArray(value.nodes) && Array.isArray(value.edges);
+}
+
+function isBuilderModel(value: unknown): value is PrrWorkspaceDto["builder"] {
+  return isJsonObject(value) && Array.isArray(value.jurisdictionPacks) && Array.isArray(value.steps);
+}
+
+function stringArrayFromJson(value: unknown): readonly string[] | undefined {
+  return Array.isArray(value) && value.every((item) => typeof item === "string") ? value : undefined;
+}
+
+function isFailedStep(value: unknown): value is RequestsCreateDraftFailedStep {
+  return (
+    value === "validate-input" ||
+    value === "append-request" ||
+    value === "estimate-deadline" ||
+    value === "append-deadline"
+  );
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function nextStreamSequence(events: readonly KnowledgeEvent[], streamId: string): number {
