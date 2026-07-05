@@ -5,7 +5,7 @@ const requiredFiles = [
   "AGENTS.md",
   "CLAUDE.md",
   ".opencode/AGENTS.md",
-  ".factory/skills/cestus-software-factory/SKILL.md",
+  ".codex/skills/cestus-software-factory/SKILL.md",
   "docs/agentic/software-factory.md",
   "docs/agentic/task-template.md",
   "docs/agentic/review-template.md",

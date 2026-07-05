@@ -4,17 +4,17 @@ Cestus uses an autonomous software-factory workflow.
 
 ## Canonical Project Skill
 
-The compact operating playbook lives at `.factory/skills/cestus-software-factory/SKILL.md`.
+The compact operating playbook lives at `.codex/skills/cestus-software-factory/SKILL.md`.
 
-- Factory/Droid-style agents can discover it as a workspace skill.
-- Codex, Claude Code, Opencode, and other generic agents should read it through the pointer in `AGENTS.md`.
+- Codex-style agents should treat it as the repo-local skill for Cestus.
+- Claude Code, Opencode, Factory/Droid-style agents, and other generic agents should read it through the pointer in `AGENTS.md`.
 - Child-thread prompts should name this skill instead of repeating the full factory contract.
 - This document remains the deeper reference for durable claims, prior readiness evidence, and factory history.
 
 The skill and this document must stay aligned. If the workflow changes, update both and run:
 
 ```bash
-uv run --with pyyaml python /home/drake/.codex/skills/.system/skill-creator/scripts/quick_validate.py .factory/skills/cestus-software-factory
+uv run --with pyyaml python /home/drake/.codex/skills/.system/skill-creator/scripts/quick_validate.py .codex/skills/cestus-software-factory
 npm run factory:check
 ```
 
