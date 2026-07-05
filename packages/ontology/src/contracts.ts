@@ -182,6 +182,7 @@ const ingestionEvidenceLinkedPayloadSchema = z.object({
 
 const ingestionParseJobCreatedPayloadSchema = z.object({
   parseJobId: parseJobIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
   importBatchId: importBatchIdSchema,
   evidenceId: evidenceIdSchema,
   lane: z.enum(["local", "provider"]),
@@ -191,6 +192,8 @@ const ingestionParseJobCreatedPayloadSchema = z.object({
 
 const ingestionParseCompletedPayloadSchema = z.object({
   parseJobId: parseJobIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  importBatchId: importBatchIdSchema,
   evidenceId: evidenceIdSchema,
   lane: z.enum(["local", "provider"]),
   parser: ingestionAdapterRefSchema,
@@ -201,6 +204,8 @@ const ingestionParseCompletedPayloadSchema = z.object({
 
 const ingestionParseFailedPayloadSchema = z.object({
   parseJobId: parseJobIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  importBatchId: importBatchIdSchema,
   evidenceId: evidenceIdSchema,
   lane: z.enum(["local", "provider"]),
   parser: ingestionAdapterRefSchema,
@@ -606,21 +611,21 @@ export const eventContracts = {
     version: 1,
     description: "Records creation of a local or provider parse job for imported evidence.",
     agentGuidance: "Use for queued or running parsing work. Parse output is derivative material, not accepted ontology fact.",
-    invariants: ["parseJobId is required", "evidenceId is required", "lane must be local or provider"]
+    invariants: ["parseJobId is required", "sourceCollectionId and importBatchId are required", "lane must be local or provider"]
   },
   "ingestion.parse.completed": {
     type: "ingestion.parse.completed",
     version: 1,
     description: "Records successful parse completion with a derivative output hash and media type.",
-    agentGuidance: "Use after derivative output is content-addressed. Future assertion extraction still needs provenance and review.",
-    invariants: ["outputHash must be sha256", "parser metadata is required", "completedAt must be an ISO datetime"]
+    agentGuidance: "Use after derivative output is content-addressed, preserving source collection and import batch identity. Future assertion extraction still needs provenance and review.",
+    invariants: ["sourceCollectionId and importBatchId are required", "outputHash must be sha256", "completedAt must be an ISO datetime"]
   },
   "ingestion.parse.failed": {
     type: "ingestion.parse.failed",
     version: 1,
     description: "Records a secret-safe parse failure for imported evidence.",
-    agentGuidance: "Use instead of silent logs when local or provider parsing fails. Do not include credentials or raw document bodies.",
-    invariants: ["message must be secret-safe", "parseJobId is required", "retryable must be explicit"]
+    agentGuidance: "Use instead of silent logs when local or provider parsing fails, preserving source collection and import batch identity. Do not include credentials or raw document bodies.",
+    invariants: ["sourceCollectionId and importBatchId are required", "message must be secret-safe", "retryable must be explicit"]
   },
   "ingestion.provider.approved": {
     type: "ingestion.provider.approved",
