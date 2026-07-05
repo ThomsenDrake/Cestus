@@ -28,9 +28,36 @@ describe("governance policy helpers", () => {
     expect(isHighConfidence(0.79, defaultGovernancePolicy)).toBe(false);
   });
 
+  it("treats non-finite and out-of-range confidence values as low confidence", () => {
+    expect(isHighConfidence(1.5, defaultGovernancePolicy)).toBe(false);
+    expect(isHighConfidence(-0.1, defaultGovernancePolicy)).toBe(false);
+    expect(isHighConfidence(Infinity, defaultGovernancePolicy)).toBe(false);
+    expect(isHighConfidence(Number.NaN, defaultGovernancePolicy)).toBe(false);
+  });
+
   it("rejects secret-bearing policy text", () => {
     expect(() => assertSecretSafeText("rotate access_token abc123")).toThrow(
       "Governance text must not contain secrets"
+    );
+  });
+
+  it("rejects common secret-looking values", () => {
+    const secretTexts = [
+      "AWS_SECRET_ACCESS_KEY=abc123",
+      "access_token=abc123",
+      "api_key: abc123",
+      "Authorization: Bearer abc123",
+      "sk-proj-abc123"
+    ];
+
+    for (const text of secretTexts) {
+      expect(() => assertSecretSafeText(text), text).toThrow("Governance text must not contain secrets");
+    }
+  });
+
+  it("allows descriptive credential-risk text without secret-looking values", () => {
+    expect(assertSecretSafeText("evidence may contain a password and requires review")).toBe(
+      "evidence may contain a password and requires review"
     );
   });
 
@@ -51,5 +78,20 @@ describe("governance policy helpers", () => {
     expect(() => validateGovernancePolicy(duplicatePolicy)).toThrow(
       "Governance policy must define each core governance tag exactly once"
     );
+  });
+
+  it("rejects unknown policy keys", () => {
+    expect(() => validateGovernancePolicy({ ...defaultGovernancePolicy, extra: true })).toThrow(
+      "Invalid governance policy"
+    );
+
+    expect(() =>
+      validateGovernancePolicy({
+        ...defaultGovernancePolicy,
+        tags: defaultGovernancePolicy.tags.map((entry) =>
+          entry.tag === "public_safe" ? { ...entry, reviewNote: "safe extra key" } : entry
+        )
+      })
+    ).toThrow("Invalid governance policy");
   });
 });

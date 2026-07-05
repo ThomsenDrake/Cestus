@@ -26,8 +26,13 @@ export const restrictedExportTags = [
   "law_enforcement_sensitive"
 ] as const satisfies readonly GovernanceTag[];
 
-const secretTextPattern =
-  /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth(?:[\s._-]*(?:token|secret|client))?)(?:$|[^a-z0-9])/i;
+const secretTextPatterns = [
+  /(?:^|[^a-z0-9])(?:aws[\s._-]*secret[\s._-]*access[\s._-]*key|access[\s._-]*token|api[\s._-]*key|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth(?:[\s._-]*(?:token|secret|client))?)\s*[:=]\s*\S{3,}/i,
+  /(?:^|[^a-z0-9])(?:aws[_-]*secret[_-]*access[_-]*key|access[_-]*token|api[_-]*key|private[_-]*key|client[_-]*secret|refresh[_-]*secret|session[_-]*secret|oauth[_-]*(?:token|secret|client))\s+\S{3,}/i,
+  /(?:^|[^a-z0-9])authorization\s*:\s*\S+(?:\s+\S+)?/i,
+  /(?:^|[^a-z0-9])bearer\s+[a-z0-9._~+/=-]{6,}/i,
+  /(?:^|[^a-z0-9])sk-(?:proj|live|test)-[a-z0-9_-]{3,}/i
+] as const;
 
 const governanceTagSchema = z.enum(governanceTags);
 
@@ -146,11 +151,11 @@ export function validateGovernancePolicy(policy: unknown): GovernancePolicy {
 }
 
 export function isHighConfidence(confidence: number, policy: GovernancePolicy = defaultGovernancePolicy): boolean {
-  return confidence >= policy.confidenceThreshold;
+  return Number.isFinite(confidence) && confidence >= 0 && confidence <= 1 && confidence >= policy.confidenceThreshold;
 }
 
 export function assertSecretSafeText(value: string): string {
-  if (secretTextPattern.test(value)) {
+  if (secretTextPatterns.some((pattern) => pattern.test(value))) {
     throw new Error("Governance text must not contain secrets");
   }
 
