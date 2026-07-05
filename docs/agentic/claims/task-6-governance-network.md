@@ -23,3 +23,6 @@ Evidence:
 - Red: `npm test -- packages/ontology/test/governance-network.test.ts packages/ontology/test/governance-projection.test.ts` failed as expected before implementation. Failures showed missing `networkExposure`, missing `isSessionApproved`, and missing `enableNetworkExposure()` / `approveDeviceSession()` methods.
 - Green: `npm test -- packages/ontology/test/governance-network.test.ts packages/ontology/test/governance-projection.test.ts` passed after implementation: 2 files passed, 19 tests passed.
 - Verify: `npm run verify` passed: typecheck passed, 47 test files passed, 416 tests passed, UI build succeeded, factory-readiness passed.
+- Review fix red: `npm test -- packages/ontology/test/governance-network.test.ts packages/ontology/test/governance-projection.test.ts` failed as expected before the fix: approval lacked exposure causation and still appended for missing or disabled exposure.
+- Review fix green: `npm test -- packages/ontology/test/governance-network.test.ts packages/ontology/test/governance-projection.test.ts` passed after the fix: 2 files passed, 23 tests passed.
+- Review fix verify: `npm run verify` passed: typecheck passed, 47 test files passed, 420 tests passed, UI build succeeded, factory-readiness passed.

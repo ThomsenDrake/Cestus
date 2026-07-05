@@ -50,6 +50,48 @@ describe("network exposure and device approval governance", () => {
     expect(projection.deviceSessions.get("devsess_revoked_tablet")?.revocationEventId).toBe("evt_device_tablet_revoked");
   });
 
+  it("clears active exposure when the latest matching exposure event disables it", () => {
+    const projection = buildGovernanceProjection([
+      ...goldenGovernanceLedgerEvents,
+      {
+        id: "evt_network_tailnet_disabled",
+        type: "network.exposure.disabled",
+        version: 1,
+        streamId: "network_exposure_netexp_tailnet_001",
+        sequence: 2,
+        context: {
+          actor,
+          occurredAt: "2026-07-05T15:20:00.000Z",
+          causationId: "evt_network_tailnet_enabled",
+          correlationId: "corr_golden_governance",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0" }
+        },
+        payload: {
+          exposureId: "netexp_tailnet_001",
+          disabledBy: "actor_investigator",
+          disabledAt: "2026-07-05T15:20:00.000Z",
+          reason: "Tailnet sharing closed after review."
+        }
+      }
+    ]);
+
+    expect(projection.networkExposure.activeExposure).toBeUndefined();
+  });
+
+  it("returns immutable network exposure and device session snapshots", () => {
+    const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
+    const laptop = projection.deviceSessions.get("devsess_reporter_laptop");
+
+    expect(() => {
+      (projection.networkExposure as { activeExposure?: unknown }).activeExposure = undefined;
+    }).toThrow();
+    expect(() => projection.deviceSessions.set("devsess_mutated", laptop!)).toThrow(
+      "GovernanceProjection.deviceSessions is read-only"
+    );
+    expect(() => (laptop?.capabilities as ("read" | "write")[]).push("read")).toThrow();
+  });
+
   it("enables network exposure with a visible warning and human actor", async () => {
     const ledger = new RecordingLedger();
     const service = new GovernanceService({ ledger, actor });
@@ -80,6 +122,13 @@ describe("network exposure and device approval governance", () => {
   it("approves a device session with a human actor and safe device label", async () => {
     const ledger = new RecordingLedger();
     const service = new GovernanceService({ ledger, actor });
+    const exposure = await service.enableNetworkExposure({
+      exposureId: "netexp_tailnet_002",
+      mode: "tailnet",
+      bindScope: "tailnet",
+      enabledBy: "actor_investigator",
+      policy
+    });
 
     const event = await service.approveDeviceSession({
       sessionId: "devsess_reporter_phone",
@@ -94,6 +143,7 @@ describe("network exposure and device approval governance", () => {
     expect(event.streamId).toBe("device_session_devsess_reporter_phone");
     expect(event.sequence).toBe(1);
     expect(event.context.actor).toEqual(actor);
+    expect(event.context.causationId).toBe(exposure.id);
     expect(event.payload).toMatchObject({
       sessionId: "devsess_reporter_phone",
       deviceLabel: "Reporter phone",
@@ -102,7 +152,72 @@ describe("network exposure and device approval governance", () => {
       capabilities: ["read", "write"],
       policy
     });
-    expect(ledger.appendOptions[0]).toEqual({ expectedNextSequence: 1 });
+    expect(ledger.appendOptions[1]).toEqual({ expectedNextSequence: 1 });
+  });
+
+  it("rejects device approval without a current exposure event before append", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new GovernanceService({ ledger, actor });
+
+    await expect(
+      service.approveDeviceSession({
+        sessionId: "devsess_reporter_phone",
+        deviceLabel: "Reporter phone",
+        approvedBy: "actor_investigator",
+        exposureId: "netexp_tailnet_002",
+        capabilities: ["read"],
+        policy
+      })
+    ).rejects.toThrow("Cannot approve device session without an active network exposure");
+
+    expect(await ledger.readAll()).toHaveLength(0);
+  });
+
+  it("rejects device approval when the requested exposure was disabled before append", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new GovernanceService({ ledger, actor });
+    const exposure = await service.enableNetworkExposure({
+      exposureId: "netexp_tailnet_002",
+      mode: "tailnet",
+      bindScope: "tailnet",
+      enabledBy: "actor_investigator",
+      policy
+    });
+    await ledger.append(
+      {
+        type: "network.exposure.disabled",
+        version: 1,
+        streamId: "network_exposure_netexp_tailnet_002",
+        context: {
+          actor,
+          occurredAt: "2026-07-05T15:20:00.000Z",
+          causationId: exposure.id,
+          correlationId: "corr_network_exposure_netexp_tailnet_002",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0" }
+        },
+        payload: {
+          exposureId: "netexp_tailnet_002",
+          disabledBy: "actor_investigator",
+          disabledAt: "2026-07-05T15:20:00.000Z",
+          reason: "Tailnet sharing closed after review."
+        }
+      },
+      { expectedNextSequence: 2 }
+    );
+
+    await expect(
+      service.approveDeviceSession({
+        sessionId: "devsess_reporter_phone",
+        deviceLabel: "Reporter phone",
+        approvedBy: "actor_investigator",
+        exposureId: "netexp_tailnet_002",
+        capabilities: ["read"],
+        policy
+      })
+    ).rejects.toThrow("Cannot approve device session without an active network exposure");
+
+    expect(await ledger.readStream("device_session_devsess_reporter_phone")).toHaveLength(0);
   });
 
   it("rejects non-human service actors before exposure or approval append", async () => {
