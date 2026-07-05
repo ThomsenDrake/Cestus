@@ -27,3 +27,7 @@ Command evidence:
 - Code-quality fix red: `npm test -- packages/ontology/test/governance-policy.test.ts` failed with 3 tests proving out-of-range confidence was high, `AWS_SECRET_ACCESS_KEY=abc123` was allowed, and descriptive password text was rejected.
 - Code-quality fix green: `npm test -- packages/ontology/test/governance-policy.test.ts` passed with 1 test file and 10 tests passing.
 - Code-quality fix verify: `npm run verify` passed with typecheck passed, 43 test files and 371 tests passing, UI build succeeded, and factory-readiness passed.
+- Spec re-check red: `npm test -- packages/ontology/test/governance-policy.test.ts` failed because `access token abc123` was allowed.
+- Spec re-check repair: `npm test -- packages/ontology/test/governance-policy.test.ts` then failed because the detector treated safe prose `password and requires review` as a secret value.
+- Spec re-check green: `npm test -- packages/ontology/test/governance-policy.test.ts` passed with 1 test file and 10 tests passing.
+- Spec re-check verify: `npm run verify` passed with typecheck passed, 43 test files and 371 tests passing, UI build succeeded, and factory-readiness passed.
