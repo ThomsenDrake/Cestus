@@ -667,13 +667,15 @@ import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import { LocalFilesystemScanner } from "../src/local-filesystem.js";
 
 let root: string;
+const duplicateText = "same";
+const notesText = JSON.stringify({ agency: "Example" });
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "cestus-scan-"));
   mkdirSync(join(root, "contracts"), { recursive: true });
-  writeFileSync(join(root, "contracts", "a.txt"), "same");
-  writeFileSync(join(root, "contracts", "copy.txt"), "same");
-  writeFileSync(join(root, "notes.json"), JSON.stringify({ agency: "Example" }));
+  writeFileSync(join(root, "contracts", "a.txt"), duplicateText);
+  writeFileSync(join(root, "contracts", "copy.txt"), duplicateText);
+  writeFileSync(join(root, "notes.json"), notesText);
 });
 
 afterEach(() => {
@@ -682,6 +684,8 @@ afterEach(() => {
 
 describe("LocalFilesystemScanner", () => {
   it("runs a dry-run scan with hashes, duplicate counts, and occurrence events", async () => {
+    const duplicateBytes = Buffer.byteLength(duplicateText);
+    const notesBytes = Buffer.byteLength(notesText);
     const ledger = new InMemoryEventLedger();
     const scanner = new LocalFilesystemScanner({
       ledger,
@@ -699,8 +703,8 @@ describe("LocalFilesystemScanner", () => {
       uniqueContent: 2,
       duplicateOccurrences: 1,
       skipped: 0,
-      bytes: 20,
-      estimatedNewBlobBytes: 16
+      bytes: duplicateBytes * 2 + notesBytes,
+      estimatedNewBlobBytes: duplicateBytes + notesBytes
     });
     expect(result.occurrences.map((occurrence) => occurrence.status).sort()).toEqual([
       "duplicate",
