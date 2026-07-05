@@ -176,6 +176,10 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
         break;
       }
       case "incident.recorded":
+        if (mutableIncidents.has(event.payload.incidentId)) {
+          break;
+        }
+
         mutableIncidents.set(event.payload.incidentId, {
           incidentId: event.payload.incidentId,
           severity: event.payload.severity,

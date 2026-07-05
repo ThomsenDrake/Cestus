@@ -23,3 +23,6 @@ Evidence:
 - Red: `npm test -- packages/ontology/test/governance-incident.test.ts packages/ontology/test/governance-projection.test.ts` failed with missing incident projection/service surface: `projection.openIncidentIds is not a function`, `projection.incidents` undefined, and `service.recordIncident is not a function`.
 - Green: `npm test -- packages/ontology/test/governance-incident.test.ts packages/ontology/test/governance-projection.test.ts` passed: 2 test files, 22 tests.
 - Verify: `npm run verify` passed: typecheck passed, 48 test files and 430 tests passed, UI build succeeded, factory-readiness passed.
+- Review fix red: duplicate incident regression tests failed as expected: duplicate replay reopened `incident_repaired_secret` and cleared repair history, and duplicate `recordIncident()` resolved instead of rejecting.
+- Review fix green: `npm test -- packages/ontology/test/governance-incident.test.ts packages/ontology/test/governance-projection.test.ts` passed: 2 test files, 24 tests.
+- Review fix verify: `npm run verify` passed: typecheck passed, 48 test files and 432 tests passed, UI build succeeded, factory-readiness passed.

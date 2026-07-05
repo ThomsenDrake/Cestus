@@ -370,6 +370,14 @@ export class GovernanceService {
 
     const streamId = this.incidentStreamId(input.incidentId);
     const streamEvents = await this.dependencies.ledger.readStream(streamId);
+    if (
+      streamEvents.some(
+        (event) => event.type === "incident.recorded" && event.payload.incidentId === input.incidentId
+      )
+    ) {
+      throw new Error(`Incident ${input.incidentId} is already recorded`);
+    }
+
     const event: AppendableKnowledgeEvent<"incident.recorded"> = {
       type: "incident.recorded",
       version: 1,
