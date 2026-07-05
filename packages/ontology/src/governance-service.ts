@@ -309,14 +309,16 @@ export class GovernanceService {
       throw new Error("Device session approvedBy must match the service actor");
     }
 
+    const deviceLabel = assertSecretSafeText(input.deviceLabel);
+    const activeExposure = await this.findActiveNetworkExposure(input.exposureId);
     const event: AppendableKnowledgeEvent<"device.session.approved"> = {
       type: "device.session.approved",
       version: 1,
       streamId: `device_session_${input.sessionId}`,
-      context: this.context(`corr_device_session_${input.sessionId}`),
+      context: this.context(`corr_device_session_${input.sessionId}`, activeExposure.id),
       payload: {
         sessionId: input.sessionId,
-        deviceLabel: assertSecretSafeText(input.deviceLabel),
+        deviceLabel,
         approvedBy: input.approvedBy,
         approvedAt: new Date().toISOString(),
         exposureId: input.exposureId,
@@ -334,6 +336,25 @@ export class GovernanceService {
     }
 
     return appended;
+  }
+
+  private async findActiveNetworkExposure(
+    exposureId: string
+  ): Promise<KnowledgeEventOf<"network.exposure.enabled">> {
+    const streamEvents = await this.dependencies.ledger.readStream(`network_exposure_${exposureId}`);
+    const latestExposureEvent = streamEvents.findLast(
+      (
+        event
+      ): event is KnowledgeEventOf<"network.exposure.enabled"> | KnowledgeEventOf<"network.exposure.disabled"> =>
+        (event.type === "network.exposure.enabled" || event.type === "network.exposure.disabled") &&
+        event.payload.exposureId === exposureId
+    );
+
+    if (latestExposureEvent?.type !== "network.exposure.enabled") {
+      throw new Error(`Cannot approve device session without an active network exposure ${exposureId}`);
+    }
+
+    return latestExposureEvent;
   }
 
   private findIngestedEvidence(
