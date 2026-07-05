@@ -55,6 +55,65 @@ describe("resolveLocalRuntimeConfig", () => {
     });
   });
 
+  it("resolves relative app-data storage directories from cwd", () => {
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_STORAGE: "app-data",
+        CESTUS_APP_DATA_DIR: "state/app-data"
+      }
+    });
+
+    expect(config.storage).toEqual({
+      strategy: "app-data",
+      sqlitePath: resolve(cwd, "state/app-data/prr-ledger.sqlite")
+    });
+  });
+
+  it.each(["0.0.0.0", "::"])(
+    "rejects unauthenticated loopback bind with non-loopback host %s",
+    (host) => {
+      expect(() =>
+        resolveLocalRuntimeConfig({
+          cwd,
+          env: {
+            CESTUS_LOCAL_HOST: host
+          }
+        })
+      ).toThrow("Auth is required for non-loopback local runtime exposure");
+    }
+  );
+
+  it("requires auth when a loopback bind uses an authenticated non-loopback host override", () => {
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_HOST: "0.0.0.0",
+        CESTUS_LOCAL_AUTH_TOKEN: "local-secret"
+      }
+    });
+
+    expect(config.http).toMatchObject({
+      host: "0.0.0.0",
+      bindMode: "loopback",
+      authRequired: true,
+      authToken: "local-secret"
+    });
+  });
+
+  it("falls back to default optional paths when env values are empty", () => {
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_UI_DIST_DIR: "",
+        CESTUS_LOCAL_LOG_DIR: ""
+      }
+    });
+
+    expect(config.staticUi.distDir).toBe(resolve(cwd, "dist"));
+    expect(config.logs.dir).toBe(resolve(cwd, ".cestus/local/logs"));
+  });
+
   it("rejects tailnet exposure without auth", () => {
     expect(() =>
       resolveLocalRuntimeConfig({
