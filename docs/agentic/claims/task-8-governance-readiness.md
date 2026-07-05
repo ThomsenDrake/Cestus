@@ -6,7 +6,7 @@ Worker: `Codex GPT-5`
 Branch: `codex/security-governance-design`
 Worktree: `/home/drake/.codex/worktrees/c3c1/Cestus`
 Claimed-at: `2026-07-05T16:22:40Z`
-Status: `in-progress`
+Status: `ready-for-review`
 
 Owned files:
 - `scripts/check-agent-readiness.mjs`
@@ -16,3 +16,7 @@ Owned files:
 Required commands:
 - `npm run factory:check`
 - `npm run verify`
+
+Evidence:
+- Targeted: `npm run factory:check` passed with `factory-readiness passed`.
+- Verify: `npm run verify` passed: typecheck passed, 48 test files and 432 tests passed, UI build succeeded, factory-readiness passed.

@@ -179,3 +179,23 @@ factory-readiness passed
 ```
 
 Preview evidence: pending final controller preview gate.
+
+## Security Governance Plan Readiness
+
+The security, threat-model, and data-governance plan was prepared from the approved design spec on 2026-07-05.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-05-security-threat-model-data-governance-design.md`
+- `docs/superpowers/plans/2026-07-05-security-threat-model-data-governance-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded command evidence:
+
+```text
+npm run factory:check
+factory-readiness passed
+```
+
+Governance implementation scope remains backend/domain work grounded in append-only ontology events. Runtime wiring, UI changes, live credentials, encryption/key management, and ingestion connector work require separate approved plans.
