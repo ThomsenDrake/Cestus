@@ -1,0 +1,163 @@
+import type { z } from "zod";
+import { actorRefSchema, type AppendableKnowledgeEvent, type KnowledgeEventOf } from "./contracts.js";
+import type { EventLedger } from "./event-ledger.js";
+import { assertSecretSafeText, type GovernanceTag } from "./governance-policy.js";
+
+type ActorRef = z.infer<typeof actorRefSchema>;
+type PolicyRef = { policyId: string; version: string };
+
+export interface GovernanceServiceDependencies {
+  ledger: EventLedger;
+  actor: ActorRef;
+}
+
+export interface ClassifyEvidenceInput {
+  evidenceId: string;
+  policy: PolicyRef;
+  classifier: {
+    actorId: string;
+    kind: "ai" | "human" | "system" | "ruleset";
+    label: string;
+    model?: string;
+    tool?: string;
+  };
+  tags: Array<{ tag: GovernanceTag; confidence: number; rationale: string }>;
+}
+
+export interface ReviewEvidenceGovernanceInput {
+  evidenceId: string;
+  reviewedBy: string;
+  policy: PolicyRef;
+  decisions: Array<{
+    tag: GovernanceTag;
+    action: "affirm" | "add" | "remove" | "supersede";
+    rationale: string;
+    supersedesEventId?: string;
+  }>;
+}
+
+export class GovernanceService {
+  private readonly actor: ActorRef;
+
+  constructor(private readonly dependencies: GovernanceServiceDependencies) {
+    const actor = actorRefSchema.safeParse(dependencies.actor);
+
+    if (!actor.success) {
+      throw new Error(`Invalid governance actor: ${actor.error.message}`);
+    }
+
+    this.actor = actor.data;
+  }
+
+  async classifyEvidence(input: ClassifyEvidenceInput): Promise<KnowledgeEventOf<"evidence.governance.classified">> {
+    const evidence = await this.findIngestedEvidence(input.evidenceId);
+
+    if (evidence === undefined) {
+      throw new Error(`Cannot classify evidence ${input.evidenceId} without evidence.ingested`);
+    }
+
+    const event: AppendableKnowledgeEvent<"evidence.governance.classified"> = {
+      type: "evidence.governance.classified",
+      version: 1,
+      streamId: this.evidenceStreamId(input.evidenceId),
+      context: this.context(`corr_governance_${input.evidenceId}`, evidence.id),
+      payload: {
+        evidenceId: input.evidenceId,
+        evidenceEventId: evidence.id,
+        contentHash: evidence.payload.contentHash,
+        policy: input.policy,
+        classifier: {
+          actorId: input.classifier.actorId,
+          kind: input.classifier.kind,
+          label: assertSecretSafeText(input.classifier.label),
+          ...(input.classifier.model === undefined
+            ? {}
+            : { model: assertSecretSafeText(input.classifier.model) }),
+          ...(input.classifier.tool === undefined ? {} : { tool: assertSecretSafeText(input.classifier.tool) })
+        },
+        tags: input.tags.map((tag) => ({
+          tag: tag.tag,
+          confidence: tag.confidence,
+          rationale: assertSecretSafeText(tag.rationale)
+        }))
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event);
+
+    if (appended.type !== "evidence.governance.classified") {
+      throw new Error(`Unexpected event type appended for governance classification: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
+  async reviewEvidenceGovernance(
+    input: ReviewEvidenceGovernanceInput
+  ): Promise<KnowledgeEventOf<"evidence.governance.reviewed">> {
+    if (this.actor.kind !== "human") {
+      throw new Error("Governance review requires a human service actor");
+    }
+
+    const streamEvents = await this.dependencies.ledger.readStream(this.evidenceStreamId(input.evidenceId));
+    const causation = streamEvents.findLast(
+      (event) => event.type === "evidence.governance.classified" || event.type === "evidence.governance.reviewed"
+    );
+
+    if (causation === undefined) {
+      throw new Error(`Cannot review evidence ${input.evidenceId} without governance classification`);
+    }
+
+    const event: AppendableKnowledgeEvent<"evidence.governance.reviewed"> = {
+      type: "evidence.governance.reviewed",
+      version: 1,
+      streamId: this.evidenceStreamId(input.evidenceId),
+      context: this.context(causation.context.correlationId, causation.id),
+      payload: {
+        evidenceId: input.evidenceId,
+        reviewedBy: input.reviewedBy,
+        policy: input.policy,
+        decisions: input.decisions.map((decision) => ({
+          tag: decision.tag,
+          action: decision.action,
+          rationale: assertSecretSafeText(decision.rationale),
+          ...(decision.supersedesEventId === undefined ? {} : { supersedesEventId: decision.supersedesEventId })
+        }))
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
+
+    if (appended.type !== "evidence.governance.reviewed") {
+      throw new Error(`Unexpected event type appended for governance review: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
+  private async findIngestedEvidence(evidenceId: string): Promise<KnowledgeEventOf<"evidence.ingested"> | undefined> {
+    const streamEvents = await this.dependencies.ledger.readStream(this.evidenceStreamId(evidenceId));
+
+    return streamEvents.find(
+      (event): event is KnowledgeEventOf<"evidence.ingested"> =>
+        event.type === "evidence.ingested" && event.payload.evidenceId === evidenceId
+    );
+  }
+
+  private evidenceStreamId(evidenceId: string): string {
+    return `evidence_${evidenceId}`;
+  }
+
+  private context(correlationId: string, causationId: string): AppendableKnowledgeEvent["context"] {
+    return {
+      actor: this.actor,
+      occurredAt: new Date().toISOString(),
+      causationId,
+      correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    };
+  }
+}
