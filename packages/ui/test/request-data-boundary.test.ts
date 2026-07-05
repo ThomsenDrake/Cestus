@@ -10,6 +10,23 @@ describe("Requests data boundary", () => {
   const requestModalSpecPath = "docs/superpowers/specs/2026-07-04-requests-detail-modal-design.md";
   const requestModalPlanPath = "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md";
   const productUiBoundaryFiles = listSourceFiles("packages/ui/src");
+  const forbiddenProductUiImportPatterns = [
+    /(?:^|\/)request-fixtures(?:\.js)?$/,
+    /^node:/,
+    nodeRuntimeModulePattern,
+    /(?:^|\/)(?:runtime|sqlite-event-ledger)(?:\.js)?$/,
+    /(?:^|\/)prr\/src\/runtime(?:\.js)?$/,
+    /(?:^|\/)local-runtime\/src\/(?:config|server|http-handler|runtime-factory)(?:\.js)?$/
+  ];
+  const forbiddenProductUiSourceFragments = [
+    "SQLiteEventLedger",
+    "sqlite-event-ledger",
+    "packages/prr/src/runtime",
+    "packages/local-runtime/src/config",
+    "packages/local-runtime/src/server",
+    "packages/local-runtime/src/http-handler",
+    "packages/local-runtime/src/runtime-factory"
+  ];
 
   it("scans every product UI source file for browser boundary drift", () => {
     expect(productUiBoundaryFiles).toContain("packages/ui/src/workspace/CommandBand.tsx");
@@ -25,15 +42,12 @@ describe("Requests data boundary", () => {
       const source = readFileSync(file, "utf8");
       const moduleSpecifiers = importedModuleSpecifiers(source);
 
-      expect(moduleSpecifiers).not.toEqual(
-        expect.arrayContaining([expect.stringMatching(/(?:^|\/)request-fixtures(?:\.js)?$/)])
-      );
-      expect(moduleSpecifiers).not.toEqual(expect.arrayContaining([expect.stringMatching(/^node:/)]));
-      expect(moduleSpecifiers).not.toEqual(expect.arrayContaining([expect.stringMatching(nodeRuntimeModulePattern)]));
-      expect(moduleSpecifiers).not.toEqual(
-        expect.arrayContaining([expect.stringMatching(/(?:^|\/)(?:runtime|sqlite-event-ledger)(?:\.js)?$/)])
-      );
-      expect(source).not.toContain("SQLiteEventLedger");
+      for (const pattern of forbiddenProductUiImportPatterns) {
+        expect(moduleSpecifiers).not.toEqual(expect.arrayContaining([expect.stringMatching(pattern)]));
+      }
+      for (const fragment of forbiddenProductUiSourceFragments) {
+        expect(source).not.toContain(fragment);
+      }
     }
   });
 
