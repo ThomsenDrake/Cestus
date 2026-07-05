@@ -45,6 +45,27 @@ describe("createHttpRequestsAdapter", () => {
     );
   });
 
+  it.each([
+    ["card", { cards: [{ ...workspace.cards[0], productionCount: "many" }] }],
+    [
+      "builder",
+      {
+        builder: {
+          ...workspace.builder,
+          steps: [{ ...workspace.builder.steps[0], suggestedFills: "not-an-array" }]
+        }
+      }
+    ],
+    ["gate", { gates: [{ ...workspace.gates[0], checks: [{ id: "risk-review", ready: "yes" }] }] }]
+  ])("rejects malformed nested %s workspace payloads", async (_label, override) => {
+    const fetcher = vi.fn(async () => jsonResponse(200, { ...workspace, ...override }));
+    const adapter = createHttpRequestsAdapter({ fetcher });
+
+    await expect(adapter.loadRequestsWorkspace()).rejects.toThrow(
+      "Requests runtime returned invalid workspace payload."
+    );
+  });
+
   it("turns invalid workspace JSON into a safe load error", async () => {
     const fetcher = vi.fn(async () => textResponse(200, "Bearer raw-token"));
     const adapter = createHttpRequestsAdapter({ fetcher });
@@ -115,6 +136,35 @@ describe("createHttpRequestsAdapter", () => {
 
   it("turns malformed successful draft payloads into stale safe diagnostics", async () => {
     const fetcher = vi.fn(async () => jsonResponse(200, { ok: true }));
+    const adapter = createHttpRequestsAdapter({ fetcher });
+
+    const result = await adapter.createDraftRequest({
+      jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+      agency: { name: "City Clerk" },
+      requester: { name: "Avery Investigator" },
+      requestText: "All budget amendment memos from January 2026."
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.workspaceStale).toBe(true);
+      expect(result.diagnostic.message).toBe("Requests runtime returned invalid draft result.");
+    }
+  });
+
+  it("turns malformed nested successful draft workspaces into stale safe diagnostics", async () => {
+    const malformedWorkspace = {
+      ...workspace,
+      cards: [{ ...workspace.cards[0], flags: ["fee"], productionCount: "many" }]
+    };
+    const fetcher = vi.fn(async () =>
+      jsonResponse(200, {
+        ok: true,
+        prrRequestId: "prr_http_city_budget",
+        committedEventIds: ["evt_created", "evt_deadline"],
+        workspace: malformedWorkspace
+      })
+    );
     const adapter = createHttpRequestsAdapter({ fetcher });
 
     const result = await adapter.createDraftRequest({

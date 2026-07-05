@@ -11,7 +11,11 @@ import {
   type JurisdictionPackRef
 } from "../../../prr/src/draft-events.js";
 import { buildPrrProjection } from "../../../prr/src/projection.js";
-import { buildPrrWorkspaceDto, type PrrWorkspaceDto } from "../../../prr/src/read-api.js";
+import {
+  buildPrrWorkspaceDto,
+  prrWorkspaceDtoLaneOrder,
+  type PrrWorkspaceDto
+} from "../../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../../prr/src/workspace-seed.js";
 
 export type RequestsAdapterNow = string | (() => string);
@@ -105,6 +109,38 @@ const draftDiagnostics: Record<RequestsCreateDraftFailedStep, RequestsDraftDiagn
     allowedRepairActions: Object.freeze(["reload Requests", "retry deadline estimate"])
   })
 });
+const validLaneIds = new Set<string>(prrWorkspaceDtoLaneOrder);
+const validSeverities = new Set(["low", "medium", "high", "critical"]);
+const validDueStates = new Set(["none", "upcoming", "overdue"]);
+const validPrrStatuses = new Set([
+  "draft",
+  "sent",
+  "acknowledged",
+  "inNegotiation",
+  "awaitingProduction",
+  "partiallyProduced",
+  "produced",
+  "denied",
+  "appealed",
+  "closed"
+]);
+const validActionPacketKinds = new Set([
+  "review-draft",
+  "wait",
+  "follow-up",
+  "review-fee-scope",
+  "intake-production",
+  "legal-review"
+]);
+const validEvidencePacketKinds = new Set([
+  "outbound-correspondence",
+  "inbound-correspondence",
+  "fee",
+  "scope",
+  "production",
+  "denial",
+  "legal-escalation"
+]);
 
 export function createLocalReplayRequestsAdapter(
   seedEvents: readonly KnowledgeEvent[],
@@ -443,24 +479,189 @@ function workspaceDtoFromJson(value: unknown): PrrWorkspaceDto | undefined {
 
   if (
     !isNonEmptyString(value.generatedAt) ||
-    !Array.isArray(value.savedViews) ||
-    !Array.isArray(value.laneOrder) ||
-    !Array.isArray(value.lanes) ||
-    !Array.isArray(value.cards) ||
-    !Array.isArray(value.requestDetails) ||
-    !Array.isArray(value.gates) ||
-    !Array.isArray(value.actionPackets) ||
-    !Array.isArray(value.evidencePackets) ||
-    !Array.isArray(value.diagnostics) ||
-    !Array.isArray(value.timeline) ||
+    !arrayOf(value.savedViews, isSavedView) ||
+    !arrayOf(value.laneOrder, isLaneId) ||
+    !arrayOf(value.lanes, isLane) ||
+    !arrayOf(value.cards, isCard) ||
+    !arrayOf(value.requestDetails, isRequestDetail) ||
+    !arrayOf(value.gates, isGateSummary) ||
+    !arrayOf(value.actionPackets, isActionPacket) ||
+    !arrayOf(value.evidencePackets, isEvidencePacket) ||
+    !arrayOf(value.diagnostics, isWorkspaceDiagnostic) ||
+    !arrayOf(value.timeline, isTimelineEntry) ||
     !isSignalMap(value.signalMap) ||
     !isBuilderModel(value.builder) ||
-    !Array.isArray(value.queueRows)
+    !arrayOf(value.queueRows, isQueueRow)
   ) {
     return undefined;
   }
 
   return value as unknown as PrrWorkspaceDto;
+}
+
+function isSavedView(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.label) &&
+    isNonEmptyString(value.description) &&
+    isStringArray(value.cardIds)
+  );
+}
+
+function isLane(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isLaneId(value.id) &&
+    isNonEmptyString(value.label) &&
+    isStringArray(value.cardIds) &&
+    arrayOf(value.agencyGroups, isAgencyGroup)
+  );
+}
+
+function isAgencyGroup(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.agencyName) &&
+    isSeverity(value.tone) &&
+    isStringArray(value.cardIds)
+  );
+}
+
+function isCard(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.prrRequestId) &&
+    isNonEmptyString(value.agencyName) &&
+    isNonEmptyString(value.jurisdictionPackName) &&
+    isNonEmptyString(value.title) &&
+    isPrrStatus(value.status) &&
+    isLaneId(value.laneId) &&
+    isSeverity(value.severity) &&
+    isDueState(value.dueState) &&
+    typeof value.productionCount === "number" &&
+    isNonEmptyString(value.actionLabel) &&
+    isStringArray(value.flags) &&
+    isOptionalString(value.deadlineDate) &&
+    (value.deadlineSource === undefined || value.deadlineSource === "estimated" || value.deadlineSource === "confirmed") &&
+    isOptionalString(value.deadlineLabel) &&
+    isOptionalString(value.feeSignal)
+  );
+}
+
+function isRequestDetail(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.prrRequestId) &&
+    isNonEmptyString(value.agencyName) &&
+    isJurisdictionPackRef(value.jurisdictionPack) &&
+    isContactRef(value.agency) &&
+    isContactRef(value.requester) &&
+    isNonEmptyString(value.requestText) &&
+    isPrrStatus(value.status) &&
+    isLaneId(value.laneId) &&
+    isSeverity(value.severity) &&
+    arrayOf(value.actionPackets, isActionPacket) &&
+    arrayOf(value.evidencePackets, isEvidencePacket) &&
+    arrayOf(value.sendGate, isGateCheck) &&
+    arrayOf(value.escalationGate, isGateCheck) &&
+    arrayOf(value.diagnostics, isWorkspaceDiagnostic) &&
+    arrayOf(value.timeline, isTimelineEntry) &&
+    Array.isArray(value.stallingSignals) &&
+    Array.isArray(value.productionBatches) &&
+    isOptionalObject(value.latestOutboundCorrespondence) &&
+    isOptionalObject(value.latestInboundCorrespondence) &&
+    isOptionalObject(value.activeDeadline) &&
+    isOptionalObject(value.feeEstimate) &&
+    isOptionalObject(value.scopeNarrowing) &&
+    isOptionalObject(value.denial) &&
+    isOptionalObject(value.appeal)
+  );
+}
+
+function isGateSummary(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.prrRequestId) &&
+    (value.kind === "send" || value.kind === "legal-escalation") &&
+    typeof value.ready === "boolean" &&
+    typeof value.locked === "boolean" &&
+    arrayOf(value.checks, isGateCheck)
+  );
+}
+
+function isGateCheck(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.label) &&
+    typeof value.ready === "boolean" &&
+    typeof value.locked === "boolean" &&
+    isNonEmptyString(value.detail) &&
+    (value.evidenceIds === undefined || isStringArray(value.evidenceIds))
+  );
+}
+
+function isActionPacket(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.prrRequestId) &&
+    isStringInSet(value.kind, validActionPacketKinds) &&
+    isNonEmptyString(value.label) &&
+    isNonEmptyString(value.detail) &&
+    isSeverity(value.severity)
+  );
+}
+
+function isEvidencePacket(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.prrRequestId) &&
+    isStringInSet(value.kind, validEvidencePacketKinds) &&
+    isNonEmptyString(value.label) &&
+    isStringArray(value.evidenceIds)
+  );
+}
+
+function isWorkspaceDiagnostic(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.diagnosticId) &&
+    isNonEmptyString(value.prrRequestId) &&
+    isNonEmptyString(value.category) &&
+    isNonEmptyString(value.message) &&
+    isJsonObject(value.repairHint) &&
+    isNonEmptyString(value.repairHint.violatedPath) &&
+    isStringArray(value.repairHint.allowedActions) &&
+    isOptionalString(value.eventId)
+  );
+}
+
+function isTimelineEntry(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.prrRequestId) &&
+    isNonEmptyString(value.eventId) &&
+    isNonEmptyString(value.type) &&
+    isNonEmptyString(value.occurredAt) &&
+    isJsonObject(value.payload)
+  );
+}
+
+function isQueueRow(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.prrRequestId) &&
+    isNonEmptyString(value.agencyName) &&
+    isPrrStatus(value.status) &&
+    typeof value.possibleStalling === "boolean" &&
+    typeof value.confirmedStalling === "boolean" &&
+    typeof value.productionCount === "number" &&
+    isOptionalString(value.deadlineDate) &&
+    (value.deadlineSource === undefined || value.deadlineSource === "estimated" || value.deadlineSource === "confirmed")
+  );
 }
 
 function diagnosticFromJson(value: unknown): RequestsDraftDiagnostic | undefined {
@@ -480,15 +681,113 @@ function diagnosticFromJson(value: unknown): RequestsDraftDiagnostic | undefined
 }
 
 function isSignalMap(value: unknown): value is PrrWorkspaceDto["signalMap"] {
-  return isJsonObject(value) && Array.isArray(value.nodes) && Array.isArray(value.edges);
+  return isJsonObject(value) && arrayOf(value.nodes, isSignalMapNode) && arrayOf(value.edges, isSignalMapEdge);
 }
 
 function isBuilderModel(value: unknown): value is PrrWorkspaceDto["builder"] {
-  return isJsonObject(value) && Array.isArray(value.jurisdictionPacks) && Array.isArray(value.steps);
+  return isJsonObject(value) && arrayOf(value.jurisdictionPacks, isBuilderPack) && arrayOf(value.steps, isBuilderStep);
+}
+
+function isSignalMapNode(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.agencyName) &&
+    isSeverity(value.tone) &&
+    typeof value.requestCount === "number" &&
+    isNonEmptyString(value.summary) &&
+    isStringArray(value.prrRequestIds)
+  );
+}
+
+function isSignalMapEdge(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.sourceNodeId) &&
+    isNonEmptyString(value.targetNodeId) &&
+    isNonEmptyString(value.label) &&
+    isStringArray(value.evidenceIds)
+  );
+}
+
+function isBuilderPack(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.name) &&
+    isNonEmptyString(value.version) &&
+    isNonEmptyString(value.jurisdiction) &&
+    isNonEmptyString(value.description) &&
+    isNonEmptyString(value.agentGuidance) &&
+    arrayOf(value.rules, isBuilderRule)
+  );
+}
+
+function isBuilderRule(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.label) &&
+    isNonEmptyString(value.kind) &&
+    isNonEmptyString(value.description) &&
+    arrayOf(value.citations, isBuilderCitation) &&
+    isNonEmptyString(value.agentWarning)
+  );
+}
+
+function isBuilderCitation(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.label) &&
+    isNonEmptyString(value.citation) &&
+    isNonEmptyString(value.url)
+  );
+}
+
+function isBuilderStep(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.label) &&
+    (value.status === "available" || value.status === "locked") &&
+    isNonEmptyString(value.detail) &&
+    arrayOf(value.suggestedFills, isSuggestedFill)
+  );
+}
+
+function isSuggestedFill(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.fieldId) &&
+    isNonEmptyString(value.label) &&
+    typeof value.value === "string" &&
+    isStringArray(value.evidenceIds)
+  );
+}
+
+function isJurisdictionPackRef(value: unknown): boolean {
+  return isJsonObject(value) && isNonEmptyString(value.name) && isNonEmptyString(value.version);
+}
+
+function isContactRef(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.name) &&
+    isOptionalString(value.email) &&
+    isOptionalString(value.phone)
+  );
+}
+
+function arrayOf(value: unknown, guard: (item: unknown) => boolean): boolean {
+  return Array.isArray(value) && value.every(guard);
+}
+
+function isStringArray(value: unknown): value is readonly string[] {
+  return arrayOf(value, (item) => typeof item === "string");
 }
 
 function stringArrayFromJson(value: unknown): readonly string[] | undefined {
-  return Array.isArray(value) && value.every((item) => typeof item === "string") ? value : undefined;
+  return isStringArray(value) ? value : undefined;
 }
 
 function isFailedStep(value: unknown): value is RequestsCreateDraftFailedStep {
@@ -506,6 +805,34 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === "string";
+}
+
+function isOptionalObject(value: unknown): boolean {
+  return value === undefined || isJsonObject(value);
+}
+
+function isLaneId(value: unknown): boolean {
+  return isStringInSet(value, validLaneIds);
+}
+
+function isSeverity(value: unknown): boolean {
+  return isStringInSet(value, validSeverities);
+}
+
+function isDueState(value: unknown): boolean {
+  return isStringInSet(value, validDueStates);
+}
+
+function isPrrStatus(value: unknown): boolean {
+  return isStringInSet(value, validPrrStatuses);
+}
+
+function isStringInSet(value: unknown, allowed: ReadonlySet<string>): value is string {
+  return typeof value === "string" && allowed.has(value);
 }
 
 function nextStreamSequence(events: readonly KnowledgeEvent[], streamId: string): number {

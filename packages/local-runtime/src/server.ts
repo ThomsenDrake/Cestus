@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { networkInterfaces, type NetworkInterfaceInfo } from "node:os";
 import { join } from "node:path";
 import {
   authorizedLocalRuntimeRequest,
@@ -16,12 +17,14 @@ export interface StartLocalRuntimeServerInput {
   readonly actor?: ActorRef;
   readonly env?: Record<string, string | undefined>;
   readonly cwd?: string;
+  readonly networkInterfaces?: () => NodeJS.Dict<NetworkInterfaceInfo[]>;
 }
 
 export interface LocalRuntimeServerHandle {
   readonly config: ResolvedLocalRuntimeConfig;
   readonly server: Server;
   readonly sessionBootstrapUrl?: string;
+  readonly sessionBootstrapUrls?: readonly string[];
   close(): Promise<void>;
 }
 
@@ -115,12 +118,20 @@ export async function startLocalRuntimeServer(
     throw error;
   }
 
+  const sessionBootstrapUrls =
+    sessionBootstrapCode === undefined
+      ? []
+      : buildSessionBootstrapUrls(config, server, sessionBootstrapCode, input.networkInterfaces ?? networkInterfaces);
+
   return Object.freeze({
     config,
     server,
-    ...(sessionBootstrapCode === undefined
+    ...(sessionBootstrapUrls.length === 0
       ? {}
-      : { sessionBootstrapUrl: buildSessionBootstrapUrl(config, server, sessionBootstrapCode) }),
+      : {
+          sessionBootstrapUrl: sessionBootstrapUrls[0],
+          sessionBootstrapUrls: Object.freeze(sessionBootstrapUrls)
+        }),
     async close() {
       if (closed) {
         return;
@@ -241,18 +252,57 @@ function sessionCodeFrom(url: string | undefined): string | undefined {
   }
 }
 
-function buildSessionBootstrapUrl(
+function buildSessionBootstrapUrls(
   config: ResolvedLocalRuntimeConfig,
   server: Server,
-  code: string
-): string {
+  code: string,
+  interfaces: () => NodeJS.Dict<NetworkInterfaceInfo[]>
+): readonly string[] {
   const address = server.address();
   const port = typeof address === "object" && address !== null ? address.port : config.http.port;
-  return `http://${browserHostFor(config.http.host)}:${port}/api/local-session?code=${encodeURIComponent(code)}`;
+  return browserHostsFor(config, interfaces).map(
+    (host) => `http://${hostForUrl(host)}:${port}/api/local-session?code=${encodeURIComponent(code)}`
+  );
 }
 
-function browserHostFor(host: string): string {
-  return host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host;
+function browserHostsFor(
+  config: ResolvedLocalRuntimeConfig,
+  interfaces: () => NodeJS.Dict<NetworkInterfaceInfo[]>
+): readonly string[] {
+  if (!isWildcardHost(config.http.host)) {
+    return Object.freeze([config.http.host]);
+  }
+
+  const candidates = publicIpv4Hosts(interfaces());
+  const bindCandidates =
+    config.http.bindMode === "tailnet" ? candidates.filter(isTailnetIpv4Host) : candidates;
+
+  return Object.freeze(uniqueStrings(bindCandidates.length > 0 ? bindCandidates : candidates.length > 0 ? candidates : ["127.0.0.1"]));
+}
+
+function publicIpv4Hosts(interfaces: NodeJS.Dict<NetworkInterfaceInfo[]>): readonly string[] {
+  return Object.values(interfaces)
+    .flatMap((items) => items ?? [])
+    .filter((item) => item.family === "IPv4" && !item.internal)
+    .map((item) => item.address);
+}
+
+function isWildcardHost(host: string): boolean {
+  return host === "0.0.0.0" || host === "::";
+}
+
+function isTailnetIpv4Host(host: string): boolean {
+  const parts = host.split(".").map((part) => Number(part));
+  const [first, second] = parts;
+  return parts.length === 4 && first === 100 && second !== undefined && second >= 64 && second <= 127;
+}
+
+function uniqueStrings(values: readonly string[]): readonly string[] {
+  return [...new Set(values)];
+}
+
+function hostForUrl(host: string): string {
+  return host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
 }
 
 function writeResponse(
