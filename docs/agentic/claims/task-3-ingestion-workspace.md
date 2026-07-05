@@ -19,8 +19,8 @@ Owned files:
 
 Verification evidence:
 
-- Pending red workspace test.
-- Pending targeted green workspace test.
-- Pending full verification.
+- `npm test -- packages/ingestion/test/workspace.test.ts` failed as expected before `packages/ingestion/src/workspace.ts` existed: Vitest could not resolve `../src/workspace.js`.
+- `npm test -- packages/ingestion/test/workspace.test.ts` passed after adding the workspace helpers: 1 test file, 1 test.
+- `npm run verify` passed: typecheck passed, 44 test files / 340 tests passed, UI build succeeded, and factory readiness passed.
 
-Status: claimed
+Status: ready-for-review
