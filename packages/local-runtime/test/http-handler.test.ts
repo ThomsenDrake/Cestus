@@ -105,6 +105,41 @@ describe("createLocalRuntimeHttpHandler", () => {
     });
     handler.close();
   });
+
+  it("returns a draft body diagnostic for valid JSON with an invalid shape", async () => {
+    const handler = createLocalRuntimeHttpHandler({
+      config: resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }),
+      actor,
+      now: fixedNow
+    });
+
+    try {
+      const response = await handler({
+        method: "POST",
+        url: "/api/requests/drafts",
+        body: JSON.stringify({
+          jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+          agency: null,
+          requester: { name: "Avery Investigator", email: "avery@example.org" },
+          requestText: "All budget amendment memos from January 2026.",
+          receivedAt: "2026-07-05T12:00:00.000Z"
+        })
+      });
+
+      expect(response.status).toBe(400);
+      expect(JSON.parse(response.body)).toEqual({
+        ok: false,
+        diagnostic: {
+          message: "Draft request body is invalid.",
+          allowedRepairActions: [
+            "send agency, requester, jurisdiction, request text, and received timestamp"
+          ]
+        }
+      });
+    } finally {
+      handler.close();
+    }
+  });
 });
 
 function tempDir(): string {
