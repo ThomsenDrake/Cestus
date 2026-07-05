@@ -27,9 +27,24 @@ export interface EvidenceGovernanceState {
   readonly tombstoned: boolean;
 }
 
+export interface ExportPlanInput {
+  readonly requestedEvidenceIds: readonly string[];
+  readonly sensitiveOptInTags: readonly GovernanceTag[];
+}
+
+export interface ExportPlan {
+  readonly includedEvidenceIds: readonly string[];
+  readonly blockedEvidence: ReadonlyArray<{
+    readonly evidenceId: string;
+    readonly requiredOptInTags: readonly GovernanceTag[];
+  }>;
+}
+
 export interface GovernanceProjection {
   readonly evidenceGovernance: ImmutableMap<string, EvidenceGovernanceState>;
   publicSafeEvidenceIds(): readonly string[];
+  buildDefaultExportEvidenceIds(): readonly string[];
+  planExport(input: ExportPlanInput): ExportPlan;
   requiresExportOptIn(evidenceId: string): boolean;
 }
 
@@ -85,6 +100,45 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
           .map((state) => state.evidenceId)
           .sort()
       );
+    },
+    buildDefaultExportEvidenceIds() {
+      return this.publicSafeEvidenceIds();
+    },
+    planExport(input: ExportPlanInput): ExportPlan {
+      const includedEvidenceIds: string[] = [];
+      const blockedEvidence: Array<{ evidenceId: string; requiredOptInTags: readonly GovernanceTag[] }> = [];
+      const optIns = new Set(input.sensitiveOptInTags);
+
+      for (const evidenceId of input.requestedEvidenceIds) {
+        const state = evidenceGovernance.get(evidenceId);
+        if (state === undefined || state.tombstoned) {
+          blockedEvidence.push({ evidenceId, requiredOptInTags: [...restrictedExportTags] });
+          continue;
+        }
+
+        const activeRestrictedTags = restrictedExportTags.filter((tag) => hasActiveTag(state, tag));
+        const missing = activeRestrictedTags.filter((tag) => !optIns.has(tag));
+        if (missing.length > 0) {
+          blockedEvidence.push({ evidenceId, requiredOptInTags: missing });
+          continue;
+        }
+
+        if (hasActiveTag(state, "public_safe") || activeRestrictedTags.length > 0) {
+          includedEvidenceIds.push(evidenceId);
+        }
+      }
+
+      return Object.freeze({
+        includedEvidenceIds: Object.freeze([...includedEvidenceIds].sort()),
+        blockedEvidence: Object.freeze(
+          blockedEvidence
+            .map((blocked) => Object.freeze({
+              evidenceId: blocked.evidenceId,
+              requiredOptInTags: Object.freeze([...blocked.requiredOptInTags].sort())
+            }))
+            .sort((left, right) => left.evidenceId.localeCompare(right.evidenceId))
+        )
+      });
     },
     requiresExportOptIn(evidenceId: string) {
       const state = evidenceGovernance.get(evidenceId);

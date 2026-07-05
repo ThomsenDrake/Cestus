@@ -36,6 +36,24 @@ export interface ReviewEvidenceGovernanceInput {
   }>;
 }
 
+export interface RecordGeneratedArtifactInput {
+  policy: PolicyRef;
+  includedEvidenceIds: readonly string[];
+  includedContentHashes: readonly `sha256:${string}`[];
+  sensitiveOptIns: readonly { tag: GovernanceTag; approvedBy: string; rationale: string }[];
+  defaultPublicSafeOnly: boolean;
+  causationId?: string;
+  blockedEvidenceIds?: readonly string[];
+}
+
+export interface RecordExportGeneratedInput extends RecordGeneratedArtifactInput {
+  exportId: string;
+}
+
+export interface RecordReportGeneratedInput extends RecordGeneratedArtifactInput {
+  reportId: string;
+}
+
 export class GovernanceService {
   private readonly actor: ActorRef;
 
@@ -161,6 +179,76 @@ export class GovernanceService {
     return appended;
   }
 
+  async recordExportGenerated(input: RecordExportGeneratedInput): Promise<KnowledgeEventOf<"export.generated">> {
+    this.assertGeneratedArtifactAllowed(input);
+
+    const event: AppendableKnowledgeEvent<"export.generated"> = {
+      type: "export.generated",
+      version: 1,
+      streamId: `export_${input.exportId}`,
+      context: this.context(`corr_${input.exportId}`, input.causationId),
+      payload: {
+        exportId: input.exportId,
+        generatedBy: this.actor.id,
+        generatedAt: new Date().toISOString(),
+        policy: input.policy,
+        includedEvidenceIds: [...input.includedEvidenceIds],
+        includedContentHashes: [...input.includedContentHashes],
+        sensitiveOptIns: input.sensitiveOptIns.map((optIn) => ({
+          tag: optIn.tag,
+          approvedBy: optIn.approvedBy,
+          rationale: assertSecretSafeText(optIn.rationale)
+        })),
+        defaultPublicSafeOnly: input.defaultPublicSafeOnly
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: 1
+    });
+
+    if (appended.type !== "export.generated") {
+      throw new Error(`Unexpected event type appended for generated export: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
+  async recordReportGenerated(input: RecordReportGeneratedInput): Promise<KnowledgeEventOf<"report.generated">> {
+    this.assertGeneratedArtifactAllowed(input);
+
+    const event: AppendableKnowledgeEvent<"report.generated"> = {
+      type: "report.generated",
+      version: 1,
+      streamId: `report_${input.reportId}`,
+      context: this.context(`corr_${input.reportId}`, input.causationId),
+      payload: {
+        reportId: input.reportId,
+        generatedBy: this.actor.id,
+        generatedAt: new Date().toISOString(),
+        policy: input.policy,
+        includedEvidenceIds: [...input.includedEvidenceIds],
+        includedContentHashes: [...input.includedContentHashes],
+        sensitiveOptIns: input.sensitiveOptIns.map((optIn) => ({
+          tag: optIn.tag,
+          approvedBy: optIn.approvedBy,
+          rationale: assertSecretSafeText(optIn.rationale)
+        })),
+        defaultPublicSafeOnly: input.defaultPublicSafeOnly
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: 1
+    });
+
+    if (appended.type !== "report.generated") {
+      throw new Error(`Unexpected event type appended for generated report: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
   private findIngestedEvidence(
     evidenceId: string,
     streamEvents: Awaited<ReturnType<EventLedger["readStream"]>>
@@ -175,11 +263,31 @@ export class GovernanceService {
     return `evidence_${evidenceId}`;
   }
 
-  private context(correlationId: string, causationId: string): AppendableKnowledgeEvent["context"] {
+  private assertGeneratedArtifactAllowed(input: RecordGeneratedArtifactInput): void {
+    const blocked = new Set(input.blockedEvidenceIds ?? []);
+    const includedBlocked = [...new Set(input.includedEvidenceIds.filter((evidenceId) => blocked.has(evidenceId)))].sort();
+    if (includedBlocked.length > 0) {
+      throw new Error(`Cannot generate export or report with blocked evidence: ${includedBlocked.join(", ")}`);
+    }
+
+    if (input.sensitiveOptIns.length > 0 && this.actor.kind !== "human") {
+      throw new Error("Sensitive export and report opt-ins require a human service actor");
+    }
+
+    for (const optIn of input.sensitiveOptIns) {
+      if (optIn.approvedBy !== this.actor.id) {
+        throw new Error("Sensitive opt-in approvedBy must match the service actor");
+      }
+
+      assertSecretSafeText(optIn.rationale);
+    }
+  }
+
+  private context(correlationId: string, causationId?: string): AppendableKnowledgeEvent["context"] {
     return {
       actor: this.actor,
       occurredAt: new Date().toISOString(),
-      causationId,
+      ...(causationId === undefined ? {} : { causationId }),
       correlationId,
       coreVersion: "0.1.0",
       packVersions: { core: "0.1.0" }
