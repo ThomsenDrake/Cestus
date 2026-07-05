@@ -1,9 +1,14 @@
 import { z } from "zod";
 
+const credentialShapedTextPattern = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential/i;
+const secretSafeStringSchema = z.string().refine((value) => !credentialShapedTextPattern.test(value), {
+  message: "must not contain credential-shaped text"
+});
+
 export const actorRefSchema = z.object({
   id: z.string().min(3),
   kind: z.enum(["human", "extractor", "system"]),
-  label: z.string().min(1)
+  label: secretSafeStringSchema.min(1)
 }).strict();
 
 export const eventContextSchema = z.object({
@@ -99,6 +104,10 @@ const providerJobIdSchema = z.string().regex(/^provider_[a-zA-Z0-9_-]+$/);
 const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/);
 const ingestionAdapterRefSchema = z.object({ name: z.string().min(1), version: z.string().min(1) }).strict();
+const secretSafeIngestionAdapterRefSchema = z.object({
+  name: secretSafeStringSchema.min(1),
+  version: secretSafeStringSchema.min(1)
+}).strict();
 
 const ingestionTotalsSchema = z.object({
   observedFiles: z.number().int().nonnegative(),
@@ -230,10 +239,10 @@ const ingestionProviderApprovedPayloadSchema = z.object({
   providerJobId: providerJobIdSchema,
   sourceCollectionId: sourceCollectionIdSchema,
   importBatchId: importBatchIdSchema,
-  provider: ingestionAdapterRefSchema,
-  approvedBy: z.string().min(3),
+  provider: secretSafeIngestionAdapterRefSchema,
+  approvedBy: secretSafeStringSchema.min(3),
   approvedAt: z.string().datetime(),
-  eligibleMediaTypes: z.array(z.string().min(1)).min(1),
+  eligibleMediaTypes: z.array(secretSafeStringSchema.min(1)).min(1),
   maxBytesPerFile: z.number().int().positive(),
   policy: z.literal("send-all-technically-eligible")
 }).strict();
@@ -862,6 +871,21 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
           message: issue.message,
           path: ["payload", ...issue.path],
           params: payloadIssueParams(issue)
+        });
+      }
+      return;
+    }
+
+    if (event.type === "ingestion.provider.approved") {
+      const providerPayload = payload.data as PayloadByEventType["ingestion.provider.approved"];
+      const expectedStreamId =
+        `ingestion_provider_${providerPayload.sourceCollectionId}_${providerPayload.importBatchId}_${providerPayload.providerJobId}`;
+
+      if (event.streamId !== expectedStreamId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "provider approval streamId must match source, import, and provider job identity",
+          path: ["streamId"]
         });
       }
     }
