@@ -56,7 +56,15 @@ describe("createHttpRequestsAdapter", () => {
         }
       }
     ],
-    ["gate", { gates: [{ ...workspace.gates[0], checks: [{ id: "risk-review", ready: "yes" }] }] }]
+    ["gate", { gates: [{ ...workspace.gates[0], checks: [{ id: "risk-review", ready: "yes" }] }] }],
+    [
+      "request detail correspondence",
+      { requestDetails: [{ ...workspace.requestDetails[0], latestInboundCorrespondence: {} }] }
+    ],
+    [
+      "request detail production batch",
+      { requestDetails: [{ ...workspace.requestDetails[0], productionBatches: [{}] }] }
+    ]
   ])("rejects malformed nested %s workspace payloads", async (_label, override) => {
     const fetcher = vi.fn(async () => jsonResponse(200, { ...workspace, ...override }));
     const adapter = createHttpRequestsAdapter({ fetcher });
@@ -155,7 +163,7 @@ describe("createHttpRequestsAdapter", () => {
   it("turns malformed nested successful draft workspaces into stale safe diagnostics", async () => {
     const malformedWorkspace = {
       ...workspace,
-      cards: [{ ...workspace.cards[0], flags: ["fee"], productionCount: "many" }]
+      requestDetails: [{ ...workspace.requestDetails[0], activeDeadline: {} }]
     };
     const fetcher = vi.fn(async () =>
       jsonResponse(200, {
