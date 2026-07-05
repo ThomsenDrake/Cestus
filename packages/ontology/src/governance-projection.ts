@@ -1,5 +1,5 @@
 import type { KnowledgeEvent, KnowledgeEventOf } from "./contracts.js";
-import { defaultGovernancePolicy, isHighConfidence, restrictedExportTags, type GovernanceTag } from "./governance-policy.js";
+import { defaultGovernancePolicy, restrictedExportTags, type GovernanceTag } from "./governance-policy.js";
 
 type MutatingMapMethod<Key, Value> = {
   set(key: Key, value: Value): never;
@@ -44,14 +44,18 @@ interface MutableEvidenceGovernanceState {
 
 export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): GovernanceProjection {
   const mutableStates = new Map<string, MutableEvidenceGovernanceState>();
+  let activeConfidenceThreshold = defaultGovernancePolicy.confidenceThreshold;
 
   for (const event of events) {
     switch (event.type) {
+      case "governance.policy.installed":
+        activeConfidenceThreshold = event.payload.confidenceThreshold;
+        break;
       case "evidence.ingested":
         ensureState(mutableStates, event.payload.evidenceId);
         break;
       case "evidence.governance.classified":
-        applyClassification(ensureState(mutableStates, event.payload.evidenceId), event);
+        applyClassification(ensureState(mutableStates, event.payload.evidenceId), event, activeConfidenceThreshold);
         break;
       case "evidence.governance.reviewed":
         applyReview(ensureState(mutableStates, event.payload.evidenceId), event);
@@ -114,12 +118,17 @@ function ensureState(states: Map<string, MutableEvidenceGovernanceState>, eviden
 
 function applyClassification(
   state: MutableEvidenceGovernanceState,
-  event: KnowledgeEventOf<"evidence.governance.classified">
+  event: KnowledgeEventOf<"evidence.governance.classified">,
+  activeConfidenceThreshold: number
 ): void {
   state.classifiedEventIds.push(event.id);
 
   for (const tag of event.payload.tags) {
-    if (!isHighConfidence(tag.confidence, defaultGovernancePolicy)) {
+    if (!meetsActiveConfidenceThreshold(tag.confidence, activeConfidenceThreshold)) {
+      continue;
+    }
+
+    if (state.currentTags.get(tag.tag)?.source === "human") {
       continue;
     }
 
@@ -161,11 +170,19 @@ function freezeState(state: MutableEvidenceGovernanceState): EvidenceGovernanceS
 }
 
 function isPublicSafe(state: EvidenceGovernanceState): boolean {
-  return !state.quarantined && !state.tombstoned && hasActiveTag(state, "public_safe");
+  return !state.quarantined && !state.tombstoned && hasActiveTag(state, "public_safe") && !hasActiveRestrictedTag(state);
 }
 
 function hasActiveTag(state: EvidenceGovernanceState, tag: GovernanceTag): boolean {
   return state.currentTags.get(tag)?.status === "active";
+}
+
+function hasActiveRestrictedTag(state: EvidenceGovernanceState): boolean {
+  return restrictedExportTags.some((tag) => hasActiveTag(state, tag));
+}
+
+function meetsActiveConfidenceThreshold(confidence: number, threshold: number): boolean {
+  return Number.isFinite(confidence) && confidence >= 0 && confidence <= 1 && confidence >= threshold;
 }
 
 function readOnlyMap<Key, Value>(source: Map<Key, Value>, mutationErrorMessage: string): ImmutableMap<Key, Value> {

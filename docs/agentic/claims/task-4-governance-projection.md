@@ -27,5 +27,8 @@ Command evidence:
 - Verify: `npm run verify` passed with typecheck passed, 45 test files and 392 tests passing, UI build succeeded, and factory-readiness passed.
 - Self-review green: `npm test -- packages/ontology/test/governance-projection.test.ts` passed with 1 test file and 8 tests passing after the read-only map proxy receiver polish.
 - Self-review verify: `npm run verify` passed with typecheck passed, 45 test files and 392 tests passing, UI build succeeded, and factory-readiness passed.
+- Code-quality fix red: `npm test -- packages/ontology/test/governance-projection.test.ts` failed with 4 expected failures proving later AI classification could override human removal, active restricted tags could leak into default public-safe IDs, and installed policy thresholds were ignored.
+- Code-quality fix green: `npm test -- packages/ontology/test/governance-projection.test.ts` passed with 1 test file and 12 tests passing.
+- Code-quality fix verify: `npm run verify` passed with typecheck passed, 45 test files and 396 tests passing, UI build succeeded, and factory-readiness passed.
 
-Ready-for-review-at: 2026-07-05T15:15:05Z
+Ready-for-review-at: 2026-07-05T15:24:41Z

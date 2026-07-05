@@ -35,6 +35,55 @@ describe("governance projection", () => {
     const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
     expect(projection.publicSafeEvidenceIds()).toEqual(["ev_source_public"]);
     expect(projection.requiresExportOptIn("ev_source_private")).toBe(true);
+    expect(projection.requiresExportOptIn("ev_source_public_restricted")).toBe(true);
+  });
+
+  it("does not let later AI classification override human review for the same tag", () => {
+    const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
+
+    expect(projection.evidenceGovernance.get("ev_source_review_locked")?.currentTags.get("public_safe")).toMatchObject({
+      tag: "public_safe",
+      status: "removed",
+      source: "human",
+      eventId: "evt_review_governance_review_locked_remove"
+    });
+    expect(projection.publicSafeEvidenceIds()).not.toContain("ev_source_review_locked");
+  });
+
+  it("excludes public-safe evidence with active restricted tags from default public-safe exports", () => {
+    const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
+
+    expect(projection.evidenceGovernance.get("ev_source_public_restricted")?.currentTags.get("public_safe")).toMatchObject({
+      tag: "public_safe",
+      status: "active"
+    });
+    expect(projection.evidenceGovernance.get("ev_source_public_restricted")?.currentTags.get("contains_pii")).toMatchObject({
+      tag: "contains_pii",
+      status: "active"
+    });
+    expect(projection.publicSafeEvidenceIds()).not.toContain("ev_source_public_restricted");
+  });
+
+  it("replays installed policy confidence thresholds for later AI classifications", () => {
+    const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
+
+    expect(projection.evidenceGovernance.get("ev_source_policy_threshold")?.currentTags.get("public_record")).toMatchObject({
+      tag: "public_record",
+      status: "active",
+      confidence: 0.85,
+      source: "ai"
+    });
+  });
+
+  it("projects human affirm and supersede decisions as human active tags", () => {
+    const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
+
+    expect(projection.evidenceGovernance.get("ev_source_human_supersede")?.currentTags.get("legal_risk")).toMatchObject({
+      tag: "legal_risk",
+      status: "active",
+      source: "human",
+      eventId: "evt_review_governance_human_affirm"
+    });
   });
 
   it("requires explicit opt-in for missing, quarantined, or tombstoned evidence", () => {
