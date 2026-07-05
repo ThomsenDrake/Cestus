@@ -80,6 +80,60 @@ describe("network exposure and device approval governance", () => {
     expect(projection.isSessionApproved("devsess_reporter_laptop")).toBe(false);
   });
 
+  it("does not revive old session approval when the same exposure id is re-enabled", () => {
+    const projection = buildGovernanceProjection([
+      ...goldenGovernanceLedgerEvents,
+      {
+        id: "evt_network_tailnet_disabled",
+        type: "network.exposure.disabled",
+        version: 1,
+        streamId: "network_exposure_netexp_tailnet_001",
+        sequence: 2,
+        context: {
+          actor,
+          occurredAt: "2026-07-05T15:20:00.000Z",
+          causationId: "evt_network_tailnet_enabled",
+          correlationId: "corr_golden_governance",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0" }
+        },
+        payload: {
+          exposureId: "netexp_tailnet_001",
+          disabledBy: "actor_investigator",
+          disabledAt: "2026-07-05T15:20:00.000Z",
+          reason: "Tailnet sharing closed after review."
+        }
+      },
+      {
+        id: "evt_network_tailnet_reenabled",
+        type: "network.exposure.enabled",
+        version: 1,
+        streamId: "network_exposure_netexp_tailnet_001",
+        sequence: 3,
+        context: {
+          actor,
+          occurredAt: "2026-07-05T15:25:00.000Z",
+          causationId: "evt_network_tailnet_disabled",
+          correlationId: "corr_golden_governance",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0" }
+        },
+        payload: {
+          exposureId: "netexp_tailnet_001",
+          mode: "tailnet",
+          bindScope: "tailnet",
+          enabledBy: "actor_investigator",
+          enabledAt: "2026-07-05T15:25:00.000Z",
+          visibleWarning: true,
+          policy
+        }
+      }
+    ]);
+
+    expect(projection.networkExposure.activeExposure?.eventId).toBe("evt_network_tailnet_reenabled");
+    expect(projection.isSessionApproved("devsess_reporter_laptop")).toBe(false);
+  });
+
   it("returns immutable network exposure and device session snapshots", () => {
     const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
     const laptop = projection.deviceSessions.get("devsess_reporter_laptop");

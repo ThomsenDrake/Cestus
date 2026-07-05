@@ -60,6 +60,7 @@ export interface DeviceSessionState {
   readonly deviceLabel: string;
   readonly approved: boolean;
   readonly exposureId: string;
+  readonly exposureEventId?: string;
   readonly capabilities: readonly ("read" | "write")[];
   readonly approvalEventId: string;
   readonly revocationEventId?: string;
@@ -105,6 +106,7 @@ interface MutableDeviceSessionState {
   deviceLabel: string;
   approved: boolean;
   exposureId: string;
+  exposureEventId?: string;
   capabilities: ("read" | "write")[];
   approvalEventId: string;
   revocationEventId?: string;
@@ -173,6 +175,7 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
           deviceLabel: event.payload.deviceLabel,
           approved: true,
           exposureId: event.payload.exposureId,
+          ...(event.context.causationId === undefined ? {} : { exposureEventId: event.context.causationId }),
           capabilities: [...event.payload.capabilities],
           approvalEventId: event.id
         });
@@ -298,7 +301,9 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
     },
     isSessionApproved(sessionId: string) {
       const session = deviceSessions.get(sessionId);
-      return session?.approved === true && networkExposure.activeExposure?.exposureId === session.exposureId;
+      return session?.approved === true &&
+        networkExposure.activeExposure?.exposureId === session.exposureId &&
+        networkExposure.activeExposure.eventId === session.exposureEventId;
     },
     openIncidentIds() {
       return Object.freeze(
@@ -399,6 +404,7 @@ function freezeDeviceSession(state: MutableDeviceSessionState): DeviceSessionSta
     deviceLabel: state.deviceLabel,
     approved: state.approved,
     exposureId: state.exposureId,
+    ...(state.exposureEventId === undefined ? {} : { exposureEventId: state.exposureEventId }),
     capabilities: Object.freeze([...state.capabilities]),
     approvalEventId: state.approvalEventId,
     ...(state.revocationEventId === undefined ? {} : { revocationEventId: state.revocationEventId })
