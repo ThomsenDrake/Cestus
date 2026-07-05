@@ -79,7 +79,6 @@ export class LocalFilesystemScanner {
     const occurrences: LocalFilesystemOccurrence[] = [];
     let observedByteTotal = 0;
     let uniqueByteTotal = 0;
-    let duplicateByteTotal = 0;
 
     for (const file of files) {
       const stat = statSync(file.absolutePath);
@@ -90,8 +89,6 @@ export class LocalFilesystemScanner {
       if (status === "new") {
         seenContentHashes.add(contentHash);
         uniqueByteTotal += stat.size;
-      } else {
-        duplicateByteTotal += stat.size;
       }
 
       observedByteTotal += stat.size;
@@ -127,8 +124,8 @@ export class LocalFilesystemScanner {
       uniqueContent: seenContentHashes.size,
       duplicateOccurrences: occurrences.filter((occurrence) => occurrence.status === "duplicate").length,
       skipped: 0,
-      bytes: nonnegative(observedByteTotal - duplicateByteTotal * 2),
-      estimatedNewBlobBytes: nonnegative(uniqueByteTotal - duplicateByteTotal * 2)
+      bytes: observedByteTotal,
+      estimatedNewBlobBytes: uniqueByteTotal
     };
 
     await this.dependencies.ledger.append({
@@ -200,8 +197,4 @@ function sha256(bytes: Buffer): `sha256:${string}` {
 
 function inventoryDigest(occurrences: LocalFilesystemOccurrence[]): `sha256:${string}` {
   return sha256(Buffer.from(JSON.stringify(occurrences), "utf8"));
-}
-
-function nonnegative(value: number): number {
-  return Math.max(0, value);
 }
