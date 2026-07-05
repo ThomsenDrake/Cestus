@@ -75,7 +75,13 @@ export function createLocalRuntimeHttpHandler(
       if (!parsed.ok) {
         return json(400, parsed.body);
       }
-      return json(200, await handle.runtime.createDraftRequest(parsed.value as CreateDraftRequestInput));
+
+      const draftInput = draftRequestInputFromBody(parsed.value);
+      if (draftInput === undefined) {
+        return json(400, invalidDraftRequestBodyDiagnostic());
+      }
+
+      return json(200, await handle.runtime.createDraftRequest(draftInput));
     }
 
     if (request.method === "POST" && path === "/api/dev/seed-prr") {
@@ -104,6 +110,93 @@ export function createLocalRuntimeHttpHandler(
 
   handler.close = () => handle.close();
   return handler;
+}
+
+function draftRequestInputFromBody(value: unknown): CreateDraftRequestInput | undefined {
+  if (!isJsonObject(value)) {
+    return undefined;
+  }
+
+  const jurisdictionPack = jurisdictionPackRefFromBody(value.jurisdictionPack);
+  const agency = contactRefFromBody(value.agency);
+  const requester = contactRefFromBody(value.requester);
+  const deadlineEstimateKind = value.deadlineEstimateKind;
+
+  if (
+    jurisdictionPack === undefined ||
+    agency === undefined ||
+    requester === undefined ||
+    typeof value.requestText !== "string" ||
+    typeof value.receivedAt !== "string" ||
+    (Object.hasOwn(value, "deadlineEstimateKind") && typeof deadlineEstimateKind !== "string")
+  ) {
+    return undefined;
+  }
+
+  const draftInput = {
+    jurisdictionPack,
+    agency,
+    requester,
+    requestText: value.requestText,
+    receivedAt: value.receivedAt
+  };
+
+  if (Object.hasOwn(value, "deadlineEstimateKind")) {
+    return {
+      ...draftInput,
+      deadlineEstimateKind: deadlineEstimateKind as NonNullable<
+        CreateDraftRequestInput["deadlineEstimateKind"]
+      >
+    };
+  }
+
+  return draftInput;
+}
+
+function jurisdictionPackRefFromBody(
+  value: unknown
+): CreateDraftRequestInput["jurisdictionPack"] | undefined {
+  if (!isJsonObject(value) || typeof value.name !== "string" || typeof value.version !== "string") {
+    return undefined;
+  }
+
+  return {
+    name: value.name,
+    version: value.version
+  };
+}
+
+function contactRefFromBody(value: unknown): CreateDraftRequestInput["agency"] | undefined {
+  if (
+    !isJsonObject(value) ||
+    typeof value.name !== "string" ||
+    (value.email !== undefined && typeof value.email !== "string") ||
+    (value.phone !== undefined && typeof value.phone !== "string")
+  ) {
+    return undefined;
+  }
+
+  return {
+    name: value.name,
+    ...(value.email === undefined ? {} : { email: value.email }),
+    ...(value.phone === undefined ? {} : { phone: value.phone })
+  };
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function invalidDraftRequestBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Draft request body is invalid.", [
+    "send agency, requester, jurisdiction, request text, and received timestamp"
+  ]);
 }
 
 function parseJsonBody(
