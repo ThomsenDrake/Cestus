@@ -12,6 +12,7 @@ let dir: string;
 
 const actor = { id: "actor_system", kind: "system" as const, label: "Local parser" };
 const parserRef = { name: "local-text", version: "0.1.0" };
+const otherParserRef = { name: "local-html", version: "0.2.0" };
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "cestus-parser-"));
@@ -69,6 +70,54 @@ describe("LocalParseService", () => {
       outputHash: completed.payload.outputHash,
       outputMediaType: "text/plain"
     });
+  });
+
+  it("returns the existing local parse job when create is retried with matching payload", async () => {
+    const ledger = new InMemoryEventLedger();
+    const parser = new LocalParseService({
+      ledger,
+      derivativeStore: new FileBlobStore(dir),
+      actor
+    });
+    const input = {
+      parseJobId: "parse_006",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      evidenceId: "ev_ing_006",
+      parser: parserRef
+    };
+
+    const created = await parser.createLocalParseJob(input);
+    const retried = await parser.createLocalParseJob(input);
+
+    expect(retried).toEqual(created);
+    expect(await ledger.readAll()).toHaveLength(1);
+  });
+
+  it("rejects duplicate local parse job creation with conflicting payload", async () => {
+    const ledger = new InMemoryEventLedger();
+    const parser = new LocalParseService({
+      ledger,
+      derivativeStore: new FileBlobStore(dir),
+      actor
+    });
+    const input = {
+      parseJobId: "parse_007",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      evidenceId: "ev_ing_007",
+      parser: parserRef
+    };
+
+    await parser.createLocalParseJob(input);
+
+    await expect(
+      parser.createLocalParseJob({
+        ...input,
+        parser: otherParserRef
+      })
+    ).rejects.toThrow(/conflicts/i);
+    expect(await ledger.readAll()).toHaveLength(1);
   });
 
   it("records local parse failures with a secret-safe message", async () => {
@@ -157,6 +206,61 @@ describe("LocalParseService", () => {
       outputHash: completed.payload.outputHash,
       outputMediaType: "text/plain"
     });
+  });
+
+  it("rejects local parse completion with parser metadata that differs from job creation", async () => {
+    const ledger = new InMemoryEventLedger();
+    const parser = new LocalParseService({
+      ledger,
+      derivativeStore: new FileBlobStore(dir),
+      actor
+    });
+    const input = {
+      parseJobId: "parse_008",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      evidenceId: "ev_ing_008",
+      parser: parserRef
+    };
+
+    await parser.createLocalParseJob(input);
+
+    await expect(
+      parser.completeTextParse({
+        ...input,
+        parser: otherParserRef,
+        text: "parser mismatch"
+      })
+    ).rejects.toThrow(/parser/i);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["ingestion.parse.job.created"]);
+  });
+
+  it("rejects local parse failure with parser metadata that differs from job creation", async () => {
+    const ledger = new InMemoryEventLedger();
+    const parser = new LocalParseService({
+      ledger,
+      derivativeStore: new FileBlobStore(dir),
+      actor
+    });
+    const input = {
+      parseJobId: "parse_009",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      evidenceId: "ev_ing_009",
+      parser: parserRef
+    };
+
+    await parser.createLocalParseJob(input);
+
+    await expect(
+      parser.failParseJob({
+        ...input,
+        parser: otherParserRef,
+        retryable: true,
+        message: "parser mismatch"
+      })
+    ).rejects.toThrow(/parser/i);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["ingestion.parse.job.created"]);
   });
 
   it("keeps completeTextParse idempotent after a local parse already completed", async () => {

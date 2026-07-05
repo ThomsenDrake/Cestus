@@ -87,10 +87,26 @@ export class LocalParseService {
 
   async createLocalParseJob(input: CreateLocalParseJobInput): Promise<KnowledgeEventOf<"ingestion.parse.job.created">> {
     const parsed = this.parseInput(parseJobInputSchema, input, "parse job");
+    const streamId = this.parseStreamId(parsed);
+    const existingEvents = await this.dependencies.ledger.readStream(streamId);
+    const existingCreated = existingEvents.find(
+      (event): event is KnowledgeEventOf<"ingestion.parse.job.created"> =>
+        event.type === "ingestion.parse.job.created"
+    );
+
+    if (existingCreated !== undefined) {
+      this.assertCreatedPayloadMatchesInput(existingCreated, parsed);
+      return existingCreated;
+    }
+
+    if (existingEvents.length > 0) {
+      throw new Error(`Local parse job ${parsed.parseJobId} conflicts with existing parse stream state`);
+    }
+
     const event: AppendableKnowledgeEvent<"ingestion.parse.job.created"> = {
       type: "ingestion.parse.job.created",
       version: 1,
-      streamId: this.parseStreamId(parsed),
+      streamId,
       context: this.context(parsed.parseJobId),
       payload: {
         parseJobId: parsed.parseJobId,
@@ -115,6 +131,7 @@ export class LocalParseService {
   async completeTextParse(input: CompleteTextParseInput): Promise<KnowledgeEventOf<"ingestion.parse.completed">> {
     const parsed = this.parseInput(completeTextParseInputSchema, input, "text parse completion");
     const state = await this.readJobState(parsed);
+    this.assertParserMatchesCreated(state.created, parsed.parser);
 
     if (state.completed !== undefined) {
       return state.completed;
@@ -137,7 +154,7 @@ export class LocalParseService {
         importBatchId: parsed.importBatchId,
         evidenceId: parsed.evidenceId,
         lane: "local",
-        parser: parsed.parser,
+        parser: state.created.payload.parser,
         outputHash: stored.contentHash,
         outputMediaType: "text/plain",
         completedAt: parsed.completedAt ?? new Date().toISOString()
@@ -156,6 +173,7 @@ export class LocalParseService {
   async failParseJob(input: FailParseJobInput): Promise<KnowledgeEventOf<"ingestion.parse.failed">> {
     const parsed = this.parseInput(failParseJobInputSchema, input, "parse failure");
     const state = await this.readJobState(parsed);
+    this.assertParserMatchesCreated(state.created, parsed.parser);
 
     if (state.completed !== undefined) {
       throw new Error(`Local parse job ${parsed.parseJobId} already completed and cannot be failed`);
@@ -176,7 +194,7 @@ export class LocalParseService {
         importBatchId: parsed.importBatchId,
         evidenceId: parsed.evidenceId,
         lane: "local",
-        parser: parsed.parser,
+        parser: state.created.payload.parser,
         failedAt: parsed.failedAt ?? new Date().toISOString(),
         message: this.secretSafeFailureMessage(parsed.message),
         retryable: parsed.retryable
@@ -202,6 +220,42 @@ export class LocalParseService {
     }
 
     return result.data;
+  }
+
+  private assertCreatedPayloadMatchesInput(
+    created: KnowledgeEventOf<"ingestion.parse.job.created">,
+    input: CreateLocalParseJobInput
+  ): void {
+    const matches =
+      created.payload.lane === "local" &&
+      created.payload.state === "queued" &&
+      created.payload.parseJobId === input.parseJobId &&
+      created.payload.sourceCollectionId === input.sourceCollectionId &&
+      created.payload.importBatchId === input.importBatchId &&
+      created.payload.evidenceId === input.evidenceId &&
+      this.sameParser(created.payload.parser, input.parser);
+
+    if (!matches) {
+      throw new Error(`Local parse job ${input.parseJobId} conflicts with existing job creation payload`);
+    }
+  }
+
+  private assertParserMatchesCreated(
+    created: KnowledgeEventOf<"ingestion.parse.job.created">,
+    parser: CreateLocalParseJobInput["parser"]
+  ): void {
+    if (!this.sameParser(created.payload.parser, parser)) {
+      throw new Error(
+        `Local parse job ${created.payload.parseJobId} parser ${parser.name}@${parser.version} conflicts with created parser ${created.payload.parser.name}@${created.payload.parser.version}`
+      );
+    }
+  }
+
+  private sameParser(
+    left: CreateLocalParseJobInput["parser"],
+    right: CreateLocalParseJobInput["parser"]
+  ): boolean {
+    return left.name === right.name && left.version === right.version;
   }
 
   private async readJobState(
