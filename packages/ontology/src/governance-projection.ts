@@ -1,0 +1,184 @@
+import type { KnowledgeEvent, KnowledgeEventOf } from "./contracts.js";
+import { defaultGovernancePolicy, isHighConfidence, restrictedExportTags, type GovernanceTag } from "./governance-policy.js";
+
+type MutatingMapMethod<Key, Value> = {
+  set(key: Key, value: Value): never;
+  delete(key: Key): never;
+  clear(): never;
+};
+
+export type ImmutableMap<Key, Value> = ReadonlyMap<Key, Value> & MutatingMapMethod<Key, Value>;
+
+export interface ProjectedGovernanceTag {
+  readonly tag: GovernanceTag;
+  readonly confidence: number;
+  readonly rationale: string;
+  readonly source: "ai" | "human";
+  readonly status: "active" | "removed";
+  readonly eventId: string;
+}
+
+export interface EvidenceGovernanceState {
+  readonly evidenceId: string;
+  readonly currentTags: ImmutableMap<GovernanceTag, ProjectedGovernanceTag>;
+  readonly classifiedEventIds: readonly string[];
+  readonly reviewedEventIds: readonly string[];
+  readonly quarantined: boolean;
+  readonly tombstoned: boolean;
+}
+
+export interface GovernanceProjection {
+  readonly evidenceGovernance: ImmutableMap<string, EvidenceGovernanceState>;
+  publicSafeEvidenceIds(): readonly string[];
+  requiresExportOptIn(evidenceId: string): boolean;
+}
+
+interface MutableEvidenceGovernanceState {
+  evidenceId: string;
+  currentTags: Map<GovernanceTag, ProjectedGovernanceTag>;
+  classifiedEventIds: string[];
+  reviewedEventIds: string[];
+  quarantined: boolean;
+  tombstoned: boolean;
+}
+
+export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): GovernanceProjection {
+  const mutableStates = new Map<string, MutableEvidenceGovernanceState>();
+
+  for (const event of events) {
+    switch (event.type) {
+      case "evidence.ingested":
+        ensureState(mutableStates, event.payload.evidenceId);
+        break;
+      case "evidence.governance.classified":
+        applyClassification(ensureState(mutableStates, event.payload.evidenceId), event);
+        break;
+      case "evidence.governance.reviewed":
+        applyReview(ensureState(mutableStates, event.payload.evidenceId), event);
+        break;
+      case "evidence.quarantined":
+        ensureState(mutableStates, event.payload.evidenceId).quarantined = true;
+        break;
+      case "evidence.tombstoned":
+        ensureState(mutableStates, event.payload.evidenceId).tombstoned = true;
+        break;
+      default:
+        break;
+    }
+  }
+
+  const evidenceGovernance = readOnlyMap(
+    new Map([...mutableStates.entries()].map(([evidenceId, state]) => [evidenceId, freezeState(state)])),
+    "GovernanceProjection.evidenceGovernance is read-only"
+  );
+
+  return Object.freeze({
+    evidenceGovernance,
+    publicSafeEvidenceIds() {
+      return Object.freeze(
+        [...evidenceGovernance.values()]
+          .filter((state) => isPublicSafe(state))
+          .map((state) => state.evidenceId)
+          .sort()
+      );
+    },
+    requiresExportOptIn(evidenceId: string) {
+      const state = evidenceGovernance.get(evidenceId);
+      if (state === undefined || state.quarantined || state.tombstoned) {
+        return true;
+      }
+
+      return restrictedExportTags.some((tag) => hasActiveTag(state, tag));
+    }
+  });
+}
+
+function ensureState(states: Map<string, MutableEvidenceGovernanceState>, evidenceId: string): MutableEvidenceGovernanceState {
+  const existing = states.get(evidenceId);
+  if (existing !== undefined) {
+    return existing;
+  }
+
+  const created: MutableEvidenceGovernanceState = {
+    evidenceId,
+    currentTags: new Map(),
+    classifiedEventIds: [],
+    reviewedEventIds: [],
+    quarantined: false,
+    tombstoned: false
+  };
+  states.set(evidenceId, created);
+
+  return created;
+}
+
+function applyClassification(
+  state: MutableEvidenceGovernanceState,
+  event: KnowledgeEventOf<"evidence.governance.classified">
+): void {
+  state.classifiedEventIds.push(event.id);
+
+  for (const tag of event.payload.tags) {
+    if (!isHighConfidence(tag.confidence, defaultGovernancePolicy)) {
+      continue;
+    }
+
+    state.currentTags.set(tag.tag, Object.freeze({
+      tag: tag.tag,
+      confidence: tag.confidence,
+      rationale: tag.rationale,
+      source: "ai",
+      status: "active",
+      eventId: event.id
+    }));
+  }
+}
+
+function applyReview(state: MutableEvidenceGovernanceState, event: KnowledgeEventOf<"evidence.governance.reviewed">): void {
+  state.reviewedEventIds.push(event.id);
+
+  for (const decision of event.payload.decisions) {
+    state.currentTags.set(decision.tag, Object.freeze({
+      tag: decision.tag,
+      confidence: 1,
+      rationale: decision.rationale,
+      source: "human",
+      status: decision.action === "remove" ? "removed" : "active",
+      eventId: event.id
+    }));
+  }
+}
+
+function freezeState(state: MutableEvidenceGovernanceState): EvidenceGovernanceState {
+  return Object.freeze({
+    evidenceId: state.evidenceId,
+    currentTags: readOnlyMap(new Map(state.currentTags), "EvidenceGovernanceState.currentTags is read-only"),
+    classifiedEventIds: Object.freeze([...state.classifiedEventIds]),
+    reviewedEventIds: Object.freeze([...state.reviewedEventIds]),
+    quarantined: state.quarantined,
+    tombstoned: state.tombstoned
+  });
+}
+
+function isPublicSafe(state: EvidenceGovernanceState): boolean {
+  return !state.quarantined && !state.tombstoned && hasActiveTag(state, "public_safe");
+}
+
+function hasActiveTag(state: EvidenceGovernanceState, tag: GovernanceTag): boolean {
+  return state.currentTags.get(tag)?.status === "active";
+}
+
+function readOnlyMap<Key, Value>(source: Map<Key, Value>, mutationErrorMessage: string): ImmutableMap<Key, Value> {
+  return new Proxy(source, {
+    get(target, property) {
+      if (property === "set" || property === "delete" || property === "clear") {
+        return () => {
+          throw new TypeError(mutationErrorMessage);
+        };
+      }
+
+      const value = Reflect.get(target, property, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    }
+  }) as unknown as ImmutableMap<Key, Value>;
+}
