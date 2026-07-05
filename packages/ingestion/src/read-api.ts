@@ -44,15 +44,6 @@ export interface IngestionReviewDto {
   }>;
 }
 
-const emptyTotals = {
-  observedFiles: 0,
-  uniqueContent: 0,
-  duplicateOccurrences: 0,
-  skipped: 0,
-  bytes: 0,
-  estimatedNewBlobBytes: 0
-};
-
 export function buildIngestionReviewDto(
   projection: IngestionProjection,
   sourceCollectionId: string
@@ -78,13 +69,28 @@ export function buildIngestionReviewDto(
     label: source.label,
     ...(source.latestScanBatchId === undefined ? {} : { latestScanBatchId: source.latestScanBatchId }),
     ...(source.latestImportBatchId === undefined ? {} : { latestImportBatchId: source.latestImportBatchId }),
-    totals: latestScan?.totals ?? emptyTotals,
+    totals: copyTotals(latestScan?.totals),
     approvalRequired: latestScan?.state === "completed" && approvalBatchIds.length === 0,
     duplicateGroups: duplicateGroupsForSource(projection, sourceCollectionId),
     evidenceLinks: evidenceLinksForSource(projection, sourceCollectionId),
     parseJobs: parseJobsForSource(projection, sourceCollectionId),
     diagnostics: diagnosticsForSource(projection, sourceCollectionId)
   };
+}
+
+function copyTotals(totals: IngestionReviewDto["totals"] | undefined): IngestionReviewDto["totals"] {
+  if (totals === undefined) {
+    return {
+      observedFiles: 0,
+      uniqueContent: 0,
+      duplicateOccurrences: 0,
+      skipped: 0,
+      bytes: 0,
+      estimatedNewBlobBytes: 0
+    };
+  }
+
+  return { ...totals };
 }
 
 function duplicateGroupsForSource(
