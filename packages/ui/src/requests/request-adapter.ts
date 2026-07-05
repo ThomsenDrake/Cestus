@@ -73,6 +73,12 @@ export interface StaticRequestsAdapterOptions {
     | ((input: RequestsCreateDraftInput) => RequestsCreateDraftResult | Promise<RequestsCreateDraftResult>);
 }
 
+export interface HttpRequestsAdapterOptions {
+  readonly baseUrl?: string;
+  readonly authToken?: string;
+  readonly fetcher?: typeof fetch;
+}
+
 const defaultActor: ActorRef = Object.freeze({
   id: "actor_ui_local",
   kind: "human",
@@ -273,10 +279,83 @@ export function createStaticRequestsAdapter(
   });
 }
 
+export function createHttpRequestsAdapter(
+  options: HttpRequestsAdapterOptions = {}
+): RequestsWorkspaceAdapter {
+  const baseUrl = options.baseUrl ?? "";
+  const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
+
+  return Object.freeze({
+    async loadRequestsWorkspace() {
+      const response = await fetcher(`${baseUrl}/api/requests/workspace`, {
+        headers: authHeaders(options.authToken),
+        method: "GET"
+      });
+      if (!response.ok) {
+        throw new Error(`Requests runtime returned HTTP ${response.status}.`);
+      }
+
+      try {
+        return (await response.json()) as PrrWorkspaceDto;
+      } catch (error) {
+        throw new Error("Requests runtime returned invalid workspace JSON.");
+      }
+    },
+    async createDraftRequest(input: RequestsCreateDraftInput) {
+      let response: Response;
+      try {
+        response = await fetcher(`${baseUrl}/api/requests/drafts`, {
+          body: JSON.stringify(input),
+          headers: {
+            ...authHeaders(options.authToken),
+            "content-type": "application/json"
+          },
+          method: "POST"
+        });
+      } catch (error) {
+        return httpFailure("request failed", await safeWorkspaceFallback());
+      }
+
+      if (!response.ok) {
+        return httpFailure(`HTTP ${response.status}`, await safeWorkspaceFallback());
+      }
+
+      try {
+        return (await response.json()) as RequestsCreateDraftResult;
+      } catch (error) {
+        return httpFailure("invalid JSON", await safeWorkspaceFallback());
+      }
+    }
+  });
+}
+
+export const httpRequestsAdapter = createHttpRequestsAdapter();
+
 export const localReplayRequestsAdapter = createLocalReplayRequestsAdapter(prrWorkspaceSeedEvents);
 
 export function loadRequestsWorkspace(): Promise<PrrWorkspaceDto> {
   return localReplayRequestsAdapter.loadRequestsWorkspace();
+}
+
+function authHeaders(authToken: string | undefined): Record<string, string> {
+  return authToken === undefined ? {} : { authorization: `Bearer ${authToken}` };
+}
+
+async function safeWorkspaceFallback(): Promise<PrrWorkspaceDto> {
+  return buildPrrWorkspaceDto(buildPrrProjection([]), { now: new Date().toISOString() });
+}
+
+async function httpFailure(reason: string, workspace: PrrWorkspaceDto): Promise<RequestsCreateDraftResult> {
+  return Object.freeze({
+    ok: false,
+    failedStep: "append-request",
+    committedEventIds: Object.freeze([]),
+    diagnostic: Object.freeze({
+      message: `Requests runtime returned ${reason}.`,
+      allowedRepairActions: Object.freeze(["reload Requests", "check the local runtime"])
+    }),
+    workspace
+  });
 }
 
 function nextStreamSequence(events: readonly KnowledgeEvent[], streamId: string): number {

@@ -91,6 +91,8 @@ describe("visual system contract", () => {
       .map((file) => readFileSync(file, "utf8"))
       .join("\n");
 
+    expect(adapterSource).toContain("createHttpRequestsAdapter");
+    expect(adapterSource).toContain("httpRequestsAdapter");
     expect(adapterSource).toContain("createLocalReplayRequestsAdapter");
     expect(adapterSource).toContain("buildPrrWorkspaceDto(buildPrrProjection(events)");
     expect(adapterSource).toContain("Object.freeze");
