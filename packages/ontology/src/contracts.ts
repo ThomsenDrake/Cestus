@@ -102,7 +102,7 @@ const projectionCheckpointedPayloadSchema = z.object({
 }).strict();
 
 const secretTextPattern =
-  /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth|credential)(?:$|[^a-z0-9])/i;
+  /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth(?:[\s._-]*(?:token|secret))?|credential(?:[\s._-]*(?:id|key|secret|token))?)(?:\s*[:=]\s*|\s+[a-z0-9][a-z0-9._-]{2,})/i;
 
 const secretSafeTextSchema = z.string().min(1).refine((value) => !secretTextPattern.test(value), {
   message: "text must not contain secrets or credentials"
@@ -271,9 +271,13 @@ const incidentRecordedPayloadSchema = z.object({
 const incidentRepairRecordedPayloadSchema = z.object({
   incidentId: z.string().regex(/^incident_[a-zA-Z0-9_-]+$/),
   repairId: z.string().regex(/^repair_[a-zA-Z0-9_-]+$/),
+  severity: z.enum(["info", "warning", "error", "critical"]),
+  category: z.enum(["classification", "secret-leak", "export", "network", "device", "quarantine", "projection"]),
   repairedBy: z.string().min(3),
   repairedAt: z.string().datetime(),
   action: secretSafeTextSchema,
+  relatedEvidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/)),
+  relatedEventIds: z.array(z.string().regex(/^evt_[a-zA-Z0-9_-]+$/)),
   closesIncident: z.boolean()
 }).strict();
 
@@ -707,7 +711,7 @@ export const eventContracts = {
     version: 1,
     description: "Records append-only repair action for a governance or security incident.",
     agentGuidance: "Use to document repair progress or closure. Do not rewrite the incident event or hide failed repairs.",
-    invariants: ["repairId must be stable", "action must be secret-safe", "closesIncident is explicit"]
+    invariants: ["repairId must be stable", "severity and category are required", "related references are arrays", "action must be secret-safe", "closesIncident is explicit"]
   },
   "prr.request.created": {
     type: "prr.request.created",
