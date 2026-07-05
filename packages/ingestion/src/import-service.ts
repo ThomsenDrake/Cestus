@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { z } from "zod";
+import { z } from "zod";
 import { EvidenceService } from "../../ontology/src/evidence-service.js";
 import type { FileBlobStore } from "../../ontology/src/blob-store.js";
 import {
@@ -11,6 +11,22 @@ import type { EventLedger } from "../../ontology/src/event-ledger.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
 type ContentHash = `sha256:${string}`;
+
+const sourceCollectionIdSchema = z.string().regex(/^src_[a-zA-Z0-9_-]+$/);
+const scanBatchIdSchema = z.string().regex(/^scan_[a-zA-Z0-9_-]+$/);
+const importBatchIdSchema = z.string().regex(/^imp_[a-zA-Z0-9_-]+$/);
+const occurrenceIdSchema = z.string().regex(/^occ_[a-zA-Z0-9_-]+$/);
+const importApprovedOccurrencesInputSchema = z.object({
+  sourceCollectionId: sourceCollectionIdSchema,
+  scanBatchId: scanBatchIdSchema,
+  importBatchId: importBatchIdSchema,
+  occurrences: z.array(z.object({
+    occurrenceId: occurrenceIdSchema,
+    content: z.instanceof(Buffer),
+    sourcePath: z.string().min(1),
+    mediaType: z.string().min(1)
+  }).strict()).min(1)
+}).strict();
 
 export interface IngestionImportServiceDependencies {
   ledger: EventLedger;
@@ -92,6 +108,7 @@ export class IngestionImportService {
   async importApprovedOccurrences(
     input: ImportApprovedOccurrencesInput
   ): Promise<ImportApprovedOccurrencesResult> {
+    this.validateImportRequest(input);
     const approval = await this.findApproval(input);
 
     if (approval === undefined) {
@@ -108,7 +125,6 @@ export class IngestionImportService {
       return { totals: existingCompletion.payload.totals };
     }
 
-    let evidenceCreated = 0;
     for (const group of groups.values()) {
       const deterministicEvidenceId = this.evidenceIdForContentHash(group.contentHash);
       const existingEvidence = this.findExistingEvidence(existingEvents, deterministicEvidenceId, group.contentHash);
@@ -127,7 +143,6 @@ export class IngestionImportService {
           actor: this.dependencies.actor
         });
         existingEvents.push(evidence);
-        evidenceCreated += 1;
       }
 
       const unlinkedOccurrenceIds = this.unlinkedOccurrenceIds(existingEvents, input, group);
@@ -138,17 +153,20 @@ export class IngestionImportService {
       }
     }
 
-    // duplicatesReused counts occurrences that did not create new canonical evidence,
-    // including duplicate paths in this batch and content already present in the ledger.
-    const totals = {
-      evidenceCreated,
-      occurrencesLinked: input.occurrences.length,
-      duplicatesReused: input.occurrences.length - evidenceCreated,
-      skipped: 0
-    };
+    const totals = this.importTotals(existingEvents, input, groups);
     await this.appendImportCompleted(input, totals, approval.id);
 
     return { totals };
+  }
+
+  private validateImportRequest(input: ImportApprovedOccurrencesInput): void {
+    const result = importApprovedOccurrencesInputSchema.safeParse(input);
+
+    if (!result.success) {
+      const issue = result.error.issues[0];
+      const path = issue?.path.length === 0 ? "import request" : issue?.path.join(".");
+      throw new Error(`Invalid import request ${path}: ${issue?.message ?? result.error.message}`);
+    }
   }
 
   private async findApproval(
@@ -224,7 +242,7 @@ export class IngestionImportService {
 
   private unlinkedOccurrenceIds(
     events: Awaited<ReturnType<EventLedger["readAll"]>>,
-    input: Pick<ImportApprovedOccurrencesInput, "sourceCollectionId" | "importBatchId">,
+    input: Pick<ImportApprovedOccurrencesInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">,
     group: OccurrenceGroup
   ): string[] {
     const linkedOccurrenceIds = new Set<string>();
@@ -234,7 +252,8 @@ export class IngestionImportService {
         event.type === "ingestion.evidence.linked" &&
         event.payload.importBatchId === input.importBatchId &&
         event.payload.sourceCollectionId === input.sourceCollectionId &&
-        event.payload.contentHash === group.contentHash
+        event.payload.contentHash === group.contentHash &&
+        event.streamId === this.evidenceLinkStreamId(input, group.contentHash)
       ) {
         for (const occurrenceId of event.payload.occurrenceIds) {
           linkedOccurrenceIds.add(occurrenceId);
@@ -245,8 +264,56 @@ export class IngestionImportService {
     return group.occurrenceIds.filter((occurrenceId) => !linkedOccurrenceIds.has(occurrenceId));
   }
 
+  private importTotals(
+    events: Awaited<ReturnType<EventLedger["readAll"]>>,
+    input: ImportApprovedOccurrencesInput,
+    groups: Map<ContentHash, OccurrenceGroup>
+  ): ImportApprovedOccurrencesResult["totals"] {
+    let evidenceCreated = 0;
+    const linkedOccurrenceIds = new Set<string>();
+
+    for (const group of groups.values()) {
+      const evidenceId = this.evidenceIdForContentHash(group.contentHash);
+      const currentImportEvidence = events.find(
+        (event): event is KnowledgeEventOf<"evidence.ingested"> =>
+          event.type === "evidence.ingested" &&
+          event.payload.evidenceId === evidenceId &&
+          event.payload.contentHash === group.contentHash &&
+          event.payload.source.uri === this.sourceUri(input, group.contentHash)
+      );
+
+      if (currentImportEvidence !== undefined) {
+        evidenceCreated += 1;
+      }
+
+      for (const event of events) {
+        if (
+          event.type === "ingestion.evidence.linked" &&
+          event.payload.importBatchId === input.importBatchId &&
+          event.payload.sourceCollectionId === input.sourceCollectionId &&
+          event.payload.contentHash === group.contentHash &&
+          event.streamId === this.evidenceLinkStreamId(input, group.contentHash)
+        ) {
+          for (const occurrenceId of event.payload.occurrenceIds) {
+            linkedOccurrenceIds.add(occurrenceId);
+          }
+        }
+      }
+    }
+
+    const expectedOccurrenceIds = new Set(input.occurrences.map((occurrence) => occurrence.occurrenceId));
+    const occurrencesLinked = [...linkedOccurrenceIds].filter((occurrenceId) => expectedOccurrenceIds.has(occurrenceId)).length;
+
+    return {
+      evidenceCreated,
+      occurrencesLinked,
+      duplicatesReused: input.occurrences.length - evidenceCreated,
+      skipped: 0
+    };
+  }
+
   private async appendEvidenceLinked(
-    input: Pick<ImportApprovedOccurrencesInput, "sourceCollectionId" | "importBatchId">,
+    input: Pick<ImportApprovedOccurrencesInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">,
     group: OccurrenceGroup,
     evidenceId: string,
     occurrenceIds: string[],
@@ -255,7 +322,7 @@ export class IngestionImportService {
     const event: AppendableKnowledgeEvent<"ingestion.evidence.linked"> = {
       type: "ingestion.evidence.linked",
       version: 1,
-      streamId: this.evidenceLinkStreamId(input.importBatchId, group.contentHash),
+      streamId: this.evidenceLinkStreamId(input, group.contentHash),
       context: this.context(`corr_${input.importBatchId}`, approvalEventId),
       payload: {
         evidenceId,
@@ -325,8 +392,11 @@ export class IngestionImportService {
     return `ingestion_import_${input.sourceCollectionId}_${input.scanBatchId}_${input.importBatchId}`;
   }
 
-  private evidenceLinkStreamId(importBatchId: string, contentHash: ContentHash): string {
-    return `ingestion_evidence_link_${importBatchId}_${contentHash.replace("sha256:", "")}`;
+  private evidenceLinkStreamId(
+    input: Pick<ImportApprovedOccurrencesInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">,
+    contentHash: ContentHash
+  ): string {
+    return `ingestion_evidence_link_${input.sourceCollectionId}_${input.scanBatchId}_${input.importBatchId}_${contentHash.replace("sha256:", "")}`;
   }
 
   private context(correlationId: string, causationId?: string): AppendableKnowledgeEvent["context"] {
