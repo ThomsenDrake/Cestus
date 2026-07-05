@@ -98,7 +98,7 @@ describe("governed exports and reports", () => {
       includedContentHashes: [publicContentHash],
       sensitiveOptIns: [],
       defaultPublicSafeOnly: true,
-      causationId: "evt_review_governance_private"
+      causationId: "evt_review_governance_public"
     });
 
     expect(event.type).toBe("export.generated");
@@ -107,7 +107,7 @@ describe("governed exports and reports", () => {
     expect(ledger.appendOptions).toEqual([{ expectedNextSequence: 1 }]);
     expect(event.context).toMatchObject({
       actor: humanActor,
-      causationId: "evt_review_governance_private",
+      causationId: "evt_review_governance_public",
       correlationId: "corr_exp_report_001",
       coreVersion: "0.1.0",
       packVersions: { core: "0.1.0" }
@@ -145,7 +145,7 @@ describe("governed exports and reports", () => {
         }
       ],
       defaultPublicSafeOnly: false,
-      causationId: "evt_review_governance_private"
+      causationId: "evt_classify_governance_private"
     });
 
     expect(event.type).toBe("report.generated");
@@ -153,7 +153,7 @@ describe("governed exports and reports", () => {
     expect(event.sequence).toBe(1);
     expect(event.context).toMatchObject({
       actor: humanActor,
-      causationId: "evt_review_governance_private",
+      causationId: "evt_classify_governance_private",
       correlationId: "corr_report_private_review_001"
     });
     expect(event.payload).toMatchObject({
@@ -214,6 +214,44 @@ describe("governed exports and reports", () => {
     expect(await ledger.readStream("report_report_missing_causation_001")).toHaveLength(0);
   });
 
+  it("rejects generated exports whose causation event is absent", async () => {
+    const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordExportGenerated({
+        exportId: "exp_unknown_causation_001",
+        policy,
+        includedEvidenceIds: ["ev_source_public"],
+        includedContentHashes: [publicContentHash],
+        sensitiveOptIns: [],
+        defaultPublicSafeOnly: true,
+        causationId: "evt_unknown_export_review"
+      })
+    ).rejects.toThrow("Generated exports and reports require causation to reference an existing event");
+
+    expect(await ledger.readStream("export_exp_unknown_causation_001")).toHaveLength(0);
+  });
+
+  it("rejects generated reports whose causation does not reference included evidence", async () => {
+    const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordReportGenerated({
+        reportId: "report_unrelated_causation_001",
+        policy,
+        includedEvidenceIds: ["ev_source_public"],
+        includedContentHashes: [publicContentHash],
+        sensitiveOptIns: [],
+        defaultPublicSafeOnly: true,
+        causationId: "evt_classify_governance_private"
+      })
+    ).rejects.toThrow("Generated exports and reports require causation to reference included evidence");
+
+    expect(await ledger.readStream("report_report_unrelated_causation_001")).toHaveLength(0);
+  });
+
   it("rejects restricted evidence without all required opt-ins when blocked IDs are omitted", async () => {
     const ledger = new RecordingLedger(governanceEventsWithoutPrivateQuarantine);
     const service = new GovernanceService({ ledger, actor: humanActor });
@@ -232,7 +270,7 @@ describe("governed exports and reports", () => {
           }
         ],
         defaultPublicSafeOnly: false,
-        causationId: "evt_review_governance_private"
+        causationId: "evt_classify_governance_private"
       })
     ).rejects.toThrow("Cannot generate export or report outside the governed export plan");
 
@@ -277,6 +315,36 @@ describe("governed exports and reports", () => {
     expect(await ledger.readStream("report_report_missing_hash_001")).toHaveLength(0);
   });
 
+  it("rejects sensitive opt-ins recorded as public-safe-only defaults", async () => {
+    const ledger = new RecordingLedger(governanceEventsWithoutPrivateQuarantine);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordReportGenerated({
+        reportId: "report_misleading_default_001",
+        policy,
+        includedEvidenceIds: ["ev_source_private"],
+        includedContentHashes: [privateContentHash],
+        sensitiveOptIns: [
+          {
+            tag: "contains_pii",
+            approvedBy: "actor_investigator",
+            rationale: "Included for private attorney review."
+          },
+          {
+            tag: "private_correspondence",
+            approvedBy: "actor_investigator",
+            rationale: "Included for non-public source review."
+          }
+        ],
+        defaultPublicSafeOnly: true,
+        causationId: "evt_classify_governance_private"
+      })
+    ).rejects.toThrow("Generated artifact defaultPublicSafeOnly must match sensitive opt-in state");
+
+    expect(await ledger.readStream("report_report_misleading_default_001")).toHaveLength(0);
+  });
+
   it("rejects quarantined evidence even with all restricted opt-ins when blocked IDs are omitted", async () => {
     const ledger = new RecordingLedger(goldenGovernanceLedgerEvents);
     const service = new GovernanceService({ ledger, actor: humanActor });
@@ -300,7 +368,7 @@ describe("governed exports and reports", () => {
           }
         ],
         defaultPublicSafeOnly: false,
-        causationId: "evt_review_governance_private"
+        causationId: "evt_quarantine_governance_private"
       })
     ).rejects.toThrow("Cannot generate export or report outside the governed export plan");
 
@@ -363,7 +431,7 @@ describe("governed exports and reports", () => {
           }
         ],
         defaultPublicSafeOnly: false,
-        causationId: "evt_review_governance_private"
+        causationId: "evt_classify_governance_private"
       })
     ).rejects.toThrow("Sensitive export and report opt-ins require a human service actor");
 
@@ -388,7 +456,7 @@ describe("governed exports and reports", () => {
           }
         ],
         defaultPublicSafeOnly: false,
-        causationId: "evt_review_governance_private"
+        causationId: "evt_classify_governance_private"
       })
     ).rejects.toThrow("Sensitive opt-in approvedBy must match the service actor");
 
@@ -413,7 +481,7 @@ describe("governed exports and reports", () => {
           }
         ],
         defaultPublicSafeOnly: false,
-        causationId: "evt_review_governance_private"
+        causationId: "evt_classify_governance_private"
       })
     ).rejects.toThrow("Governance text must not contain secrets");
 
