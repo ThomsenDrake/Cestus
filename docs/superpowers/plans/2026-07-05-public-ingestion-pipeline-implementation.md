@@ -1171,12 +1171,15 @@ describe("LocalParseService", () => {
 
     await parser.createLocalParseJob({
       parseJobId: "parse_001",
+      sourceCollectionId: "src_drive_001",
       importBatchId: "imp_001",
       evidenceId: "ev_ing_001",
       parser: { name: "local-text", version: "0.1.0" }
     });
     const completed = await parser.completeTextParse({
       parseJobId: "parse_001",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
       evidenceId: "ev_ing_001",
       text: "extracted text",
       parser: { name: "local-text", version: "0.1.0" }
