@@ -47,7 +47,16 @@ describe("governance policy helpers", () => {
       "access_token=abc123",
       "api_key: abc123",
       "Authorization: Bearer abc123",
-      "sk-proj-abc123"
+      "sk-proj-abc123",
+      "access token abc123",
+      "api key abc123",
+      "token abc123",
+      "password abc123",
+      "private key abc123",
+      "client secret abc123",
+      "refresh secret abc123",
+      "session secret abc123",
+      "oauth token abc123"
     ];
 
     for (const text of secretTexts) {

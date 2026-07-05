@@ -28,7 +28,7 @@ export const restrictedExportTags = [
 
 const secretTextPatterns = [
   /(?:^|[^a-z0-9])(?:aws[\s._-]*secret[\s._-]*access[\s._-]*key|access[\s._-]*token|api[\s._-]*key|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth(?:[\s._-]*(?:token|secret|client))?)\s*[:=]\s*\S{3,}/i,
-  /(?:^|[^a-z0-9])(?:aws[_-]*secret[_-]*access[_-]*key|access[_-]*token|api[_-]*key|private[_-]*key|client[_-]*secret|refresh[_-]*secret|session[_-]*secret|oauth[_-]*(?:token|secret|client))\s+\S{3,}/i,
+  /(?:^|[^a-z0-9])(?:aws[\s_-]*secret[\s_-]*access[\s_-]*key|access[\s_-]*token|api[\s_-]*key|token|password|private[\s_-]*key|client[\s_-]*secret|refresh[\s_-]*secret|session[\s_-]*secret|oauth[\s_-]*(?:token|secret|client))\s+(?=[a-z0-9._~+/=-]{3,})(?=[a-z0-9._~+/=-]*[0-9._~+/=-])[a-z0-9][a-z0-9._~+/=-]*/i,
   /(?:^|[^a-z0-9])authorization\s*:\s*\S+(?:\s+\S+)?/i,
   /(?:^|[^a-z0-9])bearer\s+[a-z0-9._~+/=-]{6,}/i,
   /(?:^|[^a-z0-9])sk-(?:proj|live|test)-[a-z0-9_-]{3,}/i
