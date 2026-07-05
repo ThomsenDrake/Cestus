@@ -191,3 +191,40 @@ export const goldenIngestionLedgerEvents: KnowledgeEvent[] = [
     }
   }
 ];
+
+export function diagnosticRecordedEvent(
+  id: string,
+  streamId: string,
+  diagnosticId: string,
+  message: string
+): KnowledgeEvent {
+  return {
+    id,
+    type: "diagnostic.recorded",
+    version: 1,
+    streamId,
+    sequence: 99,
+    context: {
+      actor: {
+        id: "actor_system",
+        kind: "system",
+        label: "Cestus"
+      },
+      occurredAt: "2026-07-05T12:06:00.000Z",
+      correlationId: "corr_ingestion_golden",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+    },
+    payload: {
+      diagnosticId,
+      severity: "warning",
+      category: "ingestion",
+      message,
+      repairHint: {
+        contract: "ingestion projection",
+        violatedPath: streamId,
+        allowedActions: ["inspect event stream", "rerun projection"]
+      }
+    }
+  };
+}

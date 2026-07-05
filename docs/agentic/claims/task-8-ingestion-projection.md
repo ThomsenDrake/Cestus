@@ -25,9 +25,13 @@
 - Green targeted test: `npm test -- packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts` passed with 2 test files and 2 tests.
 - Full verification: `npm run verify` passed with `typecheck passed`, 50 test files and 362 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
 - Focused typecheck repair evidence: first `npm run verify` stopped on exact optional-property/narrowing errors in the new projection/read API types; after targeted repairs, the targeted tests and full verification passed.
+- Spec review fix red targeted test: `npm test -- packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts` failed with 2 regression failures proving non-scan ingestion stream diagnostics were omitted from source DTOs and unknown runtime events were not quarantined as projection diagnostics.
+- Spec review fix green targeted test: `npm test -- packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts` passed with 2 test files and 4 tests.
+- Spec review fix full verification: `npm run verify` passed with `typecheck passed`, 50 test files and 364 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
 
 ## Self-Review
 
 - Scope: changed only the Task 8 owned files.
 - Invariants: projection and read API are side-effect-free rebuilds from append-only ledger events only.
+- Spec review fixes: diagnostics now associate through source, scan, import, evidence-link, parse, and provider replay context where source can be inferred; invalid or unknown runtime events are quarantined as deterministic in-memory projection diagnostics without appending ledger events.
 - Findings: none.
