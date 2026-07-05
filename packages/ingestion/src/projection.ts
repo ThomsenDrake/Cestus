@@ -470,10 +470,10 @@ function addDiagnosticReference(projection: IngestionProjection, diagnostic: Ing
   projection.diagnostics.set(diagnostic.diagnosticId, diagnostic);
 
   if (diagnostic.scanBatchId !== undefined && diagnostic.sourceCollectionId !== undefined) {
-    appendUniqueToArray(
-      upsertScan(projection, diagnostic.sourceCollectionId, diagnostic.scanBatchId).diagnosticIds,
-      diagnostic.diagnosticId
-    );
+    const scan = projection.scans.get(diagnostic.scanBatchId);
+    if (scan !== undefined) {
+      appendUniqueToArray(scan.diagnosticIds, diagnostic.diagnosticId);
+    }
   }
 
   if (diagnostic.sourceCollectionId !== undefined) {
