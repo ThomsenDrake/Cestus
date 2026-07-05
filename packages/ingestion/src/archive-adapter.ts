@@ -1,6 +1,6 @@
-import { unzipSync } from "fflate";
+import { unzipSync, type UnzipFileInfo } from "fflate";
 
-const fflateAdapter = { name: "fflate", version: "0.8.3" } as const;
+const fflateAdapter = { name: "fflate", version: "0.8.x" } as const;
 
 export interface ZipArchiveExpandOptions {
   containerHash: `sha256:${string}`;
@@ -13,7 +13,7 @@ export interface ZipArchiveChild {
   content: Buffer;
   containerHash: `sha256:${string}`;
   tool: "fflate";
-  version: "0.8.3";
+  version: "0.8.x";
 }
 
 export class ArchiveExpansionError extends Error {
@@ -29,10 +29,29 @@ export class ArchiveExpansionError extends Error {
 export class ZipArchiveAdapter {
   expand(content: Buffer | Uint8Array, options: ZipArchiveExpandOptions): ZipArchiveChild[] {
     let entries: Record<string, Uint8Array>;
+    let entryCount = 0;
+    let expandedBytes = 0;
 
     try {
-      entries = unzipSync(content);
+      entries = unzipSync(content, {
+        filter: (file) => {
+          validateEntryMetadata(file, options, {
+            entryCount,
+            expandedBytes,
+            recordEntry: () => {
+              entryCount += 1;
+            },
+            recordExpandedBytes: (bytes) => {
+              expandedBytes += bytes;
+            }
+          });
+          return !file.name.endsWith("/");
+        }
+      });
     } catch (error) {
+      if (error instanceof ArchiveExpansionError) {
+        throw error;
+      }
       throw new ArchiveExpansionError(`zip archive expansion failed: ${errorMessage(error)}`, "invalid-archive");
     }
 
@@ -40,12 +59,8 @@ export class ZipArchiveAdapter {
       .filter((internalPath) => !internalPath.endsWith("/"))
       .sort(compareCodeUnits);
 
-    if (internalPaths.length > options.maxEntries) {
-      throw new ArchiveExpansionError("archive entry count limit exceeded", "entry-count-limit");
-    }
-
     const children: ZipArchiveChild[] = [];
-    let expandedBytes = 0;
+    let verifiedExpandedBytes = 0;
 
     for (const internalPath of internalPaths) {
       assertSafeInternalPath(internalPath);
@@ -53,8 +68,8 @@ export class ZipArchiveAdapter {
       if (entryContent === undefined) {
         continue;
       }
-      expandedBytes += entryContent.byteLength;
-      if (expandedBytes > options.maxExpandedBytes) {
+      verifiedExpandedBytes += entryContent.byteLength;
+      if (verifiedExpandedBytes > options.maxExpandedBytes) {
         throw new ArchiveExpansionError("archive expansion byte limit exceeded", "expanded-byte-limit");
       }
       children.push({
@@ -71,6 +86,36 @@ export class ZipArchiveAdapter {
 }
 
 export const zipArchiveAdapterRef = fflateAdapter;
+
+interface ZipMetadataAccumulator {
+  entryCount: number;
+  expandedBytes: number;
+  recordEntry: () => void;
+  recordExpandedBytes: (bytes: number) => void;
+}
+
+function validateEntryMetadata(
+  file: UnzipFileInfo,
+  options: ZipArchiveExpandOptions,
+  accumulator: ZipMetadataAccumulator
+): void {
+  assertSafeInternalPath(file.name);
+
+  if (file.name.endsWith("/")) {
+    return;
+  }
+
+  if (accumulator.entryCount + 1 > options.maxEntries) {
+    throw new ArchiveExpansionError("archive entry count limit exceeded", "entry-count-limit");
+  }
+
+  if (accumulator.expandedBytes + file.originalSize > options.maxExpandedBytes) {
+    throw new ArchiveExpansionError("archive expansion byte limit exceeded", "expanded-byte-limit");
+  }
+
+  accumulator.recordEntry();
+  accumulator.recordExpandedBytes(file.originalSize);
+}
 
 function assertSafeInternalPath(internalPath: string): void {
   const segments = internalPath.split("/");

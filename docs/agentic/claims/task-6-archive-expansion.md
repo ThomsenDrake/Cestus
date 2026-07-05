@@ -37,3 +37,11 @@ Status: `ready-for-review`
   - Targeted retest result: passed, 2 test files and 9 tests.
   - Full verification retest command: `npm run verify`
   - Full verification retest result: passed; typecheck passed, 47 test files and 351 tests passed, UI build succeeded, and factory readiness passed.
+- Code-quality review fix:
+  - Findings: archive limits need pre-extraction checks; archive-child occurrence IDs need structured material; archive diagnostics need durable `diagnostic.recorded` events.
+  - Regression failure command: `npm test -- packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/local-filesystem.test.ts`
+  - Regression failure result: failed as expected; diagnostics were not durable, over-limit archive emitted one child occurrence, literal/child occurrence IDs collided, and archive adapter version was still a concrete patch string.
+  - Targeted retest command: `npm test -- packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/local-filesystem.test.ts`
+  - Targeted retest result: passed, 2 test files and 11 tests.
+  - Full verification retest command: `npm run verify`
+  - Full verification retest result: passed; typecheck passed, 47 test files and 353 tests passed, UI build succeeded, and factory readiness passed.

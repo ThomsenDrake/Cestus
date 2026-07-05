@@ -62,18 +62,18 @@ describe("zip archive expansion", () => {
         containerPath: "bundle.zip",
         containerHash,
         internalPath: "folder/a.txt",
-        archiveAdapter: { name: "fflate", version: "0.8.3" }
+        archiveAdapter: { name: "fflate", version: "0.8.x" }
       },
       {
         containerPath: "bundle.zip",
         containerHash,
         internalPath: "folder/b.txt",
-        archiveAdapter: { name: "fflate", version: "0.8.3" }
+        archiveAdapter: { name: "fflate", version: "0.8.x" }
       }
     ]);
   });
 
-  it("rejects unsafe zip internal paths before occurrence creation and still completes the scan", async () => {
+  it("rejects unsafe zip internal paths before occurrence creation and records a durable diagnostic", async () => {
     writeFileSync(join(root, "bad.zip"), zipSync({
       "../escape.txt": strToU8("nope")
     }));
@@ -94,10 +94,22 @@ describe("zip archive expansion", () => {
       category: "ingestion",
       message: expect.stringMatching(/unsafe archive path/)
     }));
-    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+    const events = await ledger.readAll();
+    expect(events.map((event) => event.type)).toEqual([
       "ingestion.scan.started",
+      "diagnostic.recorded",
       "ingestion.scan.completed"
     ]);
+    expect(events[1]?.payload).toMatchObject({
+      severity: "error",
+      category: "ingestion",
+      message: expect.stringMatching(/unsafe archive path/),
+      repairHint: {
+        contract: "ZipArchiveAdapter.expand",
+        violatedPath: "bad.zip",
+        allowedActions: ["skip archive", "rebuild archive without unsafe paths", "rerun dry-run"]
+      }
+    });
   });
 
   it("rejects Windows drive-root internal paths before occurrence creation", async () => {
@@ -123,8 +135,74 @@ describe("zip archive expansion", () => {
     }));
     expect((await ledger.readAll()).map((event) => event.type)).toEqual([
       "ingestion.scan.started",
+      "diagnostic.recorded",
       "ingestion.scan.completed"
     ]);
+  });
+
+  it("records no scanner child occurrences for over-limit archives", async () => {
+    writeFileSync(join(root, "too-large.zip"), zipSync({
+      "large.txt": strToU8("too large")
+    }));
+    const ledger = new InMemoryEventLedger();
+    const scanner = new LocalFilesystemScanner({
+      ledger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" },
+      archiveLimits: { maxEntries: 10, maxExpandedBytes: 3 }
+    });
+
+    const result = await scanner.scan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_zip_004",
+      rootDir: root
+    });
+
+    expect(result.occurrences).toHaveLength(0);
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      category: "ingestion",
+      message: expect.stringMatching(/archive expansion byte limit exceeded/)
+    }));
+    const events = await ledger.readAll();
+    expect(events.map((event) => event.type)).toEqual([
+      "ingestion.scan.started",
+      "diagnostic.recorded",
+      "ingestion.scan.completed"
+    ]);
+    expect(events[1]?.payload).toMatchObject({
+      severity: "error",
+      category: "ingestion",
+      message: "archive expansion byte limit exceeded",
+      repairHint: {
+        contract: "ZipArchiveAdapter.expand",
+        violatedPath: "too-large.zip",
+        allowedActions: ["reduce archive contents", "increase reviewed archive limits", "rerun dry-run"]
+      }
+    });
+  });
+
+  it("uses distinct occurrence IDs for archive children and literal matching filesystem paths", async () => {
+    const content = strToU8("same");
+    writeFileSync(join(root, "bundle.zip"), zipSync({
+      "folder/a.txt": content
+    }));
+    mkdirSync(join(root, "bundle.zip!", "folder"), { recursive: true });
+    writeFileSync(join(root, "bundle.zip!", "folder", "a.txt"), content);
+    const scanner = new LocalFilesystemScanner({
+      ledger: new InMemoryEventLedger(),
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+
+    const result = await scanner.scan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_zip_005",
+      rootDir: root
+    });
+
+    expect(result.occurrences.map((occurrence) => occurrence.sourcePath).sort()).toEqual([
+      "bundle.zip",
+      "bundle.zip!/folder/a.txt"
+    ]);
+    expect(new Set(result.occurrences.map((occurrence) => occurrence.occurrenceId)).size).toBe(2);
   });
 
   it("enforces configured zip entry count and expansion byte limits", () => {
