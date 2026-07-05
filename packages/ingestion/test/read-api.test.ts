@@ -55,4 +55,20 @@ describe("ingestion read API", () => {
       "diag_parse_warning"
     ]);
   });
+
+  it("returns fresh totals objects without mutating projection state or later DTOs", () => {
+    const projection = buildIngestionProjection(goldenIngestionLedgerEvents);
+    const firstDto = buildIngestionReviewDto(projection, "src_drive_001");
+
+    firstDto.totals.observedFiles = 999;
+
+    expect(projection.scans.get("scan_001")?.totals?.observedFiles).toBe(2);
+    expect(buildIngestionReviewDto(projection, "src_drive_001").totals.observedFiles).toBe(2);
+
+    const noScanProjection = buildIngestionProjection([goldenIngestionLedgerEvents[0]]);
+    const firstNoScanDto = buildIngestionReviewDto(noScanProjection, "src_drive_001");
+    firstNoScanDto.totals.observedFiles = 999;
+
+    expect(buildIngestionReviewDto(noScanProjection, "src_drive_001").totals.observedFiles).toBe(0);
+  });
 });

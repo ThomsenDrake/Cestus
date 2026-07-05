@@ -1,4 +1,10 @@
-import { validateKnowledgeEvent, type KnowledgeEvent, type KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import {
+  payloadSchemas,
+  validateKnowledgeEvent,
+  type KnowledgeEvent,
+  type KnowledgeEventOf,
+  type KnowledgeEventType
+} from "../../ontology/src/contracts.js";
 
 export type IngestionScanState = "started" | "completed";
 export type IngestionParseJobState = "queued" | "running" | "succeeded" | "failed";
@@ -80,6 +86,10 @@ export interface IngestionDiagnosticReference {
   occurredAt: string;
   sourceCollectionId?: string;
   scanBatchId?: string;
+  validationIssues?: Array<{
+    path: string;
+    message: string;
+  }>;
 }
 
 export interface IngestionProjection {
@@ -125,7 +135,18 @@ export function buildIngestionProjection(events: readonly unknown[]): IngestionP
     const eventResult = validateKnowledgeEvent(rawEvent);
 
     if (!eventResult.success) {
-      projectUnrecognizedEvent(projection, rawEvent, index, sourceCollectionIdByStreamId, scanIdByStreamId);
+      if (isKnownKnowledgeEventType(stringField(asRecord(rawEvent), "type"))) {
+        projectValidationFailedEvent(
+          projection,
+          rawEvent,
+          index,
+          eventResult.error.issues,
+          sourceCollectionIdByStreamId,
+          scanIdByStreamId
+        );
+      } else {
+        projectUnrecognizedEvent(projection, rawEvent, index, sourceCollectionIdByStreamId, scanIdByStreamId);
+      }
       continue;
     }
 
@@ -312,6 +333,10 @@ function projectParseCompleted(projection: IngestionProjection, event: Knowledge
   job.outputHash = event.payload.outputHash;
   job.outputMediaType = event.payload.outputMediaType;
   job.completedAt = event.payload.completedAt;
+  delete job.failedEventId;
+  delete job.failedAt;
+  delete job.message;
+  delete job.retryable;
 }
 
 function projectParseFailed(projection: IngestionProjection, event: KnowledgeEventOf<"ingestion.parse.failed">): void {
@@ -322,6 +347,10 @@ function projectParseFailed(projection: IngestionProjection, event: KnowledgeEve
   job.failedAt = event.payload.failedAt;
   job.message = event.payload.message;
   job.retryable = event.payload.retryable;
+  delete job.completedEventId;
+  delete job.completedAt;
+  delete job.outputHash;
+  delete job.outputMediaType;
 }
 
 function projectProviderApproved(
@@ -390,6 +419,46 @@ function projectUnrecognizedEvent(
     message: eventType === undefined ? "Unrecognized event shape" : `Unrecognized event type ${eventType}`,
     streamId,
     occurredAt: stringField(context, "occurredAt") ?? "unknown",
+    ...(sourceCollectionId === undefined ? {} : { sourceCollectionId }),
+    ...(scanBatchId === undefined ? {} : { scanBatchId })
+  };
+
+  addDiagnosticReference(projection, diagnostic);
+}
+
+function projectValidationFailedEvent(
+  projection: IngestionProjection,
+  event: unknown,
+  index: number,
+  issues: readonly { path: readonly (string | number | symbol)[]; message: string }[],
+  sourceCollectionIdByStreamId: ReadonlyMap<string, string>,
+  scanIdByStreamId: ReadonlyMap<string, string>
+): void {
+  const eventRecord = asRecord(event);
+  const eventId = stringField(eventRecord, "id") ?? `invalid_event_${index + 1}`;
+  const streamId = stringField(eventRecord, "streamId") ?? `invalid_stream_${index + 1}`;
+  const eventType = stringField(eventRecord, "type") as KnowledgeEventType;
+  const context = asRecord(eventRecord?.context);
+  const payload = asRecord(eventRecord?.payload);
+  const scanBatchId = stringField(payload, "scanBatchId")
+    ?? scanIdByStreamId.get(streamId)
+    ?? inferScanBatchIdFromStreamId(streamId);
+  const sourceCollectionId = stringField(payload, "sourceCollectionId")
+    ?? sourceCollectionIdByStreamId.get(streamId)
+    ?? inferSourceCollectionIdFromStreamId(streamId)
+    ?? (scanBatchId === undefined ? undefined : projection.scans.get(scanBatchId)?.sourceCollectionId);
+  const diagnostic: IngestionDiagnosticReference = {
+    diagnosticId: `diag_projection_validation_${stableDiagnosticToken(eventId, index)}`,
+    eventId,
+    severity: "error",
+    category: "validation",
+    message: `Validation failed for event type ${eventType}`,
+    streamId,
+    occurredAt: stringField(context, "occurredAt") ?? "unknown",
+    validationIssues: issues.map((issue) => ({
+      path: diagnosticIssuePath(issue.path),
+      message: issue.message
+    })),
     ...(sourceCollectionId === undefined ? {} : { sourceCollectionId }),
     ...(scanBatchId === undefined ? {} : { scanBatchId })
   };
@@ -560,7 +629,19 @@ function stringField(record: Record<string, unknown> | undefined, field: string)
   return typeof value === "string" ? value : undefined;
 }
 
+function isKnownKnowledgeEventType(value: string | undefined): value is KnowledgeEventType {
+  return value !== undefined && Object.hasOwn(payloadSchemas, value);
+}
+
 function stableDiagnosticToken(eventId: string, index: number): string {
   const safeToken = eventId.replaceAll(/[^a-zA-Z0-9_-]/g, "_");
   return safeToken.length === 0 ? `event_${index + 1}` : safeToken;
+}
+
+function diagnosticIssuePath(path: readonly (string | number | symbol)[]): string {
+  if (path.length === 0) {
+    return "$";
+  }
+
+  return path.map(String).join(".");
 }
