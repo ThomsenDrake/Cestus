@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/durable-local-runtime-design`
 Worktree path: `/home/drake/.codex/worktrees/ea09/Cestus`
 Claimed at UTC: `2026-07-05T14:27:29Z`
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -21,15 +21,17 @@ Status: `in-progress`
 
 ## Evidence
 
-- Red command: pending
-- Red result: pending
-- Green command: pending
-- Green result: pending
-- Smoke config command: pending
-- Smoke seed command: pending
-- Full verification: pending
+- Red command: `npm test -- packages/local-runtime/test/static-files.test.ts packages/local-runtime/test/cli.test.ts`
+- Red result: failed as expected; Vitest could not find `../src/cli.js` from `packages/local-runtime/test/cli.test.ts` and could not find `../src/static-files.js` from `packages/local-runtime/test/static-files.test.ts`.
+- Green command: `npm test -- packages/local-runtime/test/static-files.test.ts packages/local-runtime/test/cli.test.ts`
+- Green result: passed; 2 test files and 6 tests passed.
+- Smoke config command: `npm run local:runtime:config`
+- Smoke config result: passed; printed resolved repo-local config with no auth token value.
+- Smoke seed command: `npm run prr:seed-local`
+- Smoke seed result: passed; printed JSON with `ok: true` and `seed.appendedCount: 28`.
+- Full verification: `npm run verify` passed; typecheck passed, 47 test files and 368 tests passed, Vite build succeeded, and factory readiness passed.
 
 ## Review
 
-- Review status: pending
+- Review status: ready-for-review
 - Concerns: none recorded
