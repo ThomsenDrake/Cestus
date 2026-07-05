@@ -3,3 +3,4 @@ export * from "./types.js";
 export * from "./workspace.js";
 export * from "./source-registry.js";
 export * from "./local-filesystem.js";
+export * from "./archive-adapter.js";
