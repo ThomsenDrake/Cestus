@@ -9,6 +9,8 @@ describe("Requests data boundary", () => {
   const ledgerBackedPlanPath = "docs/superpowers/plans/2026-07-03-ledger-backed-prr-workspace-implementation.md";
   const requestModalSpecPath = "docs/superpowers/specs/2026-07-04-requests-detail-modal-design.md";
   const requestModalPlanPath = "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md";
+  const durableRuntimeSpecPath = "docs/superpowers/specs/2026-07-05-durable-local-prr-runtime-design.md";
+  const durableRuntimePlanPath = "docs/superpowers/plans/2026-07-05-durable-local-prr-runtime-implementation.md";
   const productUiBoundaryFiles = listSourceFiles("packages/ui/src");
   const forbiddenProductUiImportPatterns = [
     /(?:^|\/)request-fixtures(?:\.js)?$/,
@@ -72,6 +74,7 @@ describe("Requests data boundary", () => {
 
     expect(requiredFiles).toEqual(expect.arrayContaining([ledgerBackedSpecPath, ledgerBackedPlanPath]));
     expect(requiredFiles).toEqual(expect.arrayContaining([requestModalSpecPath, requestModalPlanPath]));
+    expect(requiredFiles).toEqual(expect.arrayContaining([durableRuntimeSpecPath, durableRuntimePlanPath]));
   });
 });
 
