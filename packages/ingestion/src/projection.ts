@@ -1,4 +1,4 @@
-import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import { validateKnowledgeEvent, type KnowledgeEvent, type KnowledgeEventOf } from "../../ontology/src/contracts.js";
 
 export type IngestionScanState = "started" | "completed";
 export type IngestionParseJobState = "queued" | "running" | "succeeded" | "failed";
@@ -100,7 +100,7 @@ export interface IngestionProjection {
   diagnosticsBySourceCollectionId: Map<string, string[]>;
 }
 
-export function buildIngestionProjection(events: readonly KnowledgeEvent[]): IngestionProjection {
+export function buildIngestionProjection(events: readonly unknown[]): IngestionProjection {
   const projection: IngestionProjection = {
     sources: new Map(),
     scans: new Map(),
@@ -119,47 +119,70 @@ export function buildIngestionProjection(events: readonly KnowledgeEvent[]): Ing
     diagnosticsBySourceCollectionId: new Map()
   };
   const scanIdByStreamId = new Map<string, string>();
+  const sourceCollectionIdByStreamId = new Map<string, string>();
 
-  for (const event of events) {
+  for (const [index, rawEvent] of events.entries()) {
+    const eventResult = validateKnowledgeEvent(rawEvent);
+
+    if (!eventResult.success) {
+      projectUnrecognizedEvent(projection, rawEvent, index, sourceCollectionIdByStreamId, scanIdByStreamId);
+      continue;
+    }
+
+    const event = eventResult.data;
+
     switch (event.type) {
       case "ingestion.source.registered":
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectSourceRegistered(projection, event);
         break;
       case "ingestion.scan.started":
         scanIdByStreamId.set(event.streamId, event.payload.scanBatchId);
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectScanStarted(projection, event);
         break;
       case "ingestion.occurrence.observed":
         scanIdByStreamId.set(event.streamId, event.payload.scanBatchId);
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectOccurrenceObserved(projection, event);
         break;
       case "ingestion.scan.completed":
         scanIdByStreamId.set(event.streamId, event.payload.scanBatchId);
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectScanCompleted(projection, event);
         break;
       case "ingestion.import.approved":
+        scanIdByStreamId.set(event.streamId, event.payload.scanBatchId);
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectImportApproved(projection, event);
         break;
       case "ingestion.import.completed":
+        scanIdByStreamId.set(event.streamId, event.payload.scanBatchId);
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectImportCompleted(projection, event);
         break;
       case "ingestion.evidence.linked":
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectEvidenceLinked(projection, event);
         break;
       case "ingestion.parse.job.created":
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectParseJobCreated(projection, event);
         break;
       case "ingestion.parse.completed":
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectParseCompleted(projection, event);
         break;
       case "ingestion.parse.failed":
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectParseFailed(projection, event);
         break;
       case "ingestion.provider.approved":
+        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
         projectProviderApproved(projection, event);
         break;
       case "diagnostic.recorded":
-        projectDiagnostic(projection, event, scanIdByStreamId);
+        projectDiagnostic(projection, event, sourceCollectionIdByStreamId, scanIdByStreamId);
         break;
       default:
         break;
@@ -316,12 +339,13 @@ function projectProviderApproved(
 function projectDiagnostic(
   projection: IngestionProjection,
   event: KnowledgeEventOf<"diagnostic.recorded">,
+  sourceCollectionIdByStreamId: ReadonlyMap<string, string>,
   scanIdByStreamId: ReadonlyMap<string, string>
 ): void {
-  const scanBatchId = scanIdByStreamId.get(event.streamId);
-  const sourceCollectionId = scanBatchId === undefined
-    ? undefined
-    : projection.scans.get(scanBatchId)?.sourceCollectionId;
+  const scanBatchId = scanIdByStreamId.get(event.streamId) ?? inferScanBatchIdFromStreamId(event.streamId);
+  const sourceCollectionId = sourceCollectionIdByStreamId.get(event.streamId)
+    ?? inferSourceCollectionIdFromStreamId(event.streamId)
+    ?? (scanBatchId === undefined ? undefined : projection.scans.get(scanBatchId)?.sourceCollectionId);
   const diagnostic: IngestionDiagnosticReference = {
     diagnosticId: event.payload.diagnosticId,
     eventId: event.id,
@@ -334,17 +358,60 @@ function projectDiagnostic(
     ...(scanBatchId === undefined ? {} : { scanBatchId })
   };
 
-  projection.diagnostics.set(event.payload.diagnosticId, diagnostic);
+  addDiagnosticReference(projection, diagnostic);
+}
 
-  if (scanBatchId !== undefined) {
-    appendUniqueToArray(upsertScan(projection, sourceCollectionId ?? "src_unknown", scanBatchId).diagnosticIds, event.payload.diagnosticId);
+function projectUnrecognizedEvent(
+  projection: IngestionProjection,
+  event: unknown,
+  index: number,
+  sourceCollectionIdByStreamId: ReadonlyMap<string, string>,
+  scanIdByStreamId: ReadonlyMap<string, string>
+): void {
+  const eventRecord = asRecord(event);
+  const eventId = stringField(eventRecord, "id") ?? `unknown_event_${index + 1}`;
+  const streamId = stringField(eventRecord, "streamId") ?? `unknown_stream_${index + 1}`;
+  const eventType = stringField(eventRecord, "type");
+  const context = asRecord(eventRecord?.context);
+  const payload = asRecord(eventRecord?.payload);
+  const scanBatchId = stringField(payload, "scanBatchId")
+    ?? scanIdByStreamId.get(streamId)
+    ?? inferScanBatchIdFromStreamId(streamId);
+  const sourceCollectionId = stringField(payload, "sourceCollectionId")
+    ?? sourceCollectionIdByStreamId.get(streamId)
+    ?? inferSourceCollectionIdFromStreamId(streamId)
+    ?? (scanBatchId === undefined ? undefined : projection.scans.get(scanBatchId)?.sourceCollectionId);
+  const diagnosticId = `diag_projection_unrecognized_${stableDiagnosticToken(eventId, index)}`;
+  const diagnostic: IngestionDiagnosticReference = {
+    diagnosticId,
+    eventId,
+    severity: "warning",
+    category: "projection",
+    message: eventType === undefined ? "Unrecognized event shape" : `Unrecognized event type ${eventType}`,
+    streamId,
+    occurredAt: stringField(context, "occurredAt") ?? "unknown",
+    ...(sourceCollectionId === undefined ? {} : { sourceCollectionId }),
+    ...(scanBatchId === undefined ? {} : { scanBatchId })
+  };
+
+  addDiagnosticReference(projection, diagnostic);
+}
+
+function addDiagnosticReference(projection: IngestionProjection, diagnostic: IngestionDiagnosticReference): void {
+  projection.diagnostics.set(diagnostic.diagnosticId, diagnostic);
+
+  if (diagnostic.scanBatchId !== undefined && diagnostic.sourceCollectionId !== undefined) {
+    appendUniqueToArray(
+      upsertScan(projection, diagnostic.sourceCollectionId, diagnostic.scanBatchId).diagnosticIds,
+      diagnostic.diagnosticId
+    );
   }
 
-  if (sourceCollectionId !== undefined) {
-    appendUnique(projection.diagnosticsBySourceCollectionId, sourceCollectionId, event.payload.diagnosticId);
-    const source = projection.sources.get(sourceCollectionId);
+  if (diagnostic.sourceCollectionId !== undefined) {
+    appendUnique(projection.diagnosticsBySourceCollectionId, diagnostic.sourceCollectionId, diagnostic.diagnosticId);
+    const source = projection.sources.get(diagnostic.sourceCollectionId);
     if (source !== undefined) {
-      appendUniqueToArray(source.diagnosticIds, event.payload.diagnosticId);
+      appendUniqueToArray(source.diagnosticIds, diagnostic.diagnosticId);
     }
   }
 }
@@ -453,4 +520,47 @@ function appendUniqueToArray(values: string[], value: string): void {
 
 function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function inferSourceCollectionIdFromStreamId(streamId: string): string | undefined {
+  const sourceStream = /^ingestion_source_(src_[a-zA-Z0-9_-]+)$/.exec(streamId);
+  if (sourceStream?.[1] !== undefined) {
+    return sourceStream[1];
+  }
+
+  return sourceAndScanFromStreamId(streamId)?.sourceCollectionId;
+}
+
+function inferScanBatchIdFromStreamId(streamId: string): string | undefined {
+  return sourceAndScanFromStreamId(streamId)?.scanBatchId;
+}
+
+function sourceAndScanFromStreamId(streamId: string): {
+  sourceCollectionId: string;
+  scanBatchId: string;
+} | undefined {
+  const matched = /^ingestion_(?:import|evidence_link)_(src_[a-zA-Z0-9_-]+)_(scan_[a-zA-Z0-9_-]+)_(imp_[a-zA-Z0-9_-]+)(?:_[a-f0-9]{64})?$/.exec(streamId);
+
+  if (matched?.[1] === undefined || matched[2] === undefined) {
+    return undefined;
+  }
+
+  return {
+    sourceCollectionId: matched[1],
+    scanBatchId: matched[2]
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null ? value as Record<string, unknown> : undefined;
+}
+
+function stringField(record: Record<string, unknown> | undefined, field: string): string | undefined {
+  const value = record?.[field];
+  return typeof value === "string" ? value : undefined;
+}
+
+function stableDiagnosticToken(eventId: string, index: number): string {
+  const safeToken = eventId.replaceAll(/[^a-zA-Z0-9_-]/g, "_");
+  return safeToken.length === 0 ? `event_${index + 1}` : safeToken;
 }

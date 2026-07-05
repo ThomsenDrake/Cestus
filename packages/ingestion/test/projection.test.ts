@@ -17,4 +17,33 @@ describe("buildIngestionProjection", () => {
     expect(projection.duplicatesByHash.get(fixedHash)).toEqual(["occ_001", "occ_002"]);
     expect(projection.evidenceByHash.get(fixedHash)).toBe("ev_ing_001");
   });
+
+  it("quarantines unrecognized runtime events as projection diagnostics", () => {
+    const projection = buildIngestionProjection([
+      ...goldenIngestionLedgerEvents,
+      {
+        id: "evt_ing_future_event",
+        type: "ingestion.future.created",
+        streamId: "ingestion_import_src_drive_001_scan_001_imp_001",
+        context: {
+          occurredAt: "2026-07-05T12:06:00.000Z"
+        },
+        payload: {
+          sourceCollectionId: "src_drive_001"
+        }
+      }
+    ]);
+
+    expect(projection.diagnostics.get("diag_projection_unrecognized_evt_ing_future_event")).toMatchObject({
+      diagnosticId: "diag_projection_unrecognized_evt_ing_future_event",
+      eventId: "evt_ing_future_event",
+      severity: "warning",
+      category: "projection",
+      sourceCollectionId: "src_drive_001",
+      message: "Unrecognized event type ingestion.future.created"
+    });
+    expect(projection.diagnosticsBySourceCollectionId.get("src_drive_001")).toContain(
+      "diag_projection_unrecognized_evt_ing_future_event"
+    );
+  });
 });
