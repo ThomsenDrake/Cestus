@@ -26,3 +26,6 @@ Command evidence:
 - Spec-review fix red: `npm test -- packages/ontology/test/contracts.test.ts` failed with 2 tests proving `credential_risk` rationale text was rejected and `incident.repair.recorded` rejected required incident fields.
 - Spec-review fix green: `npm test -- packages/ontology/test/contracts.test.ts` passed with 1 test file and 43 tests passing.
 - Spec-review fix verify: `npm run verify` passed with typecheck passed, 42 test files and 341 tests passing, UI build succeeded, and factory-readiness passed.
+- Code-quality fix red: `npm test -- packages/ontology/test/contracts.test.ts` failed with 12 tests proving diagnostic text accepted secret-looking values and non-human context actors were accepted for human-gated governance actions.
+- Code-quality fix green: `npm test -- packages/ontology/test/contracts.test.ts` passed with 1 test file and 63 tests passing.
+- Code-quality fix verify: `npm run verify` passed with typecheck passed, 42 test files and 361 tests passing, UI build succeeded, and factory-readiness passed.

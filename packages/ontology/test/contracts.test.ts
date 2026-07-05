@@ -181,6 +181,77 @@ describe("event contracts", () => {
     }
   });
 
+  it.each([
+    {
+      field: "message",
+      payload: {
+        diagnosticId: "diag_secret_message",
+        severity: "error",
+        category: "security",
+        message: "Failed because access_token=abc123 was present.",
+        repairHint: {
+          contract: "governance payload",
+          violatedPath: "payload.rationale",
+          allowedActions: ["Redact the secret-bearing value."]
+        }
+      }
+    },
+    {
+      field: "repairHint.contract",
+      payload: {
+        diagnosticId: "diag_secret_contract",
+        severity: "error",
+        category: "governance",
+        message: "Governance payload rejected.",
+        repairHint: {
+          contract: "access_token=abc123",
+          violatedPath: "payload.rationale",
+          allowedActions: ["Redact the secret-bearing value."]
+        }
+      }
+    },
+    {
+      field: "repairHint.violatedPath",
+      payload: {
+        diagnosticId: "diag_secret_path",
+        severity: "warning",
+        category: "export",
+        message: "Export blocked.",
+        repairHint: {
+          contract: "governance payload",
+          violatedPath: "payload.access_token=abc123",
+          allowedActions: ["Redact the secret-bearing value."]
+        }
+      }
+    },
+    {
+      field: "repairHint.allowedActions.0",
+      payload: {
+        diagnosticId: "diag_secret_action",
+        severity: "warning",
+        category: "incident",
+        message: "Incident repair needs review.",
+        repairHint: {
+          contract: "governance payload",
+          violatedPath: "payload.action",
+          allowedActions: ["Remove access_token=abc123 from the payload."]
+        }
+      }
+    }
+  ])("rejects secret-looking diagnostic text in $field", ({ payload }) => {
+    const result = validateKnowledgeEvent({
+      id: "evt_diagnostic_secret_text",
+      type: "diagnostic.recorded",
+      version: 1,
+      streamId: "diagnostic_diag_secret_text",
+      sequence: 1,
+      context,
+      payload
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("exposes appendable event typing without losing payload correlation", () => {
     const appendableEvidenceEvent = {
       type: "evidence.ingested",
@@ -212,6 +283,10 @@ describe("governance event contracts", () => {
 
   const contentHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   const policy = { policyId: "gov_policy_default", version: "0.1.0" };
+  const nonHumanContext = {
+    ...baseContext,
+    actor: { id: "actor_ai_classifier", kind: "extractor" as const, label: "Governance classifier" }
+  };
 
   it("validates an AI governance classification with independent tags", () => {
     const result = validateKnowledgeEvent({
@@ -496,6 +571,243 @@ describe("governance event contracts", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it.each([
+    {
+      type: "governance.policy.installed",
+      payload: {
+        policyId: "gov_policy_default",
+        version: "0.1.0",
+        installedBy: "actor_investigator",
+        confidenceThreshold: 0.9,
+        tags: [
+          {
+            tag: "public_record",
+            description: "Evidence obtained from public records or public proceedings.",
+            defaultExportBehavior: "exclude-unless-opted-in",
+            unlocksNormalWorkflowsAtHighConfidence: true
+          },
+          {
+            tag: "public_safe",
+            description: "Evidence safe for default export under the active policy.",
+            defaultExportBehavior: "include-by-default",
+            unlocksNormalWorkflowsAtHighConfidence: true
+          }
+        ]
+      }
+    },
+    {
+      type: "evidence.redaction.applied",
+      payload: {
+        evidenceId: "ev_source_001",
+        redactionId: "redaction_source_001",
+        appliedBy: "actor_investigator",
+        rationale: "Removed private phone numbers from the shared view.",
+        redactedContentHash: contentHash
+      }
+    },
+    {
+      type: "evidence.quarantined",
+      payload: {
+        evidenceId: "ev_source_001",
+        quarantineId: "quarantine_source_001",
+        quarantinedBy: "actor_investigator",
+        reason: "Needs source-protection review before workflow use.",
+        lockLevel: "workflow"
+      }
+    },
+    {
+      type: "evidence.tombstoned",
+      payload: {
+        evidenceId: "ev_source_001",
+        tombstoneId: "tombstone_source_001",
+        tombstonedBy: "actor_investigator",
+        reason: "Duplicate evidence superseded by a cleaner ingested copy."
+      }
+    },
+    {
+      type: "network.exposure.disabled",
+      payload: {
+        exposureId: "netexp_local_001",
+        disabledBy: "actor_investigator",
+        disabledAt: "2026-07-05T12:45:00.000Z",
+        reason: "Tailnet review session ended."
+      }
+    },
+    {
+      type: "device.session.revoked",
+      payload: {
+        sessionId: "devsess_local_phone",
+        revokedBy: "actor_investigator",
+        revokedAt: "2026-07-05T12:50:00.000Z",
+        reason: "Temporary review device no longer needs access."
+      }
+    },
+    {
+      type: "report.generated",
+      payload: {
+        reportId: "report_private_review_001",
+        generatedBy: "actor_investigator",
+        generatedAt: "2026-07-05T13:20:00.000Z",
+        policy,
+        includedEvidenceIds: ["ev_source_001"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [
+          {
+            tag: "legal_risk",
+            approvedBy: "actor_investigator",
+            rationale: "Included for private counsel review."
+          }
+        ],
+        defaultPublicSafeOnly: false
+      }
+    },
+    {
+      type: "incident.recorded",
+      payload: {
+        incidentId: "incident_network_001",
+        severity: "warning",
+        category: "network",
+        recordedBy: "actor_investigator",
+        summary: "Unexpected tailnet exposure state required review.",
+        relatedEvidenceIds: ["ev_source_001"],
+        relatedEventIds: ["evt_network_exposure_001"]
+      }
+    }
+  ])("validates a governance $type example", ({ type, payload }) => {
+    const result = validateKnowledgeEvent({
+      id: `evt_${type.replaceAll(".", "_")}_coverage_001`,
+      type,
+      version: 1,
+      streamId: `coverage_${type.replaceAll(".", "_")}`,
+      sequence: 1,
+      context: baseContext,
+      payload
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    {
+      type: "network.exposure.enabled",
+      payload: {
+        exposureId: "netexp_local_002",
+        mode: "tailnet",
+        bindScope: "tailnet",
+        enabledBy: "actor_ai_classifier",
+        enabledAt: "2026-07-05T12:00:00.000Z",
+        visibleWarning: true,
+        policy
+      }
+    },
+    {
+      type: "device.session.approved",
+      payload: {
+        sessionId: "devsess_local_tablet",
+        deviceLabel: "Review tablet",
+        approvedBy: "actor_ai_classifier",
+        approvedAt: "2026-07-05T12:05:00.000Z",
+        exposureId: "netexp_local_001",
+        capabilities: ["read"],
+        policy
+      }
+    },
+    {
+      type: "evidence.redaction.applied",
+      payload: {
+        evidenceId: "ev_source_001",
+        redactionId: "redaction_source_002",
+        appliedBy: "actor_ai_classifier",
+        rationale: "AI attempted to decide redaction.",
+        redactedContentHash: contentHash
+      }
+    },
+    {
+      type: "evidence.quarantined",
+      payload: {
+        evidenceId: "ev_source_001",
+        quarantineId: "quarantine_source_002",
+        quarantinedBy: "actor_ai_classifier",
+        reason: "AI attempted to lock workflow use.",
+        lockLevel: "all"
+      }
+    },
+    {
+      type: "evidence.tombstoned",
+      payload: {
+        evidenceId: "ev_source_001",
+        tombstoneId: "tombstone_source_002",
+        tombstonedBy: "actor_ai_classifier",
+        reason: "AI attempted a tombstone decision."
+      }
+    },
+    {
+      type: "export.generated",
+      payload: {
+        exportId: "exp_sensitive_ai_001",
+        generatedBy: "actor_ai_classifier",
+        generatedAt: "2026-07-05T12:30:00.000Z",
+        policy,
+        includedEvidenceIds: ["ev_source_001"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [
+          {
+            tag: "contains_pii",
+            approvedBy: "actor_ai_classifier",
+            rationale: "AI attempted to approve sensitive export."
+          }
+        ],
+        defaultPublicSafeOnly: false
+      }
+    },
+    {
+      type: "report.generated",
+      payload: {
+        reportId: "report_sensitive_ai_001",
+        generatedBy: "actor_ai_classifier",
+        generatedAt: "2026-07-05T12:35:00.000Z",
+        policy,
+        includedEvidenceIds: ["ev_source_001"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [
+          {
+            tag: "source_identity",
+            approvedBy: "actor_ai_classifier",
+            rationale: "AI attempted to approve source-protected report content."
+          }
+        ],
+        defaultPublicSafeOnly: false
+      }
+    },
+    {
+      type: "incident.repair.recorded",
+      payload: {
+        incidentId: "incident_export_002",
+        repairId: "repair_export_002",
+        severity: "warning",
+        category: "export",
+        repairedBy: "actor_ai_classifier",
+        repairedAt: "2026-07-05T13:00:00.000Z",
+        action: "AI attempted to close the incident.",
+        relatedEvidenceIds: ["ev_source_001"],
+        relatedEventIds: ["evt_export_generated_001"],
+        closesIncident: true
+      }
+    }
+  ])("rejects non-human context actor for human-gated $type", ({ type, payload }) => {
+    const result = validateKnowledgeEvent({
+      id: `evt_${type.replaceAll(".", "_")}_non_human_001`,
+      type,
+      version: 1,
+      streamId: `non_human_${type.replaceAll(".", "_")}`,
+      sequence: 1,
+      context: nonHumanContext,
+      payload
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 
