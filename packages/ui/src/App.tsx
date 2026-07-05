@@ -64,6 +64,7 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
   const [requestsReloadKey, setRequestsReloadKey] = useState(0);
   const [requestBuilderSubmitting, setRequestBuilderSubmitting] = useState(false);
   const [requestBuilderDiagnostic, setRequestBuilderDiagnostic] = useState<string | undefined>();
+  const [pendingRequestBuilderOpen, setPendingRequestBuilderOpen] = useState(false);
   const model = useMemo(
     () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds }),
     [reviewedItemIds]
@@ -125,6 +126,16 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
     };
   }, [loadedRequestsAdapter, requestsActive, requestsAdapter, requestsReloadKey, requestsWorkspace]);
 
+  useEffect(() => {
+    if (!pendingRequestBuilderOpen || !requestsActive || requestsWorkspace === undefined || requestsLoadState !== "loaded") {
+      return;
+    }
+
+    setRequestBuilderDiagnostic(undefined);
+    setRequestBuilderOpen(true);
+    setPendingRequestBuilderOpen(false);
+  }, [pendingRequestBuilderOpen, requestsActive, requestsLoadState, requestsWorkspace]);
+
   const commandMain = (
     <CommandDashboard
       model={model}
@@ -151,6 +162,9 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
       setSelectedPrrRequest(undefined);
       setSelectedPrrRequestId(undefined);
       setRequestDetailModalOpen(false);
+      setRequestBuilderOpen(false);
+      setRequestBuilderDiagnostic(undefined);
+      setPendingRequestBuilderOpen(false);
       setRequestsReloadKey((current) => current + 1);
     }
   });
@@ -168,6 +182,9 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
       setActiveModuleId(moduleId);
       if (moduleId !== "requests") {
         setRequestDetailModalOpen(false);
+        setRequestBuilderOpen(false);
+        setRequestBuilderDiagnostic(undefined);
+        setPendingRequestBuilderOpen(false);
       }
     }
   }
@@ -176,6 +193,15 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
     if (requestsActive && requestsWorkspace !== undefined && requestsLoadState === "loaded") {
       setRequestBuilderDiagnostic(undefined);
       setRequestBuilderOpen(true);
+      return;
+    }
+
+    if (ingestionActive) {
+      setRequestBuilderDiagnostic(undefined);
+      setRequestBuilderOpen(false);
+      setRequestDetailModalOpen(false);
+      setPendingRequestBuilderOpen(true);
+      setActiveModuleId("requests");
     }
   }
 
@@ -213,7 +239,6 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
       : "Search requests, evidence, agencies, and assertions";
   const mainId = requestsActive ? "requests" : ingestionActive ? "ingestion" : "command";
   const main = requestsActive ? requestsMain : ingestionActive ? ingestionMain : commandMain;
-  // Source-contract note for ui-picker: mainLabel={requestsActive ? "Requests workspace" : "Command workspace"}
   const decisionRail = requestsActive ? (
     <RequestWorkspaceIntelligenceRail
       workspace={requestsWorkspace}

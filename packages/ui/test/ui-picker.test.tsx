@@ -31,7 +31,7 @@ describe("ui picker cleanup", () => {
     expect(source).not.toContain("data-uidotsh-option");
   });
 
-  it("keeps Requests as a first-class shell workspace", () => {
+  it("keeps Requests and Ingestion as first-class shell workspaces", () => {
     const appSource = readFileSync("packages/ui/src/App.tsx", "utf8");
     const navSource = readFileSync("packages/ui/src/workspace/workspace-nav.ts", "utf8");
     const shellSource = [
@@ -42,10 +42,16 @@ describe("ui picker cleanup", () => {
     ].join("\n");
 
     expect(navSource).toContain('{ id: "requests", label: "Requests", href: "#requests", preview: false }');
+    expect(navSource).toContain('{ id: "ingestion", label: "Ingestion", href: "#ingestion", preview: false }');
     expect(appSource).toContain('implementedModuleIds = new Set(["command", "requests"])');
-    expect(appSource).toContain('requestsActive ? "Requests" : "Command"');
+    expect(appSource).toContain('implementedModuleIds.add("ingestion")');
+    expect(appSource).toContain('ingestionActive ? "Ingestion" : commandOrRequestsModeLabel');
     expect(appSource).toContain("<RequestWorkspace");
-    expect(shellSource).toContain('mainLabel={requestsActive ? "Requests workspace" : "Command workspace"}');
+    expect(appSource).toContain("<IngestionWorkspace");
+    expect(shellSource).toContain(
+      'mainLabel={ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}'
+    );
     expect(shellSource).not.toMatch(/Requests\s+Preview/);
+    expect(shellSource).not.toMatch(/Ingestion\s+Preview/);
   });
 });
