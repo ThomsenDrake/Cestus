@@ -2,12 +2,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveLocalRuntimeConfig } from "../src/config.js";
+import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "../src/config.js";
 import {
   createLocalRuntimeHttpHandler,
   type CreateLocalRuntimeHttpHandlerInput,
   type LocalRuntimeHttpHandler
 } from "../src/http-handler.js";
+import { createSqlitePrrRuntime } from "../src/runtime-factory.js";
 
 const actor = {
   id: "actor_auth_seed_test",
@@ -73,6 +74,13 @@ describe("local runtime auth and explicit seed", () => {
     const rejected = await handler({ method: "GET", url: "/api/requests/workspace" });
     expect(rejected.status).toBe(401);
 
+    const wrongToken = await handler({
+      method: "GET",
+      url: "/api/requests/workspace",
+      headers: { authorization: "Bearer wrong-token" }
+    });
+    expect(wrongToken.status).toBe(401);
+
     const accepted = await handler({
       method: "GET",
       url: "/api/requests/workspace",
@@ -132,8 +140,9 @@ describe("local runtime auth and explicit seed", () => {
   });
 
   it("keeps the seed endpoint disabled until explicitly configured", async () => {
+    const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
     const handler = testHandler({
-      config: resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }),
+      config,
       actor,
       now: fixedNow
     });
@@ -145,6 +154,8 @@ describe("local runtime auth and explicit seed", () => {
 
     const workspace = await handler({ method: "GET", url: "/api/requests/workspace" });
     expect(JSON.parse(workspace.body).cards).toEqual([]);
+    closeTestHandler(handler);
+    await expect(rawEventCount(config)).resolves.toBe(0);
   });
 
   it("requires bearer auth for non-loopback dev routes", async () => {
@@ -234,11 +245,13 @@ describe("local runtime auth and explicit seed", () => {
   });
 
   it("does not expose destructive ledger routes", async () => {
+    const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
     const handler = testHandler({
-      config: resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }),
+      config,
       actor,
       now: fixedNow
     });
+    const beforeCount = await rawEventCount(config);
 
     for (const url of [
       "/api/dev/reset",
@@ -255,6 +268,8 @@ describe("local runtime auth and explicit seed", () => {
 
     const workspace = await handler({ method: "GET", url: "/api/requests/workspace" });
     expect(JSON.parse(workspace.body).cards).toEqual([]);
+    closeTestHandler(handler);
+    await expect(rawEventCount(config)).resolves.toBe(beforeCount);
   });
 });
 
@@ -268,4 +283,21 @@ function testHandler(input: CreateLocalRuntimeHttpHandlerInput): LocalRuntimeHtt
   const handler = createLocalRuntimeHttpHandler(input);
   handlers.push(handler);
   return handler;
+}
+
+function closeTestHandler(handler: LocalRuntimeHttpHandler): void {
+  const index = handlers.indexOf(handler);
+  if (index >= 0) {
+    handlers.splice(index, 1);
+  }
+  handler.close();
+}
+
+async function rawEventCount(config: ResolvedLocalRuntimeConfig): Promise<number> {
+  const handle = createSqlitePrrRuntime({ config, actor, now: fixedNow });
+  try {
+    return (await handle.runtime.readEvents()).length;
+  } finally {
+    handle.close();
+  }
 }

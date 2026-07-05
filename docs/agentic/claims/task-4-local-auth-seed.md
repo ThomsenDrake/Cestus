@@ -46,3 +46,12 @@ Status: `ready-for-review`
   - Result: passed, `2` test files passed, `16` tests passed.
 - Full verification: `npm run verify`
   - Result: passed after second fix: `typecheck passed`; `Test Files  45 passed (45)`, `Tests  362 passed (362)`; `tests passed`; `vite build` succeeded; `factory-readiness passed`.
+
+## Third Code Quality Review Fix
+
+- Finding: final security review found disabled seed and destructive-route checks still proved only projected workspace state, not raw ledger immutability, and the read route did not explicitly cover wrong-token rejection.
+- Fix: `packages/local-runtime/test/auth-and-seed.test.ts` now checks raw event counts with a fresh SQLite runtime for disabled seed and destructive-looking routes, and asserts wrong-token rejection for `GET /api/requests/workspace`.
+- Green command: `npm test -- packages/local-runtime/test/auth-and-seed.test.ts packages/local-runtime/test/http-handler.test.ts`
+  - Result: passed, `2` test files passed, `16` tests passed.
+- Full verification: `npm run verify`
+  - Result: passed after third fix: `typecheck passed`; `Test Files  45 passed (45)`, `Tests  362 passed (362)`; `tests passed`; `vite build` succeeded; `factory-readiness passed`.
