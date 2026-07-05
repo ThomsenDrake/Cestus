@@ -36,7 +36,7 @@ Ready-for-review-at: `2026-07-05T15:33:37Z`
 
 ## Self-Review
 
-- The service rejects explicitly blocked evidence before append through `blockedEvidenceIds`, preserving quarantine/tombstone enforcement without introducing projection or storage dependencies into the service.
+- The service rebuilds governance projection state from ledger events before append, preserving quarantine/tombstone enforcement without introducing runtime or blob dependencies.
 - Projection export planning now blocks quarantined evidence directly, even when every active restricted tag is opted in.
 
 ## Review Fix Evidence
@@ -54,3 +54,19 @@ Review fix verify:
 - Result: passed; typecheck passed, 46 test files passed, 406 tests passed, UI build succeeded, factory-readiness passed.
 
 Review-fix-ready-at: `2026-07-05T15:37:50Z`
+
+## Code-Quality Review Fix Evidence
+
+Code-quality fix red:
+- `npm test -- packages/ontology/test/governance-export.test.ts packages/ontology/test/governance-service.test.ts packages/ontology/test/governance-projection.test.ts`
+- Result: failed as expected; service helpers appended restricted, quarantined, tombstoned, and missing evidence when callers omitted blocked IDs.
+
+Code-quality fix green:
+- `npm test -- packages/ontology/test/governance-export.test.ts packages/ontology/test/governance-service.test.ts packages/ontology/test/governance-projection.test.ts`
+- Result: passed; 3 test files passed, 38 tests passed.
+
+Code-quality fix verify:
+- `npm run verify`
+- Result: passed; typecheck passed, 46 test files passed, 409 tests passed, UI build succeeded, factory-readiness passed.
+
+Code-quality-fix-ready-at: `2026-07-05T15:44:48Z`
