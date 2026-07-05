@@ -53,6 +53,45 @@ describe("governance incidents and repairs", () => {
     expect(repaired?.repairEventIds).toEqual(["evt_incident_secret_repair"]);
   });
 
+  it("ignores duplicate incident records without clearing repairs or reopening", () => {
+    const projection = buildGovernanceProjection([
+      ...goldenGovernanceLedgerEvents,
+      {
+        id: "evt_incident_secret_duplicate_record",
+        type: "incident.recorded",
+        version: 1,
+        streamId: "incident_incident_repaired_secret",
+        sequence: 3,
+        context: {
+          actor: humanActor,
+          occurredAt: "2026-07-05T15:30:00.000Z",
+          causationId: "evt_incident_secret_repair",
+          correlationId: "corr_golden_governance",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0" }
+        },
+        payload: {
+          incidentId: "incident_repaired_secret",
+          severity: "critical",
+          category: "secret-leak",
+          recordedBy: "actor_investigator",
+          summary: "Duplicate imported incident record should not replace the original.",
+          relatedEvidenceIds: ["ev_source_private"],
+          relatedEventIds: ["evt_incident_secret_repair"]
+        }
+      } satisfies KnowledgeEvent
+    ]);
+    const repaired = projection.incidents.get("incident_repaired_secret");
+
+    expect(repaired).toMatchObject({
+      status: "closed",
+      incidentEventId: "evt_incident_secret_recorded",
+      summary: "Sensitive diagnostic was isolated with safe references only."
+    });
+    expect(repaired?.repairEventIds).toEqual(["evt_incident_secret_repair"]);
+    expect(projection.openIncidentIds()).toEqual(["incident_export_blocked"]);
+  });
+
   it("keeps incident summaries secret-safe", () => {
     const projection = buildGovernanceProjection(goldenGovernanceLedgerEvents);
     expect([...projection.incidents.values()].every((incident) => !/token|password|secret/i.test(incident.summary))).toBe(true);
@@ -76,6 +115,26 @@ describe("governance incidents and repairs", () => {
       relatedEventIds: ["evt_quarantine_governance_private"]
     });
     expect(ledger.appendOptions[0]).toEqual({ expectedNextSequence: 1 });
+  });
+
+  it("rejects duplicate incident recording before append", async () => {
+    const ledger = new InMemoryEventLedger();
+    await recordSafeIncident(ledger);
+    const service = new GovernanceService({ ledger, actor: humanActor });
+
+    await expect(
+      service.recordIncident({
+        incidentId: "incident_export_blocked",
+        severity: "warning",
+        category: "export",
+        recordedBy: "actor_investigator",
+        summary: "Duplicate incident record should be rejected.",
+        relatedEvidenceIds: ["ev_source_private"],
+        relatedEventIds: ["evt_quarantine_governance_private"]
+      })
+    ).rejects.toThrow("Incident incident_export_blocked is already recorded");
+
+    expect(await ledger.readStream("incident_incident_export_blocked")).toHaveLength(1);
   });
 
   it("records incident repairs with causation, safe action, and expected sequence", async () => {
