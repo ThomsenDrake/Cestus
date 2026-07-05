@@ -123,4 +123,110 @@ describe("IngestionImportService", () => {
       occurrenceIds: ["occ_001", "occ_002"]
     });
   });
+
+  it("is safe to retry after a completed import without appending duplicate events", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new IngestionImportService({
+      ledger,
+      blobStore: new FileBlobStore(dir),
+      actor
+    });
+    const input = {
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001",
+      occurrences: [
+        {
+          occurrenceId: "occ_001",
+          content: Buffer.from("same"),
+          sourcePath: "/source/a.txt",
+          mediaType: "text/plain"
+        },
+        {
+          occurrenceId: "occ_002",
+          content: Buffer.from("same"),
+          sourcePath: "/source/b.txt",
+          mediaType: "text/plain"
+        }
+      ]
+    };
+
+    await service.approveImport({
+      sourceCollectionId: input.sourceCollectionId,
+      scanBatchId: input.scanBatchId,
+      importBatchId: input.importBatchId,
+      approvedBy: "actor_investigator"
+    });
+    const firstResult = await service.importApprovedOccurrences(input);
+    const eventsAfterFirstImport = await ledger.readAll();
+
+    const retryResult = await service.importApprovedOccurrences(input);
+    const eventsAfterRetry = await ledger.readAll();
+
+    expect(retryResult.totals).toEqual(firstResult.totals);
+    expect(eventsAfterRetry).toEqual(eventsAfterFirstImport);
+    expect(eventsAfterRetry.filter((event) => event.type === "evidence.ingested")).toHaveLength(1);
+    expect(eventsAfterRetry.filter((event) => event.type === "ingestion.evidence.linked")).toHaveLength(1);
+    expect(eventsAfterRetry.filter((event) => event.type === "ingestion.import.completed")).toHaveLength(1);
+  });
+
+  it("reuses existing evidence for an already imported content hash", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new IngestionImportService({
+      ledger,
+      blobStore: new FileBlobStore(dir),
+      actor
+    });
+
+    await service.approveImport({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001",
+      approvedBy: "actor_investigator"
+    });
+    await service.importApprovedOccurrences({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001",
+      occurrences: [
+        {
+          occurrenceId: "occ_001",
+          content: Buffer.from("same"),
+          sourcePath: "/source/a.txt",
+          mediaType: "text/plain"
+        }
+      ]
+    });
+
+    await service.approveImport({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_002",
+      importBatchId: "imp_002",
+      approvedBy: "actor_investigator"
+    });
+    const result = await service.importApprovedOccurrences({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_002",
+      importBatchId: "imp_002",
+      occurrences: [
+        {
+          occurrenceId: "occ_002",
+          content: Buffer.from("same"),
+          sourcePath: "/source/b.txt",
+          mediaType: "text/plain"
+        }
+      ]
+    });
+    const events = await ledger.readAll();
+
+    expect(result.totals).toEqual({
+      evidenceCreated: 0,
+      occurrencesLinked: 1,
+      duplicatesReused: 1,
+      skipped: 0
+    });
+    expect(events.filter((event) => event.type === "evidence.ingested")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "ingestion.evidence.linked")).toHaveLength(2);
+    expect(events.every((event) => validateKnowledgeEvent(event).success)).toBe(true);
+  });
 });
