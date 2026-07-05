@@ -559,5 +559,59 @@ export const goldenGovernanceLedgerEvents: KnowledgeEvent[] = [
       revokedAt: "2026-07-05T15:14:00.000Z",
       reason: "Reporter tablet approval withdrawn during local review."
     }
+  },
+  {
+    id: "evt_incident_export_blocked",
+    type: "incident.recorded",
+    version: 1,
+    streamId: "incident_incident_export_blocked",
+    sequence: 1,
+    context: { ...reviewerContext, causationId: "evt_quarantine_governance_private" },
+    payload: {
+      incidentId: "incident_export_blocked",
+      severity: "warning",
+      category: "export",
+      recordedBy: "actor_investigator",
+      summary: "Public export blocked until restricted evidence is reviewed.",
+      relatedEvidenceIds: ["ev_source_private"],
+      relatedEventIds: ["evt_quarantine_governance_private"]
+    }
+  },
+  {
+    id: "evt_incident_secret_recorded",
+    type: "incident.recorded",
+    version: 1,
+    streamId: "incident_incident_repaired_secret",
+    sequence: 1,
+    context: { ...reviewerContext, causationId: "evt_classify_governance_private" },
+    payload: {
+      incidentId: "incident_repaired_secret",
+      severity: "critical",
+      category: "secret-leak",
+      recordedBy: "actor_investigator",
+      summary: "Sensitive diagnostic was isolated with safe references only.",
+      relatedEvidenceIds: ["ev_source_private"],
+      relatedEventIds: ["evt_classify_governance_private"]
+    }
+  },
+  {
+    id: "evt_incident_secret_repair",
+    type: "incident.repair.recorded",
+    version: 1,
+    streamId: "incident_incident_repaired_secret",
+    sequence: 2,
+    context: { ...reviewerContext, causationId: "evt_incident_secret_recorded" },
+    payload: {
+      incidentId: "incident_repaired_secret",
+      repairId: "repair_secret_diagnostic",
+      severity: "critical",
+      category: "secret-leak",
+      repairedBy: "actor_investigator",
+      repairedAt: "2026-07-05T15:20:00.000Z",
+      action: "Sensitive diagnostic sanitized and closure approved.",
+      relatedEvidenceIds: ["ev_source_private"],
+      relatedEventIds: ["evt_incident_secret_recorded"],
+      closesIncident: true
+    }
   }
 ];

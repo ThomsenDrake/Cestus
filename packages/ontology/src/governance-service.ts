@@ -71,6 +71,31 @@ export interface ApproveDeviceSessionInput {
   policy: PolicyRef;
 }
 
+type IncidentSeverity = "info" | "warning" | "error" | "critical";
+type IncidentCategory = "classification" | "secret-leak" | "export" | "network" | "device" | "quarantine" | "projection";
+
+export interface RecordIncidentInput {
+  incidentId: string;
+  severity: IncidentSeverity;
+  category: IncidentCategory;
+  recordedBy: string;
+  summary: string;
+  relatedEvidenceIds: readonly string[];
+  relatedEventIds: readonly string[];
+}
+
+export interface RecordIncidentRepairInput {
+  incidentId: string;
+  repairId: string;
+  severity: IncidentSeverity;
+  category: IncidentCategory;
+  repairedBy: string;
+  action: string;
+  relatedEvidenceIds: readonly string[];
+  relatedEventIds: readonly string[];
+  closesIncident: boolean;
+}
+
 export class GovernanceService {
   private readonly actor: ActorRef;
 
@@ -338,6 +363,99 @@ export class GovernanceService {
     return appended;
   }
 
+  async recordIncident(input: RecordIncidentInput): Promise<KnowledgeEventOf<"incident.recorded">> {
+    if (input.recordedBy !== this.actor.id) {
+      throw new Error("Incident recordedBy must match the service actor");
+    }
+
+    const streamId = this.incidentStreamId(input.incidentId);
+    const streamEvents = await this.dependencies.ledger.readStream(streamId);
+    const event: AppendableKnowledgeEvent<"incident.recorded"> = {
+      type: "incident.recorded",
+      version: 1,
+      streamId,
+      context: this.context(
+        `corr_incident_${input.incidentId}`,
+        input.relatedEventIds.length === 0 ? undefined : input.relatedEventIds[input.relatedEventIds.length - 1]
+      ),
+      payload: {
+        incidentId: input.incidentId,
+        severity: input.severity,
+        category: input.category,
+        recordedBy: input.recordedBy,
+        summary: assertSecretSafeText(input.summary),
+        relatedEvidenceIds: [...input.relatedEvidenceIds],
+        relatedEventIds: [...input.relatedEventIds]
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
+
+    if (appended.type !== "incident.recorded") {
+      throw new Error(`Unexpected event type appended for incident recording: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
+  async recordIncidentRepair(input: RecordIncidentRepairInput): Promise<KnowledgeEventOf<"incident.repair.recorded">> {
+    if (input.repairedBy !== this.actor.id) {
+      throw new Error("Incident repair repairedBy must match the service actor");
+    }
+
+    if (input.closesIncident) {
+      this.assertHumanActor("Incident repair closure");
+    }
+
+    const streamId = this.incidentStreamId(input.incidentId);
+    const streamEvents = await this.dependencies.ledger.readStream(streamId);
+    const incident = streamEvents.find(
+      (event): event is KnowledgeEventOf<"incident.recorded"> =>
+        event.type === "incident.recorded" && event.payload.incidentId === input.incidentId
+    );
+
+    if (incident === undefined) {
+      throw new Error(`Cannot record repair for missing incident ${input.incidentId}`);
+    }
+
+    const causation =
+      streamEvents.findLast(
+        (event): event is KnowledgeEventOf<"incident.repair.recorded"> =>
+          event.type === "incident.repair.recorded" && event.payload.incidentId === input.incidentId
+      ) ?? incident;
+
+    const event: AppendableKnowledgeEvent<"incident.repair.recorded"> = {
+      type: "incident.repair.recorded",
+      version: 1,
+      streamId,
+      context: this.context(causation.context.correlationId, causation.id),
+      payload: {
+        incidentId: input.incidentId,
+        repairId: input.repairId,
+        severity: input.severity,
+        category: input.category,
+        repairedBy: input.repairedBy,
+        repairedAt: new Date().toISOString(),
+        action: assertSecretSafeText(input.action),
+        relatedEvidenceIds: [...input.relatedEvidenceIds],
+        relatedEventIds: [...input.relatedEventIds],
+        closesIncident: input.closesIncident
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
+
+    if (appended.type !== "incident.repair.recorded") {
+      throw new Error(`Unexpected event type appended for incident repair: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
   private async findActiveNetworkExposure(
     exposureId: string
   ): Promise<KnowledgeEventOf<"network.exposure.enabled">> {
@@ -369,6 +487,10 @@ export class GovernanceService {
 
   private evidenceStreamId(evidenceId: string): string {
     return `evidence_${evidenceId}`;
+  }
+
+  private incidentStreamId(incidentId: string): string {
+    return `incident_${incidentId}`;
   }
 
   private async assertGeneratedArtifactAllowed(input: RecordGeneratedArtifactInput): Promise<void> {
