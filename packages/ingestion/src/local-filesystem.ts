@@ -4,11 +4,13 @@ import { relative, resolve, sep } from "node:path";
 import type { z } from "zod";
 import { actorRefSchema, type AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import { ArchiveExpansionError, ZipArchiveAdapter, zipArchiveAdapterRef } from "./archive-adapter.js";
 import type { OccurrenceStatus } from "./types.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
 
 const localFilesystemAdapter = { name: "local-filesystem", version: "0.1.0" } as const;
+const defaultArchiveLimits = { maxEntries: 10000, maxExpandedBytes: 1024 * 1024 * 1024 };
 
 export interface LocalFilesystemScannerDependencies {
   ledger: EventLedger;
@@ -29,6 +31,10 @@ export interface LocalFilesystemOccurrence {
   sourcePath: string;
   sizeBytes: number;
   status: OccurrenceStatus;
+  containerPath?: string;
+  containerHash?: `sha256:${string}`;
+  internalPath?: string;
+  archiveAdapter?: { name: string; version: string };
 }
 
 export interface LocalFilesystemScanTotals {
@@ -47,6 +53,14 @@ export interface LocalFilesystemScanResult {
   inventoryHash: `sha256:${string}`;
   totals: LocalFilesystemScanTotals;
   occurrences: LocalFilesystemOccurrence[];
+  diagnostics: LocalFilesystemDiagnostic[];
+}
+
+export interface LocalFilesystemDiagnostic {
+  category: "ingestion";
+  message: string;
+  sourcePath: string;
+  repairHint: string;
 }
 
 interface ScannedFile {
@@ -63,26 +77,90 @@ interface InventoryItem {
   sourcePath: string;
   contentHash: `sha256:${string}`;
   sizeBytes: number;
+  containerPath?: string;
+  containerHash?: `sha256:${string}`;
+  internalPath?: string;
+  archiveAdapter?: { name: string; version: string };
 }
 
 export class LocalFilesystemScanner {
+  private readonly zipArchiveAdapter = new ZipArchiveAdapter();
+
   constructor(private readonly dependencies: LocalFilesystemScannerDependencies) {}
 
   async scan(input: LocalFilesystemScanInput): Promise<LocalFilesystemScanResult> {
     const rootDir = resolve(input.rootDir);
     const streamId = this.streamId(input.scanBatchId);
     const collected = this.collectFiles(rootDir);
-    const files = collected.files.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+    const files = collected.files.sort((left, right) => compareCodeUnits(left.relativePath, right.relativePath));
     const seenContentHashes = new Set<string>();
     const occurrences: LocalFilesystemOccurrence[] = [];
     const inventoryItems: InventoryItem[] = [];
+    const diagnostics: LocalFilesystemDiagnostic[] = [];
     let observedByteTotal = 0;
     let uniqueByteTotal = 0;
+    let skipped = collected.skipped;
 
     for (const file of files) {
-      const stat = lstatSync(file.absolutePath);
       const bytes = readFileSync(file.absolutePath);
-      const contentHash = sha256(bytes);
+      const containerHash = sha256(bytes);
+
+      if (isZipPath(file.relativePath)) {
+        try {
+          const children = this.zipArchiveAdapter.expand(bytes, {
+            containerHash,
+            ...defaultArchiveLimits
+          });
+
+          for (const child of children) {
+            const contentHash = sha256(child.content);
+            const status: OccurrenceStatus = seenContentHashes.has(contentHash) ? "duplicate" : "new";
+
+            if (status === "new") {
+              seenContentHashes.add(contentHash);
+              uniqueByteTotal += child.content.byteLength;
+            }
+
+            observedByteTotal += child.content.byteLength;
+
+            const occurrence: LocalFilesystemOccurrence = {
+              occurrenceId: stableOccurrenceId(
+                input.scanBatchId,
+                archiveOccurrencePath(file.relativePath, child.internalPath),
+                contentHash
+              ),
+              scanBatchId: input.scanBatchId,
+              sourceCollectionId: input.sourceCollectionId,
+              contentHash,
+              sourcePath: file.relativePath,
+              sizeBytes: child.content.byteLength,
+              status,
+              containerPath: file.relativePath,
+              containerHash: child.containerHash,
+              internalPath: child.internalPath,
+              archiveAdapter: { name: child.tool, version: child.version }
+            };
+
+            occurrences.push(occurrence);
+            inventoryItems.push({
+              sourcePath: occurrence.sourcePath,
+              contentHash: occurrence.contentHash,
+              sizeBytes: occurrence.sizeBytes,
+              containerPath: file.relativePath,
+              containerHash: child.containerHash,
+              internalPath: child.internalPath,
+              archiveAdapter: { name: child.tool, version: child.version }
+            });
+          }
+        } catch (error) {
+          diagnostics.push(archiveDiagnostic(file.relativePath, error));
+          skipped += 1;
+        }
+        continue;
+      }
+
+      const stat = lstatSync(file.absolutePath);
+      const contentHash = containerHash;
       const status: OccurrenceStatus = seenContentHashes.has(contentHash) ? "duplicate" : "new";
 
       if (status === "new") {
@@ -115,7 +193,7 @@ export class LocalFilesystemScanner {
       observedFiles: occurrences.length,
       uniqueContent: seenContentHashes.size,
       duplicateOccurrences: occurrences.filter((occurrence) => occurrence.status === "duplicate").length,
-      skipped: collected.skipped,
+      skipped,
       bytes: observedByteTotal,
       estimatedNewBlobBytes: uniqueByteTotal
     };
@@ -167,7 +245,8 @@ export class LocalFilesystemScanner {
       rootDir,
       inventoryHash,
       totals,
-      occurrences
+      occurrences,
+      diagnostics
     };
   }
 
@@ -213,6 +292,36 @@ export class LocalFilesystemScanner {
   }
 }
 
+function isZipPath(relativePath: string): boolean {
+  return relativePath.toLowerCase().endsWith(".zip");
+}
+
+function archiveOccurrencePath(containerPath: string, internalPath: string): string {
+  return `${containerPath}!/${internalPath}`;
+}
+
+function archiveDiagnostic(sourcePath: string, error: unknown): LocalFilesystemDiagnostic {
+  if (error instanceof ArchiveExpansionError) {
+    return {
+      category: "ingestion",
+      message: error.message,
+      sourcePath,
+      repairHint: error.code === "unsafe-path" ? "Skip the archive or rebuild it without traversal paths." : "Reduce archive contents or adjust reviewed archive limits."
+    };
+  }
+
+  return {
+    category: "ingestion",
+    message: `zip archive expansion failed: ${errorMessage(error)}`,
+    sourcePath,
+    repairHint: "Inspect the archive and rerun dry-run after repair."
+  };
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function stableOccurrenceId(scanBatchId: string, relativePath: string, contentHash: string): string {
   return `occ_${createHash("sha256").update(`${scanBatchId}:${relativePath}:${contentHash}`).digest("hex")}`;
 }
@@ -223,4 +332,8 @@ function sha256(bytes: Buffer): `sha256:${string}` {
 
 function inventoryDigest(items: InventoryItem[]): `sha256:${string}` {
   return sha256(Buffer.from(JSON.stringify(items), "utf8"));
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

@@ -6,7 +6,7 @@ Worker: Codex
 Branch: `codex/public-ingestion-pipeline-design`
 Worktree: `/home/drake/.codex/worktrees/aee0/Cestus`
 Claimed at: `2026-07-05T15:29:58Z`
-Status: `claimed`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -20,6 +20,12 @@ Status: `claimed`
 
 ## Evidence
 
-- Pending: failing archive test command.
-- Pending: targeted passing test command.
-- Pending: full verification.
+- Failing archive test command:
+  - Command: `npm test -- packages/ingestion/test/archive-adapter.test.ts`
+  - Result: failed as expected before implementation because `fflate` could not be resolved from `packages/ingestion/test/archive-adapter.test.ts`.
+- Targeted passing test command:
+  - Command: `npm test -- packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/local-filesystem.test.ts`
+  - Result: passed, 2 test files and 8 tests.
+- Full verification:
+  - Command: `npm run verify`
+  - Result: passed after one focused TypeScript exact-optional repair; typecheck passed, 47 test files and 350 tests passed, UI build succeeded, and factory readiness passed.
