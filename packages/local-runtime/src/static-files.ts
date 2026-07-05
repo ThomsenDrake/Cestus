@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import { extname, isAbsolute, relative, resolve } from "node:path";
 
 export interface StaticFileResponse {
@@ -30,14 +30,22 @@ export function readStaticUiFile(distDir: string, requestPath: string): StaticFi
   }
 
   try {
-    if (!statSync(filePath).isFile()) {
+    const realRoot = realpathSync(root);
+    const realFilePath = realpathSync(filePath);
+    const realRootRelativePath = relative(realRoot, realFilePath);
+    if (
+      realRootRelativePath.length === 0 ||
+      realRootRelativePath.startsWith("..") ||
+      isAbsolute(realRootRelativePath) ||
+      !statSync(realFilePath).isFile()
+    ) {
       return notFound();
     }
 
     return {
       status: 200,
-      contentType: contentTypeFor(filePath),
-      body: readFileSync(filePath)
+      contentType: contentTypeFor(realFilePath),
+      body: readFileSync(realFilePath)
     };
   } catch {
     return notFound();

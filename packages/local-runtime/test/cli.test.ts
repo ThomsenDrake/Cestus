@@ -1,5 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { runLocalRuntimeCli } from "../src/cli.js";
+
+let tempDir: string | undefined;
+
+afterEach(() => {
+  if (tempDir !== undefined) {
+    rmSync(tempDir, { recursive: true, force: true });
+    tempDir = undefined;
+  }
+});
 
 describe("runLocalRuntimeCli", () => {
   it("prints resolved config without secrets", async () => {
@@ -54,5 +66,25 @@ describe("runLocalRuntimeCli", () => {
 
     expect(exitCode).toBe(0);
     expect(calls).toEqual(["serve"]);
+  });
+
+  it("authenticates the explicit seed action when local exposure requires auth", async () => {
+    const stdout: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(["seed-prr"], {
+      cwd: tempDir,
+      env: {
+        CESTUS_LOCAL_BIND: "tailnet",
+        CESTUS_LOCAL_AUTH_TOKEN: "secret-token"
+      },
+      stdout: (line) => stdout.push(line),
+      stderr: () => undefined
+    });
+
+    const body = JSON.parse(stdout.join("\n")) as { readonly ok?: boolean };
+    expect(exitCode).toBe(0);
+    expect(body.ok).toBe(true);
+    expect(stdout.join("\n")).not.toContain("secret-token");
   });
 });
