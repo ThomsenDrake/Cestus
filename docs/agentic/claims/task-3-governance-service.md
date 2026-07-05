@@ -6,7 +6,7 @@ Worker: Codex
 Branch: `codex/security-governance-design`
 Worktree: `/home/drake/.codex/worktrees/c3c1/Cestus`
 Claimed-at: 2026-07-05T14:53:49Z
-Status: claimed
+Status: in-progress
 
 Owned files:
 - `packages/ontology/src/governance-service.ts`
