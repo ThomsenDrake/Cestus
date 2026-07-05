@@ -1,23 +1,15 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { buildPrrProjection } from "../../prr/src/projection.js";
-import { buildPrrWorkspaceDto } from "../../prr/src/read-api.js";
-import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { App } from "../src/App.js";
 import { RequestBuilder } from "../src/requests/RequestBuilder.js";
 import { buildPrrBuilderModel } from "../src/requests/request-model.js";
 import { createStaticRequestsAdapter } from "../src/requests/request-adapter.js";
 import { prrWorkspaceFixture } from "../src/requests/request-fixtures.js";
+import { buildTestRequestsWorkspace, createTestRequestsAdapter } from "./request-test-utils.js";
 
 describe("RequestBuilder", () => {
   const noopSubmit = async () => undefined;
-
-  function buildTestRequestsWorkspace() {
-    return buildPrrWorkspaceDto(buildPrrProjection(prrWorkspaceSeedEvents), {
-      now: "2026-07-20T12:00:00.000Z"
-    });
-  }
 
   it("renders each guided checklist step as an open button", () => {
     render(<RequestBuilder builder={prrWorkspaceFixture.builder} onClose={() => undefined} onSubmit={noopSubmit} />);
@@ -111,7 +103,7 @@ describe("RequestBuilder", () => {
   });
 
   it("moves focus into the dialog and restores it after Escape closes the builder", async () => {
-    render(<App />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     await screen.findByRole("heading", { name: "Requests" });
@@ -143,7 +135,7 @@ describe("RequestBuilder", () => {
   });
 
   it("opens the guided request builder from the Requests shell action", async () => {
-    render(<App />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     await screen.findByRole("heading", { name: "Requests" });
@@ -154,7 +146,7 @@ describe("RequestBuilder", () => {
   });
 
   it("opens the guided builder after a request detail modal has been closed", async () => {
-    render(<App />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     const card = await screen.findByRole("button", {
