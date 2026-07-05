@@ -10,6 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit && echo 'typecheck passed'",
     "factory:check": "node scripts/check-agent-readiness.mjs",
+    "ingestion:help": "node packages/ingestion/bin/cestus-ingest.mjs --help",
     "verify": "npm run typecheck && npm test && echo 'tests passed' && npm run ui:build && npm run factory:check",
     "local:runtime": "tsx packages/local-runtime/src/cli.ts serve",
     "local:runtime:configure": "tsx packages/local-runtime/src/cli.ts configure",
@@ -19,6 +20,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
+    "fflate": "^0.8.3",
     "@heroicons/react": "^2.2.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

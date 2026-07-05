@@ -1268,3 +1268,268 @@ describe("public records request event contracts", () => {
     }
   });
 });
+
+describe("ingestion event contracts", () => {
+  it("validates source registration, scan, occurrence, approval, evidence link, parse, and provider events", () => {
+    const events: KnowledgeEvent[] = [
+      ingestionEvent("evt_ing_source_registered", "ingestion.source.registered", {
+        sourceCollectionId: "src_drive_001",
+        label: "External investigation archive",
+        mode: "read-only",
+        adapter: { name: "local-filesystem", version: "0.1.0" },
+        rootUri: "file:///mnt/investigation-drive/source",
+        workspaceUri: "file:///mnt/investigation-drive/cestus-workspace"
+      }),
+      ingestionEvent("evt_ing_scan_started", "ingestion.scan.started", {
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        hashPolicy: "sha256-dry-run",
+        startedAt: "2026-07-05T12:00:00.000Z"
+      }),
+      ingestionEvent("evt_ing_occurrence_observed", "ingestion.occurrence.observed", {
+        occurrenceId: "occ_001",
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        contentHash: validHash,
+        sourcePath: "/source/contracts/a.pdf",
+        sizeBytes: 11,
+        observedAt: "2026-07-05T12:01:00.000Z",
+        status: "new"
+      }),
+      ingestionEvent("evt_ing_archive_occurrence_observed", "ingestion.occurrence.observed", {
+        occurrenceId: "occ_archive_001",
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        contentHash: validHash,
+        sourcePath: "/source/contracts/archive.zip",
+        sizeBytes: 11,
+        observedAt: "2026-07-05T12:01:30.000Z",
+        status: "new",
+        containerPath: "/source/contracts/archive.zip",
+        containerHash: validHash,
+        internalPath: "contracts/a.pdf",
+        archiveAdapter: { name: "zip", version: "0.1.0" }
+      }),
+      ingestionEvent("evt_ing_scan_completed", "ingestion.scan.completed", {
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        completedAt: "2026-07-05T12:02:00.000Z",
+        inventoryHash: validHash,
+        totals: {
+          observedFiles: 1,
+          uniqueContent: 1,
+          duplicateOccurrences: 0,
+          skipped: 0,
+          bytes: 11,
+          estimatedNewBlobBytes: 11
+        }
+      }),
+      ingestionEvent("evt_ing_import_approved", "ingestion.import.approved", {
+        importBatchId: "imp_001",
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        approvedBy: "actor_investigator",
+        approvedAt: "2026-07-05T12:03:00.000Z"
+      }),
+      ingestionEvent("evt_ing_import_completed", "ingestion.import.completed", {
+        importBatchId: "imp_001",
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        completedAt: "2026-07-05T12:04:00.000Z",
+        totals: { evidenceCreated: 1, occurrencesLinked: 1, duplicatesReused: 0, skipped: 0 }
+      }),
+      ingestionEvent("evt_ing_evidence_linked", "ingestion.evidence.linked", {
+        evidenceId: "ev_ingested_001",
+        importBatchId: "imp_001",
+        sourceCollectionId: "src_drive_001",
+        contentHash: validHash,
+        occurrenceIds: ["occ_001"]
+      }),
+      ingestionEvent("evt_ing_parse_created", "ingestion.parse.job.created", {
+        parseJobId: "parse_001",
+        sourceCollectionId: "src_drive_001",
+        importBatchId: "imp_001",
+        evidenceId: "ev_ingested_001",
+        lane: "local",
+        parser: { name: "local-text", version: "0.1.0" },
+        state: "queued"
+      }),
+      ingestionEvent("evt_ing_parse_completed", "ingestion.parse.completed", {
+        parseJobId: "parse_001",
+        sourceCollectionId: "src_drive_001",
+        importBatchId: "imp_001",
+        evidenceId: "ev_ingested_001",
+        lane: "local",
+        parser: { name: "local-text", version: "0.1.0" },
+        outputHash: validHash,
+        outputMediaType: "text/plain",
+        completedAt: "2026-07-05T12:05:00.000Z"
+      }),
+      ingestionEvent("evt_ing_parse_failed", "ingestion.parse.failed", {
+        parseJobId: "parse_002",
+        sourceCollectionId: "src_drive_001",
+        importBatchId: "imp_001",
+        evidenceId: "ev_ingested_001",
+        lane: "provider",
+        parser: { name: "mistral-document-ai", version: "0.1.0" },
+        failedAt: "2026-07-05T12:05:30.000Z",
+        message: "provider rejected unsupported media type",
+        retryable: false
+      }),
+      ingestionEvent("evt_ing_provider_approved", "ingestion.provider.approved", {
+        providerJobId: "provider_001",
+        sourceCollectionId: "src_drive_001",
+        importBatchId: "imp_001",
+        provider: { name: "mistral-document-ai", version: "0.1.0" },
+        approvedBy: "actor_investigator",
+        approvedAt: "2026-07-05T12:06:00.000Z",
+        eligibleMediaTypes: ["application/pdf"],
+        maxBytesPerFile: 50000000,
+        policy: "send-all-technically-eligible"
+      }, "ingestion_provider_src_drive_001_imp_001_provider_001")
+    ];
+
+    for (const event of events) {
+      expect(validateKnowledgeEvent(event).success, event.type).toBe(true);
+    }
+  });
+
+  it("rejects uncontracted ingestion payload fields", () => {
+    const badPayload = {
+      scanBatchId: "scan_002",
+      sourceCollectionId: "src_drive_001",
+      completedAt: "2026-07-05T12:02:00.000Z",
+      inventoryHash: validHash,
+      totals: {
+        observedFiles: 1,
+        uniqueContent: 1,
+        duplicateOccurrences: 0,
+        skipped: 0,
+        bytes: 11,
+        estimatedNewBlobBytes: 11
+      },
+      extra: true
+    } as unknown as Extract<KnowledgeEvent, { type: "ingestion.scan.completed" }>["payload"];
+
+    const event = ingestionEvent("evt_ing_bad_scan", "ingestion.scan.completed", badPayload);
+
+    expect(validateKnowledgeEvent(event).success).toBe(false);
+  });
+
+  it("rejects terminal states when ingestion parse jobs are created", () => {
+    const event = ingestionEvent("evt_ing_parse_created_terminal", "ingestion.parse.job.created", {
+      parseJobId: "parse_003",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      evidenceId: "ev_ingested_001",
+      lane: "local",
+      parser: { name: "local-text", version: "0.1.0" },
+      state: "succeeded"
+    } as unknown as Extract<KnowledgeEvent, { type: "ingestion.parse.job.created" }>["payload"]);
+
+    expect(validateKnowledgeEvent(event).success).toBe(false);
+  });
+
+  it("rejects partial archive occurrence provenance", () => {
+    const event = ingestionEvent("evt_ing_partial_archive_occurrence", "ingestion.occurrence.observed", {
+      occurrenceId: "occ_partial_archive",
+      scanBatchId: "scan_001",
+      sourceCollectionId: "src_drive_001",
+      contentHash: validHash,
+      sourcePath: "/source/contracts/archive.zip",
+      sizeBytes: 11,
+      observedAt: "2026-07-05T12:01:00.000Z",
+      status: "new",
+      containerPath: "/source/contracts/archive.zip"
+    });
+
+    expect(validateKnowledgeEvent(event).success).toBe(false);
+  });
+
+  it("rejects credential-shaped provider approval payload and context text", () => {
+    const providerNameResult = validateKnowledgeEvent(providerApprovalEvent({
+      provider: { name: "apiKey=sk_live_provider", version: "0.1.0" }
+    }));
+    const mediaTypeResult = validateKnowledgeEvent(providerApprovalEvent({
+      eligibleMediaTypes: ["Authorization: Bearer sk_live_media"]
+    }));
+    const actorLabelResult = validateKnowledgeEvent({
+      ...providerApprovalEvent(),
+      context: {
+        ...context,
+        actor: { id: "actor_system", kind: "system", label: "Bearer sk_live_actor" }
+      }
+    });
+    const actorIdResult = validateKnowledgeEvent({
+      ...providerApprovalEvent(),
+      context: {
+        ...context,
+        actor: { id: "apiKey=sk_live_actor_id", kind: "system", label: "test runner" }
+      }
+    });
+
+    expect(validateKnowledgeEvent(providerApprovalEvent()).success).toBe(true);
+
+    for (const result of [providerNameResult, mediaTypeResult, actorLabelResult, actorIdResult]) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issueText = JSON.stringify(result.error.issues);
+        expect(issueText).toMatch(/credential-shaped/i);
+        expect(issueText).not.toMatch(/sk_live_/i);
+      }
+    }
+  });
+
+  it("rejects provider approvals whose stream does not match provider batch identity", () => {
+    const result = validateKnowledgeEvent({
+      ...providerApprovalEvent(),
+      streamId: "ingestion_provider_src_drive_999_imp_001_provider_001"
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("streamId");
+    }
+  });
+});
+
+function ingestionEvent<Type extends KnowledgeEvent["type"]>(
+  id: string,
+  type: Type,
+  payload: Extract<KnowledgeEvent, { type: Type }>["payload"],
+  streamId = `ingestion_${id}`
+): Extract<KnowledgeEvent, { type: Type }> {
+  return {
+    id,
+    type,
+    version: 1,
+    streamId,
+    sequence: 1,
+    context,
+    payload
+  } as unknown as Extract<KnowledgeEvent, { type: Type }>;
+}
+
+function providerApprovalEvent(
+  overrides: Partial<Extract<KnowledgeEvent, { type: "ingestion.provider.approved" }>["payload"]> = {}
+): Extract<KnowledgeEvent, { type: "ingestion.provider.approved" }> {
+  const payload = {
+    providerJobId: "provider_001",
+    sourceCollectionId: "src_drive_001",
+    importBatchId: "imp_001",
+    provider: { name: "mistral-document-ai", version: "0.1.0" },
+    approvedBy: "actor_investigator",
+    approvedAt: "2026-07-05T12:06:00.000Z",
+    eligibleMediaTypes: ["application/pdf"],
+    maxBytesPerFile: 50000000,
+    policy: "send-all-technically-eligible",
+    ...overrides
+  } as Extract<KnowledgeEvent, { type: "ingestion.provider.approved" }>["payload"];
+
+  return ingestionEvent(
+    "evt_ing_provider_boundary",
+    "ingestion.provider.approved",
+    payload,
+    `ingestion_provider_${payload.sourceCollectionId}_${payload.importBatchId}_${payload.providerJobId}`
+  );
+}
