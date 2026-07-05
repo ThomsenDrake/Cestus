@@ -6,7 +6,7 @@
 - Branch: `codex/public-ingestion-pipeline-design`
 - Worktree: `/home/drake/.codex/worktrees/aee0/Cestus`
 - Claimed at: 2026-07-05T18:50:24Z
-- Status: in-progress
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -16,4 +16,7 @@
 
 ## Evidence
 
-- Pending.
+- Targeted readiness check after adding ingestion spec and plan to `requiredFiles`: `npm run factory:check` passed with `factory-readiness passed`.
+- Validation: `git diff --check` passed.
+- Validation: `npm run factory:check` passed with `factory-readiness passed`.
+- Verify: `npm run verify` passed with typecheck passed, 55 test files and 394 tests passed, `vite build` succeeded, and factory-readiness passed.
