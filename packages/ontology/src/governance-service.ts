@@ -54,6 +54,23 @@ export interface RecordReportGeneratedInput extends RecordGeneratedArtifactInput
   reportId: string;
 }
 
+export interface EnableNetworkExposureInput {
+  exposureId: string;
+  mode: "lan" | "tailnet";
+  bindScope: "lan" | "tailnet";
+  enabledBy: string;
+  policy: PolicyRef;
+}
+
+export interface ApproveDeviceSessionInput {
+  sessionId: string;
+  deviceLabel: string;
+  approvedBy: string;
+  exposureId: string;
+  capabilities: readonly ("read" | "write")[];
+  policy: PolicyRef;
+}
+
 export class GovernanceService {
   private readonly actor: ActorRef;
 
@@ -249,6 +266,76 @@ export class GovernanceService {
     return appended;
   }
 
+  async enableNetworkExposure(input: EnableNetworkExposureInput): Promise<KnowledgeEventOf<"network.exposure.enabled">> {
+    this.assertHumanActor("Network exposure");
+
+    if (input.enabledBy !== this.actor.id) {
+      throw new Error("Network exposure enabledBy must match the service actor");
+    }
+
+    const streamId = `network_exposure_${input.exposureId}`;
+    const streamEvents = await this.dependencies.ledger.readStream(streamId);
+    const event: AppendableKnowledgeEvent<"network.exposure.enabled"> = {
+      type: "network.exposure.enabled",
+      version: 1,
+      streamId,
+      context: this.context(`corr_network_exposure_${input.exposureId}`),
+      payload: {
+        exposureId: input.exposureId,
+        mode: input.mode,
+        bindScope: input.bindScope,
+        enabledBy: input.enabledBy,
+        enabledAt: new Date().toISOString(),
+        visibleWarning: true,
+        policy: input.policy
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: streamEvents.length + 1
+    });
+
+    if (appended.type !== "network.exposure.enabled") {
+      throw new Error(`Unexpected event type appended for network exposure: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
+  async approveDeviceSession(input: ApproveDeviceSessionInput): Promise<KnowledgeEventOf<"device.session.approved">> {
+    this.assertHumanActor("Device session approval");
+
+    if (input.approvedBy !== this.actor.id) {
+      throw new Error("Device session approvedBy must match the service actor");
+    }
+
+    const event: AppendableKnowledgeEvent<"device.session.approved"> = {
+      type: "device.session.approved",
+      version: 1,
+      streamId: `device_session_${input.sessionId}`,
+      context: this.context(`corr_device_session_${input.sessionId}`),
+      payload: {
+        sessionId: input.sessionId,
+        deviceLabel: assertSecretSafeText(input.deviceLabel),
+        approvedBy: input.approvedBy,
+        approvedAt: new Date().toISOString(),
+        exposureId: input.exposureId,
+        capabilities: [...input.capabilities],
+        policy: input.policy
+      }
+    };
+
+    const appended = await this.dependencies.ledger.append(event, {
+      expectedNextSequence: 1
+    });
+
+    if (appended.type !== "device.session.approved") {
+      throw new Error(`Unexpected event type appended for device session approval: ${appended.type}`);
+    }
+
+    return appended;
+  }
+
   private findIngestedEvidence(
     evidenceId: string,
     streamEvents: Awaited<ReturnType<EventLedger["readStream"]>>
@@ -284,6 +371,12 @@ export class GovernanceService {
 
     if (plan.blockedEvidence.length > 0 || !sameSortedValues(plan.includedEvidenceIds, input.includedEvidenceIds)) {
       throw new Error("Cannot generate export or report outside the governed export plan");
+    }
+  }
+
+  private assertHumanActor(action: string): void {
+    if (this.actor.kind !== "human") {
+      throw new Error(`${action} requires a human service actor`);
     }
   }
 

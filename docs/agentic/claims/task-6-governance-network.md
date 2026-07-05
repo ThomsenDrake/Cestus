@@ -6,7 +6,7 @@ Worker: Codex GPT-5
 Branch: `codex/security-governance-design`
 Worktree: `/home/drake/.codex/worktrees/c3c1/Cestus`
 Claimed-at: 2026-07-05T15:50:47Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/ontology/src/governance-service.ts`
@@ -18,3 +18,8 @@ Owned files:
 Required commands:
 - `npm test -- packages/ontology/test/governance-network.test.ts packages/ontology/test/governance-projection.test.ts`
 - `npm run verify`
+
+Evidence:
+- Red: `npm test -- packages/ontology/test/governance-network.test.ts packages/ontology/test/governance-projection.test.ts` failed as expected before implementation. Failures showed missing `networkExposure`, missing `isSessionApproved`, and missing `enableNetworkExposure()` / `approveDeviceSession()` methods.
+- Green: `npm test -- packages/ontology/test/governance-network.test.ts packages/ontology/test/governance-projection.test.ts` passed after implementation: 2 files passed, 19 tests passed.
+- Verify: `npm run verify` passed: typecheck passed, 47 test files passed, 416 tests passed, UI build succeeded, factory-readiness passed.
