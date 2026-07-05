@@ -25,10 +25,15 @@ Status: ready-for-review
 - Spec review fix red targeted test: `npm test -- packages/ingestion/test/import-service.test.ts` failed with 2 failing regression tests covering completed-import retry and existing content-hash reuse.
 - Spec review fix green targeted test: `npm test -- packages/ingestion/test/import-service.test.ts` passed with 1 test file and 4 tests.
 - Spec review fix full verification: `npm run verify` passed with `typecheck passed`, 48 test files and 357 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
-- Spec review fix commit: task review-fix commit follows this evidence update.
+- Spec review fix commit: `93210f6 fix: make ingestion imports idempotent`.
+- Code-quality review fix red targeted test: `npm test -- packages/ingestion/test/import-service.test.ts` failed with 3 failing regression tests covering invalid occurrence prevalidation, partial-retry completion totals, and full evidence-link stream identity.
+- Code-quality review fix green targeted test: `npm test -- packages/ingestion/test/import-service.test.ts` passed with 1 test file and 7 tests.
+- Code-quality review fix full verification: `npm run verify` passed with `typecheck passed`, 48 test files and 360 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
+- Code-quality review fix commit: task review-fix commit follows this evidence update.
 
 ## Self-Review
 
 - Findings: none.
 - Scope: changed only the allowed Task 7 files.
 - Spec review fix: `importApprovedOccurrences()` now reuses existing evidence by content hash, skips already-linked occurrence IDs, and returns recorded completion totals for already-completed imports.
+- Code-quality review fix: added request prevalidation before evidence writes, full import identity for evidence-link streams, and ledger-derived completion totals for partial retries.
