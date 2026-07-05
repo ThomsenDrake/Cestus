@@ -251,3 +251,46 @@ Returned "cards":[] from an empty repo-local ledger without automatic seed data.
 
 Local runtime stopped before task completion; follow-up curl returned 000.
 ```
+
+## Public Ingestion Pipeline Plan Readiness
+
+The public ingestion pipeline plan was prepared from the approved design spec on 2026-07-05.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-05-public-ingestion-pipeline-design.md`
+- `docs/superpowers/plans/2026-07-05-public-ingestion-pipeline-implementation.md`
+
+Factory readiness now checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded targeted command evidence from the implementation slice:
+
+```text
+npm test -- packages/ingestion/test/workspace.test.ts packages/ingestion/test/local-filesystem.test.ts packages/ingestion/test/source-registry.test.ts packages/ingestion/test/smoke.test.ts
+Test Files  4 passed (4)
+Tests  9 passed (9)
+
+npm test -- packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/import-service.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts
+Test Files  4 passed (4)
+Tests  23 passed (23)
+
+npm test -- packages/ingestion/test/parser.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/cli.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx
+Test Files  5 passed (5)
+Tests  22 passed (22)
+```
+
+Final verification evidence:
+
+```text
+npm run factory:check
+factory-readiness passed
+
+npm run verify
+typecheck passed
+Test Files  55 passed
+Tests  394 passed
+vite build succeeded
+factory-readiness passed
+```
+
+Provider live checks for Mistral Document AI or similar document-AI services are explicit opt-in checks and are not part of standard factory verification. Standard verification uses local contracts, fake providers, approval gates, and provenance assertions so agents can validate the ingestion pipeline without credentials or outbound document transfer.
