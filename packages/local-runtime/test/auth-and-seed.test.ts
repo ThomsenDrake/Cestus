@@ -81,6 +81,56 @@ describe("local runtime auth and explicit seed", () => {
     expect(accepted.status).toBe(200);
   });
 
+  it("requires bearer auth for non-loopback draft creation routes", async () => {
+    const handler = testHandler({
+      config: resolveLocalRuntimeConfig({
+        cwd: tempDir(),
+        env: {
+          CESTUS_LOCAL_BIND: "tailnet",
+          CESTUS_LOCAL_HOST: "100.126.143.105",
+          CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
+        }
+      }),
+      actor,
+      now: fixedNow,
+      requestIdFactory: () => "prr_auth_write"
+    });
+    const draftBody = JSON.stringify({
+      jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+      agency: { name: "City Clerk", email: "clerk@example.gov" },
+      requester: { name: "Avery Investigator", email: "avery@example.org" },
+      requestText: "All budget amendment memos from January 2026.",
+      receivedAt: "2026-07-05T13:00:00.000Z"
+    });
+
+    const rejected = await handler({
+      method: "POST",
+      url: "/api/requests/drafts",
+      body: draftBody
+    });
+    expect(rejected.status).toBe(401);
+
+    const wrongToken = await handler({
+      method: "POST",
+      url: "/api/requests/drafts",
+      headers: { authorization: "Bearer wrong-token" },
+      body: draftBody
+    });
+    expect(wrongToken.status).toBe(401);
+
+    const accepted = await handler({
+      method: "POST",
+      url: "/api/requests/drafts",
+      headers: { authorization: "Bearer secret-local-token" },
+      body: draftBody
+    });
+    expect(accepted.status).toBe(200);
+    expect(JSON.parse(accepted.body)).toMatchObject({
+      ok: true,
+      prrRequestId: "prr_auth_write"
+    });
+  });
+
   it("keeps the seed endpoint disabled until explicitly configured", async () => {
     const handler = testHandler({
       config: resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }),
@@ -92,6 +142,9 @@ describe("local runtime auth and explicit seed", () => {
 
     expect(response.status).toBe(404);
     expect(JSON.parse(response.body).diagnostic.message).toBe("PRR seed endpoint is disabled.");
+
+    const workspace = await handler({ method: "GET", url: "/api/requests/workspace" });
+    expect(JSON.parse(workspace.body).cards).toEqual([]);
   });
 
   it("requires bearer auth for non-loopback dev routes", async () => {
