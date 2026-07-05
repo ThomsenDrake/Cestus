@@ -283,14 +283,19 @@ export function createHttpRequestsAdapter(
   options: HttpRequestsAdapterOptions = {}
 ): RequestsWorkspaceAdapter {
   const baseUrl = options.baseUrl ?? "";
-  const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
+  const fetcher = options.fetcher ?? ((...args: Parameters<typeof fetch>) => globalThis.fetch(...args));
 
   return Object.freeze({
     async loadRequestsWorkspace() {
-      const response = await fetcher(`${baseUrl}/api/requests/workspace`, {
-        headers: authHeaders(options.authToken),
-        method: "GET"
-      });
+      let response: Response;
+      try {
+        response = await fetcher(`${baseUrl}/api/requests/workspace`, {
+          headers: authHeaders(options.authToken),
+          method: "GET"
+        });
+      } catch (error) {
+        throw new Error("Requests runtime request failed.");
+      }
       if (!response.ok) {
         throw new Error(`Requests runtime returned HTTP ${response.status}.`);
       }
@@ -321,7 +326,7 @@ export function createHttpRequestsAdapter(
       }
 
       try {
-        return (await response.json()) as RequestsCreateDraftResult;
+        return sanitizeCreateDraftResult((await response.json()) as RequestsCreateDraftResult);
       } catch (error) {
         return httpFailure("invalid JSON", await safeWorkspaceFallback());
       }
@@ -355,6 +360,20 @@ async function httpFailure(reason: string, workspace: PrrWorkspaceDto): Promise<
       allowedRepairActions: Object.freeze(["reload Requests", "check the local runtime"])
     }),
     workspace
+  });
+}
+
+function sanitizeCreateDraftResult(result: RequestsCreateDraftResult): RequestsCreateDraftResult {
+  if (result.ok) {
+    return result;
+  }
+
+  return Object.freeze({
+    ...result,
+    diagnostic: Object.freeze({
+      message: "Requests runtime returned a failure result.",
+      allowedRepairActions: Object.freeze(["retry request creation"])
+    })
   });
 }
 
