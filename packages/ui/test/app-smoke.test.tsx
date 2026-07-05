@@ -1,23 +1,18 @@
 /** @vitest-environment jsdom */
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { buildPrrProjection } from "../../prr/src/projection.js";
-import { buildPrrWorkspaceDto, type PrrWorkspaceDto } from "../../prr/src/read-api.js";
+import type { PrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { App } from "../src/App.js";
 import {
+  createHttpRequestsAdapter,
   createLocalReplayRequestsAdapter,
   createStaticRequestsAdapter,
   type RequestsWorkspaceAdapter
 } from "../src/requests/request-adapter.js";
+import { buildTestRequestsWorkspace, createTestRequestsAdapter } from "./request-test-utils.js";
 
 describe("Cestus UI bootstrap", () => {
-  function buildTestRequestsWorkspace() {
-    return buildPrrWorkspaceDto(buildPrrProjection(prrWorkspaceSeedEvents), {
-      now: "2026-07-20T12:00:00.000Z"
-    });
-  }
-
   function replaceCardAgency(
     workspace: PrrWorkspaceDto,
     prrRequestId: string,
@@ -35,7 +30,7 @@ describe("Cestus UI bootstrap", () => {
   }
 
   it("renders the Command workspace entry point", async () => {
-    render(<App />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     expect(screen.getByRole("heading", { name: "Command" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New request" })).toBeInTheDocument();
@@ -66,13 +61,54 @@ describe("Cestus UI bootstrap", () => {
   });
 
   it("renders Requests from backend-derived PRR DTOs", async () => {
-    render(<App />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
 
     expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
     expect(screen.getByText("Building Services Department")).toBeInTheDocument();
     expect(screen.getByText("$1,850.00 challenged")).toBeInTheDocument();
+  });
+
+  it("uses the HTTP Requests adapter as the product default", async () => {
+    const workspace = buildTestRequestsWorkspace();
+    const fetchCalls: string[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: RequestInfo | URL) => {
+      fetchCalls.push(String(url));
+      return new Response(JSON.stringify(workspace), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }) as typeof fetch;
+
+    try {
+      render(<App />);
+      fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+      expect(await screen.findByText("Building Services Department")).toBeInTheDocument();
+      expect(fetchCalls).toEqual(["/api/requests/workspace"]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("shows a safe Requests runtime error when the default HTTP adapter cannot load", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ message: "Bearer raw-token" }), {
+        status: 503,
+        headers: { "content-type": "application/json" }
+      })) as typeof fetch;
+
+    try {
+      render(<App />);
+      fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+      const errorRegion = await screen.findByRole("region", { name: "Requests load error" });
+      expect(errorRegion).toHaveTextContent("Requests runtime returned HTTP 503.");
+      expect(errorRegion).not.toHaveTextContent("Bearer raw-token");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it("reloads Requests when the adapter prop changes", async () => {
@@ -170,7 +206,12 @@ describe("Cestus UI bootstrap", () => {
   });
 
   it("submits a builder draft through the Requests adapter and reloads the board", async () => {
-    render(<App />);
+    const adapter = createLocalReplayRequestsAdapter(prrWorkspaceSeedEvents, {
+      idFactory: () => "evt_app_smoke_draft",
+      now: () => "2026-07-03T18:00:00.000Z",
+      requestIdFactory: () => "prr_app_smoke_city_clerk"
+    });
+    render(<App requestsAdapter={adapter} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     fireEvent.click(await screen.findByRole("button", { name: "New request" }));
@@ -190,6 +231,46 @@ describe("Cestus UI bootstrap", () => {
     expect(screen.getByRole("complementary", { name: "Requests workspace intelligence" })).toBeInTheDocument();
     expect(screen.queryByRole("complementary", { name: "Request detail rail" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the loaded Requests board visible when HTTP draft creation fails", async () => {
+    const workspace = buildTestRequestsWorkspace();
+    let requestCount = 0;
+    const adapter = createHttpRequestsAdapter({
+      fetcher: async (url: RequestInfo | URL) => {
+        requestCount += 1;
+        if (String(url).endsWith("/api/requests/workspace")) {
+          return new Response(JSON.stringify(workspace), {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          });
+        }
+        return new Response(JSON.stringify({ message: "Bearer raw-token" }), {
+          status: 503,
+          headers: { "content-type": "application/json" }
+        });
+      }
+    });
+    render(<App requestsAdapter={adapter} />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    expect(await screen.findByText("Building Services Department")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "New request" }));
+    fireEvent.change(screen.getByLabelText("Agency name"), { target: { value: "City Clerk" } });
+    fireEvent.change(screen.getByLabelText("Requester name"), { target: { value: "Avery Investigator" } });
+    fireEvent.change(screen.getByLabelText("Request text"), {
+      target: { value: "All budget amendment memos from January 2026." }
+    });
+    fireEvent.change(screen.getByLabelText("Received timestamp"), {
+      target: { value: "2026-07-05T12:00:00.000Z" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Requests runtime returned HTTP 503.");
+    expect(screen.getByText("Building Services Department")).toBeInTheDocument();
+    expect(screen.queryByText("No requests yet.")).not.toBeInTheDocument();
+    expect(requestCount).toBe(2);
   });
 
   it("stores two local replay events for a successful builder draft submit", async () => {

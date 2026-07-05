@@ -55,6 +55,7 @@ export type CreateDraftRequestFailedStep =
 export type CreateDraftRequestResult =
   | {
       readonly ok: true;
+      readonly prrRequestId: string;
       readonly committedEventIds: readonly string[];
       readonly workspace: PrrWorkspaceDto;
     }
@@ -153,6 +154,7 @@ export function createPrrRuntime(dependencies: PrrRuntimeDependencies): PrrRunti
       const committedDeadline = await dependencies.ledger.append(deadlineEstimated, { expectedNextSequence: 2 });
       return {
         ok: true,
+        prrRequestId,
         committedEventIds: Object.freeze([committedCreated.id, committedDeadline.id]),
         workspace: await loadWorkspace()
       };

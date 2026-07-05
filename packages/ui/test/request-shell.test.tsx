@@ -2,10 +2,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.js";
+import { createTestRequestsAdapter } from "./request-test-utils.js";
 
 describe("requests workspace shell", () => {
   it("routes to the interim Requests workspace shell", async () => {
-    render(<App />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
 
@@ -19,7 +20,7 @@ describe("requests workspace shell", () => {
   });
 
   it("keeps Requests active when unsupported modules are selected", async () => {
-    render(<App />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     fireEvent.click(screen.getByRole("link", { name: "Evidence" }));
