@@ -194,17 +194,17 @@ Factory readiness now checks both files through `scripts/check-agent-readiness.m
 Recorded targeted command evidence from the implementation slice:
 
 ```text
-npm test -- packages/ingestion/test/workspace.test.ts packages/ingestion/test/event-contracts.test.ts
-Test Files  2 passed
+npm test -- packages/ingestion/test/workspace.test.ts packages/ingestion/test/local-filesystem.test.ts packages/ingestion/test/source-registry.test.ts packages/ingestion/test/smoke.test.ts
+Test Files  4 passed (4)
+Tests  9 passed (9)
 
-npm test -- packages/ingestion/test/dry-run-scanner.test.ts packages/ingestion/test/archive-expansion.test.ts packages/ingestion/test/import-service.test.ts
-Test Files  3 passed
+npm test -- packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/import-service.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts
+Test Files  4 passed (4)
+Tests  23 passed (23)
 
-npm test -- packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts packages/ingestion/test/parser-jobs.test.ts packages/ingestion/test/provider-approval.test.ts
-Test Files  4 passed
-
-npm test -- packages/ingestion/test/cli-contract.test.ts packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx packages/ui/test/request-data-boundary.test.ts
-Test Files  4 passed
+npm test -- packages/ingestion/test/parser.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/cli.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx
+Test Files  5 passed (5)
+Tests  22 passed (22)
 ```
 
 Final verification evidence:
