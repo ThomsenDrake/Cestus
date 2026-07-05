@@ -200,3 +200,54 @@ factory-readiness passed
 ```
 
 Governance implementation scope remains backend/domain work grounded in append-only ontology events. Runtime wiring, UI changes, live credentials, encryption/key management, and ingestion connector work require separate approved plans.
+
+## Durable Local PRR Runtime Plan Readiness
+
+The durable local PRR runtime plan was prepared from the approved design spec on 2026-07-05.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-05-durable-local-prr-runtime-design.md`
+- `docs/superpowers/plans/2026-07-05-durable-local-prr-runtime-implementation.md`
+
+Factory readiness now checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded command evidence:
+
+```text
+npm test -- packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx
+Test Files  2 passed (2)
+Tests  16 passed (16)
+
+npm run factory:check
+factory-readiness passed
+
+npm run verify
+typecheck passed
+Test Files  50 passed (50)
+Tests  397 passed (397)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Preview evidence:
+
+```text
+npm run ui:build
+vite build succeeded
+
+CESTUS_LOCAL_PORT=8788 npm run local:runtime
+Cestus local runtime listening on http://127.0.0.1:8788
+
+curl -I http://127.0.0.1:8788/
+HTTP/1.1 200 OK
+
+curl -s http://127.0.0.1:8788/api/health
+{"ok":true,"storageStrategy":"repo-local","bindMode":"loopback","authRequired":false,"devSeedEnabled":false}
+
+curl -s http://127.0.0.1:8788/api/requests/workspace
+Returned "cards":[] from an empty repo-local ledger without automatic seed data.
+
+Local runtime stopped before task completion; follow-up curl returned 000.
+```

@@ -1,19 +1,11 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { buildPrrProjection } from "../../prr/src/projection.js";
-import { buildPrrWorkspaceDto } from "../../prr/src/read-api.js";
-import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { App } from "../src/App.js";
 import { RequestWorkspace } from "../src/requests/RequestWorkspace.js";
+import { buildTestRequestsWorkspace, createTestRequestsAdapter } from "./request-test-utils.js";
 
 describe("RequestWorkspace", () => {
-  function buildTestRequestsWorkspace() {
-    return buildPrrWorkspaceDto(buildPrrProjection(prrWorkspaceSeedEvents), {
-      now: "2026-07-20T12:00:00.000Z"
-    });
-  }
-
   it("renders the signal operations board lanes and cards", () => {
     render(
       <RequestWorkspace
@@ -67,7 +59,7 @@ describe("RequestWorkspace", () => {
   });
 
   it("opens the request detail modal immediately when a request card is selected", async () => {
-    render(<App />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
@@ -93,7 +85,7 @@ describe("RequestWorkspace", () => {
   });
 
   it("keeps App Requests mode to one workspace intelligence rail landmark", async () => {
-    render(<App />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
 

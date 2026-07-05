@@ -71,6 +71,7 @@ describe("PRR local runtime", () => {
     if (!result.ok) {
       throw new Error(result.diagnostic.message);
     }
+    expect(result.prrRequestId).toBe("prr_new_city_budget");
     expect(result.committedEventIds).toHaveLength(2);
 
     const events = await ledger.readStream("prr_new_city_budget");

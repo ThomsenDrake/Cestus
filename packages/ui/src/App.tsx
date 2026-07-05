@@ -3,7 +3,7 @@ import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
 import {
-  localReplayRequestsAdapter,
+  httpRequestsAdapter,
   type RequestsCreateDraftInput,
   type RequestsWorkspaceAdapter
 } from "./requests/request-adapter.js";
@@ -24,7 +24,7 @@ interface AppProps {
   readonly requestsAdapter?: RequestsWorkspaceAdapter;
 }
 
-export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps = {}) {
+export function App({ requestsAdapter = httpRequestsAdapter }: AppProps = {}) {
   const [activeModuleId, setActiveModuleId] = useState("command");
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
@@ -163,8 +163,10 @@ export function App({ requestsAdapter = localReplayRequestsAdapter }: AppProps =
 
     try {
       const result = await requestsAdapter.createDraftRequest(input);
-      setRequestsWorkspace(result.workspace);
-      setLoadedRequestsAdapter(requestsAdapter);
+      if (result.ok || result.workspaceStale !== true) {
+        setRequestsWorkspace(result.workspace);
+        setLoadedRequestsAdapter(requestsAdapter);
+      }
       setRequestsLoadState("loaded");
 
       if (result.ok) {
@@ -301,7 +303,7 @@ function renderRequestsMain({
     <section aria-label="Requests loading state" className="border border-[var(--console-line)] bg-[var(--console-panel)]/72 p-4">
       <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">Loading Requests workspace</p>
       <p className="mt-3 text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
-        Replaying local PRR ledger seed events into the workspace DTO.
+        Replaying the durable local PRR ledger into the workspace DTO.
       </p>
     </section>
   );
