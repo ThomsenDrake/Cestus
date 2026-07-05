@@ -114,12 +114,12 @@ describe("resolveLocalRuntimeConfig", () => {
     expect(config.logs.dir).toBe(resolve(cwd, ".cestus/local/logs"));
   });
 
-  it("rejects tailnet exposure without auth", () => {
+  it.each(["tailnet", "lan"] as const)("rejects %s exposure without auth", (bindMode) => {
     expect(() =>
       resolveLocalRuntimeConfig({
         cwd,
         env: {
-          CESTUS_LOCAL_BIND: "tailnet",
+          CESTUS_LOCAL_BIND: bindMode,
           CESTUS_LOCAL_HOST: "100.126.143.105"
         }
       })
