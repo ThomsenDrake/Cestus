@@ -69,7 +69,18 @@ const claimCreatedPayloadSchema = z.object({
 const diagnosticRecordedPayloadSchema = z.object({
   diagnosticId: z.string().regex(/^diag_[a-zA-Z0-9_-]+$/),
   severity: z.enum(["info", "warning", "error"]),
-  category: z.enum(["ingestion", "validation", "projection", "migration", "deduplication"]),
+  category: z.enum([
+    "ingestion",
+    "validation",
+    "projection",
+    "migration",
+    "deduplication",
+    "governance",
+    "security",
+    "export",
+    "network",
+    "incident"
+  ]),
   message: z.string().min(1),
   repairHint: z.object({
     contract: z.string().min(1),
@@ -88,6 +99,182 @@ const projectionCheckpointedPayloadSchema = z.object({
   projectionName: z.string().min(1),
   highWaterMark: z.number().int().nonnegative(),
   status: z.enum(["ready", "rebuilding", "failed"])
+}).strict();
+
+const secretTextPattern =
+  /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth|credential)(?:$|[^a-z0-9])/i;
+
+const secretSafeTextSchema = z.string().min(1).refine((value) => !secretTextPattern.test(value), {
+  message: "text must not contain secrets or credentials"
+});
+
+const governanceTagSchema = z.enum([
+  "public_record",
+  "public_safe",
+  "contains_pii",
+  "source_identity",
+  "private_correspondence",
+  "legal_risk",
+  "credential_risk",
+  "export_restricted",
+  "law_enforcement_sensitive"
+]);
+
+const governancePolicyRefSchema = z.object({
+  policyId: z.string().regex(/^gov_policy_[a-zA-Z0-9_-]+$/),
+  version: z.string().min(1)
+}).strict();
+
+const governanceTagDecisionSchema = z.object({
+  tag: governanceTagSchema,
+  confidence: z.number().min(0).max(1),
+  rationale: secretSafeTextSchema
+}).strict();
+
+const governanceClassifierSchema = z.object({
+  actorId: z.string().min(3),
+  kind: z.enum(["ai", "human", "system", "ruleset"]),
+  label: secretSafeTextSchema,
+  model: secretSafeTextSchema.optional(),
+  tool: secretSafeTextSchema.optional()
+}).strict();
+
+const governancePolicyInstalledPayloadSchema = z.object({
+  policyId: z.string().regex(/^gov_policy_[a-zA-Z0-9_-]+$/),
+  version: z.string().min(1),
+  installedBy: z.string().min(3),
+  confidenceThreshold: z.number().min(0).max(1),
+  tags: z.array(z.object({
+    tag: governanceTagSchema,
+    description: secretSafeTextSchema,
+    defaultExportBehavior: z.enum(["include-by-default", "exclude-unless-opted-in"]),
+    unlocksNormalWorkflowsAtHighConfidence: z.boolean()
+  }).strict()).min(1)
+}).strict();
+
+const evidenceGovernanceClassifiedPayloadSchema = z.object({
+  evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/),
+  evidenceEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
+  contentHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  policy: governancePolicyRefSchema,
+  classifier: governanceClassifierSchema,
+  tags: z.array(governanceTagDecisionSchema).min(1)
+}).strict();
+
+const evidenceGovernanceReviewedPayloadSchema = z.object({
+  evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/),
+  reviewedBy: z.string().min(3),
+  policy: governancePolicyRefSchema,
+  decisions: z.array(z.object({
+    tag: governanceTagSchema,
+    action: z.enum(["affirm", "add", "remove", "supersede"]),
+    rationale: secretSafeTextSchema,
+    supersedesEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/).optional()
+  }).strict()).min(1)
+}).strict();
+
+const evidenceRedactionAppliedPayloadSchema = z.object({
+  evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/),
+  redactionId: z.string().regex(/^redaction_[a-zA-Z0-9_-]+$/),
+  appliedBy: z.string().min(3),
+  rationale: secretSafeTextSchema,
+  redactedContentHash: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
+}).strict();
+
+const evidenceQuarantinedPayloadSchema = z.object({
+  evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/),
+  quarantineId: z.string().regex(/^quarantine_[a-zA-Z0-9_-]+$/),
+  quarantinedBy: z.string().min(3),
+  reason: secretSafeTextSchema,
+  lockLevel: z.enum(["workflow", "export", "all"])
+}).strict();
+
+const evidenceTombstonedPayloadSchema = z.object({
+  evidenceId: z.string().regex(/^ev_[a-zA-Z0-9_-]+$/),
+  tombstoneId: z.string().regex(/^tombstone_[a-zA-Z0-9_-]+$/),
+  tombstonedBy: z.string().min(3),
+  reason: secretSafeTextSchema
+}).strict();
+
+const networkExposureEnabledPayloadSchema = z.object({
+  exposureId: z.string().regex(/^netexp_[a-zA-Z0-9_-]+$/),
+  mode: z.enum(["lan", "tailnet"]),
+  bindScope: z.enum(["lan", "tailnet"]),
+  enabledBy: z.string().min(3),
+  enabledAt: z.string().datetime(),
+  visibleWarning: z.literal(true),
+  policy: governancePolicyRefSchema
+}).strict();
+
+const networkExposureDisabledPayloadSchema = z.object({
+  exposureId: z.string().regex(/^netexp_[a-zA-Z0-9_-]+$/),
+  disabledBy: z.string().min(3),
+  disabledAt: z.string().datetime(),
+  reason: secretSafeTextSchema
+}).strict();
+
+const deviceSessionApprovedPayloadSchema = z.object({
+  sessionId: z.string().regex(/^devsess_[a-zA-Z0-9_-]+$/),
+  deviceLabel: secretSafeTextSchema,
+  approvedBy: z.string().min(3),
+  approvedAt: z.string().datetime(),
+  exposureId: z.string().regex(/^netexp_[a-zA-Z0-9_-]+$/),
+  capabilities: z.array(z.enum(["read", "write"])).min(1),
+  policy: governancePolicyRefSchema
+}).strict();
+
+const deviceSessionRevokedPayloadSchema = z.object({
+  sessionId: z.string().regex(/^devsess_[a-zA-Z0-9_-]+$/),
+  revokedBy: z.string().min(3),
+  revokedAt: z.string().datetime(),
+  reason: secretSafeTextSchema
+}).strict();
+
+const sensitiveOptInSchema = z.object({
+  tag: governanceTagSchema,
+  approvedBy: z.string().min(3),
+  rationale: secretSafeTextSchema
+}).strict();
+
+const exportGeneratedPayloadSchema = z.object({
+  exportId: z.string().regex(/^exp_[a-zA-Z0-9_-]+$/),
+  generatedBy: z.string().min(3),
+  generatedAt: z.string().datetime(),
+  policy: governancePolicyRefSchema,
+  includedEvidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/)),
+  includedContentHashes: z.array(z.string().regex(/^sha256:[a-f0-9]{64}$/)),
+  sensitiveOptIns: z.array(sensitiveOptInSchema),
+  defaultPublicSafeOnly: z.boolean()
+}).strict();
+
+const reportGeneratedPayloadSchema = z.object({
+  reportId: z.string().regex(/^report_[a-zA-Z0-9_-]+$/),
+  generatedBy: z.string().min(3),
+  generatedAt: z.string().datetime(),
+  policy: governancePolicyRefSchema,
+  includedEvidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/)),
+  includedContentHashes: z.array(z.string().regex(/^sha256:[a-f0-9]{64}$/)),
+  sensitiveOptIns: z.array(sensitiveOptInSchema),
+  defaultPublicSafeOnly: z.boolean()
+}).strict();
+
+const incidentRecordedPayloadSchema = z.object({
+  incidentId: z.string().regex(/^incident_[a-zA-Z0-9_-]+$/),
+  severity: z.enum(["info", "warning", "error", "critical"]),
+  category: z.enum(["classification", "secret-leak", "export", "network", "device", "quarantine", "projection"]),
+  recordedBy: z.string().min(3),
+  summary: secretSafeTextSchema,
+  relatedEvidenceIds: z.array(z.string().regex(/^ev_[a-zA-Z0-9_-]+$/)),
+  relatedEventIds: z.array(z.string().regex(/^evt_[a-zA-Z0-9_-]+$/))
+}).strict();
+
+const incidentRepairRecordedPayloadSchema = z.object({
+  incidentId: z.string().regex(/^incident_[a-zA-Z0-9_-]+$/),
+  repairId: z.string().regex(/^repair_[a-zA-Z0-9_-]+$/),
+  repairedBy: z.string().min(3),
+  repairedAt: z.string().datetime(),
+  action: secretSafeTextSchema,
+  closesIncident: z.boolean()
 }).strict();
 
 const prrStatusSchema = z.enum([
@@ -302,6 +489,20 @@ export const payloadSchemas = {
   "diagnostic.recorded": diagnosticRecordedPayloadSchema,
   "ontology.pack.installed": ontologyPackInstalledPayloadSchema,
   "projection.checkpointed": projectionCheckpointedPayloadSchema,
+  "governance.policy.installed": governancePolicyInstalledPayloadSchema,
+  "evidence.governance.classified": evidenceGovernanceClassifiedPayloadSchema,
+  "evidence.governance.reviewed": evidenceGovernanceReviewedPayloadSchema,
+  "evidence.redaction.applied": evidenceRedactionAppliedPayloadSchema,
+  "evidence.quarantined": evidenceQuarantinedPayloadSchema,
+  "evidence.tombstoned": evidenceTombstonedPayloadSchema,
+  "network.exposure.enabled": networkExposureEnabledPayloadSchema,
+  "network.exposure.disabled": networkExposureDisabledPayloadSchema,
+  "device.session.approved": deviceSessionApprovedPayloadSchema,
+  "device.session.revoked": deviceSessionRevokedPayloadSchema,
+  "export.generated": exportGeneratedPayloadSchema,
+  "report.generated": reportGeneratedPayloadSchema,
+  "incident.recorded": incidentRecordedPayloadSchema,
+  "incident.repair.recorded": incidentRepairRecordedPayloadSchema,
   "prr.request.created": prrRequestCreatedPayloadSchema,
   "prr.request.sent": prrRequestSentPayloadSchema,
   "prr.correspondence.received": prrCorrespondenceReceivedPayloadSchema,
@@ -409,6 +610,104 @@ export const eventContracts = {
     description: "Records projection high-water mark and rebuild status.",
     agentGuidance: "Use to make projection state inspectable and rebuildable from the ledger.",
     invariants: ["highWaterMark cannot be negative"]
+  },
+  "governance.policy.installed": {
+    type: "governance.policy.installed",
+    version: 1,
+    description: "Records installation of an active governance policy, tag definitions, confidence threshold, and export defaults.",
+    agentGuidance: "Use for governed policy changes only. Do not infer policy state from configuration that is not represented by ledger events.",
+    invariants: ["policyId must use the gov_policy_ prefix", "tags must be known governance tags", "confidenceThreshold is between 0 and 1"]
+  },
+  "evidence.governance.classified": {
+    type: "evidence.governance.classified",
+    version: 1,
+    description: "Records AI, system, ruleset, or human classification of evidence with independent governance tags.",
+    agentGuidance: "Use after evidence ingestion to record tag confidence and rationale. Classification never accepts graph facts or bypasses human gates.",
+    invariants: ["evidenceId and evidenceEventId are required", "contentHash must be sha256", "tag rationales must be secret-safe"]
+  },
+  "evidence.governance.reviewed": {
+    type: "evidence.governance.reviewed",
+    version: 1,
+    description: "Records append-only human review decisions for evidence governance tags.",
+    agentGuidance: "Use only for explicit human review. Add, affirm, remove, or supersede prior tag decisions without mutating earlier events.",
+    invariants: ["reviewedBy is required", "decisions cannot be empty", "review rationale must be secret-safe"]
+  },
+  "evidence.redaction.applied": {
+    type: "evidence.redaction.applied",
+    version: 1,
+    description: "Records a redaction decision and safe references to redacted evidence views or hashes.",
+    agentGuidance: "Use for append-only redaction history. Do not delete original ledger events or store redacted raw content in the payload.",
+    invariants: ["redactionId must be stable", "appliedBy is required", "rationale must be secret-safe"]
+  },
+  "evidence.quarantined": {
+    type: "evidence.quarantined",
+    version: 1,
+    description: "Records a quarantine or access-lock decision that removes evidence from normal workflows by projection.",
+    agentGuidance: "Use when evidence should be excluded from workflow, export, or all access paths while preserving append-only history.",
+    invariants: ["quarantineId must be stable", "lockLevel must be explicit", "reason must be secret-safe"]
+  },
+  "evidence.tombstoned": {
+    type: "evidence.tombstoned",
+    version: 1,
+    description: "Records append-only removal semantics for evidence without deleting source history.",
+    agentGuidance: "Use for tombstone decisions only after review. Projections should hide tombstoned evidence while replay still sees the event.",
+    invariants: ["tombstoneId must be stable", "tombstonedBy is required", "reason must be secret-safe"]
+  },
+  "network.exposure.enabled": {
+    type: "network.exposure.enabled",
+    version: 1,
+    description: "Records explicit LAN or tailnet exposure with visible warning state and active governance policy.",
+    agentGuidance: "Use only when local network exposure is intentionally enabled and visibly surfaced to the user.",
+    invariants: ["visibleWarning must be true", "enabledAt must be an ISO datetime", "policy is required"]
+  },
+  "network.exposure.disabled": {
+    type: "network.exposure.disabled",
+    version: 1,
+    description: "Records disabling of a previously enabled LAN or tailnet exposure.",
+    agentGuidance: "Use to close exposure state by projection. Do not erase the prior exposure-enabled event.",
+    invariants: ["exposureId is required", "disabledBy is required", "reason must be secret-safe"]
+  },
+  "device.session.approved": {
+    type: "device.session.approved",
+    version: 1,
+    description: "Records human approval for a local device or browser session to access an exposed Cestus instance.",
+    agentGuidance: "Use only after local human approval. AI agents must not approve sessions or devices.",
+    invariants: ["approvedBy is required", "capabilities cannot be empty", "policy is required"]
+  },
+  "device.session.revoked": {
+    type: "device.session.revoked",
+    version: 1,
+    description: "Records revocation of a previously approved local device or browser session.",
+    agentGuidance: "Use to remove session access in projections while preserving the prior approval history.",
+    invariants: ["sessionId is required", "revokedBy is required", "reason must be secret-safe"]
+  },
+  "export.generated": {
+    type: "export.generated",
+    version: 1,
+    description: "Records generation of an export artifact with public-safe defaults and sensitive evidence opt-in audit fields.",
+    agentGuidance: "Use whenever a durable export is generated. Sensitive or private evidence requires explicit opt-in records.",
+    invariants: ["included evidence references are recorded", "sensitiveOptIns are explicit", "defaultPublicSafeOnly is recorded"]
+  },
+  "report.generated": {
+    type: "report.generated",
+    version: 1,
+    description: "Records generation of a report artifact with public-safe defaults and sensitive evidence opt-in audit fields.",
+    agentGuidance: "Use whenever a durable report is generated. Do not infer public safety from UI state alone.",
+    invariants: ["reportId must be stable", "included content hashes are recorded", "sensitiveOptIns are explicit"]
+  },
+  "incident.recorded": {
+    type: "incident.recorded",
+    version: 1,
+    description: "Records governance, security, export, network, device, quarantine, or projection incidents with safe references.",
+    agentGuidance: "Use for inspectable incident state. Summaries must not include secrets, raw private content, or source-identifying text.",
+    invariants: ["incidentId must be stable", "summary must be secret-safe", "related references are arrays"]
+  },
+  "incident.repair.recorded": {
+    type: "incident.repair.recorded",
+    version: 1,
+    description: "Records append-only repair action for a governance or security incident.",
+    agentGuidance: "Use to document repair progress or closure. Do not rewrite the incident event or hide failed repairs.",
+    invariants: ["repairId must be stable", "action must be secret-safe", "closesIncident is explicit"]
   },
   "prr.request.created": {
     type: "prr.request.created",
@@ -606,6 +905,14 @@ function payloadIssueParams(issue: z.ZodIssue): Record<string, unknown> {
 
 export const knowledgeEventSchema = knowledgeEventBaseSchema
   .superRefine((event, ctx) => {
+    if (event.type === "evidence.governance.reviewed" && event.context.actor.kind !== "human") {
+      ctx.addIssue({
+        code: "custom",
+        message: "governance review events require a human context actor",
+        path: ["context", "actor", "kind"]
+      });
+    }
+
     const payloadSchema = payloadSchemas[event.type] as z.ZodType<unknown>;
     const payload = payloadSchema.safeParse(event.payload);
 
