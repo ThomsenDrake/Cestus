@@ -1,11 +1,8 @@
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
-import {
-  resolveJurisdictionPack,
-  type ActorRef,
-  type CreateDraftRequestInput
-} from "../../prr/src/draft-events.js";
+import { type ActorRef, type CreateDraftRequestInput } from "../../prr/src/draft-events.js";
 import type { DeadlineCalculator, PrrRuntimeNow } from "../../prr/src/runtime.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
+import { authorizedLocalRuntimeRequest } from "./auth.js";
 import type { ResolvedLocalRuntimeConfig } from "./config.js";
 import { createSqlitePrrRuntime } from "./runtime-factory.js";
 
@@ -164,18 +161,10 @@ function jurisdictionPackRefFromBody(
     return undefined;
   }
 
-  const ref = {
+  return {
     name: value.name,
     version: value.version
   };
-
-  try {
-    resolveJurisdictionPack(ref);
-  } catch {
-    return undefined;
-  }
-
-  return ref;
 }
 
 function contactRefFromBody(value: unknown): CreateDraftRequestInput["agency"] | undefined {
@@ -277,13 +266,7 @@ function parseJsonBody(
 }
 
 function authorized(config: ResolvedLocalRuntimeConfig, request: LocalRuntimeRequest): boolean {
-  if (!config.http.authRequired) {
-    return true;
-  }
-
-  const expected = config.http.authToken;
-  const header = request.headers?.authorization ?? request.headers?.Authorization;
-  return expected !== undefined && header === `Bearer ${expected}`;
+  return authorizedLocalRuntimeRequest(config, request.headers ?? {});
 }
 
 function diagnostic(message: string, allowedRepairActions: readonly string[]): {

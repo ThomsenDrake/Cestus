@@ -70,6 +70,30 @@ describe("startLocalRuntimeServer", () => {
     });
   });
 
+  it("establishes an HttpOnly browser session for auth-required served clients", async () => {
+    const handle = await startTestServer(authRequiredConfig());
+    expect(handle.sessionBootstrapUrl).toBeDefined();
+    expect(handle.sessionBootstrapUrl).not.toContain("secret-local-token");
+
+    const unauthenticated = await fetch(`http://127.0.0.1:${serverPort(handle)}/api/requests/workspace`);
+    expect(unauthenticated.status).toBe(401);
+
+    const session = await fetch(handle.sessionBootstrapUrl ?? "", { redirect: "manual" });
+    expect(session.status).toBe(303);
+    expect(session.headers.get("location")).toBe("/");
+    const setCookie = session.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain("cestus_local_runtime_session=");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).not.toContain("secret-local-token");
+
+    const authenticated = await fetch(`http://127.0.0.1:${serverPort(handle)}/api/requests/workspace`, {
+      headers: { cookie: cookieHeaderFromSetCookie(setCookie) }
+    });
+    expect(authenticated.status).toBe(200);
+    expect(await authenticated.json()).toMatchObject({ cards: [] });
+  });
+
   it("can be closed more than once without closing the runtime twice", async () => {
     const handle = await startTestServer(loopbackConfig());
     handles.splice(handles.indexOf(handle), 1);
@@ -130,6 +154,10 @@ function tempDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "cestus-local-server-"));
   tempDirs.push(dir);
   return dir;
+}
+
+function cookieHeaderFromSetCookie(setCookie: string): string {
+  return setCookie.split(";")[0] ?? "";
 }
 
 function responseFrom(request: ReturnType<typeof httpRequest>): Promise<{

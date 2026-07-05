@@ -163,8 +163,10 @@ export function App({ requestsAdapter = httpRequestsAdapter }: AppProps = {}) {
 
     try {
       const result = await requestsAdapter.createDraftRequest(input);
-      setRequestsWorkspace(result.workspace);
-      setLoadedRequestsAdapter(requestsAdapter);
+      if (result.ok || result.workspaceStale !== true) {
+        setRequestsWorkspace(result.workspace);
+        setLoadedRequestsAdapter(requestsAdapter);
+      }
       setRequestsLoadState("loaded");
 
       if (result.ok) {

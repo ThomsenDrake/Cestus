@@ -227,8 +227,18 @@ describe("createLocalRuntimeHttpHandler", () => {
       })
     });
 
-    expect(response.status).toBe(400);
-    expect(JSON.parse(response.body)).toEqual(invalidDraftRequestBodyDiagnostic());
+    expect(response.status).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body).toMatchObject({
+      ok: false,
+      failedStep: "validate-input",
+      committedEventIds: [],
+      diagnostic: {
+        message: "Unsupported jurisdiction pack",
+        allowedRepairActions: ["choose a supported jurisdiction pack"]
+      },
+      workspace: { cards: [] }
+    });
 
     const workspace = await handler({ method: "GET", url: "/api/requests/workspace" });
     expect(

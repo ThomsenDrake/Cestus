@@ -5,6 +5,7 @@ import type { PrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { App } from "../src/App.js";
 import {
+  createHttpRequestsAdapter,
   createLocalReplayRequestsAdapter,
   createStaticRequestsAdapter,
   type RequestsWorkspaceAdapter
@@ -230,6 +231,46 @@ describe("Cestus UI bootstrap", () => {
     expect(screen.getByRole("complementary", { name: "Requests workspace intelligence" })).toBeInTheDocument();
     expect(screen.queryByRole("complementary", { name: "Request detail rail" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the loaded Requests board visible when HTTP draft creation fails", async () => {
+    const workspace = buildTestRequestsWorkspace();
+    let requestCount = 0;
+    const adapter = createHttpRequestsAdapter({
+      fetcher: async (url: RequestInfo | URL) => {
+        requestCount += 1;
+        if (String(url).endsWith("/api/requests/workspace")) {
+          return new Response(JSON.stringify(workspace), {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          });
+        }
+        return new Response(JSON.stringify({ message: "Bearer raw-token" }), {
+          status: 503,
+          headers: { "content-type": "application/json" }
+        });
+      }
+    });
+    render(<App requestsAdapter={adapter} />);
+
+    fireEvent.click(screen.getByRole("link", { name: "Requests" }));
+    expect(await screen.findByText("Building Services Department")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "New request" }));
+    fireEvent.change(screen.getByLabelText("Agency name"), { target: { value: "City Clerk" } });
+    fireEvent.change(screen.getByLabelText("Requester name"), { target: { value: "Avery Investigator" } });
+    fireEvent.change(screen.getByLabelText("Request text"), {
+      target: { value: "All budget amendment memos from January 2026." }
+    });
+    fireEvent.change(screen.getByLabelText("Received timestamp"), {
+      target: { value: "2026-07-05T12:00:00.000Z" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create draft" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Requests runtime returned HTTP 503.");
+    expect(screen.getByText("Building Services Department")).toBeInTheDocument();
+    expect(screen.queryByText("No requests yet.")).not.toBeInTheDocument();
+    expect(requestCount).toBe(2);
   });
 
   it("stores two local replay events for a successful builder draft submit", async () => {

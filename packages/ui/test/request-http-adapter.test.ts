@@ -18,6 +18,7 @@ describe("createHttpRequestsAdapter", () => {
 
     await expect(adapter.loadRequestsWorkspace()).resolves.toEqual(workspace);
     expect(fetcher).toHaveBeenCalledWith("http://127.0.0.1:8787/api/requests/workspace", {
+      credentials: "same-origin",
       headers: {},
       method: "GET"
     });
@@ -33,6 +34,15 @@ describe("createHttpRequestsAdapter", () => {
       "Requests runtime request failed."
     );
     await expect(adapter.loadRequestsWorkspace()).rejects.not.toThrow("raw-token");
+  });
+
+  it("turns malformed successful workspace payloads into safe load errors", async () => {
+    const fetcher = vi.fn(async () => jsonResponse(200, { ok: true }));
+    const adapter = createHttpRequestsAdapter({ fetcher });
+
+    await expect(adapter.loadRequestsWorkspace()).rejects.toThrow(
+      "Requests runtime returned invalid workspace payload."
+    );
   });
 
   it("turns invalid workspace JSON into a safe load error", async () => {
@@ -75,6 +85,7 @@ describe("createHttpRequestsAdapter", () => {
     });
     expect(fetcher).toHaveBeenCalledWith("/api/requests/drafts", {
       body: expect.stringContaining("City Clerk"),
+      credentials: "same-origin",
       headers: {
         authorization: "Bearer secret-token",
         "content-type": "application/json"
@@ -99,6 +110,24 @@ describe("createHttpRequestsAdapter", () => {
       expect(result.failedStep).toBe("append-request");
       expect(result.diagnostic.message).toBe("Requests runtime returned HTTP 503.");
       expect(result.diagnostic.message).not.toContain("raw-token");
+    }
+  });
+
+  it("turns malformed successful draft payloads into stale safe diagnostics", async () => {
+    const fetcher = vi.fn(async () => jsonResponse(200, { ok: true }));
+    const adapter = createHttpRequestsAdapter({ fetcher });
+
+    const result = await adapter.createDraftRequest({
+      jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+      agency: { name: "City Clerk" },
+      requester: { name: "Avery Investigator" },
+      requestText: "All budget amendment memos from January 2026."
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.workspaceStale).toBe(true);
+      expect(result.diagnostic.message).toBe("Requests runtime returned invalid draft result.");
     }
   });
 
@@ -161,6 +190,7 @@ describe("createHttpRequestsAdapter", () => {
     }
 
     expect(fetcher).toHaveBeenCalledWith("/api/requests/workspace", {
+      credentials: "same-origin",
       headers: {},
       method: "GET"
     });
