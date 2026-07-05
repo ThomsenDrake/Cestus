@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import type { z } from "zod";
 import { actorRefSchema, type AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
@@ -54,34 +54,33 @@ interface ScannedFile {
   absolutePath: string;
 }
 
+interface CollectedFiles {
+  files: ScannedFile[];
+  skipped: number;
+}
+
+interface InventoryItem {
+  sourcePath: string;
+  contentHash: `sha256:${string}`;
+  sizeBytes: number;
+}
+
 export class LocalFilesystemScanner {
   constructor(private readonly dependencies: LocalFilesystemScannerDependencies) {}
 
   async scan(input: LocalFilesystemScanInput): Promise<LocalFilesystemScanResult> {
     const rootDir = resolve(input.rootDir);
     const streamId = this.streamId(input.scanBatchId);
-
-    await this.dependencies.ledger.append({
-      type: "ingestion.scan.started",
-      version: 1,
-      streamId,
-      context: this.context(input.scanBatchId),
-      payload: {
-        scanBatchId: input.scanBatchId,
-        sourceCollectionId: input.sourceCollectionId,
-        hashPolicy: "sha256-dry-run",
-        startedAt: new Date().toISOString()
-      }
-    });
-
-    const files = this.collectFiles(rootDir).sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+    const collected = this.collectFiles(rootDir);
+    const files = collected.files.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
     const seenContentHashes = new Set<string>();
     const occurrences: LocalFilesystemOccurrence[] = [];
+    const inventoryItems: InventoryItem[] = [];
     let observedByteTotal = 0;
     let uniqueByteTotal = 0;
 
     for (const file of files) {
-      const stat = statSync(file.absolutePath);
+      const stat = lstatSync(file.absolutePath);
       const bytes = readFileSync(file.absolutePath);
       const contentHash = sha256(bytes);
       const status: OccurrenceStatus = seenContentHashes.has(contentHash) ? "duplicate" : "new";
@@ -104,7 +103,37 @@ export class LocalFilesystemScanner {
       };
 
       occurrences.push(occurrence);
+      inventoryItems.push({
+        sourcePath: occurrence.sourcePath,
+        contentHash: occurrence.contentHash,
+        sizeBytes: occurrence.sizeBytes
+      });
+    }
 
+    const inventoryHash = inventoryDigest(inventoryItems);
+    const totals = {
+      observedFiles: occurrences.length,
+      uniqueContent: seenContentHashes.size,
+      duplicateOccurrences: occurrences.filter((occurrence) => occurrence.status === "duplicate").length,
+      skipped: collected.skipped,
+      bytes: observedByteTotal,
+      estimatedNewBlobBytes: uniqueByteTotal
+    };
+
+    await this.dependencies.ledger.append({
+      type: "ingestion.scan.started",
+      version: 1,
+      streamId,
+      context: this.context(input.scanBatchId),
+      payload: {
+        scanBatchId: input.scanBatchId,
+        sourceCollectionId: input.sourceCollectionId,
+        hashPolicy: "sha256-dry-run",
+        startedAt: new Date().toISOString()
+      }
+    });
+
+    for (const occurrence of occurrences) {
       await this.dependencies.ledger.append({
         type: "ingestion.occurrence.observed",
         version: 1,
@@ -117,16 +146,6 @@ export class LocalFilesystemScanner {
         }
       });
     }
-
-    const inventoryHash = inventoryDigest(occurrences);
-    const totals = {
-      observedFiles: occurrences.length,
-      uniqueContent: seenContentHashes.size,
-      duplicateOccurrences: occurrences.filter((occurrence) => occurrence.status === "duplicate").length,
-      skipped: 0,
-      bytes: observedByteTotal,
-      estimatedNewBlobBytes: uniqueByteTotal
-    };
 
     await this.dependencies.ledger.append({
       type: "ingestion.scan.completed",
@@ -152,24 +171,31 @@ export class LocalFilesystemScanner {
     };
   }
 
-  private collectFiles(rootDir: string, currentDir = rootDir): ScannedFile[] {
+  private collectFiles(rootDir: string, currentDir = rootDir): CollectedFiles {
     const files: ScannedFile[] = [];
+    let skipped = 0;
 
     for (const entry of readdirSync(currentDir)) {
       const absolutePath = resolve(currentDir, entry);
-      const stat = statSync(absolutePath);
+      const stat = lstatSync(absolutePath);
 
-      if (stat.isDirectory()) {
-        files.push(...this.collectFiles(rootDir, absolutePath));
+      if (stat.isSymbolicLink()) {
+        skipped += 1;
+      } else if (stat.isDirectory()) {
+        const nested = this.collectFiles(rootDir, absolutePath);
+        files.push(...nested.files);
+        skipped += nested.skipped;
       } else if (stat.isFile()) {
         files.push({
           absolutePath,
           relativePath: relative(rootDir, absolutePath).split(sep).join("/")
         });
+      } else {
+        skipped += 1;
       }
     }
 
-    return files;
+    return { files, skipped };
   }
 
   private context(scanBatchId: string): AppendableKnowledgeEvent["context"] {
@@ -195,6 +221,6 @@ function sha256(bytes: Buffer): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
 
-function inventoryDigest(occurrences: LocalFilesystemOccurrence[]): `sha256:${string}` {
-  return sha256(Buffer.from(JSON.stringify(occurrences), "utf8"));
+function inventoryDigest(items: InventoryItem[]): `sha256:${string}` {
+  return sha256(Buffer.from(JSON.stringify(items), "utf8"));
 }

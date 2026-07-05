@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -58,5 +58,95 @@ describe("LocalFilesystemScanner", () => {
       "ingestion.occurrence.observed",
       "ingestion.scan.completed"
     ]);
+  });
+
+  it("keeps the inventory hash stable across scan batches for the same tree", async () => {
+    const firstLedger = new InMemoryEventLedger();
+    const secondLedger = new InMemoryEventLedger();
+    const firstScanner = new LocalFilesystemScanner({
+      ledger: firstLedger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+    const secondScanner = new LocalFilesystemScanner({
+      ledger: secondLedger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+
+    const first = await firstScanner.scan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      rootDir: root
+    });
+    const second = await secondScanner.scan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_002",
+      rootDir: root
+    });
+
+    expect(second.inventoryHash).toBe(first.inventoryHash);
+  });
+
+  it("uses stable occurrence IDs for the same batch, path, and hash in fresh ledgers", async () => {
+    const firstLedger = new InMemoryEventLedger();
+    const secondLedger = new InMemoryEventLedger();
+    const firstScanner = new LocalFilesystemScanner({
+      ledger: firstLedger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+    const secondScanner = new LocalFilesystemScanner({
+      ledger: secondLedger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+
+    const first = await firstScanner.scan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      rootDir: root
+    });
+    const second = await secondScanner.scan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      rootDir: root
+    });
+
+    expect(second.occurrences.map((occurrence) => occurrence.occurrenceId).sort()).toEqual(
+      first.occurrences.map((occurrence) => occurrence.occurrenceId).sort()
+    );
+  });
+
+  it("skips symlinks without hashing targets or emitting occurrence events", async () => {
+    symlinkSync(join(root, "contracts", "a.txt"), join(root, "contracts", "linked.txt"));
+    const ledger = new InMemoryEventLedger();
+    const scanner = new LocalFilesystemScanner({
+      ledger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+
+    const result = await scanner.scan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      rootDir: root
+    });
+
+    expect(result.totals).toMatchObject({ observedFiles: 3, skipped: 1 });
+    expect(result.occurrences.map((occurrence) => occurrence.sourcePath)).not.toContain("contracts/linked.txt");
+    expect((await ledger.readAll()).filter((event) => event.type === "ingestion.occurrence.observed")).toHaveLength(3);
+  });
+
+  it("leaves the ledger empty when collection fails before append", async () => {
+    const ledger = new InMemoryEventLedger();
+    const scanner = new LocalFilesystemScanner({
+      ledger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+
+    await expect(
+      scanner.scan({
+        sourceCollectionId: "src_drive_001",
+        scanBatchId: "scan_001",
+        rootDir: join(root, "missing")
+      })
+    ).rejects.toThrow();
+    expect(await ledger.readAll()).toEqual([]);
   });
 });
