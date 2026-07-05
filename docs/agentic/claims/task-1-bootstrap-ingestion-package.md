@@ -1,6 +1,6 @@
 # Task 1: Bootstrap The Ingestion Package
 
-Status: in-progress
+Status: ready-for-review
 
 Plan: `docs/superpowers/plans/2026-07-05-public-ingestion-pipeline-implementation.md`
 
