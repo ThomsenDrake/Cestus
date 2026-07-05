@@ -90,6 +90,137 @@ const projectionCheckpointedPayloadSchema = z.object({
   status: z.enum(["ready", "rebuilding", "failed"])
 }).strict();
 
+const sourceCollectionIdSchema = z.string().regex(/^src_[a-zA-Z0-9_-]+$/);
+const scanBatchIdSchema = z.string().regex(/^scan_[a-zA-Z0-9_-]+$/);
+const importBatchIdSchema = z.string().regex(/^imp_[a-zA-Z0-9_-]+$/);
+const occurrenceIdSchema = z.string().regex(/^occ_[a-zA-Z0-9_-]+$/);
+const parseJobIdSchema = z.string().regex(/^parse_[a-zA-Z0-9_-]+$/);
+const providerJobIdSchema = z.string().regex(/^provider_[a-zA-Z0-9_-]+$/);
+const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/);
+const ingestionAdapterRefSchema = z.object({ name: z.string().min(1), version: z.string().min(1) }).strict();
+
+const ingestionTotalsSchema = z.object({
+  observedFiles: z.number().int().nonnegative(),
+  uniqueContent: z.number().int().nonnegative(),
+  duplicateOccurrences: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative(),
+  bytes: z.number().int().nonnegative(),
+  estimatedNewBlobBytes: z.number().int().nonnegative()
+}).strict();
+
+const ingestionImportTotalsSchema = z.object({
+  evidenceCreated: z.number().int().nonnegative(),
+  occurrencesLinked: z.number().int().nonnegative(),
+  duplicatesReused: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative()
+}).strict();
+
+const ingestionSourceRegisteredPayloadSchema = z.object({
+  sourceCollectionId: sourceCollectionIdSchema,
+  label: z.string().min(1),
+  mode: z.literal("read-only"),
+  adapter: ingestionAdapterRefSchema,
+  rootUri: z.string().min(1),
+  workspaceUri: z.string().min(1)
+}).strict();
+
+const ingestionScanStartedPayloadSchema = z.object({
+  scanBatchId: scanBatchIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  hashPolicy: z.string().min(1),
+  startedAt: z.string().datetime()
+}).strict();
+
+const ingestionOccurrenceObservedPayloadSchema = z.object({
+  occurrenceId: occurrenceIdSchema,
+  scanBatchId: scanBatchIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  contentHash: contentHashSchema,
+  sourcePath: z.string().min(1),
+  sizeBytes: z.number().int().nonnegative(),
+  observedAt: z.string().datetime(),
+  status: z.enum(["new", "duplicate", "changed", "missing", "skipped"]),
+  adapter: ingestionAdapterRefSchema.optional(),
+  containerPath: z.string().min(1).optional(),
+  containerHash: contentHashSchema.optional(),
+  internalPath: z.string().min(1).optional(),
+  archiveAdapter: ingestionAdapterRefSchema.optional()
+}).strict();
+
+const ingestionScanCompletedPayloadSchema = z.object({
+  scanBatchId: scanBatchIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  completedAt: z.string().datetime(),
+  inventoryHash: contentHashSchema,
+  totals: ingestionTotalsSchema
+}).strict();
+
+const ingestionImportApprovedPayloadSchema = z.object({
+  importBatchId: importBatchIdSchema,
+  scanBatchId: scanBatchIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  approvedBy: z.string().min(3),
+  approvedAt: z.string().datetime()
+}).strict();
+
+const ingestionImportCompletedPayloadSchema = z.object({
+  importBatchId: importBatchIdSchema,
+  scanBatchId: scanBatchIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  completedAt: z.string().datetime(),
+  totals: ingestionImportTotalsSchema
+}).strict();
+
+const ingestionEvidenceLinkedPayloadSchema = z.object({
+  evidenceId: evidenceIdSchema,
+  importBatchId: importBatchIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  contentHash: contentHashSchema,
+  occurrenceIds: z.array(occurrenceIdSchema).min(1)
+}).strict();
+
+const ingestionParseJobCreatedPayloadSchema = z.object({
+  parseJobId: parseJobIdSchema,
+  importBatchId: importBatchIdSchema,
+  evidenceId: evidenceIdSchema,
+  lane: z.enum(["local", "provider"]),
+  parser: ingestionAdapterRefSchema,
+  state: z.enum(["queued", "running", "succeeded", "failed", "skipped"])
+}).strict();
+
+const ingestionParseCompletedPayloadSchema = z.object({
+  parseJobId: parseJobIdSchema,
+  evidenceId: evidenceIdSchema,
+  lane: z.enum(["local", "provider"]),
+  parser: ingestionAdapterRefSchema,
+  outputHash: contentHashSchema,
+  outputMediaType: z.string().min(1),
+  completedAt: z.string().datetime()
+}).strict();
+
+const ingestionParseFailedPayloadSchema = z.object({
+  parseJobId: parseJobIdSchema,
+  evidenceId: evidenceIdSchema,
+  lane: z.enum(["local", "provider"]),
+  parser: ingestionAdapterRefSchema,
+  failedAt: z.string().datetime(),
+  message: z.string().min(1),
+  retryable: z.boolean()
+}).strict();
+
+const ingestionProviderApprovedPayloadSchema = z.object({
+  providerJobId: providerJobIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  importBatchId: importBatchIdSchema,
+  provider: ingestionAdapterRefSchema,
+  approvedBy: z.string().min(3),
+  approvedAt: z.string().datetime(),
+  eligibleMediaTypes: z.array(z.string().min(1)).min(1),
+  maxBytesPerFile: z.number().int().positive(),
+  policy: z.literal("send-all-technically-eligible")
+}).strict();
+
 const prrStatusSchema = z.enum([
   "draft",
   "sent",
@@ -302,6 +433,17 @@ export const payloadSchemas = {
   "diagnostic.recorded": diagnosticRecordedPayloadSchema,
   "ontology.pack.installed": ontologyPackInstalledPayloadSchema,
   "projection.checkpointed": projectionCheckpointedPayloadSchema,
+  "ingestion.source.registered": ingestionSourceRegisteredPayloadSchema,
+  "ingestion.scan.started": ingestionScanStartedPayloadSchema,
+  "ingestion.scan.completed": ingestionScanCompletedPayloadSchema,
+  "ingestion.occurrence.observed": ingestionOccurrenceObservedPayloadSchema,
+  "ingestion.import.approved": ingestionImportApprovedPayloadSchema,
+  "ingestion.import.completed": ingestionImportCompletedPayloadSchema,
+  "ingestion.evidence.linked": ingestionEvidenceLinkedPayloadSchema,
+  "ingestion.parse.job.created": ingestionParseJobCreatedPayloadSchema,
+  "ingestion.parse.completed": ingestionParseCompletedPayloadSchema,
+  "ingestion.parse.failed": ingestionParseFailedPayloadSchema,
+  "ingestion.provider.approved": ingestionProviderApprovedPayloadSchema,
   "prr.request.created": prrRequestCreatedPayloadSchema,
   "prr.request.sent": prrRequestSentPayloadSchema,
   "prr.correspondence.received": prrCorrespondenceReceivedPayloadSchema,
@@ -409,6 +551,83 @@ export const eventContracts = {
     description: "Records projection high-water mark and rebuild status.",
     agentGuidance: "Use to make projection state inspectable and rebuildable from the ledger.",
     invariants: ["highWaterMark cannot be negative"]
+  },
+  "ingestion.source.registered": {
+    type: "ingestion.source.registered",
+    version: 1,
+    description: "Records registration of a read-only source collection and the workspace that will receive imported evidence.",
+    agentGuidance: "Use once per logical source collection before scans. Never imply that the source tree can be mutated.",
+    invariants: ["sourceCollectionId must be stable", "mode must remain read-only", "adapter metadata is required"]
+  },
+  "ingestion.scan.started": {
+    type: "ingestion.scan.started",
+    version: 1,
+    description: "Records the start of a dry-run inventory scan for a source collection.",
+    agentGuidance: "Use before occurrence observations. This is an inventory event, not raw evidence import approval.",
+    invariants: ["scanBatchId must be stable", "sourceCollectionId is required", "startedAt must be an ISO datetime"]
+  },
+  "ingestion.scan.completed": {
+    type: "ingestion.scan.completed",
+    version: 1,
+    description: "Records completion of a dry-run inventory scan with a manifest hash and reviewable totals.",
+    agentGuidance: "Use after all occurrence observations for the scan are recorded. Do not create evidence from this event alone.",
+    invariants: ["inventoryHash must be sha256", "totals must be nonnegative", "completedAt must be an ISO datetime"]
+  },
+  "ingestion.occurrence.observed": {
+    type: "ingestion.occurrence.observed",
+    version: 1,
+    description: "Records one source occurrence observed during dry-run scanning, including duplicate or container provenance when applicable.",
+    agentGuidance: "Use for path and archive-child observations. Preserve source context without treating folders as investigations.",
+    invariants: ["contentHash must be sha256", "occurrenceId must be stable", "observations do not delete prior evidence"]
+  },
+  "ingestion.import.approved": {
+    type: "ingestion.import.approved",
+    version: 1,
+    description: "Records human approval to import raw artifacts from a completed dry-run scan.",
+    agentGuidance: "Use only after a person reviews scan totals and approves the import batch.",
+    invariants: ["approvedBy is required", "scanBatchId is required", "approval must precede import completion"]
+  },
+  "ingestion.import.completed": {
+    type: "ingestion.import.completed",
+    version: 1,
+    description: "Records completion of an approved import batch with evidence creation and occurrence linkage totals.",
+    agentGuidance: "Use after blob copy, evidence creation, and occurrence linkage work completes or deterministically skips items.",
+    invariants: ["importBatchId is required", "totals must be nonnegative", "completedAt must be an ISO datetime"]
+  },
+  "ingestion.evidence.linked": {
+    type: "ingestion.evidence.linked",
+    version: 1,
+    description: "Links imported canonical ontology evidence to one or more source occurrences and a content hash.",
+    agentGuidance: "Use to preserve detailed source lineage without overloading the generic evidence.ingested payload.",
+    invariants: ["evidenceId is required", "occurrenceIds cannot be empty", "contentHash must be sha256"]
+  },
+  "ingestion.parse.job.created": {
+    type: "ingestion.parse.job.created",
+    version: 1,
+    description: "Records creation of a local or provider parse job for imported evidence.",
+    agentGuidance: "Use for queued or running parsing work. Parse output is derivative material, not accepted ontology fact.",
+    invariants: ["parseJobId is required", "evidenceId is required", "lane must be local or provider"]
+  },
+  "ingestion.parse.completed": {
+    type: "ingestion.parse.completed",
+    version: 1,
+    description: "Records successful parse completion with a derivative output hash and media type.",
+    agentGuidance: "Use after derivative output is content-addressed. Future assertion extraction still needs provenance and review.",
+    invariants: ["outputHash must be sha256", "parser metadata is required", "completedAt must be an ISO datetime"]
+  },
+  "ingestion.parse.failed": {
+    type: "ingestion.parse.failed",
+    version: 1,
+    description: "Records a secret-safe parse failure for imported evidence.",
+    agentGuidance: "Use instead of silent logs when local or provider parsing fails. Do not include credentials or raw document bodies.",
+    invariants: ["message must be secret-safe", "parseJobId is required", "retryable must be explicit"]
+  },
+  "ingestion.provider.approved": {
+    type: "ingestion.provider.approved",
+    version: 1,
+    description: "Records human approval for a provider parse batch before document bytes may leave the machine.",
+    agentGuidance: "Use only for batch-level provider approval. Never record provider credentials or imply autonomous outbound parsing.",
+    invariants: ["approvedBy is required", "eligibleMediaTypes cannot be empty", "policy must be send-all-technically-eligible"]
   },
   "prr.request.created": {
     type: "prr.request.created",

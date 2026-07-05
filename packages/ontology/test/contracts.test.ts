@@ -619,3 +619,139 @@ describe("public records request event contracts", () => {
     }
   });
 });
+
+describe("ingestion event contracts", () => {
+  it("validates source registration, scan, occurrence, approval, evidence link, parse, and provider events", () => {
+    const events: KnowledgeEvent[] = [
+      ingestionEvent("evt_ing_source_registered", "ingestion.source.registered", {
+        sourceCollectionId: "src_drive_001",
+        label: "External investigation archive",
+        mode: "read-only",
+        adapter: { name: "local-filesystem", version: "0.1.0" },
+        rootUri: "file:///mnt/investigation-drive/source",
+        workspaceUri: "file:///mnt/investigation-drive/cestus-workspace"
+      }),
+      ingestionEvent("evt_ing_scan_started", "ingestion.scan.started", {
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        hashPolicy: "sha256-dry-run",
+        startedAt: "2026-07-05T12:00:00.000Z"
+      }),
+      ingestionEvent("evt_ing_occurrence_observed", "ingestion.occurrence.observed", {
+        occurrenceId: "occ_001",
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        contentHash: validHash,
+        sourcePath: "/source/contracts/a.pdf",
+        sizeBytes: 11,
+        observedAt: "2026-07-05T12:01:00.000Z",
+        status: "new"
+      }),
+      ingestionEvent("evt_ing_scan_completed", "ingestion.scan.completed", {
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        completedAt: "2026-07-05T12:02:00.000Z",
+        inventoryHash: validHash,
+        totals: {
+          observedFiles: 1,
+          uniqueContent: 1,
+          duplicateOccurrences: 0,
+          skipped: 0,
+          bytes: 11,
+          estimatedNewBlobBytes: 11
+        }
+      }),
+      ingestionEvent("evt_ing_import_approved", "ingestion.import.approved", {
+        importBatchId: "imp_001",
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        approvedBy: "actor_investigator",
+        approvedAt: "2026-07-05T12:03:00.000Z"
+      }),
+      ingestionEvent("evt_ing_import_completed", "ingestion.import.completed", {
+        importBatchId: "imp_001",
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        completedAt: "2026-07-05T12:04:00.000Z",
+        totals: { evidenceCreated: 1, occurrencesLinked: 1, duplicatesReused: 0, skipped: 0 }
+      }),
+      ingestionEvent("evt_ing_evidence_linked", "ingestion.evidence.linked", {
+        evidenceId: "ev_ingested_001",
+        importBatchId: "imp_001",
+        sourceCollectionId: "src_drive_001",
+        contentHash: validHash,
+        occurrenceIds: ["occ_001"]
+      }),
+      ingestionEvent("evt_ing_parse_created", "ingestion.parse.job.created", {
+        parseJobId: "parse_001",
+        importBatchId: "imp_001",
+        evidenceId: "ev_ingested_001",
+        lane: "local",
+        parser: { name: "local-text", version: "0.1.0" },
+        state: "queued"
+      }),
+      ingestionEvent("evt_ing_parse_completed", "ingestion.parse.completed", {
+        parseJobId: "parse_001",
+        evidenceId: "ev_ingested_001",
+        lane: "local",
+        parser: { name: "local-text", version: "0.1.0" },
+        outputHash: validHash,
+        outputMediaType: "text/plain",
+        completedAt: "2026-07-05T12:05:00.000Z"
+      }),
+      ingestionEvent("evt_ing_provider_approved", "ingestion.provider.approved", {
+        providerJobId: "provider_001",
+        sourceCollectionId: "src_drive_001",
+        importBatchId: "imp_001",
+        provider: { name: "mistral-document-ai", version: "0.1.0" },
+        approvedBy: "actor_investigator",
+        approvedAt: "2026-07-05T12:06:00.000Z",
+        eligibleMediaTypes: ["application/pdf"],
+        maxBytesPerFile: 50000000,
+        policy: "send-all-technically-eligible"
+      })
+    ];
+
+    for (const event of events) {
+      expect(validateKnowledgeEvent(event).success, event.type).toBe(true);
+    }
+  });
+
+  it("rejects uncontracted ingestion payload fields", () => {
+    const badPayload = {
+      scanBatchId: "scan_002",
+      sourceCollectionId: "src_drive_001",
+      completedAt: "2026-07-05T12:02:00.000Z",
+      inventoryHash: validHash,
+      totals: {
+        observedFiles: 1,
+        uniqueContent: 1,
+        duplicateOccurrences: 0,
+        skipped: 0,
+        bytes: 11,
+        estimatedNewBlobBytes: 11
+      },
+      extra: true
+    } as unknown as Extract<KnowledgeEvent, { type: "ingestion.scan.completed" }>["payload"];
+
+    const event = ingestionEvent("evt_ing_bad_scan", "ingestion.scan.completed", badPayload);
+
+    expect(validateKnowledgeEvent(event).success).toBe(false);
+  });
+});
+
+function ingestionEvent<Type extends KnowledgeEvent["type"]>(
+  id: string,
+  type: Type,
+  payload: Extract<KnowledgeEvent, { type: Type }>["payload"]
+): Extract<KnowledgeEvent, { type: Type }> {
+  return {
+    id,
+    type,
+    version: 1,
+    streamId: `ingestion_${id}`,
+    sequence: 1,
+    context,
+    payload
+  } as unknown as Extract<KnowledgeEvent, { type: Type }>;
+}
