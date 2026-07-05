@@ -4,7 +4,7 @@ import { relative, resolve, sep } from "node:path";
 import type { z } from "zod";
 import { actorRefSchema, type AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
-import { ArchiveExpansionError, ZipArchiveAdapter, zipArchiveAdapterRef } from "./archive-adapter.js";
+import { ArchiveExpansionError, ZipArchiveAdapter } from "./archive-adapter.js";
 import type { OccurrenceStatus } from "./types.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
@@ -15,6 +15,10 @@ const defaultArchiveLimits = { maxEntries: 10000, maxExpandedBytes: 1024 * 1024 
 export interface LocalFilesystemScannerDependencies {
   ledger: EventLedger;
   actor: ActorRef;
+  archiveLimits?: {
+    maxEntries: number;
+    maxExpandedBytes: number;
+  };
 }
 
 export interface LocalFilesystemScanInput {
@@ -60,7 +64,11 @@ export interface LocalFilesystemDiagnostic {
   category: "ingestion";
   message: string;
   sourcePath: string;
-  repairHint: string;
+  repairHint: {
+    contract: "ZipArchiveAdapter.expand";
+    violatedPath: string;
+    allowedActions: string[];
+  };
 }
 
 interface ScannedFile {
@@ -109,7 +117,7 @@ export class LocalFilesystemScanner {
         try {
           const children = this.zipArchiveAdapter.expand(bytes, {
             containerHash,
-            ...defaultArchiveLimits
+            ...this.archiveLimits()
           });
 
           for (const child of children) {
@@ -125,9 +133,16 @@ export class LocalFilesystemScanner {
 
             const occurrence: LocalFilesystemOccurrence = {
               occurrenceId: stableOccurrenceId(
-                input.scanBatchId,
-                archiveOccurrencePath(file.relativePath, child.internalPath),
-                contentHash
+                {
+                  kind: "archive-child",
+                  sourceCollectionId: input.sourceCollectionId,
+                  scanBatchId: input.scanBatchId,
+                  sourcePath: file.relativePath,
+                  containerPath: file.relativePath,
+                  containerHash: child.containerHash,
+                  internalPath: child.internalPath,
+                  contentHash
+                }
               ),
               scanBatchId: input.scanBatchId,
               sourceCollectionId: input.sourceCollectionId,
@@ -171,7 +186,13 @@ export class LocalFilesystemScanner {
       observedByteTotal += stat.size;
 
       const occurrence: LocalFilesystemOccurrence = {
-        occurrenceId: stableOccurrenceId(input.scanBatchId, file.relativePath, contentHash),
+        occurrenceId: stableOccurrenceId({
+          kind: "file",
+          sourceCollectionId: input.sourceCollectionId,
+          scanBatchId: input.scanBatchId,
+          sourcePath: file.relativePath,
+          contentHash
+        }),
         scanBatchId: input.scanBatchId,
         sourceCollectionId: input.sourceCollectionId,
         contentHash,
@@ -221,6 +242,22 @@ export class LocalFilesystemScanner {
           ...occurrence,
           observedAt: new Date().toISOString(),
           adapter: localFilesystemAdapter
+        }
+      });
+    }
+
+    for (const diagnostic of diagnostics) {
+      await this.dependencies.ledger.append({
+        type: "diagnostic.recorded",
+        version: 1,
+        streamId,
+        context: this.context(input.scanBatchId),
+        payload: {
+          diagnosticId: stableDiagnosticId(input.sourceCollectionId, input.scanBatchId, diagnostic),
+          severity: "error",
+          category: diagnostic.category,
+          message: diagnostic.message,
+          repairHint: diagnostic.repairHint
         }
       });
     }
@@ -290,23 +327,30 @@ export class LocalFilesystemScanner {
   private streamId(scanBatchId: string): string {
     return `ingestion_scan_${scanBatchId}`;
   }
+
+  private archiveLimits(): { maxEntries: number; maxExpandedBytes: number } {
+    return this.dependencies.archiveLimits ?? defaultArchiveLimits;
+  }
 }
 
 function isZipPath(relativePath: string): boolean {
   return relativePath.toLowerCase().endsWith(".zip");
 }
 
-function archiveOccurrencePath(containerPath: string, internalPath: string): string {
-  return `${containerPath}!/${internalPath}`;
-}
-
 function archiveDiagnostic(sourcePath: string, error: unknown): LocalFilesystemDiagnostic {
   if (error instanceof ArchiveExpansionError) {
+    const limitActions = ["reduce archive contents", "increase reviewed archive limits", "rerun dry-run"];
     return {
       category: "ingestion",
       message: error.message,
       sourcePath,
-      repairHint: error.code === "unsafe-path" ? "Skip the archive or rebuild it without traversal paths." : "Reduce archive contents or adjust reviewed archive limits."
+      repairHint: {
+        contract: "ZipArchiveAdapter.expand",
+        violatedPath: sourcePath,
+        allowedActions: error.code === "unsafe-path"
+          ? ["skip archive", "rebuild archive without unsafe paths", "rerun dry-run"]
+          : limitActions
+      }
     };
   }
 
@@ -314,7 +358,11 @@ function archiveDiagnostic(sourcePath: string, error: unknown): LocalFilesystemD
     category: "ingestion",
     message: `zip archive expansion failed: ${errorMessage(error)}`,
     sourcePath,
-    repairHint: "Inspect the archive and rerun dry-run after repair."
+    repairHint: {
+      contract: "ZipArchiveAdapter.expand",
+      violatedPath: sourcePath,
+      allowedActions: ["inspect archive", "repair archive", "rerun dry-run"]
+    }
   };
 }
 
@@ -322,8 +370,25 @@ function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function stableOccurrenceId(scanBatchId: string, relativePath: string, contentHash: string): string {
-  return `occ_${createHash("sha256").update(`${scanBatchId}:${relativePath}:${contentHash}`).digest("hex")}`;
+type OccurrenceIdMaterial = {
+  kind: "file";
+  sourceCollectionId: string;
+  scanBatchId: string;
+  sourcePath: string;
+  contentHash: string;
+} | {
+  kind: "archive-child";
+  sourceCollectionId: string;
+  scanBatchId: string;
+  sourcePath: string;
+  containerPath: string;
+  containerHash: string;
+  internalPath: string;
+  contentHash: string;
+};
+
+function stableOccurrenceId(material: OccurrenceIdMaterial): string {
+  return `occ_${createHash("sha256").update(JSON.stringify(material)).digest("hex")}`;
 }
 
 function sha256(bytes: Buffer): `sha256:${string}` {
@@ -332,6 +397,19 @@ function sha256(bytes: Buffer): `sha256:${string}` {
 
 function inventoryDigest(items: InventoryItem[]): `sha256:${string}` {
   return sha256(Buffer.from(JSON.stringify(items), "utf8"));
+}
+
+function stableDiagnosticId(
+  sourceCollectionId: string,
+  scanBatchId: string,
+  diagnostic: LocalFilesystemDiagnostic
+): string {
+  return `diag_${createHash("sha256").update(JSON.stringify({
+    sourceCollectionId,
+    scanBatchId,
+    sourcePath: diagnostic.sourcePath,
+    message: diagnostic.message
+  })).digest("hex")}`;
 }
 
 function errorMessage(error: unknown): string {
