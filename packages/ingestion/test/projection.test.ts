@@ -47,6 +47,33 @@ describe("buildIngestionProjection", () => {
     );
   });
 
+  it("does not invent scan state when quarantining an event for a missing scan", () => {
+    const projection = buildIngestionProjection([
+      goldenIngestionLedgerEvents[0],
+      {
+        id: "evt_ing_future_missing_scan",
+        type: "ingestion.future.created",
+        streamId: "ingestion_scan_scan_missing",
+        context: {
+          occurredAt: "2026-07-05T12:06:00.000Z"
+        },
+        payload: {
+          sourceCollectionId: "src_drive_001",
+          scanBatchId: "scan_missing"
+        }
+      }
+    ]);
+
+    expect(projection.diagnostics.get("diag_projection_unrecognized_evt_ing_future_missing_scan")).toMatchObject({
+      diagnosticId: "diag_projection_unrecognized_evt_ing_future_missing_scan",
+      eventId: "evt_ing_future_missing_scan",
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_missing",
+      message: "Unrecognized event type ingestion.future.created"
+    });
+    expect(projection.scans.has("scan_missing")).toBe(false);
+  });
+
   it("quarantines malformed known ingestion events as validation diagnostics", () => {
     const malformedScanCompleted = {
       ...goldenIngestionLedgerEvents[4],
