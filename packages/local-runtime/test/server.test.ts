@@ -107,6 +107,18 @@ describe("startLocalRuntimeServer", () => {
     expect(handle.sessionBootstrapUrls).toContain(handle.sessionBootstrapUrl);
   });
 
+  it("prefers tailnet browser session URLs for wildcard tailnet binds", async () => {
+    const handle = await startLocalRuntimeServer({
+      config: authRequiredWildcardTailnetConfig(),
+      networkInterfaces: () => fakeLanInterfaces("192.0.2.42", "100.99.12.34")
+    });
+    handles.push(handle);
+
+    expect(handle.sessionBootstrapUrl).toMatch(/^http:\/\/100\.99\.12\.34:\d+\/api\/local-session\?code=/);
+    expect(handle.sessionBootstrapUrls).toEqual([handle.sessionBootstrapUrl]);
+    expect(handle.sessionBootstrapUrl).not.toContain("secret-local-token");
+  });
+
   it("can be closed more than once without closing the runtime twice", async () => {
     const handle = await startTestServer(loopbackConfig());
     handles.splice(handles.indexOf(handle), 1);
@@ -139,6 +151,18 @@ function authRequiredWildcardLanConfig(): ResolvedLocalRuntimeConfig {
       cwd: tempDir(),
       env: {
         CESTUS_LOCAL_BIND: "lan",
+        CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
+      }
+    })
+  );
+}
+
+function authRequiredWildcardTailnetConfig(): ResolvedLocalRuntimeConfig {
+  return configWithPortZero(
+    resolveLocalRuntimeConfig({
+      cwd: tempDir(),
+      env: {
+        CESTUS_LOCAL_BIND: "tailnet",
         CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
       }
     })
@@ -185,18 +209,16 @@ function cookieHeaderFromSetCookie(setCookie: string): string {
   return setCookie.split(";")[0] ?? "";
 }
 
-function fakeLanInterfaces(address: string): NodeJS.Dict<NetworkInterfaceInfo[]> {
+function fakeLanInterfaces(...addresses: readonly string[]): NodeJS.Dict<NetworkInterfaceInfo[]> {
   return {
-    eth0: [
-      {
-        address,
+    eth0: addresses.map((address) => ({
+      address,
         netmask: "255.255.255.0",
         family: "IPv4",
         mac: "00:00:00:00:00:00",
         internal: false,
         cidr: `${address}/24`
-      }
-    ]
+    }))
   };
 }
 

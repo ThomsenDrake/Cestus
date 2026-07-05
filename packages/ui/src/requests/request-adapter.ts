@@ -141,6 +141,16 @@ const validEvidencePacketKinds = new Set([
   "denial",
   "legal-escalation"
 ]);
+const validCorrespondenceProviders = new Set(["gmail", "imap-smtp", "himalaya"]);
+const validDeadlineConfidences = new Set(["statutory", "workflow"]);
+const validStallingSignalKinds = new Set([
+  "deadline-breached",
+  "repeated-vague-delays",
+  "high-fee-estimate",
+  "silence-after-followup",
+  "narrowing-pressure",
+  "exemption-review-needed"
+]);
 
 export function createLocalReplayRequestsAdapter(
   seedEvents: readonly KnowledgeEvent[],
@@ -567,15 +577,15 @@ function isRequestDetail(value: unknown): boolean {
     arrayOf(value.escalationGate, isGateCheck) &&
     arrayOf(value.diagnostics, isWorkspaceDiagnostic) &&
     arrayOf(value.timeline, isTimelineEntry) &&
-    Array.isArray(value.stallingSignals) &&
-    Array.isArray(value.productionBatches) &&
-    isOptionalObject(value.latestOutboundCorrespondence) &&
-    isOptionalObject(value.latestInboundCorrespondence) &&
-    isOptionalObject(value.activeDeadline) &&
-    isOptionalObject(value.feeEstimate) &&
-    isOptionalObject(value.scopeNarrowing) &&
-    isOptionalObject(value.denial) &&
-    isOptionalObject(value.appeal)
+    arrayOf(value.stallingSignals, isStallingSignal) &&
+    arrayOf(value.productionBatches, isProductionBatch) &&
+    isOptional(value.latestOutboundCorrespondence, isCorrespondenceSummary) &&
+    isOptional(value.latestInboundCorrespondence, isCorrespondenceSummary) &&
+    isOptional(value.activeDeadline, isDeadline) &&
+    isOptional(value.feeEstimate, isFeeEstimate) &&
+    isOptional(value.scopeNarrowing, isScopeNarrowing) &&
+    isOptional(value.denial, isDenial) &&
+    isOptional(value.appeal, isAppeal)
   );
 }
 
@@ -765,6 +775,114 @@ function isSuggestedFill(value: unknown): boolean {
   );
 }
 
+function isCorrespondenceSummary(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.correspondenceId) &&
+    isStringInSet(value.provider, validCorrespondenceProviders) &&
+    isNonEmptyString(value.providerMessageId) &&
+    isOptionalString(value.providerThreadId) &&
+    isNonEmptyString(value.subject) &&
+    isNonEmptyString(value.occurredAt) &&
+    isOptionalString(value.bodyHash) &&
+    isStringArray(value.evidenceIds) &&
+    (value.attachmentEvidenceIds === undefined || isStringArray(value.attachmentEvidenceIds)) &&
+    isOptionalString(value.approvedBy) &&
+    isOptional(value.from, isContactRef) &&
+    isOptionalStringRecord(value.rawMetadata)
+  );
+}
+
+function isDeadline(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.deadlineDate) &&
+    (value.source === "estimated" || value.source === "confirmed") &&
+    (value.confidence === undefined || isStringInSet(value.confidence, validDeadlineConfidences)) &&
+    isOptionalString(value.explanation) &&
+    isOptionalString(value.confirmedBy) &&
+    isOptionalString(value.rationale) &&
+    arrayOf(value.citedRules, isCitedRule)
+  );
+}
+
+function isFeeEstimate(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    typeof value.amountCents === "number" &&
+    isNonEmptyString(value.currency) &&
+    isOptionalString(value.sourceEvidenceId) &&
+    typeof value.challenged === "boolean" &&
+    isOptionalString(value.challengeId) &&
+    (value.challengeAmountCents === undefined || typeof value.challengeAmountCents === "number") &&
+    isOptionalString(value.rationale) &&
+    isOptionalString(value.approvedBy) &&
+    arrayOf(value.citedRules, isCitedRule)
+  );
+}
+
+function isScopeNarrowing(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.narrowingId) &&
+    isNonEmptyString(value.proposedScope) &&
+    isNonEmptyString(value.proposedBy) &&
+    isOptionalString(value.sourceEvidenceId) &&
+    isOptionalString(value.acceptedScope) &&
+    isOptionalString(value.acceptedBy) &&
+    isOptionalString(value.rationale)
+  );
+}
+
+function isProductionBatch(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.productionId) &&
+    isNonEmptyString(value.label) &&
+    isNonEmptyString(value.receivedAt) &&
+    isStringArray(value.evidenceIds)
+  );
+}
+
+function isDenial(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.denialId) &&
+    isNonEmptyString(value.receivedAt) &&
+    isNonEmptyString(value.reason) &&
+    isOptionalString(value.sourceEvidenceId)
+  );
+}
+
+function isAppeal(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isNonEmptyString(value.appealId) &&
+    isNonEmptyString(value.correspondenceId) &&
+    isNonEmptyString(value.filedAt) &&
+    isNonEmptyString(value.approvedBy) &&
+    arrayOf(value.citedRules, isCitedRule)
+  );
+}
+
+function isStallingSignal(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isStringInSet(value.kind, validStallingSignalKinds) &&
+    isNonEmptyString(value.explanation)
+  );
+}
+
+function isCitedRule(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    isJurisdictionPackRef(value.jurisdictionPack) &&
+    isNonEmptyString(value.label) &&
+    isNonEmptyString(value.citation) &&
+    isOptionalString(value.url)
+  );
+}
+
 function isJurisdictionPackRef(value: unknown): boolean {
   return isJsonObject(value) && isNonEmptyString(value.name) && isNonEmptyString(value.version);
 }
@@ -784,6 +902,14 @@ function arrayOf(value: unknown, guard: (item: unknown) => boolean): boolean {
 
 function isStringArray(value: unknown): value is readonly string[] {
   return arrayOf(value, (item) => typeof item === "string");
+}
+
+function isOptional(value: unknown, guard: (item: unknown) => boolean): boolean {
+  return value === undefined || guard(value);
+}
+
+function isOptionalStringRecord(value: unknown): boolean {
+  return value === undefined || (isJsonObject(value) && Object.values(value).every((item) => typeof item === "string"));
 }
 
 function stringArrayFromJson(value: unknown): readonly string[] | undefined {
@@ -809,10 +935,6 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isOptionalString(value: unknown): boolean {
   return value === undefined || typeof value === "string";
-}
-
-function isOptionalObject(value: unknown): boolean {
-  return value === undefined || isJsonObject(value);
 }
 
 function isLaneId(value: unknown): boolean {
