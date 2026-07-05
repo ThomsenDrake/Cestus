@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { isIP } from "node:net";
 import { dirname, isAbsolute, resolve } from "node:path";
 
 export interface LocalRuntimeConfigFile {
@@ -71,7 +72,9 @@ export function readLocalRuntimeConfigFile(
     throw new Error(`Invalid local runtime config JSON at ${path}: ${reason}`);
   }
 
-  return parseLocalRuntimeConfigFile(parsed, path);
+  const config = parseLocalRuntimeConfigFile(parsed, path);
+  repairSecretConfigPermissions(path, config);
+  return config;
 }
 
 export function writeLocalRuntimeOnboardingConfig(
@@ -80,6 +83,7 @@ export function writeLocalRuntimeOnboardingConfig(
   const path = resolveLocalRuntimeConfigFilePath(input);
   const existing = readLocalRuntimeConfigFile(input) ?? {};
   const config = mergeOnboardingConfig(existing, input);
+  validateWritableConfig(config);
 
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
@@ -170,7 +174,10 @@ function mergeHttpConfig(
 
   if (input.bindMode === "loopback") {
     const { authToken: _authToken, ...loopbackHttp } = http;
-    return loopbackHttp;
+    return {
+      ...loopbackHttp,
+      host: input.host ?? "127.0.0.1"
+    };
   }
 
   return {
@@ -335,6 +342,51 @@ function assertAllowedKeys(record: Record<string, unknown>, allowed: readonly st
 
 function generateAuthToken(): string {
   return randomBytes(32).toString("base64url");
+}
+
+function repairSecretConfigPermissions(path: string, config: LocalRuntimeConfigFile): void {
+  if (config.http?.authToken === undefined) {
+    return;
+  }
+
+  const mode = statSync(path).mode & 0o777;
+  if ((mode & 0o077) === 0) {
+    return;
+  }
+
+  try {
+    chmodSync(path, 0o600);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Local runtime config at ${path} contains auth material but permissions could not be restricted: ${reason}`
+    );
+  }
+}
+
+function validateWritableConfig(config: LocalRuntimeConfigFile): void {
+  if (
+    config.http?.bindMode === "loopback" &&
+    config.http.host !== undefined &&
+    !isLoopbackHost(config.http.host)
+  ) {
+    throw new Error("Loopback local runtime config cannot use a non-loopback host");
+  }
+
+  if (config.storage?.strategy === "explicit-path" && config.storage.sqlitePath === undefined) {
+    throw new Error("explicit-path storage requires a sqlitePath");
+  }
+}
+
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  if (normalized === "localhost") {
+    return true;
+  }
+  if (isIP(normalized) === 4) {
+    return normalized.startsWith("127.");
+  }
+  return normalized === "::1" || normalized === "0:0:0:0:0:0:0:1";
 }
 
 function resolvePath(cwd: string, path: string): string {

@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -83,6 +84,33 @@ describe("local runtime config files", () => {
     expect(rotated.config.http?.authToken).not.toBe(first.config.http?.authToken);
   });
 
+  it("resets host and auth material when changing exposed config back to loopback", () => {
+    const cwd = tempDir();
+    writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "tailnet",
+      host: "100.126.143.105",
+      port: 8790
+    });
+
+    const loopback = writeLocalRuntimeOnboardingConfig({ cwd, env: {}, bindMode: "loopback" });
+    const resolved = resolveLocalRuntimeConfig({ cwd, env: {} });
+
+    expect(loopback.config.http).toEqual({
+      bindMode: "loopback",
+      host: "127.0.0.1",
+      port: 8790
+    });
+    expect(resolved.http).toMatchObject({
+      bindMode: "loopback",
+      host: "127.0.0.1",
+      port: 8790,
+      authRequired: false
+    });
+    expect("authToken" in resolved.http).toBe(false);
+  });
+
   it("lets env vars override config-file defaults", () => {
     const cwd = tempDir();
     writeLocalRuntimeOnboardingConfig({
@@ -153,6 +181,54 @@ describe("local runtime config files", () => {
     expect(() => resolveLocalRuntimeConfig({ cwd, env: {} })).toThrow(
       "Auth is required for non-loopback local runtime exposure"
     );
+  });
+
+  it("repairs broad permissions before trusting auth material from config files", () => {
+    const cwd = tempDir();
+    const configPath = join(cwd, ".cestus/local/runtime.config.json");
+    mkdirSync(join(cwd, ".cestus/local"), { recursive: true });
+    writeFileSync(
+      configPath,
+      JSON.stringify(
+        {
+          http: {
+            bindMode: "tailnet",
+            host: "100.126.143.105",
+            authToken: "file-secret"
+          }
+        },
+        null,
+        2
+      )
+    );
+    chmodSync(configPath, 0o644);
+
+    const resolved = resolveLocalRuntimeConfig({ cwd, env: {} });
+
+    expect(resolved.http.authToken).toBe("file-secret");
+    expect(statSync(configPath).mode & 0o777).toBe(0o600);
+  });
+
+  it("rejects loopback onboarding config that would expose a non-loopback host without auth", () => {
+    expect(() =>
+      writeLocalRuntimeOnboardingConfig({
+        cwd: tempDir(),
+        env: {},
+        bindMode: "loopback",
+        host: "0.0.0.0"
+      })
+    ).toThrow("Loopback local runtime config cannot use a non-loopback host");
+  });
+
+  it("rejects explicit-path onboarding config without a SQLite path", () => {
+    expect(() =>
+      writeLocalRuntimeOnboardingConfig({
+        cwd: tempDir(),
+        env: {},
+        bindMode: "loopback",
+        storageStrategy: "explicit-path"
+      })
+    ).toThrow("explicit-path storage requires a sqlitePath");
   });
 });
 
