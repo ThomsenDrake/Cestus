@@ -51,6 +51,13 @@ describe("Requests data boundary", () => {
     }
   });
 
+  it("keeps App default Requests loading on the HTTP adapter", () => {
+    const source = readFileSync("packages/ui/src/App.tsx", "utf8");
+
+    expect(source).toContain("httpRequestsAdapter");
+    expect(source).not.toContain("localReplayRequestsAdapter");
+  });
+
   it("keeps UI tests off the Node-only PRR runtime module", () => {
     for (const file of listSourceFiles("packages/ui/test").filter((path) => !path.endsWith("request-data-boundary.test.ts"))) {
       const source = readFileSync(file, "utf8");
