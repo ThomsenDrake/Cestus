@@ -66,6 +66,13 @@ const claimCreatedPayloadSchema = z.object({
   statement: z.string().min(1)
 }).strict();
 
+const secretTextPattern =
+  /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth(?:[\s._-]*(?:token|secret))?|credential(?:[\s._-]*(?:id|key|secret|token))?)(?:\s*[:=]\s*|\s+[a-z0-9][a-z0-9._-]{2,})/i;
+
+const secretSafeTextSchema = z.string().min(1).refine((value) => !secretTextPattern.test(value), {
+  message: "text must not contain secrets or credentials"
+});
+
 const diagnosticRecordedPayloadSchema = z.object({
   diagnosticId: z.string().regex(/^diag_[a-zA-Z0-9_-]+$/),
   severity: z.enum(["info", "warning", "error"]),
@@ -81,11 +88,11 @@ const diagnosticRecordedPayloadSchema = z.object({
     "network",
     "incident"
   ]),
-  message: z.string().min(1),
+  message: secretSafeTextSchema,
   repairHint: z.object({
-    contract: z.string().min(1),
-    violatedPath: z.string().min(1),
-    allowedActions: z.array(z.string().min(1)).min(1)
+    contract: secretSafeTextSchema,
+    violatedPath: secretSafeTextSchema,
+    allowedActions: z.array(secretSafeTextSchema).min(1)
   }).strict()
 }).strict();
 
@@ -100,13 +107,6 @@ const projectionCheckpointedPayloadSchema = z.object({
   highWaterMark: z.number().int().nonnegative(),
   status: z.enum(["ready", "rebuilding", "failed"])
 }).strict();
-
-const secretTextPattern =
-  /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth(?:[\s._-]*(?:token|secret))?|credential(?:[\s._-]*(?:id|key|secret|token))?)(?:\s*[:=]\s*|\s+[a-z0-9][a-z0-9._-]{2,})/i;
-
-const secretSafeTextSchema = z.string().min(1).refine((value) => !secretTextPattern.test(value), {
-  message: "text must not contain secrets or credentials"
-});
 
 const governanceTagSchema = z.enum([
   "public_record",
@@ -599,7 +599,7 @@ export const eventContracts = {
     version: 1,
     description: "Records structured operational or investigative diagnostics tied to ontology work.",
     agentGuidance: "Use when validation, ingestion, projection, migration, or deduplication produces inspectable failure state.",
-    invariants: ["repairHint must include allowed actions"]
+    invariants: ["repairHint must include allowed actions", "diagnostic text fields must be secret-safe"]
   },
   "ontology.pack.installed": {
     type: "ontology.pack.installed",
@@ -641,28 +641,28 @@ export const eventContracts = {
     version: 1,
     description: "Records a redaction decision and safe references to redacted evidence views or hashes.",
     agentGuidance: "Use for append-only redaction history. Do not delete original ledger events or store redacted raw content in the payload.",
-    invariants: ["redactionId must be stable", "appliedBy is required", "rationale must be secret-safe"]
+    invariants: ["redactionId must be stable", "appliedBy is required", "rationale must be secret-safe", "context actor must be human"]
   },
   "evidence.quarantined": {
     type: "evidence.quarantined",
     version: 1,
     description: "Records a quarantine or access-lock decision that removes evidence from normal workflows by projection.",
     agentGuidance: "Use when evidence should be excluded from workflow, export, or all access paths while preserving append-only history.",
-    invariants: ["quarantineId must be stable", "lockLevel must be explicit", "reason must be secret-safe"]
+    invariants: ["quarantineId must be stable", "lockLevel must be explicit", "reason must be secret-safe", "context actor must be human"]
   },
   "evidence.tombstoned": {
     type: "evidence.tombstoned",
     version: 1,
     description: "Records append-only removal semantics for evidence without deleting source history.",
     agentGuidance: "Use for tombstone decisions only after review. Projections should hide tombstoned evidence while replay still sees the event.",
-    invariants: ["tombstoneId must be stable", "tombstonedBy is required", "reason must be secret-safe"]
+    invariants: ["tombstoneId must be stable", "tombstonedBy is required", "reason must be secret-safe", "context actor must be human"]
   },
   "network.exposure.enabled": {
     type: "network.exposure.enabled",
     version: 1,
     description: "Records explicit LAN or tailnet exposure with visible warning state and active governance policy.",
     agentGuidance: "Use only when local network exposure is intentionally enabled and visibly surfaced to the user.",
-    invariants: ["visibleWarning must be true", "enabledAt must be an ISO datetime", "policy is required"]
+    invariants: ["visibleWarning must be true", "enabledAt must be an ISO datetime", "policy is required", "context actor must be human"]
   },
   "network.exposure.disabled": {
     type: "network.exposure.disabled",
@@ -676,7 +676,7 @@ export const eventContracts = {
     version: 1,
     description: "Records human approval for a local device or browser session to access an exposed Cestus instance.",
     agentGuidance: "Use only after local human approval. AI agents must not approve sessions or devices.",
-    invariants: ["approvedBy is required", "capabilities cannot be empty", "policy is required"]
+    invariants: ["approvedBy is required", "capabilities cannot be empty", "policy is required", "context actor must be human"]
   },
   "device.session.revoked": {
     type: "device.session.revoked",
@@ -690,14 +690,14 @@ export const eventContracts = {
     version: 1,
     description: "Records generation of an export artifact with public-safe defaults and sensitive evidence opt-in audit fields.",
     agentGuidance: "Use whenever a durable export is generated. Sensitive or private evidence requires explicit opt-in records.",
-    invariants: ["included evidence references are recorded", "sensitiveOptIns are explicit", "defaultPublicSafeOnly is recorded"]
+    invariants: ["included evidence references are recorded", "sensitiveOptIns are explicit", "defaultPublicSafeOnly is recorded", "sensitive opt-ins require a human context actor"]
   },
   "report.generated": {
     type: "report.generated",
     version: 1,
     description: "Records generation of a report artifact with public-safe defaults and sensitive evidence opt-in audit fields.",
     agentGuidance: "Use whenever a durable report is generated. Do not infer public safety from UI state alone.",
-    invariants: ["reportId must be stable", "included content hashes are recorded", "sensitiveOptIns are explicit"]
+    invariants: ["reportId must be stable", "included content hashes are recorded", "sensitiveOptIns are explicit", "sensitive opt-ins require a human context actor"]
   },
   "incident.recorded": {
     type: "incident.recorded",
@@ -711,7 +711,7 @@ export const eventContracts = {
     version: 1,
     description: "Records append-only repair action for a governance or security incident.",
     agentGuidance: "Use to document repair progress or closure. Do not rewrite the incident event or hide failed repairs.",
-    invariants: ["repairId must be stable", "severity and category are required", "related references are arrays", "action must be secret-safe", "closesIncident is explicit"]
+    invariants: ["repairId must be stable", "severity and category are required", "related references are arrays", "action must be secret-safe", "closesIncident is explicit", "closing an incident requires a human context actor"]
   },
   "prr.request.created": {
     type: "prr.request.created",
@@ -876,6 +876,42 @@ function isKnowledgeEventType(value: unknown): value is KnowledgeEventType {
   return typeof value === "string" && Object.hasOwn(payloadSchemas, value);
 }
 
+const alwaysHumanGatedEventTypes = new Set<KnowledgeEventType>([
+  "evidence.governance.reviewed",
+  "evidence.redaction.applied",
+  "evidence.quarantined",
+  "evidence.tombstoned",
+  "network.exposure.enabled",
+  "device.session.approved"
+]);
+
+function hasSensitiveOptIns(payload: unknown): boolean {
+  return typeof payload === "object" &&
+    payload !== null &&
+    "sensitiveOptIns" in payload &&
+    Array.isArray(payload.sensitiveOptIns) &&
+    payload.sensitiveOptIns.length > 0;
+}
+
+function closesIncident(payload: unknown): boolean {
+  return typeof payload === "object" &&
+    payload !== null &&
+    "closesIncident" in payload &&
+    payload.closesIncident === true;
+}
+
+function requiresHumanContextActor(type: KnowledgeEventType, payload: unknown): boolean {
+  if (alwaysHumanGatedEventTypes.has(type)) {
+    return true;
+  }
+
+  if ((type === "export.generated" || type === "report.generated") && hasSensitiveOptIns(payload)) {
+    return true;
+  }
+
+  return type === "incident.repair.recorded" && closesIncident(payload);
+}
+
 const knowledgeEventBaseSchema = z.object({
   id: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
   type: z.custom<KnowledgeEventType>(isKnowledgeEventType),
@@ -909,14 +945,6 @@ function payloadIssueParams(issue: z.ZodIssue): Record<string, unknown> {
 
 export const knowledgeEventSchema = knowledgeEventBaseSchema
   .superRefine((event, ctx) => {
-    if (event.type === "evidence.governance.reviewed" && event.context.actor.kind !== "human") {
-      ctx.addIssue({
-        code: "custom",
-        message: "governance review events require a human context actor",
-        path: ["context", "actor", "kind"]
-      });
-    }
-
     const payloadSchema = payloadSchemas[event.type] as z.ZodType<unknown>;
     const payload = payloadSchema.safeParse(event.payload);
 
@@ -929,6 +957,15 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
           params: payloadIssueParams(issue)
         });
       }
+      return;
+    }
+
+    if (requiresHumanContextActor(event.type, payload.data) && event.context.actor.kind !== "human") {
+      ctx.addIssue({
+        code: "custom",
+        message: "human-gated governance events require a human context actor",
+        path: ["context", "actor", "kind"]
+      });
     }
   })
   .transform((event): KnowledgeEvent => event as KnowledgeEvent);
