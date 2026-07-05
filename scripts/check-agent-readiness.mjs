@@ -18,7 +18,9 @@ const requiredFiles = [
   "docs/superpowers/specs/2026-07-04-requests-detail-modal-design.md",
   "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md",
   "docs/superpowers/specs/2026-07-04-requests-detail-floating-modal-design.md",
-  "docs/superpowers/plans/2026-07-04-requests-detail-floating-modal-implementation.md"
+  "docs/superpowers/plans/2026-07-04-requests-detail-floating-modal-implementation.md",
+  "docs/superpowers/specs/2026-07-05-public-ingestion-pipeline-design.md",
+  "docs/superpowers/plans/2026-07-05-public-ingestion-pipeline-implementation.md"
 ];
 
 const allowToken = "agent-readiness-allow";
