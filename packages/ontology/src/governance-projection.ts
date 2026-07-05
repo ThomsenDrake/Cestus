@@ -60,15 +60,28 @@ export interface DeviceSessionState {
   readonly revocationEventId?: string;
 }
 
+export interface GovernanceIncidentState {
+  readonly incidentId: string;
+  readonly severity: "info" | "warning" | "error" | "critical";
+  readonly category: "classification" | "secret-leak" | "export" | "network" | "device" | "quarantine" | "projection";
+  readonly summary: string;
+  readonly status: "open" | "closed";
+  readonly incidentEventId: string;
+  readonly repairIds: readonly string[];
+  readonly repairEventIds: readonly string[];
+}
+
 export interface GovernanceProjection {
   readonly evidenceGovernance: ImmutableMap<string, EvidenceGovernanceState>;
   readonly networkExposure: NetworkExposureState;
   readonly deviceSessions: ImmutableMap<string, DeviceSessionState>;
+  readonly incidents: ImmutableMap<string, GovernanceIncidentState>;
   publicSafeEvidenceIds(): readonly string[];
   buildDefaultExportEvidenceIds(): readonly string[];
   planExport(input: ExportPlanInput): ExportPlan;
   requiresExportOptIn(evidenceId: string): boolean;
   isSessionApproved(sessionId: string): boolean;
+  openIncidentIds(): readonly string[];
 }
 
 interface MutableEvidenceGovernanceState {
@@ -92,9 +105,21 @@ interface MutableDeviceSessionState {
   revocationEventId?: string;
 }
 
+interface MutableGovernanceIncidentState {
+  incidentId: string;
+  severity: GovernanceIncidentState["severity"];
+  category: GovernanceIncidentState["category"];
+  summary: string;
+  status: GovernanceIncidentState["status"];
+  incidentEventId: string;
+  repairIds: string[];
+  repairEventIds: string[];
+}
+
 export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): GovernanceProjection {
   const mutableStates = new Map<string, MutableEvidenceGovernanceState>();
   const mutableDeviceSessions = new Map<string, MutableDeviceSessionState>();
+  const mutableIncidents = new Map<string, MutableGovernanceIncidentState>();
   let activeConfidenceThreshold = defaultGovernancePolicy.confidenceThreshold;
   let activeNetworkExposure: ActiveNetworkExposure | undefined;
 
@@ -150,6 +175,29 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
         }
         break;
       }
+      case "incident.recorded":
+        mutableIncidents.set(event.payload.incidentId, {
+          incidentId: event.payload.incidentId,
+          severity: event.payload.severity,
+          category: event.payload.category,
+          summary: event.payload.summary,
+          status: "open",
+          incidentEventId: event.id,
+          repairIds: [],
+          repairEventIds: []
+        });
+        break;
+      case "incident.repair.recorded": {
+        const incident = mutableIncidents.get(event.payload.incidentId);
+        if (incident !== undefined) {
+          incident.repairIds.push(event.payload.repairId);
+          incident.repairEventIds.push(event.id);
+          if (event.payload.closesIncident) {
+            incident.status = "closed";
+          }
+        }
+        break;
+      }
       default:
         break;
     }
@@ -164,11 +212,16 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
     new Map([...mutableDeviceSessions.entries()].map(([sessionId, state]) => [sessionId, freezeDeviceSession(state)])),
     "GovernanceProjection.deviceSessions is read-only"
   );
+  const incidents = readOnlyMap(
+    new Map([...mutableIncidents.entries()].map(([incidentId, state]) => [incidentId, freezeIncident(state)])),
+    "GovernanceProjection.incidents is read-only"
+  );
 
   return Object.freeze({
     evidenceGovernance,
     networkExposure,
     deviceSessions,
+    incidents,
     publicSafeEvidenceIds() {
       return Object.freeze(
         [...evidenceGovernance.values()]
@@ -231,6 +284,14 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
     },
     isSessionApproved(sessionId: string) {
       return deviceSessions.get(sessionId)?.approved === true;
+    },
+    openIncidentIds() {
+      return Object.freeze(
+        [...incidents.values()]
+          .filter((incident) => incident.status === "open")
+          .map((incident) => incident.incidentId)
+          .sort()
+      );
     }
   });
 }
@@ -326,6 +387,19 @@ function freezeDeviceSession(state: MutableDeviceSessionState): DeviceSessionSta
     capabilities: Object.freeze([...state.capabilities]),
     approvalEventId: state.approvalEventId,
     ...(state.revocationEventId === undefined ? {} : { revocationEventId: state.revocationEventId })
+  });
+}
+
+function freezeIncident(state: MutableGovernanceIncidentState): GovernanceIncidentState {
+  return Object.freeze({
+    incidentId: state.incidentId,
+    severity: state.severity,
+    category: state.category,
+    summary: state.summary,
+    status: state.status,
+    incidentEventId: state.incidentEventId,
+    repairIds: Object.freeze([...state.repairIds]),
+    repairEventIds: Object.freeze([...state.repairEventIds])
   });
 }
 

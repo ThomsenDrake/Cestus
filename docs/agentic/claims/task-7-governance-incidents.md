@@ -6,7 +6,7 @@ Worker: Codex GPT-5
 Branch: `codex/security-governance-design`
 Worktree: `/home/drake/.codex/worktrees/c3c1/Cestus`
 Claimed-at: 2026-07-05T16:07:26Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/ontology/src/governance-service.ts`
@@ -18,3 +18,8 @@ Owned files:
 Required commands:
 - `npm test -- packages/ontology/test/governance-incident.test.ts packages/ontology/test/governance-projection.test.ts`
 - `npm run verify`
+
+Evidence:
+- Red: `npm test -- packages/ontology/test/governance-incident.test.ts packages/ontology/test/governance-projection.test.ts` failed with missing incident projection/service surface: `projection.openIncidentIds is not a function`, `projection.incidents` undefined, and `service.recordIncident is not a function`.
+- Green: `npm test -- packages/ontology/test/governance-incident.test.ts packages/ontology/test/governance-projection.test.ts` passed: 2 test files, 22 tests.
+- Verify: `npm run verify` passed: typecheck passed, 48 test files and 430 tests passed, UI build succeeded, factory-readiness passed.
