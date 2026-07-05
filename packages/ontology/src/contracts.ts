@@ -6,7 +6,7 @@ const secretSafeStringSchema = z.string().refine((value) => !credentialShapedTex
 });
 
 export const actorRefSchema = z.object({
-  id: z.string().min(3),
+  id: secretSafeStringSchema.min(3),
   kind: z.enum(["human", "extractor", "system"]),
   label: secretSafeStringSchema.min(1)
 }).strict();

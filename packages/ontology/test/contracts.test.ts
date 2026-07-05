@@ -811,8 +811,17 @@ describe("ingestion event contracts", () => {
         actor: { id: "actor_system", kind: "system", label: "Bearer sk_live_actor" }
       }
     });
+    const actorIdResult = validateKnowledgeEvent({
+      ...providerApprovalEvent(),
+      context: {
+        ...context,
+        actor: { id: "apiKey=sk_live_actor_id", kind: "system", label: "test runner" }
+      }
+    });
 
-    for (const result of [providerNameResult, mediaTypeResult, actorLabelResult]) {
+    expect(validateKnowledgeEvent(providerApprovalEvent()).success).toBe(true);
+
+    for (const result of [providerNameResult, mediaTypeResult, actorLabelResult, actorIdResult]) {
       expect(result.success).toBe(false);
       if (!result.success) {
         const issueText = JSON.stringify(result.error.issues);
