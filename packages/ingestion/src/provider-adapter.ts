@@ -12,7 +12,8 @@ const providerJobIdSchema = z.string().regex(/^provider_[a-zA-Z0-9_-]+$/);
 const sourceCollectionIdSchema = z.string().regex(/^src_[a-zA-Z0-9_-]+$/);
 const importBatchIdSchema = z.string().regex(/^imp_[a-zA-Z0-9_-]+$/);
 const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/);
-const secretLikeTextSchema = z.string().refine((value) => !/token|secret|password|oauth|credential/i.test(value), {
+const credentialMarkerPattern = /api[_-]?key|authorization|bearer|token|secret|password|oauth|credential/i;
+const secretLikeTextSchema = z.string().refine((value) => !credentialMarkerPattern.test(value), {
   message: "must not contain credential-shaped text"
 });
 const providerRefSchema = z.object({
@@ -75,24 +76,21 @@ export class ProviderParseApprovalService {
     if (!actor.success) {
       throw new Error(`Invalid provider approval actor: ${actor.error.issues[0]?.message ?? actor.error.message}`);
     }
+
+    for (const [field, value] of Object.entries({
+      id: actor.data.id,
+      label: actor.data.label
+    })) {
+      if (credentialMarkerPattern.test(value)) {
+        throw new Error(`Invalid provider approval actor ${field}: credential-shaped text is not allowed`);
+      }
+    }
   }
 
   async approveProviderBatch(
     input: ApproveProviderBatchInput
   ): Promise<KnowledgeEventOf<"ingestion.provider.approved">> {
     const parsed = this.parseInput(approveProviderBatchInputSchema, input, "provider approval");
-    const approvedAt = parsed.approvedAt ?? new Date().toISOString();
-    const payload = {
-      providerJobId: parsed.providerJobId,
-      sourceCollectionId: parsed.sourceCollectionId,
-      importBatchId: parsed.importBatchId,
-      provider: parsed.provider,
-      approvedBy: parsed.approvedBy,
-      approvedAt,
-      eligibleMediaTypes: parsed.eligibleMediaTypes,
-      maxBytesPerFile: parsed.maxBytesPerFile,
-      policy: "send-all-technically-eligible" as const
-    };
     const streamId = this.providerStreamId(parsed);
     const existingEvents = await this.dependencies.ledger.readStream(streamId);
     const existingApproval = existingEvents.find(
@@ -100,6 +98,17 @@ export class ProviderParseApprovalService {
         event.type === "ingestion.provider.approved" &&
         event.payload.providerJobId === parsed.providerJobId
     );
+    const payload = {
+      providerJobId: parsed.providerJobId,
+      sourceCollectionId: parsed.sourceCollectionId,
+      importBatchId: parsed.importBatchId,
+      provider: parsed.provider,
+      approvedBy: parsed.approvedBy,
+      approvedAt: parsed.approvedAt ?? existingApproval?.payload.approvedAt ?? new Date().toISOString(),
+      eligibleMediaTypes: canonicalStringList(parsed.eligibleMediaTypes),
+      maxBytesPerFile: parsed.maxBytesPerFile,
+      policy: "send-all-technically-eligible" as const
+    };
 
     if (existingApproval !== undefined) {
       this.assertApprovalMatches(existingApproval, payload);
@@ -179,6 +188,10 @@ export class ProviderParseApprovalService {
       packVersions: { core: "0.1.0", ingestion: "0.1.0" }
     };
   }
+}
+
+function canonicalStringList(values: readonly string[]): string[] {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
 }
 
 export interface FakeDocumentAiProviderConfig {

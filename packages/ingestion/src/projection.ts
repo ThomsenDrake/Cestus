@@ -357,12 +357,16 @@ function projectProviderApproved(
   projection: IngestionProjection,
   event: KnowledgeEventOf<"ingestion.provider.approved">
 ): void {
-  projection.providerApprovals.set(event.payload.providerJobId, {
+  projection.providerApprovals.set(providerApprovalProjectionKey(event.payload), {
     ...event.payload,
     provider: { ...event.payload.provider },
     eligibleMediaTypes: [...event.payload.eligibleMediaTypes].sort(compareCodeUnits),
     approvedEventId: event.id
   });
+}
+
+function providerApprovalProjectionKey(payload: KnowledgeEventOf<"ingestion.provider.approved">["payload"]): string {
+  return `ingestion_provider_${payload.sourceCollectionId}_${payload.importBatchId}_${payload.providerJobId}`;
 }
 
 function projectDiagnostic(
