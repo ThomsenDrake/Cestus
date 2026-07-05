@@ -5,6 +5,7 @@ import {
   type AppendableKnowledgeEvent,
   type KnowledgeEvent
 } from "../src/contracts.js";
+import { defaultGovernancePolicy } from "../src/governance-policy.js";
 
 const context = {
   actor: { id: "actor_system", kind: "system", label: "test runner" },
@@ -181,6 +182,77 @@ describe("event contracts", () => {
     }
   });
 
+  it.each([
+    {
+      field: "message",
+      payload: {
+        diagnosticId: "diag_secret_message",
+        severity: "error",
+        category: "security",
+        message: "Failed because access_token=abc123 was present.",
+        repairHint: {
+          contract: "governance payload",
+          violatedPath: "payload.rationale",
+          allowedActions: ["Redact the secret-bearing value."]
+        }
+      }
+    },
+    {
+      field: "repairHint.contract",
+      payload: {
+        diagnosticId: "diag_secret_contract",
+        severity: "error",
+        category: "governance",
+        message: "Governance payload rejected.",
+        repairHint: {
+          contract: "access_token=abc123",
+          violatedPath: "payload.rationale",
+          allowedActions: ["Redact the secret-bearing value."]
+        }
+      }
+    },
+    {
+      field: "repairHint.violatedPath",
+      payload: {
+        diagnosticId: "diag_secret_path",
+        severity: "warning",
+        category: "export",
+        message: "Export blocked.",
+        repairHint: {
+          contract: "governance payload",
+          violatedPath: "payload.access_token=abc123",
+          allowedActions: ["Redact the secret-bearing value."]
+        }
+      }
+    },
+    {
+      field: "repairHint.allowedActions.0",
+      payload: {
+        diagnosticId: "diag_secret_action",
+        severity: "warning",
+        category: "incident",
+        message: "Incident repair needs review.",
+        repairHint: {
+          contract: "governance payload",
+          violatedPath: "payload.action",
+          allowedActions: ["Remove access_token=abc123 from the payload."]
+        }
+      }
+    }
+  ])("rejects secret-looking diagnostic text in $field", ({ payload }) => {
+    const result = validateKnowledgeEvent({
+      id: "evt_diagnostic_secret_text",
+      type: "diagnostic.recorded",
+      version: 1,
+      streamId: "diagnostic_diag_secret_text",
+      sequence: 1,
+      context,
+      payload
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("exposes appendable event typing without losing payload correlation", () => {
     const appendableEvidenceEvent = {
       type: "evidence.ingested",
@@ -197,6 +269,583 @@ describe("event contracts", () => {
     } satisfies AppendableKnowledgeEvent<"evidence.ingested">;
 
     expect(appendableEvidenceEvent.payload.evidenceId).toBe("ev_typed");
+  });
+});
+
+describe("governance event contracts", () => {
+  const baseContext = {
+    actor: { id: "actor_investigator", kind: "human" as const, label: "Investigator" },
+    occurredAt: "2026-07-05T12:00:00.000Z",
+    causationId: "evt_evidence_source",
+    correlationId: "corr_governance_001",
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0" }
+  };
+
+  const contentHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const policy = { policyId: "gov_policy_default", version: "0.1.0" };
+  const nonHumanContext = {
+    ...baseContext,
+    actor: { id: "actor_ai_classifier", kind: "extractor" as const, label: "Governance classifier" }
+  };
+
+  it("validates an AI governance classification with independent tags", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_governance_classified_001",
+      type: "evidence.governance.classified",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 2,
+      context: {
+        ...baseContext,
+        actor: { id: "actor_ai_classifier", kind: "extractor", label: "Governance classifier" }
+      },
+      payload: {
+        evidenceId: "ev_source_001",
+        evidenceEventId: "evt_evidence_source",
+        contentHash,
+        policy,
+        classifier: {
+          actorId: "actor_ai_classifier",
+          kind: "ai",
+          label: "Cestus governance classifier",
+          model: "local-fixture-model"
+        },
+        tags: [
+          {
+            tag: "public_record",
+            confidence: 0.97,
+            rationale: "The document was produced by a public agency."
+          },
+          {
+            tag: "contains_pii",
+            confidence: 0.88,
+            rationale: "The document includes person names and email addresses."
+          },
+          {
+            tag: "public_safe",
+            confidence: 0.91,
+            rationale: "The public record excerpt is safe for default reports."
+          }
+        ]
+      }
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("requires human identity on governance review", () => {
+    const validReview = validateKnowledgeEvent({
+      id: "evt_governance_review_001",
+      type: "evidence.governance.reviewed",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 3,
+      context: baseContext,
+      payload: {
+        evidenceId: "ev_source_001",
+        reviewedBy: "actor_editor",
+        policy,
+        decisions: [
+          {
+            tag: "public_safe",
+            action: "add",
+            rationale: "Editor verified the selected evidence can appear in default public reports.",
+            supersedesEventId: "evt_governance_classified_001"
+          }
+        ]
+      }
+    });
+
+    const missingReviewer = validateKnowledgeEvent({
+      id: "evt_governance_review_002",
+      type: "evidence.governance.reviewed",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 4,
+      context: baseContext,
+      payload: {
+        evidenceId: "ev_source_001",
+        policy,
+        decisions: [
+          {
+            tag: "public_safe",
+            action: "affirm",
+            rationale: "Human review affirmed the public-safe classification."
+          }
+        ]
+      }
+    });
+
+    const nonHumanReview = validateKnowledgeEvent({
+      id: "evt_governance_review_003",
+      type: "evidence.governance.reviewed",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 5,
+      context: {
+        ...baseContext,
+        actor: { id: "actor_ai_classifier", kind: "extractor", label: "Governance classifier" }
+      },
+      payload: {
+        evidenceId: "ev_source_001",
+        reviewedBy: "actor_ai_classifier",
+        policy,
+        decisions: [
+          {
+            tag: "public_safe",
+            action: "affirm",
+            rationale: "AI classification attempted to stand in for human review."
+          }
+        ]
+      }
+    });
+
+    expect(validReview.success).toBe(true);
+    expect(missingReviewer.success).toBe(false);
+    expect(nonHumanReview.success).toBe(false);
+  });
+
+  it("rejects secret-looking governance payload text", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_governance_secret_001",
+      type: "evidence.governance.classified",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 2,
+      context: {
+        ...baseContext,
+        actor: { id: "actor_ai_classifier", kind: "extractor", label: "Governance classifier" }
+      },
+      payload: {
+        evidenceId: "ev_source_001",
+        evidenceEventId: "evt_evidence_source",
+        contentHash,
+        policy,
+        classifier: {
+          actorId: "actor_ai_classifier",
+          kind: "ai",
+          label: "Cestus governance classifier"
+        },
+        tags: [
+          {
+            tag: "credential_risk",
+            confidence: 0.99,
+            rationale: "The note includes access_token=abc123."
+          }
+        ]
+      }
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("allows safe governance tag names in payload text", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_governance_credential_risk_text_001",
+      type: "evidence.governance.classified",
+      version: 1,
+      streamId: "evidence_ev_source_001",
+      sequence: 2,
+      context: {
+        ...baseContext,
+        actor: { id: "actor_ai_classifier", kind: "extractor", label: "Governance classifier" }
+      },
+      payload: {
+        evidenceId: "ev_source_001",
+        evidenceEventId: "evt_evidence_source",
+        contentHash,
+        policy,
+        classifier: {
+          actorId: "actor_ai_classifier",
+          kind: "ai",
+          label: "Cestus governance classifier"
+        },
+        tags: [
+          {
+            tag: "credential_risk",
+            confidence: 0.76,
+            rationale: "The tag credential_risk applies."
+          }
+        ]
+      }
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("validates network exposure and device approval audit events", () => {
+    const exposure = validateKnowledgeEvent({
+      id: "evt_network_exposure_001",
+      type: "network.exposure.enabled",
+      version: 1,
+      streamId: "network_exposure_local",
+      sequence: 1,
+      context: { ...baseContext, causationId: undefined },
+      payload: {
+        exposureId: "netexp_local_001",
+        mode: "tailnet",
+        bindScope: "tailnet",
+        enabledBy: "actor_investigator",
+        enabledAt: "2026-07-05T12:00:00.000Z",
+        visibleWarning: true,
+        policy
+      }
+    });
+
+    const approval = validateKnowledgeEvent({
+      id: "evt_device_approval_001",
+      type: "device.session.approved",
+      version: 1,
+      streamId: "device_session_dev_local_phone",
+      sequence: 1,
+      context: { ...baseContext, causationId: "evt_network_exposure_001" },
+      payload: {
+        sessionId: "devsess_local_phone",
+        deviceLabel: "Reporter's laptop",
+        approvedBy: "actor_investigator",
+        approvedAt: "2026-07-05T12:05:00.000Z",
+        exposureId: "netexp_local_001",
+        capabilities: ["read", "write"],
+        policy
+      }
+    });
+
+    expect(exposure.success).toBe(true);
+    expect(approval.success).toBe(true);
+  });
+
+  it("validates export opt-in audit events", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_export_generated_001",
+      type: "export.generated",
+      version: 1,
+      streamId: "export_exp_report_001",
+      sequence: 1,
+      context: baseContext,
+      payload: {
+        exportId: "exp_report_001",
+        generatedBy: "actor_investigator",
+        generatedAt: "2026-07-05T12:30:00.000Z",
+        policy,
+        includedEvidenceIds: ["ev_source_001"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [
+          {
+            tag: "contains_pii",
+            approvedBy: "actor_investigator",
+            rationale: "The report is for private attorney review."
+          },
+          {
+            tag: "private_correspondence",
+            approvedBy: "actor_investigator",
+            rationale: "The private message is included for non-public source review."
+          }
+        ],
+        defaultPublicSafeOnly: false
+      }
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("validates incident repair audit events with incident fields", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_incident_repair_001",
+      type: "incident.repair.recorded",
+      version: 1,
+      streamId: "incident_incident_export_001",
+      sequence: 2,
+      context: baseContext,
+      payload: {
+        incidentId: "incident_export_001",
+        repairId: "repair_export_001",
+        severity: "warning",
+        category: "export",
+        repairedBy: "actor_investigator",
+        repairedAt: "2026-07-05T13:00:00.000Z",
+        action: "Removed restricted evidence from the generated export.",
+        relatedEvidenceIds: ["ev_source_001"],
+        relatedEventIds: ["evt_export_generated_001"],
+        closesIncident: true
+      }
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    {
+      type: "governance.policy.installed",
+      payload: {
+        policyId: "gov_policy_default",
+        version: "0.1.0",
+        installedBy: "actor_investigator",
+        confidenceThreshold: 0.9,
+        tags: defaultGovernancePolicy.tags
+      }
+    },
+    {
+      type: "evidence.redaction.applied",
+      payload: {
+        evidenceId: "ev_source_001",
+        redactionId: "redaction_source_001",
+        appliedBy: "actor_investigator",
+        rationale: "Removed private phone numbers from the shared view.",
+        redactedContentHash: contentHash
+      }
+    },
+    {
+      type: "evidence.quarantined",
+      payload: {
+        evidenceId: "ev_source_001",
+        quarantineId: "quarantine_source_001",
+        quarantinedBy: "actor_investigator",
+        reason: "Needs source-protection review before workflow use.",
+        lockLevel: "workflow"
+      }
+    },
+    {
+      type: "evidence.tombstoned",
+      payload: {
+        evidenceId: "ev_source_001",
+        tombstoneId: "tombstone_source_001",
+        tombstonedBy: "actor_investigator",
+        reason: "Duplicate evidence superseded by a cleaner ingested copy."
+      }
+    },
+    {
+      type: "network.exposure.disabled",
+      payload: {
+        exposureId: "netexp_local_001",
+        disabledBy: "actor_investigator",
+        disabledAt: "2026-07-05T12:45:00.000Z",
+        reason: "Tailnet review session ended."
+      }
+    },
+    {
+      type: "device.session.revoked",
+      payload: {
+        sessionId: "devsess_local_phone",
+        revokedBy: "actor_investigator",
+        revokedAt: "2026-07-05T12:50:00.000Z",
+        reason: "Temporary review device no longer needs access."
+      }
+    },
+    {
+      type: "report.generated",
+      payload: {
+        reportId: "report_private_review_001",
+        generatedBy: "actor_investigator",
+        generatedAt: "2026-07-05T13:20:00.000Z",
+        policy,
+        includedEvidenceIds: ["ev_source_001"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [
+          {
+            tag: "legal_risk",
+            approvedBy: "actor_investigator",
+            rationale: "Included for private counsel review."
+          }
+        ],
+        defaultPublicSafeOnly: false
+      }
+    },
+    {
+      type: "incident.recorded",
+      payload: {
+        incidentId: "incident_network_001",
+        severity: "warning",
+        category: "network",
+        recordedBy: "actor_investigator",
+        summary: "Unexpected tailnet exposure state required review.",
+        relatedEvidenceIds: ["ev_source_001"],
+        relatedEventIds: ["evt_network_exposure_001"]
+      }
+    }
+  ])("validates a governance $type example", ({ type, payload }) => {
+    const result = validateKnowledgeEvent({
+      id: `evt_${type.replaceAll(".", "_")}_coverage_001`,
+      type,
+      version: 1,
+      streamId: `coverage_${type.replaceAll(".", "_")}`,
+      sequence: 1,
+      context: baseContext,
+      payload
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects incomplete, unsafe, or default-inverted governance policy events", () => {
+    const incompletePolicy = validateKnowledgeEvent({
+      id: "evt_governance_policy_incomplete",
+      type: "governance.policy.installed",
+      version: 1,
+      streamId: "governance_policy_gov_policy_default",
+      sequence: 1,
+      context: baseContext,
+      payload: {
+        policyId: "gov_policy_default",
+        version: "0.1.0",
+        installedBy: "actor_investigator",
+        confidenceThreshold: 0.9,
+        tags: defaultGovernancePolicy.tags.slice(0, 2)
+      }
+    });
+    const lowThresholdPolicy = validateKnowledgeEvent({
+      id: "evt_governance_policy_low_threshold",
+      type: "governance.policy.installed",
+      version: 1,
+      streamId: "governance_policy_gov_policy_default",
+      sequence: 1,
+      context: baseContext,
+      payload: {
+        ...defaultGovernancePolicy,
+        installedBy: "actor_investigator",
+        confidenceThreshold: 0.1
+      }
+    });
+    const defaultInvertedPolicy = validateKnowledgeEvent({
+      id: "evt_governance_policy_default_inverted",
+      type: "governance.policy.installed",
+      version: 1,
+      streamId: "governance_policy_gov_policy_default",
+      sequence: 1,
+      context: baseContext,
+      payload: {
+        ...defaultGovernancePolicy,
+        installedBy: "actor_investigator",
+        tags: defaultGovernancePolicy.tags.map((entry) =>
+          entry.tag === "contains_pii" ? { ...entry, defaultExportBehavior: "include-by-default" as const } : entry
+        )
+      }
+    });
+
+    expect(incompletePolicy.success).toBe(false);
+    expect(lowThresholdPolicy.success).toBe(false);
+    expect(defaultInvertedPolicy.success).toBe(false);
+  });
+
+  it.each([
+    {
+      type: "network.exposure.enabled",
+      payload: {
+        exposureId: "netexp_local_002",
+        mode: "tailnet",
+        bindScope: "tailnet",
+        enabledBy: "actor_ai_classifier",
+        enabledAt: "2026-07-05T12:00:00.000Z",
+        visibleWarning: true,
+        policy
+      }
+    },
+    {
+      type: "device.session.approved",
+      payload: {
+        sessionId: "devsess_local_tablet",
+        deviceLabel: "Review tablet",
+        approvedBy: "actor_ai_classifier",
+        approvedAt: "2026-07-05T12:05:00.000Z",
+        exposureId: "netexp_local_001",
+        capabilities: ["read"],
+        policy
+      }
+    },
+    {
+      type: "evidence.redaction.applied",
+      payload: {
+        evidenceId: "ev_source_001",
+        redactionId: "redaction_source_002",
+        appliedBy: "actor_ai_classifier",
+        rationale: "AI attempted to decide redaction.",
+        redactedContentHash: contentHash
+      }
+    },
+    {
+      type: "evidence.quarantined",
+      payload: {
+        evidenceId: "ev_source_001",
+        quarantineId: "quarantine_source_002",
+        quarantinedBy: "actor_ai_classifier",
+        reason: "AI attempted to lock workflow use.",
+        lockLevel: "all"
+      }
+    },
+    {
+      type: "evidence.tombstoned",
+      payload: {
+        evidenceId: "ev_source_001",
+        tombstoneId: "tombstone_source_002",
+        tombstonedBy: "actor_ai_classifier",
+        reason: "AI attempted a tombstone decision."
+      }
+    },
+    {
+      type: "export.generated",
+      payload: {
+        exportId: "exp_sensitive_ai_001",
+        generatedBy: "actor_ai_classifier",
+        generatedAt: "2026-07-05T12:30:00.000Z",
+        policy,
+        includedEvidenceIds: ["ev_source_001"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [
+          {
+            tag: "contains_pii",
+            approvedBy: "actor_ai_classifier",
+            rationale: "AI attempted to approve sensitive export."
+          }
+        ],
+        defaultPublicSafeOnly: false
+      }
+    },
+    {
+      type: "report.generated",
+      payload: {
+        reportId: "report_sensitive_ai_001",
+        generatedBy: "actor_ai_classifier",
+        generatedAt: "2026-07-05T12:35:00.000Z",
+        policy,
+        includedEvidenceIds: ["ev_source_001"],
+        includedContentHashes: [contentHash],
+        sensitiveOptIns: [
+          {
+            tag: "source_identity",
+            approvedBy: "actor_ai_classifier",
+            rationale: "AI attempted to approve source-protected report content."
+          }
+        ],
+        defaultPublicSafeOnly: false
+      }
+    },
+    {
+      type: "incident.repair.recorded",
+      payload: {
+        incidentId: "incident_export_002",
+        repairId: "repair_export_002",
+        severity: "warning",
+        category: "export",
+        repairedBy: "actor_ai_classifier",
+        repairedAt: "2026-07-05T13:00:00.000Z",
+        action: "AI attempted to close the incident.",
+        relatedEvidenceIds: ["ev_source_001"],
+        relatedEventIds: ["evt_export_generated_001"],
+        closesIncident: true
+      }
+    }
+  ])("rejects non-human context actor for human-gated $type", ({ type, payload }) => {
+    const result = validateKnowledgeEvent({
+      id: `evt_${type.replaceAll(".", "_")}_non_human_001`,
+      type,
+      version: 1,
+      streamId: `non_human_${type.replaceAll(".", "_")}`,
+      sequence: 1,
+      context: nonHumanContext,
+      payload
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 
