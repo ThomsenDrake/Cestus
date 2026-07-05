@@ -29,3 +29,11 @@ Status: `ready-for-review`
 - Full verification:
   - Command: `npm run verify`
   - Result: passed after one focused TypeScript exact-optional repair; typecheck passed, 47 test files and 350 tests passed, UI build succeeded, and factory readiness passed.
+- Spec review fix:
+  - Finding: Windows drive-root archive paths such as `C:/escape.txt` were not rejected as absolute internal paths.
+  - Regression failure command: `npm test -- packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/local-filesystem.test.ts`
+  - Regression failure result: failed as expected; `bad-windows-path.zip` produced one child occurrence instead of zero.
+  - Targeted retest command: `npm test -- packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/local-filesystem.test.ts`
+  - Targeted retest result: passed, 2 test files and 9 tests.
+  - Full verification retest command: `npm run verify`
+  - Full verification retest result: passed; typecheck passed, 47 test files and 351 tests passed, UI build succeeded, and factory readiness passed.

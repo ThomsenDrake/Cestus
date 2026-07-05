@@ -76,6 +76,7 @@ function assertSafeInternalPath(internalPath: string): void {
   const segments = internalPath.split("/");
   if (
     internalPath.startsWith("/") ||
+    /^[A-Za-z]:\//.test(internalPath) ||
     internalPath.includes("\\") ||
     segments.some((segment) => segment === "..")
   ) {
