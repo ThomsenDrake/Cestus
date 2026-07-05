@@ -52,3 +52,15 @@ Status: `fixes-ready-for-review`
   - Passed after fix: `Test Files  1 passed (1)`, `Tests  6 passed (6)`.
 - Full verification: `npm run verify`
   - Passed after fix: `typecheck passed`; `Test Files  44 passed (44)`, `Tests  352 passed (352)`; `tests passed`; `vite build` succeeded; `factory-readiness passed`.
+
+## Final Code Quality Review Fix
+
+- Finding: final code quality review found two remaining syntactically valid JSON draft bodies could still cross the HTTP boundary and reach runtime: unsupported non-empty jurisdiction pack refs such as `unsupported-public-records@9.9.9`, and optional phone values shorter than the PRR event contract's 3-character minimum.
+- Fix: `packages/local-runtime/src/http-handler.ts` now keeps both checks private to the handler boundary. It resolves jurisdiction pack refs with the existing PRR domain resolver before calling `createDraftRequest`, converts resolver failures into the generic draft-body diagnostic, and rejects optional contact phone strings shorter than 3 characters before runtime. `/api/health` auth behavior was not changed.
+- Regression tests: `packages/local-runtime/test/http-handler.test.ts` now covers unsupported jurisdiction packs and short `agency.phone` values, asserts the generic 400 draft-body diagnostic, and confirms `prr_bad_pack` and `prr_bad_phone` are absent from the workspace after rejection.
+- Red command: `npm test -- packages/local-runtime/test/http-handler.test.ts`
+  - Failed as expected after adding the regression tests: `AssertionError: expected 200 to be 400` for `rejects unsupported jurisdiction packs without persisting a draft` at `packages/local-runtime/test/http-handler.test.ts:230:29`, and `AssertionError: expected 200 to be 400` for `rejects short agency phone values without persisting a draft` at `packages/local-runtime/test/http-handler.test.ts:261:29`; `Test Files  1 failed (1)`, `Tests  2 failed | 6 passed (8)`.
+- Green command: `npm test -- packages/local-runtime/test/http-handler.test.ts`
+  - Passed after fix: `Test Files  1 passed (1)`, `Tests  8 passed (8)`.
+- Full verification: `npm run verify`
+  - Passed after fix: `typecheck passed`; `Test Files  44 passed (44)`, `Tests  354 passed (354)`; `tests passed`; `vite build` succeeded; `factory-readiness passed`.
