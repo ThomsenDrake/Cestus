@@ -4,7 +4,7 @@ This repository is designed for autonomous AI coding agents. Treat repo files as
 
 ## Project Skill
 
-Use the project-local skill at `.factory/skills/cestus-software-factory/SKILL.md` for Cestus brainstorming, planning, implementation, review, child-thread dispatch, and branch finishing work. Agents that do not auto-discover project skills must read that file manually before planning or editing.
+Use the project-local Codex skill at `.codex/skills/cestus-software-factory/SKILL.md` for Cestus brainstorming, planning, implementation, review, child-thread dispatch, and branch finishing work. Agents that do not auto-discover project skills must read that file manually before planning or editing.
 
 ## Required Reading
 

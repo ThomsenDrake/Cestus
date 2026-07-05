@@ -9,7 +9,7 @@ description: Run Cestus development through the repo-local autonomous software-f
 
 Cestus is built by autonomous coding agents using durable repo state. This skill compresses the recurring Cestus factory prompt into one reusable playbook for Codex, Claude Code, Opencode, Factory Droid, and future Cestus-native agents.
 
-Use this skill as the first Cestus-specific context after the agent reads `AGENTS.md`. If another runtime does not auto-discover `.factory/skills`, manually read this file before planning or editing.
+Use this skill as the first Cestus-specific context after the agent reads `AGENTS.md`. If another runtime does not auto-discover `.codex/skills`, manually read this file before planning or editing.
 
 ## Required Reading
 
@@ -77,7 +77,7 @@ npm run verify
 When this skill changes, also run:
 
 ```bash
-uv run --with pyyaml python /home/drake/.codex/skills/.system/skill-creator/scripts/quick_validate.py .factory/skills/cestus-software-factory
+uv run --with pyyaml python /home/drake/.codex/skills/.system/skill-creator/scripts/quick_validate.py .codex/skills/cestus-software-factory
 ```
 
 ## Review Contract
@@ -99,7 +99,7 @@ Use this when spawning a new Cestus child thread:
 ```text
 You are in a new Codex worktree thread for Cestus, starting from branch `neo`.
 
-Use the project-local skill `.factory/skills/cestus-software-factory/SKILL.md`.
+Use the project-local skill `.codex/skills/cestus-software-factory/SKILL.md`.
 Follow `AGENTS.md` and `docs/agentic/software-factory.md`.
 
 Task: <one concrete slice>
