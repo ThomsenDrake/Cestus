@@ -186,4 +186,67 @@ describe("buildIngestionProjection", () => {
     expect(projection.parseJobs.get("parse_001")).not.toHaveProperty("completedAt");
     expect(projection.parseJobs.get("parse_001")).not.toHaveProperty("outputHash");
   });
+
+  it("keys provider approvals by source, import, and provider job identity", () => {
+    const firstProviderApproval = {
+      id: "evt_ing_provider_approved_001",
+      type: "ingestion.provider.approved",
+      version: 1,
+      streamId: "ingestion_provider_src_drive_001_imp_001_provider_shared",
+      sequence: 1,
+      context: {
+        actor: { id: "actor_investigator", kind: "human", label: "Investigator" },
+        occurredAt: "2026-07-05T12:06:00.000Z",
+        correlationId: "corr_provider_shared",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+      },
+      payload: {
+        providerJobId: "provider_shared",
+        sourceCollectionId: "src_drive_001",
+        importBatchId: "imp_001",
+        provider: { name: "mistral-document-ai", version: "0.1.0" },
+        approvedBy: "actor_investigator",
+        approvedAt: "2026-07-05T12:06:00.000Z",
+        eligibleMediaTypes: ["application/pdf"],
+        maxBytesPerFile: 50000000,
+        policy: "send-all-technically-eligible"
+      }
+    };
+    const secondProviderApproval = {
+      ...firstProviderApproval,
+      id: "evt_ing_provider_approved_002",
+      streamId: "ingestion_provider_src_drive_002_imp_002_provider_shared",
+      context: {
+        ...firstProviderApproval.context,
+        correlationId: "corr_provider_shared_second"
+      },
+      payload: {
+        ...firstProviderApproval.payload,
+        sourceCollectionId: "src_drive_002",
+        importBatchId: "imp_002",
+        approvedAt: "2026-07-05T12:07:00.000Z",
+        eligibleMediaTypes: ["image/png"]
+      }
+    };
+
+    expect(validateKnowledgeEvent(firstProviderApproval).success).toBe(true);
+    expect(validateKnowledgeEvent(secondProviderApproval).success).toBe(true);
+
+    const projection = buildIngestionProjection([firstProviderApproval, secondProviderApproval]);
+
+    expect(projection.providerApprovals).toHaveLength(2);
+    expect(projection.providerApprovals.get("ingestion_provider_src_drive_001_imp_001_provider_shared")).toMatchObject({
+      approvedEventId: "evt_ing_provider_approved_001",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      providerJobId: "provider_shared"
+    });
+    expect(projection.providerApprovals.get("ingestion_provider_src_drive_002_imp_002_provider_shared")).toMatchObject({
+      approvedEventId: "evt_ing_provider_approved_002",
+      sourceCollectionId: "src_drive_002",
+      importBatchId: "imp_002",
+      providerJobId: "provider_shared"
+    });
+  });
 });
