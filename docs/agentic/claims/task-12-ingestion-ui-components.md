@@ -6,7 +6,7 @@
 - Branch: `codex/public-ingestion-pipeline-design`
 - Worktree path: `/home/drake/.codex/worktrees/aee0/Cestus`
 - Claimed at: `2026-07-05T18:05:19Z`
-- Status: claimed
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -17,7 +17,7 @@
 
 ## Evidence
 
-- Claim commit: pending.
-- Red targeted test: pending.
-- Green targeted test: pending.
-- Full verification: pending.
+- Claim commit: `b6f72a0 chore: claim task 12`.
+- Red targeted test: `npm test -- packages/ui/test/ingestion-workspace.test.tsx` failed as expected because `../src/ingestion/IngestionWorkspace.js` could not be resolved.
+- Green targeted test: `npm test -- packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/request-data-boundary.test.ts` passed with 2 test files and 5 tests.
+- Full verification: `npm run verify` passed with `typecheck passed`, 54 test files and 391 tests, `tests passed`, Vite build succeeded, and `factory-readiness passed`.
