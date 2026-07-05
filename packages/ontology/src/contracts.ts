@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validateGovernancePolicy } from "./governance-policy.js";
 
 export const actorRefSchema = z.object({
   id: z.string().min(3),
@@ -67,7 +68,7 @@ const claimCreatedPayloadSchema = z.object({
 }).strict();
 
 const secretTextPattern =
-  /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth(?:[\s._-]*(?:token|secret))?|credential(?:[\s._-]*(?:id|key|secret|token))?)(?:\s*[:=]\s*|\s+[a-z0-9][a-z0-9._-]{2,})/i;
+  /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth(?:[\s._-]*(?:token|secret))?|credential[\s._-]*(?:id|key|secret|token)?)(?:\s*[:=]\s*|\s+(?=[a-z0-9._~+/=-]{3,})(?=[a-z0-9._~+/=-]*[0-9])[a-z0-9][a-z0-9._~+/=-]*)/i;
 
 const secretSafeTextSchema = z.string().min(1).refine((value) => !secretTextPattern.test(value), {
   message: "text must not contain secrets or credentials"
@@ -877,6 +878,7 @@ function isKnowledgeEventType(value: unknown): value is KnowledgeEventType {
 }
 
 const alwaysHumanGatedEventTypes = new Set<KnowledgeEventType>([
+  "governance.policy.installed",
   "evidence.governance.reviewed",
   "evidence.redaction.applied",
   "evidence.quarantined",
@@ -966,6 +968,19 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
         message: "human-gated governance events require a human context actor",
         path: ["context", "actor", "kind"]
       });
+    }
+
+    if (event.type === "governance.policy.installed") {
+      try {
+        const { installedBy: _installedBy, ...policy } = payload.data as z.infer<typeof governancePolicyInstalledPayloadSchema>;
+        validateGovernancePolicy(policy);
+      } catch (error) {
+        ctx.addIssue({
+          code: "custom",
+          message: error instanceof Error ? error.message : "Invalid governance policy",
+          path: ["payload"]
+        });
+      }
     }
   })
   .transform((event): KnowledgeEvent => event as KnowledgeEvent);

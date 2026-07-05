@@ -77,6 +77,7 @@ describe("network exposure and device approval governance", () => {
     ]);
 
     expect(projection.networkExposure.activeExposure).toBeUndefined();
+    expect(projection.isSessionApproved("devsess_reporter_laptop")).toBe(false);
   });
 
   it("returns immutable network exposure and device session snapshots", () => {
@@ -153,6 +154,80 @@ describe("network exposure and device approval governance", () => {
       policy
     });
     expect(ledger.appendOptions[1]).toEqual({ expectedNextSequence: 1 });
+  });
+
+  it("disables network exposure and revokes device sessions through human-gated helpers", async () => {
+    const ledger = new RecordingLedger();
+    const service = new GovernanceService({ ledger, actor });
+    const exposure = await service.enableNetworkExposure({
+      exposureId: "netexp_tailnet_002",
+      mode: "tailnet",
+      bindScope: "tailnet",
+      enabledBy: "actor_investigator",
+      policy
+    });
+    const approval = await service.approveDeviceSession({
+      sessionId: "devsess_reporter_phone",
+      deviceLabel: "Reporter phone",
+      approvedBy: "actor_investigator",
+      exposureId: "netexp_tailnet_002",
+      capabilities: ["read"],
+      policy
+    });
+
+    const disabled = await service.disableNetworkExposure({
+      exposureId: "netexp_tailnet_002",
+      disabledBy: "actor_investigator",
+      reason: "Tailnet sharing closed after review."
+    });
+    const revoked = await service.revokeDeviceSession({
+      sessionId: "devsess_reporter_phone",
+      revokedBy: "actor_investigator",
+      reason: "Reporter phone approval withdrawn."
+    });
+
+    expect(disabled.type).toBe("network.exposure.disabled");
+    expect(disabled.context.causationId).toBe(exposure.id);
+    expect(disabled.payload).toMatchObject({
+      exposureId: "netexp_tailnet_002",
+      disabledBy: "actor_investigator",
+      reason: "Tailnet sharing closed after review."
+    });
+    expect(revoked.type).toBe("device.session.revoked");
+    expect(revoked.context.causationId).toBe(approval.id);
+    expect(revoked.payload).toMatchObject({
+      sessionId: "devsess_reporter_phone",
+      revokedBy: "actor_investigator",
+      reason: "Reporter phone approval withdrawn."
+    });
+    expect(ledger.appendOptions).toEqual([
+      { expectedNextSequence: 1 },
+      { expectedNextSequence: 1 },
+      { expectedNextSequence: 2 },
+      { expectedNextSequence: 2 }
+    ]);
+  });
+
+  it("rejects disabling missing exposure and revoking missing sessions before append", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new GovernanceService({ ledger, actor });
+
+    await expect(
+      service.disableNetworkExposure({
+        exposureId: "netexp_tailnet_002",
+        disabledBy: "actor_investigator",
+        reason: "Tailnet sharing closed after review."
+      })
+    ).rejects.toThrow("Cannot disable network exposure without an active network exposure");
+    await expect(
+      service.revokeDeviceSession({
+        sessionId: "devsess_reporter_phone",
+        revokedBy: "actor_investigator",
+        reason: "Reporter phone approval withdrawn."
+      })
+    ).rejects.toThrow("Cannot revoke missing or already revoked device session");
+
+    expect(await ledger.readAll()).toHaveLength(0);
   });
 
   it("rejects device approval without a current exposure event before append", async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type AppendableKnowledgeEvent, type KnowledgeEvent } from "../src/contracts.js";
 import { type AppendOptions, type EventLedger, InMemoryEventLedger } from "../src/event-ledger.js";
+import { defaultGovernancePolicy } from "../src/governance-policy.js";
 import { GovernanceService } from "../src/governance-service.js";
 
 const actor = { id: "actor_investigator", kind: "human" as const, label: "Investigator" };
@@ -85,6 +86,43 @@ describe("GovernanceService", () => {
       evidenceEventId: evidence.id,
       contentHash
     });
+  });
+
+  it("installs governance policy through a human-gated service helper", async () => {
+    const ledger = new RecordingLedger();
+    const service = new GovernanceService({ ledger, actor });
+
+    const event = await service.installPolicy({
+      policy: defaultGovernancePolicy,
+      installedBy: "actor_investigator"
+    });
+
+    expect(event.type).toBe("governance.policy.installed");
+    expect(event.streamId).toBe("governance_policy_gov_policy_default");
+    expect(event.sequence).toBe(1);
+    expect(event.context.actor).toEqual(actor);
+    expect(event.payload).toMatchObject({
+      policyId: "gov_policy_default",
+      version: "0.1.0",
+      installedBy: "actor_investigator",
+      confidenceThreshold: 0.9,
+      tags: defaultGovernancePolicy.tags
+    });
+    expect(ledger.appendOptions[0]).toEqual({ expectedNextSequence: 1 });
+  });
+
+  it("rejects non-human policy installation before append", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new GovernanceService({ ledger, actor: classifier });
+
+    await expect(
+      service.installPolicy({
+        policy: defaultGovernancePolicy,
+        installedBy: "actor_classifier"
+      })
+    ).rejects.toThrow("Governance policy installation requires a human service actor");
+
+    expect(await ledger.readAll()).toHaveLength(0);
   });
 
   it("rejects classification when the evidence event is missing", async () => {
@@ -382,5 +420,78 @@ describe("GovernanceService", () => {
     });
 
     expect(event.payload.tags[0]?.rationale).toBe("credential_risk requires review.");
+  });
+
+  it("records redaction, quarantine, and tombstone decisions through human-gated helpers", async () => {
+    const ledger = new RecordingLedger();
+    const evidence = await appendEvidence(ledger);
+    const service = new GovernanceService({ ledger, actor });
+
+    const redaction = await service.applyEvidenceRedaction({
+      evidenceId: "ev_source_001",
+      redactionId: "redaction_source_001",
+      appliedBy: "actor_investigator",
+      rationale: "Removed private phone numbers from the shared view.",
+      redactedContentHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    });
+    const quarantine = await service.quarantineEvidence({
+      evidenceId: "ev_source_001",
+      quarantineId: "quarantine_source_001",
+      quarantinedBy: "actor_investigator",
+      reason: "Needs source-protection review before workflow use.",
+      lockLevel: "workflow"
+    });
+    const tombstone = await service.tombstoneEvidence({
+      evidenceId: "ev_source_001",
+      tombstoneId: "tombstone_source_001",
+      tombstonedBy: "actor_investigator",
+      reason: "Duplicate evidence superseded by a cleaner ingested copy."
+    });
+
+    expect(redaction.type).toBe("evidence.redaction.applied");
+    expect(redaction.context.causationId).toBe(evidence.id);
+    expect(quarantine.type).toBe("evidence.quarantined");
+    expect(quarantine.context.causationId).toBe(redaction.id);
+    expect(tombstone.type).toBe("evidence.tombstoned");
+    expect(tombstone.context.causationId).toBe(quarantine.id);
+    expect(ledger.appendOptions.slice(1)).toEqual([
+      { expectedNextSequence: 2 },
+      { expectedNextSequence: 3 },
+      { expectedNextSequence: 4 }
+    ]);
+  });
+
+  it("rejects non-human redaction, quarantine, and tombstone helpers before append", async () => {
+    const ledger = new InMemoryEventLedger();
+    await appendEvidence(ledger);
+    const service = new GovernanceService({ ledger, actor: classifier });
+
+    await expect(
+      service.applyEvidenceRedaction({
+        evidenceId: "ev_source_001",
+        redactionId: "redaction_source_001",
+        appliedBy: "actor_classifier",
+        rationale: "Attempted redaction."
+      })
+    ).rejects.toThrow("Evidence redaction requires a human service actor");
+    await expect(
+      service.quarantineEvidence({
+        evidenceId: "ev_source_001",
+        quarantineId: "quarantine_source_001",
+        quarantinedBy: "actor_classifier",
+        reason: "Attempted quarantine.",
+        lockLevel: "workflow"
+      })
+    ).rejects.toThrow("Evidence quarantine requires a human service actor");
+    await expect(
+      service.tombstoneEvidence({
+        evidenceId: "ev_source_001",
+        tombstoneId: "tombstone_source_001",
+        tombstonedBy: "actor_classifier",
+        reason: "Attempted tombstone."
+      })
+    ).rejects.toThrow("Evidence tombstone requires a human service actor");
+
+    expect(await ledger.readStream("evidence_ev_source_001")).toHaveLength(1);
   });
 });
