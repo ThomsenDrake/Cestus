@@ -737,7 +737,7 @@ describe("ingestion event contracts", () => {
         eligibleMediaTypes: ["application/pdf"],
         maxBytesPerFile: 50000000,
         policy: "send-all-technically-eligible"
-      })
+      }, "ingestion_provider_src_drive_001_imp_001_provider_001")
     ];
 
     for (const event of events) {
@@ -796,20 +796,82 @@ describe("ingestion event contracts", () => {
 
     expect(validateKnowledgeEvent(event).success).toBe(false);
   });
+
+  it("rejects credential-shaped provider approval payload and context text", () => {
+    const providerNameResult = validateKnowledgeEvent(providerApprovalEvent({
+      provider: { name: "apiKey=sk_live_provider", version: "0.1.0" }
+    }));
+    const mediaTypeResult = validateKnowledgeEvent(providerApprovalEvent({
+      eligibleMediaTypes: ["Authorization: Bearer sk_live_media"]
+    }));
+    const actorLabelResult = validateKnowledgeEvent({
+      ...providerApprovalEvent(),
+      context: {
+        ...context,
+        actor: { id: "actor_system", kind: "system", label: "Bearer sk_live_actor" }
+      }
+    });
+
+    for (const result of [providerNameResult, mediaTypeResult, actorLabelResult]) {
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issueText = JSON.stringify(result.error.issues);
+        expect(issueText).toMatch(/credential-shaped/i);
+        expect(issueText).not.toMatch(/sk_live_/i);
+      }
+    }
+  });
+
+  it("rejects provider approvals whose stream does not match provider batch identity", () => {
+    const result = validateKnowledgeEvent({
+      ...providerApprovalEvent(),
+      streamId: "ingestion_provider_src_drive_999_imp_001_provider_001"
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("streamId");
+    }
+  });
 });
 
 function ingestionEvent<Type extends KnowledgeEvent["type"]>(
   id: string,
   type: Type,
-  payload: Extract<KnowledgeEvent, { type: Type }>["payload"]
+  payload: Extract<KnowledgeEvent, { type: Type }>["payload"],
+  streamId = `ingestion_${id}`
 ): Extract<KnowledgeEvent, { type: Type }> {
   return {
     id,
     type,
     version: 1,
-    streamId: `ingestion_${id}`,
+    streamId,
     sequence: 1,
     context,
     payload
   } as unknown as Extract<KnowledgeEvent, { type: Type }>;
+}
+
+function providerApprovalEvent(
+  overrides: Partial<Extract<KnowledgeEvent, { type: "ingestion.provider.approved" }>["payload"]> = {}
+): Extract<KnowledgeEvent, { type: "ingestion.provider.approved" }> {
+  const payload = {
+    providerJobId: "provider_001",
+    sourceCollectionId: "src_drive_001",
+    importBatchId: "imp_001",
+    provider: { name: "mistral-document-ai", version: "0.1.0" },
+    approvedBy: "actor_investigator",
+    approvedAt: "2026-07-05T12:06:00.000Z",
+    eligibleMediaTypes: ["application/pdf"],
+    maxBytesPerFile: 50000000,
+    policy: "send-all-technically-eligible",
+    ...overrides
+  } as Extract<KnowledgeEvent, { type: "ingestion.provider.approved" }>["payload"];
+
+  return ingestionEvent(
+    "evt_ing_provider_boundary",
+    "ingestion.provider.approved",
+    payload,
+    `ingestion_provider_${payload.sourceCollectionId}_${payload.importBatchId}_${payload.providerJobId}`
+  );
 }

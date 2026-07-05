@@ -19,6 +19,8 @@
 
 - `packages/ingestion/src/projection.ts`
 - `packages/ingestion/test/projection.test.ts`
+- `packages/ontology/src/contracts.ts`
+- `packages/ontology/test/contracts.test.ts`
 
 ## Evidence
 
@@ -31,6 +33,9 @@
 - Code-quality repair red targeted test: `npm test -- packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts` failed with 5 regression failures proving omitted `approvedAt` retries conflicted, provider approvals were projected by non-composite `providerJobId`, actor credential-shaped labels were allowed, and media-type canonicalization/retry was missing.
 - Code-quality repair green targeted test: `npm test -- packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts` passed with 2 test files and 14 tests.
 - Code-quality repair full verification: `npm run verify` passed with `typecheck passed`, 52 test files and 386 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
+- Quality re-review red targeted test: `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts` failed with 2 ontology contract regression failures proving direct ledger validation accepted credential-shaped provider approval/context text and mismatched provider approval streams.
+- Quality re-review green targeted test: `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts` passed with 3 test files and 56 tests.
+- Quality re-review full verification: `npm run verify` passed with `typecheck passed`, 52 test files and 388 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
 
 ## Self-Review
 
@@ -41,3 +46,4 @@
 - `FakeDocumentAiProvider` is deterministic and local-only; it enforces supported media types and max bytes per file before returning fake parsed text.
 - Provider parsing remains optional and does not change local parser behavior.
 - Code-quality repair: omitted `approvedAt` retries now reuse the existing approval timestamp, eligible media types are stored as sorted unique values, provider approvals project under the same source/import/provider composite identity as service streams, and credential-shaped approval or actor fields are rejected before append without echoing secret values.
+- Quality re-review repair: canonical ontology validation now rejects credential-shaped provider approval provider fields, approver/media type text, and event context actor labels; it also enforces provider approval stream IDs against the source/import/provider-job composite identity.
