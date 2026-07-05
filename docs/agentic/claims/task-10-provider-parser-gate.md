@@ -36,6 +36,9 @@
 - Quality re-review red targeted test: `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts` failed with 2 ontology contract regression failures proving direct ledger validation accepted credential-shaped provider approval/context text and mismatched provider approval streams.
 - Quality re-review green targeted test: `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts` passed with 3 test files and 56 tests.
 - Quality re-review full verification: `npm run verify` passed with `typecheck passed`, 52 test files and 388 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
+- Spec re-review red targeted test: `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts` failed with 1 ontology contract regression proving direct provider approval validation accepted credential-shaped `context.actor.id`.
+- Spec re-review green targeted test: `npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts` passed with 3 test files and 56 tests.
+- Spec re-review full verification: `npm run verify` passed with `typecheck passed`, 52 test files and 388 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
 
 ## Self-Review
 
@@ -47,3 +50,4 @@
 - Provider parsing remains optional and does not change local parser behavior.
 - Code-quality repair: omitted `approvedAt` retries now reuse the existing approval timestamp, eligible media types are stored as sorted unique values, provider approvals project under the same source/import/provider composite identity as service streams, and credential-shaped approval or actor fields are rejected before append without echoing secret values.
 - Quality re-review repair: canonical ontology validation now rejects credential-shaped provider approval provider fields, approver/media type text, and event context actor labels; it also enforces provider approval stream IDs against the source/import/provider-job composite identity.
+- Spec re-review repair: canonical actor IDs now use the same credential-shaped text guard as actor labels, while existing actor IDs such as `actor_system` remain valid.
