@@ -126,9 +126,9 @@ function draftRequestInputFromBody(value: unknown): CreateDraftRequestInput | un
     jurisdictionPack === undefined ||
     agency === undefined ||
     requester === undefined ||
-    typeof value.requestText !== "string" ||
-    typeof value.receivedAt !== "string" ||
-    (Object.hasOwn(value, "deadlineEstimateKind") && typeof deadlineEstimateKind !== "string")
+    !isNonEmptyString(value.requestText) ||
+    !isValidReceivedAt(value.receivedAt) ||
+    (Object.hasOwn(value, "deadlineEstimateKind") && !isDeadlineEstimateKind(deadlineEstimateKind))
   ) {
     return undefined;
   }
@@ -156,7 +156,7 @@ function draftRequestInputFromBody(value: unknown): CreateDraftRequestInput | un
 function jurisdictionPackRefFromBody(
   value: unknown
 ): CreateDraftRequestInput["jurisdictionPack"] | undefined {
-  if (!isJsonObject(value) || typeof value.name !== "string" || typeof value.version !== "string") {
+  if (!isJsonObject(value) || !isNonEmptyString(value.name) || !isNonEmptyString(value.version)) {
     return undefined;
   }
 
@@ -169,8 +169,8 @@ function jurisdictionPackRefFromBody(
 function contactRefFromBody(value: unknown): CreateDraftRequestInput["agency"] | undefined {
   if (
     !isJsonObject(value) ||
-    typeof value.name !== "string" ||
-    (value.email !== undefined && typeof value.email !== "string") ||
+    !isNonEmptyString(value.name) ||
+    (value.email !== undefined && !isPlausibleEmail(value.email)) ||
     (value.phone !== undefined && typeof value.phone !== "string")
   ) {
     return undefined;
@@ -185,6 +185,49 @@ function contactRefFromBody(value: unknown): CreateDraftRequestInput["agency"] |
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isDeadlineEstimateKind(
+  value: unknown
+): value is NonNullable<CreateDraftRequestInput["deadlineEstimateKind"]> {
+  return value === "acknowledgement" || value === "productionReview";
+}
+
+function isPlausibleEmail(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) &&
+    !/[<>]/.test(value)
+  );
+}
+
+function isValidReceivedAt(value: unknown): value is string {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?Z$/
+  );
+  if (match === null) {
+    return false;
+  }
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText] = match;
+  const date = new Date(value);
+  return (
+    Number.isFinite(date.getTime()) &&
+    date.getUTCFullYear() === Number(yearText) &&
+    date.getUTCMonth() === Number(monthText) - 1 &&
+    date.getUTCDate() === Number(dayText) &&
+    date.getUTCHours() === Number(hourText) &&
+    date.getUTCMinutes() === Number(minuteText) &&
+    date.getUTCSeconds() === Number(secondText)
+  );
 }
 
 function invalidDraftRequestBodyDiagnostic(): {
