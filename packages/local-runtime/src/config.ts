@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 
@@ -37,8 +38,9 @@ export function resolveLocalRuntimeConfig(
   const cwd = resolve(input.cwd ?? process.cwd());
   const env = input.env ?? process.env;
   const bindMode = parseBindMode(env.CESTUS_LOCAL_BIND);
+  const host = resolveHost(bindMode, env);
   const authToken = normalizeOptional(env.CESTUS_LOCAL_AUTH_TOKEN);
-  const authRequired = bindMode !== "loopback";
+  const authRequired = bindMode !== "loopback" || !isLoopbackHost(host);
 
   if (authRequired && authToken === undefined) {
     throw new Error("Auth is required for non-loopback local runtime exposure");
@@ -48,7 +50,7 @@ export function resolveLocalRuntimeConfig(
     cwd,
     storage: resolveStorage(cwd, env),
     http: {
-      host: resolveHost(bindMode, env),
+      host,
       port: parsePort(env.CESTUS_LOCAL_PORT),
       bindMode,
       authRequired,
@@ -56,10 +58,10 @@ export function resolveLocalRuntimeConfig(
       devSeedEnabled: env.CESTUS_DEV_SEED_PRR === "true"
     },
     staticUi: {
-      distDir: resolvePath(cwd, env.CESTUS_UI_DIST_DIR ?? "dist")
+      distDir: resolvePath(cwd, normalizeOptional(env.CESTUS_UI_DIST_DIR) ?? "dist")
     },
     logs: {
-      dir: resolvePath(cwd, env.CESTUS_LOCAL_LOG_DIR ?? ".cestus/local/logs")
+      dir: resolvePath(cwd, normalizeOptional(env.CESTUS_LOCAL_LOG_DIR) ?? ".cestus/local/logs")
     }
   } satisfies ResolvedLocalRuntimeConfig;
 
@@ -90,7 +92,10 @@ function resolveStorage(
     });
   }
 
-  const appDataDir = normalizeOptional(env.CESTUS_APP_DATA_DIR) ?? join(homedir(), ".local/share/cestus");
+  const appDataDir = resolvePath(
+    cwd,
+    normalizeOptional(env.CESTUS_APP_DATA_DIR) ?? join(homedir(), ".local/share/cestus")
+  );
   return Object.freeze({
     strategy,
     sqlitePath: join(appDataDir, "prr-ledger.sqlite")
@@ -126,6 +131,17 @@ function resolveHost(
     return explicitHost;
   }
   return bindMode === "loopback" ? "127.0.0.1" : "0.0.0.0";
+}
+
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  if (normalized === "localhost") {
+    return true;
+  }
+  if (isIP(normalized) === 4) {
+    return normalized.startsWith("127.");
+  }
+  return normalized === "::1" || normalized === "0:0:0:0:0:0:0:1";
 }
 
 function parsePort(value: string | undefined): number {
