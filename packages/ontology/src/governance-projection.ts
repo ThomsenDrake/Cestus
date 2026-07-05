@@ -111,6 +111,11 @@ export function buildGovernanceProjection(events: readonly KnowledgeEvent[]): Go
 
       for (const evidenceId of input.requestedEvidenceIds) {
         const state = evidenceGovernance.get(evidenceId);
+        if (state?.quarantined === true) {
+          blockedEvidence.push({ evidenceId, requiredOptInTags: [] });
+          continue;
+        }
+
         if (state === undefined || state.tombstoned) {
           blockedEvidence.push({ evidenceId, requiredOptInTags: [...restrictedExportTags] });
           continue;

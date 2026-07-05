@@ -37,4 +37,20 @@ Ready-for-review-at: `2026-07-05T15:33:37Z`
 ## Self-Review
 
 - The service rejects explicitly blocked evidence before append through `blockedEvidenceIds`, preserving quarantine/tombstone enforcement without introducing projection or storage dependencies into the service.
-- The Task 5 supplied projection test expects `ev_source_private` to be includable when all restricted tags are opted in, even though the golden fixture marks it quarantined. Projection export planning follows that required test; callers that treat projected quarantine as a hard block can pass the evidence ID through the service's explicit blocked list.
+- Projection export planning now blocks quarantined evidence directly, even when every active restricted tag is opted in.
+
+## Review Fix Evidence
+
+Review fix red:
+- `npm test -- packages/ontology/test/governance-export.test.ts packages/ontology/test/governance-service.test.ts packages/ontology/test/governance-projection.test.ts`
+- Result: failed as expected; `planExport()` included quarantined `ev_source_private` when all restricted tags were opted in.
+
+Review fix green:
+- `npm test -- packages/ontology/test/governance-export.test.ts packages/ontology/test/governance-service.test.ts packages/ontology/test/governance-projection.test.ts`
+- Result: passed; 3 test files passed, 35 tests passed.
+
+Review fix verify:
+- `npm run verify`
+- Result: passed; typecheck passed, 46 test files passed, 406 tests passed, UI build succeeded, factory-readiness passed.
+
+Review-fix-ready-at: `2026-07-05T15:37:50Z`
