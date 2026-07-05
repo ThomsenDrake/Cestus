@@ -21,9 +21,14 @@ Status: ready-for-review
 - Green targeted test: `npm test -- packages/ingestion/test/import-service.test.ts` passed with 1 test file and 2 tests.
 - Full verification: `npm run verify` passed with `typecheck passed`, 48 test files and 355 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
 - Claim commit: `1e91d5e chore: claim task 7`.
-- Implementation commit: task implementation commit follows this evidence update.
+- Implementation commit: `59340ab feat: add ingestion import service`.
+- Spec review fix red targeted test: `npm test -- packages/ingestion/test/import-service.test.ts` failed with 2 failing regression tests covering completed-import retry and existing content-hash reuse.
+- Spec review fix green targeted test: `npm test -- packages/ingestion/test/import-service.test.ts` passed with 1 test file and 4 tests.
+- Spec review fix full verification: `npm run verify` passed with `typecheck passed`, 48 test files and 357 tests, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
+- Spec review fix commit: task review-fix commit follows this evidence update.
 
 ## Self-Review
 
 - Findings: none.
 - Scope: changed only the allowed Task 7 files.
+- Spec review fix: `importApprovedOccurrences()` now reuses existing evidence by content hash, skips already-linked occurrence IDs, and returns recorded completion totals for already-completed imports.

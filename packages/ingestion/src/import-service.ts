@@ -101,28 +101,49 @@ export class IngestionImportService {
     }
 
     const groups = this.groupOccurrencesByContentHash(input.occurrences);
+    const existingEvents = await this.dependencies.ledger.readAll();
+    const existingCompletion = this.findCompletedImport(existingEvents, input);
 
-    for (const group of groups.values()) {
-      const evidenceId = this.evidenceIdForContentHash(group.contentHash);
-      await this.evidenceService.ingest({
-        evidenceId,
-        content: group.representative.content,
-        mediaType: group.representative.mediaType,
-        source: {
-          kind: "dataset",
-          label: `Public ingestion import ${input.sourceCollectionId}/${input.importBatchId}`,
-          uri: this.sourceUri(input, group.contentHash)
-        },
-        actor: this.dependencies.actor
-      });
-
-      await this.appendEvidenceLinked(input, group, evidenceId, approval.id);
+    if (existingCompletion !== undefined) {
+      return { totals: existingCompletion.payload.totals };
     }
 
+    let evidenceCreated = 0;
+    for (const group of groups.values()) {
+      const deterministicEvidenceId = this.evidenceIdForContentHash(group.contentHash);
+      const existingEvidence = this.findExistingEvidence(existingEvents, deterministicEvidenceId, group.contentHash);
+      const evidenceId = existingEvidence?.payload.evidenceId ?? deterministicEvidenceId;
+
+      if (existingEvidence === undefined) {
+        const evidence = await this.evidenceService.ingest({
+          evidenceId,
+          content: group.representative.content,
+          mediaType: group.representative.mediaType,
+          source: {
+            kind: "dataset",
+            label: `Public ingestion import ${input.sourceCollectionId}/${input.importBatchId}`,
+            uri: this.sourceUri(input, group.contentHash)
+          },
+          actor: this.dependencies.actor
+        });
+        existingEvents.push(evidence);
+        evidenceCreated += 1;
+      }
+
+      const unlinkedOccurrenceIds = this.unlinkedOccurrenceIds(existingEvents, input, group);
+
+      if (unlinkedOccurrenceIds.length > 0) {
+        const linked = await this.appendEvidenceLinked(input, group, evidenceId, unlinkedOccurrenceIds, approval.id);
+        existingEvents.push(linked);
+      }
+    }
+
+    // duplicatesReused counts occurrences that did not create new canonical evidence,
+    // including duplicate paths in this batch and content already present in the ledger.
     const totals = {
-      evidenceCreated: groups.size,
+      evidenceCreated,
       occurrencesLinked: input.occurrences.length,
-      duplicatesReused: input.occurrences.length - groups.size,
+      duplicatesReused: input.occurrences.length - evidenceCreated,
       skipped: 0
     };
     await this.appendImportCompleted(input, totals, approval.id);
@@ -164,10 +185,71 @@ export class IngestionImportService {
     return groups;
   }
 
+  private findCompletedImport(
+    events: Awaited<ReturnType<EventLedger["readAll"]>>,
+    input: Pick<ImportApprovedOccurrencesInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">
+  ): KnowledgeEventOf<"ingestion.import.completed"> | undefined {
+    return events.find(
+      (event): event is KnowledgeEventOf<"ingestion.import.completed"> =>
+        event.type === "ingestion.import.completed" &&
+        event.payload.sourceCollectionId === input.sourceCollectionId &&
+        event.payload.scanBatchId === input.scanBatchId &&
+        event.payload.importBatchId === input.importBatchId
+    );
+  }
+
+  private findExistingEvidence(
+    events: Awaited<ReturnType<EventLedger["readAll"]>>,
+    deterministicEvidenceId: string,
+    contentHash: ContentHash
+  ): KnowledgeEventOf<"evidence.ingested"> | undefined {
+    const deterministicEvidence = events.find(
+      (event): event is KnowledgeEventOf<"evidence.ingested"> =>
+        event.type === "evidence.ingested" && event.payload.evidenceId === deterministicEvidenceId
+    );
+
+    if (deterministicEvidence !== undefined && deterministicEvidence.payload.contentHash !== contentHash) {
+      throw new Error(`Evidence ${deterministicEvidenceId} already exists with a different content hash`);
+    }
+
+    if (deterministicEvidence !== undefined) {
+      return deterministicEvidence;
+    }
+
+    return events.find(
+      (event): event is KnowledgeEventOf<"evidence.ingested"> =>
+        event.type === "evidence.ingested" && event.payload.contentHash === contentHash
+    );
+  }
+
+  private unlinkedOccurrenceIds(
+    events: Awaited<ReturnType<EventLedger["readAll"]>>,
+    input: Pick<ImportApprovedOccurrencesInput, "sourceCollectionId" | "importBatchId">,
+    group: OccurrenceGroup
+  ): string[] {
+    const linkedOccurrenceIds = new Set<string>();
+
+    for (const event of events) {
+      if (
+        event.type === "ingestion.evidence.linked" &&
+        event.payload.importBatchId === input.importBatchId &&
+        event.payload.sourceCollectionId === input.sourceCollectionId &&
+        event.payload.contentHash === group.contentHash
+      ) {
+        for (const occurrenceId of event.payload.occurrenceIds) {
+          linkedOccurrenceIds.add(occurrenceId);
+        }
+      }
+    }
+
+    return group.occurrenceIds.filter((occurrenceId) => !linkedOccurrenceIds.has(occurrenceId));
+  }
+
   private async appendEvidenceLinked(
     input: Pick<ImportApprovedOccurrencesInput, "sourceCollectionId" | "importBatchId">,
     group: OccurrenceGroup,
     evidenceId: string,
+    occurrenceIds: string[],
     approvalEventId: string
   ): Promise<KnowledgeEventOf<"ingestion.evidence.linked">> {
     const event: AppendableKnowledgeEvent<"ingestion.evidence.linked"> = {
@@ -180,7 +262,7 @@ export class IngestionImportService {
         importBatchId: input.importBatchId,
         sourceCollectionId: input.sourceCollectionId,
         contentHash: group.contentHash,
-        occurrenceIds: group.occurrenceIds
+        occurrenceIds
       }
     };
 
