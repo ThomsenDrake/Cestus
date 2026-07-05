@@ -6,7 +6,7 @@ Worker: Codex GPT-5
 Branch: `codex/security-governance-design`
 Worktree: `/home/drake/.codex/worktrees/c3c1/Cestus`
 Claimed-at: 2026-07-05T14:34:44Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/ontology/src/governance-policy.ts`
@@ -17,3 +17,10 @@ Owned files:
 Required commands:
 - `npm test -- packages/ontology/test/governance-policy.test.ts`
 - `npm run verify`
+
+Command evidence:
+- Red: `npm test -- packages/ontology/test/governance-policy.test.ts` failed because `../src/governance-policy.js` did not exist.
+- Green repair: `npm test -- packages/ontology/test/governance-policy.test.ts` initially found the new duplicate-tag validator reported export defaults before exact tag coverage.
+- Green: `npm test -- packages/ontology/test/governance-policy.test.ts` passed with 1 test file and 6 tests passing.
+- Final green: `npm test -- packages/ontology/test/governance-policy.test.ts` passed with 1 test file and 6 tests passing after validator polish.
+- Verify: `npm run verify` passed with typecheck passed, 43 test files and 367 tests passing, UI build succeeded, and factory-readiness passed.
