@@ -104,63 +104,88 @@ describe("operator status contracts", () => {
     ).toThrow();
   });
 
+  it("operatorSafeActionSchema rejects incomplete action descriptors", () => {
+    expect(() =>
+      operatorSafeActionSchema.parse({
+        actionId: "action_missing_target",
+        label: "Open Requests",
+        kind: "navigate",
+        sourceContract: "operator-status.v1",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false,
+        externalEffect: false,
+        enabled: true
+      })
+    ).toThrow(/target/i);
+
+    expect(() =>
+      operatorSafeActionSchema.parse({
+        actionId: "action_missing_command",
+        label: "Show command",
+        kind: "show-command",
+        sourceContract: "operator-status.v1",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false,
+        externalEffect: false,
+        enabled: true
+      })
+    ).toThrow(/command/i);
+  });
+
   it("operatorStatusDtoSchema rejects secret-shaped diagnostic and command text", () => {
-    expect(() =>
-      operatorStatusDtoSchema.parse({
-        ...readyDto,
-        sections: [
-          {
-            ...readySection,
-            diagnostics: [
-              {
-                diagnosticId: "diag_bad_secret",
-                severity: "error",
-                category: "workspace",
-                message: "token=abc123"
-              }
-            ]
-          }
-        ]
-      })
-    ).toThrow(/secret-safe/i);
+    const unsafeDiagnosticMessages = [
+      "token=abc123",
+      "password",
+      "private key",
+      "bearer",
+      "auth tokens"
+    ];
 
-    expect(() =>
-      operatorStatusDtoSchema.parse({
-        ...readyDto,
-        safeActions: [
-          {
-            actionId: "action_bad_command_secret",
-            label: "Show unsafe command",
-            kind: "show-command",
-            command: "cestus status --token=abc123",
-            sourceContract: "operator-status.v1",
-            requiresHumanApproval: false,
-            mutatesCanonicalState: false,
-            externalEffect: false,
-            enabled: true
-          }
-        ]
-      })
-    ).toThrow(/secret-safe/i);
+    for (const message of unsafeDiagnosticMessages) {
+      expect(() =>
+        operatorStatusDtoSchema.parse({
+          ...readyDto,
+          sections: [
+            {
+              ...readySection,
+              diagnostics: [
+                {
+                  diagnosticId: "diag_bad_secret",
+                  severity: "error",
+                  category: "workspace",
+                  message
+                }
+              ]
+            }
+          ]
+        })
+      ).toThrow(/secret-safe/i);
+    }
 
-    expect(() =>
-      operatorStatusDtoSchema.parse({
-        ...readyDto,
-        sections: [
-          {
-            ...readySection,
-            diagnostics: [
-              {
-                diagnosticId: "diag_bad_private_key",
-                severity: "warning",
-                category: "security",
-                message: "private key"
-              }
-            ]
-          }
-        ]
-      })
-    ).toThrow(/secret-safe/i);
+    const unsafeCommands = [
+      "cestus status --token=abc123"
+    ];
+
+    for (const command of unsafeCommands) {
+      expect(() =>
+        operatorStatusDtoSchema.parse({
+          ...readyDto,
+          safeActions: [
+            {
+              actionId: "action_bad_command_secret",
+              label: "Show unsafe command",
+              kind: "show-command",
+              command,
+              sourceContract: "operator-status.v1",
+              requiresHumanApproval: false,
+              mutatesCanonicalState: false,
+              externalEffect: false,
+              enabled: true
+            }
+          ]
+        })
+      ).toThrow(/secret-safe/i);
+    }
   });
 
   it("exports only the planned runtime contract surface", () => {
