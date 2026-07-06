@@ -7,6 +7,7 @@ import {
   type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import { sha256, stableJson } from "./legacy-report.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
 type AssertionObject = string | number | boolean | null;
@@ -29,11 +30,14 @@ export interface ApproveLegacyStagingInput {
 
 export interface LegacyApprovedAssertionCandidate {
   candidateId: string;
-  evidenceId: string;
+  observationId: string;
+  evidenceContentHash: `sha256:${string}`;
+  sourcePath: string;
   predicate: string;
   object: AssertionObject;
   confidence: number;
   subjectRef?: string;
+  evidenceId: string;
 }
 
 export interface StageApprovedLegacyAssertionsInput
@@ -107,12 +111,13 @@ export class LegacyOntologyStagingService {
     const approvedCandidates = input.candidates.filter((candidate) => approvedIds.has(candidate.candidateId));
     const proposed: Array<KnowledgeEventOf<"assertion.proposed">> = [];
 
-    await this.preflightEvidence(input.stagingBatchId, approvedCandidates);
+    this.validateCandidateSetHash(input);
+    await this.preflightEvidence(input, approvedCandidates);
 
     for (const candidate of approvedCandidates) {
       proposed.push(
         await this.assertions.propose({
-          assertionId: legacyAssertionId(input.stagingBatchId, candidate.candidateId),
+          assertionId: legacyAssertionId(input, candidate.candidateId),
           evidenceId: candidate.evidenceId,
           ...(candidate.subjectRef === undefined ? {} : { subjectRef: candidate.subjectRef }),
           predicate: candidate.predicate,
@@ -126,8 +131,19 @@ export class LegacyOntologyStagingService {
     return proposed;
   }
 
+  private validateCandidateSetHash(input: StageApprovedLegacyAssertionsInput): void {
+    const actualHash = candidateSetHash(input.candidates);
+
+    if (actualHash !== input.candidateSetHash) {
+      throw new Error(`Legacy staging candidate set hash mismatch for ${input.stagingBatchId}`);
+    }
+  }
+
   private async preflightEvidence(
-    stagingBatchId: string,
+    input: Pick<
+      StageApprovedLegacyAssertionsInput,
+      "sourceCollectionId" | "scanBatchId" | "stagingBatchId" | "candidateSetHash"
+    >,
     candidates: readonly LegacyApprovedAssertionCandidate[]
   ): Promise<void> {
     for (const candidate of candidates) {
@@ -138,7 +154,7 @@ export class LegacyOntologyStagingService {
 
       if (!ingested) {
         throw new Error(
-          `Cannot propose assertion ${legacyAssertionId(stagingBatchId, candidate.candidateId)} without evidence ${candidate.evidenceId}`
+          `Cannot propose assertion ${legacyAssertionId(input, candidate.candidateId)} without evidence ${candidate.evidenceId}`
         );
       }
     }
@@ -168,6 +184,62 @@ function stagingStreamId(
   return `legacy_staging_${input.sourceCollectionId}_${input.scanBatchId}_${input.stagingBatchId}`;
 }
 
-function legacyAssertionId(stagingBatchId: string, candidateId: string): string {
-  return `as_legacy_${createHash("sha256").update(`${stagingBatchId}:${candidateId}`).digest("hex")}`;
+function candidateSetHash(candidates: readonly LegacyApprovedAssertionCandidate[]): `sha256:${string}` {
+  return sha256(stableJson([...candidates].map(reportCandidate).sort(compareCandidateForHash)));
+}
+
+function reportCandidate(candidate: LegacyApprovedAssertionCandidate): Omit<LegacyApprovedAssertionCandidate, "evidenceId"> {
+  const { evidenceId: _evidenceId, ...candidateForHash } = candidate;
+  return candidateForHash;
+}
+
+function compareCandidateForHash(
+  left: Omit<LegacyApprovedAssertionCandidate, "evidenceId">,
+  right: Omit<LegacyApprovedAssertionCandidate, "evidenceId">
+): number {
+  return compareTuple([
+    left.candidateId,
+    left.observationId,
+    left.sourcePath,
+    left.evidenceContentHash,
+    left.predicate
+  ], [
+    right.candidateId,
+    right.observationId,
+    right.sourcePath,
+    right.evidenceContentHash,
+    right.predicate
+  ]);
+}
+
+function legacyAssertionId(
+  input: Pick<
+    StageApprovedLegacyAssertionsInput,
+    "sourceCollectionId" | "scanBatchId" | "stagingBatchId" | "candidateSetHash"
+  >,
+  candidateId: string
+): string {
+  return `as_legacy_${createHash("sha256").update([
+    input.sourceCollectionId,
+    input.scanBatchId,
+    input.stagingBatchId,
+    input.candidateSetHash,
+    candidateId
+  ].join(":")).digest("hex")}`;
+}
+
+function compareTuple(left: readonly string[], right: readonly string[]): number {
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const result = compareCodeUnits(left[index] ?? "", right[index] ?? "");
+
+    if (result !== 0) {
+      return result;
+    }
+  }
+
+  return 0;
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }

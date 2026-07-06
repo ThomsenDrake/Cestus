@@ -6,22 +6,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { EvidenceService } from "../../ontology/src/evidence-service.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { sha256, stableJson } from "../src/legacy-report.js";
 import { LegacyOntologyStagingService } from "../src/legacy-staging.js";
 
 let dir: string;
 
 const reportHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
-const candidateSetHash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
 const humanActor = { id: "actor_investigator", kind: "human" as const, label: "Investigator" };
 const systemActor = { id: "actor_system", kind: "system" as const, label: "Legacy stager" };
-const stagingIdentity = {
-  sourceCollectionId: "src_old_cestus",
-  scanBatchId: "scan_old_cestus_001",
-  stagingBatchId: "legacy_stage_001",
-  legacyReportId: "legacy_report_001",
-  reportHash,
-  candidateSetHash
-};
+const evidenceContentHash = "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const;
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "legacy-staging-"));
@@ -36,11 +29,12 @@ describe("LegacyOntologyStagingService", () => {
     const ledger = new InMemoryEventLedger();
     await ingestEvidence(ledger, "ev_legacy_metadata");
     const service = new LegacyOntologyStagingService({ ledger, actor: systemActor });
+    const candidates = [candidate("legacy_candidate_001", "ev_legacy_metadata")];
 
     await expect(
       service.stageApprovedAssertions({
-        ...stagingIdentity,
-        candidates: [candidate("legacy_candidate_001", "ev_legacy_metadata")]
+        ...stagingIdentityFor(candidates),
+        candidates
       })
     ).rejects.toThrow(/approval/i);
 
@@ -50,10 +44,11 @@ describe("LegacyOntologyStagingService", () => {
   it("rejects staging approval from a system actor through the human-gated event contract", async () => {
     const ledger = new InMemoryEventLedger();
     const service = new LegacyOntologyStagingService({ ledger, actor: systemActor });
+    const candidates = [candidate("legacy_candidate_001", "ev_legacy_metadata")];
 
     await expect(
       service.approveStaging({
-        ...stagingIdentity,
+        ...stagingIdentityFor(candidates),
         approvedBy: "actor_system",
         approvedAssertionCandidateIds: ["legacy_candidate_001"]
       })
@@ -66,6 +61,8 @@ describe("LegacyOntologyStagingService", () => {
     const ledger = new InMemoryEventLedger();
     await ingestEvidence(ledger, "ev_legacy_metadata");
     const service = new LegacyOntologyStagingService({ ledger, actor: humanActor });
+    const candidates = [candidate("legacy_candidate_001", "ev_legacy_metadata")];
+    const stagingIdentity = stagingIdentityFor(candidates);
 
     await service.approveStaging({
       ...stagingIdentity,
@@ -74,10 +71,10 @@ describe("LegacyOntologyStagingService", () => {
     });
     const proposed = await service.stageApprovedAssertions({
       ...stagingIdentity,
-      candidates: [candidate("legacy_candidate_001", "ev_legacy_metadata")]
+      candidates
     });
 
-    const expectedAssertionId = legacyAssertionId("legacy_stage_001", "legacy_candidate_001");
+    const expectedAssertionId = legacyAssertionId(stagingIdentity, "legacy_candidate_001");
     const events = await ledger.readAll();
     const eventTypes = events.map((event): string => event.type);
     expect(eventTypes).toEqual([
@@ -106,6 +103,8 @@ describe("LegacyOntologyStagingService", () => {
   it("rejects missing evidence after approval without appending assertion.proposed", async () => {
     const ledger = new InMemoryEventLedger();
     const service = new LegacyOntologyStagingService({ ledger, actor: humanActor });
+    const candidates = [candidate("legacy_candidate_missing", "ev_missing")];
+    const stagingIdentity = stagingIdentityFor(candidates);
 
     await service.approveStaging({
       ...stagingIdentity,
@@ -116,7 +115,7 @@ describe("LegacyOntologyStagingService", () => {
     await expect(
       service.stageApprovedAssertions({
         ...stagingIdentity,
-        candidates: [candidate("legacy_candidate_missing", "ev_missing")]
+        candidates
       })
     ).rejects.toThrow(/without evidence ev_missing/);
 
@@ -129,6 +128,11 @@ describe("LegacyOntologyStagingService", () => {
     const ledger = new InMemoryEventLedger();
     await ingestEvidence(ledger, "ev_legacy_metadata");
     const service = new LegacyOntologyStagingService({ ledger, actor: humanActor });
+    const candidates = [
+      candidate("legacy_candidate_present", "ev_legacy_metadata"),
+      candidate("legacy_candidate_missing", "ev_missing")
+    ];
+    const stagingIdentity = stagingIdentityFor(candidates);
 
     await service.approveStaging({
       ...stagingIdentity,
@@ -139,12 +143,40 @@ describe("LegacyOntologyStagingService", () => {
     await expect(
       service.stageApprovedAssertions({
         ...stagingIdentity,
-        candidates: [
-          candidate("legacy_candidate_present", "ev_legacy_metadata"),
-          candidate("legacy_candidate_missing", "ev_missing")
-        ]
+        candidates
       })
     ).rejects.toThrow(/without evidence ev_missing/);
+
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "evidence.ingested",
+      "legacy.ontology.staging.approved"
+    ]);
+  });
+
+  it("rejects modified candidate payloads that do not match the approved candidate set hash", async () => {
+    const ledger = new InMemoryEventLedger();
+    await ingestEvidence(ledger, "ev_legacy_metadata");
+    const service = new LegacyOntologyStagingService({ ledger, actor: humanActor });
+    const reviewedCandidates = [candidate("legacy_candidate_001", "ev_legacy_metadata")];
+    const stagingIdentity = stagingIdentityFor(reviewedCandidates);
+    const modifiedCandidates = [{
+      ...candidate("legacy_candidate_001", "ev_legacy_metadata"),
+      predicate: "agency.alias",
+      object: "Forged Agency"
+    }];
+
+    await service.approveStaging({
+      ...stagingIdentity,
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: ["legacy_candidate_001"]
+    });
+
+    await expect(
+      service.stageApprovedAssertions({
+        ...stagingIdentity,
+        candidates: modifiedCandidates
+      })
+    ).rejects.toThrow(/candidate set hash/i);
 
     expect((await ledger.readAll()).map((event) => event.type)).toEqual([
       "evidence.ingested",
@@ -156,6 +188,15 @@ describe("LegacyOntologyStagingService", () => {
     const ledger = new InMemoryEventLedger();
     await ingestEvidence(ledger, "ev_legacy_metadata");
     const service = new LegacyOntologyStagingService({ ledger, actor: humanActor });
+    const candidates = [
+      candidate("legacy_candidate_approved", "ev_legacy_metadata"),
+      {
+        ...candidate("legacy_candidate_skipped", "ev_missing_unapproved"),
+        predicate: "agency.alias",
+        object: "Skipped Agency"
+      }
+    ];
+    const stagingIdentity = stagingIdentityFor(candidates);
 
     await service.approveStaging({
       ...stagingIdentity,
@@ -164,29 +205,66 @@ describe("LegacyOntologyStagingService", () => {
     });
     const proposed = await service.stageApprovedAssertions({
       ...stagingIdentity,
-      candidates: [
-        candidate("legacy_candidate_approved", "ev_legacy_metadata"),
-        {
-          ...candidate("legacy_candidate_skipped", "ev_missing_unapproved"),
-          predicate: "agency.alias",
-          object: "Skipped Agency"
-        }
-      ]
+      candidates
     });
 
     const assertionEvents = (await ledger.readAll()).filter((event) => event.type === "assertion.proposed");
     expect(proposed).toHaveLength(1);
     expect(assertionEvents).toHaveLength(1);
     expect(assertionEvents[0]?.payload.assertionId).toBe(
-      legacyAssertionId("legacy_stage_001", "legacy_candidate_approved")
+      legacyAssertionId(stagingIdentity, "legacy_candidate_approved")
     );
+  });
+
+  it("includes full staging identity in deterministic assertion IDs", async () => {
+    const ledger = new InMemoryEventLedger();
+    await ingestEvidence(ledger, "ev_legacy_metadata");
+    const service = new LegacyOntologyStagingService({ ledger, actor: humanActor });
+    const candidates = [candidate("legacy_candidate_shared", "ev_legacy_metadata")];
+    const firstIdentity = stagingIdentityFor(candidates, {
+      sourceCollectionId: "src_old_cestus_a",
+      scanBatchId: "scan_old_cestus_001",
+      stagingBatchId: "legacy_stage_shared"
+    });
+    const secondIdentity = stagingIdentityFor(candidates, {
+      sourceCollectionId: "src_old_cestus_b",
+      scanBatchId: "scan_old_cestus_002",
+      stagingBatchId: "legacy_stage_shared"
+    });
+
+    await service.approveStaging({
+      ...firstIdentity,
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: ["legacy_candidate_shared"]
+    });
+    await service.approveStaging({
+      ...secondIdentity,
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: ["legacy_candidate_shared"]
+    });
+
+    const firstProposed = await service.stageApprovedAssertions({
+      ...firstIdentity,
+      candidates
+    });
+    const secondProposed = await service.stageApprovedAssertions({
+      ...secondIdentity,
+      candidates
+    });
+
+    expect(firstProposed[0]?.payload.assertionId).toMatch(/^as_legacy_/);
+    expect(secondProposed[0]?.payload.assertionId).toMatch(/^as_legacy_/);
+    expect(firstProposed[0]?.payload.assertionId).not.toBe(secondProposed[0]?.payload.assertionId);
   });
 });
 
 function candidate(candidateId: string, evidenceId: string) {
   return {
     candidateId,
+    observationId: `legacy_obs_${candidateId}`,
     evidenceId,
+    evidenceContentHash,
+    sourcePath: "ontology/claims.json",
     subjectRef: "legacy:agency:example",
     predicate: "agency.name",
     object: "Example Agency",
@@ -204,6 +282,72 @@ async function ingestEvidence(ledger: InMemoryEventLedger, evidenceId: string) {
   });
 }
 
-function legacyAssertionId(stagingBatchId: string, candidateId: string) {
-  return `as_legacy_${createHash("sha256").update(`${stagingBatchId}:${candidateId}`).digest("hex")}`;
+function legacyAssertionId(input: ReturnType<typeof stagingIdentityFor>, candidateId: string) {
+  return `as_legacy_${createHash("sha256").update([
+    input.sourceCollectionId,
+    input.scanBatchId,
+    input.stagingBatchId,
+    input.candidateSetHash,
+    candidateId
+  ].join(":")).digest("hex")}`;
+}
+
+function stagingIdentityFor(
+  candidates: readonly ReturnType<typeof candidate>[],
+  overrides: Partial<{
+    sourceCollectionId: string;
+    scanBatchId: string;
+    stagingBatchId: string;
+    legacyReportId: string;
+  }> = {}
+) {
+  return {
+    sourceCollectionId: overrides.sourceCollectionId ?? "src_old_cestus",
+    scanBatchId: overrides.scanBatchId ?? "scan_old_cestus_001",
+    stagingBatchId: overrides.stagingBatchId ?? "legacy_stage_001",
+    legacyReportId: overrides.legacyReportId ?? "legacy_report_001",
+    reportHash,
+    candidateSetHash: candidateSetHashFor(candidates)
+  };
+}
+
+function candidateSetHashFor(candidates: readonly ReturnType<typeof candidate>[]): `sha256:${string}` {
+  return sha256(stableJson([...candidates].map(reportCandidate).sort(compareCandidateForHash)));
+}
+
+function reportCandidate(input: ReturnType<typeof candidate>) {
+  const { evidenceId: _evidenceId, ...candidateForHash } = input;
+  return candidateForHash;
+}
+
+function compareCandidateForHash(left: ReturnType<typeof reportCandidate>, right: ReturnType<typeof reportCandidate>) {
+  return compareTuple([
+    left.candidateId,
+    left.observationId,
+    left.sourcePath,
+    left.evidenceContentHash,
+    left.predicate
+  ], [
+    right.candidateId,
+    right.observationId,
+    right.sourcePath,
+    right.evidenceContentHash,
+    right.predicate
+  ]);
+}
+
+function compareTuple(left: readonly string[], right: readonly string[]): number {
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const result = compareCodeUnits(left[index] ?? "", right[index] ?? "");
+
+    if (result !== 0) {
+      return result;
+    }
+  }
+
+  return 0;
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
