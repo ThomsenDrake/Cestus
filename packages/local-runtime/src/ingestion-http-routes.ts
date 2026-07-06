@@ -141,7 +141,7 @@ function routeFor(method: string, path: string): Route | undefined {
   if (method === "POST" && path === "/api/ingestion/jobs/retry") {
     return { kind: "runtime", runtimeMethod: "retryJob", bodyKind: "json" };
   }
-  if (method === "POST" && (path === "/api/ingestion/sources" || path === "/api/ingestion/sources/register")) {
+  if (method === "POST" && path === "/api/ingestion/sources") {
     return { kind: "runtime", runtimeMethod: "registerSource", bodyKind: "json" };
   }
   if (method === "POST" && path === "/api/ingestion/scans/dry-run") {
@@ -150,7 +150,7 @@ function routeFor(method: string, path: string): Route | undefined {
   if (method === "POST" && path === "/api/ingestion/imports/approve") {
     return { kind: "runtime", runtimeMethod: "approveRawImport", bodyKind: "json" };
   }
-  if (method === "POST" && (path === "/api/ingestion/imports/run" || path === "/api/ingestion/imports/import")) {
+  if (method === "POST" && path === "/api/ingestion/imports/run") {
     return { kind: "runtime", runtimeMethod: "importApproved", bodyKind: "json" };
   }
   if (method === "POST" && path === "/api/ingestion/provider-parsing/approve") {
