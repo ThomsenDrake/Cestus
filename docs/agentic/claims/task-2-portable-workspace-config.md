@@ -32,6 +32,17 @@ Status: `ready-for-review`
 
 ## Review
 
-- Review status: requested
+- Review status: code-quality follow-up fixed
 - Review focus: root-required portable behavior, compatibility-mode preservation, config-file secret safety, and CLI parsing.
+- Code-quality review result: ready with minor issue.
+- Minor finding: `mergeStorageConfig` preserved stale storage keys when reconfiguring away from `portable-workspace`, leaving an inactive `workspaceRoot` in persisted config.
+- Fix red command: `npm test -- packages/local-runtime/test/config.test.ts packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/cli.test.ts`
+  - Result: failed as expected before the follow-up source fix.
+  - Evidence: regression `prunes stale portable workspace fields when changing storage strategies` received `{ strategy: "repo-local", workspaceRoot: "external/case-a" }`; `Test Files 1 failed | 2 passed (3)`, `Tests 1 failed | 34 passed (35)`.
+- Fix green command: `npm test -- packages/local-runtime/test/config.test.ts packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/cli.test.ts`
+  - Result: passed after normalizing storage merge by selected strategy.
+  - Evidence: `Test Files 3 passed (3)`, `Tests 35 passed (35)`.
+- Fix full verification: `npm run verify`
+  - Result: passed after a TypeScript narrowing repair found by the first verify attempt.
+  - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 607 passed (607)`, `tests passed`, `vite build` succeeded, `factory-readiness passed`.
 - Concerns: none recorded

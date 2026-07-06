@@ -146,15 +146,50 @@ function mergeStorageConfig(
   existing: LocalRuntimeConfigFile,
   input: WriteLocalRuntimeOnboardingConfigInput
 ): LocalRuntimeConfigFile["storage"] {
+  if (input.storageStrategy !== undefined) {
+    return storageConfigForStrategy(existing.storage ?? {}, input.storageStrategy, input);
+  }
+
   const storage = {
     ...(existing.storage ?? {}),
-    ...(input.storageStrategy === undefined ? {} : { strategy: input.storageStrategy }),
     ...(input.sqlitePath === undefined ? {} : { sqlitePath: input.sqlitePath }),
     ...(input.appDataDir === undefined ? {} : { appDataDir: input.appDataDir }),
     ...(input.workspaceRoot === undefined ? {} : { workspaceRoot: input.workspaceRoot })
   };
 
   return Object.keys(storage).length === 0 ? undefined : storage;
+}
+
+function storageConfigForStrategy(
+  existing: NonNullable<LocalRuntimeConfigFile["storage"]>,
+  strategy: NonNullable<WriteLocalRuntimeOnboardingConfigInput["storageStrategy"]>,
+  input: WriteLocalRuntimeOnboardingConfigInput
+): NonNullable<LocalRuntimeConfigFile["storage"]> {
+  if (strategy === "repo-local") {
+    return { strategy };
+  }
+
+  if (strategy === "explicit-path") {
+    const sqlitePath = input.sqlitePath ?? existing.sqlitePath;
+    return {
+      strategy,
+      ...(sqlitePath === undefined ? {} : { sqlitePath })
+    };
+  }
+
+  if (strategy === "app-data") {
+    const appDataDir = input.appDataDir ?? existing.appDataDir;
+    return {
+      strategy,
+      ...(appDataDir === undefined ? {} : { appDataDir })
+    };
+  }
+
+  const workspaceRoot = input.workspaceRoot ?? existing.workspaceRoot;
+  return {
+    strategy,
+    ...(workspaceRoot === undefined ? {} : { workspaceRoot })
+  };
 }
 
 function mergeHttpConfig(
