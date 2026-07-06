@@ -10,3 +10,5 @@ export * from "./read-api.js";
 export * from "./cli.js";
 export * from "./parser.js";
 export * from "./provider-adapter.js";
+export * from "./legacy-types.js";
+export * from "./legacy-plugins.js";
