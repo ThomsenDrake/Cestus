@@ -360,7 +360,7 @@ function legacyRuntimeInput(command: LegacyIngestionRuntimeCommand, argv: Parsed
         legacyReportId: requiredOption(argv, "report"),
         stagingBatchId: requiredOption(argv, "staging"),
         approvedBy: requiredOption(argv, "approved-by"),
-        approvedAssertionCandidateIds: optionValues(argv, "candidate")
+        approvedAssertionCandidateIds: requiredOptionValues(argv, "candidate")
       };
     case "legacy stage":
       return {
@@ -634,6 +634,15 @@ function optionValue(argv: ParsedArgv, name: string): string | undefined {
 
 function optionValues(argv: ParsedArgv, name: string): string[] {
   return [...(argv.options.get(name) ?? [])];
+}
+
+function requiredOptionValues(argv: ParsedArgv, name: string): string[] {
+  const values = optionValues(argv, name);
+  if (values.length === 0) {
+    throw new Error(`Missing required ingestion CLI option --${name}.`);
+  }
+
+  return values;
 }
 
 function requiredOption(argv: ParsedArgv, name: string): string {
