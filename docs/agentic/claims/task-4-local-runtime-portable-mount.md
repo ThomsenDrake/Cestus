@@ -29,9 +29,17 @@ Status: `ready-for-review`
 - Full verification: `npm run verify`
   - Result: passed.
   - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 614 passed (614)`, `tests passed`, Vite build succeeded, `factory-readiness passed`.
+- Code-quality review fix command: `npm test -- packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/auth-and-seed.test.ts`
+  - Result: passed.
+  - Evidence: after registering the portable replay handlers with the suite cleanup registry, `Test Files 2 passed (2)`, `Tests 18 passed (18)`.
+- Code-quality review fix full verification: `npm run verify`
+  - Result: passed.
+  - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 614 passed (614)`, `tests passed`, Vite build succeeded, `factory-readiness passed`.
 
 ## Review
 
-- Review status: pending
+- Review status: code-quality ready after minor cleanup
 - Review focus: no silent fallback, one canonical ledger path, safe diagnostics, and PRR replay after restart.
+- Code-quality review finding: Minor test cleanup issue in `packages/local-runtime/test/http-handler.test.ts`; portable replay test created handlers outside the suite cleanup registry, so an exception before manual close could leak a SQLite handle.
+- Follow-up fix: portable replay test now creates both runtime handlers through `testHandler` and unregisters them after intentional close, preserving `afterEach` cleanup if an awaited call or assertion throws.
 - Concerns: none recorded
