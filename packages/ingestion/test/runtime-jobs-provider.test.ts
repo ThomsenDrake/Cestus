@@ -69,7 +69,7 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
   });
 
   it("provider approval records approval only and does not call provider parse", async () => {
-    const { runtime, providerParse } = await preparedRuntime();
+    const { runtime, providerParse } = await preparedImportedRuntime();
 
     const approved = await runtime.approveProviderParsing({
       providerJobId: "provider_001",
@@ -89,6 +89,27 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
     expect(providerParse).not.toHaveBeenCalled();
   });
 
+  it("rejects provider approval before the target import completes", async () => {
+    const { runtime, workspace, providerParse } = await preparedRuntime();
+
+    const rejected = await runtime.approveProviderParsing({
+      providerJobId: "provider_001",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      provider: { name: "mistral-document-ai", version: "0.1.0" },
+      approvedBy: "actor_investigator",
+      eligibleMediaTypes: ["application/pdf"],
+      maxBytesPerFile: 50000000
+    });
+
+    expect(rejected).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_IMPORT_APPROVAL_REQUIRED" }
+    });
+    expect(providerParse).not.toHaveBeenCalled();
+    expect((await workspace.ledger.readAll()).some((event) => event.type === "ingestion.provider.approved")).toBe(false);
+  });
+
   it("rejects missing and terminal non-retryable jobs with a stable runtime error", async () => {
     const { runtime, workspace } = await preparedRuntime();
 
@@ -101,6 +122,30 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
       error: { code: "INGESTION_JOB_NOT_RETRYABLE" }
     });
     expect(terminal).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_JOB_NOT_RETRYABLE" }
+    });
+  });
+
+  it("does not advertise retryability until retry execution exists", async () => {
+    const { runtime, workspace } = await preparedRuntime();
+    await appendRetryableParseFailure(workspace);
+
+    const jobs = await runtime.listJobs({ sourceCollectionId: "src_drive_001" });
+    const retry = await runtime.retryJob({ jobId: "parse_retryable" });
+
+    expect(jobs).toMatchObject({
+      ok: true,
+      jobs: expect.arrayContaining([
+        expect.objectContaining({
+          kind: "local-parse",
+          jobId: "parse_retryable",
+          state: "failed",
+          retryable: false
+        })
+      ])
+    });
+    expect(retry).toMatchObject({
       ok: false,
       error: { code: "INGESTION_JOB_NOT_RETRYABLE" }
     });
@@ -146,6 +191,22 @@ async function preparedRuntime() {
   });
   await runtime.dryRunScan({ sourceCollectionId: "src_drive_001", scanBatchId: "scan_001" });
   return { workspace, runtime, providerParse };
+}
+
+async function preparedImportedRuntime() {
+  const prepared = await preparedRuntime();
+  await prepared.runtime.approveRawImport({
+    sourceCollectionId: "src_drive_001",
+    scanBatchId: "scan_001",
+    importBatchId: "imp_001",
+    approvedBy: "actor_investigator"
+  });
+  await prepared.runtime.importApproved({
+    sourceCollectionId: "src_drive_001",
+    scanBatchId: "scan_001",
+    importBatchId: "imp_001"
+  });
+  return prepared;
 }
 
 async function appendLocalParseJob(workspace: ReturnType<typeof createFakeMountedWorkspace>): Promise<void> {
@@ -200,6 +261,32 @@ async function appendTerminalParseFailure(workspace: ReturnType<typeof createFak
       failedAt: "2026-07-06T16:16:00.000Z",
       message: "terminal parser failure",
       retryable: false
+    }
+  });
+}
+
+async function appendRetryableParseFailure(workspace: ReturnType<typeof createFakeMountedWorkspace>): Promise<void> {
+  await workspace.ledger.append({
+    type: "ingestion.parse.failed",
+    version: 1,
+    streamId: "ingestion_parse_parse_retryable",
+    context: {
+      actor,
+      occurredAt: "2026-07-06T16:16:30.000Z",
+      correlationId: "corr_parse_retryable",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+    },
+    payload: {
+      parseJobId: "parse_retryable",
+      sourceCollectionId: "src_drive_001",
+      importBatchId: "imp_001",
+      evidenceId: "ev_ing_retryable",
+      lane: "local",
+      parser: { name: "local-text", version: "0.1.0" },
+      failedAt: "2026-07-06T16:16:30.000Z",
+      message: "retryable parser failure",
+      retryable: true
     }
   });
 }

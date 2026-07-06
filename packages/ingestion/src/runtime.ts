@@ -351,6 +351,14 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       if (!projection.sources.has(command.sourceCollectionId)) {
         return sourceNotRegisteredError(command.sourceCollectionId);
       }
+      const completion = projection.importCompletions.get(command.importBatchId);
+      if (completion === undefined || completion.sourceCollectionId !== command.sourceCollectionId) {
+        return stableIngestionError({
+          code: "INGESTION_IMPORT_APPROVAL_REQUIRED",
+          message: "A completed raw import is required before provider parsing approval.",
+          allowedRepairActions: ["approve and execute the raw import batch", "retry provider approval"]
+        });
+      }
 
       try {
         const service = new ProviderParseApprovalService({
@@ -679,7 +687,7 @@ function parseJobsForProjection(
       jobId: job.parseJobId,
       kind: job.lane === "provider" ? "provider-parse" as const : "local-parse" as const,
       state: parseJobState(job),
-      retryable: job.state === "failed" && job.retryable === true,
+      retryable: false,
       sourceCollectionId: job.sourceCollectionId,
       importBatchId: job.importBatchId,
       evidenceId: job.evidenceId,
