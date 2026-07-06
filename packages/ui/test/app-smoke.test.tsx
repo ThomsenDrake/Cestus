@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import type { PrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { App } from "../src/App.js";
+import { createStaticOperatorStatusAdapter } from "../src/operator-status/operator-status-adapter.js";
+import type { OperatorStatusDto } from "../src/operator-status/operator-status-types.js";
 import {
   createHttpRequestsAdapter,
   createLocalReplayRequestsAdapter,
@@ -13,6 +15,8 @@ import {
 import { buildTestRequestsWorkspace, createTestRequestsAdapter } from "./request-test-utils.js";
 
 describe("Cestus UI bootstrap", () => {
+  const operatorStatusAdapter = createStaticOperatorStatusAdapter(appSmokeOperatorStatus);
+
   function replaceCardAgency(
     workspace: PrrWorkspaceDto,
     prrRequestId: string,
@@ -30,10 +34,15 @@ describe("Cestus UI bootstrap", () => {
   }
 
   it("renders the Command workspace entry point", async () => {
-    render(<App requestsAdapter={createTestRequestsAdapter()} />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} operatorStatusAdapter={operatorStatusAdapter} />);
 
     expect(screen.getByRole("heading", { name: "Command" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New request" })).toBeInTheDocument();
+    const cockpit = await screen.findByRole("region", { name: "Operator cockpit" });
+    expect(within(cockpit).getByRole("tab", { name: /Workspace/ })).toBeInTheDocument();
+    expect(within(cockpit).getByRole("tab", { name: /Ingestion/ })).toBeInTheDocument();
+    expect(within(cockpit).getByRole("tab", { name: /Legacy Import/ })).toBeInTheDocument();
+    expect(within(cockpit).getByRole("tab", { name: /PRR\/Investigations/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     expect(await screen.findByRole("heading", { name: "Requests" })).toBeInTheDocument();
@@ -61,7 +70,7 @@ describe("Cestus UI bootstrap", () => {
   });
 
   it("renders Requests from backend-derived PRR DTOs", async () => {
-    render(<App requestsAdapter={createTestRequestsAdapter()} />);
+    render(<App requestsAdapter={createTestRequestsAdapter()} operatorStatusAdapter={operatorStatusAdapter} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
 
@@ -83,7 +92,7 @@ describe("Cestus UI bootstrap", () => {
     }) as typeof fetch;
 
     try {
-      render(<App />);
+      render(<App operatorStatusAdapter={operatorStatusAdapter} />);
       fireEvent.click(screen.getByRole("link", { name: "Requests" }));
       expect(await screen.findByText("Building Services Department")).toBeInTheDocument();
       expect(fetchCalls).toEqual(["/api/requests/workspace"]);
@@ -101,7 +110,7 @@ describe("Cestus UI bootstrap", () => {
       })) as typeof fetch;
 
     try {
-      render(<App />);
+      render(<App operatorStatusAdapter={operatorStatusAdapter} />);
       fireEvent.click(screen.getByRole("link", { name: "Requests" }));
       const errorRegion = await screen.findByRole("region", { name: "Requests load error" });
       expect(errorRegion).toHaveTextContent("Requests runtime returned HTTP 503.");
@@ -120,13 +129,13 @@ describe("Cestus UI bootstrap", () => {
     );
     const firstAdapter = createStaticRequestsAdapter(firstWorkspace);
     const secondAdapter = createStaticRequestsAdapter(secondWorkspace);
-    const { rerender } = render(<App requestsAdapter={firstAdapter} />);
+    const { rerender } = render(<App requestsAdapter={firstAdapter} operatorStatusAdapter={operatorStatusAdapter} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
 
     expect(await screen.findByText("Building Services Department")).toBeInTheDocument();
 
-    rerender(<App requestsAdapter={secondAdapter} />);
+    rerender(<App requestsAdapter={secondAdapter} operatorStatusAdapter={operatorStatusAdapter} />);
 
     expect(await screen.findByText("Records Replacement Office")).toBeInTheDocument();
     expect(screen.queryByText("Building Services Department")).not.toBeInTheDocument();
@@ -152,7 +161,7 @@ describe("Cestus UI bootstrap", () => {
         };
       }
     };
-    const { rerender } = render(<App requestsAdapter={firstAdapter} />);
+    const { rerender } = render(<App requestsAdapter={firstAdapter} operatorStatusAdapter={operatorStatusAdapter} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     const card = await screen.findByRole("button", {
@@ -161,7 +170,7 @@ describe("Cestus UI bootstrap", () => {
     fireEvent.click(card);
     expect(await screen.findByRole("dialog", { name: /Request investigation detail/i })).toBeInTheDocument();
 
-    rerender(<App requestsAdapter={failingAdapter} />);
+    rerender(<App requestsAdapter={failingAdapter} operatorStatusAdapter={operatorStatusAdapter} />);
 
     const errorRegion = await screen.findByRole("region", { name: "Requests load error" });
     expect(within(errorRegion).getByText("Requests reload failed for test.")).toBeInTheDocument();
@@ -190,7 +199,7 @@ describe("Cestus UI bootstrap", () => {
       }
     };
 
-    render(<App requestsAdapter={delayedAdapter} />);
+    render(<App requestsAdapter={delayedAdapter} operatorStatusAdapter={operatorStatusAdapter} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     fireEvent.click(screen.getByRole("button", { name: "New request" }));
@@ -211,7 +220,7 @@ describe("Cestus UI bootstrap", () => {
       now: () => "2026-07-03T18:00:00.000Z",
       requestIdFactory: () => "prr_app_smoke_city_clerk"
     });
-    render(<App requestsAdapter={adapter} />);
+    render(<App requestsAdapter={adapter} operatorStatusAdapter={operatorStatusAdapter} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     fireEvent.click(await screen.findByRole("button", { name: "New request" }));
@@ -251,7 +260,7 @@ describe("Cestus UI bootstrap", () => {
         });
       }
     });
-    render(<App requestsAdapter={adapter} />);
+    render(<App requestsAdapter={adapter} operatorStatusAdapter={operatorStatusAdapter} />);
 
     fireEvent.click(screen.getByRole("link", { name: "Requests" }));
     expect(await screen.findByText("Building Services Department")).toBeInTheDocument();
@@ -353,3 +362,91 @@ describe("Cestus UI bootstrap", () => {
     expect(adapter.readEventsForTest()).toEqual([]);
   });
 });
+
+const appSmokeOperatorStatus: OperatorStatusDto = {
+  schemaVersion: "operator-status.v1",
+  generatedAt: "2026-07-06T23:40:00.000Z",
+  runtime: {
+    available: true,
+    storageStrategy: "portable-workspace",
+    bindMode: "loopback",
+    workspaceMounted: true,
+    safeMessage: "Local runtime is serving a mounted portable workspace."
+  },
+  summary: {
+    overallState: "ready",
+    blockedCount: 0,
+    actionRequiredCount: 0,
+    degradedCount: 0,
+    nextSafeActionId: "action_refresh_operator_status"
+  },
+  sections: [
+    {
+      sectionId: "workspace",
+      label: "Workspace",
+      state: "ready",
+      headline: "Mounted portable workspace",
+      safeSummary: "Workspace manifest, ledger, and blob roots are readable.",
+      metrics: [{ metricId: "ledger_events", label: "Ledger events", value: "42", tone: "healthy" }],
+      diagnostics: [],
+      sourceEvidence: [],
+      nextSafeActionIds: ["action_refresh_operator_status"]
+    },
+    {
+      sectionId: "ingestion",
+      label: "Ingestion",
+      state: "ready",
+      headline: "Ingestion ready",
+      safeSummary: "Approval gates remain available in the Ingestion module.",
+      metrics: [{ metricId: "pending_jobs", label: "Pending jobs", value: "0", tone: "healthy" }],
+      diagnostics: [],
+      sourceEvidence: [],
+      nextSafeActionIds: []
+    },
+    {
+      sectionId: "legacy-import",
+      label: "Legacy Import",
+      state: "ready",
+      headline: "Legacy import evidence view ready",
+      safeSummary: "Legacy import remains evidence-first with no accepted graph truth.",
+      metrics: [{ metricId: "accepted_truth", label: "Accepted legacy truth", value: "0", tone: "healthy" }],
+      diagnostics: [],
+      sourceEvidence: [],
+      nextSafeActionIds: []
+    },
+    {
+      sectionId: "prr",
+      label: "PRR/Investigations",
+      state: "ready",
+      headline: "Requests workspace replayed",
+      safeSummary: "Drafts are visible, and no send or escalation action is available here.",
+      metrics: [{ metricId: "active_requests", label: "Active requests", value: "7", tone: "neutral" }],
+      diagnostics: [],
+      sourceEvidence: [],
+      nextSafeActionIds: ["action_open_requests"]
+    }
+  ],
+  safeActions: [
+    {
+      actionId: "action_refresh_operator_status",
+      label: "Refresh operator status",
+      kind: "refresh-status",
+      sourceContract: "operator-status.v1",
+      requiresHumanApproval: false,
+      mutatesCanonicalState: false,
+      externalEffect: false,
+      enabled: true
+    },
+    {
+      actionId: "action_open_requests",
+      label: "Open requests",
+      kind: "navigate",
+      target: "requests",
+      sourceContract: "operator-status.v1",
+      requiresHumanApproval: false,
+      mutatesCanonicalState: false,
+      externalEffect: false,
+      enabled: true
+    }
+  ]
+};
