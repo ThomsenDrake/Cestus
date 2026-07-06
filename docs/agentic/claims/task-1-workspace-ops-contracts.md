@@ -39,3 +39,9 @@ Repair evidence:
 - Spec re-review repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 3 failing regressions covering bare credential payload keys, prototype-pollution payload keys, and missing mount next-command hints.
 - Spec re-review repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 15 tests passed.
 - Spec re-review repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 600 tests passed, UI build succeeded, and factory-readiness passed.
+- Named payload DTO repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 2 failing regressions covering missing command payload schema exports and missing representative named DTO parsing.
+- Named payload DTO repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 18 tests passed.
+- Named payload DTO repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 603 tests passed, UI build succeeded, and factory-readiness passed.
+- Named payload normalization red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 1 failing regression proving command payload defaults were validated but not emitted by formatting.
+- Named payload normalization green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 20 tests passed.
+- Named payload normalization verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 605 tests passed, UI build succeeded, and factory-readiness passed.

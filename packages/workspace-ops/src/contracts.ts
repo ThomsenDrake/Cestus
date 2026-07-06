@@ -380,6 +380,219 @@ export const mountStatusSchema = z.object({
 }).strict();
 export type MountStatusDto = z.output<typeof mountStatusSchema>;
 
+const sha256HashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+const workspaceRootCategorySchema = z.enum([
+  "manifest",
+  "ledger",
+  "blobs",
+  "derivatives",
+  "jobs",
+  "projections",
+  "diagnostics",
+  "backups"
+]);
+const workspaceManifestSectionSchema = z.enum([
+  "workspace",
+  "manifest",
+  "layout",
+  "ledger",
+  "blobs",
+  "derivatives",
+  "projections",
+  "diagnostics",
+  "jobs",
+  "backup"
+]);
+const workspaceReadinessCheckSchema = z.object({
+  checkId: secretSafeWorkspaceTextSchema,
+  status: z.enum(["pass", "warning", "fail"]),
+  safeMessage: secretSafeWorkspaceTextSchema
+}).strict();
+
+export const workspaceVerifyDtoSchema = z.object({
+  schemaVersion: z.literal(workspaceOpsSchemaVersion),
+  mountStatus: mountStatusSchema,
+  manifest: z.object({
+    readable: z.boolean(),
+    valid: z.boolean(),
+    manifestVersion: z.number().int().positive().optional(),
+    safeSummary: secretSafeWorkspaceTextSchema
+  }).strict(),
+  layout: z.object({
+    contractVersion: secretSafeWorkspaceTextSchema,
+    readable: z.boolean(),
+    requiredRoots: z.array(z.object({
+      rootId: secretSafeWorkspaceTextSchema,
+      category: workspaceRootCategorySchema,
+      status: z.enum(["available", "missing", "unreadable"]),
+      safeUri: secretSafeWorkspaceTextSchema.optional()
+    }).strict())
+  }).strict(),
+  ledger: z.object({
+    readable: z.boolean(),
+    eventCount: z.number().int().nonnegative(),
+    highWaterMark: z.number().int().nonnegative()
+  }).strict(),
+  blobStore: z.object({
+    available: z.boolean(),
+    contentAddressedRootCount: z.number().int().nonnegative(),
+    aggregateBytes: z.number().int().nonnegative(),
+    missingBlobCount: z.number().int().nonnegative(),
+    hashMismatchCount: z.number().int().nonnegative()
+  }).strict(),
+  projections: z.object({
+    available: z.boolean(),
+    staleCount: z.number().int().nonnegative(),
+    rebuildable: z.boolean()
+  }).strict(),
+  jobs: z.object({
+    available: z.boolean(),
+    queuedCount: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative()
+  }).strict(),
+  diagnostics: z.object({
+    visible: z.boolean(),
+    errorCount: z.number().int().nonnegative(),
+    warningCount: z.number().int().nonnegative()
+  }).strict(),
+  backup: z.object({
+    manifestAvailable: z.boolean(),
+    latestManifestHash: sha256HashSchema.optional(),
+    stale: z.boolean()
+  }).strict()
+}).strict();
+export type WorkspaceVerifyDto = z.output<typeof workspaceVerifyDtoSchema>;
+
+export const diskUsageDtoSchema = z.object({
+  schemaVersion: z.literal(workspaceOpsSchemaVersion),
+  estimatedFreeBytes: z.number().int().nonnegative().optional(),
+  thresholdWarnings: z.array(secretSafeWorkspaceTextSchema),
+  roots: z.array(z.object({
+    rootId: secretSafeWorkspaceTextSchema,
+    category: workspaceRootCategorySchema,
+    bytes: z.number().int().nonnegative(),
+    exists: z.boolean(),
+    safeUri: secretSafeWorkspaceTextSchema.optional()
+  }).strict()),
+  categories: z.array(z.object({
+    category: workspaceRootCategorySchema,
+    bytes: z.number().int().nonnegative(),
+    exists: z.boolean()
+  }).strict()),
+  totalBytes: z.number().int().nonnegative()
+}).strict();
+export type DiskUsageDto = z.output<typeof diskUsageDtoSchema>;
+
+export const projectionRebuildDtoSchema = z.object({
+  schemaVersion: z.literal(workspaceOpsSchemaVersion),
+  mode: z.enum(["readiness", "result"]),
+  requestedProjections: z.array(secretSafeWorkspaceTextSchema).min(1),
+  inputLedger: z.object({
+    readable: z.boolean(),
+    eventCount: z.number().int().nonnegative(),
+    highWaterMark: z.number().int().nonnegative()
+  }).strict(),
+  readiness: z.object({
+    ready: z.boolean(),
+    checks: z.array(workspaceReadinessCheckSchema)
+  }).strict(),
+  artifactOutputs: z.array(z.object({
+    projectionName: secretSafeWorkspaceTextSchema,
+    artifactId: secretSafeWorkspaceTextSchema,
+    artifactHash: sha256HashSchema.optional(),
+    byteCount: z.number().int().nonnegative(),
+    expendable: z.literal(true)
+  }).strict()),
+  validationResults: z.array(z.object({
+    validationId: secretSafeWorkspaceTextSchema,
+    status: z.enum(["pass", "warning", "fail"]),
+    safeMessage: secretSafeWorkspaceTextSchema
+  }).strict()),
+  failures: z.array(z.object({
+    failureId: secretSafeWorkspaceTextSchema,
+    safeMessage: secretSafeWorkspaceTextSchema,
+    retryable: z.boolean()
+  }).strict()),
+  wroteExpendableArtifactsOnly: z.literal(true)
+}).strict();
+export type ProjectionRebuildDto = z.output<typeof projectionRebuildDtoSchema>;
+
+export const diagnosticsInspectDtoSchema = z.object({
+  schemaVersion: z.literal(workspaceOpsSchemaVersion),
+  diagnostics: z.array(workspaceDiagnosticSchema),
+  durableCount: z.number().int().nonnegative(),
+  derivedCount: z.number().int().nonnegative()
+}).strict();
+export type DiagnosticsInspectDto = z.output<typeof diagnosticsInspectDtoSchema>;
+
+export const manifestExportDtoSchema = z.object({
+  schemaVersion: z.literal(workspaceOpsSchemaVersion),
+  workspace: workspaceRefSchema,
+  exportedAt: z.string().datetime(),
+  manifestHash: sha256HashSchema,
+  includedSections: z.array(workspaceManifestSectionSchema).min(1),
+  excludedSecretBearingFields: z.array(secretSafeWorkspaceTextSchema),
+  ledger: z.object({
+    eventCount: z.number().int().nonnegative(),
+    highWaterMark: z.number().int().nonnegative()
+  }).strict(),
+  blobStore: z.object({
+    contentAddressedRootCount: z.number().int().nonnegative(),
+    aggregateBytes: z.number().int().nonnegative()
+  }).strict(),
+  artifacts: z.array(z.object({
+    category: workspaceRootCategorySchema,
+    count: z.number().int().nonnegative(),
+    bytes: z.number().int().nonnegative(),
+    artifactHash: sha256HashSchema.optional()
+  }).strict()),
+  diagnostics: z.object({
+    errorCount: z.number().int().nonnegative(),
+    warningCount: z.number().int().nonnegative()
+  }).strict(),
+  jobs: z.object({
+    queuedCount: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative()
+  }).strict(),
+  coverage: z.object({
+    coveredCategories: z.array(workspaceRootCategorySchema),
+    missingCategories: z.array(workspaceRootCategorySchema)
+  }).strict(),
+  sectionHashes: z.array(z.object({
+    sectionId: workspaceManifestSectionSchema,
+    sectionHash: sha256HashSchema
+  }).strict()).min(1)
+}).strict();
+export type ManifestExportDto = z.output<typeof manifestExportDtoSchema>;
+
+export const backupCheckDtoSchema = z.object({
+  schemaVersion: z.literal(workspaceOpsSchemaVersion),
+  backupManifestPresent: z.boolean(),
+  identityMatches: z.boolean(),
+  layoutContractMatches: z.boolean(),
+  currentWorkspaceId: z.string().regex(/^ws_[a-zA-Z0-9_-]+$/),
+  backupWorkspaceId: z.string().regex(/^ws_[a-zA-Z0-9_-]+$/).optional(),
+  currentLedgerHighWaterMark: z.number().int().nonnegative(),
+  backupLedgerHighWaterMark: z.number().int().nonnegative().optional(),
+  coveredCategories: z.array(workspaceRootCategorySchema),
+  missingCategories: z.array(workspaceRootCategorySchema),
+  stale: z.boolean(),
+  containsSecretShapedFields: z.boolean(),
+  safeNextActions: z.array(workspaceNextCommandHintSchema)
+}).strict();
+export type BackupCheckDto = z.output<typeof backupCheckDtoSchema>;
+
+export const workspaceOpsCommandPayloadSchemas = {
+  "verify workspace": workspaceVerifyDtoSchema,
+  "disk usage": diskUsageDtoSchema,
+  "detect drive": mountStatusSchema,
+  "projection rebuild-readiness": projectionRebuildDtoSchema,
+  "projection rebuild": projectionRebuildDtoSchema,
+  "diagnostics inspect": diagnosticsInspectDtoSchema,
+  "manifest export": manifestExportDtoSchema,
+  "backup check": backupCheckDtoSchema
+} as const;
+
 export const workspaceOpsEnvelopeSchema = z.object({
   schemaVersion: z.literal(workspaceOpsSchemaVersion),
   command: workspaceCommandSchema,
@@ -398,6 +611,27 @@ export const workspaceOpsEnvelopeSchema = z.object({
       message: "ok must be true only when status is ready"
     });
   }
+}).transform((envelope, ctx) => {
+  if (envelope.payload !== undefined) {
+    const payloadResult = workspaceOpsCommandPayloadSchemas[envelope.command].safeParse(envelope.payload);
+    if (!payloadResult.success) {
+      for (const issue of payloadResult.error.issues) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["payload", ...issue.path],
+          message: issue.message
+        });
+      }
+      return z.NEVER;
+    }
+
+    return {
+      ...envelope,
+      payload: payloadResult.data
+    };
+  }
+
+  return envelope;
 });
 export type WorkspaceOpsEnvelope<TPayload = unknown> = Omit<
   z.output<typeof workspaceOpsEnvelopeSchema>,
