@@ -6,6 +6,33 @@ export const workspaceOpsSchemaVersion = "workspace-ops.v1" as const;
 const secretTextPattern =
   /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth|credential)(?:\s*[:=]\s*|\s+)(?=[a-z0-9._~+/=-]{3,})[a-z0-9][a-z0-9._~+/=-]*/i;
 
+const unsafePayloadKeyNames = new Set(["__proto__", "constructor", "prototype"]);
+const secretPayloadKeyTerms = new Set([
+  "authorization",
+  "bearer",
+  "credential",
+  "credentials",
+  "oauth",
+  "password",
+  "token"
+]);
+const secretPayloadKeyCompounds = new Set([
+  "accesstoken",
+  "apikey",
+  "clientsecret",
+  "privatekey",
+  "refreshsecret",
+  "sessionsecret"
+]);
+const secretPayloadKeyPairs = [
+  ["access", "token"],
+  ["api", "key"],
+  ["client", "secret"],
+  ["private", "key"],
+  ["refresh", "secret"],
+  ["session", "secret"]
+] as const;
+
 export function isSecretSafeWorkspaceText(value: string): boolean {
   return !secretTextPattern.test(value);
 }
@@ -13,6 +40,35 @@ export function isSecretSafeWorkspaceText(value: string): boolean {
 export const secretSafeWorkspaceTextSchema = z.string().min(1).refine(isSecretSafeWorkspaceText, {
   message: "workspace ops text must not contain secrets"
 });
+
+function splitWorkspacePayloadKey(value: string): string[] {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((part) => part.length > 0);
+}
+
+function isSecretSafeWorkspacePayloadKey(value: string): boolean {
+  if (!isSecretSafeWorkspaceText(value)) {
+    return false;
+  }
+
+  const parts = splitWorkspacePayloadKey(value);
+  if (parts.some((part) => secretPayloadKeyTerms.has(part))) {
+    return false;
+  }
+
+  const compact = parts.join("");
+  if (secretPayloadKeyCompounds.has(compact)) {
+    return false;
+  }
+
+  return !secretPayloadKeyPairs.some(([first, second]) =>
+    parts.some((part, index) => part === first && parts[index + 1] === second)
+  );
+}
 
 type WorkspaceJsonPayload =
   | null
@@ -157,8 +213,20 @@ function normalizeWorkspacePayload(
         };
       }
 
-      if (!isSecretSafeWorkspaceText(key)) {
-        return { ok: false, path, message: "workspace ops payload keys must not contain secrets" };
+      if (unsafePayloadKeyNames.has(key)) {
+        return {
+          ok: false,
+          path: [...path, key],
+          message: "workspace ops payload keys must not use prototype-pollution names"
+        };
+      }
+
+      if (!isSecretSafeWorkspacePayloadKey(key)) {
+        return {
+          ok: false,
+          path: [...path, key],
+          message: "workspace ops payload keys must not contain secrets"
+        };
       }
 
       if (!descriptor.enumerable) {
@@ -181,7 +249,12 @@ function normalizeWorkspacePayload(
       if (!result.ok) {
         return result;
       }
-      normalized[key] = result.value;
+      Object.defineProperty(normalized, key, {
+        value: result.value,
+        enumerable: true,
+        writable: true,
+        configurable: true
+      });
     }
 
     return { ok: true, value: normalized };
@@ -292,10 +365,18 @@ export const workspaceRefSchema = z.object({
 }).strict();
 export type WorkspaceRefDto = z.output<typeof workspaceRefSchema>;
 
+export const workspaceNextCommandHintSchema = z.object({
+  allowedNextCommands: z.array(workspaceCommandSchema).min(1),
+  safeReason: secretSafeWorkspaceTextSchema,
+  requiresHumanApproval: z.boolean()
+}).strict();
+export type WorkspaceNextCommandHintDto = z.output<typeof workspaceNextCommandHintSchema>;
+
 export const mountStatusSchema = z.object({
   status: z.enum(["available", "missing", "unmounted", "wrong-drive", "unreadable"]),
   safeMessage: secretSafeWorkspaceTextSchema,
-  expectedRootUri: secretSafeWorkspaceTextSchema.optional()
+  expectedRootUri: secretSafeWorkspaceTextSchema.optional(),
+  nextCommandHints: z.array(workspaceNextCommandHintSchema).min(1)
 }).strict();
 export type MountStatusDto = z.output<typeof mountStatusSchema>;
 

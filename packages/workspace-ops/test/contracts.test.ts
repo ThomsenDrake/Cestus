@@ -3,6 +3,7 @@ import {
   createWorkspaceOpsEnvelope,
   formatWorkspaceOpsJson,
   isSecretSafeWorkspaceText,
+  mountStatusSchema,
   secretSafeWorkspaceTextSchema,
   workspaceOpsEnvelopeSchema,
   workspaceOpsSchemaVersion
@@ -177,6 +178,40 @@ describe("workspace ops contracts", () => {
     expect(() => formatWorkspaceOpsJson(unsafeEnvelope)).toThrow("secret");
   });
 
+  it("rejects bare credential field names inside generic payloads before formatting", () => {
+    const unsafeKeys = ["access_token", "apiKey", "clientSecret", "password"];
+
+    for (const key of unsafeKeys) {
+      const unsafeEnvelope = {
+        schemaVersion: workspaceOpsSchemaVersion,
+        command: "verify workspace",
+        ok: true,
+        status: "ready",
+        payload: { [key]: "redacted" },
+        diagnostics: [],
+        proposedActions: []
+      };
+
+      expect(() => workspaceOpsEnvelopeSchema.parse(unsafeEnvelope)).toThrow("secret");
+      expect(() => formatWorkspaceOpsJson(unsafeEnvelope)).toThrow("secret");
+    }
+  });
+
+  it("rejects prototype-pollution payload keys before formatting", () => {
+    const unsafeEnvelope = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      command: "verify workspace",
+      ok: true,
+      status: "ready",
+      payload: JSON.parse('{"__proto__":{"polluted":true},"safeMessage":"Safe message."}') as unknown,
+      diagnostics: [],
+      proposedActions: []
+    };
+
+    expect(() => workspaceOpsEnvelopeSchema.parse(unsafeEnvelope)).toThrow("prototype");
+    expect(() => formatWorkspaceOpsJson(unsafeEnvelope)).toThrow("prototype");
+  });
+
   it("rejects boxed string payload values before formatting", () => {
     const unsafeEnvelope = {
       schemaVersion: workspaceOpsSchemaVersion,
@@ -250,5 +285,45 @@ describe("workspace ops contracts", () => {
         })
       ).toThrow();
     }
+  });
+
+  it("requires safe next-command hints on mount status DTOs", () => {
+    const mountStatus = mountStatusSchema.parse({
+      status: "missing",
+      safeMessage: "Workspace root is not available.",
+      nextCommandHints: [
+        {
+          allowedNextCommands: ["detect drive"],
+          safeReason: "Detect whether the workspace drive is mounted.",
+          requiresHumanApproval: false
+        }
+      ]
+    });
+
+    expect(mountStatus.nextCommandHints[0]).toMatchObject({
+      allowedNextCommands: ["detect drive"],
+      requiresHumanApproval: false
+    });
+
+    expect(() =>
+      mountStatusSchema.parse({
+        status: "missing",
+        safeMessage: "Workspace root is not available."
+      })
+    ).toThrow("nextCommandHints");
+
+    expect(() =>
+      mountStatusSchema.parse({
+        status: "missing",
+        safeMessage: "Workspace root is not available.",
+        nextCommandHints: [
+          {
+            allowedNextCommands: ["detect drive"],
+            safeReason: "Found access_token=abc123",
+            requiresHumanApproval: false
+          }
+        ]
+      })
+    ).toThrow("secret");
   });
 });
