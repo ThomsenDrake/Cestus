@@ -9,6 +9,7 @@ export interface LocalRuntimeConfigFile {
     readonly sqlitePath?: string;
     readonly appDataDir?: string;
     readonly workspaceRoot?: string;
+    readonly expectedWorkspaceId?: string;
   };
   readonly http?: {
     readonly host?: string;
@@ -35,6 +36,7 @@ export interface WriteLocalRuntimeOnboardingConfigInput {
   readonly sqlitePath?: string;
   readonly appDataDir?: string;
   readonly workspaceRoot?: string;
+  readonly expectedWorkspaceId?: string;
   readonly distDir?: string;
   readonly logDir?: string;
   readonly devSeedEnabled?: boolean;
@@ -154,7 +156,8 @@ function mergeStorageConfig(
     ...(existing.storage ?? {}),
     ...(input.sqlitePath === undefined ? {} : { sqlitePath: input.sqlitePath }),
     ...(input.appDataDir === undefined ? {} : { appDataDir: input.appDataDir }),
-    ...(input.workspaceRoot === undefined ? {} : { workspaceRoot: input.workspaceRoot })
+    ...(input.workspaceRoot === undefined ? {} : { workspaceRoot: input.workspaceRoot }),
+    ...(input.expectedWorkspaceId === undefined ? {} : { expectedWorkspaceId: input.expectedWorkspaceId })
   };
 
   return Object.keys(storage).length === 0 ? undefined : storage;
@@ -186,9 +189,11 @@ function storageConfigForStrategy(
   }
 
   const workspaceRoot = input.workspaceRoot ?? existing.workspaceRoot;
+  const expectedWorkspaceId = input.expectedWorkspaceId ?? existing.expectedWorkspaceId;
   return {
     strategy,
-    ...(workspaceRoot === undefined ? {} : { workspaceRoot })
+    ...(workspaceRoot === undefined ? {} : { workspaceRoot }),
+    ...(expectedWorkspaceId === undefined ? {} : { expectedWorkspaceId })
   };
 }
 
@@ -246,7 +251,11 @@ function parseStorageConfig(
   record: Record<string, unknown>,
   path: string
 ): NonNullable<LocalRuntimeConfigFile["storage"]> {
-  assertAllowedKeys(record, ["strategy", "sqlitePath", "appDataDir", "workspaceRoot"], "storage");
+  assertAllowedKeys(
+    record,
+    ["strategy", "sqlitePath", "appDataDir", "workspaceRoot", "expectedWorkspaceId"],
+    "storage"
+  );
   return Object.freeze({
     ...parseOptionalEnum(record, "strategy", path, [
       "repo-local",
@@ -256,7 +265,8 @@ function parseStorageConfig(
     ]),
     ...parseOptionalString(record, "sqlitePath", path),
     ...parseOptionalString(record, "appDataDir", path),
-    ...parseOptionalString(record, "workspaceRoot", path)
+    ...parseOptionalString(record, "workspaceRoot", path),
+    ...parseOptionalString(record, "expectedWorkspaceId", path)
   });
 }
 

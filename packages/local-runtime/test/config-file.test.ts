@@ -257,6 +257,28 @@ describe("local runtime config files", () => {
     });
   });
 
+  it("writes portable workspace expected identity without secret material", () => {
+    const cwd = tempDir();
+
+    const written = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "external/case-a",
+      expectedWorkspaceId: "ws_config_case"
+    });
+
+    expect(written.config.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: "external/case-a",
+      expectedWorkspaceId: "ws_config_case"
+    });
+    expect(JSON.stringify(written.config)).not.toMatch(
+      /token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i
+    );
+  });
+
   it("prunes stale portable workspace fields when changing storage strategies", () => {
     const cwd = tempDir();
 

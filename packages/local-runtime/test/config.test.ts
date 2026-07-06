@@ -1,3 +1,5 @@
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
@@ -67,6 +69,41 @@ describe("resolveLocalRuntimeConfig", () => {
     });
     expect(config.http.bindMode).toBe("loopback");
     expect(config.http.authRequired).toBe(false);
+  });
+
+  it("resolves expected portable workspace identity from env over config", () => {
+    const configCwd = mkdtempSync(join(tmpdir(), "cestus-runtime-config-"));
+    try {
+      mkdirSync(join(configCwd, ".cestus/local"), { recursive: true });
+      writeFileSync(
+        join(configCwd, ".cestus/local/runtime.config.json"),
+        JSON.stringify({
+          storage: {
+            strategy: "portable-workspace",
+            workspaceRoot: "external/case-a",
+            expectedWorkspaceId: "ws_config_case"
+          }
+        })
+      );
+
+      const config = resolveLocalRuntimeConfig({
+        cwd: configCwd,
+        env: {
+          CESTUS_LOCAL_STORAGE: "portable-workspace",
+          CESTUS_WORKSPACE_ROOT: "external/case-a",
+          CESTUS_WORKSPACE_ID: "ws_env_case"
+        }
+      });
+
+      expect(config.storage).toEqual({
+        strategy: "portable-workspace",
+        workspaceRoot: resolve(configCwd, "external/case-a"),
+        expectedWorkspaceId: "ws_env_case",
+        sqlitePath: resolve(configCwd, "external/case-a/ledger/ontology.sqlite")
+      });
+    } finally {
+      rmSync(configCwd, { recursive: true, force: true });
+    }
   });
 
   it("keeps explicit SQLite storage as a compatibility mode", () => {
