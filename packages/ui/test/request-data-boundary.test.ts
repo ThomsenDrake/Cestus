@@ -15,6 +15,8 @@ describe("Requests data boundary", () => {
   const portableWorkspacePlanPath = "docs/superpowers/plans/2026-07-06-portable-workspace-mount-implementation.md";
   const ingestionRuntimeSpecPath = "docs/superpowers/specs/2026-07-06-ingestion-runtime-wiring-design.md";
   const ingestionRuntimePlanPath = "docs/superpowers/plans/2026-07-06-ingestion-runtime-wiring-implementation.md";
+  const operatorBridgeSpecPath = "docs/superpowers/specs/2026-07-06-operator-workspace-status-import-bridge-design.md";
+  const operatorBridgePlanPath = "docs/superpowers/plans/2026-07-06-operator-workspace-status-import-bridge-implementation.md";
   const productUiBoundaryFiles = listSourceFiles("packages/ui/src");
   const forbiddenProductUiImportPatterns = [
     /(?:^|\/)request-fixtures(?:\.js)?$/,
@@ -111,6 +113,7 @@ describe("Requests data boundary", () => {
     expect(requiredFiles).toEqual(expect.arrayContaining([durableRuntimeSpecPath, durableRuntimePlanPath]));
     expect(requiredFiles).toEqual(expect.arrayContaining([portableWorkspaceSpecPath, portableWorkspacePlanPath]));
     expect(requiredFiles).toEqual(expect.arrayContaining([ingestionRuntimeSpecPath, ingestionRuntimePlanPath]));
+    expect(requiredFiles).toEqual(expect.arrayContaining([operatorBridgeSpecPath, operatorBridgePlanPath]));
   });
 });
 

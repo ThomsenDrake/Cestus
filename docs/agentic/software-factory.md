@@ -448,3 +448,38 @@ factory-readiness passed
 ```
 
 Legacy import remains recon-first. Every legacy file is evidence first, ontology staging can only append evidence-tied `assertion.proposed`, and accepted assertion, entity, relationship, or resolution events are forbidden during import. The readiness evidence is evidence-first and asserts only behavior proposed, reviewed, and verified through the completed legacy import slice.
+
+## Operator Workspace Status And Import Bridge Plan Readiness
+
+The operator-facing workspace status and import bridge plan was prepared from the approved design direction on 2026-07-06.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-06-operator-workspace-status-import-bridge-design.md`
+- `docs/superpowers/plans/2026-07-06-operator-workspace-status-import-bridge-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded command evidence for this planning checkpoint:
+
+```text
+git diff --check
+passed
+
+npm test -- packages/ui/test/request-data-boundary.test.ts
+Test Files 1 passed
+Tests 6 passed
+
+npm run factory:check
+factory-readiness passed
+
+npm run verify
+typecheck passed
+Test Files 92 passed
+Tests 822 passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+The implementation remains a future approved slice. The plan requires the UI bridge to depend on workspace-ops, ingestion, legacy import, PRR, and local-runtime contracts rather than duplicating their validation logic in React. The bridge is read-only and must not perform PRR sends, legal escalation, provider byte transfer, destructive repair, canonical ledger/blob mutation, accepted legacy ontology truth, or hidden local duplication of external-drive ontology data.
