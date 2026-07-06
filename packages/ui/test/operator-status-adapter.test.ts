@@ -3,7 +3,8 @@ import {
   createHttpOperatorStatusAdapter,
   createStaticOperatorStatusAdapter,
   operatorStatusDtoFromJson,
-  runtimeUnavailableStatus
+  runtimeUnavailableStatus,
+  safeOperatorText
 } from "../src/operator-status/operator-status-adapter.js";
 import type { OperatorStatusDto } from "../src/operator-status/operator-status-types.js";
 
@@ -77,6 +78,25 @@ describe("createHttpOperatorStatusAdapter", () => {
     expect(JSON.stringify(status)).not.toMatch(
       /token=abc123|Bearer raw-token|password=hunter2|\/Volumes\/Cestus|\/tmp\/cestus/
     );
+  });
+
+  it("maps non-2xx bare credential prompts into runtime-unavailable DTOs without throwing", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse(401, {
+        ok: false,
+        error: {
+          message: "Bearer token required"
+        }
+      })
+    );
+    const adapter = createHttpOperatorStatusAdapter({ fetcher });
+
+    const status = await adapter.loadStatus();
+    const serialized = JSON.stringify(status);
+
+    expect(status.runtime.available).toBe(false);
+    expect(status.summary.overallState).toBe("unavailable");
+    expect(serialized).not.toMatch(/bearer|token/i);
   });
 
   it("maps fetch rejection or invalid JSON into a runtime-unavailable DTO", async () => {
@@ -172,6 +192,32 @@ describe("runtimeUnavailableStatus", () => {
       summary: { overallState: "unavailable" }
     });
     expect(JSON.stringify(status)).not.toMatch(/token=abc123|\/Volumes\/Cestus/);
+  });
+
+  it("falls back to a valid timestamp and safe message for invalid runtime-unavailable inputs", () => {
+    const status = runtimeUnavailableStatus({
+      generatedAt: "not-a-date",
+      message: "password"
+    });
+    const serialized = JSON.stringify(status);
+
+    expect(status.runtime.available).toBe(false);
+    expect(status.summary.overallState).toBe("unavailable");
+    expect(Date.parse(status.generatedAt)).not.toBeNaN();
+    expect(serialized).not.toMatch(/password/i);
+  });
+
+  it("redacts bare secret phrases before contract parsing", () => {
+    const unsafeMessages = [
+      "Bearer token required",
+      "password",
+      "private key",
+      "auth tokens"
+    ];
+
+    for (const message of unsafeMessages) {
+      expect(safeOperatorText(message)).not.toMatch(/bearer|token|password|private key|auth tokens/i);
+    }
   });
 });
 
