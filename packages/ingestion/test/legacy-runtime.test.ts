@@ -77,4 +77,32 @@ describe("LegacyImportRuntime review workflow", () => {
     expect(report.legacyReportId).toBe(inspected.legacyReportId);
     expect(quarantine.quarantineEntries.map((entry) => entry.sourcePath)).toContain("ontology/corrupt.json");
   });
+
+  it("preserves the quarantine command in missing-report errors", async () => {
+    const workspace = createFakeMountedWorkspace("Legacy CLI workspace");
+    const runtime = createLegacyImportRuntime({ mountedWorkspace: workspace, actor });
+
+    const result = await runtime.quarantine({
+      sourceCollectionId: "src_old_cestus"
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("LEGACY_IMPORT_REPORT_REQUIRED");
+    expect(result.error.command).toBe("legacy quarantine");
+  });
+
+  it("preserves the staging-preview command in missing-report errors", async () => {
+    const workspace = createFakeMountedWorkspace("Legacy CLI workspace");
+    const runtime = createLegacyImportRuntime({ mountedWorkspace: workspace, actor });
+
+    const result = await runtime.stagingPreview({
+      sourceCollectionId: "src_old_cestus"
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("LEGACY_IMPORT_REPORT_REQUIRED");
+    expect(result.error.command).toBe("legacy staging-preview");
+  });
 });
