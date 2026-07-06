@@ -230,6 +230,32 @@ describe("local runtime config files", () => {
       })
     ).toThrow("explicit-path storage requires a sqlitePath");
   });
+
+  it("writes and reads secret-free portable workspace storage config", () => {
+    const cwd = tempDir();
+
+    const written = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "external/case-a"
+    });
+    const resolved = resolveLocalRuntimeConfig({ cwd, env: {} });
+
+    expect(written.config.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: "external/case-a"
+    });
+    expect(JSON.stringify(written.config)).not.toMatch(
+      /token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i
+    );
+    expect(resolved.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: join(cwd, "external/case-a"),
+      sqlitePath: join(cwd, "external/case-a", "ledger", "ontology.sqlite")
+    });
+  });
 });
 
 function tempDir(): string {

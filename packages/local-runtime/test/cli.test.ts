@@ -147,6 +147,37 @@ describe("runLocalRuntimeCli", () => {
     expect(stdout.join("\n")).toContain('"authToken": "[redacted]"');
   });
 
+  it("configures portable workspace storage with --workspace", async () => {
+    const stdout: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(
+      ["configure", "--storage", "portable-workspace", "--workspace", "external/case-a"],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: () => undefined
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stdout.join("\n")).toContain('"strategy": "portable-workspace"');
+    expect(stdout.join("\n")).toContain('"workspaceRoot": "external/case-a"');
+
+    const configExitCode = await runLocalRuntimeCli(["config"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: () => undefined
+    });
+
+    expect(configExitCode).toBe(0);
+    expect(stdout.join("\n")).toContain(
+      '"sqlitePath": "' + join(tempDir, "external/case-a/ledger/ontology.sqlite") + '"'
+    );
+  });
+
   it("rejects configure flags that would write an unusable exposed loopback config", async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];
