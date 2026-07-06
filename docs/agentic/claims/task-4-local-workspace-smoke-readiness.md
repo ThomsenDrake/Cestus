@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/local-workspace-readiness-smoke`
 Worktree path: `/home/drake/.codex/worktrees/2800/Cestus`
 Claimed at UTC: `2026-07-06T22:26:52Z`
-Status: `claimed`
+Status: `in-progress`
 
 ## Owned Files
 
