@@ -3,7 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
-import { LocalFilesystemScanner } from "../src/local-filesystem.js";
+import {
+  LocalFilesystemScanner,
+  stableLocalFilesystemOccurrenceId
+} from "../src/local-filesystem.js";
 
 let root: string;
 const duplicateText = "same";
@@ -112,6 +115,32 @@ describe("LocalFilesystemScanner", () => {
     expect(second.occurrences.map((occurrence) => occurrence.occurrenceId).sort()).toEqual(
       first.occurrences.map((occurrence) => occurrence.occurrenceId).sort()
     );
+  });
+
+  it("uses the exported helper for regular file occurrence IDs", async () => {
+    const ledger = new InMemoryEventLedger();
+    const scanner = new LocalFilesystemScanner({
+      ledger,
+      actor: { id: "actor_system", kind: "system", label: "Scanner" }
+    });
+
+    const result = await scanner.scan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      rootDir: root
+    });
+    const notesOccurrence = result.occurrences.find((occurrence) => occurrence.sourcePath === "notes.json");
+    if (notesOccurrence === undefined) {
+      throw new Error("Expected scan to include notes.json");
+    }
+
+    expect(notesOccurrence.occurrenceId).toBe(stableLocalFilesystemOccurrenceId({
+      kind: "file",
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      sourcePath: "notes.json",
+      contentHash: notesOccurrence.contentHash
+    }));
   });
 
   it("skips symlinks without hashing targets or emitting occurrence events", async () => {

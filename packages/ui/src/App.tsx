@@ -3,7 +3,21 @@ import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
 import { IngestionWorkspace } from "./ingestion/IngestionWorkspace.js";
-import type { IngestionReviewDto } from "./ingestion/ingestion-types.js";
+import {
+  httpIngestionWorkspaceAdapter,
+  type IngestionWorkspaceAdapter
+} from "./ingestion/ingestion-adapter.js";
+import type {
+  ApproveProviderParsingInput,
+  ApproveRawImportInput,
+  ImportApprovedInput,
+  IngestionActionResult,
+  IngestionJobActionResult,
+  IngestionJobDto,
+  IngestionRuntimeDiagnosticDto,
+  IngestionWorkspaceDto,
+  RetryIngestionJobInput
+} from "./ingestion/ingestion-types.js";
 import {
   httpRequestsAdapter,
   type RequestsCreateDraftInput,
@@ -23,28 +37,15 @@ import { workspaceModules } from "./workspace/workspace-nav.js";
 const implementedModuleIds = new Set(["command", "requests"]);
 implementedModuleIds.add("ingestion");
 
-const placeholderIngestionReview: IngestionReviewDto = {
-  sourceCollectionId: "src_ingestion_placeholder",
-  label: "External investigation archive placeholder",
-  latestScanBatchId: "scan_ingestion_placeholder",
-  totals: {
-    observedFiles: 0,
-    uniqueContent: 0,
-    duplicateOccurrences: 0,
-    skipped: 0,
-    bytes: 0,
-    estimatedNewBlobBytes: 0
-  },
-  approvalRequired: true,
-  duplicateGroups: [],
-  diagnostics: [{ severity: "info", message: "Awaiting local ingestion runtime wiring." }]
-};
-
 interface AppProps {
   readonly requestsAdapter?: RequestsWorkspaceAdapter;
+  readonly ingestionAdapter?: IngestionWorkspaceAdapter;
 }
 
-export function App({ requestsAdapter = httpRequestsAdapter }: AppProps = {}) {
+export function App({
+  requestsAdapter = httpRequestsAdapter,
+  ingestionAdapter = httpIngestionWorkspaceAdapter
+}: AppProps = {}) {
   const [activeModuleId, setActiveModuleId] = useState("command");
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
   const [selectedItemId, setSelectedItemId] = useState<string | undefined>();
@@ -65,6 +66,13 @@ export function App({ requestsAdapter = httpRequestsAdapter }: AppProps = {}) {
   const [requestBuilderSubmitting, setRequestBuilderSubmitting] = useState(false);
   const [requestBuilderDiagnostic, setRequestBuilderDiagnostic] = useState<string | undefined>();
   const [pendingRequestBuilderOpen, setPendingRequestBuilderOpen] = useState(false);
+  const [ingestionWorkspace, setIngestionWorkspace] = useState<IngestionWorkspaceDto | undefined>();
+  const [loadedIngestionAdapter, setLoadedIngestionAdapter] = useState<IngestionWorkspaceAdapter | undefined>();
+  const [ingestionLoadState, setIngestionLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [ingestionLoadError, setIngestionLoadError] = useState<string | undefined>();
+  const [ingestionReloadKey, setIngestionReloadKey] = useState(0);
+  const [ingestionJobs, setIngestionJobs] = useState<readonly IngestionJobDto[]>([]);
+  const [ingestionDiagnostics, setIngestionDiagnostics] = useState<readonly IngestionRuntimeDiagnosticDto[]>([]);
   const model = useMemo(
     () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds }),
     [reviewedItemIds]
@@ -136,6 +144,61 @@ export function App({ requestsAdapter = httpRequestsAdapter }: AppProps = {}) {
     setPendingRequestBuilderOpen(false);
   }, [pendingRequestBuilderOpen, requestsActive, requestsLoadState, requestsWorkspace]);
 
+  useEffect(() => {
+    if (!ingestionActive) {
+      return;
+    }
+
+    if (ingestionWorkspace !== undefined && loadedIngestionAdapter === ingestionAdapter) {
+      return;
+    }
+
+    let canceled = false;
+    setIngestionLoadState("loading");
+    setIngestionLoadError(undefined);
+
+    ingestionAdapter
+      .loadWorkspace()
+      .then(async (workspace) => {
+        const sourceCollectionId = workspace.review?.sourceCollectionId;
+        const [jobs, diagnosticResult] = workspace.mounted
+          ? await Promise.all([
+              ingestionAdapter.listJobs(sourceCollectionId === undefined ? {} : { sourceCollectionId }),
+              ingestionAdapter.loadDiagnostics(sourceCollectionId === undefined ? {} : { sourceCollectionId })
+            ])
+          : [{ jobs: [] }, { diagnostics: workspace.diagnostics }];
+
+        if (canceled) {
+          return;
+        }
+
+        setIngestionWorkspace(workspace);
+        setLoadedIngestionAdapter(ingestionAdapter);
+        setIngestionJobs(jobs.jobs);
+        setIngestionDiagnostics([
+          ...(jobs.diagnostics ?? []),
+          ...diagnosticResult.diagnostics
+        ]);
+        setIngestionLoadState("loaded");
+      })
+      .catch((error: unknown) => {
+        if (canceled) {
+          return;
+        }
+
+        setIngestionWorkspace(undefined);
+        setLoadedIngestionAdapter(undefined);
+        setIngestionJobs([]);
+        setIngestionDiagnostics([]);
+        setIngestionLoadState("error");
+        setIngestionLoadError(error instanceof Error ? error.message : "Ingestion workspace could not be loaded.");
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [ingestionActive, ingestionAdapter, ingestionReloadKey, ingestionWorkspace, loadedIngestionAdapter]);
+
   const commandMain = (
     <CommandDashboard
       model={model}
@@ -168,7 +231,20 @@ export function App({ requestsAdapter = httpRequestsAdapter }: AppProps = {}) {
       setRequestsReloadKey((current) => current + 1);
     }
   });
-  const ingestionMain = <IngestionWorkspace review={placeholderIngestionReview} />;
+  const ingestionMain = (
+    <IngestionWorkspace
+      workspace={ingestionWorkspace}
+      loadState={ingestionLoadState}
+      loadError={ingestionLoadError}
+      jobs={ingestionJobs}
+      diagnostics={ingestionDiagnostics}
+      onApproveRawImport={handleApproveRawImport}
+      onImportApproved={handleImportApproved}
+      onApproveProviderParsing={handleApproveProviderParsing}
+      onRetryJob={handleRetryIngestionJob}
+      onLoadDiagnostics={handleLoadIngestionDiagnostics}
+    />
+  );
   const commandDecisionRail = (
     <DecisionRail
       agentBrief={model.agentBrief}
@@ -228,6 +304,148 @@ export function App({ requestsAdapter = httpRequestsAdapter }: AppProps = {}) {
       setRequestBuilderDiagnostic("Draft creation failed. Reload the Requests workspace and try again.");
     } finally {
       setRequestBuilderSubmitting(false);
+    }
+  }
+
+  function handleApproveRawImport(input: ApproveRawImportInput) {
+    void runIngestionAction(() => ingestionAdapter.approveRawImport(input));
+  }
+
+  function handleImportApproved(input: ImportApprovedInput) {
+    void runIngestionAction(() => ingestionAdapter.importApproved(input));
+  }
+
+  function handleApproveProviderParsing(input: ApproveProviderParsingInput) {
+    void runIngestionAction(() => ingestionAdapter.approveProviderParsing(input));
+  }
+
+  function handleRetryIngestionJob(input: RetryIngestionJobInput) {
+    void runIngestionJobAction(() => ingestionAdapter.retryJob(input));
+  }
+
+  function handleLoadIngestionDiagnostics(input: { readonly sourceCollectionId?: string }) {
+    void ingestionAdapter
+      .loadDiagnostics(input)
+      .then((result) => setIngestionDiagnostics(result.diagnostics))
+      .catch(() => {
+        setIngestionDiagnostics([
+          {
+            severity: "error",
+            category: "ingestion",
+            message: "Ingestion diagnostics could not be loaded."
+          }
+        ]);
+      });
+  }
+
+  async function runIngestionAction(action: () => Promise<IngestionActionResult>) {
+    try {
+      const result = await action();
+      if (!result.ok) {
+        setIngestionDiagnostics([
+          ...result.error.diagnostics,
+          {
+            severity: "error",
+            category: "ingestion",
+            message: result.error.message
+          }
+        ]);
+        return;
+      }
+
+      setIngestionWorkspace((current) =>
+        current === undefined
+          ? {
+              mounted: true,
+              review: result.review,
+              diagnostics: []
+            }
+          : {
+              ...current,
+              mounted: true,
+              review: result.review
+            }
+      );
+      await refreshIngestionSupportStateAfterMutation(result.review.sourceCollectionId);
+    } catch {
+      setIngestionDiagnostics([
+        {
+          severity: "error",
+          category: "ingestion",
+          message: "Ingestion action failed. Reload the workspace and try again."
+        }
+      ]);
+    }
+  }
+
+  async function runIngestionJobAction(action: () => Promise<IngestionJobActionResult>) {
+    try {
+      const result = await action();
+      if (!result.ok) {
+        setIngestionDiagnostics([
+          ...result.error.diagnostics,
+          {
+            severity: "error",
+            category: "ingestion",
+            message: result.error.message
+          }
+        ]);
+        return;
+      }
+
+      const review = result.review;
+      if (review !== undefined) {
+        setIngestionWorkspace((current) =>
+          current === undefined
+            ? {
+                mounted: true,
+                review,
+                diagnostics: []
+              }
+            : {
+                ...current,
+                mounted: true,
+                review
+              }
+        );
+      }
+
+      await refreshIngestionSupportStateAfterMutation(result.review?.sourceCollectionId ?? result.job.sourceCollectionId);
+    } catch {
+      setIngestionDiagnostics([
+        {
+          severity: "error",
+          category: "ingestion",
+          message: "Ingestion job action failed. Reload the workspace and try again."
+        }
+      ]);
+    }
+  }
+
+  async function refreshIngestionSupportState(sourceCollectionId: string | undefined) {
+    const input = sourceCollectionId === undefined ? {} : { sourceCollectionId };
+    const [jobs, diagnosticResult] = await Promise.all([
+      ingestionAdapter.listJobs(input),
+      ingestionAdapter.loadDiagnostics(input)
+    ]);
+    setIngestionJobs(jobs.jobs);
+    setIngestionDiagnostics([
+      ...(jobs.diagnostics ?? []),
+      ...diagnosticResult.diagnostics
+    ]);
+  }
+
+  async function refreshIngestionSupportStateAfterMutation(sourceCollectionId: string | undefined) {
+    try {
+      await refreshIngestionSupportState(sourceCollectionId);
+    } catch {
+      setIngestionDiagnostics([
+        {
+          severity: "warning",
+          category: "ingestion",
+          message: "Ingestion support state could not be refreshed. The action completed; reload jobs and diagnostics if needed."
+        }
+      ]);
     }
   }
 

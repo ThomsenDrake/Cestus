@@ -352,6 +352,54 @@ factory-readiness passed
 
 Portable mode uses one canonical workspace root and one canonical `ledger/ontology.sqlite`. Repo-local and explicit SQLite modes remain compatibility/developer modes. Silent fallback to internal storage is forbidden in portable mode.
 
+## Ingestion Runtime Wiring Plan Readiness
+
+The ingestion runtime wiring plan was prepared from the approved design spec on 2026-07-06.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-06-ingestion-runtime-wiring-design.md`
+- `docs/superpowers/plans/2026-07-06-ingestion-runtime-wiring-implementation.md`
+
+Factory readiness now checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded targeted command evidence from the runtime wiring implementation slice:
+
+```text
+npm test -- packages/ingestion/test/runtime-contracts.test.ts packages/ingestion/test/runtime.test.ts
+Runtime core targeted verification passed.
+
+npm test -- packages/ingestion/test/runtime.test.ts packages/ingestion/test/runtime-import-stale-source.test.ts packages/ingestion/test/import-service.test.ts packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts packages/ingestion/test/local-filesystem.test.ts
+Stale-source verification targeted command passed, covering changed regular files, missing files, changed container hashes, and changed archive child hashes before blob writes.
+
+npm test -- packages/ingestion/test/runtime-jobs-provider.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts
+Runtime jobs, retry, provider approval, and diagnostics targeted command passed.
+
+npm test -- packages/ingestion/test/cli.test.ts
+npm run ingestion:help
+CLI runtime wiring targeted command and help command passed.
+
+npm test -- packages/local-runtime/test/ingestion-http-routes.test.ts packages/local-runtime/test/auth-and-seed.test.ts packages/local-runtime/test/http-handler.test.ts packages/ingestion/test/runtime.test.ts
+HTTP route wiring targeted command passed with transport-only route coverage and storage-path rejection checks.
+
+npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx
+UI adapter, explicit approval gates, diagnostics, app integration, and browser boundary targeted command passed with 5 test files and 35 tests.
+```
+
+Final verification evidence from the runtime wiring readiness gate:
+
+```text
+npm run verify
+typecheck passed
+Test Files  75 passed
+Tests  651 passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Live provider checks for Mistral Document AI or similar document-AI services remain explicit opt-in checks and are not part of standard factory verification. Standard verification uses local runtime contracts, fake providers, approval-only provider gates, and no outbound document transfer.
+
 ## Portable Workspace Ops Plan Readiness
 
 The portable workspace ops plan was prepared from the approved design spec on 2026-07-06.

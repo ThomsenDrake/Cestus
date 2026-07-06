@@ -13,6 +13,8 @@ describe("Requests data boundary", () => {
   const durableRuntimePlanPath = "docs/superpowers/plans/2026-07-05-durable-local-prr-runtime-implementation.md";
   const portableWorkspaceSpecPath = "docs/superpowers/specs/2026-07-06-portable-workspace-mount-design.md";
   const portableWorkspacePlanPath = "docs/superpowers/plans/2026-07-06-portable-workspace-mount-implementation.md";
+  const ingestionRuntimeSpecPath = "docs/superpowers/specs/2026-07-06-ingestion-runtime-wiring-design.md";
+  const ingestionRuntimePlanPath = "docs/superpowers/plans/2026-07-06-ingestion-runtime-wiring-implementation.md";
   const productUiBoundaryFiles = listSourceFiles("packages/ui/src");
   const forbiddenProductUiImportPatterns = [
     /(?:^|\/)request-fixtures(?:\.js)?$/,
@@ -24,7 +26,9 @@ describe("Requests data boundary", () => {
     /^\.\.\/workspace(?:\/.*)?$/,
     /(?:^|\/)(?:runtime|sqlite-event-ledger)(?:\.js)?$/,
     /(?:^|\/)prr\/src\/runtime(?:\.js)?$/,
-    /(?:^|\/)local-runtime\/src\/(?:config|server|http-handler|runtime-factory)(?:\.js)?$/
+    /(?:^|\/)local-runtime\/src\/[^/]+(?:\.js)?$/,
+    /(?:^|\/)ingestion\/src\/[^/]+(?:\.js)?$/,
+    /(?:^|\/)ontology\/src\/(?:sqlite-event-ledger|blob-store)(?:\.js)?$/
   ];
   const forbiddenProductUiSourceFragments = [
     "SQLiteEventLedger",
@@ -37,6 +41,9 @@ describe("Requests data boundary", () => {
     "../../workspace/src",
     "packages/workspace",
     "../workspace",
+    "packages/local-runtime/src/",
+    "packages/ingestion/src/",
+    "FileBlobStore",
     "node:fs",
     "node:path"
   ];
@@ -64,6 +71,22 @@ describe("Requests data boundary", () => {
     }
   });
 
+  it("covers representative Node-only ingestion and local-runtime imports", () => {
+    const forbiddenModuleSpecifiers = [
+      "../../local-runtime/src/auth.js",
+      "../../local-runtime/src/static-files.js",
+      "../../local-runtime/src/config-file.js",
+      "../../ingestion/src/source-registry.js",
+      "../../ingestion/src/parser.js",
+      "../../ingestion/src/projection.js",
+      "../../ingestion/src/read-api.js"
+    ];
+
+    for (const moduleSpecifier of forbiddenModuleSpecifiers) {
+      expect(forbiddenProductUiImportPatterns.some((pattern) => pattern.test(moduleSpecifier)), moduleSpecifier).toBe(true);
+    }
+  });
+
   it("keeps App default Requests loading on the HTTP adapter", () => {
     const source = readFileSync("packages/ui/src/App.tsx", "utf8");
 
@@ -79,7 +102,7 @@ describe("Requests data boundary", () => {
     }
   });
 
-  it("requires the ledger-backed PRR workspace docs in factory readiness", () => {
+  it("requires approved plan docs in factory readiness", () => {
     const readinessScript = readFileSync("scripts/check-agent-readiness.mjs", "utf8");
     const requiredFiles = stringArrayInitializer(readinessScript, "requiredFiles");
 
@@ -87,6 +110,7 @@ describe("Requests data boundary", () => {
     expect(requiredFiles).toEqual(expect.arrayContaining([requestModalSpecPath, requestModalPlanPath]));
     expect(requiredFiles).toEqual(expect.arrayContaining([durableRuntimeSpecPath, durableRuntimePlanPath]));
     expect(requiredFiles).toEqual(expect.arrayContaining([portableWorkspaceSpecPath, portableWorkspacePlanPath]));
+    expect(requiredFiles).toEqual(expect.arrayContaining([ingestionRuntimeSpecPath, ingestionRuntimePlanPath]));
   });
 });
 

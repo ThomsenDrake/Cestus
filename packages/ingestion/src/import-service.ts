@@ -8,6 +8,7 @@ import {
   type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import type { WorkspaceBlobStore } from "./mount-contract.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
 type ContentHash = `sha256:${string}`;
@@ -30,7 +31,7 @@ const importApprovedOccurrencesInputSchema = z.object({
 
 export interface IngestionImportServiceDependencies {
   ledger: EventLedger;
-  blobStore: FileBlobStore;
+  blobStore: WorkspaceBlobStore;
   actor: ActorRef;
 }
 
@@ -77,7 +78,7 @@ export class IngestionImportService {
   constructor(private readonly dependencies: IngestionImportServiceDependencies) {
     this.evidenceService = new EvidenceService({
       ledger: dependencies.ledger,
-      blobStore: dependencies.blobStore
+      blobStore: dependencies.blobStore as FileBlobStore
     });
   }
 

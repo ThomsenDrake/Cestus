@@ -613,16 +613,94 @@ function sourceAndScanFromStreamId(streamId: string): {
   sourceCollectionId: string;
   scanBatchId: string;
 } | undefined {
-  const matched = /^ingestion_(?:import|evidence_link)_(src_[a-zA-Z0-9_-]+)_(scan_[a-zA-Z0-9_-]+)_(imp_[a-zA-Z0-9_-]+)(?:_[a-f0-9]{64})?$/.exec(streamId);
+  const encodedDiagnostic = encodedDiagnosticSourceAndScanFromStreamId(streamId);
+  if (encodedDiagnostic !== undefined) {
+    return encodedDiagnostic;
+  }
 
-  if (matched?.[1] === undefined || matched[2] === undefined) {
+  const streamPrefix = [
+    "ingestion_import_",
+    "ingestion_evidence_link_",
+    "ingestion_diagnostic_"
+  ].find((prefix) => streamId.startsWith(prefix));
+
+  if (streamPrefix === undefined) {
+    return undefined;
+  }
+
+  const body = streamId.slice(streamPrefix.length).replace(/_[a-f0-9]{64}$/, "");
+  const importMarkerIndex = body.lastIndexOf("_imp_");
+
+  if (importMarkerIndex < 0) {
+    return undefined;
+  }
+
+  const sourceAndScan = body.slice(0, importMarkerIndex);
+  const importBatchId = body.slice(importMarkerIndex + 1);
+  const scanMarkerIndex = sourceAndScan.lastIndexOf("_scan_");
+
+  if (scanMarkerIndex < 0) {
+    return undefined;
+  }
+
+  const sourceCollectionId = sourceAndScan.slice(0, scanMarkerIndex);
+  const scanBatchId = sourceAndScan.slice(scanMarkerIndex + 1);
+
+  if (
+    !isStreamIdSegment(sourceCollectionId, "src_")
+    || !isStreamIdSegment(scanBatchId, "scan_")
+    || !isStreamIdSegment(importBatchId, "imp_")
+  ) {
     return undefined;
   }
 
   return {
-    sourceCollectionId: matched[1],
-    scanBatchId: matched[2]
+    sourceCollectionId,
+    scanBatchId
   };
+}
+
+function encodedDiagnosticSourceAndScanFromStreamId(streamId: string): {
+  sourceCollectionId: string;
+  scanBatchId: string;
+} | undefined {
+  const matched = /^ingestion_diagnostic_v1\.([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)$/.exec(streamId);
+
+  if (matched?.[1] === undefined || matched[2] === undefined || matched[3] === undefined) {
+    return undefined;
+  }
+
+  const sourceCollectionId = decodeBase64Url(matched[1]);
+  const scanBatchId = decodeBase64Url(matched[2]);
+  const importBatchId = decodeBase64Url(matched[3]);
+
+  if (
+    sourceCollectionId === undefined ||
+    scanBatchId === undefined ||
+    importBatchId === undefined ||
+    !isStreamIdSegment(sourceCollectionId, "src_") ||
+    !isStreamIdSegment(scanBatchId, "scan_") ||
+    !isStreamIdSegment(importBatchId, "imp_")
+  ) {
+    return undefined;
+  }
+
+  return {
+    sourceCollectionId,
+    scanBatchId
+  };
+}
+
+function decodeBase64Url(value: string): string | undefined {
+  try {
+    return Buffer.from(value, "base64url").toString("utf8");
+  } catch {
+    return undefined;
+  }
+}
+
+function isStreamIdSegment(value: string, prefix: "src_" | "scan_" | "imp_"): boolean {
+  return value.startsWith(prefix) && /^[a-zA-Z0-9_-]+$/.test(value);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

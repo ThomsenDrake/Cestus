@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validateKnowledgeEvent } from "../../ontology/src/contracts.js";
 import { buildIngestionProjection } from "../src/projection.js";
+import { buildIngestionReviewDto } from "../src/read-api.js";
 import { goldenIngestionLedgerEvents } from "./fixtures/golden-ingestion-ledger.js";
 
 const fixedHash = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
@@ -72,6 +73,106 @@ describe("buildIngestionProjection", () => {
       message: "Unrecognized event type ingestion.future.created"
     });
     expect(projection.scans.has("scan_missing")).toBe(false);
+  });
+
+  it("associates encoded diagnostic streams when IDs contain marker substrings", () => {
+    const sourceCollectionId = "src_drive_scan_shadow_001";
+    const scanBatchId = "scan_batch_imp_shadow_001";
+    const importBatchId = "imp_import_scan_shadow_001";
+    const diagnosticId = "diag_marker_substring_stream";
+    const diagnosticStreamId = encodedDiagnosticStreamId(sourceCollectionId, scanBatchId, importBatchId);
+    const context = {
+      actor: { id: "actor_system", kind: "system" as const, label: "Cestus" },
+      occurredAt: "2026-07-06T16:00:00.000Z",
+      correlationId: "corr_marker_substring_stream",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+    };
+
+    const projection = buildIngestionProjection([
+      {
+        id: "evt_marker_source_registered",
+        type: "ingestion.source.registered",
+        version: 1,
+        streamId: `ingestion_source_${sourceCollectionId}`,
+        sequence: 1,
+        context,
+        payload: {
+          sourceCollectionId,
+          label: "Marker substring source",
+          mode: "read-only",
+          adapter: { name: "local-filesystem", version: "0.1.0" },
+          rootUri: "file:///source",
+          workspaceUri: "cestus-workspace://marker"
+        }
+      },
+      {
+        id: "evt_marker_scan_started",
+        type: "ingestion.scan.started",
+        version: 1,
+        streamId: `ingestion_scan_${scanBatchId}`,
+        sequence: 1,
+        context,
+        payload: {
+          scanBatchId,
+          sourceCollectionId,
+          hashPolicy: "sha256-dry-run",
+          startedAt: "2026-07-06T16:00:00.000Z"
+        }
+      },
+      {
+        id: "evt_marker_scan_completed",
+        type: "ingestion.scan.completed",
+        version: 1,
+        streamId: `ingestion_scan_${scanBatchId}`,
+        sequence: 2,
+        context,
+        payload: {
+          scanBatchId,
+          sourceCollectionId,
+          completedAt: "2026-07-06T16:01:00.000Z",
+          inventoryHash: fixedHash,
+          totals: {
+            observedFiles: 0,
+            uniqueContent: 0,
+            duplicateOccurrences: 0,
+            skipped: 0,
+            bytes: 0,
+            estimatedNewBlobBytes: 0
+          }
+        }
+      },
+      {
+        id: "evt_marker_diagnostic",
+        type: "diagnostic.recorded",
+        version: 1,
+        streamId: diagnosticStreamId,
+        sequence: 1,
+        context,
+        payload: {
+          diagnosticId,
+          severity: "error",
+          category: "ingestion",
+          message: "Approved dry-run inventory no longer matches current source bytes.",
+          repairHint: {
+            contract: "IngestionRuntime.importApproved",
+            violatedPath: "approvedDryRunInventory",
+            allowedActions: ["rerun dry-run scan"]
+          }
+        }
+      }
+    ]);
+
+    expect(projection.diagnostics.get(diagnosticId)).toMatchObject({
+      diagnosticId,
+      sourceCollectionId,
+      scanBatchId,
+      streamId: diagnosticStreamId
+    });
+    expect(projection.scans.get(scanBatchId)?.diagnosticIds).toContain(diagnosticId);
+    expect(buildIngestionReviewDto(projection, sourceCollectionId).diagnostics).toContainEqual(
+      expect.objectContaining({ diagnosticId, category: "ingestion" })
+    );
   });
 
   it("quarantines malformed known ingestion events as validation diagnostics", () => {
@@ -250,3 +351,11 @@ describe("buildIngestionProjection", () => {
     });
   });
 });
+
+function encodedDiagnosticStreamId(sourceCollectionId: string, scanBatchId: string, importBatchId: string): string {
+  return `ingestion_diagnostic_v1.${base64Url(sourceCollectionId)}.${base64Url(scanBatchId)}.${base64Url(importBatchId)}`;
+}
+
+function base64Url(value: string): string {
+  return Buffer.from(value, "utf8").toString("base64url");
+}
