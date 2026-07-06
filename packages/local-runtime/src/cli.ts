@@ -307,17 +307,18 @@ function resolveConfigureFlags(
     return flags;
   }
 
-  if (flags.workspaceRoot === undefined) {
-    return flags;
-  }
-
   const existing = readLocalRuntimeConfigFile(configInputFrom(dependencies));
   const effectiveStorageStrategy = flags.storageStrategy ?? existing?.storage?.strategy;
   if (effectiveStorageStrategy !== "portable-workspace") {
     return flags;
   }
 
-  const rootDir = resolve(dependencies.cwd ?? process.cwd(), flags.workspaceRoot);
+  const effectiveWorkspaceRoot = flags.workspaceRoot ?? existing?.storage?.workspaceRoot;
+  if (effectiveWorkspaceRoot === undefined) {
+    return flags;
+  }
+
+  const rootDir = resolve(dependencies.cwd ?? process.cwd(), effectiveWorkspaceRoot);
   try {
     const manifest = readPortableWorkspaceManifest({
       manifestPath: portableWorkspacePaths(rootDir).manifestPath

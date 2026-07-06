@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { runLocalRuntimeCli } from "../src/cli.js";
+import { writeLocalRuntimeOnboardingConfig } from "../src/config-file.js";
 
 let tempDir: string | undefined;
 
@@ -530,6 +531,65 @@ describe("runLocalRuntimeCli", () => {
     ).toBe(0);
 
     const exitCode = await runLocalRuntimeCli(["configure", "--workspace", "missing-case"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain(
+      "portable-workspace configure requires --workspace-id or a readable workspace manifest"
+    );
+    expect(stderr.join("\n")).not.toMatch(/token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i);
+  });
+
+  it("derives expected identity from existing workspace root when configure repeats portable storage", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    createPortableWorkspace({
+      rootDir: join(tempDir, "case-a"),
+      workspaceId: "ws_case_a",
+      label: "Case A",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "local-runtime-test"
+    });
+    writeLocalRuntimeOnboardingConfig({
+      cwd: tempDir,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "case-a"
+    });
+
+    const exitCode = await runLocalRuntimeCli(["configure", "--storage", "portable-workspace"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    expect(stdout.join("\n")).toContain('"workspaceRoot": "case-a"');
+    expect(stdout.join("\n")).toContain('"expectedWorkspaceId": "ws_case_a"');
+  });
+
+  it("fails when repeating portable storage with existing unreadable workspace root and no expected identity", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    writeLocalRuntimeOnboardingConfig({
+      cwd: tempDir,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "missing-case"
+    });
+
+    const exitCode = await runLocalRuntimeCli(["configure", "--storage", "portable-workspace"], {
       cwd: tempDir,
       env: {},
       stdout: (line) => stdout.push(line),

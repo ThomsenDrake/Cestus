@@ -22,6 +22,15 @@ Status: ready-for-review
 
 ## Evidence
 
+- 2026-07-06T22:01:35Z final review-fix targeted red:
+  `npm test -- packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/config.test.ts packages/local-runtime/test/http-handler.test.ts`
+  failed as expected with 2 failures covering `configure --storage portable-workspace`
+  deriving from an existing workspace root with no expected identity and failing safely when that manifest is unreadable.
+- 2026-07-06T22:01:47Z final review-fix targeted green:
+  `npm test -- packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/config.test.ts packages/local-runtime/test/http-handler.test.ts`
+  passed with 4 test files and 63 tests.
+- 2026-07-06T22:02:00Z final review-fix full verification:
+  `npm run verify` passed with typecheck, 92 test files, 837 tests, UI build, and factory-readiness.
 - 2026-07-06T21:55:35Z second review-fix targeted red:
   `npm test -- packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/config.test.ts packages/local-runtime/test/http-handler.test.ts`
   failed as expected with 3 failures covering `configure --workspace` without `--storage`
@@ -58,3 +67,4 @@ Status: ready-for-review
 - CLI configure derives omitted expected identity from the canonical workspace manifest parser and emits only a safe generic error when it cannot.
 - Config-file merge no longer carries stale expected identity across portable workspace root changes.
 - CLI configure also derives expected identity when portable mode comes from existing config and only `--workspace` changes.
+- CLI configure derives expected identity from an existing workspace root whenever effective strategy is portable and `--workspace-id` is omitted.
