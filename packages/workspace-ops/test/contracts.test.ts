@@ -159,4 +159,96 @@ describe("workspace ops contracts", () => {
     expect(() => workspaceOpsEnvelopeSchema.parse(unsafeEnvelope)).toThrow("secret");
     expect(() => formatWorkspaceOpsJson(unsafeEnvelope)).toThrow("secret");
   });
+
+  it("rejects secret-shaped generic payload keys before formatting", () => {
+    const unsafeEnvelope = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      command: "verify workspace",
+      ok: true,
+      status: "ready",
+      payload: {
+        "access_token=abc123": "redacted"
+      },
+      diagnostics: [],
+      proposedActions: []
+    };
+
+    expect(() => workspaceOpsEnvelopeSchema.parse(unsafeEnvelope)).toThrow("secret");
+    expect(() => formatWorkspaceOpsJson(unsafeEnvelope)).toThrow("secret");
+  });
+
+  it("rejects boxed string payload values before formatting", () => {
+    const unsafeEnvelope = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      command: "verify workspace",
+      ok: true,
+      status: "ready",
+      payload: {
+        safeMessage: new String("access_token=abc123")
+      },
+      diagnostics: [],
+      proposedActions: []
+    };
+
+    expect(() => workspaceOpsEnvelopeSchema.parse(unsafeEnvelope)).toThrow();
+    expect(() => formatWorkspaceOpsJson(unsafeEnvelope)).toThrow();
+  });
+
+  it("rejects custom payload serializers before formatting", () => {
+    const unsafeEnvelope = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      command: "verify workspace",
+      ok: true,
+      status: "ready",
+      payload: {
+        safeMessage: {
+          toJSON() {
+            return "access_token=abc123";
+          }
+        }
+      },
+      diagnostics: [],
+      proposedActions: []
+    };
+
+    expect(() => workspaceOpsEnvelopeSchema.parse(unsafeEnvelope)).toThrow();
+    expect(() => formatWorkspaceOpsJson(unsafeEnvelope)).toThrow();
+  });
+
+  it("rejects non-json dto payload shapes", () => {
+    class CustomPayload {
+      readonly value = "safe";
+    }
+
+    const cyclicPayload: Record<string, unknown> = {};
+    cyclicPayload.self = cyclicPayload;
+
+    const symbolKeyPayload: Record<string | symbol, unknown> = { safeMessage: "Safe message." };
+    symbolKeyPayload[Symbol("unsafe")] = "redacted";
+
+    const unsafePayloads = [
+      { callback: () => "unsafe" },
+      { missing: undefined },
+      { id: Symbol("unsafe") },
+      { count: 1n },
+      { createdAt: new Date("2026-07-06T00:00:00.000Z") },
+      { custom: new CustomPayload() },
+      cyclicPayload,
+      symbolKeyPayload
+    ];
+
+    for (const payload of unsafePayloads) {
+      expect(() =>
+        workspaceOpsEnvelopeSchema.parse({
+          schemaVersion: workspaceOpsSchemaVersion,
+          command: "verify workspace",
+          ok: true,
+          status: "ready",
+          payload,
+          diagnostics: [],
+          proposedActions: []
+        })
+      ).toThrow();
+    }
+  });
 });

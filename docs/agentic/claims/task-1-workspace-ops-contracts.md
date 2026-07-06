@@ -30,3 +30,9 @@ Repair evidence:
 - Second review repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 2 failing regressions covering secret-shaped `diagnostics.relatedIds` and secret-shaped strings inside generic payloads.
 - Second review repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 8 tests passed.
 - Second review repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 593 tests passed, UI build succeeded, and factory-readiness passed.
+- Final hardening red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 3 failing regressions covering secret-shaped payload keys, boxed string payload values, and custom payload serializers.
+- Final hardening green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 11 tests passed.
+- Final hardening verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 596 tests passed, UI build succeeded, and factory-readiness passed.
+- Final JSON-shape hardening red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 1 failing regression covering non-JSON DTO payload shapes.
+- Final JSON-shape hardening green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 12 tests passed, including explicit non-JSON DTO field coverage.
+- Final JSON-shape hardening verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 597 tests passed, UI build succeeded, and factory-readiness passed.

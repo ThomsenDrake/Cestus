@@ -14,42 +14,194 @@ export const secretSafeWorkspaceTextSchema = z.string().min(1).refine(isSecretSa
   message: "workspace ops text must not contain secrets"
 });
 
-function findSecretPath(value: unknown, path: Array<string | number> = []): Array<string | number> | undefined {
+type WorkspaceJsonPayload =
+  | null
+  | string
+  | number
+  | boolean
+  | WorkspaceJsonPayload[]
+  | { [key: string]: WorkspaceJsonPayload };
+
+type PayloadValidationResult =
+  | { readonly ok: true; readonly value: WorkspaceJsonPayload }
+  | { readonly ok: false; readonly path: Array<string | number>; readonly message: string };
+
+function normalizeWorkspacePayload(
+  value: unknown,
+  path: Array<string | number> = [],
+  seen = new WeakSet<object>()
+): PayloadValidationResult {
+  if (value === null || typeof value === "boolean") {
+    return { ok: true, value };
+  }
+
   if (typeof value === "string") {
-    return isSecretSafeWorkspaceText(value) ? undefined : path;
+    return isSecretSafeWorkspaceText(value)
+      ? { ok: true, value }
+      : { ok: false, path, message: "workspace ops payload must not contain secrets" };
   }
 
-  if (Array.isArray(value)) {
-    for (let index = 0; index < value.length; index += 1) {
-      const secretPath = findSecretPath(value[index], [...path, index]);
-      if (secretPath !== undefined) {
-        return secretPath;
+  if (typeof value === "number") {
+    return Number.isFinite(value)
+      ? { ok: true, value }
+      : { ok: false, path, message: "workspace ops payload numbers must be finite" };
+  }
+
+  if (typeof value !== "object") {
+    return {
+      ok: false,
+      path,
+      message: "workspace ops payload must contain only JSON DTO-safe values"
+    };
+  }
+
+  if (seen.has(value)) {
+    return { ok: false, path, message: "workspace ops payload must not contain cycles" };
+  }
+  seen.add(value);
+
+  try {
+    if (Array.isArray(value)) {
+      if (Object.getPrototypeOf(value) !== Array.prototype || "toJSON" in value) {
+        return {
+          ok: false,
+          path,
+          message: "workspace ops payload arrays must be JSON DTO-safe arrays"
+        };
       }
-    }
-    return undefined;
-  }
 
-  if (value !== null && typeof value === "object") {
-    for (const [key, nestedValue] of Object.entries(value)) {
-      const secretPath = findSecretPath(nestedValue, [...path, key]);
-      if (secretPath !== undefined) {
-        return secretPath;
+      const ownKeys = Reflect.ownKeys(value);
+      for (const key of ownKeys) {
+        if (key === "length") {
+          continue;
+        }
+
+        if (typeof key === "symbol") {
+          return {
+            ok: false,
+            path,
+            message: "workspace ops payload arrays must not contain symbol keys"
+          };
+        }
+
+        if (!/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= value.length) {
+          return {
+            ok: false,
+            path,
+            message: "workspace ops payload arrays must not contain custom properties"
+          };
+        }
       }
-    }
-  }
 
-  return undefined;
+      const normalized: WorkspaceJsonPayload[] = [];
+      for (let index = 0; index < value.length; index += 1) {
+        if (!Object.prototype.hasOwnProperty.call(value, index)) {
+          return {
+            ok: false,
+            path: [...path, index],
+            message: "workspace ops payload arrays must not contain sparse entries"
+          };
+        }
+
+        const result = normalizeWorkspacePayload(value[index], [...path, index], seen);
+        if (!result.ok) {
+          return result;
+        }
+        normalized.push(result.value);
+      }
+      return { ok: true, value: normalized };
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      return {
+        ok: false,
+        path,
+        message: "workspace ops payload objects must be plain JSON DTO records"
+      };
+    }
+
+    if ("toJSON" in value) {
+      return {
+        ok: false,
+        path,
+        message: "workspace ops payload objects must not define custom serializers"
+      };
+    }
+
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const normalized: { [key: string]: WorkspaceJsonPayload } = {};
+    for (const key of Reflect.ownKeys(descriptors)) {
+      if (typeof key === "symbol") {
+        return {
+          ok: false,
+          path,
+          message: "workspace ops payload records must not contain symbol keys"
+        };
+      }
+
+      const descriptor = descriptors[key];
+      if (descriptor === undefined) {
+        return {
+          ok: false,
+          path,
+          message: "workspace ops payload records must contain valid field descriptors"
+        };
+      }
+
+      if (key === "toJSON") {
+        return {
+          ok: false,
+          path,
+          message: "workspace ops payload objects must not define custom serializers"
+        };
+      }
+
+      if (!isSecretSafeWorkspaceText(key)) {
+        return { ok: false, path, message: "workspace ops payload keys must not contain secrets" };
+      }
+
+      if (!descriptor.enumerable) {
+        return {
+          ok: false,
+          path: [...path, key],
+          message: "workspace ops payload records must contain only enumerable fields"
+        };
+      }
+
+      if (!("value" in descriptor)) {
+        return {
+          ok: false,
+          path: [...path, key],
+          message: "workspace ops payload records must not contain accessors"
+        };
+      }
+
+      const result = normalizeWorkspacePayload(descriptor.value, [...path, key], seen);
+      if (!result.ok) {
+        return result;
+      }
+      normalized[key] = result.value;
+    }
+
+    return { ok: true, value: normalized };
+  } finally {
+    seen.delete(value);
+  }
 }
 
-const workspacePayloadSchema = z.unknown().superRefine((value, ctx) => {
-  const secretPath = findSecretPath(value);
-  if (secretPath !== undefined) {
+const workspacePayloadSchema = z.unknown().transform((value, ctx) => {
+  const result = normalizeWorkspacePayload(value);
+  if (!result.ok) {
     ctx.addIssue({
       code: "custom",
-      path: secretPath,
-      message: "workspace ops payload must not contain secrets"
+      path: result.path,
+      message: result.message
     });
+    return z.NEVER;
   }
+
+  return result.value;
 });
 
 export const workspaceOpsStatusSchema = z.enum(["ready", "degraded", "blocked"]);
