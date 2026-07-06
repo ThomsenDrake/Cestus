@@ -4,7 +4,7 @@ Plan: `docs/superpowers/plans/2026-07-06-legacy-cestus-operator-cli-implementati
 Task: Task 5: Add Raw Import And Ontology Staging Runtime Gates
 Branch: `codex/legacy-import-operator-cli`
 Worktree: `/home/drake/.codex/worktrees/5738/Cestus`
-Status: claimed
+Status: ready-for-review
 Claimed-at: `2026-07-06T22:55:39Z`
 Worker: Codex
 
