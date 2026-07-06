@@ -186,6 +186,11 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
       diagnostics: [
         {
           severity: "error",
+          category: "ingestion.mount",
+          message: "Missing drive [path redacted]"
+        },
+        {
+          severity: "error",
           category: "ingestion",
           message: "Portable workspace is not mounted."
         }
@@ -203,7 +208,7 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
           {
             severity: "error",
             category: "ingestion",
-            message: "Bearer abc.def.ghi password=hunter2 oauth_token=tok_123 at /Users/drake/private/source"
+            message: "Bearer abc.def.ghi password=hunter2 oauth_token=tok_123 at /Users/drake/private/source /mnt/cestus/raw"
           }
         ],
         review: {
@@ -212,7 +217,7 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
             {
               severity: "warning",
               category: "ingestion",
-              message: "private key begins -----BEGIN PRIVATE KEY----- and path /Volumes/Cestus/raw"
+              message: "private key begins -----BEGIN PRIVATE KEY----- and path /Volumes/Cestus/raw /var/lib/cestus"
             }
           ]
         }
@@ -222,7 +227,7 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
 
     const workspace = await adapter.loadWorkspace();
 
-    expect(JSON.stringify(workspace)).not.toMatch(/abc\.def\.ghi|hunter2|tok_123|PRIVATE KEY|\/Users\/drake|\/Volumes\/Cestus/);
+    expect(JSON.stringify(workspace)).not.toMatch(/abc\.def\.ghi|hunter2|tok_123|PRIVATE KEY|\/Users\/drake|\/Volumes\/Cestus|\/mnt\/cestus|\/var\/lib/);
     expect(JSON.stringify(workspace)).toContain("[redacted]");
     expect(JSON.stringify(workspace)).toContain("[path redacted]");
   });
