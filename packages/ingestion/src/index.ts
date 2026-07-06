@@ -12,3 +12,4 @@ export * from "./parser.js";
 export * from "./provider-adapter.js";
 export * from "./legacy-types.js";
 export * from "./legacy-plugins.js";
+export * from "./legacy-inspector.js";
