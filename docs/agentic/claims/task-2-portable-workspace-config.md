@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/portable-workspace-mount-design`
 Worktree path: `/home/drake/.codex/worktrees/4ea6/Cestus`
 Claimed at UTC: `2026-07-06T13:08:55Z`
-Status: `ready-for-review`
+Status: `complete`
 
 ## Owned Files
 
@@ -32,7 +32,9 @@ Status: `ready-for-review`
 
 ## Review
 
-- Review status: code-quality follow-up fixed
+- Review status: approved
+- Spec compliance review: approved after inspection of `14aec89..fef7856`
+- Code-quality review: approved after inspection of `14aec89..fef7856`
 - Review focus: root-required portable behavior, compatibility-mode preservation, config-file secret safety, and CLI parsing.
 - Code-quality review result: ready with minor issue.
 - Minor finding: `mergeStorageConfig` preserved stale storage keys when reconfiguring away from `portable-workspace`, leaving an inactive `workspaceRoot` in persisted config.
@@ -45,4 +47,5 @@ Status: `ready-for-review`
 - Fix full verification: `npm run verify`
   - Result: passed after a TypeScript narrowing repair found by the first verify attempt.
   - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 607 passed (607)`, `tests passed`, `vite build` succeeded, `factory-readiness passed`.
+- Reviewer verification: `npm test -- packages/local-runtime/test/config.test.ts packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/cli.test.ts`, `npm run typecheck`, `npm run factory:check`, and `npm run verify` passed during review.
 - Concerns: none recorded
