@@ -70,6 +70,24 @@ function isSecretSafeWorkspacePayloadKey(value: string): boolean {
   );
 }
 
+function isSecretSafeWorkspaceIdentifier(value: string): boolean {
+  return isSecretSafeWorkspacePayloadKey(value);
+}
+
+export const secretSafeWorkspaceIdentifierSchema = z.string().min(1).refine(isSecretSafeWorkspaceIdentifier, {
+  message: "workspace ops identifiers must not contain secrets"
+});
+
+function workspaceIdentifierSchema(pattern: RegExp) {
+  return z.string().regex(pattern).refine(isSecretSafeWorkspaceIdentifier, {
+    message: "workspace ops identifiers must not contain secrets"
+  });
+}
+
+const workspaceDiagnosticIdSchema = workspaceIdentifierSchema(/^diag_[a-zA-Z0-9_-]+$/);
+const workspaceActionIdSchema = workspaceIdentifierSchema(/^(repair|action)_[a-zA-Z0-9_-]+$/);
+const workspaceIdSchema = workspaceIdentifierSchema(/^ws_[a-zA-Z0-9_-]+$/);
+
 type WorkspaceJsonPayload =
   | null
   | string
@@ -280,7 +298,21 @@ function normalizeWorkspacePayload(
   }
 }
 
-const workspacePayloadSchema = z.unknown().transform((value, ctx) => {
+const workspaceDtoJsonSchema = z.unknown().transform((value, ctx) => {
+  const result = normalizeWorkspacePayload(value);
+  if (!result.ok) {
+    ctx.addIssue({
+      code: "custom",
+      path: result.path,
+      message: result.message
+    });
+    return z.NEVER;
+  }
+
+  return result.value;
+});
+const workspacePayloadSchema = workspaceDtoJsonSchema;
+const workspaceEnvelopeInputSchema = z.unknown().transform((value, ctx): unknown => {
   const result = normalizeWorkspacePayload(value);
   if (!result.ok) {
     ctx.addIssue({
@@ -310,7 +342,7 @@ export const workspaceCommandSchema = z.enum([
 export type WorkspaceOpsCommand = z.infer<typeof workspaceCommandSchema>;
 
 export const workspaceDiagnosticSchema = z.object({
-  diagnosticId: z.string().regex(/^diag_[a-zA-Z0-9_-]+$/),
+  diagnosticId: workspaceDiagnosticIdSchema,
   severity: z.enum(["info", "warning", "error"]),
   category: z.enum([
     "manifest",
@@ -326,7 +358,7 @@ export const workspaceDiagnosticSchema = z.object({
   ]),
   message: secretSafeWorkspaceTextSchema,
   durable: z.boolean(),
-  relatedIds: z.array(secretSafeWorkspaceTextSchema).default([]),
+  relatedIds: z.array(secretSafeWorkspaceIdentifierSchema).default([]),
   repairHint: z.object({
     allowedNextCommands: z.array(workspaceCommandSchema).min(1),
     requiresHumanApproval: z.boolean()
@@ -336,7 +368,7 @@ export type WorkspaceDiagnosticDto = z.output<typeof workspaceDiagnosticSchema>;
 export type WorkspaceDiagnosticInput = z.input<typeof workspaceDiagnosticSchema>;
 
 export const proposedRepairActionSchema = z.object({
-  actionId: z.string().regex(/^(repair|action)_[a-zA-Z0-9_-]+$/),
+  actionId: workspaceActionIdSchema,
   kind: z.enum([
     "remount-drive",
     "select-workspace",
@@ -374,7 +406,7 @@ export type ProposedRepairActionDto = z.output<typeof proposedRepairActionSchema
 export type ProposedRepairActionInput = z.input<typeof proposedRepairActionSchema>;
 
 export const workspaceRefSchema = z.object({
-  workspaceId: z.string().regex(/^ws_[a-zA-Z0-9_-]+$/),
+  workspaceId: workspaceIdSchema,
   label: secretSafeWorkspaceTextSchema,
   manifestVersion: z.number().int().positive(),
   rootUri: secretSafeWorkspaceTextSchema,
@@ -421,7 +453,7 @@ const workspaceManifestSectionSchema = z.enum([
   "backup"
 ]);
 const workspaceReadinessCheckSchema = z.object({
-  checkId: secretSafeWorkspaceTextSchema,
+  checkId: secretSafeWorkspaceIdentifierSchema,
   status: z.enum(["pass", "warning", "fail"]),
   safeMessage: secretSafeWorkspaceTextSchema
 }).strict();
@@ -439,7 +471,7 @@ export const workspaceVerifyDtoSchema = z.object({
     contractVersion: secretSafeWorkspaceTextSchema,
     readable: z.boolean(),
     requiredRoots: z.array(z.object({
-      rootId: secretSafeWorkspaceTextSchema,
+      rootId: secretSafeWorkspaceIdentifierSchema,
       category: workspaceRootCategorySchema,
       status: z.enum(["available", "missing", "unreadable"]),
       safeUri: secretSafeWorkspaceTextSchema.optional()
@@ -485,7 +517,7 @@ export const diskUsageDtoSchema = z.object({
   estimatedFreeBytes: z.number().int().nonnegative().optional(),
   thresholdWarnings: z.array(secretSafeWorkspaceTextSchema),
   roots: z.array(z.object({
-    rootId: secretSafeWorkspaceTextSchema,
+    rootId: secretSafeWorkspaceIdentifierSchema,
     category: workspaceRootCategorySchema,
     bytes: z.number().int().nonnegative(),
     exists: z.boolean(),
@@ -515,18 +547,18 @@ export const projectionRebuildDtoSchema = z.object({
   }).strict(),
   artifactOutputs: z.array(z.object({
     projectionName: secretSafeWorkspaceTextSchema,
-    artifactId: secretSafeWorkspaceTextSchema,
+    artifactId: secretSafeWorkspaceIdentifierSchema,
     artifactHash: sha256HashSchema.optional(),
     byteCount: z.number().int().nonnegative(),
     expendable: z.literal(true)
   }).strict()),
   validationResults: z.array(z.object({
-    validationId: secretSafeWorkspaceTextSchema,
+    validationId: secretSafeWorkspaceIdentifierSchema,
     status: z.enum(["pass", "warning", "fail"]),
     safeMessage: secretSafeWorkspaceTextSchema
   }).strict()),
   failures: z.array(z.object({
-    failureId: secretSafeWorkspaceTextSchema,
+    failureId: secretSafeWorkspaceIdentifierSchema,
     safeMessage: secretSafeWorkspaceTextSchema,
     retryable: z.boolean()
   }).strict()),
@@ -587,8 +619,8 @@ export const backupCheckDtoSchema = z.object({
   backupManifestPresent: z.boolean(),
   identityMatches: z.boolean(),
   layoutContractMatches: z.boolean(),
-  currentWorkspaceId: z.string().regex(/^ws_[a-zA-Z0-9_-]+$/),
-  backupWorkspaceId: z.string().regex(/^ws_[a-zA-Z0-9_-]+$/).optional(),
+  currentWorkspaceId: workspaceIdSchema,
+  backupWorkspaceId: workspaceIdSchema.optional(),
   currentLedgerHighWaterMark: z.number().int().nonnegative(),
   backupLedgerHighWaterMark: z.number().int().nonnegative().optional(),
   coveredCategories: z.array(workspaceRootCategorySchema),
@@ -610,7 +642,7 @@ export const workspaceOpsCommandPayloadSchemas = {
   "backup check": backupCheckDtoSchema
 } as const;
 
-export const workspaceOpsEnvelopeSchema = z.object({
+const workspaceOpsEnvelopeObjectSchema = z.object({
   schemaVersion: z.literal(workspaceOpsSchemaVersion),
   command: workspaceCommandSchema,
   ok: z.boolean(),
@@ -663,6 +695,7 @@ export const workspaceOpsEnvelopeSchema = z.object({
 
   return envelope;
 });
+export const workspaceOpsEnvelopeSchema = workspaceEnvelopeInputSchema.pipe(workspaceOpsEnvelopeObjectSchema);
 export type WorkspaceOpsEnvelope<TPayload = unknown> = Omit<
   z.output<typeof workspaceOpsEnvelopeSchema>,
   "payload"

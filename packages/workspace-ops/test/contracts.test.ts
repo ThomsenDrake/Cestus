@@ -9,11 +9,13 @@ import {
   manifestExportDtoSchema,
   mountStatusSchema,
   projectionRebuildDtoSchema,
+  proposedRepairActionSchema,
   secretSafeWorkspaceTextSchema,
   workspaceDiagnosticSchema,
   workspaceOpsCommandPayloadSchemas,
   workspaceOpsEnvelopeSchema,
   workspaceOpsSchemaVersion,
+  workspaceRefSchema,
   workspaceVerifyDtoSchema
 } from "../src/contracts.js";
 
@@ -73,6 +75,42 @@ const workspaceVerifyPayload = {
   diagnostics: { visible: true, errorCount: 0, warningCount: 0 },
   backup: { manifestAvailable: true, latestManifestHash: hash, stale: false }
 } as const;
+
+const diagnosticInput = {
+  diagnosticId: "diag_contract_warning",
+  severity: "warning",
+  category: "backup",
+  message: "Backup manifest is stale.",
+  durable: false,
+  relatedIds: ["evt_contract_warning"],
+  repairHint: {
+    allowedNextCommands: ["manifest export", "backup check"],
+    requiresHumanApproval: false
+  }
+} as const;
+
+const proposedActionInput = {
+  actionId: "action_export_manifest",
+  kind: "export-manifest",
+  title: "Export a fresh workspace manifest.",
+  severity: "warning",
+  requiresHumanApproval: false,
+  mutatesCanonicalState: false,
+  allowedNextCommands: ["manifest export", "backup check"]
+} as const;
+
+function accessorArray<T>(value: T, onGet: () => void): T[] {
+  const array: T[] = [];
+  Object.defineProperty(array, "0", {
+    enumerable: true,
+    configurable: true,
+    get() {
+      onGet();
+      return value;
+    }
+  });
+  return array;
+}
 
 describe("workspace ops contracts", () => {
   it("uses a stable schema version and JSON envelope", () => {
@@ -702,5 +740,145 @@ describe("workspace ops contracts", () => {
         proposedActions: []
       })
     ).toThrow("result");
+  });
+
+  it("rejects accessor-backed arrays across the full envelope without invoking getters", () => {
+    const getterInvocations = {
+      diagnostics: 0,
+      proposedActions: 0,
+      relatedIds: 0,
+      allowedNextCommands: 0
+    };
+    const cases = [
+      {
+        envelope: {
+          schemaVersion: workspaceOpsSchemaVersion,
+          command: "verify workspace",
+          ok: false,
+          status: "blocked",
+          diagnostics: accessorArray(diagnosticInput, () => {
+            getterInvocations.diagnostics += 1;
+          }),
+          proposedActions: []
+        },
+        invocationKey: "diagnostics"
+      },
+      {
+        envelope: {
+          schemaVersion: workspaceOpsSchemaVersion,
+          command: "verify workspace",
+          ok: false,
+          status: "blocked",
+          diagnostics: [],
+          proposedActions: accessorArray(proposedActionInput, () => {
+            getterInvocations.proposedActions += 1;
+          })
+        },
+        invocationKey: "proposedActions"
+      },
+      {
+        envelope: {
+          schemaVersion: workspaceOpsSchemaVersion,
+          command: "verify workspace",
+          ok: false,
+          status: "blocked",
+          diagnostics: [
+            {
+              ...diagnosticInput,
+              relatedIds: accessorArray("evt_contract_warning", () => {
+                getterInvocations.relatedIds += 1;
+              })
+            }
+          ],
+          proposedActions: []
+        },
+        invocationKey: "relatedIds"
+      },
+      {
+        envelope: {
+          schemaVersion: workspaceOpsSchemaVersion,
+          command: "verify workspace",
+          ok: false,
+          status: "blocked",
+          diagnostics: [
+            {
+              ...diagnosticInput,
+              repairHint: {
+                allowedNextCommands: accessorArray("diagnostics inspect", () => {
+                  getterInvocations.allowedNextCommands += 1;
+                }),
+                requiresHumanApproval: false
+              }
+            }
+          ],
+          proposedActions: []
+        },
+        invocationKey: "allowedNextCommands"
+      }
+    ] as const;
+
+    for (const { envelope, invocationKey } of cases) {
+      expect(() => workspaceOpsEnvelopeSchema.parse(envelope)).toThrow("accessors");
+      expect(getterInvocations[invocationKey]).toBe(0);
+    }
+  });
+
+  it("rejects secret-shaped identifiers across output DTOs", () => {
+    expect(() =>
+      workspaceDiagnosticSchema.parse({
+        ...diagnosticInput,
+        diagnosticId: "diag_access_token_abc123"
+      })
+    ).toThrow("secret");
+
+    expect(() =>
+      proposedRepairActionSchema.parse({
+        ...proposedActionInput,
+        actionId: "repair_access_token_abc123"
+      })
+    ).toThrow("secret");
+
+    expect(() =>
+      workspaceRefSchema.parse({
+        ...workspaceRef,
+        workspaceId: "ws_access_token_abc123"
+      })
+    ).toThrow("secret");
+
+    expect(() =>
+      backupCheckDtoSchema.parse({
+        schemaVersion: workspaceOpsSchemaVersion,
+        backupManifestPresent: true,
+        identityMatches: true,
+        layoutContractMatches: true,
+        currentWorkspaceId: "ws_access_token_abc123",
+        backupWorkspaceId: "ws_contracts",
+        currentLedgerHighWaterMark: 12,
+        backupLedgerHighWaterMark: 10,
+        coveredCategories: ["ledger"],
+        missingCategories: [],
+        stale: false,
+        containsSecretShapedFields: false,
+        safeNextActions: []
+      })
+    ).toThrow("secret");
+
+    expect(() =>
+      backupCheckDtoSchema.parse({
+        schemaVersion: workspaceOpsSchemaVersion,
+        backupManifestPresent: true,
+        identityMatches: true,
+        layoutContractMatches: true,
+        currentWorkspaceId: "ws_contracts",
+        backupWorkspaceId: "ws_access_token_abc123",
+        currentLedgerHighWaterMark: 12,
+        backupLedgerHighWaterMark: 10,
+        coveredCategories: ["ledger"],
+        missingCategories: [],
+        stale: false,
+        containsSecretShapedFields: false,
+        safeNextActions: []
+      })
+    ).toThrow("secret");
   });
 });
