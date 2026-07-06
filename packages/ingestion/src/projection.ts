@@ -613,6 +613,11 @@ function sourceAndScanFromStreamId(streamId: string): {
   sourceCollectionId: string;
   scanBatchId: string;
 } | undefined {
+  const encodedDiagnostic = encodedDiagnosticSourceAndScanFromStreamId(streamId);
+  if (encodedDiagnostic !== undefined) {
+    return encodedDiagnostic;
+  }
+
   const streamPrefix = [
     "ingestion_import_",
     "ingestion_evidence_link_",
@@ -653,6 +658,45 @@ function sourceAndScanFromStreamId(streamId: string): {
     sourceCollectionId,
     scanBatchId
   };
+}
+
+function encodedDiagnosticSourceAndScanFromStreamId(streamId: string): {
+  sourceCollectionId: string;
+  scanBatchId: string;
+} | undefined {
+  const matched = /^ingestion_diagnostic_v1\.([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)$/.exec(streamId);
+
+  if (matched?.[1] === undefined || matched[2] === undefined || matched[3] === undefined) {
+    return undefined;
+  }
+
+  const sourceCollectionId = decodeBase64Url(matched[1]);
+  const scanBatchId = decodeBase64Url(matched[2]);
+  const importBatchId = decodeBase64Url(matched[3]);
+
+  if (
+    sourceCollectionId === undefined ||
+    scanBatchId === undefined ||
+    importBatchId === undefined ||
+    !isStreamIdSegment(sourceCollectionId, "src_") ||
+    !isStreamIdSegment(scanBatchId, "scan_") ||
+    !isStreamIdSegment(importBatchId, "imp_")
+  ) {
+    return undefined;
+  }
+
+  return {
+    sourceCollectionId,
+    scanBatchId
+  };
+}
+
+function decodeBase64Url(value: string): string | undefined {
+  try {
+    return Buffer.from(value, "base64url").toString("utf8");
+  } catch {
+    return undefined;
+  }
 }
 
 function isStreamIdSegment(value: string, prefix: "src_" | "scan_" | "imp_"): boolean {

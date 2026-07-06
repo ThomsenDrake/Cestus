@@ -73,3 +73,12 @@
   - Result: passed; Vitest reported 7 test files passed and 46 tests passed.
 - Full verification command: `npm run verify`
   - Result: passed; typecheck passed, Vitest reported 72 test files passed and 607 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Final Code-Quality Review Frozen Inventory Fix Evidence
+
+- Red command: `npm test -- packages/ingestion/test/runtime-import-stale-source.test.ts packages/ingestion/test/projection.test.ts`
+  - Result: failed as expected with 10 failing tests because runtime still used projection-widened scan occurrence IDs and stale diagnostics still used marker-delimited streams.
+- Targeted command: `npm test -- packages/ingestion/test/runtime.test.ts packages/ingestion/test/runtime-import-stale-source.test.ts packages/ingestion/test/import-service.test.ts packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts packages/ingestion/test/local-filesystem.test.ts`
+  - Result: passed; Vitest reported 7 test files passed and 48 tests passed.
+- Full verification command: `npm run verify`
+  - Result: passed; typecheck passed, Vitest reported 72 test files passed and 609 tests passed, Vite build succeeded, and factory readiness passed.

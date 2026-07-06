@@ -2,7 +2,8 @@ import { fileURLToPath } from "node:url";
 import type { z } from "zod";
 import {
   actorRefSchema,
-  type AppendableKnowledgeEvent
+  type AppendableKnowledgeEvent,
+  type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
 import { IngestionImportService } from "./import-service.js";
 import { LocalFilesystemScanner } from "./local-filesystem.js";
@@ -206,12 +207,28 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
         return rootDir;
       }
 
+      const approvedOccurrences = await occurrencesApprovedByCompletedScan(workspace.workspace, command);
+      if (!approvedOccurrences.ok) {
+        try {
+          await appendStaleSourceDiagnostic(
+            workspace.workspace,
+            command,
+            input.actor,
+            approvedOccurrences.error.allowedRepairActions,
+            approval.approvedEventId
+          );
+        } catch {
+          return runtimeInternalError("import");
+        }
+        return { ok: false, error: approvedOccurrences.error };
+      }
+
       const materialized = materializeApprovedOccurrences({
         sourceRoot: rootDir.rootDir,
         sourceCollectionId: command.sourceCollectionId,
         scanBatchId: command.scanBatchId,
         importBatchId: command.importBatchId,
-        occurrences: occurrencesForScan(projection, command.sourceCollectionId, command.scanBatchId)
+        occurrences: approvedOccurrences.occurrences
       });
 
       if (!materialized.ok) {
@@ -391,22 +408,55 @@ function staleSourceDiagnosticId(
 function diagnosticStreamId(
   input: Pick<ImportApprovedInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">
 ): string {
-  return `ingestion_diagnostic_${input.sourceCollectionId}_${input.scanBatchId}_${input.importBatchId}`;
+  return `ingestion_diagnostic_v1.${base64Url(input.sourceCollectionId)}.${base64Url(input.scanBatchId)}.${base64Url(input.importBatchId)}`;
 }
 
-function occurrencesForScan(
-  projection: IngestionProjection,
-  sourceCollectionId: string,
-  scanBatchId: string
-) {
-  const scan = projection.scans.get(scanBatchId);
-  return (scan?.occurrenceIds ?? [])
-    .map((occurrenceId) => projection.occurrencesById.get(occurrenceId))
-    .filter((occurrence): occurrence is IngestionOccurrenceSummary =>
-      occurrence !== undefined &&
-      occurrence.sourceCollectionId === sourceCollectionId &&
-      occurrence.scanBatchId === scanBatchId
-    );
+function base64Url(value: string): string {
+  return Buffer.from(value, "utf8").toString("base64url");
+}
+
+async function occurrencesApprovedByCompletedScan(
+  workspace: MountedWorkspace,
+  input: Pick<ImportApprovedInput, "sourceCollectionId" | "scanBatchId">
+): Promise<IngestionRuntimeResult<{ occurrences: IngestionOccurrenceSummary[] }>> {
+  const events = await workspace.ledger.readStream(`ingestion_scan_${input.scanBatchId}`);
+  const occurrences: IngestionOccurrenceSummary[] = [];
+  let completed = false;
+
+  for (const event of events) {
+    if (
+      event.type === "ingestion.scan.completed" &&
+      event.payload.sourceCollectionId === input.sourceCollectionId &&
+      event.payload.scanBatchId === input.scanBatchId
+    ) {
+      completed = true;
+      continue;
+    }
+
+    if (
+      event.type === "ingestion.occurrence.observed" &&
+      event.payload.sourceCollectionId === input.sourceCollectionId &&
+      event.payload.scanBatchId === input.scanBatchId
+    ) {
+      if (completed) {
+        return staleApprovedInventoryError();
+      }
+      occurrences.push(occurrenceSummaryForObservedEvent(event));
+    }
+  }
+
+  return completed ? { ok: true, occurrences } : scanRequiredError();
+}
+
+function occurrenceSummaryForObservedEvent(
+  event: KnowledgeEventOf<"ingestion.occurrence.observed">
+): IngestionOccurrenceSummary {
+  return {
+    ...event.payload,
+    ...(event.payload.adapter === undefined ? {} : { adapter: { ...event.payload.adapter } }),
+    ...(event.payload.archiveAdapter === undefined ? {} : { archiveAdapter: { ...event.payload.archiveAdapter } }),
+    observedEventId: event.id
+  };
 }
 
 function eventIdsAddedAfter(
@@ -432,6 +482,19 @@ function scanRequiredError(): IngestionRuntimeResult<never> {
     code: "INGESTION_SCAN_REQUIRED",
     message: "A completed dry-run scan is required before raw import approval or execution.",
     allowedRepairActions: ["run a dry-run scan", "retry the ingestion action"]
+  });
+}
+
+function staleApprovedInventoryError(): IngestionRuntimeResult<never> {
+  return stableIngestionError({
+    code: "INGESTION_SOURCE_CHANGED_SINCE_APPROVAL",
+    message: "Approved dry-run inventory no longer matches current source bytes.",
+    allowedRepairActions: ["rerun dry-run scan", "review source changes", "approve a new import batch"],
+    diagnostics: [{
+      severity: "error",
+      category: "ingestion.stale-source",
+      message: "Current source bytes differ from the approved dry-run inventory."
+    }]
   });
 }
 
