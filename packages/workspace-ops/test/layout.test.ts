@@ -134,6 +134,56 @@ describe("resolveWorkspaceLayout", () => {
     expect(JSON.stringify(result)).not.toContain("ws_other_workspace");
   });
 
+  it("rejects traversal manifest names without reading outside the selected root", async () => {
+    const fileSystem = new RecordingReadOnlyFs();
+    fileSystem.directories.add("/mnt/wrong-drive");
+    fileSystem.directories.add("/mnt/real-drive");
+    fileSystem.files.set(
+      "/mnt/real-drive/cestus-workspace.json",
+      JSON.stringify({ workspaceId: "ws_real_workspace", label: "Real workspace", version: 1 })
+    );
+
+    const result = await resolveWorkspaceLayout(
+      { rootPath: "/mnt/wrong-drive", manifestName: "../real-drive/cestus-workspace.json" },
+      fileSystem
+    );
+
+    expect(result.mountStatus.status).not.toBe("available");
+    expect(result.workspace).toBeUndefined();
+    expect(result.layout).toBeUndefined();
+    expect(fileSystem.readCalls).toEqual([]);
+    expect(result.diagnostics[0]).toMatchObject({
+      diagnosticId: "diag_workspace_manifest_name_unsafe",
+      category: "manifest"
+    });
+    expect(JSON.stringify(result.envelope)).not.toContain("ws_real_workspace");
+  });
+
+  it("rejects absolute manifest names without reading outside the selected root", async () => {
+    const fileSystem = new RecordingReadOnlyFs();
+    fileSystem.directories.add("/mnt/wrong-drive");
+    fileSystem.directories.add("/mnt/real-drive");
+    fileSystem.files.set(
+      "/mnt/real-drive/cestus-workspace.json",
+      JSON.stringify({ workspaceId: "ws_real_workspace", label: "Real workspace", version: 1 })
+    );
+
+    const result = await resolveWorkspaceLayout(
+      { rootPath: "/mnt/wrong-drive", manifestName: "/mnt/real-drive/cestus-workspace.json" },
+      fileSystem
+    );
+
+    expect(result.mountStatus.status).not.toBe("available");
+    expect(result.workspace).toBeUndefined();
+    expect(result.layout).toBeUndefined();
+    expect(fileSystem.readCalls).toEqual([]);
+    expect(result.diagnostics[0]).toMatchObject({
+      diagnosticId: "diag_workspace_manifest_name_unsafe",
+      category: "manifest"
+    });
+    expect(JSON.stringify(result.envelope)).not.toContain("ws_real_workspace");
+  });
+
   it("reports an unreadable manifest without leaking manifest content", async () => {
     const fileSystem = new RecordingReadOnlyFs();
     fileSystem.directories.add("/mnt/portable");
