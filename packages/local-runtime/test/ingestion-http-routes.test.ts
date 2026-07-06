@@ -266,6 +266,29 @@ describe("local runtime ingestion HTTP routes", () => {
     expect(runtimeFactory).not.toHaveBeenCalled();
   });
 
+  it("does not expose non-approved source or import alias routes", async () => {
+    const runtimeFactory = vi.fn();
+    const handler = testHandler({
+      ingestionMountResolver: mountedResolver(),
+      ingestionRuntimeFactory: runtimeFactory
+    });
+
+    const registerAlias = await handler({
+      method: "POST",
+      url: "/api/ingestion/sources/register",
+      body: JSON.stringify(sourceRegistration())
+    });
+    const importAlias = await handler({
+      method: "POST",
+      url: "/api/ingestion/imports/import",
+      body: JSON.stringify(importExecution())
+    });
+
+    expect(registerAlias.status).toBe(404);
+    expect(importAlias.status).toBe(404);
+    expect(runtimeFactory).not.toHaveBeenCalled();
+  });
+
   it("dispatches jobs, retry, diagnostics, source registration, raw approval, and import routes directly", async () => {
     const runtime = {
       listJobs: vi.fn(async () => ({ ok: true as const, jobs: [] })),

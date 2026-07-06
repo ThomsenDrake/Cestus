@@ -50,3 +50,15 @@
   - Result: failed in `npm run typecheck` because the route union narrowed `queryFields` only on runtime routes; repaired by allowing query route metadata on workspace/source route variants.
 - Full verification command: `npm run verify`
   - Result: passed; typecheck passed, Vitest reported 74 test files passed and 635 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Spec Re-review Alias Route Fix Evidence
+
+- Re-review finding at `e01134f`: the HTTP route table still exposed non-approved compatibility aliases `POST /api/ingestion/sources/register` and `POST /api/ingestion/imports/import`.
+- Red command: `npm test -- packages/local-runtime/test/ingestion-http-routes.test.ts`
+  - Result: failed as expected; Vitest reported 1 failed test because the alias route still attempted runtime dispatch instead of returning 404.
+- Focused green command: `npm test -- packages/local-runtime/test/ingestion-http-routes.test.ts`
+  - Result: passed; Vitest reported 1 test file passed and 14 tests passed.
+- Targeted command: `npm test -- packages/local-runtime/test/ingestion-http-routes.test.ts packages/local-runtime/test/auth-and-seed.test.ts packages/local-runtime/test/http-handler.test.ts`
+  - Result: passed; Vitest reported 3 test files passed and 30 tests passed.
+- Full verification command: `npm run verify`
+  - Result: passed at 2026-07-06T17:14:44Z; typecheck passed, Vitest reported 74 test files passed and 636 tests passed, Vite build succeeded, and factory readiness passed.
