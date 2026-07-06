@@ -74,6 +74,9 @@ describe("local runtime auth and explicit seed", () => {
     const rejected = await handler({ method: "GET", url: "/api/requests/workspace" });
     expect(rejected.status).toBe(401);
 
+    const rejectedIngestion = await handler({ method: "GET", url: "/api/ingestion/jobs" });
+    expect(rejectedIngestion.status).toBe(401);
+
     const wrongToken = await handler({
       method: "GET",
       url: "/api/requests/workspace",
