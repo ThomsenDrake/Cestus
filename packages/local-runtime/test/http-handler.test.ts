@@ -108,7 +108,7 @@ describe("createLocalRuntimeHttpHandler", () => {
         CESTUS_WORKSPACE_ROOT: workspaceRoot
       }
     });
-    const first = createLocalRuntimeHttpHandler({
+    const first = testHandler({
       config,
       actor,
       now: fixedNow,
@@ -128,6 +128,7 @@ describe("createLocalRuntimeHttpHandler", () => {
       })
     });
     first.close();
+    handlers.splice(handlers.indexOf(first), 1);
 
     expect(health.status).toBe(200);
     expect(JSON.parse(health.body)).toMatchObject({
@@ -145,9 +146,10 @@ describe("createLocalRuntimeHttpHandler", () => {
     expect(existsSync(join(workspaceRoot, "ledger", "ontology.sqlite"))).toBe(true);
     expect(existsSync(join(cwd, ".cestus/local/prr-ledger.sqlite"))).toBe(false);
 
-    const second = createLocalRuntimeHttpHandler({ config, actor, now: fixedNow });
+    const second = testHandler({ config, actor, now: fixedNow });
     const reloaded = await second({ method: "GET", url: "/api/requests/workspace" });
     second.close();
+    handlers.splice(handlers.indexOf(second), 1);
 
     expect(JSON.parse(reloaded.body).cards.map((card: { prrRequestId: string }) => card.prrRequestId)).toContain(
       "prr_portable_city_budget"
