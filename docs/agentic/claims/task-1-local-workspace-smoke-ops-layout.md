@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/local-workspace-readiness-smoke`
 Worktree path: `/home/drake/.codex/worktrees/2800/Cestus`
 Claimed at UTC: `2026-07-06T21:30:55Z`
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -16,9 +16,9 @@ Status: `in-progress`
 
 ## Evidence
 
-- Red command:
-- Green command:
-- Full verification:
+- Red command: `npm test -- packages/workspace-ops/test/layout.test.ts` failed as expected; the canonical portable workspace binding test received `blocked` instead of `ready`.
+- Green command: `npm test -- packages/workspace-ops/test/layout.test.ts packages/workspace-ops/test/ops.test.ts` passed: 2 test files, 21 tests.
+- Full verification: `npm run verify` passed: typecheck passed, 92 test files passed, 823 tests passed, UI build succeeded, factory-readiness passed.
 
 ## Review
 
