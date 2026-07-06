@@ -5,3 +5,4 @@ export * from "./ops.js";
 export * from "./projection-rebuild.js";
 export * from "./diagnostics.js";
 export * from "./backup.js";
+export * from "./cli.js";

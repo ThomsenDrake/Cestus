@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit && echo 'typecheck passed'",
     "factory:check": "node scripts/check-agent-readiness.mjs",
     "ingestion:help": "node packages/ingestion/bin/cestus-ingest.mjs --help",
+    "workspace:help": "node packages/workspace-ops/bin/cestus-workspace.mjs --help",
     "verify": "npm run typecheck && npm test && echo 'tests passed' && npm run ui:build && npm run factory:check",
     "local:runtime": "tsx packages/local-runtime/src/cli.ts serve",
     "local:runtime:configure": "tsx packages/local-runtime/src/cli.ts configure",
