@@ -6,7 +6,7 @@
 - Branch: `codex/operator-workspace-status-import-bridge`
 - Worktree: `/home/drake/.codex/worktrees/7234/Cestus`
 - Claimed at: `2026-07-06T22:00:28Z`
-- Status: claimed
+- Status: in-progress
 
 ## Owned Files
 
@@ -20,10 +20,11 @@
 ## Notes
 
 - `2026-07-06T22:00:28Z`: Claim created after reading the factory contract, active plan, Task 1 status contract, local-runtime route patterns, ingestion DTOs, legacy readiness DTOs, PRR read DTOs, and workspace-ops verify envelope contracts.
+- `2026-07-06T22:00:46Z`: Claim moved to in-progress before writing operator status tests or implementation.
 
 ## Evidence
 
-- Pending.
+- Claim commit: `6d7087e chore: claim task 2 operator status runtime`.
 
 ## Self-Review
 
