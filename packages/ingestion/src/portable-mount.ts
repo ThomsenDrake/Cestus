@@ -30,7 +30,13 @@ export function createPortableIngestionMountResolver(): IngestionWorkspaceMountR
         };
       }
 
-      const ledger = new SQLiteEventLedger(mounted.workspace.paths.ledgerPath);
+      let ledger: SQLiteEventLedger;
+      try {
+        ledger = new SQLiteEventLedger(mounted.workspace.paths.ledgerPath);
+      } catch {
+        return ledgerUnavailableError();
+      }
+
       const workspace: MountedWorkspace & { close(): void } = {
         workspaceId: mounted.workspace.workspaceId,
         label: mounted.workspace.label,
@@ -58,4 +64,18 @@ export function createPortableIngestionMountResolver(): IngestionWorkspaceMountR
       };
     }
   };
+}
+
+function ledgerUnavailableError() {
+  return {
+    ok: false,
+    error: {
+      code: "INGESTION_WORKSPACE_NOT_WRITABLE",
+      message: "Portable workspace ledger path is unavailable.",
+      allowedRepairActions: [
+        "restore ledger/ontology.sqlite as a SQLite database file",
+        "choose a valid portable workspace root"
+      ]
+    }
+  } as const;
 }
