@@ -6,7 +6,7 @@
 - Branch: `codex/ingestion-runtime-wiring-design`
 - Worktree: `/home/drake/.codex/worktrees/15cc/Cestus`
 - Claimed at: 2026-07-06T13:14:13Z
-- Status: claimed
+- Status: in-progress
 
 ## Owned Files
 
@@ -15,3 +15,12 @@
 - `packages/ingestion/test/runtime-test-helpers.ts`
 - `packages/ingestion/test/runtime.test.ts`
 - `packages/ingestion/src/index.ts`
+
+## Verification Evidence
+
+- Red command: `npm test -- packages/ingestion/test/runtime.test.ts`
+  - Result: failed as expected because `../src/runtime.js` could not be resolved from `packages/ingestion/test/runtime.test.ts`; Vitest reported 1 failed suite and no tests run.
+- Green command: `npm test -- packages/ingestion/test/runtime-contracts.test.ts packages/ingestion/test/runtime.test.ts`
+  - Result: passed; Vitest reported 2 test files passed and 7 tests passed.
+- Full verification command: `npm run verify`
+  - Result: passed; typecheck passed, Vitest reported 71 test files passed and 592 tests passed, Vite build succeeded, and factory readiness passed.
