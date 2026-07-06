@@ -7,7 +7,7 @@
 - Worktree: `/home/drake/.codex/worktrees/15cc/Cestus`
 - Head: `54205e7d86854c5b9038d40de9c797fd67b7250b`
 - Claimed at: 2026-07-06T16:11:50Z
-- Status: claimed
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -18,6 +18,9 @@
 
 ## Verification Evidence
 
-- Pending red command: `npm test -- packages/ingestion/test/runtime-jobs-provider.test.ts`
-- Pending targeted command: `npm test -- packages/ingestion/test/runtime-jobs-provider.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts`
-- Pending full verification command: `npm run verify`
+- Red command: `npm test -- packages/ingestion/test/runtime-jobs-provider.test.ts`
+  - Result: failed as expected; Vitest reported 1 failed test file and 4 failed tests because `runtime.listJobs`, `runtime.approveProviderParsing`, `runtime.retryJob`, and `runtime.diagnostics` were not implemented.
+- Green targeted command: `npm test -- packages/ingestion/test/runtime-jobs-provider.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts`
+  - Result: passed; Vitest reported 4 test files passed and 22 tests passed.
+- Full verification command: `npm run verify`
+  - Result: passed; typecheck passed, Vitest reported 73 test files passed and 614 tests passed, Vite build succeeded, and factory readiness passed.

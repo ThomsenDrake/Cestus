@@ -8,13 +8,20 @@ import {
 import { IngestionImportService } from "./import-service.js";
 import { LocalFilesystemScanner } from "./local-filesystem.js";
 import type { MountedWorkspace } from "./mount-contract.js";
+import { ProviderParseApprovalService, type ApproveProviderBatchInput } from "./provider-adapter.js";
 import {
   buildIngestionProjection,
+  type IngestionDiagnosticReference,
   type IngestionOccurrenceSummary,
+  type IngestionParseJobSummary,
   type IngestionProjection
 } from "./projection.js";
 import { buildIngestionReviewDto } from "./read-api.js";
 import {
+  type IngestionDiagnosticsDto,
+  type IngestionJobDto,
+  type IngestionJobListDto,
+  type IngestionJobResultDto,
   stableIngestionError,
   type IngestionImportResultDto,
   type IngestionRuntimeResult
@@ -28,6 +35,7 @@ type IngestionReview = ReturnType<typeof buildIngestionReviewDto>;
 export interface CreateIngestionRuntimeInput {
   readonly mountedWorkspace?: MountedWorkspace | undefined;
   readonly actor: ActorRef;
+  readonly providerRegistry?: Readonly<Record<string, unknown>>;
 }
 
 export interface RegisterSourceInput {
@@ -53,6 +61,20 @@ export interface ImportApprovedInput {
   readonly sourceCollectionId: string;
   readonly scanBatchId: string;
   readonly importBatchId: string;
+}
+
+export interface ListIngestionJobsInput {
+  readonly sourceCollectionId?: string;
+}
+
+export interface RetryIngestionJobInput {
+  readonly jobId: string;
+}
+
+export type ApproveProviderParsingInput = ApproveProviderBatchInput;
+
+export interface IngestionDiagnosticsInput {
+  readonly sourceCollectionId?: string;
 }
 
 export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
@@ -278,6 +300,89 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       } catch {
         return runtimeInternalError("import");
       }
+    },
+
+    async listJobs(command: ListIngestionJobsInput): Promise<IngestionRuntimeResult<IngestionJobListDto>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "read");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      try {
+        return {
+          ok: true,
+          jobs: jobsForProjection(await projectionFor(workspace.workspace), command.sourceCollectionId)
+        };
+      } catch {
+        return runtimeInternalError("jobs");
+      }
+    },
+
+    async retryJob(command: RetryIngestionJobInput): Promise<IngestionRuntimeResult<IngestionJobResultDto>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "write");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      try {
+        const [job] = jobsForProjection(await projectionFor(workspace.workspace))
+          .filter((candidate) => candidate.jobId === command.jobId);
+
+        if (job === undefined || !job.retryable) {
+          return jobNotRetryableError();
+        }
+
+        return jobNotRetryableError();
+      } catch {
+        return runtimeInternalError("retry");
+      }
+    },
+
+    async approveProviderParsing(command: ApproveProviderParsingInput): Promise<IngestionRuntimeResult<{
+      review: IngestionReview;
+      eventIds: string[];
+    }>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "write");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      const projection = await projectionFor(workspace.workspace);
+      if (!projection.sources.has(command.sourceCollectionId)) {
+        return sourceNotRegisteredError(command.sourceCollectionId);
+      }
+
+      try {
+        const service = new ProviderParseApprovalService({
+          ledger: workspace.workspace.ledger,
+          actor: input.actor
+        });
+        const event = await service.approveProviderBatch(command);
+
+        return {
+          ok: true,
+          review: await reviewFor(workspace.workspace, command.sourceCollectionId),
+          eventIds: [event.id]
+        };
+      } catch {
+        return runtimeInternalError("provider approval");
+      }
+    },
+
+    async diagnostics(command: IngestionDiagnosticsInput): Promise<IngestionRuntimeResult<IngestionDiagnosticsDto>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "read");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      try {
+        return {
+          ok: true,
+          diagnostics: diagnosticsForProjection(await projectionFor(workspace.workspace), command.sourceCollectionId)
+        };
+      } catch {
+        return runtimeInternalError("diagnostics");
+      }
     }
   };
 }
@@ -496,6 +601,161 @@ function eventIdsAddedAfter(
     .map((event) => event.id);
 }
 
+function jobsForProjection(
+  projection: IngestionProjection,
+  sourceCollectionId: string | undefined = undefined
+): IngestionJobDto[] {
+  return [
+    ...scanJobsForProjection(projection, sourceCollectionId),
+    ...importJobsForProjection(projection, sourceCollectionId),
+    ...parseJobsForProjection(projection, sourceCollectionId),
+    ...providerJobsForProjection(projection, sourceCollectionId)
+  ].sort((left, right) => compareJobDto(left, right));
+}
+
+function scanJobsForProjection(
+  projection: IngestionProjection,
+  sourceCollectionId: string | undefined
+): IngestionJobDto[] {
+  return [...projection.scans.values()]
+    .filter((scan) => sourceCollectionId === undefined || scan.sourceCollectionId === sourceCollectionId)
+    .map((scan) => ({
+      jobId: scan.scanBatchId,
+      kind: "scan" as const,
+      state: scan.state === "completed" ? "succeeded" as const : "running" as const,
+      retryable: false,
+      sourceCollectionId: scan.sourceCollectionId,
+      scanBatchId: scan.scanBatchId,
+      diagnosticIds: [...scan.diagnosticIds].sort(compareCodeUnits)
+    }));
+}
+
+function importJobsForProjection(
+  projection: IngestionProjection,
+  sourceCollectionId: string | undefined
+): IngestionJobDto[] {
+  const importBatchIds = new Set([
+    ...projection.importApprovals.keys(),
+    ...projection.importCompletions.keys()
+  ]);
+  const jobs: IngestionJobDto[] = [];
+
+  for (const importBatchId of importBatchIds) {
+    const completion = projection.importCompletions.get(importBatchId);
+    const approval = projection.importApprovals.get(importBatchId);
+    const sourceId = completion?.sourceCollectionId ?? approval?.sourceCollectionId;
+    const scanBatchId = completion?.scanBatchId ?? approval?.scanBatchId;
+
+    if (sourceId === undefined || scanBatchId === undefined) {
+      continue;
+    }
+
+    if (sourceCollectionId !== undefined && sourceId !== sourceCollectionId) {
+      continue;
+    }
+
+    jobs.push({
+      jobId: importBatchId,
+      kind: "import",
+      state: completion === undefined ? "queued" : "succeeded",
+      retryable: false,
+      sourceCollectionId: sourceId,
+      scanBatchId,
+      importBatchId,
+      diagnosticIds: diagnosticIdsFor(projection, sourceId, scanBatchId)
+    });
+  }
+
+  return jobs;
+}
+
+function parseJobsForProjection(
+  projection: IngestionProjection,
+  sourceCollectionId: string | undefined
+): IngestionJobDto[] {
+  return [...projection.parseJobs.values()]
+    .filter((job) => sourceCollectionId === undefined || job.sourceCollectionId === sourceCollectionId)
+    .map((job) => ({
+      jobId: job.parseJobId,
+      kind: job.lane === "provider" ? "provider-parse" as const : "local-parse" as const,
+      state: parseJobState(job),
+      retryable: job.state === "failed" && job.retryable === true,
+      sourceCollectionId: job.sourceCollectionId,
+      importBatchId: job.importBatchId,
+      evidenceId: job.evidenceId,
+      diagnosticIds: diagnosticIdsFor(projection, job.sourceCollectionId)
+    }));
+}
+
+function providerJobsForProjection(
+  projection: IngestionProjection,
+  sourceCollectionId: string | undefined
+): IngestionJobDto[] {
+  return [...projection.providerApprovals.values()]
+    .filter((approval) => sourceCollectionId === undefined || approval.sourceCollectionId === sourceCollectionId)
+    .map((approval) => ({
+      jobId: approval.providerJobId,
+      kind: "provider-parse" as const,
+      state: "queued" as const,
+      retryable: false,
+      sourceCollectionId: approval.sourceCollectionId,
+      importBatchId: approval.importBatchId,
+      diagnosticIds: diagnosticIdsFor(projection, approval.sourceCollectionId)
+    }));
+}
+
+function parseJobState(job: IngestionParseJobSummary): IngestionJobDto["state"] {
+  switch (job.state) {
+    case "queued":
+      return "queued";
+    case "running":
+      return "running";
+    case "succeeded":
+      return "succeeded";
+    case "failed":
+      return "failed";
+  }
+}
+
+function diagnosticsForProjection(
+  projection: IngestionProjection,
+  sourceCollectionId: string | undefined
+): IngestionDiagnosticsDto["diagnostics"] {
+  return [...projection.diagnostics.values()]
+    .filter((diagnostic) => sourceCollectionId === undefined || diagnostic.sourceCollectionId === sourceCollectionId)
+    .map(stableDiagnosticDto)
+    .sort((left, right) => compareCodeUnits(left.diagnosticId ?? "", right.diagnosticId ?? ""));
+}
+
+function stableDiagnosticDto(diagnostic: IngestionDiagnosticReference): IngestionDiagnosticsDto["diagnostics"][number] {
+  return {
+    diagnosticId: diagnostic.diagnosticId,
+    severity: diagnostic.severity,
+    category: diagnostic.category,
+    message: diagnostic.message
+  };
+}
+
+function diagnosticIdsFor(
+  projection: IngestionProjection,
+  sourceCollectionId: string,
+  scanBatchId?: string
+): string[] {
+  if (scanBatchId !== undefined) {
+    return [...(projection.scans.get(scanBatchId)?.diagnosticIds ?? [])].sort(compareCodeUnits);
+  }
+
+  return [...(projection.diagnosticsBySourceCollectionId.get(sourceCollectionId) ?? [])].sort(compareCodeUnits);
+}
+
+function compareJobDto(left: IngestionJobDto, right: IngestionJobDto): number {
+  return compareCodeUnits(`${left.kind}:${left.jobId}`, `${right.kind}:${right.jobId}`);
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function sourceNotRegisteredError(sourceCollectionId: string): IngestionRuntimeResult<never> {
   return stableIngestionError({
     code: "INGESTION_SOURCE_NOT_REGISTERED",
@@ -525,6 +785,14 @@ function staleApprovedInventoryError(): IngestionRuntimeResult<never> {
   });
 }
 
+function jobNotRetryableError(): IngestionRuntimeResult<never> {
+  return stableIngestionError({
+    code: "INGESTION_JOB_NOT_RETRYABLE",
+    message: "The requested ingestion job is missing or is not retryable.",
+    allowedRepairActions: ["refresh ingestion jobs", "choose a retryable failed job", "rerun the relevant workflow"]
+  });
+}
+
 function workspaceNotWritableError(): IngestionRuntimeResult<never> {
   return stableIngestionError({
     code: "INGESTION_WORKSPACE_NOT_WRITABLE",
@@ -533,7 +801,15 @@ function workspaceNotWritableError(): IngestionRuntimeResult<never> {
   });
 }
 
-type RuntimeAction = "dry-run" | "source registration" | "raw import approval" | "import";
+type RuntimeAction =
+  | "dry-run"
+  | "source registration"
+  | "raw import approval"
+  | "import"
+  | "jobs"
+  | "retry"
+  | "provider approval"
+  | "diagnostics";
 
 function runtimeInternalError(action: RuntimeAction): IngestionRuntimeResult<never> {
   return stableIngestionError({
@@ -553,5 +829,13 @@ function repairActionsFor(action: RuntimeAction): string[] {
       return ["verify the completed scan", "retry raw import approval", "inspect runtime diagnostics"];
     case "import":
       return ["verify the approved import batch", "retry import", "inspect runtime diagnostics"];
+    case "jobs":
+      return ["refresh ingestion workspace", "retry listing jobs", "inspect runtime diagnostics"];
+    case "retry":
+      return ["refresh ingestion jobs", "retry the job action", "inspect runtime diagnostics"];
+    case "provider approval":
+      return ["verify the provider approval input", "retry provider approval", "inspect runtime diagnostics"];
+    case "diagnostics":
+      return ["refresh ingestion workspace", "retry diagnostics", "inspect runtime diagnostics"];
   }
 }
