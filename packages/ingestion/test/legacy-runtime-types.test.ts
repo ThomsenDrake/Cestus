@@ -70,4 +70,35 @@ describe("legacy operator runtime contracts", () => {
       nextActions: ["review legacy report", "approve raw import"]
     });
   });
+
+  it("rejects success data that collides with reserved envelope fields", () => {
+    const collidingData = {
+      ok: false,
+      command: "legacy stage",
+      workspace: { workspaceId: "ws_unsafe", label: "Unsafe Workspace" },
+      sourceCollectionId: "src_unsafe",
+      scanBatchId: "scan_unsafe",
+      legacyReportId: "legacy_report_001"
+    } as unknown as Record<string, unknown>;
+
+    expect(() =>
+      stableLegacyImportSuccess({
+        command: "legacy inspect",
+        workspace: { workspaceId: "ws_cli", label: "CLI Workspace" },
+        sourceCollectionId: "src_old_cestus",
+        scanBatchId: "scan_old_cestus_001",
+        eventIds: ["evt_report"],
+        nextActions: [legacyImportNextActions.reviewReport],
+        data: collidingData
+      })
+    ).toThrow(/reserved legacy import success envelope field/i);
+  });
 });
+
+if (false) {
+  stableLegacyImportSuccess({
+    command: "legacy inspect",
+    // @ts-expect-error success data cannot use reserved envelope keys.
+    data: { ok: false }
+  });
+}

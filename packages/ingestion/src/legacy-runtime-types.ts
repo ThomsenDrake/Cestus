@@ -67,6 +67,19 @@ export type LegacyImportRuntimeResult<T extends object = Record<string, never>> 
   | LegacyImportRuntimeSuccess<T>
   | { readonly ok: false; readonly error: LegacyImportRuntimeError };
 
+type LegacyImportReservedSuccessDataKey =
+  | "ok"
+  | "error"
+  | "command"
+  | "workspace"
+  | "sourceCollectionId"
+  | "scanBatchId"
+  | "eventIds"
+  | "nextActions";
+
+type LegacyImportSuccessData<T extends object> =
+  T & { readonly [Key in Extract<keyof T, LegacyImportReservedSuccessDataKey>]: never };
+
 export type LegacyImportRuntimeSuccess<T extends object = Record<string, never>> =
   Readonly<{
     ok: true;
@@ -104,20 +117,45 @@ export function stableLegacyImportSuccess<T extends object>(input: {
   readonly scanBatchId?: string;
   readonly eventIds?: readonly string[];
   readonly nextActions?: readonly LegacyImportNextAction[];
-  readonly data?: T;
+  readonly data?: LegacyImportSuccessData<T>;
 }): LegacyImportRuntimeResult<T> {
+  assertNoReservedSuccessDataKeys(input.data);
+
   const common = {
+    ...(input.data ?? {}),
     ok: true,
     command: input.command,
     ...(input.workspace === undefined ? {} : { workspace: stableLegacyImportWorkspace(input.workspace) }),
     ...(input.sourceCollectionId === undefined ? {} : { sourceCollectionId: input.sourceCollectionId }),
     ...(input.scanBatchId === undefined ? {} : { scanBatchId: input.scanBatchId }),
-    ...(input.data ?? {}),
     eventIds: Object.freeze([...(input.eventIds ?? [])]),
     nextActions: Object.freeze([...(input.nextActions ?? [])])
   } as LegacyImportRuntimeSuccess<T>;
 
   return Object.freeze(common);
+}
+
+const legacyImportReservedSuccessDataKeys = new Set<LegacyImportReservedSuccessDataKey>([
+  "ok",
+  "error",
+  "command",
+  "workspace",
+  "sourceCollectionId",
+  "scanBatchId",
+  "eventIds",
+  "nextActions"
+]);
+
+function assertNoReservedSuccessDataKeys(data: object | undefined): void {
+  if (data === undefined) {
+    return;
+  }
+
+  for (const key of Object.keys(data)) {
+    if (legacyImportReservedSuccessDataKeys.has(key as LegacyImportReservedSuccessDataKey)) {
+      throw new Error(`Data contains reserved legacy import success envelope field: ${key}`);
+    }
+  }
 }
 
 function stableLegacyImportWorkspace(workspace: LegacyImportWorkspaceDto): LegacyImportWorkspaceDto {
