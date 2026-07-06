@@ -722,8 +722,8 @@ export function createWorkspaceOpsEnvelope<TPayload>(
     status: input.status,
     ...(input.workspace === undefined ? {} : { workspace: input.workspace }),
     ...(input.payload === undefined ? {} : { payload: input.payload }),
-    diagnostics: [...(input.diagnostics ?? [])],
-    proposedActions: [...(input.proposedActions ?? [])]
+    diagnostics: input.diagnostics ?? [],
+    proposedActions: input.proposedActions ?? []
   };
 
   return workspaceOpsEnvelopeSchema.parse(envelope) as WorkspaceOpsEnvelope<TPayload>;

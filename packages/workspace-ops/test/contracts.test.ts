@@ -18,6 +18,7 @@ import {
   workspaceRefSchema,
   workspaceVerifyDtoSchema
 } from "../src/contracts.js";
+import type { ProposedRepairActionInput, WorkspaceDiagnosticInput } from "../src/contracts.js";
 
 const hash = "sha256:9f2c8b7a5f4e3d2c1b0a99887766554433221100ffeeddccbbaa998877665544";
 
@@ -76,7 +77,7 @@ const workspaceVerifyPayload = {
   backup: { manifestAvailable: true, latestManifestHash: hash, stale: false }
 } as const;
 
-const diagnosticInput = {
+const diagnosticInput: WorkspaceDiagnosticInput = {
   diagnosticId: "diag_contract_warning",
   severity: "warning",
   category: "backup",
@@ -87,9 +88,9 @@ const diagnosticInput = {
     allowedNextCommands: ["manifest export", "backup check"],
     requiresHumanApproval: false
   }
-} as const;
+};
 
-const proposedActionInput = {
+const proposedActionInput: ProposedRepairActionInput = {
   actionId: "action_export_manifest",
   kind: "export-manifest",
   title: "Export a fresh workspace manifest.",
@@ -97,7 +98,7 @@ const proposedActionInput = {
   requiresHumanApproval: false,
   mutatesCanonicalState: false,
   allowedNextCommands: ["manifest export", "backup check"]
-} as const;
+};
 
 function accessorArray<T>(value: T, onGet: () => void): T[] {
   const array: T[] = [];
@@ -821,6 +822,37 @@ describe("workspace ops contracts", () => {
       expect(() => workspaceOpsEnvelopeSchema.parse(envelope)).toThrow("accessors");
       expect(getterInvocations[invocationKey]).toBe(0);
     }
+  });
+
+  it("rejects accessor-backed helper input arrays without invoking getters", () => {
+    const getterInvocations = {
+      diagnostics: 0,
+      proposedActions: 0
+    };
+
+    expect(() =>
+      createWorkspaceOpsEnvelope({
+        command: "verify workspace",
+        status: "blocked",
+        diagnostics: accessorArray(diagnosticInput, () => {
+          getterInvocations.diagnostics += 1;
+        }),
+        proposedActions: []
+      })
+    ).toThrow("accessors");
+    expect(getterInvocations.diagnostics).toBe(0);
+
+    expect(() =>
+      createWorkspaceOpsEnvelope({
+        command: "verify workspace",
+        status: "blocked",
+        diagnostics: [],
+        proposedActions: accessorArray(proposedActionInput, () => {
+          getterInvocations.proposedActions += 1;
+        })
+      })
+    ).toThrow("accessors");
+    expect(getterInvocations.proposedActions).toBe(0);
   });
 
   it("rejects secret-shaped identifiers across output DTOs", () => {

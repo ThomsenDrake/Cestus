@@ -51,3 +51,6 @@ Repair evidence:
 - Full DTO safety repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 2 failing regressions covering accessor-backed arrays outside payload and secret-shaped identifiers.
 - Full DTO safety repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 24 tests passed.
 - Full DTO safety repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 609 tests passed, UI build succeeded, and factory-readiness passed.
+- Helper-surface safety repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 1 failing regression covering `createWorkspaceOpsEnvelope` accessor-backed diagnostics/proposedActions input arrays.
+- Helper-surface safety repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 25 tests passed.
+- Helper-surface safety repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 610 tests passed, UI build succeeded, and factory-readiness passed.
