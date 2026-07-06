@@ -15,6 +15,7 @@ import {
   workspaceOpsCommandPayloadSchemas,
   workspaceOpsEnvelopeSchema,
   workspaceOpsSchemaVersion,
+  workspaceNextCommandHintSchema,
   workspaceRefSchema,
   workspaceVerifyDtoSchema
 } from "../src/contracts.js";
@@ -853,6 +854,427 @@ describe("workspace ops contracts", () => {
       })
     ).toThrow("accessors");
     expect(getterInvocations.proposedActions).toBe(0);
+  });
+
+  it("rejects accessor-backed arrays when exported DTO schemas are parsed directly", () => {
+    const nextCommandHint = {
+      allowedNextCommands: ["detect drive"],
+      safeReason: "Detect whether the workspace drive is mounted.",
+      requiresHumanApproval: false
+    } as const;
+    const diskRoot = {
+      rootId: "ledger",
+      category: "ledger",
+      bytes: 2048,
+      exists: true,
+      safeUri: "workspace://contracts/ledger"
+    } as const;
+    const diskCategory = { category: "ledger", bytes: 2048, exists: true } as const;
+    const readinessCheck = {
+      checkId: "projection_root_writable",
+      status: "pass",
+      safeMessage: "Projection root is writable."
+    } as const;
+    const artifactOutput = {
+      projectionName: "requests-workspace",
+      artifactId: "artifact_requests_workspace",
+      artifactHash: hash,
+      byteCount: 512,
+      expendable: true
+    } as const;
+    const validationResult = {
+      validationId: "validation_requests_workspace",
+      status: "pass",
+      safeMessage: "Projection output validated."
+    } as const;
+    const projectionFailure = {
+      failureId: "failure_requests_workspace",
+      safeMessage: "Projection output did not validate.",
+      retryable: true
+    } as const;
+    const manifestArtifact = {
+      category: "projections",
+      count: 2,
+      bytes: 1024,
+      artifactHash: hash
+    } as const;
+    const sectionHash = { sectionId: "ledger", sectionHash: hash } as const;
+    const getterInvocations: Record<string, number> = {};
+    const trackedAccessorArray = <T>(key: string, value: T): T[] => {
+      getterInvocations[key] = 0;
+      return accessorArray(value, () => {
+        getterInvocations[key] = (getterInvocations[key] ?? 0) + 1;
+      });
+    };
+
+    const cases = [
+      {
+        key: "diagnosticRelatedIds",
+        parse: () =>
+          workspaceDiagnosticSchema.parse({
+            ...diagnosticInput,
+            relatedIds: trackedAccessorArray("diagnosticRelatedIds", "evt_contract_warning")
+          })
+      },
+      {
+        key: "diagnosticAllowedCommands",
+        parse: () =>
+          workspaceDiagnosticSchema.parse({
+            ...diagnosticInput,
+            repairHint: {
+              allowedNextCommands: trackedAccessorArray("diagnosticAllowedCommands", "diagnostics inspect"),
+              requiresHumanApproval: false
+            }
+          })
+      },
+      {
+        key: "proposedActionAllowedCommands",
+        parse: () =>
+          proposedRepairActionSchema.parse({
+            ...proposedActionInput,
+            allowedNextCommands: trackedAccessorArray("proposedActionAllowedCommands", "diagnostics inspect")
+          })
+      },
+      {
+        key: "nextCommandHintAllowedCommands",
+        parse: () =>
+          workspaceNextCommandHintSchema.parse({
+            ...nextCommandHint,
+            allowedNextCommands: trackedAccessorArray("nextCommandHintAllowedCommands", "detect drive")
+          })
+      },
+      {
+        key: "mountStatusHints",
+        parse: () =>
+          mountStatusSchema.parse({
+            status: "missing",
+            safeMessage: "Workspace root is not available.",
+            nextCommandHints: trackedAccessorArray("mountStatusHints", nextCommandHint)
+          })
+      },
+      {
+        key: "verifyRequiredRoots",
+        parse: () =>
+          workspaceVerifyDtoSchema.parse({
+            ...workspaceVerifyPayload,
+            layout: {
+              ...workspaceVerifyPayload.layout,
+              requiredRoots: trackedAccessorArray("verifyRequiredRoots", {
+                rootId: "ledger",
+                category: "ledger",
+                status: "available",
+                safeUri: "workspace://contracts/ledger"
+              })
+            }
+          })
+      },
+      {
+        key: "diskThresholdWarnings",
+        parse: () =>
+          diskUsageDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            thresholdWarnings: trackedAccessorArray(
+              "diskThresholdWarnings",
+              "Projection root is below preferred free space."
+            ),
+            roots: [],
+            categories: [],
+            totalBytes: 0
+          })
+      },
+      {
+        key: "diskRoots",
+        parse: () =>
+          diskUsageDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            thresholdWarnings: [],
+            roots: trackedAccessorArray("diskRoots", diskRoot),
+            categories: [],
+            totalBytes: 2048
+          })
+      },
+      {
+        key: "diskCategories",
+        parse: () =>
+          diskUsageDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            thresholdWarnings: [],
+            roots: [],
+            categories: trackedAccessorArray("diskCategories", diskCategory),
+            totalBytes: 2048
+          })
+      },
+      {
+        key: "projectionRequested",
+        parse: () =>
+          projectionRebuildDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            mode: "readiness",
+            requestedProjections: trackedAccessorArray("projectionRequested", "requests-workspace"),
+            inputLedger: { readable: true, eventCount: 12, highWaterMark: 12 },
+            readiness: { ready: true, checks: [] },
+            artifactOutputs: [],
+            validationResults: [],
+            failures: [],
+            wroteExpendableArtifactsOnly: true
+          })
+      },
+      {
+        key: "projectionChecks",
+        parse: () =>
+          projectionRebuildDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            mode: "readiness",
+            requestedProjections: ["requests-workspace"],
+            inputLedger: { readable: true, eventCount: 12, highWaterMark: 12 },
+            readiness: { ready: true, checks: trackedAccessorArray("projectionChecks", readinessCheck) },
+            artifactOutputs: [],
+            validationResults: [],
+            failures: [],
+            wroteExpendableArtifactsOnly: true
+          })
+      },
+      {
+        key: "projectionArtifacts",
+        parse: () =>
+          projectionRebuildDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            mode: "result",
+            requestedProjections: ["requests-workspace"],
+            inputLedger: { readable: true, eventCount: 12, highWaterMark: 12 },
+            readiness: { ready: true, checks: [] },
+            artifactOutputs: trackedAccessorArray("projectionArtifacts", artifactOutput),
+            validationResults: [],
+            failures: [],
+            wroteExpendableArtifactsOnly: true
+          })
+      },
+      {
+        key: "projectionValidationResults",
+        parse: () =>
+          projectionRebuildDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            mode: "result",
+            requestedProjections: ["requests-workspace"],
+            inputLedger: { readable: true, eventCount: 12, highWaterMark: 12 },
+            readiness: { ready: true, checks: [] },
+            artifactOutputs: [],
+            validationResults: trackedAccessorArray("projectionValidationResults", validationResult),
+            failures: [],
+            wroteExpendableArtifactsOnly: true
+          })
+      },
+      {
+        key: "projectionFailures",
+        parse: () =>
+          projectionRebuildDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            mode: "result",
+            requestedProjections: ["requests-workspace"],
+            inputLedger: { readable: true, eventCount: 12, highWaterMark: 12 },
+            readiness: { ready: true, checks: [] },
+            artifactOutputs: [],
+            validationResults: [],
+            failures: trackedAccessorArray("projectionFailures", projectionFailure),
+            wroteExpendableArtifactsOnly: true
+          })
+      },
+      {
+        key: "diagnosticsInspectDiagnostics",
+        parse: () =>
+          diagnosticsInspectDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            diagnostics: trackedAccessorArray("diagnosticsInspectDiagnostics", diagnosticInput),
+            durableCount: 0,
+            derivedCount: 1
+          })
+      },
+      {
+        key: "manifestIncludedSections",
+        parse: () =>
+          manifestExportDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            workspace: workspaceRef,
+            exportedAt: "2026-07-06T12:00:00.000Z",
+            manifestHash: hash,
+            includedSections: trackedAccessorArray("manifestIncludedSections", "ledger"),
+            excludedSecretBearingFields: [],
+            ledger: { eventCount: 12, highWaterMark: 12 },
+            blobStore: { contentAddressedRootCount: 1, aggregateBytes: 4096 },
+            artifacts: [],
+            diagnostics: { errorCount: 0, warningCount: 0 },
+            jobs: { queuedCount: 0, failedCount: 0 },
+            coverage: { coveredCategories: [], missingCategories: [] },
+            sectionHashes: [sectionHash]
+          })
+      },
+      {
+        key: "manifestExcludedSecretFields",
+        parse: () =>
+          manifestExportDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            workspace: workspaceRef,
+            exportedAt: "2026-07-06T12:00:00.000Z",
+            manifestHash: hash,
+            includedSections: ["ledger"],
+            excludedSecretBearingFields: trackedAccessorArray(
+              "manifestExcludedSecretFields",
+              "provider credentials"
+            ),
+            ledger: { eventCount: 12, highWaterMark: 12 },
+            blobStore: { contentAddressedRootCount: 1, aggregateBytes: 4096 },
+            artifacts: [],
+            diagnostics: { errorCount: 0, warningCount: 0 },
+            jobs: { queuedCount: 0, failedCount: 0 },
+            coverage: { coveredCategories: [], missingCategories: [] },
+            sectionHashes: [sectionHash]
+          })
+      },
+      {
+        key: "manifestArtifacts",
+        parse: () =>
+          manifestExportDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            workspace: workspaceRef,
+            exportedAt: "2026-07-06T12:00:00.000Z",
+            manifestHash: hash,
+            includedSections: ["ledger"],
+            excludedSecretBearingFields: [],
+            ledger: { eventCount: 12, highWaterMark: 12 },
+            blobStore: { contentAddressedRootCount: 1, aggregateBytes: 4096 },
+            artifacts: trackedAccessorArray("manifestArtifacts", manifestArtifact),
+            diagnostics: { errorCount: 0, warningCount: 0 },
+            jobs: { queuedCount: 0, failedCount: 0 },
+            coverage: { coveredCategories: [], missingCategories: [] },
+            sectionHashes: [sectionHash]
+          })
+      },
+      {
+        key: "manifestCoveredCategories",
+        parse: () =>
+          manifestExportDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            workspace: workspaceRef,
+            exportedAt: "2026-07-06T12:00:00.000Z",
+            manifestHash: hash,
+            includedSections: ["ledger"],
+            excludedSecretBearingFields: [],
+            ledger: { eventCount: 12, highWaterMark: 12 },
+            blobStore: { contentAddressedRootCount: 1, aggregateBytes: 4096 },
+            artifacts: [],
+            diagnostics: { errorCount: 0, warningCount: 0 },
+            jobs: { queuedCount: 0, failedCount: 0 },
+            coverage: {
+              coveredCategories: trackedAccessorArray("manifestCoveredCategories", "ledger"),
+              missingCategories: []
+            },
+            sectionHashes: [sectionHash]
+          })
+      },
+      {
+        key: "manifestMissingCategories",
+        parse: () =>
+          manifestExportDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            workspace: workspaceRef,
+            exportedAt: "2026-07-06T12:00:00.000Z",
+            manifestHash: hash,
+            includedSections: ["ledger"],
+            excludedSecretBearingFields: [],
+            ledger: { eventCount: 12, highWaterMark: 12 },
+            blobStore: { contentAddressedRootCount: 1, aggregateBytes: 4096 },
+            artifacts: [],
+            diagnostics: { errorCount: 0, warningCount: 0 },
+            jobs: { queuedCount: 0, failedCount: 0 },
+            coverage: {
+              coveredCategories: [],
+              missingCategories: trackedAccessorArray("manifestMissingCategories", "projections")
+            },
+            sectionHashes: [sectionHash]
+          })
+      },
+      {
+        key: "manifestSectionHashes",
+        parse: () =>
+          manifestExportDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            workspace: workspaceRef,
+            exportedAt: "2026-07-06T12:00:00.000Z",
+            manifestHash: hash,
+            includedSections: ["ledger"],
+            excludedSecretBearingFields: [],
+            ledger: { eventCount: 12, highWaterMark: 12 },
+            blobStore: { contentAddressedRootCount: 1, aggregateBytes: 4096 },
+            artifacts: [],
+            diagnostics: { errorCount: 0, warningCount: 0 },
+            jobs: { queuedCount: 0, failedCount: 0 },
+            coverage: { coveredCategories: [], missingCategories: [] },
+            sectionHashes: trackedAccessorArray("manifestSectionHashes", sectionHash)
+          })
+      },
+      {
+        key: "backupCoveredCategories",
+        parse: () =>
+          backupCheckDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            backupManifestPresent: true,
+            identityMatches: true,
+            layoutContractMatches: true,
+            currentWorkspaceId: "ws_contracts",
+            backupWorkspaceId: "ws_contracts",
+            currentLedgerHighWaterMark: 12,
+            backupLedgerHighWaterMark: 10,
+            coveredCategories: trackedAccessorArray("backupCoveredCategories", "ledger"),
+            missingCategories: [],
+            stale: false,
+            containsSecretShapedFields: false,
+            safeNextActions: []
+          })
+      },
+      {
+        key: "backupMissingCategories",
+        parse: () =>
+          backupCheckDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            backupManifestPresent: true,
+            identityMatches: true,
+            layoutContractMatches: true,
+            currentWorkspaceId: "ws_contracts",
+            backupWorkspaceId: "ws_contracts",
+            currentLedgerHighWaterMark: 12,
+            backupLedgerHighWaterMark: 10,
+            coveredCategories: [],
+            missingCategories: trackedAccessorArray("backupMissingCategories", "projections"),
+            stale: false,
+            containsSecretShapedFields: false,
+            safeNextActions: []
+          })
+      },
+      {
+        key: "backupSafeNextActions",
+        parse: () =>
+          backupCheckDtoSchema.parse({
+            schemaVersion: workspaceOpsSchemaVersion,
+            backupManifestPresent: true,
+            identityMatches: true,
+            layoutContractMatches: true,
+            currentWorkspaceId: "ws_contracts",
+            backupWorkspaceId: "ws_contracts",
+            currentLedgerHighWaterMark: 12,
+            backupLedgerHighWaterMark: 10,
+            coveredCategories: [],
+            missingCategories: [],
+            stale: false,
+            containsSecretShapedFields: false,
+            safeNextActions: trackedAccessorArray("backupSafeNextActions", nextCommandHint)
+          })
+      }
+    ];
+
+    for (const { key, parse } of cases) {
+      expect(parse).toThrow("accessors");
+      expect(getterInvocations[key]).toBe(0);
+    }
   });
 
   it("rejects secret-shaped identifiers across output DTOs", () => {

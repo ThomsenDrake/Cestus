@@ -54,3 +54,6 @@ Repair evidence:
 - Helper-surface safety repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 1 failing regression covering `createWorkspaceOpsEnvelope` accessor-backed diagnostics/proposedActions input arrays.
 - Helper-surface safety repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 25 tests passed.
 - Helper-surface safety repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 610 tests passed, UI build succeeded, and factory-readiness passed.
+- Exported DTO array safety repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 1 failing regression covering direct exported DTO schema parsing of accessor-backed arrays.
+- Exported DTO array safety repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 26 tests passed.
+- Exported DTO array safety repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 611 tests passed, UI build succeeded, and factory-readiness passed.

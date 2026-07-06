@@ -326,6 +326,102 @@ const workspaceEnvelopeInputSchema = z.unknown().transform((value, ctx): unknown
   return result.value;
 });
 
+type ArrayValidationResult =
+  | { readonly ok: true; readonly value: unknown[] }
+  | { readonly ok: false; readonly path: Array<string | number>; readonly message: string };
+
+function normalizeWorkspaceArray(value: unknown, path: Array<string | number> = []): ArrayValidationResult {
+  if (!Array.isArray(value)) {
+    return { ok: false, path, message: "workspace ops arrays must be arrays" };
+  }
+
+  if (Object.getPrototypeOf(value) !== Array.prototype || "toJSON" in value) {
+    return {
+      ok: false,
+      path,
+      message: "workspace ops arrays must be JSON DTO-safe arrays"
+    };
+  }
+
+  const ownKeys = Reflect.ownKeys(value);
+  for (const key of ownKeys) {
+    if (key === "length") {
+      continue;
+    }
+
+    if (typeof key === "symbol") {
+      return {
+        ok: false,
+        path,
+        message: "workspace ops arrays must not contain symbol keys"
+      };
+    }
+
+    if (!/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= value.length) {
+      return {
+        ok: false,
+        path,
+        message: "workspace ops arrays must not contain custom properties"
+      };
+    }
+  }
+
+  const normalized: unknown[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, index);
+    if (descriptor === undefined) {
+      return {
+        ok: false,
+        path: [...path, index],
+        message: "workspace ops arrays must not contain sparse entries"
+      };
+    }
+
+    if (!descriptor.enumerable) {
+      return {
+        ok: false,
+        path: [...path, index],
+        message: "workspace ops arrays must contain only enumerable entries"
+      };
+    }
+
+    if (!("value" in descriptor)) {
+      return {
+        ok: false,
+        path: [...path, index],
+        message: "workspace ops arrays must not contain accessors"
+      };
+    }
+
+    normalized.push(descriptor.value);
+  }
+
+  return { ok: true, value: normalized };
+}
+
+function descriptorSafeWorkspaceArraySchema<TElement extends z.ZodType>(
+  elementSchema: TElement,
+  options: { readonly min?: number } = {}
+) {
+  const arraySchema = options.min === undefined
+    ? z.array(elementSchema)
+    : z.array(elementSchema).min(options.min);
+
+  return z.unknown().transform((value, ctx) => {
+    const result = normalizeWorkspaceArray(value);
+    if (!result.ok) {
+      ctx.addIssue({
+        code: "custom",
+        path: result.path,
+        message: result.message
+      });
+      return z.NEVER;
+    }
+
+    return result.value;
+  }).pipe(arraySchema);
+}
+
 export const workspaceOpsStatusSchema = z.enum(["ready", "degraded", "blocked"]);
 export type WorkspaceOpsStatus = z.infer<typeof workspaceOpsStatusSchema>;
 
@@ -358,9 +454,9 @@ export const workspaceDiagnosticSchema = z.object({
   ]),
   message: secretSafeWorkspaceTextSchema,
   durable: z.boolean(),
-  relatedIds: z.array(secretSafeWorkspaceIdentifierSchema).default([]),
+  relatedIds: descriptorSafeWorkspaceArraySchema(secretSafeWorkspaceIdentifierSchema).default([]),
   repairHint: z.object({
-    allowedNextCommands: z.array(workspaceCommandSchema).min(1),
+    allowedNextCommands: descriptorSafeWorkspaceArraySchema(workspaceCommandSchema, { min: 1 }),
     requiresHumanApproval: z.boolean()
   }).strict()
 }).strict();
@@ -381,7 +477,7 @@ export const proposedRepairActionSchema = z.object({
   severity: z.enum(["info", "warning", "error"]),
   requiresHumanApproval: z.boolean(),
   mutatesCanonicalState: z.boolean(),
-  allowedNextCommands: z.array(workspaceCommandSchema).min(1)
+  allowedNextCommands: descriptorSafeWorkspaceArraySchema(workspaceCommandSchema, { min: 1 })
 }).strict().superRefine((action, ctx) => {
   if (action.mutatesCanonicalState && !action.requiresHumanApproval) {
     ctx.addIssue({
@@ -415,7 +511,7 @@ export const workspaceRefSchema = z.object({
 export type WorkspaceRefDto = z.output<typeof workspaceRefSchema>;
 
 export const workspaceNextCommandHintSchema = z.object({
-  allowedNextCommands: z.array(workspaceCommandSchema).min(1),
+  allowedNextCommands: descriptorSafeWorkspaceArraySchema(workspaceCommandSchema, { min: 1 }),
   safeReason: secretSafeWorkspaceTextSchema,
   requiresHumanApproval: z.boolean()
 }).strict();
@@ -425,7 +521,7 @@ export const mountStatusSchema = z.object({
   status: z.enum(["available", "missing", "unmounted", "wrong-drive", "unreadable"]),
   safeMessage: secretSafeWorkspaceTextSchema,
   expectedRootUri: secretSafeWorkspaceTextSchema.optional(),
-  nextCommandHints: z.array(workspaceNextCommandHintSchema).min(1)
+  nextCommandHints: descriptorSafeWorkspaceArraySchema(workspaceNextCommandHintSchema, { min: 1 })
 }).strict();
 export type MountStatusDto = z.output<typeof mountStatusSchema>;
 
@@ -470,7 +566,7 @@ export const workspaceVerifyDtoSchema = z.object({
   layout: z.object({
     contractVersion: secretSafeWorkspaceTextSchema,
     readable: z.boolean(),
-    requiredRoots: z.array(z.object({
+    requiredRoots: descriptorSafeWorkspaceArraySchema(z.object({
       rootId: secretSafeWorkspaceIdentifierSchema,
       category: workspaceRootCategorySchema,
       status: z.enum(["available", "missing", "unreadable"]),
@@ -515,15 +611,15 @@ export type WorkspaceVerifyDto = z.output<typeof workspaceVerifyDtoSchema>;
 export const diskUsageDtoSchema = z.object({
   schemaVersion: z.literal(workspaceOpsSchemaVersion),
   estimatedFreeBytes: z.number().int().nonnegative().optional(),
-  thresholdWarnings: z.array(secretSafeWorkspaceTextSchema),
-  roots: z.array(z.object({
+  thresholdWarnings: descriptorSafeWorkspaceArraySchema(secretSafeWorkspaceTextSchema),
+  roots: descriptorSafeWorkspaceArraySchema(z.object({
     rootId: secretSafeWorkspaceIdentifierSchema,
     category: workspaceRootCategorySchema,
     bytes: z.number().int().nonnegative(),
     exists: z.boolean(),
     safeUri: secretSafeWorkspaceTextSchema.optional()
   }).strict()),
-  categories: z.array(z.object({
+  categories: descriptorSafeWorkspaceArraySchema(z.object({
     category: workspaceRootCategorySchema,
     bytes: z.number().int().nonnegative(),
     exists: z.boolean()
@@ -535,7 +631,7 @@ export type DiskUsageDto = z.output<typeof diskUsageDtoSchema>;
 export const projectionRebuildDtoSchema = z.object({
   schemaVersion: z.literal(workspaceOpsSchemaVersion),
   mode: z.enum(["readiness", "result"]),
-  requestedProjections: z.array(secretSafeWorkspaceTextSchema).min(1),
+  requestedProjections: descriptorSafeWorkspaceArraySchema(secretSafeWorkspaceTextSchema, { min: 1 }),
   inputLedger: z.object({
     readable: z.boolean(),
     eventCount: z.number().int().nonnegative(),
@@ -543,21 +639,21 @@ export const projectionRebuildDtoSchema = z.object({
   }).strict(),
   readiness: z.object({
     ready: z.boolean(),
-    checks: z.array(workspaceReadinessCheckSchema)
+    checks: descriptorSafeWorkspaceArraySchema(workspaceReadinessCheckSchema)
   }).strict(),
-  artifactOutputs: z.array(z.object({
+  artifactOutputs: descriptorSafeWorkspaceArraySchema(z.object({
     projectionName: secretSafeWorkspaceTextSchema,
     artifactId: secretSafeWorkspaceIdentifierSchema,
     artifactHash: sha256HashSchema.optional(),
     byteCount: z.number().int().nonnegative(),
     expendable: z.literal(true)
   }).strict()),
-  validationResults: z.array(z.object({
+  validationResults: descriptorSafeWorkspaceArraySchema(z.object({
     validationId: secretSafeWorkspaceIdentifierSchema,
     status: z.enum(["pass", "warning", "fail"]),
     safeMessage: secretSafeWorkspaceTextSchema
   }).strict()),
-  failures: z.array(z.object({
+  failures: descriptorSafeWorkspaceArraySchema(z.object({
     failureId: secretSafeWorkspaceIdentifierSchema,
     safeMessage: secretSafeWorkspaceTextSchema,
     retryable: z.boolean()
@@ -568,7 +664,7 @@ export type ProjectionRebuildDto = z.output<typeof projectionRebuildDtoSchema>;
 
 export const diagnosticsInspectDtoSchema = z.object({
   schemaVersion: z.literal(workspaceOpsSchemaVersion),
-  diagnostics: z.array(workspaceDiagnosticSchema),
+  diagnostics: descriptorSafeWorkspaceArraySchema(workspaceDiagnosticSchema),
   durableCount: z.number().int().nonnegative(),
   derivedCount: z.number().int().nonnegative()
 }).strict();
@@ -579,8 +675,8 @@ export const manifestExportDtoSchema = z.object({
   workspace: workspaceRefSchema,
   exportedAt: z.string().datetime(),
   manifestHash: sha256HashSchema,
-  includedSections: z.array(workspaceManifestSectionSchema).min(1),
-  excludedSecretBearingFields: z.array(secretSafeWorkspaceTextSchema),
+  includedSections: descriptorSafeWorkspaceArraySchema(workspaceManifestSectionSchema, { min: 1 }),
+  excludedSecretBearingFields: descriptorSafeWorkspaceArraySchema(secretSafeWorkspaceTextSchema),
   ledger: z.object({
     eventCount: z.number().int().nonnegative(),
     highWaterMark: z.number().int().nonnegative()
@@ -589,7 +685,7 @@ export const manifestExportDtoSchema = z.object({
     contentAddressedRootCount: z.number().int().nonnegative(),
     aggregateBytes: z.number().int().nonnegative()
   }).strict(),
-  artifacts: z.array(z.object({
+  artifacts: descriptorSafeWorkspaceArraySchema(z.object({
     category: workspaceRootCategorySchema,
     count: z.number().int().nonnegative(),
     bytes: z.number().int().nonnegative(),
@@ -604,13 +700,13 @@ export const manifestExportDtoSchema = z.object({
     failedCount: z.number().int().nonnegative()
   }).strict(),
   coverage: z.object({
-    coveredCategories: z.array(workspaceRootCategorySchema),
-    missingCategories: z.array(workspaceRootCategorySchema)
+    coveredCategories: descriptorSafeWorkspaceArraySchema(workspaceRootCategorySchema),
+    missingCategories: descriptorSafeWorkspaceArraySchema(workspaceRootCategorySchema)
   }).strict(),
-  sectionHashes: z.array(z.object({
+  sectionHashes: descriptorSafeWorkspaceArraySchema(z.object({
     sectionId: workspaceManifestSectionSchema,
     sectionHash: sha256HashSchema
-  }).strict()).min(1)
+  }).strict(), { min: 1 })
 }).strict();
 export type ManifestExportDto = z.output<typeof manifestExportDtoSchema>;
 
@@ -623,11 +719,11 @@ export const backupCheckDtoSchema = z.object({
   backupWorkspaceId: workspaceIdSchema.optional(),
   currentLedgerHighWaterMark: z.number().int().nonnegative(),
   backupLedgerHighWaterMark: z.number().int().nonnegative().optional(),
-  coveredCategories: z.array(workspaceRootCategorySchema),
-  missingCategories: z.array(workspaceRootCategorySchema),
+  coveredCategories: descriptorSafeWorkspaceArraySchema(workspaceRootCategorySchema),
+  missingCategories: descriptorSafeWorkspaceArraySchema(workspaceRootCategorySchema),
   stale: z.boolean(),
   containsSecretShapedFields: z.boolean(),
-  safeNextActions: z.array(workspaceNextCommandHintSchema)
+  safeNextActions: descriptorSafeWorkspaceArraySchema(workspaceNextCommandHintSchema)
 }).strict();
 export type BackupCheckDto = z.output<typeof backupCheckDtoSchema>;
 
@@ -649,8 +745,8 @@ const workspaceOpsEnvelopeObjectSchema = z.object({
   status: workspaceOpsStatusSchema,
   workspace: workspaceRefSchema.optional(),
   payload: workspacePayloadSchema.optional(),
-  diagnostics: z.array(workspaceDiagnosticSchema),
-  proposedActions: z.array(proposedRepairActionSchema)
+  diagnostics: descriptorSafeWorkspaceArraySchema(workspaceDiagnosticSchema),
+  proposedActions: descriptorSafeWorkspaceArraySchema(proposedRepairActionSchema)
 }).strict().superRefine((envelope, ctx) => {
   const expectedOk = envelope.status === "ready";
   if (envelope.ok !== expectedOk) {
