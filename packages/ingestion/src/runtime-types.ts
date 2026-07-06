@@ -103,7 +103,18 @@ export function stableIngestionError(input: {
       code: input.code,
       message: input.message,
       allowedRepairActions: Object.freeze([...input.allowedRepairActions]),
-      diagnostics: Object.freeze([...(input.diagnostics ?? [])])
+      diagnostics: Object.freeze((input.diagnostics ?? []).map(stableIngestionDiagnostic))
     })
+  });
+}
+
+function stableIngestionDiagnostic(
+  diagnostic: IngestionRuntimeDiagnosticDto
+): IngestionRuntimeDiagnosticDto {
+  return Object.freeze({
+    ...(diagnostic.diagnosticId === undefined ? {} : { diagnosticId: diagnostic.diagnosticId }),
+    severity: diagnostic.severity,
+    category: diagnostic.category,
+    message: diagnostic.message
   });
 }

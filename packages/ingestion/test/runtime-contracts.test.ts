@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
@@ -8,8 +8,10 @@ import {
   ingestionErrorCodes,
   mountedWorkspaceCapabilities,
   stableIngestionError,
+  type IngestionRuntimeDiagnosticDto,
   type IngestionRuntimeResult,
-  type MountedWorkspace
+  type MountedWorkspace,
+  type WorkspaceBlobStore
 } from "../src/index.js";
 
 describe("ingestion runtime contracts", () => {
@@ -40,10 +42,19 @@ describe("ingestion runtime contracts", () => {
   });
 
   it("creates secret-safe stable error envelopes", () => {
+    const diagnostic = {
+      diagnosticId: "diag_runtime_001",
+      severity: "warning",
+      category: "mount",
+      message: "Workspace mount needs attention.",
+      secret: "provider-token",
+      debugPath: "/private/workspace/token-cache"
+    } as unknown as IngestionRuntimeDiagnosticDto;
     const result: IngestionRuntimeResult<never> = stableIngestionError({
       code: "INGESTION_WORKSPACE_NOT_MOUNTED",
       message: "Portable workspace is not mounted.",
-      allowedRepairActions: ["mount the portable workspace", "retry the command"]
+      allowedRepairActions: ["mount the portable workspace", "retry the command"],
+      diagnostics: [diagnostic]
     });
 
     expect(result).toEqual({
@@ -52,35 +63,70 @@ describe("ingestion runtime contracts", () => {
         code: "INGESTION_WORKSPACE_NOT_MOUNTED",
         message: "Portable workspace is not mounted.",
         allowedRepairActions: ["mount the portable workspace", "retry the command"],
-        diagnostics: []
+        diagnostics: [{
+          diagnosticId: "diag_runtime_001",
+          severity: "warning",
+          category: "mount",
+          message: "Workspace mount needs attention."
+        }]
       }
     });
+    expect(result.error.diagnostics[0]).not.toBe(diagnostic);
+    expect(JSON.stringify(result)).not.toMatch(/secret|token|debugPath|private/i);
   });
 
-  it("keeps mounted workspace capabilities explicit and storage-agnostic", () => {
+  it("keeps mounted workspace capabilities explicit and storage-agnostic", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "cestus-mounted-workspace-"));
     tempDirs.push(rootDir);
+    const fakeDerivativeStore = {
+      async put(content: Buffer) {
+        return {
+          contentHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const,
+          sizeBytes: content.byteLength,
+          path: "memory://derivatives/alpha"
+        };
+      },
+      async get(_contentHash: `sha256:${string}`) {
+        return Buffer.from("alpha");
+      }
+    } satisfies WorkspaceBlobStore;
     const workspace = {
       workspaceId: "ws_runtime_001",
       label: "Mounted runtime workspace",
       ledger: new InMemoryEventLedger(),
       blobStore: new FileBlobStore(join(rootDir, "blobs")),
-      derivativeStore: new FileBlobStore(join(rootDir, "derivatives")),
+      derivativeStore: fakeDerivativeStore,
       jobStateRoot: join(rootDir, "jobs"),
       diagnosticsRoot: join(rootDir, "diagnostics"),
       projectionCacheRoot: join(rootDir, "projection-cache"),
-      capabilities: mountedWorkspaceCapabilities({
+      capabilities: mountedWorkspaceCapabilities(({
         canReadLedger: true,
         canAppendLedger: true,
         canWriteBlobs: true,
         canWriteDerivatives: true,
-        canWriteJobState: true
-      })
+        canWriteJobState: true,
+        secretToken: "mount-secret"
+      }) as unknown as Parameters<typeof mountedWorkspaceCapabilities>[0])
     } satisfies MountedWorkspace;
 
     expect(workspace.capabilities.canWriteBlobs).toBe(true);
+    expect(workspace.capabilities).toEqual({
+      canReadLedger: true,
+      canAppendLedger: true,
+      canWriteBlobs: true,
+      canWriteDerivatives: true,
+      canWriteJobState: true
+    });
     expect(workspace.diagnosticsRoot).toBe(join(rootDir, "diagnostics"));
     expect(workspace.projectionCacheRoot).toBe(join(rootDir, "projection-cache"));
+    await expect(workspace.derivativeStore.get("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+      .resolves.toEqual(Buffer.from("alpha"));
     expect(JSON.stringify(workspace)).not.toMatch(/token|secret|password/i);
+  });
+
+  it("keeps the public mounted workspace contract independent of FileBlobStore", () => {
+    const source = readFileSync(new URL("../src/mount-contract.ts", import.meta.url), "utf8");
+
+    expect(source).not.toContain("FileBlobStore");
   });
 });
