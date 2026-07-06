@@ -448,3 +448,45 @@ factory-readiness passed
 ```
 
 Legacy import remains recon-first. Every legacy file is evidence first, ontology staging can only append evidence-tied `assertion.proposed`, and accepted assertion, entity, relationship, or resolution events are forbidden during import. The readiness evidence is evidence-first and asserts only behavior proposed, reviewed, and verified through the completed legacy import slice.
+
+## Local Workspace Readiness Smoke Plan Readiness
+
+The local workspace readiness smoke plan was prepared from the approved design spec on 2026-07-06.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-06-local-workspace-readiness-smoke-design.md`
+- `docs/superpowers/plans/2026-07-06-local-workspace-readiness-smoke-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded targeted command evidence:
+
+```text
+npm test -- packages/local-runtime/test/workspace-readiness-smoke.test.ts packages/workspace-ops/test/layout.test.ts
+Test Files  2 passed (2)
+Tests  17 passed (17)
+```
+
+Recorded operator evidence:
+
+```text
+npm run local:workspace:smoke -- --json
+schemaVersion local-workspace-readiness-smoke.v1
+ok true
+status ready
+stderr bytes 0
+```
+
+Final verification evidence from the most recent full verify:
+
+```text
+npm run verify
+typecheck passed
+Test Files  93 passed (93)
+Tests  833 passed (833)
+vite build succeeded
+factory-readiness passed
+```
+
+The smoke path remains local-only and proof-oriented, with no provider credentials, outbound document transfer, canonical repair execution, old-Cestus migration mapping, PRR sends, or legal escalation.

@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/local-workspace-readiness-smoke`
 Worktree path: `/home/drake/.codex/worktrees/2800/Cestus`
 Claimed at UTC: `2026-07-06T22:26:52Z`
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -17,10 +17,10 @@ Status: `in-progress`
 
 ## Evidence
 
-- Red command:
-- Green command:
-- Factory readiness:
-- Full verification:
+- Red command: `npm test -- packages/ui/test/request-data-boundary.test.ts` failed as expected because `scripts/check-agent-readiness.mjs` did not include the local workspace readiness smoke spec and plan.
+- Green command: `npm test -- packages/ui/test/request-data-boundary.test.ts` passed with 1 test file and 6 tests.
+- Factory readiness: `npm run factory:check` passed with `factory-readiness passed`.
+- Full verification: `npm run verify` passed with typecheck passed, 93 test files passed, 833 tests passed, UI build succeeded, and factory-readiness passed.
 
 ## Review
 
