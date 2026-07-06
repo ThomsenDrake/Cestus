@@ -184,4 +184,91 @@ describe("workspace backup manifests", () => {
     expect(backupCheckDtoSchema.parse(secretShaped.payload)).toEqual(secretShaped.payload);
     expect(workspaceOpsEnvelopeSchema.parse(secretShaped)).toEqual(secretShaped);
   });
+
+  it.each([
+    {
+      name: "raw canonical ledger event copies",
+      backupManifest: {
+        workspaceId: workspace.workspaceId,
+        layoutContractVersion: workspace.layoutContractVersion,
+        ledgerHighWaterMark: 15,
+        coveredCategories: expectedCategories,
+        exportedAt: "2026-07-06T12:00:00.000Z",
+        canonicalLedgerEvents: [{ id: "evt_private", payload: { note: "Mayor met vendor at home." } }]
+      },
+      leakedText: /Mayor met vendor at home|evt_private|canonicalLedgerEvents/
+    },
+    {
+      name: "private body text without token-like strings",
+      backupManifest: {
+        workspaceId: workspace.workspaceId,
+        layoutContractVersion: workspace.layoutContractVersion,
+        ledgerHighWaterMark: 15,
+        coveredCategories: expectedCategories,
+        exportedAt: "2026-07-06T12:00:00.000Z",
+        evidenceBodies: ["Confidential interview notes about a protected source."]
+      },
+      leakedText: /Confidential interview notes|protected source|evidenceBodies/
+    },
+    {
+      name: "invalid exportedAt values",
+      backupManifest: {
+        workspaceId: workspace.workspaceId,
+        layoutContractVersion: workspace.layoutContractVersion,
+        ledgerHighWaterMark: 15,
+        coveredCategories: expectedCategories,
+        exportedAt: "not-a-date"
+      },
+      leakedText: /not-a-date/
+    },
+    {
+      name: "unexpected keys",
+      backupManifest: {
+        workspaceId: workspace.workspaceId,
+        layoutContractVersion: workspace.layoutContractVersion,
+        ledgerHighWaterMark: 15,
+        coveredCategories: expectedCategories,
+        exportedAt: "2026-07-06T12:00:00.000Z",
+        harmlessLookingExtra: "should not be accepted"
+      },
+      leakedText: /harmlessLookingExtra|should not be accepted/
+    }
+  ])("degrades unsafe backup manifest shape for $name", async ({ backupManifest, leakedText }) => {
+    const result = await checkBackupManifest({
+      workspace,
+      currentLedgerHighWaterMark: 15,
+      expectedCategories,
+      backupManifest
+    } as never);
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload).toMatchObject({
+      backupManifestPresent: true,
+      identityMatches: true,
+      layoutContractMatches: true,
+      missingCategories: [],
+      stale: false,
+      containsSecretShapedFields: true
+    });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_backup_manifest_invalid",
+        category: "backup"
+      })
+    );
+    expect(result.proposedActions).toEqual([
+      expect.objectContaining({
+        kind: "export-manifest",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false,
+        allowedNextCommands: ["manifest export", "backup check"]
+      })
+    ]);
+    expect(result.proposedActions).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "append-repair-event-required" })])
+    );
+    expect(JSON.stringify(result)).not.toMatch(leakedText);
+    expect(backupCheckDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
 });
