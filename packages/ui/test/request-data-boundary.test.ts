@@ -18,7 +18,9 @@ describe("Requests data boundary", () => {
     nodeRuntimeModulePattern,
     /(?:^|\/)(?:runtime|sqlite-event-ledger)(?:\.js)?$/,
     /(?:^|\/)prr\/src\/runtime(?:\.js)?$/,
-    /(?:^|\/)local-runtime\/src\/(?:config|server|http-handler|runtime-factory)(?:\.js)?$/
+    /(?:^|\/)local-runtime\/src\/(?:config|server|http-handler|runtime-factory|ingestion-http-routes)(?:\.js)?$/,
+    /(?:^|\/)ingestion\/src\/(?:runtime|source-materializer|import-service|local-filesystem|mount-contract|provider-adapter)(?:\.js)?$/,
+    /(?:^|\/)ontology\/src\/(?:sqlite-event-ledger|blob-store)(?:\.js)?$/
   ];
   const forbiddenProductUiSourceFragments = [
     "SQLiteEventLedger",
@@ -27,7 +29,16 @@ describe("Requests data boundary", () => {
     "packages/local-runtime/src/config",
     "packages/local-runtime/src/server",
     "packages/local-runtime/src/http-handler",
-    "packages/local-runtime/src/runtime-factory"
+    "packages/local-runtime/src/runtime-factory",
+    "packages/local-runtime/src/ingestion-http-routes",
+    "packages/ingestion/src/runtime",
+    "packages/ingestion/src/source-materializer",
+    "packages/ingestion/src/import-service",
+    "packages/ingestion/src/local-filesystem",
+    "packages/ingestion/src/mount-contract",
+    "FileBlobStore",
+    "node:fs",
+    "node:path"
   ];
 
   it("scans every product UI source file for browser boundary drift", () => {
