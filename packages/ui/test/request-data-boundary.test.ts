@@ -89,7 +89,7 @@ describe("Requests data boundary", () => {
     }
   });
 
-  it("requires the ledger-backed PRR workspace docs in factory readiness", () => {
+  it("requires approved plan docs in factory readiness", () => {
     const readinessScript = readFileSync("scripts/check-agent-readiness.mjs", "utf8");
     const requiredFiles = stringArrayInitializer(readinessScript, "requiredFiles");
 

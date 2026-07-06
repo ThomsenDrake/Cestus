@@ -329,7 +329,7 @@ npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ing
 UI adapter, explicit approval gates, diagnostics, app integration, and browser boundary targeted command passed with 5 test files and 35 tests.
 ```
 
-Final verification evidence from the approved Task 7 gate:
+Final verification evidence from the runtime wiring readiness gate:
 
 ```text
 npm run verify
