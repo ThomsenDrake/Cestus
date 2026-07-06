@@ -56,3 +56,16 @@
 - Full verification command:
   `npm run verify`
   - Result: passed at 2026-07-06T17:58:06Z; typecheck passed, Vitest reported 75 test files passed and 645 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Code-Quality Review Fix Evidence
+
+- Code-quality review findings at `aacb138`: provider approval could be enabled after raw import approval but before import execution completed, job-list stable failures were hidden as empty jobs, and successful workspace/review diagnostics were not sanitized before rendering.
+- Red command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts`
+  - Result: failed as expected; Vitest reported 3 failing tests covering job-list failure diagnostics, successful workspace/review diagnostic redaction, and approval/import/provider gate state.
+- Targeted green command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx`
+  - Result: passed; Vitest reported 5 test files passed and 32 tests passed.
+- Full verification command:
+  `npm run verify`
+  - Result: passed at 2026-07-06T18:14:32Z; typecheck passed, Vitest reported 75 test files passed and 648 tests passed, Vite build succeeded, and factory readiness passed.

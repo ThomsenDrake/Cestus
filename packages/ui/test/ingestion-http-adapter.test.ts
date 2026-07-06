@@ -160,6 +160,72 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
       eventIds: ["evt_retry"]
     });
   });
+
+  it("maps stable job-list failures into diagnostics instead of hiding them", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse(503, {
+        ok: false,
+        error: {
+          code: "INGESTION_WORKSPACE_NOT_MOUNTED",
+          message: "Portable workspace is not mounted.",
+          allowedRepairActions: ["mount the workspace"],
+          diagnostics: [
+            {
+              severity: "error",
+              category: "ingestion.mount",
+              message: "Missing drive /Volumes/Cestus"
+            }
+          ]
+        }
+      })
+    );
+    const adapter = createHttpIngestionWorkspaceAdapter({ fetcher });
+
+    await expect(adapter.listJobs({ sourceCollectionId: "src_drive_001" })).resolves.toEqual({
+      jobs: [],
+      diagnostics: [
+        {
+          severity: "error",
+          category: "ingestion",
+          message: "Portable workspace is not mounted."
+        }
+      ]
+    });
+  });
+
+  it("redacts secrets and private paths from successful workspace diagnostics", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse(200, {
+        mounted: true,
+        workspaceId: "ws_ui_001",
+        label: "UI workspace",
+        diagnostics: [
+          {
+            severity: "error",
+            category: "ingestion",
+            message: "Bearer abc.def.ghi password=hunter2 oauth_token=tok_123 at /Users/drake/private/source"
+          }
+        ],
+        review: {
+          ...reviewDto(),
+          diagnostics: [
+            {
+              severity: "warning",
+              category: "ingestion",
+              message: "private key begins -----BEGIN PRIVATE KEY----- and path /Volumes/Cestus/raw"
+            }
+          ]
+        }
+      })
+    );
+    const adapter = createHttpIngestionWorkspaceAdapter({ fetcher });
+
+    const workspace = await adapter.loadWorkspace();
+
+    expect(JSON.stringify(workspace)).not.toMatch(/abc\.def\.ghi|hunter2|tok_123|PRIVATE KEY|\/Users\/drake|\/Volumes\/Cestus/);
+    expect(JSON.stringify(workspace)).toContain("[redacted]");
+    expect(JSON.stringify(workspace)).toContain("[path redacted]");
+  });
 });
 
 function jsonResponse(status: number, body: unknown): Response {

@@ -42,6 +42,7 @@ export function IngestionWorkspace({
     ...(review?.diagnostics ?? []),
     ...diagnostics
   ];
+  const importCompleted = review === undefined ? false : isImportCompleted(review);
 
   return (
     <section aria-label="Ingestion workspace" className="space-y-5">
@@ -144,13 +145,13 @@ export function IngestionWorkspace({
               <div className="space-y-3 px-4 py-3 text-sm">
                 <GateState
                   label="Raw import"
-                  state={review.approvalRequired ? "Human approval required" : "Approval recorded"}
+                  state={rawImportGateState(review)}
                 />
                 <GateState
                   label="Import execution"
-                  state={review.latestImportBatchId === undefined ? "Waiting for approval" : review.latestImportBatchId}
+                  state={importExecutionGateState(review)}
                 />
-                <GateState label="Provider parsing" state={providerGateState(review.parseJobs)} />
+                <GateState label="Provider parsing" state={providerGateState(review, importCompleted)} />
               </div>
             </section>
           </div>
@@ -329,7 +330,7 @@ function workspaceLabel(workspace: IngestionWorkspaceDto | undefined, loadState:
 }
 
 function approveRawImportInput(review: NonNullable<IngestionWorkspaceDto["review"]>): ApproveRawImportInput | undefined {
-  if (review.latestScanBatchId === undefined) {
+  if (!review.approvalRequired || review.latestScanBatchId === undefined) {
     return undefined;
   }
 
@@ -342,7 +343,11 @@ function approveRawImportInput(review: NonNullable<IngestionWorkspaceDto["review
 }
 
 function importApprovedInput(review: NonNullable<IngestionWorkspaceDto["review"]>): ImportApprovedInput | undefined {
-  if (review.latestScanBatchId === undefined || review.latestImportBatchId === undefined) {
+  if (
+    review.latestScanBatchId === undefined ||
+    review.latestImportBatchId === undefined ||
+    isImportCompleted(review)
+  ) {
     return undefined;
   }
 
@@ -354,7 +359,7 @@ function importApprovedInput(review: NonNullable<IngestionWorkspaceDto["review"]
 }
 
 function approveProviderInput(review: NonNullable<IngestionWorkspaceDto["review"]>): ApproveProviderParsingInput | undefined {
-  if (review.latestImportBatchId === undefined) {
+  if (review.latestImportBatchId === undefined || !isImportCompleted(review)) {
     return undefined;
   }
 
@@ -377,12 +382,36 @@ function normalizeIdPart(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-function providerGateState(parseJobs: readonly NonNullable<IngestionWorkspaceDto["review"]>["parseJobs"][number][]) {
-  const providerJob = parseJobs.find((job) => job.lane === "provider");
+function rawImportGateState(review: NonNullable<IngestionWorkspaceDto["review"]>) {
+  if (review.approvalRequired) {
+    return "Human approval required";
+  }
+  return review.latestImportBatchId === undefined ? "Waiting for dry-run" : "Approval recorded";
+}
+
+function importExecutionGateState(review: NonNullable<IngestionWorkspaceDto["review"]>) {
+  if (isImportCompleted(review)) {
+    return "Imported evidence ready";
+  }
+  return review.latestImportBatchId === undefined ? "Waiting for approval" : review.latestImportBatchId;
+}
+
+function providerGateState(
+  review: NonNullable<IngestionWorkspaceDto["review"]>,
+  importCompleted: boolean
+) {
+  if (!importCompleted) {
+    return "Waiting for import execution";
+  }
+  const providerJob = review.parseJobs.find((job) => job.lane === "provider");
   if (providerJob === undefined) {
     return "Approval required before byte transfer";
   }
   return `${providerJob.parser.name} ${providerJob.state}`;
+}
+
+function isImportCompleted(review: NonNullable<IngestionWorkspaceDto["review"]>) {
+  return review.evidenceLinks.length > 0;
 }
 
 function diagnosticKey(diagnostic: IngestionRuntimeDiagnosticDto, index: number) {
