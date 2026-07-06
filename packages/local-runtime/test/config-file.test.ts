@@ -309,6 +309,35 @@ describe("local runtime config files", () => {
     });
   });
 
+  it("does not carry stale portable workspace identity across a generic root change", () => {
+    const cwd = tempDir();
+
+    writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "external/old-case",
+      expectedWorkspaceId: "ws_old_case"
+    });
+
+    const changed = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      workspaceRoot: "external/new-case"
+    });
+
+    expect(changed.config.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: "external/new-case"
+    });
+    expect(readLocalRuntimeConfigFile({ cwd, env: {} })?.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: "external/new-case"
+    });
+  });
+
   it("prunes stale portable workspace fields when changing storage strategies", () => {
     const cwd = tempDir();
 
