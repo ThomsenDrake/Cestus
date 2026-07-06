@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import { ZipArchiveAdapter, type ZipArchiveChild } from "./archive-adapter.js";
+import { stableLocalFilesystemOccurrenceId } from "./local-filesystem.js";
 import type { IngestionOccurrenceSummary } from "./projection.js";
 import {
   stableIngestionError,
@@ -49,6 +50,7 @@ type InventoryResult =
 interface InventoryItem {
   readonly key: string;
   readonly kind: "regular" | "archive-child";
+  readonly occurrenceId: string;
   readonly occurrence?: IngestionOccurrenceSummary;
   readonly contentHash: `sha256:${string}`;
   readonly sizeBytes: number;
@@ -71,7 +73,12 @@ export function materializeApprovedOccurrences(
     return approved;
   }
 
-  const current = currentInventoryFor(sourceRoot, approved.archiveContainerHashes);
+  const current = currentInventoryFor(
+    sourceRoot,
+    input.sourceCollectionId,
+    input.scanBatchId,
+    approved.archiveContainerHashes
+  );
 
   if (!current.ok) {
     return current;
@@ -122,6 +129,7 @@ function approvedInventoryFor(occurrences: readonly IngestionOccurrenceSummary[]
       items.set(inventoryKeyForOccurrence(occurrence), {
         key: inventoryKeyForOccurrence(occurrence),
         kind: "archive-child",
+        occurrenceId: occurrence.occurrenceId,
         occurrence,
         contentHash: asContentHash(occurrence.contentHash),
         sizeBytes: occurrence.sizeBytes,
@@ -136,6 +144,7 @@ function approvedInventoryFor(occurrences: readonly IngestionOccurrenceSummary[]
       items.set(inventoryKeyForOccurrence(occurrence), {
         key: inventoryKeyForOccurrence(occurrence),
         kind: "regular",
+        occurrenceId: occurrence.occurrenceId,
         occurrence,
         contentHash: asContentHash(occurrence.contentHash),
         sizeBytes: occurrence.sizeBytes,
@@ -150,6 +159,8 @@ function approvedInventoryFor(occurrences: readonly IngestionOccurrenceSummary[]
 
 function currentInventoryFor(
   sourceRoot: string,
+  sourceCollectionId: string,
+  scanBatchId: string,
   approvedArchiveContainerHashes: ReadonlyMap<string, `sha256:${string}`>
 ): InventoryResult {
   const archiveAdapter = new ZipArchiveAdapter();
@@ -202,6 +213,16 @@ function currentInventoryFor(
         items.set(archiveInventoryKey(file.relativePath, child.internalPath), {
           key: archiveInventoryKey(file.relativePath, child.internalPath),
           kind: "archive-child",
+          occurrenceId: stableLocalFilesystemOccurrenceId({
+            kind: "archive-child",
+            sourceCollectionId,
+            scanBatchId,
+            sourcePath: file.relativePath,
+            containerPath: file.relativePath,
+            containerHash: child.containerHash,
+            internalPath: child.internalPath,
+            contentHash
+          }),
           content: child.content,
           contentHash,
           sizeBytes: child.content.byteLength,
@@ -220,6 +241,13 @@ function currentInventoryFor(
     items.set(regularInventoryKey(file.relativePath), {
       key: regularInventoryKey(file.relativePath),
       kind: "regular",
+      occurrenceId: stableLocalFilesystemOccurrenceId({
+        kind: "file",
+        sourceCollectionId,
+        scanBatchId,
+        sourcePath: file.relativePath,
+        contentHash
+      }),
       content,
       contentHash,
       sizeBytes: content.byteLength,
@@ -244,6 +272,7 @@ function compareInventories(
 
     if (
       currentItem.kind !== approvedItem.kind ||
+      currentItem.occurrenceId !== approvedItem.occurrenceId ||
       currentItem.contentHash !== approvedItem.contentHash ||
       currentItem.sizeBytes !== approvedItem.sizeBytes
     ) {
