@@ -39,6 +39,9 @@ Command evidence:
 - Diagnostics accessor verify repair: `npm run verify` first exited 2 during typecheck because an unknown derived category needed explicit narrowing before checking the workspace category set.
 - Diagnostics accessor final targeted green: `npm test -- packages/workspace-ops/test/diagnostics.test.ts packages/workspace-ops/test/backup.test.ts` exited 0 with 2 test files and 15 tests passed.
 - Diagnostics accessor verify: `npm run verify` exited 0 with typecheck passed, 76 test files and 656 tests passed, UI build succeeded, and factory-readiness passed.
+- Manifest round-trip repair red: `npm test -- packages/workspace-ops/test/diagnostics.test.ts packages/workspace-ops/test/backup.test.ts` exited 1 with 1 failing regression proving `checkBackupManifest` degraded a fresh `exportWorkspaceManifest(...).payload` instead of certifying it as ready.
+- Manifest round-trip repair green: `npm test -- packages/workspace-ops/test/diagnostics.test.ts packages/workspace-ops/test/backup.test.ts` exited 0 with 2 test files and 16 tests passed.
+- Manifest round-trip verify: `npm run verify` exited 0 with typecheck passed, 76 test files and 657 tests passed, UI build succeeded, and factory-readiness passed.
 
 Self-review:
 - Diagnostics inspection validates durable `diagnostic.recorded` events through ontology contracts, marks durable versus derived diagnostics explicitly, and turns invalid or secret-shaped diagnostic content into safe derived diagnostics.
@@ -48,3 +51,4 @@ Self-review:
 - Code-quality repair adds strict backup-manifest shape validation for allowed fields, safe identifiers, nonnegative ledger marks, known categories, and ISO `exportedAt`; raw-state/canonical-copy fields, private body fields, invalid dates, and unexpected keys now degrade with safe backup diagnostics and do not echo private content.
 - Spec re-review repair tightens `exportedAt` to strict ISO instants that round-trip exactly and ensures backup checks only read normalized descriptor-derived manifest data after validation succeeds; accessor-backed manifests now degrade without invoking getters or echoing private text.
 - Diagnostics accessor repair normalizes durable diagnostic events and derived diagnostics through descriptor-safe reads before validation or sanitization; accessor-backed inputs now become safe redacted derived error diagnostics without invoking getters or leaking thrown private text.
+- Manifest round-trip repair lets backup checks accept the nested `ManifestExportDto` emitted by manifest export via descriptor-safe cloning, DTO schema validation, strict `exportedAt`, coverage coherence, and manifest hash validation while preserving the existing strict flat manifest path.
