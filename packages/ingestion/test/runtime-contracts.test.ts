@@ -67,6 +67,8 @@ describe("ingestion runtime contracts", () => {
       blobStore: new FileBlobStore(join(rootDir, "blobs")),
       derivativeStore: new FileBlobStore(join(rootDir, "derivatives")),
       jobStateRoot: join(rootDir, "jobs"),
+      diagnosticsRoot: join(rootDir, "diagnostics"),
+      projectionCacheRoot: join(rootDir, "projection-cache"),
       capabilities: mountedWorkspaceCapabilities({
         canReadLedger: true,
         canAppendLedger: true,
@@ -77,6 +79,8 @@ describe("ingestion runtime contracts", () => {
     } satisfies MountedWorkspace;
 
     expect(workspace.capabilities.canWriteBlobs).toBe(true);
+    expect(workspace.diagnosticsRoot).toBe(join(rootDir, "diagnostics"));
+    expect(workspace.projectionCacheRoot).toBe(join(rootDir, "projection-cache"));
     expect(JSON.stringify(workspace)).not.toMatch(/token|secret|password/i);
   });
 });
