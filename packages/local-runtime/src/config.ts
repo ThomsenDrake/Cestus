@@ -3,7 +3,11 @@ import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { readLocalRuntimeConfigFile, type LocalRuntimeConfigFile } from "./config-file.js";
 
-export type LocalRuntimeStorageStrategy = "repo-local" | "explicit-path" | "app-data";
+export type LocalRuntimeStorageStrategy =
+  | "repo-local"
+  | "explicit-path"
+  | "app-data"
+  | "portable-workspace";
 export type LocalRuntimeBindMode = "loopback" | "tailnet" | "lan";
 
 export interface LocalRuntimeConfigInput {
@@ -13,10 +17,16 @@ export interface LocalRuntimeConfigInput {
 
 export interface ResolvedLocalRuntimeConfig {
   readonly cwd: string;
-  readonly storage: {
-    readonly strategy: LocalRuntimeStorageStrategy;
-    readonly sqlitePath: string;
-  };
+  readonly storage:
+    | {
+        readonly strategy: "repo-local" | "explicit-path" | "app-data";
+        readonly sqlitePath: string;
+      }
+    | {
+        readonly strategy: "portable-workspace";
+        readonly workspaceRoot: string;
+        readonly sqlitePath: string;
+      };
   readonly http: {
     readonly host: string;
     readonly port: number;
@@ -100,6 +110,19 @@ function resolveStorage(
     });
   }
 
+  if (strategy === "portable-workspace") {
+    const workspaceRoot = normalizeOptional(env.CESTUS_WORKSPACE_ROOT) ?? configFile?.storage?.workspaceRoot;
+    if (workspaceRoot === undefined) {
+      throw new Error("CESTUS_WORKSPACE_ROOT is required for portable-workspace storage");
+    }
+    const resolvedRoot = resolvePath(cwd, workspaceRoot);
+    return Object.freeze({
+      strategy,
+      workspaceRoot: resolvedRoot,
+      sqlitePath: join(resolvedRoot, "ledger", "ontology.sqlite")
+    });
+  }
+
   const appDataDir = resolvePath(
     cwd,
     normalizeOptional(env.CESTUS_APP_DATA_DIR) ??
@@ -116,7 +139,7 @@ function parseStorageStrategy(value: string | undefined): LocalRuntimeStorageStr
   if (value === undefined || value === "repo-local") {
     return "repo-local";
   }
-  if (value === "explicit-path" || value === "app-data") {
+  if (value === "explicit-path" || value === "app-data" || value === "portable-workspace") {
     return value;
   }
   throw new Error(`Unsupported local runtime storage strategy: ${value}`);

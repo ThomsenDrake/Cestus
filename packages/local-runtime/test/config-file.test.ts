@@ -230,6 +230,73 @@ describe("local runtime config files", () => {
       })
     ).toThrow("explicit-path storage requires a sqlitePath");
   });
+
+  it("writes and reads secret-free portable workspace storage config", () => {
+    const cwd = tempDir();
+
+    const written = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "external/case-a"
+    });
+    const resolved = resolveLocalRuntimeConfig({ cwd, env: {} });
+
+    expect(written.config.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: "external/case-a"
+    });
+    expect(JSON.stringify(written.config)).not.toMatch(
+      /token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i
+    );
+    expect(resolved.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: join(cwd, "external/case-a"),
+      sqlitePath: join(cwd, "external/case-a", "ledger", "ontology.sqlite")
+    });
+  });
+
+  it("prunes stale portable workspace fields when changing storage strategies", () => {
+    const cwd = tempDir();
+
+    writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "external/case-a"
+    });
+
+    const repoLocal = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "repo-local"
+    });
+    expect(repoLocal.config.storage).toEqual({
+      strategy: "repo-local"
+    });
+    expect(readLocalRuntimeConfigFile({ cwd, env: {} })?.storage).toEqual({
+      strategy: "repo-local"
+    });
+
+    const explicitPath = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "explicit-path",
+      sqlitePath: "compat/prr-ledger.sqlite"
+    });
+    expect(explicitPath.config.storage).toEqual({
+      strategy: "explicit-path",
+      sqlitePath: "compat/prr-ledger.sqlite"
+    });
+    expect(readLocalRuntimeConfigFile({ cwd, env: {} })?.storage).toEqual({
+      strategy: "explicit-path",
+      sqlitePath: "compat/prr-ledger.sqlite"
+    });
+  });
 });
 
 function tempDir(): string {

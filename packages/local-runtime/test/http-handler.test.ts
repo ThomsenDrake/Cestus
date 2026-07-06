@@ -1,7 +1,8 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
   createLocalRuntimeHttpHandler,
@@ -88,6 +89,91 @@ describe("createLocalRuntimeHttpHandler", () => {
     expect(JSON.parse(reloaded.body).cards.map((card: { prrRequestId: string }) => card.prrRequestId)).toContain(
       "prr_http_city_budget"
     );
+  });
+
+  it("creates drafts in the mounted portable workspace ledger and replays them after reopen", async () => {
+    const cwd = tempDir();
+    const workspaceRoot = join(cwd, "external-case");
+    createPortableWorkspace({
+      rootDir: workspaceRoot,
+      workspaceId: "ws_runtime_001",
+      label: "Runtime portable workspace",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "local-runtime-test"
+    });
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_STORAGE: "portable-workspace",
+        CESTUS_WORKSPACE_ROOT: workspaceRoot
+      }
+    });
+    const first = testHandler({
+      config,
+      actor,
+      now: fixedNow,
+      requestIdFactory: () => "prr_portable_city_budget"
+    });
+    const health = await first({ method: "GET", url: "/api/health" });
+
+    const created = await first({
+      method: "POST",
+      url: "/api/requests/drafts",
+      body: JSON.stringify({
+        jurisdictionPack: { name: "florida-public-records", version: "0.1.0" },
+        agency: { name: "City Clerk", email: "clerk@example.gov" },
+        requester: { name: "Avery Investigator", email: "avery@example.org" },
+        requestText: "All budget amendment memos from January 2026.",
+        receivedAt: "2026-07-05T12:00:00.000Z"
+      })
+    });
+    first.close();
+    handlers.splice(handlers.indexOf(first), 1);
+
+    expect(health.status).toBe(200);
+    expect(JSON.parse(health.body)).toMatchObject({
+      ok: true,
+      storageStrategy: "portable-workspace",
+      workspaceMounted: true,
+      workspaceId: "ws_runtime_001"
+    });
+    expect(health.body).not.toContain(workspaceRoot);
+    expect(created.status).toBe(200);
+    expect(JSON.parse(created.body)).toMatchObject({
+      ok: true,
+      prrRequestId: "prr_portable_city_budget"
+    });
+    expect(existsSync(join(workspaceRoot, "ledger", "ontology.sqlite"))).toBe(true);
+    expect(existsSync(join(cwd, ".cestus/local/prr-ledger.sqlite"))).toBe(false);
+
+    const second = testHandler({ config, actor, now: fixedNow });
+    const reloaded = await second({ method: "GET", url: "/api/requests/workspace" });
+    second.close();
+    handlers.splice(handlers.indexOf(second), 1);
+
+    expect(JSON.parse(reloaded.body).cards.map((card: { prrRequestId: string }) => card.prrRequestId)).toContain(
+      "prr_portable_city_budget"
+    );
+  });
+
+  it("fails closed instead of falling back when the portable workspace is not mounted", () => {
+    const cwd = tempDir();
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_STORAGE: "portable-workspace",
+        CESTUS_WORKSPACE_ROOT: join(cwd, "missing-drive")
+      }
+    });
+
+    expect(() =>
+      createLocalRuntimeHttpHandler({
+        config,
+        actor,
+        now: fixedNow
+      })
+    ).toThrow("Portable workspace root does not exist.");
+    expect(existsSync(join(cwd, ".cestus/local/prr-ledger.sqlite"))).toBe(false);
   });
 
   it("returns safe JSON for invalid request bodies", async () => {

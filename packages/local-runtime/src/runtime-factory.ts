@@ -4,6 +4,7 @@ import {
   type PrrRuntime,
   type PrrRuntimeDependencies
 } from "../../prr/src/runtime.js";
+import { mountPortableWorkspace, type MountedPortableWorkspace } from "../../workspace/src/index.js";
 import type { ResolvedLocalRuntimeConfig } from "./config.js";
 
 export interface LocalRuntimeFactoryDependencies extends Omit<PrrRuntimeDependencies, "ledger"> {
@@ -12,13 +13,34 @@ export interface LocalRuntimeFactoryDependencies extends Omit<PrrRuntimeDependen
 
 export interface LocalRuntimeHandle {
   readonly runtime: PrrRuntime;
+  readonly mountedWorkspace?: MountedPortableWorkspace;
   close(): void;
+}
+
+function sqlitePathFor(config: ResolvedLocalRuntimeConfig): {
+  readonly sqlitePath: string;
+  readonly mountedWorkspace?: MountedPortableWorkspace;
+} {
+  if (config.storage.strategy !== "portable-workspace") {
+    return { sqlitePath: config.storage.sqlitePath };
+  }
+
+  const mounted = mountPortableWorkspace({ rootDir: config.storage.workspaceRoot });
+  if (!mounted.ok) {
+    throw new Error(mounted.diagnostic.message);
+  }
+
+  return {
+    sqlitePath: mounted.workspace.paths.ledgerPath,
+    mountedWorkspace: mounted.workspace
+  };
 }
 
 export function createSqlitePrrRuntime(
   dependencies: LocalRuntimeFactoryDependencies
 ): LocalRuntimeHandle {
-  const ledger = new SQLiteEventLedger(dependencies.config.storage.sqlitePath);
+  const resolvedStorage = sqlitePathFor(dependencies.config);
+  const ledger = new SQLiteEventLedger(resolvedStorage.sqlitePath);
   const runtime = createPrrRuntime({
     ledger,
     actor: dependencies.actor,
@@ -33,6 +55,9 @@ export function createSqlitePrrRuntime(
 
   return Object.freeze({
     runtime,
+    ...(resolvedStorage.mountedWorkspace === undefined
+      ? {}
+      : { mountedWorkspace: resolvedStorage.mountedWorkspace }),
     close() {
       ledger.close();
     }

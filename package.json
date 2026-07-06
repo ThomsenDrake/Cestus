@@ -16,6 +16,7 @@
     "local:runtime:configure": "tsx packages/local-runtime/src/cli.ts configure",
     "local:runtime:config": "tsx packages/local-runtime/src/cli.ts config",
     "local:runtime:health": "tsx packages/local-runtime/src/cli.ts health",
+    "local:workspace:create": "tsx packages/local-runtime/src/cli.ts create-workspace",
     "prr:seed-local": "tsx packages/local-runtime/src/cli.ts seed-prr"
   },
   "dependencies": {

@@ -294,3 +294,60 @@ factory-readiness passed
 ```
 
 Provider live checks for Mistral Document AI or similar document-AI services are explicit opt-in checks and are not part of standard factory verification. Standard verification uses local contracts, fake providers, approval gates, and provenance assertions so agents can validate the ingestion pipeline without credentials or outbound document transfer.
+
+## Portable Workspace Mount Plan Readiness
+
+The portable workspace mount plan was prepared from the approved design spec on 2026-07-06.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-06-portable-workspace-mount-design.md`
+- `docs/superpowers/plans/2026-07-06-portable-workspace-mount-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded targeted command evidence from the implementation slice:
+
+```text
+npm test -- packages/workspace/test/workspace.test.ts
+Test Files 1 passed (1)
+Tests 16 passed (16)
+workspace package tests passed
+
+npm test -- packages/local-runtime/test/config.test.ts packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/cli.test.ts
+Test Files 3 passed (3)
+Tests 35 passed (35)
+local runtime config and CLI tests passed
+
+npm test -- packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/auth-and-seed.test.ts
+Test Files 2 passed (2)
+Tests 18 passed (18)
+local runtime portable mount tests passed
+
+npm test -- packages/ingestion/test/workspace.test.ts packages/workspace/test/workspace.test.ts
+Test Files 2 passed (2)
+Tests 18 passed (18)
+ingestion workspace delegation tests passed
+
+npm test -- packages/ui/test/request-data-boundary.test.ts
+Test Files 1 passed (1)
+Tests 5 passed (5)
+UI boundary and readiness tests passed
+```
+
+Final verification evidence:
+
+```text
+npm run factory:check
+factory-readiness passed
+
+npm run verify
+typecheck passed
+Test Files 70 passed (70)
+Tests 615 passed (615)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Portable mode uses one canonical workspace root and one canonical `ledger/ontology.sqlite`. Repo-local and explicit SQLite modes remain compatibility/developer modes. Silent fallback to internal storage is forbidden in portable mode.

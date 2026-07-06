@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   resolveLocalRuntimeConfig,
@@ -11,6 +12,7 @@ import {
 } from "./config-file.js";
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
 import { startLocalRuntimeServer } from "./server.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 
 export interface LocalRuntimeCliDependencies {
   readonly cwd?: string;
@@ -41,6 +43,25 @@ export async function runLocalRuntimeCli(
             ok: true,
             configPath: written.path,
             config: redactLocalRuntimeConfigFile(written.config)
+          },
+          null,
+          2
+        )
+      );
+      return 0;
+    }
+
+    if (command === "create-workspace") {
+      const createWorkspaceInput = parseCreateWorkspaceArgs(argv.slice(1));
+      const workspace = createPortableWorkspace({
+        ...createWorkspaceInput,
+        rootDir: resolve(dependencies.cwd ?? process.cwd(), createWorkspaceInput.rootDir)
+      });
+      stdout(
+        JSON.stringify(
+          {
+            ok: true,
+            workspace
           },
           null,
           2
@@ -166,6 +187,7 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     storageStrategy?: ConfigureFlags["storageStrategy"];
     sqlitePath?: string;
     appDataDir?: string;
+    workspaceRoot?: string;
     distDir?: string;
     logDir?: string;
     devSeedEnabled?: boolean;
@@ -228,6 +250,12 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
       index = nextIndex;
       continue;
     }
+    if (arg === "--workspace") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.workspaceRoot = value;
+      index = nextIndex;
+      continue;
+    }
     if (arg === "--ui-dist-dir") {
       const { value, nextIndex } = readFlagValue(argv, index, arg);
       options.distDir = value;
@@ -253,10 +281,95 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     ...(options.storageStrategy === undefined ? {} : { storageStrategy: options.storageStrategy }),
     ...(options.sqlitePath === undefined ? {} : { sqlitePath: options.sqlitePath }),
     ...(options.appDataDir === undefined ? {} : { appDataDir: options.appDataDir }),
+    ...(options.workspaceRoot === undefined ? {} : { workspaceRoot: options.workspaceRoot }),
     ...(options.distDir === undefined ? {} : { distDir: options.distDir }),
     ...(options.logDir === undefined ? {} : { logDir: options.logDir }),
     ...(options.devSeedEnabled === undefined ? {} : { devSeedEnabled: options.devSeedEnabled }),
     ...(options.rotateAuthToken === undefined ? {} : { rotateAuthToken: options.rotateAuthToken })
+  };
+}
+
+function parseCreateWorkspaceArgs(argv: readonly string[]) {
+  const options: {
+    rootDir?: string;
+    workspaceId?: string;
+    label?: string;
+    createdAt?: string;
+    createdBy?: string;
+    coreVersion?: string;
+    description?: string;
+  } = {};
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === undefined) {
+      continue;
+    }
+    if (arg === "--workspace") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.rootDir = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--workspace-id") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.workspaceId = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--label") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.label = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--created-at") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.createdAt = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--created-by") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.createdBy = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--core-version") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.coreVersion = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--description") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.description = value;
+      index = nextIndex;
+      continue;
+    }
+    throw new Error(
+      arg.startsWith("--") ? `Unknown create-workspace flag: ${arg}` : `Unexpected create-workspace argument: ${arg}`
+    );
+  }
+
+  if (options.rootDir === undefined) {
+    throw new Error("create-workspace requires --workspace <root>");
+  }
+  if (options.workspaceId === undefined) {
+    throw new Error("create-workspace requires --workspace-id <id>");
+  }
+  if (options.label === undefined) {
+    throw new Error("create-workspace requires --label <label>");
+  }
+
+  return {
+    rootDir: options.rootDir,
+    workspaceId: options.workspaceId,
+    label: options.label,
+    createdBy: options.createdBy ?? "cestus-local-runtime",
+    ...(options.createdAt === undefined ? {} : { createdAt: options.createdAt }),
+    ...(options.coreVersion === undefined ? {} : { coreVersion: options.coreVersion }),
+    ...(options.description === undefined ? {} : { description: options.description })
   };
 }
 
@@ -280,10 +393,17 @@ function parseConfigureBindMode(value: string): ConfigureFlags["bindMode"] {
 }
 
 function parseConfigureStorageStrategy(value: string): ConfigureFlags["storageStrategy"] {
-  if (value === "repo-local" || value === "explicit-path" || value === "app-data") {
+  if (
+    value === "repo-local" ||
+    value === "explicit-path" ||
+    value === "app-data" ||
+    value === "portable-workspace"
+  ) {
     return value;
   }
-  throw new Error("Configure --storage must be one of repo-local, explicit-path, or app-data");
+  throw new Error(
+    "Configure --storage must be one of repo-local, explicit-path, app-data, or portable-workspace"
+  );
 }
 
 function parseConfigurePort(value: string): number {

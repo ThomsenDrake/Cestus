@@ -5,9 +5,10 @@ import { dirname, isAbsolute, resolve } from "node:path";
 
 export interface LocalRuntimeConfigFile {
   readonly storage?: {
-    readonly strategy?: "repo-local" | "explicit-path" | "app-data";
+    readonly strategy?: "repo-local" | "explicit-path" | "app-data" | "portable-workspace";
     readonly sqlitePath?: string;
     readonly appDataDir?: string;
+    readonly workspaceRoot?: string;
   };
   readonly http?: {
     readonly host?: string;
@@ -30,9 +31,10 @@ export interface WriteLocalRuntimeOnboardingConfigInput {
   readonly bindMode: "loopback" | "tailnet" | "lan";
   readonly host?: string;
   readonly port?: number;
-  readonly storageStrategy?: "repo-local" | "explicit-path" | "app-data";
+  readonly storageStrategy?: "repo-local" | "explicit-path" | "app-data" | "portable-workspace";
   readonly sqlitePath?: string;
   readonly appDataDir?: string;
+  readonly workspaceRoot?: string;
   readonly distDir?: string;
   readonly logDir?: string;
   readonly devSeedEnabled?: boolean;
@@ -144,14 +146,50 @@ function mergeStorageConfig(
   existing: LocalRuntimeConfigFile,
   input: WriteLocalRuntimeOnboardingConfigInput
 ): LocalRuntimeConfigFile["storage"] {
+  if (input.storageStrategy !== undefined) {
+    return storageConfigForStrategy(existing.storage ?? {}, input.storageStrategy, input);
+  }
+
   const storage = {
     ...(existing.storage ?? {}),
-    ...(input.storageStrategy === undefined ? {} : { strategy: input.storageStrategy }),
     ...(input.sqlitePath === undefined ? {} : { sqlitePath: input.sqlitePath }),
-    ...(input.appDataDir === undefined ? {} : { appDataDir: input.appDataDir })
+    ...(input.appDataDir === undefined ? {} : { appDataDir: input.appDataDir }),
+    ...(input.workspaceRoot === undefined ? {} : { workspaceRoot: input.workspaceRoot })
   };
 
   return Object.keys(storage).length === 0 ? undefined : storage;
+}
+
+function storageConfigForStrategy(
+  existing: NonNullable<LocalRuntimeConfigFile["storage"]>,
+  strategy: NonNullable<WriteLocalRuntimeOnboardingConfigInput["storageStrategy"]>,
+  input: WriteLocalRuntimeOnboardingConfigInput
+): NonNullable<LocalRuntimeConfigFile["storage"]> {
+  if (strategy === "repo-local") {
+    return { strategy };
+  }
+
+  if (strategy === "explicit-path") {
+    const sqlitePath = input.sqlitePath ?? existing.sqlitePath;
+    return {
+      strategy,
+      ...(sqlitePath === undefined ? {} : { sqlitePath })
+    };
+  }
+
+  if (strategy === "app-data") {
+    const appDataDir = input.appDataDir ?? existing.appDataDir;
+    return {
+      strategy,
+      ...(appDataDir === undefined ? {} : { appDataDir })
+    };
+  }
+
+  const workspaceRoot = input.workspaceRoot ?? existing.workspaceRoot;
+  return {
+    strategy,
+    ...(workspaceRoot === undefined ? {} : { workspaceRoot })
+  };
 }
 
 function mergeHttpConfig(
@@ -208,11 +246,17 @@ function parseStorageConfig(
   record: Record<string, unknown>,
   path: string
 ): NonNullable<LocalRuntimeConfigFile["storage"]> {
-  assertAllowedKeys(record, ["strategy", "sqlitePath", "appDataDir"], "storage");
+  assertAllowedKeys(record, ["strategy", "sqlitePath", "appDataDir", "workspaceRoot"], "storage");
   return Object.freeze({
-    ...parseOptionalEnum(record, "strategy", path, ["repo-local", "explicit-path", "app-data"]),
+    ...parseOptionalEnum(record, "strategy", path, [
+      "repo-local",
+      "explicit-path",
+      "app-data",
+      "portable-workspace"
+    ]),
     ...parseOptionalString(record, "sqlitePath", path),
-    ...parseOptionalString(record, "appDataDir", path)
+    ...parseOptionalString(record, "appDataDir", path),
+    ...parseOptionalString(record, "workspaceRoot", path)
   });
 }
 
@@ -375,6 +419,10 @@ function validateWritableConfig(config: LocalRuntimeConfigFile): void {
 
   if (config.storage?.strategy === "explicit-path" && config.storage.sqlitePath === undefined) {
     throw new Error("explicit-path storage requires a sqlitePath");
+  }
+
+  if (config.storage?.strategy === "portable-workspace" && config.storage.workspaceRoot === undefined) {
+    throw new Error("portable-workspace storage requires a workspaceRoot");
   }
 }
 
