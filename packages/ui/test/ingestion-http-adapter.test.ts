@@ -208,7 +208,8 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
           {
             severity: "error",
             category: "ingestion",
-            message: "Bearer abc.def.ghi password=hunter2 oauth_token=tok_123 at /Users/drake/private/source /mnt/cestus/raw"
+            message:
+              "Bearer abc.def.ghi password=hunter2 oauth_token=tok_123 client_secret=client_123 apiKey=key_123 credential=cred_123 at /Users/drake/private/source /mnt/cestus/raw /media/cestus/raw /opt/cestus"
           }
         ],
         review: {
@@ -217,7 +218,8 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
             {
               severity: "warning",
               category: "ingestion",
-              message: "private key begins -----BEGIN PRIVATE KEY----- and path /Volumes/Cestus/raw /var/lib/cestus"
+              message:
+                "private key begins -----BEGIN PRIVATE KEY----- and path /Volumes/Cestus/raw /var/lib/cestus /etc/cestus.conf"
             }
           ]
         }
@@ -227,7 +229,9 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
 
     const workspace = await adapter.loadWorkspace();
 
-    expect(JSON.stringify(workspace)).not.toMatch(/abc\.def\.ghi|hunter2|tok_123|PRIVATE KEY|\/Users\/drake|\/Volumes\/Cestus|\/mnt\/cestus|\/var\/lib/);
+    expect(JSON.stringify(workspace)).not.toMatch(
+      /abc\.def\.ghi|hunter2|tok_123|client_123|key_123|cred_123|PRIVATE KEY|\/Users\/drake|\/Volumes\/Cestus|\/mnt\/cestus|\/media\/cestus|\/opt\/cestus|\/var\/lib|\/etc\/cestus/
+    );
     expect(JSON.stringify(workspace)).toContain("[redacted]");
     expect(JSON.stringify(workspace)).toContain("[path redacted]");
   });
