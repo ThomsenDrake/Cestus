@@ -166,6 +166,7 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     storageStrategy?: ConfigureFlags["storageStrategy"];
     sqlitePath?: string;
     appDataDir?: string;
+    workspaceRoot?: string;
     distDir?: string;
     logDir?: string;
     devSeedEnabled?: boolean;
@@ -228,6 +229,12 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
       index = nextIndex;
       continue;
     }
+    if (arg === "--workspace") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.workspaceRoot = value;
+      index = nextIndex;
+      continue;
+    }
     if (arg === "--ui-dist-dir") {
       const { value, nextIndex } = readFlagValue(argv, index, arg);
       options.distDir = value;
@@ -253,6 +260,7 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     ...(options.storageStrategy === undefined ? {} : { storageStrategy: options.storageStrategy }),
     ...(options.sqlitePath === undefined ? {} : { sqlitePath: options.sqlitePath }),
     ...(options.appDataDir === undefined ? {} : { appDataDir: options.appDataDir }),
+    ...(options.workspaceRoot === undefined ? {} : { workspaceRoot: options.workspaceRoot }),
     ...(options.distDir === undefined ? {} : { distDir: options.distDir }),
     ...(options.logDir === undefined ? {} : { logDir: options.logDir }),
     ...(options.devSeedEnabled === undefined ? {} : { devSeedEnabled: options.devSeedEnabled }),
@@ -280,10 +288,17 @@ function parseConfigureBindMode(value: string): ConfigureFlags["bindMode"] {
 }
 
 function parseConfigureStorageStrategy(value: string): ConfigureFlags["storageStrategy"] {
-  if (value === "repo-local" || value === "explicit-path" || value === "app-data") {
+  if (
+    value === "repo-local" ||
+    value === "explicit-path" ||
+    value === "app-data" ||
+    value === "portable-workspace"
+  ) {
     return value;
   }
-  throw new Error("Configure --storage must be one of repo-local, explicit-path, or app-data");
+  throw new Error(
+    "Configure --storage must be one of repo-local, explicit-path, app-data, or portable-workspace"
+  );
 }
 
 function parseConfigurePort(value: string): number {

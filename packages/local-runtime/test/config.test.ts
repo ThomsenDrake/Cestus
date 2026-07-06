@@ -40,6 +40,51 @@ describe("resolveLocalRuntimeConfig", () => {
     expect(config.http.authRequired).toBe(false);
   });
 
+  it("requires a workspace root for portable workspace storage", () => {
+    expect(() =>
+      resolveLocalRuntimeConfig({
+        cwd,
+        env: {
+          CESTUS_LOCAL_STORAGE: "portable-workspace"
+        }
+      })
+    ).toThrow("CESTUS_WORKSPACE_ROOT is required for portable-workspace storage");
+  });
+
+  it("resolves portable workspace storage to the canonical ontology ledger path", () => {
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_STORAGE: "portable-workspace",
+        CESTUS_WORKSPACE_ROOT: "external/case-a"
+      }
+    });
+
+    expect(config.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: resolve(cwd, "external/case-a"),
+      sqlitePath: resolve(cwd, "external/case-a/ledger/ontology.sqlite")
+    });
+    expect(config.http.bindMode).toBe("loopback");
+    expect(config.http.authRequired).toBe(false);
+  });
+
+  it("keeps explicit SQLite storage as a compatibility mode", () => {
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_STORAGE: "explicit-path",
+        CESTUS_LOCAL_SQLITE_PATH: "compat/prr-ledger.sqlite",
+        CESTUS_WORKSPACE_ROOT: "external/case-a"
+      }
+    });
+
+    expect(config.storage).toEqual({
+      strategy: "explicit-path",
+      sqlitePath: resolve(cwd, "compat/prr-ledger.sqlite")
+    });
+  });
+
   it("represents app-data storage for packaged desktop builds", () => {
     const config = resolveLocalRuntimeConfig({
       cwd,
