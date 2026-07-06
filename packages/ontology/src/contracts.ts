@@ -122,6 +122,9 @@ const parseJobIdSchema = z.string().regex(/^parse_[a-zA-Z0-9_-]+$/);
 const providerJobIdSchema = z.string().regex(/^provider_[a-zA-Z0-9_-]+$/);
 const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/);
+const legacyReportIdSchema = z.string().regex(/^legacy_report_[a-zA-Z0-9_-]+$/);
+const legacyStagingBatchIdSchema = z.string().regex(/^legacy_stage_[a-zA-Z0-9_-]+$/);
+const legacyCandidateIdSchema = z.string().regex(/^legacy_candidate_[a-zA-Z0-9_-]+$/);
 const ingestionAdapterRefSchema = z.object({ name: z.string().min(1), version: z.string().min(1) }).strict();
 const secretSafeIngestionAdapterRefSchema = z.object({
   name: secretSafeStringSchema.min(1),
@@ -142,6 +145,14 @@ const ingestionImportTotalsSchema = z.object({
   occurrencesLinked: z.number().int().nonnegative(),
   duplicatesReused: z.number().int().nonnegative(),
   skipped: z.number().int().nonnegative()
+}).strict();
+
+const legacyReportTotalsSchema = z.object({
+  inspectedFiles: z.number().int().nonnegative(),
+  candidateMetadataFiles: z.number().int().nonnegative(),
+  proposedAssertionCandidates: z.number().int().nonnegative(),
+  quarantineEntries: z.number().int().nonnegative(),
+  unresolvedReferences: z.number().int().nonnegative()
 }).strict();
 
 const ingestionSourceRegisteredPayloadSchema = z.object({
@@ -264,6 +275,29 @@ const ingestionProviderApprovedPayloadSchema = z.object({
   eligibleMediaTypes: z.array(secretSafeStringSchema.min(1)).min(1),
   maxBytesPerFile: z.number().int().positive(),
   policy: z.literal("send-all-technically-eligible")
+}).strict();
+
+const legacyImportReportGeneratedPayloadSchema = z.object({
+  legacyReportId: legacyReportIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  scanBatchId: scanBatchIdSchema,
+  reportHash: contentHashSchema,
+  candidateSetHash: contentHashSchema,
+  generatedAt: z.string().datetime(),
+  generator: secretSafeIngestionAdapterRefSchema,
+  totals: legacyReportTotalsSchema
+}).strict();
+
+const legacyOntologyStagingApprovedPayloadSchema = z.object({
+  stagingBatchId: legacyStagingBatchIdSchema,
+  legacyReportId: legacyReportIdSchema,
+  sourceCollectionId: sourceCollectionIdSchema,
+  scanBatchId: scanBatchIdSchema,
+  reportHash: contentHashSchema,
+  candidateSetHash: contentHashSchema,
+  approvedBy: secretSafeStringSchema.min(3),
+  approvedAt: z.string().datetime(),
+  approvedAssertionCandidateIds: z.array(legacyCandidateIdSchema)
 }).strict();
 
 const governanceTagSchema = z.enum([
@@ -662,6 +696,8 @@ export const payloadSchemas = {
   "ingestion.parse.completed": ingestionParseCompletedPayloadSchema,
   "ingestion.parse.failed": ingestionParseFailedPayloadSchema,
   "ingestion.provider.approved": ingestionProviderApprovedPayloadSchema,
+  "legacy.import.report.generated": legacyImportReportGeneratedPayloadSchema,
+  "legacy.ontology.staging.approved": legacyOntologyStagingApprovedPayloadSchema,
   "governance.policy.installed": governancePolicyInstalledPayloadSchema,
   "evidence.governance.classified": evidenceGovernanceClassifiedPayloadSchema,
   "evidence.governance.reviewed": evidenceGovernanceReviewedPayloadSchema,
@@ -870,6 +906,28 @@ export const eventContracts = {
     description: "Records human approval for a provider parse batch before document bytes may leave the machine.",
     agentGuidance: "Use only for batch-level provider approval. Never record provider credentials or imply autonomous outbound parsing.",
     invariants: ["approvedBy is required", "eligibleMediaTypes cannot be empty", "policy must be send-all-technically-eligible"]
+  },
+  "legacy.import.report.generated": {
+    type: "legacy.import.report.generated",
+    version: 1,
+    description: "Records a content-addressed migration report for a read-only old-Cestus inspection batch.",
+    agentGuidance: "Use after deterministic inspection and plugin parsing. This event references report artifacts and candidate sets; it does not import accepted graph truth.",
+    invariants: [
+      "reportHash and candidateSetHash must be sha256",
+      "totals must be nonnegative",
+      "accepted graph event IDs are not allowed in the payload"
+    ]
+  },
+  "legacy.ontology.staging.approved": {
+    type: "legacy.ontology.staging.approved",
+    version: 1,
+    description: "Records human approval to stage selected evidence-tied legacy observations as proposed assertions.",
+    agentGuidance: "Use only after raw evidence import and report review. This event permits assertion.proposed only, never accepted assertions or entity resolution.",
+    invariants: [
+      "context actor must be human",
+      "reportHash and candidateSetHash must match the reviewed report",
+      "approved candidates can only become assertion.proposed"
+    ]
   },
   "governance.policy.installed": {
     type: "governance.policy.installed",
@@ -1139,7 +1197,8 @@ const alwaysHumanGatedEventTypes = new Set<KnowledgeEventType>([
   "evidence.quarantined",
   "evidence.tombstoned",
   "network.exposure.enabled",
-  "device.session.approved"
+  "device.session.approved",
+  "legacy.ontology.staging.approved"
 ]);
 
 function hasSensitiveOptIns(payload: unknown): boolean {
@@ -1247,6 +1306,34 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
         ctx.addIssue({
           code: "custom",
           message: "provider approval streamId must match source, import, and provider job identity",
+          path: ["streamId"]
+        });
+      }
+    }
+
+    if (event.type === "legacy.import.report.generated") {
+      const legacyPayload = payload.data as PayloadByEventType["legacy.import.report.generated"];
+      const expectedStreamId =
+        `legacy_report_${legacyPayload.sourceCollectionId}_${legacyPayload.scanBatchId}_${legacyPayload.legacyReportId}`;
+
+      if (event.streamId !== expectedStreamId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "legacy report streamId must match source, scan, and report identity",
+          path: ["streamId"]
+        });
+      }
+    }
+
+    if (event.type === "legacy.ontology.staging.approved") {
+      const legacyPayload = payload.data as PayloadByEventType["legacy.ontology.staging.approved"];
+      const expectedStreamId =
+        `legacy_staging_${legacyPayload.sourceCollectionId}_${legacyPayload.scanBatchId}_${legacyPayload.stagingBatchId}`;
+
+      if (event.streamId !== expectedStreamId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "legacy staging streamId must match source, scan, and staging identity",
           path: ["streamId"]
         });
       }
