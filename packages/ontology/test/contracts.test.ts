@@ -1598,6 +1598,34 @@ describe("legacy Cestus import event contracts", () => {
     expect(validateKnowledgeEvent(event).success).toBe(false);
   });
 
+  it("rejects legacy report stream IDs that do not match source, scan, and report identity", () => {
+    const event = {
+      ...legacyEvent("evt_legacy_report_wrong_stream", "legacy.import.report.generated", {
+        legacyReportId: "legacy_report_001",
+        sourceCollectionId: "src_old_cestus",
+        scanBatchId: "scan_old_cestus_001",
+        reportHash: legacyReportHash,
+        candidateSetHash: legacyCandidateSetHash,
+        generatedAt: "2026-07-06T12:00:00.000Z",
+        generator: { name: "legacy-cestus-inspector", version: "0.1.0" },
+        totals: {
+          inspectedFiles: 5,
+          candidateMetadataFiles: 2,
+          proposedAssertionCandidates: 1,
+          quarantineEntries: 2,
+          unresolvedReferences: 1
+        }
+      }),
+      streamId: "legacy_report_src_other_scan_old_cestus_001_legacy_report_001"
+    };
+
+    const result = validateKnowledgeEvent(event);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("streamId");
+    }
+  });
+
   it("requires human approval for legacy ontology staging", () => {
     const event = {
       ...legacyEvent("evt_legacy_staging_system", "legacy.ontology.staging.approved", {
@@ -1621,6 +1649,29 @@ describe("legacy Cestus import event contracts", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("context.actor.kind");
+    }
+  });
+
+  it("rejects legacy staging stream IDs that do not match source, scan, and staging identity", () => {
+    const event = {
+      ...legacyEvent("evt_legacy_staging_wrong_stream", "legacy.ontology.staging.approved", {
+        stagingBatchId: "legacy_stage_001",
+        legacyReportId: "legacy_report_001",
+        sourceCollectionId: "src_old_cestus",
+        scanBatchId: "scan_old_cestus_001",
+        reportHash: legacyReportHash,
+        candidateSetHash: legacyCandidateSetHash,
+        approvedBy: "actor_investigator",
+        approvedAt: "2026-07-06T12:05:00.000Z",
+        approvedAssertionCandidateIds: ["legacy_candidate_001"]
+      }, legacyHumanContext),
+      streamId: "legacy_staging_src_old_cestus_scan_other_legacy_stage_001"
+    };
+
+    const result = validateKnowledgeEvent(event);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("streamId");
     }
   });
 });
