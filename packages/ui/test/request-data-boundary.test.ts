@@ -27,6 +27,7 @@ describe("Requests data boundary", () => {
     /^\.\.\/\.\.\/workspace-ops\/src(?:\/.*)?$/,
     /^packages\/workspace(?:\/.*)?$/,
     /^packages\/workspace-ops(?:\/.*)?$/,
+    /^packages\/local-runtime(?:\/.*)?$/,
     /^\.\.\/workspace(?:\/.*)?$/,
     /^\.\.\/\.\.\/local-runtime\/src\/operator-status(?:-routes)?(?:\.js)?$/,
     /^packages\/local-runtime\/src\/operator-status(?:-routes)?(?:\.js)?$/,
@@ -99,7 +100,12 @@ describe("Requests data boundary", () => {
       "packages/local-runtime/src/operator-status.js",
       "../../local-runtime/src/operator-status-routes.js",
       "../../workspace/src/index.js",
-      "packages/workspace/src/index.js"
+      "packages/workspace/src/index.js",
+      "packages/local-runtime",
+      "packages/local-runtime/index.js",
+      "fs/promises",
+      "path/posix",
+      "node:fs/promises"
     ];
 
     for (const moduleSpecifier of forbiddenModuleSpecifiers) {
@@ -146,7 +152,7 @@ describe("Requests data boundary", () => {
   });
 });
 
-const nodeRuntimeModulePattern = /^(?:fs|path|crypto|child_process|os|sqlite|http|https|stream|url|buffer|process|module|net|tls|worker_threads)$/;
+const nodeRuntimeModulePattern = /^(?:fs|path|crypto|child_process|os|sqlite|http|https|stream|url|buffer|process|module|net|tls|worker_threads)(?:\/.*)?$/;
 
 function listSourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
