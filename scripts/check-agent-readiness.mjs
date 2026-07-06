@@ -24,7 +24,9 @@ const requiredFiles = [
   "docs/superpowers/specs/2026-07-05-durable-local-prr-runtime-design.md",
   "docs/superpowers/plans/2026-07-05-durable-local-prr-runtime-implementation.md",
   "docs/superpowers/specs/2026-07-05-public-ingestion-pipeline-design.md",
-  "docs/superpowers/plans/2026-07-05-public-ingestion-pipeline-implementation.md"
+  "docs/superpowers/plans/2026-07-05-public-ingestion-pipeline-implementation.md",
+  "docs/superpowers/specs/2026-07-06-legacy-cestus-import-design.md",
+  "docs/superpowers/plans/2026-07-06-legacy-cestus-import-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
