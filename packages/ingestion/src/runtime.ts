@@ -357,7 +357,7 @@ async function appendStaleSourceDiagnostic(
   const event: AppendableKnowledgeEvent<"diagnostic.recorded"> = {
     type: "diagnostic.recorded",
     version: 1,
-    streamId: importStreamId(input),
+    streamId: diagnosticStreamId(input),
     context: {
       actor,
       occurredAt: new Date().toISOString(),
@@ -388,10 +388,10 @@ function staleSourceDiagnosticId(
   return `diag_ingestion_stale_${input.sourceCollectionId}_${input.scanBatchId}_${input.importBatchId}`;
 }
 
-function importStreamId(
+function diagnosticStreamId(
   input: Pick<ImportApprovedInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">
 ): string {
-  return `ingestion_import_${input.sourceCollectionId}_${input.scanBatchId}_${input.importBatchId}`;
+  return `ingestion_diagnostic_${input.sourceCollectionId}_${input.scanBatchId}_${input.importBatchId}`;
 }
 
 function occurrencesForScan(

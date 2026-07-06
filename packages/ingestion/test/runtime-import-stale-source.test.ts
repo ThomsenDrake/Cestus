@@ -57,6 +57,45 @@ describe("IngestionRuntime stale-source import verification", () => {
     expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual([]);
   });
 
+  it("keeps stale diagnostics off the import stream so restored-byte retries can complete", async () => {
+    const { workspace, runtime, sourceRoot } = await preparedRuntime({ "a.txt": "alpha" });
+    await approve(runtime);
+    writeFileSync(join(sourceRoot, "a.txt"), "changed");
+
+    const stale = await runtime.importApproved({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001"
+    });
+    expect(stale).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_SOURCE_CHANGED_SINCE_APPROVAL" }
+    });
+    expectStableSourceDiagnostic(await workspace.ledger.readAll(), stale);
+
+    writeFileSync(join(sourceRoot, "a.txt"), "alpha");
+    const retry = await runtime.importApproved({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001"
+    });
+
+    expect(retry).toMatchObject({
+      ok: true,
+      importBatchId: "imp_001",
+      totals: { evidenceCreated: 1, occurrencesLinked: 1 }
+    });
+    expect(JSON.stringify(retry)).not.toContain("INGESTION_RUNTIME_INTERNAL");
+    const events = await workspace.ledger.readAll();
+    expect(events.some((event) => event.type === "evidence.ingested")).toBe(true);
+    expect(events.some((event) => event.type === "ingestion.evidence.linked")).toBe(true);
+    expect(events.some((event) => event.type === "ingestion.import.completed")).toBe(true);
+    expect((await workspace.ledger.readStream("ingestion_import_src_drive_001_scan_001_imp_001")).map((event) => event.type)).toEqual([
+      "ingestion.import.approved",
+      "ingestion.import.completed"
+    ]);
+  });
+
   it("rejects missing regular files before blob writes", async () => {
     const { workspace, runtime, sourceRoot } = await preparedRuntime({ "a.txt": "alpha" });
     await approve(runtime);
@@ -72,7 +111,31 @@ describe("IngestionRuntime stale-source import verification", () => {
       ok: false,
       error: { code: "INGESTION_SOURCE_CHANGED_SINCE_APPROVAL" }
     });
-    expect((await workspace.ledger.readAll()).some((event) => event.type === "evidence.ingested")).toBe(false);
+    const events = await workspace.ledger.readAll();
+    expectStableSourceDiagnostic(events, result);
+    expectNoImportWrites(events);
+    expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual([]);
+  });
+
+  it("rejects added regular files before blob writes", async () => {
+    const { workspace, runtime, sourceRoot } = await preparedRuntime({ "a.txt": "alpha" });
+    await approve(runtime);
+    writeFileSync(join(sourceRoot, "new.txt"), "new content");
+
+    const result = await runtime.importApproved({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001"
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_SOURCE_CHANGED_SINCE_APPROVAL" }
+    });
+    const events = await workspace.ledger.readAll();
+    expectStableSourceDiagnostic(events, result);
+    expectNoImportWrites(events);
+    expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual([]);
   });
 
   it("rejects changed archive container hashes before blob writes", async () => {
@@ -166,7 +229,7 @@ function expectStableSourceDiagnostic(
   const diagnostics = events.filter((event) => event.type === "diagnostic.recorded");
   expect(diagnostics).toHaveLength(1);
   expect(diagnostics[0]).toMatchObject({
-    streamId: "ingestion_import_src_drive_001_scan_001_imp_001",
+    streamId: "ingestion_diagnostic_src_drive_001_scan_001_imp_001",
     payload: {
       diagnosticId: "diag_ingestion_stale_src_drive_001_scan_001_imp_001",
       severity: "error",
