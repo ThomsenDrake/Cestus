@@ -41,6 +41,8 @@ const validEvent = {
 class MemoryWorkspaceFs implements WorkspaceFileSystem {
   readonly files = new Map<string, string>();
   readonly directories = new Set<string>();
+  readonly statFailures = new Set<string>();
+  readonly listFailures = new Set<string>();
   readonly existsCalls: string[] = [];
   readonly statCalls: string[] = [];
   readonly listCalls: string[] = [];
@@ -61,6 +63,9 @@ class MemoryWorkspaceFs implements WorkspaceFileSystem {
 
   async stat(path: string): Promise<WorkspaceStats> {
     this.statCalls.push(path);
+    if (this.statFailures.has(path)) {
+      throw new Error(`unreadable path ${path}`);
+    }
     if (this.directories.has(path)) {
       return { kind: "directory", sizeBytes: 0 };
     }
@@ -73,6 +78,9 @@ class MemoryWorkspaceFs implements WorkspaceFileSystem {
 
   async list(path: string): Promise<readonly string[]> {
     this.listCalls.push(path);
+    if (this.listFailures.has(path)) {
+      throw new Error(`unreadable directory ${path}`);
+    }
     return [];
   }
 
@@ -165,6 +173,108 @@ describe("verifyWorkspace", () => {
       },
       projections: { available: true, rebuildable: true }
     });
+    expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("does not read canonical ledger events when the ledger path is unavailable", async () => {
+    const fileSystem = new MemoryWorkspaceFs();
+    const layoutShape = addResolvedWorkspace(fileSystem);
+    fileSystem.files.delete(layoutShape.ledgerPath);
+    const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
+    let readCalls = 0;
+
+    const result = await verifyWorkspace({
+      layout,
+      fileSystem,
+      eventReader: {
+        readAll: async () => {
+          readCalls += 1;
+          return [validEvent];
+        }
+      }
+    });
+
+    expect(readCalls).toBe(0);
+    expect(result.status).toBe("blocked");
+    expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_workspace_ledger_root_unavailable",
+        category: "ledger"
+      })
+    );
+    expect(result.proposedActions).toContainEqual(
+      expect.objectContaining({
+        kind: "append-repair-event-required",
+        requiresHumanApproval: true,
+        mutatesCanonicalState: true
+      })
+    );
+    expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+  });
+
+  it("reports stale resolved layouts when the manifest disappears after detection", async () => {
+    const fileSystem = new MemoryWorkspaceFs();
+    const layoutShape = addResolvedWorkspace(fileSystem);
+    const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
+    fileSystem.files.delete(layoutShape.manifestPath);
+
+    const result = await verifyWorkspace({
+      layout,
+      fileSystem,
+      eventReader: { readAll: async () => [validEvent] }
+    });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload?.manifest).toMatchObject({ readable: false, valid: false });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_workspace_manifest_unavailable",
+        category: "manifest"
+      })
+    );
+    expect(result.proposedActions).toContainEqual(
+      expect.objectContaining({
+        kind: "rerun-verify",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false
+      })
+    );
+    expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("reports blob subtree unreadability as proposed-only canonical repair", async () => {
+    const fileSystem = new MemoryWorkspaceFs();
+    const layoutShape = addResolvedWorkspace(fileSystem);
+    fileSystem.listFailures.add(layoutShape.blobRoot);
+    const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
+
+    const result = await verifyWorkspace({
+      layout,
+      fileSystem,
+      eventReader: { readAll: async () => [validEvent] }
+    });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload?.blobStore).toMatchObject({
+      available: false,
+      missingBlobCount: 1
+    });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_workspace_blob_root_unreadable",
+        category: "blob-integrity"
+      })
+    );
+    expect(result.proposedActions).toContainEqual(
+      expect.objectContaining({
+        kind: "append-repair-event-required",
+        requiresHumanApproval: true,
+        mutatesCanonicalState: true
+      })
+    );
     expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
