@@ -40,4 +40,9 @@ describe("legacy ingestion CLI handlers", () => {
     expect(output).toBe(`${JSON.stringify(dto, null, 2)}\n`);
     expect(JSON.parse(output)).toEqual(dto);
   });
+
+  it("rejects legacy migration report JSON without a DTO", () => {
+    expect(() => handleIngestionCommand({ command: "legacy-report-json" } as any))
+      .toThrow("Command legacy-report-json needs a legacy migration review DTO.");
+  });
 });
