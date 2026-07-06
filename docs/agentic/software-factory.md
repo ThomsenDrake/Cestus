@@ -294,3 +294,32 @@ factory-readiness passed
 ```
 
 Provider live checks for Mistral Document AI or similar document-AI services are explicit opt-in checks and are not part of standard factory verification. Standard verification uses local contracts, fake providers, approval gates, and provenance assertions so agents can validate the ingestion pipeline without credentials or outbound document transfer.
+
+## Legacy Cestus Import Plan Readiness
+
+The legacy old-Cestus import plan was prepared from the approved design spec on 2026-07-06.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-06-legacy-cestus-import-design.md`
+- `docs/superpowers/plans/2026-07-06-legacy-cestus-import-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded targeted command evidence from the implementation slice:
+
+```text
+npm test -- packages/ontology/test/contracts.test.ts packages/ingestion/test/legacy-plugins.test.ts packages/ingestion/test/legacy-inspector.test.ts packages/ingestion/test/legacy-report.test.ts packages/ingestion/test/legacy-projection.test.ts packages/ingestion/test/legacy-read-api.test.ts packages/ingestion/test/legacy-import-service.test.ts packages/ingestion/test/legacy-staging.test.ts packages/ingestion/test/legacy-cli.test.ts
+```
+
+Final verification evidence:
+
+```text
+npm run verify
+typecheck passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Legacy import remains recon-first. Every legacy file is evidence first, ontology staging can only append evidence-tied `assertion.proposed`, and accepted assertion, entity, relationship, or resolution events are forbidden during import. The readiness evidence is evidence-first and asserts only behavior proposed, reviewed, and verified through the completed legacy import slice.
