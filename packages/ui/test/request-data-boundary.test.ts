@@ -11,11 +11,17 @@ describe("Requests data boundary", () => {
   const requestModalPlanPath = "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md";
   const durableRuntimeSpecPath = "docs/superpowers/specs/2026-07-05-durable-local-prr-runtime-design.md";
   const durableRuntimePlanPath = "docs/superpowers/plans/2026-07-05-durable-local-prr-runtime-implementation.md";
+  const portableWorkspaceSpecPath = "docs/superpowers/specs/2026-07-06-portable-workspace-mount-design.md";
+  const portableWorkspacePlanPath = "docs/superpowers/plans/2026-07-06-portable-workspace-mount-implementation.md";
   const productUiBoundaryFiles = listSourceFiles("packages/ui/src");
   const forbiddenProductUiImportPatterns = [
     /(?:^|\/)request-fixtures(?:\.js)?$/,
     /^node:/,
+    /^node:(?:fs|path)$/,
     nodeRuntimeModulePattern,
+    /^\.\.\/\.\.\/workspace\/src(?:\/.*)?$/,
+    /^packages\/workspace(?:\/.*)?$/,
+    /^\.\.\/workspace(?:\/.*)?$/,
     /(?:^|\/)(?:runtime|sqlite-event-ledger)(?:\.js)?$/,
     /(?:^|\/)prr\/src\/runtime(?:\.js)?$/,
     /(?:^|\/)local-runtime\/src\/(?:config|server|http-handler|runtime-factory)(?:\.js)?$/
@@ -27,7 +33,12 @@ describe("Requests data boundary", () => {
     "packages/local-runtime/src/config",
     "packages/local-runtime/src/server",
     "packages/local-runtime/src/http-handler",
-    "packages/local-runtime/src/runtime-factory"
+    "packages/local-runtime/src/runtime-factory",
+    "../../workspace/src",
+    "packages/workspace",
+    "../workspace",
+    "node:fs",
+    "node:path"
   ];
 
   it("scans every product UI source file for browser boundary drift", () => {
@@ -75,6 +86,7 @@ describe("Requests data boundary", () => {
     expect(requiredFiles).toEqual(expect.arrayContaining([ledgerBackedSpecPath, ledgerBackedPlanPath]));
     expect(requiredFiles).toEqual(expect.arrayContaining([requestModalSpecPath, requestModalPlanPath]));
     expect(requiredFiles).toEqual(expect.arrayContaining([durableRuntimeSpecPath, durableRuntimePlanPath]));
+    expect(requiredFiles).toEqual(expect.arrayContaining([portableWorkspaceSpecPath, portableWorkspacePlanPath]));
   });
 });
 
