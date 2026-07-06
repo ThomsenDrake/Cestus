@@ -198,6 +198,42 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
     });
   });
 
+  it("maps stable diagnostics endpoint failures without dropping server diagnostics", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse(503, {
+        ok: false,
+        error: {
+          code: "INGESTION_WORKSPACE_NOT_MOUNTED",
+          message: "Portable workspace is not mounted.",
+          allowedRepairActions: ["mount the workspace"],
+          diagnostics: [
+            {
+              severity: "warning",
+              category: "ingestion.mount",
+              message: "Drive disappeared at /Volumes/Cestus"
+            }
+          ]
+        }
+      })
+    );
+    const adapter = createHttpIngestionWorkspaceAdapter({ fetcher });
+
+    await expect(adapter.loadDiagnostics({ sourceCollectionId: "src_drive_001" })).resolves.toEqual({
+      diagnostics: [
+        {
+          severity: "warning",
+          category: "ingestion.mount",
+          message: "Drive disappeared at [path redacted]"
+        },
+        {
+          severity: "error",
+          category: "ingestion",
+          message: "Portable workspace is not mounted."
+        }
+      ]
+    });
+  });
+
   it("redacts secrets and private paths from successful workspace diagnostics", async () => {
     const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       jsonResponse(200, {
