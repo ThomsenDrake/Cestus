@@ -66,6 +66,12 @@ interface InspectedRoot {
   readonly safeUri: string;
 }
 
+interface ManifestValidation {
+  readonly readable: boolean;
+  readonly valid: boolean;
+  readonly reason: ManifestValidationReason;
+}
+
 export async function verifyWorkspace(
   input: VerifyWorkspaceInput
 ): Promise<WorkspaceOpsEnvelope<WorkspaceVerifyDto>> {
@@ -81,27 +87,13 @@ export async function verifyWorkspace(
   }
 
   const layout = input.layout.layout;
-  const roots = await inspectWorkspaceRoots(input.fileSystem, layout);
-  const rootMap = new Map<WorkspaceRootId, InspectedRoot>(
-    roots.map((root) => [root.rootId, root])
-  );
-  const manifestRoot = requireRoot(rootMap, "manifest");
-  const ledgerRoot = requireRoot(rootMap, "ledger");
-  const blobRoot = requireRoot(rootMap, "blobs");
-  const projectionRoot = requireRoot(rootMap, "projections");
-  const derivativeRoot = requireRoot(rootMap, "derivatives");
-  const jobRoot = requireRoot(rootMap, "jobs");
-  const diagnosticsRoot = requireRoot(rootMap, "diagnostics");
-  const backupRoot = requireRoot(rootMap, "backups");
+  const manifestRoot = await inspectWorkspaceRoot(input.fileSystem, workspaceRootSpecs[0], layout);
   const manifestValidation = manifestRoot.status === "available"
     ? await validateResolvedManifest(input.fileSystem, layout, input.layout.workspace)
     : { readable: false, valid: false, reason: "unavailable" as const };
 
   const diagnostics: WorkspaceDiagnosticInput[] = [];
   const proposedActions: ProposedRepairActionInput[] = [];
-
-  let events: readonly unknown[] = [];
-  let ledgerReadable = false;
 
   if (manifestRoot.status !== "available" || !manifestValidation.valid) {
     diagnostics.push({
@@ -116,7 +108,34 @@ export async function verifyWorkspace(
       }
     });
     proposedActions.push(manifestRevalidationAction(manifestValidation.reason));
+
+    return createWorkspaceOpsEnvelope({
+      command: "verify workspace",
+      status: "blocked",
+      workspace: input.layout.workspace,
+      payload: manifestBlockedVerifyPayload(input.layout, layout, manifestRoot, manifestValidation, diagnostics),
+      diagnostics,
+      proposedActions
+    });
   }
+
+  const roots = [
+    manifestRoot,
+    ...(await inspectWorkspaceRoots(input.fileSystem, layout, workspaceRootSpecs.slice(1)))
+  ];
+  const rootMap = new Map<WorkspaceRootId, InspectedRoot>(
+    roots.map((root) => [root.rootId, root])
+  );
+  const ledgerRoot = requireRoot(rootMap, "ledger");
+  const blobRoot = requireRoot(rootMap, "blobs");
+  const projectionRoot = requireRoot(rootMap, "projections");
+  const derivativeRoot = requireRoot(rootMap, "derivatives");
+  const jobRoot = requireRoot(rootMap, "jobs");
+  const diagnosticsRoot = requireRoot(rootMap, "diagnostics");
+  const backupRoot = requireRoot(rootMap, "backups");
+
+  let events: readonly unknown[] = [];
+  let ledgerReadable = false;
 
   if (ledgerRoot.status !== "available") {
     diagnostics.push(canonicalDiagnostic(
@@ -383,33 +402,87 @@ function blockedVerifyPayload(layout: WorkspaceLayoutResult): WorkspaceVerifyDto
   };
 }
 
+function manifestBlockedVerifyPayload(
+  layoutResult: WorkspaceLayoutResult,
+  layout: ResolvedWorkspaceLayout,
+  manifestRoot: InspectedRoot,
+  manifestValidation: ManifestValidation,
+  diagnostics: readonly WorkspaceDiagnosticInput[]
+): WorkspaceVerifyDto {
+  return {
+    schemaVersion: workspaceOpsSchemaVersion,
+    mountStatus: mountStatusForManifestValidation(layoutResult.mountStatus, manifestValidation.reason),
+    manifest: {
+      readable: manifestValidation.readable,
+      valid: manifestValidation.valid,
+      ...(layoutResult.workspace?.manifestVersion === undefined
+        ? {}
+        : { manifestVersion: layoutResult.workspace.manifestVersion }),
+      safeSummary: manifestSafeSummary(manifestValidation.reason)
+    },
+    layout: {
+      contractVersion: layout.layoutContractVersion,
+      readable: false,
+      requiredRoots: [
+        {
+          rootId: manifestRoot.rootId,
+          category: manifestRoot.category,
+          status: manifestRoot.status,
+          safeUri: manifestRoot.safeUri
+        }
+      ]
+    },
+    ledger: { readable: false, eventCount: 0, highWaterMark: 0 },
+    blobStore: {
+      available: false,
+      contentAddressedRootCount: 0,
+      aggregateBytes: 0,
+      missingBlobCount: 0,
+      hashMismatchCount: 0
+    },
+    projections: { available: false, staleCount: 0, rebuildable: false },
+    jobs: { available: false, queuedCount: 0, failedCount: 0 },
+    diagnostics: {
+      visible: false,
+      errorCount: diagnostics.filter((diagnostic) => diagnostic.severity === "error").length,
+      warningCount: diagnostics.filter((diagnostic) => diagnostic.severity === "warning").length
+    },
+    backup: { manifestAvailable: false, stale: true }
+  };
+}
+
 async function inspectWorkspaceRoots(
   fileSystem: WorkspaceFileSystem,
-  layout: ResolvedWorkspaceLayout
+  layout: ResolvedWorkspaceLayout,
+  specs: readonly WorkspaceRootSpec[] = workspaceRootSpecs
 ): Promise<InspectedRoot[]> {
   const roots: InspectedRoot[] = [];
-  for (const spec of workspaceRootSpecs) {
-    const path = spec.path(layout);
-    roots.push({
-      rootId: spec.rootId,
-      category: spec.category,
-      path,
-      status: await pathStatus(fileSystem, path),
-      safeUri: safeUriForPath(path)
-    });
+  for (const spec of specs) {
+    roots.push(await inspectWorkspaceRoot(fileSystem, spec, layout));
   }
   return roots;
+}
+
+async function inspectWorkspaceRoot(
+  fileSystem: WorkspaceFileSystem,
+  spec: WorkspaceRootSpec,
+  layout: ResolvedWorkspaceLayout
+): Promise<InspectedRoot> {
+  const path = spec.path(layout);
+  return {
+    rootId: spec.rootId,
+    category: spec.category,
+    path,
+    status: await pathStatus(fileSystem, path),
+    safeUri: safeUriForPath(path)
+  };
 }
 
 async function validateResolvedManifest(
   fileSystem: WorkspaceFileSystem,
   layout: ResolvedWorkspaceLayout,
   workspace: NonNullable<WorkspaceLayoutResult["workspace"]>
-): Promise<{
-  readonly readable: boolean;
-  readonly valid: boolean;
-  readonly reason: ManifestValidationReason;
-}> {
+): Promise<ManifestValidation> {
   let rawManifest: string;
   try {
     rawManifest = await fileSystem.readText(layout.manifestPath);

@@ -6,7 +6,7 @@ Worker: Codex implementing agent for this task
 Branch: `codex/portable-workspace-ops-design` in an existing task-scoped worktree
 Worktree: `/home/drake/.codex/worktrees/797e/Cestus`
 Claimed-at: 2026-07-06T15:11:49Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/workspace-ops/src/ops.ts`
@@ -45,6 +45,9 @@ Command evidence:
 - Wrong-drive manifest repair red: `npm test -- packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts` exited 1 with 3 expected failures proving wrong or stale manifest identity/version still reported mount status `available` and only proposed `rerun-verify`.
 - Wrong-drive manifest repair green: `npm test -- packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts` exited 0 with 2 test files and 17 tests passed.
 - Wrong-drive manifest repair verify: `npm run verify` exited 0 with typecheck passed, 73 test files and 635 tests passed, UI build succeeded, and factory-readiness passed.
+- Manifest-first canonical traversal repair red: `npm test -- packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts` exited 1 with 1 expected failure proving wrong-drive manifest revalidation still touched ledger/blob/projection/support root paths through `exists`, `stat`, `list`, and `realpath`.
+- Manifest-first canonical traversal repair green: `npm test -- packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts` exited 0 with 2 test files and 17 tests passed.
+- Manifest-first canonical traversal repair verify: `npm run verify` exited 0 with typecheck passed, 73 test files and 635 tests passed, UI build succeeded, and factory-readiness passed.
 
 Self-review:
 - The repair stayed within the Task 3 owned files and did not start Task 4.
@@ -59,3 +62,4 @@ Self-review:
 - The Task 3 provisional ledger high-water mark is now event count, avoiding underreporting across multiple per-stream sequence counters.
 - Disk usage now catches `availableBytes()` adapter failures, reports a safe disk diagnostic, preserves aggregate category output, and still omits raw child names and adapter error text.
 - Manifest revalidation now distinguishes invalid/unreadable shape from identity/version mismatch; identity or version mismatch reports `mountStatus: "wrong-drive"` and proposes `select-workspace` without touching canonical readers.
+- `verifyWorkspace` now runs a manifest-first phase and returns blocked immediately for manifest failure, so wrong-drive and invalid manifest states do not inspect canonical ledger, blob, projection, or support roots.
