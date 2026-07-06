@@ -507,7 +507,7 @@ function inspectManifestExportShape(value: object): BackupManifestShapeInspectio
     !exportManifestHashMatches(manifest) ||
     !sameStrings(manifest.includedSections, expectedIncludedSections) ||
     !manifestSectionHashesMatch(manifest) ||
-    !artifactsSupportCoveredCategories(manifest.artifacts, coveredCategories) ||
+    !artifactsMatchCoveredCategories(manifest.artifacts, coveredCategories) ||
     coveredCategories.length !== manifest.coverage.coveredCategories.length ||
     !sameCategories(manifest.coverage.missingCategories, missingCategoriesFor(workspaceRootCategories, coveredCategories))
   ) {
@@ -656,12 +656,24 @@ function manifestSectionHashesMatch(manifest: ManifestExportDto): boolean {
     });
 }
 
-function artifactsSupportCoveredCategories(
+function artifactsMatchCoveredCategories(
   artifacts: readonly ManifestArtifact[],
   coveredCategories: readonly WorkspaceRootCategory[]
 ): boolean {
-  const artifactCategories = new Set(artifacts.map((artifact) => artifact.category));
-  return coveredCategories.every((category) => artifactCategories.has(category));
+  if (artifacts.length !== coveredCategories.length) {
+    return false;
+  }
+
+  const coveredCategorySet = new Set(coveredCategories);
+  const artifactCategorySet = new Set<WorkspaceRootCategory>();
+  for (const artifact of artifacts) {
+    if (!coveredCategorySet.has(artifact.category) || artifactCategorySet.has(artifact.category)) {
+      return false;
+    }
+    artifactCategorySet.add(artifact.category);
+  }
+
+  return coveredCategories.every((category) => artifactCategorySet.has(category));
 }
 
 function sameCategories(

@@ -12,6 +12,8 @@ import {
 import { checkBackupManifest, exportWorkspaceManifest } from "../src/backup.js";
 import { createProvisionalWorkspaceLayout } from "../src/layout.js";
 
+type WorkspaceRootCategory = DiskUsageDto["categories"][number]["category"];
+
 const workspace: WorkspaceRefDto = {
   workspaceId: "ws_ops_001",
   label: "Ops Fixture",
@@ -43,8 +45,48 @@ function withRecomputedManifestHash(manifest: ManifestExportDto): ManifestExport
   };
 }
 
+function withRecomputedExportHashes(manifest: ManifestExportDto): ManifestExportDto {
+  return withRecomputedManifestHash({
+    ...manifest,
+    sectionHashes: manifest.includedSections.map((sectionId) => ({
+      sectionId,
+      sectionHash: hashJson(sectionSummary(sectionId, manifest))
+    }))
+  });
+}
+
 function hashJson(value: unknown): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(stableJson(value), "utf8").digest("hex")}`;
+}
+
+function sectionSummary(
+  sectionId: ManifestExportDto["includedSections"][number],
+  manifest: ManifestExportDto
+): unknown {
+  switch (sectionId) {
+    case "workspace":
+      return manifest.workspace;
+    case "manifest":
+      return manifest.coverage;
+    case "layout":
+      return { layoutContractVersion: manifest.workspace.layoutContractVersion };
+    case "ledger":
+      return manifest.ledger;
+    case "blobs":
+      return manifest.blobStore;
+    case "derivatives":
+    case "projections":
+    case "diagnostics":
+    case "jobs":
+    case "backup":
+      return manifest.artifacts.filter((artifact) => sectionForCategory(artifact.category) === sectionId);
+  }
+}
+
+function sectionForCategory(
+  category: ManifestExportDto["artifacts"][number]["category"]
+): ManifestExportDto["includedSections"][number] {
+  return category === "backups" ? "backup" : category;
 }
 
 function stableJson(value: unknown): string {
@@ -199,6 +241,119 @@ describe("workspace backup manifests", () => {
       containsSecretShapedFields: true
     });
     expect(result.payload?.missingCategories).toEqual(expectedCategories);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_backup_manifest_invalid",
+        category: "backup"
+      })
+    );
+    expect(result.proposedActions).toEqual([
+      expect.objectContaining({
+        kind: "export-manifest",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false,
+        allowedNextCommands: ["manifest export", "backup check"]
+      })
+    ]);
+    expect(result.proposedActions).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "append-repair-event-required" })])
+    );
+    expect(JSON.stringify(result)).not.toMatch(/canonicalLedgerEvents|evidenceBodies|protected source|private text/i);
+    expect(backupCheckDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it.each([
+    {
+      name: "duplicate artifact summaries",
+      async manifest(): Promise<{
+        readonly manifest: ManifestExportDto;
+        readonly expected: readonly WorkspaceRootCategory[];
+      }> {
+        const exported = await exportWorkspaceManifest({
+          workspace,
+          layout,
+          ledgerEventCount: 15,
+          ledgerHighWaterMark: 15,
+          categoryBytes,
+          diagnosticCounts: { errorCount: 0, warningCount: 0 },
+          jobCounts: { queuedCount: 0, failedCount: 0 },
+          createdAt: "2026-07-06T12:30:00.000Z"
+        });
+        const projectionArtifact = exported.payload?.artifacts.find((artifact) => artifact.category === "projections");
+        if (exported.payload === undefined || projectionArtifact === undefined) {
+          throw new Error("manifest export fixture did not include projection artifact");
+        }
+
+        return {
+          manifest: withRecomputedExportHashes({
+            ...exported.payload,
+            artifacts: [...exported.payload.artifacts, projectionArtifact]
+          }),
+          expected: expectedCategories
+        };
+      }
+    },
+    {
+      name: "extra artifact summaries outside claimed coverage",
+      async manifest(): Promise<{
+        readonly manifest: ManifestExportDto;
+        readonly expected: readonly WorkspaceRootCategory[];
+      }> {
+        const categoryBytesWithoutBackups = categoryBytes.filter((category) => category.category !== "backups");
+        const exported = await exportWorkspaceManifest({
+          workspace,
+          layout,
+          ledgerEventCount: 15,
+          ledgerHighWaterMark: 15,
+          categoryBytes: categoryBytesWithoutBackups,
+          diagnosticCounts: { errorCount: 0, warningCount: 0 },
+          jobCounts: { queuedCount: 0, failedCount: 0 },
+          createdAt: "2026-07-06T12:30:00.000Z"
+        });
+        const fullExport = await exportWorkspaceManifest({
+          workspace,
+          layout,
+          ledgerEventCount: 15,
+          ledgerHighWaterMark: 15,
+          categoryBytes,
+          diagnosticCounts: { errorCount: 0, warningCount: 0 },
+          jobCounts: { queuedCount: 0, failedCount: 0 },
+          createdAt: "2026-07-06T12:30:00.000Z"
+        });
+        const backupArtifact = fullExport.payload?.artifacts.find((artifact) => artifact.category === "backups");
+        if (exported.payload === undefined || backupArtifact === undefined) {
+          throw new Error("manifest export fixture did not include backup artifact");
+        }
+
+        return {
+          manifest: withRecomputedExportHashes({
+            ...exported.payload,
+            artifacts: [...exported.payload.artifacts, backupArtifact]
+          }),
+          expected: categoryBytesWithoutBackups.map((category) => category.category)
+        };
+      }
+    }
+  ])("degrades exported manifests with $name even when hashes are recomputed", async ({ manifest }) => {
+    const malformed = await manifest();
+
+    const result = await checkBackupManifest({
+      workspace,
+      currentLedgerHighWaterMark: 15,
+      expectedCategories: malformed.expected,
+      backupManifest: malformed.manifest
+    });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload).toMatchObject({
+      backupManifestPresent: true,
+      identityMatches: false,
+      layoutContractMatches: false,
+      stale: true,
+      containsSecretShapedFields: true
+    });
+    expect(result.payload?.missingCategories).toEqual(malformed.expected);
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
         diagnosticId: "diag_backup_manifest_invalid",
