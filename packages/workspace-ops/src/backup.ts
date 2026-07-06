@@ -37,12 +37,12 @@ export interface ExportWorkspaceManifestInput {
 }
 
 export interface BackupManifestInput {
-  readonly workspaceId?: string;
-  readonly layoutContractVersion?: string;
+  readonly workspaceId: string;
+  readonly layoutContractVersion: string;
   readonly ledgerHighWaterMark?: number;
   readonly ledgerEventCount?: number;
-  readonly coveredCategories?: readonly string[];
-  readonly exportedAt?: string;
+  readonly coveredCategories: readonly string[];
+  readonly exportedAt: string;
 }
 
 export interface CheckBackupManifestInput {
@@ -65,6 +65,22 @@ const workspaceRootCategories = [
 
 const secretFieldPattern =
   /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth|credential)/i;
+const allowedBackupManifestKeys = new Set([
+  "workspaceId",
+  "layoutContractVersion",
+  "ledgerHighWaterMark",
+  "ledgerEventCount",
+  "coveredCategories",
+  "exportedAt"
+]);
+const requiredBackupManifestKeys = [
+  "workspaceId",
+  "layoutContractVersion",
+  "coveredCategories",
+  "exportedAt"
+] as const;
+const rawStateFieldPattern =
+  /(?:canonical|ledger|event|events|payload|payloads|evidence|blob|path|paths|raw|content|contents|body|bodies|correspondence)/i;
 
 export async function exportWorkspaceManifest(
   input: ExportWorkspaceManifestInput
@@ -137,7 +153,13 @@ export async function checkBackupManifest(
 ): Promise<WorkspaceOpsEnvelope<BackupCheckDto>> {
   const expectedCategories = input.expectedCategories ?? workspaceRootCategories;
   const backupManifestPresent = input.backupManifest !== undefined;
-  const containsSecretShapedFields = backupManifestPresent && containsSecretShapedField(input.backupManifest);
+  const manifestShape = backupManifestPresent
+    ? inspectBackupManifestShape(input.backupManifest)
+    : { valid: false, containsUnsafeFields: false };
+  const manifestShapeInvalid = backupManifestPresent && !manifestShape.valid;
+  const containsSecretShapedFields =
+    backupManifestPresent &&
+    (manifestShape.containsUnsafeFields || containsSecretShapedField(input.backupManifest) || manifestShapeInvalid);
   const backupWorkspaceId = safeWorkspaceId(input.backupManifest?.workspaceId);
   const backupLedgerHighWaterMark = nonnegativeInteger(
     input.backupManifest?.ledgerHighWaterMark ?? input.backupManifest?.ledgerEventCount
@@ -155,6 +177,7 @@ export async function checkBackupManifest(
 
   const diagnostics = backupDiagnostics({
     backupManifestPresent,
+    manifestShapeInvalid,
     containsSecretShapedFields,
     identityMatches,
     layoutContractMatches,
@@ -260,6 +283,7 @@ function sectionSummary(
 
 function backupDiagnostics(input: {
   readonly backupManifestPresent: boolean;
+  readonly manifestShapeInvalid: boolean;
   readonly containsSecretShapedFields: boolean;
   readonly identityMatches: boolean;
   readonly layoutContractMatches: boolean;
@@ -272,6 +296,12 @@ function backupDiagnostics(input: {
     return diagnostics;
   }
 
+  if (input.manifestShapeInvalid) {
+    diagnostics.push(backupDiagnostic(
+      "diag_backup_manifest_invalid",
+      "Backup manifest shape is invalid; export a fresh safe manifest."
+    ));
+  }
   if (input.containsSecretShapedFields) {
     diagnostics.push(backupDiagnostic(
       "diag_backup_manifest_secret_fields",
@@ -410,6 +440,133 @@ function containsSecretShapedField(value: unknown, seen = new WeakSet<object>())
       return true;
     }
     if (containsSecretShapedField(descriptor.value, seen)) {
+      return true;
+    }
+  }
+
+  seen.delete(value);
+  return false;
+}
+
+function inspectBackupManifestShape(
+  value: unknown
+): { readonly valid: boolean; readonly containsUnsafeFields: boolean } {
+  if (typeof value !== "object" || value === null || Object.getPrototypeOf(value) !== Object.prototype) {
+    return { valid: false, containsUnsafeFields: true };
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  let valid = true;
+  let containsUnsafeFields = false;
+
+  for (const key of Reflect.ownKeys(descriptors)) {
+    if (typeof key !== "string") {
+      valid = false;
+      containsUnsafeFields = true;
+      continue;
+    }
+
+    const descriptor = descriptors[key];
+    if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) {
+      valid = false;
+      containsUnsafeFields = true;
+      continue;
+    }
+
+    if (!allowedBackupManifestKeys.has(key)) {
+      valid = false;
+      containsUnsafeFields = true;
+    }
+
+    if (isUnsafeBackupManifestFieldName(key) || containsUnsafeBackupManifestField(descriptor.value)) {
+      valid = false;
+      containsUnsafeFields = true;
+    }
+  }
+
+  for (const key of requiredBackupManifestKeys) {
+    if (!Object.hasOwn(descriptors, key)) {
+      valid = false;
+    }
+  }
+
+  if (
+    nonnegativeInteger(descriptorValue(descriptors, "ledgerHighWaterMark")) === undefined &&
+    nonnegativeInteger(descriptorValue(descriptors, "ledgerEventCount")) === undefined
+  ) {
+    valid = false;
+  }
+
+  if (safeWorkspaceId(descriptorValue(descriptors, "workspaceId")) === undefined) {
+    valid = false;
+  }
+
+  const layoutContractVersion = descriptorValue(descriptors, "layoutContractVersion");
+  if (typeof layoutContractVersion !== "string" || !isSecretSafeWorkspaceText(layoutContractVersion)) {
+    valid = false;
+  }
+
+  if (!isValidCategoryList(descriptorValue(descriptors, "coveredCategories"))) {
+    valid = false;
+  }
+
+  if (!isIsoDateTime(descriptorValue(descriptors, "exportedAt"))) {
+    valid = false;
+  }
+
+  return { valid, containsUnsafeFields };
+}
+
+function descriptorValue(
+  descriptors: PropertyDescriptorMap,
+  key: string
+): unknown {
+  const descriptor = descriptors[key];
+  return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
+}
+
+function isValidCategoryList(value: unknown): value is readonly WorkspaceRootCategory[] {
+  return Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Array.prototype &&
+    Reflect.ownKeys(value).every((key) =>
+      key === "length" ||
+      (typeof key === "string" && /^(0|[1-9][0-9]*)$/.test(key) && Number(key) < value.length)
+    ) &&
+    value.every((category) => typeof category === "string" && isWorkspaceRootCategory(category));
+}
+
+function isIsoDateTime(value: unknown): boolean {
+  return typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) &&
+    !Number.isNaN(Date.parse(value));
+}
+
+function isUnsafeBackupManifestFieldName(key: string): boolean {
+  return secretFieldPattern.test(key) ||
+    (!allowedBackupManifestKeys.has(key) && rawStateFieldPattern.test(key));
+}
+
+function containsUnsafeBackupManifestField(value: unknown, seen = new WeakSet<object>()): boolean {
+  if (typeof value === "string") {
+    return !isSecretSafeWorkspaceText(value);
+  }
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (seen.has(value)) {
+    return true;
+  }
+  seen.add(value);
+
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== "string" || isUnsafeBackupManifestFieldName(key)) {
+      return true;
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined || !("value" in descriptor)) {
+      return true;
+    }
+    if (containsUnsafeBackupManifestField(descriptor.value, seen)) {
       return true;
     }
   }
