@@ -1,8 +1,10 @@
 import type { CreateIngestionRuntimeInput } from "../../ingestion/src/runtime.js";
 import type {
   IngestionMountResult,
+  MountedWorkspace,
   IngestionWorkspaceMountResolver
 } from "../../ingestion/src/mount-contract.js";
+import { buildIngestionProjection } from "../../ingestion/src/projection.js";
 import type { IngestionErrorCode, IngestionRuntimeError } from "../../ingestion/src/runtime-types.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 import {
@@ -58,8 +60,16 @@ export async function handleIngestionHttpRoute(
   }
 
   const mount = await resolveMountedWorkspace(input.ingestionMountResolver);
+  if (route.kind === "workspace") {
+    return json(200, workspaceDto(mount));
+  }
+
   if (!mount.ok) {
     return json(503, ingestionErrorBody(mount.error));
+  }
+
+  if (route.kind === "sources") {
+    return json(200, await sourcesDto(mount.workspace));
   }
 
   const runtimeFactory = input.ingestionRuntimeFactory ?? defaultLocalIngestionRuntimeFactory;
@@ -93,7 +103,18 @@ export async function handleIngestionHttpRoute(
   }
 }
 
-type Route = {
+type Route = RuntimeRoute | {
+  readonly kind: "workspace";
+  readonly bodyKind: "query";
+  readonly queryFields?: readonly string[];
+} | {
+  readonly kind: "sources";
+  readonly bodyKind: "query";
+  readonly queryFields?: readonly string[];
+};
+
+type RuntimeRoute = {
+  readonly kind: "runtime";
   readonly runtimeMethod:
     | "listJobs"
     | "retryJob"
@@ -108,32 +129,95 @@ type Route = {
 };
 
 function routeFor(method: string, path: string): Route | undefined {
+  if (method === "GET" && path === "/api/ingestion/workspace") {
+    return { kind: "workspace", bodyKind: "query" };
+  }
+  if (method === "GET" && path === "/api/ingestion/sources") {
+    return { kind: "sources", bodyKind: "query" };
+  }
   if (method === "GET" && path === "/api/ingestion/jobs") {
-    return { runtimeMethod: "listJobs", bodyKind: "query", queryFields: ["sourceCollectionId"] };
+    return { kind: "runtime", runtimeMethod: "listJobs", bodyKind: "query", queryFields: ["sourceCollectionId"] };
   }
   if (method === "POST" && path === "/api/ingestion/jobs/retry") {
-    return { runtimeMethod: "retryJob", bodyKind: "json" };
+    return { kind: "runtime", runtimeMethod: "retryJob", bodyKind: "json" };
   }
-  if (method === "POST" && path === "/api/ingestion/sources/register") {
-    return { runtimeMethod: "registerSource", bodyKind: "json" };
+  if (method === "POST" && (path === "/api/ingestion/sources" || path === "/api/ingestion/sources/register")) {
+    return { kind: "runtime", runtimeMethod: "registerSource", bodyKind: "json" };
   }
   if (method === "POST" && path === "/api/ingestion/scans/dry-run") {
-    return { runtimeMethod: "dryRunScan", bodyKind: "json" };
+    return { kind: "runtime", runtimeMethod: "dryRunScan", bodyKind: "json" };
   }
   if (method === "POST" && path === "/api/ingestion/imports/approve") {
-    return { runtimeMethod: "approveRawImport", bodyKind: "json" };
+    return { kind: "runtime", runtimeMethod: "approveRawImport", bodyKind: "json" };
   }
-  if (method === "POST" && path === "/api/ingestion/imports/import") {
-    return { runtimeMethod: "importApproved", bodyKind: "json" };
+  if (method === "POST" && (path === "/api/ingestion/imports/run" || path === "/api/ingestion/imports/import")) {
+    return { kind: "runtime", runtimeMethod: "importApproved", bodyKind: "json" };
   }
   if (method === "POST" && path === "/api/ingestion/provider-parsing/approve") {
-    return { runtimeMethod: "approveProviderParsing", bodyKind: "json" };
+    return { kind: "runtime", runtimeMethod: "approveProviderParsing", bodyKind: "json" };
   }
   if (method === "GET" && path === "/api/ingestion/diagnostics") {
-    return { runtimeMethod: "diagnostics", bodyKind: "query", queryFields: ["sourceCollectionId"] };
+    return { kind: "runtime", runtimeMethod: "diagnostics", bodyKind: "query", queryFields: ["sourceCollectionId"] };
   }
 
   return undefined;
+}
+
+function workspaceDto(mount: IngestionMountResult | MountResolverFailure) {
+  if (!mount.ok) {
+    return {
+      mounted: false,
+      diagnostics: diagnosticsFromMountError(mount.error)
+    };
+  }
+
+  return {
+    mounted: true,
+    workspaceId: mount.workspace.workspaceId,
+    label: mount.workspace.label,
+    capabilities: { ...mount.workspace.capabilities },
+    diagnostics: []
+  };
+}
+
+async function sourcesDto(workspace: MountedWorkspace) {
+  const projection = buildIngestionProjection(await workspace.ledger.readAll());
+  const sources = [...projection.sources.values()]
+    .sort((left, right) => compareCodeUnits(left.sourceCollectionId, right.sourceCollectionId))
+    .map((source) => ({
+      sourceCollectionId: source.sourceCollectionId,
+      label: source.label,
+      ...(source.latestScanBatchId === undefined ? {} : { latestScanBatchId: source.latestScanBatchId }),
+      ...(source.latestImportBatchId === undefined ? {} : { latestImportBatchId: source.latestImportBatchId }),
+      scanBatchIds: [...source.scanBatchIds],
+      importBatchIds: [...source.importBatchIds],
+      diagnosticIds: [...source.diagnosticIds]
+    }));
+
+  return {
+    ok: true,
+    sources
+  };
+}
+
+function diagnosticsFromMountError(
+  error: {
+    readonly message: string;
+    readonly diagnostics?: IngestionRuntimeError["diagnostics"];
+  }
+) {
+  return [
+    ...(error.diagnostics ?? []),
+    {
+      severity: "error" as const,
+      category: "ingestion.mount",
+      message: error.message
+    }
+  ];
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function parseJsonBody(
