@@ -21,15 +21,47 @@ export type IngestionCommandName =
   | "legacy-report-json"
   | IngestionOperationalCommand;
 
+export interface SummaryJsonCommandInput {
+  command: "summary-json";
+  dto?: IngestionReviewDto;
+  runtime?: unknown;
+}
+
+export interface LegacyArtifactAskJsonCommandInput {
+  command: "legacy-artifact-ask-json";
+  runtime?: unknown;
+}
+
+export interface LegacyReportJsonCommandInput {
+  command: "legacy-report-json";
+  dto: LegacyMigrationReviewDto;
+  runtime?: unknown;
+}
+
+export interface IngestionOperationalCommandInput {
+  command: IngestionOperationalCommand;
+  runtime?: unknown;
+}
+
 export type IngestionCommandInput =
-  | { command: "summary-json"; dto?: IngestionReviewDto; runtime?: unknown }
-  | { command: "legacy-artifact-ask-json"; runtime?: unknown }
-  | { command: "legacy-report-json"; dto: LegacyMigrationReviewDto; runtime?: unknown }
-  | {
-    command: IngestionOperationalCommand | string;
-    dto?: IngestionReviewDto | LegacyMigrationReviewDto;
+  | SummaryJsonCommandInput
+  | LegacyArtifactAskJsonCommandInput
+  | LegacyReportJsonCommandInput
+  | IngestionOperationalCommandInput;
+
+type UnknownIngestionCommandInput<Command extends string> = Command extends IngestionCommandName
+  ? never
+  : {
+    command: Command;
+    dto?: unknown;
     runtime?: unknown;
   };
+
+interface RuntimeIngestionCommandInput {
+  command: string;
+  dto?: unknown;
+  runtime?: unknown;
+}
 
 export interface IngestionCliErrorOutput {
   ok: false;
@@ -40,7 +72,11 @@ export interface IngestionCliErrorOutput {
   };
 }
 
-export function handleIngestionCommand(input: IngestionCommandInput): string {
+export function handleIngestionCommand(input: IngestionCommandInput): string;
+export function handleIngestionCommand<Command extends string>(
+  input: UnknownIngestionCommandInput<Command>
+): string;
+export function handleIngestionCommand(input: RuntimeIngestionCommandInput): string {
   if (input.command === "summary-json") {
     if (input.dto === undefined) {
       return formatCliJson({
@@ -61,6 +97,10 @@ export function handleIngestionCommand(input: IngestionCommandInput): string {
   }
 
   if (input.command === "legacy-report-json") {
+    if (input.dto === undefined) {
+      throw new Error("Command legacy-report-json needs a legacy migration review DTO.");
+    }
+
     return `${JSON.stringify(input.dto, null, 2)}\n`;
   }
 

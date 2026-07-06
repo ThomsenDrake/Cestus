@@ -20,12 +20,16 @@ Worker: Codex implementation worker
 - Red targeted test: `npm test -- packages/ingestion/test/legacy-cli.test.ts` failed because both legacy commands returned `INGESTION_COMMAND_UNSUPPORTED`.
 - Green targeted test: `npm test -- packages/ingestion/test/legacy-cli.test.ts packages/ingestion/test/cli.test.ts` passed with 2 test files and 4 tests.
 - Full verification: `npm run verify` passed with typecheck, 77 test files and 628 tests, UI build, and factory readiness.
+- Spec review fix: added a regression for malformed `legacy-report-json` calls and tightened command typing/runtime validation so missing DTOs throw instead of printing `undefined`.
+- Review-fix red targeted test: `npm test -- packages/ingestion/test/legacy-cli.test.ts packages/ingestion/test/cli.test.ts` failed because malformed `legacy-report-json` did not throw.
+- Review-fix green targeted test: `npm test -- packages/ingestion/test/legacy-cli.test.ts packages/ingestion/test/cli.test.ts` passed with 2 test files and 5 tests.
+- Review-fix full verification: `npm run verify` passed with typecheck, 77 test files and 629 tests, UI build, and factory readiness.
 
 ## Self-Review
 
 - Scope: changed only the Task 8 owned files.
 - Pure DTO behavior: legacy CLI handlers return stable pretty JSON and do not access filesystems, services, prompts, runtimes, imports, or external dependencies.
 - Artifact ask: `legacy-artifact-ask-json` uses `firstLegacyArtifactAsk` exactly from `legacy-types.ts`.
-- Report DTO: `legacy-report-json` prints the supplied `LegacyMigrationReviewDto` without mutation or hidden enrichment.
+- Report DTO: `legacy-report-json` prints the supplied `LegacyMigrationReviewDto` without mutation or hidden enrichment, and malformed runtime calls without a DTO throw before serialization.
 - Truth boundary: no ledger, evidence, assertion, entity, relationship, staging, or accepted graph events are emitted by these handlers.
 - Findings: none.
