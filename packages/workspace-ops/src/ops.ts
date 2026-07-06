@@ -94,27 +94,6 @@ export async function verifyWorkspace(
   let events: readonly unknown[] = [];
   let ledgerReadable = false;
 
-  if (ledgerRoot.status !== "available") {
-    diagnostics.push(canonicalDiagnostic(
-      "diag_workspace_ledger_root_unavailable",
-      "ledger",
-      "Workspace ledger root is not available."
-    ));
-    proposedActions.push(canonicalRepairAction("repair_workspace_ledger_root_unavailable"));
-  } else {
-    try {
-      events = await input.eventReader.readAll(layout);
-      ledgerReadable = true;
-    } catch {
-      diagnostics.push(canonicalDiagnostic(
-        "diag_workspace_ledger_read_failed",
-        "ledger",
-        "Workspace ledger could not be read safely."
-      ));
-      proposedActions.push(canonicalRepairAction("repair_workspace_ledger_read_failed"));
-    }
-  }
-
   if (manifestRoot.status !== "available" || !manifestValidation.valid) {
     diagnostics.push({
       diagnosticId: "diag_workspace_manifest_unavailable",
@@ -136,6 +115,27 @@ export async function verifyWorkspace(
       mutatesCanonicalState: false,
       allowedNextCommands: ["detect drive", "verify workspace"]
     });
+  }
+
+  if (ledgerRoot.status !== "available") {
+    diagnostics.push(canonicalDiagnostic(
+      "diag_workspace_ledger_root_unavailable",
+      "ledger",
+      "Workspace ledger root is not available."
+    ));
+    proposedActions.push(canonicalRepairAction("repair_workspace_ledger_root_unavailable"));
+  } else if (manifestValidation.valid) {
+    try {
+      events = await input.eventReader.readAll(layout);
+      ledgerReadable = true;
+    } catch {
+      diagnostics.push(canonicalDiagnostic(
+        "diag_workspace_ledger_read_failed",
+        "ledger",
+        "Workspace ledger could not be read safely."
+      ));
+      proposedActions.push(canonicalRepairAction("repair_workspace_ledger_read_failed"));
+    }
   }
 
   const invalidEventCount = ledgerReadable
@@ -283,9 +283,23 @@ export async function verifyWorkspace(
 export async function reportDiskUsage(
   input: ReportDiskUsageInput
 ): Promise<WorkspaceOpsEnvelope<DiskUsageDto>> {
-  const estimatedFreeBytes = await input.fileSystem.availableBytes(input.layout.rootPath);
   const roots = [];
   const diagnostics: WorkspaceDiagnosticInput[] = [];
+  const availableBytes = await safeAvailableBytes(input.fileSystem, input.layout.rootPath);
+
+  if (!availableBytes.readable) {
+    diagnostics.push({
+      diagnosticId: "diag_workspace_disk_available_bytes_unreadable",
+      severity: "warning",
+      category: "disk",
+      message: "Workspace free-space estimate could not be inspected safely.",
+      durable: false,
+      repairHint: {
+        allowedNextCommands: ["disk usage", "diagnostics inspect"],
+        requiresHumanApproval: false
+      }
+    });
+  }
 
   for (const spec of workspaceRootSpecs) {
     const path = spec.path(input.layout);
@@ -316,6 +330,7 @@ export async function reportDiskUsage(
 
   const categories = aggregateCategories(roots);
   const totalBytes = categories.reduce((total, category) => total + category.bytes, 0);
+  const estimatedFreeBytes = availableBytes.bytes;
   const thresholdWarnings =
     estimatedFreeBytes !== undefined &&
     input.warningThresholdBytes !== undefined &&
@@ -437,6 +452,18 @@ async function safeExists(
   }
 }
 
+async function safeAvailableBytes(
+  fileSystem: WorkspaceFileSystem,
+  path: string
+): Promise<{ readonly bytes?: number; readonly readable: boolean }> {
+  try {
+    const bytes = await fileSystem.availableBytes(path);
+    return bytes === undefined ? { readable: true } : { bytes, readable: true };
+  } catch {
+    return { readable: false };
+  }
+}
+
 async function bytesForPath(
   fileSystem: WorkspaceFileSystem,
   path: string,
@@ -491,20 +518,7 @@ function requireRoot(
 }
 
 function highWaterMark(events: readonly unknown[]): number {
-  let highWater = 0;
-  for (const event of events) {
-    if (
-      typeof event === "object" &&
-      event !== null &&
-      "sequence" in event
-    ) {
-      const sequence = (event as { readonly sequence?: unknown }).sequence;
-      if (typeof sequence === "number" && Number.isInteger(sequence) && sequence > highWater) {
-        highWater = sequence;
-      }
-    }
-  }
-  return highWater;
+  return events.length;
 }
 
 function supportRootDiagnosticCategory(root: InspectedRoot): WorkspaceDiagnosticInput["category"] {
