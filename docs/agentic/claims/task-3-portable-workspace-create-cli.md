@@ -31,4 +31,13 @@ Status: `ready-for-review`
 
 - Review status: ready-for-review
 - Review focus: explicit creation, no runtime auto-create behavior, and secret-free CLI output.
+- Code-quality review: ready with minor test-hardening gap.
+- Review finding: CLI creation happy path was covered, but missing/unknown flags and repeated creation against an existing manifest needed regression coverage for exit code `1`, empty stdout, useful stderr, and unchanged manifest behavior.
+- Fix: added CLI regression tests for missing `--workspace-id`, unknown `create-workspace` flags, and repeated creation preserving the original manifest. No production code change was required.
+- Fix targeted command: `npm test -- packages/local-runtime/test/cli.test.ts`
+  - Result: passed.
+  - Evidence: `Test Files 1 passed (1)`, `Tests 13 passed (13)`.
+- Fix full verification: `npm run verify`
+  - Result: passed.
+  - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 611 passed (611)`, `tests passed`, `vite build` succeeded, `factory-readiness passed`.
 - Concerns: none recorded
