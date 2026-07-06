@@ -6,7 +6,7 @@
 - Branch: `codex/operator-workspace-status-import-bridge`
 - Worktree: `/home/drake/.codex/worktrees/7234/Cestus`
 - Claimed at: `2026-07-06T21:32:49Z`
-- Status: claimed
+- Status: in-progress
 
 ## Owned Files
 
@@ -14,3 +14,7 @@
 - `packages/operator-status/src/contracts.ts`
 - `packages/operator-status/src/index.ts`
 - `packages/operator-status/test/contracts.test.ts`
+
+## Notes
+
+- `2026-07-06T21:33:30Z`: Claim moved to in-progress before writing contract tests or implementation.
