@@ -291,6 +291,66 @@ describe("IngestionRuntime stale-source import verification", () => {
     expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual([]);
   });
 
+  it("imports approved regular files when the dry-run diagnosed and skipped an unsafe archive", async () => {
+    const { workspace, runtime } = await preparedRuntime({
+      "good.txt": "approved safe file",
+      "unsafe.zip": Buffer.from(zipSync({
+        "../escape.txt": strToU8("unsafe")
+      }))
+    });
+    await approve(runtime);
+
+    const result = await runtime.importApproved({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001"
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      importBatchId: "imp_001",
+      totals: { evidenceCreated: 1, occurrencesLinked: 1 }
+    });
+    const events = await workspace.ledger.readAll();
+    const diagnostics = events.filter((event) => event.type === "diagnostic.recorded");
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]).toMatchObject({
+      streamId: "ingestion_scan_scan_001",
+      payload: {
+        severity: "error",
+        category: "ingestion",
+        message: expect.stringMatching(/unsafe archive path/),
+        repairHint: {
+          contract: "ZipArchiveAdapter.expand",
+          violatedPath: "unsafe.zip",
+          allowedActions: ["skip archive", "rebuild archive without unsafe paths", "rerun dry-run"]
+        }
+      }
+    });
+    expect(events.some((event) => event.type === "evidence.ingested")).toBe(true);
+    const link = events.find((event) => event.type === "ingestion.evidence.linked");
+    expect(link).toMatchObject({
+      payload: {
+        importBatchId: "imp_001",
+        sourceCollectionId: "src_drive_001",
+        occurrenceIds: [expect.stringMatching(/^occ_/)]
+      }
+    });
+    expect(events.some((event) => event.type === "ingestion.import.completed")).toBe(true);
+
+    const projection = buildIngestionProjection(events);
+    expect(projection.scans.get("scan_001")?.diagnosticIds).toContain(
+      diagnostics[0]?.payload.diagnosticId
+    );
+    expect(buildIngestionReviewDto(projection, "src_drive_001").diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: diagnostics[0]?.payload.diagnosticId,
+        category: "ingestion",
+        message: expect.stringMatching(/unsafe archive path/)
+      })
+    );
+  });
+
   it("rejects changed archive container hashes before blob writes", async () => {
     const { workspace, runtime, sourceRoot } = await preparedRuntimeWithArchive({ "folder/a.txt": "alpha" });
     await approve(runtime);

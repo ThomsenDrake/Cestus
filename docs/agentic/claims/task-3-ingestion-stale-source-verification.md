@@ -6,7 +6,7 @@
 - Branch: `codex/ingestion-runtime-wiring-design`
 - Worktree: `/home/drake/.codex/worktrees/15cc/Cestus`
 - Claimed at: 2026-07-06T14:04:16Z
-- Status: in-progress
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -82,3 +82,14 @@
   - Result: passed; Vitest reported 7 test files passed and 48 tests passed.
 - Full verification command: `npm run verify`
   - Result: passed; typecheck passed, Vitest reported 72 test files passed and 609 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Code-Quality Review Skipped Archive Inventory Fix Evidence
+
+- Red command: `npm test -- packages/ingestion/test/runtime-import-stale-source.test.ts`
+  - Result: failed as expected with 1 failing test because an approved scan containing a valid regular file plus a diagnosed skipped unsafe zip rejected import as stale.
+- Focused green command: `npm test -- packages/ingestion/test/runtime-import-stale-source.test.ts`
+  - Result: passed; Vitest reported 1 test file passed and 11 tests passed.
+- Targeted command: `npm test -- packages/ingestion/test/runtime.test.ts packages/ingestion/test/runtime-import-stale-source.test.ts packages/ingestion/test/import-service.test.ts packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts packages/ingestion/test/local-filesystem.test.ts`
+  - Result: passed; Vitest reported 7 test files passed and 49 tests passed.
+- Full verification command: `npm run verify`
+  - Result: passed; typecheck passed, Vitest reported 72 test files passed and 610 tests passed, Vite build succeeded, and factory readiness passed.

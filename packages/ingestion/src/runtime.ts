@@ -228,7 +228,8 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
         sourceCollectionId: command.sourceCollectionId,
         scanBatchId: command.scanBatchId,
         importBatchId: command.importBatchId,
-        occurrences: approvedOccurrences.occurrences
+        occurrences: approvedOccurrences.occurrences,
+        approvedSkippedArchivePaths: approvedOccurrences.approvedSkippedArchivePaths
       });
 
       if (!materialized.ok) {
@@ -418,9 +419,13 @@ function base64Url(value: string): string {
 async function occurrencesApprovedByCompletedScan(
   workspace: MountedWorkspace,
   input: Pick<ImportApprovedInput, "sourceCollectionId" | "scanBatchId">
-): Promise<IngestionRuntimeResult<{ occurrences: IngestionOccurrenceSummary[] }>> {
+): Promise<IngestionRuntimeResult<{
+  occurrences: IngestionOccurrenceSummary[];
+  approvedSkippedArchivePaths: string[];
+}>> {
   const events = await workspace.ledger.readStream(`ingestion_scan_${input.scanBatchId}`);
   const occurrences: IngestionOccurrenceSummary[] = [];
+  const approvedSkippedArchivePaths: string[] = [];
   let completed = false;
 
   for (const event of events) {
@@ -443,9 +448,16 @@ async function occurrencesApprovedByCompletedScan(
       }
       occurrences.push(occurrenceSummaryForObservedEvent(event));
     }
+
+    if (event.type === "diagnostic.recorded" && !completed) {
+      const skippedArchivePath = skippedArchivePathFromScanDiagnostic(event);
+      if (skippedArchivePath !== undefined && !approvedSkippedArchivePaths.includes(skippedArchivePath)) {
+        approvedSkippedArchivePaths.push(skippedArchivePath);
+      }
+    }
   }
 
-  return completed ? { ok: true, occurrences } : scanRequiredError();
+  return completed ? { ok: true, occurrences, approvedSkippedArchivePaths } : scanRequiredError();
 }
 
 function occurrenceSummaryForObservedEvent(
@@ -457,6 +469,21 @@ function occurrenceSummaryForObservedEvent(
     ...(event.payload.archiveAdapter === undefined ? {} : { archiveAdapter: { ...event.payload.archiveAdapter } }),
     observedEventId: event.id
   };
+}
+
+function skippedArchivePathFromScanDiagnostic(
+  event: KnowledgeEventOf<"diagnostic.recorded">
+): string | undefined {
+  const violatedPath = event.payload.repairHint.violatedPath;
+  return event.payload.category === "ingestion" &&
+    event.payload.repairHint.contract === "ZipArchiveAdapter.expand" &&
+    isZipPath(violatedPath)
+    ? violatedPath
+    : undefined;
+}
+
+function isZipPath(relativePath: string): boolean {
+  return relativePath.toLowerCase().endsWith(".zip");
 }
 
 function eventIdsAddedAfter(

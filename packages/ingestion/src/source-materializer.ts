@@ -28,6 +28,7 @@ export interface MaterializeApprovedOccurrencesInput {
   readonly scanBatchId: string;
   readonly importBatchId: string;
   readonly occurrences: readonly IngestionOccurrenceSummary[];
+  readonly approvedSkippedArchivePaths?: readonly string[];
 }
 
 export type MaterializeApprovedOccurrencesResult =
@@ -77,7 +78,8 @@ export function materializeApprovedOccurrences(
     sourceRoot,
     input.sourceCollectionId,
     input.scanBatchId,
-    approved.archiveContainerHashes
+    approved.archiveContainerHashes,
+    input.approvedSkippedArchivePaths ?? []
   );
 
   if (!current.ok) {
@@ -200,11 +202,13 @@ function currentInventoryFor(
   sourceRoot: string,
   sourceCollectionId: string,
   scanBatchId: string,
-  approvedArchiveContainerHashes: ReadonlyMap<string, `sha256:${string}`>
+  approvedArchiveContainerHashes: ReadonlyMap<string, `sha256:${string}`>,
+  approvedSkippedArchivePaths: readonly string[]
 ): InventoryResult {
   const archiveAdapter = new ZipArchiveAdapter();
   const items = new Map<string, InventoryItem>();
   const archiveContainerHashes = new Map<string, `sha256:${string}`>();
+  const approvedSkippedArchives = new Set(approvedSkippedArchivePaths);
   let files: ScannedFile[];
 
   try {
@@ -225,6 +229,9 @@ function currentInventoryFor(
       const approvedContainerHash = approvedArchiveContainerHashes.get(file.relativePath);
 
       if (approvedContainerHash === undefined) {
+        if (approvedSkippedArchives.has(file.relativePath)) {
+          continue;
+        }
         return archiveMismatchError();
       }
 
