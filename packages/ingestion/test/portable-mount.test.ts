@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -53,6 +53,59 @@ describe("portable ingestion mount resolver", () => {
         code: "INGESTION_WORKSPACE_NOT_MOUNTED",
         message: "Portable workspace root is required.",
         allowedRepairActions: ["set CESTUS_WORKSPACE_ROOT", "pass --workspace <root>"]
+      }
+    });
+  });
+
+  it("returns stable not-writable errors for corrupt ledger files", async () => {
+    const rootDir = tempDir("portable-ingestion-");
+    createPortableWorkspace({
+      rootDir,
+      workspaceId: "ws_corrupt_ledger",
+      label: "Corrupt ledger workspace",
+      createdBy: "test"
+    });
+    writeFileSync(join(rootDir, "ledger", "ontology.sqlite"), "not a sqlite database");
+
+    const resolver = createPortableIngestionMountResolver();
+    const result = await resolver.resolve({ workspaceRoot: rootDir });
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: "INGESTION_WORKSPACE_NOT_WRITABLE",
+        message: "Portable workspace ledger path is unavailable.",
+        allowedRepairActions: [
+          "restore ledger/ontology.sqlite as a SQLite database file",
+          "choose a valid portable workspace root"
+        ]
+      }
+    });
+    expect(JSON.stringify(result)).not.toMatch(/token|secret|password/i);
+  });
+
+  it("maps unavailable portable ledger paths to not-writable mount errors", async () => {
+    const rootDir = tempDir("portable-ingestion-");
+    createPortableWorkspace({
+      rootDir,
+      workspaceId: "ws_unavailable_ledger",
+      label: "Unavailable ledger workspace",
+      createdBy: "test"
+    });
+    mkdirSync(join(rootDir, "ledger", "ontology.sqlite"));
+
+    const resolver = createPortableIngestionMountResolver();
+    const result = await resolver.resolve({ workspaceRoot: rootDir });
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: "INGESTION_WORKSPACE_NOT_WRITABLE",
+        message: "Portable workspace ledger path is unavailable.",
+        allowedRepairActions: [
+          "restore ledger/ontology.sqlite as a SQLite database file",
+          "choose a valid portable workspace root"
+        ]
       }
     });
   });
