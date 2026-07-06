@@ -190,6 +190,33 @@ describe("legacy operator CLI workflow", () => {
     expect(JSON.parse(output)).toMatchObject({ ok: true, command: "legacy approve-staging" });
   });
 
+  it("rejects missing staging approval candidates before resolving workspace", async () => {
+    const mountResolver = { resolve: vi.fn() };
+    const output = await handleIngestionCommand({
+      command: "legacy approve-staging",
+      argv: [
+        "--workspace", "/Volumes/Cestus",
+        "--source-id", "src_old_cestus",
+        "--scan", "scan_old_cestus_001",
+        "--report", "legacy_report_001",
+        "--staging", "legacy_stage_001",
+        "--approved-by", "operator_001"
+      ],
+      mountResolver,
+      legacyRuntimeFactory: () => fakeLegacyRuntime()
+    });
+
+    expect(JSON.parse(output)).toMatchObject({
+      ok: false,
+      error: {
+        code: "LEGACY_IMPORT_INVALID_ARGUMENTS",
+        command: "legacy approve-staging",
+        message: "Missing required ingestion CLI option --candidate."
+      }
+    });
+    expect(mountResolver.resolve).not.toHaveBeenCalled();
+  });
+
   it("rejects missing legacy command options before resolving workspace", async () => {
     const mountResolver = { resolve: vi.fn() };
     const output = await handleIngestionCommand({
