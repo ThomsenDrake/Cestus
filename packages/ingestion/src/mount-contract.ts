@@ -1,5 +1,15 @@
-import type { FileBlobStore } from "../../ontology/src/blob-store.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
+
+export interface WorkspaceStoredBlob {
+  readonly contentHash: `sha256:${string}`;
+  readonly sizeBytes: number;
+  readonly path: string;
+}
+
+export interface WorkspaceBlobStore {
+  put(content: Buffer): Promise<WorkspaceStoredBlob>;
+  get(contentHash: `sha256:${string}`): Promise<Buffer>;
+}
 
 export interface MountedWorkspaceCapabilities {
   readonly canReadLedger: boolean;
@@ -13,8 +23,8 @@ export interface MountedWorkspace {
   readonly workspaceId: string;
   readonly label: string;
   readonly ledger: EventLedger;
-  readonly blobStore: FileBlobStore;
-  readonly derivativeStore: FileBlobStore;
+  readonly blobStore: WorkspaceBlobStore;
+  readonly derivativeStore: WorkspaceBlobStore;
   readonly jobStateRoot: string;
   readonly diagnosticsRoot?: string;
   readonly projectionCacheRoot?: string;
@@ -44,5 +54,11 @@ export interface IngestionWorkspaceMountResolver {
 export function mountedWorkspaceCapabilities(
   capabilities: MountedWorkspaceCapabilities
 ): MountedWorkspaceCapabilities {
-  return Object.freeze({ ...capabilities });
+  return Object.freeze({
+    canReadLedger: capabilities.canReadLedger,
+    canAppendLedger: capabilities.canAppendLedger,
+    canWriteBlobs: capabilities.canWriteBlobs,
+    canWriteDerivatives: capabilities.canWriteDerivatives,
+    canWriteJobState: capabilities.canWriteJobState
+  });
 }
