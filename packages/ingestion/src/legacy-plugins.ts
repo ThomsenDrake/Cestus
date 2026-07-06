@@ -1,27 +1,33 @@
 import type {
   LegacyDetection,
   LegacyDetectorInput,
+  LegacyDetectorOutput,
   LegacyPluginRef
+} from "./legacy-types.js";
+import {
+  filterLegacySecretSafeDiagnosticTexts,
+  parseLegacyConfidence
 } from "./legacy-types.js";
 
 export interface LegacyDetectorPlugin extends LegacyPluginRef {
-  detect(input: LegacyDetectorInput): LegacyDetection | undefined;
+  detect(input: LegacyDetectorInput): LegacyDetectorOutput | undefined;
 }
 
 export class LegacyDetectorRegistry {
   private readonly plugins: LegacyDetectorPlugin[];
 
   constructor(plugins: readonly LegacyDetectorPlugin[]) {
-    this.plugins = [...plugins].sort((left, right) => compareCodeUnits(left.name, right.name));
+    this.plugins = [...plugins].sort(comparePluginRefs);
   }
 
   detect(input: LegacyDetectorInput): LegacyDetection[] {
     return this.plugins
       .map((plugin) => plugin.detect(input))
-      .filter((detection): detection is LegacyDetection => detection !== undefined && detection.confidence > 0)
+      .map((detection) => detection === undefined ? undefined : normalizeDetection(detection))
+      .filter((detection): detection is LegacyDetection => detection !== undefined)
       .sort((left, right) => {
         const confidence = right.confidence - left.confidence;
-        return confidence === 0 ? compareCodeUnits(left.plugin.name, right.plugin.name) : confidence;
+        return confidence === 0 ? comparePluginRefs(left.plugin, right.plugin) : confidence;
       });
   }
 }
@@ -45,6 +51,30 @@ export const conservativeJsonMetadataPlugin: LegacyDetectorPlugin = {
     };
   }
 };
+
+function normalizeDetection(detection: LegacyDetectorOutput): LegacyDetection | undefined {
+  const confidence = parseLegacyConfidence(detection.confidence);
+
+  if (confidence === undefined || confidence === 0) {
+    return undefined;
+  }
+
+  const warnings = filterLegacySecretSafeDiagnosticTexts(detection.warnings);
+
+  return {
+    plugin: detection.plugin,
+    shape: detection.shape,
+    confidence,
+    parserEligible: detection.parserEligible,
+    reasonCodes: [...detection.reasonCodes],
+    ...(warnings.length === 0 ? {} : { warnings })
+  };
+}
+
+function comparePluginRefs(left: LegacyPluginRef, right: LegacyPluginRef): number {
+  const name = compareCodeUnits(left.name, right.name);
+  return name === 0 ? compareCodeUnits(left.version, right.version) : name;
+}
 
 function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
