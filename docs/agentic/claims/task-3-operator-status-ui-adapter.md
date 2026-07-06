@@ -29,12 +29,17 @@
 - Review-fix GREEN targeted test: `npm test -- packages/ui/test/operator-status-adapter.test.ts packages/ui/test/request-data-boundary.test.ts` passed with 2 test files and 15 tests.
 - Review-fix full verification: `npm run verify` passed with typecheck, 96 test files and 847 tests, UI build, and factory readiness.
 - `2026-07-06T22:38:46Z`: Status remains ready-for-review after hardening local-runtime package-level and Node builtin subpath boundary checks.
+- Code-quality RED targeted test: `npm test -- packages/ui/test/operator-status-adapter.test.ts packages/ui/test/request-data-boundary.test.ts` failed because `runtimeUnavailableStatus` threw for invalid generatedAt plus bare `password`, `safeOperatorText` did not redact bare secret phrases, and `../../local-runtime` was not rejected by the boundary patterns.
+- Code-quality GREEN targeted test: `npm test -- packages/ui/test/operator-status-adapter.test.ts packages/ui/test/request-data-boundary.test.ts` passed with 2 test files and 18 tests.
+- Code-quality full verification: `npm run verify` passed with typecheck, 96 test files and 850 tests, UI build, and factory readiness.
+- `2026-07-06T22:47:37Z`: Status remains ready-for-review after making the operator status adapter fail closed and hardening relative package-level UI boundary checks.
 
 ## Self-Review
 
 - Browser UI imports only the operator-status contract package and Fetch types for this adapter.
 - HTTP adapter sends `GET /api/operator/status` without a body, uses same-origin credentials by default, and only includes an authorization header when configured.
 - Runtime failures, non-2xx JSON, invalid JSON, and invalid DTO payloads become runtime-unavailable DTOs with redacted diagnostics.
+- Runtime-unavailable fallback construction now normalizes invalid timestamps, redacts bare secret phrases, and has a final schema-safe fallback DTO.
 - Static adapter returns frozen cloned DTOs so test callers cannot mutate future loads.
-- Boundary checks now reject `packages/local-runtime`, `packages/local-runtime/index.js`, `fs/promises`, and `path/posix` while preserving the allowed operator-status contract import.
+- Boundary checks now reject package-level local-runtime/workspace/workspace-ops/ingestion imports, Node builtin subpaths, and preserve the allowed operator-status contract import.
 - No PRR send, legal escalation, workspace repair, canonical mutation, or portable workspace duplication behavior was added.

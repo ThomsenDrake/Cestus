@@ -85,7 +85,7 @@ export function runtimeUnavailableStatus(input: {
   readonly generatedAt?: string;
   readonly message?: string;
 } = {}): OperatorStatusDto {
-  const generatedAt = input.generatedAt ?? new Date().toISOString();
+  const generatedAt = safeGeneratedAt(input.generatedAt);
   const message = safeOperatorText(input.message ?? "Operator status runtime is unavailable.");
   const diagnostic: OperatorDiagnosticDto = {
     diagnosticId: "diag_operator_runtime_unavailable",
@@ -98,7 +98,7 @@ export function runtimeUnavailableStatus(input: {
     unavailableSection(sectionId, diagnostic)
   );
 
-  return operatorStatusDtoFromJson({
+  const value = {
     schemaVersion: "operator-status.v1",
     generatedAt,
     runtime: {
@@ -113,6 +113,35 @@ export function runtimeUnavailableStatus(input: {
     },
     sections,
     safeActions: []
+  };
+  const parsed = operatorStatusDtoSchema.safeParse(safeOperatorValue(value));
+  if (parsed.success) {
+    return deepFreeze(parsed.data);
+  }
+
+  return operatorStatusDtoFromJson({
+    schemaVersion: "operator-status.v1",
+    generatedAt: new Date().toISOString(),
+    runtime: {
+      available: false,
+      safeMessage: "Operator status runtime is unavailable."
+    },
+    summary: {
+      overallState: "unavailable",
+      blockedCount: 0,
+      actionRequiredCount: 0,
+      degradedCount: 0
+    },
+    sections: unavailableSectionIds.map((sectionId) =>
+      unavailableSection(sectionId, {
+        diagnosticId: "diag_operator_runtime_unavailable",
+        severity: "error",
+        category: "runtime",
+        message: "Operator status runtime is unavailable.",
+        refs: []
+      })
+    ),
+    safeActions: []
   });
 }
 
@@ -126,7 +155,20 @@ export function safeOperatorText(text: string): string {
     .replace(/-----BEGIN [^-]*PRIVATE KEY-----/gi, "[redacted credential]")
     .replace(/-----END [^-]*PRIVATE KEY-----/gi, "[redacted credential]")
     .replace(/\b[A-Za-z]:\\[^\s"',;)]+/g, "[path redacted]")
-    .replace(/(?<![:/])\/(?!\/)[^\s"',;)]+/g, "[path redacted]");
+    .replace(/(?<![:/])\/(?!\/)[^\s"',;)]+/g, "[path redacted]")
+    .replace(
+      /\b(?:auth[\s._-]*tokens?|bearer(?:[\s._-]*tokens?)?|tokens?|passwords?|private[\s._-]*keys?)\b/gi,
+      "[redacted credential]"
+    );
+}
+
+function safeGeneratedAt(value: string | undefined): string {
+  if (value === undefined) {
+    return new Date().toISOString();
+  }
+
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? new Date().toISOString() : new Date(timestamp).toISOString();
 }
 
 function unavailableSection(
