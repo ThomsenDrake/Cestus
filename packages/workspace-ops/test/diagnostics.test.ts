@@ -121,4 +121,134 @@ describe("inspectWorkspaceDiagnostics", () => {
     expect(diagnosticsInspectDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
+
+  it("redacts accessor-backed durable diagnostic events without invoking getters", async () => {
+    let getterCalls = 0;
+    const accessorBackedEvent = {
+      id: "evt_diag_accessor",
+      version: 1,
+      streamId: "diagnostic_diag_accessor",
+      sequence: 2,
+      context: durableDiagnosticEvent.context,
+      payload: durableDiagnosticEvent.payload
+    };
+    Object.defineProperty(accessorBackedEvent, "type", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        throw new Error("private durable diagnostic memo from a protected source");
+      }
+    });
+
+    const result = await inspectWorkspaceDiagnostics({
+      durableEvents: [accessorBackedEvent],
+      derivedDiagnostics: []
+    } as never);
+
+    expect(getterCalls).toBe(0);
+    expect(result.status).toBe("degraded");
+    expect(result.payload).toMatchObject({
+      durableCount: 0,
+      derivedCount: 1
+    });
+    expect(result.payload?.diagnostics).toEqual([
+      expect.objectContaining({
+        diagnosticId: "diag_durable_diagnostic_event_redacted",
+        category: "diagnostics",
+        durable: false
+      })
+    ]);
+    expect(JSON.stringify(result)).not.toMatch(/private durable diagnostic memo|protected source/);
+    expect(diagnosticsInspectDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it.each([
+    {
+      name: "message",
+      defineAccessor(diagnostic: Record<string, unknown>, onAccess: () => void) {
+        Object.defineProperty(diagnostic, "message", {
+          enumerable: true,
+          get() {
+            onAccess();
+            throw new Error("private message body about a protected source");
+          }
+        });
+      }
+    },
+    {
+      name: "relatedIds",
+      defineAccessor(diagnostic: Record<string, unknown>, onAccess: () => void) {
+        Object.defineProperty(diagnostic, "relatedIds", {
+          enumerable: true,
+          get() {
+            onAccess();
+            throw new Error("private related identifier from a case note");
+          }
+        });
+      }
+    },
+    {
+      name: "repairHint.allowedNextCommands",
+      defineAccessor(diagnostic: Record<string, unknown>, onAccess: () => void) {
+        const repairHint = { requiresHumanApproval: false };
+        Object.defineProperty(repairHint, "allowedNextCommands", {
+          enumerable: true,
+          get() {
+            onAccess();
+            throw new Error("private command hint from correspondence body");
+          }
+        });
+        diagnostic.repairHint = repairHint;
+      }
+    }
+  ])("redacts accessor-backed derived diagnostic $name without invoking getters", async ({ defineAccessor }) => {
+    let getterCalls = 0;
+    const diagnostic: Record<string, unknown> = {
+      diagnosticId: "diag_accessor_derived",
+      severity: "warning",
+      category: "diagnostics",
+      message: "Safe fallback message.",
+      durable: false,
+      relatedIds: ["evt_safe"],
+      repairHint: {
+        allowedNextCommands: ["diagnostics inspect"],
+        requiresHumanApproval: false
+      }
+    };
+    defineAccessor(diagnostic, () => {
+      getterCalls += 1;
+    });
+
+    const result = await inspectWorkspaceDiagnostics({
+      durableEvents: [],
+      derivedDiagnostics: [diagnostic]
+    } as never);
+
+    expect(getterCalls).toBe(0);
+    expect(result.status).toBe("degraded");
+    expect(result.payload).toMatchObject({
+      durableCount: 0,
+      derivedCount: 1
+    });
+    expect(result.payload?.diagnostics).toEqual([
+      expect.objectContaining({
+        diagnosticId: "diag_diagnostic_redacted",
+        severity: "error",
+        category: "diagnostics",
+        message: "Diagnostic message was redacted.",
+        durable: false,
+        relatedIds: [],
+        repairHint: {
+          allowedNextCommands: ["diagnostics inspect"],
+          requiresHumanApproval: false
+        }
+      })
+    ]);
+    expect(JSON.stringify(result)).not.toMatch(
+      /private message body|protected source|private related identifier|case note|private command hint|correspondence body/
+    );
+    expect(diagnosticsInspectDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
 });
