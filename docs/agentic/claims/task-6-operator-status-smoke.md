@@ -6,7 +6,7 @@
 - Branch: `codex/operator-workspace-status-import-bridge`
 - Worktree: `/home/drake/.codex/worktrees/7234/Cestus`
 - Claimed at: `2026-07-06T23:42:54Z`
-- Status: claimed
+- Status: in-progress
 
 ## Owned Files
 
@@ -18,7 +18,8 @@
 
 ## Evidence
 
-- Claim commit: pending.
+- `2026-07-06T23:43:08Z`: Claim moved to in-progress before writing runtime smoke and failure-state tests.
+- Claim commit: `c4f2a9a chore: claim task 6 operator status smoke`.
 - Start commit: pending.
 - RED targeted test: pending.
 - GREEN targeted test: pending.
