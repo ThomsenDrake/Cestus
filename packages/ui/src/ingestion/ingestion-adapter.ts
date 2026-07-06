@@ -329,7 +329,13 @@ function jobListDtoFromJson(value: unknown): IngestionJobListDto {
   }
 
   if (isRuntimeFailure(value)) {
-    return { jobs: [], diagnostics: [safeDiagnosticFromError(value.error)] };
+    return {
+      jobs: [],
+      diagnostics: [
+        ...value.error.diagnostics.map(safeDiagnostic),
+        safeDiagnosticFromError(value.error)
+      ]
+    };
   }
 
   throw new Error("Ingestion runtime returned invalid jobs payload.");
@@ -555,5 +561,5 @@ function safeMessage(message: string): string {
     .replace(/-----BEGIN [^-]*PRIVATE KEY-----/gi, "[redacted]")
     .replace(/-----END [^-]*PRIVATE KEY-----/gi, "[redacted]")
     .replace(/\b[A-Za-z]:\\[^\s"',;)]+/g, "[path redacted]")
-    .replace(/\/(?:Users|Volumes|private|tmp|home)\/[^\s"',;)]+/g, "[path redacted]");
+    .replace(/\/(?:Users|Volumes|private|tmp|home|mnt|var)\/[^\s"',;)]+/g, "[path redacted]");
 }

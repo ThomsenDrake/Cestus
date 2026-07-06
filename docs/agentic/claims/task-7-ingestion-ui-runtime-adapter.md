@@ -69,3 +69,16 @@
 - Full verification command:
   `npm run verify`
   - Result: passed at 2026-07-06T18:14:32Z; typecheck passed, Vitest reported 75 test files passed and 648 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Spec Re-review Boundary Diagnostics Fix Evidence
+
+- Spec re-review findings at `b7f1054`: list-job failures dropped server diagnostics, successful diagnostic path redaction missed `/mnt` and `/var`, and the browser boundary test did not explicitly forbid `packages/ingestion/src/workspace`.
+- Red command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/request-data-boundary.test.ts`
+  - Result: failed as expected; Vitest reported 2 failing ingestion HTTP adapter tests for dropped server diagnostics and incomplete `/mnt`/`/var` path redaction. The boundary test extension passed because current UI code does not import the forbidden workspace module.
+- Targeted green command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx`
+  - Result: passed; Vitest reported 5 test files passed and 32 tests passed.
+- Full verification command:
+  `npm run verify`
+  - Result: passed at 2026-07-06T18:20:50Z; typecheck passed, Vitest reported 75 test files passed and 648 tests passed, Vite build succeeded, and factory readiness passed.

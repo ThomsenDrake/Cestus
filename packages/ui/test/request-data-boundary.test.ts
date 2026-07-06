@@ -19,7 +19,7 @@ describe("Requests data boundary", () => {
     /(?:^|\/)(?:runtime|sqlite-event-ledger)(?:\.js)?$/,
     /(?:^|\/)prr\/src\/runtime(?:\.js)?$/,
     /(?:^|\/)local-runtime\/src\/(?:config|server|http-handler|runtime-factory|ingestion-http-routes)(?:\.js)?$/,
-    /(?:^|\/)ingestion\/src\/(?:runtime|source-materializer|import-service|local-filesystem|mount-contract|provider-adapter)(?:\.js)?$/,
+    /(?:^|\/)ingestion\/src\/(?:runtime|workspace|source-materializer|import-service|local-filesystem|mount-contract|provider-adapter)(?:\.js)?$/,
     /(?:^|\/)ontology\/src\/(?:sqlite-event-ledger|blob-store)(?:\.js)?$/
   ];
   const forbiddenProductUiSourceFragments = [
@@ -32,6 +32,7 @@ describe("Requests data boundary", () => {
     "packages/local-runtime/src/runtime-factory",
     "packages/local-runtime/src/ingestion-http-routes",
     "packages/ingestion/src/runtime",
+    "packages/ingestion/src/workspace",
     "packages/ingestion/src/source-materializer",
     "packages/ingestion/src/import-service",
     "packages/ingestion/src/local-filesystem",
