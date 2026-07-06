@@ -102,7 +102,7 @@ export async function inspectWorkspaceDiagnostics(
 
 function durableDiagnosticFromEvent(event: DiagnosticRecordedEvent): WorkspaceDiagnosticDto {
   return {
-    diagnosticId: event.payload.diagnosticId,
+    diagnosticId: safeDiagnosticId(event.payload.diagnosticId),
     severity: event.payload.severity,
     category: workspaceCategory(event.payload.category),
     message: safeDiagnosticMessage(event.payload.message),
@@ -435,8 +435,7 @@ function isSafeDiagnosticMessage(message: string): boolean {
 function safeDiagnosticId(diagnosticId: unknown): WorkspaceDiagnosticInput["diagnosticId"] {
   return typeof diagnosticId === "string" &&
     /^diag_[a-zA-Z0-9_-]+$/.test(diagnosticId) &&
-    isSecretSafeWorkspaceText(diagnosticId) &&
-    !/token|password|credential|secret/i.test(diagnosticId)
+    isSafeDiagnosticIdentifier(diagnosticId)
     ? diagnosticId
     : "diag_diagnostic_redacted";
 }
@@ -449,7 +448,12 @@ function safeRelatedIds(relatedIds: readonly unknown[]): string[] {
   return relatedIds.filter((relatedId): relatedId is string =>
     typeof relatedId === "string" &&
     /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(relatedId) &&
-    isSecretSafeWorkspaceText(relatedId) &&
-    !/token|password|credential|secret/i.test(relatedId)
+    isSafeDiagnosticIdentifier(relatedId)
   );
+}
+
+function isSafeDiagnosticIdentifier(identifier: string): boolean {
+  return isSecretSafeWorkspaceText(identifier) &&
+    !/token|password|credential|secret/i.test(identifier) &&
+    !privateDiagnosticTextPattern.test(identifier);
 }

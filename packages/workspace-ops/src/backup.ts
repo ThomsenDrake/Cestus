@@ -501,9 +501,13 @@ function inspectManifestExportShape(value: object): BackupManifestShapeInspectio
 
   const manifest = parseResult.data;
   const coveredCategories = safeCoveredCategories(manifest.coverage.coveredCategories);
+  const expectedIncludedSections = includedSectionsFor(coveredCategories);
   if (
     !isIsoDateTime(manifest.exportedAt) ||
     !exportManifestHashMatches(manifest) ||
+    !sameStrings(manifest.includedSections, expectedIncludedSections) ||
+    !manifestSectionHashesMatch(manifest) ||
+    !artifactsSupportCoveredCategories(manifest.artifacts, coveredCategories) ||
     coveredCategories.length !== manifest.coverage.coveredCategories.length ||
     !sameCategories(manifest.coverage.missingCategories, missingCategoriesFor(workspaceRootCategories, coveredCategories))
   ) {
@@ -631,11 +635,47 @@ function exportManifestHashMatches(manifest: ManifestExportDto): boolean {
   return manifestHash === hashJson(manifestWithoutHash);
 }
 
+function manifestSectionHashesMatch(manifest: ManifestExportDto): boolean {
+  const expectedSectionHashes = sectionHashesFor({
+    workspace: manifest.workspace,
+    layoutContractVersion: manifest.workspace.layoutContractVersion,
+    ledger: manifest.ledger,
+    blobStore: manifest.blobStore,
+    artifacts: manifest.artifacts,
+    diagnostics: manifest.diagnostics,
+    jobs: manifest.jobs,
+    coverage: manifest.coverage
+  }, manifest.includedSections);
+
+  return manifest.sectionHashes.length === expectedSectionHashes.length &&
+    manifest.sectionHashes.every((sectionHash, index) => {
+      const expectedSectionHash = expectedSectionHashes[index];
+      return expectedSectionHash !== undefined &&
+        sectionHash.sectionId === expectedSectionHash.sectionId &&
+        sectionHash.sectionHash === expectedSectionHash.sectionHash;
+    });
+}
+
+function artifactsSupportCoveredCategories(
+  artifacts: readonly ManifestArtifact[],
+  coveredCategories: readonly WorkspaceRootCategory[]
+): boolean {
+  const artifactCategories = new Set(artifacts.map((artifact) => artifact.category));
+  return coveredCategories.every((category) => artifactCategories.has(category));
+}
+
 function sameCategories(
   left: readonly WorkspaceRootCategory[],
   right: readonly WorkspaceRootCategory[]
 ): boolean {
   return left.length === right.length && left.every((category, index) => category === right[index]);
+}
+
+function sameStrings(
+  left: readonly string[],
+  right: readonly string[]
+): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function descriptorSafeClone(value: unknown, seen = new WeakSet<object>()): DescriptorCloneResult {
