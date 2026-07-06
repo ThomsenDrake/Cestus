@@ -1,6 +1,6 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { runLocalRuntimeCli } from "../src/cli.js";
 
@@ -216,6 +216,54 @@ describe("runLocalRuntimeCli", () => {
     expect(output.workspace.paths.ledgerPath).toBe(join(workspaceRoot, "ledger", "ontology.sqlite"));
     expect(readFileSync(join(workspaceRoot, "cestus-workspace.json"), "utf8")).toContain('"workspaceId": "ws_cli_001"');
     expect(stdout.join("\n")).not.toMatch(/token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i);
+  });
+
+  it("resolves relative create-workspace roots from the injected cwd", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    const relativeRoot = join(`relative-${basename(tempDir)}`, "external-case");
+    const expectedWorkspaceRoot = join(tempDir, relativeRoot);
+    const processCwdWorkspaceRoot = join(process.cwd(), relativeRoot);
+
+    try {
+      const exitCode = await runLocalRuntimeCli(
+        [
+          "create-workspace",
+          "--workspace",
+          relativeRoot,
+          "--workspace-id",
+          "ws_cli_relative",
+          "--label",
+          "Relative CLI Portable Workspace",
+          "--created-at",
+          "2026-07-06T12:00:00.000Z"
+        ],
+        {
+          cwd: tempDir,
+          env: {},
+          stdout: (line) => stdout.push(line),
+          stderr: (line) => stderr.push(line)
+        }
+      );
+
+      expect(exitCode).toBe(0);
+      expect(stderr).toEqual([]);
+      const output = JSON.parse(stdout.join("\n")) as {
+        workspace: {
+          manifestPath: string;
+          paths: { ledgerPath: string };
+        };
+      };
+      expect(output.workspace.manifestPath).toBe(join(expectedWorkspaceRoot, "cestus-workspace.json"));
+      expect(output.workspace.paths.ledgerPath).toBe(join(expectedWorkspaceRoot, "ledger", "ontology.sqlite"));
+      expect(readFileSync(join(expectedWorkspaceRoot, "cestus-workspace.json"), "utf8")).toContain(
+        '"workspaceId": "ws_cli_relative"'
+      );
+      expect(existsSync(join(processCwdWorkspaceRoot, "cestus-workspace.json"))).toBe(false);
+    } finally {
+      rmSync(join(process.cwd(), `relative-${basename(tempDir)}`), { recursive: true, force: true });
+    }
   });
 
   it("rejects create-workspace without the required workspace id", async () => {

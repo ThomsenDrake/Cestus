@@ -40,4 +40,16 @@ Status: `ready-for-review`
 - Fix full verification: `npm run verify`
   - Result: passed.
   - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 611 passed (611)`, `tests passed`, `vite build` succeeded, `factory-readiness passed`.
+- Final code-quality review: important issue found.
+- Final review finding: relative `create-workspace --workspace` paths were resolved against `process.cwd()` instead of the injected CLI `cwd`, allowing `create-workspace` to disagree with `configure --workspace`.
+- Final fix red command: `npm test -- packages/local-runtime/test/cli.test.ts`
+  - Result: failed as expected before implementation.
+  - Evidence: relative workspace regression expected a manifest under `/tmp/cestus-cli-...`, but received a manifest path under `/home/drake/.codex/worktrees/4ea6/Cestus/...`; `Test Files 1 failed (1)`, `Tests 1 failed | 13 passed (14)`.
+- Final fix: resolved parsed `rootDir` against `dependencies.cwd ?? process.cwd()` before calling `createPortableWorkspace`; absolute paths remain unchanged by Node path resolution.
+- Final fix green command: `npm test -- packages/local-runtime/test/cli.test.ts`
+  - Result: passed.
+  - Evidence: `Test Files 1 passed (1)`, `Tests 14 passed (14)`.
+- Final fix full verification: `npm run verify`
+  - Result: passed.
+  - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 612 passed (612)`, `tests passed`, `vite build` succeeded, `factory-readiness passed`.
 - Concerns: none recorded

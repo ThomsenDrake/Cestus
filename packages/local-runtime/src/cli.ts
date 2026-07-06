@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   resolveLocalRuntimeConfig,
@@ -51,7 +52,11 @@ export async function runLocalRuntimeCli(
     }
 
     if (command === "create-workspace") {
-      const workspace = createPortableWorkspace(parseCreateWorkspaceArgs(argv.slice(1)));
+      const createWorkspaceInput = parseCreateWorkspaceArgs(argv.slice(1));
+      const workspace = createPortableWorkspace({
+        ...createWorkspaceInput,
+        rootDir: resolve(dependencies.cwd ?? process.cwd(), createWorkspaceInput.rootDir)
+      });
       stdout(
         JSON.stringify(
           {
