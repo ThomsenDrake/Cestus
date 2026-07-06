@@ -41,6 +41,7 @@ const validEvent = {
 class MemoryWorkspaceFs implements WorkspaceFileSystem {
   readonly files = new Map<string, string>();
   readonly directories = new Set<string>();
+  readonly readFailures = new Set<string>();
   readonly statFailures = new Set<string>();
   readonly listFailures = new Set<string>();
   readonly existsCalls: string[] = [];
@@ -54,6 +55,9 @@ class MemoryWorkspaceFs implements WorkspaceFileSystem {
   }
 
   async readText(path: string): Promise<string> {
+    if (this.readFailures.has(path)) {
+      throw new Error(`unreadable file ${path}`);
+    }
     const value = this.files.get(path);
     if (value === undefined) {
       throw new Error(`missing file ${path}`);
@@ -241,6 +245,65 @@ describe("verifyWorkspace", () => {
         mutatesCanonicalState: false
       })
     );
+    expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("reports stale resolved layouts when the manifest can no longer be read", async () => {
+    const fileSystem = new MemoryWorkspaceFs();
+    const layoutShape = addResolvedWorkspace(fileSystem);
+    const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
+    fileSystem.readFailures.add(layoutShape.manifestPath);
+
+    const result = await verifyWorkspace({
+      layout,
+      fileSystem,
+      eventReader: { readAll: async () => [validEvent] }
+    });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload?.manifest).toMatchObject({ readable: false, valid: false });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_workspace_manifest_unavailable",
+        category: "manifest"
+      })
+    );
+    expect(result.proposedActions).toContainEqual(
+      expect.objectContaining({
+        kind: "rerun-verify",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false
+      })
+    );
+    expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("reports stale resolved layouts when the manifest content becomes invalid", async () => {
+    const fileSystem = new MemoryWorkspaceFs();
+    const layoutShape = addResolvedWorkspace(fileSystem);
+    const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
+    fileSystem.files.set(
+      layoutShape.manifestPath,
+      JSON.stringify({ workspaceId: "ws_ops_001", label: "Ops Fixture", version: 2 })
+    );
+
+    const result = await verifyWorkspace({
+      layout,
+      fileSystem,
+      eventReader: { readAll: async () => [validEvent] }
+    });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload?.manifest).toMatchObject({ readable: true, valid: false });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_workspace_manifest_unavailable",
+        category: "manifest"
+      })
+    );
+    expect(JSON.stringify(result)).not.toContain("\"version\":2");
     expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });

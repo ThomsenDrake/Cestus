@@ -80,6 +80,9 @@ export async function verifyWorkspace(
   const jobRoot = requireRoot(rootMap, "jobs");
   const diagnosticsRoot = requireRoot(rootMap, "diagnostics");
   const backupRoot = requireRoot(rootMap, "backups");
+  const manifestValidation = manifestRoot.status === "available"
+    ? await validateResolvedManifest(input.fileSystem, layout, input.layout.workspace)
+    : { readable: false, valid: false };
 
   const diagnostics: WorkspaceDiagnosticInput[] = [];
   const proposedActions: ProposedRepairActionInput[] = [];
@@ -108,7 +111,7 @@ export async function verifyWorkspace(
     }
   }
 
-  if (manifestRoot.status !== "available") {
+  if (manifestRoot.status !== "available" || !manifestValidation.valid) {
     diagnostics.push({
       diagnosticId: "diag_workspace_manifest_unavailable",
       severity: "error",
@@ -211,12 +214,12 @@ export async function verifyWorkspace(
     schemaVersion: workspaceOpsSchemaVersion,
     mountStatus: input.layout.mountStatus,
     manifest: {
-      readable: manifestRoot.status === "available",
-      valid: manifestRoot.status === "available",
+      readable: manifestValidation.readable,
+      valid: manifestValidation.valid,
       ...(input.layout.workspace.manifestVersion === undefined
         ? {}
         : { manifestVersion: input.layout.workspace.manifestVersion }),
-      safeSummary: manifestRoot.status === "available"
+      safeSummary: manifestValidation.valid
         ? "Workspace manifest is valid."
         : "Workspace manifest is not readable."
     },
@@ -378,6 +381,49 @@ async function inspectWorkspaceRoots(
     });
   }
   return roots;
+}
+
+async function validateResolvedManifest(
+  fileSystem: WorkspaceFileSystem,
+  layout: ResolvedWorkspaceLayout,
+  workspace: NonNullable<WorkspaceLayoutResult["workspace"]>
+): Promise<{ readonly readable: boolean; readonly valid: boolean }> {
+  try {
+    const rawManifest = await fileSystem.readText(layout.manifestPath);
+    const parsed = JSON.parse(rawManifest) as unknown;
+    if (!isProvisionalWorkspaceManifest(parsed)) {
+      return { readable: true, valid: false };
+    }
+    return {
+      readable: true,
+      valid:
+        parsed.workspaceId === workspace.workspaceId &&
+        parsed.version === workspace.manifestVersion
+    };
+  } catch {
+    return { readable: false, valid: false };
+  }
+}
+
+function isProvisionalWorkspaceManifest(value: unknown): value is {
+  readonly workspaceId: string;
+  readonly label: string;
+  readonly version: 1;
+} {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Object.getPrototypeOf(value) === Object.prototype &&
+    "workspaceId" in value &&
+    "label" in value &&
+    "version" in value &&
+    typeof (value as { readonly workspaceId?: unknown }).workspaceId === "string" &&
+    /^ws_[a-zA-Z0-9_-]+$/.test((value as { readonly workspaceId: string }).workspaceId) &&
+    typeof (value as { readonly label?: unknown }).label === "string" &&
+    (value as { readonly label: string }).label.length > 0 &&
+    isSecretSafeWorkspaceText((value as { readonly label: string }).label) &&
+    (value as { readonly version?: unknown }).version === 1
+  );
 }
 
 async function pathStatus(
