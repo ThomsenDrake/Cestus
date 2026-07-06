@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
 
@@ -112,6 +112,7 @@ export function createPortableWorkspace(input: CreatePortableWorkspaceInput): Mo
     mkdirSync(dir, { recursive: true });
     assertDirectory(dir, "workspace layout directory");
   }
+  assertLedgerPathAvailableForCreate(paths.ledgerPath);
 
   const manifestInput = {
     version: 1,
@@ -275,14 +276,11 @@ function firstLayoutConflict(paths: PortableWorkspacePaths): string | undefined 
 }
 
 function ledgerPathIsUnavailable(ledgerPath: string): boolean {
-  if (!existsSync(ledgerPath)) {
-    return false;
-  }
-
   try {
-    return statSync(ledgerPath).isDirectory();
-  } catch {
-    return true;
+    const stat = lstatSync(ledgerPath);
+    return !stat.isFile();
+  } catch (error) {
+    return errorCode(error) !== "ENOENT";
   }
 }
 
@@ -294,10 +292,24 @@ function assertDirectory(path: string, label: string): void {
 
 function isDirectory(path: string): boolean {
   try {
-    return existsSync(path) && statSync(path).isDirectory();
+    return lstatSync(path).isDirectory();
   } catch {
     return false;
   }
+}
+
+function assertLedgerPathAvailableForCreate(ledgerPath: string): void {
+  if (ledgerPathIsUnavailable(ledgerPath)) {
+    throw new Error(`Portable workspace ledger path is unavailable: ${ledgerPath}`);
+  }
+}
+
+function errorCode(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return undefined;
+  }
+  const code = (error as { readonly code?: unknown }).code;
+  return typeof code === "string" ? code : undefined;
 }
 
 function assertPathUnderRoot(rootDir: string, path: string): void {
