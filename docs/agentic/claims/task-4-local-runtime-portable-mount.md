@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/portable-workspace-mount-design`
 Worktree path: `/home/drake/.codex/worktrees/4ea6/Cestus`
 Claimed at UTC: `2026-07-06T14:11:55Z`
-Status: `ready-for-review`
+Status: `complete`
 
 ## Owned Files
 
@@ -38,8 +38,11 @@ Status: `ready-for-review`
 
 ## Review
 
-- Review status: code-quality ready after minor cleanup
+- Review status: approved
+- Spec compliance review: approved after inspection of `bd0eaac..c5d6fc4`
+- Code-quality review: approved after inspection of `bd0eaac..c5d6fc4`
 - Review focus: no silent fallback, one canonical ledger path, safe diagnostics, and PRR replay after restart.
 - Code-quality review finding: Minor test cleanup issue in `packages/local-runtime/test/http-handler.test.ts`; portable replay test created handlers outside the suite cleanup registry, so an exception before manual close could leak a SQLite handle.
 - Follow-up fix: portable replay test now creates both runtime handlers through `testHandler` and unregisters them after intentional close, preserving `afterEach` cleanup if an awaited call or assertion throws.
+- Reviewer verification: `npm test -- packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/auth-and-seed.test.ts`, `npm run verify`, `npm run typecheck`, `npm test`, and `npm run factory:check` passed during review.
 - Concerns: none recorded
