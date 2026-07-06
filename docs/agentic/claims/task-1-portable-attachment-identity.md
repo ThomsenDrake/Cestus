@@ -15,9 +15,9 @@ Status: in-progress
 
 ## Evidence
 
-- Targeted red command:
-- Targeted green command:
-- Full verification:
+- Targeted red command: `npm test -- packages/workspace/test/workspace.test.ts` failed as expected; mismatched expected identity mounted successfully before identity validation existed.
+- Targeted green command: `npm test -- packages/workspace/test/workspace.test.ts` passed; 1 test file passed, 18 tests passed.
+- Full verification: `npm run verify` passed; typecheck passed, 92 test files passed, 824 tests passed, UI build succeeded, factory-readiness passed.
 
 ## Review
 
