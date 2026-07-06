@@ -5,6 +5,7 @@ import {
   createWorkspaceOpsEnvelope,
   isSecretSafeWorkspaceText,
   workspaceOpsSchemaVersion,
+  type ProposedRepairActionInput,
   type ProjectionRebuildDto,
   type WorkspaceDiagnosticInput,
   type WorkspaceOpsEnvelope
@@ -47,6 +48,7 @@ interface LedgerReadResult {
   readonly inputLedger: ProjectionRebuildDto["inputLedger"];
   readonly events: readonly KnowledgeEvent[];
   readonly diagnostics: readonly WorkspaceDiagnosticInput[];
+  readonly proposedActions: readonly ProposedRepairActionInput[];
   readonly checks: readonly ProjectionReadinessCheck[];
   readonly validationResults: readonly ProjectionValidationResult[];
 }
@@ -79,6 +81,7 @@ export async function rebuildProjectionReadiness(
   const projectionRoot = await inspectProjectionRoot(input.layout, input.fileSystem);
   const checks = [...ledger.checks, ...projectionRoot.checks, preservationCheck()];
   const diagnostics = [...ledger.diagnostics, ...projectionRoot.diagnostics];
+  const proposedActions = [...ledger.proposedActions];
 
   return createWorkspaceOpsEnvelope({
     command: "projection rebuild-readiness",
@@ -90,7 +93,8 @@ export async function rebuildProjectionReadiness(
       checks,
       validationResults: ledger.validationResults
     }),
-    diagnostics
+    diagnostics,
+    proposedActions
   });
 }
 
@@ -114,6 +118,7 @@ export async function rebuildProjection(
   const projectionRoot = await inspectProjectionRoot(input.layout, input.fileSystem);
   const checks = [...ledger.checks, ...projectionRoot.checks, preservationCheck()];
   const diagnostics = [...ledger.diagnostics, ...projectionRoot.diagnostics];
+  const proposedActions = [...ledger.proposedActions];
   if (checks.some((check) => check.status === "fail")) {
     return createWorkspaceOpsEnvelope({
       command: "projection rebuild",
@@ -126,7 +131,8 @@ export async function rebuildProjection(
         validationResults: ledger.validationResults,
         failures: [failure("failure_projection_readiness", "Projection rebuild readiness failed.", true)]
       }),
-      diagnostics
+      diagnostics,
+      proposedActions
     });
   }
 
@@ -156,7 +162,8 @@ export async function rebuildProjection(
           validationResult("validation_projection_output", "pass", "Projection output validated.")
         ]
       }),
-      diagnostics
+      diagnostics,
+      proposedActions
     });
   } catch {
     await safeRemoveTemp(input.fileSystem, tempRoot);
@@ -193,7 +200,8 @@ export async function rebuildProjection(
             requiresHumanApproval: false
           }
         }
-      ]
+      ],
+      proposedActions
     });
   }
 }
@@ -211,6 +219,7 @@ async function readAndValidateLedger(
       events: [],
       checks: [check("ledger_readable", "fail", "Workspace ledger could not be read safely.")],
       validationResults: [validationResult("validation_ledger_events", "fail", "Ledger events could not be validated.")],
+      proposedActions: [canonicalLedgerRepairAction("repair_projection_ledger_read_failed")],
       diagnostics: [
         {
           diagnosticId: "diag_projection_ledger_read_failed",
@@ -219,8 +228,8 @@ async function readAndValidateLedger(
           message: "Workspace ledger could not be read safely.",
           durable: false,
           repairHint: {
-            allowedNextCommands: ["verify workspace", "diagnostics inspect"],
-            requiresHumanApproval: false
+            allowedNextCommands: ["diagnostics inspect"],
+            requiresHumanApproval: true
           }
         }
       ]
@@ -255,6 +264,7 @@ async function readAndValidateLedger(
       validationResults: [
         validationResult("validation_ledger_events", "fail", "Ledger events failed contract validation.")
       ],
+      proposedActions: [canonicalLedgerRepairAction("repair_projection_ledger_event_validation_failed")],
       diagnostics: [
         {
           diagnosticId: "diag_projection_ledger_event_validation_failed",
@@ -263,8 +273,8 @@ async function readAndValidateLedger(
           message: "Ledger events failed contract validation.",
           durable: false,
           repairHint: {
-            allowedNextCommands: ["verify workspace", "diagnostics inspect"],
-            requiresHumanApproval: false
+            allowedNextCommands: ["diagnostics inspect"],
+            requiresHumanApproval: true
           }
         }
       ]
@@ -281,6 +291,7 @@ async function readAndValidateLedger(
     validationResults: [
       validationResult("validation_ledger_events", "pass", "Ledger events passed contract validation.")
     ],
+    proposedActions: [],
     diagnostics: []
   };
 }
@@ -459,6 +470,20 @@ function projectionRootDiagnostic(
       allowedNextCommands: ["projection rebuild-readiness", "disk usage"],
       requiresHumanApproval: false
     }
+  };
+}
+
+function canonicalLedgerRepairAction(
+  actionId: ProposedRepairActionInput["actionId"]
+): ProposedRepairActionInput {
+  return {
+    actionId,
+    kind: "append-repair-event-required",
+    title: "Record a human-approved canonical ledger repair event.",
+    severity: "error",
+    requiresHumanApproval: true,
+    mutatesCanonicalState: true,
+    allowedNextCommands: ["diagnostics inspect"]
   };
 }
 
