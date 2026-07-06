@@ -5,6 +5,7 @@ import type { z } from "zod";
 import { actorRefSchema } from "../../ontology/src/contracts.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { FileBlobStore } from "../../ontology/src/blob-store.js";
+import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { buildIngestionProjection } from "./projection.js";
 import {
   LegacyCestusInspector,
@@ -17,10 +18,12 @@ import {
 import {
   buildLegacyMigrationReport,
   LegacyMigrationReportService,
+  reportArtifactJson,
+  sha256,
   type LegacyMigrationReport,
   type LegacyReportTotals
 } from "./legacy-report.js";
-import { buildLegacyImportProjection } from "./legacy-projection.js";
+import { buildLegacyImportProjection, type LegacyImportProjection } from "./legacy-projection.js";
 import { buildLegacyMigrationReviewDto, type LegacyMigrationReviewDto } from "./legacy-read-api.js";
 import { parseLegacyClaimMetadata } from "./legacy-claim-parser.js";
 import type { MountedWorkspace } from "./mount-contract.js";
@@ -79,8 +82,13 @@ export interface LegacyReportData {
   readonly candidateSetHash: `sha256:${string}`;
   readonly totals: LegacyReportTotals;
   readonly report: LegacyMigrationReport;
-  readonly review: LegacyMigrationReviewDto;
+  readonly review: LegacyReportReviewDto;
 }
+
+export type LegacyReportReviewDto = LegacyMigrationReviewDto & {
+  readonly selectedReportId: string;
+  readonly isLatestReport: boolean;
+};
 
 export interface LegacyQuarantineData {
   readonly legacyReportId: string;
@@ -116,6 +124,18 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
       try {
         const sourceRoot = resolve(command.sourceRoot);
         const rootUri = pathToFileURL(sourceRoot).toString();
+        const dryRun = await inspectAndParseLegacyRoot({
+          ledger: new InMemoryEventLedger(),
+          actor,
+          sourceCollectionId: command.sourceCollectionId,
+          scanBatchId: command.scanBatchId,
+          sourceRoot
+        });
+
+        if (!dryRun.ok) {
+          return sourceUnavailableError();
+        }
+
         const sourceRegistration = await ensureSourceRegistration({
           workspace: workspace.workspace,
           actor,
@@ -129,24 +149,24 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
         }
 
         const beforeEvents = await workspace.workspace.ledger.readAll();
-        const inspector = new LegacyCestusInspector({
+        const inspected = await inspectAndParseLegacyRoot({
           ledger: workspace.workspace.ledger,
           actor,
-          detectorRegistry: new LegacyDetectorRegistry([conservativeJsonMetadataPlugin])
-        });
-        const inspected = await inspector.inspect({
           sourceCollectionId: command.sourceCollectionId,
           scanBatchId: command.scanBatchId,
-          rootDir: sourceRoot
+          sourceRoot
         });
-        const parsed = await parseDetectedLegacyMetadata(sourceRoot, inspected.detections);
+        if (!inspected.ok) {
+          return sourceUnavailableError();
+        }
+
         const report = buildLegacyMigrationReport({
-          sourceCollectionId: inspected.sourceCollectionId,
-          scanBatchId: inspected.scanBatchId,
-          files: inspected.files,
-          detections: inspected.detections,
-          proposedAssertionCandidates: parsed.proposedAssertionCandidates,
-          quarantineEntries: parsed.quarantineEntries
+          sourceCollectionId: inspected.reportInput.sourceCollectionId,
+          scanBatchId: inspected.reportInput.scanBatchId,
+          files: inspected.reportInput.files,
+          detections: inspected.reportInput.detections,
+          proposedAssertionCandidates: inspected.proposedAssertionCandidates,
+          quarantineEntries: inspected.quarantineEntries
         });
         const service = new LegacyMigrationReportService({
           ledger: workspace.workspace.ledger,
@@ -204,7 +224,7 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
           data: {
             ...inspectData(resolved.report),
             report: resolved.report,
-            review: buildLegacyMigrationReviewDto(projection, command.sourceCollectionId)
+            review: buildLegacyReportReviewDto(projection, command.sourceCollectionId, resolved.report.legacyReportId)
           }
         });
       } catch {
@@ -352,6 +372,45 @@ async function parseDetectedLegacyMetadata(
   return { proposedAssertionCandidates, quarantineEntries };
 }
 
+async function inspectAndParseLegacyRoot(input: {
+  readonly ledger: EventLedger;
+  readonly actor: ActorRef;
+  readonly sourceCollectionId: string;
+  readonly scanBatchId: string;
+  readonly sourceRoot: string;
+}): Promise<
+  | {
+      readonly ok: true;
+      readonly reportInput: Awaited<ReturnType<LegacyCestusInspector["inspect"]>>;
+      readonly proposedAssertionCandidates: LegacyProposedAssertionCandidate[];
+      readonly quarantineEntries: LegacyQuarantineEntry[];
+    }
+  | { readonly ok: false }
+> {
+  try {
+    const inspector = new LegacyCestusInspector({
+      ledger: input.ledger,
+      actor: input.actor,
+      detectorRegistry: new LegacyDetectorRegistry([conservativeJsonMetadataPlugin])
+    });
+    const reportInput = await inspector.inspect({
+      sourceCollectionId: input.sourceCollectionId,
+      scanBatchId: input.scanBatchId,
+      rootDir: input.sourceRoot
+    });
+    const parsed = await parseDetectedLegacyMetadata(input.sourceRoot, reportInput.detections);
+
+    return {
+      ok: true,
+      reportInput,
+      proposedAssertionCandidates: parsed.proposedAssertionCandidates,
+      quarantineEntries: parsed.quarantineEntries
+    };
+  } catch {
+    return { ok: false };
+  }
+}
+
 async function resolveStoredReport(
   workspace: MountedWorkspace,
   command: Extract<LegacyImportCommandName, "legacy report" | "legacy quarantine" | "legacy staging-preview">,
@@ -394,9 +453,17 @@ async function resolveStoredReport(
       LegacyMigrationReport,
       "reportHash"
     >;
+    const reportWithHash = { ...report, reportHash };
+    if (!reportArtifactMatchesSummary(reportWithHash, summary)) {
+      return {
+        ok: false,
+        result: reportMismatchError(command)
+      };
+    }
+
     return {
       ok: true,
-      report: { ...report, reportHash }
+      report: reportWithHash
     };
   } catch {
     return {
@@ -409,6 +476,49 @@ async function resolveStoredReport(
       })
     };
   }
+}
+
+function reportArtifactMatchesSummary(
+  report: LegacyMigrationReport,
+  summary: NonNullable<ReturnType<LegacyImportProjection["reports"]["get"]>>
+): boolean {
+  return report.legacyReportId === summary.legacyReportId &&
+    report.sourceCollectionId === summary.sourceCollectionId &&
+    report.scanBatchId === summary.scanBatchId &&
+    report.candidateSetHash === summary.candidateSetHash &&
+    sha256(reportArtifactJson(report)) === summary.reportHash;
+}
+
+function buildLegacyReportReviewDto(
+  projection: LegacyImportProjection,
+  sourceCollectionId: string,
+  selectedReportId: string
+): LegacyReportReviewDto {
+  const base = buildLegacyMigrationReviewDto(projection, sourceCollectionId);
+  const selectedReport = projection.reports.get(selectedReportId);
+  const selectedStagingApproved = [...projection.stagingApprovals.values()].some(
+    (approval) => approval.sourceCollectionId === sourceCollectionId && approval.legacyReportId === selectedReportId
+  );
+
+  return {
+    ...base,
+    selectedReportId,
+    ...(base.latestReportId === undefined ? {} : { latestReportId: base.latestReportId }),
+    rawImportRequiresApproval: selectedReport !== undefined,
+    ontologyStagingApproved: selectedStagingApproved,
+    isLatestReport: base.latestReportId === selectedReportId
+  };
+}
+
+function reportMismatchError(
+  command: Extract<LegacyImportCommandName, "legacy report" | "legacy quarantine" | "legacy staging-preview">
+): LegacyImportRuntimeResult<never> {
+  return stableLegacyImportError({
+    code: "LEGACY_IMPORT_REPORT_NOT_FOUND",
+    command,
+    message: "Stored legacy migration report artifact does not match the ledger summary.",
+    allowedRepairActions: ["rerun legacy inspect", "review workspace derivative storage"]
+  });
 }
 
 function requireMountedWorkspace(
@@ -476,5 +586,14 @@ function internalError(command: "legacy inspect" | "legacy report" | "legacy qua
     command,
     message: "Legacy import runtime failed while handling the command.",
     allowedRepairActions: ["retry the command", "inspect safe diagnostics"]
+  });
+}
+
+function sourceUnavailableError(): LegacyImportRuntimeResult<never> {
+  return stableLegacyImportError({
+    code: "LEGACY_IMPORT_SOURCE_REQUIRED",
+    command: "legacy inspect",
+    message: "Readable legacy source root is required before inspection.",
+    allowedRepairActions: ["check the legacy source root", "retry legacy inspect"]
   });
 }
