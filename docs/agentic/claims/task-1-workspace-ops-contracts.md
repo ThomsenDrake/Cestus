@@ -6,7 +6,7 @@ Worker: implementing agent for this task
 Branch: `codex/portable-workspace-ops-design` in a task-isolated worktree
 Worktree: `/home/drake/.codex/worktrees/797e/Cestus`
 Claimed-at: 2026-07-06T12:39:11Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/workspace-ops/src/contracts.ts`
@@ -17,3 +17,8 @@ Owned files:
 Required commands:
 - `npm test -- packages/workspace-ops/test/contracts.test.ts`
 - `npm run verify`
+
+Command evidence:
+- Red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 because `../src/contracts.js` was missing.
+- Green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 3 tests passed.
+- Verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 588 tests passed, UI build succeeded, and factory-readiness passed.
