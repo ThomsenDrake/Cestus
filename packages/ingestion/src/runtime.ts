@@ -80,25 +80,36 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
         });
       }
 
-      const before = await workspace.workspace.ledger.readAll();
       const scanner = new LocalFilesystemScanner({
         ledger: workspace.workspace.ledger,
         actor: input.actor
       });
-      const result = await scanner.scan({
-        sourceCollectionId: command.sourceCollectionId,
-        scanBatchId: command.scanBatchId,
-        rootDir: fileURLToPath(source.rootUri)
-      });
-      const after = await workspace.workspace.ledger.readAll();
+      const rootDir = rootDirFromRegisteredSource(source.rootUri);
+      if (!rootDir.ok) {
+        return rootDir;
+      }
 
-      return {
-        ok: true,
-        scanBatchId: result.scanBatchId,
-        inventoryHash: result.inventoryHash,
-        review: await reviewFor(workspace.workspace, command.sourceCollectionId),
-        eventIds: after.slice(before.length).map((event) => event.id)
-      };
+      try {
+        const result = await scanner.scan({
+          sourceCollectionId: command.sourceCollectionId,
+          scanBatchId: command.scanBatchId,
+          rootDir: rootDir.rootDir
+        });
+
+        return {
+          ok: true,
+          scanBatchId: result.scanBatchId,
+          inventoryHash: result.inventoryHash,
+          review: await reviewFor(workspace.workspace, command.sourceCollectionId),
+          eventIds: await scanEventIdsFor(
+            workspace.workspace,
+            command.sourceCollectionId,
+            command.scanBatchId
+          )
+        };
+      } catch {
+        return runtimeInternalError();
+      }
     }
   };
 }
@@ -126,13 +137,58 @@ function requireMountedWorkspace(
     });
   }
 
+  if (!workspace.capabilities.canReadLedger) {
+    return stableIngestionError({
+      code: "INGESTION_WORKSPACE_NOT_WRITABLE",
+      message: "Mounted workspace is not readable/writable for ingestion.",
+      allowedRepairActions: ["remount the workspace read-write", "retry the ingestion action"]
+    });
+  }
+
   if (mode === "write" && (!workspace.capabilities.canAppendLedger || !workspace.capabilities.canWriteJobState)) {
     return stableIngestionError({
       code: "INGESTION_WORKSPACE_NOT_WRITABLE",
-      message: "Mounted workspace is not writable for ingestion.",
+      message: "Mounted workspace is not readable/writable for ingestion.",
       allowedRepairActions: ["remount the workspace read-write", "retry the ingestion action"]
     });
   }
 
   return { ok: true, workspace };
+}
+
+function rootDirFromRegisteredSource(rootUri: string): IngestionRuntimeResult<{ rootDir: string }> {
+  try {
+    return { ok: true, rootDir: fileURLToPath(rootUri) };
+  } catch {
+    return runtimeInternalError();
+  }
+}
+
+async function scanEventIdsFor(
+  workspace: MountedWorkspace,
+  sourceCollectionId: string,
+  scanBatchId: string
+): Promise<string[]> {
+  return (await workspace.ledger.readStream(`ingestion_scan_${scanBatchId}`))
+    .filter((event) => {
+      if (
+        event.type !== "ingestion.scan.started"
+        && event.type !== "ingestion.occurrence.observed"
+        && event.type !== "ingestion.scan.completed"
+      ) {
+        return false;
+      }
+
+      return event.payload.sourceCollectionId === sourceCollectionId
+        && event.payload.scanBatchId === scanBatchId;
+    })
+    .map((event) => event.id);
+}
+
+function runtimeInternalError(): IngestionRuntimeResult<never> {
+  return stableIngestionError({
+    code: "INGESTION_RUNTIME_INTERNAL",
+    message: "Ingestion runtime could not complete the requested dry-run.",
+    allowedRepairActions: ["verify the registered source", "retry dry-run", "inspect runtime diagnostics"]
+  });
 }
