@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -53,6 +53,10 @@ describe("portable workspace contract", () => {
     expect(existsSync(join(dir, "projections"))).toBe(true);
     expect(existsSync(join(dir, "cache"))).toBe(true);
     expect(existsSync(join(dir, "config"))).toBe(true);
+    expect(existsSync(join(dir, "ledger", "ontology.sqlite"))).toBe(false);
+    expect(readdirSync(join(dir, "blobs"))).toEqual([]);
+    expect(readdirSync(join(dir, "derivatives"))).toEqual([]);
+    expect(readdirSync(join(dir, "jobs"))).toEqual([]);
 
     const manifest = readPortableWorkspaceManifest({
       manifestPath: workspace.manifestPath
@@ -75,6 +79,22 @@ describe("portable workspace contract", () => {
       expect(mounted.workspace.paths.ledgerPath).toBe(join(resolve(dir), "ledger", "ontology.sqlite"));
       expect(mounted.workspace.workspaceId).toBe("ws_portable_001");
     }
+  });
+
+  it("fails create before writing the manifest when the ledger path is unavailable", () => {
+    mkdirSync(join(dir, "ledger", "ontology.sqlite"), { recursive: true });
+
+    expect(() =>
+      createPortableWorkspace({
+        rootDir: dir,
+        workspaceId: "ws_portable_create_conflict",
+        label: "Ledger conflict",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-package-test",
+        coreVersion: "0.1.0"
+      })
+    ).toThrow(/ledger path is unavailable/i);
+    expect(existsSync(join(dir, "cestus-workspace.json"))).toBe(false);
   });
 
   it("derives all canonical paths under the resolved root", () => {
@@ -160,6 +180,24 @@ describe("portable workspace contract", () => {
     });
   });
 
+  it.each([
+    ["nested token", { nested: { token: "do-not-store" } }],
+    ["array secret", { providers: [{ secret: "do-not-store" }] }],
+    ["api_key", { api_key: "do-not-store" }],
+    ["api-key", { "api-key": "do-not-store" }],
+    ["privateKey", { privateKey: "do-not-store" }],
+    ["credential", { credential: "do-not-store" }],
+    ["oauth", { oauth: "do-not-store" }],
+    ["session", { session: "do-not-store" }]
+  ])("rejects secret-looking manifest keys in %s", (_label, extraFields) => {
+    writeValidManifest(dir, "ws_portable_secret_matrix", extraFields);
+
+    expect(mountPortableWorkspace({ rootDir: dir })).toMatchObject({
+      ok: false,
+      diagnostic: { code: "workspace-secret-material-rejected" }
+    });
+  });
+
   it("fails closed for layout conflicts and unavailable ledger paths", () => {
     writeFileSync(join(dir, "blobs"), "not a directory");
     writeFileSync(
@@ -206,4 +244,58 @@ describe("portable workspace contract", () => {
       diagnostic: { code: "workspace-ledger-unavailable" }
     });
   });
+
+  it("fails closed when a layout directory is a symlink outside the workspace root", () => {
+    const outside = mkdtempSync(join(tmpdir(), "cestus-workspace-outside-"));
+    try {
+      mkdirSync(join(dir, "ledger"), { recursive: true });
+      mkdirSync(join(dir, "derivatives"), { recursive: true });
+      mkdirSync(join(dir, "jobs"), { recursive: true });
+      mkdirSync(join(dir, "projections"), { recursive: true });
+      mkdirSync(join(dir, "cache"), { recursive: true });
+      mkdirSync(join(dir, "config"), { recursive: true });
+      symlinkSync(outside, join(dir, "blobs"), "dir");
+      writeValidManifest(dir, "ws_portable_symlink");
+
+      expect(mountPortableWorkspace({ rootDir: dir })).toMatchObject({
+        ok: false,
+        diagnostic: { code: "workspace-layout-conflict" }
+      });
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("fails closed when the ledger path exists as a non-regular file", () => {
+    mkdirSync(join(dir, "ledger"), { recursive: true });
+    mkdirSync(join(dir, "blobs"), { recursive: true });
+    mkdirSync(join(dir, "derivatives"), { recursive: true });
+    mkdirSync(join(dir, "jobs"), { recursive: true });
+    mkdirSync(join(dir, "projections"), { recursive: true });
+    mkdirSync(join(dir, "cache"), { recursive: true });
+    mkdirSync(join(dir, "config"), { recursive: true });
+    symlinkSync(join(dir, "missing-target.sqlite"), join(dir, "ledger", "ontology.sqlite"));
+    writeValidManifest(dir, "ws_portable_non_regular_ledger");
+
+    expect(mountPortableWorkspace({ rootDir: dir })).toMatchObject({
+      ok: false,
+      diagnostic: { code: "workspace-ledger-unavailable" }
+    });
+  });
 });
+
+function writeValidManifest(rootDir: string, workspaceId: string, extraFields: Record<string, unknown> = {}): void {
+  writeFileSync(
+    join(rootDir, "cestus-workspace.json"),
+    JSON.stringify({
+      version: 1,
+      layoutVersion: 1,
+      workspaceId,
+      label: "Portable workspace",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "test",
+      coreVersion: "0.1.0",
+      ...extraFields
+    })
+  );
+}

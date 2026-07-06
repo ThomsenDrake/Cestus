@@ -28,5 +28,15 @@ Status: `ready-for-review`
 
 ## Review
 
-- Review status: pending
+- Review status: fixes applied; pending re-review
+- Code-quality review result: with fixes
+- Fix red command: `npm test -- packages/workspace/test/workspace.test.ts`
+  - Result: failed as expected before the follow-up source fix.
+  - Evidence: 3 failing tests: create-time ledger path conflict, symlinked layout directory escape, and non-regular ledger path.
+- Fix green command: `npm test -- packages/workspace/test/workspace.test.ts`
+  - Result: passed.
+  - Evidence: `Test Files 1 passed (1)`, `Tests 16 passed (16)`.
+- Fix full verification: `npm run verify`
+  - Result: passed.
+  - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 601 passed (601)`, `tests passed`, `vite build` succeeded, `factory-readiness passed`.
 - Concerns: none recorded
