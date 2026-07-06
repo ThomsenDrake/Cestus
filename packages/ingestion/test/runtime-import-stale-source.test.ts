@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { afterEach, describe, expect, it } from "vitest";
+import { stableLocalFilesystemOccurrenceId } from "../src/local-filesystem.js";
 import { buildIngestionProjection } from "../src/projection.js";
 import { buildIngestionReviewDto } from "../src/read-api.js";
 import { createIngestionRuntime } from "../src/runtime.js";
@@ -123,6 +125,59 @@ describe("IngestionRuntime stale-source import verification", () => {
     const { workspace, runtime, sourceRoot } = await preparedRuntime({ "a.txt": "alpha" });
     await approve(runtime);
     writeFileSync(join(sourceRoot, "new.txt"), "new content");
+
+    const result = await runtime.importApproved({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001"
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_SOURCE_CHANGED_SINCE_APPROVAL" }
+    });
+    const events = await workspace.ledger.readAll();
+    expectStableSourceDiagnostic(events, result);
+    expectNoImportWrites(events);
+    expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual([]);
+  });
+
+  it("rejects post-approval forged occurrences that try to widen the approved inventory", async () => {
+    const { workspace, runtime, sourceRoot } = await preparedRuntime({ "a.txt": "alpha" });
+    await approve(runtime);
+    const content = Buffer.from("new content");
+    const contentHash = sha256(content);
+    writeFileSync(join(sourceRoot, "new.txt"), content);
+
+    await workspace.ledger.append({
+      type: "ingestion.occurrence.observed",
+      version: 1,
+      streamId: "ingestion_scan_scan_001",
+      context: {
+        actor,
+        occurredAt: "2026-07-06T15:00:00.000Z",
+        correlationId: "corr_scan_001",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+      },
+      payload: {
+        occurrenceId: stableLocalFilesystemOccurrenceId({
+          kind: "file",
+          sourceCollectionId: "src_drive_001",
+          scanBatchId: "scan_001",
+          sourcePath: "new.txt",
+          contentHash
+        }),
+        scanBatchId: "scan_001",
+        sourceCollectionId: "src_drive_001",
+        contentHash,
+        sourcePath: "new.txt",
+        sizeBytes: content.byteLength,
+        observedAt: "2026-07-06T15:00:00.000Z",
+        status: "new",
+        adapter: { name: "local-filesystem", version: "0.1.0" }
+      }
+    });
 
     const result = await runtime.importApproved({
       sourceCollectionId: "src_drive_001",
@@ -316,6 +371,10 @@ async function approve(runtime: ReturnType<typeof createIngestionRuntime>) {
   });
 }
 
+function sha256(content: Buffer): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(content).digest("hex")}`;
+}
+
 function expectStableSourceDiagnostic(
   events: Awaited<ReturnType<ReturnType<typeof createFakeMountedWorkspace>["ledger"]["readAll"]>>,
   result: Awaited<ReturnType<ReturnType<typeof createIngestionRuntime>["importApproved"]>>
@@ -327,7 +386,7 @@ function expectStableSourceDiagnostic(
   const diagnostics = events.filter((event) => event.type === "diagnostic.recorded");
   expect(diagnostics).toHaveLength(1);
   expect(diagnostics[0]).toMatchObject({
-    streamId: "ingestion_diagnostic_src_drive_001_scan_001_imp_001",
+    streamId: diagnosticStreamId("src_drive_001", "scan_001", "imp_001"),
     payload: {
       diagnosticId: "diag_ingestion_stale_src_drive_001_scan_001_imp_001",
       severity: "error",
@@ -348,7 +407,7 @@ function expectStableSourceDiagnostic(
     diagnosticId,
     sourceCollectionId: "src_drive_001",
     scanBatchId: "scan_001",
-    streamId: "ingestion_diagnostic_src_drive_001_scan_001_imp_001"
+    streamId: diagnosticStreamId("src_drive_001", "scan_001", "imp_001")
   });
   expect(projection.diagnosticsBySourceCollectionId.get("src_drive_001")).toContain(diagnosticId);
   expect(projection.sources.get("src_drive_001")?.diagnosticIds).toContain(diagnosticId);
@@ -368,4 +427,12 @@ function expectNoImportWrites(
   expect(events.some((event) => event.type === "evidence.ingested")).toBe(false);
   expect(events.some((event) => event.type === "ingestion.evidence.linked")).toBe(false);
   expect(events.some((event) => event.type === "ingestion.import.completed")).toBe(false);
+}
+
+function diagnosticStreamId(sourceCollectionId: string, scanBatchId: string, importBatchId: string): string {
+  return `ingestion_diagnostic_v1.${base64Url(sourceCollectionId)}.${base64Url(scanBatchId)}.${base64Url(importBatchId)}`;
+}
+
+function base64Url(value: string): string {
+  return Buffer.from(value, "utf8").toString("base64url");
 }
