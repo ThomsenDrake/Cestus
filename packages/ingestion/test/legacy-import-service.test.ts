@@ -66,13 +66,22 @@ describe("LegacyRawImportService", () => {
       files: [metadataFile]
     });
 
-    const eventTypes = (await ledger.readAll()).map((event) => event.type);
+    const events = await ledger.readAll();
+    const eventTypes = events.map((event) => event.type);
+    const linkedEvents = events.filter((event) => event.type === "ingestion.evidence.linked");
+
     expect(approval.type).toBe("ingestion.import.approved");
-    expect(eventTypes).toContain("evidence.ingested");
-    expect(eventTypes).toContain("ingestion.evidence.linked");
-    expect(eventTypes).not.toContain("assertion.proposed");
-    expect(eventTypes).not.toContain("assertion.accepted");
-    expect(eventTypes).not.toContain("entity.resolved");
-    expect(eventTypes).not.toContain("relationship.accepted");
+    expect(eventTypes).toEqual([
+      "ingestion.import.approved",
+      "evidence.ingested",
+      "ingestion.evidence.linked",
+      "ingestion.import.completed"
+    ]);
+    expect(linkedEvents).toHaveLength(1);
+    expect(linkedEvents[0]?.payload).toMatchObject({
+      importBatchId: "imp_old_cestus_001",
+      sourceCollectionId: "src_old_cestus",
+      occurrenceIds: ["occ_legacy_claims"]
+    });
   });
 });
