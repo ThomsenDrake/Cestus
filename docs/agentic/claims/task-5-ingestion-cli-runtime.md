@@ -7,7 +7,7 @@
 - Worktree: `/home/drake/.codex/worktrees/15cc/Cestus`
 - Head: `890a1f25ecf80d703d6562503b9f9ae934db6e28`
 - Claimed at: 2026-07-06T16:33:04Z
-- Status: claimed
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -19,4 +19,18 @@
 
 ## Verification Evidence
 
-- Pending.
+- Red command: `npm test -- packages/ingestion/test/cli.test.ts`
+  - Result: failed as expected; Vitest reported 1 failed test file with 4 failing tests because the existing handler did not call `mountResolver.resolve`, still returned `INGESTION_RUNTIME_WIRING_REQUIRED`, and did not call runtime methods.
+- Green targeted command: `npm test -- packages/ingestion/test/cli.test.ts`
+  - Result: passed; Vitest reported 1 test file passed and 6 tests passed.
+- Help command: `npm run ingestion:help`
+  - Result: passed; usage printed `cestus ingest dry-run --workspace <root> --source-id src_drive_001 --scan scan_001`.
+- Full verification command: `npm run verify`
+  - Result: passed; typecheck passed, Vitest reported 73 test files passed and 620 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Self-Review Notes
+
+- Scope stayed within the Task 5 owned files.
+- `summary-json` remains stable and pretty-printed with a trailing newline.
+- Operational CLI commands now delegate workspace resolution to the injected mount resolver and call injected runtime methods; the CLI does not resolve storage or create workspaces itself.
+- The standalone executable still has no hidden mount/runtime globals and returns stable JSON for operational commands when wiring is absent.
