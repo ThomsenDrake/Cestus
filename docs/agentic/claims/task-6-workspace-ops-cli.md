@@ -46,3 +46,15 @@ Spec review repair self-review:
 - Pure unsupported-command errors and executable unsupported/runtime-wiring errors no longer emit `--access-token` or the provided secret value.
 - Operation-failure errors continue to avoid raw thrown error text and do not include raw argv.
 - Exit codes, JSON error shape, help output, pure injected operation dispatch, and no-hidden-runtime behavior remain unchanged.
+
+Code-quality review repair evidence:
+- Finding: no-value secret-shaped flags such as `--access-token` and `--authorization` could still appear in executable error command summaries because the redaction check only matched secret keys paired with values.
+- Red: `npm test -- packages/workspace-ops/test/cli.test.ts` exited 1 with no-value secret-flag regressions failing for executable runtime-wiring and unsupported-command errors.
+- Green: `npm test -- packages/workspace-ops/test/cli.test.ts` exited 0 with 1 test file and 15 tests passed.
+- Help: `npm run workspace:help` exited 0 and printed `Usage: cestus-workspace <command> [options]`.
+- Verify: `npm run verify` exited 0 with typecheck passed, 77 test files and 682 tests passed, UI build succeeded, and factory-readiness passed.
+
+Code-quality repair self-review:
+- Pure CLI and executable command summaries now treat secret-shaped option names as unsafe even without a value.
+- Ordinary argv summaries remain readable when no secret-shaped option names or values are present.
+- Stable JSON error shapes, exit codes, help output, injected-operation boundaries, and no-hidden-runtime behavior remain unchanged.

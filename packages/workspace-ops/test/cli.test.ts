@@ -159,6 +159,26 @@ describe("runWorkspaceOpsCli", () => {
     expect(output).not.toContain("abc123");
   });
 
+  it("redacts no-value secret flags in unsupported command errors", async () => {
+    const lines: string[] = [];
+    const exitCode = await runWorkspaceOpsCli(["unknown", "--access-token"], {
+      stdout: (line) => lines.push(line),
+      operations: {}
+    });
+
+    const output = lines.join("");
+    expect(exitCode).toBe(1);
+    expect(JSON.parse(output)).toEqual({
+      ok: false,
+      error: {
+        code: "WORKSPACE_OPS_COMMAND_UNSUPPORTED",
+        command: "unsupported command",
+        message: "Unsupported workspace ops command unsupported command."
+      }
+    });
+    expect(output).not.toContain("access-token");
+  });
+
   it("prints stable JSON runtime-wiring errors for supported but uninjected commands", async () => {
     const lines: string[] = [];
     const exitCode = await runWorkspaceOpsCli(["verify", "workspace"], {
@@ -175,6 +195,26 @@ describe("runWorkspaceOpsCli", () => {
         message: "Workspace ops command verify workspace requires injected operations; pure CLI handlers do not use hidden globals."
       }
     });
+  });
+
+  it("does not echo no-value secret flags in pure runtime-wiring errors", async () => {
+    const lines: string[] = [];
+    const exitCode = await runWorkspaceOpsCli(["verify", "workspace", "--authorization"], {
+      stdout: (line) => lines.push(line),
+      operations: {}
+    });
+
+    const output = lines.join("");
+    expect(exitCode).toBe(1);
+    expect(JSON.parse(output)).toEqual({
+      ok: false,
+      error: {
+        code: "WORKSPACE_OPS_RUNTIME_WIRING_REQUIRED",
+        command: "verify workspace",
+        message: "Workspace ops command verify workspace requires injected operations; pure CLI handlers do not use hidden globals."
+      }
+    });
+    expect(output).not.toContain("authorization");
   });
 
   it("returns JSON when an injected operation throws without leaking raw error text", async () => {
@@ -271,6 +311,28 @@ describe("cestus-workspace executable", () => {
     });
   });
 
+  it("redacts no-value secret flags in runtime-wiring executable errors", async () => {
+    await expect(
+      execFileAsync("node", [
+        "packages/workspace-ops/bin/cestus-workspace.mjs",
+        "verify",
+        "workspace",
+        "--authorization"
+      ])
+    ).rejects.toMatchObject({
+      code: 1,
+      stdout: "",
+      stderr: `${JSON.stringify({
+        ok: false,
+        error: {
+          code: "WORKSPACE_OPS_RUNTIME_WIRING_REQUIRED",
+          command: "verify workspace [redacted]",
+          message: "Workspace ops executable commands require explicit package wiring; the executable does not use hidden globals."
+        }
+      }, null, 2)}\n`
+    });
+  });
+
   it("redacts secret-shaped argv in unsupported executable errors", async () => {
     await expect(
       execFileAsync("node", [
@@ -292,4 +354,26 @@ describe("cestus-workspace executable", () => {
       }, null, 2)}\n`
     });
   });
+
+  it("redacts no-value secret flags in unsupported executable errors", async () => {
+    await expect(
+      execFileAsync("node", [
+        "packages/workspace-ops/bin/cestus-workspace.mjs",
+        "unknown",
+        "--access-token"
+      ])
+    ).rejects.toMatchObject({
+      code: 1,
+      stdout: "",
+      stderr: `${JSON.stringify({
+        ok: false,
+        error: {
+          code: "WORKSPACE_OPS_COMMAND_UNSUPPORTED",
+          command: "unsupported command",
+          message: "Unsupported workspace ops command unsupported command."
+        }
+      }, null, 2)}\n`
+    });
+  });
+
 });
