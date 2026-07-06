@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/portable-workspace-attachment-ops`
 Worktree: `/home/drake/.codex/worktrees/db41/Cestus`
 Claimed at: 2026-07-06T00:00:00.000Z
-Status: in-progress
+Status: ready-for-review
 
 ## Owned Files
 
@@ -21,4 +21,5 @@ Status: in-progress
 
 ## Review
 
-- Pending.
+- Spec review passed.
+- Code-quality review found only claim metadata housekeeping; status updated to `ready-for-review`.
