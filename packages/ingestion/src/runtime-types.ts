@@ -75,6 +75,12 @@ export interface IngestionJobListDto {
   readonly jobs: readonly IngestionJobDto[];
 }
 
+export interface IngestionJobResultDto {
+  readonly job: IngestionJobDto;
+  readonly review?: IngestionReviewDto;
+  readonly eventIds: readonly string[];
+}
+
 export interface IngestionJobDto {
   readonly jobId: string;
   readonly kind: "scan" | "import" | "local-parse" | "provider-parse";
