@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createLegacyImportRuntime } from "../src/legacy-runtime.js";
+import { mountedWorkspaceCapabilities } from "../src/mount-contract.js";
 import { createFakeMountedWorkspace } from "./runtime-test-helpers.js";
 import { writeLegacyCestusFixture } from "./fixtures/legacy-cestus-fixtures.js";
 
@@ -360,6 +361,102 @@ describe("LegacyImportRuntime gated import and staging workflow", () => {
     expect((preview as typeof preview & { proposedAssertionCandidates?: readonly unknown[] }).proposedAssertionCandidates ?? [])
       .toHaveLength(0);
   });
+
+  it("rejects empty staging approval candidate selections", async () => {
+    const { runtime, inspected } = await preparedImportedRuntime();
+
+    const approved = await runtime.approveStaging({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId: "legacy_stage_001",
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: []
+    });
+
+    expect(approved.ok).toBe(false);
+    if (approved.ok) return;
+    expect(approved.error.code).toBe("LEGACY_IMPORT_CANDIDATE_SET_MISMATCH");
+  });
+
+  it("rejects duplicate staging approval candidate selections", async () => {
+    const { runtime, inspected } = await preparedImportedRuntime();
+    const preview = await runtime.stagingPreview({
+      sourceCollectionId: "src_old_cestus",
+      legacyReportId: inspected.legacyReportId
+    });
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    const [candidate] = preview.candidates;
+    expect(candidate).toBeDefined();
+    if (candidate === undefined) return;
+
+    const approved = await runtime.approveStaging({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId: "legacy_stage_001",
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: [candidate.candidateId, candidate.candidateId]
+    });
+
+    expect(approved.ok).toBe(false);
+    if (approved.ok) return;
+    expect(approved.error.code).toBe("LEGACY_IMPORT_CANDIDATE_SET_MISMATCH");
+  });
+
+  it("fails closed when staged approval ids are absent from current eligible candidates", async () => {
+    const { workspace, runtime, inspected } = await preparedImportedRuntime();
+    await appendUnknownCandidateStagingApproval(workspace, {
+      legacyReportId: inspected.legacyReportId,
+      reportHash: inspected.reportHash,
+      candidateSetHash: inspected.candidateSetHash
+    });
+
+    const staged = await runtime.stageApproved({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId: "legacy_stage_001"
+    });
+
+    expect(staged.ok).toBe(false);
+    if (staged.ok) return;
+    expect(["LEGACY_IMPORT_CANDIDATE_SET_MISMATCH", "LEGACY_IMPORT_EVIDENCE_LINK_REQUIRED"])
+      .toContain(staged.error.code);
+    expect((await workspace.ledger.readAll()).map((event) => event.type)).not.toContain("assertion.proposed");
+  });
+
+  it("allows append-only legacy approval gates without job-state write capability", async () => {
+    const { workspace, inspected } = await preparedImportedRuntime();
+    const appendOnlyRuntime = createLegacyImportRuntime({
+      mountedWorkspace: {
+        ...workspace,
+        capabilities: mountedWorkspaceCapabilities({
+          ...workspace.capabilities,
+          canWriteJobState: false
+        })
+      },
+      actor
+    });
+    const preview = await appendOnlyRuntime.stagingPreview({
+      sourceCollectionId: "src_old_cestus",
+      legacyReportId: inspected.legacyReportId
+    });
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+
+    const approved = await appendOnlyRuntime.approveStaging({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId: "legacy_stage_001",
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: preview.candidates.map((candidate) => candidate.candidateId)
+    });
+
+    expect(approved.ok).toBe(true);
+  });
 });
 
 async function preparedImportedRuntime() {
@@ -408,6 +505,39 @@ async function appendForeignEvidenceLink(
       sourceCollectionId: "src_other_cestus",
       contentHash,
       occurrenceIds: ["occ_other_cestus_001"]
+    }
+  });
+}
+
+async function appendUnknownCandidateStagingApproval(
+  workspace: ReturnType<typeof createFakeMountedWorkspace>,
+  input: {
+    legacyReportId: string;
+    reportHash: `sha256:${string}`;
+    candidateSetHash: `sha256:${string}`;
+  }
+) {
+  await workspace.ledger.append({
+    type: "legacy.ontology.staging.approved",
+    version: 1,
+    streamId: "legacy_staging_src_old_cestus_scan_old_cestus_001_legacy_stage_001",
+    context: {
+      actor,
+      occurredAt: new Date().toISOString(),
+      correlationId: "corr_legacy_stage_001",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0", legacy: "0.1.0" }
+    },
+    payload: {
+      stagingBatchId: "legacy_stage_001",
+      legacyReportId: input.legacyReportId,
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      reportHash: input.reportHash,
+      candidateSetHash: input.candidateSetHash,
+      approvedBy: "actor_investigator",
+      approvedAt: new Date().toISOString(),
+      approvedAssertionCandidateIds: ["legacy_candidate_unknown"]
     }
   });
 }

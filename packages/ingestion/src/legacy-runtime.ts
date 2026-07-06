@@ -456,7 +456,7 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
         const candidates = await evidenceTiedCandidatesForReport(workspace.workspace, resolved.report);
         const candidateIds = new Set(candidates.map((candidate) => candidate.candidateId));
         const requestedIds = [...command.approvedAssertionCandidateIds];
-        if (requestedIds.some((candidateId) => !candidateIds.has(candidateId))) {
+        if (!validCandidateIdSelection(requestedIds, candidateIds)) {
           return candidateSetMismatchError("legacy approve-staging");
         }
 
@@ -511,11 +511,25 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
         }
 
         const candidates = await evidenceTiedCandidatesForReport(workspace.workspace, resolved.report);
+        const candidateIds = new Set(candidates.map((candidate) => candidate.candidateId));
+        const beforeEvents = await workspace.workspace.ledger.readAll();
+        const existingApproval = buildLegacyImportProjection(beforeEvents).stagingApprovals.get(command.stagingBatchId);
+        if (
+          existingApproval !== undefined &&
+          existingApproval.sourceCollectionId === command.sourceCollectionId &&
+          existingApproval.scanBatchId === command.scanBatchId &&
+          existingApproval.legacyReportId === command.legacyReportId &&
+          existingApproval.reportHash === resolved.report.reportHash &&
+          existingApproval.candidateSetHash === resolved.report.candidateSetHash &&
+          !validCandidateIdSelection(existingApproval.approvedAssertionCandidateIds, candidateIds)
+        ) {
+          return candidateSetMismatchError("legacy stage");
+        }
+
         const service = new LegacyOntologyStagingService({
           ledger: workspace.workspace.ledger,
           actor
         });
-        const beforeEvents = await workspace.workspace.ledger.readAll();
         const proposed = await service.stageApprovedAssertions({
           sourceCollectionId: command.sourceCollectionId,
           scanBatchId: command.scanBatchId,
@@ -529,6 +543,9 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
         const newEvents = eventsAddedAfter(beforeEvents, afterEvents);
         if (newEvents.some((event) => forbiddenAcceptedEventTypes.has(event.type))) {
           return acceptedEventForbiddenError("legacy stage");
+        }
+        if (proposed.length === 0) {
+          return candidateSetMismatchError("legacy stage");
         }
 
         return stableLegacyImportSuccess({
@@ -802,7 +819,7 @@ function requireMountedWorkspace(
 
   if (
     (mode === "append" || mode === "blob-write") &&
-    (!workspace.capabilities.canAppendLedger || !workspace.capabilities.canWriteJobState)
+    !workspace.capabilities.canAppendLedger
   ) {
     return stableLegacyImportError({
       code: "LEGACY_IMPORT_WORKSPACE_NOT_WRITABLE",
@@ -872,6 +889,19 @@ async function evidenceTiedCandidatesForReport(
       evidenceId
     }];
   });
+}
+
+function validCandidateIdSelection(
+  candidateIds: readonly string[],
+  eligibleCandidateIds: ReadonlySet<string>
+): boolean {
+  if (candidateIds.length === 0) {
+    return false;
+  }
+
+  const uniqueCandidateIds = new Set(candidateIds);
+  return uniqueCandidateIds.size === candidateIds.length &&
+    candidateIds.every((candidateId) => eligibleCandidateIds.has(candidateId));
 }
 
 function legacyErrorFromIngestion(
