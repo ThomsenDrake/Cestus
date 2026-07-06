@@ -37,6 +37,13 @@ export interface LegacyImportProjection {
   diagnosticsBySourceCollectionId: Map<string, string[]>;
 }
 
+interface DiagnosticStreamIdentity {
+  sourceCollectionId?: string;
+  scanBatchId?: string;
+  legacyReportId?: string;
+  stagingBatchId?: string;
+}
+
 export function buildLegacyImportProjection(events: readonly unknown[]): LegacyImportProjection {
   const projection: LegacyImportProjection = {
     reports: new Map(),
@@ -45,7 +52,7 @@ export function buildLegacyImportProjection(events: readonly unknown[]): LegacyI
     diagnostics: new Map(),
     diagnosticsBySourceCollectionId: new Map()
   };
-  const sourceCollectionIdByStreamId = new Map<string, string>();
+  const streamIdentityByStreamId = new Map<string, DiagnosticStreamIdentity>();
 
   for (const rawEvent of events) {
     const eventResult = validateKnowledgeEvent(rawEvent);
@@ -58,23 +65,35 @@ export function buildLegacyImportProjection(events: readonly unknown[]): LegacyI
 
     switch (event.type) {
       case "ingestion.source.registered":
-        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
+        streamIdentityByStreamId.set(event.streamId, { sourceCollectionId: event.payload.sourceCollectionId });
         break;
       case "ingestion.scan.started":
       case "ingestion.occurrence.observed":
       case "ingestion.scan.completed":
-        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
+        streamIdentityByStreamId.set(event.streamId, {
+          sourceCollectionId: event.payload.sourceCollectionId,
+          scanBatchId: event.payload.scanBatchId
+        });
         break;
       case "legacy.import.report.generated":
-        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
+        streamIdentityByStreamId.set(event.streamId, {
+          sourceCollectionId: event.payload.sourceCollectionId,
+          scanBatchId: event.payload.scanBatchId,
+          legacyReportId: event.payload.legacyReportId
+        });
         projectReport(projection, event);
         break;
       case "legacy.ontology.staging.approved":
-        sourceCollectionIdByStreamId.set(event.streamId, event.payload.sourceCollectionId);
+        streamIdentityByStreamId.set(event.streamId, {
+          sourceCollectionId: event.payload.sourceCollectionId,
+          scanBatchId: event.payload.scanBatchId,
+          legacyReportId: event.payload.legacyReportId,
+          stagingBatchId: event.payload.stagingBatchId
+        });
         projectStagingApproval(projection, event);
         break;
       case "diagnostic.recorded":
-        projectDiagnostic(projection, event, sourceCollectionIdByStreamId);
+        projectDiagnostic(projection, event, streamIdentityByStreamId);
         break;
       default:
         break;
@@ -116,12 +135,9 @@ function projectStagingApproval(
 function projectDiagnostic(
   projection: LegacyImportProjection,
   event: KnowledgeEventOf<"diagnostic.recorded">,
-  sourceCollectionIdByStreamId: ReadonlyMap<string, string>
+  streamIdentityByStreamId: ReadonlyMap<string, DiagnosticStreamIdentity>
 ): void {
-  const streamIdentity = inferLegacyStreamIdentity(event.streamId);
-  const sourceCollectionId = sourceCollectionIdByStreamId.get(event.streamId)
-    ?? streamIdentity?.sourceCollectionId
-    ?? inferIngestionSourceStreamId(event.streamId);
+  const streamIdentity = streamIdentityByStreamId.get(event.streamId) ?? inferNonLegacyStreamIdentity(event.streamId);
   const diagnostic: LegacyDiagnosticReference = {
     diagnosticId: event.payload.diagnosticId,
     eventId: event.id,
@@ -130,7 +146,7 @@ function projectDiagnostic(
     message: event.payload.message,
     streamId: event.streamId,
     occurredAt: event.context.occurredAt,
-    ...(sourceCollectionId === undefined ? {} : { sourceCollectionId }),
+    ...(streamIdentity?.sourceCollectionId === undefined ? {} : { sourceCollectionId: streamIdentity.sourceCollectionId }),
     ...(streamIdentity?.scanBatchId === undefined ? {} : { scanBatchId: streamIdentity.scanBatchId }),
     ...(streamIdentity?.legacyReportId === undefined ? {} : { legacyReportId: streamIdentity.legacyReportId }),
     ...(streamIdentity?.stagingBatchId === undefined ? {} : { stagingBatchId: streamIdentity.stagingBatchId })
@@ -138,45 +154,19 @@ function projectDiagnostic(
 
   projection.diagnostics.set(diagnostic.diagnosticId, diagnostic);
 
-  if (sourceCollectionId !== undefined) {
-    appendUnique(projection.diagnosticsBySourceCollectionId, sourceCollectionId, diagnostic.diagnosticId);
+  if (streamIdentity?.sourceCollectionId !== undefined) {
+    appendUnique(projection.diagnosticsBySourceCollectionId, streamIdentity.sourceCollectionId, diagnostic.diagnosticId);
   }
 }
 
-function inferLegacyStreamIdentity(streamId: string): {
-  sourceCollectionId: string;
-  scanBatchId: string;
-  legacyReportId?: string;
-  stagingBatchId?: string;
-} | undefined {
-  const reportMatch =
-    /^legacy_report_(src_[a-zA-Z0-9_-]+)_(scan_[a-zA-Z0-9_-]+)_(legacy_report_[a-zA-Z0-9_-]+)$/.exec(streamId);
-
-  if (reportMatch?.[1] !== undefined && reportMatch[2] !== undefined && reportMatch[3] !== undefined) {
-    return {
-      sourceCollectionId: reportMatch[1],
-      scanBatchId: reportMatch[2],
-      legacyReportId: reportMatch[3]
-    };
-  }
-
-  const stagingMatch =
-    /^legacy_staging_(src_[a-zA-Z0-9_-]+)_(scan_[a-zA-Z0-9_-]+)_(legacy_stage_[a-zA-Z0-9_-]+)$/.exec(streamId);
-
-  if (stagingMatch?.[1] !== undefined && stagingMatch[2] !== undefined && stagingMatch[3] !== undefined) {
-    return {
-      sourceCollectionId: stagingMatch[1],
-      scanBatchId: stagingMatch[2],
-      stagingBatchId: stagingMatch[3]
-    };
-  }
-
-  return undefined;
-}
-
-function inferIngestionSourceStreamId(streamId: string): string | undefined {
+function inferNonLegacyStreamIdentity(streamId: string): DiagnosticStreamIdentity | undefined {
   const matched = /^ingestion_source_(src_[a-zA-Z0-9_-]+)$/.exec(streamId);
-  return matched?.[1];
+
+  if (matched?.[1] === undefined) {
+    return undefined;
+  }
+
+  return { sourceCollectionId: matched[1] };
 }
 
 function sortDiagnosticIndexes(projection: LegacyImportProjection): void {
