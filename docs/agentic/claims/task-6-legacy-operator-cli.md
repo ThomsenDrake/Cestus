@@ -6,7 +6,7 @@
 - Branch: `codex/legacy-import-operator-cli`
 - Worktree: `/home/drake/.codex/worktrees/5738/Cestus`
 - Claimed at: 2026-07-06T23:19:17Z
-- Status: claimed
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -19,7 +19,8 @@
 
 ## Verification
 
-- Pending: `npm test -- packages/ingestion/test/legacy-cli-workflow.test.ts`
-- Pending: `npm test -- packages/ingestion/test/legacy-cli-workflow.test.ts packages/ingestion/test/legacy-cli.test.ts packages/ingestion/test/cli.test.ts`
-- Pending: `npm run ingestion:help`
-- Pending: `npm run verify`
+- Red: `npm test -- packages/ingestion/test/legacy-cli-workflow.test.ts` failed with missing `normalizeIngestionCliArgs`, legacy help, and legacy command routing.
+- Green: `npm test -- packages/ingestion/test/legacy-cli-workflow.test.ts` passed 10 tests.
+- Targeted: `npm test -- packages/ingestion/test/legacy-cli-workflow.test.ts packages/ingestion/test/legacy-cli.test.ts packages/ingestion/test/cli.test.ts` passed 3 files / 21 tests.
+- Help: `npm run ingestion:help` printed the legacy workflow, including `cestus ingest legacy inspect --workspace <root> --source <old-root>`.
+- Full: `npm run verify` passed typecheck, 97 test files / 863 tests, UI build, and factory readiness.
