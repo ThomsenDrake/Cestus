@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { runLocalRuntimeCli } from "../src/cli.js";
 
 let tempDir: string | undefined;
@@ -149,7 +150,15 @@ describe("runLocalRuntimeCli", () => {
 
   it("configures portable workspace storage with --workspace", async () => {
     const stdout: string[] = [];
+    const stderr: string[] = [];
     tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    createPortableWorkspace({
+      rootDir: join(tempDir, "external/case-a"),
+      workspaceId: "ws_manifest_case_a",
+      label: "Manifest Case A",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "local-runtime-test"
+    });
 
     const exitCode = await runLocalRuntimeCli(
       ["configure", "--storage", "portable-workspace", "--workspace", "external/case-a"],
@@ -157,13 +166,15 @@ describe("runLocalRuntimeCli", () => {
         cwd: tempDir,
         env: {},
         stdout: (line) => stdout.push(line),
-        stderr: () => undefined
+        stderr: (line) => stderr.push(line)
       }
     );
 
     expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
     expect(stdout.join("\n")).toContain('"strategy": "portable-workspace"');
     expect(stdout.join("\n")).toContain('"workspaceRoot": "external/case-a"');
+    expect(stdout.join("\n")).toContain('"expectedWorkspaceId": "ws_manifest_case_a"');
 
     const configExitCode = await runLocalRuntimeCli(["config"], {
       cwd: tempDir,
@@ -176,6 +187,7 @@ describe("runLocalRuntimeCli", () => {
     expect(stdout.join("\n")).toContain(
       '"sqlitePath": "' + join(tempDir, "external/case-a/ledger/ontology.sqlite") + '"'
     );
+    expect(stdout.join("\n")).toContain('"expectedWorkspaceId": "ws_manifest_case_a"');
   });
 
   it("explicitly creates a portable workspace without printing secret material", async () => {
@@ -351,6 +363,85 @@ describe("runLocalRuntimeCli", () => {
 
     expect(exitCode).toBe(0);
     expect(stdout.join("\n")).toContain('"expectedWorkspaceId": "ws_cli_case"');
+  });
+
+  it("requires --workspace-id when portable configure cannot read the workspace manifest", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(
+      ["configure", "--storage", "portable-workspace", "--workspace", "missing-case"],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: (line) => stderr.push(line)
+      }
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain(
+      "portable-workspace configure requires --workspace-id or a readable workspace manifest"
+    );
+    expect(stderr.join("\n")).not.toMatch(/token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i);
+  });
+
+  it("replaces a stale expected identity when configuring a different readable workspace", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    createPortableWorkspace({
+      rootDir: join(tempDir, "old-case"),
+      workspaceId: "ws_old_case",
+      label: "Old Case",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "local-runtime-test"
+    });
+    createPortableWorkspace({
+      rootDir: join(tempDir, "new-case"),
+      workspaceId: "ws_new_case",
+      label: "New Case",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "local-runtime-test"
+    });
+
+    expect(
+      await runLocalRuntimeCli(
+        [
+          "configure",
+          "--storage",
+          "portable-workspace",
+          "--workspace",
+          "old-case",
+          "--workspace-id",
+          "ws_old_case"
+        ],
+        {
+          cwd: tempDir,
+          env: {},
+          stdout: () => undefined,
+          stderr: (line) => stderr.push(line)
+        }
+      )
+    ).toBe(0);
+
+    const exitCode = await runLocalRuntimeCli(
+      ["configure", "--storage", "portable-workspace", "--workspace", "new-case"],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: (line) => stderr.push(line)
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    expect(stdout.join("\n")).toContain('"workspaceRoot": "new-case"');
+    expect(stdout.join("\n")).toContain('"expectedWorkspaceId": "ws_new_case"');
+    expect(stdout.join("\n")).not.toContain("ws_old_case");
   });
 
   it("rejects unknown create-workspace flags without writing output", async () => {

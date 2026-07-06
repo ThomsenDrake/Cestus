@@ -13,7 +13,7 @@ import {
 } from "./config-file.js";
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
 import { startLocalRuntimeServer } from "./server.js";
-import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { createPortableWorkspace, portableWorkspacePaths, readPortableWorkspaceManifest } from "../../workspace/src/index.js";
 
 export interface LocalRuntimeCliDependencies {
   readonly cwd?: string;
@@ -36,7 +36,7 @@ export async function runLocalRuntimeCli(
     if (command === "configure") {
       const written = writeLocalRuntimeOnboardingConfig({
         ...configInputFrom(dependencies),
-        ...parseConfigureArgs(argv.slice(1))
+        ...resolveConfigureFlags(parseConfigureArgs(argv.slice(1)), dependencies)
       });
       stdout(
         JSON.stringify(
@@ -296,6 +296,34 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     ...(options.devSeedEnabled === undefined ? {} : { devSeedEnabled: options.devSeedEnabled }),
     ...(options.rotateAuthToken === undefined ? {} : { rotateAuthToken: options.rotateAuthToken })
   };
+}
+
+function resolveConfigureFlags(
+  flags: ConfigureFlags,
+  dependencies: LocalRuntimeCliDependencies
+): ConfigureFlags {
+  if (flags.storageStrategy !== "portable-workspace" || flags.expectedWorkspaceId !== undefined) {
+    return flags;
+  }
+
+  if (flags.workspaceRoot === undefined) {
+    return flags;
+  }
+
+  const rootDir = resolve(dependencies.cwd ?? process.cwd(), flags.workspaceRoot);
+  try {
+    const manifest = readPortableWorkspaceManifest({
+      manifestPath: portableWorkspacePaths(rootDir).manifestPath
+    });
+    return {
+      ...flags,
+      expectedWorkspaceId: manifest.workspaceId
+    };
+  } catch {
+    throw new Error(
+      "portable-workspace configure requires --workspace-id or a readable workspace manifest"
+    );
+  }
 }
 
 function parseCreateWorkspaceArgs(argv: readonly string[]) {
