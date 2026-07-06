@@ -23,7 +23,10 @@ const uiTsxFiles = [
   "packages/ui/src/requests/RequestDetailRail.tsx",
   "packages/ui/src/requests/RequestWorkspaceIntelligenceRail.tsx",
   "packages/ui/src/requests/RequestSignalMap.tsx",
-  "packages/ui/src/requests/RequestBuilder.tsx"
+  "packages/ui/src/requests/RequestBuilder.tsx",
+  "packages/ui/src/operator-status/OperatorCockpit.tsx",
+  "packages/ui/src/operator-status/OperatorStatusBand.tsx",
+  "packages/ui/src/operator-status/OperatorStatusDetail.tsx"
 ];
 
 const finalRequestsContractFiles = [
@@ -81,6 +84,13 @@ describe("visual system contract", () => {
     expect(joined).toContain("Signal operations board");
     expect(joined).toContain("Legal escalation locked");
     expect(joined).toContain("Guided request builder");
+    expect(joined).toContain("Workspace");
+    expect(joined).toContain("Legacy Import");
+    expect(joined).toContain("source evidence");
+    expect(joined).toContain("var(--signal-amber)");
+    expect(joined).toContain("var(--signal-cyan)");
+    expect(joined).toContain("var(--signal-green)");
+    expect(joined).toContain("var(--signal-red)");
   });
 
   it("keeps final Requests workspace contracts dimensioned, sparse, and multi-signal", () => {
