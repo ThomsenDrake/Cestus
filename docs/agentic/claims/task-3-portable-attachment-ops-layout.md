@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/portable-workspace-attachment-ops`
 Worktree: `/home/drake/.codex/worktrees/db41/Cestus`
 Claimed at: 2026-07-06T22:13:03.000Z
-Status: in-progress
+Status: ready-for-review
 
 ## Owned Files
 
@@ -17,12 +17,21 @@ Status: in-progress
 - `packages/workspace-ops/test/ops.test.ts`
 - `docs/agentic/claims/task-3-portable-attachment-ops-layout.md`
 
+## Verifier-Forced Supporting Files
+
+- `packages/workspace-ops/src/backup.ts` updated manifest export category handling for canonical `cache` and `config`.
+- `packages/workspace-ops/test/disk-usage.test.ts` updated required green-command expectations for canonical `ledger/`, `cache`, and `config` roots.
+- `packages/workspace-ops/test/backup.test.ts` updated required green-command fixtures for the canonical layout contract and root categories.
+
 ## Evidence
 
-- Targeted red command: pending
-- Targeted green command: pending
-- Full verification: pending
+- Targeted red command: `npm test -- packages/workspace-ops/test/layout.test.ts packages/workspace-ops/test/ops.test.ts`
+  - Result: failed as expected before implementation; 2 test files failed, 15 tests failed and 6 passed. Canonical manifests resolved as unreadable under the provisional parser, and a fresh unopened workspace verified as blocked instead of ready.
+- Targeted green command: `npm test -- packages/workspace-ops/test/layout.test.ts packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts packages/workspace-ops/test/backup.test.ts`
+  - Result: passed after implementation; 4 test files passed, 42 tests passed.
+- Full verification: `npm run verify`
+  - Result: passed after one focused typecheck repair; typecheck passed, 92 test files passed, 838 tests passed, UI build succeeded, factory-readiness passed.
 
 ## Review
 
-- Pending.
+- Ready for review.

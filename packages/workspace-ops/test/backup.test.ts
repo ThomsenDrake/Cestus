@@ -19,7 +19,7 @@ const workspace: WorkspaceRefDto = {
   label: "Ops Fixture",
   manifestVersion: 1,
   rootUri: "file:///workspace",
-  layoutContractVersion: "portable-workspace-layout.v1-provisional"
+  layoutContractVersion: "portable-workspace-layout.v1"
 };
 
 const layout = createProvisionalWorkspaceLayout("/workspace");
@@ -31,8 +31,8 @@ const categoryBytes: DiskUsageDto["categories"] = [
   { category: "derivatives", bytes: 4_000, exists: true },
   { category: "jobs", bytes: 5_000, exists: true },
   { category: "projections", bytes: 6_000, exists: true },
-  { category: "diagnostics", bytes: 7_000, exists: true },
-  { category: "backups", bytes: 8_000, exists: true }
+  { category: "cache", bytes: 7_000, exists: true },
+  { category: "config", bytes: 8_000, exists: true }
 ];
 
 const expectedCategories = categoryBytes.map((category) => category.category);
@@ -76,7 +76,8 @@ function sectionSummary(
       return manifest.blobStore;
     case "derivatives":
     case "projections":
-    case "diagnostics":
+    case "cache":
+    case "config":
     case "jobs":
     case "backup":
       return manifest.artifacts.filter((artifact) => sectionForCategory(artifact.category) === sectionId);
@@ -369,13 +370,13 @@ describe("workspace backup manifests", () => {
         readonly manifest: ManifestExportDto;
         readonly expected: readonly WorkspaceRootCategory[];
       }> {
-        const categoryBytesWithoutBackups = categoryBytes.filter((category) => category.category !== "backups");
+        const categoryBytesWithoutConfig = categoryBytes.filter((category) => category.category !== "config");
         const exported = await exportWorkspaceManifest({
           workspace,
           layout,
           ledgerEventCount: 15,
           ledgerHighWaterMark: 15,
-          categoryBytes: categoryBytesWithoutBackups,
+          categoryBytes: categoryBytesWithoutConfig,
           diagnosticCounts: { errorCount: 0, warningCount: 0 },
           jobCounts: { queuedCount: 0, failedCount: 0 },
           createdAt: "2026-07-06T12:30:00.000Z"
@@ -390,17 +391,17 @@ describe("workspace backup manifests", () => {
           jobCounts: { queuedCount: 0, failedCount: 0 },
           createdAt: "2026-07-06T12:30:00.000Z"
         });
-        const backupArtifact = fullExport.payload?.artifacts.find((artifact) => artifact.category === "backups");
-        if (exported.payload === undefined || backupArtifact === undefined) {
-          throw new Error("manifest export fixture did not include backup artifact");
+        const configArtifact = fullExport.payload?.artifacts.find((artifact) => artifact.category === "config");
+        if (exported.payload === undefined || configArtifact === undefined) {
+          throw new Error("manifest export fixture did not include config artifact");
         }
 
         return {
           manifest: withRecomputedExportHashes({
             ...exported.payload,
-            artifacts: [...exported.payload.artifacts, backupArtifact]
+            artifacts: [...exported.payload.artifacts, configArtifact]
           }),
-          expected: categoryBytesWithoutBackups.map((category) => category.category)
+          expected: categoryBytesWithoutConfig.map((category) => category.category)
         };
       }
     }
@@ -501,7 +502,7 @@ describe("workspace backup manifests", () => {
       containsSecretShapedFields: false
     });
     expect(result.payload?.missingCategories).toEqual(
-      expect.arrayContaining(["blobs", "projections", "diagnostics", "backups"])
+      expect.arrayContaining(["blobs", "projections", "cache", "config"])
     );
     expect(result.diagnostics.map((diagnostic) => diagnostic.diagnosticId)).toEqual(
       expect.arrayContaining([

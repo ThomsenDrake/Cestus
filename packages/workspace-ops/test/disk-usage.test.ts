@@ -109,6 +109,7 @@ describe("reportDiskUsage", () => {
     const fileSystem = new TreeWorkspaceFs(
       new Map([
         [layout.manifestPath, { kind: "file", sizeBytes: 4 }],
+        ["/workspace/ledger", { kind: "directory", sizeBytes: 0, children: ["ontology.sqlite"] }],
         [layout.ledgerPath, { kind: "file", sizeBytes: 20 }],
         [layout.blobRoot, { kind: "directory", sizeBytes: 0, children: ["sha256"] }],
         [`${layout.blobRoot}/sha256`, { kind: "directory", sizeBytes: 0, children: ["aa"] }],
@@ -119,8 +120,8 @@ describe("reportDiskUsage", () => {
         [layout.jobRoot, { kind: "directory", sizeBytes: 0, children: [] }],
         [layout.projectionRoot, { kind: "directory", sizeBytes: 0, children: ["graph.json"] }],
         [`${layout.projectionRoot}/graph.json`, { kind: "file", sizeBytes: 7 }],
-        [layout.diagnosticsRoot, { kind: "directory", sizeBytes: 0, children: [] }],
-        [layout.backupRoot, { kind: "directory", sizeBytes: 0, children: [] }]
+        [layout.cacheRoot, { kind: "directory", sizeBytes: 0, children: [] }],
+        [layout.configRoot, { kind: "directory", sizeBytes: 0, children: [] }]
       ]),
       10_000
     );
@@ -134,13 +135,13 @@ describe("reportDiskUsage", () => {
       thresholdWarnings: [],
       roots: [
         { rootId: "manifest", category: "manifest", bytes: 4, exists: true, safeUri: "file:///workspace/cestus-workspace.json" },
-        { rootId: "ledger", category: "ledger", bytes: 20, exists: true, safeUri: "file:///workspace/ledger/ontology.sqlite" },
+        { rootId: "ledger", category: "ledger", bytes: 20, exists: true, safeUri: "file:///workspace/ledger" },
         { rootId: "blobs", category: "blobs", bytes: 12, exists: true, safeUri: "file:///workspace/blobs" },
         { rootId: "derivatives", category: "derivatives", bytes: 3, exists: true, safeUri: "file:///workspace/derivatives" },
         { rootId: "jobs", category: "jobs", bytes: 0, exists: true, safeUri: "file:///workspace/jobs" },
         { rootId: "projections", category: "projections", bytes: 7, exists: true, safeUri: "file:///workspace/projections" },
-        { rootId: "diagnostics", category: "diagnostics", bytes: 0, exists: true, safeUri: "file:///workspace/diagnostics" },
-        { rootId: "backups", category: "backups", bytes: 0, exists: true, safeUri: "file:///workspace/backups" }
+        { rootId: "cache", category: "cache", bytes: 0, exists: true, safeUri: "file:///workspace/cache" },
+        { rootId: "config", category: "config", bytes: 0, exists: true, safeUri: "file:///workspace/config" }
       ],
       categories: [
         { category: "manifest", bytes: 4, exists: true },
@@ -149,8 +150,8 @@ describe("reportDiskUsage", () => {
         { category: "derivatives", bytes: 3, exists: true },
         { category: "jobs", bytes: 0, exists: true },
         { category: "projections", bytes: 7, exists: true },
-        { category: "diagnostics", bytes: 0, exists: true },
-        { category: "backups", bytes: 0, exists: true }
+        { category: "cache", bytes: 0, exists: true },
+        { category: "config", bytes: 0, exists: true }
       ],
       totalBytes: 46
     });
