@@ -11,6 +11,7 @@ import {
 } from "./config-file.js";
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
 import { startLocalRuntimeServer } from "./server.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 
 export interface LocalRuntimeCliDependencies {
   readonly cwd?: string;
@@ -41,6 +42,21 @@ export async function runLocalRuntimeCli(
             ok: true,
             configPath: written.path,
             config: redactLocalRuntimeConfigFile(written.config)
+          },
+          null,
+          2
+        )
+      );
+      return 0;
+    }
+
+    if (command === "create-workspace") {
+      const workspace = createPortableWorkspace(parseCreateWorkspaceArgs(argv.slice(1)));
+      stdout(
+        JSON.stringify(
+          {
+            ok: true,
+            workspace
           },
           null,
           2
@@ -265,6 +281,90 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     ...(options.logDir === undefined ? {} : { logDir: options.logDir }),
     ...(options.devSeedEnabled === undefined ? {} : { devSeedEnabled: options.devSeedEnabled }),
     ...(options.rotateAuthToken === undefined ? {} : { rotateAuthToken: options.rotateAuthToken })
+  };
+}
+
+function parseCreateWorkspaceArgs(argv: readonly string[]) {
+  const options: {
+    rootDir?: string;
+    workspaceId?: string;
+    label?: string;
+    createdAt?: string;
+    createdBy?: string;
+    coreVersion?: string;
+    description?: string;
+  } = {};
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === undefined) {
+      continue;
+    }
+    if (arg === "--workspace") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.rootDir = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--workspace-id") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.workspaceId = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--label") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.label = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--created-at") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.createdAt = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--created-by") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.createdBy = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--core-version") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.coreVersion = value;
+      index = nextIndex;
+      continue;
+    }
+    if (arg === "--description") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.description = value;
+      index = nextIndex;
+      continue;
+    }
+    throw new Error(
+      arg.startsWith("--") ? `Unknown create-workspace flag: ${arg}` : `Unexpected create-workspace argument: ${arg}`
+    );
+  }
+
+  if (options.rootDir === undefined) {
+    throw new Error("create-workspace requires --workspace <root>");
+  }
+  if (options.workspaceId === undefined) {
+    throw new Error("create-workspace requires --workspace-id <id>");
+  }
+  if (options.label === undefined) {
+    throw new Error("create-workspace requires --label <label>");
+  }
+
+  return {
+    rootDir: options.rootDir,
+    workspaceId: options.workspaceId,
+    label: options.label,
+    createdBy: options.createdBy ?? "cestus-local-runtime",
+    ...(options.createdAt === undefined ? {} : { createdAt: options.createdAt }),
+    ...(options.coreVersion === undefined ? {} : { coreVersion: options.coreVersion }),
+    ...(options.description === undefined ? {} : { description: options.description })
   };
 }
 
