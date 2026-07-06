@@ -5,6 +5,7 @@ import {
   type LegacyDetectorPlugin
 } from "../src/legacy-plugins.js";
 import {
+  assertLegacyConfidence,
   assertLegacySecretSafeDiagnosticText,
   firstLegacyArtifactAsk,
   legacyConfidenceSchema,
@@ -104,10 +105,10 @@ describe("legacy detector registry", () => {
 
   it("orders detection results by confidence and plugin name", () => {
     const registry = new LegacyDetectorRegistry([
-      fixtureDetector("zzz-low-detector", "zzz-low-result", 0.3),
-      fixtureDetector("aaa-tie-detector", "zzz-tie-result", 0.8),
-      fixtureDetector("mmm-high-detector", "mmm-high-result", 0.95),
-      fixtureDetector("bbb-tie-detector", "aaa-tie-result", 0.8)
+      fixtureDetector("zzz-low-detector", 0.3),
+      fixtureDetector("aaa-tie-detector", 0.8),
+      fixtureDetector("mmm-high-detector", 0.95),
+      fixtureDetector("bbb-tie-detector", 0.8)
     ]);
 
     const detections = registry.detect({
@@ -121,10 +122,26 @@ describe("legacy detector registry", () => {
     });
 
     expect(detections.map((detection) => `${detection.plugin.name}:${detection.confidence}`)).toEqual([
-      "mmm-high-result:0.95",
-      "aaa-tie-result:0.8",
-      "zzz-tie-result:0.8",
-      "zzz-low-result:0.3"
+      "mmm-high-detector:0.95",
+      "aaa-tie-detector:0.8",
+      "bbb-tie-detector:0.8",
+      "zzz-low-detector:0.3"
+    ]);
+  });
+
+  it("orders same-name detection results by plugin version", () => {
+    const registry = new LegacyDetectorRegistry([
+      versionedFixtureDetector("same-name-detector", "0.2.0", 0.8),
+      versionedFixtureDetector("same-name-detector", "0.1.0", 0.8),
+      versionedFixtureDetector("same-name-detector", "0.3.0", 0.8)
+    ]);
+
+    const detections = registry.detect(detectorInput());
+
+    expect(detections.map((detection) => `${detection.plugin.name}@${detection.plugin.version}`)).toEqual([
+      "same-name-detector@0.1.0",
+      "same-name-detector@0.2.0",
+      "same-name-detector@0.3.0"
     ]);
   });
 
@@ -138,23 +155,54 @@ describe("legacy detector registry", () => {
     expect(legacyConfidenceSchema.safeParse(Number.NaN).success).toBe(false);
   });
 
+  it("provides an assertion helper for constructing branded confidence values", () => {
+    const confidence = assertLegacyConfidence(0.72);
+
+    expect(confidence).toBe(0.72);
+    expect(() => assertLegacyConfidence(1.01)).toThrow(/confidence/i);
+    expect(() => assertLegacyConfidence(Number.NaN)).toThrow(/confidence/i);
+  });
+
   it("rejects detector results with out-of-range or non-finite confidence", () => {
     const registry = new LegacyDetectorRegistry([
-      fixtureDetector("valid-low-detector", "valid-low-result", 0.2),
-      fixtureDetector("too-high-detector", "too-high-result", 1.1),
-      fixtureDetector("infinite-detector", "infinite-result", Number.POSITIVE_INFINITY),
-      fixtureDetector("negative-infinite-detector", "negative-infinite-result", Number.NEGATIVE_INFINITY),
-      fixtureDetector("nan-detector", "nan-result", Number.NaN),
-      fixtureDetector("zero-detector", "zero-result", 0),
-      fixtureDetector("valid-high-detector", "valid-high-result", 1)
+      fixtureDetector("valid-low-detector", 0.2),
+      fixtureDetector("too-high-detector", 1.1),
+      fixtureDetector("infinite-detector", Number.POSITIVE_INFINITY),
+      fixtureDetector("negative-infinite-detector", Number.NEGATIVE_INFINITY),
+      fixtureDetector("nan-detector", Number.NaN),
+      fixtureDetector("zero-detector", 0),
+      fixtureDetector("valid-high-detector", 1)
     ]);
 
     const detections = registry.detect(detectorInput());
 
     expect(detections.map((detection) => `${detection.plugin.name}:${detection.confidence}`)).toEqual([
-      "valid-high-result:1",
-      "valid-low-result:0.2"
+      "valid-high-detector:1",
+      "valid-low-detector:0.2"
     ]);
+  });
+
+  it("overwrites spoofed detector result provenance with the invoked plugin identity", () => {
+    const registry = new LegacyDetectorRegistry([
+      {
+        name: "actual-detector",
+        version: "0.1.0",
+        detect() {
+          return {
+            plugin: { name: "spoofed-detector", version: "9.9.9" },
+            shape: "fixture",
+            confidence: 0.6,
+            parserEligible: false,
+            reasonCodes: ["fixture"]
+          };
+        }
+      }
+    ]);
+
+    expect(registry.detect(detectorInput())[0]?.plugin).toEqual({
+      name: "actual-detector",
+      version: "0.1.0"
+    });
   });
 
   it("validates plugin warnings as secret-safe single-line diagnostic text", () => {
@@ -246,13 +294,17 @@ function detectorInput(): LegacyDetectorInput {
   };
 }
 
-function fixtureDetector(detectorName: string, resultPluginName: string, confidence: number): LegacyDetectorPlugin {
+function fixtureDetector(detectorName: string, confidence: number): LegacyDetectorPlugin {
+  return versionedFixtureDetector(detectorName, "0.1.0", confidence);
+}
+
+function versionedFixtureDetector(detectorName: string, version: string, confidence: number): LegacyDetectorPlugin {
   return {
     name: detectorName,
-    version: "0.1.0",
+    version,
     detect() {
       return {
-        plugin: { name: resultPluginName, version: "0.1.0" },
+        plugin: { name: `spoofed-${detectorName}`, version: "9.9.9" },
         shape: "fixture",
         confidence,
         parserEligible: false,

@@ -22,8 +22,10 @@ export class LegacyDetectorRegistry {
 
   detect(input: LegacyDetectorInput): LegacyDetection[] {
     return this.plugins
-      .map((plugin) => plugin.detect(input))
-      .map((detection) => detection === undefined ? undefined : normalizeDetection(detection))
+      .map((plugin) => {
+        const detection = plugin.detect(input);
+        return detection === undefined ? undefined : normalizeDetection(plugin, detection);
+      })
       .filter((detection): detection is LegacyDetection => detection !== undefined)
       .sort((left, right) => {
         const confidence = right.confidence - left.confidence;
@@ -52,7 +54,10 @@ export const conservativeJsonMetadataPlugin: LegacyDetectorPlugin = {
   }
 };
 
-function normalizeDetection(detection: LegacyDetectorOutput): LegacyDetection | undefined {
+function normalizeDetection(
+  invokedPlugin: LegacyDetectorPlugin,
+  detection: LegacyDetectorOutput
+): LegacyDetection | undefined {
   const confidence = parseLegacyConfidence(detection.confidence);
 
   if (confidence === undefined || confidence === 0) {
@@ -62,7 +67,7 @@ function normalizeDetection(detection: LegacyDetectorOutput): LegacyDetection | 
   const warnings = filterLegacySecretSafeDiagnosticTexts(detection.warnings);
 
   return {
-    plugin: detection.plugin,
+    plugin: { name: invokedPlugin.name, version: invokedPlugin.version },
     shape: detection.shape,
     confidence,
     parserEligible: detection.parserEligible,
