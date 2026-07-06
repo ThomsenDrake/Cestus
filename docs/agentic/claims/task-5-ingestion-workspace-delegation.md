@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/portable-workspace-mount-design`
 Worktree path: `/home/drake/.codex/worktrees/4ea6/Cestus`
 Claimed at UTC: `2026-07-06T14:36:00Z`
-Status: `claimed`
+Status: `in-progress`
 
 ## Owned Files
 
