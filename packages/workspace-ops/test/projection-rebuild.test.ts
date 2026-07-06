@@ -116,9 +116,71 @@ describe("projection rebuild", () => {
     expect(result.payload?.validationResults).toContainEqual(
       expect.objectContaining({ validationId: "validation_ledger_events", status: "fail" })
     );
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_projection_ledger_event_validation_failed",
+        repairHint: expect.objectContaining({
+          allowedNextCommands: ["diagnostics inspect"],
+          requiresHumanApproval: true
+        })
+      })
+    );
+    expect(result.proposedActions).toContainEqual(
+      expect.objectContaining({
+        kind: "append-repair-event-required",
+        requiresHumanApproval: true,
+        mutatesCanonicalState: true,
+        allowedNextCommands: ["diagnostics inspect"]
+      })
+    );
     expect(fileSystem.writes).toEqual([]);
     expect(fileSystem.removed).toEqual([]);
     expect(fileSystem.promoted).toEqual([]);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("blocks rebuild on ledger read failure with a human-approved canonical repair action", async () => {
+    const fileSystem = new RecordingProjectionFs();
+
+    const result = await rebuildProjection({
+      layout,
+      projectionName: "graph",
+      fileSystem,
+      eventReader: {
+        readAll: async () => {
+          throw new Error("private ledger read failure");
+        }
+      },
+      builder: {
+        projectionName: "graph",
+        build: async () => ({ "projection.json": "{}" })
+      },
+      rebuildId: "rb_ledger_failed"
+    });
+
+    expect(result.status).toBe("blocked");
+    expect(result.payload?.mode).toBe("result");
+    expect(result.payload?.inputLedger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_projection_ledger_read_failed",
+        repairHint: expect.objectContaining({
+          allowedNextCommands: ["diagnostics inspect"],
+          requiresHumanApproval: true
+        })
+      })
+    );
+    expect(result.proposedActions).toContainEqual(
+      expect.objectContaining({
+        kind: "append-repair-event-required",
+        requiresHumanApproval: true,
+        mutatesCanonicalState: true,
+        allowedNextCommands: ["diagnostics inspect"]
+      })
+    );
+    expect(fileSystem.writes).toEqual([]);
+    expect(fileSystem.promoted).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain("private ledger read failure");
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
