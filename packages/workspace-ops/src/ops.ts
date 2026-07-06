@@ -86,17 +86,6 @@ export async function verifyWorkspace(
 
   let events: readonly unknown[] = [];
   let ledgerReadable = false;
-  try {
-    events = await input.eventReader.readAll(layout);
-    ledgerReadable = true;
-  } catch {
-    diagnostics.push(canonicalDiagnostic(
-      "diag_workspace_ledger_read_failed",
-      "ledger",
-      "Workspace ledger could not be read safely."
-    ));
-    proposedActions.push(canonicalRepairAction("repair_workspace_ledger_read_failed"));
-  }
 
   if (ledgerRoot.status !== "available") {
     diagnostics.push(canonicalDiagnostic(
@@ -105,9 +94,46 @@ export async function verifyWorkspace(
       "Workspace ledger root is not available."
     ));
     proposedActions.push(canonicalRepairAction("repair_workspace_ledger_root_unavailable"));
+  } else {
+    try {
+      events = await input.eventReader.readAll(layout);
+      ledgerReadable = true;
+    } catch {
+      diagnostics.push(canonicalDiagnostic(
+        "diag_workspace_ledger_read_failed",
+        "ledger",
+        "Workspace ledger could not be read safely."
+      ));
+      proposedActions.push(canonicalRepairAction("repair_workspace_ledger_read_failed"));
+    }
   }
 
-  const invalidEventCount = events.filter((event) => !validateKnowledgeEvent(event).success).length;
+  if (manifestRoot.status !== "available") {
+    diagnostics.push({
+      diagnosticId: "diag_workspace_manifest_unavailable",
+      severity: "error",
+      category: "manifest",
+      message: "Workspace manifest is unavailable; rerun workspace detection before trusting this layout.",
+      durable: false,
+      repairHint: {
+        allowedNextCommands: ["detect drive", "verify workspace"],
+        requiresHumanApproval: false
+      }
+    });
+    proposedActions.push({
+      actionId: "action_rerun_workspace_manifest_detection",
+      kind: "rerun-verify",
+      title: "Rerun workspace detection before trusting this resolved layout.",
+      severity: "error",
+      requiresHumanApproval: false,
+      mutatesCanonicalState: false,
+      allowedNextCommands: ["detect drive", "verify workspace"]
+    });
+  }
+
+  const invalidEventCount = ledgerReadable
+    ? events.filter((event) => !validateKnowledgeEvent(event).success).length
+    : 0;
   if (invalidEventCount > 0) {
     diagnostics.push(canonicalDiagnostic(
       "diag_workspace_ledger_event_validation_failed",
@@ -117,19 +143,28 @@ export async function verifyWorkspace(
     proposedActions.push(canonicalRepairAction("repair_workspace_ledger_event_validation_failed"));
   }
 
-  const blobBytes = blobRoot.status === "available"
-    ? (await bytesForPath(input.fileSystem, blobRoot.path)).bytes
-    : 0;
-  if (blobRoot.status !== "available") {
+  const blobTotal = blobRoot.status === "available"
+    ? await bytesForPath(input.fileSystem, blobRoot.path)
+    : { bytes: 0, readable: false };
+  const blobAvailable = blobRoot.status === "available" && blobTotal.readable;
+  if (!blobAvailable) {
     diagnostics.push(canonicalDiagnostic(
-      "diag_workspace_blob_root_unavailable",
+      blobRoot.status === "available"
+        ? "diag_workspace_blob_root_unreadable"
+        : "diag_workspace_blob_root_unavailable",
       "blob-integrity",
-      "Workspace blob store root is not available."
+      blobRoot.status === "available"
+        ? "Workspace blob store root could not be traversed safely."
+        : "Workspace blob store root is not available."
     ));
-    proposedActions.push(canonicalRepairAction("repair_workspace_blob_root_unavailable"));
+    proposedActions.push(canonicalRepairAction(
+      blobRoot.status === "available"
+        ? "repair_workspace_blob_root_unreadable"
+        : "repair_workspace_blob_root_unavailable"
+    ));
   }
 
-  const contentAddressedRootCount = blobRoot.status === "available"
+  const contentAddressedRootCount = blobAvailable
     ? await safeChildCount(input.fileSystem, blobRoot.path)
     : 0;
 
@@ -201,10 +236,10 @@ export async function verifyWorkspace(
       highWaterMark: highWaterMark(events)
     },
     blobStore: {
-      available: blobRoot.status === "available",
+      available: blobAvailable,
       contentAddressedRootCount,
-      aggregateBytes: blobBytes,
-      missingBlobCount: blobRoot.status === "available" ? 0 : 1,
+      aggregateBytes: blobTotal.bytes,
+      missingBlobCount: blobAvailable ? 0 : 1,
       hashMismatchCount: 0
     },
     projections: {
@@ -375,22 +410,32 @@ async function safeExists(
 
 async function bytesForPath(
   fileSystem: WorkspaceFileSystem,
-  path: string
+  path: string,
+  visitingRealpaths = new Set<string>()
 ): Promise<{ readonly bytes: number; readonly readable: boolean }> {
   try {
+    const realPath = await fileSystem.realpath(path);
+    if (visitingRealpaths.has(realPath)) {
+      return { bytes: 0, readable: true };
+    }
+    visitingRealpaths.add(realPath);
+
     const stats = await fileSystem.stat(path);
     if (stats.kind !== "directory") {
+      visitingRealpaths.delete(realPath);
       return { bytes: stats.sizeBytes, readable: true };
     }
 
     let bytes = 0;
     for (const child of await fileSystem.list(path)) {
-      const childTotal = await bytesForPath(fileSystem, childPath(path, child));
+      const childTotal = await bytesForPath(fileSystem, childPath(path, child), visitingRealpaths);
       if (!childTotal.readable) {
+        visitingRealpaths.delete(realPath);
         return { bytes, readable: false };
       }
       bytes += childTotal.bytes;
     }
+    visitingRealpaths.delete(realPath);
     return { bytes, readable: true };
   } catch {
     return { bytes: 0, readable: false };

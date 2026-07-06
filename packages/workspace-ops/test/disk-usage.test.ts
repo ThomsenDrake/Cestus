@@ -54,6 +54,52 @@ class TreeWorkspaceFs implements WorkspaceFileSystem {
 
 const layout = createProvisionalWorkspaceLayout("/workspace");
 
+class CyclicWorkspaceFs implements WorkspaceFileSystem {
+  readonly realpathCalls: string[] = [];
+  readonly listCalls: string[] = [];
+  private readonly listCounts = new Map<string, number>();
+
+  async exists(path: string): Promise<boolean> {
+    return path === layout.blobRoot;
+  }
+
+  async readText(): Promise<string> {
+    return "";
+  }
+
+  async stat(path: string): Promise<WorkspaceStats> {
+    if (path.startsWith(layout.blobRoot)) {
+      return { kind: "directory", sizeBytes: 0 };
+    }
+    throw new Error(`missing ${path}`);
+  }
+
+  async list(path: string): Promise<readonly string[]> {
+    this.listCalls.push(path);
+    const count = this.listCounts.get(path) ?? 0;
+    this.listCounts.set(path, count + 1);
+    if (path === layout.blobRoot && count === 0) {
+      return ["private-cycle-name"];
+    }
+    if (path === `${layout.blobRoot}/private-cycle-name`) {
+      return [".."];
+    }
+    return [];
+  }
+
+  async realpath(path: string): Promise<string> {
+    this.realpathCalls.push(path);
+    if (path === `${layout.blobRoot}/private-cycle-name/..`) {
+      return layout.blobRoot;
+    }
+    return path;
+  }
+
+  async availableBytes(): Promise<number | undefined> {
+    return 10_000;
+  }
+}
+
 describe("reportDiskUsage", () => {
   it("reports root and aggregate category totals without raw filenames", async () => {
     const fileSystem = new TreeWorkspaceFs(
@@ -125,5 +171,23 @@ describe("reportDiskUsage", () => {
     expect(result.payload?.thresholdWarnings).toEqual([]);
     expect(fileSystem.availableBytesCalls).toBe(1);
     expect(diskUsageDtoSchema.parse(result.payload)).toEqual(result.payload);
+  });
+
+  it("uses realpath cycle protection while keeping raw child names out of output", async () => {
+    const fileSystem = new CyclicWorkspaceFs();
+
+    const result = await reportDiskUsage({ layout, fileSystem });
+
+    expect(result.status).toBe("ready");
+    expect(result.payload?.categories.find((category) => category.category === "blobs")).toEqual({
+      category: "blobs",
+      bytes: 0,
+      exists: true
+    });
+    expect(fileSystem.realpathCalls.length).toBeGreaterThan(0);
+    expect(fileSystem.listCalls.filter((path) => path === layout.blobRoot)).toHaveLength(1);
+    expect(JSON.stringify(result)).not.toContain("private-cycle-name");
+    expect(diskUsageDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 });

@@ -6,7 +6,7 @@ Worker: Codex implementing agent for this task
 Branch: `codex/portable-workspace-ops-design` in an existing task-scoped worktree
 Worktree: `/home/drake/.codex/worktrees/797e/Cestus`
 Claimed-at: 2026-07-06T15:11:49Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/workspace-ops/src/ops.ts`
@@ -25,3 +25,14 @@ Command evidence:
 - Verify repair: `npm run verify` first exited 2 during typecheck because support-root diagnostic categories and high-water mark narrowing needed stricter typing.
 - Green after repair: `npm test -- packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts` exited 0 with 2 test files and 6 tests passed.
 - Verify: `npm run verify` exited 0 with typecheck passed, 73 test files and 624 tests passed, UI build succeeded, and factory-readiness passed.
+- Code-quality repair red: `npm test -- packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts` exited 1 with 4 failing regressions covering ledger-reader gating when the ledger path is unavailable, stale resolved-layout manifest loss, blob subtree unreadability, and disk-usage realpath cycle protection.
+- Code-quality repair green: `npm test -- packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts` exited 0 with 2 test files and 10 tests passed.
+- Code-quality repair verify: `npm run verify` exited 0 with typecheck passed, 73 test files and 628 tests passed, UI build succeeded, and factory-readiness passed.
+
+Self-review:
+- The repair stayed within the Task 3 owned files and did not start Task 4.
+- `verifyWorkspace` no longer touches the injected canonical event reader when the ledger path is unavailable.
+- Manifest loss, ledger unavailability, and blob unreadability now emit diagnostics and proposed actions rather than silently reporting ready.
+- Canonical ledger/event/blob repairs remain proposed-only, human-approved, and framed as future append-only repair events.
+- Projection rebuild remains proposed only for expendable projection artifacts.
+- Disk usage now uses realpath-based cycle protection and still omits raw child names from DTO output.
