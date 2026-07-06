@@ -22,3 +22,8 @@ Command evidence:
 - Red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 because `../src/contracts.js` was missing.
 - Green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 3 tests passed.
 - Verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 588 tests passed, UI build succeeded, and factory-readiness passed.
+
+Repair evidence:
+- Review repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 3 failing regressions covering no-digit credential phrases, contradictory `ok`/`status`, and invalid formatter input.
+- Review repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 6 tests passed.
+- Review repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 591 tests passed, UI build succeeded, and factory-readiness passed.
