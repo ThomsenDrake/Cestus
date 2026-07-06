@@ -24,8 +24,12 @@ describe("Requests data boundary", () => {
     /^node:(?:fs|path)$/,
     nodeRuntimeModulePattern,
     /^\.\.\/\.\.\/workspace\/src(?:\/.*)?$/,
+    /^\.\.\/\.\.\/workspace-ops\/src(?:\/.*)?$/,
     /^packages\/workspace(?:\/.*)?$/,
+    /^packages\/workspace-ops(?:\/.*)?$/,
     /^\.\.\/workspace(?:\/.*)?$/,
+    /^\.\.\/\.\.\/local-runtime\/src\/operator-status(?:-routes)?(?:\.js)?$/,
+    /^packages\/local-runtime\/src\/operator-status(?:-routes)?(?:\.js)?$/,
     /(?:^|\/)(?:runtime|sqlite-event-ledger)(?:\.js)?$/,
     /(?:^|\/)prr\/src\/runtime(?:\.js)?$/,
     /(?:^|\/)local-runtime\/src\/[^/]+(?:\.js)?$/,
@@ -36,6 +40,11 @@ describe("Requests data boundary", () => {
     "SQLiteEventLedger",
     "sqlite-event-ledger",
     "packages/prr/src/runtime",
+    "../../workspace-ops/src",
+    "packages/workspace-ops",
+    "../../local-runtime/src/operator-status",
+    "packages/local-runtime/src/operator-status",
+    "../../local-runtime/src/operator-status-routes",
     "packages/local-runtime/src/config",
     "packages/local-runtime/src/server",
     "packages/local-runtime/src/http-handler",
@@ -57,6 +66,8 @@ describe("Requests data boundary", () => {
     expect(productUiBoundaryFiles).toContain("packages/ui/src/requests/RequestDetailSections.tsx");
     expect(productUiBoundaryFiles).toContain("packages/ui/src/requests/RequestDetailModal.tsx");
     expect(productUiBoundaryFiles).toContain("packages/ui/src/requests/RequestWorkspaceIntelligenceRail.tsx");
+    expect(productUiBoundaryFiles).toContain("packages/ui/src/operator-status/operator-status-types.ts");
+    expect(productUiBoundaryFiles).toContain("packages/ui/src/operator-status/operator-status-adapter.ts");
   });
 
   it("keeps product Requests code off local card fixtures and Node-only runtime imports", () => {
@@ -81,11 +92,29 @@ describe("Requests data boundary", () => {
       "../../ingestion/src/source-registry.js",
       "../../ingestion/src/parser.js",
       "../../ingestion/src/projection.js",
-      "../../ingestion/src/read-api.js"
+      "../../ingestion/src/read-api.js",
+      "../../workspace-ops/src/contracts.js",
+      "packages/workspace-ops/src/contracts.js",
+      "../../local-runtime/src/operator-status.js",
+      "packages/local-runtime/src/operator-status.js",
+      "../../local-runtime/src/operator-status-routes.js",
+      "../../workspace/src/index.js",
+      "packages/workspace/src/index.js"
     ];
 
     for (const moduleSpecifier of forbiddenModuleSpecifiers) {
       expect(forbiddenProductUiImportPatterns.some((pattern) => pattern.test(moduleSpecifier)), moduleSpecifier).toBe(true);
+    }
+  });
+
+  it("allows the UI operator status adapter to import only the browser-safe operator contract", () => {
+    const allowedModuleSpecifiers = [
+      "../../../operator-status/src/contracts.js",
+      "../../operator-status/src/contracts.js"
+    ];
+
+    for (const moduleSpecifier of allowedModuleSpecifiers) {
+      expect(forbiddenProductUiImportPatterns.some((pattern) => pattern.test(moduleSpecifier)), moduleSpecifier).toBe(false);
     }
   });
 
