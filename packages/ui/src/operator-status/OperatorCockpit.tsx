@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { OperatorSafeActionDto, OperatorStatusDto, OperatorStatusSectionDto } from "./operator-status-types.js";
 import { OperatorStatusBand } from "./OperatorStatusBand.js";
 import { OperatorStatusDetail } from "./OperatorStatusDetail.js";
@@ -18,6 +18,7 @@ const sectionFallbackLabels: Record<OperatorStatusSectionDto["sectionId"], strin
 };
 
 export function OperatorCockpit({ status, onNavigate, onRefresh, title = "Operator cockpit" }: OperatorCockpitProps) {
+  const tabRefs = useRef(new Map<OperatorStatusSectionDto["sectionId"], HTMLDivElement>());
   const sections = useMemo(
     () =>
       status.sections.map((section) => ({
@@ -47,6 +48,26 @@ export function OperatorCockpit({ status, onNavigate, onRefresh, title = "Operat
   }
 
   const selectedActions = actionsForSection(selectedSection, actionsById);
+  const selectedTabId = tabIdForSection(selectedSection.sectionId);
+  const selectedPanelId = panelIdForSection(selectedSection.sectionId);
+
+  function setTabRef(sectionId: OperatorStatusSectionDto["sectionId"], node: HTMLDivElement | null) {
+    if (node === null) {
+      tabRefs.current.delete(sectionId);
+      return;
+    }
+
+    tabRefs.current.set(sectionId, node);
+  }
+
+  function handleKeyboardNavigate(
+    sectionId: OperatorStatusSectionDto["sectionId"],
+    direction: "first" | "last" | "next" | "previous"
+  ) {
+    const nextSectionId = sectionIdForKeyboardNavigation(sections, sectionId, direction);
+    setSelectedSectionId(nextSectionId);
+    tabRefs.current.get(nextSectionId)?.focus();
+  }
 
   return (
     <section aria-label={title} className="space-y-4">
@@ -67,17 +88,20 @@ export function OperatorCockpit({ status, onNavigate, onRefresh, title = "Operat
           <OperatorStatusBand
             key={section.sectionId}
             section={section}
+            tabId={tabIdForSection(section.sectionId)}
+            panelId={panelIdForSection(section.sectionId)}
             primaryAction={primaryActionForSection(section, actionsById)}
             selected={section.sectionId === selectedSection.sectionId}
             onSelect={setSelectedSectionId}
-            onKeyboardNavigate={(sectionId, direction) =>
-              setSelectedSectionId(sectionIdForKeyboardNavigation(sections, sectionId, direction))
-            }
+            onKeyboardNavigate={handleKeyboardNavigate}
+            tabRef={(node) => setTabRef(section.sectionId, node)}
           />
         ))}
       </div>
       <OperatorStatusDetail
         section={selectedSection}
+        panelId={selectedPanelId}
+        labelledByTabId={selectedTabId}
         actions={selectedActions}
         {...(onNavigate === undefined ? {} : { onNavigate })}
         {...(onRefresh === undefined ? {} : { onRefresh })}
@@ -137,6 +161,14 @@ function primaryActionForSection(
   actionsById: ReadonlyMap<string, OperatorSafeActionDto>
 ): OperatorSafeActionDto | undefined {
   return actionsForSection(section, actionsById)[0];
+}
+
+function tabIdForSection(sectionId: OperatorStatusSectionDto["sectionId"]): string {
+  return `operator-status-tab-${sectionId}`;
+}
+
+function panelIdForSection(sectionId: OperatorStatusSectionDto["sectionId"]): string {
+  return `operator-status-panel-${sectionId}`;
 }
 
 function sectionIdForKeyboardNavigation(

@@ -3,6 +3,8 @@ import type { OperatorSafeActionDto, OperatorStatusSectionDto } from "./operator
 
 interface OperatorStatusBandProps {
   readonly section: OperatorStatusSectionDto;
+  readonly tabId: string;
+  readonly panelId: string;
   readonly primaryAction: OperatorSafeActionDto | undefined;
   readonly selected: boolean;
   readonly onSelect: (sectionId: OperatorStatusSectionDto["sectionId"]) => void;
@@ -10,6 +12,7 @@ interface OperatorStatusBandProps {
     sectionId: OperatorStatusSectionDto["sectionId"],
     direction: "first" | "last" | "next" | "previous"
   ) => void;
+  readonly tabRef: (node: HTMLDivElement | null) => void;
 }
 
 const stateToneClasses: Record<OperatorStatusSectionDto["state"], string> = {
@@ -30,10 +33,13 @@ const metricToneClasses: Record<OperatorStatusSectionDto["metrics"][number]["ton
 
 export function OperatorStatusBand({
   section,
+  tabId,
+  panelId,
   primaryAction,
   selected,
   onSelect,
-  onKeyboardNavigate
+  onKeyboardNavigate,
+  tabRef
 }: OperatorStatusBandProps) {
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     switch (event.key) {
@@ -65,8 +71,11 @@ export function OperatorStatusBand({
 
   return (
     <div
+      id={tabId}
+      ref={tabRef}
       role="tab"
       aria-selected={selected}
+      aria-controls={panelId}
       tabIndex={selected ? 0 : -1}
       onClick={() => onSelect(section.sectionId)}
       onKeyDown={handleKeyDown}
