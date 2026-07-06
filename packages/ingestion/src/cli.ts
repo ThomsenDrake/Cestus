@@ -22,6 +22,7 @@ export const ingestionOperationalCommands = [
   "dry-run",
   "approve-import",
   "import",
+  "jobs",
   "list-jobs",
   "retry",
   "approve-provider",
@@ -105,7 +106,7 @@ export function formatIngestionCliUsage(executableName = "cestus-ingest"): strin
     "  dry-run             Run a hash-computing dry-run inventory.",
     "  approve-import      Approve a dry-run batch for raw import.",
     "  import              Import approved unique evidence blobs.",
-    "  list-jobs           List ingestion jobs.",
+    "  jobs                List ingestion jobs.",
     "  retry               Retry a failed ingestion job.",
     "  approve-provider    Approve an outbound provider parse batch.",
     "  diagnostics         Inspect ingestion diagnostics.",
@@ -128,7 +129,13 @@ async function handleRuntimeCommand(
     return formatCliJson(runtimeWiringRequired(command));
   }
 
-  const argv = parseArgv(input.argv ?? []);
+  let argv: ParsedArgv;
+  try {
+    argv = parseArgv(input.argv ?? []);
+  } catch (error) {
+    return formatCliJson(cliInvalidArguments(command, error));
+  }
+
   const env = input.env ?? process.env;
   const workspaceRoot = optionValue(argv, "workspace") ?? env.CESTUS_WORKSPACE_ROOT;
   const mountResult = await input.mountResolver.resolve({
@@ -180,6 +187,7 @@ async function callRuntime(
       return runtime.approveRawImport(approveImportInput(argv));
     case "import":
       return runtime.importApproved(importInput(argv));
+    case "jobs":
     case "list-jobs":
       return runtime.listJobs(optionalSourceInput(argv));
     case "retry":
@@ -249,7 +257,7 @@ function approveProviderInput(argv: ParsedArgv): ApproveProviderParsingInput {
     },
     approvedBy: requiredOption(argv, "approved-by"),
     eligibleMediaTypes: optionValues(argv, "media-type"),
-    maxBytesPerFile: Number(requiredOption(argv, "max-bytes"))
+    maxBytesPerFile: positiveIntegerOption(argv, "max-bytes")
   };
 }
 
@@ -330,6 +338,7 @@ const ingestionRuntimeCommands = [
   "dry-run",
   "approve-import",
   "import",
+  "jobs",
   "list-jobs",
   "retry",
   "approve-provider",
@@ -362,9 +371,8 @@ function parseArgv(argv: readonly string[]): ParsedArgv {
     }
 
     const value = inlineValue ?? argv[index + 1];
-    if (value === undefined || value.startsWith("--")) {
-      pushOption(options, rawName, "true");
-      continue;
+    if (value === undefined || value.length === 0 || value.startsWith("--")) {
+      throw new Error(`Missing value for ingestion CLI option --${rawName}.`);
     }
 
     pushOption(options, rawName, value);
@@ -397,6 +405,28 @@ function requiredOption(argv: ParsedArgv, name: string): string {
   }
 
   return value;
+}
+
+function positiveIntegerOption(argv: ParsedArgv, name: string): number {
+  const rawValue = requiredOption(argv, name);
+  const value = Number(rawValue);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`Option --${name} must be a finite positive integer.`);
+  }
+
+  return value;
+}
+
+function cliInvalidArguments(command: IngestionRuntimeCommand, error: unknown) {
+  return {
+    ok: false,
+    error: {
+      code: "INGESTION_CLI_INVALID_ARGUMENTS",
+      command,
+      message: error instanceof Error ? error.message : "Invalid ingestion CLI arguments.",
+      diagnostics: []
+    }
+  };
 }
 
 function mountFailure(result: Extract<IngestionMountResult, { ok: false }>) {

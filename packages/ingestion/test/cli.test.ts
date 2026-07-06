@@ -127,6 +127,67 @@ describe("ingestion CLI command handlers", () => {
     expect(runtimeFactory).not.toHaveBeenCalled();
   });
 
+  it("rejects missing option values before resolving a workspace", async () => {
+    const mountResolver = { resolve: vi.fn() };
+    const runtimeFactory = vi.fn();
+    const output = await handleIngestionCommand({
+      command: "dry-run",
+      argv: ["--workspace", "--source-id", "src_drive_001", "--scan", "scan_001"],
+      mountResolver,
+      runtimeFactory
+    });
+
+    expect(JSON.parse(output)).toEqual({
+      ok: false,
+      error: {
+        code: "INGESTION_CLI_INVALID_ARGUMENTS",
+        command: "dry-run",
+        message: "Missing value for ingestion CLI option --workspace.",
+        diagnostics: []
+      }
+    });
+    expect(mountResolver.resolve).not.toHaveBeenCalled();
+    expect(runtimeFactory).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid numeric provider options before calling runtime", async () => {
+    const approveProviderParsing = vi.fn();
+    const mountResolver = {
+      resolve: vi.fn(async () => ({
+        ok: true as const,
+        workspace: fakeMountedWorkspaceForCli()
+      }))
+    };
+    const runtimeFactory = vi.fn(() => fakeRuntimeForCli({ approveProviderParsing }));
+
+    const output = await handleIngestionCommand({
+      command: "approve-provider",
+      argv: [
+        "--workspace", "/Volumes/Cestus",
+        "--source-id", "src_drive_001",
+        "--import", "imp_001",
+        "--provider-job", "provider_001",
+        "--provider", "mistral-document-ai",
+        "--provider-version", "2026-07-06",
+        "--approved-by", "cli_user",
+        "--media-type", "application/pdf",
+        "--max-bytes", "many"
+      ],
+      mountResolver,
+      runtimeFactory
+    });
+
+    expect(JSON.parse(output)).toMatchObject({
+      ok: false,
+      error: {
+        code: "INGESTION_CLI_INVALID_ARGUMENTS",
+        command: "approve-provider",
+        message: "Option --max-bytes must be a finite positive integer."
+      }
+    });
+    expect(approveProviderParsing).not.toHaveBeenCalled();
+  });
+
   it("maps operational commands to runtime methods", async () => {
     const calls: string[] = [];
     const runtime = {
@@ -165,7 +226,7 @@ describe("ingestion CLI command handlers", () => {
       ["register-source", "registerSource", ["--source-id", "src_drive_001", "--source", "/Volumes/Drive", "--label", "Drive"]],
       ["approve-import", "approveRawImport", ["--source-id", "src_drive_001", "--scan", "scan_001", "--import", "imp_001", "--approved-by", "cli_user"]],
       ["import", "importApproved", ["--source-id", "src_drive_001", "--scan", "scan_001", "--import", "imp_001"]],
-      ["list-jobs", "listJobs", ["--source-id", "src_drive_001"]],
+      ["jobs", "listJobs", ["--source-id", "src_drive_001"]],
       ["retry", "retryJob", ["--job", "parse_001"]],
       ["approve-provider", "approveProviderParsing", [
         "--source-id", "src_drive_001",
