@@ -1,6 +1,7 @@
 import {
   buildOperatorStatusSummary,
   operatorStatusDtoSchema,
+  operatorStatusSectionSchema,
   type OperatorDiagnosticDto,
   type OperatorReadinessState,
   type OperatorSafeActionDto,
@@ -125,7 +126,7 @@ export async function buildOperatorStatusDto(
     schemaVersion: "operator-status.v1",
     generatedAt: input.now(),
     runtime: input.runtime,
-    summary: buildOperatorStatusSummary(sections),
+    summary: buildAggregateStatusSummary(sections),
     sections,
     safeActions
   });
@@ -146,7 +147,7 @@ async function buildWorkspaceSection(
       ? ["action_refresh_operator_status"]
       : ["action_show_workspace_verify", "action_refresh_operator_status"];
 
-    return {
+    return safeSection({
       sectionId: "workspace",
       label: "Workspace",
       state,
@@ -169,7 +170,7 @@ async function buildWorkspaceSection(
         ])
       ],
       nextSafeActionIds
-    };
+    }, unavailableSection("workspace", "Workspace", "workspace-ops.v1"));
   } catch {
     return unavailableSection("workspace", "Workspace", "workspace-ops.v1");
   }
@@ -194,7 +195,7 @@ async function buildIngestionSection(
     const failedJobs = ingestion.jobs.jobs.filter((job) => job.state === "failed").length;
     const state = ingestionState(workspace, diagnostics, failedJobs);
 
-    return {
+    return safeSection({
       sectionId: "ingestion",
       label: "Ingestion",
       state,
@@ -223,7 +224,7 @@ async function buildIngestionSection(
       nextSafeActionIds: state === "ready"
         ? ["action_refresh_operator_status"]
         : ["action_open_ingestion", "action_refresh_operator_status"]
-    };
+    }, unavailableSection("ingestion", "Ingestion", "ingestion"));
   } catch {
     return unavailableSection("ingestion", "Ingestion", "ingestion");
   }
@@ -240,8 +241,9 @@ async function buildLegacyImportSection(
     const legacy = await provider();
     const errorCount = legacy.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length;
     const warningCount = legacy.diagnostics.filter((diagnostic) => diagnostic.severity === "warning").length;
+    const samplesStillNeeded = legacy.latestReportId === undefined && legacy.firstArtifactAsk.length > 0;
     const actionRequired =
-      legacy.firstArtifactAsk.length > 0 ||
+      samplesStillNeeded ||
       legacy.rawImportRequiresApproval ||
       !legacy.ontologyStagingApproved;
     const state: OperatorReadinessState = errorCount > 0
@@ -252,11 +254,11 @@ async function buildLegacyImportSection(
           ? "degraded"
           : "ready";
 
-    return {
+    return safeSection({
       sectionId: "legacy-import",
       label: "Legacy Import",
       state,
-      headline: legacy.firstArtifactAsk.length > 0
+      headline: samplesStillNeeded
         ? "Legacy samples needed"
         : legacy.rawImportRequiresApproval
           ? "Raw legacy import approval required"
@@ -283,7 +285,7 @@ async function buildLegacyImportSection(
       nextSafeActionIds: state === "ready"
         ? ["action_refresh_operator_status"]
         : ["action_show_legacy_inspect", "action_open_ingestion"]
-    };
+    }, unavailableSection("legacy-import", "Legacy Import", "legacy-import"));
   } catch {
     return unavailableSection("legacy-import", "Legacy Import", "legacy-import");
   }
@@ -301,7 +303,7 @@ async function buildPrrSection(
     const diagnosticCount = prr.diagnostics.length;
     const state: OperatorReadinessState = diagnosticCount > 0 ? "degraded" : "ready";
 
-    return {
+    return safeSection({
       sectionId: "prr",
       label: "PRR",
       state,
@@ -318,10 +320,37 @@ async function buildPrrSection(
         ])
       ],
       nextSafeActionIds: ["action_open_requests", "action_refresh_operator_status"]
-    };
+    }, unavailableSection("prr", "PRR", "prr"));
   } catch {
     return unavailableSection("prr", "PRR", "prr");
   }
+}
+
+function buildAggregateStatusSummary(
+  sections: readonly OperatorStatusSectionDto[]
+): OperatorStatusDto["summary"] {
+  const summary = buildOperatorStatusSummary(sections);
+  const unavailable = sections.filter((section) => section.state === "unavailable");
+  if (unavailable.length === 0 || summary.overallState !== "ready") {
+    return summary;
+  }
+  if (unavailable.length === sections.length) {
+    return { ...summary, overallState: "unavailable" };
+  }
+  return {
+    ...summary,
+    overallState: "degraded",
+    degradedCount: summary.degradedCount + unavailable.length,
+    nextSafeActionId: unavailable[0]?.nextSafeActionIds[0] ?? summary.nextSafeActionId
+  };
+}
+
+function safeSection(
+  section: OperatorStatusSectionDto,
+  fallback: OperatorStatusSectionDto
+): OperatorStatusSectionDto {
+  const parsed = operatorStatusSectionSchema.safeParse(section);
+  return parsed.success ? parsed.data : fallback;
 }
 
 function workspaceState(
