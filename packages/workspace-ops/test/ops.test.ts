@@ -334,7 +334,7 @@ describe("verifyWorkspace", () => {
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
-  it("blocks without reading canonical ledger events when the manifest content becomes invalid", async () => {
+  it("blocks as wrong-drive without reading canonical ledger events when the manifest version changes", async () => {
     const fileSystem = new MemoryWorkspaceFs();
     const layoutShape = addResolvedWorkspace(fileSystem);
     const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
@@ -357,12 +357,20 @@ describe("verifyWorkspace", () => {
 
     expect(readCalls).toBe(0);
     expect(result.status).toBe("blocked");
+    expect(result.payload?.mountStatus.status).toBe("wrong-drive");
     expect(result.payload?.manifest).toMatchObject({ readable: true, valid: false });
     expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
         diagnosticId: "diag_workspace_manifest_unavailable",
         category: "manifest"
+      })
+    );
+    expect(result.proposedActions).toContainEqual(
+      expect.objectContaining({
+        kind: "select-workspace",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false
       })
     );
     expect(JSON.stringify(result)).not.toContain("\"version\":2");
@@ -393,6 +401,7 @@ describe("verifyWorkspace", () => {
 
     expect(readCalls).toBe(0);
     expect(result.status).toBe("blocked");
+    expect(result.payload?.mountStatus.status).toBe("wrong-drive");
     expect(result.payload?.manifest).toMatchObject({ readable: true, valid: false });
     expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
     expect(result.diagnostics).toContainEqual(
@@ -401,7 +410,57 @@ describe("verifyWorkspace", () => {
         category: "manifest"
       })
     );
+    expect(result.proposedActions).toContainEqual(
+      expect.objectContaining({
+        kind: "select-workspace",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false
+      })
+    );
     expect(JSON.stringify(result)).not.toContain("ws_ops_999");
+    expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("blocks as wrong-drive without reading canonical ledger events when the manifest version mismatches the resolved layout", async () => {
+    const fileSystem = new MemoryWorkspaceFs();
+    addResolvedWorkspace(fileSystem);
+    const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
+    if (layout.workspace === undefined) {
+      throw new Error("expected ready workspace layout");
+    }
+    const staleLayout = {
+      ...layout,
+      workspace: {
+        ...layout.workspace,
+        manifestVersion: 2
+      }
+    } satisfies WorkspaceLayoutResult;
+    let readCalls = 0;
+
+    const result = await verifyWorkspace({
+      layout: staleLayout,
+      fileSystem,
+      eventReader: {
+        readAll: async () => {
+          readCalls += 1;
+          return [validEvent];
+        }
+      }
+    });
+
+    expect(readCalls).toBe(0);
+    expect(result.status).toBe("blocked");
+    expect(result.payload?.mountStatus.status).toBe("wrong-drive");
+    expect(result.payload?.manifest).toMatchObject({ readable: true, valid: false });
+    expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
+    expect(result.proposedActions).toContainEqual(
+      expect.objectContaining({
+        kind: "select-workspace",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false
+      })
+    );
     expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
