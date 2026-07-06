@@ -42,6 +42,17 @@ export function parseLegacyConfidence(value: number): LegacyConfidence | undefin
   return result.success ? result.data : undefined;
 }
 
+export function assertLegacyConfidence(value: number): LegacyConfidence {
+  const result = legacyConfidenceSchema.safeParse(value);
+
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    throw new Error(`Legacy confidence must be in [0, 1]: ${issue?.message ?? result.error.message}`);
+  }
+
+  return result.data;
+}
+
 export function assertLegacySecretSafeDiagnosticText(value: string): LegacySecretSafeDiagnosticText {
   const result = legacySecretSafeDiagnosticTextSchema.safeParse(value);
 
