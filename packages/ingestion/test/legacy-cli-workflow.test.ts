@@ -88,6 +88,76 @@ describe("legacy operator CLI workflow", () => {
     });
   });
 
+  it("returns stable JSON when a legacy runtime method throws", async () => {
+    const report = vi.fn(async () => {
+      throw new Error("unexpected runtime detail");
+    });
+
+    const output = await handleIngestionCommand({
+      command: "legacy report",
+      argv: ["--workspace", "/Volumes/Cestus", "--source-id", "src_old_cestus"],
+      mountResolver: fakeMountResolver(),
+      legacyRuntimeFactory: () => fakeLegacyRuntime({ report })
+    });
+
+    expect(JSON.parse(output)).toEqual({
+      ok: false,
+      error: {
+        code: "LEGACY_IMPORT_RUNTIME_INTERNAL",
+        command: "legacy report",
+        message: "Legacy import runtime failed while handling the command.",
+        allowedRepairActions: [
+          "retry the legacy import command",
+          "inspect legacy import diagnostics",
+          "report the issue with the command context"
+        ],
+        diagnostics: []
+      }
+    });
+    expect(report).toHaveBeenCalledWith({
+      sourceCollectionId: "src_old_cestus"
+    });
+  });
+
+  it("returns legacy-shaped JSON for legacy workspace mount failures", async () => {
+    const mountResolver = {
+      resolve: vi.fn(async () => ({
+        ok: false as const,
+        error: {
+          code: "INGESTION_WORKSPACE_NOT_MOUNTED" as const,
+          message: "Portable workspace is not mounted.",
+          allowedRepairActions: ["mount the workspace"]
+        }
+      }))
+    };
+    const legacyRuntimeFactory = vi.fn(() => fakeLegacyRuntime());
+
+    const output = await handleIngestionCommand({
+      command: "legacy inspect",
+      argv: [
+        "--workspace", "/Volumes/Missing",
+        "--source", "/Volumes/OldCestus",
+        "--source-id", "src_old_cestus",
+        "--scan", "scan_old_cestus_001",
+        "--label", "Old Cestus"
+      ],
+      mountResolver,
+      legacyRuntimeFactory
+    });
+
+    expect(JSON.parse(output)).toEqual({
+      ok: false,
+      error: {
+        code: "LEGACY_IMPORT_WORKSPACE_NOT_MOUNTED",
+        command: "legacy inspect",
+        message: "Portable workspace is not mounted.",
+        allowedRepairActions: ["mount the workspace"],
+        diagnostics: []
+      }
+    });
+    expect(legacyRuntimeFactory).not.toHaveBeenCalled();
+  });
+
   it("maps all legacy runtime commands", async () => {
     const runtime = fakeLegacyRuntime({
       report: vi.fn(async () => legacyOk("legacy report")),

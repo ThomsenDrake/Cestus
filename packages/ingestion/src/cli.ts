@@ -271,11 +271,11 @@ async function handleLegacyRuntimeCommand(
   });
 
   if (!mountResult.ok) {
-    return formatCliJson(mountFailure(mountResult));
+    return formatCliJson(legacyMountFailure(command, mountResult));
   }
 
   const runtime = input.legacyRuntimeFactory({ mountedWorkspace: mountResult.workspace });
-  const result = await callLegacyRuntime(command, runtime, commandInput);
+  const result = await stableLegacyRuntimeCall(command, runtime, commandInput);
 
   return formatCliJson(result);
 }
@@ -297,6 +297,18 @@ async function stableRuntimeCall(
         diagnostics: []
       }
     };
+  }
+}
+
+async function stableLegacyRuntimeCall(
+  command: LegacyIngestionRuntimeCommand,
+  runtime: LegacyImportRuntime,
+  input: unknown
+): Promise<unknown> {
+  try {
+    return await callLegacyRuntime(command, runtime, input);
+  } catch {
+    return legacyRuntimeInternalError(command);
   }
 }
 
@@ -688,6 +700,23 @@ function legacyCliInvalidArguments(command: LegacyIngestionRuntimeCommand, error
   };
 }
 
+function legacyRuntimeInternalError(command: LegacyIngestionRuntimeCommand) {
+  return {
+    ok: false,
+    error: {
+      code: "LEGACY_IMPORT_RUNTIME_INTERNAL",
+      command,
+      message: "Legacy import runtime failed while handling the command.",
+      allowedRepairActions: [
+        "retry the legacy import command",
+        "inspect legacy import diagnostics",
+        "report the issue with the command context"
+      ],
+      diagnostics: []
+    }
+  };
+}
+
 function mountFailure(result: Extract<IngestionMountResult, { ok: false }>) {
   return {
     ok: false,
@@ -698,6 +727,28 @@ function mountFailure(result: Extract<IngestionMountResult, { ok: false }>) {
       diagnostics: []
     }
   };
+}
+
+function legacyMountFailure(
+  command: LegacyIngestionRuntimeCommand,
+  result: Extract<IngestionMountResult, { ok: false }>
+) {
+  return {
+    ok: false,
+    error: {
+      code: legacyWorkspaceErrorCode(result.error.code),
+      command,
+      message: result.error.message,
+      allowedRepairActions: [...result.error.allowedRepairActions],
+      diagnostics: []
+    }
+  };
+}
+
+function legacyWorkspaceErrorCode(code: string): string {
+  return code === "INGESTION_WORKSPACE_NOT_WRITABLE"
+    ? "LEGACY_IMPORT_WORKSPACE_NOT_WRITABLE"
+    : "LEGACY_IMPORT_WORKSPACE_NOT_MOUNTED";
 }
 
 function formatCliJson(value: unknown): string {
