@@ -7,6 +7,7 @@ import {
   type ResolvedLocalRuntimeConfig
 } from "./config.js";
 import {
+  readLocalRuntimeConfigFile,
   redactLocalRuntimeConfigFile,
   writeLocalRuntimeOnboardingConfig,
   type WriteLocalRuntimeOnboardingConfigInput
@@ -302,11 +303,17 @@ function resolveConfigureFlags(
   flags: ConfigureFlags,
   dependencies: LocalRuntimeCliDependencies
 ): ConfigureFlags {
-  if (flags.storageStrategy !== "portable-workspace" || flags.expectedWorkspaceId !== undefined) {
+  if (flags.expectedWorkspaceId !== undefined) {
     return flags;
   }
 
   if (flags.workspaceRoot === undefined) {
+    return flags;
+  }
+
+  const existing = readLocalRuntimeConfigFile(configInputFrom(dependencies));
+  const effectiveStorageStrategy = flags.storageStrategy ?? existing?.storage?.strategy;
+  if (effectiveStorageStrategy !== "portable-workspace") {
     return flags;
   }
 

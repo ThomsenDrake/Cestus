@@ -148,12 +148,16 @@ function mergeStorageConfig(
   existing: LocalRuntimeConfigFile,
   input: WriteLocalRuntimeOnboardingConfigInput
 ): LocalRuntimeConfigFile["storage"] {
+  const workspaceRootChanged = workspaceRootChangedFor(existing.storage ?? {}, input);
   if (input.storageStrategy !== undefined) {
-    return storageConfigForStrategy(existing.storage ?? {}, input.storageStrategy, input);
+    return storageConfigForStrategy(existing.storage ?? {}, input.storageStrategy, input, workspaceRootChanged);
   }
 
+  const { expectedWorkspaceId: _staleExpectedWorkspaceId, ...existingStorageWithoutExpectedId } =
+    existing.storage ?? {};
+  const baseStorage = workspaceRootChanged ? existingStorageWithoutExpectedId : existing.storage ?? {};
   const storage = {
-    ...(existing.storage ?? {}),
+    ...baseStorage,
     ...(input.sqlitePath === undefined ? {} : { sqlitePath: input.sqlitePath }),
     ...(input.appDataDir === undefined ? {} : { appDataDir: input.appDataDir }),
     ...(input.workspaceRoot === undefined ? {} : { workspaceRoot: input.workspaceRoot }),
@@ -166,7 +170,8 @@ function mergeStorageConfig(
 function storageConfigForStrategy(
   existing: NonNullable<LocalRuntimeConfigFile["storage"]>,
   strategy: NonNullable<WriteLocalRuntimeOnboardingConfigInput["storageStrategy"]>,
-  input: WriteLocalRuntimeOnboardingConfigInput
+  input: WriteLocalRuntimeOnboardingConfigInput,
+  workspaceRootChanged: boolean
 ): NonNullable<LocalRuntimeConfigFile["storage"]> {
   if (strategy === "repo-local") {
     return { strategy };
@@ -189,10 +194,6 @@ function storageConfigForStrategy(
   }
 
   const workspaceRoot = input.workspaceRoot ?? existing.workspaceRoot;
-  const workspaceRootChanged =
-    input.workspaceRoot !== undefined &&
-    existing.workspaceRoot !== undefined &&
-    input.workspaceRoot !== existing.workspaceRoot;
   const expectedWorkspaceId =
     input.expectedWorkspaceId ?? (workspaceRootChanged ? undefined : existing.expectedWorkspaceId);
   return {
@@ -200,6 +201,17 @@ function storageConfigForStrategy(
     ...(workspaceRoot === undefined ? {} : { workspaceRoot }),
     ...(expectedWorkspaceId === undefined ? {} : { expectedWorkspaceId })
   };
+}
+
+function workspaceRootChangedFor(
+  existing: NonNullable<LocalRuntimeConfigFile["storage"]>,
+  input: WriteLocalRuntimeOnboardingConfigInput
+): boolean {
+  return (
+    input.workspaceRoot !== undefined &&
+    existing.workspaceRoot !== undefined &&
+    input.workspaceRoot !== existing.workspaceRoot
+  );
 }
 
 function mergeHttpConfig(
