@@ -1,22 +1,85 @@
 import { describe, expect, it } from "vitest";
 import {
+  backupCheckDtoSchema,
   createWorkspaceOpsEnvelope,
+  diagnosticsInspectDtoSchema,
+  diskUsageDtoSchema,
   formatWorkspaceOpsJson,
   isSecretSafeWorkspaceText,
+  manifestExportDtoSchema,
   mountStatusSchema,
+  projectionRebuildDtoSchema,
   secretSafeWorkspaceTextSchema,
+  workspaceDiagnosticSchema,
+  workspaceOpsCommandPayloadSchemas,
   workspaceOpsEnvelopeSchema,
-  workspaceOpsSchemaVersion
+  workspaceOpsSchemaVersion,
+  workspaceVerifyDtoSchema
 } from "../src/contracts.js";
+
+const hash = "sha256:9f2c8b7a5f4e3d2c1b0a99887766554433221100ffeeddccbbaa998877665544";
+
+const workspaceRef = {
+  workspaceId: "ws_contracts",
+  label: "Contracts workspace",
+  manifestVersion: 1,
+  rootUri: "workspace://contracts",
+  layoutContractVersion: "layout.v1"
+} as const;
+
+const mountStatus = {
+  status: "available",
+  safeMessage: "Workspace is available.",
+  nextCommandHints: [
+    {
+      allowedNextCommands: ["verify workspace"],
+      safeReason: "Verify the workspace after mount detection.",
+      requiresHumanApproval: false
+    }
+  ]
+} as const;
+
+const workspaceVerifyPayload = {
+  schemaVersion: workspaceOpsSchemaVersion,
+  mountStatus,
+  manifest: {
+    readable: true,
+    valid: true,
+    manifestVersion: 1,
+    safeSummary: "Workspace manifest is valid."
+  },
+  layout: {
+    contractVersion: "layout.v1",
+    readable: true,
+    requiredRoots: [
+      {
+        rootId: "ledger",
+        category: "ledger",
+        status: "available",
+        safeUri: "workspace://contracts/ledger"
+      }
+    ]
+  },
+  ledger: { readable: true, eventCount: 12, highWaterMark: 12 },
+  blobStore: {
+    available: true,
+    contentAddressedRootCount: 1,
+    aggregateBytes: 4096,
+    missingBlobCount: 0,
+    hashMismatchCount: 0
+  },
+  projections: { available: true, staleCount: 0, rebuildable: true },
+  jobs: { available: true, queuedCount: 0, failedCount: 0 },
+  diagnostics: { visible: true, errorCount: 0, warningCount: 0 },
+  backup: { manifestAvailable: true, latestManifestHash: hash, stale: false }
+} as const;
 
 describe("workspace ops contracts", () => {
   it("uses a stable schema version and JSON envelope", () => {
     const envelope = createWorkspaceOpsEnvelope({
       command: "verify workspace",
       status: "ready",
-      payload: {
-        mountStatus: { status: "available", safeMessage: "Workspace is available." }
-      }
+      payload: workspaceVerifyPayload
     });
 
     expect(envelope.schemaVersion).toBe(workspaceOpsSchemaVersion);
@@ -288,7 +351,7 @@ describe("workspace ops contracts", () => {
   });
 
   it("requires safe next-command hints on mount status DTOs", () => {
-    const mountStatus = mountStatusSchema.parse({
+    const parsedMountStatus = mountStatusSchema.parse({
       status: "missing",
       safeMessage: "Workspace root is not available.",
       nextCommandHints: [
@@ -300,7 +363,7 @@ describe("workspace ops contracts", () => {
       ]
     });
 
-    expect(mountStatus.nextCommandHints[0]).toMatchObject({
+    expect(parsedMountStatus.nextCommandHints[0]).toMatchObject({
       allowedNextCommands: ["detect drive"],
       requiresHumanApproval: false
     });
@@ -325,5 +388,243 @@ describe("workspace ops contracts", () => {
         ]
       })
     ).toThrow("secret");
+  });
+
+  it("exports named schemas for each command payload DTO", () => {
+    expect(workspaceOpsCommandPayloadSchemas).toMatchObject({
+      "verify workspace": workspaceVerifyDtoSchema,
+      "disk usage": diskUsageDtoSchema,
+      "projection rebuild-readiness": projectionRebuildDtoSchema,
+      "projection rebuild": projectionRebuildDtoSchema,
+      "diagnostics inspect": diagnosticsInspectDtoSchema,
+      "manifest export": manifestExportDtoSchema,
+      "backup check": backupCheckDtoSchema
+    });
+  });
+
+  it("parses and formats representative named command payload envelopes", () => {
+    const diagnostic = workspaceDiagnosticSchema.parse({
+      diagnosticId: "diag_contract_warning",
+      severity: "warning",
+      category: "backup",
+      message: "Backup manifest is stale.",
+      durable: false,
+      repairHint: {
+        allowedNextCommands: ["manifest export", "backup check"],
+        requiresHumanApproval: false
+      }
+    });
+
+    const diskUsagePayload = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      estimatedFreeBytes: 1_000_000,
+      thresholdWarnings: ["Projection root is below preferred free space."],
+      roots: [
+        {
+          rootId: "ledger",
+          category: "ledger",
+          bytes: 2048,
+          exists: true,
+          safeUri: "workspace://contracts/ledger"
+        }
+      ],
+      categories: [{ category: "ledger", bytes: 2048, exists: true }],
+      totalBytes: 2048
+    } as const;
+
+    const projectionRebuildPayload = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      mode: "result",
+      requestedProjections: ["requests-workspace"],
+      inputLedger: { readable: true, eventCount: 12, highWaterMark: 12 },
+      readiness: {
+        ready: true,
+        checks: [
+          {
+            checkId: "projection_root_writable",
+            status: "pass",
+            safeMessage: "Projection root is writable."
+          }
+        ]
+      },
+      artifactOutputs: [
+        {
+          projectionName: "requests-workspace",
+          artifactId: "artifact_requests_workspace",
+          artifactHash: hash,
+          byteCount: 512,
+          expendable: true
+        }
+      ],
+      validationResults: [
+        {
+          validationId: "validation_requests_workspace",
+          status: "pass",
+          safeMessage: "Projection output validated."
+        }
+      ],
+      failures: [],
+      wroteExpendableArtifactsOnly: true
+    } as const;
+
+    const diagnosticsInspectPayload = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      diagnostics: [diagnostic],
+      durableCount: 0,
+      derivedCount: 1
+    } as const;
+
+    const manifestExportPayload = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      workspace: workspaceRef,
+      exportedAt: "2026-07-06T12:00:00.000Z",
+      manifestHash: hash,
+      includedSections: ["workspace", "ledger", "blobs", "projections", "diagnostics", "jobs", "backup"],
+      excludedSecretBearingFields: ["provider credentials", "raw correspondence bodies"],
+      ledger: { eventCount: 12, highWaterMark: 12 },
+      blobStore: { contentAddressedRootCount: 1, aggregateBytes: 4096 },
+      artifacts: [{ category: "projections", count: 2, bytes: 1024, artifactHash: hash }],
+      diagnostics: { errorCount: 0, warningCount: 1 },
+      jobs: { queuedCount: 0, failedCount: 0 },
+      coverage: {
+        coveredCategories: ["ledger", "blobs", "projections"],
+        missingCategories: []
+      },
+      sectionHashes: [{ sectionId: "ledger", sectionHash: hash }]
+    } as const;
+
+    const backupCheckPayload = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      backupManifestPresent: true,
+      identityMatches: true,
+      layoutContractMatches: true,
+      currentWorkspaceId: "ws_contracts",
+      backupWorkspaceId: "ws_contracts",
+      currentLedgerHighWaterMark: 12,
+      backupLedgerHighWaterMark: 10,
+      coveredCategories: ["ledger", "blobs"],
+      missingCategories: ["projections"],
+      stale: true,
+      containsSecretShapedFields: false,
+      safeNextActions: [
+        {
+          allowedNextCommands: ["manifest export", "backup check"],
+          safeReason: "Export a fresh manifest and rerun backup coverage checks.",
+          requiresHumanApproval: false
+        }
+      ]
+    } as const;
+
+    const envelopes = [
+      createWorkspaceOpsEnvelope({
+        command: "verify workspace",
+        status: "ready",
+        workspace: workspaceRef,
+        payload: workspaceVerifyDtoSchema.parse(workspaceVerifyPayload)
+      }),
+      createWorkspaceOpsEnvelope({
+        command: "disk usage",
+        status: "ready",
+        workspace: workspaceRef,
+        payload: diskUsageDtoSchema.parse(diskUsagePayload)
+      }),
+      createWorkspaceOpsEnvelope({
+        command: "projection rebuild",
+        status: "ready",
+        workspace: workspaceRef,
+        payload: projectionRebuildDtoSchema.parse(projectionRebuildPayload)
+      }),
+      createWorkspaceOpsEnvelope({
+        command: "diagnostics inspect",
+        status: "degraded",
+        workspace: workspaceRef,
+        payload: diagnosticsInspectDtoSchema.parse(diagnosticsInspectPayload),
+        diagnostics: [diagnostic]
+      }),
+      createWorkspaceOpsEnvelope({
+        command: "manifest export",
+        status: "ready",
+        workspace: workspaceRef,
+        payload: manifestExportDtoSchema.parse(manifestExportPayload)
+      }),
+      createWorkspaceOpsEnvelope({
+        command: "backup check",
+        status: "degraded",
+        workspace: workspaceRef,
+        payload: backupCheckDtoSchema.parse(backupCheckPayload),
+        diagnostics: [diagnostic]
+      })
+    ];
+
+    for (const envelope of envelopes) {
+      expect(workspaceOpsEnvelopeSchema.parse(envelope)).toEqual(envelope);
+      expect(JSON.parse(formatWorkspaceOpsJson(envelope))).toEqual(envelope);
+    }
+  });
+
+  it("keeps projection rebuild payloads limited to expendable artifacts", () => {
+    expect(() =>
+      projectionRebuildDtoSchema.parse({
+        schemaVersion: workspaceOpsSchemaVersion,
+        mode: "result",
+        requestedProjections: ["requests-workspace"],
+        inputLedger: { readable: true, eventCount: 12, highWaterMark: 12 },
+        readiness: { ready: true, checks: [] },
+        artifactOutputs: [],
+        validationResults: [],
+        failures: [],
+        wroteExpendableArtifactsOnly: false
+      })
+    ).toThrow();
+  });
+
+  it("rejects envelopes whose payload does not match the named command DTO", () => {
+    expect(() =>
+      workspaceOpsEnvelopeSchema.parse({
+        schemaVersion: workspaceOpsSchemaVersion,
+        command: "disk usage",
+        ok: true,
+        status: "ready",
+        payload: {
+          schemaVersion: workspaceOpsSchemaVersion,
+          safeButWrongShape: "This generic JSON is not a DiskUsageDto."
+        },
+        diagnostics: [],
+        proposedActions: []
+      })
+    ).toThrow("Unrecognized key");
+  });
+
+  it("normalizes command payloads through their named DTO schemas before formatting", () => {
+    const formatted = JSON.parse(
+      formatWorkspaceOpsJson({
+        schemaVersion: workspaceOpsSchemaVersion,
+        command: "diagnostics inspect",
+        ok: false,
+        status: "degraded",
+        payload: {
+          schemaVersion: workspaceOpsSchemaVersion,
+          diagnostics: [
+            {
+              diagnosticId: "diag_payload_default",
+              severity: "warning",
+              category: "diagnostics",
+              message: "Derived diagnostic is inspectable.",
+              durable: false,
+              repairHint: {
+                allowedNextCommands: ["diagnostics inspect"],
+                requiresHumanApproval: false
+              }
+            }
+          ],
+          durableCount: 0,
+          derivedCount: 1
+        },
+        diagnostics: [],
+        proposedActions: []
+      })
+    );
+
+    expect(formatted.payload.diagnostics[0].relatedIds).toEqual([]);
   });
 });
