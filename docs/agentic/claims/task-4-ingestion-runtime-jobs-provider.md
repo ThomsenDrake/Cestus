@@ -24,3 +24,16 @@
   - Result: passed; Vitest reported 4 test files passed and 22 tests passed.
 - Full verification command: `npm run verify`
   - Result: passed; typecheck passed, Vitest reported 73 test files passed and 614 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Code-Quality Review Fix Evidence
+
+- Review finding: provider approval could append an approval for an import batch that had not completed, weakening provider-approval provenance.
+- Review finding: `listJobs` could report failed parse jobs as `retryable: true` while `retryJob` still returned `INGESTION_JOB_NOT_RETRYABLE`.
+- Red command: `npm test -- packages/ingestion/test/runtime-jobs-provider.test.ts`
+  - Result: failed as expected with 2 failing tests covering provider approval before import completion and advertised retryability without retry execution.
+- Focused green command: `npm test -- packages/ingestion/test/runtime-jobs-provider.test.ts`
+  - Result: passed; Vitest reported 1 test file passed and 6 tests passed.
+- Targeted command: `npm test -- packages/ingestion/test/runtime-jobs-provider.test.ts packages/ingestion/test/provider-adapter.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts`
+  - Result: passed; Vitest reported 4 test files passed and 24 tests passed.
+- Full verification command: `npm run verify`
+  - Result: passed; typecheck passed, Vitest reported 73 test files passed and 616 tests passed, Vite build succeeded, and factory readiness passed.
