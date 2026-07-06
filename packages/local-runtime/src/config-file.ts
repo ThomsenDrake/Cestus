@@ -189,7 +189,12 @@ function storageConfigForStrategy(
   }
 
   const workspaceRoot = input.workspaceRoot ?? existing.workspaceRoot;
-  const expectedWorkspaceId = input.expectedWorkspaceId ?? existing.expectedWorkspaceId;
+  const workspaceRootChanged =
+    input.workspaceRoot !== undefined &&
+    existing.workspaceRoot !== undefined &&
+    input.workspaceRoot !== existing.workspaceRoot;
+  const expectedWorkspaceId =
+    input.expectedWorkspaceId ?? (workspaceRootChanged ? undefined : existing.expectedWorkspaceId);
   return {
     strategy,
     ...(workspaceRoot === undefined ? {} : { workspaceRoot }),
