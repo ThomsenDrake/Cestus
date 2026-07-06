@@ -6,7 +6,7 @@
 - Branch: `codex/legacy-cestus-import`
 - Worktree: `/home/drake/.codex/worktrees/9b5f/Cestus`
 - Claimed at: `2026-07-06T14:35:11Z`
-- Status: `ready-for-review`
+- Status: `approved`
 
 ## Owned Files
 
@@ -25,6 +25,14 @@
 - Green targeted test: `npm test -- packages/ingestion/test/legacy-projection.test.ts packages/ingestion/test/legacy-read-api.test.ts` passed with 2 test files and 2 tests.
 - Focused typecheck: `npm run typecheck` passed.
 - Full verification: `npm run verify` passed with typecheck, 74 test files and 612 tests, UI build, and factory readiness.
+- Review fix: `0d8ad4f fix: make legacy diagnostic source inference conservative` replaced ambiguous legacy stream parsing with validated stream identity mappings and added underscore-heavy source inference regressions.
+- Post-fix targeted test: `npm test -- packages/ingestion/test/legacy-projection.test.ts packages/ingestion/test/legacy-read-api.test.ts` passed with 2 test files and 5 tests.
+- Post-fix full verification: `npm run verify` passed with typecheck, 74 test files and 615 tests, UI build, and factory readiness.
+
+## Review Gate
+
+- Spec review: approved at 2026-07-06T14:57:25Z; no blocking issues after the conservative diagnostic inference fix.
+- Code-quality review: approved at 2026-07-06T14:57:25Z; no Critical, Important, or Minor issues remaining.
 
 ## Self-Review
 
