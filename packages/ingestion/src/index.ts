@@ -14,3 +14,5 @@ export * from "./legacy-types.js";
 export * from "./legacy-plugins.js";
 export * from "./legacy-inspector.js";
 export * from "./legacy-report.js";
+export * from "./legacy-projection.js";
+export * from "./legacy-read-api.js";

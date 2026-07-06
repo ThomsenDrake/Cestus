@@ -6,7 +6,7 @@
 - Branch: `codex/legacy-cestus-import`
 - Worktree: `/home/drake/.codex/worktrees/9b5f/Cestus`
 - Claimed at: `2026-07-06T14:35:11Z`
-- Status: `claimed`
+- Status: `ready-for-review`
 
 ## Owned Files
 
@@ -17,3 +17,20 @@
 - `packages/ingestion/test/legacy-read-api.test.ts`
 - `packages/ingestion/test/fixtures/golden-legacy-ledger.ts`
 - `packages/ingestion/src/index.ts`
+
+## Evidence
+
+- Claim commit: `05b3d04 chore: claim legacy projection`.
+- Red targeted test: `npm test -- packages/ingestion/test/legacy-projection.test.ts packages/ingestion/test/legacy-read-api.test.ts` failed because `../src/legacy-projection.js` could not be resolved.
+- Green targeted test: `npm test -- packages/ingestion/test/legacy-projection.test.ts packages/ingestion/test/legacy-read-api.test.ts` passed with 2 test files and 2 tests.
+- Focused typecheck: `npm run typecheck` passed.
+- Full verification: `npm run verify` passed with typecheck, 74 test files and 612 tests, UI build, and factory readiness.
+
+## Self-Review
+
+- Scope: changed only the Task 5 owned files.
+- Replayability: legacy migration review state rebuilds from validated ledger events only.
+- Source inference: diagnostics associate through known report/staging stream mappings and conservative legacy/source stream parsing.
+- Truth boundary: projection stores report, staging approval, and diagnostic summaries only; it does not project accepted graph state, candidate relationships, or assertions as durable truth.
+- First artifact ask: read API preserves `firstLegacyArtifactAsk` exactly from `legacy-types.ts`.
+- Findings: none.
