@@ -15,6 +15,8 @@ import type {
   MountedWorkspace
 } from "./mount-contract.js";
 import type { IngestionReviewDto } from "./read-api.js";
+import type { LegacyMigrationReviewDto } from "./legacy-read-api.js";
+import { firstLegacyArtifactAsk } from "./legacy-types.js";
 
 export const ingestionOperationalCommands = [
   "create-workspace",
@@ -30,15 +32,20 @@ export const ingestionOperationalCommands = [
 ] as const;
 
 export type IngestionOperationalCommand = typeof ingestionOperationalCommands[number];
-export type IngestionCommandName = "summary-json" | IngestionOperationalCommand;
+export type IngestionCommandName =
+  | "summary-json"
+  | "legacy-artifact-ask-json"
+  | "legacy-report-json"
+  | IngestionOperationalCommand;
 
 export interface IngestionCommandInput {
   command: IngestionCommandName | string;
   argv?: readonly string[];
-  dto?: IngestionReviewDto;
+  dto?: IngestionReviewDto | LegacyMigrationReviewDto;
   env?: Record<string, string | undefined>;
   mountResolver?: IngestionWorkspaceMountResolver;
   runtimeFactory?: IngestionCliRuntimeFactory;
+  runtime?: unknown;
 }
 
 export interface IngestionCliErrorOutput {
@@ -67,7 +74,7 @@ export interface IngestionCliRuntime {
   diagnostics(input: IngestionDiagnosticsInput): Promise<unknown> | unknown;
 }
 
-export async function handleIngestionCommand(input: IngestionCommandInput): Promise<string> {
+export function handleIngestionCommand(input: IngestionCommandInput): string | Promise<string> {
   if (input.command === "summary-json") {
     if (input.dto === undefined) {
       return formatCliJson({
@@ -80,7 +87,19 @@ export async function handleIngestionCommand(input: IngestionCommandInput): Prom
       });
     }
 
-    return formatCliJson(stableReviewDto(input.dto));
+    return formatCliJson(stableReviewDto(input.dto as IngestionReviewDto));
+  }
+
+  if (input.command === "legacy-artifact-ask-json") {
+    return `${JSON.stringify({ firstArtifactAsk: firstLegacyArtifactAsk }, null, 2)}\n`;
+  }
+
+  if (input.command === "legacy-report-json") {
+    if (input.dto === undefined) {
+      throw new Error("Command legacy-report-json needs a legacy migration review DTO.");
+    }
+
+    return `${JSON.stringify(input.dto, null, 2)}\n`;
   }
 
   if (input.command === "create-workspace") {

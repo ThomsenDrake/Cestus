@@ -1533,3 +1533,175 @@ function providerApprovalEvent(
     `ingestion_provider_${payload.sourceCollectionId}_${payload.importBatchId}_${payload.providerJobId}`
   );
 }
+
+describe("legacy Cestus import event contracts", () => {
+  const legacyReportHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const legacyCandidateSetHash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const legacyHumanContext = {
+    ...context,
+    actor: { id: "actor_investigator", kind: "human" as const, label: "Investigator" }
+  };
+
+  it("validates report generation and staging approval events", () => {
+    const report = legacyEvent("evt_legacy_report_generated", "legacy.import.report.generated", {
+      legacyReportId: "legacy_report_001",
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      reportHash: legacyReportHash,
+      candidateSetHash: legacyCandidateSetHash,
+      generatedAt: "2026-07-06T12:00:00.000Z",
+      generator: { name: "legacy-cestus-inspector", version: "0.1.0" },
+      totals: {
+        inspectedFiles: 5,
+        candidateMetadataFiles: 2,
+        proposedAssertionCandidates: 1,
+        quarantineEntries: 2,
+        unresolvedReferences: 1
+      }
+    });
+
+    const approval = legacyEvent("evt_legacy_staging_approved", "legacy.ontology.staging.approved", {
+      stagingBatchId: "legacy_stage_001",
+      legacyReportId: "legacy_report_001",
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      reportHash: legacyReportHash,
+      candidateSetHash: legacyCandidateSetHash,
+      approvedBy: "actor_investigator",
+      approvedAt: "2026-07-06T12:05:00.000Z",
+      approvedAssertionCandidateIds: ["legacy_candidate_001"]
+    }, legacyHumanContext);
+
+    expect(validateKnowledgeEvent(report).success).toBe(true);
+    expect(validateKnowledgeEvent(approval).success).toBe(true);
+  });
+
+  it("rejects uncontracted legacy report fields", () => {
+    const event = legacyEvent("evt_legacy_report_extra", "legacy.import.report.generated", {
+      legacyReportId: "legacy_report_extra",
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      reportHash: legacyReportHash,
+      candidateSetHash: legacyCandidateSetHash,
+      generatedAt: "2026-07-06T12:00:00.000Z",
+      generator: { name: "legacy-cestus-inspector", version: "0.1.0" },
+      totals: {
+        inspectedFiles: 1,
+        candidateMetadataFiles: 1,
+        proposedAssertionCandidates: 0,
+        quarantineEntries: 1,
+        unresolvedReferences: 0
+      },
+      acceptedEntityIds: ["ent_forbidden"]
+    } as unknown as Extract<KnowledgeEvent, { type: "legacy.import.report.generated" }>["payload"]);
+
+    expect(validateKnowledgeEvent(event).success).toBe(false);
+  });
+
+  it("rejects legacy report stream IDs that do not match source, scan, and report identity", () => {
+    const event = {
+      ...legacyEvent("evt_legacy_report_wrong_stream", "legacy.import.report.generated", {
+        legacyReportId: "legacy_report_001",
+        sourceCollectionId: "src_old_cestus",
+        scanBatchId: "scan_old_cestus_001",
+        reportHash: legacyReportHash,
+        candidateSetHash: legacyCandidateSetHash,
+        generatedAt: "2026-07-06T12:00:00.000Z",
+        generator: { name: "legacy-cestus-inspector", version: "0.1.0" },
+        totals: {
+          inspectedFiles: 5,
+          candidateMetadataFiles: 2,
+          proposedAssertionCandidates: 1,
+          quarantineEntries: 2,
+          unresolvedReferences: 1
+        }
+      }),
+      streamId: "legacy_report_src_other_scan_old_cestus_001_legacy_report_001"
+    };
+
+    const result = validateKnowledgeEvent(event);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("streamId");
+    }
+  });
+
+  it("requires human approval for legacy ontology staging", () => {
+    const event = {
+      ...legacyEvent("evt_legacy_staging_system", "legacy.ontology.staging.approved", {
+        stagingBatchId: "legacy_stage_system",
+        legacyReportId: "legacy_report_001",
+        sourceCollectionId: "src_old_cestus",
+        scanBatchId: "scan_old_cestus_001",
+        reportHash: legacyReportHash,
+        candidateSetHash: legacyCandidateSetHash,
+        approvedBy: "actor_system",
+        approvedAt: "2026-07-06T12:05:00.000Z",
+        approvedAssertionCandidateIds: ["legacy_candidate_001"]
+      }),
+      context: {
+        ...context,
+        actor: { id: "actor_system", kind: "system" as const, label: "system" }
+      }
+    };
+
+    const result = validateKnowledgeEvent(event);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("context.actor.kind");
+    }
+  });
+
+  it("rejects legacy staging stream IDs that do not match source, scan, and staging identity", () => {
+    const event = {
+      ...legacyEvent("evt_legacy_staging_wrong_stream", "legacy.ontology.staging.approved", {
+        stagingBatchId: "legacy_stage_001",
+        legacyReportId: "legacy_report_001",
+        sourceCollectionId: "src_old_cestus",
+        scanBatchId: "scan_old_cestus_001",
+        reportHash: legacyReportHash,
+        candidateSetHash: legacyCandidateSetHash,
+        approvedBy: "actor_investigator",
+        approvedAt: "2026-07-06T12:05:00.000Z",
+        approvedAssertionCandidateIds: ["legacy_candidate_001"]
+      }, legacyHumanContext),
+      streamId: "legacy_staging_src_old_cestus_scan_other_legacy_stage_001"
+    };
+
+    const result = validateKnowledgeEvent(event);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("streamId");
+    }
+  });
+});
+
+type LegacyCestusImportEventType = "legacy.import.report.generated" | "legacy.ontology.staging.approved";
+type LegacyCestusImportEvent = Extract<KnowledgeEvent, { type: LegacyCestusImportEventType }>;
+
+function legacyEvent<Type extends LegacyCestusImportEventType>(
+  id: string,
+  type: Type,
+  payload: Extract<LegacyCestusImportEvent, { type: Type }>["payload"],
+  eventContext: KnowledgeEvent["context"] = context
+): Extract<LegacyCestusImportEvent, { type: Type }> {
+  return {
+    id,
+    type,
+    version: 1,
+    streamId: legacyStreamId(type, payload),
+    sequence: 1,
+    context: eventContext,
+    payload
+  } as unknown as Extract<LegacyCestusImportEvent, { type: Type }>;
+}
+
+function legacyStreamId(type: LegacyCestusImportEventType, payload: LegacyCestusImportEvent["payload"]): string {
+  if (type === "legacy.ontology.staging.approved") {
+    const stagingPayload = payload as Extract<LegacyCestusImportEvent, { type: "legacy.ontology.staging.approved" }>["payload"];
+    return `legacy_staging_${stagingPayload.sourceCollectionId}_${stagingPayload.scanBatchId}_${stagingPayload.stagingBatchId}`;
+  }
+
+  const reportPayload = payload as Extract<LegacyCestusImportEvent, { type: "legacy.import.report.generated" }>["payload"];
+  return `legacy_report_${reportPayload.sourceCollectionId}_${reportPayload.scanBatchId}_${reportPayload.legacyReportId}`;
+}
