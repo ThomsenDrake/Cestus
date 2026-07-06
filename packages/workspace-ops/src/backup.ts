@@ -104,11 +104,26 @@ const rawStateFieldPattern =
 export async function exportWorkspaceManifest(
   input: ExportWorkspaceManifestInput
 ): Promise<WorkspaceOpsEnvelope<ManifestExportDto>> {
+  if (input.workspace.layoutContractVersion !== input.layout.layoutContractVersion) {
+    return createWorkspaceOpsEnvelope({
+      command: "manifest export",
+      status: "degraded",
+      workspace: input.workspace,
+      diagnostics: [
+        backupDiagnostic(
+          "diag_manifest_export_layout_contract_mismatch",
+          "Workspace and resolved layout use different layout contracts; export a fresh safe manifest after resolving layout identity."
+        )
+      ],
+      proposedActions: [exportManifestAction()]
+    });
+  }
+
   const exportedAt = normalizeExportedAt(input.createdAt);
   const coveredCategories = safeCoveredCategories(input.categoryBytes.map((category) => category.category));
   const missingCategories = missingCategoriesFor(workspaceRootCategories, coveredCategories);
   const includedSections = includedSectionsFor(coveredCategories);
-  const artifacts = artifactSummaries(input.categoryBytes);
+  const artifacts = artifactSummaries(input.categoryBytes, coveredCategories);
   const ledger = {
     eventCount: input.ledgerEventCount,
     highWaterMark: input.ledgerHighWaterMark ?? input.ledgerEventCount
@@ -128,7 +143,7 @@ export async function exportWorkspaceManifest(
   const coverage = { coveredCategories, missingCategories };
   const sectionHashes = sectionHashesFor({
     workspace: input.workspace,
-    layoutContractVersion: input.layout.layoutContractVersion,
+    layoutContractVersion: input.workspace.layoutContractVersion,
     ledger,
     blobStore,
     artifacts,
@@ -248,19 +263,21 @@ function sectionForCategory(category: WorkspaceRootCategory): ManifestSection {
   return category === "backups" ? "backup" : category;
 }
 
-function artifactSummaries(categories: readonly DiskUsageDto["categories"][number][]): ManifestArtifact[] {
-  return [...categories]
-    .sort((left, right) => compareCodeUnits(left.category, right.category))
-    .map((category) => ({
-      category: category.category,
-      count: category.exists ? 1 : 0,
-      bytes: category.bytes,
-      ...(category.exists ? { artifactHash: hashJson({
-        category: category.category,
-        bytes: category.bytes,
-        exists: category.exists
-      }) } : {})
-    }));
+function artifactSummaries(
+  categories: readonly DiskUsageDto["categories"][number][],
+  coveredCategories: readonly WorkspaceRootCategory[]
+): ManifestArtifact[] {
+  return coveredCategories.map((category) => {
+    const matches = categories.filter((candidate) => candidate.category === category);
+    const exists = matches.some((candidate) => candidate.exists);
+    const bytes = matches.reduce((total, candidate) => total + candidate.bytes, 0);
+    return {
+      category,
+      count: exists ? 1 : 0,
+      bytes,
+      ...(exists ? { artifactHash: hashJson({ category, bytes, exists }) } : {})
+    };
+  });
 }
 
 function sectionHashesFor(
@@ -441,7 +458,9 @@ function bytesForCategory(
   categories: readonly DiskUsageDto["categories"][number][],
   category: WorkspaceRootCategory
 ): number {
-  return categories.find((candidate) => candidate.category === category)?.bytes ?? 0;
+  return categories
+    .filter((candidate) => candidate.category === category)
+    .reduce((total, candidate) => total + candidate.bytes, 0);
 }
 
 function containsSecretShapedField(value: unknown, seen = new WeakSet<object>()): boolean {

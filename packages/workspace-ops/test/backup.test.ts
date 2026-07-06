@@ -189,6 +189,75 @@ describe("workspace backup manifests", () => {
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
+  it("normalizes duplicate category byte entries into a backup-checkable manifest", async () => {
+    const exported = await exportWorkspaceManifest({
+      workspace,
+      layout,
+      ledgerEventCount: 15,
+      ledgerHighWaterMark: 15,
+      categoryBytes: [
+        ...categoryBytes,
+        { category: "projections", bytes: 500, exists: true }
+      ],
+      diagnosticCounts: { errorCount: 0, warningCount: 0 },
+      jobCounts: { queuedCount: 0, failedCount: 0 },
+      createdAt: "2026-07-06T12:30:00.000Z"
+    });
+
+    expect(exported.status).toBe("ready");
+    expect(exported.payload?.coverage.coveredCategories).toEqual(expectedCategories);
+    expect(exported.payload?.artifacts.map((artifact) => artifact.category)).toEqual(expectedCategories);
+    expect(exported.payload?.artifacts.filter((artifact) => artifact.category === "projections")).toHaveLength(1);
+
+    const result = await checkBackupManifest({
+      workspace,
+      currentLedgerHighWaterMark: 15,
+      expectedCategories,
+      backupManifest: exported.payload
+    });
+
+    expect(result.status).toBe("ready");
+    expect(result.diagnostics).toEqual([]);
+    expect(result.proposedActions).toEqual([]);
+    expect(backupCheckDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("degrades layout contract mismatches instead of exporting a self-invalid manifest", async () => {
+    const exported = await exportWorkspaceManifest({
+      workspace,
+      layout: {
+        ...layout,
+        layoutContractVersion: "portable-workspace-layout.v1-other" as never
+      },
+      ledgerEventCount: 15,
+      ledgerHighWaterMark: 15,
+      categoryBytes,
+      diagnosticCounts: { errorCount: 0, warningCount: 0 },
+      jobCounts: { queuedCount: 0, failedCount: 0 },
+      createdAt: "2026-07-06T12:30:00.000Z"
+    });
+
+    expect(exported.status).toBe("degraded");
+    expect(exported.payload).toBeUndefined();
+    expect(exported.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_manifest_export_layout_contract_mismatch",
+        category: "backup"
+      })
+    );
+    expect(exported.proposedActions).toEqual([
+      expect.objectContaining({
+        kind: "export-manifest",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false,
+        allowedNextCommands: ["manifest export", "backup check"]
+      })
+    ]);
+    expect(JSON.stringify(exported)).not.toMatch(/PRIVATE-CASE-NOTE|access_token|abc123|canonicalLedgerEvents/);
+    expect(workspaceOpsEnvelopeSchema.parse(exported)).toEqual(exported);
+  });
+
   it.each([
     {
       name: "included sections omit roots claimed by coverage",
