@@ -5,6 +5,7 @@ import {
   operatorStatusDtoSchema,
   type OperatorStatusDto
 } from "../src/contracts.js";
+import * as operatorStatusExports from "../src/index.js";
 
 describe("operator status contracts", () => {
   const readySection: OperatorStatusDto["sections"][number] = {
@@ -160,5 +161,22 @@ describe("operator status contracts", () => {
         ]
       })
     ).toThrow(/secret-safe/i);
+  });
+
+  it("exports only the planned runtime contract surface", () => {
+    expect(Object.keys(operatorStatusExports).sort()).toEqual([
+      "buildOperatorStatusSummary",
+      "operatorDiagnosticSchema",
+      "operatorMetricSchema",
+      "operatorNavigationTargets",
+      "operatorReadinessStates",
+      "operatorSafeActionKinds",
+      "operatorSafeActionSchema",
+      "operatorSectionIds",
+      "operatorSourceEvidenceSchema",
+      "operatorStatusDtoSchema",
+      "operatorStatusSchemaVersion",
+      "operatorStatusSectionSchema"
+    ].sort());
   });
 });

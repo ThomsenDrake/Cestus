@@ -19,6 +19,7 @@
 
 - `2026-07-06T21:33:30Z`: Claim moved to in-progress before writing contract tests or implementation.
 - `2026-07-06T21:36:33Z`: Contract tests, implementation, targeted verification, and full verification completed.
+- `2026-07-06T21:44:41Z`: Spec review fix completed for leaked runtime helper schema exports.
 
 ## Evidence
 
@@ -27,6 +28,9 @@
 - RED targeted test: `npm test -- packages/operator-status/test/contracts.test.ts` failed because `../src/contracts.js` could not be resolved.
 - GREEN targeted test: `npm test -- packages/operator-status/test/contracts.test.ts` passed with 1 test file and 4 tests.
 - Full verification: `npm run verify` passed with typecheck, 93 test files and 826 tests, UI build, and factory readiness.
+- Review-fix RED targeted test: `npm test -- packages/operator-status/test/contracts.test.ts` failed because `operatorReadinessStateSchema` and `operatorSectionIdSchema` were present in the runtime package export keys.
+- Review-fix GREEN targeted test: `npm test -- packages/operator-status/test/contracts.test.ts` passed with 1 test file and 5 tests.
+- Review-fix full verification: `npm run verify` passed with typecheck, 93 test files and 827 tests, UI build, and factory readiness.
 
 ## Self-Review
 
@@ -34,4 +38,5 @@
 - Contract boundary: schemas are browser-safe Zod contracts and do not import runtime, filesystem, SQLite, workspace, workspace-ops, ingestion service, or blob-store code.
 - Safety: safe actions require `mutatesCanonicalState: false` and `externalEffect: false`; navigate actions require `target`; show-command actions require `command`.
 - Secret safety: human-visible text and JSON-friendly refs reject credential-shaped strings with `secret-safe` validation messages.
+- Public surface: runtime exports now match the planned value export list and do not include internal helper schemas.
 - Findings: none.

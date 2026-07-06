@@ -29,8 +29,8 @@ const operatorDiagnosticIdSchema = z.string()
   .regex(/^diag_[a-zA-Z0-9_-]+$/)
   .refine(isSecretSafeOperatorText, { message: "operator status diagnostic ids must be secret-safe" });
 
-export const operatorReadinessStateSchema = z.enum(operatorReadinessStates);
-export const operatorSectionIdSchema = z.enum(operatorSectionIds);
+const operatorReadinessStateSchema = z.enum(operatorReadinessStates);
+const operatorSectionIdSchema = z.enum(operatorSectionIds);
 
 export const operatorMetricSchema = z.object({
   metricId: operatorIdentifierSchema,
