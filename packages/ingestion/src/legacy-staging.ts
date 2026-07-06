@@ -148,13 +148,20 @@ export class LegacyOntologyStagingService {
   ): Promise<void> {
     for (const candidate of candidates) {
       const evidenceEvents = await this.ledger.readStream(`evidence_${candidate.evidenceId}`);
-      const ingested = evidenceEvents.some(
-        (event) => event.type === "evidence.ingested" && event.payload.evidenceId === candidate.evidenceId
+      const ingested = evidenceEvents.find(
+        (event): event is KnowledgeEventOf<"evidence.ingested"> =>
+          event.type === "evidence.ingested" && event.payload.evidenceId === candidate.evidenceId
       );
 
-      if (!ingested) {
+      if (ingested === undefined) {
         throw new Error(
           `Cannot propose assertion ${legacyAssertionId(input, candidate.candidateId)} without evidence ${candidate.evidenceId}`
+        );
+      }
+
+      if (ingested.payload.contentHash !== candidate.evidenceContentHash) {
+        throw new Error(
+          `Cannot propose assertion ${legacyAssertionId(input, candidate.candidateId)}: evidence content hash mismatch for ${candidate.evidenceId}`
         );
       }
     }
