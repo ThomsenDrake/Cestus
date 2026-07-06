@@ -554,12 +554,15 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
 function safeMessage(message: string): string {
   return message
     .replace(/bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
-    .replace(/\b(?:password|passwd|secret|token|oauth_token|api_key)\s*[:=]\s*[^\s,;]+/gi, (match) => {
-      const separator = match.includes(":") ? ":" : "=";
-      return `${match.slice(0, match.indexOf(separator))}${separator}[redacted]`;
-    })
+    .replace(
+      /\b(?:password|passwd|secret|token|oauth[_-]?token|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|client[_-]?secret|credential|credentials)\s*[:=]\s*[^\s,;]+/gi,
+      (match) => {
+        const separator = match.includes(":") ? ":" : "=";
+        return `${match.slice(0, match.indexOf(separator))}${separator}[redacted]`;
+      }
+    )
     .replace(/-----BEGIN [^-]*PRIVATE KEY-----/gi, "[redacted]")
     .replace(/-----END [^-]*PRIVATE KEY-----/gi, "[redacted]")
     .replace(/\b[A-Za-z]:\\[^\s"',;)]+/g, "[path redacted]")
-    .replace(/\/(?:Users|Volumes|private|tmp|home|mnt|var)\/[^\s"',;)]+/g, "[path redacted]");
+    .replace(/(?<![:/])\/(?!\/)[^\s"',;)]+/g, "[path redacted]");
 }

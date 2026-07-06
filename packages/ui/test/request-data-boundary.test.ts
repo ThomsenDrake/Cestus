@@ -18,25 +18,16 @@ describe("Requests data boundary", () => {
     nodeRuntimeModulePattern,
     /(?:^|\/)(?:runtime|sqlite-event-ledger)(?:\.js)?$/,
     /(?:^|\/)prr\/src\/runtime(?:\.js)?$/,
-    /(?:^|\/)local-runtime\/src\/(?:config|server|http-handler|runtime-factory|ingestion-http-routes)(?:\.js)?$/,
-    /(?:^|\/)ingestion\/src\/(?:runtime|workspace|source-materializer|import-service|local-filesystem|mount-contract|provider-adapter)(?:\.js)?$/,
+    /(?:^|\/)local-runtime\/src\/[^/]+(?:\.js)?$/,
+    /(?:^|\/)ingestion\/src\/[^/]+(?:\.js)?$/,
     /(?:^|\/)ontology\/src\/(?:sqlite-event-ledger|blob-store)(?:\.js)?$/
   ];
   const forbiddenProductUiSourceFragments = [
     "SQLiteEventLedger",
     "sqlite-event-ledger",
     "packages/prr/src/runtime",
-    "packages/local-runtime/src/config",
-    "packages/local-runtime/src/server",
-    "packages/local-runtime/src/http-handler",
-    "packages/local-runtime/src/runtime-factory",
-    "packages/local-runtime/src/ingestion-http-routes",
-    "packages/ingestion/src/runtime",
-    "packages/ingestion/src/workspace",
-    "packages/ingestion/src/source-materializer",
-    "packages/ingestion/src/import-service",
-    "packages/ingestion/src/local-filesystem",
-    "packages/ingestion/src/mount-contract",
+    "packages/local-runtime/src/",
+    "packages/ingestion/src/",
     "FileBlobStore",
     "node:fs",
     "node:path"
@@ -62,6 +53,22 @@ describe("Requests data boundary", () => {
       for (const fragment of forbiddenProductUiSourceFragments) {
         expect(source).not.toContain(fragment);
       }
+    }
+  });
+
+  it("covers representative Node-only ingestion and local-runtime imports", () => {
+    const forbiddenModuleSpecifiers = [
+      "../../local-runtime/src/auth.js",
+      "../../local-runtime/src/static-files.js",
+      "../../local-runtime/src/config-file.js",
+      "../../ingestion/src/source-registry.js",
+      "../../ingestion/src/parser.js",
+      "../../ingestion/src/projection.js",
+      "../../ingestion/src/read-api.js"
+    ];
+
+    for (const moduleSpecifier of forbiddenModuleSpecifiers) {
+      expect(forbiddenProductUiImportPatterns.some((pattern) => pattern.test(moduleSpecifier)), moduleSpecifier).toBe(true);
     }
   });
 

@@ -82,3 +82,19 @@
 - Full verification command:
   `npm run verify`
   - Result: passed at 2026-07-06T18:20:50Z; typecheck passed, Vitest reported 75 test files passed and 648 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Spec Re-review Broad Boundary Fix Evidence
+
+- Spec re-review findings at `1e88efd`: browser boundary coverage still allowed representative Node-only `local-runtime` and ingestion service imports, and successful diagnostic redaction still allowed credential aliases and unlisted absolute path prefixes.
+- Red command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/request-data-boundary.test.ts`
+  - Result: failed as expected; Vitest reported 2 failing tests covering representative `local-runtime`/ingestion service imports and unredacted `client_secret`, `apiKey`, `credential`, `/media`, `/opt`, and `/etc` diagnostic content.
+- Targeted green command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/request-data-boundary.test.ts`
+  - Result: passed; Vitest reported 2 test files passed and 15 tests passed.
+- Full Task 7 targeted command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx`
+  - Result: passed; Vitest reported 5 test files passed and 33 tests passed.
+- Full verification command:
+  `npm run verify`
+  - Result: passed at 2026-07-06T18:30:45Z; typecheck passed, Vitest reported 75 test files passed and 649 tests passed, Vite build succeeded, and factory readiness passed.
