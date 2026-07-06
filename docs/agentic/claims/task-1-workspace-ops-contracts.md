@@ -6,7 +6,7 @@ Worker: implementing agent for this task
 Branch: `codex/portable-workspace-ops-design` in a task-isolated worktree
 Worktree: `/home/drake/.codex/worktrees/797e/Cestus`
 Claimed-at: 2026-07-06T12:39:11Z
-Status: claimed
+Status: in-progress
 
 Owned files:
 - `packages/workspace-ops/src/contracts.ts`
