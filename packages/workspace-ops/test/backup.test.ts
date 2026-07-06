@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   backupCheckDtoSchema,
@@ -5,6 +6,7 @@ import {
   workspaceOpsEnvelopeSchema,
   workspaceOpsSchemaVersion,
   type DiskUsageDto,
+  type ManifestExportDto,
   type WorkspaceRefDto
 } from "../src/contracts.js";
 import { checkBackupManifest, exportWorkspaceManifest } from "../src/backup.js";
@@ -32,6 +34,34 @@ const categoryBytes: DiskUsageDto["categories"] = [
 ];
 
 const expectedCategories = categoryBytes.map((category) => category.category);
+
+function withRecomputedManifestHash(manifest: ManifestExportDto): ManifestExportDto {
+  const { manifestHash: _manifestHash, ...manifestWithoutHash } = manifest;
+  return {
+    ...manifest,
+    manifestHash: hashJson(manifestWithoutHash)
+  };
+}
+
+function hashJson(value: unknown): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(stableJson(value), "utf8").digest("hex")}`;
+}
+
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableJson(item)).join(",")}]`;
+  }
+
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`)
+    .join(",")}}`;
+}
 
 describe("workspace backup manifests", () => {
   it("exports a secret-free manifest summary without copying canonical state", async () => {
@@ -113,6 +143,80 @@ describe("workspace backup manifests", () => {
     });
     expect(result.diagnostics).toEqual([]);
     expect(result.proposedActions).toEqual([]);
+    expect(backupCheckDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it.each([
+    {
+      name: "included sections omit roots claimed by coverage",
+      mutate(manifest: ManifestExportDto): ManifestExportDto {
+        const includedSections = ["layout", "manifest", "workspace"] as const;
+        return {
+          ...manifest,
+          includedSections: [...includedSections],
+          sectionHashes: manifest.sectionHashes.filter((sectionHash) =>
+            includedSections.includes(sectionHash.sectionId as (typeof includedSections)[number])
+          )
+        };
+      }
+    },
+    {
+      name: "artifact summaries omit roots claimed by coverage",
+      mutate(manifest: ManifestExportDto): ManifestExportDto {
+        return {
+          ...manifest,
+          artifacts: manifest.artifacts.filter((artifact) => artifact.category === "ledger")
+        };
+      }
+    }
+  ])("degrades internally malformed exported manifests when $name", async ({ mutate }) => {
+    const exported = await exportWorkspaceManifest({
+      workspace,
+      layout,
+      ledgerEventCount: 15,
+      ledgerHighWaterMark: 15,
+      categoryBytes,
+      diagnosticCounts: { errorCount: 0, warningCount: 0 },
+      jobCounts: { queuedCount: 0, failedCount: 0 },
+      createdAt: "2026-07-06T12:30:00.000Z"
+    });
+    const malformed = withRecomputedManifestHash(mutate(exported.payload as ManifestExportDto));
+
+    const result = await checkBackupManifest({
+      workspace,
+      currentLedgerHighWaterMark: 15,
+      expectedCategories,
+      backupManifest: malformed
+    });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload).toMatchObject({
+      backupManifestPresent: true,
+      identityMatches: false,
+      layoutContractMatches: false,
+      stale: true,
+      containsSecretShapedFields: true
+    });
+    expect(result.payload?.missingCategories).toEqual(expectedCategories);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_backup_manifest_invalid",
+        category: "backup"
+      })
+    );
+    expect(result.proposedActions).toEqual([
+      expect.objectContaining({
+        kind: "export-manifest",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false,
+        allowedNextCommands: ["manifest export", "backup check"]
+      })
+    ]);
+    expect(result.proposedActions).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: "append-repair-event-required" })])
+    );
+    expect(JSON.stringify(result)).not.toMatch(/canonicalLedgerEvents|evidenceBodies|protected source|private text/i);
     expect(backupCheckDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });

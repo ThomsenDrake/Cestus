@@ -84,7 +84,7 @@ describe("inspectWorkspaceDiagnostics", () => {
           relatedIds: ["evt_diag_projection_stale"]
         }),
         expect.objectContaining({
-          diagnosticId: "diag_current_redacted_source",
+          diagnosticId: "diag_diagnostic_redacted",
           category: "diagnostics",
           durable: false,
           relatedIds: ["evt_current_safe"]
@@ -160,18 +160,87 @@ describe("inspectWorkspaceDiagnostics", () => {
     expect(result.payload?.diagnostics).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          diagnosticId: "diag_private_interview",
+          diagnosticId: "diag_diagnostic_redacted",
           durable: true,
           message: "Diagnostic message was redacted."
         }),
         expect.objectContaining({
-          diagnosticId: "diag_private_derived",
+          diagnosticId: "diag_diagnostic_redacted",
           durable: false,
           message: "Diagnostic message was redacted."
         })
       ])
     );
-    expect(JSON.stringify(result)).not.toMatch(/Private interview notes|protected source/);
+    expect(JSON.stringify(result)).not.toMatch(/Private interview notes|protected source|private_interview/);
+    expect(diagnosticsInspectDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("redacts secret-shaped durable diagnostic identifiers without throwing", async () => {
+    const result = await inspectWorkspaceDiagnostics({
+      durableEvents: [
+        {
+          ...durableDiagnosticEvent,
+          id: "evt_diag_identifier_redacted",
+          streamId: "diagnostic_diag_identifier_redacted",
+          payload: {
+            ...durableDiagnosticEvent.payload,
+            diagnosticId: "diag_access_token_abc123"
+          }
+        }
+      ],
+      derivedDiagnostics: []
+    });
+
+    expect(result.status).toBe("ready");
+    expect(result.payload).toMatchObject({
+      durableCount: 1,
+      derivedCount: 0
+    });
+    expect(result.payload?.diagnostics).toEqual([
+      expect.objectContaining({
+        diagnosticId: "diag_diagnostic_redacted",
+        durable: true,
+        relatedIds: ["evt_diag_identifier_redacted"]
+      })
+    ]);
+    expect(JSON.stringify(result)).not.toMatch(/access_token|abc123/);
+    expect(diagnosticsInspectDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("filters private-content derived related identifiers", async () => {
+    const result = await inspectWorkspaceDiagnostics({
+      durableEvents: [],
+      derivedDiagnostics: [
+        {
+          diagnosticId: "diag_related_ids",
+          severity: "warning",
+          category: "diagnostics",
+          message: "Related identifiers were inspected.",
+          durable: false,
+          relatedIds: [
+            "evt_public_summary",
+            "evt_protected_source_jane_doe",
+            "evt_private_interview_notes"
+          ],
+          repairHint: {
+            allowedNextCommands: ["diagnostics inspect"],
+            requiresHumanApproval: false
+          }
+        }
+      ]
+    });
+
+    expect(result.status).toBe("ready");
+    expect(result.payload?.diagnostics).toEqual([
+      expect.objectContaining({
+        diagnosticId: "diag_related_ids",
+        durable: false,
+        relatedIds: ["evt_public_summary"]
+      })
+    ]);
+    expect(JSON.stringify(result)).not.toMatch(/protected_source|private_interview|jane_doe|interview_notes/);
     expect(diagnosticsInspectDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
