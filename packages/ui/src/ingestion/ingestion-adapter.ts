@@ -6,6 +6,7 @@ import type {
   IngestionActionResult,
   IngestionDiagnosticsDto,
   IngestionDiagnosticsInput,
+  IngestionJobActionResult,
   IngestionJobDto,
   IngestionJobListDto,
   IngestionReviewDto,
@@ -24,7 +25,7 @@ export interface IngestionWorkspaceAdapter {
   approveRawImport(input: ApproveRawImportInput): Promise<IngestionActionResult>;
   importApproved(input: ImportApprovedInput): Promise<IngestionActionResult>;
   listJobs(input: ListIngestionJobsInput): Promise<IngestionJobListDto>;
-  retryJob(input: RetryIngestionJobInput): Promise<IngestionActionResult>;
+  retryJob(input: RetryIngestionJobInput): Promise<IngestionJobActionResult>;
   approveProviderParsing(input: ApproveProviderParsingInput): Promise<IngestionActionResult>;
   loadDiagnostics(input: IngestionDiagnosticsInput): Promise<IngestionDiagnosticsDto>;
 }
@@ -40,6 +41,7 @@ export interface StaticIngestionWorkspaceAdapterOptions {
   readonly jobs?: IngestionJobListDto;
   readonly diagnostics?: IngestionDiagnosticsDto;
   readonly actionResult?: IngestionActionResult;
+  readonly jobActionResult?: IngestionJobActionResult;
 }
 
 const forbiddenBodyFields = new Set([
@@ -89,7 +91,7 @@ export function createHttpIngestionWorkspaceAdapter(
       return jobListDtoFromJson(response);
     },
     retryJob(input: RetryIngestionJobInput) {
-      return postAction(fetcher, `${baseUrl}/api/ingestion/jobs/retry`, input, credentials, options.authToken);
+      return postJobAction(fetcher, `${baseUrl}/api/ingestion/jobs/retry`, input, credentials, options.authToken);
     },
     approveProviderParsing(input: ApproveProviderParsingInput) {
       return postAction(
@@ -149,7 +151,17 @@ export function createStaticIngestionWorkspaceAdapter(
     async listJobs() {
       return options.jobs ?? { jobs: [] };
     },
-    retryJob: action,
+    async retryJob() {
+      return options.jobActionResult ?? {
+        ok: false,
+        error: {
+          code: "INGESTION_RUNTIME_INTERNAL",
+          message: "This ingestion adapter cannot retry jobs.",
+          allowedRepairActions: ["use an HTTP ingestion adapter"],
+          diagnostics: []
+        }
+      };
+    },
     approveProviderParsing: action,
     async loadDiagnostics() {
       return options.diagnostics ?? { diagnostics: currentWorkspace.diagnostics };
@@ -169,14 +181,14 @@ async function getJson(
     throw new Error("Ingestion runtime request failed.");
   }
 
-  if (!response.ok) {
-    throw new Error(`Ingestion runtime returned HTTP ${response.status}.`);
-  }
-
   try {
-    return await response.json();
+    const value = await response.json();
+    if (!response.ok && !isRuntimeFailure(value)) {
+      throw new Error(`Ingestion runtime returned HTTP ${response.status}.`);
+    }
+    return value;
   } catch {
-    throw new Error("Ingestion runtime returned invalid JSON.");
+    throw new Error(response.ok ? "Ingestion runtime returned invalid JSON." : `Ingestion runtime returned HTTP ${response.status}.`);
   }
 }
 
@@ -197,6 +209,25 @@ async function postAction(
     method: "POST"
   });
   return actionResultFromJson(response);
+}
+
+async function postJobAction(
+  fetcher: typeof fetch,
+  url: string,
+  input: object,
+  credentials: RequestCredentials,
+  authToken: string | undefined
+): Promise<IngestionJobActionResult> {
+  const response = await getJson(fetcher, url, {
+    body: JSON.stringify(stripForbiddenBodyFields(input)),
+    credentials,
+    headers: {
+      ...authHeaders(authToken),
+      "content-type": "application/json"
+    },
+    method: "POST"
+  });
+  return jobActionResultFromJson(response);
 }
 
 function workspaceDtoFromJson(value: unknown): IngestionWorkspaceDto {
@@ -254,6 +285,31 @@ function actionResultFromJson(value: unknown): IngestionActionResult {
     ...(typeof value.inventoryHash === "string" ? { inventoryHash: value.inventoryHash } : {}),
     ...(typeof value.importBatchId === "string" ? { importBatchId: value.importBatchId } : {}),
     ...(isImportTotals(value.totals) ? { totals: value.totals } : {})
+  };
+}
+
+function jobActionResultFromJson(value: unknown): IngestionJobActionResult {
+  if (isRuntimeFailure(value)) {
+    return { ok: false, error: safeError(value.error) };
+  }
+
+  if (!isJsonObject(value) || value.ok !== true || !isJobDto(value.job)) {
+    return {
+      ok: false,
+      error: {
+        code: "INGESTION_RUNTIME_INTERNAL",
+        message: "Ingestion runtime returned an invalid job action payload.",
+        allowedRepairActions: ["retry the ingestion job action"],
+        diagnostics: []
+      }
+    };
+  }
+
+  return {
+    ok: true,
+    job: value.job,
+    ...(isReviewDto(value.review) ? { review: value.review } : {}),
+    eventIds: stringArray(value.eventIds) ?? []
   };
 }
 

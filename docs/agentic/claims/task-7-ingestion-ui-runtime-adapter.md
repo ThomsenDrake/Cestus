@@ -43,3 +43,16 @@
 - HTTP adapter uses `/api/ingestion/*`, accepts both direct workspace DTO and `{ ok, workspace }` workspace envelopes, maps workspace-not-mounted to a safe UI DTO, and strips workspace/storage path fields from action bodies.
 - App defaults to `httpIngestionWorkspaceAdapter`, supports injected ingestion adapters for tests, and removes the placeholder ingestion review state.
 - UI keeps raw import approval, import execution, provider approval, retry, jobs, and diagnostics as separate controls/states.
+
+## Spec Review Fix Evidence
+
+- Spec review findings at `8a1de91`: non-2xx stable JSON failures were thrown before diagnostics could be mapped, `retryJob` parsed a valid runtime job result as an invalid action because it required `review`, and UI `RegisterSourceInput` did not include the live runtime `rootUri`/`sourceRoot` fields.
+- Red command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts`
+  - Result: failed as expected; Vitest reported 3 failing ingestion HTTP adapter tests covering 503 workspace error mapping, 400 action error mapping, and retry job success without a review DTO.
+- Targeted green command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx`
+  - Result: passed; Vitest reported 5 test files passed and 29 tests passed.
+- Full verification command:
+  `npm run verify`
+  - Result: passed at 2026-07-06T17:58:06Z; typecheck passed, Vitest reported 75 test files passed and 645 tests passed, Vite build succeeded, and factory readiness passed.

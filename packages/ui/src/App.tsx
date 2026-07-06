@@ -12,6 +12,7 @@ import type {
   ApproveRawImportInput,
   ImportApprovedInput,
   IngestionActionResult,
+  IngestionJobActionResult,
   IngestionJobDto,
   IngestionRuntimeDiagnosticDto,
   IngestionWorkspaceDto,
@@ -316,7 +317,7 @@ export function App({
   }
 
   function handleRetryIngestionJob(input: RetryIngestionJobInput) {
-    void runIngestionAction(() => ingestionAdapter.retryJob(input));
+    void runIngestionJobAction(() => ingestionAdapter.retryJob(input));
   }
 
   function handleLoadIngestionDiagnostics(input: { readonly sourceCollectionId?: string }) {
@@ -369,6 +370,50 @@ export function App({
           severity: "error",
           category: "ingestion",
           message: "Ingestion action failed. Reload the workspace and try again."
+        }
+      ]);
+    }
+  }
+
+  async function runIngestionJobAction(action: () => Promise<IngestionJobActionResult>) {
+    try {
+      const result = await action();
+      if (!result.ok) {
+        setIngestionDiagnostics([
+          ...result.error.diagnostics,
+          {
+            severity: "error",
+            category: "ingestion",
+            message: result.error.message
+          }
+        ]);
+        return;
+      }
+
+      const review = result.review;
+      if (review !== undefined) {
+        setIngestionWorkspace((current) =>
+          current === undefined
+            ? {
+                mounted: true,
+                review,
+                diagnostics: []
+              }
+            : {
+                ...current,
+                mounted: true,
+                review
+              }
+        );
+      }
+
+      await refreshIngestionSupportState(result.review?.sourceCollectionId ?? result.job.sourceCollectionId);
+    } catch {
+      setIngestionDiagnostics([
+        {
+          severity: "error",
+          category: "ingestion",
+          message: "Ingestion job action failed. Reload the workspace and try again."
         }
       ]);
     }

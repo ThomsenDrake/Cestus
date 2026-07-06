@@ -40,7 +40,7 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
 
   it("maps workspace-not-mounted into a safe UI DTO", async () => {
     const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
-      jsonResponse(200, {
+      jsonResponse(503, {
         ok: false,
         error: {
           code: "INGESTION_WORKSPACE_NOT_MOUNTED",
@@ -64,6 +64,43 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
     });
   });
 
+  it("maps stable non-2xx action errors instead of throwing away diagnostics", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse(400, {
+        ok: false,
+        error: {
+          code: "INGESTION_HTTP_STORAGE_PATH_FORBIDDEN",
+          message: "Ingestion HTTP request body must not include storage paths.",
+          allowedRepairActions: ["remove storage paths"],
+          diagnostics: [
+            {
+              severity: "error",
+              category: "ingestion.http",
+              message: "Storage path fields are forbidden."
+            }
+          ]
+        }
+      })
+    );
+    const adapter = createHttpIngestionWorkspaceAdapter({ fetcher });
+
+    await expect(adapter.dryRunScan({ sourceCollectionId: "src_drive_001", scanBatchId: "scan_001" })).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "INGESTION_HTTP_STORAGE_PATH_FORBIDDEN",
+        message: "Ingestion HTTP request body must not include storage paths.",
+        allowedRepairActions: ["remove storage paths"],
+        diagnostics: [
+          {
+            severity: "error",
+            category: "ingestion.http",
+            message: "Storage path fields are forbidden."
+          }
+        ]
+      }
+    });
+  });
+
   it("does not send workspace paths in ingestion action bodies", async () => {
     const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       jsonResponse(200, { ok: true, review: reviewDto(), eventIds: ["evt_scan"] })
@@ -76,6 +113,52 @@ describe("createHttpIngestionWorkspaceAdapter", () => {
     const body = JSON.parse(String(init?.body));
     expect(body).toEqual({ sourceCollectionId: "src_drive_001", scanBatchId: "scan_001" });
     expect(JSON.stringify(body)).not.toMatch(/workspace|storage|sqlite|blobRoot/i);
+  });
+
+  it("sends the live source registration contract while stripping workspace storage paths", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse(200, { ok: true, review: reviewDto(), eventIds: ["evt_source"] })
+    );
+    const adapter = createHttpIngestionWorkspaceAdapter({ fetcher });
+    const input = {
+      sourceCollectionId: "src_drive_001",
+      label: "Old archive",
+      rootUri: "file:///Volumes/OldArchive",
+      sourceRoot: "/Volumes/OldArchive",
+      workspaceRoot: "/Volumes/Cestus"
+    };
+
+    await adapter.registerSource(input);
+
+    const init = fetcher.mock.calls[0]?.[1] as RequestInit | undefined;
+    expect(fetcher.mock.calls[0]?.[0]).toBe("/api/ingestion/sources");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      sourceCollectionId: "src_drive_001",
+      label: "Old archive",
+      rootUri: "file:///Volumes/OldArchive",
+      sourceRoot: "/Volumes/OldArchive"
+    });
+  });
+
+  it("accepts retry job successes without requiring a review DTO", async () => {
+    const job = {
+      jobId: "parse_001",
+      kind: "local-parse",
+      state: "queued",
+      retryable: false,
+      sourceCollectionId: "src_drive_001",
+      diagnosticIds: []
+    };
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse(200, { ok: true, job, eventIds: ["evt_retry"] })
+    );
+    const adapter = createHttpIngestionWorkspaceAdapter({ fetcher });
+
+    await expect(adapter.retryJob({ jobId: "parse_001" })).resolves.toEqual({
+      ok: true,
+      job,
+      eventIds: ["evt_retry"]
+    });
   });
 });
 

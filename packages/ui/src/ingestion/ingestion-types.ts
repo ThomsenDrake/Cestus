@@ -68,6 +68,8 @@ export interface IngestionWorkspaceDto {
 export interface RegisterSourceInput {
   readonly sourceCollectionId: string;
   readonly label: string;
+  readonly rootUri: string;
+  readonly sourceRoot: string;
 }
 
 export interface DryRunScanInput {
@@ -134,6 +136,18 @@ export type IngestionActionResult =
         readonly duplicatesReused: number;
         readonly skipped: number;
       };
+    }
+  | {
+      readonly ok: false;
+      readonly error: IngestionRuntimeError;
+    };
+
+export type IngestionJobActionResult =
+  | {
+      readonly ok: true;
+      readonly job: IngestionJobDto;
+      readonly review?: IngestionReviewDto;
+      readonly eventIds: readonly string[];
     }
   | {
       readonly ok: false;
