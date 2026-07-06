@@ -448,3 +448,24 @@ factory-readiness passed
 ```
 
 Legacy import remains recon-first. Every legacy file is evidence first, ontology staging can only append evidence-tied `assertion.proposed`, and accepted assertion, entity, relationship, or resolution events are forbidden during import. The readiness evidence is evidence-first and asserts only behavior proposed, reviewed, and verified through the completed legacy import slice.
+
+## Legacy Cestus Operator CLI Plan Readiness
+
+The legacy Cestus operator CLI plan was prepared from the approved design spec on 2026-07-06.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-06-legacy-cestus-operator-cli-design.md`
+- `docs/superpowers/plans/2026-07-06-legacy-cestus-operator-cli-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded targeted command evidence from the implementation slice:
+
+```text
+npm test -- packages/ingestion/test/legacy-runtime-types.test.ts packages/ingestion/test/portable-mount.test.ts packages/ingestion/test/legacy-claim-parser.test.ts packages/ingestion/test/legacy-runtime.test.ts packages/ingestion/test/legacy-cli-workflow.test.ts packages/ingestion/test/legacy-cli.test.ts packages/ingestion/test/cli.test.ts
+npm run ingestion:help
+npm run verify
+```
+
+The operator workflow remains recon-first, evidence-first, human-gated, and forbidden from accepted graph events. Raw import is approval/import split: approval records intent only, and import execution uses stale-source verification before blob writes. Staging preview is source-scoped and evidence-tied, staging approval requires selected human-approved candidate IDs, and staging execution can append only `assertion.proposed`.
