@@ -14,7 +14,7 @@ let dir: string;
 const reportHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
 const humanActor = { id: "actor_investigator", kind: "human" as const, label: "Investigator" };
 const systemActor = { id: "actor_system", kind: "system" as const, label: "Legacy stager" };
-const evidenceContentHash = "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const;
+const evidenceContentHash = sha256(evidenceContentFor("ev_legacy_metadata"));
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "legacy-staging-"));
@@ -184,6 +184,37 @@ describe("LegacyOntologyStagingService", () => {
     ]);
   });
 
+  it("rejects staged evidence whose content hash does not match the reviewed candidate", async () => {
+    const ledger = new InMemoryEventLedger();
+    await ingestEvidence(ledger, "ev_legacy_metadata");
+    await ingestEvidence(ledger, "ev_unrelated_metadata");
+    const service = new LegacyOntologyStagingService({ ledger, actor: humanActor });
+    const reviewedCandidates = [candidate("legacy_candidate_001", "ev_legacy_metadata")];
+    const stagingIdentity = stagingIdentityFor(reviewedCandidates);
+    const swappedEvidenceCandidates = [{
+      ...candidate("legacy_candidate_001", "ev_unrelated_metadata")
+    }];
+
+    await service.approveStaging({
+      ...stagingIdentity,
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: ["legacy_candidate_001"]
+    });
+
+    await expect(
+      service.stageApprovedAssertions({
+        ...stagingIdentity,
+        candidates: swappedEvidenceCandidates
+      })
+    ).rejects.toThrow(/content hash mismatch/i);
+
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "evidence.ingested",
+      "evidence.ingested",
+      "legacy.ontology.staging.approved"
+    ]);
+  });
+
   it("proposes only approved candidate IDs and skips unapproved candidates", async () => {
     const ledger = new InMemoryEventLedger();
     await ingestEvidence(ledger, "ev_legacy_metadata");
@@ -275,11 +306,15 @@ function candidate(candidateId: string, evidenceId: string) {
 async function ingestEvidence(ledger: InMemoryEventLedger, evidenceId: string) {
   await new EvidenceService({ ledger, blobStore: new FileBlobStore(dir) }).ingest({
     evidenceId,
-    content: Buffer.from(`legacy metadata fixture for ${evidenceId}`),
+    content: Buffer.from(evidenceContentFor(evidenceId)),
     mediaType: "application/json",
     source: { kind: "file", label: "ontology/claims.json" },
     actor: systemActor
   });
+}
+
+function evidenceContentFor(evidenceId: string): string {
+  return `legacy metadata fixture for ${evidenceId}`;
 }
 
 function legacyAssertionId(input: ReturnType<typeof stagingIdentityFor>, candidateId: string) {
