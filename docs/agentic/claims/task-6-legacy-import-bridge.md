@@ -6,7 +6,7 @@
 - Branch: `codex/legacy-cestus-import`
 - Worktree: `/home/drake/.codex/worktrees/9b5f/Cestus`
 - Claimed at: `2026-07-06T15:00:22Z`
-- Status: `ready-for-review`
+- Status: `approved`
 
 ## Owned Files
 
@@ -21,6 +21,14 @@
 - Red targeted test: `npm test -- packages/ingestion/test/legacy-import-service.test.ts` failed because `../src/legacy-import-service.js` could not be resolved.
 - Green targeted test: `npm test -- packages/ingestion/test/legacy-import-service.test.ts` passed with 1 test file and 2 tests.
 - Full verification: `npm run verify` passed with typecheck, 75 test files and 617 tests, UI build, and factory readiness.
+- Review fix: `a4e22c2 test: whitelist legacy raw import events` tightened the successful import test to assert the exact raw-import event surface and evidence-link occurrence mapping.
+- Post-fix targeted test: `npm test -- packages/ingestion/test/legacy-import-service.test.ts packages/ingestion/test/import-service.test.ts` passed with 2 test files and 9 tests.
+- Post-fix full verification: `npm run verify` passed with typecheck, 75 test files and 617 tests, UI build, and factory readiness.
+
+## Review Gate
+
+- Spec review: approved at 2026-07-06T15:18:29Z; no blocking issues after event-surface test hardening.
+- Code-quality review: approved at 2026-07-06T15:18:29Z; no Critical, Important, or Minor issues remaining.
 
 ## Self-Review
 
