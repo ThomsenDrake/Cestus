@@ -14,6 +14,44 @@ export const secretSafeWorkspaceTextSchema = z.string().min(1).refine(isSecretSa
   message: "workspace ops text must not contain secrets"
 });
 
+function findSecretPath(value: unknown, path: Array<string | number> = []): Array<string | number> | undefined {
+  if (typeof value === "string") {
+    return isSecretSafeWorkspaceText(value) ? undefined : path;
+  }
+
+  if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index += 1) {
+      const secretPath = findSecretPath(value[index], [...path, index]);
+      if (secretPath !== undefined) {
+        return secretPath;
+      }
+    }
+    return undefined;
+  }
+
+  if (value !== null && typeof value === "object") {
+    for (const [key, nestedValue] of Object.entries(value)) {
+      const secretPath = findSecretPath(nestedValue, [...path, key]);
+      if (secretPath !== undefined) {
+        return secretPath;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+const workspacePayloadSchema = z.unknown().superRefine((value, ctx) => {
+  const secretPath = findSecretPath(value);
+  if (secretPath !== undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: secretPath,
+      message: "workspace ops payload must not contain secrets"
+    });
+  }
+});
+
 export const workspaceOpsStatusSchema = z.enum(["ready", "degraded", "blocked"]);
 export type WorkspaceOpsStatus = z.infer<typeof workspaceOpsStatusSchema>;
 
@@ -46,7 +84,7 @@ export const workspaceDiagnosticSchema = z.object({
   ]),
   message: secretSafeWorkspaceTextSchema,
   durable: z.boolean(),
-  relatedIds: z.array(z.string().min(1)).default([]),
+  relatedIds: z.array(secretSafeWorkspaceTextSchema).default([]),
   repairHint: z.object({
     allowedNextCommands: z.array(workspaceCommandSchema).min(1),
     requiresHumanApproval: z.boolean()
@@ -115,7 +153,7 @@ export const workspaceOpsEnvelopeSchema = z.object({
   ok: z.boolean(),
   status: workspaceOpsStatusSchema,
   workspace: workspaceRefSchema.optional(),
-  payload: z.unknown().optional(),
+  payload: workspacePayloadSchema.optional(),
   diagnostics: z.array(workspaceDiagnosticSchema),
   proposedActions: z.array(proposedRepairActionSchema)
 }).strict().superRefine((envelope, ctx) => {
