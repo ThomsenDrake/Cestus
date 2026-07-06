@@ -6,7 +6,7 @@ Worker: Codex implementing agent for this task
 Branch: `codex/portable-workspace-ops-design` in an existing task-scoped worktree
 Worktree: `/home/drake/.codex/worktrees/797e/Cestus`
 Claimed-at: 2026-07-06T19:55:21Z
-Status: claimed
+Status: in-progress
 
 Owned files:
 - `scripts/check-agent-readiness.mjs`
