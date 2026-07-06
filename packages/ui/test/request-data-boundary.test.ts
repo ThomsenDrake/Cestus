@@ -11,6 +11,8 @@ describe("Requests data boundary", () => {
   const requestModalPlanPath = "docs/superpowers/plans/2026-07-04-requests-detail-modal-implementation.md";
   const durableRuntimeSpecPath = "docs/superpowers/specs/2026-07-05-durable-local-prr-runtime-design.md";
   const durableRuntimePlanPath = "docs/superpowers/plans/2026-07-05-durable-local-prr-runtime-implementation.md";
+  const ingestionRuntimeSpecPath = "docs/superpowers/specs/2026-07-06-ingestion-runtime-wiring-design.md";
+  const ingestionRuntimePlanPath = "docs/superpowers/plans/2026-07-06-ingestion-runtime-wiring-implementation.md";
   const productUiBoundaryFiles = listSourceFiles("packages/ui/src");
   const forbiddenProductUiImportPatterns = [
     /(?:^|\/)request-fixtures(?:\.js)?$/,
@@ -94,6 +96,7 @@ describe("Requests data boundary", () => {
     expect(requiredFiles).toEqual(expect.arrayContaining([ledgerBackedSpecPath, ledgerBackedPlanPath]));
     expect(requiredFiles).toEqual(expect.arrayContaining([requestModalSpecPath, requestModalPlanPath]));
     expect(requiredFiles).toEqual(expect.arrayContaining([durableRuntimeSpecPath, durableRuntimePlanPath]));
+    expect(requiredFiles).toEqual(expect.arrayContaining([ingestionRuntimeSpecPath, ingestionRuntimePlanPath]));
   });
 });
 
