@@ -30,7 +30,18 @@ Status: ready-for-review
 
 ## Supporting Edits
 
-- None outside the Task 5 allowed write scope.
+- Final review fix support edit: `packages/local-runtime/src/cli.ts` preserves an existing portable `expectedWorkspaceId` when `configure` runs without `--workspace-id` and the effective workspace root is unchanged. This file was outside the original Task 5 write scope but was required to fix the final review finding.
+
+## Final Review Fix Evidence
+
+- Targeted red command: `npm test -- packages/local-runtime/test/cli.test.ts`
+  - Result: failed as expected before implementation; 1 test file failed, 2 tests failed and 23 passed. The same-root configure paths rewrote `expectedWorkspaceId` from `ws_expected_case` to the swapped manifest ID `ws_actual_swapped`.
+- Focused green command: `npm test -- packages/local-runtime/test/cli.test.ts`
+  - Result: passed after implementation; 1 test file passed, 25 tests passed.
+- Targeted green command: `npm test -- packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/http-handler.test.ts`
+  - Result: passed; 3 test files passed, 50 tests passed.
+- Full verification: `npm run verify`
+  - Result: passed; typecheck passed, 92 test files passed, 851 tests passed, UI build succeeded, factory-readiness passed.
 
 ## Review
 

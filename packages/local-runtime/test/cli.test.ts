@@ -419,6 +419,80 @@ describe("runLocalRuntimeCli", () => {
     expect(configureStdout.join("\n")).toContain(`"expectedWorkspaceId": "${created.workspace.workspaceId}"`);
   });
 
+  it("preserves expected portable workspace identity when unrelated configure runs after a drive swap", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    writeLocalRuntimeOnboardingConfig({
+      cwd: tempDir,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "case",
+      expectedWorkspaceId: "ws_expected_case"
+    });
+    createPortableWorkspace({
+      rootDir: join(tempDir, "case"),
+      workspaceId: "ws_actual_swapped",
+      label: "Actual Swapped Workspace",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "local-runtime-test"
+    });
+
+    const exitCode = await runLocalRuntimeCli(["configure", "--port", "8799"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+    const configText = readFileSync(join(tempDir, ".cestus/local/runtime.config.json"), "utf8");
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    expect(stdout.join("\n")).toContain('"port": 8799');
+    expect(stdout.join("\n")).toContain('"expectedWorkspaceId": "ws_expected_case"');
+    expect(stdout.join("\n")).not.toContain("ws_actual_swapped");
+    expect(configText).toContain('"expectedWorkspaceId": "ws_expected_case"');
+    expect(configText).not.toContain("ws_actual_swapped");
+  });
+
+  it("preserves expected portable workspace identity when configure repeats the same workspace root", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    writeLocalRuntimeOnboardingConfig({
+      cwd: tempDir,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "case",
+      expectedWorkspaceId: "ws_expected_case"
+    });
+    createPortableWorkspace({
+      rootDir: join(tempDir, "case"),
+      workspaceId: "ws_actual_swapped",
+      label: "Actual Swapped Workspace",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "local-runtime-test"
+    });
+
+    const exitCode = await runLocalRuntimeCli(["configure", "--workspace", "case", "--port", "8799"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+    const configText = readFileSync(join(tempDir, ".cestus/local/runtime.config.json"), "utf8");
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    expect(stdout.join("\n")).toContain('"workspaceRoot": "case"');
+    expect(stdout.join("\n")).toContain('"expectedWorkspaceId": "ws_expected_case"');
+    expect(stdout.join("\n")).not.toContain("ws_actual_swapped");
+    expect(configText).toContain('"expectedWorkspaceId": "ws_expected_case"');
+    expect(configText).not.toContain("ws_actual_swapped");
+  });
+
   it("requires --workspace-id when portable configure cannot read the workspace manifest", async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];

@@ -318,6 +318,17 @@ function resolveConfigureFlags(
     return flags;
   }
 
+  if (
+    existing?.storage?.strategy === "portable-workspace" &&
+    existing.storage.expectedWorkspaceId !== undefined &&
+    workspaceRootsMatch(effectiveWorkspaceRoot, existing.storage.workspaceRoot, dependencies)
+  ) {
+    return {
+      ...flags,
+      expectedWorkspaceId: existing.storage.expectedWorkspaceId
+    };
+  }
+
   const rootDir = resolve(dependencies.cwd ?? process.cwd(), effectiveWorkspaceRoot);
   try {
     const manifest = readPortableWorkspaceManifest({
@@ -332,6 +343,18 @@ function resolveConfigureFlags(
       "portable-workspace configure requires --workspace-id or a readable workspace manifest"
     );
   }
+}
+
+function workspaceRootsMatch(
+  effectiveWorkspaceRoot: string,
+  existingWorkspaceRoot: string | undefined,
+  dependencies: LocalRuntimeCliDependencies
+): boolean {
+  if (existingWorkspaceRoot === undefined) {
+    return false;
+  }
+  const cwd = dependencies.cwd ?? process.cwd();
+  return resolve(cwd, effectiveWorkspaceRoot) === resolve(cwd, existingWorkspaceRoot);
 }
 
 function parseCreateWorkspaceArgs(argv: readonly string[]) {
