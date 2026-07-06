@@ -6,7 +6,7 @@
 - Branch: `codex/operator-workspace-status-import-bridge`
 - Worktree: `/home/drake/.codex/worktrees/7234/Cestus`
 - Claimed at: `2026-07-06T22:29:19Z`
-- Status: claimed
+- Status: in-progress
 
 ## Owned Files
 
@@ -18,4 +18,6 @@
 
 ## Evidence
 
-- Claim commit: pending.
+- `2026-07-06T22:29:32Z`: Claim moved to in-progress before writing UI adapter tests or implementation.
+- Claim commit: `e9fc5f1 chore: claim task 3 operator status UI adapter`.
+- Start commit: pending.
