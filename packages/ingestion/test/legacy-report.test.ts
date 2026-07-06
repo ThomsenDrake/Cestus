@@ -135,6 +135,43 @@ describe("legacy migration report", () => {
     expect(event.payload).not.toHaveProperty("entityIds");
     expect(event.payload).not.toHaveProperty("relationshipIds");
   });
+
+  it("uses full report material for report ids so same candidate sets do not collide", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new LegacyMigrationReportService({
+      ledger,
+      reportStore: new FileBlobStore(dir),
+      actor: { id: "actor_system", kind: "system", label: "Legacy reporter" }
+    });
+    const first = buildLegacyMigrationReport({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      files: [claimFile()],
+      detections: [claimDetection()],
+      proposedAssertionCandidates: [legacyCandidate("legacy_candidate_001")],
+      quarantineEntries: []
+    });
+    const second = buildLegacyMigrationReport({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      files: [claimFile(), rawFile()],
+      detections: [claimDetection()],
+      proposedAssertionCandidates: [legacyCandidate("legacy_candidate_001")],
+      quarantineEntries: [staleReferenceQuarantine()]
+    });
+
+    expect(first.candidateSetHash).toBe(second.candidateSetHash);
+    expect(first.legacyReportId).not.toBe(second.legacyReportId);
+    expect(first.reportHash).not.toBe(second.reportHash);
+
+    const firstEvent = await service.recordReport(first);
+    const secondEvent = await service.recordReport(second);
+    const events = await ledger.readAll();
+
+    expect(firstEvent.streamId).not.toBe(secondEvent.streamId);
+    expect(events).toHaveLength(2);
+    expect([firstEvent.payload.reportHash, secondEvent.payload.reportHash]).toEqual([first.reportHash, second.reportHash]);
+  });
 });
 
 function rawFile(): LegacyInspectedFile {

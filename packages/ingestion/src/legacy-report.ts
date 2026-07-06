@@ -107,17 +107,18 @@ export class LegacyMigrationReportService {
 }
 
 export function buildLegacyMigrationReport(input: BuildLegacyMigrationReportInput): LegacyMigrationReport {
+  const sortedFiles = sortFiles(input.files);
+  const sortedDetections = sortDetections(input.detections);
   const sortedCandidates = sortProposedAssertionCandidates(input.proposedAssertionCandidates);
+  const sortedQuarantineEntries = sortQuarantineEntries(input.quarantineEntries);
   const candidateSetHash = sha256(stableJson(sortedCandidates));
-  const legacyReportId = `legacy_report_${sha256Hex(`${input.sourceCollectionId}:${input.scanBatchId}:${candidateSetHash}`)}`;
-  const reportWithoutHash = {
+  const reportMaterial = {
     sourceCollectionId: input.sourceCollectionId,
     scanBatchId: input.scanBatchId,
-    files: sortFiles(input.files),
-    detections: sortDetections(input.detections),
+    files: sortedFiles,
+    detections: sortedDetections,
     proposedAssertionCandidates: sortedCandidates,
-    quarantineEntries: sortQuarantineEntries(input.quarantineEntries),
-    legacyReportId,
+    quarantineEntries: sortedQuarantineEntries,
     candidateSetHash,
     generatedAt,
     generator,
@@ -133,6 +134,11 @@ export function buildLegacyMigrationReport(input: BuildLegacyMigrationReportInpu
       "Review proposed assertion candidates before ontology staging",
       "Keep candidate entity resolution and relationship material in the report"
     ]
+  };
+  const legacyReportId = `legacy_report_${sha256Hex(stableJson(reportMaterial))}`;
+  const reportWithoutHash = {
+    ...reportMaterial,
+    legacyReportId
   } satisfies Omit<LegacyMigrationReport, "reportHash">;
 
   return {
