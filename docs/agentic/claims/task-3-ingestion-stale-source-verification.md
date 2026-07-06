@@ -64,3 +64,12 @@
   - Result: passed; Vitest reported 7 test files passed and 45 tests passed.
 - Full verification command: `npm run verify`
   - Result: passed; typecheck passed, Vitest reported 72 test files passed and 606 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Final Code-Quality Review Duplicate Occurrence Identity Fix Evidence
+
+- Red command: `npm test -- packages/ingestion/test/runtime-import-stale-source.test.ts`
+  - Result: failed as expected with 1 failing test because a forged duplicate occurrence ID that sorted before the deterministic ID imported successfully.
+- Targeted command: `npm test -- packages/ingestion/test/runtime.test.ts packages/ingestion/test/runtime-import-stale-source.test.ts packages/ingestion/test/import-service.test.ts packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts packages/ingestion/test/local-filesystem.test.ts`
+  - Result: passed; Vitest reported 7 test files passed and 46 tests passed.
+- Full verification command: `npm run verify`
+  - Result: passed; typecheck passed, Vitest reported 72 test files passed and 607 tests passed, Vite build succeeded, and factory readiness passed.

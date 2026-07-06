@@ -98,6 +98,9 @@ export function materializeApprovedOccurrences(
     if (currentItem?.content === undefined) {
       return isArchiveOccurrence(occurrence) ? archiveMismatchError() : sourceChangedError();
     }
+    if (currentItem.occurrenceId !== occurrence.occurrenceId) {
+      return isArchiveOccurrence(occurrence) ? archiveMismatchError() : sourceChangedError();
+    }
 
     materialized.push({
       occurrenceId: occurrence.occurrenceId,
@@ -126,7 +129,7 @@ function approvedInventoryFor(occurrences: readonly IngestionOccurrenceSummary[]
       }
 
       archiveContainerHashes.set(occurrence.containerPath, occurrence.containerHash);
-      items.set(inventoryKeyForOccurrence(occurrence), {
+      const item: InventoryItem = {
         key: inventoryKeyForOccurrence(occurrence),
         kind: "archive-child",
         occurrenceId: occurrence.occurrenceId,
@@ -139,9 +142,13 @@ function approvedInventoryFor(occurrences: readonly IngestionOccurrenceSummary[]
         containerHash: occurrence.containerHash,
         internalPath: occurrence.internalPath,
         archiveAdapter: occurrence.archiveAdapter
-      });
+      };
+      const duplicate = rememberApprovedItem(items, item);
+      if (!duplicate.ok) {
+        return duplicate;
+      }
     } else {
-      items.set(inventoryKeyForOccurrence(occurrence), {
+      const item: InventoryItem = {
         key: inventoryKeyForOccurrence(occurrence),
         kind: "regular",
         occurrenceId: occurrence.occurrenceId,
@@ -150,11 +157,43 @@ function approvedInventoryFor(occurrences: readonly IngestionOccurrenceSummary[]
         sizeBytes: occurrence.sizeBytes,
         materializedSourcePath: occurrence.sourcePath,
         mediaTypePath: occurrence.sourcePath
-      });
+      };
+      const duplicate = rememberApprovedItem(items, item);
+      if (!duplicate.ok) {
+        return duplicate;
+      }
     }
   }
 
   return { ok: true, items, archiveContainerHashes };
+}
+
+function rememberApprovedItem(
+  items: Map<string, InventoryItem>,
+  item: InventoryItem
+): { readonly ok: true } | { readonly ok: false; readonly error: IngestionRuntimeError } {
+  const existing = items.get(item.key);
+
+  if (existing !== undefined && !approvedItemsMatch(existing, item)) {
+    return item.kind === "archive-child" ? archiveMismatchError() : sourceChangedError();
+  }
+
+  items.set(item.key, item);
+  return { ok: true };
+}
+
+function approvedItemsMatch(left: InventoryItem, right: InventoryItem): boolean {
+  return left.kind === right.kind &&
+    left.occurrenceId === right.occurrenceId &&
+    left.contentHash === right.contentHash &&
+    left.sizeBytes === right.sizeBytes &&
+    left.materializedSourcePath === right.materializedSourcePath &&
+    left.mediaTypePath === right.mediaTypePath &&
+    left.containerPath === right.containerPath &&
+    left.containerHash === right.containerHash &&
+    left.internalPath === right.internalPath &&
+    left.archiveAdapter?.name === right.archiveAdapter?.name &&
+    left.archiveAdapter?.version === right.archiveAdapter?.version;
 }
 
 function currentInventoryFor(
