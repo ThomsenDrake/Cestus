@@ -48,3 +48,6 @@ Repair evidence:
 - Array and projection mode repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 2 failing regressions covering accessor-backed array entries and projection command/mode mismatches.
 - Array and projection mode repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 22 tests passed, including representative `detect drive` payload dispatch coverage.
 - Array and projection mode repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 607 tests passed, UI build succeeded, and factory-readiness passed.
+- Full DTO safety repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 2 failing regressions covering accessor-backed arrays outside payload and secret-shaped identifiers.
+- Full DTO safety repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 24 tests passed.
+- Full DTO safety repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 609 tests passed, UI build succeeded, and factory-readiness passed.
