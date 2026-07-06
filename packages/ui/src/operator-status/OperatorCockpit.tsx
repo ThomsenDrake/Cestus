@@ -62,7 +62,7 @@ export function OperatorCockpit({ status, onNavigate, onRefresh, title = "Operat
           <SummaryMetric label="Degraded" value={status.summary.degradedCount} tone="text-[var(--signal-amber)]" />
         </div>
       </div>
-      <div className="grid gap-3 lg:grid-cols-4">
+      <div role="tablist" aria-label="Operator status bands" className="grid gap-3 lg:grid-cols-4">
         {sections.map((section) => (
           <OperatorStatusBand
             key={section.sectionId}
@@ -70,6 +70,9 @@ export function OperatorCockpit({ status, onNavigate, onRefresh, title = "Operat
             primaryAction={primaryActionForSection(section, actionsById)}
             selected={section.sectionId === selectedSection.sectionId}
             onSelect={setSelectedSectionId}
+            onKeyboardNavigate={(sectionId, direction) =>
+              setSelectedSectionId(sectionIdForKeyboardNavigation(sections, sectionId, direction))
+            }
           />
         ))}
       </div>
@@ -134,4 +137,34 @@ function primaryActionForSection(
   actionsById: ReadonlyMap<string, OperatorSafeActionDto>
 ): OperatorSafeActionDto | undefined {
   return actionsForSection(section, actionsById)[0];
+}
+
+function sectionIdForKeyboardNavigation(
+  sections: readonly OperatorStatusSectionDto[],
+  sectionId: OperatorStatusSectionDto["sectionId"],
+  direction: "first" | "last" | "next" | "previous"
+): OperatorStatusSectionDto["sectionId"] {
+  if (sections.length === 0) {
+    return sectionId;
+  }
+
+  if (direction === "first") {
+    return sections[0]?.sectionId ?? sectionId;
+  }
+
+  if (direction === "last") {
+    return sections[sections.length - 1]?.sectionId ?? sectionId;
+  }
+
+  const currentIndex = sections.findIndex((section) => section.sectionId === sectionId);
+  if (currentIndex === -1) {
+    return sections[0]?.sectionId ?? sectionId;
+  }
+
+  const nextIndex =
+    direction === "next"
+      ? (currentIndex + 1) % sections.length
+      : (currentIndex - 1 + sections.length) % sections.length;
+
+  return sections[nextIndex]?.sectionId ?? sectionId;
 }

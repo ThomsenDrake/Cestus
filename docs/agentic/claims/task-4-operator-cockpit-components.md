@@ -28,6 +28,11 @@
 - Final targeted test: `npm test -- packages/ui/test/operator-cockpit.test.tsx packages/ui/test/visual-contract.test.ts` passed with 2 test files and 11 tests.
 - Full verification: `npm run verify` passed with typecheck, 97 test files and 856 tests, UI build, and factory readiness.
 - `2026-07-06T23:07:04Z`: Status moved to ready-for-review after RED, GREEN, final targeted verification, and full verification evidence.
+- Spec-review RED targeted test: `npm test -- packages/ui/test/operator-cockpit.test.tsx` failed with 6 failures because status bands still exposed `button` roles and no `tablist` or `tab` roles existed.
+- Spec-review GREEN targeted test: `npm test -- packages/ui/test/operator-cockpit.test.tsx` passed with 1 test file and 8 tests after making status bands non-button tabs.
+- Spec-review targeted test: `npm test -- packages/ui/test/operator-cockpit.test.tsx packages/ui/test/visual-contract.test.ts` passed with 2 test files and 13 tests.
+- Spec-review full verification: `npm run verify` passed with typecheck, 97 test files and 858 tests, UI build, and factory readiness.
+- `2026-07-06T23:13:48Z`: Status remains ready-for-review after fixing status-band button-role drift.
 
 ## Self-Review
 
@@ -35,4 +40,5 @@
 - `OperatorCockpit` owns selected section state and defaults to the section referenced by `summary.nextSafeActionId` when available.
 - `OperatorStatusBand` renders dense status, headline, metric, and primary safe-action label panels using existing console tokens.
 - `OperatorStatusDetail` renders diagnostics, source evidence, command descriptors, and safe controls; show-command actions are display-only `<code>` text.
+- Status bands now use non-button `role="tab"` elements inside an `Operator status bands` tablist with click, Enter, Space, arrow, Home, and End selection support.
 - Navigation and refresh actions are the only rendered controls; no PRR send, legal escalation, workspace repair, accepted assertion, ontology staging, canonical mutation, or runtime wiring behavior was added.
