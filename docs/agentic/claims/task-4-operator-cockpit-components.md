@@ -6,7 +6,7 @@
 - Branch: `codex/operator-workspace-status-import-bridge`
 - Worktree: `/home/drake/.codex/worktrees/7234/Cestus`
 - Claimed at: `2026-07-06T23:01:52Z`
-- Status: claimed
+- Status: in-progress
 
 ## Owned Files
 
@@ -19,7 +19,8 @@
 
 ## Evidence
 
-- Claim commit: pending.
+- Claim commit: `3cd11bb chore: claim task 4 operator cockpit components`.
+- `2026-07-06T23:02:11Z`: Status moved to in-progress before writing cockpit component tests or implementation.
 
 ## Self-Review
 
