@@ -116,4 +116,47 @@ describe("workspace ops contracts", () => {
   it("does not format invalid workspace ops JSON envelopes", () => {
     expect(() => formatWorkspaceOpsJson({ not: "a workspace ops envelope" })).toThrow();
   });
+
+  it("rejects secret-shaped diagnostic related ids", () => {
+    expect(() =>
+      createWorkspaceOpsEnvelope({
+        command: "diagnostics inspect",
+        status: "blocked",
+        diagnostics: [
+          {
+            diagnosticId: "diag_related_secret",
+            severity: "error",
+            category: "diagnostics",
+            message: "Related diagnostic reference is unsafe.",
+            durable: false,
+            relatedIds: ["access_token=abc123"],
+            repairHint: {
+              allowedNextCommands: ["diagnostics inspect"],
+              requiresHumanApproval: true
+            }
+          }
+        ]
+      })
+    ).toThrow("secret");
+  });
+
+  it("rejects secret-shaped strings inside generic payloads before formatting", () => {
+    const unsafeEnvelope = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      command: "verify workspace",
+      ok: true,
+      status: "ready",
+      payload: {
+        mountStatus: {
+          status: "available",
+          safeMessage: "access_token=abc123"
+        }
+      },
+      diagnostics: [],
+      proposedActions: []
+    };
+
+    expect(() => workspaceOpsEnvelopeSchema.parse(unsafeEnvelope)).toThrow("secret");
+    expect(() => formatWorkspaceOpsJson(unsafeEnvelope)).toThrow("secret");
+  });
 });
