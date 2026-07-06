@@ -6,6 +6,8 @@ const operations = {
   verifyWorkspace: runNodeWorkspaceOperation,
   diskUsage: runNodeWorkspaceOperation,
   detectDrive: runNodeWorkspaceOperation,
+  projectionRebuildReadiness: runNodeWorkspaceOperation,
+  projectionRebuild: runNodeWorkspaceOperation,
   diagnosticsInspect: runNodeWorkspaceOperation,
   manifestExport: runNodeWorkspaceOperation,
   backupCheck: runNodeWorkspaceOperation
