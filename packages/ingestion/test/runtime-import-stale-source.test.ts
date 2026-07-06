@@ -140,6 +140,54 @@ describe("IngestionRuntime stale-source import verification", () => {
     expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual([]);
   });
 
+  it("rejects approved regular occurrence IDs that do not match scanner identity before blob writes", async () => {
+    const { workspace, runtime } = await preparedRuntime({ "a.txt": "alpha" });
+    const [occurrence] = [...buildIngestionProjection(await workspace.ledger.readAll()).occurrencesById.values()];
+    if (occurrence === undefined) {
+      throw new Error("Expected prepared runtime to observe one occurrence");
+    }
+
+    await workspace.ledger.append({
+      type: "ingestion.occurrence.observed",
+      version: 1,
+      streamId: "ingestion_scan_scan_001",
+      context: {
+        actor,
+        occurredAt: "2026-07-06T15:00:00.000Z",
+        correlationId: "corr_scan_001",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+      },
+      payload: {
+        occurrenceId: "occ_wrong_identity",
+        scanBatchId: occurrence.scanBatchId,
+        sourceCollectionId: occurrence.sourceCollectionId,
+        contentHash: occurrence.contentHash,
+        sourcePath: occurrence.sourcePath,
+        sizeBytes: occurrence.sizeBytes,
+        observedAt: "2026-07-06T15:00:00.000Z",
+        status: occurrence.status,
+        adapter: { name: "local-filesystem", version: "0.1.0" }
+      }
+    });
+    await approve(runtime);
+
+    const result = await runtime.importApproved({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001",
+      importBatchId: "imp_001"
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_SOURCE_CHANGED_SINCE_APPROVAL" }
+    });
+    const events = await workspace.ledger.readAll();
+    expectStableSourceDiagnostic(events, result);
+    expectNoImportWrites(events);
+    expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual([]);
+  });
+
   it("rejects changed archive container hashes before blob writes", async () => {
     const { workspace, runtime, sourceRoot } = await preparedRuntimeWithArchive({ "folder/a.txt": "alpha" });
     await approve(runtime);

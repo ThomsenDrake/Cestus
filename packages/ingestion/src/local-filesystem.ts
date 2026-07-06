@@ -132,7 +132,7 @@ export class LocalFilesystemScanner {
             observedByteTotal += child.content.byteLength;
 
             const occurrence: LocalFilesystemOccurrence = {
-              occurrenceId: stableOccurrenceId(
+              occurrenceId: stableLocalFilesystemOccurrenceId(
                 {
                   kind: "archive-child",
                   sourceCollectionId: input.sourceCollectionId,
@@ -186,7 +186,7 @@ export class LocalFilesystemScanner {
       observedByteTotal += stat.size;
 
       const occurrence: LocalFilesystemOccurrence = {
-        occurrenceId: stableOccurrenceId({
+        occurrenceId: stableLocalFilesystemOccurrenceId({
           kind: "file",
           sourceCollectionId: input.sourceCollectionId,
           scanBatchId: input.scanBatchId,
@@ -370,7 +370,7 @@ function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-type OccurrenceIdMaterial = {
+export type StableLocalFilesystemOccurrenceIdInput = {
   kind: "file";
   sourceCollectionId: string;
   scanBatchId: string;
@@ -387,7 +387,7 @@ type OccurrenceIdMaterial = {
   contentHash: string;
 };
 
-function stableOccurrenceId(material: OccurrenceIdMaterial): string {
+export function stableLocalFilesystemOccurrenceId(material: StableLocalFilesystemOccurrenceIdInput): string {
   return `occ_${createHash("sha256").update(JSON.stringify(material)).digest("hex")}`;
 }
 
