@@ -1,4 +1,8 @@
-import { formatWorkspaceOpsJson, type WorkspaceOpsEnvelope } from "./contracts.js";
+import {
+  formatWorkspaceOpsJson,
+  isSecretSafeWorkspaceText,
+  type WorkspaceOpsEnvelope
+} from "./contracts.js";
 
 type WorkspaceOpsCliOperation = (input: WorkspaceOpsCliOperationContext) => Promise<WorkspaceOpsEnvelope>;
 
@@ -115,7 +119,7 @@ function normalizeCommand(argv: readonly string[]):
   if (first === "manifest" && second === "export") return { kind: "supported", command: "manifest export" };
   if (first === "backup" && second === "check") return { kind: "supported", command: "backup check" };
 
-  return { kind: "unsupported", command: argv.join(" ") };
+  return { kind: "unsupported", command: safeCommandSummary(argv) };
 }
 
 function operationFor(
@@ -183,6 +187,19 @@ function operationFailed(command: string): WorkspaceOpsCliErrorOutput {
 
 function formatWorkspaceOpsCliJson(value: WorkspaceOpsCliErrorOutput): string {
   return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function safeCommandSummary(argv: readonly string[], baseCommand?: string): string {
+  const command = argv.join(" ");
+  if (command.length === 0) {
+    return baseCommand ?? "unsupported command";
+  }
+
+  if (isSecretSafeWorkspaceText(command)) {
+    return command;
+  }
+
+  return baseCommand === undefined ? "unsupported command" : `${baseCommand} [redacted]`;
 }
 
 interface WorkspaceOpsCliErrorOutput {

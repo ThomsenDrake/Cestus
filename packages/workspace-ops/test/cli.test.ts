@@ -138,6 +138,27 @@ describe("runWorkspaceOpsCli", () => {
     });
   });
 
+  it("redacts secret-shaped argv in unsupported command errors", async () => {
+    const lines: string[] = [];
+    const exitCode = await runWorkspaceOpsCli(["unknown", "--access-token", "abc123"], {
+      stdout: (line) => lines.push(line),
+      operations: {}
+    });
+
+    const output = lines.join("");
+    expect(exitCode).toBe(1);
+    expect(JSON.parse(output)).toEqual({
+      ok: false,
+      error: {
+        code: "WORKSPACE_OPS_COMMAND_UNSUPPORTED",
+        command: "unsupported command",
+        message: "Unsupported workspace ops command unsupported command."
+      }
+    });
+    expect(output).not.toContain("access-token");
+    expect(output).not.toContain("abc123");
+  });
+
   it("prints stable JSON runtime-wiring errors for supported but uninjected commands", async () => {
     const lines: string[] = [];
     const exitCode = await runWorkspaceOpsCli(["verify", "workspace"], {
@@ -222,6 +243,51 @@ describe("cestus-workspace executable", () => {
           code: "WORKSPACE_OPS_RUNTIME_WIRING_REQUIRED",
           command: "verify workspace --root /workspace",
           message: "Workspace ops executable commands require explicit package wiring; the executable does not use hidden globals."
+        }
+      }, null, 2)}\n`
+    });
+  });
+
+  it("redacts secret-shaped argv in runtime-wiring errors", async () => {
+    await expect(
+      execFileAsync("node", [
+        "packages/workspace-ops/bin/cestus-workspace.mjs",
+        "verify",
+        "workspace",
+        "--access-token",
+        "abc123"
+      ])
+    ).rejects.toMatchObject({
+      code: 1,
+      stdout: "",
+      stderr: `${JSON.stringify({
+        ok: false,
+        error: {
+          code: "WORKSPACE_OPS_RUNTIME_WIRING_REQUIRED",
+          command: "verify workspace [redacted]",
+          message: "Workspace ops executable commands require explicit package wiring; the executable does not use hidden globals."
+        }
+      }, null, 2)}\n`
+    });
+  });
+
+  it("redacts secret-shaped argv in unsupported executable errors", async () => {
+    await expect(
+      execFileAsync("node", [
+        "packages/workspace-ops/bin/cestus-workspace.mjs",
+        "unknown",
+        "--access-token",
+        "abc123"
+      ])
+    ).rejects.toMatchObject({
+      code: 1,
+      stdout: "",
+      stderr: `${JSON.stringify({
+        ok: false,
+        error: {
+          code: "WORKSPACE_OPS_COMMAND_UNSUPPORTED",
+          command: "unsupported command",
+          message: "Unsupported workspace ops command unsupported command."
         }
       }, null, 2)}\n`
     });

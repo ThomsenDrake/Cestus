@@ -28,22 +28,24 @@ if (normalized.kind === "help") {
 }
 
 if (normalized.kind === "unsupported") {
+  const command = safeCommandSummary(args);
   process.stderr.write(formatJson({
     ok: false,
     error: {
       code: "WORKSPACE_OPS_COMMAND_UNSUPPORTED",
-      command: normalized.command,
-      message: `Unsupported workspace ops command ${normalized.command}.`
+      command,
+      message: `Unsupported workspace ops command ${command}.`
     }
   }));
   process.exit(1);
 }
 
+const command = safeCommandSummary(args, normalized.command);
 process.stderr.write(formatJson({
   ok: false,
   error: {
     code: "WORKSPACE_OPS_RUNTIME_WIRING_REQUIRED",
-    command: args.join(" "),
+    command,
     message: "Workspace ops executable commands require explicit package wiring; the executable does not use hidden globals."
   }
 }));
@@ -61,18 +63,37 @@ function normalizeCommand(argv) {
 
   const first = argv[0] ?? "";
   const second = argv[1] ?? "";
-  if (first === "verify" && second === "workspace") return { kind: "supported" };
-  if (first === "disk" && second === "usage") return { kind: "supported" };
-  if (first === "detect" && second === "drive") return { kind: "supported" };
-  if (first === "projection" && second === "rebuild-readiness") return { kind: "supported" };
-  if (first === "projection" && second === "rebuild") return { kind: "supported" };
-  if (first === "diagnostics" && second === "inspect") return { kind: "supported" };
-  if (first === "manifest" && second === "export") return { kind: "supported" };
-  if (first === "backup" && second === "check") return { kind: "supported" };
+  if (first === "verify" && second === "workspace") return { kind: "supported", command: "verify workspace" };
+  if (first === "disk" && second === "usage") return { kind: "supported", command: "disk usage" };
+  if (first === "detect" && second === "drive") return { kind: "supported", command: "detect drive" };
+  if (first === "projection" && second === "rebuild-readiness") {
+    return { kind: "supported", command: "projection rebuild-readiness" };
+  }
+  if (first === "projection" && second === "rebuild") return { kind: "supported", command: "projection rebuild" };
+  if (first === "diagnostics" && second === "inspect") return { kind: "supported", command: "diagnostics inspect" };
+  if (first === "manifest" && second === "export") return { kind: "supported", command: "manifest export" };
+  if (first === "backup" && second === "check") return { kind: "supported", command: "backup check" };
 
   return { kind: "unsupported", command: argv.join(" ") };
 }
 
 function formatJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function safeCommandSummary(argv, baseCommand) {
+  const command = argv.join(" ");
+  if (command.length === 0) {
+    return baseCommand ?? "unsupported command";
+  }
+
+  if (isSecretSafeText(command)) {
+    return command;
+  }
+
+  return baseCommand === undefined ? "unsupported command" : `${baseCommand} [redacted]`;
+}
+
+function isSecretSafeText(value) {
+  return !/(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth|credential)(?:\s*[:=]\s*|\s+)(?=[a-z0-9._~+/=-]{3,})[a-z0-9][a-z0-9._~+/=-]*/i.test(value);
 }
