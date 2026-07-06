@@ -34,3 +34,15 @@ Self-review:
 - Unsupported commands, missing injected operations, and thrown operations return stable JSON errors with exit code 1.
 - The standalone executable exposes help and returns stable JSON errors for operational commands instead of attempting hidden runtime or filesystem work.
 - This task did not modify Task 7 readiness docs/scripts, HTTP/UI runtime code, or portable mount contracts.
+
+Spec review repair evidence:
+- Red: `npm test -- packages/workspace-ops/test/cli.test.ts` exited 1 with 3 failing regressions proving secret-shaped argv leaked through pure unsupported errors, executable runtime-wiring errors, and executable unsupported errors.
+- Green: `npm test -- packages/workspace-ops/test/cli.test.ts` exited 0 with 1 test file and 11 tests passed.
+- Help: `npm run workspace:help` exited 0 and printed `Usage: cestus-workspace <command> [options]`.
+- Verify: `npm run verify` exited 0 with typecheck passed, 77 test files and 678 tests passed, UI build succeeded, and factory-readiness passed.
+
+Spec review repair self-review:
+- CLI error command summaries now preserve ordinary argv but collapse secret-shaped argv to safe summaries.
+- Pure unsupported-command errors and executable unsupported/runtime-wiring errors no longer emit `--access-token` or the provided secret value.
+- Operation-failure errors continue to avoid raw thrown error text and do not include raw argv.
+- Exit codes, JSON error shape, help output, pure injected operation dispatch, and no-hidden-runtime behavior remain unchanged.
