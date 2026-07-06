@@ -1,19 +1,16 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { z } from "zod";
+import {
+  createPortableWorkspace,
+  readPortableWorkspaceManifest as readCanonicalPortableWorkspaceManifest,
+  type PortableWorkspaceManifest
+} from "../../workspace/src/index.js";
 
-const workspaceManifestSchema = z.object({
-  workspaceId: z.string().regex(/^ws_[a-zA-Z0-9_-]+$/),
-  label: z.string().min(1),
-  version: z.literal(1)
-}).strict();
-
-export type PortableWorkspaceManifest = z.infer<typeof workspaceManifestSchema>;
+export type { PortableWorkspaceManifest };
 
 export interface CreatePortableWorkspaceInput {
   rootDir: string;
   workspaceId: string;
   label: string;
+  createdAt?: string;
 }
 
 export interface PortableIngestionWorkspace {
@@ -25,36 +22,35 @@ export interface PortableIngestionWorkspace {
   blobRoot: string;
   derivativeRoot: string;
   jobRoot: string;
+  projectionRoot: string;
+  cacheRoot: string;
+  configRoot: string;
 }
 
 export function createPortableIngestionWorkspace(input: CreatePortableWorkspaceInput): PortableIngestionWorkspace {
-  const manifest = workspaceManifestSchema.parse({
+  const workspace = createPortableWorkspace({
+    rootDir: input.rootDir,
     workspaceId: input.workspaceId,
     label: input.label,
-    version: 1
+    createdBy: "cestus-ingest",
+    ...(input.createdAt === undefined ? {} : { createdAt: input.createdAt })
   });
-  const workspace = workspacePaths(input.rootDir, manifest.workspaceId, manifest.label);
-  mkdirSync(join(input.rootDir, "ledger"), { recursive: true });
-  mkdirSync(workspace.blobRoot, { recursive: true });
-  mkdirSync(workspace.derivativeRoot, { recursive: true });
-  mkdirSync(workspace.jobRoot, { recursive: true });
-  writeFileSync(workspace.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { flag: "wx" });
-  return workspace;
+
+  return {
+    workspaceId: workspace.workspaceId,
+    label: workspace.label,
+    rootDir: input.rootDir,
+    manifestPath: workspace.manifestPath,
+    ledgerPath: workspace.paths.ledgerPath,
+    blobRoot: workspace.paths.blobRoot,
+    derivativeRoot: workspace.paths.derivativeRoot,
+    jobRoot: workspace.paths.jobRoot,
+    projectionRoot: workspace.paths.projectionRoot,
+    cacheRoot: workspace.paths.cacheRoot,
+    configRoot: workspace.paths.configRoot
+  };
 }
 
 export function readPortableWorkspaceManifest(manifestPath: string): PortableWorkspaceManifest {
-  return workspaceManifestSchema.parse(JSON.parse(readFileSync(manifestPath, "utf8")));
-}
-
-function workspacePaths(rootDir: string, workspaceId: string, label: string): PortableIngestionWorkspace {
-  return {
-    workspaceId,
-    label,
-    rootDir,
-    manifestPath: join(rootDir, "cestus-workspace.json"),
-    ledgerPath: join(rootDir, "ledger", "ontology.sqlite"),
-    blobRoot: join(rootDir, "blobs"),
-    derivativeRoot: join(rootDir, "derivatives"),
-    jobRoot: join(rootDir, "jobs")
-  };
+  return readCanonicalPortableWorkspaceManifest({ manifestPath });
 }
