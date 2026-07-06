@@ -24,3 +24,4 @@ export * from "./legacy-import-service.js";
 export * from "./legacy-staging.js";
 export * from "./legacy-runtime-types.js";
 export * from "./portable-mount.js";
+export * from "./legacy-claim-parser.js";
