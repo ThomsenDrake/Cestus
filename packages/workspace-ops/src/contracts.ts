@@ -4,7 +4,7 @@ export const workspaceOpsPackageName = "@cestus/workspace-ops";
 export const workspaceOpsSchemaVersion = "workspace-ops.v1" as const;
 
 const secretTextPattern =
-  /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth|credential)(?:\s*[:=]\s*|\s+(?=[a-z0-9._~+/=-]{3,})(?=[a-z0-9._~+/=-]*[0-9])[a-z0-9][a-z0-9._~+/=-]*)/i;
+  /(?:^|[^a-z0-9])(?:access[\s._-]*token|api[\s._-]*key|authorization|bearer|token|password|private[\s._-]*key|client[\s._-]*secret|refresh[\s._-]*secret|session[\s._-]*secret|oauth|credential)(?:\s*[:=]\s*|\s+)(?=[a-z0-9._~+/=-]{3,})[a-z0-9][a-z0-9._~+/=-]*/i;
 
 export function isSecretSafeWorkspaceText(value: string): boolean {
   return !secretTextPattern.test(value);
@@ -118,7 +118,16 @@ export const workspaceOpsEnvelopeSchema = z.object({
   payload: z.unknown().optional(),
   diagnostics: z.array(workspaceDiagnosticSchema),
   proposedActions: z.array(proposedRepairActionSchema)
-}).strict();
+}).strict().superRefine((envelope, ctx) => {
+  const expectedOk = envelope.status === "ready";
+  if (envelope.ok !== expectedOk) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["ok"],
+      message: "ok must be true only when status is ready"
+    });
+  }
+});
 export type WorkspaceOpsEnvelope<TPayload = unknown> = Omit<
   z.output<typeof workspaceOpsEnvelopeSchema>,
   "payload"
@@ -153,5 +162,5 @@ export function createWorkspaceOpsEnvelope<TPayload>(
 }
 
 export function formatWorkspaceOpsJson(value: unknown): string {
-  return `${JSON.stringify(value, null, 2)}\n`;
+  return `${JSON.stringify(workspaceOpsEnvelopeSchema.parse(value), null, 2)}\n`;
 }

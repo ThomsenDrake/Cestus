@@ -3,6 +3,7 @@ import {
   createWorkspaceOpsEnvelope,
   formatWorkspaceOpsJson,
   isSecretSafeWorkspaceText,
+  secretSafeWorkspaceTextSchema,
   workspaceOpsEnvelopeSchema,
   workspaceOpsSchemaVersion
 } from "../src/contracts.js";
@@ -82,5 +83,37 @@ describe("workspace ops contracts", () => {
         })
       )
     ).toThrow("secret");
+  });
+
+  it("rejects common credential phrases even when the value has no digits", () => {
+    const unsafeExamples = [
+      "Bearer raw-token",
+      "api key abcdef",
+      "password hunter",
+      "token abcdef"
+    ];
+
+    for (const example of unsafeExamples) {
+      expect(isSecretSafeWorkspaceText(example)).toBe(false);
+      expect(() => secretSafeWorkspaceTextSchema.parse(example)).toThrow("secret");
+    }
+  });
+
+  it("rejects envelopes with contradictory ok and status fields", () => {
+    const envelope = createWorkspaceOpsEnvelope({
+      command: "verify workspace",
+      status: "blocked"
+    });
+
+    expect(() =>
+      workspaceOpsEnvelopeSchema.parse({
+        ...envelope,
+        ok: true
+      })
+    ).toThrow("ok");
+  });
+
+  it("does not format invalid workspace ops JSON envelopes", () => {
+    expect(() => formatWorkspaceOpsJson({ not: "a workspace ops envelope" })).toThrow();
   });
 });
