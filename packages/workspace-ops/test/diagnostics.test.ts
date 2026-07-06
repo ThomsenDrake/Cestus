@@ -122,6 +122,60 @@ describe("inspectWorkspaceDiagnostics", () => {
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
+  it("redacts private durable and derived diagnostic body text without token-shaped strings", async () => {
+    const result = await inspectWorkspaceDiagnostics({
+      durableEvents: [
+        {
+          ...durableDiagnosticEvent,
+          id: "evt_diag_private_interview",
+          streamId: "diagnostic_diag_private_interview",
+          payload: {
+            ...durableDiagnosticEvent.payload,
+            diagnosticId: "diag_private_interview",
+            message: "Private interview notes about a protected source."
+          }
+        }
+      ],
+      derivedDiagnostics: [
+        {
+          diagnosticId: "diag_private_derived",
+          severity: "error",
+          category: "diagnostics",
+          message: "Private interview notes about a protected source.",
+          durable: false,
+          relatedIds: ["evt_private_derived"],
+          repairHint: {
+            allowedNextCommands: ["diagnostics inspect"],
+            requiresHumanApproval: false
+          }
+        }
+      ]
+    });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload).toMatchObject({
+      durableCount: 1,
+      derivedCount: 1
+    });
+    expect(result.payload?.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          diagnosticId: "diag_private_interview",
+          durable: true,
+          message: "Diagnostic message was redacted."
+        }),
+        expect.objectContaining({
+          diagnosticId: "diag_private_derived",
+          durable: false,
+          message: "Diagnostic message was redacted."
+        })
+      ])
+    );
+    expect(JSON.stringify(result)).not.toMatch(/Private interview notes|protected source/);
+    expect(diagnosticsInspectDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
   it("redacts accessor-backed durable diagnostic events without invoking getters", async () => {
     let getterCalls = 0;
     const accessorBackedEvent = {
