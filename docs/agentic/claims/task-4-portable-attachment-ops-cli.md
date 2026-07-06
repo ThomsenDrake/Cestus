@@ -28,6 +28,17 @@ Status: ready-for-review
 - Full verification: `npm run verify`
   - Result: passed after one focused typecheck repair; typecheck passed, 92 test files passed, 844 tests passed, UI build succeeded, factory-readiness passed.
 
+## Review Fix Evidence
+
+- Review targeted red command: `npm test -- packages/workspace-ops/test/cli.test.ts`
+  - Result: failed as expected before the review fix; 1 test file failed, 3 tests failed and 16 passed. The executable returned ready for a zero-byte ledger, returned a `verify workspace` envelope for missing-root `disk usage`, and still returned runtime wiring required for `projection rebuild-readiness`.
+- Review targeted green command: `npm test -- packages/workspace-ops/test/cli.test.ts`
+  - Result: passed after the review fix; 1 test file passed, 19 tests passed.
+- Review help command: `npm run workspace:ops -- --help`
+  - Result: passed after the review fix; printed `Usage: cestus-workspace <command> [options]`.
+- Review full verification: `npm run verify`
+  - Result: passed after the review fix; typecheck passed, 92 test files passed, 847 tests passed, UI build succeeded, factory-readiness passed.
+
 ## Review
 
 - Ready for review.
