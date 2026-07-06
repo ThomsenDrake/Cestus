@@ -39,6 +39,17 @@ Never weaken these Cestus contracts:
 
 Stop and escalate on data-loss risk, schema conflict, unavailable dependency, credential need, external-service dependency, verifier failure after two focused repair attempts, or any task that would bypass those invariants.
 
+## Operating Lessons
+
+Recent completed Cestus slices exposed a few recurring failure modes. Treat these as standing factory rules:
+
+- Ambiguous git state is a stop-and-audit moment. If a reset, soft reset, staged repair, detached worktree, or missing commit is observed, inspect `git status`, `git log`, and the relevant claim before editing. Preserve intended work with forward commits; do not rewrite history again unless the user explicitly asks.
+- Stale reviewers are not passive blockers. If a review has no visible verdict or worktree movement after bounded monitor intervals, close and restart the reviewer or perform an inline review using the Cestus review contract. Do not wait silently.
+- Secret safety applies to every structured boundary, not just payload values. Review DTO keys, IDs, command names, no-value flags, raw argv, diagnostics, custom serializers, boxed values, and array accessors for leakage or getter-triggered surprises.
+- Event accounting and provenance must bind exact artifacts. Include diagnostic events in returned event IDs, bind imported evidence IDs to reviewed content hashes, and reject stale or swapped source bytes before blob writes.
+- UI surfaces are cockpit views over domain/runtime contracts. React should render browser-safe DTOs and safe next commands; workspace validation, ingestion approval gates, legacy staging rules, PRR sends, legal escalation locks, and portable storage truth stay in domain packages and local runtime.
+- Archive or clean up child threads only after their final answer, branch ancestry, clean worktree, and verification evidence agree. Leave newly approved implementation lanes unarchived if they are the next active work.
+
 ## Workflow Decision
 
 - Brainstorming or new product behavior: explore context, ask clarifying questions, propose approaches, present a design, and wait for approval before writing files.

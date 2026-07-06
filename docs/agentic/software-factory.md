@@ -72,6 +72,17 @@ Concurrent workers claim tasks in repo-local files so the assignment survives ch
 
 Stop when a dependency is unavailable, a verifier fails after two focused repair attempts, a schema choice conflicts with the ontology spec, a storage change risks data loss, or a task needs credentials or unavailable external services.
 
+## Lessons From Completed Parallel Slices
+
+The portable workspace, ingestion runtime, workspace ops, and legacy import implementation threads produced several durable coordination lessons. These rules are part of the factory memory for future Cestus agents:
+
+- **Audit before repair when git state is unclear.** A coordinator may observe a worktree while a worker is between reset, staged repair, and recommit. Before acting, inspect `git status`, current `HEAD`, relevant claims, and staged files. If the staged changes are intended, recommit them as forward work and rerun targeted plus full verification. Do not perform another history rewrite to repair ambiguous history.
+- **Bound stale reviewer waits.** Reviewers are useful because they caught real defects, but review handles can stall. If no verdict, disk movement, or claim update appears after bounded monitor intervals, close/restart the reviewer or do an inline review against the Cestus review contract. Silent waiting is not a valid completion strategy.
+- **Treat secret safety as structural.** Review findings repeatedly came from places that were not obvious payload strings: raw argv, no-value flags like token-shaped option names, diagnostic keys, `relatedIds`, boxed strings, custom serializers, nested arrays, and accessor-backed fields. Contract tests should prove keys and values are sanitized without invoking surprising getters.
+- **Bind provenance to exact bytes and events.** Runtime and legacy import reviews found accounting mistakes around diagnostic event IDs, scan streams, stale source checks, report identity, candidate hashes, and imported evidence IDs. Every reported event ID, evidence link, migration report, and staged assertion must be tied to the exact artifact, content hash, stream, and approval that produced it.
+- **Keep UI as an operator cockpit, not a truth engine.** The first workspace bridge should aggregate browser-safe DTOs from local runtime, workspace ops, ingestion, legacy import, and PRR contracts. React may show status, diagnostics, and safe next commands, but it must not duplicate portable workspace validation, approval gates, accepted ontology decisions, repair execution, PRR sends, legal escalation, or hidden local copies of external-drive data.
+- **Clean up only after evidence agrees.** A child thread is ready to archive only when the thread is idle, final handoff names the branch and commit, Git shows the branch is merged or intentionally preserved, verification evidence is recorded, and the worktree is clean. Newly approved implementation lanes should stay visible until their implementation work is actually finished.
+
 ## Ontology Layer Final Readiness
 
 The ontology foundation reached factory readiness on 2026-06-30 in worktree
