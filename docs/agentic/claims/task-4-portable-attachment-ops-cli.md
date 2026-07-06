@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/portable-workspace-attachment-ops`
 Worktree: `/home/drake/.codex/worktrees/db41/Cestus`
 Claimed at: 2026-07-06T22:48:35.000Z
-Status: claimed
+Status: in-progress
 
 ## Owned Files
 
