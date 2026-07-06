@@ -7,7 +7,7 @@
 - Worktree: `/home/drake/.codex/worktrees/15cc/Cestus`
 - Head: `32930b49d714a29298ebaa68092434e137348c18`
 - Claimed at: 2026-07-06T16:55:54Z
-- Status: ready-for-review
+- Status: approved
 
 ## Owned Files
 
@@ -75,3 +75,13 @@
   - Result: passed; Vitest reported 4 test files passed and 39 tests passed.
 - Full verification command: `npm run verify`
   - Result: passed at 2026-07-06T17:24:15Z; typecheck passed, Vitest reported 74 test files passed and 637 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Review Approval Evidence
+
+- Spec compliance review at `4bbe20e`: approved. Reviewer verified the approved canonical route set only, transport-only HTTP dispatch, delegated mount resolution, source listing through `IngestionRuntime.listSources`, provider approval-only dispatch, import execution through `importApproved`, structured missing-workspace diagnostics, and latest targeted/full verification evidence.
+- Code-quality review at `4bbe20e`: approved. Reviewer found no critical, important, or minor issues; noted clean transport responsibilities, preserved auth policy, canonical route handling, safe source-list DTOs, and adequate tests.
+- Approval recorded at: 2026-07-06T17:32:51Z.
+- Approval targeted verification command: `npm test -- packages/local-runtime/test/ingestion-http-routes.test.ts packages/local-runtime/test/auth-and-seed.test.ts packages/local-runtime/test/http-handler.test.ts packages/ingestion/test/runtime.test.ts`
+  - Result: passed; Vitest reported 4 test files passed and 39 tests passed.
+- Approval full verification command: `npm run verify`
+  - Result: passed at 2026-07-06T17:33:38Z; typecheck passed, Vitest reported 74 test files passed and 637 tests passed, Vite build succeeded, and factory readiness passed.
