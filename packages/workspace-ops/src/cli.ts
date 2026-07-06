@@ -195,11 +195,66 @@ function safeCommandSummary(argv: readonly string[], baseCommand?: string): stri
     return baseCommand ?? "unsupported command";
   }
 
-  if (isSecretSafeWorkspaceText(command)) {
+  if (!hasSecretShapedArgv(argv) && isSecretSafeWorkspaceText(command)) {
     return command;
   }
 
   return baseCommand === undefined ? "unsupported command" : `${baseCommand} [redacted]`;
+}
+
+function hasSecretShapedArgv(argv: readonly string[]): boolean {
+  return argv.some((arg) => isSecretShapedOptionName(arg));
+}
+
+function isSecretShapedOptionName(arg: string): boolean {
+  if (!arg.startsWith("-")) {
+    return false;
+  }
+
+  const [rawName] = arg.replace(/^-+/, "").split("=", 1);
+  if (rawName === undefined || rawName.length === 0) {
+    return false;
+  }
+
+  const parts = rawName
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((part) => part.length > 0);
+  const compact = parts.join("");
+  const secretTerms = new Set([
+    "authorization",
+    "bearer",
+    "credential",
+    "credentials",
+    "oauth",
+    "password",
+    "token"
+  ]);
+  const secretCompounds = new Set([
+    "accesstoken",
+    "apikey",
+    "clientsecret",
+    "privatekey",
+    "refreshsecret",
+    "sessionsecret"
+  ]);
+
+  if (parts.some((part) => secretTerms.has(part)) || secretCompounds.has(compact)) {
+    return true;
+  }
+
+  return [
+    ["access", "token"],
+    ["api", "key"],
+    ["client", "secret"],
+    ["private", "key"],
+    ["refresh", "secret"],
+    ["session", "secret"]
+  ].some(([first, second]) =>
+    parts.some((part, index) => part === first && parts[index + 1] === second)
+  );
 }
 
 interface WorkspaceOpsCliErrorOutput {
