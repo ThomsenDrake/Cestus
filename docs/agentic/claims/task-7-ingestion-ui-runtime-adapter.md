@@ -5,9 +5,9 @@
 - Worker: Codex
 - Branch: `codex/task-7-ingestion-ui-runtime-adapter`
 - Worktree: `/home/drake/.codex/worktrees/15cc/Cestus`
-- Head: `48440b078b64dd078727c8c50df1f21b6a473c79`
+- Head: `83e6445`
 - Claimed at: 2026-07-06T17:34:44Z
-- Status: claimed
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -20,3 +20,26 @@
 - `packages/ui/test/ingestion-workspace.test.tsx`
 - `packages/ui/test/ingestion-app-integration.test.tsx`
 - `packages/ui/test/request-data-boundary.test.ts`
+
+## Verification Evidence
+
+- Updated to in-progress before task file edits: 2026-07-06T17:39:45Z.
+- Red command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts`
+  - Result: failed as expected.
+  - Evidence: missing `packages/ui/src/ingestion/ingestion-adapter.ts` import and old `IngestionWorkspace` single-review prop shape caused the new UI adapter/workspace tests to fail.
+- Targeted green command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx`
+  - Result: passed, 5 test files and 26 tests.
+- Full verification:
+  `npm run verify`
+  - Result: passed.
+  - Evidence: `typecheck passed`; Vitest reported 75 test files and 642 tests passed; `tests passed`; Vite build succeeded; `factory-readiness passed`.
+- Completed at: 2026-07-06T17:47:35Z.
+
+## Self-Review Notes
+
+- Browser ingestion code imports UI DTO/types only and does not import ingestion runtime/services, local-runtime modules, SQLite, filesystem, blob store, mount/storage, or `node:*` modules.
+- HTTP adapter uses `/api/ingestion/*`, accepts both direct workspace DTO and `{ ok, workspace }` workspace envelopes, maps workspace-not-mounted to a safe UI DTO, and strips workspace/storage path fields from action bodies.
+- App defaults to `httpIngestionWorkspaceAdapter`, supports injected ingestion adapters for tests, and removes the placeholder ingestion review state.
+- UI keeps raw import approval, import execution, provider approval, retry, jobs, and diagnostics as separate controls/states.
