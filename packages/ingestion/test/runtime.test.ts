@@ -1,5 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { strToU8, zipSync } from "fflate";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   InMemoryEventLedger,
@@ -94,6 +95,43 @@ describe("IngestionRuntime core workflows", () => {
       error: { code: "INGESTION_SOURCE_NOT_REGISTERED" }
     });
     expect(await workspace.ledger.readAll()).toEqual([]);
+  });
+
+  it("includes scanner diagnostics from the scan stream in dry-run event IDs", async () => {
+    const workspace = createFakeMountedWorkspace();
+    roots.push(workspace.rootDir);
+    const sourceRoot = join(workspace.rootDir, "source");
+    mkdirSync(sourceRoot, { recursive: true });
+    writeFileSync(join(sourceRoot, "bad.zip"), Buffer.from(zipSync({
+      "../escape.txt": strToU8("nope")
+    })));
+    const runtime = createIngestionRuntime({ mountedWorkspace: workspace, actor });
+    await runtime.registerSource({
+      sourceCollectionId: "src_drive_001",
+      label: "Old archive",
+      rootUri: `file://${sourceRoot}`,
+      sourceRoot
+    });
+
+    const scanned = await runtime.dryRunScan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001"
+    });
+
+    expect(scanned.ok).toBe(true);
+    if (!scanned.ok) {
+      throw new Error("Expected dry-run scan to succeed with diagnostics");
+    }
+    const scanEvents = await workspace.ledger.readStream("ingestion_scan_scan_001");
+    const diagnosticEvent = scanEvents.find((event) => event.type === "diagnostic.recorded");
+    expect(scanEvents.map((event) => event.type)).toEqual([
+      "ingestion.scan.started",
+      "diagnostic.recorded",
+      "ingestion.scan.completed"
+    ]);
+    expect(diagnosticEvent?.id).toBeDefined();
+    expect(scanned.eventIds).toEqual(scanEvents.map((event) => event.id));
+    expect(scanned.eventIds).toContain(diagnosticEvent?.id);
   });
 
   it("reports dry-run event IDs from the scan stream only", async () => {
@@ -203,6 +241,33 @@ describe("IngestionRuntime core workflows", () => {
       error: { code: "INGESTION_RUNTIME_INTERNAL" }
     });
     expect(JSON.stringify(result)).not.toMatch(/private-bucket|case-files|s3:\/\//i);
+    expect((await workspace.ledger.readAll()).map((event) => event.type)).toEqual([
+      "ingestion.source.registered"
+    ]);
+  });
+
+  it("returns a stable secret-safe error for duplicate source registration", async () => {
+    const workspace = createFakeMountedWorkspace();
+    roots.push(workspace.rootDir);
+    const sourceRoot = join(workspace.rootDir, "source");
+    mkdirSync(sourceRoot, { recursive: true });
+    const runtime = createIngestionRuntime({ mountedWorkspace: workspace, actor });
+    const input = {
+      sourceCollectionId: "src_drive_001",
+      label: "Old archive",
+      rootUri: `file://${sourceRoot}`,
+      sourceRoot
+    };
+
+    const first = await runtime.registerSource(input);
+    const second = await runtime.registerSource(input);
+
+    expect(first.ok).toBe(true);
+    expect(second).toMatchObject({
+      ok: false,
+      error: { code: "INGESTION_RUNTIME_INTERNAL" }
+    });
+    expect(JSON.stringify(second)).not.toContain(sourceRoot);
     expect((await workspace.ledger.readAll()).map((event) => event.type)).toEqual([
       "ingestion.source.registered"
     ]);

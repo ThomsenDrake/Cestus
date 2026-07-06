@@ -46,18 +46,23 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
         ledger: workspace.workspace.ledger,
         actor: input.actor
       });
-      const event = await registry.registerLocalSource({
-        sourceCollectionId: command.sourceCollectionId,
-        label: command.label,
-        rootUri: command.rootUri,
-        workspaceUri: `cestus-workspace://${workspace.workspace.workspaceId}`
-      });
 
-      return {
-        ok: true,
-        review: await reviewFor(workspace.workspace, command.sourceCollectionId),
-        eventIds: [event.id]
-      };
+      try {
+        const event = await registry.registerLocalSource({
+          sourceCollectionId: command.sourceCollectionId,
+          label: command.label,
+          rootUri: command.rootUri,
+          workspaceUri: `cestus-workspace://${workspace.workspace.workspaceId}`
+        });
+
+        return {
+          ok: true,
+          review: await reviewFor(workspace.workspace, command.sourceCollectionId),
+          eventIds: [event.id]
+        };
+      } catch {
+        return runtimeInternalError("source registration");
+      }
     },
 
     async dryRunScan(command: DryRunScanInput): Promise<IngestionRuntimeResult<{
@@ -108,7 +113,7 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
           )
         };
       } catch {
-        return runtimeInternalError();
+        return runtimeInternalError("dry-run");
       }
     }
   };
@@ -160,7 +165,7 @@ function rootDirFromRegisteredSource(rootUri: string): IngestionRuntimeResult<{ 
   try {
     return { ok: true, rootDir: fileURLToPath(rootUri) };
   } catch {
-    return runtimeInternalError();
+    return runtimeInternalError("dry-run");
   }
 }
 
@@ -169,26 +174,22 @@ async function scanEventIdsFor(
   sourceCollectionId: string,
   scanBatchId: string
 ): Promise<string[]> {
-  return (await workspace.ledger.readStream(`ingestion_scan_${scanBatchId}`))
-    .filter((event) => {
-      if (
-        event.type !== "ingestion.scan.started"
-        && event.type !== "ingestion.occurrence.observed"
-        && event.type !== "ingestion.scan.completed"
-      ) {
-        return false;
-      }
+  const events = await workspace.ledger.readStream(`ingestion_scan_${scanBatchId}`);
+  const streamBelongsToRequestedScan = events.some((event) =>
+    event.type === "ingestion.scan.started"
+    && event.payload.sourceCollectionId === sourceCollectionId
+    && event.payload.scanBatchId === scanBatchId
+  );
 
-      return event.payload.sourceCollectionId === sourceCollectionId
-        && event.payload.scanBatchId === scanBatchId;
-    })
-    .map((event) => event.id);
+  return streamBelongsToRequestedScan ? events.map((event) => event.id) : [];
 }
 
-function runtimeInternalError(): IngestionRuntimeResult<never> {
+function runtimeInternalError(action: "dry-run" | "source registration"): IngestionRuntimeResult<never> {
   return stableIngestionError({
     code: "INGESTION_RUNTIME_INTERNAL",
-    message: "Ingestion runtime could not complete the requested dry-run.",
-    allowedRepairActions: ["verify the registered source", "retry dry-run", "inspect runtime diagnostics"]
+    message: `Ingestion runtime could not complete the requested ${action}.`,
+    allowedRepairActions: action === "dry-run"
+      ? ["verify the registered source", "retry dry-run", "inspect runtime diagnostics"]
+      : ["verify the source registration input", "retry source registration", "inspect runtime diagnostics"]
   });
 }
