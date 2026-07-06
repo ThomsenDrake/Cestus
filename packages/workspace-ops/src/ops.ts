@@ -14,7 +14,7 @@ import {
 } from "./contracts.js";
 import { childPath, type WorkspaceFileSystem } from "./filesystem.js";
 import {
-  parseProvisionalWorkspaceManifest,
+  parseWorkspaceManifestIdentity,
   type ResolvedWorkspaceLayout,
   type WorkspaceLayoutResult
 } from "./layout.js";
@@ -497,7 +497,7 @@ async function validateResolvedManifest(
     return { readable: true, valid: false, reason: "invalid-shape" };
   }
 
-  const parsed = parseProvisionalWorkspaceManifest(manifestValue);
+  const parsed = parseWorkspaceManifestIdentity(manifestValue);
   if (parsed !== undefined) {
     if (parsed.workspaceId !== workspace.workspaceId) {
       return { readable: true, valid: false, reason: "identity-mismatch" };
