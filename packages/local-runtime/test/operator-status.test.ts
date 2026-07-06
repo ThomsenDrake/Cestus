@@ -270,7 +270,7 @@ describe("operator status aggregation", () => {
     expectSectionStateDiagnosticAndAction(status, "workspace", {
       state: "blocked",
       diagnosticMessage: "External drive is missing; run drive detection before starting local work.",
-      actionCommand: "cestus-workspace detect drive --workspace <root>"
+      actionCommand: "cestus-workspace detect drive --root <root>"
     });
   });
 
@@ -298,12 +298,18 @@ describe("operator status aggregation", () => {
     const section = expectSectionStateDiagnosticAndAction(status, "workspace", {
       state: "blocked",
       diagnosticMessage: "Mounted drive identity does not match workspace manifest.",
-      actionCommand: "cestus-workspace detect drive --workspace <root>"
+      actionCommand: "npm run local:runtime:configure -- --storage portable-workspace --workspace <root>"
     });
     expect(section.diagnostics[0]?.refs).toContainEqual({
       label: "relatedId",
       value: "expected_ws_case_001"
     });
+    expect(section.sourceEvidence.flatMap((evidence) => evidence.refs)).toEqual(
+      expect.arrayContaining([
+        { label: "identityRef", value: "expected_ws_case_001" },
+        { label: "identityRef", value: "found_ws_case_999" }
+      ])
+    );
   });
 
   it("maps uninitialized workspace root to action-required with an explicit create command", async () => {
@@ -334,7 +340,7 @@ describe("operator status aggregation", () => {
     expectSectionStateDiagnosticAndAction(status, "workspace", {
       state: "action-required",
       diagnosticMessage: "External root is present but no Cestus workspace manifest has been initialized.",
-      actionCommand: "cestus-workspace create --workspace <root>"
+      actionCommand: "npm run local:workspace:create -- --workspace <root> --workspace-id <id> --label <label>"
     });
   });
 
@@ -362,7 +368,7 @@ describe("operator status aggregation", () => {
     expectSectionStateDiagnosticAndAction(status, "workspace", {
       state: "degraded",
       diagnosticMessage: "Projection artifacts are stale relative to ledger high-water mark.",
-      actionCommand: "cestus-workspace projection rebuild-readiness --workspace <root>"
+      actionCommand: "cestus-workspace projection rebuild-readiness --root <root>"
     });
   });
 

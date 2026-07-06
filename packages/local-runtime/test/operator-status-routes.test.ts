@@ -127,7 +127,7 @@ describe("operator status HTTP route", () => {
     expect(workspace?.diagnostics.map((diagnostic) => diagnostic.message)).toContain(
       "External drive is missing; run drive detection before starting local work."
     );
-    expect(workspaceActions.some((action) => action.command === "cestus-workspace detect drive --workspace <root>")).toBe(
+    expect(workspaceActions.some((action) => action.command === "cestus-workspace detect drive --root <root>")).toBe(
       true
     );
     expect(prr?.state).toBe("ready");

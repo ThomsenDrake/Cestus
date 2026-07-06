@@ -91,7 +91,7 @@ const safeActions: readonly OperatorSafeActionDto[] = Object.freeze([
     actionId: "action_show_workspace_verify",
     label: "Show workspace verify command",
     kind: "show-command",
-    command: "cestus-workspace verify workspace",
+    command: "cestus-workspace verify workspace --root <root>",
     sourceContract: "workspace-ops.v1",
     requiresHumanApproval: false,
     mutatesCanonicalState: false,
@@ -102,9 +102,20 @@ const safeActions: readonly OperatorSafeActionDto[] = Object.freeze([
     actionId: "action_show_workspace_detect_drive",
     label: "Show workspace drive detection command",
     kind: "show-command",
-    command: "cestus-workspace detect drive --workspace <root>",
+    command: "cestus-workspace detect drive --root <root>",
     sourceContract: "workspace-ops.v1",
     requiresHumanApproval: false,
+    mutatesCanonicalState: false,
+    externalEffect: false,
+    enabled: true
+  },
+  {
+    actionId: "action_show_workspace_select_mount",
+    label: "Show workspace mount selection command",
+    kind: "show-command",
+    command: "npm run local:runtime:configure -- --storage portable-workspace --workspace <root>",
+    sourceContract: "local-runtime",
+    requiresHumanApproval: true,
     mutatesCanonicalState: false,
     externalEffect: false,
     enabled: true
@@ -113,9 +124,9 @@ const safeActions: readonly OperatorSafeActionDto[] = Object.freeze([
     actionId: "action_show_workspace_create",
     label: "Show workspace create command",
     kind: "show-command",
-    command: "cestus-workspace create --workspace <root>",
-    sourceContract: "workspace-ops.v1",
-    requiresHumanApproval: false,
+    command: "npm run local:workspace:create -- --workspace <root> --workspace-id <id> --label <label>",
+    sourceContract: "local-runtime",
+    requiresHumanApproval: true,
     mutatesCanonicalState: false,
     externalEffect: false,
     enabled: true
@@ -124,7 +135,7 @@ const safeActions: readonly OperatorSafeActionDto[] = Object.freeze([
     actionId: "action_show_projection_rebuild_readiness",
     label: "Show projection rebuild-readiness command",
     kind: "show-command",
-    command: "cestus-workspace projection rebuild-readiness --workspace <root>",
+    command: "cestus-workspace projection rebuild-readiness --root <root>",
     sourceContract: "workspace-ops.v1",
     requiresHumanApproval: false,
     mutatesCanonicalState: false,
@@ -205,13 +216,7 @@ async function buildWorkspaceSection(
       ],
       diagnostics: workspaceDiagnostics(envelope.diagnostics),
       sourceEvidence: [
-        sourceEvidence("src_workspace_verify", "workspace-ops.v1", "workspace-ops", "verify workspace", [
-          ...(envelope.workspace === undefined
-            ? []
-            : [{ label: "workspaceId", value: envelope.workspace.workspaceId }]),
-          { label: "command", value: envelope.command },
-          { label: "schemaVersion", value: envelope.schemaVersion }
-        ])
+        workspaceSourceEvidence(envelope, payload)
       ],
       nextSafeActionIds
     }, unavailableSection("workspace", "Workspace", "workspace-ops.v1"));
@@ -452,6 +457,10 @@ function workspaceNextSafeActionIds(
     return ["action_refresh_operator_status"];
   }
 
+  if (payload?.mountStatus.status === "wrong-drive") {
+    return ["action_show_workspace_select_mount", "action_show_workspace_detect_drive", "action_refresh_operator_status"];
+  }
+
   if (payload?.mountStatus.status !== undefined && payload.mountStatus.status !== "available") {
     return ["action_show_workspace_detect_drive", "action_refresh_operator_status"];
   }
@@ -477,6 +486,30 @@ function workspaceNextSafeActionIds(
   }
 
   return ["action_show_workspace_verify", "action_refresh_operator_status"];
+}
+
+function workspaceSourceEvidence(
+  envelope: WorkspaceOpsEnvelope<WorkspaceVerifyDto>,
+  payload: WorkspaceVerifyDto | undefined
+): OperatorSourceEvidenceDto {
+  const refs: OperatorSourceEvidenceDto["refs"] = [
+    ...(envelope.workspace === undefined
+      ? []
+      : [{ label: "workspaceId", value: safeMessage(envelope.workspace.workspaceId) }]),
+    { label: "command", value: envelope.command },
+    { label: "schemaVersion", value: envelope.schemaVersion },
+    ...(payload?.mountStatus.status === undefined
+      ? []
+      : [{ label: "mountStatus", value: payload.mountStatus.status }]),
+    ...(payload?.mountStatus.expectedRootUri === undefined
+      ? []
+      : [{ label: "expectedRootUri", value: safeMessage(payload.mountStatus.expectedRootUri) }]),
+    ...envelope.diagnostics.flatMap((diagnostic) =>
+      diagnostic.relatedIds.map((relatedId) => ({ label: "identityRef", value: safeMessage(relatedId) }))
+    )
+  ];
+
+  return sourceEvidence("src_workspace_verify", "workspace-ops.v1", "workspace-ops", "verify workspace", refs);
 }
 
 function ingestionState(

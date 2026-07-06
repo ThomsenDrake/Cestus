@@ -39,7 +39,7 @@ describe("OperatorCockpit", () => {
     fireEvent.click(screen.getByRole("tab", { name: /Workspace/ }));
 
     const detail = screen.getByRole("tabpanel", { name: /Workspace/ });
-    const command = within(detail).getByText("cestus-workspace verify workspace");
+    const command = within(detail).getByText("cestus-workspace verify workspace --root <root>");
     expect(command.tagName).toBe("CODE");
     expect(within(detail).queryByRole("button", { name: "Show workspace verify" })).not.toBeInTheDocument();
     expect(within(detail).queryByRole("button", { name: /cestus-workspace verify workspace/ })).not.toBeInTheDocument();
@@ -139,7 +139,7 @@ describe("OperatorCockpit", () => {
     expect(
       within(workspaceDetail).getByText("External drive is missing; run drive detection before starting local work.")
     ).toBeInTheDocument();
-    expect(within(workspaceDetail).getByText("cestus-workspace detect drive --workspace <root>").tagName).toBe(
+    expect(within(workspaceDetail).getByText("cestus-workspace detect drive --root <root>").tagName).toBe(
       "CODE"
     );
     expect(within(workspaceDetail).queryByRole("button", { name: /detect drive/i })).not.toBeInTheDocument();
@@ -222,7 +222,7 @@ function smokeFailureStatusFixture(): OperatorStatusDto {
         actionId: "action_show_workspace_detect_drive",
         label: "Show drive detection command",
         kind: "show-command",
-        command: "cestus-workspace detect drive --workspace <root>",
+        command: "cestus-workspace detect drive --root <root>",
         sourceContract: "workspace-ops.v1",
         requiresHumanApproval: false,
         mutatesCanonicalState: false,
@@ -393,7 +393,7 @@ const operatorStatusFixture: OperatorStatusDto = {
       actionId: "action_show_workspace_verify",
       label: "Show workspace verify",
       kind: "show-command",
-      command: "cestus-workspace verify workspace",
+      command: "cestus-workspace verify workspace --root <root>",
       sourceContract: "workspace-ops.v1",
       requiresHumanApproval: false,
       mutatesCanonicalState: false,
