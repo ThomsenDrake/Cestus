@@ -11,7 +11,11 @@ import {
   type WorkspaceVerifyDto
 } from "./contracts.js";
 import { childPath, type WorkspaceFileSystem } from "./filesystem.js";
-import type { ResolvedWorkspaceLayout, WorkspaceLayoutResult } from "./layout.js";
+import {
+  parseProvisionalWorkspaceManifest,
+  type ResolvedWorkspaceLayout,
+  type WorkspaceLayoutResult
+} from "./layout.js";
 
 export interface WorkspaceEventReader {
   readAll(layout: ResolvedWorkspaceLayout): Promise<readonly unknown[]>;
@@ -390,8 +394,8 @@ async function validateResolvedManifest(
 ): Promise<{ readonly readable: boolean; readonly valid: boolean }> {
   try {
     const rawManifest = await fileSystem.readText(layout.manifestPath);
-    const parsed = JSON.parse(rawManifest) as unknown;
-    if (!isProvisionalWorkspaceManifest(parsed)) {
+    const parsed = parseProvisionalWorkspaceManifest(JSON.parse(rawManifest));
+    if (parsed === undefined) {
       return { readable: true, valid: false };
     }
     return {
@@ -403,27 +407,6 @@ async function validateResolvedManifest(
   } catch {
     return { readable: false, valid: false };
   }
-}
-
-function isProvisionalWorkspaceManifest(value: unknown): value is {
-  readonly workspaceId: string;
-  readonly label: string;
-  readonly version: 1;
-} {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    Object.getPrototypeOf(value) === Object.prototype &&
-    "workspaceId" in value &&
-    "label" in value &&
-    "version" in value &&
-    typeof (value as { readonly workspaceId?: unknown }).workspaceId === "string" &&
-    /^ws_[a-zA-Z0-9_-]+$/.test((value as { readonly workspaceId: string }).workspaceId) &&
-    typeof (value as { readonly label?: unknown }).label === "string" &&
-    (value as { readonly label: string }).label.length > 0 &&
-    isSecretSafeWorkspaceText((value as { readonly label: string }).label) &&
-    (value as { readonly version?: unknown }).version === 1
-  );
 }
 
 async function pathStatus(

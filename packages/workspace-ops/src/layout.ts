@@ -26,6 +26,11 @@ const provisionalWorkspaceManifestSchema = z.object({
 
 export type ProvisionalWorkspaceManifest = z.output<typeof provisionalWorkspaceManifestSchema>;
 
+export function parseProvisionalWorkspaceManifest(value: unknown): ProvisionalWorkspaceManifest | undefined {
+  const manifest = provisionalWorkspaceManifestSchema.safeParse(value);
+  return manifest.success ? manifest.data : undefined;
+}
+
 export interface ResolveWorkspaceLayoutInput {
   readonly rootPath: string;
   readonly manifestName?: string;
@@ -306,10 +311,7 @@ async function readProvisionalManifest(
   manifestPath: string
 ): Promise<ProvisionalWorkspaceManifest | "unreadable"> {
   try {
-    const manifest = provisionalWorkspaceManifestSchema.safeParse(
-      JSON.parse(await fileSystem.readText(manifestPath))
-    );
-    return manifest.success ? manifest.data : "unreadable";
+    return parseProvisionalWorkspaceManifest(JSON.parse(await fileSystem.readText(manifestPath))) ?? "unreadable";
   } catch {
     return "unreadable";
   }
