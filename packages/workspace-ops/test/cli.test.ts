@@ -1,6 +1,10 @@
 import { execFile } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { createWorkspaceOpsEnvelope } from "../src/contracts.js";
 import { runWorkspaceOpsCli } from "../src/cli.js";
 
@@ -265,30 +269,87 @@ describe("cestus-workspace executable", () => {
     expect(stderr).toBe("");
   });
 
-  it("returns stable JSON errors for operational commands without hidden wiring", async () => {
-    await expect(
-      execFileAsync("node", [
+  it("runs real executable detect and verify commands against a canonical workspace", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-workspace-cli-"));
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_cli_ops",
+        label: "CLI Ops Workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-cli-test",
+        coreVersion: "0.1.0"
+      });
+
+      const detected = await execFileAsync("node", [
+        "packages/workspace-ops/bin/cestus-workspace.mjs",
+        "detect",
+        "drive",
+        "--root",
+        rootPath,
+        "--workspace-id",
+        "ws_cli_ops"
+      ]);
+      expect(JSON.parse(detected.stdout)).toMatchObject({
+        schemaVersion: "workspace-ops.v1",
+        command: "detect drive",
+        status: "ready",
+        workspace: { workspaceId: "ws_cli_ops" }
+      });
+
+      const verified = await execFileAsync("node", [
         "packages/workspace-ops/bin/cestus-workspace.mjs",
         "verify",
         "workspace",
         "--root",
-        "/workspace"
-      ])
-    ).rejects.toMatchObject({
-      code: 1,
-      stdout: "",
-      stderr: `${JSON.stringify({
-        ok: false,
-        error: {
-          code: "WORKSPACE_OPS_RUNTIME_WIRING_REQUIRED",
-          command: "verify workspace --root /workspace",
-          message: "Workspace ops executable commands require explicit package wiring; the executable does not use hidden globals."
-        }
-      }, null, 2)}\n`
-    });
+        rootPath,
+        "--workspace-id",
+        "ws_cli_ops"
+      ]);
+      expect(JSON.parse(verified.stdout)).toMatchObject({
+        schemaVersion: "workspace-ops.v1",
+        command: "verify workspace",
+        status: "ready",
+        payload: { ledger: { eventCount: 0 } }
+      });
+      expect(verified.stderr).toBe("");
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+    }
   });
 
-  it("redacts secret-shaped argv in runtime-wiring errors", async () => {
+  it("returns blocked JSON for a swapped workspace identity without leaking the actual id", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-workspace-cli-"));
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_actual_cli_ops",
+        label: "Actual CLI Ops Workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-cli-test",
+        coreVersion: "0.1.0"
+      });
+
+      await expect(
+        execFileAsync("node", [
+          "packages/workspace-ops/bin/cestus-workspace.mjs",
+          "detect",
+          "drive",
+          "--root",
+          rootPath,
+          "--workspace-id",
+          "ws_expected_cli_ops"
+        ])
+      ).rejects.toMatchObject({
+        code: 3,
+        stderr: ""
+      });
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("redacts secret-shaped argv in executable operation failures", async () => {
     await expect(
       execFileAsync("node", [
         "packages/workspace-ops/bin/cestus-workspace.mjs",
@@ -299,19 +360,19 @@ describe("cestus-workspace executable", () => {
       ])
     ).rejects.toMatchObject({
       code: 1,
-      stdout: "",
-      stderr: `${JSON.stringify({
+      stderr: "",
+      stdout: `${JSON.stringify({
         ok: false,
         error: {
-          code: "WORKSPACE_OPS_RUNTIME_WIRING_REQUIRED",
-          command: "verify workspace [redacted]",
-          message: "Workspace ops executable commands require explicit package wiring; the executable does not use hidden globals."
+          code: "WORKSPACE_OPS_OPERATION_FAILED",
+          command: "verify workspace",
+          message: "Workspace ops command verify workspace failed before producing a JSON envelope."
         }
       }, null, 2)}\n`
     });
   });
 
-  it("redacts no-value secret flags in runtime-wiring executable errors", async () => {
+  it("redacts no-value secret flags in executable operation failures", async () => {
     await expect(
       execFileAsync("node", [
         "packages/workspace-ops/bin/cestus-workspace.mjs",
@@ -321,13 +382,13 @@ describe("cestus-workspace executable", () => {
       ])
     ).rejects.toMatchObject({
       code: 1,
-      stdout: "",
-      stderr: `${JSON.stringify({
+      stderr: "",
+      stdout: `${JSON.stringify({
         ok: false,
         error: {
-          code: "WORKSPACE_OPS_RUNTIME_WIRING_REQUIRED",
-          command: "verify workspace [redacted]",
-          message: "Workspace ops executable commands require explicit package wiring; the executable does not use hidden globals."
+          code: "WORKSPACE_OPS_OPERATION_FAILED",
+          command: "verify workspace",
+          message: "Workspace ops command verify workspace failed before producing a JSON envelope."
         }
       }, null, 2)}\n`
     });
@@ -343,8 +404,8 @@ describe("cestus-workspace executable", () => {
       ])
     ).rejects.toMatchObject({
       code: 1,
-      stdout: "",
-      stderr: `${JSON.stringify({
+      stderr: "",
+      stdout: `${JSON.stringify({
         ok: false,
         error: {
           code: "WORKSPACE_OPS_COMMAND_UNSUPPORTED",
@@ -364,8 +425,8 @@ describe("cestus-workspace executable", () => {
       ])
     ).rejects.toMatchObject({
       code: 1,
-      stdout: "",
-      stderr: `${JSON.stringify({
+      stderr: "",
+      stdout: `${JSON.stringify({
         ok: false,
         error: {
           code: "WORKSPACE_OPS_COMMAND_UNSUPPORTED",

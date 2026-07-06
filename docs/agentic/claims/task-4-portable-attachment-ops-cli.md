@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/portable-workspace-attachment-ops`
 Worktree: `/home/drake/.codex/worktrees/db41/Cestus`
 Claimed at: 2026-07-06T22:48:35.000Z
-Status: in-progress
+Status: ready-for-review
 
 ## Owned Files
 
@@ -19,11 +19,15 @@ Status: in-progress
 
 ## Evidence
 
-- Targeted red command:
-- Targeted green command:
-- Help command:
-- Full verification:
+- Targeted red command: `npm test -- packages/workspace-ops/test/cli.test.ts`
+  - Result: failed as expected before implementation; 1 test file failed, 6 tests failed and 10 passed. The executable still returned `WORKSPACE_OPS_RUNTIME_WIRING_REQUIRED` for `detect drive` and did not produce the new real-operation stdout/stderr contract.
+- Targeted green command: `npm test -- packages/workspace-ops/test/cli.test.ts`
+  - Result: passed after implementation; 1 test file passed, 16 tests passed.
+- Help command: `npm run workspace:ops -- --help`
+  - Result: passed after implementation; printed `Usage: cestus-workspace <command> [options]`.
+- Full verification: `npm run verify`
+  - Result: passed after one focused typecheck repair; typecheck passed, 92 test files passed, 844 tests passed, UI build succeeded, factory-readiness passed.
 
 ## Review
 
-- Pending.
+- Ready for review.
