@@ -1,4 +1,6 @@
 import type { IngestionReviewDto } from "./read-api.js";
+import type { LegacyMigrationReviewDto } from "./legacy-read-api.js";
+import { firstLegacyArtifactAsk } from "./legacy-types.js";
 
 export const ingestionOperationalCommands = [
   "create-workspace",
@@ -13,13 +15,21 @@ export const ingestionOperationalCommands = [
 ] as const;
 
 export type IngestionOperationalCommand = typeof ingestionOperationalCommands[number];
-export type IngestionCommandName = "summary-json" | IngestionOperationalCommand;
+export type IngestionCommandName =
+  | "summary-json"
+  | "legacy-artifact-ask-json"
+  | "legacy-report-json"
+  | IngestionOperationalCommand;
 
-export interface IngestionCommandInput {
-  command: IngestionCommandName | string;
-  dto?: IngestionReviewDto;
-  runtime?: unknown;
-}
+export type IngestionCommandInput =
+  | { command: "summary-json"; dto?: IngestionReviewDto; runtime?: unknown }
+  | { command: "legacy-artifact-ask-json"; runtime?: unknown }
+  | { command: "legacy-report-json"; dto: LegacyMigrationReviewDto; runtime?: unknown }
+  | {
+    command: IngestionOperationalCommand | string;
+    dto?: IngestionReviewDto | LegacyMigrationReviewDto;
+    runtime?: unknown;
+  };
 
 export interface IngestionCliErrorOutput {
   ok: false;
@@ -43,7 +53,15 @@ export function handleIngestionCommand(input: IngestionCommandInput): string {
       });
     }
 
-    return formatCliJson(stableReviewDto(input.dto));
+    return formatCliJson(stableReviewDto(input.dto as IngestionReviewDto));
+  }
+
+  if (input.command === "legacy-artifact-ask-json") {
+    return `${JSON.stringify({ firstArtifactAsk: firstLegacyArtifactAsk }, null, 2)}\n`;
+  }
+
+  if (input.command === "legacy-report-json") {
+    return `${JSON.stringify(input.dto, null, 2)}\n`;
   }
 
   if (isIngestionOperationalCommand(input.command)) {
