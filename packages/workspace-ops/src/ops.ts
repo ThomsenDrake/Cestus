@@ -3,8 +3,10 @@ import { validateKnowledgeEvent } from "../../ontology/src/contracts.js";
 import {
   createWorkspaceOpsEnvelope,
   isSecretSafeWorkspaceText,
+  mountStatusSchema,
   workspaceOpsSchemaVersion,
   type DiskUsageDto,
+  type MountStatusDto,
   type ProposedRepairActionInput,
   type WorkspaceDiagnosticInput,
   type WorkspaceOpsEnvelope,
@@ -48,6 +50,13 @@ type WorkspaceRootSpec = (typeof workspaceRootSpecs)[number];
 type WorkspaceRootCategory = WorkspaceRootSpec["category"];
 type WorkspaceRootId = WorkspaceRootSpec["rootId"];
 type WorkspaceRootStatus = "available" | "missing" | "unreadable";
+type ManifestValidationReason =
+  | "valid"
+  | "unavailable"
+  | "unreadable"
+  | "invalid-shape"
+  | "identity-mismatch"
+  | "version-mismatch";
 
 interface InspectedRoot {
   readonly rootId: WorkspaceRootId;
@@ -86,7 +95,7 @@ export async function verifyWorkspace(
   const backupRoot = requireRoot(rootMap, "backups");
   const manifestValidation = manifestRoot.status === "available"
     ? await validateResolvedManifest(input.fileSystem, layout, input.layout.workspace)
-    : { readable: false, valid: false };
+    : { readable: false, valid: false, reason: "unavailable" as const };
 
   const diagnostics: WorkspaceDiagnosticInput[] = [];
   const proposedActions: ProposedRepairActionInput[] = [];
@@ -106,15 +115,7 @@ export async function verifyWorkspace(
         requiresHumanApproval: false
       }
     });
-    proposedActions.push({
-      actionId: "action_rerun_workspace_manifest_detection",
-      kind: "rerun-verify",
-      title: "Rerun workspace detection before trusting this resolved layout.",
-      severity: "error",
-      requiresHumanApproval: false,
-      mutatesCanonicalState: false,
-      allowedNextCommands: ["detect drive", "verify workspace"]
-    });
+    proposedActions.push(manifestRevalidationAction(manifestValidation.reason));
   }
 
   if (ledgerRoot.status !== "available") {
@@ -216,16 +217,14 @@ export async function verifyWorkspace(
 
   const payload: WorkspaceVerifyDto = {
     schemaVersion: workspaceOpsSchemaVersion,
-    mountStatus: input.layout.mountStatus,
+    mountStatus: mountStatusForManifestValidation(input.layout.mountStatus, manifestValidation.reason),
     manifest: {
       readable: manifestValidation.readable,
       valid: manifestValidation.valid,
       ...(input.layout.workspace.manifestVersion === undefined
         ? {}
         : { manifestVersion: input.layout.workspace.manifestVersion }),
-      safeSummary: manifestValidation.valid
-        ? "Workspace manifest is valid."
-        : "Workspace manifest is not readable."
+      safeSummary: manifestSafeSummary(manifestValidation.reason)
     },
     layout: {
       contractVersion: layout.layoutContractVersion,
@@ -406,22 +405,149 @@ async function validateResolvedManifest(
   fileSystem: WorkspaceFileSystem,
   layout: ResolvedWorkspaceLayout,
   workspace: NonNullable<WorkspaceLayoutResult["workspace"]>
-): Promise<{ readonly readable: boolean; readonly valid: boolean }> {
+): Promise<{
+  readonly readable: boolean;
+  readonly valid: boolean;
+  readonly reason: ManifestValidationReason;
+}> {
+  let rawManifest: string;
   try {
-    const rawManifest = await fileSystem.readText(layout.manifestPath);
-    const parsed = parseProvisionalWorkspaceManifest(JSON.parse(rawManifest));
-    if (parsed === undefined) {
-      return { readable: true, valid: false };
-    }
-    return {
-      readable: true,
-      valid:
-        parsed.workspaceId === workspace.workspaceId &&
-        parsed.version === workspace.manifestVersion
-    };
+    rawManifest = await fileSystem.readText(layout.manifestPath);
   } catch {
-    return { readable: false, valid: false };
+    return { readable: false, valid: false, reason: "unreadable" };
   }
+
+  let manifestValue: unknown;
+  try {
+    manifestValue = JSON.parse(rawManifest);
+  } catch {
+    return { readable: true, valid: false, reason: "invalid-shape" };
+  }
+
+  const parsed = parseProvisionalWorkspaceManifest(manifestValue);
+  if (parsed !== undefined) {
+    if (parsed.workspaceId !== workspace.workspaceId) {
+      return { readable: true, valid: false, reason: "identity-mismatch" };
+    }
+    if (parsed.version !== workspace.manifestVersion) {
+      return { readable: true, valid: false, reason: "version-mismatch" };
+    }
+    return { readable: true, valid: true, reason: "valid" };
+  }
+
+  const mismatchReason = manifestIdentityMismatchReason(manifestValue, workspace);
+  return { readable: true, valid: false, reason: mismatchReason ?? "invalid-shape" };
+}
+
+function manifestIdentityMismatchReason(
+  value: unknown,
+  workspace: NonNullable<WorkspaceLayoutResult["workspace"]>
+): Extract<ManifestValidationReason, "identity-mismatch" | "version-mismatch"> | undefined {
+  if (!isStrictManifestIdentityRecord(value)) {
+    return undefined;
+  }
+
+  if (value.workspaceId !== workspace.workspaceId) {
+    return "identity-mismatch";
+  }
+  if (value.version !== workspace.manifestVersion) {
+    return "version-mismatch";
+  }
+  return undefined;
+}
+
+function isStrictManifestIdentityRecord(value: unknown): value is {
+  readonly workspaceId: string;
+  readonly label: string;
+  readonly version: number;
+} {
+  if (typeof value !== "object" || value === null || Object.getPrototypeOf(value) !== Object.prototype) {
+    return false;
+  }
+
+  const keys = Object.keys(value).sort();
+  if (keys.join("\0") !== "label\0version\0workspaceId") {
+    return false;
+  }
+
+  const candidate = value as {
+    readonly workspaceId?: unknown;
+    readonly label?: unknown;
+    readonly version?: unknown;
+  };
+  return (
+    typeof candidate.workspaceId === "string" &&
+    /^ws_[a-zA-Z0-9_-]+$/.test(candidate.workspaceId) &&
+    typeof candidate.label === "string" &&
+    candidate.label.length > 0 &&
+    isSecretSafeWorkspaceText(candidate.label) &&
+    typeof candidate.version === "number" &&
+    Number.isInteger(candidate.version) &&
+    candidate.version > 0
+  );
+}
+
+function mountStatusForManifestValidation(
+  mountStatus: MountStatusDto,
+  reason: ManifestValidationReason
+): MountStatusDto {
+  if (!isWrongDriveManifestReason(reason)) {
+    return mountStatus;
+  }
+
+  return mountStatusSchema.parse({
+    status: "wrong-drive",
+    safeMessage: "Workspace manifest does not match the resolved workspace.",
+    ...(mountStatus.expectedRootUri === undefined ? {} : { expectedRootUri: mountStatus.expectedRootUri }),
+    nextCommandHints: [
+      {
+        allowedNextCommands: ["detect drive"],
+        safeReason: "Select the correct workspace root, then rerun drive detection.",
+        requiresHumanApproval: false
+      }
+    ]
+  });
+}
+
+function manifestRevalidationAction(reason: ManifestValidationReason): ProposedRepairActionInput {
+  if (isWrongDriveManifestReason(reason)) {
+    return {
+      actionId: "action_select_workspace_root",
+      kind: "select-workspace",
+      title: "Select the correct workspace root and rerun detection.",
+      severity: "error",
+      requiresHumanApproval: false,
+      mutatesCanonicalState: false,
+      allowedNextCommands: ["detect drive"]
+    };
+  }
+
+  return {
+    actionId: "action_rerun_workspace_manifest_detection",
+    kind: "rerun-verify",
+    title: "Rerun workspace detection before trusting this resolved layout.",
+    severity: "error",
+    requiresHumanApproval: false,
+    mutatesCanonicalState: false,
+    allowedNextCommands: ["detect drive", "verify workspace"]
+  };
+}
+
+function manifestSafeSummary(reason: ManifestValidationReason): string {
+  if (reason === "valid") {
+    return "Workspace manifest is valid.";
+  }
+  if (isWrongDriveManifestReason(reason)) {
+    return "Workspace manifest does not match the resolved workspace.";
+  }
+  if (reason === "invalid-shape") {
+    return "Workspace manifest is invalid.";
+  }
+  return "Workspace manifest is not readable.";
+}
+
+function isWrongDriveManifestReason(reason: ManifestValidationReason): boolean {
+  return reason === "identity-mismatch" || reason === "version-mismatch";
 }
 
 async function pathStatus(
