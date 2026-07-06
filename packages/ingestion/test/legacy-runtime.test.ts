@@ -289,6 +289,77 @@ describe("LegacyImportRuntime gated import and staging workflow", () => {
     expect(eventTypes).not.toContain("entity.resolved");
     expect(eventTypes).not.toContain("relationship.accepted");
   });
+
+  it("does not treat same-hash evidence from another source as eligible staging provenance", async () => {
+    const workspace = createFakeMountedWorkspace("Legacy CLI workspace");
+    const runtime = createLegacyImportRuntime({ mountedWorkspace: workspace, actor });
+    const inspected = await runtime.inspect({
+      sourceCollectionId: "src_old_cestus",
+      label: "Old Cestus",
+      sourceRoot,
+      scanBatchId: "scan_old_cestus_001"
+    });
+    expect(inspected.ok).toBe(true);
+    if (!inspected.ok) return;
+
+    const report = await runtime.report({
+      sourceCollectionId: "src_old_cestus",
+      legacyReportId: inspected.legacyReportId
+    });
+    expect(report.ok).toBe(true);
+    if (!report.ok) return;
+    const [reportCandidate] = report.report.proposedAssertionCandidates;
+    expect(reportCandidate).toBeDefined();
+    if (reportCandidate === undefined) return;
+    await appendForeignEvidenceLink(workspace, reportCandidate.evidenceContentHash);
+
+    const preview = await runtime.stagingPreview({
+      sourceCollectionId: "src_old_cestus",
+      legacyReportId: inspected.legacyReportId
+    });
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    expect(preview.candidates).toHaveLength(0);
+    expect((preview as typeof preview & { proposedAssertionCandidates?: readonly unknown[] }).proposedAssertionCandidates ?? [])
+      .toHaveLength(0);
+
+    const approved = await runtime.approveStaging({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId: "legacy_stage_001",
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: [reportCandidate.candidateId]
+    });
+    expect(approved.ok).toBe(false);
+    if (approved.ok) return;
+    expect(["LEGACY_IMPORT_CANDIDATE_SET_MISMATCH", "LEGACY_IMPORT_EVIDENCE_LINK_REQUIRED"])
+      .toContain(approved.error.code);
+  });
+
+  it("does not expose raw report candidates as staging-preview eligible before source import", async () => {
+    const workspace = createFakeMountedWorkspace("Legacy CLI workspace");
+    const runtime = createLegacyImportRuntime({ mountedWorkspace: workspace, actor });
+    const inspected = await runtime.inspect({
+      sourceCollectionId: "src_old_cestus",
+      label: "Old Cestus",
+      sourceRoot,
+      scanBatchId: "scan_old_cestus_001"
+    });
+    expect(inspected.ok).toBe(true);
+    if (!inspected.ok) return;
+
+    const preview = await runtime.stagingPreview({
+      sourceCollectionId: "src_old_cestus",
+      legacyReportId: inspected.legacyReportId
+    });
+
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    expect(preview.candidates).toHaveLength(0);
+    expect((preview as typeof preview & { proposedAssertionCandidates?: readonly unknown[] }).proposedAssertionCandidates ?? [])
+      .toHaveLength(0);
+  });
 });
 
 async function preparedImportedRuntime() {
@@ -314,4 +385,29 @@ async function preparedImportedRuntime() {
     importBatchId: "imp_old_cestus_001"
   });
   return { workspace, runtime, inspected };
+}
+
+async function appendForeignEvidenceLink(
+  workspace: ReturnType<typeof createFakeMountedWorkspace>,
+  contentHash: `sha256:${string}`
+) {
+  await workspace.ledger.append({
+    type: "ingestion.evidence.linked",
+    version: 1,
+    streamId: "ingestion_evidence_ev_other_source_same_hash",
+    context: {
+      actor,
+      occurredAt: new Date().toISOString(),
+      correlationId: "corr_imp_other_cestus_001",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+    },
+    payload: {
+      evidenceId: "ev_other_source_same_hash",
+      importBatchId: "imp_other_cestus_001",
+      sourceCollectionId: "src_other_cestus",
+      contentHash,
+      occurrenceIds: ["occ_other_cestus_001"]
+    }
+  });
 }

@@ -136,7 +136,6 @@ export interface LegacyStagingPreviewData {
   readonly reportHash: `sha256:${string}`;
   readonly candidateSetHash: `sha256:${string}`;
   readonly candidates: readonly LegacyApprovedAssertionCandidate[];
-  readonly proposedAssertionCandidates: readonly LegacyProposedAssertionCandidate[];
   readonly quarantineEntries: readonly LegacyQuarantineEntry[];
 }
 
@@ -431,7 +430,6 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
             reportHash: resolved.report.reportHash,
             candidateSetHash: resolved.report.candidateSetHash,
             candidates,
-            proposedAssertionCandidates: resolved.report.proposedAssertionCandidates,
             quarantineEntries: resolved.report.quarantineEntries
           }
         });
@@ -856,8 +854,7 @@ async function evidenceTiedCandidatesForReport(
   }
 
   return report.proposedAssertionCandidates.flatMap((candidate) => {
-    const evidenceId = evidenceBySourceHash.get(candidate.evidenceContentHash) ??
-      ingestionProjection.evidenceByHash.get(candidate.evidenceContentHash);
+    const evidenceId = evidenceBySourceHash.get(candidate.evidenceContentHash);
 
     if (evidenceId === undefined) {
       return [];
