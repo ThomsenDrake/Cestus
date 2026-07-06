@@ -1,6 +1,9 @@
 import { fileURLToPath } from "node:url";
 import type { z } from "zod";
-import { actorRefSchema } from "../../ontology/src/contracts.js";
+import {
+  actorRefSchema,
+  type AppendableKnowledgeEvent
+} from "../../ontology/src/contracts.js";
 import { IngestionImportService } from "./import-service.js";
 import { LocalFilesystemScanner } from "./local-filesystem.js";
 import type { MountedWorkspace } from "./mount-contract.js";
@@ -186,7 +189,8 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       if (source === undefined) {
         return sourceNotRegisteredError(command.sourceCollectionId);
       }
-      if (approvalFor(projection, command) === undefined) {
+      const approval = approvalFor(projection, command);
+      if (approval === undefined) {
         return stableIngestionError({
           code: "INGESTION_IMPORT_APPROVAL_REQUIRED",
           message: "Raw import approval is required before import execution.",
@@ -211,6 +215,17 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       });
 
       if (!materialized.ok) {
+        try {
+          await appendStaleSourceDiagnostic(
+            workspace.workspace,
+            command,
+            input.actor,
+            materialized.error.allowedRepairActions,
+            approval.approvedEventId
+          );
+        } catch {
+          return runtimeInternalError("import");
+        }
         return { ok: false, error: materialized.error };
       }
 
@@ -330,6 +345,53 @@ function approvalFor(
   return approval?.sourceCollectionId === input.sourceCollectionId && approval.scanBatchId === input.scanBatchId
     ? approval
     : undefined;
+}
+
+async function appendStaleSourceDiagnostic(
+  workspace: MountedWorkspace,
+  input: Pick<ImportApprovedInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">,
+  actor: ActorRef,
+  allowedRepairActions: readonly string[],
+  approvalEventId: string
+): Promise<void> {
+  const event: AppendableKnowledgeEvent<"diagnostic.recorded"> = {
+    type: "diagnostic.recorded",
+    version: 1,
+    streamId: importStreamId(input),
+    context: {
+      actor,
+      occurredAt: new Date().toISOString(),
+      causationId: approvalEventId,
+      correlationId: `corr_${input.importBatchId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+    },
+    payload: {
+      diagnosticId: staleSourceDiagnosticId(input),
+      severity: "error",
+      category: "ingestion",
+      message: "Approved dry-run inventory no longer matches current source bytes.",
+      repairHint: {
+        contract: "IngestionRuntime.importApproved",
+        violatedPath: "approvedDryRunInventory",
+        allowedActions: [...allowedRepairActions]
+      }
+    }
+  };
+
+  await workspace.ledger.append(event);
+}
+
+function staleSourceDiagnosticId(
+  input: Pick<ImportApprovedInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">
+): string {
+  return `diag_ingestion_stale_${input.sourceCollectionId}_${input.scanBatchId}_${input.importBatchId}`;
+}
+
+function importStreamId(
+  input: Pick<ImportApprovedInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">
+): string {
+  return `ingestion_import_${input.sourceCollectionId}_${input.scanBatchId}_${input.importBatchId}`;
 }
 
 function occurrencesForScan(

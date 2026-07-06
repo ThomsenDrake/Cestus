@@ -51,7 +51,9 @@ describe("IngestionRuntime stale-source import verification", () => {
       ok: false,
       error: { code: "INGESTION_SOURCE_CHANGED_SINCE_APPROVAL" }
     });
-    expect((await workspace.ledger.readAll()).some((event) => event.type === "evidence.ingested")).toBe(false);
+    const events = await workspace.ledger.readAll();
+    expectStableSourceDiagnostic(events, result);
+    expectNoImportWrites(events);
     expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual([]);
   });
 
@@ -91,7 +93,10 @@ describe("IngestionRuntime stale-source import verification", () => {
       ok: false,
       error: { code: "INGESTION_ARCHIVE_CHILD_HASH_MISMATCH" }
     });
-    expect((await workspace.ledger.readAll()).some((event) => event.type === "evidence.ingested")).toBe(false);
+    const events = await workspace.ledger.readAll();
+    expectStableSourceDiagnostic(events, result);
+    expectNoImportWrites(events);
+    expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual([]);
   });
 
   it("rejects changed archive child hashes before blob writes", async () => {
@@ -109,7 +114,10 @@ describe("IngestionRuntime stale-source import verification", () => {
       ok: false,
       error: { code: "INGESTION_ARCHIVE_CHILD_HASH_MISMATCH" }
     });
-    expect((await workspace.ledger.readAll()).some((event) => event.type === "evidence.ingested")).toBe(false);
+    const events = await workspace.ledger.readAll();
+    expectStableSourceDiagnostic(events, result);
+    expectNoImportWrites(events);
+    expect(readdirSync(join(workspace.rootDir, "blobs"), { recursive: true })).toEqual([]);
   });
 });
 
@@ -145,4 +153,39 @@ async function approve(runtime: ReturnType<typeof createIngestionRuntime>) {
     importBatchId: "imp_001",
     approvedBy: "actor_investigator"
   });
+}
+
+function expectStableSourceDiagnostic(
+  events: Awaited<ReturnType<ReturnType<typeof createFakeMountedWorkspace>["ledger"]["readAll"]>>,
+  result: Awaited<ReturnType<ReturnType<typeof createIngestionRuntime>["importApproved"]>>
+) {
+  if (result.ok) {
+    throw new Error("Expected import to fail before asserting diagnostic details");
+  }
+
+  const diagnostics = events.filter((event) => event.type === "diagnostic.recorded");
+  expect(diagnostics).toHaveLength(1);
+  expect(diagnostics[0]).toMatchObject({
+    streamId: "ingestion_import_src_drive_001_scan_001_imp_001",
+    payload: {
+      diagnosticId: "diag_ingestion_stale_src_drive_001_scan_001_imp_001",
+      severity: "error",
+      category: "ingestion",
+      message: "Approved dry-run inventory no longer matches current source bytes.",
+      repairHint: {
+        contract: "IngestionRuntime.importApproved",
+        violatedPath: "approvedDryRunInventory",
+        allowedActions: result.error.allowedRepairActions
+      }
+    }
+  });
+  expect(JSON.stringify(diagnostics[0])).not.toMatch(/cestus-ingestion-runtime|\/tmp\/|sourceRoot|bundle\.zip|a\.txt/i);
+}
+
+function expectNoImportWrites(
+  events: Awaited<ReturnType<ReturnType<typeof createFakeMountedWorkspace>["ledger"]["readAll"]>>
+) {
+  expect(events.some((event) => event.type === "evidence.ingested")).toBe(false);
+  expect(events.some((event) => event.type === "ingestion.evidence.linked")).toBe(false);
+  expect(events.some((event) => event.type === "ingestion.import.completed")).toBe(false);
 }
