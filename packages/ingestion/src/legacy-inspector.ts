@@ -27,7 +27,14 @@ export interface LegacyInspectInput {
   rootDir: string;
 }
 
-export type LegacyInspectedFile = LegacyFileRef;
+export interface LegacyInspectedFile extends LegacyFileRef {
+  occurrenceId: string;
+  status: LocalFilesystemOccurrence["status"];
+  internalPath?: string;
+  containerPath?: string;
+  containerHash?: `sha256:${string}`;
+  archiveAdapter?: { name: string; version: string };
+}
 
 export interface LegacyDetectionRecord extends LegacyDetection {
   sourcePath: string;
@@ -73,15 +80,21 @@ export class LegacyCestusInspector {
   }
 
   private inspectedFile(occurrence: LocalFilesystemOccurrence): LegacyInspectedFile {
-    const sourcePath = occurrence.internalPath ?? occurrence.sourcePath;
+    const mediaPath = occurrence.internalPath ?? occurrence.sourcePath;
 
     return {
-      sourcePath,
+      occurrenceId: occurrence.occurrenceId,
+      sourcePath: occurrence.sourcePath,
       contentHash: occurrence.contentHash,
       sizeBytes: occurrence.sizeBytes,
-      mediaType: mediaTypeForPath(sourcePath),
+      mediaType: mediaTypeForPath(mediaPath),
       sourceCollectionId: occurrence.sourceCollectionId,
-      scanBatchId: occurrence.scanBatchId
+      scanBatchId: occurrence.scanBatchId,
+      status: occurrence.status,
+      ...(occurrence.internalPath === undefined ? {} : { internalPath: occurrence.internalPath }),
+      ...(occurrence.containerPath === undefined ? {} : { containerPath: occurrence.containerPath }),
+      ...(occurrence.containerHash === undefined ? {} : { containerHash: occurrence.containerHash }),
+      ...(occurrence.archiveAdapter === undefined ? {} : { archiveAdapter: { ...occurrence.archiveAdapter } })
     };
   }
 
