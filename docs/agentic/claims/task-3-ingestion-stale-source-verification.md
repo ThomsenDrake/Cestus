@@ -54,3 +54,5 @@
   - Result: failed as expected with 6 failing tests because separate stale-source diagnostic streams were durable but not source/scan-associated after projection rebuild.
 - Targeted command: `npm test -- packages/ingestion/test/runtime.test.ts packages/ingestion/test/runtime-import-stale-source.test.ts packages/ingestion/test/import-service.test.ts packages/ingestion/test/archive-adapter.test.ts packages/ingestion/test/projection.test.ts packages/ingestion/test/read-api.test.ts`
   - Result: passed; Vitest reported 6 test files passed and 38 tests passed.
+- Full verification command: `npm run verify`
+  - Result: passed; typecheck passed, Vitest reported 72 test files passed and 604 tests passed, Vite build succeeded, and factory readiness passed.
