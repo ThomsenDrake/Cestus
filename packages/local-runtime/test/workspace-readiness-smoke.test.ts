@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { runLocalWorkspaceReadinessSmoke } from "../src/workspace-readiness-smoke.js";
 
 const tempDirs: string[] = [];
@@ -53,6 +54,8 @@ describe("runLocalWorkspaceReadinessSmoke", () => {
       ingestion: {
         evidenceCount: 1,
         blobCount: 1,
+        jobCount: 3,
+        jobKinds: ["import", "local-parse", "scan"],
         diagnosticCount: 0
       },
       workspaceOps: {
@@ -78,5 +81,43 @@ describe("runLocalWorkspaceReadinessSmoke", () => {
       "workspace-ops.backup-check"
     ]);
     expect(report.checks.every((check) => check.ok)).toBe(true);
+  });
+
+  it("returns blocked JSON instead of throwing when the workspace already exists", async () => {
+    const workspaceRoot = tempDir("cestus-smoke-existing-workspace-");
+    const sourceRoot = tempDir("cestus-smoke-existing-source-");
+    createPortableWorkspace({
+      rootDir: workspaceRoot,
+      workspaceId: "ws_smoke_existing_001",
+      label: "Existing Smoke Workspace",
+      createdAt: "2026-07-06T11:00:00.000Z",
+      createdBy: "workspace-readiness-smoke-test"
+    });
+
+    const report = await runLocalWorkspaceReadinessSmoke({
+      workspaceRoot,
+      sourceRoot,
+      workspaceId: "ws_smoke_existing_001",
+      workspaceLabel: "Smoke token=secret123 Workspace",
+      sourceCollectionId: "src_smoke_existing_001",
+      sourceLabel: "Existing Smoke Source",
+      scanBatchId: "scan_smoke_existing_001",
+      importBatchId: "imp_smoke_existing_001",
+      approvedBy: "actor_smoke",
+      now: () => "2026-07-06T12:00:00.000Z"
+    });
+
+    expect(report).toMatchObject({
+      schemaVersion: "local-workspace-readiness-smoke.v1",
+      ok: false,
+      status: "blocked"
+    });
+    expect(report.checks[0]).toMatchObject({
+      checkId: "workspace.create",
+      ok: false,
+      status: "blocked"
+    });
+    expect(JSON.stringify(report.diagnostics)).not.toContain("secret123");
+    expect(JSON.stringify(report.diagnostics)).not.toContain("token=");
   });
 });

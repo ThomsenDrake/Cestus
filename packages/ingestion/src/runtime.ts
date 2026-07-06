@@ -5,9 +5,11 @@ import {
   type AppendableKnowledgeEvent,
   type KnowledgeEventOf
 } from "../../ontology/src/contracts.js";
+import type { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { IngestionImportService } from "./import-service.js";
 import { LocalFilesystemScanner } from "./local-filesystem.js";
 import type { MountedWorkspace } from "./mount-contract.js";
+import { LocalParseService } from "./parser.js";
 import { ProviderParseApprovalService, type ApproveProviderBatchInput } from "./provider-adapter.js";
 import {
   buildIngestionProjection,
@@ -291,6 +293,8 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
             mediaType: occurrence.mediaType
           }))
         });
+        const importedEvents = await workspace.workspace.ledger.readAll();
+        await createLocalParseJobsForImport(workspace.workspace, command, importedEvents);
         const afterEvents = await workspace.workspace.ledger.readAll();
 
         return {
@@ -412,6 +416,45 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       }
     }
   };
+}
+
+async function createLocalParseJobsForImport(
+  workspace: MountedWorkspace,
+  command: ImportApprovedInput,
+  events: Awaited<ReturnType<MountedWorkspace["ledger"]["readAll"]>>
+): Promise<void> {
+  const parser = new LocalParseService({
+    ledger: workspace.ledger,
+    derivativeStore: workspace.derivativeStore as FileBlobStore,
+    actor: { id: "actor_local_parser", kind: "system", label: "Local Parser" }
+  });
+  const seenEvidenceIds = new Set<string>();
+
+  for (const event of events) {
+    if (
+      event.type !== "ingestion.evidence.linked" ||
+      event.payload.sourceCollectionId !== command.sourceCollectionId ||
+      event.payload.importBatchId !== command.importBatchId
+    ) {
+      continue;
+    }
+    if (seenEvidenceIds.has(event.payload.evidenceId)) {
+      continue;
+    }
+    seenEvidenceIds.add(event.payload.evidenceId);
+
+    await parser.createLocalParseJob({
+      parseJobId: localParseJobId(command.importBatchId, event.payload.contentHash),
+      sourceCollectionId: command.sourceCollectionId,
+      importBatchId: command.importBatchId,
+      evidenceId: event.payload.evidenceId,
+      parser: { name: "local-text", version: "0.1.0" }
+    });
+  }
+}
+
+function localParseJobId(importBatchId: string, contentHash: string): string {
+  return `parse_${importBatchId}_${contentHash.replace("sha256:", "").slice(0, 16)}`;
 }
 
 async function projectionFor(workspace: MountedWorkspace): Promise<IngestionProjection> {
