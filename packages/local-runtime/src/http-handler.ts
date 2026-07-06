@@ -2,8 +2,11 @@ import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { type ActorRef, type CreateDraftRequestInput } from "../../prr/src/draft-events.js";
 import type { DeadlineCalculator, PrrRuntimeNow } from "../../prr/src/runtime.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
+import type { IngestionWorkspaceMountResolver } from "../../ingestion/src/mount-contract.js";
 import { authorizedLocalRuntimeRequest } from "./auth.js";
 import type { ResolvedLocalRuntimeConfig } from "./config.js";
+import { handleIngestionHttpRoute } from "./ingestion-http-routes.js";
+import type { LocalIngestionRuntimeFactory } from "./ingestion-runtime-factory.js";
 import { createSqlitePrrRuntime } from "./runtime-factory.js";
 
 export interface LocalRuntimeRequest {
@@ -31,6 +34,8 @@ export interface CreateLocalRuntimeHttpHandlerInput {
   readonly requestIdFactory?: () => string;
   readonly deadlineCalculator?: DeadlineCalculator;
   readonly seedEvents?: readonly KnowledgeEvent[];
+  readonly ingestionMountResolver?: IngestionWorkspaceMountResolver;
+  readonly ingestionRuntimeFactory?: LocalIngestionRuntimeFactory;
 }
 
 export function createLocalRuntimeHttpHandler(
@@ -69,6 +74,22 @@ export function createLocalRuntimeHttpHandler(
           "provide the configured local runtime auth token"
         ])
       );
+    }
+
+    if (path.startsWith("/api/ingestion/")) {
+      const response = await handleIngestionHttpRoute({
+        request,
+        actor: input.actor,
+        ...(input.ingestionMountResolver === undefined
+          ? {}
+          : { ingestionMountResolver: input.ingestionMountResolver }),
+        ...(input.ingestionRuntimeFactory === undefined
+          ? {}
+          : { ingestionRuntimeFactory: input.ingestionRuntimeFactory })
+      });
+      if (response !== undefined) {
+        return response;
+      }
     }
 
     if (request.method === "GET" && path === "/api/requests/workspace") {
