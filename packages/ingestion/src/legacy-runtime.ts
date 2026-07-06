@@ -33,6 +33,7 @@ import {
   legacyImportNextActions,
   stableLegacyImportError,
   stableLegacyImportSuccess,
+  type LegacyImportCommandName,
   type LegacyImportRuntimeResult
 } from "./legacy-runtime-types.js";
 
@@ -107,7 +108,7 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
 
   return {
     async inspect(command): Promise<LegacyImportRuntimeResult<LegacyInspectData>> {
-      const workspace = requireMountedWorkspace(input.mountedWorkspace, "inspect");
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "legacy inspect", "inspect");
       if (!workspace.ok) {
         return workspace;
       }
@@ -177,13 +178,13 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
     },
 
     async report(command): Promise<LegacyImportRuntimeResult<LegacyReportData>> {
-      const workspace = requireMountedWorkspace(input.mountedWorkspace, "read");
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "legacy report", "read");
       if (!workspace.ok) {
         return workspace;
       }
 
       try {
-        const resolved = await resolveStoredReport(workspace.workspace, command);
+        const resolved = await resolveStoredReport(workspace.workspace, "legacy report", command);
         if (!resolved.ok) {
           return resolved.result;
         }
@@ -212,13 +213,13 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
     },
 
     async quarantine(command): Promise<LegacyImportRuntimeResult<LegacyQuarantineData>> {
-      const workspace = requireMountedWorkspace(input.mountedWorkspace, "read");
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "legacy quarantine", "read");
       if (!workspace.ok) {
         return workspace;
       }
 
       try {
-        const resolved = await resolveStoredReport(workspace.workspace, command);
+        const resolved = await resolveStoredReport(workspace.workspace, "legacy quarantine", command);
         if (!resolved.ok) {
           return resolved.result;
         }
@@ -245,13 +246,13 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
     },
 
     async stagingPreview(command): Promise<LegacyImportRuntimeResult<LegacyStagingPreviewData>> {
-      const workspace = requireMountedWorkspace(input.mountedWorkspace, "read");
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "legacy staging-preview", "read");
       if (!workspace.ok) {
         return workspace;
       }
 
       try {
-        const resolved = await resolveStoredReport(workspace.workspace, command);
+        const resolved = await resolveStoredReport(workspace.workspace, "legacy staging-preview", command);
         if (!resolved.ok) {
           return resolved.result;
         }
@@ -353,6 +354,7 @@ async function parseDetectedLegacyMetadata(
 
 async function resolveStoredReport(
   workspace: MountedWorkspace,
+  command: Extract<LegacyImportCommandName, "legacy report" | "legacy quarantine" | "legacy staging-preview">,
   input: { readonly sourceCollectionId: string; readonly legacyReportId?: string }
 ): Promise<
   | { readonly ok: true; readonly report: LegacyMigrationReport }
@@ -366,7 +368,7 @@ async function resolveStoredReport(
       ok: false,
       result: stableLegacyImportError({
         code: "LEGACY_IMPORT_REPORT_REQUIRED",
-        command: "legacy report",
+        command,
         message: "A migration report is required before legacy review.",
         allowedRepairActions: ["run legacy inspect", "review legacy report"]
       })
@@ -379,7 +381,7 @@ async function resolveStoredReport(
       ok: false,
       result: stableLegacyImportError({
         code: "LEGACY_IMPORT_REPORT_NOT_FOUND",
-        command: "legacy report",
+        command,
         message: "Requested legacy migration report was not found for this source.",
         allowedRepairActions: ["run legacy inspect", "choose a listed report id"]
       })
@@ -401,7 +403,7 @@ async function resolveStoredReport(
       ok: false,
       result: stableLegacyImportError({
         code: "LEGACY_IMPORT_REPORT_NOT_FOUND",
-        command: "legacy report",
+        command,
         message: "Stored legacy migration report artifact was not found.",
         allowedRepairActions: ["rerun legacy inspect", "review workspace derivative storage"]
       })
@@ -411,12 +413,16 @@ async function resolveStoredReport(
 
 function requireMountedWorkspace(
   workspace: MountedWorkspace | undefined,
+  command: Extract<
+    LegacyImportCommandName,
+    "legacy inspect" | "legacy report" | "legacy quarantine" | "legacy staging-preview"
+  >,
   mode: "read" | "inspect"
 ): LegacyWorkspaceRequirementResult {
   if (workspace === undefined || !workspace.capabilities.canReadLedger) {
     return stableLegacyImportError({
       code: "LEGACY_IMPORT_WORKSPACE_NOT_MOUNTED",
-      command: mode === "inspect" ? "legacy inspect" : "legacy report",
+      command,
       message: "Mounted portable workspace with ledger read capability is required.",
       allowedRepairActions: ["mount the portable workspace", "retry the legacy import command"]
     });
@@ -428,7 +434,7 @@ function requireMountedWorkspace(
   ) {
     return stableLegacyImportError({
       code: "LEGACY_IMPORT_WORKSPACE_NOT_WRITABLE",
-      command: "legacy inspect",
+      command,
       message: "Legacy inspect requires append and derivative-write workspace capabilities.",
       allowedRepairActions: ["remount the portable workspace read-write", "retry legacy inspect"]
     });
