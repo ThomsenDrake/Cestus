@@ -49,6 +49,94 @@ describe("operator status HTTP route", () => {
     });
   });
 
+  it("returns smoke-ready missing-drive and zero-request diagnostics from GET /api/operator/status", async () => {
+    const handler = testHandler({
+      operatorStatusProviders: {
+        ...readyProviders(),
+        workspace: vi.fn(async () => createWorkspaceOpsEnvelope<WorkspaceVerifyDto>({
+          command: "verify workspace",
+          status: "blocked",
+          payload: {
+            schemaVersion: "workspace-ops.v1",
+            mountStatus: {
+              status: "missing",
+              safeMessage: "Expected external Cestus drive is not mounted.",
+              expectedRootUri: "file:///expected-workspace",
+              nextCommandHints: [
+                {
+                  allowedNextCommands: ["detect drive"],
+                  safeReason: "Detect the mounted Cestus drive before changing state.",
+                  requiresHumanApproval: false
+                }
+              ]
+            },
+            manifest: {
+              readable: false,
+              valid: false,
+              safeSummary: "Manifest cannot be read while the drive is missing."
+            },
+            layout: {
+              contractVersion: "portable-workspace-layout.v1-provisional",
+              readable: false,
+              requiredRoots: []
+            },
+            ledger: { readable: false, eventCount: 0, highWaterMark: 0 },
+            blobStore: {
+              available: false,
+              contentAddressedRootCount: 0,
+              aggregateBytes: 0,
+              missingBlobCount: 0,
+              hashMismatchCount: 0
+            },
+            projections: { available: false, staleCount: 0, rebuildable: false },
+            jobs: { available: false, queuedCount: 0, failedCount: 0 },
+            diagnostics: { visible: true, errorCount: 1, warningCount: 0 },
+            backup: { manifestAvailable: false, stale: true }
+          },
+          diagnostics: [
+            {
+              diagnosticId: "diag_workspace_missing_drive",
+              severity: "error",
+              category: "mount",
+              message: "External drive is missing; run drive detection before starting local work.",
+              durable: false,
+              relatedIds: [],
+              repairHint: {
+                allowedNextCommands: ["detect drive"],
+                requiresHumanApproval: false
+              }
+            }
+          ],
+          proposedActions: []
+        })),
+        prr: vi.fn(async () => ({ cards: [], diagnostics: [] }))
+      }
+    });
+
+    const response = await handler({ method: "GET", url: "/api/operator/status" });
+    const body = operatorStatusDtoSchema.parse(JSON.parse(response.body));
+    const workspace = body.sections.find((section) => section.sectionId === "workspace");
+    const prr = body.sections.find((section) => section.sectionId === "prr");
+    const workspaceActions = body.safeActions.filter((action) =>
+      workspace?.nextSafeActionIds.includes(action.actionId)
+    );
+    const prrActions = body.safeActions.filter((action) => prr?.nextSafeActionIds.includes(action.actionId));
+
+    expect(response.status).toBe(200);
+    expect(workspace?.state).toBe("blocked");
+    expect(workspace?.diagnostics.map((diagnostic) => diagnostic.message)).toContain(
+      "External drive is missing; run drive detection before starting local work."
+    );
+    expect(workspaceActions.some((action) => action.command === "cestus-workspace detect drive --workspace <root>")).toBe(
+      true
+    );
+    expect(prr?.state).toBe("ready");
+    expect(prr?.diagnostics.map((diagnostic) => diagnostic.message)).toContain(
+      "PRR workspace is readable with zero open requests."
+    );
+    expect(prrActions.some((action) => action.kind === "navigate" && action.target === "requests")).toBe(true);
+  });
+
   it("does not route POST /api/operator/status or call providers", async () => {
     const providers = readyProviders();
     const handler = testHandler({ operatorStatusProviders: providers });
