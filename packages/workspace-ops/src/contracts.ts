@@ -151,7 +151,8 @@ function normalizeWorkspacePayload(
 
       const normalized: WorkspaceJsonPayload[] = [];
       for (let index = 0; index < value.length; index += 1) {
-        if (!Object.prototype.hasOwnProperty.call(value, index)) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, index);
+        if (descriptor === undefined) {
           return {
             ok: false,
             path: [...path, index],
@@ -159,7 +160,23 @@ function normalizeWorkspacePayload(
           };
         }
 
-        const result = normalizeWorkspacePayload(value[index], [...path, index], seen);
+        if (!descriptor.enumerable) {
+          return {
+            ok: false,
+            path: [...path, index],
+            message: "workspace ops payload arrays must contain only enumerable entries"
+          };
+        }
+
+        if (!("value" in descriptor)) {
+          return {
+            ok: false,
+            path: [...path, index],
+            message: "workspace ops payload arrays must not contain accessors"
+          };
+        }
+
+        const result = normalizeWorkspacePayload(descriptor.value, [...path, index], seen);
         if (!result.ok) {
           return result;
         }
@@ -623,6 +640,19 @@ export const workspaceOpsEnvelopeSchema = z.object({
         });
       }
       return z.NEVER;
+    }
+
+    if (envelope.command === "projection rebuild-readiness" || envelope.command === "projection rebuild") {
+      const expectedMode = envelope.command === "projection rebuild-readiness" ? "readiness" : "result";
+      const projectionPayload = payloadResult.data as ProjectionRebuildDto;
+      if (projectionPayload.mode !== expectedMode) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["payload", "mode"],
+          message: `${envelope.command} payload mode must be ${expectedMode}`
+        });
+        return z.NEVER;
+      }
     }
 
     return {

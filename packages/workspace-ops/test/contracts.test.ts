@@ -529,6 +529,12 @@ describe("workspace ops contracts", () => {
         payload: diskUsageDtoSchema.parse(diskUsagePayload)
       }),
       createWorkspaceOpsEnvelope({
+        command: "detect drive",
+        status: "ready",
+        workspace: workspaceRef,
+        payload: mountStatusSchema.parse(mountStatus)
+      }),
+      createWorkspaceOpsEnvelope({
         command: "projection rebuild",
         status: "ready",
         workspace: workspaceRef,
@@ -626,5 +632,75 @@ describe("workspace ops contracts", () => {
     );
 
     expect(formatted.payload.diagnostics[0].relatedIds).toEqual([]);
+  });
+
+  it("rejects accessor-backed array entries without invoking getters", () => {
+    let getterInvoked = false;
+    const thresholdWarnings: string[] = [];
+    Object.defineProperty(thresholdWarnings, "0", {
+      enumerable: true,
+      configurable: true,
+      get() {
+        getterInvoked = true;
+        return "Projection root is below preferred free space.";
+      }
+    });
+
+    expect(() =>
+      workspaceOpsEnvelopeSchema.parse({
+        schemaVersion: workspaceOpsSchemaVersion,
+        command: "disk usage",
+        ok: true,
+        status: "ready",
+        payload: {
+          schemaVersion: workspaceOpsSchemaVersion,
+          estimatedFreeBytes: 1_000_000,
+          thresholdWarnings,
+          roots: [],
+          categories: [],
+          totalBytes: 0
+        },
+        diagnostics: [],
+        proposedActions: []
+      })
+    ).toThrow("accessors");
+    expect(getterInvoked).toBe(false);
+  });
+
+  it("rejects projection command payloads with mismatched modes", () => {
+    const projectionPayload = {
+      schemaVersion: workspaceOpsSchemaVersion,
+      requestedProjections: ["requests-workspace"],
+      inputLedger: { readable: true, eventCount: 12, highWaterMark: 12 },
+      readiness: { ready: true, checks: [] },
+      artifactOutputs: [],
+      validationResults: [],
+      failures: [],
+      wroteExpendableArtifactsOnly: true
+    } as const;
+
+    expect(() =>
+      workspaceOpsEnvelopeSchema.parse({
+        schemaVersion: workspaceOpsSchemaVersion,
+        command: "projection rebuild-readiness",
+        ok: true,
+        status: "ready",
+        payload: { ...projectionPayload, mode: "result" },
+        diagnostics: [],
+        proposedActions: []
+      })
+    ).toThrow("readiness");
+
+    expect(() =>
+      workspaceOpsEnvelopeSchema.parse({
+        schemaVersion: workspaceOpsSchemaVersion,
+        command: "projection rebuild",
+        ok: true,
+        status: "ready",
+        payload: { ...projectionPayload, mode: "readiness" },
+        diagnostics: [],
+        proposedActions: []
+      })
+    ).toThrow("result");
   });
 });

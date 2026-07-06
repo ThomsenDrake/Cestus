@@ -45,3 +45,6 @@ Repair evidence:
 - Named payload normalization red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 1 failing regression proving command payload defaults were validated but not emitted by formatting.
 - Named payload normalization green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 20 tests passed.
 - Named payload normalization verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 605 tests passed, UI build succeeded, and factory-readiness passed.
+- Array and projection mode repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 2 failing regressions covering accessor-backed array entries and projection command/mode mismatches.
+- Array and projection mode repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 22 tests passed, including representative `detect drive` payload dispatch coverage.
+- Array and projection mode repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 607 tests passed, UI build succeeded, and factory-readiness passed.
