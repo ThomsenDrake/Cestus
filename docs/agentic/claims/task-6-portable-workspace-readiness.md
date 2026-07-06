@@ -7,7 +7,7 @@ Branch: `codex/portable-workspace-mount-design`
 Worktree path: `/home/drake/.codex/worktrees/4ea6/Cestus`
 Claimed at UTC: `2026-07-06T14:57:21Z`
 Started at UTC: `2026-07-06T14:57:51Z`
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -19,10 +19,27 @@ Status: `in-progress`
 ## Evidence
 
 - Claim commit: `214389d` (`chore: claim task 6 portable workspace readiness`).
-- Start commit: pending.
+- Start commit: `cdc8859` (`chore: start task 6 portable workspace readiness`).
+- Red command: `npm test -- packages/ui/test/request-data-boundary.test.ts`
+  - Result: failed as expected before updating `scripts/check-agent-readiness.mjs`.
+  - Evidence: readiness assertion missing the 2026-07-06 portable workspace spec and plan; `Test Files 1 failed (1)`, `Tests 1 failed | 4 passed (5)`.
+- Green command: `npm test -- packages/ui/test/request-data-boundary.test.ts`
+  - Result: passed after adding readiness paths and UI import boundary expectations.
+  - Evidence: `Test Files 1 passed (1)`, `Tests 5 passed (5)`.
+- Factory readiness: `npm run factory:check`
+  - Result: passed.
+  - Evidence: `factory-readiness passed`.
+- Full verification: `npm run verify`
+  - Result: passed.
+  - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 615 passed (615)`, `tests passed`, Vite build succeeded, `factory-readiness passed`.
+- Implementation-slice counts recorded in `docs/agentic/software-factory.md`:
+  - Workspace package: `Test Files 1 passed (1)`, `Tests 16 passed (16)`.
+  - Local runtime config and CLI: `Test Files 3 passed (3)`, `Tests 35 passed (35)`.
+  - Local runtime portable mount: `Test Files 2 passed (2)`, `Tests 18 passed (18)`.
+  - Ingestion workspace delegation with workspace package: `Test Files 2 passed (2)`, `Tests 18 passed (18)`.
 
 ## Review
 
-- Review status: in-progress
+- Review status: ready-for-review
 - Review focus: spec/plan readiness, UI boundary safety, verification evidence, and preservation of portable workspace invariants.
 - Concerns: none recorded.
