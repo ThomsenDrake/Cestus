@@ -205,3 +205,113 @@ describe("LegacyImportRuntime review workflow", () => {
     expect(report.error.command).toBe("legacy report");
   });
 });
+
+describe("LegacyImportRuntime gated import and staging workflow", () => {
+  it("approves raw import without copying bytes, then imports through stale-source verification", async () => {
+    const workspace = createFakeMountedWorkspace("Legacy CLI workspace");
+    const runtime = createLegacyImportRuntime({ mountedWorkspace: workspace, actor });
+    await runtime.inspect({
+      sourceCollectionId: "src_old_cestus",
+      label: "Old Cestus",
+      sourceRoot,
+      scanBatchId: "scan_old_cestus_001"
+    });
+
+    const approved = await runtime.approveRawImport({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      importBatchId: "imp_old_cestus_001",
+      approvedBy: "actor_investigator"
+    });
+    expect(approved.ok).toBe(true);
+    expect((await workspace.ledger.readAll()).map((event) => event.type)).not.toContain("evidence.ingested");
+
+    const imported = await runtime.importApproved({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      importBatchId: "imp_old_cestus_001"
+    });
+
+    expect(imported.ok).toBe(true);
+    expect((await workspace.ledger.readAll()).map((event) => event.type)).toContain("evidence.ingested");
+  });
+
+  it("previews only evidence-tied staging candidates after raw import", async () => {
+    const { runtime, inspected } = await preparedImportedRuntime();
+
+    const preview = await runtime.stagingPreview({
+      sourceCollectionId: "src_old_cestus",
+      legacyReportId: inspected.legacyReportId
+    });
+
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    expect(preview.candidates).toHaveLength(1);
+    expect(preview.candidates[0]).toMatchObject({
+      candidateId: expect.stringMatching(/^legacy_candidate_/),
+      evidenceId: expect.stringMatching(/^ev_/),
+      predicate: "agency.name",
+      object: "Example Agency"
+    });
+  });
+
+  it("requires human staging approval before appending assertion.proposed only", async () => {
+    const { workspace, runtime, inspected } = await preparedImportedRuntime();
+    const preview = await runtime.stagingPreview({
+      sourceCollectionId: "src_old_cestus",
+      legacyReportId: inspected.legacyReportId
+    });
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+
+    const approved = await runtime.approveStaging({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId: "legacy_stage_001",
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: preview.candidates.map((candidate) => candidate.candidateId)
+    });
+    expect(approved.ok).toBe(true);
+
+    const staged = await runtime.stageApproved({
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      legacyReportId: inspected.legacyReportId,
+      stagingBatchId: "legacy_stage_001"
+    });
+
+    const eventTypes = (await workspace.ledger.readAll()).map((event) => event.type);
+    expect(staged.ok).toBe(true);
+    expect(eventTypes).toContain("legacy.ontology.staging.approved");
+    expect(eventTypes).toContain("assertion.proposed");
+    expect(eventTypes).not.toContain("assertion.accepted");
+    expect(eventTypes).not.toContain("entity.resolved");
+    expect(eventTypes).not.toContain("relationship.accepted");
+  });
+});
+
+async function preparedImportedRuntime() {
+  const workspace = createFakeMountedWorkspace("Legacy CLI workspace");
+  const runtime = createLegacyImportRuntime({ mountedWorkspace: workspace, actor });
+  const inspected = await runtime.inspect({
+    sourceCollectionId: "src_old_cestus",
+    label: "Old Cestus",
+    sourceRoot,
+    scanBatchId: "scan_old_cestus_001"
+  });
+  expect(inspected.ok).toBe(true);
+  if (!inspected.ok) throw new Error("inspect failed");
+  await runtime.approveRawImport({
+    sourceCollectionId: "src_old_cestus",
+    scanBatchId: "scan_old_cestus_001",
+    importBatchId: "imp_old_cestus_001",
+    approvedBy: "actor_investigator"
+  });
+  await runtime.importApproved({
+    sourceCollectionId: "src_old_cestus",
+    scanBatchId: "scan_old_cestus_001",
+    importBatchId: "imp_old_cestus_001"
+  });
+  return { workspace, runtime, inspected };
+}

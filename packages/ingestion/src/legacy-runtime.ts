@@ -11,6 +11,8 @@ import {
   LegacyCestusInspector,
   type LegacyDetectionRecord
 } from "./legacy-inspector.js";
+import { createIngestionRuntime } from "./runtime.js";
+import type { IngestionRuntimeError } from "./runtime-types.js";
 import {
   conservativeJsonMetadataPlugin,
   LegacyDetectorRegistry
@@ -26,6 +28,10 @@ import {
 import { buildLegacyImportProjection, type LegacyImportProjection } from "./legacy-projection.js";
 import { buildLegacyMigrationReviewDto, type LegacyMigrationReviewDto } from "./legacy-read-api.js";
 import { parseLegacyClaimMetadata } from "./legacy-claim-parser.js";
+import {
+  LegacyOntologyStagingService,
+  type LegacyApprovedAssertionCandidate
+} from "./legacy-staging.js";
 import type { MountedWorkspace } from "./mount-contract.js";
 import { IngestionSourceRegistry } from "./source-registry.js";
 import type {
@@ -69,6 +75,35 @@ export interface LegacyRuntimeStagingPreviewInput {
   readonly legacyReportId?: string;
 }
 
+export interface LegacyRuntimeApproveRawImportInput {
+  readonly sourceCollectionId: string;
+  readonly scanBatchId: string;
+  readonly importBatchId: string;
+  readonly approvedBy: string;
+}
+
+export interface LegacyRuntimeImportApprovedInput {
+  readonly sourceCollectionId: string;
+  readonly scanBatchId: string;
+  readonly importBatchId: string;
+}
+
+export interface LegacyRuntimeApproveStagingInput {
+  readonly sourceCollectionId: string;
+  readonly scanBatchId: string;
+  readonly legacyReportId: string;
+  readonly stagingBatchId: string;
+  readonly approvedBy: string;
+  readonly approvedAssertionCandidateIds: readonly string[];
+}
+
+export interface LegacyRuntimeStageApprovedInput {
+  readonly sourceCollectionId: string;
+  readonly scanBatchId: string;
+  readonly legacyReportId: string;
+  readonly stagingBatchId: string;
+}
+
 export interface LegacyInspectData {
   readonly legacyReportId: string;
   readonly reportHash: `sha256:${string}`;
@@ -100,8 +135,37 @@ export interface LegacyStagingPreviewData {
   readonly legacyReportId: string;
   readonly reportHash: `sha256:${string}`;
   readonly candidateSetHash: `sha256:${string}`;
+  readonly candidates: readonly LegacyApprovedAssertionCandidate[];
   readonly proposedAssertionCandidates: readonly LegacyProposedAssertionCandidate[];
   readonly quarantineEntries: readonly LegacyQuarantineEntry[];
+}
+
+export interface LegacyRawImportApprovalData {
+  readonly importBatchId: string;
+}
+
+export interface LegacyRawImportResultData {
+  readonly importBatchId: string;
+  readonly totals: {
+    readonly evidenceCreated: number;
+    readonly occurrencesLinked: number;
+    readonly duplicatesReused: number;
+    readonly skipped: number;
+  };
+}
+
+export interface LegacyStagingApprovalData {
+  readonly legacyReportId: string;
+  readonly stagingBatchId: string;
+  readonly reportHash: `sha256:${string}`;
+  readonly candidateSetHash: `sha256:${string}`;
+  readonly approvedAssertionCandidateIds: readonly string[];
+}
+
+export interface LegacyStageResultData {
+  readonly legacyReportId: string;
+  readonly stagingBatchId: string;
+  readonly proposedAssertionIds: readonly string[];
 }
 
 export interface LegacyImportRuntime {
@@ -109,6 +173,12 @@ export interface LegacyImportRuntime {
   report(input: LegacyRuntimeReportInput): Promise<LegacyImportRuntimeResult<LegacyReportData>>;
   quarantine(input: LegacyRuntimeQuarantineInput): Promise<LegacyImportRuntimeResult<LegacyQuarantineData>>;
   stagingPreview(input: LegacyRuntimeStagingPreviewInput): Promise<LegacyImportRuntimeResult<LegacyStagingPreviewData>>;
+  approveRawImport(
+    input: LegacyRuntimeApproveRawImportInput
+  ): Promise<LegacyImportRuntimeResult<LegacyRawImportApprovalData>>;
+  importApproved(input: LegacyRuntimeImportApprovedInput): Promise<LegacyImportRuntimeResult<LegacyRawImportResultData>>;
+  approveStaging(input: LegacyRuntimeApproveStagingInput): Promise<LegacyImportRuntimeResult<LegacyStagingApprovalData>>;
+  stageApproved(input: LegacyRuntimeStageApprovedInput): Promise<LegacyImportRuntimeResult<LegacyStageResultData>>;
 }
 
 export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput): LegacyImportRuntime {
@@ -265,6 +335,74 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
       }
     },
 
+    async approveRawImport(
+      command
+    ): Promise<LegacyImportRuntimeResult<LegacyRawImportApprovalData>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "legacy approve-import", "append");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      try {
+        const approved = await createIngestionRuntime({
+          mountedWorkspace: workspace.workspace,
+          actor
+        }).approveRawImport(command);
+        if (!approved.ok) {
+          return legacyErrorFromIngestion("legacy approve-import", approved.error);
+        }
+
+        return stableLegacyImportSuccess({
+          command: "legacy approve-import",
+          workspace: workspaceDto(workspace.workspace),
+          sourceCollectionId: command.sourceCollectionId,
+          scanBatchId: command.scanBatchId,
+          eventIds: approved.eventIds,
+          nextActions: [legacyImportNextActions.runRawImport],
+          data: {
+            importBatchId: command.importBatchId
+          }
+        });
+      } catch {
+        return internalError("legacy approve-import");
+      }
+    },
+
+    async importApproved(command): Promise<LegacyImportRuntimeResult<LegacyRawImportResultData>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "legacy import", "blob-write");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      try {
+        const imported = await createIngestionRuntime({
+          mountedWorkspace: workspace.workspace,
+          actor
+        }).importApproved(command);
+        if (!imported.ok) {
+          return legacyErrorFromIngestion("legacy import", imported.error);
+        }
+
+        return stableLegacyImportSuccess({
+          command: "legacy import",
+          workspace: workspaceDto(workspace.workspace),
+          sourceCollectionId: command.sourceCollectionId,
+          scanBatchId: command.scanBatchId,
+          eventIds: imported.eventIds,
+          nextActions: [
+            legacyImportNextActions.previewStaging,
+            legacyImportNextActions.approveStaging
+          ],
+          data: {
+            importBatchId: imported.importBatchId,
+            totals: imported.totals
+          }
+        });
+      } catch {
+        return internalError("legacy import");
+      }
+    },
+
     async stagingPreview(command): Promise<LegacyImportRuntimeResult<LegacyStagingPreviewData>> {
       const workspace = requireMountedWorkspace(input.mountedWorkspace, "legacy staging-preview", "read");
       if (!workspace.ok) {
@@ -276,6 +414,7 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
         if (!resolved.ok) {
           return resolved.result;
         }
+        const candidates = await evidenceTiedCandidatesForReport(workspace.workspace, resolved.report);
 
         return stableLegacyImportSuccess({
           command: "legacy staging-preview",
@@ -291,12 +430,124 @@ export function createLegacyImportRuntime(input: CreateLegacyImportRuntimeInput)
             legacyReportId: resolved.report.legacyReportId,
             reportHash: resolved.report.reportHash,
             candidateSetHash: resolved.report.candidateSetHash,
+            candidates,
             proposedAssertionCandidates: resolved.report.proposedAssertionCandidates,
             quarantineEntries: resolved.report.quarantineEntries
           }
         });
       } catch {
         return internalError("legacy staging-preview");
+      }
+    },
+
+    async approveStaging(command): Promise<LegacyImportRuntimeResult<LegacyStagingApprovalData>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "legacy approve-staging", "append");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      try {
+        const resolved = await resolveStoredReport(workspace.workspace, "legacy approve-staging", command);
+        if (!resolved.ok) {
+          return resolved.result;
+        }
+        if (resolved.report.scanBatchId !== command.scanBatchId) {
+          return reportMismatchError("legacy approve-staging");
+        }
+
+        const candidates = await evidenceTiedCandidatesForReport(workspace.workspace, resolved.report);
+        const candidateIds = new Set(candidates.map((candidate) => candidate.candidateId));
+        const requestedIds = [...command.approvedAssertionCandidateIds];
+        if (requestedIds.some((candidateId) => !candidateIds.has(candidateId))) {
+          return candidateSetMismatchError("legacy approve-staging");
+        }
+
+        const service = new LegacyOntologyStagingService({
+          ledger: workspace.workspace.ledger,
+          actor
+        });
+        const event = await service.approveStaging({
+          sourceCollectionId: command.sourceCollectionId,
+          scanBatchId: command.scanBatchId,
+          legacyReportId: command.legacyReportId,
+          stagingBatchId: command.stagingBatchId,
+          reportHash: resolved.report.reportHash,
+          candidateSetHash: resolved.report.candidateSetHash,
+          approvedBy: command.approvedBy,
+          approvedAssertionCandidateIds: requestedIds
+        });
+
+        return stableLegacyImportSuccess({
+          command: "legacy approve-staging",
+          workspace: workspaceDto(workspace.workspace),
+          sourceCollectionId: command.sourceCollectionId,
+          scanBatchId: command.scanBatchId,
+          eventIds: [event.id],
+          nextActions: [legacyImportNextActions.stageApprovedAssertions],
+          data: {
+            legacyReportId: resolved.report.legacyReportId,
+            stagingBatchId: command.stagingBatchId,
+            reportHash: resolved.report.reportHash,
+            candidateSetHash: resolved.report.candidateSetHash,
+            approvedAssertionCandidateIds: requestedIds
+          }
+        });
+      } catch (error) {
+        return stagingRuntimeError("legacy approve-staging", error);
+      }
+    },
+
+    async stageApproved(command): Promise<LegacyImportRuntimeResult<LegacyStageResultData>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "legacy stage", "append");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      try {
+        const resolved = await resolveStoredReport(workspace.workspace, "legacy stage", command);
+        if (!resolved.ok) {
+          return resolved.result;
+        }
+        if (resolved.report.scanBatchId !== command.scanBatchId) {
+          return reportMismatchError("legacy stage");
+        }
+
+        const candidates = await evidenceTiedCandidatesForReport(workspace.workspace, resolved.report);
+        const service = new LegacyOntologyStagingService({
+          ledger: workspace.workspace.ledger,
+          actor
+        });
+        const beforeEvents = await workspace.workspace.ledger.readAll();
+        const proposed = await service.stageApprovedAssertions({
+          sourceCollectionId: command.sourceCollectionId,
+          scanBatchId: command.scanBatchId,
+          legacyReportId: command.legacyReportId,
+          stagingBatchId: command.stagingBatchId,
+          reportHash: resolved.report.reportHash,
+          candidateSetHash: resolved.report.candidateSetHash,
+          candidates
+        });
+        const afterEvents = await workspace.workspace.ledger.readAll();
+        const newEvents = eventsAddedAfter(beforeEvents, afterEvents);
+        if (newEvents.some((event) => forbiddenAcceptedEventTypes.has(event.type))) {
+          return acceptedEventForbiddenError("legacy stage");
+        }
+
+        return stableLegacyImportSuccess({
+          command: "legacy stage",
+          workspace: workspaceDto(workspace.workspace),
+          sourceCollectionId: command.sourceCollectionId,
+          scanBatchId: command.scanBatchId,
+          eventIds: newEvents.map((event) => event.id),
+          nextActions: [legacyImportNextActions.reviewReport],
+          data: {
+            legacyReportId: resolved.report.legacyReportId,
+            stagingBatchId: command.stagingBatchId,
+            proposedAssertionIds: proposed.map((event) => event.payload.assertionId)
+          }
+        });
+      } catch (error) {
+        return stagingRuntimeError("legacy stage", error);
       }
     }
   };
@@ -413,7 +664,10 @@ async function inspectAndParseLegacyRoot(input: {
 
 async function resolveStoredReport(
   workspace: MountedWorkspace,
-  command: Extract<LegacyImportCommandName, "legacy report" | "legacy quarantine" | "legacy staging-preview">,
+  command: Extract<
+    LegacyImportCommandName,
+    "legacy report" | "legacy quarantine" | "legacy staging-preview" | "legacy approve-staging" | "legacy stage"
+  >,
   input: { readonly sourceCollectionId: string; readonly legacyReportId?: string }
 ): Promise<
   | { readonly ok: true; readonly report: LegacyMigrationReport }
@@ -511,7 +765,10 @@ function buildLegacyReportReviewDto(
 }
 
 function reportMismatchError(
-  command: Extract<LegacyImportCommandName, "legacy report" | "legacy quarantine" | "legacy staging-preview">
+  command: Extract<
+    LegacyImportCommandName,
+    "legacy report" | "legacy quarantine" | "legacy staging-preview" | "legacy approve-staging" | "legacy stage"
+  >
 ): LegacyImportRuntimeResult<never> {
   return stableLegacyImportError({
     code: "LEGACY_IMPORT_REPORT_NOT_FOUND",
@@ -525,9 +782,16 @@ function requireMountedWorkspace(
   workspace: MountedWorkspace | undefined,
   command: Extract<
     LegacyImportCommandName,
-    "legacy inspect" | "legacy report" | "legacy quarantine" | "legacy staging-preview"
+    | "legacy inspect"
+    | "legacy report"
+    | "legacy quarantine"
+    | "legacy approve-import"
+    | "legacy import"
+    | "legacy staging-preview"
+    | "legacy approve-staging"
+    | "legacy stage"
   >,
-  mode: "read" | "inspect"
+  mode: "read" | "inspect" | "append" | "blob-write"
 ): LegacyWorkspaceRequirementResult {
   if (workspace === undefined || !workspace.capabilities.canReadLedger) {
     return stableLegacyImportError({
@@ -535,6 +799,27 @@ function requireMountedWorkspace(
       command,
       message: "Mounted portable workspace with ledger read capability is required.",
       allowedRepairActions: ["mount the portable workspace", "retry the legacy import command"]
+    });
+  }
+
+  if (
+    (mode === "append" || mode === "blob-write") &&
+    (!workspace.capabilities.canAppendLedger || !workspace.capabilities.canWriteJobState)
+  ) {
+    return stableLegacyImportError({
+      code: "LEGACY_IMPORT_WORKSPACE_NOT_WRITABLE",
+      command,
+      message: "Legacy import gate requires append-capable workspace storage.",
+      allowedRepairActions: ["remount the portable workspace read-write", "retry the legacy import command"]
+    });
+  }
+
+  if (mode === "blob-write" && !workspace.capabilities.canWriteBlobs) {
+    return stableLegacyImportError({
+      code: "LEGACY_IMPORT_WORKSPACE_NOT_WRITABLE",
+      command,
+      message: "Legacy raw import requires blob-write workspace capability.",
+      allowedRepairActions: ["remount the portable workspace read-write", "retry legacy import"]
     });
   }
 
@@ -557,6 +842,148 @@ type LegacyWorkspaceRequirementResult =
   | { readonly ok: true; readonly workspace: MountedWorkspace }
   | { readonly ok: false; readonly error: LegacyImportRuntimeResult<never>["error"] };
 
+async function evidenceTiedCandidatesForReport(
+  workspace: MountedWorkspace,
+  report: LegacyMigrationReport
+): Promise<LegacyApprovedAssertionCandidate[]> {
+  const ingestionProjection = buildIngestionProjection(await workspace.ledger.readAll());
+  const evidenceBySourceHash = new Map<`sha256:${string}`, string>();
+
+  for (const link of ingestionProjection.evidenceLinks.values()) {
+    if (link.sourceCollectionId === report.sourceCollectionId) {
+      evidenceBySourceHash.set(link.contentHash as `sha256:${string}`, link.evidenceId);
+    }
+  }
+
+  return report.proposedAssertionCandidates.flatMap((candidate) => {
+    const evidenceId = evidenceBySourceHash.get(candidate.evidenceContentHash) ??
+      ingestionProjection.evidenceByHash.get(candidate.evidenceContentHash);
+
+    if (evidenceId === undefined) {
+      return [];
+    }
+
+    return [{
+      candidateId: candidate.candidateId,
+      observationId: candidate.observationId,
+      evidenceContentHash: candidate.evidenceContentHash,
+      sourcePath: candidate.sourcePath,
+      predicate: candidate.predicate,
+      object: candidate.object,
+      confidence: candidate.confidence,
+      ...(candidate.subjectRef === undefined ? {} : { subjectRef: candidate.subjectRef }),
+      evidenceId
+    }];
+  });
+}
+
+function legacyErrorFromIngestion(
+  command: Extract<LegacyImportCommandName, "legacy approve-import" | "legacy import">,
+  error: IngestionRuntimeError
+): LegacyImportRuntimeResult<never> {
+  switch (error.code) {
+    case "INGESTION_WORKSPACE_NOT_MOUNTED":
+      return stableLegacyImportError({
+        code: "LEGACY_IMPORT_WORKSPACE_NOT_MOUNTED",
+        command,
+        message: "Mounted portable workspace with ledger read capability is required.",
+        allowedRepairActions: ["mount the portable workspace", "retry the legacy import command"]
+      });
+    case "INGESTION_WORKSPACE_NOT_WRITABLE":
+      return stableLegacyImportError({
+        code: "LEGACY_IMPORT_WORKSPACE_NOT_WRITABLE",
+        command,
+        message: "Legacy import requires writable workspace storage.",
+        allowedRepairActions: ["remount the portable workspace read-write", "retry the legacy import command"]
+      });
+    case "INGESTION_SOURCE_NOT_REGISTERED":
+      return stableLegacyImportError({
+        code: "LEGACY_IMPORT_SOURCE_NOT_REGISTERED",
+        command,
+        message: "Legacy source collection is not registered.",
+        allowedRepairActions: ["run legacy inspect", "retry the legacy import command"]
+      });
+    case "INGESTION_SCAN_REQUIRED":
+      return stableLegacyImportError({
+        code: "LEGACY_IMPORT_SOURCE_REQUIRED",
+        command,
+        message: "Completed legacy source scan is required before this import gate.",
+        allowedRepairActions: ["run legacy inspect", "retry the legacy import command"]
+      });
+    case "INGESTION_IMPORT_APPROVAL_REQUIRED":
+      return stableLegacyImportError({
+        code: "LEGACY_IMPORT_RAW_IMPORT_APPROVAL_REQUIRED",
+        command,
+        message: "Human raw import approval is required before legacy import execution.",
+        allowedRepairActions: ["run legacy approve-import", "retry legacy import"]
+      });
+    default:
+      return stableLegacyImportError({
+        code: "LEGACY_IMPORT_RUNTIME_INTERNAL",
+        command,
+        message: "Shared ingestion runtime rejected the legacy import gate.",
+        allowedRepairActions: [...error.allowedRepairActions]
+      });
+  }
+}
+
+function candidateSetMismatchError(
+  command: Extract<LegacyImportCommandName, "legacy approve-staging" | "legacy stage">
+): LegacyImportRuntimeResult<never> {
+  return stableLegacyImportError({
+    code: "LEGACY_IMPORT_CANDIDATE_SET_MISMATCH",
+    command,
+    message: "Requested legacy staging candidates do not match the current evidence-tied report candidate set.",
+    allowedRepairActions: ["rerun legacy staging-preview", "approve only listed candidate ids"]
+  });
+}
+
+function stagingRuntimeError(
+  command: Extract<LegacyImportCommandName, "legacy approve-staging" | "legacy stage">,
+  error: unknown
+): LegacyImportRuntimeResult<never> {
+  const message = error instanceof Error ? error.message : "";
+
+  if (/approval/i.test(message)) {
+    return stableLegacyImportError({
+      code: "LEGACY_IMPORT_STAGING_APPROVAL_REQUIRED",
+      command,
+      message: "Human ontology staging approval is required before staging legacy assertions.",
+      allowedRepairActions: ["run legacy approve-staging", "retry legacy stage"]
+    });
+  }
+
+  if (/candidate set hash/i.test(message)) {
+    return candidateSetMismatchError(command);
+  }
+
+  if (/without evidence|content hash mismatch/i.test(message)) {
+    return stableLegacyImportError({
+      code: "LEGACY_IMPORT_EVIDENCE_LINK_REQUIRED",
+      command,
+      message: "Legacy staging candidates must be tied to imported evidence.",
+      allowedRepairActions: ["run legacy import", "rerun legacy staging-preview"]
+    });
+  }
+
+  return internalError(command);
+}
+
+const forbiddenAcceptedEventTypes = new Set<KnowledgeEvent["type"]>([
+  "assertion.accepted",
+  "entity.resolved",
+  "relationship.accepted"
+]);
+
+function acceptedEventForbiddenError(command: "legacy stage"): LegacyImportRuntimeResult<never> {
+  return stableLegacyImportError({
+    code: "LEGACY_IMPORT_ACCEPTED_EVENT_FORBIDDEN",
+    command,
+    message: "Legacy ontology staging may append assertion proposals only.",
+    allowedRepairActions: ["review the staging service implementation", "do not accept graph state in legacy stage"]
+  });
+}
+
 function inspectData(report: LegacyMigrationReport): LegacyInspectData {
   return {
     legacyReportId: report.legacyReportId,
@@ -574,13 +1001,28 @@ function workspaceDto(workspace: MountedWorkspace) {
 }
 
 function eventIdsAddedAfter(beforeEvents: readonly KnowledgeEvent[], afterEvents: readonly KnowledgeEvent[]): string[] {
-  const beforeIds = new Set(beforeEvents.map((event) => event.id));
-  return afterEvents
-    .filter((event) => !beforeIds.has(event.id))
-    .map((event) => event.id);
+  return eventsAddedAfter(beforeEvents, afterEvents).map((event) => event.id);
 }
 
-function internalError(command: "legacy inspect" | "legacy report" | "legacy quarantine" | "legacy staging-preview") {
+function eventsAddedAfter(beforeEvents: readonly KnowledgeEvent[], afterEvents: readonly KnowledgeEvent[]): KnowledgeEvent[] {
+  const beforeIds = new Set(beforeEvents.map((event) => event.id));
+  return afterEvents
+    .filter((event) => !beforeIds.has(event.id));
+}
+
+function internalError(
+  command: Extract<
+    LegacyImportCommandName,
+    | "legacy inspect"
+    | "legacy report"
+    | "legacy quarantine"
+    | "legacy approve-import"
+    | "legacy import"
+    | "legacy staging-preview"
+    | "legacy approve-staging"
+    | "legacy stage"
+  >
+) {
   return stableLegacyImportError({
     code: "LEGACY_IMPORT_RUNTIME_INTERNAL",
     command,
