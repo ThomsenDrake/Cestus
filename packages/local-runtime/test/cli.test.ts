@@ -218,6 +218,38 @@ describe("runLocalRuntimeCli", () => {
     expect(stdout.join("\n")).not.toMatch(/token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i);
   });
 
+  it("generates a portable workspace id when create-workspace omits one", async () => {
+    const stdout: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    const workspaceRoot = join(tempDir, "external-case");
+
+    const exitCode = await runLocalRuntimeCli(
+      [
+        "create-workspace",
+        "--workspace",
+        workspaceRoot,
+        "--label",
+        "Generated Id Workspace",
+        "--created-at",
+        "2026-07-06T12:00:00.000Z"
+      ],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: () => undefined
+      }
+    );
+
+    const output = JSON.parse(stdout.join("\n")) as {
+      ok: true;
+      workspace: { workspaceId: string };
+    };
+    expect(exitCode).toBe(0);
+    expect(output.workspace.workspaceId).toMatch(/^ws_[a-z0-9_]+$/);
+    expect(stdout.join("\n")).not.toMatch(/token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i);
+  });
+
   it("resolves relative create-workspace roots from the injected cwd", async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];
@@ -266,7 +298,7 @@ describe("runLocalRuntimeCli", () => {
     }
   });
 
-  it("rejects create-workspace without the required workspace id", async () => {
+  it("creates a portable workspace without an explicit workspace id", async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];
     tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
@@ -287,9 +319,38 @@ describe("runLocalRuntimeCli", () => {
       }
     );
 
-    expect(exitCode).toBe(1);
-    expect(stdout).toEqual([]);
-    expect(stderr.join("\n")).toContain("create-workspace requires --workspace-id <id>");
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    const output = JSON.parse(stdout.join("\n")) as {
+      workspace: { workspaceId: string };
+    };
+    expect(output.workspace.workspaceId).toMatch(/^ws_[a-z0-9_]+$/);
+  });
+
+  it("configures expected portable workspace identity with --workspace-id", async () => {
+    const stdout: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(
+      [
+        "configure",
+        "--storage",
+        "portable-workspace",
+        "--workspace",
+        "external/case-a",
+        "--workspace-id",
+        "ws_cli_case"
+      ],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: () => undefined
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stdout.join("\n")).toContain('"expectedWorkspaceId": "ws_cli_case"');
   });
 
   it("rejects unknown create-workspace flags without writing output", async () => {

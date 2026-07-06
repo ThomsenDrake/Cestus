@@ -25,7 +25,12 @@ function sqlitePathFor(config: ResolvedLocalRuntimeConfig): {
     return { sqlitePath: config.storage.sqlitePath };
   }
 
-  const mounted = mountPortableWorkspace({ rootDir: config.storage.workspaceRoot });
+  const mounted = mountPortableWorkspace({
+    rootDir: config.storage.workspaceRoot,
+    ...(config.storage.expectedWorkspaceId === undefined
+      ? {}
+      : { expectedWorkspaceId: config.storage.expectedWorkspaceId })
+  });
   if (!mounted.ok) {
     throw new Error(mounted.diagnostic.message);
   }

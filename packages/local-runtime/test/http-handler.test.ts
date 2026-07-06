@@ -176,6 +176,38 @@ describe("createLocalRuntimeHttpHandler", () => {
     expect(existsSync(join(cwd, ".cestus/local/prr-ledger.sqlite"))).toBe(false);
   });
 
+  it("fails closed when portable config expects a different workspace identity", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "cestus-local-runtime-"));
+    try {
+      createPortableWorkspace({
+        rootDir: join(cwd, "external-case"),
+        workspaceId: "ws_actual_runtime",
+        label: "Actual Runtime Workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "local-runtime-test",
+        coreVersion: "0.1.0"
+      });
+
+      const config = resolveLocalRuntimeConfig({
+        cwd,
+        env: {
+          CESTUS_LOCAL_STORAGE: "portable-workspace",
+          CESTUS_WORKSPACE_ROOT: "external-case",
+          CESTUS_WORKSPACE_ID: "ws_expected_runtime"
+        }
+      });
+
+      expect(() =>
+        createLocalRuntimeHttpHandler({
+          config,
+          actor: { id: "actor_local_runtime_test", kind: "system", label: "Local Runtime Test" }
+        })
+      ).toThrow("Portable workspace identity does not match the expected workspace.");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("returns safe JSON for invalid request bodies", async () => {
     const handler = testHandler({
       config: resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} }),

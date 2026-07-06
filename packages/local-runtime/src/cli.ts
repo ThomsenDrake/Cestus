@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -188,6 +189,7 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     sqlitePath?: string;
     appDataDir?: string;
     workspaceRoot?: string;
+    expectedWorkspaceId?: string;
     distDir?: string;
     logDir?: string;
     devSeedEnabled?: boolean;
@@ -256,6 +258,12 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
       index = nextIndex;
       continue;
     }
+    if (arg === "--workspace-id") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.expectedWorkspaceId = value;
+      index = nextIndex;
+      continue;
+    }
     if (arg === "--ui-dist-dir") {
       const { value, nextIndex } = readFlagValue(argv, index, arg);
       options.distDir = value;
@@ -282,6 +290,7 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     ...(options.sqlitePath === undefined ? {} : { sqlitePath: options.sqlitePath }),
     ...(options.appDataDir === undefined ? {} : { appDataDir: options.appDataDir }),
     ...(options.workspaceRoot === undefined ? {} : { workspaceRoot: options.workspaceRoot }),
+    ...(options.expectedWorkspaceId === undefined ? {} : { expectedWorkspaceId: options.expectedWorkspaceId }),
     ...(options.distDir === undefined ? {} : { distDir: options.distDir }),
     ...(options.logDir === undefined ? {} : { logDir: options.logDir }),
     ...(options.devSeedEnabled === undefined ? {} : { devSeedEnabled: options.devSeedEnabled }),
@@ -355,22 +364,24 @@ function parseCreateWorkspaceArgs(argv: readonly string[]) {
   if (options.rootDir === undefined) {
     throw new Error("create-workspace requires --workspace <root>");
   }
-  if (options.workspaceId === undefined) {
-    throw new Error("create-workspace requires --workspace-id <id>");
-  }
   if (options.label === undefined) {
     throw new Error("create-workspace requires --label <label>");
   }
 
+  const workspaceId = options.workspaceId ?? generatedWorkspaceId();
   return {
     rootDir: options.rootDir,
-    workspaceId: options.workspaceId,
+    workspaceId,
     label: options.label,
     createdBy: options.createdBy ?? "cestus-local-runtime",
     ...(options.createdAt === undefined ? {} : { createdAt: options.createdAt }),
     ...(options.coreVersion === undefined ? {} : { coreVersion: options.coreVersion }),
     ...(options.description === undefined ? {} : { description: options.description })
   };
+}
+
+function generatedWorkspaceId(): string {
+  return `ws_${randomUUID().replaceAll("-", "_")}`;
 }
 
 function readFlagValue(

@@ -25,6 +25,7 @@ export interface ResolvedLocalRuntimeConfig {
     | {
         readonly strategy: "portable-workspace";
         readonly workspaceRoot: string;
+        readonly expectedWorkspaceId?: string;
         readonly sqlitePath: string;
       };
   readonly http: {
@@ -116,9 +117,12 @@ function resolveStorage(
       throw new Error("CESTUS_WORKSPACE_ROOT is required for portable-workspace storage");
     }
     const resolvedRoot = resolvePath(cwd, workspaceRoot);
+    const expectedWorkspaceId =
+      normalizeOptional(env.CESTUS_WORKSPACE_ID) ?? configFile?.storage?.expectedWorkspaceId;
     return Object.freeze({
       strategy,
       workspaceRoot: resolvedRoot,
+      ...(expectedWorkspaceId === undefined ? {} : { expectedWorkspaceId }),
       sqlitePath: join(resolvedRoot, "ledger", "ontology.sqlite")
     });
   }
