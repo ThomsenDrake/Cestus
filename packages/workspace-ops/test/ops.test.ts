@@ -47,7 +47,16 @@ class MemoryWorkspaceFs implements WorkspaceFileSystem {
   readonly existsCalls: string[] = [];
   readonly statCalls: string[] = [];
   readonly listCalls: string[] = [];
+  readonly realpathCalls: string[] = [];
   availableBytesCalls = 0;
+
+  clearRecordedCalls(): void {
+    this.existsCalls.length = 0;
+    this.statCalls.length = 0;
+    this.listCalls.length = 0;
+    this.realpathCalls.length = 0;
+    this.availableBytesCalls = 0;
+  }
 
   async exists(path: string): Promise<boolean> {
     this.existsCalls.push(path);
@@ -89,6 +98,7 @@ class MemoryWorkspaceFs implements WorkspaceFileSystem {
   }
 
   async realpath(path: string): Promise<string> {
+    this.realpathCalls.push(path);
     return path;
   }
 
@@ -113,6 +123,22 @@ function addResolvedWorkspace(fileSystem: MemoryWorkspaceFs): ResolvedWorkspaceL
   fileSystem.directories.add(layout.diagnosticsRoot);
   fileSystem.directories.add(layout.backupRoot);
   return layout;
+}
+
+function canonicalRootPaths(layout: ResolvedWorkspaceLayout): readonly string[] {
+  return [
+    layout.ledgerPath,
+    layout.blobRoot,
+    layout.derivativeRoot,
+    layout.jobRoot,
+    layout.projectionRoot,
+    layout.diagnosticsRoot,
+    layout.backupRoot
+  ];
+}
+
+function callsUnder(paths: readonly string[], calls: readonly string[]): readonly string[] {
+  return calls.filter((call) => paths.some((path) => call === path || call.startsWith(`${path}/`)));
 }
 
 async function readyLayout(fileSystem: MemoryWorkspaceFs): Promise<WorkspaceLayoutResult> {
@@ -386,6 +412,7 @@ describe("verifyWorkspace", () => {
       layoutShape.manifestPath,
       JSON.stringify({ workspaceId: "ws_ops_999", label: "Ops Fixture", version: 1 })
     );
+    fileSystem.clearRecordedCalls();
     let readCalls = 0;
 
     const result = await verifyWorkspace({
@@ -417,6 +444,17 @@ describe("verifyWorkspace", () => {
         mutatesCanonicalState: false
       })
     );
+    expect({
+      exists: callsUnder(canonicalRootPaths(layoutShape), fileSystem.existsCalls),
+      stat: callsUnder(canonicalRootPaths(layoutShape), fileSystem.statCalls),
+      list: callsUnder(canonicalRootPaths(layoutShape), fileSystem.listCalls),
+      realpath: callsUnder(canonicalRootPaths(layoutShape), fileSystem.realpathCalls)
+    }).toEqual({
+      exists: [],
+      stat: [],
+      list: [],
+      realpath: []
+    });
     expect(JSON.stringify(result)).not.toContain("ws_ops_999");
     expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
