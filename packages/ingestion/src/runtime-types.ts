@@ -56,6 +56,20 @@ export interface IngestionActionResult {
   readonly eventIds: readonly string[];
 }
 
+export interface IngestionSourceListDto {
+  readonly sources: readonly IngestionSourceDto[];
+}
+
+export interface IngestionSourceDto {
+  readonly sourceCollectionId: string;
+  readonly label: string;
+  readonly latestScanBatchId?: string;
+  readonly latestImportBatchId?: string;
+  readonly scanBatchIds: readonly string[];
+  readonly importBatchIds: readonly string[];
+  readonly diagnosticIds: readonly string[];
+}
+
 export interface IngestionScanResultDto extends IngestionActionResult {
   readonly scanBatchId: string;
   readonly inventoryHash: string;

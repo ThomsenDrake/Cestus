@@ -22,6 +22,7 @@ import {
   type IngestionJobDto,
   type IngestionJobListDto,
   type IngestionJobResultDto,
+  type IngestionSourceListDto,
   stableIngestionError,
   type IngestionImportResultDto,
   type IngestionRuntimeResult
@@ -66,6 +67,8 @@ export interface ImportApprovedInput {
 export interface ListIngestionJobsInput {
   readonly sourceCollectionId?: string;
 }
+
+export interface ListIngestionSourcesInput {}
 
 export interface RetryIngestionJobInput {
   readonly jobId: string;
@@ -299,6 +302,22 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
         };
       } catch {
         return runtimeInternalError("import");
+      }
+    },
+
+    async listSources(_command: ListIngestionSourcesInput = {}): Promise<IngestionRuntimeResult<IngestionSourceListDto>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "read");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      try {
+        return {
+          ok: true,
+          sources: sourcesForProjection(await projectionFor(workspace.workspace))
+        };
+      } catch {
+        return runtimeInternalError("sources");
       }
     },
 
@@ -621,6 +640,20 @@ function jobsForProjection(
   ].sort((left, right) => compareJobDto(left, right));
 }
 
+function sourcesForProjection(projection: IngestionProjection): IngestionSourceListDto["sources"] {
+  return [...projection.sources.values()]
+    .sort((left, right) => compareCodeUnits(left.sourceCollectionId, right.sourceCollectionId))
+    .map((source) => ({
+      sourceCollectionId: source.sourceCollectionId,
+      label: source.label,
+      ...(source.latestScanBatchId === undefined ? {} : { latestScanBatchId: source.latestScanBatchId }),
+      ...(source.latestImportBatchId === undefined ? {} : { latestImportBatchId: source.latestImportBatchId }),
+      scanBatchIds: [...source.scanBatchIds],
+      importBatchIds: [...source.importBatchIds],
+      diagnosticIds: [...source.diagnosticIds]
+    }));
+}
+
 function scanJobsForProjection(
   projection: IngestionProjection,
   sourceCollectionId: string | undefined
@@ -814,6 +847,7 @@ type RuntimeAction =
   | "source registration"
   | "raw import approval"
   | "import"
+  | "sources"
   | "jobs"
   | "retry"
   | "provider approval"
@@ -837,6 +871,8 @@ function repairActionsFor(action: RuntimeAction): string[] {
       return ["verify the completed scan", "retry raw import approval", "inspect runtime diagnostics"];
     case "import":
       return ["verify the approved import batch", "retry import", "inspect runtime diagnostics"];
+    case "sources":
+      return ["refresh ingestion workspace", "retry listing sources", "inspect runtime diagnostics"];
     case "jobs":
       return ["refresh ingestion workspace", "retry listing jobs", "inspect runtime diagnostics"];
     case "retry":

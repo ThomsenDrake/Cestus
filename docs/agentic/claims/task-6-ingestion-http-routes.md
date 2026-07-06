@@ -62,3 +62,16 @@
   - Result: passed; Vitest reported 3 test files passed and 30 tests passed.
 - Full verification command: `npm run verify`
   - Result: passed at 2026-07-06T17:14:44Z; typecheck passed, Vitest reported 74 test files passed and 636 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Spec Re-review Transport-Only Sources Fix Evidence
+
+- Re-review finding at `b91a10e`: `GET /api/ingestion/sources` rebuilt projection state in the HTTP layer instead of dispatching through `IngestionRuntime`, violating the transport-only HTTP boundary.
+- Supporting scope note: the route had no existing runtime source-list method, so the focused repair added a safe `IngestionRuntime.listSources` DTO/method in `packages/ingestion` and routed HTTP through it.
+- Red command: `npm test -- packages/local-runtime/test/ingestion-http-routes.test.ts packages/ingestion/test/runtime.test.ts`
+  - Result: failed as expected; Vitest reported 2 failed tests because `runtime.listSources` did not exist and HTTP still returned its own projection result instead of the runtime source-list DTO.
+- Focused green command: `npm test -- packages/local-runtime/test/ingestion-http-routes.test.ts packages/ingestion/test/runtime.test.ts`
+  - Result: passed; Vitest reported 2 test files passed and 23 tests passed.
+- Targeted command: `npm test -- packages/local-runtime/test/ingestion-http-routes.test.ts packages/local-runtime/test/auth-and-seed.test.ts packages/local-runtime/test/http-handler.test.ts packages/ingestion/test/runtime.test.ts`
+  - Result: passed; Vitest reported 4 test files passed and 39 tests passed.
+- Full verification command: `npm run verify`
+  - Result: passed at 2026-07-06T17:24:15Z; typecheck passed, Vitest reported 74 test files passed and 637 tests passed, Vite build succeeded, and factory readiness passed.

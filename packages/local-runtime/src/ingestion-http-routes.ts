@@ -1,10 +1,8 @@
 import type { CreateIngestionRuntimeInput } from "../../ingestion/src/runtime.js";
 import type {
   IngestionMountResult,
-  MountedWorkspace,
   IngestionWorkspaceMountResolver
 } from "../../ingestion/src/mount-contract.js";
-import { buildIngestionProjection } from "../../ingestion/src/projection.js";
 import type { IngestionErrorCode, IngestionRuntimeError } from "../../ingestion/src/runtime-types.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 import {
@@ -68,10 +66,6 @@ export async function handleIngestionHttpRoute(
     return json(503, ingestionErrorBody(mount.error));
   }
 
-  if (route.kind === "sources") {
-    return json(200, await sourcesDto(mount.workspace));
-  }
-
   const runtimeFactory = input.ingestionRuntimeFactory ?? defaultLocalIngestionRuntimeFactory;
   const runtime = runtimeFactory({
     mountedWorkspace: mount.workspace,
@@ -107,16 +101,13 @@ type Route = RuntimeRoute | {
   readonly kind: "workspace";
   readonly bodyKind: "query";
   readonly queryFields?: readonly string[];
-} | {
-  readonly kind: "sources";
-  readonly bodyKind: "query";
-  readonly queryFields?: readonly string[];
 };
 
 type RuntimeRoute = {
   readonly kind: "runtime";
   readonly runtimeMethod:
     | "listJobs"
+    | "listSources"
     | "retryJob"
     | "registerSource"
     | "dryRunScan"
@@ -133,7 +124,7 @@ function routeFor(method: string, path: string): Route | undefined {
     return { kind: "workspace", bodyKind: "query" };
   }
   if (method === "GET" && path === "/api/ingestion/sources") {
-    return { kind: "sources", bodyKind: "query" };
+    return { kind: "runtime", runtimeMethod: "listSources", bodyKind: "query" };
   }
   if (method === "GET" && path === "/api/ingestion/jobs") {
     return { kind: "runtime", runtimeMethod: "listJobs", bodyKind: "query", queryFields: ["sourceCollectionId"] };
@@ -180,26 +171,6 @@ function workspaceDto(mount: IngestionMountResult | MountResolverFailure) {
   };
 }
 
-async function sourcesDto(workspace: MountedWorkspace) {
-  const projection = buildIngestionProjection(await workspace.ledger.readAll());
-  const sources = [...projection.sources.values()]
-    .sort((left, right) => compareCodeUnits(left.sourceCollectionId, right.sourceCollectionId))
-    .map((source) => ({
-      sourceCollectionId: source.sourceCollectionId,
-      label: source.label,
-      ...(source.latestScanBatchId === undefined ? {} : { latestScanBatchId: source.latestScanBatchId }),
-      ...(source.latestImportBatchId === undefined ? {} : { latestImportBatchId: source.latestImportBatchId }),
-      scanBatchIds: [...source.scanBatchIds],
-      importBatchIds: [...source.importBatchIds],
-      diagnosticIds: [...source.diagnosticIds]
-    }));
-
-  return {
-    ok: true,
-    sources
-  };
-}
-
 function diagnosticsFromMountError(
   error: {
     readonly message: string;
@@ -214,10 +185,6 @@ function diagnosticsFromMountError(
       message: error.message
     }
   ];
-}
-
-function compareCodeUnits(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function parseJsonBody(
