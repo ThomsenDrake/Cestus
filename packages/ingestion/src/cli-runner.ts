@@ -1,11 +1,8 @@
 import {
-  createIngestionRuntime,
-  createLegacyImportRuntime,
-  createPortableIngestionMountResolver,
   formatIngestionCliUsage,
   handleIngestionCommand,
   normalizeIngestionCliArgs
-} from "./index.js";
+} from "./cli.js";
 
 export async function runIngestionCli(argv: readonly string[] = process.argv.slice(2)): Promise<number> {
   const normalized = normalizeIngestionCliArgs(argv);
@@ -13,6 +10,21 @@ export async function runIngestionCli(argv: readonly string[] = process.argv.sli
     process.stdout.write(`${formatIngestionCliUsage("cestus-ingest")}\n`);
     return 0;
   }
+
+  if (isPureCliCommand(normalized.command)) {
+    const output = await handleIngestionCommand({
+      command: normalized.command,
+      argv: normalized.argv
+    });
+    process.stdout.write(output);
+    return JSON.parse(output).ok === true ? 0 : 1;
+  }
+
+  const {
+    createIngestionRuntime,
+    createLegacyImportRuntime,
+    createPortableIngestionMountResolver
+  } = await import("./index.js");
 
   const output = await handleIngestionCommand({
     command: normalized.command,
@@ -29,6 +41,12 @@ export async function runIngestionCli(argv: readonly string[] = process.argv.sli
   });
   process.stdout.write(output);
   return JSON.parse(output).ok === true ? 0 : 1;
+}
+
+function isPureCliCommand(command: string): boolean {
+  return command === "summary-json" ||
+    command === "legacy-artifact-ask-json" ||
+    command === "legacy artifact-ask";
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
