@@ -26,6 +26,7 @@ Status: `ready-for-review`
 - Operator command: `npm run local:workspace:smoke -- --json` exited 0 and printed `schemaVersion: "local-workspace-readiness-smoke.v1"`, `ok: true`, and `status: "ready"`.
 - Full verification: `npm run verify` passed: typecheck passed, 93 test files passed, 829 tests passed, UI build succeeded, factory-readiness passed.
 - Review-fix red checks: exact npm operator stdout was not directly JSON-parseable and CLI secret-shaped argument errors had no regression coverage.
+- Review-fix boundary: npm emits lifecycle banners before scripts run; project `.npmrc` sets the repository default `loglevel=silent` so the exact documented operator command is parseable under project defaults. External environment overrides of npm config can still make npm itself noisy before script execution.
 
 ## Review
 
