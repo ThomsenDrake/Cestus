@@ -52,6 +52,10 @@ Command evidence:
 - Exported manifest artifact-coherence repair green: `npm test -- packages/workspace-ops/test/diagnostics.test.ts packages/workspace-ops/test/backup.test.ts` exited 0 with 2 test files and 24 tests passed.
 - Exported manifest artifact-coherence verify repair: `npm run verify` first exited 2 during typecheck because the new test helper used generic string categories instead of workspace-root category DTO types.
 - Exported manifest artifact-coherence verify: `npm run verify` exited 0 with typecheck passed, 76 test files and 665 tests passed, UI build succeeded, and factory-readiness passed.
+- Export self-checkability repair red: `npm test -- packages/workspace-ops/test/diagnostics.test.ts packages/workspace-ops/test/backup.test.ts` exited 1 with 2 failing regressions proving duplicate `categoryBytes` emitted duplicate artifacts and workspace/layout layout-contract mismatches still exported `ready` manifests.
+- Export self-checkability repair green: `npm test -- packages/workspace-ops/test/diagnostics.test.ts packages/workspace-ops/test/backup.test.ts` exited 0 with 2 test files and 26 tests passed.
+- Export self-checkability verify repair: `npm run verify` first exited 2 during typecheck because the runtime-negative layout mismatch fixture needed an explicit cast around the currently literal provisional layout type.
+- Export self-checkability verify: `npm run verify` exited 0 with typecheck passed, 76 test files and 667 tests passed, UI build succeeded, and factory-readiness passed.
 
 Self-review:
 - Diagnostics inspection validates durable `diagnostic.recorded` events through ontology contracts, marks durable versus derived diagnostics explicitly, and turns invalid or secret-shaped diagnostic content into safe derived diagnostics.
@@ -65,3 +69,4 @@ Self-review:
 - Diagnostics private-text/timestamp repair conservatively redacts diagnostic messages that look like private body/interview/source material even without credential-shaped strings, and manifest export now normalizes valid datetimes to canonical ISO milliseconds before hashing and backup checks.
 - Manifest internals/diagnostic identifier repair recomputes and compares exported manifest section hashes, requires included sections to match covered categories, requires artifact summaries for covered categories, and routes durable diagnostic IDs plus related IDs through the same credential/private-content identifier filter before DTO validation.
 - Exported manifest artifact-coherence repair requires artifact summaries to correspond exactly to exported coverage categories, rejecting duplicate, extra, or missing artifact categories even when section hashes and manifest hashes have been recomputed.
+- Export self-checkability repair normalizes duplicate category byte rows into one deterministic artifact summary per covered category and degrades workspace/layout layout-contract mismatches without emitting a manifest payload, so `ready` manifest exports remain accepted by backup checks.
