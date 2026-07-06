@@ -613,16 +613,50 @@ function sourceAndScanFromStreamId(streamId: string): {
   sourceCollectionId: string;
   scanBatchId: string;
 } | undefined {
-  const matched = /^ingestion_(?:import|evidence_link)_(src_[a-zA-Z0-9_-]+)_(scan_[a-zA-Z0-9_-]+)_(imp_[a-zA-Z0-9_-]+)(?:_[a-f0-9]{64})?$/.exec(streamId);
+  const streamPrefix = [
+    "ingestion_import_",
+    "ingestion_evidence_link_",
+    "ingestion_diagnostic_"
+  ].find((prefix) => streamId.startsWith(prefix));
 
-  if (matched?.[1] === undefined || matched[2] === undefined) {
+  if (streamPrefix === undefined) {
+    return undefined;
+  }
+
+  const body = streamId.slice(streamPrefix.length).replace(/_[a-f0-9]{64}$/, "");
+  const importMarkerIndex = body.lastIndexOf("_imp_");
+
+  if (importMarkerIndex < 0) {
+    return undefined;
+  }
+
+  const sourceAndScan = body.slice(0, importMarkerIndex);
+  const importBatchId = body.slice(importMarkerIndex + 1);
+  const scanMarkerIndex = sourceAndScan.lastIndexOf("_scan_");
+
+  if (scanMarkerIndex < 0) {
+    return undefined;
+  }
+
+  const sourceCollectionId = sourceAndScan.slice(0, scanMarkerIndex);
+  const scanBatchId = sourceAndScan.slice(scanMarkerIndex + 1);
+
+  if (
+    !isStreamIdSegment(sourceCollectionId, "src_")
+    || !isStreamIdSegment(scanBatchId, "scan_")
+    || !isStreamIdSegment(importBatchId, "imp_")
+  ) {
     return undefined;
   }
 
   return {
-    sourceCollectionId: matched[1],
-    scanBatchId: matched[2]
+    sourceCollectionId,
+    scanBatchId
   };
+}
+
+function isStreamIdSegment(value: string, prefix: "src_" | "scan_" | "imp_"): boolean {
+  return value.startsWith(prefix) && /^[a-zA-Z0-9_-]+$/.test(value);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

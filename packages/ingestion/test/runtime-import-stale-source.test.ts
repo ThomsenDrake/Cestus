@@ -2,6 +2,8 @@ import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { afterEach, describe, expect, it } from "vitest";
+import { buildIngestionProjection } from "../src/projection.js";
+import { buildIngestionReviewDto } from "../src/read-api.js";
 import { createIngestionRuntime } from "../src/runtime.js";
 import { createFakeMountedWorkspace } from "./runtime-test-helpers.js";
 
@@ -243,6 +245,25 @@ function expectStableSourceDiagnostic(
     }
   });
   expect(JSON.stringify(diagnostics[0])).not.toMatch(/cestus-ingestion-runtime|\/tmp\/|sourceRoot|bundle\.zip|a\.txt/i);
+
+  const projection = buildIngestionProjection(events);
+  const diagnosticId = "diag_ingestion_stale_src_drive_001_scan_001_imp_001";
+  expect(projection.diagnostics.get(diagnosticId)).toMatchObject({
+    diagnosticId,
+    sourceCollectionId: "src_drive_001",
+    scanBatchId: "scan_001",
+    streamId: "ingestion_diagnostic_src_drive_001_scan_001_imp_001"
+  });
+  expect(projection.diagnosticsBySourceCollectionId.get("src_drive_001")).toContain(diagnosticId);
+  expect(projection.sources.get("src_drive_001")?.diagnosticIds).toContain(diagnosticId);
+  expect(projection.scans.get("scan_001")?.diagnosticIds).toContain(diagnosticId);
+  expect(buildIngestionReviewDto(projection, "src_drive_001").diagnostics).toContainEqual(
+    expect.objectContaining({
+      diagnosticId,
+      category: "ingestion",
+      message: "Approved dry-run inventory no longer matches current source bytes."
+    })
+  );
 }
 
 function expectNoImportWrites(
