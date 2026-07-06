@@ -7,6 +7,8 @@ import { authorizedLocalRuntimeRequest } from "./auth.js";
 import type { ResolvedLocalRuntimeConfig } from "./config.js";
 import { handleIngestionHttpRoute } from "./ingestion-http-routes.js";
 import type { LocalIngestionRuntimeFactory } from "./ingestion-runtime-factory.js";
+import { handleOperatorStatusRoute } from "./operator-status-routes.js";
+import type { OperatorStatusProviderSet } from "./operator-status.js";
 import { createSqlitePrrRuntime } from "./runtime-factory.js";
 
 export interface LocalRuntimeRequest {
@@ -36,6 +38,7 @@ export interface CreateLocalRuntimeHttpHandlerInput {
   readonly seedEvents?: readonly KnowledgeEvent[];
   readonly ingestionMountResolver?: IngestionWorkspaceMountResolver;
   readonly ingestionRuntimeFactory?: LocalIngestionRuntimeFactory;
+  readonly operatorStatusProviders?: OperatorStatusProviderSet;
 }
 
 export function createLocalRuntimeHttpHandler(
@@ -74,6 +77,20 @@ export function createLocalRuntimeHttpHandler(
           "provide the configured local runtime auth token"
         ])
       );
+    }
+
+    const operatorStatusResponse = await handleOperatorStatusRoute({
+      request,
+      config: input.config,
+      runtime: { workspaceMounted: handle.mountedWorkspace !== undefined },
+      now: localRuntimeNow(input.now),
+      providers: {
+        prr: async () => handle.runtime.loadWorkspace(),
+        ...(input.operatorStatusProviders ?? {})
+      }
+    });
+    if (operatorStatusResponse !== undefined) {
+      return operatorStatusResponse;
     }
 
     if (path.startsWith("/api/ingestion/")) {
@@ -292,6 +309,16 @@ function parseJsonBody(
 
 function authorized(config: ResolvedLocalRuntimeConfig, request: LocalRuntimeRequest): boolean {
   return authorizedLocalRuntimeRequest(config, request.headers ?? {});
+}
+
+function localRuntimeNow(now: PrrRuntimeNow | undefined): () => string {
+  if (typeof now === "function") {
+    return now;
+  }
+  if (now !== undefined) {
+    return () => now;
+  }
+  return () => new Date().toISOString();
 }
 
 function diagnostic(message: string, allowedRepairActions: readonly string[]): {
