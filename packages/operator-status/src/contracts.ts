@@ -8,7 +8,7 @@ export const operatorNavigationTargets = ["command", "requests", "ingestion", "e
 
 const secretTextPattern =
   /(?:^|[^a-z0-9])(?:access[\s._-]*tokens?|api[\s._-]*keys?|auth[\s._-]*tokens?|authorization|bearer|tokens?|passwords?|private[\s._-]*keys?|client[\s._-]*secrets?|refresh[\s._-]*secrets?|session[\s._-]*secrets?|oauth|credentials?)(?:\s*[:=]\s*|\s+)(?=[a-z0-9._~+/=-]{3,})[a-z0-9][a-z0-9._~+/=-]*/i;
-const secretPhrasePattern = /\b(?:auth[\s._-]*tokens?|bearer[\s._-]*tokens?|private[\s._-]*keys?)\b/i;
+const secretPhrasePattern = /\b(?:auth[\s._-]*tokens?|bearer(?:[\s._-]*tokens?)?|passwords?|private[\s._-]*keys?)\b/i;
 const privateKeyBlockPattern = /-----BEGIN [A-Z ]*PRIVATE KEY-----/i;
 
 function isSecretSafeOperatorText(value: string): boolean {
