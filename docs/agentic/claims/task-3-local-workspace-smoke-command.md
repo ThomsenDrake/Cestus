@@ -15,14 +15,19 @@ Status: `ready-for-review`
 - `packages/local-runtime/test/workspace-readiness-smoke.test.ts`
 - `package.json`
 
+## Supporting Verifier Edits
+
+- `.npmrc`: review-gate fix for Task 3 command parseability; plain `npm run local:workspace:smoke -- --json` must not prefix stdout with npm's lifecycle banner.
+
 ## Evidence
 
 - Red command: `npm test -- packages/local-runtime/test/workspace-readiness-smoke.test.ts` failed as expected because `runLocalWorkspaceReadinessSmokeCli` was not exported.
 - Green command: `npm test -- packages/local-runtime/test/workspace-readiness-smoke.test.ts` passed: 1 test file, 4 tests.
 - Operator command: `npm run local:workspace:smoke -- --json` exited 0 and printed `schemaVersion: "local-workspace-readiness-smoke.v1"`, `ok: true`, and `status: "ready"`.
 - Full verification: `npm run verify` passed: typecheck passed, 93 test files passed, 829 tests passed, UI build succeeded, factory-readiness passed.
+- Review-fix red checks: exact npm operator stdout was not directly JSON-parseable and CLI secret-shaped argument errors had no regression coverage.
 
 ## Review
 
-- Self-review: Task 3 stayed within owned files and added JSON-first CLI coverage plus the operator npm script.
+- Self-review: Task 3 added JSON-first CLI coverage plus the operator npm script; review-gate fix made the exact npm command stdout parseable and covered safe argument errors/help.
 - Reviewer records decision after review.

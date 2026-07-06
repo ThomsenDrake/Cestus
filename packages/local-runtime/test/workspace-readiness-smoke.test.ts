@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -204,5 +205,100 @@ describe("runLocalWorkspaceReadinessSmokeCli", () => {
       ok: false,
       status: "blocked"
     });
+  });
+
+  it("keeps the npm operator command stdout parseable as JSON", () => {
+    const workspaceRoot = tempDir("cestus-smoke-npm-workspace-");
+    const sourceRoot = tempDir("cestus-smoke-npm-source-");
+
+    const result = spawnSync(
+      "npm",
+      [
+        "run",
+        "local:workspace:smoke",
+        "--",
+        "--json",
+        "--workspace",
+        workspaceRoot,
+        "--source",
+        sourceRoot,
+        "--workspace-id",
+        "ws_smoke_npm_001",
+        "--source-id",
+        "src_smoke_npm_001",
+        "--created-at",
+        "2026-07-06T12:00:00.000Z"
+      ],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8"
+      }
+    );
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).not.toContain("ExperimentalWarning");
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      schemaVersion: "local-workspace-readiness-smoke.v1",
+      ok: true,
+      status: "ready"
+    });
+  });
+
+  it("prints safe blocked JSON for unsupported secret-shaped options", async () => {
+    const lines: string[] = [];
+
+    const exitCode = await runLocalWorkspaceReadinessSmokeCli(
+      ["--api-key=secret-123"],
+      { stdout: (line) => lines.push(line) }
+    );
+
+    expect(exitCode).toBe(2);
+    const output = JSON.parse(lines.join(""));
+    expect(output).toMatchObject({
+      schemaVersion: "local-workspace-readiness-smoke.v1",
+      ok: false,
+      status: "blocked",
+      diagnostics: [
+        expect.objectContaining({
+          code: "unknown-option"
+        })
+      ]
+    });
+    expect(JSON.stringify(output)).not.toContain("api-key");
+    expect(JSON.stringify(output)).not.toContain("secret-123");
+  });
+
+  it("prints safe blocked JSON for missing option values", async () => {
+    const lines: string[] = [];
+
+    const exitCode = await runLocalWorkspaceReadinessSmokeCli(
+      ["--workspace"],
+      { stdout: (line) => lines.push(line) }
+    );
+
+    expect(exitCode).toBe(2);
+    expect(JSON.parse(lines.join(""))).toMatchObject({
+      schemaVersion: "local-workspace-readiness-smoke.v1",
+      ok: false,
+      status: "blocked",
+      diagnostics: [
+        expect.objectContaining({
+          code: "missing-option-value",
+          optionName: "workspace"
+        })
+      ]
+    });
+  });
+
+  it("prints usage for help", async () => {
+    const lines: string[] = [];
+
+    const exitCode = await runLocalWorkspaceReadinessSmokeCli(
+      ["--help"],
+      { stdout: (line) => lines.push(line) }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(lines.join("")).toContain("Usage: npm run local:workspace:smoke -- --json");
   });
 });
