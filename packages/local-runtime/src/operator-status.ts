@@ -99,6 +99,39 @@ const safeActions: readonly OperatorSafeActionDto[] = Object.freeze([
     enabled: true
   },
   {
+    actionId: "action_show_workspace_detect_drive",
+    label: "Show workspace drive detection command",
+    kind: "show-command",
+    command: "cestus-workspace detect drive --workspace <root>",
+    sourceContract: "workspace-ops.v1",
+    requiresHumanApproval: false,
+    mutatesCanonicalState: false,
+    externalEffect: false,
+    enabled: true
+  },
+  {
+    actionId: "action_show_workspace_create",
+    label: "Show workspace create command",
+    kind: "show-command",
+    command: "cestus-workspace create --workspace <root>",
+    sourceContract: "workspace-ops.v1",
+    requiresHumanApproval: false,
+    mutatesCanonicalState: false,
+    externalEffect: false,
+    enabled: true
+  },
+  {
+    actionId: "action_show_projection_rebuild_readiness",
+    label: "Show projection rebuild-readiness command",
+    kind: "show-command",
+    command: "cestus-workspace projection rebuild-readiness --workspace <root>",
+    sourceContract: "workspace-ops.v1",
+    requiresHumanApproval: false,
+    mutatesCanonicalState: false,
+    externalEffect: false,
+    enabled: true
+  },
+  {
     actionId: "action_show_legacy_inspect",
     label: "Show legacy inspect command",
     kind: "show-command",
@@ -114,6 +147,19 @@ const safeActions: readonly OperatorSafeActionDto[] = Object.freeze([
 export async function buildOperatorStatusDto(
   input: BuildOperatorStatusDtoInput
 ): Promise<OperatorStatusDto> {
+  if (!input.runtime.available) {
+    const sections = runtimeUnavailableSections();
+
+    return operatorStatusDtoSchema.parse({
+      schemaVersion: "operator-status.v1",
+      generatedAt: input.now(),
+      runtime: input.runtime,
+      summary: buildAggregateStatusSummary(sections),
+      sections,
+      safeActions
+    });
+  }
+
   const [workspace, ingestion, legacy, prr] = await Promise.all([
     buildWorkspaceSection(input.workspace),
     buildIngestionSection(input.ingestion),
@@ -143,9 +189,7 @@ async function buildWorkspaceSection(
     const envelope = await provider();
     const payload = envelope.payload;
     const state = workspaceState(envelope, payload);
-    const nextSafeActionIds = state === "ready"
-      ? ["action_refresh_operator_status"]
-      : ["action_show_workspace_verify", "action_refresh_operator_status"];
+    const nextSafeActionIds = workspaceNextSafeActionIds(envelope, payload, state);
 
     return safeSection({
       sectionId: "workspace",
@@ -269,22 +313,14 @@ async function buildLegacyImportSection(
         { metricId: "raw_approval_required", label: "Raw approval", value: legacy.rawImportRequiresApproval ? "required" : "not required", tone: legacy.rawImportRequiresApproval ? "attention" : "healthy" },
         { metricId: "staging_approved", label: "Staging approved", value: legacy.ontologyStagingApproved ? "yes" : "no", tone: legacy.ontologyStagingApproved ? "healthy" : "attention" }
       ],
-      diagnostics: legacy.diagnostics.map((diagnostic, index) => ({
-        diagnosticId: safeDiagnosticId(diagnostic.diagnosticId, "legacy", index),
-        severity: diagnostic.severity,
-        category: "legacy-import",
-        message: safeMessage(diagnostic.message),
-        refs: []
-      })),
+      diagnostics: legacyDiagnostics(legacy, samplesStillNeeded),
       sourceEvidence: [
         sourceEvidence("src_legacy_review", "legacy-import", "legacy-import", "legacy migration review", [
           { label: "sourceCollectionId", value: legacy.sourceCollectionId },
           ...(legacy.latestReportId === undefined ? [] : [{ label: "legacyReportId", value: legacy.latestReportId }])
         ])
       ],
-      nextSafeActionIds: state === "ready"
-        ? ["action_refresh_operator_status"]
-        : ["action_show_legacy_inspect", "action_open_ingestion"]
+      nextSafeActionIds: legacyNextSafeActionIds(legacy, state, samplesStillNeeded)
     }, unavailableSection("legacy-import", "Legacy Import", "legacy-import"));
   } catch {
     return unavailableSection("legacy-import", "Legacy Import", "legacy-import");
@@ -313,7 +349,20 @@ async function buildPrrSection(
         { metricId: "request_cards", label: "Request cards", value: String(prr.cards.length), tone: "machine" },
         { metricId: "diagnostics", label: "Diagnostics", value: String(diagnosticCount), tone: diagnosticCount > 0 ? "attention" : "healthy" }
       ],
-      diagnostics: prrDiagnostics(prr.diagnostics),
+      diagnostics: [
+        ...prrDiagnostics(prr.diagnostics),
+        ...(prr.cards.length === 0 && diagnosticCount === 0
+          ? [
+              {
+                diagnosticId: "diag_prr_zero_open_requests",
+                severity: "info" as const,
+                category: "prr" as const,
+                message: "PRR workspace is readable with zero open requests.",
+                refs: [{ label: "cardCount", value: 0 }]
+              }
+            ]
+          : [])
+      ],
       sourceEvidence: [
         sourceEvidence("src_prr_workspace", "prr", "prr", "PRR workspace read DTO", [
           { label: "cardCount", value: prr.cards.length }
@@ -363,11 +412,14 @@ function workspaceState(
   if (payload === undefined) {
     return envelope.status === "ready" ? "ready" : "degraded";
   }
+  if (payload.mountStatus.status !== "available") {
+    return "blocked";
+  }
+  if (payload.manifest.readable && !payload.manifest.valid) {
+    return "action-required";
+  }
   if (
-    !envelope.ok ||
-    payload.mountStatus.status !== "available" ||
     !payload.manifest.readable ||
-    !payload.manifest.valid ||
     !payload.layout.readable ||
     !payload.ledger.readable
   ) {
@@ -389,6 +441,42 @@ function workspaceState(
     return "degraded";
   }
   return "ready";
+}
+
+function workspaceNextSafeActionIds(
+  envelope: WorkspaceOpsEnvelope<WorkspaceVerifyDto>,
+  payload: WorkspaceVerifyDto | undefined,
+  state: OperatorReadinessState
+): string[] {
+  if (state === "ready") {
+    return ["action_refresh_operator_status"];
+  }
+
+  if (payload?.mountStatus.status !== undefined && payload.mountStatus.status !== "available") {
+    return ["action_show_workspace_detect_drive", "action_refresh_operator_status"];
+  }
+
+  if (payload?.manifest.readable === true && payload.manifest.valid === false) {
+    return ["action_show_workspace_create", "action_show_workspace_verify", "action_refresh_operator_status"];
+  }
+
+  if (
+    payload?.projections.available === true &&
+    payload.projections.rebuildable &&
+    payload.projections.staleCount > 0
+  ) {
+    return ["action_show_projection_rebuild_readiness", "action_refresh_operator_status"];
+  }
+
+  if (
+    envelope.diagnostics.some((diagnostic) =>
+      diagnostic.repairHint.allowedNextCommands.includes("projection rebuild-readiness")
+    )
+  ) {
+    return ["action_show_projection_rebuild_readiness", "action_refresh_operator_status"];
+  }
+
+  return ["action_show_workspace_verify", "action_refresh_operator_status"];
 }
 
 function ingestionState(
@@ -472,6 +560,66 @@ function prrDiagnostics(
   }));
 }
 
+function legacyDiagnostics(
+  legacy: LegacyMigrationReviewDto,
+  samplesStillNeeded: boolean
+): OperatorDiagnosticDto[] {
+  const diagnostics: OperatorDiagnosticDto[] = legacy.diagnostics.map((diagnostic, index) => ({
+    diagnosticId: safeDiagnosticId(diagnostic.diagnosticId, "legacy", index),
+    severity: diagnostic.severity,
+    category: "legacy-import",
+    message: safeMessage(diagnostic.message),
+    refs: []
+  }));
+
+  if (samplesStillNeeded) {
+    diagnostics.push({
+      diagnosticId: "diag_legacy_samples_needed",
+      severity: "warning",
+      category: "legacy-import",
+      message: safeMessage(`Legacy samples needed: ${legacy.firstArtifactAsk[0] ?? "legacy artifact sample"}`),
+      refs: []
+    });
+  }
+
+  if (legacy.rawImportRequiresApproval) {
+    diagnostics.push({
+      diagnosticId: "diag_legacy_raw_import_approval_required",
+      severity: "warning",
+      category: "legacy-import",
+      message: "Legacy raw import approval required before evidence copy.",
+      refs: [
+        { label: "sourceCollectionId", value: safeMessage(legacy.sourceCollectionId) },
+        ...(legacy.latestReportId === undefined
+          ? []
+          : [{ label: "legacyReportId", value: safeMessage(legacy.latestReportId) }])
+      ]
+    });
+  }
+
+  return diagnostics;
+}
+
+function legacyNextSafeActionIds(
+  legacy: LegacyMigrationReviewDto,
+  state: OperatorReadinessState,
+  samplesStillNeeded: boolean
+): string[] {
+  if (state === "ready") {
+    return ["action_refresh_operator_status"];
+  }
+
+  if (legacy.rawImportRequiresApproval) {
+    return ["action_open_ingestion", "action_show_legacy_inspect", "action_refresh_operator_status"];
+  }
+
+  if (samplesStillNeeded) {
+    return ["action_show_legacy_inspect", "action_open_ingestion", "action_refresh_operator_status"];
+  }
+
+  return ["action_show_legacy_inspect", "action_open_ingestion"];
+}
+
 function reviewDiagnostics(
   review: IngestionWorkspaceDto["review"] | undefined
 ): readonly IngestionRuntimeDiagnosticDto[] {
@@ -506,6 +654,48 @@ function unavailableSection(
     ],
     sourceEvidence: [
       sourceEvidence(`src_${sectionId.replace(/-/g, "_")}_provider`, sourceContract, "operator-status", `${label} provider`, [])
+    ],
+    nextSafeActionIds: ["action_refresh_operator_status"]
+  };
+}
+
+function runtimeUnavailableSections(): OperatorStatusSectionDto[] {
+  return [
+    runtimeUnavailableSection("workspace", "Workspace"),
+    runtimeUnavailableSection("ingestion", "Ingestion"),
+    runtimeUnavailableSection("legacy-import", "Legacy Import"),
+    runtimeUnavailableSection("prr", "PRR")
+  ];
+}
+
+function runtimeUnavailableSection(
+  sectionId: OperatorStatusSectionDto["sectionId"],
+  label: string
+): OperatorStatusSectionDto {
+  return {
+    sectionId,
+    label,
+    state: "unavailable",
+    headline: `${label} status unavailable`,
+    safeSummary: "Local runtime is unavailable; no fallback workspace status is assumed.",
+    metrics: [],
+    diagnostics: [
+      {
+        diagnosticId: `diag_${sectionId.replace(/-/g, "_")}_runtime_unavailable`,
+        severity: "error",
+        category: "runtime",
+        message: "Local runtime is unavailable; operator status sections cannot be trusted.",
+        refs: []
+      }
+    ],
+    sourceEvidence: [
+      sourceEvidence(
+        `src_${sectionId.replace(/-/g, "_")}_runtime_unavailable`,
+        "local-runtime",
+        "local-runtime",
+        `${label} runtime availability`,
+        []
+      )
     ],
     nextSafeActionIds: ["action_refresh_operator_status"]
   };

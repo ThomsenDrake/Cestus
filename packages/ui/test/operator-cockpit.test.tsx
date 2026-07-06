@@ -129,6 +129,28 @@ describe("OperatorCockpit", () => {
     fireEvent.click(disabledAction);
     expect(onNavigate).not.toHaveBeenCalled();
   });
+
+  it("renders smoke failure diagnostics and safe command descriptors without executing them", () => {
+    const status = smokeFailureStatusFixture();
+    render(<OperatorCockpit status={status} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: /Workspace/ }));
+    const workspaceDetail = screen.getByRole("tabpanel", { name: /Workspace/ });
+    expect(
+      within(workspaceDetail).getByText("External drive is missing; run drive detection before starting local work.")
+    ).toBeInTheDocument();
+    expect(within(workspaceDetail).getByText("cestus-workspace detect drive --workspace <root>").tagName).toBe(
+      "CODE"
+    );
+    expect(within(workspaceDetail).queryByRole("button", { name: /detect drive/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /PRR\/Investigations/ }));
+    const prrDetail = screen.getByRole("tabpanel", { name: /PRR\/Investigations/ });
+    expect(within(prrDetail).getByText("PRR workspace is readable with zero open requests.")).toBeInTheDocument();
+    expect(within(prrDetail).getByText("cardCount")).toBeInTheDocument();
+    expect(within(prrDetail).getByText("0")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open requests" })).toBeInTheDocument();
+  });
 });
 
 function withDisabledAction(status: OperatorStatusDto, actionId: string): OperatorStatusDto {
@@ -139,6 +161,75 @@ function withDisabledAction(status: OperatorStatusDto, actionId: string): Operat
         ? { ...action, enabled: false, disabledReason: "Disabled by test fixture." }
         : action
     )
+  };
+}
+
+function smokeFailureStatusFixture(): OperatorStatusDto {
+  return {
+    ...operatorStatusFixture,
+    summary: {
+      overallState: "blocked",
+      blockedCount: 1,
+      actionRequiredCount: 0,
+      degradedCount: 0,
+      nextSafeActionId: "action_show_workspace_detect_drive"
+    },
+    sections: operatorStatusFixture.sections.map((section) => {
+      if (section.sectionId === "workspace") {
+        return {
+          ...section,
+          state: "blocked",
+          headline: "Workspace mount requires attention",
+          safeSummary: "Expected external Cestus drive is not mounted.",
+          metrics: [{ metricId: "workspace_errors", label: "Visible errors", value: "1", tone: "danger" }],
+          diagnostics: [
+            {
+              diagnosticId: "diag_workspace_missing_drive",
+              severity: "error",
+              category: "workspace",
+              message: "External drive is missing; run drive detection before starting local work.",
+              refs: []
+            }
+          ],
+          nextSafeActionIds: ["action_show_workspace_detect_drive", "action_refresh_operator_status"]
+        };
+      }
+
+      if (section.sectionId === "prr") {
+        return {
+          ...section,
+          state: "ready",
+          headline: "PRR workspace ready with no open requests",
+          metrics: [{ metricId: "request_cards", label: "Request cards", value: "0", tone: "machine" }],
+          diagnostics: [
+            {
+              diagnosticId: "diag_prr_zero_open_requests",
+              severity: "info",
+              category: "prr",
+              message: "PRR workspace is readable with zero open requests.",
+              refs: [{ label: "cardCount", value: 0 }]
+            }
+          ],
+          nextSafeActionIds: ["action_open_requests", "action_refresh_operator_status"]
+        };
+      }
+
+      return { ...section, state: "ready", diagnostics: [] };
+    }),
+    safeActions: [
+      ...operatorStatusFixture.safeActions,
+      {
+        actionId: "action_show_workspace_detect_drive",
+        label: "Show drive detection command",
+        kind: "show-command",
+        command: "cestus-workspace detect drive --workspace <root>",
+        sourceContract: "workspace-ops.v1",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false,
+        externalEffect: false,
+        enabled: true
+      }
+    ]
   };
 }
 
