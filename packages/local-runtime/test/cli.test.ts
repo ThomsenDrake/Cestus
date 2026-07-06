@@ -366,6 +366,59 @@ describe("runLocalRuntimeCli", () => {
     expect(stdout.join("\n")).toContain('"expectedWorkspaceId": "ws_cli_case"');
   });
 
+  it("creates and configures the same portable workspace identity for operator attachment", async () => {
+    const createStdout: string[] = [];
+    const configureStdout: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    const workspaceRoot = join(tempDir, "external-case");
+
+    expect(
+      await runLocalRuntimeCli(
+        [
+          "create-workspace",
+          "--workspace",
+          workspaceRoot,
+          "--label",
+          "Operator Case",
+          "--created-at",
+          "2026-07-06T12:00:00.000Z"
+        ],
+        {
+          cwd: tempDir,
+          env: {},
+          stdout: (line) => createStdout.push(line),
+          stderr: () => undefined
+        }
+      )
+    ).toBe(0);
+
+    const created = JSON.parse(createStdout.join("\n")) as {
+      workspace: { workspaceId: string };
+    };
+
+    expect(
+      await runLocalRuntimeCli(
+        [
+          "configure",
+          "--storage",
+          "portable-workspace",
+          "--workspace",
+          workspaceRoot,
+          "--workspace-id",
+          created.workspace.workspaceId
+        ],
+        {
+          cwd: tempDir,
+          env: {},
+          stdout: (line) => configureStdout.push(line),
+          stderr: () => undefined
+        }
+      )
+    ).toBe(0);
+
+    expect(configureStdout.join("\n")).toContain(`"expectedWorkspaceId": "${created.workspace.workspaceId}"`);
+  });
+
   it("requires --workspace-id when portable configure cannot read the workspace manifest", async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];

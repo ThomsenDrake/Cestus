@@ -438,6 +438,38 @@ describe("cestus-workspace executable", () => {
     }
   });
 
+  it("runs the operator diagnose command set against one portable workspace", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-workspace-cli-"));
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_operator_cli",
+        label: "Operator CLI Workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-cli-test",
+        coreVersion: "0.1.0"
+      });
+
+      for (const command of [
+        ["detect", "drive", "--root", rootPath, "--workspace-id", "ws_operator_cli"],
+        ["verify", "workspace", "--root", rootPath, "--workspace-id", "ws_operator_cli"],
+        ["disk", "usage", "--root", rootPath],
+        ["diagnostics", "inspect", "--root", rootPath, "--workspace-id", "ws_operator_cli"]
+      ] as const) {
+        const result = await execFileAsync("node", [
+          "packages/workspace-ops/bin/cestus-workspace.mjs",
+          ...command
+        ]);
+        const body = JSON.parse(result.stdout) as { schemaVersion: string; status: string };
+        expect(body.schemaVersion).toBe("workspace-ops.v1");
+        expect(["ready", "degraded"]).toContain(body.status);
+        expect(result.stderr).toBe("");
+      }
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
   it("returns blocked JSON for a swapped workspace identity without leaking the actual id", async () => {
     const rootPath = mkdtempSync(join(tmpdir(), "cestus-workspace-cli-"));
     try {
