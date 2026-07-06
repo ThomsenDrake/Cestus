@@ -181,6 +181,44 @@ describe("verifyWorkspace", () => {
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
+  it("uses event count as the provisional ledger high-water mark across streams", async () => {
+    const fileSystem = new MemoryWorkspaceFs();
+    const layout = await readyLayout(fileSystem);
+    const events = [
+      validEvent,
+      {
+        ...validEvent,
+        id: "evt_ops_evidence_second_stream",
+        streamId: "evidence_ev_ops_002",
+        sequence: 1,
+        payload: {
+          ...validEvent.payload,
+          evidenceId: "ev_ops_002"
+        }
+      },
+      {
+        ...validEvent,
+        id: "evt_ops_evidence_first_stream_second_event",
+        sequence: 2
+      }
+    ] as const;
+
+    const result = await verifyWorkspace({
+      layout,
+      fileSystem,
+      eventReader: { readAll: async () => events }
+    });
+
+    expect(result.status).toBe("ready");
+    expect(result.payload?.ledger).toMatchObject({
+      readable: true,
+      eventCount: 3,
+      highWaterMark: 3
+    });
+    expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
   it("does not read canonical ledger events when the ledger path is unavailable", async () => {
     const fileSystem = new MemoryWorkspaceFs();
     const layoutShape = addResolvedWorkspace(fileSystem);
@@ -218,20 +256,28 @@ describe("verifyWorkspace", () => {
     expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
   });
 
-  it("reports stale resolved layouts when the manifest disappears after detection", async () => {
+  it("blocks without reading canonical ledger events when the manifest disappears after detection", async () => {
     const fileSystem = new MemoryWorkspaceFs();
     const layoutShape = addResolvedWorkspace(fileSystem);
     const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
     fileSystem.files.delete(layoutShape.manifestPath);
+    let readCalls = 0;
 
     const result = await verifyWorkspace({
       layout,
       fileSystem,
-      eventReader: { readAll: async () => [validEvent] }
+      eventReader: {
+        readAll: async () => {
+          readCalls += 1;
+          return [validEvent];
+        }
+      }
     });
 
-    expect(result.status).toBe("degraded");
+    expect(readCalls).toBe(0);
+    expect(result.status).toBe("blocked");
     expect(result.payload?.manifest).toMatchObject({ readable: false, valid: false });
+    expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
         diagnosticId: "diag_workspace_manifest_unavailable",
@@ -249,20 +295,28 @@ describe("verifyWorkspace", () => {
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
-  it("reports stale resolved layouts when the manifest can no longer be read", async () => {
+  it("blocks without reading canonical ledger events when the manifest can no longer be read", async () => {
     const fileSystem = new MemoryWorkspaceFs();
     const layoutShape = addResolvedWorkspace(fileSystem);
     const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
     fileSystem.readFailures.add(layoutShape.manifestPath);
+    let readCalls = 0;
 
     const result = await verifyWorkspace({
       layout,
       fileSystem,
-      eventReader: { readAll: async () => [validEvent] }
+      eventReader: {
+        readAll: async () => {
+          readCalls += 1;
+          return [validEvent];
+        }
+      }
     });
 
-    expect(result.status).toBe("degraded");
+    expect(readCalls).toBe(0);
+    expect(result.status).toBe("blocked");
     expect(result.payload?.manifest).toMatchObject({ readable: false, valid: false });
+    expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
         diagnosticId: "diag_workspace_manifest_unavailable",
@@ -280,7 +334,7 @@ describe("verifyWorkspace", () => {
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
-  it("reports stale resolved layouts when the manifest content becomes invalid", async () => {
+  it("blocks without reading canonical ledger events when the manifest content becomes invalid", async () => {
     const fileSystem = new MemoryWorkspaceFs();
     const layoutShape = addResolvedWorkspace(fileSystem);
     const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
@@ -288,15 +342,23 @@ describe("verifyWorkspace", () => {
       layoutShape.manifestPath,
       JSON.stringify({ workspaceId: "ws_ops_001", label: "Ops Fixture", version: 2 })
     );
+    let readCalls = 0;
 
     const result = await verifyWorkspace({
       layout,
       fileSystem,
-      eventReader: { readAll: async () => [validEvent] }
+      eventReader: {
+        readAll: async () => {
+          readCalls += 1;
+          return [validEvent];
+        }
+      }
     });
 
-    expect(result.status).toBe("degraded");
+    expect(readCalls).toBe(0);
+    expect(result.status).toBe("blocked");
     expect(result.payload?.manifest).toMatchObject({ readable: true, valid: false });
+    expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
         diagnosticId: "diag_workspace_manifest_unavailable",
@@ -308,7 +370,43 @@ describe("verifyWorkspace", () => {
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
-  it("reports stale resolved layouts when the manifest gains extra fields", async () => {
+  it("blocks without reading canonical ledger events when the manifest belongs to another workspace", async () => {
+    const fileSystem = new MemoryWorkspaceFs();
+    const layoutShape = addResolvedWorkspace(fileSystem);
+    const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
+    fileSystem.files.set(
+      layoutShape.manifestPath,
+      JSON.stringify({ workspaceId: "ws_ops_999", label: "Ops Fixture", version: 1 })
+    );
+    let readCalls = 0;
+
+    const result = await verifyWorkspace({
+      layout,
+      fileSystem,
+      eventReader: {
+        readAll: async () => {
+          readCalls += 1;
+          return [validEvent];
+        }
+      }
+    });
+
+    expect(readCalls).toBe(0);
+    expect(result.status).toBe("blocked");
+    expect(result.payload?.manifest).toMatchObject({ readable: true, valid: false });
+    expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_workspace_manifest_unavailable",
+        category: "manifest"
+      })
+    );
+    expect(JSON.stringify(result)).not.toContain("ws_ops_999");
+    expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("blocks without reading canonical ledger events when the manifest gains extra fields", async () => {
     const fileSystem = new MemoryWorkspaceFs();
     const layoutShape = addResolvedWorkspace(fileSystem);
     const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
@@ -321,15 +419,23 @@ describe("verifyWorkspace", () => {
         extraField: "not part of the provisional contract"
       })
     );
+    let readCalls = 0;
 
     const result = await verifyWorkspace({
       layout,
       fileSystem,
-      eventReader: { readAll: async () => [validEvent] }
+      eventReader: {
+        readAll: async () => {
+          readCalls += 1;
+          return [validEvent];
+        }
+      }
     });
 
-    expect(result.status).toBe("degraded");
+    expect(readCalls).toBe(0);
+    expect(result.status).toBe("blocked");
     expect(result.payload?.manifest).toMatchObject({ readable: true, valid: false });
+    expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
         diagnosticId: "diag_workspace_manifest_unavailable",

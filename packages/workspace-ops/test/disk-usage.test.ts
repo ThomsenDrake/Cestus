@@ -19,7 +19,8 @@ class TreeWorkspaceFs implements WorkspaceFileSystem {
 
   constructor(
     private readonly entries: ReadonlyMap<string, TreeEntry>,
-    private readonly freeBytes: number | undefined
+    private readonly freeBytes: number | undefined,
+    private readonly failAvailableBytes = false
   ) {}
 
   async exists(path: string): Promise<boolean> {
@@ -48,6 +49,9 @@ class TreeWorkspaceFs implements WorkspaceFileSystem {
 
   async availableBytes(): Promise<number | undefined> {
     this.availableBytesCalls += 1;
+    if (this.failAvailableBytes) {
+      throw new Error("private adapter free-space failure");
+    }
     return this.freeBytes;
   }
 }
@@ -171,6 +175,40 @@ describe("reportDiskUsage", () => {
     expect(result.payload?.thresholdWarnings).toEqual([]);
     expect(fileSystem.availableBytesCalls).toBe(1);
     expect(diskUsageDtoSchema.parse(result.payload)).toEqual(result.payload);
+  });
+
+  it("reports disk usage when free-space inspection fails without leaking adapter errors", async () => {
+    const fileSystem = new TreeWorkspaceFs(
+      new Map([
+        [layout.manifestPath, { kind: "file", sizeBytes: 4 }],
+        [layout.blobRoot, { kind: "directory", sizeBytes: 0, children: ["private-child-name"] }],
+        [`${layout.blobRoot}/private-child-name`, { kind: "file", sizeBytes: 12 }]
+      ]),
+      undefined,
+      true
+    );
+
+    const result = await reportDiskUsage({ layout, fileSystem, warningThresholdBytes: 100 });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload?.estimatedFreeBytes).toBeUndefined();
+    expect(result.payload?.thresholdWarnings).toEqual([]);
+    expect(result.payload?.categories.find((category) => category.category === "blobs")).toEqual({
+      category: "blobs",
+      bytes: 12,
+      exists: true
+    });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_workspace_disk_available_bytes_unreadable",
+        category: "disk"
+      })
+    );
+    expect(fileSystem.availableBytesCalls).toBe(1);
+    expect(JSON.stringify(result)).not.toContain("private adapter free-space failure");
+    expect(JSON.stringify(result)).not.toContain("private-child-name");
+    expect(diskUsageDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
   it("uses realpath cycle protection while keeping raw child names out of output", async () => {
