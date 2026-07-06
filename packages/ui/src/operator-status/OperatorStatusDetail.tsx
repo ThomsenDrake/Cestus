@@ -2,6 +2,8 @@ import type { OperatorSafeActionDto, OperatorStatusSectionDto } from "./operator
 
 interface OperatorStatusDetailProps {
   readonly section: OperatorStatusSectionDto;
+  readonly panelId: string;
+  readonly labelledByTabId: string;
   readonly actions: readonly OperatorSafeActionDto[];
   readonly onNavigate?: (target: OperatorSafeActionDto["target"]) => void;
   readonly onRefresh?: () => void;
@@ -13,13 +15,22 @@ const diagnosticToneClasses: Record<OperatorStatusSectionDto["diagnostics"][numb
   warning: "text-[var(--signal-amber)]"
 };
 
-export function OperatorStatusDetail({ section, actions, onNavigate, onRefresh }: OperatorStatusDetailProps) {
+export function OperatorStatusDetail({
+  section,
+  panelId,
+  labelledByTabId,
+  actions,
+  onNavigate,
+  onRefresh
+}: OperatorStatusDetailProps) {
   const commandActions = actions.filter((action) => action.kind === "show-command");
   const controlActions = actions.filter((action) => action.kind === "navigate" || action.kind === "refresh-status");
 
   return (
     <section
-      aria-label={`${section.label} details`}
+      id={panelId}
+      role="tabpanel"
+      aria-labelledby={labelledByTabId}
       className="grid gap-4 border border-[var(--console-line)] bg-[var(--console-void)]/72 p-3 lg:grid-cols-[minmax(0,1fr)_18rem]"
     >
       <div className="min-w-0 space-y-4">

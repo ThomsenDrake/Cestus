@@ -26,7 +26,7 @@ describe("OperatorCockpit", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: /Legacy Import/ }));
 
-    const detail = screen.getByRole("region", { name: "Legacy Import details" });
+    const detail = screen.getByRole("tabpanel", { name: /Legacy Import/ });
     expect(within(detail).getByText("Legacy importer needs a reviewed export manifest.")).toBeInTheDocument();
     expect(within(detail).getByText("source evidence")).toBeInTheDocument();
     expect(within(detail).getByText("legacy-readiness snapshot")).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe("OperatorCockpit", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: /Workspace/ }));
 
-    const detail = screen.getByRole("region", { name: "Workspace details" });
+    const detail = screen.getByRole("tabpanel", { name: /Workspace/ });
     const command = within(detail).getByText("cestus-workspace verify workspace");
     expect(command.tagName).toBe("CODE");
     expect(within(detail).queryByRole("button", { name: "Show workspace verify" })).not.toBeInTheDocument();
@@ -64,11 +64,30 @@ describe("OperatorCockpit", () => {
     const workspaceBand = screen.getByRole("tab", { name: /Workspace/ });
     workspaceBand.focus();
     fireEvent.keyDown(workspaceBand, { key: "Enter" });
-    expect(screen.getByRole("region", { name: "Workspace details" })).toBeInTheDocument();
+    expect(screen.getByRole("tabpanel", { name: /Workspace/ })).toBeInTheDocument();
 
     fireEvent.keyDown(workspaceBand, { key: "ArrowRight" });
-    expect(screen.getByRole("tab", { name: /Ingestion/ })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("region", { name: "Ingestion details" })).toBeInTheDocument();
+    const ingestionBand = screen.getByRole("tab", { name: /Ingestion/ });
+    expect(ingestionBand).toHaveAttribute("aria-selected", "true");
+    expect(ingestionBand).toHaveFocus();
+    expect(screen.getByRole("tabpanel", { name: /Ingestion/ })).toBeInTheDocument();
+
+    fireEvent.keyDown(ingestionBand, { key: "ArrowRight" });
+    const legacyBand = screen.getByRole("tab", { name: /Legacy Import/ });
+    expect(legacyBand).toHaveAttribute("aria-selected", "true");
+    expect(legacyBand).toHaveFocus();
+    expect(screen.getByRole("tabpanel", { name: /Legacy Import/ })).toBeInTheDocument();
+  });
+
+  it("links selected tabs to the visible detail panel", () => {
+    render(<OperatorCockpit status={operatorStatusFixture} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: /Legacy Import/ }));
+
+    const selectedTab = screen.getByRole("tab", { name: /Legacy Import/ });
+    const detail = screen.getByRole("tabpanel", { name: /Legacy Import/ });
+    expect(selectedTab).toHaveAttribute("aria-controls", detail.id);
+    expect(detail).toHaveAttribute("aria-labelledby", selectedTab.id);
   });
 
   it("renders refresh as a button that calls onRefresh", () => {
@@ -97,7 +116,31 @@ describe("OperatorCockpit", () => {
     expect(within(cockpit).queryByRole("button", { name: /Workspace/ })).not.toBeInTheDocument();
     expect(within(cockpit).queryByRole("button", { name: /Legacy Import/ })).not.toBeInTheDocument();
   });
+
+  it("renders disabled safe actions without invoking callbacks", () => {
+    const onNavigate = vi.fn();
+    const status = withDisabledAction(operatorStatusFixture, "action_open_ingestion");
+
+    render(<OperatorCockpit status={status} onNavigate={onNavigate} />);
+
+    const disabledAction = screen.getByRole("button", { name: "Open ingestion" });
+    expect(disabledAction).toBeDisabled();
+
+    fireEvent.click(disabledAction);
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
 });
+
+function withDisabledAction(status: OperatorStatusDto, actionId: string): OperatorStatusDto {
+  return {
+    ...status,
+    safeActions: status.safeActions.map((action) =>
+      action.actionId === actionId
+        ? { ...action, enabled: false, disabledReason: "Disabled by test fixture." }
+        : action
+    )
+  };
+}
 
 const operatorStatusFixture: OperatorStatusDto = {
   schemaVersion: "operator-status.v1",

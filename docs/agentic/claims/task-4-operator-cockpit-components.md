@@ -33,6 +33,11 @@
 - Spec-review targeted test: `npm test -- packages/ui/test/operator-cockpit.test.tsx packages/ui/test/visual-contract.test.ts` passed with 2 test files and 13 tests.
 - Spec-review full verification: `npm run verify` passed with typecheck, 97 test files and 858 tests, UI build, and factory readiness.
 - `2026-07-06T23:13:48Z`: Status remains ready-for-review after fixing status-band button-role drift.
+- Code-quality RED targeted test: `npm test -- packages/ui/test/operator-cockpit.test.tsx` failed with 4 failures because the detail panel was still a plain region, tabs did not expose `aria-controls`, the panel did not expose `aria-labelledby`, and keyboard navigation did not yet prove focus movement across multiple tabs.
+- Code-quality GREEN targeted test: `npm test -- packages/ui/test/operator-cockpit.test.tsx` passed with 1 test file and 10 tests after adding roving focus, tab/panel IDs, and disabled-action coverage.
+- Code-quality targeted test: `npm test -- packages/ui/test/operator-cockpit.test.tsx packages/ui/test/visual-contract.test.ts` passed with 2 test files and 15 tests.
+- Code-quality full verification: `npm run verify` passed with typecheck, 97 test files and 860 tests, UI build, and factory readiness.
+- `2026-07-06T23:22:06Z`: Status remains ready-for-review after improving operator cockpit tab accessibility.
 
 ## Self-Review
 
@@ -41,4 +46,6 @@
 - `OperatorStatusBand` renders dense status, headline, metric, and primary safe-action label panels using existing console tokens.
 - `OperatorStatusDetail` renders diagnostics, source evidence, command descriptors, and safe controls; show-command actions are display-only `<code>` text.
 - Status bands now use non-button `role="tab"` elements inside an `Operator status bands` tablist with click, Enter, Space, arrow, Home, and End selection support.
+- Status tabs now move focus during arrow-key navigation and expose `aria-controls`; the selected detail surface is a `role="tabpanel"` with `aria-labelledby` pointing back to the selected tab.
+- Disabled safe actions render disabled buttons and do not invoke navigation or refresh callbacks.
 - Navigation and refresh actions are the only rendered controls; no PRR send, legal escalation, workspace repair, accepted assertion, ontology staging, canonical mutation, or runtime wiring behavior was added.
