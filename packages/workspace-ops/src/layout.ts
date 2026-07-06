@@ -1,3 +1,4 @@
+import { basename, isAbsolute, posix, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import {
@@ -145,6 +146,10 @@ export async function resolveWorkspaceLayout(
   }
 
   const manifestName = input.manifestName ?? provisionalWorkspaceManifestName;
+  if (!isSafeManifestBasename(manifestName)) {
+    return unsafeManifestNameResult(rootUri);
+  }
+
   const manifestPath = childPath(input.rootPath, manifestName);
   const manifestExists = await safeExists(fileSystem, manifestPath);
   if (manifestExists === "unreadable") {
@@ -330,6 +335,26 @@ function unreadableManifestResult(rootUri: string): WorkspaceLayoutResult {
   });
 }
 
+function unsafeManifestNameResult(rootUri: string): WorkspaceLayoutResult {
+  return layoutResult({
+    mountStatus: mountStatus(
+      "wrong-drive",
+      "Workspace manifest name must be a safe file basename.",
+      rootUri,
+      ["detect drive"],
+      "Use a workspace manifest basename inside the selected root, then rerun drive detection."
+    ),
+    diagnostics: [
+      workspaceDiagnostic(
+        "diag_workspace_manifest_name_unsafe",
+        "manifest",
+        "Workspace manifest name must be a safe file basename."
+      )
+    ],
+    proposedActions: [selectWorkspaceAction("error")]
+  });
+}
+
 function layoutResult(input: {
   readonly workspace?: WorkspaceRefDto;
   readonly mountStatus: MountStatusDto;
@@ -434,4 +459,18 @@ function rerunDetectionAction(severity: ProposedRepairActionInput["severity"]): 
 function pathToSafeFileUri(path: string): string {
   const uri = pathToFileURL(path).href;
   return isSecretSafeWorkspaceText(uri) ? uri : "workspace://redacted-path";
+}
+
+function isSafeManifestBasename(manifestName: string): boolean {
+  return (
+    manifestName.length > 0 &&
+    manifestName !== "." &&
+    manifestName !== ".." &&
+    !manifestName.includes("\0") &&
+    !isAbsolute(manifestName) &&
+    !win32.isAbsolute(manifestName) &&
+    basename(manifestName) === manifestName &&
+    posix.basename(manifestName) === manifestName &&
+    win32.basename(manifestName) === manifestName
+  );
 }

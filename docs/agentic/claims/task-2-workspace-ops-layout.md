@@ -25,3 +25,6 @@ Command evidence:
 - Verify repair: `npm run verify` first exited 2 during typecheck because `createProvisionalWorkspaceLayout` inferred the default manifest name as the literal `cestus-workspace.json`; the parameter was widened to `string`.
 - Green after repair: `npm test -- packages/workspace-ops/test/layout.test.ts` exited 0 with 1 test file and 5 tests passed.
 - Verify: `npm run verify` exited 0 with typecheck passed, 71 test files and 616 tests passed, UI build succeeded, and factory-readiness passed.
+- Code-quality repair red: `npm test -- packages/workspace-ops/test/layout.test.ts` exited 1 with 2 failing regressions proving traversal manifest names could read a sibling manifest and absolute manifest names were not rejected as unsafe.
+- Code-quality repair green: `npm test -- packages/workspace-ops/test/layout.test.ts` exited 0 with 1 test file and 7 tests passed.
+- Code-quality repair verify: `npm run verify` exited 0 with typecheck passed, 71 test files and 618 tests passed, UI build succeeded, and factory-readiness passed.
