@@ -80,6 +80,41 @@ describe("IngestionRuntime core workflows", () => {
     expect(scanned.eventIds).not.toContain((await workspace.ledger.readStream("ingestion_source_src_drive_001"))[0]?.id);
   });
 
+  it("lists source summaries through the runtime without exposing source roots", async () => {
+    const workspace = createFakeMountedWorkspace();
+    roots.push(workspace.rootDir);
+    const sourceRoot = join(workspace.rootDir, "source");
+    mkdirSync(sourceRoot, { recursive: true });
+    writeFileSync(join(sourceRoot, "a.txt"), "alpha");
+    const runtime = createIngestionRuntime({ mountedWorkspace: workspace, actor });
+    await runtime.registerSource({
+      sourceCollectionId: "src_drive_001",
+      label: "Old archive",
+      rootUri: `file://${sourceRoot}`,
+      sourceRoot
+    });
+    await runtime.dryRunScan({
+      sourceCollectionId: "src_drive_001",
+      scanBatchId: "scan_001"
+    });
+
+    const sources = await runtime.listSources({});
+
+    expect(sources).toEqual({
+      ok: true,
+      sources: [{
+        sourceCollectionId: "src_drive_001",
+        label: "Old archive",
+        latestScanBatchId: "scan_001",
+        scanBatchIds: ["scan_001"],
+        importBatchIds: [],
+        diagnosticIds: []
+      }]
+    });
+    expect(JSON.stringify(sources)).not.toContain(sourceRoot);
+    expect(JSON.stringify(sources)).not.toContain("rootUri");
+  });
+
   it("requires source registration before dry-run scans", async () => {
     const workspace = createFakeMountedWorkspace();
     roots.push(workspace.rootDir);

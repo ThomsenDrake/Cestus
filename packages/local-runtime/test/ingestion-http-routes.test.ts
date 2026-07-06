@@ -219,33 +219,20 @@ describe("local runtime ingestion HTTP routes", () => {
     expect(runtimeFactory).not.toHaveBeenCalled();
   });
 
-  it("lists registered source summaries from rebuildable workspace state", async () => {
-    const runtimeFactory = vi.fn();
-    const workspace = mountedWorkspace();
-    await workspace.ledger.append({
-      type: "ingestion.source.registered",
-      version: 1,
-      streamId: "ingestion_source_src_drive_001",
-      context: {
-        actor,
-        occurredAt: "2026-07-06T17:05:00.000Z",
-        correlationId: "corr_http_source",
-        coreVersion: "0.1.0",
-        packVersions: { core: "0.1.0", ingestion: "0.1.0" }
-      },
-      payload: {
+  it("dispatches source listing through the ingestion runtime", async () => {
+    const listSources = vi.fn(async () => ({
+      ok: true as const,
+      sources: [{
         sourceCollectionId: "src_drive_001",
         label: "Old archive",
-        mode: "read-only",
-        adapter: { name: "local-filesystem", version: "0.1.0" },
-        rootUri: "file:///private/archive",
-        workspaceUri: "cestus-workspace://ws_http_001"
-      }
-    });
+        scanBatchIds: [],
+        importBatchIds: [],
+        diagnosticIds: []
+      }]
+    }));
+    const runtimeFactory = vi.fn(() => ({ listSources }));
     const handler = testHandler({
-      ingestionMountResolver: {
-        resolve: vi.fn(async () => ({ ok: true as const, workspace }))
-      },
+      ingestionMountResolver: mountedResolver(),
       ingestionRuntimeFactory: runtimeFactory
     });
 
@@ -262,8 +249,12 @@ describe("local runtime ingestion HTTP routes", () => {
         diagnosticIds: []
       }]
     });
-    expect(response.body).not.toContain("/private/archive");
-    expect(runtimeFactory).not.toHaveBeenCalled();
+    expect(response.body).not.toContain("rootUri");
+    expect(listSources).toHaveBeenCalledWith({});
+    expect(runtimeFactory).toHaveBeenCalledWith({
+      mountedWorkspace: expect.objectContaining({ workspaceId: "ws_http_001" }),
+      actor
+    });
   });
 
   it("does not expose non-approved source or import alias routes", async () => {
