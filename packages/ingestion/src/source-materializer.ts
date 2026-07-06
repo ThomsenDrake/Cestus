@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { isAbsolute, relative, resolve } from "node:path";
+import { lstatSync, readdirSync, readFileSync } from "node:fs";
+import { relative, resolve, sep } from "node:path";
 import { ZipArchiveAdapter, type ZipArchiveChild } from "./archive-adapter.js";
 import type { IngestionOccurrenceSummary } from "./projection.js";
 import {
@@ -12,6 +12,7 @@ const archiveLimits = {
   maxEntries: 10000,
   maxExpandedBytes: 1024 * 1024 * 1024
 };
+const localFilesystemAdapter = { name: "local-filesystem", version: "0.1.0" } as const;
 
 export interface MaterializedImportOccurrence {
   readonly occurrenceId: string;
@@ -37,155 +38,288 @@ interface ExpandedArchive {
   readonly children: readonly ZipArchiveChild[];
 }
 
-type MaterializedOccurrenceResult =
-  | { readonly ok: true; readonly occurrence: MaterializedImportOccurrence }
+type InventoryResult =
+  | {
+      readonly ok: true;
+      readonly items: ReadonlyMap<string, InventoryItem>;
+      readonly archiveContainerHashes: ReadonlyMap<string, `sha256:${string}`>;
+    }
   | { readonly ok: false; readonly error: IngestionRuntimeError };
+
+interface InventoryItem {
+  readonly key: string;
+  readonly kind: "regular" | "archive-child";
+  readonly occurrence?: IngestionOccurrenceSummary;
+  readonly contentHash: `sha256:${string}`;
+  readonly sizeBytes: number;
+  readonly content?: Buffer;
+  readonly materializedSourcePath: string;
+  readonly mediaTypePath: string;
+  readonly containerPath?: string;
+  readonly containerHash?: `sha256:${string}`;
+  readonly internalPath?: string;
+  readonly archiveAdapter?: { readonly name: string; readonly version: string };
+}
 
 export function materializeApprovedOccurrences(
   input: MaterializeApprovedOccurrencesInput
 ): MaterializeApprovedOccurrencesResult {
   const sourceRoot = resolve(input.sourceRoot);
-  const archiveAdapter = new ZipArchiveAdapter();
-  const expandedArchives = new Map<string, ExpandedArchive>();
+  const approved = approvedInventoryFor(input.occurrences);
+
+  if (!approved.ok) {
+    return approved;
+  }
+
+  const current = currentInventoryFor(sourceRoot, approved.archiveContainerHashes);
+
+  if (!current.ok) {
+    return current;
+  }
+
+  const inventoryComparison = compareInventories(approved.items, current.items);
+
+  if (!inventoryComparison.ok) {
+    return inventoryComparison;
+  }
+
   const materialized: MaterializedImportOccurrence[] = [];
 
   for (const occurrence of input.occurrences) {
-    const result = isArchiveOccurrence(occurrence)
-      ? materializeArchiveOccurrence(sourceRoot, occurrence, archiveAdapter, expandedArchives)
-      : materializeRegularOccurrence(sourceRoot, occurrence);
+    const currentItem = current.items.get(inventoryKeyForOccurrence(occurrence));
 
-    if (!result.ok) {
-      return result;
+    if (currentItem?.content === undefined) {
+      return isArchiveOccurrence(occurrence) ? archiveMismatchError() : sourceChangedError();
     }
 
-    materialized.push(result.occurrence);
+    materialized.push({
+      occurrenceId: occurrence.occurrenceId,
+      content: currentItem.content,
+      sourcePath: currentItem.materializedSourcePath,
+      mediaType: mediaTypeFor(currentItem.mediaTypePath)
+    });
   }
 
   return { ok: true, occurrences: materialized };
 }
 
-function materializeRegularOccurrence(
-  sourceRoot: string,
-  occurrence: IngestionOccurrenceSummary
-): MaterializedOccurrenceResult {
-  const current = readSourceFile(sourceRoot, occurrence.sourcePath);
+function approvedInventoryFor(occurrences: readonly IngestionOccurrenceSummary[]): InventoryResult {
+  const items = new Map<string, InventoryItem>();
+  const archiveContainerHashes = new Map<string, `sha256:${string}`>();
 
-  if (current === undefined) {
+  for (const occurrence of occurrences) {
+    if (!isLocalFilesystemOccurrence(occurrence)) {
+      return sourceChangedError();
+    }
+
+    if (isArchiveOccurrence(occurrence)) {
+      const previousContainerHash = archiveContainerHashes.get(occurrence.containerPath);
+      if (previousContainerHash !== undefined && previousContainerHash !== occurrence.containerHash) {
+        return archiveMismatchError();
+      }
+
+      archiveContainerHashes.set(occurrence.containerPath, occurrence.containerHash);
+      items.set(inventoryKeyForOccurrence(occurrence), {
+        key: inventoryKeyForOccurrence(occurrence),
+        kind: "archive-child",
+        occurrence,
+        contentHash: asContentHash(occurrence.contentHash),
+        sizeBytes: occurrence.sizeBytes,
+        materializedSourcePath: `${occurrence.containerPath}!/${occurrence.internalPath}`,
+        mediaTypePath: occurrence.internalPath,
+        containerPath: occurrence.containerPath,
+        containerHash: occurrence.containerHash,
+        internalPath: occurrence.internalPath,
+        archiveAdapter: occurrence.archiveAdapter
+      });
+    } else {
+      items.set(inventoryKeyForOccurrence(occurrence), {
+        key: inventoryKeyForOccurrence(occurrence),
+        kind: "regular",
+        occurrence,
+        contentHash: asContentHash(occurrence.contentHash),
+        sizeBytes: occurrence.sizeBytes,
+        materializedSourcePath: occurrence.sourcePath,
+        mediaTypePath: occurrence.sourcePath
+      });
+    }
+  }
+
+  return { ok: true, items, archiveContainerHashes };
+}
+
+function currentInventoryFor(
+  sourceRoot: string,
+  approvedArchiveContainerHashes: ReadonlyMap<string, `sha256:${string}`>
+): InventoryResult {
+  const archiveAdapter = new ZipArchiveAdapter();
+  const items = new Map<string, InventoryItem>();
+  const archiveContainerHashes = new Map<string, `sha256:${string}`>();
+  let files: ScannedFile[];
+
+  try {
+    files = collectFiles(sourceRoot).sort((left, right) => compareCodeUnits(left.relativePath, right.relativePath));
+  } catch {
     return sourceChangedError();
   }
 
-  if (sha256(current) !== occurrence.contentHash || current.byteLength !== occurrence.sizeBytes) {
-    return sourceChangedError();
-  }
-
-  return {
-    ok: true,
-    occurrence: {
-      occurrenceId: occurrence.occurrenceId,
-      content: current,
-      sourcePath: occurrence.sourcePath,
-      mediaType: mediaTypeFor(occurrence.sourcePath)
+  for (const file of files) {
+    let content: Buffer;
+    try {
+      content = readFileSync(file.absolutePath);
+    } catch {
+      return sourceChangedError();
     }
-  };
-}
 
-function materializeArchiveOccurrence(
-  sourceRoot: string,
-  occurrence: IngestionOccurrenceSummary & {
-    containerPath: string;
-    containerHash: `sha256:${string}`;
-    internalPath: string;
-    archiveAdapter: { name: string; version: string };
-  },
-  archiveAdapter: ZipArchiveAdapter,
-  expandedArchives: Map<string, ExpandedArchive>
-): MaterializedOccurrenceResult {
-  const archive = expandedArchiveFor(sourceRoot, occurrence, archiveAdapter, expandedArchives);
+    if (isZipPath(file.relativePath)) {
+      const approvedContainerHash = approvedArchiveContainerHashes.get(file.relativePath);
 
-  if (!archive.ok) {
-    return archive;
-  }
+      if (approvedContainerHash === undefined) {
+        return archiveMismatchError();
+      }
 
-  if (archive.archive.containerHash !== occurrence.containerHash) {
-    return archiveMismatchError();
-  }
+      const containerHash = sha256(content);
+      if (containerHash !== approvedContainerHash) {
+        return archiveMismatchError();
+      }
 
-  const child = archive.archive.children.find((entry) => entry.internalPath === occurrence.internalPath);
+      let archive: ExpandedArchive;
+      try {
+        archive = {
+          containerHash,
+          children: archiveAdapter.expand(content, {
+            containerHash,
+            ...archiveLimits
+          })
+        };
+      } catch {
+        return archiveMismatchError();
+      }
 
-  if (child === undefined) {
-    return archiveMismatchError();
-  }
-
-  if (
-    child.containerHash !== occurrence.containerHash ||
-    sha256(child.content) !== occurrence.contentHash ||
-    child.content.byteLength !== occurrence.sizeBytes ||
-    child.tool !== occurrence.archiveAdapter.name ||
-    child.version !== occurrence.archiveAdapter.version
-  ) {
-    return archiveMismatchError();
-  }
-
-  return {
-    ok: true,
-    occurrence: {
-      occurrenceId: occurrence.occurrenceId,
-      content: child.content,
-      sourcePath: `${occurrence.containerPath}!/${occurrence.internalPath}`,
-      mediaType: mediaTypeFor(occurrence.internalPath)
+      archiveContainerHashes.set(file.relativePath, containerHash);
+      for (const child of archive.children) {
+        const contentHash = sha256(child.content);
+        items.set(archiveInventoryKey(file.relativePath, child.internalPath), {
+          key: archiveInventoryKey(file.relativePath, child.internalPath),
+          kind: "archive-child",
+          content: child.content,
+          contentHash,
+          sizeBytes: child.content.byteLength,
+          materializedSourcePath: `${file.relativePath}!/${child.internalPath}`,
+          mediaTypePath: child.internalPath,
+          containerPath: file.relativePath,
+          containerHash,
+          internalPath: child.internalPath,
+          archiveAdapter: { name: child.tool, version: child.version }
+        });
+      }
+      continue;
     }
-  };
+
+    const contentHash = sha256(content);
+    items.set(regularInventoryKey(file.relativePath), {
+      key: regularInventoryKey(file.relativePath),
+      kind: "regular",
+      content,
+      contentHash,
+      sizeBytes: content.byteLength,
+      materializedSourcePath: file.relativePath,
+      mediaTypePath: file.relativePath
+    });
+  }
+
+  return { ok: true, items, archiveContainerHashes };
 }
 
-function expandedArchiveFor(
-  sourceRoot: string,
-  occurrence: IngestionOccurrenceSummary & {
-    containerPath: string;
-    containerHash: `sha256:${string}`;
-  },
-  archiveAdapter: ZipArchiveAdapter,
-  expandedArchives: Map<string, ExpandedArchive>
-): { readonly ok: true; readonly archive: ExpandedArchive } | { readonly ok: false; readonly error: IngestionRuntimeError } {
-  const existing = expandedArchives.get(occurrence.containerPath);
-  if (existing !== undefined) {
-    return { ok: true, archive: existing };
+function compareInventories(
+  approvedItems: ReadonlyMap<string, InventoryItem>,
+  currentItems: ReadonlyMap<string, InventoryItem>
+): { readonly ok: true } | { readonly ok: false; readonly error: IngestionRuntimeError } {
+  for (const approvedItem of approvedItems.values()) {
+    const currentItem = currentItems.get(approvedItem.key);
+
+    if (currentItem === undefined) {
+      return approvedItem.kind === "archive-child" ? archiveMismatchError() : sourceChangedError();
+    }
+
+    if (
+      currentItem.kind !== approvedItem.kind ||
+      currentItem.contentHash !== approvedItem.contentHash ||
+      currentItem.sizeBytes !== approvedItem.sizeBytes
+    ) {
+      return approvedItem.kind === "archive-child" ? archiveMismatchError() : sourceChangedError();
+    }
+
+    if (approvedItem.kind === "archive-child") {
+      if (
+        currentItem.containerHash !== approvedItem.containerHash ||
+        currentItem.internalPath !== approvedItem.internalPath ||
+        currentItem.archiveAdapter?.name !== approvedItem.archiveAdapter?.name ||
+        currentItem.archiveAdapter?.version !== approvedItem.archiveAdapter?.version
+      ) {
+        return archiveMismatchError();
+      }
+    }
   }
 
-  const container = readSourceFile(sourceRoot, occurrence.containerPath);
-
-  if (container === undefined) {
-    return archiveMismatchError();
+  for (const currentItem of currentItems.values()) {
+    if (!approvedItems.has(currentItem.key)) {
+      return currentItem.kind === "archive-child" ? archiveMismatchError() : sourceChangedError();
+    }
   }
 
-  const containerHash = sha256(container);
-
-  try {
-    const archive = {
-      containerHash,
-      children: archiveAdapter.expand(container, {
-        containerHash,
-        ...archiveLimits
-      })
-    };
-    expandedArchives.set(occurrence.containerPath, archive);
-    return { ok: true, archive };
-  } catch {
-    return archiveMismatchError();
-  }
+  return { ok: true };
 }
 
-function readSourceFile(sourceRoot: string, sourcePath: string): Buffer | undefined {
-  const resolvedPath = resolve(sourceRoot, sourcePath);
+interface ScannedFile {
+  readonly relativePath: string;
+  readonly absolutePath: string;
+}
 
-  if (!isPathInside(sourceRoot, resolvedPath)) {
-    return undefined;
+function collectFiles(rootDir: string, currentDir = rootDir): ScannedFile[] {
+  const files: ScannedFile[] = [];
+
+  for (const entry of readdirSync(currentDir)) {
+    const absolutePath = resolve(currentDir, entry);
+    const stat = lstatSync(absolutePath);
+
+    if (stat.isSymbolicLink()) {
+      continue;
+    }
+    if (stat.isDirectory()) {
+      files.push(...collectFiles(rootDir, absolutePath));
+    } else if (stat.isFile()) {
+      files.push({
+        absolutePath,
+        relativePath: relative(rootDir, absolutePath).split(sep).join("/")
+      });
+    }
   }
 
-  try {
-    return readFileSync(resolvedPath);
-  } catch {
-    return undefined;
-  }
+  return files;
+}
+
+function inventoryKeyForOccurrence(occurrence: IngestionOccurrenceSummary): string {
+  return isArchiveOccurrence(occurrence)
+    ? archiveInventoryKey(occurrence.containerPath, occurrence.internalPath)
+    : regularInventoryKey(occurrence.sourcePath);
+}
+
+function regularInventoryKey(sourcePath: string): string {
+  return JSON.stringify(["regular", sourcePath]);
+}
+
+function archiveInventoryKey(containerPath: string, internalPath: string): string {
+  return JSON.stringify(["archive-child", containerPath, internalPath]);
+}
+
+function isLocalFilesystemOccurrence(occurrence: IngestionOccurrenceSummary): boolean {
+  return occurrence.adapter?.name === localFilesystemAdapter.name &&
+    occurrence.adapter.version === localFilesystemAdapter.version;
+}
+
+function isZipPath(relativePath: string): boolean {
+  return relativePath.toLowerCase().endsWith(".zip");
 }
 
 function isArchiveOccurrence(
@@ -202,11 +336,6 @@ function isArchiveOccurrence(
     occurrence.internalPath !== undefined &&
     occurrence.archiveAdapter !== undefined
   );
-}
-
-function isPathInside(root: string, filePath: string): boolean {
-  const relativePath = relative(root, filePath);
-  return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
 }
 
 function sha256(content: Buffer): `sha256:${string}` {
@@ -233,6 +362,14 @@ function mediaTypeFor(sourcePath: string): string {
   }
 
   return "application/octet-stream";
+}
+
+function asContentHash(contentHash: string): `sha256:${string}` {
+  return contentHash as `sha256:${string}`;
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function sourceChangedError(): { readonly ok: false; readonly error: IngestionRuntimeError } {
