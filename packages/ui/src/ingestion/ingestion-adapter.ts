@@ -351,7 +351,12 @@ function diagnosticsDtoFromJson(value: unknown): IngestionDiagnosticsDto {
   }
 
   if (isRuntimeFailure(value)) {
-    return { diagnostics: [safeDiagnosticFromError(value.error)] };
+    return {
+      diagnostics: [
+        ...value.error.diagnostics.map(safeDiagnostic),
+        safeDiagnosticFromError(value.error)
+      ]
+    };
   }
 
   throw new Error("Ingestion runtime returned invalid diagnostics payload.");

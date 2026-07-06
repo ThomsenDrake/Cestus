@@ -366,7 +366,7 @@ export function App({
               review: result.review
             }
       );
-      await refreshIngestionSupportState(result.review.sourceCollectionId);
+      await refreshIngestionSupportStateAfterMutation(result.review.sourceCollectionId);
     } catch {
       setIngestionDiagnostics([
         {
@@ -410,7 +410,7 @@ export function App({
         );
       }
 
-      await refreshIngestionSupportState(result.review?.sourceCollectionId ?? result.job.sourceCollectionId);
+      await refreshIngestionSupportStateAfterMutation(result.review?.sourceCollectionId ?? result.job.sourceCollectionId);
     } catch {
       setIngestionDiagnostics([
         {
@@ -433,6 +433,20 @@ export function App({
       ...(jobs.diagnostics ?? []),
       ...diagnosticResult.diagnostics
     ]);
+  }
+
+  async function refreshIngestionSupportStateAfterMutation(sourceCollectionId: string | undefined) {
+    try {
+      await refreshIngestionSupportState(sourceCollectionId);
+    } catch {
+      setIngestionDiagnostics([
+        {
+          severity: "warning",
+          category: "ingestion",
+          message: "Ingestion support state could not be refreshed. The action completed; reload jobs and diagnostics if needed."
+        }
+      ]);
+    }
   }
 
   const commandOrRequestsModeLabel = requestsActive ? "Requests" : "Command";

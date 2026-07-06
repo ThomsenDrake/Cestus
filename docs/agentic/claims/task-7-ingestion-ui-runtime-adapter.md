@@ -98,3 +98,19 @@
 - Full verification command:
   `npm run verify`
   - Result: passed at 2026-07-06T18:30:45Z; typecheck passed, Vitest reported 75 test files passed and 649 tests passed, Vite build succeeded, and factory readiness passed.
+
+## Code-Quality Re-review Refresh Diagnostics Fix Evidence
+
+- Code-quality re-review findings at `b560c35`: successful ingestion mutations were reported as failed when post-action jobs/diagnostics refresh failed, and `/api/ingestion/diagnostics` stable failures dropped server diagnostics.
+- Red command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-app-integration.test.tsx`
+  - Result: failed as expected; Vitest reported 2 failing tests covering dropped diagnostics endpoint server diagnostics and misleading post-mutation action failure diagnostics.
+- Targeted green command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-app-integration.test.tsx`
+  - Result: passed; Vitest reported 2 test files passed and 14 tests passed.
+- Full Task 7 targeted command:
+  `npm test -- packages/ui/test/ingestion-http-adapter.test.ts packages/ui/test/ingestion-workspace.test.tsx packages/ui/test/ingestion-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts packages/ui/test/app-smoke.test.tsx`
+  - Result: passed; Vitest reported 5 test files passed and 35 tests passed.
+- Full verification command:
+  `npm run verify`
+  - Result: passed at 2026-07-06T18:40:40Z; typecheck passed, Vitest reported 75 test files passed and 651 tests passed, Vite build succeeded, and factory readiness passed.
