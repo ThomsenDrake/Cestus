@@ -165,12 +165,12 @@ describe("workspace backup manifests", () => {
 
     expect(secretShaped.status).toBe("degraded");
     expect(secretShaped.payload).toMatchObject({
-      identityMatches: true,
-      layoutContractMatches: true,
-      missingCategories: [],
-      stale: false,
+      identityMatches: false,
+      layoutContractMatches: false,
+      stale: true,
       containsSecretShapedFields: true
     });
+    expect(secretShaped.payload?.missingCategories).toEqual(expectedCategories);
     expect(secretShaped.diagnostics).toContainEqual(
       expect.objectContaining({ diagnosticId: "diag_backup_manifest_secret_fields" })
     );
@@ -222,6 +222,17 @@ describe("workspace backup manifests", () => {
       leakedText: /not-a-date/
     },
     {
+      name: "rollover exportedAt values",
+      backupManifest: {
+        workspaceId: workspace.workspaceId,
+        layoutContractVersion: workspace.layoutContractVersion,
+        ledgerHighWaterMark: 15,
+        coveredCategories: expectedCategories,
+        exportedAt: "2026-02-31T12:00:00.000Z"
+      },
+      leakedText: /2026-02-31/
+    },
+    {
       name: "unexpected keys",
       backupManifest: {
         workspaceId: workspace.workspaceId,
@@ -244,12 +255,12 @@ describe("workspace backup manifests", () => {
     expect(result.status).toBe("degraded");
     expect(result.payload).toMatchObject({
       backupManifestPresent: true,
-      identityMatches: true,
-      layoutContractMatches: true,
-      missingCategories: [],
-      stale: false,
+      identityMatches: false,
+      layoutContractMatches: false,
+      stale: true,
       containsSecretShapedFields: true
     });
+    expect(result.payload?.missingCategories).toEqual(expectedCategories);
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
         diagnosticId: "diag_backup_manifest_invalid",
@@ -268,6 +279,58 @@ describe("workspace backup manifests", () => {
       expect.arrayContaining([expect.objectContaining({ kind: "append-repair-event-required" })])
     );
     expect(JSON.stringify(result)).not.toMatch(leakedText);
+    expect(backupCheckDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("does not invoke accessors on allowed backup manifest fields", async () => {
+    let getterCalls = 0;
+    const backupManifest = {
+      layoutContractVersion: workspace.layoutContractVersion,
+      ledgerHighWaterMark: 15,
+      coveredCategories: expectedCategories,
+      exportedAt: "2026-07-06T12:00:00.000Z"
+    };
+    Object.defineProperty(backupManifest, "workspaceId", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        throw new Error("private interview body without token shaped text");
+      }
+    });
+
+    const result = await checkBackupManifest({
+      workspace,
+      currentLedgerHighWaterMark: 15,
+      expectedCategories,
+      backupManifest
+    } as never);
+
+    expect(getterCalls).toBe(0);
+    expect(result.status).toBe("degraded");
+    expect(result.payload).toMatchObject({
+      backupManifestPresent: true,
+      identityMatches: false,
+      layoutContractMatches: false,
+      missingCategories: expectedCategories,
+      stale: true,
+      containsSecretShapedFields: true
+    });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_backup_manifest_invalid",
+        category: "backup"
+      })
+    );
+    expect(result.proposedActions).toEqual([
+      expect.objectContaining({
+        kind: "export-manifest",
+        requiresHumanApproval: false,
+        mutatesCanonicalState: false,
+        allowedNextCommands: ["manifest export", "backup check"]
+      })
+    ]);
+    expect(JSON.stringify(result)).not.toMatch(/private interview body|token shaped text/);
     expect(backupCheckDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
