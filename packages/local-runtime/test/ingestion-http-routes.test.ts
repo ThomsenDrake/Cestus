@@ -193,6 +193,79 @@ describe("local runtime ingestion HTTP routes", () => {
     expect(runtimeFactory).not.toHaveBeenCalled();
   });
 
+  it("returns safe mounted workspace status without constructing runtime", async () => {
+    const runtimeFactory = vi.fn();
+    const handler = testHandler({
+      ingestionMountResolver: mountedResolver(),
+      ingestionRuntimeFactory: runtimeFactory
+    });
+
+    const response = await handler({ method: "GET", url: "/api/ingestion/workspace" });
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      mounted: true,
+      workspaceId: "ws_http_001",
+      label: "HTTP workspace",
+      capabilities: {
+        canReadLedger: true,
+        canAppendLedger: true,
+        canWriteBlobs: true,
+        canWriteDerivatives: true,
+        canWriteJobState: true
+      },
+      diagnostics: []
+    });
+    expect(runtimeFactory).not.toHaveBeenCalled();
+  });
+
+  it("lists registered source summaries from rebuildable workspace state", async () => {
+    const runtimeFactory = vi.fn();
+    const workspace = mountedWorkspace();
+    await workspace.ledger.append({
+      type: "ingestion.source.registered",
+      version: 1,
+      streamId: "ingestion_source_src_drive_001",
+      context: {
+        actor,
+        occurredAt: "2026-07-06T17:05:00.000Z",
+        correlationId: "corr_http_source",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", ingestion: "0.1.0" }
+      },
+      payload: {
+        sourceCollectionId: "src_drive_001",
+        label: "Old archive",
+        mode: "read-only",
+        adapter: { name: "local-filesystem", version: "0.1.0" },
+        rootUri: "file:///private/archive",
+        workspaceUri: "cestus-workspace://ws_http_001"
+      }
+    });
+    const handler = testHandler({
+      ingestionMountResolver: {
+        resolve: vi.fn(async () => ({ ok: true as const, workspace }))
+      },
+      ingestionRuntimeFactory: runtimeFactory
+    });
+
+    const response = await handler({ method: "GET", url: "/api/ingestion/sources" });
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      ok: true,
+      sources: [{
+        sourceCollectionId: "src_drive_001",
+        label: "Old archive",
+        scanBatchIds: [],
+        importBatchIds: [],
+        diagnosticIds: []
+      }]
+    });
+    expect(response.body).not.toContain("/private/archive");
+    expect(runtimeFactory).not.toHaveBeenCalled();
+  });
+
   it("dispatches jobs, retry, diagnostics, source registration, raw approval, and import routes directly", async () => {
     const runtime = {
       listJobs: vi.fn(async () => ({ ok: true as const, jobs: [] })),
@@ -225,7 +298,7 @@ describe("local runtime ingestion HTTP routes", () => {
     }));
     await expectJson(handler({
       method: "POST",
-      url: "/api/ingestion/sources/register",
+      url: "/api/ingestion/sources",
       body: JSON.stringify(sourceRegistration())
     }));
     await expectJson(handler({
@@ -235,7 +308,7 @@ describe("local runtime ingestion HTTP routes", () => {
     }));
     await expectJson(handler({
       method: "POST",
-      url: "/api/ingestion/imports/import",
+      url: "/api/ingestion/imports/run",
       body: JSON.stringify(importExecution())
     }));
 
