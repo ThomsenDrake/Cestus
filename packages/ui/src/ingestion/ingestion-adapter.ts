@@ -236,11 +236,11 @@ function workspaceDtoFromJson(value: unknown): IngestionWorkspaceDto {
   }
 
   if (isJsonObject(value) && value.ok === true && isWorkspaceDto(value.workspace)) {
-    return value.workspace;
+    return safeWorkspaceDto(value.workspace);
   }
 
   if (isWorkspaceDto(value)) {
-    return value;
+    return safeWorkspaceDto(value);
   }
 
   throw new Error("Ingestion runtime returned invalid workspace payload.");
@@ -279,7 +279,7 @@ function actionResultFromJson(value: unknown): IngestionActionResult {
 
   return {
     ok: true,
-    review: value.review,
+    review: safeReviewDto(value.review),
     eventIds: stringArray(value.eventIds) ?? [],
     ...(typeof value.scanBatchId === "string" ? { scanBatchId: value.scanBatchId } : {}),
     ...(typeof value.inventoryHash === "string" ? { inventoryHash: value.inventoryHash } : {}),
@@ -308,22 +308,28 @@ function jobActionResultFromJson(value: unknown): IngestionJobActionResult {
   return {
     ok: true,
     job: value.job,
-    ...(isReviewDto(value.review) ? { review: value.review } : {}),
+    ...(isReviewDto(value.review) ? { review: safeReviewDto(value.review) } : {}),
     eventIds: stringArray(value.eventIds) ?? []
   };
 }
 
 function jobListDtoFromJson(value: unknown): IngestionJobListDto {
   if (isJsonObject(value) && value.ok === true && arrayOf(value.jobs, isJobDto)) {
-    return { jobs: value.jobs };
+    return {
+      jobs: value.jobs,
+      ...(arrayOf(value.diagnostics, isDiagnosticDto) ? { diagnostics: value.diagnostics.map(safeDiagnostic) } : {})
+    };
   }
 
   if (isJsonObject(value) && arrayOf(value.jobs, isJobDto)) {
-    return { jobs: value.jobs };
+    return {
+      jobs: value.jobs,
+      ...(arrayOf(value.diagnostics, isDiagnosticDto) ? { diagnostics: value.diagnostics.map(safeDiagnostic) } : {})
+    };
   }
 
   if (isRuntimeFailure(value)) {
-    return { jobs: [] };
+    return { jobs: [], diagnostics: [safeDiagnosticFromError(value.error)] };
   }
 
   throw new Error("Ingestion runtime returned invalid jobs payload.");
@@ -343,6 +349,51 @@ function diagnosticsDtoFromJson(value: unknown): IngestionDiagnosticsDto {
   }
 
   throw new Error("Ingestion runtime returned invalid diagnostics payload.");
+}
+
+function safeWorkspaceDto(workspace: IngestionWorkspaceDto): IngestionWorkspaceDto {
+  return {
+    mounted: workspace.mounted,
+    ...(workspace.workspaceId === undefined ? {} : { workspaceId: safeMessage(workspace.workspaceId) }),
+    ...(workspace.label === undefined ? {} : { label: safeMessage(workspace.label) }),
+    ...(workspace.capabilities === undefined ? {} : { capabilities: { ...workspace.capabilities } }),
+    ...(workspace.review === undefined ? {} : { review: safeReviewDto(workspace.review) }),
+    diagnostics: workspace.diagnostics.map(safeDiagnostic)
+  };
+}
+
+function safeReviewDto(review: IngestionReviewDto): IngestionReviewDto {
+  return {
+    sourceCollectionId: safeMessage(review.sourceCollectionId),
+    label: safeMessage(review.label),
+    ...(review.latestScanBatchId === undefined ? {} : { latestScanBatchId: safeMessage(review.latestScanBatchId) }),
+    ...(review.latestImportBatchId === undefined ? {} : { latestImportBatchId: safeMessage(review.latestImportBatchId) }),
+    totals: { ...review.totals },
+    approvalRequired: review.approvalRequired,
+    duplicateGroups: review.duplicateGroups.map((group) => ({
+      contentHash: safeMessage(group.contentHash),
+      occurrenceCount: group.occurrenceCount,
+      ...(group.occurrenceIds === undefined ? {} : { occurrenceIds: group.occurrenceIds.map(safeMessage) }),
+      ...(group.sourcePaths === undefined ? {} : { sourcePaths: group.sourcePaths.map(safeMessage) }),
+      ...(group.evidenceId === undefined ? {} : { evidenceId: safeMessage(group.evidenceId) })
+    })),
+    evidenceLinks: review.evidenceLinks.map((link) => ({
+      contentHash: safeMessage(link.contentHash),
+      evidenceId: safeMessage(link.evidenceId),
+      occurrenceIds: link.occurrenceIds.map(safeMessage)
+    })),
+    parseJobs: review.parseJobs.map((job) => ({
+      parseJobId: safeMessage(job.parseJobId),
+      evidenceId: safeMessage(job.evidenceId),
+      lane: job.lane,
+      parser: {
+        name: safeMessage(job.parser.name),
+        version: safeMessage(job.parser.version)
+      },
+      state: job.state
+    })),
+    diagnostics: review.diagnostics.map(safeDiagnostic)
+  };
 }
 
 function safeError(error: IngestionRuntimeError): IngestionRuntimeError {
@@ -495,5 +546,14 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
 }
 
 function safeMessage(message: string): string {
-  return message.replace(/bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]");
+  return message
+    .replace(/bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
+    .replace(/\b(?:password|passwd|secret|token|oauth_token|api_key)\s*[:=]\s*[^\s,;]+/gi, (match) => {
+      const separator = match.includes(":") ? ":" : "=";
+      return `${match.slice(0, match.indexOf(separator))}${separator}[redacted]`;
+    })
+    .replace(/-----BEGIN [^-]*PRIVATE KEY-----/gi, "[redacted]")
+    .replace(/-----END [^-]*PRIVATE KEY-----/gi, "[redacted]")
+    .replace(/\b[A-Za-z]:\\[^\s"',;)]+/g, "[path redacted]")
+    .replace(/\/(?:Users|Volumes|private|tmp|home)\/[^\s"',;)]+/g, "[path redacted]");
 }

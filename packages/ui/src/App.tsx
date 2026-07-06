@@ -175,7 +175,10 @@ export function App({
         setIngestionWorkspace(workspace);
         setLoadedIngestionAdapter(ingestionAdapter);
         setIngestionJobs(jobs.jobs);
-        setIngestionDiagnostics(diagnosticResult.diagnostics);
+        setIngestionDiagnostics([
+          ...(jobs.diagnostics ?? []),
+          ...diagnosticResult.diagnostics
+        ]);
         setIngestionLoadState("loaded");
       })
       .catch((error: unknown) => {
@@ -426,7 +429,10 @@ export function App({
       ingestionAdapter.loadDiagnostics(input)
     ]);
     setIngestionJobs(jobs.jobs);
-    setIngestionDiagnostics(diagnosticResult.diagnostics);
+    setIngestionDiagnostics([
+      ...(jobs.diagnostics ?? []),
+      ...diagnosticResult.diagnostics
+    ]);
   }
 
   const commandOrRequestsModeLabel = requestsActive ? "Requests" : "Command";

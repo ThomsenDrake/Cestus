@@ -18,7 +18,11 @@ describe("IngestionWorkspace", () => {
           mounted: true,
           workspaceId: "ws_ui_001",
           label: "Mounted evidence workspace",
-          review: reviewDto(),
+          review: reviewDto({
+            approvalRequired: false,
+            latestImportBatchId: "imp_001",
+            evidenceLinks: [evidenceLinkDto()]
+          }),
           diagnostics: [
             {
               severity: "warning",
@@ -58,18 +62,92 @@ describe("IngestionWorkspace", () => {
     expect(screen.getAllByText("imp_001").length).toBeGreaterThan(0);
     expect(screen.getByText("Provider approval is still required.")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Approve raw import" }));
-    expect(onApproveRawImport).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Approve raw import" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run approved import" })).toBeDisabled();
+    expect(onApproveRawImport).not.toHaveBeenCalled();
     expect(onImportApproved).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("button", { name: "Run approved import" }));
-    expect(onImportApproved).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Approve provider parsing" }));
     expect(onApproveProviderParsing).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Retry parse_001" }));
     expect(onRetryJob).toHaveBeenCalledWith({ jobId: "parse_001" });
+  });
+
+  it("keeps approval, import execution, and provider gates aligned to import state", () => {
+    const onApproveRawImport = vi.fn();
+    const onImportApproved = vi.fn();
+    const onApproveProviderParsing = vi.fn();
+    const { rerender } = render(
+      <IngestionWorkspace
+        loadState="loaded"
+        workspace={{
+          mounted: true,
+          label: "Mounted evidence workspace",
+          review: reviewDto({ approvalRequired: true }),
+          diagnostics: []
+        }}
+        jobs={[]}
+        diagnostics={[]}
+        onApproveRawImport={onApproveRawImport}
+        onImportApproved={onImportApproved}
+        onApproveProviderParsing={onApproveProviderParsing}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Approve raw import" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Run approved import" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Approve provider parsing" })).toBeDisabled();
+
+    rerender(
+      <IngestionWorkspace
+        loadState="loaded"
+        workspace={{
+          mounted: true,
+          label: "Mounted evidence workspace",
+          review: reviewDto({
+            approvalRequired: false,
+            latestImportBatchId: "imp_001",
+            evidenceLinks: []
+          }),
+          diagnostics: []
+        }}
+        jobs={[]}
+        diagnostics={[]}
+        onApproveRawImport={onApproveRawImport}
+        onImportApproved={onImportApproved}
+        onApproveProviderParsing={onApproveProviderParsing}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Approve raw import" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run approved import" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Approve provider parsing" })).toBeDisabled();
+
+    rerender(
+      <IngestionWorkspace
+        loadState="loaded"
+        workspace={{
+          mounted: true,
+          label: "Mounted evidence workspace",
+          review: reviewDto({
+            approvalRequired: false,
+            latestImportBatchId: "imp_001",
+            evidenceLinks: [evidenceLinkDto()]
+          }),
+          diagnostics: []
+        }}
+        jobs={[]}
+        diagnostics={[]}
+        onApproveRawImport={onApproveRawImport}
+        onImportApproved={onImportApproved}
+        onApproveProviderParsing={onApproveProviderParsing}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Approve raw import" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run approved import" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Approve provider parsing" })).toBeEnabled();
   });
 
   it("renders workspace-not-mounted diagnostics without accepting arbitrary paths", () => {
@@ -99,12 +177,11 @@ describe("IngestionWorkspace", () => {
   });
 });
 
-function reviewDto(): IngestionReviewDto {
+function reviewDto(overrides: Partial<IngestionReviewDto> = {}): IngestionReviewDto {
   return {
     sourceCollectionId: "src_drive_001",
     label: "External investigation archive",
     latestScanBatchId: "scan_001",
-    latestImportBatchId: "imp_001",
     totals: {
       observedFiles: 2,
       uniqueContent: 1,
@@ -122,13 +199,7 @@ function reviewDto(): IngestionReviewDto {
         sourcePaths: ["/source/a.txt", "/source/copy.txt"]
       }
     ],
-    evidenceLinks: [
-      {
-        contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-        evidenceId: "ev_ing_001",
-        occurrenceIds: ["occ_001", "occ_002"]
-      }
-    ],
+    evidenceLinks: [],
     parseJobs: [
       {
         parseJobId: "parse_001",
@@ -138,6 +209,15 @@ function reviewDto(): IngestionReviewDto {
         state: "failed"
       }
     ],
-    diagnostics: []
+    diagnostics: [],
+    ...overrides
+  };
+}
+
+function evidenceLinkDto() {
+  return {
+    contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    evidenceId: "ev_ing_001",
+    occurrenceIds: ["occ_001", "occ_002"]
   };
 }

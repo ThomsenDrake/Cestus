@@ -156,6 +156,7 @@ export type IngestionJobActionResult =
 
 export interface IngestionJobListDto {
   readonly jobs: readonly IngestionJobDto[];
+  readonly diagnostics?: readonly IngestionRuntimeDiagnosticDto[];
 }
 
 export interface IngestionJobDto {
