@@ -16,20 +16,35 @@ import {
 import { childPath, type WorkspaceFileSystem } from "./filesystem.js";
 
 export const provisionalWorkspaceManifestName = "cestus-workspace.json" as const;
-export const provisionalWorkspaceLayoutContractVersion = "portable-workspace-layout.v1-provisional" as const;
+export const portableWorkspaceManifestName = provisionalWorkspaceManifestName;
+export const portableWorkspaceLayoutContractVersion = "portable-workspace-layout.v1" as const;
+export const provisionalWorkspaceLayoutContractVersion = portableWorkspaceLayoutContractVersion;
 
-const provisionalWorkspaceManifestSchema = z.object({
+const secretKeyPattern = /token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i;
+
+const portableWorkspaceManifestSchema = z.object({
+  version: z.literal(1),
+  layoutVersion: z.literal(1),
   workspaceId: z.string().regex(/^ws_[a-zA-Z0-9_-]+$/),
   label: secretSafeWorkspaceTextSchema,
-  version: z.literal(1)
+  createdAt: z.string().datetime(),
+  createdBy: secretSafeWorkspaceTextSchema,
+  coreVersion: z.string().min(1),
+  description: secretSafeWorkspaceTextSchema.optional()
 }).strict();
 
-export type ProvisionalWorkspaceManifest = z.output<typeof provisionalWorkspaceManifestSchema>;
+export type PortableWorkspaceManifest = z.output<typeof portableWorkspaceManifestSchema>;
+export type ProvisionalWorkspaceManifest = PortableWorkspaceManifest;
 
-export function parseProvisionalWorkspaceManifest(value: unknown): ProvisionalWorkspaceManifest | undefined {
-  const manifest = provisionalWorkspaceManifestSchema.safeParse(value);
+export function parsePortableWorkspaceManifest(value: unknown): PortableWorkspaceManifest | undefined {
+  if (findSecretLikeKey(value) !== undefined) {
+    return undefined;
+  }
+  const manifest = portableWorkspaceManifestSchema.safeParse(value);
   return manifest.success ? manifest.data : undefined;
 }
+
+export const parseProvisionalWorkspaceManifest = parsePortableWorkspaceManifest;
 
 export interface ResolveWorkspaceLayoutInput {
   readonly rootPath: string;
@@ -38,7 +53,7 @@ export interface ResolveWorkspaceLayoutInput {
 }
 
 export interface ResolvedWorkspaceLayout {
-  readonly layoutContractVersion: typeof provisionalWorkspaceLayoutContractVersion;
+  readonly layoutContractVersion: typeof portableWorkspaceLayoutContractVersion;
   readonly rootPath: string;
   readonly rootUri: string;
   readonly manifestPath: string;
@@ -47,8 +62,8 @@ export interface ResolvedWorkspaceLayout {
   readonly derivativeRoot: string;
   readonly jobRoot: string;
   readonly projectionRoot: string;
-  readonly diagnosticsRoot: string;
-  readonly backupRoot: string;
+  readonly cacheRoot: string;
+  readonly configRoot: string;
 }
 
 export type WorkspaceLayoutEnvelope = WorkspaceOpsEnvelope<MountStatusDto>;
@@ -150,7 +165,7 @@ export async function resolveWorkspaceLayout(
     });
   }
 
-  const manifestName = input.manifestName ?? provisionalWorkspaceManifestName;
+  const manifestName = input.manifestName ?? portableWorkspaceManifestName;
   if (!isSafeManifestBasename(manifestName)) {
     return unsafeManifestNameResult(rootUri);
   }
@@ -181,7 +196,7 @@ export async function resolveWorkspaceLayout(
     });
   }
 
-  const manifest = await readProvisionalManifest(fileSystem, manifestPath);
+  const manifest = await readPortableManifest(fileSystem, manifestPath);
   if (manifest === "unreadable") {
     return unreadableManifestResult(rootUri);
   }
@@ -236,9 +251,9 @@ export async function resolveWorkspaceLayout(
     label: manifest.label,
     manifestVersion: manifest.version,
     rootUri: resolvedRootUri,
-    layoutContractVersion: provisionalWorkspaceLayoutContractVersion
+    layoutContractVersion: portableWorkspaceLayoutContractVersion
   });
-  const layout = createProvisionalWorkspaceLayout(rootPath, resolvedRootUri, manifestName);
+  const layout = createPortableWorkspaceOpsLayout(rootPath, resolvedRootUri, manifestName);
 
   return layoutResult({
     workspace,
@@ -253,13 +268,13 @@ export async function resolveWorkspaceLayout(
   });
 }
 
-export function createProvisionalWorkspaceLayout(
+export function createPortableWorkspaceOpsLayout(
   rootPath: string,
   rootUri = pathToSafeFileUri(rootPath),
-  manifestName: string = provisionalWorkspaceManifestName
+  manifestName: string = portableWorkspaceManifestName
 ): ResolvedWorkspaceLayout {
   return {
-    layoutContractVersion: provisionalWorkspaceLayoutContractVersion,
+    layoutContractVersion: portableWorkspaceLayoutContractVersion,
     rootPath,
     rootUri,
     manifestPath: childPath(rootPath, manifestName),
@@ -268,10 +283,12 @@ export function createProvisionalWorkspaceLayout(
     derivativeRoot: childPath(rootPath, "derivatives"),
     jobRoot: childPath(rootPath, "jobs"),
     projectionRoot: childPath(rootPath, "projections"),
-    diagnosticsRoot: childPath(rootPath, "diagnostics"),
-    backupRoot: childPath(rootPath, "backups")
+    cacheRoot: childPath(rootPath, "cache"),
+    configRoot: childPath(rootPath, "config")
   };
 }
+
+export const createProvisionalWorkspaceLayout = createPortableWorkspaceOpsLayout;
 
 async function safeExists(
   fileSystem: WorkspaceFileSystem,
@@ -306,12 +323,12 @@ async function safeRealpath(
   }
 }
 
-async function readProvisionalManifest(
+async function readPortableManifest(
   fileSystem: WorkspaceFileSystem,
   manifestPath: string
-): Promise<ProvisionalWorkspaceManifest | "unreadable"> {
+): Promise<PortableWorkspaceManifest | "unreadable"> {
   try {
-    return parseProvisionalWorkspaceManifest(JSON.parse(await fileSystem.readText(manifestPath))) ?? "unreadable";
+    return parsePortableWorkspaceManifest(JSON.parse(await fileSystem.readText(manifestPath))) ?? "unreadable";
   } catch {
     return "unreadable";
   }
@@ -475,4 +492,32 @@ function isSafeManifestBasename(manifestName: string): boolean {
     posix.basename(manifestName) === manifestName &&
     win32.basename(manifestName) === manifestName
   );
+}
+
+function findSecretLikeKey(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findSecretLikeKey(item);
+      if (found !== undefined) {
+        return found;
+      }
+    }
+    return undefined;
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    if (secretKeyPattern.test(key)) {
+      return key;
+    }
+    const found = findSecretLikeKey(child);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+
+  return undefined;
 }

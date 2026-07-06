@@ -5,10 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { formatWorkspaceOpsJson, workspaceOpsEnvelopeSchema } from "../src/contracts.js";
 import { NodeWorkspaceFileSystem, type WorkspaceFileSystem, type WorkspaceStats } from "../src/filesystem.js";
-import {
-  provisionalWorkspaceLayoutContractVersion,
-  resolveWorkspaceLayout
-} from "../src/layout.js";
+import { resolveWorkspaceLayout } from "../src/layout.js";
 
 class RecordingReadOnlyFs implements WorkspaceFileSystem {
   readonly files = new Map<string, string>();
@@ -116,7 +113,15 @@ describe("resolveWorkspaceLayout", () => {
     fileSystem.directories.add("/mnt/portable");
     fileSystem.files.set(
       "/mnt/portable/cestus-workspace.json",
-      JSON.stringify({ workspaceId: "ws_other_workspace", label: "Other workspace", version: 1 })
+      JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_other_workspace",
+        label: "Other workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      })
     );
 
     const result = await resolveWorkspaceLayout(
@@ -140,7 +145,15 @@ describe("resolveWorkspaceLayout", () => {
     fileSystem.directories.add("/mnt/real-drive");
     fileSystem.files.set(
       "/mnt/real-drive/cestus-workspace.json",
-      JSON.stringify({ workspaceId: "ws_real_workspace", label: "Real workspace", version: 1 })
+      JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_real_workspace",
+        label: "Real workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      })
     );
 
     const result = await resolveWorkspaceLayout(
@@ -165,7 +178,15 @@ describe("resolveWorkspaceLayout", () => {
     fileSystem.directories.add("/mnt/real-drive");
     fileSystem.files.set(
       "/mnt/real-drive/cestus-workspace.json",
-      JSON.stringify({ workspaceId: "ws_real_workspace", label: "Real workspace", version: 1 })
+      JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_real_workspace",
+        label: "Real workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      })
     );
 
     const result = await resolveWorkspaceLayout(
@@ -189,7 +210,15 @@ describe("resolveWorkspaceLayout", () => {
     fileSystem.directories.add("/mnt/portable");
     fileSystem.files.set(
       "/mnt/portable/cestus-workspace.json",
-      JSON.stringify({ workspaceId: "ws_ops_001", label: "api key abcdef", version: 1 })
+      JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_ops_001",
+        label: "api key abcdef",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      })
     );
 
     const result = await resolveWorkspaceLayout({ rootPath: "/mnt/portable" }, fileSystem);
@@ -204,12 +233,20 @@ describe("resolveWorkspaceLayout", () => {
     expect(formatWorkspaceOpsJson(result.envelope)).not.toMatch(/api key|abcdef/i);
   });
 
-  it("resolves the provisional layout through a replaceable adapter without creating layout roots", async () => {
+  it("resolves the canonical portable workspace layout without creating layout roots", async () => {
     const rootPath = mkdtempSync(join(tmpdir(), "cestus-layout-"));
     const fileSystem = new NodeWorkspaceFileSystem();
     writeFileSync(
       join(rootPath, "cestus-workspace.json"),
-      `${JSON.stringify({ workspaceId: "ws_ops_001", label: "Ops Fixture", version: 1 })}\n`,
+      `${JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_ops_001",
+        label: "Ops Fixture",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      })}\n`,
       "utf8"
     );
 
@@ -221,7 +258,7 @@ describe("resolveWorkspaceLayout", () => {
         workspaceId: "ws_ops_001",
         label: "Ops Fixture",
         manifestVersion: 1,
-        layoutContractVersion: provisionalWorkspaceLayoutContractVersion
+        layoutContractVersion: "portable-workspace-layout.v1"
       });
       expect(result.layout).toMatchObject({
         manifestPath: join(rootPath, "cestus-workspace.json"),
@@ -230,8 +267,8 @@ describe("resolveWorkspaceLayout", () => {
         derivativeRoot: join(rootPath, "derivatives"),
         jobRoot: join(rootPath, "jobs"),
         projectionRoot: join(rootPath, "projections"),
-        diagnosticsRoot: join(rootPath, "diagnostics"),
-        backupRoot: join(rootPath, "backups")
+        cacheRoot: join(rootPath, "cache"),
+        configRoot: join(rootPath, "config")
       });
       expect(Object.keys(result.envelope)).not.toContain("layout");
       expect(result.envelope.payload).toEqual(result.mountStatus);

@@ -14,7 +14,7 @@ import {
 } from "./contracts.js";
 import { childPath, type WorkspaceFileSystem } from "./filesystem.js";
 import {
-  parseProvisionalWorkspaceManifest,
+  parsePortableWorkspaceManifest,
   type ResolvedWorkspaceLayout,
   type WorkspaceLayoutResult
 } from "./layout.js";
@@ -37,13 +37,13 @@ export interface ReportDiskUsageInput {
 
 const workspaceRootSpecs = [
   { rootId: "manifest", category: "manifest", path: (layout: ResolvedWorkspaceLayout) => layout.manifestPath },
-  { rootId: "ledger", category: "ledger", path: (layout: ResolvedWorkspaceLayout) => layout.ledgerPath },
+  { rootId: "ledger", category: "ledger", path: (layout: ResolvedWorkspaceLayout) => childPath(layout.rootPath, "ledger") },
   { rootId: "blobs", category: "blobs", path: (layout: ResolvedWorkspaceLayout) => layout.blobRoot },
   { rootId: "derivatives", category: "derivatives", path: (layout: ResolvedWorkspaceLayout) => layout.derivativeRoot },
   { rootId: "jobs", category: "jobs", path: (layout: ResolvedWorkspaceLayout) => layout.jobRoot },
   { rootId: "projections", category: "projections", path: (layout: ResolvedWorkspaceLayout) => layout.projectionRoot },
-  { rootId: "diagnostics", category: "diagnostics", path: (layout: ResolvedWorkspaceLayout) => layout.diagnosticsRoot },
-  { rootId: "backups", category: "backups", path: (layout: ResolvedWorkspaceLayout) => layout.backupRoot }
+  { rootId: "cache", category: "cache", path: (layout: ResolvedWorkspaceLayout) => layout.cacheRoot },
+  { rootId: "config", category: "config", path: (layout: ResolvedWorkspaceLayout) => layout.configRoot }
 ] as const;
 
 type WorkspaceRootSpec = (typeof workspaceRootSpecs)[number];
@@ -131,8 +131,8 @@ export async function verifyWorkspace(
   const projectionRoot = requireRoot(rootMap, "projections");
   const derivativeRoot = requireRoot(rootMap, "derivatives");
   const jobRoot = requireRoot(rootMap, "jobs");
-  const diagnosticsRoot = requireRoot(rootMap, "diagnostics");
-  const backupRoot = requireRoot(rootMap, "backups");
+  const cacheRoot = requireRoot(rootMap, "cache");
+  const configRoot = requireRoot(rootMap, "config");
 
   let events: readonly unknown[] = [];
   let ledgerReadable = false;
@@ -218,12 +218,12 @@ export async function verifyWorkspace(
     });
   }
 
-  for (const root of [derivativeRoot, jobRoot, diagnosticsRoot, backupRoot]) {
+  for (const root of [derivativeRoot, jobRoot, cacheRoot, configRoot]) {
     if (root.status !== "available") {
       diagnostics.push({
         diagnosticId: `diag_workspace_${root.rootId}_root_unavailable`,
         severity: "warning",
-        category: supportRootDiagnosticCategory(root),
+        category: supportRootDiagnosticCategory(),
         message: "Workspace derived or support root is not available.",
         durable: false,
         repairHint: {
@@ -278,13 +278,13 @@ export async function verifyWorkspace(
       failedCount: 0
     },
     diagnostics: {
-      visible: diagnosticsRoot.status === "available",
+      visible: ledgerReadable,
       errorCount: diagnostics.filter((diagnostic) => diagnostic.severity === "error").length,
       warningCount: diagnostics.filter((diagnostic) => diagnostic.severity === "warning").length
     },
     backup: {
-      manifestAvailable: backupRoot.status === "available",
-      stale: backupRoot.status !== "available"
+      manifestAvailable: false,
+      stale: false
     }
   };
 
@@ -497,7 +497,7 @@ async function validateResolvedManifest(
     return { readable: true, valid: false, reason: "invalid-shape" };
   }
 
-  const parsed = parseProvisionalWorkspaceManifest(manifestValue);
+  const parsed = parsePortableWorkspaceManifest(manifestValue);
   if (parsed !== undefined) {
     if (parsed.workspaceId !== workspace.workspaceId) {
       return { readable: true, valid: false, reason: "identity-mismatch" };
@@ -523,7 +523,7 @@ function manifestIdentityMismatchReason(
   if (value.workspaceId !== workspace.workspaceId) {
     return "identity-mismatch";
   }
-  if (value.version !== workspace.manifestVersion) {
+  if (value.version !== workspace.manifestVersion || value.layoutVersion !== 1) {
     return "version-mismatch";
   }
   return undefined;
@@ -533,13 +533,36 @@ function isStrictManifestIdentityRecord(value: unknown): value is {
   readonly workspaceId: string;
   readonly label: string;
   readonly version: number;
+  readonly layoutVersion: number;
 } {
   if (typeof value !== "object" || value === null || Object.getPrototypeOf(value) !== Object.prototype) {
     return false;
   }
 
   const keys = Object.keys(value).sort();
-  if (keys.join("\0") !== "label\0version\0workspaceId") {
+  const allowedKeys = [
+    "coreVersion",
+    "createdAt",
+    "createdBy",
+    "description",
+    "label",
+    "layoutVersion",
+    "version",
+    "workspaceId"
+  ];
+  const requiredKeys = [
+    "coreVersion",
+    "createdAt",
+    "createdBy",
+    "label",
+    "layoutVersion",
+    "version",
+    "workspaceId"
+  ];
+  if (
+    keys.some((key) => !allowedKeys.includes(key)) ||
+    requiredKeys.some((key) => !keys.includes(key))
+  ) {
     return false;
   }
 
@@ -547,6 +570,11 @@ function isStrictManifestIdentityRecord(value: unknown): value is {
     readonly workspaceId?: unknown;
     readonly label?: unknown;
     readonly version?: unknown;
+    readonly layoutVersion?: unknown;
+    readonly createdAt?: unknown;
+    readonly createdBy?: unknown;
+    readonly coreVersion?: unknown;
+    readonly description?: unknown;
   };
   return (
     typeof candidate.workspaceId === "string" &&
@@ -556,7 +584,14 @@ function isStrictManifestIdentityRecord(value: unknown): value is {
     isSecretSafeWorkspaceText(candidate.label) &&
     typeof candidate.version === "number" &&
     Number.isInteger(candidate.version) &&
-    candidate.version > 0
+    candidate.version > 0 &&
+    typeof candidate.layoutVersion === "number" &&
+    Number.isInteger(candidate.layoutVersion) &&
+    candidate.layoutVersion > 0 &&
+    typeof candidate.createdAt === "string" &&
+    typeof candidate.createdBy === "string" &&
+    typeof candidate.coreVersion === "string" &&
+    (candidate.description === undefined || typeof candidate.description === "string")
   );
 }
 
@@ -720,13 +755,7 @@ function highWaterMark(events: readonly unknown[]): number {
   return events.length;
 }
 
-function supportRootDiagnosticCategory(root: InspectedRoot): WorkspaceDiagnosticInput["category"] {
-  if (root.category === "backups") {
-    return "backup";
-  }
-  if (root.category === "diagnostics") {
-    return "diagnostics";
-  }
+function supportRootDiagnosticCategory(): WorkspaceDiagnosticInput["category"] {
   return "layout";
 }
 
