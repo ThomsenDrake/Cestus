@@ -218,6 +218,119 @@ describe("runLocalRuntimeCli", () => {
     expect(stdout.join("\n")).not.toMatch(/token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i);
   });
 
+  it("rejects create-workspace without the required workspace id", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(
+      [
+        "create-workspace",
+        "--workspace",
+        join(tempDir, "external-case"),
+        "--label",
+        "CLI Portable Workspace"
+      ],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: (line) => stderr.push(line)
+      }
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("create-workspace requires --workspace-id <id>");
+  });
+
+  it("rejects unknown create-workspace flags without writing output", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(
+      [
+        "create-workspace",
+        "--workspace",
+        join(tempDir, "external-case"),
+        "--workspace-id",
+        "ws_cli_001",
+        "--label",
+        "CLI Portable Workspace",
+        "--unexpected"
+      ],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: (line) => stderr.push(line)
+      }
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("Unknown create-workspace flag");
+  });
+
+  it("rejects repeated create-workspace without changing the existing manifest", async () => {
+    const firstStdout: string[] = [];
+    const secondStdout: string[] = [];
+    const secondStderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    const workspaceRoot = join(tempDir, "external-case");
+    const manifestPath = join(workspaceRoot, "cestus-workspace.json");
+
+    const firstExitCode = await runLocalRuntimeCli(
+      [
+        "create-workspace",
+        "--workspace",
+        workspaceRoot,
+        "--workspace-id",
+        "ws_cli_first",
+        "--label",
+        "First CLI Portable Workspace",
+        "--created-at",
+        "2026-07-06T12:00:00.000Z"
+      ],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => firstStdout.push(line),
+        stderr: () => undefined
+      }
+    );
+    const originalManifest = readFileSync(manifestPath, "utf8");
+
+    const secondExitCode = await runLocalRuntimeCli(
+      [
+        "create-workspace",
+        "--workspace",
+        workspaceRoot,
+        "--workspace-id",
+        "ws_cli_second",
+        "--label",
+        "Second CLI Portable Workspace",
+        "--created-at",
+        "2026-07-06T13:00:00.000Z"
+      ],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => secondStdout.push(line),
+        stderr: (line) => secondStderr.push(line)
+      }
+    );
+
+    expect(firstExitCode).toBe(0);
+    expect(secondExitCode).toBe(1);
+    expect(secondStdout).toEqual([]);
+    expect(secondStderr.join("\n")).toMatch(/EEXIST|exist|already/i);
+    expect(readFileSync(manifestPath, "utf8")).toBe(originalManifest);
+    expect(readFileSync(manifestPath, "utf8")).toContain('"workspaceId": "ws_cli_first"');
+    expect(readFileSync(manifestPath, "utf8")).not.toContain("ws_cli_second");
+  });
+
   it("rejects configure flags that would write an unusable exposed loopback config", async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];
