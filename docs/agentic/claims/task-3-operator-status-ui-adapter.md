@@ -25,6 +25,10 @@
 - GREEN targeted test: `npm test -- packages/ui/test/operator-status-adapter.test.ts packages/ui/test/request-data-boundary.test.ts` passed with 2 test files and 15 tests.
 - Full verification: `npm run verify` passed with typecheck, 96 test files and 847 tests, UI build, and factory readiness.
 - `2026-07-06T22:33:01Z`: Status moved to ready-for-review after RED, GREEN, and full verification evidence.
+- Review-fix RED targeted test: `npm test -- packages/ui/test/request-data-boundary.test.ts` failed because `packages/local-runtime` was not rejected by the boundary import patterns after adding package-level local-runtime and Node builtin subpath examples.
+- Review-fix GREEN targeted test: `npm test -- packages/ui/test/operator-status-adapter.test.ts packages/ui/test/request-data-boundary.test.ts` passed with 2 test files and 15 tests.
+- Review-fix full verification: `npm run verify` passed with typecheck, 96 test files and 847 tests, UI build, and factory readiness.
+- `2026-07-06T22:38:46Z`: Status remains ready-for-review after hardening local-runtime package-level and Node builtin subpath boundary checks.
 
 ## Self-Review
 
@@ -32,4 +36,5 @@
 - HTTP adapter sends `GET /api/operator/status` without a body, uses same-origin credentials by default, and only includes an authorization header when configured.
 - Runtime failures, non-2xx JSON, invalid JSON, and invalid DTO payloads become runtime-unavailable DTOs with redacted diagnostics.
 - Static adapter returns frozen cloned DTOs so test callers cannot mutate future loads.
+- Boundary checks now reject `packages/local-runtime`, `packages/local-runtime/index.js`, `fs/promises`, and `path/posix` while preserving the allowed operator-status contract import.
 - No PRR send, legal escalation, workspace repair, canonical mutation, or portable workspace duplication behavior was added.
