@@ -294,3 +294,23 @@ factory-readiness passed
 ```
 
 Provider live checks for Mistral Document AI or similar document-AI services are explicit opt-in checks and are not part of standard factory verification. Standard verification uses local contracts, fake providers, approval gates, and provenance assertions so agents can validate the ingestion pipeline without credentials or outbound document transfer.
+
+## Portable Workspace Ops Plan Readiness
+
+The portable workspace ops plan was prepared from the approved design spec on 2026-07-06.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-06-portable-workspace-ops-design.md`
+- `docs/superpowers/plans/2026-07-06-portable-workspace-ops-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded command evidence:
+
+```text
+npm run factory:check
+factory-readiness passed
+```
+
+Workspace ops implementation remains CLI/JSON-first package work. Runtime HTTP endpoints, UI panels, final portable mount binding, backup copying, restore flows, and canonical repair execution require separate approved plans.
