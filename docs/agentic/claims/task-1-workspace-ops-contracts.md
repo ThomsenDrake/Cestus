@@ -36,3 +36,6 @@ Repair evidence:
 - Final JSON-shape hardening red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 1 failing regression covering non-JSON DTO payload shapes.
 - Final JSON-shape hardening green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 12 tests passed, including explicit non-JSON DTO field coverage.
 - Final JSON-shape hardening verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 597 tests passed, UI build succeeded, and factory-readiness passed.
+- Spec re-review repair red: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 1 with 3 failing regressions covering bare credential payload keys, prototype-pollution payload keys, and missing mount next-command hints.
+- Spec re-review repair green: `npm test -- packages/workspace-ops/test/contracts.test.ts` exited 0 with 1 test file and 15 tests passed.
+- Spec re-review repair verify: `npm run verify` exited 0 with typecheck passed, 70 test files and 600 tests passed, UI build succeeded, and factory-readiness passed.
