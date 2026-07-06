@@ -77,6 +77,7 @@ export interface LocalWorkspaceReadinessSmokeReport {
     readonly evidenceCount: number;
     readonly blobCount: number;
     readonly jobCount: number;
+    readonly jobKinds: readonly string[];
     readonly diagnosticCount: number;
   };
   readonly workspaceOps: {
@@ -132,18 +133,35 @@ export async function runLocalWorkspaceReadinessSmoke(
   let evidenceCount = 0;
   let blobCount = 0;
   let jobCount = 0;
+  let jobKinds: readonly string[] = [];
   let diagnosticCount = 0;
   let fixtureFileCount = 0;
 
   try {
     fixtureFileCount = ensureFixtureSource(sourceRoot);
-    const portableWorkspace = createPortableWorkspace({
-      rootDir: workspaceRoot,
-      workspaceId,
-      label: workspaceLabel,
-      createdAt,
-      createdBy: "local-workspace-readiness-smoke"
-    });
+    let portableWorkspace: MountedPortableWorkspace;
+    try {
+      portableWorkspace = createPortableWorkspace({
+        rootDir: workspaceRoot,
+        workspaceId,
+        label: workspaceLabel,
+        createdAt,
+        createdBy: "local-workspace-readiness-smoke"
+      });
+    } catch {
+      diagnostics.push({
+        code: "workspace-create-failed",
+        message: "Portable workspace creation failed; choose an empty workspace root.",
+        allowedRepairActions: ["choose an empty workspace root", "rerun local workspace readiness smoke"]
+      });
+      recordCheck(
+        checks,
+        "workspace.create",
+        "blocked",
+        "Portable workspace creation failed before mount or ingestion."
+      );
+      return finalizeReport(reportState());
+    }
     recordCheck(checks, "workspace.create", "ready", "Portable workspace manifest and canonical roots were created.");
 
     mkdirSync(join(workspaceRoot, "diagnostics"), { recursive: true });
@@ -249,7 +267,19 @@ export async function runLocalWorkspaceReadinessSmoke(
       return finalizeReport(reportState(afterImport.events));
     }
     jobCount = jobs.jobs.length;
-    recordCheck(checks, "ingestion.jobs", "ready", "Ingestion job DTOs were listed after import.");
+    jobKinds = [...new Set(jobs.jobs.map((job) => job.kind))].sort(compareCodeUnits);
+    const requiredJobsPresent = ["import", "local-parse", "scan"].every((kind) => jobKinds.includes(kind));
+    recordCheck(
+      checks,
+      "ingestion.jobs",
+      requiredJobsPresent ? "ready" : "blocked",
+      requiredJobsPresent
+        ? "Ingestion job DTOs include scan, import, and local parse jobs."
+        : "Ingestion job DTOs were missing a required local readiness job kind."
+    );
+    if (!requiredJobsPresent) {
+      return finalizeReport(reportState(afterImport.events));
+    }
 
     const ingestionDiagnostics = await runtime.diagnostics({ sourceCollectionId });
     if (!ingestionDiagnostics.ok) {
@@ -317,6 +347,7 @@ export async function runLocalWorkspaceReadinessSmoke(
       evidenceCount,
       blobCount,
       jobCount,
+      jobKinds,
       diagnosticCount,
       workspaceOpsStatus,
       diagnostics,
@@ -336,6 +367,7 @@ interface ReportState {
   readonly evidenceCount: number;
   readonly blobCount: number;
   readonly jobCount: number;
+  readonly jobKinds: readonly string[];
   readonly diagnosticCount: number;
   readonly workspaceOpsStatus: {
     readonly verifyStatus: ReadinessStatus;
@@ -515,6 +547,7 @@ function finalizeReport(state: ReportState): LocalWorkspaceReadinessSmokeReport 
       evidenceCount: state.evidenceCount,
       blobCount: state.blobCount,
       jobCount: state.jobCount,
+      jobKinds: [...state.jobKinds],
       diagnosticCount: state.diagnosticCount
     },
     workspaceOps: state.workspaceOpsStatus,
@@ -584,4 +617,8 @@ function countFiles(...pathParts: string[]): number {
     }
   }
   return count;
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
