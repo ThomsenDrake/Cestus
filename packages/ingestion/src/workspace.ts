@@ -39,7 +39,7 @@ export function createPortableIngestionWorkspace(input: CreatePortableWorkspaceI
   return {
     workspaceId: workspace.workspaceId,
     label: workspace.label,
-    rootDir: input.rootDir,
+    rootDir: workspace.rootDir,
     manifestPath: workspace.manifestPath,
     ledgerPath: workspace.paths.ledgerPath,
     blobRoot: workspace.paths.blobRoot,

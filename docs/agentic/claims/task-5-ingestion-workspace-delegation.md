@@ -28,6 +28,16 @@ Status: `ready-for-review`
 
 ## Review
 
-- Review status: requested
+- Review status: fix ready for review
 - Review focus: canonical package ownership, ingestion compatibility, and secret-free manifests.
+- Code-quality review finding: Important issue in `packages/ingestion/src/workspace.ts`; `rootDir` returned `input.rootDir` while canonical paths came from `createPortableWorkspace`, allowing relative or non-normalized roots to mix raw and resolved path values.
+- Fix red command: `npm test -- packages/ingestion/test/workspace.test.ts packages/workspace/test/workspace.test.ts`
+  - Result: failed as expected before the follow-up source fix.
+  - Evidence: non-normalized root regression expected `/tmp/.../canonical-ingestion` but received `/tmp/.../nested/../canonical-ingestion`; `Test Files 1 failed | 1 passed (2)`, `Tests 1 failed | 17 passed (18)`.
+- Fix green command: `npm test -- packages/ingestion/test/workspace.test.ts packages/workspace/test/workspace.test.ts`
+  - Result: passed after returning `workspace.rootDir`.
+  - Evidence: `Test Files 2 passed (2)`, `Tests 18 passed (18)`.
+- Fix full verification: `npm run verify`
+  - Result: passed.
+  - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 615 passed (615)`, `tests passed`, Vite build succeeded, `factory-readiness passed`.
 - Concerns: none recorded

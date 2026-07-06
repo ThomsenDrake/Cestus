@@ -1,8 +1,11 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { readPortableWorkspaceManifest as readCanonicalManifest } from "../../workspace/src/index.js";
+import {
+  portableWorkspacePaths,
+  readPortableWorkspaceManifest as readCanonicalManifest
+} from "../../workspace/src/index.js";
 import { createPortableIngestionWorkspace, readPortableWorkspaceManifest } from "../src/workspace.js";
 
 let dir: string;
@@ -50,5 +53,32 @@ describe("portable ingestion workspace", () => {
       readPortableWorkspaceManifest(workspace.manifestPath)
     );
     expect(JSON.stringify(readPortableWorkspaceManifest(workspace.manifestPath))).not.toMatch(/token|secret|password/i);
+  });
+
+  it("returns the canonical resolved root for non-normalized input", () => {
+    const rootDir = `${dir}/nested/../canonical-ingestion`;
+    const canonicalRootDir = resolve(rootDir);
+    const canonicalPaths = portableWorkspacePaths(rootDir);
+
+    const workspace = createPortableIngestionWorkspace({
+      rootDir,
+      workspaceId: "ws_ingestion_normalized",
+      label: "Normalized corpus",
+      createdAt: "2026-07-06T12:00:00.000Z"
+    });
+
+    expect(workspace).toEqual({
+      workspaceId: "ws_ingestion_normalized",
+      label: "Normalized corpus",
+      rootDir: canonicalRootDir,
+      manifestPath: canonicalPaths.manifestPath,
+      ledgerPath: canonicalPaths.ledgerPath,
+      blobRoot: canonicalPaths.blobRoot,
+      derivativeRoot: canonicalPaths.derivativeRoot,
+      jobRoot: canonicalPaths.jobRoot,
+      projectionRoot: canonicalPaths.projectionRoot,
+      cacheRoot: canonicalPaths.cacheRoot,
+      configRoot: canonicalPaths.configRoot
+    });
   });
 });
