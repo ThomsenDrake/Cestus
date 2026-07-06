@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import {
   createWorkspaceOpsEnvelope,
   isSecretSafeWorkspaceText,
+  manifestExportDtoSchema,
   workspaceOpsSchemaVersion,
   type BackupCheckDto,
   type DiskUsageDto,
@@ -18,6 +19,9 @@ type WorkspaceRootCategory = DiskUsageDto["categories"][number]["category"];
 type ManifestSection = ManifestExportDto["includedSections"][number];
 type ManifestArtifact = ManifestExportDto["artifacts"][number];
 type SectionHash = ManifestExportDto["sectionHashes"][number];
+type DescriptorCloneResult =
+  | { readonly ok: true; readonly value: unknown }
+  | { readonly ok: false };
 
 export interface ExportWorkspaceManifestInput {
   readonly workspace: WorkspaceRefDto;
@@ -49,7 +53,7 @@ export interface CheckBackupManifestInput {
   readonly workspace: WorkspaceRefDto;
   readonly currentLedgerHighWaterMark: number;
   readonly expectedCategories?: readonly WorkspaceRootCategory[];
-  readonly backupManifest: BackupManifestInput | undefined;
+  readonly backupManifest: BackupManifestInput | ManifestExportDto | undefined;
 }
 
 interface NormalizedBackupManifestInput {
@@ -472,6 +476,52 @@ function inspectBackupManifestShape(
   }
 
   const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (isManifestExportCandidate(descriptors)) {
+    return inspectManifestExportShape(value);
+  }
+
+  return inspectFlatBackupManifestShape(descriptors);
+}
+
+function inspectManifestExportShape(value: object): BackupManifestShapeInspection {
+  const clonedManifest = descriptorSafeClone(value);
+  if (!clonedManifest.ok) {
+    return { valid: false, containsUnsafeFields: true };
+  }
+
+  const parseResult = manifestExportDtoSchema.safeParse(clonedManifest.value);
+  if (!parseResult.success) {
+    return { valid: false, containsUnsafeFields: true };
+  }
+
+  const manifest = parseResult.data;
+  const coveredCategories = safeCoveredCategories(manifest.coverage.coveredCategories);
+  if (
+    !isIsoDateTime(manifest.exportedAt) ||
+    !exportManifestHashMatches(manifest) ||
+    coveredCategories.length !== manifest.coverage.coveredCategories.length ||
+    !sameCategories(manifest.coverage.missingCategories, missingCategoriesFor(workspaceRootCategories, coveredCategories))
+  ) {
+    return { valid: false, containsUnsafeFields: true };
+  }
+
+  return {
+    valid: true,
+    containsUnsafeFields: false,
+    data: {
+      workspaceId: manifest.workspace.workspaceId,
+      layoutContractVersion: manifest.workspace.layoutContractVersion,
+      ledgerHighWaterMark: manifest.ledger.highWaterMark,
+      ledgerEventCount: manifest.ledger.eventCount,
+      coveredCategories,
+      exportedAt: manifest.exportedAt
+    }
+  };
+}
+
+function inspectFlatBackupManifestShape(
+  descriptors: PropertyDescriptorMap
+): BackupManifestShapeInspection {
   let valid = true;
   let containsUnsafeFields = false;
 
@@ -561,6 +611,109 @@ function inspectBackupManifestShape(
       exportedAt
     }
   };
+}
+
+function isManifestExportCandidate(descriptors: PropertyDescriptorMap): boolean {
+  return Object.hasOwn(descriptors, "schemaVersion") ||
+    Object.hasOwn(descriptors, "workspace") ||
+    Object.hasOwn(descriptors, "manifestHash") ||
+    Object.hasOwn(descriptors, "coverage") ||
+    Object.hasOwn(descriptors, "sectionHashes");
+}
+
+function exportManifestHashMatches(manifest: ManifestExportDto): boolean {
+  const { manifestHash, ...manifestWithoutHash } = manifest;
+  return manifestHash === hashJson(manifestWithoutHash);
+}
+
+function sameCategories(
+  left: readonly WorkspaceRootCategory[],
+  right: readonly WorkspaceRootCategory[]
+): boolean {
+  return left.length === right.length && left.every((category, index) => category === right[index]);
+}
+
+function descriptorSafeClone(value: unknown, seen = new WeakSet<object>()): DescriptorCloneResult {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return { ok: true, value };
+  }
+  if (typeof value !== "object") {
+    return { ok: false };
+  }
+  if (seen.has(value)) {
+    return { ok: false };
+  }
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const arrayValue = descriptorSafeArrayValue(value, seen);
+    seen.delete(value);
+    return arrayValue === undefined ? { ok: false } : { ok: true, value: arrayValue };
+  }
+
+  if (Object.getPrototypeOf(value) !== Object.prototype) {
+    seen.delete(value);
+    return { ok: false };
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const clone: Record<string, unknown> = {};
+  for (const key of Reflect.ownKeys(descriptors)) {
+    if (typeof key !== "string") {
+      seen.delete(value);
+      return { ok: false };
+    }
+    const descriptor = descriptors[key];
+    if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) {
+      seen.delete(value);
+      return { ok: false };
+    }
+    const clonedValue = descriptorSafeClone(descriptor.value, seen);
+    if (!clonedValue.ok) {
+      seen.delete(value);
+      return { ok: false };
+    }
+    clone[key] = clonedValue.value;
+  }
+
+  seen.delete(value);
+  return { ok: true, value: clone };
+}
+
+function descriptorSafeArrayValue(value: unknown[], seen: WeakSet<object>): unknown[] | undefined {
+  if (Object.getPrototypeOf(value) !== Array.prototype) {
+    return undefined;
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  for (const key of Reflect.ownKeys(descriptors)) {
+    if (
+      key !== "length" &&
+      (typeof key !== "string" || !/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= value.length)
+    ) {
+      return undefined;
+    }
+
+    const descriptor = descriptors[key];
+    if (key !== "length" && (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor))) {
+      return undefined;
+    }
+  }
+
+  const values: unknown[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (descriptor === undefined || !("value" in descriptor)) {
+      return undefined;
+    }
+    const clonedValue = descriptorSafeClone(descriptor.value, seen);
+    if (!clonedValue.ok) {
+      return undefined;
+    }
+    values.push(clonedValue.value);
+  }
+
+  return values;
 }
 
 function descriptorValue(
