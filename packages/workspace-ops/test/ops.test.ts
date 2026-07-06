@@ -1,8 +1,8 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { createPortableWorkspace, mountPortableWorkspace } from "../../workspace/src/index.js";
 import {
   workspaceOpsEnvelopeSchema,
   workspaceOpsSchemaVersion,
@@ -210,6 +210,100 @@ describe("verifyWorkspace", () => {
       expect(existsSync(join(rootPath, "ledger", "ontology.sqlite"))).toBe(false);
     } finally {
       rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("blocks an existing unsafe SQLite ledger path without opening ledger events", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-ops-ledger-link-"));
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_linked_ledger",
+        label: "Linked Ledger Workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      });
+      const fs = new NodeWorkspaceFileSystem();
+      const layout = await resolveWorkspaceLayout({ rootPath, expectedWorkspaceId: "ws_linked_ledger" }, fs);
+      symlinkSync(join(rootPath, "missing-ledger.sqlite"), join(rootPath, "ledger", "ontology.sqlite"));
+      expect(mountPortableWorkspace({ rootDir: rootPath })).toMatchObject({
+        ok: false,
+        diagnostic: { code: "workspace-ledger-unavailable" }
+      });
+
+      let readCalls = 0;
+      const result = await verifyWorkspace({
+        layout,
+        fileSystem: fs,
+        eventReader: {
+          async readAll() {
+            readCalls += 1;
+            return [];
+          }
+        }
+      });
+
+      expect(readCalls).toBe(0);
+      expect(result.status).toBe("blocked");
+      expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          diagnosticId: "diag_workspace_ledger_file_unavailable",
+          category: "ledger"
+        })
+      );
+      expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+      expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("treats canonical root symlinks that escape the workspace as unsafe", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-ops-root-link-"));
+    const outsideRoot = mkdtempSync(join(tmpdir(), "cestus-ops-outside-"));
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_linked_blob",
+        label: "Linked Blob Workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      });
+      const fs = new NodeWorkspaceFileSystem();
+      const layout = await resolveWorkspaceLayout({ rootPath, expectedWorkspaceId: "ws_linked_blob" }, fs);
+      rmSync(join(rootPath, "blobs"), { recursive: true, force: true });
+      symlinkSync(outsideRoot, join(rootPath, "blobs"));
+
+      const result = await verifyWorkspace({
+        layout,
+        fileSystem: fs,
+        eventReader: {
+          async readAll() {
+            return [];
+          }
+        }
+      });
+
+      expect(result.status).toBe("degraded");
+      expect(result.payload?.blobStore).toMatchObject({
+        available: false,
+        aggregateBytes: 0,
+        missingBlobCount: 1
+      });
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          diagnosticId: "diag_workspace_blob_root_unreadable",
+          category: "blob-integrity"
+        })
+      );
+      expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+      expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+      rmSync(outsideRoot, { recursive: true, force: true });
     }
   });
 

@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { formatWorkspaceOpsJson, workspaceOpsEnvelopeSchema } from "../src/contracts.js";
 import { NodeWorkspaceFileSystem, type WorkspaceFileSystem, type WorkspaceStats } from "../src/filesystem.js";
 import { resolveWorkspaceLayout } from "../src/layout.js";
@@ -137,6 +138,77 @@ describe("resolveWorkspaceLayout", () => {
       durable: false
     });
     expect(JSON.stringify(result)).not.toContain("ws_other_workspace");
+  });
+
+  it("does not report detect ready when an existing SQLite ledger path is unsafe", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-detect-ledger-link-"));
+    const fileSystem = new NodeWorkspaceFileSystem();
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_detect_ledger_link",
+        label: "Detect Ledger Link",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      });
+      symlinkSync(join(rootPath, "missing-ledger.sqlite"), join(rootPath, "ledger", "ontology.sqlite"));
+
+      const result = await resolveWorkspaceLayout(
+        { rootPath, expectedWorkspaceId: "ws_detect_ledger_link" },
+        fileSystem
+      );
+
+      expect(result.status).toBe("blocked");
+      expect(result.mountStatus.status).toBe("unreadable");
+      expect(result.workspace).toBeUndefined();
+      expect(result.layout).toBeUndefined();
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          diagnosticId: "diag_workspace_layout_unsafe",
+          category: "layout"
+        })
+      );
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("does not report detect ready when a canonical root escapes the workspace", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-detect-root-link-"));
+    const outsideRoot = mkdtempSync(join(tmpdir(), "cestus-detect-outside-"));
+    const fileSystem = new NodeWorkspaceFileSystem();
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_detect_blob_link",
+        label: "Detect Blob Link",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      });
+      rmSync(join(rootPath, "blobs"), { recursive: true, force: true });
+      symlinkSync(outsideRoot, join(rootPath, "blobs"));
+
+      const result = await resolveWorkspaceLayout(
+        { rootPath, expectedWorkspaceId: "ws_detect_blob_link" },
+        fileSystem
+      );
+
+      expect(result.status).toBe("blocked");
+      expect(result.mountStatus.status).toBe("unreadable");
+      expect(result.workspace).toBeUndefined();
+      expect(result.layout).toBeUndefined();
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          diagnosticId: "diag_workspace_layout_unsafe",
+          category: "layout"
+        })
+      );
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+      rmSync(outsideRoot, { recursive: true, force: true });
+    }
   });
 
   it("rejects traversal manifest names without reading outside the selected root", async () => {
