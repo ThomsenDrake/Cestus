@@ -117,6 +117,34 @@ describe("workspace backup manifests", () => {
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
+  it("normalizes exported timestamps without milliseconds before backup checks", async () => {
+    const exported = await exportWorkspaceManifest({
+      workspace,
+      layout,
+      ledgerEventCount: 15,
+      ledgerHighWaterMark: 15,
+      categoryBytes,
+      diagnosticCounts: { errorCount: 0, warningCount: 0 },
+      jobCounts: { queuedCount: 0, failedCount: 0 },
+      createdAt: "2026-07-06T12:30:00Z"
+    });
+
+    expect(exported.status).toBe("ready");
+    expect(exported.payload?.exportedAt).toBe("2026-07-06T12:30:00.000Z");
+    const result = await checkBackupManifest({
+      workspace,
+      currentLedgerHighWaterMark: 15,
+      expectedCategories,
+      backupManifest: exported.payload
+    });
+
+    expect(result.status).toBe("ready");
+    expect(result.diagnostics).toEqual([]);
+    expect(result.proposedActions).toEqual([]);
+    expect(backupCheckDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
   it("reports stale, mismatched, and missing coverage as non-canonical manifest actions", async () => {
     const result = await checkBackupManifest({
       workspace,

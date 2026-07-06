@@ -104,6 +104,7 @@ const rawStateFieldPattern =
 export async function exportWorkspaceManifest(
   input: ExportWorkspaceManifestInput
 ): Promise<WorkspaceOpsEnvelope<ManifestExportDto>> {
+  const exportedAt = normalizeExportedAt(input.createdAt);
   const coveredCategories = safeCoveredCategories(input.categoryBytes.map((category) => category.category));
   const missingCategories = missingCategoriesFor(workspaceRootCategories, coveredCategories);
   const includedSections = includedSectionsFor(coveredCategories);
@@ -138,7 +139,7 @@ export async function exportWorkspaceManifest(
   const manifestWithoutHash = {
     schemaVersion: workspaceOpsSchemaVersion,
     workspace: input.workspace,
-    exportedAt: input.createdAt,
+    exportedAt,
     includedSections,
     excludedSecretBearingFields: [
       "external auth fields",
@@ -229,6 +230,10 @@ export async function checkBackupManifest(
     diagnostics,
     proposedActions: diagnostics.length === 0 ? [] : [exportManifestAction()]
   });
+}
+
+function normalizeExportedAt(createdAt: string): string {
+  return new Date(createdAt).toISOString();
 }
 
 function includedSectionsFor(categories: readonly WorkspaceRootCategory[]): ManifestSection[] {

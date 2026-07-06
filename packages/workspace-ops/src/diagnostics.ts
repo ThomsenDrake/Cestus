@@ -46,6 +46,8 @@ const workspaceCommands = new Set<WorkspaceOpsCommand>([
   "manifest export",
   "backup check"
 ]);
+const privateDiagnosticTextPattern =
+  /(?:private|interview|protected\s+source|source|body|correspondence|case\s+note|memo|notes?)/i;
 
 export async function inspectWorkspaceDiagnostics(
   input: InspectWorkspaceDiagnosticsInput
@@ -427,7 +429,7 @@ function safeDiagnosticMessage(message: unknown): string {
 }
 
 function isSafeDiagnosticMessage(message: string): boolean {
-  return isSecretSafeWorkspaceText(message) && !/(?:raw private|private case|private correspondence)/i.test(message);
+  return isSecretSafeWorkspaceText(message) && !privateDiagnosticTextPattern.test(message);
 }
 
 function safeDiagnosticId(diagnosticId: unknown): WorkspaceDiagnosticInput["diagnosticId"] {
