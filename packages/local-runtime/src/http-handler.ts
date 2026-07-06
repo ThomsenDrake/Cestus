@@ -54,7 +54,11 @@ export function createLocalRuntimeHttpHandler(
         storageStrategy: input.config.storage.strategy,
         bindMode: input.config.http.bindMode,
         authRequired: input.config.http.authRequired,
-        devSeedEnabled: input.config.http.devSeedEnabled
+        devSeedEnabled: input.config.http.devSeedEnabled,
+        workspaceMounted: handle.mountedWorkspace !== undefined,
+        ...(handle.mountedWorkspace === undefined
+          ? {}
+          : { workspaceId: handle.mountedWorkspace.workspaceId })
       });
     }
 

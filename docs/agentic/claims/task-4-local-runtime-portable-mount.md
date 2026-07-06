@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/portable-workspace-mount-design`
 Worktree path: `/home/drake/.codex/worktrees/4ea6/Cestus`
 Claimed at UTC: `2026-07-06T14:11:55Z`
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -17,9 +17,18 @@ Status: `in-progress`
 
 ## Evidence
 
-- Red command: pending
-- Green command: pending
-- Full verification: pending
+- Red command: `npm test -- packages/local-runtime/test/http-handler.test.ts`
+  - Result: failed as expected before runtime factory mount validation.
+  - Evidence: `fails closed instead of falling back when the portable workspace is not mounted` received no thrown error; `Test Files 1 failed (1)`, `Tests 1 failed | 9 passed (10)`.
+- Health diagnostic red check: `npm test -- packages/local-runtime/test/http-handler.test.ts`
+  - Result: failed as expected before browser-facing mounted workspace diagnostics were restored.
+  - Evidence: portable health response was missing `workspaceMounted` and `workspaceId`; `Test Files 1 failed (1)`, `Tests 1 failed | 9 passed (10)`.
+- Green command: `npm test -- packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/auth-and-seed.test.ts`
+  - Result: passed.
+  - Evidence: `Test Files 2 passed (2)`, `Tests 18 passed (18)`.
+- Full verification: `npm run verify`
+  - Result: passed.
+  - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 614 passed (614)`, `tests passed`, Vite build succeeded, `factory-readiness passed`.
 
 ## Review
 
