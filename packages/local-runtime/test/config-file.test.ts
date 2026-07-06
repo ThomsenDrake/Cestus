@@ -256,6 +256,47 @@ describe("local runtime config files", () => {
       sqlitePath: join(cwd, "external/case-a", "ledger", "ontology.sqlite")
     });
   });
+
+  it("prunes stale portable workspace fields when changing storage strategies", () => {
+    const cwd = tempDir();
+
+    writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "external/case-a"
+    });
+
+    const repoLocal = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "repo-local"
+    });
+    expect(repoLocal.config.storage).toEqual({
+      strategy: "repo-local"
+    });
+    expect(readLocalRuntimeConfigFile({ cwd, env: {} })?.storage).toEqual({
+      strategy: "repo-local"
+    });
+
+    const explicitPath = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "explicit-path",
+      sqlitePath: "compat/prr-ledger.sqlite"
+    });
+    expect(explicitPath.config.storage).toEqual({
+      strategy: "explicit-path",
+      sqlitePath: "compat/prr-ledger.sqlite"
+    });
+    expect(readLocalRuntimeConfigFile({ cwd, env: {} })?.storage).toEqual({
+      strategy: "explicit-path",
+      sqlitePath: "compat/prr-ledger.sqlite"
+    });
+  });
 });
 
 function tempDir(): string {
