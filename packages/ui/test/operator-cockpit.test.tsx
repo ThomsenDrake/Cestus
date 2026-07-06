@@ -5,20 +5,26 @@ import { OperatorCockpit } from "../src/operator-status/OperatorCockpit.js";
 import type { OperatorStatusDto } from "../src/operator-status/operator-status-types.js";
 
 describe("OperatorCockpit", () => {
-  it("renders four operator status bands", () => {
+  it("renders four selectable status bands without button roles", () => {
     render(<OperatorCockpit status={operatorStatusFixture} />);
 
     const cockpit = screen.getByRole("region", { name: "Operator cockpit" });
-    expect(within(cockpit).getByRole("button", { name: /Workspace/ })).toBeInTheDocument();
-    expect(within(cockpit).getByRole("button", { name: /Ingestion/ })).toBeInTheDocument();
-    expect(within(cockpit).getByRole("button", { name: /Legacy Import/ })).toBeInTheDocument();
-    expect(within(cockpit).getByRole("button", { name: /PRR\/Investigations/ })).toBeInTheDocument();
+    const bands = within(cockpit).getByRole("tablist", { name: "Operator status bands" });
+
+    expect(within(bands).getByRole("tab", { name: /Workspace/ })).toBeInTheDocument();
+    expect(within(bands).getByRole("tab", { name: /Ingestion/ })).toBeInTheDocument();
+    expect(within(bands).getByRole("tab", { name: /Legacy Import/ })).toBeInTheDocument();
+    expect(within(bands).getByRole("tab", { name: /PRR\/Investigations/ })).toBeInTheDocument();
+    expect(within(cockpit).queryByRole("button", { name: /Workspace/ })).not.toBeInTheDocument();
+    expect(within(cockpit).queryByRole("button", { name: /Ingestion/ })).not.toBeInTheDocument();
+    expect(within(cockpit).queryByRole("button", { name: /Legacy Import/ })).not.toBeInTheDocument();
+    expect(within(cockpit).queryByRole("button", { name: /PRR\/Investigations/ })).not.toBeInTheDocument();
   });
 
   it("selects a band and shows diagnostics and source evidence in the detail panel", () => {
     render(<OperatorCockpit status={operatorStatusFixture} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Legacy Import/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Legacy Import/ }));
 
     const detail = screen.getByRole("region", { name: "Legacy Import details" });
     expect(within(detail).getByText("Legacy importer needs a reviewed export manifest.")).toBeInTheDocument();
@@ -30,7 +36,7 @@ describe("OperatorCockpit", () => {
   it("renders command actions as display text and not executable submit controls", () => {
     render(<OperatorCockpit status={operatorStatusFixture} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Workspace/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Workspace/ }));
 
     const detail = screen.getByRole("region", { name: "Workspace details" });
     const command = within(detail).getByText("cestus-workspace verify workspace");
@@ -47,9 +53,22 @@ describe("OperatorCockpit", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open ingestion" }));
     expect(onNavigate).toHaveBeenCalledWith("ingestion");
 
-    fireEvent.click(screen.getByRole("button", { name: /PRR\/Investigations/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /PRR\/Investigations/ }));
     fireEvent.click(screen.getByRole("button", { name: "Open requests" }));
     expect(onNavigate).toHaveBeenCalledWith("requests");
+  });
+
+  it("selects status bands with keyboard tab interactions", () => {
+    render(<OperatorCockpit status={operatorStatusFixture} />);
+
+    const workspaceBand = screen.getByRole("tab", { name: /Workspace/ });
+    workspaceBand.focus();
+    fireEvent.keyDown(workspaceBand, { key: "Enter" });
+    expect(screen.getByRole("region", { name: "Workspace details" })).toBeInTheDocument();
+
+    fireEvent.keyDown(workspaceBand, { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: /Ingestion/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("region", { name: "Ingestion details" })).toBeInTheDocument();
   });
 
   it("renders refresh as a button that calls onRefresh", () => {
@@ -66,6 +85,17 @@ describe("OperatorCockpit", () => {
     for (const unsafeName of ["Send", "Escalate", "Repair ledger", "Accept assertion", "Stage ontology"]) {
       expect(screen.queryByRole("button", { name: unsafeName })).not.toBeInTheDocument();
     }
+  });
+
+  it("uses actual buttons only for safe actions", () => {
+    render(<OperatorCockpit status={operatorStatusFixture} />);
+
+    const cockpit = screen.getByRole("region", { name: "Operator cockpit" });
+    const buttonNames = within(cockpit).getAllByRole("button").map((button) => button.textContent);
+
+    expect(buttonNames).toEqual(["Open ingestion", "Refresh operator status"]);
+    expect(within(cockpit).queryByRole("button", { name: /Workspace/ })).not.toBeInTheDocument();
+    expect(within(cockpit).queryByRole("button", { name: /Legacy Import/ })).not.toBeInTheDocument();
   });
 });
 

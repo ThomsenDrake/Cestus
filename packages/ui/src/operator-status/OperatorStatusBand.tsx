@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import type { OperatorSafeActionDto, OperatorStatusSectionDto } from "./operator-status-types.js";
 
 interface OperatorStatusBandProps {
@@ -5,6 +6,10 @@ interface OperatorStatusBandProps {
   readonly primaryAction: OperatorSafeActionDto | undefined;
   readonly selected: boolean;
   readonly onSelect: (sectionId: OperatorStatusSectionDto["sectionId"]) => void;
+  readonly onKeyboardNavigate: (
+    sectionId: OperatorStatusSectionDto["sectionId"],
+    direction: "first" | "last" | "next" | "previous"
+  ) => void;
 }
 
 const stateToneClasses: Record<OperatorStatusSectionDto["state"], string> = {
@@ -23,12 +28,48 @@ const metricToneClasses: Record<OperatorStatusSectionDto["metrics"][number]["ton
   neutral: "text-[var(--muted-amber)]"
 };
 
-export function OperatorStatusBand({ section, primaryAction, selected, onSelect }: OperatorStatusBandProps) {
+export function OperatorStatusBand({
+  section,
+  primaryAction,
+  selected,
+  onSelect,
+  onKeyboardNavigate
+}: OperatorStatusBandProps) {
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    switch (event.key) {
+      case " ":
+      case "Enter":
+        event.preventDefault();
+        onSelect(section.sectionId);
+        break;
+      case "ArrowDown":
+      case "ArrowRight":
+        event.preventDefault();
+        onKeyboardNavigate(section.sectionId, "next");
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        event.preventDefault();
+        onKeyboardNavigate(section.sectionId, "previous");
+        break;
+      case "Home":
+        event.preventDefault();
+        onKeyboardNavigate(section.sectionId, "first");
+        break;
+      case "End":
+        event.preventDefault();
+        onKeyboardNavigate(section.sectionId, "last");
+        break;
+    }
+  }
+
   return (
-    <button
-      type="button"
-      aria-pressed={selected}
+    <div
+      role="tab"
+      aria-selected={selected}
+      tabIndex={selected ? 0 : -1}
       onClick={() => onSelect(section.sectionId)}
+      onKeyDown={handleKeyDown}
       className={[
         "relative min-h-40 border bg-[var(--console-void)]/72 p-3 text-left hover:border-[var(--signal-amber)] hover:bg-[var(--console-panel)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--signal-cyan)]",
         selected ? "border-[var(--signal-cyan)]" : "border-[var(--console-line)]"
@@ -60,7 +101,7 @@ export function OperatorStatusBand({ section, primaryAction, selected, onSelect 
           {primaryAction.label}
         </span>
       )}
-    </button>
+    </div>
   );
 }
 
