@@ -20,6 +20,7 @@ Status: ready-for-review
 ## Verifier-Forced Supporting Files
 
 - `packages/workspace-ops/src/backup.ts` updated manifest export category handling for canonical `cache` and `config`.
+- `packages/workspace-ops/src/filesystem.ts` added optional `lstat` support so Node-backed ops can reject symlinked canonical paths consistently with the canonical workspace mount.
 - `packages/workspace-ops/test/disk-usage.test.ts` updated required green-command expectations for canonical `ledger/`, `cache`, and `config` roots.
 - `packages/workspace-ops/test/backup.test.ts` updated required green-command fixtures for the canonical layout contract and root categories.
 
@@ -31,6 +32,20 @@ Status: ready-for-review
   - Result: passed after implementation; 4 test files passed, 42 tests passed.
 - Full verification: `npm run verify`
   - Result: passed after one focused typecheck repair; typecheck passed, 92 test files passed, 838 tests passed, UI build succeeded, factory-readiness passed.
+
+## Review Fix Evidence
+
+- Review finding: workspace ops could report ready for canonical layouts rejected by `mountPortableWorkspace`, including broken `ledger/ontology.sqlite` symlinks and canonical root symlinks escaping the workspace.
+- Targeted review red command: `npm test -- packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts`
+  - Result: failed as expected before the fix; 2 test files failed, 3 tests failed and 18 passed. The unsafe ledger path still opened ledger events, and escaping roots returned ready.
+- Detect review red command: `npm test -- packages/workspace-ops/test/layout.test.ts`
+  - Result: failed as expected before the detect guard; 1 test file failed, 2 tests failed and 7 passed. Unsafe existing layout paths still returned ready from drive detection.
+- Targeted review green command: `npm test -- packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts`
+  - Result: passed after the fix; 2 test files passed, 21 tests passed.
+- Task 3 review green command: `npm test -- packages/workspace-ops/test/layout.test.ts packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts packages/workspace-ops/test/backup.test.ts`
+  - Result: passed after the fix; 4 test files passed, 47 tests passed.
+- Review full verification: `npm run verify`
+  - Result: passed after the detect guard; typecheck passed, 92 test files passed, 843 tests passed, UI build succeeded, factory-readiness passed.
 
 ## Review
 

@@ -104,6 +104,44 @@ class CyclicWorkspaceFs implements WorkspaceFileSystem {
   }
 }
 
+class EscapingWorkspaceFs implements WorkspaceFileSystem {
+  readonly listCalls: string[] = [];
+
+  async exists(path: string): Promise<boolean> {
+    return path === layout.blobRoot;
+  }
+
+  async readText(): Promise<string> {
+    return "";
+  }
+
+  async stat(path: string): Promise<WorkspaceStats> {
+    if (path === layout.blobRoot) {
+      return { kind: "directory", sizeBytes: 0 };
+    }
+    if (path === `${layout.blobRoot}/outside-private-file.txt`) {
+      return { kind: "file", sizeBytes: 99_000 };
+    }
+    throw new Error(`missing ${path}`);
+  }
+
+  async list(path: string): Promise<readonly string[]> {
+    this.listCalls.push(path);
+    return path === layout.blobRoot ? ["outside-private-file.txt"] : [];
+  }
+
+  async realpath(path: string): Promise<string> {
+    if (path === layout.blobRoot || path.startsWith(`${layout.blobRoot}/`)) {
+      return path.replace(layout.blobRoot, "/outside-workspace/blobs");
+    }
+    return path;
+  }
+
+  async availableBytes(): Promise<number | undefined> {
+    return 10_000;
+  }
+}
+
 describe("reportDiskUsage", () => {
   it("reports root and aggregate category totals without raw filenames", async () => {
     const fileSystem = new TreeWorkspaceFs(
@@ -226,6 +264,34 @@ describe("reportDiskUsage", () => {
     expect(fileSystem.realpathCalls.length).toBeGreaterThan(0);
     expect(fileSystem.listCalls.filter((path) => path === layout.blobRoot)).toHaveLength(1);
     expect(JSON.stringify(result)).not.toContain("private-cycle-name");
+    expect(diskUsageDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("does not traverse or count disk usage roots whose realpath escapes the workspace", async () => {
+    const fileSystem = new EscapingWorkspaceFs();
+
+    const result = await reportDiskUsage({ layout, fileSystem });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload?.roots.find((root) => root.rootId === "blobs")).toMatchObject({
+      category: "blobs",
+      bytes: 0,
+      exists: true
+    });
+    expect(result.payload?.categories.find((category) => category.category === "blobs")).toEqual({
+      category: "blobs",
+      bytes: 0,
+      exists: true
+    });
+    expect(fileSystem.listCalls).toEqual([]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_workspace_disk_blobs_unreadable",
+        category: "disk"
+      })
+    );
+    expect(JSON.stringify(result)).not.toContain("outside-private-file");
     expect(diskUsageDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });

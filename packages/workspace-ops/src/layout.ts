@@ -1,4 +1,4 @@
-import { basename, isAbsolute, posix, win32 } from "node:path";
+import { basename, isAbsolute, posix, relative, sep, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import {
@@ -73,6 +73,8 @@ export type WorkspaceLayoutResult = WorkspaceLayoutEnvelope & {
   readonly mountStatus: MountStatusDto;
   readonly layout?: ResolvedWorkspaceLayout;
 };
+
+type LayoutPathKind = "file" | "directory";
 
 export async function resolveWorkspaceLayout(
   input: ResolveWorkspaceLayoutInput,
@@ -246,6 +248,11 @@ export async function resolveWorkspaceLayout(
   }
 
   const resolvedRootUri = pathToSafeFileUri(rootPath);
+  const layout = createPortableWorkspaceOpsLayout(rootPath, resolvedRootUri, manifestName);
+  if (await hasUnsafeExistingLayoutPath(fileSystem, layout)) {
+    return unsafeLayoutResult(resolvedRootUri);
+  }
+
   const workspace = workspaceRefSchema.parse({
     workspaceId: manifest.workspaceId,
     label: manifest.label,
@@ -253,7 +260,6 @@ export async function resolveWorkspaceLayout(
     rootUri: resolvedRootUri,
     layoutContractVersion: portableWorkspaceLayoutContractVersion
   });
-  const layout = createPortableWorkspaceOpsLayout(rootPath, resolvedRootUri, manifestName);
 
   return layoutResult({
     workspace,
@@ -374,6 +380,26 @@ function unsafeManifestNameResult(rootUri: string): WorkspaceLayoutResult {
   });
 }
 
+function unsafeLayoutResult(rootUri: string): WorkspaceLayoutResult {
+  return layoutResult({
+    mountStatus: mountStatus(
+      "unreadable",
+      "Workspace layout contains an unsafe existing path.",
+      rootUri,
+      ["detect drive", "diagnostics inspect"],
+      "Inspect workspace layout paths, then rerun drive detection."
+    ),
+    diagnostics: [
+      workspaceDiagnostic(
+        "diag_workspace_layout_unsafe",
+        "layout",
+        "Workspace layout contains an unsafe existing path."
+      )
+    ],
+    proposedActions: [rerunDetectionAction("error")]
+  });
+}
+
 function layoutResult(input: {
   readonly workspace?: WorkspaceRefDto;
   readonly mountStatus: MountStatusDto;
@@ -491,6 +517,77 @@ function isSafeManifestBasename(manifestName: string): boolean {
     basename(manifestName) === manifestName &&
     posix.basename(manifestName) === manifestName &&
     win32.basename(manifestName) === manifestName
+  );
+}
+
+async function hasUnsafeExistingLayoutPath(
+  fileSystem: WorkspaceFileSystem,
+  layout: ResolvedWorkspaceLayout
+): Promise<boolean> {
+  const paths: Array<{ readonly path: string; readonly expectedKind: LayoutPathKind }> = [
+    { path: layout.manifestPath, expectedKind: "file" },
+    { path: childPath(layout.rootPath, "ledger"), expectedKind: "directory" },
+    { path: layout.ledgerPath, expectedKind: "file" },
+    { path: layout.blobRoot, expectedKind: "directory" },
+    { path: layout.derivativeRoot, expectedKind: "directory" },
+    { path: layout.jobRoot, expectedKind: "directory" },
+    { path: layout.projectionRoot, expectedKind: "directory" },
+    { path: layout.cacheRoot, expectedKind: "directory" },
+    { path: layout.configRoot, expectedKind: "directory" }
+  ];
+
+  for (const candidate of paths) {
+    if (await isUnsafeExistingPath(fileSystem, layout.rootPath, candidate.path, candidate.expectedKind)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function isUnsafeExistingPath(
+  fileSystem: WorkspaceFileSystem,
+  workspaceRootPath: string,
+  path: string,
+  expectedKind: LayoutPathKind
+): Promise<boolean> {
+  const exists = await safeExists(fileSystem, path);
+  if (exists === "unreadable") {
+    return true;
+  }
+  if (!exists) {
+    if (fileSystem.lstat === undefined) {
+      return false;
+    }
+    try {
+      await fileSystem.lstat(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  try {
+    const stats = fileSystem.lstat === undefined
+      ? await fileSystem.stat(path)
+      : await fileSystem.lstat(path);
+    if (stats.kind !== expectedKind) {
+      return true;
+    }
+    return !isPathInsideWorkspace(workspaceRootPath, await fileSystem.realpath(path));
+  } catch {
+    return true;
+  }
+}
+
+function isPathInsideWorkspace(workspaceRootPath: string, path: string): boolean {
+  const relativePath = relative(workspaceRootPath, path);
+  return (
+    relativePath === "" ||
+    (
+      relativePath !== ".." &&
+      !relativePath.startsWith(`..${sep}`) &&
+      !isAbsolute(relativePath)
+    )
   );
 }
 
