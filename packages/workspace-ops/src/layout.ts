@@ -44,7 +44,7 @@ type WorkspaceManifestIdentity = {
 };
 
 export function parseProvisionalWorkspaceManifest(value: unknown): ProvisionalWorkspaceManifest | undefined {
-  return parseStrictProvisionalWorkspaceManifest(value) ?? parseCanonicalPortableWorkspaceManifestIdentity(value);
+  return parseStrictProvisionalWorkspaceManifest(value);
 }
 
 export function parseWorkspaceManifestIdentity(value: unknown): WorkspaceManifestIdentity | undefined {

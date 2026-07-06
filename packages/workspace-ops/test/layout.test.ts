@@ -7,6 +7,8 @@ import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { formatWorkspaceOpsJson, workspaceOpsEnvelopeSchema } from "../src/contracts.js";
 import { NodeWorkspaceFileSystem, type WorkspaceFileSystem, type WorkspaceStats } from "../src/filesystem.js";
 import {
+  parseProvisionalWorkspaceManifest,
+  parseWorkspaceManifestIdentity,
   provisionalWorkspaceLayoutContractVersion,
   resolveWorkspaceLayout
 } from "../src/layout.js";
@@ -260,6 +262,25 @@ describe("resolveWorkspaceLayout", () => {
 });
 
 describe("resolveWorkspaceLayout canonical portable workspace binding", () => {
+  it("keeps provisional parsing strict while parsing canonical identity beside it", () => {
+    const canonicalManifest = {
+      version: 1,
+      layoutVersion: 1,
+      workspaceId: "ws_ops_canonical_001",
+      label: "Ops Canonical Fixture",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "workspace-ops-test",
+      coreVersion: "0.1.0"
+    };
+
+    expect(parseProvisionalWorkspaceManifest(canonicalManifest)).toBeUndefined();
+    expect(parseWorkspaceManifestIdentity(canonicalManifest)).toEqual({
+      workspaceId: "ws_ops_canonical_001",
+      label: "Ops Canonical Fixture",
+      version: 1
+    });
+  });
+
   it("resolves a workspace created by the canonical workspace package", async () => {
     const rootDir = mkdtempSync(join(tmpdir(), "cestus-ops-canonical-"));
     tempDirs.push(rootDir);
