@@ -79,7 +79,8 @@ describe("LegacyOntologyStagingService", () => {
 
     const expectedAssertionId = legacyAssertionId("legacy_stage_001", "legacy_candidate_001");
     const events = await ledger.readAll();
-    expect(events.map((event) => event.type)).toEqual([
+    const eventTypes = events.map((event): string => event.type);
+    expect(eventTypes).toEqual([
       "evidence.ingested",
       "legacy.ontology.staging.approved",
       "assertion.proposed"
@@ -94,9 +95,12 @@ describe("LegacyOntologyStagingService", () => {
       confidence: 0.8,
       reviewState: "proposed"
     });
-    expect(events.map((event) => event.type)).not.toContain("assertion.accepted");
-    expect(events.map((event) => event.type)).not.toContain("entity.resolved");
-    expect(events.map((event) => event.type)).not.toContain("relationship.accepted");
+    expect(eventTypes).not.toContain("legacy.import.report.generated");
+    expect(eventTypes).not.toContain("assertion.accepted");
+    expect(eventTypes).not.toContain("entity.resolved");
+    expect(eventTypes).not.toContain("relationship.accepted");
+    expect(eventTypes).not.toContain("candidate.entity.resolved");
+    expect(eventTypes).not.toContain("candidate.relationship.accepted");
   });
 
   it("rejects missing evidence after approval without appending assertion.proposed", async () => {
@@ -121,6 +125,33 @@ describe("LegacyOntologyStagingService", () => {
     ]);
   });
 
+  it("preflights all approved candidates before appending any assertion proposals", async () => {
+    const ledger = new InMemoryEventLedger();
+    await ingestEvidence(ledger, "ev_legacy_metadata");
+    const service = new LegacyOntologyStagingService({ ledger, actor: humanActor });
+
+    await service.approveStaging({
+      ...stagingIdentity,
+      approvedBy: "actor_investigator",
+      approvedAssertionCandidateIds: ["legacy_candidate_present", "legacy_candidate_missing"]
+    });
+
+    await expect(
+      service.stageApprovedAssertions({
+        ...stagingIdentity,
+        candidates: [
+          candidate("legacy_candidate_present", "ev_legacy_metadata"),
+          candidate("legacy_candidate_missing", "ev_missing")
+        ]
+      })
+    ).rejects.toThrow(/without evidence ev_missing/);
+
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "evidence.ingested",
+      "legacy.ontology.staging.approved"
+    ]);
+  });
+
   it("proposes only approved candidate IDs and skips unapproved candidates", async () => {
     const ledger = new InMemoryEventLedger();
     await ingestEvidence(ledger, "ev_legacy_metadata");
@@ -136,7 +167,7 @@ describe("LegacyOntologyStagingService", () => {
       candidates: [
         candidate("legacy_candidate_approved", "ev_legacy_metadata"),
         {
-          ...candidate("legacy_candidate_skipped", "ev_legacy_metadata"),
+          ...candidate("legacy_candidate_skipped", "ev_missing_unapproved"),
           predicate: "agency.alias",
           object: "Skipped Agency"
         }

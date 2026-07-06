@@ -104,13 +104,12 @@ export class LegacyOntologyStagingService {
     }
 
     const approvedIds = new Set(approval.payload.approvedAssertionCandidateIds);
+    const approvedCandidates = input.candidates.filter((candidate) => approvedIds.has(candidate.candidateId));
     const proposed: Array<KnowledgeEventOf<"assertion.proposed">> = [];
 
-    for (const candidate of input.candidates) {
-      if (!approvedIds.has(candidate.candidateId)) {
-        continue;
-      }
+    await this.preflightEvidence(input.stagingBatchId, approvedCandidates);
 
+    for (const candidate of approvedCandidates) {
       proposed.push(
         await this.assertions.propose({
           assertionId: legacyAssertionId(input.stagingBatchId, candidate.candidateId),
@@ -125,6 +124,24 @@ export class LegacyOntologyStagingService {
     }
 
     return proposed;
+  }
+
+  private async preflightEvidence(
+    stagingBatchId: string,
+    candidates: readonly LegacyApprovedAssertionCandidate[]
+  ): Promise<void> {
+    for (const candidate of candidates) {
+      const evidenceEvents = await this.ledger.readStream(`evidence_${candidate.evidenceId}`);
+      const ingested = evidenceEvents.some(
+        (event) => event.type === "evidence.ingested" && event.payload.evidenceId === candidate.evidenceId
+      );
+
+      if (!ingested) {
+        throw new Error(
+          `Cannot propose assertion ${legacyAssertionId(stagingBatchId, candidate.candidateId)} without evidence ${candidate.evidenceId}`
+        );
+      }
+    }
   }
 
   private async findApproval(
