@@ -231,7 +231,8 @@ describe("runLocalWorkspaceReadinessSmokeCli", () => {
       ],
       {
         cwd: process.cwd(),
-        encoding: "utf8"
+        encoding: "utf8",
+        env: projectDefaultNpmEnv()
       }
     );
 
@@ -302,3 +303,10 @@ describe("runLocalWorkspaceReadinessSmokeCli", () => {
     expect(lines.join("")).toContain("Usage: npm run local:workspace:smoke -- --json");
   });
 });
+
+function projectDefaultNpmEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  delete env.NPM_CONFIG_LOGLEVEL;
+  delete env.npm_config_loglevel;
+  return env;
+}
