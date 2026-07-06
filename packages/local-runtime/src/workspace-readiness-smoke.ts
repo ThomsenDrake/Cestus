@@ -50,6 +50,10 @@ export interface RunLocalWorkspaceReadinessSmokeInput {
   readonly now?: () => string;
 }
 
+export interface LocalWorkspaceReadinessSmokeCliDependencies {
+  readonly stdout?: (line: string) => void;
+}
+
 export interface LocalWorkspaceReadinessCheck {
   readonly checkId: string;
   readonly ok: boolean;
@@ -105,6 +109,50 @@ const orderedCheckIds = [
   "workspace-ops.manifest-export",
   "workspace-ops.backup-check"
 ] as const;
+
+const smokeCliUsage = [
+  "Usage: npm run local:workspace:smoke -- --json [options]",
+  "",
+  "Options:",
+  "  --json                    Print a JSON smoke report.",
+  "  --workspace <root>        Workspace root to initialize.",
+  "  --source <root>           Source fixture root to scan.",
+  "  --workspace-id <id>       Workspace id for deterministic runs.",
+  "  --workspace-label <text>  Workspace label.",
+  "  --source-id <id>          Source collection id.",
+  "  --source-label <text>     Source collection label.",
+  "  --scan <id>               Scan batch id.",
+  "  --import <id>             Import batch id.",
+  "  --approved-by <actor-id>  Approval actor id.",
+  "  --created-at <iso>        Fixed creation timestamp.",
+  "  --help                    Show this help."
+].join("\n");
+
+export async function runLocalWorkspaceReadinessSmokeCli(
+  argv: readonly string[],
+  dependencies: LocalWorkspaceReadinessSmokeCliDependencies = {}
+): Promise<number> {
+  const stdout = dependencies.stdout ?? ((line: string) => process.stdout.write(line));
+
+  try {
+    const parsed = parseSmokeCliArgv(argv);
+    if (parsed.kind === "help") {
+      stdout(`${smokeCliUsage}\n`);
+      return 0;
+    }
+    if (parsed.kind === "error") {
+      stdout(JSON.stringify(blockedCliReport(parsed.message, parsed.code, parsed.optionName)));
+      return 2;
+    }
+
+    const report = await runLocalWorkspaceReadinessSmoke(parsed.input);
+    stdout(JSON.stringify(report));
+    return report.ok ? 0 : 3;
+  } catch {
+    stdout(JSON.stringify(blockedCliReport("Local workspace readiness smoke failed before completion.", "cli-failed")));
+    return 3;
+  }
+}
 
 export async function runLocalWorkspaceReadinessSmoke(
   input: RunLocalWorkspaceReadinessSmokeInput = {}
@@ -621,4 +669,190 @@ function countFiles(...pathParts: string[]): number {
 
 function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+type ParsedSmokeCliArgv =
+  | { readonly kind: "run"; readonly input: RunLocalWorkspaceReadinessSmokeInput }
+  | { readonly kind: "help" }
+  | {
+      readonly kind: "error";
+      readonly code: string;
+      readonly message: string;
+      readonly optionName?: string;
+    };
+
+function parseSmokeCliArgv(argv: readonly string[]): ParsedSmokeCliArgv {
+  const input: {
+    workspaceRoot?: string;
+    sourceRoot?: string;
+    workspaceId?: string;
+    workspaceLabel?: string;
+    sourceCollectionId?: string;
+    sourceLabel?: string;
+    scanBatchId?: string;
+    importBatchId?: string;
+    approvedBy?: string;
+    now?: () => string;
+  } = {};
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === undefined) {
+      continue;
+    }
+    if (token === "--help" || token === "-h") {
+      return { kind: "help" };
+    }
+    if (token === "--json") {
+      continue;
+    }
+    if (!token.startsWith("--")) {
+      return {
+        kind: "error",
+        code: "unexpected-argument",
+        message: "Unexpected positional argument was provided."
+      };
+    }
+
+    const parsedOption = splitCliOption(token);
+    const optionName = parsedOption.name;
+    if (!isSupportedSmokeCliOption(optionName)) {
+      return {
+        kind: "error",
+        code: "unknown-option",
+        message: "Unsupported local workspace smoke option was provided.",
+        ...(isSecretShapedOptionName(optionName) ? {} : { optionName })
+      };
+    }
+
+    const valueResult = readSmokeCliValue(argv, index, parsedOption);
+    if (valueResult.kind === "error") {
+      return {
+        kind: "error",
+        code: "missing-option-value",
+        message: "Required local workspace smoke option value was missing.",
+        ...(isSecretShapedOptionName(optionName) ? {} : { optionName })
+      };
+    }
+    index = valueResult.nextIndex;
+
+    if (optionName === "workspace") {
+      input.workspaceRoot = valueResult.value;
+    } else if (optionName === "source") {
+      input.sourceRoot = valueResult.value;
+    } else if (optionName === "workspace-id") {
+      input.workspaceId = valueResult.value;
+    } else if (optionName === "workspace-label") {
+      input.workspaceLabel = valueResult.value;
+    } else if (optionName === "source-id") {
+      input.sourceCollectionId = valueResult.value;
+    } else if (optionName === "source-label") {
+      input.sourceLabel = valueResult.value;
+    } else if (optionName === "scan") {
+      input.scanBatchId = valueResult.value;
+    } else if (optionName === "import") {
+      input.importBatchId = valueResult.value;
+    } else if (optionName === "approved-by") {
+      input.approvedBy = valueResult.value;
+    } else if (optionName === "created-at") {
+      input.now = () => valueResult.value;
+    }
+  }
+
+  return { kind: "run", input };
+}
+
+function splitCliOption(token: string): { readonly name: string; readonly inlineValue?: string } {
+  const withoutPrefix = token.slice(2);
+  const equalsIndex = withoutPrefix.indexOf("=");
+  if (equalsIndex === -1) {
+    return { name: withoutPrefix };
+  }
+  return {
+    name: withoutPrefix.slice(0, equalsIndex),
+    inlineValue: withoutPrefix.slice(equalsIndex + 1)
+  };
+}
+
+function readSmokeCliValue(
+  argv: readonly string[],
+  index: number,
+  option: { readonly name: string; readonly inlineValue?: string }
+):
+  | { readonly kind: "value"; readonly value: string; readonly nextIndex: number }
+  | { readonly kind: "error" } {
+  if (option.inlineValue !== undefined) {
+    return option.inlineValue.length === 0
+      ? { kind: "error" }
+      : { kind: "value", value: option.inlineValue, nextIndex: index };
+  }
+
+  const value = argv[index + 1];
+  if (value === undefined || value.startsWith("--")) {
+    return { kind: "error" };
+  }
+  return { kind: "value", value, nextIndex: index + 1 };
+}
+
+function isSupportedSmokeCliOption(optionName: string): boolean {
+  return [
+    "workspace",
+    "source",
+    "workspace-id",
+    "workspace-label",
+    "source-id",
+    "source-label",
+    "scan",
+    "import",
+    "approved-by",
+    "created-at"
+  ].includes(optionName);
+}
+
+function blockedCliReport(
+  message: string,
+  code: string,
+  optionName?: string
+): LocalWorkspaceReadinessSmokeReport {
+  const diagnostics = [
+    {
+      code,
+      message,
+      ...(optionName === undefined ? {} : { optionName }),
+      allowedRepairActions: ["review local workspace smoke usage", "rerun local workspace readiness smoke"]
+    }
+  ];
+  return finalizeReport({
+    workspaceId: "ws_local_workspace_readiness_smoke",
+    workspaceLabel: "Local Workspace Readiness Smoke",
+    sourceCollectionId: "src_local_workspace_readiness_smoke",
+    sourceLabel: "Local Workspace Readiness Smoke Source",
+    fixtureFileCount: 0,
+    checks: [],
+    eventCount: 0,
+    evidenceCount: 0,
+    blobCount: 0,
+    jobCount: 0,
+    jobKinds: [],
+    diagnosticCount: diagnostics.length,
+    workspaceOpsStatus: {
+      verifyStatus: "blocked",
+      diskUsageStatus: "blocked",
+      manifestExportStatus: "blocked",
+      backupCheckStatus: "blocked"
+    },
+    diagnostics,
+    proposedActions: []
+  });
+}
+
+function isSecretShapedOptionName(optionName: string): boolean {
+  return /(^|[-_])(token|secret|password|credential|api[-_]?key|auth)([-_]|$)/i.test(optionName);
+}
+
+const entrypoint = process.argv[1] === undefined ? undefined : pathToFileURL(process.argv[1]).href;
+
+if (import.meta.url === entrypoint) {
+  const exitCode = await runLocalWorkspaceReadinessSmokeCli(process.argv.slice(2));
+  process.exitCode = exitCode;
 }

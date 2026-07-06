@@ -3,7 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
-import { runLocalWorkspaceReadinessSmoke } from "../src/workspace-readiness-smoke.js";
+import {
+  runLocalWorkspaceReadinessSmoke,
+  runLocalWorkspaceReadinessSmokeCli
+} from "../src/workspace-readiness-smoke.js";
 
 const tempDirs: string[] = [];
 
@@ -119,5 +122,87 @@ describe("runLocalWorkspaceReadinessSmoke", () => {
     });
     expect(JSON.stringify(report.diagnostics)).not.toContain("secret123");
     expect(JSON.stringify(report.diagnostics)).not.toContain("token=");
+  });
+});
+
+describe("runLocalWorkspaceReadinessSmokeCli", () => {
+  it("prints stable JSON from argv", async () => {
+    const workspaceRoot = tempDir("cestus-smoke-cli-workspace-");
+    const sourceRoot = tempDir("cestus-smoke-cli-source-");
+    const lines: string[] = [];
+
+    const exitCode = await runLocalWorkspaceReadinessSmokeCli(
+      [
+        "--json",
+        "--workspace",
+        workspaceRoot,
+        "--source",
+        sourceRoot,
+        "--workspace-id",
+        "ws_smoke_cli_001",
+        "--source-id",
+        "src_smoke_cli_001",
+        "--created-at",
+        "2026-07-06T12:00:00.000Z"
+      ],
+      {
+        stdout: (line) => lines.push(line)
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    const output = JSON.parse(lines.join(""));
+    expect(output).toMatchObject({
+      schemaVersion: "local-workspace-readiness-smoke.v1",
+      ok: true,
+      status: "ready",
+      workspace: {
+        workspaceId: "ws_smoke_cli_001"
+      },
+      source: {
+        sourceCollectionId: "src_smoke_cli_001"
+      }
+    });
+  });
+
+  it("fails closed without deleting or overwriting an initialized workspace", async () => {
+    const workspaceRoot = tempDir("cestus-smoke-cli-existing-");
+    const firstLines: string[] = [];
+    const secondLines: string[] = [];
+
+    expect(
+      await runLocalWorkspaceReadinessSmokeCli(
+        [
+          "--json",
+          "--workspace",
+          workspaceRoot,
+          "--workspace-id",
+          "ws_smoke_existing_001",
+          "--created-at",
+          "2026-07-06T12:00:00.000Z"
+        ],
+        { stdout: (line) => firstLines.push(line) }
+      )
+    ).toBe(0);
+
+    const exitCode = await runLocalWorkspaceReadinessSmokeCli(
+      [
+        "--json",
+        "--workspace",
+        workspaceRoot,
+        "--workspace-id",
+        "ws_smoke_existing_001",
+        "--created-at",
+        "2026-07-06T12:00:00.000Z"
+      ],
+      { stdout: (line) => secondLines.push(line) }
+    );
+
+    expect(exitCode).toBe(3);
+    expect(JSON.parse(secondLines.join(""))).toMatchObject({
+      schemaVersion: "local-workspace-readiness-smoke.v1",
+      ok: false,
+      status: "blocked"
+    });
   });
 });
