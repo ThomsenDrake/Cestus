@@ -178,6 +178,46 @@ describe("runLocalRuntimeCli", () => {
     );
   });
 
+  it("explicitly creates a portable workspace without printing secret material", async () => {
+    const stdout: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    const workspaceRoot = join(tempDir, "external-case");
+
+    const exitCode = await runLocalRuntimeCli(
+      [
+        "create-workspace",
+        "--workspace",
+        workspaceRoot,
+        "--workspace-id",
+        "ws_cli_001",
+        "--label",
+        "CLI Portable Workspace",
+        "--created-at",
+        "2026-07-06T12:00:00.000Z"
+      ],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: () => undefined
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    const output = JSON.parse(stdout.join("\n")) as {
+      ok: true;
+      workspace: {
+        workspaceId: string;
+        manifestPath: string;
+        paths: { ledgerPath: string };
+      };
+    };
+    expect(output.workspace.workspaceId).toBe("ws_cli_001");
+    expect(output.workspace.paths.ledgerPath).toBe(join(workspaceRoot, "ledger", "ontology.sqlite"));
+    expect(readFileSync(join(workspaceRoot, "cestus-workspace.json"), "utf8")).toContain('"workspaceId": "ws_cli_001"');
+    expect(stdout.join("\n")).not.toMatch(/token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i);
+  });
+
   it("rejects configure flags that would write an unusable exposed loopback config", async () => {
     const stdout: string[] = [];
     const stderr: string[] = [];

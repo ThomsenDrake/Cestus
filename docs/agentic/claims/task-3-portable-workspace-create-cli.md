@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/portable-workspace-mount-design`
 Worktree path: `/home/drake/.codex/worktrees/4ea6/Cestus`
 Claimed at UTC: `2026-07-06T13:35:05Z`
-Status: `in-progress`
+Status: `ready-for-review`
 
 ## Owned Files
 
@@ -17,12 +17,18 @@ Status: `in-progress`
 
 ## Evidence
 
-- Red command: pending
-- Green command: pending
-- Full verification: pending
+- Red command: `npm test -- packages/local-runtime/test/cli.test.ts`
+  - Result: failed as expected before implementation.
+  - Evidence: new `create-workspace` test received exit code `1` instead of `0`; `Test Files 1 failed (1)`, `Tests 1 failed | 9 passed (10)`.
+- Green command: `npm test -- packages/local-runtime/test/cli.test.ts`
+  - Result: passed.
+  - Evidence: `Test Files 1 passed (1)`, `Tests 10 passed (10)`.
+- Full verification: `npm run verify`
+  - Result: passed.
+  - Evidence: `typecheck passed`, `Test Files 70 passed (70)`, `Tests 608 passed (608)`, `tests passed`, `vite build` succeeded, `factory-readiness passed`.
 
 ## Review
 
-- Review status: pending
+- Review status: ready-for-review
 - Review focus: explicit creation, no runtime auto-create behavior, and secret-free CLI output.
 - Concerns: none recorded
