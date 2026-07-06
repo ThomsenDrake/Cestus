@@ -32,7 +32,9 @@ const requiredFiles = [
   "docs/superpowers/specs/2026-07-06-ingestion-runtime-wiring-design.md",
   "docs/superpowers/plans/2026-07-06-ingestion-runtime-wiring-implementation.md",
   "docs/superpowers/specs/2026-07-06-legacy-cestus-import-design.md",
-  "docs/superpowers/plans/2026-07-06-legacy-cestus-import-implementation.md"
+  "docs/superpowers/plans/2026-07-06-legacy-cestus-import-implementation.md",
+  "docs/superpowers/specs/2026-07-06-operator-workspace-status-import-bridge-design.md",
+  "docs/superpowers/plans/2026-07-06-operator-workspace-status-import-bridge-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
