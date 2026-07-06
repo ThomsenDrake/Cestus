@@ -6,7 +6,7 @@
 - Branch: `codex/ingestion-runtime-wiring-design`
 - Worktree: `/home/drake/.codex/worktrees/15cc/Cestus`
 - Claimed at: 2026-07-06T12:44:08Z
-- Status: claimed
+- Status: in-progress
 
 ## Owned Files
 
