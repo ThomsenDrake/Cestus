@@ -1,14 +1,23 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { join, resolve } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { formatWorkspaceOpsJson, workspaceOpsEnvelopeSchema } from "../src/contracts.js";
 import { NodeWorkspaceFileSystem, type WorkspaceFileSystem, type WorkspaceStats } from "../src/filesystem.js";
 import {
   provisionalWorkspaceLayoutContractVersion,
   resolveWorkspaceLayout
 } from "../src/layout.js";
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 class RecordingReadOnlyFs implements WorkspaceFileSystem {
   readonly files = new Map<string, string>();
@@ -247,5 +256,36 @@ describe("resolveWorkspaceLayout", () => {
     } finally {
       rmSync(rootPath, { recursive: true, force: true });
     }
+  });
+});
+
+describe("resolveWorkspaceLayout canonical portable workspace binding", () => {
+  it("resolves a workspace created by the canonical workspace package", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "cestus-ops-canonical-"));
+    tempDirs.push(rootDir);
+    createPortableWorkspace({
+      rootDir,
+      workspaceId: "ws_ops_canonical_001",
+      label: "Ops Canonical Fixture",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "workspace-ops-test"
+    });
+
+    const result = await resolveWorkspaceLayout({ rootPath: rootDir }, new NodeWorkspaceFileSystem());
+
+    expect(result.status).toBe("ready");
+    expect(result.workspace).toMatchObject({
+      workspaceId: "ws_ops_canonical_001",
+      label: "Ops Canonical Fixture",
+      manifestVersion: 1
+    });
+    expect(result.layout).toMatchObject({
+      rootPath: resolve(rootDir),
+      ledgerPath: join(resolve(rootDir), "ledger", "ontology.sqlite"),
+      blobRoot: join(resolve(rootDir), "blobs"),
+      derivativeRoot: join(resolve(rootDir), "derivatives"),
+      jobRoot: join(resolve(rootDir), "jobs"),
+      projectionRoot: join(resolve(rootDir), "projections")
+    });
   });
 });

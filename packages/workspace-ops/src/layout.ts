@@ -24,11 +24,49 @@ const provisionalWorkspaceManifestSchema = z.object({
   version: z.literal(1)
 }).strict();
 
+const canonicalPortableWorkspaceManifestSchema = z.object({
+  version: z.literal(1),
+  layoutVersion: z.literal(1),
+  workspaceId: z.string().regex(/^ws_[a-zA-Z0-9_-]+$/),
+  label: secretSafeWorkspaceTextSchema,
+  createdAt: z.string().datetime(),
+  createdBy: secretSafeWorkspaceTextSchema,
+  coreVersion: secretSafeWorkspaceTextSchema,
+  description: secretSafeWorkspaceTextSchema.optional()
+}).strict();
+
 export type ProvisionalWorkspaceManifest = z.output<typeof provisionalWorkspaceManifestSchema>;
 
+type WorkspaceManifestIdentity = {
+  readonly workspaceId: string;
+  readonly label: string;
+  readonly version: 1;
+};
+
 export function parseProvisionalWorkspaceManifest(value: unknown): ProvisionalWorkspaceManifest | undefined {
+  return parseStrictProvisionalWorkspaceManifest(value) ?? parseCanonicalPortableWorkspaceManifestIdentity(value);
+}
+
+export function parseWorkspaceManifestIdentity(value: unknown): WorkspaceManifestIdentity | undefined {
+  return parseCanonicalPortableWorkspaceManifestIdentity(value) ?? parseStrictProvisionalWorkspaceManifest(value);
+}
+
+function parseStrictProvisionalWorkspaceManifest(value: unknown): ProvisionalWorkspaceManifest | undefined {
   const manifest = provisionalWorkspaceManifestSchema.safeParse(value);
   return manifest.success ? manifest.data : undefined;
+}
+
+function parseCanonicalPortableWorkspaceManifestIdentity(value: unknown): WorkspaceManifestIdentity | undefined {
+  const manifest = canonicalPortableWorkspaceManifestSchema.safeParse(value);
+  if (!manifest.success) {
+    return undefined;
+  }
+
+  return {
+    workspaceId: manifest.data.workspaceId,
+    label: manifest.data.label,
+    version: manifest.data.version
+  };
 }
 
 export interface ResolveWorkspaceLayoutInput {
@@ -309,9 +347,9 @@ async function safeRealpath(
 async function readProvisionalManifest(
   fileSystem: WorkspaceFileSystem,
   manifestPath: string
-): Promise<ProvisionalWorkspaceManifest | "unreadable"> {
+): Promise<WorkspaceManifestIdentity | "unreadable"> {
   try {
-    return parseProvisionalWorkspaceManifest(JSON.parse(await fileSystem.readText(manifestPath))) ?? "unreadable";
+    return parseWorkspaceManifestIdentity(JSON.parse(await fileSystem.readText(manifestPath))) ?? "unreadable";
   } catch {
     return "unreadable";
   }
