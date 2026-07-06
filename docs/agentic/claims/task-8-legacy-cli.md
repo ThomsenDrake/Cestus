@@ -4,7 +4,7 @@ Plan: `docs/superpowers/plans/2026-07-06-legacy-cestus-import-implementation.md`
 Task: Task 8: Add Legacy CLI DTO Handlers
 Branch: `codex/legacy-cestus-import`
 Worktree: `/home/drake/.codex/worktrees/9b5f/Cestus`
-Status: ready-for-review
+Status: approved
 Claimed-at: 2026-07-06T16:05:42Z
 Worker: Codex implementation worker
 
@@ -24,6 +24,11 @@ Worker: Codex implementation worker
 - Review-fix red targeted test: `npm test -- packages/ingestion/test/legacy-cli.test.ts packages/ingestion/test/cli.test.ts` failed because malformed `legacy-report-json` did not throw.
 - Review-fix green targeted test: `npm test -- packages/ingestion/test/legacy-cli.test.ts packages/ingestion/test/cli.test.ts` passed with 2 test files and 5 tests.
 - Review-fix full verification: `npm run verify` passed with typecheck, 77 test files and 629 tests, UI build, and factory readiness.
+
+## Review Gate
+
+- Spec review: approved at 2026-07-06T16:22:38Z; no blocking issues after DTO validation.
+- Code-quality review: approved at 2026-07-06T16:22:38Z; no Critical, Important, or Minor issues remaining.
 
 ## Self-Review
 
