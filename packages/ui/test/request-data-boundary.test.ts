@@ -23,9 +23,7 @@ describe("Requests data boundary", () => {
     /^node:/,
     /^node:(?:fs|path)$/,
     nodeRuntimeModulePattern,
-    /^\.\.\/\.\.\/workspace\/src(?:\/.*)?$/,
-    /^\.\.\/\.\.\/workspace-ops\/src(?:\/.*)?$/,
-    /^\.\.\/\.\.\/(?:ingestion|local-runtime|workspace|workspace-ops)(?:\/.*)?$/,
+    /^(?:\.\.\/)+(?:ingestion|local-runtime|workspace|workspace-ops)(?:\/.*)?$/,
     /^packages\/workspace(?:\/.*)?$/,
     /^packages\/workspace-ops(?:\/.*)?$/,
     /^packages\/ingestion(?:\/.*)?$/,
@@ -113,8 +111,16 @@ describe("Requests data boundary", () => {
       "../../workspace-ops/index.js",
       "../../ingestion",
       "../../ingestion/index.js",
+      "../../../local-runtime",
+      "../../../local-runtime/index.js",
+      "../../../workspace",
+      "../../../workspace-ops",
+      "../../../ingestion",
       "fs/promises",
       "path/posix",
+      "util",
+      "events",
+      "assert/strict",
       "node:fs/promises"
     ];
 
@@ -162,7 +168,7 @@ describe("Requests data boundary", () => {
   });
 });
 
-const nodeRuntimeModulePattern = /^(?:fs|path|crypto|child_process|os|sqlite|http|https|stream|url|buffer|process|module|net|tls|worker_threads)(?:\/.*)?$/;
+const nodeRuntimeModulePattern = /^(?:assert|async_hooks|buffer|child_process|cluster|console|constants|crypto|dgram|diagnostics_channel|dns|domain|events|fs|http|http2|https|inspector|module|net|os|path|perf_hooks|process|punycode|querystring|readline|repl|sqlite|stream|string_decoder|test|timers|tls|trace_events|tty|url|util|v8|vm|wasi|worker_threads|zlib)(?:\/.*)?$/;
 
 function listSourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

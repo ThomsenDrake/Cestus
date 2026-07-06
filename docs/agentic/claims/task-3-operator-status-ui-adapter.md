@@ -33,6 +33,10 @@
 - Code-quality GREEN targeted test: `npm test -- packages/ui/test/operator-status-adapter.test.ts packages/ui/test/request-data-boundary.test.ts` passed with 2 test files and 18 tests.
 - Code-quality full verification: `npm run verify` passed with typecheck, 96 test files and 850 tests, UI build, and factory readiness.
 - `2026-07-06T22:47:37Z`: Status remains ready-for-review after making the operator status adapter fail closed and hardening relative package-level UI boundary checks.
+- Spec re-review RED targeted test: `npm test -- packages/ui/test/request-data-boundary.test.ts` failed because `../../../local-runtime` was not rejected after adding deeper relative package imports and additional Node builtin examples.
+- Spec re-review GREEN targeted test: `npm test -- packages/ui/test/operator-status-adapter.test.ts packages/ui/test/request-data-boundary.test.ts` passed with 2 test files and 18 tests.
+- Spec re-review full verification: `npm run verify` passed with typecheck, 96 test files and 850 tests, UI build, and factory readiness.
+- `2026-07-06T22:53:22Z`: Status remains ready-for-review after closing deeper relative import and broader Node builtin boundary gaps.
 
 ## Self-Review
 
@@ -41,5 +45,5 @@
 - Runtime failures, non-2xx JSON, invalid JSON, and invalid DTO payloads become runtime-unavailable DTOs with redacted diagnostics.
 - Runtime-unavailable fallback construction now normalizes invalid timestamps, redacts bare secret phrases, and has a final schema-safe fallback DTO.
 - Static adapter returns frozen cloned DTOs so test callers cannot mutate future loads.
-- Boundary checks now reject package-level local-runtime/workspace/workspace-ops/ingestion imports, Node builtin subpaths, and preserve the allowed operator-status contract import.
+- Boundary checks now reject package-level local-runtime/workspace/workspace-ops/ingestion imports at any parent depth, common bare Node builtins and subpaths, and preserve the allowed operator-status contract import.
 - No PRR send, legal escalation, workspace repair, canonical mutation, or portable workspace duplication behavior was added.
