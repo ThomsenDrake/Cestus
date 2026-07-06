@@ -308,6 +308,45 @@ describe("verifyWorkspace", () => {
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });
 
+  it("reports stale resolved layouts when the manifest gains extra fields", async () => {
+    const fileSystem = new MemoryWorkspaceFs();
+    const layoutShape = addResolvedWorkspace(fileSystem);
+    const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
+    fileSystem.files.set(
+      layoutShape.manifestPath,
+      JSON.stringify({
+        workspaceId: "ws_ops_001",
+        label: "Ops Fixture",
+        version: 1,
+        extraField: "not part of the provisional contract"
+      })
+    );
+
+    const result = await verifyWorkspace({
+      layout,
+      fileSystem,
+      eventReader: { readAll: async () => [validEvent] }
+    });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload?.manifest).toMatchObject({ readable: true, valid: false });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_workspace_manifest_unavailable",
+        category: "manifest"
+      })
+    );
+    expect(result.proposedActions).toContainEqual(
+      expect.objectContaining({
+        kind: "rerun-verify",
+        mutatesCanonicalState: false
+      })
+    );
+    expect(JSON.stringify(result)).not.toContain("extraField");
+    expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
   it("reports blob subtree unreadability as proposed-only canonical repair", async () => {
     const fileSystem = new MemoryWorkspaceFs();
     const layoutShape = addResolvedWorkspace(fileSystem);
