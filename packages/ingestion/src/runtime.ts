@@ -1,15 +1,22 @@
 import { fileURLToPath } from "node:url";
 import type { z } from "zod";
 import { actorRefSchema } from "../../ontology/src/contracts.js";
+import { IngestionImportService } from "./import-service.js";
 import { LocalFilesystemScanner } from "./local-filesystem.js";
 import type { MountedWorkspace } from "./mount-contract.js";
-import { buildIngestionProjection } from "./projection.js";
+import {
+  buildIngestionProjection,
+  type IngestionOccurrenceSummary,
+  type IngestionProjection
+} from "./projection.js";
 import { buildIngestionReviewDto } from "./read-api.js";
 import {
   stableIngestionError,
+  type IngestionImportResultDto,
   type IngestionRuntimeResult
 } from "./runtime-types.js";
 import { IngestionSourceRegistry } from "./source-registry.js";
+import { materializeApprovedOccurrences } from "./source-materializer.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
 type IngestionReview = ReturnType<typeof buildIngestionReviewDto>;
@@ -29,6 +36,19 @@ export interface RegisterSourceInput {
 export interface DryRunScanInput {
   readonly sourceCollectionId: string;
   readonly scanBatchId: string;
+}
+
+export interface ApproveRawImportInput {
+  readonly sourceCollectionId: string;
+  readonly scanBatchId: string;
+  readonly importBatchId: string;
+  readonly approvedBy: string;
+}
+
+export interface ImportApprovedInput {
+  readonly sourceCollectionId: string;
+  readonly scanBatchId: string;
+  readonly importBatchId: string;
 }
 
 export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
@@ -115,19 +135,133 @@ export function createIngestionRuntime(input: CreateIngestionRuntimeInput) {
       } catch {
         return runtimeInternalError("dry-run");
       }
+    },
+
+    async approveRawImport(command: ApproveRawImportInput): Promise<IngestionRuntimeResult<{
+      review: IngestionReview;
+      eventIds: string[];
+    }>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "write");
+      if (!workspace.ok) {
+        return workspace;
+      }
+
+      const projection = await projectionFor(workspace.workspace);
+      if (!projection.sources.has(command.sourceCollectionId)) {
+        return sourceNotRegisteredError(command.sourceCollectionId);
+      }
+      if (completedScanFor(projection, command.sourceCollectionId, command.scanBatchId) === undefined) {
+        return scanRequiredError();
+      }
+
+      try {
+        const service = new IngestionImportService({
+          ledger: workspace.workspace.ledger,
+          blobStore: workspace.workspace.blobStore,
+          actor: input.actor
+        });
+        const event = await service.approveImport(command);
+
+        return {
+          ok: true,
+          review: await reviewFor(workspace.workspace, command.sourceCollectionId),
+          eventIds: [event.id]
+        };
+      } catch {
+        return runtimeInternalError("raw import approval");
+      }
+    },
+
+    async importApproved(command: ImportApprovedInput): Promise<IngestionRuntimeResult<IngestionImportResultDto>> {
+      const workspace = requireMountedWorkspace(input.mountedWorkspace, "write");
+      if (!workspace.ok) {
+        return workspace;
+      }
+      if (!workspace.workspace.capabilities.canWriteBlobs) {
+        return workspaceNotWritableError();
+      }
+
+      const projection = await projectionFor(workspace.workspace);
+      const source = projection.sources.get(command.sourceCollectionId);
+      if (source === undefined) {
+        return sourceNotRegisteredError(command.sourceCollectionId);
+      }
+      if (approvalFor(projection, command) === undefined) {
+        return stableIngestionError({
+          code: "INGESTION_IMPORT_APPROVAL_REQUIRED",
+          message: "Raw import approval is required before import execution.",
+          allowedRepairActions: ["approve the raw import batch", "retry import"]
+        });
+      }
+      if (completedScanFor(projection, command.sourceCollectionId, command.scanBatchId) === undefined) {
+        return scanRequiredError();
+      }
+
+      const rootDir = rootDirFromRegisteredSource(source.rootUri, "import");
+      if (!rootDir.ok) {
+        return rootDir;
+      }
+
+      const materialized = materializeApprovedOccurrences({
+        sourceRoot: rootDir.rootDir,
+        sourceCollectionId: command.sourceCollectionId,
+        scanBatchId: command.scanBatchId,
+        importBatchId: command.importBatchId,
+        occurrences: occurrencesForScan(projection, command.sourceCollectionId, command.scanBatchId)
+      });
+
+      if (!materialized.ok) {
+        return { ok: false, error: materialized.error };
+      }
+
+      const beforeEvents = await workspace.workspace.ledger.readAll();
+
+      try {
+        const service = new IngestionImportService({
+          ledger: workspace.workspace.ledger,
+          blobStore: workspace.workspace.blobStore,
+          actor: input.actor
+        });
+        const result = await service.importApprovedOccurrences({
+          sourceCollectionId: command.sourceCollectionId,
+          scanBatchId: command.scanBatchId,
+          importBatchId: command.importBatchId,
+          occurrences: materialized.occurrences.map((occurrence) => ({
+            occurrenceId: occurrence.occurrenceId,
+            content: occurrence.content,
+            sourcePath: occurrence.sourcePath,
+            mediaType: occurrence.mediaType
+          }))
+        });
+        const afterEvents = await workspace.workspace.ledger.readAll();
+
+        return {
+          ok: true,
+          importBatchId: command.importBatchId,
+          totals: result.totals,
+          review: await reviewFor(workspace.workspace, command.sourceCollectionId),
+          eventIds: eventIdsAddedAfter(beforeEvents, afterEvents)
+        };
+      } catch {
+        return runtimeInternalError("import");
+      }
     }
   };
 }
 
+async function projectionFor(workspace: MountedWorkspace): Promise<IngestionProjection> {
+  return buildIngestionProjection(await workspace.ledger.readAll());
+}
+
 async function reviewFor(workspace: MountedWorkspace, sourceCollectionId: string): Promise<IngestionReview> {
   return buildIngestionReviewDto(
-    buildIngestionProjection(await workspace.ledger.readAll()),
+    await projectionFor(workspace),
     sourceCollectionId
   );
 }
 
 async function sourceFor(workspace: MountedWorkspace, sourceCollectionId: string) {
-  return buildIngestionProjection(await workspace.ledger.readAll()).sources.get(sourceCollectionId);
+  return (await projectionFor(workspace)).sources.get(sourceCollectionId);
 }
 
 function requireMountedWorkspace(
@@ -143,29 +277,24 @@ function requireMountedWorkspace(
   }
 
   if (!workspace.capabilities.canReadLedger) {
-    return stableIngestionError({
-      code: "INGESTION_WORKSPACE_NOT_WRITABLE",
-      message: "Mounted workspace is not readable/writable for ingestion.",
-      allowedRepairActions: ["remount the workspace read-write", "retry the ingestion action"]
-    });
+    return workspaceNotWritableError();
   }
 
   if (mode === "write" && (!workspace.capabilities.canAppendLedger || !workspace.capabilities.canWriteJobState)) {
-    return stableIngestionError({
-      code: "INGESTION_WORKSPACE_NOT_WRITABLE",
-      message: "Mounted workspace is not readable/writable for ingestion.",
-      allowedRepairActions: ["remount the workspace read-write", "retry the ingestion action"]
-    });
+    return workspaceNotWritableError();
   }
 
   return { ok: true, workspace };
 }
 
-function rootDirFromRegisteredSource(rootUri: string): IngestionRuntimeResult<{ rootDir: string }> {
+function rootDirFromRegisteredSource(
+  rootUri: string,
+  action: RuntimeAction = "dry-run"
+): IngestionRuntimeResult<{ rootDir: string }> {
   try {
     return { ok: true, rootDir: fileURLToPath(rootUri) };
   } catch {
-    return runtimeInternalError("dry-run");
+    return runtimeInternalError(action);
   }
 }
 
@@ -184,12 +313,93 @@ async function scanEventIdsFor(
   return streamBelongsToRequestedScan ? events.map((event) => event.id) : [];
 }
 
-function runtimeInternalError(action: "dry-run" | "source registration"): IngestionRuntimeResult<never> {
+function completedScanFor(
+  projection: IngestionProjection,
+  sourceCollectionId: string,
+  scanBatchId: string
+) {
+  const scan = projection.scans.get(scanBatchId);
+  return scan?.sourceCollectionId === sourceCollectionId && scan.state === "completed" ? scan : undefined;
+}
+
+function approvalFor(
+  projection: IngestionProjection,
+  input: Pick<ApproveRawImportInput, "sourceCollectionId" | "scanBatchId" | "importBatchId">
+) {
+  const approval = projection.importApprovals.get(input.importBatchId);
+  return approval?.sourceCollectionId === input.sourceCollectionId && approval.scanBatchId === input.scanBatchId
+    ? approval
+    : undefined;
+}
+
+function occurrencesForScan(
+  projection: IngestionProjection,
+  sourceCollectionId: string,
+  scanBatchId: string
+) {
+  const scan = projection.scans.get(scanBatchId);
+  return (scan?.occurrenceIds ?? [])
+    .map((occurrenceId) => projection.occurrencesById.get(occurrenceId))
+    .filter((occurrence): occurrence is IngestionOccurrenceSummary =>
+      occurrence !== undefined &&
+      occurrence.sourceCollectionId === sourceCollectionId &&
+      occurrence.scanBatchId === scanBatchId
+    );
+}
+
+function eventIdsAddedAfter(
+  beforeEvents: Awaited<ReturnType<MountedWorkspace["ledger"]["readAll"]>>,
+  afterEvents: Awaited<ReturnType<MountedWorkspace["ledger"]["readAll"]>>
+): string[] {
+  const beforeIds = new Set(beforeEvents.map((event) => event.id));
+  return afterEvents
+    .filter((event) => !beforeIds.has(event.id))
+    .map((event) => event.id);
+}
+
+function sourceNotRegisteredError(sourceCollectionId: string): IngestionRuntimeResult<never> {
+  return stableIngestionError({
+    code: "INGESTION_SOURCE_NOT_REGISTERED",
+    message: `Source collection ${sourceCollectionId} is not registered.`,
+    allowedRepairActions: ["register the source collection", "retry dry-run"]
+  });
+}
+
+function scanRequiredError(): IngestionRuntimeResult<never> {
+  return stableIngestionError({
+    code: "INGESTION_SCAN_REQUIRED",
+    message: "A completed dry-run scan is required before raw import approval or execution.",
+    allowedRepairActions: ["run a dry-run scan", "retry the ingestion action"]
+  });
+}
+
+function workspaceNotWritableError(): IngestionRuntimeResult<never> {
+  return stableIngestionError({
+    code: "INGESTION_WORKSPACE_NOT_WRITABLE",
+    message: "Mounted workspace is not readable/writable for ingestion.",
+    allowedRepairActions: ["remount the workspace read-write", "retry the ingestion action"]
+  });
+}
+
+type RuntimeAction = "dry-run" | "source registration" | "raw import approval" | "import";
+
+function runtimeInternalError(action: RuntimeAction): IngestionRuntimeResult<never> {
   return stableIngestionError({
     code: "INGESTION_RUNTIME_INTERNAL",
     message: `Ingestion runtime could not complete the requested ${action}.`,
-    allowedRepairActions: action === "dry-run"
-      ? ["verify the registered source", "retry dry-run", "inspect runtime diagnostics"]
-      : ["verify the source registration input", "retry source registration", "inspect runtime diagnostics"]
+    allowedRepairActions: repairActionsFor(action)
   });
+}
+
+function repairActionsFor(action: RuntimeAction): string[] {
+  switch (action) {
+    case "dry-run":
+      return ["verify the registered source", "retry dry-run", "inspect runtime diagnostics"];
+    case "source registration":
+      return ["verify the source registration input", "retry source registration", "inspect runtime diagnostics"];
+    case "raw import approval":
+      return ["verify the completed scan", "retry raw import approval", "inspect runtime diagnostics"];
+    case "import":
+      return ["verify the approved import batch", "retry import", "inspect runtime diagnostics"];
+  }
 }
