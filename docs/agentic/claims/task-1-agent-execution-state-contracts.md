@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/b770/Cestus`
 
 Claimed at: `2026-07-07T15:11:00Z`
 
-Status: `blocked`
+Status: `in-progress`
 
 Owned files:
 
@@ -48,3 +48,16 @@ Blocker summary:
 Next unblock condition:
 
 - Resume this task after the resident-agent foundation plan lands the `packages/agent` projection, provider, tool-gateway, and secret-safety modules, or after the implementation plan is revised to remove that prerequisite without weakening the factory invariants.
+
+Resume recorded at: `2026-07-07T15:45:00Z`
+
+Resume summary:
+
+- `packages/agent/src/projection.ts` is present.
+- `packages/agent/src/projection-types.ts` is present.
+- `packages/agent/src/tool-gateway.ts` is present.
+- `packages/agent/src/provider.ts` is present.
+- `packages/agent/src/secret-safety.ts` is present.
+- `packages/local-runtime/src/agent-runtime-factory.ts` is present.
+- `packages/ui/src/agent/agent-adapter.ts` is present.
+- Active base includes `origin/neo` at `5c8a4e9`, which merged the resident-agent foundation.
