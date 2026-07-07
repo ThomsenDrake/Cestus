@@ -14,6 +14,30 @@ export interface HttpAgentAdapterOptions {
 
 const eventIdsSchema = z.array(z.string().min(1));
 const optionalEventIdsSchema = eventIdsSchema.default([]);
+const agentFailureCategorySchema = z.enum([
+  "provider-unavailable",
+  "credential-missing",
+  "credential-revoked",
+  "approval-required",
+  "approval-stale",
+  "permission-denied",
+  "secret-detected",
+  "legal-lock-active",
+  "projection-lag",
+  "provenance-missing",
+  "model-output-invalid",
+  "external-effect-failed"
+]);
+const agentToolApprovalClassSchema = z.enum([
+  "none",
+  "human-review",
+  "provider-byte-transfer",
+  "external-message-send",
+  "export-or-publication",
+  "destructive-or-repair",
+  "legal-escalation",
+  "ledger-review"
+]);
 
 const identitySchema = z.object({
   residentAgentId: z.string().min(1),
@@ -93,7 +117,7 @@ const runSchema = z.object({
   toolRequestIds: z.array(z.string().min(1)),
   completedAt: z.string().datetime().optional(),
   failedAt: z.string().datetime().optional(),
-  failureCategory: z.string().min(1).optional(),
+  failureCategory: agentFailureCategorySchema.optional(),
   failureMessage: z.string().min(1).optional(),
   retryable: z.boolean().optional(),
   allowedActions: z.array(z.string().min(1)),
@@ -125,16 +149,7 @@ const toolRequestSchema = z.object({
     "destructive-or-repair",
     "legal-escalation"
   ]),
-  requiredApprovalClass: z.enum([
-    "none",
-    "human-review",
-    "provider-byte-transfer",
-    "external-message-send",
-    "export-or-publication",
-    "destructive-or-repair",
-    "legal-escalation",
-    "ledger-review"
-  ]),
+  requiredApprovalClass: agentToolApprovalClassSchema,
   previewHash: z.string().min(1),
   scope: z.string().min(1),
   estimatedEffect: z.string().min(1),
@@ -144,7 +159,7 @@ const toolRequestSchema = z.object({
   inputArtifactHashes: z.array(z.string().min(1)),
   approvedBy: z.string().min(1).optional(),
   approvedPreviewHash: z.string().min(1).optional(),
-  approvalClass: z.string().min(1).optional(),
+  approvalClass: agentToolApprovalClassSchema.optional(),
   approvalRationale: z.string().min(1).optional(),
   approvedAt: z.string().datetime().optional(),
   deniedBy: z.string().min(1).optional(),
@@ -156,7 +171,7 @@ const toolRequestSchema = z.object({
   readModelChanges: z.array(readModelChangeSchema),
   resultSummary: z.string().min(1).optional(),
   failedAt: z.string().datetime().optional(),
-  failureCategory: z.string().min(1).optional(),
+  failureCategory: agentFailureCategorySchema.optional(),
   failureMessage: z.string().min(1).optional(),
   retryable: z.boolean().optional(),
   allowedActions: z.array(z.string().min(1)),
@@ -337,7 +352,10 @@ export function safeAgentText(text: string): string {
     .replace(/bearer\s+[A-Za-z0-9._~+/=-]+/gi, "[redacted credential]")
     .replace(/sk[-_](?:live|test|proj)[-_][A-Za-z0-9_-]+/gi, "[redacted credential]")
     .replace(/(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+/gi, "[redacted credential]")
-    .replace(/[A-Z][A-Z0-9_]*(?:API_KEY|TOKEN|SECRET|PRIVATE_KEY|CLIENT_SECRET|ACCESS_KEY_ID)[A-Z0-9_]*/g, "[redacted credential]")
+    .replace(
+      /\b(?=[A-Za-z0-9_]*_)(?=[A-Za-z0-9_]*(?:api_key|token|secret|password|credentials|private_key|client_secret|access_key_id))[A-Za-z0-9_]+\b/gi,
+      "[redacted credential]"
+    )
     .replace(
       /\b(?:password|passwd|secret|token|oauth[_-]?token|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|client[_-]?secret|credential|credentials)\s*[:=]\s*[^\s,;]+/gi,
       "[redacted credential]"

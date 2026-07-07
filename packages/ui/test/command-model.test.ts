@@ -138,7 +138,7 @@ describe("CommandBoardViewModel", () => {
         providers: [
           {
             providerId: "provider_openai",
-            label: "OpenAI sk-live-provider OPENAI_API_KEY",
+            label: "OpenAI sk-live-provider OPENAI_API_KEY DATABASE_PASSWORD GOOGLE_APPLICATION_CREDENTIALS",
             adapterVersion: "openai-adapter.v1",
             endpointKind: "openai-api",
             modelFamilies: ["gpt-4.1"],
@@ -152,14 +152,14 @@ describe("CommandBoardViewModel", () => {
           {
             taskId: "task_sk_live_task",
             residentAgentId: "agent_default",
-            title: "Review ghp_task and OPENAI_API_KEY",
+            title: "Review ghp_task, OPENAI_API_KEY, DATABASE_PASSWORD, and GOOGLE_APPLICATION_CREDENTIALS",
             requestedBy: "actor_case_owner",
             priority: "normal",
             status: "waiting-for-approval",
             createdAt: "2026-07-07T21:00:00.000Z",
-            sourceEventIds: ["evt_OPENAI_API_KEY"],
+            sourceEventIds: ["evt_DATABASE_PASSWORD"],
             inputArtifactHashes: [],
-            eventIds: ["evt_sk-live_task"],
+            eventIds: ["evt_GOOGLE_APPLICATION_CREDENTIALS"],
             causationIds: []
           }
         ],
@@ -189,16 +189,16 @@ describe("CommandBoardViewModel", () => {
         ],
         locks: [
           {
-            lockId: "lock_OPENAI_API_KEY",
+            lockId: "lock_OPENAI_API_KEY_DATABASE_PASSWORD",
             residentAgentId: "agent_default",
             kind: "secret",
             activatedBy: "actor_case_owner",
             reason: "Secret-shaped runtime note.",
             activatedAt: "2026-07-07T21:00:00.000Z",
-            relatedEventIds: ["evt_lock_ghp_related"],
+            relatedEventIds: ["evt_lock_GOOGLE_APPLICATION_CREDENTIALS"],
             state: "active",
             clearRelatedEventIds: [],
-            eventIds: ["evt_lock_sk_live_event"],
+            eventIds: ["evt_lock_DATABASE_PASSWORD"],
             causationIds: []
           }
         ],
@@ -207,7 +207,9 @@ describe("CommandBoardViewModel", () => {
       })
     });
 
-    expect(JSON.stringify(model.agentBrief)).not.toMatch(/sk-live|sk_live|ghp_|OPENAI_API_KEY/i);
+    expect(JSON.stringify(model.agentBrief)).not.toMatch(
+      /sk-live|sk_live|ghp_|OPENAI_API_KEY|DATABASE_PASSWORD|GOOGLE_APPLICATION_CREDENTIALS/i
+    );
   });
 });
 

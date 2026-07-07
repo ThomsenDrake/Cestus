@@ -48,6 +48,29 @@ describe("agent app integration", () => {
       "Refresh agent status"
     ]);
   });
+
+  it("does not carry selected Command decision rail controls into the Agent module", async () => {
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={createStaticAgentAdapter(agentStatus())}
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Select Miami-Dade Aviation Department stalling signal" }));
+    expect(screen.getByRole("button", { name: "Back to agent brief" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+
+    const workspace = await screen.findByRole("region", { name: "Resident agent workspace" });
+    expect(screen.queryByRole("button", { name: "Back to agent brief" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Decision rail" })).not.toBeInTheDocument();
+    expect(within(workspace).getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
+      "Refresh agent status"
+    ]);
+  });
 });
 
 function agentStatus(): AgentStatusDto {
