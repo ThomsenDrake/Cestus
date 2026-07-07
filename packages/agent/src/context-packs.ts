@@ -24,6 +24,7 @@ export interface ContextPackRef {
   readonly contextPackId: string;
   readonly version: number;
   readonly contentHash: string;
+  readonly sizeBytes: number;
   readonly generatedAt: string;
   readonly safeSummary: string;
   readonly provenanceRefs: readonly string[];
@@ -64,6 +65,8 @@ const contextPackIdSchema = z.string()
   .superRefine((value, ctx) => addSecretSafeIssue(value, "contextPackId", ctx));
 const agentSecretSafeTextSchema = (label: string) => z.string().min(1)
   .superRefine((value, ctx) => addSecretSafeIssue(value, label, ctx));
+const provenanceRefsSchema = z.array(agentSecretSafeTextSchema("provenanceRef"))
+  .min(1, { message: "provenanceRefs must not be empty" });
 
 const contextPackDescriptorObjectSchema = z.object({
   contextPackId: contextPackIdSchema,
@@ -79,9 +82,10 @@ const contextPackRefObjectSchema = z.object({
   contextPackId: contextPackIdSchema,
   version: z.number().int().positive(),
   contentHash: contentHashSchema,
+  sizeBytes: z.number().int().nonnegative(),
   generatedAt: z.string().datetime(),
   safeSummary: agentSecretSafeTextSchema("safeSummary"),
-  provenanceRefs: z.array(agentSecretSafeTextSchema("provenanceRef")),
+  provenanceRefs: provenanceRefsSchema,
   projectionHighWaterMark: z.number().int().nonnegative().optional()
 }).strict();
 
@@ -91,7 +95,7 @@ const buildContextPackRefInputObjectSchema = z.object({
   generatedAt: z.string().datetime(),
   payload: z.custom<AgentContextPackJsonValue>((value) => value !== undefined, { message: "payload is required" }),
   safeSummary: agentSecretSafeTextSchema("safeSummary"),
-  provenanceRefs: z.array(agentSecretSafeTextSchema("provenanceRef")),
+  provenanceRefs: provenanceRefsSchema,
   projectionHighWaterMark: z.number().int().nonnegative().optional()
 }).strict();
 
@@ -116,20 +120,18 @@ export const contextPackRefSchema = z.unknown()
   });
 
 export function hashAgentContextPack(value: unknown): string {
-  const normalized = normalizeJsonDtoValue(value, "$");
-  const json = JSON.stringify(normalized);
-  const digest = createHash("sha256").update(json).digest("hex");
-
-  return `sha256:${digest}`;
+  return hashStableJson(stableJsonForAgentContextPack(value));
 }
 
 export function buildContextPackRef(input: BuildContextPackRefInput): ContextPackRef {
   const parsed = parseNormalizedDtoOrThrow(input, buildContextPackRefInputObjectSchema, "$");
-  const contentHash = hashAgentContextPack(parsed.payload);
+  const payloadJson = stringifyJsonDtoValue(parsed.payload);
+  const contentHash = hashStableJson(payloadJson);
   const ref = {
     contextPackId: parsed.contextPackId,
     version: parsed.version,
     contentHash,
+    sizeBytes: Buffer.byteLength(payloadJson, "utf8"),
     generatedAt: parsed.generatedAt,
     safeSummary: parsed.safeSummary,
     provenanceRefs: parsed.provenanceRefs,
@@ -159,10 +161,7 @@ export function createContextPackRegistry(): ContextPackRegistry {
     },
 
     async build(contextPackId: string): Promise<ContextPackRef> {
-      if (typeof contextPackId !== "string") {
-        throw new Error("contextPackId must be a string");
-      }
-      assertAgentSecretSafeText(contextPackId, "contextPackId");
+      assertSafeContextPackLookupId(contextPackId);
       const builder = builders.get(contextPackId);
       if (builder === undefined) {
         throw new Error(`Context pack ${contextPackId} is not registered`);
@@ -175,11 +174,18 @@ export function createContextPackRegistry(): ContextPackRegistry {
       if (ref.version !== builder.descriptor.version) {
         throw new Error(`Context pack ${contextPackId} builder returned version ${ref.version}`);
       }
+      if (ref.provenanceRefs.length === 0) {
+        throw new Error(`Context pack ${contextPackId} returned no provenanceRefs`);
+      }
+      if (ref.sizeBytes > builder.descriptor.maxBytes) {
+        throw new Error(`Context pack ${contextPackId} exceeds maxBytes ${builder.descriptor.maxBytes}: ${ref.sizeBytes} bytes`);
+      }
 
       return ref;
     },
 
     getDescriptor(contextPackId: string): ContextPackDescriptor | undefined {
+      assertSafeContextPackLookupId(contextPackId);
       return builders.get(contextPackId)?.descriptor;
     },
 
@@ -197,6 +203,32 @@ export function createContextPackRegistry(): ContextPackRegistry {
       });
     }
   });
+}
+
+function assertSafeContextPackLookupId(contextPackId: unknown): asserts contextPackId is string {
+  if (typeof contextPackId !== "string") {
+    throw new Error("contextPackId must be a string");
+  }
+  assertAgentSecretSafeText(contextPackId, "contextPackId");
+}
+
+function stableJsonForAgentContextPack(value: unknown): string {
+  return stringifyJsonDtoValue(normalizeJsonDtoValue(value, "$"));
+}
+
+function stringifyJsonDtoValue(value: AgentContextPackJsonValue): string {
+  const json = JSON.stringify(value);
+  if (json === undefined) {
+    throw new Error("$ must be JSON DTO-safe");
+  }
+
+  return json;
+}
+
+function hashStableJson(json: string): string {
+  const digest = createHash("sha256").update(json).digest("hex");
+
+  return `sha256:${digest}`;
 }
 
 function addSecretSafeIssue(value: string, label: string, ctx: z.RefinementCtx): void {
@@ -373,6 +405,7 @@ function freezeContextPackRef(ref: z.infer<typeof contextPackRefObjectSchema>): 
     contextPackId: ref.contextPackId,
     version: ref.version,
     contentHash: ref.contentHash,
+    sizeBytes: ref.sizeBytes,
     generatedAt: ref.generatedAt,
     safeSummary: ref.safeSummary,
     provenanceRefs: Object.freeze([...ref.provenanceRefs])
