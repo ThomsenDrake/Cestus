@@ -6,6 +6,16 @@ export * from "./runtime.js";
 export * from "./runtime-types.js";
 export * from "./secret-safety.js";
 export {
+  createCredentialReference,
+  credentialKindSchema as credentialReferenceKindSchema,
+  credentialReferenceSchema,
+  credentialReferenceStatusSchema,
+  type CredentialKind as CredentialReferenceKind,
+  type CredentialReference,
+  type CredentialReferenceStatus
+} from "./credential-reference.js";
+export * from "./secret-store.js";
+export {
   approvedAgentSpecialistRunTypes,
   specialistExecutionStatusFor,
   type AgentSpecialistRunType
