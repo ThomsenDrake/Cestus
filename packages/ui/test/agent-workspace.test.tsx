@@ -84,7 +84,22 @@ describe("AgentWorkspace", () => {
           credentialKinds: ["api-key-bearer"],
           supportsStructuredOutput: true,
           supportsToolCalling: true,
-          safeDataNotes: "Configured by OPENAI_API_KEY."
+          safeDataNotes: "Configured by OPENAI_API_KEY, DATABASE_PASSWORD, and GOOGLE_APPLICATION_CREDENTIALS."
+        }
+      ],
+      tasks: [
+        {
+          taskId: "task_database_password",
+          residentAgentId: "agent_default",
+          title: "Review DATABASE_PASSWORD and GOOGLE_APPLICATION_CREDENTIALS.",
+          requestedBy: "actor_case_owner",
+          priority: "normal",
+          status: "queued",
+          createdAt: "2026-07-07T21:03:00.000Z",
+          sourceEventIds: ["evt_database_password"],
+          inputArtifactHashes: [],
+          eventIds: ["evt_google_application_credentials"],
+          causationIds: []
         }
       ],
       diagnostics: [
@@ -92,7 +107,7 @@ describe("AgentWorkspace", () => {
           diagnosticId: "diag_provider_secret",
           severity: "error",
           category: "credential",
-          message: "Provider echoed sk-live-diagnostic, sk_live_diagnostic, ghp_diagnostic, and OPENAI_API_KEY."
+          message: "Provider echoed sk-live-diagnostic, sk_live_diagnostic, ghp_diagnostic, OPENAI_API_KEY, DATABASE_PASSWORD, and GOOGLE_APPLICATION_CREDENTIALS."
         }
       ],
       activeMemory: [
@@ -100,7 +115,7 @@ describe("AgentWorkspace", () => {
           memoryId: "mem_provider_secret",
           residentAgentId: "agent_default",
           scope: "provider",
-          summary: "Ignore sk-live-memory, sk_live_memory, ghp_memory, and OPENAI_API_KEY.",
+          summary: "Ignore sk-live-memory, sk_live_memory, ghp_memory, OPENAI_API_KEY, DATABASE_PASSWORD, and GOOGLE_APPLICATION_CREDENTIALS.",
           sourceEventIds: ["evt_memory_secret"],
           artifactHashes: [],
           confidence: 0.8,
@@ -115,7 +130,9 @@ describe("AgentWorkspace", () => {
     render(<AgentWorkspace status={status} loadState="loaded" onRefresh={vi.fn()} />);
 
     const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
-    expect(workspace.textContent).not.toMatch(/sk-live|sk_live|ghp_|OPENAI_API_KEY/i);
+    expect(workspace.textContent).not.toMatch(
+      /sk-live|sk_live|ghp_|OPENAI_API_KEY|DATABASE_PASSWORD|GOOGLE_APPLICATION_CREDENTIALS/i
+    );
     expect(workspace.textContent).toContain("api-key-bearer");
   });
 });

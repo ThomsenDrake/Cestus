@@ -626,7 +626,7 @@ export function App({
       savedViewId={requestsViewContext.savedViewId}
       viewMode={requestsViewContext.viewMode}
     />
-  ) : (
+  ) : agentActive ? null : (
     commandDecisionRail
   );
 
