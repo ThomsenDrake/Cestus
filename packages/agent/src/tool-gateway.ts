@@ -148,7 +148,7 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
           approvedAt: input.now()
         }
       };
-      return appendToolEvent(input.ledger, event);
+      return appendToolEvent(input.ledger, event, nextToolRequestAppendOptions(state));
     },
 
     async denyTool(command: DenyAgentToolInput) {
@@ -175,7 +175,7 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
           approvalClass: state.request.payload.requiredApprovalClass
         }
       };
-      return appendToolEvent(input.ledger, event);
+      return appendToolEvent(input.ledger, event, nextToolRequestAppendOptions(state));
     },
 
     async completeTool(command: CompleteAgentToolInput) {
@@ -222,7 +222,7 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
           resultSummary
         }
       };
-      return appendToolEvent(input.ledger, event);
+      return appendToolEvent(input.ledger, event, nextToolRequestAppendOptions(state));
     },
 
     async failTool(command: FailAgentToolInput) {
@@ -250,7 +250,7 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
           allowedActions: [...command.allowedActions]
         }
       };
-      return appendToolEvent(input.ledger, event);
+      return appendToolEvent(input.ledger, event, nextToolRequestAppendOptions(state));
     }
   };
 }
@@ -327,7 +327,7 @@ type ToolRequestEvent =
 async function assertNewToolRequest(ledger: EventLedger, toolRequestId: string): Promise<void> {
   const events = await ledger.readStream(toolRequestStreamId(toolRequestId));
   if (events.some((event) => event.type === "agent.tool.requested")) {
-    throw new Error(`Tool request ${toolRequestId} already exists; create a new toolRequestId for a changed preview.`);
+    throw new Error("Tool request already exists; create a new toolRequestId for a changed preview.");
   }
 }
 
@@ -336,7 +336,7 @@ async function readToolRequestState(ledger: EventLedger, toolRequestId: string):
   const request = events.find((event): event is KnowledgeEventOf<"agent.tool.requested"> => event.type === "agent.tool.requested");
 
   if (request === undefined) {
-    throw new Error(`Tool request ${toolRequestId} was not found.`);
+    throw new Error("Tool request was not found.");
   }
 
   const approval = lastOfType(events, "agent.tool.approved");
@@ -352,6 +352,10 @@ async function readToolRequestState(ledger: EventLedger, toolRequestId: string):
     ...(completed === undefined ? {} : { completed }),
     ...(failure === undefined ? {} : { failure })
   };
+}
+
+function nextToolRequestAppendOptions(state: ToolRequestState): AppendOptions {
+  return { expectedNextSequence: state.latest.sequence + 1 };
 }
 
 function isToolRequestEvent(event: unknown): event is ToolRequestEvent {
