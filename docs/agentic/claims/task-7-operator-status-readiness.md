@@ -6,7 +6,7 @@
 - Branch: `codex/operator-workspace-status-import-bridge`
 - Worktree: `/home/drake/.codex/worktrees/7234/Cestus`
 - Claimed at: `2026-07-07T00:11:52Z`
-- Status: claimed
+- Status: in-progress
 
 ## Owned Files
 
@@ -18,3 +18,4 @@
 ## Notes
 
 - The operator bridge spec and plan were already added to `scripts/check-agent-readiness.mjs` and `packages/ui/test/request-data-boundary.test.ts` during the approved planning checkpoint.
+- `2026-07-07T00:12:10Z`: Status moved to in-progress before updating implementation evidence.
