@@ -41,9 +41,11 @@ export interface BuildContextPackRefInput {
   readonly projectionHighWaterMark?: number;
 }
 
+export type ContextPackBuilderResult = ContextPackRef | BuildContextPackRefInput;
+
 export interface ContextPackBuilder {
   readonly descriptor: ContextPackDescriptor;
-  build(): ContextPackRef | Promise<ContextPackRef>;
+  build(): ContextPackBuilderResult | Promise<ContextPackBuilderResult>;
 }
 
 export interface ContextPackRegistrySnapshot {
@@ -67,6 +69,7 @@ const agentSecretSafeTextSchema = (label: string) => z.string().min(1)
   .superRefine((value, ctx) => addSecretSafeIssue(value, label, ctx));
 const provenanceRefsSchema = z.array(agentSecretSafeTextSchema("provenanceRef"))
   .min(1, { message: "provenanceRefs must not be empty" });
+const builtContextPackRefs = new WeakSet<object>();
 
 const contextPackDescriptorObjectSchema = z.object({
   contextPackId: contextPackIdSchema,
@@ -138,18 +141,27 @@ export function buildContextPackRef(input: BuildContextPackRefInput): ContextPac
     ...(parsed.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: parsed.projectionHighWaterMark })
   };
 
-  return contextPackRefSchema.parse(ref);
+  const parsedRef = contextPackRefSchema.parse(ref);
+  builtContextPackRefs.add(parsedRef);
+
+  return parsedRef;
 }
 
 export function createContextPackRegistry(): ContextPackRegistry {
   const builders = new Map<string, {
     readonly descriptor: ContextPackDescriptor;
-    readonly build: () => ContextPackRef | Promise<ContextPackRef>;
+    readonly build: () => ContextPackBuilderResult | Promise<ContextPackBuilderResult>;
   }>();
 
   return Object.freeze({
     register(builder: ContextPackBuilder): void {
-      const descriptor = contextPackDescriptorSchema.parse(builder.descriptor);
+      const descriptorInput = builder.descriptor;
+      const duplicateContextPackId = extractContextPackIdForDuplicateCheck(descriptorInput);
+      if (duplicateContextPackId !== undefined && builders.has(duplicateContextPackId)) {
+        throw new Error(`Context pack ${duplicateContextPackId} is already registered`);
+      }
+
+      const descriptor = contextPackDescriptorSchema.parse(descriptorInput);
       if (builders.has(descriptor.contextPackId)) {
         throw new Error(`Context pack ${descriptor.contextPackId} is already registered`);
       }
@@ -167,7 +179,7 @@ export function createContextPackRegistry(): ContextPackRegistry {
         throw new Error(`Context pack ${contextPackId} is not registered`);
       }
 
-      const ref = contextPackRefSchema.parse(await builder.build());
+      const ref = normalizeContextPackBuilderResult(await builder.build());
       if (ref.contextPackId !== builder.descriptor.contextPackId) {
         throw new Error(`Context pack ${contextPackId} builder returned ref for ${ref.contextPackId}`);
       }
@@ -203,6 +215,49 @@ export function createContextPackRegistry(): ContextPackRegistry {
       });
     }
   });
+}
+
+function extractContextPackIdForDuplicateCheck(descriptor: unknown): string | undefined {
+  if (typeof descriptor !== "object" || descriptor === null) {
+    return undefined;
+  }
+
+  const contextPackIdDescriptor = Object.getOwnPropertyDescriptor(descriptor, "contextPackId");
+  if (
+    contextPackIdDescriptor === undefined ||
+    !contextPackIdDescriptor.enumerable ||
+    !("value" in contextPackIdDescriptor) ||
+    typeof contextPackIdDescriptor.value !== "string"
+  ) {
+    return undefined;
+  }
+
+  return contextPackIdDescriptor.value;
+}
+
+function normalizeContextPackBuilderResult(result: ContextPackBuilderResult): ContextPackRef {
+  if (isBuiltContextPackRef(result)) {
+    return result;
+  }
+
+  if (looksLikeUntrustedContextPackRef(result)) {
+    throw new Error("Context pack builder returned an untrusted context pack ref; use buildContextPackRef(...) or return raw build input");
+  }
+
+  return buildContextPackRef(result);
+}
+
+function isBuiltContextPackRef(value: unknown): value is ContextPackRef {
+  return typeof value === "object" && value !== null && builtContextPackRefs.has(value);
+}
+
+function looksLikeUntrustedContextPackRef(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  return Object.getOwnPropertyDescriptor(value, "contentHash") !== undefined ||
+    Object.getOwnPropertyDescriptor(value, "sizeBytes") !== undefined;
 }
 
 function assertSafeContextPackLookupId(contextPackId: unknown): asserts contextPackId is string {
