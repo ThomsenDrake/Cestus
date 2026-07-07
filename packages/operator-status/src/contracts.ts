@@ -45,7 +45,7 @@ const forbiddenCommandPatterns = [
   /\b(?:accept|approve)\b.*\b(?:legacy|ontology|assertion|truth)\b/i,
   /\b(?:legacy|ontology|assertion|truth)\b.*\b(?:accept|approve)\b/i,
   /\bcestus(?:-ingest)?\s+(?:ingest\s+)?(?:approve-import|import)\b/i,
-  /\bcestus\s+agent\s+(?:(?:approve|deny|execute|invoke|send|export)(?:[-\s][a-z0-9_-]+)?|provider[-\s]?transfer|transfer[-\s]?provider)\b/i,
+  /\bcestus\s+agent\s+(?:(?:approve|deny|execute|invoke|send|export|external-message)(?:[-\s][a-z0-9_-]+)?|provider[-\s]?transfer|transfer[-\s]?provider)\b/i,
   /\bagent\s+tool\b.*\b(?:approve|deny|execute|run|invoke)\b/i,
   /\b(?:approve|deny|execute|run|invoke)\b.*\bagent\s+tool\b/i,
   /\bagent\b.*\bprovider\b.*\b(?:invoke|run|execute|send|transfer|upload)\b/i,
