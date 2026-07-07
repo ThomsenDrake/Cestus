@@ -373,4 +373,72 @@ describe("agent context packs", () => {
       provenanceRefs: ["evt_agent_task"]
     });
   });
+
+  it("checks duplicate registration before touching duplicate build properties", () => {
+    const registry = createContextPackRegistry();
+    const descriptor = {
+      contextPackId: "task-run-history.v1",
+      version: 1,
+      label: "Task and run history",
+      maxBytes: 16_384,
+      requiredProvenanceKinds: ["event-id"],
+      redactionPolicy: "safe-summary",
+      sourceProjection: "agent.projection"
+    };
+    registry.register({
+      descriptor,
+      async build() {
+        return buildContextPackRef({
+          contextPackId: "task-run-history.v1",
+          version: 1,
+          generatedAt: "2026-07-07T22:00:00.000Z",
+          payload: { events: ["evt_agent_task"] },
+          safeSummary: "Original registered builder.",
+          provenanceRefs: ["evt_agent_task"]
+        });
+      }
+    });
+
+    let getterInvoked = false;
+    const duplicateBuilder = { descriptor } as unknown as {
+      descriptor: typeof descriptor;
+      build(): ReturnType<typeof buildContextPackRef>;
+    };
+    Object.defineProperty(duplicateBuilder, "build", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        throw new Error("duplicate build getter invoked");
+      }
+    });
+
+    expect(() => registry.register(duplicateBuilder)).toThrow("Context pack task-run-history.v1 is already registered");
+    expect(getterInvoked).toBe(false);
+  });
+
+  it("rejects non-primitive registry lookup ids without invoking coercion hooks", async () => {
+    const registry = createContextPackRegistry();
+    let coercionInvoked = false;
+    const nonPrimitive = {
+      [Symbol.toPrimitive]() {
+        coercionInvoked = true;
+        return "task-run-history.v1";
+      },
+      toString() {
+        coercionInvoked = true;
+        return "task-run-history.v1";
+      }
+    };
+
+    let thrown: unknown;
+    try {
+      await registry.build(nonPrimitive as unknown as string);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toMatch(/contextPackId/i);
+    expect(coercionInvoked).toBe(false);
+  });
 });
