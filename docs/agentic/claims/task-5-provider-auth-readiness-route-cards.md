@@ -12,7 +12,18 @@ Worktree: `/home/drake/.codex/worktrees/8f27/Cestus`
 
 Claimed at: `2026-07-07T23:15:36Z`
 
-Status: `in-progress`
+Status: `ready-for-review`
+
+Review evidence:
+
+- Spec compliance re-review approved at `8b1e48c`.
+- Code-quality re-review approved at `8b1e48c`.
+- Targeted verification: `npm test -- packages/local-runtime/test/agent-provider-readiness-routes.test.ts packages/ui/test/agent-provider-setup-cards.test.ts packages/ui/test/agent-adapter.test.ts` passed with 19 tests.
+- Full verification: `npm run verify` passed with typecheck, 125 test files / 1163 tests, Vite build, and factory readiness.
+
+Non-blocking follow-up note:
+
+- A reviewer suggested future stricter handling for `action_*` values in diagnostic `relatedSafeIds`; no active returned action or credential-leak path was found in this slice.
 
 Owned files:
 
