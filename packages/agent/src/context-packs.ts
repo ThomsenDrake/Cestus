@@ -61,9 +61,14 @@ export interface ContextPackRegistry {
   snapshot(): ContextPackRegistrySnapshot;
 }
 
-const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+const contentHashPattern = /^sha256:[a-f0-9]{64}$/;
+const contextPackIdPattern = /^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)*\.v[1-9][0-9]*$/;
+const contextPackVersionSuffixPattern = /\.v([1-9][0-9]*)$/;
+const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
+const evidenceIdPattern = /^ev_[a-zA-Z0-9_-]+$/;
+const contentHashSchema = z.string().regex(contentHashPattern);
 const contextPackIdSchema = z.string()
-  .regex(/^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)*\.v[1-9][0-9]*$/)
+  .regex(contextPackIdPattern)
   .superRefine((value, ctx) => addSecretSafeIssue(value, "contextPackId", ctx));
 const agentSecretSafeTextSchema = (label: string) => z.string().min(1)
   .superRefine((value, ctx) => addSecretSafeIssue(value, label, ctx));
@@ -79,7 +84,7 @@ const contextPackDescriptorObjectSchema = z.object({
   requiredProvenanceKinds: z.array(agentSecretSafeTextSchema("requiredProvenanceKind")).min(1),
   redactionPolicy: agentSecretSafeTextSchema("redactionPolicy"),
   sourceProjection: agentSecretSafeTextSchema("sourceProjection")
-}).strict();
+}).strict().superRefine((value, ctx) => addContextPackVersionMatchIssue(value, ctx));
 
 const contextPackRefObjectSchema = z.object({
   contextPackId: contextPackIdSchema,
@@ -90,7 +95,7 @@ const contextPackRefObjectSchema = z.object({
   safeSummary: agentSecretSafeTextSchema("safeSummary"),
   provenanceRefs: provenanceRefsSchema,
   projectionHighWaterMark: z.number().int().nonnegative().optional()
-}).strict();
+}).strict().superRefine((value, ctx) => addContextPackVersionMatchIssue(value, ctx));
 
 const buildContextPackRefInputObjectSchema = z.object({
   contextPackId: contextPackIdSchema,
@@ -100,7 +105,7 @@ const buildContextPackRefInputObjectSchema = z.object({
   safeSummary: agentSecretSafeTextSchema("safeSummary"),
   provenanceRefs: provenanceRefsSchema,
   projectionHighWaterMark: z.number().int().nonnegative().optional()
-}).strict();
+}).strict().superRefine((value, ctx) => addContextPackVersionMatchIssue(value, ctx));
 
 export const contextPackDescriptorSchema = z.unknown()
   .transform((value, ctx): ContextPackDescriptor => {
@@ -192,6 +197,7 @@ export function createContextPackRegistry(): ContextPackRegistry {
       if (ref.sizeBytes > builder.descriptor.maxBytes) {
         throw new Error(`Context pack ${contextPackId} exceeds maxBytes ${builder.descriptor.maxBytes}: ${ref.sizeBytes} bytes`);
       }
+      assertRequiredProvenanceKinds(contextPackId, builder.descriptor, ref);
 
       return ref;
     },
@@ -265,6 +271,58 @@ function assertSafeContextPackLookupId(contextPackId: unknown): asserts contextP
     throw new Error("contextPackId must be a string");
   }
   assertAgentSecretSafeText(contextPackId, "contextPackId");
+  if (!contextPackIdPattern.test(contextPackId)) {
+    throw new Error("contextPackId must be a valid context pack ID");
+  }
+}
+
+function addContextPackVersionMatchIssue(
+  value: { readonly contextPackId: string; readonly version: number },
+  ctx: z.RefinementCtx
+): void {
+  const suffixVersion = contextPackVersionFromId(value.contextPackId);
+  if (suffixVersion !== undefined && suffixVersion !== value.version) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["version"],
+      message: "contextPackId version suffix must match version"
+    });
+  }
+}
+
+function contextPackVersionFromId(contextPackId: string): number | undefined {
+  const match = contextPackVersionSuffixPattern.exec(contextPackId);
+  if (match?.[1] === undefined) {
+    return undefined;
+  }
+
+  return Number(match[1]);
+}
+
+function assertRequiredProvenanceKinds(
+  contextPackId: string,
+  descriptor: ContextPackDescriptor,
+  ref: ContextPackRef
+): void {
+  for (const kind of descriptor.requiredProvenanceKinds) {
+    if (!ref.provenanceRefs.some((provenanceRef) => satisfiesRequiredProvenanceKind(kind, provenanceRef))) {
+      throw new Error(`Context pack ${contextPackId} is missing required provenance kind ${kind}`);
+    }
+  }
+}
+
+function satisfiesRequiredProvenanceKind(kind: string, provenanceRef: string): boolean {
+  switch (kind) {
+    case "event-id":
+      return eventIdPattern.test(provenanceRef);
+    case "content-hash":
+    case "artifact-hash":
+      return contentHashPattern.test(provenanceRef);
+    case "evidence-id":
+      return evidenceIdPattern.test(provenanceRef);
+    default:
+      return provenanceRef.startsWith(`${kind}:`) && provenanceRef.length > kind.length + 1;
+  }
 }
 
 function stableJsonForAgentContextPack(value: unknown): string {
