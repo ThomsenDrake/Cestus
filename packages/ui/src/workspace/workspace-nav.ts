@@ -10,7 +10,7 @@ export const workspaceModules: readonly WorkspaceModule[] = Object.freeze([
   { id: "requests", label: "Requests", href: "#requests", preview: false },
   { id: "evidence", label: "Evidence", href: "#evidence", preview: false },
   { id: "ontology", label: "Ontology", href: "#ontology", preview: false },
-  { id: "agents", label: "Agents Preview", href: "#agents", preview: true },
+  { id: "agents", label: "Agent", href: "#agents", preview: false },
   { id: "ingestion", label: "Ingestion", href: "#ingestion", preview: false },
   { id: "settings", label: "Settings", href: "#settings", preview: false }
 ]);

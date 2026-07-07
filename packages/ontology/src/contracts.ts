@@ -8,9 +8,11 @@ const secretSafeStringSchema = z.string().refine((value) => !credentialShapedTex
 
 export const actorRefSchema = z.object({
   id: secretSafeStringSchema.min(3),
-  kind: z.enum(["human", "extractor", "system"]),
+  kind: z.enum(["human", "extractor", "system", "agent"]),
   label: secretSafeStringSchema.min(1)
 }).strict();
+
+export type ActorRef = z.infer<typeof actorRefSchema>;
 
 export const eventContextSchema = z.object({
   actor: actorRefSchema,
@@ -121,6 +123,394 @@ const occurrenceIdSchema = z.string().regex(/^occ_[a-zA-Z0-9_-]+$/);
 const parseJobIdSchema = z.string().regex(/^parse_[a-zA-Z0-9_-]+$/);
 const providerJobIdSchema = z.string().regex(/^provider_[a-zA-Z0-9_-]+$/);
 const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+const eventIdSchema = z.string().regex(/^evt_[a-zA-Z0-9_-]+$/);
+const actorIdSchema = secretSafeStringSchema.min(3);
+const secretLikeIdFragmentPattern =
+  /(?:^|[_-])(?:sk[_-](?:live|test|proj)|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?[_-]|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])/i;
+
+function agentSecretSafeIdSchema(pattern: RegExp) {
+  return secretSafeStringSchema.regex(pattern).refine((value) => !secretLikeIdFragmentPattern.test(value), {
+    message: "must not contain secret-looking ID fragments"
+  });
+}
+
+const agentSecretSafeRelatedIdSchema = secretSafeStringSchema.min(1).refine(
+  (value) => !secretLikeIdFragmentPattern.test(value),
+  { message: "must not contain secret-looking ID fragments" }
+);
+
+const residentAgentIdSchema = agentSecretSafeIdSchema(/^agent_[a-zA-Z0-9_-]+$/);
+const agentPolicyIdSchema = agentSecretSafeIdSchema(/^agent_policy_[a-zA-Z0-9_-]+$/);
+const agentWorkspaceIdSchema = agentSecretSafeIdSchema(/^ws_[a-zA-Z0-9_-]+$/);
+const agentTaskIdSchema = agentSecretSafeIdSchema(/^task_[a-zA-Z0-9_-]+$/);
+const agentRunIdSchema = agentSecretSafeIdSchema(/^run_[a-zA-Z0-9_-]+$/);
+const agentRunStepIdSchema = agentSecretSafeIdSchema(/^step_[a-zA-Z0-9_-]+$/);
+const agentToolRequestIdSchema = agentSecretSafeIdSchema(/^toolreq_[a-zA-Z0-9_-]+$/);
+const agentMemoryIdSchema = agentSecretSafeIdSchema(/^mem_[a-zA-Z0-9_-]+$/);
+const agentPermissionIdSchema = agentSecretSafeIdSchema(/^perm_[a-zA-Z0-9_-]+$/);
+const agentLockIdSchema = agentSecretSafeIdSchema(/^lock_[a-zA-Z0-9_-]+$/);
+const agentProviderIdSchema = agentSecretSafeIdSchema(/^provider_[a-zA-Z0-9_-]+$/);
+const agentCredentialRefIdSchema = agentSecretSafeIdSchema(/^agent_credref_[a-zA-Z0-9_-]+$/);
+const agentInvocationIdSchema = agentSecretSafeIdSchema(/^inv_[a-zA-Z0-9_-]+$/);
+const agentArtifactHashSchema = contentHashSchema;
+const agentTaskStatusSchema = z.enum([
+  "queued",
+  "running",
+  "waiting-for-approval",
+  "blocked",
+  "completed",
+  "failed",
+  "canceled"
+]);
+const agentSpecialistRunTypeSchema = z.enum([
+  "ontology-bootstrap",
+  "prr-negotiation",
+  "evidence-triage",
+  "timeline-builder",
+  "contradiction-finder",
+  "investigation-planner",
+  "report-builder"
+]);
+const agentCredentialKindSchema = z.enum([
+  "api-key-bearer",
+  "workload-identity-token",
+  "subscription-oauth",
+  "device-code-oauth",
+  "local-no-secret",
+  "mtls-certificate",
+  "enterprise-gateway"
+]);
+const agentToolSideEffectClassSchema = z.enum([
+  "read-only",
+  "local-derivative",
+  "ledger-proposal",
+  "ledger-review",
+  "external-byte-transfer",
+  "external-message-send",
+  "export-or-publication",
+  "destructive-or-repair",
+  "legal-escalation"
+]);
+const agentToolApprovalClassSchema = z.enum([
+  "none",
+  "human-review",
+  "provider-byte-transfer",
+  "external-message-send",
+  "export-or-publication",
+  "destructive-or-repair",
+  "legal-escalation",
+  "ledger-review"
+]);
+type AgentToolSideEffectClass = z.infer<typeof agentToolSideEffectClassSchema>;
+type AgentToolApprovalClass = z.infer<typeof agentToolApprovalClassSchema>;
+
+const agentApprovalClassesBySideEffectClass: Record<AgentToolSideEffectClass, readonly AgentToolApprovalClass[]> = {
+  "read-only": ["none", "human-review"],
+  "local-derivative": ["none", "human-review"],
+  "ledger-proposal": ["none", "human-review"],
+  "ledger-review": ["ledger-review"],
+  "external-byte-transfer": ["provider-byte-transfer"],
+  "external-message-send": ["external-message-send"],
+  "export-or-publication": ["export-or-publication"],
+  "destructive-or-repair": ["destructive-or-repair"],
+  "legal-escalation": ["legal-escalation"]
+};
+
+function agentApprovalClassMatchesSideEffect(
+  sideEffectClass: AgentToolSideEffectClass,
+  approvalClass: AgentToolApprovalClass
+): boolean {
+  return agentApprovalClassesBySideEffectClass[sideEffectClass].includes(approvalClass);
+}
+
+const agentTaskPrioritySchema = z.enum(["low", "normal", "high", "urgent"]);
+const agentMemoryScopeSchema = z.enum(["workspace", "investigation", "task", "provider", "policy"]);
+const agentFailureCategorySchema = z.enum([
+  "provider-unavailable",
+  "credential-missing",
+  "credential-revoked",
+  "approval-required",
+  "approval-stale",
+  "permission-denied",
+  "secret-detected",
+  "legal-lock-active",
+  "projection-lag",
+  "provenance-missing",
+  "model-output-invalid",
+  "external-effect-failed"
+]);
+const agentLockKindSchema = z.enum([
+  "legal-escalation",
+  "export",
+  "secret",
+  "governance",
+  "data-loss",
+  "provider-byte-transfer"
+]);
+const agentSourceEventIdsSchema = z.array(eventIdSchema);
+const agentArtifactHashesSchema = z.array(agentArtifactHashSchema);
+const agentSafeActionsSchema = z.array(secretSafeTextSchema).min(1);
+const agentReadModelChangeSchema = z.object({
+  projectionName: secretSafeStringSchema.min(1),
+  change: secretSafeTextSchema,
+  relatedIds: z.array(agentSecretSafeRelatedIdSchema).optional()
+}).strict();
+
+const agentIdentityInitializedPayloadSchema = z.object({
+  residentAgentId: residentAgentIdSchema,
+  workspaceId: agentWorkspaceIdSchema,
+  label: secretSafeTextSchema,
+  policyId: agentPolicyIdSchema,
+  initializedBy: actorIdSchema,
+  allowedRunTypes: z.array(agentSpecialistRunTypeSchema).optional(),
+  memoryProjectionVersion: secretSafeStringSchema.min(1).optional()
+}).strict();
+
+const agentIdentityUpdatedPayloadSchema = z.object({
+  residentAgentId: residentAgentIdSchema,
+  updatedBy: actorIdSchema,
+  rationale: secretSafeTextSchema,
+  label: secretSafeTextSchema.optional(),
+  policyId: agentPolicyIdSchema.optional(),
+  allowedRunTypes: z.array(agentSpecialistRunTypeSchema).optional(),
+  previousEventId: eventIdSchema.optional()
+}).strict();
+
+const agentPolicyInstalledPayloadSchema = z.object({
+  policyId: agentPolicyIdSchema,
+  residentAgentId: residentAgentIdSchema,
+  version: secretSafeStringSchema.min(1),
+  installedBy: actorIdSchema,
+  humanGatedActionClasses: z.array(agentToolSideEffectClassSchema).min(1),
+  allowedRunTypes: z.array(agentSpecialistRunTypeSchema).min(1),
+  credentialKinds: z.array(agentCredentialKindSchema).min(1),
+  rationale: secretSafeTextSchema
+}).strict();
+
+const agentTaskCreatedPayloadSchema = z.object({
+  taskId: agentTaskIdSchema,
+  residentAgentId: residentAgentIdSchema,
+  title: secretSafeTextSchema,
+  requestedBy: actorIdSchema,
+  priority: agentTaskPrioritySchema,
+  description: secretSafeTextSchema.optional(),
+  sourceEventIds: agentSourceEventIdsSchema.optional(),
+  inputArtifactHashes: agentArtifactHashesSchema.optional()
+}).strict();
+
+const agentTaskStatusChangedPayloadSchema = z.object({
+  taskId: agentTaskIdSchema,
+  status: agentTaskStatusSchema,
+  changedBy: actorIdSchema,
+  reason: secretSafeTextSchema.optional(),
+  runId: agentRunIdSchema.optional()
+}).strict();
+
+const agentSpecialistRunStartedPayloadSchema = z.object({
+  runId: agentRunIdSchema,
+  residentAgentId: residentAgentIdSchema,
+  runType: agentSpecialistRunTypeSchema,
+  startedBy: actorIdSchema,
+  taskId: agentTaskIdSchema.optional(),
+  workspaceId: agentWorkspaceIdSchema.optional(),
+  investigationId: secretSafeStringSchema.min(3).optional(),
+  sourceEventIds: agentSourceEventIdsSchema.optional(),
+  inputArtifactHashes: agentArtifactHashesSchema.optional()
+}).strict();
+
+const agentSpecialistRunStepRecordedPayloadSchema = z.object({
+  runId: agentRunIdSchema,
+  stepId: agentRunStepIdSchema,
+  summary: secretSafeTextSchema,
+  sourceEventIds: agentSourceEventIdsSchema.optional(),
+  inputArtifactHashes: agentArtifactHashesSchema.optional(),
+  outputArtifactHashes: agentArtifactHashesSchema.optional(),
+  invocationId: agentInvocationIdSchema.optional(),
+  toolRequestId: agentToolRequestIdSchema.optional()
+}).strict();
+
+const agentSpecialistRunCompletedPayloadSchema = z.object({
+  runId: agentRunIdSchema,
+  completedAt: z.string().datetime(),
+  outputArtifactHashes: agentArtifactHashesSchema,
+  relatedEventIds: agentSourceEventIdsSchema.optional(),
+  summary: secretSafeTextSchema.optional()
+}).strict();
+
+const agentSpecialistRunFailedPayloadSchema = z.object({
+  runId: agentRunIdSchema,
+  failedAt: z.string().datetime(),
+  category: agentFailureCategorySchema,
+  message: secretSafeTextSchema,
+  retryable: z.boolean(),
+  allowedActions: agentSafeActionsSchema,
+  relatedEventIds: agentSourceEventIdsSchema.optional(),
+  toolRequestId: agentToolRequestIdSchema.optional()
+}).strict();
+
+const agentModelInvocationRequestedPayloadSchema = z.object({
+  invocationId: agentInvocationIdSchema,
+  runId: agentRunIdSchema,
+  providerId: agentProviderIdSchema,
+  modelFamily: secretSafeStringSchema.min(1),
+  inputArtifactHash: agentArtifactHashSchema,
+  safetyClass: z.enum(["workspace-safe", "public-safe", "sensitive-local-only", "provider-approved"]),
+  credentialRefId: agentCredentialRefIdSchema.optional(),
+  credentialKind: agentCredentialKindSchema.optional()
+}).strict();
+
+const agentModelInvocationCompletedPayloadSchema = z.object({
+  invocationId: agentInvocationIdSchema,
+  runId: agentRunIdSchema,
+  providerId: agentProviderIdSchema,
+  outputArtifactHash: agentArtifactHashSchema,
+  completedAt: z.string().datetime(),
+  modelFamily: secretSafeStringSchema.min(1).optional(),
+  usage: z.object({
+    inputTokens: z.number().int().nonnegative().optional(),
+    outputTokens: z.number().int().nonnegative().optional(),
+    totalTokens: z.number().int().nonnegative().optional()
+  }).strict().optional()
+}).strict();
+
+const agentModelInvocationFailedPayloadSchema = z.object({
+  invocationId: agentInvocationIdSchema,
+  runId: agentRunIdSchema,
+  providerId: agentProviderIdSchema,
+  category: agentFailureCategorySchema,
+  message: secretSafeTextSchema,
+  retryable: z.boolean(),
+  allowedActions: agentSafeActionsSchema
+}).strict();
+
+const agentToolRequestedPayloadSchema = z.object({
+  toolRequestId: agentToolRequestIdSchema,
+  runId: agentRunIdSchema,
+  toolId: secretSafeStringSchema.min(3),
+  toolVersion: secretSafeStringSchema.min(1),
+  requestedBy: residentAgentIdSchema,
+  sideEffectClass: agentToolSideEffectClassSchema,
+  requiredApprovalClass: agentToolApprovalClassSchema,
+  previewHash: agentArtifactHashSchema,
+  scope: secretSafeTextSchema,
+  estimatedEffect: secretSafeTextSchema,
+  sourceEventIds: agentSourceEventIdsSchema.optional(),
+  inputArtifactHashes: agentArtifactHashesSchema.optional()
+}).strict().superRefine((toolRequest, ctx) => {
+  if (!agentApprovalClassMatchesSideEffect(toolRequest.sideEffectClass, toolRequest.requiredApprovalClass)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["requiredApprovalClass"],
+      message: "requiredApprovalClass must match the sideEffectClass risk"
+    });
+  }
+});
+
+const agentToolApprovedPayloadSchema = z.object({
+  toolRequestId: agentToolRequestIdSchema,
+  approvedBy: actorIdSchema,
+  approvedPreviewHash: agentArtifactHashSchema,
+  approvalClass: agentToolApprovalClassSchema,
+  rationale: secretSafeTextSchema,
+  approvedAt: z.string().datetime().optional()
+}).strict();
+
+const agentToolDeniedPayloadSchema = z.object({
+  toolRequestId: agentToolRequestIdSchema,
+  deniedBy: actorIdSchema,
+  rationale: secretSafeTextSchema,
+  deniedAt: z.string().datetime().optional(),
+  approvalClass: agentToolApprovalClassSchema.optional()
+}).strict();
+
+const agentToolCompletedPayloadSchema = z.object({
+  toolRequestId: agentToolRequestIdSchema,
+  completedAt: z.string().datetime(),
+  eventIds: agentSourceEventIdsSchema,
+  artifactHashes: agentArtifactHashesSchema,
+  readModelChanges: z.array(agentReadModelChangeSchema),
+  resultSummary: secretSafeTextSchema
+}).strict();
+
+const agentToolFailedPayloadSchema = z.object({
+  toolRequestId: agentToolRequestIdSchema,
+  failedAt: z.string().datetime(),
+  category: agentFailureCategorySchema,
+  message: secretSafeTextSchema,
+  retryable: z.boolean(),
+  allowedActions: agentSafeActionsSchema
+}).strict();
+
+const agentMemoryRecordedPayloadSchema = z.object({
+  memoryId: agentMemoryIdSchema,
+  residentAgentId: residentAgentIdSchema,
+  scope: agentMemoryScopeSchema,
+  summary: secretSafeTextSchema,
+  sourceEventIds: agentSourceEventIdsSchema.optional(),
+  artifactHashes: agentArtifactHashesSchema.optional(),
+  confidence: z.number().min(0).max(1),
+  createdAt: z.string().datetime(),
+  expiresAt: z.string().datetime().optional()
+}).strict().superRefine((memory, ctx) => {
+  if ((memory.sourceEventIds?.length ?? 0) === 0 && (memory.artifactHashes?.length ?? 0) === 0) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["sourceEventIds"],
+      message: "memory requires sourceEventIds or artifactHashes provenance"
+    });
+  }
+});
+
+const agentMemorySupersededPayloadSchema = z.object({
+  memoryId: agentMemoryIdSchema,
+  supersededByMemoryId: agentMemoryIdSchema,
+  supersededBy: actorIdSchema,
+  rationale: secretSafeTextSchema,
+  supersededAt: z.string().datetime().optional()
+}).strict();
+
+const agentMemoryRetractedPayloadSchema = z.object({
+  memoryId: agentMemoryIdSchema,
+  retractedBy: actorIdSchema,
+  rationale: secretSafeTextSchema,
+  retractedAt: z.string().datetime().optional()
+}).strict();
+
+const agentPermissionGrantedPayloadSchema = z.object({
+  permissionId: agentPermissionIdSchema,
+  residentAgentId: residentAgentIdSchema,
+  grantedBy: actorIdSchema,
+  scope: secretSafeTextSchema,
+  sideEffectClasses: z.array(agentToolSideEffectClassSchema).min(1),
+  rationale: secretSafeTextSchema,
+  grantedAt: z.string().datetime().optional(),
+  expiresAt: z.string().datetime().optional()
+}).strict();
+
+const agentPermissionRevokedPayloadSchema = z.object({
+  permissionId: agentPermissionIdSchema,
+  revokedBy: actorIdSchema,
+  rationale: secretSafeTextSchema,
+  revokedAt: z.string().datetime().optional()
+}).strict();
+
+const agentLockActivatedPayloadSchema = z.object({
+  lockId: agentLockIdSchema,
+  residentAgentId: residentAgentIdSchema,
+  kind: agentLockKindSchema,
+  activatedBy: actorIdSchema,
+  reason: secretSafeTextSchema,
+  activatedAt: z.string().datetime().optional(),
+  relatedEventIds: agentSourceEventIdsSchema.optional()
+}).strict();
+
+const agentLockClearedPayloadSchema = z.object({
+  lockId: agentLockIdSchema,
+  clearedBy: actorIdSchema,
+  rationale: secretSafeTextSchema,
+  clearedAt: z.string().datetime().optional(),
+  relatedEventIds: agentSourceEventIdsSchema.optional()
+}).strict();
 const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/);
 const legacyReportIdSchema = z.string().regex(/^legacy_report_[a-zA-Z0-9_-]+$/);
 const legacyStagingBatchIdSchema = z.string().regex(/^legacy_stage_[a-zA-Z0-9_-]+$/);
@@ -685,6 +1075,30 @@ export const payloadSchemas = {
   "diagnostic.recorded": diagnosticRecordedPayloadSchema,
   "ontology.pack.installed": ontologyPackInstalledPayloadSchema,
   "projection.checkpointed": projectionCheckpointedPayloadSchema,
+  "agent.identity.initialized": agentIdentityInitializedPayloadSchema,
+  "agent.identity.updated": agentIdentityUpdatedPayloadSchema,
+  "agent.policy.installed": agentPolicyInstalledPayloadSchema,
+  "agent.task.created": agentTaskCreatedPayloadSchema,
+  "agent.task.status.changed": agentTaskStatusChangedPayloadSchema,
+  "agent.specialist-run.started": agentSpecialistRunStartedPayloadSchema,
+  "agent.specialist-run.step.recorded": agentSpecialistRunStepRecordedPayloadSchema,
+  "agent.specialist-run.completed": agentSpecialistRunCompletedPayloadSchema,
+  "agent.specialist-run.failed": agentSpecialistRunFailedPayloadSchema,
+  "agent.model-invocation.requested": agentModelInvocationRequestedPayloadSchema,
+  "agent.model-invocation.completed": agentModelInvocationCompletedPayloadSchema,
+  "agent.model-invocation.failed": agentModelInvocationFailedPayloadSchema,
+  "agent.tool.requested": agentToolRequestedPayloadSchema,
+  "agent.tool.approved": agentToolApprovedPayloadSchema,
+  "agent.tool.denied": agentToolDeniedPayloadSchema,
+  "agent.tool.completed": agentToolCompletedPayloadSchema,
+  "agent.tool.failed": agentToolFailedPayloadSchema,
+  "agent.memory.recorded": agentMemoryRecordedPayloadSchema,
+  "agent.memory.superseded": agentMemorySupersededPayloadSchema,
+  "agent.memory.retracted": agentMemoryRetractedPayloadSchema,
+  "agent.permission.granted": agentPermissionGrantedPayloadSchema,
+  "agent.permission.revoked": agentPermissionRevokedPayloadSchema,
+  "agent.lock.activated": agentLockActivatedPayloadSchema,
+  "agent.lock.cleared": agentLockClearedPayloadSchema,
   "ingestion.source.registered": ingestionSourceRegisteredPayloadSchema,
   "ingestion.scan.started": ingestionScanStartedPayloadSchema,
   "ingestion.scan.completed": ingestionScanCompletedPayloadSchema,
@@ -819,6 +1233,174 @@ export const eventContracts = {
     description: "Records projection high-water mark and rebuild status.",
     agentGuidance: "Use to make projection state inspectable and rebuildable from the ledger.",
     invariants: ["highWaterMark cannot be negative"]
+  },
+  "agent.identity.initialized": {
+    type: "agent.identity.initialized",
+    version: 1,
+    description: "Records the default resident Cestus Agent identity for a workspace.",
+    agentGuidance: "Required provenance fields: residentAgentId, workspaceId, policyId, initializedBy, and context actor. Forbidden autonomous effects: this does not grant permissions, clear locks, or accept graph state.",
+    invariants: ["residentAgentId must route the stream", "workspaceId is required", "identity initialization does not imply provider credentials"]
+  },
+  "agent.identity.updated": {
+    type: "agent.identity.updated",
+    version: 1,
+    description: "Records a reviewed update to resident agent identity metadata or capabilities.",
+    agentGuidance: "Required provenance fields: residentAgentId, updatedBy, rationale, and human context actor. Forbidden autonomous effects: the resident agent must not update its own identity or expand capabilities without human review.",
+    invariants: ["context actor must be human", "residentAgentId must route the stream", "updates are append-only"]
+  },
+  "agent.policy.installed": {
+    type: "agent.policy.installed",
+    version: 1,
+    description: "Records installation of a resident-agent capability policy and gate classes.",
+    agentGuidance: "Required provenance fields: policyId, residentAgentId, installedBy, credentialKinds, allowedRunTypes, and human context actor. Forbidden autonomous effects: policy install must not approve provider byte transfer, PRR sends, export, repair, or legal escalation.",
+    invariants: ["context actor must be human", "policyId must route the stream", "credential kinds are references to allowed auth classes only"]
+  },
+  "agent.task.created": {
+    type: "agent.task.created",
+    version: 1,
+    description: "Records a durable user or workflow task for the resident agent.",
+    agentGuidance: "Required provenance fields: taskId, residentAgentId, requestedBy, priority, and context actor, with sourceEventIds or inputArtifactHashes when available. Forbidden autonomous effects: task creation is not permission to execute external actions.",
+    invariants: ["taskId must route the stream", "priority must be explicit", "tasks do not mutate domain state by themselves"]
+  },
+  "agent.task.status.changed": {
+    type: "agent.task.status.changed",
+    version: 1,
+    description: "Records an append-only status transition for a resident-agent task.",
+    agentGuidance: "Required provenance fields: taskId, status, changedBy, and optional runId when a run caused the transition. Forbidden autonomous effects: status changes must not stand in for approvals or domain events.",
+    invariants: ["taskId must route the stream", "status must use the agent task status set", "terminal status does not delete task history"]
+  },
+  "agent.specialist-run.started": {
+    type: "agent.specialist-run.started",
+    version: 1,
+    description: "Records the start of a specialist workflow under the resident identity.",
+    agentGuidance: "Required provenance fields: runId, residentAgentId, runType, startedBy, and sourceEventIds or inputArtifactHashes when scoped evidence exists. Forbidden autonomous effects: a run start must not import accepted truth, send messages, or transfer provider bytes.",
+    invariants: ["runId must route the stream", "runType must use the approved specialist vocabulary", "providers are not agent identities"]
+  },
+  "agent.specialist-run.step.recorded": {
+    type: "agent.specialist-run.step.recorded",
+    version: 1,
+    description: "Records a summarized reasoning, model, or tool step for a specialist run.",
+    agentGuidance: "Required provenance fields: runId, stepId, summary, and any invocationId, toolRequestId, sourceEventIds, or artifact hashes that caused the step. Forbidden autonomous effects: step records are audit notes, not accepted ontology facts.",
+    invariants: ["runId must route the stream", "summary must be secret-safe", "steps do not bypass tool approval"]
+  },
+  "agent.specialist-run.completed": {
+    type: "agent.specialist-run.completed",
+    version: 1,
+    description: "Records completion of a specialist run with output artifact references.",
+    agentGuidance: "Required provenance fields: runId, completedAt, outputArtifactHashes, and relatedEventIds when domain events were produced. Forbidden autonomous effects: completion must not imply PRR send, legal escalation, export, or accepted graph changes.",
+    invariants: ["runId must route the stream", "outputs are content-addressed", "completion preserves replay order"]
+  },
+  "agent.specialist-run.failed": {
+    type: "agent.specialist-run.failed",
+    version: 1,
+    description: "Records a secret-safe specialist run failure and allowed repair actions.",
+    agentGuidance: "Required provenance fields: runId, failedAt, category, message, retryable, and allowedActions. Forbidden autonomous effects: failure recovery must not clear locks, approve tools, or retry external effects without the required gate.",
+    invariants: ["runId must route the stream", "message must be secret-safe", "allowedActions must be explicit"]
+  },
+  "agent.model-invocation.requested": {
+    type: "agent.model-invocation.requested",
+    version: 1,
+    description: "Records a requested model invocation through a provider adapter.",
+    agentGuidance: "Required provenance fields: invocationId, runId, providerId, modelFamily, inputArtifactHash, safetyClass, and optional credentialRefId. Forbidden autonomous effects: this event does not send bytes unless a separate approved tool or provider gate permits it.",
+    invariants: ["invocationId must route the stream", "credentialRefId must be an ID reference only", "inputArtifactHash must be sha256"]
+  },
+  "agent.model-invocation.completed": {
+    type: "agent.model-invocation.completed",
+    version: 1,
+    description: "Records successful model invocation output and safe usage metadata.",
+    agentGuidance: "Required provenance fields: invocationId, runId, providerId, outputArtifactHash, and completedAt. Forbidden autonomous effects: model output is derivative material and must not become accepted graph state without evidence-backed review.",
+    invariants: ["invocationId must route the stream", "outputArtifactHash must be sha256", "usage metadata must be nonnegative when present"]
+  },
+  "agent.model-invocation.failed": {
+    type: "agent.model-invocation.failed",
+    version: 1,
+    description: "Records a secret-safe model provider failure for a resident-agent run.",
+    agentGuidance: "Required provenance fields: invocationId, runId, providerId, category, retryable, and allowedActions. Forbidden autonomous effects: do not store raw provider errors, credentials, or retry provider calls past approval boundaries.",
+    invariants: ["invocationId must route the stream", "message must be secret-safe", "credential failures expose no secret value"]
+  },
+  "agent.tool.requested": {
+    type: "agent.tool.requested",
+    version: 1,
+    description: "Records a typed resident-agent tool request with side-effect and approval class.",
+    agentGuidance: "Required provenance fields: toolRequestId, runId, toolId, sideEffectClass, requiredApprovalClass, previewHash, scope, estimatedEffect, and source artifacts when available. The exact preview hash binds any later approval; changed previews require a new approval. Forbidden autonomous effects: this request does not execute external byte transfer, messages, export, repair, legal escalation, or accepted graph review.",
+    invariants: ["toolRequestId must route the stream", "previewHash must be sha256", "approval must bind the exact preview hash"]
+  },
+  "agent.tool.approved": {
+    type: "agent.tool.approved",
+    version: 1,
+    description: "Records human approval for a specific resident-agent tool request preview.",
+    agentGuidance: "Required provenance fields: toolRequestId, approvedBy, approvedPreviewHash, approvalClass, rationale, and human context actor. Forbidden autonomous effects: an agent actor must not approve its own tools or broaden approval beyond the bound preview hash.",
+    invariants: ["context actor must be human", "toolRequestId must route the stream", "approvedPreviewHash must match the reviewed preview"]
+  },
+  "agent.tool.denied": {
+    type: "agent.tool.denied",
+    version: 1,
+    description: "Records denial of a resident-agent tool request by a person or policy.",
+    agentGuidance: "Required provenance fields: toolRequestId, deniedBy, and rationale. Forbidden autonomous effects: denial closes or blocks execution by projection and must not delete the original request.",
+    invariants: ["toolRequestId must route the stream", "rationale must be secret-safe", "denial is append-only"]
+  },
+  "agent.tool.completed": {
+    type: "agent.tool.completed",
+    version: 1,
+    description: "Records completed tool execution with returned event and artifact references.",
+    agentGuidance: "Required provenance fields: toolRequestId, completedAt, eventIds, artifactHashes, readModelChanges, and resultSummary. Forbidden autonomous effects: completion may report domain-service results but must not fabricate accepted graph, PRR send, export, repair, or legal events.",
+    invariants: ["toolRequestId must route the stream", "returned event IDs are explicit", "artifact hashes are content-addressed", "readModelChanges relatedIds must be secret-safe"]
+  },
+  "agent.tool.failed": {
+    type: "agent.tool.failed",
+    version: 1,
+    description: "Records secret-safe failure of a resident-agent tool request.",
+    agentGuidance: "Required provenance fields: toolRequestId, failedAt, category, message, retryable, and allowedActions. Forbidden autonomous effects: failed tools must not retry external or destructive side effects without a still-valid gate.",
+    invariants: ["toolRequestId must route the stream", "message must be secret-safe", "allowedActions must be explicit"]
+  },
+  "agent.memory.recorded": {
+    type: "agent.memory.recorded",
+    version: 1,
+    description: "Records scoped durable resident-agent memory with source provenance.",
+    agentGuidance: "Required provenance fields: memoryId, residentAgentId, scope, summary, confidence, createdAt, and sourceEventIds or artifactHashes. Memory is not accepted graph state; forbidden autonomous effects include accepting assertions, resolving entities, or creating relationships from memory alone.",
+    invariants: ["memoryId must route the stream", "sourceEventIds or artifactHashes are required", "memory cannot become accepted graph state"]
+  },
+  "agent.memory.superseded": {
+    type: "agent.memory.superseded",
+    version: 1,
+    description: "Records that a memory item has been replaced by a newer memory item.",
+    agentGuidance: "Required provenance fields: memoryId, supersededByMemoryId, supersededBy, and rationale. Forbidden autonomous effects: supersession changes active memory projections only and must not alter ledger history or graph truth.",
+    invariants: ["memoryId must route the stream", "replacement memory ID is explicit", "superseded memory remains replayable"]
+  },
+  "agent.memory.retracted": {
+    type: "agent.memory.retracted",
+    version: 1,
+    description: "Records removal of a memory item from active projections without deleting history.",
+    agentGuidance: "Required provenance fields: memoryId, retractedBy, and rationale. Forbidden autonomous effects: retraction cannot erase source events, accepted graph state, or prior audit records.",
+    invariants: ["memoryId must route the stream", "rationale must be secret-safe", "history remains append-only"]
+  },
+  "agent.permission.granted": {
+    type: "agent.permission.granted",
+    version: 1,
+    description: "Records a bounded human-granted permission for resident-agent actions.",
+    agentGuidance: "Required provenance fields: permissionId, residentAgentId, grantedBy, sideEffectClasses, rationale, and human context actor. Forbidden autonomous effects: permission grants must not execute tools, send messages, transfer bytes, clear locks, or accept graph state.",
+    invariants: ["context actor must be human", "permissionId must route the stream", "sideEffectClasses must be explicit"]
+  },
+  "agent.permission.revoked": {
+    type: "agent.permission.revoked",
+    version: 1,
+    description: "Records revocation of a resident-agent permission.",
+    agentGuidance: "Required provenance fields: permissionId, revokedBy, rationale, and human context actor. Forbidden autonomous effects: revocation updates projections only and must not delete the original grant event.",
+    invariants: ["context actor must be human", "permissionId must route the stream", "revocation is append-only"]
+  },
+  "agent.lock.activated": {
+    type: "agent.lock.activated",
+    version: 1,
+    description: "Records an active legal, export, secret, governance, data-loss, or provider-transfer lock.",
+    agentGuidance: "Required provenance fields: lockId, residentAgentId, kind, activatedBy, reason, and relatedEventIds when a prior event caused the lock. Forbidden autonomous effects: activating a lock blocks rather than authorizes risky actions.",
+    invariants: ["lockId must route the stream", "kind must be explicit", "reason must be secret-safe"]
+  },
+  "agent.lock.cleared": {
+    type: "agent.lock.cleared",
+    version: 1,
+    description: "Records human-cleared resident-agent lock state with rationale.",
+    agentGuidance: "Required provenance fields: lockId, clearedBy, rationale, and human context actor. Forbidden autonomous effects: agent actors must not clear legal, export, secret, data-loss, provider-transfer, or governance locks.",
+    invariants: ["context actor must be human", "lockId must route the stream", "clearing a lock does not approve a separate side effect"]
   },
   "ingestion.source.registered": {
     type: "ingestion.source.registered",
@@ -1191,6 +1773,15 @@ function isKnowledgeEventType(value: unknown): value is KnowledgeEventType {
 }
 
 const alwaysHumanGatedEventTypes = new Set<KnowledgeEventType>([
+  "assertion.accepted",
+  "entity.resolved",
+  "relationship.accepted",
+  "agent.identity.updated",
+  "agent.policy.installed",
+  "agent.tool.approved",
+  "agent.permission.granted",
+  "agent.permission.revoked",
+  "agent.lock.cleared",
   "governance.policy.installed",
   "evidence.governance.reviewed",
   "evidence.redaction.applied",
@@ -1198,7 +1789,15 @@ const alwaysHumanGatedEventTypes = new Set<KnowledgeEventType>([
   "evidence.tombstoned",
   "network.exposure.enabled",
   "device.session.approved",
-  "legacy.ontology.staging.approved"
+  "legacy.ontology.staging.approved",
+  "prr.request.sent",
+  "prr.followup.sent",
+  "prr.deadline.confirmed",
+  "prr.fee.challenged",
+  "prr.scope.narrowing.accepted",
+  "prr.appeal.created",
+  "prr.stalling.confirmed",
+  "prr.legal-escalation.confirmed"
 ]);
 
 function hasSensitiveOptIns(payload: unknown): boolean {
@@ -1226,6 +1825,52 @@ function requiresHumanContextActor(type: KnowledgeEventType, payload: unknown): 
   }
 
   return type === "incident.repair.recorded" && closesIncident(payload);
+}
+
+function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): string | undefined {
+  if (!type.startsWith("agent.") || typeof payload !== "object" || payload === null) {
+    return undefined;
+  }
+
+  const agentPayload = payload as Record<string, unknown>;
+
+  if (type.startsWith("agent.identity.")) {
+    return `agent_identity_${agentPayload.residentAgentId}`;
+  }
+
+  if (type === "agent.policy.installed") {
+    return `agent_policy_${agentPayload.policyId}`;
+  }
+
+  if (type.startsWith("agent.task.")) {
+    return `agent_task_${agentPayload.taskId}`;
+  }
+
+  if (type.startsWith("agent.specialist-run.")) {
+    return `agent_run_${agentPayload.runId}`;
+  }
+
+  if (type.startsWith("agent.model-invocation.")) {
+    return `agent_model_invocation_${agentPayload.invocationId}`;
+  }
+
+  if (type.startsWith("agent.tool.")) {
+    return `agent_tool_request_${agentPayload.toolRequestId}`;
+  }
+
+  if (type.startsWith("agent.memory.")) {
+    return `agent_memory_${agentPayload.memoryId}`;
+  }
+
+  if (type.startsWith("agent.permission.")) {
+    return `agent_permission_${agentPayload.permissionId}`;
+  }
+
+  if (type.startsWith("agent.lock.")) {
+    return `agent_lock_${agentPayload.lockId}`;
+  }
+
+  return undefined;
 }
 
 const knowledgeEventBaseSchema = z.object({
@@ -1279,8 +1924,17 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
     if (requiresHumanContextActor(event.type, payload.data) && event.context.actor.kind !== "human") {
       ctx.addIssue({
         code: "custom",
-        message: "human-gated governance events require a human context actor",
+        message: "human-gated events require a human context actor",
         path: ["context", "actor", "kind"]
+      });
+    }
+
+    const agentStreamId = expectedAgentStreamId(event.type, payload.data);
+    if (agentStreamId !== undefined && event.streamId !== agentStreamId) {
+      ctx.addIssue({
+        code: "custom",
+        message: "agent event streamId must match payload identity",
+        path: ["streamId"]
       });
     }
 

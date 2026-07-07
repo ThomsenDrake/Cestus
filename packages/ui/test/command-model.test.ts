@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildPrrProjection } from "../../prr/src/projection.js";
 import { buildRequestQueueRows, type RequestQueueRow } from "../../prr/src/read-api.js";
 import { goldenPrrLedgerEvents } from "../../prr/test/fixtures/golden-prr-ledger.js";
+import type { AgentStatusDto } from "../src/agent/agent-types.js";
 import { buildCommandBoardViewModel, filterQueueItems, getSelectedCommandItem } from "../src/workspace/command-model.js";
 import { commandWorkspaceFixture } from "../src/workspace/command-fixtures.js";
 
@@ -113,4 +114,195 @@ describe("CommandBoardViewModel", () => {
     ]);
     expect(stalled?.detail.provenanceRefs).toContain("prr_req_airport_022");
   });
+
+  it("derives the AgentBrief from resident agent status when supplied", () => {
+    const model = buildCommandBoardViewModel({
+      ...commandWorkspaceFixture,
+      agentStatus: agentStatus()
+    });
+
+    expect(model.agentBrief.watching).toContain("1 pending agent approval");
+    expect(model.agentBrief.watching).toContain("1 active agent lock");
+    expect(model.agentBrief.watching).toContain("1 provider backend: Fake Local Model Provider");
+    expect(model.agentBrief.changedSinceReview).toContain("Review provider approval | evt_task_created");
+    expect(model.agentBrief.uncertain).toContain("Lock lock_legal_escalation active from evt_lock_active");
+    expect(model.agentBrief.recommendedActions).toContain(
+      "Review toolreq_provider_preview approval for external-byte-transfer | evt_tool_requested"
+    );
+  });
+
+  it("redacts credential-shaped strings from serialized AgentBrief fields", () => {
+    const model = buildCommandBoardViewModel({
+      ...commandWorkspaceFixture,
+      agentStatus: agentStatus({
+        providers: [
+          {
+            providerId: "provider_openai",
+            label: "OpenAI sk-live-provider OPENAI_API_KEY DATABASE_PASSWORD GOOGLE_APPLICATION_CREDENTIALS",
+            adapterVersion: "openai-adapter.v1",
+            endpointKind: "openai-api",
+            modelFamilies: ["gpt-4.1"],
+            credentialKinds: ["api-key-bearer"],
+            supportsStructuredOutput: true,
+            supportsToolCalling: true,
+            safeDataNotes: "Safe notes."
+          }
+        ],
+        tasks: [
+          {
+            taskId: "task_sk_live_task",
+            residentAgentId: "agent_default",
+            title: "Review ghp_task, OPENAI_API_KEY, DATABASE_PASSWORD, and GOOGLE_APPLICATION_CREDENTIALS",
+            requestedBy: "actor_case_owner",
+            priority: "normal",
+            status: "waiting-for-approval",
+            createdAt: "2026-07-07T21:00:00.000Z",
+            sourceEventIds: ["evt_DATABASE_PASSWORD"],
+            inputArtifactHashes: [],
+            eventIds: ["evt_GOOGLE_APPLICATION_CREDENTIALS"],
+            causationIds: []
+          }
+        ],
+        toolRequests: [
+          {
+            toolRequestId: "toolreq_ghp_request",
+            runId: "run_provider_review",
+            toolId: "provider.parse.preview",
+            toolVersion: "1",
+            requestedBy: "actor_cestus_agent",
+            sideEffectClass: "external-byte-transfer",
+            requiredApprovalClass: "provider-byte-transfer",
+            previewHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+            scope: "workspace",
+            estimatedEffect: "Provider byte transfer preview.",
+            state: "requested",
+            requestedAt: "2026-07-07T21:01:00.000Z",
+            sourceEventIds: ["evt_tool_sk_live_source"],
+            inputArtifactHashes: [],
+            resultEventIds: [],
+            artifactHashes: [],
+            readModelChanges: [],
+            allowedActions: [],
+            eventIds: ["evt_tool_ghp_event"],
+            causationIds: []
+          }
+        ],
+        locks: [
+          {
+            lockId: "lock_OPENAI_API_KEY_DATABASE_PASSWORD",
+            residentAgentId: "agent_default",
+            kind: "secret",
+            activatedBy: "actor_case_owner",
+            reason: "Secret-shaped runtime note.",
+            activatedAt: "2026-07-07T21:00:00.000Z",
+            relatedEventIds: ["evt_lock_GOOGLE_APPLICATION_CREDENTIALS"],
+            state: "active",
+            clearRelatedEventIds: [],
+            eventIds: ["evt_lock_DATABASE_PASSWORD"],
+            causationIds: []
+          }
+        ],
+        pendingApprovalCount: 1,
+        activeLockCount: 1
+      })
+    });
+
+    expect(JSON.stringify(model.agentBrief)).not.toMatch(
+      /sk-live|sk_live|ghp_|OPENAI_API_KEY|DATABASE_PASSWORD|GOOGLE_APPLICATION_CREDENTIALS/i
+    );
+  });
 });
+
+function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
+  return {
+    schemaVersion: "agent-status.v1",
+    generatedAt: "2026-07-07T21:00:00.000Z",
+    residentAgentId: "agent_default",
+    identity: {
+      residentAgentId: "agent_default",
+      workspaceId: "ws_case_001",
+      label: "Cestus Agent",
+      policyId: "agent_policy_default",
+      initializedBy: "actor_case_owner",
+      allowedRunTypes: ["evidence-triage"],
+      memoryProjectionVersion: "0.1.0",
+      eventIds: ["evt_agent_identity"],
+      causationIds: []
+    },
+    providers: [
+      {
+        providerId: "provider_fake_local",
+        label: "Fake Local Model Provider",
+        adapterVersion: "fake-provider.v1",
+        endpointKind: "local-engine",
+        modelFamilies: ["fake-local"],
+        credentialKinds: ["local-no-secret"],
+        supportsStructuredOutput: false,
+        supportsToolCalling: false,
+        safeDataNotes: "Deterministic local fake provider for command tests."
+      }
+    ],
+    pendingApprovalCount: 1,
+    activeLockCount: 1,
+    diagnostics: [],
+    tasks: [
+      {
+        taskId: "task_provider_review",
+        residentAgentId: "agent_default",
+        title: "Review provider approval",
+        requestedBy: "actor_case_owner",
+        priority: "normal",
+        status: "waiting-for-approval",
+        createdAt: "2026-07-07T21:00:00.000Z",
+        sourceEventIds: ["evt_operator_status"],
+        inputArtifactHashes: [],
+        runId: "run_provider_review",
+        eventIds: ["evt_task_created"],
+        causationIds: []
+      }
+    ],
+    runs: [],
+    toolRequests: [
+      {
+        toolRequestId: "toolreq_provider_preview",
+        runId: "run_provider_review",
+        toolId: "provider.parse.preview",
+        toolVersion: "1",
+        requestedBy: "actor_cestus_agent",
+        sideEffectClass: "external-byte-transfer",
+        requiredApprovalClass: "provider-byte-transfer",
+        previewHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        scope: "workspace",
+        estimatedEffect: "Provider byte transfer preview.",
+        state: "requested",
+        requestedAt: "2026-07-07T21:01:00.000Z",
+        sourceEventIds: ["evt_task_created"],
+        inputArtifactHashes: [],
+        resultEventIds: [],
+        artifactHashes: [],
+        readModelChanges: [],
+        allowedActions: [],
+        eventIds: ["evt_tool_requested"],
+        causationIds: ["evt_run_started"]
+      }
+    ],
+    activeMemory: [],
+    permissions: [],
+    locks: [
+      {
+        lockId: "lock_legal_escalation",
+        residentAgentId: "agent_default",
+        kind: "legal-escalation",
+        activatedBy: "actor_case_owner",
+        reason: "Human legal review is required.",
+        activatedAt: "2026-07-07T21:00:00.000Z",
+        relatedEventIds: ["evt_prr_signal"],
+        state: "active",
+        clearRelatedEventIds: [],
+        eventIds: ["evt_lock_active"],
+        causationIds: []
+      }
+    ],
+    ...overrides
+  };
+}

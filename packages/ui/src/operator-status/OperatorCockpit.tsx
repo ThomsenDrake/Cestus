@@ -14,7 +14,8 @@ const sectionFallbackLabels: Record<OperatorStatusSectionDto["sectionId"], strin
   workspace: "Workspace",
   ingestion: "Ingestion",
   "legacy-import": "Legacy Import",
-  prr: "PRR/Investigations"
+  prr: "PRR/Investigations",
+  agent: "Agent"
 };
 
 export function OperatorCockpit({ status, onNavigate, onRefresh, title = "Operator cockpit" }: OperatorCockpitProps) {

@@ -1878,7 +1878,7 @@ git commit -m "feat: register resident agent specialist types"
 - Modify: `docs/agentic/software-factory.md`
 - Modify: `docs/superpowers/plans/2026-07-07-cestus-resident-agent-implementation.md`
 
-- [ ] **Step 1: Run focused verification bundle**
+- [x] **Step 1: Run focused verification bundle**
 
 Run:
 
@@ -1892,7 +1892,14 @@ Expected:
 Test Files  19 passed
 ```
 
-- [ ] **Step 2: Run full verification**
+Observed on the final review rerun after human-gate contract coverage:
+
+```text
+Test Files  19 passed
+Tests  283 passed
+```
+
+- [x] **Step 2: Run full verification**
 
 Run:
 
@@ -1909,7 +1916,18 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 3: Update readiness tracking if the implementation branch adds final docs**
+Observed on final review rerun after human-gate fixes and a scoped timeout for the isolated workspace-ops CLI flake:
+
+```text
+typecheck passed
+Test Files  119 passed
+Tests  1110 passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+- [x] **Step 3: Update readiness tracking if the implementation branch adds final docs**
 
 If `scripts/check-agent-readiness.mjs` does not already track this implementation plan, add:
 
@@ -1925,7 +1943,9 @@ Append a `Resident Cestus Agent Foundation Implementation Readiness` section to 
 - Full verification evidence.
 - A statement that the foundation uses fake providers only and preserves all Cestus invariants.
 
-- [ ] **Step 4: Check whitespace**
+The readiness script already tracked the resident-agent design and implementation plan after planning completion. The factory document now records final implementation readiness evidence.
+
+- [x] **Step 4: Check whitespace**
 
 Run:
 
@@ -1939,7 +1959,7 @@ Expected:
 no output
 ```
 
-- [ ] **Step 5: Run factory check**
+- [x] **Step 5: Run factory check**
 
 Run:
 
@@ -1953,7 +1973,7 @@ Expected:
 factory-readiness passed
 ```
 
-- [ ] **Step 6: Commit readiness evidence**
+- [x] **Step 6: Commit readiness evidence**
 
 Run:
 

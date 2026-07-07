@@ -1,5 +1,6 @@
 import type { PrrDiagnostic } from "../../../prr/src/diagnostics.js";
 import type { RequestQueueRow } from "../../../prr/src/read-api.js";
+import type { AgentStatusDto } from "../agent/agent-types.js";
 
 export type QueueFilter = "all" | "deadline" | "signal" | "evidence" | "diagnostic";
 export type CommandItemKind = Exclude<QueueFilter, "all">;
@@ -93,4 +94,5 @@ export interface CommandBoardInput {
   readonly evidenceAlerts: readonly EvidenceAlert[];
   readonly todayIso: string;
   readonly reviewedItemIds: readonly string[];
+  readonly agentStatus?: AgentStatusDto | undefined;
 }

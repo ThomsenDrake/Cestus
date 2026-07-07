@@ -16,7 +16,7 @@ interface OpsShellProps {
   readonly searchPlaceholder?: string | undefined;
   readonly mainId: string;
   readonly mainLabel: string;
-  readonly onNewRequest: () => void;
+  readonly onNewRequest?: (() => void) | undefined;
   readonly onModuleSelect?: ((moduleId: string) => void) | undefined;
   readonly main: ReactNode;
   readonly decisionRail: ReactNode;

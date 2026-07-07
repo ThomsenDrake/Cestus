@@ -9,7 +9,7 @@ interface CommandBandProps {
   readonly searchLabel?: string | undefined;
   readonly searchPlaceholder?: string | undefined;
   readonly onOpenMenu: () => void;
-  readonly onNewRequest: () => void;
+  readonly onNewRequest?: (() => void) | undefined;
 }
 
 export function CommandBand({
@@ -73,18 +73,20 @@ export function CommandBand({
               <span className={signal.className}>{signal.value}</span>
             </div>
           ))}
-          <button
-            type="button"
-            onClick={onNewRequest}
-            className="relative flex min-h-10 items-center gap-2 border border-[var(--signal-orange)] bg-[var(--signal-orange)] py-2 pl-2 pr-3 text-base font-semibold text-[var(--console-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--signal-cyan)] sm:min-h-9 sm:text-sm"
-          >
-            <span
-              aria-hidden="true"
-              className="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2"
-            />
-            <PlusIcon aria-hidden="true" className="size-4 shrink-0 fill-[var(--console-ink)]" />
-            New request
-          </button>
+          {onNewRequest === undefined ? null : (
+            <button
+              type="button"
+              onClick={onNewRequest}
+              className="relative flex min-h-10 items-center gap-2 border border-[var(--signal-orange)] bg-[var(--signal-orange)] py-2 pl-2 pr-3 text-base font-semibold text-[var(--console-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--signal-cyan)] sm:min-h-9 sm:text-sm"
+            >
+              <span
+                aria-hidden="true"
+                className="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2"
+              />
+              <PlusIcon aria-hidden="true" className="size-4 shrink-0 fill-[var(--console-ink)]" />
+              New request
+            </button>
+          )}
         </div>
       </div>
     </header>
