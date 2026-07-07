@@ -29,11 +29,15 @@
 - Full verification: `npm run verify` passed with typecheck, 98 test files and 876 tests, UI build, and factory readiness.
 - Review remediation RED: `npm test -- packages/local-runtime/test/operator-status.test.ts packages/local-runtime/test/operator-status-routes.test.ts packages/ui/test/operator-cockpit.test.tsx packages/ui/test/operator-app-integration.test.tsx` failed with 5 failures after tightening swapped-drive evidence and real CLI command expectations.
 - Review remediation GREEN: the same targeted command passed with 4 test files and 36 tests after splitting wrong-drive remount/configure from missing-drive detection, correcting command descriptors, and adding workspace identity refs to source evidence.
+- Second review remediation RED: the same targeted command failed with 2 failures after making uninitialized workspace root use the production-shaped `diag_workspace_manifest_missing` workspace-ops DTO and requiring legacy guidance to use a real public CLI help command.
+- Second review remediation GREEN: the same targeted command passed with 4 test files and 36 tests after classifying manifest-missing roots as action-required create guidance and replacing the invalid legacy inspect descriptor with `npm run ingestion:help`.
 
 ## Self-Review
 
 - Named states covered: missing drive, swapped drive, uninitialized workspace root, stale projections, ingestion blocked pending approval, ingestion source changed since approval, legacy samples needed, legacy raw import approval required, runtime unavailable, and PRR ready with zero open requests.
 - Runtime mapping changes stayed in local-runtime provider DTO adaptation; React remains DTO-only and does not duplicate domain validation.
 - Swapped-drive readiness now has distinct display-only remount/configure guidance and manifest identity evidence, separate from missing-drive detection.
+- Uninitialized workspace readiness now follows the production workspace-ops manifest-missing DTO shape rather than a synthetic available mount.
+- Legacy sample readiness now points at the existing ingestion help command rather than a nonexistent legacy inspect CLI.
 - Safe actions remain inert descriptors or navigation/refresh controls only.
 - No PRR sends, legal escalation, destructive repair, accepted legacy ontology truth, provider byte transfer, or hidden local copy behavior was added.

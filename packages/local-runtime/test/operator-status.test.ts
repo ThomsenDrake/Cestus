@@ -316,22 +316,17 @@ describe("operator status aggregation", () => {
     const status = await statusFor({
       workspace: async () =>
         workspaceEnvelope({
-          status: "degraded",
+          status: "blocked",
           ok: false,
-          mountStatus: "available",
-          safeMessage: "External root is present but no Cestus workspace manifest has been initialized.",
-          manifest: {
-            readable: true,
-            valid: false,
-            safeSummary: "Manifest initialization is required."
-          },
+          mountStatus: "wrong-drive",
+          safeMessage: "Workspace manifest was not found at the selected root.",
           diagnostics: [
             workspaceDiagnostic(
-              "diag_workspace_uninitialized_root",
-              "warning",
+              "diag_workspace_manifest_missing",
+              "error",
               "manifest",
-              "External root is present but no Cestus workspace manifest has been initialized.",
-              ["verify workspace"]
+              "Workspace manifest was not found at the selected root.",
+              ["detect drive"]
             )
           ]
         })
@@ -339,7 +334,7 @@ describe("operator status aggregation", () => {
 
     expectSectionStateDiagnosticAndAction(status, "workspace", {
       state: "action-required",
-      diagnosticMessage: "External root is present but no Cestus workspace manifest has been initialized.",
+      diagnosticMessage: "Workspace manifest was not found at the selected root.",
       actionCommand: "npm run local:workspace:create -- --workspace <root> --workspace-id <id> --label <label>"
     });
   });
@@ -434,7 +429,7 @@ describe("operator status aggregation", () => {
     expectSectionStateDiagnosticAndAction(status, "legacy-import", {
       state: "action-required",
       diagnosticMessage: "Legacy samples needed: Read-only folder tree listing of the old Cestus root",
-      actionCommand: "cestus legacy inspect --help"
+      actionCommand: "npm run ingestion:help"
     });
   });
 
