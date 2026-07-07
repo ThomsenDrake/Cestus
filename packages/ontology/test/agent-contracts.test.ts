@@ -175,7 +175,8 @@ describe("resident agent event contracts", () => {
       readModelChanges: [
         {
           projectionName: "agent-tool-requests",
-          change: "Marked the tool request completed."
+          change: "Marked the tool request completed.",
+          relatedIds: ["evt_assertion_proposed_from_tool", "ent_vendor_001", "task_001"]
         }
       ],
       resultSummary: "Created a reviewable assertion proposal."
@@ -200,6 +201,25 @@ describe("resident agent event contracts", () => {
           {
             ...completedPayload,
             readModelChanges: [{ projectionName: "agent-tool-requests", change: "Completed.", unsafe: true }]
+          }
+        )
+      ).success
+    ).toBe(false);
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_tool_completed_secret_related_id",
+          "agent.tool.completed",
+          "agent_tool_request_toolreq_001",
+          {
+            ...completedPayload,
+            readModelChanges: [
+              {
+                projectionName: "agent-tool-requests",
+                change: "Completed.",
+                relatedIds: ["sk_live_unsafe"]
+              }
+            ]
           }
         )
       ).success

@@ -134,6 +134,11 @@ function agentSecretSafeIdSchema(pattern: RegExp) {
   });
 }
 
+const agentSecretSafeRelatedIdSchema = secretSafeStringSchema.min(1).refine(
+  (value) => !secretLikeIdFragmentPattern.test(value),
+  { message: "must not contain secret-looking ID fragments" }
+);
+
 const residentAgentIdSchema = agentSecretSafeIdSchema(/^agent_[a-zA-Z0-9_-]+$/);
 const agentPolicyIdSchema = agentSecretSafeIdSchema(/^agent_policy_[a-zA-Z0-9_-]+$/);
 const agentWorkspaceIdSchema = agentSecretSafeIdSchema(/^ws_[a-zA-Z0-9_-]+$/);
@@ -248,7 +253,7 @@ const agentSafeActionsSchema = z.array(secretSafeTextSchema).min(1);
 const agentReadModelChangeSchema = z.object({
   projectionName: secretSafeStringSchema.min(1),
   change: secretSafeTextSchema,
-  relatedIds: z.array(secretSafeStringSchema.min(1)).optional()
+  relatedIds: z.array(agentSecretSafeRelatedIdSchema).optional()
 }).strict();
 
 const agentIdentityInitializedPayloadSchema = z.object({
@@ -1338,8 +1343,8 @@ export const eventContracts = {
     type: "agent.tool.completed",
     version: 1,
     description: "Records completed tool execution with returned event and artifact references.",
-    agentGuidance: "Required provenance fields: toolRequestId, completedAt, eventIds, artifactHashes, and resultSummary. Forbidden autonomous effects: completion may report domain-service results but must not fabricate accepted graph, PRR send, export, repair, or legal events.",
-    invariants: ["toolRequestId must route the stream", "returned event IDs are explicit", "artifact hashes are content-addressed"]
+    agentGuidance: "Required provenance fields: toolRequestId, completedAt, eventIds, artifactHashes, readModelChanges, and resultSummary. Forbidden autonomous effects: completion may report domain-service results but must not fabricate accepted graph, PRR send, export, repair, or legal events.",
+    invariants: ["toolRequestId must route the stream", "returned event IDs are explicit", "artifact hashes are content-addressed", "readModelChanges relatedIds must be secret-safe"]
   },
   "agent.tool.failed": {
     type: "agent.tool.failed",
