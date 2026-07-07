@@ -85,11 +85,25 @@ const contextPackRefObjectSchema = z.object({
   projectionHighWaterMark: z.number().int().nonnegative().optional()
 }).strict();
 
-export const contextPackDescriptorSchema = contextPackDescriptorObjectSchema
-  .transform((descriptor): ContextPackDescriptor => freezeContextPackDescriptor(descriptor));
+export const contextPackDescriptorSchema = z.unknown()
+  .transform((value, ctx): ContextPackDescriptor => {
+    const descriptor = parseNormalizedDto(value, contextPackDescriptorObjectSchema, "$", ctx);
+    if (descriptor === z.NEVER) {
+      return z.NEVER;
+    }
 
-export const contextPackRefSchema = contextPackRefObjectSchema
-  .transform((ref): ContextPackRef => freezeContextPackRef(ref));
+    return freezeContextPackDescriptor(descriptor);
+  });
+
+export const contextPackRefSchema = z.unknown()
+  .transform((value, ctx): ContextPackRef => {
+    const ref = parseNormalizedDto(value, contextPackRefObjectSchema, "$", ctx);
+    if (ref === z.NEVER) {
+      return z.NEVER;
+    }
+
+    return freezeContextPackRef(ref);
+  });
 
 export function hashAgentContextPack(value: unknown): string {
   const normalized = normalizeJsonDtoValue(value, "$");
@@ -123,12 +137,13 @@ export function createContextPackRegistry(): ContextPackRegistry {
   return Object.freeze({
     register(builder: ContextPackBuilder): void {
       const descriptor = contextPackDescriptorSchema.parse(builder.descriptor);
+      const build = builder.build.bind(builder);
       if (builders.has(descriptor.contextPackId)) {
         throw new Error(`Context pack ${descriptor.contextPackId} is already registered`);
       }
       builders.set(descriptor.contextPackId, Object.freeze({
         descriptor,
-        build: () => builder.build()
+        build
       }));
     },
 
@@ -179,6 +194,38 @@ function addSecretSafeIssue(value: string, label: string, ctx: z.RefinementCtx):
       message: error instanceof Error ? error.message : `${label} must be secret-safe`
     });
   }
+}
+
+function parseNormalizedDto<T>(
+  value: unknown,
+  schema: z.ZodType<T>,
+  path: string,
+  ctx: z.RefinementCtx
+): T | typeof z.NEVER {
+  let normalized: AgentContextPackJsonValue;
+  try {
+    normalized = normalizeJsonDtoValue(value, path);
+  } catch (error) {
+    ctx.addIssue({
+      code: "custom",
+      message: error instanceof Error ? error.message : `${path} must be JSON DTO-safe`
+    });
+    return z.NEVER;
+  }
+
+  const result = schema.safeParse(normalized);
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      ctx.addIssue({
+        code: "custom",
+        path: issue.path,
+        message: issue.message
+      });
+    }
+    return z.NEVER;
+  }
+
+  return result.data;
 }
 
 function normalizeJsonDtoValue(value: unknown, path: string): AgentContextPackJsonValue {
