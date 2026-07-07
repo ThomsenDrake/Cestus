@@ -165,6 +165,71 @@ describe("agent context packs", () => {
     }
   });
 
+  it("rejects build refs with provenance arrays that have secret-shaped custom properties", () => {
+    const provenanceRefs = ["evt_agent_task"] as string[] & { extra?: string };
+    provenanceRefs.extra = "api key sk-live-value";
+
+    expect(() =>
+      buildContextPackRef({
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        generatedAt: "2026-07-07T22:00:00.000Z",
+        payload: { events: ["evt_agent_task"] },
+        safeSummary: "One prior task event.",
+        provenanceRefs
+      })
+    ).toThrow(/JSON DTO-safe|secret/i);
+  });
+
+  it("rejects build refs with provenance arrays that have symbol keys", () => {
+    const provenanceRefs = ["evt_agent_task"];
+    Object.defineProperty(provenanceRefs, Symbol("context"), {
+      value: "extra context",
+      enumerable: true
+    });
+
+    expect(() =>
+      buildContextPackRef({
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        generatedAt: "2026-07-07T22:00:00.000Z",
+        payload: { events: ["evt_agent_task"] },
+        safeSummary: "One prior task event.",
+        provenanceRefs
+      })
+    ).toThrow(/JSON DTO-safe/i);
+  });
+
+  it("rejects build refs with accessor-backed provenance entries without invoking the getter", () => {
+    let getterInvoked = false;
+    const provenanceRefs: string[] = [];
+    Object.defineProperty(provenanceRefs, "0", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return "evt_agent_task";
+      }
+    });
+
+    let thrown: unknown;
+    try {
+      buildContextPackRef({
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        generatedAt: "2026-07-07T22:00:00.000Z",
+        payload: { events: ["evt_agent_task"] },
+        safeSummary: "One prior task event.",
+        provenanceRefs
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toMatch(/JSON DTO-safe/i);
+    expect(getterInvoked).toBe(false);
+  });
+
   it("rejects accessor-backed descriptor fields and arrays without invoking getters", () => {
     let labelGetterInvoked = false;
     const descriptor = {

@@ -85,6 +85,16 @@ const contextPackRefObjectSchema = z.object({
   projectionHighWaterMark: z.number().int().nonnegative().optional()
 }).strict();
 
+const buildContextPackRefInputObjectSchema = z.object({
+  contextPackId: contextPackIdSchema,
+  version: z.number().int().positive(),
+  generatedAt: z.string().datetime(),
+  payload: z.custom<AgentContextPackJsonValue>((value) => value !== undefined, { message: "payload is required" }),
+  safeSummary: agentSecretSafeTextSchema("safeSummary"),
+  provenanceRefs: z.array(agentSecretSafeTextSchema("provenanceRef")),
+  projectionHighWaterMark: z.number().int().nonnegative().optional()
+}).strict();
+
 export const contextPackDescriptorSchema = z.unknown()
   .transform((value, ctx): ContextPackDescriptor => {
     const descriptor = parseNormalizedDto(value, contextPackDescriptorObjectSchema, "$", ctx);
@@ -114,15 +124,16 @@ export function hashAgentContextPack(value: unknown): string {
 }
 
 export function buildContextPackRef(input: BuildContextPackRefInput): ContextPackRef {
-  const contentHash = hashAgentContextPack(input.payload);
+  const parsed = parseNormalizedDtoOrThrow(input, buildContextPackRefInputObjectSchema, "$");
+  const contentHash = hashAgentContextPack(parsed.payload);
   const ref = {
-    contextPackId: input.contextPackId,
-    version: input.version,
+    contextPackId: parsed.contextPackId,
+    version: parsed.version,
     contentHash,
-    generatedAt: input.generatedAt,
-    safeSummary: input.safeSummary,
-    provenanceRefs: [...input.provenanceRefs],
-    ...(input.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: input.projectionHighWaterMark })
+    generatedAt: parsed.generatedAt,
+    safeSummary: parsed.safeSummary,
+    provenanceRefs: parsed.provenanceRefs,
+    ...(parsed.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: parsed.projectionHighWaterMark })
   };
 
   return contextPackRefSchema.parse(ref);
@@ -226,6 +237,10 @@ function parseNormalizedDto<T>(
   }
 
   return result.data;
+}
+
+function parseNormalizedDtoOrThrow<T>(value: unknown, schema: z.ZodType<T>, path: string): T {
+  return schema.parse(normalizeJsonDtoValue(value, path));
 }
 
 function normalizeJsonDtoValue(value: unknown, path: string): AgentContextPackJsonValue {
