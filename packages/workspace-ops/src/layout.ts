@@ -21,7 +21,12 @@ export const provisionalWorkspaceLayoutContractVersion = "portable-workspace-lay
 const provisionalWorkspaceManifestSchema = z.object({
   workspaceId: z.string().regex(/^ws_[a-zA-Z0-9_-]+$/),
   label: secretSafeWorkspaceTextSchema,
-  version: z.literal(1)
+  version: z.literal(1),
+  layoutVersion: z.literal(1).optional(),
+  createdAt: z.string().datetime().optional(),
+  createdBy: secretSafeWorkspaceTextSchema.optional(),
+  coreVersion: secretSafeWorkspaceTextSchema.optional(),
+  description: secretSafeWorkspaceTextSchema.optional()
 }).strict();
 
 export type ProvisionalWorkspaceManifest = z.output<typeof provisionalWorkspaceManifestSchema>;
