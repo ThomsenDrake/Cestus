@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import type { AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
+import { InMemoryEventLedger, type AppendOptions, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { createAgentToolGateway } from "../src/tool-gateway.js";
 
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
@@ -89,7 +90,7 @@ describe("agent tool gateway", () => {
       rationale: "Human approved the first preview."
     });
 
-    await expect(
+    const duplicateError = await captureError(() =>
       gateway.requestTool({
         toolRequestId: "toolreq_prr_duplicate",
         residentAgentId: "agent_default",
@@ -99,9 +100,28 @@ describe("agent tool gateway", () => {
         sideEffectClass: "external-message-send",
         preview: { summary: "Send changed PRR follow-up draft.", relatedEventIds: ["evt_prr_draft"] }
       })
-    ).rejects.toThrow(/already exists|duplicate/i);
+    );
 
+    expect(duplicateError).toBeInstanceOf(Error);
+    expect((duplicateError as Error).message).toMatch(/already exists|duplicate/i);
+    expect((duplicateError as Error).message).not.toContain("toolreq_prr_duplicate");
     expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested", "agent.tool.approved"]);
+  });
+
+  it("does not echo raw tool request IDs in missing-request errors", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const error = await captureError(() =>
+      gateway.completeTool({
+        toolRequestId: "toolreq_sk_live_value",
+        result: { eventIds: [], artifactHashes: [], readModelChanges: [] }
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain("toolreq_sk_live_value");
+    expect((error as Error).message).not.toMatch(/sk[_-]live/i);
   });
 
   it("fails closed when a gated request has no approval", async () => {
@@ -158,6 +178,117 @@ describe("agent tool gateway", () => {
     ).rejects.toThrow(/denied/i);
 
     expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested", "agent.tool.denied"]);
+  });
+
+  it("completes approved gated requests when the approved preview is current", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_approved_complete",
+      residentAgentId: "agent_default",
+      taskId: "task_prr",
+      runId: "run_prr",
+      toolId: "prr.send.followup",
+      sideEffectClass: "external-message-send",
+      preview: { summary: "Send PRR follow-up draft.", relatedEventIds: ["evt_prr_draft"] }
+    });
+    await gateway.approveTool({
+      toolRequestId: "toolreq_approved_complete",
+      approvedPreviewHash: requested.payload.previewHash,
+      actor: humanActor,
+      rationale: "Human approved the exact preview."
+    });
+
+    const completed = await gateway.completeTool({
+      toolRequestId: "toolreq_approved_complete",
+      approvedPreviewHash: requested.payload.previewHash,
+      result: {
+        eventIds: ["evt_prr_sent"],
+        artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+        readModelChanges: [{ projectionName: "agent-tool-requests", change: "Recorded gated completion." }],
+        resultSummary: "Approved gated tool completed."
+      }
+    });
+
+    expect(completed.type).toBe("agent.tool.completed");
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved",
+      "agent.tool.completed"
+    ]);
+  });
+
+  it("rejects completion when denial is appended between state read and append", async () => {
+    const inner = new InMemoryEventLedger();
+    const ledger = new InterleavingLedger(inner, "agent.tool.denied");
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_interleaved_denial",
+      residentAgentId: "agent_default",
+      taskId: "task_prr",
+      runId: "run_prr",
+      toolId: "prr.send.followup",
+      sideEffectClass: "external-message-send",
+      preview: { summary: "Send PRR follow-up draft.", relatedEventIds: ["evt_prr_draft"] }
+    });
+    await gateway.approveTool({
+      toolRequestId: "toolreq_interleaved_denial",
+      approvedPreviewHash: requested.payload.previewHash,
+      actor: humanActor,
+      rationale: "Human approved the exact preview."
+    });
+
+    await expect(
+      gateway.completeTool({
+        toolRequestId: "toolreq_interleaved_denial",
+        approvedPreviewHash: requested.payload.previewHash,
+        result: { eventIds: [], artifactHashes: [], readModelChanges: [] }
+      })
+    ).rejects.toThrow(/concurrency|conflict/i);
+
+    expect((await inner.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved",
+      "agent.tool.denied"
+    ]);
+  });
+
+  it("rejects completion when failure is appended between state read and append", async () => {
+    const inner = new InMemoryEventLedger();
+    const ledger = new InterleavingLedger(inner, "agent.tool.failed");
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_interleaved_failure",
+      residentAgentId: "agent_default",
+      taskId: "task_prr",
+      runId: "run_prr",
+      toolId: "prr.send.followup",
+      sideEffectClass: "external-message-send",
+      preview: { summary: "Send PRR follow-up draft.", relatedEventIds: ["evt_prr_draft"] }
+    });
+    await gateway.approveTool({
+      toolRequestId: "toolreq_interleaved_failure",
+      approvedPreviewHash: requested.payload.previewHash,
+      actor: humanActor,
+      rationale: "Human approved the exact preview."
+    });
+
+    await expect(
+      gateway.completeTool({
+        toolRequestId: "toolreq_interleaved_failure",
+        approvedPreviewHash: requested.payload.previewHash,
+        result: { eventIds: [], artifactHashes: [], readModelChanges: [] }
+      })
+    ).rejects.toThrow(/concurrency|conflict/i);
+
+    expect((await inner.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved",
+      "agent.tool.failed"
+    ]);
   });
 
   it("allows read-only tool completion without approval", async () => {
@@ -253,4 +384,121 @@ describe("agent tool gateway", () => {
 
     expect(second.payload.previewHash).toBe(first.payload.previewHash);
   });
+
+  it("hashes nested preview objects with stable key ordering", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const first = await gateway.requestTool({
+      toolRequestId: "toolreq_nested_hash_a",
+      residentAgentId: "agent_default",
+      taskId: "task_hash",
+      runId: "run_hash",
+      toolId: "projection.read",
+      sideEffectClass: "read-only",
+      preview: {
+        summary: "Read nested projection status.",
+        relatedEventIds: ["evt_projection_check"],
+        nested: { b: { y: 2, x: 1 }, a: [{ d: 4, c: 3 }] }
+      }
+    });
+    const second = await gateway.requestTool({
+      toolRequestId: "toolreq_nested_hash_b",
+      residentAgentId: "agent_default",
+      taskId: "task_hash",
+      runId: "run_hash",
+      toolId: "projection.read",
+      sideEffectClass: "read-only",
+      preview: {
+        nested: { a: [{ c: 3, d: 4 }], b: { x: 1, y: 2 } },
+        relatedEventIds: ["evt_projection_check"],
+        summary: "Read nested projection status."
+      }
+    });
+
+    expect(second.payload.previewHash).toBe(first.payload.previewHash);
+  });
 });
+
+type InterleavedLifecycleEventType = "agent.tool.denied" | "agent.tool.failed";
+
+class InterleavingLedger implements EventLedger {
+  private injected = false;
+
+  constructor(
+    private readonly inner: InMemoryEventLedger,
+    private readonly interleavedEventType: InterleavedLifecycleEventType
+  ) {}
+
+  async append(event: AppendableKnowledgeEvent, options?: AppendOptions) {
+    if (!this.injected && event.type === "agent.tool.completed") {
+      this.injected = true;
+      await this.inner.append(this.buildInterleavedEvent(event));
+    }
+    return this.inner.append(event, options);
+  }
+
+  readStream(streamId: string) {
+    return this.inner.readStream(streamId);
+  }
+
+  readAll() {
+    return this.inner.readAll();
+  }
+
+  private buildInterleavedEvent(
+    completedEvent: AppendableKnowledgeEvent<"agent.tool.completed">
+  ): AppendableKnowledgeEvent<InterleavedLifecycleEventType> {
+    if (this.interleavedEventType === "agent.tool.denied") {
+      return {
+        type: "agent.tool.denied",
+        version: 1,
+        streamId: completedEvent.streamId,
+        context: {
+          actor: humanActor,
+          occurredAt: fixedNow(),
+          correlationId: "corr_interleaved_denial",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0", agent: "0.1.0" }
+        },
+        payload: {
+          toolRequestId: completedEvent.payload.toolRequestId,
+          deniedBy: humanActor.id,
+          rationale: "Human denial arrived before completion append.",
+          deniedAt: fixedNow(),
+          approvalClass: "external-message-send"
+        }
+      };
+    }
+
+    return {
+      type: "agent.tool.failed",
+      version: 1,
+      streamId: completedEvent.streamId,
+      context: {
+        actor: agentActor,
+        occurredAt: fixedNow(),
+        correlationId: "corr_interleaved_failure",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId: completedEvent.payload.toolRequestId,
+        failedAt: fixedNow(),
+        category: "approval-stale",
+        message: "Tool request became stale before completion.",
+        retryable: false,
+        allowedActions: ["open a fresh tool request"]
+      }
+    };
+  }
+}
+
+async function captureError(action: () => Promise<unknown>): Promise<unknown> {
+  try {
+    await action();
+    return undefined;
+  } catch (error) {
+    return error;
+  }
+}
