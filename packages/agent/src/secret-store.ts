@@ -1,6 +1,9 @@
 import { z } from "zod";
+import { isCredentialReferenceSecretSafeText } from "./credential-reference.js";
 
-const credentialRefIdSchema = z.string().regex(/^agent_credref_[a-zA-Z0-9_-]+$/);
+const credentialRefIdSchema = z.string()
+  .regex(/^agent_credref_[a-zA-Z0-9_-]+$/)
+  .refine(isCredentialReferenceSecretSafeText, { message: "credentialRefId must be secret-safe" });
 
 export const secretStoreHealthSchema = z.object({
   credentialRefId: credentialRefIdSchema,
