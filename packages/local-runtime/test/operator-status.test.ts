@@ -291,6 +291,7 @@ describe("operator status aggregation", () => {
               ["detect drive"]
             )
           ],
+          preserveReadyPayload: true,
           relatedIds: ["expected_ws_case_001", "found_ws_case_999"]
         })
     });
@@ -646,8 +647,10 @@ async function workspaceEnvelope(input: {
   };
   readonly diagnostics: readonly WorkspaceDiagnosticDto[];
   readonly relatedIds?: readonly string[];
+  readonly preserveReadyPayload?: boolean;
 }): Promise<WorkspaceOpsEnvelope<WorkspaceVerifyDto>> {
   const base = await readyWorkspace();
+  const isBlockedMount = input.mountStatus !== "available" && input.preserveReadyPayload !== true;
   const envelope = {
     ...base,
     ok: input.ok,
@@ -666,10 +669,40 @@ async function workspaceEnvelope(input: {
           }
         ]
       },
-      manifest: input.manifest ?? base.payload.manifest,
-      projections: input.projections ?? base.payload.projections,
+      manifest: input.manifest ?? (
+        isBlockedMount
+          ? {
+              readable: false,
+              valid: false,
+              safeSummary: "Workspace manifest cannot be verified until the workspace drive is available."
+            }
+          : base.payload.manifest
+      ),
+      layout: isBlockedMount
+        ? {
+            contractVersion: "unavailable",
+            readable: false,
+            requiredRoots: []
+          }
+        : base.payload.layout,
+      ledger: isBlockedMount ? { readable: false, eventCount: 0, highWaterMark: 0 } : base.payload.ledger,
+      blobStore: isBlockedMount
+        ? {
+            available: false,
+            contentAddressedRootCount: 0,
+            aggregateBytes: 0,
+            missingBlobCount: 0,
+            hashMismatchCount: 0
+          }
+        : base.payload.blobStore,
+      projections: input.projections ?? (
+        isBlockedMount
+          ? { available: false, staleCount: 0, rebuildable: false }
+          : base.payload.projections
+      ),
+      jobs: isBlockedMount ? { available: false, queuedCount: 0, failedCount: 0 } : base.payload.jobs,
       diagnostics: {
-        visible: true,
+        visible: !isBlockedMount,
         errorCount: input.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length,
         warningCount: input.diagnostics.filter((diagnostic) => diagnostic.severity === "warning").length
       }

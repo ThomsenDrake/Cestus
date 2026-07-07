@@ -31,6 +31,7 @@
 - Review remediation GREEN: the same targeted command passed with 4 test files and 36 tests after splitting wrong-drive remount/configure from missing-drive detection, correcting command descriptors, and adding workspace identity refs to source evidence.
 - Second review remediation RED: the same targeted command failed with 2 failures after making uninitialized workspace root use the production-shaped `diag_workspace_manifest_missing` workspace-ops DTO and requiring legacy guidance to use a real public CLI help command.
 - Second review remediation GREEN: the same targeted command passed with 4 test files and 36 tests after classifying manifest-missing roots as action-required create guidance and replacing the invalid legacy inspect descriptor with `npm run ingestion:help`.
+- Third review remediation: the same targeted command passed with 4 test files and 36 tests after replacing the uninitialized workspace test helper with the blocked verify payload internals emitted by workspace-ops for manifest-missing roots.
 
 ## Self-Review
 
