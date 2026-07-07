@@ -152,4 +152,32 @@ describe("ontology bootstrap contracts", () => {
       })
     ).toThrow(/accepted graph/i);
   });
+
+  it("accepts structured evidence refs on staging previews", () => {
+    const preview = ontologyBootstrapToolPreviewSchema.parse({
+      previewId: "bootstrap_preview_staging_approval",
+      toolId: "legacy.staging.approval.request",
+      effect: "ledger-review",
+      previewHash: hash,
+      summary: "Review evidence-tied staging candidates.",
+      sourceCollectionId: "src_old_cestus",
+      scanBatchId: "scan_old_cestus_001",
+      stagingBatchId: "legacy_stage_001",
+      legacyReportId: "legacy_report_001",
+      reportHash: hash,
+      candidateSetHash: hash,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      allowedEventTypes: [],
+      evidenceRefs: [
+        {
+          candidateId: "legacy_candidate_001",
+          evidenceId: "ev_legacy_claims",
+          evidenceContentHash: hash
+        }
+      ],
+      requiresHumanApproval: true
+    });
+
+    expect(preview.evidenceRefs[0]?.evidenceId).toBe("ev_legacy_claims");
+  });
 });
