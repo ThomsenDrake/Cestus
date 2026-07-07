@@ -174,6 +174,50 @@ describe("agent runtime core", () => {
     expect(ledgerJson).toContain("agent.model-invocation.failed");
     expect(ledgerJson).not.toContain("sk-live-value");
   });
+
+  it("omits unsafe provider descriptors from status without leaking descriptor text", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({
+      ledger,
+      actor: humanActor,
+      now: fixedNow,
+      providers: [new UnsafeDescriptorProvider()]
+    });
+
+    const status = await runtime.status();
+    const statusJson = JSON.stringify(status);
+
+    expect(status.providers).toEqual([]);
+    expect(status.diagnostics).toEqual([
+      expect.objectContaining({
+        severity: "error",
+        category: "provider",
+        message: "Provider descriptor was rejected."
+      })
+    ]);
+    expect(statusJson).not.toContain("OPENAI_API_KEY");
+    expect(statusJson).not.toContain("sk-live-value");
+  });
+
+  it("records malformed provider output as a safe model failure", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = await createPreparedRuntime(ledger, [new MalformedOutputProvider()]);
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_malformed_output",
+      runId: "run_fake_model",
+      providerId: "provider_malformed_local",
+      modelFamily: "fake-local",
+      inputArtifactHash,
+      credentialRef: { credentialRefId: "agent_credref_local", providerId: "provider_malformed_local", kind: "local-no-secret" }
+    });
+
+    const ledgerJson = JSON.stringify(await ledger.readAll());
+    expect(result).toMatchObject({ ok: false, error: { category: "provider", severity: "error" } });
+    expect((await ledger.readAll()).map((event) => event.type)).toContain("agent.model-invocation.failed");
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.completed");
+    expect(ledgerJson).not.toContain("sk-live-value");
+  });
 });
 
 async function createPreparedRuntime(
@@ -213,5 +257,49 @@ class ThrowingProvider implements ModelProviderAdapter {
 
   async invoke(_request: ModelInvocationRequest): Promise<ModelInvocationResult> {
     throw new Error("provider failed with api key sk-live-value");
+  }
+}
+
+class UnsafeDescriptorProvider implements ModelProviderAdapter {
+  describe(): ProviderDescriptor {
+    return {
+      providerId: "provider_unsafe_local",
+      label: "OPENAI_API_KEY",
+      adapterVersion: "unsafe-provider.v1",
+      endpointKind: "local-engine",
+      modelFamilies: ["fake-local"],
+      credentialKinds: ["local-no-secret"],
+      supportsStructuredOutput: false,
+      supportsToolCalling: false,
+      safeDataNotes: "provider failed with api key sk-live-value"
+    };
+  }
+
+  async invoke(_request: ModelInvocationRequest): Promise<ModelInvocationResult> {
+    throw new Error("Unsafe descriptor provider should not be invoked.");
+  }
+}
+
+class MalformedOutputProvider implements ModelProviderAdapter {
+  describe(): ProviderDescriptor {
+    return {
+      providerId: "provider_malformed_local",
+      label: "Malformed Local Provider",
+      adapterVersion: "malformed-provider.v1",
+      endpointKind: "local-engine",
+      modelFamilies: ["fake-local"],
+      credentialKinds: ["local-no-secret"],
+      supportsStructuredOutput: false,
+      supportsToolCalling: false,
+      safeDataNotes: "Local malformed provider for safe failure tests."
+    };
+  }
+
+  async invoke(_request: ModelInvocationRequest): Promise<ModelInvocationResult> {
+    return {
+      outputText: "provider output with api key sk-live-value",
+      outputArtifactHash: "not-a-sha256",
+      usage: { inputUnits: -1, outputUnits: 1 }
+    };
   }
 }

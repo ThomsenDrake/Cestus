@@ -9,9 +9,10 @@ import type {
 import type {
   CredentialReference,
   ModelInvocationResult,
-  ModelProviderAdapter
+  ModelProviderAdapter,
+  ProviderDescriptor
 } from "./provider.js";
-import { assertCredentialReferenceIsSafe } from "./provider.js";
+import { assertCredentialReferenceIsSafe, providerDescriptorSchema } from "./provider.js";
 import type { AgentRuntimeDiagnosticDto, AgentRuntimeResult, AgentStatusDto } from "./runtime-types.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
 
@@ -106,7 +107,7 @@ export interface InvokeAgentModelResult {
 }
 
 export function createAgentRuntime(input: CreateAgentRuntimeInput) {
-  const providers = new Map((input.providers ?? []).map((provider) => [provider.describe().providerId, provider]));
+  const providerRegistry = createProviderRegistry(input.providers ?? []);
 
   return {
     async status(): Promise<AgentStatusDto> {
@@ -117,10 +118,10 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
         generatedAt: input.now(),
         ...dto,
         identity: projection.identity,
-        providers: Object.freeze([...providers.values()].map((provider) => provider.describe())),
+        providers: Object.freeze([...providerRegistry.providers.values()].map((provider) => provider.descriptor)),
         pendingApprovalCount: [...projection.toolRequests.values()].filter((request) => request.state === "requested").length,
         activeLockCount: [...projection.locks.values()].filter((lock) => lock.state === "active").length,
-        diagnostics: Object.freeze([])
+        diagnostics: Object.freeze([...providerRegistry.diagnostics])
       });
     },
 
@@ -286,7 +287,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
         return failedResult(agentDiagnostic("runtime", "Model invocation request was not safe to record.", ["inspect the safe invocation identifiers"]));
       }
 
-      const provider = providers.get(command.providerId);
+      const provider = providerRegistry.providers.get(command.providerId);
       if (provider === undefined) {
         return await failModelInvocation(input.ledger, input, command, requested, {
           diagnosticCategory: "provider",
@@ -297,7 +298,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
         });
       }
 
-      const descriptor = provider.describe();
+      const descriptor = provider.descriptor;
       if (!descriptor.modelFamilies.includes(command.modelFamily)) {
         return await failModelInvocation(input.ledger, input, command, requested, {
           diagnosticCategory: "provider",
@@ -342,7 +343,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
 
       let providerResult: ModelInvocationResult;
       try {
-        providerResult = await provider.invoke({
+        providerResult = await provider.adapter.invoke({
           invocationId: command.invocationId,
           runId: command.runId,
           modelFamily: command.modelFamily,
@@ -356,6 +357,16 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           message: "Provider invocation failed.",
           retryable: true,
           allowedActions: ["inspect provider setup before retrying"]
+        });
+      }
+
+      if (!isValidModelInvocationResult(providerResult)) {
+        return await failModelInvocation(input.ledger, input, command, requested, {
+          diagnosticCategory: "provider",
+          eventCategory: "model-output-invalid",
+          message: "Provider returned invalid output.",
+          retryable: false,
+          allowedActions: ["inspect provider adapter output validation"]
         });
       }
 
@@ -378,7 +389,18 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           }
         }
       };
-      const completed = await appendRuntimeEvent(input.ledger, completedEvent, { expectedNextSequence: requested.sequence + 1 });
+      let completed: KnowledgeEventOf<"agent.model-invocation.completed">;
+      try {
+        completed = await appendRuntimeEvent(input.ledger, completedEvent, { expectedNextSequence: requested.sequence + 1 });
+      } catch {
+        return await failModelInvocation(input.ledger, input, command, requested, {
+          diagnosticCategory: "provider",
+          eventCategory: "model-output-invalid",
+          message: "Provider output could not be recorded.",
+          retryable: false,
+          allowedActions: ["inspect provider adapter output validation"]
+        });
+      }
       return {
         ok: true,
         invocationId: command.invocationId,
@@ -390,6 +412,74 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
 
     gateway: createAgentToolGateway({ ledger: input.ledger, actor: input.actor, now: input.now })
   };
+}
+
+interface RuntimeProviderRecord {
+  readonly adapter: ModelProviderAdapter;
+  readonly descriptor: ProviderDescriptor;
+}
+
+interface RuntimeProviderRegistry {
+  readonly providers: ReadonlyMap<string, RuntimeProviderRecord>;
+  readonly diagnostics: readonly AgentRuntimeDiagnosticDto[];
+}
+
+function createProviderRegistry(providerAdapters: readonly ModelProviderAdapter[]): RuntimeProviderRegistry {
+  const providers = new Map<string, RuntimeProviderRecord>();
+  const diagnostics: AgentRuntimeDiagnosticDto[] = [];
+
+  for (const adapter of providerAdapters) {
+    let descriptor: ProviderDescriptor;
+    try {
+      descriptor = freezeProviderDescriptor(providerDescriptorSchema.parse(adapter.describe()));
+    } catch {
+      diagnostics.push(providerDescriptorRejectedDiagnostic());
+      continue;
+    }
+
+    if (providers.has(descriptor.providerId)) {
+      diagnostics.push(providerDescriptorRejectedDiagnostic());
+      continue;
+    }
+
+    providers.set(descriptor.providerId, Object.freeze({ adapter, descriptor }));
+  }
+
+  return Object.freeze({
+    providers,
+    diagnostics: Object.freeze(diagnostics)
+  });
+}
+
+function providerDescriptorRejectedDiagnostic(): AgentRuntimeDiagnosticDto {
+  return agentDiagnostic("provider", "Provider descriptor was rejected.", ["inspect provider adapter metadata"]);
+}
+
+function freezeProviderDescriptor(descriptor: ProviderDescriptor): ProviderDescriptor {
+  return Object.freeze({
+    ...descriptor,
+    modelFamilies: Object.freeze([...descriptor.modelFamilies]),
+    credentialKinds: Object.freeze([...descriptor.credentialKinds])
+  }) as ProviderDescriptor;
+}
+
+function isValidModelInvocationResult(value: unknown): value is ModelInvocationResult {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<ModelInvocationResult>;
+  return typeof candidate.outputArtifactHash === "string" &&
+    /^sha256:[a-f0-9]{64}$/.test(candidate.outputArtifactHash) &&
+    typeof candidate.outputText === "string" &&
+    typeof candidate.usage === "object" &&
+    candidate.usage !== null &&
+    isNonnegativeInteger(candidate.usage.inputUnits) &&
+    isNonnegativeInteger(candidate.usage.outputUnits);
+}
+
+function isNonnegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
 interface RuntimeModelFailure {
