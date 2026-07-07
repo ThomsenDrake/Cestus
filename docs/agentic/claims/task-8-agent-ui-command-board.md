@@ -47,6 +47,9 @@ Command evidence:
 - Support verifier: `npm test -- packages/ui/test/shell.test.tsx packages/ui/test/ui-picker.test.tsx` passed with 2 test files and 4 tests passing after updating stale Agent preview expectations.
 - Verify: `npm run verify` passed with typecheck passed, 113 test files and 1057 tests passing, Vite build succeeded, and factory-readiness passed.
 - Diff hygiene: `git diff --check` passed with no output.
+- Review fix red: `npm test -- packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx packages/ui/test/command-model.test.ts packages/ui/test/app-smoke.test.tsx packages/ui/test/operator-app-integration.test.tsx packages/ui/test/shell.test.tsx packages/ui/test/ui-picker.test.tsx` failed with the expected Agent `New request` shell leak, missing recursive redaction for `sk-live-*`, `sk_live_*`, `ghp_*`, `OPENAI_API_KEY`, damaged `api-key-bearer` metadata, and unsafe `AgentBrief` serialization.
+- Review fix green: `npm test -- packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx packages/ui/test/command-model.test.ts packages/ui/test/app-smoke.test.tsx packages/ui/test/operator-app-integration.test.tsx packages/ui/test/shell.test.tsx packages/ui/test/ui-picker.test.tsx` passed with 8 test files and 39 tests passing.
+- Review fix verify: `npm run verify` passed with typecheck passed, 113 test files and 1060 tests passing, Vite build succeeded, and factory-readiness passed.
 
 Self-review notes:
 - The Agent adapter parses `agent-status.v1` through a local Zod DTO mirror, redacts unsafe strings before parsing, and returns frozen DTOs for HTTP and static adapters.

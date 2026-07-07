@@ -645,7 +645,7 @@ export function App({
           searchPlaceholder={searchPlaceholder}
           mainId={mainId}
           mainLabel={agentActive ? "Agent workspace" : ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}
-          onNewRequest={handleNewRequest}
+          onNewRequest={agentActive ? undefined : handleNewRequest}
           onModuleSelect={handleModuleSelect}
           main={main}
           decisionRail={decisionRail}

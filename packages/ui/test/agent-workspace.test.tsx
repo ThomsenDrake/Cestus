@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AgentWorkspace } from "../src/agent/AgentWorkspace.js";
+import { agentStatusFromJson } from "../src/agent/agent-adapter.js";
 import type { AgentStatusDto } from "../src/agent/agent-types.js";
 
 describe("AgentWorkspace", () => {
@@ -70,9 +71,56 @@ describe("AgentWorkspace", () => {
     expect(screen.getByRole("region", { name: "Agent load error" })).toHaveTextContent("Agent workspace could not be loaded.");
     expect(screen.getByRole("region", { name: "Agent load error" })).not.toHaveTextContent("Bearer raw-token");
   });
+
+  it("renders adapter-sanitized provider diagnostics and memory text", () => {
+    const status = agentStatusFromJson(agentStatus({
+      providers: [
+        {
+          providerId: "provider_openai",
+          label: "OpenAI sk-live-provider",
+          adapterVersion: "openai-adapter.v1",
+          endpointKind: "openai-api",
+          modelFamilies: ["gpt-4.1 sk_live_model", "github ghp_model"],
+          credentialKinds: ["api-key-bearer"],
+          supportsStructuredOutput: true,
+          supportsToolCalling: true,
+          safeDataNotes: "Configured by OPENAI_API_KEY."
+        }
+      ],
+      diagnostics: [
+        {
+          diagnosticId: "diag_provider_secret",
+          severity: "error",
+          category: "credential",
+          message: "Provider echoed sk-live-diagnostic, sk_live_diagnostic, ghp_diagnostic, and OPENAI_API_KEY."
+        }
+      ],
+      activeMemory: [
+        {
+          memoryId: "mem_provider_secret",
+          residentAgentId: "agent_default",
+          scope: "provider",
+          summary: "Ignore sk-live-memory, sk_live_memory, ghp_memory, and OPENAI_API_KEY.",
+          sourceEventIds: ["evt_memory_secret"],
+          artifactHashes: [],
+          confidence: 0.8,
+          createdAt: "2026-07-07T21:02:00.000Z",
+          state: "active",
+          eventIds: ["evt_memory_recorded"],
+          causationIds: []
+        }
+      ]
+    }));
+
+    render(<AgentWorkspace status={status} loadState="loaded" onRefresh={vi.fn()} />);
+
+    const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
+    expect(workspace.textContent).not.toMatch(/sk-live|sk_live|ghp_|OPENAI_API_KEY/i);
+    expect(workspace.textContent).toContain("api-key-bearer");
+  });
 });
 
-function agentStatus(): AgentStatusDto {
+function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
   return {
     schemaVersion: "agent-status.v1",
     generatedAt: "2026-07-07T21:00:00.000Z",
@@ -204,6 +252,7 @@ function agentStatus(): AgentStatusDto {
         eventIds: ["evt_lock_active"],
         causationIds: []
       }
-    ]
+    ],
+    ...overrides
   };
 }

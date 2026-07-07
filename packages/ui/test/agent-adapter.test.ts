@@ -53,12 +53,63 @@ describe("agent UI adapter", () => {
   });
 
   it("redacts unsafe runtime text", () => {
-    const status = runtimeUnavailableAgentStatus({ message: "provider failed with bearer raw-value" });
+    const status = runtimeUnavailableAgentStatus({
+      message: "provider failed with bearer raw-value, sk-live-runtime, sk_live_runtime, ghp_runtime, and OPENAI_API_KEY"
+    });
     const serialized = JSON.stringify(status);
 
     expect(status.schemaVersion).toBe("agent-status.v1");
     expect(status.diagnostics[0]?.category).toBe("runtime");
-    expect(serialized).not.toMatch(/raw-value|bearer/i);
+    expect(serialized).not.toMatch(/raw-value|bearer|sk-live|sk_live|ghp_|OPENAI_API_KEY/i);
+  });
+
+  it("recursively redacts credential-shaped provider diagnostics and memory text before parsing", async () => {
+    const unsafeStatus = agentStatus({
+      providers: [
+        {
+          providerId: "provider_openai",
+          label: "OpenAI fallback sk-live-provider",
+          adapterVersion: "openai-adapter.v1",
+          endpointKind: "openai-api",
+          modelFamilies: ["gpt-4.1 sk_live_model", "github ghp_model"],
+          credentialKinds: ["api-key-bearer"],
+          supportsStructuredOutput: true,
+          supportsToolCalling: true,
+          safeDataNotes: "Loaded through OPENAI_API_KEY and ghp_notes."
+        }
+      ],
+      diagnostics: [
+        {
+          diagnosticId: "diag_provider_secret",
+          severity: "error",
+          category: "credential",
+          message: "Provider echoed sk-live-diagnostic, sk_live_diagnostic, ghp_diagnostic, and OPENAI_API_KEY.",
+          allowedRepairActions: ["rotate OPENAI_API_KEY", "remove ghp_repair"]
+        }
+      ],
+      activeMemory: [
+        {
+          memoryId: "mem_provider_secret",
+          residentAgentId: "agent_default",
+          scope: "provider",
+          summary: "Do not remember sk-live-memory, sk_live_memory, ghp_memory, or OPENAI_API_KEY.",
+          sourceEventIds: ["evt_memory_secret"],
+          artifactHashes: [],
+          confidence: 0.8,
+          createdAt: "2026-07-07T21:02:00.000Z",
+          state: "active",
+          eventIds: ["evt_memory_recorded"],
+          causationIds: []
+        }
+      ]
+    });
+
+    const parsed = agentStatusFromJson(unsafeStatus);
+    const loaded = await createStaticAgentAdapter(unsafeStatus).loadStatus();
+
+    expect(JSON.stringify(parsed)).not.toMatch(/sk-live|sk_live|ghp_|OPENAI_API_KEY/i);
+    expect(JSON.stringify(loaded)).not.toMatch(/sk-live|sk_live|ghp_|OPENAI_API_KEY/i);
+    expect(loaded.providers[0]?.credentialKinds).toStrictEqual(["api-key-bearer"]);
   });
 
   it("maps non-2xx runtime JSON into a safe unavailable DTO", async () => {

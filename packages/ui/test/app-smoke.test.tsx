@@ -116,8 +116,12 @@ describe("Cestus UI bootstrap", () => {
     try {
       render(<App requestsAdapter={createTestRequestsAdapter()} operatorStatusAdapter={operatorStatusAdapter} />);
       fireEvent.click(screen.getByRole("link", { name: "Agent" }));
-      expect(await screen.findByRole("region", { name: "Resident agent workspace" })).toBeInTheDocument();
+      const workspace = await screen.findByRole("region", { name: "Resident agent workspace" });
       expect(screen.getByText("Fake Local Model Provider")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "New request" })).not.toBeInTheDocument();
+      expect(within(workspace).getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
+        "Refresh agent status"
+      ]);
       expect(fetchCalls).toEqual(["/api/agent/status"]);
     } finally {
       globalThis.fetch = originalFetch;

@@ -41,8 +41,12 @@ describe("agent app integration", () => {
     fireEvent.click(screen.getByRole("link", { name: "Agent" }));
     await screen.findByRole("region", { name: "Resident agent workspace" });
 
+    expect(screen.queryByRole("button", { name: "New request" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /approve|deny|execute|send|export|repair|clear lock/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
+    const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
+    expect(within(workspace).getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
+      "Refresh agent status"
+    ]);
   });
 });
 

@@ -335,6 +335,9 @@ export function runtimeUnavailableAgentStatus(input: {
 export function safeAgentText(text: string): string {
   return text
     .replace(/bearer\s+[A-Za-z0-9._~+/=-]+/gi, "[redacted credential]")
+    .replace(/sk[-_](?:live|test|proj)[-_][A-Za-z0-9_-]+/gi, "[redacted credential]")
+    .replace(/(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+/gi, "[redacted credential]")
+    .replace(/[A-Z][A-Z0-9_]*(?:API_KEY|TOKEN|SECRET|PRIVATE_KEY|CLIENT_SECRET|ACCESS_KEY_ID)[A-Z0-9_]*/g, "[redacted credential]")
     .replace(
       /\b(?:password|passwd|secret|token|oauth[_-]?token|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|client[_-]?secret|credential|credentials)\s*[:=]\s*[^\s,;]+/gi,
       "[redacted credential]"
@@ -344,7 +347,7 @@ export function safeAgentText(text: string): string {
     .replace(/\b[A-Za-z]:\\[^\s"',;)]+/g, "[path redacted]")
     .replace(/(?<![:/])\/(?!\/)[^\s"',;)]+/g, "[path redacted]")
     .replace(
-      /\b(?:auth[\s._-]*tokens?|bearer(?:[\s._-]*tokens?)?|tokens?|passwords?|private[\s._-]*keys?)\b/gi,
+      /(?<![-\w])(?:auth[\s._-]*tokens?|bearer(?:[\s._-]*tokens?)?|tokens?|passwords?|private[\s._-]*keys?)(?![-\w])/gi,
       "[redacted credential]"
     );
 }
