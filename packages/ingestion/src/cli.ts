@@ -9,6 +9,7 @@ import type {
   RegisterSourceInput,
   RetryIngestionJobInput
 } from "./runtime.js";
+import type { LegacyImportRuntime } from "./legacy-runtime.js";
 import type {
   IngestionMountResult,
   IngestionWorkspaceMountResolver,
@@ -31,11 +32,25 @@ export const ingestionOperationalCommands = [
   "diagnostics"
 ] as const;
 
+export const legacyIngestionCommands = [
+  "legacy artifact-ask",
+  "legacy inspect",
+  "legacy report",
+  "legacy quarantine",
+  "legacy approve-import",
+  "legacy import",
+  "legacy staging-preview",
+  "legacy approve-staging",
+  "legacy stage"
+] as const;
+
 export type IngestionOperationalCommand = typeof ingestionOperationalCommands[number];
+export type LegacyIngestionCommand = typeof legacyIngestionCommands[number];
 export type IngestionCommandName =
   | "summary-json"
   | "legacy-artifact-ask-json"
   | "legacy-report-json"
+  | LegacyIngestionCommand
   | IngestionOperationalCommand;
 
 export interface IngestionCommandInput {
@@ -45,6 +60,7 @@ export interface IngestionCommandInput {
   env?: Record<string, string | undefined>;
   mountResolver?: IngestionWorkspaceMountResolver;
   runtimeFactory?: IngestionCliRuntimeFactory;
+  legacyRuntimeFactory?: LegacyImportCliRuntimeFactory;
   runtime?: unknown;
 }
 
@@ -63,6 +79,12 @@ export interface IngestionCliRuntimeFactoryInput {
 
 export type IngestionCliRuntimeFactory = (input: IngestionCliRuntimeFactoryInput) => IngestionCliRuntime;
 
+export interface LegacyImportCliRuntimeFactoryInput {
+  readonly mountedWorkspace: MountedWorkspace;
+}
+
+export type LegacyImportCliRuntimeFactory = (input: LegacyImportCliRuntimeFactoryInput) => LegacyImportRuntime;
+
 export interface IngestionCliRuntime {
   registerSource(input: RegisterSourceInput): Promise<unknown> | unknown;
   dryRunScan(input: DryRunScanInput): Promise<unknown> | unknown;
@@ -72,6 +94,33 @@ export interface IngestionCliRuntime {
   retryJob(input: RetryIngestionJobInput): Promise<unknown> | unknown;
   approveProviderParsing(input: ApproveProviderParsingInput): Promise<unknown> | unknown;
   diagnostics(input: IngestionDiagnosticsInput): Promise<unknown> | unknown;
+}
+
+export type NormalizedIngestionCliArgs =
+  | { readonly kind: "help" }
+  | { readonly kind: "command"; readonly command: string; readonly argv: readonly string[] };
+
+export function normalizeIngestionCliArgs(argv: readonly string[]): NormalizedIngestionCliArgs {
+  const withProgramRemoved = argv[0] === "cestus" ? argv.slice(1) : argv;
+  const normalized = withProgramRemoved[0] === "ingest" ? withProgramRemoved.slice(1) : withProgramRemoved;
+
+  if (normalized.length === 0 || normalized.includes("--help") || normalized.includes("-h")) {
+    return { kind: "help" };
+  }
+
+  if (normalized[0] === "legacy" && normalized[1] !== undefined) {
+    return {
+      kind: "command",
+      command: `legacy ${normalized[1]}`,
+      argv: normalized.slice(2)
+    };
+  }
+
+  return {
+    kind: "command",
+    command: normalized[0] ?? "",
+    argv: normalized.slice(1)
+  };
 }
 
 export function handleIngestionCommand(input: IngestionCommandInput): string | Promise<string> {
@@ -102,6 +151,18 @@ export function handleIngestionCommand(input: IngestionCommandInput): string | P
     return `${JSON.stringify(input.dto, null, 2)}\n`;
   }
 
+  if (input.command === "legacy artifact-ask") {
+    return formatCliJson({
+      ok: true,
+      command: input.command,
+      firstArtifactAsk: firstLegacyArtifactAsk
+    });
+  }
+
+  if (isLegacyRuntimeCommand(input.command)) {
+    return handleLegacyRuntimeCommand(input.command, input);
+  }
+
   if (input.command === "create-workspace") {
     return formatCliJson(unsupportedCommand(input.command));
   }
@@ -129,6 +190,18 @@ export function formatIngestionCliUsage(executableName = "cestus-ingest"): strin
     "  retry               Retry a failed ingestion job.",
     "  approve-provider    Approve an outbound provider parse batch.",
     "  diagnostics         Inspect ingestion diagnostics.",
+    "  legacy artifact-ask Print the first legacy artifact ask as JSON.",
+    "  legacy inspect      Inspect an old-Cestus root and store a migration report.",
+    "  legacy report       Print a selected or latest migration report.",
+    "  legacy quarantine   Print quarantine entries from a migration report.",
+    "  legacy approve-import",
+    "                      Approve raw legacy import for a completed scan.",
+    "  legacy import       Execute approved raw legacy import.",
+    "  legacy staging-preview",
+    "                      Preview evidence-tied legacy assertion candidates.",
+    "  legacy approve-staging",
+    "                      Approve selected legacy assertion candidates.",
+    "  legacy stage        Stage approved legacy candidates as assertion proposals.",
     "",
     "Options:",
     "  --workspace <root>  Portable workspace root to resolve through the mount layer.",
@@ -136,7 +209,8 @@ export function formatIngestionCliUsage(executableName = "cestus-ingest"): strin
     "",
     "Examples:",
     "  cestus ingest dry-run --workspace <root> --source-id src_drive_001 --scan scan_001",
-    "  cestus ingest register-source --workspace <root> --source /Volumes/OldArchive --source-id src_old_archive --label \"Old archive\""
+    "  cestus ingest register-source --workspace <root> --source /Volumes/OldArchive --source-id src_old_archive --label \"Old archive\"",
+    "  cestus ingest legacy inspect --workspace <root> --source <old-root> --source-id src_old_cestus --scan scan_old_cestus_001 --label \"Old Cestus\""
   ].join("\n");
 }
 
@@ -172,6 +246,40 @@ async function handleRuntimeCommand(
   return formatCliJson(result);
 }
 
+async function handleLegacyRuntimeCommand(
+  command: LegacyIngestionRuntimeCommand,
+  input: IngestionCommandInput
+): Promise<string> {
+  if (input.mountResolver === undefined || input.legacyRuntimeFactory === undefined) {
+    return formatCliJson(legacyRuntimeWiringRequired(command));
+  }
+
+  let argv: ParsedArgv;
+  let commandInput: unknown;
+  try {
+    argv = parseArgv(input.argv ?? []);
+    commandInput = legacyRuntimeInput(command, argv);
+  } catch (error) {
+    return formatCliJson(legacyCliInvalidArguments(command, error));
+  }
+
+  const env = input.env ?? process.env;
+  const workspaceRoot = optionValue(argv, "workspace") ?? env.CESTUS_WORKSPACE_ROOT;
+  const mountResult = await input.mountResolver.resolve({
+    ...(workspaceRoot === undefined ? {} : { workspaceRoot }),
+    env
+  });
+
+  if (!mountResult.ok) {
+    return formatCliJson(legacyMountFailure(command, mountResult));
+  }
+
+  const runtime = input.legacyRuntimeFactory({ mountedWorkspace: mountResult.workspace });
+  const result = await stableLegacyRuntimeCall(command, runtime, commandInput);
+
+  return formatCliJson(result);
+}
+
 async function stableRuntimeCall(
   command: IngestionRuntimeCommand,
   runtime: IngestionCliRuntime,
@@ -189,6 +297,18 @@ async function stableRuntimeCall(
         diagnostics: []
       }
     };
+  }
+}
+
+async function stableLegacyRuntimeCall(
+  command: LegacyIngestionRuntimeCommand,
+  runtime: LegacyImportRuntime,
+  input: unknown
+): Promise<unknown> {
+  try {
+    return await callLegacyRuntime(command, runtime, input);
+  } catch {
+    return legacyRuntimeInternalError(command);
   }
 }
 
@@ -215,6 +335,89 @@ async function callRuntime(
       return runtime.approveProviderParsing(approveProviderInput(argv));
     case "diagnostics":
       return runtime.diagnostics(optionalSourceInput(argv));
+  }
+}
+
+function legacyRuntimeInput(command: LegacyIngestionRuntimeCommand, argv: ParsedArgv): unknown {
+  switch (command) {
+    case "legacy inspect":
+      const sourceRoot = requiredOption(argv, "source");
+      return {
+        sourceCollectionId: requiredOption(argv, "source-id"),
+        label: requiredOption(argv, "label"),
+        sourceRoot,
+        scanBatchId: requiredOption(argv, "scan")
+      };
+    case "legacy report":
+    case "legacy quarantine":
+    case "legacy staging-preview":
+      return legacyReportSelectionInput(argv);
+    case "legacy approve-import":
+      return {
+        sourceCollectionId: requiredOption(argv, "source-id"),
+        scanBatchId: requiredOption(argv, "scan"),
+        importBatchId: requiredOption(argv, "import"),
+        approvedBy: requiredOption(argv, "approved-by")
+      };
+    case "legacy import":
+      return {
+        sourceCollectionId: requiredOption(argv, "source-id"),
+        scanBatchId: requiredOption(argv, "scan"),
+        importBatchId: requiredOption(argv, "import")
+      };
+    case "legacy approve-staging":
+      return {
+        sourceCollectionId: requiredOption(argv, "source-id"),
+        scanBatchId: requiredOption(argv, "scan"),
+        legacyReportId: requiredOption(argv, "report"),
+        stagingBatchId: requiredOption(argv, "staging"),
+        approvedBy: requiredOption(argv, "approved-by"),
+        approvedAssertionCandidateIds: requiredOptionValues(argv, "candidate")
+      };
+    case "legacy stage":
+      return {
+        sourceCollectionId: requiredOption(argv, "source-id"),
+        scanBatchId: requiredOption(argv, "scan"),
+        legacyReportId: requiredOption(argv, "report"),
+        stagingBatchId: requiredOption(argv, "staging")
+      };
+  }
+}
+
+function legacyReportSelectionInput(argv: ParsedArgv): {
+  readonly sourceCollectionId: string;
+  readonly legacyReportId?: string;
+} {
+  const legacyReportId = optionValue(argv, "report");
+
+  return {
+    sourceCollectionId: requiredOption(argv, "source-id"),
+    ...(legacyReportId === undefined ? {} : { legacyReportId })
+  };
+}
+
+function callLegacyRuntime(
+  command: LegacyIngestionRuntimeCommand,
+  runtime: LegacyImportRuntime,
+  input: unknown
+): Promise<unknown> {
+  switch (command) {
+    case "legacy inspect":
+      return runtime.inspect(input as Parameters<LegacyImportRuntime["inspect"]>[0]);
+    case "legacy report":
+      return runtime.report(input as Parameters<LegacyImportRuntime["report"]>[0]);
+    case "legacy quarantine":
+      return runtime.quarantine(input as Parameters<LegacyImportRuntime["quarantine"]>[0]);
+    case "legacy approve-import":
+      return runtime.approveRawImport(input as Parameters<LegacyImportRuntime["approveRawImport"]>[0]);
+    case "legacy import":
+      return runtime.importApproved(input as Parameters<LegacyImportRuntime["importApproved"]>[0]);
+    case "legacy staging-preview":
+      return runtime.stagingPreview(input as Parameters<LegacyImportRuntime["stagingPreview"]>[0]);
+    case "legacy approve-staging":
+      return runtime.approveStaging(input as Parameters<LegacyImportRuntime["approveStaging"]>[0]);
+    case "legacy stage":
+      return runtime.stageApproved(input as Parameters<LegacyImportRuntime["stageApproved"]>[0]);
   }
 }
 
@@ -337,6 +540,17 @@ function runtimeWiringRequired(command: IngestionOperationalCommand): IngestionC
   };
 }
 
+function legacyRuntimeWiringRequired(command: LegacyIngestionRuntimeCommand): IngestionCliErrorOutput {
+  return {
+    ok: false,
+    error: {
+      code: "INGESTION_RUNTIME_WIRING_REQUIRED",
+      command,
+      message: `Command ${command} needs a legacy runtime wiring object; pure CLI handlers do not use hidden globals.`
+    }
+  };
+}
+
 function unsupportedCommand(command: string): IngestionCliErrorOutput {
   return {
     ok: false,
@@ -366,8 +580,25 @@ const ingestionRuntimeCommands = [
 
 type IngestionRuntimeCommand = typeof ingestionRuntimeCommands[number];
 
+const legacyRuntimeCommands = [
+  "legacy inspect",
+  "legacy report",
+  "legacy quarantine",
+  "legacy approve-import",
+  "legacy import",
+  "legacy staging-preview",
+  "legacy approve-staging",
+  "legacy stage"
+] as const;
+
+type LegacyIngestionRuntimeCommand = typeof legacyRuntimeCommands[number];
+
 function isRuntimeCommand(command: IngestionOperationalCommand): command is IngestionRuntimeCommand {
   return ingestionRuntimeCommands.some((candidate) => candidate === command);
+}
+
+function isLegacyRuntimeCommand(command: string): command is LegacyIngestionRuntimeCommand {
+  return legacyRuntimeCommands.some((candidate) => candidate === command);
 }
 
 interface ParsedArgv {
@@ -417,6 +648,15 @@ function optionValues(argv: ParsedArgv, name: string): string[] {
   return [...(argv.options.get(name) ?? [])];
 }
 
+function requiredOptionValues(argv: ParsedArgv, name: string): string[] {
+  const values = optionValues(argv, name);
+  if (values.length === 0) {
+    throw new Error(`Missing required ingestion CLI option --${name}.`);
+  }
+
+  return values;
+}
+
 function requiredOption(argv: ParsedArgv, name: string): string {
   const value = optionValue(argv, name);
   if (value === undefined || value.length === 0) {
@@ -448,6 +688,35 @@ function cliInvalidArguments(command: IngestionRuntimeCommand, error: unknown) {
   };
 }
 
+function legacyCliInvalidArguments(command: LegacyIngestionRuntimeCommand, error: unknown) {
+  return {
+    ok: false,
+    error: {
+      code: "LEGACY_IMPORT_INVALID_ARGUMENTS",
+      command,
+      message: error instanceof Error ? error.message : "Invalid legacy ingestion CLI arguments.",
+      diagnostics: []
+    }
+  };
+}
+
+function legacyRuntimeInternalError(command: LegacyIngestionRuntimeCommand) {
+  return {
+    ok: false,
+    error: {
+      code: "LEGACY_IMPORT_RUNTIME_INTERNAL",
+      command,
+      message: "Legacy import runtime failed while handling the command.",
+      allowedRepairActions: [
+        "retry the legacy import command",
+        "inspect legacy import diagnostics",
+        "report the issue with the command context"
+      ],
+      diagnostics: []
+    }
+  };
+}
+
 function mountFailure(result: Extract<IngestionMountResult, { ok: false }>) {
   return {
     ok: false,
@@ -458,6 +727,28 @@ function mountFailure(result: Extract<IngestionMountResult, { ok: false }>) {
       diagnostics: []
     }
   };
+}
+
+function legacyMountFailure(
+  command: LegacyIngestionRuntimeCommand,
+  result: Extract<IngestionMountResult, { ok: false }>
+) {
+  return {
+    ok: false,
+    error: {
+      code: legacyWorkspaceErrorCode(result.error.code),
+      command,
+      message: result.error.message,
+      allowedRepairActions: [...result.error.allowedRepairActions],
+      diagnostics: []
+    }
+  };
+}
+
+function legacyWorkspaceErrorCode(code: string): string {
+  return code === "INGESTION_WORKSPACE_NOT_WRITABLE"
+    ? "LEGACY_IMPORT_WORKSPACE_NOT_WRITABLE"
+    : "LEGACY_IMPORT_WORKSPACE_NOT_MOUNTED";
 }
 
 function formatCliJson(value: unknown): string {
