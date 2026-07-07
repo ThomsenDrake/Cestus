@@ -12,7 +12,14 @@ Worktree: `/home/drake/.codex/worktrees/8f27/Cestus`
 
 Claimed at: `2026-07-07T21:33:37Z`
 
-Status: `in-progress`
+Status: `ready-for-review`
+
+Review evidence:
+
+- Spec compliance re-review approved at `c3bdbd9`.
+- Code-quality re-review approved at `c3bdbd9`.
+- Targeted verification: `npm test -- packages/agent/test/credential-reference.test.ts` passed with 12 tests.
+- Full verification: `npm run verify` passed with typecheck, 120 test files / 1122 tests, Vite build, and factory readiness.
 
 Owned files:
 
