@@ -1,17 +1,34 @@
 import { z } from "zod";
-import { assertAgentSecretSafeText, isAgentSecretSafeText } from "./secret-safety.js";
+import { isAgentSecretSafeText } from "./secret-safety.js";
 
-const secretSafeTextSchema = z.string().min(1).refine(isAgentSecretSafeText, {
+const embeddedCredentialEnvironmentNamePattern =
+  /(?:^|[_-])(?:[a-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|session[_-]?token|client[_-]?secret|private[_-]?key|secret[_-]?access[_-]?key|access[_-]?key|token|secret|password|credentials?)(?:$|[_-])/i;
+
+export function isCredentialReferenceSecretSafeText(value: string): boolean {
+  return isAgentSecretSafeText(value) && !embeddedCredentialEnvironmentNamePattern.test(value);
+}
+
+export function assertCredentialReferenceSecretSafeText(value: string, label: string): void {
+  if (!isCredentialReferenceSecretSafeText(value)) {
+    throw new Error(`${label} must be secret-safe`);
+  }
+}
+
+const secretSafeTextSchema = z.string().min(1).refine(isCredentialReferenceSecretSafeText, {
   message: "must be secret-safe"
 });
 
 const credentialRefIdSchema = z.string()
   .regex(/^agent_credref_[a-zA-Z0-9_-]+$/)
-  .refine(isAgentSecretSafeText, { message: "credentialRefId must be secret-safe" });
+  .refine(isCredentialReferenceSecretSafeText, { message: "credentialRefId must be secret-safe" });
 
 const providerIdSchema = z.string()
   .regex(/^provider_[a-zA-Z0-9_-]+$/)
-  .refine(isAgentSecretSafeText, { message: "providerId must be secret-safe" });
+  .refine(isCredentialReferenceSecretSafeText, { message: "providerId must be secret-safe" });
+
+const authorizedBySchema = z.string().min(3).refine(isCredentialReferenceSecretSafeText, {
+  message: "authorizedBy must be secret-safe"
+});
 
 export const credentialKindSchema = z.enum([
   "api-key-bearer",
@@ -45,7 +62,7 @@ export const credentialReferenceSchema = z.object({
     "harness-execution"
   ])).min(1),
   safeLabel: secretSafeTextSchema,
-  authorizedBy: secretSafeTextSchema,
+  authorizedBy: authorizedBySchema,
   authorizedAt: z.string().datetime(),
   expiresAt: z.string().datetime().optional(),
   rotationDueAt: z.string().datetime().optional(),
@@ -68,7 +85,7 @@ export function createCredentialReference(input: z.input<typeof credentialRefere
     policyVersion: input.policyVersion
   })) {
     if (typeof value === "string") {
-      assertAgentSecretSafeText(value, label);
+      assertCredentialReferenceSecretSafeText(value, label);
     }
   }
 

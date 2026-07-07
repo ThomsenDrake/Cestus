@@ -11,7 +11,7 @@ export {
   credentialReferenceSchema,
   credentialReferenceStatusSchema,
   type CredentialKind as CredentialReferenceKind,
-  type CredentialReference,
+  type CredentialReference as AgentCredentialReference,
   type CredentialReferenceStatus
 } from "./credential-reference.js";
 export * from "./secret-store.js";
