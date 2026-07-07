@@ -438,7 +438,7 @@ git commit -m "feat: add agent context pack registry"
 - Create: `packages/agent/test/approval-queue.test.ts`
 - Modify: `packages/agent/src/index.ts`
 
-- [ ] **Step 1: Write the failing approval queue tests**
+- [x] **Step 1: Write the failing approval queue tests**
 
 Create `packages/agent/test/approval-queue.test.ts`:
 
@@ -545,7 +545,7 @@ describe("agent approval queue", () => {
 });
 ```
 
-- [ ] **Step 2: Run the targeted failing test**
+- [x] **Step 2: Run the targeted failing test**
 
 Run:
 
@@ -559,7 +559,7 @@ Expected before implementation:
 Failed to resolve import "../src/approval-queue.js"
 ```
 
-- [ ] **Step 3: Add approval queue DTO builder**
+- [x] **Step 3: Add approval queue DTO builder**
 
 Create `packages/agent/src/approval-queue.ts`.
 
@@ -581,7 +581,7 @@ Implementation requirements:
 - Locked items include blocking reason `lock-active`.
 - All messages and summaries pass `assertAgentSecretSafeText`.
 
-- [ ] **Step 4: Export approval queue surface**
+- [x] **Step 4: Export approval queue surface**
 
 Modify `packages/agent/src/index.ts`:
 
@@ -591,7 +591,7 @@ export * from "./approval-queue.js";
 
 Preserve existing exports.
 
-- [ ] **Step 5: Run targeted tests**
+- [x] **Step 5: Run targeted tests**
 
 Run:
 
@@ -605,7 +605,7 @@ Expected:
 Test Files  3 passed
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run:
 
