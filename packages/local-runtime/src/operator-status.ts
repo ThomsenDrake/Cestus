@@ -143,11 +143,11 @@ const safeActions: readonly OperatorSafeActionDto[] = Object.freeze([
     enabled: true
   },
   {
-    actionId: "action_show_legacy_inspect",
-    label: "Show legacy inspect command",
+    actionId: "action_show_legacy_import_help",
+    label: "Show legacy import help command",
     kind: "show-command",
-    command: "cestus legacy inspect --help",
-    sourceContract: "legacy-import",
+    command: "npm run ingestion:help",
+    sourceContract: "ingestion",
     requiresHumanApproval: false,
     mutatesCanonicalState: false,
     externalEffect: false,
@@ -411,6 +411,9 @@ function workspaceState(
   envelope: WorkspaceOpsEnvelope<WorkspaceVerifyDto>,
   payload: WorkspaceVerifyDto | undefined
 ): OperatorReadinessState {
+  if (isUninitializedWorkspaceRoot(envelope, payload)) {
+    return "action-required";
+  }
   if (envelope.status === "blocked") {
     return "blocked";
   }
@@ -457,6 +460,10 @@ function workspaceNextSafeActionIds(
     return ["action_refresh_operator_status"];
   }
 
+  if (isUninitializedWorkspaceRoot(envelope, payload)) {
+    return ["action_show_workspace_create", "action_show_workspace_verify", "action_refresh_operator_status"];
+  }
+
   if (payload?.mountStatus.status === "wrong-drive") {
     return ["action_show_workspace_select_mount", "action_show_workspace_detect_drive", "action_refresh_operator_status"];
   }
@@ -486,6 +493,17 @@ function workspaceNextSafeActionIds(
   }
 
   return ["action_show_workspace_verify", "action_refresh_operator_status"];
+}
+
+function isUninitializedWorkspaceRoot(
+  envelope: WorkspaceOpsEnvelope<WorkspaceVerifyDto>,
+  payload: WorkspaceVerifyDto | undefined
+): boolean {
+  return (
+    payload?.mountStatus.status === "wrong-drive" &&
+    envelope.workspace === undefined &&
+    envelope.diagnostics.some((diagnostic) => diagnostic.diagnosticId === "diag_workspace_manifest_missing")
+  );
 }
 
 function workspaceSourceEvidence(
@@ -643,14 +661,14 @@ function legacyNextSafeActionIds(
   }
 
   if (legacy.rawImportRequiresApproval) {
-    return ["action_open_ingestion", "action_show_legacy_inspect", "action_refresh_operator_status"];
+    return ["action_open_ingestion", "action_show_legacy_import_help", "action_refresh_operator_status"];
   }
 
   if (samplesStillNeeded) {
-    return ["action_show_legacy_inspect", "action_open_ingestion", "action_refresh_operator_status"];
+    return ["action_show_legacy_import_help", "action_open_ingestion", "action_refresh_operator_status"];
   }
 
-  return ["action_show_legacy_inspect", "action_open_ingestion"];
+  return ["action_show_legacy_import_help", "action_open_ingestion"];
 }
 
 function reviewDiagnostics(
