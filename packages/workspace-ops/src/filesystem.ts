@@ -1,10 +1,12 @@
 import {
   readdir,
+  lstat as nodeLstat,
   readFile,
   realpath as nodeRealpath,
   stat as nodeStat,
   statfs as nodeStatfs
 } from "node:fs/promises";
+import type { Stats } from "node:fs";
 import { join } from "node:path";
 
 export interface WorkspaceStats {
@@ -16,6 +18,7 @@ export interface WorkspaceFileSystem {
   exists(path: string): Promise<boolean>;
   readText(path: string): Promise<string>;
   stat(path: string): Promise<WorkspaceStats>;
+  lstat?(path: string): Promise<WorkspaceStats>;
   list(path: string): Promise<readonly string[]>;
   realpath(path: string): Promise<string>;
   availableBytes(path: string): Promise<number | undefined>;
@@ -40,10 +43,12 @@ export class NodeWorkspaceFileSystem implements WorkspaceFileSystem {
 
   async stat(path: string): Promise<WorkspaceStats> {
     const stats = await nodeStat(path);
-    return {
-      kind: stats.isDirectory() ? "directory" : stats.isFile() ? "file" : "other",
-      sizeBytes: stats.size
-    };
+    return statsToWorkspaceStats(stats);
+  }
+
+  async lstat(path: string): Promise<WorkspaceStats> {
+    const stats = await nodeLstat(path);
+    return statsToWorkspaceStats(stats);
   }
 
   async list(path: string): Promise<readonly string[]> {
@@ -62,6 +67,13 @@ export class NodeWorkspaceFileSystem implements WorkspaceFileSystem {
       return undefined;
     }
   }
+}
+
+function statsToWorkspaceStats(stats: Stats): WorkspaceStats {
+  return {
+    kind: stats.isDirectory() ? "directory" : stats.isFile() ? "file" : "other",
+    sizeBytes: stats.size
+  };
 }
 
 export function childPath(parent: string, ...children: string[]): string {

@@ -1,3 +1,4 @@
+import { isAbsolute, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { validateKnowledgeEvent } from "../../ontology/src/contracts.js";
 import {
@@ -14,7 +15,7 @@ import {
 } from "./contracts.js";
 import { childPath, type WorkspaceFileSystem } from "./filesystem.js";
 import {
-  parseProvisionalWorkspaceManifest,
+  parsePortableWorkspaceManifest,
   type ResolvedWorkspaceLayout,
   type WorkspaceLayoutResult
 } from "./layout.js";
@@ -36,14 +37,54 @@ export interface ReportDiskUsageInput {
 }
 
 const workspaceRootSpecs = [
-  { rootId: "manifest", category: "manifest", path: (layout: ResolvedWorkspaceLayout) => layout.manifestPath },
-  { rootId: "ledger", category: "ledger", path: (layout: ResolvedWorkspaceLayout) => layout.ledgerPath },
-  { rootId: "blobs", category: "blobs", path: (layout: ResolvedWorkspaceLayout) => layout.blobRoot },
-  { rootId: "derivatives", category: "derivatives", path: (layout: ResolvedWorkspaceLayout) => layout.derivativeRoot },
-  { rootId: "jobs", category: "jobs", path: (layout: ResolvedWorkspaceLayout) => layout.jobRoot },
-  { rootId: "projections", category: "projections", path: (layout: ResolvedWorkspaceLayout) => layout.projectionRoot },
-  { rootId: "diagnostics", category: "diagnostics", path: (layout: ResolvedWorkspaceLayout) => layout.diagnosticsRoot },
-  { rootId: "backups", category: "backups", path: (layout: ResolvedWorkspaceLayout) => layout.backupRoot }
+  {
+    rootId: "manifest",
+    category: "manifest",
+    expectedKind: "file",
+    path: (layout: ResolvedWorkspaceLayout) => layout.manifestPath
+  },
+  {
+    rootId: "ledger",
+    category: "ledger",
+    expectedKind: "directory",
+    path: (layout: ResolvedWorkspaceLayout) => childPath(layout.rootPath, "ledger")
+  },
+  {
+    rootId: "blobs",
+    category: "blobs",
+    expectedKind: "directory",
+    path: (layout: ResolvedWorkspaceLayout) => layout.blobRoot
+  },
+  {
+    rootId: "derivatives",
+    category: "derivatives",
+    expectedKind: "directory",
+    path: (layout: ResolvedWorkspaceLayout) => layout.derivativeRoot
+  },
+  {
+    rootId: "jobs",
+    category: "jobs",
+    expectedKind: "directory",
+    path: (layout: ResolvedWorkspaceLayout) => layout.jobRoot
+  },
+  {
+    rootId: "projections",
+    category: "projections",
+    expectedKind: "directory",
+    path: (layout: ResolvedWorkspaceLayout) => layout.projectionRoot
+  },
+  {
+    rootId: "cache",
+    category: "cache",
+    expectedKind: "directory",
+    path: (layout: ResolvedWorkspaceLayout) => layout.cacheRoot
+  },
+  {
+    rootId: "config",
+    category: "config",
+    expectedKind: "directory",
+    path: (layout: ResolvedWorkspaceLayout) => layout.configRoot
+  }
 ] as const;
 
 type WorkspaceRootSpec = (typeof workspaceRootSpecs)[number];
@@ -131,11 +172,14 @@ export async function verifyWorkspace(
   const projectionRoot = requireRoot(rootMap, "projections");
   const derivativeRoot = requireRoot(rootMap, "derivatives");
   const jobRoot = requireRoot(rootMap, "jobs");
-  const diagnosticsRoot = requireRoot(rootMap, "diagnostics");
-  const backupRoot = requireRoot(rootMap, "backups");
+  const cacheRoot = requireRoot(rootMap, "cache");
+  const configRoot = requireRoot(rootMap, "config");
 
   let events: readonly unknown[] = [];
   let ledgerReadable = false;
+  const ledgerFileStatus = ledgerRoot.status === "available"
+    ? await pathStatus(input.fileSystem, layout.ledgerPath, layout.rootPath, "file")
+    : "missing";
 
   if (ledgerRoot.status !== "available") {
     diagnostics.push(canonicalDiagnostic(
@@ -144,6 +188,13 @@ export async function verifyWorkspace(
       "Workspace ledger root is not available."
     ));
     proposedActions.push(canonicalRepairAction("repair_workspace_ledger_root_unavailable"));
+  } else if (ledgerFileStatus === "unreadable") {
+    diagnostics.push(canonicalDiagnostic(
+      "diag_workspace_ledger_file_unavailable",
+      "ledger",
+      "Workspace ledger file path is not a regular file inside the workspace."
+    ));
+    proposedActions.push(canonicalRepairAction("repair_workspace_ledger_file_unavailable"));
   } else if (manifestValidation.valid) {
     try {
       events = await input.eventReader.readAll(layout);
@@ -171,21 +222,21 @@ export async function verifyWorkspace(
   }
 
   const blobTotal = blobRoot.status === "available"
-    ? await bytesForPath(input.fileSystem, blobRoot.path)
+    ? await bytesForPath(input.fileSystem, blobRoot.path, layout.rootPath)
     : { bytes: 0, readable: false };
   const blobAvailable = blobRoot.status === "available" && blobTotal.readable;
   if (!blobAvailable) {
     diagnostics.push(canonicalDiagnostic(
-      blobRoot.status === "available"
+      blobRoot.status !== "missing"
         ? "diag_workspace_blob_root_unreadable"
         : "diag_workspace_blob_root_unavailable",
       "blob-integrity",
-      blobRoot.status === "available"
+      blobRoot.status !== "missing"
         ? "Workspace blob store root could not be traversed safely."
         : "Workspace blob store root is not available."
     ));
     proposedActions.push(canonicalRepairAction(
-      blobRoot.status === "available"
+      blobRoot.status !== "missing"
         ? "repair_workspace_blob_root_unreadable"
         : "repair_workspace_blob_root_unavailable"
     ));
@@ -218,12 +269,12 @@ export async function verifyWorkspace(
     });
   }
 
-  for (const root of [derivativeRoot, jobRoot, diagnosticsRoot, backupRoot]) {
+  for (const root of [derivativeRoot, jobRoot, cacheRoot, configRoot]) {
     if (root.status !== "available") {
       diagnostics.push({
         diagnosticId: `diag_workspace_${root.rootId}_root_unavailable`,
         severity: "warning",
-        category: supportRootDiagnosticCategory(root),
+        category: supportRootDiagnosticCategory(),
         message: "Workspace derived or support root is not available.",
         durable: false,
         repairHint: {
@@ -278,13 +329,13 @@ export async function verifyWorkspace(
       failedCount: 0
     },
     diagnostics: {
-      visible: diagnosticsRoot.status === "available",
+      visible: ledgerReadable,
       errorCount: diagnostics.filter((diagnostic) => diagnostic.severity === "error").length,
       warningCount: diagnostics.filter((diagnostic) => diagnostic.severity === "warning").length
     },
     backup: {
-      manifestAvailable: backupRoot.status === "available",
-      stale: backupRoot.status !== "available"
+      manifestAvailable: false,
+      stale: false
     }
   };
 
@@ -322,7 +373,9 @@ export async function reportDiskUsage(
   for (const spec of workspaceRootSpecs) {
     const path = spec.path(input.layout);
     const exists = await safeExists(input.fileSystem, path);
-    const total = exists === true ? await bytesForPath(input.fileSystem, path) : { bytes: 0, readable: true };
+    const total = exists === true
+      ? await bytesForPath(input.fileSystem, path, input.layout.rootPath)
+      : { bytes: 0, readable: true };
     if (!total.readable || exists === "unreadable") {
       diagnostics.push({
         diagnosticId: `diag_workspace_disk_${spec.rootId}_unreadable`,
@@ -473,7 +526,7 @@ async function inspectWorkspaceRoot(
     rootId: spec.rootId,
     category: spec.category,
     path,
-    status: await pathStatus(fileSystem, path),
+    status: await pathStatus(fileSystem, path, layout.rootPath, spec.expectedKind),
     safeUri: safeUriForPath(path)
   };
 }
@@ -497,7 +550,7 @@ async function validateResolvedManifest(
     return { readable: true, valid: false, reason: "invalid-shape" };
   }
 
-  const parsed = parseProvisionalWorkspaceManifest(manifestValue);
+  const parsed = parsePortableWorkspaceManifest(manifestValue);
   if (parsed !== undefined) {
     if (parsed.workspaceId !== workspace.workspaceId) {
       return { readable: true, valid: false, reason: "identity-mismatch" };
@@ -523,7 +576,7 @@ function manifestIdentityMismatchReason(
   if (value.workspaceId !== workspace.workspaceId) {
     return "identity-mismatch";
   }
-  if (value.version !== workspace.manifestVersion) {
+  if (value.version !== workspace.manifestVersion || value.layoutVersion !== 1) {
     return "version-mismatch";
   }
   return undefined;
@@ -533,13 +586,36 @@ function isStrictManifestIdentityRecord(value: unknown): value is {
   readonly workspaceId: string;
   readonly label: string;
   readonly version: number;
+  readonly layoutVersion: number;
 } {
   if (typeof value !== "object" || value === null || Object.getPrototypeOf(value) !== Object.prototype) {
     return false;
   }
 
   const keys = Object.keys(value).sort();
-  if (keys.join("\0") !== "label\0version\0workspaceId") {
+  const allowedKeys = [
+    "coreVersion",
+    "createdAt",
+    "createdBy",
+    "description",
+    "label",
+    "layoutVersion",
+    "version",
+    "workspaceId"
+  ];
+  const requiredKeys = [
+    "coreVersion",
+    "createdAt",
+    "createdBy",
+    "label",
+    "layoutVersion",
+    "version",
+    "workspaceId"
+  ];
+  if (
+    keys.some((key) => !allowedKeys.includes(key)) ||
+    requiredKeys.some((key) => !keys.includes(key))
+  ) {
     return false;
   }
 
@@ -547,6 +623,11 @@ function isStrictManifestIdentityRecord(value: unknown): value is {
     readonly workspaceId?: unknown;
     readonly label?: unknown;
     readonly version?: unknown;
+    readonly layoutVersion?: unknown;
+    readonly createdAt?: unknown;
+    readonly createdBy?: unknown;
+    readonly coreVersion?: unknown;
+    readonly description?: unknown;
   };
   return (
     typeof candidate.workspaceId === "string" &&
@@ -556,7 +637,14 @@ function isStrictManifestIdentityRecord(value: unknown): value is {
     isSecretSafeWorkspaceText(candidate.label) &&
     typeof candidate.version === "number" &&
     Number.isInteger(candidate.version) &&
-    candidate.version > 0
+    candidate.version > 0 &&
+    typeof candidate.layoutVersion === "number" &&
+    Number.isInteger(candidate.layoutVersion) &&
+    candidate.layoutVersion > 0 &&
+    typeof candidate.createdAt === "string" &&
+    typeof candidate.createdBy === "string" &&
+    typeof candidate.coreVersion === "string" &&
+    (candidate.description === undefined || typeof candidate.description === "string")
   );
 }
 
@@ -625,15 +713,37 @@ function isWrongDriveManifestReason(reason: ManifestValidationReason): boolean {
 
 async function pathStatus(
   fileSystem: WorkspaceFileSystem,
-  path: string
+  path: string,
+  workspaceRootPath: string,
+  expectedKind: WorkspaceRootSpec["expectedKind"]
 ): Promise<WorkspaceRootStatus> {
   const exists = await safeExists(fileSystem, path);
   if (exists !== true) {
-    return exists === "unreadable" ? "unreadable" : "missing";
+    if (exists === "unreadable") {
+      return "unreadable";
+    }
+    if (fileSystem.lstat !== undefined) {
+      try {
+        await fileSystem.lstat(path);
+        return "unreadable";
+      } catch {
+        return "missing";
+      }
+    }
+    return "missing";
   }
 
   try {
-    await fileSystem.stat(path);
+    const stats = fileSystem.lstat === undefined
+      ? await fileSystem.stat(path)
+      : await fileSystem.lstat(path);
+    if (stats.kind !== expectedKind) {
+      return "unreadable";
+    }
+    const realPath = await fileSystem.realpath(path);
+    if (!isPathInsideWorkspace(workspaceRootPath, realPath)) {
+      return "unreadable";
+    }
     return "available";
   } catch {
     return "unreadable";
@@ -666,10 +776,14 @@ async function safeAvailableBytes(
 async function bytesForPath(
   fileSystem: WorkspaceFileSystem,
   path: string,
+  workspaceRootPath: string,
   visitingRealpaths = new Set<string>()
 ): Promise<{ readonly bytes: number; readonly readable: boolean }> {
   try {
     const realPath = await fileSystem.realpath(path);
+    if (!isPathInsideWorkspace(workspaceRootPath, realPath)) {
+      return { bytes: 0, readable: false };
+    }
     if (visitingRealpaths.has(realPath)) {
       return { bytes: 0, readable: true };
     }
@@ -683,7 +797,7 @@ async function bytesForPath(
 
     let bytes = 0;
     for (const child of await fileSystem.list(path)) {
-      const childTotal = await bytesForPath(fileSystem, childPath(path, child), visitingRealpaths);
+      const childTotal = await bytesForPath(fileSystem, childPath(path, child), workspaceRootPath, visitingRealpaths);
       if (!childTotal.readable) {
         visitingRealpaths.delete(realPath);
         return { bytes, readable: false };
@@ -720,13 +834,7 @@ function highWaterMark(events: readonly unknown[]): number {
   return events.length;
 }
 
-function supportRootDiagnosticCategory(root: InspectedRoot): WorkspaceDiagnosticInput["category"] {
-  if (root.category === "backups") {
-    return "backup";
-  }
-  if (root.category === "diagnostics") {
-    return "diagnostics";
-  }
+function supportRootDiagnosticCategory(): WorkspaceDiagnosticInput["category"] {
   return "layout";
 }
 
@@ -806,4 +914,16 @@ function aggregateCategories(
 function safeUriForPath(path: string): string {
   const uri = pathToFileURL(path).href;
   return isSecretSafeWorkspaceText(uri) ? uri : "workspace://redacted-root";
+}
+
+function isPathInsideWorkspace(workspaceRootPath: string, path: string): boolean {
+  const relativePath = relative(workspaceRootPath, path);
+  return (
+    relativePath === "" ||
+    (
+      relativePath !== ".." &&
+      !relativePath.startsWith(`..${sep}`) &&
+      !isAbsolute(relativePath)
+    )
+  );
 }

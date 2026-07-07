@@ -9,6 +9,7 @@ export interface LocalRuntimeConfigFile {
     readonly sqlitePath?: string;
     readonly appDataDir?: string;
     readonly workspaceRoot?: string;
+    readonly expectedWorkspaceId?: string;
   };
   readonly http?: {
     readonly host?: string;
@@ -35,6 +36,7 @@ export interface WriteLocalRuntimeOnboardingConfigInput {
   readonly sqlitePath?: string;
   readonly appDataDir?: string;
   readonly workspaceRoot?: string;
+  readonly expectedWorkspaceId?: string;
   readonly distDir?: string;
   readonly logDir?: string;
   readonly devSeedEnabled?: boolean;
@@ -146,15 +148,20 @@ function mergeStorageConfig(
   existing: LocalRuntimeConfigFile,
   input: WriteLocalRuntimeOnboardingConfigInput
 ): LocalRuntimeConfigFile["storage"] {
+  const workspaceRootChanged = workspaceRootChangedFor(existing.storage ?? {}, input);
   if (input.storageStrategy !== undefined) {
-    return storageConfigForStrategy(existing.storage ?? {}, input.storageStrategy, input);
+    return storageConfigForStrategy(existing.storage ?? {}, input.storageStrategy, input, workspaceRootChanged);
   }
 
+  const { expectedWorkspaceId: _staleExpectedWorkspaceId, ...existingStorageWithoutExpectedId } =
+    existing.storage ?? {};
+  const baseStorage = workspaceRootChanged ? existingStorageWithoutExpectedId : existing.storage ?? {};
   const storage = {
-    ...(existing.storage ?? {}),
+    ...baseStorage,
     ...(input.sqlitePath === undefined ? {} : { sqlitePath: input.sqlitePath }),
     ...(input.appDataDir === undefined ? {} : { appDataDir: input.appDataDir }),
-    ...(input.workspaceRoot === undefined ? {} : { workspaceRoot: input.workspaceRoot })
+    ...(input.workspaceRoot === undefined ? {} : { workspaceRoot: input.workspaceRoot }),
+    ...(input.expectedWorkspaceId === undefined ? {} : { expectedWorkspaceId: input.expectedWorkspaceId })
   };
 
   return Object.keys(storage).length === 0 ? undefined : storage;
@@ -163,7 +170,8 @@ function mergeStorageConfig(
 function storageConfigForStrategy(
   existing: NonNullable<LocalRuntimeConfigFile["storage"]>,
   strategy: NonNullable<WriteLocalRuntimeOnboardingConfigInput["storageStrategy"]>,
-  input: WriteLocalRuntimeOnboardingConfigInput
+  input: WriteLocalRuntimeOnboardingConfigInput,
+  workspaceRootChanged: boolean
 ): NonNullable<LocalRuntimeConfigFile["storage"]> {
   if (strategy === "repo-local") {
     return { strategy };
@@ -186,10 +194,24 @@ function storageConfigForStrategy(
   }
 
   const workspaceRoot = input.workspaceRoot ?? existing.workspaceRoot;
+  const expectedWorkspaceId =
+    input.expectedWorkspaceId ?? (workspaceRootChanged ? undefined : existing.expectedWorkspaceId);
   return {
     strategy,
-    ...(workspaceRoot === undefined ? {} : { workspaceRoot })
+    ...(workspaceRoot === undefined ? {} : { workspaceRoot }),
+    ...(expectedWorkspaceId === undefined ? {} : { expectedWorkspaceId })
   };
+}
+
+function workspaceRootChangedFor(
+  existing: NonNullable<LocalRuntimeConfigFile["storage"]>,
+  input: WriteLocalRuntimeOnboardingConfigInput
+): boolean {
+  return (
+    input.workspaceRoot !== undefined &&
+    existing.workspaceRoot !== undefined &&
+    input.workspaceRoot !== existing.workspaceRoot
+  );
 }
 
 function mergeHttpConfig(
@@ -246,7 +268,11 @@ function parseStorageConfig(
   record: Record<string, unknown>,
   path: string
 ): NonNullable<LocalRuntimeConfigFile["storage"]> {
-  assertAllowedKeys(record, ["strategy", "sqlitePath", "appDataDir", "workspaceRoot"], "storage");
+  assertAllowedKeys(
+    record,
+    ["strategy", "sqlitePath", "appDataDir", "workspaceRoot", "expectedWorkspaceId"],
+    "storage"
+  );
   return Object.freeze({
     ...parseOptionalEnum(record, "strategy", path, [
       "repo-local",
@@ -256,7 +282,8 @@ function parseStorageConfig(
     ]),
     ...parseOptionalString(record, "sqlitePath", path),
     ...parseOptionalString(record, "appDataDir", path),
-    ...parseOptionalString(record, "workspaceRoot", path)
+    ...parseOptionalString(record, "workspaceRoot", path),
+    ...parseOptionalString(record, "expectedWorkspaceId", path)
   });
 }
 

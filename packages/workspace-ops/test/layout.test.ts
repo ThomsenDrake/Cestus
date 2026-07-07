@@ -1,14 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { formatWorkspaceOpsJson, workspaceOpsEnvelopeSchema } from "../src/contracts.js";
 import { NodeWorkspaceFileSystem, type WorkspaceFileSystem, type WorkspaceStats } from "../src/filesystem.js";
-import {
-  provisionalWorkspaceLayoutContractVersion,
-  resolveWorkspaceLayout
-} from "../src/layout.js";
+import { resolveWorkspaceLayout } from "../src/layout.js";
 
 class RecordingReadOnlyFs implements WorkspaceFileSystem {
   readonly files = new Map<string, string>();
@@ -116,7 +114,15 @@ describe("resolveWorkspaceLayout", () => {
     fileSystem.directories.add("/mnt/portable");
     fileSystem.files.set(
       "/mnt/portable/cestus-workspace.json",
-      JSON.stringify({ workspaceId: "ws_other_workspace", label: "Other workspace", version: 1 })
+      JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_other_workspace",
+        label: "Other workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      })
     );
 
     const result = await resolveWorkspaceLayout(
@@ -134,13 +140,92 @@ describe("resolveWorkspaceLayout", () => {
     expect(JSON.stringify(result)).not.toContain("ws_other_workspace");
   });
 
+  it("does not report detect ready when an existing SQLite ledger path is unsafe", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-detect-ledger-link-"));
+    const fileSystem = new NodeWorkspaceFileSystem();
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_detect_ledger_link",
+        label: "Detect Ledger Link",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      });
+      symlinkSync(join(rootPath, "missing-ledger.sqlite"), join(rootPath, "ledger", "ontology.sqlite"));
+
+      const result = await resolveWorkspaceLayout(
+        { rootPath, expectedWorkspaceId: "ws_detect_ledger_link" },
+        fileSystem
+      );
+
+      expect(result.status).toBe("blocked");
+      expect(result.mountStatus.status).toBe("unreadable");
+      expect(result.workspace).toBeUndefined();
+      expect(result.layout).toBeUndefined();
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          diagnosticId: "diag_workspace_layout_unsafe",
+          category: "layout"
+        })
+      );
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("does not report detect ready when a canonical root escapes the workspace", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-detect-root-link-"));
+    const outsideRoot = mkdtempSync(join(tmpdir(), "cestus-detect-outside-"));
+    const fileSystem = new NodeWorkspaceFileSystem();
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_detect_blob_link",
+        label: "Detect Blob Link",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      });
+      rmSync(join(rootPath, "blobs"), { recursive: true, force: true });
+      symlinkSync(outsideRoot, join(rootPath, "blobs"));
+
+      const result = await resolveWorkspaceLayout(
+        { rootPath, expectedWorkspaceId: "ws_detect_blob_link" },
+        fileSystem
+      );
+
+      expect(result.status).toBe("blocked");
+      expect(result.mountStatus.status).toBe("unreadable");
+      expect(result.workspace).toBeUndefined();
+      expect(result.layout).toBeUndefined();
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          diagnosticId: "diag_workspace_layout_unsafe",
+          category: "layout"
+        })
+      );
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+      rmSync(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
   it("rejects traversal manifest names without reading outside the selected root", async () => {
     const fileSystem = new RecordingReadOnlyFs();
     fileSystem.directories.add("/mnt/wrong-drive");
     fileSystem.directories.add("/mnt/real-drive");
     fileSystem.files.set(
       "/mnt/real-drive/cestus-workspace.json",
-      JSON.stringify({ workspaceId: "ws_real_workspace", label: "Real workspace", version: 1 })
+      JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_real_workspace",
+        label: "Real workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      })
     );
 
     const result = await resolveWorkspaceLayout(
@@ -165,7 +250,15 @@ describe("resolveWorkspaceLayout", () => {
     fileSystem.directories.add("/mnt/real-drive");
     fileSystem.files.set(
       "/mnt/real-drive/cestus-workspace.json",
-      JSON.stringify({ workspaceId: "ws_real_workspace", label: "Real workspace", version: 1 })
+      JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_real_workspace",
+        label: "Real workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      })
     );
 
     const result = await resolveWorkspaceLayout(
@@ -189,7 +282,15 @@ describe("resolveWorkspaceLayout", () => {
     fileSystem.directories.add("/mnt/portable");
     fileSystem.files.set(
       "/mnt/portable/cestus-workspace.json",
-      JSON.stringify({ workspaceId: "ws_ops_001", label: "api key abcdef", version: 1 })
+      JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_ops_001",
+        label: "api key abcdef",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      })
     );
 
     const result = await resolveWorkspaceLayout({ rootPath: "/mnt/portable" }, fileSystem);
@@ -204,12 +305,20 @@ describe("resolveWorkspaceLayout", () => {
     expect(formatWorkspaceOpsJson(result.envelope)).not.toMatch(/api key|abcdef/i);
   });
 
-  it("resolves the provisional layout through a replaceable adapter without creating layout roots", async () => {
+  it("resolves the canonical portable workspace layout without creating layout roots", async () => {
     const rootPath = mkdtempSync(join(tmpdir(), "cestus-layout-"));
     const fileSystem = new NodeWorkspaceFileSystem();
     writeFileSync(
       join(rootPath, "cestus-workspace.json"),
-      `${JSON.stringify({ workspaceId: "ws_ops_001", label: "Ops Fixture", version: 1 })}\n`,
+      `${JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_ops_001",
+        label: "Ops Fixture",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      })}\n`,
       "utf8"
     );
 
@@ -221,7 +330,7 @@ describe("resolveWorkspaceLayout", () => {
         workspaceId: "ws_ops_001",
         label: "Ops Fixture",
         manifestVersion: 1,
-        layoutContractVersion: provisionalWorkspaceLayoutContractVersion
+        layoutContractVersion: "portable-workspace-layout.v1"
       });
       expect(result.layout).toMatchObject({
         manifestPath: join(rootPath, "cestus-workspace.json"),
@@ -230,8 +339,8 @@ describe("resolveWorkspaceLayout", () => {
         derivativeRoot: join(rootPath, "derivatives"),
         jobRoot: join(rootPath, "jobs"),
         projectionRoot: join(rootPath, "projections"),
-        diagnosticsRoot: join(rootPath, "diagnostics"),
-        backupRoot: join(rootPath, "backups")
+        cacheRoot: join(rootPath, "cache"),
+        configRoot: join(rootPath, "config")
       });
       expect(Object.keys(result.envelope)).not.toContain("layout");
       expect(result.envelope.payload).toEqual(result.mountStatus);

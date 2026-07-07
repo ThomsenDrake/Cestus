@@ -29,7 +29,8 @@ export type WorkspaceMountDiagnosticCode =
   | "workspace-manifest-unsupported-version"
   | "workspace-layout-conflict"
   | "workspace-ledger-unavailable"
-  | "workspace-secret-material-rejected";
+  | "workspace-secret-material-rejected"
+  | "workspace-identity-mismatch";
 
 export interface WorkspaceMountDiagnostic {
   readonly code: WorkspaceMountDiagnosticCode;
@@ -68,6 +69,7 @@ export interface CreatePortableWorkspaceInput {
 
 export interface MountPortableWorkspaceInput {
   readonly rootDir: string;
+  readonly expectedWorkspaceId?: string;
 }
 
 export interface ReadPortableWorkspaceManifestInput {
@@ -204,6 +206,14 @@ export function mountPortableWorkspace(input: MountPortableWorkspaceInput): Work
       "inspect cestus-workspace.json",
       "restore a valid workspace manifest"
     ]);
+  }
+
+  if (input.expectedWorkspaceId !== undefined && manifest.data.workspaceId !== input.expectedWorkspaceId) {
+    return failure(
+      "workspace-identity-mismatch",
+      "Portable workspace identity does not match the expected workspace.",
+      ["select the expected workspace root", "check CESTUS_WORKSPACE_ID"]
+    );
   }
 
   const conflict = firstLayoutConflict(paths);

@@ -78,8 +78,8 @@ const workspaceRootCategories = [
   "derivatives",
   "jobs",
   "projections",
-  "diagnostics",
-  "backups"
+  "cache",
+  "config"
 ] as const satisfies readonly WorkspaceRootCategory[];
 
 const secretFieldPattern =
@@ -316,7 +316,8 @@ function sectionSummary(
       return summary.blobStore;
     case "derivatives":
     case "projections":
-    case "diagnostics":
+    case "cache":
+    case "config":
     case "jobs":
     case "backup":
       return summary.artifacts.filter((artifact) => sectionForCategory(artifact.category) === sectionId);

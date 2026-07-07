@@ -81,6 +81,56 @@ describe("portable workspace contract", () => {
     }
   });
 
+  it("fails closed when the mounted workspace identity does not match the expected identity", () => {
+    createPortableWorkspace({
+      rootDir: dir,
+      workspaceId: "ws_actual_drive",
+      label: "Actual Drive",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "workspace-package-test",
+      coreVersion: "0.1.0"
+    });
+
+    const mounted = mountPortableWorkspace({
+      rootDir: dir,
+      expectedWorkspaceId: "ws_expected_drive"
+    });
+
+    expect(mounted).toEqual({
+      ok: false,
+      diagnostic: {
+        code: "workspace-identity-mismatch",
+        message: "Portable workspace identity does not match the expected workspace.",
+        allowedRepairActions: [
+          "select the expected workspace root",
+          "check CESTUS_WORKSPACE_ID"
+        ]
+      }
+    });
+    expect(JSON.stringify(mounted)).not.toContain("ws_actual_drive");
+  });
+
+  it("mounts when the expected workspace identity matches the manifest", () => {
+    createPortableWorkspace({
+      rootDir: dir,
+      workspaceId: "ws_expected_drive",
+      label: "Expected Drive",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "workspace-package-test",
+      coreVersion: "0.1.0"
+    });
+
+    const mounted = mountPortableWorkspace({
+      rootDir: dir,
+      expectedWorkspaceId: "ws_expected_drive"
+    });
+
+    expect(mounted.ok).toBe(true);
+    if (mounted.ok) {
+      expect(mounted.workspace.workspaceId).toBe("ws_expected_drive");
+    }
+  });
+
   it("fails create before writing the manifest when the ledger path is unavailable", () => {
     mkdirSync(join(dir, "ledger", "ontology.sqlite"), { recursive: true });
 

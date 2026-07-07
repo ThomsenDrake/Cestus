@@ -1,10 +1,14 @@
+import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { createPortableWorkspace, mountPortableWorkspace } from "../../workspace/src/index.js";
 import {
   workspaceOpsEnvelopeSchema,
   workspaceOpsSchemaVersion,
   workspaceVerifyDtoSchema
 } from "../src/contracts.js";
-import type { WorkspaceFileSystem, WorkspaceStats } from "../src/filesystem.js";
+import { NodeWorkspaceFileSystem, type WorkspaceFileSystem, type WorkspaceStats } from "../src/filesystem.js";
 import {
   createProvisionalWorkspaceLayout,
   resolveWorkspaceLayout,
@@ -37,6 +41,24 @@ const validEvent = {
     sizeBytes: 1
   }
 } as const;
+
+function canonicalManifest(
+  workspaceId = "ws_ops_001",
+  label = "Ops Fixture",
+  version = 1,
+  extraFields: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    version,
+    layoutVersion: 1,
+    workspaceId,
+    label,
+    createdAt: "2026-07-06T12:00:00.000Z",
+    createdBy: "workspace-ops-test",
+    coreVersion: "0.1.0",
+    ...extraFields
+  };
+}
 
 class MemoryWorkspaceFs implements WorkspaceFileSystem {
   readonly files = new Map<string, string>();
@@ -111,29 +133,27 @@ class MemoryWorkspaceFs implements WorkspaceFileSystem {
 function addResolvedWorkspace(fileSystem: MemoryWorkspaceFs): ResolvedWorkspaceLayout {
   const layout = createProvisionalWorkspaceLayout(rootPath);
   fileSystem.directories.add(rootPath);
-  fileSystem.files.set(
-    manifestPath,
-    JSON.stringify({ workspaceId: "ws_ops_001", label: "Ops Fixture", version: 1 })
-  );
+  fileSystem.files.set(manifestPath, JSON.stringify(canonicalManifest()));
+  fileSystem.directories.add(join(rootPath, "ledger"));
   fileSystem.files.set(layout.ledgerPath, "sqlite");
   fileSystem.directories.add(layout.blobRoot);
   fileSystem.directories.add(layout.derivativeRoot);
   fileSystem.directories.add(layout.jobRoot);
   fileSystem.directories.add(layout.projectionRoot);
-  fileSystem.directories.add(layout.diagnosticsRoot);
-  fileSystem.directories.add(layout.backupRoot);
+  fileSystem.directories.add(join(rootPath, "cache"));
+  fileSystem.directories.add(join(rootPath, "config"));
   return layout;
 }
 
 function canonicalRootPaths(layout: ResolvedWorkspaceLayout): readonly string[] {
   return [
-    layout.ledgerPath,
+    join(layout.rootPath, "ledger"),
     layout.blobRoot,
     layout.derivativeRoot,
     layout.jobRoot,
     layout.projectionRoot,
-    layout.diagnosticsRoot,
-    layout.backupRoot
+    join(layout.rootPath, "cache"),
+    join(layout.rootPath, "config")
   ];
 }
 
@@ -157,6 +177,136 @@ function neverCalledEventReader(): WorkspaceEventReader {
 }
 
 describe("verifyWorkspace", () => {
+  it("verifies a fresh unopened canonical workspace without creating the SQLite ledger", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-ops-fresh-"));
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_fresh_ops",
+        label: "Fresh Ops Workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      });
+
+      const fs = new NodeWorkspaceFileSystem();
+      const layout = await resolveWorkspaceLayout({ rootPath, expectedWorkspaceId: "ws_fresh_ops" }, fs);
+      const result = await verifyWorkspace({
+        layout,
+        fileSystem: fs,
+        eventReader: {
+          async readAll() {
+            return [];
+          }
+        }
+      });
+
+      expect(result.status).toBe("ready");
+      expect(result.payload?.ledger).toEqual({
+        readable: true,
+        eventCount: 0,
+        highWaterMark: 0
+      });
+      expect(existsSync(join(rootPath, "ledger", "ontology.sqlite"))).toBe(false);
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("blocks an existing unsafe SQLite ledger path without opening ledger events", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-ops-ledger-link-"));
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_linked_ledger",
+        label: "Linked Ledger Workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      });
+      const fs = new NodeWorkspaceFileSystem();
+      const layout = await resolveWorkspaceLayout({ rootPath, expectedWorkspaceId: "ws_linked_ledger" }, fs);
+      symlinkSync(join(rootPath, "missing-ledger.sqlite"), join(rootPath, "ledger", "ontology.sqlite"));
+      expect(mountPortableWorkspace({ rootDir: rootPath })).toMatchObject({
+        ok: false,
+        diagnostic: { code: "workspace-ledger-unavailable" }
+      });
+
+      let readCalls = 0;
+      const result = await verifyWorkspace({
+        layout,
+        fileSystem: fs,
+        eventReader: {
+          async readAll() {
+            readCalls += 1;
+            return [];
+          }
+        }
+      });
+
+      expect(readCalls).toBe(0);
+      expect(result.status).toBe("blocked");
+      expect(result.payload?.ledger).toEqual({ readable: false, eventCount: 0, highWaterMark: 0 });
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          diagnosticId: "diag_workspace_ledger_file_unavailable",
+          category: "ledger"
+        })
+      );
+      expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+      expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it("treats canonical root symlinks that escape the workspace as unsafe", async () => {
+    const rootPath = mkdtempSync(join(tmpdir(), "cestus-ops-root-link-"));
+    const outsideRoot = mkdtempSync(join(tmpdir(), "cestus-ops-outside-"));
+    try {
+      createPortableWorkspace({
+        rootDir: rootPath,
+        workspaceId: "ws_linked_blob",
+        label: "Linked Blob Workspace",
+        createdAt: "2026-07-06T12:00:00.000Z",
+        createdBy: "workspace-ops-test",
+        coreVersion: "0.1.0"
+      });
+      const fs = new NodeWorkspaceFileSystem();
+      const layout = await resolveWorkspaceLayout({ rootPath, expectedWorkspaceId: "ws_linked_blob" }, fs);
+      rmSync(join(rootPath, "blobs"), { recursive: true, force: true });
+      symlinkSync(outsideRoot, join(rootPath, "blobs"));
+
+      const result = await verifyWorkspace({
+        layout,
+        fileSystem: fs,
+        eventReader: {
+          async readAll() {
+            return [];
+          }
+        }
+      });
+
+      expect(result.status).toBe("degraded");
+      expect(result.payload?.blobStore).toMatchObject({
+        available: false,
+        aggregateBytes: 0,
+        missingBlobCount: 1
+      });
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          diagnosticId: "diag_workspace_blob_root_unreadable",
+          category: "blob-integrity"
+        })
+      );
+      expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+      expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+    } finally {
+      rmSync(rootPath, { recursive: true, force: true });
+      rmSync(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
   it("blocks verification when the drive is missing and proposes remount without reading canonical stores", async () => {
     const fileSystem = new MemoryWorkspaceFs();
     const layout = await resolveWorkspaceLayout({ rootPath: "/missing-workspace" }, fileSystem);
@@ -248,6 +398,7 @@ describe("verifyWorkspace", () => {
   it("does not read canonical ledger events when the ledger path is unavailable", async () => {
     const fileSystem = new MemoryWorkspaceFs();
     const layoutShape = addResolvedWorkspace(fileSystem);
+    fileSystem.directories.delete(join(rootPath, "ledger"));
     fileSystem.files.delete(layoutShape.ledgerPath);
     const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
     let readCalls = 0;
@@ -366,7 +517,7 @@ describe("verifyWorkspace", () => {
     const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
     fileSystem.files.set(
       layoutShape.manifestPath,
-      JSON.stringify({ workspaceId: "ws_ops_001", label: "Ops Fixture", version: 2 })
+      JSON.stringify(canonicalManifest("ws_ops_001", "Ops Fixture", 2))
     );
     let readCalls = 0;
 
@@ -410,7 +561,7 @@ describe("verifyWorkspace", () => {
     const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
     fileSystem.files.set(
       layoutShape.manifestPath,
-      JSON.stringify({ workspaceId: "ws_ops_999", label: "Ops Fixture", version: 1 })
+      JSON.stringify(canonicalManifest("ws_ops_999"))
     );
     fileSystem.clearRecordedCalls();
     let readCalls = 0;
@@ -509,12 +660,9 @@ describe("verifyWorkspace", () => {
     const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
     fileSystem.files.set(
       layoutShape.manifestPath,
-      JSON.stringify({
-        workspaceId: "ws_ops_001",
-        label: "Ops Fixture",
-        version: 1,
-        extraField: "not part of the provisional contract"
-      })
+      JSON.stringify(canonicalManifest("ws_ops_001", "Ops Fixture", 1, {
+        extraField: "not part of the canonical contract"
+      }))
     );
     let readCalls = 0;
 
