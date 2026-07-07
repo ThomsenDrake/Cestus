@@ -148,10 +148,10 @@ export function createContextPackRegistry(): ContextPackRegistry {
   return Object.freeze({
     register(builder: ContextPackBuilder): void {
       const descriptor = contextPackDescriptorSchema.parse(builder.descriptor);
-      const build = builder.build.bind(builder);
       if (builders.has(descriptor.contextPackId)) {
         throw new Error(`Context pack ${descriptor.contextPackId} is already registered`);
       }
+      const build = builder.build.bind(builder);
       builders.set(descriptor.contextPackId, Object.freeze({
         descriptor,
         build
@@ -159,6 +159,9 @@ export function createContextPackRegistry(): ContextPackRegistry {
     },
 
     async build(contextPackId: string): Promise<ContextPackRef> {
+      if (typeof contextPackId !== "string") {
+        throw new Error("contextPackId must be a string");
+      }
       assertAgentSecretSafeText(contextPackId, "contextPackId");
       const builder = builders.get(contextPackId);
       if (builder === undefined) {
