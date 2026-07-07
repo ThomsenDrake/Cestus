@@ -117,7 +117,7 @@ function assertMatchingReportReviewIdentity(
 ): void {
   if (
     review.sourceCollectionId !== report.sourceCollectionId ||
-    (review.latestReportId !== undefined && review.latestReportId !== report.legacyReportId)
+    review.latestReportId !== report.legacyReportId
   ) {
     throw new Error("Legacy report identity does not match the ontology bootstrap review context.");
   }
