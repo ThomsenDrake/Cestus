@@ -41,7 +41,8 @@ const requiredFiles = [
   "docs/superpowers/plans/2026-07-06-legacy-cestus-operator-cli-implementation.md",
   "docs/superpowers/specs/2026-07-06-operator-workspace-status-import-bridge-design.md",
   "docs/superpowers/plans/2026-07-06-operator-workspace-status-import-bridge-implementation.md",
-  "docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md"
+  "docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md",
+  "docs/superpowers/plans/2026-07-07-cestus-resident-agent-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
