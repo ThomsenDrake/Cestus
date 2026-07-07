@@ -125,19 +125,28 @@ const providerJobIdSchema = z.string().regex(/^provider_[a-zA-Z0-9_-]+$/);
 const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const eventIdSchema = z.string().regex(/^evt_[a-zA-Z0-9_-]+$/);
 const actorIdSchema = secretSafeStringSchema.min(3);
-const residentAgentIdSchema = secretSafeStringSchema.regex(/^agent_[a-zA-Z0-9_-]+$/);
-const agentPolicyIdSchema = secretSafeStringSchema.regex(/^agent_policy_[a-zA-Z0-9_-]+$/);
-const agentWorkspaceIdSchema = secretSafeStringSchema.regex(/^ws_[a-zA-Z0-9_-]+$/);
-const agentTaskIdSchema = secretSafeStringSchema.regex(/^task_[a-zA-Z0-9_-]+$/);
-const agentRunIdSchema = secretSafeStringSchema.regex(/^run_[a-zA-Z0-9_-]+$/);
-const agentRunStepIdSchema = secretSafeStringSchema.regex(/^step_[a-zA-Z0-9_-]+$/);
-const agentToolRequestIdSchema = secretSafeStringSchema.regex(/^toolreq_[a-zA-Z0-9_-]+$/);
-const agentMemoryIdSchema = secretSafeStringSchema.regex(/^mem_[a-zA-Z0-9_-]+$/);
-const agentPermissionIdSchema = secretSafeStringSchema.regex(/^perm_[a-zA-Z0-9_-]+$/);
-const agentLockIdSchema = secretSafeStringSchema.regex(/^lock_[a-zA-Z0-9_-]+$/);
-const agentProviderIdSchema = secretSafeStringSchema.regex(/^provider_[a-zA-Z0-9_-]+$/);
-const agentCredentialRefIdSchema = secretSafeStringSchema.regex(/^agent_credref_[a-zA-Z0-9_-]+$/);
-const agentInvocationIdSchema = secretSafeStringSchema.regex(/^inv_[a-zA-Z0-9_-]+$/);
+const secretLikeIdFragmentPattern =
+  /(?:^|[_-])(?:sk[_-](?:live|test|proj)|gh[pousr]_|github[_-]?pat[_-]|glpat[_-]|xox[baprs]?[_-]|AKIA|ASIA|AIza|ya29|eyJ|hf[_-]|rk[_-]live|pk[_-]live|sg[._-])/i;
+
+function agentSecretSafeIdSchema(pattern: RegExp) {
+  return secretSafeStringSchema.regex(pattern).refine((value) => !secretLikeIdFragmentPattern.test(value), {
+    message: "must not contain secret-looking ID fragments"
+  });
+}
+
+const residentAgentIdSchema = agentSecretSafeIdSchema(/^agent_[a-zA-Z0-9_-]+$/);
+const agentPolicyIdSchema = agentSecretSafeIdSchema(/^agent_policy_[a-zA-Z0-9_-]+$/);
+const agentWorkspaceIdSchema = agentSecretSafeIdSchema(/^ws_[a-zA-Z0-9_-]+$/);
+const agentTaskIdSchema = agentSecretSafeIdSchema(/^task_[a-zA-Z0-9_-]+$/);
+const agentRunIdSchema = agentSecretSafeIdSchema(/^run_[a-zA-Z0-9_-]+$/);
+const agentRunStepIdSchema = agentSecretSafeIdSchema(/^step_[a-zA-Z0-9_-]+$/);
+const agentToolRequestIdSchema = agentSecretSafeIdSchema(/^toolreq_[a-zA-Z0-9_-]+$/);
+const agentMemoryIdSchema = agentSecretSafeIdSchema(/^mem_[a-zA-Z0-9_-]+$/);
+const agentPermissionIdSchema = agentSecretSafeIdSchema(/^perm_[a-zA-Z0-9_-]+$/);
+const agentLockIdSchema = agentSecretSafeIdSchema(/^lock_[a-zA-Z0-9_-]+$/);
+const agentProviderIdSchema = agentSecretSafeIdSchema(/^provider_[a-zA-Z0-9_-]+$/);
+const agentCredentialRefIdSchema = agentSecretSafeIdSchema(/^agent_credref_[a-zA-Z0-9_-]+$/);
+const agentInvocationIdSchema = agentSecretSafeIdSchema(/^inv_[a-zA-Z0-9_-]+$/);
 const agentArtifactHashSchema = contentHashSchema;
 const agentTaskStatusSchema = z.enum([
   "queued",
@@ -187,6 +196,28 @@ const agentToolApprovalClassSchema = z.enum([
   "legal-escalation",
   "ledger-review"
 ]);
+type AgentToolSideEffectClass = z.infer<typeof agentToolSideEffectClassSchema>;
+type AgentToolApprovalClass = z.infer<typeof agentToolApprovalClassSchema>;
+
+const agentApprovalClassesBySideEffectClass: Record<AgentToolSideEffectClass, readonly AgentToolApprovalClass[]> = {
+  "read-only": ["none", "human-review"],
+  "local-derivative": ["none", "human-review"],
+  "ledger-proposal": ["none", "human-review"],
+  "ledger-review": ["ledger-review"],
+  "external-byte-transfer": ["provider-byte-transfer"],
+  "external-message-send": ["external-message-send"],
+  "export-or-publication": ["export-or-publication"],
+  "destructive-or-repair": ["destructive-or-repair"],
+  "legal-escalation": ["legal-escalation"]
+};
+
+function agentApprovalClassMatchesSideEffect(
+  sideEffectClass: AgentToolSideEffectClass,
+  approvalClass: AgentToolApprovalClass
+): boolean {
+  return agentApprovalClassesBySideEffectClass[sideEffectClass].includes(approvalClass);
+}
+
 const agentTaskPrioritySchema = z.enum(["low", "normal", "high", "urgent"]);
 const agentMemoryScopeSchema = z.enum(["workspace", "investigation", "task", "provider", "policy"]);
 const agentFailureCategorySchema = z.enum([
@@ -214,6 +245,11 @@ const agentLockKindSchema = z.enum([
 const agentSourceEventIdsSchema = z.array(eventIdSchema);
 const agentArtifactHashesSchema = z.array(agentArtifactHashSchema);
 const agentSafeActionsSchema = z.array(secretSafeTextSchema).min(1);
+const agentReadModelChangeSchema = z.object({
+  projectionName: secretSafeStringSchema.min(1),
+  change: secretSafeTextSchema,
+  relatedIds: z.array(secretSafeStringSchema.min(1)).optional()
+}).strict();
 
 const agentIdentityInitializedPayloadSchema = z.object({
   residentAgentId: residentAgentIdSchema,
@@ -355,7 +391,15 @@ const agentToolRequestedPayloadSchema = z.object({
   estimatedEffect: secretSafeTextSchema,
   sourceEventIds: agentSourceEventIdsSchema.optional(),
   inputArtifactHashes: agentArtifactHashesSchema.optional()
-}).strict();
+}).strict().superRefine((toolRequest, ctx) => {
+  if (!agentApprovalClassMatchesSideEffect(toolRequest.sideEffectClass, toolRequest.requiredApprovalClass)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["requiredApprovalClass"],
+      message: "requiredApprovalClass must match the sideEffectClass risk"
+    });
+  }
+});
 
 const agentToolApprovedPayloadSchema = z.object({
   toolRequestId: agentToolRequestIdSchema,
@@ -379,6 +423,7 @@ const agentToolCompletedPayloadSchema = z.object({
   completedAt: z.string().datetime(),
   eventIds: agentSourceEventIdsSchema,
   artifactHashes: agentArtifactHashesSchema,
+  readModelChanges: z.array(agentReadModelChangeSchema),
   resultSummary: secretSafeTextSchema
 }).strict();
 

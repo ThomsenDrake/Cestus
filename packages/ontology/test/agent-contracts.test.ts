@@ -106,6 +106,107 @@ describe("resident agent event contracts", () => {
   });
 
   it.each([
+    ["agent_credref_local", true],
+    ["agent_credref_sk_live_unsafe", false],
+    ["agent_credref_ghp_abc123456789", false]
+  ])("validates credential reference ID secret safety for %s", (credentialRefId, expectedSuccess) => {
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          `evt_agent_model_requested_${credentialRefId}`,
+          "agent.model-invocation.requested",
+          "agent_model_invocation_inv_001",
+          {
+            invocationId: "inv_001",
+            runId: "run_001",
+            providerId: "provider_fake",
+            modelFamily: "fake-local",
+            inputArtifactHash: hash111,
+            safetyClass: "workspace-safe",
+            credentialRefId
+          }
+        )
+      ).success
+    ).toBe(expectedSuccess);
+  });
+
+  it("rejects tool requests that understate required approval for risky side effects", () => {
+    const providerTransferRequest = {
+      toolRequestId: "toolreq_provider_transfer",
+      runId: "run_001",
+      toolId: "tool_provider_parse",
+      toolVersion: "0.1.0",
+      requestedBy: "agent_default",
+      sideEffectClass: "external-byte-transfer",
+      requiredApprovalClass: "provider-byte-transfer",
+      previewHash: hash333,
+      scope: "Selected evidence IDs only.",
+      estimatedEffect: "Transfers approved evidence bytes to the configured provider."
+    };
+
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_tool_requested_provider_transfer",
+          "agent.tool.requested",
+          "agent_tool_request_toolreq_provider_transfer",
+          providerTransferRequest
+        )
+      ).success
+    ).toBe(true);
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_tool_requested_understated",
+          "agent.tool.requested",
+          "agent_tool_request_toolreq_provider_transfer",
+          { ...providerTransferRequest, requiredApprovalClass: "none" }
+        )
+      ).success
+    ).toBe(false);
+  });
+
+  it("requires strict read model change summaries on completed tools", () => {
+    const completedPayload = {
+      toolRequestId: "toolreq_001",
+      completedAt: "2026-07-07T18:10:00.000Z",
+      eventIds: ["evt_assertion_proposed_from_tool"],
+      artifactHashes: [hash333],
+      readModelChanges: [
+        {
+          projectionName: "agent-tool-requests",
+          change: "Marked the tool request completed."
+        }
+      ],
+      resultSummary: "Created a reviewable assertion proposal."
+    };
+
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_tool_completed",
+          "agent.tool.completed",
+          "agent_tool_request_toolreq_001",
+          completedPayload
+        )
+      ).success
+    ).toBe(true);
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_tool_completed_extra",
+          "agent.tool.completed",
+          "agent_tool_request_toolreq_001",
+          {
+            ...completedPayload,
+            readModelChanges: [{ projectionName: "agent-tool-requests", change: "Completed.", unsafe: true }]
+          }
+        )
+      ).success
+    ).toBe(false);
+  });
+
+  it.each([
     {
       name: "identity update",
       event: agentEvent("evt_agent_identity_updated", "agent.identity.updated", "agent_identity_agent_default", {
