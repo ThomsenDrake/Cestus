@@ -105,6 +105,110 @@ describe("provider selection policy", () => {
     });
   });
 
+  it("prefers local providers for sensitive local-only tasks even when remote transfer is allowed", () => {
+    const selected = selectProviderForTask({
+      registry: createProviderRegistry.withDefaultsForTest(),
+      task: {
+        modality: "text",
+        structuredOutputRequired: true,
+        sensitivity: "sensitive-local-only",
+        requiresRemoteHarness: false
+      },
+      readinessByProviderId: {
+        provider_fake_local: "works-locally",
+        provider_fake_remote: "requires-byte-transfer-approval"
+      },
+      policy: {
+        allowRemoteByteTransfer: true,
+        preferredCostPolicy: "metered-api"
+      }
+    });
+
+    expect(selected).toMatchObject({
+      ok: true,
+      providerId: "provider_fake_local",
+      approvalClass: "none"
+    });
+  });
+
+  it("blocks remote providers for sensitive local-only tasks when no local provider is ready", () => {
+    const registry = createProviderRegistry();
+    registry.register(remoteProviderDescriptor("provider_remote_only", "Remote only provider"));
+
+    const selected = selectProviderForTask({
+      registry,
+      task: {
+        modality: "text",
+        structuredOutputRequired: true,
+        sensitivity: "sensitive-local-only",
+        requiresRemoteHarness: false
+      },
+      readinessByProviderId: {
+        provider_remote_only: "requires-byte-transfer-approval"
+      },
+      policy: {
+        allowRemoteByteTransfer: true,
+        preferredCostPolicy: "metered-api"
+      }
+    });
+
+    expect(selected).toMatchObject({
+      ok: false,
+      category: "provider-policy-blocked"
+    });
+  });
+
+  it("ranks provider byte-transfer approval ahead of harness workspace approval", () => {
+    const registry = createProviderRegistry();
+    registry.register(remoteProviderDescriptor("provider_z_remote_api", "Remote API provider"));
+    registry.register(harnessProviderDescriptor("provider_a_remote_harness", "Remote harness provider"));
+
+    const selected = selectProviderForTask({
+      registry,
+      task: {
+        modality: "text",
+        structuredOutputRequired: false,
+        sensitivity: "workspace-safe",
+        requiresRemoteHarness: false
+      },
+      readinessByProviderId: {
+        provider_z_remote_api: "requires-byte-transfer-approval",
+        provider_a_remote_harness: "requires-byte-transfer-approval"
+      },
+      policy: {
+        allowRemoteByteTransfer: true,
+        preferredCostPolicy: "metered-api"
+      }
+    });
+
+    expect(selected).toMatchObject({
+      ok: true,
+      providerId: "provider_z_remote_api",
+      approvalClass: "provider-byte-transfer"
+    });
+  });
+
+  it("rejects unknown task sensitivity values", () => {
+    expect(() =>
+      selectProviderForTask({
+        registry: createProviderRegistry.withDefaultsForTest(),
+        task: {
+          modality: "text",
+          structuredOutputRequired: true,
+          sensitivity: "sensitive-ish" as never,
+          requiresRemoteHarness: false
+        },
+        readinessByProviderId: {
+          provider_fake_local: "works-locally"
+        },
+        policy: {
+          allowRemoteByteTransfer: false,
+          preferredCostPolicy: "local-compute"
+        }
+      })
+    ).toThrow();
+  });
+
   it("breaks equivalent provider ties by provider ID", () => {
     const registry = createProviderRegistry();
     registry.register(localProviderDescriptor("provider_order_b", "Order B provider"));
@@ -197,6 +301,27 @@ function remoteProviderDescriptor(providerId: string, label: string) {
     costPolicy: "metered-api",
     workspaceScopes: ["workspace"],
     approvalProfile: "remote-byte-transfer-gated",
+    diagnosticContract: ["provider-ready"],
+    fakeSupport: true
+  };
+}
+
+function harnessProviderDescriptor(providerId: string, label: string) {
+  return {
+    providerId,
+    label,
+    adapterVersion: "agent-provider-auth.v1",
+    backendKind: "xai-harness",
+    modelFamilies: ["fake-harness"],
+    modalities: ["text"],
+    toolSupport: "harness-tools",
+    structuredOutputSupport: "harness-mediated",
+    contextLimits: { maxInputTokens: 8192, maxOutputTokens: 2048 },
+    credentialRequirements: [{ credentialKind: "subscription-oauth", required: true }],
+    dataHandlingNotes: "Simulates an official harness with workspace approval requirements.",
+    costPolicy: "metered-api",
+    workspaceScopes: ["workspace"],
+    approvalProfile: "harness-workspace-gated",
     diagnosticContract: ["provider-ready"],
     fakeSupport: true
   };
