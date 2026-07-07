@@ -137,6 +137,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
             investigationId: event.payload.investigationId,
             sourceEventIds: freezeArray(event.payload.sourceEventIds ?? []),
             inputArtifactHashes: freezeArray(event.payload.inputArtifactHashes ?? []),
+            relatedEventIds: freezeArray([]),
             outputArtifactHashes: freezeArray([]),
             stepIds: freezeArray([]),
             invocationIds: freezeArray([]),
@@ -175,6 +176,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
               state: "completed",
               completedAt: event.payload.completedAt,
               outputArtifactHashes: appendValues(previous.outputArtifactHashes, event.payload.outputArtifactHashes),
+              relatedEventIds: appendValues(previous.relatedEventIds, event.payload.relatedEventIds ?? []),
               summary: event.payload.summary ?? previous.summary,
               ...nextProvenance(previous, event)
             })
@@ -196,6 +198,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
               failureMessage: event.payload.message,
               retryable: event.payload.retryable,
               allowedActions: freezeArray(event.payload.allowedActions),
+              relatedEventIds: appendValues(previous.relatedEventIds, event.payload.relatedEventIds ?? []),
               toolRequestIds: appendOptionalValue(previous.toolRequestIds, event.payload.toolRequestId),
               ...nextProvenance(previous, event)
             })
@@ -464,24 +467,31 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
     (memory) => memory.memoryId
   );
 
+  const taskSnapshot = readonlyMapSnapshot(tasks);
+  const runSnapshot = readonlyMapSnapshot(runs);
+  const toolRequestSnapshot = readonlyMapSnapshot(toolRequests);
+  const memoryHistorySnapshot = readonlyMapSnapshot(memoryHistory);
+  const permissionSnapshot = readonlyMapSnapshot(permissions);
+  const lockSnapshot = readonlyMapSnapshot(locks);
+
   const projection: AgentProjection = {
     identity,
-    tasks,
-    runs,
-    toolRequests,
-    memoryHistory,
+    tasks: taskSnapshot,
+    runs: runSnapshot,
+    toolRequests: toolRequestSnapshot,
+    memoryHistory: memoryHistorySnapshot,
     activeMemory,
-    permissions,
-    locks,
+    permissions: permissionSnapshot,
+    locks: lockSnapshot,
     toDto() {
       return freezeProjected({
         ...(identity === undefined ? {} : { residentAgentId: identity.residentAgentId }),
-        tasks: sortedById([...tasks.values()], (task) => task.taskId),
-        runs: sortedById([...runs.values()], (run) => run.runId),
-        toolRequests: sortedById([...toolRequests.values()], (toolRequest) => toolRequest.toolRequestId),
+        tasks: sortedById([...taskSnapshot.values()], (task) => task.taskId),
+        runs: sortedById([...runSnapshot.values()], (run) => run.runId),
+        toolRequests: sortedById([...toolRequestSnapshot.values()], (toolRequest) => toolRequest.toolRequestId),
         activeMemory: sortedById(activeMemory, (memory) => memory.memoryId),
-        permissions: sortedById([...permissions.values()], (permission) => permission.permissionId),
-        locks: sortedById([...locks.values()], (lock) => lock.lockId)
+        permissions: sortedById([...permissionSnapshot.values()], (permission) => permission.permissionId),
+        locks: sortedById([...lockSnapshot.values()], (lock) => lock.lockId)
       });
     }
   };
@@ -569,6 +579,43 @@ function appendValues(values: readonly string[], nextValues: readonly string[]):
 
 function sortedById<T>(values: readonly T[], idFor: (value: T) => string): readonly T[] {
   return freezeArray([...values].sort((left, right) => idFor(left).localeCompare(idFor(right))));
+}
+
+function readonlyMapSnapshot<K, V>(source: ReadonlyMap<K, V>): ReadonlyMap<K, V> {
+  const snapshot = new Map(source);
+  let readonlyMap: ReadonlyMap<K, V>;
+
+  readonlyMap = Object.freeze({
+    get size() {
+      return snapshot.size;
+    },
+    get(key: K) {
+      return snapshot.get(key);
+    },
+    has(key: K) {
+      return snapshot.has(key);
+    },
+    forEach(callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: unknown) {
+      snapshot.forEach((value, key) => callbackfn.call(thisArg, value, key, readonlyMap));
+    },
+    entries() {
+      return snapshot.entries();
+    },
+    keys() {
+      return snapshot.keys();
+    },
+    values() {
+      return snapshot.values();
+    },
+    [Symbol.iterator]() {
+      return snapshot[Symbol.iterator]();
+    },
+    get [Symbol.toStringTag]() {
+      return "ReadonlyMap";
+    }
+  });
+
+  return readonlyMap;
 }
 
 function freezeArray<T>(values: readonly T[]): readonly T[] {
