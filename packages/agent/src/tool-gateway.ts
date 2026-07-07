@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
-import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import type { AppendOptions, EventLedger } from "../../ontology/src/event-ledger.js";
 import { approvalClassForSideEffect, type AgentApprovalClass } from "./permission-policy.js";
 import type { AgentToolSideEffectClass } from "./projection-types.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
@@ -95,6 +95,7 @@ export interface FailAgentToolInput {
 export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
   return {
     async requestTool(command: RequestAgentToolInput) {
+      await assertNewToolRequest(input.ledger, command.toolRequestId);
       const previewHash = hashPreview(command.preview);
       const requiredApprovalClass = command.requiredApprovalClass ?? approvalClassForSideEffect(command.sideEffectClass);
       const event: AppendableKnowledgeEvent<"agent.tool.requested"> = {
@@ -117,7 +118,7 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
           ...optionalArray("inputArtifactHashes", command.inputArtifactHashes ?? command.preview.artifactHashes)
         }
       };
-      return appendToolEvent(input.ledger, event);
+      return appendToolEvent(input.ledger, event, { expectedNextSequence: 1 });
     },
 
     async approveTool(command: ApproveAgentToolInput) {
@@ -301,9 +302,10 @@ function toolRequestStreamId(toolRequestId: string): string {
 
 async function appendToolEvent<Type extends ToolRequestEvent["type"]>(
   ledger: EventLedger,
-  event: AppendableKnowledgeEvent<Type>
+  event: AppendableKnowledgeEvent<Type>,
+  options?: AppendOptions
 ): Promise<KnowledgeEventOf<Type>> {
-  return await ledger.append(event) as KnowledgeEventOf<Type>;
+  return await ledger.append(event, options) as KnowledgeEventOf<Type>;
 }
 
 interface ToolRequestState {
@@ -321,6 +323,13 @@ type ToolRequestEvent =
   | KnowledgeEventOf<"agent.tool.denied">
   | KnowledgeEventOf<"agent.tool.completed">
   | KnowledgeEventOf<"agent.tool.failed">;
+
+async function assertNewToolRequest(ledger: EventLedger, toolRequestId: string): Promise<void> {
+  const events = await ledger.readStream(toolRequestStreamId(toolRequestId));
+  if (events.some((event) => event.type === "agent.tool.requested")) {
+    throw new Error(`Tool request ${toolRequestId} already exists; create a new toolRequestId for a changed preview.`);
+  }
+}
 
 async function readToolRequestState(ledger: EventLedger, toolRequestId: string): Promise<ToolRequestState> {
   const events = (await ledger.readStream(toolRequestStreamId(toolRequestId))).filter(isToolRequestEvent);
