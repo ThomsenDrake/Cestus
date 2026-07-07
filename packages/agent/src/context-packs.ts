@@ -203,14 +203,7 @@ function normalizeJsonDtoValue(value: unknown, path: string): AgentContextPackJs
   }
 
   if (Array.isArray(value)) {
-    const normalized: AgentContextPackJsonValue[] = [];
-    for (let index = 0; index < value.length; index += 1) {
-      if (!Object.prototype.hasOwnProperty.call(value, index)) {
-        throw new Error(`${path} must be JSON DTO-safe`);
-      }
-      normalized.push(normalizeJsonDtoValue(value[index], `${path}[${index}]`));
-    }
-    return normalized;
+    return normalizeJsonDtoArray(value, path);
   }
 
   if (typeof value === "object") {
@@ -218,6 +211,54 @@ function normalizeJsonDtoValue(value: unknown, path: string): AgentContextPackJs
   }
 
   throw new Error(`${path} must be JSON DTO-safe`);
+}
+
+function normalizeJsonDtoArray(value: readonly unknown[], path: string): AgentContextPackJsonValue {
+  if (Object.getPrototypeOf(value) !== Array.prototype) {
+    throw new Error(`${path} must be JSON DTO-safe`);
+  }
+
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${path} must be JSON DTO-safe`);
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const indexedDescriptors: Array<{
+    readonly index: number;
+    readonly descriptor: PropertyDescriptor;
+  }> = [];
+
+  for (const key of Object.keys(descriptors)) {
+    if (key === "length") {
+      continue;
+    }
+
+    if (!isCanonicalArrayIndexKey(key)) {
+      throw new Error(`${path} must be JSON DTO-safe`);
+    }
+
+    const descriptor = descriptors[key];
+    if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) {
+      throw new Error(`${path} must be JSON DTO-safe`);
+    }
+
+    indexedDescriptors.push({
+      index: Number(key),
+      descriptor
+    });
+  }
+
+  indexedDescriptors.sort((left, right) => left.index - right.index);
+  if (indexedDescriptors.length !== value.length) {
+    throw new Error(`${path} must be JSON DTO-safe`);
+  }
+
+  return indexedDescriptors.map(({ index, descriptor }) => {
+    if (index >= value.length) {
+      throw new Error(`${path} must be JSON DTO-safe`);
+    }
+    return normalizeJsonDtoValue(descriptor.value, `${path}[${index}]`);
+  });
 }
 
 function normalizeJsonDtoObject(value: object, path: string): AgentContextPackJsonValue {
@@ -244,6 +285,15 @@ function normalizeJsonDtoObject(value: object, path: string): AgentContextPackJs
   }
 
   return normalized;
+}
+
+function isCanonicalArrayIndexKey(key: string): boolean {
+  if (!/^(0|[1-9][0-9]*)$/.test(key)) {
+    return false;
+  }
+
+  const index = Number(key);
+  return Number.isInteger(index) && index >= 0 && index < 2 ** 32 - 1;
 }
 
 function freezeContextPackDescriptor(descriptor: z.infer<typeof contextPackDescriptorObjectSchema>): ContextPackDescriptor {

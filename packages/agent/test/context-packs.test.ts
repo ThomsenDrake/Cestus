@@ -30,6 +30,46 @@ describe("agent context packs", () => {
     expect(left).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 
+  it("rejects arrays with custom enumerable string properties", () => {
+    const payload = ["ok"] as string[] & { extra?: string };
+    payload.extra = "api key sk-live-value";
+
+    expect(() => hashAgentContextPack(payload)).toThrow(/JSON DTO-safe|secret/i);
+  });
+
+  it("rejects arrays with symbol keys", () => {
+    const payload = ["ok"];
+    Object.defineProperty(payload, Symbol("context"), {
+      value: "ok",
+      enumerable: true
+    });
+
+    expect(() => hashAgentContextPack(payload)).toThrow(/JSON DTO-safe/i);
+  });
+
+  it("rejects accessor-backed array entries without invoking the getter", () => {
+    let getterInvoked = false;
+    const payload: string[] = [];
+    Object.defineProperty(payload, "0", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return "ok";
+      }
+    });
+
+    let thrown: unknown;
+    try {
+      hashAgentContextPack(payload);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toMatch(/JSON DTO-safe/i);
+    expect(getterInvoked).toBe(false);
+  });
+
   it("rejects secret-shaped summaries and refs", () => {
     expect(() =>
       contextPackRefSchema.parse({
