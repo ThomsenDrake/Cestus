@@ -67,10 +67,17 @@ export async function handleAgentHttpRoute(
         return json(409, duplicateTaskDiagnostic());
       }
 
-      return json(200, await runtime.createTask({
-        ...taskInput,
-        requestedBy: input.actor.id
-      }));
+      try {
+        return json(200, await runtime.createTask({
+          ...taskInput,
+          requestedBy: input.actor.id
+        }));
+      } catch (error) {
+        if (isDuplicateTaskConflict(error, taskInput.taskId)) {
+          return json(409, duplicateTaskDiagnostic());
+        }
+        throw error;
+      }
     }
 
     return undefined;
@@ -172,6 +179,12 @@ function duplicateTaskDiagnostic(): {
     "choose a different task id",
     "refresh agent status"
   ]);
+}
+
+function isDuplicateTaskConflict(error: unknown, taskId: string): boolean {
+  return error instanceof Error &&
+    error.message.includes("Concurrency conflict") &&
+    error.message.includes(`agent_task_${taskId}`);
 }
 
 function isAgentTaskId(value: unknown): value is string {

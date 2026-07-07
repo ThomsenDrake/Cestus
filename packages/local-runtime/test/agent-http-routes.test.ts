@@ -98,6 +98,42 @@ describe("agent HTTP routes", () => {
     });
   });
 
+  it("returns a stable conflict when duplicate task ids race", async () => {
+    const handler = testHandler();
+    const warmup = await handler({
+      method: "POST",
+      url: "/api/agent/tasks",
+      body: JSON.stringify({
+        taskId: "task_route_warmup",
+        title: "Initialize resident identity",
+        priority: "normal"
+      })
+    });
+    const body = JSON.stringify({
+      taskId: "task_route_concurrent_duplicate",
+      title: "Inspect concurrent duplicate behavior",
+      priority: "normal"
+    });
+
+    const responses = await Promise.all([
+      handler({ method: "POST", url: "/api/agent/tasks", body }),
+      handler({ method: "POST", url: "/api/agent/tasks", body })
+    ]);
+    const statuses = responses.map((response) => response.status).sort((left, right) => left - right);
+    const conflict = responses.find((response) => response.status === 409);
+
+    expect(warmup.status).toBe(200);
+    expect(statuses).toEqual([200, 409]);
+    expect(conflict).toBeDefined();
+    expect(JSON.parse(conflict?.body ?? "{}")).toEqual({
+      ok: false,
+      diagnostic: {
+        message: "Agent task already exists.",
+        allowedRepairActions: ["choose a different task id", "refresh agent status"]
+      }
+    });
+  });
+
   it("returns HTTP 400 for invalid task bodies without echoing secret-shaped text", async () => {
     const handler = testHandler();
     const response = await handler({
