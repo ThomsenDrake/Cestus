@@ -35,7 +35,7 @@ describe("operator shell", () => {
     expect(screen.getByText("Command")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Cestus home" })).toHaveLength(2);
     expect(screen.getByRole("link", { name: "Command" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Agents Preview" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("link", { name: "Agent" })).not.toHaveAttribute("aria-disabled");
   });
 
   it("opens the mobile module menu as a focus-managed dialog", () => {
