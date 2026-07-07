@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/b770/Cestus`
 
 Claimed at: `2026-07-07T15:11:00Z`
 
-Status: `in-progress`
+Status: `blocked`
 
 Owned files:
 
@@ -32,3 +32,19 @@ Stop conditions:
 - Schema conflict with the resident-agent foundation.
 - Missing `packages/agent` foundation files.
 - Any need to weaken append-only, provenance, projection, send-gate, legal-lock, or secret-safety invariants.
+
+Blocker recorded at: `2026-07-07T15:27:00Z`
+
+Blocker summary:
+
+- `packages/agent/src/projection.ts` is absent.
+- `packages/agent/src/projection-types.ts` is absent.
+- `packages/agent/src/tool-gateway.ts` is absent.
+- `packages/agent/src/provider.ts` is absent.
+- `packages/agent/src/secret-safety.ts` is absent.
+- No local or fetched branch contains any `packages/agent/` files after `git fetch --all --prune`.
+- `codex/cestus-resident-agent-foundation` contains ontology `agent.*` event contracts, but not the `packages/agent` foundation package required by the implementation plan.
+
+Next unblock condition:
+
+- Resume this task after the resident-agent foundation plan lands the `packages/agent` projection, provider, tool-gateway, and secret-safety modules, or after the implementation plan is revised to remove that prerequisite without weakening the factory invariants.
