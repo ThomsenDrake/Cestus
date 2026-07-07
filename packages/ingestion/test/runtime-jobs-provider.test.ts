@@ -28,9 +28,9 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
       scanBatchId: "scan_001",
       importBatchId: "imp_001"
     });
-    await appendLocalParseJob(workspace);
 
     const jobs = await runtime.listJobs({ sourceCollectionId: "src_drive_001" });
+    const events = await workspace.ledger.readAll();
 
     expect(jobs).toMatchObject({
       ok: true,
@@ -56,7 +56,7 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
         }),
         expect.objectContaining({
           kind: "local-parse",
-          jobId: "parse_001",
+          jobId: expect.stringMatching(/^parse_/),
           state: "queued",
           sourceCollectionId: "src_drive_001",
           importBatchId: "imp_001",
@@ -66,6 +66,7 @@ describe("IngestionRuntime jobs, retry, provider approval, and diagnostics", () 
         })
       ])
     });
+    expect(events.some((event) => event.type === "ingestion.parse.job.created")).toBe(true);
   });
 
   it("provider approval records approval only and does not call provider parse", async () => {
@@ -207,36 +208,6 @@ async function preparedImportedRuntime() {
     importBatchId: "imp_001"
   });
   return prepared;
-}
-
-async function appendLocalParseJob(workspace: ReturnType<typeof createFakeMountedWorkspace>): Promise<void> {
-  const evidenceLink = (await workspace.ledger.readAll()).find((event) => event.type === "ingestion.evidence.linked");
-  if (evidenceLink?.type !== "ingestion.evidence.linked") {
-    throw new Error("Expected imported evidence before appending parse job");
-  }
-
-  await workspace.ledger.append({
-    type: "ingestion.parse.job.created",
-    version: 1,
-    streamId: "ingestion_parse_parse_001",
-    context: {
-      actor,
-      occurredAt: "2026-07-06T16:15:00.000Z",
-      causationId: evidenceLink.id,
-      correlationId: "corr_parse_001",
-      coreVersion: "0.1.0",
-      packVersions: { core: "0.1.0", ingestion: "0.1.0" }
-    },
-    payload: {
-      parseJobId: "parse_001",
-      sourceCollectionId: "src_drive_001",
-      importBatchId: "imp_001",
-      evidenceId: evidenceLink.payload.evidenceId,
-      lane: "local",
-      parser: { name: "local-text", version: "0.1.0" },
-      state: "queued"
-    }
-  });
 }
 
 async function appendTerminalParseFailure(workspace: ReturnType<typeof createFakeMountedWorkspace>): Promise<void> {

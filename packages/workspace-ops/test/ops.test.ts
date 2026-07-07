@@ -145,6 +145,32 @@ function addResolvedWorkspace(fileSystem: MemoryWorkspaceFs): ResolvedWorkspaceL
   return layout;
 }
 
+function addCanonicalResolvedWorkspace(fileSystem: MemoryWorkspaceFs): ResolvedWorkspaceLayout {
+  const layout = createProvisionalWorkspaceLayout(rootPath);
+  fileSystem.directories.add(rootPath);
+  fileSystem.files.set(
+    manifestPath,
+    JSON.stringify({
+      version: 1,
+      layoutVersion: 1,
+      workspaceId: "ws_ops_001",
+      label: "Ops Fixture",
+      createdAt: "2026-07-06T12:00:00.000Z",
+      createdBy: "workspace-ops-test",
+      coreVersion: "0.1.0"
+    })
+  );
+  fileSystem.directories.add(join(rootPath, "ledger"));
+  fileSystem.files.set(layout.ledgerPath, "sqlite");
+  fileSystem.directories.add(layout.blobRoot);
+  fileSystem.directories.add(layout.derivativeRoot);
+  fileSystem.directories.add(layout.jobRoot);
+  fileSystem.directories.add(layout.projectionRoot);
+  fileSystem.directories.add(layout.cacheRoot);
+  fileSystem.directories.add(layout.configRoot);
+  return layout;
+}
+
 function canonicalRootPaths(layout: ResolvedWorkspaceLayout): readonly string[] {
   return [
     join(layout.rootPath, "ledger"),
@@ -352,6 +378,28 @@ describe("verifyWorkspace", () => {
         hashMismatchCount: 0
       },
       projections: { available: true, rebuildable: true }
+    });
+    expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("verifies a resolved canonical portable workspace manifest", async () => {
+    const fileSystem = new MemoryWorkspaceFs();
+    addCanonicalResolvedWorkspace(fileSystem);
+    const layout = await resolveWorkspaceLayout({ rootPath }, fileSystem);
+
+    const result = await verifyWorkspace({
+      layout,
+      fileSystem,
+      eventReader: { readAll: async () => [validEvent] }
+    });
+
+    expect(layout.status).toBe("ready");
+    expect(result.status).toBe("ready");
+    expect(result.payload?.manifest).toMatchObject({
+      readable: true,
+      valid: true,
+      manifestVersion: 1
     });
     expect(workspaceVerifyDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
