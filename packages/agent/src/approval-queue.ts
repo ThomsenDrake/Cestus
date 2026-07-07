@@ -14,6 +14,11 @@ export const agentApprovalQueueClassValues = [
 type AgentApprovalClass = typeof agentApprovalQueueClassValues[number];
 
 export type AgentApprovalQueueApprovalClass = AgentApprovalClass;
+export type AgentApprovalQueueInputApprovalClass =
+  | AgentApprovalQueueApprovalClass
+  | "external-message-send"
+  | "export-or-publication"
+  | "destructive-or-repair";
 
 export interface AgentAffectedRefDto {
   readonly kind: string;
@@ -28,7 +33,7 @@ export interface AgentActiveLockDto {
   readonly message: string;
   readonly relatedRefs?: readonly AgentAffectedRefDto[];
   readonly appliesToToolRequestIds?: readonly string[];
-  readonly appliesToApprovalClasses?: readonly AgentApprovalQueueApprovalClass[];
+  readonly appliesToApprovalClasses?: readonly AgentApprovalQueueInputApprovalClass[];
 }
 
 export interface AgentApprovalQueueRequestDto {
@@ -38,7 +43,7 @@ export interface AgentApprovalQueueRequestDto {
   readonly toolId: string;
   readonly toolVersion: number | string;
   readonly sideEffectClass: string;
-  readonly requiredApprovalClass: AgentApprovalQueueApprovalClass;
+  readonly requiredApprovalClass: AgentApprovalQueueInputApprovalClass;
   readonly previewHash: string;
   readonly previewSummary: string;
   readonly affectedRefs: readonly AgentAffectedRefDto[];
@@ -53,7 +58,7 @@ export interface AgentToolApprovalDto {
   readonly approvedPreviewHash: string;
   readonly approvedAt: string;
   readonly rationale: string;
-  readonly approvalClass?: AgentApprovalQueueApprovalClass;
+  readonly approvalClass?: AgentApprovalQueueInputApprovalClass;
 }
 
 export interface AgentToolDenialDto {
@@ -61,7 +66,7 @@ export interface AgentToolDenialDto {
   readonly deniedBy: string;
   readonly deniedAt: string;
   readonly rationale: string;
-  readonly approvalClass?: AgentApprovalQueueApprovalClass;
+  readonly approvalClass?: AgentApprovalQueueInputApprovalClass;
 }
 
 export interface AgentToolCompletionDto {
@@ -139,6 +144,25 @@ export interface AgentApprovalQueueOutput {
   readonly failed: readonly AgentApprovalQueueItemDto[];
 }
 
+type NormalizedAgentActiveLockDto = Omit<AgentActiveLockDto, "appliesToApprovalClasses" | "relatedRefs"> & {
+  readonly relatedRefs?: readonly AgentAffectedRefDto[];
+  readonly appliesToApprovalClasses?: readonly AgentApprovalQueueApprovalClass[];
+};
+
+type NormalizedAgentApprovalQueueRequestDto = Omit<AgentApprovalQueueRequestDto, "requiredApprovalClass" | "affectedRefs" | "contextPackRefs"> & {
+  readonly requiredApprovalClass: AgentApprovalQueueApprovalClass;
+  readonly affectedRefs: readonly AgentAffectedRefDto[];
+  readonly contextPackRefs: readonly ContextPackRef[];
+};
+
+type NormalizedAgentToolApprovalDto = Omit<AgentToolApprovalDto, "approvalClass"> & {
+  readonly approvalClass?: AgentApprovalQueueApprovalClass;
+};
+
+type NormalizedAgentToolDenialDto = Omit<AgentToolDenialDto, "approvalClass"> & {
+  readonly approvalClass?: AgentApprovalQueueApprovalClass;
+};
+
 export function buildAgentApprovalQueue(input: AgentApprovalQueueInput): AgentApprovalQueueOutput {
   assertAgentSecretSafeText(input.now, "approval queue generatedAt");
   assertSafeCurrentPreviewHashes(input.currentPreviewHashes);
@@ -191,7 +215,15 @@ export function buildAgentApprovalQueue(input: AgentApprovalQueueInput): AgentAp
     }
 
     if (approval === undefined) {
-      pending.push(buildQueueItem(normalizedRequest, currentPreviewHash, applicableLocks, [], {}));
+      const blockingReasons = blockingReasonsForRequestedItem(normalizedRequest, currentPreviewHash, applicableLocks);
+      const item = buildQueueItem(normalizedRequest, currentPreviewHash, applicableLocks, blockingReasons, {});
+      if (blockingReasons.includes("approval-stale")) {
+        stale.push(item);
+      } else if (blockingReasons.length > 0) {
+        blocked.push(item);
+      } else {
+        pending.push(item);
+      }
       continue;
     }
 
@@ -220,10 +252,10 @@ export function buildAgentApprovalQueue(input: AgentApprovalQueueInput): AgentAp
 }
 
 function blockingReasonsForApprovedRequest(
-  request: AgentApprovalQueueRequestDto,
-  approval: AgentToolApprovalDto,
+  request: NormalizedAgentApprovalQueueRequestDto,
+  approval: NormalizedAgentToolApprovalDto,
   currentPreviewHash: string | undefined,
-  locks: readonly AgentActiveLockDto[]
+  locks: readonly NormalizedAgentActiveLockDto[]
 ): readonly string[] {
   const reasons: string[] = [];
   if (
@@ -236,18 +268,37 @@ function blockingReasonsForApprovedRequest(
   if (locks.length > 0) {
     reasons.push("lock-active");
   }
+  if (approval.approvalClass !== undefined && approval.approvalClass !== request.requiredApprovalClass) {
+    reasons.push("approval-class-mismatch");
+  }
+
+  return Object.freeze(reasons);
+}
+
+function blockingReasonsForRequestedItem(
+  request: NormalizedAgentApprovalQueueRequestDto,
+  currentPreviewHash: string | undefined,
+  locks: readonly NormalizedAgentActiveLockDto[]
+): readonly string[] {
+  const reasons: string[] = [];
+  if (currentPreviewHash === undefined || currentPreviewHash !== request.previewHash) {
+    reasons.push("approval-stale");
+  }
+  if (locks.length > 0) {
+    reasons.push("lock-active");
+  }
 
   return Object.freeze(reasons);
 }
 
 function buildQueueItem(
-  request: AgentApprovalQueueRequestDto,
+  request: NormalizedAgentApprovalQueueRequestDto,
   currentPreviewHash: string | undefined,
-  activeLocks: readonly AgentActiveLockDto[],
+  activeLocks: readonly NormalizedAgentActiveLockDto[],
   blockingReasons: readonly string[],
   related: {
-    readonly approval?: AgentToolApprovalDto;
-    readonly denial?: AgentToolDenialDto;
+    readonly approval?: NormalizedAgentToolApprovalDto;
+    readonly denial?: NormalizedAgentToolDenialDto;
     readonly completion?: AgentToolCompletionDto;
     readonly failure?: AgentToolFailureDto;
   }
@@ -292,9 +343,9 @@ function buildQueueItem(
 }
 
 function locksForRequest(
-  request: AgentApprovalQueueRequestDto,
-  locks: readonly AgentActiveLockDto[]
-): readonly AgentActiveLockDto[] {
+  request: NormalizedAgentApprovalQueueRequestDto,
+  locks: readonly NormalizedAgentActiveLockDto[]
+): readonly NormalizedAgentActiveLockDto[] {
   return Object.freeze(locks.filter((lock) => {
     const toolRequestIds = lock.appliesToToolRequestIds;
     if (toolRequestIds !== undefined && !toolRequestIds.includes(request.toolRequestId)) {
@@ -318,7 +369,8 @@ function lastByToolRequestId<T extends { readonly toolRequestId: string }>(items
   return byToolRequestId;
 }
 
-function freezeRequest(request: AgentApprovalQueueRequestDto): AgentApprovalQueueRequestDto {
+function freezeRequest(request: AgentApprovalQueueRequestDto): NormalizedAgentApprovalQueueRequestDto {
+  const requiredApprovalClass = normalizeAgentApprovalClass(request.requiredApprovalClass);
   assertSecretSafeStrings([
     [request.toolRequestId, "toolRequestId"],
     [request.runId, "runId"],
@@ -335,6 +387,7 @@ function freezeRequest(request: AgentApprovalQueueRequestDto): AgentApprovalQueu
 
   return Object.freeze({
     ...request,
+    requiredApprovalClass,
     affectedRefs: freezeAffectedRefs(request.affectedRefs),
     contextPackRefs: freezeContextPackRefs(request.contextPackRefs)
   });
@@ -357,7 +410,7 @@ function freezeAffectedRefs(refs: readonly AgentAffectedRefDto[]): readonly Agen
   }));
 }
 
-function freezeActiveLocks(locks: readonly AgentActiveLockDto[]): readonly AgentActiveLockDto[] {
+function freezeActiveLocks(locks: readonly AgentActiveLockDto[]): readonly NormalizedAgentActiveLockDto[] {
   return Object.freeze(locks.map((lock) => {
     assertSecretSafeStrings([
       [lock.lockId, "active lock id"],
@@ -374,7 +427,7 @@ function freezeActiveLocks(locks: readonly AgentActiveLockDto[]): readonly Agent
         appliesToToolRequestIds: freezeSafeStringArray(lock.appliesToToolRequestIds, "active lock toolRequestId")
       }),
       ...(lock.appliesToApprovalClasses === undefined ? {} : {
-        appliesToApprovalClasses: freezeSafeStringArray(lock.appliesToApprovalClasses, "active lock approval class") as readonly AgentApprovalQueueApprovalClass[]
+        appliesToApprovalClasses: freezeApprovalClasses(lock.appliesToApprovalClasses, "active lock approval class")
       })
     });
   }));
@@ -411,7 +464,7 @@ function freezeContextPackRefs(refs: readonly ContextPackRef[]): readonly Contex
   }));
 }
 
-function freezeApproval(approval: AgentToolApprovalDto): AgentToolApprovalDto {
+function freezeApproval(approval: AgentToolApprovalDto): NormalizedAgentToolApprovalDto {
   assertSecretSafeStrings([
     [approval.toolRequestId, "approval toolRequestId"],
     [approval.approvedBy, "approvedBy"],
@@ -420,17 +473,18 @@ function freezeApproval(approval: AgentToolApprovalDto): AgentToolApprovalDto {
     [approval.rationale, "approval rationale"],
     [approval.approvalClass, "approval class"]
   ]);
+  const approvalClass = approval.approvalClass === undefined ? undefined : normalizeAgentApprovalClass(approval.approvalClass);
   return Object.freeze({
     toolRequestId: approval.toolRequestId,
     approvedBy: approval.approvedBy,
     approvedPreviewHash: approval.approvedPreviewHash,
     approvedAt: approval.approvedAt,
     rationale: approval.rationale,
-    ...(approval.approvalClass === undefined ? {} : { approvalClass: approval.approvalClass })
+    ...(approvalClass === undefined ? {} : { approvalClass })
   });
 }
 
-function freezeDenial(denial: AgentToolDenialDto): AgentToolDenialDto {
+function freezeDenial(denial: AgentToolDenialDto): NormalizedAgentToolDenialDto {
   assertSecretSafeStrings([
     [denial.toolRequestId, "denial toolRequestId"],
     [denial.deniedBy, "deniedBy"],
@@ -438,12 +492,13 @@ function freezeDenial(denial: AgentToolDenialDto): AgentToolDenialDto {
     [denial.rationale, "denial rationale"],
     [denial.approvalClass, "denial approval class"]
   ]);
+  const approvalClass = denial.approvalClass === undefined ? undefined : normalizeAgentApprovalClass(denial.approvalClass);
   return Object.freeze({
     toolRequestId: denial.toolRequestId,
     deniedBy: denial.deniedBy,
     deniedAt: denial.deniedAt,
     rationale: denial.rationale,
-    ...(denial.approvalClass === undefined ? {} : { approvalClass: denial.approvalClass })
+    ...(approvalClass === undefined ? {} : { approvalClass })
   });
 }
 
@@ -485,6 +540,38 @@ function freezeSafeStringArray(values: readonly string[], label: string): readon
     assertAgentSecretSafeText(value, label);
   }
   return Object.freeze([...values]);
+}
+
+function freezeApprovalClasses(
+  values: readonly AgentApprovalQueueInputApprovalClass[],
+  label: string
+): readonly AgentApprovalQueueApprovalClass[] {
+  return Object.freeze(values.map((value) => {
+    assertAgentSecretSafeText(value, label);
+    return normalizeAgentApprovalClass(value);
+  }));
+}
+
+function normalizeAgentApprovalClass(value: AgentApprovalQueueInputApprovalClass): AgentApprovalQueueApprovalClass {
+  assertAgentSecretSafeText(value, "approval class");
+  switch (value) {
+    case "external-message-send":
+      return "prr-send-followup";
+    case "export-or-publication":
+      return "export-publication";
+    case "destructive-or-repair":
+      return "destructive-repair";
+    case "provider-byte-transfer":
+    case "prr-send-followup":
+    case "legal-escalation":
+    case "export-publication":
+    case "destructive-repair":
+    case "accepted-graph-review":
+    case "ledger-review":
+      return value;
+  }
+
+  throw new Error("Unsupported approval class.");
 }
 
 function assertSecretSafeStrings(entries: readonly (readonly [string | undefined, string])[]): void {
