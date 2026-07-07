@@ -15,6 +15,10 @@ import type {
   IngestionRuntimeDiagnosticDto,
   IngestionWorkspaceDto
 } from "../../ingestion/src/runtime-types.js";
+import type {
+  AgentRuntimeDiagnosticDto,
+  AgentStatusDto
+} from "../../agent/src/runtime-types.js";
 import type { LegacyMigrationReviewDto } from "../../ingestion/src/legacy-read-api.js";
 import type { PrrWorkspaceDto } from "../../prr/src/read-api.js";
 import type {
@@ -28,6 +32,7 @@ export interface OperatorStatusProviderSet {
   readonly ingestion?: () => Promise<OperatorIngestionStatusProviderDto>;
   readonly legacy?: () => Promise<LegacyMigrationReviewDto>;
   readonly prr?: () => Promise<OperatorPrrStatusProviderDto>;
+  readonly agent?: () => Promise<AgentStatusDto>;
 }
 
 export interface OperatorIngestionStatusProviderDto {
@@ -82,6 +87,17 @@ const safeActions: readonly OperatorSafeActionDto[] = Object.freeze([
     kind: "navigate",
     target: "requests",
     sourceContract: "operator-status.v1",
+    requiresHumanApproval: false,
+    mutatesCanonicalState: false,
+    externalEffect: false,
+    enabled: true
+  },
+  {
+    actionId: "action_open_agents",
+    label: "Open Agent",
+    kind: "navigate",
+    target: "agents",
+    sourceContract: "agent-status.v1",
     requiresHumanApproval: false,
     mutatesCanonicalState: false,
     externalEffect: false,
@@ -171,13 +187,14 @@ export async function buildOperatorStatusDto(
     });
   }
 
-  const [workspace, ingestion, legacy, prr] = await Promise.all([
+  const [workspace, ingestion, legacy, prr, agent] = await Promise.all([
     buildWorkspaceSection(input.workspace),
     buildIngestionSection(input.ingestion),
     buildLegacyImportSection(input.legacy),
-    buildPrrSection(input.prr)
+    buildPrrSection(input.prr),
+    buildAgentSection(input.agent)
   ]);
-  const sections = [workspace, ingestion, legacy, prr];
+  const sections = [workspace, ingestion, legacy, prr, agent];
 
   return operatorStatusDtoSchema.parse({
     schemaVersion: "operator-status.v1",
@@ -380,6 +397,61 @@ async function buildPrrSection(
   }
 }
 
+async function buildAgentSection(
+  provider: OperatorStatusProviderSet["agent"] | undefined
+): Promise<OperatorStatusSectionDto> {
+  if (provider === undefined) {
+    return unavailableSection("agent", "Agent", "agent-status.v1");
+  }
+
+  try {
+    const agent = await provider();
+    const state = agentState(agent);
+
+    return safeSection({
+      sectionId: "agent",
+      label: "Agent",
+      state,
+      headline: headlineForAgent(agent, state),
+      safeSummary: "Resident agent status is read from agent-status.v1; operator status can only navigate to the Agent workspace.",
+      metrics: [
+        { metricId: "tasks", label: "Tasks", value: String(agent.tasks.length), tone: "machine" },
+        {
+          metricId: "pending_approvals",
+          label: "Pending approvals",
+          value: String(agent.pendingApprovalCount),
+          tone: agent.pendingApprovalCount > 0 ? "attention" : "healthy"
+        },
+        {
+          metricId: "active_locks",
+          label: "Active locks",
+          value: String(agent.activeLockCount),
+          tone: agent.activeLockCount > 0 ? "danger" : "healthy"
+        },
+        {
+          metricId: "providers",
+          label: "Providers",
+          value: String(agent.providers.length),
+          tone: agent.providers.length > 0 ? "healthy" : "attention"
+        }
+      ],
+      diagnostics: agentDiagnostics(agent.diagnostics),
+      sourceEvidence: [
+        sourceEvidence("src_agent_status", "agent-status.v1", "agent", "resident agent status", [
+          { label: "schemaVersion", value: agent.schemaVersion },
+          { label: "generatedAt", value: safeMessage(agent.generatedAt) },
+          ...(agent.residentAgentId === undefined
+            ? []
+            : [{ label: "residentAgentId", value: safeMessage(agent.residentAgentId) }])
+        ])
+      ],
+      nextSafeActionIds: ["action_open_agents", "action_refresh_operator_status"]
+    }, unavailableSection("agent", "Agent", "agent-status.v1"));
+  } catch {
+    return unavailableSection("agent", "Agent", "agent-status.v1");
+  }
+}
+
 function buildAggregateStatusSummary(
   sections: readonly OperatorStatusSectionDto[]
 ): OperatorStatusDto["summary"] {
@@ -550,6 +622,50 @@ function ingestionState(
   return "ready";
 }
 
+function agentState(agent: AgentStatusDto): OperatorReadinessState {
+  if (
+    agent.diagnostics.some((diagnostic) => diagnostic.severity === "error") ||
+    hasBlockingAgentLock(agent)
+  ) {
+    return "blocked";
+  }
+  if (agent.pendingApprovalCount > 0) {
+    return "action-required";
+  }
+  if (agent.diagnostics.some((diagnostic) => diagnostic.severity === "warning")) {
+    return "degraded";
+  }
+  return "ready";
+}
+
+function hasBlockingAgentLock(agent: AgentStatusDto): boolean {
+  return agent.locks.some((lock) =>
+    lock.state === "active" &&
+    (
+      lock.kind === "legal-escalation" ||
+      lock.kind === "export" ||
+      lock.kind === "secret" ||
+      lock.kind === "data-loss"
+    )
+  );
+}
+
+function headlineForAgent(agent: AgentStatusDto, state: OperatorReadinessState): string {
+  if (hasBlockingAgentLock(agent)) {
+    return "Agent lock is active";
+  }
+  if (agent.diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+    return "Agent diagnostics require attention";
+  }
+  if (state === "action-required") {
+    return "Agent approvals pending";
+  }
+  if (state === "degraded") {
+    return "Agent status degraded";
+  }
+  return "Agent runtime ready";
+}
+
 function headlineForWorkspace(
   envelope: WorkspaceOpsEnvelope<WorkspaceVerifyDto>,
   payload: WorkspaceVerifyDto | undefined
@@ -596,6 +712,21 @@ function ingestionDiagnostics(
     category: "ingestion",
     message: safeMessage(diagnostic.message),
     refs: []
+  }));
+}
+
+function agentDiagnostics(
+  diagnostics: readonly AgentRuntimeDiagnosticDto[]
+): OperatorDiagnosticDto[] {
+  return diagnostics.map((diagnostic, index) => ({
+    diagnosticId: safeDiagnosticId(diagnostic.diagnosticId, "agent", index),
+    severity: diagnostic.severity,
+    category: "agent",
+    message: safeMessage(diagnostic.message),
+    refs: (diagnostic.allowedRepairActions ?? []).slice(0, 3).map((action) => ({
+      label: "allowedRepairAction",
+      value: safeMessage(action)
+    }))
   }));
 }
 
@@ -715,7 +846,8 @@ function runtimeUnavailableSections(): OperatorStatusSectionDto[] {
     runtimeUnavailableSection("workspace", "Workspace"),
     runtimeUnavailableSection("ingestion", "Ingestion"),
     runtimeUnavailableSection("legacy-import", "Legacy Import"),
-    runtimeUnavailableSection("prr", "PRR")
+    runtimeUnavailableSection("prr", "PRR"),
+    runtimeUnavailableSection("agent", "Agent")
   ];
 }
 

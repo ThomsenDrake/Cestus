@@ -26,6 +26,10 @@ import {
   defaultLocalIngestionRuntimeFactory,
   type LocalIngestionRuntimeFactory
 } from "./ingestion-runtime-factory.js";
+import {
+  defaultLocalAgentRuntimeFactory,
+  type LocalAgentRuntimeFactory
+} from "./agent-runtime-factory.js";
 import type {
   OperatorIngestionStatusProviderDto,
   OperatorStatusProviderSet
@@ -36,13 +40,16 @@ export function createDefaultOperatorStatusProviders(input: {
   readonly config: ResolvedLocalRuntimeConfig;
   readonly actor: ActorRef;
   readonly handle: LocalRuntimeHandle;
+  readonly now?: () => string;
   readonly ingestionRuntimeFactory?: LocalIngestionRuntimeFactory;
+  readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
 }): OperatorStatusProviderSet {
   return {
     workspace: () => workspaceStatus(input),
     ingestion: () => ingestionStatus(input),
     legacy: () => legacyStatus(input.handle),
-    prr: () => input.handle.runtime.loadWorkspace()
+    prr: () => input.handle.runtime.loadWorkspace(),
+    agent: () => agentStatus(input)
   };
 }
 
@@ -125,6 +132,22 @@ async function legacyStatus(handle: LocalRuntimeHandle) {
     "src_legacy_pending";
 
   return buildLegacyMigrationReviewDto(projection, sourceCollectionId);
+}
+
+async function agentStatus(input: {
+  readonly actor: ActorRef;
+  readonly handle: LocalRuntimeHandle;
+  readonly now?: () => string;
+  readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
+}) {
+  const runtimeFactory = input.agentRuntimeFactory ?? defaultLocalAgentRuntimeFactory;
+  const runtime = runtimeFactory({
+    handle: input.handle,
+    actor: input.actor,
+    now: input.now ?? (() => new Date().toISOString())
+  });
+
+  return runtime.status();
 }
 
 function ingestionMountedWorkspace(handle: LocalRuntimeHandle): MountedWorkspace | undefined {

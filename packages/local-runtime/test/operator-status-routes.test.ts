@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { operatorStatusDtoSchema } from "../../operator-status/src/contracts.js";
+import type { AgentStatusDto } from "../../agent/src/runtime-types.js";
 import {
   createWorkspaceOpsEnvelope,
   type WorkspaceVerifyDto
@@ -13,6 +14,7 @@ import {
   type CreateLocalRuntimeHttpHandlerInput,
   type LocalRuntimeHttpHandler
 } from "../src/http-handler.js";
+import type { LocalAgentRuntimeFactory } from "../src/agent-runtime-factory.js";
 import type { OperatorStatusProviderSet } from "../src/operator-status.js";
 
 const actor = {
@@ -137,6 +139,104 @@ describe("operator status HTTP route", () => {
     expect(prrActions.some((action) => action.kind === "navigate" && action.target === "requests")).toBe(true);
   });
 
+  it("includes an Agent section with injected pending approvals and active locks", async () => {
+    const providerOverrides = {
+      ...readyProviders(),
+      agent: vi.fn(async () => agentStatus({
+        pendingApprovalCount: 1,
+        activeLockCount: 1,
+        locks: [agentLock("lock_export_review", "export")]
+      }))
+    };
+    const handler = testHandler({ operatorStatusProviders: providerOverrides });
+
+    const response = await handler({ method: "GET", url: "/api/operator/status" });
+    const body = operatorStatusDtoSchema.parse(JSON.parse(response.body));
+    const section = body.sections.find((candidate) => candidate.sectionId === "agent");
+
+    expect(response.status).toBe(200);
+    expect(section?.state).toBe("blocked");
+    expect(section?.metrics).toEqual(
+      expect.arrayContaining([
+        { metricId: "pending_approvals", label: "Pending approvals", value: "1", tone: "attention" },
+        { metricId: "active_locks", label: "Active locks", value: "1", tone: "danger" }
+      ])
+    );
+    expect(body.safeActions).toContainEqual({
+      actionId: "action_open_agents",
+      label: "Open Agent",
+      kind: "navigate",
+      target: "agents",
+      sourceContract: "agent-status.v1",
+      requiresHumanApproval: false,
+      mutatesCanonicalState: false,
+      externalEffect: false,
+      enabled: true
+    });
+  });
+
+  it("uses the injected agent runtime factory and handler clock for the default Agent provider", async () => {
+    const { agent: _agent, ...providersWithoutAgent } = readyProviders();
+    const agentRuntimeFactory = vi.fn((input) => ({
+      status: async () => agentStatus({
+        generatedAt: input.now(),
+        pendingApprovalCount: 2,
+        providers: [
+          {
+            providerId: "provider_route_injected_primary",
+            label: "Injected Route Provider",
+            adapterVersion: "fake-provider.v1",
+            endpointKind: "local-engine",
+            modelFamilies: ["fake-local"],
+            credentialKinds: ["local-no-secret"],
+            supportsStructuredOutput: false,
+            supportsToolCalling: false,
+            safeDataNotes: "Injected route provider for operator status."
+          },
+          {
+            providerId: "provider_route_injected_secondary",
+            label: "Injected Route Provider Secondary",
+            adapterVersion: "fake-provider.v1",
+            endpointKind: "local-engine",
+            modelFamilies: ["fake-local"],
+            credentialKinds: ["local-no-secret"],
+            supportsStructuredOutput: false,
+            supportsToolCalling: false,
+            safeDataNotes: "Second injected route provider for operator status."
+          }
+        ]
+      })
+    }) as ReturnType<LocalAgentRuntimeFactory>);
+    const handler = testHandler({
+      operatorStatusProviders: providersWithoutAgent,
+      agentRuntimeFactory
+    });
+
+    const response = await handler({ method: "GET", url: "/api/operator/status" });
+    const body = operatorStatusDtoSchema.parse(JSON.parse(response.body));
+    const section = body.sections.find((candidate) => candidate.sectionId === "agent");
+
+    expect(response.status).toBe(200);
+    expect(agentRuntimeFactory).toHaveBeenCalledTimes(1);
+    expect(section?.state).toBe("action-required");
+    expect(section?.metrics).toContainEqual({
+      metricId: "providers",
+      label: "Providers",
+      value: "2",
+      tone: "healthy"
+    });
+    expect(section?.metrics).toContainEqual({
+      metricId: "pending_approvals",
+      label: "Pending approvals",
+      value: "2",
+      tone: "attention"
+    });
+    expect(section?.sourceEvidence.flatMap((evidence) => evidence.refs)).toContainEqual({
+      label: "generatedAt",
+      value: fixedNow()
+    });
+  });
+
   it("does not route POST /api/operator/status or call providers", async () => {
     const providers = readyProviders();
     const handler = testHandler({ operatorStatusProviders: providers });
@@ -152,6 +252,7 @@ describe("operator status HTTP route", () => {
     expect(providers.ingestion).not.toHaveBeenCalled();
     expect(providers.legacy).not.toHaveBeenCalled();
     expect(providers.prr).not.toHaveBeenCalled();
+    expect(providers.agent).not.toHaveBeenCalled();
   });
 
   it("respects the existing auth policy for non-loopback exposure", async () => {
@@ -226,6 +327,26 @@ describe("operator status HTTP route", () => {
     );
     expect(response.body).not.toContain("token=abc123");
     expect(response.body).not.toContain("abc123");
+  });
+
+  it("redacts unavailable Agent provider errors over the operator status route", async () => {
+    const providerOverrides = {
+      ...readyProviders(),
+      agent: vi.fn(async () => {
+        throw new Error("agent provider failed with bearer raw-secret");
+      })
+    };
+    const handler = testHandler({ operatorStatusProviders: providerOverrides });
+
+    const response = await handler({ method: "GET", url: "/api/operator/status" });
+    const body = operatorStatusDtoSchema.parse(JSON.parse(response.body));
+
+    expect(response.status).toBe(200);
+    expect(body.sections.find((section) => section.sectionId === "agent")?.state).toBe(
+      "unavailable"
+    );
+    expect(response.body).not.toContain("bearer raw-secret");
+    expect(response.body).not.toContain("raw-secret");
   });
 });
 
@@ -314,6 +435,68 @@ function readyProviders() {
       firstArtifactAsk: [],
       diagnostics: []
     })),
-    prr: vi.fn(async () => ({ cards: [], diagnostics: [] }))
+    prr: vi.fn(async () => ({ cards: [], diagnostics: [] })),
+    agent: vi.fn(async () => agentStatus())
   } satisfies OperatorStatusProviderSet;
+}
+
+function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
+  return {
+    schemaVersion: "agent-status.v1",
+    generatedAt: "2026-07-07T21:00:00.000Z",
+    residentAgentId: "agent_default",
+    identity: {
+      residentAgentId: "agent_default",
+      workspaceId: "ws_route_001",
+      label: "Cestus Agent",
+      policyId: "agent_policy_default",
+      initializedBy: "actor_operator_status_route",
+      allowedRunTypes: ["evidence-triage"],
+      memoryProjectionVersion: "0.1.0",
+      eventIds: ["evt_agent_identity_route"],
+      causationIds: []
+    },
+    tasks: [],
+    runs: [],
+    toolRequests: [],
+    activeMemory: [],
+    permissions: [],
+    locks: [],
+    providers: [
+      {
+        providerId: "provider_fake_local",
+        label: "Fake Local Model Provider",
+        adapterVersion: "fake-provider.v1",
+        endpointKind: "local-engine",
+        modelFamilies: ["fake-local"],
+        credentialKinds: ["local-no-secret"],
+        supportsStructuredOutput: false,
+        supportsToolCalling: false,
+        safeDataNotes: "Deterministic local fake provider for route tests."
+      }
+    ],
+    pendingApprovalCount: 0,
+    activeLockCount: 0,
+    diagnostics: [],
+    ...overrides
+  };
+}
+
+function agentLock(
+  lockId: string,
+  kind: AgentStatusDto["locks"][number]["kind"]
+): AgentStatusDto["locks"][number] {
+  return {
+    lockId,
+    residentAgentId: "agent_default",
+    kind,
+    activatedBy: "actor_operator_status_route",
+    reason: "Operator route test lock.",
+    activatedAt: "2026-07-07T21:00:00.000Z",
+    relatedEventIds: ["evt_route_lock_related"],
+    state: "active",
+    clearRelatedEventIds: [],
+    eventIds: ["evt_route_lock_active"],
+    causationIds: []
+  };
 }

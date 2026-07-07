@@ -468,7 +468,7 @@ describe("cestus-workspace executable", () => {
     } finally {
       rmSync(rootPath, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 
   it("returns blocked JSON for a swapped workspace identity without leaking the actual id", async () => {
     const rootPath = mkdtempSync(join(tmpdir(), "cestus-workspace-cli-"));

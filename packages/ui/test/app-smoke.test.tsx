@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { PrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { App } from "../src/App.js";
+import type { AgentStatusDto } from "../src/agent/agent-types.js";
 import { createStaticOperatorStatusAdapter } from "../src/operator-status/operator-status-adapter.js";
 import type { OperatorStatusDto } from "../src/operator-status/operator-status-types.js";
 import {
@@ -96,6 +97,32 @@ describe("Cestus UI bootstrap", () => {
       fireEvent.click(screen.getByRole("link", { name: "Requests" }));
       expect(await screen.findByText("Building Services Department")).toBeInTheDocument();
       expect(fetchCalls).toEqual(["/api/requests/workspace"]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("uses the HTTP Agent adapter as the product default", async () => {
+    const fetchCalls: string[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: RequestInfo | URL) => {
+      fetchCalls.push(String(url));
+      return new Response(JSON.stringify(appSmokeAgentStatus()), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      });
+    }) as typeof fetch;
+
+    try {
+      render(<App requestsAdapter={createTestRequestsAdapter()} operatorStatusAdapter={operatorStatusAdapter} />);
+      fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+      const workspace = await screen.findByRole("region", { name: "Resident agent workspace" });
+      expect(screen.getByText("Fake Local Model Provider")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "New request" })).not.toBeInTheDocument();
+      expect(within(workspace).getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
+        "Refresh agent status"
+      ]);
+      expect(fetchCalls).toEqual(["/api/agent/status"]);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -362,6 +389,47 @@ describe("Cestus UI bootstrap", () => {
     expect(adapter.readEventsForTest()).toEqual([]);
   });
 });
+
+function appSmokeAgentStatus(): AgentStatusDto {
+  return {
+    schemaVersion: "agent-status.v1",
+    generatedAt: "2026-07-07T21:00:00.000Z",
+    residentAgentId: "agent_default",
+    identity: {
+      residentAgentId: "agent_default",
+      workspaceId: "ws_case_001",
+      label: "Cestus Agent",
+      policyId: "agent_policy_default",
+      initializedBy: "actor_case_owner",
+      allowedRunTypes: ["evidence-triage"],
+      memoryProjectionVersion: "0.1.0",
+      eventIds: ["evt_agent_identity"],
+      causationIds: []
+    },
+    tasks: [],
+    runs: [],
+    toolRequests: [],
+    activeMemory: [],
+    permissions: [],
+    locks: [],
+    providers: [
+      {
+        providerId: "provider_fake_local",
+        label: "Fake Local Model Provider",
+        adapterVersion: "fake-provider.v1",
+        endpointKind: "local-engine",
+        modelFamilies: ["fake-local"],
+        credentialKinds: ["local-no-secret"],
+        supportsStructuredOutput: false,
+        supportsToolCalling: false,
+        safeDataNotes: "Deterministic local fake provider for app smoke tests."
+      }
+    ],
+    pendingApprovalCount: 0,
+    activeLockCount: 0,
+    diagnostics: []
+  };
+}
 
 const appSmokeOperatorStatus: OperatorStatusDto = {
   schemaVersion: "operator-status.v1",

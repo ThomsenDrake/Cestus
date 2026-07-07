@@ -3,6 +3,11 @@ import { type ActorRef, type CreateDraftRequestInput } from "../../prr/src/draft
 import type { DeadlineCalculator, PrrRuntimeNow } from "../../prr/src/runtime.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import type { IngestionWorkspaceMountResolver } from "../../ingestion/src/mount-contract.js";
+import {
+  defaultLocalAgentRuntimeFactory,
+  type LocalAgentRuntimeFactory
+} from "./agent-runtime-factory.js";
+import { handleAgentHttpRoute } from "./agent-http-routes.js";
 import { authorizedLocalRuntimeRequest } from "./auth.js";
 import type { ResolvedLocalRuntimeConfig } from "./config.js";
 import { handleIngestionHttpRoute } from "./ingestion-http-routes.js";
@@ -40,6 +45,7 @@ export interface CreateLocalRuntimeHttpHandlerInput {
   readonly ingestionMountResolver?: IngestionWorkspaceMountResolver;
   readonly ingestionRuntimeFactory?: LocalIngestionRuntimeFactory;
   readonly operatorStatusProviders?: OperatorStatusProviderSet;
+  readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
 }
 
 export function createLocalRuntimeHttpHandler(
@@ -57,9 +63,13 @@ export function createLocalRuntimeHttpHandler(
     config: input.config,
     actor: input.actor,
     handle,
+    now: localRuntimeNow(input.now),
     ...(input.ingestionRuntimeFactory === undefined
       ? {}
-      : { ingestionRuntimeFactory: input.ingestionRuntimeFactory })
+      : { ingestionRuntimeFactory: input.ingestionRuntimeFactory }),
+    ...(input.agentRuntimeFactory === undefined
+      ? {}
+      : { agentRuntimeFactory: input.agentRuntimeFactory })
   });
 
   const handler = (async (request: LocalRuntimeRequest): Promise<LocalRuntimeResponse> => {
@@ -100,6 +110,19 @@ export function createLocalRuntimeHttpHandler(
     });
     if (operatorStatusResponse !== undefined) {
       return operatorStatusResponse;
+    }
+
+    if (path.startsWith("/api/agent/")) {
+      const response = await handleAgentHttpRoute({
+        request,
+        handle,
+        actor: input.actor,
+        now: localRuntimeNow(input.now),
+        agentRuntimeFactory: input.agentRuntimeFactory ?? defaultLocalAgentRuntimeFactory
+      });
+      if (response !== undefined) {
+        return response;
+      }
     }
 
     if (path.startsWith("/api/ingestion/")) {

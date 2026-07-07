@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { buildCommandBoardViewModel, getSelectedCommandItem } from "./workspace/command-model.js";
 import { commandWorkspaceFixture } from "./workspace/command-fixtures.js";
 import type { QueueFilter } from "./workspace/command-types.js";
+import { AgentWorkspace } from "./agent/AgentWorkspace.js";
+import {
+  httpAgentAdapter,
+  type AgentAdapter
+} from "./agent/agent-adapter.js";
+import type { AgentStatusDto } from "./agent/agent-types.js";
 import { IngestionWorkspace } from "./ingestion/IngestionWorkspace.js";
 import {
   httpIngestionWorkspaceAdapter,
@@ -43,17 +49,20 @@ import { workspaceModules } from "./workspace/workspace-nav.js";
 
 const implementedModuleIds = new Set(["command", "requests"]);
 implementedModuleIds.add("ingestion");
+implementedModuleIds.add("agents");
 
 interface AppProps {
   readonly requestsAdapter?: RequestsWorkspaceAdapter;
   readonly ingestionAdapter?: IngestionWorkspaceAdapter;
   readonly operatorStatusAdapter?: OperatorStatusAdapter;
+  readonly agentAdapter?: AgentAdapter;
 }
 
 export function App({
   requestsAdapter = httpRequestsAdapter,
   ingestionAdapter = httpIngestionWorkspaceAdapter,
-  operatorStatusAdapter = httpOperatorStatusAdapter
+  operatorStatusAdapter = httpOperatorStatusAdapter,
+  agentAdapter = httpAgentAdapter
 }: AppProps = {}) {
   const [activeModuleId, setActiveModuleId] = useState("command");
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
@@ -85,14 +94,20 @@ export function App({
   const [operatorStatus, setOperatorStatus] = useState<OperatorStatusDto | undefined>();
   const [loadedOperatorStatusAdapter, setLoadedOperatorStatusAdapter] = useState<OperatorStatusAdapter | undefined>();
   const [operatorStatusReloadKey, setOperatorStatusReloadKey] = useState(0);
+  const [agentStatus, setAgentStatus] = useState<AgentStatusDto | undefined>();
+  const [loadedAgentAdapter, setLoadedAgentAdapter] = useState<AgentAdapter | undefined>();
+  const [agentLoadState, setAgentLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [agentLoadError, setAgentLoadError] = useState<string | undefined>();
+  const [agentReloadKey, setAgentReloadKey] = useState(0);
   const model = useMemo(
-    () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds }),
-    [reviewedItemIds]
+    () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds, agentStatus }),
+    [agentStatus, reviewedItemIds]
   );
   const selectedItem = getSelectedCommandItem(model, selectedItemId);
   const commandActive = activeModuleId === "command";
   const requestsActive = activeModuleId === "requests";
   const ingestionActive = activeModuleId === "ingestion";
+  const agentActive = activeModuleId === "agents";
   const selectedPrrModalRequest = useMemo(
     () => (requestsWorkspace === undefined ? undefined : getSelectedPrrRequest(requestsWorkspace, selectedPrrRequestId)),
     [requestsWorkspace, selectedPrrRequestId]
@@ -251,6 +266,46 @@ export function App({
     };
   }, [ingestionActive, ingestionAdapter, ingestionReloadKey, ingestionWorkspace, loadedIngestionAdapter]);
 
+  useEffect(() => {
+    if (!agentActive) {
+      return;
+    }
+
+    if (agentStatus !== undefined && loadedAgentAdapter === agentAdapter) {
+      return;
+    }
+
+    let canceled = false;
+    setAgentLoadState("loading");
+    setAgentLoadError(undefined);
+
+    agentAdapter
+      .loadStatus()
+      .then((status) => {
+        if (canceled) {
+          return;
+        }
+
+        setAgentStatus(status);
+        setLoadedAgentAdapter(agentAdapter);
+        setAgentLoadState("loaded");
+      })
+      .catch(() => {
+        if (canceled) {
+          return;
+        }
+
+        setAgentStatus(undefined);
+        setLoadedAgentAdapter(undefined);
+        setAgentLoadState("error");
+        setAgentLoadError("Agent workspace could not be loaded.");
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [agentActive, agentAdapter, agentReloadKey, agentStatus, loadedAgentAdapter]);
+
   const commandMain = (
     <div className="space-y-6">
       {operatorStatus === undefined ? (
@@ -315,6 +370,14 @@ export function App({
       onLoadDiagnostics={handleLoadIngestionDiagnostics}
     />
   );
+  const agentMain = (
+    <AgentWorkspace
+      status={agentStatus}
+      loadState={agentLoadState}
+      loadError={agentLoadError}
+      onRefresh={handleRefreshAgentStatus}
+    />
+  );
   const commandDecisionRail = (
     <DecisionRail
       agentBrief={model.agentBrief}
@@ -345,6 +408,14 @@ export function App({
     setOperatorStatus(undefined);
     setLoadedOperatorStatusAdapter(undefined);
     setOperatorStatusReloadKey((current) => current + 1);
+  }
+
+  function handleRefreshAgentStatus() {
+    setAgentStatus(undefined);
+    setLoadedAgentAdapter(undefined);
+    setAgentLoadState("idle");
+    setAgentLoadError(undefined);
+    setAgentReloadKey((current) => current + 1);
   }
 
   function handleNewRequest() {
@@ -532,22 +603,30 @@ export function App({
   }
 
   const commandOrRequestsModeLabel = requestsActive ? "Requests" : "Command";
-  const modeLabel = ingestionActive ? "Ingestion" : commandOrRequestsModeLabel;
-  const searchLabel = requestsActive ? "Requests search" : ingestionActive ? "Ingestion search" : "Command search";
+  const modeLabel = agentActive ? "Agent" : ingestionActive ? "Ingestion" : commandOrRequestsModeLabel;
+  const searchLabel = requestsActive
+    ? "Requests search"
+    : ingestionActive
+      ? "Ingestion search"
+      : agentActive
+        ? "Agent search"
+        : "Command search";
   const searchPlaceholder = requestsActive
     ? "Search requests, agencies, evidence, and correspondence"
     : ingestionActive
       ? "Search source collections, scans, duplicates, and diagnostics"
-      : "Search requests, evidence, agencies, and assertions";
-  const mainId = requestsActive ? "requests" : ingestionActive ? "ingestion" : "command";
-  const main = requestsActive ? requestsMain : ingestionActive ? ingestionMain : commandMain;
+      : agentActive
+        ? "Search resident tasks, providers, locks, and tool requests"
+        : "Search requests, evidence, agencies, and assertions";
+  const mainId = requestsActive ? "requests" : ingestionActive ? "ingestion" : agentActive ? "agents" : "command";
+  const main = requestsActive ? requestsMain : ingestionActive ? ingestionMain : agentActive ? agentMain : commandMain;
   const decisionRail = requestsActive ? (
     <RequestWorkspaceIntelligenceRail
       workspace={requestsWorkspace}
       savedViewId={requestsViewContext.savedViewId}
       viewMode={requestsViewContext.viewMode}
     />
-  ) : (
+  ) : agentActive ? null : (
     commandDecisionRail
   );
 
@@ -565,8 +644,8 @@ export function App({
           searchLabel={searchLabel}
           searchPlaceholder={searchPlaceholder}
           mainId={mainId}
-          mainLabel={ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}
-          onNewRequest={handleNewRequest}
+          mainLabel={agentActive ? "Agent workspace" : ingestionActive ? "Ingestion workspace" : requestsActive ? "Requests workspace" : "Command workspace"}
+          onNewRequest={agentActive ? undefined : handleNewRequest}
           onModuleSelect={handleModuleSelect}
           main={main}
           decisionRail={decisionRail}

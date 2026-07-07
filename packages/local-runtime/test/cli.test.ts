@@ -2,8 +2,10 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { runLocalRuntimeCli } from "../src/cli.js";
+import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { writeLocalRuntimeOnboardingConfig } from "../src/config-file.js";
 
 let tempDir: string | undefined;
@@ -16,6 +18,175 @@ afterEach(() => {
 });
 
 describe("runLocalRuntimeCli", () => {
+  it("prints resident agent status as stable JSON without live credentials", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const cwd = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    tempDir = cwd;
+
+    const exitCode = await runLocalRuntimeCli(["agent-status"], {
+      cwd,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    const body = JSON.parse(stdout.join("\n")) as {
+      readonly schemaVersion: string;
+      readonly providers: readonly { readonly providerId: string }[];
+    };
+    expect(body.schemaVersion).toBe("agent-status.v1");
+    expect(body.providers).toEqual([expect.objectContaining({ providerId: "provider_fake_local" })]);
+    expect(stdout.join("\n")).not.toMatch(/sk_live|password|private key|bearer [a-z0-9._-]+/i);
+    expect(await eventTypes(resolveLocalRuntimeConfig({ cwd, env: {} }))).toEqual([]);
+  });
+
+  it("creates resident agent tasks as stable JSON", async () => {
+    const createStdout: string[] = [];
+    const statusStdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(
+      ["agent-create-task", "--task-id", "task_cli_001", "--title", "Review resident status"],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => createStdout.push(line),
+        stderr: (line) => stderr.push(line)
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    const body = JSON.parse(createStdout.join("\n")) as { readonly ok: boolean; readonly taskId: string };
+    expect(body).toMatchObject({ ok: true, taskId: "task_cli_001" });
+    expect(createStdout.join("\n")).not.toMatch(/sk_live|password|private key|bearer [a-z0-9._-]+/i);
+
+    expect(
+      await runLocalRuntimeCli(["agent-status"], {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => statusStdout.push(line),
+        stderr: (line) => stderr.push(line)
+      })
+    ).toBe(0);
+    expect(JSON.parse(statusStdout.join("\n")).tasks.map((task: { readonly taskId: string }) => task.taskId)).toContain(
+      "task_cli_001"
+    );
+  });
+
+  it("redacts secret-shaped diagnostics from injected agent dependencies", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runLocalRuntimeCli(["agent-status"], {
+      cwd: "/tmp/cestus-cli-test",
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line),
+      agentStatus: async () => {
+        throw new Error("provider failed with sk_live_unsafe and CESTUS_LOCAL_AUTH_TOKEN=route-secret");
+      }
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("redacted");
+    expect(stderr.join("\n")).not.toMatch(/sk_live|route-secret|CESTUS_LOCAL_AUTH_TOKEN/i);
+  });
+
+  it("redacts secret-shaped values from injected agent status success output", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runLocalRuntimeCli(["agent-status"], {
+      cwd: "/tmp/cestus-cli-test",
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line),
+      agentStatus: async () => ({
+        schemaVersion: "agent-status.v1",
+        note: "provider returned sk_live_unsafe",
+        nested: {
+          warning: "password hunter2",
+          ["sk_live_key"]: "private key abc123"
+        },
+        diagnostics: ["Bearer abc123"]
+      })
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    expect(stdout.join("\n")).toContain("redacted");
+    expect(stdout.join("\n")).not.toMatch(/sk_live|hunter2|private key|Bearer abc123/i);
+  });
+
+  it("redacts secret-shaped values from injected agent task success output", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runLocalRuntimeCli(
+      ["agent-create-task", "--task-id", "task_cli_secret_output", "--title", "Review safe output"],
+      {
+        cwd: "/tmp/cestus-cli-test",
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: (line) => stderr.push(line),
+        agentCreateTask: async () => ({
+          ok: true,
+          taskId: "task_cli_secret_output",
+          diagnostic: "api key sk_live_unsafe",
+          nested: [{ message: "private key abc123" }, { message: "bearer route-secret" }]
+        })
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    expect(stdout.join("\n")).toContain("redacted");
+    expect(stdout.join("\n")).not.toMatch(/sk_live|private key|route-secret/i);
+  });
+
+  it("does not echo secret-shaped unknown commands", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runLocalRuntimeCli(["sk_live_unsafe"], {
+      cwd: "/tmp/cestus-cli-test",
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("Unknown local runtime command");
+    expect(stderr.join("\n")).not.toMatch(/sk_live/i);
+  });
+
+  it.each(["--access-token", "--api-key"])("does not echo secret-shaped unknown agent task flag %s", async (flag) => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runLocalRuntimeCli(
+      ["agent-create-task", "--task-id", "task_cli_001", "--title", "Review resident status", flag],
+      {
+        cwd: "/tmp/cestus-cli-test",
+        env: {},
+        stdout: (line) => stdout.push(line),
+        stderr: (line) => stderr.push(line)
+      }
+    );
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("Unknown agent-create-task flag");
+    expect(stderr.join("\n")).not.toContain(flag);
+  });
+
   it("prints resolved config without secrets", async () => {
     const stdout: string[] = [];
 
@@ -852,3 +1023,12 @@ describe("runLocalRuntimeCli", () => {
     expect(stderr.join("\n")).toContain("explicit-path storage requires a sqlitePath");
   });
 });
+
+async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>): Promise<readonly string[]> {
+  const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
+  try {
+    return (await ledger.readAll()).map((event) => event.type);
+  } finally {
+    ledger.close();
+  }
+}

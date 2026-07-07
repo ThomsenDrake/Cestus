@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { operatorStatusDtoSchema } from "../../operator-status/src/contracts.js";
 import type { OperatorStatusDto } from "../../operator-status/src/contracts.js";
+import type { AgentStatusDto } from "../../agent/src/runtime-types.js";
 import type { IngestionReviewDto } from "../../ingestion/src/read-api.js";
 import type {
   WorkspaceDiagnosticDto,
@@ -123,7 +124,8 @@ describe("operator status aggregation", () => {
       prr: async () => ({
         cards: [],
         diagnostics: []
-      })
+      }),
+      agent: async () => agentStatus()
     });
 
     expect(operatorStatusDtoSchema.parse(status)).toEqual(status);
@@ -132,7 +134,8 @@ describe("operator status aggregation", () => {
       ["workspace", "ready"],
       ["ingestion", "action-required"],
       ["legacy-import", "action-required"],
-      ["prr", "ready"]
+      ["prr", "ready"],
+      ["agent", "ready"]
     ]);
     expect(JSON.stringify(status)).not.toMatch(/token|password|private key/i);
   });
@@ -226,6 +229,128 @@ describe("operator status aggregation", () => {
     expect(status.sections.find((section) => section.sectionId === "ingestion")?.state).toMatch(
       /^(ready|unavailable)$/
     );
+  });
+
+  it("builds an Agent section from agent-status.v1 metrics and legal locks", async () => {
+    const input = {
+      now,
+      runtime: { available: true, safeMessage: "Runtime ready." },
+      workspace: readyWorkspace,
+      ingestion: readyIngestion,
+      legacy: readyLegacy,
+      prr: readyPrr,
+      agent: async () => agentStatus({
+        pendingApprovalCount: 2,
+        activeLockCount: 1,
+        locks: [agentLock("lock_legal_review", "legal-escalation")],
+        providers: [fakeAgentProvider("provider_fake_local"), fakeAgentProvider("provider_fake_secondary")]
+      })
+    };
+
+    const status = await buildOperatorStatusDto(input);
+    const section = status.sections.find((candidate) => candidate.sectionId === "agent");
+    const action = status.safeActions.find((candidate) => candidate.actionId === "action_open_agents");
+
+    expect(operatorStatusDtoSchema.parse(status)).toEqual(status);
+    expect(section).toMatchObject({
+      sectionId: "agent",
+      label: "Agent",
+      state: "blocked",
+      headline: "Agent lock is active"
+    });
+    expect(section?.metrics).toEqual(
+      expect.arrayContaining([
+        { metricId: "tasks", label: "Tasks", value: "0", tone: "machine" },
+        { metricId: "pending_approvals", label: "Pending approvals", value: "2", tone: "attention" },
+        { metricId: "active_locks", label: "Active locks", value: "1", tone: "danger" },
+        { metricId: "providers", label: "Providers", value: "2", tone: "healthy" }
+      ])
+    );
+    expect(action).toEqual({
+      actionId: "action_open_agents",
+      label: "Open Agent",
+      kind: "navigate",
+      target: "agents",
+      sourceContract: "agent-status.v1",
+      requiresHumanApproval: false,
+      mutatesCanonicalState: false,
+      externalEffect: false,
+      enabled: true
+    });
+  });
+
+  it("maps Agent status states by diagnostics, approvals, and warnings", async () => {
+    const cases = [
+      {
+        name: "error diagnostic",
+        status: agentStatus({
+          diagnostics: [{ severity: "error", category: "runtime", message: "Agent runtime failed safely." }]
+        }),
+        expected: "blocked"
+      },
+      {
+        name: "pending approvals",
+        status: agentStatus({ pendingApprovalCount: 1 }),
+        expected: "action-required"
+      },
+      {
+        name: "warning diagnostic",
+        status: agentStatus({
+          diagnostics: [{ severity: "warning", category: "provider", message: "Fake provider is degraded." }]
+        }),
+        expected: "degraded"
+      },
+      {
+        name: "ready",
+        status: agentStatus(),
+        expected: "ready"
+      }
+    ] as const;
+
+    for (const testCase of cases) {
+      const input = {
+        now,
+        runtime: { available: true, safeMessage: "Runtime ready." },
+        workspace: readyWorkspace,
+        ingestion: readyIngestion,
+        legacy: readyLegacy,
+        prr: readyPrr,
+        agent: async () => testCase.status
+      };
+
+      const status = await buildOperatorStatusDto(input);
+      expect(
+        status.sections.find((section) => section.sectionId === "agent")?.state,
+        testCase.name
+      ).toBe(testCase.expected);
+    }
+  });
+
+  it("redacts unavailable Agent provider failures and degrades the aggregate safely", async () => {
+    const input = {
+      now,
+      runtime: { available: true, safeMessage: "Runtime ready." },
+      workspace: readyWorkspace,
+      ingestion: readyIngestion,
+      legacy: readyLegacy,
+      prr: readyPrr,
+      agent: async () => {
+        throw new Error("agent provider failed with token=abc123");
+      }
+    };
+
+    const status = await buildOperatorStatusDto(input);
+    const section = status.sections.find((candidate) => candidate.sectionId === "agent");
+    const body = JSON.stringify(status);
+
+    expect(operatorStatusDtoSchema.parse(status)).toEqual(status);
+    expect(section?.state).toBe("unavailable");
+    expect(section?.diagnostics.map((diagnostic) => diagnostic.message)).toContain(
+      "Status provider failed before returning a safe DTO."
+    );
+    expect(status.summary.overallState).toBe("degraded");
+    expect(body).not.toContain("token=abc123");
+    expect(body).not.toContain("abc123");
   });
 
   it("surfaces one unavailable provider in the aggregate summary", async () => {
@@ -489,6 +614,7 @@ async function statusFor(
     ingestion: readyIngestion,
     legacy: readyLegacy,
     prr: readyPrr,
+    agent: async () => agentStatus(),
     ...overrides
   });
 
@@ -626,6 +752,69 @@ function emptyIngestionTotals() {
     skipped: 0,
     bytes: 0,
     estimatedNewBlobBytes: 0
+  };
+}
+
+function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
+  return {
+    schemaVersion: "agent-status.v1",
+    generatedAt: "2026-07-07T21:00:00.000Z",
+    residentAgentId: "agent_default",
+    identity: {
+      residentAgentId: "agent_default",
+      workspaceId: "ws_case_001",
+      label: "Cestus Agent",
+      policyId: "agent_policy_default",
+      initializedBy: "actor_case_owner",
+      allowedRunTypes: ["evidence-triage"],
+      memoryProjectionVersion: "0.1.0",
+      eventIds: ["evt_agent_identity"],
+      causationIds: []
+    },
+    tasks: [],
+    runs: [],
+    toolRequests: [],
+    activeMemory: [],
+    permissions: [],
+    locks: [],
+    providers: [fakeAgentProvider("provider_fake_local")],
+    pendingApprovalCount: 0,
+    activeLockCount: 0,
+    diagnostics: [],
+    ...overrides
+  };
+}
+
+function fakeAgentProvider(providerId: string): AgentStatusDto["providers"][number] {
+  return {
+    providerId,
+    label: "Fake Local Model Provider",
+    adapterVersion: "fake-provider.v1",
+    endpointKind: "local-engine",
+    modelFamilies: ["fake-local"],
+    credentialKinds: ["local-no-secret"],
+    supportsStructuredOutput: false,
+    supportsToolCalling: false,
+    safeDataNotes: "Deterministic local fake provider for operator status tests."
+  };
+}
+
+function agentLock(
+  lockId: string,
+  kind: AgentStatusDto["locks"][number]["kind"]
+): AgentStatusDto["locks"][number] {
+  return {
+    lockId,
+    residentAgentId: "agent_default",
+    kind,
+    activatedBy: "actor_case_owner",
+    reason: "Human review lock is active.",
+    activatedAt: "2026-07-07T21:00:00.000Z",
+    relatedEventIds: ["evt_lock_related"],
+    state: "active",
+    clearRelatedEventIds: [],
+    eventIds: ["evt_lock_active"],
+    causationIds: []
   };
 }
 
