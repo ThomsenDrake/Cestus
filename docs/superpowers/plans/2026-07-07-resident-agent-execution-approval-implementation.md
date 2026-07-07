@@ -271,7 +271,7 @@ git commit -m "feat: add agent execution state contracts"
 - Create: `packages/agent/test/context-packs.test.ts`
 - Modify: `packages/agent/src/index.ts`
 
-- [ ] **Step 1: Write the failing context pack tests**
+- [x] **Step 1: Write the failing context pack tests**
 
 Create `packages/agent/test/context-packs.test.ts`:
 
@@ -353,7 +353,7 @@ describe("agent context packs", () => {
 });
 ```
 
-- [ ] **Step 2: Run the targeted failing test**
+- [x] **Step 2: Run the targeted failing test**
 
 Run:
 
@@ -367,7 +367,7 @@ Expected before implementation:
 Failed to resolve import "../src/context-packs.js"
 ```
 
-- [ ] **Step 3: Add context pack descriptor contracts**
+- [x] **Step 3: Add context pack descriptor contracts**
 
 Create `packages/agent/src/context-packs.ts` with:
 
@@ -387,7 +387,7 @@ Implementation requirements:
 - Registry duplicate IDs throw `Context pack <id> is already registered`.
 - Missing builder IDs throw `Context pack <id> is not registered`.
 
-- [ ] **Step 4: Export context pack surface**
+- [x] **Step 4: Export context pack surface**
 
 Modify `packages/agent/src/index.ts`:
 
@@ -397,7 +397,7 @@ export * from "./context-packs.js";
 
 Preserve existing exports.
 
-- [ ] **Step 5: Run targeted tests**
+- [x] **Step 5: Run targeted tests**
 
 Run:
 
@@ -411,7 +411,7 @@ Expected:
 Test Files  2 passed
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run:
 
