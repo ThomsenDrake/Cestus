@@ -1,7 +1,9 @@
 import type { PrrDiagnostic } from "../../../prr/src/diagnostics.js";
 import type { RequestQueueRow } from "../../../prr/src/read-api.js";
 import type { PrrStatus } from "../../../prr/src/types.js";
+import type { AgentStatusDto } from "../agent/agent-types.js";
 import type {
+  AgentBrief,
   CommandBoardInput,
   CommandBoardViewModel,
   CommandQueueItem,
@@ -36,29 +38,83 @@ export function buildCommandBoardViewModel(input: CommandBoardInput): CommandBoa
     statusMetrics: Object.freeze(buildStatusMetrics(input).map(freezeMetric)),
     queueItems: Object.freeze(queueItems),
     tacticalPanels: Object.freeze(buildTacticalPanels(input, queueItems).map(freezePanel)),
-    agentBrief: Object.freeze({
-      watching: Object.freeze([
-        `${input.requestRows.length} public records request streams`,
-        `${input.evidenceAlerts.length} new evidence signals`,
-        `${input.diagnostics.length} diagnostics`
-      ]),
-      changedSinceReview: Object.freeze(
-        queueItems
-          .filter((item) => !item.reviewed)
-          .slice(0, 3)
-          .map((item) => item.title)
-      ),
-      uncertain: Object.freeze([
-        "Deadline confidence depends on jurisdiction pack coverage",
-        "Stalling signals remain recommendations until confirmed by review"
-      ]),
-      recommendedActions: Object.freeze(queueItems.slice(0, 3).map((item) => item.actionLabel))
-    }),
+    agentBrief: buildAgentBrief(input, queueItems),
     decisionRail: Object.freeze({
       modeLabel: "Advisory decision model",
       defaultVotes: buildDefaultDecisionVotes(input)
     })
   });
+}
+
+function buildAgentBrief(input: CommandBoardInput, queueItems: readonly CommandQueueItem[]): AgentBrief {
+  if (input.agentStatus !== undefined) {
+    return agentBriefFromStatus(input.agentStatus);
+  }
+
+  return Object.freeze({
+    watching: Object.freeze([
+      `${input.requestRows.length} public records request streams`,
+      `${input.evidenceAlerts.length} new evidence signals`,
+      `${input.diagnostics.length} diagnostics`
+    ]),
+    changedSinceReview: Object.freeze(
+      queueItems
+        .filter((item) => !item.reviewed)
+        .slice(0, 3)
+        .map((item) => item.title)
+    ),
+    uncertain: Object.freeze([
+      "Deadline confidence depends on jurisdiction pack coverage",
+      "Stalling signals remain recommendations until confirmed by review"
+    ]),
+    recommendedActions: Object.freeze(queueItems.slice(0, 3).map((item) => item.actionLabel))
+  });
+}
+
+function agentBriefFromStatus(status: AgentStatusDto): AgentBrief {
+  const activeLocks = status.locks.filter((lock) => lock.state === "active");
+  const requestedTools = status.toolRequests.filter((request) => request.state === "requested");
+  const recentTasks = [...status.tasks]
+    .sort((left, right) => timestampForTask(right).localeCompare(timestampForTask(left)) || left.taskId.localeCompare(right.taskId))
+    .slice(0, 3);
+  const providerLabels = status.providers.map((provider) => provider.label).slice(0, 3);
+
+  return Object.freeze({
+    watching: Object.freeze([
+      countLabel(status.pendingApprovalCount, "pending agent approval"),
+      countLabel(status.activeLockCount, "active agent lock"),
+      `${countLabel(status.providers.length, "provider backend")}${providerLabels.length > 0 ? `: ${providerLabels.join(", ")}` : ""}`
+    ]),
+    changedSinceReview: Object.freeze(
+      recentTasks.length > 0
+        ? recentTasks.map((task) => `${task.title} | ${firstRef([...task.eventIds, ...task.sourceEventIds])}`)
+        : ["No resident agent task changes"]
+    ),
+    uncertain: Object.freeze(
+      activeLocks.length > 0
+        ? activeLocks.slice(0, 3).map((lock) => `Lock ${lock.lockId} active from ${firstRef([...lock.eventIds, ...lock.relatedEventIds])}`)
+        : ["Provider credential state is summarized by agent-status.v1"]
+    ),
+    recommendedActions: Object.freeze(
+      requestedTools.length > 0
+        ? requestedTools
+            .slice(0, 3)
+            .map((request) => `Review ${request.toolRequestId} approval for ${request.sideEffectClass} | ${firstRef([...request.eventIds, ...request.sourceEventIds])}`)
+        : ["Refresh resident agent status before risky actions"]
+    )
+  });
+}
+
+function countLabel(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+function timestampForTask(task: AgentStatusDto["tasks"][number]): string {
+  return task.updatedAt ?? task.createdAt;
+}
+
+function firstRef(refs: readonly string[]): string {
+  return refs[0] ?? "agent-status.v1";
 }
 
 export function filterQueueItems(

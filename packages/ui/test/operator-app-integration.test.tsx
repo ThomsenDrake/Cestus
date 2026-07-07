@@ -2,6 +2,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.js";
+import { createStaticAgentAdapter } from "../src/agent/agent-adapter.js";
+import type { AgentStatusDto } from "../src/agent/agent-types.js";
 import { createStaticIngestionWorkspaceAdapter } from "../src/ingestion/ingestion-adapter.js";
 import {
   createStaticOperatorStatusAdapter,
@@ -26,6 +28,7 @@ describe("operator cockpit app integration", () => {
     expect(within(cockpit).getByRole("tab", { name: /Ingestion/ })).toBeInTheDocument();
     expect(within(cockpit).getByRole("tab", { name: /Legacy Import/ })).toBeInTheDocument();
     expect(within(cockpit).getByRole("tab", { name: /PRR\/Investigations/ })).toBeInTheDocument();
+    expect(within(cockpit).getByRole("tab", { name: /Agent/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Command" })).toBeInTheDocument();
   });
 
@@ -43,6 +46,23 @@ describe("operator cockpit app integration", () => {
     expect(await screen.findByRole("heading", { name: "Ingestion" })).toBeInTheDocument();
     expect(await screen.findByRole("region", { name: "Workspace not mounted" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Guided request builder" })).not.toBeInTheDocument();
+  });
+
+  it("opens the Agent module from the cockpit navigation action", async () => {
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatusFixture)}
+        agentAdapter={createStaticAgentAdapter(agentStatusFixture)}
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("tab", { name: /Agent/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open Agent" }));
+
+    expect(await screen.findByRole("heading", { name: "Agent" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Resident agent workspace" })).toBeInTheDocument();
   });
 
   it("reloads operator status when the cockpit refresh action is clicked", async () => {
@@ -189,6 +209,25 @@ const operatorStatusFixture: OperatorStatusDto = {
         }
       ],
       nextSafeActionIds: ["action_open_requests"]
+    },
+    {
+      sectionId: "agent",
+      label: "Agent",
+      state: "ready",
+      headline: "Resident agent ready",
+      safeSummary: "Agent status is available without exposing execution controls.",
+      metrics: [{ metricId: "pending_approvals", label: "Pending approvals", value: "0", tone: "healthy" }],
+      diagnostics: [],
+      sourceEvidence: [
+        {
+          evidenceId: "src_agent_status",
+          sourceContract: "agent-status.v1",
+          sourceKind: "agent",
+          label: "resident agent status",
+          refs: [{ label: "residentAgentId", value: "agent_default" }]
+        }
+      ],
+      nextSafeActionIds: ["action_open_agents"]
     }
   ],
   safeActions: [
@@ -223,6 +262,56 @@ const operatorStatusFixture: OperatorStatusDto = {
       mutatesCanonicalState: false,
       externalEffect: false,
       enabled: true
+    },
+    {
+      actionId: "action_open_agents",
+      label: "Open Agent",
+      kind: "navigate",
+      target: "agents",
+      sourceContract: "agent-status.v1",
+      requiresHumanApproval: false,
+      mutatesCanonicalState: false,
+      externalEffect: false,
+      enabled: true
     }
   ]
+};
+
+const agentStatusFixture: AgentStatusDto = {
+  schemaVersion: "agent-status.v1",
+  generatedAt: "2026-07-07T21:00:00.000Z",
+  residentAgentId: "agent_default",
+  identity: {
+    residentAgentId: "agent_default",
+    workspaceId: "ws_case_001",
+    label: "Cestus Agent",
+    policyId: "agent_policy_default",
+    initializedBy: "actor_case_owner",
+    allowedRunTypes: ["evidence-triage"],
+    memoryProjectionVersion: "0.1.0",
+    eventIds: ["evt_agent_identity"],
+    causationIds: []
+  },
+  tasks: [],
+  runs: [],
+  toolRequests: [],
+  activeMemory: [],
+  permissions: [],
+  locks: [],
+  providers: [
+    {
+      providerId: "provider_fake_local",
+      label: "Fake Local Model Provider",
+      adapterVersion: "fake-provider.v1",
+      endpointKind: "local-engine",
+      modelFamilies: ["fake-local"],
+      credentialKinds: ["local-no-secret"],
+      supportsStructuredOutput: false,
+      supportsToolCalling: false,
+      safeDataNotes: "Deterministic local fake provider for operator app tests."
+    }
+  ],
+  pendingApprovalCount: 0,
+  activeLockCount: 0,
+  diagnostics: []
 };
