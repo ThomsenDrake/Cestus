@@ -657,3 +657,36 @@ npm run verify
 ```
 
 The plan intentionally scopes the first resident-agent implementation to a measurable foundation: default resident identity, strict agent events and projections, fake-provider credential references, tool-gateway approval contracts, and minimal local runtime, CLI, operator-status, Command, and Agent UI surfaces without live credentials. Full legacy `ontology-bootstrap`, PRR, evidence, timeline, contradiction, investigation, report, live provider, and team hardening work remains split into focused follow-up implementation plans.
+
+## Ontology Bootstrap Specialist Implementation Readiness
+
+The ontology bootstrap specialist foundation was implemented from the approved zero-trust legacy import direction on 2026-07-07.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-ontology-bootstrap-specialist-design.md`
+- `docs/superpowers/plans/2026-07-07-ontology-bootstrap-specialist-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded focused verification:
+
+```text
+npm test -- packages/ontology-bootstrap/test/contracts.test.ts packages/ontology-bootstrap/test/dossier-builder.test.ts packages/ontology-bootstrap/test/read-model.test.ts packages/ontology-bootstrap/test/tool-previews.test.ts packages/ontology-bootstrap/test/fake-runtime.test.ts packages/ingestion/test/legacy-runtime.test.ts packages/ingestion/test/legacy-staging.test.ts
+Test Files  7 passed
+Tests  38 passed
+```
+
+Recorded full verification before readiness tracking:
+
+```text
+npm run verify
+typecheck passed
+Test Files  109 passed
+Tests  977 passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+The implementation adds a pure `packages/ontology-bootstrap` package with strict DTO contracts, deterministic dossier generation from existing legacy reports and evidence links, a read-model helper, approval-preview builders, and a fake specialist runtime facade. It does not implement live model orchestration, direct old source-tree import, raw byte copy, staging execution outside existing legacy services, accepted ontology truth, legal/export actions, provider byte transfer, UI mutation, or destructive repair. Legacy-derived structure can only be represented as evidence-tied preview or dossier material; the only allowed staged ontology output remains `assertion.proposed` through existing legacy services after human staging approval.
