@@ -34,7 +34,7 @@ export async function handleAgentHttpRoute(
   try {
     if (input.request.method === "GET" && path === "/api/agent/providers/readiness") {
       return json(200, await buildProviderReadiness({
-        registry: createProviderRegistry.withDefaultsForTest(),
+        registry: createDefaultProviderReadinessRegistry(),
         credentialReferences: [],
         secretStore: new FakeSecretStore(),
         now: input.now
@@ -271,4 +271,8 @@ function json(status: number, body: unknown): LocalRuntimeResponse {
     headers: Object.freeze({ "content-type": "application/json; charset=utf-8" }),
     body: JSON.stringify(body)
   });
+}
+
+function createDefaultProviderReadinessRegistry() {
+  return createProviderRegistry.withDefaultsForTest();
 }
