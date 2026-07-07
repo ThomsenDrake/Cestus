@@ -26,6 +26,18 @@ export interface OntologyBootstrapReadiness {
 export function buildOntologyBootstrapReadiness(
   input: BuildOntologyBootstrapReadinessInput
 ): OntologyBootstrapReadiness {
+  const mismatch = identityMismatch(input);
+  if (mismatch !== undefined) {
+    return {
+      sourceCollectionId: input.sourceCollectionId,
+      phase: "blocked",
+      ...(input.review.latestReportId === undefined ? {} : { latestReportId: input.review.latestReportId }),
+      eligibleCandidateCount: 0,
+      blockedCandidateCount: 0,
+      failures: [mismatch]
+    };
+  }
+
   if (input.report === undefined || input.review.latestReportId === undefined) {
     return {
       sourceCollectionId: input.sourceCollectionId,
@@ -61,6 +73,31 @@ export function buildOntologyBootstrapReadiness(
     blockedCandidateCount,
     failures: []
   };
+}
+
+function identityMismatch(input: BuildOntologyBootstrapReadinessInput): OntologyBootstrapFailure | undefined {
+  if (input.review.sourceCollectionId !== input.sourceCollectionId) {
+    return legacyReportMismatchFailure();
+  }
+  if (input.report !== undefined && input.report.sourceCollectionId !== input.sourceCollectionId) {
+    return legacyReportMismatchFailure();
+  }
+  if (
+    input.report !== undefined &&
+    input.review.latestReportId !== undefined &&
+    input.review.latestReportId !== input.report.legacyReportId
+  ) {
+    return legacyReportMismatchFailure();
+  }
+  return undefined;
+}
+
+function legacyReportMismatchFailure(): OntologyBootstrapFailure {
+  return failure({
+    code: "legacy-report-mismatch",
+    message: "Legacy report identity does not match the ontology bootstrap launch context.",
+    allowedRepairActions: ["select the matching legacy report", "refresh the legacy review projection"]
+  });
 }
 
 function phaseFor(input: BuildOntologyBootstrapReadinessInput, eligibleCandidateCount: number): OntologyBootstrapPhase {

@@ -56,8 +56,11 @@ export function createStagingApprovalPreview(
 ): OntologyBootstrapToolPreview {
   const selectedCandidateIds = sortedCandidateIds(input.selectedCandidateIds);
   const evidenceRefs = sortedEvidenceRefs(input.evidenceRefs);
+  const candidatesById = candidatesByIdFor(input.report);
   assertSelectedCandidates(selectedCandidateIds);
+  assertSelectedCandidatesBelongToReport(candidatesById, selectedCandidateIds);
   assertEvidenceRefsMatchSelection(selectedCandidateIds, evidenceRefs);
+  assertEvidenceRefsMatchReportCandidates(candidatesById, evidenceRefs);
 
   return parsePreview({
     previewId: `bootstrap_preview_staging_approval_${input.stagingBatchId}`,
@@ -91,7 +94,9 @@ export function createStagingExecutionPreview(
   input: StagingExecutionPreviewInput
 ): OntologyBootstrapToolPreview {
   const selectedCandidateIds = sortedCandidateIds(input.selectedCandidateIds);
+  const candidatesById = candidatesByIdFor(input.report);
   assertSelectedCandidates(selectedCandidateIds);
+  assertSelectedCandidatesBelongToReport(candidatesById, selectedCandidateIds);
 
   return parsePreview({
     previewId: `bootstrap_preview_staging_execute_${input.stagingBatchId}`,
@@ -155,6 +160,17 @@ function assertSelectedCandidates(candidateIds: readonly string[]): void {
   }
 }
 
+function assertSelectedCandidatesBelongToReport(
+  candidatesById: ReadonlyMap<string, LegacyMigrationReport["proposedAssertionCandidates"][number]>,
+  selectedCandidateIds: readonly string[]
+): void {
+  for (const candidateId of selectedCandidateIds) {
+    if (!candidatesById.has(candidateId)) {
+      throw new Error(`Selected candidate ${candidateId} is not in the legacy report.`);
+    }
+  }
+}
+
 function assertEvidenceRefsMatchSelection(
   selectedCandidateIds: readonly string[],
   evidenceRefs: readonly StagingApprovalPreviewInput["evidenceRefs"][number][]
@@ -172,6 +188,27 @@ function assertEvidenceRefsMatchSelection(
       throw new Error(`Evidence ref is required for selected ontology bootstrap candidate ${candidateId}.`);
     }
   }
+}
+
+function assertEvidenceRefsMatchReportCandidates(
+  candidatesById: ReadonlyMap<string, LegacyMigrationReport["proposedAssertionCandidates"][number]>,
+  evidenceRefs: readonly StagingApprovalPreviewInput["evidenceRefs"][number][]
+): void {
+  for (const ref of evidenceRefs) {
+    const candidate = candidatesById.get(ref.candidateId);
+    if (candidate === undefined) {
+      throw new Error(`Evidence ref ${ref.candidateId} is not in the legacy report.`);
+    }
+    if (candidate.evidenceContentHash !== ref.evidenceContentHash) {
+      throw new Error(`Evidence content hash for candidate ${ref.candidateId} does not match the legacy report.`);
+    }
+  }
+}
+
+function candidatesByIdFor(
+  report: LegacyMigrationReport
+): Map<string, LegacyMigrationReport["proposedAssertionCandidates"][number]> {
+  return new Map(report.proposedAssertionCandidates.map((candidate) => [candidate.candidateId, candidate]));
 }
 
 function sortedCandidateIds(candidateIds: readonly string[]): string[] {
