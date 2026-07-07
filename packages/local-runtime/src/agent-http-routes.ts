@@ -33,20 +33,10 @@ export async function handleAgentHttpRoute(
 
   try {
     if (input.request.method === "GET" && path === "/api/agent/status") {
-      const initialized = await ensureDefaultIdentity(runtime, input);
-      if (!initialized.ok) {
-        return json(500, initialized.body);
-      }
-
       return json(200, await runtime.status());
     }
 
     if (input.request.method === "GET" && path === "/api/agent/tool-requests") {
-      const initialized = await ensureDefaultIdentity(runtime, input);
-      if (!initialized.ok) {
-        return json(500, initialized.body);
-      }
-
       const status = await runtime.status();
       return json(200, {
         schemaVersion: "agent-tool-requests.v1",
@@ -70,6 +60,11 @@ export async function handleAgentHttpRoute(
       const initialized = await ensureDefaultIdentity(runtime, input);
       if (!initialized.ok) {
         return json(500, initialized.body);
+      }
+
+      const status = await runtime.status();
+      if (status.tasks.some((task) => task.taskId === taskInput.taskId)) {
+        return json(409, duplicateTaskDiagnostic());
       }
 
       return json(200, await runtime.createTask({
@@ -163,6 +158,19 @@ function invalidTaskBodyDiagnostic(): {
 } {
   return diagnostic("Agent task body is invalid.", [
     "send taskId, title, and optional priority as a JSON object"
+  ]);
+}
+
+function duplicateTaskDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent task already exists.", [
+    "choose a different task id",
+    "refresh agent status"
   ]);
 }
 
