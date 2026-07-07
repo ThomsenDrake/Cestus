@@ -192,6 +192,8 @@ describe("operator status contracts", () => {
       "cestus agent invoke provider_fake_local",
       "cestus agent send-message msg_001",
       "cestus agent export-report report_001",
+      "cestus agent external-message-send msg_001",
+      "cestus agent external-message send msg_001",
       "cestus agent provider transfer provider_fake_local",
       "cestus agent provider-transfer provider_fake_local"
     ];
