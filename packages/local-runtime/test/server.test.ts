@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "../src/config.js";
 import { startLocalRuntimeServer, type LocalRuntimeServerHandle } from "../src/server.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { operatorStatusDtoSchema } from "../../operator-status/src/contracts.js";
 
 const tempDirs: string[] = [];
 const handles: LocalRuntimeServerHandle[] = [];
@@ -94,6 +96,29 @@ describe("startLocalRuntimeServer", () => {
     expect(await authenticated.json()).toMatchObject({ cards: [] });
   });
 
+  it("serves operator status from production workspace, ingestion, legacy, and PRR providers", async () => {
+    const workspaceRoot = tempDir();
+    createPortableWorkspace({
+      rootDir: workspaceRoot,
+      workspaceId: "ws_operator_status_server",
+      label: "Operator status server",
+      createdBy: "server-test",
+      createdAt: "2026-07-07T00:20:00.000Z"
+    });
+    const handle = await startTestServer(portableWorkspaceConfig(workspaceRoot));
+
+    const response = await fetch(`http://127.0.0.1:${serverPort(handle)}/api/operator/status`);
+    const body = operatorStatusDtoSchema.parse(await response.json());
+
+    expect(response.status).toBe(200);
+    expect(body.sections.map((section) => [section.sectionId, section.state])).toEqual([
+      ["workspace", "ready"],
+      ["ingestion", "ready"],
+      ["legacy-import", "action-required"],
+      ["prr", "ready"]
+    ]);
+  });
+
   it("uses a non-loopback browser session URL for wildcard LAN binds", async () => {
     const handle = await startLocalRuntimeServer({
       config: authRequiredWildcardLanConfig(),
@@ -164,6 +189,18 @@ function authRequiredWildcardTailnetConfig(): ResolvedLocalRuntimeConfig {
       env: {
         CESTUS_LOCAL_BIND: "tailnet",
         CESTUS_LOCAL_AUTH_TOKEN: "secret-local-token"
+      }
+    })
+  );
+}
+
+function portableWorkspaceConfig(workspaceRoot: string): ResolvedLocalRuntimeConfig {
+  return configWithPortZero(
+    resolveLocalRuntimeConfig({
+      cwd: tempDir(),
+      env: {
+        CESTUS_LOCAL_STORAGE: "portable-workspace",
+        CESTUS_WORKSPACE_ROOT: workspaceRoot
       }
     })
   );

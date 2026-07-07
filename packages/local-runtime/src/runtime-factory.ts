@@ -1,4 +1,5 @@
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
+import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import {
   createPrrRuntime,
   type PrrRuntime,
@@ -13,6 +14,7 @@ export interface LocalRuntimeFactoryDependencies extends Omit<PrrRuntimeDependen
 
 export interface LocalRuntimeHandle {
   readonly runtime: PrrRuntime;
+  readonly ledger: EventLedger;
   readonly mountedWorkspace?: MountedPortableWorkspace;
   close(): void;
 }
@@ -60,6 +62,7 @@ export function createSqlitePrrRuntime(
 
   return Object.freeze({
     runtime,
+    ledger,
     ...(resolvedStorage.mountedWorkspace === undefined
       ? {}
       : { mountedWorkspace: resolvedStorage.mountedWorkspace }),

@@ -460,41 +460,6 @@ factory-readiness passed
 
 Legacy import remains recon-first. Every legacy file is evidence first, ontology staging can only append evidence-tied `assertion.proposed`, and accepted assertion, entity, relationship, or resolution events are forbidden during import. The readiness evidence is evidence-first and asserts only behavior proposed, reviewed, and verified through the completed legacy import slice.
 
-## Operator Workspace Status And Import Bridge Plan Readiness
-
-The operator-facing workspace status and import bridge plan was prepared from the approved design direction on 2026-07-06.
-
-Required design and plan files:
-
-- `docs/superpowers/specs/2026-07-06-operator-workspace-status-import-bridge-design.md`
-- `docs/superpowers/plans/2026-07-06-operator-workspace-status-import-bridge-implementation.md`
-
-Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
-
-Recorded command evidence for this planning checkpoint:
-
-```text
-git diff --check
-passed
-
-npm test -- packages/ui/test/request-data-boundary.test.ts
-Test Files 1 passed
-Tests 6 passed
-
-npm run factory:check
-factory-readiness passed
-
-npm run verify
-typecheck passed
-Test Files 92 passed
-Tests 822 passed
-tests passed
-vite build succeeded
-factory-readiness passed
-```
-
-The implementation remains a future approved slice. The plan requires the UI bridge to depend on workspace-ops, ingestion, legacy import, PRR, and local-runtime contracts rather than duplicating their validation logic in React. The bridge is read-only and must not perform PRR sends, legal escalation, provider byte transfer, destructive repair, canonical ledger/blob mutation, accepted legacy ontology truth, or hidden local duplication of external-drive ontology data.
-
 ## Portable Workspace Attachment Ops Plan Readiness
 
 The portable workspace attachment ops plan was prepared from the approved design spec on 2026-07-06.
@@ -595,3 +560,54 @@ npm run verify
 ```
 
 The operator workflow remains recon-first, evidence-first, human-gated, and forbidden from accepted graph events. Raw import is approval/import split: approval records intent only, and import execution uses stale-source verification before blob writes. Staging preview is source-scoped and evidence-tied, staging approval requires selected human-approved candidate IDs, and staging execution can append only `assertion.proposed`.
+
+## Operator Workspace Status And Import Bridge Implementation Readiness
+
+The operator-facing workspace status and import bridge implementation was completed from the approved design direction on 2026-07-06.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-06-operator-workspace-status-import-bridge-design.md`
+- `docs/superpowers/plans/2026-07-06-operator-workspace-status-import-bridge-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded targeted command evidence from the implementation slice:
+
+```text
+npm test -- packages/operator-status/test/contracts.test.ts
+Operator status contract targeted verification passed.
+
+npm test -- packages/local-runtime/test/operator-status.test.ts packages/local-runtime/test/operator-status-routes.test.ts
+Local runtime status aggregation and HTTP route targeted verification passed.
+
+npm test -- packages/ui/test/operator-status-adapter.test.ts packages/ui/test/request-data-boundary.test.ts
+UI adapter parsing, runtime-unavailable fallback, redaction, and browser boundary targeted verification passed.
+
+npm test -- packages/ui/test/operator-cockpit.test.tsx packages/ui/test/visual-contract.test.ts
+Operator cockpit DOM safety, command display-only rendering, tab accessibility, and visual contract targeted verification passed.
+
+npm test -- packages/ui/test/operator-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx packages/ui/test/dashboard.test.tsx packages/ui/test/ingestion-app-integration.test.tsx
+Command screen integration, Requests preservation, and Ingestion preservation targeted verification passed.
+
+npm test -- packages/local-runtime/test/operator-status.test.ts packages/local-runtime/test/operator-status-routes.test.ts packages/ui/test/operator-cockpit.test.tsx packages/ui/test/operator-app-integration.test.tsx
+Failure-state smoke verification passed for missing drive, swapped drive, uninitialized workspace root, stale projections, ingestion approval blocks, source-changed-since-approval, legacy samples needed, raw legacy approval, runtime unavailable, and PRR zero-open readiness.
+```
+
+Final review remediation evidence for production provider wiring and safe-command hardening:
+
+```text
+npm test -- packages/operator-status/test/contracts.test.ts packages/workspace-ops/test/layout.test.ts packages/local-runtime/test/operator-status.test.ts packages/local-runtime/test/operator-status-routes.test.ts packages/local-runtime/test/server.test.ts packages/ui/test/operator-status-adapter.test.ts packages/ui/test/operator-cockpit.test.tsx packages/ui/test/operator-app-integration.test.tsx packages/ui/test/request-data-boundary.test.ts
+Test Files 9 passed
+Tests 77 passed
+
+npm run verify
+typecheck passed
+Test Files 98 passed
+Tests 880 passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+The implemented bridge depends on workspace-ops, ingestion, legacy import, PRR, and local-runtime status/readiness DTOs rather than duplicating their validation logic in React. The UI bridge remains read-only: it renders safe navigation, refresh, and display-only command descriptors, and it does not perform PRR sends, legal escalation, provider byte transfer, destructive repair, canonical ledger/blob mutation, accepted legacy ontology truth, or hidden local duplication of external-drive ontology data. Append-only ledger semantics, provenance requirements, projection rebuildability, evidence-first legacy import, legal escalation locks, and browser boundary safety are preserved by the implementation and covered by the targeted and full verification gates above.

@@ -370,6 +370,35 @@ describe("resolveWorkspaceLayout", () => {
       rmSync(rootPath, { recursive: true, force: true });
     }
   });
+
+  it("accepts the portable workspace manifest shape without accepting arbitrary extra fields", async () => {
+    const fileSystem = new RecordingReadOnlyFs();
+    fileSystem.directories.add("/mnt/portable");
+    fileSystem.files.set(
+      "/mnt/portable/cestus-workspace.json",
+      JSON.stringify({
+        version: 1,
+        layoutVersion: 1,
+        workspaceId: "ws_portable_workspace",
+        label: "Portable workspace",
+        createdAt: "2026-07-07T00:20:00.000Z",
+        createdBy: "layout-test",
+        coreVersion: "0.1.0",
+        description: "Investigation workspace"
+      })
+    );
+
+    const result = await resolveWorkspaceLayout({ rootPath: "/mnt/portable" }, fileSystem);
+
+    expect(result.mountStatus.status).toBe("available");
+    expect(result.workspace).toMatchObject({
+      workspaceId: "ws_portable_workspace",
+      label: "Portable workspace",
+      manifestVersion: 1
+    });
+    expect(result.layout).toBeDefined();
+    expect(formatWorkspaceOpsJson(result.envelope)).not.toContain("createdBy");
+  });
 });
 
 describe("resolveWorkspaceLayout canonical portable workspace binding", () => {

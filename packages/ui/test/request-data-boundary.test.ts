@@ -25,9 +25,14 @@ describe("Requests data boundary", () => {
     /^node:/,
     /^node:(?:fs|path)$/,
     nodeRuntimeModulePattern,
-    /^\.\.\/\.\.\/workspace\/src(?:\/.*)?$/,
+    /^(?:\.\.\/)+(?:ingestion|local-runtime|workspace|workspace-ops)(?:\/.*)?$/,
     /^packages\/workspace(?:\/.*)?$/,
+    /^packages\/workspace-ops(?:\/.*)?$/,
+    /^packages\/ingestion(?:\/.*)?$/,
+    /^packages\/local-runtime(?:\/.*)?$/,
     /^\.\.\/workspace(?:\/.*)?$/,
+    /^\.\.\/\.\.\/local-runtime\/src\/operator-status(?:-routes)?(?:\.js)?$/,
+    /^packages\/local-runtime\/src\/operator-status(?:-routes)?(?:\.js)?$/,
     /(?:^|\/)(?:runtime|sqlite-event-ledger)(?:\.js)?$/,
     /(?:^|\/)prr\/src\/runtime(?:\.js)?$/,
     /(?:^|\/)local-runtime\/src\/[^/]+(?:\.js)?$/,
@@ -38,6 +43,11 @@ describe("Requests data boundary", () => {
     "SQLiteEventLedger",
     "sqlite-event-ledger",
     "packages/prr/src/runtime",
+    "../../workspace-ops/src",
+    "packages/workspace-ops",
+    "../../local-runtime/src/operator-status",
+    "packages/local-runtime/src/operator-status",
+    "../../local-runtime/src/operator-status-routes",
     "packages/local-runtime/src/config",
     "packages/local-runtime/src/server",
     "packages/local-runtime/src/http-handler",
@@ -59,6 +69,8 @@ describe("Requests data boundary", () => {
     expect(productUiBoundaryFiles).toContain("packages/ui/src/requests/RequestDetailSections.tsx");
     expect(productUiBoundaryFiles).toContain("packages/ui/src/requests/RequestDetailModal.tsx");
     expect(productUiBoundaryFiles).toContain("packages/ui/src/requests/RequestWorkspaceIntelligenceRail.tsx");
+    expect(productUiBoundaryFiles).toContain("packages/ui/src/operator-status/operator-status-types.ts");
+    expect(productUiBoundaryFiles).toContain("packages/ui/src/operator-status/operator-status-adapter.ts");
   });
 
   it("keeps product Requests code off local card fixtures and Node-only runtime imports", () => {
@@ -83,11 +95,50 @@ describe("Requests data boundary", () => {
       "../../ingestion/src/source-registry.js",
       "../../ingestion/src/parser.js",
       "../../ingestion/src/projection.js",
-      "../../ingestion/src/read-api.js"
+      "../../ingestion/src/read-api.js",
+      "../../workspace-ops/src/contracts.js",
+      "packages/workspace-ops/src/contracts.js",
+      "../../local-runtime/src/operator-status.js",
+      "packages/local-runtime/src/operator-status.js",
+      "../../local-runtime/src/operator-status-routes.js",
+      "../../workspace/src/index.js",
+      "packages/workspace/src/index.js",
+      "packages/local-runtime",
+      "packages/local-runtime/index.js",
+      "../../local-runtime",
+      "../../local-runtime/index.js",
+      "../../workspace",
+      "../../workspace/index.js",
+      "../../workspace-ops",
+      "../../workspace-ops/index.js",
+      "../../ingestion",
+      "../../ingestion/index.js",
+      "../../../local-runtime",
+      "../../../local-runtime/index.js",
+      "../../../workspace",
+      "../../../workspace-ops",
+      "../../../ingestion",
+      "fs/promises",
+      "path/posix",
+      "util",
+      "events",
+      "assert/strict",
+      "node:fs/promises"
     ];
 
     for (const moduleSpecifier of forbiddenModuleSpecifiers) {
       expect(forbiddenProductUiImportPatterns.some((pattern) => pattern.test(moduleSpecifier)), moduleSpecifier).toBe(true);
+    }
+  });
+
+  it("allows the UI operator status adapter to import only the browser-safe operator contract", () => {
+    const allowedModuleSpecifiers = [
+      "../../../operator-status/src/contracts.js",
+      "../../operator-status/src/contracts.js"
+    ];
+
+    for (const moduleSpecifier of allowedModuleSpecifiers) {
+      expect(forbiddenProductUiImportPatterns.some((pattern) => pattern.test(moduleSpecifier)), moduleSpecifier).toBe(false);
     }
   });
 
@@ -120,7 +171,7 @@ describe("Requests data boundary", () => {
   });
 });
 
-const nodeRuntimeModulePattern = /^(?:fs|path|crypto|child_process|os|sqlite|http|https|stream|url|buffer|process|module|net|tls|worker_threads)$/;
+const nodeRuntimeModulePattern = /^(?:assert|async_hooks|buffer|child_process|cluster|console|constants|crypto|dgram|diagnostics_channel|dns|domain|events|fs|http|http2|https|inspector|module|net|os|path|perf_hooks|process|punycode|querystring|readline|repl|sqlite|stream|string_decoder|test|timers|tls|trace_events|tty|url|util|v8|vm|wasi|worker_threads|zlib)(?:\/.*)?$/;
 
 function listSourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

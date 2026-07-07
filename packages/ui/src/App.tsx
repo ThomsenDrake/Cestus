@@ -23,6 +23,13 @@ import {
   type RequestsCreateDraftInput,
   type RequestsWorkspaceAdapter
 } from "./requests/request-adapter.js";
+import { OperatorCockpit } from "./operator-status/OperatorCockpit.js";
+import {
+  httpOperatorStatusAdapter,
+  runtimeUnavailableStatus,
+  type OperatorStatusAdapter
+} from "./operator-status/operator-status-adapter.js";
+import type { OperatorSafeActionDto, OperatorStatusDto } from "./operator-status/operator-status-types.js";
 import { RequestBuilder } from "./requests/RequestBuilder.js";
 import { RequestDetailModal } from "./requests/RequestDetailModal.js";
 import { buildPrrBuilderModel, getSelectedPrrRequest } from "./requests/request-model.js";
@@ -40,11 +47,13 @@ implementedModuleIds.add("ingestion");
 interface AppProps {
   readonly requestsAdapter?: RequestsWorkspaceAdapter;
   readonly ingestionAdapter?: IngestionWorkspaceAdapter;
+  readonly operatorStatusAdapter?: OperatorStatusAdapter;
 }
 
 export function App({
   requestsAdapter = httpRequestsAdapter,
-  ingestionAdapter = httpIngestionWorkspaceAdapter
+  ingestionAdapter = httpIngestionWorkspaceAdapter,
+  operatorStatusAdapter = httpOperatorStatusAdapter
 }: AppProps = {}) {
   const [activeModuleId, setActiveModuleId] = useState("command");
   const [activeFilter, setActiveFilter] = useState<QueueFilter>("all");
@@ -73,11 +82,15 @@ export function App({
   const [ingestionReloadKey, setIngestionReloadKey] = useState(0);
   const [ingestionJobs, setIngestionJobs] = useState<readonly IngestionJobDto[]>([]);
   const [ingestionDiagnostics, setIngestionDiagnostics] = useState<readonly IngestionRuntimeDiagnosticDto[]>([]);
+  const [operatorStatus, setOperatorStatus] = useState<OperatorStatusDto | undefined>();
+  const [loadedOperatorStatusAdapter, setLoadedOperatorStatusAdapter] = useState<OperatorStatusAdapter | undefined>();
+  const [operatorStatusReloadKey, setOperatorStatusReloadKey] = useState(0);
   const model = useMemo(
     () => buildCommandBoardViewModel({ ...commandWorkspaceFixture, reviewedItemIds }),
     [reviewedItemIds]
   );
   const selectedItem = getSelectedCommandItem(model, selectedItemId);
+  const commandActive = activeModuleId === "command";
   const requestsActive = activeModuleId === "requests";
   const ingestionActive = activeModuleId === "ingestion";
   const selectedPrrModalRequest = useMemo(
@@ -88,6 +101,45 @@ export function App({
     requestsActive && requestBuilderOpen && requestsWorkspace !== undefined && requestsLoadState === "loaded";
   const requestDetailModalVisible =
     requestsActive && requestDetailModalOpen && requestsWorkspace !== undefined && requestsLoadState === "loaded";
+
+  useEffect(() => {
+    if (!commandActive) {
+      return;
+    }
+
+    if (operatorStatus !== undefined && loadedOperatorStatusAdapter === operatorStatusAdapter) {
+      return;
+    }
+
+    let canceled = false;
+
+    operatorStatusAdapter
+      .loadStatus()
+      .then((status) => {
+        if (canceled) {
+          return;
+        }
+
+        setOperatorStatus(status);
+        setLoadedOperatorStatusAdapter(operatorStatusAdapter);
+      })
+      .catch((error: unknown) => {
+        if (canceled) {
+          return;
+        }
+
+        setOperatorStatus(
+          runtimeUnavailableStatus({
+            message: error instanceof Error ? error.message : "Operator status runtime is unavailable."
+          })
+        );
+        setLoadedOperatorStatusAdapter(operatorStatusAdapter);
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [commandActive, loadedOperatorStatusAdapter, operatorStatus, operatorStatusAdapter, operatorStatusReloadKey]);
 
   useEffect(() => {
     if (!requestsActive) {
@@ -200,14 +252,32 @@ export function App({
   }, [ingestionActive, ingestionAdapter, ingestionReloadKey, ingestionWorkspace, loadedIngestionAdapter]);
 
   const commandMain = (
-    <CommandDashboard
-      model={model}
-      activeFilter={activeFilter}
-      selectedItemId={selectedItemId}
-      onFilterChange={setActiveFilter}
-      onSelectItem={setSelectedItemId}
-      onMarkReviewed={(itemId) => setReviewedItemIds((current) => [...new Set([...current, itemId])])}
-    />
+    <div className="space-y-6">
+      {operatorStatus === undefined ? (
+        <section aria-label="Operator cockpit loading state" className="border border-[var(--console-line)] bg-[var(--console-void)]/72 p-4">
+          <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">Loading operator cockpit</p>
+          <p className="mt-3 text-base text-pretty text-[var(--muted-amber)] sm:text-sm">
+            Loading the read-only operator status bridge.
+          </p>
+        </section>
+      ) : (
+        <OperatorCockpit
+          status={operatorStatusForCommand(operatorStatus)}
+          onNavigate={handleOperatorNavigate}
+          onRefresh={handleRefreshOperatorStatus}
+        />
+      )}
+      <section aria-label="Operational queue" className="space-y-4">
+        <CommandDashboard
+          model={model}
+          activeFilter={activeFilter}
+          selectedItemId={selectedItemId}
+          onFilterChange={setActiveFilter}
+          onSelectItem={setSelectedItemId}
+          onMarkReviewed={(itemId) => setReviewedItemIds((current) => [...new Set([...current, itemId])])}
+        />
+      </section>
+    </div>
   );
   const requestsMain = renderRequestsMain({
     requestsWorkspace,
@@ -263,6 +333,18 @@ export function App({
         setPendingRequestBuilderOpen(false);
       }
     }
+  }
+
+  function handleOperatorNavigate(target: OperatorSafeActionDto["target"]) {
+    if (target !== undefined) {
+      handleModuleSelect(target);
+    }
+  }
+
+  function handleRefreshOperatorStatus() {
+    setOperatorStatus(undefined);
+    setLoadedOperatorStatusAdapter(undefined);
+    setOperatorStatusReloadKey((current) => current + 1);
   }
 
   function handleNewRequest() {
@@ -510,6 +592,15 @@ export function App({
       ) : null}
     </>
   );
+}
+
+function operatorStatusForCommand(status: OperatorStatusDto): OperatorStatusDto {
+  return {
+    ...status,
+    sections: status.sections.map((section) =>
+      section.sectionId === "prr" ? { ...section, label: "PRR/Investigations" } : section
+    )
+  };
 }
 
 function renderRequestsMain({
