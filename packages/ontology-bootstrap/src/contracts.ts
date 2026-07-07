@@ -5,6 +5,8 @@ export const ontologyBootstrapSchemaVersion = "ontology-bootstrap.v1" as const;
 const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const sourceCollectionIdSchema = z.string().regex(/^src_[a-zA-Z0-9_-]+$/);
 const scanBatchIdSchema = z.string().regex(/^scan_[a-zA-Z0-9_-]+$/);
+const importBatchIdSchema = z.string().regex(/^imp_[a-zA-Z0-9_-]+$/);
+const stagingBatchIdSchema = z.string().regex(/^legacy_stage_[a-zA-Z0-9_-]+$/);
 const legacyReportIdSchema = z.string().regex(/^legacy_report_[a-zA-Z0-9_-]+$/);
 const legacyCandidateIdSchema = z.string().regex(/^legacy_candidate_[a-zA-Z0-9_-]+$/);
 const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/);
@@ -156,6 +158,12 @@ export const ontologyBootstrapDossierSchema = z.object({
 
 const allowedBootstrapEventTypes = ["assertion.proposed"] as const;
 
+const ontologyBootstrapPreviewEvidenceRefSchema = z.object({
+  candidateId: legacyCandidateIdSchema,
+  evidenceId: evidenceIdSchema,
+  evidenceContentHash: contentHashSchema
+}).strict();
+
 export const ontologyBootstrapToolPreviewSchema = z.object({
   previewId: bootstrapIdSchema,
   toolId: ontologyBootstrapSafeTextSchema,
@@ -163,10 +171,14 @@ export const ontologyBootstrapToolPreviewSchema = z.object({
   previewHash: contentHashSchema,
   summary: ontologyBootstrapSafeTextSchema,
   sourceCollectionId: sourceCollectionIdSchema,
+  scanBatchId: scanBatchIdSchema.optional(),
+  importBatchId: importBatchIdSchema.optional(),
+  stagingBatchId: stagingBatchIdSchema.optional(),
   legacyReportId: legacyReportIdSchema.optional(),
   reportHash: contentHashSchema.optional(),
   candidateSetHash: contentHashSchema.optional(),
   selectedCandidateIds: z.array(legacyCandidateIdSchema).default([]),
+  evidenceRefs: z.array(ontologyBootstrapPreviewEvidenceRefSchema).default([]),
   allowedEventTypes: z.array(z.string()).default([]),
   requiresHumanApproval: z.boolean()
 }).strict().superRefine((preview, ctx) => {
