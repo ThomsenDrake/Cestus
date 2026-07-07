@@ -69,6 +69,34 @@ describe("provider setup cards", () => {
       })
     ).toThrow();
   });
+
+  it("rejects unsafe diagnostic ids even with readiness-state suffixes", () => {
+    expect(() =>
+      providerSetupCardsFromReadiness({
+        ...readinessFixture(),
+        cards: [cardFixture()],
+        diagnostics: [
+          diagnosticFixture({
+            diagnosticId: "diag_openai_api_key_needs_api_key"
+          })
+        ]
+      })
+    ).toThrow();
+  });
+
+  it("rejects unsafe diag related ids even with readiness-state suffixes", () => {
+    expect(() =>
+      providerSetupCardsFromReadiness({
+        ...readinessFixture(),
+        cards: [cardFixture()],
+        diagnostics: [
+          diagnosticFixture({
+            relatedSafeIds: ["diag_openai_token_provider_unavailable"]
+          })
+        ]
+      })
+    ).toThrow();
+  });
 });
 
 function readinessFixture(overrides: Record<string, unknown> = {}) {
