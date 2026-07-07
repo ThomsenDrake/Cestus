@@ -194,6 +194,12 @@ agent actor kind and agent event types are rejected
 Modify `packages/ontology/src/contracts.ts`:
 
 - Extend `actorRefSchema` to include `"agent"`.
+- Export an `ActorRef` alias immediately after `actorRefSchema` so later agent package tasks can import the canonical actor type:
+
+```ts
+export type ActorRef = z.infer<typeof actorRefSchema>;
+```
+
 - Add secret-safe ID schemas for resident agent IDs, task IDs, run IDs, tool request IDs, memory IDs, permission IDs, lock IDs, provider IDs, credential reference IDs, invocation IDs, and artifact hashes.
 - Add payload schemas for:
   - `agent.identity.initialized`
@@ -1307,7 +1313,7 @@ Create `packages/local-runtime/src/agent-runtime-factory.ts`:
 
 ```ts
 import { FakeModelProvider, createAgentRuntime } from "../../agent/src/index.js";
-import type { ActorRef } from "../../prr/src/draft-events.js";
+import type { ActorRef } from "../../ontology/src/contracts.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
 export interface LocalAgentRuntimeFactoryInput {
