@@ -6,7 +6,7 @@ Worker: Codex GPT-5
 Branch: `codex/cestus-resident-agent-foundation`
 Worktree: `/home/drake/.codex/worktrees/6fc5/Cestus`
 Claimed-at: 2026-07-07T14:50:08Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/ontology/src/contracts.ts`
@@ -17,6 +17,12 @@ Targeted commands:
 - `npm test -- packages/ontology/test/agent-contracts.test.ts`
 - `npm test -- packages/ontology/test/agent-contracts.test.ts packages/ontology/test/contracts.test.ts`
 - `npm run verify`
+
+Command evidence:
+- Red: `npm test -- packages/ontology/test/agent-contracts.test.ts` failed with 1 test file failed, 2 tests failed, and 2 tests passed. The failing assertions proved `agent.identity.initialized` and human-approved `agent.tool.approved` were rejected before the new actor kind and event contracts existed.
+- Green: `npm test -- packages/ontology/test/agent-contracts.test.ts` passed with 1 test file and 4 tests passing.
+- Nearby: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/ontology/test/contracts.test.ts` passed with 2 test files and 79 tests passing.
+- Verify: `npm run verify` passed with typecheck passed, 105 test files and 968 tests passing, UI build succeeded, and factory-readiness passed.
 
 Invariant notes:
 - Preserve append-only ledger semantics: agent identity, tasks, runs, tools, memory, permissions, and locks must be represented as new events, not hidden mutation.
