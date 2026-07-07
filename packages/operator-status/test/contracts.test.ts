@@ -185,7 +185,15 @@ describe("operator status contracts", () => {
     const forbiddenAgentCommands = [
       "cestus agent approve-tool toolreq_001",
       "cestus agent execute-tool toolreq_001",
-      "cestus agent invoke-provider inv_001"
+      "cestus agent invoke-provider inv_001",
+      "cestus agent approve toolreq_001",
+      "cestus agent deny toolreq_001",
+      "cestus agent execute toolreq_001",
+      "cestus agent invoke provider_fake_local",
+      "cestus agent send-message msg_001",
+      "cestus agent export-report report_001",
+      "cestus agent provider transfer provider_fake_local",
+      "cestus agent provider-transfer provider_fake_local"
     ];
 
     for (const [index, command] of forbiddenAgentCommands.entries()) {

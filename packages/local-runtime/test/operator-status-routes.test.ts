@@ -14,6 +14,7 @@ import {
   type CreateLocalRuntimeHttpHandlerInput,
   type LocalRuntimeHttpHandler
 } from "../src/http-handler.js";
+import type { LocalAgentRuntimeFactory } from "../src/agent-runtime-factory.js";
 import type { OperatorStatusProviderSet } from "../src/operator-status.js";
 
 const actor = {
@@ -171,6 +172,68 @@ describe("operator status HTTP route", () => {
       mutatesCanonicalState: false,
       externalEffect: false,
       enabled: true
+    });
+  });
+
+  it("uses the injected agent runtime factory and handler clock for the default Agent provider", async () => {
+    const { agent: _agent, ...providersWithoutAgent } = readyProviders();
+    const agentRuntimeFactory = vi.fn((input) => ({
+      status: async () => agentStatus({
+        generatedAt: input.now(),
+        pendingApprovalCount: 2,
+        providers: [
+          {
+            providerId: "provider_route_injected_primary",
+            label: "Injected Route Provider",
+            adapterVersion: "fake-provider.v1",
+            endpointKind: "local-engine",
+            modelFamilies: ["fake-local"],
+            credentialKinds: ["local-no-secret"],
+            supportsStructuredOutput: false,
+            supportsToolCalling: false,
+            safeDataNotes: "Injected route provider for operator status."
+          },
+          {
+            providerId: "provider_route_injected_secondary",
+            label: "Injected Route Provider Secondary",
+            adapterVersion: "fake-provider.v1",
+            endpointKind: "local-engine",
+            modelFamilies: ["fake-local"],
+            credentialKinds: ["local-no-secret"],
+            supportsStructuredOutput: false,
+            supportsToolCalling: false,
+            safeDataNotes: "Second injected route provider for operator status."
+          }
+        ]
+      })
+    }) as ReturnType<LocalAgentRuntimeFactory>);
+    const handler = testHandler({
+      operatorStatusProviders: providersWithoutAgent,
+      agentRuntimeFactory
+    });
+
+    const response = await handler({ method: "GET", url: "/api/operator/status" });
+    const body = operatorStatusDtoSchema.parse(JSON.parse(response.body));
+    const section = body.sections.find((candidate) => candidate.sectionId === "agent");
+
+    expect(response.status).toBe(200);
+    expect(agentRuntimeFactory).toHaveBeenCalledTimes(1);
+    expect(section?.state).toBe("action-required");
+    expect(section?.metrics).toContainEqual({
+      metricId: "providers",
+      label: "Providers",
+      value: "2",
+      tone: "healthy"
+    });
+    expect(section?.metrics).toContainEqual({
+      metricId: "pending_approvals",
+      label: "Pending approvals",
+      value: "2",
+      tone: "attention"
+    });
+    expect(section?.sourceEvidence.flatMap((evidence) => evidence.refs)).toContainEqual({
+      label: "generatedAt",
+      value: fixedNow()
     });
   });
 
