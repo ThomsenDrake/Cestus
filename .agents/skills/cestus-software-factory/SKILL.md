@@ -48,6 +48,9 @@ Recent completed Cestus slices exposed a few recurring failure modes. Treat thes
 - Secret safety applies to every structured boundary, not just payload values. Review DTO keys, IDs, command names, no-value flags, raw argv, diagnostics, custom serializers, boxed values, and array accessors for leakage or getter-triggered surprises.
 - Event accounting and provenance must bind exact artifacts. Include diagnostic events in returned event IDs, bind imported evidence IDs to reviewed content hashes, and reject stale or swapped source bytes before blob writes.
 - UI surfaces are cockpit views over domain/runtime contracts. React should render browser-safe DTOs and safe next commands; workspace validation, ingestion approval gates, legacy staging rules, PRR sends, legal escalation locks, and portable storage truth stay in domain packages and local runtime.
+- Merge dependent cockpit or bridge slices last. Branches that aggregate workspace, ingestion, legacy import, PRR, and runtime status should land after the domain/runtime slices they observe, then run cross-boundary targeted suites before full verification.
+- Name compatibility boundaries explicitly. Keep old/provisional parsers, canonical portable parsers, UI DTO adapters, and runtime providers separate and tested; do not alias an older compatibility parser to a newer canonical contract just to make a merge compile.
+- Treat shared readiness history as append-only coordination state. When multiple slices append to `docs/agentic/software-factory.md`, preserve all readiness evidence and prefer additive section merges; if the file becomes noisy, move future detailed evidence into per-slice claim/readiness files and keep the factory document as an index.
 - Archive or clean up child threads only after their final answer, branch ancestry, clean worktree, and verification evidence agree. Leave newly approved implementation lanes unarchived if they are the next active work.
 
 ## Workflow Decision
