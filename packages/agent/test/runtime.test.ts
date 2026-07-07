@@ -218,6 +218,28 @@ describe("agent runtime core", () => {
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.completed");
     expect(ledgerJson).not.toContain("sk-live-value");
   });
+
+  it("sanitizes successful provider usage before returning result payloads", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = await createPreparedRuntime(ledger, [new UsageMetadataProvider()]);
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_usage_metadata",
+      runId: "run_fake_model",
+      providerId: "provider_usage_local",
+      modelFamily: "fake-local",
+      inputArtifactHash,
+      credentialRef: { credentialRefId: "agent_credref_local", providerId: "provider_usage_local", kind: "local-no-secret" }
+    });
+
+    const resultJson = JSON.stringify(result);
+    const ledgerJson = JSON.stringify(await ledger.readAll());
+    expect(result).toMatchObject({ ok: true, usage: { inputUnits: 7, outputUnits: 11 } });
+    expect(result.ok && Object.keys(result.usage ?? {})).toEqual(["inputUnits", "outputUnits"]);
+    expect(resultJson).not.toContain("sk-live-value");
+    expect(ledgerJson).toContain("agent.model-invocation.completed");
+    expect(ledgerJson).not.toContain("sk-live-value");
+  });
 });
 
 async function createPreparedRuntime(
@@ -300,6 +322,34 @@ class MalformedOutputProvider implements ModelProviderAdapter {
       outputText: "provider output with api key sk-live-value",
       outputArtifactHash: "not-a-sha256",
       usage: { inputUnits: -1, outputUnits: 1 }
+    };
+  }
+}
+
+class UsageMetadataProvider implements ModelProviderAdapter {
+  describe(): ProviderDescriptor {
+    return {
+      providerId: "provider_usage_local",
+      label: "Usage Metadata Local Provider",
+      adapterVersion: "usage-provider.v1",
+      endpointKind: "local-engine",
+      modelFamilies: ["fake-local"],
+      credentialKinds: ["local-no-secret"],
+      supportsStructuredOutput: false,
+      supportsToolCalling: false,
+      safeDataNotes: "Local usage metadata provider for safe result tests."
+    };
+  }
+
+  async invoke(_request: ModelInvocationRequest): Promise<ModelInvocationResult> {
+    return {
+      outputText: "safe provider output",
+      outputArtifactHash: "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      usage: {
+        inputUnits: 7,
+        outputUnits: 11,
+        rawMetadata: "api key sk-live-value"
+      } as ModelInvocationResult["usage"]
     };
   }
 }

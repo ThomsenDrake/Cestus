@@ -369,6 +369,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           allowedActions: ["inspect provider adapter output validation"]
         });
       }
+      const usage = sanitizedModelUsage(providerResult.usage);
 
       const completedEvent: AppendableKnowledgeEvent<"agent.model-invocation.completed"> = {
         type: "agent.model-invocation.completed",
@@ -383,9 +384,9 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           completedAt: input.now(),
           modelFamily: command.modelFamily,
           usage: {
-            inputTokens: providerResult.usage.inputUnits,
-            outputTokens: providerResult.usage.outputUnits,
-            totalTokens: providerResult.usage.inputUnits + providerResult.usage.outputUnits
+            inputTokens: usage.inputUnits,
+            outputTokens: usage.outputUnits,
+            totalTokens: usage.inputUnits + usage.outputUnits
           }
         }
       };
@@ -405,7 +406,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
         ok: true,
         invocationId: command.invocationId,
         outputArtifactHash: providerResult.outputArtifactHash,
-        usage: providerResult.usage,
+        usage,
         eventIds: Object.freeze([requested.id, completed.id])
       };
     },
@@ -480,6 +481,13 @@ function isValidModelInvocationResult(value: unknown): value is ModelInvocationR
 
 function isNonnegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function sanitizedModelUsage(usage: ModelInvocationResult["usage"]): ModelInvocationResult["usage"] {
+  return Object.freeze({
+    inputUnits: usage.inputUnits,
+    outputUnits: usage.outputUnits
+  });
 }
 
 interface RuntimeModelFailure {
