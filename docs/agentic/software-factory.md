@@ -636,3 +636,24 @@ factory-readiness passed
 ```
 
 The design keeps one default workspace resident agent identity with specialist run types underneath it. Model providers remain replaceable execution backends, not agent identities. The resident agent architecture preserves append-only ledger semantics, provenance, rebuildable projections, evidence-first legacy bootstrap, human-approved PRR send gates, legal escalation locks, provider byte-transfer approvals, secret-safe credential references, and portable workspace compatibility.
+
+## Resident Cestus Agent Foundation Plan Readiness
+
+The resident Cestus Agent foundation implementation plan was prepared from the approved design spec on 2026-07-07.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md`
+- `docs/superpowers/plans/2026-07-07-cestus-resident-agent-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded validation commands for the planning slice:
+
+```text
+git diff --check
+npm run factory:check
+npm run verify
+```
+
+The plan intentionally scopes the first resident-agent implementation to a measurable foundation: default resident identity, strict agent events and projections, fake-provider credential references, tool-gateway approval contracts, and minimal local runtime, CLI, operator-status, Command, and Agent UI surfaces without live credentials. Full legacy `ontology-bootstrap`, PRR, evidence, timeline, contradiction, investigation, report, live provider, and team hardening work remains split into focused follow-up implementation plans.
