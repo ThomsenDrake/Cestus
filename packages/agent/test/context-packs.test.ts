@@ -22,6 +22,43 @@ describe("agent context packs", () => {
     expect(descriptor.contextPackId).toBe("accepted-graph-projection.v1");
   });
 
+  it("rejects context pack IDs whose version suffix does not match version", () => {
+    expect(() =>
+      contextPackDescriptorSchema.parse({
+        contextPackId: "task-run-history.v2",
+        version: 1,
+        label: "Task and run history",
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event-id"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      })
+    ).toThrow(/version/i);
+
+    expect(() =>
+      contextPackRefSchema.parse({
+        contextPackId: "task-run-history.v2",
+        version: 1,
+        contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        sizeBytes: 2,
+        generatedAt: "2026-07-07T22:00:00.000Z",
+        safeSummary: "One prior task event.",
+        provenanceRefs: ["evt_agent_task"]
+      })
+    ).toThrow(/version/i);
+
+    expect(() =>
+      buildContextPackRef({
+        contextPackId: "task-run-history.v2",
+        version: 1,
+        generatedAt: "2026-07-07T22:00:00.000Z",
+        payload: { events: ["evt_agent_task"] },
+        safeSummary: "One prior task event.",
+        provenanceRefs: ["evt_agent_task"]
+      })
+    ).toThrow(/version/i);
+  });
+
   it("builds stable context pack hashes from sorted JSON", () => {
     const left = hashAgentContextPack({ b: 2, a: 1 });
     const right = hashAgentContextPack({ a: 1, b: 2 });
@@ -401,6 +438,61 @@ describe("agent context packs", () => {
     await expect(registry.build("task-run-history.v1")).rejects.toThrow(/maxBytes|budget|exceeds/i);
   });
 
+  it("enforces required provenance kinds on registry build refs", async () => {
+    const contentHashRef = "sha256:2222222222222222222222222222222222222222222222222222222222222222";
+    const missingHashRegistry = createContextPackRegistry();
+    missingHashRegistry.register({
+      descriptor: {
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        label: "Task and run history",
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event-id", "content-hash"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      async build() {
+        return buildContextPackRef({
+          contextPackId: "task-run-history.v1",
+          version: 1,
+          generatedAt: "2026-07-07T22:00:00.000Z",
+          payload: { events: ["evt_agent_task"] },
+          safeSummary: "One prior task event.",
+          provenanceRefs: ["evt_agent_task"]
+        });
+      }
+    });
+
+    await expect(missingHashRegistry.build("task-run-history.v1")).rejects.toThrow(/task-run-history\.v1.*content-hash|content-hash.*task-run-history\.v1/i);
+
+    const completeRegistry = createContextPackRegistry();
+    completeRegistry.register({
+      descriptor: {
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        label: "Task and run history",
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event-id", "content-hash"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      async build() {
+        return buildContextPackRef({
+          contextPackId: "task-run-history.v1",
+          version: 1,
+          generatedAt: "2026-07-07T22:00:00.000Z",
+          payload: { events: ["evt_agent_task"], contentHash: contentHashRef },
+          safeSummary: "One prior task event with content hash.",
+          provenanceRefs: ["evt_agent_task", contentHashRef]
+        });
+      }
+    });
+
+    await expect(completeRegistry.build("task-run-history.v1")).resolves.toMatchObject({
+      provenanceRefs: ["evt_agent_task", contentHashRef]
+    });
+  });
+
   it("rejects hand-rolled refs that under-report derived size bytes", async () => {
     const registry = createContextPackRegistry();
     registry.register({
@@ -432,6 +524,14 @@ describe("agent context packs", () => {
   it("reports the exact missing builder error", async () => {
     const registry = createContextPackRegistry();
 
+    await expect(registry.build("missing-pack.v1")).rejects.toThrow("Context pack missing-pack.v1 is not registered");
+  });
+
+  it("rejects malformed registry lookup ids before treating them as missing", async () => {
+    const registry = createContextPackRegistry();
+
+    await expect(registry.build("bad id with spaces")).rejects.toThrow(/valid context pack ID/i);
+    expect(() => registry.getDescriptor("bad id with spaces")).toThrow(/valid context pack ID/i);
     await expect(registry.build("missing-pack.v1")).rejects.toThrow("Context pack missing-pack.v1 is not registered");
   });
 
