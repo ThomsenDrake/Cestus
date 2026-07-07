@@ -1,6 +1,7 @@
 import type { PrrDiagnostic } from "../../../prr/src/diagnostics.js";
 import type { RequestQueueRow } from "../../../prr/src/read-api.js";
 import type { PrrStatus } from "../../../prr/src/types.js";
+import { safeAgentText } from "../agent/agent-adapter.js";
 import type { AgentStatusDto } from "../agent/agent-types.js";
 import type {
   AgentBrief,
@@ -77,7 +78,7 @@ function agentBriefFromStatus(status: AgentStatusDto): AgentBrief {
   const recentTasks = [...status.tasks]
     .sort((left, right) => timestampForTask(right).localeCompare(timestampForTask(left)) || left.taskId.localeCompare(right.taskId))
     .slice(0, 3);
-  const providerLabels = status.providers.map((provider) => provider.label).slice(0, 3);
+  const providerLabels = status.providers.map((provider) => safeAgentText(provider.label)).slice(0, 3);
 
   return Object.freeze({
     watching: Object.freeze([
@@ -87,19 +88,19 @@ function agentBriefFromStatus(status: AgentStatusDto): AgentBrief {
     ]),
     changedSinceReview: Object.freeze(
       recentTasks.length > 0
-        ? recentTasks.map((task) => `${task.title} | ${firstRef([...task.eventIds, ...task.sourceEventIds])}`)
+        ? recentTasks.map((task) => `${safeAgentText(task.title)} | ${firstRef([...task.eventIds, ...task.sourceEventIds])}`)
         : ["No resident agent task changes"]
     ),
     uncertain: Object.freeze(
       activeLocks.length > 0
-        ? activeLocks.slice(0, 3).map((lock) => `Lock ${lock.lockId} active from ${firstRef([...lock.eventIds, ...lock.relatedEventIds])}`)
+        ? activeLocks.slice(0, 3).map((lock) => `Lock ${safeAgentText(lock.lockId)} active from ${firstRef([...lock.eventIds, ...lock.relatedEventIds])}`)
         : ["Provider credential state is summarized by agent-status.v1"]
     ),
     recommendedActions: Object.freeze(
       requestedTools.length > 0
         ? requestedTools
             .slice(0, 3)
-            .map((request) => `Review ${request.toolRequestId} approval for ${request.sideEffectClass} | ${firstRef([...request.eventIds, ...request.sourceEventIds])}`)
+            .map((request) => `Review ${safeAgentText(request.toolRequestId)} approval for ${request.sideEffectClass} | ${firstRef([...request.eventIds, ...request.sourceEventIds])}`)
         : ["Refresh resident agent status before risky actions"]
     )
   });
@@ -114,7 +115,7 @@ function timestampForTask(task: AgentStatusDto["tasks"][number]): string {
 }
 
 function firstRef(refs: readonly string[]): string {
-  return refs[0] ?? "agent-status.v1";
+  return safeAgentText(refs[0] ?? "agent-status.v1");
 }
 
 export function filterQueueItems(
