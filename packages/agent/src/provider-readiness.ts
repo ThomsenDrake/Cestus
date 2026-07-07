@@ -200,6 +200,7 @@ async function evaluateProviderReadiness(
 
   const readyCredentialRefIds: string[] = [];
   const requiredCredentialKinds = credentialRequirementKinds(descriptor, true);
+  const alternativeCredentialKinds = credentialRequirementKinds(descriptor, false);
   for (const credentialKind of requiredCredentialKinds) {
     const credentialEvaluation = await evaluateCredentialKindReadiness(
       credentialKind,
@@ -214,20 +215,17 @@ async function evaluateProviderReadiness(
     }
   }
 
-  if (requiredCredentialKinds.length === 0) {
-    const alternativeCredentialKinds = credentialRequirementKinds(descriptor, false);
-    if (alternativeCredentialKinds.length > 0) {
-      const alternativeEvaluation = await evaluateAlternativeCredentialReadiness(
-        alternativeCredentialKinds,
-        credentialReferences,
-        secretStore
-      );
-      if (alternativeEvaluation.state !== "ready") {
-        return alternativeEvaluation;
-      }
-      if (alternativeEvaluation.credentialRefId !== undefined) {
-        readyCredentialRefIds.push(alternativeEvaluation.credentialRefId);
-      }
+  if (alternativeCredentialKinds.length > 0) {
+    const alternativeEvaluation = await evaluateAlternativeCredentialReadiness(
+      alternativeCredentialKinds,
+      credentialReferences,
+      secretStore
+    );
+    if (alternativeEvaluation.state !== "ready") {
+      return alternativeEvaluation;
+    }
+    if (alternativeEvaluation.credentialRefId !== undefined) {
+      readyCredentialRefIds.push(alternativeEvaluation.credentialRefId);
     }
   }
 
@@ -291,11 +289,33 @@ async function evaluateCredentialKindReadiness(
   credentialReferences: readonly CredentialReference[],
   secretStore: SecretStore
 ): Promise<ProviderReadinessEvaluation> {
-  const credentialReference = credentialReferences.find((ref) => ref.credentialKind === credentialKind);
-  if (credentialReference === undefined) {
+  const matchingCredentialReferences = credentialReferences
+    .filter((ref) => ref.credentialKind === credentialKind);
+  if (matchingCredentialReferences.length === 0) {
     return { state: missingCredentialStateFor(credentialKind) };
   }
 
+  const blockedEvaluations: ProviderReadinessEvaluation[] = [];
+  for (const credentialReference of matchingCredentialReferences) {
+    const credentialEvaluation = await evaluateCredentialReferenceReadiness(
+      credentialKind,
+      credentialReference,
+      secretStore
+    );
+    if (credentialEvaluation.state === "ready") {
+      return credentialEvaluation;
+    }
+    blockedEvaluations.push(credentialEvaluation);
+  }
+
+  return blockedEvaluations[0] ?? { state: missingCredentialStateFor(credentialKind) };
+}
+
+async function evaluateCredentialReferenceReadiness(
+  credentialKind: CredentialKind,
+  credentialReference: CredentialReference,
+  secretStore: SecretStore
+): Promise<ProviderReadinessEvaluation> {
   const referenceState = stateForCredentialReference(credentialReference);
   if (referenceState !== undefined) {
     return {
@@ -393,7 +413,7 @@ function requiredApprovalClassFor(
     return "provider-byte-transfer";
   }
   if (approvalProfile === "harness-workspace-gated") {
-    return "provider-byte-transfer";
+    return "harness-workspace";
   }
   return "none";
 }
@@ -465,7 +485,14 @@ function diagnosticForEvaluation(input: {
 }
 
 function diagnosticIdFor(providerId: string, state: ProviderReadinessState): string {
-  return `diag_${providerId.replace(/^provider_/, "")}_${state.replaceAll("-", "_")}`;
+  return `diag_${diagnosticIdComponentFor(providerId.replace(/^provider_/i, ""))}_${diagnosticIdComponentFor(state)}`;
+}
+
+function diagnosticIdComponentFor(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "unknown";
 }
 
 function severityForState(state: ProviderReadinessState): ProviderReadinessDiagnostic["severity"] {
