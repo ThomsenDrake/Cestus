@@ -8,6 +8,8 @@ import {
 } from "./agent-runtime-factory.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
+const defaultIdentityStreamId = "agent_identity_agent_default";
+
 export interface HandleAgentHttpRouteInput {
   readonly request: LocalRuntimeRequest;
   readonly handle: LocalRuntimeHandle;
@@ -95,10 +97,12 @@ async function ensureDefaultIdentity(
   runtime: LocalAgentRuntime,
   input: HandleAgentHttpRouteInput
 ): Promise<{ readonly ok: true } | { readonly ok: false; readonly body: unknown }> {
-  const result = await runtime.initializeDefaultIdentity({
+  const command = {
     workspaceId: input.handle.mountedWorkspace?.workspaceId ?? "ws_local_runtime",
     initializedBy: input.actor.id
-  });
+  };
+
+  const result = await initializeDefaultIdentityRaceSafe(runtime, command);
 
   if (result.ok) {
     return { ok: true };
@@ -110,6 +114,23 @@ async function ensureDefaultIdentity(
       "inspect the local agent runtime configuration"
     ])
   };
+}
+
+async function initializeDefaultIdentityRaceSafe(
+  runtime: LocalAgentRuntime,
+  command: {
+    readonly workspaceId: string;
+    readonly initializedBy: string;
+  }
+): ReturnType<LocalAgentRuntime["initializeDefaultIdentity"]> {
+  try {
+    return await runtime.initializeDefaultIdentity(command);
+  } catch (error) {
+    if (!isDefaultIdentityConflict(error)) {
+      throw error;
+    }
+    return await runtime.initializeDefaultIdentity(command);
+  }
 }
 
 function taskInputFromBody(value: Record<string, unknown>): {
@@ -185,6 +206,12 @@ function isDuplicateTaskConflict(error: unknown, taskId: string): boolean {
   return error instanceof Error &&
     error.message.includes("Concurrency conflict") &&
     error.message.includes(`agent_task_${taskId}`);
+}
+
+function isDefaultIdentityConflict(error: unknown): boolean {
+  return error instanceof Error &&
+    error.message.includes("Concurrency conflict") &&
+    error.message.includes(defaultIdentityStreamId);
 }
 
 function isAgentTaskId(value: unknown): value is string {
