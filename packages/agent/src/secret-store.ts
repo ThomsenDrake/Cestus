@@ -5,11 +5,15 @@ const credentialRefIdSchema = z.string()
   .regex(/^agent_credref_[a-zA-Z0-9_-]+$/)
   .refine(isCredentialReferenceSecretSafeText, { message: "credentialRefId must be secret-safe" });
 
+const safeMessageSchema = z.string().min(1).refine(isCredentialReferenceSecretSafeText, {
+  message: "safeMessage must be secret-safe"
+});
+
 export const secretStoreHealthSchema = z.object({
   credentialRefId: credentialRefIdSchema,
   status: z.enum(["healthy", "missing-binding", "expired", "revoked", "unverified"]),
   checkedAt: z.string().datetime(),
-  safeMessage: z.string().min(1)
+  safeMessage: safeMessageSchema
 }).strict();
 
 export type SecretStoreHealth = z.infer<typeof secretStoreHealthSchema>;

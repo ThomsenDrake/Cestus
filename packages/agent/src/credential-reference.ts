@@ -30,6 +30,10 @@ const authorizedBySchema = z.string().min(3).refine(isCredentialReferenceSecretS
   message: "authorizedBy must be secret-safe"
 });
 
+const sourceEventIdSchema = z.string()
+  .regex(/^evt_[a-zA-Z0-9_-]+$/)
+  .refine(isCredentialReferenceSecretSafeText, { message: "sourceEventId must be secret-safe" });
+
 export const credentialKindSchema = z.enum([
   "api-key-bearer",
   "workload-identity-token",
@@ -69,7 +73,7 @@ export const credentialReferenceSchema = z.object({
   revokedAt: z.string().datetime().optional(),
   status: credentialReferenceStatusSchema,
   policyVersion: secretSafeTextSchema,
-  sourceEventIds: z.array(z.string().regex(/^evt_[a-zA-Z0-9_-]+$/)).default([])
+  sourceEventIds: z.array(sourceEventIdSchema).default([])
 }).strict();
 
 export type CredentialReference = z.infer<typeof credentialReferenceSchema>;
@@ -89,5 +93,13 @@ export function createCredentialReference(input: z.input<typeof credentialRefere
     }
   }
 
-  return Object.freeze(credentialReferenceSchema.parse(input));
+  return freezeCredentialReference(credentialReferenceSchema.parse(input));
+}
+
+function freezeCredentialReference(ref: CredentialReference): CredentialReference {
+  return Object.freeze({
+    ...ref,
+    capabilityScopes: Object.freeze([...ref.capabilityScopes]),
+    sourceEventIds: Object.freeze([...ref.sourceEventIds])
+  }) as CredentialReference;
 }

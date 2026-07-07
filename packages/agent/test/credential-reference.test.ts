@@ -45,6 +45,14 @@ describe("agent credential references", () => {
     ).toThrow(/secret-safe/i);
   });
 
+  it("rejects unsafe source event identifiers", () => {
+    expect(() =>
+      createCredentialReference(validCredentialReferenceInput({
+        sourceEventIds: ["evt_OPENAI_API_KEY"]
+      }))
+    ).toThrow(/secret-safe/i);
+  });
+
   it("rejects too-short credential authorizers", () => {
     expect(() =>
       createCredentialReference(validCredentialReferenceInput({
@@ -61,6 +69,25 @@ describe("agent credential references", () => {
     expect(material?.exposeForProviderAdapter()).toBe("live-secret-value");
     expect(JSON.stringify(material)).toBe("{}");
     expect(String(material)).toBe("[SecretMaterial]");
+  });
+
+  it("keeps nested secret material serialization safe", () => {
+    const material = SecretMaterial.fromTestValue("live-secret-value");
+    const serialized = JSON.stringify({ material, list: [material] });
+
+    expect(serialized).toBe("{\"material\":{},\"list\":[{}]}");
+    expect(serialized).not.toMatch(/live-secret-value|authorization:\s*bearer|password=|private key|secret=/i);
+  });
+
+  it("freezes credential reference array fields", () => {
+    const ref = createCredentialReference(validCredentialReferenceInput({
+      sourceEventIds: ["evt_provider_auth_linked"]
+    }));
+
+    expect(() => ref.capabilityScopes.push("provider-health")).toThrow();
+    expect(() => ref.sourceEventIds.push("evt_provider_auth_rotated")).toThrow();
+    expect(ref.capabilityScopes).toEqual(["model-inference"]);
+    expect(ref.sourceEventIds).toEqual(["evt_provider_auth_linked"]);
   });
 
   it("keeps the package root provider credential reference type intact", () => {
@@ -85,6 +112,17 @@ describe("agent credential references", () => {
     });
     expect(JSON.stringify(missing)).not.toMatch(/live-secret-value|authorization:\s*bearer|password=|private key|secret=/i);
     expect(credentialReferenceStatusSchema.options).toContain("missing-binding");
+  });
+
+  it("rejects unsafe secret-store health messages", () => {
+    expect(() =>
+      secretStoreHealthSchema.parse({
+        credentialRefId: "agent_credref_openai_api_default",
+        status: "healthy",
+        checkedAt: "2026-07-07T22:00:00.000Z",
+        safeMessage: "Authorization: Bearer abc123"
+      })
+    ).toThrow(/secret-safe/i);
   });
 
   it("rejects raw environment names before fake secret-store health serialization", async () => {
