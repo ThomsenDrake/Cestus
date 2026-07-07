@@ -16,6 +16,84 @@ afterEach(() => {
 });
 
 describe("runLocalRuntimeCli", () => {
+  it("prints resident agent status as stable JSON without live credentials", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(["agent-status"], {
+      cwd: tempDir,
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    const body = JSON.parse(stdout.join("\n")) as {
+      readonly schemaVersion: string;
+      readonly providers: readonly { readonly providerId: string }[];
+    };
+    expect(body.schemaVersion).toBe("agent-status.v1");
+    expect(body.providers).toEqual([expect.objectContaining({ providerId: "provider_fake_local" })]);
+    expect(stdout.join("\n")).not.toMatch(/sk_live|password|private key|bearer [a-z0-9._-]+/i);
+  });
+
+  it("creates resident agent tasks as stable JSON", async () => {
+    const createStdout: string[] = [];
+    const statusStdout: string[] = [];
+    const stderr: string[] = [];
+    tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+
+    const exitCode = await runLocalRuntimeCli(
+      ["agent-create-task", "--task-id", "task_cli_001", "--title", "Review resident status"],
+      {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => createStdout.push(line),
+        stderr: (line) => stderr.push(line)
+      }
+    );
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    const body = JSON.parse(createStdout.join("\n")) as { readonly ok: boolean; readonly taskId: string };
+    expect(body).toMatchObject({ ok: true, taskId: "task_cli_001" });
+    expect(createStdout.join("\n")).not.toMatch(/sk_live|password|private key|bearer [a-z0-9._-]+/i);
+
+    expect(
+      await runLocalRuntimeCli(["agent-status"], {
+        cwd: tempDir,
+        env: {},
+        stdout: (line) => statusStdout.push(line),
+        stderr: (line) => stderr.push(line)
+      })
+    ).toBe(0);
+    expect(JSON.parse(statusStdout.join("\n")).tasks.map((task: { readonly taskId: string }) => task.taskId)).toContain(
+      "task_cli_001"
+    );
+  });
+
+  it("redacts secret-shaped diagnostics from injected agent dependencies", async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runLocalRuntimeCli(["agent-status"], {
+      cwd: "/tmp/cestus-cli-test",
+      env: {},
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line),
+      agentStatus: async () => {
+        throw new Error("provider failed with sk_live_unsafe and CESTUS_LOCAL_AUTH_TOKEN=route-secret");
+      }
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join("\n")).toContain("redacted");
+    expect(stderr.join("\n")).not.toMatch(/sk_live|route-secret|CESTUS_LOCAL_AUTH_TOKEN/i);
+  });
+
   it("prints resolved config without secrets", async () => {
     const stdout: string[] = [];
 
