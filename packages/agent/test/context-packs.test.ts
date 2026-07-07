@@ -83,6 +83,161 @@ describe("agent context packs", () => {
     ).toThrow(/secret/i);
   });
 
+  it("rejects accessor-backed context pack ref summaries without invoking the getter", () => {
+    let getterInvoked = false;
+    const ref = {
+      contextPackId: "evidence-summary.v1",
+      version: 1,
+      contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      generatedAt: "2026-07-07T22:00:00.000Z",
+      provenanceRefs: []
+    };
+    Object.defineProperty(ref, "safeSummary", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return "Safe summary.";
+      }
+    });
+
+    let thrown: unknown;
+    try {
+      contextPackRefSchema.parse(ref);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toMatch(/JSON DTO-safe/i);
+    expect(getterInvoked).toBe(false);
+  });
+
+  it("rejects accessor-backed provenance refs without invoking the getter", () => {
+    let getterInvoked = false;
+    const provenanceRefs: string[] = [];
+    Object.defineProperty(provenanceRefs, "0", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return "evt_agent_task";
+      }
+    });
+
+    let thrown: unknown;
+    try {
+      contextPackRefSchema.parse({
+        contextPackId: "evidence-summary.v1",
+        version: 1,
+        contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        generatedAt: "2026-07-07T22:00:00.000Z",
+        safeSummary: "Safe summary.",
+        provenanceRefs
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toMatch(/JSON DTO-safe/i);
+    expect(getterInvoked).toBe(false);
+  });
+
+  it("rejects provenance ref arrays with custom properties and symbol keys", () => {
+    const customProps = ["evt_agent_task"] as string[] & { extra?: string };
+    customProps.extra = "extra context";
+    const symbolKeyed = ["evt_agent_task"];
+    Object.defineProperty(symbolKeyed, Symbol("context"), {
+      value: "extra context",
+      enumerable: true
+    });
+
+    for (const provenanceRefs of [customProps, symbolKeyed]) {
+      expect(() =>
+        contextPackRefSchema.parse({
+          contextPackId: "evidence-summary.v1",
+          version: 1,
+          contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          generatedAt: "2026-07-07T22:00:00.000Z",
+          safeSummary: "Safe summary.",
+          provenanceRefs
+        })
+      ).toThrow(/JSON DTO-safe/i);
+    }
+  });
+
+  it("rejects accessor-backed descriptor fields and arrays without invoking getters", () => {
+    let labelGetterInvoked = false;
+    const descriptor = {
+      contextPackId: "accepted-graph-projection.v1",
+      version: 1,
+      maxBytes: 32_768,
+      requiredProvenanceKinds: ["event-id"],
+      redactionPolicy: "safe-summary",
+      sourceProjection: "ontology.graph"
+    };
+    Object.defineProperty(descriptor, "label", {
+      enumerable: true,
+      get() {
+        labelGetterInvoked = true;
+        return "Accepted graph projection";
+      }
+    });
+
+    let descriptorThrown: unknown;
+    try {
+      contextPackDescriptorSchema.parse(descriptor);
+    } catch (error) {
+      descriptorThrown = error;
+    }
+
+    expect(descriptorThrown).toBeInstanceOf(Error);
+    expect((descriptorThrown as Error).message).toMatch(/JSON DTO-safe/i);
+    expect(labelGetterInvoked).toBe(false);
+
+    let arrayGetterInvoked = false;
+    const requiredProvenanceKinds: string[] = [];
+    Object.defineProperty(requiredProvenanceKinds, "0", {
+      enumerable: true,
+      get() {
+        arrayGetterInvoked = true;
+        return "event-id";
+      }
+    });
+
+    let arrayThrown: unknown;
+    try {
+      contextPackDescriptorSchema.parse({
+        contextPackId: "accepted-graph-projection.v1",
+        version: 1,
+        label: "Accepted graph projection",
+        maxBytes: 32_768,
+        requiredProvenanceKinds,
+        redactionPolicy: "safe-summary",
+        sourceProjection: "ontology.graph"
+      });
+    } catch (error) {
+      arrayThrown = error;
+    }
+
+    expect(arrayThrown).toBeInstanceOf(Error);
+    expect((arrayThrown as Error).message).toMatch(/JSON DTO-safe/i);
+    expect(arrayGetterInvoked).toBe(false);
+
+    const requiredKindsWithCustomProp = ["event-id"] as string[] & { extra?: string };
+    requiredKindsWithCustomProp.extra = "extra context";
+    expect(() =>
+      contextPackDescriptorSchema.parse({
+        contextPackId: "accepted-graph-projection.v1",
+        version: 1,
+        label: "Accepted graph projection",
+        maxBytes: 32_768,
+        requiredProvenanceKinds: requiredKindsWithCustomProp,
+        redactionPolicy: "safe-summary",
+        sourceProjection: "ontology.graph"
+      })
+    ).toThrow(/JSON DTO-safe/i);
+  });
+
   it("registers fake context builders by stable id", async () => {
     const registry = createContextPackRegistry();
     registry.register({
@@ -109,6 +264,47 @@ describe("agent context packs", () => {
 
     await expect(registry.build("task-run-history.v1")).resolves.toMatchObject({
       contextPackId: "task-run-history.v1",
+      provenanceRefs: ["evt_agent_task"]
+    });
+  });
+
+  it("captures the registered builder function", async () => {
+    const registry = createContextPackRegistry();
+    const builder = {
+      descriptor: {
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        label: "Task and run history",
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event-id"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      async build() {
+        return buildContextPackRef({
+          contextPackId: "task-run-history.v1",
+          version: 1,
+          generatedAt: "2026-07-07T22:00:00.000Z",
+          payload: { events: ["evt_agent_task"] },
+          safeSummary: "Original registered builder.",
+          provenanceRefs: ["evt_agent_task"]
+        });
+      }
+    };
+
+    registry.register(builder);
+    builder.build = async () =>
+      buildContextPackRef({
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        generatedAt: "2026-07-07T22:00:00.000Z",
+        payload: { events: ["evt_agent_task_mutated"] },
+        safeSummary: "Mutated builder.",
+        provenanceRefs: ["evt_agent_task_mutated"]
+      });
+
+    await expect(registry.build("task-run-history.v1")).resolves.toMatchObject({
+      safeSummary: "Original registered builder.",
       provenanceRefs: ["evt_agent_task"]
     });
   });
