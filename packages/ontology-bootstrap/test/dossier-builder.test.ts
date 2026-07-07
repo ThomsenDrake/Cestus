@@ -50,4 +50,34 @@ describe("buildOntologyBootstrapDossier", () => {
     expect(first.phase).toBe("ready-to-stage");
     expect(JSON.stringify(first)).toEqual(JSON.stringify(second));
   });
+
+  it("rejects review source mismatches before building a dossier", () => {
+    expect(() =>
+      buildOntologyBootstrapDossier({
+        report: bootstrapReportFixture,
+        review: {
+          ...bootstrapReviewFixture,
+          sourceCollectionId: "src_other_collection",
+          ontologyStagingApproved: true
+        },
+        evidenceLinks: bootstrapEvidenceLinksFixture,
+        now: () => "2026-07-07T23:00:00.000Z"
+      })
+    ).toThrow(/legacy report identity/i);
+  });
+
+  it("rejects latest report id mismatches before building a dossier", () => {
+    expect(() =>
+      buildOntologyBootstrapDossier({
+        report: bootstrapReportFixture,
+        review: {
+          ...bootstrapReviewFixture,
+          latestReportId: "legacy_report_other",
+          ontologyStagingApproved: true
+        },
+        evidenceLinks: bootstrapEvidenceLinksFixture,
+        now: () => "2026-07-07T23:00:00.000Z"
+      })
+    ).toThrow(/legacy report identity/i);
+  });
 });

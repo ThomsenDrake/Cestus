@@ -24,6 +24,8 @@ export interface BuildOntologyBootstrapDossierInput {
 export function buildOntologyBootstrapDossier(
   input: BuildOntologyBootstrapDossierInput
 ): OntologyBootstrapDossier {
+  assertMatchingReportReviewIdentity(input.report, input.review);
+
   const evidenceByHash = sameSourceEvidenceByHash(input);
   const evidenceInventory = [...input.report.files]
     .sort((left, right) =>
@@ -107,6 +109,18 @@ export function buildOntologyBootstrapDossier(
     nextSafeAction: nextSafeActionFor(input, eligible.length),
     provenanceRefs: [...(input.provenanceRefs ?? [input.report.legacyReportId])]
   });
+}
+
+function assertMatchingReportReviewIdentity(
+  report: LegacyMigrationReport,
+  review: LegacyMigrationReviewDto
+): void {
+  if (
+    review.sourceCollectionId !== report.sourceCollectionId ||
+    (review.latestReportId !== undefined && review.latestReportId !== report.legacyReportId)
+  ) {
+    throw new Error("Legacy report identity does not match the ontology bootstrap review context.");
+  }
 }
 
 function sameSourceEvidenceByHash(input: BuildOntologyBootstrapDossierInput): Map<`sha256:${string}`, string> {
