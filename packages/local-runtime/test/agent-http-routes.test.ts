@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
 
@@ -19,7 +20,8 @@ afterEach(() => {
 
 describe("agent HTTP routes", () => {
   it("returns agent-status.v1 from GET /api/agent/status without live credentials", async () => {
-    const handler = testHandler();
+    const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
+    const handler = testHandler({ config });
     const response = await handler({ method: "GET", url: "/api/agent/status" });
     const body = JSON.parse(response.body) as {
       readonly schemaVersion: string;
@@ -32,10 +34,13 @@ describe("agent HTTP routes", () => {
       expect.objectContaining({ providerId: "provider_fake_local", modelFamilies: ["fake-local"] })
     ]);
     expect(response.body).not.toMatch(/sk_live|password|private key|bearer [a-z0-9._-]+/i);
+    closeHandler(handler);
+    expect(await eventTypes(config)).toEqual([]);
   });
 
   it("returns pending tool requests from GET /api/agent/tool-requests", async () => {
-    const handler = testHandler();
+    const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
+    const handler = testHandler({ config });
     const response = await handler({ method: "GET", url: "/api/agent/tool-requests" });
 
     expect(response.status).toBe(200);
@@ -45,6 +50,8 @@ describe("agent HTTP routes", () => {
       pendingApprovalCount: 0,
       toolRequests: []
     });
+    closeHandler(handler);
+    expect(await eventTypes(config)).toEqual([]);
   });
 
   it("creates a durable task through POST /api/agent/tasks", async () => {
@@ -67,6 +74,28 @@ describe("agent HTTP routes", () => {
     expect(JSON.parse(reloaded.body).tasks.map((task: { readonly taskId: string }) => task.taskId)).toContain(
       "task_route_001"
     );
+  });
+
+  it("returns a stable conflict for duplicate task ids", async () => {
+    const handler = testHandler();
+    const body = JSON.stringify({
+      taskId: "task_route_duplicate",
+      title: "Inspect duplicate behavior",
+      priority: "normal"
+    });
+
+    const first = await handler({ method: "POST", url: "/api/agent/tasks", body });
+    const second = await handler({ method: "POST", url: "/api/agent/tasks", body });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(409);
+    expect(JSON.parse(second.body)).toEqual({
+      ok: false,
+      diagnostic: {
+        message: "Agent task already exists.",
+        allowedRepairActions: ["choose a different task id", "refresh agent status"]
+      }
+    });
   });
 
   it("returns HTTP 400 for invalid task bodies without echoing secret-shaped text", async () => {
@@ -131,4 +160,21 @@ function tempDir(): string {
   const cwd = mkdtempSync(join(tmpdir(), "cestus-agent-route-"));
   tempDirs.push(cwd);
   return cwd;
+}
+
+function closeHandler(handler: LocalRuntimeHttpHandler): void {
+  handler.close();
+  const index = handlers.indexOf(handler);
+  if (index >= 0) {
+    handlers.splice(index, 1);
+  }
+}
+
+async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>): Promise<readonly string[]> {
+  const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
+  try {
+    return (await ledger.readAll()).map((event) => event.type);
+  } finally {
+    ledger.close();
+  }
 }

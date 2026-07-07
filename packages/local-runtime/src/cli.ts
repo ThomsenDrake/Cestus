@@ -95,7 +95,7 @@ export async function runLocalRuntimeCli(
         dependencies.agentStatus === undefined
           ? await requestLocalAgent(dependencies, { method: "GET", url: "/api/agent/status" })
           : await dependencies.agentStatus();
-      stdout(JSON.stringify(result, null, 2));
+      stdout(agentCliJson(result));
       return 0;
     }
 
@@ -109,7 +109,7 @@ export async function runLocalRuntimeCli(
               body: JSON.stringify(taskInput)
             })
           : await dependencies.agentCreateTask(taskInput);
-      stdout(JSON.stringify(result, null, 2));
+      stdout(agentCliJson(result));
       return 0;
     }
 
@@ -150,7 +150,7 @@ export async function runLocalRuntimeCli(
       return 0;
     }
 
-    stderr(`Unknown local runtime command: ${command}`);
+    stderr("Unknown local runtime command.");
     return 1;
   } catch (error) {
     stderr(redactDiagnosticText(error instanceof Error ? error.message : String(error)));
@@ -547,7 +547,7 @@ function parseAgentCreateTaskArgs(argv: readonly string[]): {
     }
 
     throw new Error(
-      arg.startsWith("--") ? `Unknown agent-create-task flag: ${arg}` : `Unexpected agent-create-task argument: ${arg}`
+      arg.startsWith("--") ? "Unknown agent-create-task flag." : "Unexpected agent-create-task argument."
     );
   }
 
@@ -617,7 +617,41 @@ function parseConfigurePort(value: string): number {
   return port;
 }
 
-function redactDiagnosticText(value: string): string {
+function agentCliJson(value: unknown): string {
+  return JSON.stringify(sanitizeAgentCliOutput(value), null, 2);
+}
+
+function sanitizeAgentCliOutput(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (typeof value === "string") {
+    return redactSecretText(value);
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  if (seen.has(value)) {
+    return "[redacted]";
+  }
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeAgentCliOutput(item, seen));
+  }
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
+    if (!descriptor.enumerable) {
+      continue;
+    }
+
+    const sanitizedKey = redactSecretText(key);
+    sanitized[sanitizedKey] = "value" in descriptor
+      ? sanitizeAgentCliOutput(descriptor.value, seen)
+      : "[redacted]";
+  }
+  return sanitized;
+}
+
+function redactSecretText(value: string): string {
   const redacted = value
     .replace(/(?:^|[^a-z0-9])sk[._-](?:live|test|proj)[\w._~+/=-]*/gi, (match) =>
       match.startsWith("s") || match.startsWith("S") ? "[redacted]" : `${match.slice(0, 1)}[redacted]`
@@ -631,6 +665,19 @@ function redactDiagnosticText(value: string): string {
       "[redacted]"
     );
 
+  if (redacted !== value) {
+    return redacted;
+  }
+
+  if (/\b(?:bearer|password|private[\s._-]*key|access[\s._-]*token|api[\s._-]*key)\b/i.test(redacted)) {
+    return "[redacted]";
+  }
+
+  return redacted;
+}
+
+function redactDiagnosticText(value: string): string {
+  const redacted = redactSecretText(value);
   if (redacted !== value) {
     return redacted;
   }

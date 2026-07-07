@@ -43,3 +43,9 @@ Self-review notes:
 - HTTP task creation validates a strict JSON object shape before calling the runtime and returns generic HTTP 400 diagnostics without echoing unsafe task body values.
 - CLI `agent-status` and `agent-create-task` use stable JSON output and the in-process local HTTP handler; configured auth tokens stay inside the process and are not printed.
 - This slice adds no provider byte-transfer approval, PRR send, legal escalation, export, repair, accepted graph truth, or live credential path.
+
+Review remediation evidence:
+- Red: `npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/cli.test.ts` failed with 9 review-regression failures. The failures proved GET agent probes appended `agent.identity.initialized`, duplicate task IDs returned HTTP 500, injected agent CLI success output printed secret-shaped values, and unknown command/flag diagnostics echoed secret-shaped argv.
+- Green: `npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/cli.test.ts` passed with 3 test files and 50 tests passing after the review fixes.
+- Verify: `npm run verify` passed with typecheck passed, 110 test files and 1035 tests passing, UI build succeeded, and factory-readiness passed.
+- Remediation notes: GET status and tool-request routes are read-only on empty ledgers, CLI `agent-status` is read-only through the same route, injected agent CLI success output is recursively sanitized before JSON serialization, secret-shaped unknown command and agent task flag diagnostics are generic, and duplicate task creation returns HTTP 409 with a stable diagnostic.
