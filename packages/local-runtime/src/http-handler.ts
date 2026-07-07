@@ -63,9 +63,13 @@ export function createLocalRuntimeHttpHandler(
     config: input.config,
     actor: input.actor,
     handle,
+    now: localRuntimeNow(input.now),
     ...(input.ingestionRuntimeFactory === undefined
       ? {}
-      : { ingestionRuntimeFactory: input.ingestionRuntimeFactory })
+      : { ingestionRuntimeFactory: input.ingestionRuntimeFactory }),
+    ...(input.agentRuntimeFactory === undefined
+      ? {}
+      : { agentRuntimeFactory: input.agentRuntimeFactory })
   });
 
   const handler = (async (request: LocalRuntimeRequest): Promise<LocalRuntimeResponse> => {
