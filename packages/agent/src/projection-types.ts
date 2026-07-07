@@ -91,6 +91,7 @@ export interface ProjectedAgentRun extends ProjectedAgentProvenance {
   readonly investigationId?: string | undefined;
   readonly sourceEventIds: readonly string[];
   readonly inputArtifactHashes: readonly string[];
+  readonly relatedEventIds: readonly string[];
   readonly outputArtifactHashes: readonly string[];
   readonly stepIds: readonly string[];
   readonly invocationIds: readonly string[];
