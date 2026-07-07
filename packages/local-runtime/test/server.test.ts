@@ -115,7 +115,8 @@ describe("startLocalRuntimeServer", () => {
       ["workspace", "ready"],
       ["ingestion", "ready"],
       ["legacy-import", "action-required"],
-      ["prr", "ready"]
+      ["prr", "ready"],
+      ["agent", "ready"]
     ]);
   });
 

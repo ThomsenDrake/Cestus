@@ -17,7 +17,7 @@ export interface HttpOperatorStatusAdapterOptions {
   readonly fetcher?: typeof fetch;
 }
 
-const unavailableSectionIds = ["workspace", "ingestion", "legacy-import", "prr"] as const;
+const unavailableSectionIds = ["workspace", "ingestion", "legacy-import", "prr", "agent"] as const;
 
 export function createHttpOperatorStatusAdapter(
   options: HttpOperatorStatusAdapterOptions = {}
@@ -198,6 +198,8 @@ function sectionLabel(sectionId: OperatorStatusSectionDto["sectionId"]): string 
       return "Legacy Import";
     case "prr":
       return "PRR";
+    case "agent":
+      return "Agent";
   }
 }
 
