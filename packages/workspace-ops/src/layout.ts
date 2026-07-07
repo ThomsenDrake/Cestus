@@ -34,7 +34,6 @@ const portableWorkspaceManifestSchema = z.object({
 }).strict();
 
 export type PortableWorkspaceManifest = z.output<typeof portableWorkspaceManifestSchema>;
-export type ProvisionalWorkspaceManifest = PortableWorkspaceManifest;
 
 export function parsePortableWorkspaceManifest(value: unknown): PortableWorkspaceManifest | undefined {
   if (findSecretLikeKey(value) !== undefined) {
@@ -44,7 +43,51 @@ export function parsePortableWorkspaceManifest(value: unknown): PortableWorkspac
   return manifest.success ? manifest.data : undefined;
 }
 
-export const parseProvisionalWorkspaceManifest = parsePortableWorkspaceManifest;
+const provisionalWorkspaceManifestSchema = z.object({
+  workspaceId: z.string().regex(/^ws_[a-zA-Z0-9_-]+$/),
+  label: secretSafeWorkspaceTextSchema,
+  version: z.literal(1)
+}).strict();
+
+export type ProvisionalWorkspaceManifest = z.output<typeof provisionalWorkspaceManifestSchema>;
+
+type WorkspaceManifestIdentity = {
+  readonly workspaceId: string;
+  readonly label: string;
+  readonly version: 1;
+};
+
+export function parseProvisionalWorkspaceManifest(value: unknown): ProvisionalWorkspaceManifest | undefined {
+  if (findSecretLikeKey(value) !== undefined) {
+    return undefined;
+  }
+  return parseStrictProvisionalWorkspaceManifest(value);
+}
+
+export function parseWorkspaceManifestIdentity(value: unknown): WorkspaceManifestIdentity | undefined {
+  if (findSecretLikeKey(value) !== undefined) {
+    return undefined;
+  }
+  return parsePortableWorkspaceManifestIdentity(value) ?? parseStrictProvisionalWorkspaceManifest(value);
+}
+
+function parseStrictProvisionalWorkspaceManifest(value: unknown): ProvisionalWorkspaceManifest | undefined {
+  const manifest = provisionalWorkspaceManifestSchema.safeParse(value);
+  return manifest.success ? manifest.data : undefined;
+}
+
+function parsePortableWorkspaceManifestIdentity(value: unknown): WorkspaceManifestIdentity | undefined {
+  const manifest = portableWorkspaceManifestSchema.safeParse(value);
+  if (!manifest.success) {
+    return undefined;
+  }
+
+  return {
+    workspaceId: manifest.data.workspaceId,
+    label: manifest.data.label,
+    version: manifest.data.version
+  };
+}
 
 export interface ResolveWorkspaceLayoutInput {
   readonly rootPath: string;
@@ -332,9 +375,9 @@ async function safeRealpath(
 async function readPortableManifest(
   fileSystem: WorkspaceFileSystem,
   manifestPath: string
-): Promise<PortableWorkspaceManifest | "unreadable"> {
+): Promise<WorkspaceManifestIdentity | "unreadable"> {
   try {
-    return parsePortableWorkspaceManifest(JSON.parse(await fileSystem.readText(manifestPath))) ?? "unreadable";
+    return parseWorkspaceManifestIdentity(JSON.parse(await fileSystem.readText(manifestPath))) ?? "unreadable";
   } catch {
     return "unreadable";
   }
