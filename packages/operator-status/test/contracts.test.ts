@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildOperatorStatusSummary,
+  operatorDiagnosticSchema,
+  operatorNavigationTargets,
   operatorSafeActionSchema,
+  operatorSectionIds,
+  operatorSourceEvidenceSchema,
   operatorStatusDtoSchema,
   type OperatorStatusDto
 } from "../src/contracts.js";
@@ -153,6 +157,51 @@ describe("operator status contracts", () => {
           enabled: true
         })
       ).toMatchObject({ command });
+    }
+  });
+
+  it("accepts resident-agent status vocabulary for sections, navigation, diagnostics, and evidence", () => {
+    expect(operatorSectionIds).toContain("agent");
+    expect(operatorNavigationTargets).toContain("agents");
+    expect(
+      operatorDiagnosticSchema.parse({
+        diagnosticId: "diag_agent_warning",
+        severity: "warning",
+        category: "agent",
+        message: "Agent runtime has pending operator review."
+      })
+    ).toMatchObject({ category: "agent" });
+    expect(
+      operatorSourceEvidenceSchema.parse({
+        evidenceId: "src_agent_status",
+        sourceContract: "agent-status.v1",
+        sourceKind: "agent",
+        label: "resident agent status"
+      })
+    ).toMatchObject({ sourceKind: "agent" });
+  });
+
+  it("operatorSafeActionSchema rejects visible commands that approve, execute, or invoke agent tools", () => {
+    const forbiddenAgentCommands = [
+      "cestus agent approve-tool toolreq_001",
+      "cestus agent execute-tool toolreq_001",
+      "cestus agent invoke-provider inv_001"
+    ];
+
+    for (const [index, command] of forbiddenAgentCommands.entries()) {
+      expect(() =>
+        operatorSafeActionSchema.parse({
+          actionId: `action_show_agent_forbidden_${index}`,
+          label: "Show forbidden agent command",
+          kind: "show-command",
+          command,
+          sourceContract: "agent-status.v1",
+          requiresHumanApproval: false,
+          mutatesCanonicalState: false,
+          externalEffect: false,
+          enabled: true
+        })
+      ).toThrow(/forbidden/i);
     }
   });
 

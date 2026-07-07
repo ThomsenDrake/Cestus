@@ -2,9 +2,9 @@ import { z } from "zod";
 
 export const operatorStatusSchemaVersion = "operator-status.v1" as const;
 export const operatorReadinessStates = ["ready", "degraded", "action-required", "blocked", "unavailable"] as const;
-export const operatorSectionIds = ["workspace", "ingestion", "legacy-import", "prr"] as const;
+export const operatorSectionIds = ["workspace", "ingestion", "legacy-import", "prr", "agent"] as const;
 export const operatorSafeActionKinds = ["navigate", "refresh-status", "show-command", "open-doc"] as const;
-export const operatorNavigationTargets = ["command", "requests", "ingestion", "evidence", "ontology", "settings"] as const;
+export const operatorNavigationTargets = ["command", "requests", "ingestion", "evidence", "ontology", "settings", "agents"] as const;
 
 const secretTextPattern =
   /(?:^|[^a-z0-9])(?:access[\s._-]*tokens?|api[\s._-]*keys?|auth[\s._-]*tokens?|authorization|bearer|tokens?|passwords?|private[\s._-]*keys?|client[\s._-]*secrets?|refresh[\s._-]*secrets?|session[\s._-]*secrets?|oauth|credentials?)(?:\s*[:=]\s*|\s+)(?=[a-z0-9._~+/=-]{3,})[a-z0-9][a-z0-9._~+/=-]*/i;
@@ -44,7 +44,12 @@ const forbiddenCommandPatterns = [
   /\b(?:parse|send|transfer|upload)\b.*\b(?:provider|document[-\s]*ai|mistral)\b/i,
   /\b(?:accept|approve)\b.*\b(?:legacy|ontology|assertion|truth)\b/i,
   /\b(?:legacy|ontology|assertion|truth)\b.*\b(?:accept|approve)\b/i,
-  /\bcestus(?:-ingest)?\s+(?:ingest\s+)?(?:approve-import|import)\b/i
+  /\bcestus(?:-ingest)?\s+(?:ingest\s+)?(?:approve-import|import)\b/i,
+  /\bcestus\s+agent\s+(?:approve-tool|deny-tool|execute-tool|invoke-provider)\b/i,
+  /\bagent\s+tool\b.*\b(?:approve|deny|execute|run|invoke)\b/i,
+  /\b(?:approve|deny|execute|run|invoke)\b.*\bagent\s+tool\b/i,
+  /\bagent\b.*\bprovider\b.*\b(?:invoke|run|execute|send|transfer|upload)\b/i,
+  /\b(?:invoke|run|execute|send|transfer|upload)\b.*\bagent\b.*\bprovider\b/i
 ] as const;
 
 export const operatorMetricSchema = z.object({
@@ -111,7 +116,7 @@ export const operatorSafeActionSchema = z.object({
 export const operatorDiagnosticSchema = z.object({
   diagnosticId: operatorDiagnosticIdSchema,
   severity: z.enum(["info", "warning", "error"]),
-  category: z.enum(["workspace", "ingestion", "legacy-import", "prr", "runtime", "operator-status", "security"]),
+  category: z.enum(["workspace", "ingestion", "legacy-import", "prr", "agent", "runtime", "operator-status", "security"]),
   message: operatorSecretSafeTextSchema,
   refs: z.array(operatorRefSchema).default([])
 }).strict();
@@ -119,7 +124,7 @@ export const operatorDiagnosticSchema = z.object({
 export const operatorSourceEvidenceSchema = z.object({
   evidenceId: operatorIdentifierSchema,
   sourceContract: operatorSecretSafeTextSchema,
-  sourceKind: z.enum(["workspace-ops", "ingestion", "legacy-import", "prr", "local-runtime", "ontology", "operator-status"]),
+  sourceKind: z.enum(["workspace-ops", "ingestion", "legacy-import", "prr", "agent", "local-runtime", "ontology", "operator-status"]),
   label: operatorSecretSafeTextSchema,
   refs: z.array(operatorRefSchema).default([])
 }).strict();
