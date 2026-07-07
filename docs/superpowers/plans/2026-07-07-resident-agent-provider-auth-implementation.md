@@ -1154,6 +1154,28 @@ git add docs/agentic/software-factory.md docs/superpowers/plans/2026-07-07-resid
 git commit -m "docs: record provider auth readiness"
 ```
 
+Recorded 2026-07-07 command evidence:
+
+```text
+npm test -- packages/agent/test/credential-reference.test.ts packages/agent/test/provider-registry.test.ts packages/agent/test/provider-readiness.test.ts packages/agent/test/provider-selection.test.ts packages/local-runtime/test/agent-provider-readiness-routes.test.ts packages/ui/test/agent-provider-setup-cards.test.ts
+Test Files  6 passed (6)
+Tests  53 passed (53)
+
+npm run verify
+typecheck passed
+Test Files  125 passed (125)
+Tests  1163 passed (1163)
+tests passed
+Vite build succeeded
+factory-readiness passed
+
+git diff --check
+No output.
+
+npm run factory:check
+factory-readiness passed
+```
+
 **Acceptance Criteria:**
 
 - Focused and full verification pass.

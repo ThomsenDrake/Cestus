@@ -723,3 +723,34 @@ factory-readiness passed
 ```
 
 The implementation adds a pure `packages/ontology-bootstrap` package with strict DTO contracts, deterministic dossier generation from existing legacy reports and evidence links, a read-model helper, approval-preview builders, and a fake specialist runtime facade. It does not implement live model orchestration, direct old source-tree import, raw byte copy, staging execution outside existing legacy services, accepted ontology truth, legal/export actions, provider byte transfer, UI mutation, or destructive repair. Legacy-derived structure can only be represented as evidence-tied preview or dossier material; the only allowed staged ontology output remains `assertion.proposed` through existing legacy services after human staging approval.
+
+## Resident Agent Provider/Auth First Slice Readiness
+
+The resident agent provider/auth first slice was implemented from the approved provider/auth design and plan on 2026-07-07.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-resident-agent-provider-auth-design.md`
+- `docs/superpowers/plans/2026-07-07-resident-agent-provider-auth-implementation.md`
+
+Recorded focused verification:
+
+```text
+npm test -- packages/agent/test/credential-reference.test.ts packages/agent/test/provider-registry.test.ts packages/agent/test/provider-readiness.test.ts packages/agent/test/provider-selection.test.ts packages/local-runtime/test/agent-provider-readiness-routes.test.ts packages/ui/test/agent-provider-setup-cards.test.ts
+Test Files  6 passed (6)
+Tests  53 passed (53)
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  125 passed (125)
+Tests  1163 passed (1163)
+tests passed
+Vite build succeeded
+factory-readiness passed
+```
+
+This slice uses fake providers and fake secret stores only for standard verification. Live OpenAI, live xAI, BYOK, local model, and enterprise gateway calls remain separate approved work.
