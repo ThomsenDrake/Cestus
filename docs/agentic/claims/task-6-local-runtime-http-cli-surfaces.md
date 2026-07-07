@@ -49,3 +49,7 @@ Review remediation evidence:
 - Green: `npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/cli.test.ts` passed with 3 test files and 50 tests passing after the review fixes.
 - Verify: `npm run verify` passed with typecheck passed, 110 test files and 1035 tests passing, UI build succeeded, and factory-readiness passed.
 - Remediation notes: GET status and tool-request routes are read-only on empty ledgers, CLI `agent-status` is read-only through the same route, injected agent CLI success output is recursively sanitized before JSON serialization, secret-shaped unknown command and agent task flag diagnostics are generic, and duplicate task creation returns HTTP 409 with a stable diagnostic.
+
+Concurrent duplicate remediation evidence:
+- Red: `npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/cli.test.ts` failed with the concurrent duplicate task regression returning statuses `[200, 500]` instead of `[200, 409]`.
+- Green: `npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/cli.test.ts` passed with 3 test files and 51 tests passing after mapping task-stream ledger concurrency conflicts to the existing HTTP 409 duplicate-task diagnostic.
