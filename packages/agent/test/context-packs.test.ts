@@ -230,6 +230,19 @@ describe("agent context packs", () => {
     expect(getterInvoked).toBe(false);
   });
 
+  it("rejects build refs without provenance refs", () => {
+    expect(() =>
+      buildContextPackRef({
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        generatedAt: "2026-07-07T22:00:00.000Z",
+        payload: { events: [] },
+        safeSummary: "No prior task events.",
+        provenanceRefs: []
+      })
+    ).toThrow(/provenanceRefs/i);
+  });
+
   it("rejects accessor-backed descriptor fields and arrays without invoking getters", () => {
     let labelGetterInvoked = false;
     const descriptor = {
@@ -331,6 +344,67 @@ describe("agent context packs", () => {
       contextPackId: "task-run-history.v1",
       provenanceRefs: ["evt_agent_task"]
     });
+  });
+
+  it("rejects registered builder refs without provenance refs", async () => {
+    const registry = createContextPackRegistry();
+    registry.register({
+      descriptor: {
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        label: "Task and run history",
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event-id"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      async build() {
+        return {
+          contextPackId: "task-run-history.v1",
+          version: 1,
+          contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          generatedAt: "2026-07-07T22:00:00.000Z",
+          safeSummary: "No provenance.",
+          provenanceRefs: [],
+          sizeBytes: 2
+        } as ReturnType<typeof buildContextPackRef>;
+      }
+    });
+
+    await expect(registry.build("task-run-history.v1")).rejects.toThrow(/provenanceRefs/i);
+  });
+
+  it("rejects registered builder refs that exceed the descriptor byte budget", async () => {
+    const registry = createContextPackRegistry();
+    registry.register({
+      descriptor: {
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        label: "Task and run history",
+        maxBytes: 8,
+        requiredProvenanceKinds: ["event-id"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      async build() {
+        return buildContextPackRef({
+          contextPackId: "task-run-history.v1",
+          version: 1,
+          generatedAt: "2026-07-07T22:00:00.000Z",
+          payload: { events: ["evt_agent_task", "evt_agent_task_two"] },
+          safeSummary: "Two prior task events.",
+          provenanceRefs: ["evt_agent_task"]
+        });
+      }
+    });
+
+    await expect(registry.build("task-run-history.v1")).rejects.toThrow(/maxBytes|budget|exceeds/i);
+  });
+
+  it("reports the exact missing builder error", async () => {
+    const registry = createContextPackRegistry();
+
+    await expect(registry.build("missing-pack.v1")).rejects.toThrow("Context pack missing-pack.v1 is not registered");
   });
 
   it("captures the registered builder function", async () => {
@@ -440,5 +514,77 @@ describe("agent context packs", () => {
     expect(thrown).toBeInstanceOf(Error);
     expect((thrown as Error).message).toMatch(/contextPackId/i);
     expect(coercionInvoked).toBe(false);
+  });
+
+  it("rejects non-primitive descriptor lookups without invoking coercion hooks", () => {
+    const registry = createContextPackRegistry();
+    let coercionInvoked = false;
+    const nonPrimitive = {
+      [Symbol.toPrimitive]() {
+        coercionInvoked = true;
+        return "task-run-history.v1";
+      },
+      toString() {
+        coercionInvoked = true;
+        return "task-run-history.v1";
+      }
+    };
+
+    let thrown: unknown;
+    try {
+      registry.getDescriptor(nonPrimitive as unknown as string);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toMatch(/contextPackId/i);
+    expect(coercionInvoked).toBe(false);
+  });
+
+  it("rejects secret-shaped descriptor lookup ids", () => {
+    const registry = createContextPackRegistry();
+
+    expect(() => registry.getDescriptor("api key sk-live-value")).toThrow(/secret/i);
+  });
+
+  it("freezes built refs and registry descriptor snapshots", () => {
+    const ref = buildContextPackRef({
+      contextPackId: "task-run-history.v1",
+      version: 1,
+      generatedAt: "2026-07-07T22:00:00.000Z",
+      payload: { events: ["evt_agent_task"] },
+      safeSummary: "One prior task event.",
+      provenanceRefs: ["evt_agent_task"]
+    });
+    expect(Object.isFrozen(ref)).toBe(true);
+    expect(Object.isFrozen(ref.provenanceRefs)).toBe(true);
+    expect(ref.sizeBytes).toBeGreaterThan(0);
+
+    const registry = createContextPackRegistry();
+    registry.register({
+      descriptor: {
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        label: "Task and run history",
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event-id"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      async build() {
+        return ref;
+      }
+    });
+
+    const descriptors = registry.listDescriptors();
+    const snapshot = registry.snapshot();
+
+    expect(Object.isFrozen(descriptors)).toBe(true);
+    expect(Object.isFrozen(descriptors[0])).toBe(true);
+    expect(Object.isFrozen(descriptors[0]?.requiredProvenanceKinds)).toBe(true);
+    expect(Object.isFrozen(snapshot)).toBe(true);
+    expect(Object.isFrozen(snapshot.contextPackIds)).toBe(true);
+    expect(Object.isFrozen(snapshot.descriptors)).toBe(true);
   });
 });
