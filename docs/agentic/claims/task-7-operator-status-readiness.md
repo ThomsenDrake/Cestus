@@ -6,7 +6,7 @@
 - Branch: `codex/operator-workspace-status-import-bridge`
 - Worktree: `/home/drake/.codex/worktrees/7234/Cestus`
 - Claimed at: `2026-07-07T00:11:52Z`
-- Status: in-progress
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -19,3 +19,12 @@
 
 - The operator bridge spec and plan were already added to `scripts/check-agent-readiness.mjs` and `packages/ui/test/request-data-boundary.test.ts` during the approved planning checkpoint.
 - `2026-07-07T00:12:10Z`: Status moved to in-progress before updating implementation evidence.
+- `2026-07-07T00:12:45Z`: Status moved to ready-for-review after updating `docs/agentic/software-factory.md` with implementation evidence.
+
+## Evidence
+
+- Readiness guard pre-existing from approved planning checkpoint: `scripts/check-agent-readiness.mjs` and `packages/ui/test/request-data-boundary.test.ts` both already require:
+  - `docs/superpowers/specs/2026-07-06-operator-workspace-status-import-bridge-design.md`
+  - `docs/superpowers/plans/2026-07-06-operator-workspace-status-import-bridge-implementation.md`
+- Updated `docs/agentic/software-factory.md` with targeted implementation command evidence and final `npm run verify` evidence.
+- The readiness evidence states that the implemented bridge preserves append-only ledger semantics, provenance, projection rebuildability, no PRR send, legal escalation locks, evidence-first legacy import, and browser boundary safety.
