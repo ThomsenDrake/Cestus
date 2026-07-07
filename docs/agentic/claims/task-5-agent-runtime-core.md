@@ -6,7 +6,7 @@ Worker: Codex GPT-5
 Branch: `codex/cestus-resident-agent-foundation`
 Worktree: `/home/drake/.codex/worktrees/6fc5/Cestus`
 Claimed-at: 2026-07-07T17:07:55Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/agent/src/runtime-types.ts`
@@ -28,3 +28,16 @@ Invariant notes:
 - Preserve secret safety: diagnostics, result DTOs, credential references, provider failures, and claim evidence must not contain raw credentials, environment variable names, bearer material, or raw provider error text.
 - Preserve ontology truth boundaries: runtime task, run, and model invocation events must not append accepted assertions, resolved entities, relationships, PRR send events, legal escalation events, export events, repair events, or legacy-derived accepted graph state.
 - Preserve portable workspace compatibility: behavior must remain deterministic, local-only, replayable from ledger events, and browser-safe for later runtime and UI surfaces.
+
+Command evidence:
+- Red: `npm test -- packages/agent/test/runtime.test.ts` failed before implementation with 8 failing tests and `TypeError: createAgentRuntime is not a function`, proving the runtime surface was missing from the agent package.
+- Green: `npm test -- packages/agent/test/runtime.test.ts` passed with 1 test file and 8 tests passing after implementing the runtime core.
+- Targeted: `npm test -- packages/agent/test/runtime.test.ts packages/agent/test/provider.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/projection.test.ts` passed with 4 test files and 33 tests passing.
+- Verify: `npm run verify` passed with typecheck passed, 109 test files and 1017 tests passing, UI build succeeded, and factory-readiness passed.
+
+Self-review notes:
+- `status()` reads ledger events and provider descriptors only; it does not append status events or persist hidden runtime state.
+- `initializeDefaultIdentity()` appends one default `agent.identity.initialized` event and returns the existing identity without appending on repeated calls.
+- Task creation, run start, model invocation success, and model invocation failure append only `agent.*` events and do not create accepted graph, PRR send, legal escalation, export, repair, or legacy truth events.
+- Missing providers, unsupported model families, unsafe auth references, and provider-thrown errors return structured diagnostics and append `agent.model-invocation.failed` when the invocation request is safe to record.
+- Provider-thrown raw text is not returned or appended; fake provider execution remains local-only and requires no live credentials.
