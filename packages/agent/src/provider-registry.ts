@@ -2,17 +2,38 @@ import { z } from "zod";
 import { credentialKindSchema } from "./credential-reference.js";
 import { isAgentSecretSafeText } from "./secret-safety.js";
 
+const embeddedCredentialCompoundMarkerPattern =
+  /(?:^|[^a-z0-9])(?:[a-z0-9]+[._-])*(?:api[._-]?key|access[._-]?token|refresh[._-]?token|session[._-]?token|client[._-]?secret|private[._-]?key|secret[._-]?access[._-]?key|access[._-]?key)(?:$|[^a-z0-9])/i;
+const embeddedCredentialSegmentMarkerPattern =
+  /(?:^|[._-])(?:token|secret|password|credentials?)(?:$|[._-])/i;
+
+const allowedCredentialNamedDiagnosticCodes = new Set([
+  "auth-rejected",
+  "credential-binding-missing",
+  "credential-expired",
+  "credential-revoked",
+  "health-unverified",
+  "insufficient-scope",
+  "needs-api-key",
+  "needs-device-sign-in",
+  "needs-mtls-binding",
+  "needs-oauth-sign-in",
+  "needs-workload-identity",
+  "provider-ready",
+  "requires-byte-transfer-approval"
+]);
+
 const providerIdSchema = z.string()
   .regex(/^provider_[a-zA-Z0-9_-]+$/)
-  .refine(isAgentSecretSafeText, { message: "providerId must be secret-safe" });
+  .refine(isProviderStructuralSecretSafeText, { message: "providerId must be secret-safe" });
 
-const secretSafeTextSchema = z.string().min(1).refine(isAgentSecretSafeText, {
+const secretSafeTextSchema = z.string().min(1).refine(isProviderStructuralSecretSafeText, {
   message: "must be secret-safe"
 });
 
 const diagnosticCodeSchema = z.string()
   .regex(/^[a-z][a-z0-9_-]*$/)
-  .refine(isAgentSecretSafeText, { message: "diagnostic code must be secret-safe" });
+  .refine(isProviderDiagnosticCodeSecretSafeText, { message: "diagnostic code must be secret-safe" });
 
 export const providerBackendKindSchema = z.enum([
   "openai-api",
@@ -216,9 +237,19 @@ function credentialRequirementsSatisfied(
   const requiredKinds = descriptor.credentialRequirements
     .filter((requirement) => requirement.required)
     .map((requirement) => requirement.credentialKind);
+  const alternativeKinds = descriptor.credentialRequirements
+    .filter((requirement) => !requirement.required)
+    .map((requirement) => requirement.credentialKind);
 
-  return requiredKinds.length > 0 &&
-    requiredKinds.every((credentialKind) => availableKinds.has(credentialKind));
+  if (!requiredKinds.every((credentialKind) => availableKinds.has(credentialKind))) {
+    return false;
+  }
+
+  if (alternativeKinds.length > 0) {
+    return alternativeKinds.some((credentialKind) => availableKinds.has(credentialKind));
+  }
+
+  return requiredKinds.length > 0;
 }
 
 function defaultTestProviderDescriptors(): readonly ProviderCapabilityDescriptorInput[] {
@@ -300,6 +331,33 @@ function freezeDescriptorList(
   descriptors: readonly ProviderCapabilityDescriptor[]
 ): readonly ProviderCapabilityDescriptor[] {
   return Object.freeze(
-    [...descriptors].sort((left, right) => left.providerId.localeCompare(right.providerId))
+    [...descriptors].sort(compareProviderDescriptorIds)
   );
+}
+
+function compareProviderDescriptorIds(
+  left: ProviderCapabilityDescriptor,
+  right: ProviderCapabilityDescriptor
+): number {
+  if (left.providerId < right.providerId) {
+    return -1;
+  }
+  if (left.providerId > right.providerId) {
+    return 1;
+  }
+  return 0;
+}
+
+function isProviderStructuralSecretSafeText(value: string): boolean {
+  return isAgentSecretSafeText(value) && !hasEmbeddedCredentialMarker(value);
+}
+
+function isProviderDiagnosticCodeSecretSafeText(value: string): boolean {
+  return isAgentSecretSafeText(value) &&
+    (allowedCredentialNamedDiagnosticCodes.has(value) || !hasEmbeddedCredentialMarker(value));
+}
+
+function hasEmbeddedCredentialMarker(value: string): boolean {
+  return embeddedCredentialCompoundMarkerPattern.test(value) ||
+    embeddedCredentialSegmentMarkerPattern.test(value);
 }

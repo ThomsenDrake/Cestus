@@ -180,7 +180,7 @@ export function providerDescriptorToCapabilityDescriptor(
     contextLimits: { maxInputTokens: 4096, maxOutputTokens: 1024 },
     credentialRequirements: parsed.credentialKinds.map((credentialKind) => ({
       credentialKind,
-      required: true
+      required: false
     })),
     dataHandlingNotes: parsed.safeDataNotes,
     costPolicy: costPolicyForEndpointKind(parsed.endpointKind),
