@@ -1,0 +1,134 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { resolveLocalRuntimeConfig } from "../src/config.js";
+import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
+
+const handlers: LocalRuntimeHttpHandler[] = [];
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  for (const handler of handlers.splice(0)) {
+    handler.close();
+  }
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+describe("agent HTTP routes", () => {
+  it("returns agent-status.v1 from GET /api/agent/status without live credentials", async () => {
+    const handler = testHandler();
+    const response = await handler({ method: "GET", url: "/api/agent/status" });
+    const body = JSON.parse(response.body) as {
+      readonly schemaVersion: string;
+      readonly providers: readonly { readonly providerId: string; readonly modelFamilies: readonly string[] }[];
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.schemaVersion).toBe("agent-status.v1");
+    expect(body.providers).toEqual([
+      expect.objectContaining({ providerId: "provider_fake_local", modelFamilies: ["fake-local"] })
+    ]);
+    expect(response.body).not.toMatch(/sk_live|password|private key|bearer [a-z0-9._-]+/i);
+  });
+
+  it("returns pending tool requests from GET /api/agent/tool-requests", async () => {
+    const handler = testHandler();
+    const response = await handler({ method: "GET", url: "/api/agent/tool-requests" });
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      schemaVersion: "agent-tool-requests.v1",
+      generatedAt: "2026-07-07T20:00:00.000Z",
+      pendingApprovalCount: 0,
+      toolRequests: []
+    });
+  });
+
+  it("creates a durable task through POST /api/agent/tasks", async () => {
+    const cwd = tempDir();
+    const config = resolveLocalRuntimeConfig({ cwd, env: {} });
+    const first = testHandler({ config });
+    const response = await first({
+      method: "POST",
+      url: "/api/agent/tasks",
+      body: JSON.stringify({ taskId: "task_route_001", title: "Inspect resident status", priority: "normal" })
+    });
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toMatchObject({ ok: true, taskId: "task_route_001" });
+    first.close();
+    handlers.splice(handlers.indexOf(first), 1);
+
+    const second = testHandler({ config });
+    const reloaded = await second({ method: "GET", url: "/api/agent/status" });
+    expect(JSON.parse(reloaded.body).tasks.map((task: { readonly taskId: string }) => task.taskId)).toContain(
+      "task_route_001"
+    );
+  });
+
+  it("returns HTTP 400 for invalid task bodies without echoing secret-shaped text", async () => {
+    const handler = testHandler();
+    const response = await handler({
+      method: "POST",
+      url: "/api/agent/tasks",
+      body: JSON.stringify({
+        taskId: "sk_live_unsafe",
+        title: "password hunter2",
+        priority: "urgent",
+        extra: "private key"
+      })
+    });
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.body)).toEqual({
+      ok: false,
+      diagnostic: {
+        message: "Agent task body is invalid.",
+        allowedRepairActions: ["send taskId, title, and optional priority as a JSON object"]
+      }
+    });
+    expect(response.body).not.toMatch(/sk_live|hunter2|private key/i);
+  });
+
+  it("uses existing auth policy for protected agent routes", async () => {
+    const handler = testHandler({
+      env: {
+        CESTUS_LOCAL_BIND: "lan",
+        CESTUS_LOCAL_AUTH_TOKEN: "route-secret"
+      }
+    });
+
+    const rejected = await handler({ method: "GET", url: "/api/agent/status" });
+    const accepted = await handler({
+      method: "GET",
+      url: "/api/agent/status",
+      headers: { authorization: "Bearer route-secret" }
+    });
+
+    expect(rejected.status).toBe(401);
+    expect(accepted.status).toBe(200);
+  });
+});
+
+function testHandler(input: {
+  readonly config?: ReturnType<typeof resolveLocalRuntimeConfig>;
+  readonly env?: Record<string, string | undefined>;
+} = {}) {
+  const config = input.config ?? resolveLocalRuntimeConfig({ cwd: tempDir(), env: input.env ?? {} });
+  const handler = createLocalRuntimeHttpHandler({
+    config,
+    actor: { id: "actor_agent_route", kind: "human", label: "Agent Route Test" },
+    now: () => "2026-07-07T20:00:00.000Z"
+  });
+  handlers.push(handler);
+  return handler;
+}
+
+function tempDir(): string {
+  const cwd = mkdtempSync(join(tmpdir(), "cestus-agent-route-"));
+  tempDirs.push(cwd);
+  return cwd;
+}

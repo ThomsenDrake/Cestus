@@ -6,7 +6,7 @@ Worker: Codex GPT-5
 Branch: `codex/cestus-resident-agent-foundation`
 Worktree: `/home/drake/.codex/worktrees/6fc5/Cestus`
 Claimed-at: 2026-07-07T20:00:00Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/local-runtime/src/agent-runtime-factory.ts`
@@ -29,3 +29,17 @@ Invariant notes:
 - Preserve provider and credential boundaries: the default local factory may use only the deterministic fake local provider and must not require live credentials or outbound services.
 - Preserve human gates: routes and CLI commands must not approve provider byte transfer, PRR sends, legal escalation, export, destructive repair, or accepted graph truth.
 - Preserve secret safety: task-body validation, route diagnostics, CLI JSON, provider descriptors, and dependency failures must not emit raw secrets, environment variable names, bearer material, or raw provider errors.
+
+Command evidence:
+- Red: `npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/cli.test.ts` failed with 2 failed test files and 8 failed tests. HTTP agent routes returned 404, and CLI `agent-status` / `agent-create-task` were unknown commands.
+- Green: `npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/cli.test.ts` passed with 2 test files and 33 tests passing after adding the local agent runtime factory, HTTP routes, handler wiring, and CLI commands.
+- Targeted: `npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/cli.test.ts` passed with 3 test files and 44 tests passing.
+- Verify: `npm run verify` passed with typecheck passed, 110 test files and 1029 tests passing, UI build succeeded, and factory-readiness passed.
+- Diff hygiene: `git diff --check` passed.
+
+Self-review notes:
+- `GET /api/agent/status`, `GET /api/agent/tool-requests`, and `POST /api/agent/tasks` are wired after the shared `/api/` auth check; no agent route performs route-local auth bypass.
+- The default local agent runtime factory uses `createAgentRuntime` with `FakeModelProvider` only, configured as `provider_fake_local` / `fake-local`.
+- HTTP task creation validates a strict JSON object shape before calling the runtime and returns generic HTTP 400 diagnostics without echoing unsafe task body values.
+- CLI `agent-status` and `agent-create-task` use stable JSON output and the in-process local HTTP handler; configured auth tokens stay inside the process and are not printed.
+- This slice adds no provider byte-transfer approval, PRR send, legal escalation, export, repair, accepted graph truth, or live credential path.
