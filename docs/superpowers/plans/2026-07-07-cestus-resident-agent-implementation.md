@@ -1892,11 +1892,11 @@ Expected:
 Test Files  19 passed
 ```
 
-Observed on the rebased implementation branch:
+Observed on the final review rerun after human-gate contract coverage:
 
 ```text
 Test Files  19 passed
-Tests  262 passed
+Tests  283 passed
 ```
 
 - [x] **Step 2: Run full verification**
@@ -1916,12 +1916,12 @@ vite build succeeded
 factory-readiness passed
 ```
 
-Observed on rerun after an isolated workspace-ops CLI timeout reproduced as a parallel-suite flake and passed in isolation:
+Observed on final review rerun after human-gate fixes and a scoped timeout for the isolated workspace-ops CLI flake:
 
 ```text
 typecheck passed
 Test Files  119 passed
-Tests  1089 passed
+Tests  1110 passed
 tests passed
 vite build succeeded
 factory-readiness passed
