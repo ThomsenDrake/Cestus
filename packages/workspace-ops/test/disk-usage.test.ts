@@ -104,11 +104,50 @@ class CyclicWorkspaceFs implements WorkspaceFileSystem {
   }
 }
 
+class EscapingWorkspaceFs implements WorkspaceFileSystem {
+  readonly listCalls: string[] = [];
+
+  async exists(path: string): Promise<boolean> {
+    return path === layout.blobRoot;
+  }
+
+  async readText(): Promise<string> {
+    return "";
+  }
+
+  async stat(path: string): Promise<WorkspaceStats> {
+    if (path === layout.blobRoot) {
+      return { kind: "directory", sizeBytes: 0 };
+    }
+    if (path === `${layout.blobRoot}/outside-private-file.txt`) {
+      return { kind: "file", sizeBytes: 99_000 };
+    }
+    throw new Error(`missing ${path}`);
+  }
+
+  async list(path: string): Promise<readonly string[]> {
+    this.listCalls.push(path);
+    return path === layout.blobRoot ? ["outside-private-file.txt"] : [];
+  }
+
+  async realpath(path: string): Promise<string> {
+    if (path === layout.blobRoot || path.startsWith(`${layout.blobRoot}/`)) {
+      return path.replace(layout.blobRoot, "/outside-workspace/blobs");
+    }
+    return path;
+  }
+
+  async availableBytes(): Promise<number | undefined> {
+    return 10_000;
+  }
+}
+
 describe("reportDiskUsage", () => {
   it("reports root and aggregate category totals without raw filenames", async () => {
     const fileSystem = new TreeWorkspaceFs(
       new Map([
         [layout.manifestPath, { kind: "file", sizeBytes: 4 }],
+        ["/workspace/ledger", { kind: "directory", sizeBytes: 0, children: ["ontology.sqlite"] }],
         [layout.ledgerPath, { kind: "file", sizeBytes: 20 }],
         [layout.blobRoot, { kind: "directory", sizeBytes: 0, children: ["sha256"] }],
         [`${layout.blobRoot}/sha256`, { kind: "directory", sizeBytes: 0, children: ["aa"] }],
@@ -119,8 +158,8 @@ describe("reportDiskUsage", () => {
         [layout.jobRoot, { kind: "directory", sizeBytes: 0, children: [] }],
         [layout.projectionRoot, { kind: "directory", sizeBytes: 0, children: ["graph.json"] }],
         [`${layout.projectionRoot}/graph.json`, { kind: "file", sizeBytes: 7 }],
-        [layout.diagnosticsRoot, { kind: "directory", sizeBytes: 0, children: [] }],
-        [layout.backupRoot, { kind: "directory", sizeBytes: 0, children: [] }]
+        [layout.cacheRoot, { kind: "directory", sizeBytes: 0, children: [] }],
+        [layout.configRoot, { kind: "directory", sizeBytes: 0, children: [] }]
       ]),
       10_000
     );
@@ -134,13 +173,13 @@ describe("reportDiskUsage", () => {
       thresholdWarnings: [],
       roots: [
         { rootId: "manifest", category: "manifest", bytes: 4, exists: true, safeUri: "file:///workspace/cestus-workspace.json" },
-        { rootId: "ledger", category: "ledger", bytes: 20, exists: true, safeUri: "file:///workspace/ledger/ontology.sqlite" },
+        { rootId: "ledger", category: "ledger", bytes: 20, exists: true, safeUri: "file:///workspace/ledger" },
         { rootId: "blobs", category: "blobs", bytes: 12, exists: true, safeUri: "file:///workspace/blobs" },
         { rootId: "derivatives", category: "derivatives", bytes: 3, exists: true, safeUri: "file:///workspace/derivatives" },
         { rootId: "jobs", category: "jobs", bytes: 0, exists: true, safeUri: "file:///workspace/jobs" },
         { rootId: "projections", category: "projections", bytes: 7, exists: true, safeUri: "file:///workspace/projections" },
-        { rootId: "diagnostics", category: "diagnostics", bytes: 0, exists: true, safeUri: "file:///workspace/diagnostics" },
-        { rootId: "backups", category: "backups", bytes: 0, exists: true, safeUri: "file:///workspace/backups" }
+        { rootId: "cache", category: "cache", bytes: 0, exists: true, safeUri: "file:///workspace/cache" },
+        { rootId: "config", category: "config", bytes: 0, exists: true, safeUri: "file:///workspace/config" }
       ],
       categories: [
         { category: "manifest", bytes: 4, exists: true },
@@ -149,8 +188,8 @@ describe("reportDiskUsage", () => {
         { category: "derivatives", bytes: 3, exists: true },
         { category: "jobs", bytes: 0, exists: true },
         { category: "projections", bytes: 7, exists: true },
-        { category: "diagnostics", bytes: 0, exists: true },
-        { category: "backups", bytes: 0, exists: true }
+        { category: "cache", bytes: 0, exists: true },
+        { category: "config", bytes: 0, exists: true }
       ],
       totalBytes: 46
     });
@@ -225,6 +264,34 @@ describe("reportDiskUsage", () => {
     expect(fileSystem.realpathCalls.length).toBeGreaterThan(0);
     expect(fileSystem.listCalls.filter((path) => path === layout.blobRoot)).toHaveLength(1);
     expect(JSON.stringify(result)).not.toContain("private-cycle-name");
+    expect(diskUsageDtoSchema.parse(result.payload)).toEqual(result.payload);
+    expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
+  });
+
+  it("does not traverse or count disk usage roots whose realpath escapes the workspace", async () => {
+    const fileSystem = new EscapingWorkspaceFs();
+
+    const result = await reportDiskUsage({ layout, fileSystem });
+
+    expect(result.status).toBe("degraded");
+    expect(result.payload?.roots.find((root) => root.rootId === "blobs")).toMatchObject({
+      category: "blobs",
+      bytes: 0,
+      exists: true
+    });
+    expect(result.payload?.categories.find((category) => category.category === "blobs")).toEqual({
+      category: "blobs",
+      bytes: 0,
+      exists: true
+    });
+    expect(fileSystem.listCalls).toEqual([]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        diagnosticId: "diag_workspace_disk_blobs_unreadable",
+        category: "disk"
+      })
+    );
+    expect(JSON.stringify(result)).not.toContain("outside-private-file");
     expect(diskUsageDtoSchema.parse(result.payload)).toEqual(result.payload);
     expect(workspaceOpsEnvelopeSchema.parse(result)).toEqual(result);
   });

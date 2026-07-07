@@ -29,6 +29,8 @@ const requiredFiles = [
   "docs/superpowers/plans/2026-07-06-portable-workspace-mount-implementation.md",
   "docs/superpowers/specs/2026-07-06-portable-workspace-ops-design.md",
   "docs/superpowers/plans/2026-07-06-portable-workspace-ops-implementation.md",
+  "docs/superpowers/specs/2026-07-06-portable-workspace-attachment-ops-design.md",
+  "docs/superpowers/plans/2026-07-06-portable-workspace-attachment-ops-implementation.md",
   "docs/superpowers/specs/2026-07-06-ingestion-runtime-wiring-design.md",
   "docs/superpowers/plans/2026-07-06-ingestion-runtime-wiring-implementation.md",
   "docs/superpowers/specs/2026-07-06-legacy-cestus-import-design.md",

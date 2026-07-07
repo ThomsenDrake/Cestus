@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -6,13 +7,14 @@ import {
   type ResolvedLocalRuntimeConfig
 } from "./config.js";
 import {
+  readLocalRuntimeConfigFile,
   redactLocalRuntimeConfigFile,
   writeLocalRuntimeOnboardingConfig,
   type WriteLocalRuntimeOnboardingConfigInput
 } from "./config-file.js";
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
 import { startLocalRuntimeServer } from "./server.js";
-import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { createPortableWorkspace, portableWorkspacePaths, readPortableWorkspaceManifest } from "../../workspace/src/index.js";
 
 export interface LocalRuntimeCliDependencies {
   readonly cwd?: string;
@@ -35,7 +37,7 @@ export async function runLocalRuntimeCli(
     if (command === "configure") {
       const written = writeLocalRuntimeOnboardingConfig({
         ...configInputFrom(dependencies),
-        ...parseConfigureArgs(argv.slice(1))
+        ...resolveConfigureFlags(parseConfigureArgs(argv.slice(1)), dependencies)
       });
       stdout(
         JSON.stringify(
@@ -188,6 +190,7 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     sqlitePath?: string;
     appDataDir?: string;
     workspaceRoot?: string;
+    expectedWorkspaceId?: string;
     distDir?: string;
     logDir?: string;
     devSeedEnabled?: boolean;
@@ -256,6 +259,12 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
       index = nextIndex;
       continue;
     }
+    if (arg === "--workspace-id") {
+      const { value, nextIndex } = readFlagValue(argv, index, arg);
+      options.expectedWorkspaceId = value;
+      index = nextIndex;
+      continue;
+    }
     if (arg === "--ui-dist-dir") {
       const { value, nextIndex } = readFlagValue(argv, index, arg);
       options.distDir = value;
@@ -282,11 +291,70 @@ function parseConfigureArgs(argv: readonly string[]): ConfigureFlags {
     ...(options.sqlitePath === undefined ? {} : { sqlitePath: options.sqlitePath }),
     ...(options.appDataDir === undefined ? {} : { appDataDir: options.appDataDir }),
     ...(options.workspaceRoot === undefined ? {} : { workspaceRoot: options.workspaceRoot }),
+    ...(options.expectedWorkspaceId === undefined ? {} : { expectedWorkspaceId: options.expectedWorkspaceId }),
     ...(options.distDir === undefined ? {} : { distDir: options.distDir }),
     ...(options.logDir === undefined ? {} : { logDir: options.logDir }),
     ...(options.devSeedEnabled === undefined ? {} : { devSeedEnabled: options.devSeedEnabled }),
     ...(options.rotateAuthToken === undefined ? {} : { rotateAuthToken: options.rotateAuthToken })
   };
+}
+
+function resolveConfigureFlags(
+  flags: ConfigureFlags,
+  dependencies: LocalRuntimeCliDependencies
+): ConfigureFlags {
+  if (flags.expectedWorkspaceId !== undefined) {
+    return flags;
+  }
+
+  const existing = readLocalRuntimeConfigFile(configInputFrom(dependencies));
+  const effectiveStorageStrategy = flags.storageStrategy ?? existing?.storage?.strategy;
+  if (effectiveStorageStrategy !== "portable-workspace") {
+    return flags;
+  }
+
+  const effectiveWorkspaceRoot = flags.workspaceRoot ?? existing?.storage?.workspaceRoot;
+  if (effectiveWorkspaceRoot === undefined) {
+    return flags;
+  }
+
+  if (
+    existing?.storage?.strategy === "portable-workspace" &&
+    existing.storage.expectedWorkspaceId !== undefined &&
+    workspaceRootsMatch(effectiveWorkspaceRoot, existing.storage.workspaceRoot, dependencies)
+  ) {
+    return {
+      ...flags,
+      expectedWorkspaceId: existing.storage.expectedWorkspaceId
+    };
+  }
+
+  const rootDir = resolve(dependencies.cwd ?? process.cwd(), effectiveWorkspaceRoot);
+  try {
+    const manifest = readPortableWorkspaceManifest({
+      manifestPath: portableWorkspacePaths(rootDir).manifestPath
+    });
+    return {
+      ...flags,
+      expectedWorkspaceId: manifest.workspaceId
+    };
+  } catch {
+    throw new Error(
+      "portable-workspace configure requires --workspace-id or a readable workspace manifest"
+    );
+  }
+}
+
+function workspaceRootsMatch(
+  effectiveWorkspaceRoot: string,
+  existingWorkspaceRoot: string | undefined,
+  dependencies: LocalRuntimeCliDependencies
+): boolean {
+  if (existingWorkspaceRoot === undefined) {
+    return false;
+  }
+  const cwd = dependencies.cwd ?? process.cwd();
+  return resolve(cwd, effectiveWorkspaceRoot) === resolve(cwd, existingWorkspaceRoot);
 }
 
 function parseCreateWorkspaceArgs(argv: readonly string[]) {
@@ -355,22 +423,24 @@ function parseCreateWorkspaceArgs(argv: readonly string[]) {
   if (options.rootDir === undefined) {
     throw new Error("create-workspace requires --workspace <root>");
   }
-  if (options.workspaceId === undefined) {
-    throw new Error("create-workspace requires --workspace-id <id>");
-  }
   if (options.label === undefined) {
     throw new Error("create-workspace requires --label <label>");
   }
 
+  const workspaceId = options.workspaceId ?? generatedWorkspaceId();
   return {
     rootDir: options.rootDir,
-    workspaceId: options.workspaceId,
+    workspaceId,
     label: options.label,
     createdBy: options.createdBy ?? "cestus-local-runtime",
     ...(options.createdAt === undefined ? {} : { createdAt: options.createdAt }),
     ...(options.coreVersion === undefined ? {} : { coreVersion: options.coreVersion }),
     ...(options.description === undefined ? {} : { description: options.description })
   };
+}
+
+function generatedWorkspaceId(): string {
+  return `ws_${randomUUID().replaceAll("-", "_")}`;
 }
 
 function readFlagValue(

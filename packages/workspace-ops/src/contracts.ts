@@ -533,6 +533,8 @@ const workspaceRootCategorySchema = z.enum([
   "derivatives",
   "jobs",
   "projections",
+  "cache",
+  "config",
   "diagnostics",
   "backups"
 ]);
@@ -544,6 +546,8 @@ const workspaceManifestSectionSchema = z.enum([
   "blobs",
   "derivatives",
   "projections",
+  "cache",
+  "config",
   "diagnostics",
   "jobs",
   "backup"

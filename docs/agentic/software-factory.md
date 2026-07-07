@@ -494,3 +494,42 @@ factory-readiness passed
 ```
 
 The implementation remains a future approved slice. The plan requires the UI bridge to depend on workspace-ops, ingestion, legacy import, PRR, and local-runtime contracts rather than duplicating their validation logic in React. The bridge is read-only and must not perform PRR sends, legal escalation, provider byte transfer, destructive repair, canonical ledger/blob mutation, accepted legacy ontology truth, or hidden local duplication of external-drive ontology data.
+
+## Portable Workspace Attachment Ops Plan Readiness
+
+The portable workspace attachment ops plan was prepared from the approved design spec on 2026-07-06.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-06-portable-workspace-attachment-ops-design.md`
+- `docs/superpowers/plans/2026-07-06-portable-workspace-attachment-ops-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded targeted command evidence from the implementation slice:
+
+```text
+npm test -- packages/workspace/test/workspace.test.ts
+workspace identity guard tests passed
+
+npm test -- packages/local-runtime/test/config.test.ts packages/local-runtime/test/config-file.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/http-handler.test.ts
+local runtime portable attachment config tests passed
+
+npm test -- packages/workspace-ops/test/layout.test.ts packages/workspace-ops/test/ops.test.ts packages/workspace-ops/test/disk-usage.test.ts packages/workspace-ops/test/backup.test.ts
+workspace ops canonical layout tests passed
+
+npm test -- packages/workspace-ops/test/cli.test.ts
+workspace ops executable tests passed
+```
+
+Final verification evidence:
+
+```text
+npm run verify
+typecheck passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Portable attachment mode lets an operator create, configure, detect, verify, open, and diagnose an external-drive workspace from CLI/runtime commands. Portable mode still uses one canonical external-drive ledger at `ledger/ontology.sqlite`, never falls back to internal storage, and reports missing or swapped drives through secret-safe diagnostics.

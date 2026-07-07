@@ -257,6 +257,87 @@ describe("local runtime config files", () => {
     });
   });
 
+  it("writes portable workspace expected identity without secret material", () => {
+    const cwd = tempDir();
+
+    const written = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "external/case-a",
+      expectedWorkspaceId: "ws_config_case"
+    });
+
+    expect(written.config.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: "external/case-a",
+      expectedWorkspaceId: "ws_config_case"
+    });
+    expect(JSON.stringify(written.config)).not.toMatch(
+      /token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i
+    );
+  });
+
+  it("does not carry stale portable workspace identity across a root change", () => {
+    const cwd = tempDir();
+
+    writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "external/old-case",
+      expectedWorkspaceId: "ws_old_case"
+    });
+
+    const changed = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "external/new-case"
+    });
+
+    expect(changed.config.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: "external/new-case"
+    });
+    expect(readLocalRuntimeConfigFile({ cwd, env: {} })?.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: "external/new-case"
+    });
+  });
+
+  it("does not carry stale portable workspace identity across a generic root change", () => {
+    const cwd = tempDir();
+
+    writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      storageStrategy: "portable-workspace",
+      workspaceRoot: "external/old-case",
+      expectedWorkspaceId: "ws_old_case"
+    });
+
+    const changed = writeLocalRuntimeOnboardingConfig({
+      cwd,
+      env: {},
+      bindMode: "loopback",
+      workspaceRoot: "external/new-case"
+    });
+
+    expect(changed.config.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: "external/new-case"
+    });
+    expect(readLocalRuntimeConfigFile({ cwd, env: {} })?.storage).toEqual({
+      strategy: "portable-workspace",
+      workspaceRoot: "external/new-case"
+    });
+  });
+
   it("prunes stale portable workspace fields when changing storage strategies", () => {
     const cwd = tempDir();
 
