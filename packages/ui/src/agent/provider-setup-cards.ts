@@ -190,8 +190,18 @@ function isBrowserRelatedIdSafe(value: string): boolean {
 }
 
 function isBrowserDiagnosticIdSafe(value: string): boolean {
-  return isBrowserIdentifierSafe(value) ||
-    safeReadinessStateDiagnosticSuffixes.some((suffix) => value.endsWith(`_${suffix}`));
+  if (!isAgentSecretSafeText(value) || rawCredentialLocationPattern.test(value)) {
+    return false;
+  }
+
+  return !hasEmbeddedCredentialMarker(stripReadinessStateDiagnosticSuffix(value));
+}
+
+function stripReadinessStateDiagnosticSuffix(value: string): string {
+  const suffix = safeReadinessStateDiagnosticSuffixes.find((stateSuffix) =>
+    value.endsWith(`_${stateSuffix}`)
+  );
+  return suffix === undefined ? value : value.slice(0, -suffix.length - 1);
 }
 
 function hasEmbeddedCredentialMarker(value: string): boolean {
