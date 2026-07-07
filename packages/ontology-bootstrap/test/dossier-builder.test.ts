@@ -80,4 +80,23 @@ describe("buildOntologyBootstrapDossier", () => {
       })
     ).toThrow(/legacy report identity/i);
   });
+
+  it("rejects reviews without latest report id before building a stageable dossier", () => {
+    const reviewWithoutLatestReportId = {
+      sourceCollectionId: bootstrapReviewFixture.sourceCollectionId,
+      rawImportRequiresApproval: bootstrapReviewFixture.rawImportRequiresApproval,
+      ontologyStagingApproved: true,
+      firstArtifactAsk: bootstrapReviewFixture.firstArtifactAsk,
+      diagnostics: bootstrapReviewFixture.diagnostics
+    };
+
+    expect(() =>
+      buildOntologyBootstrapDossier({
+        report: bootstrapReportFixture,
+        review: reviewWithoutLatestReportId,
+        evidenceLinks: bootstrapEvidenceLinksFixture,
+        now: () => "2026-07-07T23:00:00.000Z"
+      })
+    ).toThrow(/legacy report identity/i);
+  });
 });
