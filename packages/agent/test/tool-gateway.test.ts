@@ -69,6 +69,41 @@ describe("agent tool gateway", () => {
     ).rejects.toThrow(/stale/i);
   });
 
+  it("rejects duplicate changed-preview requests so old approvals cannot be reused", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_prr_duplicate",
+      residentAgentId: "agent_default",
+      taskId: "task_prr",
+      runId: "run_prr",
+      toolId: "prr.send.followup",
+      sideEffectClass: "external-message-send",
+      preview: { summary: "Send PRR follow-up draft.", relatedEventIds: ["evt_prr_draft"] }
+    });
+    await gateway.approveTool({
+      toolRequestId: "toolreq_prr_duplicate",
+      approvedPreviewHash: requested.payload.previewHash,
+      actor: humanActor,
+      rationale: "Human approved the first preview."
+    });
+
+    await expect(
+      gateway.requestTool({
+        toolRequestId: "toolreq_prr_duplicate",
+        residentAgentId: "agent_default",
+        taskId: "task_prr",
+        runId: "run_prr",
+        toolId: "prr.send.followup",
+        sideEffectClass: "external-message-send",
+        preview: { summary: "Send changed PRR follow-up draft.", relatedEventIds: ["evt_prr_draft"] }
+      })
+    ).rejects.toThrow(/already exists|duplicate/i);
+
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested", "agent.tool.approved"]);
+  });
+
   it("fails closed when a gated request has no approval", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
