@@ -50,4 +50,29 @@ describe("buildOntologyBootstrapReadiness", () => {
     expect(readiness.blockedCandidateCount).toBe(1);
     expect(readiness.failures).toEqual([]);
   });
+
+  it("rejects launch source and review source mismatches", () => {
+    const readiness = buildOntologyBootstrapReadiness({
+      sourceCollectionId: "src_old_cestus",
+      review: {
+        ...bootstrapReviewFixture,
+        sourceCollectionId: "src_other_collection"
+      },
+      report: bootstrapReportFixture,
+      evidenceLinks: bootstrapEvidenceLinksFixture
+    });
+
+    expect(readiness).toMatchObject({
+      sourceCollectionId: "src_old_cestus",
+      phase: "blocked",
+      eligibleCandidateCount: 0,
+      blockedCandidateCount: 0,
+      failures: [
+        {
+          code: "legacy-report-mismatch",
+          message: "Legacy report identity does not match the ontology bootstrap launch context."
+        }
+      ]
+    });
+  });
 });

@@ -52,4 +52,50 @@ describe("runFakeOntologyBootstrapSpecialist", () => {
       }
     });
   });
+
+  it("returns a safe failure when launch source and report source disagree", () => {
+    const result = runFakeOntologyBootstrapSpecialist({
+      sourceCollectionId: "src_old_cestus",
+      report: {
+        ...bootstrapReportFixture,
+        sourceCollectionId: "src_other_collection"
+      },
+      review: bootstrapReviewFixture,
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      now: () => "2026-07-07T23:00:00.000Z"
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      failure: {
+        code: "legacy-report-mismatch",
+        message: "Legacy report identity does not match the ontology bootstrap launch context.",
+        allowedRepairActions: ["select the matching legacy report", "refresh the legacy review projection"]
+      }
+    });
+  });
+
+  it("returns a safe failure when review latest report id disagrees with the report", () => {
+    const result = runFakeOntologyBootstrapSpecialist({
+      sourceCollectionId: "src_old_cestus",
+      report: bootstrapReportFixture,
+      review: {
+        ...bootstrapReviewFixture,
+        latestReportId: "legacy_report_other"
+      },
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      now: () => "2026-07-07T23:00:00.000Z"
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      failure: {
+        code: "legacy-report-mismatch",
+        message: "Legacy report identity does not match the ontology bootstrap launch context.",
+        allowedRepairActions: ["select the matching legacy report", "refresh the legacy review projection"]
+      }
+    });
+  });
 });
