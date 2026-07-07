@@ -240,6 +240,29 @@ describe("agent runtime core", () => {
     expect(ledgerJson).toContain("agent.model-invocation.completed");
     expect(ledgerJson).not.toContain("sk-live-value");
   });
+
+  it("records accessor-backed provider result validation failures safely", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = await createPreparedRuntime(ledger, [new AccessorThrowingResultProvider()]);
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_accessor_result",
+      runId: "run_fake_model",
+      providerId: "provider_accessor_local",
+      modelFamily: "fake-local",
+      inputArtifactHash,
+      credentialRef: { credentialRefId: "agent_credref_local", providerId: "provider_accessor_local", kind: "local-no-secret" }
+    });
+
+    const resultJson = JSON.stringify(result);
+    const ledgerJson = JSON.stringify(await ledger.readAll());
+    expect(result).toMatchObject({ ok: false, error: { category: "provider", severity: "error" } });
+    expect(resultJson).not.toContain("OPENAI_API_KEY");
+    expect(resultJson).not.toContain("raw-secret");
+    expect(ledgerJson).toContain("agent.model-invocation.failed");
+    expect(ledgerJson).not.toContain("OPENAI_API_KEY");
+    expect(ledgerJson).not.toContain("raw-secret");
+  });
 });
 
 async function createPreparedRuntime(
@@ -351,5 +374,31 @@ class UsageMetadataProvider implements ModelProviderAdapter {
         rawMetadata: "api key sk-live-value"
       } as ModelInvocationResult["usage"]
     };
+  }
+}
+
+class AccessorThrowingResultProvider implements ModelProviderAdapter {
+  describe(): ProviderDescriptor {
+    return {
+      providerId: "provider_accessor_local",
+      label: "Accessor Local Provider",
+      adapterVersion: "accessor-provider.v1",
+      endpointKind: "local-engine",
+      modelFamilies: ["fake-local"],
+      credentialKinds: ["local-no-secret"],
+      supportsStructuredOutput: false,
+      supportsToolCalling: false,
+      safeDataNotes: "Local accessor provider for safe failure tests."
+    };
+  }
+
+  async invoke(_request: ModelInvocationRequest): Promise<ModelInvocationResult> {
+    return {
+      outputText: "safe provider output",
+      get outputArtifactHash() {
+        throw new Error("OPENAI_API_KEY=raw-secret");
+      },
+      usage: { inputUnits: 7, outputUnits: 11 }
+    } as unknown as ModelInvocationResult;
   }
 }

@@ -341,7 +341,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
         });
       }
 
-      let providerResult: ModelInvocationResult;
+      let providerResult: unknown;
       try {
         providerResult = await provider.adapter.invoke({
           invocationId: command.invocationId,
@@ -360,7 +360,14 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
         });
       }
 
-      if (!isValidModelInvocationResult(providerResult)) {
+      let safeProviderResult: ModelInvocationResult | undefined;
+      try {
+        safeProviderResult = sanitizedModelInvocationResult(providerResult);
+      } catch {
+        safeProviderResult = undefined;
+      }
+
+      if (safeProviderResult === undefined) {
         return await failModelInvocation(input.ledger, input, command, requested, {
           diagnosticCategory: "provider",
           eventCategory: "model-output-invalid",
@@ -369,7 +376,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           allowedActions: ["inspect provider adapter output validation"]
         });
       }
-      const usage = sanitizedModelUsage(providerResult.usage);
+      const usage = safeProviderResult.usage;
 
       const completedEvent: AppendableKnowledgeEvent<"agent.model-invocation.completed"> = {
         type: "agent.model-invocation.completed",
@@ -380,7 +387,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           invocationId: command.invocationId,
           runId: command.runId,
           providerId: command.providerId,
-          outputArtifactHash: providerResult.outputArtifactHash,
+          outputArtifactHash: safeProviderResult.outputArtifactHash,
           completedAt: input.now(),
           modelFamily: command.modelFamily,
           usage: {
@@ -405,7 +412,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       return {
         ok: true,
         invocationId: command.invocationId,
-        outputArtifactHash: providerResult.outputArtifactHash,
+        outputArtifactHash: safeProviderResult.outputArtifactHash,
         usage,
         eventIds: Object.freeze([requested.id, completed.id])
       };
@@ -464,19 +471,31 @@ function freezeProviderDescriptor(descriptor: ProviderDescriptor): ProviderDescr
   }) as ProviderDescriptor;
 }
 
-function isValidModelInvocationResult(value: unknown): value is ModelInvocationResult {
+function sanitizedModelInvocationResult(value: unknown): ModelInvocationResult | undefined {
   if (typeof value !== "object" || value === null) {
-    return false;
+    return undefined;
   }
 
   const candidate = value as Partial<ModelInvocationResult>;
-  return typeof candidate.outputArtifactHash === "string" &&
-    /^sha256:[a-f0-9]{64}$/.test(candidate.outputArtifactHash) &&
-    typeof candidate.outputText === "string" &&
-    typeof candidate.usage === "object" &&
-    candidate.usage !== null &&
-    isNonnegativeInteger(candidate.usage.inputUnits) &&
-    isNonnegativeInteger(candidate.usage.outputUnits);
+  const outputArtifactHash = candidate.outputArtifactHash;
+  const outputText = candidate.outputText;
+  const usage = candidate.usage;
+
+  if (typeof outputArtifactHash !== "string" ||
+    !/^sha256:[a-f0-9]{64}$/.test(outputArtifactHash) ||
+    typeof outputText !== "string" ||
+    typeof usage !== "object" ||
+    usage === null ||
+    !isNonnegativeInteger(usage.inputUnits) ||
+    !isNonnegativeInteger(usage.outputUnits)) {
+    return undefined;
+  }
+
+  return Object.freeze({
+    outputText,
+    outputArtifactHash,
+    usage: sanitizedModelUsage(usage)
+  });
 }
 
 function isNonnegativeInteger(value: unknown): value is number {
