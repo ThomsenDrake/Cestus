@@ -1,11 +1,7 @@
 import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { AppendOptions, EventLedger } from "../../ontology/src/event-ledger.js";
 import { buildAgentProjection } from "./projection.js";
-import type {
-  AgentFailureCategory,
-  AgentSpecialistRunType,
-  AgentTaskPriority
-} from "./projection-types.js";
+import type { AgentFailureCategory, AgentTaskPriority } from "./projection-types.js";
 import type {
   CredentialReference,
   ModelInvocationResult,
@@ -14,6 +10,11 @@ import type {
 } from "./provider.js";
 import { assertCredentialReferenceIsSafe, providerDescriptorSchema } from "./provider.js";
 import type { AgentRuntimeDiagnosticDto, AgentRuntimeResult, AgentStatusDto } from "./runtime-types.js";
+import {
+  approvedAgentSpecialistRunTypes,
+  specialistExecutionStatusFor,
+  type AgentSpecialistRunType
+} from "./specialists.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
 
 const agentCoreVersion = "0.1.0";
@@ -22,15 +23,7 @@ const defaultResidentAgentId = "agent_default";
 const defaultResidentLabel = "Cestus Agent";
 const defaultPolicyId = "agent_policy_default";
 const defaultMemoryProjectionVersion = "0.1.0";
-const defaultAllowedRunTypes = [
-  "ontology-bootstrap",
-  "prr-negotiation",
-  "evidence-triage",
-  "timeline-builder",
-  "contradiction-finder",
-  "investigation-planner",
-  "report-builder"
-] as const satisfies readonly AgentSpecialistRunType[];
+const defaultAllowedRunTypes = approvedAgentSpecialistRunTypes;
 
 export interface CreateAgentRuntimeInput {
   readonly ledger: EventLedger;
@@ -204,6 +197,15 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       const identity = projection.identity;
       if (identity === undefined) {
         return failedResult(agentDiagnostic("agent", "Resident identity is not initialized.", ["initialize the default resident identity"]));
+      }
+
+      if (!isApprovedAgentSpecialistRunType(command.runType)) {
+        const status = specialistExecutionStatusFor(command.runType);
+        return failedResult(agentDiagnostic(
+          "agent",
+          "Specialist workflow is not enabled for this run type.",
+          status.allowedRepairActions
+        ));
       }
 
       const task = command.taskId === undefined ? undefined : projection.tasks.get(command.taskId);
@@ -586,6 +588,10 @@ function agentDiagnostic(
 
 function failedResult<T>(error: AgentRuntimeDiagnosticDto): AgentRuntimeResult<T> {
   return { ok: false, error };
+}
+
+function isApprovedAgentSpecialistRunType(value: unknown): value is AgentSpecialistRunType {
+  return typeof value === "string" && (approvedAgentSpecialistRunTypes as readonly string[]).includes(value);
 }
 
 function scopePayload(scope: AgentRunScopeInput): { readonly workspaceId?: string; readonly investigationId?: string } {
