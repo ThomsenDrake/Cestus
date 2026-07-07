@@ -81,7 +81,7 @@ Deferred:
 - Create: `packages/agent/test/execution-types.test.ts`
 - Modify: `packages/agent/src/index.ts`
 
-- [ ] **Step 1: Write the failing execution state tests**
+- [x] **Step 1: Write the failing execution state tests**
 
 Create `packages/agent/test/execution-types.test.ts`:
 
@@ -133,7 +133,7 @@ describe("resident agent execution state contracts", () => {
 });
 ```
 
-- [ ] **Step 2: Run the targeted failing test**
+- [x] **Step 2: Run the targeted failing test**
 
 Run:
 
@@ -147,7 +147,7 @@ Expected before implementation:
 Failed to resolve import "../src/execution-types.js"
 ```
 
-- [ ] **Step 3: Add execution state contracts**
+- [x] **Step 3: Add execution state contracts**
 
 Create `packages/agent/src/execution-types.ts`:
 
@@ -230,7 +230,7 @@ export * from "./execution-types.js";
 
 Preserve all existing exports in the file.
 
-- [ ] **Step 4: Run the targeted passing test**
+- [x] **Step 4: Run the targeted passing test**
 
 Run:
 
@@ -244,7 +244,7 @@ Expected:
 Test Files  1 passed
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Run:
 

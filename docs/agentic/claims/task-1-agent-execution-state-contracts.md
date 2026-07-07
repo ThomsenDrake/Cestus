@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/b770/Cestus`
 
 Claimed at: `2026-07-07T15:11:00Z`
 
-Status: `in-progress`
+Status: `ready-for-review`
 
 Owned files:
 
@@ -61,3 +61,18 @@ Resume summary:
 - `packages/local-runtime/src/agent-runtime-factory.ts` is present.
 - `packages/ui/src/agent/agent-adapter.ts` is present.
 - Active base includes `origin/neo` at `5c8a4e9`, which merged the resident-agent foundation.
+
+Implementation recorded at: `2026-07-07T16:02:00Z`
+
+Implementation evidence:
+
+- Commit: `a3c59b68 feat: add agent execution state contracts`
+- Red test: `npm test -- packages/agent/test/execution-types.test.ts` failed before implementation with missing `../src/execution-types.js`.
+- Targeted pass: `npm test -- packages/agent/test/execution-types.test.ts`
+- Full gate: `npm run verify`
+- Whitespace: `git diff --check`
+
+Review evidence:
+
+- Spec compliance reviewer `Poincare`: approved with no issues.
+- Code quality reviewer `Noether`: approved with no critical, important, or minor issues.
