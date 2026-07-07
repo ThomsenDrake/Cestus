@@ -8,6 +8,18 @@
 
 **Tech Stack:** TypeScript, Zod, Vitest, existing `packages/ingestion` legacy report/read API contracts, existing ontology ledger event types, deterministic SHA-256 hashing, Markdown factory work orders.
 
+## Implementation Evidence
+
+Implemented on branch `codex/ontology-bootstrap-specialist` on 2026-07-07 as a pure `packages/ontology-bootstrap` foundation. The completed slice exports strict contracts, dossier builder, read-model helper, tool-preview builders, and fake runtime facade. Verification evidence is recorded in `docs/agentic/claims/task-*-ontology-bootstrap-*.md` and in `docs/agentic/software-factory.md`.
+
+Final focused bundle before readiness tracking:
+
+```bash
+npm test -- packages/ontology-bootstrap/test/contracts.test.ts packages/ontology-bootstrap/test/dossier-builder.test.ts packages/ontology-bootstrap/test/read-model.test.ts packages/ontology-bootstrap/test/tool-previews.test.ts packages/ontology-bootstrap/test/fake-runtime.test.ts packages/ingestion/test/legacy-runtime.test.ts packages/ingestion/test/legacy-staging.test.ts
+```
+
+The implementation preserves the hard invariant: legacy-derived structure can only surface as evidence-tied dossier, preview, or `assertion.proposed` staging material with exact evidence IDs and content hashes; it cannot produce `assertion.accepted`, entity resolution, accepted relationships, merge/split acceptance, legal/export actions, provider byte transfer, or destructive repair.
+
 ---
 
 ## Required Reading
