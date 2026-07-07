@@ -658,6 +658,39 @@ npm run verify
 
 The plan intentionally scopes the first resident-agent implementation to a measurable foundation: default resident identity, strict agent events and projections, fake-provider credential references, tool-gateway approval contracts, and minimal local runtime, CLI, operator-status, Command, and Agent UI surfaces without live credentials. Full legacy `ontology-bootstrap`, PRR, evidence, timeline, contradiction, investigation, report, live provider, and team hardening work remains split into focused follow-up implementation plans.
 
+## Resident Cestus Agent Foundation Implementation Readiness
+
+The resident Cestus Agent foundation was implemented from the approved design and foundation plan on 2026-07-07.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md`
+- `docs/superpowers/plans/2026-07-07-cestus-resident-agent-implementation.md`
+
+Factory readiness checks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded focused verification after rebasing onto current `origin/neo`:
+
+```text
+npm test -- packages/ontology/test/agent-contracts.test.ts packages/ontology/test/contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/provider.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/runtime.test.ts packages/agent/test/specialists.test.ts packages/operator-status/test/contracts.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/operator-status.test.ts packages/local-runtime/test/operator-status-routes.test.ts packages/local-runtime/test/http-handler.test.ts packages/local-runtime/test/cli.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx packages/ui/test/command-model.test.ts packages/ui/test/app-smoke.test.tsx packages/ui/test/operator-app-integration.test.tsx
+Test Files  19 passed
+Tests  262 passed
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  119 passed
+Tests  1089 passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+The implementation adds the first resident-agent foundation only: strict append-only agent event contracts, replayable projections, fake local model-provider support, secret-safe credential references, tool-gateway approval contracts, a minimal local runtime/CLI/HTTP surface, operator-status integration, first-class Agent UI, Command brief integration, and a specialist run-type registry that fails closed for workflow execution. It uses fake providers only and does not add live provider adapters, direct external byte transfer, PRR send execution, legal lock clearing, destructive repair, accepted graph decisions, or full specialist workflows. Append-only ledger semantics, provenance requirements, projection rebuildability, human-approved PRR send gates, legal escalation locks, provider byte-transfer approvals, secret-safe credential references, evidence-first legacy bootstrap, and portable workspace compatibility remain preserved.
+
 ## Ontology Bootstrap Specialist Implementation Readiness
 
 The ontology bootstrap specialist foundation was implemented from the approved zero-trust legacy import direction on 2026-07-07.
