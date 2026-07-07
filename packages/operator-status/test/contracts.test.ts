@@ -104,6 +104,58 @@ describe("operator status contracts", () => {
     ).toThrow();
   });
 
+  it("operatorSafeActionSchema rejects forbidden commands even when action flags claim they are safe", () => {
+    const forbiddenCommands = [
+      "cestus prr send prr_001",
+      "cestus ingest register-source --workspace <root> --source /old --source-id src_old --label Old",
+      "cestus ingest approve-import --workspace <root> --source-id src_old --scan scan_001",
+      "cestus ingest import --workspace <root> --source-id src_old --import import_001",
+      "cestus ingest approve-provider --workspace <root> --source-id src_old --import import_001",
+      "node packages/ingestion/bin/cestus-ingest.mjs approve-import --workspace <root>",
+      "node packages/ingestion/bin/cestus-ingest.mjs approve-provider --workspace <root>"
+    ];
+
+    for (const [index, command] of forbiddenCommands.entries()) {
+      expect(() =>
+        operatorSafeActionSchema.parse({
+          actionId: `action_show_forbidden_${index}`,
+          label: "Show forbidden command",
+          kind: "show-command",
+          command,
+          sourceContract: "operator-status.v1",
+          requiresHumanApproval: false,
+          mutatesCanonicalState: false,
+          externalEffect: false,
+          enabled: true
+        })
+      ).toThrow(/forbidden/i);
+    }
+  });
+
+  it("operatorSafeActionSchema keeps display-only help and readiness commands available", () => {
+    const allowedCommands = [
+      "npm run ingestion:help",
+      "cestus-workspace verify workspace --root <root>",
+      "cestus-workspace projection rebuild-readiness --root <root>"
+    ];
+
+    for (const [index, command] of allowedCommands.entries()) {
+      expect(
+        operatorSafeActionSchema.parse({
+          actionId: `action_show_allowed_${index}`,
+          label: "Show allowed command",
+          kind: "show-command",
+          command,
+          sourceContract: "operator-status.v1",
+          requiresHumanApproval: false,
+          mutatesCanonicalState: false,
+          externalEffect: false,
+          enabled: true
+        })
+      ).toMatchObject({ command });
+    }
+  });
+
   it("operatorSafeActionSchema rejects incomplete action descriptors", () => {
     expect(() =>
       operatorSafeActionSchema.parse({

@@ -7,6 +7,7 @@ import { authorizedLocalRuntimeRequest } from "./auth.js";
 import type { ResolvedLocalRuntimeConfig } from "./config.js";
 import { handleIngestionHttpRoute } from "./ingestion-http-routes.js";
 import type { LocalIngestionRuntimeFactory } from "./ingestion-runtime-factory.js";
+import { createDefaultOperatorStatusProviders } from "./operator-status-providers.js";
 import { handleOperatorStatusRoute } from "./operator-status-routes.js";
 import type { OperatorStatusProviderSet } from "./operator-status.js";
 import { createSqlitePrrRuntime } from "./runtime-factory.js";
@@ -52,6 +53,14 @@ export function createLocalRuntimeHttpHandler(
     ...(input.deadlineCalculator === undefined ? {} : { deadlineCalculator: input.deadlineCalculator })
   });
   const seedEvents = input.seedEvents ?? prrWorkspaceSeedEvents;
+  const defaultOperatorStatusProviders = createDefaultOperatorStatusProviders({
+    config: input.config,
+    actor: input.actor,
+    handle,
+    ...(input.ingestionRuntimeFactory === undefined
+      ? {}
+      : { ingestionRuntimeFactory: input.ingestionRuntimeFactory })
+  });
 
   const handler = (async (request: LocalRuntimeRequest): Promise<LocalRuntimeResponse> => {
     const path = new URL(request.url, "http://localhost").pathname;
@@ -85,7 +94,7 @@ export function createLocalRuntimeHttpHandler(
       runtime: { workspaceMounted: handle.mountedWorkspace !== undefined },
       now: localRuntimeNow(input.now),
       providers: {
-        prr: async () => handle.runtime.loadWorkspace(),
+        ...defaultOperatorStatusProviders,
         ...(input.operatorStatusProviders ?? {})
       }
     });

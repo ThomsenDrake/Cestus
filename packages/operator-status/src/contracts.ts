@@ -31,6 +31,21 @@ const operatorDiagnosticIdSchema = z.string()
 
 const operatorReadinessStateSchema = z.enum(operatorReadinessStates);
 const operatorSectionIdSchema = z.enum(operatorSectionIds);
+const forbiddenCommandPatterns = [
+  /\bprr\s+send\b/i,
+  /\b(public[-\s]*records?\s+request|request)\s+send\b/i,
+  /\blegal\s+escalat(?:e|ion)\b/i,
+  /\bprojection\s+rebuild\b(?!-readiness)/i,
+  /\b(?:register-source|approve-import|approve-provider)\b/i,
+  /\b(?:cestus(?:-ingest)?|cestus-ingest\.mjs|ingest)\b.*\b(?:dry-run|import|retry)\b/i,
+  /\b(?:repair|restore|delete|reset|destroy)\b.*\b(?:ledger|blob|workspace|ontology|canonical)\b/i,
+  /\b(?:ledger|blob|workspace|ontology|canonical)\b.*\b(?:repair|restore|delete|reset|destroy)\b/i,
+  /\b(?:provider|document[-\s]*ai|mistral)\b.*\b(?:parse|send|transfer|upload)\b/i,
+  /\b(?:parse|send|transfer|upload)\b.*\b(?:provider|document[-\s]*ai|mistral)\b/i,
+  /\b(?:accept|approve)\b.*\b(?:legacy|ontology|assertion|truth)\b/i,
+  /\b(?:legacy|ontology|assertion|truth)\b.*\b(?:accept|approve)\b/i,
+  /\bcestus(?:-ingest)?\s+(?:ingest\s+)?(?:approve-import|import)\b/i
+] as const;
 
 export const operatorMetricSchema = z.object({
   metricId: operatorIdentifierSchema,
@@ -77,6 +92,18 @@ export const operatorSafeActionSchema = z.object({
       code: "custom",
       path: ["command"],
       message: "show-command actions require command text"
+    });
+  }
+
+  if (
+    action.kind === "show-command" &&
+    action.command !== undefined &&
+    forbiddenCommandPatterns.some((pattern) => pattern.test(action.command ?? ""))
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["command"],
+      message: "show-command actions must not contain forbidden irreversible command text"
     });
   }
 });
