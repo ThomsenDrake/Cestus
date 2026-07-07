@@ -342,7 +342,8 @@ describe("agent context packs", () => {
 
     await expect(registry.build("task-run-history.v1")).resolves.toMatchObject({
       contextPackId: "task-run-history.v1",
-      provenanceRefs: ["evt_agent_task"]
+      provenanceRefs: ["evt_agent_task"],
+      sizeBytes: expect.any(Number)
     });
   });
 
@@ -362,12 +363,11 @@ describe("agent context packs", () => {
         return {
           contextPackId: "task-run-history.v1",
           version: 1,
-          contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
           generatedAt: "2026-07-07T22:00:00.000Z",
+          payload: { events: [] },
           safeSummary: "No provenance.",
-          provenanceRefs: [],
-          sizeBytes: 2
-        } as ReturnType<typeof buildContextPackRef>;
+          provenanceRefs: []
+        };
       }
     });
 
@@ -399,6 +399,34 @@ describe("agent context packs", () => {
     });
 
     await expect(registry.build("task-run-history.v1")).rejects.toThrow(/maxBytes|budget|exceeds/i);
+  });
+
+  it("rejects hand-rolled refs that under-report derived size bytes", async () => {
+    const registry = createContextPackRegistry();
+    registry.register({
+      descriptor: {
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        label: "Task and run history",
+        maxBytes: 8,
+        requiredProvenanceKinds: ["event-id"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      async build() {
+        return {
+          contextPackId: "task-run-history.v1",
+          version: 1,
+          contentHash: hashAgentContextPack({ events: ["evt_agent_task", "evt_agent_task_two"] }),
+          sizeBytes: 1,
+          generatedAt: "2026-07-07T22:00:00.000Z",
+          safeSummary: "Forged tiny ref.",
+          provenanceRefs: ["evt_agent_task"]
+        } as ReturnType<typeof buildContextPackRef>;
+      }
+    });
+
+    await expect(registry.build("task-run-history.v1")).rejects.toThrow(/buildContextPackRef|untrusted/i);
   });
 
   it("reports the exact missing builder error", async () => {
@@ -488,6 +516,64 @@ describe("agent context packs", () => {
 
     expect(() => registry.register(duplicateBuilder)).toThrow("Context pack task-run-history.v1 is already registered");
     expect(getterInvoked).toBe(false);
+  });
+
+  it("checks duplicate registration before validating unrelated duplicate descriptor fields", () => {
+    const registry = createContextPackRegistry();
+    registry.register({
+      descriptor: {
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        label: "Task and run history",
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event-id"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      async build() {
+        return buildContextPackRef({
+          contextPackId: "task-run-history.v1",
+          version: 1,
+          generatedAt: "2026-07-07T22:00:00.000Z",
+          payload: { events: ["evt_agent_task"] },
+          safeSummary: "Original registered builder.",
+          provenanceRefs: ["evt_agent_task"]
+        });
+      }
+    });
+
+    let labelGetterInvoked = false;
+    let buildGetterInvoked = false;
+    const duplicateDescriptor = {
+      contextPackId: "task-run-history.v1",
+      version: 1,
+      maxBytes: 0,
+      requiredProvenanceKinds: ["event-id"],
+      redactionPolicy: "api key sk-live-value",
+      sourceProjection: "agent.projection"
+    };
+    Object.defineProperty(duplicateDescriptor, "label", {
+      enumerable: true,
+      get() {
+        labelGetterInvoked = true;
+        throw new Error("duplicate label getter invoked");
+      }
+    });
+    const duplicateBuilder = { descriptor: duplicateDescriptor } as unknown as {
+      descriptor: typeof duplicateDescriptor & { label: string };
+      build(): ReturnType<typeof buildContextPackRef>;
+    };
+    Object.defineProperty(duplicateBuilder, "build", {
+      enumerable: true,
+      get() {
+        buildGetterInvoked = true;
+        throw new Error("duplicate build getter invoked");
+      }
+    });
+
+    expect(() => registry.register(duplicateBuilder)).toThrow("Context pack task-run-history.v1 is already registered");
+    expect(labelGetterInvoked).toBe(false);
+    expect(buildGetterInvoked).toBe(false);
   });
 
   it("rejects non-primitive registry lookup ids without invoking coercion hooks", async () => {
