@@ -6,7 +6,7 @@ Worker: Codex GPT-5
 Branch: `codex/cestus-resident-agent-foundation`
 Worktree: `/home/drake/.codex/worktrees/6fc5/Cestus`
 Claimed-at: 2026-07-07T15:37:23Z
-Status: in-progress
+Status: ready-for-review
 
 Owned files:
 - `packages/agent/src/projection.ts`
@@ -20,6 +20,12 @@ Targeted commands:
 - `npm test -- packages/agent/test/projection.test.ts`
 - `npm test -- packages/agent/test/projection.test.ts packages/ontology/test/agent-contracts.test.ts`
 - `npm run verify`
+
+Command evidence:
+- Red: `npm test -- packages/agent/test/projection.test.ts` failed with `Cannot find module '../src/projection.js'` before production code existed.
+- Green: `npm test -- packages/agent/test/projection.test.ts` passed with 1 test file and 2 tests passing.
+- Targeted: `npm test -- packages/agent/test/projection.test.ts packages/ontology/test/agent-contracts.test.ts` passed with 2 test files and 22 tests passing.
+- Verify: `npm run verify` passed with typecheck passed, 106 test files and 986 tests passing, UI build succeeded, and factory-readiness passed.
 
 Invariant notes:
 - Preserve append-only ledger semantics: the projection may only derive current state by replaying supplied events.
