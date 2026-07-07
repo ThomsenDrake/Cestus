@@ -1773,6 +1773,9 @@ function isKnowledgeEventType(value: unknown): value is KnowledgeEventType {
 }
 
 const alwaysHumanGatedEventTypes = new Set<KnowledgeEventType>([
+  "assertion.accepted",
+  "entity.resolved",
+  "relationship.accepted",
   "agent.identity.updated",
   "agent.policy.installed",
   "agent.tool.approved",
@@ -1786,7 +1789,15 @@ const alwaysHumanGatedEventTypes = new Set<KnowledgeEventType>([
   "evidence.tombstoned",
   "network.exposure.enabled",
   "device.session.approved",
-  "legacy.ontology.staging.approved"
+  "legacy.ontology.staging.approved",
+  "prr.request.sent",
+  "prr.followup.sent",
+  "prr.deadline.confirmed",
+  "prr.fee.challenged",
+  "prr.scope.narrowing.accepted",
+  "prr.appeal.created",
+  "prr.stalling.confirmed",
+  "prr.legal-escalation.confirmed"
 ]);
 
 function hasSensitiveOptIns(payload: unknown): boolean {

@@ -15,6 +15,16 @@ const context = {
   packVersions: { core: "0.1.0" }
 } as const;
 
+const humanContext = {
+  ...context,
+  actor: { id: "actor_investigator", kind: "human" as const, label: "Investigator" }
+} as const;
+
+const agentContext = {
+  ...context,
+  actor: { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" }
+} as const;
+
 describe("event contracts", () => {
   it("contains agent guidance for every event contract", () => {
     for (const contract of Object.values(eventContracts)) {
@@ -128,6 +138,52 @@ describe("event contracts", () => {
     if (!result.success) {
       expect(result.error.issues.map((issue) => issue.path.join("."))).toContain("payload.evidenceId");
     }
+  });
+
+  it.each([
+    {
+      type: "assertion.accepted",
+      streamId: "assertion_as_human_gate",
+      payload: {
+        assertionId: "as_human_gate",
+        acceptedBy: "actor_investigator",
+        rationale: "Reviewed against the source evidence."
+      }
+    },
+    {
+      type: "entity.resolved",
+      streamId: "entity_ent_human_gate",
+      payload: {
+        entityId: "ent_human_gate",
+        assertionIds: ["as_human_gate"],
+        canonicalLabel: "Human Reviewed Entity",
+        entityType: "GovernmentAgency"
+      }
+    },
+    {
+      type: "relationship.accepted",
+      streamId: "relationship_rel_human_gate",
+      payload: {
+        relationshipId: "rel_human_gate",
+        fromEntityId: "ent_human_gate_from",
+        toEntityId: "ent_human_gate_to",
+        relationshipType: "contracts-with",
+        assertionIds: ["as_human_gate"]
+      }
+    }
+  ])("requires a human context actor for accepted graph truth event $type", ({ type, streamId, payload }) => {
+    const event = {
+      id: `evt_${type.replaceAll(".", "_")}_agent_human_gate`,
+      type,
+      version: 1,
+      streamId,
+      sequence: 1,
+      context: agentContext,
+      payload
+    };
+
+    expect(validateKnowledgeEvent(event).success).toBe(false);
+    expect(validateKnowledgeEvent({ ...event, context: humanContext }).success).toBe(true);
   });
 
   it("returns validation failure for inherited event type names", () => {
@@ -1072,6 +1128,17 @@ const validPrrPayloadExamples = [
   }
 ] as const;
 
+const humanGatedPrrEventTypes = [
+  "prr.request.sent",
+  "prr.followup.sent",
+  "prr.deadline.confirmed",
+  "prr.fee.challenged",
+  "prr.scope.narrowing.accepted",
+  "prr.appeal.created",
+  "prr.stalling.confirmed",
+  "prr.legal-escalation.confirmed"
+] as const;
+
 function prrEvent(type: string, payload: Record<string, unknown>) {
   return {
     id: `evt_${type.replaceAll(".", "_")}_valid`,
@@ -1079,7 +1146,9 @@ function prrEvent(type: string, payload: Record<string, unknown>) {
     version: 1,
     streamId: prrRequestId,
     sequence: 1,
-    context,
+    context: humanGatedPrrEventTypes.includes(type as (typeof humanGatedPrrEventTypes)[number])
+      ? humanContext
+      : context,
     payload
   };
 }
@@ -1087,6 +1156,44 @@ function prrEvent(type: string, payload: Record<string, unknown>) {
 describe("public records request event contracts", () => {
   it.each(validPrrPayloadExamples)("validates a valid $type payload", ({ type, payload }) => {
     expect(validateKnowledgeEvent(prrEvent(type, payload)).success).toBe(true);
+  });
+
+  it.each(humanGatedPrrEventTypes)("rejects agent context actors for human-gated %s", (type) => {
+    const payload = validPrrPayloadExamples.find((example) => example.type === type)?.payload;
+    expect(payload).toBeDefined();
+
+    const event = {
+      ...prrEvent(type, payload as Record<string, unknown>),
+      id: `evt_${type.replaceAll(".", "_")}_agent_human_gate`,
+      context: agentContext
+    };
+
+    expect(validateKnowledgeEvent(event).success).toBe(false);
+    expect(validateKnowledgeEvent({ ...event, context: humanContext }).success).toBe(true);
+  });
+
+  it.each([
+    "prr.request.created",
+    "prr.correspondence.received",
+    "prr.followup.drafted",
+    "prr.deadline.estimated",
+    "prr.fee.estimated",
+    "prr.scope.narrowing.proposed",
+    "prr.production.received",
+    "prr.exemption.claimed",
+    "prr.denial.recorded",
+    "prr.stalling.detected"
+  ])("allows agent context actors for non-human-gated %s", (type) => {
+    const payload = validPrrPayloadExamples.find((example) => example.type === type)?.payload;
+    expect(payload).toBeDefined();
+
+    expect(
+      validateKnowledgeEvent({
+        ...prrEvent(type, payload as Record<string, unknown>),
+        id: `evt_${type.replaceAll(".", "_")}_agent_allowed`,
+        context: agentContext
+      }).success
+    ).toBe(true);
   });
 
   it("validates a prr.request.created event", () => {
