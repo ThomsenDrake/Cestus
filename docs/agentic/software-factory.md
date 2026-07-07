@@ -616,3 +616,23 @@ factory-readiness passed
 ```
 
 The implemented bridge depends on workspace-ops, ingestion, legacy import, PRR, and local-runtime status/readiness DTOs rather than duplicating their validation logic in React. The UI bridge remains read-only: it renders safe navigation, refresh, and display-only command descriptors, and it does not perform PRR sends, legal escalation, provider byte transfer, destructive repair, canonical ledger/blob mutation, accepted legacy ontology truth, or hidden local duplication of external-drive ontology data. Append-only ledger semantics, provenance requirements, projection rebuildability, evidence-first legacy import, legal escalation locks, and browser boundary safety are preserved by the implementation and covered by the targeted and full verification gates above.
+
+## Resident Cestus Agent Design Readiness
+
+The resident Cestus Agent design spec was prepared from the approved coordination-thread direction on 2026-07-07.
+
+Required design file:
+
+- `docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md`
+
+Factory readiness checks this design file through `scripts/check-agent-readiness.mjs`.
+
+Recorded command evidence:
+
+```text
+git diff --check
+npm run factory:check
+factory-readiness passed
+```
+
+The design keeps one default workspace resident agent identity with specialist run types underneath it. Model providers remain replaceable execution backends, not agent identities. The resident agent architecture preserves append-only ledger semantics, provenance, rebuildable projections, evidence-first legacy bootstrap, human-approved PRR send gates, legal escalation locks, provider byte-transfer approvals, secret-safe credential references, and portable workspace compatibility.
