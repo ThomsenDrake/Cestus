@@ -23,9 +23,13 @@ const safeTextSchema = z.string()
   .min(1)
   .refine(isAgentSecretSafeText, { message: "must be secret-safe" });
 
-export const providerTaskSensitivitySchema = z.string()
-  .regex(/^[a-z][a-z0-9-]*$/)
-  .refine(isAgentSecretSafeText, { message: "task sensitivity must be secret-safe" });
+export const providerTaskSensitivitySchema = z.enum([
+  "workspace-safe",
+  "public-safe",
+  "sensitive-evidence",
+  "sensitive-local-only",
+  "provider-approved"
+]);
 
 export const providerSelectionTaskSchema = z.object({
   modality: providerModalitySchema,
@@ -204,7 +208,7 @@ function evaluateReadinessForPolicy(input: {
     return { kind: "not-ready" };
   }
 
-  if (sensitiveEvidenceRemoteTransferBlocked(input.descriptor, input.task, input.policy)) {
+  if (remoteProviderBlockedBySensitivity(input.descriptor, input.task, input.policy)) {
     return { kind: "policy-blocked" };
   }
 
@@ -262,14 +266,21 @@ function isHarnessProvider(descriptor: ProviderCapabilityDescriptor): boolean {
     descriptor.backendKind === "xai-harness";
 }
 
-function sensitiveEvidenceRemoteTransferBlocked(
+function remoteProviderBlockedBySensitivity(
   descriptor: ProviderCapabilityDescriptor,
   task: ProviderSelectionTask,
   policy: ProviderSelectionPolicy
 ): boolean {
+  if (isLocalProvider(descriptor)) {
+    return false;
+  }
+
+  if (task.sensitivity === "sensitive-local-only") {
+    return true;
+  }
+
   return task.sensitivity === "sensitive-evidence" &&
-    !policy.allowRemoteByteTransfer &&
-    !isLocalProvider(descriptor);
+    !policy.allowRemoteByteTransfer;
 }
 
 function approvalClassFor(
@@ -316,14 +327,19 @@ function candidateRank(
   policy: ProviderSelectionPolicy
 ): readonly number[] {
   return [
-    task.sensitivity === "sensitive-evidence" && !isLocalProvider(candidate.descriptor) ? 1 : 0,
+    sensitivityPrefersLocalProvider(task.sensitivity) && !isLocalProvider(candidate.descriptor) ? 1 : 0,
     candidate.descriptor.costPolicy === policy.preferredCostPolicy ? 0 : 1,
     approvalClassRank(candidate.approvalClass)
   ];
 }
 
 function approvalClassRank(approvalClass: ProviderSelectionApprovalClass): number {
-  return approvalClass === "none" ? 0 : 1;
+  const ranks: Record<ProviderSelectionApprovalClass, number> = {
+    none: 0,
+    "provider-byte-transfer": 1,
+    "harness-workspace": 2
+  };
+  return ranks[approvalClass];
 }
 
 function compareRank(left: readonly number[], right: readonly number[]): number {
@@ -357,6 +373,11 @@ function compareProviderIds(left: string, right: string): number {
 function isLocalProvider(descriptor: ProviderCapabilityDescriptor): boolean {
   return descriptor.approvalProfile === "local-only" ||
     descriptor.backendKind === "local-engine";
+}
+
+function sensitivityPrefersLocalProvider(sensitivity: ProviderTaskSensitivity): boolean {
+  return sensitivity === "sensitive-evidence" ||
+    sensitivity === "sensitive-local-only";
 }
 
 function providerSelectionFailure(
