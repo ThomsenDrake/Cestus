@@ -89,3 +89,18 @@ Status parser evidence:
   - RED: `npm test -- packages/ui/test/agent-adapter.test.ts`
   - GREEN: `npm test -- packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-approval-adapter.test.ts`
   - FULL: `npm run verify`
+
+UI DTO type follow-up at: `2026-07-08T16:55:00Z`
+
+UI DTO type evidence:
+
+- Added a compile-time regression in `packages/ui/test/agent-adapter.test.ts` that types a future-class fixture as exported UI `AgentStatusDto`, proving browser status DTOs must accept `toolRequests[].requiredApprovalClass` and optional `approvalClass` values such as `evidence-retention-review`.
+- Observed RED with `npm run typecheck` before the fix:
+  - `packages/ui/test/agent-adapter.test.ts(168,11): error TS2322: Type '"evidence-retention-review"' is not assignable to type 'AgentToolApprovalClass'.`
+  - `packages/ui/test/agent-adapter.test.ts(169,11): error TS2322: Type '"evidence-retention-review"' is not assignable to type 'AgentToolApprovalClass | undefined'.`
+- Root cause: `packages/ui/src/agent/agent-types.ts` still re-exported runtime `AgentStatusDto` directly, so the UI package exported the old closed projection union even though the browser parser already accepted future non-sentinel approval identifiers.
+- Implemented the smallest browser-safe fix by redefining exported UI `AgentStatusDto` as the canonical runtime status DTO with only `toolRequests[].requiredApprovalClass` and optional `approvalClass` retyped to `AgentApprovalQueueApprovalClass`, while keeping `AgentRuntimeDiagnosticDto` export behavior unchanged and using type-only imports only.
+- Re-verified the required chain:
+  - GREEN typecheck: `npm run typecheck`
+  - GREEN targeted: `npm test -- packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-approval-adapter.test.ts`
+  - FULL: `npm run verify`
