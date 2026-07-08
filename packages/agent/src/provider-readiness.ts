@@ -10,7 +10,7 @@ import {
   type ProviderCapabilityDescriptor,
   type ProviderCapabilityRegistry
 } from "./provider-registry.js";
-import { type SecretStore, type SecretStoreHealth } from "./secret-store.js";
+import { secretStoreHealthSchema, type SecretStore, type SecretStoreHealth } from "./secret-store.js";
 import { isAgentSecretSafeText } from "./secret-safety.js";
 
 const rawCredentialLocationPattern =
@@ -332,8 +332,15 @@ async function evaluateCredentialReferenceReadiness(
     };
   }
 
-  const health = await secretStore.health(credentialReference.credentialRefId);
-  const healthState = stateForSecretStoreHealth(credentialKind, health);
+  const health = secretStoreHealthSchema.safeParse(await secretStore.health(credentialReference.credentialRefId));
+  if (!health.success) {
+    return {
+      state: "health-unverified",
+      credentialRefId: credentialReference.credentialRefId
+    };
+  }
+
+  const healthState = stateForSecretStoreHealth(credentialKind, health.data);
   if (healthState !== "ready") {
     return {
       state: healthState,

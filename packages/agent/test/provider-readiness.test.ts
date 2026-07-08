@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCredentialReference, FakeSecretStore, SecretMaterial } from "../src/index.js";
+import type { SecretStore } from "../src/index.js";
 import {
   buildProviderReadiness,
   providerReadinessDtoSchema
@@ -365,6 +366,59 @@ describe("provider readiness DTOs", () => {
       });
   });
 
+  it("fails closed when secret-store health metadata is malformed", async () => {
+    const registry = createProviderRegistry();
+    registry.register({
+      providerId: "provider_fake_malformed_health_remote",
+      label: "Malformed health remote provider",
+      adapterVersion: "agent-provider-auth.v1",
+      backendKind: "openai-compatible-api",
+      modelFamilies: ["fake-malformed-health-remote"],
+      modalities: ["text"],
+      toolSupport: "function-calling",
+      structuredOutputSupport: "schema-strict",
+      contextLimits: { maxInputTokens: 8192, maxOutputTokens: 2048 },
+      credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+      dataHandlingNotes: "Simulates a remote API provider with malformed health metadata.",
+      costPolicy: "metered-api",
+      workspaceScopes: ["workspace"],
+      approvalProfile: "remote-byte-transfer-gated",
+      diagnosticContract: ["health-unverified"],
+      fakeSupport: true
+    });
+
+    const dto = await buildProviderReadiness({
+      registry,
+      credentialReferences: [
+        createCredentialReference({
+          credentialRefId: "agent_credref_api_malformed_health",
+          providerId: "provider_fake_malformed_health_remote",
+          credentialKind: "api-key-bearer",
+          scopeKind: "workspace",
+          capabilityScopes: ["model-inference"],
+          safeLabel: "Malformed health remote key",
+          authorizedBy: "actor_case_owner",
+          authorizedAt: "2026-07-07T21:00:00.000Z",
+          policyVersion: "agent-provider-auth.v1",
+          status: "linked"
+        })
+      ],
+      secretStore: new MalformedHealthySecretStore(),
+      now: () => "2026-07-07T22:15:00.000Z"
+    });
+
+    expect(providerReadinessDtoSchema.parse(dto)).toEqual(dto);
+    expect(JSON.stringify(dto)).not.toMatch(/authorization:\s*bearer|password=|private key|secret=|zod|not-a-date/i);
+    expect(dto.cards.find((card) => card.providerId === "provider_fake_malformed_health_remote")).toMatchObject({
+      state: "health-unverified"
+    });
+    expect(dto.diagnostics.find((diagnostic) => diagnostic.providerId === "provider_fake_malformed_health_remote"))
+      .toMatchObject({
+        category: "health-unverified",
+        credentialRefId: "agent_credref_api_malformed_health"
+      });
+  });
+
   it("reports harness workspace approval for harness-gated providers", async () => {
     const registry = createProviderRegistry();
     registry.register({
@@ -459,3 +513,18 @@ describe("provider readiness DTOs", () => {
     });
   });
 });
+
+class MalformedHealthySecretStore implements SecretStore {
+  async resolve(): Promise<SecretMaterial | undefined> {
+    return undefined;
+  }
+
+  async health(credentialRefId: string) {
+    return Object.freeze({
+      credentialRefId,
+      status: "healthy",
+      checkedAt: "not-a-date",
+      safeMessage: "Local binding is available."
+    }) as never;
+  }
+}
