@@ -1,6 +1,6 @@
 # Task 5: Agent Approval App Integration
 
-Plan path: `docs/superpowers/plans/2026-07-07-resident-agent-approval-cockpit-implementation.md`
+Plan path: `docs/superpowers/plans/2026-07-08-resident-agent-approval-cockpit-routes-ui-implementation.md`
 Task heading: `Task 5: App Integration And Command Regression`
 Worker identity: Codex
 Branch: `codex/resident-agent-approval-cockpit-plan`
@@ -31,3 +31,4 @@ Status: `ready-for-review`
 ## Notes
 
 - `packages/ui/test/command-model.test.ts` did not require changes for Task 5. The existing assertions already prove the Command workspace derives approval pressure from `AgentStatusDto` rather than approval cockpit UI state.
+- 2026-07-08 follow-up: added app-level deny integration coverage proving `Deny request` calls only `agentAdapter.denyToolRequest()` with `{ toolRequestId, rationale }`, leaves `approveToolRequest()` untouched, and still exposes no forbidden execution buttons.
