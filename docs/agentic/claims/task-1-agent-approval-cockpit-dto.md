@@ -6,7 +6,7 @@ Worker: Codex resident agent
 Branch: `codex/resident-agent-approval-cockpit-plan`
 Worktree: `/home/drake/.codex/worktrees/b782/Cestus`
 Claimed-at: 2026-07-08T13:38:09Z
-Status: claimed
+Status: in-progress
 
 Owned files:
 - `packages/agent/src/approval-cockpit.ts`
