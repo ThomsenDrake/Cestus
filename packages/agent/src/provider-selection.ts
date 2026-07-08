@@ -212,7 +212,7 @@ function evaluateReadinessForPolicy(input: {
     return { kind: "policy-blocked" };
   }
 
-  const approvalClass = approvalClassFor(input.descriptor, input.readiness);
+  const approvalClass = approvalClassFor(input.descriptor, input.readiness, input.task);
   if (approvalClass !== "none" && !input.policy.allowRemoteByteTransfer) {
     return { kind: "policy-blocked" };
   }
@@ -285,7 +285,8 @@ function remoteProviderBlockedBySensitivity(
 
 function approvalClassFor(
   descriptor: ProviderCapabilityDescriptor,
-  readiness: ProviderReadinessState
+  readiness: ProviderReadinessState,
+  task: ProviderSelectionTask
 ): ProviderSelectionApprovalClass {
   if (descriptor.approvalProfile === "harness-workspace-gated") {
     return "harness-workspace";
@@ -293,7 +294,8 @@ function approvalClassFor(
 
   if (
     descriptor.approvalProfile === "remote-byte-transfer-gated" ||
-    readiness === "requires-byte-transfer-approval"
+    readiness === "requires-byte-transfer-approval" ||
+    (!isLocalProvider(descriptor) && task.sensitivity === "sensitive-evidence")
   ) {
     return "provider-byte-transfer";
   }

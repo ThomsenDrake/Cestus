@@ -250,6 +250,62 @@ describe("provider readiness DTOs", () => {
     });
   });
 
+  it("fails closed when a linked credential reference expires before secret-store health is trusted", async () => {
+    const registry = createProviderRegistry();
+    registry.register({
+      providerId: "provider_fake_expiring_remote",
+      label: "Expiring remote provider",
+      adapterVersion: "agent-provider-auth.v1",
+      backendKind: "openai-compatible-api",
+      modelFamilies: ["fake-expiring-remote"],
+      modalities: ["text"],
+      toolSupport: "function-calling",
+      structuredOutputSupport: "schema-strict",
+      contextLimits: { maxInputTokens: 8192, maxOutputTokens: 2048 },
+      credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+      dataHandlingNotes: "Simulates a remote API provider with expiring credentials.",
+      costPolicy: "metered-api",
+      workspaceScopes: ["workspace"],
+      approvalProfile: "remote-byte-transfer-gated",
+      diagnosticContract: ["credential-expired"],
+      fakeSupport: true
+    });
+    const store = new FakeSecretStore();
+    await store.putForTest("agent_credref_api_expiring", SecretMaterial.fromTestValue("remote-provider-material"));
+
+    const dto = await buildProviderReadiness({
+      registry,
+      credentialReferences: [
+        createCredentialReference({
+          credentialRefId: "agent_credref_api_expiring",
+          providerId: "provider_fake_expiring_remote",
+          credentialKind: "api-key-bearer",
+          scopeKind: "workspace",
+          capabilityScopes: ["model-inference"],
+          safeLabel: "Expiring remote key",
+          authorizedBy: "actor_case_owner",
+          authorizedAt: "2026-07-07T21:00:00.000Z",
+          expiresAt: "2026-07-07T22:00:00.000Z",
+          policyVersion: "agent-provider-auth.v1",
+          status: "linked"
+        })
+      ],
+      secretStore: store,
+      now: () => "2026-07-07T22:15:00.000Z"
+    });
+
+    expect(providerReadinessDtoSchema.parse(dto)).toEqual(dto);
+    expect(JSON.stringify(dto)).not.toMatch(/remote-provider-material|authorization:\s*bearer|password=|private key|secret=/i);
+    expect(dto.cards.find((card) => card.providerId === "provider_fake_expiring_remote")).toMatchObject({
+      state: "credential-expired"
+    });
+    expect(dto.diagnostics.find((diagnostic) => diagnostic.providerId === "provider_fake_expiring_remote"))
+      .toMatchObject({
+        category: "credential-expired",
+        credentialRefId: "agent_credref_api_expiring"
+      });
+  });
+
   it("reports harness workspace approval for harness-gated providers", async () => {
     const registry = createProviderRegistry();
     registry.register({
