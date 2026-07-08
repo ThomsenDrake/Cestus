@@ -9,6 +9,7 @@ export type { AppendableKnowledgeEvent } from "./contracts.js";
 
 export interface AppendOptions {
   expectedNextSequence?: number;
+  expectedGlobalEventCount?: number;
 }
 
 export interface EventLedger {
@@ -25,7 +26,14 @@ export class InMemoryEventLedger implements EventLedger {
   private readonly events: KnowledgeEvent[] = [];
 
   async append(event: AppendableKnowledgeEvent, options: AppendOptions = {}): Promise<KnowledgeEvent> {
+    const globalEventCount = this.events.length;
     const nextSequence = this.events.filter((stored) => stored.streamId === event.streamId).length + 1;
+
+    if (options.expectedGlobalEventCount !== undefined && options.expectedGlobalEventCount !== globalEventCount) {
+      throw new Error(
+        `Concurrency conflict for ${event.streamId}: expected global event count ${options.expectedGlobalEventCount}, current global event count ${globalEventCount}`
+      );
+    }
 
     if (options.expectedNextSequence !== undefined && options.expectedNextSequence !== nextSequence) {
       throw new Error(

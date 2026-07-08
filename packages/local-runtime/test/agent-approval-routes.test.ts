@@ -2,11 +2,17 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createAgentToolGateway } from "../../agent/src/index.js";
-import type { AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
+import {
+  createAgentRuntime,
+  createAgentToolGateway
+} from "../../agent/src/index.js";
+import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { InMemoryEventLedger, type AppendOptions, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
+import { handleAgentHttpRoute } from "../src/agent-http-routes.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
+import type { LocalRuntimeHandle } from "../src/runtime-factory.js";
 
 const handlers: LocalRuntimeHttpHandler[] = [];
 const tempDirs: string[] = [];
@@ -132,6 +138,29 @@ describe("agent approval routes", () => {
     expect(unsafe.body).not.toMatch(/hunter2|password/i);
   });
 
+  it("uses denial diagnostics for malformed deny JSON and object bodies", async () => {
+    const { handler } = await seededHandler("toolreq_provider_denial_diagnostics");
+    const malformedJson = await handler({
+      method: "POST",
+      url: "/api/agent/approvals/toolreq_provider_denial_diagnostics/deny",
+      body: "{"
+    });
+    const invalidObject = await handler({
+      method: "POST",
+      url: "/api/agent/approvals/toolreq_provider_denial_diagnostics/deny",
+      body: JSON.stringify({
+        approvedPreviewHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      })
+    });
+
+    expect(malformedJson.status).toBe(400);
+    expect(invalidObject.status).toBe(400);
+    expect(malformedJson.body).toContain("Agent denial body is invalid.");
+    expect(invalidObject.body).toContain("Agent denial body is invalid.");
+    expect(malformedJson.body).not.toContain("Agent approval body is invalid.");
+    expect(invalidObject.body).not.toContain("Agent approval body is invalid.");
+  });
+
   it("rejects locked provider byte-transfer approvals without appending approval events", async () => {
     const { config, handler, previewHash } = await seededHandler({
       toolRequestId: "toolreq_locked_provider_transfer",
@@ -193,6 +222,62 @@ describe("agent approval routes", () => {
     });
 
     expect(response.status).toBe(403);
+  });
+
+  it("rejects approval when a lock lands after the cockpit snapshot and before append", async () => {
+    const ledger = new InterleavingApprovalLedger();
+    const gateway = createAgentToolGateway({
+      ledger,
+      actor: { id: "actor_cestus_agent", kind: "agent", label: "Cestus Agent" },
+      now
+    });
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_interleaved_lock",
+      residentAgentId: "agent_default",
+      taskId: "task_provider_transfer",
+      runId: "run_provider_transfer",
+      toolId: "provider.bytes.transfer",
+      sideEffectClass: "external-byte-transfer",
+      requiredApprovalClass: "provider-byte-transfer",
+      preview: {
+        summary: "Send selected synthetic evidence excerpts to the configured provider.",
+        relatedEventIds: ["evt_provider_preview"],
+        artifactHashes: ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+        scope: "Selected synthetic evidence excerpts.",
+        estimatedEffect: "Provider byte transfer after human approval."
+      }
+    });
+    const config = resolveLocalRuntimeConfig({ cwd: mkdtempSync(join(tmpdir(), "cestus-agent-approval-routes-")), env: {} });
+    tempDirs.push(config.cwd);
+    const handle: LocalRuntimeHandle = {
+      runtime: {} as LocalRuntimeHandle["runtime"],
+      ledger,
+      config,
+      close() {}
+    };
+    const response = await handleAgentHttpRoute({
+      request: {
+        method: "POST",
+        url: "/api/agent/approvals/toolreq_interleaved_lock/approve",
+        body: JSON.stringify({
+          approvedPreviewHash: requested.payload.previewHash,
+          rationale: "Approved the exact synthetic provider byte-transfer preview."
+        })
+      },
+      handle,
+      actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
+      now,
+      agentRuntimeFactory: ({ handle, actor, now }) => createAgentRuntime({
+        ledger: handle.ledger,
+        actor,
+        now
+      })
+    });
+
+    expect(response?.status).toBe(409);
+    expect(response?.body).not.toMatch(/toolreq_interleaved_lock|lock_provider_byte_transfer/i);
+    const allEvents = await ledger.readAll();
+    expect(allEvents.map((event) => event.type)).toEqual(["agent.tool.requested", "agent.lock.activated"]);
   });
 });
 
@@ -293,4 +378,51 @@ async function readAllEvents(config: ReturnType<typeof resolveLocalRuntimeConfig
   } finally {
     ledger.close();
   }
+}
+
+class InterleavingApprovalLedger implements EventLedger {
+  private readonly ledger = new InMemoryEventLedger();
+
+  private didInterleave = false;
+
+  async append(event: AppendableKnowledgeEvent, options: AppendOptions = {}): Promise<KnowledgeEvent> {
+    if (event.type === "agent.tool.approved" && !this.didInterleave) {
+      this.didInterleave = true;
+      await this.ledger.append(approvalLockEvent(event.context.causationId ?? "evt_requested"));
+    }
+
+    return await this.ledger.append(event, options);
+  }
+
+  async readStream(streamId: string): Promise<KnowledgeEvent[]> {
+    return await this.ledger.readStream(streamId);
+  }
+
+  async readAll(): Promise<KnowledgeEvent[]> {
+    return await this.ledger.readAll();
+  }
+}
+
+function approvalLockEvent(causationId: string): AppendableKnowledgeEvent<"agent.lock.activated"> {
+  return {
+    type: "agent.lock.activated",
+    version: 1,
+    streamId: "agent_lock_lock_provider_byte_transfer",
+    context: {
+      actor: { id: "actor_policy_guard", kind: "system", label: "Policy Guard" },
+      occurredAt: now(),
+      correlationId: "corr_lock_provider_byte_transfer",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" },
+      causationId
+    },
+    payload: {
+      lockId: "lock_provider_byte_transfer",
+      residentAgentId: "agent_default",
+      kind: "provider-byte-transfer",
+      activatedBy: "actor_policy_guard",
+      reason: "Provider transfer locked pending review.",
+      relatedEventIds: [causationId]
+    }
+  };
 }

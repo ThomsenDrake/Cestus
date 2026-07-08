@@ -90,3 +90,35 @@ Base commit before task: `94e376c`
   - Passed: `tests passed`
   - Passed: Vite production build completed
   - Passed: `factory-readiness passed`
+
+## Re-review fix: atomic approval validity and deny diagnostics
+
+- Re-review base head: `623bdc8`
+- Added failing assertions first in:
+  - `packages/ontology/test/ledger-contract.test-helper.ts`
+  - `packages/local-runtime/test/agent-approval-routes.test.ts`
+- Verified RED with:
+  - `npm test -- packages/ontology/test/event-ledger.test.ts packages/ontology/test/sqlite-event-ledger.test.ts packages/local-runtime/test/agent-approval-routes.test.ts`
+  - Observed expected failures:
+    - both ledger implementations accepted stale `expectedGlobalEventCount` appends instead of rejecting with a concurrency conflict,
+    - malformed deny JSON returned the wrong diagnostic shape, and
+    - an interleaved `agent.lock.activated` event could still be followed by `agent.tool.approved`, returning `200` instead of safe `409`.
+- Implemented the scoped fix by:
+  - extending `AppendOptions` with `expectedGlobalEventCount` and enforcing it in both in-memory and SQLite ledgers before append,
+  - threading the optional global-count guard through `ApproveAgentToolInput` and `createAgentToolGateway().approveTool()`,
+  - binding the approve route preflight to one ledger snapshot by reading all events once, building the approval cockpit from that snapshot, and passing `snapshotEvents.length` into the approval append guard,
+  - mapping global concurrency conflicts to the existing safe blocked-approval `409`, and
+  - switching malformed deny JSON/object bodies to `invalidDenialBodyDiagnostic`.
+- Verified GREEN with:
+  - `npm test -- packages/ontology/test/event-ledger.test.ts packages/ontology/test/sqlite-event-ledger.test.ts packages/local-runtime/test/agent-approval-routes.test.ts`
+  - Passed: `Test Files  3 passed (3)`, `Tests  28 passed (28)`
+- Verified covering command:
+  - `npm test -- packages/ontology/test/event-ledger.test.ts packages/ontology/test/sqlite-event-ledger.test.ts packages/local-runtime/test/agent-approval-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/agent/test/approval-cockpit.test.ts`
+  - Passed: `Test Files  5 passed (5)`, `Tests  44 passed (44)`
+- Re-ran full gate:
+  - `npm run verify`
+  - Passed: `typecheck passed`
+  - Passed: `Test Files  132 passed (132)`, `Tests  1275 passed (1275)`
+  - Passed: `tests passed`
+  - Passed: Vite production build completed
+  - Passed: `factory-readiness passed`

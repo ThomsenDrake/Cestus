@@ -58,6 +58,7 @@ export interface ApproveAgentToolInput {
   readonly approvedPreviewHash: string;
   readonly actor: ActorRef;
   readonly rationale: string;
+  readonly expectedGlobalEventCount?: number;
 }
 
 export interface DenyAgentToolInput {
@@ -174,7 +175,12 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
           approvedAt: input.now()
         }
       };
-      return appendToolEvent(input.ledger, event, nextToolRequestAppendOptions(state));
+      return appendToolEvent(input.ledger, event, {
+        ...nextToolRequestAppendOptions(state),
+        ...(command.expectedGlobalEventCount === undefined
+          ? {}
+          : { expectedGlobalEventCount: command.expectedGlobalEventCount })
+      });
     },
 
     async denyTool(command: DenyAgentToolInput) {

@@ -46,7 +46,14 @@ export class SQLiteEventLedger implements EventLedger {
   }
 
   async append(event: AppendableKnowledgeEvent, options: AppendOptions = {}): Promise<KnowledgeEvent> {
+    const globalEventCount = this.globalEventCount();
     const nextSequence = this.nextSequence(event.streamId);
+
+    if (options.expectedGlobalEventCount !== undefined && options.expectedGlobalEventCount !== globalEventCount) {
+      throw new Error(
+        `Concurrency conflict for ${event.streamId}: expected global event count ${options.expectedGlobalEventCount}, current global event count ${globalEventCount}`
+      );
+    }
 
     if (options.expectedNextSequence !== undefined && options.expectedNextSequence !== nextSequence) {
       throw new Error(
@@ -127,6 +134,14 @@ export class SQLiteEventLedger implements EventLedger {
       .get(streamId) as { next_sequence: number | bigint } | undefined;
 
     return Number(row?.next_sequence ?? 1);
+  }
+
+  private globalEventCount(): number {
+    const row = this.db
+      .prepare("SELECT COUNT(*) AS event_count FROM ontology_events")
+      .get() as { event_count: number | bigint } | undefined;
+
+    return Number(row?.event_count ?? 0);
   }
 
   private eventFromRow(row: StoredEventRow): KnowledgeEvent {
