@@ -1,0 +1,535 @@
+import { createHash } from "node:crypto";
+import { z } from "zod";
+import { assertAgentSecretSafeText } from "./secret-safety.js";
+
+export type AgentContextPackJsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly AgentContextPackJsonValue[]
+  | { readonly [key: string]: AgentContextPackJsonValue };
+
+export interface ContextPackDescriptor {
+  readonly contextPackId: string;
+  readonly version: number;
+  readonly label: string;
+  readonly maxBytes: number;
+  readonly requiredProvenanceKinds: readonly string[];
+  readonly redactionPolicy: string;
+  readonly sourceProjection: string;
+}
+
+export interface ContextPackRef {
+  readonly contextPackId: string;
+  readonly version: number;
+  readonly contentHash: string;
+  readonly sizeBytes: number;
+  readonly generatedAt: string;
+  readonly safeSummary: string;
+  readonly provenanceRefs: readonly string[];
+  readonly projectionHighWaterMark?: number;
+}
+
+export interface BuildContextPackRefInput {
+  readonly contextPackId: string;
+  readonly version: number;
+  readonly generatedAt: string;
+  readonly payload: unknown;
+  readonly safeSummary: string;
+  readonly provenanceRefs: readonly string[];
+  readonly projectionHighWaterMark?: number;
+}
+
+export type ContextPackBuilderResult = ContextPackRef | BuildContextPackRefInput;
+
+export interface ContextPackBuilder {
+  readonly descriptor: ContextPackDescriptor;
+  build(): ContextPackBuilderResult | Promise<ContextPackBuilderResult>;
+}
+
+export interface ContextPackRegistrySnapshot {
+  readonly contextPackIds: readonly string[];
+  readonly descriptors: readonly ContextPackDescriptor[];
+}
+
+export interface ContextPackRegistry {
+  register(builder: ContextPackBuilder): void;
+  build(contextPackId: string): Promise<ContextPackRef>;
+  getDescriptor(contextPackId: string): ContextPackDescriptor | undefined;
+  listDescriptors(): readonly ContextPackDescriptor[];
+  snapshot(): ContextPackRegistrySnapshot;
+}
+
+const contentHashPattern = /^sha256:[a-f0-9]{64}$/;
+const contextPackIdPattern = /^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)*\.v[1-9][0-9]*$/;
+const contextPackVersionSuffixPattern = /\.v([1-9][0-9]*)$/;
+const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
+const evidenceIdPattern = /^ev_[a-zA-Z0-9_-]+$/;
+const contentHashSchema = z.string().regex(contentHashPattern);
+const contextPackIdSchema = z.string()
+  .regex(contextPackIdPattern)
+  .superRefine((value, ctx) => addSecretSafeIssue(value, "contextPackId", ctx));
+const agentSecretSafeTextSchema = (label: string) => z.string().min(1)
+  .superRefine((value, ctx) => addSecretSafeIssue(value, label, ctx));
+const provenanceRefsSchema = z.array(agentSecretSafeTextSchema("provenanceRef"))
+  .min(1, { message: "provenanceRefs must not be empty" });
+const builtContextPackRefs = new WeakSet<object>();
+
+const contextPackDescriptorObjectSchema = z.object({
+  contextPackId: contextPackIdSchema,
+  version: z.number().int().positive(),
+  label: agentSecretSafeTextSchema("label"),
+  maxBytes: z.number().int().positive(),
+  requiredProvenanceKinds: z.array(agentSecretSafeTextSchema("requiredProvenanceKind")).min(1),
+  redactionPolicy: agentSecretSafeTextSchema("redactionPolicy"),
+  sourceProjection: agentSecretSafeTextSchema("sourceProjection")
+}).strict().superRefine((value, ctx) => addContextPackVersionMatchIssue(value, ctx));
+
+const contextPackRefObjectSchema = z.object({
+  contextPackId: contextPackIdSchema,
+  version: z.number().int().positive(),
+  contentHash: contentHashSchema,
+  sizeBytes: z.number().int().nonnegative(),
+  generatedAt: z.string().datetime(),
+  safeSummary: agentSecretSafeTextSchema("safeSummary"),
+  provenanceRefs: provenanceRefsSchema,
+  projectionHighWaterMark: z.number().int().nonnegative().optional()
+}).strict().superRefine((value, ctx) => addContextPackVersionMatchIssue(value, ctx));
+
+const buildContextPackRefInputObjectSchema = z.object({
+  contextPackId: contextPackIdSchema,
+  version: z.number().int().positive(),
+  generatedAt: z.string().datetime(),
+  payload: z.custom<AgentContextPackJsonValue>((value) => value !== undefined, { message: "payload is required" }),
+  safeSummary: agentSecretSafeTextSchema("safeSummary"),
+  provenanceRefs: provenanceRefsSchema,
+  projectionHighWaterMark: z.number().int().nonnegative().optional()
+}).strict().superRefine((value, ctx) => addContextPackVersionMatchIssue(value, ctx));
+
+export const contextPackDescriptorSchema = z.unknown()
+  .transform((value, ctx): ContextPackDescriptor => {
+    const descriptor = parseNormalizedDto(value, contextPackDescriptorObjectSchema, "$", ctx);
+    if (descriptor === z.NEVER) {
+      return z.NEVER;
+    }
+
+    return freezeContextPackDescriptor(descriptor);
+  });
+
+export const contextPackRefSchema = z.unknown()
+  .transform((value, ctx): ContextPackRef => {
+    const ref = parseNormalizedDto(value, contextPackRefObjectSchema, "$", ctx);
+    if (ref === z.NEVER) {
+      return z.NEVER;
+    }
+
+    return freezeContextPackRef(ref);
+  });
+
+export function hashAgentContextPack(value: unknown): string {
+  return hashStableJson(stableJsonForAgentContextPack(value));
+}
+
+export function buildContextPackRef(input: BuildContextPackRefInput): ContextPackRef {
+  const parsed = parseNormalizedDtoOrThrow(input, buildContextPackRefInputObjectSchema, "$");
+  const payloadJson = stringifyJsonDtoValue(parsed.payload);
+  const contentHash = hashStableJson(payloadJson);
+  const ref = {
+    contextPackId: parsed.contextPackId,
+    version: parsed.version,
+    contentHash,
+    sizeBytes: Buffer.byteLength(payloadJson, "utf8"),
+    generatedAt: parsed.generatedAt,
+    safeSummary: parsed.safeSummary,
+    provenanceRefs: parsed.provenanceRefs,
+    ...(parsed.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: parsed.projectionHighWaterMark })
+  };
+
+  const parsedRef = contextPackRefSchema.parse(ref);
+  builtContextPackRefs.add(parsedRef);
+
+  return parsedRef;
+}
+
+export function createContextPackRegistry(): ContextPackRegistry {
+  const builders = new Map<string, {
+    readonly descriptor: ContextPackDescriptor;
+    readonly build: () => ContextPackBuilderResult | Promise<ContextPackBuilderResult>;
+  }>();
+
+  return Object.freeze({
+    register(builder: ContextPackBuilder): void {
+      const descriptorInput = builder.descriptor;
+      const duplicateContextPackId = extractContextPackIdForDuplicateCheck(descriptorInput);
+      if (duplicateContextPackId !== undefined && builders.has(duplicateContextPackId)) {
+        throw new Error(`Context pack ${duplicateContextPackId} is already registered`);
+      }
+
+      const descriptor = contextPackDescriptorSchema.parse(descriptorInput);
+      if (builders.has(descriptor.contextPackId)) {
+        throw new Error(`Context pack ${descriptor.contextPackId} is already registered`);
+      }
+      const build = builder.build.bind(builder);
+      builders.set(descriptor.contextPackId, Object.freeze({
+        descriptor,
+        build
+      }));
+    },
+
+    async build(contextPackId: string): Promise<ContextPackRef> {
+      assertSafeContextPackLookupId(contextPackId);
+      const builder = builders.get(contextPackId);
+      if (builder === undefined) {
+        throw new Error(`Context pack ${contextPackId} is not registered`);
+      }
+
+      const ref = normalizeContextPackBuilderResult(await builder.build());
+      if (ref.contextPackId !== builder.descriptor.contextPackId) {
+        throw new Error(`Context pack ${contextPackId} builder returned ref for ${ref.contextPackId}`);
+      }
+      if (ref.version !== builder.descriptor.version) {
+        throw new Error(`Context pack ${contextPackId} builder returned version ${ref.version}`);
+      }
+      if (ref.provenanceRefs.length === 0) {
+        throw new Error(`Context pack ${contextPackId} returned no provenanceRefs`);
+      }
+      if (ref.sizeBytes > builder.descriptor.maxBytes) {
+        throw new Error(`Context pack ${contextPackId} exceeds maxBytes ${builder.descriptor.maxBytes}: ${ref.sizeBytes} bytes`);
+      }
+      assertRequiredProvenanceKinds(contextPackId, builder.descriptor, ref);
+
+      return ref;
+    },
+
+    getDescriptor(contextPackId: string): ContextPackDescriptor | undefined {
+      assertSafeContextPackLookupId(contextPackId);
+      return builders.get(contextPackId)?.descriptor;
+    },
+
+    listDescriptors(): readonly ContextPackDescriptor[] {
+      return Object.freeze([...builders.values()].map((builder) => builder.descriptor));
+    },
+
+    snapshot(): ContextPackRegistrySnapshot {
+      const descriptors = Object.freeze([...builders.values()].map((builder) => builder.descriptor));
+      const contextPackIds = Object.freeze(descriptors.map((descriptor) => descriptor.contextPackId));
+
+      return Object.freeze({
+        contextPackIds,
+        descriptors
+      });
+    }
+  });
+}
+
+function extractContextPackIdForDuplicateCheck(descriptor: unknown): string | undefined {
+  if (typeof descriptor !== "object" || descriptor === null) {
+    return undefined;
+  }
+
+  const contextPackIdDescriptor = Object.getOwnPropertyDescriptor(descriptor, "contextPackId");
+  if (
+    contextPackIdDescriptor === undefined ||
+    !contextPackIdDescriptor.enumerable ||
+    !("value" in contextPackIdDescriptor) ||
+    typeof contextPackIdDescriptor.value !== "string"
+  ) {
+    return undefined;
+  }
+
+  return contextPackIdDescriptor.value;
+}
+
+function normalizeContextPackBuilderResult(result: ContextPackBuilderResult): ContextPackRef {
+  if (isBuiltContextPackRef(result)) {
+    return result;
+  }
+
+  if (looksLikeUntrustedContextPackRef(result)) {
+    throw new Error("Context pack builder returned an untrusted context pack ref; use buildContextPackRef(...) or return raw build input");
+  }
+
+  return buildContextPackRef(result);
+}
+
+function isBuiltContextPackRef(value: unknown): value is ContextPackRef {
+  return typeof value === "object" && value !== null && builtContextPackRefs.has(value);
+}
+
+function looksLikeUntrustedContextPackRef(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  return Object.getOwnPropertyDescriptor(value, "contentHash") !== undefined ||
+    Object.getOwnPropertyDescriptor(value, "sizeBytes") !== undefined;
+}
+
+function assertSafeContextPackLookupId(contextPackId: unknown): asserts contextPackId is string {
+  if (typeof contextPackId !== "string") {
+    throw new Error("contextPackId must be a string");
+  }
+  assertAgentSecretSafeText(contextPackId, "contextPackId");
+  if (!contextPackIdPattern.test(contextPackId)) {
+    throw new Error("contextPackId must be a valid context pack ID");
+  }
+}
+
+function addContextPackVersionMatchIssue(
+  value: { readonly contextPackId: string; readonly version: number },
+  ctx: z.RefinementCtx
+): void {
+  const suffixVersion = contextPackVersionFromId(value.contextPackId);
+  if (suffixVersion !== undefined && suffixVersion !== value.version) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["version"],
+      message: "contextPackId version suffix must match version"
+    });
+  }
+}
+
+function contextPackVersionFromId(contextPackId: string): number | undefined {
+  const match = contextPackVersionSuffixPattern.exec(contextPackId);
+  if (match?.[1] === undefined) {
+    return undefined;
+  }
+
+  return Number(match[1]);
+}
+
+function assertRequiredProvenanceKinds(
+  contextPackId: string,
+  descriptor: ContextPackDescriptor,
+  ref: ContextPackRef
+): void {
+  for (const kind of descriptor.requiredProvenanceKinds) {
+    if (!ref.provenanceRefs.some((provenanceRef) => satisfiesRequiredProvenanceKind(kind, provenanceRef))) {
+      throw new Error(`Context pack ${contextPackId} is missing required provenance kind ${kind}`);
+    }
+  }
+}
+
+function satisfiesRequiredProvenanceKind(kind: string, provenanceRef: string): boolean {
+  switch (kind) {
+    case "event-id":
+      return eventIdPattern.test(provenanceRef);
+    case "content-hash":
+    case "artifact-hash":
+      return contentHashPattern.test(provenanceRef);
+    case "evidence-id":
+      return evidenceIdPattern.test(provenanceRef);
+    default:
+      return provenanceRef.startsWith(`${kind}:`) && provenanceRef.length > kind.length + 1;
+  }
+}
+
+function stableJsonForAgentContextPack(value: unknown): string {
+  return stringifyJsonDtoValue(normalizeJsonDtoValue(value, "$"));
+}
+
+function stringifyJsonDtoValue(value: AgentContextPackJsonValue): string {
+  const json = JSON.stringify(value);
+  if (json === undefined) {
+    throw new Error("$ must be JSON DTO-safe");
+  }
+
+  return json;
+}
+
+function hashStableJson(json: string): string {
+  const digest = createHash("sha256").update(json).digest("hex");
+
+  return `sha256:${digest}`;
+}
+
+function addSecretSafeIssue(value: string, label: string, ctx: z.RefinementCtx): void {
+  try {
+    assertAgentSecretSafeText(value, label);
+  } catch (error) {
+    ctx.addIssue({
+      code: "custom",
+      message: error instanceof Error ? error.message : `${label} must be secret-safe`
+    });
+  }
+}
+
+function parseNormalizedDto<T>(
+  value: unknown,
+  schema: z.ZodType<T>,
+  path: string,
+  ctx: z.RefinementCtx
+): T | typeof z.NEVER {
+  let normalized: AgentContextPackJsonValue;
+  try {
+    normalized = normalizeJsonDtoValue(value, path);
+  } catch (error) {
+    ctx.addIssue({
+      code: "custom",
+      message: error instanceof Error ? error.message : `${path} must be JSON DTO-safe`
+    });
+    return z.NEVER;
+  }
+
+  const result = schema.safeParse(normalized);
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      ctx.addIssue({
+        code: "custom",
+        path: issue.path,
+        message: issue.message
+      });
+    }
+    return z.NEVER;
+  }
+
+  return result.data;
+}
+
+function parseNormalizedDtoOrThrow<T>(value: unknown, schema: z.ZodType<T>, path: string): T {
+  return schema.parse(normalizeJsonDtoValue(value, path));
+}
+
+function normalizeJsonDtoValue(value: unknown, path: string): AgentContextPackJsonValue {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    assertAgentSecretSafeText(value, path);
+    return value;
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new Error(`${path} must be JSON DTO-safe`);
+    }
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return normalizeJsonDtoArray(value, path);
+  }
+
+  if (typeof value === "object") {
+    return normalizeJsonDtoObject(value, path);
+  }
+
+  throw new Error(`${path} must be JSON DTO-safe`);
+}
+
+function normalizeJsonDtoArray(value: readonly unknown[], path: string): AgentContextPackJsonValue {
+  if (Object.getPrototypeOf(value) !== Array.prototype) {
+    throw new Error(`${path} must be JSON DTO-safe`);
+  }
+
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${path} must be JSON DTO-safe`);
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const indexedDescriptors: Array<{
+    readonly index: number;
+    readonly descriptor: PropertyDescriptor;
+  }> = [];
+
+  for (const key of Object.keys(descriptors)) {
+    if (key === "length") {
+      continue;
+    }
+
+    if (!isCanonicalArrayIndexKey(key)) {
+      throw new Error(`${path} must be JSON DTO-safe`);
+    }
+
+    const descriptor = descriptors[key];
+    if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) {
+      throw new Error(`${path} must be JSON DTO-safe`);
+    }
+
+    indexedDescriptors.push({
+      index: Number(key),
+      descriptor
+    });
+  }
+
+  indexedDescriptors.sort((left, right) => left.index - right.index);
+  if (indexedDescriptors.length !== value.length) {
+    throw new Error(`${path} must be JSON DTO-safe`);
+  }
+
+  return indexedDescriptors.map(({ index, descriptor }) => {
+    if (index >= value.length) {
+      throw new Error(`${path} must be JSON DTO-safe`);
+    }
+    return normalizeJsonDtoValue(descriptor.value, `${path}[${index}]`);
+  });
+}
+
+function normalizeJsonDtoObject(value: object, path: string): AgentContextPackJsonValue {
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new Error(`${path} must be JSON DTO-safe`);
+  }
+
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${path} must be JSON DTO-safe`);
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const normalized = Object.create(null) as Record<string, AgentContextPackJsonValue>;
+
+  for (const key of Object.keys(descriptors).sort()) {
+    const descriptor = descriptors[key];
+    if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) {
+      throw new Error(`${path} must be JSON DTO-safe`);
+    }
+
+    assertAgentSecretSafeText(key, `${path} key`);
+    normalized[key] = normalizeJsonDtoValue(descriptor.value, `${path}.${key}`);
+  }
+
+  return normalized;
+}
+
+function isCanonicalArrayIndexKey(key: string): boolean {
+  if (!/^(0|[1-9][0-9]*)$/.test(key)) {
+    return false;
+  }
+
+  const index = Number(key);
+  return Number.isInteger(index) && index >= 0 && index < 2 ** 32 - 1;
+}
+
+function freezeContextPackDescriptor(descriptor: z.infer<typeof contextPackDescriptorObjectSchema>): ContextPackDescriptor {
+  return Object.freeze({
+    ...descriptor,
+    requiredProvenanceKinds: Object.freeze([...descriptor.requiredProvenanceKinds])
+  });
+}
+
+function freezeContextPackRef(ref: z.infer<typeof contextPackRefObjectSchema>): ContextPackRef {
+  const frozenRef = {
+    contextPackId: ref.contextPackId,
+    version: ref.version,
+    contentHash: ref.contentHash,
+    sizeBytes: ref.sizeBytes,
+    generatedAt: ref.generatedAt,
+    safeSummary: ref.safeSummary,
+    provenanceRefs: Object.freeze([...ref.provenanceRefs])
+  };
+
+  if (ref.projectionHighWaterMark !== undefined) {
+    return Object.freeze({
+      ...frozenRef,
+      projectionHighWaterMark: ref.projectionHighWaterMark
+    });
+  }
+
+  return Object.freeze(frozenRef);
+}

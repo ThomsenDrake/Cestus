@@ -219,6 +219,193 @@ describe("agent tool gateway", () => {
     ]);
   });
 
+  it("rejects forged human approval from the resident agent identity", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_forged_resident_human",
+      residentAgentId: "agent_default",
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolId: "provider.parse.preview",
+      sideEffectClass: "external-byte-transfer",
+      preview: {
+        summary: "Send provider byte transfer preview.",
+        relatedEventIds: ["evt_import_001"]
+      },
+      requiredApprovalClass: "provider-byte-transfer"
+    });
+
+    await expect(
+      gateway.approveTool({
+        toolRequestId: "toolreq_forged_resident_human",
+        approvedPreviewHash: requested.payload.previewHash,
+        actor: { id: "agent_default", kind: "human" as const, label: "Forged Human Agent" },
+        rationale: "Forged resident approval."
+      })
+    ).rejects.toThrow(/independent human/i);
+
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
+  });
+
+  it("rejects forged human approval from the gateway actor identity", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_forged_gateway_actor",
+      residentAgentId: "agent_default",
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolId: "provider.parse.preview",
+      sideEffectClass: "external-byte-transfer",
+      preview: {
+        summary: "Send provider byte transfer preview.",
+        relatedEventIds: ["evt_import_001"]
+      },
+      requiredApprovalClass: "provider-byte-transfer"
+    });
+
+    await expect(
+      gateway.approveTool({
+        toolRequestId: "toolreq_forged_gateway_actor",
+        approvedPreviewHash: requested.payload.previewHash,
+        actor: { id: agentActor.id, kind: "human" as const, label: "Forged Runtime Human" },
+        rationale: "Forged runtime approval."
+      })
+    ).rejects.toThrow(/independent human/i);
+
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
+  });
+
+  it("rejects directly appended forged resident approvals at completion time", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_forged_direct_resident",
+      residentAgentId: "agent_default",
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolId: "provider.parse.preview",
+      sideEffectClass: "external-byte-transfer",
+      preview: {
+        summary: "Send provider byte transfer preview.",
+        relatedEventIds: ["evt_import_001"]
+      },
+      requiredApprovalClass: "provider-byte-transfer"
+    });
+
+    await ledger.append({
+      type: "agent.tool.approved",
+      version: 1,
+      streamId: "agent_tool_request_toolreq_forged_direct_resident",
+      context: {
+        actor: { id: "agent_default", kind: "human", label: "Forged Human Agent" },
+        occurredAt: fixedNow(),
+        causationId: requested.id,
+        correlationId: "corr_toolreq_forged_direct_resident",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId: "toolreq_forged_direct_resident",
+        approvedBy: "agent_default",
+        approvedPreviewHash: requested.payload.previewHash,
+        approvalClass: requested.payload.requiredApprovalClass,
+        rationale: "Forged resident approval.",
+        approvedAt: fixedNow()
+      }
+    });
+
+    const error = await captureError(() =>
+      gateway.completeTool({
+        toolRequestId: "toolreq_forged_direct_resident",
+        approvedPreviewHash: requested.payload.previewHash,
+        result: {
+          eventIds: [],
+          artifactHashes: [],
+          readModelChanges: [{ projectionName: "agent-tool-requests", change: "Should not complete." }],
+          resultSummary: "Should not complete."
+        }
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/approval/i);
+    expect((error as Error).message).not.toContain("agent_default");
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved"
+    ]);
+  });
+
+  it.each([
+    ["missing", {}],
+    ["wrong", { causationId: "evt_wrong_tool_request" }]
+  ] as const)("rejects directly appended human approvals with %s request causation", async (_label, contextCausation) => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: `toolreq_direct_human_${_label}_causation`,
+      residentAgentId: "agent_default",
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolId: "provider.parse.preview",
+      sideEffectClass: "external-byte-transfer",
+      preview: {
+        summary: "Send provider byte transfer preview.",
+        relatedEventIds: ["evt_import_001"]
+      },
+      requiredApprovalClass: "provider-byte-transfer"
+    });
+
+    const approval: AppendableKnowledgeEvent<"agent.tool.approved"> = {
+      type: "agent.tool.approved",
+      version: 1,
+      streamId: `agent_tool_request_toolreq_direct_human_${_label}_causation`,
+      context: {
+        actor: humanActor,
+        occurredAt: fixedNow(),
+        ...contextCausation,
+        correlationId: `corr_toolreq_direct_human_${_label}_causation`,
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId: `toolreq_direct_human_${_label}_causation`,
+        approvedBy: humanActor.id,
+        approvedPreviewHash: requested.payload.previewHash,
+        approvalClass: requested.payload.requiredApprovalClass,
+        rationale: "Human-looking approval was appended outside the gateway.",
+        approvedAt: fixedNow()
+      }
+    };
+    await ledger.append(approval);
+
+    const error = await captureError(() =>
+      gateway.completeTool({
+        toolRequestId: `toolreq_direct_human_${_label}_causation`,
+        approvedPreviewHash: requested.payload.previewHash,
+        result: {
+          eventIds: [],
+          artifactHashes: [],
+          readModelChanges: [{ projectionName: "agent-tool-requests", change: "Should not complete." }],
+          resultSummary: "Should not complete."
+        }
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/approval/i);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved"
+    ]);
+  });
+
   it("rejects completion when denial is appended between state read and append", async () => {
     const inner = new InMemoryEventLedger();
     const ledger = new InterleavingLedger(inner, "agent.tool.denied");
@@ -319,6 +506,259 @@ describe("agent tool gateway", () => {
     expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested", "agent.tool.completed"]);
   });
 
+  it("rejects forged approval causation on no-approval requests", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_projection_forged_none",
+      residentAgentId: "agent_default",
+      taskId: "task_projection",
+      runId: "run_projection",
+      toolId: "projection.read",
+      sideEffectClass: "read-only",
+      preview: { summary: "Read local projection status.", relatedEventIds: ["evt_projection_check"] }
+    });
+
+    await ledger.append({
+      type: "agent.tool.approved",
+      version: 1,
+      streamId: "agent_tool_request_toolreq_projection_forged_none",
+      context: {
+        actor: humanActor,
+        occurredAt: fixedNow(),
+        causationId: requested.id,
+        correlationId: "corr_toolreq_projection_forged_none",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId: "toolreq_projection_forged_none",
+        approvedBy: humanActor.id,
+        approvedPreviewHash: requested.payload.previewHash,
+        approvalClass: "none",
+        rationale: "Forged approval for an ungated read.",
+        approvedAt: fixedNow()
+      }
+    });
+
+    await expect(
+      gateway.completeTool({
+        toolRequestId: "toolreq_projection_forged_none",
+        result: {
+          eventIds: [],
+          artifactHashes: [],
+          readModelChanges: [{ projectionName: "agent-tool-requests", change: "Should not complete." }],
+          resultSummary: "Should not complete."
+        }
+      })
+    ).rejects.toThrow(/approval/i);
+
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved"
+    ]);
+  });
+
+  it("rejects secret-shaped completion event IDs without appending lifecycle events", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+    const badEventId = "evt_sk_live_value";
+
+    await gateway.requestTool({
+      toolRequestId: "toolreq_projection_bad_result",
+      residentAgentId: "agent_default",
+      taskId: "task_projection",
+      runId: "run_projection",
+      toolId: "projection.read",
+      sideEffectClass: "read-only",
+      preview: { summary: "Read local projection status.", relatedEventIds: ["evt_projection_check"] }
+    });
+
+    const error = await captureError(() =>
+      gateway.completeTool({
+        toolRequestId: "toolreq_projection_bad_result",
+        result: {
+          eventIds: [badEventId],
+          artifactHashes: [],
+          readModelChanges: [],
+          resultSummary: "Read-only projection check completed."
+        }
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/event id/i);
+    expect((error as Error).message).not.toContain(badEventId);
+    expect((error as Error).message).not.toMatch(/sk[_-]live/i);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
+  });
+
+  it("keeps ordinary preview and result DTO keys valid", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    await gateway.requestTool({
+      toolRequestId: "toolreq_preview_domain_fields",
+      residentAgentId: "agent_default",
+      taskId: "task_projection",
+      runId: "run_projection",
+      toolId: "projection.read",
+      sideEffectClass: "read-only",
+      preview: {
+        summary: "Read local projection status.",
+        relatedEventIds: ["evt_projection_check"],
+        artifactHashes: ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+        affectedRefs: ["ev_contract_001"],
+        scope: "Projection readiness scope.",
+        estimatedEffect: "Projection read has no external effect."
+      }
+    });
+
+    const completed = await gateway.completeTool({
+      toolRequestId: "toolreq_preview_domain_fields",
+      result: {
+        eventIds: ["evt_projection_result"],
+        artifactHashes: ["sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"],
+        readModelChanges: [{
+          projectionName: "agent-tool-requests",
+          change: "Recorded projection read.",
+          relatedIds: ["projection-agent-tool-requests"]
+        }],
+        resultSummary: "Projection read completed."
+      }
+    });
+
+    expect(completed.type).toBe("agent.tool.completed");
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested", "agent.tool.completed"]);
+  });
+
+  it.each([
+    ["api_key", "a"],
+    ["authorization", "b"]
+  ] as const)(
+    "rejects secret-shaped preview key %s without appending request events",
+    async (secretKey, idSuffix) => {
+      const ledger = new InMemoryEventLedger();
+      const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+      const secretValue = "redacted";
+
+      const error = await captureError(() =>
+        gateway.requestTool({
+          toolRequestId: `toolreq_preview_field_${idSuffix}`,
+          residentAgentId: "agent_default",
+          taskId: "task_projection",
+          runId: "run_projection",
+          toolId: "projection.read",
+          sideEffectClass: "read-only",
+          preview: {
+            summary: "Read local projection status.",
+            [secretKey]: secretValue
+          }
+        })
+      );
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toMatch(/secret-safe/i);
+      expect((error as Error).message).not.toContain(secretKey);
+      expect((error as Error).message).not.toContain(secretValue);
+      expect(await ledger.readAll()).toEqual([]);
+    }
+  );
+
+  it("rejects preview accessors without invoking getters", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+    let getterCalls = 0;
+    const preview = {
+      summary: "Read local projection status."
+    } as { summary: string; unsafe?: string };
+    Object.defineProperty(preview, "unsafe", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return "api key sk-live-value";
+      }
+    });
+
+    const error = await captureError(() =>
+      gateway.requestTool({
+        toolRequestId: "toolreq_accessor_preview",
+        residentAgentId: "agent_default",
+        taskId: "task_projection",
+        runId: "run_projection",
+        toolId: "projection.read",
+        sideEffectClass: "read-only",
+        preview
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/preview/i);
+    expect(getterCalls).toBe(0);
+    expect(await ledger.readAll()).toEqual([]);
+  });
+
+  it("rejects symbol-keyed preview metadata", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+    const metadata = Symbol("metadata");
+    const preview = {
+      summary: "Read local projection status.",
+      [metadata]: "hidden metadata"
+    } as AgentPreviewWithSymbol;
+
+    const error = await captureError(() =>
+      gateway.requestTool({
+        toolRequestId: "toolreq_symbol_preview",
+        residentAgentId: "agent_default",
+        taskId: "task_projection",
+        runId: "run_projection",
+        toolId: "projection.read",
+        sideEffectClass: "read-only",
+        preview
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/preview/i);
+    expect(await ledger.readAll()).toEqual([]);
+  });
+
+  it("rejects __proto__ preview keys without appending or echoing unsafe data", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+    const preview = {
+      summary: "Read local projection status."
+    } as { summary: string; "__proto__"?: unknown };
+    Object.defineProperty(preview, "__proto__", {
+      enumerable: true,
+      value: {
+        relatedEventIds: ["evt_proto_hidden"],
+        scope: "Prototype-bound scope should never emit."
+      }
+    });
+
+    const error = await captureError(() =>
+      gateway.requestTool({
+        toolRequestId: "toolreq_proto_preview",
+        residentAgentId: "agent_default",
+        taskId: "task_projection",
+        runId: "run_projection",
+        toolId: "projection.read",
+        sideEffectClass: "read-only",
+        preview
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/preview/i);
+    expect((error as Error).message).not.toContain("__proto__");
+    expect((error as Error).message).not.toContain("evt_proto_hidden");
+    expect((error as Error).message).not.toContain("Prototype-bound scope");
+    expect(await ledger.readAll()).toEqual([]);
+  });
+
   it("records secret-safe failures and blocks failed request completion", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
@@ -357,6 +797,114 @@ describe("agent tool gateway", () => {
         result: { eventIds: [], artifactHashes: [], readModelChanges: [] }
       })
     ).rejects.toThrow(/failed/i);
+  });
+
+  it("does not let denial or failure overwrite terminal request state", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    await gateway.requestTool({
+      toolRequestId: "toolreq_terminal_denied",
+      residentAgentId: "agent_default",
+      taskId: "task_projection",
+      runId: "run_projection",
+      toolId: "projection.read",
+      sideEffectClass: "read-only",
+      preview: { summary: "Read local projection status.", relatedEventIds: ["evt_projection_check"] }
+    });
+    await gateway.denyTool({
+      toolRequestId: "toolreq_terminal_denied",
+      actor: policyActor,
+      rationale: "Policy denied the read."
+    });
+    await expect(
+      gateway.denyTool({
+        toolRequestId: "toolreq_terminal_denied",
+        actor: policyActor,
+        rationale: "Second denial should not append."
+      })
+    ).rejects.toThrow(/denied/i);
+    await expect(
+      gateway.failTool({
+        toolRequestId: "toolreq_terminal_denied",
+        category: "projection-lag",
+        message: "Failure should not overwrite denial.",
+        retryable: false,
+        allowedActions: ["open a fresh request"]
+      })
+    ).rejects.toThrow(/denied/i);
+
+    await gateway.requestTool({
+      toolRequestId: "toolreq_terminal_failed",
+      residentAgentId: "agent_default",
+      taskId: "task_projection",
+      runId: "run_projection",
+      toolId: "projection.read",
+      sideEffectClass: "read-only",
+      preview: { summary: "Read local projection status.", relatedEventIds: ["evt_projection_check"] }
+    });
+    await gateway.failTool({
+      toolRequestId: "toolreq_terminal_failed",
+      category: "projection-lag",
+      message: "Local projection is stale.",
+      retryable: true,
+      allowedActions: ["rebuild the stale projection before retrying"]
+    });
+    await expect(
+      gateway.denyTool({
+        toolRequestId: "toolreq_terminal_failed",
+        actor: policyActor,
+        rationale: "Denial should not overwrite failure."
+      })
+    ).rejects.toThrow(/failed/i);
+    await expect(
+      gateway.failTool({
+        toolRequestId: "toolreq_terminal_failed",
+        category: "projection-lag",
+        message: "Second failure should not append.",
+        retryable: false,
+        allowedActions: ["open a fresh request"]
+      })
+    ).rejects.toThrow(/failed/i);
+
+    await gateway.requestTool({
+      toolRequestId: "toolreq_terminal_completed",
+      residentAgentId: "agent_default",
+      taskId: "task_projection",
+      runId: "run_projection",
+      toolId: "projection.read",
+      sideEffectClass: "read-only",
+      preview: { summary: "Read local projection status.", relatedEventIds: ["evt_projection_check"] }
+    });
+    await gateway.completeTool({
+      toolRequestId: "toolreq_terminal_completed",
+      result: { eventIds: [], artifactHashes: [], readModelChanges: [] }
+    });
+    await expect(
+      gateway.denyTool({
+        toolRequestId: "toolreq_terminal_completed",
+        actor: policyActor,
+        rationale: "Denial should not overwrite completion."
+      })
+    ).rejects.toThrow(/completed/i);
+    await expect(
+      gateway.failTool({
+        toolRequestId: "toolreq_terminal_completed",
+        category: "projection-lag",
+        message: "Failure should not overwrite completion.",
+        retryable: false,
+        allowedActions: ["open a fresh request"]
+      })
+    ).rejects.toThrow(/completed/i);
+
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.denied",
+      "agent.tool.requested",
+      "agent.tool.failed",
+      "agent.tool.requested",
+      "agent.tool.completed"
+    ]);
   });
 
   it("hashes previews with stable key ordering", async () => {
@@ -419,6 +967,11 @@ describe("agent tool gateway", () => {
     expect(second.payload.previewHash).toBe(first.payload.previewHash);
   });
 });
+
+type AgentPreviewWithSymbol = {
+  readonly summary: string;
+  readonly [key: symbol]: string;
+};
 
 type InterleavedLifecycleEventType = "agent.tool.denied" | "agent.tool.failed";
 
