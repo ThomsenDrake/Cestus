@@ -6,7 +6,7 @@ Worker: Codex GPT-5
 Branch: `codex/resident-agent-approval-cockpit-plan`
 Worktree: `/home/drake/.codex/worktrees/b782/Cestus`
 Claimed-at: 2026-07-08T22:15:00Z
-Status: claimed
+Status: in-progress
 
 Owned files:
 - `packages/agent/src/approval-cockpit.ts`
