@@ -65,3 +65,28 @@ Base commit before task: `94e376c`
   - Passed: `tests passed`
   - Passed: Vite production build completed
   - Passed: `factory-readiness passed`
+
+## Review fix: blocked approvals rejected before append
+
+- Review-fix base head: `7ebdb06`
+- Added failing assertions in `packages/local-runtime/test/agent-approval-routes.test.ts` proving:
+  - locked `provider-byte-transfer` approvals return `409` and append no `agent.tool.approved` event, and
+  - missing-provenance blocked approvals return `409` and append no `agent.tool.approved` event.
+- Verified RED with:
+  - `npm test -- packages/local-runtime/test/agent-approval-routes.test.ts`
+  - Observed expected failure: both blocked approval requests still returned `200`, showing the route approved blocked requests when the preview hash matched.
+- Updated `packages/local-runtime/src/agent-http-routes.ts` to:
+  - load the current approval cockpit before calling `gateway.approveTool(...)`,
+  - look up the selected approval item,
+  - reject approval with safe `409` diagnostics when the item is missing from the approvable pending bucket, has `staleness.approvable === false`, has blocking reasons, or is otherwise non-pending/terminal, and
+  - preserve append-only decision behavior for valid approvals and existing denial behavior.
+- Verified GREEN with:
+  - `npm test -- packages/local-runtime/test/agent-approval-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/agent/test/approval-cockpit.test.ts`
+  - Passed: `Test Files  3 passed (3)`, `Tests  24 passed (24)`
+- Re-ran full gate:
+  - `npm run verify`
+  - Passed: `typecheck passed`
+  - Passed: `Test Files  132 passed (132)`, `Tests  1271 passed (1271)`
+  - Passed: `tests passed`
+  - Passed: Vite production build completed
+  - Passed: `factory-readiness passed`
