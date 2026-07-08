@@ -132,6 +132,17 @@ const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
 const artifactHashPattern = /^sha256:[a-f0-9]{64}$/;
 const arrayIndexNamePattern = /^(0|[1-9]\d*)$/;
 const invalidFakeToolResultMessage = "Fake tool result failed validation.";
+const secretShapedDtoKeyTerms = new Set([
+  "authorization",
+  "bearer",
+  "credential",
+  "credentials",
+  "oauth",
+  "passwd",
+  "password",
+  "secret",
+  "token"
+]);
 
 export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoopInput) {
   const gateway = createAgentToolGateway({
@@ -471,7 +482,7 @@ function dataEntriesFromObject(value: unknown, label: string): Array<readonly [s
 
   const entries: Array<readonly [string, unknown]> = [];
   for (const key of Object.getOwnPropertyNames(value).sort()) {
-    assertAgentSecretSafeText(key, `${label} key`);
+    assertSecretSafeDtoKey(key, `${label} key`);
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (descriptor === undefined || !("value" in descriptor)) {
       throw new Error(`${label} must not contain accessors.`);
@@ -613,6 +624,37 @@ function assertNonEmptySecretSafeString(value: unknown, label: string): asserts 
     throw new Error(`${label} must be a non-empty string.`);
   }
   assertAgentSecretSafeText(value, label);
+}
+
+function assertSecretSafeDtoKey(value: string, label: string): void {
+  assertAgentSecretSafeText(value, label);
+  if (isSecretShapedDtoKey(value)) {
+    throw new Error(`${label} must be secret-safe.`);
+  }
+}
+
+function isSecretShapedDtoKey(value: string): boolean {
+  const segments = normalizeDtoKeySegments(value);
+  if (segments.some((segment) => secretShapedDtoKeyTerms.has(segment))) {
+    return true;
+  }
+
+  return hasKeySegments(segments, "api", "key") ||
+    hasKeySegments(segments, "access", "key") ||
+    hasKeySegments(segments, "private", "key");
+}
+
+function normalizeDtoKeySegments(value: string): string[] {
+  return value
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((segment) => segment.length > 0);
+}
+
+function hasKeySegments(segments: readonly string[], ...requiredSegments: readonly string[]): boolean {
+  return requiredSegments.every((segment) => segments.includes(segment));
 }
 
 async function failForInvalidFakeToolResult(

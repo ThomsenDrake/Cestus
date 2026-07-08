@@ -540,6 +540,78 @@ describe("agent tool gateway", () => {
     expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
   });
 
+  it("keeps ordinary preview and result DTO keys valid", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    await gateway.requestTool({
+      toolRequestId: "toolreq_preview_domain_fields",
+      residentAgentId: "agent_default",
+      taskId: "task_projection",
+      runId: "run_projection",
+      toolId: "projection.read",
+      sideEffectClass: "read-only",
+      preview: {
+        summary: "Read local projection status.",
+        relatedEventIds: ["evt_projection_check"],
+        artifactHashes: ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+        affectedRefs: ["ev_contract_001"],
+        scope: "Projection readiness scope.",
+        estimatedEffect: "Projection read has no external effect."
+      }
+    });
+
+    const completed = await gateway.completeTool({
+      toolRequestId: "toolreq_preview_domain_fields",
+      result: {
+        eventIds: ["evt_projection_result"],
+        artifactHashes: ["sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"],
+        readModelChanges: [{
+          projectionName: "agent-tool-requests",
+          change: "Recorded projection read.",
+          relatedIds: ["projection-agent-tool-requests"]
+        }],
+        resultSummary: "Projection read completed."
+      }
+    });
+
+    expect(completed.type).toBe("agent.tool.completed");
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested", "agent.tool.completed"]);
+  });
+
+  it.each([
+    ["api_key", "a"],
+    ["authorization", "b"]
+  ] as const)(
+    "rejects secret-shaped preview key %s without appending request events",
+    async (secretKey, idSuffix) => {
+      const ledger = new InMemoryEventLedger();
+      const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+      const secretValue = "redacted";
+
+      const error = await captureError(() =>
+        gateway.requestTool({
+          toolRequestId: `toolreq_preview_field_${idSuffix}`,
+          residentAgentId: "agent_default",
+          taskId: "task_projection",
+          runId: "run_projection",
+          toolId: "projection.read",
+          sideEffectClass: "read-only",
+          preview: {
+            summary: "Read local projection status.",
+            [secretKey]: secretValue
+          }
+        })
+      );
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toMatch(/secret-safe/i);
+      expect((error as Error).message).not.toContain(secretKey);
+      expect((error as Error).message).not.toContain(secretValue);
+      expect(await ledger.readAll()).toEqual([]);
+    }
+  );
+
   it("rejects preview accessors without invoking getters", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });

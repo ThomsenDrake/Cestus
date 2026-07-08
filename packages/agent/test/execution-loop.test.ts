@@ -70,6 +70,45 @@ describe("resident agent fake execution loop", () => {
     expect(await ledger.readAll()).toEqual([]);
   });
 
+  it.each([
+    ["client_secret", "a"],
+    ["private_key", "b"]
+  ] as const)(
+    "rejects secret-shaped approval preview key %s without appending a request event",
+    async (secretKey, idSuffix) => {
+      const ledger = new InMemoryEventLedger();
+      const loop = createFakeAgentExecutionLoop({
+        ledger,
+        actor: agentActor,
+        now: () => "2026-07-07T23:00:00.000Z",
+        executor: { async execute() { return { eventIds: [], artifactHashes: [], readModelChanges: [] }; } }
+      });
+      const secretValue = "redacted";
+
+      const error = await captureError(() =>
+        loop.requestApprovalOnly({
+          taskId: "task_provider_readiness",
+          runId: "run_provider_readiness",
+          toolRequestId: `toolreq_preview_field_${idSuffix}`,
+          toolId: "provider.parse.preview",
+          toolVersion: 1,
+          sideEffectClass: "external-byte-transfer",
+          approvalClass: "provider-byte-transfer",
+          preview: {
+            summary: "Provider preview.",
+            [secretKey]: secretValue
+          }
+        })
+      );
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toMatch(/secret-safe/i);
+      expect((error as Error).message).not.toContain(secretKey);
+      expect((error as Error).message).not.toContain(secretValue);
+      expect(await ledger.readAll()).toEqual([]);
+    }
+  );
+
   it("rejects agent self-approval before resume", async () => {
     const ledger = new InMemoryEventLedger();
     const loop = createFakeAgentExecutionLoop({
