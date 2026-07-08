@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/resident-agent-approval-cockpit-plan`
 Worktree path: `/home/drake/.codex/worktrees/b782/Cestus`
 Claimed at UTC: `2026-07-08T17:21:20Z`
-Status: `claimed`
+Status: `in-progress`
 
 ## Owned Files
 
