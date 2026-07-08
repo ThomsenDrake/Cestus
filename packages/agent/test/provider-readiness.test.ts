@@ -482,6 +482,101 @@ describe("provider readiness DTOs", () => {
       });
   });
 
+  it("preserves explicit credential statuses before expiration metadata", async () => {
+    const registry = createProviderRegistry();
+    registry.register({
+      providerId: "provider_fake_revoked_remote",
+      label: "Revoked remote provider",
+      adapterVersion: "agent-provider-auth.v1",
+      backendKind: "openai-compatible-api",
+      modelFamilies: ["fake-revoked-remote"],
+      modalities: ["text"],
+      toolSupport: "function-calling",
+      structuredOutputSupport: "schema-strict",
+      contextLimits: { maxInputTokens: 8192, maxOutputTokens: 2048 },
+      credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+      dataHandlingNotes: "Simulates a remote API provider with revoked access state.",
+      costPolicy: "metered-api",
+      workspaceScopes: ["workspace"],
+      approvalProfile: "remote-byte-transfer-gated",
+      diagnosticContract: ["credential-revoked"],
+      fakeSupport: true
+    });
+    registry.register({
+      providerId: "provider_fake_missing_binding_remote",
+      label: "Missing binding remote provider",
+      adapterVersion: "agent-provider-auth.v1",
+      backendKind: "openai-compatible-api",
+      modelFamilies: ["fake-missing-binding-remote"],
+      modalities: ["text"],
+      toolSupport: "function-calling",
+      structuredOutputSupport: "schema-strict",
+      contextLimits: { maxInputTokens: 8192, maxOutputTokens: 2048 },
+      credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+      dataHandlingNotes: "Simulates a remote API provider with missing local binding status.",
+      costPolicy: "metered-api",
+      workspaceScopes: ["workspace"],
+      approvalProfile: "remote-byte-transfer-gated",
+      diagnosticContract: ["needs-api-key"],
+      fakeSupport: true
+    });
+    const missingBindingReference = createCredentialReference({
+      credentialRefId: "agent_credref_api_missing_binding_expired",
+      providerId: "provider_fake_missing_binding_remote",
+      credentialKind: "api-key-bearer",
+      scopeKind: "workspace",
+      capabilityScopes: ["model-inference"],
+      safeLabel: "Missing binding remote key",
+      authorizedBy: "actor_case_owner",
+      authorizedAt: "2026-07-07T21:00:00.000Z",
+      policyVersion: "agent-provider-auth.v1",
+      status: "missing-binding"
+    });
+
+    const dto = await buildProviderReadiness({
+      registry,
+      credentialReferences: [
+        createCredentialReference({
+          credentialRefId: "agent_credref_api_revoked_expired",
+          providerId: "provider_fake_revoked_remote",
+          credentialKind: "api-key-bearer",
+          scopeKind: "workspace",
+          capabilityScopes: ["model-inference"],
+          safeLabel: "Revoked remote key",
+          authorizedBy: "actor_case_owner",
+          authorizedAt: "2026-07-07T21:00:00.000Z",
+          expiresAt: "2026-07-07T22:00:00.000Z",
+          policyVersion: "agent-provider-auth.v1",
+          status: "revoked"
+        }),
+        {
+          ...missingBindingReference,
+          expiresAt: "not-a-date"
+        }
+      ],
+      secretStore: new FakeSecretStore(),
+      now: () => "2026-07-07T22:15:00.000Z"
+    });
+
+    expect(providerReadinessDtoSchema.parse(dto)).toEqual(dto);
+    expect(dto.cards.find((card) => card.providerId === "provider_fake_revoked_remote")).toMatchObject({
+      state: "credential-revoked"
+    });
+    expect(dto.cards.find((card) => card.providerId === "provider_fake_missing_binding_remote")).toMatchObject({
+      state: "needs-api-key"
+    });
+    expect(dto.diagnostics.find((diagnostic) => diagnostic.providerId === "provider_fake_revoked_remote"))
+      .toMatchObject({
+        category: "credential-revoked",
+        credentialRefId: "agent_credref_api_revoked_expired"
+      });
+    expect(dto.diagnostics.find((diagnostic) => diagnostic.providerId === "provider_fake_missing_binding_remote"))
+      .toMatchObject({
+        category: "needs-api-key",
+        credentialRefId: "agent_credref_api_missing_binding_expired"
+      });
+  });
+
   it("fails closed when secret-store health metadata is malformed", async () => {
     const registry = createProviderRegistry();
     registry.register({
@@ -532,6 +627,59 @@ describe("provider readiness DTOs", () => {
       .toMatchObject({
         category: "health-unverified",
         credentialRefId: "agent_credref_api_malformed_health"
+      });
+  });
+
+  it("fails closed without leaking details when secret-store health rejects", async () => {
+    const registry = createProviderRegistry();
+    registry.register({
+      providerId: "provider_fake_rejected_health_remote",
+      label: "Rejected health remote provider",
+      adapterVersion: "agent-provider-auth.v1",
+      backendKind: "openai-compatible-api",
+      modelFamilies: ["fake-rejected-health-remote"],
+      modalities: ["text"],
+      toolSupport: "function-calling",
+      structuredOutputSupport: "schema-strict",
+      contextLimits: { maxInputTokens: 8192, maxOutputTokens: 2048 },
+      credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+      dataHandlingNotes: "Simulates a remote API provider when health metadata is unavailable.",
+      costPolicy: "metered-api",
+      workspaceScopes: ["workspace"],
+      approvalProfile: "remote-byte-transfer-gated",
+      diagnosticContract: ["health-unverified"],
+      fakeSupport: true
+    });
+
+    const dto = await buildProviderReadiness({
+      registry,
+      credentialReferences: [
+        createCredentialReference({
+          credentialRefId: "agent_credref_api_rejected_health",
+          providerId: "provider_fake_rejected_health_remote",
+          credentialKind: "api-key-bearer",
+          scopeKind: "workspace",
+          capabilityScopes: ["model-inference"],
+          safeLabel: "Rejected health remote key",
+          authorizedBy: "actor_case_owner",
+          authorizedAt: "2026-07-07T21:00:00.000Z",
+          policyVersion: "agent-provider-auth.v1",
+          status: "linked"
+        })
+      ],
+      secretStore: new RejectedHealthSecretStore(),
+      now: () => "2026-07-07T22:15:00.000Z"
+    });
+
+    expect(providerReadinessDtoSchema.parse(dto)).toEqual(dto);
+    expect(JSON.stringify(dto)).not.toMatch(/backend failure detail|zod|raw payload/i);
+    expect(dto.cards.find((card) => card.providerId === "provider_fake_rejected_health_remote")).toMatchObject({
+      state: "health-unverified"
+    });
+    expect(dto.diagnostics.find((diagnostic) => diagnostic.providerId === "provider_fake_rejected_health_remote"))
+      .toMatchObject({
+        category: "health-unverified",
+        credentialRefId: "agent_credref_api_rejected_health"
       });
   });
 
@@ -642,5 +790,15 @@ class MalformedHealthySecretStore implements SecretStore {
       checkedAt: "not-a-date",
       safeMessage: "Local binding is available."
     }) as never;
+  }
+}
+
+class RejectedHealthSecretStore implements SecretStore {
+  async resolve(): Promise<SecretMaterial | undefined> {
+    return undefined;
+  }
+
+  async health(): Promise<never> {
+    throw new Error("backend failure detail with raw payload");
   }
 }
