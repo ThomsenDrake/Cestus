@@ -44,7 +44,8 @@ const requiredFiles = [
   "docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md",
   "docs/superpowers/plans/2026-07-07-cestus-resident-agent-implementation.md",
   "docs/superpowers/specs/2026-07-07-ontology-bootstrap-specialist-design.md",
-  "docs/superpowers/plans/2026-07-07-ontology-bootstrap-specialist-implementation.md"
+  "docs/superpowers/plans/2026-07-07-ontology-bootstrap-specialist-implementation.md",
+  "docs/superpowers/plans/2026-07-08-ontology-bootstrap-resident-agent-workflow-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",

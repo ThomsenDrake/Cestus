@@ -840,3 +840,43 @@ factory-readiness passed
 ```
 
 Integration lesson: future resident-agent work should start from `neo` after this checkpoint and preserve the direct-boundary, consume-time approval, provider-secret, and zero-trust bootstrap hardening added by the four finished threads.
+
+## Ontology Bootstrap Resident Agent Workflow Readiness
+
+The ontology bootstrap resident-agent workflow was implemented from the approved workflow plan on 2026-07-08.
+
+Required plan file:
+
+- `docs/superpowers/plans/2026-07-08-ontology-bootstrap-resident-agent-workflow-implementation.md`
+
+Factory readiness checks this plan through `scripts/check-agent-readiness.mjs`.
+
+Recorded focused verification:
+
+```text
+npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/ontology-bootstrap-nous.test.ts packages/agent/test/specialists.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/tool-gateway.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts packages/ui/test/agent-ontology-bootstrap-adapter.test.ts packages/ui/test/agent-workspace.test.tsx packages/ingestion/test/legacy-runtime.test.ts packages/ingestion/test/legacy-staging.test.ts
+Test Files  10 passed (10)
+Tests  96 passed (96)
+```
+
+Recorded live Nous acceptance:
+
+```text
+CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/ontology-bootstrap-nous-live.test.ts
+Test Files  1 passed (1)
+Tests  1 passed (1)
+```
+
+Recorded full verification before readiness tracking:
+
+```text
+npm run verify
+typecheck passed
+Test Files  134 passed | 1 skipped
+Tests  1272 passed | 1 skipped
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+This slice keeps Cestus as the resident orchestrator for the `ontology-bootstrap` specialist run type. Legacy artifacts enter as evidence-backed dossiers and candidate bundles first; graph-like legacy structure can only inform proposed assertion material tied to exact report, candidate-set, review-bundle, evidence, source, and content hashes. The workflow records review bundles, context-pack refs, run steps, pending ledger-review tool requests, safe memory caveats, live Nous review notes for model-facing acceptance, local-runtime read routes, and a read-only Agent UI surface. It does not accept ontology truth, run accepted graph review, approve staging, execute provider byte transfer, send PRRs, export, escalate legal work, or perform destructive repair. Append-only ledger semantics, provenance, projection rebuildability, human staging/accepted graph separation, high-volume chunk/cursor readiness, and secret-safe diagnostics remain preserved.
