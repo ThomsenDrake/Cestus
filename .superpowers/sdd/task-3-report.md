@@ -74,3 +74,32 @@ Base commit before task: `58f3d4f`
 - Verified RED/GREEN for the sentinel fix with:
   - RED: `npm test -- packages/agent/test/approval-cockpit.test.ts packages/agent/test/approval-queue.test.ts`
   - GREEN: `npm test -- packages/agent/test/approval-cockpit.test.ts packages/agent/test/approval-queue.test.ts`
+
+## UI sentinel parser fix
+
+- Root cause: `packages/ui/src/agent/agent-adapter.ts` still used `extensibleApprovalClassSchema = z.string().min(1)`, so the browser DTO parser accepted canonical sentinel placeholders `none` and `human-review` even after the agent package rejected them.
+- Added a failing UI sentinel regression in `packages/ui/test/agent-approval-adapter.test.ts` that drives each sentinel value through all required extensible approval/direct-effect positions:
+  - `approvalClasses[].approvalClass`
+  - queue item `approvalClass`
+  - queue item `requiredApprovalClass`
+  - `approvalContract.requiredApprovalClass`
+  - `risk.approvalClass`
+  - `activeLocks[].appliesToApprovalClasses`
+  - `decisionContract.forbiddenDirectEffects`
+  - top-level `forbiddenDirectEffects`
+- Observed RED with `npm test -- packages/ui/test/agent-approval-adapter.test.ts`:
+  - Failed as expected with two assertion failures:
+    - `rejects sentinel approval identifiers at extensible DTO boundaries: none`
+    - `rejects sentinel approval identifiers at extensible DTO boundaries: human-review`
+  - Failure shape: `expected [Function] to throw an error`
+- Implemented the smallest adapter fix by refining the shared UI extensible approval/direct-effect identifier schema to accept nonempty strings except `none` and `human-review`.
+- Verified targeted GREEN with `npm test -- packages/ui/test/agent-approval-adapter.test.ts packages/ui/test/agent-adapter.test.ts`:
+  - Passed: `Test Files  2 passed (2)`
+  - Passed: `Tests  14 passed (14)`
+- Verified full gate with `npm run verify`:
+  - Passed: `typecheck passed`
+  - Passed: `Test Files  133 passed (133)`
+  - Passed: `Tests  1290 passed (1290)`
+  - Passed: `tests passed`
+  - Passed: Vite production build completed
+  - Passed: `factory-readiness passed`

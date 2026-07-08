@@ -262,8 +262,13 @@ const diagnosticSchema = z.object({
   allowedRepairActions: z.array(z.string().min(1)).optional()
 }).strict();
 
-const extensibleApprovalClassSchema = z.string().min(1);
-const extensibleForbiddenDirectEffectSchema = z.string().min(1);
+const sentinelApprovalIdentifiers = new Set(["none", "human-review"]);
+const extensibleApprovalIdentifierSchema = z.string().min(1).refine(
+  (value) => !sentinelApprovalIdentifiers.has(value),
+  "Approval identifiers must not use sentinel values."
+);
+const extensibleApprovalClassSchema = extensibleApprovalIdentifierSchema;
+const extensibleForbiddenDirectEffectSchema = extensibleApprovalIdentifierSchema;
 
 const contextPackRefSchema = z.object({
   contextPackId: z.string().min(1),
@@ -409,7 +414,7 @@ const agentApprovalCockpitDtoSchema = z.object({
     denialAppendsDecisionOnly: z.literal(true),
     requiresHumanActor: z.literal(true),
     afterApproval: z.string().min(1),
-    forbiddenDirectEffects: z.array(z.string().min(1))
+    forbiddenDirectEffects: z.array(extensibleForbiddenDirectEffectSchema)
   }).strict(),
   approvalClasses: z.array(z.object({
     approvalClass: extensibleApprovalClassSchema,

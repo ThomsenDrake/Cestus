@@ -114,6 +114,13 @@ describe("agent approval cockpit adapter", () => {
     expect(cockpit.queue.pending[0]?.activeLocks[0]?.appliesToApprovalClasses).toEqual(["future-export-repair"]);
   });
 
+  it.each(["none", "human-review"])(
+    "rejects sentinel approval identifiers at extensible DTO boundaries: %s",
+    (approvalClass) => {
+      expect(() => agentApprovalCockpitFromJson(sentinelApprovalCockpitJson(approvalClass))).toThrow();
+    }
+  );
+
   it("supports static adapters for component and app tests", async () => {
     const adapter = createStaticAgentAdapter(agentStatus(), approvalCockpit());
 
@@ -249,6 +256,18 @@ function approvalCockpit(
 function futureApprovalCockpitJson(): unknown {
   const cockpit = JSON.parse(JSON.stringify(approvalCockpit())) as Record<string, unknown>;
   const approvalClass = "future-export-repair";
+  return approvalClassCockpitJson(cockpit, approvalClass);
+}
+
+function sentinelApprovalCockpitJson(approvalClass: string): unknown {
+  const cockpit = JSON.parse(JSON.stringify(approvalCockpit())) as Record<string, unknown>;
+  return approvalClassCockpitJson(cockpit, approvalClass);
+}
+
+function approvalClassCockpitJson(
+  cockpit: Record<string, unknown>,
+  approvalClass: string
+): Record<string, unknown> {
   const queue = cockpit.queue as Record<string, unknown>;
   const pending = queue.pending as Array<Record<string, unknown>>;
   const item = pending[0] as Record<string, unknown>;
