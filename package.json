@@ -18,6 +18,7 @@
     "local:runtime:configure": "tsx packages/local-runtime/src/cli.ts configure",
     "local:runtime:config": "tsx packages/local-runtime/src/cli.ts config",
     "local:runtime:health": "tsx packages/local-runtime/src/cli.ts health",
+    "local:agent:provider-smoke": "NODE_NO_WARNINGS=1 tsx packages/local-runtime/src/cli.ts agent-provider-smoke",
     "local:workspace:create": "tsx packages/local-runtime/src/cli.ts create-workspace",
     "local:workspace:smoke": "node --disable-warning=ExperimentalWarning --import tsx packages/local-runtime/src/workspace-readiness-smoke.ts",
     "prr:seed-local": "tsx packages/local-runtime/src/cli.ts seed-prr"
