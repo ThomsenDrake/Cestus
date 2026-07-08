@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { providerReadinessDtoSchema } from "../../../agent/src/provider-readiness.js";
 import type { AgentRuntimeDiagnosticDto, AgentStatusDto } from "./agent-types.js";
 
 export interface AgentAdapter {
@@ -255,6 +256,7 @@ const agentStatusDtoSchema = z.object({
   permissions: z.array(permissionSchema),
   locks: z.array(lockSchema),
   providers: z.array(providerSchema),
+  providerReadiness: providerReadinessDtoSchema.optional(),
   pendingApprovalCount: z.number().int().nonnegative(),
   activeLockCount: z.number().int().nonnegative(),
   diagnostics: z.array(diagnosticSchema)

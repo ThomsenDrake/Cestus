@@ -65,6 +65,35 @@ describe("agent UI adapter", () => {
     );
   });
 
+  it("parses provider readiness in agent status without leaking unsafe runtime fields", () => {
+    const status = agentStatusFromJson(agentStatus({
+      providerReadiness: {
+        schemaVersion: "agent-provider-readiness.v1",
+        generatedAt: "2026-07-08T12:15:00.000Z",
+        cards: [{
+          providerId: "provider_nous_portal",
+          label: "Nous Portal",
+          backendKind: "openai-compatible-api",
+          state: "requires-byte-transfer-approval",
+          capabilitySummary: ["text", "unsupported", "no tools"],
+          credentialKindSummary: ["api-key-bearer"],
+          credentialHealth: "local-binding-healthy",
+          dataHandlingPosture: "remote-prompt-byte-transfer-gated",
+          credentialRefId: "agent_credref_nous_portal",
+          requiredApprovalClass: "provider-byte-transfer",
+          safeActionIds: ["action_request_provider_byte_transfer_approval"]
+        }],
+        diagnostics: []
+      }
+    }));
+
+    expect(status.providerReadiness?.cards[0]).toMatchObject({
+      providerId: "provider_nous_portal",
+      credentialHealth: "local-binding-healthy"
+    });
+    expect(JSON.stringify(status)).not.toMatch(/authorization:\s*bearer|provider error|response body|runtime-provider-material/i);
+  });
+
   it("recursively redacts credential-shaped provider diagnostics and memory text before parsing", async () => {
     const unsafeStatus = agentStatus({
       providers: [
