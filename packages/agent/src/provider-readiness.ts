@@ -341,7 +341,9 @@ async function evaluateCredentialReferenceReadiness(
     };
   }
 
-  const health = secretStoreHealthSchema.safeParse(await secretStore.health(credentialReference.credentialRefId));
+  const health = secretStoreHealthSchema.safeParse(
+    await readSecretStoreHealth(secretStore, credentialReference.credentialRefId)
+  );
   if (!health.success) {
     return {
       state: "health-unverified",
@@ -363,6 +365,17 @@ async function evaluateCredentialReferenceReadiness(
   };
 }
 
+async function readSecretStoreHealth(
+  secretStore: SecretStore,
+  credentialRefId: string
+): Promise<unknown> {
+  try {
+    return await secretStore.health(credentialRefId);
+  } catch {
+    return undefined;
+  }
+}
+
 function requiresOnlyLocalNoSecret(descriptor: ProviderCapabilityDescriptor): boolean {
   return descriptor.approvalProfile === "local-only" &&
     descriptor.credentialRequirements.every((requirement) => requirement.credentialKind === "local-no-secret");
@@ -372,10 +385,7 @@ function stateForCredentialReference(
   credentialReference: CredentialReference,
   checkedAt: string
 ): ProviderReadinessState | undefined {
-  if (
-    credentialReference.status === "expired" ||
-    credentialReferenceExpiredAtOrBefore(credentialReference, checkedAt)
-  ) {
+  if (credentialReference.status === "expired") {
     return "credential-expired";
   }
   if (credentialReference.status === "revoked") {
@@ -389,6 +399,9 @@ function stateForCredentialReference(
   }
   if (credentialReference.status === "unverified") {
     return "health-unverified";
+  }
+  if (credentialReferenceExpiredAtOrBefore(credentialReference, checkedAt)) {
+    return "credential-expired";
   }
   return undefined;
 }
