@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { ActorRef, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import type { AgentToolApprovalClass, AgentToolSideEffectClass } from "./projection-types.js";
@@ -77,7 +78,7 @@ export interface ApproveFakeAgentToolInput {
 
 export interface ResumeApprovedFakeToolInput {
   readonly toolRequestId: string;
-  readonly currentPreviewHash: string;
+  readonly currentPreview: AgentToolPreview;
   readonly activeLocks: readonly FakeAgentActiveLock[];
 }
 
@@ -102,6 +103,32 @@ interface ToolRequestState {
   readonly failure?: KnowledgeEventOf<"agent.tool.failed">;
 }
 
+interface StoredFakeToolRequestMetadata {
+  readonly taskId: string;
+}
+
+interface CanonicalFakeToolPreviewInput {
+  readonly toolRequestId: string;
+  readonly toolId: string;
+  readonly toolVersion: string;
+  readonly residentAgentId: string;
+  readonly runId: string;
+  readonly taskId: string;
+  readonly sideEffectClass: AgentToolSideEffectClass;
+  readonly requiredApprovalClass: AgentToolApprovalClass;
+  readonly preview: AgentToolPreview;
+  readonly scope?: string;
+  readonly estimatedEffect?: string;
+  readonly sourceEventIds?: readonly string[];
+  readonly inputArtifactHashes?: readonly string[];
+}
+
+type CanonicalFakeToolPreview = AgentToolPreview & {
+  readonly scope: string;
+  readonly estimatedEffect: string;
+  readonly inputArtifactHashes?: readonly string[];
+};
+
 const defaultResidentAgentId = "agent_default";
 const fakeReadModelProjectionName = "fake-agent-execution-loop";
 
@@ -112,30 +139,50 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
     now: input.now
   });
   const residentAgentId = input.residentAgentId ?? defaultResidentAgentId;
-  const requestedInputs = new Map<string, RequestFakeAgentApprovalInput>();
+  const requestMetadataById = new Map<string, StoredFakeToolRequestMetadata>();
 
   return Object.freeze({
     async requestApprovalOnly(command: RequestFakeAgentApprovalInput): Promise<WaitingForApprovalResult> {
+      const toolVersion = String(command.toolVersion ?? "0.1.0");
+      const canonicalPreview = buildCanonicalFakeToolPreview({
+        toolRequestId: command.toolRequestId,
+        residentAgentId,
+        taskId: command.taskId,
+        runId: command.runId,
+        toolId: command.toolId,
+        toolVersion,
+        sideEffectClass: command.sideEffectClass,
+        requiredApprovalClass: command.approvalClass,
+        preview: command.preview,
+        ...(command.scope === undefined ? {} : { scope: command.scope }),
+        ...(command.estimatedEffect === undefined ? {} : { estimatedEffect: command.estimatedEffect }),
+        ...(command.preview.relatedEventIds === undefined ? {} : { sourceEventIds: command.preview.relatedEventIds }),
+        ...(command.inputArtifactHashes === undefined ? {} : { inputArtifactHashes: command.inputArtifactHashes })
+      });
+      const previewHash = hashStablePreview(canonicalPreview);
       const requested = await gateway.requestTool({
         toolRequestId: command.toolRequestId,
         residentAgentId,
         taskId: command.taskId,
         runId: command.runId,
         toolId: command.toolId,
-        toolVersion: String(command.toolVersion ?? "0.1.0"),
+        toolVersion,
         sideEffectClass: command.sideEffectClass,
         requiredApprovalClass: command.approvalClass as NonNullable<RequestAgentToolInput["requiredApprovalClass"]>,
-        preview: command.preview,
-        ...(command.scope === undefined ? {} : { scope: command.scope }),
-        ...(command.estimatedEffect === undefined ? {} : { estimatedEffect: command.estimatedEffect }),
-        ...(command.inputArtifactHashes === undefined ? {} : { inputArtifactHashes: command.inputArtifactHashes })
+        preview: canonicalPreview,
+        scope: canonicalPreview.scope,
+        estimatedEffect: canonicalPreview.estimatedEffect,
+        ...(canonicalPreview.inputArtifactHashes === undefined ? {} : { inputArtifactHashes: canonicalPreview.inputArtifactHashes })
       });
-      requestedInputs.set(command.toolRequestId, command);
+      if (requested.payload.previewHash !== previewHash) {
+        throw new Error("Runtime preview hash did not match the gateway preview hash.");
+      }
+      requestMetadataById.set(command.toolRequestId, { taskId: command.taskId });
 
       return Object.freeze({
         state: "waiting-for-approval" as const,
         toolRequestId: requested.payload.toolRequestId,
-        previewHash: requested.payload.previewHash,
+        previewHash,
         eventId: requested.id
       });
     },
@@ -163,8 +210,35 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
         throw new Error("Tool resume requires an exact human approval.");
       }
 
+      const requestMetadata = requestMetadataById.get(command.toolRequestId);
+      if (requestMetadata === undefined) {
+        await gateway.failTool({
+          toolRequestId: command.toolRequestId,
+          category: "approval-stale",
+          message: "Tool request preview metadata is unavailable for resume.",
+          retryable: false,
+          allowedActions: ["rebuild the tool preview and request a new approval"]
+        });
+        throw new Error("Tool request preview metadata is unavailable for resume.");
+      }
+      const currentPreviewHash = hashStablePreview(buildCanonicalFakeToolPreview({
+        toolRequestId: state.request.payload.toolRequestId,
+        residentAgentId: state.request.payload.requestedBy,
+        taskId: requestMetadata.taskId,
+        runId: state.request.payload.runId,
+        toolId: state.request.payload.toolId,
+        toolVersion: state.request.payload.toolVersion,
+        sideEffectClass: state.request.payload.sideEffectClass,
+        requiredApprovalClass: state.request.payload.requiredApprovalClass,
+        preview: command.currentPreview,
+        scope: state.request.payload.scope,
+        estimatedEffect: state.request.payload.estimatedEffect,
+        ...(state.request.payload.sourceEventIds === undefined ? {} : { sourceEventIds: state.request.payload.sourceEventIds }),
+        ...(state.request.payload.inputArtifactHashes === undefined ? {} : { inputArtifactHashes: state.request.payload.inputArtifactHashes })
+      }));
+
       if (
-        command.currentPreviewHash !== state.request.payload.previewHash ||
+        currentPreviewHash !== state.request.payload.previewHash ||
         approval.payload.approvedPreviewHash !== state.request.payload.previewHash
       ) {
         await gateway.failTool({
@@ -183,7 +257,6 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
       }
 
       let fakeResult: FakeAgentToolExecutorResult;
-      const registeredRequest = requestedInputs.get(command.toolRequestId);
       try {
         fakeResult = await input.executor.execute({
           toolRequestId: state.request.payload.toolRequestId,
@@ -194,7 +267,7 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
           approvalClass: state.request.payload.requiredApprovalClass,
           previewHash: state.request.payload.previewHash,
           approvedPreviewHash: approval.payload.approvedPreviewHash,
-          ...(registeredRequest === undefined ? {} : { taskId: registeredRequest.taskId })
+          taskId: requestMetadata.taskId
         });
       } catch {
         await gateway.failTool({
@@ -220,6 +293,102 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
       });
     }
   });
+}
+
+function buildCanonicalFakeToolPreview(input: CanonicalFakeToolPreviewInput): CanonicalFakeToolPreview {
+  const safeDisplayPreview = secretSafeJsonValue(input.preview);
+  const inputArtifactHashes = input.inputArtifactHashes ?? input.preview.artifactHashes;
+  const scope = input.scope ?? input.preview.scope ?? input.preview.summary;
+  const estimatedEffect = input.estimatedEffect ?? input.preview.estimatedEffect ?? input.preview.summary;
+
+  return Object.freeze({
+    summary: input.preview.summary,
+    toolRequestId: input.toolRequestId,
+    toolId: input.toolId,
+    toolVersion: input.toolVersion,
+    residentAgentId: input.residentAgentId,
+    runId: input.runId,
+    taskId: input.taskId,
+    sideEffectClass: input.sideEffectClass,
+    requiredApprovalClass: input.requiredApprovalClass,
+    displayPreview: safeDisplayPreview,
+    scope,
+    estimatedEffect,
+    ...(input.preview.affectedRefs === undefined ? {} : { affectedRefs: secretSafeJsonValue(input.preview.affectedRefs) }),
+    ...(input.sourceEventIds === undefined ? {} : { relatedEventIds: [...input.sourceEventIds], sourceEventIds: [...input.sourceEventIds] }),
+    ...(input.preview.artifactHashes === undefined ? {} : { artifactHashes: [...input.preview.artifactHashes] }),
+    ...(inputArtifactHashes === undefined ? {} : { inputArtifactHashes: [...inputArtifactHashes] })
+  });
+}
+
+function hashStablePreview(preview: AgentToolPreview): `sha256:${string}` {
+  const digest = createHash("sha256").update(stableJsonStringify(preview)).digest("hex");
+  return `sha256:${digest}`;
+}
+
+function stableJsonStringify(value: unknown): string {
+  return JSON.stringify(stabilizeJsonValue(value));
+}
+
+function stabilizeJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => stabilizeJsonValue(item));
+  }
+
+  if (value !== null && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const stable: Record<string, unknown> = {};
+    for (const key of Object.keys(record).sort()) {
+      stable[key] = stabilizeJsonValue(record[key]);
+    }
+    return stable;
+  }
+
+  return value;
+}
+
+function secretSafeJsonValue(value: unknown): unknown {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    assertAgentSecretSafeText(value, "preview text");
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => secretSafeJsonValue(item));
+  }
+
+  if (typeof value === "object") {
+    if (!isPlainRecord(value)) {
+      throw new Error("Preview content must be JSON-compatible.");
+    }
+
+    const safe: Record<string, unknown> = {};
+    for (const key of Object.keys(value)) {
+      assertAgentSecretSafeText(key, "preview key");
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (descriptor === undefined || !("value" in descriptor)) {
+        throw new Error("Preview content must be JSON-compatible.");
+      }
+      safe[key] = secretSafeJsonValue(descriptor.value);
+    }
+    return safe;
+  }
+
+  throw new Error("Preview content must be JSON-compatible.");
+}
+
+function isPlainRecord(value: object): value is Record<string, unknown> {
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function normalizeFakeToolResult(result: FakeAgentToolExecutorResult): AgentToolResult {
@@ -268,6 +437,8 @@ async function failForActiveLocks(
     }
   }
 
+  // Queue DTOs expose generic "lock-active"; gateway failure events stay on
+  // "legal-lock-active" until the ontology adds a broader failure category.
   await gateway.failTool({
     toolRequestId,
     category: "legal-lock-active",
