@@ -122,3 +122,26 @@ Base commit before task: `94e376c`
   - Passed: `tests passed`
   - Passed: Vite production build completed
   - Passed: `factory-readiness passed`
+
+## Review blocker fix: atomic SQLite expectedGlobalEventCount guard
+
+- Review-fix base head: `91a9e7e`
+- Added a failing SQLite-focused assertion first in `packages/ontology/test/sqlite-event-ledger.test.ts` that interleaves a second SQLite writer during `nextSequence()` and proves a guarded append must not allow that writer to commit between the stale global-count read and the insert.
+- Verified RED with:
+  - `npm test -- packages/ontology/test/sqlite-event-ledger.test.ts packages/ontology/test/event-ledger.test.ts packages/local-runtime/test/agent-approval-routes.test.ts`
+  - Observed expected failure: `blocks interleaved SQLite writers from slipping past expected global event count guards` reported `Expected: "blocked" / Received: "committed"`, proving the second SQLite writer could still commit while the first append used `expectedGlobalEventCount: 1`.
+- Updated `packages/ontology/src/sqlite-event-ledger.ts` to:
+  - start append with `BEGIN IMMEDIATE`,
+  - perform `expectedGlobalEventCount` and `expectedNextSequence` checks inside the write transaction,
+  - insert and `COMMIT` inside the same transaction, and
+  - safely `ROLLBACK` on any post-begin failure before rethrowing, while preserving invalid-event and stream-sequence conflict behavior.
+- Verified GREEN with:
+  - `npm test -- packages/ontology/test/sqlite-event-ledger.test.ts packages/ontology/test/event-ledger.test.ts packages/local-runtime/test/agent-approval-routes.test.ts`
+  - Passed: `Test Files  3 passed (3)`, `Tests  29 passed (29)`
+- Re-ran full gate:
+  - `npm run verify`
+  - Passed: `typecheck passed`
+  - Passed: `Test Files  132 passed (132)`, `Tests  1276 passed (1276)`
+  - Passed: `tests passed`
+  - Passed: Vite production build completed
+  - Passed: `factory-readiness passed`
