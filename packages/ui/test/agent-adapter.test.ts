@@ -160,7 +160,7 @@ describe("agent UI adapter", () => {
   });
 
   it("accepts future approval identifiers in status tool requests", () => {
-    const parsed = agentStatusFromJson({
+    const futureApprovalStatus: AgentStatusDto = {
       ...agentStatus(),
       toolRequests: [
         {
@@ -169,7 +169,9 @@ describe("agent UI adapter", () => {
           approvalClass: "evidence-retention-review"
         }
       ]
-    });
+    };
+
+    const parsed = agentStatusFromJson(futureApprovalStatus);
 
     expect(parsed.toolRequests[0]?.requiredApprovalClass).toBe("evidence-retention-review");
     expect(parsed.toolRequests[0]?.approvalClass).toBe("evidence-retention-review");
@@ -287,7 +289,7 @@ function agentRun() {
   };
 }
 
-function agentToolRequest() {
+function agentToolRequest(): AgentStatusDto["toolRequests"][number] {
   return {
     toolRequestId: "toolreq_provider_preview",
     runId: "run_provider_review",

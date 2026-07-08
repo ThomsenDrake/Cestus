@@ -129,3 +129,36 @@ Base commit before task: `58f3d4f`
   - Passed: `tests passed`
   - Passed: Vite production build completed
   - Passed: `factory-readiness passed`
+
+## UI DTO type alignment fix
+
+- Root cause: `packages/ui/src/agent/agent-types.ts` still re-exported `AgentStatusDto` directly from `packages/agent/src/runtime-types.js`, so the exported UI/browser DTO type still inherited the old closed `ProjectedAgentToolRequest.requiredApprovalClass` / optional `approvalClass` union from `projection-types.ts` even though the browser parser had already moved to extensible non-sentinel approval identifiers.
+- Added a compile-time regression in `packages/ui/test/agent-adapter.test.ts` by typing a future-class fixture as exported UI `AgentStatusDto` with:
+  - `toolRequests[0].requiredApprovalClass = "evidence-retention-review"`
+  - `toolRequests[0].approvalClass = "evidence-retention-review"`
+- Observed RED with `npm run typecheck` before the fix:
+  - `packages/ui/test/agent-adapter.test.ts(168,11): error TS2322: Type '"evidence-retention-review"' is not assignable to type 'AgentToolApprovalClass'.`
+  - `packages/ui/test/agent-adapter.test.ts(169,11): error TS2322: Type '"evidence-retention-review"' is not assignable to type 'AgentToolApprovalClass | undefined'.`
+- Implemented the smallest browser-safe fix in `packages/ui/src/agent/agent-types.ts`:
+  - kept `AgentRuntimeDiagnosticDto` export behavior unchanged,
+  - based exported UI `AgentStatusDto` on canonical runtime `AgentStatusDto`,
+  - retyped only `toolRequests[].requiredApprovalClass` and optional `approvalClass` to `AgentApprovalQueueApprovalClass`,
+  - used type-only imports from browser-safe DTO/type modules only.
+- Added a focused test-helper annotation so `agentToolRequest()` returns `AgentStatusDto["toolRequests"][number]`, keeping the compile-time regression anchored to approval-class drift rather than unrelated string widening in helper literals.
+
+Verification:
+
+- RED: `npm run typecheck`
+  - Failed as expected with the two `TS2322` approval-class assignment errors above.
+- GREEN typecheck: `npm run typecheck`
+  - Passed: `typecheck passed`
+- GREEN targeted: `npm test -- packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-approval-adapter.test.ts`
+  - Passed: `Test Files  2 passed (2)`
+  - Passed: `Tests  17 passed (17)`
+- FULL: `npm run verify`
+  - Passed: `typecheck passed`
+  - Passed: `Test Files  133 passed (133)`
+  - Passed: `Tests  1293 passed (1293)`
+  - Passed: `tests passed`
+  - Passed: Vite production build completed
+  - Passed: `factory-readiness passed`
