@@ -101,6 +101,19 @@ describe("agent approval cockpit adapter", () => {
     );
   });
 
+  it("accepts future approval class identifiers at extensible DTO boundaries", () => {
+    const cockpit = agentApprovalCockpitFromJson(futureApprovalCockpitJson());
+
+    expect(cockpit.decisionContract.forbiddenDirectEffects).toContain("future-export-repair");
+    expect(cockpit.forbiddenDirectEffects).toContain("future-export-repair");
+    expect(cockpit.approvalClasses[0]?.approvalClass).toBe("future-export-repair");
+    expect(cockpit.queue.pending[0]?.approvalClass).toBe("future-export-repair");
+    expect(cockpit.queue.pending[0]?.requiredApprovalClass).toBe("future-export-repair");
+    expect(cockpit.queue.pending[0]?.approvalContract.requiredApprovalClass).toBe("future-export-repair");
+    expect(cockpit.queue.pending[0]?.risk.approvalClass).toBe("future-export-repair");
+    expect(cockpit.queue.pending[0]?.activeLocks[0]?.appliesToApprovalClasses).toEqual(["future-export-repair"]);
+  });
+
   it("supports static adapters for component and app tests", async () => {
     const adapter = createStaticAgentAdapter(agentStatus(), approvalCockpit());
 
@@ -231,4 +244,48 @@ function approvalCockpit(
       "accepted-graph-review"
     ]
   } as AgentApprovalCockpitDto;
+}
+
+function futureApprovalCockpitJson(): unknown {
+  const cockpit = JSON.parse(JSON.stringify(approvalCockpit())) as Record<string, unknown>;
+  const approvalClass = "future-export-repair";
+  const queue = cockpit.queue as Record<string, unknown>;
+  const pending = queue.pending as Array<Record<string, unknown>>;
+  const item = pending[0] as Record<string, unknown>;
+  const approvalContract = item.approvalContract as Record<string, unknown>;
+  const risk = item.risk as Record<string, unknown>;
+  const activeLocks = item.activeLocks as Array<Record<string, unknown>>;
+  const approvalClasses = cockpit.approvalClasses as Array<Record<string, unknown>>;
+
+  cockpit.decisionContract = {
+    ...(cockpit.decisionContract as Record<string, unknown>),
+    forbiddenDirectEffects: [approvalClass]
+  };
+  cockpit.forbiddenDirectEffects = [approvalClass];
+  approvalClasses[0] = {
+    ...approvalClasses[0],
+    approvalClass,
+    label: "Future export repair",
+    requiredFor: "Future extensible approval class coverage."
+  };
+  item.approvalClass = approvalClass;
+  item.requiredApprovalClass = approvalClass;
+  item.approvalContract = {
+    ...approvalContract,
+    requiredApprovalClass: approvalClass
+  };
+  item.risk = {
+    ...risk,
+    approvalClass
+  };
+  activeLocks[0] = {
+    ...(activeLocks[0] ?? {
+      lockId: "lock_future_export_repair",
+      category: "governance",
+      message: "Future approval class remains blocked until reviewed."
+    }),
+    appliesToApprovalClasses: [approvalClass]
+  };
+
+  return cockpit;
 }

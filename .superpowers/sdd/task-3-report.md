@@ -63,3 +63,6 @@ Base commit before task: `58f3d4f`
 - Tightened approval adapter tests to assert the exact approve POST body includes `approvedPreviewHash` plus rationale, while the deny POST body remains decision-only with rationale only.
 - Broadened `safeAgentText()` path scrubbing so non-URL absolute paths like `/workspace/case-7/report.pdf`, `/repo/foo`, and `/data/export` are redacted during approval cockpit DTO parsing and route-error diagnostics while safe explanatory text and `https://` URLs remain visible.
 - Verified the follow-up targeted suite with `npm test -- packages/ui/test/agent-approval-adapter.test.ts packages/ui/test/agent-adapter.test.ts`.
+- Fixed the remaining approval-cockpit extensibility issue by changing the browser parser to treat approval-class and forbidden-direct-effect identifiers as nonempty strings at extension points instead of a closed local enum.
+- Added a regression that feeds `agentApprovalCockpitFromJson()` a well-formed future class string across approval metadata, queue items, approval-contract class, risk class, lock class filters, and forbidden direct-effect lists, proving the cockpit still parses without adding any new execution behavior.
+- Re-verified the targeted suite after the extensibility fix with `npm test -- packages/ui/test/agent-approval-adapter.test.ts packages/ui/test/agent-adapter.test.ts`.
