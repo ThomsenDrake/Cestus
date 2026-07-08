@@ -139,6 +139,34 @@ describe("AgentApprovalCockpit", () => {
     });
   });
 
+  it("disables approval for resumable requests while still allowing denial with rationale", () => {
+    const onApprove = vi.fn();
+    const onDeny = vi.fn();
+
+    render(
+      <AgentApprovalCockpit
+        cockpit={cockpit({ resumableApproved: true })}
+        decisionState="idle"
+        onApprove={onApprove}
+        onDeny={onDeny}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("Decision rationale"), {
+      target: { value: "Denied after the request was already approved." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Approve exact preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Deny request" }));
+
+    expect(screen.getByRole("button", { name: "Approve exact preview" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Deny request" })).toBeEnabled();
+    expect(onApprove).not.toHaveBeenCalled();
+    expect(onDeny).toHaveBeenCalledWith({
+      toolRequestId: "toolreq_provider_transfer",
+      rationale: "Denied after the request was already approved."
+    });
+  });
+
   it("clears the rationale when switching the selected request", () => {
     const onDeny = vi.fn();
 
@@ -202,11 +230,13 @@ function cockpit(
     readonly blocked?: boolean;
     readonly malformedBlockedLockBypass?: boolean;
     readonly stale?: boolean;
+    readonly resumableApproved?: boolean;
     readonly secondPending?: boolean;
   } = {}
 ): AgentApprovalCockpitDto {
   const blocked = input.blocked ?? input.malformedBlockedLockBypass ?? false;
   const stale = input.stale ?? false;
+  const resumableApproved = input.resumableApproved ?? false;
   const item = queueItem({
     toolRequestId: "toolreq_provider_transfer",
     runId: "run_provider_transfer",
@@ -247,8 +277,8 @@ function cockpit(
     schemaVersion: "agent-approval-cockpit.v1",
     generatedAt: "2026-07-08T15:30:00.000Z",
     summary: {
-      pendingCount: blocked || stale ? 0 : input.secondPending ? 2 : 1,
-      resumableCount: 0,
+      pendingCount: blocked || stale || resumableApproved ? 0 : input.secondPending ? 2 : 1,
+      resumableCount: resumableApproved ? 1 : 0,
       blockedCount: blocked ? 1 : 0,
       staleCount: stale ? 1 : 0,
       terminalCount: 0
@@ -276,8 +306,18 @@ function cockpit(
     }],
     queue: {
       generatedAt: "2026-07-08T15:30:00.000Z",
-      pending: blocked || stale ? [] : secondItem === undefined ? [item] : [item, secondItem],
-      resumable: [],
+      pending: blocked || stale || resumableApproved ? [] : secondItem === undefined ? [item] : [item, secondItem],
+      resumable: resumableApproved ? [{
+        ...item,
+        approval: {
+          toolRequestId: item.toolRequestId,
+          approvedBy: "actor_case_owner",
+          approvedPreviewHash: previewHash,
+          approvedAt: "2026-07-08T15:29:30.000Z",
+          rationale: "Approved the exact provider preview.",
+          approvalClass: "provider-byte-transfer"
+        }
+      }] : [],
       blocked: blocked ? [item] : [],
       stale: stale ? [item] : [],
       denied: [],

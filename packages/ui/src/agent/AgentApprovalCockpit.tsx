@@ -71,6 +71,7 @@ export function AgentApprovalCockpit({
   const isTerminal = selectedEntry === undefined
     ? true
     : selectedEntry.bucket === "denied" || selectedEntry.bucket === "completed" || selectedEntry.bucket === "failed";
+  const isPendingBucket = selectedBucket === "pending";
   const isBlockedBucket = selectedBucket === "blocked";
   const isStaleBucket = selectedBucket === "stale";
   const hasActiveLocks = (selectedItem?.activeLocks.length ?? 0) > 0;
@@ -85,6 +86,7 @@ export function AgentApprovalCockpit({
     ));
   const rationaleMissing = rationale.trim().length === 0;
   const approvalDisabled = selectedItem === undefined
+    || !isPendingBucket
     || isTerminal
     || isBlockedBucket
     || isStaleBucket
