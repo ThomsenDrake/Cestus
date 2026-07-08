@@ -12,12 +12,24 @@ Worktree: `/home/drake/.codex/worktrees/8f27/Cestus`
 
 Claimed at: `2026-07-08T00:00:22Z`
 
-Status: `in-progress`
+Status: `ready-for-review`
+
+Review evidence:
+
+- Final repair commits: `249d1d2`, `3159684`, `4b99d95`, `8d4435e`, `fbede7a`, `f7636b6`, `6f9979c`, and `d8909bd`.
+- Spec compliance re-review approved diff `bd9acad..d8909bd`.
+- Code-quality re-review approved diff `bd9acad..d8909bd`.
+- Focused repair verification from reviewer gates: `npm test -- packages/agent/test/provider-readiness.test.ts packages/agent/test/provider-selection.test.ts` passed with 29 tests.
+- Focused provider/auth suite from reviewer gates: `npm test -- packages/agent/test/credential-reference.test.ts packages/agent/test/provider-registry.test.ts packages/agent/test/provider-readiness.test.ts packages/agent/test/provider-selection.test.ts packages/local-runtime/test/agent-provider-readiness-routes.test.ts packages/ui/test/agent-provider-setup-cards.test.ts` passed with 63 tests.
+- Full verification from reviewer gates: `npm run verify` passed with typecheck, 125 test files / 1173 tests, Vite build, and factory readiness.
+- Factory check from reviewer gates: `npm run factory:check` passed.
 
 Review findings to repair:
 
 - Expired credential references must fail closed as `credential-expired` even when the secret-store binding reports healthy.
 - Remote prompt-only providers must still require human byte-transfer approval for sensitive evidence prompts when remote transfer is allowed.
+- Credential reference expiry and readiness-clock parsing must fail closed without masking explicit credential states.
+- Secret-store health must be schema-valid, safely parsed, bound to the requested credential reference, and fail closed without leaking parser, accessor, rejection, or mismatched-ID details.
 
 Owned files:
 
