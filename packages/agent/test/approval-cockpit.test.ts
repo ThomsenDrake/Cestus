@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   agentApprovalCockpitDtoSchema,
+  agentApprovalDecisionResultDtoSchema,
   buildAgentApprovalCockpit
 } from "../src/approval-cockpit.js";
 import type { AgentStatusDto } from "../src/runtime-types.js";
@@ -88,6 +89,32 @@ describe("agent approval cockpit dto", () => {
     expect(cockpit.queue.blocked[0]?.executableByApproval).toBe(false);
   });
 
+  it("marks missing provenance requests blocked with an explicit reason", () => {
+    const cockpit = buildAgentApprovalCockpit({
+      status: agentStatus({
+        toolRequests: [providerTransferRequest({
+          sourceEventIds: [],
+          inputArtifactHashes: []
+        })]
+      }),
+      generatedAt: "2026-07-08T14:00:00.000Z"
+    });
+
+    expect(cockpit.queue.pending).toHaveLength(0);
+    expect(cockpit.queue.blocked[0]).toMatchObject({
+      toolRequestId: "toolreq_provider_transfer",
+      blockingReasons: expect.arrayContaining(["missing-provenance"]),
+      staleness: {
+        state: "current",
+        approvable: false
+      }
+    });
+    expect(cockpit.queue.blocked[0]?.review.riskAndLockStatus).toMatch(/missing provenance/i);
+    expect(cockpit.queue.blocked[0]?.review.staleOrUnsafePrevention).toContain(
+      "Requests without source-event and artifact provenance stay blocked until both provenance inputs are present."
+    );
+  });
+
   it("projects approved denied completed and failed terminal buckets", () => {
     const approved = buildAgentApprovalCockpit({
       status: agentStatus({
@@ -156,6 +183,55 @@ describe("agent approval cockpit dto", () => {
         generatedAt: "2026-07-08T14:00:00.000Z"
       })
     ).toThrow(/secret|credential/i);
+  });
+
+  it("exports a strict decision result schema for route parsing", () => {
+    const approvalCockpit = buildAgentApprovalCockpit({
+      status: agentStatus({
+        toolRequests: [providerTransferRequest()]
+      }),
+      generatedAt: "2026-07-08T14:00:00.000Z"
+    });
+
+    const result = {
+      ok: true,
+      schemaVersion: "agent-approval-decision-result.v1",
+      eventIds: ["evt_agent_tool_approved"],
+      approvalCockpit
+    };
+
+    expect(agentApprovalDecisionResultDtoSchema.parse(result)).toEqual(result);
+    expect(() =>
+      agentApprovalDecisionResultDtoSchema.parse({
+        ...result,
+        approvalCockpit: {
+          ...approvalCockpit,
+          queue: { pending: "nope" }
+        }
+      })
+    ).toThrow(/queue/i);
+  });
+
+  it("rejects malformed cockpit queue payloads during parsing", () => {
+    const cockpit = buildAgentApprovalCockpit({
+      status: agentStatus({
+        toolRequests: [providerTransferRequest()]
+      }),
+      generatedAt: "2026-07-08T14:00:00.000Z"
+    });
+
+    expect(() =>
+      agentApprovalCockpitDtoSchema.parse({
+        ...cockpit,
+        queue: {
+          ...cockpit.queue,
+          blocked: [{
+            ...cockpit.queue.pending[0],
+            review: { ...cockpit.queue.pending[0]!.review, staleOrUnsafePrevention: "wrong" }
+          }]
+        }
+      })
+    ).toThrow(/staleOrUnsafePrevention/i);
   });
 });
 
