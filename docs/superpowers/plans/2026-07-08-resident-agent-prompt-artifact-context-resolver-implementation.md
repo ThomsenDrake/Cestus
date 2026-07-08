@@ -932,3 +932,7 @@ The slice is complete when:
 - Local runtime no longer contains placeholder prompt text based only on `inputArtifactHash`.
 - Live Nous smoke, targeted verification, `npm run verify`, and `npm run factory:check` pass.
 - Every task has a claim commit, implementation commit, and review-ready handoff.
+
+## Task 5 Readiness Marker
+
+Task 5 reached ready-for-review on 2026-07-08. The claim-only commit was recorded, focused verification passed, the live Nous smoke returned `ok: true` with only safe hashes, invocation event IDs, context pack IDs, and counts, full verification passed, whitespace passed, factory readiness passed with the prompt artifact context resolver plan tracked, and sanitized durable evidence was appended to `docs/agentic/software-factory.md`.

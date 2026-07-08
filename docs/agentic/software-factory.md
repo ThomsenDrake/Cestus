@@ -840,3 +840,66 @@ factory-readiness passed
 ```
 
 Integration lesson: future resident-agent work should start from `neo` after this checkpoint and preserve the direct-boundary, consume-time approval, provider-secret, and zero-trust bootstrap hardening added by the four finished threads.
+
+## Resident Agent Prompt Artifact Context Resolver Readiness
+
+The resident-agent prompt artifact and context resolver slice was implemented and verified from the approved resident-agent execution, provider/auth, and prompt-artifact implementation direction on 2026-07-08.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md`
+- `docs/superpowers/specs/2026-07-07-resident-agent-execution-approval-design.md`
+- `docs/superpowers/specs/2026-07-07-resident-agent-provider-auth-design.md`
+- `docs/superpowers/plans/2026-07-08-resident-agent-prompt-artifact-context-resolver-implementation.md`
+
+Factory readiness tracks the prompt artifact context resolver plan through `scripts/check-agent-readiness.mjs`.
+
+Recorded focused verification:
+
+```text
+npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/context-packs.test.ts packages/ontology/test/agent-contracts.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/provider.test.ts packages/agent/test/openai-compatible-provider.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts packages/local-runtime/test/agent-http-routes.test.ts
+Test Files  10 passed (10)
+Tests  118 passed (118)
+```
+
+Recorded live Nous smoke evidence:
+
+```text
+npm run agent:nous:smoke
+ok true
+input artifact hash present
+output artifact hash present
+invocation event IDs present: 2
+context pack IDs present: workspace-runtime-status.v1
+omission count: 4
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  133 passed (133)
+Tests  1287 passed (1287)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Whitespace verification:
+
+```text
+git diff --check
+no output
+```
+
+Factory check:
+
+```text
+npm run factory:check
+factory-readiness passed
+```
+
+Provider prompts now flow through durable prompt artifact envelopes bound to context pack refs, template metadata, omissions, stale-input metadata, provider-transfer policy, and stable SHA-256 artifact hashes. Production prompt text is not stored in ledger events, DTOs, diagnostics, docs, tests, or logs; model invocation events record only safe prompt artifact audit metadata.
+
+The live Nous smoke is an approved provider acceptance check for this slice. The slice adds no PRR send or follow-up execution, legal escalation, export or publication, destructive repair, accepted graph review execution, hidden external effects, or direct cockpit execution path.
