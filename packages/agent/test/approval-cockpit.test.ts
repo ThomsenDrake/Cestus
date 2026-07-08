@@ -326,6 +326,94 @@ describe("agent approval cockpit dto", () => {
     expect(parsed.decisionContract.forbiddenDirectEffects).toContain("evidence-retention-review");
     expect(parsed.forbiddenDirectEffects).toContain("evidence-retention-review");
   });
+
+  it.each([
+    "none",
+    "human-review"
+  ])("rejects sentinel approval class %s in canonical cockpit dto parsing", (approvalClass) => {
+    const cockpit = buildAgentApprovalCockpit({
+      status: agentStatus({
+        toolRequests: [providerTransferRequest()]
+      }),
+      generatedAt: "2026-07-08T14:00:00.000Z"
+    });
+
+    expect(() =>
+      agentApprovalCockpitDtoSchema.parse({
+        ...cockpit,
+        approvalClasses: [{
+          ...cockpit.approvalClasses[0]!,
+          approvalClass
+        }]
+      })
+    ).toThrow(/approval class|direct effect/i);
+
+    expect(() =>
+      agentApprovalCockpitDtoSchema.parse({
+        ...cockpit,
+        queue: {
+          ...cockpit.queue,
+          pending: [{
+            ...cockpit.queue.pending[0]!,
+            approvalClass,
+            requiredApprovalClass: approvalClass,
+            activeLocks: [{
+              lockId: "lock_provider_review",
+              category: "review",
+              message: "Waiting for review.",
+              appliesToApprovalClasses: [approvalClass]
+            }],
+            risk: {
+              ...cockpit.queue.pending[0]!.risk,
+              approvalClass,
+              activeLocks: [{
+                lockId: "lock_provider_review",
+                category: "review",
+                message: "Waiting for review.",
+                appliesToApprovalClasses: [approvalClass]
+              }]
+            },
+            approval: {
+              toolRequestId: "toolreq_provider_transfer",
+              approvedBy: "actor_case_owner",
+              approvedPreviewHash: previewHash,
+              approvedAt: "2026-07-08T14:01:00.000Z",
+              rationale: "Approved the review.",
+              approvalClass
+            },
+            denial: {
+              toolRequestId: "toolreq_provider_transfer",
+              deniedBy: "actor_case_owner",
+              deniedAt: "2026-07-08T14:02:00.000Z",
+              rationale: "Denied the review.",
+              approvalClass
+            },
+            approvalContract: {
+              ...cockpit.queue.pending[0]!.approvalContract,
+              requiredApprovalClass: approvalClass
+            }
+          }]
+        }
+      })
+    ).toThrow(/approval class|direct effect/i);
+
+    expect(() =>
+      agentApprovalCockpitDtoSchema.parse({
+        ...cockpit,
+        decisionContract: {
+          ...cockpit.decisionContract,
+          forbiddenDirectEffects: ["provider-byte-transfer", approvalClass]
+        }
+      })
+    ).toThrow(/approval class|direct effect/i);
+
+    expect(() =>
+      agentApprovalCockpitDtoSchema.parse({
+        ...cockpit,
+        forbiddenDirectEffects: ["provider-byte-transfer", approvalClass]
+      })
+    ).toThrow(/approval class|direct effect/i);
+  });
 });
 
 function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {

@@ -201,6 +201,49 @@ describe("agent approval queue", () => {
     expect(deniedQueue.denied[0]?.denial?.approvalClass).toBe("evidence-retention-review");
   });
 
+  it.each([
+    "none",
+    "human-review"
+  ])("rejects sentinel approval class %s at canonical queue boundaries", (approvalClass) => {
+    expect(() =>
+      buildAgentApprovalQueue(queueInput({
+        requests: [{
+          ...baseRequest,
+          requiredApprovalClass: approvalClass
+        }]
+      }))
+    ).toThrow(/approval class/i);
+
+    expect(() =>
+      buildAgentApprovalQueue(queueInput({
+        approvals: [approvedProvider({ approvalClass })]
+      }))
+    ).toThrow(/approval class/i);
+
+    expect(() =>
+      buildAgentApprovalQueue(queueInput({
+        denials: [{
+          toolRequestId: "toolreq_provider_preview",
+          deniedBy: "actor_case_owner",
+          deniedAt: "2026-07-07T22:03:00.000Z",
+          rationale: "Needs review.",
+          approvalClass
+        }]
+      }))
+    ).toThrow(/approval class/i);
+
+    expect(() =>
+      buildAgentApprovalQueue(queueInput({
+        activeLocks: [{
+          lockId: "lock_provider_review",
+          category: "review",
+          message: "Waiting for review.",
+          appliesToApprovalClasses: [approvalClass]
+        }]
+      }))
+    ).toThrow(/approval class/i);
+  });
+
   it("marks requested items stale before approval when the current preview hash differs", () => {
     const queue = buildAgentApprovalQueue(queueInput({
       currentPreviewHashes: {
