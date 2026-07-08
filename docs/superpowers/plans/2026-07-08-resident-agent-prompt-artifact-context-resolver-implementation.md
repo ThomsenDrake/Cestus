@@ -936,3 +936,7 @@ The slice is complete when:
 ## Task 5 Readiness Marker
 
 Task 5 reached ready-for-review on 2026-07-08. The claim-only commit was recorded, focused verification passed, the live Nous smoke returned `ok: true` with only safe hashes, invocation event IDs, context pack IDs, and counts, full verification passed, whitespace passed, factory readiness passed with the prompt artifact context resolver plan tracked, and sanitized durable evidence was appended to `docs/agentic/software-factory.md`.
+
+## Whole-Branch Review Fix Marker
+
+Whole-branch review found one provider-test fixture hygiene issue after Task 5. The touched OpenAI-compatible provider tests were updated to avoid credential-shaped and raw-error-shaped fixture material, the focused prompt-artifact resolver test set passed with 10 files and 118 tests, the live Nous smoke returned `ok: true` with only safe hashes, invocation event IDs, context pack IDs, and counts, and final `npm run verify` passed with typecheck, 133 test files, 1287 tests, UI build, and factory readiness.
