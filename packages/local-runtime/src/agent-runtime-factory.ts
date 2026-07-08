@@ -18,8 +18,7 @@ export type LocalAgentRuntimeFactory = (
 export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input) => {
   const configuredProviders = createLocalAgentProviderConfiguration({
     cwd: input.handle.config.cwd,
-    now: input.now,
-    resolveInputText: resolveInputTextForLocalRuntime
+    now: input.now
   });
 
   return createAgentRuntime({
@@ -29,7 +28,3 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
     providers: configuredProviders.providers
   });
 };
-
-function resolveInputTextForLocalRuntime(inputArtifactHash: string): string {
-  return `Cestus local runtime prompt artifact ${inputArtifactHash}.`;
-}

@@ -67,6 +67,91 @@ describe("agent context packs", () => {
     expect(left).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 
+  it("carries source events, artifact hashes, policy scope, budget, and staleness metadata", () => {
+    const artifactHash = "sha256:2222222222222222222222222222222222222222222222222222222222222222";
+    const ref = buildContextPackRef({
+      contextPackId: "task-run-history.v1",
+      version: 1,
+      generatedAt: "2026-07-08T12:00:00.000Z",
+      payload: { events: ["evt_agent_task_created"], artifacts: [artifactHash] },
+      safeSummary: "One resident-agent task event.",
+      provenanceRefs: ["evt_agent_task_created", artifactHash],
+      sourceEventIds: ["evt_agent_task_created"],
+      artifactHashes: [artifactHash],
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      sizeBudgetBytes: 16_384,
+      stalenessInputs: [{
+        kind: "projection-high-water-mark",
+        ref: "agent.projection",
+        value: "42"
+      }]
+    });
+
+    expect(ref.sourceEventIds).toEqual(["evt_agent_task_created"]);
+    expect(ref.artifactHashes).toEqual([artifactHash]);
+    expect(ref.policyVersion).toBe("agent-policy-v1");
+    expect(ref.scope).toEqual({ kind: "workspace", id: "ws_case_001" });
+    expect(ref.sizeBudgetBytes).toBe(16_384);
+    expect(ref.stalenessInputs).toEqual([{
+      kind: "projection-high-water-mark",
+      ref: "agent.projection",
+      value: "42"
+    }]);
+    expect(Object.isFrozen(ref)).toBe(true);
+    expect(Object.isFrozen(ref.sourceEventIds)).toBe(true);
+    expect(Object.isFrozen(ref.artifactHashes)).toBe(true);
+    expect(Object.isFrozen(ref.scope)).toBe(true);
+    expect(Object.isFrozen(ref.stalenessInputs)).toBe(true);
+    expect(Object.isFrozen(ref.stalenessInputs?.[0])).toBe(true);
+  });
+
+  it("parses richer context pack refs returned from durable artifact manifests", () => {
+    const ref = contextPackRefSchema.parse({
+      contextPackId: "task-run-history.v1",
+      version: 1,
+      contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      sizeBytes: 512,
+      generatedAt: "2026-07-08T12:00:00.000Z",
+      safeSummary: "One resident-agent task event.",
+      provenanceRefs: ["evt_agent_task_created"],
+      projectionHighWaterMark: 42,
+      sourceEventIds: ["evt_agent_task_created"],
+      artifactHashes: ["sha256:2222222222222222222222222222222222222222222222222222222222222222"],
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      sizeBudgetBytes: 16_384,
+      stalenessInputs: [{
+        kind: "projection-high-water-mark",
+        ref: "agent.projection",
+        value: "42"
+      }]
+    });
+
+    expect(ref.projectionHighWaterMark).toBe(42);
+    expect(ref.sourceEventIds).toEqual(["evt_agent_task_created"]);
+    expect(ref.artifactHashes).toEqual(["sha256:2222222222222222222222222222222222222222222222222222222222222222"]);
+    expect(ref.stalenessInputs?.[0]).toEqual({
+      kind: "projection-high-water-mark",
+      ref: "agent.projection",
+      value: "42"
+    });
+  });
+
+  it("rejects size budgets smaller than the derived context pack payload", () => {
+    expect(() =>
+      buildContextPackRef({
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        generatedAt: "2026-07-08T12:00:00.000Z",
+        payload: { events: ["evt_agent_task_created"], summary: "This payload is larger than one byte." },
+        safeSummary: "One resident-agent task event.",
+        provenanceRefs: ["evt_agent_task_created"],
+        sizeBudgetBytes: 1
+      })
+    ).toThrow(/sizeBudgetBytes must be at least the derived context pack size/i);
+  });
+
   it("rejects arrays with custom enumerable string properties", () => {
     const payload = ["ok"] as string[] & { extra?: string };
     payload.extra = "api key sk-live-value";

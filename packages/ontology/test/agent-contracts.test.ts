@@ -84,6 +84,49 @@ describe("resident agent event contracts", () => {
     ).toBe(false);
   });
 
+  it("accepts model invocation prompt artifact audit metadata without prompt text", () => {
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_model_requested_prompt_audit",
+          "agent.model-invocation.requested",
+          "agent_model_invocation_inv_001",
+          modelInvocationPromptAuditPayload()
+        )
+      ).success
+    ).toBe(true);
+  });
+
+  it.each([
+    {
+      name: "credential header marker in safe prompt summary",
+      patch: { safePromptSummary: unsafeCredentialHeaderMarker() }
+    },
+    {
+      name: "private key marker in context pack summary",
+      patch: { contextPackRefs: [{ ...contextPackRef(), safeSummary: unsafePrivateKeyMarker() }] }
+    },
+    {
+      name: "credential-setting name in prompt template ID",
+      patch: { promptTemplateId: unsafeCredentialSettingName() }
+    },
+    {
+      name: "unknown context pack field",
+      patch: { contextPackRefs: [{ ...contextPackRef(), unexpectedContextField: "extra metadata" }] }
+    }
+  ])("rejects unsafe or non-strict prompt metadata: $name", ({ patch }) => {
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_model_requested_prompt_audit_rejected",
+          "agent.model-invocation.requested",
+          "agent_model_invocation_inv_001",
+          { ...modelInvocationPromptAuditPayload(), ...patch }
+        )
+      ).success
+    ).toBe(false);
+  });
+
   it("rejects secret-shaped credential references independently", () => {
     expect(
       validateKnowledgeEvent(
@@ -386,3 +429,66 @@ describe("resident agent event contracts", () => {
     expect(validateKnowledgeEvent({ ...validEvent, streamId: "wrong_stream" }).success).toBe(false);
   });
 });
+
+function modelInvocationPromptAuditPayload(): Record<string, unknown> {
+  return {
+    invocationId: "inv_001",
+    runId: "run_001",
+    providerId: "provider_fake",
+    modelFamily: "fake-local",
+    inputArtifactHash: hash111,
+    safetyClass: "provider-approved",
+    credentialRefId: "agent_credref_local",
+    credentialKind: "local-no-secret",
+    contextPackRefs: [contextPackRef()],
+    promptTemplateId: "resident-agent-context-pack.v1",
+    promptTemplateVersion: 1,
+    runType: "evidence-triage",
+    safePromptSummary: "Provider-approved prompt artifact assembled from safe context pack summaries.",
+    omissions: [
+      {
+        reason: "budget",
+        sourceRef: "evidence-summary.v1",
+        safeSummary: "One evidence pack was omitted because the declared size budget was reached."
+      }
+    ],
+    transferApprovalClass: "provider-byte-transfer"
+  };
+}
+
+function contextPackRef(): Record<string, unknown> {
+  return {
+    contextPackId: "task-run-history.v1",
+    version: 1,
+    contentHash: hash222,
+    sizeBytes: 512,
+    generatedAt: "2026-07-08T12:00:00.000Z",
+    safeSummary: "One resident-agent task event.",
+    provenanceRefs: ["evt_agent_task_created"],
+    projectionHighWaterMark: 42,
+    sourceEventIds: ["evt_agent_task_created"],
+    artifactHashes: [hash333],
+    policyVersion: "agent-policy-v1",
+    scope: { kind: "workspace", id: "ws_case_001" },
+    sizeBudgetBytes: 16384,
+    stalenessInputs: [
+      {
+        kind: "projection-high-water-mark",
+        ref: "agent.projection",
+        value: "42"
+      }
+    ]
+  };
+}
+
+function unsafeCredentialHeaderMarker(): string {
+  return ["Author", "ization", ": ", "Bear", "er", " raw-provider-material"].join("");
+}
+
+function unsafePrivateKeyMarker(): string {
+  return ["private", " ", "key", ": ", "raw-provider-material"].join("");
+}
+
+function unsafeCredentialSettingName(): string {
+  return ["OPEN", "AI", "_", "API", "_", "KEY"].join("");
+}

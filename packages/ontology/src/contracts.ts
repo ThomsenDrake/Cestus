@@ -250,6 +250,47 @@ const agentLockKindSchema = z.enum([
 const agentSourceEventIdsSchema = z.array(eventIdSchema);
 const agentArtifactHashesSchema = z.array(agentArtifactHashSchema);
 const agentSafeActionsSchema = z.array(secretSafeTextSchema).min(1);
+const agentContextPackScopeSchema = z.object({
+  kind: secretSafeStringSchema.min(1),
+  id: secretSafeStringSchema.min(1)
+}).strict();
+const agentContextPackStalenessInputSchema = z.object({
+  kind: secretSafeStringSchema.min(1),
+  ref: secretSafeStringSchema.min(1),
+  value: secretSafeStringSchema.min(1)
+}).strict();
+const agentContextPackRefSchema = z.object({
+  contextPackId: secretSafeStringSchema.min(1),
+  version: z.number().int().positive(),
+  contentHash: agentArtifactHashSchema,
+  sizeBytes: z.number().int().nonnegative(),
+  generatedAt: z.string().datetime(),
+  safeSummary: secretSafeTextSchema,
+  provenanceRefs: z.array(secretSafeStringSchema.min(1)).min(1),
+  projectionHighWaterMark: z.number().int().nonnegative().optional(),
+  sourceEventIds: agentSourceEventIdsSchema.optional(),
+  artifactHashes: agentArtifactHashesSchema.optional(),
+  policyVersion: secretSafeStringSchema.min(1).optional(),
+  scope: agentContextPackScopeSchema.optional(),
+  sizeBudgetBytes: z.number().int().positive().optional(),
+  stalenessInputs: z.array(agentContextPackStalenessInputSchema).optional()
+}).strict().superRefine((contextPackRef, ctx) => {
+  if (
+    contextPackRef.sizeBudgetBytes !== undefined &&
+    contextPackRef.sizeBudgetBytes < contextPackRef.sizeBytes
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["sizeBudgetBytes"],
+      message: "sizeBudgetBytes must be at least sizeBytes"
+    });
+  }
+});
+const agentPromptArtifactOmissionSchema = z.object({
+  reason: secretSafeTextSchema,
+  sourceRef: secretSafeStringSchema.min(1),
+  safeSummary: secretSafeTextSchema
+}).strict();
 const agentReadModelChangeSchema = z.object({
   projectionName: secretSafeStringSchema.min(1),
   change: secretSafeTextSchema,
@@ -356,7 +397,14 @@ const agentModelInvocationRequestedPayloadSchema = z.object({
   inputArtifactHash: agentArtifactHashSchema,
   safetyClass: z.enum(["workspace-safe", "public-safe", "sensitive-local-only", "provider-approved"]),
   credentialRefId: agentCredentialRefIdSchema.optional(),
-  credentialKind: agentCredentialKindSchema.optional()
+  credentialKind: agentCredentialKindSchema.optional(),
+  contextPackRefs: z.array(agentContextPackRefSchema).optional(),
+  promptTemplateId: secretSafeStringSchema.min(1).optional(),
+  promptTemplateVersion: z.number().int().positive().optional(),
+  runType: agentSpecialistRunTypeSchema.optional(),
+  safePromptSummary: secretSafeTextSchema.optional(),
+  omissions: z.array(agentPromptArtifactOmissionSchema).optional(),
+  transferApprovalClass: z.enum(["none", "provider-byte-transfer"]).optional()
 }).strict();
 
 const agentModelInvocationCompletedPayloadSchema = z.object({
@@ -1301,7 +1349,7 @@ export const eventContracts = {
     type: "agent.model-invocation.requested",
     version: 1,
     description: "Records a requested model invocation through a provider adapter.",
-    agentGuidance: "Required provenance fields: invocationId, runId, providerId, modelFamily, inputArtifactHash, safetyClass, and optional credentialRefId. Forbidden autonomous effects: this event does not send bytes unless a separate approved tool or provider gate permits it.",
+    agentGuidance: "Required provenance fields: invocationId, runId, providerId, modelFamily, inputArtifactHash, safetyClass, and optional credentialRefId. Prompt artifact audit metadata may include context pack refs, prompt template ID/version, run type, omission records, safe prompt summary, and transfer approval class; never store prompt text. Forbidden autonomous effects: this event does not send bytes unless a separate approved tool or provider gate permits it.",
     invariants: ["invocationId must route the stream", "credentialRefId must be an ID reference only", "inputArtifactHash must be sha256"]
   },
   "agent.model-invocation.completed": {

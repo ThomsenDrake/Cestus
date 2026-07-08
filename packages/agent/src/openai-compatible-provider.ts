@@ -24,7 +24,6 @@ export interface OpenAICompatibleChatProviderOptions {
   readonly credentialRefId: string;
   readonly secretStore: SecretStore;
   readonly fetch?: FetchLike;
-  readonly resolveInputText: (inputArtifactHash: string) => string | Promise<string>;
   readonly systemPrompt?: string;
   readonly maxTokens?: number;
   readonly adapterVersion?: string;
@@ -37,7 +36,6 @@ export interface OpenAICompatibleChatProviderOptions {
 export interface CreateNousPortalProviderInput {
   readonly secretStore: SecretStore;
   readonly fetch?: FetchLike;
-  readonly resolveInputText: (inputArtifactHash: string) => string | Promise<string>;
   readonly endpointUrl?: string;
   readonly modelId?: string;
   readonly requestTags?: readonly string[];
@@ -91,7 +89,6 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
   private readonly credentialRefId: string;
   private readonly secretStore: SecretStore;
   private readonly fetchImpl: FetchLike;
-  private readonly resolveInputText: (inputArtifactHash: string) => string | Promise<string>;
   private readonly systemPrompt: string;
   private readonly maxTokens: number;
   private readonly requestTags: readonly string[];
@@ -112,7 +109,6 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
     this.credentialRefId = options.credentialRefId;
     this.secretStore = options.secretStore;
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
-    this.resolveInputText = options.resolveInputText;
     this.systemPrompt = systemPrompt;
     this.maxTokens = maxTokens;
     this.requestTags = Object.freeze([...requestTagsSchema.parse(options.requestTags ?? [])]);
@@ -142,7 +138,7 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
     assertCredentialReferenceIsSafe(parsed.credentialRef);
     this.assertCredentialSupported(parsed.credentialRef, parsed.modelFamily);
 
-    const inputText = nonEmptySecretSafeTextSchema.parse(await this.resolveInputText(parsed.inputArtifactHash));
+    const inputText = requireInputText(parsed);
     const secret = await this.secretStore.resolve(this.credentialRefId);
     if (secret === undefined) {
       throw new Error("Credential binding is missing.");
@@ -230,7 +226,6 @@ export function createNousPortalProvider(input: CreateNousPortalProviderInput): 
     credentialRefId: "agent_credref_nous_portal",
     secretStore: input.secretStore,
     ...(input.fetch === undefined ? {} : { fetch: input.fetch }),
-    resolveInputText: input.resolveInputText,
     requestTags: input.requestTags ?? defaultNousPortalRequestTags,
     includeReasoning: input.includeReasoning ?? false,
     reasoningEffort: input.reasoningEffort ?? "none",
@@ -243,6 +238,17 @@ function parseInvocationRequest(request: ModelInvocationRequest): ModelInvocatio
     throw new Error("inputArtifactHash must be a sha256 content hash.");
   }
   return request;
+}
+
+function requireInputText(request: ModelInvocationRequest): string {
+  if (request.inputText === undefined) {
+    throw new Error("inputText is required for remote provider invocation.");
+  }
+  const parsed = nonEmptySecretSafeTextSchema.safeParse(request.inputText);
+  if (!parsed.success) {
+    throw new Error("inputText must be non-empty and secret-safe.");
+  }
+  return parsed.data;
 }
 
 function hashProviderOutput(input: {

@@ -9,6 +9,12 @@ import type {
   ProviderDescriptor
 } from "./provider.js";
 import { assertCredentialReferenceIsSafe, providerDescriptorSchema } from "./provider.js";
+import {
+  assertPromptArtifactCanTransferToRemoteProvider,
+  promptArtifactAuditMetadata,
+  type PromptArtifactAuditMetadata,
+  type PromptArtifactEnvelope
+} from "./prompt-artifacts.js";
 import type { AgentRuntimeDiagnosticDto, AgentRuntimeResult, AgentStatusDto } from "./runtime-types.js";
 import {
   approvedAgentSpecialistRunTypes,
@@ -74,6 +80,7 @@ export interface InvokeAgentModelInput {
   readonly inputArtifactHash: string;
   readonly credentialRef: CredentialReference;
   readonly safetyClass?: "workspace-safe" | "public-safe" | "sensitive-local-only" | "provider-approved";
+  readonly promptArtifact?: PromptArtifactEnvelope;
 }
 
 export interface InitializeDefaultIdentityResult {
@@ -259,6 +266,10 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       if (!projection.runs.has(command.runId)) {
         return failedResult(agentDiagnostic("agent", "Agent run was not found.", ["start the specialist run before invoking a model"]));
       }
+      const promptAudit = auditPromptArtifact(command.promptArtifact);
+      const matchedPromptAudit = promptAudit.ok && promptAudit.metadata.inputArtifactHash === command.inputArtifactHash
+        ? promptAudit.metadata
+        : undefined;
 
       const requestedEvent: AppendableKnowledgeEvent<"agent.model-invocation.requested"> = {
         type: "agent.model-invocation.requested",
@@ -276,9 +287,10 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           providerId: command.providerId,
           modelFamily: command.modelFamily,
           inputArtifactHash: command.inputArtifactHash,
-          safetyClass: command.safetyClass ?? "workspace-safe",
+          safetyClass: matchedPromptAudit?.safetyClass ?? command.safetyClass ?? "workspace-safe",
           credentialRefId: command.credentialRef.credentialRefId,
-          credentialKind: command.credentialRef.kind
+          credentialKind: command.credentialRef.kind,
+          ...promptAuditPayload(matchedPromptAudit)
         }
       };
 
@@ -309,6 +321,53 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           retryable: false,
           allowedActions: ["choose a supported model family"]
         });
+      }
+
+      let providerInputText: string | undefined;
+      if (requiresPromptArtifactForProvider(descriptor)) {
+        if (command.promptArtifact === undefined) {
+          return await failModelInvocation(input.ledger, input, command, requested, {
+            diagnosticCategory: "runtime",
+            eventCategory: "provenance-missing",
+            message: "Prompt artifact provenance is missing.",
+            retryable: false,
+            allowedActions: ["build a prompt artifact for this model invocation"]
+          });
+        }
+
+        if (!promptAudit.ok) {
+          return await failModelInvocation(input.ledger, input, command, requested, {
+            diagnosticCategory: "runtime",
+            eventCategory: "secret-detected",
+            message: "Prompt artifact audit metadata was rejected.",
+            retryable: false,
+            allowedActions: ["rebuild the prompt artifact from safe context packs"]
+          });
+        }
+
+        if (promptAudit.metadata.inputArtifactHash !== command.inputArtifactHash) {
+          return await failModelInvocation(input.ledger, input, command, requested, {
+            diagnosticCategory: "runtime",
+            eventCategory: "provenance-missing",
+            message: "Prompt artifact hash does not match the invocation input.",
+            retryable: false,
+            allowedActions: ["rebuild the prompt artifact for the requested input hash"]
+          });
+        }
+
+        try {
+          assertPromptArtifactCanTransferToRemoteProvider(command.promptArtifact);
+        } catch {
+          return await failModelInvocation(input.ledger, input, command, requested, {
+            diagnosticCategory: "policy",
+            eventCategory: "permission-denied",
+            message: "Prompt artifact is not approved for remote provider transfer.",
+            retryable: false,
+            allowedActions: ["request provider byte transfer approval for this prompt artifact"]
+          });
+        }
+
+        providerInputText = command.promptArtifact.text;
       }
 
       try {
@@ -345,13 +404,15 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
 
       let providerResult: unknown;
       try {
-        providerResult = await provider.adapter.invoke({
+        const providerRequest = {
           invocationId: command.invocationId,
           runId: command.runId,
           modelFamily: command.modelFamily,
           inputArtifactHash: command.inputArtifactHash,
-          credentialRef: command.credentialRef
-        });
+          credentialRef: command.credentialRef,
+          ...optionalValue("inputText", providerInputText)
+        };
+        providerResult = await provider.adapter.invoke(providerRequest);
       } catch {
         return await failModelInvocation(input.ledger, input, command, requested, {
           diagnosticCategory: "provider",
@@ -509,6 +570,60 @@ function sanitizedModelUsage(usage: ModelInvocationResult["usage"]): ModelInvoca
     inputUnits: usage.inputUnits,
     outputUnits: usage.outputUnits
   });
+}
+
+type PromptArtifactAuditResult =
+  | { readonly ok: true; readonly metadata: PromptArtifactAuditMetadata }
+  | { readonly ok: false };
+
+function auditPromptArtifact(promptArtifact: PromptArtifactEnvelope | undefined): PromptArtifactAuditResult {
+  if (promptArtifact === undefined) {
+    return { ok: false };
+  }
+
+  try {
+    return { ok: true, metadata: promptArtifactAuditMetadata(promptArtifact) };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function promptAuditPayload(metadata: PromptArtifactAuditMetadata | undefined) {
+  if (metadata === undefined) {
+    return {};
+  }
+
+  return {
+    contextPackRefs: metadata.contextPackRefs.map((ref) => ({
+      contextPackId: ref.contextPackId,
+      version: ref.version,
+      contentHash: ref.contentHash,
+      sizeBytes: ref.sizeBytes,
+      generatedAt: ref.generatedAt,
+      safeSummary: ref.safeSummary,
+      provenanceRefs: [...ref.provenanceRefs],
+      ...optionalValue("projectionHighWaterMark", ref.projectionHighWaterMark),
+      ...optionalArray("sourceEventIds", ref.sourceEventIds),
+      ...optionalArray("artifactHashes", ref.artifactHashes),
+      ...optionalValue("policyVersion", ref.policyVersion),
+      ...optionalValue("scope", ref.scope === undefined ? undefined : { ...ref.scope }),
+      ...optionalValue("sizeBudgetBytes", ref.sizeBudgetBytes),
+      ...optionalValue(
+        "stalenessInputs",
+        ref.stalenessInputs?.map((stalenessInput) => ({ ...stalenessInput }))
+      )
+    })),
+    promptTemplateId: metadata.promptTemplateId,
+    promptTemplateVersion: metadata.promptTemplateVersion,
+    runType: metadata.runType,
+    safePromptSummary: metadata.safeSummary,
+    omissions: metadata.omissions.map((omission) => ({ ...omission })),
+    transferApprovalClass: metadata.transferApprovalClass
+  };
+}
+
+function requiresPromptArtifactForProvider(descriptor: ProviderDescriptor): boolean {
+  return descriptor.endpointKind !== "local-engine";
 }
 
 interface RuntimeModelFailure {
