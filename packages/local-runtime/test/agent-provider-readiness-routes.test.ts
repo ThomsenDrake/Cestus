@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -30,11 +30,43 @@ describe("agent provider readiness route", () => {
     closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
+
+  it("returns configured Nous readiness from the local runtime without ledger writes", async () => {
+    const { handler, config } = testHandler({
+      dotEnvLines: ["CESTUS_AGENT_NOUS_API_KEY=runtime-provider-material"]
+    });
+
+    const response = await handler({ method: "GET", url: "/api/agent/providers/readiness" });
+    const body = JSON.parse(response.body) as {
+      readonly cards: ReadonlyArray<{
+        readonly providerId: string;
+        readonly state: string;
+        readonly credentialHealth: string;
+        readonly requiredApprovalClass: string;
+      }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.cards).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        providerId: "provider_nous_portal",
+        state: "requires-byte-transfer-approval",
+        credentialHealth: "local-binding-healthy",
+        requiredApprovalClass: "provider-byte-transfer"
+      })
+    ]));
+    expect(response.body).not.toMatch(/runtime-provider-material|authorization:\s*bearer|provider error|response body/i);
+    closeHandler(handler);
+    expect(await eventTypes(config)).toEqual([]);
+  });
 });
 
-function testHandler() {
+function testHandler(input: { readonly dotEnvLines?: readonly string[] } = {}) {
   const cwd = mkdtempSync(join(tmpdir(), "cestus-agent-provider-readiness-"));
   tempDirs.push(cwd);
+  if (input.dotEnvLines !== undefined) {
+    writeFileSync(join(cwd, ".env"), input.dotEnvLines.join("\n"));
+  }
   const config = resolveLocalRuntimeConfig({ cwd, env: {} });
   const handler = createLocalRuntimeHttpHandler({
     config,
