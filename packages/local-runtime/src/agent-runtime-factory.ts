@@ -36,7 +36,6 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
     }, { now: input.now });
     providers.push(createNousPortalProvider({
       secretStore,
-      resolveInputText: resolveInputTextForLocalRuntime,
       ...(localEnv.nousEndpoint === undefined ? {} : { endpointUrl: localEnv.nousEndpoint }),
       ...(localEnv.nousModel === undefined ? {} : { modelId: localEnv.nousModel })
     }));
@@ -49,7 +48,3 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
     providers
   });
 };
-
-function resolveInputTextForLocalRuntime(inputArtifactHash: string): string {
-  return `Cestus local runtime prompt artifact ${inputArtifactHash}.`;
-}
