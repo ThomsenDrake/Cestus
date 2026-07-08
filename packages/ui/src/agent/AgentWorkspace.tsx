@@ -1,6 +1,7 @@
 import type {
   AgentStatusDto
 } from "./agent-types.js";
+import { providerSetupCardsFromReadiness } from "./provider-setup-cards.js";
 
 interface AgentWorkspaceProps {
   readonly status: AgentStatusDto | undefined;
@@ -18,6 +19,9 @@ export function AgentWorkspace({
   const activeLocks = status?.locks.filter((lock) => lock.state === "active") ?? [];
   const requestedTools = status?.toolRequests.filter((request) => request.state === "requested") ?? [];
   const runsById = new Map((status?.runs ?? []).map((run) => [run.runId, run]));
+  const providerReadinessCards = status?.providerReadiness === undefined
+    ? []
+    : providerSetupCardsFromReadiness(status.providerReadiness);
 
   return (
     <section aria-label="Resident agent workspace" className="space-y-5">
@@ -124,6 +128,38 @@ export function AgentWorkspace({
                 </ul>
               ) : (
                 <EmptyState>No providers reported.</EmptyState>
+              )}
+            </section>
+
+            <section aria-label="Provider readiness" className="border border-[var(--console-line)] bg-[var(--console-panel)]">
+              <SectionHeader
+                title="Provider readiness"
+                meta={status.providerReadiness?.schemaVersion ?? "not reported"}
+              />
+              {providerReadinessCards.length > 0 ? (
+                <ul role="list" className="divide-y divide-[var(--console-line)]">
+                  {providerReadinessCards.map((card) => (
+                    <li key={card.providerId} className="grid gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-base font-medium text-[var(--paper-light)] sm:text-sm">{card.label}</p>
+                        <p className="mt-1 font-mono text-base text-[var(--muted-amber)] sm:text-sm">{card.providerId}</p>
+                      </div>
+                      <dl className="grid gap-2 md:grid-cols-3">
+                        <InlineStat label="State" value={card.state} />
+                        <InlineStat label="Health" value={card.credentialHealth} />
+                        <InlineStat label="Data posture" value={card.dataHandlingPosture} />
+                        <InlineStat label="Approval" value={card.requiredApprovalClass} />
+                        <InlineStat label="Capabilities" value={card.capabilitySummary.join(", ")} />
+                        <InlineStat label="Actions" value={card.safeActionIds.join(", ") || "no action"} />
+                        {card.credentialRefId === undefined ? null : (
+                          <InlineStat label="Credential ref" value={card.credentialRefId} />
+                        )}
+                      </dl>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState>No provider readiness reported.</EmptyState>
               )}
             </section>
 

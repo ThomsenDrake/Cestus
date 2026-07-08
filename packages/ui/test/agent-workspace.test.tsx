@@ -61,6 +61,42 @@ describe("AgentWorkspace", () => {
     }
   });
 
+  it("renders provider readiness cards as display-only cockpit state", () => {
+    render(
+      <AgentWorkspace
+        status={agentStatus({
+          providerReadiness: {
+            schemaVersion: "agent-provider-readiness.v1",
+            generatedAt: "2026-07-08T12:15:00.000Z",
+            cards: [{
+              providerId: "provider_nous_portal",
+              label: "Nous Portal",
+              backendKind: "openai-compatible-api",
+              state: "requires-byte-transfer-approval",
+              capabilitySummary: ["text", "unsupported", "no tools"],
+              credentialKindSummary: ["api-key-bearer"],
+              credentialHealth: "local-binding-healthy",
+              dataHandlingPosture: "remote-prompt-byte-transfer-gated",
+              credentialRefId: "agent_credref_nous_portal",
+              requiredApprovalClass: "provider-byte-transfer",
+              safeActionIds: ["action_request_provider_byte_transfer_approval"]
+            }],
+            diagnostics: []
+          }
+        })}
+        loadState="loaded"
+        onRefresh={vi.fn()}
+      />
+    );
+
+    const readiness = screen.getByRole("region", { name: "Provider readiness" });
+    expect(within(readiness).getByText("Nous Portal")).toBeInTheDocument();
+    expect(within(readiness).getByText("local-binding-healthy")).toBeInTheDocument();
+    expect(within(readiness).getByText("remote-prompt-byte-transfer-gated")).toBeInTheDocument();
+    expect(within(readiness).getByText("provider-byte-transfer")).toBeInTheDocument();
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Refresh agent status"]);
+  });
+
   it("shows safe loading and error states", () => {
     const { rerender } = render(<AgentWorkspace status={undefined} loadState="loading" />);
 

@@ -840,3 +840,53 @@ factory-readiness passed
 ```
 
 Integration lesson: future resident-agent work should start from `neo` after this checkpoint and preserve the direct-boundary, consume-time approval, provider-secret, and zero-trust bootstrap hardening added by the four finished threads.
+
+## Provider Readiness Health UX Implementation Readiness
+
+The provider readiness health UX slice was implemented from the approved resident-agent provider/auth design and the live Nous provider correction on 2026-07-08.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-resident-agent-provider-auth-design.md`
+- `docs/superpowers/plans/2026-07-08-provider-readiness-health-ux-implementation.md`
+
+Recorded focused verification:
+
+```text
+npm test -- packages/agent/test/provider-readiness.test.ts packages/local-runtime/test/agent-provider-readiness.test.ts packages/local-runtime/test/agent-provider-readiness-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-provider-smoke.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-provider-setup-cards.test.ts packages/ui/test/agent-workspace.test.tsx
+Test Files  8 passed
+Tests  62 passed
+```
+
+Recorded live Nous smoke:
+
+```text
+schemaVersion agent-provider-smoke.v1
+providerId provider_nous_portal
+modelId tencent/hy3:free
+ok true
+category ok
+marker cestus-live-provider-ok
+outputHash sha256:40f46f72360d42f803171329431c6ad304ea18ddd4f575cda51135a1de1704f3
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  132 passed
+Tests  1268 passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Whitespace verification:
+
+```text
+git diff --check
+no output
+```
+
+This slice uses live Nous as the authoritative provider/model acceptance path. Deterministic tests cover DTO contracts, redaction, route safety, and UI rendering. Readiness remains display-only and byte-transfer-gated; it does not approve private evidence transfer or any other risky effect.

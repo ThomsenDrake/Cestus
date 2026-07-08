@@ -1,5 +1,7 @@
 import { z } from "zod";
 import {
+  providerCredentialHealthSchema,
+  providerDataHandlingPostureSchema,
   providerReadinessApprovalClassSchema,
   providerReadinessDiagnosticSchema,
   providerReadinessDtoSchema,
@@ -62,6 +64,8 @@ const allowedBrowserLiteralText = new Set<string>([
   ...providerBackendKindSchema.options,
   ...providerReadinessApprovalClassSchema.options,
   ...providerReadinessStateSchema.options,
+  ...providerCredentialHealthSchema.options,
+  ...providerDataHandlingPostureSchema.options,
   ...safeProviderSetupActionIds,
   ...Object.values(displayLabelByState)
 ]);
@@ -87,6 +91,9 @@ const safeProviderReadinessCardSchema = providerSetupCardSchema.extend({
   providerId: safeProviderIdSchema,
   label: safeFreeTextSchema,
   capabilitySummary: z.array(safeFreeTextSchema),
+  credentialHealth: providerCredentialHealthSchema,
+  dataHandlingPosture: providerDataHandlingPostureSchema,
+  credentialRefId: safeCredentialRefIdSchema.optional(),
   safeActionIds: z.array(safeProviderSetupActionIdSchema)
 }).strict();
 

@@ -12,7 +12,37 @@ describe("provider setup cards", () => {
     });
 
     expect(cards.map((card) => safeProviderSetupCardSchema.parse(card).state)).toEqual(["needs-api-key"]);
+    expect(cards[0]).toMatchObject({
+      credentialHealth: "local-binding-missing",
+      dataHandlingPosture: "remote-prompt-byte-transfer-gated"
+    });
     expect(JSON.stringify(cards)).not.toMatch(/authorization:\s*bearer|password=|private key|secret=|raw-provider-material/i);
+  });
+
+  it("preserves configured credential health, data posture, and safe credential reference", () => {
+    const cards = providerSetupCardsFromReadiness({
+      ...readinessFixture(),
+      cards: [
+        cardFixture({
+          providerId: "provider_nous_portal",
+          label: "Nous Portal",
+          state: "requires-byte-transfer-approval",
+          credentialHealth: "local-binding-healthy",
+          dataHandlingPosture: "remote-prompt-byte-transfer-gated",
+          credentialRefId: "agent_credref_nous_portal",
+          safeActionIds: ["action_request_provider_byte_transfer_approval"]
+        })
+      ]
+    });
+
+    expect(cards[0]).toMatchObject({
+      providerId: "provider_nous_portal",
+      credentialHealth: "local-binding-healthy",
+      dataHandlingPosture: "remote-prompt-byte-transfer-gated",
+      credentialRefId: "agent_credref_nous_portal",
+      requiredApprovalClass: "provider-byte-transfer"
+    });
+    expect(JSON.stringify(cards)).not.toMatch(/authorization:\s*bearer|provider error|response body|runtime-provider-material/i);
   });
 
   it.each([
@@ -117,6 +147,8 @@ function cardFixture(overrides: Record<string, unknown> = {}) {
     state: "needs-api-key",
     capabilitySummary: ["text", "schema output"],
     credentialKindSummary: ["api-key-bearer"],
+    credentialHealth: "local-binding-missing",
+    dataHandlingPosture: "remote-prompt-byte-transfer-gated",
     requiredApprovalClass: "provider-byte-transfer",
     safeActionIds: ["action_link_provider_credential"],
     ...overrides

@@ -1,7 +1,4 @@
 import {
-  buildProviderReadiness,
-  createProviderRegistry,
-  FakeSecretStore,
   isAgentSecretSafeText,
   type AgentTaskPriority
 } from "../../agent/src/index.js";
@@ -11,6 +8,7 @@ import {
   defaultLocalAgentRuntimeFactory,
   type LocalAgentRuntimeFactory
 } from "./agent-runtime-factory.js";
+import { buildLocalAgentProviderReadiness } from "./agent-provider-readiness.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
 const defaultIdentityStreamId = "agent_identity_agent_default";
@@ -33,10 +31,8 @@ export async function handleAgentHttpRoute(
 
   try {
     if (input.request.method === "GET" && path === "/api/agent/providers/readiness") {
-      return json(200, await buildProviderReadiness({
-        registry: createDefaultProviderReadinessRegistry(),
-        credentialReferences: [],
-        secretStore: new FakeSecretStore(),
+      return json(200, await buildLocalAgentProviderReadiness({
+        cwd: input.handle.config.cwd,
         now: input.now
       }));
     }
@@ -49,7 +45,14 @@ export async function handleAgentHttpRoute(
     });
 
     if (input.request.method === "GET" && path === "/api/agent/status") {
-      return json(200, await runtime.status());
+      const [status, providerReadiness] = await Promise.all([
+        runtime.status(),
+        buildLocalAgentProviderReadiness({
+          cwd: input.handle.config.cwd,
+          now: input.now
+        })
+      ]);
+      return json(200, { ...status, providerReadiness });
     }
 
     if (input.request.method === "GET" && path === "/api/agent/tool-requests") {
@@ -271,8 +274,4 @@ function json(status: number, body: unknown): LocalRuntimeResponse {
     headers: Object.freeze({ "content-type": "application/json; charset=utf-8" }),
     body: JSON.stringify(body)
   });
-}
-
-function createDefaultProviderReadinessRegistry() {
-  return createProviderRegistry.withDefaultsForTest();
 }

@@ -72,6 +72,34 @@ describe("agent HTTP routes", () => {
     expect(await eventTypes(config)).toEqual([]);
   });
 
+  it("includes provider readiness in agent status for configured Nous", async () => {
+    const cwd = tempDir();
+    writeFileSync(join(cwd, ".env"), ["CESTUS_AGENT_NOUS_API_KEY=runtime-provider-material"].join("\n"));
+    const config = resolveLocalRuntimeConfig({ cwd, env: {} });
+    const handler = testHandler({ config });
+
+    const response = await handler({ method: "GET", url: "/api/agent/status" });
+    const body = JSON.parse(response.body) as {
+      readonly providerReadiness?: {
+        readonly cards: ReadonlyArray<{
+          readonly providerId: string;
+          readonly credentialHealth: string;
+          readonly dataHandlingPosture: string;
+        }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.providerReadiness?.cards).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        providerId: "provider_nous_portal",
+        credentialHealth: "local-binding-healthy",
+        dataHandlingPosture: "remote-prompt-byte-transfer-gated"
+      })
+    ]));
+    expect(response.body).not.toMatch(/runtime-provider-material|authorization:\s*bearer|provider error|response body/i);
+  });
+
   it("returns pending tool requests from GET /api/agent/tool-requests", async () => {
     const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
     const handler = testHandler({ config });
