@@ -25,6 +25,10 @@ export class SecretMaterial {
     return Object.freeze(new SecretMaterial(value)) as SecretMaterial;
   }
 
+  static fromRuntimeValue(value: string): SecretMaterial {
+    return Object.freeze(new SecretMaterial(value)) as SecretMaterial;
+  }
+
   private constructor(value: string) {
     this.#value = value;
   }
@@ -65,6 +69,41 @@ export class FakeSecretStore implements SecretStore {
       credentialRefId: parsedCredentialRefId,
       status,
       checkedAt: "2026-07-07T22:00:00.000Z",
+      safeMessage: status === "healthy"
+        ? "Local binding is available."
+        : "Local binding is missing on this machine."
+    }));
+  }
+}
+
+export class StaticSecretStore implements SecretStore {
+  private readonly values: ReadonlyMap<string, SecretMaterial>;
+  private readonly now: () => string;
+
+  constructor(
+    values: Record<string, SecretMaterial>,
+    options: { readonly now?: () => string } = {}
+  ) {
+    this.values = new Map(
+      Object.entries(values).map(([credentialRefId, material]) => [
+        credentialRefIdSchema.parse(credentialRefId),
+        material
+      ])
+    );
+    this.now = options.now ?? (() => new Date().toISOString());
+  }
+
+  async resolve(credentialRefId: string): Promise<SecretMaterial | undefined> {
+    return this.values.get(credentialRefIdSchema.parse(credentialRefId));
+  }
+
+  async health(credentialRefId: string): Promise<SecretStoreHealth> {
+    const parsedCredentialRefId = credentialRefIdSchema.parse(credentialRefId);
+    const status: SecretStoreHealth["status"] = this.values.has(parsedCredentialRefId) ? "healthy" : "missing-binding";
+    return Object.freeze(secretStoreHealthSchema.parse({
+      credentialRefId: parsedCredentialRefId,
+      status,
+      checkedAt: this.now(),
       safeMessage: status === "healthy"
         ? "Local binding is available."
         : "Local binding is missing on this machine."

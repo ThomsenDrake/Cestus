@@ -15,6 +15,7 @@ export interface LocalRuntimeFactoryDependencies extends Omit<PrrRuntimeDependen
 export interface LocalRuntimeHandle {
   readonly runtime: PrrRuntime;
   readonly ledger: EventLedger;
+  readonly config: ResolvedLocalRuntimeConfig;
   readonly mountedWorkspace?: MountedPortableWorkspace;
   close(): void;
 }
@@ -63,6 +64,7 @@ export function createSqlitePrrRuntime(
   return Object.freeze({
     runtime,
     ledger,
+    config: dependencies.config,
     ...(resolvedStorage.mountedWorkspace === undefined
       ? {}
       : { mountedWorkspace: resolvedStorage.mountedWorkspace }),
