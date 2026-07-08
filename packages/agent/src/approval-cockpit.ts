@@ -576,6 +576,14 @@ function enrichQueueItem(
 }
 
 function missingApprovalProvenance(item: AgentApprovalQueueItemDto): boolean {
+  if (item.approvalClass === providerByteTransferClass) {
+    return !hasProviderByteTransferProvenance(item);
+  }
+
+  return !hasSafeProvenanceRef(item);
+}
+
+function hasProviderByteTransferProvenance(item: AgentApprovalQueueItemDto): boolean {
   let hasSourceOrEventRef = false;
   let hasArtifactRef = false;
 
@@ -588,7 +596,11 @@ function missingApprovalProvenance(item: AgentApprovalQueueItemDto): boolean {
     }
   }
 
-  return !(hasSourceOrEventRef && hasArtifactRef);
+  return hasSourceOrEventRef && hasArtifactRef;
+}
+
+function hasSafeProvenanceRef(item: AgentApprovalQueueItemDto): boolean {
+  return item.affectedRefs.length > 0 || item.contextPackRefs.length > 0;
 }
 
 function appendBlockingReason(
@@ -653,7 +665,9 @@ function approvalClassRequiredFor(approvalClass: typeof agentApprovalQueueClassV
 
 function describeRiskAndLockStatus(item: AgentApprovalQueueItemDto): string {
   if (item.blockingReasons.includes("missing-provenance")) {
-    return "Blocked because missing provenance for required source-event and artifact refs.";
+    return item.approvalClass === providerByteTransferClass
+      ? "Blocked because provider byte-transfer provenance is missing required source-event/source and artifact refs."
+      : "Blocked because provenance is missing safe affected refs or context pack refs required for this approval class.";
   }
   if (item.blockingReasons.includes("approval-stale")) {
     return "Blocked because the current preview hash is stale or missing.";
@@ -681,7 +695,11 @@ function staleOrUnsafePrevention(item: AgentApprovalQueueItemDto): readonly stri
     checks.push("Active locks keep requests blocked even when the preview hash is current.");
   }
   if (item.blockingReasons.includes("missing-provenance")) {
-    checks.push("Requests without source-event and artifact provenance stay blocked until both provenance inputs are present.");
+    checks.push(
+      item.approvalClass === providerByteTransferClass
+        ? "Provider byte-transfer requests stay blocked until both source-event or source refs and artifact refs are present."
+        : "Requests stay blocked until at least one safe affected ref or context pack ref is present for the current approval class."
+    );
   }
 
   return Object.freeze(checks);

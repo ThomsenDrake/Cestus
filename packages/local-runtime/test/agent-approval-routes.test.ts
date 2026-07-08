@@ -134,6 +134,26 @@ describe("agent approval routes", () => {
     expect(denial?.context.actor.id).toBe("actor_case_owner");
   });
 
+  it("rejects direct deny requests for filtered read-only tool requests", async () => {
+    const { config, handler } = await seededHandler({
+      toolRequestId: "toolreq_provider_transfer",
+      includeReadOnlyRequest: true
+    });
+    const response = await handler({
+      method: "POST",
+      url: "/api/agent/approvals/toolreq_read_only/deny",
+      body: JSON.stringify({
+        rationale: "Read-only requests do not belong in the approval cockpit."
+      })
+    });
+
+    expect(response.status).toBe(404);
+    expect(response.body).not.toContain("toolreq_read_only");
+    handler.close();
+    handlers.splice(handlers.indexOf(handler), 1);
+    expect(await eventTypes(config)).toEqual(["agent.tool.requested", "agent.tool.requested"]);
+  });
+
   it("rejects stale approval hashes and secret-shaped rationales safely", async () => {
     const { handler } = await seededHandler();
     const stale = await handler({
