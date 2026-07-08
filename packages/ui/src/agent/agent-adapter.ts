@@ -4,7 +4,8 @@ import type {
   AgentApprovalCockpitDto,
   AgentApprovalDecisionResultDto,
   AgentRuntimeDiagnosticDto,
-  AgentStatusDto
+  AgentStatusDto,
+  OntologyBootstrapRouteDto
 } from "./agent-types.js";
 
 export interface AgentAdapter {
@@ -453,6 +454,50 @@ const agentStatusDtoSchema = z.object({
   diagnostics: z.array(diagnosticSchema)
 }).strict();
 
+const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+const ontologyBootstrapNextCursorSchema = z.object({
+  currentOffset: z.number().int().nonnegative(),
+  limit: z.number().int().positive(),
+  totalCandidates: z.number().int().nonnegative(),
+  nextOffset: z.number().int().nonnegative().optional()
+}).strict();
+const ontologyBootstrapNextSafeActionSchema = z.object({
+  actionId: z.string().min(1).optional(),
+  label: z.string().min(1),
+  kind: z.enum(["read", "ask-operator", "request-tool", "review"]),
+  effect: z.enum(["none", "local-derivative", "ledger-review", "ledger-proposal"])
+}).strict();
+const ontologyBootstrapRouteDtoSchema = z.object({
+  schemaVersion: z.literal("agent-ontology-bootstrap-route.v1"),
+  generatedAt: z.string().datetime(),
+  runId: z.string().regex(/^run_[a-zA-Z0-9_-]+$/),
+  taskId: z.string().regex(/^task_[a-zA-Z0-9_-]+$/).optional(),
+  phase: z.enum([
+    "report-required",
+    "raw-import-review",
+    "evidence-import",
+    "dossier-review",
+    "staging-review",
+    "ready-to-stage",
+    "completed",
+    "blocked"
+  ]).optional(),
+  legacyReportId: z.string().regex(/^legacy_report_[a-zA-Z0-9_-]+$/).optional(),
+  reportHash: contentHashSchema.optional(),
+  candidateSetHash: contentHashSchema.optional(),
+  reviewBundleHash: contentHashSchema.optional(),
+  candidateBundleCount: z.number().int().nonnegative().optional(),
+  candidateCount: z.number().int().nonnegative().optional(),
+  selectedCandidateIds: z.array(z.string().regex(/^legacy_candidate_[a-zA-Z0-9_-]+$/)).default([]),
+  blockedRequestedCandidateIds: z.array(z.string().regex(/^legacy_candidate_[a-zA-Z0-9_-]+$/)).default([]),
+  pendingApprovalToolRequestIds: z.array(z.string().regex(/^toolreq_[a-zA-Z0-9_-]+$/)).default([]),
+  nextCursor: ontologyBootstrapNextCursorSchema.optional(),
+  nextSafeAction: ontologyBootstrapNextSafeActionSchema.optional(),
+  runState: z.enum(["running", "completed", "failed"]).optional(),
+  outputArtifactHashes: z.array(contentHashSchema).optional(),
+  stepIds: z.array(z.string().min(1)).optional()
+}).strict();
+
 export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): AgentAdapter {
   const baseUrl = options.baseUrl ?? "";
   const credentials = options.credentials ?? "same-origin";
@@ -576,6 +621,10 @@ export function agentApprovalDecisionResultFromJson(value: unknown): AgentApprov
   return deepFreeze(
     agentApprovalDecisionResultDtoSchema.parse(safeAgentValue(value)) as AgentApprovalDecisionResultDto
   );
+}
+
+export function ontologyBootstrapRouteDtoFromJson(value: unknown): OntologyBootstrapRouteDto {
+  return deepFreeze(ontologyBootstrapRouteDtoSchema.parse(safeAgentValue(value)) as OntologyBootstrapRouteDto);
 }
 
 export function runtimeUnavailableAgentStatus(input: {

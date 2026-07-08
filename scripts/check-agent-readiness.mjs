@@ -43,9 +43,16 @@ const requiredFiles = [
   "docs/superpowers/plans/2026-07-06-operator-workspace-status-import-bridge-implementation.md",
   "docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md",
   "docs/superpowers/plans/2026-07-07-cestus-resident-agent-implementation.md",
+  "docs/superpowers/specs/2026-07-07-resident-agent-execution-approval-design.md",
+  "docs/superpowers/plans/2026-07-07-resident-agent-execution-approval-implementation.md",
+  "docs/superpowers/specs/2026-07-07-resident-agent-provider-auth-design.md",
+  "docs/superpowers/plans/2026-07-07-resident-agent-provider-auth-implementation.md",
   "docs/superpowers/specs/2026-07-07-ontology-bootstrap-specialist-design.md",
   "docs/superpowers/plans/2026-07-07-ontology-bootstrap-specialist-implementation.md",
-  "docs/superpowers/plans/2026-07-08-resident-agent-prompt-artifact-context-resolver-implementation.md"
+  "docs/superpowers/plans/2026-07-08-provider-readiness-health-ux-implementation.md",
+  "docs/superpowers/plans/2026-07-08-resident-agent-approval-cockpit-routes-ui-implementation.md",
+  "docs/superpowers/plans/2026-07-08-resident-agent-prompt-artifact-context-resolver-implementation.md",
+  "docs/superpowers/plans/2026-07-08-ontology-bootstrap-resident-agent-workflow-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
