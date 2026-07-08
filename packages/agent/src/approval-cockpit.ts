@@ -8,6 +8,7 @@ import {
   type AgentApprovalQueueOutput,
   type AgentApprovalQueueRequestDto
 } from "./approval-queue.js";
+import { contextPackRefSchema } from "./context-packs.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import type { AgentStatusDto } from "./runtime-types.js";
 
@@ -24,6 +25,135 @@ const forbiddenDirectEffects = [
 ] as const;
 const afterApproval =
   "Approval records a human decision only. A separate scheduler or executor may later revalidate the exact preview hash before doing any work.";
+
+const affectedRefSchema = z.object({
+  kind: z.string().min(1),
+  id: z.string().min(1),
+  hash: z.string().min(1).optional(),
+  label: z.string().min(1).optional()
+}).strict();
+
+const approvalQueueLockSchema = z.object({
+  lockId: z.string().min(1),
+  category: z.string().min(1),
+  message: z.string().min(1),
+  relatedRefs: z.array(affectedRefSchema).optional(),
+  appliesToToolRequestIds: z.array(z.string().min(1)).optional(),
+  appliesToApprovalClasses: z.array(z.enum(agentApprovalQueueClassValues)).optional()
+}).strict();
+
+const approvalQueueApprovalSchema = z.object({
+  toolRequestId: z.string().min(1),
+  approvedBy: z.string().min(1),
+  approvedPreviewHash: z.string().min(1),
+  approvedAt: z.string().datetime(),
+  rationale: z.string().min(1),
+  approvalClass: z.enum(agentApprovalQueueClassValues).optional()
+}).strict();
+
+const approvalQueueDenialSchema = z.object({
+  toolRequestId: z.string().min(1),
+  deniedBy: z.string().min(1),
+  deniedAt: z.string().datetime(),
+  rationale: z.string().min(1),
+  approvalClass: z.enum(agentApprovalQueueClassValues).optional()
+}).strict();
+
+const approvalQueueCompletionSchema = z.object({
+  toolRequestId: z.string().min(1),
+  completedAt: z.string().datetime(),
+  resultSummary: z.string().min(1).optional(),
+  eventIds: z.array(z.string().min(1)),
+  artifactHashes: z.array(z.string().min(1)),
+  readModelChanges: z.array(z.string().min(1))
+}).strict();
+
+const approvalQueueFailureSchema = z.object({
+  toolRequestId: z.string().min(1),
+  failedAt: z.string().datetime(),
+  category: z.string().min(1),
+  message: z.string().min(1),
+  retryable: z.boolean(),
+  allowedActions: z.array(z.string().min(1))
+}).strict();
+
+const approvalQueueRiskSchema = z.object({
+  sideEffectClass: z.string().min(1),
+  approvalClass: z.enum(agentApprovalQueueClassValues),
+  previewSummary: z.string().min(1),
+  affectedRefs: z.array(affectedRefSchema),
+  contextPackRefs: z.array(contextPackRefSchema),
+  activeLocks: z.array(approvalQueueLockSchema),
+  blockingReasons: z.array(z.string().min(1))
+}).strict();
+
+const approvalContractSchema = z.object({
+  requiredApprovalClass: z.enum(agentApprovalQueueClassValues),
+  approvalRouteAppendsOnly: z.literal(true),
+  denialRouteAppendsOnly: z.literal(true),
+  rationaleRequired: z.literal(true),
+  rationaleSecretSafe: z.literal(true),
+  afterApproval: z.string().min(1)
+}).strict();
+
+const reviewSchema = z.object({
+  what: z.string().min(1),
+  why: z.string().min(1),
+  dataLeavesOrChanges: z.string().min(1),
+  evidenceRefs: z.array(affectedRefSchema),
+  artifactRefs: z.array(affectedRefSchema),
+  riskAndLockStatus: z.string().min(1),
+  whatHappensAfterApproval: z.string().min(1),
+  staleOrUnsafePrevention: z.array(z.string().min(1))
+}).strict();
+
+const stalenessSchema = z.object({
+  state: z.enum(["current", "stale"]),
+  approvable: z.boolean(),
+  currentPreviewHash: z.string().min(1).optional(),
+  guidance: z.string().min(1).optional()
+}).strict();
+
+const cockpitItemSchema = z.object({
+  toolRequestId: z.string().min(1),
+  runId: z.string().min(1),
+  taskId: z.string().min(1),
+  toolId: z.string().min(1),
+  toolVersion: z.union([z.number(), z.string().min(1)]),
+  sideEffectClass: z.string().min(1),
+  approvalClass: z.enum(agentApprovalQueueClassValues),
+  requiredApprovalClass: z.enum(agentApprovalQueueClassValues),
+  previewHash: z.string().min(1),
+  currentPreviewHash: z.string().min(1).optional(),
+  previewSummary: z.string().min(1),
+  requestedAt: z.string().datetime(),
+  stale: z.boolean(),
+  executableByApproval: z.literal(false),
+  affectedRefs: z.array(affectedRefSchema),
+  contextPackRefs: z.array(contextPackRefSchema),
+  activeLocks: z.array(approvalQueueLockSchema),
+  blockingReasons: z.array(z.string().min(1)),
+  risk: approvalQueueRiskSchema,
+  approval: approvalQueueApprovalSchema.optional(),
+  denial: approvalQueueDenialSchema.optional(),
+  completion: approvalQueueCompletionSchema.optional(),
+  failure: approvalQueueFailureSchema.optional(),
+  providerByteTransferNote: z.string().min(1).optional(),
+  staleness: stalenessSchema,
+  approvalContract: approvalContractSchema,
+  review: reviewSchema
+}).strict();
+
+const cockpitQueueSchema = z.object({
+  generatedAt: z.string().datetime(),
+  pending: z.array(cockpitItemSchema),
+  resumable: z.array(cockpitItemSchema),
+  blocked: z.array(cockpitItemSchema),
+  stale: z.array(cockpitItemSchema),
+  denied: z.array(cockpitItemSchema),
+  completed: z.array(cockpitItemSchema),
+  failed: z.array(cockpitItemSchema)
+}).strict();
 
 export const agentApprovalCockpitDtoSchema = z.object({
   schemaVersion: z.literal(schemaVersion),
@@ -52,11 +182,40 @@ export const agentApprovalCockpitDtoSchema = z.object({
       secretSafe: z.literal(true)
     }).strict()
   }).strict()),
-  queue: z.custom<AgentApprovalCockpitQueueDto>(),
+  queue: cockpitQueueSchema,
   forbiddenDirectEffects: z.array(z.enum(forbiddenDirectEffects))
 }).strict();
 
-export type AgentApprovalCockpitDto = z.infer<typeof agentApprovalCockpitDtoSchema>;
+export interface AgentApprovalCockpitDto {
+  readonly schemaVersion: typeof schemaVersion;
+  readonly generatedAt: string;
+  readonly summary: {
+    readonly pendingCount: number;
+    readonly resumableCount: number;
+    readonly blockedCount: number;
+    readonly staleCount: number;
+    readonly terminalCount: number;
+  };
+  readonly decisionContract: {
+    readonly approvalAppendsDecisionOnly: true;
+    readonly denialAppendsDecisionOnly: true;
+    readonly requiresHumanActor: true;
+    readonly afterApproval: string;
+    readonly forbiddenDirectEffects: readonly string[];
+  };
+  readonly approvalClasses: readonly {
+    readonly approvalClass: typeof agentApprovalQueueClassValues[number];
+    readonly label: string;
+    readonly requiredFor: string;
+    readonly providerByteTransferNote?: string | undefined;
+    readonly rationale: {
+      readonly required: true;
+      readonly secretSafe: true;
+    };
+  }[];
+  readonly queue: AgentApprovalCockpitQueueDto;
+  readonly forbiddenDirectEffects: readonly (typeof forbiddenDirectEffects[number])[];
+}
 
 export interface AgentApprovalCockpitQueueDto {
   readonly generatedAt: string;
@@ -71,12 +230,12 @@ export interface AgentApprovalCockpitQueueDto {
 
 export interface AgentApprovalCockpitItemDto extends AgentApprovalQueueItemDto {
   readonly requiredApprovalClass: AgentApprovalQueueItemDto["approvalClass"];
-  readonly providerByteTransferNote?: string;
+  readonly providerByteTransferNote?: string | undefined;
   readonly staleness: {
     readonly state: "current" | "stale";
     readonly approvable: boolean;
-    readonly currentPreviewHash?: string;
-    readonly guidance?: string;
+    readonly currentPreviewHash?: string | undefined;
+    readonly guidance?: string | undefined;
   };
   readonly approvalContract: {
     readonly requiredApprovalClass: AgentApprovalQueueItemDto["approvalClass"];
@@ -110,6 +269,13 @@ export interface AgentApprovalDecisionResultDto {
   readonly eventIds: readonly string[];
   readonly approvalCockpit: AgentApprovalCockpitDto;
 }
+
+export const agentApprovalDecisionResultDtoSchema = z.object({
+  ok: z.literal(true),
+  schemaVersion: z.literal(decisionResultSchemaVersion),
+  eventIds: z.array(z.string().min(1)),
+  approvalCockpit: agentApprovalCockpitDtoSchema
+}).strict();
 
 interface ReviewInput {
   readonly what: string;
@@ -175,9 +341,9 @@ export function buildAgentApprovalCockpit(input: BuildAgentApprovalCockpitInput)
     approvalClasses: approvalClassMetadata(),
     queue,
     forbiddenDirectEffects: [...forbiddenDirectEffects]
-  } satisfies AgentApprovalCockpitDto;
+  };
 
-  return deepFreeze(agentApprovalCockpitDtoSchema.parse(dto));
+  return deepFreeze(agentApprovalCockpitDtoSchema.parse(dto)) as AgentApprovalCockpitDto;
 }
 
 function projectRequestForQueue(
@@ -280,12 +446,35 @@ function enrichQueue(
   queue: AgentApprovalQueueOutput,
   reviewInputsById: ReadonlyMap<string, ReviewInput>
 ): AgentApprovalCockpitQueueDto {
+  const pending: AgentApprovalCockpitItemDto[] = [];
+  const resumable: AgentApprovalCockpitItemDto[] = [];
+  const blocked = queue.blocked.map((item) => enrichQueueItem(item, reviewInputsById.get(item.toolRequestId)));
+  const stale = queue.stale.map((item) => enrichQueueItem(item, reviewInputsById.get(item.toolRequestId)));
+
+  for (const item of queue.pending) {
+    const enriched = enrichQueueItem(item, reviewInputsById.get(item.toolRequestId));
+    if (enriched.blockingReasons.includes("missing-provenance")) {
+      blocked.push(enriched);
+      continue;
+    }
+    pending.push(enriched);
+  }
+
+  for (const item of queue.resumable) {
+    const enriched = enrichQueueItem(item, reviewInputsById.get(item.toolRequestId));
+    if (enriched.blockingReasons.includes("missing-provenance")) {
+      blocked.push(enriched);
+      continue;
+    }
+    resumable.push(enriched);
+  }
+
   return deepFreeze({
     generatedAt: queue.generatedAt,
-    pending: queue.pending.map((item) => enrichQueueItem(item, reviewInputsById.get(item.toolRequestId))),
-    resumable: queue.resumable.map((item) => enrichQueueItem(item, reviewInputsById.get(item.toolRequestId))),
-    blocked: queue.blocked.map((item) => enrichQueueItem(item, reviewInputsById.get(item.toolRequestId))),
-    stale: queue.stale.map((item) => enrichQueueItem(item, reviewInputsById.get(item.toolRequestId))),
+    pending,
+    resumable,
+    blocked,
+    stale,
     denied: queue.denied.map((item) => enrichQueueItem(item, reviewInputsById.get(item.toolRequestId))),
     completed: queue.completed.map((item) => enrichQueueItem(item, reviewInputsById.get(item.toolRequestId))),
     failed: queue.failed.map((item) => enrichQueueItem(item, reviewInputsById.get(item.toolRequestId)))
@@ -296,6 +485,19 @@ function enrichQueueItem(
   item: AgentApprovalQueueItemDto,
   reviewInput: ReviewInput | undefined
 ): AgentApprovalCockpitItemDto {
+  const blockingReasons = missingApprovalProvenance(item)
+    ? appendBlockingReason(item.blockingReasons, "missing-provenance")
+    : item.blockingReasons;
+  const normalizedItem = blockingReasons === item.blockingReasons
+    ? item
+    : {
+        ...item,
+        blockingReasons,
+        risk: {
+          ...item.risk,
+          blockingReasons
+        }
+      };
   const staleness = item.stale
     ? {
         state: "stale" as const,
@@ -305,7 +507,7 @@ function enrichQueueItem(
       }
     : {
         state: "current" as const,
-        approvable: item.blockingReasons.length === 0,
+        approvable: blockingReasons.length === 0,
         ...(item.currentPreviewHash === undefined ? {} : { currentPreviewHash: item.currentPreviewHash })
       };
 
@@ -323,20 +525,20 @@ function enrichQueueItem(
     dataLeavesOrChanges: safeReviewInput.dataLeavesOrChanges,
     evidenceRefs: safeReviewInput.evidenceRefs,
     artifactRefs: safeReviewInput.artifactRefs,
-    riskAndLockStatus: describeRiskAndLockStatus(item),
+    riskAndLockStatus: describeRiskAndLockStatus(normalizedItem),
     whatHappensAfterApproval: afterApproval,
-    staleOrUnsafePrevention: staleOrUnsafePrevention(item)
+    staleOrUnsafePrevention: staleOrUnsafePrevention(normalizedItem)
   };
 
   return deepFreeze({
-    ...item,
-    requiredApprovalClass: item.approvalClass,
-    ...(item.approvalClass === providerByteTransferClass
+    ...normalizedItem,
+    requiredApprovalClass: normalizedItem.approvalClass,
+    ...(normalizedItem.approvalClass === providerByteTransferClass
       ? { providerByteTransferNote: "Approval itself does not transfer bytes; it records a human decision only." }
       : {}),
     staleness,
     approvalContract: {
-      requiredApprovalClass: item.approvalClass,
+      requiredApprovalClass: normalizedItem.approvalClass,
       approvalRouteAppendsOnly: true,
       denialRouteAppendsOnly: true,
       rationaleRequired: true,
@@ -345,6 +547,29 @@ function enrichQueueItem(
     },
     review
   });
+}
+
+function missingApprovalProvenance(item: AgentApprovalQueueItemDto): boolean {
+  let hasSourceOrEventRef = false;
+  let hasArtifactRef = false;
+
+  for (const ref of item.affectedRefs) {
+    if (ref.kind === "event" || ref.kind === "source") {
+      hasSourceOrEventRef = true;
+    }
+    if (ref.kind === "artifact") {
+      hasArtifactRef = true;
+    }
+  }
+
+  return !(hasSourceOrEventRef && hasArtifactRef);
+}
+
+function appendBlockingReason(
+  reasons: readonly string[],
+  reason: string
+): readonly string[] {
+  return reasons.includes(reason) ? reasons : Object.freeze([...reasons, reason]);
 }
 
 function approvalClassMetadata() {
@@ -401,6 +626,9 @@ function approvalClassRequiredFor(approvalClass: typeof agentApprovalQueueClassV
 }
 
 function describeRiskAndLockStatus(item: AgentApprovalQueueItemDto): string {
+  if (item.blockingReasons.includes("missing-provenance")) {
+    return "Blocked because missing provenance for required source-event and artifact refs.";
+  }
   if (item.blockingReasons.includes("approval-stale")) {
     return "Blocked because the current preview hash is stale or missing.";
   }
@@ -425,6 +653,9 @@ function staleOrUnsafePrevention(item: AgentApprovalQueueItemDto): readonly stri
   }
   if (item.blockingReasons.includes("lock-active")) {
     checks.push("Active locks keep requests blocked even when the preview hash is current.");
+  }
+  if (item.blockingReasons.includes("missing-provenance")) {
+    checks.push("Requests without source-event and artifact provenance stay blocked until both provenance inputs are present.");
   }
 
   return Object.freeze(checks);
