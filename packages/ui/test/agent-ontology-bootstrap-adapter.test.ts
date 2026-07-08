@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ontologyBootstrapRouteDtoFromJson } from "../src/agent/agent-adapter.js";
 
 describe("ontology bootstrap route DTO parser", () => {
-  it("parses browser-safe bootstrap route DTOs and rejects secret-shaped fields", () => {
+  it("parses browser-safe bootstrap route DTOs and rejects raw provider fields", () => {
     const dto = ontologyBootstrapRouteDtoFromJson({
       schemaVersion: "agent-ontology-bootstrap-route.v1",
       generatedAt: "2026-07-08T16:00:00.000Z",
@@ -34,7 +34,7 @@ describe("ontology bootstrap route DTO parser", () => {
     expect(() =>
       ontologyBootstrapRouteDtoFromJson({
         ...dto,
-        rawProviderError: "Authorization Bearer sk-live-value"
+        rawProviderError: "provider failure details are not allowed"
       })
     ).toThrow();
   });

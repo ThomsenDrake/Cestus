@@ -1092,7 +1092,7 @@ describe("ontology bootstrap route DTO parser", () => {
     expect(() =>
       ontologyBootstrapRouteDtoFromJson({
         ...dto,
-        rawProviderError: "Authorization Bearer sk-live-value"
+        rawProviderError: "provider failure details are not allowed"
       })
     ).toThrow();
   });
