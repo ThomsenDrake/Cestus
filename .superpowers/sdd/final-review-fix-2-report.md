@@ -13,7 +13,7 @@ Files changed:
 - `.superpowers/sdd/final-review-fix-2-report.md`
 
 Commit SHAs:
-- Final fix commit: `6f8c81623f0a16723a2ba4f9a8d5d270d0fe91b4`
+- Final fix commit: `cbd01cec5a80ebc3648d5f64f20881bdbc8cd9c6`
 
 Red commands and observed failures:
 - `npm test -- packages/local-runtime/test/agent-approval-routes.test.ts packages/agent/test/approval-cockpit.test.ts packages/ui/test/agent-approval-adapter.test.ts`
