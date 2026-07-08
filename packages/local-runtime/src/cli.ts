@@ -15,6 +15,7 @@ import {
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
 import { startLocalRuntimeServer } from "./server.js";
 import { createPortableWorkspace, portableWorkspacePaths, readPortableWorkspaceManifest } from "../../workspace/src/index.js";
+import { agentProviderSmokeResultSchema, runLiveNousProviderSmoke } from "./agent-provider-smoke.js";
 
 export interface LocalRuntimeCliDependencies {
   readonly cwd?: string;
@@ -111,6 +112,16 @@ export async function runLocalRuntimeCli(
           : await dependencies.agentCreateTask(taskInput);
       stdout(agentCliJson(result));
       return 0;
+    }
+
+    if (command === "agent-provider-smoke") {
+      parseAgentProviderSmokeArgs(argv.slice(1));
+      const result = agentProviderSmokeResultSchema.parse(await runLiveNousProviderSmoke({
+        ...(dependencies.cwd === undefined ? { cwd: process.cwd() } : { cwd: dependencies.cwd }),
+        ...(dependencies.env === undefined ? {} : { env: dependencies.env })
+      }));
+      stdout(JSON.stringify(result, null, 2));
+      return result.ok ? 0 : 1;
     }
 
     if (command === "health") {
@@ -570,6 +581,14 @@ function parseAgentTaskPriority(value: string): string {
     return value;
   }
   throw new Error("agent-create-task --priority must be one of normal, high, or low");
+}
+
+function parseAgentProviderSmokeArgs(argv: readonly string[]): void {
+  for (const arg of argv) {
+    if (arg !== "--json") {
+      throw new Error("Unknown agent-provider-smoke flag.");
+    }
+  }
 }
 
 function generatedWorkspaceId(): string {
