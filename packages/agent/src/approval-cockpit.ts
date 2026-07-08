@@ -3,6 +3,7 @@ import {
   agentApprovalQueueClassValues,
   buildAgentApprovalQueue,
   type AgentAffectedRefDto,
+  type AgentApprovalQueueApprovalClass,
   type AgentApprovalQueueInputApprovalClass,
   type AgentApprovalQueueItemDto,
   type AgentApprovalQueueOutput,
@@ -26,37 +27,50 @@ const forbiddenDirectEffects = [
 const afterApproval =
   "Approval records a human decision only. A separate scheduler or executor may later revalidate the exact preview hash before doing any work.";
 
+function secretSafeIdentifierSchema(label: string) {
+  return z.string().min(1).superRefine((value, ctx) => {
+    try {
+      assertAgentSecretSafeText(value, label);
+    } catch (error) {
+      ctx.addIssue({
+        code: "custom",
+        message: error instanceof Error ? error.message : `${label} must be secret-safe.`
+      });
+    }
+  });
+}
+
 const affectedRefSchema = z.object({
-  kind: z.string().min(1),
-  id: z.string().min(1),
-  hash: z.string().min(1).optional(),
-  label: z.string().min(1).optional()
+  kind: secretSafeIdentifierSchema("affected ref kind"),
+  id: secretSafeIdentifierSchema("affected ref id"),
+  hash: secretSafeIdentifierSchema("affected ref hash").optional(),
+  label: secretSafeIdentifierSchema("affected ref label").optional()
 }).strict();
 
 const approvalQueueLockSchema = z.object({
-  lockId: z.string().min(1),
-  category: z.string().min(1),
-  message: z.string().min(1),
+  lockId: secretSafeIdentifierSchema("approval cockpit lock id"),
+  category: secretSafeIdentifierSchema("approval cockpit lock category"),
+  message: secretSafeIdentifierSchema("approval cockpit lock message"),
   relatedRefs: z.array(affectedRefSchema).optional(),
-  appliesToToolRequestIds: z.array(z.string().min(1)).optional(),
-  appliesToApprovalClasses: z.array(z.enum(agentApprovalQueueClassValues)).optional()
+  appliesToToolRequestIds: z.array(secretSafeIdentifierSchema("approval cockpit lock tool request id")).optional(),
+  appliesToApprovalClasses: z.array(secretSafeIdentifierSchema("approval cockpit lock approval class")).optional()
 }).strict();
 
 const approvalQueueApprovalSchema = z.object({
-  toolRequestId: z.string().min(1),
-  approvedBy: z.string().min(1),
-  approvedPreviewHash: z.string().min(1),
+  toolRequestId: secretSafeIdentifierSchema("approval cockpit approval tool request id"),
+  approvedBy: secretSafeIdentifierSchema("approval cockpit approved by"),
+  approvedPreviewHash: secretSafeIdentifierSchema("approval cockpit approved preview hash"),
   approvedAt: z.string().datetime(),
-  rationale: z.string().min(1),
-  approvalClass: z.enum(agentApprovalQueueClassValues).optional()
+  rationale: secretSafeIdentifierSchema("approval cockpit approval rationale"),
+  approvalClass: secretSafeIdentifierSchema("approval cockpit approval class").optional()
 }).strict();
 
 const approvalQueueDenialSchema = z.object({
-  toolRequestId: z.string().min(1),
-  deniedBy: z.string().min(1),
+  toolRequestId: secretSafeIdentifierSchema("approval cockpit denial tool request id"),
+  deniedBy: secretSafeIdentifierSchema("approval cockpit denied by"),
   deniedAt: z.string().datetime(),
-  rationale: z.string().min(1),
-  approvalClass: z.enum(agentApprovalQueueClassValues).optional()
+  rationale: secretSafeIdentifierSchema("approval cockpit denial rationale"),
+  approvalClass: secretSafeIdentifierSchema("approval cockpit denial approval class").optional()
 }).strict();
 
 const approvalQueueCompletionSchema = z.object({
@@ -78,33 +92,33 @@ const approvalQueueFailureSchema = z.object({
 }).strict();
 
 const approvalQueueRiskSchema = z.object({
-  sideEffectClass: z.string().min(1),
-  approvalClass: z.enum(agentApprovalQueueClassValues),
-  previewSummary: z.string().min(1),
+  sideEffectClass: secretSafeIdentifierSchema("approval cockpit risk side-effect class"),
+  approvalClass: secretSafeIdentifierSchema("approval cockpit risk approval class"),
+  previewSummary: secretSafeIdentifierSchema("approval cockpit risk preview summary"),
   affectedRefs: z.array(affectedRefSchema),
   contextPackRefs: z.array(contextPackRefSchema),
   activeLocks: z.array(approvalQueueLockSchema),
-  blockingReasons: z.array(z.string().min(1))
+  blockingReasons: z.array(secretSafeIdentifierSchema("approval cockpit blocking reason"))
 }).strict();
 
 const approvalContractSchema = z.object({
-  requiredApprovalClass: z.enum(agentApprovalQueueClassValues),
+  requiredApprovalClass: secretSafeIdentifierSchema("approval cockpit contract approval class"),
   approvalRouteAppendsOnly: z.literal(true),
   denialRouteAppendsOnly: z.literal(true),
   rationaleRequired: z.literal(true),
   rationaleSecretSafe: z.literal(true),
-  afterApproval: z.string().min(1)
+  afterApproval: secretSafeIdentifierSchema("approval cockpit after approval")
 }).strict();
 
 const reviewSchema = z.object({
-  what: z.string().min(1),
-  why: z.string().min(1),
-  dataLeavesOrChanges: z.string().min(1),
+  what: secretSafeIdentifierSchema("approval cockpit review what"),
+  why: secretSafeIdentifierSchema("approval cockpit review why"),
+  dataLeavesOrChanges: secretSafeIdentifierSchema("approval cockpit review effect"),
   evidenceRefs: z.array(affectedRefSchema),
   artifactRefs: z.array(affectedRefSchema),
-  riskAndLockStatus: z.string().min(1),
-  whatHappensAfterApproval: z.string().min(1),
-  staleOrUnsafePrevention: z.array(z.string().min(1))
+  riskAndLockStatus: secretSafeIdentifierSchema("approval cockpit risk and lock status"),
+  whatHappensAfterApproval: secretSafeIdentifierSchema("approval cockpit after approval explanation"),
+  staleOrUnsafePrevention: z.array(secretSafeIdentifierSchema("approval cockpit stale or unsafe prevention"))
 }).strict();
 
 const stalenessSchema = z.object({
@@ -115,30 +129,30 @@ const stalenessSchema = z.object({
 }).strict();
 
 const cockpitItemSchema = z.object({
-  toolRequestId: z.string().min(1),
-  runId: z.string().min(1),
-  taskId: z.string().min(1),
-  toolId: z.string().min(1),
-  toolVersion: z.union([z.number(), z.string().min(1)]),
-  sideEffectClass: z.string().min(1),
-  approvalClass: z.enum(agentApprovalQueueClassValues),
-  requiredApprovalClass: z.enum(agentApprovalQueueClassValues),
-  previewHash: z.string().min(1),
-  currentPreviewHash: z.string().min(1).optional(),
-  previewSummary: z.string().min(1),
+  toolRequestId: secretSafeIdentifierSchema("approval cockpit tool request id"),
+  runId: secretSafeIdentifierSchema("approval cockpit run id"),
+  taskId: secretSafeIdentifierSchema("approval cockpit task id"),
+  toolId: secretSafeIdentifierSchema("approval cockpit tool id"),
+  toolVersion: z.union([z.number(), secretSafeIdentifierSchema("approval cockpit tool version")]),
+  sideEffectClass: secretSafeIdentifierSchema("approval cockpit side-effect class"),
+  approvalClass: secretSafeIdentifierSchema("approval cockpit item approval class"),
+  requiredApprovalClass: secretSafeIdentifierSchema("approval cockpit item required approval class"),
+  previewHash: secretSafeIdentifierSchema("approval cockpit preview hash"),
+  currentPreviewHash: secretSafeIdentifierSchema("approval cockpit current preview hash").optional(),
+  previewSummary: secretSafeIdentifierSchema("approval cockpit preview summary"),
   requestedAt: z.string().datetime(),
   stale: z.boolean(),
   executableByApproval: z.literal(false),
   affectedRefs: z.array(affectedRefSchema),
   contextPackRefs: z.array(contextPackRefSchema),
   activeLocks: z.array(approvalQueueLockSchema),
-  blockingReasons: z.array(z.string().min(1)),
+  blockingReasons: z.array(secretSafeIdentifierSchema("approval cockpit blocking reason")),
   risk: approvalQueueRiskSchema,
   approval: approvalQueueApprovalSchema.optional(),
   denial: approvalQueueDenialSchema.optional(),
   completion: approvalQueueCompletionSchema.optional(),
   failure: approvalQueueFailureSchema.optional(),
-  providerByteTransferNote: z.string().min(1).optional(),
+  providerByteTransferNote: secretSafeIdentifierSchema("approval cockpit provider byte transfer note").optional(),
   staleness: stalenessSchema,
   approvalContract: approvalContractSchema,
   review: reviewSchema
@@ -169,21 +183,21 @@ export const agentApprovalCockpitDtoSchema = z.object({
     approvalAppendsDecisionOnly: z.literal(true),
     denialAppendsDecisionOnly: z.literal(true),
     requiresHumanActor: z.literal(true),
-    afterApproval: z.string().min(1),
-    forbiddenDirectEffects: z.array(z.string().min(1))
+    afterApproval: secretSafeIdentifierSchema("approval cockpit decision after approval"),
+    forbiddenDirectEffects: z.array(secretSafeIdentifierSchema("approval cockpit forbidden direct effect"))
   }).strict(),
   approvalClasses: z.array(z.object({
-    approvalClass: z.enum(agentApprovalQueueClassValues),
-    label: z.string().min(1),
-    requiredFor: z.string().min(1),
-    providerByteTransferNote: z.string().min(1).optional(),
+    approvalClass: secretSafeIdentifierSchema("approval cockpit metadata approval class"),
+    label: secretSafeIdentifierSchema("approval cockpit metadata label"),
+    requiredFor: secretSafeIdentifierSchema("approval cockpit metadata required for"),
+    providerByteTransferNote: secretSafeIdentifierSchema("approval cockpit metadata provider byte transfer note").optional(),
     rationale: z.object({
       required: z.literal(true),
       secretSafe: z.literal(true)
     }).strict()
   }).strict()),
   queue: cockpitQueueSchema,
-  forbiddenDirectEffects: z.array(z.enum(forbiddenDirectEffects))
+  forbiddenDirectEffects: z.array(secretSafeIdentifierSchema("approval cockpit forbidden direct effect"))
 }).strict();
 
 export interface AgentApprovalCockpitDto {
@@ -204,7 +218,7 @@ export interface AgentApprovalCockpitDto {
     readonly forbiddenDirectEffects: readonly string[];
   };
   readonly approvalClasses: readonly {
-    readonly approvalClass: typeof agentApprovalQueueClassValues[number];
+    readonly approvalClass: AgentApprovalQueueApprovalClass;
     readonly label: string;
     readonly requiredFor: string;
     readonly providerByteTransferNote?: string | undefined;
@@ -214,7 +228,7 @@ export interface AgentApprovalCockpitDto {
     };
   }[];
   readonly queue: AgentApprovalCockpitQueueDto;
-  readonly forbiddenDirectEffects: readonly (typeof forbiddenDirectEffects[number])[];
+  readonly forbiddenDirectEffects: readonly string[];
 }
 
 export interface AgentApprovalCockpitQueueDto {
@@ -229,7 +243,7 @@ export interface AgentApprovalCockpitQueueDto {
 }
 
 export interface AgentApprovalCockpitItemDto extends AgentApprovalQueueItemDto {
-  readonly requiredApprovalClass: AgentApprovalQueueItemDto["approvalClass"];
+  readonly requiredApprovalClass: AgentApprovalQueueApprovalClass;
   readonly providerByteTransferNote?: string | undefined;
   readonly staleness: {
     readonly state: "current" | "stale";
@@ -238,7 +252,7 @@ export interface AgentApprovalCockpitItemDto extends AgentApprovalQueueItemDto {
     readonly guidance?: string | undefined;
   };
   readonly approvalContract: {
-    readonly requiredApprovalClass: AgentApprovalQueueItemDto["approvalClass"];
+    readonly requiredApprovalClass: AgentApprovalQueueApprovalClass;
     readonly approvalRouteAppendsOnly: true;
     readonly denialRouteAppendsOnly: true;
     readonly rationaleRequired: true;
@@ -684,7 +698,8 @@ function normalizeApprovalClass(
     case "human-review":
       throw new Error(`Unsupported approval class for cockpit queue: ${value}`);
     default:
-      throw new Error(`Unsupported approval class for cockpit queue: ${value}`);
+      assertAgentSecretSafeText(value, "approval cockpit approval class");
+      return value;
   }
 }
 

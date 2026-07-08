@@ -233,6 +233,99 @@ describe("agent approval cockpit dto", () => {
       })
     ).toThrow(/staleOrUnsafePrevention/i);
   });
+
+  it("parses future approval classes and direct-effect identifiers through canonical cockpit dto contracts", () => {
+    const cockpit = buildAgentApprovalCockpit({
+      status: agentStatus({
+        toolRequests: [providerTransferRequest()]
+      }),
+      generatedAt: "2026-07-08T14:00:00.000Z"
+    });
+
+    const parsed = agentApprovalCockpitDtoSchema.parse({
+      ...cockpit,
+      decisionContract: {
+        ...cockpit.decisionContract,
+        forbiddenDirectEffects: ["provider-byte-transfer", "evidence-retention-review"]
+      },
+      approvalClasses: [{
+        approvalClass: "evidence-retention-review",
+        label: "Evidence retention review",
+        requiredFor: "Reviews evidence retention actions before any decision is consumed.",
+        rationale: {
+          required: true,
+          secretSafe: true
+        }
+      }],
+      queue: {
+        ...cockpit.queue,
+        pending: [{
+          ...cockpit.queue.pending[0]!,
+          approvalClass: "evidence-retention-review",
+          requiredApprovalClass: "evidence-retention-review",
+          activeLocks: [{
+            lockId: "lock_retention",
+            category: "retention",
+            message: "Retention review lock active.",
+            appliesToApprovalClasses: ["evidence-retention-review"]
+          }],
+          risk: {
+            ...cockpit.queue.pending[0]!.risk,
+            approvalClass: "evidence-retention-review",
+            activeLocks: [{
+              lockId: "lock_retention",
+              category: "retention",
+              message: "Retention review lock active.",
+              appliesToApprovalClasses: ["evidence-retention-review"]
+            }]
+          },
+          approval: {
+            toolRequestId: "toolreq_provider_transfer",
+            approvedBy: "actor_case_owner",
+            approvedPreviewHash: previewHash,
+            approvedAt: "2026-07-08T14:01:00.000Z",
+            rationale: "Approved retention review.",
+            approvalClass: "evidence-retention-review"
+          },
+          denial: {
+            toolRequestId: "toolreq_provider_transfer",
+            deniedBy: "actor_case_owner",
+            deniedAt: "2026-07-08T14:02:00.000Z",
+            rationale: "Denied retention review.",
+            approvalClass: "evidence-retention-review"
+          },
+          approvalContract: {
+            ...cockpit.queue.pending[0]!.approvalContract,
+            requiredApprovalClass: "evidence-retention-review"
+          }
+        }]
+      },
+      forbiddenDirectEffects: ["provider-byte-transfer", "evidence-retention-review"]
+    });
+
+    expect(parsed.approvalClasses[0]?.approvalClass).toBe("evidence-retention-review");
+    expect(parsed.queue.pending[0]).toMatchObject({
+      approvalClass: "evidence-retention-review",
+      requiredApprovalClass: "evidence-retention-review",
+      activeLocks: [{
+        appliesToApprovalClasses: ["evidence-retention-review"]
+      }],
+      risk: {
+        approvalClass: "evidence-retention-review"
+      },
+      approval: {
+        approvalClass: "evidence-retention-review"
+      },
+      denial: {
+        approvalClass: "evidence-retention-review"
+      },
+      approvalContract: {
+        requiredApprovalClass: "evidence-retention-review"
+      }
+    });
+    expect(parsed.decisionContract.forbiddenDirectEffects).toContain("evidence-retention-review");
+    expect(parsed.forbiddenDirectEffects).toContain("evidence-retention-review");
+  });
 });
 
 function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
