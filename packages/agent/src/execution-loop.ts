@@ -128,6 +128,9 @@ type CanonicalFakeToolPreview = AgentToolPreview & {
 
 const defaultResidentAgentId = "agent_default";
 const fakeReadModelProjectionName = "fake-agent-execution-loop";
+const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
+const artifactHashPattern = /^sha256:[a-f0-9]{64}$/;
+const invalidFakeToolResultMessage = "Fake tool result failed validation.";
 
 export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoopInput) {
   const gateway = createAgentToolGateway({
@@ -139,6 +142,10 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
 
   return Object.freeze({
     async requestApprovalOnly(command: RequestFakeAgentApprovalInput): Promise<WaitingForApprovalResult> {
+      if (command.approvalClass === "none") {
+        throw new Error("Approval-only tool request requires a human approval class.");
+      }
+
       const toolVersion = String(command.toolVersion ?? "0.1.0");
       const canonicalPreview = buildCanonicalFakeToolPreview({
         toolRequestId: command.toolRequestId,
@@ -264,11 +271,25 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
         throw new Error("Fake executor failed before producing a safe result.");
       }
 
-      const completed = await gateway.completeTool({
-        toolRequestId: command.toolRequestId,
-        approvedPreviewHash: approval.payload.approvedPreviewHash,
-        result: normalizeFakeToolResult(fakeResult)
-      });
+      let result: AgentToolResult;
+      try {
+        result = normalizeAndValidateFakeToolResult(fakeResult);
+      } catch {
+        await failForInvalidFakeToolResult(gateway, command.toolRequestId);
+        throw new Error(invalidFakeToolResultMessage);
+      }
+
+      let completed: KnowledgeEventOf<"agent.tool.completed">;
+      try {
+        completed = await gateway.completeTool({
+          toolRequestId: command.toolRequestId,
+          approvedPreviewHash: approval.payload.approvedPreviewHash,
+          result
+        });
+      } catch {
+        await failForInvalidFakeToolResult(gateway, command.toolRequestId);
+        throw new Error(invalidFakeToolResultMessage);
+      }
 
       return Object.freeze({
         state: "completed" as const,
@@ -384,6 +405,41 @@ function normalizeFakeToolResult(result: FakeAgentToolExecutorResult): AgentTool
   };
 }
 
+function normalizeAndValidateFakeToolResult(result: FakeAgentToolExecutorResult): AgentToolResult {
+  if (!Array.isArray(result.eventIds) || !Array.isArray(result.artifactHashes) || !Array.isArray(result.readModelChanges)) {
+    throw new Error("Fake tool result must contain result arrays.");
+  }
+
+  const normalized = normalizeFakeToolResult(result);
+
+  for (const eventId of normalized.eventIds) {
+    if (typeof eventId !== "string" || !eventIdPattern.test(eventId)) {
+      throw new Error("Fake tool result contains an invalid event ID.");
+    }
+    assertAgentSecretSafeText(eventId, "fake tool result event id");
+  }
+
+  for (const artifactHash of normalized.artifactHashes) {
+    if (typeof artifactHash !== "string" || !artifactHashPattern.test(artifactHash)) {
+      throw new Error("Fake tool result contains an invalid artifact hash.");
+    }
+  }
+
+  for (const change of normalized.readModelChanges) {
+    assertNonEmptySecretSafeString(change.projectionName, "fake tool result projection name");
+    assertNonEmptySecretSafeString(change.change, "fake tool result read model change");
+    for (const relatedId of change.relatedIds ?? []) {
+      assertNonEmptySecretSafeString(relatedId, "fake tool result related id");
+    }
+  }
+
+  if (normalized.resultSummary !== undefined) {
+    assertNonEmptySecretSafeString(normalized.resultSummary, "fake tool result summary");
+  }
+
+  return normalized;
+}
+
 function normalizeReadModelChange(change: string | AgentToolReadModelChange): AgentToolReadModelChange {
   if (typeof change === "string") {
     return {
@@ -397,6 +453,26 @@ function normalizeReadModelChange(change: string | AgentToolReadModelChange): Ag
     change: change.change,
     ...(change.relatedIds === undefined ? {} : { relatedIds: [...change.relatedIds] })
   };
+}
+
+function assertNonEmptySecretSafeString(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+  assertAgentSecretSafeText(value, label);
+}
+
+async function failForInvalidFakeToolResult(
+  gateway: ReturnType<typeof createAgentToolGateway>,
+  toolRequestId: string
+): Promise<void> {
+  await gateway.failTool({
+    toolRequestId,
+    category: "model-output-invalid",
+    message: invalidFakeToolResultMessage,
+    retryable: false,
+    allowedActions: ["inspect the fake executor result mapper", "rerun with a schema-valid fake result"]
+  });
 }
 
 async function failForActiveLocks(
