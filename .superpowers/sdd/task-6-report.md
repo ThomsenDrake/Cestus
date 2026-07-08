@@ -1,6 +1,6 @@
 # Task 6 Report: Agent Approval Cockpit Readiness
 
-Status: blocked
+Status: ready-for-review
 
 ## Commits
 
@@ -57,4 +57,4 @@ Status: blocked
   - Model family: `tencent/hy3:free`
   - Output artifact hash: `sha256:270aa91a724b42b5319931c6abffcebe625f658589133d47d7ee5c922f731e35`
   - Event IDs: `evt_7b76696c0db0415dba5149dcaa4e5214`, `evt_c1c112af6a6d4a5badabd6858bfea67d`
-- Outcome: this report's earlier blocked state remains as historical evidence; the task claim and readiness docs now carry the current `ready-for-review` state.
+- Outcome: the earlier blocked state remains as historical evidence below; this report, the task claim, and readiness docs now carry the current `ready-for-review` state.

@@ -55,6 +55,7 @@ Implementation evidence:
   - Passed with safeLabel `Nous Portal local auth reference`, provider ID `provider_nous_portal`, model family `tencent/hy3:free`, output artifact hash `sha256:270aa91a724b42b5319931c6abffcebe625f658589133d47d7ee5c922f731e35`, and event IDs `evt_7b76696c0db0415dba5149dcaa4e5214`, `evt_c1c112af6a6d4a5badabd6858bfea67d`.
 - Factory check after docs update
   - `npm run factory:check`
+  - Passed with `factory-readiness passed`.
 
 Readiness summary:
 
