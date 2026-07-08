@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -34,6 +34,40 @@ describe("agent HTTP routes", () => {
       expect.objectContaining({ providerId: "provider_fake_local", modelFamilies: ["fake-local"] })
     ]);
     expect(response.body).not.toMatch(/sk_live|password|private key|bearer [a-z0-9._-]+/i);
+    closeHandler(handler);
+    expect(await eventTypes(config)).toEqual([]);
+  });
+
+  it("discovers Nous Portal from local .env without leaking the credential", async () => {
+    const cwd = tempDir();
+    writeFileSync(join(cwd, ".env"), [
+      "CESTUS_AGENT_NOUS_API_KEY=test-provider-key",
+      "CESTUS_AGENT_NOUS_ENDPOINT=https://inference-api.nousresearch.com/v1/chat/completions",
+      "CESTUS_AGENT_NOUS_MODEL=tencent/hy3:free"
+    ].join("\n"));
+    const config = resolveLocalRuntimeConfig({ cwd, env: {} });
+    const handler = testHandler({ config });
+    const response = await handler({ method: "GET", url: "/api/agent/status" });
+    const body = JSON.parse(response.body) as {
+      readonly schemaVersion: string;
+      readonly providers: readonly {
+        readonly providerId: string;
+        readonly endpointKind: string;
+        readonly modelFamilies: readonly string[];
+      }[];
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.schemaVersion).toBe("agent-status.v1");
+    expect(body.providers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ providerId: "provider_fake_local", modelFamilies: ["fake-local"] }),
+      expect.objectContaining({
+        providerId: "provider_nous_portal",
+        endpointKind: "openai-compatible-api",
+        modelFamilies: ["tencent/hy3:free"]
+      })
+    ]));
+    expect(response.body).not.toMatch(/test-provider-key|authorization: bearer|bearer test-provider-key/i);
     closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
