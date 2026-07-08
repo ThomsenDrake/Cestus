@@ -339,6 +339,30 @@ describe("agent runtime core", () => {
     );
   });
 
+  it("refuses unsafe prompt artifacts with secret-detected before calling the provider", async () => {
+    const ledger = new InMemoryEventLedger();
+    const remoteProvider = new CountingRemoteProvider();
+    const runtime = await createPreparedRuntime(ledger, [remoteProvider]);
+    const promptArtifact = unsafePromptArtifact();
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_remote_unsafe_artifact",
+      runId: "run_fake_model",
+      providerId: "provider_remote_model",
+      modelFamily: "remote-safe",
+      inputArtifactHash: promptArtifact.manifest.inputArtifactHash,
+      safetyClass: "provider-approved",
+      credentialRef: remoteCredentialRef(),
+      promptArtifact
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { category: "runtime", severity: "error" } });
+    expect(remoteProvider.calls).toHaveLength(0);
+    expect(modelFailurePayloads(await ledger.readAll())).toContainEqual(
+      expect.objectContaining({ category: "secret-detected" })
+    );
+  });
+
   it("records prompt artifact audit metadata and passes validated artifact text to remote providers", async () => {
     const ledger = new InMemoryEventLedger();
     const remoteProvider = new CountingRemoteProvider();
@@ -415,6 +439,14 @@ function localOnlyPromptArtifact(): PromptArtifactEnvelope {
   return promptArtifact("sensitive-local-only", "none");
 }
 
+function unsafePromptArtifact(): PromptArtifactEnvelope {
+  const envelope = providerApprovedPromptArtifact();
+  return {
+    manifest: envelope.manifest,
+    text: unsafeInputText()
+  };
+}
+
 function promptArtifact(
   safetyClass: "sensitive-local-only" | "provider-approved",
   transferApprovalClass: "none" | "provider-byte-transfer"
@@ -458,6 +490,10 @@ function promptArtifact(
       }
     ]
   });
+}
+
+function unsafeInputText(): string {
+  return ["Author", "ization", ": ", "Bear", "er", " raw-provider-material"].join("");
 }
 
 function modelRequestedPayloads(events: Awaited<ReturnType<InMemoryEventLedger["readAll"]>>): Record<string, unknown>[] {
