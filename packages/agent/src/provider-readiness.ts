@@ -369,7 +369,10 @@ async function readSecretStoreHealth(
 ): Promise<SecretStoreHealth | undefined> {
   try {
     const health = secretStoreHealthSchema.safeParse(await secretStore.health(credentialRefId));
-    return health.success ? health.data : undefined;
+    if (!health.success || health.data.credentialRefId !== credentialRefId) {
+      return undefined;
+    }
+    return health.data;
   } catch {
     return undefined;
   }
