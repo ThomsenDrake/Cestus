@@ -40,6 +40,13 @@ function secretSafeIdentifierSchema(label: string) {
   });
 }
 
+function approvalClassIdentifierSchema(label: string) {
+  return secretSafeIdentifierSchema(label).refine(
+    (value) => value !== "none" && value !== "human-review",
+    { message: `${label} must be a canonical approval-class identifier.` }
+  );
+}
+
 const affectedRefSchema = z.object({
   kind: secretSafeIdentifierSchema("affected ref kind"),
   id: secretSafeIdentifierSchema("affected ref id"),
@@ -53,7 +60,7 @@ const approvalQueueLockSchema = z.object({
   message: secretSafeIdentifierSchema("approval cockpit lock message"),
   relatedRefs: z.array(affectedRefSchema).optional(),
   appliesToToolRequestIds: z.array(secretSafeIdentifierSchema("approval cockpit lock tool request id")).optional(),
-  appliesToApprovalClasses: z.array(secretSafeIdentifierSchema("approval cockpit lock approval class")).optional()
+  appliesToApprovalClasses: z.array(approvalClassIdentifierSchema("approval cockpit lock approval class")).optional()
 }).strict();
 
 const approvalQueueApprovalSchema = z.object({
@@ -62,7 +69,7 @@ const approvalQueueApprovalSchema = z.object({
   approvedPreviewHash: secretSafeIdentifierSchema("approval cockpit approved preview hash"),
   approvedAt: z.string().datetime(),
   rationale: secretSafeIdentifierSchema("approval cockpit approval rationale"),
-  approvalClass: secretSafeIdentifierSchema("approval cockpit approval class").optional()
+  approvalClass: approvalClassIdentifierSchema("approval cockpit approval class").optional()
 }).strict();
 
 const approvalQueueDenialSchema = z.object({
@@ -70,7 +77,7 @@ const approvalQueueDenialSchema = z.object({
   deniedBy: secretSafeIdentifierSchema("approval cockpit denied by"),
   deniedAt: z.string().datetime(),
   rationale: secretSafeIdentifierSchema("approval cockpit denial rationale"),
-  approvalClass: secretSafeIdentifierSchema("approval cockpit denial approval class").optional()
+  approvalClass: approvalClassIdentifierSchema("approval cockpit denial approval class").optional()
 }).strict();
 
 const approvalQueueCompletionSchema = z.object({
@@ -93,7 +100,7 @@ const approvalQueueFailureSchema = z.object({
 
 const approvalQueueRiskSchema = z.object({
   sideEffectClass: secretSafeIdentifierSchema("approval cockpit risk side-effect class"),
-  approvalClass: secretSafeIdentifierSchema("approval cockpit risk approval class"),
+  approvalClass: approvalClassIdentifierSchema("approval cockpit risk approval class"),
   previewSummary: secretSafeIdentifierSchema("approval cockpit risk preview summary"),
   affectedRefs: z.array(affectedRefSchema),
   contextPackRefs: z.array(contextPackRefSchema),
@@ -102,7 +109,7 @@ const approvalQueueRiskSchema = z.object({
 }).strict();
 
 const approvalContractSchema = z.object({
-  requiredApprovalClass: secretSafeIdentifierSchema("approval cockpit contract approval class"),
+  requiredApprovalClass: approvalClassIdentifierSchema("approval cockpit contract approval class"),
   approvalRouteAppendsOnly: z.literal(true),
   denialRouteAppendsOnly: z.literal(true),
   rationaleRequired: z.literal(true),
@@ -135,8 +142,8 @@ const cockpitItemSchema = z.object({
   toolId: secretSafeIdentifierSchema("approval cockpit tool id"),
   toolVersion: z.union([z.number(), secretSafeIdentifierSchema("approval cockpit tool version")]),
   sideEffectClass: secretSafeIdentifierSchema("approval cockpit side-effect class"),
-  approvalClass: secretSafeIdentifierSchema("approval cockpit item approval class"),
-  requiredApprovalClass: secretSafeIdentifierSchema("approval cockpit item required approval class"),
+  approvalClass: approvalClassIdentifierSchema("approval cockpit item approval class"),
+  requiredApprovalClass: approvalClassIdentifierSchema("approval cockpit item required approval class"),
   previewHash: secretSafeIdentifierSchema("approval cockpit preview hash"),
   currentPreviewHash: secretSafeIdentifierSchema("approval cockpit current preview hash").optional(),
   previewSummary: secretSafeIdentifierSchema("approval cockpit preview summary"),
@@ -184,10 +191,10 @@ export const agentApprovalCockpitDtoSchema = z.object({
     denialAppendsDecisionOnly: z.literal(true),
     requiresHumanActor: z.literal(true),
     afterApproval: secretSafeIdentifierSchema("approval cockpit decision after approval"),
-    forbiddenDirectEffects: z.array(secretSafeIdentifierSchema("approval cockpit forbidden direct effect"))
+    forbiddenDirectEffects: z.array(approvalClassIdentifierSchema("approval cockpit forbidden direct effect"))
   }).strict(),
   approvalClasses: z.array(z.object({
-    approvalClass: secretSafeIdentifierSchema("approval cockpit metadata approval class"),
+    approvalClass: approvalClassIdentifierSchema("approval cockpit metadata approval class"),
     label: secretSafeIdentifierSchema("approval cockpit metadata label"),
     requiredFor: secretSafeIdentifierSchema("approval cockpit metadata required for"),
     providerByteTransferNote: secretSafeIdentifierSchema("approval cockpit metadata provider byte transfer note").optional(),
@@ -197,7 +204,7 @@ export const agentApprovalCockpitDtoSchema = z.object({
     }).strict()
   }).strict()),
   queue: cockpitQueueSchema,
-  forbiddenDirectEffects: z.array(secretSafeIdentifierSchema("approval cockpit forbidden direct effect"))
+  forbiddenDirectEffects: z.array(approvalClassIdentifierSchema("approval cockpit forbidden direct effect"))
 }).strict();
 
 export interface AgentApprovalCockpitDto {

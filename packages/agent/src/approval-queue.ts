@@ -23,6 +23,11 @@ export type AgentApprovalQueueLegacyApprovalClassAlias =
 export type AgentApprovalQueueApprovalClass = string;
 export type AgentApprovalQueueInputApprovalClass = string;
 
+const forbiddenSentinelApprovalClasses = new Set<AgentApprovalQueueInputApprovalClass>([
+  "none",
+  "human-review"
+]);
+
 export interface AgentAffectedRefDto {
   readonly kind: string;
   readonly id: string;
@@ -557,6 +562,9 @@ function freezeApprovalClasses(
 
 function normalizeAgentApprovalClass(value: AgentApprovalQueueInputApprovalClass): AgentApprovalQueueApprovalClass {
   assertAgentSecretSafeText(value, "approval class");
+  if (forbiddenSentinelApprovalClasses.has(value)) {
+    throw new Error(`Unsupported approval class for canonical approval queue: ${value}`);
+  }
   switch (value) {
     case "external-message-send":
       return "prr-send-followup";
