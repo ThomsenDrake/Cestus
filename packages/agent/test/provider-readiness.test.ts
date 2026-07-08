@@ -736,6 +736,59 @@ describe("provider readiness DTOs", () => {
       });
   });
 
+  it("fails closed when secret-store health is for a different credential reference", async () => {
+    const registry = createProviderRegistry();
+    registry.register({
+      providerId: "provider_fake_mismatched_health_remote",
+      label: "Mismatched health remote provider",
+      adapterVersion: "agent-provider-auth.v1",
+      backendKind: "openai-compatible-api",
+      modelFamilies: ["fake-mismatched-health-remote"],
+      modalities: ["text"],
+      toolSupport: "function-calling",
+      structuredOutputSupport: "schema-strict",
+      contextLimits: { maxInputTokens: 8192, maxOutputTokens: 2048 },
+      credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+      dataHandlingNotes: "Simulates a remote API provider when health metadata is mismatched.",
+      costPolicy: "metered-api",
+      workspaceScopes: ["workspace"],
+      approvalProfile: "remote-byte-transfer-gated",
+      diagnosticContract: ["health-unverified"],
+      fakeSupport: true
+    });
+
+    const dto = await buildProviderReadiness({
+      registry,
+      credentialReferences: [
+        createCredentialReference({
+          credentialRefId: "agent_credref_api_mismatched_health",
+          providerId: "provider_fake_mismatched_health_remote",
+          credentialKind: "api-key-bearer",
+          scopeKind: "workspace",
+          capabilityScopes: ["model-inference"],
+          safeLabel: "Mismatched health remote key",
+          authorizedBy: "actor_case_owner",
+          authorizedAt: "2026-07-07T21:00:00.000Z",
+          policyVersion: "agent-provider-auth.v1",
+          status: "linked"
+        })
+      ],
+      secretStore: new MismatchedHealthSecretStore(),
+      now: () => "2026-07-07T22:15:00.000Z"
+    });
+
+    expect(providerReadinessDtoSchema.parse(dto)).toEqual(dto);
+    expect(JSON.stringify(dto)).not.toContain("agent_credref_other_binding");
+    expect(dto.cards.find((card) => card.providerId === "provider_fake_mismatched_health_remote")).toMatchObject({
+      state: "health-unverified"
+    });
+    expect(dto.diagnostics.find((diagnostic) => diagnostic.providerId === "provider_fake_mismatched_health_remote"))
+      .toMatchObject({
+        category: "health-unverified",
+        credentialRefId: "agent_credref_api_mismatched_health"
+      });
+  });
+
   it("reports harness workspace approval for harness-gated providers", async () => {
     const registry = createProviderRegistry();
     registry.register({
@@ -870,5 +923,20 @@ class ThrowingHealthAccessorSecretStore implements SecretStore {
       },
       safeMessage: "Local binding is available."
     } as never;
+  }
+}
+
+class MismatchedHealthSecretStore implements SecretStore {
+  async resolve(): Promise<SecretMaterial | undefined> {
+    return undefined;
+  }
+
+  async health() {
+    return Object.freeze({
+      credentialRefId: "agent_credref_other_binding",
+      status: "healthy",
+      checkedAt: "2026-07-07T22:15:00.000Z",
+      safeMessage: "Local binding is available."
+    }) as never;
   }
 }
