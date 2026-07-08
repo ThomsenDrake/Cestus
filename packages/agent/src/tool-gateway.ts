@@ -662,6 +662,7 @@ function assertStoredApprovalUsable(
   if (
     approval.context.actor.kind !== "human" ||
     approval.context.actor.id !== approval.payload.approvedBy ||
+    approval.context.causationId !== request.id ||
     approval.payload.approvalClass !== request.payload.requiredApprovalClass ||
     approval.payload.approvedPreviewHash !== request.payload.previewHash ||
     approval.context.actor.id === request.payload.requestedBy ||
