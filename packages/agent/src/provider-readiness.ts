@@ -341,17 +341,15 @@ async function evaluateCredentialReferenceReadiness(
     };
   }
 
-  const health = secretStoreHealthSchema.safeParse(
-    await readSecretStoreHealth(secretStore, credentialReference.credentialRefId)
-  );
-  if (!health.success) {
+  const health = await readSecretStoreHealth(secretStore, credentialReference.credentialRefId);
+  if (health === undefined) {
     return {
       state: "health-unverified",
       credentialRefId: credentialReference.credentialRefId
     };
   }
 
-  const healthState = stateForSecretStoreHealth(credentialKind, health.data);
+  const healthState = stateForSecretStoreHealth(credentialKind, health);
   if (healthState !== "ready") {
     return {
       state: healthState,
@@ -368,9 +366,10 @@ async function evaluateCredentialReferenceReadiness(
 async function readSecretStoreHealth(
   secretStore: SecretStore,
   credentialRefId: string
-): Promise<unknown> {
+): Promise<SecretStoreHealth | undefined> {
   try {
-    return await secretStore.health(credentialRefId);
+    const health = secretStoreHealthSchema.safeParse(await secretStore.health(credentialRefId));
+    return health.success ? health.data : undefined;
   } catch {
     return undefined;
   }
