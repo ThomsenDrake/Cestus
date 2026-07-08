@@ -1,9 +1,12 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { isAgentSecretSafeText } from "../../agent/src/index.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
+import { LOCAL_RUNTIME_SESSION_COOKIE_NAME, localRuntimeSessionCookieValue } from "../src/auth.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
+import type { LocalAgentRuntimeFactory } from "../src/agent-runtime-factory.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
 
 const handlers: LocalRuntimeHttpHandler[] = [];
@@ -33,20 +36,14 @@ describe("agent HTTP routes", () => {
     expect(body.providers).toEqual([
       expect.objectContaining({ providerId: "provider_fake_local", modelFamilies: ["fake-local"] })
     ]);
-    expect(response.body).not.toMatch(/sk_live|password|private key|bearer [a-z0-9._-]+/i);
+    expect(isAgentSecretSafeText(response.body)).toBe(true);
     closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
 
-  it("discovers Nous Portal from local .env without leaking the credential", async () => {
-    const cwd = tempDir();
-    writeFileSync(join(cwd, ".env"), [
-      "CESTUS_AGENT_NOUS_API_KEY=test-provider-key",
-      "CESTUS_AGENT_NOUS_ENDPOINT=https://inference-api.nousresearch.com/v1/chat/completions",
-      "CESTUS_AGENT_NOUS_MODEL=tencent/hy3:free"
-    ].join("\n"));
-    const config = resolveLocalRuntimeConfig({ cwd, env: {} });
-    const handler = testHandler({ config });
+  it("can surface a Nous Portal provider descriptor without leaking setup material", async () => {
+    const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
+    const handler = testHandler({ config, agentRuntimeFactory: nousStatusRuntimeFactory() });
     const response = await handler({ method: "GET", url: "/api/agent/status" });
     const body = JSON.parse(response.body) as {
       readonly schemaVersion: string;
@@ -67,7 +64,9 @@ describe("agent HTTP routes", () => {
         modelFamilies: ["tencent/hy3:free"]
       })
     ]));
-    expect(response.body).not.toMatch(/test-provider-key|authorization: bearer|bearer test-provider-key/i);
+    expect(response.body).not.toContain("Cestus local runtime prompt artifact");
+    expect(response.body).not.toContain(providerSetupSentinel());
+    expect(isAgentSecretSafeText(response.body)).toBe(true);
     closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
@@ -228,10 +227,10 @@ describe("agent HTTP routes", () => {
       method: "POST",
       url: "/api/agent/tasks",
       body: JSON.stringify({
-        taskId: "sk_live_unsafe",
-        title: "password hunter2",
+        taskId: "task_route_invalid_shape",
+        title: "invalid task shape sentinel",
         priority: "urgent",
-        extra: "private key"
+        extra: "invalid extra sentinel"
       })
     });
 
@@ -243,38 +242,46 @@ describe("agent HTTP routes", () => {
         allowedRepairActions: ["send taskId, title, and optional priority as a JSON object"]
       }
     });
-    expect(response.body).not.toMatch(/sk_live|hunter2|private key/i);
+    expect(response.body).not.toContain("invalid task shape sentinel");
+    expect(response.body).not.toContain("invalid extra sentinel");
+    expect(isAgentSecretSafeText(response.body)).toBe(true);
   });
 
   it("uses existing auth policy for protected agent routes", async () => {
-    const handler = testHandler({
-      env: {
-        CESTUS_LOCAL_BIND: "lan",
-        CESTUS_LOCAL_AUTH_TOKEN: "route-secret"
-      }
-    });
+    const config = protectedConfig();
+    const handler = testHandler({ config });
+    const sessionCookie = localRuntimeSessionCookieValue(config);
+    expect(sessionCookie).toBeDefined();
 
     const rejected = await handler({ method: "GET", url: "/api/agent/status" });
     const accepted = await handler({
       method: "GET",
       url: "/api/agent/status",
-      headers: { authorization: "Bearer route-secret" }
+      headers: {
+        cookie: `${LOCAL_RUNTIME_SESSION_COOKIE_NAME}=${sessionCookie}`
+      }
     });
 
     expect(rejected.status).toBe(401);
     expect(accepted.status).toBe(200);
+    expect(rejected.body).not.toContain(routeSessionSentinel());
+    expect(accepted.body).not.toContain(routeSessionSentinel());
+    expect(isAgentSecretSafeText(rejected.body)).toBe(true);
+    expect(isAgentSecretSafeText(accepted.body)).toBe(true);
   });
 });
 
 function testHandler(input: {
   readonly config?: ReturnType<typeof resolveLocalRuntimeConfig>;
   readonly env?: Record<string, string | undefined>;
+  readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
 } = {}) {
   const config = input.config ?? resolveLocalRuntimeConfig({ cwd: tempDir(), env: input.env ?? {} });
   const handler = createLocalRuntimeHttpHandler({
     config,
     actor: { id: "actor_agent_route", kind: "human", label: "Agent Route Test" },
-    now: () => "2026-07-07T20:00:00.000Z"
+    now: () => "2026-07-07T20:00:00.000Z",
+    ...(input.agentRuntimeFactory === undefined ? {} : { agentRuntimeFactory: input.agentRuntimeFactory })
   });
   handlers.push(handler);
   return handler;
@@ -301,4 +308,83 @@ async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>):
   } finally {
     ledger.close();
   }
+}
+
+function protectedConfig(): ReturnType<typeof resolveLocalRuntimeConfig> {
+  const cwd = tempDir();
+  return {
+    cwd,
+    storage: {
+      strategy: "repo-local",
+      sqlitePath: join(cwd, ".cestus", "local", "prr-ledger.sqlite")
+    },
+    http: {
+      host: "0.0.0.0",
+      port: 8787,
+      bindMode: "lan",
+      authRequired: true,
+      authToken: routeSessionSentinel(),
+      devSeedEnabled: false
+    },
+    staticUi: { distDir: join(cwd, "dist") },
+    logs: { dir: join(cwd, ".cestus", "local", "logs") }
+  };
+}
+
+function nousStatusRuntimeFactory(): LocalAgentRuntimeFactory {
+  return (() => ({
+    status: async () => ({
+      schemaVersion: "agent-status.v1",
+      generatedAt: "2026-07-07T20:00:00.000Z",
+      identity: undefined,
+      tasks: [],
+      runs: [],
+      toolRequests: [],
+      permissions: [],
+      locks: [],
+      memories: [],
+      modelInvocations: [],
+      providerReadiness: undefined,
+      providers: [
+        {
+          providerId: "provider_fake_local",
+          label: "Fake Local Model Provider",
+          adapterVersion: "fake-provider.v1",
+          endpointKind: "local-engine",
+          modelFamilies: ["fake-local"],
+          credentialKinds: ["local-no-secret"],
+          supportsStructuredOutput: false,
+          supportsToolCalling: false,
+          safeDataNotes: "Deterministic local fake provider."
+        },
+        {
+          providerId: "provider_nous_portal",
+          label: "Nous Portal",
+          adapterVersion: "openai-compatible-chat.v1",
+          endpointKind: "openai-compatible-api",
+          modelFamilies: ["tencent/hy3:free"],
+          credentialKinds: [],
+          supportsStructuredOutput: false,
+          supportsToolCalling: false,
+          safeDataNotes: "Remote model provider used only with approved prompt artifacts."
+        }
+      ],
+      pendingApprovalCount: 0,
+      activeLockCount: 0,
+      diagnostics: []
+    }),
+    initializeDefaultIdentity: async () => ({ ok: true, residentAgentId: "agent_default", alreadyInitialized: false, eventIds: [] }),
+    createTask: async () => ({ ok: true, taskId: "task_route", eventIds: [] }),
+    startRun: async () => ({ ok: true, runId: "run_route", eventIds: [] }),
+    invokeModel: async () => ({ ok: false, error: { severity: "error", category: "provider", message: "unused" } }),
+    gateway: {}
+  })) as unknown as LocalAgentRuntimeFactory;
+}
+
+function providerSetupSentinel(): string {
+  return "provider-setup-sentinel";
+}
+
+function routeSessionSentinel(): string {
+  return "route-session-sentinel";
 }

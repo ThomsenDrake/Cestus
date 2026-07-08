@@ -27,7 +27,6 @@ export interface LocalAgentProviderConfiguration {
 export function createLocalAgentProviderConfiguration(input: {
   readonly cwd: string;
   readonly now: () => string;
-  readonly resolveInputText: (inputArtifactHash: string) => string | Promise<string>;
   readonly env?: Record<string, string | undefined>;
 }): LocalAgentProviderConfiguration {
   const localEnv = loadLocalAgentEnv({
@@ -38,7 +37,6 @@ export function createLocalAgentProviderConfiguration(input: {
   const secretStore = createNousSecretStore(localEnv.nousApiKey, input.now);
   const nousProvider = createNousPortalProvider({
     secretStore,
-    resolveInputText: input.resolveInputText,
     ...(localEnv.nousEndpoint === undefined ? {} : { endpointUrl: localEnv.nousEndpoint }),
     ...(localEnv.nousModel === undefined ? {} : { modelId: localEnv.nousModel })
   });
@@ -71,7 +69,6 @@ export async function buildLocalAgentProviderReadiness(input: {
   const configured = createLocalAgentProviderConfiguration({
     cwd: input.cwd,
     now: input.now,
-    resolveInputText: resolveInputTextForReadiness,
     ...(input.env === undefined ? {} : { env: input.env })
   });
 
@@ -118,8 +115,4 @@ function createNousCredentialReference(
     policyVersion: "agent-provider-auth.v1",
     status
   });
-}
-
-function resolveInputTextForReadiness(inputArtifactHash: string): string {
-  return `Cestus provider readiness prompt artifact ${inputArtifactHash}.`;
 }

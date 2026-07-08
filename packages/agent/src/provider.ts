@@ -60,6 +60,7 @@ export interface ModelInvocationRequest {
   readonly runId: string;
   readonly modelFamily: string;
   readonly inputArtifactHash: string;
+  readonly inputText?: string;
   readonly credentialRef: CredentialReference;
 }
 
@@ -86,6 +87,7 @@ const modelInvocationRequestSchema = z.object({
   runId: runIdSchema,
   modelFamily: agentSecretSafeTextSchema,
   inputArtifactHash: contentHashSchema,
+  inputText: agentSecretSafeTextSchema.optional(),
   credentialRef: credentialReferenceSchema
 }).strict();
 

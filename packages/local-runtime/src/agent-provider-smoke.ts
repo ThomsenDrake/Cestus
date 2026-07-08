@@ -46,7 +46,6 @@ export async function runLiveNousProviderSmoke(input: {
     configured = createLocalAgentProviderConfiguration({
       cwd: input.cwd,
       now,
-      resolveInputText: () => smokePrompt,
       ...(input.env === undefined ? {} : { env: input.env })
     });
   } catch (error) {
@@ -75,6 +74,7 @@ export async function runLiveNousProviderSmoke(input: {
       runId: "run_nous_provider_smoke",
       modelFamily: modelId,
       inputArtifactHash: smokeInputArtifactHash,
+      inputText: smokePrompt,
       credentialRef: {
         credentialRefId: smokeCredentialRefId,
         providerId: smokeProviderId,

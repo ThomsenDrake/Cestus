@@ -63,8 +63,7 @@ describe("local agent provider readiness", () => {
     const configured = createLocalAgentProviderConfiguration({
       cwd: tempDir(),
       env: { CESTUS_AGENT_NOUS_API_KEY: "runtime-provider-material" },
-      now: () => "2026-07-08T12:10:00.000Z",
-      resolveInputText: () => "safe prompt"
+      now: () => "2026-07-08T12:10:00.000Z"
     });
 
     expect(configured.providers.map((provider) => provider.describe().providerId)).toContain("provider_nous_portal");

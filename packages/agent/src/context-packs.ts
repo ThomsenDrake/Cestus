@@ -29,6 +29,12 @@ export interface ContextPackRef {
   readonly safeSummary: string;
   readonly provenanceRefs: readonly string[];
   readonly projectionHighWaterMark?: number;
+  readonly sourceEventIds?: readonly string[];
+  readonly artifactHashes?: readonly string[];
+  readonly policyVersion?: string;
+  readonly scope?: ContextPackScope;
+  readonly sizeBudgetBytes?: number;
+  readonly stalenessInputs?: readonly ContextPackStalenessInput[];
 }
 
 export interface BuildContextPackRefInput {
@@ -39,6 +45,23 @@ export interface BuildContextPackRefInput {
   readonly safeSummary: string;
   readonly provenanceRefs: readonly string[];
   readonly projectionHighWaterMark?: number;
+  readonly sourceEventIds?: readonly string[];
+  readonly artifactHashes?: readonly string[];
+  readonly policyVersion?: string;
+  readonly scope?: ContextPackScope;
+  readonly sizeBudgetBytes?: number;
+  readonly stalenessInputs?: readonly ContextPackStalenessInput[];
+}
+
+export interface ContextPackScope {
+  readonly kind: string;
+  readonly id: string;
+}
+
+export interface ContextPackStalenessInput {
+  readonly kind: string;
+  readonly ref: string;
+  readonly value: string;
 }
 
 export type ContextPackBuilderResult = ContextPackRef | BuildContextPackRefInput;
@@ -74,6 +97,18 @@ const agentSecretSafeTextSchema = (label: string) => z.string().min(1)
   .superRefine((value, ctx) => addSecretSafeIssue(value, label, ctx));
 const provenanceRefsSchema = z.array(agentSecretSafeTextSchema("provenanceRef"))
   .min(1, { message: "provenanceRefs must not be empty" });
+const sourceEventIdsSchema = z.array(z.string().regex(eventIdPattern)
+  .superRefine((value, ctx) => addSecretSafeIssue(value, "sourceEventId", ctx)));
+const artifactHashesSchema = z.array(contentHashSchema);
+const contextPackScopeSchema = z.object({
+  kind: agentSecretSafeTextSchema("scope.kind"),
+  id: agentSecretSafeTextSchema("scope.id")
+}).strict();
+const contextPackStalenessInputSchema = z.object({
+  kind: agentSecretSafeTextSchema("stalenessInput.kind"),
+  ref: agentSecretSafeTextSchema("stalenessInput.ref"),
+  value: agentSecretSafeTextSchema("stalenessInput.value")
+}).strict();
 const builtContextPackRefs = new WeakSet<object>();
 
 const contextPackDescriptorObjectSchema = z.object({
@@ -94,8 +129,17 @@ const contextPackRefObjectSchema = z.object({
   generatedAt: z.string().datetime(),
   safeSummary: agentSecretSafeTextSchema("safeSummary"),
   provenanceRefs: provenanceRefsSchema,
-  projectionHighWaterMark: z.number().int().nonnegative().optional()
-}).strict().superRefine((value, ctx) => addContextPackVersionMatchIssue(value, ctx));
+  projectionHighWaterMark: z.number().int().nonnegative().optional(),
+  sourceEventIds: sourceEventIdsSchema.optional(),
+  artifactHashes: artifactHashesSchema.optional(),
+  policyVersion: agentSecretSafeTextSchema("policyVersion").optional(),
+  scope: contextPackScopeSchema.optional(),
+  sizeBudgetBytes: z.number().int().positive().optional(),
+  stalenessInputs: z.array(contextPackStalenessInputSchema).optional()
+}).strict().superRefine((value, ctx) => {
+  addContextPackVersionMatchIssue(value, ctx);
+  addContextPackSizeBudgetIssue(value, ctx);
+});
 
 const buildContextPackRefInputObjectSchema = z.object({
   contextPackId: contextPackIdSchema,
@@ -104,7 +148,13 @@ const buildContextPackRefInputObjectSchema = z.object({
   payload: z.custom<AgentContextPackJsonValue>((value) => value !== undefined, { message: "payload is required" }),
   safeSummary: agentSecretSafeTextSchema("safeSummary"),
   provenanceRefs: provenanceRefsSchema,
-  projectionHighWaterMark: z.number().int().nonnegative().optional()
+  projectionHighWaterMark: z.number().int().nonnegative().optional(),
+  sourceEventIds: sourceEventIdsSchema.optional(),
+  artifactHashes: artifactHashesSchema.optional(),
+  policyVersion: agentSecretSafeTextSchema("policyVersion").optional(),
+  scope: contextPackScopeSchema.optional(),
+  sizeBudgetBytes: z.number().int().positive().optional(),
+  stalenessInputs: z.array(contextPackStalenessInputSchema).optional()
 }).strict().superRefine((value, ctx) => addContextPackVersionMatchIssue(value, ctx));
 
 export const contextPackDescriptorSchema = z.unknown()
@@ -135,15 +185,25 @@ export function buildContextPackRef(input: BuildContextPackRefInput): ContextPac
   const parsed = parseNormalizedDtoOrThrow(input, buildContextPackRefInputObjectSchema, "$");
   const payloadJson = stringifyJsonDtoValue(parsed.payload);
   const contentHash = hashStableJson(payloadJson);
+  const sizeBytes = Buffer.byteLength(payloadJson, "utf8");
+  if (parsed.sizeBudgetBytes !== undefined && parsed.sizeBudgetBytes < sizeBytes) {
+    throw new Error("sizeBudgetBytes must be at least the derived context pack size");
+  }
   const ref = {
     contextPackId: parsed.contextPackId,
     version: parsed.version,
     contentHash,
-    sizeBytes: Buffer.byteLength(payloadJson, "utf8"),
+    sizeBytes,
     generatedAt: parsed.generatedAt,
     safeSummary: parsed.safeSummary,
     provenanceRefs: parsed.provenanceRefs,
-    ...(parsed.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: parsed.projectionHighWaterMark })
+    ...(parsed.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: parsed.projectionHighWaterMark }),
+    ...(parsed.sourceEventIds === undefined ? {} : { sourceEventIds: parsed.sourceEventIds }),
+    ...(parsed.artifactHashes === undefined ? {} : { artifactHashes: parsed.artifactHashes }),
+    ...(parsed.policyVersion === undefined ? {} : { policyVersion: parsed.policyVersion }),
+    ...(parsed.scope === undefined ? {} : { scope: parsed.scope }),
+    ...(parsed.sizeBudgetBytes === undefined ? {} : { sizeBudgetBytes: parsed.sizeBudgetBytes }),
+    ...(parsed.stalenessInputs === undefined ? {} : { stalenessInputs: parsed.stalenessInputs })
   };
 
   const parsedRef = contextPackRefSchema.parse(ref);
@@ -286,6 +346,19 @@ function addContextPackVersionMatchIssue(
       code: "custom",
       path: ["version"],
       message: "contextPackId version suffix must match version"
+    });
+  }
+}
+
+function addContextPackSizeBudgetIssue(
+  value: { readonly sizeBytes: number; readonly sizeBudgetBytes?: number | undefined },
+  ctx: z.RefinementCtx
+): void {
+  if (value.sizeBudgetBytes !== undefined && value.sizeBudgetBytes < value.sizeBytes) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["sizeBudgetBytes"],
+      message: "sizeBudgetBytes must be at least the derived context pack size"
     });
   }
 }
@@ -514,22 +587,24 @@ function freezeContextPackDescriptor(descriptor: z.infer<typeof contextPackDescr
 }
 
 function freezeContextPackRef(ref: z.infer<typeof contextPackRefObjectSchema>): ContextPackRef {
-  const frozenRef = {
+  const frozenRef: ContextPackRef = {
     contextPackId: ref.contextPackId,
     version: ref.version,
     contentHash: ref.contentHash,
     sizeBytes: ref.sizeBytes,
     generatedAt: ref.generatedAt,
     safeSummary: ref.safeSummary,
-    provenanceRefs: Object.freeze([...ref.provenanceRefs])
+    provenanceRefs: Object.freeze([...ref.provenanceRefs]),
+    ...(ref.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: ref.projectionHighWaterMark }),
+    ...(ref.sourceEventIds === undefined ? {} : { sourceEventIds: Object.freeze([...ref.sourceEventIds]) }),
+    ...(ref.artifactHashes === undefined ? {} : { artifactHashes: Object.freeze([...ref.artifactHashes]) }),
+    ...(ref.policyVersion === undefined ? {} : { policyVersion: ref.policyVersion }),
+    ...(ref.scope === undefined ? {} : { scope: Object.freeze({ ...ref.scope }) }),
+    ...(ref.sizeBudgetBytes === undefined ? {} : { sizeBudgetBytes: ref.sizeBudgetBytes }),
+    ...(ref.stalenessInputs === undefined ? {} : {
+      stalenessInputs: Object.freeze(ref.stalenessInputs.map((input) => Object.freeze({ ...input })))
+    })
   };
-
-  if (ref.projectionHighWaterMark !== undefined) {
-    return Object.freeze({
-      ...frozenRef,
-      projectionHighWaterMark: ref.projectionHighWaterMark
-    });
-  }
 
   return Object.freeze(frozenRef);
 }

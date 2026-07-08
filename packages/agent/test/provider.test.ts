@@ -63,6 +63,28 @@ describe("agent provider abstraction", () => {
     expect(changedResponse.outputArtifactHash).not.toBe(first.outputArtifactHash);
   });
 
+  it("validates optional provider input text without echoing it in fake provider results", async () => {
+    const provider = new FakeModelProvider({
+      providerId: "provider_fake_local",
+      modelFamilies: ["fake-local"],
+      responseText: "review complete"
+    });
+    const request = {
+      invocationId: "inv_fake_001",
+      runId: "run_fake_001",
+      modelFamily: "fake-local",
+      inputArtifactHash: "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      credentialRef: { credentialRefId: "agent_credref_local", providerId: "provider_fake_local", kind: "local-no-secret" as const },
+      inputText: "Use safe context pack summaries only."
+    };
+
+    const result = await provider.invoke(request);
+
+    expect(JSON.stringify(result)).not.toContain(request.inputText);
+    await expect(provider.invoke({ ...request, inputText: "" })).rejects.toThrow();
+    await expect(provider.invoke({ ...request, inputText: unsafeInputText() })).rejects.toThrow(/safe/i);
+  });
+
   it("rejects secret-shaped credential reference values", () => {
     expect(() =>
       assertCredentialReferenceIsSafe({
@@ -133,3 +155,7 @@ describe("agent provider abstraction", () => {
     ).rejects.toThrow(/provider/i);
   });
 });
+
+function unsafeInputText(): string {
+  return ["Author", "ization", ": ", "Bear", "er", " raw-provider-material"].join("");
+}
