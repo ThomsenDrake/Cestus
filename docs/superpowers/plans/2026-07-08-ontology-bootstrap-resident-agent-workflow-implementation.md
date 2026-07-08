@@ -1184,11 +1184,11 @@ git commit -m "feat: show ontology bootstrap agent review state"
   - Factory readiness tracking for this approved plan.
   - Final readiness entry with live Nous acceptance evidence and no secret material.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-6-ontology-bootstrap-resident-readiness.md`. Mark it `in-progress`.
 
-- [ ] **Step 2: Run focused non-live verification bundle**
+- [x] **Step 2: Run focused non-live verification bundle**
 
 Run:
 
@@ -1202,7 +1202,7 @@ Expected:
 Test Files  10 passed
 ```
 
-- [ ] **Step 3: Run live Nous acceptance**
+- [x] **Step 3: Run live Nous acceptance**
 
 Run:
 
@@ -1218,7 +1218,7 @@ Test Files  1 passed
 
 Review the visible command output before recording evidence. It must not include the API key, bearer header, raw provider error body, or credential-shaped text.
 
-- [ ] **Step 4: Run full verification**
+- [x] **Step 4: Run full verification**
 
 Run:
 
@@ -1235,7 +1235,7 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 5: Track the approved plan**
+- [x] **Step 5: Track the approved plan**
 
 Modify `scripts/check-agent-readiness.mjs` by adding:
 
@@ -1245,11 +1245,11 @@ Modify `scripts/check-agent-readiness.mjs` by adding:
 
 near the resident-agent and ontology-bootstrap entries.
 
-- [ ] **Step 6: Record readiness evidence**
+- [x] **Step 6: Record readiness evidence**
 
 Append a section to `docs/agentic/software-factory.md` titled `Ontology Bootstrap Resident Agent Workflow Readiness`. Record the focused command, live Nous acceptance command, full verification command, and invariant summary. Do not include model output text, request headers, API key material, raw provider errors, or prompt bodies.
 
-- [ ] **Step 7: Run final documentation checks**
+- [x] **Step 7: Run final documentation checks**
 
 Run:
 
@@ -1264,7 +1264,7 @@ Expected:
 factory-readiness passed
 ```
 
-- [ ] **Step 8: Run final full verification**
+- [x] **Step 8: Run final full verification**
 
 Run:
 
@@ -1281,7 +1281,7 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 Run:
 
