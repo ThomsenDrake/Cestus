@@ -1,5 +1,10 @@
-import type { AgentTaskPriority } from "../../agent/src/index.js";
-import { isAgentSecretSafeText } from "../../agent/src/index.js";
+import {
+  buildProviderReadiness,
+  createProviderRegistry,
+  FakeSecretStore,
+  isAgentSecretSafeText,
+  type AgentTaskPriority
+} from "../../agent/src/index.js";
 import type { ActorRef } from "../../ontology/src/contracts.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 import {
@@ -26,14 +31,23 @@ export async function handleAgentHttpRoute(
     return undefined;
   }
 
-  const runtimeFactory = input.agentRuntimeFactory ?? defaultLocalAgentRuntimeFactory;
-  const runtime = runtimeFactory({
-    handle: input.handle,
-    actor: input.actor,
-    now: input.now
-  });
-
   try {
+    if (input.request.method === "GET" && path === "/api/agent/providers/readiness") {
+      return json(200, await buildProviderReadiness({
+        registry: createDefaultProviderReadinessRegistry(),
+        credentialReferences: [],
+        secretStore: new FakeSecretStore(),
+        now: input.now
+      }));
+    }
+
+    const runtimeFactory = input.agentRuntimeFactory ?? defaultLocalAgentRuntimeFactory;
+    const runtime = runtimeFactory({
+      handle: input.handle,
+      actor: input.actor,
+      now: input.now
+    });
+
     if (input.request.method === "GET" && path === "/api/agent/status") {
       return json(200, await runtime.status());
     }
@@ -257,4 +271,8 @@ function json(status: number, body: unknown): LocalRuntimeResponse {
     headers: Object.freeze({ "content-type": "application/json; charset=utf-8" }),
     body: JSON.stringify(body)
   });
+}
+
+function createDefaultProviderReadinessRegistry() {
+  return createProviderRegistry.withDefaultsForTest();
 }

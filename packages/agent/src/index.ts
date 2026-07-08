@@ -1,10 +1,23 @@
 export * from "./projection.js";
 export * from "./projection-types.js";
 export * from "./provider.js";
+export * from "./provider-registry.js";
+export * from "./provider-readiness.js";
+export * from "./provider-selection.js";
 export * from "./permission-policy.js";
 export * from "./runtime.js";
 export * from "./runtime-types.js";
 export * from "./secret-safety.js";
+export {
+  createCredentialReference,
+  credentialKindSchema as credentialReferenceKindSchema,
+  credentialReferenceSchema,
+  credentialReferenceStatusSchema,
+  type CredentialKind as CredentialReferenceKind,
+  type CredentialReference as AgentCredentialReference,
+  type CredentialReferenceStatus
+} from "./credential-reference.js";
+export * from "./secret-store.js";
 export {
   approvedAgentSpecialistRunTypes,
   specialistExecutionStatusFor,
