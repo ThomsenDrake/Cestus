@@ -56,3 +56,10 @@ Base commit before task: `58f3d4f`
 ## Concerns
 
 - The task brief's route-safety assertion was internally contradictory: it required exact expected URLs containing `toolreq_provider_transfer` while also asserting that the joined URL strings must not match `/transfer/`. I preserved the intended safety check by normalizing the dynamic tool-request ID before applying the forbidden-route regex, and left the exact route expectations intact.
+
+## Follow-up fixes
+
+- Repointed `packages/ui/src/agent/agent-types.ts` away from `packages/agent/src/index.js` so the UI now sources approval cockpit DTO types from `packages/agent/src/approval-cockpit.js` and runtime status types from `packages/agent/src/runtime-types.js`, avoiding the broad runtime barrel.
+- Tightened approval adapter tests to assert the exact approve POST body includes `approvedPreviewHash` plus rationale, while the deny POST body remains decision-only with rationale only.
+- Broadened `safeAgentText()` path scrubbing so non-URL absolute paths like `/workspace/case-7/report.pdf`, `/repo/foo`, and `/data/export` are redacted during approval cockpit DTO parsing and route-error diagnostics while safe explanatory text and `https://` URLs remain visible.
+- Verified the follow-up targeted suite with `npm test -- packages/ui/test/agent-approval-adapter.test.ts packages/ui/test/agent-adapter.test.ts`.

@@ -1,7 +1,9 @@
 export type {
   AgentApprovalCockpitDto,
-  AgentApprovalDecisionResultDto,
-  AgentApprovalQueueItemDto,
+  AgentApprovalDecisionResultDto
+} from "../../../agent/src/approval-cockpit.js";
+export type { AgentApprovalQueueItemDto } from "../../../agent/src/approval-queue.js";
+export type {
   AgentRuntimeDiagnosticDto,
   AgentStatusDto
-} from "../../../agent/src/index.js";
+} from "../../../agent/src/runtime-types.js";

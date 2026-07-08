@@ -629,7 +629,8 @@ export function runtimeUnavailableAgentStatus(input: {
 }
 
 export function safeAgentText(text: string): string {
-  return text
+  return redactNonUrlAbsolutePaths(
+    text
     .replace(/bearer\s+[A-Za-z0-9._~+/=-]+/gi, "[redacted credential]")
     .replace(/sk[-_](?:live|test|proj)[-_][A-Za-z0-9_-]+/gi, "[redacted credential]")
     .replace(/(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+/gi, "[redacted credential]")
@@ -644,11 +645,11 @@ export function safeAgentText(text: string): string {
     .replace(/-----BEGIN [^-]*PRIVATE KEY-----/gi, "[redacted credential]")
     .replace(/-----END [^-]*PRIVATE KEY-----/gi, "[redacted credential]")
     .replace(/\b[A-Za-z]:\\[^\s"',;)]+/g, "[path redacted]")
-    .replace(/\/(?:tmp|var|Users|home|Volumes|etc|opt|private|mnt|srv|root|proc|sys|dev)(?:\/[^\s"',;)]*)*/g, "[path redacted]")
     .replace(
       /(?<![-\w])(?:auth[\s._-]*tokens?|bearer(?:[\s._-]*tokens?)?|tokens?|passwords?|private[\s._-]*keys?)(?![-\w])/gi,
       "[redacted credential]"
-    );
+    )
+  );
 }
 
 function safeGeneratedAt(value: string | undefined): string {
@@ -658,6 +659,13 @@ function safeGeneratedAt(value: string | undefined): string {
 
   const timestamp = Date.parse(value);
   return Number.isNaN(timestamp) ? new Date().toISOString() : new Date(timestamp).toISOString();
+}
+
+function redactNonUrlAbsolutePaths(text: string): string {
+  return text.replace(
+    /(^|[\s("'=:\[])(\/(?:[^/\s"'`,;)\]]+(?:\/[^/\s"'`,;)\]]*)*))/g,
+    (_match, prefix: string, path: string) => `${prefix}${path.startsWith("//") ? path : "[path redacted]"}`
+  );
 }
 
 function authHeaders(authToken: string | undefined): Record<string, string> {

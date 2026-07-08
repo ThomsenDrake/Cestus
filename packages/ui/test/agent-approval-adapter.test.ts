@@ -55,6 +55,13 @@ describe("agent approval cockpit adapter", () => {
       "/api/agent/approvals/toolreq_provider_transfer/deny"
     ]);
     expect(calls.map(([, init]) => init?.method)).toEqual(["POST", "POST"]);
+    expect(JSON.parse(String(calls[0]?.[1]?.body))).toEqual({
+      approvedPreviewHash: previewHash,
+      rationale: "Approved the exact preview."
+    });
+    expect(JSON.parse(String(calls[1]?.[1]?.body))).toEqual({
+      rationale: "Need a narrower preview."
+    });
     expect(
       calls
         .map(([url]) => String(url).replace(/toolreq_[^/]+/g, "toolreq_id"))
@@ -62,12 +69,36 @@ describe("agent approval cockpit adapter", () => {
     ).not.toMatch(/send|transfer|export|repair|legal|accept/i);
   });
 
-  it("redacts unsafe runtime text before parsing cockpit DTOs", () => {
+  it("redacts non-url absolute paths before parsing cockpit DTOs while keeping safe text", () => {
     const cockpit = agentApprovalCockpitFromJson(approvalCockpit({
-      unsafeSummary: "Provider returned bearer raw-value from /tmp/secret-agent"
+      unsafeSummary: [
+        "Review note kept for operators.",
+        "See https://example.com/case-7/report.pdf for the public source.",
+        "Local copies at /workspace/case-7/report.pdf, /repo/foo, and /data/export must stay hidden.",
+        "Provider returned bearer raw-value."
+      ].join(" ")
     }));
+    const serialized = JSON.stringify(cockpit);
 
-    expect(JSON.stringify(cockpit)).not.toMatch(/raw-value|\/tmp\/secret-agent|bearer/i);
+    expect(serialized).not.toMatch(/raw-value|bearer|\/workspace\/case-7\/report\.pdf|\/repo\/foo|\/data\/export/i);
+    expect(serialized).toContain("Review note kept for operators.");
+    expect(serialized).toContain("https://example.com/case-7/report.pdf");
+    expect(serialized).toContain("[path redacted]");
+  });
+
+  it("redacts non-url absolute paths from approval cockpit diagnostics", async () => {
+    const fetcher = vi.fn(async () =>
+      new Response(JSON.stringify({
+        error: {
+          message: "Approval cockpit log at /data/export came from /repo/foo after reviewing https://example.com/case-7/report.pdf"
+        }
+      }), { status: 500 })
+    );
+    const adapter = createHttpAgentAdapter({ fetcher });
+
+    await expect(adapter.loadApprovalCockpit()).rejects.toThrow(
+      "Approval cockpit log at [path redacted] came from [path redacted] after reviewing https://example.com/case-7/report.pdf"
+    );
   });
 
   it("supports static adapters for component and app tests", async () => {
