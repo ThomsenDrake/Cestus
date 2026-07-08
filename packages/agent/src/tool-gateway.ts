@@ -205,8 +205,8 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
         if (command.approvedPreviewHash === undefined) {
           throw new Error("Approved preview hash is required before completing this tool request.");
         }
+        assertStoredApprovalUsable(state.approval, state.request, input.actor.id);
         assertFreshPreviewHash(command.approvedPreviewHash, requestPreviewHash);
-        assertFreshPreviewHash(state.approval.payload.approvedPreviewHash, requestPreviewHash);
       } else if (command.approvedPreviewHash !== undefined) {
         assertFreshPreviewHash(command.approvedPreviewHash, requestPreviewHash);
       }
@@ -651,5 +651,22 @@ function assertFreshPreviewHash(candidateHash: string, expectedHash: string): vo
 function assertIndependentApprovalActor(actor: ActorRef, requestedBy: string, gatewayActorId: string): void {
   if (actor.id === requestedBy || actor.id === gatewayActorId) {
     throw new Error("Tool approval requires an independent human actor.");
+  }
+}
+
+function assertStoredApprovalUsable(
+  approval: KnowledgeEventOf<"agent.tool.approved">,
+  request: KnowledgeEventOf<"agent.tool.requested">,
+  gatewayActorId: string
+): void {
+  if (
+    approval.context.actor.kind !== "human" ||
+    approval.context.actor.id !== approval.payload.approvedBy ||
+    approval.payload.approvalClass !== request.payload.requiredApprovalClass ||
+    approval.payload.approvedPreviewHash !== request.payload.previewHash ||
+    approval.context.actor.id === request.payload.requestedBy ||
+    approval.context.actor.id === gatewayActorId
+  ) {
+    throw new Error("Stored tool approval is not usable.");
   }
 }
