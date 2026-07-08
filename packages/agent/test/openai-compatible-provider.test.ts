@@ -9,6 +9,8 @@ import {
 } from "../src/secret-store.js";
 
 const inputArtifactHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const providerInputText = "Use the audited prompt artifact context to answer with provenance.";
+const placeholderInputText = `Cestus local runtime prompt artifact ${inputArtifactHash}`;
 
 describe("OpenAI-compatible chat provider", () => {
   it("invokes a chat completions endpoint with bearer auth from the secret store", async () => {
@@ -30,8 +32,7 @@ describe("OpenAI-compatible chat provider", () => {
           }],
           usage: { prompt_tokens: 7, completion_tokens: 4 }
         })
-      }),
-      resolveInputText: async () => "Explain the public record."
+      })
     });
 
     const result = await provider.invoke({
@@ -39,6 +40,7 @@ describe("OpenAI-compatible chat provider", () => {
       runId: "run_nous_001",
       modelFamily: "tencent/hy3:free",
       inputArtifactHash,
+      inputText: providerInputText,
       credentialRef: {
         credentialRefId: "agent_credref_nous_portal",
         providerId: "provider_nous_portal",
@@ -56,7 +58,7 @@ describe("OpenAI-compatible chat provider", () => {
       model: "tencent/hy3:free",
       messages: [
         { role: "system", content: "You are the resident Cestus Agent. Answer with concise, evidence-aware reasoning." },
-        { role: "user", content: "Explain the public record." }
+        { role: "user", content: providerInputText }
       ],
       max_tokens: 512
     });
@@ -72,8 +74,7 @@ describe("OpenAI-compatible chat provider", () => {
   it("describes Nous Portal as an OpenAI-compatible backend, not an agent identity", () => {
     const provider = createNousPortalProvider({
       secretStore: secretStoreWithNousKey(),
-      fetch: captureFetch([], successfulResponse()),
-      resolveInputText: async () => "hello"
+      fetch: captureFetch([], successfulResponse())
     });
 
     expect(provider.describe()).toMatchObject({
@@ -91,8 +92,7 @@ describe("OpenAI-compatible chat provider", () => {
     const calls: CapturedFetchCall[] = [];
     const provider = createNousPortalProvider({
       secretStore: secretStoreWithNousKey(),
-      fetch: captureFetch(calls, successfulResponse()),
-      resolveInputText: async () => "hello"
+      fetch: captureFetch(calls, successfulResponse())
     });
 
     await provider.invoke({
@@ -100,6 +100,7 @@ describe("OpenAI-compatible chat provider", () => {
       runId: "run_nous_001",
       modelFamily: "tencent/hy3:free",
       inputArtifactHash,
+      inputText: providerInputText,
       credentialRef: {
         credentialRefId: "agent_credref_nous_portal",
         providerId: "provider_nous_portal",
@@ -119,6 +120,55 @@ describe("OpenAI-compatible chat provider", () => {
     expect(calls[0]?.body).not.toMatch(/test-provider-key/i);
   });
 
+  it("requires runtime-supplied input text before any remote request", async () => {
+    const calls: CapturedFetchCall[] = [];
+    const provider = createNousPortalProvider({
+      secretStore: secretStoreWithNousKey(),
+      fetch: captureFetch(calls, successfulResponse())
+    });
+
+    await expect(provider.invoke({
+      invocationId: "inv_nous_missing_input_text",
+      runId: "run_nous_001",
+      modelFamily: "tencent/hy3:free",
+      inputArtifactHash,
+      credentialRef: {
+        credentialRefId: "agent_credref_nous_portal",
+        providerId: "provider_nous_portal",
+        kind: "api-key-bearer"
+      }
+    })).rejects.toThrow(/inputText/i);
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it("sends exact audited artifact text instead of a hash placeholder", async () => {
+    const calls: CapturedFetchCall[] = [];
+    const provider = createNousPortalProvider({
+      secretStore: secretStoreWithNousKey(),
+      fetch: captureFetch(calls, successfulResponse())
+    });
+
+    await provider.invoke({
+      invocationId: "inv_nous_artifact_text",
+      runId: "run_nous_001",
+      modelFamily: "tencent/hy3:free",
+      inputArtifactHash,
+      inputText: providerInputText,
+      credentialRef: {
+        credentialRefId: "agent_credref_nous_portal",
+        providerId: "provider_nous_portal",
+        kind: "api-key-bearer"
+      }
+    });
+
+    const body = JSON.parse(calls[0]?.body ?? "{}") as { messages?: Array<{ role: string; content: string }> };
+
+    expect(body.messages?.find((message) => message.role === "user")?.content).toBe(providerInputText);
+    expect(calls[0]?.body).toContain(providerInputText);
+    expect(calls[0]?.body).not.toContain(placeholderInputText);
+  });
+
   it("fails closed without exposing provider secrets or raw response bodies", async () => {
     const provider = new OpenAICompatibleChatProvider({
       providerId: "provider_nous_portal",
@@ -131,8 +181,7 @@ describe("OpenAI-compatible chat provider", () => {
         ok: false,
         status: 401,
         json: async () => ({ error: { message: "Authorization: Bearer test-provider-key rejected" } })
-      }),
-      resolveInputText: async () => "Explain the public record."
+      })
     });
 
     await expect(provider.invoke({
@@ -140,6 +189,7 @@ describe("OpenAI-compatible chat provider", () => {
       runId: "run_nous_001",
       modelFamily: "tencent/hy3:free",
       inputArtifactHash,
+      inputText: providerInputText,
       credentialRef: {
         credentialRefId: "agent_credref_nous_portal",
         providerId: "provider_nous_portal",
@@ -155,8 +205,7 @@ describe("OpenAI-compatible chat provider", () => {
         ok: true,
         status: 200,
         json: async () => ({ choices: [{ message: { content: "" } }] })
-      }),
-      resolveInputText: async () => "Explain the public record."
+      })
     });
 
     await expect(provider.invoke({
@@ -164,6 +213,7 @@ describe("OpenAI-compatible chat provider", () => {
       runId: "run_nous_001",
       modelFamily: "tencent/hy3:free",
       inputArtifactHash,
+      inputText: providerInputText,
       credentialRef: {
         credentialRefId: "agent_credref_nous_portal",
         providerId: "provider_nous_portal",
