@@ -7,6 +7,9 @@ import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 const agentCoreVersion = "0.1.0";
 const agentPackVersions = { core: "0.1.0", agent: "0.1.0" } as const;
+const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
+const artifactHashPattern = /^sha256:[a-f0-9]{64}$/;
+const arrayIndexNamePattern = /^(0|[1-9]\d*)$/;
 
 export interface CreateAgentToolGatewayInput {
   readonly ledger: EventLedger;
@@ -96,8 +99,18 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
   return {
     async requestTool(command: RequestAgentToolInput) {
       await assertNewToolRequest(input.ledger, command.toolRequestId);
-      const previewHash = hashPreview(command.preview);
+      const preview = sanitizeAgentToolPreview(command.preview);
+      const previewHash = hashPreview(preview);
       const requiredApprovalClass = command.requiredApprovalClass ?? approvalClassForSideEffect(command.sideEffectClass);
+      const scope = command.scope ?? preview.scope ?? preview.summary;
+      const estimatedEffect = command.estimatedEffect ?? preview.estimatedEffect ?? preview.summary;
+      assertNonEmptySecretSafeString(scope, "tool request scope");
+      assertNonEmptySecretSafeString(estimatedEffect, "tool request estimated effect");
+      const sourceEventIds = sanitizeEventIds(preview.relatedEventIds, "preview related event id");
+      const inputArtifactHashes = sanitizeArtifactHashes(
+        command.inputArtifactHashes ?? preview.artifactHashes,
+        "input artifact hash"
+      );
       const event: AppendableKnowledgeEvent<"agent.tool.requested"> = {
         type: "agent.tool.requested",
         version: 1,
@@ -112,10 +125,10 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
           sideEffectClass: command.sideEffectClass,
           requiredApprovalClass,
           previewHash,
-          scope: command.scope ?? command.preview.scope ?? command.preview.summary,
-          estimatedEffect: command.estimatedEffect ?? command.preview.estimatedEffect ?? command.preview.summary,
-          ...optionalArray("sourceEventIds", command.preview.relatedEventIds),
-          ...optionalArray("inputArtifactHashes", command.inputArtifactHashes ?? command.preview.artifactHashes)
+          scope,
+          estimatedEffect,
+          ...optionalArray("sourceEventIds", sourceEventIds),
+          ...optionalArray("inputArtifactHashes", inputArtifactHashes)
         }
       };
       return appendToolEvent(input.ledger, event, { expectedNextSequence: 1 });
@@ -198,11 +211,12 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
         assertFreshPreviewHash(command.approvedPreviewHash, requestPreviewHash);
       }
 
-      for (const change of command.result.readModelChanges) {
+      const result = sanitizeAgentToolResult(command.result);
+      for (const change of result.readModelChanges) {
         assertAgentSecretSafeText(change.projectionName, "read model projection name");
         assertAgentSecretSafeText(change.change, "read model change");
       }
-      const resultSummary = command.result.resultSummary ?? "Tool completed.";
+      const resultSummary = result.resultSummary ?? "Tool completed.";
       assertAgentSecretSafeText(resultSummary, "tool result summary");
 
       const event: AppendableKnowledgeEvent<"agent.tool.completed"> = {
@@ -213,9 +227,9 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
         payload: {
           toolRequestId: command.toolRequestId,
           completedAt: input.now(),
-          eventIds: [...command.result.eventIds],
-          artifactHashes: [...command.result.artifactHashes],
-          readModelChanges: command.result.readModelChanges.map((change) => ({
+          eventIds: [...result.eventIds],
+          artifactHashes: [...result.artifactHashes],
+          readModelChanges: result.readModelChanges.map((change) => ({
             projectionName: change.projectionName,
             change: change.change,
             ...optionalArray("relatedIds", change.relatedIds)
@@ -280,6 +294,242 @@ function stabilizeJsonValue(value: unknown): unknown {
   }
 
   return value;
+}
+
+function sanitizeAgentToolPreview(preview: AgentToolPreview): AgentToolPreview {
+  const normalized = sanitizePlainJsonObject(preview, "preview");
+  assertNonEmptySecretSafeString(normalized.summary, "preview summary");
+
+  if (Object.hasOwn(normalized, "scope")) {
+    assertNonEmptySecretSafeString(normalized.scope, "preview scope");
+  }
+  if (Object.hasOwn(normalized, "estimatedEffect")) {
+    assertNonEmptySecretSafeString(normalized.estimatedEffect, "preview estimated effect");
+  }
+  if (Object.hasOwn(normalized, "relatedEventIds")) {
+    normalized.relatedEventIds = sanitizeEventIds(normalized.relatedEventIds, "preview related event id");
+  }
+  if (Object.hasOwn(normalized, "artifactHashes")) {
+    normalized.artifactHashes = sanitizeArtifactHashes(normalized.artifactHashes, "preview artifact hash");
+  }
+
+  return Object.freeze(normalized) as AgentToolPreview;
+}
+
+function sanitizeAgentToolResult(result: AgentToolResult): AgentToolResult {
+  const record = dataRecordFromObject(result, "tool result");
+  rejectUnsupportedKeys(record, ["eventIds", "artifactHashes", "readModelChanges", "resultSummary"], "tool result");
+  const eventIds = sanitizeRequiredEventIds(record.eventIds, "tool result event id");
+  const artifactHashes = sanitizeRequiredArtifactHashes(record.artifactHashes, "tool result artifact hash");
+  const readModelChanges = sanitizeReadModelChanges(record.readModelChanges);
+  let resultSummary: string | undefined;
+
+  if (Object.hasOwn(record, "resultSummary")) {
+    assertNonEmptySecretSafeString(record.resultSummary, "tool result summary");
+    resultSummary = record.resultSummary;
+  }
+
+  return Object.freeze({
+    eventIds,
+    artifactHashes,
+    readModelChanges,
+    ...(resultSummary === undefined ? {} : { resultSummary })
+  });
+}
+
+function sanitizeReadModelChanges(value: unknown): AgentToolReadModelChange[] {
+  const values = sanitizeJsonArray(value, "tool result read model changes");
+  return values.map((item) => {
+    const change = dataRecordFromObject(item, "tool result read model change");
+    rejectUnsupportedKeys(change, ["projectionName", "change", "relatedIds"], "tool result read model change");
+    assertNonEmptySecretSafeString(change.projectionName, "read model projection name");
+    assertNonEmptySecretSafeString(change.change, "read model change");
+    const relatedIds = sanitizeRelatedIds(change.relatedIds, "read model related id");
+
+    return {
+      projectionName: change.projectionName,
+      change: change.change,
+      ...(relatedIds === undefined ? {} : { relatedIds })
+    };
+  });
+}
+
+function sanitizePlainJsonObject(value: unknown, label: string): Record<string, unknown> {
+  const safe: Record<string, unknown> = {};
+  for (const [key, entryValue] of dataEntriesFromObject(value, label)) {
+    safe[key] = sanitizeJsonValue(entryValue, `${label} ${key}`);
+  }
+  return safe;
+}
+
+function sanitizeJsonValue(value: unknown, label: string): unknown {
+  if (value === null || typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    assertAgentSecretSafeText(value, `${label} text`);
+    return value;
+  }
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new Error(`${label} must be JSON-compatible.`);
+    }
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return sanitizeJsonArray(value, label);
+  }
+
+  if (typeof value === "object" && value !== null) {
+    return Object.freeze(sanitizePlainJsonObject(value, label));
+  }
+
+  throw new Error(`${label} must be JSON-compatible.`);
+}
+
+function sanitizeJsonArray(value: unknown, label: string): readonly unknown[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be an array.`);
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${label} must not contain symbol-keyed fields.`);
+  }
+
+  for (const name of Object.getOwnPropertyNames(value)) {
+    if (name === "length") {
+      continue;
+    }
+    if (!isArrayIndexName(name) || Number(name) >= value.length) {
+      throw new Error(`${label} must not contain custom array fields.`);
+    }
+  }
+
+  const safe: unknown[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable) {
+      throw new Error(`${label} must not contain sparse, hidden, or accessor-backed values.`);
+    }
+    safe.push(sanitizeJsonValue(descriptor.value, `${label} item`));
+  }
+
+  return Object.freeze(safe);
+}
+
+function dataRecordFromObject(value: unknown, label: string): Record<string, unknown> {
+  const record: Record<string, unknown> = {};
+  for (const [key, entryValue] of dataEntriesFromObject(value, label)) {
+    record[key] = entryValue;
+  }
+  return record;
+}
+
+function dataEntriesFromObject(value: unknown, label: string): Array<readonly [string, unknown]> {
+  if (value === null || typeof value !== "object" || Array.isArray(value) || !isPlainRecord(value)) {
+    throw new Error(`${label} must be a plain JSON object.`);
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${label} must not contain symbol-keyed fields.`);
+  }
+
+  const entries: Array<readonly [string, unknown]> = [];
+  for (const key of Object.getOwnPropertyNames(value).sort()) {
+    assertAgentSecretSafeText(key, `${label} key`);
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined || !("value" in descriptor)) {
+      throw new Error(`${label} must not contain accessors.`);
+    }
+    if (!descriptor.enumerable) {
+      throw new Error(`${label} must not contain hidden fields.`);
+    }
+    entries.push([key, descriptor.value]);
+  }
+  return entries;
+}
+
+function rejectUnsupportedKeys(record: Record<string, unknown>, allowedKeys: readonly string[], label: string): void {
+  const allowed = new Set(allowedKeys);
+  if (Object.keys(record).some((key) => !allowed.has(key))) {
+    throw new Error(`${label} contains unsupported fields.`);
+  }
+}
+
+function sanitizeRequiredEventIds(value: unknown, label: string): string[] {
+  const eventIds = sanitizeEventIds(value, label);
+  if (eventIds === undefined) {
+    throw new Error(`${label} list is required.`);
+  }
+  return eventIds;
+}
+
+function sanitizeEventIds(value: unknown, label: string): string[] | undefined {
+  return sanitizeValidatedStringArray(value, label, (item) => {
+    if (!eventIdPattern.test(item)) {
+      throw new Error(`${label} must be a valid event ID.`);
+    }
+  });
+}
+
+function sanitizeRequiredArtifactHashes(value: unknown, label: string): string[] {
+  const hashes = sanitizeArtifactHashes(value, label);
+  if (hashes === undefined) {
+    throw new Error(`${label} list is required.`);
+  }
+  return hashes;
+}
+
+function sanitizeArtifactHashes(value: unknown, label: string): string[] | undefined {
+  return sanitizeValidatedStringArray(value, label, (item) => {
+    if (!artifactHashPattern.test(item)) {
+      throw new Error(`${label} must be a valid artifact hash.`);
+    }
+  });
+}
+
+function sanitizeRelatedIds(value: unknown, label: string): string[] | undefined {
+  return sanitizeValidatedStringArray(value, label, () => undefined);
+}
+
+function sanitizeValidatedStringArray(
+  value: unknown,
+  label: string,
+  validate: (item: string) => void
+): string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const values = sanitizeJsonArray(value, `${label} list`);
+  const strings: string[] = [];
+  for (const item of values) {
+    assertNonEmptySecretSafeString(item, label);
+    validate(item);
+    strings.push(item);
+  }
+  return strings;
+}
+
+function assertNonEmptySecretSafeString(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+  assertAgentSecretSafeText(value, label);
+}
+
+function isPlainRecord(value: object): value is Record<string, unknown> {
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function isArrayIndexName(value: string): boolean {
+  if (!arrayIndexNamePattern.test(value)) {
+    return false;
+  }
+  const index = Number(value);
+  return Number.isSafeInteger(index) && index >= 0 && index < 4_294_967_295 && String(index) === value;
 }
 
 function agentContext(input: CreateAgentToolGatewayInput, correlationId: string, actor = input.actor, causationId?: string) {
