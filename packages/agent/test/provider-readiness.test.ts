@@ -8,6 +8,59 @@ import {
 import { createProviderRegistry } from "../src/provider-registry.js";
 
 describe("provider readiness DTOs", () => {
+  it("reports credential health and data posture for a configured remote provider", async () => {
+    const registry = createProviderRegistry();
+    registry.register({
+      providerId: "provider_nous_portal",
+      label: "Nous Portal",
+      adapterVersion: "openai-compatible-chat.v1",
+      backendKind: "openai-compatible-api",
+      modelFamilies: ["tencent/hy3:free"],
+      modalities: ["text"],
+      toolSupport: "none",
+      structuredOutputSupport: "unsupported",
+      contextLimits: { maxInputTokens: 4096, maxOutputTokens: 1024 },
+      credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+      dataHandlingNotes: "Remote Nous Portal provider. Prompts leave this machine only after provider policy allows it.",
+      costPolicy: "metered-api",
+      workspaceScopes: ["workspace"],
+      approvalProfile: "remote-byte-transfer-gated",
+      diagnosticContract: ["provider-ready", "requires-byte-transfer-approval"],
+      fakeSupport: false
+    });
+    const store = new FakeSecretStore();
+    await store.putForTest("agent_credref_nous_portal", SecretMaterial.fromTestValue("runtime-provider-material"));
+
+    const dto = await buildProviderReadiness({
+      registry,
+      credentialReferences: [
+        createCredentialReference({
+          credentialRefId: "agent_credref_nous_portal",
+          providerId: "provider_nous_portal",
+          credentialKind: "api-key-bearer",
+          scopeKind: "machine",
+          capabilityScopes: ["model-inference", "provider-health"],
+          safeLabel: "Nous Portal local binding",
+          authorizedBy: "actor_local_operator",
+          authorizedAt: "2026-07-08T12:00:00.000Z",
+          policyVersion: "agent-provider-auth.v1",
+          status: "linked"
+        })
+      ],
+      secretStore: store,
+      now: () => "2026-07-08T12:05:00.000Z"
+    });
+
+    expect(dto.cards.find((card) => card.providerId === "provider_nous_portal")).toMatchObject({
+      state: "requires-byte-transfer-approval",
+      requiredApprovalClass: "provider-byte-transfer",
+      credentialHealth: "local-binding-healthy",
+      dataHandlingPosture: "remote-prompt-byte-transfer-gated",
+      credentialRefId: "agent_credref_nous_portal"
+    });
+    expect(JSON.stringify(dto)).not.toMatch(/runtime-provider-material|authorization:\s*bearer|provider error|response body/i);
+  });
+
   it("reports setup cards without raw secret locations", async () => {
     const dto = await buildProviderReadiness({
       registry: createProviderRegistry.withDefaultsForTest(),

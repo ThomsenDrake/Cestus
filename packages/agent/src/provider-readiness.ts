@@ -71,6 +71,23 @@ export const providerReadinessApprovalClassSchema = z.enum([
   "policy"
 ]);
 
+export const providerCredentialHealthSchema = z.enum([
+  "local-binding-healthy",
+  "local-binding-missing",
+  "expired",
+  "revoked",
+  "insufficient-scope",
+  "unverified",
+  "not-required"
+]);
+
+export const providerDataHandlingPostureSchema = z.enum([
+  "local-only",
+  "remote-prompt-byte-transfer-gated",
+  "remote-workspace-harness-gated",
+  "policy-blocked"
+]);
+
 export const providerSetupCardSchema = z.object({
   providerId: providerIdSchema,
   label: safeTextSchema,
@@ -79,6 +96,9 @@ export const providerSetupCardSchema = z.object({
   credentialKindSummary: z.array(credentialKindSchema).min(1),
   state: providerReadinessStateSchema,
   requiredApprovalClass: providerReadinessApprovalClassSchema,
+  credentialHealth: providerCredentialHealthSchema,
+  dataHandlingPosture: providerDataHandlingPostureSchema,
+  credentialRefId: credentialRefIdSchema.optional(),
   safeActionIds: z.array(safeActionIdSchema)
 }).strict();
 
@@ -105,6 +125,8 @@ export const providerReadinessDtoSchema = z.object({
 
 export type ProviderReadinessState = z.infer<typeof providerReadinessStateSchema>;
 export type ProviderReadinessApprovalClass = z.infer<typeof providerReadinessApprovalClassSchema>;
+export type ProviderCredentialHealth = z.infer<typeof providerCredentialHealthSchema>;
+export type ProviderDataHandlingPosture = z.infer<typeof providerDataHandlingPostureSchema>;
 export type ProviderSetupCard = z.infer<typeof providerSetupCardSchema>;
 export type ProviderReadinessDiagnostic = z.infer<typeof providerReadinessDiagnosticSchema>;
 export type ProviderReadinessDto = z.infer<typeof providerReadinessDtoSchema>;
@@ -114,6 +136,8 @@ const allowedSchemaLiteralText = new Set<string>([
   ...credentialKindSchema.options,
   ...providerReadinessStateSchema.options,
   ...providerReadinessApprovalClassSchema.options,
+  ...providerCredentialHealthSchema.options,
+  ...providerDataHandlingPostureSchema.options,
   ...providerBackendKindSchema.options
 ]);
 
@@ -155,6 +179,9 @@ export async function buildProviderReadiness(
       credentialKindSummary: credentialKindSummaryFor(descriptor),
       state: evaluation.state,
       requiredApprovalClass: requiredApprovalClassFor(descriptor.approvalProfile),
+      credentialHealth: credentialHealthForEvaluation(descriptor, evaluation),
+      dataHandlingPosture: dataHandlingPostureFor(descriptor.approvalProfile),
+      ...(evaluation.credentialRefId === undefined ? {} : { credentialRefId: evaluation.credentialRefId }),
       safeActionIds
     });
     cards.push(freezeProviderSetupCard(card));
@@ -492,6 +519,43 @@ function requiredApprovalClassFor(
     return "harness-workspace";
   }
   return "none";
+}
+
+function credentialHealthForEvaluation(
+  descriptor: ProviderCapabilityDescriptor,
+  evaluation: ProviderReadinessEvaluation
+): ProviderCredentialHealth {
+  if (requiresOnlyLocalNoSecret(descriptor)) {
+    return "not-required";
+  }
+  if (evaluation.state === "credential-expired") {
+    return "expired";
+  }
+  if (evaluation.state === "credential-revoked") {
+    return "revoked";
+  }
+  if (evaluation.state === "insufficient-scope") {
+    return "insufficient-scope";
+  }
+  if (evaluation.state === "needs-api-key" || evaluation.state === "credential-binding-missing") {
+    return "local-binding-missing";
+  }
+  if (evaluation.state === "health-unverified") {
+    return "unverified";
+  }
+  return evaluation.credentialRefId === undefined ? "unverified" : "local-binding-healthy";
+}
+
+function dataHandlingPostureFor(
+  approvalProfile: ProviderApprovalProfile
+): ProviderDataHandlingPosture {
+  if (approvalProfile === "local-only") {
+    return "local-only";
+  }
+  if (approvalProfile === "harness-workspace-gated") {
+    return "remote-workspace-harness-gated";
+  }
+  return "remote-prompt-byte-transfer-gated";
 }
 
 function capabilitySummaryFor(descriptor: ProviderCapabilityDescriptor): readonly string[] {
