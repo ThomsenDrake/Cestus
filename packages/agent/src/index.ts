@@ -6,6 +6,7 @@ export * from "./projection.js";
 export * from "./projection-types.js";
 export * from "./provider.js";
 export * from "./openai-compatible-provider.js";
+export * from "./ontology-bootstrap-nous.js";
 export * from "./ontology-bootstrap-workflow.js";
 export * from "./provider-registry.js";
 export * from "./provider-readiness.js";
