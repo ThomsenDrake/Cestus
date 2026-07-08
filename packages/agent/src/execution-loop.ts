@@ -13,7 +13,7 @@ import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 export interface FakeAgentToolExecutorInput {
   readonly toolRequestId: string;
-  readonly taskId?: string;
+  readonly taskId: string;
   readonly runId: string;
   readonly toolId: string;
   readonly toolVersion: string;
@@ -78,6 +78,7 @@ export interface ApproveFakeAgentToolInput {
 
 export interface ResumeApprovedFakeToolInput {
   readonly toolRequestId: string;
+  readonly taskId: string;
   readonly currentPreview: AgentToolPreview;
   readonly activeLocks: readonly FakeAgentActiveLock[];
 }
@@ -101,10 +102,6 @@ interface ToolRequestState {
   readonly denial?: KnowledgeEventOf<"agent.tool.denied">;
   readonly completed?: KnowledgeEventOf<"agent.tool.completed">;
   readonly failure?: KnowledgeEventOf<"agent.tool.failed">;
-}
-
-interface StoredFakeToolRequestMetadata {
-  readonly taskId: string;
 }
 
 interface CanonicalFakeToolPreviewInput {
@@ -139,7 +136,6 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
     now: input.now
   });
   const residentAgentId = input.residentAgentId ?? defaultResidentAgentId;
-  const requestMetadataById = new Map<string, StoredFakeToolRequestMetadata>();
 
   return Object.freeze({
     async requestApprovalOnly(command: RequestFakeAgentApprovalInput): Promise<WaitingForApprovalResult> {
@@ -177,7 +173,6 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
       if (requested.payload.previewHash !== previewHash) {
         throw new Error("Runtime preview hash did not match the gateway preview hash.");
       }
-      requestMetadataById.set(command.toolRequestId, { taskId: command.taskId });
 
       return Object.freeze({
         state: "waiting-for-approval" as const,
@@ -210,21 +205,10 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
         throw new Error("Tool resume requires an exact human approval.");
       }
 
-      const requestMetadata = requestMetadataById.get(command.toolRequestId);
-      if (requestMetadata === undefined) {
-        await gateway.failTool({
-          toolRequestId: command.toolRequestId,
-          category: "approval-stale",
-          message: "Tool request preview metadata is unavailable for resume.",
-          retryable: false,
-          allowedActions: ["rebuild the tool preview and request a new approval"]
-        });
-        throw new Error("Tool request preview metadata is unavailable for resume.");
-      }
       const currentPreviewHash = hashStablePreview(buildCanonicalFakeToolPreview({
         toolRequestId: state.request.payload.toolRequestId,
         residentAgentId: state.request.payload.requestedBy,
-        taskId: requestMetadata.taskId,
+        taskId: command.taskId,
         runId: state.request.payload.runId,
         toolId: state.request.payload.toolId,
         toolVersion: state.request.payload.toolVersion,
@@ -267,7 +251,7 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
           approvalClass: state.request.payload.requiredApprovalClass,
           previewHash: state.request.payload.previewHash,
           approvedPreviewHash: approval.payload.approvedPreviewHash,
-          taskId: requestMetadata.taskId
+          taskId: command.taskId
         });
       } catch {
         await gateway.failTool({
