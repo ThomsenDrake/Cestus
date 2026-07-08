@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/9b6b/Cestus`
 
 Claimed at: `2026-07-08T13:50:15Z`
 
-Status: `claimed`
+Status: `ready-for-review`
 
 Owned files:
 
@@ -38,3 +38,12 @@ Stop conditions:
 - Data-loss risk or any need to weaken append-only ledger semantics, provenance requirements, projection rebuildability, provider-transfer approval gates, legal locks, or secret-safety boundaries.
 - Need to modify prompt-artifacts/context-packs, provider/local-runtime files, package lockfiles, or other files outside Task 2 scope.
 - Repeated targeted or full verifier failure after two focused repair attempts.
+
+Implementation evidence:
+
+- Claim commit: `0282826 chore: claim task 2 agent model invocation audit`
+- Ontology RED: `npm test -- packages/ontology/test/agent-contracts.test.ts` failed with 1 expected failing test because strict `agent.model-invocation.requested` rejected prompt artifact audit metadata.
+- Ontology GREEN: `npm test -- packages/ontology/test/agent-contracts.test.ts` passed with 1 file and 25 tests.
+- Runtime/projection RED: `npm test -- packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts` failed with 5 expected failing tests because remote invocation still accepted hash-only input and projection DTOs had no prompt audit metadata.
+- Targeted GREEN: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/prompt-artifacts.test.ts` passed with 4 files and 55 tests.
+- Full gate: `npm run verify` passed with typecheck, 131 test files, 1276 tests, Vite build, and factory-readiness.

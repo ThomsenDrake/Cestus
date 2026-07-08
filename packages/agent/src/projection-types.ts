@@ -14,6 +14,7 @@ export type AgentLockState = "active" | "cleared";
 
 export type AgentTaskPriority = "low" | "normal" | "high" | "urgent";
 export type AgentRunState = "running" | "completed" | "failed";
+export type AgentModelInvocationStatus = "requested" | "completed" | "failed";
 export type AgentSpecialistRunType =
   | "ontology-bootstrap"
   | "prr-negotiation"
@@ -111,6 +112,73 @@ export interface ProjectedAgentReadModelChange {
   readonly relatedIds?: readonly string[] | undefined;
 }
 
+export interface ProjectedAgentContextPackScope {
+  readonly kind: string;
+  readonly id: string;
+}
+
+export interface ProjectedAgentContextPackStalenessInput {
+  readonly kind: string;
+  readonly ref: string;
+  readonly value: string;
+}
+
+export interface ProjectedAgentContextPackRef {
+  readonly contextPackId: string;
+  readonly version: number;
+  readonly contentHash: string;
+  readonly sizeBytes: number;
+  readonly generatedAt: string;
+  readonly safeSummary: string;
+  readonly provenanceRefs: readonly string[];
+  readonly projectionHighWaterMark?: number | undefined;
+  readonly sourceEventIds?: readonly string[] | undefined;
+  readonly artifactHashes?: readonly string[] | undefined;
+  readonly policyVersion?: string | undefined;
+  readonly scope?: ProjectedAgentContextPackScope | undefined;
+  readonly sizeBudgetBytes?: number | undefined;
+  readonly stalenessInputs?: readonly ProjectedAgentContextPackStalenessInput[] | undefined;
+}
+
+export interface ProjectedAgentPromptArtifactOmission {
+  readonly reason: string;
+  readonly sourceRef: string;
+  readonly safeSummary: string;
+}
+
+export interface ProjectedAgentModelInvocationUsage {
+  readonly inputTokens?: number | undefined;
+  readonly outputTokens?: number | undefined;
+  readonly totalTokens?: number | undefined;
+}
+
+export interface ProjectedAgentModelInvocation extends ProjectedAgentProvenance {
+  readonly invocationId: string;
+  readonly runId: string;
+  readonly providerId: string;
+  readonly modelFamily: string;
+  readonly inputArtifactHash: string;
+  readonly safetyClass: "workspace-safe" | "public-safe" | "sensitive-local-only" | "provider-approved";
+  readonly status: AgentModelInvocationStatus;
+  readonly requestedAt: string;
+  readonly credentialRefId?: string | undefined;
+  readonly credentialKind?: string | undefined;
+  readonly contextPackRefs: readonly ProjectedAgentContextPackRef[];
+  readonly promptTemplateId?: string | undefined;
+  readonly promptTemplateVersion?: number | undefined;
+  readonly runType?: AgentSpecialistRunType | undefined;
+  readonly safePromptSummary?: string | undefined;
+  readonly omissions: readonly ProjectedAgentPromptArtifactOmission[];
+  readonly transferApprovalClass?: "none" | "provider-byte-transfer" | undefined;
+  readonly providerOutputArtifactHash?: string | undefined;
+  readonly completedAt?: string | undefined;
+  readonly usage?: ProjectedAgentModelInvocationUsage | undefined;
+  readonly failureCategory?: AgentFailureCategory | undefined;
+  readonly failureMessage?: string | undefined;
+  readonly retryable?: boolean | undefined;
+  readonly allowedActions: readonly string[];
+}
+
 export interface ProjectedAgentToolRequest extends ProjectedAgentProvenance {
   readonly toolRequestId: string;
   readonly runId: string;
@@ -200,6 +268,7 @@ export interface AgentProjectionDto {
   readonly residentAgentId?: string;
   readonly tasks: readonly ProjectedAgentTask[];
   readonly runs: readonly ProjectedAgentRun[];
+  readonly modelInvocations?: readonly ProjectedAgentModelInvocation[];
   readonly toolRequests: readonly ProjectedAgentToolRequest[];
   readonly activeMemory: readonly ProjectedAgentMemory[];
   readonly permissions: readonly ProjectedAgentPermission[];
