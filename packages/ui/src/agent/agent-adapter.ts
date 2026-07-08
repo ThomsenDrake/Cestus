@@ -763,16 +763,66 @@ function safeAgentValue(value: unknown): unknown {
   }
 
   if (Array.isArray(value)) {
-    return value.map(safeAgentValue);
+    return safeAgentArray(value);
   }
 
   if (!isJsonObject(value)) {
     return value;
   }
 
-  return Object.fromEntries(
-    Object.entries(value).map(([key, nested]) => [safeAgentText(key), safeAgentValue(nested)])
-  );
+  return safeAgentObject(value);
+}
+
+function safeAgentArray(value: readonly unknown[]): unknown[] {
+  if (Object.getPrototypeOf(value) !== Array.prototype) {
+    throw invalidBrowserDtoError("Browser DTO input must use plain array prototypes.");
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const result: unknown[] = [];
+
+  for (const key of Object.keys(value)) {
+    const descriptor = descriptors[key];
+    if (descriptor === undefined || !("value" in descriptor)) {
+      throw invalidBrowserDtoError("Browser DTO input must not use accessor-backed array items.");
+    }
+
+    const index = Number(key);
+    if (!Number.isInteger(index) || index < 0) {
+      throw invalidBrowserDtoError("Browser DTO arrays must use numeric item keys only.");
+    }
+
+    result[index] = safeAgentValue(descriptor.value);
+  }
+
+  return result;
+}
+
+function safeAgentObject(value: Record<string, unknown>): Record<string, unknown> {
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw invalidBrowserDtoError("Browser DTO input must use plain object prototypes.");
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const result: Record<string, unknown> = {};
+
+  for (const [key, descriptor] of Object.entries(descriptors)) {
+    if (!descriptor.enumerable) {
+      continue;
+    }
+    if (!("value" in descriptor)) {
+      throw invalidBrowserDtoError("Browser DTO input must not use accessor-backed fields.");
+    }
+
+    result[safeAgentText(key)] = safeAgentValue(descriptor.value);
+  }
+
+  return result;
+}
+
+function invalidBrowserDtoError(message: string): Error {
+  return new Error(message);
 }
 
 function deepClone<T>(value: T): T {

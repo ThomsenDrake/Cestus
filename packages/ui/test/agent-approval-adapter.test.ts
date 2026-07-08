@@ -121,6 +121,54 @@ describe("agent approval cockpit adapter", () => {
     }
   );
 
+  it("rejects accessor-backed cockpit fields without surfacing getter secrets", () => {
+    const payload = approvalCockpit() as unknown as Record<string, unknown>;
+    Object.defineProperty(payload, "queue", {
+      enumerable: true,
+      get() {
+        throw new Error("sk_live_getter_secret from /tmp/cockpit-getter");
+      }
+    });
+
+    const message = thrownMessage(() => agentApprovalCockpitFromJson(payload));
+
+    expect(message).toMatch(/accessor|descriptor|dto/i);
+    expect(message).not.toMatch(/sk_live|getter_secret|\/tmp\/cockpit-getter/i);
+  });
+
+  it("rejects accessor-backed cockpit arrays and prototypes without invoking them", async () => {
+    const arrayPayload = approvalCockpit() as unknown as Record<string, unknown>;
+    const queue = (arrayPayload.queue as Record<string, unknown>);
+    const pending = [] as unknown[];
+    Object.defineProperty(pending, "0", {
+      enumerable: true,
+      get() {
+        throw new Error("DATABASE_PASSWORD array accessor");
+      }
+    });
+    queue.pending = pending;
+
+    const baseCockpit = approvalCockpit() as unknown as Record<string, unknown>;
+    const protoPayload = Object.create({
+      get approvalClasses() {
+        throw new Error("GOOGLE_APPLICATION_CREDENTIALS prototype accessor");
+      }
+    }) as Record<string, unknown>;
+    for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(baseCockpit))) {
+      if (key === "approvalClasses") {
+        continue;
+      }
+      Object.defineProperty(protoPayload, key, descriptor);
+    }
+
+    expect(thrownMessage(() => agentApprovalCockpitFromJson(arrayPayload))).toMatch(/accessor|descriptor|dto/i);
+    expect(thrownMessage(() => agentApprovalCockpitFromJson(protoPayload))).toMatch(/accessor|prototype|descriptor|dto/i);
+
+    expect(
+      thrownMessage(() => createStaticAgentAdapter(agentStatus(), protoPayload as unknown as AgentApprovalCockpitDto))
+    ).toMatch(/accessor|prototype|descriptor|dto/i);
+  });
+
   it("supports static adapters for component and app tests", async () => {
     const adapter = createStaticAgentAdapter(agentStatus(), approvalCockpit());
 
@@ -307,4 +355,13 @@ function approvalClassCockpitJson(
   };
 
   return cockpit;
+}
+
+function thrownMessage(action: () => unknown): string {
+  try {
+    action();
+    return "did not throw";
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
 }

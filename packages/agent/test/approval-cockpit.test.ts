@@ -115,6 +115,32 @@ describe("agent approval cockpit dto", () => {
     );
   });
 
+  it("ignores read-only tool requests while keeping real approval requests visible", () => {
+    const cockpit = buildAgentApprovalCockpit({
+      status: agentStatus({
+        toolRequests: [
+          readOnlyRequest(),
+          providerTransferRequest()
+        ]
+      }),
+      generatedAt: "2026-07-08T14:00:00.000Z"
+    });
+
+    expect(cockpit.summary.pendingCount).toBe(1);
+    expect(cockpit.queue.pending.map((item) => item.toolRequestId)).toEqual(["toolreq_provider_transfer"]);
+    expect(
+      [
+        ...cockpit.queue.pending,
+        ...cockpit.queue.resumable,
+        ...cockpit.queue.blocked,
+        ...cockpit.queue.stale,
+        ...cockpit.queue.denied,
+        ...cockpit.queue.completed,
+        ...cockpit.queue.failed
+      ].some((item) => item.toolRequestId === "toolreq_read_only")
+    ).toBe(false);
+  });
+
   it("projects approved denied completed and failed terminal buckets", () => {
     const approved = buildAgentApprovalCockpit({
       status: agentStatus({
@@ -459,6 +485,34 @@ function providerTransferRequest(
     allowedActions: [],
     eventIds: ["evt_agent_tool_requested_provider_transfer"],
     causationIds: ["evt_agent_run_started_provider_transfer"],
+    ...overrides
+  };
+}
+
+function readOnlyRequest(
+  overrides: Partial<AgentStatusDto["toolRequests"][number]> = {}
+): AgentStatusDto["toolRequests"][number] {
+  return {
+    toolRequestId: "toolreq_read_only",
+    runId: "run_read_only",
+    toolId: "workspace.inspect",
+    toolVersion: "1",
+    requestedBy: "agent_default",
+    sideEffectClass: "read-only",
+    requiredApprovalClass: "none",
+    previewHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    scope: "Read workspace state for planning.",
+    estimatedEffect: "Read-only workspace inspection with no external effects.",
+    state: "requested",
+    requestedAt: "2026-07-08T13:58:00.000Z",
+    sourceEventIds: ["evt_read_only_preview"],
+    inputArtifactHashes: [],
+    resultEventIds: [],
+    artifactHashes: [],
+    readModelChanges: [],
+    allowedActions: [],
+    eventIds: ["evt_agent_tool_requested_read_only"],
+    causationIds: ["evt_agent_run_started_read_only"],
     ...overrides
   };
 }
