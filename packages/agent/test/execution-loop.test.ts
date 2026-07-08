@@ -109,6 +109,7 @@ describe("resident agent fake execution loop", () => {
 
     const resumed = await loop.resumeApprovedTool({
       toolRequestId: "toolreq_provider_preview",
+      taskId: "task_provider_readiness",
       currentPreview: { affectedRefs: ["ev_contract_001"], summary: "Provider preview." },
       activeLocks: []
     });
@@ -124,6 +125,62 @@ describe("resident agent fake execution loop", () => {
       projectionName: "fake-agent-execution-loop",
       change: "fake approval resume complete"
     }]);
+  });
+
+  it("resumes durably after loop recreation using explicit task context", async () => {
+    const ledger = new InMemoryEventLedger();
+    const requestLoop = createFakeAgentExecutionLoop({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-07-07T23:00:00.000Z",
+      executor: { async execute() { throw new Error("request loop executor should not run"); } }
+    });
+    const requested = await requestLoop.requestApprovalOnly({
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolRequestId: "toolreq_provider_preview",
+      toolId: "provider.parse.preview",
+      toolVersion: 1,
+      sideEffectClass: "external-byte-transfer",
+      approvalClass: "provider-byte-transfer",
+      preview: { summary: "Provider preview.", affectedRefs: ["ev_contract_001"] }
+    });
+    await requestLoop.approveForTest({
+      toolRequestId: "toolreq_provider_preview",
+      actor: humanActor,
+      approvedPreviewHash: requested.previewHash,
+      rationale: "Human approved the exact preview."
+    });
+
+    let executions = 0;
+    const freshLoop = createFakeAgentExecutionLoop({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-07-07T23:05:00.000Z",
+      executor: {
+        async execute(input) {
+          executions += 1;
+          expect(input.taskId).toBe("task_provider_readiness");
+          expect(input.toolRequestId).toBe("toolreq_provider_preview");
+          return {
+            eventIds: ["evt_fake_domain_result"],
+            artifactHashes: ["sha256:6666666666666666666666666666666666666666666666666666666666666666"],
+            readModelChanges: ["fresh loop approval resume complete"]
+          };
+        }
+      }
+    });
+
+    const resumed = await freshLoop.resumeApprovedTool({
+      toolRequestId: "toolreq_provider_preview",
+      taskId: "task_provider_readiness",
+      currentPreview: { affectedRefs: ["ev_contract_001"], summary: "Provider preview." },
+      activeLocks: []
+    });
+
+    expect(resumed.state).toBe("completed");
+    expect(executions).toBe(1);
+    expect((await ledger.readAll()).map((event) => event.type)).toContain("agent.tool.completed");
   });
 
   it("fails closed when approval is stale", async () => {
@@ -156,6 +213,7 @@ describe("resident agent fake execution loop", () => {
     await expect(
       loop.resumeApprovedTool({
         toolRequestId: "toolreq_provider_preview",
+        taskId: "task_provider_readiness",
         currentPreview: { summary: "Changed provider preview.", affectedRefs: ["ev_contract_001"] },
         activeLocks: []
       })
@@ -198,6 +256,7 @@ describe("resident agent fake execution loop", () => {
     await expect(
       loop.resumeApprovedTool({
         toolRequestId: "toolreq_export_preview",
+        taskId: "task_export_readiness",
         currentPreview: preview,
         activeLocks: [
           { lockId: "lock_legal_review", category: "legal-escalation", message: "Legal review lock active." },
