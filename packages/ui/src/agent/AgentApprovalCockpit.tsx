@@ -61,12 +61,21 @@ export function AgentApprovalCockpit({
     }
   }, [entries, selectedToolRequestId]);
 
+  useEffect(() => {
+    setRationale("");
+  }, [selectedToolRequestId]);
+
   const selectedEntry = entries.find((entry) => entry.item.toolRequestId === selectedToolRequestId) ?? entries[0];
   const selectedItem = selectedEntry?.item;
+  const selectedBucket = selectedEntry?.bucket;
   const isTerminal = selectedEntry === undefined
     ? true
     : selectedEntry.bucket === "denied" || selectedEntry.bucket === "completed" || selectedEntry.bucket === "failed";
+  const isBlockedBucket = selectedBucket === "blocked";
+  const isStaleBucket = selectedBucket === "stale";
+  const hasActiveLocks = (selectedItem?.activeLocks.length ?? 0) > 0;
   const hasBlockingReasons = (selectedItem?.blockingReasons.length ?? 0) > 0;
+  const hasStaleState = selectedItem?.stale === true || selectedItem?.staleness.state === "stale";
   const detailAffectedRefs = selectedItem === undefined
     ? []
     : selectedItem.affectedRefs.filter((ref) => !selectedItem.review.evidenceRefs.some(
@@ -77,8 +86,11 @@ export function AgentApprovalCockpit({
   const rationaleMissing = rationale.trim().length === 0;
   const approvalDisabled = selectedItem === undefined
     || isTerminal
-    || selectedItem.stale
+    || isBlockedBucket
+    || isStaleBucket
+    || hasStaleState
     || selectedItem.staleness.approvable === false
+    || hasActiveLocks
     || hasBlockingReasons
     || rationaleMissing
     || onApprove === undefined

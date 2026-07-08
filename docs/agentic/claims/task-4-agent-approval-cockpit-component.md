@@ -44,3 +44,9 @@ Implementation log:
 - GREEN targeted test: `npm test -- packages/ui/test/agent-approval-cockpit.test.tsx packages/ui/test/agent-workspace.test.tsx` passed with 2 test files and 8 tests.
 - Full verification: `npm run verify` passed with typecheck, 134 test files and 1297 tests, UI build, and factory readiness.
 - `2026-07-08T17:05:30Z`: Status moved to `ready-for-review` after RED, GREEN, and full verification evidence.
+- `2026-07-08T17:20:00Z`: Reopened to `in-progress` for review follow-up fixes covering fail-closed approval disablement, true stale queue coverage, and rationale reset on request switch.
+- `2026-07-08T17:32:00Z`: Added failing cockpit tests for malformed blocked/locked DTO approval bypass, true stale queue denial path, and rationale reset when switching requests.
+- RED targeted test: `npm test -- packages/ui/test/agent-approval-cockpit.test.tsx` failed as expected because malformed blocked/locked requests still left approval enabled and switching requests retained the previous rationale.
+- GREEN targeted test: `npm test -- packages/ui/test/agent-approval-cockpit.test.tsx packages/ui/test/agent-workspace.test.tsx` passed with 2 test files and 11 tests.
+- Full verification: `npm run verify` passed with `typecheck passed`, `Test Files  134 passed (134)`, `Tests  1300 passed (1300)`, `tests passed`, Vite production build success, and `factory-readiness passed`.
+- `2026-07-08T17:36:00Z`: Status moved to `ready-for-review` after review-fix RED/GREEN/full verification evidence.
