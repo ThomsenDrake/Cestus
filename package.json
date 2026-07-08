@@ -20,6 +20,7 @@
     "local:runtime:health": "tsx packages/local-runtime/src/cli.ts health",
     "local:workspace:create": "tsx packages/local-runtime/src/cli.ts create-workspace",
     "local:workspace:smoke": "node --disable-warning=ExperimentalWarning --import tsx packages/local-runtime/src/workspace-readiness-smoke.ts",
+    "agent:nous:smoke": "node --disable-warning=ExperimentalWarning --import tsx packages/local-runtime/src/agent-nous-smoke.ts",
     "prr:seed-local": "tsx packages/local-runtime/src/cli.ts seed-prr"
   },
   "dependencies": {

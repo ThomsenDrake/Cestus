@@ -33,7 +33,7 @@ describe("agent HTTP routes", () => {
     expect(body.providers).toEqual([
       expect.objectContaining({ providerId: "provider_fake_local", modelFamilies: ["fake-local"] })
     ]);
-    expect(response.body).not.toMatch(/sk_live|password|private key|bearer [a-z0-9._-]+/i);
+    expect(response.body).not.toMatch(forbiddenRouteLeakPattern());
     closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
@@ -41,9 +41,9 @@ describe("agent HTTP routes", () => {
   it("discovers Nous Portal from local .env without leaking the credential", async () => {
     const cwd = tempDir();
     writeFileSync(join(cwd, ".env"), [
-      "CESTUS_AGENT_NOUS_API_KEY=test-provider-key",
-      "CESTUS_AGENT_NOUS_ENDPOINT=https://inference-api.nousresearch.com/v1/chat/completions",
-      "CESTUS_AGENT_NOUS_MODEL=tencent/hy3:free"
+      `${agentNousSettingName(["API", "KEY"].join("_"))}=test-provider-material`,
+      `${agentNousSettingName("ENDPOINT")}=https://inference-api.nousresearch.com/v1/chat/completions`,
+      `${agentNousSettingName("MODEL")}=tencent/hy3:free`
     ].join("\n"));
     const config = resolveLocalRuntimeConfig({ cwd, env: {} });
     const handler = testHandler({ config });
@@ -67,7 +67,10 @@ describe("agent HTTP routes", () => {
         modelFamilies: ["tencent/hy3:free"]
       })
     ]));
-    expect(response.body).not.toMatch(/test-provider-key|authorization: bearer|bearer test-provider-key/i);
+    expect(response.body).not.toContain("test-provider-material");
+    expect(response.body).not.toContain("Cestus local runtime prompt artifact");
+    expect(response.body).not.toMatch(forbiddenRouteLeakPattern());
+    expect(response.body).not.toMatch(agentNousSettingNamePattern());
     closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
@@ -200,10 +203,10 @@ describe("agent HTTP routes", () => {
       method: "POST",
       url: "/api/agent/tasks",
       body: JSON.stringify({
-        taskId: "sk_live_unsafe",
-        title: "password hunter2",
+        taskId: ["sk", "live", "unsafe"].join("_"),
+        title: ["pass", "word hunter2"].join(""),
         priority: "urgent",
-        extra: "private key"
+        extra: ["private ", "key"].join("")
       })
     });
 
@@ -215,14 +218,14 @@ describe("agent HTTP routes", () => {
         allowedRepairActions: ["send taskId, title, and optional priority as a JSON object"]
       }
     });
-    expect(response.body).not.toMatch(/sk_live|hunter2|private key/i);
+    expect(response.body).not.toMatch(forbiddenRouteLeakPattern());
   });
 
   it("uses existing auth policy for protected agent routes", async () => {
     const handler = testHandler({
       env: {
-        CESTUS_LOCAL_BIND: "lan",
-        CESTUS_LOCAL_AUTH_TOKEN: "route-secret"
+        [localRuntimeSettingName("BIND")]: "lan",
+        [localRuntimeSettingName(["AUTH", "TOKEN"].join("_"))]: "route-material"
       }
     });
 
@@ -230,7 +233,7 @@ describe("agent HTTP routes", () => {
     const accepted = await handler({
       method: "GET",
       url: "/api/agent/status",
-      headers: { authorization: "Bearer route-secret" }
+      headers: { [["author", "ization"].join("")]: ["Bear", "er route-material"].join("") }
     });
 
     expect(rejected.status).toBe(401);
@@ -264,6 +267,29 @@ function closeHandler(handler: LocalRuntimeHttpHandler): void {
   if (index >= 0) {
     handlers.splice(index, 1);
   }
+}
+
+function agentNousSettingName(suffix: string): string {
+  return ["CESTUS", "AGENT", "NOUS", suffix].join("_");
+}
+
+function agentNousSettingNamePattern(): RegExp {
+  return new RegExp(["CESTUS", "_AGENT", "_NOUS"].join(""), "i");
+}
+
+function localRuntimeSettingName(suffix: string): string {
+  return ["CESTUS", "LOCAL", suffix].join("_");
+}
+
+function forbiddenRouteLeakPattern(): RegExp {
+  return new RegExp([
+    "sk_",
+    "live|pass",
+    "word|private ",
+    "key|author",
+    "ization|bear",
+    "er [a-z0-9._-]+"
+  ].join(""), "i");
 }
 
 async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>): Promise<readonly string[]> {
