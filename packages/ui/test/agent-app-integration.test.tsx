@@ -114,6 +114,57 @@ describe("agent app integration", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("denies provider byte-transfer previews through the Agent adapter only", async () => {
+    const approvals: unknown[] = [];
+    const denials: unknown[] = [];
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit()),
+      async approveToolRequest(input: unknown) {
+        approvals.push(input);
+        return {
+          ok: true as const,
+          schemaVersion: "agent-approval-decision-result.v1" as const,
+          eventIds: ["evt_agent_tool_approved_provider_transfer"],
+          approvalCockpit: approvalCockpit({ pendingCount: 0 })
+        };
+      },
+      async denyToolRequest(input: unknown) {
+        denials.push(input);
+        return {
+          ok: true as const,
+          schemaVersion: "agent-approval-decision-result.v1" as const,
+          eventIds: ["evt_agent_tool_denied_provider_transfer"],
+          approvalCockpit: approvalCockpit({ pendingCount: 0 })
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    await screen.findByRole("region", { name: "Agent approval cockpit" });
+    fireEvent.change(screen.getByLabelText("Decision rationale"), {
+      target: { value: "Provider transfer is not approved for this preview." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Deny request" }));
+
+    expect(denials).toEqual([{
+      toolRequestId: "toolreq_provider_transfer",
+      rationale: "Provider transfer is not approved for this preview."
+    }]);
+    expect(approvals).toEqual([]);
+    expect(
+      screen.queryByRole("button", { name: /transfer provider bytes|send prr|export|repair|clear lock|accept graph/i })
+    ).not.toBeInTheDocument();
+  });
+
   it("refreshes the Agent approval cockpit with agent status", async () => {
     let statusLoads = 0;
     let cockpitLoads = 0;
