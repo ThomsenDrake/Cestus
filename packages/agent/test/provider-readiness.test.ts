@@ -683,6 +683,59 @@ describe("provider readiness DTOs", () => {
       });
   });
 
+  it("fails closed without leaking details when secret-store health accessors throw during parsing", async () => {
+    const registry = createProviderRegistry();
+    registry.register({
+      providerId: "provider_fake_throwing_health_remote",
+      label: "Throwing health remote provider",
+      adapterVersion: "agent-provider-auth.v1",
+      backendKind: "openai-compatible-api",
+      modelFamilies: ["fake-throwing-health-remote"],
+      modalities: ["text"],
+      toolSupport: "function-calling",
+      structuredOutputSupport: "schema-strict",
+      contextLimits: { maxInputTokens: 8192, maxOutputTokens: 2048 },
+      credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+      dataHandlingNotes: "Simulates a remote API provider when health parsing is unsafe.",
+      costPolicy: "metered-api",
+      workspaceScopes: ["workspace"],
+      approvalProfile: "remote-byte-transfer-gated",
+      diagnosticContract: ["health-unverified"],
+      fakeSupport: true
+    });
+
+    const dto = await buildProviderReadiness({
+      registry,
+      credentialReferences: [
+        createCredentialReference({
+          credentialRefId: "agent_credref_api_throwing_health",
+          providerId: "provider_fake_throwing_health_remote",
+          credentialKind: "api-key-bearer",
+          scopeKind: "workspace",
+          capabilityScopes: ["model-inference"],
+          safeLabel: "Throwing health remote key",
+          authorizedBy: "actor_case_owner",
+          authorizedAt: "2026-07-07T21:00:00.000Z",
+          policyVersion: "agent-provider-auth.v1",
+          status: "linked"
+        })
+      ],
+      secretStore: new ThrowingHealthAccessorSecretStore(),
+      now: () => "2026-07-07T22:15:00.000Z"
+    });
+
+    expect(providerReadinessDtoSchema.parse(dto)).toEqual(dto);
+    expect(JSON.stringify(dto)).not.toMatch(/raw payload secret detail|zod|invalid_type/i);
+    expect(dto.cards.find((card) => card.providerId === "provider_fake_throwing_health_remote")).toMatchObject({
+      state: "health-unverified"
+    });
+    expect(dto.diagnostics.find((diagnostic) => diagnostic.providerId === "provider_fake_throwing_health_remote"))
+      .toMatchObject({
+        category: "health-unverified",
+        credentialRefId: "agent_credref_api_throwing_health"
+      });
+  });
+
   it("reports harness workspace approval for harness-gated providers", async () => {
     const registry = createProviderRegistry();
     registry.register({
@@ -800,5 +853,22 @@ class RejectedHealthSecretStore implements SecretStore {
 
   async health(): Promise<never> {
     throw new Error("backend failure detail with raw payload");
+  }
+}
+
+class ThrowingHealthAccessorSecretStore implements SecretStore {
+  async resolve(): Promise<SecretMaterial | undefined> {
+    return undefined;
+  }
+
+  async health(credentialRefId: string) {
+    return {
+      credentialRefId,
+      status: "healthy",
+      get checkedAt(): string {
+        throw new Error("raw payload secret detail");
+      },
+      safeMessage: "Local binding is available."
+    } as never;
   }
 }
