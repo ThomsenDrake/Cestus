@@ -29,6 +29,9 @@ export interface OpenAICompatibleChatProviderOptions {
   readonly maxTokens?: number;
   readonly adapterVersion?: string;
   readonly safeDataNotes?: string;
+  readonly requestTags?: readonly string[];
+  readonly includeReasoning?: boolean;
+  readonly reasoningEffort?: NousReasoningEffort;
 }
 
 export interface CreateNousPortalProviderInput {
@@ -37,12 +40,22 @@ export interface CreateNousPortalProviderInput {
   readonly resolveInputText: (inputArtifactHash: string) => string | Promise<string>;
   readonly endpointUrl?: string;
   readonly modelId?: string;
+  readonly requestTags?: readonly string[];
+  readonly includeReasoning?: boolean;
+  readonly reasoningEffort?: NousReasoningEffort;
 }
+
+export type NousReasoningEffort = "none" | "low" | "high";
 
 const defaultNousEndpointUrl = "https://inference-api.nousresearch.com/v1/chat/completions";
 const defaultNousModelId = "tencent/hy3:free";
 const defaultSystemPrompt = "You are the resident Cestus Agent. Answer with concise, evidence-aware reasoning.";
 const defaultMaxTokens = 512;
+const defaultNousPortalRequestTags = Object.freeze([
+  "user=cestus-local",
+  "product=cestus",
+  "client=cestus-agent-v0.1.0"
+]);
 
 const contentHashPattern = /^sha256:[a-f0-9]{64}$/;
 const endpointSchema = z.string().url();
@@ -61,13 +74,15 @@ const chatCompletionResponseSchema = z.object({
   choices: z.array(z.object({
     message: z.object({
       content: nonEmptySecretSafeTextSchema
-    }).strict()
-  }).strict()).min(1),
+    }).passthrough()
+  }).passthrough()).min(1),
   usage: z.object({
     prompt_tokens: z.number().int().nonnegative().optional(),
     completion_tokens: z.number().int().nonnegative().optional()
   }).passthrough().optional()
 }).passthrough();
+const requestTagsSchema = z.array(nonEmptySecretSafeTextSchema).max(20);
+const reasoningEffortSchema = z.enum(["none", "low", "high"]);
 
 export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
   private readonly descriptor: ProviderDescriptor;
@@ -79,6 +94,9 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
   private readonly resolveInputText: (inputArtifactHash: string) => string | Promise<string>;
   private readonly systemPrompt: string;
   private readonly maxTokens: number;
+  private readonly requestTags: readonly string[];
+  private readonly includeReasoning: boolean | undefined;
+  private readonly reasoningEffort: NousReasoningEffort | undefined;
 
   constructor(options: OpenAICompatibleChatProviderOptions) {
     const endpointUrl = endpointSchema.parse(options.endpointUrl);
@@ -97,6 +115,11 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
     this.resolveInputText = options.resolveInputText;
     this.systemPrompt = systemPrompt;
     this.maxTokens = maxTokens;
+    this.requestTags = Object.freeze([...requestTagsSchema.parse(options.requestTags ?? [])]);
+    this.includeReasoning = options.includeReasoning;
+    this.reasoningEffort = options.reasoningEffort === undefined
+      ? undefined
+      : reasoningEffortSchema.parse(options.reasoningEffort);
     this.descriptor = freezeProviderDescriptor(providerDescriptorSchema.parse({
       providerId: options.providerId,
       label: options.label,
@@ -137,7 +160,10 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
           { role: "system", content: this.systemPrompt },
           { role: "user", content: inputText }
         ],
-        max_tokens: this.maxTokens
+        max_tokens: this.maxTokens,
+        ...(this.requestTags.length === 0 ? {} : { tags: [...this.requestTags] }),
+        ...(this.includeReasoning === undefined ? {} : { include_reasoning: this.includeReasoning }),
+        ...(this.reasoningEffort === undefined ? {} : { reasoning: { effort: this.reasoningEffort } })
       })
     });
 
@@ -205,6 +231,9 @@ export function createNousPortalProvider(input: CreateNousPortalProviderInput): 
     secretStore: input.secretStore,
     ...(input.fetch === undefined ? {} : { fetch: input.fetch }),
     resolveInputText: input.resolveInputText,
+    requestTags: input.requestTags ?? defaultNousPortalRequestTags,
+    includeReasoning: input.includeReasoning ?? false,
+    reasoningEffort: input.reasoningEffort ?? "none",
     safeDataNotes: "Remote OpenAI-compatible Nous Portal chat provider. Prompts leave this machine only after provider policy allows it."
   });
 }
