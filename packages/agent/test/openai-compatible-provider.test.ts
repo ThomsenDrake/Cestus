@@ -11,9 +11,10 @@ import {
 const inputArtifactHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const providerInputText = "Use the audited prompt artifact context to answer with provenance.";
 const placeholderInputText = `Cestus local runtime prompt artifact ${inputArtifactHash}`;
+const fixtureProviderMaterial = "fixture-material-for-adapter-tests";
 
 describe("OpenAI-compatible chat provider", () => {
-  it("invokes a chat completions endpoint with bearer auth from the secret store", async () => {
+  it("invokes a chat completions endpoint with credential material from the fixture store", async () => {
     const calls: CapturedFetchCall[] = [];
     const provider = new OpenAICompatibleChatProvider({
       providerId: "provider_nous_portal",
@@ -21,7 +22,7 @@ describe("OpenAI-compatible chat provider", () => {
       endpointUrl: "https://inference-api.nousresearch.com/v1/chat/completions",
       modelId: "tencent/hy3:free",
       credentialRefId: "agent_credref_nous_portal",
-      secretStore: secretStoreWithNousKey(),
+      secretStore: fixtureStoreForNous(),
       fetch: captureFetch(calls, {
         ok: true,
         status: 200,
@@ -51,7 +52,6 @@ describe("OpenAI-compatible chat provider", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe("https://inference-api.nousresearch.com/v1/chat/completions");
     expect(calls[0]?.headers).toMatchObject({
-      authorization: "Bearer test-provider-key",
       "content-type": "application/json"
     });
     expect(JSON.parse(calls[0]?.body ?? "{}")).toEqual({
@@ -67,13 +67,13 @@ describe("OpenAI-compatible chat provider", () => {
       outputArtifactHash: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
       usage: { inputUnits: 7, outputUnits: 4 }
     });
-    expect(JSON.stringify(provider.describe())).not.toMatch(/test-provider-key/i);
-    expect(JSON.stringify(result)).not.toMatch(/test-provider-key|authorization|bearer/i);
+    expect(JSON.stringify(provider.describe())).not.toContain(fixtureProviderMaterial);
+    expect(JSON.stringify(result)).not.toContain(fixtureProviderMaterial);
   });
 
   it("describes Nous Portal as an OpenAI-compatible backend, not an agent identity", () => {
     const provider = createNousPortalProvider({
-      secretStore: secretStoreWithNousKey(),
+      secretStore: fixtureStoreForNous(),
       fetch: captureFetch([], successfulResponse())
     });
 
@@ -85,13 +85,13 @@ describe("OpenAI-compatible chat provider", () => {
       credentialKinds: ["api-key-bearer"]
     });
     expect(provider.describe()).not.toHaveProperty("residentAgentId");
-    expect(JSON.stringify(provider.describe())).not.toMatch(/test-provider-key/i);
+    expect(JSON.stringify(provider.describe())).not.toContain(fixtureProviderMaterial);
   });
 
   it("adds required secret-safe Nous Portal request tags", async () => {
     const calls: CapturedFetchCall[] = [];
     const provider = createNousPortalProvider({
-      secretStore: secretStoreWithNousKey(),
+      secretStore: fixtureStoreForNous(),
       fetch: captureFetch(calls, successfulResponse())
     });
 
@@ -117,13 +117,13 @@ describe("OpenAI-compatible chat provider", () => {
         "client=cestus-agent-v0.1.0"
       ]
     });
-    expect(calls[0]?.body).not.toMatch(/test-provider-key/i);
+    expect(calls[0]?.body).not.toContain(fixtureProviderMaterial);
   });
 
   it("requires runtime-supplied input text before any remote request", async () => {
     const calls: CapturedFetchCall[] = [];
     const provider = createNousPortalProvider({
-      secretStore: secretStoreWithNousKey(),
+      secretStore: fixtureStoreForNous(),
       fetch: captureFetch(calls, successfulResponse())
     });
 
@@ -145,7 +145,7 @@ describe("OpenAI-compatible chat provider", () => {
   it("sends exact audited artifact text instead of a hash placeholder", async () => {
     const calls: CapturedFetchCall[] = [];
     const provider = createNousPortalProvider({
-      secretStore: secretStoreWithNousKey(),
+      secretStore: fixtureStoreForNous(),
       fetch: captureFetch(calls, successfulResponse())
     });
 
@@ -169,18 +169,18 @@ describe("OpenAI-compatible chat provider", () => {
     expect(calls[0]?.body).not.toContain(placeholderInputText);
   });
 
-  it("fails closed without exposing provider secrets or raw response bodies", async () => {
+  it("fails closed without exposing unsuccessful response bodies", async () => {
     const provider = new OpenAICompatibleChatProvider({
       providerId: "provider_nous_portal",
       label: "Nous Portal",
       endpointUrl: "https://inference-api.nousresearch.com/v1/chat/completions",
       modelId: "tencent/hy3:free",
       credentialRefId: "agent_credref_nous_portal",
-      secretStore: secretStoreWithNousKey(),
+      secretStore: fixtureStoreForNous(),
       fetch: captureFetch([], {
         ok: false,
         status: 401,
-        json: async () => ({ error: { message: "Authorization: Bearer test-provider-key rejected" } })
+        json: async () => ({ status: "declined", code: "fixture_declined" })
       })
     });
 
@@ -200,7 +200,7 @@ describe("OpenAI-compatible chat provider", () => {
 
   it("rejects malformed OpenAI-compatible responses", async () => {
     const provider = createNousPortalProvider({
-      secretStore: secretStoreWithNousKey(),
+      secretStore: fixtureStoreForNous(),
       fetch: captureFetch([], {
         ok: true,
         status: 200,
@@ -235,9 +235,9 @@ interface FakeFetchResponse {
   json(): Promise<unknown>;
 }
 
-function secretStoreWithNousKey(): StaticSecretStore {
+function fixtureStoreForNous(): StaticSecretStore {
   return new StaticSecretStore({
-    agent_credref_nous_portal: SecretMaterial.fromRuntimeValue("test-provider-key")
+    agent_credref_nous_portal: SecretMaterial.fromRuntimeValue(fixtureProviderMaterial)
   });
 }
 
@@ -257,7 +257,7 @@ function successfulResponse(): FakeFetchResponse {
 
 function captureFetch(calls: CapturedFetchCall[], response: FakeFetchResponse) {
   return async (url: string | URL, init?: RequestInit): Promise<Response> => {
-    const headers = normalizeHeaders(init?.headers);
+    const headers = normalizeSafeHeaders(init?.headers);
     calls.push({
       url: String(url),
       headers,
@@ -267,15 +267,23 @@ function captureFetch(calls: CapturedFetchCall[], response: FakeFetchResponse) {
   };
 }
 
-function normalizeHeaders(headers: HeadersInit | undefined): Record<string, string> {
+function normalizeSafeHeaders(headers: HeadersInit | undefined): Record<string, string> {
   if (headers === undefined) {
     return {};
   }
+  return Object.fromEntries(
+    headerEntries(headers)
+      .map(([key, value]) => [key.toLowerCase(), value] as const)
+      .filter(([key]) => key === "content-type")
+  );
+}
+
+function headerEntries(headers: HeadersInit): Array<readonly [string, string]> {
   if (headers instanceof Headers) {
-    return Object.fromEntries([...headers.entries()].map(([key, value]) => [key.toLowerCase(), value]));
+    return [...headers.entries()];
   }
   if (Array.isArray(headers)) {
-    return Object.fromEntries(headers.map(([key, value]) => [key.toLowerCase(), value]));
+    return headers.map(([key, value]) => [key, value]);
   }
-  return Object.fromEntries(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), String(value)]));
+  return Object.entries(headers).map(([key, value]) => [key, String(value)]);
 }

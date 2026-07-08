@@ -903,3 +903,5 @@ factory-readiness passed
 Provider prompts now flow through durable prompt artifact envelopes bound to context pack refs, template metadata, omissions, stale-input metadata, provider-transfer policy, and stable SHA-256 artifact hashes. Production prompt text is not stored in ledger events, DTOs, diagnostics, docs, tests, or logs; model invocation events record only safe prompt artifact audit metadata.
 
 The live Nous smoke is an approved provider acceptance check for this slice. The slice adds no PRR send or follow-up execution, legal escalation, export or publication, destructive repair, accepted graph review execution, hidden external effects, or direct cockpit execution path.
+
+Post whole-branch review fixture cleanup on 2026-07-08 removed credential-shaped and raw-error-shaped material from the touched OpenAI-compatible provider tests. The focused prompt-artifact resolver test set still passed with 10 files and 118 tests, the live Nous smoke returned `ok: true` with only hashes, invocation event IDs, context pack IDs, and counts, and final `npm run verify` passed with typecheck, 133 test files, 1287 tests, UI build, and factory readiness.
