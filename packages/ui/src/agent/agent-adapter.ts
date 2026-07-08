@@ -47,17 +47,13 @@ const agentFailureCategorySchema = z.enum([
   "model-output-invalid",
   "external-effect-failed"
 ]);
-const agentToolApprovalClassSchema = z.enum([
-  "none",
-  "human-review",
-  "provider-byte-transfer",
-  "external-message-send",
-  "export-or-publication",
-  "destructive-or-repair",
-  "legal-escalation",
-  "ledger-review"
-]);
-
+const sentinelApprovalIdentifiers = new Set(["none", "human-review"]);
+const extensibleApprovalIdentifierSchema = z.string().min(1).refine(
+  (value) => !sentinelApprovalIdentifiers.has(value),
+  "Approval identifiers must not use sentinel values."
+);
+const extensibleApprovalClassSchema = extensibleApprovalIdentifierSchema;
+const extensibleForbiddenDirectEffectSchema = extensibleApprovalIdentifierSchema;
 const identitySchema = z.object({
   residentAgentId: z.string().min(1),
   workspaceId: z.string().min(1),
@@ -168,7 +164,7 @@ const toolRequestSchema = z.object({
     "destructive-or-repair",
     "legal-escalation"
   ]),
-  requiredApprovalClass: agentToolApprovalClassSchema,
+  requiredApprovalClass: extensibleApprovalClassSchema,
   previewHash: z.string().min(1),
   scope: z.string().min(1),
   estimatedEffect: z.string().min(1),
@@ -178,7 +174,7 @@ const toolRequestSchema = z.object({
   inputArtifactHashes: z.array(z.string().min(1)),
   approvedBy: z.string().min(1).optional(),
   approvedPreviewHash: z.string().min(1).optional(),
-  approvalClass: agentToolApprovalClassSchema.optional(),
+  approvalClass: extensibleApprovalClassSchema.optional(),
   approvalRationale: z.string().min(1).optional(),
   approvedAt: z.string().datetime().optional(),
   deniedBy: z.string().min(1).optional(),
@@ -261,14 +257,6 @@ const diagnosticSchema = z.object({
   message: z.string().min(1),
   allowedRepairActions: z.array(z.string().min(1)).optional()
 }).strict();
-
-const sentinelApprovalIdentifiers = new Set(["none", "human-review"]);
-const extensibleApprovalIdentifierSchema = z.string().min(1).refine(
-  (value) => !sentinelApprovalIdentifiers.has(value),
-  "Approval identifiers must not use sentinel values."
-);
-const extensibleApprovalClassSchema = extensibleApprovalIdentifierSchema;
-const extensibleForbiddenDirectEffectSchema = extensibleApprovalIdentifierSchema;
 
 const contextPackRefSchema = z.object({
   contextPackId: z.string().min(1),

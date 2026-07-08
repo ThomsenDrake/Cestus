@@ -103,3 +103,29 @@ Base commit before task: `58f3d4f`
   - Passed: `tests passed`
   - Passed: Vite production build completed
   - Passed: `factory-readiness passed`
+
+## Status parser alignment fix
+
+- Root cause: `agentStatusFromJson()` still parsed status `toolRequests[].requiredApprovalClass` and optional `toolRequests[].approvalClass` through the old closed `agentToolApprovalClassSchema`, so it rejected future real identifiers like `evidence-retention-review` while still admitting sentinel placeholders `none` and `human-review` at the browser status boundary.
+- Added failing regressions in `packages/ui/test/agent-adapter.test.ts` proving:
+  - `agentStatusFromJson()` accepts `evidence-retention-review` on both `requiredApprovalClass` and optional `approvalClass`.
+  - `agentStatusFromJson()` rejects sentinel values `none` and `human-review` in those same status tool-request fields.
+  - malformed `failureCategory` values remain rejected.
+- Observed RED with `npm test -- packages/ui/test/agent-adapter.test.ts`:
+  - Failed: `accepts future approval identifiers in status tool requests`
+  - Failed: `rejects sentinel approval identifiers in status tool requests: none`
+  - Failed: `rejects sentinel approval identifiers in status tool requests: human-review`
+  - Failure shape:
+    - Zod rejected `evidence-retention-review` because the status parser still expected the old enum values on `toolRequests[0].requiredApprovalClass` and `toolRequests[0].approvalClass`.
+    - Sentinel regressions failed with `expected [Function] to throw an error`, proving `none` and `human-review` were still accepted there.
+- Implemented the smallest fix in `packages/ui/src/agent/agent-adapter.ts` by swapping the status tool-request approval-class fields to the existing extensible non-sentinel approval identifier schema already used by the cockpit parser.
+- Verified targeted GREEN with `npm test -- packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-approval-adapter.test.ts`:
+  - Passed: `Test Files  2 passed (2)`
+  - Passed: `Tests  17 passed (17)`
+- Verified full gate with `npm run verify`:
+  - Passed: `typecheck passed`
+  - Passed: `Test Files  133 passed (133)`
+  - Passed: `Tests  1293 passed (1293)`
+  - Passed: `tests passed`
+  - Passed: Vite production build completed
+  - Passed: `factory-readiness passed`

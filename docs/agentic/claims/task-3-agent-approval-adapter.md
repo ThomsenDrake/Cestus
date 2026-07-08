@@ -18,6 +18,7 @@ Owned files:
 
 - `packages/ui/src/agent/agent-types.ts`
 - `packages/ui/src/agent/agent-adapter.ts`
+- `packages/ui/test/agent-adapter.test.ts`
 - `packages/ui/test/agent-approval-adapter.test.ts`
 - `docs/agentic/claims/task-3-agent-approval-adapter.md`
 - `.superpowers/sdd/task-3-report.md`
@@ -75,4 +76,16 @@ UI follow-up evidence:
 - Re-ran the required UI verification chain:
   - RED: `npm test -- packages/ui/test/agent-approval-adapter.test.ts`
   - GREEN: `npm test -- packages/ui/test/agent-approval-adapter.test.ts packages/ui/test/agent-adapter.test.ts`
+  - FULL: `npm run verify`
+
+Status parser alignment follow-up at: `2026-07-08T16:47:00Z`
+
+Status parser evidence:
+
+- Added `packages/ui/test/agent-adapter.test.ts` regressions proving `agentStatusFromJson()` accepts a future real approval-class identifier (`evidence-retention-review`) on status tool-request `requiredApprovalClass` and optional `approvalClass`.
+- Added matching negative regressions proving the browser status parser rejects sentinel placeholders `none` and `human-review` in those same tool-request approval-class fields while still rejecting malformed failure categories.
+- Refined the status tool-request parser in `packages/ui/src/agent/agent-adapter.ts` to use the same extensible non-sentinel approval identifier schema already used by the browser approval-cockpit parser.
+- Re-ran the required verification chain for this fix:
+  - RED: `npm test -- packages/ui/test/agent-adapter.test.ts`
+  - GREEN: `npm test -- packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-approval-adapter.test.ts`
   - FULL: `npm run verify`
