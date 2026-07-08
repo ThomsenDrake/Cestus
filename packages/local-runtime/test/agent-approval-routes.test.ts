@@ -48,6 +48,26 @@ describe("agent approval routes", () => {
     expect(await eventTypes(config)).toEqual(["agent.tool.requested"]);
   });
 
+  it("tolerates mixed read-only and approval requests on GET /api/agent/approvals", async () => {
+    const { config, handler } = await seededHandler({
+      toolRequestId: "toolreq_provider_transfer",
+      includeReadOnlyRequest: true
+    });
+    const response = await handler({ method: "GET", url: "/api/agent/approvals" });
+    const body = JSON.parse(response.body) as {
+      readonly summary: { readonly pendingCount: number };
+      readonly queue: { readonly pending: readonly { readonly toolRequestId: string }[] };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.summary.pendingCount).toBe(1);
+    expect(body.queue.pending.map((item) => item.toolRequestId)).toEqual(["toolreq_provider_transfer"]);
+    expect(response.body).not.toContain("toolreq_read_only");
+    handler.close();
+    handlers.splice(handlers.indexOf(handler), 1);
+    expect(await eventTypes(config)).toEqual(["agent.tool.requested", "agent.tool.requested"]);
+  });
+
   it("shows a single approval request by tool request id", async () => {
     const { handler } = await seededHandler();
     const response = await handler({
@@ -297,6 +317,7 @@ interface SeedToolRequestInput {
   readonly sourceEventIds?: readonly string[];
   readonly inputArtifactHashes?: readonly string[];
   readonly lockKind?: "provider-byte-transfer";
+  readonly includeReadOnlyRequest?: boolean;
 }
 
 async function seedToolRequest(input: SeedToolRequestInput | string = "toolreq_provider_transfer") {
@@ -328,6 +349,24 @@ async function seedToolRequest(input: SeedToolRequestInput | string = "toolreq_p
         estimatedEffect: "Provider byte transfer after human approval."
       }
     });
+
+    if (request.includeReadOnlyRequest === true) {
+      await gateway.requestTool({
+        toolRequestId: "toolreq_read_only",
+        residentAgentId: "agent_default",
+        taskId: "task_read_only",
+        runId: "run_read_only",
+        toolId: "workspace.inspect",
+        sideEffectClass: "read-only",
+        preview: {
+          summary: "Inspect local workspace state for planning.",
+          relatedEventIds: ["evt_read_only_preview"],
+          artifactHashes: [],
+          scope: "Workspace inspection only.",
+          estimatedEffect: "Read-only workspace inspection with no external effects."
+        }
+      });
+    }
 
     if (request.lockKind !== undefined) {
       const lockEvent: AppendableKnowledgeEvent<"agent.lock.activated"> = {

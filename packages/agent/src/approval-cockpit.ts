@@ -310,9 +310,10 @@ export function buildAgentApprovalCockpit(input: BuildAgentApprovalCockpitInput)
   const generatedAt = input.generatedAt ?? input.status.generatedAt;
   assertAgentSecretSafeText(generatedAt, "approval cockpit generatedAt");
 
+  const approvalToolRequests = input.status.toolRequests.filter(requestBelongsInApprovalCockpit);
   const taskIdsByRunId = new Map(input.status.runs.map((run) => [run.runId, run.taskId]));
-  const requests = input.status.toolRequests.map((request) => projectRequestForQueue(request, taskIdsByRunId.get(request.runId)));
-  const reviewInputsById = new Map(input.status.toolRequests.map((request) => [
+  const requests = approvalToolRequests.map((request) => projectRequestForQueue(request, taskIdsByRunId.get(request.runId)));
+  const reviewInputsById = new Map(approvalToolRequests.map((request) => [
     request.toolRequestId,
     {
       what: request.scope,
@@ -326,10 +327,10 @@ export function buildAgentApprovalCockpit(input: BuildAgentApprovalCockpitInput)
   const queue = enrichQueue(buildAgentApprovalQueue({
     now: generatedAt,
     requests,
-    approvals: input.status.toolRequests.flatMap(projectApprovalForQueue),
-    denials: input.status.toolRequests.flatMap(projectDenialForQueue),
-    completed: input.status.toolRequests.flatMap(projectCompletionForQueue),
-    failures: input.status.toolRequests.flatMap(projectFailureForQueue),
+    approvals: approvalToolRequests.flatMap(projectApprovalForQueue),
+    denials: approvalToolRequests.flatMap(projectDenialForQueue),
+    completed: approvalToolRequests.flatMap(projectCompletionForQueue),
+    failures: approvalToolRequests.flatMap(projectFailureForQueue),
     currentPreviewHashes: input.currentPreviewHashes ?? currentPreviewHashesFor(requests),
     activeLocks: input.status.locks
       .filter((lock) => lock.state === "active")
@@ -365,6 +366,10 @@ export function buildAgentApprovalCockpit(input: BuildAgentApprovalCockpitInput)
   };
 
   return deepFreeze(agentApprovalCockpitDtoSchema.parse(dto)) as AgentApprovalCockpitDto;
+}
+
+function requestBelongsInApprovalCockpit(request: AgentStatusDto["toolRequests"][number]): boolean {
+  return request.requiredApprovalClass !== "none";
 }
 
 function projectRequestForQueue(

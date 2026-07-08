@@ -75,7 +75,7 @@ One implementation constraint is explicit: the current `agent.tool.requested` ev
 - Produces: `agentApprovalCockpitDtoSchema` for local runtime and UI validation.
 - Produces: `AgentApprovalDecisionResultDto` for route and adapter result parsing.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create `docs/agentic/claims/task-1-agent-approval-cockpit-dto.md`:
 
@@ -104,7 +104,7 @@ git add docs/agentic/claims/task-1-agent-approval-cockpit-dto.md
 git commit -m "chore: claim agent approval cockpit dto task"
 ```
 
-- [ ] **Step 2: Mark claim in progress**
+- [x] **Step 2: Mark claim in progress**
 
 Edit the claim status to `in-progress`, then commit:
 
@@ -113,7 +113,7 @@ git add docs/agentic/claims/task-1-agent-approval-cockpit-dto.md
 git commit -m "chore: start agent approval cockpit dto task"
 ```
 
-- [ ] **Step 3: Write the failing DTO tests**
+- [x] **Step 3: Write the failing DTO tests**
 
 Create `packages/agent/test/approval-cockpit.test.ts`:
 
@@ -327,7 +327,7 @@ function providerTransferRequest(
 }
 ```
 
-- [ ] **Step 4: Run the targeted failing test**
+- [x] **Step 4: Run the targeted failing test**
 
 Run:
 
@@ -341,7 +341,7 @@ Expected before implementation:
 Failed to resolve import "../src/approval-cockpit.js"
 ```
 
-- [ ] **Step 5: Add the approval cockpit DTO builder**
+- [x] **Step 5: Add the approval cockpit DTO builder**
 
 Create `packages/agent/src/approval-cockpit.ts` with:
 
@@ -522,7 +522,7 @@ export function buildAgentApprovalCockpit(input: BuildAgentApprovalCockpitInput)
 
 Complete the module by adding the small projector helpers named in the snippet. `projectRequestForQueue()` must map `sourceEventIds` to `{ kind: "event", id }`, `inputArtifactHashes` to `{ kind: "artifact", id: hash, hash }`, `estimatedEffect` to `previewSummary`, and `previewHash` to `currentPreviewHashes[toolRequestId]`. `enrichQueue()` must use `reviewInputsById` to preserve `scope` as request-review `what`, `estimatedEffect` as `dataLeavesOrChanges`, source event refs as evidence refs, and input artifact hashes as artifact refs. It must preserve the approval-queue bucket names while adding `requiredApprovalClass`, `providerByteTransferNote` only for provider byte-transfer items, `staleness`, `approvalContract`, and `review` to every item. Terminal projector helpers must read the flattened projection fields without appending events. Freeze all returned objects and arrays.
 
-- [ ] **Step 6: Export the DTO surface**
+- [x] **Step 6: Export the DTO surface**
 
 Modify `packages/agent/src/index.ts`:
 
@@ -532,7 +532,7 @@ export * from "./approval-cockpit.js";
 
 Preserve existing exports.
 
-- [ ] **Step 7: Run targeted tests**
+- [x] **Step 7: Run targeted tests**
 
 Run:
 
@@ -546,7 +546,7 @@ Expected:
 Test Files  2 passed
 ```
 
-- [ ] **Step 8: Commit Task 1**
+- [x] **Step 8: Commit Task 1**
 
 Run:
 
@@ -583,15 +583,15 @@ git commit -m "feat: add agent approval cockpit dto"
 - Produces: `POST /api/agent/approvals/:toolRequestId/approve`.
 - Produces: `POST /api/agent/approvals/:toolRequestId/deny`.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create `docs/agentic/claims/task-2-agent-approval-routes.md` with the same shape as Task 1, owned files set to this task, status `claimed`, then commit the claim.
 
-- [ ] **Step 2: Mark claim in progress**
+- [x] **Step 2: Mark claim in progress**
 
 Set status to `in-progress` and commit the claim update.
 
-- [ ] **Step 3: Write failing route tests**
+- [x] **Step 3: Write failing route tests**
 
 Create `packages/local-runtime/test/agent-approval-routes.test.ts`:
 
@@ -791,7 +791,7 @@ async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>):
 }
 ```
 
-- [ ] **Step 4: Run the targeted failing test**
+- [x] **Step 4: Run the targeted failing test**
 
 Run:
 
@@ -805,7 +805,7 @@ Expected before implementation:
 Local runtime route was not found.
 ```
 
-- [ ] **Step 5: Add read and decision routes**
+- [x] **Step 5: Add read and decision routes**
 
 Modify `packages/local-runtime/src/agent-http-routes.ts`:
 
@@ -823,7 +823,7 @@ Modify `packages/local-runtime/src/agent-http-routes.ts`:
 - Map invalid body or unsafe rationale to `400` with a safe diagnostic.
 - Never call `completeTool`, `resumeApprovedTool`, a provider adapter, PRR service, export service, repair service, or ontology acceptance service.
 
-- [ ] **Step 6: Run targeted tests**
+- [x] **Step 6: Run targeted tests**
 
 Run:
 
@@ -837,7 +837,7 @@ Expected:
 Test Files  3 passed
 ```
 
-- [ ] **Step 7: Commit Task 2**
+- [x] **Step 7: Commit Task 2**
 
 Run:
 
@@ -873,11 +873,11 @@ git commit -m "feat: expose agent approval decision routes"
 - Produces: `AgentAdapter.denyToolRequest(input)`.
 - Produces browser-safe parsing for `AgentApprovalCockpitDto` and `AgentApprovalDecisionResultDto`.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-3-agent-approval-adapter.md`, then mark it `in-progress` and commit the status update.
 
-- [ ] **Step 2: Write failing adapter tests**
+- [x] **Step 2: Write failing adapter tests**
 
 Create `packages/ui/test/agent-approval-adapter.test.ts`:
 
@@ -1080,7 +1080,7 @@ function approvalCockpit(input: { readonly pendingCount?: number; readonly unsaf
 }
 ```
 
-- [ ] **Step 3: Run the targeted failing test**
+- [x] **Step 3: Run the targeted failing test**
 
 Run:
 
@@ -1094,7 +1094,7 @@ Expected before implementation:
 Property 'loadApprovalCockpit' does not exist
 ```
 
-- [ ] **Step 4: Extend UI types and adapter**
+- [x] **Step 4: Extend UI types and adapter**
 
 Modify `packages/ui/src/agent/agent-types.ts`:
 
@@ -1119,7 +1119,7 @@ Modify `packages/ui/src/agent/agent-adapter.ts`:
 - `createStaticAgentAdapter(status, approvalCockpit?)` must return an empty frozen cockpit when one is not supplied.
 - HTTP failures must return or throw safe runtime diagnostics without raw response text.
 
-- [ ] **Step 5: Run targeted tests**
+- [x] **Step 5: Run targeted tests**
 
 Run:
 
@@ -1133,7 +1133,7 @@ Expected:
 Test Files  2 passed
 ```
 
-- [ ] **Step 6: Commit Task 3**
+- [x] **Step 6: Commit Task 3**
 
 Run:
 
@@ -1166,11 +1166,11 @@ git commit -m "feat: add agent approval cockpit adapter"
 - Consumes: `AgentApprovalCockpitDto` and decision callbacks from the UI adapter layer.
 - Produces: a browser-only cockpit component with approval queue, request detail, evidence/provenance refs, risk/locks, rationale input, and decision-only buttons.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-4-agent-approval-cockpit-component.md`, then mark it `in-progress` and commit the status update.
 
-- [ ] **Step 2: Write failing component tests**
+- [x] **Step 2: Write failing component tests**
 
 Create `packages/ui/test/agent-approval-cockpit.test.tsx`:
 
@@ -1393,7 +1393,7 @@ function cockpit(input: { readonly blocked?: boolean } = {}): AgentApprovalCockp
 }
 ```
 
-- [ ] **Step 3: Run the targeted failing component test**
+- [x] **Step 3: Run the targeted failing component test**
 
 Run:
 
@@ -1407,7 +1407,7 @@ Expected before implementation:
 Failed to resolve import "../src/agent/AgentApprovalCockpit.js"
 ```
 
-- [ ] **Step 4: Build the cockpit component**
+- [x] **Step 4: Build the cockpit component**
 
 Create `packages/ui/src/agent/AgentApprovalCockpit.tsx`.
 
@@ -1427,7 +1427,7 @@ Implementation requirements:
 - Keep layout dense and consistent with the existing Agent workspace panels.
 - Keep all text inside responsive containers with break-word or break-all for hashes and IDs.
 
-- [ ] **Step 5: Wire the component into AgentWorkspace**
+- [x] **Step 5: Wire the component into AgentWorkspace**
 
 Modify `packages/ui/src/agent/AgentWorkspace.tsx`:
 
@@ -1436,7 +1436,7 @@ Modify `packages/ui/src/agent/AgentWorkspace.tsx`:
 - Keep the existing `Tool requests` section as a compact historical list or rename it to `Tool request ledger` if the cockpit is present.
 - Update the existing "read-only" test expectations so refresh plus approve/deny decision buttons are allowed, while direct execution buttons remain forbidden.
 
-- [ ] **Step 6: Run targeted tests**
+- [x] **Step 6: Run targeted tests**
 
 Run:
 
@@ -1450,7 +1450,7 @@ Expected:
 Test Files  2 passed
 ```
 
-- [ ] **Step 7: Commit Task 4**
+- [x] **Step 7: Commit Task 4**
 
 Run:
 
@@ -1485,11 +1485,11 @@ git commit -m "feat: add agent approval cockpit component"
 - Consumes: extended `AgentAdapter`.
 - Produces: app-level loading, refresh, approve, and deny behavior for the Agent approval cockpit.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-5-agent-approval-app-integration.md`, then mark it `in-progress` and commit the status update.
 
-- [ ] **Step 2: Write failing integration tests**
+- [x] **Step 2: Write failing integration tests**
 
 Modify `packages/ui/test/agent-app-integration.test.tsx` to add:
 
@@ -1536,7 +1536,7 @@ it("approves provider byte-transfer previews through the Agent adapter only", as
 
 Add local helpers `approvalCockpit()` and a provider transfer `agentStatus()` item in the same file. The helper can mirror Task 4's fixture but must use `toolreq_provider_transfer` and provider byte-transfer text.
 
-- [ ] **Step 3: Run the targeted failing integration test**
+- [x] **Step 3: Run the targeted failing integration test**
 
 Run:
 
@@ -1550,7 +1550,7 @@ Expected before implementation:
 Unable to find role="region" and name "Agent approval cockpit"
 ```
 
-- [ ] **Step 4: Wire cockpit loading and decisions in App**
+- [x] **Step 4: Wire cockpit loading and decisions in App**
 
 Modify `packages/ui/src/App.tsx`:
 
@@ -1562,11 +1562,11 @@ Modify `packages/ui/src/App.tsx`:
 - On decision failure, show a safe diagnostic through the cockpit component or Agent workspace without raw runtime text.
 - Do not call ingestion adapter, request adapter, operator-status actions, provider adapters, scheduler wake, or any execution endpoint from these handlers.
 
-- [ ] **Step 5: Preserve command model behavior**
+- [x] **Step 5: Preserve command model behavior**
 
 Modify `packages/ui/test/command-model.test.ts` only as needed so Command still derives pending agent approval counts from `AgentStatusDto` and does not depend on approval cockpit UI state. If no production change is needed, update only the assertion text in this task's claim.
 
-- [ ] **Step 6: Run targeted tests**
+- [x] **Step 6: Run targeted tests**
 
 Run:
 
@@ -1580,7 +1580,7 @@ Expected:
 Test Files  3 passed
 ```
 
-- [ ] **Step 7: Commit Task 5**
+- [x] **Step 7: Commit Task 5**
 
 Run:
 
