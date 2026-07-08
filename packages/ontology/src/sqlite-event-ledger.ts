@@ -46,57 +46,72 @@ export class SQLiteEventLedger implements EventLedger {
   }
 
   async append(event: AppendableKnowledgeEvent, options: AppendOptions = {}): Promise<KnowledgeEvent> {
-    const globalEventCount = this.globalEventCount();
-    const nextSequence = this.nextSequence(event.streamId);
-
-    if (options.expectedGlobalEventCount !== undefined && options.expectedGlobalEventCount !== globalEventCount) {
-      throw new Error(
-        `Concurrency conflict for ${event.streamId}: expected global event count ${options.expectedGlobalEventCount}, current global event count ${globalEventCount}`
-      );
-    }
-
-    if (options.expectedNextSequence !== undefined && options.expectedNextSequence !== nextSequence) {
-      throw new Error(
-        `Concurrency conflict for ${event.streamId}: expected sequence ${options.expectedNextSequence}, next sequence ${nextSequence}`
-      );
-    }
-
-    const candidate = {
-      ...cloneSnapshot(event),
-      id: eventId(),
-      sequence: nextSequence
-    };
-    const result = validateKnowledgeEvent(candidate);
-
-    if (!result.success) {
-      throw new Error(`Invalid knowledge event: ${result.error.message}`);
-    }
-
-    const committed = cloneSnapshot(result.data);
+    let transactionOpen = false;
 
     try {
-      this.db
-        .prepare(`
-          INSERT INTO ontology_events (id, type, version, stream_id, stream_sequence, context_json, payload_json)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `)
-        .run(
-          committed.id,
-          committed.type,
-          committed.version,
-          committed.streamId,
-          committed.sequence,
-          JSON.stringify(committed.context),
-          JSON.stringify(committed.payload)
+      this.db.exec("BEGIN IMMEDIATE");
+      transactionOpen = true;
+
+      const globalEventCount = this.globalEventCount();
+      const nextSequence = this.nextSequence(event.streamId);
+
+      if (options.expectedGlobalEventCount !== undefined && options.expectedGlobalEventCount !== globalEventCount) {
+        throw new Error(
+          `Concurrency conflict for ${event.streamId}: expected global event count ${options.expectedGlobalEventCount}, current global event count ${globalEventCount}`
         );
+      }
+
+      if (options.expectedNextSequence !== undefined && options.expectedNextSequence !== nextSequence) {
+        throw new Error(
+          `Concurrency conflict for ${event.streamId}: expected sequence ${options.expectedNextSequence}, next sequence ${nextSequence}`
+        );
+      }
+
+      const candidate = {
+        ...cloneSnapshot(event),
+        id: eventId(),
+        sequence: nextSequence
+      };
+      const result = validateKnowledgeEvent(candidate);
+
+      if (!result.success) {
+        throw new Error(`Invalid knowledge event: ${result.error.message}`);
+      }
+
+      const committed = cloneSnapshot(result.data);
+
+      try {
+        this.db
+          .prepare(`
+            INSERT INTO ontology_events (id, type, version, stream_id, stream_sequence, context_json, payload_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `)
+          .run(
+            committed.id,
+            committed.type,
+            committed.version,
+            committed.streamId,
+            committed.sequence,
+            JSON.stringify(committed.context),
+            JSON.stringify(committed.payload)
+          );
+      } catch (error) {
+        if (this.isConstraintError(error)) {
+          throw new Error(`Concurrency conflict for ${event.streamId}: sequence ${nextSequence} already exists`);
+        }
+        throw error;
+      }
+
+      this.db.exec("COMMIT");
+      transactionOpen = false;
+
+      return cloneSnapshot(committed);
     } catch (error) {
-      if (this.isConstraintError(error)) {
-        throw new Error(`Concurrency conflict for ${event.streamId}: sequence ${nextSequence} already exists`);
+      if (transactionOpen) {
+        this.rollbackTransaction();
       }
       throw error;
     }
-
-    return cloneSnapshot(committed);
   }
 
   async readStream(streamId: string): Promise<KnowledgeEvent[]> {
@@ -179,5 +194,13 @@ export class SQLiteEventLedger implements EventLedger {
       (error as NodeJS.ErrnoException).code === "ERR_SQLITE_ERROR" &&
       error.message.includes("constraint")
     );
+  }
+
+  private rollbackTransaction(): void {
+    try {
+      this.db.exec("ROLLBACK");
+    } catch {
+      // Ignore rollback failures while preserving the original append error.
+    }
   }
 }

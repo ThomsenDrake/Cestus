@@ -65,3 +65,14 @@ Review-fix evidence:
 - Fix: `packages/local-runtime/src/agent-http-routes.ts` now rebuilds the current approval cockpit before approval, loads the selected item, and rejects `POST .../approve` with a safe `409` diagnostic unless the item is still in the approvable pending bucket with no stale or blocking state.
 - Targeted pass: `npm test -- packages/local-runtime/test/agent-approval-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/agent/test/approval-cockpit.test.ts`
 - Full gate: `npm run verify`
+
+SQLite review-blocker fix recorded at: `2026-07-08T16:01:00Z`
+
+SQLite review-blocker evidence:
+
+- Review-fix base head: `91a9e7e`
+- Red test: `npm test -- packages/ontology/test/sqlite-event-ledger.test.ts packages/ontology/test/event-ledger.test.ts packages/local-runtime/test/agent-approval-routes.test.ts`
+- Observed red failure: `blocks interleaved SQLite writers from slipping past expected global event count guards` reported `Expected: "blocked" / Received: "committed"`, proving the guarded SQLite append still allowed an interleaved writer to commit between the stale global-count read and the insert.
+- Fix: `packages/ontology/src/sqlite-event-ledger.ts` now wraps append in `BEGIN IMMEDIATE`/`COMMIT`, performs the global-count and stream-sequence guard checks inside that transaction, and safely rolls back any post-begin failure before rethrowing while preserving invalid-event and sequence-conflict behavior.
+- Targeted pass: `npm test -- packages/ontology/test/sqlite-event-ledger.test.ts packages/ontology/test/event-ledger.test.ts packages/local-runtime/test/agent-approval-routes.test.ts`
+- Full gate: `npm run verify` (`Test Files  132 passed (132)`, `Tests  1276 passed (1276)`, `factory-readiness passed`)
