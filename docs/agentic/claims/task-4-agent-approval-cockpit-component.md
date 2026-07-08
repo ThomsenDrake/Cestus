@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/b782/Cestus`
 
 Claimed at: `2026-07-08T16:58:44Z`
 
-Status: `claimed`
+Status: `in-progress`
 
 Owned files:
 
@@ -34,3 +34,8 @@ Stop conditions:
 - The cockpit needs raw provider bytes, raw evidence text, secret-bearing diagnostics, or direct domain-service calls.
 - Approval or denial actions become execution controls instead of append-only decision intents.
 - Any change would weaken append-only ledger semantics, provenance requirements, projection rebuildability, or consume-time approval revalidation.
+
+Implementation log:
+
+- Claim commit: `2e42b74 chore: claim task 4 agent approval cockpit component`
+- `2026-07-08T16:59:00Z`: Status moved to `in-progress` before writing failing cockpit component tests.
