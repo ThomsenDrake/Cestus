@@ -105,6 +105,57 @@ describe("provider selection policy", () => {
     });
   });
 
+  it("requires approval for ready remote prompt-only providers handling sensitive evidence", () => {
+    const registry = createProviderRegistry();
+    registry.register(remotePromptOnlyProviderDescriptor("provider_remote_prompt_only", "Remote prompt-only provider"));
+
+    const approvedTransfer = selectProviderForTask({
+      registry,
+      task: {
+        modality: "text",
+        structuredOutputRequired: true,
+        sensitivity: "sensitive-evidence",
+        requiresRemoteHarness: false
+      },
+      readinessByProviderId: {
+        provider_remote_prompt_only: "ready"
+      },
+      policy: {
+        allowRemoteByteTransfer: true,
+        preferredCostPolicy: "metered-api"
+      }
+    });
+
+    expect(approvedTransfer).toMatchObject({
+      ok: true,
+      providerId: "provider_remote_prompt_only",
+      approvalClass: "provider-byte-transfer",
+      safeReason: "approval-required"
+    });
+
+    const blockedTransfer = selectProviderForTask({
+      registry,
+      task: {
+        modality: "text",
+        structuredOutputRequired: true,
+        sensitivity: "sensitive-evidence",
+        requiresRemoteHarness: false
+      },
+      readinessByProviderId: {
+        provider_remote_prompt_only: "ready"
+      },
+      policy: {
+        allowRemoteByteTransfer: false,
+        preferredCostPolicy: "metered-api"
+      }
+    });
+
+    expect(blockedTransfer).toMatchObject({
+      ok: false,
+      category: "provider-policy-blocked"
+    });
+  });
+
   it("prefers local providers for sensitive local-only tasks even when remote transfer is allowed", () => {
     const selected = selectProviderForTask({
       registry: createProviderRegistry.withDefaultsForTest(),
@@ -303,6 +354,14 @@ function remoteProviderDescriptor(providerId: string, label: string) {
     approvalProfile: "remote-byte-transfer-gated",
     diagnosticContract: ["provider-ready"],
     fakeSupport: true
+  };
+}
+
+function remotePromptOnlyProviderDescriptor(providerId: string, label: string) {
+  return {
+    ...remoteProviderDescriptor(providerId, label),
+    approvalProfile: "remote-prompt-only",
+    diagnosticContract: ["provider-ready"]
   };
 }
 

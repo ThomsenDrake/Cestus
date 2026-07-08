@@ -136,7 +136,7 @@ export async function buildProviderReadiness(
 
   for (const descriptor of input.registry.list()) {
     const credentialReferences = credentialReferencesByProviderId.get(descriptor.providerId) ?? [];
-    const evaluation = await evaluateProviderReadiness(descriptor, credentialReferences, input.secretStore);
+    const evaluation = await evaluateProviderReadiness(descriptor, credentialReferences, input.secretStore, generatedAt);
     const safeActionIds = safeActionIdsForState(evaluation.state);
     const card = providerSetupCardSchema.parse({
       providerId: descriptor.providerId,
@@ -192,7 +192,8 @@ function groupCredentialReferencesByProviderId(
 async function evaluateProviderReadiness(
   descriptor: ProviderCapabilityDescriptor,
   credentialReferences: readonly CredentialReference[],
-  secretStore: SecretStore
+  secretStore: SecretStore,
+  checkedAt: string
 ): Promise<ProviderReadinessEvaluation> {
   if (requiresOnlyLocalNoSecret(descriptor)) {
     return { state: "works-locally" };
@@ -205,7 +206,8 @@ async function evaluateProviderReadiness(
     const credentialEvaluation = await evaluateCredentialKindReadiness(
       credentialKind,
       credentialReferences,
-      secretStore
+      secretStore,
+      checkedAt
     );
     if (credentialEvaluation.state !== "ready") {
       return credentialEvaluation;
@@ -219,7 +221,8 @@ async function evaluateProviderReadiness(
     const alternativeEvaluation = await evaluateAlternativeCredentialReadiness(
       alternativeCredentialKinds,
       credentialReferences,
-      secretStore
+      secretStore,
+      checkedAt
     );
     if (alternativeEvaluation.state !== "ready") {
       return alternativeEvaluation;
@@ -264,14 +267,16 @@ function credentialRequirementKinds(
 async function evaluateAlternativeCredentialReadiness(
   credentialKinds: readonly CredentialKind[],
   credentialReferences: readonly CredentialReference[],
-  secretStore: SecretStore
+  secretStore: SecretStore,
+  checkedAt: string
 ): Promise<ProviderReadinessEvaluation> {
   const blockedEvaluations: ProviderReadinessEvaluation[] = [];
   for (const credentialKind of credentialKinds) {
     const credentialEvaluation = await evaluateCredentialKindReadiness(
       credentialKind,
       credentialReferences,
-      secretStore
+      secretStore,
+      checkedAt
     );
     if (credentialEvaluation.state === "ready") {
       return credentialEvaluation;
@@ -287,7 +292,8 @@ async function evaluateAlternativeCredentialReadiness(
 async function evaluateCredentialKindReadiness(
   credentialKind: CredentialKind,
   credentialReferences: readonly CredentialReference[],
-  secretStore: SecretStore
+  secretStore: SecretStore,
+  checkedAt: string
 ): Promise<ProviderReadinessEvaluation> {
   const matchingCredentialReferences = credentialReferences
     .filter((ref) => ref.credentialKind === credentialKind);
@@ -300,7 +306,8 @@ async function evaluateCredentialKindReadiness(
     const credentialEvaluation = await evaluateCredentialReferenceReadiness(
       credentialKind,
       credentialReference,
-      secretStore
+      secretStore,
+      checkedAt
     );
     if (credentialEvaluation.state === "ready") {
       return credentialEvaluation;
@@ -314,9 +321,10 @@ async function evaluateCredentialKindReadiness(
 async function evaluateCredentialReferenceReadiness(
   credentialKind: CredentialKind,
   credentialReference: CredentialReference,
-  secretStore: SecretStore
+  secretStore: SecretStore,
+  checkedAt: string
 ): Promise<ProviderReadinessEvaluation> {
-  const referenceState = stateForCredentialReference(credentialReference);
+  const referenceState = stateForCredentialReference(credentialReference, checkedAt);
   if (referenceState !== undefined) {
     return {
       state: referenceState,
@@ -345,9 +353,13 @@ function requiresOnlyLocalNoSecret(descriptor: ProviderCapabilityDescriptor): bo
 }
 
 function stateForCredentialReference(
-  credentialReference: CredentialReference
+  credentialReference: CredentialReference,
+  checkedAt: string
 ): ProviderReadinessState | undefined {
-  if (credentialReference.status === "expired") {
+  if (
+    credentialReference.status === "expired" ||
+    credentialReferenceExpiredAtOrBefore(credentialReference, checkedAt)
+  ) {
     return "credential-expired";
   }
   if (credentialReference.status === "revoked") {
@@ -363,6 +375,16 @@ function stateForCredentialReference(
     return "health-unverified";
   }
   return undefined;
+}
+
+function credentialReferenceExpiredAtOrBefore(
+  credentialReference: CredentialReference,
+  checkedAt: string
+): boolean {
+  if (credentialReference.expiresAt === undefined) {
+    return false;
+  }
+  return Date.parse(credentialReference.expiresAt) <= Date.parse(checkedAt);
 }
 
 function stateForSecretStoreHealth(
