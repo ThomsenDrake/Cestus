@@ -130,6 +130,7 @@ const defaultResidentAgentId = "agent_default";
 const fakeReadModelProjectionName = "fake-agent-execution-loop";
 const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
 const artifactHashPattern = /^sha256:[a-f0-9]{64}$/;
+const arrayIndexNamePattern = /^(0|[1-9]\d*)$/;
 const invalidFakeToolResultMessage = "Fake tool result failed validation.";
 
 export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoopInput) {
@@ -147,6 +148,15 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
       }
 
       const toolVersion = String(command.toolVersion ?? "0.1.0");
+      const preview = sanitizeFakeToolPreview(command.preview);
+      const sourceEventIds = sanitizeEventIds(preview.relatedEventIds, "preview related event id");
+      const previewArtifactHashes = sanitizeArtifactHashes(preview.artifactHashes, "preview artifact hash");
+      const inputArtifactHashes = sanitizeArtifactHashes(command.inputArtifactHashes, "input artifact hash") ?? previewArtifactHashes;
+      const scope = optionalSecretSafeString(command.scope ?? preview.scope, "tool request scope");
+      const estimatedEffect = optionalSecretSafeString(
+        command.estimatedEffect ?? preview.estimatedEffect,
+        "tool request estimated effect"
+      );
       const canonicalPreview = buildCanonicalFakeToolPreview({
         toolRequestId: command.toolRequestId,
         residentAgentId,
@@ -156,11 +166,11 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
         toolVersion,
         sideEffectClass: command.sideEffectClass,
         requiredApprovalClass: command.approvalClass,
-        preview: command.preview,
-        ...(command.scope === undefined ? {} : { scope: command.scope }),
-        ...(command.estimatedEffect === undefined ? {} : { estimatedEffect: command.estimatedEffect }),
-        ...(command.preview.relatedEventIds === undefined ? {} : { sourceEventIds: command.preview.relatedEventIds }),
-        ...(command.inputArtifactHashes === undefined ? {} : { inputArtifactHashes: command.inputArtifactHashes })
+        preview,
+        ...(scope === undefined ? {} : { scope }),
+        ...(estimatedEffect === undefined ? {} : { estimatedEffect }),
+        ...(sourceEventIds === undefined ? {} : { sourceEventIds }),
+        ...(inputArtifactHashes === undefined ? {} : { inputArtifactHashes })
       });
       const previewHash = hashStablePreview(canonicalPreview);
       const requested = await gateway.requestTool({
@@ -201,17 +211,18 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
       if (approval === undefined) {
         throw new Error("Human approval is required before resume.");
       }
-      if (approval.context.actor.kind !== "human") {
+      if (!isStoredApprovalUsable(approval, state.request, input.actor.id)) {
         await gateway.failTool({
           toolRequestId: command.toolRequestId,
           category: "permission-denied",
-          message: "Tool resume requires an exact human approval.",
+          message: "Tool resume requires a usable human approval.",
           retryable: false,
           allowedActions: ["request a human approval for the current preview"]
         });
-        throw new Error("Tool resume requires an exact human approval.");
+        throw new Error("Tool resume requires a usable human approval.");
       }
 
+      const currentPreview = sanitizeFakeToolPreview(command.currentPreview);
       const currentPreviewHash = hashStablePreview(buildCanonicalFakeToolPreview({
         toolRequestId: state.request.payload.toolRequestId,
         residentAgentId: state.request.payload.requestedBy,
@@ -221,7 +232,7 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
         toolVersion: state.request.payload.toolVersion,
         sideEffectClass: state.request.payload.sideEffectClass,
         requiredApprovalClass: state.request.payload.requiredApprovalClass,
-        preview: command.currentPreview,
+        preview: currentPreview,
         scope: state.request.payload.scope,
         estimatedEffect: state.request.payload.estimatedEffect,
         ...(state.request.payload.sourceEventIds === undefined ? {} : { sourceEventIds: state.request.payload.sourceEventIds }),
@@ -301,13 +312,18 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
 }
 
 function buildCanonicalFakeToolPreview(input: CanonicalFakeToolPreviewInput): CanonicalFakeToolPreview {
-  const safeDisplayPreview = secretSafeJsonValue(input.preview);
-  const inputArtifactHashes = input.inputArtifactHashes ?? input.preview.artifactHashes;
-  const scope = input.scope ?? input.preview.scope ?? input.preview.summary;
-  const estimatedEffect = input.estimatedEffect ?? input.preview.estimatedEffect ?? input.preview.summary;
+  const preview = sanitizeFakeToolPreview(input.preview);
+  const safeDisplayPreview = sanitizeJsonValue(preview, "preview display");
+  const sourceEventIds = sanitizeEventIds(input.sourceEventIds, "preview source event id");
+  const artifactHashes = sanitizeArtifactHashes(preview.artifactHashes, "preview artifact hash");
+  const inputArtifactHashes = sanitizeArtifactHashes(input.inputArtifactHashes, "input artifact hash") ?? artifactHashes;
+  const summary = preview.summary;
+  assertNonEmptySecretSafeString(summary, "preview summary");
+  const scope = input.scope ?? optionalSecretSafeString(preview.scope, "preview scope") ?? summary;
+  const estimatedEffect = input.estimatedEffect ?? optionalSecretSafeString(preview.estimatedEffect, "preview estimated effect") ?? summary;
 
   return Object.freeze({
-    summary: input.preview.summary,
+    summary,
     toolRequestId: input.toolRequestId,
     toolId: input.toolId,
     toolVersion: input.toolVersion,
@@ -319,9 +335,9 @@ function buildCanonicalFakeToolPreview(input: CanonicalFakeToolPreviewInput): Ca
     displayPreview: safeDisplayPreview,
     scope,
     estimatedEffect,
-    ...(input.preview.affectedRefs === undefined ? {} : { affectedRefs: secretSafeJsonValue(input.preview.affectedRefs) }),
-    ...(input.sourceEventIds === undefined ? {} : { relatedEventIds: [...input.sourceEventIds], sourceEventIds: [...input.sourceEventIds] }),
-    ...(input.preview.artifactHashes === undefined ? {} : { artifactHashes: [...input.preview.artifactHashes] }),
+    ...(Object.hasOwn(preview, "affectedRefs") ? { affectedRefs: sanitizeJsonValue(preview.affectedRefs, "preview affectedRefs") } : {}),
+    ...(sourceEventIds === undefined ? {} : { relatedEventIds: [...sourceEventIds], sourceEventIds: [...sourceEventIds] }),
+    ...(artifactHashes === undefined ? {} : { artifactHashes: [...artifactHashes] }),
     ...(inputArtifactHashes === undefined ? {} : { inputArtifactHashes: [...inputArtifactHashes] })
   });
 }
@@ -337,14 +353,13 @@ function stableJsonStringify(value: unknown): string {
 
 function stabilizeJsonValue(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value.map((item) => stabilizeJsonValue(item));
+    return sanitizeJsonArray(value, "stable preview array").map((item) => stabilizeJsonValue(item));
   }
 
   if (value !== null && typeof value === "object") {
-    const record = value as Record<string, unknown>;
     const stable: Record<string, unknown> = {};
-    for (const key of Object.keys(record).sort()) {
-      stable[key] = stabilizeJsonValue(record[key]);
+    for (const [key, entryValue] of dataEntriesFromObject(value, "stable preview object")) {
+      stable[key] = stabilizeJsonValue(entryValue);
     }
     return stable;
   }
@@ -352,48 +367,168 @@ function stabilizeJsonValue(value: unknown): unknown {
   return value;
 }
 
-function secretSafeJsonValue(value: unknown): unknown {
-  if (
-    value === null ||
-    value === undefined ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
+function sanitizeFakeToolPreview(preview: AgentToolPreview): AgentToolPreview {
+  const normalized = sanitizePlainJsonObject(preview, "preview");
+  assertNonEmptySecretSafeString(normalized.summary, "preview summary");
+
+  if (Object.hasOwn(normalized, "scope")) {
+    assertNonEmptySecretSafeString(normalized.scope, "preview scope");
+  }
+  if (Object.hasOwn(normalized, "estimatedEffect")) {
+    assertNonEmptySecretSafeString(normalized.estimatedEffect, "preview estimated effect");
+  }
+  if (Object.hasOwn(normalized, "relatedEventIds")) {
+    normalized.relatedEventIds = sanitizeEventIds(normalized.relatedEventIds, "preview related event id");
+  }
+  if (Object.hasOwn(normalized, "artifactHashes")) {
+    normalized.artifactHashes = sanitizeArtifactHashes(normalized.artifactHashes, "preview artifact hash");
+  }
+
+  return Object.freeze(normalized) as AgentToolPreview;
+}
+
+function sanitizePlainJsonObject(value: unknown, label: string): Record<string, unknown> {
+  const safe: Record<string, unknown> = {};
+  for (const [key, entryValue] of dataEntriesFromObject(value, label)) {
+    safe[key] = sanitizeJsonValue(entryValue, `${label} ${key}`);
+  }
+  return safe;
+}
+
+function sanitizeJsonValue(value: unknown, label: string): unknown {
+  if (value === null || typeof value === "boolean") {
     return value;
   }
 
   if (typeof value === "string") {
-    assertAgentSecretSafeText(value, "preview text");
+    assertAgentSecretSafeText(value, `${label} text`);
+    return value;
+  }
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new Error(`${label} must be JSON-compatible.`);
+    }
     return value;
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => secretSafeJsonValue(item));
+    return sanitizeJsonArray(value, label);
   }
 
-  if (typeof value === "object") {
-    if (!isPlainRecord(value)) {
-      throw new Error("Preview content must be JSON-compatible.");
-    }
-
-    const safe: Record<string, unknown> = {};
-    for (const key of Object.keys(value)) {
-      assertAgentSecretSafeText(key, "preview key");
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      if (descriptor === undefined || !("value" in descriptor)) {
-        throw new Error("Preview content must be JSON-compatible.");
-      }
-      safe[key] = secretSafeJsonValue(descriptor.value);
-    }
-    return safe;
+  if (typeof value === "object" && value !== null) {
+    return Object.freeze(sanitizePlainJsonObject(value, label));
   }
 
-  throw new Error("Preview content must be JSON-compatible.");
+  throw new Error(`${label} must be JSON-compatible.`);
+}
+
+function sanitizeJsonArray(value: unknown, label: string): readonly unknown[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be an array.`);
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${label} must not contain symbol-keyed fields.`);
+  }
+
+  for (const name of Object.getOwnPropertyNames(value)) {
+    if (name === "length") {
+      continue;
+    }
+    if (!isArrayIndexName(name) || Number(name) >= value.length) {
+      throw new Error(`${label} must not contain custom array fields.`);
+    }
+  }
+
+  const safe: unknown[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable) {
+      throw new Error(`${label} must not contain sparse, hidden, or accessor-backed values.`);
+    }
+    safe.push(sanitizeJsonValue(descriptor.value, `${label} item`));
+  }
+
+  return Object.freeze(safe);
+}
+
+function dataEntriesFromObject(value: unknown, label: string): Array<readonly [string, unknown]> {
+  if (value === null || typeof value !== "object" || Array.isArray(value) || !isPlainRecord(value)) {
+    throw new Error(`${label} must be a plain JSON object.`);
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${label} must not contain symbol-keyed fields.`);
+  }
+
+  const entries: Array<readonly [string, unknown]> = [];
+  for (const key of Object.getOwnPropertyNames(value).sort()) {
+    assertAgentSecretSafeText(key, `${label} key`);
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined || !("value" in descriptor)) {
+      throw new Error(`${label} must not contain accessors.`);
+    }
+    if (!descriptor.enumerable) {
+      throw new Error(`${label} must not contain hidden fields.`);
+    }
+    entries.push([key, descriptor.value]);
+  }
+  return entries;
+}
+
+function sanitizeEventIds(value: unknown, label: string): string[] | undefined {
+  return sanitizeValidatedStringArray(value, label, (item) => {
+    if (!eventIdPattern.test(item)) {
+      throw new Error(`${label} must be a valid event ID.`);
+    }
+  });
+}
+
+function sanitizeArtifactHashes(value: unknown, label: string): string[] | undefined {
+  return sanitizeValidatedStringArray(value, label, (item) => {
+    if (!artifactHashPattern.test(item)) {
+      throw new Error(`${label} must be a valid artifact hash.`);
+    }
+  });
+}
+
+function sanitizeValidatedStringArray(
+  value: unknown,
+  label: string,
+  validate: (item: string) => void
+): string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const values = sanitizeJsonArray(value, `${label} list`);
+  const strings: string[] = [];
+  for (const item of values) {
+    assertNonEmptySecretSafeString(item, label);
+    validate(item);
+    strings.push(item);
+  }
+  return strings;
+}
+
+function optionalSecretSafeString(value: unknown, label: string): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  assertNonEmptySecretSafeString(value, label);
+  return value;
 }
 
 function isPlainRecord(value: object): value is Record<string, unknown> {
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
+}
+
+function isArrayIndexName(value: string): boolean {
+  if (!arrayIndexNamePattern.test(value)) {
+    return false;
+  }
+  const index = Number(value);
+  return Number.isSafeInteger(index) && index >= 0 && index < 4_294_967_295 && String(index) === value;
 }
 
 function normalizeFakeToolResult(result: FakeAgentToolExecutorResult): AgentToolResult {
@@ -518,6 +653,19 @@ function assertRequestOpenForResume(state: ToolRequestState): void {
   if (state.failure !== undefined) {
     throw new Error("Failed tool requests cannot resume.");
   }
+}
+
+function isStoredApprovalUsable(
+  approval: KnowledgeEventOf<"agent.tool.approved">,
+  request: KnowledgeEventOf<"agent.tool.requested">,
+  runtimeActorId: string
+): boolean {
+  return approval.context.actor.kind === "human" &&
+    approval.context.actor.id === approval.payload.approvedBy &&
+    approval.payload.approvalClass === request.payload.requiredApprovalClass &&
+    approval.payload.approvedPreviewHash === request.payload.previewHash &&
+    approval.context.actor.id !== request.payload.requestedBy &&
+    approval.context.actor.id !== runtimeActorId;
 }
 
 async function readToolRequestState(ledger: EventLedger, toolRequestId: string): Promise<ToolRequestState> {
