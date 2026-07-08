@@ -306,6 +306,65 @@ describe("provider readiness DTOs", () => {
       });
   });
 
+  it("fails closed when a linked credential reference has a malformed expiration timestamp", async () => {
+    const registry = createProviderRegistry();
+    registry.register({
+      providerId: "provider_fake_malformed_expiry_remote",
+      label: "Malformed expiry remote provider",
+      adapterVersion: "agent-provider-auth.v1",
+      backendKind: "openai-compatible-api",
+      modelFamilies: ["fake-malformed-expiry-remote"],
+      modalities: ["text"],
+      toolSupport: "function-calling",
+      structuredOutputSupport: "schema-strict",
+      contextLimits: { maxInputTokens: 8192, maxOutputTokens: 2048 },
+      credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+      dataHandlingNotes: "Simulates a remote API provider with malformed expiry metadata.",
+      costPolicy: "metered-api",
+      workspaceScopes: ["workspace"],
+      approvalProfile: "remote-byte-transfer-gated",
+      diagnosticContract: ["credential-expired"],
+      fakeSupport: true
+    });
+    const store = new FakeSecretStore();
+    await store.putForTest("agent_credref_api_malformed_expiry", SecretMaterial.fromTestValue("remote-provider-material"));
+    const validReference = createCredentialReference({
+      credentialRefId: "agent_credref_api_malformed_expiry",
+      providerId: "provider_fake_malformed_expiry_remote",
+      credentialKind: "api-key-bearer",
+      scopeKind: "workspace",
+      capabilityScopes: ["model-inference"],
+      safeLabel: "Malformed expiry remote key",
+      authorizedBy: "actor_case_owner",
+      authorizedAt: "2026-07-07T21:00:00.000Z",
+      policyVersion: "agent-provider-auth.v1",
+      status: "linked"
+    });
+
+    const dto = await buildProviderReadiness({
+      registry,
+      credentialReferences: [
+        {
+          ...validReference,
+          expiresAt: "not-a-date"
+        }
+      ],
+      secretStore: store,
+      now: () => "2026-07-07T22:15:00.000Z"
+    });
+
+    expect(providerReadinessDtoSchema.parse(dto)).toEqual(dto);
+    expect(JSON.stringify(dto)).not.toMatch(/remote-provider-material|authorization:\s*bearer|password=|private key|secret=/i);
+    expect(dto.cards.find((card) => card.providerId === "provider_fake_malformed_expiry_remote")).toMatchObject({
+      state: "credential-expired"
+    });
+    expect(dto.diagnostics.find((diagnostic) => diagnostic.providerId === "provider_fake_malformed_expiry_remote"))
+      .toMatchObject({
+        category: "credential-expired",
+        credentialRefId: "agent_credref_api_malformed_expiry"
+      });
+  });
+
   it("reports harness workspace approval for harness-gated providers", async () => {
     const registry = createProviderRegistry();
     registry.register({
