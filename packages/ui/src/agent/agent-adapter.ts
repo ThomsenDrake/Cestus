@@ -1,9 +1,17 @@
 import { z } from "zod";
 import { providerReadinessDtoSchema } from "../../../agent/src/provider-readiness.js";
-import type { AgentRuntimeDiagnosticDto, AgentStatusDto } from "./agent-types.js";
+import type {
+  AgentApprovalCockpitDto,
+  AgentApprovalDecisionResultDto,
+  AgentRuntimeDiagnosticDto,
+  AgentStatusDto
+} from "./agent-types.js";
 
 export interface AgentAdapter {
   loadStatus(): Promise<AgentStatusDto>;
+  loadApprovalCockpit(): Promise<AgentApprovalCockpitDto>;
+  approveToolRequest(input: ApproveToolRequestInput): Promise<AgentApprovalDecisionResultDto>;
+  denyToolRequest(input: DenyToolRequestInput): Promise<AgentApprovalDecisionResultDto>;
 }
 
 export interface HttpAgentAdapterOptions {
@@ -11,6 +19,17 @@ export interface HttpAgentAdapterOptions {
   readonly authToken?: string;
   readonly credentials?: RequestCredentials;
   readonly fetcher?: typeof fetch;
+}
+
+export interface ApproveToolRequestInput {
+  readonly toolRequestId: string;
+  readonly approvedPreviewHash: string;
+  readonly rationale: string;
+}
+
+export interface DenyToolRequestInput {
+  readonly toolRequestId: string;
+  readonly rationale: string;
 }
 
 const eventIdsSchema = z.array(z.string().min(1));
@@ -29,17 +48,13 @@ const agentFailureCategorySchema = z.enum([
   "model-output-invalid",
   "external-effect-failed"
 ]);
-const agentToolApprovalClassSchema = z.enum([
-  "none",
-  "human-review",
-  "provider-byte-transfer",
-  "external-message-send",
-  "export-or-publication",
-  "destructive-or-repair",
-  "legal-escalation",
-  "ledger-review"
-]);
-
+const sentinelApprovalIdentifiers = new Set(["none", "human-review"]);
+const extensibleApprovalIdentifierSchema = z.string().min(1).refine(
+  (value) => !sentinelApprovalIdentifiers.has(value),
+  "Approval identifiers must not use sentinel values."
+);
+const extensibleApprovalClassSchema = extensibleApprovalIdentifierSchema;
+const extensibleForbiddenDirectEffectSchema = extensibleApprovalIdentifierSchema;
 const identitySchema = z.object({
   residentAgentId: z.string().min(1),
   workspaceId: z.string().min(1),
@@ -150,7 +165,7 @@ const toolRequestSchema = z.object({
     "destructive-or-repair",
     "legal-escalation"
   ]),
-  requiredApprovalClass: agentToolApprovalClassSchema,
+  requiredApprovalClass: extensibleApprovalClassSchema,
   previewHash: z.string().min(1),
   scope: z.string().min(1),
   estimatedEffect: z.string().min(1),
@@ -160,7 +175,7 @@ const toolRequestSchema = z.object({
   inputArtifactHashes: z.array(z.string().min(1)),
   approvedBy: z.string().min(1).optional(),
   approvedPreviewHash: z.string().min(1).optional(),
-  approvalClass: agentToolApprovalClassSchema.optional(),
+  approvalClass: extensibleApprovalClassSchema.optional(),
   approvalRationale: z.string().min(1).optional(),
   approvedAt: z.string().datetime().optional(),
   deniedBy: z.string().min(1).optional(),
@@ -244,6 +259,182 @@ const diagnosticSchema = z.object({
   allowedRepairActions: z.array(z.string().min(1)).optional()
 }).strict();
 
+const contextPackRefSchema = z.object({
+  contextPackId: z.string().min(1),
+  version: z.number().int().positive(),
+  contentHash: z.string().min(1),
+  sizeBytes: z.number().int().nonnegative(),
+  generatedAt: z.string().datetime(),
+  safeSummary: z.string().min(1),
+  provenanceRefs: z.array(z.string().min(1)).min(1),
+  projectionHighWaterMark: z.number().int().nonnegative().optional()
+}).strict();
+
+const affectedRefSchema = z.object({
+  kind: z.string().min(1),
+  id: z.string().min(1),
+  hash: z.string().min(1).optional(),
+  label: z.string().min(1).optional()
+}).strict();
+
+const approvalQueueLockSchema = z.object({
+  lockId: z.string().min(1),
+  category: z.string().min(1),
+  message: z.string().min(1),
+  relatedRefs: z.array(affectedRefSchema).optional(),
+  appliesToToolRequestIds: z.array(z.string().min(1)).optional(),
+  appliesToApprovalClasses: z.array(extensibleApprovalClassSchema).optional()
+}).strict();
+
+const approvalQueueApprovalSchema = z.object({
+  toolRequestId: z.string().min(1),
+  approvedBy: z.string().min(1),
+  approvedPreviewHash: z.string().min(1),
+  approvedAt: z.string().datetime(),
+  rationale: z.string().min(1),
+  approvalClass: extensibleApprovalClassSchema.optional()
+}).strict();
+
+const approvalQueueDenialSchema = z.object({
+  toolRequestId: z.string().min(1),
+  deniedBy: z.string().min(1),
+  deniedAt: z.string().datetime(),
+  rationale: z.string().min(1),
+  approvalClass: extensibleApprovalClassSchema.optional()
+}).strict();
+
+const approvalQueueCompletionSchema = z.object({
+  toolRequestId: z.string().min(1),
+  completedAt: z.string().datetime(),
+  resultSummary: z.string().min(1).optional(),
+  eventIds: z.array(z.string().min(1)),
+  artifactHashes: z.array(z.string().min(1)),
+  readModelChanges: z.array(z.string().min(1))
+}).strict();
+
+const approvalQueueFailureSchema = z.object({
+  toolRequestId: z.string().min(1),
+  failedAt: z.string().datetime(),
+  category: z.string().min(1),
+  message: z.string().min(1),
+  retryable: z.boolean(),
+  allowedActions: z.array(z.string().min(1))
+}).strict();
+
+const approvalQueueRiskSchema = z.object({
+  sideEffectClass: z.string().min(1),
+  approvalClass: extensibleApprovalClassSchema,
+  previewSummary: z.string().min(1),
+  affectedRefs: z.array(affectedRefSchema),
+  contextPackRefs: z.array(contextPackRefSchema),
+  activeLocks: z.array(approvalQueueLockSchema),
+  blockingReasons: z.array(z.string().min(1))
+}).strict();
+
+const approvalStalenessSchema = z.object({
+  state: z.enum(["current", "stale"]),
+  approvable: z.boolean(),
+  currentPreviewHash: z.string().min(1).optional(),
+  guidance: z.string().min(1).optional()
+}).strict();
+
+const approvalContractSchema = z.object({
+  requiredApprovalClass: extensibleApprovalClassSchema,
+  approvalRouteAppendsOnly: z.literal(true),
+  denialRouteAppendsOnly: z.literal(true),
+  rationaleRequired: z.literal(true),
+  rationaleSecretSafe: z.literal(true),
+  afterApproval: z.string().min(1)
+}).strict();
+
+const approvalReviewSchema = z.object({
+  what: z.string().min(1),
+  why: z.string().min(1),
+  dataLeavesOrChanges: z.string().min(1),
+  evidenceRefs: z.array(affectedRefSchema),
+  artifactRefs: z.array(affectedRefSchema),
+  riskAndLockStatus: z.string().min(1),
+  whatHappensAfterApproval: z.string().min(1),
+  staleOrUnsafePrevention: z.array(z.string().min(1))
+}).strict();
+
+const agentApprovalQueueItemSchema = z.object({
+  toolRequestId: z.string().min(1),
+  runId: z.string().min(1),
+  taskId: z.string().min(1),
+  toolId: z.string().min(1),
+  toolVersion: z.union([z.number(), z.string().min(1)]),
+  sideEffectClass: z.string().min(1),
+  approvalClass: extensibleApprovalClassSchema,
+  requiredApprovalClass: extensibleApprovalClassSchema,
+  previewHash: z.string().min(1),
+  currentPreviewHash: z.string().min(1).optional(),
+  previewSummary: z.string().min(1),
+  requestedAt: z.string().datetime(),
+  stale: z.boolean(),
+  executableByApproval: z.literal(false),
+  providerByteTransferNote: z.string().min(1).optional(),
+  staleness: approvalStalenessSchema,
+  approvalContract: approvalContractSchema,
+  review: approvalReviewSchema,
+  affectedRefs: z.array(affectedRefSchema),
+  contextPackRefs: z.array(contextPackRefSchema),
+  activeLocks: z.array(approvalQueueLockSchema),
+  blockingReasons: z.array(z.string().min(1)),
+  risk: approvalQueueRiskSchema,
+  approval: approvalQueueApprovalSchema.optional(),
+  denial: approvalQueueDenialSchema.optional(),
+  completion: approvalQueueCompletionSchema.optional(),
+  failure: approvalQueueFailureSchema.optional()
+}).strict();
+
+const agentApprovalCockpitDtoSchema = z.object({
+  schemaVersion: z.literal("agent-approval-cockpit.v1"),
+  generatedAt: z.string().datetime(),
+  summary: z.object({
+    pendingCount: z.number().int().nonnegative(),
+    resumableCount: z.number().int().nonnegative(),
+    blockedCount: z.number().int().nonnegative(),
+    staleCount: z.number().int().nonnegative(),
+    terminalCount: z.number().int().nonnegative()
+  }).strict(),
+  decisionContract: z.object({
+    approvalAppendsDecisionOnly: z.literal(true),
+    denialAppendsDecisionOnly: z.literal(true),
+    requiresHumanActor: z.literal(true),
+    afterApproval: z.string().min(1),
+    forbiddenDirectEffects: z.array(extensibleForbiddenDirectEffectSchema)
+  }).strict(),
+  approvalClasses: z.array(z.object({
+    approvalClass: extensibleApprovalClassSchema,
+    label: z.string().min(1),
+    requiredFor: z.string().min(1),
+    providerByteTransferNote: z.string().min(1).optional(),
+    rationale: z.object({
+      required: z.literal(true),
+      secretSafe: z.literal(true)
+    }).strict()
+  }).strict()),
+  queue: z.object({
+    generatedAt: z.string().datetime(),
+    pending: z.array(agentApprovalQueueItemSchema),
+    resumable: z.array(agentApprovalQueueItemSchema),
+    blocked: z.array(agentApprovalQueueItemSchema),
+    stale: z.array(agentApprovalQueueItemSchema),
+    denied: z.array(agentApprovalQueueItemSchema),
+    completed: z.array(agentApprovalQueueItemSchema),
+    failed: z.array(agentApprovalQueueItemSchema)
+  }).strict(),
+  forbiddenDirectEffects: z.array(extensibleForbiddenDirectEffectSchema)
+}).strict();
+
+const agentApprovalDecisionResultDtoSchema = z.object({
+  ok: z.literal(true),
+  schemaVersion: z.literal("agent-approval-decision-result.v1"),
+  eventIds: z.array(z.string().min(1)),
+  approvalCockpit: agentApprovalCockpitDtoSchema
+}).strict();
+
 const agentStatusDtoSchema = z.object({
   schemaVersion: z.literal("agent-status.v1"),
   generatedAt: z.string().datetime(),
@@ -300,24 +491,91 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
       } catch {
         return runtimeUnavailableAgentStatus({ message: "Agent runtime returned an invalid DTO." });
       }
+    },
+
+    async loadApprovalCockpit() {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/approvals`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken })
+      });
+      return agentApprovalCockpitFromJson(await readRouteJson(response, "Agent approval cockpit"));
+    },
+
+    async approveToolRequest(input: ApproveToolRequestInput) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/approvals/${encodeURIComponent(input.toolRequestId)}/approve`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: {
+          approvedPreviewHash: input.approvedPreviewHash,
+          rationale: input.rationale
+        }
+      });
+      return agentApprovalDecisionResultFromJson(await readRouteJson(response, "Agent approval decision"));
+    },
+
+    async denyToolRequest(input: DenyToolRequestInput) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/approvals/${encodeURIComponent(input.toolRequestId)}/deny`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: {
+          rationale: input.rationale
+        }
+      });
+      return agentApprovalDecisionResultFromJson(await readRouteJson(response, "Agent approval decision"));
     }
   });
 }
 
 export const httpAgentAdapter = createHttpAgentAdapter();
 
-export function createStaticAgentAdapter(dto: AgentStatusDto): AgentAdapter {
+export function createStaticAgentAdapter(
+  dto: AgentStatusDto,
+  approvalCockpit?: AgentApprovalCockpitDto
+): AgentAdapter {
   const stored = agentStatusFromJson(dto);
+  const storedApprovalCockpit = agentApprovalCockpitFromJson(
+    approvalCockpit ?? emptyApprovalCockpit(stored.generatedAt)
+  );
 
   return Object.freeze({
     async loadStatus() {
       return deepFreeze(deepClone(stored));
+    },
+
+    async loadApprovalCockpit() {
+      return deepFreeze(deepClone(storedApprovalCockpit));
+    },
+
+    async approveToolRequest() {
+      throw new Error("Static agent adapter cannot approve tool requests.");
+    },
+
+    async denyToolRequest() {
+      throw new Error("Static agent adapter cannot deny tool requests.");
     }
   });
 }
 
 export function agentStatusFromJson(value: unknown): AgentStatusDto {
   return deepFreeze(agentStatusDtoSchema.parse(safeAgentValue(value)) as AgentStatusDto);
+}
+
+export function agentApprovalCockpitFromJson(value: unknown): AgentApprovalCockpitDto {
+  return deepFreeze(agentApprovalCockpitDtoSchema.parse(safeAgentValue(value)) as AgentApprovalCockpitDto);
+}
+
+export function agentApprovalDecisionResultFromJson(value: unknown): AgentApprovalDecisionResultDto {
+  return deepFreeze(
+    agentApprovalDecisionResultDtoSchema.parse(safeAgentValue(value)) as AgentApprovalDecisionResultDto
+  );
 }
 
 export function runtimeUnavailableAgentStatus(input: {
@@ -350,7 +608,8 @@ export function runtimeUnavailableAgentStatus(input: {
 }
 
 export function safeAgentText(text: string): string {
-  return text
+  return redactNonUrlAbsolutePaths(
+    text
     .replace(/bearer\s+[A-Za-z0-9._~+/=-]+/gi, "[redacted credential]")
     .replace(/sk[-_](?:live|test|proj)[-_][A-Za-z0-9_-]+/gi, "[redacted credential]")
     .replace(/(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+/gi, "[redacted credential]")
@@ -365,11 +624,11 @@ export function safeAgentText(text: string): string {
     .replace(/-----BEGIN [^-]*PRIVATE KEY-----/gi, "[redacted credential]")
     .replace(/-----END [^-]*PRIVATE KEY-----/gi, "[redacted credential]")
     .replace(/\b[A-Za-z]:\\[^\s"',;)]+/g, "[path redacted]")
-    .replace(/(?<![:/])\/(?!\/)[^\s"',;)]+/g, "[path redacted]")
     .replace(
       /(?<![-\w])(?:auth[\s._-]*tokens?|bearer(?:[\s._-]*tokens?)?|tokens?|passwords?|private[\s._-]*keys?)(?![-\w])/gi,
       "[redacted credential]"
-    );
+    )
+  );
 }
 
 function safeGeneratedAt(value: string | undefined): string {
@@ -381,8 +640,60 @@ function safeGeneratedAt(value: string | undefined): string {
   return Number.isNaN(timestamp) ? new Date().toISOString() : new Date(timestamp).toISOString();
 }
 
+function redactNonUrlAbsolutePaths(text: string): string {
+  return text.replace(
+    /(^|[\s("'=:\[])(\/(?:[^/\s"'`,;)\]]+(?:\/[^/\s"'`,;)\]]*)*))/g,
+    (_match, prefix: string, path: string) => `${prefix}${path.startsWith("//") ? path : "[path redacted]"}`
+  );
+}
+
 function authHeaders(authToken: string | undefined): Record<string, string> {
   return authToken === undefined ? {} : { authorization: `Bearer ${authToken}` };
+}
+
+async function fetchAgentRoute(input: {
+  readonly path: string;
+  readonly credentials: RequestCredentials;
+  readonly fetcher: typeof fetch;
+  readonly authToken?: string;
+  readonly method?: "GET" | "POST";
+  readonly body?: Record<string, string>;
+}): Promise<Response> {
+  try {
+    return await input.fetcher(input.path, {
+      credentials: input.credentials,
+      headers: requestHeaders(input.authToken, input.body === undefined ? undefined : "application/json"),
+      method: input.method ?? "GET",
+      ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) })
+    });
+  } catch {
+    throw new Error("Agent runtime request failed.");
+  }
+}
+
+async function readRouteJson(response: Response, label: string): Promise<unknown> {
+  let json: unknown;
+  try {
+    json = await response.json();
+  } catch {
+    throw new Error(response.ok ? `${label} route returned invalid JSON.` : `${label} route returned HTTP ${response.status}.`);
+  }
+
+  if (!response.ok) {
+    throw new Error(safeAgentText(messageFromRuntimeFailure(json) ?? `${label} route returned HTTP ${response.status}.`));
+  }
+
+  return json;
+}
+
+function requestHeaders(
+  authToken: string | undefined,
+  contentType: string | undefined
+): Record<string, string> {
+  return {
+    ...authHeaders(authToken),
+    ...(contentType === undefined ? {} : { "content-type": contentType })
+  };
 }
 
 function messageFromRuntimeFailure(value: unknown): string | undefined {
@@ -401,22 +712,135 @@ function messageFromRuntimeFailure(value: unknown): string | undefined {
   return undefined;
 }
 
+function emptyApprovalCockpit(generatedAt: string): AgentApprovalCockpitDto {
+  return agentApprovalCockpitFromJson({
+    schemaVersion: "agent-approval-cockpit.v1",
+    generatedAt: safeGeneratedAt(generatedAt),
+    summary: {
+      pendingCount: 0,
+      resumableCount: 0,
+      blockedCount: 0,
+      staleCount: 0,
+      terminalCount: 0
+    },
+    decisionContract: {
+      approvalAppendsDecisionOnly: true,
+      denialAppendsDecisionOnly: true,
+      requiresHumanActor: true,
+      afterApproval: "Approval records a human decision only. A separate scheduler revalidates the exact preview hash before work.",
+      forbiddenDirectEffects: [
+        "provider-byte-transfer",
+        "prr-send-followup",
+        "legal-escalation",
+        "export-publication",
+        "destructive-repair",
+        "accepted-graph-review"
+      ]
+    },
+    approvalClasses: [],
+    queue: {
+      generatedAt: safeGeneratedAt(generatedAt),
+      pending: [],
+      resumable: [],
+      blocked: [],
+      stale: [],
+      denied: [],
+      completed: [],
+      failed: []
+    },
+    forbiddenDirectEffects: [
+      "provider-byte-transfer",
+      "prr-send-followup",
+      "legal-escalation",
+      "export-publication",
+      "destructive-repair",
+      "accepted-graph-review"
+    ]
+  });
+}
+
 function safeAgentValue(value: unknown): unknown {
   if (typeof value === "string") {
     return safeAgentText(value);
   }
 
   if (Array.isArray(value)) {
-    return value.map(safeAgentValue);
+    return safeAgentArray(value);
   }
 
   if (!isJsonObject(value)) {
     return value;
   }
 
-  return Object.fromEntries(
-    Object.entries(value).map(([key, nested]) => [safeAgentText(key), safeAgentValue(nested)])
+  return safeAgentObject(value);
+}
+
+function safeAgentArray(value: readonly unknown[]): unknown[] {
+  if (Object.getPrototypeOf(value) !== Array.prototype) {
+    throw invalidBrowserDtoError("Browser DTO input must use plain array prototypes.");
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  assertNoAccessorDescriptors(
+    descriptors,
+    "Browser DTO input must not use accessor-backed array items."
   );
+  const result: unknown[] = [];
+
+  for (const key of Object.keys(value)) {
+    const descriptor = descriptors[key];
+    if (descriptor === undefined) {
+      throw invalidBrowserDtoError("Browser DTO input must not use accessor-backed array items.");
+    }
+
+    const index = Number(key);
+    if (!Number.isInteger(index) || index < 0) {
+      throw invalidBrowserDtoError("Browser DTO arrays must use numeric item keys only.");
+    }
+
+    result[index] = safeAgentValue(descriptor.value);
+  }
+
+  return result;
+}
+
+function safeAgentObject(value: Record<string, unknown>): Record<string, unknown> {
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw invalidBrowserDtoError("Browser DTO input must use plain object prototypes.");
+  }
+
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  assertNoAccessorDescriptors(
+    descriptors,
+    "Browser DTO input must not use accessor-backed fields."
+  );
+  const result: Record<string, unknown> = {};
+
+  for (const [key, descriptor] of Object.entries(descriptors)) {
+    if (!descriptor.enumerable) {
+      continue;
+    }
+
+    result[safeAgentText(key)] = safeAgentValue(descriptor.value);
+  }
+
+  return result;
+}
+
+function assertNoAccessorDescriptors(
+  descriptors: Readonly<Record<string, PropertyDescriptor>>,
+  message: string
+): void {
+  for (const descriptor of Object.values(descriptors)) {
+    if (!("value" in descriptor)) {
+      throw invalidBrowserDtoError(message);
+    }
+  }
+}
+
+function invalidBrowserDtoError(message: string): Error {
+  return new Error(message);
 }
 
 function deepClone<T>(value: T): T {

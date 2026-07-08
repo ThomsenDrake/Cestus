@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -36,7 +36,7 @@ describe("agent HTTP routes", () => {
     expect(body.providers).toEqual([
       expect.objectContaining({ providerId: "provider_fake_local", modelFamilies: ["fake-local"] })
     ]);
-    expect(isAgentSecretSafeText(response.body)).toBe(true);
+    expectAgentStatusBodyToHideRuntimeMaterial(response.body);
     closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
@@ -66,7 +66,7 @@ describe("agent HTTP routes", () => {
     ]));
     expect(response.body).not.toContain("Cestus local runtime prompt artifact");
     expect(response.body).not.toContain(providerSetupSentinel());
-    expect(isAgentSecretSafeText(response.body)).toBe(true);
+    expectAgentStatusBodyToHideRuntimeMaterial(response.body);
     closeHandler(handler);
     expect(await eventTypes(config)).toEqual([]);
   });
@@ -267,7 +267,7 @@ describe("agent HTTP routes", () => {
     expect(rejected.body).not.toContain(routeSessionSentinel());
     expect(accepted.body).not.toContain(routeSessionSentinel());
     expect(isAgentSecretSafeText(rejected.body)).toBe(true);
-    expect(isAgentSecretSafeText(accepted.body)).toBe(true);
+    expectAgentStatusBodyToHideRuntimeMaterial(accepted.body);
   });
 });
 
@@ -387,4 +387,10 @@ function providerSetupSentinel(): string {
 
 function routeSessionSentinel(): string {
   return "route-session-sentinel";
+}
+
+function expectAgentStatusBodyToHideRuntimeMaterial(body: string): void {
+  expect(body).not.toContain(providerSetupSentinel());
+  expect(body).not.toContain(routeSessionSentinel());
+  expect(body).not.toMatch(/runtime-provider-material|authorization:\s*bearer|provider error|response body|private key|password=|secret=/i);
 }

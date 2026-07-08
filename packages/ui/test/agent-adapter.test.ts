@@ -181,24 +181,59 @@ describe("agent UI adapter", () => {
         toolRequests: [
           {
             ...agentToolRequest(),
-            approvalClass: "manager-signoff"
-          }
-        ]
-      })
-    ).toThrow();
-
-    expect(() =>
-      agentStatusFromJson({
-        ...agentStatus(),
-        toolRequests: [
-          {
-            ...agentToolRequest(),
             failureCategory: "runtime-crash"
           }
         ]
       })
     ).toThrow();
   });
+
+  it("accepts future approval identifiers in status tool requests", () => {
+    const futureApprovalStatus: AgentStatusDto = {
+      ...agentStatus(),
+      toolRequests: [
+        {
+          ...agentToolRequest(),
+          requiredApprovalClass: "evidence-retention-review",
+          approvalClass: "evidence-retention-review"
+        }
+      ]
+    };
+
+    const parsed = agentStatusFromJson(futureApprovalStatus);
+
+    expect(parsed.toolRequests[0]?.requiredApprovalClass).toBe("evidence-retention-review");
+    expect(parsed.toolRequests[0]?.approvalClass).toBe("evidence-retention-review");
+  });
+
+  it.each(["none", "human-review"])(
+    "rejects sentinel approval identifiers in status tool requests: %s",
+    (approvalClass) => {
+      expect(() =>
+        agentStatusFromJson({
+          ...agentStatus(),
+          toolRequests: [
+            {
+              ...agentToolRequest(),
+              requiredApprovalClass: approvalClass
+            }
+          ]
+        })
+      ).toThrow();
+
+      expect(() =>
+        agentStatusFromJson({
+          ...agentStatus(),
+          toolRequests: [
+            {
+              ...agentToolRequest(),
+              approvalClass
+            }
+          ]
+        })
+      ).toThrow();
+    }
+  );
 
   it("maps non-2xx runtime JSON into a safe unavailable DTO", async () => {
     const fetcher = vi.fn(async () =>
@@ -283,7 +318,7 @@ function agentRun() {
   };
 }
 
-function agentToolRequest() {
+function agentToolRequest(): AgentStatusDto["toolRequests"][number] {
   return {
     toolRequestId: "toolreq_provider_preview",
     runId: "run_provider_review",

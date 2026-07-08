@@ -1,19 +1,33 @@
 import type {
+  AgentApprovalCockpitDto,
   AgentStatusDto
 } from "./agent-types.js";
 import { providerSetupCardsFromReadiness } from "./provider-setup-cards.js";
+import type {
+  ApproveToolRequestInput,
+  DenyToolRequestInput
+} from "./agent-adapter.js";
+import { AgentApprovalCockpit } from "./AgentApprovalCockpit.js";
 
 interface AgentWorkspaceProps {
   readonly status: AgentStatusDto | undefined;
+  readonly approvalCockpit?: AgentApprovalCockpitDto | undefined;
+  readonly decisionState?: "idle" | "submitting" | "error" | undefined;
   readonly loadState: "idle" | "loading" | "loaded" | "error";
   readonly loadError?: string | undefined;
   readonly onRefresh?: (() => void) | undefined;
+  readonly onApproveToolRequest?: ((input: ApproveToolRequestInput) => void) | undefined;
+  readonly onDenyToolRequest?: ((input: DenyToolRequestInput) => void) | undefined;
 }
 
 export function AgentWorkspace({
   status,
+  approvalCockpit,
+  decisionState = "idle",
   loadState,
-  onRefresh
+  onRefresh,
+  onApproveToolRequest,
+  onDenyToolRequest
 }: AgentWorkspaceProps) {
   const identity = status?.identity;
   const activeLocks = status?.locks.filter((lock) => lock.state === "active") ?? [];
@@ -106,6 +120,15 @@ export function AgentWorkspace({
               )}
             </section>
           </div>
+
+          {approvalCockpit === undefined ? null : (
+            <AgentApprovalCockpit
+              cockpit={approvalCockpit}
+              decisionState={decisionState}
+              onApprove={onApproveToolRequest}
+              onDeny={onDenyToolRequest}
+            />
+          )}
 
           <div className="grid gap-4 xl:grid-cols-2">
             <section aria-label="Agent providers" className="border border-[var(--console-line)] bg-[var(--console-panel)]">
@@ -212,7 +235,10 @@ export function AgentWorkspace({
           </section>
 
           <section aria-label="Agent tool requests" className="border border-[var(--console-line)] bg-[var(--console-panel)]">
-            <SectionHeader title="Tool requests" meta={countLabel(requestedTools.length, "pending approval")} />
+            <SectionHeader
+              title={approvalCockpit === undefined ? "Tool requests" : "Tool request ledger"}
+              meta={countLabel(requestedTools.length, "pending approval")}
+            />
             {status.toolRequests.length > 0 ? (
               <ul role="list" className="divide-y divide-[var(--console-line)]">
                 {status.toolRequests.map((request) => (
