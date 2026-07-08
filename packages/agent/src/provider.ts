@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import {
+  createProviderCapabilityDescriptor,
+  type ProviderCapabilityDescriptor
+} from "./provider-registry.js";
 import { assertAgentSecretSafeText, isAgentSecretSafeText } from "./secret-safety.js";
 
 const providerIdSchema = z.string()
@@ -160,6 +164,33 @@ export class FakeModelProvider implements ModelProviderAdapter {
   }
 }
 
+export function providerDescriptorToCapabilityDescriptor(
+  descriptor: ProviderDescriptor
+): ProviderCapabilityDescriptor {
+  const parsed = providerDescriptorSchema.parse(descriptor);
+  return createProviderCapabilityDescriptor({
+    providerId: parsed.providerId,
+    label: parsed.label,
+    adapterVersion: parsed.adapterVersion,
+    backendKind: parsed.endpointKind,
+    modelFamilies: parsed.modelFamilies,
+    modalities: ["text"],
+    toolSupport: parsed.supportsToolCalling ? "function-calling" : "none",
+    structuredOutputSupport: parsed.supportsStructuredOutput ? "schema-strict" : "unsupported",
+    contextLimits: { maxInputTokens: 4096, maxOutputTokens: 1024 },
+    credentialRequirements: parsed.credentialKinds.map((credentialKind) => ({
+      credentialKind,
+      required: false
+    })),
+    dataHandlingNotes: parsed.safeDataNotes,
+    costPolicy: costPolicyForEndpointKind(parsed.endpointKind),
+    workspaceScopes: ["workspace"],
+    approvalProfile: parsed.endpointKind === "local-engine" ? "local-only" : "remote-byte-transfer-gated",
+    diagnosticContract: ["provider-ready", "model-output-invalid"],
+    fakeSupport: parsed.endpointKind === "local-engine"
+  });
+}
+
 function hashInvocationOutput(input: {
   readonly invocationId: string;
   readonly runId: string;
@@ -177,6 +208,20 @@ function hashInvocationOutput(input: {
     .digest("hex");
 
   return `sha256:${digest}`;
+}
+
+function costPolicyForEndpointKind(endpointKind: ProviderDescriptor["endpointKind"]) {
+  switch (endpointKind) {
+    case "local-engine":
+      return "local-compute";
+    case "enterprise-gateway":
+      return "org-managed";
+    case "custom-adapter":
+      return "unknown-until-configured";
+    case "openai-api":
+    case "openai-compatible-api":
+      return "metered-api";
+  }
 }
 
 function freezeProviderDescriptor(descriptor: ProviderDescriptor): ProviderDescriptor {
