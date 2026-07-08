@@ -22,6 +22,7 @@ import {
 } from "../../ontology-bootstrap/src/fake-runtime.js";
 import type { OntologyBootstrapEvidenceLink } from "../../ontology-bootstrap/src/dossier-builder.js";
 import { buildContextPackRef, type ContextPackRef } from "./context-packs.js";
+import type { OntologyBootstrapNousMemo } from "./ontology-bootstrap-nous.js";
 import { buildAgentProjection } from "./projection.js";
 import type { AgentFailureCategory, AgentToolSideEffectClass } from "./projection-types.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
@@ -155,7 +156,14 @@ export interface RunOntologyBootstrapResidentWorkflowInput {
   readonly importBatchId?: string;
   readonly stagingBatchId?: string;
   readonly maxCandidatesPerBundle?: number;
+  readonly nousMemo?: OntologyBootstrapNousMemoAttachment;
   readonly now: () => string;
+}
+
+export interface OntologyBootstrapNousMemoAttachment {
+  readonly invocationId: string;
+  readonly outputArtifactHash: `sha256:${string}`;
+  readonly memo: OntologyBootstrapNousMemo;
 }
 
 export type RunOntologyBootstrapResidentWorkflowResult =
@@ -165,6 +173,7 @@ export type RunOntologyBootstrapResidentWorkflowResult =
       readonly reviewBundleHash: `sha256:${string}`;
       readonly contextPack: ContextPackRef;
       readonly candidateBundleHashes: readonly `sha256:${string}`[];
+      readonly nousMemoHash?: `sha256:${string}`;
       readonly pendingApprovalToolRequestIds: readonly string[];
       readonly eventIds: readonly string[];
     }
@@ -416,6 +425,14 @@ export async function runOntologyBootstrapResidentWorkflow(
     eventIds.push(stepEvent.id);
   }
 
+  const nousStepEvent = await appendNousMemoStepIfNeeded(input, {
+    reviewBundleHash,
+    projectionStepIds: buildAgentProjection(await input.ledger.readAll()).runs.get(input.runId)?.stepIds ?? []
+  });
+  if (nousStepEvent !== undefined) {
+    eventIds.push(nousStepEvent.id);
+  }
+
   const toolRequestEventIds: string[] = [];
   const pendingApprovalToolRequestIds: string[] = [];
   for (const preview of bootstrap.toolPreviews) {
@@ -502,6 +519,7 @@ export async function runOntologyBootstrapResidentWorkflow(
     reviewBundleHash,
     contextPack,
     candidateBundleHashes,
+    ...(input.nousMemo === undefined ? {} : { nousMemoHash: input.nousMemo.memo.memoHash as `sha256:${string}` }),
     pendingApprovalToolRequestIds,
     eventIds: Object.freeze(eventIds)
   };
@@ -811,6 +829,37 @@ async function appendWaitingForApprovalIfNeeded(
       changedBy: input.actor.id,
       reason: "Ontology bootstrap staging approval requires human ledger review.",
       runId: input.runId
+    }
+  };
+  return await input.ledger.append(event);
+}
+
+async function appendNousMemoStepIfNeeded(
+  input: RunOntologyBootstrapResidentWorkflowInput,
+  command: {
+    readonly reviewBundleHash: `sha256:${string}`;
+    readonly projectionStepIds: readonly string[];
+  }
+): Promise<KnowledgeEvent | undefined> {
+  if (input.nousMemo === undefined || command.projectionStepIds.includes("step_ontology_bootstrap_nous_review")) {
+    return undefined;
+  }
+
+  const event: AppendableKnowledgeEvent<"agent.specialist-run.step.recorded"> = {
+    type: "agent.specialist-run.step.recorded",
+    version: 1,
+    streamId: runStreamId(input.runId),
+    context: agentContext(input, `corr_${input.runId}_ontology_bootstrap_nous`, input.actor),
+    payload: {
+      runId: input.runId,
+      stepId: "step_ontology_bootstrap_nous_review",
+      summary: `Attached Nous review note: ${input.nousMemo.memo.summary}`,
+      invocationId: input.nousMemo.invocationId,
+      inputArtifactHashes: [command.reviewBundleHash],
+      outputArtifactHashes: [
+        input.nousMemo.outputArtifactHash,
+        input.nousMemo.memo.memoHash as `sha256:${string}`
+      ]
     }
   };
   return await input.ledger.append(event);

@@ -6,6 +6,7 @@ import {
   runOntologyBootstrapResidentWorkflow,
   toAgentOntologyBootstrapToolPreview
 } from "../src/ontology-bootstrap-workflow.js";
+import { validateOntologyBootstrapNousMemo } from "../src/ontology-bootstrap-nous.js";
 import {
   bootstrapEvidenceLinksFixture,
   bootstrapReportFixture,
@@ -257,6 +258,53 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
     expect(projection.tasks.get("task_ontology_bootstrap_001")?.status).toBe("waiting-for-approval");
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("assertion.proposed");
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("assertion.accepted");
+  });
+
+  it("records a model-invocation-linked step when a Nous memo artifact is supplied", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    await runtime.startRun({
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      runType: "ontology-bootstrap",
+      scope: { kind: "workspace", refs: ["ws_case_001"] }
+    });
+
+    const memo = validateOntologyBootstrapNousMemo(
+      "Review note: prioritize eligible agency name candidates and inspect the malformed quarantine group."
+    );
+    const result = await runOntologyBootstrapResidentWorkflow({
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: "src_old_cestus",
+      report: bootstrapReportFixture,
+      review: bootstrapReviewFixture,
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      nousMemo: {
+        invocationId: "inv_ontology_bootstrap_nous",
+        outputArtifactHash: "sha256:3434343434343434343434343434343434343434343434343434343434343434",
+        memo
+      },
+      now
+    });
+
+    const projection = buildAgentProjection(await ledger.readAll());
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.nousMemoHash : undefined).toBe(memo.memoHash);
+    expect(projection.runs.get("run_ontology_bootstrap_001")?.stepIds).toContain("step_ontology_bootstrap_nous_review");
+    expect(projection.runs.get("run_ontology_bootstrap_001")?.invocationIds).toContain("inv_ontology_bootstrap_nous");
+    expect(JSON.stringify(await ledger.readAll())).not.toMatch(/assertion\.accepted|entity\.resolved|relationship\.accepted/i);
   });
 
   it("resumes without duplicating pending ontology bootstrap tool requests", async () => {
