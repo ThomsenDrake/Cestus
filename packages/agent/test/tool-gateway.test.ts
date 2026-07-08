@@ -219,6 +219,66 @@ describe("agent tool gateway", () => {
     ]);
   });
 
+  it("rejects forged human approval from the resident agent identity", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_forged_resident_human",
+      residentAgentId: "agent_default",
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolId: "provider.parse.preview",
+      sideEffectClass: "external-byte-transfer",
+      preview: {
+        summary: "Send provider byte transfer preview.",
+        relatedEventIds: ["evt_import_001"]
+      },
+      requiredApprovalClass: "provider-byte-transfer"
+    });
+
+    await expect(
+      gateway.approveTool({
+        toolRequestId: "toolreq_forged_resident_human",
+        approvedPreviewHash: requested.payload.previewHash,
+        actor: { id: "agent_default", kind: "human" as const, label: "Forged Human Agent" },
+        rationale: "Forged resident approval."
+      })
+    ).rejects.toThrow(/independent human/i);
+
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
+  });
+
+  it("rejects forged human approval from the gateway actor identity", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_forged_gateway_actor",
+      residentAgentId: "agent_default",
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolId: "provider.parse.preview",
+      sideEffectClass: "external-byte-transfer",
+      preview: {
+        summary: "Send provider byte transfer preview.",
+        relatedEventIds: ["evt_import_001"]
+      },
+      requiredApprovalClass: "provider-byte-transfer"
+    });
+
+    await expect(
+      gateway.approveTool({
+        toolRequestId: "toolreq_forged_gateway_actor",
+        approvedPreviewHash: requested.payload.previewHash,
+        actor: { id: agentActor.id, kind: "human" as const, label: "Forged Runtime Human" },
+        rationale: "Forged runtime approval."
+      })
+    ).rejects.toThrow(/independent human/i);
+
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
+  });
+
   it("rejects completion when denial is appended between state read and append", async () => {
     const inner = new InMemoryEventLedger();
     const ledger = new InterleavingLedger(inner, "agent.tool.denied");

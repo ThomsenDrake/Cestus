@@ -132,6 +132,7 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
       if (state.request.payload.requiredApprovalClass === "none") {
         throw new Error("Tool request does not require human approval.");
       }
+      assertIndependentApprovalActor(command.actor, state.request.payload.requestedBy, input.actor.id);
       assertFreshPreviewHash(command.approvedPreviewHash, state.request.payload.previewHash);
 
       const event: AppendableKnowledgeEvent<"agent.tool.approved"> = {
@@ -394,5 +395,11 @@ function assertNotClosed(state: ToolRequestState): void {
 function assertFreshPreviewHash(candidateHash: string, expectedHash: string): void {
   if (candidateHash !== expectedHash) {
     throw new Error("Stale approval preview hash does not match the requested preview.");
+  }
+}
+
+function assertIndependentApprovalActor(actor: ActorRef, requestedBy: string, gatewayActorId: string): void {
+  if (actor.id === requestedBy || actor.id === gatewayActorId) {
+    throw new Error("Tool approval requires an independent human actor.");
   }
 }
