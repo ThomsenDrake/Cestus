@@ -13,6 +13,7 @@ import {
   type LocalAgentRuntimeFactory
 } from "./agent-runtime-factory.js";
 import { buildLocalAgentProviderReadiness } from "./agent-provider-readiness.js";
+import { handleAgentOntologyBootstrapRoute } from "./agent-ontology-bootstrap-routes.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
 const defaultIdentityStreamId = "agent_identity_agent_default";
@@ -53,6 +54,17 @@ export async function handleAgentHttpRoute(
       actor: input.actor,
       now: input.now
     });
+
+    const ontologyBootstrapResponse = await handleAgentOntologyBootstrapRoute({
+      request: input.request,
+      handle: input.handle,
+      actor: input.actor,
+      now: input.now,
+      runtime
+    });
+    if (ontologyBootstrapResponse !== undefined) {
+      return ontologyBootstrapResponse;
+    }
 
     if (input.request.method === "GET" && path === "/api/agent/status") {
       const [status, providerReadiness] = await Promise.all([

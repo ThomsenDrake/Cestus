@@ -1,0 +1,493 @@
+import { FileBlobStore } from "../../ontology/src/blob-store.js";
+import type { ActorRef } from "../../ontology/src/contracts.js";
+import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import {
+  runOntologyBootstrapResidentWorkflow,
+  type OntologyBootstrapAgentReviewBundle
+} from "../../agent/src/index.js";
+import { buildIngestionProjection } from "../../ingestion/src/projection.js";
+import {
+  createLegacyImportRuntime,
+  type LegacyReportData
+} from "../../ingestion/src/legacy-runtime.js";
+import {
+  mountedWorkspaceCapabilities,
+  type MountedWorkspace
+} from "../../ingestion/src/mount-contract.js";
+import type { OntologyBootstrapEvidenceLink } from "../../ontology-bootstrap/src/dossier-builder.js";
+import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
+import type { LocalAgentRuntimeFactory } from "./agent-runtime-factory.js";
+import type { LocalRuntimeHandle } from "./runtime-factory.js";
+
+const routeSchemaVersion = "agent-ontology-bootstrap-route.v1" as const;
+const residentAgentId = "agent_default";
+const residentAgentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
+
+export interface HandleAgentOntologyBootstrapRouteInput {
+  readonly request: LocalRuntimeRequest;
+  readonly handle: LocalRuntimeHandle;
+  readonly actor: ActorRef;
+  readonly now: () => string;
+  readonly runtime: ReturnType<LocalAgentRuntimeFactory>;
+}
+
+export async function handleAgentOntologyBootstrapRoute(
+  input: HandleAgentOntologyBootstrapRouteInput
+): Promise<LocalRuntimeResponse | undefined> {
+  const url = new URL(input.request.url, "http://localhost");
+  const path = url.pathname;
+
+  if (input.request.method === "POST" && path === "/api/agent/specialists/ontology-bootstrap/runs") {
+    const payload = parseJsonObjectBody(input.request.body);
+    if (!payload.ok) {
+      return json(400, payload.body);
+    }
+
+    const launchInput = launchInputFromBody(payload.value);
+    if (launchInput === undefined) {
+      return json(400, invalidLaunchBodyDiagnostic());
+    }
+
+    return await launchOntologyBootstrapRun(input, launchInput);
+  }
+
+  const readMatch = path.match(/^\/api\/agent\/specialists\/ontology-bootstrap\/runs\/([^/]+)$/);
+  if (input.request.method === "GET" && readMatch !== null) {
+    const runId = decodeURIComponent(readMatch[1] ?? "");
+    if (!isAgentRunId(runId)) {
+      return json(400, invalidRunIdDiagnostic());
+    }
+    return await readOntologyBootstrapRun(input, runId);
+  }
+
+  return undefined;
+}
+
+interface LaunchInput {
+  readonly taskId: string;
+  readonly runId: string;
+  readonly sourceCollectionId: string;
+  readonly sourceRoot: string;
+  readonly scanBatchId: string;
+  readonly importBatchId: string;
+  readonly stagingBatchId?: string;
+  readonly selectedCandidateIds: readonly string[];
+  readonly maxCandidatesPerBundle?: number;
+}
+
+async function launchOntologyBootstrapRun(
+  input: HandleAgentOntologyBootstrapRouteInput,
+  launchInput: LaunchInput
+): Promise<LocalRuntimeResponse> {
+  const mountedWorkspace = mountedWorkspaceFromHandle(input.handle);
+  if (mountedWorkspace === undefined) {
+    return json(503, diagnostic("Ontology bootstrap requires a mounted portable workspace.", [
+      "configure local runtime storage as portable-workspace",
+      "retry ontology bootstrap launch"
+    ]));
+  }
+
+  const initialized = await input.runtime.initializeDefaultIdentity({
+    workspaceId: mountedWorkspace.workspaceId,
+    initializedBy: input.actor.id
+  });
+  if (!initialized.ok) {
+    return json(500, diagnostic("Agent identity could not be initialized.", [
+      "inspect the local agent runtime configuration"
+    ]));
+  }
+
+  const taskReady = await ensureTask(input, launchInput.taskId);
+  if (!taskReady.ok) {
+    return json(500, taskReady.body);
+  }
+
+  const legacyRuntime = createLegacyImportRuntime({
+    mountedWorkspace,
+    actor: input.actor
+  });
+  const inspected = await legacyRuntime.inspect({
+    sourceCollectionId: launchInput.sourceCollectionId,
+    label: "Old Cestus archive",
+    sourceRoot: launchInput.sourceRoot,
+    scanBatchId: launchInput.scanBatchId
+  });
+  if (!inspected.ok) {
+    return json(500, legacyFailureDiagnostic(inspected.error.message, inspected.error.allowedRepairActions));
+  }
+
+  const report = await legacyRuntime.report({
+    sourceCollectionId: launchInput.sourceCollectionId,
+    legacyReportId: inspected.legacyReportId
+  });
+  if (!report.ok) {
+    return json(500, legacyFailureDiagnostic(report.error.message, report.error.allowedRepairActions));
+  }
+
+  const runReady = await ensureRun(input, launchInput, report);
+  if (!runReady.ok) {
+    return json(500, runReady.body);
+  }
+
+  const evidenceLinks = await evidenceLinksForSource(input.handle.ledger, launchInput.sourceCollectionId);
+  const selectedCandidateIds = evidenceBackedSelection(report, evidenceLinks, launchInput.selectedCandidateIds);
+  const result = await runOntologyBootstrapResidentWorkflow({
+    ledger: input.handle.ledger,
+    actor: residentAgentActor,
+    residentAgentId,
+    runId: launchInput.runId,
+    taskId: launchInput.taskId,
+    sourceCollectionId: launchInput.sourceCollectionId,
+    report: report.report,
+    review: report.review,
+    evidenceLinks,
+    selectedCandidateIds,
+    importBatchId: launchInput.importBatchId,
+    ...(launchInput.stagingBatchId === undefined ? {} : { stagingBatchId: launchInput.stagingBatchId }),
+    ...(launchInput.maxCandidatesPerBundle === undefined ? {} : {
+      maxCandidatesPerBundle: launchInput.maxCandidatesPerBundle
+    }),
+    now: input.now
+  });
+
+  if (!result.ok) {
+    return json(500, diagnostic(result.message, ["inspect ontology bootstrap agent diagnostics"]));
+  }
+
+  return json(200, routeDto({
+    generatedAt: input.now(),
+    taskId: launchInput.taskId,
+    runId: launchInput.runId,
+    reviewBundle: result.reviewBundle,
+    reviewBundleHash: result.reviewBundleHash,
+    pendingApprovalToolRequestIds: result.pendingApprovalToolRequestIds,
+    requestedCandidateIds: launchInput.selectedCandidateIds,
+    selectedCandidateIds
+  }));
+}
+
+async function readOntologyBootstrapRun(
+  input: HandleAgentOntologyBootstrapRouteInput,
+  runId: string
+): Promise<LocalRuntimeResponse> {
+  const status = await input.runtime.status();
+  const run = status.runs.find((candidate) => candidate.runId === runId);
+  if (run === undefined) {
+    return json(404, diagnostic("Ontology bootstrap run was not found.", [
+      "launch the ontology bootstrap specialist run",
+      "refresh agent status"
+    ]));
+  }
+
+  const pendingApprovalToolRequestIds = status.toolRequests
+    .filter((request) => request.runId === runId && request.state === "requested")
+    .map((request) => request.toolRequestId)
+    .sort(compareCodeUnits);
+
+  return json(200, {
+    schemaVersion: routeSchemaVersion,
+    generatedAt: status.generatedAt,
+    runId: run.runId,
+    ...(run.taskId === undefined ? {} : { taskId: run.taskId }),
+    runState: run.state,
+    reviewBundleHash: run.outputArtifactHashes[0],
+    pendingApprovalToolRequestIds,
+    outputArtifactHashes: run.outputArtifactHashes,
+    stepIds: run.stepIds,
+    nextSafeAction: pendingApprovalToolRequestIds.length > 0
+      ? { kind: "review", label: "Review pending ontology bootstrap tool request", effect: "ledger-review" }
+      : { kind: "review", label: "Inspect ontology bootstrap run output hashes", effect: "none" }
+  });
+}
+
+function routeDto(input: {
+  readonly generatedAt: string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly reviewBundle: OntologyBootstrapAgentReviewBundle;
+  readonly reviewBundleHash: `sha256:${string}`;
+  readonly pendingApprovalToolRequestIds: readonly string[];
+  readonly requestedCandidateIds: readonly string[];
+  readonly selectedCandidateIds: readonly string[];
+}) {
+  const nextCursorBundle = input.reviewBundle.candidateBundles.find(
+    (bundle) => bundle.cursor.nextOffset !== undefined
+  );
+  const blockedRequestedCandidateIds = input.requestedCandidateIds
+    .filter((candidateId) => !input.selectedCandidateIds.includes(candidateId))
+    .sort(compareCodeUnits);
+
+  return {
+    schemaVersion: routeSchemaVersion,
+    generatedAt: input.generatedAt,
+    runId: input.runId,
+    taskId: input.taskId,
+    phase: input.reviewBundle.dossier.phase,
+    legacyReportId: input.reviewBundle.dossier.legacyReportId,
+    reportHash: input.reviewBundle.dossier.reportHash,
+    candidateSetHash: input.reviewBundle.dossier.candidateSetHash,
+    reviewBundleHash: input.reviewBundleHash,
+    candidateBundleCount: input.reviewBundle.candidateBundles.length,
+    candidateCount: input.reviewBundle.candidateBundles.reduce((total, bundle) => total + bundle.candidateCount, 0),
+    selectedCandidateIds: [...input.selectedCandidateIds],
+    blockedRequestedCandidateIds,
+    pendingApprovalToolRequestIds: [...input.pendingApprovalToolRequestIds],
+    nextCursor: nextCursorBundle?.cursor,
+    nextSafeAction: input.reviewBundle.nextSafeAction
+  };
+}
+
+async function ensureTask(
+  input: HandleAgentOntologyBootstrapRouteInput,
+  taskId: string
+): Promise<{ readonly ok: true } | { readonly ok: false; readonly body: unknown }> {
+  const status = await input.runtime.status();
+  if (status.tasks.some((task) => task.taskId === taskId)) {
+    return { ok: true };
+  }
+
+  const created = await input.runtime.createTask({
+    taskId,
+    title: "Bootstrap old Cestus archive",
+    requestedBy: input.actor.id,
+    priority: "normal"
+  });
+  if (created.ok) {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    body: diagnostic("Agent task could not be created.", ["inspect agent diagnostics"])
+  };
+}
+
+async function ensureRun(
+  input: HandleAgentOntologyBootstrapRouteInput,
+  launchInput: LaunchInput,
+  report: LegacyReportData
+): Promise<{ readonly ok: true } | { readonly ok: false; readonly body: unknown }> {
+  const status = await input.runtime.status();
+  if (status.runs.some((run) => run.runId === launchInput.runId)) {
+    return { ok: true };
+  }
+
+  const started = await input.runtime.startRun({
+    runId: launchInput.runId,
+    taskId: launchInput.taskId,
+    runType: "ontology-bootstrap",
+    scope: {
+      kind: "workspace",
+      refs: [input.handle.mountedWorkspace?.workspaceId ?? "ws_local_runtime"]
+    },
+    inputArtifactHashes: [report.reportHash, report.candidateSetHash]
+  });
+  if (started.ok) {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    body: diagnostic("Ontology bootstrap run could not be started.", ["inspect agent diagnostics"])
+  };
+}
+
+function mountedWorkspaceFromHandle(handle: LocalRuntimeHandle): MountedWorkspace | undefined {
+  const mounted = handle.mountedWorkspace;
+  if (mounted === undefined) {
+    return undefined;
+  }
+
+  return {
+    workspaceId: mounted.workspaceId,
+    label: mounted.label,
+    ledger: handle.ledger,
+    blobStore: new FileBlobStore(mounted.paths.blobRoot),
+    derivativeStore: new FileBlobStore(mounted.paths.derivativeRoot),
+    jobStateRoot: mounted.paths.jobRoot,
+    diagnosticsRoot: mounted.paths.cacheRoot,
+    projectionCacheRoot: mounted.paths.projectionRoot,
+    capabilities: mountedWorkspaceCapabilities({
+      canReadLedger: true,
+      canAppendLedger: true,
+      canWriteBlobs: true,
+      canWriteDerivatives: true,
+      canWriteJobState: true
+    })
+  };
+}
+
+async function evidenceLinksForSource(
+  ledger: EventLedger,
+  sourceCollectionId: string
+): Promise<readonly OntologyBootstrapEvidenceLink[]> {
+  const projection = buildIngestionProjection(await ledger.readAll());
+  return [...projection.evidenceLinks.values()]
+    .filter((link) => link.sourceCollectionId === sourceCollectionId)
+    .map((link) => ({
+      sourceCollectionId: link.sourceCollectionId,
+      evidenceId: link.evidenceId,
+      contentHash: link.contentHash as `sha256:${string}`,
+      occurrenceIds: [...link.occurrenceIds].sort(compareCodeUnits)
+    }))
+    .sort((left, right) => compareCodeUnits(left.contentHash, right.contentHash));
+}
+
+function evidenceBackedSelection(
+  report: LegacyReportData,
+  evidenceLinks: readonly OntologyBootstrapEvidenceLink[],
+  selectedCandidateIds: readonly string[]
+): readonly string[] {
+  const evidenceHashes = new Set(evidenceLinks.map((link) => link.contentHash));
+  const evidenceBackedCandidateIds = new Set(
+    report.report.proposedAssertionCandidates
+      .filter((candidate) => evidenceHashes.has(candidate.evidenceContentHash))
+      .map((candidate) => candidate.candidateId)
+  );
+  return selectedCandidateIds
+    .filter((candidateId) => evidenceBackedCandidateIds.has(candidateId))
+    .sort(compareCodeUnits);
+}
+
+function launchInputFromBody(value: Record<string, unknown>): LaunchInput | undefined {
+  if (!hasOnlyKeys(value, [
+    "taskId",
+    "runId",
+    "sourceCollectionId",
+    "sourceRoot",
+    "scanBatchId",
+    "importBatchId",
+    "stagingBatchId",
+    "selectedCandidateIds",
+    "maxCandidatesPerBundle"
+  ])) {
+    return undefined;
+  }
+
+  if (
+    !isAgentTaskId(value.taskId) ||
+    !isAgentRunId(value.runId) ||
+    !isSourceCollectionId(value.sourceCollectionId) ||
+    !isNonEmptyString(value.sourceRoot) ||
+    !isScanBatchId(value.scanBatchId) ||
+    !isImportBatchId(value.importBatchId) ||
+    (value.stagingBatchId !== undefined && !isStagingBatchId(value.stagingBatchId)) ||
+    !isCandidateIdArray(value.selectedCandidateIds) ||
+    (value.maxCandidatesPerBundle !== undefined && !isCandidateLimit(value.maxCandidatesPerBundle))
+  ) {
+    return undefined;
+  }
+
+  return {
+    taskId: value.taskId,
+    runId: value.runId,
+    sourceCollectionId: value.sourceCollectionId,
+    sourceRoot: value.sourceRoot,
+    scanBatchId: value.scanBatchId,
+    importBatchId: value.importBatchId,
+    ...(value.stagingBatchId === undefined ? {} : { stagingBatchId: value.stagingBatchId }),
+    selectedCandidateIds: value.selectedCandidateIds,
+    ...(value.maxCandidatesPerBundle === undefined ? {} : {
+      maxCandidatesPerBundle: value.maxCandidatesPerBundle
+    })
+  };
+}
+
+function parseJsonObjectBody(
+  body: string | undefined
+):
+  | { readonly ok: true; readonly value: Record<string, unknown> }
+  | { readonly ok: false; readonly body: unknown } {
+  try {
+    const value = body === undefined || body.trim() === "" ? {} : JSON.parse(body);
+    if (!isJsonObject(value)) {
+      return { ok: false, body: invalidLaunchBodyDiagnostic() };
+    }
+    return { ok: true, value };
+  } catch {
+    return {
+      ok: false,
+      body: diagnostic("Ontology bootstrap request body must be valid JSON.", ["send a valid JSON request body"])
+    };
+  }
+}
+
+function invalidLaunchBodyDiagnostic() {
+  return diagnostic("Ontology bootstrap launch body is invalid.", [
+    "send taskId, runId, sourceCollectionId, sourceRoot, scanBatchId, importBatchId, selectedCandidateIds, and optional maxCandidatesPerBundle"
+  ]);
+}
+
+function invalidRunIdDiagnostic() {
+  return diagnostic("Ontology bootstrap run id is invalid.", ["use a run_ id in the route path"]);
+}
+
+function legacyFailureDiagnostic(message: string, allowedRepairActions: readonly string[]) {
+  return diagnostic(message, allowedRepairActions);
+}
+
+function diagnostic(message: string, allowedRepairActions: readonly string[]) {
+  return Object.freeze({
+    ok: false,
+    diagnostic: Object.freeze({
+      message,
+      allowedRepairActions: Object.freeze([...allowedRepairActions])
+    })
+  });
+}
+
+function json(status: number, body: unknown): LocalRuntimeResponse {
+  return Object.freeze({
+    status,
+    headers: Object.freeze({ "content-type": "application/json; charset=utf-8" }),
+    body: JSON.stringify(body)
+  });
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const allowed = new Set(keys);
+  return Object.keys(value).every((key) => allowed.has(key));
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isAgentTaskId(value: unknown): value is string {
+  return typeof value === "string" && /^task_[a-zA-Z0-9_-]+$/.test(value);
+}
+
+function isAgentRunId(value: unknown): value is string {
+  return typeof value === "string" && /^run_[a-zA-Z0-9_-]+$/.test(value);
+}
+
+function isSourceCollectionId(value: unknown): value is string {
+  return typeof value === "string" && /^src_[a-zA-Z0-9_-]+$/.test(value);
+}
+
+function isScanBatchId(value: unknown): value is string {
+  return typeof value === "string" && /^scan_[a-zA-Z0-9_-]+$/.test(value);
+}
+
+function isImportBatchId(value: unknown): value is string {
+  return typeof value === "string" && /^imp_[a-zA-Z0-9_-]+$/.test(value);
+}
+
+function isStagingBatchId(value: unknown): value is string {
+  return typeof value === "string" && /^legacy_stage_[a-zA-Z0-9_-]+$/.test(value);
+}
+
+function isCandidateIdArray(value: unknown): value is string[] {
+  return Array.isArray(value) &&
+    value.every((item) => typeof item === "string" && /^legacy_candidate_[a-zA-Z0-9_-]+$/.test(item));
+}
+
+function isCandidateLimit(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 500;
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}

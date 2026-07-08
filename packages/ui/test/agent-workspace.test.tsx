@@ -128,6 +128,119 @@ describe("AgentWorkspace", () => {
     expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Refresh agent status"]);
   });
 
+  it("renders ontology bootstrap review state as read-only run evidence", () => {
+    render(
+      <AgentWorkspace
+        ontologyBootstrapRoutes={[
+          {
+            schemaVersion: "agent-ontology-bootstrap-route.v1",
+            generatedAt: "2026-07-08T16:02:00.000Z",
+            runId: "run_ontology_bootstrap_route",
+            taskId: "task_ontology_bootstrap_route",
+            phase: "staging-review",
+            legacyReportId: "legacy_report_001",
+            reportHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            candidateSetHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+            reviewBundleHash: "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+            candidateBundleCount: 1,
+            candidateCount: 2,
+            selectedCandidateIds: ["legacy_candidate_001"],
+            blockedRequestedCandidateIds: [],
+            pendingApprovalToolRequestIds: ["toolreq_ontology_bootstrap_staging_approval"],
+            nextCursor: { currentOffset: 0, limit: 1, totalCandidates: 2, nextOffset: 1 },
+            nextSafeAction: {
+              actionId: "bootstrap_action_review_staging",
+              label: "Review staging approval preview",
+              kind: "review",
+              effect: "ledger-review"
+            },
+            runState: "running",
+            outputArtifactHashes: ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
+            stepIds: ["step_ontology_bootstrap_dossier"]
+          }
+        ]}
+        status={agentStatus({
+          tasks: [
+            {
+              taskId: "task_ontology_bootstrap_route",
+              residentAgentId: "agent_default",
+              title: "Bootstrap old Cestus archive",
+              requestedBy: "actor_case_owner",
+              priority: "normal",
+              status: "waiting-for-approval",
+              createdAt: "2026-07-08T16:00:00.000Z",
+              sourceEventIds: [],
+              inputArtifactHashes: [],
+              runId: "run_ontology_bootstrap_route",
+              eventIds: ["evt_bootstrap_task"],
+              causationIds: []
+            }
+          ],
+          runs: [
+            {
+              runId: "run_ontology_bootstrap_route",
+              residentAgentId: "agent_default",
+              runType: "ontology-bootstrap",
+              state: "running",
+              startedBy: "actor_case_owner",
+              startedAt: "2026-07-08T16:00:10.000Z",
+              taskId: "task_ontology_bootstrap_route",
+              workspaceId: "ws_case_001",
+              sourceEventIds: [],
+              inputArtifactHashes: [],
+              relatedEventIds: [],
+              outputArtifactHashes: ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
+              stepIds: ["step_ontology_bootstrap_dossier"],
+              invocationIds: [],
+              toolRequestIds: ["toolreq_ontology_bootstrap_staging_approval"],
+              allowedActions: [],
+              eventIds: ["evt_bootstrap_run"],
+              causationIds: ["evt_bootstrap_task"]
+            }
+          ],
+          toolRequests: [
+            {
+              toolRequestId: "toolreq_ontology_bootstrap_staging_approval",
+              runId: "run_ontology_bootstrap_route",
+              toolId: "legacy.staging.approval.request",
+              toolVersion: "0.1.0",
+              requestedBy: "agent_default",
+              sideEffectClass: "ledger-review",
+              requiredApprovalClass: "ledger-review",
+              previewHash: "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+              scope: "Ontology bootstrap legacy_report_001",
+              estimatedEffect: "Human ledger review is required before any follow-up event can be recorded.",
+              state: "requested",
+              requestedAt: "2026-07-08T16:01:00.000Z",
+              sourceEventIds: [],
+              inputArtifactHashes: [],
+              resultEventIds: [],
+              artifactHashes: [],
+              readModelChanges: [],
+              allowedActions: [],
+              eventIds: ["evt_bootstrap_tool"],
+              causationIds: ["evt_bootstrap_run"]
+            }
+          ]
+        })}
+        loadState="loaded"
+        onRefresh={vi.fn()}
+      />
+    );
+
+    const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
+    expect(within(workspace).getByRole("region", { name: "Ontology bootstrap review" })).toBeInTheDocument();
+    expect(within(workspace).getByText("run_ontology_bootstrap_route")).toBeInTheDocument();
+    expect(within(workspace).getByText("sha256:3333333333333333333333333333333333333333333333333333333333333333")).toBeInTheDocument();
+    expect(within(workspace).getAllByText("toolreq_ontology_bootstrap_staging_approval").length).toBeGreaterThan(0);
+    expect(within(workspace).getByText("staging-review")).toBeInTheDocument();
+    expect(within(workspace).getByText("1 candidate bundle")).toBeInTheDocument();
+    expect(within(workspace).getByText("1 of 2")).toBeInTheDocument();
+    expect(within(workspace).getByText("Review staging approval preview")).toBeInTheDocument();
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Refresh agent status"]);
+    expect(screen.queryByRole("button", { name: /approve|execute|accept/i })).not.toBeInTheDocument();
+  });
+
   it("shows safe loading and error states", () => {
     const { rerender } = render(<AgentWorkspace status={undefined} loadState="loading" />);
 

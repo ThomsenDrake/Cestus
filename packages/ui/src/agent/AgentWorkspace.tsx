@@ -1,6 +1,7 @@
 import type {
   AgentApprovalCockpitDto,
-  AgentStatusDto
+  AgentStatusDto,
+  OntologyBootstrapRouteDto
 } from "./agent-types.js";
 import { providerSetupCardsFromReadiness } from "./provider-setup-cards.js";
 import type {
@@ -13,6 +14,7 @@ interface AgentWorkspaceProps {
   readonly status: AgentStatusDto | undefined;
   readonly approvalCockpit?: AgentApprovalCockpitDto | undefined;
   readonly decisionState?: "idle" | "submitting" | "error" | undefined;
+  readonly ontologyBootstrapRoutes?: readonly OntologyBootstrapRouteDto[] | undefined;
   readonly loadState: "idle" | "loading" | "loaded" | "error";
   readonly loadError?: string | undefined;
   readonly onRefresh?: (() => void) | undefined;
@@ -24,6 +26,7 @@ export function AgentWorkspace({
   status,
   approvalCockpit,
   decisionState = "idle",
+  ontologyBootstrapRoutes = [],
   loadState,
   onRefresh,
   onApproveToolRequest,
@@ -36,6 +39,8 @@ export function AgentWorkspace({
   const providerReadinessCards = status?.providerReadiness === undefined
     ? []
     : providerSetupCardsFromReadiness(status.providerReadiness);
+  const ontologyBootstrapRuns = status?.runs.filter((run) => run.runType === "ontology-bootstrap") ?? [];
+  const ontologyRoutesByRunId = new Map(ontologyBootstrapRoutes.map((route) => [route.runId, route]));
 
   return (
     <section aria-label="Resident agent workspace" className="space-y-5">
@@ -234,6 +239,58 @@ export function AgentWorkspace({
             )}
           </section>
 
+          {ontologyBootstrapRuns.length > 0 ? (
+            <section aria-label="Ontology bootstrap review" className="border border-[var(--console-line)] bg-[var(--console-panel)]">
+              <SectionHeader title="Ontology bootstrap" meta={countLabel(ontologyBootstrapRuns.length, "run")} />
+              <ul role="list" className="divide-y divide-[var(--console-line)]">
+                {ontologyBootstrapRuns.map((run) => {
+                  const route = ontologyRoutesByRunId.get(run.runId);
+                  const pendingForRun = status.toolRequests
+                    .filter((request) => request.runId === run.runId && request.state === "requested");
+                  const pendingToolRequestIds = route?.pendingApprovalToolRequestIds.length
+                    ? route.pendingApprovalToolRequestIds
+                    : pendingForRun.map((request) => request.toolRequestId);
+                  const reviewBundleHash = route?.reviewBundleHash ?? run.outputArtifactHashes[0] ?? "review bundle pending";
+                  const candidateBundleCount = route?.candidateBundleCount ?? Math.max(run.outputArtifactHashes.length - 2, 0);
+                  const nextCursor = formatOntologyBootstrapCursor(route);
+                  const nextAction = route?.nextSafeAction?.label ?? (pendingForRun.length > 0
+                    ? "Review pending ontology bootstrap request"
+                    : run.state === "completed"
+                      ? "Inspect review bundle outputs"
+                      : "Continue ontology bootstrap review");
+                  return (
+                    <li key={run.runId} className="grid gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
+                      <div className="min-w-0">
+                        <p className="font-mono text-base text-[var(--signal-amber)] sm:text-sm">{run.runId}</p>
+                        <p className="mt-1 text-base text-pretty text-[var(--paper-light)] sm:text-sm">
+                          {run.taskId ?? "unlinked task"} | {run.state}
+                        </p>
+                        <p className="mt-1 break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">
+                          {reviewBundleHash}
+                        </p>
+                        {pendingToolRequestIds.length > 0 ? (
+                          <div className="mt-2 min-w-0 space-y-1">
+                            {pendingToolRequestIds.map((toolRequestId) => (
+                              <p key={toolRequestId} className="break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">
+                                {toolRequestId}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                      <dl className="grid gap-2">
+                        <InlineStat label="Phase" value={route?.phase ?? run.runType} />
+                        <InlineStat label="Candidate bundles" value={countLabel(candidateBundleCount, "candidate bundle")} />
+                        <InlineStat label="Next cursor" value={nextCursor} />
+                        <InlineStat label="Next action" value={nextAction} />
+                      </dl>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+
           <section aria-label="Agent tool requests" className="border border-[var(--console-line)] bg-[var(--console-panel)]">
             <SectionHeader
               title={approvalCockpit === undefined ? "Tool requests" : "Tool request ledger"}
@@ -340,6 +397,16 @@ function EmptyState({ children }: { readonly children: string }) {
 
 function countLabel(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+function formatOntologyBootstrapCursor(route: OntologyBootstrapRouteDto | undefined): string {
+  if (route?.nextCursor === undefined) {
+    return "not reported";
+  }
+  if (route.nextCursor.nextOffset === undefined) {
+    return `${route.nextCursor.totalCandidates} candidates complete`;
+  }
+  return `${route.nextCursor.nextOffset} of ${route.nextCursor.totalCandidates}`;
 }
 
 function severityClassName(severity: AgentStatusDto["diagnostics"][number]["severity"]): string {
