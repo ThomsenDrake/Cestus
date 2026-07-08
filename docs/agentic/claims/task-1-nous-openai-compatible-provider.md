@@ -35,4 +35,5 @@
 - Broader package tests passing: `npm test -- packages/local-runtime/test packages/agent/test`.
 - Typecheck passing: `npm run typecheck`.
 - Full verification passing: `npm run verify`.
-- Live smoke reached Nous Portal with local `.env` credentials, but the gateway rejected the provided model/config payload with HTTP 400 and a sanitized `missing tags` diagnostic. The adapter failed closed without exposing the secret or raw body.
+- Troubleshooting follow-up: `tencent/hy3:free` is valid in Nous `/v1/models`; the root cause was request shape. Nous requires a `tags` array containing a `user=...` tag, and Hy3 must be called with `reasoning: { effort: "none" }` when Cestus expects normal `message.content` instead of reasoning-only output.
+- Live smoke passing with local `.env` credentials: the adapter returned `cestus-live-provider-ok` without exposing the secret.

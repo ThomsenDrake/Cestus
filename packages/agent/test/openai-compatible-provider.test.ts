@@ -24,7 +24,10 @@ describe("OpenAI-compatible chat provider", () => {
         ok: true,
         status: 200,
         json: async () => ({
-          choices: [{ message: { content: "A careful answer." } }],
+          choices: [{
+            finish_reason: "stop",
+            message: { role: "assistant", content: "A careful answer.", refusal: null }
+          }],
           usage: { prompt_tokens: 7, completion_tokens: 4 }
         })
       }),
@@ -82,6 +85,38 @@ describe("OpenAI-compatible chat provider", () => {
     });
     expect(provider.describe()).not.toHaveProperty("residentAgentId");
     expect(JSON.stringify(provider.describe())).not.toMatch(/test-provider-key/i);
+  });
+
+  it("adds required secret-safe Nous Portal request tags", async () => {
+    const calls: CapturedFetchCall[] = [];
+    const provider = createNousPortalProvider({
+      secretStore: secretStoreWithNousKey(),
+      fetch: captureFetch(calls, successfulResponse()),
+      resolveInputText: async () => "hello"
+    });
+
+    await provider.invoke({
+      invocationId: "inv_nous_tags",
+      runId: "run_nous_001",
+      modelFamily: "tencent/hy3:free",
+      inputArtifactHash,
+      credentialRef: {
+        credentialRefId: "agent_credref_nous_portal",
+        providerId: "provider_nous_portal",
+        kind: "api-key-bearer"
+      }
+    });
+
+    expect(JSON.parse(calls[0]?.body ?? "{}")).toMatchObject({
+      include_reasoning: false,
+      reasoning: { effort: "none" },
+      tags: [
+        "user=cestus-local",
+        "product=cestus",
+        "client=cestus-agent-v0.1.0"
+      ]
+    });
+    expect(calls[0]?.body).not.toMatch(/test-provider-key/i);
   });
 
   it("fails closed without exposing provider secrets or raw response bodies", async () => {
@@ -161,7 +196,10 @@ function successfulResponse(): FakeFetchResponse {
     ok: true,
     status: 200,
     json: async () => ({
-      choices: [{ message: { content: "Hello from Nous." } }],
+      choices: [{
+        finish_reason: "stop",
+        message: { role: "assistant", content: "Hello from Nous.", refusal: null }
+      }],
       usage: { prompt_tokens: 3, completion_tokens: 4 }
     })
   };
