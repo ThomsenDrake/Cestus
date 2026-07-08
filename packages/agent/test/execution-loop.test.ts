@@ -41,6 +41,33 @@ describe("resident agent fake execution loop", () => {
     expect((await ledger.readAll()).map((event) => event.type)).toContain("agent.tool.requested");
   });
 
+  it("rejects approvalClass none without appending a request event", async () => {
+    const ledger = new InMemoryEventLedger();
+    const loop = createFakeAgentExecutionLoop({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-07-07T23:00:00.000Z",
+      executor: { async execute() { return { eventIds: [], artifactHashes: [], readModelChanges: [] }; } }
+    });
+
+    await expect(
+      loop.requestApprovalOnly({
+        taskId: "task_projection_readiness",
+        runId: "run_projection_readiness",
+        toolRequestId: "toolreq_projection_read",
+        toolId: "projection.read",
+        sideEffectClass: "read-only",
+        approvalClass: "none",
+        preview: {
+          summary: "Read local projection status.",
+          affectedRefs: ["evt_projection_check"]
+        }
+      })
+    ).rejects.toThrow(/requires a human approval class/i);
+
+    expect(await ledger.readAll()).toEqual([]);
+  });
+
   it("rejects agent self-approval before resume", async () => {
     const ledger = new InMemoryEventLedger();
     const loop = createFakeAgentExecutionLoop({
@@ -125,6 +152,75 @@ describe("resident agent fake execution loop", () => {
       projectionName: "fake-agent-execution-loop",
       change: "fake approval resume complete"
     }]);
+  });
+
+  it("fails closed with a secret-safe failure when a fake executor returns a malformed result", async () => {
+    const ledger = new InMemoryEventLedger();
+    const malformedEventId = "not-a-valid-event-id";
+    const loop = createFakeAgentExecutionLoop({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-07-07T23:00:00.000Z",
+      executor: {
+        async execute() {
+          return {
+            eventIds: [malformedEventId],
+            artifactHashes: [],
+            readModelChanges: []
+          };
+        }
+      }
+    });
+    const requested = await loop.requestApprovalOnly({
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolRequestId: "toolreq_provider_malformed_result",
+      toolId: "provider.parse.preview",
+      toolVersion: 1,
+      sideEffectClass: "external-byte-transfer",
+      approvalClass: "provider-byte-transfer",
+      preview: { summary: "Provider preview.", affectedRefs: ["ev_contract_001"] }
+    });
+    await loop.approveForTest({
+      toolRequestId: "toolreq_provider_malformed_result",
+      actor: humanActor,
+      approvedPreviewHash: requested.previewHash,
+      rationale: "Human approved the exact preview."
+    });
+
+    let thrown: unknown;
+    try {
+      await loop.resumeApprovedTool({
+        toolRequestId: "toolreq_provider_malformed_result",
+        taskId: "task_provider_readiness",
+        currentPreview: { affectedRefs: ["ev_contract_001"], summary: "Provider preview." },
+        activeLocks: []
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    const message = (thrown as Error).message;
+    expect(message).toMatch(/fake tool result failed validation/i);
+    expect(message).not.toContain(malformedEventId);
+
+    const events = await ledger.readAll();
+    expect(events.map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved",
+      "agent.tool.failed"
+    ]);
+    const failedEvent = events.find((event) => event.type === "agent.tool.failed");
+    expect(failedEvent?.type).toBe("agent.tool.failed");
+    if (failedEvent?.type !== "agent.tool.failed") {
+      throw new Error("expected failed event");
+    }
+    expect(failedEvent.payload.category).toBe("model-output-invalid");
+    expect(failedEvent.payload.retryable).toBe(false);
+    expect(failedEvent.payload.message).not.toContain(malformedEventId);
+    expect(failedEvent.payload.allowedActions.join(" ")).not.toContain(malformedEventId);
+    expect(events.some((event) => event.type === "agent.tool.completed")).toBe(false);
   });
 
   it("resumes durably after loop recreation using explicit task context", async () => {
