@@ -143,6 +143,7 @@ const secretShapedDtoKeyTerms = new Set([
   "secret",
   "token"
 ]);
+const unsafeDtoKeys = new Set(["__proto__", "constructor", "prototype"]);
 
 export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoopInput) {
   const gateway = createAgentToolGateway({
@@ -362,7 +363,7 @@ function stabilizeJsonValue(value: unknown): unknown {
   }
 
   if (value !== null && typeof value === "object") {
-    const stable: Record<string, unknown> = {};
+    const stable = Object.create(null) as Record<string, unknown>;
     for (const [key, entryValue] of dataEntriesFromObject(value, "stable preview object")) {
       stable[key] = stabilizeJsonValue(entryValue);
     }
@@ -393,7 +394,7 @@ function sanitizeFakeToolPreview(preview: AgentToolPreview): AgentToolPreview {
 }
 
 function sanitizePlainJsonObject(value: unknown, label: string): Record<string, unknown> {
-  const safe: Record<string, unknown> = {};
+  const safe = Object.create(null) as Record<string, unknown>;
   for (const [key, entryValue] of dataEntriesFromObject(value, label)) {
     safe[key] = sanitizeJsonValue(entryValue, `${label} ${key}`);
   }
@@ -401,7 +402,7 @@ function sanitizePlainJsonObject(value: unknown, label: string): Record<string, 
 }
 
 function dataRecordFromObject(value: unknown, label: string): Record<string, unknown> {
-  const record: Record<string, unknown> = {};
+  const record = Object.create(null) as Record<string, unknown>;
   for (const [key, entryValue] of dataEntriesFromObject(value, label)) {
     record[key] = entryValue;
   }
@@ -482,7 +483,7 @@ function dataEntriesFromObject(value: unknown, label: string): Array<readonly [s
 
   const entries: Array<readonly [string, unknown]> = [];
   for (const key of Object.getOwnPropertyNames(value).sort()) {
-    assertSecretSafeDtoKey(key, `${label} key`);
+    assertSafeDtoKey(key, `${label} key`);
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (descriptor === undefined || !("value" in descriptor)) {
       throw new Error(`${label} must not contain accessors.`);
@@ -626,8 +627,11 @@ function assertNonEmptySecretSafeString(value: unknown, label: string): asserts 
   assertAgentSecretSafeText(value, label);
 }
 
-function assertSecretSafeDtoKey(value: string, label: string): void {
+function assertSafeDtoKey(value: string, label: string): void {
   assertAgentSecretSafeText(value, label);
+  if (unsafeDtoKeys.has(value)) {
+    throw new Error(`${label} must be safe.`);
+  }
   if (isSecretShapedDtoKey(value)) {
     throw new Error(`${label} must be secret-safe.`);
   }
@@ -675,21 +679,17 @@ async function failForActiveLocks(
   toolRequestId: string,
   activeLocks: readonly FakeAgentActiveLock[]
 ): Promise<void> {
-  for (const lock of activeLocks) {
-    try {
-      assertAgentSecretSafeText(lock.lockId, "active lock id");
-      assertAgentSecretSafeText(lock.category, "active lock category");
-      assertAgentSecretSafeText(lock.message, "active lock message");
-    } catch {
-      await gateway.failTool({
-        toolRequestId,
-        category: "secret-detected",
-        message: "Active lock metadata was not secret-safe.",
-        retryable: false,
-        allowedActions: ["inspect secret-safe lock diagnostics"]
-      });
-      throw new Error("Active lock metadata was not secret-safe.");
-    }
+  try {
+    sanitizeActiveLocks(activeLocks);
+  } catch {
+    await gateway.failTool({
+      toolRequestId,
+      category: "secret-detected",
+      message: "Active lock metadata was not secret-safe.",
+      retryable: false,
+      allowedActions: ["inspect secret-safe lock diagnostics"]
+    });
+    throw new Error("Active lock metadata was not secret-safe.");
   }
 
   // Queue DTOs expose generic "lock-active"; gateway failure events stay on
@@ -700,6 +700,23 @@ async function failForActiveLocks(
     message: "Active legal export or data-loss lock blocks resume.",
     retryable: false,
     allowedActions: ["clear the lock through the human-governed domain workflow"]
+  });
+}
+
+function sanitizeActiveLocks(activeLocks: unknown): readonly FakeAgentActiveLock[] {
+  const locks = sanitizeJsonArray(activeLocks, "active locks");
+  return locks.map((lock) => {
+    const record = dataRecordFromObject(lock, "active lock");
+    rejectUnsupportedKeys(record, ["lockId", "category", "message"], "active lock");
+    assertNonEmptySecretSafeString(record.lockId, "active lock id");
+    assertNonEmptySecretSafeString(record.category, "active lock category");
+    assertNonEmptySecretSafeString(record.message, "active lock message");
+
+    return Object.freeze({
+      lockId: record.lockId,
+      category: record.category,
+      message: record.message
+    });
   });
 }
 

@@ -21,6 +21,7 @@ const secretShapedDtoKeyTerms = new Set([
   "secret",
   "token"
 ]);
+const unsafeDtoKeys = new Set(["__proto__", "constructor", "prototype"]);
 
 export interface CreateAgentToolGatewayInput {
   readonly ledger: EventLedger;
@@ -183,9 +184,7 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
       assertAgentSecretSafeText(command.rationale, "denial rationale");
 
       const state = await readToolRequestState(input.ledger, command.toolRequestId);
-      if (state.completed !== undefined) {
-        throw new Error("Completed tool requests cannot be denied.");
-      }
+      assertNotTerminal(state, "denied");
 
       const event: AppendableKnowledgeEvent<"agent.tool.denied"> = {
         type: "agent.tool.denied",
@@ -218,8 +217,13 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
         }
         assertStoredApprovalUsable(state.approval, state.request, input.actor.id);
         assertFreshPreviewHash(command.approvedPreviewHash, requestPreviewHash);
-      } else if (command.approvedPreviewHash !== undefined) {
-        assertFreshPreviewHash(command.approvedPreviewHash, requestPreviewHash);
+      } else {
+        if (state.approval !== undefined) {
+          throw new Error("No-approval tool requests cannot consume approval events.");
+        }
+        if (command.approvedPreviewHash !== undefined) {
+          assertFreshPreviewHash(command.approvedPreviewHash, requestPreviewHash);
+        }
       }
 
       const result = sanitizeAgentToolResult(command.result);
@@ -234,7 +238,12 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
         type: "agent.tool.completed",
         version: 1,
         streamId: toolRequestStreamId(command.toolRequestId),
-        context: agentContext(input, `corr_${command.toolRequestId}`, input.actor, state.approval?.id ?? state.request.id),
+        context: agentContext(
+          input,
+          `corr_${command.toolRequestId}`,
+          input.actor,
+          requiresApproval ? state.approval?.id : state.request.id
+        ),
         payload: {
           toolRequestId: command.toolRequestId,
           completedAt: input.now(),
@@ -258,9 +267,7 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
       }
 
       const state = await readToolRequestState(input.ledger, command.toolRequestId);
-      if (state.completed !== undefined) {
-        throw new Error("Completed tool requests cannot be marked failed.");
-      }
+      assertNotTerminal(state, "marked failed");
 
       const event: AppendableKnowledgeEvent<"agent.tool.failed"> = {
         type: "agent.tool.failed",
@@ -297,7 +304,7 @@ function stabilizeJsonValue(value: unknown): unknown {
 
   if (value !== null && typeof value === "object") {
     const record = value as Record<string, unknown>;
-    const stable: Record<string, unknown> = {};
+    const stable = Object.create(null) as Record<string, unknown>;
     for (const key of Object.keys(record).sort()) {
       stable[key] = stabilizeJsonValue(record[key]);
     }
@@ -366,7 +373,7 @@ function sanitizeReadModelChanges(value: unknown): AgentToolReadModelChange[] {
 }
 
 function sanitizePlainJsonObject(value: unknown, label: string): Record<string, unknown> {
-  const safe: Record<string, unknown> = {};
+  const safe = Object.create(null) as Record<string, unknown>;
   for (const [key, entryValue] of dataEntriesFromObject(value, label)) {
     safe[key] = sanitizeJsonValue(entryValue, `${label} ${key}`);
   }
@@ -431,7 +438,7 @@ function sanitizeJsonArray(value: unknown, label: string): readonly unknown[] {
 }
 
 function dataRecordFromObject(value: unknown, label: string): Record<string, unknown> {
-  const record: Record<string, unknown> = {};
+  const record = Object.create(null) as Record<string, unknown>;
   for (const [key, entryValue] of dataEntriesFromObject(value, label)) {
     record[key] = entryValue;
   }
@@ -448,7 +455,7 @@ function dataEntriesFromObject(value: unknown, label: string): Array<readonly [s
 
   const entries: Array<readonly [string, unknown]> = [];
   for (const key of Object.getOwnPropertyNames(value).sort()) {
-    assertSecretSafeDtoKey(key, `${label} key`);
+    assertSafeDtoKey(key, `${label} key`);
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (descriptor === undefined || !("value" in descriptor)) {
       throw new Error(`${label} must not contain accessors.`);
@@ -530,8 +537,11 @@ function assertNonEmptySecretSafeString(value: unknown, label: string): asserts 
   assertAgentSecretSafeText(value, label);
 }
 
-function assertSecretSafeDtoKey(value: string, label: string): void {
+function assertSafeDtoKey(value: string, label: string): void {
   assertAgentSecretSafeText(value, label);
+  if (unsafeDtoKeys.has(value)) {
+    throw new Error(`${label} must be safe.`);
+  }
   if (isSecretShapedDtoKey(value)) {
     throw new Error(`${label} must be secret-safe.`);
   }
@@ -681,6 +691,18 @@ function assertNotClosed(state: ToolRequestState): void {
   }
   if (state.completed !== undefined) {
     throw new Error("Tool request already completed.");
+  }
+}
+
+function assertNotTerminal(state: ToolRequestState, action: string): void {
+  if (state.completed !== undefined) {
+    throw new Error(`Completed tool requests cannot be ${action}.`);
+  }
+  if (state.denial !== undefined) {
+    throw new Error(`Denied tool requests cannot be ${action}.`);
+  }
+  if (state.failure !== undefined) {
+    throw new Error(`Failed tool requests cannot be ${action}.`);
   }
 }
 
