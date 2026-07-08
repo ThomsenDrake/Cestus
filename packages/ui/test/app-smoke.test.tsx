@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { PrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { App } from "../src/App.js";
-import type { AgentStatusDto } from "../src/agent/agent-types.js";
+import type { AgentApprovalCockpitDto, AgentStatusDto } from "../src/agent/agent-types.js";
 import { createStaticOperatorStatusAdapter } from "../src/operator-status/operator-status-adapter.js";
 import type { OperatorStatusDto } from "../src/operator-status/operator-status-types.js";
 import {
@@ -107,7 +107,10 @@ describe("Cestus UI bootstrap", () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async (url: RequestInfo | URL) => {
       fetchCalls.push(String(url));
-      return new Response(JSON.stringify(appSmokeAgentStatus()), {
+      const body = String(url).endsWith("/api/agent/approvals")
+        ? appSmokeApprovalCockpit()
+        : appSmokeAgentStatus();
+      return new Response(JSON.stringify(body), {
         status: 200,
         headers: { "content-type": "application/json" }
       });
@@ -117,12 +120,13 @@ describe("Cestus UI bootstrap", () => {
       render(<App requestsAdapter={createTestRequestsAdapter()} operatorStatusAdapter={operatorStatusAdapter} />);
       fireEvent.click(screen.getByRole("link", { name: "Agent" }));
       const workspace = await screen.findByRole("region", { name: "Resident agent workspace" });
+      expect(screen.getByRole("region", { name: "Agent approval cockpit" })).toBeInTheDocument();
       expect(screen.getByText("Fake Local Model Provider")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "New request" })).not.toBeInTheDocument();
       expect(within(workspace).getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
         "Refresh agent status"
       ]);
-      expect(fetchCalls).toEqual(["/api/agent/status"]);
+      expect(fetchCalls).toEqual(["/api/agent/status", "/api/agent/approvals"]);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -428,6 +432,53 @@ function appSmokeAgentStatus(): AgentStatusDto {
     pendingApprovalCount: 0,
     activeLockCount: 0,
     diagnostics: []
+  };
+}
+
+function appSmokeApprovalCockpit(): AgentApprovalCockpitDto {
+  return {
+    schemaVersion: "agent-approval-cockpit.v1",
+    generatedAt: "2026-07-07T21:00:00.000Z",
+    summary: {
+      pendingCount: 0,
+      resumableCount: 0,
+      blockedCount: 0,
+      staleCount: 0,
+      terminalCount: 0
+    },
+    decisionContract: {
+      approvalAppendsDecisionOnly: true,
+      denialAppendsDecisionOnly: true,
+      requiresHumanActor: true,
+      afterApproval: "Approval records a human decision only. A separate scheduler revalidates the exact preview hash before work.",
+      forbiddenDirectEffects: [
+        "provider-byte-transfer",
+        "prr-send-followup",
+        "legal-escalation",
+        "export-publication",
+        "destructive-repair",
+        "accepted-graph-review"
+      ]
+    },
+    approvalClasses: [],
+    queue: {
+      generatedAt: "2026-07-07T21:00:00.000Z",
+      pending: [],
+      resumable: [],
+      blocked: [],
+      stale: [],
+      denied: [],
+      completed: [],
+      failed: []
+    },
+    forbiddenDirectEffects: [
+      "provider-byte-transfer",
+      "prr-send-followup",
+      "legal-escalation",
+      "export-publication",
+      "destructive-repair",
+      "accepted-graph-review"
+    ]
   };
 }
 

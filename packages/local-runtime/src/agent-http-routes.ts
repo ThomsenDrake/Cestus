@@ -1,8 +1,12 @@
 import {
+  agentApprovalDecisionResultDtoSchema,
+  buildAgentApprovalCockpit,
+  buildAgentProjection,
+  createAgentToolGateway,
   isAgentSecretSafeText,
   type AgentTaskPriority
 } from "../../agent/src/index.js";
-import type { ActorRef } from "../../ontology/src/contracts.js";
+import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 import {
   defaultLocalAgentRuntimeFactory,
@@ -12,6 +16,12 @@ import { buildLocalAgentProviderReadiness } from "./agent-provider-readiness.js"
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
 const defaultIdentityStreamId = "agent_identity_agent_default";
+const approvalDetailSchemaVersion = "agent-approval-detail.v1" as const;
+const localApprovalGatewayActor: ActorRef = Object.freeze({
+  id: "actor_local_runtime_approval_gateway",
+  kind: "system",
+  label: "Local Runtime Approval Gateway"
+});
 
 export interface HandleAgentHttpRouteInput {
   readonly request: LocalRuntimeRequest;
@@ -65,8 +75,122 @@ export async function handleAgentHttpRoute(
       });
     }
 
+    if (input.request.method === "GET" && path === "/api/agent/approvals") {
+      return json(200, await approvalCockpit(runtime));
+    }
+
+    const approvalRoute = matchApprovalRoute(path);
+    if (approvalRoute !== undefined) {
+      if (input.request.method === "GET" && approvalRoute.kind === "detail") {
+        const cockpit = await approvalCockpit(runtime);
+        const item = approvalItemById(cockpit, approvalRoute.toolRequestId);
+        if (item === undefined) {
+          return json(404, missingApprovalDiagnostic());
+        }
+
+        return json(200, {
+          ok: true,
+          schemaVersion: approvalDetailSchemaVersion,
+          generatedAt: cockpit.generatedAt,
+          item
+        });
+      }
+
+      if (
+        input.request.method === "POST" &&
+        (approvalRoute.kind === "approve" || approvalRoute.kind === "deny")
+      ) {
+        if (input.actor.kind !== "human") {
+          return json(403, humanApprovalActorDiagnostic());
+        }
+
+        const payload = parseJsonObjectBody(
+          input.request.body,
+          approvalRoute.kind === "approve" ? invalidApprovalBodyDiagnostic : invalidDenialBodyDiagnostic
+        );
+        if (!payload.ok) {
+          return json(400, payload.body);
+        }
+
+        if (approvalRoute.kind === "approve") {
+          const decision = approvalInputFromBody(payload.value);
+          if (decision === undefined) {
+            return json(400, invalidApprovalBodyDiagnostic());
+          }
+
+          const snapshotEvents = await input.handle.ledger.readAll();
+          const cockpit = approvalCockpitFromEvents(snapshotEvents, input.now);
+          const approvalItem = approvalItemById(cockpit, approvalRoute.toolRequestId);
+          if (approvalItem === undefined) {
+            return json(404, missingApprovalDiagnostic());
+          }
+          if (!approvalItemIsCurrentlyApprovable(cockpit, approvalItem)) {
+            return json(409, blockedApprovalDiagnostic());
+          }
+
+          try {
+            const gateway = createAgentToolGateway({
+              ledger: input.handle.ledger,
+              actor: localApprovalGatewayActor,
+              now: input.now
+            });
+            const event = await gateway.approveTool({
+              toolRequestId: approvalRoute.toolRequestId,
+              approvedPreviewHash: decision.approvedPreviewHash,
+              actor: input.actor,
+              rationale: decision.rationale,
+              expectedGlobalEventCount: snapshotEvents.length
+            });
+            const result = agentApprovalDecisionResultDtoSchema.parse({
+              ok: true,
+              schemaVersion: "agent-approval-decision-result.v1",
+              eventIds: [event.id],
+              approvalCockpit: await approvalCockpit(runtime)
+            });
+            return json(200, result);
+          } catch (error) {
+            return approvalDecisionErrorResponse(error);
+          }
+        }
+
+        const denial = denialInputFromBody(payload.value);
+        if (denial === undefined) {
+          return json(400, invalidDenialBodyDiagnostic());
+        }
+
+        const snapshotEvents = await input.handle.ledger.readAll();
+        const cockpit = approvalCockpitFromEvents(snapshotEvents, input.now);
+        const approvalItem = approvalItemById(cockpit, approvalRoute.toolRequestId);
+        if (approvalItem === undefined) {
+          return json(404, missingApprovalDiagnostic());
+        }
+
+        try {
+          const gateway = createAgentToolGateway({
+            ledger: input.handle.ledger,
+            actor: localApprovalGatewayActor,
+            now: input.now
+          });
+          const event = await gateway.denyTool({
+            toolRequestId: approvalRoute.toolRequestId,
+            actor: input.actor,
+            rationale: denial.rationale
+          });
+          const result = agentApprovalDecisionResultDtoSchema.parse({
+            ok: true,
+            schemaVersion: "agent-approval-decision-result.v1",
+            eventIds: [event.id],
+            approvalCockpit: await approvalCockpit(runtime)
+          });
+          return json(200, result);
+        } catch (error) {
+          return approvalDecisionErrorResponse(error);
+        }
+      }
+    }
+
     if (input.request.method === "POST" && path === "/api/agent/tasks") {
-      const payload = parseJsonObjectBody(input.request.body);
+      const payload = parseJsonObjectBody(input.request.body, invalidTaskBodyDiagnostic);
       if (!payload.ok) {
         return json(400, payload.body);
       }
@@ -176,21 +300,25 @@ function taskInputFromBody(value: Record<string, unknown>): {
 }
 
 function parseJsonObjectBody(
-  body: string | undefined
+  body: string | undefined,
+  invalidBodyDiagnostic: () => {
+    readonly ok: false;
+    readonly diagnostic: {
+      readonly message: string;
+      readonly allowedRepairActions: readonly string[];
+    };
+  }
 ):
   | { readonly ok: true; readonly value: Record<string, unknown> }
   | { readonly ok: false; readonly body: unknown } {
   try {
     const value = body === undefined || body.trim() === "" ? {} : JSON.parse(body);
     if (!isJsonObject(value)) {
-      return { ok: false, body: invalidTaskBodyDiagnostic() };
+      return { ok: false, body: invalidBodyDiagnostic() };
     }
     return { ok: true, value };
   } catch {
-    return {
-      ok: false,
-      body: diagnostic("Agent request body must be valid JSON.", ["send a valid JSON request body"])
-    };
+    return { ok: false, body: invalidBodyDiagnostic() };
   }
 }
 
@@ -219,6 +347,94 @@ function duplicateTaskDiagnostic(): {
   ]);
 }
 
+function invalidApprovalBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent approval body is invalid.", [
+    "send approvedPreviewHash and rationale as a JSON object"
+  ]);
+}
+
+function invalidDenialBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent denial body is invalid.", [
+    "send rationale as a JSON object"
+  ]);
+}
+
+function humanApprovalActorDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Approval decisions require a human actor.", [
+    "sign in with a human local runtime session"
+  ]);
+}
+
+function missingApprovalDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Approval request was not found.", [
+    "refresh the approval cockpit"
+  ]);
+}
+
+function staleApprovalDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Approval preview is stale.", [
+    "refresh the approval cockpit",
+    "request a revised preview"
+  ]);
+}
+
+function blockedApprovalDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Approval request is no longer approvable.", [
+    "refresh the approval cockpit",
+    "rebuild the preview",
+    "request a revised preview"
+  ]);
+}
+
+function approvalDecisionRejectedDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Approval decision could not be recorded.", [
+    "refresh the approval cockpit",
+    "inspect agent diagnostics"
+  ]);
+}
+
 function isDuplicateTaskConflict(error: unknown, taskId: string): boolean {
   return error instanceof Error &&
     error.message.includes("Concurrency conflict") &&
@@ -241,6 +457,36 @@ function isSafeNonEmptyText(value: unknown): value is string {
 
 function isRouteTaskPriority(value: unknown): value is AgentTaskPriority {
   return value === "low" || value === "normal" || value === "high";
+}
+
+function approvalInputFromBody(value: Record<string, unknown>): {
+  readonly approvedPreviewHash: string;
+  readonly rationale: string;
+} | undefined {
+  if (!hasOnlyKeys(value, ["approvedPreviewHash", "rationale"])) {
+    return undefined;
+  }
+
+  if (!isSafeNonEmptyText(value.approvedPreviewHash) || !isSafeNonEmptyText(value.rationale)) {
+    return undefined;
+  }
+
+  return {
+    approvedPreviewHash: value.approvedPreviewHash,
+    rationale: value.rationale
+  };
+}
+
+function denialInputFromBody(value: Record<string, unknown>): {
+  readonly rationale: string;
+} | undefined {
+  if (!hasOnlyKeys(value, ["rationale"]) || !isSafeNonEmptyText(value.rationale)) {
+    return undefined;
+  }
+
+  return {
+    rationale: value.rationale
+  };
 }
 
 function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
@@ -266,6 +512,114 @@ function diagnostic(message: string, allowedRepairActions: readonly string[]): {
       allowedRepairActions: Object.freeze([...allowedRepairActions])
     })
   });
+}
+
+function matchApprovalRoute(path: string):
+  | { readonly kind: "detail"; readonly toolRequestId: string }
+  | { readonly kind: "approve"; readonly toolRequestId: string }
+  | { readonly kind: "deny"; readonly toolRequestId: string }
+  | undefined {
+  const match = /^\/api\/agent\/approvals\/([^/]+?)(?:\/(approve|deny))?$/.exec(path);
+  if (match === null) {
+    return undefined;
+  }
+
+  const toolRequestId = match[1];
+  if (!isSafeNonEmptyText(toolRequestId)) {
+    return undefined;
+  }
+
+  const action = match[2];
+  if (action === undefined) {
+    return { kind: "detail", toolRequestId };
+  }
+
+  return { kind: action as "approve" | "deny", toolRequestId };
+}
+
+async function approvalCockpit(runtime: LocalAgentRuntime) {
+  return buildAgentApprovalCockpit({ status: await runtime.status() });
+}
+
+function approvalCockpitFromEvents(
+  events: readonly KnowledgeEvent[],
+  now: () => string
+) {
+  const projection = buildAgentProjection(events);
+  return buildAgentApprovalCockpit({
+    status: {
+      schemaVersion: "agent-status.v1",
+      generatedAt: now(),
+      ...projection.toDto(),
+      identity: projection.identity,
+      providers: [],
+      pendingApprovalCount: [...projection.toolRequests.values()].filter((request) => request.state === "requested").length,
+      activeLockCount: [...projection.locks.values()].filter((lock) => lock.state === "active").length,
+      diagnostics: []
+    }
+  });
+}
+
+function approvalItemById(
+  cockpit: Awaited<ReturnType<typeof approvalCockpit>>,
+  toolRequestId: string
+) {
+  return allApprovalItems(cockpit).find((item) => item.toolRequestId === toolRequestId);
+}
+
+function approvalItemIsCurrentlyApprovable(
+  cockpit: Awaited<ReturnType<typeof approvalCockpit>>,
+  item: NonNullable<ReturnType<typeof approvalItemById>>
+): boolean {
+  return cockpit.queue.pending.some((pendingItem) => pendingItem.toolRequestId === item.toolRequestId) &&
+    item.staleness.approvable === true &&
+    item.stale === false &&
+    item.blockingReasons.length === 0 &&
+    item.approval === undefined &&
+    item.denial === undefined &&
+    item.completion === undefined &&
+    item.failure === undefined;
+}
+
+function allApprovalItems(cockpit: Awaited<ReturnType<typeof approvalCockpit>>) {
+  return [
+    ...cockpit.queue.pending,
+    ...cockpit.queue.resumable,
+    ...cockpit.queue.blocked,
+    ...cockpit.queue.stale,
+    ...cockpit.queue.denied,
+    ...cockpit.queue.completed,
+    ...cockpit.queue.failed
+  ];
+}
+
+function approvalDecisionErrorResponse(error: unknown): LocalRuntimeResponse {
+  if (error instanceof Error) {
+    if (error.message.includes("Tool request was not found.")) {
+      return json(404, missingApprovalDiagnostic());
+    }
+    if (error.message.includes("Stale approval preview hash")) {
+      return json(409, staleApprovalDiagnostic());
+    }
+    if (
+      error.message.includes("must be secret-safe") ||
+      error.message.includes("requires a human actor") ||
+      error.message.includes("requires an independent human actor") ||
+      error.message.includes("cannot be denied") ||
+      error.message.includes("already completed") ||
+      error.message.includes("was denied")
+    ) {
+      return json(400, approvalDecisionRejectedDiagnostic());
+    }
+    if (error.message.includes("Concurrency conflict")) {
+      return json(409, blockedApprovalDiagnostic());
+    }
+  }
+
+  return json(500, diagnostic("Agent runtime route failed.", [
+    "retry the local agent request",
+    "inspect agent diagnostics"
+  ]));
 }
 
 function json(status: number, body: unknown): LocalRuntimeResponse {

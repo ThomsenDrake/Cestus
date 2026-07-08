@@ -1,5 +1,6 @@
 export * from "./context-packs.js";
 export * from "./prompt-artifacts.js";
+export * from "./approval-cockpit.js";
 export * from "./approval-queue.js";
 export * from "./execution-loop.js";
 export * from "./execution-types.js";

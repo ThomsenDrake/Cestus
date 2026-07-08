@@ -11,14 +11,22 @@ export const agentApprovalQueueClassValues = [
   "ledger-review"
 ] as const;
 
-type AgentApprovalClass = typeof agentApprovalQueueClassValues[number];
+export const agentApprovalQueueLegacyApprovalClassAliases = [
+  "external-message-send",
+  "export-or-publication",
+  "destructive-or-repair"
+] as const;
 
-export type AgentApprovalQueueApprovalClass = AgentApprovalClass;
-export type AgentApprovalQueueInputApprovalClass =
-  | AgentApprovalQueueApprovalClass
-  | "external-message-send"
-  | "export-or-publication"
-  | "destructive-or-repair";
+export type AgentApprovalQueueDefaultApprovalClass = typeof agentApprovalQueueClassValues[number];
+export type AgentApprovalQueueLegacyApprovalClassAlias =
+  typeof agentApprovalQueueLegacyApprovalClassAliases[number];
+export type AgentApprovalQueueApprovalClass = string;
+export type AgentApprovalQueueInputApprovalClass = string;
+
+const forbiddenSentinelApprovalClasses = new Set<AgentApprovalQueueInputApprovalClass>([
+  "none",
+  "human-review"
+]);
 
 export interface AgentAffectedRefDto {
   readonly kind: string;
@@ -554,6 +562,9 @@ function freezeApprovalClasses(
 
 function normalizeAgentApprovalClass(value: AgentApprovalQueueInputApprovalClass): AgentApprovalQueueApprovalClass {
   assertAgentSecretSafeText(value, "approval class");
+  if (forbiddenSentinelApprovalClasses.has(value)) {
+    throw new Error(`Unsupported approval class for canonical approval queue: ${value}`);
+  }
   switch (value) {
     case "external-message-send":
       return "prr-send-followup";
@@ -571,7 +582,7 @@ function normalizeAgentApprovalClass(value: AgentApprovalQueueInputApprovalClass
       return value;
   }
 
-  throw new Error("Unsupported approval class.");
+  return value;
 }
 
 function assertSecretSafeStrings(entries: readonly (readonly [string | undefined, string])[]): void {

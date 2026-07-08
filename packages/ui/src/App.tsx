@@ -5,9 +5,11 @@ import type { QueueFilter } from "./workspace/command-types.js";
 import { AgentWorkspace } from "./agent/AgentWorkspace.js";
 import {
   httpAgentAdapter,
+  safeAgentText,
+  runtimeUnavailableAgentStatus,
   type AgentAdapter
 } from "./agent/agent-adapter.js";
-import type { AgentStatusDto } from "./agent/agent-types.js";
+import type { AgentApprovalCockpitDto, AgentStatusDto } from "./agent/agent-types.js";
 import { IngestionWorkspace } from "./ingestion/IngestionWorkspace.js";
 import {
   httpIngestionWorkspaceAdapter,
@@ -95,6 +97,9 @@ export function App({
   const [loadedOperatorStatusAdapter, setLoadedOperatorStatusAdapter] = useState<OperatorStatusAdapter | undefined>();
   const [operatorStatusReloadKey, setOperatorStatusReloadKey] = useState(0);
   const [agentStatus, setAgentStatus] = useState<AgentStatusDto | undefined>();
+  const [agentApprovalCockpit, setAgentApprovalCockpit] = useState<AgentApprovalCockpitDto | undefined>();
+  const [agentApprovalDecisionState, setAgentApprovalDecisionState] = useState<"idle" | "submitting" | "error">("idle");
+  const [agentApprovalDiagnostic, setAgentApprovalDiagnostic] = useState<string | undefined>();
   const [loadedAgentAdapter, setLoadedAgentAdapter] = useState<AgentAdapter | undefined>();
   const [agentLoadState, setAgentLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [agentLoadError, setAgentLoadError] = useState<string | undefined>();
@@ -271,22 +276,23 @@ export function App({
       return;
     }
 
-    if (agentStatus !== undefined && loadedAgentAdapter === agentAdapter) {
+    if (agentStatus !== undefined && agentApprovalCockpit !== undefined && loadedAgentAdapter === agentAdapter) {
       return;
     }
 
     let canceled = false;
     setAgentLoadState("loading");
     setAgentLoadError(undefined);
+    setAgentApprovalDiagnostic(undefined);
 
-    agentAdapter
-      .loadStatus()
-      .then((status) => {
+    Promise.all([agentAdapter.loadStatus(), agentAdapter.loadApprovalCockpit()])
+      .then(([status, cockpit]) => {
         if (canceled) {
           return;
         }
 
         setAgentStatus(status);
+        setAgentApprovalCockpit(cockpit);
         setLoadedAgentAdapter(agentAdapter);
         setAgentLoadState("loaded");
       })
@@ -296,6 +302,7 @@ export function App({
         }
 
         setAgentStatus(undefined);
+        setAgentApprovalCockpit(undefined);
         setLoadedAgentAdapter(undefined);
         setAgentLoadState("error");
         setAgentLoadError("Agent workspace could not be loaded.");
@@ -304,7 +311,7 @@ export function App({
     return () => {
       canceled = true;
     };
-  }, [agentActive, agentAdapter, agentReloadKey, agentStatus, loadedAgentAdapter]);
+  }, [agentActive, agentAdapter, agentApprovalCockpit, agentReloadKey, agentStatus, loadedAgentAdapter]);
 
   const commandMain = (
     <div className="space-y-6">
@@ -372,10 +379,14 @@ export function App({
   );
   const agentMain = (
     <AgentWorkspace
-      status={agentStatus}
+      status={statusWithAgentApprovalDiagnostic(agentStatus, agentApprovalDiagnostic)}
+      approvalCockpit={agentApprovalCockpit}
+      decisionState={agentApprovalDecisionState}
       loadState={agentLoadState}
       loadError={agentLoadError}
       onRefresh={handleRefreshAgentStatus}
+      onApproveToolRequest={handleApproveToolRequest}
+      onDenyToolRequest={handleDenyToolRequest}
     />
   );
   const commandDecisionRail = (
@@ -412,10 +423,28 @@ export function App({
 
   function handleRefreshAgentStatus() {
     setAgentStatus(undefined);
+    setAgentApprovalCockpit(undefined);
+    setAgentApprovalDecisionState("idle");
+    setAgentApprovalDiagnostic(undefined);
     setLoadedAgentAdapter(undefined);
     setAgentLoadState("idle");
     setAgentLoadError(undefined);
     setAgentReloadKey((current) => current + 1);
+  }
+
+  function handleApproveToolRequest(input: {
+    readonly toolRequestId: string;
+    readonly approvedPreviewHash: string;
+    readonly rationale: string;
+  }) {
+    void runAgentApprovalDecision(() => agentAdapter.approveToolRequest(input));
+  }
+
+  function handleDenyToolRequest(input: {
+    readonly toolRequestId: string;
+    readonly rationale: string;
+  }) {
+    void runAgentApprovalDecision(() => agentAdapter.denyToolRequest(input));
   }
 
   function handleNewRequest() {
@@ -602,6 +631,29 @@ export function App({
     }
   }
 
+  async function runAgentApprovalDecision(
+    decision: () => Promise<{ readonly approvalCockpit: AgentApprovalCockpitDto }>
+  ) {
+    setAgentApprovalDecisionState("submitting");
+    setAgentApprovalDiagnostic(undefined);
+
+    try {
+      const result = await decision();
+      setAgentApprovalCockpit(result.approvalCockpit);
+      const status = await agentAdapter.loadStatus();
+      setAgentStatus(status);
+      setLoadedAgentAdapter(agentAdapter);
+      setAgentLoadState("loaded");
+      setAgentLoadError(undefined);
+      setAgentApprovalDecisionState("idle");
+    } catch (error: unknown) {
+      setAgentApprovalDecisionState("error");
+      setAgentApprovalDiagnostic(
+        safeAgentText(error instanceof Error ? error.message : "Agent approval decision could not be recorded.")
+      );
+    }
+  }
+
   const commandOrRequestsModeLabel = requestsActive ? "Requests" : "Command";
   const modeLabel = agentActive ? "Agent" : ingestionActive ? "Ingestion" : commandOrRequestsModeLabel;
   const searchLabel = requestsActive
@@ -679,6 +731,33 @@ function operatorStatusForCommand(status: OperatorStatusDto): OperatorStatusDto 
     sections: status.sections.map((section) =>
       section.sectionId === "prr" ? { ...section, label: "PRR/Investigations" } : section
     )
+  };
+}
+
+function statusWithAgentApprovalDiagnostic(
+  status: AgentStatusDto | undefined,
+  diagnosticMessage: string | undefined
+): AgentStatusDto | undefined {
+  if (diagnosticMessage === undefined) {
+    return status;
+  }
+
+  if (status === undefined) {
+    return runtimeUnavailableAgentStatus({ message: diagnosticMessage });
+  }
+
+  return {
+    ...status,
+    diagnostics: [
+      ...status.diagnostics,
+      {
+        diagnosticId: "diag_agent_approval_decision",
+        severity: "error",
+        category: "agent",
+        message: diagnosticMessage,
+        allowedRepairActions: ["refresh agent status"]
+      }
+    ]
   };
 }
 

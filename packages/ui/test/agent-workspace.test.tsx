@@ -3,14 +3,18 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AgentWorkspace } from "../src/agent/AgentWorkspace.js";
 import { agentStatusFromJson } from "../src/agent/agent-adapter.js";
-import type { AgentStatusDto } from "../src/agent/agent-types.js";
+import type { AgentApprovalCockpitDto, AgentStatusDto } from "../src/agent/agent-types.js";
 
 describe("AgentWorkspace", () => {
   it("renders resident status, providers, tasks, tools, memory, locks, and diagnostics", () => {
     render(
       <AgentWorkspace
         status={agentStatus()}
+        approvalCockpit={approvalCockpit()}
+        decisionState="idle"
         loadState="loaded"
+        onApproveToolRequest={vi.fn()}
+        onDenyToolRequest={vi.fn()}
         onRefresh={vi.fn()}
       />
     );
@@ -28,28 +32,55 @@ describe("AgentWorkspace", () => {
     expect(within(workspace).getByText("evidence-triage")).toBeInTheDocument();
     expect(within(workspace).getByText("evt_task_created")).toBeInTheDocument();
     expect(within(workspace).getByText("sha256:2222222222222222222222222222222222222222222222222222222222222222")).toBeInTheDocument();
-    expect(within(workspace).getByText("external-byte-transfer")).toBeInTheDocument();
-    expect(within(workspace).getByText("provider-byte-transfer")).toBeInTheDocument();
+    expect(within(workspace).getAllByText("external-byte-transfer").length).toBeGreaterThan(0);
+    expect(within(workspace).getAllByText("provider-byte-transfer").length).toBeGreaterThan(0);
     expect(within(workspace).getByText("requested")).toBeInTheDocument();
     expect(within(workspace).getAllByText("1 memory item").length).toBeGreaterThan(0);
     expect(within(workspace).getByText("Projection lag detected.")).toBeInTheDocument();
   });
 
-  it("exposes only refresh control and no hidden risky execution buttons", () => {
+  it("allows refresh plus approval decisions while keeping direct execution controls absent", () => {
     const onRefresh = vi.fn();
-    render(<AgentWorkspace status={agentStatus()} loadState="loaded" onRefresh={onRefresh} />);
+    const onApproveToolRequest = vi.fn();
+    const onDenyToolRequest = vi.fn();
+    render(
+      <AgentWorkspace
+        status={agentStatus()}
+        approvalCockpit={approvalCockpit()}
+        decisionState="idle"
+        loadState="loaded"
+        onApproveToolRequest={onApproveToolRequest}
+        onDenyToolRequest={onDenyToolRequest}
+        onRefresh={onRefresh}
+      />
+    );
 
-    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Refresh agent status"]);
+    expect(screen.getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve exact preview" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Deny request" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Refresh agent status" }));
     expect(onRefresh).toHaveBeenCalledTimes(1);
 
+    fireEvent.change(screen.getByLabelText("Decision rationale"), {
+      target: { value: "Approved after review." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Approve exact preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Deny request" }));
+
+    expect(onApproveToolRequest).toHaveBeenCalledWith({
+      toolRequestId: "toolreq_provider_transfer",
+      approvedPreviewHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      rationale: "Approved after review."
+    });
+    expect(onDenyToolRequest).toHaveBeenCalledWith({
+      toolRequestId: "toolreq_provider_transfer",
+      rationale: "Approved after review."
+    });
+
     for (const forbiddenName of [
-      /approve/i,
-      /deny/i,
       /execute/i,
       /invoke provider/i,
-      /provider transfer/i,
       /send prr/i,
       /legal escalation/i,
       /destructive repair/i,
@@ -163,7 +194,17 @@ describe("AgentWorkspace", () => {
       ]
     }));
 
-    render(<AgentWorkspace status={status} loadState="loaded" onRefresh={vi.fn()} />);
+    render(
+      <AgentWorkspace
+        status={status}
+        approvalCockpit={approvalCockpit()}
+        decisionState="idle"
+        loadState="loaded"
+        onApproveToolRequest={vi.fn()}
+        onDenyToolRequest={vi.fn()}
+        onRefresh={vi.fn()}
+      />
+    );
 
     const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
     expect(workspace.textContent).not.toMatch(
@@ -307,5 +348,108 @@ function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
       }
     ],
     ...overrides
+  };
+}
+
+function approvalCockpit(): AgentApprovalCockpitDto {
+  return {
+    schemaVersion: "agent-approval-cockpit.v1",
+    generatedAt: "2026-07-08T15:30:00.000Z",
+    summary: {
+      pendingCount: 1,
+      resumableCount: 0,
+      blockedCount: 0,
+      staleCount: 0,
+      terminalCount: 0
+    },
+    decisionContract: {
+      approvalAppendsDecisionOnly: true,
+      denialAppendsDecisionOnly: true,
+      requiresHumanActor: true,
+      afterApproval: "Approval records a human decision only. A separate scheduler revalidates the exact preview hash before work.",
+      forbiddenDirectEffects: [
+        "provider-byte-transfer",
+        "prr-send-followup",
+        "legal-escalation",
+        "export-publication",
+        "destructive-repair",
+        "accepted-graph-review"
+      ]
+    },
+    approvalClasses: [{
+      approvalClass: "provider-byte-transfer",
+      label: "Provider byte transfer",
+      requiredFor: "Sending selected evidence/artifact bytes to the configured provider.",
+      providerByteTransferNote: "Approval itself transfers no bytes.",
+      rationale: { required: true, secretSafe: true }
+    }],
+    queue: {
+      generatedAt: "2026-07-08T15:30:00.000Z",
+      pending: [{
+        toolRequestId: "toolreq_provider_transfer",
+        runId: "run_provider_transfer",
+        taskId: "task_provider_transfer",
+        toolId: "provider.bytes.transfer",
+        toolVersion: "1",
+        sideEffectClass: "external-byte-transfer",
+        approvalClass: "provider-byte-transfer",
+        requiredApprovalClass: "provider-byte-transfer",
+        previewHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        previewSummary: "Provider byte-transfer preview.",
+        requestedAt: "2026-07-08T15:29:00.000Z",
+        stale: false,
+        executableByApproval: false,
+        providerByteTransferNote: "Approval records a decision only; it does not transfer provider bytes.",
+        staleness: {
+          state: "current",
+          approvable: true
+        },
+        approvalContract: {
+          requiredApprovalClass: "provider-byte-transfer",
+          approvalRouteAppendsOnly: true,
+          denialRouteAppendsOnly: true,
+          rationaleRequired: true,
+          rationaleSecretSafe: true,
+          afterApproval: "A separate scheduler revalidates the exact preview hash before any execution."
+        },
+        review: {
+          what: "Selected evidence excerpts for provider processing.",
+          why: "The resident agent requested model assistance for selected evidence.",
+          dataLeavesOrChanges: "Provider byte-transfer preview.",
+          evidenceRefs: [{ kind: "event", id: "evt_provider_preview" }],
+          artifactRefs: [],
+          riskAndLockStatus: "No active locks. Preview is current.",
+          whatHappensAfterApproval: "A separate scheduler may resume after consume-time validation.",
+          staleOrUnsafePrevention: ["Exact preview hash binding", "Human-only approval"]
+        },
+        affectedRefs: [{ kind: "event", id: "evt_provider_preview" }],
+        contextPackRefs: [],
+        activeLocks: [],
+        blockingReasons: [],
+        risk: {
+          sideEffectClass: "external-byte-transfer",
+          approvalClass: "provider-byte-transfer",
+          previewSummary: "Provider byte-transfer preview.",
+          affectedRefs: [{ kind: "event", id: "evt_provider_preview" }],
+          contextPackRefs: [],
+          activeLocks: [],
+          blockingReasons: []
+        }
+      }],
+      resumable: [],
+      blocked: [],
+      stale: [],
+      denied: [],
+      completed: [],
+      failed: []
+    },
+    forbiddenDirectEffects: [
+      "provider-byte-transfer",
+      "prr-send-followup",
+      "legal-escalation",
+      "export-publication",
+      "destructive-repair",
+      "accepted-graph-review"
+    ]
   };
 }

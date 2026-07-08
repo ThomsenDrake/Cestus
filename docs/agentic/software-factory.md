@@ -955,3 +955,58 @@ Provider prompts now flow through durable prompt artifact envelopes bound to con
 The live Nous smoke is an approved provider acceptance check for this slice. The slice adds no PRR send or follow-up execution, legal escalation, export or publication, destructive repair, accepted graph review execution, hidden external effects, or direct cockpit execution path.
 
 Post whole-branch review fixture cleanup on 2026-07-08 removed credential-shaped and raw-error-shaped material from the touched OpenAI-compatible provider tests. The focused prompt-artifact resolver test set still passed with 10 files and 118 tests, the live Nous smoke returned `ok: true` with only hashes, invocation event IDs, context pack IDs, and counts, and final `npm run verify` passed with typecheck, 133 test files, 1287 tests, UI build, and factory readiness.
+
+## Resident Agent Approval Cockpit Routes And UI Readiness
+
+The resident-agent approval cockpit routes and UI slice was implemented from the approved design and plan on 2026-07-08.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md`
+- `docs/superpowers/specs/2026-07-07-resident-agent-execution-approval-design.md`
+- `docs/superpowers/specs/2026-07-07-resident-agent-provider-auth-design.md`
+- `docs/superpowers/plans/2026-07-08-resident-agent-approval-cockpit-routes-ui-implementation.md`
+
+Recorded focused verification:
+
+```text
+npm test -- packages/agent/test/approval-cockpit.test.ts packages/agent/test/approval-queue.test.ts packages/local-runtime/test/agent-approval-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/ui/test/agent-approval-adapter.test.ts packages/ui/test/agent-approval-cockpit.test.tsx packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx packages/ui/test/command-model.test.ts
+Test Files  10 passed (10)
+Tests  88 passed (88)
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  134 passed (134)
+Tests  1304 passed (1304)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Whitespace verification:
+
+```text
+git diff --check
+no output
+```
+
+Live Nous Portal acceptance smoke evidence used the Task 6 safe command path and records only safe fields:
+
+```text
+providerId: provider_nous_portal
+modelFamily: tencent/hy3:free
+outputArtifactHash: sha256:270aa91a724b42b5319931c6abffcebe625f658589133d47d7ee5c922f731e35
+eventIds: evt_7b76696c0db0415dba5149dcaa4e5214, evt_c1c112af6a6d4a5badabd6858bfea67d
+```
+
+The initial exact smoke attempt blocked before provider invocation because the credential reference safeLabel text used "Nous Portal local credential reference"; secret-safety rejects that label because it contains the word "credential". A safe lower-level probe then confirmed the live provider path with provider ID `provider_nous_portal`, model family `tencent/hy3:free`, HTTP 200 OpenAI-compatible response shape, and output artifact hash `sha256:6c473d7019772af97a591cb7b6777bbedf3b8eb699f7e696f4149ba24a31eca4`. The authoritative exact Task 6 smoke was rerun with safeLabel `Nous Portal local auth reference` and passed with the safe fields above.
+
+Deterministic tests for this slice use synthetic provider-byte-transfer fixtures only for pure contract behavior. Live Nous Portal remains the authoritative provider/model acceptance path for this slice.
+
+Approval and denial routes append decision events only. No route or UI button in this slice sends PRR correspondence, transfers provider bytes, exports sensitive material, clears legal locks, executes repair, or accepts graph truth.
+
+Scheduler wake, domain execution adapters, rich provider preview storage, live provider byte transfer execution, PRR send/follow-up execution, export/publication execution, destructive repair, accepted graph review execution, and team-role approvals remain separate approved slices.

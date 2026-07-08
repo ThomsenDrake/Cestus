@@ -110,4 +110,57 @@ describe("SQLiteEventLedger", () => {
 
     db.close();
   });
+
+  it("blocks interleaved SQLite writers from slipping past expected global event count guards", async () => {
+    const path = dbPath();
+    const ledger = new SQLiteEventLedger(path);
+    await ledger.append(evidenceEvent("ev_sqlite_005a"));
+
+    const otherDb = new DatabaseSync(path);
+    const originalNextSequence = (
+      ledger as unknown as { nextSequence: (streamId: string) => number }
+    ).nextSequence.bind(ledger);
+    let interleavedOutcome: "blocked" | "committed" | undefined;
+
+    (ledger as unknown as { nextSequence: (streamId: string) => number }).nextSequence = (streamId: string) => {
+      try {
+        const interleaved = evidenceEvent("ev_sqlite_005b");
+        otherDb
+          .prepare(`
+            INSERT INTO ontology_events (id, type, version, stream_id, stream_sequence, context_json, payload_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `)
+          .run(
+            "evt_interleaved_global_count_guard",
+            interleaved.type,
+            interleaved.version,
+            interleaved.streamId,
+            1,
+            JSON.stringify(interleaved.context),
+            JSON.stringify(interleaved.payload)
+          );
+        interleavedOutcome = "committed";
+      } catch {
+        interleavedOutcome = "blocked";
+      }
+
+      return originalNextSequence(streamId);
+    };
+
+    const committed = await ledger.append(evidenceEvent("ev_sqlite_005c"), {
+      expectedGlobalEventCount: 1
+    });
+
+    const allEvents = await ledger.readAll();
+
+    expect(committed.sequence).toBe(1);
+    expect(interleavedOutcome).toBe("blocked");
+    expect(allEvents.map((event) => event.payload)).toEqual([
+      expect.objectContaining({ evidenceId: "ev_sqlite_005a" }),
+      expect.objectContaining({ evidenceId: "ev_sqlite_005c" })
+    ]);
+
+    otherDb.close();
+    ledger.close();
+  });
 });
