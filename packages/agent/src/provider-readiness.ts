@@ -381,10 +381,21 @@ function credentialReferenceExpiredAtOrBefore(
   credentialReference: CredentialReference,
   checkedAt: string
 ): boolean {
+  const checkedAtTime = Date.parse(checkedAt);
+  if (Number.isNaN(checkedAtTime)) {
+    return true;
+  }
+
   if (credentialReference.expiresAt === undefined) {
     return false;
   }
-  return Date.parse(credentialReference.expiresAt) <= Date.parse(checkedAt);
+
+  const expiresAtTime = Date.parse(credentialReference.expiresAt);
+  if (Number.isNaN(expiresAtTime)) {
+    return true;
+  }
+
+  return expiresAtTime <= checkedAtTime;
 }
 
 function stateForSecretStoreHealth(
