@@ -723,3 +723,45 @@ factory-readiness passed
 ```
 
 The implementation adds a pure `packages/ontology-bootstrap` package with strict DTO contracts, deterministic dossier generation from existing legacy reports and evidence links, a read-model helper, approval-preview builders, and a fake specialist runtime facade. It does not implement live model orchestration, direct old source-tree import, raw byte copy, staging execution outside existing legacy services, accepted ontology truth, legal/export actions, provider byte transfer, UI mutation, or destructive repair. Legacy-derived structure can only be represented as evidence-tied preview or dossier material; the only allowed staged ontology output remains `assertion.proposed` through existing legacy services after human staging approval.
+
+## Resident Agent Execution And Approval Readiness
+
+The resident agent execution and approval slice was implemented from the approved design and plan on 2026-07-08.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-resident-agent-execution-approval-design.md`
+- `docs/superpowers/plans/2026-07-07-resident-agent-execution-approval-implementation.md`
+
+Recorded focused verification:
+
+```text
+npm test -- packages/agent/test/execution-types.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/approval-queue.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/tool-gateway.test.ts
+Test Files  5 passed (5)
+Tests  90 passed (90)
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  123 passed (123)
+Tests  1187 passed (1187)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Whitespace verification:
+
+```text
+git diff --check
+no output
+```
+
+This slice uses fake execution only. Approval does not execute tools directly; the runtime resumes only after matching independent human approval and current preview, lock, provenance, and secret-safety checks.
+
+Live provider byte transfer, PRR send/follow-up, legal escalation, export/publication, destructive repair, accepted graph review execution, local runtime routes, CLI approval commands, and browser cockpit UI remain follow-up slices.
+
+Accepted residual: active-lock fake loop failures use schema-compatible `legal-lock-active` because the current ontology/gateway failure categories do not include generic `lock-active`.

@@ -883,22 +883,23 @@ git commit -m "feat: add fake agent scheduler resume loop"
 **Files:**
 - Modify: `docs/agentic/software-factory.md`
 - Modify: `docs/superpowers/plans/2026-07-07-resident-agent-execution-approval-implementation.md`
+- Modify: `docs/agentic/claims/task-5-agent-execution-approval-readiness.md`
 
-- [ ] **Step 1: Run the focused verification bundle**
+- [x] **Step 1: Run the focused verification bundle**
 
 Run:
 
 ```bash
-npm test -- packages/agent/test/execution-types.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/approval-queue.test.ts packages/agent/test/execution-loop.test.ts
+npm test -- packages/agent/test/execution-types.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/approval-queue.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/tool-gateway.test.ts
 ```
 
 Expected:
 
 ```text
-Test Files  4 passed
+Test Files  5 passed
 ```
 
-- [ ] **Step 2: Run full verification**
+- [x] **Step 2: Run full verification**
 
 Run:
 
@@ -915,7 +916,7 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 3: Check whitespace**
+- [x] **Step 3: Check whitespace**
 
 Run:
 
@@ -929,7 +930,7 @@ Expected:
 no output
 ```
 
-- [ ] **Step 4: Append readiness evidence**
+- [x] **Step 4: Append readiness evidence**
 
 Append a `Resident Agent Execution And Approval Readiness` section to `docs/agentic/software-factory.md` with:
 
@@ -937,16 +938,18 @@ Append a `Resident Agent Execution And Approval Readiness` section to `docs/agen
 - plan path
 - focused verification command
 - full verification command
+- whitespace command outcome
 - statement that the slice uses fake execution only
-- statement that approval does not execute tools directly
-- statement that live provider, PRR send, legal escalation, export/publication, destructive repair, and accepted graph review execution remain follow-up slices
+- statement that approval does not execute tools directly and runtime resumes only after matching independent human approval and current preview/lock checks
+- statement that live provider byte transfer, PRR send/follow-up, legal escalation, export/publication, destructive repair, accepted graph review execution, local runtime routes, CLI approval commands, and browser cockpit UI remain follow-up slices
+- accepted residual that active-lock fake loop failures use schema-compatible `legal-lock-active` because the current ontology/gateway failure categories do not include generic `lock-active`
 
-- [ ] **Step 5: Commit readiness evidence**
+- [x] **Step 5: Commit readiness evidence**
 
 Run:
 
 ```bash
-git add docs/agentic/software-factory.md docs/superpowers/plans/2026-07-07-resident-agent-execution-approval-implementation.md
+git add docs/agentic/software-factory.md docs/superpowers/plans/2026-07-07-resident-agent-execution-approval-implementation.md docs/agentic/claims/task-5-agent-execution-approval-readiness.md
 git commit -m "docs: record agent execution approval readiness"
 ```
 
@@ -960,6 +963,31 @@ git commit -m "docs: record agent execution approval readiness"
 **Rollback/Escalation:**
 
 - Escalate if full verification fails repeatedly after two focused repair attempts.
+
+**Readiness Evidence:**
+
+```text
+npm test -- packages/agent/test/execution-types.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/approval-queue.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/tool-gateway.test.ts
+Test Files  5 passed (5)
+Tests  90 passed (90)
+
+npm run verify
+typecheck passed
+Test Files  123 passed (123)
+Tests  1187 passed (1187)
+tests passed
+vite build succeeded
+factory-readiness passed
+
+git diff --check
+no output
+```
+
+Task 5 records readiness evidence only. The landed execution slice uses fake execution, approval events do not execute tools directly, and runtime resume remains gated on matching independent human approval plus current preview, lock, provenance, and secret-safety checks.
+
+Follow-up slices remain: live provider byte transfer, PRR send/follow-up, legal escalation, export/publication, destructive repair, accepted graph review execution, local runtime routes, CLI approval commands, browser cockpit UI, rich specialist orchestration, live provider hardening, and team hardening.
+
+Accepted residual: active-lock fake loop failures use schema-compatible `legal-lock-active` because the current ontology/gateway failure categories do not include generic `lock-active`.
 
 ## Completion Criteria
 
