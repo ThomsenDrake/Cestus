@@ -631,7 +631,7 @@ git commit -m "feat: add agent approval queue dto"
 - Create: `packages/agent/test/execution-loop.test.ts`
 - Modify: `packages/agent/src/index.ts`
 
-- [ ] **Step 1: Write failing fake execution tests**
+- [x] **Step 1: Write failing fake execution tests**
 
 Create `packages/agent/test/execution-loop.test.ts`:
 
@@ -792,7 +792,7 @@ describe("resident agent fake execution loop", () => {
 });
 ```
 
-- [ ] **Step 2: Run the targeted failing test**
+- [x] **Step 2: Run the targeted failing test**
 
 Run:
 
@@ -806,7 +806,7 @@ Expected before implementation:
 Failed to resolve import "../src/execution-loop.js"
 ```
 
-- [ ] **Step 3: Add fake execution loop**
+- [x] **Step 3: Add fake execution loop**
 
 Create `packages/agent/src/execution-loop.ts`.
 
@@ -822,7 +822,7 @@ Implementation requirements:
 - Active locks append `agent.tool.failed` with category `lock-active` and do not call the executor.
 - The fake executor cannot send external messages, transfer bytes, export material, repair canonical state, or accept graph truth because it returns event IDs and artifact hashes only.
 
-- [ ] **Step 4: Export execution loop surface**
+- [x] **Step 4: Export execution loop surface**
 
 Modify `packages/agent/src/index.ts`:
 
@@ -832,7 +832,7 @@ export * from "./execution-loop.js";
 
 Preserve existing exports.
 
-- [ ] **Step 5: Run targeted tests**
+- [x] **Step 5: Run targeted tests**
 
 Run:
 
@@ -846,7 +846,7 @@ Expected:
 Test Files  4 passed
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run:
 
@@ -866,6 +866,17 @@ git commit -m "feat: add fake agent scheduler resume loop"
 **Rollback/Escalation:**
 
 - Escalate if foundation tool-gateway APIs make it impossible to append a request without executing a tool.
+
+**Implementation Evidence:**
+
+- Initial fake loop commit: `954d727 feat: add fake agent scheduler resume loop`
+- Review-loop hardening commits: `40a61b5`, `b5d06b0`, `135ac64`, `6250161`, `b05a9bf`, `ce6e65a`, `f3cb726`, `7bfda69`, `9dd1fa5`
+- Final focused pass: `npm test -- packages/agent/test/execution-loop.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/approval-queue.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/execution-types.test.ts` passed with 5 files and 90 tests.
+- Full gate: `npm run verify` passed with typecheck, 123 test files, 1187 tests, Vite build, and factory-readiness.
+- Whitespace: `git diff --check` passed with no output.
+- Final spec compliance reviewer `Meitner`: approved with no findings at `9dd1fa5`.
+- Final code quality reviewer `Laplace`: approved with no findings at `9dd1fa5`.
+- Accepted residual: active-lock failures emit schema-compatible `legal-lock-active` because the landed ontology/gateway failure category schema does not yet include generic `lock-active`.
 
 ## Task 5: Readiness And Review Evidence
 
