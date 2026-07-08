@@ -87,6 +87,11 @@ The portable workspace, ingestion runtime, workspace ops, and legacy import impl
 - **Treat shared readiness history as append-only.** `docs/agentic/software-factory.md` is useful durable memory, but parallel slices commonly append to the same readiness area. Resolve these conflicts additively, never by replacing another slice's evidence. If readiness detail keeps growing, put detailed evidence in per-slice claim/readiness files and leave this document as the index.
 - **Update test expectations from upstream contracts, not stale assumptions.** The operator status merge showed that a fresh canonical portable workspace now verifies as `ready`, not `degraded`. When a provider contract intentionally improves, update bridge expectations to match the provider contract instead of weakening the provider or preserving stale status labels.
 - **Clean up only after evidence agrees.** A child thread is ready to archive only when the thread is idle, final handoff names the branch and commit, Git shows the branch is merged or intentionally preserved, verification evidence is recorded, and the worktree is clean. Newly approved implementation lanes should stay visible until their implementation work is actually finished.
+- **Make public package boundaries as strict as runtime paths.** The resident-agent and ontology-bootstrap reviews found direct exported builders and helper APIs that were looser than their safer runtime wrappers. Future agents should test exported builders, projectors, provider readiness helpers, preview builders, and tool gateways directly with stale, missing, swapped, forged, or mismatched inputs.
+- **Separate resident identity from execution backends.** Cestus has one resident workspace agent identity. Specialist workflows are run types under that identity, while OpenAI, xAI, BYOK endpoints, local models, subscription OAuth lanes, CLI harnesses, API keys, and credential references are provider backends only.
+- **Recheck approval validity when consumed.** A stored approval is not enough. Runtime resume must revalidate independent human actor, approval class, preview hash, causation/provenance, active locks, current source hashes, and stale state before any gated effect reaches a domain service.
+- **Keep approval cockpits out of the execution path.** The UI and CLI should append human approve/deny decisions and explain risk. They must not directly run PRR sends, provider byte transfer, legal escalation, export, destructive repair, accepted graph review, raw import, or legacy staging.
+- **Test DTO safety as adversarial object safety.** Resident-agent slices exposed leaks through keys, IDs, provider health objects, malformed DTOs, prototype fields, and accessor-triggered throws. Browser DTO and diagnostics tests should cover keys, values, arrays, prototypes, getters, and parser failure paths, not just obvious secret strings.
 
 ## Ontology Layer Final Readiness
 
@@ -738,7 +743,7 @@ Recorded focused verification:
 ```text
 npm test -- packages/agent/test/credential-reference.test.ts packages/agent/test/provider-registry.test.ts packages/agent/test/provider-readiness.test.ts packages/agent/test/provider-selection.test.ts packages/local-runtime/test/agent-provider-readiness-routes.test.ts packages/ui/test/agent-provider-setup-cards.test.ts
 Test Files  6 passed (6)
-Tests  53 passed (53)
+Tests  63 passed (63)
 ```
 
 Recorded full verification:
@@ -747,7 +752,7 @@ Recorded full verification:
 npm run verify
 typecheck passed
 Test Files  125 passed (125)
-Tests  1163 passed (1163)
+Tests  1173 passed (1173)
 tests passed
 Vite build succeeded
 factory-readiness passed
@@ -796,3 +801,42 @@ This slice uses fake execution only. Approval does not execute tools directly; t
 Live provider byte transfer, PRR send/follow-up, legal escalation, export/publication, destructive repair, accepted graph review execution, local runtime routes, CLI approval commands, and browser cockpit UI remain follow-up slices.
 
 Accepted residual: active-lock fake loop failures use schema-compatible `legal-lock-active` because the current ontology/gateway failure categories do not include generic `lock-active`.
+
+## Resident Agent Tranche Integration Readiness
+
+The resident-agent foundation, ontology-bootstrap specialist, provider/auth, and execution/approval branches were integrated on `neo` on 2026-07-08.
+
+Merged branch evidence:
+
+- `codex/cestus-resident-agent-foundation`
+- `codex/ontology-bootstrap-specialist`
+- `codex/resident-agent-provider-auth-design`
+- `codex/resident-agent-execution-approval-design`
+
+Final merged commit on `neo`:
+
+```text
+d4b83bb Merge branch 'codex/resident-agent-execution-approval-design' into codex/review-agent-provider-execution-integration
+```
+
+Recorded integration-focused verification before the final merge:
+
+```text
+npm test -- packages/agent/test/credential-reference.test.ts packages/agent/test/provider-registry.test.ts packages/agent/test/provider-readiness.test.ts packages/agent/test/provider-selection.test.ts packages/local-runtime/test/agent-provider-readiness-routes.test.ts packages/ui/test/agent-provider-setup-cards.test.ts packages/agent/test/execution-types.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/approval-queue.test.ts packages/agent/test/execution-loop.test.ts packages/agent/test/tool-gateway.test.ts
+Test Files  11 passed
+Tests  153 passed
+```
+
+Recorded final verification on merged `neo`:
+
+```text
+npm run verify
+typecheck passed
+Test Files  129 passed
+Tests  1250 passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Integration lesson: future resident-agent work should start from `neo` after this checkpoint and preserve the direct-boundary, consume-time approval, provider-secret, and zero-trust bootstrap hardening added by the four finished threads.
