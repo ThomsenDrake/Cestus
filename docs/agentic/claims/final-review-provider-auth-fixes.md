@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/8f27/Cestus`
 
 Claimed at: `2026-07-08T00:00:22Z`
 
-Status: `claimed`
+Status: `in-progress`
 
 Review findings to repair:
 
