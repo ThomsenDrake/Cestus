@@ -65,3 +65,14 @@ Follow-up evidence:
 - Re-ran the targeted agent suite RED then GREEN:
   - RED: `npm test -- packages/agent/test/approval-cockpit.test.ts packages/agent/test/approval-queue.test.ts`
   - GREEN: `npm test -- packages/agent/test/approval-cockpit.test.ts packages/agent/test/approval-queue.test.ts`
+
+UI sentinel parser follow-up at: `2026-07-08T16:41:00Z`
+
+UI follow-up evidence:
+
+- Added a browser-adapter regression in `packages/ui/test/agent-approval-adapter.test.ts` proving `agentApprovalCockpitFromJson()` rejects sentinel identifiers `none` and `human-review` when they appear in approval-class metadata, queue item `approvalClass` and `requiredApprovalClass`, approval-contract class fields, risk approval class, lock `appliesToApprovalClasses`, and both decision-contract and top-level `forbiddenDirectEffects`.
+- Tightened the UI-only extensible approval/direct-effect identifier parser in `packages/ui/src/agent/agent-adapter.ts` from plain nonempty strings to nonempty strings except the sentinel placeholders `none` and `human-review`, while still accepting future identifiers such as `evidence-retention-review`.
+- Re-ran the required UI verification chain:
+  - RED: `npm test -- packages/ui/test/agent-approval-adapter.test.ts`
+  - GREEN: `npm test -- packages/ui/test/agent-approval-adapter.test.ts packages/ui/test/agent-adapter.test.ts`
+  - FULL: `npm run verify`
