@@ -49,6 +49,7 @@ describe("resident agent fake execution loop", () => {
       now: () => "2026-07-07T23:00:00.000Z",
       executor: { async execute() { return { eventIds: [], artifactHashes: [], readModelChanges: [] }; } }
     });
+    const preview = { summary: "Provider preview.", affectedRefs: ["ev_contract_001"] };
     const requested = await loop.requestApprovalOnly({
       taskId: "task_provider_readiness",
       runId: "run_provider_readiness",
@@ -57,7 +58,7 @@ describe("resident agent fake execution loop", () => {
       toolVersion: 1,
       sideEffectClass: "external-byte-transfer",
       approvalClass: "provider-byte-transfer",
-      preview: { summary: "Provider preview.", affectedRefs: ["ev_contract_001"] }
+      preview
     });
 
     await expect(
@@ -108,7 +109,7 @@ describe("resident agent fake execution loop", () => {
 
     const resumed = await loop.resumeApprovedTool({
       toolRequestId: "toolreq_provider_preview",
-      currentPreviewHash: requested.previewHash,
+      currentPreview: { affectedRefs: ["ev_contract_001"], summary: "Provider preview." },
       activeLocks: []
     });
 
@@ -127,12 +128,14 @@ describe("resident agent fake execution loop", () => {
 
   it("fails closed when approval is stale", async () => {
     const ledger = new InMemoryEventLedger();
+    let executions = 0;
     const loop = createFakeAgentExecutionLoop({
       ledger,
       actor: agentActor,
       now: () => "2026-07-07T23:00:00.000Z",
-      executor: { async execute() { throw new Error("executor should not run for stale approval"); } }
+      executor: { async execute() { executions += 1; throw new Error("executor should not run for stale approval"); } }
     });
+    const preview = { summary: "Provider preview.", affectedRefs: ["ev_contract_001"] };
     const requested = await loop.requestApprovalOnly({
       taskId: "task_provider_readiness",
       runId: "run_provider_readiness",
@@ -141,7 +144,7 @@ describe("resident agent fake execution loop", () => {
       toolVersion: 1,
       sideEffectClass: "external-byte-transfer",
       approvalClass: "provider-byte-transfer",
-      preview: { summary: "Provider preview.", affectedRefs: ["ev_contract_001"] }
+      preview
     });
     await loop.approveForTest({
       toolRequestId: "toolreq_provider_preview",
@@ -153,10 +156,11 @@ describe("resident agent fake execution loop", () => {
     await expect(
       loop.resumeApprovedTool({
         toolRequestId: "toolreq_provider_preview",
-        currentPreviewHash: "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+        currentPreview: { summary: "Changed provider preview.", affectedRefs: ["ev_contract_001"] },
         activeLocks: []
       })
     ).rejects.toThrow(/stale/i);
+    expect(executions).toBe(0);
     expect((await ledger.readAll()).map((event) => event.type)).toContain("agent.tool.failed");
   });
 
@@ -174,6 +178,7 @@ describe("resident agent fake execution loop", () => {
         }
       }
     });
+    const preview = { summary: "Export governed report preview.", affectedRefs: ["ev_contract_001"] };
     const requested = await loop.requestApprovalOnly({
       taskId: "task_export_readiness",
       runId: "run_export_readiness",
@@ -181,7 +186,7 @@ describe("resident agent fake execution loop", () => {
       toolId: "report.export.preview",
       sideEffectClass: "export-or-publication",
       approvalClass: "export-or-publication",
-      preview: { summary: "Export governed report preview.", affectedRefs: ["ev_contract_001"] }
+      preview
     });
     await loop.approveForTest({
       toolRequestId: "toolreq_export_preview",
@@ -193,7 +198,7 @@ describe("resident agent fake execution loop", () => {
     await expect(
       loop.resumeApprovedTool({
         toolRequestId: "toolreq_export_preview",
-        currentPreviewHash: requested.previewHash,
+        currentPreview: preview,
         activeLocks: [
           { lockId: "lock_legal_review", category: "legal-escalation", message: "Legal review lock active." },
           { lockId: "lock_export_review", category: "export", message: "Export review lock active." },
