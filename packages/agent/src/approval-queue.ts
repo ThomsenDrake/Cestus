@@ -11,14 +11,17 @@ export const agentApprovalQueueClassValues = [
   "ledger-review"
 ] as const;
 
-type AgentApprovalClass = typeof agentApprovalQueueClassValues[number];
+export const agentApprovalQueueLegacyApprovalClassAliases = [
+  "external-message-send",
+  "export-or-publication",
+  "destructive-or-repair"
+] as const;
 
-export type AgentApprovalQueueApprovalClass = AgentApprovalClass;
-export type AgentApprovalQueueInputApprovalClass =
-  | AgentApprovalQueueApprovalClass
-  | "external-message-send"
-  | "export-or-publication"
-  | "destructive-or-repair";
+export type AgentApprovalQueueDefaultApprovalClass = typeof agentApprovalQueueClassValues[number];
+export type AgentApprovalQueueLegacyApprovalClassAlias =
+  typeof agentApprovalQueueLegacyApprovalClassAliases[number];
+export type AgentApprovalQueueApprovalClass = string;
+export type AgentApprovalQueueInputApprovalClass = string;
 
 export interface AgentAffectedRefDto {
   readonly kind: string;
@@ -571,7 +574,7 @@ function normalizeAgentApprovalClass(value: AgentApprovalQueueInputApprovalClass
       return value;
   }
 
-  throw new Error("Unsupported approval class.");
+  return value;
 }
 
 function assertSecretSafeStrings(entries: readonly (readonly [string | undefined, string])[]): void {

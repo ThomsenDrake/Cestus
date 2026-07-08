@@ -139,6 +139,68 @@ describe("agent approval queue", () => {
     ]);
   });
 
+  it("preserves future approval classes and forbidden direct-effect identifiers as extensible strings", () => {
+    const queue = buildAgentApprovalQueue(queueInput({
+      requests: [{
+        ...baseRequest,
+        toolRequestId: "toolreq_future_review",
+        toolId: "evidence.retention.review",
+        sideEffectClass: "evidence-retention",
+        requiredApprovalClass: "evidence-retention-review"
+      }],
+      approvals: [approvedProvider({
+        toolRequestId: "toolreq_future_review",
+        approvalClass: "evidence-retention-review"
+      })],
+      currentPreviewHashes: {
+        toolreq_future_review: matchingPreviewHash
+      },
+      activeLocks: [{
+        lockId: "lock_retention",
+        category: "retention",
+        message: "Retention review lock active.",
+        appliesToApprovalClasses: ["evidence-retention-review"]
+      }]
+    }));
+
+    expect(queue.blocked[0]).toMatchObject({
+      approvalClass: "evidence-retention-review",
+      currentPreviewHash: matchingPreviewHash,
+      activeLocks: [{
+        appliesToApprovalClasses: ["evidence-retention-review"]
+      }],
+      approval: {
+        approvalClass: "evidence-retention-review"
+      },
+      risk: {
+        approvalClass: "evidence-retention-review"
+      }
+    });
+    expect(queue.blocked[0]?.blockingReasons).toContain("lock-active");
+
+    const deniedQueue = buildAgentApprovalQueue(queueInput({
+      requests: [{
+        ...baseRequest,
+        toolRequestId: "toolreq_future_review",
+        toolId: "evidence.retention.review",
+        sideEffectClass: "evidence-retention",
+        requiredApprovalClass: "evidence-retention-review"
+      }],
+      denials: [{
+        toolRequestId: "toolreq_future_review",
+        deniedBy: "actor_case_owner",
+        deniedAt: "2026-07-07T22:03:00.000Z",
+        rationale: "Need a narrower retention scope.",
+        approvalClass: "evidence-retention-review"
+      }],
+      currentPreviewHashes: {
+        toolreq_future_review: matchingPreviewHash
+      }
+    }));
+
+    expect(deniedQueue.denied[0]?.denial?.approvalClass).toBe("evidence-retention-review");
+  });
+
   it("marks requested items stale before approval when the current preview hash differs", () => {
     const queue = buildAgentApprovalQueue(queueInput({
       currentPreviewHashes: {
