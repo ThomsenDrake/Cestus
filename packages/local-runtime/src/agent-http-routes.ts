@@ -155,6 +155,13 @@ export async function handleAgentHttpRoute(
           return json(400, invalidDenialBodyDiagnostic());
         }
 
+        const snapshotEvents = await input.handle.ledger.readAll();
+        const cockpit = approvalCockpitFromEvents(snapshotEvents, input.now);
+        const approvalItem = approvalItemById(cockpit, approvalRoute.toolRequestId);
+        if (approvalItem === undefined) {
+          return json(404, missingApprovalDiagnostic());
+        }
+
         try {
           const gateway = createAgentToolGateway({
             ledger: input.handle.ledger,

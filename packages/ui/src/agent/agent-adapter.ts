@@ -779,11 +779,15 @@ function safeAgentArray(value: readonly unknown[]): unknown[] {
   }
 
   const descriptors = Object.getOwnPropertyDescriptors(value);
+  assertNoAccessorDescriptors(
+    descriptors,
+    "Browser DTO input must not use accessor-backed array items."
+  );
   const result: unknown[] = [];
 
   for (const key of Object.keys(value)) {
     const descriptor = descriptors[key];
-    if (descriptor === undefined || !("value" in descriptor)) {
+    if (descriptor === undefined) {
       throw invalidBrowserDtoError("Browser DTO input must not use accessor-backed array items.");
     }
 
@@ -805,20 +809,32 @@ function safeAgentObject(value: Record<string, unknown>): Record<string, unknown
   }
 
   const descriptors = Object.getOwnPropertyDescriptors(value);
+  assertNoAccessorDescriptors(
+    descriptors,
+    "Browser DTO input must not use accessor-backed fields."
+  );
   const result: Record<string, unknown> = {};
 
   for (const [key, descriptor] of Object.entries(descriptors)) {
     if (!descriptor.enumerable) {
       continue;
     }
-    if (!("value" in descriptor)) {
-      throw invalidBrowserDtoError("Browser DTO input must not use accessor-backed fields.");
-    }
 
     result[safeAgentText(key)] = safeAgentValue(descriptor.value);
   }
 
   return result;
+}
+
+function assertNoAccessorDescriptors(
+  descriptors: Readonly<Record<string, PropertyDescriptor>>,
+  message: string
+): void {
+  for (const descriptor of Object.values(descriptors)) {
+    if (!("value" in descriptor)) {
+      throw invalidBrowserDtoError(message);
+    }
+  }
 }
 
 function invalidBrowserDtoError(message: string): Error {

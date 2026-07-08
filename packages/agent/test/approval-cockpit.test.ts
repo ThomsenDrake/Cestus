@@ -109,10 +109,72 @@ describe("agent approval cockpit dto", () => {
         approvable: false
       }
     });
-    expect(cockpit.queue.blocked[0]?.review.riskAndLockStatus).toMatch(/missing provenance/i);
+    expect(cockpit.queue.blocked[0]?.review.riskAndLockStatus).toMatch(/provider byte-transfer provenance/i);
     expect(cockpit.queue.blocked[0]?.review.staleOrUnsafePrevention).toContain(
-      "Requests without source-event and artifact provenance stay blocked until both provenance inputs are present."
+      "Provider byte-transfer requests stay blocked until both source-event or source refs and artifact refs are present."
     );
+  });
+
+  it.each([
+    {
+      label: "missing source-event refs",
+      overrides: {
+        sourceEventIds: [],
+        inputArtifactHashes: [artifactHash]
+      }
+    },
+    {
+      label: "missing artifact refs",
+      overrides: {
+        sourceEventIds: ["evt_provider_preview"],
+        inputArtifactHashes: []
+      }
+    }
+  ])("keeps provider byte-transfer approvals blocked when %s", ({ overrides }) => {
+    const cockpit = buildAgentApprovalCockpit({
+      status: agentStatus({
+        toolRequests: [providerTransferRequest(overrides)]
+      }),
+      generatedAt: "2026-07-08T14:00:00.000Z"
+    });
+
+    expect(cockpit.queue.pending).toHaveLength(0);
+    expect(cockpit.queue.blocked[0]?.blockingReasons).toContain("missing-provenance");
+    expect(cockpit.queue.blocked[0]?.review.riskAndLockStatus).toMatch(/provider byte-transfer/i);
+    expect(cockpit.queue.blocked[0]?.review.staleOrUnsafePrevention).toContain(
+      "Provider byte-transfer requests stay blocked until both source-event or source refs and artifact refs are present."
+    );
+  });
+
+  it("does not block future approval classes solely for missing artifact refs when safe refs exist", () => {
+    const cockpit = buildAgentApprovalCockpit({
+      status: agentStatus({
+        toolRequests: [providerTransferRequest({
+          toolRequestId: "toolreq_future_review",
+          toolId: "ledger.review.prepare",
+          sideEffectClass: "ledger-review",
+          requiredApprovalClass:
+            "evidence-retention-review" as unknown as AgentStatusDto["toolRequests"][number]["requiredApprovalClass"],
+          scope: "Prepare a retained-evidence review package.",
+          estimatedEffect: "Prepare a human review package without transferring external bytes.",
+          sourceEventIds: ["evt_retention_review"],
+          inputArtifactHashes: []
+        })]
+      }),
+      generatedAt: "2026-07-08T14:00:00.000Z"
+    });
+
+    expect(cockpit.queue.pending).toHaveLength(1);
+    expect(cockpit.queue.pending[0]).toMatchObject({
+      toolRequestId: "toolreq_future_review",
+      approvalClass: "evidence-retention-review",
+      blockingReasons: [],
+      staleness: {
+        state: "current",
+        approvable: true
+      }
+    });
+    expect(cockpit.queue.blocked).toHaveLength(0);
   });
 
   it("ignores read-only tool requests while keeping real approval requests visible", () => {

@@ -169,6 +169,21 @@ describe("agent approval cockpit adapter", () => {
     ).toMatch(/accessor|prototype|descriptor|dto/i);
   });
 
+  it("rejects non-enumerable accessor-backed cockpit fields without surfacing getter secrets", () => {
+    const payload = approvalCockpit() as unknown as Record<string, unknown>;
+    Object.defineProperty(payload, "queue", {
+      enumerable: false,
+      get() {
+        throw new Error("OPENAI_API_KEY from /tmp/non-enumerable-getter");
+      }
+    });
+
+    const message = thrownMessage(() => agentApprovalCockpitFromJson(payload));
+
+    expect(message).toMatch(/accessor|descriptor|dto/i);
+    expect(message).not.toMatch(/OPENAI_API_KEY|non-enumerable-getter|\/tmp\/non-enumerable-getter/i);
+  });
+
   it("supports static adapters for component and app tests", async () => {
     const adapter = createStaticAgentAdapter(agentStatus(), approvalCockpit());
 
