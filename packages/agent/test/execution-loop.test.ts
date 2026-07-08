@@ -3,6 +3,7 @@ import type { AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger, type AppendOptions, type EventLedger } from "../../ontology/src/event-ledger.js";
 import {
   createFakeAgentExecutionLoop,
+  type FakeAgentActiveLock,
   type FakeAgentToolExecutor,
   type FakeAgentToolExecutorResult
 } from "../src/execution-loop.js";
@@ -105,6 +106,49 @@ describe("resident agent fake execution loop", () => {
       expect((error as Error).message).toMatch(/secret-safe/i);
       expect((error as Error).message).not.toContain(secretKey);
       expect((error as Error).message).not.toContain(secretValue);
+      expect(await ledger.readAll()).toEqual([]);
+    }
+  );
+
+  it.each(["__proto__", "constructor"] as const)(
+    "rejects unsafe preview key %s without appending or echoing unsafe data",
+    async (unsafeKey) => {
+      const ledger = new InMemoryEventLedger();
+      const loop = createFakeAgentExecutionLoop({
+        ledger,
+        actor: agentActor,
+        now: () => "2026-07-07T23:00:00.000Z",
+        executor: { async execute() { return { eventIds: [], artifactHashes: [], readModelChanges: [] }; } }
+      });
+      const preview = {
+        summary: "Provider preview."
+      } as { summary: string; [key: string]: unknown };
+      Object.defineProperty(preview, unsafeKey, {
+        enumerable: true,
+        value: {
+          relatedEventIds: ["evt_proto_hidden"],
+          scope: "Prototype-bound scope should never emit."
+        }
+      });
+
+      const error = await captureError(() =>
+        loop.requestApprovalOnly({
+          taskId: "task_provider_readiness",
+          runId: "run_provider_readiness",
+          toolRequestId: `toolreq_${unsafeKey.replaceAll("_", "proto")}_preview`,
+          toolId: "provider.parse.preview",
+          toolVersion: 1,
+          sideEffectClass: "external-byte-transfer",
+          approvalClass: "provider-byte-transfer",
+          preview
+        })
+      );
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toMatch(/preview/i);
+      expect((error as Error).message).not.toContain(unsafeKey);
+      expect((error as Error).message).not.toContain("evt_proto_hidden");
+      expect((error as Error).message).not.toContain("Prototype-bound scope");
       expect(await ledger.readAll()).toEqual([]);
     }
   );
@@ -711,6 +755,72 @@ describe("resident agent fake execution loop", () => {
       throw new Error("expected failed event");
     }
     expect(failedEvent.payload.category).toBe("legal-lock-active");
+  });
+
+  it("rejects accessor-backed active lock fields without invoking getters or executing", async () => {
+    const ledger = new InMemoryEventLedger();
+    let executions = 0;
+    const loop = createFakeAgentExecutionLoop({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-07-07T23:00:00.000Z",
+      executor: {
+        async execute() {
+          executions += 1;
+          return { eventIds: [], artifactHashes: [], readModelChanges: [] };
+        }
+      }
+    });
+    const preview = { summary: "Export governed report preview.", affectedRefs: ["ev_contract_001"] };
+    const requested = await loop.requestApprovalOnly({
+      taskId: "task_export_readiness",
+      runId: "run_export_readiness",
+      toolRequestId: "toolreq_accessor_lock",
+      toolId: "report.export.preview",
+      sideEffectClass: "export-or-publication",
+      approvalClass: "export-or-publication",
+      preview
+    });
+    await loop.approveForTest({
+      toolRequestId: "toolreq_accessor_lock",
+      actor: humanActor,
+      approvedPreviewHash: requested.previewHash,
+      rationale: "Human approved the exact preview."
+    });
+    let lockGetterCalls = 0;
+    const activeLock = {
+      category: "export",
+      message: "Export review lock active."
+    } as Record<string, unknown>;
+    Object.defineProperty(activeLock, "lockId", {
+      enumerable: true,
+      get() {
+        lockGetterCalls += 1;
+        return "api key sk-live-value";
+      }
+    });
+
+    await expect(
+      loop.resumeApprovedTool({
+        toolRequestId: "toolreq_accessor_lock",
+        taskId: "task_export_readiness",
+        currentPreview: preview,
+        activeLocks: [activeLock as unknown as FakeAgentActiveLock]
+      })
+    ).rejects.toThrow(/lock/i);
+
+    expect(lockGetterCalls).toBe(0);
+    expect(executions).toBe(0);
+    const events = await ledger.readAll();
+    expect(events.some((event) => event.type === "agent.tool.completed")).toBe(false);
+    const failedEvent = events.find((event) => event.type === "agent.tool.failed");
+    expect(failedEvent?.type).toBe("agent.tool.failed");
+    if (failedEvent?.type !== "agent.tool.failed") {
+      throw new Error("expected failed event");
+    }
+    expect(failedEvent.payload.category).toBe("secret-detected");
+    expect(failedEvent.payload.message).not.toMatch(/sk[_-]live|api key/i);
+    expect(failedEvent.payload.allowedActions.join(" ")).not.toMatch(/sk[_-]live|api key/i);
   });
 
   it("rejects accessor-backed preview fields and array items without invoking getters", async () => {
