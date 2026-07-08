@@ -76,6 +76,13 @@ describe("agent approval routes", () => {
     handler.close();
     handlers.splice(handlers.indexOf(handler), 1);
     expect(await eventTypes(config)).toEqual(["agent.tool.requested", "agent.tool.approved"]);
+    const approval = await eventByType(config, "agent.tool.approved");
+    expect(approval?.payload).toMatchObject({
+      toolRequestId: "toolreq_provider_transfer",
+      approvedBy: "actor_case_owner",
+      approvedPreviewHash: previewHash
+    });
+    expect(approval?.context.actor.id).toBe("actor_case_owner");
   });
 
   it("appends human denial and no execution events", async () => {
@@ -92,6 +99,12 @@ describe("agent approval routes", () => {
     handler.close();
     handlers.splice(handlers.indexOf(handler), 1);
     expect(await eventTypes(config)).toEqual(["agent.tool.requested", "agent.tool.denied"]);
+    const denial = await eventByType(config, "agent.tool.denied");
+    expect(denial?.payload).toMatchObject({
+      toolRequestId: "toolreq_provider_denied",
+      deniedBy: "actor_case_owner"
+    });
+    expect(denial?.context.actor.id).toBe("actor_case_owner");
   });
 
   it("rejects stale approval hashes and secret-shaped rationales safely", async () => {
@@ -184,9 +197,20 @@ async function seedToolRequest(toolRequestId = "toolreq_provider_transfer") {
 }
 
 async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>): Promise<readonly string[]> {
+  return (await readAllEvents(config)).map((event) => event.type);
+}
+
+async function eventByType(
+  config: ReturnType<typeof resolveLocalRuntimeConfig>,
+  eventType: string
+) {
+  return (await readAllEvents(config)).find((event) => event.type === eventType);
+}
+
+async function readAllEvents(config: ReturnType<typeof resolveLocalRuntimeConfig>) {
   const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
   try {
-    return (await ledger.readAll()).map((event) => event.type);
+    return await ledger.readAll();
   } finally {
     ledger.close();
   }

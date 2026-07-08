@@ -44,3 +44,13 @@ Implementation evidence:
 - Targeted pass: `npm test -- packages/local-runtime/test/agent-approval-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/agent/test/approval-cockpit.test.ts`
 - Full gate: `npm run verify`
 - Whitespace: `git diff --check`
+
+Concern fix recorded at: `2026-07-08T15:40:00Z`
+
+Concern-fix evidence:
+
+- Red test: `npm test -- packages/local-runtime/test/agent-approval-routes.test.ts`
+- Observed red failure: approval and denial events persisted `actor_case_owner_approval_route` instead of the authenticated local-runtime human actor ID.
+- Fix: `packages/local-runtime/src/agent-http-routes.ts` now constructs the approval/denial gateway with a dedicated system actor and passes `input.actor` unchanged to `approveTool()` / `denyTool()`.
+- Targeted pass: `npm test -- packages/local-runtime/test/agent-approval-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/agent/test/approval-cockpit.test.ts`
+- Full gate: `npm run verify`

@@ -18,6 +18,11 @@ import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
 const defaultIdentityStreamId = "agent_identity_agent_default";
 const approvalDetailSchemaVersion = "agent-approval-detail.v1" as const;
+const localApprovalGatewayActor: ActorRef = Object.freeze({
+  id: "actor_local_runtime_approval_gateway",
+  kind: "system",
+  label: "Local Runtime Approval Gateway"
+});
 
 export interface HandleAgentHttpRouteInput {
   readonly request: LocalRuntimeRequest;
@@ -109,13 +114,13 @@ export async function handleAgentHttpRoute(
           try {
             const gateway = createAgentToolGateway({
               ledger: input.handle.ledger,
-              actor: input.actor,
+              actor: localApprovalGatewayActor,
               now: input.now
             });
             const event = await gateway.approveTool({
               toolRequestId: approvalRoute.toolRequestId,
               approvedPreviewHash: decision.approvedPreviewHash,
-              actor: routeDecisionActor(input.actor),
+              actor: input.actor,
               rationale: decision.rationale
             });
             const result = agentApprovalDecisionResultDtoSchema.parse({
@@ -138,12 +143,12 @@ export async function handleAgentHttpRoute(
         try {
           const gateway = createAgentToolGateway({
             ledger: input.handle.ledger,
-            actor: input.actor,
+            actor: localApprovalGatewayActor,
             now: input.now
           });
           const event = await gateway.denyTool({
             toolRequestId: approvalRoute.toolRequestId,
-            actor: routeDecisionActor(input.actor),
+            actor: input.actor,
             rationale: denial.rationale
           });
           const result = agentApprovalDecisionResultDtoSchema.parse({
@@ -517,13 +522,6 @@ function allApprovalItems(cockpit: Awaited<ReturnType<typeof approvalCockpit>>) 
     ...cockpit.queue.completed,
     ...cockpit.queue.failed
   ];
-}
-
-function routeDecisionActor(actor: ActorRef): ActorRef {
-  return {
-    ...actor,
-    id: `${actor.id}_approval_route`
-  };
 }
 
 function approvalDecisionErrorResponse(error: unknown): LocalRuntimeResponse {
