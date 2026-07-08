@@ -111,6 +111,15 @@ export async function handleAgentHttpRoute(
             return json(400, invalidApprovalBodyDiagnostic());
           }
 
+          const cockpit = await approvalCockpit(runtime);
+          const approvalItem = approvalItemById(cockpit, approvalRoute.toolRequestId);
+          if (approvalItem === undefined) {
+            return json(404, missingApprovalDiagnostic());
+          }
+          if (!approvalItemIsCurrentlyApprovable(cockpit, approvalItem)) {
+            return json(409, blockedApprovalDiagnostic());
+          }
+
           try {
             const gateway = createAgentToolGateway({
               ledger: input.handle.ledger,
@@ -386,6 +395,20 @@ function staleApprovalDiagnostic(): {
   ]);
 }
 
+function blockedApprovalDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Approval request is no longer approvable.", [
+    "refresh the approval cockpit",
+    "rebuild the preview",
+    "request a revised preview"
+  ]);
+}
+
 function approvalDecisionRejectedDiagnostic(): {
   readonly ok: false;
   readonly diagnostic: {
@@ -510,6 +533,20 @@ function approvalItemById(
   toolRequestId: string
 ) {
   return allApprovalItems(cockpit).find((item) => item.toolRequestId === toolRequestId);
+}
+
+function approvalItemIsCurrentlyApprovable(
+  cockpit: Awaited<ReturnType<typeof approvalCockpit>>,
+  item: NonNullable<ReturnType<typeof approvalItemById>>
+): boolean {
+  return cockpit.queue.pending.some((pendingItem) => pendingItem.toolRequestId === item.toolRequestId) &&
+    item.staleness.approvable === true &&
+    item.stale === false &&
+    item.blockingReasons.length === 0 &&
+    item.approval === undefined &&
+    item.denial === undefined &&
+    item.completion === undefined &&
+    item.failure === undefined;
 }
 
 function allApprovalItems(cockpit: Awaited<ReturnType<typeof approvalCockpit>>) {

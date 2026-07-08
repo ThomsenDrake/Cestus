@@ -54,3 +54,14 @@ Concern-fix evidence:
 - Fix: `packages/local-runtime/src/agent-http-routes.ts` now constructs the approval/denial gateway with a dedicated system actor and passes `input.actor` unchanged to `approveTool()` / `denyTool()`.
 - Targeted pass: `npm test -- packages/local-runtime/test/agent-approval-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/agent/test/approval-cockpit.test.ts`
 - Full gate: `npm run verify`
+
+Review-fix recorded at: `2026-07-08T15:47:00Z`
+
+Review-fix evidence:
+
+- Review-fix base head: `7ebdb06 fix: preserve exact approval route actor provenance`
+- Red test: `npm test -- packages/local-runtime/test/agent-approval-routes.test.ts`
+- Observed red failure: locked and missing-provenance blocked approvals still returned `200`, so the route appended approval events as long as the preview hash matched.
+- Fix: `packages/local-runtime/src/agent-http-routes.ts` now rebuilds the current approval cockpit before approval, loads the selected item, and rejects `POST .../approve` with a safe `409` diagnostic unless the item is still in the approvable pending bucket with no stale or blocking state.
+- Targeted pass: `npm test -- packages/local-runtime/test/agent-approval-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/agent/test/approval-cockpit.test.ts`
+- Full gate: `npm run verify`

@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createAgentToolGateway } from "../../agent/src/index.js";
+import type { AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
@@ -131,6 +132,49 @@ describe("agent approval routes", () => {
     expect(unsafe.body).not.toMatch(/hunter2|password/i);
   });
 
+  it("rejects locked provider byte-transfer approvals without appending approval events", async () => {
+    const { config, handler, previewHash } = await seededHandler({
+      toolRequestId: "toolreq_locked_provider_transfer",
+      lockKind: "provider-byte-transfer"
+    });
+    const response = await handler({
+      method: "POST",
+      url: "/api/agent/approvals/toolreq_locked_provider_transfer/approve",
+      body: JSON.stringify({
+        approvedPreviewHash: previewHash,
+        rationale: "Approved the exact locked preview."
+      })
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body).not.toMatch(/toolreq_locked_provider_transfer|lock_provider_byte_transfer/i);
+    handler.close();
+    handlers.splice(handlers.indexOf(handler), 1);
+    expect(await eventTypes(config)).toEqual(["agent.tool.requested", "agent.lock.activated"]);
+  });
+
+  it("rejects missing-provenance blocked approvals without appending approval events", async () => {
+    const { config, handler, previewHash } = await seededHandler({
+      toolRequestId: "toolreq_missing_provenance_transfer",
+      sourceEventIds: [],
+      inputArtifactHashes: []
+    });
+    const response = await handler({
+      method: "POST",
+      url: "/api/agent/approvals/toolreq_missing_provenance_transfer/approve",
+      body: JSON.stringify({
+        approvedPreviewHash: previewHash,
+        rationale: "Approved the exact provenance-missing preview."
+      })
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body).not.toMatch(/toolreq_missing_provenance_transfer/i);
+    handler.close();
+    handlers.splice(handlers.indexOf(handler), 1);
+    expect(await eventTypes(config)).toEqual(["agent.tool.requested"]);
+  });
+
   it("requires human route actors for approval decisions", async () => {
     const { config } = await seedToolRequest();
     const handler = createLocalRuntimeHttpHandler({
@@ -152,8 +196,8 @@ describe("agent approval routes", () => {
   });
 });
 
-async function seededHandler(toolRequestId = "toolreq_provider_transfer") {
-  const seeded = await seedToolRequest(toolRequestId);
+async function seededHandler(input: SeedToolRequestInput | string = "toolreq_provider_transfer") {
+  const seeded = await seedToolRequest(input);
   const handler = createLocalRuntimeHttpHandler({
     config: seeded.config,
     actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
@@ -163,7 +207,16 @@ async function seededHandler(toolRequestId = "toolreq_provider_transfer") {
   return { ...seeded, handler };
 }
 
-async function seedToolRequest(toolRequestId = "toolreq_provider_transfer") {
+interface SeedToolRequestInput {
+  readonly toolRequestId?: string;
+  readonly sourceEventIds?: readonly string[];
+  readonly inputArtifactHashes?: readonly string[];
+  readonly lockKind?: "provider-byte-transfer";
+}
+
+async function seedToolRequest(input: SeedToolRequestInput | string = "toolreq_provider_transfer") {
+  const request = typeof input === "string" ? { toolRequestId: input } : input;
+  const toolRequestId = request.toolRequestId ?? "toolreq_provider_transfer";
   const cwd = mkdtempSync(join(tmpdir(), "cestus-agent-approval-routes-"));
   tempDirs.push(cwd);
   const config = resolveLocalRuntimeConfig({ cwd, env: {} });
@@ -184,12 +237,38 @@ async function seedToolRequest(toolRequestId = "toolreq_provider_transfer") {
       requiredApprovalClass: "provider-byte-transfer",
       preview: {
         summary: "Send selected synthetic evidence excerpts to the configured provider.",
-        relatedEventIds: ["evt_provider_preview"],
-        artifactHashes: ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+        relatedEventIds: request.sourceEventIds ?? ["evt_provider_preview"],
+        artifactHashes: request.inputArtifactHashes ?? ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
         scope: "Selected synthetic evidence excerpts.",
         estimatedEffect: "Provider byte transfer after human approval."
       }
     });
+
+    if (request.lockKind !== undefined) {
+      const lockEvent: AppendableKnowledgeEvent<"agent.lock.activated"> = {
+        type: "agent.lock.activated",
+        version: 1,
+        streamId: "agent_lock_lock_provider_byte_transfer",
+        context: {
+          actor: { id: "actor_policy_guard", kind: "system", label: "Policy Guard" },
+          occurredAt: now(),
+          correlationId: "corr_lock_provider_byte_transfer",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0", agent: "0.1.0" },
+          causationId: requested.id
+        },
+        payload: {
+          lockId: "lock_provider_byte_transfer",
+          residentAgentId: "agent_default",
+          kind: request.lockKind,
+          activatedBy: "actor_policy_guard",
+          reason: "Provider transfer locked pending review.",
+          relatedEventIds: [requested.id]
+        }
+      };
+      await ledger.append(lockEvent);
+    }
+
     return { config, previewHash: requested.payload.previewHash };
   } finally {
     ledger.close();
