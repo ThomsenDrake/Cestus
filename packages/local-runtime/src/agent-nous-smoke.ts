@@ -2,7 +2,6 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { AgentRuntimeDiagnosticDto } from "../../agent/src/index.js";
 import { resolveLocalRuntimeConfig } from "./config.js";
 import { loadLocalAgentEnv, type LocalAgentEnv } from "./agent-env.js";
 import { defaultLocalAgentRuntimeFactory, type LocalAgentRuntimeFactory } from "./agent-runtime-factory.js";
@@ -43,6 +42,7 @@ export interface RunAgentNousSmokeDependencies {
   readonly stdout?: (line: string) => void;
   readonly env?: Record<string, string | undefined>;
   readonly loadAgentEnv?: (input: { readonly cwd: string; readonly env?: Record<string, string | undefined> }) => LocalAgentEnv;
+  readonly providerSettingsAvailable?: (input: { readonly cwd: string; readonly env?: Record<string, string | undefined> }) => boolean;
   readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
 }
 
@@ -56,66 +56,72 @@ export async function runAgentNousSmokeCli(
   dependencies: RunAgentNousSmokeDependencies = {}
 ): Promise<number> {
   const stdout = dependencies.stdout ?? ((line: string) => process.stdout.write(line));
-  const now = dependencies.now ?? (() => new Date().toISOString());
-  const cwd = dependencies.cwd?.() ?? process.cwd();
+  try {
+    const now = dependencies.now ?? (() => new Date().toISOString());
+    const cwd = dependencies.cwd?.() ?? process.cwd();
 
-  if (argv.length > 0) {
-    stdout(`${JSON.stringify(blockedReport(
-      "invalid-arguments",
-      "Nous smoke accepts no command arguments.",
-      ["run the smoke command without arguments"]
-    ))}\n`);
-    return 2;
+    if (argv.length > 0) {
+      writeSmokeReport(stdout, blockedReport(
+        "invalid-arguments",
+        "Nous smoke accepts no command arguments.",
+        ["run the smoke command without arguments"]
+      ));
+      return 2;
+    }
+
+    const report = await runAgentNousSmoke(
+      {
+        cwd,
+        now,
+        ...(dependencies.env === undefined ? {} : { env: dependencies.env })
+      },
+      dependencies
+    );
+    writeSmokeReport(stdout, report);
+    return report.ok ? 0 : 3;
+  } catch {
+    writeSmokeReport(stdout, genericSmokeFailureReport());
+    return 3;
   }
-
-  const report = await runAgentNousSmoke(
-    {
-      cwd,
-      now,
-      ...(dependencies.env === undefined ? {} : { env: dependencies.env })
-    },
-    dependencies
-  );
-  stdout(`${JSON.stringify(report)}\n`);
-  return report.ok ? 0 : 3;
 }
 
 export async function runAgentNousSmoke(
   input: RunAgentNousSmokeInput = {},
   dependencies: RunAgentNousSmokeDependencies = {}
 ): Promise<AgentNousSmokeReport> {
-  const cwd = input.cwd ?? dependencies.cwd?.() ?? process.cwd();
-  const now = input.now ?? dependencies.now ?? (() => new Date().toISOString());
-  const loadEnv = dependencies.loadAgentEnv ?? loadLocalAgentEnv;
-  const localEnv = loadEnv({
-    cwd,
-    ...(input.env === undefined ? {} : { env: input.env })
-  });
-
-  if (localEnv.nousApiKey === undefined) {
-    return blockedReport(
-      "provider-settings-unavailable",
-      "Nous provider settings are unavailable.",
-      ["configure local provider settings"]
-    );
-  }
-
-  const tempRoot = dependencies.tempDir?.() ?? mkdtempSync(join(tmpdir(), "cestus-nous-smoke-"));
-  const shouldCleanupTempRoot = dependencies.tempDir === undefined;
-  const handle = createSqlitePrrRuntime({
-    config: resolveLocalRuntimeConfig({
-      cwd,
-      env: {
-        ...(input.env ?? process.env),
-        CESTUS_LOCAL_STORAGE: "explicit-path",
-        CESTUS_LOCAL_SQLITE_PATH: join(tempRoot, "runtime.sqlite")
-      }
-    }),
-    actor: smokeActor,
-    now
-  });
+  let tempRoot: string | undefined;
+  let shouldCleanupTempRoot = false;
+  let handle: ReturnType<typeof createSqlitePrrRuntime> | undefined;
 
   try {
+    const cwd = input.cwd ?? dependencies.cwd?.() ?? process.cwd();
+    const now = input.now ?? dependencies.now ?? (() => new Date().toISOString());
+    const env = input.env;
+
+    const providerSettingsInput = env === undefined ? { cwd } : { cwd, env };
+    if (!hasNousProviderSettings(providerSettingsInput, dependencies)) {
+      return blockedReport(
+        "provider-settings-unavailable",
+        "Nous provider settings are unavailable.",
+        ["configure local provider settings"]
+      );
+    }
+
+    tempRoot = dependencies.tempDir?.() ?? mkdtempSync(join(tmpdir(), "cestus-nous-smoke-"));
+    shouldCleanupTempRoot = dependencies.tempDir === undefined;
+    handle = createSqlitePrrRuntime({
+      config: resolveLocalRuntimeConfig({
+        cwd,
+        env: {
+          ...(env ?? process.env),
+          CESTUS_LOCAL_STORAGE: "explicit-path",
+          CESTUS_LOCAL_SQLITE_PATH: join(tempRoot, "runtime.sqlite")
+        }
+      }),
+      actor: smokeActor,
+      now
+    });
+
     const runtime = (dependencies.agentRuntimeFactory ?? defaultLocalAgentRuntimeFactory)({
       handle,
       actor: smokeActor,
@@ -135,7 +141,7 @@ export async function runAgentNousSmoke(
     const workspaceId = handle.mountedWorkspace?.workspaceId ?? "ws_agent_nous_smoke";
     const identity = await runtime.initializeDefaultIdentity({ workspaceId });
     if (!identity.ok) {
-      return runtimeBlockedReport("runtime-initialization-failed", identity.error);
+      return runtimeBlockedReport("runtime-initialization-failed");
     }
     const task = await runtime.createTask({
       taskId: smokeTaskId,
@@ -144,7 +150,7 @@ export async function runAgentNousSmoke(
       priority: "normal"
     });
     if (!task.ok) {
-      return runtimeBlockedReport("runtime-task-failed", task.error);
+      return runtimeBlockedReport("runtime-task-failed");
     }
     const run = await runtime.startRun({
       runId: smokeRunId,
@@ -153,7 +159,7 @@ export async function runAgentNousSmoke(
       scope: { kind: "workspace", refs: [workspaceId] }
     });
     if (!run.ok) {
-      return runtimeBlockedReport("runtime-run-failed", run.error);
+      return runtimeBlockedReport("runtime-run-failed");
     }
 
     const events = await handle.ledger.readAll();
@@ -181,7 +187,7 @@ export async function runAgentNousSmoke(
     });
 
     if (!invoked.ok) {
-      return runtimeBlockedReport("provider-invocation-failed", invoked.error);
+      return runtimeBlockedReport("provider-invocation-failed");
     }
 
     return Object.freeze({
@@ -193,29 +199,46 @@ export async function runAgentNousSmoke(
       omissionCount: promptArtifact.manifest.omissions.length
     });
   } catch {
-    return blockedReport(
-      "provider-invocation-failed",
-      "Nous smoke did not complete.",
-      ["inspect local provider setup before retrying"]
-    );
+    return genericSmokeFailureReport();
   } finally {
-    handle.close();
-    if (shouldCleanupTempRoot) {
-      rmSync(tempRoot, { recursive: true, force: true });
+    try {
+      handle?.close();
+    } catch {
+      // Keep smoke cleanup failures inside the safe JSON boundary.
+    }
+    if (shouldCleanupTempRoot && tempRoot !== undefined) {
+      try {
+        rmSync(tempRoot, { recursive: true, force: true });
+      } catch {
+        // Cleanup failures must not escape the smoke JSON boundary.
+      }
     }
   }
 }
 
-function runtimeBlockedReport(code: string, diagnostic: AgentRuntimeDiagnosticDto): AgentNousSmokeBlockedReport {
-  if (code === "provider-invocation-failed") {
-    return blockedReport(
-      code,
-      "Nous smoke did not complete.",
-      ["inspect local provider setup before retrying"]
-    );
+function hasNousProviderSettings(
+  input: { readonly cwd: string; readonly env?: Record<string, string | undefined> },
+  dependencies: RunAgentNousSmokeDependencies
+): boolean {
+  if (dependencies.providerSettingsAvailable !== undefined) {
+    return dependencies.providerSettingsAvailable(input);
   }
 
-  return blockedReport(code, diagnostic.message, diagnostic.allowedRepairActions ?? ["inspect local runtime status"]);
+  const loadEnv = dependencies.loadAgentEnv ?? loadLocalAgentEnv;
+  const localEnv = loadEnv({
+    cwd: input.cwd,
+    ...(input.env === undefined ? {} : { env: input.env })
+  });
+
+  return localEnv.nousApiKey !== undefined;
+}
+
+function runtimeBlockedReport(code: string): AgentNousSmokeBlockedReport {
+  return blockedReport(
+    code,
+    "Nous smoke did not complete.",
+    ["inspect local provider setup before retrying"]
+  );
 }
 
 function blockedReport(
@@ -232,6 +255,22 @@ function blockedReport(
       allowedRepairActions: Object.freeze([...allowedRepairActions])
     })
   });
+}
+
+function genericSmokeFailureReport(): AgentNousSmokeBlockedReport {
+  return blockedReport(
+    "smoke-failed",
+    "Nous smoke did not complete.",
+    ["inspect local provider setup before retrying"]
+  );
+}
+
+function writeSmokeReport(stdout: (line: string) => void, report: AgentNousSmokeReport): void {
+  try {
+    stdout(`${JSON.stringify(report)}\n`);
+  } catch {
+    // A CLI stdout failure cannot be repaired here, but it must not print raw diagnostics.
+  }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
