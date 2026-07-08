@@ -290,17 +290,11 @@ export function createFakeAgentExecutionLoop(input: CreateFakeAgentExecutionLoop
         throw new Error(invalidFakeToolResultMessage);
       }
 
-      let completed: KnowledgeEventOf<"agent.tool.completed">;
-      try {
-        completed = await gateway.completeTool({
-          toolRequestId: command.toolRequestId,
-          approvedPreviewHash: approval.payload.approvedPreviewHash,
-          result
-        });
-      } catch {
-        await failForInvalidFakeToolResult(gateway, command.toolRequestId);
-        throw new Error(invalidFakeToolResultMessage);
-      }
+      const completed = await gateway.completeTool({
+        toolRequestId: command.toolRequestId,
+        approvedPreviewHash: approval.payload.approvedPreviewHash,
+        result
+      });
 
       return Object.freeze({
         state: "completed" as const,
@@ -395,6 +389,21 @@ function sanitizePlainJsonObject(value: unknown, label: string): Record<string, 
   return safe;
 }
 
+function dataRecordFromObject(value: unknown, label: string): Record<string, unknown> {
+  const record: Record<string, unknown> = {};
+  for (const [key, entryValue] of dataEntriesFromObject(value, label)) {
+    record[key] = entryValue;
+  }
+  return record;
+}
+
+function rejectUnsupportedKeys(record: Record<string, unknown>, allowedKeys: readonly string[], label: string): void {
+  const allowed = new Set(allowedKeys);
+  if (Object.keys(record).some((key) => !allowed.has(key))) {
+    throw new Error(`${label} contains unsupported fields.`);
+  }
+}
+
 function sanitizeJsonValue(value: unknown, label: string): unknown {
   if (value === null || typeof value === "boolean") {
     return value;
@@ -483,12 +492,32 @@ function sanitizeEventIds(value: unknown, label: string): string[] | undefined {
   });
 }
 
+function sanitizeRequiredEventIds(value: unknown, label: string): string[] {
+  const eventIds = sanitizeEventIds(value, label);
+  if (eventIds === undefined) {
+    throw new Error(`${label} list is required.`);
+  }
+  return eventIds;
+}
+
 function sanitizeArtifactHashes(value: unknown, label: string): string[] | undefined {
   return sanitizeValidatedStringArray(value, label, (item) => {
     if (!artifactHashPattern.test(item)) {
       throw new Error(`${label} must be a valid artifact hash.`);
     }
   });
+}
+
+function sanitizeRequiredArtifactHashes(value: unknown, label: string): string[] {
+  const artifactHashes = sanitizeArtifactHashes(value, label);
+  if (artifactHashes === undefined) {
+    throw new Error(`${label} list is required.`);
+  }
+  return artifactHashes;
+}
+
+function sanitizeRelatedIds(value: unknown, label: string): string[] | undefined {
+  return sanitizeValidatedStringArray(value, label, () => undefined);
 }
 
 function sanitizeValidatedStringArray(
@@ -531,62 +560,51 @@ function isArrayIndexName(value: string): boolean {
   return Number.isSafeInteger(index) && index >= 0 && index < 4_294_967_295 && String(index) === value;
 }
 
-function normalizeFakeToolResult(result: FakeAgentToolExecutorResult): AgentToolResult {
-  return {
-    eventIds: [...result.eventIds],
-    artifactHashes: [...result.artifactHashes],
-    readModelChanges: result.readModelChanges.map(normalizeReadModelChange),
-    ...(result.resultSummary === undefined ? {} : { resultSummary: result.resultSummary })
-  };
+function normalizeAndValidateFakeToolResult(result: unknown): AgentToolResult {
+  const record = dataRecordFromObject(result, "fake tool result");
+  rejectUnsupportedKeys(record, ["eventIds", "artifactHashes", "readModelChanges", "resultSummary"], "fake tool result");
+  const eventIds = sanitizeRequiredEventIds(record.eventIds, "fake tool result event id");
+  const artifactHashes = sanitizeRequiredArtifactHashes(record.artifactHashes, "fake tool result artifact hash");
+  const readModelChanges = sanitizeReadModelChanges(record.readModelChanges);
+  let resultSummary: string | undefined;
+
+  if (Object.hasOwn(record, "resultSummary")) {
+    assertNonEmptySecretSafeString(record.resultSummary, "fake tool result summary");
+    resultSummary = record.resultSummary;
+  }
+
+  return Object.freeze({
+    eventIds,
+    artifactHashes,
+    readModelChanges,
+    ...(resultSummary === undefined ? {} : { resultSummary })
+  });
 }
 
-function normalizeAndValidateFakeToolResult(result: FakeAgentToolExecutorResult): AgentToolResult {
-  if (!Array.isArray(result.eventIds) || !Array.isArray(result.artifactHashes) || !Array.isArray(result.readModelChanges)) {
-    throw new Error("Fake tool result must contain result arrays.");
-  }
-
-  const normalized = normalizeFakeToolResult(result);
-
-  for (const eventId of normalized.eventIds) {
-    if (typeof eventId !== "string" || !eventIdPattern.test(eventId)) {
-      throw new Error("Fake tool result contains an invalid event ID.");
-    }
-    assertAgentSecretSafeText(eventId, "fake tool result event id");
-  }
-
-  for (const artifactHash of normalized.artifactHashes) {
-    if (typeof artifactHash !== "string" || !artifactHashPattern.test(artifactHash)) {
-      throw new Error("Fake tool result contains an invalid artifact hash.");
-    }
-  }
-
-  for (const change of normalized.readModelChanges) {
-    assertNonEmptySecretSafeString(change.projectionName, "fake tool result projection name");
-    assertNonEmptySecretSafeString(change.change, "fake tool result read model change");
-    for (const relatedId of change.relatedIds ?? []) {
-      assertNonEmptySecretSafeString(relatedId, "fake tool result related id");
-    }
-  }
-
-  if (normalized.resultSummary !== undefined) {
-    assertNonEmptySecretSafeString(normalized.resultSummary, "fake tool result summary");
-  }
-
-  return normalized;
+function sanitizeReadModelChanges(value: unknown): AgentToolReadModelChange[] {
+  const values = sanitizeJsonArray(value, "fake tool result read model changes");
+  return values.map(normalizeReadModelChange);
 }
 
-function normalizeReadModelChange(change: string | AgentToolReadModelChange): AgentToolReadModelChange {
+function normalizeReadModelChange(change: unknown): AgentToolReadModelChange {
   if (typeof change === "string") {
+    assertNonEmptySecretSafeString(change, "fake tool result read model change");
     return {
       projectionName: fakeReadModelProjectionName,
       change
     };
   }
 
+  const record = dataRecordFromObject(change, "fake tool result read model change");
+  rejectUnsupportedKeys(record, ["projectionName", "change", "relatedIds"], "fake tool result read model change");
+  assertNonEmptySecretSafeString(record.projectionName, "fake tool result projection name");
+  assertNonEmptySecretSafeString(record.change, "fake tool result read model change");
+  const relatedIds = sanitizeRelatedIds(record.relatedIds, "fake tool result related id");
+
   return {
-    projectionName: change.projectionName,
-    change: change.change,
-    ...(change.relatedIds === undefined ? {} : { relatedIds: [...change.relatedIds] })
+    projectionName: record.projectionName,
+    change: record.change,
+    ...(relatedIds === undefined ? {} : { relatedIds })
   };
 }
 
@@ -662,6 +680,7 @@ function isStoredApprovalUsable(
 ): boolean {
   return approval.context.actor.kind === "human" &&
     approval.context.actor.id === approval.payload.approvedBy &&
+    approval.context.causationId === request.id &&
     approval.payload.approvalClass === request.payload.requiredApprovalClass &&
     approval.payload.approvedPreviewHash === request.payload.previewHash &&
     approval.context.actor.id !== request.payload.requestedBy &&

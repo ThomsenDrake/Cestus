@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { InMemoryEventLedger, type AppendOptions, type EventLedger } from "../../ontology/src/event-ledger.js";
 import {
   createFakeAgentExecutionLoop,
-  type FakeAgentToolExecutor
+  type FakeAgentToolExecutor,
+  type FakeAgentToolExecutorResult
 } from "../src/execution-loop.js";
 
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
@@ -178,6 +179,84 @@ describe("resident agent fake execution loop", () => {
     expect(failedEvent.payload.category).toBe("permission-denied");
   });
 
+  it.each([
+    ["missing", {}],
+    ["wrong", { causationId: "evt_wrong_tool_request" }]
+  ] as const)("rejects directly appended human-looking approvals with %s request causation before executor resume", async (_label, contextCausation) => {
+    const ledger = new InMemoryEventLedger();
+    let executions = 0;
+    const loop = createFakeAgentExecutionLoop({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-07-07T23:00:00.000Z",
+      executor: {
+        async execute() {
+          executions += 1;
+          return {
+            eventIds: ["evt_fake_domain_result"],
+            artifactHashes: [],
+            readModelChanges: []
+          };
+        }
+      }
+    });
+    const preview = { summary: "Provider preview.", affectedRefs: ["ev_contract_001"] };
+    const requested = await loop.requestApprovalOnly({
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolRequestId: `toolreq_direct_human_${_label}_causation`,
+      toolId: "provider.parse.preview",
+      toolVersion: 1,
+      sideEffectClass: "external-byte-transfer",
+      approvalClass: "provider-byte-transfer",
+      preview
+    });
+
+    const approval: AppendableKnowledgeEvent<"agent.tool.approved"> = {
+      type: "agent.tool.approved",
+      version: 1,
+      streamId: `agent_tool_request_toolreq_direct_human_${_label}_causation`,
+      context: {
+        actor: humanActor,
+        occurredAt: "2026-07-07T23:00:00.000Z",
+        ...contextCausation,
+        correlationId: `corr_toolreq_direct_human_${_label}_causation`,
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId: `toolreq_direct_human_${_label}_causation`,
+        approvedBy: humanActor.id,
+        approvedPreviewHash: requested.previewHash,
+        approvalClass: "provider-byte-transfer",
+        rationale: "Human-looking approval was appended outside the gateway.",
+        approvedAt: "2026-07-07T23:00:00.000Z"
+      }
+    };
+    await ledger.append(approval);
+
+    const error = await captureError(() =>
+      loop.resumeApprovedTool({
+        toolRequestId: `toolreq_direct_human_${_label}_causation`,
+        taskId: "task_provider_readiness",
+        currentPreview: preview,
+        activeLocks: []
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/approval/i);
+    expect(executions).toBe(0);
+    const events = await ledger.readAll();
+    expect(events.some((event) => event.type === "agent.tool.completed")).toBe(false);
+    const failedEvent = events.find((event) => event.type === "agent.tool.failed");
+    expect(failedEvent?.type).toBe("agent.tool.failed");
+    if (failedEvent?.type !== "agent.tool.failed") {
+      throw new Error("expected failed event");
+    }
+    expect(failedEvent.payload.category).toBe("permission-denied");
+  });
+
   it("resumes after exact human approval and records fake completion", async () => {
     const ledger = new InMemoryEventLedger();
     let executions = 0;
@@ -232,6 +311,62 @@ describe("resident agent fake execution loop", () => {
       projectionName: "fake-agent-execution-loop",
       change: "fake approval resume complete"
     }]);
+  });
+
+  it("propagates completion lifecycle failures without reclassifying them as fake result validation", async () => {
+    const inner = new InMemoryEventLedger();
+    const ledger = new CompletionInterleavingLedger(inner);
+    let executions = 0;
+    const loop = createFakeAgentExecutionLoop({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-07-07T23:00:00.000Z",
+      executor: {
+        async execute() {
+          executions += 1;
+          return {
+            eventIds: ["evt_fake_domain_result"],
+            artifactHashes: [],
+            readModelChanges: []
+          };
+        }
+      }
+    });
+    const preview = { summary: "Provider preview.", affectedRefs: ["ev_contract_001"] };
+    const requested = await loop.requestApprovalOnly({
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolRequestId: "toolreq_interleaved_completion_denial",
+      toolId: "provider.parse.preview",
+      toolVersion: 1,
+      sideEffectClass: "external-byte-transfer",
+      approvalClass: "provider-byte-transfer",
+      preview
+    });
+    await loop.approveForTest({
+      toolRequestId: "toolreq_interleaved_completion_denial",
+      actor: humanActor,
+      approvedPreviewHash: requested.previewHash,
+      rationale: "Human approved the exact preview."
+    });
+
+    const error = await captureError(() =>
+      loop.resumeApprovedTool({
+        toolRequestId: "toolreq_interleaved_completion_denial",
+        taskId: "task_provider_readiness",
+        currentPreview: preview,
+        activeLocks: []
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/concurrency|conflict/i);
+    expect(executions).toBe(1);
+    expect((await inner.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved",
+      "agent.tool.denied"
+    ]);
   });
 
   it("fails closed with a secret-safe failure when a fake executor returns a malformed result", async () => {
@@ -300,6 +435,94 @@ describe("resident agent fake execution loop", () => {
     expect(failedEvent.payload.retryable).toBe(false);
     expect(failedEvent.payload.message).not.toContain(malformedEventId);
     expect(failedEvent.payload.allowedActions.join(" ")).not.toContain(malformedEventId);
+    expect(events.some((event) => event.type === "agent.tool.completed")).toBe(false);
+  });
+
+  it.each([
+    "accessor-backed result field",
+    "accessor-backed result array item"
+  ] as const)("rejects %s without invoking getters or completing", async (caseName) => {
+    const ledger = new InMemoryEventLedger();
+    let resultFieldGetterCalls = 0;
+    let arrayItemGetterCalls = 0;
+    const toolRequestId = `toolreq_${caseName.replaceAll(" ", "_").replaceAll("-", "_")}`;
+    const loop = createFakeAgentExecutionLoop({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-07-07T23:00:00.000Z",
+      executor: {
+        async execute() {
+          if (caseName === "accessor-backed result field") {
+            const result = {
+              artifactHashes: [],
+              readModelChanges: []
+            } as unknown as FakeAgentToolExecutorResult;
+            Object.defineProperty(result, "eventIds", {
+              enumerable: true,
+              get() {
+                resultFieldGetterCalls += 1;
+                return ["evt_fake_domain_result"];
+              }
+            });
+            return result;
+          }
+
+          const eventIds = [] as string[];
+          Object.defineProperty(eventIds, "0", {
+            enumerable: true,
+            get() {
+              arrayItemGetterCalls += 1;
+              return "evt_fake_domain_result";
+            }
+          });
+          return {
+            eventIds,
+            artifactHashes: [],
+            readModelChanges: []
+          };
+        }
+      }
+    });
+    const requested = await loop.requestApprovalOnly({
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolRequestId,
+      toolId: "provider.parse.preview",
+      toolVersion: 1,
+      sideEffectClass: "external-byte-transfer",
+      approvalClass: "provider-byte-transfer",
+      preview: { summary: "Provider preview.", affectedRefs: ["ev_contract_001"] }
+    });
+    await loop.approveForTest({
+      toolRequestId,
+      actor: humanActor,
+      approvedPreviewHash: requested.previewHash,
+      rationale: "Human approved the exact preview."
+    });
+
+    await expect(
+      loop.resumeApprovedTool({
+        toolRequestId,
+        taskId: "task_provider_readiness",
+        currentPreview: { affectedRefs: ["ev_contract_001"], summary: "Provider preview." },
+        activeLocks: []
+      })
+    ).rejects.toThrow(/fake tool result failed validation/i);
+
+    expect(resultFieldGetterCalls).toBe(0);
+    expect(arrayItemGetterCalls).toBe(0);
+    const events = await ledger.readAll();
+    expect(events.map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved",
+      "agent.tool.failed"
+    ]);
+    const failedEvent = events.find((event) => event.type === "agent.tool.failed");
+    expect(failedEvent?.type).toBe("agent.tool.failed");
+    if (failedEvent?.type !== "agent.tool.failed") {
+      throw new Error("expected failed event");
+    }
+    expect(failedEvent.payload.category).toBe("model-output-invalid");
     expect(events.some((event) => event.type === "agent.tool.completed")).toBe(false);
   });
 
@@ -514,3 +737,52 @@ describe("resident agent fake execution loop", () => {
     expect(await ledger.readAll()).toEqual([]);
   });
 });
+
+class CompletionInterleavingLedger implements EventLedger {
+  private injected = false;
+
+  constructor(private readonly inner: InMemoryEventLedger) {}
+
+  async append(event: AppendableKnowledgeEvent, options?: AppendOptions) {
+    if (!this.injected && event.type === "agent.tool.completed") {
+      this.injected = true;
+      await this.inner.append({
+        type: "agent.tool.denied",
+        version: 1,
+        streamId: event.streamId,
+        context: {
+          actor: humanActor,
+          occurredAt: "2026-07-07T23:00:00.000Z",
+          correlationId: "corr_interleaved_completion_denial",
+          coreVersion: "0.1.0",
+          packVersions: { core: "0.1.0", agent: "0.1.0" }
+        },
+        payload: {
+          toolRequestId: event.payload.toolRequestId,
+          deniedBy: humanActor.id,
+          rationale: "Human denial arrived before completion append.",
+          deniedAt: "2026-07-07T23:00:00.000Z",
+          approvalClass: "provider-byte-transfer"
+        }
+      });
+    }
+    return this.inner.append(event, options);
+  }
+
+  readStream(streamId: string) {
+    return this.inner.readStream(streamId);
+  }
+
+  readAll() {
+    return this.inner.readAll();
+  }
+}
+
+async function captureError(action: () => Promise<unknown>): Promise<unknown> {
+  try {
+    await action();
+    return undefined;
+  } catch (error) {
+    return error;
+  }
+}

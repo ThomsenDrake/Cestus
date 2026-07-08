@@ -341,6 +341,71 @@ describe("agent tool gateway", () => {
     ]);
   });
 
+  it.each([
+    ["missing", {}],
+    ["wrong", { causationId: "evt_wrong_tool_request" }]
+  ] as const)("rejects directly appended human approvals with %s request causation", async (_label, contextCausation) => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: `toolreq_direct_human_${_label}_causation`,
+      residentAgentId: "agent_default",
+      taskId: "task_provider_readiness",
+      runId: "run_provider_readiness",
+      toolId: "provider.parse.preview",
+      sideEffectClass: "external-byte-transfer",
+      preview: {
+        summary: "Send provider byte transfer preview.",
+        relatedEventIds: ["evt_import_001"]
+      },
+      requiredApprovalClass: "provider-byte-transfer"
+    });
+
+    const approval: AppendableKnowledgeEvent<"agent.tool.approved"> = {
+      type: "agent.tool.approved",
+      version: 1,
+      streamId: `agent_tool_request_toolreq_direct_human_${_label}_causation`,
+      context: {
+        actor: humanActor,
+        occurredAt: fixedNow(),
+        ...contextCausation,
+        correlationId: `corr_toolreq_direct_human_${_label}_causation`,
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId: `toolreq_direct_human_${_label}_causation`,
+        approvedBy: humanActor.id,
+        approvedPreviewHash: requested.payload.previewHash,
+        approvalClass: requested.payload.requiredApprovalClass,
+        rationale: "Human-looking approval was appended outside the gateway.",
+        approvedAt: fixedNow()
+      }
+    };
+    await ledger.append(approval);
+
+    const error = await captureError(() =>
+      gateway.completeTool({
+        toolRequestId: `toolreq_direct_human_${_label}_causation`,
+        approvedPreviewHash: requested.payload.previewHash,
+        result: {
+          eventIds: [],
+          artifactHashes: [],
+          readModelChanges: [{ projectionName: "agent-tool-requests", change: "Should not complete." }],
+          resultSummary: "Should not complete."
+        }
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/approval/i);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved"
+    ]);
+  });
+
   it("rejects completion when denial is appended between state read and append", async () => {
     const inner = new InMemoryEventLedger();
     const ledger = new InterleavingLedger(inner, "agent.tool.denied");
