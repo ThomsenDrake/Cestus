@@ -105,6 +105,25 @@ export function describeEventLedgerContract(name: string, options: LedgerContrac
       });
     });
 
+    it("rejects stale global event counts without mutating stored state", async () => {
+      await useLedger(options.createLedger, async (ledger) => {
+        await ledger.append(evidenceEvent("ev_contract_007a"));
+        await ledger.append(evidenceEvent("ev_contract_007b"));
+
+        await expect(
+          ledger.append(evidenceEvent("ev_contract_007c"), { expectedGlobalEventCount: 1 })
+        ).rejects.toThrow("Concurrency conflict");
+
+        const allEvents = await ledger.readAll();
+
+        expect(allEvents).toHaveLength(2);
+        expect(allEvents.map((event) => evidencePayload(event).evidenceId)).toEqual([
+          "ev_contract_007a",
+          "ev_contract_007b"
+        ]);
+      });
+    });
+
     it("rejects invalid appends without mutating stored state", async () => {
       await useLedger(options.createLedger, async (ledger) => {
         await ledger.append(evidenceEvent("ev_contract_008"));

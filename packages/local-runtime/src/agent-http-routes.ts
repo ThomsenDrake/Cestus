@@ -1,6 +1,7 @@
 import {
   agentApprovalDecisionResultDtoSchema,
   buildAgentApprovalCockpit,
+  buildAgentProjection,
   createAgentToolGateway,
   buildProviderReadiness,
   createProviderRegistry,
@@ -8,7 +9,7 @@ import {
   isAgentSecretSafeText,
   type AgentTaskPriority
 } from "../../agent/src/index.js";
-import type { ActorRef } from "../../ontology/src/contracts.js";
+import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
 import {
   defaultLocalAgentRuntimeFactory,
@@ -100,7 +101,10 @@ export async function handleAgentHttpRoute(
           return json(403, humanApprovalActorDiagnostic());
         }
 
-        const payload = parseJsonObjectBody(input.request.body, invalidApprovalBodyDiagnostic);
+        const payload = parseJsonObjectBody(
+          input.request.body,
+          approvalRoute.kind === "approve" ? invalidApprovalBodyDiagnostic : invalidDenialBodyDiagnostic
+        );
         if (!payload.ok) {
           return json(400, payload.body);
         }
@@ -111,7 +115,8 @@ export async function handleAgentHttpRoute(
             return json(400, invalidApprovalBodyDiagnostic());
           }
 
-          const cockpit = await approvalCockpit(runtime);
+          const snapshotEvents = await input.handle.ledger.readAll();
+          const cockpit = approvalCockpitFromEvents(snapshotEvents, input.now);
           const approvalItem = approvalItemById(cockpit, approvalRoute.toolRequestId);
           if (approvalItem === undefined) {
             return json(404, missingApprovalDiagnostic());
@@ -130,7 +135,8 @@ export async function handleAgentHttpRoute(
               toolRequestId: approvalRoute.toolRequestId,
               approvedPreviewHash: decision.approvedPreviewHash,
               actor: input.actor,
-              rationale: decision.rationale
+              rationale: decision.rationale,
+              expectedGlobalEventCount: snapshotEvents.length
             });
             const result = agentApprovalDecisionResultDtoSchema.parse({
               ok: true,
@@ -302,10 +308,7 @@ function parseJsonObjectBody(
     }
     return { ok: true, value };
   } catch {
-    return {
-      ok: false,
-      body: diagnostic("Agent request body must be valid JSON.", ["send a valid JSON request body"])
-    };
+    return { ok: false, body: invalidBodyDiagnostic() };
   }
 }
 
@@ -528,6 +531,25 @@ async function approvalCockpit(runtime: LocalAgentRuntime) {
   return buildAgentApprovalCockpit({ status: await runtime.status() });
 }
 
+function approvalCockpitFromEvents(
+  events: readonly KnowledgeEvent[],
+  now: () => string
+) {
+  const projection = buildAgentProjection(events);
+  return buildAgentApprovalCockpit({
+    status: {
+      schemaVersion: "agent-status.v1",
+      generatedAt: now(),
+      ...projection.toDto(),
+      identity: projection.identity,
+      providers: [],
+      pendingApprovalCount: [...projection.toolRequests.values()].filter((request) => request.state === "requested").length,
+      activeLockCount: [...projection.locks.values()].filter((lock) => lock.state === "active").length,
+      diagnostics: []
+    }
+  });
+}
+
 function approvalItemById(
   cockpit: Awaited<ReturnType<typeof approvalCockpit>>,
   toolRequestId: string
@@ -578,6 +600,9 @@ function approvalDecisionErrorResponse(error: unknown): LocalRuntimeResponse {
       error.message.includes("was denied")
     ) {
       return json(400, approvalDecisionRejectedDiagnostic());
+    }
+    if (error.message.includes("Concurrency conflict")) {
+      return json(409, blockedApprovalDiagnostic());
     }
   }
 
