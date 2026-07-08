@@ -32,6 +32,8 @@ const safeTextSchema = z.string().min(1).refine(isProviderReadinessSecretSafeTex
   message: "must be secret-safe"
 });
 
+const strictDateTimeSchema = z.string().datetime();
+
 const safeActionIdSchema = z.string()
   .regex(/^action_[a-z0-9_]+$/)
   .refine(isProviderReadinessSecretSafeText, { message: "safeActionId must be secret-safe" });
@@ -388,8 +390,8 @@ function credentialReferenceExpiredAtOrBefore(
   credentialReference: CredentialReference,
   checkedAt: string
 ): boolean {
-  const checkedAtTime = Date.parse(checkedAt);
-  if (Number.isNaN(checkedAtTime)) {
+  const checkedAtTime = parseStrictDateTime(checkedAt);
+  if (checkedAtTime === undefined) {
     return true;
   }
 
@@ -397,12 +399,20 @@ function credentialReferenceExpiredAtOrBefore(
     return false;
   }
 
-  const expiresAtTime = Date.parse(credentialReference.expiresAt);
-  if (Number.isNaN(expiresAtTime)) {
+  const expiresAtTime = parseStrictDateTime(credentialReference.expiresAt);
+  if (expiresAtTime === undefined) {
     return true;
   }
 
   return expiresAtTime <= checkedAtTime;
+}
+
+function parseStrictDateTime(value: string): number | undefined {
+  if (!strictDateTimeSchema.safeParse(value).success) {
+    return undefined;
+  }
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? undefined : time;
 }
 
 function stateForSecretStoreHealth(
