@@ -262,24 +262,8 @@ const diagnosticSchema = z.object({
   allowedRepairActions: z.array(z.string().min(1)).optional()
 }).strict();
 
-const agentApprovalQueueClassSchema = z.enum([
-  "provider-byte-transfer",
-  "prr-send-followup",
-  "legal-escalation",
-  "export-publication",
-  "destructive-repair",
-  "accepted-graph-review",
-  "ledger-review"
-]);
-
-const agentApprovalForbiddenDirectEffectSchema = z.enum([
-  "provider-byte-transfer",
-  "prr-send-followup",
-  "legal-escalation",
-  "export-publication",
-  "destructive-repair",
-  "accepted-graph-review"
-]);
+const extensibleApprovalClassSchema = z.string().min(1);
+const extensibleForbiddenDirectEffectSchema = z.string().min(1);
 
 const contextPackRefSchema = z.object({
   contextPackId: z.string().min(1),
@@ -305,7 +289,7 @@ const approvalQueueLockSchema = z.object({
   message: z.string().min(1),
   relatedRefs: z.array(affectedRefSchema).optional(),
   appliesToToolRequestIds: z.array(z.string().min(1)).optional(),
-  appliesToApprovalClasses: z.array(agentApprovalQueueClassSchema).optional()
+  appliesToApprovalClasses: z.array(extensibleApprovalClassSchema).optional()
 }).strict();
 
 const approvalQueueApprovalSchema = z.object({
@@ -314,7 +298,7 @@ const approvalQueueApprovalSchema = z.object({
   approvedPreviewHash: z.string().min(1),
   approvedAt: z.string().datetime(),
   rationale: z.string().min(1),
-  approvalClass: agentApprovalQueueClassSchema.optional()
+  approvalClass: extensibleApprovalClassSchema.optional()
 }).strict();
 
 const approvalQueueDenialSchema = z.object({
@@ -322,7 +306,7 @@ const approvalQueueDenialSchema = z.object({
   deniedBy: z.string().min(1),
   deniedAt: z.string().datetime(),
   rationale: z.string().min(1),
-  approvalClass: agentApprovalQueueClassSchema.optional()
+  approvalClass: extensibleApprovalClassSchema.optional()
 }).strict();
 
 const approvalQueueCompletionSchema = z.object({
@@ -345,7 +329,7 @@ const approvalQueueFailureSchema = z.object({
 
 const approvalQueueRiskSchema = z.object({
   sideEffectClass: z.string().min(1),
-  approvalClass: agentApprovalQueueClassSchema,
+  approvalClass: extensibleApprovalClassSchema,
   previewSummary: z.string().min(1),
   affectedRefs: z.array(affectedRefSchema),
   contextPackRefs: z.array(contextPackRefSchema),
@@ -361,7 +345,7 @@ const approvalStalenessSchema = z.object({
 }).strict();
 
 const approvalContractSchema = z.object({
-  requiredApprovalClass: agentApprovalQueueClassSchema,
+  requiredApprovalClass: extensibleApprovalClassSchema,
   approvalRouteAppendsOnly: z.literal(true),
   denialRouteAppendsOnly: z.literal(true),
   rationaleRequired: z.literal(true),
@@ -387,8 +371,8 @@ const agentApprovalQueueItemSchema = z.object({
   toolId: z.string().min(1),
   toolVersion: z.union([z.number(), z.string().min(1)]),
   sideEffectClass: z.string().min(1),
-  approvalClass: agentApprovalQueueClassSchema,
-  requiredApprovalClass: agentApprovalQueueClassSchema,
+  approvalClass: extensibleApprovalClassSchema,
+  requiredApprovalClass: extensibleApprovalClassSchema,
   previewHash: z.string().min(1),
   currentPreviewHash: z.string().min(1).optional(),
   previewSummary: z.string().min(1),
@@ -428,7 +412,7 @@ const agentApprovalCockpitDtoSchema = z.object({
     forbiddenDirectEffects: z.array(z.string().min(1))
   }).strict(),
   approvalClasses: z.array(z.object({
-    approvalClass: agentApprovalQueueClassSchema,
+    approvalClass: extensibleApprovalClassSchema,
     label: z.string().min(1),
     requiredFor: z.string().min(1),
     providerByteTransferNote: z.string().min(1).optional(),
@@ -447,7 +431,7 @@ const agentApprovalCockpitDtoSchema = z.object({
     completed: z.array(agentApprovalQueueItemSchema),
     failed: z.array(agentApprovalQueueItemSchema)
   }).strict(),
-  forbiddenDirectEffects: z.array(agentApprovalForbiddenDirectEffectSchema)
+  forbiddenDirectEffects: z.array(extensibleForbiddenDirectEffectSchema)
 }).strict();
 
 const agentApprovalDecisionResultDtoSchema = z.object({

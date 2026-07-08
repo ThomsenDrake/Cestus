@@ -46,3 +46,11 @@ Implementation evidence:
 - Full gate: `npm run verify`
 - Full gate result: `typecheck passed`, `Test Files  133 passed (133)`, `Tests  1280 passed (1280)`, `tests passed`, Vite production build completed, and `factory-readiness passed`.
 - Scope note: the brief's route-safety assertion was internally contradictory because it expected exact URLs containing `toolreq_provider_transfer` while also rejecting any string matching `transfer`; the test now normalizes the dynamic tool request ID before applying the forbidden-route regex so the assertion still checks route families instead of request IDs.
+
+Re-review follow-up at: `2026-07-08T16:24:00Z`
+
+Re-review evidence:
+
+- Added a regression proving `agentApprovalCockpitFromJson()` accepts a well-formed cockpit DTO that carries a future approval-class identifier through all documented extension points, including class metadata, queue items, approval-contract class, risk class, lock class filters, and forbidden direct-effect lists.
+- Relaxed the browser-only approval cockpit parser in `packages/ui/src/agent/agent-adapter.ts` so approval-class and forbidden-direct-effect extension points parse as nonempty strings while decision-only booleans and DTO shape remain strict.
+- Re-ran the targeted suite: `npm test -- packages/ui/test/agent-approval-adapter.test.ts packages/ui/test/agent-adapter.test.ts`
