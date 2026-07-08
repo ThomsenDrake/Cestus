@@ -32,6 +32,7 @@ const safeTextSchema = z.string().min(1).refine(isProviderReadinessSecretSafeTex
   message: "must be secret-safe"
 });
 
+const fallbackGeneratedAt = "1970-01-01T00:00:00.000Z";
 const strictDateTimeSchema = z.string().datetime();
 
 const safeActionIdSchema = z.string()
@@ -131,14 +132,20 @@ interface ProviderReadinessEvaluation {
 export async function buildProviderReadiness(
   input: BuildProviderReadinessInput
 ): Promise<ProviderReadinessDto> {
-  const generatedAt = input.now();
+  const rawGeneratedAt = input.now();
+  const generatedAt = dtoTimestampFor(rawGeneratedAt);
   const credentialReferencesByProviderId = groupCredentialReferencesByProviderId(input.credentialReferences);
   const cards: ProviderSetupCard[] = [];
   const diagnostics: ProviderReadinessDiagnostic[] = [];
 
   for (const descriptor of input.registry.list()) {
     const credentialReferences = credentialReferencesByProviderId.get(descriptor.providerId) ?? [];
-    const evaluation = await evaluateProviderReadiness(descriptor, credentialReferences, input.secretStore, generatedAt);
+    const evaluation = await evaluateProviderReadiness(
+      descriptor,
+      credentialReferences,
+      input.secretStore,
+      rawGeneratedAt
+    );
     const safeActionIds = safeActionIdsForState(evaluation.state);
     const card = providerSetupCardSchema.parse({
       providerId: descriptor.providerId,
@@ -413,6 +420,10 @@ function parseStrictDateTime(value: string): number | undefined {
   }
   const time = Date.parse(value);
   return Number.isNaN(time) ? undefined : time;
+}
+
+function dtoTimestampFor(value: string): string {
+  return strictDateTimeSchema.safeParse(value).success ? value : fallbackGeneratedAt;
 }
 
 function stateForSecretStoreHealth(

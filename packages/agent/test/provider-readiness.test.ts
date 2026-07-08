@@ -425,6 +425,63 @@ describe("provider readiness DTOs", () => {
       });
   });
 
+  it("returns a secret-safe fail-closed DTO when the readiness clock is malformed", async () => {
+    const registry = createProviderRegistry();
+    registry.register({
+      providerId: "provider_fake_invalid_clock_remote",
+      label: "Invalid clock remote provider",
+      adapterVersion: "agent-provider-auth.v1",
+      backendKind: "openai-compatible-api",
+      modelFamilies: ["fake-invalid-clock-remote"],
+      modalities: ["text"],
+      toolSupport: "function-calling",
+      structuredOutputSupport: "schema-strict",
+      contextLimits: { maxInputTokens: 8192, maxOutputTokens: 2048 },
+      credentialRequirements: [{ credentialKind: "api-key-bearer", required: true }],
+      dataHandlingNotes: "Simulates a remote API provider when the readiness clock is invalid.",
+      costPolicy: "metered-api",
+      workspaceScopes: ["workspace"],
+      approvalProfile: "remote-byte-transfer-gated",
+      diagnosticContract: ["credential-expired"],
+      fakeSupport: true
+    });
+    const store = new FakeSecretStore();
+    await store.putForTest("agent_credref_api_invalid_clock", SecretMaterial.fromTestValue("remote-provider-material"));
+
+    const dto = await buildProviderReadiness({
+      registry,
+      credentialReferences: [
+        createCredentialReference({
+          credentialRefId: "agent_credref_api_invalid_clock",
+          providerId: "provider_fake_invalid_clock_remote",
+          credentialKind: "api-key-bearer",
+          scopeKind: "workspace",
+          capabilityScopes: ["model-inference"],
+          safeLabel: "Invalid clock remote key",
+          authorizedBy: "actor_case_owner",
+          authorizedAt: "2026-07-07T21:00:00.000Z",
+          policyVersion: "agent-provider-auth.v1",
+          status: "linked"
+        })
+      ],
+      secretStore: store,
+      now: () => "not-a-date"
+    });
+
+    expect(providerReadinessDtoSchema.parse(dto)).toEqual(dto);
+    expect(JSON.stringify(dto)).not.toMatch(/not-a-date|remote-provider-material|authorization:\s*bearer|password=|private key|secret=/i);
+    expect(dto.generatedAt).toBe("1970-01-01T00:00:00.000Z");
+    expect(dto.cards.find((card) => card.providerId === "provider_fake_invalid_clock_remote")).toMatchObject({
+      state: "credential-expired"
+    });
+    expect(dto.diagnostics.find((diagnostic) => diagnostic.providerId === "provider_fake_invalid_clock_remote"))
+      .toMatchObject({
+        category: "credential-expired",
+        credentialRefId: "agent_credref_api_invalid_clock",
+        checkedAt: "1970-01-01T00:00:00.000Z"
+      });
+  });
+
   it("fails closed when secret-store health metadata is malformed", async () => {
     const registry = createProviderRegistry();
     registry.register({
