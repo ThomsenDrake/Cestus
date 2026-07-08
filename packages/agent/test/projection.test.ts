@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { buildAgentProjection } from "../src/projection.js";
 import { goldenAgentLedgerEvents } from "./fixtures/golden-agent-ledger.js";
 
+const hash111 = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
+const hash222 = "sha256:2222222222222222222222222222222222222222222222222222222222222222";
+const hash333 = "sha256:3333333333333333333333333333333333333333333333333333333333333333";
+
 describe("buildAgentProjection", () => {
   it("rebuilds resident identity, tasks, runs, tools, memory, permissions, and locks", () => {
     const projection = buildAgentProjection(goldenAgentLedgerEvents);
@@ -145,6 +149,40 @@ describe("buildAgentProjection", () => {
       "evt_agent_run_started_failed_triage"
     ]);
   });
+
+  it("replays model invocation prompt audit metadata without prompt text or mixed output artifacts", () => {
+    const dto = buildAgentProjection(modelInvocationAuditEvents()).toDto() as ReturnType<
+      ReturnType<typeof buildAgentProjection>["toDto"]
+    > & {
+      readonly modelInvocations?: readonly Record<string, unknown>[];
+    };
+    const invocation = dto.modelInvocations?.find((item) => item.invocationId === "inv_prompt_audit");
+
+    expect(invocation).toMatchObject({
+      invocationId: "inv_prompt_audit",
+      runId: "run_prompt_audit",
+      providerId: "provider_remote_model",
+      modelFamily: "remote-safe",
+      inputArtifactHash: hash222,
+      safetyClass: "provider-approved",
+      status: "completed",
+      contextPackRefs: [contextPackRef()],
+      promptTemplateId: "resident-agent-context-pack.v1",
+      promptTemplateVersion: 1,
+      runType: "evidence-triage",
+      safePromptSummary: "Prompt artifact assembled from safe context pack summaries.",
+      omissions: [promptOmission()],
+      transferApprovalClass: "provider-byte-transfer",
+      providerOutputArtifactHash: hash333,
+      usage: { inputTokens: 10, outputTokens: 12, totalTokens: 22 },
+      eventIds: [
+        "evt_agent_model_requested_prompt_audit",
+        "evt_agent_model_completed_prompt_audit"
+      ]
+    });
+    expect(invocation?.inputArtifactHash).not.toBe(invocation?.providerOutputArtifactHash);
+    expect(JSON.stringify(dto)).not.toContain("Use the listed context pack summaries");
+  });
 });
 
 function tryRuntimeMapClear(map: ReadonlyMap<string, unknown>): void {
@@ -153,4 +191,116 @@ function tryRuntimeMapClear(map: ReadonlyMap<string, unknown>): void {
   } catch {
     // Immutable map snapshots may reject runtime mutation attempts.
   }
+}
+
+function modelInvocationAuditEvents(): Parameters<typeof buildAgentProjection>[0] {
+  return [
+    {
+      id: "evt_agent_run_started_prompt_audit",
+      type: "agent.specialist-run.started",
+      version: 1,
+      streamId: "agent_run_run_prompt_audit",
+      sequence: 1,
+      context: agentContext("2026-07-08T12:00:00.000Z"),
+      payload: {
+        runId: "run_prompt_audit",
+        residentAgentId: "agent_default",
+        runType: "evidence-triage",
+        startedBy: "actor_cestus_agent",
+        taskId: "task_prompt_audit",
+        workspaceId: "ws_case_001"
+      }
+    },
+    {
+      id: "evt_agent_model_requested_prompt_audit",
+      type: "agent.model-invocation.requested",
+      version: 1,
+      streamId: "agent_model_invocation_inv_prompt_audit",
+      sequence: 1,
+      context: {
+        ...agentContext("2026-07-08T12:01:00.000Z"),
+        causationId: "evt_agent_run_started_prompt_audit"
+      },
+      payload: {
+        invocationId: "inv_prompt_audit",
+        runId: "run_prompt_audit",
+        providerId: "provider_remote_model",
+        modelFamily: "remote-safe",
+        inputArtifactHash: hash222,
+        safetyClass: "provider-approved",
+        credentialRefId: "agent_credref_remote_model",
+        credentialKind: "api-key-bearer",
+        contextPackRefs: [contextPackRef()],
+        promptTemplateId: "resident-agent-context-pack.v1",
+        promptTemplateVersion: 1,
+        runType: "evidence-triage",
+        safePromptSummary: "Prompt artifact assembled from safe context pack summaries.",
+        omissions: [promptOmission()],
+        transferApprovalClass: "provider-byte-transfer"
+      }
+    },
+    {
+      id: "evt_agent_model_completed_prompt_audit",
+      type: "agent.model-invocation.completed",
+      version: 1,
+      streamId: "agent_model_invocation_inv_prompt_audit",
+      sequence: 2,
+      context: {
+        ...agentContext("2026-07-08T12:02:00.000Z"),
+        causationId: "evt_agent_model_requested_prompt_audit"
+      },
+      payload: {
+        invocationId: "inv_prompt_audit",
+        runId: "run_prompt_audit",
+        providerId: "provider_remote_model",
+        outputArtifactHash: hash333,
+        completedAt: "2026-07-08T12:02:00.000Z",
+        modelFamily: "remote-safe",
+        usage: { inputTokens: 10, outputTokens: 12, totalTokens: 22 }
+      }
+    }
+  ] as Parameters<typeof buildAgentProjection>[0];
+}
+
+function agentContext(occurredAt: string) {
+  return {
+    actor: { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" },
+    occurredAt,
+    correlationId: "corr_prompt_audit",
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0", agent: "0.1.0" }
+  };
+}
+
+function contextPackRef(): Record<string, unknown> {
+  return {
+    contextPackId: "task-run-history.v1",
+    version: 1,
+    contentHash: hash111,
+    sizeBytes: 512,
+    generatedAt: "2026-07-08T12:00:00.000Z",
+    safeSummary: "One resident-agent task event.",
+    provenanceRefs: ["evt_agent_task_created"],
+    projectionHighWaterMark: 42,
+    sourceEventIds: ["evt_agent_task_created"],
+    artifactHashes: [hash222],
+    policyVersion: "agent-policy-v1",
+    scope: { kind: "workspace", id: "ws_case_001" },
+    sizeBudgetBytes: 16384,
+    stalenessInputs: [
+      {
+        kind: "projection-high-water-mark",
+        ref: "agent.projection",
+        value: "42"
+      }
+    ]
+  };
+}
+
+function promptOmission(): Record<string, unknown> {
+  return {
+    reason: "budget",
+    sourceRef: "evidence-summary.v1",
+    safeSummary: "One evidence pack was omitted because the size budget was reached."
+  };
 }

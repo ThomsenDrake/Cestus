@@ -2,16 +2,20 @@ import { describe, expect, it } from "vitest";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import {
   FakeModelProvider,
+  buildContextPackRef,
+  buildPromptArtifact,
   createAgentRuntime,
   type ModelInvocationRequest,
   type ModelInvocationResult,
   type ModelProviderAdapter,
+  type PromptArtifactEnvelope,
   type ProviderDescriptor
 } from "../src/index.js";
 
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 const fixedNow = () => "2026-07-07T19:00:00.000Z";
 const inputArtifactHash = "sha256:4444444444444444444444444444444444444444444444444444444444444444";
+const providerOutputArtifactHash = "sha256:7777777777777777777777777777777777777777777777777777777777777777";
 
 describe("agent runtime core", () => {
   it("initializes a default resident identity and creates durable tasks", async () => {
@@ -263,6 +267,115 @@ describe("agent runtime core", () => {
     expect(ledgerJson).not.toContain("OPENAI_API_KEY");
     expect(ledgerJson).not.toContain("raw-secret");
   });
+
+  it("refuses remote provider invocation without a prompt artifact before calling the provider", async () => {
+    const ledger = new InMemoryEventLedger();
+    const remoteProvider = new CountingRemoteProvider();
+    const runtime = await createPreparedRuntime(ledger, [remoteProvider]);
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_remote_no_prompt_artifact",
+      runId: "run_fake_model",
+      providerId: "provider_remote_model",
+      modelFamily: "remote-safe",
+      inputArtifactHash,
+      safetyClass: "provider-approved",
+      credentialRef: remoteCredentialRef()
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { category: "runtime", severity: "error" } });
+    expect(remoteProvider.calls).toHaveLength(0);
+    expect(modelFailurePayloads(await ledger.readAll())).toContainEqual(
+      expect.objectContaining({ category: "provenance-missing" })
+    );
+  });
+
+  it("refuses remote provider invocation with a mismatched prompt artifact hash", async () => {
+    const ledger = new InMemoryEventLedger();
+    const remoteProvider = new CountingRemoteProvider();
+    const runtime = await createPreparedRuntime(ledger, [remoteProvider]);
+    const promptArtifact = providerApprovedPromptArtifact();
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_remote_hash_mismatch",
+      runId: "run_fake_model",
+      providerId: "provider_remote_model",
+      modelFamily: "remote-safe",
+      inputArtifactHash,
+      safetyClass: "provider-approved",
+      credentialRef: remoteCredentialRef(),
+      promptArtifact
+    } as Parameters<typeof runtime.invokeModel>[0]);
+
+    expect(promptArtifact.manifest.inputArtifactHash).not.toBe(inputArtifactHash);
+    expect(result).toMatchObject({ ok: false, error: { category: "runtime", severity: "error" } });
+    expect(remoteProvider.calls).toHaveLength(0);
+    expect(modelFailurePayloads(await ledger.readAll())).toContainEqual(
+      expect.objectContaining({ category: "provenance-missing" })
+    );
+  });
+
+  it("refuses remote provider invocation with a local-only prompt artifact", async () => {
+    const ledger = new InMemoryEventLedger();
+    const remoteProvider = new CountingRemoteProvider();
+    const runtime = await createPreparedRuntime(ledger, [remoteProvider]);
+    const promptArtifact = localOnlyPromptArtifact();
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_remote_local_only_artifact",
+      runId: "run_fake_model",
+      providerId: "provider_remote_model",
+      modelFamily: "remote-safe",
+      inputArtifactHash: promptArtifact.manifest.inputArtifactHash,
+      safetyClass: "sensitive-local-only",
+      credentialRef: remoteCredentialRef(),
+      promptArtifact
+    } as Parameters<typeof runtime.invokeModel>[0]);
+
+    expect(result).toMatchObject({ ok: false, error: { category: "policy", severity: "error" } });
+    expect(remoteProvider.calls).toHaveLength(0);
+    expect(modelFailurePayloads(await ledger.readAll())).toContainEqual(
+      expect.objectContaining({ category: "permission-denied" })
+    );
+  });
+
+  it("records prompt artifact audit metadata and passes validated artifact text to remote providers", async () => {
+    const ledger = new InMemoryEventLedger();
+    const remoteProvider = new CountingRemoteProvider();
+    const runtime = await createPreparedRuntime(ledger, [remoteProvider]);
+    const promptArtifact = providerApprovedPromptArtifact();
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_remote_prompt_audit",
+      runId: "run_fake_model",
+      providerId: "provider_remote_model",
+      modelFamily: "remote-safe",
+      inputArtifactHash: promptArtifact.manifest.inputArtifactHash,
+      safetyClass: "provider-approved",
+      credentialRef: remoteCredentialRef(),
+      promptArtifact
+    } as Parameters<typeof runtime.invokeModel>[0]);
+
+    const events = await ledger.readAll();
+    const requestedPayload = modelRequestedPayloads(events).find((payload) => payload.invocationId === "inv_remote_prompt_audit");
+    const ledgerJson = JSON.stringify(events);
+
+    expect(result).toMatchObject({ ok: true, outputArtifactHash: providerOutputArtifactHash });
+    expect(remoteProvider.calls).toHaveLength(1);
+    expect((remoteProvider.calls[0] as ModelInvocationRequest & { inputText?: string }).inputText).toBe(promptArtifact.text);
+    expect(requestedPayload).toMatchObject({
+      inputArtifactHash: promptArtifact.manifest.inputArtifactHash,
+      contextPackRefs: promptArtifact.manifest.contextPackRefs,
+      promptTemplateId: promptArtifact.manifest.promptTemplateId,
+      promptTemplateVersion: promptArtifact.manifest.promptTemplateVersion,
+      runType: promptArtifact.manifest.runType,
+      safePromptSummary: promptArtifact.manifest.safeSummary,
+      omissions: promptArtifact.manifest.omissions,
+      transferApprovalClass: "provider-byte-transfer"
+    });
+    expect(ledgerJson).not.toContain(promptArtifact.text);
+    expect(requestedPayload?.inputArtifactHash).not.toBe(providerOutputArtifactHash);
+  });
 });
 
 async function createPreparedRuntime(
@@ -283,6 +396,107 @@ async function beforePreparedInvoke(runtime: ReturnType<typeof createAgentRuntim
     runType: "evidence-triage",
     scope: { kind: "workspace", refs: ["ws_case_001"] }
   });
+}
+
+function remoteCredentialRef() {
+  return {
+    credentialRefId: "agent_credref_remote_model",
+    providerId: "provider_remote_model",
+    kind: "api-key-bearer" as const,
+    safeLabel: "Remote model reference"
+  };
+}
+
+function providerApprovedPromptArtifact(): PromptArtifactEnvelope {
+  return promptArtifact("provider-approved", "provider-byte-transfer");
+}
+
+function localOnlyPromptArtifact(): PromptArtifactEnvelope {
+  return promptArtifact("sensitive-local-only", "none");
+}
+
+function promptArtifact(
+  safetyClass: "sensitive-local-only" | "provider-approved",
+  transferApprovalClass: "none" | "provider-byte-transfer"
+): PromptArtifactEnvelope {
+  const contextPackRef = buildContextPackRef({
+    contextPackId: "task-run-history.v1",
+    version: 1,
+    generatedAt: "2026-07-08T12:00:00.000Z",
+    payload: { events: ["evt_agent_task_created"] },
+    safeSummary: "One resident-agent task event.",
+    provenanceRefs: ["evt_agent_task_created"],
+    sourceEventIds: ["evt_agent_task_created"],
+    artifactHashes: [inputArtifactHash],
+    policyVersion: "agent-policy-v1",
+    scope: { kind: "workspace", id: "ws_case_001" },
+    sizeBudgetBytes: 16384,
+    stalenessInputs: [
+      {
+        kind: "projection-high-water-mark",
+        ref: "agent.projection",
+        value: "42"
+      }
+    ]
+  });
+
+  return buildPromptArtifact({
+    promptTemplateId: "resident-agent-context-pack.v1",
+    promptTemplateVersion: 1,
+    generatedAt: "2026-07-08T12:01:00.000Z",
+    runType: "evidence-triage",
+    safetyClass,
+    transferApprovalClass,
+    contextPackRefs: [contextPackRef],
+    text: "Use the listed context pack summaries to answer with provenance.",
+    safeSummary: "Prompt artifact assembled from safe context pack summaries.",
+    omissions: [
+      {
+        reason: "budget",
+        sourceRef: "evidence-summary.v1",
+        safeSummary: "One evidence pack was omitted because the size budget was reached."
+      }
+    ]
+  });
+}
+
+function modelRequestedPayloads(events: Awaited<ReturnType<InMemoryEventLedger["readAll"]>>): Record<string, unknown>[] {
+  return events
+    .filter((event) => event.type === "agent.model-invocation.requested")
+    .map((event) => event.payload as Record<string, unknown>);
+}
+
+function modelFailurePayloads(events: Awaited<ReturnType<InMemoryEventLedger["readAll"]>>): Record<string, unknown>[] {
+  return events
+    .filter((event) => event.type === "agent.model-invocation.failed")
+    .map((event) => event.payload as Record<string, unknown>);
+}
+
+class CountingRemoteProvider implements ModelProviderAdapter {
+  readonly calls: ModelInvocationRequest[] = [];
+
+  describe(): ProviderDescriptor {
+    return {
+      providerId: "provider_remote_model",
+      label: "Remote Model Provider",
+      adapterVersion: "remote-provider.v1",
+      endpointKind: "openai-compatible-api",
+      modelFamilies: ["remote-safe"],
+      credentialKinds: ["api-key-bearer"],
+      supportsStructuredOutput: false,
+      supportsToolCalling: false,
+      safeDataNotes: "Remote provider used only with approved prompt artifacts."
+    };
+  }
+
+  async invoke(request: ModelInvocationRequest): Promise<ModelInvocationResult> {
+    this.calls.push(request);
+    return {
+      outputText: "safe remote output",
+      outputArtifactHash: providerOutputArtifactHash,
+      usage: { inputUnits: 13, outputUnits: 17 }
+    };
+  }
 }
 
 class ThrowingProvider implements ModelProviderAdapter {

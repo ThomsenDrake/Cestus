@@ -1,9 +1,12 @@
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import type {
   AgentProjectionDto,
+  ProjectedAgentContextPackRef,
   ProjectedAgentLock,
   ProjectedAgentMemory,
+  ProjectedAgentModelInvocation,
   ProjectedAgentPermission,
+  ProjectedAgentPromptArtifactOmission,
   ProjectedAgentRun,
   ProjectedAgentTask,
   ProjectedAgentToolRequest
@@ -25,6 +28,7 @@ export interface AgentProjection {
   readonly identity?: AgentProjectionIdentity | undefined;
   readonly tasks: ReadonlyMap<string, ProjectedAgentTask>;
   readonly runs: ReadonlyMap<string, ProjectedAgentRun>;
+  readonly modelInvocations: ReadonlyMap<string, ProjectedAgentModelInvocation>;
   readonly toolRequests: ReadonlyMap<string, ProjectedAgentToolRequest>;
   readonly memoryHistory: ReadonlyMap<string, ProjectedAgentMemory>;
   readonly activeMemory: readonly ProjectedAgentMemory[];
@@ -37,6 +41,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
   let identity: AgentProjectionIdentity | undefined;
   const tasks = new Map<string, ProjectedAgentTask>();
   const runs = new Map<string, ProjectedAgentRun>();
+  const modelInvocations = new Map<string, ProjectedAgentModelInvocation>();
   const toolRequests = new Map<string, ProjectedAgentToolRequest>();
   const memoryHistory = new Map<string, ProjectedAgentMemory>();
   const permissions = new Map<string, ProjectedAgentPermission>();
@@ -208,10 +213,78 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
       }
 
       case "agent.model-invocation.requested":
-      case "agent.model-invocation.completed":
-      case "agent.model-invocation.failed":
+        modelInvocations.set(
+          event.payload.invocationId,
+          freezeProjected({
+            invocationId: event.payload.invocationId,
+            runId: event.payload.runId,
+            providerId: event.payload.providerId,
+            modelFamily: event.payload.modelFamily,
+            inputArtifactHash: event.payload.inputArtifactHash,
+            safetyClass: event.payload.safetyClass,
+            status: "requested",
+            requestedAt: event.context.occurredAt,
+            credentialRefId: event.payload.credentialRefId,
+            credentialKind: event.payload.credentialKind,
+            contextPackRefs: projectContextPackRefs(event.payload.contextPackRefs ?? []),
+            promptTemplateId: event.payload.promptTemplateId,
+            promptTemplateVersion: event.payload.promptTemplateVersion,
+            runType: event.payload.runType,
+            safePromptSummary: event.payload.safePromptSummary,
+            omissions: projectPromptOmissions(event.payload.omissions ?? []),
+            transferApprovalClass: event.payload.transferApprovalClass,
+            allowedActions: freezeArray([]),
+            ...nextProvenance(undefined, event)
+          })
+        );
         rememberRunInvocation(runs, event.payload.runId, event.payload.invocationId, event);
         break;
+
+      case "agent.model-invocation.completed": {
+        const previous = modelInvocations.get(event.payload.invocationId);
+        if (previous) {
+          modelInvocations.set(
+            event.payload.invocationId,
+            freezeProjected({
+              ...previous,
+              status: "completed",
+              providerOutputArtifactHash: event.payload.outputArtifactHash,
+              completedAt: event.payload.completedAt,
+              modelFamily: event.payload.modelFamily ?? previous.modelFamily,
+              usage: event.payload.usage === undefined
+                ? undefined
+                : freezeProjected({
+                  inputTokens: event.payload.usage.inputTokens,
+                  outputTokens: event.payload.usage.outputTokens,
+                  totalTokens: event.payload.usage.totalTokens
+                }),
+              ...nextProvenance(previous, event)
+            })
+          );
+        }
+        rememberRunInvocation(runs, event.payload.runId, event.payload.invocationId, event);
+        break;
+      }
+
+      case "agent.model-invocation.failed": {
+        const previous = modelInvocations.get(event.payload.invocationId);
+        if (previous) {
+          modelInvocations.set(
+            event.payload.invocationId,
+            freezeProjected({
+              ...previous,
+              status: "failed",
+              failureCategory: event.payload.category,
+              failureMessage: event.payload.message,
+              retryable: event.payload.retryable,
+              allowedActions: freezeArray(event.payload.allowedActions),
+              ...nextProvenance(previous, event)
+            })
+          );
+        }
+        rememberRunInvocation(runs, event.payload.runId, event.payload.invocationId, event);
+        break;
+      }
 
       case "agent.tool.requested":
         toolRequests.set(
@@ -469,6 +542,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
 
   const taskSnapshot = readonlyMapSnapshot(tasks);
   const runSnapshot = readonlyMapSnapshot(runs);
+  const modelInvocationSnapshot = readonlyMapSnapshot(modelInvocations);
   const toolRequestSnapshot = readonlyMapSnapshot(toolRequests);
   const memoryHistorySnapshot = readonlyMapSnapshot(memoryHistory);
   const permissionSnapshot = readonlyMapSnapshot(permissions);
@@ -478,6 +552,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
     identity,
     tasks: taskSnapshot,
     runs: runSnapshot,
+    modelInvocations: modelInvocationSnapshot,
     toolRequests: toolRequestSnapshot,
     memoryHistory: memoryHistorySnapshot,
     activeMemory,
@@ -488,6 +563,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
         ...(identity === undefined ? {} : { residentAgentId: identity.residentAgentId }),
         tasks: sortedById([...taskSnapshot.values()], (task) => task.taskId),
         runs: sortedById([...runSnapshot.values()], (run) => run.runId),
+        modelInvocations: sortedById([...modelInvocationSnapshot.values()], (invocation) => invocation.invocationId),
         toolRequests: sortedById([...toolRequestSnapshot.values()], (toolRequest) => toolRequest.toolRequestId),
         activeMemory: sortedById(activeMemory, (memory) => memory.memoryId),
         permissions: sortedById([...permissionSnapshot.values()], (permission) => permission.permissionId),
@@ -497,6 +573,60 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
   };
 
   return freezeProjected(projection);
+}
+
+type AgentModelRequestedEvent = Extract<KnowledgeEvent, { type: "agent.model-invocation.requested" }>;
+type AgentContextPackRefPayload = NonNullable<AgentModelRequestedEvent["payload"]["contextPackRefs"]>[number];
+type AgentPromptOmissionPayload = NonNullable<AgentModelRequestedEvent["payload"]["omissions"]>[number];
+
+function projectContextPackRefs(refs: readonly AgentContextPackRefPayload[]): readonly ProjectedAgentContextPackRef[] {
+  return freezeArray(
+    refs.map((ref) =>
+      freezeProjected({
+        contextPackId: ref.contextPackId,
+        version: ref.version,
+        contentHash: ref.contentHash,
+        sizeBytes: ref.sizeBytes,
+        generatedAt: ref.generatedAt,
+        safeSummary: ref.safeSummary,
+        provenanceRefs: freezeArray(ref.provenanceRefs),
+        projectionHighWaterMark: ref.projectionHighWaterMark,
+        sourceEventIds: ref.sourceEventIds === undefined ? undefined : freezeArray(ref.sourceEventIds),
+        artifactHashes: ref.artifactHashes === undefined ? undefined : freezeArray(ref.artifactHashes),
+        policyVersion: ref.policyVersion,
+        scope: ref.scope === undefined
+          ? undefined
+          : freezeProjected({
+            kind: ref.scope.kind,
+            id: ref.scope.id
+          }),
+        sizeBudgetBytes: ref.sizeBudgetBytes,
+        stalenessInputs: ref.stalenessInputs === undefined
+          ? undefined
+          : freezeArray(
+            ref.stalenessInputs.map((stalenessInput) =>
+              freezeProjected({
+                kind: stalenessInput.kind,
+                ref: stalenessInput.ref,
+                value: stalenessInput.value
+              })
+            )
+          )
+      })
+    )
+  );
+}
+
+function projectPromptOmissions(omissions: readonly AgentPromptOmissionPayload[]): readonly ProjectedAgentPromptArtifactOmission[] {
+  return freezeArray(
+    omissions.map((omission) =>
+      freezeProjected({
+        reason: omission.reason,
+        sourceRef: omission.sourceRef,
+        safeSummary: omission.safeSummary
+      })
+    )
+  );
 }
 
 function rememberRunInvocation(
