@@ -6,7 +6,7 @@
 - Branch: `codex/resident-agent-domain-adapters-plan`
 - Worktree: `/home/drake/.codex/worktrees/7018/Cestus`
 - Claimed at: `2026-07-09T01:02:19Z`
-- Status: `claimed`
+- Status: `in-progress`
 
 ## Owned Files
 
@@ -27,3 +27,8 @@
 This task is pure descriptor/type scaffolding plus failure-category alignment. It must not implement the scheduler dispatcher or any broad domain execution adapter. The scheduler/resumer descriptor interface is not present on this branch, so implementation must stop after Task 1 and before Task 2.
 
 Preserve append-only ledger semantics, provenance requirements, projection rebuildability, human approval gates, legal escalation locks, provider byte-transfer gates, and secret-safe diagnostics.
+
+## Progress
+
+- `2026-07-09T01:02:19Z`: Claim opened after the approved plan/readiness base commit.
+- `2026-07-09T01:02:19Z`: Scheduler dependency check found only the existing fake `resumeApprovedTool`; Task 2 and later remain blocked until the scheduler/resumer descriptor interface lands.
