@@ -210,6 +210,45 @@ describe("agent scheduler wake", () => {
     expect(events.filter((event) => event.type === "agent.tool.failed")).toHaveLength(0);
   });
 
+  it("returns stable wake DTOs when concurrent descriptorless wakes race to close the same request", async () => {
+    const toolRequestId = "toolreq_missing_descriptor_concurrent";
+    const ledger = new CoordinatedStreamReadLedger(`agent_tool_request_${toolRequestId}`);
+    await requestAndApprove(ledger, previewFor(toolRequestId), toolRequestId);
+    ledger.arm();
+    const scheduler = createAgentScheduler({
+      ledger,
+      actor: schedulerActor,
+      now: () => "2026-07-09T12:00:00.000Z",
+      descriptors: []
+    });
+
+    const settled = await Promise.allSettled([scheduler.wake(), scheduler.wake()]);
+    const results = settled.map((outcome) => {
+      expect(outcome.status).toBe("fulfilled");
+      if (outcome.status !== "fulfilled") {
+        throw outcome.reason;
+      }
+      return agentSchedulerWakeResultDtoSchema.parse(outcome.value);
+    });
+    const items = results.flatMap((result) => result.items);
+    const events = await ledger.readAll();
+
+    expect(results).toHaveLength(2);
+    expect(results.reduce((sum, result) => sum + result.failedCount, 0)).toBe(1);
+    expect(results.reduce((sum, result) => sum + result.completedCount, 0)).toBe(0);
+    expect(results.reduce((sum, result) => sum + result.resumedCount, 0)).toBe(0);
+    expect(items.filter((item) => item.state === "failed")).toHaveLength(1);
+    expect(items.filter((item) => item.state === "not-ready")).toHaveLength(1);
+    expect(items.find((item) => item.state === "not-ready")).toMatchObject({
+      toolRequestId,
+      state: "not-ready"
+    });
+    expect(items.find((item) => item.state === "not-ready")?.message).toMatch(/open|claimed/i);
+    expect(events.filter((event) => event.type === "agent.tool.failed")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.tool.execution.claimed")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "agent.tool.completed")).toHaveLength(0);
+  });
+
   it("fails closed when an approved request has no descriptor", async () => {
     const ledger = new InMemoryEventLedger();
     await requestAndApprove(ledger, previewFor("toolreq_missing_descriptor"), "toolreq_missing_descriptor");
@@ -669,4 +708,33 @@ function createBarrier(count: number): { readonly arrive: () => Promise<void> } 
       await released;
     }
   };
+}
+
+class CoordinatedStreamReadLedger extends InMemoryEventLedger {
+  private armed = false;
+  private readCount = 0;
+  private readonly initialStateBarrier = createBarrier(2);
+  private readonly failAppendBarrier = createBarrier(2);
+
+  constructor(private readonly targetStreamId: string) {
+    super();
+  }
+
+  arm(): void {
+    this.armed = true;
+    this.readCount = 0;
+  }
+
+  override async readStream(streamId: string) {
+    if (this.armed && streamId === this.targetStreamId) {
+      this.readCount += 1;
+      if (this.readCount <= 2) {
+        await this.initialStateBarrier.arrive();
+      } else if (this.readCount <= 4) {
+        await this.failAppendBarrier.arrive();
+      }
+    }
+
+    return await super.readStream(streamId);
+  }
 }
