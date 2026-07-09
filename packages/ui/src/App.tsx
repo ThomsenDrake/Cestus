@@ -308,11 +308,7 @@ export function App({
         setAgentStatus(status);
         setAgentApprovalCockpit(cockpit);
         setAgentMemoryList(memory);
-        setSelectedAgentMemoryId((current) =>
-          current !== undefined && memory.items.some((item) => item.memoryId === current)
-            ? current
-            : memory.items[0]?.memoryId
-        );
+        setSelectedAgentMemoryId((current) => selectVisibleMemoryId(memory, current));
         setAgentLoadState("loaded");
       })
       .catch(() => {
@@ -746,7 +742,10 @@ export function App({
       ]);
       setAgentStatus(status);
       setAgentMemoryList(memory);
-      setSelectedAgentMemoryId(result.memoryId);
+      setSelectedAgentMemoryId(selectVisibleMemoryId(memory, result.memoryId));
+      if (memory.items.length === 0) {
+        setAgentMemoryDetail(undefined);
+      }
       setAgentLoadState("loaded");
       setAgentLoadError(undefined);
     } catch (error: unknown) {
@@ -863,6 +862,17 @@ function statusWithAgentDiagnostics(
       }))
     ]
   };
+}
+
+function selectVisibleMemoryId(
+  memoryList: AgentMemoryListDto,
+  preferredMemoryId: string | undefined
+): string | undefined {
+  if (preferredMemoryId !== undefined && memoryList.items.some((item) => item.memoryId === preferredMemoryId)) {
+    return preferredMemoryId;
+  }
+
+  return memoryList.items[0]?.memoryId;
 }
 
 function renderRequestsMain({

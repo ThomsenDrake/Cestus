@@ -376,6 +376,12 @@ describe("AgentWorkspace", () => {
       sourceEventIds: ["evt_agent_task_created"]
     }));
 
+    fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
+    expect(onRecordMemory).toHaveBeenCalledTimes(2);
+    const firstRecord = onRecordMemory.mock.calls[0]?.[0];
+    const secondRecord = onRecordMemory.mock.calls[1]?.[0];
+    expect(firstRecord?.memoryId).not.toBe(secondRecord?.memoryId);
+
     fireEvent.change(within(memory).getAllByLabelText("Superseding summary")[0]!, {
       target: { value: "Use compact summaries with source and artifact refs." }
     });
@@ -383,7 +389,11 @@ describe("AgentWorkspace", () => {
       target: { value: "User asked for more provenance detail." }
     });
     fireEvent.click(within(memory).getAllByRole("button", { name: "Supersede memory" })[0]!);
-    expect(onSupersedeMemory).toHaveBeenCalled();
+    fireEvent.click(within(memory).getAllByRole("button", { name: "Supersede memory" })[0]!);
+    expect(onSupersedeMemory).toHaveBeenCalledTimes(2);
+    const firstSupersede = onSupersedeMemory.mock.calls[0]?.[0];
+    const secondSupersede = onSupersedeMemory.mock.calls[1]?.[0];
+    expect(firstSupersede?.supersededByMemoryId).not.toBe(secondSupersede?.supersededByMemoryId);
 
     fireEvent.click(within(memory).getAllByRole("button", { name: "Retract memory" })[0]!);
     expect(onRetractMemory).toHaveBeenCalled();
@@ -391,6 +401,27 @@ describe("AgentWorkspace", () => {
     for (const forbiddenName of [/send prr/i, /export/i, /clear lock/i, /accepted graph/i, /provider transfer/i, /repair/i]) {
       expect(within(memory).queryByRole("button", { name: forbiddenName })).not.toBeInTheDocument();
     }
+  });
+
+  it("blocks record-memory submission without summary and provenance and shows inline validation", () => {
+    const onRecordMemory = vi.fn();
+
+    render(
+      <AgentWorkspace
+        status={agentStatus()}
+        memoryList={agentMemoryList({ filters: { scope: "all", state: "all" } })}
+        loadState="loaded"
+        onRefresh={vi.fn()}
+        onRecordMemory={onRecordMemory}
+      />
+    );
+
+    const memory = screen.getByRole("region", { name: "Agent working memory" });
+    fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
+
+    expect(onRecordMemory).not.toHaveBeenCalled();
+    expect(within(memory).getByText("Enter a memory summary before recording.")).toBeInTheDocument();
+    expect(within(memory).getByText("Add at least one source event ID or artifact hash before recording memory.")).toBeInTheDocument();
   });
 });
 

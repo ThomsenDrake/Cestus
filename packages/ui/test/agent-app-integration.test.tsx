@@ -258,6 +258,72 @@ describe("agent app integration", () => {
       screen.queryByRole("button", { name: /send prr|export|clear lock|accepted graph|provider transfer|repair/i })
     ).not.toBeInTheDocument();
   });
+
+  it("falls back to the first visible filtered memory after a mutation hides the returned memory id", async () => {
+    const memoryLoads: unknown[] = [];
+    const detailLoads: string[] = [];
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), agentMemoryList()),
+      async loadMemory(filters) {
+        memoryLoads.push(filters ?? {});
+        return agentMemoryList({
+          filters: {
+            scope: filters?.scope ?? "all",
+            state: filters?.state ?? "all"
+          },
+          items: filters?.scope === "provider"
+            ? [agentMemoryList().items[1]!]
+            : agentMemoryList().items
+        });
+      },
+      async loadMemoryDetail(memoryId) {
+        detailLoads.push(memoryId);
+        const item = agentMemoryList().items.find((memory) => memory.memoryId === memoryId) ?? agentMemoryList().items[1]!;
+        return {
+          schemaVersion: "agent-memory-detail.v1",
+          generatedAt: "2026-07-09T15:00:00.000Z",
+          truthBoundary: agentMemoryList().truthBoundary,
+          memory: item,
+          history: item.memoryHistoryEntries
+        };
+      },
+      async recordMemory() {
+        return {
+          ok: true as const,
+          memoryId: "mem_workspace_hidden_by_filter",
+          eventIds: ["evt_memory_recorded_hidden"]
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    const memory = await screen.findByRole("region", { name: "Agent working memory" });
+    fireEvent.change(within(memory).getByLabelText("Memory scope"), {
+      target: { value: "provider" }
+    });
+    expect(await within(memory).findByText("mem_provider_note")).toBeInTheDocument();
+
+    fireEvent.change(within(memory).getByLabelText("New memory summary"), {
+      target: { value: "Provider-safe reminder." }
+    });
+    fireEvent.change(within(memory).getByLabelText("New memory source event IDs"), {
+      target: { value: "evt_provider_preview" }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
+
+    expect(await within(memory).findByText("mem_provider_note")).toBeInTheDocument();
+    expect(detailLoads.at(-1)).toBe("mem_provider_note");
+    expect(memoryLoads).toContainEqual({ scope: "provider", state: "all" });
+  });
 });
 
 function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
