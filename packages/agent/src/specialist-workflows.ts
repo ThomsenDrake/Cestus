@@ -125,9 +125,13 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
         approval("provider-byte-transfer", "Any transfer of raw correspondence text or private attachments.")
       ],
       outputArtifacts: [
-        outputArtifact("correspondence-draft", "prr-negotiation-handoff.v1", "Capture drafted follow-up or narrowing responses."),
-        outputArtifact("deadline-review", "prr-negotiation-handoff.v1", "Preserve deadline and fee review findings."),
-        outputArtifact("legal-risk-note", "prr-negotiation-handoff.v1", "Track unresolved legal and escalation questions.")
+        outputArtifact("correspondence-draft-artifact", "prr-negotiation-handoff.v1", "Capture drafted follow-up responses and local correspondence material."),
+        outputArtifact("deadline-review-artifact", "prr-negotiation-handoff.v1", "Preserve deadline review findings and cited rule refs."),
+        outputArtifact("fee-stalling-note", "prr-negotiation-handoff.v1", "Record fee and stalling posture notes for review."),
+        outputArtifact("narrowing-options", "prr-negotiation-handoff.v1", "Capture narrowing response options that keep the request in draft state."),
+        outputArtifact("legal-risk-note", "prr-negotiation-handoff.v1", "Track legal-escalation review material and risk notes."),
+        outputArtifact("pending-send-followup-approval-request", "prr-negotiation-handoff.v1", "Bind pending send or follow-up approval requests to exact previews."),
+        outputArtifact("unresolved-question-list", "prr-negotiation-handoff.v1", "List open questions that block a safe PRR next step.")
       ],
       failureModes: [
         "prr-request-missing",
@@ -173,8 +177,12 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
       ],
       outputArtifacts: [
         outputArtifact("triage-dossier", "evidence-triage-handoff.v1", "Capture safe summaries, gaps, and suggested review queues."),
+        outputArtifact("safe-evidence-summaries", "evidence-triage-handoff.v1", "Capture safe summaries of reviewed evidence without raw content transfer."),
+        outputArtifact("sensitive-quarantine-flags", "evidence-triage-handoff.v1", "Record sensitive, quarantine, or redaction concerns for governance review."),
+        outputArtifact("duplicate-groups", "evidence-triage-handoff.v1", "Group likely duplicate evidence for analyst follow-up."),
         outputArtifact("assertion-candidate-bundle", "evidence-triage-handoff.v1", "Package local candidate assertions for later human/domain review."),
-        outputArtifact("governance-review-note", "evidence-triage-handoff.v1", "Record quarantine and sensitivity follow-up needs.")
+        outputArtifact("evidence-gap-list", "evidence-triage-handoff.v1", "Track missing evidence and parse gaps discovered during triage."),
+        outputArtifact("review-queue-suggestions", "evidence-triage-handoff.v1", "Suggest safe next review queues without executing governance or ontology actions.")
       ],
       failureModes: [
         "evidence-missing",
@@ -215,8 +223,11 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
       ],
       outputArtifacts: [
         outputArtifact("timeline-artifact", "timeline-builder-handoff.v1", "Store the sourced timeline with item citations."),
-        outputArtifact("uncertainty-note", "timeline-builder-handoff.v1", "Preserve date precision and uncertainty caveats."),
-        outputArtifact("omitted-source-list", "timeline-builder-handoff.v1", "Record omitted sources and unresolved evidence prompts.")
+        outputArtifact("item-level-citation-map", "timeline-builder-handoff.v1", "Map timeline items to evidence, assertions, and PRR event refs."),
+        outputArtifact("date-precision-notes", "timeline-builder-handoff.v1", "Preserve normalized date precision notes for each item."),
+        outputArtifact("uncertainty-flags", "timeline-builder-handoff.v1", "Track uncertainty flags that keep chronology reviewable."),
+        outputArtifact("omitted-source-list", "timeline-builder-handoff.v1", "Record omitted sources and omission reasons."),
+        outputArtifact("unresolved-evidence-prompts", "timeline-builder-handoff.v1", "List unresolved evidence prompts needed to firm up the timeline.")
       ],
       failureModes: [
         "timeline-source-missing",
@@ -257,9 +268,12 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
         approval("provider-byte-transfer", "Any transfer of raw records or correspondence to a remote provider.")
       ],
       outputArtifacts: [
-        outputArtifact("candidate-dossier", "contradiction-finder-handoff.v1", "Capture paired source refs, rationale, and alternatives."),
-        outputArtifact("follow-up-evidence-note", "contradiction-finder-handoff.v1", "Track requested follow-up evidence and reviewer actions."),
-        outputArtifact("confidence-caveat", "contradiction-finder-handoff.v1", "Preserve uncertainty and alternative explanations.")
+        outputArtifact("contradiction-candidate-dossier", "contradiction-finder-handoff.v1", "Capture contradiction candidates with rationale and exact source binding."),
+        outputArtifact("paired-source-refs", "contradiction-finder-handoff.v1", "Preserve the exact paired source refs compared by the workflow."),
+        outputArtifact("confidence-caveats", "contradiction-finder-handoff.v1", "Record confidence caveats that keep the output reviewable."),
+        outputArtifact("alternative-explanations", "contradiction-finder-handoff.v1", "List plausible non-contradiction explanations for analyst review."),
+        outputArtifact("requested-followup-evidence", "contradiction-finder-handoff.v1", "Track follow-up evidence requests needed to resolve the candidate."),
+        outputArtifact("review-queue-items", "contradiction-finder-handoff.v1", "Suggest safe review queue entries without mutating claims or assertions.")
       ],
       failureModes: [
         "source-pair-missing",
@@ -302,9 +316,13 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
         approval("provider-byte-transfer", "Any new provider transfer of raw report, timeline, or evidence context.")
       ],
       outputArtifacts: [
-        outputArtifact("investigation-plan", "investigation-planner-handoff.v1", "Capture prioritized next steps and dependencies."),
+        outputArtifact("investigation-plan-artifact", "investigation-planner-handoff.v1", "Capture the local investigation plan artifact."),
+        outputArtifact("prioritized-evidence-gaps", "investigation-planner-handoff.v1", "List prioritized evidence gaps discovered during planning."),
         outputArtifact("task-suggestion-bundle", "investigation-planner-handoff.v1", "Preserve local task candidates and rationale."),
-        outputArtifact("prr-candidate-bundle", "investigation-planner-handoff.v1", "Package local PRR draft candidates for review.")
+        outputArtifact("draft-prr-candidate-bundle", "investigation-planner-handoff.v1", "Package local PRR draft candidates for review."),
+        outputArtifact("risk-notes", "investigation-planner-handoff.v1", "Record risk notes that constrain safe next steps."),
+        outputArtifact("dependencies", "investigation-planner-handoff.v1", "Capture task and evidence dependencies across the investigation."),
+        outputArtifact("safe-next-action-list", "investigation-planner-handoff.v1", "List safe next actions without creating durable tasks or external requests.")
       ],
       failureModes: [
         "investigation-scope-missing",
@@ -351,7 +369,10 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
         outputArtifact("report-outline", "report-builder-handoff.v1", "Capture the local report outline."),
         outputArtifact("draft-sections", "report-builder-handoff.v1", "Preserve local section drafts and unresolved risks."),
         outputArtifact("citation-map", "report-builder-handoff.v1", "Bind included claims to evidence and exclusions."),
-        outputArtifact("export-preview", "report-builder-handoff.v1", "Record export-preview and approval request refs.")
+        outputArtifact("unresolved-risk-note", "report-builder-handoff.v1", "Track unresolved reporting risks that need review before sharing."),
+        outputArtifact("excluded-evidence-list", "report-builder-handoff.v1", "Record excluded evidence and governed omission reasons."),
+        outputArtifact("export-preview", "report-builder-handoff.v1", "Record export preview refs without exporting or publishing."),
+        outputArtifact("pending-export-publication-approval-request", "report-builder-handoff.v1", "Bind pending export or publication approval requests to exact previews.")
       ],
       failureModes: [
         "citation-missing",
@@ -435,7 +456,7 @@ function createDescriptor(input: {
   readonly outputArtifacts: readonly SpecialistOutputDescriptor[];
   readonly failureModes: readonly string[];
 }): SpecialistWorkflowDescriptor {
-  const descriptor: Omit<SpecialistWorkflowDescriptor, "failureModes"> = Object.freeze({
+  return Object.freeze({
     runType: input.runType,
     residentIdentity: "agent_default",
     label: input.label,
@@ -447,21 +468,7 @@ function createDescriptor(input: {
     allowedTools: Object.freeze([...input.allowedTools]),
     approvalRequirements: Object.freeze([...input.approvalRequirements]),
     outputArtifacts: Object.freeze([...input.outputArtifacts]),
-    handoffSchemaId: `${input.runType}-handoff.v1`
+    handoffSchemaId: `${input.runType}-handoff.v1`,
+    failureModes: Object.freeze([...input.failureModes])
   });
-
-  return Object.freeze(
-    Object.defineProperty(
-      {
-        ...descriptor,
-        failureModes: Object.freeze([...input.failureModes])
-      },
-      "failureModes",
-      {
-        enumerable: false,
-        configurable: false,
-        writable: false
-      }
-    )
-  ) as SpecialistWorkflowDescriptor;
 }
