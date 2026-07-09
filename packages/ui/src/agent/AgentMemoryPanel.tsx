@@ -50,9 +50,20 @@ export function AgentMemoryPanel({
     expiresAt: ""
   });
   const [supersedeDrafts, setSupersedeDrafts] = useState<Record<string, { summary: string; rationale: string }>>({});
+  const [recordAttempted, setRecordAttempted] = useState(false);
 
   const selectedHistory = memoryDetail?.history ?? [];
   const items = memoryList?.items ?? [];
+  const recordSummary = recordDraft.summary.trim();
+  const recordSourceEventIds = splitRefs(recordDraft.sourceEventIds);
+  const recordArtifactHashes = splitRefs(recordDraft.artifactHashes);
+  const recordErrors = {
+    summary: recordSummary.length === 0 ? "Enter a memory summary before recording." : undefined,
+    provenance:
+      recordSourceEventIds.length === 0 && recordArtifactHashes.length === 0
+        ? "Add at least one source event ID or artifact hash before recording memory."
+        : undefined
+  };
   const detailRefs = useMemo(() => {
     if (memoryDetail === undefined) {
       return [];
@@ -160,6 +171,16 @@ export function AgentMemoryPanel({
             </label>
           </div>
         </div>
+        {recordAttempted && (recordErrors.summary !== undefined || recordErrors.provenance !== undefined) ? (
+          <div className="grid gap-1">
+            {recordErrors.summary === undefined ? null : (
+              <p className="text-base text-[var(--signal-red)] sm:text-sm">{recordErrors.summary}</p>
+            )}
+            {recordErrors.provenance === undefined ? null : (
+              <p className="text-base text-[var(--signal-red)] sm:text-sm">{recordErrors.provenance}</p>
+            )}
+          </div>
+        ) : null}
         <div className="grid gap-3 @lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
           <label className="grid gap-1">
             <span className="font-mono text-base text-[var(--muted-amber)] sm:text-sm">Memory kind</span>
@@ -205,16 +226,23 @@ export function AgentMemoryPanel({
             <button
               type="button"
               onClick={() => {
+                setRecordAttempted(true);
+                if (recordErrors.summary !== undefined || recordErrors.provenance !== undefined) {
+                  return;
+                }
+
+                const memoryId = nextMemoryId(recordSummary);
                 onRecordMemory?.({
-                  memoryId: nextMemoryId(recordDraft.summary),
+                  memoryId,
                   scope: recordDraft.scope,
                   memoryKind: recordDraft.memoryKind,
-                  summary: recordDraft.summary,
-                  sourceEventIds: splitRefs(recordDraft.sourceEventIds),
-                  artifactHashes: splitRefs(recordDraft.artifactHashes),
+                  summary: recordSummary,
+                  sourceEventIds: recordSourceEventIds,
+                  artifactHashes: recordArtifactHashes,
                   confidence: parseConfidence(recordDraft.confidence),
                   ...(recordDraft.expiresAt.length === 0 ? {} : { expiresAt: recordDraft.expiresAt })
                 });
+                setRecordAttempted(false);
               }}
               className="relative min-h-10 border border-[var(--console-line)] px-3 py-2 font-mono text-base text-[var(--signal-amber)] sm:min-h-9 sm:text-sm"
             >
@@ -409,9 +437,18 @@ function nextMemoryId(summary: string): string {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 24);
-  return `mem_${slug.length > 0 ? slug : "working_memory"}`;
+  return `mem_${slug.length > 0 ? slug : "working_memory"}_${randomToken()}`;
 }
 
 function nextSupersedingMemoryId(memoryId: string): string {
-  return `${memoryId}_v2`;
+  return `${memoryId}_sup_${randomToken()}`;
+}
+
+function randomToken(): string {
+  const token = globalThis.crypto?.randomUUID?.();
+  if (typeof token === "string") {
+    return token.replace(/-/g, "").slice(0, 12);
+  }
+
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
