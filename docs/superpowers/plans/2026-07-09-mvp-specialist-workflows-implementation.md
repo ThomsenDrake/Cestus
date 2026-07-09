@@ -158,7 +158,16 @@ describe("MVP specialist workflow descriptors", () => {
     for (const descriptor of specialistWorkflowDescriptors) {
       expect(descriptor.contextPacks.length).toBeGreaterThanOrEqual(5);
       expect(descriptor.contextPacks.map((pack) => pack.contextPackId)).toContain("governance-locks.v1");
-      expect(descriptor.promptTemplate.promptTemplateId).toBe(`${descriptor.runType}.context-pack.v1`);
+      expect(descriptor.promptTemplate.promptTemplateId).toBe(
+        {
+          "prr-negotiation": "prr-negotiation.review.v1",
+          "evidence-triage": "evidence-triage.classify.v1",
+          "timeline-builder": "timeline-builder.sourced-timeline.v1",
+          "contradiction-finder": "contradiction-finder.candidates.v1",
+          "investigation-planner": "investigation-planner.next-steps.v1",
+          "report-builder": "report-builder.packet-draft.v1"
+        }[descriptor.runType]
+      );
       expect(descriptor.handoffSchemaId).toBe(`${descriptor.runType}-handoff.v1`);
       expect(descriptor.allowedTools.length).toBeGreaterThan(0);
       expect(descriptor.approvalRequirements.length).toBeGreaterThan(0);

@@ -42,3 +42,4 @@ Self-review notes:
 Review repair notes:
 - Follow-up review found that hiding `failureModes` from JSON weakened the snapshot DTO contract; the fix keeps `failureModes` enumerable and adjusts the browser-safety test to allow the required literal `secret-detected` category while still rejecting raw secret/provider-error text.
 - Follow-up review also found the safe output artifact catalog was incomplete; the fix expands each MVP mode to include the full approved safe output set from the workflow design without adding execution behavior.
+- Coordinator follow-up clarified that workflow-specific prompt template IDs govern this slice; the registry and tests now treat prompt template identity as distinct from context-pack schema identity instead of deriving `${runType}.context-pack.v1`.
