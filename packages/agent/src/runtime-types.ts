@@ -5,7 +5,7 @@ import type {
   AgentMemoryListDto,
   AgentMemoryTruthBoundaryDto
 } from "./memory.js";
-import type { AgentProjectionDto } from "./projection-types.js";
+import type { AgentMemoryKind, AgentMemoryScope, AgentMemoryState, AgentProjectionDto } from "./projection-types.js";
 import type { ProviderDescriptor } from "./provider.js";
 import type { ProviderReadinessDto } from "./provider-readiness.js";
 
@@ -40,5 +40,8 @@ export type {
   AgentMemoryDetailDto,
   AgentMemoryFiltersDto,
   AgentMemoryListDto,
-  AgentMemoryTruthBoundaryDto
+  AgentMemoryTruthBoundaryDto,
+  AgentMemoryKind,
+  AgentMemoryScope,
+  AgentMemoryState
 };

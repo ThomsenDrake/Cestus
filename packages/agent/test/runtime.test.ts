@@ -59,6 +59,29 @@ describe("agent runtime core", () => {
     expect(status.identity?.workspaceId).toBe("ws_case_001");
   });
 
+  it("keeps memory reads read-only and rebuilt from ledger events", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now: fixedNow });
+
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.recordMemory({
+      memoryId: "mem_runtime_read_only",
+      scope: "workspace",
+      memoryKind: "agent-observation",
+      summary: "Working memory must stay a read-only projection surface.",
+      sourceEventIds: ["evt_agent_task_created_runtime"],
+      confidence: 0.75
+    });
+    const beforeReads = await ledger.readAll();
+    const list = await runtime.listMemory({ state: "active" });
+    const detail = await runtime.memoryDetail("mem_runtime_read_only");
+    const afterReads = await ledger.readAll();
+
+    expect(afterReads).toHaveLength(beforeReads.length);
+    expect(list.items.map((item) => item.memoryId)).toEqual(["mem_runtime_read_only"]);
+    expect(detail?.memory.memoryId).toBe("mem_runtime_read_only");
+  });
+
   it("invokes fake providers through resident-agent events only", async () => {
     const ledger = new InMemoryEventLedger();
     const runtime = createAgentRuntime({
