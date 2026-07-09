@@ -39,6 +39,17 @@ describe("agent scheduler contracts", () => {
     expect(agentSchedulerWakeResultDtoSchema.parse(dto)).toEqual(dto);
   });
 
+  it.each(["none", "human-review", "ledger-review"] as const)(
+    "accepts scheduler approval class %s in wake DTO transport summaries",
+    (approvalClass) => {
+      const dto = buildWakeResultDto({
+        item: { approvalClass }
+      });
+
+      expect(agentSchedulerWakeResultDtoSchema.parse(dto).items[0]?.approvalClass).toBe(approvalClass);
+    }
+  );
+
   it("keeps descriptor execution behind buildCurrentPreview and executeApproved", async () => {
     const descriptor: AgentApprovedToolExecutorDescriptor = {
       toolId: "agent.test.effect",
@@ -142,8 +153,12 @@ describe("agent scheduler contracts", () => {
       patch: { item: { toolVersion: "ghp_secret_version" } }
     },
     {
-      label: "non-canonical approval class",
-      patch: { item: { approvalClass: "human-review" } }
+      label: "malformed approval class",
+      patch: { item: { approvalClass: "human review" } }
+    },
+    {
+      label: "secret-shaped approval class",
+      patch: { item: { approvalClass: "sk-live-review-token" } }
     },
     {
       label: "unsafe category",
@@ -169,13 +184,27 @@ describe("agent scheduler contracts", () => {
   });
 });
 
+type SchedulerWakeResultItemPatch =
+  Partial<Omit<AgentSchedulerWakeResultDto["items"][number], "approvalClass">> & {
+    approvalClass?: string;
+  };
+
+type SchedulerWakeResultItemInput =
+  Omit<AgentSchedulerWakeResultDto["items"][number], "approvalClass"> & {
+    approvalClass: string;
+  };
+
+type SchedulerWakeResultDtoInput = Omit<AgentSchedulerWakeResultDto, "items"> & {
+  items: SchedulerWakeResultItemInput[];
+};
+
 function buildWakeResultDto(
   patch: {
-    item?: Partial<AgentSchedulerWakeResultDto["items"][number]>;
+    item?: SchedulerWakeResultItemPatch;
     allowedNextActions?: AgentSchedulerWakeResultDto["allowedNextActions"];
   } = {}
-): AgentSchedulerWakeResultDto {
-  const baseItem: AgentSchedulerWakeResultDto["items"][number] = {
+): SchedulerWakeResultDtoInput {
+  const baseItem: SchedulerWakeResultItemInput = {
     toolRequestId: "toolreq_scheduler_contract",
     runId: "run_scheduler_contract",
     toolId: "agent.test.effect",
