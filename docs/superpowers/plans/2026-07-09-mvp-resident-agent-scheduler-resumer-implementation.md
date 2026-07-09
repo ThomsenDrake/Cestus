@@ -949,7 +949,7 @@ git commit -m "feat: add agent scheduler wake spine"
 - Consumes: `createAgentScheduler(input).wake()`.
 - Produces: `runtime.scheduler.wake()` and `POST /api/agent/scheduler/wake`.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create `docs/agentic/claims/task-3-agent-scheduler-runtime-route.md`:
 
@@ -978,7 +978,7 @@ Status: claimed
 
 Then change `Status: claimed` to `Status: in-progress` before editing source files.
 
-- [ ] **Step 2: Write failing local-runtime wake route tests**
+- [x] **Step 2: Write failing local-runtime wake route tests**
 
 Append tests to `packages/local-runtime/test/agent-http-routes.test.ts`:
 
@@ -1044,7 +1044,7 @@ Expected before implementation:
 expected 200 but received 404 or undefined route for /api/agent/scheduler/wake
 ```
 
-- [ ] **Step 4: Expose scheduler from the agent runtime**
+- [x] **Step 4: Expose scheduler from the agent runtime**
 
 Modify `packages/agent/src/runtime.ts`:
 
@@ -1081,7 +1081,7 @@ scheduler,
 gateway: createAgentToolGateway({ ledger: input.ledger, actor: input.actor, now: input.now })
 ```
 
-- [ ] **Step 5: Thread descriptor injection through local runtime factory**
+- [x] **Step 5: Thread descriptor injection through local runtime factory**
 
 Modify `packages/local-runtime/src/agent-runtime-factory.ts`:
 
@@ -1108,7 +1108,7 @@ return createAgentRuntime({
 });
 ```
 
-- [ ] **Step 6: Add the wake route**
+- [x] **Step 6: Add the wake route**
 
 Modify `packages/local-runtime/src/agent-http-routes.ts` before the task creation route:
 
@@ -1144,7 +1144,7 @@ Route requirements:
 - Return only the scheduler wake DTO.
 - Rely on existing local-runtime auth wrapper.
 
-- [ ] **Step 7: Run targeted passing tests**
+- [x] **Step 7: Run targeted passing tests**
 
 Run:
 
@@ -1158,7 +1158,7 @@ Expected:
 Test Files  4 passed
 ```
 
-- [ ] **Step 8: Commit Task 3**
+- [x] **Step 8: Commit Task 3**
 
 Run:
 
