@@ -62,3 +62,8 @@ Invariant notes:
 - Mutation bodies are parsed with allowlisted keys, provenance is required for record/supersede payloads, and invalid or unsafe requests return generic diagnostics without echoing request text.
 - The route tests assert that memory mutations do not surface accepted graph, entity resolution, relationship acceptance, PRR send, or lock-clearing effects.
 - Fix pass note: invalid record/supersede/retract bodies are now rejected before `ensureDefaultIdentity(...)`, keeping malformed requests side-effect free, and route-level HTTP 400 responses now preserve safe runtime-provided memory diagnostics instead of replacing them with the generic invalid-body message.
+
+Coverage-fix follow-up:
+
+- The route hidden-effect assertion now covers the full Task 3 forbidden family list: accepted graph/assertions, entity resolution, relationship acceptance, PRR send, export, lock clearing, repair execution, provider byte transfer, and legacy/source-tree mutation.
+- Reviewer minor note: `memoryMutationResponse(...)` still uses safe substring status mapping for diagnostics. That robustness item is recorded as non-blocking for Task 3 and was intentionally left out of this coverage-only pass.

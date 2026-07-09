@@ -20,7 +20,8 @@ afterEach(() => {
 
 describe("agent memory HTTP routes", () => {
   it("records, lists, supersedes, details, and retracts memory without hidden effects", async () => {
-    const handler = testHandler();
+    const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
+    const handler = testHandler({ config });
     const recorded = await handler({
       method: "POST",
       url: "/api/agent/memory",
@@ -75,8 +76,27 @@ describe("agent memory HTTP routes", () => {
     expect(retracted.status).toBe(200);
 
     const status = await handler({ method: "GET", url: "/api/agent/status" });
-    const eventTypes = JSON.stringify(JSON.parse(status.body));
-    expect(eventTypes).not.toMatch(/assertion\.accepted|entity\.resolved|relationship\.accepted|prr\.request\.sent|agent\.lock\.cleared/);
+    const statusBody = JSON.parse(status.body) as {
+      readonly modelInvocations: readonly unknown[];
+      readonly toolRequests: readonly unknown[];
+    };
+    const eventTypes = await eventTypesFromLedger(config);
+    expect(eventTypes).not.toEqual(
+      expect.arrayContaining([
+        "assertion.accepted",
+        "entity.resolved",
+        "relationship.accepted",
+        "prr.request.sent",
+        "export.generated",
+        "agent.lock.cleared",
+        "incident.repair.recorded",
+        "legacy.import.report.generated",
+        "legacy.ontology.staging.approved"
+      ])
+    );
+    expect(eventTypes.some((eventType) => eventType.startsWith("agent.model-invocation."))).toBe(false);
+    expect(statusBody.modelInvocations).toEqual([]);
+    expect(statusBody.toolRequests).toEqual([]);
   });
 
   it("rejects unsafe or unproven memory bodies without echoing source text", async () => {
@@ -167,3 +187,5 @@ async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>):
     ledger.close();
   }
 }
+
+const eventTypesFromLedger = eventTypes;
