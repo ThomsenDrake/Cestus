@@ -1,4 +1,10 @@
 import type { AgentProjectionIdentity } from "./projection.js";
+import type {
+  AgentMemoryDetailDto,
+  AgentMemoryFiltersDto,
+  AgentMemoryListDto,
+  AgentMemoryTruthBoundaryDto
+} from "./memory.js";
 import type { AgentProjectionDto } from "./projection-types.js";
 import type { ProviderDescriptor } from "./provider.js";
 import type { ProviderReadinessDto } from "./provider-readiness.js";
@@ -29,3 +35,10 @@ export interface AgentProviderReadinessEnvelope {
 export type AgentRuntimeResult<T> =
   | ({ readonly ok: true } & T)
   | { readonly ok: false; readonly error: AgentRuntimeDiagnosticDto };
+
+export type {
+  AgentMemoryDetailDto,
+  AgentMemoryFiltersDto,
+  AgentMemoryListDto,
+  AgentMemoryTruthBoundaryDto
+};

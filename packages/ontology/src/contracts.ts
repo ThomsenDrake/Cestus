@@ -225,6 +225,12 @@ function agentApprovalClassMatchesSideEffect(
 
 const agentTaskPrioritySchema = z.enum(["low", "normal", "high", "urgent"]);
 const agentMemoryScopeSchema = z.enum(["workspace", "investigation", "task", "provider", "policy"]);
+const agentMemoryKindSchema = z.enum([
+  "operator-preference",
+  "agent-observation",
+  "policy-caveat",
+  "provider-note"
+]);
 const agentFailureCategorySchema = z.enum([
   "provider-unavailable",
   "provider-rate-limited",
@@ -517,6 +523,7 @@ const agentMemoryRecordedPayloadSchema = z.object({
   memoryId: agentMemoryIdSchema,
   residentAgentId: residentAgentIdSchema,
   scope: agentMemoryScopeSchema,
+  memoryKind: agentMemoryKindSchema.optional(),
   summary: secretSafeTextSchema,
   sourceEventIds: agentSourceEventIdsSchema.optional(),
   artifactHashes: agentArtifactHashesSchema.optional(),
@@ -1437,7 +1444,7 @@ export const eventContracts = {
     type: "agent.memory.recorded",
     version: 1,
     description: "Records scoped durable resident-agent memory with source provenance.",
-    agentGuidance: "Required provenance fields: memoryId, residentAgentId, scope, summary, confidence, createdAt, and sourceEventIds or artifactHashes. Memory is not accepted graph state; forbidden autonomous effects include accepting assertions, resolving entities, or creating relationships from memory alone.",
+    agentGuidance: "Required provenance fields: memoryId, residentAgentId, scope, memoryKind, summary, confidence, createdAt, and sourceEventIds or artifactHashes. Memory is not accepted graph state. Forbidden autonomous effects include accepting assertions, resolving entities, creating relationships, sending PRRs, exporting material, clearing locks, running provider byte transfer, executing repair, or mutating source trees from memory alone.",
     invariants: ["memoryId must route the stream", "sourceEventIds or artifactHashes are required", "memory cannot become accepted graph state"]
   },
   "agent.memory.superseded": {
