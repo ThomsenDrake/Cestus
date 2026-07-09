@@ -40,3 +40,6 @@ Preserve append-only ledger semantics, provenance requirements, projection rebui
 - `2026-07-08T21:19:10-04:00`: Review-fix GREEN captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts`; result was `Test Files  1 passed (1)` and `Tests  11 passed (11)`.
 - `2026-07-08T21:19:10-04:00`: Covering GREEN captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts packages/ontology/test/agent-contracts.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/execution-loop.test.ts`; result was `Test Files  4 passed (4)` and `Tests  86 passed (86)`.
 - `2026-07-08T21:19:34-04:00`: Review-fix full gate passed with `npm run verify`; result included `typecheck passed`, `Test Files  144 passed | 1 skipped (145)`, `Tests  1387 passed | 1 skipped (1388)`, `tests passed`, and `factory-readiness passed`.
+- `2026-07-09T01:02:19Z`: Re-review approved Task 1 after the hardening fix with no Critical or Important issues.
+- Minor review notes for future registry/readiness tightening: narrow `AgentDomainExecutionResult.artifactHashes` to the template-literal hash type and add a table-driven ontology category test over the whole added failure vocabulary.
+- Stop checkpoint: Task 2 remains blocked because no shared scheduler/resumer descriptor interface is present in `packages/agent/src`.
