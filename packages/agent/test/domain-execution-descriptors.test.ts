@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type {
+  AgentDomainExecutionResult,
   AgentDomainPreview,
   AgentDomainToolDescriptor
 } from "../src/domain-execution-descriptors.js";
@@ -9,6 +10,18 @@ import {
 } from "../src/domain-execution-descriptors.js";
 
 describe("agent domain execution descriptors", () => {
+  it("exposes artifact hashes as sha256-prefixed result hashes", () => {
+    const result: AgentDomainExecutionResult = {
+      eventIds: ["evt_descriptor_result"],
+      artifactHashes: [hash("4")],
+      readModelChanges: [],
+      resultSummary: "Produced a content-addressed artifact."
+    };
+    const acceptSha256Hashes = (_hashes: readonly `sha256:${string}`[]) => undefined;
+
+    expect(() => acceptSha256Hashes(result.artifactHashes)).not.toThrow();
+  });
+
   it("hashes semantic preview content with stable key ordering", () => {
     const left = hashAgentDomainPreview({
       schemaVersion: "agent-domain-preview.v1",
@@ -234,3 +247,13 @@ function basePreview(): AgentDomainPreview {
 function hash(seed: string): `sha256:${string}` {
   return `sha256:${seed.repeat(64)}` as `sha256:${string}`;
 }
+
+type Assert<T extends true> = T;
+type IsEqual<Left, Right> =
+  (<Value>() => Value extends Left ? 1 : 2) extends
+    <Value>() => Value extends Right ? 1 : 2
+    ? true
+    : false;
+type _agentDomainExecutionResultArtifactHashesAreStrict = Assert<
+  IsEqual<AgentDomainExecutionResult["artifactHashes"], readonly `sha256:${string}`[]>
+>;
