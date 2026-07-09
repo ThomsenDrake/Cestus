@@ -1337,7 +1337,8 @@ typecheck passed
 Test Files  147 passed | 1 skipped (148)
 Tests  1403 passed | 1 skipped (1404)
 tests passed
-vite build succeeded
+vite v8.1.3 building client environment for production...
+✓ built in 426ms
 factory-readiness passed
 ```
 
