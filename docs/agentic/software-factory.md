@@ -1343,3 +1343,38 @@ factory-readiness passed
 ```
 
 Memory is now visible as resident-agent working memory with active, superseded, and retracted states, source event IDs or artifact hashes, scope, confidence, expiry when present, safe summaries, human correction routes, and `agent-memory-summary.v1` context packs. The slice keeps memory non-authoritative: memory can guide future actions, but any factual graph effect still has to become evidence-backed proposed assertion or reasoning and pass normal review. The surface does not accept assertions, resolve entities, send PRRs, export material, clear locks, execute provider byte transfer, run repair, or mutate old source trees.
+
+## MVP Specialist Workflows Planning Readiness
+
+The MVP specialist workflow design and implementation plan were prepared on 2026-07-09 for the resident-agent modes beyond ontology bootstrap.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-09-mvp-specialist-workflows-design.md`
+- `docs/superpowers/plans/2026-07-09-mvp-specialist-workflows-implementation.md`
+
+Factory readiness tracks both files through `scripts/check-agent-readiness.mjs`.
+
+Recorded document and factory checks:
+
+```text
+git diff --check
+no output
+
+npm run factory:check
+factory-readiness passed
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  143 passed | 1 skipped
+Tests  1373 passed | 1 skipped
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+This planning slice keeps Cestus as one resident agent with typed work modes for `prr-negotiation`, `evidence-triage`, `timeline-builder`, `contradiction-finder`, `investigation-planner`, and `report-builder`. The plan allows only inert registry metadata and handoff DTO schemas before scheduler/resumer and domain adapter contracts land. Full workflow execution remains gated, domain-owned, approval-bound, and evidence/proposal-first. No new agent personas, PRR sends, legal escalation, export/publication, provider byte transfer, destructive repair, accepted graph review, or accepted ontology truth are introduced by this planning slice.
