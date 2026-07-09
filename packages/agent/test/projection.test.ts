@@ -129,6 +129,18 @@ describe("buildAgentProjection", () => {
       "evt_agent_memory_recorded_superseded_context",
       "evt_agent_memory_superseded_context"
     ]);
+    expect(supersededMemory?.memoryHistoryEntries).toEqual([
+      {
+        eventId: "evt_agent_memory_recorded_superseded_context",
+        eventType: "agent.memory.recorded",
+        occurredAt: "2026-07-07T18:06:30.000Z"
+      },
+      {
+        eventId: "evt_agent_memory_superseded_context",
+        eventType: "agent.memory.superseded",
+        occurredAt: "2026-07-07T18:06:40.000Z"
+      }
+    ]);
     expect(projection.activeMemory.some((memory) => memory.memoryId === "mem_superseded_context")).toBe(false);
 
     const revokedPermission = projection.permissions.get("perm_export_review");

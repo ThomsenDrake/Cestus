@@ -147,6 +147,13 @@ describe("agent UI adapter", () => {
           confidence: 0.8,
           createdAt: "2026-07-07T21:02:00.000Z",
           state: "active",
+          memoryHistoryEntries: [
+            {
+              eventId: "evt_memory_recorded",
+              eventType: "agent.memory.recorded",
+              occurredAt: "2026-07-07T21:02:00.000Z"
+            }
+          ],
           eventIds: ["evt_memory_recorded"],
           causationIds: []
         }

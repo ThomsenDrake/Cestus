@@ -210,6 +210,11 @@ const memorySchema = z.object({
   createdAt: z.string().datetime(),
   expiresAt: z.string().datetime().optional(),
   state: z.enum(["active", "superseded", "retracted"]),
+  memoryHistoryEntries: z.array(z.object({
+    eventId: z.string().min(1),
+    eventType: z.enum(["agent.memory.recorded", "agent.memory.superseded", "agent.memory.retracted"]),
+    occurredAt: z.string().datetime()
+  }).strict()),
   supersededByMemoryId: z.string().min(1).optional(),
   supersededBy: z.string().min(1).optional(),
   supersededAt: z.string().datetime().optional(),

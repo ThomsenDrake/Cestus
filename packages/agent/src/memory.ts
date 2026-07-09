@@ -1,6 +1,12 @@
 import { buildContextPackRef, type ContextPackRef, type ContextPackScope } from "./context-packs.js";
 import type { AgentProjection } from "./projection.js";
-import type { AgentMemoryKind, AgentMemoryScope, AgentMemoryState, ProjectedAgentMemory } from "./projection-types.js";
+import type {
+  AgentMemoryEventType,
+  AgentMemoryKind,
+  AgentMemoryScope,
+  AgentMemoryState,
+  ProjectedAgentMemory
+} from "./projection-types.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 export interface AgentMemoryTruthBoundaryDto {
@@ -32,7 +38,7 @@ export interface AgentMemoryFiltersDto {
 
 export interface AgentMemoryHistoryEntryDto {
   readonly eventId: string;
-  readonly eventType: "agent.memory.recorded" | "agent.memory.superseded" | "agent.memory.retracted";
+  readonly eventType: AgentMemoryEventType;
   readonly occurredAt?: string;
 }
 
@@ -125,9 +131,9 @@ export function buildAgentMemorySummaryContextPack(input: BuildAgentMemorySummar
       ...(memory.expiresAt === undefined ? {} : { expiresAt: memory.expiresAt })
     }))
   };
-  const sourceEventIds = unique(activeWithRealProvenance.flatMap((memory) => [...memory.eventIds, ...memory.sourceEventIds]));
+  const sourceEventIds = unique(activeWithRealProvenance.flatMap((memory) => memory.sourceEventIds));
   const artifactHashes = unique(activeWithRealProvenance.flatMap((memory) => memory.artifactHashes));
-  const provenanceRefs = [...sourceEventIds, ...artifactHashes];
+  const provenanceRefs = unique(activeWithRealProvenance.flatMap((memory) => [...memory.eventIds, ...memory.sourceEventIds, ...memory.artifactHashes]));
 
   return buildContextPackRef({
     contextPackId: "agent-memory-summary.v1",
@@ -163,18 +169,11 @@ function compareMemory(left: ProjectedAgentMemory, right: ProjectedAgentMemory):
 }
 
 function historyFor(memory: ProjectedAgentMemory): readonly AgentMemoryHistoryEntryDto[] {
-  const history: AgentMemoryHistoryEntryDto[] = memory.eventIds.map((eventId, index) => {
-    if (index === 0) {
-      return { eventId, eventType: "agent.memory.recorded", occurredAt: memory.createdAt };
-    }
-    if (memory.supersededAt !== undefined) {
-      return { eventId, eventType: "agent.memory.superseded", occurredAt: memory.supersededAt };
-    }
-    return memory.retractedAt === undefined
-      ? { eventId, eventType: "agent.memory.retracted" }
-      : { eventId, eventType: "agent.memory.retracted", occurredAt: memory.retractedAt };
-  });
-  return deepFreeze(history);
+  return deepFreeze(memory.memoryHistoryEntries.map((entry) => ({
+    eventId: entry.eventId,
+    eventType: entry.eventType,
+    occurredAt: entry.occurredAt
+  })));
 }
 
 function unique(values: readonly string[]): readonly string[] {
