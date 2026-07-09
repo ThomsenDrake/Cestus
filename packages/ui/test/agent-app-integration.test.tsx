@@ -244,7 +244,7 @@ describe("agent app integration", () => {
       target: { value: "evt_agent_task_created" }
     });
     fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
-    fireEvent.click(within(memory).getAllByRole("button", { name: "Retract memory" })[0]!);
+    fireEvent.click(within(memory).getByRole("button", { name: "Retract memory mem_workspace_preference" }));
 
     expect(memoryRecords).toEqual([expect.objectContaining({
       summary: "Keep summaries source-linked and compact.",
@@ -257,6 +257,54 @@ describe("agent app integration", () => {
     expect(
       screen.queryByRole("button", { name: /send prr|export|clear lock|accepted graph|provider transfer|repair/i })
     ).not.toBeInTheDocument();
+  });
+
+  it("submits operator-supplied supersede provenance instead of stale memory refs", async () => {
+    const supersedes: unknown[] = [];
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), agentMemoryList()),
+      async supersedeMemory(input: unknown) {
+        supersedes.push(input);
+        return {
+          ok: true as const,
+          memoryId: "mem_workspace_preference_sup",
+          eventIds: ["evt_memory_replacement", "evt_memory_superseded"]
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    const memory = await screen.findByRole("region", { name: "Agent working memory" });
+    fireEvent.change(within(memory).getByLabelText("Superseding summary mem_workspace_preference"), {
+      target: { value: "Use concise summaries with fresh provenance." }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding rationale mem_workspace_preference"), {
+      target: { value: "Operator replaced the original note after review." }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding source event IDs mem_workspace_preference"), {
+      target: { value: "evt_memory_review_update" }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding artifact hashes mem_workspace_preference"), {
+      target: { value: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Supersede memory mem_workspace_preference" }));
+
+    expect(supersedes).toEqual([expect.objectContaining({
+      memoryId: "mem_workspace_preference",
+      sourceEventIds: ["evt_memory_review_update"],
+      artifactHashes: ["sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"]
+    })]);
+    expect(JSON.stringify(supersedes)).not.toContain("evt_memory_recorded");
+    expect(JSON.stringify(supersedes)).not.toContain("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
   });
 
   it("falls back to the first visible filtered memory after a mutation hides the returned memory id", async () => {

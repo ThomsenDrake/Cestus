@@ -29,6 +29,13 @@ interface RecordDraftState {
   readonly expiresAt: string;
 }
 
+interface SupersedeDraftState {
+  readonly summary: string;
+  readonly rationale: string;
+  readonly sourceEventIds: string;
+  readonly artifactHashes: string;
+}
+
 export function AgentMemoryPanel({
   memoryList,
   memoryDetail,
@@ -49,7 +56,8 @@ export function AgentMemoryPanel({
     confidence: "0.8",
     expiresAt: ""
   });
-  const [supersedeDrafts, setSupersedeDrafts] = useState<Record<string, { summary: string; rationale: string }>>({});
+  const [supersedeDrafts, setSupersedeDrafts] = useState<Record<string, SupersedeDraftState>>({});
+  const [supersedeAttempted, setSupersedeAttempted] = useState<Record<string, boolean>>({});
   const [recordAttempted, setRecordAttempted] = useState(false);
 
   const selectedHistory = memoryDetail?.history ?? [];
@@ -266,8 +274,22 @@ export function AgentMemoryPanel({
             {items.map((memory) => {
               const supersedeDraft = supersedeDrafts[memory.memoryId] ?? {
                 summary: "",
-                rationale: ""
+                rationale: "",
+                sourceEventIds: "",
+                artifactHashes: ""
               };
+              const replacementSourceEventIds = splitRefs(supersedeDraft.sourceEventIds);
+              const replacementArtifactHashes = splitRefs(supersedeDraft.artifactHashes);
+              const supersedeErrors = {
+                summary: supersedeDraft.summary.trim().length === 0 ? "Enter a replacement summary before superseding memory." : undefined,
+                rationale:
+                  supersedeDraft.rationale.trim().length === 0 ? "Enter a replacement rationale before superseding memory." : undefined,
+                provenance:
+                  replacementSourceEventIds.length === 0 && replacementArtifactHashes.length === 0
+                    ? "Add replacement source event IDs or artifact hashes before superseding memory."
+                    : undefined
+              };
+              const showCorrectionControls = memory.state === "active";
               return (
                 <li key={memory.memoryId} className="grid gap-3 px-4 py-3">
                   <button
@@ -286,11 +308,12 @@ export function AgentMemoryPanel({
                     <InlineStat label="Expiry" value={memory.expiresAt ?? "not set"} />
                   </dl>
                   <RefGroup refs={[...memory.sourceEventIds, ...memory.artifactHashes, ...memory.eventIds]} />
-                  <div className="grid gap-3 border-t border-[var(--console-line)] pt-3 @lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
+                  {!showCorrectionControls ? null : (
+                    <div className="grid gap-3 border-t border-[var(--console-line)] pt-3 @lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                     <label className="grid gap-1">
                       <span className="font-mono text-base text-[var(--muted-amber)] sm:text-sm">Superseding summary</span>
                       <input
-                        aria-label="Superseding summary"
+                        aria-label={`Superseding summary ${memory.memoryId}`}
                         name={`superseding-summary-${memory.memoryId}`}
                         value={supersedeDraft.summary}
                         onChange={(event) =>
@@ -308,7 +331,7 @@ export function AgentMemoryPanel({
                     <label className="grid gap-1">
                       <span className="font-mono text-base text-[var(--muted-amber)] sm:text-sm">Superseding rationale</span>
                       <input
-                        aria-label="Superseding rationale"
+                        aria-label={`Superseding rationale ${memory.memoryId}`}
                         name={`superseding-rationale-${memory.memoryId}`}
                         value={supersedeDraft.rationale}
                         onChange={(event) =>
@@ -323,23 +346,111 @@ export function AgentMemoryPanel({
                         className="min-w-0 border border-[var(--console-line)] bg-[var(--console-void)] px-3 py-2 text-base text-[var(--paper-light)] sm:text-sm"
                       />
                     </label>
+                    <label className="grid gap-1">
+                      <span className="font-mono text-base text-[var(--muted-amber)] sm:text-sm">Superseding source event IDs</span>
+                      <input
+                        aria-label={`Superseding source event IDs ${memory.memoryId}`}
+                        name={`superseding-source-event-ids-${memory.memoryId}`}
+                        value={supersedeDraft.sourceEventIds}
+                        onChange={(event) =>
+                          setSupersedeDrafts((current) => ({
+                            ...current,
+                            [memory.memoryId]: {
+                              ...supersedeDraft,
+                              sourceEventIds: event.target.value
+                            }
+                          }))
+                        }
+                        className="min-w-0 border border-[var(--console-line)] bg-[var(--console-void)] px-3 py-2 text-base text-[var(--paper-light)] sm:text-sm"
+                      />
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="font-mono text-base text-[var(--muted-amber)] sm:text-sm">Superseding artifact hashes</span>
+                      <input
+                        aria-label={`Superseding artifact hashes ${memory.memoryId}`}
+                        name={`superseding-artifact-hashes-${memory.memoryId}`}
+                        value={supersedeDraft.artifactHashes}
+                        onChange={(event) =>
+                          setSupersedeDrafts((current) => ({
+                            ...current,
+                            [memory.memoryId]: {
+                              ...supersedeDraft,
+                              artifactHashes: event.target.value
+                            }
+                          }))
+                        }
+                        className="min-w-0 border border-[var(--console-line)] bg-[var(--console-void)] px-3 py-2 text-base text-[var(--paper-light)] sm:text-sm"
+                      />
+                    </label>
+                    </div>
+                  )}
+                  {!showCorrectionControls ? null : (
+                    <div className="grid gap-3 @lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+                      <div className="grid gap-2">
+                        <p className="font-mono text-base text-[var(--muted-amber)] sm:text-sm">Current provenance refs</p>
+                        <RefGroup refs={[...memory.sourceEventIds, ...memory.artifactHashes]} />
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSupersedeDrafts((current) => ({
+                                ...current,
+                                [memory.memoryId]: {
+                                  ...supersedeDraft,
+                                  sourceEventIds: memory.sourceEventIds.join(", "),
+                                  artifactHashes: memory.artifactHashes.join(", ")
+                                }
+                              }))
+                            }
+                            className="relative min-h-10 border border-[var(--console-line)] px-3 py-2 font-mono text-base text-[var(--signal-cyan)] sm:min-h-9 sm:text-sm"
+                          >
+                            Reuse current refs
+                          </button>
+                        </div>
+                        {supersedeAttempted[memory.memoryId] === true &&
+                        (supersedeErrors.summary !== undefined ||
+                          supersedeErrors.rationale !== undefined ||
+                          supersedeErrors.provenance !== undefined) ? (
+                            <div className="grid gap-1">
+                              {supersedeErrors.summary === undefined ? null : (
+                                <p className="text-base text-[var(--signal-red)] sm:text-sm">{supersedeErrors.summary}</p>
+                              )}
+                              {supersedeErrors.rationale === undefined ? null : (
+                                <p className="text-base text-[var(--signal-red)] sm:text-sm">{supersedeErrors.rationale}</p>
+                              )}
+                              {supersedeErrors.provenance === undefined ? null : (
+                                <p className="text-base text-[var(--signal-red)] sm:text-sm">{supersedeErrors.provenance}</p>
+                              )}
+                            </div>
+                          ) : null}
+                      </div>
                     <div className="flex items-end">
                       <button
                         type="button"
-                        onClick={() =>
+                        aria-label={`Supersede memory ${memory.memoryId}`}
+                        onClick={() => {
+                          setSupersedeAttempted((current) => ({ ...current, [memory.memoryId]: true }));
+                          if (
+                            supersedeErrors.summary !== undefined ||
+                            supersedeErrors.rationale !== undefined ||
+                            supersedeErrors.provenance !== undefined
+                          ) {
+                            return;
+                          }
+
                           onSupersedeMemory?.({
                             memoryId: memory.memoryId,
                             supersededByMemoryId: nextSupersedingMemoryId(memory.memoryId),
                             scope: memory.scope,
                             memoryKind: memory.memoryKind,
-                            summary: supersedeDraft.summary.length > 0 ? supersedeDraft.summary : memory.summary,
-                            sourceEventIds: memory.sourceEventIds,
-                            artifactHashes: memory.artifactHashes,
+                            summary: supersedeDraft.summary.trim(),
+                            sourceEventIds: replacementSourceEventIds,
+                            artifactHashes: replacementArtifactHashes,
                             confidence: memory.confidence,
                             ...(memory.expiresAt === undefined ? {} : { expiresAt: memory.expiresAt }),
-                            rationale: supersedeDraft.rationale.length > 0 ? supersedeDraft.rationale : "Updated working memory."
-                          })
-                        }
+                            rationale: supersedeDraft.rationale.trim()
+                          });
+                        }}
                         className="relative min-h-10 border border-[var(--console-line)] px-3 py-2 font-mono text-base text-[var(--signal-amber)] sm:min-h-9 sm:text-sm"
                       >
                         <span
@@ -352,6 +463,7 @@ export function AgentMemoryPanel({
                     <div className="flex items-end">
                       <button
                         type="button"
+                        aria-label={`Retract memory ${memory.memoryId}`}
                         onClick={() => onRetractMemory?.({ memoryId: memory.memoryId, rationale: "No longer useful." })}
                         className="relative min-h-10 border border-[var(--console-line)] px-3 py-2 font-mono text-base text-[var(--signal-amber)] sm:min-h-9 sm:text-sm"
                       >
@@ -362,7 +474,8 @@ export function AgentMemoryPanel({
                         Retract memory
                       </button>
                     </div>
-                  </div>
+                    </div>
+                  )}
                 </li>
               );
             })}

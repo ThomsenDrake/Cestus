@@ -137,18 +137,32 @@ describe("agent memory surface", () => {
     ]);
   });
 
-  it("fails closed when no active memory has real provenance for the summary pack", () => {
+  it("builds a stable empty-memory summary pack for first-run workspaces", () => {
     const projection = buildAgentProjection([]);
 
-    expect(() =>
-      buildAgentMemorySummaryContextPack({
-        projection,
-        generatedAt: "2026-07-09T12:30:00.000Z",
-        policyVersion: "agent-policy-v1",
-        scope: { kind: "workspace", id: "ws_case_001" },
-        sizeBudgetBytes: 16_384
-      })
-    ).toThrow(/agent-memory-summary\.v1 requires active memory with real provenance/i);
+    const ref = buildAgentMemorySummaryContextPack({
+      projection,
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      sizeBudgetBytes: 16_384
+    });
+
+    expect(ref).toMatchObject({
+      contextPackId: "agent-memory-summary.v1",
+      version: 1,
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      sourceEventIds: [],
+      artifactHashes: [],
+      provenanceRefs: ["agent.projection.memory.empty"],
+      stalenessInputs: [{
+        kind: "projection-high-water-mark",
+        ref: "agent.projection.memory",
+        value: "0"
+      }]
+    });
+    expect(ref.safeSummary).toBe("0 active working memory items; not ontology truth.");
   });
 });
 
