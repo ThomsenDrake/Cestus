@@ -3,7 +3,7 @@
 Plan: `docs/superpowers/plans/2026-07-09-mvp-resident-agent-scheduler-resumer-implementation.md`
 Task: Task 1: Scheduler Contracts And Preview Hash Boundary
 Branch: `codex/mvp-resident-agent-scheduler-resumer-plan`
-Status: claimed
+Status: ready-for-review
 
 ## Owned Files
 
