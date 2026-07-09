@@ -38,3 +38,7 @@ Self-review notes:
 - Every descriptor stays inert with `executionEnabled: false` and keeps the single resident identity fixed at `agent_default`.
 - The browser-safe registry snapshot omits `failureModes` from JSON enumeration so snapshot serialization stays free of secret-shaped strings while direct descriptor access still reports `secret-detected`.
 - No runner, scheduler, provider call, domain effect, approval consumption, or workflow execution behavior was added in this slice.
+
+Review repair notes:
+- Follow-up review found that hiding `failureModes` from JSON weakened the snapshot DTO contract; the fix keeps `failureModes` enumerable and adjusts the browser-safety test to allow the required literal `secret-detected` category while still rejecting raw secret/provider-error text.
+- Follow-up review also found the safe output artifact catalog was incomplete; the fix expands each MVP mode to include the full approved safe output set from the workflow design without adding execution behavior.

@@ -15,6 +15,61 @@ const mvpRunTypes = [
   "report-builder"
 ] as const;
 
+const expectedOutputArtifactKindsByRunType = {
+  "prr-negotiation": [
+    "correspondence-draft-artifact",
+    "deadline-review-artifact",
+    "fee-stalling-note",
+    "narrowing-options",
+    "legal-risk-note",
+    "pending-send-followup-approval-request",
+    "unresolved-question-list"
+  ],
+  "evidence-triage": [
+    "triage-dossier",
+    "safe-evidence-summaries",
+    "sensitive-quarantine-flags",
+    "duplicate-groups",
+    "assertion-candidate-bundle",
+    "evidence-gap-list",
+    "review-queue-suggestions"
+  ],
+  "timeline-builder": [
+    "timeline-artifact",
+    "item-level-citation-map",
+    "date-precision-notes",
+    "uncertainty-flags",
+    "omitted-source-list",
+    "unresolved-evidence-prompts"
+  ],
+  "contradiction-finder": [
+    "contradiction-candidate-dossier",
+    "paired-source-refs",
+    "confidence-caveats",
+    "alternative-explanations",
+    "requested-followup-evidence",
+    "review-queue-items"
+  ],
+  "investigation-planner": [
+    "investigation-plan-artifact",
+    "prioritized-evidence-gaps",
+    "task-suggestion-bundle",
+    "draft-prr-candidate-bundle",
+    "risk-notes",
+    "dependencies",
+    "safe-next-action-list"
+  ],
+  "report-builder": [
+    "report-outline",
+    "draft-sections",
+    "citation-map",
+    "unresolved-risk-note",
+    "excluded-evidence-list",
+    "export-preview",
+    "pending-export-publication-approval-request"
+  ]
+} satisfies Record<(typeof mvpRunTypes)[number], readonly string[]>;
+
 describe("MVP specialist workflow descriptors", () => {
   it("describes exactly the six MVP modes without adding agent identities", () => {
     expect(specialistWorkflowDescriptors.map((descriptor) => descriptor.runType)).toEqual([...mvpRunTypes]);
@@ -44,6 +99,9 @@ describe("MVP specialist workflow descriptors", () => {
       expect(descriptor.allowedTools.length).toBeGreaterThan(0);
       expect(descriptor.approvalRequirements.length).toBeGreaterThan(0);
       expect(descriptor.outputArtifacts.length).toBeGreaterThan(0);
+      expect(descriptor.outputArtifacts.map((artifact) => artifact.artifactKind)).toEqual(
+        expectedOutputArtifactKindsByRunType[descriptor.runType]
+      );
       expect(descriptor.failureModes).toContain("secret-detected");
       expect(descriptor.prerequisiteContractIds).toEqual(
         expect.arrayContaining(["agent.scheduler-resumer.v1", "agent.domain-adapter.v1"])
@@ -53,12 +111,15 @@ describe("MVP specialist workflow descriptors", () => {
 
   it("exposes a frozen registry snapshot for browser-safe inspection", () => {
     const snapshot = specialistWorkflowRegistrySnapshot();
+    const serializedSnapshot = JSON.stringify(snapshot);
 
     expect(snapshot.schemaVersion).toBe("agent-specialist-workflow-registry.v1");
     expect(snapshot.descriptors).toHaveLength(6);
     expect(Object.isFrozen(snapshot)).toBe(true);
     expect(Object.isFrozen(snapshot.descriptors)).toBe(true);
+    expect(serializedSnapshot).toContain("\"failureModes\"");
+    expect(serializedSnapshot).toContain("\"secret-detected\"");
     expect(() => specialistWorkflowDescriptorFor("ontology-bootstrap")).toThrow(/not part of MVP workflow registry/i);
-    expect(JSON.stringify(snapshot)).not.toMatch(/api key|authorization|bearer|password|secret|rawProviderError/i);
+    expect(serializedSnapshot).not.toMatch(/api key|authorization|bearer|password|rawProviderError/i);
   });
 });
