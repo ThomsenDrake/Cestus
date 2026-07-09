@@ -93,7 +93,7 @@ export interface AgentDomainPreview extends AgentToolPreview {
 
 export interface AgentDomainExecutionResult extends AgentToolResult {
   readonly eventIds: readonly string[];
-  readonly artifactHashes: readonly string[];
+  readonly artifactHashes: readonly `sha256:${string}`[];
   readonly readModelChanges: AgentToolResult["readModelChanges"];
   readonly resultSummary: string;
 }

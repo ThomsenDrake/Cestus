@@ -17,6 +17,26 @@ const humanContext = {
 const hash111 = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
 const hash222 = "sha256:2222222222222222222222222222222222222222222222222222222222222222";
 const hash333 = "sha256:3333333333333333333333333333333333333333333333333333333333333333";
+const adapterFailureCategories = [
+  "approval-required",
+  "approval-denied",
+  "approval-stale",
+  "provider-unavailable",
+  "provider-rate-limited",
+  "credential-missing",
+  "credential-revoked",
+  "model-output-invalid",
+  "secret-detected",
+  "permission-denied",
+  "lock-active",
+  "projection-lag",
+  "context-budget-exceeded",
+  "missing-provenance",
+  "domain-gate-failed",
+  "stale-source",
+  "external-effect-failed",
+  "data-loss-risk"
+] as const;
 
 function agentEvent(id: string, type: string, streamId: string, payload: Record<string, unknown>) {
   return {
@@ -311,8 +331,8 @@ describe("resident agent event contracts", () => {
     ).toBe(false);
   });
 
-  it.each(["lock-active", "stale-source"] as const)(
-    "accepts extended tool failure category %s",
+  it.each(adapterFailureCategories)(
+    "accepts adapter-facing tool failure category %s",
     (category) => {
       expect(
         validateKnowledgeEvent(

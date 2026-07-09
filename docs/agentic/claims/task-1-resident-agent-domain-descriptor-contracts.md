@@ -30,16 +30,16 @@ Preserve append-only ledger semantics, provenance requirements, projection rebui
 
 ## Progress
 
-- `2026-07-09T01:02:19Z`: Claim opened after the approved plan/readiness base commit.
-- `2026-07-09T01:02:19Z`: Scheduler dependency check found only the existing fake `resumeApprovedTool`; Task 2 and later remain blocked until the scheduler/resumer descriptor interface lands.
-- `2026-07-09T21:05:02-04:00`: RED captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts`; expected failure was `Cannot find module '../src/domain-execution-descriptors.js'`.
-- `2026-07-09T21:09:11-04:00`: GREEN captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts packages/ontology/test/agent-contracts.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/execution-loop.test.ts`; result was `Test Files  4 passed (4)` and `Tests  77 passed (77)`.
-- `2026-07-09T21:10:00-04:00`: Full gate passed with `npm run verify`; result included `typecheck passed`, `Test Files  144 passed | 1 skipped (145)`, `Tests  1378 passed | 1 skipped (1379)`, `tests passed`, and `factory-readiness passed`.
-- `2026-07-08T21:18:00-04:00`: Review returned Needs Fixes for getter-safe public-boundary sanitization, missing direct descriptor contract coverage, and non-finite numeric rejection during preview hashing/sanitization.
+- `2026-07-08T21:02:19-04:00`: Claim opened after the approved plan/readiness base commit.
+- `2026-07-08T21:02:19-04:00`: Scheduler dependency check found only the existing fake `resumeApprovedTool`; Task 2 and later remain blocked until the scheduler/resumer descriptor interface lands.
+- `2026-07-08T21:05:02-04:00`: RED captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts`; expected failure was `Cannot find module '../src/domain-execution-descriptors.js'`.
+- `2026-07-08T21:09:11-04:00`: GREEN captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts packages/ontology/test/agent-contracts.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/execution-loop.test.ts`; result was `Test Files  4 passed (4)` and `Tests  77 passed (77)`.
+- `2026-07-08T21:10:00-04:00`: Full gate passed with `npm run verify`; result included `typecheck passed`, `Test Files  144 passed | 1 skipped (145)`, `Tests  1378 passed | 1 skipped (1379)`, `tests passed`, and `factory-readiness passed`.
 - `2026-07-08T21:17:02-04:00`: Review-fix RED captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts`; five new adversarial boundary tests failed against the pre-fix descriptor module (accessor-backed preview fields, symbol-keyed preview fields, hidden descriptor fields, custom array fields, and sparse/accessor-backed array values).
+- `2026-07-08T21:18:00-04:00`: Review returned Needs Fixes for getter-safe public-boundary sanitization, missing direct descriptor contract coverage, and non-finite numeric rejection during preview hashing/sanitization.
 - `2026-07-08T21:19:10-04:00`: Review-fix GREEN captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts`; result was `Test Files  1 passed (1)` and `Tests  11 passed (11)`.
-- `2026-07-08T21:19:10-04:00`: Covering GREEN captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts packages/ontology/test/agent-contracts.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/execution-loop.test.ts`; result was `Test Files  4 passed (4)` and `Tests  86 passed (86)`.
+- `2026-07-08T21:19:12-04:00`: Covering GREEN captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts packages/ontology/test/agent-contracts.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/execution-loop.test.ts`; result was `Test Files  4 passed (4)` and `Tests  86 passed (86)`.
 - `2026-07-08T21:19:34-04:00`: Review-fix full gate passed with `npm run verify`; result included `typecheck passed`, `Test Files  144 passed | 1 skipped (145)`, `Tests  1387 passed | 1 skipped (1388)`, `tests passed`, and `factory-readiness passed`.
-- `2026-07-09T01:02:19Z`: Re-review approved Task 1 after the hardening fix with no Critical or Important issues.
+- `2026-07-08T21:20:00-04:00`: Re-review approved Task 1 after the hardening fix with no Critical or Important issues.
 - Minor review notes for future registry/readiness tightening: narrow `AgentDomainExecutionResult.artifactHashes` to the template-literal hash type and add a table-driven ontology category test over the whole added failure vocabulary.
 - Stop checkpoint: Task 2 remains blocked because no shared scheduler/resumer descriptor interface is present in `packages/agent/src`.
