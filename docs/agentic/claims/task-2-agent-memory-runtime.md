@@ -138,3 +138,27 @@ Fourth fix-pass notes:
 - `supersedeMemory()` now rejects non-human actors when the incoming replacement `command.memoryKind === "operator-preference"` before appending the replacement `agent.memory.recorded` event.
 - The existing projected-memory guard for already-`operator-preference` memory remains in place, so both the source-memory and replacement-memory preference boundaries are enforced.
 - Denied agent attempts to supersede an `agent-observation` into an `operator-preference` leave the ledger unchanged beyond the original active memory history.
+
+Fifth fix-pass evidence after re-review:
+
+- RED:
+  - `npm run typecheck`
+  - Observed failure:
+    - `Module '"../src/runtime-types.js"' has no exported member 'AgentMemoryMutationResult'`
+    - `Module '"../src/runtime-types.js"' has no exported member 'RecordAgentMemoryInput'`
+    - `Module '"../src/runtime-types.js"' has no exported member 'RetractAgentMemoryInput'`
+    - `Module '"../src/runtime-types.js"' has no exported member 'SupersedeAgentMemoryInput'`
+- GREEN:
+  - `npm run typecheck`
+  - Result: `typecheck passed`
+  - `npm test -- packages/agent/test/memory-runtime.test.ts packages/agent/test/runtime.test.ts packages/agent/test/memory.test.ts`
+  - Result: `Test Files  3 passed (3)` and `Tests  32 passed (32)`
+- VERIFY:
+  - `npm run verify`
+  - Result: `Test Files  145 passed | 1 skipped (146)`, `Tests  1391 passed | 1 skipped (1392)`, `tests passed`, build succeeded, and `factory-readiness passed`
+
+Fifth fix-pass notes:
+
+- `RecordAgentMemoryInput`, `SupersedeAgentMemoryInput`, `RetractAgentMemoryInput`, and `AgentMemoryMutationResult` now live on the exported `packages/agent/src/runtime-types.ts` surface.
+- `packages/agent/src/runtime.ts` imports those types from `runtime-types.ts`, making that file the source of truth for the public runtime type surface.
+- `packages/agent/test/memory-runtime.test.ts` now includes compile-time coverage that imports the memory command/result types from `../src/runtime-types.js` and validates representative shapes with `satisfies`.
