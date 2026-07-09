@@ -9,6 +9,7 @@ export type AgentTaskStatus =
 
 export type AgentToolRequestState = "requested" | "approved" | "executing" | "denied" | "completed" | "failed";
 export type AgentMemoryState = "active" | "superseded" | "retracted";
+export type AgentMemoryEventType = "agent.memory.recorded" | "agent.memory.superseded" | "agent.memory.retracted";
 export type AgentPermissionState = "granted" | "revoked";
 export type AgentLockState = "active" | "cleared";
 export type AgentMemoryKind = "operator-preference" | "agent-observation" | "policy-caveat" | "provider-note";
@@ -242,6 +243,7 @@ export interface ProjectedAgentMemory extends ProjectedAgentProvenance {
   readonly createdAt: string;
   readonly expiresAt?: string | undefined;
   readonly state: AgentMemoryState;
+  readonly memoryHistoryEntries: readonly ProjectedAgentMemoryHistoryEntry[];
   readonly supersededByMemoryId?: string | undefined;
   readonly supersededBy?: string | undefined;
   readonly supersededAt?: string | undefined;
@@ -249,6 +251,12 @@ export interface ProjectedAgentMemory extends ProjectedAgentProvenance {
   readonly retractedBy?: string | undefined;
   readonly retractedAt?: string | undefined;
   readonly retractionRationale?: string | undefined;
+}
+
+export interface ProjectedAgentMemoryHistoryEntry {
+  readonly eventId: string;
+  readonly eventType: AgentMemoryEventType;
+  readonly occurredAt: string;
 }
 
 export interface ProjectedAgentPermission extends ProjectedAgentProvenance {

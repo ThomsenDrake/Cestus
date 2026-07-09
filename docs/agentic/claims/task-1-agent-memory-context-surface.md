@@ -77,3 +77,22 @@ Review-fix evidence:
   - GREEN after the production fix: `Test Files  4 passed (4)` and `Tests  71 passed (71)`.
 - Final verify: `npm run verify`
   - Passed: `typecheck passed`, `Test Files  144 passed | 1 skipped (145)`, `Tests  1380 passed | 1 skipped (1381)`, `tests passed`, Vite production build succeeded, and `factory-readiness passed`.
+
+Second re-review fix evidence:
+
+- Root cause 1: `buildAgentMemorySummaryContextPack` was appending `memory.eventIds` into `sourceEventIds`, causing memory lifecycle event IDs to masquerade as upstream source refs. The fix keeps `sourceEventIds` limited to replayed upstream `memory.sourceEventIds`, while `provenanceRefs` now carries the combined real source refs, memory lifecycle event IDs, and artifact hashes as separate provenance-only material.
+- Root cause 2: `buildAgentMemoryDetail` inferred history row `eventType` values from terminal projected state. A memory that was first superseded and later retracted could therefore label the retraction row as another supersession. The fix adds typed `memoryHistoryEntries` during projection replay and has the detail DTO render from those recorded entries instead of reverse-inference.
+- RED: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/memory.test.ts packages/agent/test/context-packs.test.ts`
+  - Failed as expected with:
+    - `packages/agent/test/memory.test.ts`: summary-pack `sourceEventIds` still included `evt_agent_memory_recorded_workspace_policy`
+    - `packages/agent/test/memory.test.ts`: superseded-then-retracted detail history labeled the retraction row as `agent.memory.superseded`
+    - `packages/agent/test/projection.test.ts`: projected memory had no typed history entries
+- GREEN: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/memory.test.ts packages/agent/test/context-packs.test.ts`
+  - Passed: `Test Files  4 passed (4)` and `Tests  72 passed (72)`.
+- VERIFY: `npm run verify`
+  - Passed: `typecheck passed`, `Test Files  144 passed | 1 skipped (145)`, `Tests  1381 passed | 1 skipped (1382)`, `tests passed`, Vite production build succeeded, and `factory-readiness passed`.
+- Verifier-driven support-file scope remained narrow:
+  - `packages/ui/src/agent/agent-adapter.ts`
+  - `packages/ui/test/agent-adapter.test.ts`
+  - `packages/ui/test/agent-workspace.test.tsx`
+  - These edits only teach the browser adapter schema and fixtures about the new typed `memoryHistoryEntries` field required by the stricter projection contract. No routes, controls, or authority boundaries changed.

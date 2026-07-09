@@ -171,7 +171,9 @@ describe("agent context packs", () => {
       policyVersion: "agent-policy-v1",
       scope: { kind: "workspace", id: "ws_case_001" }
     });
+    expect(ref.sourceEventIds).toEqual(["evt_agent_policy_installed_default"]);
     expect(ref.provenanceRefs).toEqual(expect.arrayContaining(["evt_agent_memory_recorded_workspace_policy"]));
+    expect(ref.provenanceRefs).toEqual(expect.arrayContaining(["evt_agent_policy_installed_default"]));
     expect(ref.safeSummary).toMatch(/working memory/i);
   });
 

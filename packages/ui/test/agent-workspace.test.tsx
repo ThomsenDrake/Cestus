@@ -304,6 +304,13 @@ describe("AgentWorkspace", () => {
           confidence: 0.8,
           createdAt: "2026-07-07T21:02:00.000Z",
           state: "active",
+          memoryHistoryEntries: [
+            {
+              eventId: "evt_memory_recorded",
+              eventType: "agent.memory.recorded",
+              occurredAt: "2026-07-07T21:02:00.000Z"
+            }
+          ],
           eventIds: ["evt_memory_recorded"],
           causationIds: []
         }
@@ -446,6 +453,13 @@ function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
         confidence: 1,
         createdAt: "2026-07-07T21:00:00.000Z",
         state: "active",
+        memoryHistoryEntries: [
+          {
+            eventId: "evt_memory_recorded",
+            eventType: "agent.memory.recorded",
+            occurredAt: "2026-07-07T21:00:00.000Z"
+          }
+        ],
         eventIds: ["evt_memory_recorded"],
         causationIds: ["evt_policy_installed"]
       }

@@ -54,9 +54,87 @@ describe("agent memory surface", () => {
     expect(ref.contextPackId).toBe("agent-memory-summary.v1");
     expect(ref.version).toBe(1);
     expect(ref.provenanceRefs).toEqual(expect.arrayContaining(["evt_agent_memory_recorded_workspace_policy"]));
+    expect(ref.sourceEventIds).toEqual(["evt_agent_policy_installed_default"]);
+    expect(ref.provenanceRefs).toEqual(expect.arrayContaining(["evt_agent_policy_installed_default"]));
     expect(ref.safeSummary).toMatch(/working memory/i);
     expect(ref.sizeBytes).toBeLessThanOrEqual(16_384);
     expect(JSON.stringify(ref)).not.toContain("raw evidence");
+  });
+
+  it("builds detail history from the actual recorded lifecycle event types", () => {
+    const projection = buildAgentProjection([
+      {
+        id: "evt_agent_memory_recorded_history_mix",
+        type: "agent.memory.recorded",
+        version: 1,
+        streamId: "agent_memory_mem_history_mix",
+        sequence: 1,
+        context: agentContext("2026-07-09T12:00:00.000Z"),
+        payload: {
+          memoryId: "mem_history_mix",
+          residentAgentId: "agent_default",
+          scope: "workspace",
+          summary: "Record a memory that is later superseded and then retracted.",
+          sourceEventIds: ["evt_agent_task_created_provider_readiness"],
+          confidence: 0.7,
+          createdAt: "2026-07-09T12:00:00.000Z"
+        }
+      },
+      {
+        id: "evt_agent_memory_superseded_history_mix",
+        type: "agent.memory.superseded",
+        version: 1,
+        streamId: "agent_memory_mem_history_mix",
+        sequence: 2,
+        context: humanContext("2026-07-09T12:05:00.000Z", "evt_agent_memory_recorded_history_mix"),
+        payload: {
+          memoryId: "mem_history_mix",
+          supersededByMemoryId: "mem_workspace_policy",
+          supersededBy: "actor_case_owner",
+          rationale: "Prefer the canonical workspace policy memory.",
+          supersededAt: "2026-07-09T12:05:00.000Z"
+        }
+      },
+      {
+        id: "evt_agent_memory_retracted_history_mix",
+        type: "agent.memory.retracted",
+        version: 1,
+        streamId: "agent_memory_mem_history_mix",
+        sequence: 3,
+        context: humanContext("2026-07-09T12:10:00.000Z", "evt_agent_memory_superseded_history_mix"),
+        payload: {
+          memoryId: "mem_history_mix",
+          retractedBy: "actor_case_owner",
+          rationale: "Remove the superseded memory from consideration entirely.",
+          retractedAt: "2026-07-09T12:10:00.000Z"
+        }
+      }
+    ]);
+
+    const detail = buildAgentMemoryDetail({
+      projection,
+      memoryId: "mem_history_mix",
+      generatedAt: "2026-07-09T12:30:00.000Z"
+    });
+
+    expect(detail?.memory.state).toBe("retracted");
+    expect(detail?.history).toEqual([
+      {
+        eventId: "evt_agent_memory_recorded_history_mix",
+        eventType: "agent.memory.recorded",
+        occurredAt: "2026-07-09T12:00:00.000Z"
+      },
+      {
+        eventId: "evt_agent_memory_superseded_history_mix",
+        eventType: "agent.memory.superseded",
+        occurredAt: "2026-07-09T12:05:00.000Z"
+      },
+      {
+        eventId: "evt_agent_memory_retracted_history_mix",
+        eventType: "agent.memory.retracted",
+        occurredAt: "2026-07-09T12:10:00.000Z"
+      }
+    ]);
   });
 
   it("fails closed when no active memory has real provenance for the summary pack", () => {
@@ -73,3 +151,24 @@ describe("agent memory surface", () => {
     ).toThrow(/agent-memory-summary\.v1 requires active memory with real provenance/i);
   });
 });
+
+function agentContext(occurredAt: string) {
+  return {
+    actor: { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" },
+    occurredAt,
+    correlationId: "corr_memory_history_mix",
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0", agent: "0.1.0" }
+  };
+}
+
+function humanContext(occurredAt: string, causationId: string) {
+  return {
+    actor: { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" },
+    occurredAt,
+    causationId,
+    correlationId: "corr_memory_history_mix",
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0", agent: "0.1.0" }
+  };
+}
