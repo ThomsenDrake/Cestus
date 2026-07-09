@@ -2,11 +2,20 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { isAgentSecretSafeText } from "../../agent/src/index.js";
+import {
+  createAgentToolGateway,
+  hashAgentToolPreview,
+  isAgentSecretSafeText,
+  type AgentApprovedToolExecutorDescriptor,
+  type AgentToolPreview
+} from "../../agent/src/index.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { LOCAL_RUNTIME_SESSION_COOKIE_NAME, localRuntimeSessionCookieValue } from "../src/auth.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
-import type { LocalAgentRuntimeFactory } from "../src/agent-runtime-factory.js";
+import {
+  defaultLocalAgentRuntimeFactory,
+  type LocalAgentRuntimeFactory
+} from "../src/agent-runtime-factory.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
 
 const handlers: LocalRuntimeHttpHandler[] = [];
@@ -247,6 +256,60 @@ describe("agent HTTP routes", () => {
     expect(isAgentSecretSafeText(response.body)).toBe(true);
   });
 
+  it("wakes the resident agent scheduler without accepting tool input", async () => {
+    const { handler } = await seededApprovedToolHandler();
+    const emptyObject = await seededApprovedToolHandler("toolreq_scheduler_route_empty_object");
+
+    const rejected = await handler({
+      method: "POST",
+      url: "/api/agent/scheduler/wake",
+      body: JSON.stringify({ toolRequestId: "toolreq_must_not_be_routed" })
+    });
+    const accepted = await handler({
+      method: "POST",
+      url: "/api/agent/scheduler/wake"
+    });
+    const acceptedEmptyObject = await emptyObject.handler({
+      method: "POST",
+      url: "/api/agent/scheduler/wake",
+      body: JSON.stringify({})
+    });
+
+    expect(rejected.status).toBe(400);
+    expect(accepted.status).toBe(200);
+    expect(acceptedEmptyObject.status).toBe(200);
+    const body = JSON.parse(accepted.body) as {
+      readonly schemaVersion: string;
+      readonly examinedCount: number;
+      readonly completedCount: number;
+      readonly eventIds: readonly string[];
+    };
+    expect(body.schemaVersion).toBe("agent-scheduler-wake-result.v1");
+    expect(body.examinedCount).toBe(1);
+    expect(body.completedCount).toBe(1);
+    expect(body.eventIds).toEqual(expect.arrayContaining([expect.stringMatching(/^evt_/)]));
+    expect(accepted.body).not.toMatch(/prr\.request\.sent|legal-escalation|accepted graph|provider byte transfer/i);
+  });
+
+  it("uses existing auth policy for scheduler wake routes", async () => {
+    const handler = testHandler({
+      env: {
+        CESTUS_LOCAL_BIND: "lan",
+        CESTUS_LOCAL_AUTH_TOKEN: "route-secret"
+      }
+    });
+
+    const rejected = await handler({ method: "POST", url: "/api/agent/scheduler/wake" });
+    const accepted = await handler({
+      method: "POST",
+      url: "/api/agent/scheduler/wake",
+      headers: { authorization: "Bearer route-secret" }
+    });
+
+    expect(rejected.status).toBe(401);
+    expect(accepted.status).toBe(200);
+  });
+
   it("uses existing auth policy for protected agent routes", async () => {
     const config = protectedConfig();
     const handler = testHandler({ config });
@@ -308,6 +371,98 @@ async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>):
   } finally {
     ledger.close();
   }
+}
+
+async function seededApprovedToolHandler(toolRequestId = "toolreq_scheduler_route") {
+  const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
+  const preview = schedulerWakePreview(toolRequestId);
+  const previewHash = hashAgentToolPreview(preview);
+  const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
+  try {
+    const gateway = createAgentToolGateway({
+      ledger,
+      actor: { id: "actor_cestus_agent", kind: "agent", label: "Cestus Agent" },
+      now: () => "2026-07-07T20:00:00.000Z"
+    });
+    await gateway.requestTool({
+      toolRequestId,
+      residentAgentId: "agent_default",
+      taskId: "task_scheduler_route",
+      runId: "run_scheduler_route",
+      toolId: "agent.test.route-wake",
+      toolVersion: "1.0.0",
+      sideEffectClass: "ledger-review",
+      requiredApprovalClass: "ledger-review",
+      preview
+    });
+    await gateway.approveTool({
+      toolRequestId,
+      actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
+      approvedPreviewHash: previewHash,
+      rationale: "Approved exact scheduler route preview."
+    });
+  } finally {
+    ledger.close();
+  }
+
+  return {
+    config,
+    handler: testHandler({
+      config,
+      agentRuntimeFactory: (input) => defaultLocalAgentRuntimeFactory({
+        ...input,
+        approvedToolExecutors: [schedulerWakeDescriptor(preview)]
+      })
+    }),
+    previewHash
+  };
+}
+
+function schedulerWakePreview(toolRequestId: string): AgentToolPreview {
+  return {
+    summary: `Review approved scheduler route request ${toolRequestId}.`,
+    relatedEventIds: ["evt_source_route_review"],
+    artifactHashes: [schedulerWakeArtifactHash()]
+  };
+}
+
+function schedulerWakeDescriptor(preview: AgentToolPreview): AgentApprovedToolExecutorDescriptor {
+  return {
+    toolId: "agent.test.route-wake",
+    toolVersion: "1.0.0",
+    sideEffectClass: "ledger-review",
+    approvalClass: "ledger-review",
+    async buildCurrentPreview() {
+      return {
+        preview,
+        sourceEventIds: ["evt_source_route_review"],
+        inputArtifactHashes: [schedulerWakeArtifactHash()],
+        provenanceRefs: ["evt_source_route_review", schedulerWakeArtifactHash()],
+        activeLocks: [],
+        freshnessChecks: [{
+          name: "agent-projection",
+          expected: "high-watermark:1",
+          actual: "high-watermark:1",
+          ok: true
+        }]
+      };
+    },
+    async executeApproved() {
+      return {
+        eventIds: ["evt_scheduler_route_domain_completed"],
+        artifactHashes: [schedulerWakeArtifactHash()],
+        readModelChanges: [{
+          projectionName: "agent-route-test",
+          change: "scheduler wake route completed approved work"
+        }],
+        resultSummary: "Scheduler wake route completed approved work."
+      };
+    }
+  };
+}
+
+function schedulerWakeArtifactHash(): `sha256:${string}` {
+  return "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 }
 
 function protectedConfig(): ReturnType<typeof resolveLocalRuntimeConfig> {
@@ -377,6 +532,20 @@ function nousStatusRuntimeFactory(): LocalAgentRuntimeFactory {
     createTask: async () => ({ ok: true, taskId: "task_route", eventIds: [] }),
     startRun: async () => ({ ok: true, runId: "run_route", eventIds: [] }),
     invokeModel: async () => ({ ok: false, error: { severity: "error", category: "provider", message: "unused" } }),
+    scheduler: {
+      wake: async () => ({
+        schemaVersion: "agent-scheduler-wake-result.v1",
+        generatedAt: "2026-07-07T20:00:00.000Z",
+        examinedCount: 0,
+        resumedCount: 0,
+        completedCount: 0,
+        blockedCount: 0,
+        failedCount: 0,
+        eventIds: [],
+        allowedNextActions: [],
+        items: []
+      })
+    },
     gateway: {}
   })) as unknown as LocalAgentRuntimeFactory;
 }
