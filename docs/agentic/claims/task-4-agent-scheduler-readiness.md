@@ -20,8 +20,8 @@ Status: ready-for-review
 
 ## Implementation Evidence
 
-- Focused: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts packages/agent/test/runtime.test.ts packages/agent/test/scheduler-types.test.ts` passed with 8 test files and 140 tests after the final review regression fixes.
-- Full: `npm run verify` passed with typecheck, 145 test files passed, 1 skipped, 1415 tests passed, 1 skipped, Vite build, and factory readiness after the final review regression fixes.
+- Focused: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts packages/agent/test/runtime.test.ts packages/agent/test/scheduler-types.test.ts` passed with 8 test files and 141 tests after the final review regression fixes.
+- Full: `npm run verify` passed with typecheck, 145 test files passed, 1 skipped, 1416 tests passed, 1 skipped, Vite build, and factory readiness after the final review regression fixes.
 - Whitespace: `git diff --check` had no output.
 - Factory: `npm run factory:check` passed with `factory-readiness passed`.
 
