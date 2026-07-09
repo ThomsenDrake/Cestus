@@ -60,7 +60,8 @@ describe("agent cockpit adapter", () => {
     await expect(createTask({
       taskId: "task_adapter_review",
       title: "Review the adapter cockpit flow",
-      priority: "high"
+      priority: "high",
+      description: "Carry the investigator task note through the route."
     })).resolves.toEqual({
       ok: true,
       taskId: "task_adapter_review",
@@ -88,7 +89,8 @@ describe("agent cockpit adapter", () => {
     expect(JSON.parse(String(fetchCalls[0]?.init?.body))).toEqual({
       taskId: "task_adapter_review",
       title: "Review the adapter cockpit flow",
-      priority: "high"
+      priority: "high",
+      description: "Carry the investigator task note through the route."
     });
     expect(JSON.parse(String(fetchCalls[1]?.init?.body))).toEqual({
       runId: "run_adapter_review",

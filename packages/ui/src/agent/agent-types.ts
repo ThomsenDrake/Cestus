@@ -74,6 +74,7 @@ export interface CreateAgentTaskInput {
   readonly taskId: string;
   readonly title: string;
   readonly priority: AgentTaskPriority;
+  readonly description?: string;
 }
 
 export interface StartAgentRunInput {

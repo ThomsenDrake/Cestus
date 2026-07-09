@@ -82,13 +82,15 @@ export function AgentTaskComposer({
       return;
     }
 
+    const trimmedDescription = description.trim();
     setSubmitState("submitting");
     setErrorMessage(undefined);
     try {
       await onCreateTask({
         taskId: proposedTaskId,
         title: title.trim(),
-        priority
+        priority,
+        ...(trimmedDescription.length === 0 ? {} : { description: trimmedDescription })
       });
     } catch {
       setErrorMessage("Task handoff could not be completed safely.");
@@ -102,13 +104,15 @@ export function AgentTaskComposer({
       return;
     }
 
+    const trimmedDescription = description.trim();
     setSubmitState("submitting");
     setErrorMessage(undefined);
     try {
       const created = await onCreateTask({
         taskId: proposedTaskId,
         title: title.trim(),
-        priority
+        priority,
+        ...(trimmedDescription.length === 0 ? {} : { description: trimmedDescription })
       }) as { readonly taskId?: string } | undefined;
       await onStartRun({
         runId: proposedRunId,

@@ -708,7 +708,8 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
         body: {
           taskId: input.taskId,
           title: input.title,
-          priority: input.priority
+          priority: input.priority,
+          ...(input.description === undefined ? {} : { description: input.description })
         }
       });
       return readRouteDto(response, "Agent task creation", agentTaskCreateResultFromJson);

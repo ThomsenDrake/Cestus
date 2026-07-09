@@ -64,13 +64,17 @@ describe("AgentTaskComposer", () => {
     fireEvent.change(within(composer).getByLabelText("Task title"), {
       target: { value: "Review provider approval" }
     });
+    fireEvent.change(within(composer).getByLabelText("Description"), {
+      target: { value: "Check the provider preview against case policy." }
+    });
     fireEvent.click(within(composer).getByRole("button", { name: "Create task" }));
 
     await waitFor(() => expect(onCreateTask).toHaveBeenCalledTimes(1));
     expect(onCreateTask).toHaveBeenCalledWith({
       taskId: expect.stringMatching(/^task_review-provider-approval_[a-z0-9]+$/i),
       title: "Review provider approval",
-      priority: "normal"
+      priority: "normal",
+      description: "Check the provider preview against case policy."
     });
   });
 
