@@ -1,5 +1,7 @@
 import {
   agentApprovalDecisionResultDtoSchema,
+  approvedAgentSpecialistRunTypes,
+  buildAgentCockpit,
   buildAgentApprovalCockpit,
   buildAgentProjection,
   createAgentToolGateway,
@@ -67,14 +69,13 @@ export async function handleAgentHttpRoute(
     }
 
     if (input.request.method === "GET" && path === "/api/agent/status") {
-      const [status, providerReadiness] = await Promise.all([
-        runtime.status(),
-        buildLocalAgentProviderReadiness({
-          cwd: input.handle.config.cwd,
-          now: input.now
-        })
-      ]);
-      return json(200, { ...status, providerReadiness });
+      return json(200, await statusWithProviderReadiness(runtime, input));
+    }
+
+    if (input.request.method === "GET" && path === "/api/agent/cockpit") {
+      const status = await statusWithProviderReadiness(runtime, input);
+      const approvalCockpit = buildAgentApprovalCockpit({ status });
+      return json(200, buildAgentCockpit({ status, approvalCockpit }));
     }
 
     if (input.request.method === "GET" && path === "/api/agent/tool-requests") {
@@ -201,6 +202,43 @@ export async function handleAgentHttpRoute(
       }
     }
 
+    if (input.request.method === "POST" && path === "/api/agent/runs") {
+      const payload = parseJsonObjectBody(input.request.body, invalidRunBodyDiagnostic);
+      if (!payload.ok) {
+        return json(400, payload.body);
+      }
+
+      const runInput = runInputFromBody(payload.value);
+      if (runInput === undefined) {
+        return json(400, invalidRunBodyDiagnostic());
+      }
+
+      try {
+        const started = await runtime.startRun({
+          ...runInput,
+          startedBy: input.actor.id
+        });
+        if (!started.ok) {
+          return runStartRejectedResponse(started.error);
+        }
+
+        return json(200, {
+          ok: true,
+          schemaVersion: "agent-run-start-result.v1",
+          runId: started.runId,
+          eventIds: started.eventIds
+        });
+      } catch (error) {
+        if (isDuplicateRunConflict(error, runInput.runId)) {
+          return json(409, duplicateRunDiagnostic());
+        }
+        if (error instanceof Error && error.message.includes("Concurrency conflict")) {
+          return json(409, runStartRejectedDiagnostic());
+        }
+        throw error;
+      }
+    }
+
     if (input.request.method === "POST" && path === "/api/agent/tasks") {
       const payload = parseJsonObjectBody(input.request.body, invalidTaskBodyDiagnostic);
       if (!payload.ok) {
@@ -286,6 +324,20 @@ async function initializeDefaultIdentityRaceSafe(
   }
 }
 
+async function statusWithProviderReadiness(
+  runtime: LocalAgentRuntime,
+  input: HandleAgentHttpRouteInput
+) {
+  const [status, providerReadiness] = await Promise.all([
+    runtime.status(),
+    buildLocalAgentProviderReadiness({
+      cwd: input.handle.config.cwd,
+      now: input.now
+    })
+  ]);
+  return { ...status, providerReadiness };
+}
+
 function taskInputFromBody(value: Record<string, unknown>): {
   readonly taskId: string;
   readonly title: string;
@@ -308,6 +360,48 @@ function taskInputFromBody(value: Record<string, unknown>): {
     taskId: value.taskId,
     title: value.title,
     priority
+  };
+}
+
+function runInputFromBody(value: Record<string, unknown>): {
+  readonly runId: string;
+  readonly taskId: string;
+  readonly runType: typeof approvedAgentSpecialistRunTypes[number];
+  readonly scope: {
+    readonly kind: "workspace" | "investigation";
+    readonly refs: readonly string[];
+  };
+  readonly sourceEventIds?: readonly string[];
+  readonly inputArtifactHashes?: readonly string[];
+} | undefined {
+  if (!hasOnlyKeys(value, ["runId", "taskId", "runType", "scope", "sourceEventIds", "inputArtifactHashes"])) {
+    return undefined;
+  }
+
+  if (
+    !isAgentRunId(value.runId) ||
+    !isAgentTaskId(value.taskId) ||
+    !isRouteRunType(value.runType) ||
+    !isRouteRunScope(value.scope)
+  ) {
+    return undefined;
+  }
+
+  if (value.sourceEventIds !== undefined && !isRouteEventIdArray(value.sourceEventIds)) {
+    return undefined;
+  }
+
+  if (value.inputArtifactHashes !== undefined && !isArtifactHashArray(value.inputArtifactHashes)) {
+    return undefined;
+  }
+
+  return {
+    runId: value.runId,
+    taskId: value.taskId,
+    runType: value.runType,
+    scope: value.scope,
+    ...(value.sourceEventIds === undefined ? {} : { sourceEventIds: value.sourceEventIds }),
+    ...(value.inputArtifactHashes === undefined ? {} : { inputArtifactHashes: value.inputArtifactHashes })
   };
 }
 
@@ -356,6 +450,44 @@ function duplicateTaskDiagnostic(): {
   return diagnostic("Agent task already exists.", [
     "choose a different task id",
     "refresh agent status"
+  ]);
+}
+
+function invalidRunBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent run body is invalid.", [
+    "send runId, taskId, runType, scope, and optional sourceEventIds/inputArtifactHashes as a JSON object"
+  ]);
+}
+
+function duplicateRunDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent run already exists.", [
+    "choose a different run id",
+    "refresh the agent cockpit"
+  ]);
+}
+
+function runStartRejectedDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent run could not be recorded.", [
+    "refresh the agent cockpit",
+    "inspect agent diagnostics"
   ]);
 }
 
@@ -459,8 +591,18 @@ function isDefaultIdentityConflict(error: unknown): boolean {
     error.message.includes(defaultIdentityStreamId);
 }
 
+function isDuplicateRunConflict(error: unknown, runId: string): boolean {
+  return error instanceof Error &&
+    error.message.includes("Concurrency conflict") &&
+    error.message.includes(`agent_run_${runId}`);
+}
+
 function isAgentTaskId(value: unknown): value is string {
   return typeof value === "string" && /^task_[a-zA-Z0-9_-]+$/.test(value) && isAgentSecretSafeText(value);
+}
+
+function isAgentRunId(value: unknown): value is string {
+  return typeof value === "string" && /^run_[a-zA-Z0-9_-]+$/.test(value) && isAgentSecretSafeText(value);
 }
 
 function isSafeNonEmptyText(value: unknown): value is string {
@@ -469,6 +611,41 @@ function isSafeNonEmptyText(value: unknown): value is string {
 
 function isRouteTaskPriority(value: unknown): value is AgentTaskPriority {
   return value === "low" || value === "normal" || value === "high";
+}
+
+function isRouteRunType(value: unknown): value is typeof approvedAgentSpecialistRunTypes[number] {
+  return typeof value === "string" &&
+    isAgentSecretSafeText(value) &&
+    (approvedAgentSpecialistRunTypes as readonly string[]).includes(value);
+}
+
+function isRouteRunScope(value: unknown): value is {
+  readonly kind: "workspace" | "investigation";
+  readonly refs: readonly string[];
+} {
+  if (!isJsonObject(value) || !hasOnlyKeys(value, ["kind", "refs"])) {
+    return false;
+  }
+
+  if ((value.kind !== "workspace" && value.kind !== "investigation") || !isSafeIdentifierArray(value.refs)) {
+    return false;
+  }
+
+  return value.refs.length > 0;
+}
+
+function isRouteEventIdArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) &&
+    value.every((item) => typeof item === "string" && /^evt_[a-zA-Z0-9_-]+$/.test(item) && isAgentSecretSafeText(item));
+}
+
+function isArtifactHashArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) &&
+    value.every((item) => typeof item === "string" && /^sha256:[a-f0-9]{64}$/.test(item));
+}
+
+function isSafeIdentifierArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((item) => isSafeNonEmptyText(item));
 }
 
 function approvalInputFromBody(value: Record<string, unknown>): {
@@ -632,6 +809,25 @@ function approvalDecisionErrorResponse(error: unknown): LocalRuntimeResponse {
     "retry the local agent request",
     "inspect agent diagnostics"
   ]));
+}
+
+function runStartRejectedResponse(error: {
+  readonly message: string;
+  readonly allowedRepairActions?: readonly string[];
+}): LocalRuntimeResponse {
+  if (error.message === "Agent task was not found.") {
+    return json(404, diagnostic(error.message, error.allowedRepairActions ?? ["create the task before starting a run"]));
+  }
+
+  if (error.message === "Resident identity is not initialized.") {
+    return json(409, diagnostic(error.message, error.allowedRepairActions ?? ["initialize the default resident identity"]));
+  }
+
+  if (error.message === "Specialist workflow is not enabled for this run type.") {
+    return json(400, diagnostic(error.message, error.allowedRepairActions ?? ["review the approved resident-agent foundation"]));
+  }
+
+  return json(409, runStartRejectedDiagnostic());
 }
 
 function json(status: number, body: unknown): LocalRuntimeResponse {
