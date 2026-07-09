@@ -104,9 +104,17 @@ export function buildAgentMemoryDetail(input: {
 
 export function buildAgentMemorySummaryContextPack(input: BuildAgentMemorySummaryContextPackInput): ContextPackRef {
   const active = [...input.projection.activeMemory].sort(compareMemory).slice(0, input.maxItems ?? 25);
+  const activeWithRealProvenance = active.filter(
+    (memory) => memory.sourceEventIds.length > 0 || memory.artifactHashes.length > 0
+  );
+  if (activeWithRealProvenance.length === 0) {
+    throw new Error(
+      "agent-memory-summary.v1 requires active memory with real provenance from sourceEventIds or artifactHashes"
+    );
+  }
   const payload = {
     truthBoundary: memoryTruthBoundary(),
-    items: active.map<AgentMemorySummaryItemDto>((memory) => ({
+    items: activeWithRealProvenance.map<AgentMemorySummaryItemDto>((memory) => ({
       memoryId: memory.memoryId,
       scope: memory.scope,
       memoryKind: memory.memoryKind,
@@ -117,8 +125,8 @@ export function buildAgentMemorySummaryContextPack(input: BuildAgentMemorySummar
       ...(memory.expiresAt === undefined ? {} : { expiresAt: memory.expiresAt })
     }))
   };
-  const sourceEventIds = unique(active.flatMap((memory) => [...memory.eventIds, ...memory.sourceEventIds]));
-  const artifactHashes = unique(active.flatMap((memory) => memory.artifactHashes));
+  const sourceEventIds = unique(activeWithRealProvenance.flatMap((memory) => [...memory.eventIds, ...memory.sourceEventIds]));
+  const artifactHashes = unique(activeWithRealProvenance.flatMap((memory) => memory.artifactHashes));
   const provenanceRefs = [...sourceEventIds, ...artifactHashes];
 
   return buildContextPackRef({
@@ -126,8 +134,8 @@ export function buildAgentMemorySummaryContextPack(input: BuildAgentMemorySummar
     version: 1,
     generatedAt: input.generatedAt,
     payload,
-    safeSummary: `${active.length} active working memory item${active.length === 1 ? "" : "s"}; not ontology truth.`,
-    provenanceRefs: provenanceRefs.length === 0 ? ["agent-memory:none"] : provenanceRefs,
+    safeSummary: `${activeWithRealProvenance.length} active working memory item${activeWithRealProvenance.length === 1 ? "" : "s"}; not ontology truth.`,
+    provenanceRefs,
     sourceEventIds,
     artifactHashes,
     ...(input.policyVersion === undefined ? {} : { policyVersion: input.policyVersion }),

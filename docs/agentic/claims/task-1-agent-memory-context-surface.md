@@ -28,6 +28,12 @@ Owned files:
 - `packages/agent/test/context-packs.test.ts`
 - `docs/agentic/claims/task-1-agent-memory-context-surface.md`
 
+Verifier-driven support files kept for schema/fixture alignment only:
+
+- `packages/ui/src/agent/agent-adapter.ts`
+- `packages/ui/test/agent-adapter.test.ts`
+- `packages/ui/test/agent-workspace.test.tsx`
+
 Targeted commands:
 
 - `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/memory.test.ts packages/agent/test/context-packs.test.ts`
@@ -60,3 +66,14 @@ Invariant notes:
 - Memory summary context packs stay source-linked, budgeted, stable-hashed, and raw-content-free.
 - Projection output now captures `memoryKind`, `recordedBy`, and `recordedByKind` so browser-safe consumers can explain provenance without granting memory any graph authority.
 - Verifier-required support edits updated UI memory DTO parsing/fixtures only; no route or UI surface gained authority to accept assertions, resolve entities, send PRRs, export material, clear locks, transfer provider bytes, execute repair, or mutate source trees.
+
+Review-fix evidence:
+
+- Root cause: `buildAgentMemorySummaryContextPack` fabricated fallback provenance with `agent-memory:none` when `projection.activeMemory` was empty, violating the requirement that summary packs rely on real `sourceEventIds` or `artifactHashes`.
+- UI support inspection: `packages/ui/src/agent/agent-adapter.ts`, `packages/ui/test/agent-adapter.test.ts`, and `packages/ui/test/agent-workspace.test.tsx` only align browser DTO parsing/fixtures with stricter memory projection fields such as `memoryKind`; they do not add Task 4 memory routes, mutation controls, or new UI behavior.
+- Added focused red/green coverage in `packages/agent/test/memory.test.ts` proving that `agent-memory-summary.v1` now fails closed when no active memory carries real provenance.
+- Review-fix targeted command: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/memory.test.ts packages/agent/test/context-packs.test.ts`
+  - RED after test addition: `packages/agent/test/memory.test.ts` failed because the builder returned a summary pack instead of throwing for zero active memory.
+  - GREEN after the production fix: `Test Files  4 passed (4)` and `Tests  71 passed (71)`.
+- Final verify: `npm run verify`
+  - Passed: `typecheck passed`, `Test Files  144 passed | 1 skipped (145)`, `Tests  1380 passed | 1 skipped (1381)`, `tests passed`, Vite production build succeeded, and `factory-readiness passed`.
