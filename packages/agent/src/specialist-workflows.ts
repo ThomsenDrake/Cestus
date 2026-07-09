@@ -399,12 +399,29 @@ function contextPack(contextPackId: string, purpose: string): SpecialistContextP
 
 function promptTemplate(runType: MvpSpecialistRunType): SpecialistPromptTemplateDescriptor {
   return Object.freeze({
-    promptTemplateId: `${runType}.context-pack.v1`,
+    promptTemplateId: promptTemplateIdFor(runType),
     promptTemplateVersion: 1,
     outputSchemaId: `${runType}-handoff.v1`,
     safetyClass: "provider-approved",
     transferApprovalClass: "provider-byte-transfer"
   });
+}
+
+function promptTemplateIdFor(runType: MvpSpecialistRunType): string {
+  switch (runType) {
+    case "prr-negotiation":
+      return "prr-negotiation.review.v1";
+    case "evidence-triage":
+      return "evidence-triage.classify.v1";
+    case "timeline-builder":
+      return "timeline-builder.sourced-timeline.v1";
+    case "contradiction-finder":
+      return "contradiction-finder.candidates.v1";
+    case "investigation-planner":
+      return "investigation-planner.next-steps.v1";
+    case "report-builder":
+      return "report-builder.packet-draft.v1";
+  }
 }
 
 function tool(
