@@ -1484,7 +1484,7 @@ git commit -m "feat: add inspectable agent memory workspace"
 - Consumes: completed Task 1 through Task 4 commits.
 - Produces: factory readiness tracking for this approved plan and recorded verification evidence.
 
-- [ ] **Step 1: Add plan to readiness check**
+- [x] **Step 1: Add plan to readiness check**
 
 Modify `scripts/check-agent-readiness.mjs` `requiredFiles`:
 
@@ -1492,7 +1492,7 @@ Modify `scripts/check-agent-readiness.mjs` `requiredFiles`:
 "docs/superpowers/plans/2026-07-09-resident-agent-memory-context-surface-implementation.md"
 ```
 
-- [ ] **Step 2: Run focused verification**
+- [x] **Step 2: Run focused verification**
 
 Run:
 
@@ -1506,7 +1506,7 @@ Expected:
 Test Files  8 passed
 ```
 
-- [ ] **Step 3: Run whitespace and factory checks**
+- [x] **Step 3: Run whitespace and factory checks**
 
 Run:
 
@@ -1523,7 +1523,7 @@ factory-readiness passed
 
 `git diff --check` should produce no output.
 
-- [ ] **Step 4: Run full verification**
+- [x] **Step 4: Run full verification**
 
 Run:
 
@@ -1540,7 +1540,7 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 5: Record readiness evidence**
+- [x] **Step 5: Record readiness evidence**
 
 Append a section to `docs/agentic/software-factory.md`:
 
@@ -1577,7 +1577,7 @@ Memory is now visible as resident-agent working memory with active, superseded, 
 
 Before committing, replace the example verification summaries in this readiness note with the exact observed command output from Step 2 and Step 4.
 
-- [ ] **Step 6: Run final readiness checks after docs update**
+- [x] **Step 6: Run final readiness checks after docs update**
 
 Run:
 
@@ -1597,7 +1597,7 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 7: Commit readiness**
+- [x] **Step 7: Commit readiness**
 
 Run:
 

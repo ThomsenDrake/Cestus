@@ -1,37 +1,48 @@
-# Task 5 Claim: Factory Readiness And Final Verification
+# Task 5: Factory Readiness And Final Verification
 
 Plan: `docs/superpowers/plans/2026-07-09-resident-agent-memory-context-surface-implementation.md`
-
-Task heading: `Task 5: Factory Readiness And Final Verification`
-
-Worker identity: Codex subagent-driven worker
-
+Task: `Task 5: Factory Readiness And Final Verification`
 Branch: `codex/resident-agent-memory-context-plan`
+Status: `ready-for-review`
+Claimed-at: `2026-07-09T14:11:26Z`
+Completed-at: `2026-07-09T10:15:31-04:00`
+Worker: `Codex`
 
-Worktree: `/home/drake/.codex/worktrees/5ced/Cestus`
-
-Claimed at: `2026-07-09T14:11:26Z`
-
-Status: `in-progress`
-
-Owned files:
+## Owned Files
 
 - `scripts/check-agent-readiness.mjs`
 - `docs/agentic/software-factory.md`
 - `docs/superpowers/plans/2026-07-09-resident-agent-memory-context-surface-implementation.md`
 - `docs/agentic/claims/task-5-agent-memory-readiness.md`
 
-Targeted commands:
+## Verification
 
-- `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/memory.test.ts packages/agent/test/memory-runtime.test.ts packages/agent/test/context-packs.test.ts packages/local-runtime/test/agent-memory-routes.test.ts packages/ui/test/agent-memory-adapter.test.ts packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx`
-- `git diff --check`
-- `npm run factory:check`
-- `npm run verify`
+- Focused verification passed: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/memory.test.ts packages/agent/test/memory-runtime.test.ts packages/agent/test/context-packs.test.ts packages/local-runtime/test/agent-memory-routes.test.ts packages/ui/test/agent-memory-adapter.test.ts packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx`
+  - `Test Files  8 passed (8)`
+  - `Tests  96 passed (96)`
+- Whitespace gate passed: `git diff --check` produced no output.
+- Factory gate passed: `npm run factory:check`
+  - `factory-readiness passed`
+- Full verification passed before readiness-doc updates: `npm run verify`
+  - `typecheck passed`
+  - `Test Files  147 passed | 1 skipped (148)`
+  - `Tests  1403 passed | 1 skipped (1404)`
+  - `tests passed`
+  - `factory-readiness passed`
+- Final whitespace gate passed after readiness-doc updates: `git diff --check` produced no output.
+- Final factory gate passed after readiness-doc updates: `npm run factory:check`
+  - `factory-readiness passed`
+- Final full verification passed after readiness-doc updates: `npm run verify`
+  - `typecheck passed`
+  - `Test Files  147 passed | 1 skipped (148)`
+  - `Tests  1403 passed | 1 skipped (1404)`
+  - `tests passed`
+  - `factory-readiness passed`
 
-Stop conditions:
+## Invariant Notes
 
-- Readiness tracking would require broadening the memory/context implementation scope.
-- Verification repeatedly fails on the same memory/context regression after two focused repair attempts.
-- Verification failure is unrelated existing suite flake; record exact evidence instead of patching unrelated behavior.
-- Readiness evidence would need to include raw provider output, raw evidence bodies, secrets, or credential-shaped values.
-- Final diff exposes a hidden path from memory to accepted ontology truth or external effects.
+- Memory remains resident-agent working memory, not accepted ontology truth.
+- Memory can guide future actions, but any factual graph effect still has to become evidence-backed proposed assertion or reasoning and pass normal review.
+- Memory summaries remain secret-safe, raw-content-free, budgeted, stable-hashed, and source-linked.
+- Memory routes and UI do not accept assertions, resolve entities, send PRRs, export material, clear locks, run provider byte transfer, execute repair, or mutate old source trees.
+- Recorded readiness evidence excludes credential-shaped values, raw provider output, raw evidence bodies, unapproved scheduler DTO assumptions, and hidden direct-execution paths.
