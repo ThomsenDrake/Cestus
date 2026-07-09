@@ -1190,7 +1190,7 @@ git commit -m "feat: expose agent scheduler wake route"
 - Consumes: all Task 1-3 implementation outputs.
 - Produces: readiness evidence and final review handoff.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create `docs/agentic/claims/task-4-agent-scheduler-readiness.md`:
 
@@ -1218,7 +1218,9 @@ Status: claimed
 
 Then change `Status: claimed` to `Status: in-progress`.
 
-- [ ] **Step 2: Run focused verification**
+Recorded: `docs/agentic/claims/task-4-agent-scheduler-readiness.md` was created from the brief and moved to `Status: in-progress` before edits to `docs/agentic/software-factory.md` or this plan.
+
+- [x] **Step 2: Run focused verification**
 
 Run:
 
@@ -1232,7 +1234,14 @@ Expected:
 Test Files  6 passed
 ```
 
-- [ ] **Step 3: Run full verification**
+Observed:
+
+```text
+Test Files  6 passed (6)
+Tests  93 passed (93)
+```
+
+- [x] **Step 3: Run full verification**
 
 Run:
 
@@ -1249,7 +1258,18 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 4: Check whitespace and factory readiness**
+Observed:
+
+```text
+typecheck passed
+Test Files  145 passed | 1 skipped (146)
+Tests  1400 passed | 1 skipped (1401)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+- [x] **Step 4: Check whitespace and factory readiness**
 
 Run:
 
@@ -1265,7 +1285,17 @@ git diff --check has no output
 factory-readiness passed
 ```
 
-- [ ] **Step 5: Record readiness evidence**
+Observed:
+
+```text
+git diff --check
+no output
+
+npm run factory:check
+factory-readiness passed
+```
+
+- [x] **Step 5: Record readiness evidence**
 
 Append a `Resident Agent Scheduler Resumer Readiness` section to `docs/agentic/software-factory.md` with:
 
@@ -1280,7 +1310,9 @@ Append a `Resident Agent Scheduler Resumer Readiness` section to `docs/agentic/s
 - statement that completions and failures are recorded through the existing gateway;
 - statement that provider byte transfer, PRR send/follow-up, legal escalation, export/publication, destructive repair, accepted graph review, and legacy staging remain descriptor/domain-service follow-up work and are not executed directly in this branch.
 
-- [ ] **Step 6: Commit readiness**
+Recorded: `docs/agentic/software-factory.md` now includes `Resident Agent Scheduler Resumer Readiness` with the plan path, exact verification evidence, append-only ledger/projection source of scheduler state, one-pass wake and no-tool-input route boundary, consume-time validation list, gateway completion/failure recording, and deferred descriptor/domain-service scope statement.
+
+- [x] **Step 6: Commit readiness**
 
 Run:
 

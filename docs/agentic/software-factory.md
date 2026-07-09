@@ -1124,3 +1124,51 @@ Integration lessons:
 - Live Nous Portal is the authoritative real-provider acceptance path for the current local provider lane. Standard verification remains deterministic and credential-free unless a task explicitly opts into live provider checks.
 - Ontology bootstrap remains evidence-first: old Cestus artifacts bootstrap a fresh ontology by producing evidence-backed dossiers, review bundles, and proposed assertion material, never accepted graph truth.
 - Shared readiness documentation is valuable but noisy. Future high-volume implementation detail should move into per-slice claim/readiness artifacts, with this file retaining the index and final gate evidence.
+
+## Resident Agent Scheduler Resumer Readiness
+
+The resident-agent scheduler/resumer foundation was completed from the approved implementation plan on 2026-07-09.
+
+Required plan file:
+
+- `docs/superpowers/plans/2026-07-09-mvp-resident-agent-scheduler-resumer-implementation.md`
+
+Recorded focused verification:
+
+```text
+npm test -- packages/agent/test/scheduler-types.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts
+Test Files  6 passed (6)
+Tests  93 passed (93)
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  145 passed | 1 skipped (146)
+Tests  1400 passed | 1 skipped (1401)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Whitespace verification:
+
+```text
+git diff --check
+no output
+```
+
+Factory readiness check:
+
+```text
+npm run factory:check
+factory-readiness passed
+```
+
+The scheduler derives approved open work from the append-only agent ledger and rebuildable agent projection, not from hidden mutable runtime state. `wake()` performs a bounded one-pass inspection/resume attempt over the current approved-open snapshot, and `POST /api/agent/scheduler/wake` is only a wake signal route that accepts no tool input.
+
+Consume-time validation rechecks independent human approval, causation, approval class, exact preview hash, current descriptor preview, active locks, source/provenance/artifact hashes, projection/read-model freshness, terminal state, and secret-safety before execution. Successful completions and validation or execution failures are recorded through the existing agent tool gateway as `agent.tool.completed` or `agent.tool.failed`.
+
+Provider byte transfer, PRR send/follow-up, legal escalation, export/publication, destructive repair, accepted graph review, and legacy staging are not executed directly in this branch and remain descriptor/domain-service follow-up work.
