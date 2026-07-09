@@ -487,7 +487,7 @@ Status: claimed
 
 Then change `Status: claimed` to `Status: in-progress` before editing source files.
 
-- [ ] **Step 2: Write failing scheduler wake tests**
+- [x] **Step 2: Write failing scheduler wake tests**
 
 Create `packages/agent/test/scheduler.test.ts` with these cases:
 
@@ -774,7 +774,7 @@ async function wakeWithPreviewResult(
 }
 ```
 
-- [ ] **Step 3: Run targeted failing tests**
+- [x] **Step 3: Run targeted failing tests**
 
 Run:
 
@@ -788,7 +788,7 @@ Expected before implementation:
 Failed to resolve import "../src/index.js" because createAgentScheduler is not exported
 ```
 
-- [ ] **Step 4: Implement the scheduler service**
+- [x] **Step 4: Implement the scheduler service**
 
 Create `packages/agent/src/scheduler.ts` with these exported surfaces:
 
@@ -889,7 +889,7 @@ Implementation requirements:
 - The wake loop must be one-pass: do not recursively inspect tool requests appended by descriptor execution.
 - The scheduler must not call any PRR, ingestion provider byte transfer, governance export, destructive repair, accepted graph review, legal escalation, or legacy staging service directly.
 
-- [ ] **Step 5: Export the scheduler**
+- [x] **Step 5: Export the scheduler**
 
 Modify `packages/agent/src/index.ts`:
 
@@ -899,7 +899,7 @@ export * from "./scheduler.js";
 
 Preserve existing exports.
 
-- [ ] **Step 6: Run targeted passing tests**
+- [x] **Step 6: Run targeted passing tests**
 
 Run:
 
@@ -913,7 +913,7 @@ Expected:
 Test Files  5 passed
 ```
 
-- [ ] **Step 7: Commit Task 2**
+- [x] **Step 7: Commit Task 2**
 
 Run:
 

@@ -28,6 +28,7 @@ export {
 } from "./credential-reference.js";
 export * from "./secret-store.js";
 export * from "./scheduler-types.js";
+export * from "./scheduler.js";
 export {
   approvedAgentSpecialistRunTypes,
   specialistExecutionStatusFor,
