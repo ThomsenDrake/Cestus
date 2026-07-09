@@ -45,4 +45,5 @@ export {
   type AgentSpecialistRunType
 } from "./specialists.js";
 export * from "./specialist-workflows.js";
+export * from "./specialist-handoffs.js";
 export * from "./tool-gateway.js";
