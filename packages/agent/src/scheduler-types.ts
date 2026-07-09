@@ -5,6 +5,17 @@ import type { AgentToolPreview, AgentToolReadModelChange, AgentToolResult } from
 
 export const agentSchedulerItemStateSchema = z.enum(["not-ready", "blocked", "resumed", "completed", "failed"]);
 
+const agentToolApprovalClassValues = [
+  "none",
+  "human-review",
+  "provider-byte-transfer",
+  "external-message-send",
+  "export-or-publication",
+  "destructive-or-repair",
+  "legal-escalation",
+  "ledger-review"
+] as const satisfies readonly AgentToolApprovalClass[];
+
 function secretSafeTextSchema(label: string) {
   return z.string().min(1).superRefine((value, ctx) => {
     try {
@@ -20,7 +31,8 @@ function secretSafeTextSchema(label: string) {
 
 function approvalClassIdentifierSchema(label: string) {
   return secretSafeTextSchema(label).refine(
-    (value) => value !== "none" && value !== "human-review",
+    (value): value is AgentToolApprovalClass =>
+      agentToolApprovalClassValues.includes(value as AgentToolApprovalClass),
     { message: `${label} must be a canonical approval-class identifier.` }
   );
 }
