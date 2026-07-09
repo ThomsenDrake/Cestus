@@ -343,13 +343,20 @@ async function consumeApprovedRequest(
       approvedPreviewHash: approval.payload.approvedPreviewHash,
       leaseExpiresAt: claimLeaseExpiresAt(now())
     });
-  } catch {
-    return notReadyItem(
-      request,
-      "Tool execution claim could not be recorded.",
-      "execution-claimed",
-      currentPreviewHash
-    );
+  } catch (error) {
+    const latestState = await readToolRequestStreamState(ledger, request.toolRequestId);
+    if (hasOpenExecutionClaim(latestState)) {
+      return notReadyItem(
+        request,
+        "Tool execution is already claimed and requires inspection before retry.",
+        "execution-claimed",
+        currentPreviewHash
+      );
+    }
+    if (isTerminalStreamState(latestState)) {
+      return notReadyItem(request, "Tool request is no longer open.", "permission-denied", currentPreviewHash);
+    }
+    throw error;
   }
 
   let executionResult: AgentApprovedToolExecutionResult;
