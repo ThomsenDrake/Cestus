@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/50b6/Cestus`
 
 Claimed at: `2026-07-09T02:05:13Z`
 
-Status: `claimed`
+Status: `in-progress`
 
 Owned files:
 
@@ -37,3 +37,5 @@ Stop conditions:
 
 Implementation log:
 
+- Claim commit: `22eddac chore: claim task 4 agent task composer`
+- `2026-07-09T02:05:34Z`: Status moved to `in-progress` before writing failing task composer tests.
