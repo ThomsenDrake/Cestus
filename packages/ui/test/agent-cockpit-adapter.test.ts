@@ -147,6 +147,69 @@ describe("agent cockpit adapter", () => {
       expect(message).not.toMatch(/bearer|raw-value|sk_live|\/tmp\/run-secrets/i);
     });
   });
+
+  it("rejects malformed cockpit ids and safe actions instead of accepting them", async () => {
+    const fetcher = vi.fn(async () =>
+      new Response(JSON.stringify(cockpitDto({
+        taskQueue: [{
+          taskId: "not_task",
+          title: "Review the adapter cockpit flow",
+          priority: "high",
+          status: "running",
+          createdAt: "2026-07-09T01:59:00.000Z",
+          runId: "bad"
+        }],
+        needsNext: [{
+          kind: "approval",
+          severity: "action-required",
+          label: "Review provider approval queue",
+          relatedTaskId: "not_task",
+          relatedRunId: "bad",
+          relatedToolRequestId: "toolreq_adapter_review",
+          safeAction: "Review Now"
+        }]
+      })), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      })
+    );
+    const adapter = createHttpAgentAdapter({ fetcher });
+    const loadCockpit = requireMethod(adapter, "loadCockpit");
+
+    await expect(loadCockpit()).rejects.toThrow("Agent cockpit route returned an invalid DTO.");
+  });
+
+  it("rejects unsafe cockpit secret-shaped text without leaking raw values", async () => {
+    const fetcher = vi.fn(async () =>
+      new Response(JSON.stringify(cockpitDto({
+        selectedRun: {
+          ...cockpitDto().selectedRun,
+          summary: "bearer raw-value at /tmp/cockpit-secret",
+          blockedReasons: ["sk_live_blocked_reason"]
+        },
+        memorySnippets: [{
+          memoryId: "mem_adapter_review",
+          scope: "workspace",
+          summary: "OPENAI_API_KEY copied into notes",
+          createdAt: "2026-07-09T01:57:00.000Z",
+          sourceEventIds: ["evt_memory_recorded"],
+          artifactHashes: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
+          confidence: 0.6
+        }]
+      })), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      })
+    );
+    const adapter = createHttpAgentAdapter({ fetcher });
+    const loadCockpit = requireMethod(adapter, "loadCockpit");
+
+    await expect(loadCockpit()).rejects.toThrow("Agent cockpit route returned an invalid DTO.");
+    await loadCockpit().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      expect(message).not.toMatch(/bearer|raw-value|sk_live|OPENAI_API_KEY|\/tmp\/cockpit-secret/i);
+    });
+  });
 });
 
 function requireMethod<T extends string>(
@@ -161,7 +224,7 @@ function requireMethod<T extends string>(
   return method.bind(adapter) as (...args: readonly unknown[]) => Promise<unknown>;
 }
 
-function cockpitDto() {
+function cockpitDto(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     schemaVersion: "agent-cockpit.v1",
     generatedAt: "2026-07-09T02:00:00.000Z",
@@ -256,9 +319,11 @@ function cockpitDto() {
       "export-publication",
       "destructive-repair",
       "legal-escalation",
+      "lock-clearing",
       "accepted-graph-review",
       "legacy-raw-import",
       "legacy-staging-execution"
-    ]
+    ],
+    ...overrides
   };
 }

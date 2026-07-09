@@ -259,6 +259,9 @@ describe("agent UI adapter", () => {
     await expect(loadCockpit()).resolves.toMatchObject({
       schemaVersion: "agent-cockpit.v1"
     });
+    await expect(loadCockpit()).resolves.toMatchObject({
+      forbiddenDirectEffects: expect.arrayContaining(["lock-clearing"])
+    });
     await expect(createTask({
       taskId: "task_static_adapter",
       title: "Static adapter task",
