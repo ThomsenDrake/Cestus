@@ -143,6 +143,35 @@ describe("agent HTTP routes", () => {
     }));
   });
 
+  it("accepts and persists urgent task priority through POST /api/agent/tasks", async () => {
+    const cwd = tempDir();
+    const config = resolveLocalRuntimeConfig({ cwd, env: {} });
+    const first = testHandler({ config });
+    const response = await first({
+      method: "POST",
+      url: "/api/agent/tasks",
+      body: JSON.stringify({
+        taskId: "task_route_urgent",
+        title: "Inspect urgent resident status",
+        priority: "urgent",
+        description: "Handle a time-sensitive task handoff."
+      })
+    });
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toMatchObject({ ok: true, taskId: "task_route_urgent" });
+    first.close();
+    handlers.splice(handlers.indexOf(first), 1);
+
+    const second = testHandler({ config });
+    const reloaded = await second({ method: "GET", url: "/api/agent/status" });
+    expect(JSON.parse(reloaded.body).tasks).toContainEqual(expect.objectContaining({
+      taskId: "task_route_urgent",
+      priority: "urgent",
+      description: "Handle a time-sensitive task handoff."
+    }));
+  });
+
   it("returns a stable conflict for duplicate task ids", async () => {
     const handler = testHandler();
     const body = JSON.stringify({

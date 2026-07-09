@@ -78,6 +78,38 @@ describe("AgentTaskComposer", () => {
     });
   });
 
+  it("emits urgent priority when selected in the task composer", async () => {
+    const onCreateTask = vi.fn(async (input: CreateAgentTaskInput) => ({
+      ok: true as const,
+      taskId: input.taskId,
+      eventIds: ["evt_task_created"]
+    }));
+
+    render(
+      <AgentTaskComposer
+        cockpit={agentCockpit()}
+        status={agentStatus()}
+        onCreateTask={onCreateTask}
+      />
+    );
+
+    const composer = screen.getByRole("region", { name: "Give Cestus Agent a task" });
+    fireEvent.change(within(composer).getByLabelText("Task title"), {
+      target: { value: "Review urgent provider approval" }
+    });
+    fireEvent.change(within(composer).getByLabelText("Priority"), {
+      target: { value: "urgent" }
+    });
+    fireEvent.click(within(composer).getByRole("button", { name: "Create task" }));
+
+    await waitFor(() => expect(onCreateTask).toHaveBeenCalledTimes(1));
+    expect(onCreateTask).toHaveBeenCalledWith({
+      taskId: expect.stringMatching(/^task_review-urgent-provider-approval_[a-z0-9]+$/i),
+      title: "Review urgent provider approval",
+      priority: "urgent"
+    });
+  });
+
   it("creates a task and then starts an allowed run when start is safe", async () => {
     const onCreateTask = vi.fn(async () => ({
       ok: true as const,
