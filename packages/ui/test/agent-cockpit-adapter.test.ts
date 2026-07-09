@@ -26,6 +26,33 @@ describe("agent cockpit adapter", () => {
     });
   });
 
+  it("loads ontology bootstrap routes through the configured runtime transport", async () => {
+    const payload = ontologyBootstrapRouteDto();
+    const fetcher = vi.fn(async () =>
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      })
+    );
+    const adapter = createHttpAgentAdapter({
+      baseUrl: "http://127.0.0.1:8787",
+      authToken: "local-runtime-token",
+      credentials: "include",
+      fetcher
+    });
+    const loadOntologyBootstrapRoute = requireMethod(adapter, "loadOntologyBootstrapRoute");
+
+    await expect(loadOntologyBootstrapRoute("run_ontology_bootstrap_route")).resolves.toEqual(payload);
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://127.0.0.1:8787/api/agent/specialists/ontology-bootstrap/runs/run_ontology_bootstrap_route",
+      {
+        credentials: "include",
+        headers: { authorization: "Bearer local-runtime-token" },
+        method: "GET"
+      }
+    );
+  });
+
   it("creates tasks and starts runs through the safe runtime routes only", async () => {
     const fetchCalls: Array<{ readonly path: string; readonly init: RequestInit | undefined }> = [];
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -327,5 +354,39 @@ function cockpitDto(overrides: Partial<Record<string, unknown>> = {}) {
       "legacy-staging-execution"
     ],
     ...overrides
+  };
+}
+
+function ontologyBootstrapRouteDto() {
+  return {
+    schemaVersion: "agent-ontology-bootstrap-route.v1",
+    generatedAt: "2026-07-09T02:05:00.000Z",
+    runId: "run_ontology_bootstrap_route",
+    taskId: "task_ontology_bootstrap_route",
+    phase: "staging-review",
+    legacyReportId: "legacy_report_001",
+    reportHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    candidateSetHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    reviewBundleHash: "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    candidateBundleCount: 2,
+    candidateCount: 4,
+    selectedCandidateIds: ["legacy_candidate_001"],
+    blockedRequestedCandidateIds: ["legacy_candidate_missing"],
+    pendingApprovalToolRequestIds: ["toolreq_ontology_bootstrap_staging_approval"],
+    nextCursor: {
+      currentOffset: 0,
+      limit: 2,
+      totalCandidates: 4,
+      nextOffset: 2
+    },
+    nextSafeAction: {
+      actionId: "bootstrap_action_approve_staging",
+      label: "Review staging approval preview",
+      kind: "request-tool",
+      effect: "ledger-review"
+    },
+    runState: "running",
+    outputArtifactHashes: ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
+    stepIds: ["step_ontology_bootstrap_dossier"]
   };
 }

@@ -18,6 +18,7 @@ export interface AgentAdapter {
   loadStatus(): Promise<AgentStatusDto>;
   loadCockpit(): Promise<AgentCockpitDto>;
   loadApprovalCockpit(): Promise<AgentApprovalCockpitDto>;
+  loadOntologyBootstrapRoute(runId: string): Promise<OntologyBootstrapRouteDto>;
   createTask(input: CreateAgentTaskInput): Promise<AgentTaskCreateResultDto>;
   startRun(input: StartAgentRunInput): Promise<AgentRunStartResultDto>;
   approveToolRequest(input: ApproveToolRequestInput): Promise<AgentApprovalDecisionResultDto>;
@@ -44,6 +45,7 @@ export interface DenyToolRequestInput {
 
 export interface StaticAgentAdapterOptions {
   readonly cockpit?: AgentCockpitDto;
+  readonly loadOntologyBootstrapRoute?: (runId: string) => Promise<OntologyBootstrapRouteDto>;
   readonly createTask?: (input: CreateAgentTaskInput) => Promise<AgentTaskCreateResultDto>;
   readonly startRun?: (input: StartAgentRunInput) => Promise<AgentRunStartResultDto>;
   readonly approveToolRequest?: (input: ApproveToolRequestInput) => Promise<AgentApprovalDecisionResultDto>;
@@ -698,6 +700,16 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
       return agentApprovalCockpitFromJson(await readRouteJson(response, "Agent approval cockpit"));
     },
 
+    async loadOntologyBootstrapRoute(runId: string) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/specialists/ontology-bootstrap/runs/${encodeURIComponent(runId)}`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken })
+      });
+      return readRouteDto(response, "Agent ontology bootstrap route", ontologyBootstrapRouteDtoFromJson);
+    },
+
     async createTask(input: CreateAgentTaskInput) {
       const response = await fetchAgentRoute({
         path: `${baseUrl}/api/agent/tasks`,
@@ -791,6 +803,13 @@ export function createStaticAgentAdapter(
 
     async loadApprovalCockpit() {
       return deepFreeze(deepClone(storedApprovalCockpit));
+    },
+
+    async loadOntologyBootstrapRoute(runId: string) {
+      if (options.loadOntologyBootstrapRoute !== undefined) {
+        return deepFreeze(deepClone(await options.loadOntologyBootstrapRoute(runId)));
+      }
+      throw new Error(`Static agent adapter cannot load ontology bootstrap route ${runId}.`);
     },
 
     async createTask(input: CreateAgentTaskInput) {

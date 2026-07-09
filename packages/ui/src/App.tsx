@@ -5,7 +5,6 @@ import type { QueueFilter } from "./workspace/command-types.js";
 import { AgentWorkspace } from "./agent/AgentWorkspace.js";
 import {
   httpAgentAdapter,
-  ontologyBootstrapRouteDtoFromJson,
   safeAgentText,
   runtimeUnavailableAgentStatus,
   type AgentAdapter
@@ -312,7 +311,7 @@ export function App({
         setLoadedAgentAdapter(agentAdapter);
         setAgentLoadState("loaded");
 
-        void loadOntologyBootstrapRoutes(status).then((routes) => {
+        void loadOntologyBootstrapRoutes(agentAdapter, status).then((routes) => {
           if (!canceled) {
             setAgentOntologyBootstrapRoutes(routes);
           }
@@ -793,7 +792,10 @@ export function App({
   );
 }
 
-async function loadOntologyBootstrapRoutes(status: AgentStatusDto): Promise<readonly OntologyBootstrapRouteDto[]> {
+async function loadOntologyBootstrapRoutes(
+  agentAdapter: AgentAdapter,
+  status: AgentStatusDto
+): Promise<readonly OntologyBootstrapRouteDto[]> {
   const runIds = [...new Set(
     status.runs
       .filter((run) => run.runType === "ontology-bootstrap")
@@ -807,11 +809,7 @@ async function loadOntologyBootstrapRoutes(status: AgentStatusDto): Promise<read
   const routes = await Promise.all(
     runIds.map(async (runId) => {
       try {
-        const response = await fetch(`/api/agent/specialists/ontology-bootstrap/runs/${encodeURIComponent(runId)}`);
-        if (!response.ok) {
-          return undefined;
-        }
-        return ontologyBootstrapRouteDtoFromJson(await response.json());
+        return await agentAdapter.loadOntologyBootstrapRoute(runId);
       } catch {
         return undefined;
       }
@@ -836,7 +834,7 @@ async function refreshAgentState(input: {
   ]);
   input.setAgentStatus(status);
   input.setAgentCockpit(cockpit);
-  input.setAgentOntologyBootstrapRoutes(await loadOntologyBootstrapRoutes(status));
+  input.setAgentOntologyBootstrapRoutes(await loadOntologyBootstrapRoutes(input.agentAdapter, status));
   input.setLoadedAgentAdapter(input.agentAdapter);
   input.setAgentLoadState("loaded");
   input.setAgentLoadError(undefined);
