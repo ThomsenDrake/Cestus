@@ -141,6 +141,13 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
             <section className="border border-[var(--console-line)] bg-[var(--console-panel)]">
               <SectionHeader title="Selected run" meta={activeRun.runId} />
               <div className="space-y-4 px-4 py-4">
+                {selectedRunRecord === undefined ? (
+                  <RunFallbackNotice
+                    label="Active queued run"
+                    run={activeRun}
+                    note="Detailed selected-run fields are unavailable yet; showing the active queue run only."
+                  />
+                ) : null}
                 <dl className="grid gap-3 lg:grid-cols-2">
                   <DetailRow label="Run type" value={activeRun.runType} />
                   <DetailRow label="State" value={activeRun.state} />
@@ -209,7 +216,18 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
       {view === "Audit" ? (
         <section aria-label="Selected run audit" className="space-y-4">
           {selectedRunRecord === undefined ? (
-            <EmptyState>No run is selected.</EmptyState>
+            activeRun === undefined ? (
+              <EmptyState>No run is selected.</EmptyState>
+            ) : (
+              <>
+                <RunFallbackNotice
+                  label="Active queued run"
+                  run={activeRun}
+                  note="Detailed selected-run audit is unavailable yet; showing the active queue run only."
+                />
+                <EmptyState>No selected-run audit details are available yet.</EmptyState>
+              </>
+            )
           ) : (
             <>
               <section className="space-y-2">
@@ -295,7 +313,18 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
       {view === "Handoff" ? (
         <section aria-label="Selected run handoff" className="space-y-4">
           {selectedRunRecord?.handoff === undefined ? (
-            <EmptyState>No handoff artifacts are ready for human review.</EmptyState>
+            activeRun === undefined ? (
+              <EmptyState>No handoff artifacts are ready for human review.</EmptyState>
+            ) : (
+              <>
+                <RunFallbackNotice
+                  label="Active queued run"
+                  run={activeRun}
+                  note="Detailed selected-run handoff is unavailable yet; showing the active queue run only."
+                />
+                <EmptyState>No selected-run handoff artifacts are available yet.</EmptyState>
+              </>
+            )
           ) : (
             <section className="border border-[var(--console-line)] bg-[var(--console-panel)]">
               <SectionHeader title="Handoff artifacts" meta={selectedRunRecord.handoff.state} />
@@ -347,7 +376,7 @@ function SectionHeader({ title, meta }: { readonly title: string; readonly meta:
   return (
     <div className="flex min-w-0 flex-col gap-1 border-b border-[var(--console-line)] px-4 py-3 md:flex-row md:items-center md:justify-between">
       <h2 className="text-base font-semibold text-[var(--paper-light)]">{title}</h2>
-      <p className="truncate font-mono text-base text-[var(--muted-amber)] sm:text-sm">{meta}</p>
+      <p className="break-all font-mono text-base text-[var(--muted-amber)] sm:text-sm">{meta}</p>
     </div>
   );
 }
@@ -384,6 +413,27 @@ function InlineStat({ label, value, breakAll = false }: { readonly label: string
 
 function EmptyState({ children }: { readonly children: string }) {
   return <p className="border border-[var(--console-line)] bg-[var(--console-void)]/48 px-4 py-3 text-base text-[var(--muted-amber)] sm:text-sm">{children}</p>;
+}
+
+function RunFallbackNotice({
+  label,
+  run,
+  note
+}: {
+  readonly label: string;
+  readonly run: AgentCockpitDto["runQueue"][number];
+  readonly note: string;
+}) {
+  return (
+    <section aria-label={label} className="space-y-2 border border-[var(--console-line)] bg-[var(--console-void)]/48 px-4 py-3">
+      <dl className="grid gap-2 lg:grid-cols-3">
+        <DetailRow label="Run ID" value={run.runId} breakAll />
+        <DetailRow label="Run type" value={run.runType} />
+        <DetailRow label="State" value={run.state} />
+      </dl>
+      <p className="text-base text-[var(--muted-amber)] sm:text-sm">{note}</p>
+    </section>
+  );
 }
 
 function countLabel(count: number, noun: string): string {
