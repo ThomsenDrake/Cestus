@@ -13,7 +13,9 @@ import type {
   AgentDomainPreview,
   AgentDomainToolDescriptor
 } from "../domain-execution-descriptors.js";
+import { buildAgentProjection } from "../projection.js";
 import type {
+  AgentApprovedToolActiveLock,
   AgentApprovedToolExecutionInput,
   AgentApprovedToolPreviewResult
 } from "../scheduler-types.js";
@@ -60,6 +62,7 @@ export const forbiddenLegacyStagingEventTypes = Object.freeze([
 export interface LegacyStagingAdapterContext {
   readonly runtime: LegacyImportRuntime;
   readonly ledger?: EventLedger;
+  readonly residentAgentId?: string;
   readonly sourceCollectionId: string;
   readonly scanBatchId: string;
   readonly stagingBatchId: string;
@@ -253,6 +256,7 @@ function validateLegacyStagingAdapterInput(input: CreateLegacyStagingAdapterInpu
   return {
     runtime: input.runtime,
     ledger: input.ledger,
+    residentAgentId: input.residentAgentId ?? "agent_default",
     sourceCollectionId: input.sourceCollectionId,
     scanBatchId: input.scanBatchId,
     stagingBatchId: input.stagingBatchId,
@@ -314,6 +318,7 @@ export async function rebuildLegacyStagingCurrentPreview(
   const evidenceRefs = previewResult.candidates
     .filter((candidate) => selectedCandidateIds.has(candidate.candidateId))
     .map((candidate) => candidate.evidenceId);
+  const activeLocks = await readActiveLocks(input.ledger, input.residentAgentId);
 
   return {
     preview: current,
@@ -329,7 +334,7 @@ export async function rebuildLegacyStagingCurrentPreview(
       ...input.selectedCandidateIds,
       ...evidenceRefs
     ],
-    activeLocks: [],
+    activeLocks,
     freshnessChecks: [
       {
         name: "legacy-report-hash",
@@ -365,7 +370,7 @@ export function createLegacyStagingApprovalAdapter(input: CreateLegacyStagingAda
         toolVersion: request.toolVersion,
         runId: request.runId,
         taskId: request.taskId ?? "task_legacy_staging",
-        residentAgentId: "agent_default",
+        residentAgentId: validated.residentAgentId ?? "agent_default",
         approvedReportHash: validated.reportHash,
         approvedCandidateSetHash: validated.candidateSetHash
       });
@@ -391,7 +396,7 @@ export function createLegacyStagingExecutionAdapter(input: CreateLegacyStagingAd
         toolVersion: request.toolVersion,
         runId: request.runId,
         taskId: request.taskId ?? "task_legacy_staging",
-        residentAgentId: "agent_default",
+        residentAgentId: validated.residentAgentId ?? "agent_default",
         approvedReportHash: validated.reportHash,
         approvedCandidateSetHash: validated.candidateSetHash
       });
@@ -406,6 +411,7 @@ async function executeLegacyStagingApproval(
   context: CreateLegacyStagingAdapterInput,
   request: AgentApprovedToolExecutionInput
 ): Promise<LegacyApproveSuccess> {
+  await assertNoActiveLocks(context);
   await assertCurrentSelectionStillEligible(context);
   const existingApproval = await findExistingMatchingStagingApproval(context);
   if (existingApproval !== undefined) {
@@ -435,6 +441,7 @@ async function executeLegacyStagingApproval(
 }
 
 async function executeLegacyStaging(context: CreateLegacyStagingAdapterInput): Promise<AgentDomainExecutionResult> {
+  await assertNoActiveLocks(context);
   const selectedCandidates = await assertCurrentSelectionStillEligible(context);
   const existingProposals = await findExistingLegacyAssertionProposals(context, selectedCandidates);
   if (existingProposals.length === selectedCandidates.length) {
@@ -472,6 +479,38 @@ async function executeLegacyStaging(context: CreateLegacyStagingAdapterInput): P
   }
 
   return mapLegacyStageResult(result, context.selectedCandidateIds);
+}
+
+async function assertNoActiveLocks(context: LegacyStagingAdapterContext): Promise<void> {
+  if ((await readActiveLocks(context.ledger, context.residentAgentId ?? "agent_default")).length === 0) {
+    return;
+  }
+  throw agentDomainExecutionFailure({
+    category: "lock-active",
+    message: "An active resident-agent lock blocks legacy staging.",
+    retryable: true,
+    allowedActions: ["clear active resident-agent locks before retrying"]
+  });
+}
+
+async function readActiveLocks(
+  ledger: EventLedger | undefined,
+  residentAgentId: string
+): Promise<readonly AgentApprovedToolActiveLock[]> {
+  if (ledger === undefined) {
+    return Object.freeze([]);
+  }
+  const projection = buildAgentProjection(await ledger.readAll());
+  return Object.freeze(
+    [...projection.locks.values()]
+      .filter((lock) => lock.state === "active" && lock.residentAgentId === residentAgentId)
+      .sort((left, right) => left.lockId.localeCompare(right.lockId))
+      .map((lock) => Object.freeze({
+        lockId: lock.lockId,
+        category: lock.kind,
+        message: lock.reason
+      }))
+  );
 }
 
 async function assertCurrentSelectionStillEligible(

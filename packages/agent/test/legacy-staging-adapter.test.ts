@@ -234,6 +234,61 @@ describe("legacy staging domain execution adapter", () => {
     });
   });
 
+  it("reports active resident-agent locks and blocks direct legacy staging execution", async () => {
+    const prepared = await prepareLegacyStagingContext();
+    const selectedCandidateIds = prepared.preview.candidates.map((candidate) => candidate.candidateId);
+    await prepared.workspace.ledger.append({
+      type: "agent.lock.activated",
+      version: 1,
+      streamId: "agent_lock_lock_legacy_staging",
+      context: {
+        actor: humanActor,
+        occurredAt: now(),
+        correlationId: "corr_lock_legacy_staging",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        lockId: "lock_legacy_staging",
+        residentAgentId: "agent_legacy_staging",
+        kind: "governance",
+        activatedBy: humanActor.id,
+        reason: "Legacy staging review is active."
+      }
+    });
+
+    const current = await rebuildLegacyStagingCurrentPreview({
+      ...prepared.context,
+      toolRequestId: "toolreq_legacy_staging_locked",
+      toolId: legacyStagingApproveDescriptor.toolId,
+      toolVersion: legacyStagingApproveDescriptor.toolVersion,
+      runId: "run_legacy_staging",
+      taskId: "task_legacy_staging",
+      residentAgentId: "agent_legacy_staging",
+      approvedReportHash: prepared.inspected.reportHash,
+      approvedCandidateSetHash: prepared.inspected.candidateSetHash,
+      selectedCandidateIds
+    });
+
+    expect(current.activeLocks).toEqual([{
+      lockId: "lock_legacy_staging",
+      category: "governance",
+      message: "Legacy staging review is active."
+    }]);
+    await expect(createLegacyStagingApprovalAdapter({
+      ...prepared.context,
+      residentAgentId: "agent_legacy_staging",
+      selectedCandidateIds
+    }).executeApproved(executionInputFor(
+      prepared.context,
+      undefined,
+      legacyStagingApproveDescriptor
+    ))).rejects.toMatchObject({ category: "lock-active" });
+    expect((await prepared.workspace.ledger.readAll()).filter(
+      (event) => event.type === "legacy.ontology.staging.approved"
+    )).toHaveLength(0);
+  });
+
   it("fails execution with approval-stale when selected candidates are absent from current evidence-tied candidates", async () => {
     const prepared = await prepareLegacyStagingContext();
     const adapter = createLegacyStagingExecutionAdapter({

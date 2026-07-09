@@ -10,6 +10,7 @@ export * from "./adapters/provider-byte-transfer.js";
 export * from "./adapters/prr-correspondence.js";
 export * from "./adapters/destructive-repair.js";
 export * from "./domain-execution-descriptors.js";
+export * from "./domain-execution-adapter-registry.js";
 export * from "./domain-execution-dispatcher.js";
 export * from "./execution-types.js";
 export * from "./projection.js";
