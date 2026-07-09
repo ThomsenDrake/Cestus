@@ -11,6 +11,7 @@ import {
 } from "./tool-gateway.js";
 import {
   agentSchedulerWakeResultDtoSchema,
+  getAgentApprovedToolExecutionFailure,
   type AgentApprovedToolActiveLock,
   type AgentApprovedToolExecutorDescriptor,
   type AgentApprovedToolExecutionResult,
@@ -375,7 +376,20 @@ async function consumeApprovedRequest(
       inputArtifactHashes: previewResult.inputArtifactHashes,
       provenanceRefs: previewResult.provenanceRefs
     });
-  } catch {
+  } catch (error) {
+    const safeFailure = getAgentApprovedToolExecutionFailure(error);
+    if (safeFailure !== undefined) {
+      return await failRequest(
+        gateway,
+        request,
+        safeFailure.category,
+        safeFailure.message,
+        safeFailure.retryable,
+        safeFailure.allowedActions,
+        currentPreviewHash,
+        [claim.id]
+      );
+    }
     return await failRequest(
       gateway,
       request,

@@ -4,6 +4,7 @@ export * from "./approval-cockpit.js";
 export * from "./approval-queue.js";
 export * from "./execution-loop.js";
 export * from "./domain-execution-descriptors.js";
+export * from "./domain-execution-dispatcher.js";
 export * from "./execution-types.js";
 export * from "./projection.js";
 export * from "./projection-types.js";
