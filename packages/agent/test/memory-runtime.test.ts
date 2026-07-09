@@ -214,6 +214,47 @@ describe("agent runtime memory", () => {
     expect(list.items.find((item) => item.memoryId === "mem_original_context")?.state).toBe("active");
     expect(list.items.find((item) => item.memoryId === "mem_replacement_context")?.state).toBe("retracted");
   });
+
+  it("surfaces a runtime partial-write diagnostic if supersession compensation also fails", async () => {
+    const ledger = new FailSupersessionCompensationLedger("mem_original_context", "mem_replacement_context");
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.recordMemory({
+      memoryId: "mem_original_context",
+      scope: "workspace",
+      memoryKind: "operator-preference",
+      summary: "Case owner prefers terse summaries.",
+      sourceEventIds: ["evt_agent_task_created"],
+      confidence: 0.9
+    });
+
+    const result = await runtime.supersedeMemory({
+      memoryId: "mem_original_context",
+      supersededByMemoryId: "mem_replacement_context",
+      scope: "workspace",
+      memoryKind: "operator-preference",
+      summary: "Case owner prefers concise summaries with source IDs.",
+      sourceEventIds: ["evt_agent_task_updated"],
+      confidence: 0.95,
+      rationale: "Preference clarified during review."
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { category: "runtime" } });
+    expect(result.ok ? undefined : result.error.message).toMatch(/partially applied/i);
+    expect(result.ok ? undefined : result.error.message).toMatch(/operator review|retraction/i);
+    expect(JSON.stringify(result)).not.toContain("Case owner prefers concise summaries with source IDs.");
+
+    const events = await ledger.readAll();
+    expect(events.map((event) => event.type)).toEqual([
+      "agent.identity.initialized",
+      "agent.memory.recorded",
+      "agent.memory.recorded"
+    ]);
+
+    const list = await runtime.listMemory({ state: "all" });
+    expect(list.items.find((item) => item.memoryId === "mem_original_context")?.state).toBe("active");
+    expect(list.items.find((item) => item.memoryId === "mem_replacement_context")?.state).toBe("active");
+  });
 });
 
 function unsafeCredentialText(): string {
@@ -234,6 +275,48 @@ class FailOriginalMemorySupersessionLedger implements EventLedger {
     ) {
       this.didFailSupersession = true;
       throw new Error("injected supersession append failure");
+    }
+
+    return this.ledger.append(event, options);
+  }
+
+  async readStream(streamId: string): Promise<KnowledgeEvent[]> {
+    return this.ledger.readStream(streamId);
+  }
+
+  async readAll(): Promise<KnowledgeEvent[]> {
+    return this.ledger.readAll();
+  }
+}
+
+class FailSupersessionCompensationLedger implements EventLedger {
+  private readonly ledger = new InMemoryEventLedger();
+  private didFailSupersession = false;
+  private didFailCompensation = false;
+
+  constructor(
+    private readonly originalMemoryId: string,
+    private readonly replacementMemoryId: string
+  ) {}
+
+  async append(event: AppendableKnowledgeEvent, options?: AppendOptions): Promise<KnowledgeEvent> {
+    if (
+      !this.didFailSupersession &&
+      event.type === "agent.memory.superseded" &&
+      event.payload.memoryId === this.originalMemoryId
+    ) {
+      this.didFailSupersession = true;
+      throw new Error("injected supersession append failure");
+    }
+
+    if (
+      this.didFailSupersession &&
+      !this.didFailCompensation &&
+      event.type === "agent.memory.retracted" &&
+      event.payload.memoryId === this.replacementMemoryId
+    ) {
+      this.didFailCompensation = true;
+      throw new Error("injected compensation append failure");
     }
 
     return this.ledger.append(event, options);

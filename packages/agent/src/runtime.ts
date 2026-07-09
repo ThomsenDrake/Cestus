@@ -383,7 +383,11 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
             }
           }, { expectedNextSequence: streamEvents.length + 1 });
         } catch {
-          await appendCompensatingMemoryRetraction(input, command.supersededByMemoryId, replacement.id);
+          try {
+            await appendCompensatingMemoryRetraction(input, command.supersededByMemoryId, replacement.id);
+          } catch {
+            return failedResult(memorySupersessionPartialFailureDiagnostic());
+          }
           throw new Error("memory supersession failed");
         }
         return {
@@ -955,6 +959,14 @@ function rejectsOperatorPreferenceCorrection(
   memoryKind: AgentMemoryKind
 ): boolean {
   return rejectsOperatorPreferenceMemory(input, memoryKind);
+}
+
+function memorySupersessionPartialFailureDiagnostic(): AgentRuntimeDiagnosticDto {
+  return agentDiagnostic(
+    "runtime",
+    "Memory supersession was partially applied. The replacement memory requires operator review or retraction.",
+    ["inspect memory history", "review the replacement memory", "retract the replacement memory if needed"]
+  );
 }
 
 async function appendCompensatingMemoryRetraction(
