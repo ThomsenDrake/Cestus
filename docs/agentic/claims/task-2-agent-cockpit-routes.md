@@ -1,6 +1,6 @@
 # Task 2 Claim: Agent Cockpit Routes
 
-Plan: `docs/superpowers/plans/2026-07-07-cestus-resident-agent-implementation.md`
+Plan: `docs/superpowers/plans/2026-07-09-resident-agent-cockpit-task-run-interface-implementation.md`
 Requirements: `.superpowers/sdd/task-2-brief.md`
 Task: Task 2: Local Runtime Cockpit And Safe Run Routes
 Worker: Codex GPT-5

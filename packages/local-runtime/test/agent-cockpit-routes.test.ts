@@ -1,17 +1,29 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createAgentRuntime,
   createAgentToolGateway,
   isAgentSecretSafeText,
+  type AgentStatusDto,
   type StartAgentRunInput
 } from "../../agent/src/index.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import type { LocalAgentRuntimeFactory } from "../src/agent-runtime-factory.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
+
+const mockedOntologyBootstrapBoundary = vi.hoisted(() => ({
+  calls: [] as string[]
+}));
+
+vi.mock("../src/agent-ontology-bootstrap-routes.js", () => ({
+  handleAgentOntologyBootstrapRoute: vi.fn(async (input: { readonly request: { readonly url: string } }) => {
+    mockedOntologyBootstrapBoundary.calls.push(new URL(input.request.url, "http://localhost").pathname);
+    return undefined;
+  })
+}));
 
 const handlers: LocalRuntimeHttpHandler[] = [];
 const tempDirs: string[] = [];
@@ -28,6 +40,7 @@ afterEach(() => {
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
+  mockedOntologyBootstrapBoundary.calls.splice(0);
 });
 
 describe("agent cockpit routes", () => {
@@ -89,6 +102,30 @@ describe("agent cockpit routes", () => {
     ]);
   });
 
+  it("keeps cockpit and run routes out of the legacy bootstrap boundary", async () => {
+    const context = routeContext();
+    await seedIdentityAndTask(context);
+
+    const cockpit = await context.handler({
+      method: "GET",
+      url: "/api/agent/cockpit"
+    });
+    const runStart = await context.handler({
+      method: "POST",
+      url: "/api/agent/runs",
+      body: JSON.stringify({
+        runId: "run_route_no_bootstrap",
+        taskId: "task_route_review",
+        runType: "evidence-triage",
+        scope: { kind: "workspace", refs: [workspaceId] }
+      })
+    });
+
+    expect(cockpit.status).toBe(200);
+    expect(runStart.status).toBe(200);
+    expect(mockedOntologyBootstrapBoundary.calls).toEqual([]);
+  });
+
   it("calls runtime.startRun without reading runtime status on POST /api/agent/runs", async () => {
     const seen: {
       readonly statusCalls: number[];
@@ -142,6 +179,79 @@ describe("agent cockpit routes", () => {
       inputArtifactHashes: [inputArtifactHash],
       startedBy: routeActor.id
     }]);
+  });
+
+  it("builds cockpit without touching run execution or tool gateway surfaces", async () => {
+    const touched: string[] = [];
+    const context = routeContext({
+      agentRuntimeFactory: (() => ({
+        status: async () => cockpitStatusFixture(),
+        initializeDefaultIdentity: async () => {
+          touched.push("initializeDefaultIdentity");
+          throw new Error("initializeDefaultIdentity should not be called for GET /api/agent/cockpit");
+        },
+        createTask: async () => {
+          touched.push("createTask");
+          throw new Error("createTask should not be called for GET /api/agent/cockpit");
+        },
+        startRun: async () => {
+          touched.push("startRun");
+          throw new Error("startRun should not be called for GET /api/agent/cockpit");
+        },
+        invokeModel: async () => {
+          touched.push("invokeModel");
+          throw new Error("invokeModel should not be called for GET /api/agent/cockpit");
+        },
+        gateway: new Proxy({}, {
+          get(_target, property) {
+            touched.push(`gateway:${String(property)}`);
+            throw new Error(`gateway.${String(property)} should not be called for GET /api/agent/cockpit`);
+          }
+        })
+      })) as unknown as LocalAgentRuntimeFactory
+    });
+
+    const response = await context.handler({
+      method: "GET",
+      url: "/api/agent/cockpit"
+    });
+
+    expect(response.status).toBe(200);
+    expect(touched).toEqual([]);
+  });
+
+  it("keeps forbidden-effect cockpit and run subpaths unavailable", async () => {
+    const context = routeContext();
+    const attempts = [
+      { method: "POST", url: "/api/agent/runs/scheduler-wake" },
+      { method: "POST", url: "/api/agent/runs/provider-invocation" },
+      { method: "POST", url: "/api/agent/runs/prr-send" },
+      { method: "POST", url: "/api/agent/runs/provider-byte-transfer" },
+      { method: "POST", url: "/api/agent/runs/export" },
+      { method: "POST", url: "/api/agent/runs/legal-escalation" },
+      { method: "POST", url: "/api/agent/runs/repair" },
+      { method: "POST", url: "/api/agent/runs/accepted-graph-review" },
+      { method: "POST", url: "/api/agent/runs/legacy-import" },
+      { method: "POST", url: "/api/agent/runs/legacy-staging" },
+      { method: "GET", url: "/api/agent/cockpit/scheduler-wake" },
+      { method: "GET", url: "/api/agent/cockpit/provider-byte-transfer" }
+    ] as const;
+
+    const responses = await Promise.all(attempts.map((request) => context.handler(request)));
+
+    for (const response of responses) {
+      expect(response.status).toBe(404);
+      expect(response.body).not.toMatch(/authorization:\s*bearer|sk_live|password/i);
+      expect(JSON.parse(response.body)).toEqual({
+        ok: false,
+        diagnostic: {
+          message: "Local runtime route was not found.",
+          allowedRepairActions: ["check the request path and method"]
+        }
+      });
+    }
+
+    expect(await eventTypes(context)).toEqual([]);
   });
 
   it("rejects missing tasks with a safe 404 diagnostic", async () => {
@@ -394,4 +504,23 @@ async function withLedger<T>(
   } finally {
     ledger.close();
   }
+}
+
+function cockpitStatusFixture(): AgentStatusDto {
+  return {
+    schemaVersion: "agent-status.v1",
+    generatedAt: now(),
+    identity: undefined,
+    tasks: [],
+    runs: [],
+    toolRequests: [],
+    permissions: [],
+    locks: [],
+    activeMemory: [],
+    modelInvocations: [],
+    providers: [],
+    pendingApprovalCount: 0,
+    activeLockCount: 0,
+    diagnostics: []
+  };
 }

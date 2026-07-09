@@ -57,15 +57,17 @@ export async function handleAgentHttpRoute(
       now: input.now
     });
 
-    const ontologyBootstrapResponse = await handleAgentOntologyBootstrapRoute({
-      request: input.request,
-      handle: input.handle,
-      actor: input.actor,
-      now: input.now,
-      runtime
-    });
-    if (ontologyBootstrapResponse !== undefined) {
-      return ontologyBootstrapResponse;
+    if (path.startsWith("/api/agent/specialists/ontology-bootstrap/")) {
+      const ontologyBootstrapResponse = await handleAgentOntologyBootstrapRoute({
+        request: input.request,
+        handle: input.handle,
+        actor: input.actor,
+        now: input.now,
+        runtime
+      });
+      if (ontologyBootstrapResponse !== undefined) {
+        return ontologyBootstrapResponse;
+      }
     }
 
     if (input.request.method === "GET" && path === "/api/agent/status") {
