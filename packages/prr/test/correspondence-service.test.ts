@@ -33,6 +33,17 @@ const initialSendInput = {
   approvedBy: "actor_investigator"
 };
 
+const followUpInput = {
+  prrRequestId: "prr_req_001",
+  correspondenceId: "corr_followup_001",
+  provider: "gmail" as const,
+  from: "investigator@example.org",
+  to: ["foia@example.gov"],
+  subject: "Follow-up on records request",
+  body: "Please provide a status update.",
+  approvedBy: "actor_investigator"
+};
+
 const attachmentContentHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 describe("PrrCorrespondenceService", () => {
@@ -212,9 +223,298 @@ describe("PrrCorrespondenceService", () => {
     });
 
     await expect(service.sendInitialRequest(initialSendInput)).rejects.toThrow(
-      "Sent message rawMetadata key oauthToken is not allowed"
+      "Provider result metadata contains a disallowed key"
     );
     await expect(sentEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects an initial provider result with a mismatched provider before lifecycle append", async () => {
+    const ledger = await ledgerWithCreatedRequest();
+    const adapter = new RecordingAdapter("gmail", {}, "imap-smtp");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendInitialRequest(initialSendInput)).rejects.toThrow(
+      "Provider result did not match requested provider gmail"
+    );
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(sentEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects an initial provider result without a message id before lifecycle append", async () => {
+    const ledger = await ledgerWithCreatedRequest();
+    const adapter = new RecordingAdapter("gmail", {}, "gmail", " ");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendInitialRequest(initialSendInput)).rejects.toThrow(
+      "Provider result did not include a message id"
+    );
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(sentEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects an initial provider result with an invalid sent timestamp before lifecycle append", async () => {
+    const ledger = await ledgerWithCreatedRequest();
+    const adapter = new RecordingAdapter("gmail", {}, "gmail", undefined, "not-a-date");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendInitialRequest(initialSendInput)).rejects.toThrow(
+      "Provider result did not include a valid sent timestamp"
+    );
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(sentEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects an initial provider result with a secret-shaped metadata value before lifecycle append", async () => {
+    const ledger = await ledgerWithCreatedRequest();
+    const adapter = new RecordingAdapter("gmail", { tracking: "Bearer abcdefghijklmnop" });
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendInitialRequest(initialSendInput)).rejects.toThrow(
+      "Provider result metadata contains a secret-shaped value"
+    );
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(sentEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects secret-shaped provider message and thread references before lifecycle append", async () => {
+    const messageLedger = await ledgerWithCreatedRequest();
+    const messageAdapter = new RecordingAdapter("gmail", {}, "gmail", "Bearer abcdefghijklmnop");
+    const messageService = new PrrCorrespondenceService({
+      ledger: messageLedger,
+      actor,
+      adapters: { gmail: messageAdapter }
+    });
+    await expect(messageService.sendInitialRequest(initialSendInput)).rejects.toThrow(
+      "Provider result contains a secret-shaped reference"
+    );
+    await expect(sentEventCount(messageLedger)).resolves.toBe(0);
+
+    const threadLedger = await ledgerWithCreatedRequest();
+    const threadAdapter = new RecordingAdapter(
+      "gmail",
+      {},
+      "gmail",
+      "safe_message_001",
+      undefined,
+      "api key abcdefghijklmnop"
+    );
+    const threadService = new PrrCorrespondenceService({
+      ledger: threadLedger,
+      actor,
+      adapters: { gmail: threadAdapter }
+    });
+    await expect(threadService.sendInitialRequest(initialSendInput)).rejects.toThrow(
+      "Provider result contains a secret-shaped reference"
+    );
+    await expect(sentEventCount(threadLedger)).resolves.toBe(0);
+  });
+
+  it("sends an approved follow-up after the initial request and records only the follow-up event contract", async () => {
+    const ledger = await ledgerWithCreatedRequest();
+    const adapter = new RecordingAdapter("gmail", { accountEmail: "investigator@example.org" });
+    const service = new PrrCorrespondenceService({
+      ledger,
+      actor,
+      adapters: { gmail: adapter }
+    });
+    await service.sendInitialRequest(initialSendInput);
+
+    const event = await service.sendFollowUp(followUpInput);
+
+    expect(event.type).toBe("prr.followup.sent");
+    expect(event.payload).toEqual({
+      prrRequestId: "prr_req_001",
+      correspondenceId: "corr_followup_001",
+      provider: "gmail",
+      providerMessageId: "recorded_followup_prr_req_001_corr_followup_001",
+      subject: "Follow-up on records request",
+      bodyHash: "sha256:74f76dc0610d620f2d90a082667030ef34b6db922e2303c71d12d9d7c00ac2e4",
+      sentAt: "2026-07-01T16:00:00.000Z",
+      approvedBy: "actor_investigator"
+    });
+    expect(adapter.lastInput?.idempotencyKey).toBe("followup_prr_req_001_corr_followup_001");
+    expect(event.payload).not.toHaveProperty("rawMetadata");
+    expect(event.payload).not.toHaveProperty("providerThreadId");
+  });
+
+  it("rejects invalid follow-up attachments before the provider is called", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new RecordingAdapter("gmail");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp({
+      ...followUpInput,
+      attachments: [{ filename: "follow-up.pdf", contentHash: attachmentContentHash, evidenceId: "invalid" }]
+    })).rejects.toThrow("attachments[0].evidenceId is invalid");
+
+    expect(adapter.sendCalls).toBe(0);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects valid follow-up attachments when the lifecycle event cannot attest them", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new RecordingAdapter("gmail");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp({
+      ...followUpInput,
+      attachments: [{
+        filename: "follow-up.pdf",
+        contentHash: attachmentContentHash,
+        evidenceId: "ev_followup_001"
+      }]
+    })).rejects.toThrow("Follow-up attachments are not supported until the lifecycle event can attest them");
+
+    expect(adapter.sendCalls).toBe(0);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects a follow-up without approval before the provider is called", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new RecordingAdapter("gmail");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+    const { approvedBy: _approvedBy, ...inputWithoutApproval } = followUpInput;
+
+    await expect(service.sendFollowUp(
+      inputWithoutApproval as Parameters<PrrCorrespondenceService["sendFollowUp"]>[0]
+    )).rejects.toThrow("approvedBy is required for one-click send");
+
+    expect(adapter.sendCalls).toBe(0);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("requires a created request with an initial sent event before sending a follow-up", async () => {
+    const ledger = await ledgerWithCreatedRequest();
+    const adapter = new RecordingAdapter("gmail");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp(followUpInput)).rejects.toThrow(
+      "Cannot send follow-up for prr_req_001 before the initial request is sent"
+    );
+
+    expect(adapter.sendCalls).toBe(0);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects follow-ups for closed requests before the provider is called", async () => {
+    const ledger = await ledgerWithSentRequest();
+    await appendRequestClosed(ledger);
+    const adapter = new RecordingAdapter("gmail");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp(followUpInput)).rejects.toThrow(
+      "Cannot send follow-up for closed request prr_req_001"
+    );
+
+    expect(adapter.sendCalls).toBe(0);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects duplicate follow-up correspondence IDs before the provider is called", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new RecordingAdapter("gmail");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+    await service.sendFollowUp(followUpInput);
+
+    await expect(service.sendFollowUp(followUpInput)).rejects.toThrow(
+      "Cannot send duplicate correspondence corr_followup_001 for request prr_req_001"
+    );
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(followUpEventCount(ledger)).resolves.toBe(1);
+  });
+
+  it("rejects a follow-up correspondence ID already used for the initial request", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new RecordingAdapter("gmail");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp({ ...followUpInput, correspondenceId: initialSendInput.correspondenceId })).rejects.toThrow(
+      "Cannot send duplicate correspondence corr_req_001 for request prr_req_001"
+    );
+
+    expect(adapter.sendCalls).toBe(0);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects a mismatched provider result without appending a follow-up event", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new RecordingAdapter("gmail", {}, "imap-smtp");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp(followUpInput)).rejects.toThrow(
+      "Provider result did not match requested provider gmail"
+    );
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("does not append a follow-up event when the provider fails", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new FailingAdapter("gmail");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp(followUpInput)).rejects.toThrow("Provider unavailable");
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects secret-shaped follow-up metadata without appending a follow-up event", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new RecordingAdapter("gmail", { oauthToken: "never-store-this" });
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp(followUpInput)).rejects.toThrow(
+      "Provider result metadata contains a disallowed key"
+    );
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects a follow-up provider result without a message id before lifecycle append", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new RecordingAdapter("gmail", {}, "gmail", " ");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp(followUpInput)).rejects.toThrow(
+      "Provider result did not include a message id"
+    );
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects a follow-up provider result with an invalid sent timestamp before lifecycle append", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new RecordingAdapter("gmail", {}, "gmail", undefined, "not-a-date");
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp(followUpInput)).rejects.toThrow(
+      "Provider result did not include a valid sent timestamp"
+    );
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
+  });
+
+  it("rejects a follow-up provider result with a secret-shaped metadata value before lifecycle append", async () => {
+    const ledger = await ledgerWithSentRequest();
+    const adapter = new RecordingAdapter("gmail", { tracking: "Bearer abcdefghijklmnop" });
+    const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+
+    await expect(service.sendFollowUp(followUpInput)).rejects.toThrow(
+      "Provider result metadata contains a secret-shaped value"
+    );
+
+    expect(adapter.sendCalls).toBe(1);
+    await expect(followUpEventCount(ledger)).resolves.toBe(0);
   });
 });
 
@@ -225,9 +525,50 @@ async function ledgerWithCreatedRequest(): Promise<InMemoryEventLedger> {
   return ledger;
 }
 
+async function ledgerWithSentRequest(
+  adapter: CorrespondenceAdapter = new RecordingAdapter("gmail")
+): Promise<InMemoryEventLedger> {
+  const ledger = await ledgerWithCreatedRequest();
+  const service = new PrrCorrespondenceService({ ledger, actor, adapters: { gmail: adapter } });
+  await service.sendInitialRequest(initialSendInput);
+  return ledger;
+}
+
 async function sentEventCount(ledger: EventLedger): Promise<number> {
   const events = await ledger.readAll();
   return events.filter((event) => event.type === "prr.request.sent").length;
+}
+
+async function followUpEventCount(ledger: EventLedger): Promise<number> {
+  const events = await ledger.readAll();
+  return events.filter((event) => event.type === "prr.followup.sent").length;
+}
+
+async function appendRequestClosed(ledger: EventLedger): Promise<void> {
+  const events = await ledger.readStream(initialSendInput.prrRequestId);
+  const created = events.find((event) => event.type === "prr.request.created");
+  if (created === undefined) {
+    throw new Error("Test setup requires a created request");
+  }
+
+  await ledger.append({
+    type: "prr.request.closed",
+    version: 1,
+    streamId: initialSendInput.prrRequestId,
+    context: {
+      actor,
+      occurredAt: "2026-07-02T16:00:00.000Z",
+      correlationId: created.context.correlationId,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0" }
+    },
+    payload: {
+      prrRequestId: initialSendInput.prrRequestId,
+      closedAt: "2026-07-02T16:00:00.000Z",
+      closedBy: actor.id,
+      reason: "fulfilled"
+    }
+  });
 }
 
 class RecordingAdapter implements CorrespondenceAdapter {
@@ -236,7 +577,11 @@ class RecordingAdapter implements CorrespondenceAdapter {
 
   constructor(
     private readonly provider: CorrespondenceProvider,
-    private readonly rawMetadata: Record<string, string> = {}
+    private readonly rawMetadata: Record<string, string> = {},
+    private readonly resultProvider: CorrespondenceProvider = provider,
+    private readonly providerMessageId?: string,
+    private readonly sentAt?: string,
+    private readonly providerThreadId?: string
   ) {}
 
   async capabilities(): Promise<AdapterCapabilities> {
@@ -260,14 +605,27 @@ class RecordingAdapter implements CorrespondenceAdapter {
       this.lastInput.cc = [...input.cc];
     }
     return {
-      provider: this.provider,
-      providerMessageId: `recorded_${input.idempotencyKey}`,
-      sentAt: "2026-07-01T16:00:00.000Z",
+      provider: this.resultProvider,
+      providerMessageId: this.providerMessageId ?? `recorded_${input.idempotencyKey}`,
+      ...(this.providerThreadId === undefined ? {} : { providerThreadId: this.providerThreadId }),
+      sentAt: this.sentAt ?? "2026-07-01T16:00:00.000Z",
       rawMetadata: this.rawMetadata
     };
   }
 
   async syncSince(): Promise<SyncResult> {
     return { checkpoint: "recording", messages: [] };
+  }
+}
+
+class FailingAdapter extends RecordingAdapter {
+  override async sendApprovedMessage(input: ApprovedMessageInput): Promise<SentMessageResult> {
+    this.sendCalls += 1;
+    this.lastInput = {
+      ...input,
+      to: [...input.to],
+      attachments: input.attachments.map((attachment) => ({ ...attachment }))
+    };
+    throw new Error("Provider unavailable");
   }
 }

@@ -7,6 +7,7 @@ export * from "./adapters/legacy-staging.js";
 export * from "./adapters/accepted-graph-review.js";
 export * from "./adapters/export-report.js";
 export * from "./adapters/provider-byte-transfer.js";
+export * from "./adapters/prr-correspondence.js";
 export * from "./domain-execution-descriptors.js";
 export * from "./domain-execution-dispatcher.js";
 export * from "./execution-types.js";
