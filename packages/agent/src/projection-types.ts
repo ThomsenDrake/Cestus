@@ -46,17 +46,25 @@ export type AgentToolApprovalClass =
 export type AgentLockKind = "legal-escalation" | "export" | "secret" | "governance" | "data-loss" | "provider-byte-transfer";
 export type AgentFailureCategory =
   | "provider-unavailable"
+  | "provider-rate-limited"
   | "credential-missing"
   | "credential-revoked"
   | "approval-required"
+  | "approval-denied"
   | "approval-stale"
   | "permission-denied"
   | "secret-detected"
   | "legal-lock-active"
+  | "lock-active"
   | "projection-lag"
+  | "context-budget-exceeded"
+  | "missing-provenance"
   | "provenance-missing"
   | "model-output-invalid"
-  | "external-effect-failed";
+  | "domain-gate-failed"
+  | "stale-source"
+  | "external-effect-failed"
+  | "data-loss-risk";
 
 export interface ProjectedAgentProvenance {
   readonly eventIds: readonly string[];

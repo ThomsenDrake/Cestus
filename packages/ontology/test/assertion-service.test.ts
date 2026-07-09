@@ -165,4 +165,62 @@ describe("AssertionService", () => {
       })
     ).rejects.toThrow("Cannot accept assertion as_service_003 without an assertion.proposed event");
   });
+
+  it("returns the original acceptance for repeated and concurrent retries", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new AssertionService({ ledger });
+    await ingestEvidence(ledger, "ev_service_idempotent");
+    await service.propose({
+      assertionId: "as_service_idempotent",
+      evidenceId: "ev_service_idempotent",
+      predicate: "agency.name",
+      object: "Idempotent Agency",
+      confidence: 0.9,
+      actor: extractor
+    });
+    const input = {
+      assertionId: "as_service_idempotent",
+      acceptedBy: reviewer.id,
+      rationale: "The evidence supports this assertion.",
+      actor: reviewer
+    } as const;
+
+    const [first, concurrent] = await Promise.all([
+      service.accept(input),
+      service.accept(input)
+    ]);
+    const repeated = await service.accept(input);
+    const events = await ledger.readStream("assertion_as_service_idempotent");
+
+    expect(concurrent.id).toBe(first.id);
+    expect(repeated.id).toBe(first.id);
+    expect(events.filter((event) => event.type === "assertion.accepted")).toHaveLength(1);
+  });
+
+  it("requires a human review actor whose id matches acceptedBy", async () => {
+    const ledger = new InMemoryEventLedger();
+    const service = new AssertionService({ ledger });
+    await ingestEvidence(ledger, "ev_service_human_gate");
+    await service.propose({
+      assertionId: "as_service_human_gate",
+      evidenceId: "ev_service_human_gate",
+      predicate: "agency.name",
+      object: "Human Reviewed Agency",
+      confidence: 0.93,
+      actor: extractor
+    });
+
+    await expect(service.accept({
+      assertionId: "as_service_human_gate",
+      acceptedBy: extractor.id,
+      rationale: "An extractor cannot accept graph truth.",
+      actor: extractor
+    })).rejects.toThrow(/human review actor/i);
+    await expect(service.accept({
+      assertionId: "as_service_human_gate",
+      acceptedBy: "actor_other_reviewer",
+      rationale: "The recorded reviewer must match the event actor.",
+      actor: reviewer
+    })).rejects.toThrow(/acceptedBy must match/i);
+  });
 });

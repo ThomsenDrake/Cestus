@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  agentApprovedToolExecutionFailure,
   agentSchedulerItemSummaryDtoSchema,
   agentSchedulerWakeResultDtoSchema,
+  getAgentApprovedToolExecutionFailure,
   hashAgentToolPreview,
+  type AgentApprovedToolExecutionFailureInput,
   type AgentApprovedToolExecutorDescriptor,
   type AgentSchedulerWakeResultDto
 } from "../src/index.js";
@@ -217,6 +220,122 @@ describe("agent scheduler contracts", () => {
 
     expect(parsed.success).toBe(false);
   });
+
+  it("creates frozen secret-safe execution failure markers for scheduler-side mapping", () => {
+    const failure = agentApprovedToolExecutionFailure(validExecutionFailureInput());
+
+    expect(failure).toEqual({
+      kind: "agent-approved-tool-execution-failure.v1",
+      category: "domain-gate-failed",
+      message: "Domain service rejected the approved request.",
+      retryable: false,
+      allowedActions: ["inspect domain service gate"]
+    });
+    expect(Object.isFrozen(failure)).toBe(true);
+    expect(Object.isFrozen(failure.allowedActions)).toBe(true);
+    expect(getAgentApprovedToolExecutionFailure(failure)).toEqual(failure);
+  });
+
+  it.each([
+    {
+      label: "non-canonical category",
+      patch: { category: "not-a-real-category" }
+    },
+    {
+      label: "unsafe message",
+      patch: { message: "Authorization Bearer sk-live-review-token" }
+    },
+    {
+      label: "unsafe allowed action",
+      patch: { allowedActions: ["copy API_KEY=sk-live-token into logs"] }
+    },
+    {
+      label: "non-boolean retryable",
+      patch: { retryable: "false" }
+    },
+    {
+      label: "unsupported field",
+      patch: { authorization: "Bearer sk-live-review-token" }
+    }
+  ])("rejects malformed execution failure markers with %s", ({ patch }) => {
+    const input = { ...validExecutionFailureInput(), ...patch };
+    const marked = {
+      ...agentApprovedToolExecutionFailure(validExecutionFailureInput()),
+      ...patch
+    };
+
+    expect(() =>
+      agentApprovedToolExecutionFailure(input as unknown as AgentApprovedToolExecutionFailureInput)
+    ).toThrow();
+    expect(getAgentApprovedToolExecutionFailure(marked)).toBeUndefined();
+  });
+
+  it("rejects accessor-backed execution failure markers without invoking getters", () => {
+    let getterCalls = 0;
+    const input = { ...validExecutionFailureInput() } as Record<string, unknown>;
+    Object.defineProperty(input, "message", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return "Domain service rejected the approved request.";
+      }
+    });
+    const marked = {
+      kind: "agent-approved-tool-execution-failure.v1",
+      category: "domain-gate-failed",
+      retryable: false,
+      allowedActions: ["inspect domain service gate"]
+    } as Record<string, unknown>;
+    Object.defineProperty(marked, "message", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return "Domain service rejected the approved request.";
+      }
+    });
+
+    expect(() =>
+      agentApprovedToolExecutionFailure(input as unknown as AgentApprovedToolExecutionFailureInput)
+    ).toThrow(/plain object/i);
+    expect(getAgentApprovedToolExecutionFailure(marked)).toBeUndefined();
+    expect(getterCalls).toBe(0);
+  });
+
+  it("rejects symbol-keyed and custom-array execution failure marker fields", () => {
+    const symbolKeyed = { ...validExecutionFailureInput() } as Record<PropertyKey, unknown>;
+    symbolKeyed[Symbol("hidden")] = "shadow";
+    const customActions = ["inspect domain service gate"];
+    Object.defineProperty(customActions, "extra", {
+      enumerable: true,
+      value: "shadow"
+    });
+    const sparseActions = [] as string[];
+    sparseActions.length = 1;
+
+    expect(() =>
+      agentApprovedToolExecutionFailure(symbolKeyed as unknown as AgentApprovedToolExecutionFailureInput)
+    ).toThrow(/plain object/i);
+    expect(getAgentApprovedToolExecutionFailure({
+      kind: "agent-approved-tool-execution-failure.v1",
+      ...symbolKeyed
+    })).toBeUndefined();
+    expect(() =>
+      agentApprovedToolExecutionFailure({
+        ...validExecutionFailureInput(),
+        allowedActions: customActions
+      })
+    ).toThrow(/custom array fields/i);
+    expect(getAgentApprovedToolExecutionFailure({
+      ...agentApprovedToolExecutionFailure(validExecutionFailureInput()),
+      allowedActions: customActions
+    })).toBeUndefined();
+    expect(() =>
+      agentApprovedToolExecutionFailure({
+        ...validExecutionFailureInput(),
+        allowedActions: sparseActions
+      })
+    ).toThrow(/sparse/i);
+  });
 });
 
 type SchedulerWakeResultItemPatch =
@@ -268,5 +387,14 @@ function buildItemSummaryDto(patch: SchedulerWakeResultItemPatch = {}): Schedule
     eventIds: ["evt_agent_tool_completed"],
     allowedNextActions: ["refresh agent status"],
     ...patch
+  };
+}
+
+function validExecutionFailureInput(): AgentApprovedToolExecutionFailureInput {
+  return {
+    category: "domain-gate-failed",
+    message: "Domain service rejected the approved request.",
+    retryable: false,
+    allowedActions: ["inspect domain service gate"]
   };
 }

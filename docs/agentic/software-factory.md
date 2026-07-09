@@ -1172,3 +1172,142 @@ The scheduler derives approved open work from the append-only agent ledger and r
 Consume-time validation rechecks independent human approval, causation, approval class, exact preview hash, current descriptor preview, active locks, source/provenance/artifact hashes, projection/read-model freshness, terminal state, and secret-safety before execution. Successful completions and validation or execution failures are recorded through the existing agent tool gateway as `agent.tool.completed` or `agent.tool.failed`.
 
 Provider byte transfer, PRR send/follow-up, legal escalation, export/publication, destructive repair, accepted graph review, and legacy staging are not executed directly in this branch and remain descriptor/domain-service follow-up work.
+
+## Resident Agent Domain Execution Adapter Plan Readiness
+
+The resident-agent domain execution adapter implementation plan was prepared on 2026-07-09.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md`
+- `docs/superpowers/specs/2026-07-07-resident-agent-execution-approval-design.md`
+- `docs/superpowers/plans/2026-07-09-resident-agent-domain-execution-adapters-implementation.md`
+
+Factory readiness tracks the adapter plan through `scripts/check-agent-readiness.mjs`.
+
+Recorded planning validation:
+
+```text
+git diff --cached --check
+no output
+
+npm run factory:check
+factory-readiness passed
+```
+
+Full verification status on this planning branch:
+
+```text
+npm run verify
+typecheck passed
+Test Files  1 failed | 142 passed | 1 skipped (144)
+Tests  3 failed | 1370 passed | 1 skipped (1374)
+
+Failed file:
+packages/workspace-ops/test/cli.test.ts
+
+Failed tests:
+- runs real executable detect and verify commands against a canonical workspace
+- blocks existing zero-byte ledgers without mutating the file or leaking raw SQLite errors
+- returns command-specific blocked JSON for disk usage against a missing root
+
+Failure mode:
+Error: Test timed out in 5000ms.
+```
+
+Targeted repro after restoring dependencies with `npm ci`:
+
+```text
+npm test -- packages/workspace-ops/test/cli.test.ts
+Test Files  1 failed (1)
+Tests  2 failed | 18 passed (20)
+
+npm test -- packages/workspace-ops/test/cli.test.ts
+Test Files  1 failed (1)
+Tests  1 failed | 19 passed (20)
+```
+
+The timeout is in existing `workspace-ops` executable tests that spawn `node packages/workspace-ops/bin/cestus-workspace.mjs`, whose wrapper launches `npx tsx`. This adapter planning branch does not change workspace-ops runtime, tests, or executable behavior, so the planning diff remains scoped to the adapter plan and readiness tracking.
+
+This planning slice adds no runtime executor. It defines the descriptor-backed adapter contract, desired scheduler dependency, preview builders, current-preview rebuilds, stale-source checks, lock checks, provenance requirements, idempotency keys, domain service targets, result mappers, failure categories, adapter family order, acceptance criteria, and stop conditions. Broad domain execution remains blocked until the scheduler/resumer descriptor interface lands on `neo`; domain services remain authoritative for provider byte transfer, PRR send/follow-up, accepted graph review, export/report, destructive repair, and legacy staging.
+
+## Resident Agent Domain Adapter Registry Readiness
+
+The resident-agent domain execution adapter family reached its final registry
+and cross-family readiness gate on 2026-07-09.
+
+Required implementation plan:
+
+- `docs/superpowers/plans/2026-07-09-resident-agent-domain-execution-adapters-implementation.md`
+
+The public agent package exports a frozen, descriptor-only registry with 11
+tools across provider byte transfer, PRR correspondence, accepted graph review,
+export/report, destructive repair, and legacy staging. Each registered entry
+names its preview builder, current-preview rebuilder, stale and lock checks,
+provenance requirements, idempotency fields, result mapper, safe failure
+categories, authoritative target service, intended effect, and forbidden
+effects. Registry lookup never constructs an executable adapter or supplies a
+domain dependency.
+
+Recorded registry RED/GREEN:
+
+```text
+npm test -- packages/agent/test/domain-execution-adapter-registry.test.ts
+RED: Test Files 1 failed; Tests 3 failed
+GREEN: Test Files 1 passed; Tests 3 passed
+```
+
+Recorded review-repair RED/GREEN:
+
+```text
+npx vitest run packages/agent/test/domain-execution-adapter-registry.test.ts packages/agent/test/legacy-staging-adapter.test.ts
+RED: Test Files 2 failed; Tests 2 failed | 15 passed
+GREEN: Test Files 2 passed; Tests 17 passed
+
+npx vitest run packages/agent/test/legacy-staging-adapter.test.ts -t "reports active resident-agent locks"
+Non-default resident identity RED: Test Files 1 failed; Tests 1 failed | 13 skipped
+
+npx vitest run packages/agent/test/domain-execution-adapter-registry.test.ts
+Canonical metadata RED: Test Files 1 failed; Tests no tests
+
+npx vitest run packages/agent/test/domain-execution-adapter-registry.test.ts packages/agent/test/destructive-repair-adapter.test.ts
+Canonical metadata GREEN: Test Files 2 passed; Tests 13 passed
+```
+
+Recorded cross-family target:
+
+```text
+npm test -- packages/agent/test/domain-execution-adapter-registry.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/accepted-graph-review-adapter.test.ts packages/agent/test/export-report-adapter.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/prr-correspondence-adapter.test.ts packages/agent/test/destructive-repair-adapter.test.ts
+Test Files  8 passed (8)
+Tests  88 passed (88)
+```
+
+Recorded available verification:
+
+```text
+npm run typecheck
+typecheck passed
+
+npm run ui:build
+Vite build passed with the existing chunk-size warning
+
+npm run verify
+typecheck passed
+Test Files  3 failed | 151 passed | 1 skipped (155)
+Tests  19 failed | 1546 passed | 1 skipped (1566)
+```
+
+All 19 child full-suite failures were managed-sandbox `listen EPERM` or `tsx`
+IPC pipe `EPERM` failures. The coordinator's unrestricted `npm run verify`
+passed with 154 passed / 1 skipped test files and 1565 passed / 1 skipped
+tests, followed by the Vite production build and factory readiness check.
+
+Closing repair-delta review verdict: **APPROVED**, with no remaining Critical
+or Important findings. Registry tests now bind current-preview rebuilders by
+exact tool ID, including the distinct fail-closed canonical-repair path, and
+legacy staging proves lock enforcement for a non-default resident agent.
+
+This registry changes discovery only. Provider byte transfer, PRR send and
+follow-up, accepted graph review, export/report generation, destructive repair,
+and legacy staging remain executable only through their existing scheduler,
+approval, provenance, lock, and authoritative domain-service boundaries.

@@ -17,6 +17,27 @@ const humanContext = {
 const hash111 = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
 const hash222 = "sha256:2222222222222222222222222222222222222222222222222222222222222222";
 const hash333 = "sha256:3333333333333333333333333333333333333333333333333333333333333333";
+const adapterFailureCategories = [
+  "approval-required",
+  "approval-denied",
+  "approval-stale",
+  "provider-unavailable",
+  "provider-rate-limited",
+  "credential-missing",
+  "credential-revoked",
+  "model-output-invalid",
+  "secret-detected",
+  "permission-denied",
+  "legal-lock-active",
+  "lock-active",
+  "projection-lag",
+  "context-budget-exceeded",
+  "missing-provenance",
+  "domain-gate-failed",
+  "stale-source",
+  "external-effect-failed",
+  "data-loss-risk"
+] as const;
 
 function agentEvent(id: string, type: string, streamId: string, payload: Record<string, unknown>) {
   return {
@@ -310,6 +331,29 @@ describe("resident agent event contracts", () => {
       ).success
     ).toBe(false);
   });
+
+  it.each(adapterFailureCategories)(
+    "accepts adapter-facing tool failure category %s",
+    (category) => {
+      expect(
+        validateKnowledgeEvent(
+          agentEvent(
+            `evt_agent_tool_failed_${category.replaceAll("-", "_")}`,
+            "agent.tool.failed",
+            "agent_tool_request_toolreq_failure_category",
+            {
+              toolRequestId: "toolreq_failure_category",
+              failedAt: "2026-07-07T18:11:00.000Z",
+              category,
+              message: "Execution stopped behind an explicit domain gate.",
+              retryable: false,
+              allowedActions: ["request a fresh approval after the blocking state changes"]
+            }
+          )
+        ).success
+      ).toBe(true);
+    }
+  );
 
   it.each([
     {

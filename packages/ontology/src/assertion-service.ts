@@ -1,5 +1,10 @@
 import type { z } from "zod";
-import { actorRefSchema, type AppendableKnowledgeEvent, type KnowledgeEventOf } from "./contracts.js";
+import {
+  actorRefSchema,
+  type AppendableKnowledgeEvent,
+  type KnowledgeEvent,
+  type KnowledgeEventOf
+} from "./contracts.js";
 import type { EventLedger } from "./event-ledger.js";
 
 type ActorRef = z.infer<typeof actorRefSchema>;
@@ -69,6 +74,17 @@ export class AssertionService {
   }
 
   async accept(input: AssertionAcceptanceInput): Promise<KnowledgeEventOf<"assertion.accepted">> {
+    const actor = actorRefSchema.safeParse(input.actor);
+    if (!actor.success) {
+      throw new Error(`Invalid assertion review actor: ${actor.error.message}`);
+    }
+    if (actor.data.kind !== "human") {
+      throw new Error("Assertion acceptance requires a human review actor");
+    }
+    if (input.acceptedBy !== actor.data.id) {
+      throw new Error("Assertion acceptance acceptedBy must match the human review actor");
+    }
+
     const streamId = this.streamId(input.assertionId);
     const streamEvents = await this.dependencies.ledger.readStream(streamId);
     const proposed = streamEvents.find(
@@ -79,13 +95,17 @@ export class AssertionService {
     if (proposed === undefined) {
       throw new Error(`Cannot accept assertion ${input.assertionId} without an assertion.proposed event`);
     }
+    const existing = this.findAcceptance(streamEvents, input.assertionId, proposed.id);
+    if (existing !== undefined) {
+      return existing;
+    }
 
     const event: AppendableKnowledgeEvent<"assertion.accepted"> = {
       type: "assertion.accepted",
       version: 1,
       streamId,
       context: {
-        actor: input.actor,
+        actor: actor.data,
         occurredAt: new Date().toISOString(),
         causationId: proposed.id,
         correlationId: proposed.context.correlationId,
@@ -99,13 +119,36 @@ export class AssertionService {
       }
     };
 
-    const appended = await this.dependencies.ledger.append(event, { expectedNextSequence: streamEvents.length + 1 });
+    let appended;
+    try {
+      appended = await this.dependencies.ledger.append(event, { expectedNextSequence: streamEvents.length + 1 });
+    } catch (error) {
+      const currentEvents = await this.dependencies.ledger.readStream(streamId);
+      const concurrent = this.findAcceptance(currentEvents, input.assertionId, proposed.id);
+      if (concurrent !== undefined) {
+        return concurrent;
+      }
+      throw error;
+    }
 
     if (appended.type !== "assertion.accepted") {
       throw new Error(`Unexpected event type appended for assertion acceptance: ${appended.type}`);
     }
 
     return appended;
+  }
+
+  private findAcceptance(
+    events: readonly KnowledgeEvent[],
+    assertionId: string,
+    proposalEventId: string
+  ): KnowledgeEventOf<"assertion.accepted"> | undefined {
+    return events.find(
+      (event): event is KnowledgeEventOf<"assertion.accepted"> =>
+        event.type === "assertion.accepted" &&
+        event.payload.assertionId === assertionId &&
+        event.context.causationId === proposalEventId
+    );
   }
 
   private streamId(assertionId: string): string {

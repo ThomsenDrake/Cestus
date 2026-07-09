@@ -754,7 +754,7 @@ describe("resident agent fake execution loop", () => {
     if (failedEvent?.type !== "agent.tool.failed") {
       throw new Error("expected failed event");
     }
-    expect(failedEvent.payload.category).toBe("legal-lock-active");
+    expect(failedEvent.payload.category).toBe("lock-active");
   });
 
   it("rejects accessor-backed active lock fields without invoking getters or executing", async () => {
