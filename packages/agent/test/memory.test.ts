@@ -58,4 +58,18 @@ describe("agent memory surface", () => {
     expect(ref.sizeBytes).toBeLessThanOrEqual(16_384);
     expect(JSON.stringify(ref)).not.toContain("raw evidence");
   });
+
+  it("fails closed when no active memory has real provenance for the summary pack", () => {
+    const projection = buildAgentProjection([]);
+
+    expect(() =>
+      buildAgentMemorySummaryContextPack({
+        projection,
+        generatedAt: "2026-07-09T12:30:00.000Z",
+        policyVersion: "agent-policy-v1",
+        scope: { kind: "workspace", id: "ws_case_001" },
+        sizeBudgetBytes: 16_384
+      })
+    ).toThrow(/agent-memory-summary\.v1 requires active memory with real provenance/i);
+  });
 });
