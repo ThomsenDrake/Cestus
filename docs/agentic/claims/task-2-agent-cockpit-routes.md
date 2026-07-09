@@ -7,7 +7,7 @@ Worker: Codex GPT-5
 Branch: `codex/resident-agent-cockpit-task-run-plan`
 Worktree: `/home/drake/.codex/worktrees/50b6/Cestus`
 Claimed-at: 2026-07-09T01:26:26Z
-Status: claimed
+Status: in-progress
 
 Owned files:
 - `packages/local-runtime/src/agent-http-routes.ts`
