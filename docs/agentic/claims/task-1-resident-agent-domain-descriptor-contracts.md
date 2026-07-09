@@ -6,7 +6,7 @@
 - Branch: `codex/resident-agent-domain-adapters-plan`
 - Worktree: `/home/drake/.codex/worktrees/7018/Cestus`
 - Claimed at: `2026-07-09T01:02:19Z`
-- Status: `in-progress`
+- Status: `ready-for-review`
 
 ## Owned Files
 
@@ -32,3 +32,6 @@ Preserve append-only ledger semantics, provenance requirements, projection rebui
 
 - `2026-07-09T01:02:19Z`: Claim opened after the approved plan/readiness base commit.
 - `2026-07-09T01:02:19Z`: Scheduler dependency check found only the existing fake `resumeApprovedTool`; Task 2 and later remain blocked until the scheduler/resumer descriptor interface lands.
+- `2026-07-09T21:05:02-04:00`: RED captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts`; expected failure was `Cannot find module '../src/domain-execution-descriptors.js'`.
+- `2026-07-09T21:09:11-04:00`: GREEN captured with `npm test -- packages/agent/test/domain-execution-descriptors.test.ts packages/ontology/test/agent-contracts.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/execution-loop.test.ts`; result was `Test Files  4 passed (4)` and `Tests  77 passed (77)`.
+- `2026-07-09T21:10:00-04:00`: Full gate passed with `npm run verify`; result included `typecheck passed`, `Test Files  144 passed | 1 skipped (145)`, `Tests  1378 passed | 1 skipped (1379)`, `tests passed`, and `factory-readiness passed`.

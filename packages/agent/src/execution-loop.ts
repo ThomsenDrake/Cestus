@@ -692,11 +692,9 @@ async function failForActiveLocks(
     throw new Error("Active lock metadata was not secret-safe.");
   }
 
-  // Queue DTOs expose generic "lock-active"; gateway failure events stay on
-  // "legal-lock-active" until the ontology adds a broader failure category.
   await gateway.failTool({
     toolRequestId,
-    category: "legal-lock-active",
+    category: "lock-active",
     message: "Active legal export or data-loss lock blocks resume.",
     retryable: false,
     allowedActions: ["clear the lock through the human-governed domain workflow"]

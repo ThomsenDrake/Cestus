@@ -1012,6 +1012,34 @@ describe("agent tool gateway", () => {
     ).rejects.toThrow(/failed/i);
   });
 
+  it("records extended failure categories for domain execution scaffolding", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    await gateway.requestTool({
+      toolRequestId: "toolreq_domain_stale_source",
+      residentAgentId: "agent_default",
+      taskId: "task_domain",
+      runId: "run_domain",
+      toolId: "provider.bytes.transfer",
+      toolVersion: "0.1.0",
+      sideEffectClass: "external-byte-transfer",
+      preview: { summary: "Resume the approved provider transfer.", relatedEventIds: ["evt_provider_preview"] },
+      requiredApprovalClass: "provider-byte-transfer"
+    });
+
+    const failed = await gateway.failTool({
+      toolRequestId: "toolreq_domain_stale_source",
+      category: "stale-source",
+      message: "Approved source hashes no longer match the current evidence state.",
+      retryable: false,
+      allowedActions: ["request a fresh approval for the current source hashes"]
+    });
+
+    expect(failed.type).toBe("agent.tool.failed");
+    expect(failed.payload.category).toBe("stale-source");
+  });
+
   it("does not let denial or failure overwrite terminal request state", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
