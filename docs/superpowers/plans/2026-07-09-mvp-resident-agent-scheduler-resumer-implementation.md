@@ -1238,7 +1238,7 @@ Observed:
 
 ```text
 Test Files  8 passed (8)
-Tests  139 passed (139)
+Tests  140 passed (140)
 ```
 
 - [x] **Step 3: Run full verification**
@@ -1263,7 +1263,7 @@ Observed:
 ```text
 typecheck passed
 Test Files  145 passed | 1 skipped (146)
-Tests  1414 passed | 1 skipped (1415)
+Tests  1415 passed | 1 skipped (1416)
 tests passed
 vite build succeeded
 factory-readiness passed

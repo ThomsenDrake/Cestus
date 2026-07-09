@@ -1138,7 +1138,7 @@ Recorded focused verification:
 ```text
 npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts packages/agent/test/runtime.test.ts packages/agent/test/scheduler-types.test.ts
 Test Files  8 passed (8)
-Tests  139 passed (139)
+Tests  140 passed (140)
 ```
 
 Recorded full verification:
@@ -1147,7 +1147,7 @@ Recorded full verification:
 npm run verify
 typecheck passed
 Test Files  145 passed | 1 skipped (146)
-Tests  1414 passed | 1 skipped (1415)
+Tests  1415 passed | 1 skipped (1416)
 tests passed
 vite build succeeded
 factory-readiness passed
