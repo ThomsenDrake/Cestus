@@ -44,4 +44,5 @@ export {
   specialistExecutionStatusFor,
   type AgentSpecialistRunType
 } from "./specialists.js";
+export * from "./specialist-workflows.js";
 export * from "./tool-gateway.js";
