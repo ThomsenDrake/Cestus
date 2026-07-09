@@ -1,5 +1,5 @@
 import type { AppendableKnowledgeEvent } from "../../ontology/src/contracts.js";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { type AppendOptions, type EventLedger, InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import { describe, expect, it } from "vitest";
 import {
   agentSchedulerWakeResultDtoSchema,
@@ -117,6 +117,33 @@ describe("agent scheduler wake", () => {
     expect(events.filter((event) => event.type === "agent.tool.execution.claimed")).toHaveLength(1);
     expect(events.filter((event) => event.type === "agent.tool.completed")).toHaveLength(1);
     expect(allItems.find((item) => item.state === "completed")?.eventIds).toHaveLength(2);
+  });
+
+  it("rethrows claim append failures when the request stream stays open and unclaimed", async () => {
+    const innerLedger = new InMemoryEventLedger();
+    const ledger = new ClaimAppendFailureLedger(innerLedger);
+    const preview = previewFor("toolreq_claim_append_failure");
+    await requestAndApprove(innerLedger, preview, "toolreq_claim_append_failure");
+    let executions = 0;
+    const scheduler = createAgentScheduler({
+      ledger,
+      actor: schedulerActor,
+      now: () => "2026-07-09T12:00:00.000Z",
+      descriptors: [fakeDescriptor(preview, {
+        async executeApproved() {
+          executions += 1;
+          throw new Error("claim append failures must not reach descriptor execution");
+        }
+      })]
+    });
+
+    await expect(scheduler.wake()).rejects.toThrow("synthetic claim append failure");
+
+    const events = await innerLedger.readAll();
+    expect(executions).toBe(0);
+    expect(events.filter((event) => event.type === "agent.tool.execution.claimed")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "agent.tool.completed")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "agent.tool.failed")).toHaveLength(0);
   });
 
   it("does not execute or reclaim an expired existing execution claim automatically", async () => {
@@ -736,5 +763,24 @@ class CoordinatedStreamReadLedger extends InMemoryEventLedger {
     }
 
     return await super.readStream(streamId);
+  }
+}
+
+class ClaimAppendFailureLedger implements EventLedger {
+  constructor(private readonly inner: InMemoryEventLedger) {}
+
+  async append(event: AppendableKnowledgeEvent, options?: AppendOptions) {
+    if (event.type === "agent.tool.execution.claimed") {
+      throw new Error("synthetic claim append failure");
+    }
+    return await this.inner.append(event, options);
+  }
+
+  readStream(streamId: string) {
+    return this.inner.readStream(streamId);
+  }
+
+  readAll() {
+    return this.inner.readAll();
   }
 }
