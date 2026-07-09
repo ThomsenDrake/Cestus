@@ -249,7 +249,41 @@ describe("agent UI adapter", () => {
     expect(status.diagnostics[0]?.severity).toBe("error");
     expect(JSON.stringify(status)).not.toMatch(/token=abc123|\/Volumes\/Cestus/);
   });
+
+  it("keeps static adapters safe for cockpit fixtures and mutation defaults", async () => {
+    const adapter = createStaticAgentAdapter(agentStatus());
+    const loadCockpit = requireStaticMethod(adapter, "loadCockpit");
+    const createTask = requireStaticMethod(adapter, "createTask");
+    const startRun = requireStaticMethod(adapter, "startRun");
+
+    await expect(loadCockpit()).resolves.toMatchObject({
+      schemaVersion: "agent-cockpit.v1"
+    });
+    await expect(createTask({
+      taskId: "task_static_adapter",
+      title: "Static adapter task",
+      priority: "normal"
+    })).rejects.toThrow("Static agent adapter cannot create tasks.");
+    await expect(startRun({
+      runId: "run_static_adapter",
+      taskId: "task_static_adapter",
+      runType: "evidence-triage",
+      scope: { kind: "workspace", refs: ["ws_case_001"] }
+    })).rejects.toThrow("Static agent adapter cannot start runs.");
+  });
 });
+
+function requireStaticMethod<T extends string>(
+  adapter: object,
+  methodName: T
+): (...args: readonly unknown[]) => Promise<unknown> {
+  const method = (adapter as Record<string, unknown>)[methodName];
+  if (typeof method !== "function") {
+    throw new Error(`Agent adapter does not expose ${methodName}.`);
+  }
+
+  return method.bind(adapter) as (...args: readonly unknown[]) => Promise<unknown>;
+}
 
 function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
   return {
