@@ -2,8 +2,15 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AgentWorkspace } from "../src/agent/AgentWorkspace.js";
-import { agentStatusFromJson } from "../src/agent/agent-adapter.js";
-import type { AgentApprovalCockpitDto, AgentStatusDto } from "../src/agent/agent-types.js";
+import {
+  agentCockpitFromJson,
+  agentStatusFromJson
+} from "../src/agent/agent-adapter.js";
+import type {
+  AgentApprovalCockpitDto,
+  AgentCockpitDto,
+  AgentStatusDto
+} from "../src/agent/agent-types.js";
 
 describe("AgentWorkspace", () => {
   it("renders resident status, providers, tasks, tools, memory, locks, and diagnostics", () => {
@@ -239,6 +246,27 @@ describe("AgentWorkspace", () => {
     expect(within(workspace).getByText("Review staging approval preview")).toBeInTheDocument();
     expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Refresh agent status"]);
     expect(screen.queryByRole("button", { name: /approve|execute|accept/i })).not.toBeInTheDocument();
+  });
+
+  it("renders the task composer ahead of the task list when cockpit state is present", () => {
+    render(
+      <AgentWorkspace
+        cockpit={agentCockpit()}
+        status={agentStatus()}
+        loadState="loaded"
+        onCreateTask={vi.fn()}
+        onStartRun={vi.fn()}
+        onRefresh={vi.fn()}
+      />
+    );
+
+    const composer = screen.getByRole("region", { name: "Give Cestus Agent a task" });
+    const tasks = screen.getByRole("region", { name: "Agent tasks" });
+    expect(within(composer).getByText("Safe handoff only. Route validation remains authoritative.")).toBeInTheDocument();
+    expect(within(composer).getByRole("button", { name: "Create task" })).toBeInTheDocument();
+    expect(within(composer).getByRole("button", { name: "Create task and start run" })).toBeInTheDocument();
+    expect(within(composer).getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+    expect(composer.compareDocumentPosition(tasks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("shows safe loading and error states", () => {
@@ -565,4 +593,50 @@ function approvalCockpit(): AgentApprovalCockpitDto {
       "accepted-graph-review"
     ]
   };
+}
+
+function agentCockpit(): AgentCockpitDto {
+  return agentCockpitFromJson({
+    schemaVersion: "agent-cockpit.v1",
+    generatedAt: "2026-07-09T02:00:00.000Z",
+    summary: {
+      activeTaskCount: 1,
+      activeRunCount: 1,
+      pendingApprovalCount: 1,
+      activeLockCount: 1,
+      mergeAfterScheduler: false
+    },
+    taskQueue: [{
+      taskId: "task_provider_review",
+      title: "Review provider approval",
+      priority: "normal",
+      status: "waiting-for-approval",
+      createdAt: "2026-07-07T21:00:00.000Z",
+      runId: "run_provider_review"
+    }],
+    runQueue: [{
+      runId: "run_provider_review",
+      taskId: "task_provider_review",
+      runType: "evidence-triage",
+      state: "running",
+      startedAt: "2026-07-07T21:00:10.000Z",
+      currentStepCount: 0,
+      modelInvocationCount: 0,
+      pendingApprovalCount: 1,
+      blockedReasonCount: 0
+    }],
+    needsNext: [],
+    memorySnippets: [],
+    forbiddenDirectEffects: [
+      "provider-byte-transfer",
+      "prr-send-followup",
+      "export-publication",
+      "destructive-repair",
+      "legal-escalation",
+      "lock-clearing",
+      "accepted-graph-review",
+      "legacy-raw-import",
+      "legacy-staging-execution"
+    ]
+  });
 }
