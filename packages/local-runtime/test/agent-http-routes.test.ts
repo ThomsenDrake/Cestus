@@ -254,6 +254,7 @@ describe("agent HTTP routes", () => {
     expect(sessionCookie).toBeDefined();
 
     const rejected = await handler({ method: "GET", url: "/api/agent/status" });
+    const rejectedCockpit = await handler({ method: "GET", url: "/api/agent/cockpit" });
     const accepted = await handler({
       method: "GET",
       url: "/api/agent/status",
@@ -261,13 +262,26 @@ describe("agent HTTP routes", () => {
         cookie: `${LOCAL_RUNTIME_SESSION_COOKIE_NAME}=${sessionCookie}`
       }
     });
+    const acceptedCockpit = await handler({
+      method: "GET",
+      url: "/api/agent/cockpit",
+      headers: {
+        cookie: `${LOCAL_RUNTIME_SESSION_COOKIE_NAME}=${sessionCookie}`
+      }
+    });
 
     expect(rejected.status).toBe(401);
+    expect(rejectedCockpit.status).toBe(401);
     expect(accepted.status).toBe(200);
+    expect(acceptedCockpit.status).toBe(200);
     expect(rejected.body).not.toContain(routeSessionSentinel());
+    expect(rejectedCockpit.body).not.toContain(routeSessionSentinel());
     expect(accepted.body).not.toContain(routeSessionSentinel());
+    expect(acceptedCockpit.body).not.toContain(routeSessionSentinel());
     expect(isAgentSecretSafeText(rejected.body)).toBe(true);
+    expect(isAgentSecretSafeText(rejectedCockpit.body)).toBe(true);
     expectAgentStatusBodyToHideRuntimeMaterial(accepted.body);
+    expectAgentStatusBodyToHideRuntimeMaterial(acceptedCockpit.body);
   });
 });
 
