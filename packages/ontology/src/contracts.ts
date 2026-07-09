@@ -463,6 +463,22 @@ const agentToolApprovedPayloadSchema = z.object({
   approvedAt: z.string().datetime().optional()
 }).strict();
 
+const agentToolExecutionClaimedPayloadSchema = z.object({
+  toolRequestId: agentToolRequestIdSchema,
+  claimedBy: actorIdSchema,
+  claimedAt: z.string().datetime(),
+  approvedPreviewHash: agentArtifactHashSchema,
+  leaseExpiresAt: z.string().datetime()
+}).strict().superRefine((claim, ctx) => {
+  if (Date.parse(claim.leaseExpiresAt) <= Date.parse(claim.claimedAt)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["leaseExpiresAt"],
+      message: "leaseExpiresAt must be after claimedAt"
+    });
+  }
+});
+
 const agentToolDeniedPayloadSchema = z.object({
   toolRequestId: agentToolRequestIdSchema,
   deniedBy: actorIdSchema,
@@ -1137,6 +1153,7 @@ export const payloadSchemas = {
   "agent.model-invocation.failed": agentModelInvocationFailedPayloadSchema,
   "agent.tool.requested": agentToolRequestedPayloadSchema,
   "agent.tool.approved": agentToolApprovedPayloadSchema,
+  "agent.tool.execution.claimed": agentToolExecutionClaimedPayloadSchema,
   "agent.tool.denied": agentToolDeniedPayloadSchema,
   "agent.tool.completed": agentToolCompletedPayloadSchema,
   "agent.tool.failed": agentToolFailedPayloadSchema,
@@ -1379,6 +1396,13 @@ export const eventContracts = {
     description: "Records human approval for a specific resident-agent tool request preview.",
     agentGuidance: "Required provenance fields: toolRequestId, approvedBy, approvedPreviewHash, approvalClass, rationale, and human context actor. Forbidden autonomous effects: an agent actor must not approve its own tools or broaden approval beyond the bound preview hash.",
     invariants: ["context actor must be human", "toolRequestId must route the stream", "approvedPreviewHash must match the reviewed preview"]
+  },
+  "agent.tool.execution.claimed": {
+    type: "agent.tool.execution.claimed",
+    version: 1,
+    description: "Records a scheduler execution claim for an approved tool request before descriptor side effects run.",
+    agentGuidance: "Append this through the tool gateway using expected stream sequence semantics after consume-time validation and before executeApproved. The lease lets a later wake retry if the claiming process dies before terminal completion or failure.",
+    invariants: ["toolRequestId must route the stream", "approvedPreviewHash must match the approved preview", "leaseExpiresAt must be after claimedAt"]
   },
   "agent.tool.denied": {
     type: "agent.tool.denied",

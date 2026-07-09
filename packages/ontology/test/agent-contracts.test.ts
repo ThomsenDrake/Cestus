@@ -269,6 +269,48 @@ describe("resident agent event contracts", () => {
     ).toBe(false);
   });
 
+  it("validates tool execution claim events for scheduler reservations", () => {
+    const claimPayload = {
+      toolRequestId: "toolreq_001",
+      claimedBy: "actor_agent_scheduler",
+      claimedAt: "2026-07-07T18:09:00.000Z",
+      approvedPreviewHash: hash222,
+      leaseExpiresAt: "2026-07-07T18:14:00.000Z"
+    };
+
+    const claimEvent = agentEvent(
+      "evt_agent_tool_execution_claimed",
+      "agent.tool.execution.claimed",
+      "agent_tool_request_toolreq_001",
+      claimPayload
+    );
+
+    expect(validateKnowledgeEvent(claimEvent).success).toBe(true);
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_tool_execution_claimed_expired",
+          "agent.tool.execution.claimed",
+          "agent_tool_request_toolreq_001",
+          { ...claimPayload, leaseExpiresAt: "2026-07-07T18:09:00.000Z" }
+        )
+      ).success
+    ).toBe(false);
+    expect(
+      validateKnowledgeEvent({ ...claimEvent, streamId: "wrong_stream" }).success
+    ).toBe(false);
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_tool_execution_claimed_extra",
+          "agent.tool.execution.claimed",
+          "agent_tool_request_toolreq_001",
+          { ...claimPayload, unsafe: true }
+        )
+      ).success
+    ).toBe(false);
+  });
+
   it.each([
     {
       name: "identity update",

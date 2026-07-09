@@ -1,5 +1,6 @@
 import {
-  createAgentRuntime
+  createAgentRuntime,
+  type AgentApprovedToolExecutorDescriptor
 } from "../../agent/src/index.js";
 import type { ActorRef } from "../../ontology/src/contracts.js";
 import { createLocalAgentProviderConfiguration } from "./agent-provider-readiness.js";
@@ -9,6 +10,7 @@ export interface LocalAgentRuntimeFactoryInput {
   readonly handle: LocalRuntimeHandle;
   readonly actor: ActorRef;
   readonly now: () => string;
+  readonly approvedToolExecutors?: readonly AgentApprovedToolExecutorDescriptor[];
 }
 
 export type LocalAgentRuntimeFactory = (
@@ -25,6 +27,7 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
     ledger: input.handle.ledger,
     actor: input.actor,
     now: input.now,
-    providers: configuredProviders.providers
+    providers: configuredProviders.providers,
+    approvedToolExecutors: input.approvedToolExecutors ?? []
   });
 };
