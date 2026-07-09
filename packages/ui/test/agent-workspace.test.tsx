@@ -16,6 +16,7 @@ describe("AgentWorkspace", () => {
   it("renders resident status, providers, tasks, tools, memory, locks, and diagnostics", () => {
     render(
       <AgentWorkspace
+        cockpit={agentCockpit()}
         status={agentStatus()}
         approvalCockpit={approvalCockpit()}
         decisionState="idle"
@@ -27,16 +28,19 @@ describe("AgentWorkspace", () => {
     );
 
     const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
+    const runCockpit = within(workspace).getByRole("region", { name: "Agent run cockpit" });
+    const approvalCockpitRegion = within(workspace).getByRole("region", { name: "Agent approval cockpit" });
     expect(within(workspace).getByRole("heading", { name: "Agent" })).toBeInTheDocument();
     expect(within(workspace).getByText("Cestus Agent")).toBeInTheDocument();
+    expect(runCockpit).toBeInTheDocument();
     expect(within(workspace).getAllByText("1 pending approval").length).toBeGreaterThan(0);
     expect(within(workspace).getAllByText("1 active lock").length).toBeGreaterThan(0);
     expect(within(workspace).getByText("Fake Local Model Provider")).toBeInTheDocument();
     expect(within(workspace).getByText("local-engine")).toBeInTheDocument();
     expect(within(workspace).getByText("fake-local")).toBeInTheDocument();
     expect(within(workspace).getByText("local-no-secret")).toBeInTheDocument();
-    expect(within(workspace).getByText("Review provider approval")).toBeInTheDocument();
-    expect(within(workspace).getByText("evidence-triage")).toBeInTheDocument();
+    expect(within(workspace).getAllByText("Review provider approval").length).toBeGreaterThan(0);
+    expect(within(workspace).getAllByText("evidence-triage").length).toBeGreaterThan(0);
     expect(within(workspace).getByText("evt_task_created")).toBeInTheDocument();
     expect(within(workspace).getByText("sha256:2222222222222222222222222222222222222222222222222222222222222222")).toBeInTheDocument();
     expect(within(workspace).getAllByText("external-byte-transfer").length).toBeGreaterThan(0);
@@ -44,6 +48,7 @@ describe("AgentWorkspace", () => {
     expect(within(workspace).getByText("requested")).toBeInTheDocument();
     expect(within(workspace).getAllByText("1 memory item").length).toBeGreaterThan(0);
     expect(within(workspace).getByText("Projection lag detected.")).toBeInTheDocument();
+    expect(runCockpit.compareDocumentPosition(approvalCockpitRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("allows refresh plus approval decisions while keeping direct execution controls absent", () => {
