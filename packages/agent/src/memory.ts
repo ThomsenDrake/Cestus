@@ -113,11 +113,6 @@ export function buildAgentMemorySummaryContextPack(input: BuildAgentMemorySummar
   const activeWithRealProvenance = active.filter(
     (memory) => memory.sourceEventIds.length > 0 || memory.artifactHashes.length > 0
   );
-  if (activeWithRealProvenance.length === 0) {
-    throw new Error(
-      "agent-memory-summary.v1 requires active memory with real provenance from sourceEventIds or artifactHashes"
-    );
-  }
   const payload = {
     truthBoundary: memoryTruthBoundary(),
     items: activeWithRealProvenance.map<AgentMemorySummaryItemDto>((memory) => ({
@@ -133,7 +128,11 @@ export function buildAgentMemorySummaryContextPack(input: BuildAgentMemorySummar
   };
   const sourceEventIds = unique(activeWithRealProvenance.flatMap((memory) => memory.sourceEventIds));
   const artifactHashes = unique(activeWithRealProvenance.flatMap((memory) => memory.artifactHashes));
-  const provenanceRefs = unique(activeWithRealProvenance.flatMap((memory) => [...memory.eventIds, ...memory.sourceEventIds, ...memory.artifactHashes]));
+  const provenanceRefs = unique(
+    activeWithRealProvenance.length === 0
+      ? ["agent.projection.memory.empty"]
+      : activeWithRealProvenance.flatMap((memory) => [...memory.eventIds, ...memory.sourceEventIds, ...memory.artifactHashes])
+  );
 
   return buildContextPackRef({
     contextPackId: "agent-memory-summary.v1",

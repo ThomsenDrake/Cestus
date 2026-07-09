@@ -360,7 +360,7 @@ describe("AgentWorkspace", () => {
     expect(within(memory).getByText("working-memory-not-ontology-truth")).toBeInTheDocument();
     expect(within(memory).getByText("workspace")).toBeInTheDocument();
     expect(within(memory).getByText("operator-preference")).toBeInTheDocument();
-    expect(within(memory).getByText("evt_memory_recorded")).toBeInTheDocument();
+    expect(within(memory).getAllByText("evt_memory_recorded").length).toBeGreaterThan(0);
     expect(within(memory).getByLabelText("Memory scope")).toBeInTheDocument();
     expect(within(memory).getByLabelText("Memory state")).toBeInTheDocument();
 
@@ -382,20 +382,32 @@ describe("AgentWorkspace", () => {
     const secondRecord = onRecordMemory.mock.calls[1]?.[0];
     expect(firstRecord?.memoryId).not.toBe(secondRecord?.memoryId);
 
-    fireEvent.change(within(memory).getAllByLabelText("Superseding summary")[0]!, {
+    fireEvent.change(within(memory).getByLabelText("Superseding summary mem_workspace_preference"), {
       target: { value: "Use compact summaries with source and artifact refs." }
     });
-    fireEvent.change(within(memory).getAllByLabelText("Superseding rationale")[0]!, {
+    fireEvent.change(within(memory).getByLabelText("Superseding rationale mem_workspace_preference"), {
       target: { value: "User asked for more provenance detail." }
     });
-    fireEvent.click(within(memory).getAllByRole("button", { name: "Supersede memory" })[0]!);
-    fireEvent.click(within(memory).getAllByRole("button", { name: "Supersede memory" })[0]!);
+    fireEvent.change(within(memory).getByLabelText("Superseding source event IDs mem_workspace_preference"), {
+      target: { value: "evt_memory_review_update" }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding artifact hashes mem_workspace_preference"), {
+      target: { value: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Supersede memory mem_workspace_preference" }));
+    fireEvent.click(within(memory).getByRole("button", { name: "Supersede memory mem_workspace_preference" }));
     expect(onSupersedeMemory).toHaveBeenCalledTimes(2);
     const firstSupersede = onSupersedeMemory.mock.calls[0]?.[0];
     const secondSupersede = onSupersedeMemory.mock.calls[1]?.[0];
     expect(firstSupersede?.supersededByMemoryId).not.toBe(secondSupersede?.supersededByMemoryId);
+    expect(firstSupersede).toMatchObject({
+      summary: "Use compact summaries with source and artifact refs.",
+      rationale: "User asked for more provenance detail.",
+      sourceEventIds: ["evt_memory_review_update"],
+      artifactHashes: ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]
+    });
 
-    fireEvent.click(within(memory).getAllByRole("button", { name: "Retract memory" })[0]!);
+    fireEvent.click(within(memory).getByRole("button", { name: "Retract memory mem_workspace_preference" }));
     expect(onRetractMemory).toHaveBeenCalled();
 
     for (const forbiddenName of [/send prr/i, /export/i, /clear lock/i, /accepted graph/i, /provider transfer/i, /repair/i]) {
@@ -422,6 +434,49 @@ describe("AgentWorkspace", () => {
     expect(onRecordMemory).not.toHaveBeenCalled();
     expect(within(memory).getByText("Enter a memory summary before recording.")).toBeInTheDocument();
     expect(within(memory).getByText("Add at least one source event ID or artifact hash before recording memory.")).toBeInTheDocument();
+  });
+
+  it("blocks supersede submission without explicit replacement provenance", () => {
+    const onSupersedeMemory = vi.fn();
+
+    render(
+      <AgentWorkspace
+        status={agentStatus()}
+        memoryList={agentMemoryList({ filters: { scope: "all", state: "all" } })}
+        loadState="loaded"
+        onRefresh={vi.fn()}
+        onSupersedeMemory={onSupersedeMemory}
+      />
+    );
+
+    const memory = screen.getByRole("region", { name: "Agent working memory" });
+    fireEvent.change(within(memory).getByLabelText("Superseding summary mem_workspace_preference"), {
+      target: { value: "Updated summary." }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding rationale mem_workspace_preference"), {
+      target: { value: "Updated rationale." }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Supersede memory mem_workspace_preference" }));
+
+    expect(onSupersedeMemory).not.toHaveBeenCalled();
+    expect(within(memory).getByText("Add replacement source event IDs or artifact hashes before superseding memory.")).toBeInTheDocument();
+  });
+
+  it("hides correction controls for inactive memory rows", () => {
+    render(
+      <AgentWorkspace
+        status={agentStatus()}
+        memoryList={agentMemoryList({ filters: { scope: "all", state: "all" } })}
+        loadState="loaded"
+        onRefresh={vi.fn()}
+      />
+    );
+
+    const memory = screen.getByRole("region", { name: "Agent working memory" });
+    expect(within(memory).getByRole("button", { name: "Supersede memory mem_workspace_preference" })).toBeInTheDocument();
+    expect(within(memory).getByRole("button", { name: "Retract memory mem_workspace_preference" })).toBeInTheDocument();
+    expect(within(memory).queryByRole("button", { name: "Supersede memory mem_provider_note" })).not.toBeInTheDocument();
+    expect(within(memory).queryByRole("button", { name: "Retract memory mem_provider_note" })).not.toBeInTheDocument();
   });
 });
 
