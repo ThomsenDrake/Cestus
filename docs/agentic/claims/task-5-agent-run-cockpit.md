@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/50b6/Cestus`
 
 Claimed at: `2026-07-09T13:31:58Z`
 
-Status: `claimed`
+Status: `in-progress`
 
 Owned files:
 
@@ -39,3 +39,4 @@ Stop conditions:
 Implementation log:
 
 - Claim commit: pending
+- `2026-07-09T13:31:58Z`: Status moved to `in-progress` before writing failing run cockpit tests.
