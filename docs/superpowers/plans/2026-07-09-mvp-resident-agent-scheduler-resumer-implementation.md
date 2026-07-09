@@ -459,7 +459,7 @@ git commit -m "feat: add agent scheduler contracts"
 - Consumes: `buildAgentProjection(events)`, `createAgentToolGateway(input)`, `hashAgentToolPreview(preview)`, `AgentApprovedToolExecutorDescriptor`.
 - Produces: `createAgentScheduler(input).wake()`, one-pass `AgentSchedulerWakeResultDto`.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create `docs/agentic/claims/task-2-agent-scheduler-wake.md`:
 
