@@ -94,17 +94,24 @@ export interface CompleteAgentToolInput {
 
 export type AgentToolFailureCategory =
   | "provider-unavailable"
+  | "provider-rate-limited"
   | "credential-missing"
   | "credential-revoked"
   | "approval-required"
+  | "approval-denied"
   | "approval-stale"
   | "permission-denied"
   | "secret-detected"
-  | "legal-lock-active"
+  | "lock-active"
   | "projection-lag"
+  | "context-budget-exceeded"
+  | "missing-provenance"
   | "provenance-missing"
   | "model-output-invalid"
-  | "external-effect-failed";
+  | "domain-gate-failed"
+  | "stale-source"
+  | "external-effect-failed"
+  | "data-loss-risk";
 
 export interface FailAgentToolInput {
   readonly toolRequestId: string;

@@ -311,6 +311,29 @@ describe("resident agent event contracts", () => {
     ).toBe(false);
   });
 
+  it.each(["lock-active", "stale-source"] as const)(
+    "accepts extended tool failure category %s",
+    (category) => {
+      expect(
+        validateKnowledgeEvent(
+          agentEvent(
+            `evt_agent_tool_failed_${category.replaceAll("-", "_")}`,
+            "agent.tool.failed",
+            "agent_tool_request_toolreq_failure_category",
+            {
+              toolRequestId: "toolreq_failure_category",
+              failedAt: "2026-07-07T18:11:00.000Z",
+              category,
+              message: "Execution stopped behind an explicit domain gate.",
+              retryable: false,
+              allowedActions: ["request a fresh approval after the blocking state changes"]
+            }
+          )
+        ).success
+      ).toBe(true);
+    }
+  );
+
   it.each([
     {
       name: "identity update",
