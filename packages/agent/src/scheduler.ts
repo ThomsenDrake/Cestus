@@ -80,14 +80,7 @@ export function createAgentScheduler(input: CreateAgentSchedulerInput) {
       for (const request of candidates) {
         const descriptor = descriptorRegistry.get(descriptorKey(request.toolId, request.toolVersion));
         const item = descriptor === undefined
-          ? await failRequest(
-            gateway,
-            request,
-            "permission-denied",
-            "Approved tool descriptor is unavailable.",
-            false,
-            ["install or register the approved tool descriptor"]
-          )
+          ? await handleDescriptorlessRequest(input.ledger, gateway, request)
           : await consumeApprovedRequest(input.ledger, gateway, input.actor.id, input.now, descriptor, request);
         items.push(item);
         eventIds.push(...item.eventIds);
@@ -110,6 +103,35 @@ export function createAgentScheduler(input: CreateAgentSchedulerInput) {
       });
     }
   });
+}
+
+async function handleDescriptorlessRequest(
+  ledger: EventLedger,
+  gateway: AgentToolGateway,
+  request: ProjectedAgentToolRequest
+): Promise<AgentSchedulerItemSummaryDto> {
+  const streamState = await readToolRequestStreamState(ledger, request.toolRequestId);
+  if (
+    streamState?.executionClaim !== undefined &&
+    streamState.completed === undefined &&
+    streamState.denial === undefined &&
+    streamState.failure === undefined
+  ) {
+    return notReadyItem(
+      request,
+      "Tool execution is already claimed and requires inspection before retry.",
+      "execution-claimed"
+    );
+  }
+
+  return await failRequest(
+    gateway,
+    request,
+    "permission-denied",
+    "Approved tool descriptor is unavailable.",
+    false,
+    ["install or register the approved tool descriptor"]
+  );
 }
 
 function descriptorKey(toolId: string, toolVersion: string): string {
