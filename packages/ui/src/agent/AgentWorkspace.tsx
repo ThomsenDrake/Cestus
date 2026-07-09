@@ -1,7 +1,10 @@
 import type {
   AgentApprovalCockpitDto,
+  AgentCockpitDto,
   AgentStatusDto,
-  OntologyBootstrapRouteDto
+  CreateAgentTaskInput,
+  OntologyBootstrapRouteDto,
+  StartAgentRunInput
 } from "./agent-types.js";
 import { providerSetupCardsFromReadiness } from "./provider-setup-cards.js";
 import type {
@@ -9,8 +12,10 @@ import type {
   DenyToolRequestInput
 } from "./agent-adapter.js";
 import { AgentApprovalCockpit } from "./AgentApprovalCockpit.js";
+import { AgentTaskComposer } from "./AgentTaskComposer.js";
 
 interface AgentWorkspaceProps {
+  readonly cockpit?: AgentCockpitDto | undefined;
   readonly status: AgentStatusDto | undefined;
   readonly approvalCockpit?: AgentApprovalCockpitDto | undefined;
   readonly decisionState?: "idle" | "submitting" | "error" | undefined;
@@ -18,17 +23,22 @@ interface AgentWorkspaceProps {
   readonly loadState: "idle" | "loading" | "loaded" | "error";
   readonly loadError?: string | undefined;
   readonly onRefresh?: (() => void) | undefined;
+  readonly onCreateTask?: ((input: CreateAgentTaskInput) => Promise<unknown>) | undefined;
+  readonly onStartRun?: ((input: StartAgentRunInput) => Promise<unknown>) | undefined;
   readonly onApproveToolRequest?: ((input: ApproveToolRequestInput) => void) | undefined;
   readonly onDenyToolRequest?: ((input: DenyToolRequestInput) => void) | undefined;
 }
 
 export function AgentWorkspace({
+  cockpit,
   status,
   approvalCockpit,
   decisionState = "idle",
   ontologyBootstrapRoutes = [],
   loadState,
   onRefresh,
+  onCreateTask,
+  onStartRun,
   onApproveToolRequest,
   onDenyToolRequest
 }: AgentWorkspaceProps) {
@@ -87,6 +97,16 @@ export function AgentWorkspace({
 
       {status === undefined ? null : (
         <>
+          {cockpit === undefined ? null : (
+            <AgentTaskComposer
+              cockpit={cockpit}
+              status={status}
+              onCreateTask={onCreateTask}
+              onStartRun={onStartRun}
+              onRefresh={onRefresh}
+            />
+          )}
+
           <div className="grid gap-3 md:grid-cols-5">
             <SummaryMetric label="Pending" value={countLabel(status.pendingApprovalCount, "pending approval")} />
             <SummaryMetric label="Locks" value={countLabel(status.activeLockCount, "active lock")} />
