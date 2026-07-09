@@ -4,6 +4,7 @@ export * from "./approval-cockpit.js";
 export * from "./approval-queue.js";
 export * from "./execution-loop.js";
 export * from "./adapters/legacy-staging.js";
+export * from "./adapters/accepted-graph-review.js";
 export * from "./domain-execution-descriptors.js";
 export * from "./domain-execution-dispatcher.js";
 export * from "./execution-types.js";
