@@ -349,7 +349,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       if (identity === undefined || previous === undefined || previous.state !== "active") {
         return failedResult(agentDiagnostic("agent", "Active memory item was not found.", ["refresh memory before superseding"]));
       }
-      if (rejectsOperatorPreferenceMemory(input, command.memoryKind)) {
+      if (rejectsOperatorPreferenceCorrection(input, previous.memoryKind)) {
         return failedResult(
           agentDiagnostic("agent", "Memory could not be superseded safely.", ["refresh memory and review provenance"])
         );
@@ -403,6 +403,11 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       const previous = projection.memoryHistory.get(command.memoryId);
       if (previous === undefined || previous.state !== "active") {
         return failedResult(agentDiagnostic("agent", "Active memory item was not found.", ["refresh memory before retracting"]));
+      }
+      if (rejectsOperatorPreferenceCorrection(input, previous.memoryKind)) {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be retracted safely.", ["refresh memory and review rationale"])
+        );
       }
 
       try {
@@ -943,6 +948,13 @@ function rejectsOperatorPreferenceMemory(
   memoryKind: AgentMemoryKind | undefined
 ): boolean {
   return memoryKind === "operator-preference" && input.actor.kind !== "human";
+}
+
+function rejectsOperatorPreferenceCorrection(
+  input: CreateAgentRuntimeInput,
+  memoryKind: AgentMemoryKind
+): boolean {
+  return rejectsOperatorPreferenceMemory(input, memoryKind);
 }
 
 async function appendCompensatingMemoryRetraction(

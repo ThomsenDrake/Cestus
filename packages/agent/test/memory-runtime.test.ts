@@ -111,6 +111,72 @@ describe("agent runtime memory", () => {
     expect(list.items.find((item) => item.memoryId === "mem_new_style")?.state).toBe("retracted");
   });
 
+  it("rejects agent supersession of a human-created operator preference without appending mutation events", async () => {
+    const ledger = new InMemoryEventLedger();
+    const humanRuntime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await humanRuntime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await humanRuntime.recordMemory({
+      memoryId: "mem_operator_preference",
+      scope: "workspace",
+      memoryKind: "operator-preference",
+      summary: "Case owner prefers terse summaries.",
+      sourceEventIds: ["evt_agent_task_created"],
+      confidence: 0.9
+    });
+
+    const runtime = createAgentRuntime({ ledger, actor: agentActor, now });
+    const beforeEvents = await ledger.readAll();
+
+    const result = await runtime.supersedeMemory({
+      memoryId: "mem_operator_preference",
+      supersededByMemoryId: "mem_agent_attempt",
+      scope: "workspace",
+      memoryKind: "agent-observation",
+      summary: "Agent tried to replace the operator preference.",
+      sourceEventIds: ["evt_agent_task_updated"],
+      confidence: 0.7,
+      rationale: "Agent guessed at an operator preference."
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { category: "agent" } });
+    expect(await ledger.readAll()).toEqual(beforeEvents);
+    expect((await runtime.listMemory({ state: "all" })).items).toHaveLength(1);
+    expect((await runtime.listMemory({ state: "all" })).items[0]).toMatchObject({
+      memoryId: "mem_operator_preference",
+      state: "active"
+    });
+  });
+
+  it("rejects agent retraction of a human-created operator preference without appending mutation events", async () => {
+    const ledger = new InMemoryEventLedger();
+    const humanRuntime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await humanRuntime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await humanRuntime.recordMemory({
+      memoryId: "mem_operator_preference",
+      scope: "workspace",
+      memoryKind: "operator-preference",
+      summary: "Case owner prefers terse summaries.",
+      sourceEventIds: ["evt_agent_task_created"],
+      confidence: 0.9
+    });
+
+    const runtime = createAgentRuntime({ ledger, actor: agentActor, now });
+    const beforeEvents = await ledger.readAll();
+
+    const result = await runtime.retractMemory({
+      memoryId: "mem_operator_preference",
+      rationale: "Agent tried to remove the operator preference."
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { category: "agent" } });
+    expect(await ledger.readAll()).toEqual(beforeEvents);
+    expect((await runtime.listMemory({ state: "all" })).items).toHaveLength(1);
+    expect((await runtime.listMemory({ state: "all" })).items[0]).toMatchObject({
+      memoryId: "mem_operator_preference",
+      state: "active"
+    });
+  });
+
   it("retracts the replacement memory if supersession fails after the replacement append", async () => {
     const ledger = new FailOriginalMemorySupersessionLedger("mem_original_context");
     const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
