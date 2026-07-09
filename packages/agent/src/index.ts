@@ -1,4 +1,5 @@
 export * from "./context-packs.js";
+export * from "./memory.js";
 export * from "./prompt-artifacts.js";
 export * from "./approval-cockpit.js";
 export * from "./approval-queue.js";

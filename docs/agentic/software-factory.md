@@ -1311,3 +1311,35 @@ This registry changes discovery only. Provider byte transfer, PRR send and
 follow-up, accepted graph review, export/report generation, destructive repair,
 and legacy staging remain executable only through their existing scheduler,
 approval, provenance, lock, and authoritative domain-service boundaries.
+## Resident Agent Memory Context Surface Readiness
+
+The resident-agent memory context surface was implemented from the approved resident-agent designs and the memory/context plan on 2026-07-09.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md`
+- `docs/superpowers/specs/2026-07-07-resident-agent-execution-approval-design.md`
+- `docs/superpowers/plans/2026-07-09-resident-agent-memory-context-surface-implementation.md`
+
+Recorded focused verification:
+
+```text
+npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/memory.test.ts packages/agent/test/memory-runtime.test.ts packages/agent/test/context-packs.test.ts packages/local-runtime/test/agent-memory-routes.test.ts packages/ui/test/agent-memory-adapter.test.ts packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx
+Test Files  8 passed (8)
+Tests  96 passed (96)
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  147 passed | 1 skipped (148)
+Tests  1403 passed | 1 skipped (1404)
+tests passed
+vite v8.1.3 building client environment for production...
+✓ built in 426ms
+factory-readiness passed
+```
+
+Memory is now visible as resident-agent working memory with active, superseded, and retracted states, source event IDs or artifact hashes, scope, confidence, expiry when present, safe summaries, human correction routes, and `agent-memory-summary.v1` context packs. The slice keeps memory non-authoritative: memory can guide future actions, but any factual graph effect still has to become evidence-backed proposed assertion or reasoning and pass normal review. The surface does not accept assertions, resolve entities, send PRRs, export material, clear locks, execute provider byte transfer, run repair, or mutate old source trees.

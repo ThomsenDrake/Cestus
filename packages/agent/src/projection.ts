@@ -4,6 +4,7 @@ import type {
   ProjectedAgentContextPackRef,
   ProjectedAgentLock,
   ProjectedAgentMemory,
+  ProjectedAgentMemoryHistoryEntry,
   ProjectedAgentModelInvocation,
   ProjectedAgentPermission,
   ProjectedAgentPromptArtifactOmission,
@@ -428,13 +429,23 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
             memoryId: event.payload.memoryId,
             residentAgentId: event.payload.residentAgentId,
             scope: event.payload.scope,
+            memoryKind: event.payload.memoryKind ?? "agent-observation",
             summary: event.payload.summary,
+            recordedBy: event.context.actor.id,
+            recordedByKind: event.context.actor.kind,
             sourceEventIds: freezeArray(event.payload.sourceEventIds ?? []),
             artifactHashes: freezeArray(event.payload.artifactHashes ?? []),
             confidence: event.payload.confidence,
             createdAt: event.payload.createdAt,
             expiresAt: event.payload.expiresAt,
             state: "active",
+            memoryHistoryEntries: freezeArray([
+              freezeProjected({
+                eventId: event.id,
+                eventType: event.type,
+                occurredAt: event.payload.createdAt
+              })
+            ]),
             ...nextProvenance(undefined, event)
           })
         );
@@ -452,6 +463,11 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
               supersededBy: event.payload.supersededBy,
               supersededAt: event.payload.supersededAt ?? event.context.occurredAt,
               supersessionRationale: event.payload.rationale,
+              memoryHistoryEntries: appendMemoryHistoryEntry(previous.memoryHistoryEntries, {
+                eventId: event.id,
+                eventType: event.type,
+                occurredAt: event.payload.supersededAt ?? event.context.occurredAt
+              }),
               ...nextProvenance(previous, event)
             })
           );
@@ -470,6 +486,11 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
               retractedBy: event.payload.retractedBy,
               retractedAt: event.payload.retractedAt ?? event.context.occurredAt,
               retractionRationale: event.payload.rationale,
+              memoryHistoryEntries: appendMemoryHistoryEntry(previous.memoryHistoryEntries, {
+                eventId: event.id,
+                eventType: event.type,
+                occurredAt: event.payload.retractedAt ?? event.context.occurredAt
+              }),
               ...nextProvenance(previous, event)
             })
           );
@@ -708,6 +729,13 @@ function nextProvenance(
 interface ProjectedProvenance {
   readonly eventIds: readonly string[];
   readonly causationIds: readonly string[];
+}
+
+function appendMemoryHistoryEntry(
+  history: readonly ProjectedAgentMemoryHistoryEntry[],
+  entry: ProjectedAgentMemoryHistoryEntry
+): readonly ProjectedAgentMemoryHistoryEntry[] {
+  return freezeArray([...history, freezeProjected(entry)]);
 }
 
 function appendOptionalValue(values: readonly string[], value: string | undefined): readonly string[] {

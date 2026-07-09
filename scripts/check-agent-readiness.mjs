@@ -56,7 +56,8 @@ const requiredFiles = [
   "docs/superpowers/plans/2026-07-09-resident-agent-domain-execution-adapters-implementation.md",
   "docs/agentic/claims/task-9-resident-agent-domain-adapter-registry.md",
   "packages/agent/src/domain-execution-adapter-registry.ts",
-  "packages/agent/test/domain-execution-adapter-registry.test.ts"
+  "packages/agent/test/domain-execution-adapter-registry.test.ts",
+  "docs/superpowers/plans/2026-07-09-resident-agent-memory-context-surface-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",

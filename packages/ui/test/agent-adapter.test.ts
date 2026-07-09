@@ -138,12 +138,22 @@ describe("agent UI adapter", () => {
           memoryId: "mem_provider_secret",
           residentAgentId: "agent_default",
           scope: "provider",
+          memoryKind: "provider-note",
           summary: "Do not remember sk-live-memory, sk_live_memory, ghp_memory, OPENAI_API_KEY, DATABASE_PASSWORD, or GOOGLE_APPLICATION_CREDENTIALS.",
+          recordedBy: "actor_cestus_agent",
+          recordedByKind: "agent",
           sourceEventIds: ["evt_memory_secret"],
           artifactHashes: [],
           confidence: 0.8,
           createdAt: "2026-07-07T21:02:00.000Z",
           state: "active",
+          memoryHistoryEntries: [
+            {
+              eventId: "evt_memory_recorded",
+              eventType: "agent.memory.recorded",
+              occurredAt: "2026-07-07T21:02:00.000Z"
+            }
+          ],
           eventIds: ["evt_memory_recorded"],
           causationIds: []
         }

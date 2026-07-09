@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateKnowledgeEvent } from "../src/contracts.js";
+import { eventContracts, validateKnowledgeEvent } from "../src/contracts.js";
 
 const context = {
   actor: { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" },
@@ -227,6 +227,53 @@ describe("resident agent event contracts", () => {
           { ...providerTransferRequest, requiredApprovalClass: "none" }
         )
       ).success
+    ).toBe(false);
+  });
+
+  it("records memory kind while requiring provenance and non-authoritative guidance", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_agent_memory_recorded_operator_pref",
+      type: "agent.memory.recorded",
+      version: 1,
+      streamId: "agent_memory_mem_operator_preference",
+      sequence: 1,
+      context,
+      payload: {
+        memoryId: "mem_operator_preference",
+        residentAgentId: "agent_default",
+        scope: "workspace",
+        memoryKind: "operator-preference",
+        summary: "Case owner prefers concise PRR draft summaries.",
+        sourceEventIds: ["evt_agent_task_created"],
+        confidence: 0.9,
+        createdAt: "2026-07-09T12:00:00.000Z"
+      }
+    });
+
+    expect(result.success).toBe(true);
+    expect(eventContracts["agent.memory.recorded"].agentGuidance).toMatch(/not accepted graph state/i);
+    expect(eventContracts["agent.memory.recorded"].agentGuidance).toMatch(/forbidden autonomous effects/i);
+  });
+
+  it("rejects memory records without source events or artifact hashes", () => {
+    expect(
+      validateKnowledgeEvent({
+        id: "evt_agent_memory_recorded_unproven",
+        type: "agent.memory.recorded",
+        version: 1,
+        streamId: "agent_memory_mem_unproven",
+        sequence: 1,
+        context,
+        payload: {
+          memoryId: "mem_unproven",
+          residentAgentId: "agent_default",
+          scope: "investigation",
+          memoryKind: "agent-observation",
+          summary: "Agency X is connected to Vendor Y.",
+          confidence: 0.7,
+          createdAt: "2026-07-09T12:00:00.000Z"
+        }
+      }).success
     ).toBe(false);
   });
 
