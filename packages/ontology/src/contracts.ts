@@ -235,6 +235,7 @@ const agentFailureCategorySchema = z.enum([
   "approval-stale",
   "permission-denied",
   "secret-detected",
+  "legal-lock-active",
   "lock-active",
   "projection-lag",
   "context-budget-exceeded",

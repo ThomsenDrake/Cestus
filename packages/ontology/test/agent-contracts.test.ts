@@ -28,6 +28,7 @@ const adapterFailureCategories = [
   "model-output-invalid",
   "secret-detected",
   "permission-denied",
+  "legal-lock-active",
   "lock-active",
   "projection-lag",
   "context-budget-exceeded",
