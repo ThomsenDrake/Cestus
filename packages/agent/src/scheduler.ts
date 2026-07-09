@@ -254,6 +254,21 @@ async function consumeApprovedRequest(
     );
   }
 
+  if (
+    !stringArraysEqual(previewResult.sourceEventIds, request.sourceEventIds) ||
+    !stringArraysEqual(previewResult.inputArtifactHashes, request.inputArtifactHashes)
+  ) {
+    return await failRequest(
+      gateway,
+      request,
+      "approval-stale",
+      "Approved source or artifact references no longer match the request.",
+      false,
+      ["request a revised preview approval"],
+      currentPreviewHash
+    );
+  }
+
   if (previewResult.freshnessChecks.some((check) => !check.ok)) {
     return await failRequest(
       gateway,
@@ -590,6 +605,10 @@ function validateArtifactHash(item: string, label: string): void {
   if (!artifactHashPattern.test(item)) {
     throw new Error(`${label} must be a valid artifact hash.`);
   }
+}
+
+function stringArraysEqual(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((item, index) => item === right[index]);
 }
 
 function categoryForSanitizationError(error: unknown, fallback: AgentToolFailureCategory): AgentToolFailureCategory {
