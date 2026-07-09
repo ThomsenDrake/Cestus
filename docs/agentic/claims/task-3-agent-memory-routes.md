@@ -67,3 +67,7 @@ Coverage-fix follow-up:
 
 - The route hidden-effect assertion now covers the full Task 3 forbidden family list: accepted graph/assertions, entity resolution, relationship acceptance, PRR send, export, lock clearing, repair execution, provider byte transfer, and legacy/source-tree mutation.
 - Reviewer minor note: `memoryMutationResponse(...)` still uses safe substring status mapping for diagnostics. That robustness item is recorded as non-blocking for Task 3 and was intentionally left out of this coverage-only pass.
+- COVERAGE GREEN `2026-07-09`: `npm test -- packages/local-runtime/test/agent-memory-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts`
+  - Passed: `Test Files  2 passed (2)`, `Tests  15 passed (15)`.
+- COVERAGE VERIFY `2026-07-09`: `npm run verify`
+  - Passed: `typecheck passed`, `Test Files  146 passed | 1 skipped (147)`, `Tests  1396 passed | 1 skipped (1397)`, `tests passed`, production build succeeded, and `factory-readiness passed`.
