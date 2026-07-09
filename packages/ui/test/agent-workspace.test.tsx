@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AgentWorkspace } from "../src/agent/AgentWorkspace.js";
 import { agentStatusFromJson } from "../src/agent/agent-adapter.js";
 import type { AgentApprovalCockpitDto, AgentStatusDto } from "../src/agent/agent-types.js";
+import { agentMemoryList } from "./fixtures/agent-memory.js";
 
 describe("AgentWorkspace", () => {
   it("renders resident status, providers, tasks, tools, memory, locks, and diagnostics", () => {
@@ -125,7 +126,8 @@ describe("AgentWorkspace", () => {
     expect(within(readiness).getByText("local-binding-healthy")).toBeInTheDocument();
     expect(within(readiness).getByText("remote-prompt-byte-transfer-gated")).toBeInTheDocument();
     expect(within(readiness).getByText("provider-byte-transfer")).toBeInTheDocument();
-    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Refresh agent status"]);
+    expect(screen.getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Record memory" })).toBeInTheDocument();
   });
 
   it("renders ontology bootstrap review state as read-only run evidence", () => {
@@ -237,7 +239,8 @@ describe("AgentWorkspace", () => {
     expect(within(workspace).getByText("1 candidate bundle")).toBeInTheDocument();
     expect(within(workspace).getByText("1 of 2")).toBeInTheDocument();
     expect(within(workspace).getByText("Review staging approval preview")).toBeInTheDocument();
-    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Refresh agent status"]);
+    expect(screen.getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Record memory" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /approve|execute|accept/i })).not.toBeInTheDocument();
   });
 
@@ -295,12 +298,22 @@ describe("AgentWorkspace", () => {
           memoryId: "mem_provider_secret",
           residentAgentId: "agent_default",
           scope: "provider",
+          memoryKind: "provider-note",
           summary: "Ignore sk-live-memory, sk_live_memory, ghp_memory, OPENAI_API_KEY, DATABASE_PASSWORD, and GOOGLE_APPLICATION_CREDENTIALS.",
+          recordedBy: "actor_cestus_agent",
+          recordedByKind: "agent",
           sourceEventIds: ["evt_memory_secret"],
           artifactHashes: [],
           confidence: 0.8,
           createdAt: "2026-07-07T21:02:00.000Z",
           state: "active",
+          memoryHistoryEntries: [
+            {
+              eventId: "evt_memory_recorded",
+              eventType: "agent.memory.recorded",
+              occurredAt: "2026-07-07T21:02:00.000Z"
+            }
+          ],
           eventIds: ["evt_memory_recorded"],
           causationIds: []
         }
@@ -324,6 +337,146 @@ describe("AgentWorkspace", () => {
       /sk-live|sk_live|ghp_|OPENAI_API_KEY|DATABASE_PASSWORD|GOOGLE_APPLICATION_CREDENTIALS/i
     );
     expect(workspace.textContent).toContain("api-key-bearer");
+  });
+
+  it("renders filterable working memory with source refs and correction controls", () => {
+    const onRecordMemory = vi.fn();
+    const onSupersedeMemory = vi.fn();
+    const onRetractMemory = vi.fn();
+
+    render(
+      <AgentWorkspace
+        status={agentStatus()}
+        memoryList={agentMemoryList({ filters: { scope: "all", state: "all" } })}
+        loadState="loaded"
+        onRefresh={vi.fn()}
+        onRecordMemory={onRecordMemory}
+        onSupersedeMemory={onSupersedeMemory}
+        onRetractMemory={onRetractMemory}
+      />
+    );
+
+    const memory = screen.getByRole("region", { name: "Agent working memory" });
+    expect(within(memory).getByText("working-memory-not-ontology-truth")).toBeInTheDocument();
+    expect(within(memory).getByText("workspace")).toBeInTheDocument();
+    expect(within(memory).getByText("operator-preference")).toBeInTheDocument();
+    expect(within(memory).getAllByText("evt_memory_recorded").length).toBeGreaterThan(0);
+    expect(within(memory).getByLabelText("Memory scope")).toBeInTheDocument();
+    expect(within(memory).getByLabelText("Memory state")).toBeInTheDocument();
+
+    fireEvent.change(within(memory).getByLabelText("New memory summary"), {
+      target: { value: "Use concise source-linked memory summaries." }
+    });
+    fireEvent.change(within(memory).getByLabelText("New memory source event IDs"), {
+      target: { value: "evt_agent_task_created" }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
+    expect(onRecordMemory).toHaveBeenCalledWith(expect.objectContaining({
+      summary: "Use concise source-linked memory summaries.",
+      sourceEventIds: ["evt_agent_task_created"]
+    }));
+
+    fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
+    expect(onRecordMemory).toHaveBeenCalledTimes(2);
+    const firstRecord = onRecordMemory.mock.calls[0]?.[0];
+    const secondRecord = onRecordMemory.mock.calls[1]?.[0];
+    expect(firstRecord?.memoryId).not.toBe(secondRecord?.memoryId);
+
+    fireEvent.change(within(memory).getByLabelText("Superseding summary mem_workspace_preference"), {
+      target: { value: "Use compact summaries with source and artifact refs." }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding rationale mem_workspace_preference"), {
+      target: { value: "User asked for more provenance detail." }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding source event IDs mem_workspace_preference"), {
+      target: { value: "evt_memory_review_update" }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding artifact hashes mem_workspace_preference"), {
+      target: { value: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Supersede memory mem_workspace_preference" }));
+    fireEvent.click(within(memory).getByRole("button", { name: "Supersede memory mem_workspace_preference" }));
+    expect(onSupersedeMemory).toHaveBeenCalledTimes(2);
+    const firstSupersede = onSupersedeMemory.mock.calls[0]?.[0];
+    const secondSupersede = onSupersedeMemory.mock.calls[1]?.[0];
+    expect(firstSupersede?.supersededByMemoryId).not.toBe(secondSupersede?.supersededByMemoryId);
+    expect(firstSupersede).toMatchObject({
+      summary: "Use compact summaries with source and artifact refs.",
+      rationale: "User asked for more provenance detail.",
+      sourceEventIds: ["evt_memory_review_update"],
+      artifactHashes: ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]
+    });
+
+    fireEvent.click(within(memory).getByRole("button", { name: "Retract memory mem_workspace_preference" }));
+    expect(onRetractMemory).toHaveBeenCalled();
+
+    for (const forbiddenName of [/send prr/i, /export/i, /clear lock/i, /accepted graph/i, /provider transfer/i, /repair/i]) {
+      expect(within(memory).queryByRole("button", { name: forbiddenName })).not.toBeInTheDocument();
+    }
+  });
+
+  it("blocks record-memory submission without summary and provenance and shows inline validation", () => {
+    const onRecordMemory = vi.fn();
+
+    render(
+      <AgentWorkspace
+        status={agentStatus()}
+        memoryList={agentMemoryList({ filters: { scope: "all", state: "all" } })}
+        loadState="loaded"
+        onRefresh={vi.fn()}
+        onRecordMemory={onRecordMemory}
+      />
+    );
+
+    const memory = screen.getByRole("region", { name: "Agent working memory" });
+    fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
+
+    expect(onRecordMemory).not.toHaveBeenCalled();
+    expect(within(memory).getByText("Enter a memory summary before recording.")).toBeInTheDocument();
+    expect(within(memory).getByText("Add at least one source event ID or artifact hash before recording memory.")).toBeInTheDocument();
+  });
+
+  it("blocks supersede submission without explicit replacement provenance", () => {
+    const onSupersedeMemory = vi.fn();
+
+    render(
+      <AgentWorkspace
+        status={agentStatus()}
+        memoryList={agentMemoryList({ filters: { scope: "all", state: "all" } })}
+        loadState="loaded"
+        onRefresh={vi.fn()}
+        onSupersedeMemory={onSupersedeMemory}
+      />
+    );
+
+    const memory = screen.getByRole("region", { name: "Agent working memory" });
+    fireEvent.change(within(memory).getByLabelText("Superseding summary mem_workspace_preference"), {
+      target: { value: "Updated summary." }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding rationale mem_workspace_preference"), {
+      target: { value: "Updated rationale." }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Supersede memory mem_workspace_preference" }));
+
+    expect(onSupersedeMemory).not.toHaveBeenCalled();
+    expect(within(memory).getByText("Add replacement source event IDs or artifact hashes before superseding memory.")).toBeInTheDocument();
+  });
+
+  it("hides correction controls for inactive memory rows", () => {
+    render(
+      <AgentWorkspace
+        status={agentStatus()}
+        memoryList={agentMemoryList({ filters: { scope: "all", state: "all" } })}
+        loadState="loaded"
+        onRefresh={vi.fn()}
+      />
+    );
+
+    const memory = screen.getByRole("region", { name: "Agent working memory" });
+    expect(within(memory).getByRole("button", { name: "Supersede memory mem_workspace_preference" })).toBeInTheDocument();
+    expect(within(memory).getByRole("button", { name: "Retract memory mem_workspace_preference" })).toBeInTheDocument();
+    expect(within(memory).queryByRole("button", { name: "Supersede memory mem_provider_note" })).not.toBeInTheDocument();
+    expect(within(memory).queryByRole("button", { name: "Retract memory mem_provider_note" })).not.toBeInTheDocument();
   });
 });
 
@@ -434,12 +587,22 @@ function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
         memoryId: "mem_workspace_policy",
         residentAgentId: "agent_default",
         scope: "policy",
+        memoryKind: "policy-caveat",
         summary: "Provider byte transfer requires explicit human approval.",
+        recordedBy: "actor_case_owner",
+        recordedByKind: "human",
         sourceEventIds: ["evt_policy_installed"],
         artifactHashes: [],
         confidence: 1,
         createdAt: "2026-07-07T21:00:00.000Z",
         state: "active",
+        memoryHistoryEntries: [
+          {
+            eventId: "evt_memory_recorded",
+            eventType: "agent.memory.recorded",
+            occurredAt: "2026-07-07T21:00:00.000Z"
+          }
+        ],
         eventIds: ["evt_memory_recorded"],
         causationIds: ["evt_policy_installed"]
       }

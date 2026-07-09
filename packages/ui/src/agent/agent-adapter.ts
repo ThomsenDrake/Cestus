@@ -3,14 +3,26 @@ import { providerReadinessDtoSchema } from "../../../agent/src/provider-readines
 import type {
   AgentApprovalCockpitDto,
   AgentApprovalDecisionResultDto,
+  AgentMemoryDetailDto,
+  AgentMemoryFiltersDto,
+  AgentMemoryListDto,
+  AgentMemoryMutationResultDto,
   AgentRuntimeDiagnosticDto,
   AgentStatusDto,
-  OntologyBootstrapRouteDto
+  OntologyBootstrapRouteDto,
+  RecordMemoryInput,
+  RetractMemoryInput,
+  SupersedeMemoryInput
 } from "./agent-types.js";
 
 export interface AgentAdapter {
   loadStatus(): Promise<AgentStatusDto>;
   loadApprovalCockpit(): Promise<AgentApprovalCockpitDto>;
+  loadMemory(filters?: AgentMemoryFiltersDto): Promise<AgentMemoryListDto>;
+  loadMemoryDetail(memoryId: string): Promise<AgentMemoryDetailDto>;
+  recordMemory(input: RecordMemoryInput): Promise<AgentMemoryMutationResultDto>;
+  supersedeMemory(input: SupersedeMemoryInput): Promise<AgentMemoryMutationResultDto>;
+  retractMemory(input: RetractMemoryInput): Promise<AgentMemoryMutationResultDto>;
   approveToolRequest(input: ApproveToolRequestInput): Promise<AgentApprovalDecisionResultDto>;
   denyToolRequest(input: DenyToolRequestInput): Promise<AgentApprovalDecisionResultDto>;
 }
@@ -200,13 +212,21 @@ const memorySchema = z.object({
   memoryId: z.string().min(1),
   residentAgentId: z.string().min(1),
   scope: z.enum(["workspace", "investigation", "task", "provider", "policy"]),
+  memoryKind: z.enum(["operator-preference", "agent-observation", "policy-caveat", "provider-note"]),
   summary: z.string().min(1),
+  recordedBy: z.string().min(1),
+  recordedByKind: z.enum(["human", "agent", "extractor", "system"]),
   sourceEventIds: eventIdsSchema,
   artifactHashes: z.array(z.string().min(1)),
   confidence: z.number().min(0).max(1),
   createdAt: z.string().datetime(),
   expiresAt: z.string().datetime().optional(),
   state: z.enum(["active", "superseded", "retracted"]),
+  memoryHistoryEntries: z.array(z.object({
+    eventId: z.string().min(1),
+    eventType: z.enum(["agent.memory.recorded", "agent.memory.superseded", "agent.memory.retracted"]),
+    occurredAt: z.string().datetime()
+  }).strict()),
   supersededByMemoryId: z.string().min(1).optional(),
   supersededBy: z.string().min(1).optional(),
   supersededAt: z.string().datetime().optional(),
@@ -436,6 +456,45 @@ const agentApprovalDecisionResultDtoSchema = z.object({
   approvalCockpit: agentApprovalCockpitDtoSchema
 }).strict();
 
+const agentMemoryTruthBoundarySchema = z.object({
+  authoritativeForOntology: z.literal(false),
+  label: z.literal("working-memory-not-ontology-truth"),
+  graphEffectRequires: z.literal("evidence-backed-proposed-assertion-or-reviewed-reasoning")
+}).strict();
+
+const agentMemoryFiltersDtoSchema = z.object({
+  scope: z.enum(["workspace", "investigation", "task", "provider", "policy", "all"]).optional(),
+  state: z.enum(["active", "superseded", "retracted", "all"]).optional()
+}).strict();
+
+const agentMemoryHistoryEntryDtoSchema = z.object({
+  eventId: z.string().min(1),
+  eventType: z.enum(["agent.memory.recorded", "agent.memory.superseded", "agent.memory.retracted"]),
+  occurredAt: z.string().datetime().optional()
+}).strict();
+
+const agentMemoryListDtoSchema = z.object({
+  schemaVersion: z.literal("agent-memory-list.v1"),
+  generatedAt: z.string().datetime(),
+  filters: agentMemoryFiltersDtoSchema,
+  truthBoundary: agentMemoryTruthBoundarySchema,
+  items: z.array(memorySchema)
+}).strict();
+
+const agentMemoryDetailDtoSchema = z.object({
+  schemaVersion: z.literal("agent-memory-detail.v1"),
+  generatedAt: z.string().datetime(),
+  truthBoundary: agentMemoryTruthBoundarySchema,
+  memory: memorySchema,
+  history: z.array(agentMemoryHistoryEntryDtoSchema)
+}).strict();
+
+const agentMemoryMutationResultDtoSchema = z.object({
+  ok: z.literal(true),
+  memoryId: z.string().min(1),
+  eventIds: z.array(z.string().min(1))
+}).strict();
+
 const agentStatusDtoSchema = z.object({
   schemaVersion: z.literal("agent-status.v1"),
   generatedAt: z.string().datetime(),
@@ -548,6 +607,72 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
       return agentApprovalCockpitFromJson(await readRouteJson(response, "Agent approval cockpit"));
     },
 
+    async loadMemory(filters: AgentMemoryFiltersDto = {}) {
+      const params = new URLSearchParams();
+      if (filters.scope !== undefined) {
+        params.set("scope", filters.scope);
+      }
+      if (filters.state !== undefined) {
+        params.set("state", filters.state);
+      }
+      const suffix = params.toString();
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/memory${suffix.length === 0 ? "" : `?${suffix}`}`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken })
+      });
+      return agentMemoryListFromJson(await readRouteJson(response, "Agent memory"));
+    },
+
+    async loadMemoryDetail(memoryId: string) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/memory/${encodeURIComponent(memoryId)}`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken })
+      });
+      return agentMemoryDetailFromJson(await readRouteJson(response, "Agent memory detail"));
+    },
+
+    async recordMemory(input: RecordMemoryInput) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/memory`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: memoryRecordBody(input)
+      });
+      return agentMemoryMutationResultFromJson(await readRouteJson(response, "Agent memory mutation"));
+    },
+
+    async supersedeMemory(input: SupersedeMemoryInput) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/memory/${encodeURIComponent(input.memoryId)}/supersede`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: memorySupersedeBody(input)
+      });
+      return agentMemoryMutationResultFromJson(await readRouteJson(response, "Agent memory mutation"));
+    },
+
+    async retractMemory(input: RetractMemoryInput) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/memory/${encodeURIComponent(input.memoryId)}/retract`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: {
+          rationale: input.rationale
+        }
+      });
+      return agentMemoryMutationResultFromJson(await readRouteJson(response, "Agent memory mutation"));
+    },
+
     async approveToolRequest(input: ApproveToolRequestInput) {
       const response = await fetchAgentRoute({
         path: `${baseUrl}/api/agent/approvals/${encodeURIComponent(input.toolRequestId)}/approve`,
@@ -582,12 +707,21 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
 export const httpAgentAdapter = createHttpAgentAdapter();
 
 export function createStaticAgentAdapter(
-  dto: AgentStatusDto,
-  approvalCockpit?: AgentApprovalCockpitDto
+  dto?: AgentStatusDto,
+  approvalCockpit?: AgentApprovalCockpitDto,
+  memoryList?: AgentMemoryListDto,
+  memoryDetails: readonly AgentMemoryDetailDto[] = []
 ): AgentAdapter {
-  const stored = agentStatusFromJson(dto);
+  const stored = agentStatusFromJson(dto ?? runtimeUnavailableAgentStatus());
   const storedApprovalCockpit = agentApprovalCockpitFromJson(
     approvalCockpit ?? emptyApprovalCockpit(stored.generatedAt)
+  );
+  const storedMemoryList = agentMemoryListFromJson(memoryList ?? emptyMemoryList(stored.generatedAt));
+  const storedMemoryDetails = new Map(
+    memoryDetails.map((detail) => {
+      const parsed = agentMemoryDetailFromJson(detail);
+      return [parsed.memory.memoryId, parsed] as const;
+    })
   );
 
   return Object.freeze({
@@ -597,6 +731,42 @@ export function createStaticAgentAdapter(
 
     async loadApprovalCockpit() {
       return deepFreeze(deepClone(storedApprovalCockpit));
+    },
+
+    async loadMemory(filters: AgentMemoryFiltersDto = {}) {
+      return deepFreeze(deepClone(filterMemoryList(storedMemoryList, filters)));
+    },
+
+    async loadMemoryDetail(memoryId: string) {
+      const storedDetail = storedMemoryDetails.get(memoryId);
+      if (storedDetail !== undefined) {
+        return deepFreeze(deepClone(storedDetail));
+      }
+
+      const memory = storedMemoryList.items.find((item) => item.memoryId === memoryId);
+      if (memory === undefined) {
+        throw new Error("Memory not found.");
+      }
+
+      return deepFreeze(deepClone({
+        schemaVersion: "agent-memory-detail.v1",
+        generatedAt: storedMemoryList.generatedAt,
+        truthBoundary: storedMemoryList.truthBoundary,
+        memory,
+        history: memory.memoryHistoryEntries
+      } satisfies AgentMemoryDetailDto));
+    },
+
+    async recordMemory() {
+      throw new Error("Static agent adapter cannot record memory.");
+    },
+
+    async supersedeMemory() {
+      throw new Error("Static agent adapter cannot supersede memory.");
+    },
+
+    async retractMemory() {
+      throw new Error("Static agent adapter cannot retract memory.");
     },
 
     async approveToolRequest() {
@@ -620,6 +790,20 @@ export function agentApprovalCockpitFromJson(value: unknown): AgentApprovalCockp
 export function agentApprovalDecisionResultFromJson(value: unknown): AgentApprovalDecisionResultDto {
   return deepFreeze(
     agentApprovalDecisionResultDtoSchema.parse(safeAgentValue(value)) as AgentApprovalDecisionResultDto
+  );
+}
+
+export function agentMemoryListFromJson(value: unknown): AgentMemoryListDto {
+  return deepFreeze(agentMemoryListDtoSchema.parse(safeAgentValue(value)) as AgentMemoryListDto);
+}
+
+export function agentMemoryDetailFromJson(value: unknown): AgentMemoryDetailDto {
+  return deepFreeze(agentMemoryDetailDtoSchema.parse(safeAgentValue(value)) as AgentMemoryDetailDto);
+}
+
+export function agentMemoryMutationResultFromJson(value: unknown): AgentMemoryMutationResultDto {
+  return deepFreeze(
+    agentMemoryMutationResultDtoSchema.parse(safeAgentValue(value)) as AgentMemoryMutationResultDto
   );
 }
 
@@ -706,7 +890,7 @@ async function fetchAgentRoute(input: {
   readonly fetcher: typeof fetch;
   readonly authToken?: string;
   readonly method?: "GET" | "POST";
-  readonly body?: Record<string, string>;
+  readonly body?: Record<string, unknown>;
 }): Promise<Response> {
   try {
     return await input.fetcher(input.path, {
@@ -806,6 +990,61 @@ function emptyApprovalCockpit(generatedAt: string): AgentApprovalCockpitDto {
       "accepted-graph-review"
     ]
   });
+}
+
+function emptyMemoryList(generatedAt: string): AgentMemoryListDto {
+  return agentMemoryListFromJson({
+    schemaVersion: "agent-memory-list.v1",
+    generatedAt: safeGeneratedAt(generatedAt),
+    filters: {
+      scope: "all",
+      state: "active"
+    },
+    truthBoundary: {
+      authoritativeForOntology: false,
+      label: "working-memory-not-ontology-truth",
+      graphEffectRequires: "evidence-backed-proposed-assertion-or-reviewed-reasoning"
+    },
+    items: []
+  });
+}
+
+function filterMemoryList(
+  memoryList: AgentMemoryListDto,
+  filters: AgentMemoryFiltersDto
+): AgentMemoryListDto {
+  const scope = filters.scope ?? memoryList.filters.scope ?? "all";
+  const state = filters.state ?? memoryList.filters.state ?? "active";
+  return agentMemoryListFromJson({
+    ...memoryList,
+    filters: { scope, state },
+    items: memoryList.items.filter((item) => {
+      const scopeMatch = scope === "all" || item.scope === scope;
+      const stateMatch = state === "all" || item.state === state;
+      return scopeMatch && stateMatch;
+    })
+  });
+}
+
+function memoryRecordBody(input: RecordMemoryInput): Record<string, unknown> {
+  return {
+    memoryId: input.memoryId,
+    scope: input.scope,
+    ...(input.memoryKind === undefined ? {} : { memoryKind: input.memoryKind }),
+    summary: input.summary,
+    ...(input.sourceEventIds === undefined ? {} : { sourceEventIds: [...input.sourceEventIds] }),
+    ...(input.artifactHashes === undefined ? {} : { artifactHashes: [...input.artifactHashes] }),
+    confidence: input.confidence,
+    ...(input.expiresAt === undefined ? {} : { expiresAt: input.expiresAt })
+  };
+}
+
+function memorySupersedeBody(input: SupersedeMemoryInput): Record<string, unknown> {
+  return {
+    ...memoryRecordBody(input),
+    supersededByMemoryId: input.supersededByMemoryId,
+    rationale: input.rationale
+  };
 }
 
 function safeAgentValue(value: unknown): unknown {

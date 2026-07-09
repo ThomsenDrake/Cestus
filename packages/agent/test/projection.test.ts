@@ -121,10 +121,25 @@ describe("buildAgentProjection", () => {
 
     const supersededMemory = projection.memoryHistory.get("mem_superseded_context");
     expect(supersededMemory?.state).toBe("superseded");
+    expect(supersededMemory?.memoryKind).toBe("agent-observation");
+    expect(supersededMemory?.recordedBy).toBe("actor_cestus_agent");
+    expect(supersededMemory?.recordedByKind).toBe("agent");
     expect(supersededMemory?.supersededByMemoryId).toBe("mem_workspace_policy");
     expect(supersededMemory?.eventIds).toEqual([
       "evt_agent_memory_recorded_superseded_context",
       "evt_agent_memory_superseded_context"
+    ]);
+    expect(supersededMemory?.memoryHistoryEntries).toEqual([
+      {
+        eventId: "evt_agent_memory_recorded_superseded_context",
+        eventType: "agent.memory.recorded",
+        occurredAt: "2026-07-07T18:06:30.000Z"
+      },
+      {
+        eventId: "evt_agent_memory_superseded_context",
+        eventType: "agent.memory.superseded",
+        occurredAt: "2026-07-07T18:06:40.000Z"
+      }
     ]);
     expect(projection.activeMemory.some((memory) => memory.memoryId === "mem_superseded_context")).toBe(false);
 

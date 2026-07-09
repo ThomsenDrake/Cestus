@@ -4,6 +4,9 @@ import {
   buildAgentProjection,
   createAgentToolGateway,
   isAgentSecretSafeText,
+  type AgentMemoryKind,
+  type AgentMemoryScope,
+  type AgentMemoryState,
   type AgentTaskPriority
 } from "../../agent/src/index.js";
 import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
@@ -64,6 +67,78 @@ export async function handleAgentHttpRoute(
     });
     if (ontologyBootstrapResponse !== undefined) {
       return ontologyBootstrapResponse;
+    }
+
+    const memoryRoute = matchMemoryRoute(path);
+    if (memoryRoute !== undefined) {
+      if (input.request.method === "GET" && memoryRoute.kind === "list") {
+        const url = new URL(input.request.url, "http://localhost");
+        const scope = memoryScopeFilter(url.searchParams.get("scope"));
+        const state = memoryStateFilter(url.searchParams.get("state"));
+        return json(200, await runtime.listMemory({
+          ...(scope === undefined ? {} : { scope }),
+          ...(state === undefined ? {} : { state })
+        }));
+      }
+
+      if (input.request.method === "GET" && memoryRoute.kind === "detail") {
+        const detail = await runtime.memoryDetail(memoryRoute.memoryId);
+        return detail === undefined ? json(404, missingMemoryDiagnostic()) : json(200, detail);
+      }
+
+      if (
+        input.request.method === "POST" &&
+        (memoryRoute.kind === "list" || memoryRoute.kind === "supersede" || memoryRoute.kind === "retract")
+      ) {
+        if (input.actor.kind !== "human") {
+          return json(403, humanMemoryActorDiagnostic());
+        }
+
+        const payload = parseJsonObjectBody(input.request.body, invalidMemoryBodyDiagnostic);
+        if (!payload.ok) {
+          return json(400, payload.body);
+        }
+
+        if (memoryRoute.kind === "list") {
+          const command = memoryRecordInputFromBody(payload.value);
+          if (command === undefined) {
+            return json(400, invalidMemoryBodyDiagnostic());
+          }
+
+          const initialized = await ensureDefaultIdentity(runtime, input);
+          if (!initialized.ok) {
+            return json(500, initialized.body);
+          }
+
+          return memoryMutationResponse(await runtime.recordMemory(command));
+        }
+
+        if (memoryRoute.kind === "supersede") {
+          const command = memorySupersedeInputFromBody(memoryRoute.memoryId, payload.value);
+          if (command === undefined) {
+            return json(400, invalidMemoryBodyDiagnostic());
+          }
+
+          const initialized = await ensureDefaultIdentity(runtime, input);
+          if (!initialized.ok) {
+            return json(500, initialized.body);
+          }
+
+          return memoryMutationResponse(await runtime.supersedeMemory(command));
+        }
+
+        const command = memoryRetractInputFromBody(memoryRoute.memoryId, payload.value);
+        if (command === undefined) {
+          return json(400, invalidMemoryBodyDiagnostic());
+        }
+
+        const initialized = await ensureDefaultIdentity(runtime, input);
+        if (!initialized.ok) {
+          return json(500, initialized.body);
+        }
+
+        return memoryMutationResponse(await runtime.retractMemory(command));
+      }
     }
 
     if (input.request.method === "GET" && path === "/api/agent/status") {
@@ -322,6 +397,108 @@ function taskInputFromBody(value: Record<string, unknown>): {
   };
 }
 
+function memoryRecordInputFromBody(value: Record<string, unknown>) {
+  if (!hasOnlyKeys(value, [
+    "memoryId",
+    "scope",
+    "memoryKind",
+    "summary",
+    "sourceEventIds",
+    "artifactHashes",
+    "confidence",
+    "expiresAt"
+  ])) {
+    return undefined;
+  }
+
+  const memoryKind = value.memoryKind ?? "agent-observation";
+  const sourceEventIds = stringArray(value.sourceEventIds);
+  const artifactHashes = stringArray(value.artifactHashes);
+  if (
+    !isSafeNonEmptyText(value.memoryId) ||
+    !isMemoryScope(value.scope) ||
+    !isMemoryKind(memoryKind) ||
+    !isSafeNonEmptyText(value.summary) ||
+    !isMemoryConfidence(value.confidence) ||
+    (value.expiresAt !== undefined && !isSafeNonEmptyText(value.expiresAt)) ||
+    sourceEventIds === undefined ||
+    artifactHashes === undefined ||
+    (sourceEventIds.length === 0 && artifactHashes.length === 0)
+  ) {
+    return undefined;
+  }
+
+  return {
+    memoryId: value.memoryId,
+    scope: value.scope,
+    memoryKind,
+    summary: value.summary,
+    sourceEventIds,
+    artifactHashes,
+    confidence: value.confidence,
+    ...(value.expiresAt === undefined ? {} : { expiresAt: value.expiresAt })
+  };
+}
+
+function memorySupersedeInputFromBody(memoryId: string, value: Record<string, unknown>) {
+  if (!hasOnlyKeys(value, [
+    "supersededByMemoryId",
+    "scope",
+    "memoryKind",
+    "summary",
+    "sourceEventIds",
+    "artifactHashes",
+    "confidence",
+    "expiresAt",
+    "rationale"
+  ])) {
+    return undefined;
+  }
+
+  const memoryKind = value.memoryKind ?? "agent-observation";
+  const sourceEventIds = stringArray(value.sourceEventIds);
+  const artifactHashes = stringArray(value.artifactHashes);
+  if (
+    !isSafeNonEmptyText(memoryId) ||
+    !isSafeNonEmptyText(value.supersededByMemoryId) ||
+    !isMemoryScope(value.scope) ||
+    !isMemoryKind(memoryKind) ||
+    !isSafeNonEmptyText(value.summary) ||
+    !isMemoryConfidence(value.confidence) ||
+    (value.expiresAt !== undefined && !isSafeNonEmptyText(value.expiresAt)) ||
+    !isSafeNonEmptyText(value.rationale) ||
+    sourceEventIds === undefined ||
+    artifactHashes === undefined ||
+    (sourceEventIds.length === 0 && artifactHashes.length === 0)
+  ) {
+    return undefined;
+  }
+
+  return {
+    memoryId,
+    supersededByMemoryId: value.supersededByMemoryId,
+    scope: value.scope,
+    memoryKind,
+    summary: value.summary,
+    sourceEventIds,
+    artifactHashes,
+    confidence: value.confidence,
+    rationale: value.rationale,
+    ...(value.expiresAt === undefined ? {} : { expiresAt: value.expiresAt })
+  };
+}
+
+function memoryRetractInputFromBody(memoryId: string, value: Record<string, unknown>) {
+  if (!hasOnlyKeys(value, ["rationale"]) || !isSafeNonEmptyText(memoryId) || !isSafeNonEmptyText(value.rationale)) {
+    return undefined;
+  }
+
+  return {
+    memoryId,
+    rationale: value.rationale
+  };
+}
+
 function parseJsonObjectBody(
   body: string | undefined,
   invalidBodyDiagnostic: () => {
@@ -367,6 +544,18 @@ function invalidSchedulerWakeBodyDiagnostic(): {
   return diagnostic("Agent scheduler wake does not accept tool input.", [
     "send an empty POST body to wake the scheduler",
     "use approval routes to append human decisions"
+  ]);
+}
+
+function invalidMemoryBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent memory body is invalid.", [
+    "send a safe provenance-backed memory JSON body"
   ]);
 }
 
@@ -419,6 +608,18 @@ function humanApprovalActorDiagnostic(): {
   ]);
 }
 
+function humanMemoryActorDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent memory correction requires a human actor.", [
+    "sign in with a human local runtime session"
+  ]);
+}
+
 function missingApprovalDiagnostic(): {
   readonly ok: false;
   readonly diagnostic: {
@@ -428,6 +629,18 @@ function missingApprovalDiagnostic(): {
 } {
   return diagnostic("Approval request was not found.", [
     "refresh the approval cockpit"
+  ]);
+}
+
+function missingMemoryDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent memory item was not found.", [
+    "refresh agent memory"
   ]);
 }
 
@@ -491,6 +704,29 @@ function isSafeNonEmptyText(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0 && isAgentSecretSafeText(value);
 }
 
+function isMemoryKind(value: unknown): value is AgentMemoryKind {
+  return value === "operator-preference" ||
+    value === "agent-observation" ||
+    value === "policy-caveat" ||
+    value === "provider-note";
+}
+
+function isMemoryScope(value: unknown): value is AgentMemoryScope {
+  return value === "workspace" ||
+    value === "investigation" ||
+    value === "task" ||
+    value === "provider" ||
+    value === "policy";
+}
+
+function isMemoryState(value: unknown): value is AgentMemoryState {
+  return value === "active" || value === "superseded" || value === "retracted";
+}
+
+function isMemoryConfidence(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
 function isRouteTaskPriority(value: unknown): value is AgentTaskPriority {
   return value === "low" || value === "normal" || value === "high";
 }
@@ -528,6 +764,14 @@ function denialInputFromBody(value: Record<string, unknown>): {
 function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   const allowed = new Set(keys);
   return Object.keys(value).every((key) => allowed.has(key));
+}
+
+function stringArray(value: unknown): readonly string[] | undefined {
+  if (value === undefined) {
+    return [];
+  }
+
+  return Array.isArray(value) && value.every((item) => isSafeNonEmptyText(item)) ? value : undefined;
 }
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
@@ -571,6 +815,51 @@ function matchApprovalRoute(path: string):
   }
 
   return { kind: action as "approve" | "deny", toolRequestId };
+}
+
+function matchMemoryRoute(path: string):
+  | { readonly kind: "list" }
+  | { readonly kind: "detail"; readonly memoryId: string }
+  | { readonly kind: "supersede"; readonly memoryId: string }
+  | { readonly kind: "retract"; readonly memoryId: string }
+  | undefined {
+  if (path === "/api/agent/memory") {
+    return { kind: "list" };
+  }
+
+  const match = /^\/api\/agent\/memory\/([^/]+?)(?:\/(supersede|retract))?$/.exec(path);
+  if (match === null) {
+    return undefined;
+  }
+
+  const memoryId = match[1];
+  if (!isSafeNonEmptyText(memoryId)) {
+    return undefined;
+  }
+
+  const action = match[2];
+  if (action === "supersede") {
+    return { kind: "supersede", memoryId };
+  }
+  if (action === "retract") {
+    return { kind: "retract", memoryId };
+  }
+
+  return { kind: "detail", memoryId };
+}
+
+function memoryScopeFilter(value: string | null): AgentMemoryScope | "all" | undefined {
+  if (value === null) {
+    return undefined;
+  }
+  return value === "all" || isMemoryScope(value) ? value : undefined;
+}
+
+function memoryStateFilter(value: string | null): AgentMemoryState | "all" | undefined {
+  if (value === null) {
+    return undefined;
+  }
+  return value === "all" || isMemoryState(value) ? value : undefined;
 }
 
 async function approvalCockpit(runtime: LocalAgentRuntime) {
@@ -656,6 +945,43 @@ function approvalDecisionErrorResponse(error: unknown): LocalRuntimeResponse {
     "retry the local agent request",
     "inspect agent diagnostics"
   ]));
+}
+
+function memoryMutationResponse(
+  result: Awaited<ReturnType<LocalAgentRuntime["recordMemory"]>>
+): LocalRuntimeResponse {
+  if (result.ok) {
+    return json(200, result);
+  }
+
+  if (result.error.message.includes("not found")) {
+    return json(404, missingMemoryDiagnostic());
+  }
+
+  if (isMemoryRuntimeConflict(result.error)) {
+    return json(409, runtimeDiagnostic(result.error));
+  }
+
+  return json(400, runtimeDiagnostic(result.error));
+}
+
+function isMemoryRuntimeConflict(
+  error: { readonly category: string; readonly message: string }
+): boolean {
+  return error.category === "runtime" && error.message.includes("partially applied");
+}
+
+function runtimeDiagnostic(error: {
+  readonly message: string;
+  readonly allowedRepairActions?: readonly string[];
+}): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic(error.message, error.allowedRepairActions ?? []);
 }
 
 function json(status: number, body: unknown): LocalRuntimeResponse {

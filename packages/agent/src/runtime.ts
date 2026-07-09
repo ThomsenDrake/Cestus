@@ -1,7 +1,14 @@
 import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import type { AppendOptions, EventLedger } from "../../ontology/src/event-ledger.js";
+import { buildAgentMemoryDetail, buildAgentMemoryList } from "./memory.js";
 import { buildAgentProjection } from "./projection.js";
-import type { AgentFailureCategory, AgentTaskPriority } from "./projection-types.js";
+import type {
+  AgentFailureCategory,
+  AgentMemoryKind,
+  AgentMemoryScope,
+  AgentMemoryState,
+  AgentTaskPriority
+} from "./projection-types.js";
 import type {
   CredentialReference,
   ModelInvocationResult,
@@ -15,7 +22,15 @@ import {
   type PromptArtifactAuditMetadata,
   type PromptArtifactEnvelope
 } from "./prompt-artifacts.js";
-import type { AgentRuntimeDiagnosticDto, AgentRuntimeResult, AgentStatusDto } from "./runtime-types.js";
+import type {
+  AgentMemoryMutationResult,
+  AgentRuntimeDiagnosticDto,
+  AgentRuntimeResult,
+  AgentStatusDto,
+  RecordAgentMemoryInput,
+  RetractAgentMemoryInput,
+  SupersedeAgentMemoryInput
+} from "./runtime-types.js";
 import {
   approvedAgentSpecialistRunTypes,
   specialistExecutionStatusFor,
@@ -167,6 +182,22 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       return { ok: true, residentAgentId, alreadyInitialized: false, eventIds: Object.freeze([committed.id]) };
     },
 
+    async listMemory(filters: { readonly scope?: AgentMemoryScope | "all"; readonly state?: AgentMemoryState | "all" } = {}) {
+      return buildAgentMemoryList({
+        projection: buildAgentProjection(await input.ledger.readAll()),
+        generatedAt: input.now(),
+        filters
+      });
+    },
+
+    async memoryDetail(memoryId: string) {
+      return buildAgentMemoryDetail({
+        projection: buildAgentProjection(await input.ledger.readAll()),
+        memoryId,
+        generatedAt: input.now()
+      });
+    },
+
     async createTask(command: CreateAgentTaskInput): Promise<AgentRuntimeResult<CreateAgentTaskResult>> {
       const projection = buildAgentProjection(await input.ledger.readAll());
       const identity = projection.identity;
@@ -268,6 +299,128 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       }
 
       return { ok: true, runId: command.runId, eventIds: Object.freeze(eventIds) };
+    },
+
+    async recordMemory(command: RecordAgentMemoryInput): Promise<AgentRuntimeResult<AgentMemoryMutationResult>> {
+      const projection = buildAgentProjection(await input.ledger.readAll());
+      const identity = projection.identity;
+      if (identity === undefined) {
+        return failedResult(agentDiagnostic("agent", "Resident identity is not initialized.", ["initialize the default resident identity"]));
+      }
+      if (rejectsOperatorPreferenceMemory(input, command.memoryKind)) {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be recorded safely.", ["review memory provenance and safe summary"])
+        );
+      }
+
+      const event = memoryRecordedEvent(input, identity.residentAgentId, command, lastValue(identity.eventIds));
+      try {
+        const committed = await appendRuntimeEvent(input.ledger, event, { expectedNextSequence: 1 });
+        return { ok: true, memoryId: command.memoryId, eventIds: Object.freeze([committed.id]) };
+      } catch {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be recorded safely.", ["review memory provenance and safe summary"])
+        );
+      }
+    },
+
+    async supersedeMemory(command: SupersedeAgentMemoryInput): Promise<AgentRuntimeResult<AgentMemoryMutationResult>> {
+      const projection = buildAgentProjection(await input.ledger.readAll());
+      const previous = projection.memoryHistory.get(command.memoryId);
+      const identity = projection.identity;
+      if (identity === undefined || previous === undefined || previous.state !== "active") {
+        return failedResult(agentDiagnostic("agent", "Active memory item was not found.", ["refresh memory before superseding"]));
+      }
+      if (rejectsOperatorPreferenceCorrection(input, previous.memoryKind)) {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be superseded safely.", ["refresh memory and review provenance"])
+        );
+      }
+      if (rejectsOperatorPreferenceMemory(input, command.memoryKind)) {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be superseded safely.", ["refresh memory and review provenance"])
+        );
+      }
+
+      try {
+        const replacement = await appendRuntimeEvent(
+          input.ledger,
+          memoryRecordedEvent(
+            input,
+            identity.residentAgentId,
+            { ...command, memoryId: command.supersededByMemoryId },
+            lastValue(previous.eventIds)
+          ),
+          { expectedNextSequence: 1 }
+        );
+        let superseded: KnowledgeEventOf<"agent.memory.superseded">;
+        try {
+          const streamEvents = await input.ledger.readStream(memoryStreamId(command.memoryId));
+          superseded = await appendRuntimeEvent(input.ledger, {
+            type: "agent.memory.superseded",
+            version: 1,
+            streamId: memoryStreamId(command.memoryId),
+            context: agentContext(input, `corr_${command.memoryId}`, input.actor, replacement.id),
+            payload: {
+              memoryId: command.memoryId,
+              supersededByMemoryId: command.supersededByMemoryId,
+              supersededBy: input.actor.id,
+              rationale: command.rationale,
+              supersededAt: input.now()
+            }
+          }, { expectedNextSequence: streamEvents.length + 1 });
+        } catch {
+          try {
+            await appendCompensatingMemoryRetraction(input, command.supersededByMemoryId, replacement.id);
+          } catch {
+            return failedResult(memorySupersessionPartialFailureDiagnostic());
+          }
+          throw new Error("memory supersession failed");
+        }
+        return {
+          ok: true,
+          memoryId: command.supersededByMemoryId,
+          eventIds: Object.freeze([replacement.id, superseded.id])
+        };
+      } catch {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be superseded safely.", ["refresh memory and review provenance"])
+        );
+      }
+    },
+
+    async retractMemory(command: RetractAgentMemoryInput): Promise<AgentRuntimeResult<AgentMemoryMutationResult>> {
+      const projection = buildAgentProjection(await input.ledger.readAll());
+      const previous = projection.memoryHistory.get(command.memoryId);
+      if (previous === undefined || previous.state !== "active") {
+        return failedResult(agentDiagnostic("agent", "Active memory item was not found.", ["refresh memory before retracting"]));
+      }
+      if (rejectsOperatorPreferenceCorrection(input, previous.memoryKind)) {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be retracted safely.", ["refresh memory and review rationale"])
+        );
+      }
+
+      try {
+        const streamEvents = await input.ledger.readStream(memoryStreamId(command.memoryId));
+        const retracted = await appendRuntimeEvent(input.ledger, {
+          type: "agent.memory.retracted",
+          version: 1,
+          streamId: memoryStreamId(command.memoryId),
+          context: agentContext(input, `corr_${command.memoryId}`, input.actor, lastValue(previous.eventIds)),
+          payload: {
+            memoryId: command.memoryId,
+            retractedBy: input.actor.id,
+            rationale: command.rationale,
+            retractedAt: input.now()
+          }
+        }, { expectedNextSequence: streamEvents.length + 1 });
+        return { ok: true, memoryId: command.memoryId, eventIds: Object.freeze([retracted.id]) };
+      } catch {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be retracted safely.", ["refresh memory and review rationale"])
+        );
+      }
     },
 
     async invokeModel(command: InvokeAgentModelInput): Promise<AgentRuntimeResult<InvokeAgentModelResult>> {
@@ -675,6 +828,9 @@ type RuntimeEventType =
   | "agent.task.created"
   | "agent.task.status.changed"
   | "agent.specialist-run.started"
+  | "agent.memory.recorded"
+  | "agent.memory.superseded"
+  | "agent.memory.retracted"
   | "agent.model-invocation.requested"
   | "agent.model-invocation.completed"
   | "agent.model-invocation.failed";
@@ -746,6 +902,78 @@ function runStreamId(runId: string): string {
 
 function modelInvocationStreamId(invocationId: string): string {
   return `agent_model_invocation_${invocationId}`;
+}
+
+function memoryStreamId(memoryId: string): string {
+  return `agent_memory_${memoryId}`;
+}
+
+function memoryRecordedEvent(
+  input: CreateAgentRuntimeInput,
+  residentAgentId: string,
+  command: RecordAgentMemoryInput,
+  causationId?: string
+): AppendableKnowledgeEvent<"agent.memory.recorded"> {
+  return {
+    type: "agent.memory.recorded",
+    version: 1,
+    streamId: memoryStreamId(command.memoryId),
+    context: agentContext(input, `corr_${command.memoryId}`, input.actor, causationId),
+    payload: {
+      memoryId: command.memoryId,
+      residentAgentId,
+      scope: command.scope,
+      ...optionalValue("memoryKind", command.memoryKind),
+      summary: command.summary,
+      ...optionalArray("sourceEventIds", command.sourceEventIds),
+      ...optionalArray("artifactHashes", command.artifactHashes),
+      confidence: command.confidence,
+      createdAt: input.now(),
+      ...optionalValue("expiresAt", command.expiresAt)
+    }
+  };
+}
+
+function rejectsOperatorPreferenceMemory(
+  input: CreateAgentRuntimeInput,
+  memoryKind: AgentMemoryKind | undefined
+): boolean {
+  return memoryKind === "operator-preference" && input.actor.kind !== "human";
+}
+
+function rejectsOperatorPreferenceCorrection(
+  input: CreateAgentRuntimeInput,
+  memoryKind: AgentMemoryKind
+): boolean {
+  return rejectsOperatorPreferenceMemory(input, memoryKind);
+}
+
+function memorySupersessionPartialFailureDiagnostic(): AgentRuntimeDiagnosticDto {
+  return agentDiagnostic(
+    "runtime",
+    "Memory supersession was partially applied. The replacement memory requires operator review or retraction.",
+    ["inspect memory history", "review the replacement memory", "retract the replacement memory if needed"]
+  );
+}
+
+async function appendCompensatingMemoryRetraction(
+  input: CreateAgentRuntimeInput,
+  memoryId: string,
+  causationId: string
+): Promise<void> {
+  const streamEvents = await input.ledger.readStream(memoryStreamId(memoryId));
+  await appendRuntimeEvent(input.ledger, {
+    type: "agent.memory.retracted",
+    version: 1,
+    streamId: memoryStreamId(memoryId),
+    context: agentContext(input, `corr_${memoryId}`, input.actor, causationId),
+    payload: {
+      memoryId,
+      retractedBy: input.actor.id,
+      rationale: "Compensating retraction after incomplete supersession.",
+      retractedAt: input.now()
+    }
+  }, { expectedNextSequence: streamEvents.length + 1 });
 }
 
 function optionalValue<Key extends string, Value>(
