@@ -140,6 +140,92 @@ describe("agent scheduler wake", () => {
     expect(staleArtifacts.executions).toBe(0);
   });
 
+  it("fails closed before execution when a duplicate request record changes refs in the same stream", async () => {
+    const ledger = new InMemoryEventLedger();
+    const toolRequestId = "toolreq_duplicate_request_refs";
+    const preview = previewFor(toolRequestId);
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: () => "2026-07-09T12:00:00.000Z" });
+    const original = await gateway.requestTool({
+      toolRequestId,
+      residentAgentId: "agent_default",
+      taskId: "task_scheduler",
+      runId: "run_scheduler",
+      toolId: "agent.test.effect",
+      toolVersion: "1.0.0",
+      sideEffectClass: "ledger-review",
+      requiredApprovalClass: "ledger-review",
+      preview
+    });
+    const duplicate: AppendableKnowledgeEvent<"agent.tool.requested"> = {
+      type: "agent.tool.requested",
+      version: 1,
+      streamId: "agent_tool_request_toolreq_duplicate_request_refs",
+      context: {
+        actor: agentActor,
+        occurredAt: "2026-07-09T12:00:01.000Z",
+        causationId: original.id,
+        correlationId: "corr_toolreq_duplicate_request_refs",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId,
+        runId: "run_scheduler",
+        toolId: "agent.test.effect",
+        toolVersion: "1.0.0",
+        requestedBy: "agent_default",
+        sideEffectClass: "ledger-review",
+        requiredApprovalClass: "ledger-review",
+        previewHash: original.payload.previewHash,
+        scope: "Review duplicate request refs.",
+        estimatedEffect: "Review duplicate request refs.",
+        sourceEventIds: ["evt_source_changed"],
+        inputArtifactHashes: [changedArtifactHash]
+      }
+    };
+    await ledger.append(duplicate);
+    await gateway.approveTool({
+      toolRequestId,
+      actor: humanActor,
+      approvedPreviewHash: original.payload.previewHash,
+      rationale: "Human approved the original scheduler preview."
+    });
+    let executions = 0;
+    const scheduler = createAgentScheduler({
+      ledger,
+      actor: schedulerActor,
+      now: () => "2026-07-09T12:00:02.000Z",
+      descriptors: [fakeDescriptor(preview, {
+        async buildCurrentPreview() {
+          return {
+            preview,
+            sourceEventIds: ["evt_source_changed"],
+            inputArtifactHashes: [changedArtifactHash],
+            provenanceRefs: ["evt_source_changed", changedArtifactHash],
+            activeLocks: [],
+            freshnessChecks: [{ name: "agent-projection", expected: "high-watermark:1", actual: "high-watermark:1", ok: true }]
+          };
+        },
+        async executeApproved() {
+          executions += 1;
+          throw new Error("duplicate request records must not execute");
+        }
+      })]
+    });
+
+    const result = await scheduler.wake();
+
+    expect(result.failedCount).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      toolRequestId,
+      state: "failed",
+      category: "permission-denied"
+    });
+    expect(executions).toBe(0);
+    expect((await ledger.readAll()).map((event) => event.type)).toContain("agent.tool.failed");
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.tool.completed");
+  });
+
   it("fails closed when active locks, missing provenance, or stale read models block consume-time validation", async () => {
     const lockCase = await wakeWithPreviewResult("toolreq_lock_active", {
       activeLocks: [{ lockId: "lock_export_review", category: "export", message: "Export review lock active." }]
