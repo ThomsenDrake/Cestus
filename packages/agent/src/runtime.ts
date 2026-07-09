@@ -354,6 +354,11 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           agentDiagnostic("agent", "Memory could not be superseded safely.", ["refresh memory and review provenance"])
         );
       }
+      if (rejectsOperatorPreferenceMemory(input, command.memoryKind)) {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be superseded safely.", ["refresh memory and review provenance"])
+        );
+      }
 
       try {
         const replacement = await appendRuntimeEvent(

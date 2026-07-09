@@ -114,3 +114,27 @@ Third fix-pass notes:
 - If replacement recording succeeds, original-memory supersession append fails, and the compensating replacement-memory retraction also fails, `supersedeMemory()` now returns an explicit safe `runtime` diagnostic instead of the generic `agent` supersession failure.
 - The runtime diagnostic states that supersession was partially applied and that the replacement memory requires operator review or retraction.
 - The double-failure response remains secret-safe and does not expose replacement summary text.
+
+Fourth fix-pass evidence after re-review:
+
+- RED:
+  - `npm test -- packages/agent/test/memory-runtime.test.ts packages/agent/test/runtime.test.ts packages/agent/test/memory.test.ts`
+  - Observed failure:
+    - `rejects agent supersession into an operator preference without appending mutation events`
+- GREEN:
+  - `npm test -- packages/agent/test/memory-runtime.test.ts packages/agent/test/runtime.test.ts packages/agent/test/memory.test.ts`
+  - Result: `Test Files  3 passed (3)` and `Tests  32 passed (32)`
+- VERIFY:
+  - First `npm run verify` failed on an unrelated timeout in `packages/workspace-ops/test/cli.test.ts` (`runs real executable detect and verify commands against a canonical workspace`).
+  - Focused rerun:
+    - `npm test -- packages/workspace-ops/test/cli.test.ts`
+    - Result: `Test Files  1 passed (1)` and `Tests  20 passed (20)`
+  - Second full verify:
+    - `npm run verify`
+    - Result: `Test Files  145 passed | 1 skipped (146)`, `Tests  1391 passed | 1 skipped (1392)`, `tests passed`, build succeeded, and `factory-readiness passed`
+
+Fourth fix-pass notes:
+
+- `supersedeMemory()` now rejects non-human actors when the incoming replacement `command.memoryKind === "operator-preference"` before appending the replacement `agent.memory.recorded` event.
+- The existing projected-memory guard for already-`operator-preference` memory remains in place, so both the source-memory and replacement-memory preference boundaries are enforced.
+- Denied agent attempts to supersede an `agent-observation` into an `operator-preference` leave the ledger unchanged beyond the original active memory history.

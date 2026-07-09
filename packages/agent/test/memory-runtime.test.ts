@@ -147,6 +147,43 @@ describe("agent runtime memory", () => {
     });
   });
 
+  it("rejects agent supersession into an operator preference without appending mutation events", async () => {
+    const ledger = new InMemoryEventLedger();
+    const humanRuntime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await humanRuntime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await humanRuntime.recordMemory({
+      memoryId: "mem_agent_observation",
+      scope: "workspace",
+      memoryKind: "agent-observation",
+      summary: "Investigation notes currently prefer source-linked summaries.",
+      sourceEventIds: ["evt_agent_task_created"],
+      confidence: 0.72
+    });
+
+    const runtime = createAgentRuntime({ ledger, actor: agentActor, now });
+    const beforeEvents = await ledger.readAll();
+
+    const result = await runtime.supersedeMemory({
+      memoryId: "mem_agent_observation",
+      supersededByMemoryId: "mem_agent_preference_attempt",
+      scope: "workspace",
+      memoryKind: "operator-preference",
+      summary: "Operator prefers source-linked summaries.",
+      sourceEventIds: ["evt_agent_task_updated"],
+      confidence: 0.7,
+      rationale: "Agent tried to turn an observation into an operator preference."
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { category: "agent" } });
+    expect(await ledger.readAll()).toEqual(beforeEvents);
+    expect((await runtime.listMemory({ state: "all" })).items).toHaveLength(1);
+    expect((await runtime.listMemory({ state: "all" })).items[0]).toMatchObject({
+      memoryId: "mem_agent_observation",
+      memoryKind: "agent-observation",
+      state: "active"
+    });
+  });
+
   it("rejects agent retraction of a human-created operator preference without appending mutation events", async () => {
     const ledger = new InMemoryEventLedger();
     const humanRuntime = createAgentRuntime({ ledger, actor: humanActor, now });
