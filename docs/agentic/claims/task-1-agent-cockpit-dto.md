@@ -21,3 +21,10 @@ Verification:
 - Full gate: `npm run verify`
 
 Implementation recorded at: 2026-07-09T01:12:14Z
+
+Review fix loop:
+- Reviewer findings addressed: current blocker derivation for run cards/selected run, compatibility approval-class normalization in no-cockpit fallback, and focused regression coverage.
+- Fix red command: `npm test -- packages/agent/test/cockpit.test.ts`
+- Fix green command: `npm test -- packages/agent/test/cockpit.test.ts packages/agent/test/approval-cockpit.test.ts packages/agent/test/projection.test.ts`
+- Fix full gate rerun: `npm run verify`
+- Fix loop recorded at: 2026-07-09T01:22:28Z

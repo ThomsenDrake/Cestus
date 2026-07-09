@@ -102,6 +102,67 @@ describe("agent cockpit dto", () => {
     });
   });
 
+  it("counts current blockers from pending approvals and active locks without treating retryable invocation failures as current blocks", () => {
+    const cockpit = buildAgentCockpit({
+      status: statusFixture(),
+      approvalCockpit: approvalCockpitFixture(),
+      selectedRunId: "run_provider_review",
+      generatedAt: "2026-07-09T12:10:00.000Z"
+    });
+
+    expect(cockpit.runQueue[0]?.blockedReasonCount).toBe(2);
+    expect(cockpit.selectedRun?.blockedReasons).toEqual([
+      "pending-approval",
+      "lock-legal-escalation"
+    ]);
+    expect(cockpit.selectedRun?.blockedReasons).not.toContain("retryable-provider-unavailable");
+  });
+
+  it("normalizes compatibility approval classes when deriving a fallback approval need without approval cockpit state", () => {
+    const baseStatus = statusFixture();
+    const cockpit = buildAgentCockpit({
+      status: {
+        ...baseStatus,
+        toolRequests: [{
+          ...baseStatus.toolRequests[0]!,
+          requiredApprovalClass: "external-message-send"
+        }]
+      },
+      generatedAt: "2026-07-09T12:15:00.000Z",
+      selectedRunId: "run_provider_review"
+    });
+
+    expect(cockpit.needsNext[0]).toMatchObject({
+      kind: "approval",
+      label: "Review PRR send/follow-up approval",
+      safeAction: "review-approval",
+      relatedRunId: "run_provider_review",
+      relatedTaskId: "task_provider_review"
+    });
+  });
+
+  it("falls back to a quiet need when no higher-priority action exists", () => {
+    const baseStatus = statusFixture();
+    const cockpit = buildAgentCockpit({
+      status: {
+        ...baseStatus,
+        pendingApprovalCount: 0,
+        activeLockCount: 0,
+        tasks: [],
+        runs: [],
+        modelInvocations: [],
+        toolRequests: [],
+        locks: []
+      },
+      generatedAt: "2026-07-09T12:20:00.000Z"
+    });
+
+    expect(cockpit.needsNext).toEqual([expect.objectContaining({
+      kind: "quiet",
+      safeAction: "refresh-status"
+    })]);
+  });
+
   it("rejects secret-shaped text before projecting a browser DTO", () => {
     expect(() =>
       buildAgentCockpit({

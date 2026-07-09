@@ -212,14 +212,16 @@ export function buildAgentCockpit(input: BuildAgentCockpitInput): AgentCockpitDt
       ...(task.runId === undefined ? {} : { runId: task.runId }),
       ...(task.statusReason === undefined ? {} : { statusReason: task.statusReason })
     })) satisfies AgentCockpitTaskCardDto[];
-  const runCards = [...input.status.runs]
-    .sort(compareRuns)
-    .map((run) => projectRunCard(run, modelInvocations, toolRequests)) satisfies AgentCockpitRunCardDto[];
+  const runCards = (
+    [...input.status.runs]
+      .sort(compareRuns)
+      .map((run) => projectRunCard(run, input.status.tasks, modelInvocations, toolRequests, activeLocks))
+  ) satisfies AgentCockpitRunCardDto[];
 
   const selectedRunRecord = selectRun(input.status, input.selectedRunId);
   const selectedRun = selectedRunRecord === undefined
     ? undefined
-    : projectSelectedRun(selectedRunRecord, modelInvocations, toolRequests);
+    : projectSelectedRun(selectedRunRecord, input.status.tasks, modelInvocations, toolRequests, activeLocks);
 
   const needsNext = deriveNeedsNext({
     status: input.status,
@@ -267,12 +269,13 @@ export function buildAgentCockpit(input: BuildAgentCockpitInput): AgentCockpitDt
 
 function projectRunCard(
   run: AgentStatusDto["runs"][number],
+  tasks: AgentStatusDto["tasks"],
   modelInvocations: readonly NonNullable<AgentStatusDto["modelInvocations"]>[number][],
-  toolRequests: AgentStatusDto["toolRequests"]
+  toolRequests: AgentStatusDto["toolRequests"],
+  activeLocks: readonly AgentStatusDto["locks"][number][]
 ): AgentCockpitRunCardDto {
-  const runInvocations = modelInvocationsForRun(run, modelInvocations);
   const runToolRequests = toolRequestsForRun(run, toolRequests);
-  const blockedReasons = blockedReasonsForRun(run, runInvocations);
+  const blockedReasons = blockedReasonsForRun(run, taskForRun(run, tasks), runToolRequests, activeLocks);
 
   return {
     runId: run.runId,
@@ -282,7 +285,7 @@ function projectRunCard(
     startedAt: run.startedAt,
     ...(run.summary === undefined ? {} : { summary: run.summary }),
     currentStepCount: run.stepIds.length,
-    modelInvocationCount: runInvocations.length,
+    modelInvocationCount: modelInvocationsForRun(run, modelInvocations).length,
     pendingApprovalCount: runToolRequests.filter(isPendingApprovalRequest).length,
     blockedReasonCount: blockedReasons.length
   };
@@ -290,17 +293,19 @@ function projectRunCard(
 
 function projectSelectedRun(
   run: AgentStatusDto["runs"][number],
+  tasks: AgentStatusDto["tasks"],
   modelInvocations: readonly NonNullable<AgentStatusDto["modelInvocations"]>[number][],
-  toolRequests: AgentStatusDto["toolRequests"]
+  toolRequests: AgentStatusDto["toolRequests"],
+  activeLocks: readonly AgentStatusDto["locks"][number][]
 ): AgentCockpitSelectedRunDto {
   const runInvocations = modelInvocationsForRun(run, modelInvocations);
   const runToolRequests = toolRequestsForRun(run, toolRequests);
-  const blockedReasons = blockedReasonsForRun(run, runInvocations);
+  const blockedReasons = blockedReasonsForRun(run, taskForRun(run, tasks), runToolRequests, activeLocks);
   const contextPacks = uniqueContextPacks(runInvocations);
   const handoff = handoffForRun(run);
 
   return {
-    ...projectRunCard(run, modelInvocations, toolRequests),
+    ...projectRunCard(run, tasks, modelInvocations, toolRequests, activeLocks),
     stepIds: [...run.stepIds],
     pendingApprovalIds: runToolRequests.filter(isPendingApprovalRequest).map((request) => request.toolRequestId),
     blockedReasons,
@@ -380,7 +385,7 @@ function deriveNeedsNext(input: {
       needs.push({
         kind: "approval",
         severity: "action-required",
-        label: `Review ${approvalLabelFor(pendingToolRequest.requiredApprovalClass)} approval`,
+        label: `Review ${approvalLabelFor(normalizeApprovalClass(pendingToolRequest.requiredApprovalClass))} approval`,
         ...(relatedTaskId === undefined ? {} : { relatedTaskId }),
         relatedRunId: pendingToolRequest.runId,
         relatedToolRequestId: pendingToolRequest.toolRequestId,
@@ -504,25 +509,42 @@ function retryNeedFromStatus(status: AgentStatusDto): AgentCockpitNeedDto | unde
 
 function blockedReasonsForRun(
   run: AgentStatusDto["runs"][number],
-  modelInvocations: readonly NonNullable<AgentStatusDto["modelInvocations"]>[number][]
+  task: AgentStatusDto["tasks"][number] | undefined,
+  toolRequests: readonly AgentStatusDto["toolRequests"][number][],
+  activeLocks: readonly AgentStatusDto["locks"][number][]
 ): string[] {
+  if (run.state === "completed") {
+    return [];
+  }
+
   const reasons = new Set<string>();
+
+  if (run.state === "running" && (toolRequests.some(isPendingApprovalRequest) || task?.status === "waiting-for-approval")) {
+    reasons.add("pending-approval");
+  }
+
+  if (run.state === "running") {
+    for (const lock of activeLocks) {
+      reasons.add(`lock-${lock.kind}`);
+    }
+  }
 
   if (run.state === "failed" && run.failureCategory !== undefined) {
     reasons.add(`run-${run.failureCategory}`);
   }
 
-  for (const invocation of modelInvocations) {
-    if (invocation.status === "failed" && invocation.failureCategory !== undefined) {
-      reasons.add(
-        invocation.retryable === true
-          ? `retryable-${invocation.failureCategory}`
-          : `model-${invocation.failureCategory}`
-      );
-    }
+  if (task?.status === "blocked") {
+    reasons.add("task-blocked");
   }
 
   return [...reasons];
+}
+
+function taskForRun(
+  run: AgentStatusDto["runs"][number],
+  tasks: AgentStatusDto["tasks"]
+): AgentStatusDto["tasks"][number] | undefined {
+  return tasks.find((task) => task.taskId === run.taskId);
 }
 
 function modelInvocationsForRun(
@@ -608,6 +630,19 @@ function approvalLabelFor(approvalClass: string): string {
       return "accepted-graph review";
     default:
       return humanizeIdentifier(approvalClass);
+  }
+}
+
+function normalizeApprovalClass(approvalClass: string): string {
+  switch (approvalClass) {
+    case "external-message-send":
+      return "prr-send-followup";
+    case "export-or-publication":
+      return "export-publication";
+    case "destructive-or-repair":
+      return "destructive-repair";
+    default:
+      return approvalClass;
   }
 }
 
