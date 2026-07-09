@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  agentSchedulerItemSummaryDtoSchema,
   agentSchedulerWakeResultDtoSchema,
   hashAgentToolPreview,
   type AgentApprovedToolExecutorDescriptor,
@@ -144,6 +145,31 @@ describe("agent scheduler contracts", () => {
     expect(parsed.success).toBe(false);
   });
 
+  it("rejects unknown authorization fields on public scheduler wake result DTOs", () => {
+    const dto = {
+      ...buildWakeResultDto(),
+      authorization: "Bearer sk-live-review-token"
+    };
+    const parsed = agentSchedulerWakeResultDtoSchema.safeParse(dto);
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects unknown credential fields on public scheduler item summary DTOs", () => {
+    const item = {
+      ...buildItemSummaryDto(),
+      credential: "sk-live-review-token"
+    };
+
+    expect(agentSchedulerItemSummaryDtoSchema.safeParse(item).success).toBe(false);
+    expect(
+      agentSchedulerWakeResultDtoSchema.safeParse({
+        ...buildWakeResultDto(),
+        items: [item]
+      }).success
+    ).toBe(false);
+  });
+
   it.each([
     {
       label: "unsafe tool request id",
@@ -215,19 +241,6 @@ function buildWakeResultDto(
     allowedNextActions?: AgentSchedulerWakeResultDto["allowedNextActions"];
   } = {}
 ): SchedulerWakeResultDtoInput {
-  const baseItem: SchedulerWakeResultItemInput = {
-    toolRequestId: "toolreq_scheduler_contract",
-    runId: "run_scheduler_contract",
-    toolId: "agent.test.effect",
-    toolVersion: "1.0.0",
-    state: "completed",
-    approvalClass: "ledger-review",
-    previewHash: safeHash,
-    currentPreviewHash: safeHash,
-    eventIds: ["evt_agent_tool_completed"],
-    allowedNextActions: ["refresh agent status"]
-  };
-
   return {
     schemaVersion: "agent-scheduler-wake-result.v1",
     generatedAt: "2026-07-09T12:00:00.000Z",
@@ -238,11 +251,22 @@ function buildWakeResultDto(
     failedCount: 0,
     eventIds: ["evt_agent_tool_completed"],
     allowedNextActions: patch.allowedNextActions ?? ["refresh agent status"],
-    items: [
-      {
-        ...baseItem,
-        ...patch.item
-      }
-    ]
+    items: [buildItemSummaryDto(patch.item)]
+  };
+}
+
+function buildItemSummaryDto(patch: SchedulerWakeResultItemPatch = {}): SchedulerWakeResultItemInput {
+  return {
+    toolRequestId: "toolreq_scheduler_contract",
+    runId: "run_scheduler_contract",
+    toolId: "agent.test.effect",
+    toolVersion: "1.0.0",
+    state: "completed",
+    approvalClass: "ledger-review",
+    previewHash: safeHash,
+    currentPreviewHash: safeHash,
+    eventIds: ["evt_agent_tool_completed"],
+    allowedNextActions: ["refresh agent status"],
+    ...patch
   };
 }
