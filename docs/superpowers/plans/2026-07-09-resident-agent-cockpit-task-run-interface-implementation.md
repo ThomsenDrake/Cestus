@@ -1,6 +1,6 @@
 # Resident Agent Cockpit Task Run Interface Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking.
 
 **Goal:** Build the minimally viable resident-agent cockpit where an investigator can give Cestus Agent a task, understand task and run state, inspect audit material, review approvals, and see what the agent needs next without moving domain execution into React.
 
@@ -84,7 +84,7 @@ The existing code already has `AgentStatusDto`, approval cockpit routes, task cr
 - Produces: `agentCockpitDtoSchema` and `AgentCockpitDto` for local runtime and UI parsing.
 - Produces: `AgentCockpitNeedDto`, `AgentCockpitRunCardDto`, `AgentCockpitTaskCardDto`, `AgentCockpitModelAuditDto`, `AgentCockpitContextPackDto`, `AgentCockpitMemorySnippetDto`, and `AgentCockpitHandoffDto`.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create `docs/agentic/claims/task-1-agent-cockpit-dto.md`:
 
@@ -113,7 +113,7 @@ git add docs/agentic/claims/task-1-agent-cockpit-dto.md
 git commit -m "chore: claim agent cockpit dto task"
 ```
 
-- [ ] **Step 2: Mark claim in progress**
+- [x] **Step 2: Mark claim in progress**
 
 Change `Status: claimed` to `Status: in-progress`, then commit:
 
@@ -122,7 +122,7 @@ git add docs/agentic/claims/task-1-agent-cockpit-dto.md
 git commit -m "chore: start agent cockpit dto task"
 ```
 
-- [ ] **Step 3: Write the failing DTO tests**
+- [x] **Step 3: Write the failing DTO tests**
 
 Create `packages/agent/test/cockpit.test.ts` with tests that assert these exact behaviors:
 
@@ -222,7 +222,7 @@ describe("agent cockpit dto", () => {
 
 The fixture helpers must build strict `AgentStatusDto` and `AgentApprovalCockpitDto` objects with only safe strings, active lock coverage, one pending approval, one task without a run, one running run with step IDs, one failed model invocation, one completed invocation with context pack refs, one completed run with output artifact hashes, and one active memory entry.
 
-- [ ] **Step 4: Run the targeted failing command**
+- [x] **Step 4: Run the targeted failing command**
 
 Run:
 
@@ -236,7 +236,7 @@ Expected before implementation:
 Failed to resolve import "../src/cockpit.js"
 ```
 
-- [ ] **Step 5: Implement the DTO builder**
+- [x] **Step 5: Implement the DTO builder**
 
 Create `packages/agent/src/cockpit.ts` with:
 
@@ -263,7 +263,7 @@ Modify `packages/agent/src/index.ts`:
 export * from "./cockpit.js";
 ```
 
-- [ ] **Step 6: Run targeted passing command**
+- [x] **Step 6: Run targeted passing command**
 
 Run:
 
@@ -277,7 +277,7 @@ Expected:
 Test Files  3 passed
 ```
 
-- [ ] **Step 7: Commit Task 1**
+- [x] **Step 7: Commit Task 1**
 
 Update the claim with red/green command evidence and `Status: ready-for-review`, then commit:
 
@@ -311,11 +311,11 @@ git commit -m "feat: add resident agent cockpit dto"
 - Produces: `GET /api/agent/cockpit`.
 - Produces: `POST /api/agent/runs` only as a safe event-appending run-start route. If a scheduler branch has already landed a conflicting run route, adapt this task to the landed contract and keep this plan's acceptance criteria.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-2-agent-cockpit-routes.md` with owned files listed above and `Status: claimed`, then change it to `in-progress` and commit the status update.
 
-- [ ] **Step 2: Write failing route tests**
+- [x] **Step 2: Write failing route tests**
 
 Create `packages/local-runtime/test/agent-cockpit-routes.test.ts` with tests that prove:
 
@@ -375,7 +375,7 @@ it("starts a safe specialist run without executing the specialist workflow", asy
 });
 ```
 
-- [ ] **Step 3: Run targeted failing command**
+- [x] **Step 3: Run targeted failing command**
 
 Run:
 
@@ -389,7 +389,7 @@ Expected before implementation:
 expected 200 received 404
 ```
 
-- [ ] **Step 4: Implement read and safe run routes**
+- [x] **Step 4: Implement read and safe run routes**
 
 Modify `packages/local-runtime/src/agent-http-routes.ts`:
 
@@ -413,7 +413,7 @@ Modify `packages/local-runtime/src/agent-http-routes.ts`:
 
 If the scheduler branch has already provided a generic run-start route, preserve this route's tests by changing the path and adapter to the scheduler branch's accepted path rather than creating duplicate local-runtime contracts.
 
-- [ ] **Step 5: Run targeted passing command**
+- [x] **Step 5: Run targeted passing command**
 
 Run:
 
@@ -427,7 +427,7 @@ Expected:
 Test Files  3 passed
 ```
 
-- [ ] **Step 6: Commit Task 2**
+- [x] **Step 6: Commit Task 2**
 
 Update the claim with red/green command evidence and `Status: ready-for-review`, then commit:
 
@@ -461,11 +461,11 @@ git commit -m "feat: expose resident agent cockpit routes"
 - Produces: adapter methods `loadCockpit()`, `createTask(input)`, and `startRun(input)`.
 - Produces: `CreateAgentTaskInput`, `StartAgentRunInput`, `AgentTaskCreateResultDto`, and `AgentRunStartResultDto` browser types.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-3-agent-cockpit-adapter.md`, then mark it `in-progress` and commit.
 
-- [ ] **Step 2: Write failing adapter tests**
+- [x] **Step 2: Write failing adapter tests**
 
 Create `packages/ui/test/agent-cockpit-adapter.test.ts` with tests that prove:
 
@@ -488,7 +488,7 @@ expect(fetchCalls.map((call) => call.path).join(" ")).not.toMatch(
 );
 ```
 
-- [ ] **Step 3: Run targeted failing command**
+- [x] **Step 3: Run targeted failing command**
 
 Run:
 
@@ -502,7 +502,7 @@ Expected before implementation:
 Agent adapter does not expose loadCockpit
 ```
 
-- [ ] **Step 4: Extend UI types and adapter**
+- [x] **Step 4: Extend UI types and adapter**
 
 Modify `packages/ui/src/agent/agent-types.ts` to export the cockpit DTO types from `packages/agent/src/cockpit.js`.
 
@@ -521,7 +521,7 @@ startRun(input: StartAgentRunInput): Promise<AgentRunStartResultDto>;
 - Keep `createStaticAgentAdapter` returning frozen cockpit fixtures and throwing safe errors for mutation methods unless explicit test doubles override them.
 - Redact URL paths in error messages with the existing redaction helper.
 
-- [ ] **Step 5: Run targeted passing command**
+- [x] **Step 5: Run targeted passing command**
 
 Run:
 
@@ -535,7 +535,7 @@ Expected:
 Test Files  2 passed
 ```
 
-- [ ] **Step 6: Commit Task 3**
+- [x] **Step 6: Commit Task 3**
 
 Update the claim with command evidence and `Status: ready-for-review`, then commit:
 
@@ -563,11 +563,11 @@ git commit -m "feat: add agent cockpit browser adapter"
 - Consumes: `AgentCockpitDto`, `AgentStatusDto`, `CreateAgentTaskInput`, `StartAgentRunInput`, `createTask`, and `startRun` callbacks.
 - Produces: a browser-only task handoff form that proposes safe task/run IDs, run type, scope, and scope refs.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-4-agent-task-composer.md`, then mark it `in-progress` and commit.
 
-- [ ] **Step 2: Write failing component tests**
+- [x] **Step 2: Write failing component tests**
 
 Create `packages/ui/test/agent-task-composer.test.tsx` with tests that prove:
 
@@ -581,7 +581,7 @@ Create `packages/ui/test/agent-task-composer.test.tsx` with tests that prove:
 - Start controls are disabled with a clear safe message when run start route is unavailable, active locks block handoff, or provider readiness is unavailable.
 - No button label matches provider transfer, PRR send, export, repair, lock clearing, accepted graph, scheduler wake, import, or staging execution.
 
-- [ ] **Step 3: Run targeted failing command**
+- [x] **Step 3: Run targeted failing command**
 
 Run:
 
@@ -595,7 +595,7 @@ Expected before implementation:
 Failed to resolve import "../src/agent/AgentTaskComposer.js"
 ```
 
-- [ ] **Step 4: Build task composer**
+- [x] **Step 4: Build task composer**
 
 Create `AgentTaskComposer.tsx`:
 
@@ -611,7 +611,7 @@ Create `AgentTaskComposer.tsx`:
 
 Modify `AgentWorkspace.tsx` to render the composer above task/run state when cockpit DTO is present.
 
-- [ ] **Step 5: Run targeted passing command**
+- [x] **Step 5: Run targeted passing command**
 
 Run:
 
@@ -625,7 +625,7 @@ Expected:
 Test Files  2 passed
 ```
 
-- [ ] **Step 6: Commit Task 4**
+- [x] **Step 6: Commit Task 4**
 
 Update the claim with evidence and `Status: ready-for-review`, then commit:
 
@@ -655,11 +655,11 @@ git commit -m "feat: add resident agent task composer"
 - Consumes: `AgentCockpitDto`.
 - Produces: dense read-only cockpit panels for task queue, selected run detail, run steps, model invocation audit summaries, context pack summaries, memory snippets, pending approvals, blocked reasons, and final handoff artifacts.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-5-agent-run-cockpit.md`, then mark it `in-progress` and commit.
 
-- [ ] **Step 2: Write failing run cockpit tests**
+- [x] **Step 2: Write failing run cockpit tests**
 
 Create `packages/ui/test/agent-run-cockpit.test.tsx` with tests that prove:
 
@@ -673,7 +673,7 @@ Create `packages/ui/test/agent-run-cockpit.test.tsx` with tests that prove:
 - It links pending approval IDs to the existing approval cockpit through text and callback-free refs.
 - It never renders forbidden direct action buttons.
 
-- [ ] **Step 3: Run targeted failing command**
+- [x] **Step 3: Run targeted failing command**
 
 Run:
 
@@ -687,7 +687,7 @@ Expected before implementation:
 Failed to resolve import "../src/agent/AgentRunCockpit.js"
 ```
 
-- [ ] **Step 4: Build run cockpit**
+- [x] **Step 4: Build run cockpit**
 
 Create `AgentRunCockpit.tsx`:
 
@@ -700,7 +700,7 @@ Create `AgentRunCockpit.tsx`:
 
 Modify `AgentWorkspace.tsx` to render `AgentRunCockpit` near the top of the workspace and keep the existing approval cockpit visible for decisions.
 
-- [ ] **Step 5: Run targeted passing command**
+- [x] **Step 5: Run targeted passing command**
 
 Run:
 
@@ -714,7 +714,7 @@ Expected:
 Test Files  3 passed
 ```
 
-- [ ] **Step 6: Commit Task 5**
+- [x] **Step 6: Commit Task 5**
 
 Update the claim with evidence and `Status: ready-for-review`, then commit:
 
@@ -743,11 +743,11 @@ git commit -m "feat: add resident agent run cockpit"
 - Consumes: extended `AgentAdapter`, `AgentWorkspace`, `AgentTaskComposer`, `AgentRunCockpit`, and existing approval cockpit wiring.
 - Produces: app-level load, refresh, create task, safe run start, approve, and deny behavior.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-6-agent-cockpit-app-integration.md`, then mark it `in-progress` and commit.
 
-- [ ] **Step 2: Write failing app integration tests**
+- [x] **Step 2: Write failing app integration tests**
 
 Modify `packages/ui/test/agent-app-integration.test.tsx` to prove:
 
@@ -758,7 +758,7 @@ Modify `packages/ui/test/agent-app-integration.test.tsx` to prove:
 - Approval decisions still call only approval decision methods and reload cockpit/status after success.
 - If run start route is unavailable, the app shows a safe message and does not call forbidden routes.
 
-- [ ] **Step 3: Run targeted failing command**
+- [x] **Step 3: Run targeted failing command**
 
 Run:
 
@@ -772,7 +772,7 @@ Expected before implementation:
 expected loadCockpit to have been called
 ```
 
-- [ ] **Step 4: Wire App state and callbacks**
+- [x] **Step 4: Wire App state and callbacks**
 
 Modify `App.tsx`:
 
@@ -787,7 +787,7 @@ Modify `App.tsx`:
 
 Modify command and smoke tests only to preserve existing Agent brief behavior and route smoke.
 
-- [ ] **Step 5: Run targeted passing command**
+- [x] **Step 5: Run targeted passing command**
 
 Run:
 
@@ -801,7 +801,7 @@ Expected:
 Test Files  4 passed
 ```
 
-- [ ] **Step 6: Commit Task 6**
+- [x] **Step 6: Commit Task 6**
 
 Update the claim with evidence and `Status: ready-for-review`, then commit:
 
@@ -828,11 +828,11 @@ git commit -m "feat: wire resident agent cockpit app flow"
 - Consumes: completed Tasks 1 through 6.
 - Produces: factory readiness evidence and final review handoff.
 
-- [ ] **Step 1: Claim readiness task**
+- [x] **Step 1: Claim readiness task**
 
 Create and commit `docs/agentic/claims/task-7-agent-cockpit-readiness.md`, then mark it `in-progress` and commit.
 
-- [ ] **Step 2: Run focused verification**
+- [x] **Step 2: Run focused verification**
 
 Run:
 
@@ -846,7 +846,7 @@ Expected:
 Test Files  12 passed
 ```
 
-- [ ] **Step 3: Run full verification**
+- [x] **Step 3: Run full verification**
 
 Run:
 
@@ -863,7 +863,7 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 4: Run whitespace check**
+- [x] **Step 4: Run whitespace check**
 
 Run:
 
@@ -877,7 +877,7 @@ Expected:
 no output
 ```
 
-- [ ] **Step 5: Record readiness**
+- [x] **Step 5: Record readiness**
 
 Append a `Resident Agent Cockpit Task Run Interface Readiness` section to `docs/agentic/software-factory.md` with:
 
@@ -891,7 +891,7 @@ Append a `Resident Agent Cockpit Task Run Interface Readiness` section to `docs/
 
 Check off completed tasks in this plan and record command evidence in the claim.
 
-- [ ] **Step 6: Commit readiness**
+- [x] **Step 6: Commit readiness**
 
 ```bash
 git add docs/agentic/software-factory.md docs/superpowers/plans/2026-07-09-resident-agent-cockpit-task-run-interface-implementation.md docs/agentic/claims/task-7-agent-cockpit-readiness.md

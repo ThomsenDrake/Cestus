@@ -1124,3 +1124,42 @@ Integration lessons:
 - Live Nous Portal is the authoritative real-provider acceptance path for the current local provider lane. Standard verification remains deterministic and credential-free unless a task explicitly opts into live provider checks.
 - Ontology bootstrap remains evidence-first: old Cestus artifacts bootstrap a fresh ontology by producing evidence-backed dossiers, review bundles, and proposed assertion material, never accepted graph truth.
 - Shared readiness documentation is valuable but noisy. Future high-volume implementation detail should move into per-slice claim/readiness artifacts, with this file retaining the index and final gate evidence.
+
+## Resident Agent Cockpit Task Run Interface Readiness
+
+The resident-agent cockpit/task/run interface slice was implemented on `codex/resident-agent-cockpit-task-run-plan` against:
+
+- `docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md`
+- `docs/superpowers/specs/2026-07-07-resident-agent-execution-approval-design.md`
+- `docs/superpowers/plans/2026-07-09-resident-agent-cockpit-task-run-interface-implementation.md`
+
+Focused verification:
+
+```text
+npm test -- packages/agent/test/cockpit.test.ts packages/agent/test/approval-cockpit.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-task-composer.test.tsx packages/ui/test/agent-run-cockpit.test.tsx packages/ui/test/agent-approval-cockpit.test.tsx packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx packages/ui/test/command-model.test.ts
+Test Files  12 passed (12)
+Tests  96 passed (96)
+```
+
+Full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  148 passed | 1 skipped
+Tests  1407 passed | 1 skipped
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Whitespace check:
+
+```text
+git diff --check
+no output
+```
+
+The Agent workspace now creates tasks, starts safe specialist runs only through runtime routes, refreshes browser-safe cockpit/status state, navigates within the workspace, and approves or denies through existing decision routes. It renders task queue, run detail, run steps, model invocation audit summaries, context pack summaries, memory snippets, pending approvals, blocked reasons, and final handoff artifacts from DTOs rather than from React-side domain execution.
+
+No route or button in this slice directly sends PRRs, transfers provider bytes, exports, clears legal locks, executes repairs, accepts graph truth, imports legacy material, stages legacy material, mutates portable storage truth, calls provider adapters, or wakes a scheduler. Scheduler wake remains merge-after-scheduler; if the scheduler branch lands an overlapping route contract, this branch must adapt to that landed contract before merge.
