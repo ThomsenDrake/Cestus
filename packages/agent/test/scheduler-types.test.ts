@@ -135,6 +135,15 @@ describe("agent scheduler contracts", () => {
     expect(left).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 
+  it("rejects numeric toolVersion values in public scheduler dto parsing", () => {
+    const dto = buildWakeResultDto({
+      item: { toolVersion: 1 }
+    });
+    const parsed = agentSchedulerWakeResultDtoSchema.safeParse(dto);
+
+    expect(parsed.success).toBe(false);
+  });
+
   it.each([
     {
       label: "unsafe tool request id",
@@ -185,13 +194,15 @@ describe("agent scheduler contracts", () => {
 });
 
 type SchedulerWakeResultItemPatch =
-  Partial<Omit<AgentSchedulerWakeResultDto["items"][number], "approvalClass">> & {
+  Partial<Omit<AgentSchedulerWakeResultDto["items"][number], "approvalClass" | "toolVersion">> & {
     approvalClass?: string;
+    toolVersion?: unknown;
   };
 
 type SchedulerWakeResultItemInput =
-  Omit<AgentSchedulerWakeResultDto["items"][number], "approvalClass"> & {
+  Omit<AgentSchedulerWakeResultDto["items"][number], "approvalClass" | "toolVersion"> & {
     approvalClass: string;
+    toolVersion: unknown;
   };
 
 type SchedulerWakeResultDtoInput = Omit<AgentSchedulerWakeResultDto, "items"> & {
