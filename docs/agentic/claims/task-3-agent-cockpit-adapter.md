@@ -37,3 +37,12 @@ Self-review notes:
 - Added browser-safe cockpit, task-create, and run-start adapter methods using the existing fetch/redaction helpers and strict local route schemas.
 - Static adapters now expose frozen cockpit fixtures and safe default mutation failures, with optional explicit test-double overrides for mutation methods.
 - The adapter route surface remains limited to `/api/agent/cockpit`, `/api/agent/tasks`, and `/api/agent/runs`; no scheduler wake, provider transfer, PRR send, export, repair, legal escalation, accepted graph review, legacy import, or staging paths were added.
+
+Review-fix recorded at: 2026-07-09T02:02:19Z
+
+Review-fix evidence:
+- Reviewer findings addressed: canonical cockpit parsing was too loose, and the static cockpit fixture omitted `lock-clearing`.
+- Red: `npm test -- packages/ui/test/agent-cockpit-adapter.test.ts` failed with malformed cockpit IDs and secret-shaped cockpit text being accepted instead of rejected.
+- Fix: `packages/ui/src/agent/agent-adapter.ts` now parses cockpit DTOs with the canonical `agentCockpitDtoSchema` from `packages/agent/src/cockpit.ts`, preserves value strings long enough for canonical secret-safe/id validation, and keeps static fixture fallback lists aligned with the canonical forbidden direct effects including `lock-clearing`.
+- Targeted: `npm test -- packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-adapter.test.ts` passed with 2 test files and 16 tests passing.
+- Verify: `npm run verify` passed on rerun with `typecheck passed`, `Test Files  146 passed | 1 skipped (147)`, `Tests  1394 passed | 1 skipped (1395)`, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.

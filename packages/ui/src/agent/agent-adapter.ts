@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { agentCockpitDtoSchema as canonicalAgentCockpitDtoSchema } from "../../../agent/src/cockpit.js";
 import { providerReadinessDtoSchema } from "../../../agent/src/provider-readiness.js";
 import type {
   AgentCockpitDto,
@@ -826,7 +827,9 @@ export function agentStatusFromJson(value: unknown): AgentStatusDto {
 }
 
 export function agentCockpitFromJson(value: unknown): AgentCockpitDto {
-  return deepFreeze(agentCockpitDtoSchema.parse(safeAgentValue(value)) as AgentCockpitDto);
+  return deepFreeze(
+    canonicalAgentCockpitDtoSchema.parse(safeAgentValueForCockpit(value)) as AgentCockpitDto
+  );
 }
 
 export function agentApprovalCockpitFromJson(value: unknown): AgentApprovalCockpitDto {
@@ -1056,80 +1059,114 @@ function buildStaticCockpit(
   const activeTaskCount = status.tasks.filter((task) => !["completed", "failed", "canceled"].includes(task.status)).length;
   const activeRunCount = status.runs.filter((run) => run.state === "running").length;
 
+  try {
+    return agentCockpitFromJson({
+      schemaVersion: "agent-cockpit.v1",
+      generatedAt: safeGeneratedAt(status.generatedAt),
+      summary: {
+        activeTaskCount,
+        activeRunCount,
+        pendingApprovalCount: Math.max(status.pendingApprovalCount, approvalCockpit.summary.pendingCount),
+        activeLockCount: status.activeLockCount,
+        mergeAfterScheduler: false
+      },
+      taskQueue: status.tasks.map((task) => ({
+        taskId: task.taskId,
+        title: task.title,
+        priority: task.priority,
+        status: task.status,
+        createdAt: task.createdAt,
+        ...(task.runId === undefined ? {} : { runId: task.runId }),
+        ...(task.statusReason === undefined ? {} : { statusReason: task.statusReason })
+      })),
+      runQueue: status.runs.map((run) => ({
+        runId: run.runId,
+        ...(run.taskId === undefined ? {} : { taskId: run.taskId }),
+        runType: run.runType,
+        state: run.state,
+        startedAt: run.startedAt,
+        ...(run.summary === undefined ? {} : { summary: run.summary }),
+        currentStepCount: run.stepIds.length,
+        modelInvocationCount: run.invocationIds.length,
+        pendingApprovalCount: run.toolRequestIds.length,
+        blockedReasonCount: run.failureMessage === undefined ? 0 : 1
+      })),
+      needsNext: [],
+      memorySnippets: status.activeMemory
+        .filter((memory) => memory.state === "active")
+        .map((memory) => ({
+          memoryId: memory.memoryId,
+          scope: memory.scope,
+          summary: memory.summary,
+          createdAt: memory.createdAt,
+          sourceEventIds: [...memory.sourceEventIds],
+          artifactHashes: [...memory.artifactHashes],
+          confidence: memory.confidence
+        })),
+      forbiddenDirectEffects: canonicalForbiddenDirectEffects,
+      ...(status.providerReadiness === undefined ? {} : { providerReadiness: status.providerReadiness })
+    });
+  } catch {
+    return emptyStaticCockpit(status.generatedAt);
+  }
+}
+
+const canonicalForbiddenDirectEffects = [
+  "provider-byte-transfer",
+  "prr-send-followup",
+  "export-publication",
+  "destructive-repair",
+  "legal-escalation",
+  "lock-clearing",
+  "accepted-graph-review",
+  "legacy-raw-import",
+  "legacy-staging-execution"
+] as const;
+
+function emptyStaticCockpit(generatedAt: string): AgentCockpitDto {
   return agentCockpitFromJson({
     schemaVersion: "agent-cockpit.v1",
-    generatedAt: safeGeneratedAt(status.generatedAt),
+    generatedAt: safeGeneratedAt(generatedAt),
     summary: {
-      activeTaskCount,
-      activeRunCount,
-      pendingApprovalCount: Math.max(status.pendingApprovalCount, approvalCockpit.summary.pendingCount),
-      activeLockCount: status.activeLockCount,
+      activeTaskCount: 0,
+      activeRunCount: 0,
+      pendingApprovalCount: 0,
+      activeLockCount: 0,
       mergeAfterScheduler: false
     },
-    taskQueue: status.tasks.map((task) => ({
-      taskId: task.taskId,
-      title: task.title,
-      priority: task.priority,
-      status: task.status,
-      createdAt: task.createdAt,
-      ...(task.runId === undefined ? {} : { runId: task.runId }),
-      ...(task.statusReason === undefined ? {} : { statusReason: task.statusReason })
-    })),
-    runQueue: status.runs.map((run) => ({
-      runId: run.runId,
-      ...(run.taskId === undefined ? {} : { taskId: run.taskId }),
-      runType: run.runType,
-      state: run.state,
-      startedAt: run.startedAt,
-      ...(run.summary === undefined ? {} : { summary: run.summary }),
-      currentStepCount: run.stepIds.length,
-      modelInvocationCount: run.invocationIds.length,
-      pendingApprovalCount: run.toolRequestIds.length,
-      blockedReasonCount: run.failureMessage === undefined ? 0 : 1
-    })),
+    taskQueue: [],
+    runQueue: [],
     needsNext: [],
-    memorySnippets: status.activeMemory
-      .filter((memory) => memory.state === "active")
-      .map((memory) => ({
-        memoryId: memory.memoryId,
-        scope: memory.scope,
-        summary: memory.summary,
-        createdAt: memory.createdAt,
-        sourceEventIds: [...memory.sourceEventIds],
-        artifactHashes: [...memory.artifactHashes],
-        confidence: memory.confidence
-      })),
-    forbiddenDirectEffects: [
-      "provider-byte-transfer",
-      "prr-send-followup",
-      "export-publication",
-      "destructive-repair",
-      "legal-escalation",
-      "accepted-graph-review",
-      "legacy-raw-import",
-      "legacy-staging-execution"
-    ],
-    ...(status.providerReadiness === undefined ? {} : { providerReadiness: status.providerReadiness })
+    memorySnippets: [],
+    forbiddenDirectEffects: canonicalForbiddenDirectEffects
   });
 }
 
 function safeAgentValue(value: unknown): unknown {
+  return sanitizeAgentValue(value, true);
+}
+
+function safeAgentValueForCockpit(value: unknown): unknown {
+  return sanitizeAgentValue(value, false);
+}
+
+function sanitizeAgentValue(value: unknown, redactStrings: boolean): unknown {
   if (typeof value === "string") {
-    return safeAgentText(value);
+    return redactStrings ? safeAgentText(value) : value;
   }
 
   if (Array.isArray(value)) {
-    return safeAgentArray(value);
+    return safeAgentArray(value, redactStrings);
   }
 
   if (!isJsonObject(value)) {
     return value;
   }
 
-  return safeAgentObject(value);
+  return safeAgentObject(value, redactStrings);
 }
 
-function safeAgentArray(value: readonly unknown[]): unknown[] {
+function safeAgentArray(value: readonly unknown[], redactStrings: boolean): unknown[] {
   if (Object.getPrototypeOf(value) !== Array.prototype) {
     throw invalidBrowserDtoError("Browser DTO input must use plain array prototypes.");
   }
@@ -1152,13 +1189,13 @@ function safeAgentArray(value: readonly unknown[]): unknown[] {
       throw invalidBrowserDtoError("Browser DTO arrays must use numeric item keys only.");
     }
 
-    result[index] = safeAgentValue(descriptor.value);
+    result[index] = sanitizeAgentValue(descriptor.value, redactStrings);
   }
 
   return result;
 }
 
-function safeAgentObject(value: Record<string, unknown>): Record<string, unknown> {
+function safeAgentObject(value: Record<string, unknown>, redactStrings: boolean): Record<string, unknown> {
   const prototype = Object.getPrototypeOf(value);
   if (prototype !== Object.prototype && prototype !== null) {
     throw invalidBrowserDtoError("Browser DTO input must use plain object prototypes.");
@@ -1176,7 +1213,7 @@ function safeAgentObject(value: Record<string, unknown>): Record<string, unknown
       continue;
     }
 
-    result[safeAgentText(key)] = safeAgentValue(descriptor.value);
+    result[safeAgentText(key)] = sanitizeAgentValue(descriptor.value, redactStrings);
   }
 
   return result;
