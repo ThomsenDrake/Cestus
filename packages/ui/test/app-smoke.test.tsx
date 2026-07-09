@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { PrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
 import { App } from "../src/App.js";
-import type { AgentApprovalCockpitDto, AgentStatusDto } from "../src/agent/agent-types.js";
+import type { AgentApprovalCockpitDto, AgentCockpitDto, AgentStatusDto } from "../src/agent/agent-types.js";
 import { createStaticOperatorStatusAdapter } from "../src/operator-status/operator-status-adapter.js";
 import type { OperatorStatusDto } from "../src/operator-status/operator-status-types.js";
 import {
@@ -107,9 +107,12 @@ describe("Cestus UI bootstrap", () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async (url: RequestInfo | URL) => {
       fetchCalls.push(String(url));
-      const body = String(url).endsWith("/api/agent/approvals")
+      const requestUrl = String(url);
+      const body = requestUrl.endsWith("/api/agent/approvals")
         ? appSmokeApprovalCockpit()
-        : appSmokeAgentStatus();
+        : requestUrl.endsWith("/api/agent/cockpit")
+          ? appSmokeAgentCockpit()
+          : appSmokeAgentStatus();
       return new Response(JSON.stringify(body), {
         status: 200,
         headers: { "content-type": "application/json" }
@@ -121,12 +124,12 @@ describe("Cestus UI bootstrap", () => {
       fireEvent.click(screen.getByRole("link", { name: "Agent" }));
       const workspace = await screen.findByRole("region", { name: "Resident agent workspace" });
       expect(screen.getByRole("region", { name: "Agent approval cockpit" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Give Cestus Agent a task" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Agent run cockpit" })).toBeInTheDocument();
       expect(screen.getByText("Fake Local Model Provider")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "New request" })).not.toBeInTheDocument();
-      expect(within(workspace).getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
-        "Refresh agent status"
-      ]);
-      expect(fetchCalls).toEqual(["/api/agent/status", "/api/agent/approvals"]);
+      expect(within(workspace).getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
+      expect(fetchCalls).toEqual(["/api/agent/status", "/api/agent/cockpit", "/api/agent/approvals"]);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -478,6 +481,42 @@ function appSmokeApprovalCockpit(): AgentApprovalCockpitDto {
       "export-publication",
       "destructive-repair",
       "accepted-graph-review"
+    ]
+  };
+}
+
+function appSmokeAgentCockpit(): AgentCockpitDto {
+  return {
+    schemaVersion: "agent-cockpit.v1",
+    generatedAt: "2026-07-07T21:00:00.000Z",
+    summary: {
+      activeTaskCount: 0,
+      activeRunCount: 0,
+      pendingApprovalCount: 0,
+      activeLockCount: 0,
+      mergeAfterScheduler: false
+    },
+    taskQueue: [],
+    runQueue: [],
+    needsNext: [
+      {
+        kind: "quiet",
+        severity: "info",
+        label: "No active resident work is queued.",
+        safeAction: "review"
+      }
+    ],
+    memorySnippets: [],
+    forbiddenDirectEffects: [
+      "provider-byte-transfer",
+      "prr-send-followup",
+      "export-publication",
+      "destructive-repair",
+      "legal-escalation",
+      "lock-clearing",
+      "accepted-graph-review",
+      "legacy-raw-import",
+      "legacy-staging-execution"
     ]
   };
 }
