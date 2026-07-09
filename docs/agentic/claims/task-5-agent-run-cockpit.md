@@ -44,3 +44,6 @@ Implementation log:
 - `2026-07-09T09:41:21Z`: Targeted pass succeeded with `Test Files  3 passed (3)` and `Tests  17 passed (17)`.
 - `2026-07-09T09:41:49Z`: First `npm run verify` attempt failed on two workspace-ops CLI tests timing out at 5000ms; direct reproduction of the failing CLI tests passed separately, indicating a transient load issue.
 - `2026-07-09T09:43:40Z`: Full `npm run verify` rerun passed with `typecheck passed`, `Test Files  148 passed | 1 skipped (149)`, `Tests  1402 passed | 1 skipped (1403)`, `tests passed`, Vite production build success, and `factory-readiness passed`.
+- `2026-07-09T09:52:50Z`: Review-fix RED verified the no-selected-run fixture and long-meta assertions failed before the fix landed.
+- `2026-07-09T09:52:58Z`: Review-fix targeted pass succeeded with `Test Files  3 passed (3)` and `Tests  19 passed (19)`.
+- `2026-07-09T09:53:25Z`: Review-fix `npm run verify` passed with `typecheck passed`, `Test Files  148 passed | 1 skipped (149)`, `Tests  1404 passed | 1 skipped (1405)`, `tests passed`, Vite production build success, and `factory-readiness passed`.
