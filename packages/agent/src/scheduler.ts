@@ -38,6 +38,7 @@ type ToolRequestEvent =
 
 interface ToolRequestStreamState {
   readonly request: KnowledgeEventOf<"agent.tool.requested">;
+  readonly requestCount: number;
   readonly approval?: KnowledgeEventOf<"agent.tool.approved">;
   readonly denial?: KnowledgeEventOf<"agent.tool.denied">;
   readonly completed?: KnowledgeEventOf<"agent.tool.completed">;
@@ -154,6 +155,16 @@ async function consumeApprovedRequest(
   if (streamState.completed !== undefined || streamState.denial !== undefined || streamState.failure !== undefined) {
     return notReadyItem(request, "Tool request is no longer open.");
   }
+  if (streamState.requestCount > 1) {
+    return await failRequest(
+      gateway,
+      request,
+      "permission-denied",
+      "Tool request stream contains duplicate request records.",
+      false,
+      ["create a new tool request with a unique id"]
+    );
+  }
 
   const approval = streamState.approval;
   if (approval === undefined || !isStoredApprovalUsable(approval, streamState.request, schedulerActorId)) {
@@ -216,6 +227,7 @@ async function consumeApprovedRequest(
   }
 
   if (
+    currentPreviewHash !== request.previewHash ||
     currentPreviewHash !== streamState.request.payload.previewHash ||
     currentPreviewHash !== approval.payload.approvedPreviewHash
   ) {
@@ -405,7 +417,8 @@ async function readToolRequestStreamState(
   toolRequestId: string
 ): Promise<ToolRequestStreamState | undefined> {
   const events = (await ledger.readStream(toolRequestStreamId(toolRequestId))).filter(isToolRequestEvent);
-  const request = events.find((event): event is KnowledgeEventOf<"agent.tool.requested"> => event.type === "agent.tool.requested");
+  const requests = events.filter((event): event is KnowledgeEventOf<"agent.tool.requested"> => event.type === "agent.tool.requested");
+  const request = requests[0];
   if (request === undefined) {
     return undefined;
   }
@@ -416,6 +429,7 @@ async function readToolRequestStreamState(
   const failure = lastOfType(events, "agent.tool.failed");
   return {
     request,
+    requestCount: requests.length,
     ...(approval === undefined ? {} : { approval }),
     ...(denial === undefined ? {} : { denial }),
     ...(completed === undefined ? {} : { completed }),
