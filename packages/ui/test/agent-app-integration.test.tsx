@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.js";
 import { createStaticAgentAdapter, type AgentAdapter } from "../src/agent/agent-adapter.js";
@@ -23,16 +23,12 @@ describe("agent app integration", () => {
     const loads = {
       status: 0,
       cockpit: 0,
-      approvals: 0
+      approvals: 0,
+      ontologyRoute: 0
     };
-    let resolveOntologyRoute: ((response: Response) => void) | undefined;
-    const routeLoads: string[] = [];
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => {
-      routeLoads.push(String(url));
-      return await new Promise<Response>((resolve) => {
-        resolveOntologyRoute = resolve;
-      });
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error("App must not use ambient fetch for ontology bootstrap routes.");
     }) as typeof fetch;
     const adapter: AgentAdapter = {
       ...createStaticAgentAdapter(agentStatusWithOntologyBootstrap(), approvalCockpit(), { cockpit: agentCockpit() }),
@@ -47,6 +43,11 @@ describe("agent app integration", () => {
       async loadApprovalCockpit() {
         loads.approvals += 1;
         return approvalCockpit();
+      },
+      async loadOntologyBootstrapRoute(runId: string) {
+        loads.ontologyRoute += 1;
+        expect(runId).toBe("run_ontology_bootstrap_route");
+        return ontologyBootstrapRoute();
       }
     };
 
@@ -70,21 +71,11 @@ describe("agent app integration", () => {
       expect(screen.getByRole("region", { name: "Give Cestus Agent a task" })).toBeInTheDocument();
       expect(screen.getByRole("region", { name: "Agent run cockpit" })).toBeInTheDocument();
 
-      await waitFor(() => expect(loads).toEqual({ status: 1, cockpit: 1, approvals: 1 }));
-      expect(routeLoads).toEqual([
-        "/api/agent/specialists/ontology-bootstrap/runs/run_ontology_bootstrap_route"
-      ]);
-      const fallbackReview = screen.getByRole("region", { name: "Ontology bootstrap review" });
-      expect(within(fallbackReview).getByText("ontology-bootstrap")).toBeInTheDocument();
-      expect(within(fallbackReview).getByText("Review pending ontology bootstrap request")).toBeInTheDocument();
-
-      await act(async () => {
-        resolveOntologyRoute?.(new Response(JSON.stringify(ontologyBootstrapRoute()), {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        }));
-      });
-      expect(screen.getByRole("region", { name: "Ontology bootstrap review" })).toBeInTheDocument();
+      await waitFor(() => expect(loads).toEqual({ status: 1, cockpit: 1, approvals: 1, ontologyRoute: 1 }));
+      const review = screen.getByRole("region", { name: "Ontology bootstrap review" });
+      expect(within(review).getByText("Ontology bootstrap")).toBeInTheDocument();
+      expect(within(review).getByText("Review staging approval preview")).toBeInTheDocument();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
     } finally {
       globalThis.fetch = originalFetch;
     }
