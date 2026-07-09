@@ -1337,6 +1337,7 @@ typecheck passed
 Test Files  147 passed | 1 skipped (148)
 Tests  1403 passed | 1 skipped (1404)
 tests passed
+vite build succeeded
 factory-readiness passed
 ```
 

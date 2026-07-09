@@ -28,6 +28,7 @@ Worker: `Codex`
   - `Test Files  147 passed | 1 skipped (148)`
   - `Tests  1403 passed | 1 skipped (1404)`
   - `tests passed`
+  - `vite build succeeded`
   - `factory-readiness passed`
 - Final whitespace gate passed after readiness-doc updates: `git diff --check` produced no output.
 - Final factory gate passed after readiness-doc updates: `npm run factory:check`
@@ -37,6 +38,7 @@ Worker: `Codex`
   - `Test Files  147 passed | 1 skipped (148)`
   - `Tests  1403 passed | 1 skipped (1404)`
   - `tests passed`
+  - `vite build succeeded`
   - `factory-readiness passed`
 
 ## Invariant Notes
