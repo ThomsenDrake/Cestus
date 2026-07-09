@@ -1172,3 +1172,61 @@ The scheduler derives approved open work from the append-only agent ledger and r
 Consume-time validation rechecks independent human approval, causation, approval class, exact preview hash, current descriptor preview, active locks, source/provenance/artifact hashes, projection/read-model freshness, terminal state, and secret-safety before execution. Successful completions and validation or execution failures are recorded through the existing agent tool gateway as `agent.tool.completed` or `agent.tool.failed`.
 
 Provider byte transfer, PRR send/follow-up, legal escalation, export/publication, destructive repair, accepted graph review, and legacy staging are not executed directly in this branch and remain descriptor/domain-service follow-up work.
+
+## Resident Agent Domain Execution Adapter Plan Readiness
+
+The resident-agent domain execution adapter implementation plan was prepared on 2026-07-09.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md`
+- `docs/superpowers/specs/2026-07-07-resident-agent-execution-approval-design.md`
+- `docs/superpowers/plans/2026-07-09-resident-agent-domain-execution-adapters-implementation.md`
+
+Factory readiness tracks the adapter plan through `scripts/check-agent-readiness.mjs`.
+
+Recorded planning validation:
+
+```text
+git diff --cached --check
+no output
+
+npm run factory:check
+factory-readiness passed
+```
+
+Full verification status on this planning branch:
+
+```text
+npm run verify
+typecheck passed
+Test Files  1 failed | 142 passed | 1 skipped (144)
+Tests  3 failed | 1370 passed | 1 skipped (1374)
+
+Failed file:
+packages/workspace-ops/test/cli.test.ts
+
+Failed tests:
+- runs real executable detect and verify commands against a canonical workspace
+- blocks existing zero-byte ledgers without mutating the file or leaking raw SQLite errors
+- returns command-specific blocked JSON for disk usage against a missing root
+
+Failure mode:
+Error: Test timed out in 5000ms.
+```
+
+Targeted repro after restoring dependencies with `npm ci`:
+
+```text
+npm test -- packages/workspace-ops/test/cli.test.ts
+Test Files  1 failed (1)
+Tests  2 failed | 18 passed (20)
+
+npm test -- packages/workspace-ops/test/cli.test.ts
+Test Files  1 failed (1)
+Tests  1 failed | 19 passed (20)
+```
+
+The timeout is in existing `workspace-ops` executable tests that spawn `node packages/workspace-ops/bin/cestus-workspace.mjs`, whose wrapper launches `npx tsx`. This adapter planning branch does not change workspace-ops runtime, tests, or executable behavior, so the planning diff remains scoped to the adapter plan and readiness tracking.
+
+This planning slice adds no runtime executor. It defines the descriptor-backed adapter contract, desired scheduler dependency, preview builders, current-preview rebuilds, stale-source checks, lock checks, provenance requirements, idempotency keys, domain service targets, result mappers, failure categories, adapter family order, acceptance criteria, and stop conditions. Broad domain execution remains blocked until the scheduler/resumer descriptor interface lands on `neo`; domain services remain authoritative for provider byte transfer, PRR send/follow-up, accepted graph review, export/report, destructive repair, and legacy staging.

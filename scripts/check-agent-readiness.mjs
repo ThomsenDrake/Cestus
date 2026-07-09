@@ -52,7 +52,8 @@ const requiredFiles = [
   "docs/superpowers/plans/2026-07-08-provider-readiness-health-ux-implementation.md",
   "docs/superpowers/plans/2026-07-08-resident-agent-approval-cockpit-routes-ui-implementation.md",
   "docs/superpowers/plans/2026-07-08-resident-agent-prompt-artifact-context-resolver-implementation.md",
-  "docs/superpowers/plans/2026-07-08-ontology-bootstrap-resident-agent-workflow-implementation.md"
+  "docs/superpowers/plans/2026-07-08-ontology-bootstrap-resident-agent-workflow-implementation.md",
+  "docs/superpowers/plans/2026-07-09-resident-agent-domain-execution-adapters-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
