@@ -51,7 +51,7 @@ export const agentSchedulerItemSummaryDtoSchema = z.object({
   message: secretSafeTextSchema("scheduler message").optional(),
   eventIds: z.array(z.string().regex(/^evt_[a-zA-Z0-9_-]+$/)),
   allowedNextActions: z.array(secretSafeTextSchema("scheduler allowed next action"))
-});
+}).strict();
 
 export const agentSchedulerWakeResultDtoSchema = z.object({
   schemaVersion: z.literal("agent-scheduler-wake-result.v1"),
@@ -64,7 +64,7 @@ export const agentSchedulerWakeResultDtoSchema = z.object({
   eventIds: z.array(z.string().regex(/^evt_[a-zA-Z0-9_-]+$/)),
   allowedNextActions: z.array(secretSafeTextSchema("scheduler allowed next action")),
   items: z.array(agentSchedulerItemSummaryDtoSchema)
-});
+}).strict();
 
 export type AgentSchedulerItemState = z.infer<typeof agentSchedulerItemStateSchema>;
 export type AgentSchedulerItemSummaryDto = z.infer<typeof agentSchedulerItemSummaryDtoSchema>;
