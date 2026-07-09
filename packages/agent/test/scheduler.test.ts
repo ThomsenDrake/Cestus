@@ -14,6 +14,7 @@ const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "C
 const schedulerActor = { id: "actor_agent_scheduler", kind: "system" as const, label: "Agent Scheduler" };
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 const artifactHash = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+const changedArtifactHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 
 describe("agent scheduler wake", () => {
   it("resumes an approved request once and records completion through the gateway", async () => {
@@ -107,6 +108,36 @@ describe("agent scheduler wake", () => {
     expect(result.failedCount).toBe(1);
     expect(result.items[0]?.category).toBe("approval-stale");
     expect(executions).toBe(0);
+  });
+
+  it("fails closed before execution when rebuilt source event refs change without changing the preview hash", async () => {
+    const staleSource = await wakeWithPreviewResult("toolreq_stale_source_refs", {
+      sourceEventIds: ["evt_source_changed"]
+    });
+
+    expect(staleSource.result.failedCount).toBe(1);
+    expect(staleSource.result.items[0]?.currentPreviewHash).toBe(staleSource.result.items[0]?.previewHash);
+    expect(staleSource.result.items[0]).toMatchObject({
+      toolRequestId: "toolreq_stale_source_refs",
+      state: "failed",
+      category: "approval-stale"
+    });
+    expect(staleSource.executions).toBe(0);
+  });
+
+  it("fails closed before execution when rebuilt input artifact refs change without changing the preview hash", async () => {
+    const staleArtifacts = await wakeWithPreviewResult("toolreq_stale_artifact_refs", {
+      inputArtifactHashes: [changedArtifactHash]
+    });
+
+    expect(staleArtifacts.result.failedCount).toBe(1);
+    expect(staleArtifacts.result.items[0]?.currentPreviewHash).toBe(staleArtifacts.result.items[0]?.previewHash);
+    expect(staleArtifacts.result.items[0]).toMatchObject({
+      toolRequestId: "toolreq_stale_artifact_refs",
+      state: "failed",
+      category: "approval-stale"
+    });
+    expect(staleArtifacts.executions).toBe(0);
   });
 
   it("fails closed when active locks, missing provenance, or stale read models block consume-time validation", async () => {
