@@ -414,6 +414,29 @@ export async function rebuildDestructiveRepairCurrentPreview(
   };
 }
 
+export async function rebuildBlockedCanonicalRepairCurrentPreview(
+  input: BlockedCanonicalRepairAdapterContext,
+  request: AgentApprovedToolPreviewInput
+): Promise<AgentApprovedToolPreviewResult> {
+  const record = dataRecordFromObject(input, "blocked canonical repair current-preview input");
+  rejectUnsupportedKeys(record, canonicalContextKeys, "blocked canonical repair current-preview input");
+  const context = validatedCanonicalContextFromRecord(record);
+  const activeLocks = await readActiveLocks(context.ledger, context.residentAgentId);
+  return {
+    preview: canonicalPreviewFor(context, request, activeLocks),
+    sourceEventIds: [],
+    inputArtifactHashes: canonicalArtifactHashes(context),
+    provenanceRefs: canonicalProvenanceRefs(context),
+    activeLocks,
+    freshnessChecks: [{
+      name: "append-only-repair-service",
+      expected: "unavailable",
+      actual: "unavailable",
+      ok: true
+    }]
+  };
+}
+
 export function createWorkspaceProjectionRebuildAdapter(
   input: WorkspaceProjectionRebuildAdapterContext
 ): AgentDomainExecutionAdapter {
@@ -444,23 +467,8 @@ export function createBlockedCanonicalRepairAdapter(
   const context = validatedCanonicalContextFromRecord(record);
   return Object.freeze({
     descriptor: workspaceCanonicalRepairDescriptor,
-    async buildCurrentPreview(request: AgentApprovedToolPreviewInput) {
-      const activeLocks = await readActiveLocks(context.ledger, context.residentAgentId);
-      const preview = canonicalPreviewFor(context, request, activeLocks);
-      const inputArtifactHashes = canonicalArtifactHashes(context);
-      return {
-        preview,
-        sourceEventIds: [],
-        inputArtifactHashes,
-        provenanceRefs: canonicalProvenanceRefs(context),
-        activeLocks,
-        freshnessChecks: [{
-          name: "append-only-repair-service",
-          expected: "unavailable",
-          actual: "unavailable",
-          ok: true
-        }]
-      };
+    buildCurrentPreview(request: AgentApprovedToolPreviewInput) {
+      return rebuildBlockedCanonicalRepairCurrentPreview(context, request);
     },
     async executeApproved(request: AgentApprovedToolExecutionInput): Promise<AgentDomainExecutionResult> {
       const execution = validateExecutionInput(context, request);

@@ -173,7 +173,7 @@ The current gateway and ontology schema do not yet include every category above.
 - Consumes: existing `AgentToolPreview`, `AgentToolResult`, `AgentToolFailureCategory`, `AgentToolSideEffectClass`, `AgentToolApprovalClass`.
 - Produces: `AgentDomainToolDescriptor`, `AgentDomainPreview`, `AgentDomainExecutionResult`, `AgentDomainExecutionFailure`, `createAgentDomainToolRegistry()`, `hashAgentDomainPreview()`.
 
-- [ ] **Step 1: Write the failing descriptor contract tests**
+- [x] **Step 1: Write the failing descriptor contract tests**
 
 Create `packages/agent/test/domain-execution-descriptors.test.ts`:
 
@@ -259,7 +259,7 @@ describe("agent domain execution descriptors", () => {
 });
 ```
 
-- [ ] **Step 2: Run the descriptor test to verify it fails**
+- [x] **Step 2: Run the descriptor test to verify it fails**
 
 Run:
 
@@ -269,17 +269,17 @@ npm test -- packages/agent/test/domain-execution-descriptors.test.ts
 
 Expected: fail because `../src/domain-execution-descriptors.js` does not exist.
 
-- [ ] **Step 3: Extend failure categories before adapters can emit them**
+- [x] **Step 3: Extend failure categories before adapters can emit them**
 
 Modify `packages/ontology/src/contracts.ts`, `packages/agent/src/projection-types.ts`, and `packages/agent/src/tool-gateway.ts` so `agent.tool.failed` accepts the full failure category list from this plan.
 
 Update the fake loop active-lock mapper in `packages/agent/src/execution-loop.ts` to emit `lock-active` instead of the old residual `legal-lock-active` when generic active locks block resume.
 
-- [ ] **Step 4: Add the pure descriptor contract**
+- [x] **Step 4: Add the pure descriptor contract**
 
 Create `packages/agent/src/domain-execution-descriptors.ts` with frozen DTOs, stable JSON hashing, side-effect/approval-class validation, secret-safe text validation, descriptor-family validation, and registry lookup by `toolId@toolVersion`.
 
-- [ ] **Step 5: Run focused descriptor and lifecycle tests**
+- [x] **Step 5: Run focused descriptor and lifecycle tests**
 
 Run:
 
@@ -289,7 +289,7 @@ npm test -- packages/agent/test/domain-execution-descriptors.test.ts packages/on
 
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/agent/src/domain-execution-descriptors.ts packages/agent/src/index.ts packages/agent/src/projection-types.ts packages/agent/src/tool-gateway.ts packages/agent/src/execution-loop.ts packages/ontology/src/contracts.ts packages/agent/test/domain-execution-descriptors.test.ts packages/ontology/test/agent-contracts.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/execution-loop.test.ts
@@ -308,7 +308,7 @@ git commit -m "feat: add resident agent domain execution descriptor contracts"
 - Consumes: `AgentDomainToolDescriptor`, `createAgentToolGateway()`, landed scheduler approved-request interface.
 - Produces: `createAgentDomainExecutionDispatcher()` and a `resumeApprovedDomainTool()` path that calls one descriptor and maps completion/failure through the gateway.
 
-- [ ] **Step 1: Confirm scheduler dependency exists**
+- [x] **Step 1: Confirm scheduler dependency exists**
 
 Run:
 
@@ -318,7 +318,7 @@ rg -n "ApprovedToolExecution|resumeApproved|scheduler" packages/agent/src packag
 
 Expected: output names the scheduler/resumer contract from the scheduler branch. If no shared scheduler contract exists, stop before editing this task.
 
-- [ ] **Step 2: Write the failing dispatcher tests**
+- [x] **Step 2: Write the failing dispatcher tests**
 
 Create `packages/agent/test/domain-execution-dispatcher.test.ts` with tests that prove:
 
@@ -329,7 +329,7 @@ Create `packages/agent/test/domain-execution-dispatcher.test.ts` with tests that
 - a descriptor execution result maps to `agent.tool.completed` with exact event IDs, artifact hashes, read-model changes, and result summary
 - a domain service rejection maps to `domain-gate-failed` without appending completion
 
-- [ ] **Step 3: Run dispatcher tests to verify they fail**
+- [x] **Step 3: Run dispatcher tests to verify they fail**
 
 Run:
 
@@ -339,7 +339,7 @@ npm test -- packages/agent/test/domain-execution-dispatcher.test.ts
 
 Expected: fail because `domain-execution-dispatcher.ts` does not exist.
 
-- [ ] **Step 4: Implement the dispatcher**
+- [x] **Step 4: Implement the dispatcher**
 
 Implement a dispatcher that:
 
@@ -352,7 +352,7 @@ Implement a dispatcher that:
 - maps success through `gateway.completeTool()`
 - maps failure through `gateway.failTool()` with a safe category and allowed actions
 
-- [ ] **Step 5: Run dispatcher and existing resume tests**
+- [x] **Step 5: Run dispatcher and existing resume tests**
 
 Run:
 
@@ -362,7 +362,7 @@ npm test -- packages/agent/test/domain-execution-dispatcher.test.ts packages/age
 
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/agent/src/domain-execution-dispatcher.ts packages/agent/src/index.ts packages/agent/test/domain-execution-dispatcher.test.ts
@@ -380,7 +380,7 @@ git commit -m "feat: add approved domain execution dispatcher"
 - Consumes: `LegacyOntologyStagingService`, `LegacyImportRuntime`, legacy report hashes, evidence-tied candidates.
 - Produces: descriptors for `legacy.staging.approve` and `legacy.staging.execute`.
 
-- [ ] **Step 1: Write failing adapter tests**
+- [x] **Step 1: Write failing adapter tests**
 
 Create `packages/agent/test/legacy-staging-adapter.test.ts` with tests that prove:
 
@@ -390,7 +390,7 @@ Create `packages/agent/test/legacy-staging-adapter.test.ts` with tests that prov
 - execution maps `assertion.proposed` event IDs into `agent.tool.completed`
 - execution fails if any appended event type is `assertion.accepted`, `entity.resolved`, or `relationship.accepted`
 
-- [ ] **Step 2: Run the failing tests**
+- [x] **Step 2: Run the failing tests**
 
 Run:
 
@@ -400,18 +400,18 @@ npm test -- packages/agent/test/legacy-staging-adapter.test.ts
 
 Expected: fail because `legacy-staging.ts` does not exist.
 
-- [ ] **Step 3: Implement preview builders and stale checks**
+- [x] **Step 3: Implement preview builders and stale checks**
 
 Implement `buildLegacyStagingApprovalPreview()` and `rebuildLegacyStagingCurrentPreview()` using report identity, candidate-set hash, selected candidates, evidence IDs, and evidence content hashes.
 
-- [ ] **Step 4: Implement execution descriptors**
+- [x] **Step 4: Implement execution descriptors**
 
 Implement:
 
 - `legacy.staging.approve`: calls `LegacyOntologyStagingService.approveStaging()` through a human actor context and maps the approval event.
 - `legacy.staging.execute`: calls `stageApprovedAssertions()` only after a matching staging approval already exists and maps only `assertion.proposed` events.
 
-- [ ] **Step 5: Run legacy adapter and domain tests**
+- [x] **Step 5: Run legacy adapter and domain tests**
 
 Run:
 
@@ -421,7 +421,7 @@ npm test -- packages/agent/test/legacy-staging-adapter.test.ts packages/ingestio
 
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/agent/src/adapters/legacy-staging.ts packages/agent/src/index.ts packages/agent/test/legacy-staging-adapter.test.ts
@@ -440,7 +440,7 @@ git commit -m "feat: add legacy staging execution adapters"
 - Consumes: `AssertionService.accept()`, graph projection provenance, ontology pack versions.
 - Produces: descriptors for `ontology.assertion.accept` first; relationship/entity descriptors only after corresponding ontology services exist.
 
-- [ ] **Step 1: Write failing accepted-graph tests**
+- [x] **Step 1: Write failing accepted-graph tests**
 
 Create `packages/agent/test/accepted-graph-review-adapter.test.ts` with tests that prove:
 
@@ -450,7 +450,7 @@ Create `packages/agent/test/accepted-graph-review-adapter.test.ts` with tests th
 - agent actors cannot execute accepted graph review as the domain review actor
 - relationship/entity descriptors are not registered until domain services exist
 
-- [ ] **Step 2: Run the failing tests**
+- [x] **Step 2: Run the failing tests**
 
 Run:
 
@@ -460,11 +460,11 @@ npm test -- packages/agent/test/accepted-graph-review-adapter.test.ts
 
 Expected: fail because `accepted-graph-review.ts` does not exist.
 
-- [ ] **Step 3: Implement assertion review descriptor**
+- [x] **Step 3: Implement assertion review descriptor**
 
 Implement `ontology.assertion.accept` with `sideEffectClass: "ledger-review"` and `requiredApprovalClass: "ledger-review"`. The adapter must call `AssertionService.accept()` and must not append accepted graph events directly.
 
-- [ ] **Step 4: Run accepted graph tests**
+- [x] **Step 4: Run accepted graph tests**
 
 Run:
 
@@ -474,7 +474,7 @@ npm test -- packages/agent/test/accepted-graph-review-adapter.test.ts packages/o
 
 Expected: pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/agent/src/adapters/accepted-graph-review.ts packages/agent/src/index.ts packages/agent/test/accepted-graph-review-adapter.test.ts
@@ -492,7 +492,7 @@ git commit -m "feat: add accepted graph review execution adapter"
 - Consumes: `GovernanceService.recordExportGenerated()`, `GovernanceService.recordReportGenerated()`, `buildGovernanceProjection().planExport()`, content-addressed artifact hashes.
 - Produces: descriptors for `governance.export.generate` and `governance.report.generate`.
 
-- [ ] **Step 1: Write failing export/report tests**
+- [x] **Step 1: Write failing export/report tests**
 
 Create `packages/agent/test/export-report-adapter.test.ts` with tests that prove:
 
@@ -502,7 +502,7 @@ Create `packages/agent/test/export-report-adapter.test.ts` with tests that prove
 - sensitive opt-ins require the human service actor named by the approval
 - result mapper records `export.generated` or `report.generated` event IDs and output artifact hashes
 
-- [ ] **Step 2: Run the failing tests**
+- [x] **Step 2: Run the failing tests**
 
 Run:
 
@@ -512,15 +512,15 @@ npm test -- packages/agent/test/export-report-adapter.test.ts
 
 Expected: fail because `export-report.ts` does not exist.
 
-- [ ] **Step 3: Implement governed preview builders**
+- [x] **Step 3: Implement governed preview builders**
 
 Build previews from governance projection export plans and the content-addressed report/export artifact hash. Keep report drafting as a separate local-derivative tool outside this `export-or-publication` adapter.
 
-- [ ] **Step 4: Implement execution descriptors**
+- [x] **Step 4: Implement execution descriptors**
 
 Call the governance service methods and map service events plus generated artifact hashes. Map governance rejections to `domain-gate-failed`, stale plan changes to `approval-stale`, active export/governance locks to `lock-active`, and possible restricted evidence leaks to `secret-detected`.
 
-- [ ] **Step 5: Run export/report adapter and governance tests**
+- [x] **Step 5: Run export/report adapter and governance tests**
 
 Run:
 
@@ -530,7 +530,7 @@ npm test -- packages/agent/test/export-report-adapter.test.ts packages/ontology/
 
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/agent/src/adapters/export-report.ts packages/agent/src/index.ts packages/agent/test/export-report-adapter.test.ts
@@ -549,7 +549,7 @@ git commit -m "feat: add export and report execution adapters"
 - Consumes: `ProviderParseApprovalService`, `DocumentAiProvider`, provider readiness descriptors, prompt artifact transfer policy, ingestion runtime provider-job projections.
 - Produces: descriptors for `provider.bytes.transfer` and `ingestion.provider-parse.execute`.
 
-- [ ] **Step 1: Write failing provider byte-transfer tests**
+- [x] **Step 1: Write failing provider byte-transfer tests**
 
 Create `packages/agent/test/provider-byte-transfer-adapter.test.ts` with tests that prove:
 
@@ -559,7 +559,7 @@ Create `packages/agent/test/provider-byte-transfer-adapter.test.ts` with tests t
 - result mapper records provider approval event IDs and parse output artifact hashes when provider execution is available
 - no provider error, credential ref secret, environment variable name, raw document body, or raw prompt text enters `agent.tool.failed` or `agent.tool.completed`
 
-- [ ] **Step 2: Run the failing tests**
+- [x] **Step 2: Run the failing tests**
 
 Run:
 
@@ -569,15 +569,15 @@ npm test -- packages/agent/test/provider-byte-transfer-adapter.test.ts
 
 Expected: fail because `provider-byte-transfer.ts` does not exist.
 
-- [ ] **Step 3: Implement provider previews and domain gate checks**
+- [x] **Step 3: Implement provider previews and domain gate checks**
 
 Build previews from exact evidence/source refs, content hashes, byte counts, provider capability metadata, provider transfer policy, and current provider readiness. Require both source event refs and artifact hashes for provider-byte-transfer approval.
 
-- [ ] **Step 4: Implement provider execution descriptors**
+- [x] **Step 4: Implement provider execution descriptors**
 
 The adapter must call the ingestion/provider domain gate first. If provider parse execution is not yet exposed by ingestion runtime, register only the approval/preview descriptor and make the execution descriptor fail with `domain-gate-failed` and allowed action `wait for ingestion provider execution service`.
 
-- [ ] **Step 5: Run provider adapter and ingestion tests**
+- [x] **Step 5: Run provider adapter and ingestion tests**
 
 Run:
 
@@ -587,7 +587,7 @@ npm test -- packages/agent/test/provider-byte-transfer-adapter.test.ts packages/
 
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/agent/src/adapters/provider-byte-transfer.ts packages/agent/src/index.ts packages/agent/test/provider-byte-transfer-adapter.test.ts
@@ -607,7 +607,7 @@ git commit -m "feat: add provider byte transfer execution adapters"
 - Consumes: `PrrCorrespondenceService`, PRR lifecycle projection, PRR provider adapters, legal escalation gates.
 - Produces: descriptors for `prr.initial-send.execute` and `prr.follow-up.execute`.
 
-- [ ] **Step 1: Write failing PRR adapter tests**
+- [x] **Step 1: Write failing PRR adapter tests**
 
 Create `packages/agent/test/prr-correspondence-adapter.test.ts` with tests that prove:
 
@@ -618,7 +618,7 @@ Create `packages/agent/test/prr-correspondence-adapter.test.ts` with tests that 
 - legal escalation text fails with `lock-active` unless the PRR/legal domain gate already recorded the required confirmation
 - result mapper records PRR event IDs and safe provider message refs only through domain events
 
-- [ ] **Step 2: Run the failing tests**
+- [x] **Step 2: Run the failing tests**
 
 Run:
 
@@ -628,15 +628,15 @@ npm test -- packages/agent/test/prr-correspondence-adapter.test.ts
 
 Expected: fail because `prr-correspondence.ts` does not exist.
 
-- [ ] **Step 3: Extend PRR correspondence service for follow-ups if absent**
+- [x] **Step 3: Extend PRR correspondence service for follow-ups if absent**
 
 If `PrrCorrespondenceService` still lacks a follow-up method, add `sendFollowUp()` that mirrors `sendInitialRequest()` but routes to the existing `prr.followup.sent` contract, requires approved message input, request lifecycle eligibility, body hash, attachment evidence IDs, provider metadata validation, and idempotency.
 
-- [ ] **Step 4: Implement PRR descriptors**
+- [x] **Step 4: Implement PRR descriptors**
 
 Implement initial-send and follow-up descriptors with `sideEffectClass: "external-message-send"` and `requiredApprovalClass: "external-message-send"`. Do not let this adapter confirm legal escalation or send legal pressure language without the separate legal domain gate.
 
-- [ ] **Step 5: Run PRR adapter and PRR service tests**
+- [x] **Step 5: Run PRR adapter and PRR service tests**
 
 Run:
 
@@ -646,7 +646,7 @@ npm test -- packages/agent/test/prr-correspondence-adapter.test.ts packages/prr/
 
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/agent/src/adapters/prr-correspondence.ts packages/agent/src/index.ts packages/agent/test/prr-correspondence-adapter.test.ts packages/prr/src/correspondence-service.ts packages/prr/test/correspondence-service.test.ts
@@ -664,7 +664,7 @@ git commit -m "feat: add prr correspondence execution adapters"
 - Consumes: `workspace-ops` verification, diagnostics, projection rebuild readiness/result envelopes, future append-only repair events.
 - Produces: descriptors for `workspace.projection-rebuild.execute` and blocked canonical repair descriptors.
 
-- [ ] **Step 1: Write failing destructive repair tests**
+- [x] **Step 1: Write failing destructive repair tests**
 
 Create `packages/agent/test/destructive-repair-adapter.test.ts` with tests that prove:
 
@@ -674,7 +674,7 @@ Create `packages/agent/test/destructive-repair-adapter.test.ts` with tests that 
 - canonical ledger/blob repair descriptors fail with `data-loss-risk` until an append-only repair event service exists
 - no descriptor can delete, rewrite, compact, reset, migrate, or silently modify canonical ledger/blob state
 
-- [ ] **Step 2: Run the failing tests**
+- [x] **Step 2: Run the failing tests**
 
 Run:
 
@@ -684,15 +684,15 @@ npm test -- packages/agent/test/destructive-repair-adapter.test.ts
 
 Expected: fail because `destructive-repair.ts` does not exist.
 
-- [ ] **Step 3: Implement projection rebuild descriptor**
+- [x] **Step 3: Implement projection rebuild descriptor**
 
 Route `workspace.projection-rebuild.execute` through `rebuildProjectionReadiness()` and `rebuildProjection()`. Require readiness pass, exact projection name, exact rebuild ID, expendable artifact outputs, and prior-artifact preservation.
 
-- [ ] **Step 4: Implement blocked canonical repair descriptors**
+- [x] **Step 4: Implement blocked canonical repair descriptors**
 
 Register canonical repair descriptors only as fail-closed descriptors that return `data-loss-risk` and allowed actions naming the missing append-only repair event service. Do not mutate canonical ledger or blob files.
 
-- [ ] **Step 5: Run destructive repair and workspace-ops tests**
+- [x] **Step 5: Run destructive repair and workspace-ops tests**
 
 Run:
 
@@ -702,7 +702,7 @@ npm test -- packages/agent/test/destructive-repair-adapter.test.ts packages/work
 
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/agent/src/adapters/destructive-repair.ts packages/agent/src/index.ts packages/agent/test/destructive-repair-adapter.test.ts
@@ -712,8 +712,12 @@ git commit -m "feat: add destructive repair execution adapters"
 ## Task 9: Adapter Registry Readiness And Cross-Family Verification
 
 **Files:**
+- Create: `packages/agent/src/domain-execution-adapter-registry.ts`
 - Create: `packages/agent/test/domain-execution-adapter-registry.test.ts`
+- Modify: `packages/agent/src/adapters/destructive-repair.ts`
+- Modify: `packages/agent/src/adapters/legacy-staging.ts`
 - Modify: `packages/agent/src/index.ts`
+- Modify: `packages/agent/test/legacy-staging-adapter.test.ts`
 - Modify: `docs/agentic/software-factory.md`
 - Modify: `scripts/check-agent-readiness.mjs`
 - Modify: this plan file with final readiness evidence.
@@ -722,7 +726,7 @@ git commit -m "feat: add destructive repair execution adapters"
 - Consumes: all adapter descriptors from Tasks 3 through 8.
 - Produces: one exported registry helper for the scheduler to consume.
 
-- [ ] **Step 1: Write registry coverage tests**
+- [x] **Step 1: Write registry coverage tests**
 
 Create `packages/agent/test/domain-execution-adapter-registry.test.ts` with tests that prove:
 
@@ -732,7 +736,7 @@ Create `packages/agent/test/domain-execution-adapter-registry.test.ts` with test
 - no descriptor declares a forbidden effect that belongs to its own execution path
 - provider, PRR, accepted graph, export/report, destructive repair, and legacy staging families are present as separate groups
 
-- [ ] **Step 2: Run cross-family tests**
+- [x] **Step 2: Run cross-family tests**
 
 Run:
 
@@ -742,7 +746,7 @@ npm test -- packages/agent/test/domain-execution-adapter-registry.test.ts packag
 
 Expected: pass.
 
-- [ ] **Step 3: Run full verification**
+- [x] **Step 3: Run full verification**
 
 Run:
 
@@ -752,16 +756,83 @@ npm run verify
 
 Expected: pass with typecheck, tests, Vite build, and factory readiness.
 
-- [ ] **Step 4: Record readiness**
+- [x] **Step 4: Record readiness**
 
 Append readiness evidence to `docs/agentic/software-factory.md`, add this plan to `scripts/check-agent-readiness.mjs`, and mark all completed checkboxes in this plan.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/agent/src/index.ts packages/agent/test/domain-execution-adapter-registry.test.ts docs/agentic/software-factory.md scripts/check-agent-readiness.mjs docs/superpowers/plans/2026-07-09-resident-agent-domain-execution-adapters-implementation.md
 git commit -m "docs: record resident agent domain adapter readiness"
 ```
+
+### Task 9 Readiness Evidence
+
+Task 9 completed the descriptor-discovery and cross-family verification slice
+on 2026-07-09. The public agent package now exports one frozen, descriptor-only
+registry containing 11 tools across the six required adapter families. Registry
+construction validates the existing base descriptors but does not instantiate
+provider, PRR, ontology, governance, workspace, or legacy adapter factories.
+
+Recorded RED/GREEN verification:
+
+```text
+npm test -- packages/agent/test/domain-execution-adapter-registry.test.ts
+RED: Test Files 1 failed; Tests 3 failed
+GREEN: Test Files 1 passed; Tests 3 passed
+```
+
+Recorded review-repair RED/GREEN verification:
+
+```text
+npx vitest run packages/agent/test/domain-execution-adapter-registry.test.ts packages/agent/test/legacy-staging-adapter.test.ts
+RED: Test Files 2 failed; Tests 2 failed | 15 passed
+GREEN: Test Files 2 passed; Tests 17 passed
+
+npx vitest run packages/agent/test/legacy-staging-adapter.test.ts -t "reports active resident-agent locks"
+Non-default resident identity RED: Test Files 1 failed; Tests 1 failed | 13 skipped
+
+npx vitest run packages/agent/test/domain-execution-adapter-registry.test.ts
+Canonical metadata RED: Test Files 1 failed; Tests no tests
+
+npx vitest run packages/agent/test/domain-execution-adapter-registry.test.ts packages/agent/test/destructive-repair-adapter.test.ts
+Canonical metadata GREEN: Test Files 2 passed; Tests 13 passed
+```
+
+Recorded cross-family verification:
+
+```text
+npm test -- packages/agent/test/domain-execution-adapter-registry.test.ts packages/agent/test/domain-execution-dispatcher.test.ts packages/agent/test/legacy-staging-adapter.test.ts packages/agent/test/accepted-graph-review-adapter.test.ts packages/agent/test/export-report-adapter.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/prr-correspondence-adapter.test.ts packages/agent/test/destructive-repair-adapter.test.ts
+Test Files  8 passed (8)
+Tests  88 passed (88)
+```
+
+Recorded available gates:
+
+```text
+npm run typecheck
+typecheck passed
+
+npm run ui:build
+Vite build passed with the existing chunk-size warning
+
+npm run verify
+typecheck passed
+Test Files  3 failed | 151 passed | 1 skipped (155)
+Tests  19 failed | 1546 passed | 1 skipped (1566)
+```
+
+All 19 child full-suite failures were managed-sandbox restrictions: local HTTP
+listeners returned `listen EPERM`, and executable tests could not create `tsx`
+IPC pipes. The coordinator's unrestricted `npm run verify` passed with 154
+passed / 1 skipped test files and 1565 passed / 1 skipped tests, followed by
+the Vite production build and factory readiness check.
+
+Closing repair-delta review verdict: **APPROVED**, with no remaining Critical
+or Important findings. The review confirmed exact per-tool current-preview
+rebuilder binding for canonical repair and non-default resident-agent lock
+enforcement for legacy staging.
 
 ## Merge Order
 
