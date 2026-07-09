@@ -99,16 +99,17 @@ export async function handleAgentHttpRoute(
           return json(400, payload.body);
         }
 
-        const initialized = await ensureDefaultIdentity(runtime, input);
-        if (!initialized.ok) {
-          return json(500, initialized.body);
-        }
-
         if (memoryRoute.kind === "list") {
           const command = memoryRecordInputFromBody(payload.value);
           if (command === undefined) {
             return json(400, invalidMemoryBodyDiagnostic());
           }
+
+          const initialized = await ensureDefaultIdentity(runtime, input);
+          if (!initialized.ok) {
+            return json(500, initialized.body);
+          }
+
           return memoryMutationResponse(await runtime.recordMemory(command));
         }
 
@@ -117,6 +118,12 @@ export async function handleAgentHttpRoute(
           if (command === undefined) {
             return json(400, invalidMemoryBodyDiagnostic());
           }
+
+          const initialized = await ensureDefaultIdentity(runtime, input);
+          if (!initialized.ok) {
+            return json(500, initialized.body);
+          }
+
           return memoryMutationResponse(await runtime.supersedeMemory(command));
         }
 
@@ -124,6 +131,12 @@ export async function handleAgentHttpRoute(
         if (command === undefined) {
           return json(400, invalidMemoryBodyDiagnostic());
         }
+
+        const initialized = await ensureDefaultIdentity(runtime, input);
+        if (!initialized.ok) {
+          return json(500, initialized.body);
+        }
+
         return memoryMutationResponse(await runtime.retractMemory(command));
       }
     }
@@ -945,14 +958,30 @@ function memoryMutationResponse(
     return json(404, missingMemoryDiagnostic());
   }
 
-  if (result.error.category === "runtime") {
-    return json(409, diagnostic("Agent memory change needs operator review.", [
-      "refresh agent memory",
-      "inspect agent diagnostics"
-    ]));
+  if (isMemoryRuntimeConflict(result.error)) {
+    return json(409, runtimeDiagnostic(result.error));
   }
 
-  return json(400, invalidMemoryBodyDiagnostic());
+  return json(400, runtimeDiagnostic(result.error));
+}
+
+function isMemoryRuntimeConflict(
+  error: { readonly category: string; readonly message: string }
+): boolean {
+  return error.category === "runtime" && error.message.includes("partially applied");
+}
+
+function runtimeDiagnostic(error: {
+  readonly message: string;
+  readonly allowedRepairActions?: readonly string[];
+}): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic(error.message, error.allowedRepairActions ?? []);
 }
 
 function json(status: number, body: unknown): LocalRuntimeResponse {

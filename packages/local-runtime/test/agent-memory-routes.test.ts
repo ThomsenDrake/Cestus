@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
 
@@ -79,7 +80,8 @@ describe("agent memory HTTP routes", () => {
   });
 
   it("rejects unsafe or unproven memory bodies without echoing source text", async () => {
-    const handler = testHandler();
+    const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
+    const handler = testHandler({ config });
     const response = await handler({
       method: "POST",
       url: "/api/agent/memory",
@@ -98,6 +100,8 @@ describe("agent memory HTTP routes", () => {
       ok: false,
       diagnostic: { message: "Agent memory body is invalid." }
     });
+    closeHandler(handler);
+    expect(await eventTypes(config)).toEqual([]);
   });
 
   it("requires a human actor for HTTP memory correction routes", async () => {
@@ -128,15 +132,38 @@ function unsafeCredentialText(): string {
 }
 
 function testHandler(input: {
+  readonly config?: ReturnType<typeof resolveLocalRuntimeConfig>;
   readonly actor?: { readonly id: string; readonly kind: "human" | "system"; readonly label: string };
 } = {}) {
-  const cwd = mkdtempSync(join(tmpdir(), "cestus-agent-memory-route-"));
-  tempDirs.push(cwd);
+  const config = input.config ?? resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
   const handler = createLocalRuntimeHttpHandler({
-    config: resolveLocalRuntimeConfig({ cwd, env: {} }),
+    config,
     actor: input.actor ?? { id: "actor_case_owner", kind: "human", label: "Case Owner" },
     now: () => "2026-07-09T14:00:00.000Z"
   });
   handlers.push(handler);
   return handler;
+}
+
+function tempDir(): string {
+  const cwd = mkdtempSync(join(tmpdir(), "cestus-agent-memory-route-"));
+  tempDirs.push(cwd);
+  return cwd;
+}
+
+function closeHandler(handler: LocalRuntimeHttpHandler): void {
+  handler.close();
+  const index = handlers.indexOf(handler);
+  if (index >= 0) {
+    handlers.splice(index, 1);
+  }
+}
+
+async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>): Promise<readonly string[]> {
+  const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
+  try {
+    return (await ledger.readAll()).map((event) => event.type);
+  } finally {
+    ledger.close();
+  }
 }

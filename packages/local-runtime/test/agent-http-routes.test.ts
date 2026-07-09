@@ -415,6 +415,34 @@ describe("agent HTTP routes", () => {
     expect(accepted.body).not.toContain(routeSessionSentinel());
     expect(isAgentSecretSafeText(rejected.body)).toBe(true);
   });
+
+  it("preserves safe runtime diagnostics for memory validation failures", async () => {
+    const handler = testHandler({ agentRuntimeFactory: memoryValidationFailureRuntimeFactory() });
+    const response = await handler({
+      method: "POST",
+      url: "/api/agent/memory",
+      body: JSON.stringify({
+        memoryId: "mem_route_diagnostic",
+        scope: "workspace",
+        memoryKind: "agent-observation",
+        summary: "Source text sentinel that must not echo back.",
+        sourceEventIds: ["evt_route_diagnostic"],
+        confidence: 0.8
+      })
+    });
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.body)).toEqual({
+      ok: false,
+      diagnostic: {
+        message: "Memory could not be recorded safely.",
+        allowedRepairActions: ["review memory provenance and safe summary"]
+      }
+    });
+    expect(response.body).not.toContain("Source text sentinel that must not echo back.");
+    expect(response.body).not.toContain("evt_route_diagnostic");
+    expect(isAgentSecretSafeText(response.body)).toBe(true);
+  });
 });
 
 function testHandler(input: {
@@ -636,6 +664,67 @@ function nousStatusRuntimeFactory(): LocalAgentRuntimeFactory {
         items: []
       })
     },
+    gateway: {}
+  })) as unknown as LocalAgentRuntimeFactory;
+}
+
+function memoryValidationFailureRuntimeFactory(): LocalAgentRuntimeFactory {
+  return (() => ({
+    status: async () => ({
+      schemaVersion: "agent-status.v1",
+      generatedAt: "2026-07-07T20:00:00.000Z",
+      identity: undefined,
+      tasks: [],
+      runs: [],
+      toolRequests: [],
+      permissions: [],
+      locks: [],
+      memories: [],
+      modelInvocations: [],
+      providerReadiness: undefined,
+      providers: [],
+      pendingApprovalCount: 0,
+      activeLockCount: 0,
+      diagnostics: []
+    }),
+    listMemory: async () => ({ schemaVersion: "agent-memory-list.v1", generatedAt: "2026-07-07T20:00:00.000Z", truthBoundary: { authoritativeForOntology: false, scope: "working-memory" }, filters: { scope: "all", state: "active" }, items: [] }),
+    memoryDetail: async () => undefined,
+    initializeDefaultIdentity: async () => ({
+      ok: true,
+      residentAgentId: "agent_default",
+      alreadyInitialized: false,
+      eventIds: []
+    }),
+    recordMemory: async () => ({
+      ok: false,
+      error: {
+        severity: "error",
+        category: "agent",
+        message: "Memory could not be recorded safely.",
+        allowedRepairActions: ["review memory provenance and safe summary"]
+      }
+    }),
+    supersedeMemory: async () => ({
+      ok: false,
+      error: {
+        severity: "error",
+        category: "agent",
+        message: "Memory could not be superseded safely.",
+        allowedRepairActions: ["refresh memory and review provenance"]
+      }
+    }),
+    retractMemory: async () => ({
+      ok: false,
+      error: {
+        severity: "error",
+        category: "agent",
+        message: "Memory could not be retracted safely.",
+        allowedRepairActions: ["refresh memory and review rationale"]
+      }
+    }),
+    createTask: async () => ({ ok: true, taskId: "task_route", eventIds: [] }),
+    startRun: async () => ({ ok: true, runId: "run_route", eventIds: [] }),
+    invokeModel: async () => ({ ok: false, error: { severity: "error", category: "provider", message: "unused" } }),
     gateway: {}
   })) as unknown as LocalAgentRuntimeFactory;
 }
