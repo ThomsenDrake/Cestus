@@ -1,16 +1,24 @@
 import { z } from "zod";
 import { providerReadinessDtoSchema } from "../../../agent/src/provider-readiness.js";
 import type {
+  AgentCockpitDto,
   AgentApprovalCockpitDto,
   AgentApprovalDecisionResultDto,
+  AgentRunStartResultDto,
   AgentRuntimeDiagnosticDto,
   AgentStatusDto,
-  OntologyBootstrapRouteDto
+  AgentTaskCreateResultDto,
+  CreateAgentTaskInput,
+  OntologyBootstrapRouteDto,
+  StartAgentRunInput
 } from "./agent-types.js";
 
 export interface AgentAdapter {
   loadStatus(): Promise<AgentStatusDto>;
+  loadCockpit(): Promise<AgentCockpitDto>;
   loadApprovalCockpit(): Promise<AgentApprovalCockpitDto>;
+  createTask(input: CreateAgentTaskInput): Promise<AgentTaskCreateResultDto>;
+  startRun(input: StartAgentRunInput): Promise<AgentRunStartResultDto>;
   approveToolRequest(input: ApproveToolRequestInput): Promise<AgentApprovalDecisionResultDto>;
   denyToolRequest(input: DenyToolRequestInput): Promise<AgentApprovalDecisionResultDto>;
 }
@@ -31,6 +39,14 @@ export interface ApproveToolRequestInput {
 export interface DenyToolRequestInput {
   readonly toolRequestId: string;
   readonly rationale: string;
+}
+
+export interface StaticAgentAdapterOptions {
+  readonly cockpit?: AgentCockpitDto;
+  readonly createTask?: (input: CreateAgentTaskInput) => Promise<AgentTaskCreateResultDto>;
+  readonly startRun?: (input: StartAgentRunInput) => Promise<AgentRunStartResultDto>;
+  readonly approveToolRequest?: (input: ApproveToolRequestInput) => Promise<AgentApprovalDecisionResultDto>;
+  readonly denyToolRequest?: (input: DenyToolRequestInput) => Promise<AgentApprovalDecisionResultDto>;
 }
 
 const eventIdsSchema = z.array(z.string().min(1));
@@ -498,6 +514,129 @@ const ontologyBootstrapRouteDtoSchema = z.object({
   stepIds: z.array(z.string().min(1)).optional()
 }).strict();
 
+const agentCockpitNeedDtoSchema = z.object({
+  kind: z.enum([
+    "approval",
+    "lock",
+    "retry",
+    "run-start",
+    "handoff",
+    "provider-readiness",
+    "quiet"
+  ]),
+  severity: z.enum(["action-required", "warning", "info"]),
+  label: z.string().min(1),
+  relatedTaskId: z.string().min(1).optional(),
+  relatedRunId: z.string().min(1).optional(),
+  relatedToolRequestId: z.string().min(1).optional(),
+  relatedLockId: z.string().min(1).optional(),
+  relatedProviderId: z.string().min(1).optional(),
+  safeAction: z.string().min(1)
+}).strict();
+
+const agentCockpitTaskCardDtoSchema = z.object({
+  taskId: taskSchema.shape.taskId,
+  title: z.string().min(1),
+  priority: taskSchema.shape.priority,
+  status: taskSchema.shape.status,
+  createdAt: z.string().datetime(),
+  runId: runSchema.shape.runId.optional(),
+  statusReason: z.string().min(1).optional()
+}).strict();
+
+const agentCockpitModelAuditDtoSchema = z.object({
+  invocationId: z.string().min(1),
+  providerId: z.string().min(1),
+  modelFamily: z.string().min(1),
+  status: z.enum(["requested", "completed", "failed"]),
+  inputArtifactHash: contentHashSchema,
+  outputArtifactHash: contentHashSchema.optional(),
+  usageSummary: z.string().min(1).optional(),
+  failureCategory: z.string().min(1).optional(),
+  retryable: z.boolean().optional()
+}).strict();
+
+const agentCockpitContextPackDtoSchema = z.object({
+  contextPackId: z.string().min(1),
+  contentHash: contentHashSchema,
+  safeSummary: z.string().min(1),
+  generatedAt: z.string().datetime(),
+  provenanceRefs: z.array(z.string().min(1)).min(1),
+  sourceEventIds: z.array(z.string().min(1)).optional(),
+  artifactHashes: z.array(contentHashSchema).optional()
+}).strict();
+
+const agentCockpitHandoffDtoSchema = z.object({
+  state: z.literal("ready-for-human-review"),
+  summary: z.string().min(1),
+  artifactHashes: z.array(contentHashSchema).min(1),
+  relatedEventIds: z.array(z.string().min(1))
+}).strict();
+
+const agentCockpitRunCardDtoSchema = z.object({
+  runId: runSchema.shape.runId,
+  taskId: taskSchema.shape.taskId.optional(),
+  runType: runSchema.shape.runType,
+  state: runSchema.shape.state,
+  startedAt: z.string().datetime(),
+  summary: z.string().min(1).optional(),
+  currentStepCount: z.number().int().nonnegative(),
+  modelInvocationCount: z.number().int().nonnegative(),
+  pendingApprovalCount: z.number().int().nonnegative(),
+  blockedReasonCount: z.number().int().nonnegative()
+}).strict();
+
+const agentCockpitSelectedRunDtoSchema = agentCockpitRunCardDtoSchema.extend({
+  stepIds: z.array(z.string().min(1)),
+  pendingApprovalIds: z.array(z.string().min(1)),
+  blockedReasons: z.array(z.string().min(1)),
+  modelInvocations: z.array(agentCockpitModelAuditDtoSchema),
+  contextPacks: z.array(agentCockpitContextPackDtoSchema),
+  handoff: agentCockpitHandoffDtoSchema.optional()
+}).strict();
+
+const agentCockpitMemorySnippetDtoSchema = z.object({
+  memoryId: z.string().min(1),
+  scope: memorySchema.shape.scope,
+  summary: z.string().min(1),
+  createdAt: z.string().datetime(),
+  sourceEventIds: z.array(z.string().min(1)),
+  artifactHashes: z.array(contentHashSchema),
+  confidence: z.number().min(0).max(1)
+}).strict();
+
+const agentCockpitDtoSchema = z.object({
+  schemaVersion: z.literal("agent-cockpit.v1"),
+  generatedAt: z.string().datetime(),
+  summary: z.object({
+    activeTaskCount: z.number().int().nonnegative(),
+    activeRunCount: z.number().int().nonnegative(),
+    pendingApprovalCount: z.number().int().nonnegative(),
+    activeLockCount: z.number().int().nonnegative(),
+    mergeAfterScheduler: z.boolean()
+  }).strict(),
+  taskQueue: z.array(agentCockpitTaskCardDtoSchema),
+  runQueue: z.array(agentCockpitRunCardDtoSchema),
+  selectedRun: agentCockpitSelectedRunDtoSchema.optional(),
+  needsNext: z.array(agentCockpitNeedDtoSchema),
+  memorySnippets: z.array(agentCockpitMemorySnippetDtoSchema),
+  forbiddenDirectEffects: z.array(z.string().min(1)),
+  providerReadiness: providerReadinessDtoSchema.optional()
+}).strict();
+
+const agentTaskCreateResultDtoSchema = z.object({
+  ok: z.literal(true),
+  taskId: z.string().min(1),
+  eventIds: eventIdsSchema
+}).strict();
+
+const agentRunStartResultDtoSchema = z.object({
+  ok: z.literal(true),
+  schemaVersion: z.literal("agent-run-start-result.v1"),
+  runId: z.string().min(1),
+  eventIds: eventIdsSchema
+}).strict();
+
 export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): AgentAdapter {
   const baseUrl = options.baseUrl ?? "";
   const credentials = options.credentials ?? "same-origin";
@@ -538,6 +677,16 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
       }
     },
 
+    async loadCockpit() {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/cockpit`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken })
+      });
+      return readRouteDto(response, "Agent cockpit", agentCockpitFromJson);
+    },
+
     async loadApprovalCockpit() {
       const response = await fetchAgentRoute({
         path: `${baseUrl}/api/agent/approvals`,
@@ -546,6 +695,41 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
         ...(options.authToken === undefined ? {} : { authToken: options.authToken })
       });
       return agentApprovalCockpitFromJson(await readRouteJson(response, "Agent approval cockpit"));
+    },
+
+    async createTask(input: CreateAgentTaskInput) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/tasks`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: {
+          taskId: input.taskId,
+          title: input.title,
+          priority: input.priority
+        }
+      });
+      return readRouteDto(response, "Agent task creation", agentTaskCreateResultFromJson);
+    },
+
+    async startRun(input: StartAgentRunInput) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/runs`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: {
+          runId: input.runId,
+          taskId: input.taskId,
+          runType: input.runType,
+          scope: input.scope,
+          ...(input.sourceEventIds === undefined ? {} : { sourceEventIds: input.sourceEventIds }),
+          ...(input.inputArtifactHashes === undefined ? {} : { inputArtifactHashes: input.inputArtifactHashes })
+        }
+      });
+      return readRouteDto(response, "Agent run start", agentRunStartResultFromJson);
     },
 
     async approveToolRequest(input: ApproveToolRequestInput) {
@@ -583,27 +767,55 @@ export const httpAgentAdapter = createHttpAgentAdapter();
 
 export function createStaticAgentAdapter(
   dto: AgentStatusDto,
-  approvalCockpit?: AgentApprovalCockpitDto
+  approvalCockpit?: AgentApprovalCockpitDto,
+  options: StaticAgentAdapterOptions = {}
 ): AgentAdapter {
   const stored = agentStatusFromJson(dto);
   const storedApprovalCockpit = agentApprovalCockpitFromJson(
     approvalCockpit ?? emptyApprovalCockpit(stored.generatedAt)
   );
+  const storedCockpit = options.cockpit === undefined
+    ? buildStaticCockpit(stored, storedApprovalCockpit)
+    : agentCockpitFromJson(options.cockpit);
 
   return Object.freeze({
     async loadStatus() {
       return deepFreeze(deepClone(stored));
     },
 
+    async loadCockpit() {
+      return deepFreeze(deepClone(storedCockpit));
+    },
+
     async loadApprovalCockpit() {
       return deepFreeze(deepClone(storedApprovalCockpit));
     },
 
-    async approveToolRequest() {
+    async createTask(input: CreateAgentTaskInput) {
+      if (options.createTask !== undefined) {
+        return deepFreeze(deepClone(await options.createTask(input)));
+      }
+      throw new Error("Static agent adapter cannot create tasks.");
+    },
+
+    async startRun(input: StartAgentRunInput) {
+      if (options.startRun !== undefined) {
+        return deepFreeze(deepClone(await options.startRun(input)));
+      }
+      throw new Error("Static agent adapter cannot start runs.");
+    },
+
+    async approveToolRequest(input: ApproveToolRequestInput) {
+      if (options.approveToolRequest !== undefined) {
+        return deepFreeze(deepClone(await options.approveToolRequest(input)));
+      }
       throw new Error("Static agent adapter cannot approve tool requests.");
     },
 
-    async denyToolRequest() {
+    async denyToolRequest(input: DenyToolRequestInput) {
+      if (options.denyToolRequest !== undefined) {
+        return deepFreeze(deepClone(await options.denyToolRequest(input)));
+      }
       throw new Error("Static agent adapter cannot deny tool requests.");
     }
   });
@@ -613,8 +825,24 @@ export function agentStatusFromJson(value: unknown): AgentStatusDto {
   return deepFreeze(agentStatusDtoSchema.parse(safeAgentValue(value)) as AgentStatusDto);
 }
 
+export function agentCockpitFromJson(value: unknown): AgentCockpitDto {
+  return deepFreeze(agentCockpitDtoSchema.parse(safeAgentValue(value)) as AgentCockpitDto);
+}
+
 export function agentApprovalCockpitFromJson(value: unknown): AgentApprovalCockpitDto {
   return deepFreeze(agentApprovalCockpitDtoSchema.parse(safeAgentValue(value)) as AgentApprovalCockpitDto);
+}
+
+export function agentTaskCreateResultFromJson(value: unknown): AgentTaskCreateResultDto {
+  return deepFreeze(
+    agentTaskCreateResultDtoSchema.parse(safeAgentValue(value)) as AgentTaskCreateResultDto
+  );
+}
+
+export function agentRunStartResultFromJson(value: unknown): AgentRunStartResultDto {
+  return deepFreeze(
+    agentRunStartResultDtoSchema.parse(safeAgentValue(value)) as AgentRunStartResultDto
+  );
 }
 
 export function agentApprovalDecisionResultFromJson(value: unknown): AgentApprovalDecisionResultDto {
@@ -706,7 +934,7 @@ async function fetchAgentRoute(input: {
   readonly fetcher: typeof fetch;
   readonly authToken?: string;
   readonly method?: "GET" | "POST";
-  readonly body?: Record<string, string>;
+  readonly body?: Record<string, unknown>;
 }): Promise<Response> {
   try {
     return await input.fetcher(input.path, {
@@ -733,6 +961,19 @@ async function readRouteJson(response: Response, label: string): Promise<unknown
   }
 
   return json;
+}
+
+async function readRouteDto<T>(
+  response: Response,
+  label: string,
+  parse: (value: unknown) => T
+): Promise<T> {
+  const json = await readRouteJson(response, label);
+  try {
+    return parse(json);
+  } catch {
+    throw new Error(`${label} route returned an invalid DTO.`);
+  }
 }
 
 function requestHeaders(
@@ -805,6 +1046,70 @@ function emptyApprovalCockpit(generatedAt: string): AgentApprovalCockpitDto {
       "destructive-repair",
       "accepted-graph-review"
     ]
+  });
+}
+
+function buildStaticCockpit(
+  status: AgentStatusDto,
+  approvalCockpit: AgentApprovalCockpitDto
+): AgentCockpitDto {
+  const activeTaskCount = status.tasks.filter((task) => !["completed", "failed", "canceled"].includes(task.status)).length;
+  const activeRunCount = status.runs.filter((run) => run.state === "running").length;
+
+  return agentCockpitFromJson({
+    schemaVersion: "agent-cockpit.v1",
+    generatedAt: safeGeneratedAt(status.generatedAt),
+    summary: {
+      activeTaskCount,
+      activeRunCount,
+      pendingApprovalCount: Math.max(status.pendingApprovalCount, approvalCockpit.summary.pendingCount),
+      activeLockCount: status.activeLockCount,
+      mergeAfterScheduler: false
+    },
+    taskQueue: status.tasks.map((task) => ({
+      taskId: task.taskId,
+      title: task.title,
+      priority: task.priority,
+      status: task.status,
+      createdAt: task.createdAt,
+      ...(task.runId === undefined ? {} : { runId: task.runId }),
+      ...(task.statusReason === undefined ? {} : { statusReason: task.statusReason })
+    })),
+    runQueue: status.runs.map((run) => ({
+      runId: run.runId,
+      ...(run.taskId === undefined ? {} : { taskId: run.taskId }),
+      runType: run.runType,
+      state: run.state,
+      startedAt: run.startedAt,
+      ...(run.summary === undefined ? {} : { summary: run.summary }),
+      currentStepCount: run.stepIds.length,
+      modelInvocationCount: run.invocationIds.length,
+      pendingApprovalCount: run.toolRequestIds.length,
+      blockedReasonCount: run.failureMessage === undefined ? 0 : 1
+    })),
+    needsNext: [],
+    memorySnippets: status.activeMemory
+      .filter((memory) => memory.state === "active")
+      .map((memory) => ({
+        memoryId: memory.memoryId,
+        scope: memory.scope,
+        summary: memory.summary,
+        createdAt: memory.createdAt,
+        sourceEventIds: [...memory.sourceEventIds],
+        artifactHashes: [...memory.artifactHashes],
+        confidence: memory.confidence
+      })),
+    forbiddenDirectEffects: [
+      "provider-byte-transfer",
+      "prr-send-followup",
+      "export-publication",
+      "destructive-repair",
+      "legal-escalation",
+      "accepted-graph-review",
+      "legacy-raw-import",
+      "legacy-staging-execution"
+    ],
+    ...(status.providerReadiness === undefined ? {} : { providerReadiness: status.providerReadiness })
   });
 }
 
