@@ -344,8 +344,9 @@ function taskInputFromBody(value: Record<string, unknown>): {
   readonly taskId: string;
   readonly title: string;
   readonly priority: AgentTaskPriority;
+  readonly description?: string;
 } | undefined {
-  if (!hasOnlyKeys(value, ["taskId", "title", "priority"])) {
+  if (!hasOnlyKeys(value, ["taskId", "title", "priority", "description"])) {
     return undefined;
   }
 
@@ -353,7 +354,8 @@ function taskInputFromBody(value: Record<string, unknown>): {
   if (
     !isAgentTaskId(value.taskId) ||
     !isSafeNonEmptyText(value.title) ||
-    !isRouteTaskPriority(priority)
+    !isRouteTaskPriority(priority) ||
+    (value.description !== undefined && !isSafeNonEmptyText(value.description))
   ) {
     return undefined;
   }
@@ -361,7 +363,8 @@ function taskInputFromBody(value: Record<string, unknown>): {
   return {
     taskId: value.taskId,
     title: value.title,
-    priority
+    priority,
+    ...(value.description === undefined ? {} : { description: value.description })
   };
 }
 

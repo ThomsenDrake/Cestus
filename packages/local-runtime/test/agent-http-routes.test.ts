@@ -122,7 +122,12 @@ describe("agent HTTP routes", () => {
     const response = await first({
       method: "POST",
       url: "/api/agent/tasks",
-      body: JSON.stringify({ taskId: "task_route_001", title: "Inspect resident status", priority: "normal" })
+      body: JSON.stringify({
+        taskId: "task_route_001",
+        title: "Inspect resident status",
+        priority: "normal",
+        description: "Check readiness before handing work to the resident agent."
+      })
     });
 
     expect(response.status).toBe(200);
@@ -132,9 +137,10 @@ describe("agent HTTP routes", () => {
 
     const second = testHandler({ config });
     const reloaded = await second({ method: "GET", url: "/api/agent/status" });
-    expect(JSON.parse(reloaded.body).tasks.map((task: { readonly taskId: string }) => task.taskId)).toContain(
-      "task_route_001"
-    );
+    expect(JSON.parse(reloaded.body).tasks).toContainEqual(expect.objectContaining({
+      taskId: "task_route_001",
+      description: "Check readiness before handing work to the resident agent."
+    }));
   });
 
   it("returns a stable conflict for duplicate task ids", async () => {
