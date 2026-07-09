@@ -48,6 +48,10 @@ Command evidence:
   - Passed: `Test Files  2 passed (2)`, `Tests  15 passed (15)`.
 - FIX VERIFY `2026-07-09`: `npm run verify`
   - Partial pass then unrelated failure outside Task 3 scope: `typecheck passed`, then `packages/ui/test/agent-app-integration.test.tsx > agent app integration > denies provider byte-transfer previews through the Agent adapter only` failed because `denials` remained `[]` instead of receiving the expected provider-transfer denial callback payload.
+- FIX REPRO `2026-07-09`: `npm test -- packages/ui/test/agent-app-integration.test.tsx`
+  - Passed focused repro for the unrelated UI failure: `Test Files  1 passed (1)`, `Tests  6 passed (6)`.
+- FINAL VERIFY `2026-07-09`: `npm run verify`
+  - Passed: `typecheck passed`, `Test Files  146 passed | 1 skipped (147)`, `Tests  1396 passed | 1 skipped (1397)`, `tests passed`, production build succeeded, and `factory-readiness passed`.
 
 Invariant notes:
 
