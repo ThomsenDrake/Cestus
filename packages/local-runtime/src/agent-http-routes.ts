@@ -615,7 +615,7 @@ function isSafeNonEmptyText(value: unknown): value is string {
 }
 
 function isRouteTaskPriority(value: unknown): value is AgentTaskPriority {
-  return value === "low" || value === "normal" || value === "high";
+  return value === "low" || value === "normal" || value === "high" || value === "urgent";
 }
 
 function isRouteRunType(value: unknown): value is typeof approvedAgentSpecialistRunTypes[number] {
