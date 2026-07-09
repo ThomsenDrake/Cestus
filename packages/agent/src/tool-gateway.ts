@@ -113,7 +113,7 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
     async requestTool(command: RequestAgentToolInput) {
       await assertNewToolRequest(input.ledger, command.toolRequestId);
       const preview = sanitizeAgentToolPreview(command.preview);
-      const previewHash = hashPreview(preview);
+      const previewHash = hashAgentToolPreview(preview);
       const requiredApprovalClass = command.requiredApprovalClass ?? approvalClassForSideEffect(command.sideEffectClass);
       const scope = command.scope ?? preview.scope ?? preview.summary;
       const estimatedEffect = command.estimatedEffect ?? preview.estimatedEffect ?? preview.summary;
@@ -294,8 +294,9 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
   };
 }
 
-function hashPreview(preview: AgentToolPreview): `sha256:${string}` {
-  const digest = createHash("sha256").update(stableJsonStringify(preview)).digest("hex");
+export function hashAgentToolPreview(preview: AgentToolPreview): `sha256:${string}` {
+  const safePreview = sanitizeAgentToolPreview(preview);
+  const digest = createHash("sha256").update(stableJsonStringify(safePreview)).digest("hex");
   return `sha256:${digest}`;
 }
 

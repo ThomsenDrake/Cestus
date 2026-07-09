@@ -102,7 +102,7 @@ Scheduler responsibilities:
 - Consumes: `AgentToolPreview`, `AgentToolResult`, `AgentToolReadModelChange`, `AgentToolApprovalClass`, `AgentToolSideEffectClass`.
 - Produces: `AgentApprovedToolExecutorDescriptor`, `AgentSchedulerWakeResultDto`, `AgentSchedulerItemSummaryDto`, `hashAgentToolPreview(preview)`.
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create `docs/agentic/claims/task-1-agent-scheduler-contracts.md`:
 
@@ -131,7 +131,7 @@ Status: claimed
 
 Then change `Status: claimed` to `Status: in-progress` before editing source files.
 
-- [ ] **Step 2: Write failing scheduler contract tests**
+- [x] **Step 2: Write failing scheduler contract tests**
 
 Create `packages/agent/test/scheduler-types.test.ts`:
 
@@ -256,7 +256,7 @@ describe("agent scheduler contracts", () => {
 });
 ```
 
-- [ ] **Step 3: Run targeted failing tests**
+- [x] **Step 3: Run targeted failing tests**
 
 Run:
 
@@ -270,7 +270,7 @@ Expected before implementation:
 Failed to resolve import "../src/index.js" because scheduler exports are missing
 ```
 
-- [ ] **Step 4: Add scheduler DTOs and descriptor contracts**
+- [x] **Step 4: Add scheduler DTOs and descriptor contracts**
 
 Create `packages/agent/src/scheduler-types.ts`:
 
@@ -388,7 +388,7 @@ export interface AgentApprovedToolExecutorDescriptor {
 }
 ```
 
-- [ ] **Step 5: Export the gateway preview hash helper**
+- [x] **Step 5: Export the gateway preview hash helper**
 
 Modify `packages/agent/src/tool-gateway.ts` by renaming the private helper and reusing it:
 
@@ -402,7 +402,7 @@ export function hashAgentToolPreview(preview: AgentToolPreview): `sha256:${strin
 
 Then change `requestTool()` to use `hashAgentToolPreview(preview)` instead of the private `hashPreview(preview)` and remove the old private `hashPreview` function.
 
-- [ ] **Step 6: Export scheduler contracts**
+- [x] **Step 6: Export scheduler contracts**
 
 Modify `packages/agent/src/index.ts`:
 
@@ -412,7 +412,7 @@ export * from "./scheduler-types.js";
 
 Preserve all existing exports.
 
-- [ ] **Step 7: Run targeted passing tests**
+- [x] **Step 7: Run targeted passing tests**
 
 Run:
 
@@ -426,7 +426,7 @@ Expected:
 Test Files  2 passed
 ```
 
-- [ ] **Step 8: Commit Task 1**
+- [x] **Step 8: Commit Task 1**
 
 Run:
 
