@@ -291,6 +291,67 @@ describe("agent HTTP routes", () => {
     expect(accepted.body).not.toMatch(/prr\.request\.sent|legal-escalation|accepted graph|provider byte transfer/i);
   });
 
+  it("does not double-execute an approved descriptor across concurrent scheduler wake posts", async () => {
+    const previewBarrier = createBarrier(2);
+    let executions = 0;
+    const { handler, config } = await seededApprovedToolHandler(
+      "toolreq_scheduler_route_concurrent_claim",
+      (preview) => schedulerWakeDescriptor(preview, {
+        async buildCurrentPreview() {
+          await previewBarrier.arrive();
+          return {
+            preview,
+            sourceEventIds: ["evt_source_route_review"],
+            inputArtifactHashes: [schedulerWakeArtifactHash()],
+            provenanceRefs: ["evt_source_route_review", schedulerWakeArtifactHash()],
+            activeLocks: [],
+            freshnessChecks: [{
+              name: "agent-projection",
+              expected: "high-watermark:1",
+              actual: "high-watermark:1",
+              ok: true
+            }]
+          };
+        },
+        async executeApproved() {
+          executions += 1;
+          await Promise.resolve();
+          return {
+            eventIds: ["evt_scheduler_route_domain_completed"],
+            artifactHashes: [schedulerWakeArtifactHash()],
+            readModelChanges: [{
+              projectionName: "agent-route-test",
+              change: "scheduler wake route completed approved work"
+            }],
+            resultSummary: "Scheduler wake route completed approved work."
+          };
+        }
+      })
+    );
+
+    const responses = await Promise.all([
+      handler({ method: "POST", url: "/api/agent/scheduler/wake" }),
+      handler({ method: "POST", url: "/api/agent/scheduler/wake" })
+    ]);
+
+    expect(responses.map((response) => response.status).sort((left, right) => left - right)).toEqual([200, 200]);
+    const bodies = responses.map((response) => JSON.parse(response.body) as {
+      readonly completedCount: number;
+      readonly failedCount: number;
+      readonly items: readonly { readonly state: string; readonly eventIds: readonly string[] }[];
+    });
+    const items = bodies.flatMap((body) => body.items);
+    const types = await eventTypes(config);
+    expect(executions).toBe(1);
+    expect(bodies.reduce((sum, body) => sum + body.completedCount, 0)).toBe(1);
+    expect(bodies.reduce((sum, body) => sum + body.failedCount, 0)).toBe(0);
+    expect(items.filter((item) => item.state === "completed")).toHaveLength(1);
+    expect(items.filter((item) => item.state === "not-ready" || item.state === "blocked")).toHaveLength(1);
+    expect(items.find((item) => item.state === "completed")?.eventIds).toHaveLength(2);
+    expect(types.filter((type) => type === "agent.tool.execution.claimed")).toHaveLength(1);
+    expect(types.filter((type) => type === "agent.tool.completed")).toHaveLength(1);
+  });
+
   it("uses existing auth policy for scheduler wake routes", async () => {
     const handler = testHandler({
       env: {
@@ -373,7 +434,10 @@ async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>):
   }
 }
 
-async function seededApprovedToolHandler(toolRequestId = "toolreq_scheduler_route") {
+async function seededApprovedToolHandler(
+  toolRequestId = "toolreq_scheduler_route",
+  descriptorFactory: (preview: AgentToolPreview) => AgentApprovedToolExecutorDescriptor = schedulerWakeDescriptor
+) {
   const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
   const preview = schedulerWakePreview(toolRequestId);
   const previewHash = hashAgentToolPreview(preview);
@@ -411,7 +475,7 @@ async function seededApprovedToolHandler(toolRequestId = "toolreq_scheduler_rout
       config,
       agentRuntimeFactory: (input) => defaultLocalAgentRuntimeFactory({
         ...input,
-        approvedToolExecutors: [schedulerWakeDescriptor(preview)]
+        approvedToolExecutors: [descriptorFactory(preview)]
       })
     }),
     previewHash
@@ -426,7 +490,10 @@ function schedulerWakePreview(toolRequestId: string): AgentToolPreview {
   };
 }
 
-function schedulerWakeDescriptor(preview: AgentToolPreview): AgentApprovedToolExecutorDescriptor {
+function schedulerWakeDescriptor(
+  preview: AgentToolPreview,
+  overrides: Partial<AgentApprovedToolExecutorDescriptor> = {}
+): AgentApprovedToolExecutorDescriptor {
   return {
     toolId: "agent.test.route-wake",
     toolVersion: "1.0.0",
@@ -457,7 +524,8 @@ function schedulerWakeDescriptor(preview: AgentToolPreview): AgentApprovedToolEx
         }],
         resultSummary: "Scheduler wake route completed approved work."
       };
-    }
+    },
+    ...overrides
   };
 }
 
@@ -562,4 +630,22 @@ function expectAgentStatusBodyToHideRuntimeMaterial(body: string): void {
   expect(body).not.toContain(providerSetupSentinel());
   expect(body).not.toContain(routeSessionSentinel());
   expect(body).not.toMatch(/runtime-provider-material|authorization:\s*bearer|provider error|response body|private key|password=|secret=/i);
+}
+
+function createBarrier(count: number): { readonly arrive: () => Promise<void> } {
+  let arrivals = 0;
+  let release: (() => void) | undefined;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  return {
+    async arrive() {
+      arrivals += 1;
+      if (arrivals >= count) {
+        release?.();
+      }
+      await released;
+    }
+  };
 }

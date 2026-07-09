@@ -70,6 +70,105 @@ describe("agent tool gateway", () => {
     ).rejects.toThrow(/stale/i);
   });
 
+  it("claims approved tool execution with a lease before external effects run", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_execution_claim",
+      residentAgentId: "agent_default",
+      taskId: "task_claim",
+      runId: "run_claim",
+      toolId: "ledger.review.claim",
+      sideEffectClass: "ledger-review",
+      preview: { summary: "Review ledger proposal after claim.", relatedEventIds: ["evt_claim_source"] },
+      requiredApprovalClass: "ledger-review"
+    });
+    await gateway.approveTool({
+      toolRequestId: "toolreq_execution_claim",
+      approvedPreviewHash: requested.payload.previewHash,
+      actor: humanActor,
+      rationale: "Human approved the exact claim preview."
+    });
+
+    const claimed = await claimCapableGateway(gateway).claimExecution({
+      toolRequestId: "toolreq_execution_claim",
+      approvedPreviewHash: requested.payload.previewHash,
+      leaseExpiresAt: "2026-07-07T18:35:00.000Z"
+    });
+
+    expect(claimed.type).toBe("agent.tool.execution.claimed");
+    expect(claimed.payload).toEqual({
+      toolRequestId: "toolreq_execution_claim",
+      claimedBy: agentActor.id,
+      claimedAt: fixedNow(),
+      approvedPreviewHash: requested.payload.previewHash,
+      leaseExpiresAt: "2026-07-07T18:35:00.000Z"
+    });
+    await expect(
+      claimCapableGateway(gateway).claimExecution({
+        toolRequestId: "toolreq_execution_claim",
+        approvedPreviewHash: requested.payload.previewHash,
+        leaseExpiresAt: "2026-07-07T18:36:00.000Z"
+      })
+    ).rejects.toThrow(/claim|lease|execution/i);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved",
+      "agent.tool.execution.claimed"
+    ]);
+  });
+
+  it("allows re-claiming approved execution after the previous lease expires", async () => {
+    const ledger = new InMemoryEventLedger();
+    const firstGateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await firstGateway.requestTool({
+      toolRequestId: "toolreq_execution_reclaim",
+      residentAgentId: "agent_default",
+      taskId: "task_claim",
+      runId: "run_claim",
+      toolId: "ledger.review.claim",
+      sideEffectClass: "ledger-review",
+      preview: { summary: "Review ledger proposal after re-claim.", relatedEventIds: ["evt_claim_source"] },
+      requiredApprovalClass: "ledger-review"
+    });
+    await firstGateway.approveTool({
+      toolRequestId: "toolreq_execution_reclaim",
+      approvedPreviewHash: requested.payload.previewHash,
+      actor: humanActor,
+      rationale: "Human approved the exact re-claim preview."
+    });
+    await claimCapableGateway(firstGateway).claimExecution({
+      toolRequestId: "toolreq_execution_reclaim",
+      approvedPreviewHash: requested.payload.previewHash,
+      leaseExpiresAt: "2026-07-07T18:31:00.000Z"
+    });
+
+    const laterGateway = createAgentToolGateway({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-07-07T18:32:00.000Z"
+    });
+    const reclaimed = await claimCapableGateway(laterGateway).claimExecution({
+      toolRequestId: "toolreq_execution_reclaim",
+      approvedPreviewHash: requested.payload.previewHash,
+      leaseExpiresAt: "2026-07-07T18:37:00.000Z"
+    });
+
+    expect(reclaimed.payload).toMatchObject({
+      toolRequestId: "toolreq_execution_reclaim",
+      claimedAt: "2026-07-07T18:32:00.000Z",
+      leaseExpiresAt: "2026-07-07T18:37:00.000Z"
+    });
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved",
+      "agent.tool.execution.claimed",
+      "agent.tool.execution.claimed"
+    ]);
+  });
+
   it("rejects duplicate changed-preview requests so old approvals cannot be reused", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
@@ -972,6 +1071,27 @@ type AgentPreviewWithSymbol = {
   readonly summary: string;
   readonly [key: symbol]: string;
 };
+
+type ClaimCapableGateway = ReturnType<typeof createAgentToolGateway> & {
+  readonly claimExecution: (command: {
+    readonly toolRequestId: string;
+    readonly approvedPreviewHash: string;
+    readonly leaseExpiresAt: string;
+  }) => Promise<{
+    readonly type: "agent.tool.execution.claimed";
+    readonly payload: {
+      readonly toolRequestId: string;
+      readonly claimedBy: string;
+      readonly claimedAt: string;
+      readonly approvedPreviewHash: string;
+      readonly leaseExpiresAt: string;
+    };
+  }>;
+};
+
+function claimCapableGateway(gateway: ReturnType<typeof createAgentToolGateway>): ClaimCapableGateway {
+  return gateway as unknown as ClaimCapableGateway;
+}
 
 type InterleavedLifecycleEventType = "agent.tool.denied" | "agent.tool.failed";
 

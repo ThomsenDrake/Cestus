@@ -7,7 +7,7 @@ export type AgentTaskStatus =
   | "failed"
   | "canceled";
 
-export type AgentToolRequestState = "requested" | "approved" | "denied" | "completed" | "failed";
+export type AgentToolRequestState = "requested" | "approved" | "executing" | "denied" | "completed" | "failed";
 export type AgentMemoryState = "active" | "superseded" | "retracted";
 export type AgentPermissionState = "granted" | "revoked";
 export type AgentLockState = "active" | "cleared";
@@ -199,6 +199,11 @@ export interface ProjectedAgentToolRequest extends ProjectedAgentProvenance {
   readonly approvalClass?: AgentToolApprovalClass | undefined;
   readonly approvalRationale?: string | undefined;
   readonly approvedAt?: string | undefined;
+  readonly executionClaimedBy?: string | undefined;
+  readonly executionClaimedAt?: string | undefined;
+  readonly executionLeaseExpiresAt?: string | undefined;
+  readonly executionApprovedPreviewHash?: string | undefined;
+  readonly executionClaimEventId?: string | undefined;
   readonly deniedBy?: string | undefined;
   readonly denialRationale?: string | undefined;
   readonly deniedAt?: string | undefined;

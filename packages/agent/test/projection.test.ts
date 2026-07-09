@@ -88,6 +88,34 @@ describe("buildAgentProjection", () => {
     ]);
   });
 
+  it("projects tool execution claims with lease metadata for active and expired claim handling", () => {
+    const projection = buildAgentProjection(toolExecutionClaimEvents());
+
+    const claimedTool = projection.toolRequests.get("toolreq_claimed_execution");
+    expect(claimedTool).toMatchObject({
+      toolRequestId: "toolreq_claimed_execution",
+      state: "executing",
+      approvedBy: "actor_case_owner",
+      executionClaimedBy: "actor_agent_scheduler",
+      executionClaimedAt: "2026-07-09T12:06:00.000Z",
+      executionLeaseExpiresAt: "2026-07-09T12:11:00.000Z",
+      executionApprovedPreviewHash: hash222,
+      executionClaimEventId: "evt_agent_tool_execution_claimed_reclaim"
+    });
+    expect(claimedTool?.eventIds).toEqual([
+      "evt_agent_tool_requested_claimed_execution",
+      "evt_agent_tool_approved_claimed_execution",
+      "evt_agent_tool_execution_claimed_expired",
+      "evt_agent_tool_execution_claimed_reclaim"
+    ]);
+    expect(claimedTool?.causationIds).toEqual([
+      "evt_agent_run_started_claim_projection",
+      "evt_agent_tool_requested_claimed_execution",
+      "evt_agent_tool_approved_claimed_execution",
+      "evt_agent_tool_execution_claimed_expired"
+    ]);
+  });
+
   it("tracks memory supersession, permission revocation, and lock clearing", () => {
     const projection = buildAgentProjection(goldenAgentLedgerEvents);
 
@@ -303,4 +331,92 @@ function promptOmission(): Record<string, unknown> {
     sourceRef: "evidence-summary.v1",
     safeSummary: "One evidence pack was omitted because the size budget was reached."
   };
+}
+
+function toolExecutionClaimEvents(): Parameters<typeof buildAgentProjection>[0] {
+  const request = {
+    id: "evt_agent_tool_requested_claimed_execution",
+    type: "agent.tool.requested",
+    version: 1,
+    streamId: "agent_tool_request_toolreq_claimed_execution",
+    sequence: 1,
+    context: {
+      ...agentContext("2026-07-09T12:00:00.000Z"),
+      causationId: "evt_agent_run_started_claim_projection"
+    },
+    payload: {
+      toolRequestId: "toolreq_claimed_execution",
+      runId: "run_claim_projection",
+      toolId: "tool_claim_projection",
+      toolVersion: "1.0.0",
+      requestedBy: "agent_default",
+      sideEffectClass: "ledger-review",
+      requiredApprovalClass: "ledger-review",
+      previewHash: hash222,
+      scope: "Claim projection test.",
+      estimatedEffect: "Records a scheduler execution claim.",
+      sourceEventIds: ["evt_agent_run_started_claim_projection"],
+      inputArtifactHashes: [hash111]
+    }
+  };
+  const approval = {
+    id: "evt_agent_tool_approved_claimed_execution",
+    type: "agent.tool.approved",
+    version: 1,
+    streamId: "agent_tool_request_toolreq_claimed_execution",
+    sequence: 2,
+    context: {
+      ...agentContext("2026-07-09T12:01:00.000Z"),
+      actor: { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" },
+      causationId: request.id
+    },
+    payload: {
+      toolRequestId: "toolreq_claimed_execution",
+      approvedBy: "actor_case_owner",
+      approvedPreviewHash: hash222,
+      approvalClass: "ledger-review",
+      rationale: "Approved the projection claim test.",
+      approvedAt: "2026-07-09T12:01:00.000Z"
+    }
+  };
+  const expiredClaim = {
+    id: "evt_agent_tool_execution_claimed_expired",
+    type: "agent.tool.execution.claimed",
+    version: 1,
+    streamId: "agent_tool_request_toolreq_claimed_execution",
+    sequence: 3,
+    context: {
+      ...agentContext("2026-07-09T12:02:00.000Z"),
+      actor: { id: "actor_agent_scheduler", kind: "system" as const, label: "Agent Scheduler" },
+      causationId: approval.id
+    },
+    payload: {
+      toolRequestId: "toolreq_claimed_execution",
+      claimedBy: "actor_agent_scheduler",
+      claimedAt: "2026-07-09T12:02:00.000Z",
+      approvedPreviewHash: hash222,
+      leaseExpiresAt: "2026-07-09T12:05:00.000Z"
+    }
+  };
+  const reclaim = {
+    id: "evt_agent_tool_execution_claimed_reclaim",
+    type: "agent.tool.execution.claimed",
+    version: 1,
+    streamId: "agent_tool_request_toolreq_claimed_execution",
+    sequence: 4,
+    context: {
+      ...agentContext("2026-07-09T12:06:00.000Z"),
+      actor: { id: "actor_agent_scheduler", kind: "system" as const, label: "Agent Scheduler" },
+      causationId: expiredClaim.id
+    },
+    payload: {
+      toolRequestId: "toolreq_claimed_execution",
+      claimedBy: "actor_agent_scheduler",
+      claimedAt: "2026-07-09T12:06:00.000Z",
+      approvedPreviewHash: hash222,
+      leaseExpiresAt: "2026-07-09T12:11:00.000Z"
+    }
+  };
+
+  return [request, approval, expiredClaim, reclaim] as Parameters<typeof buildAgentProjection>[0];
 }
