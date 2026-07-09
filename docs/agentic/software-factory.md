@@ -1136,9 +1136,9 @@ Required plan file:
 Recorded focused verification:
 
 ```text
-npm test -- packages/agent/test/scheduler-types.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts
-Test Files  6 passed (6)
-Tests  97 passed (97)
+npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts packages/agent/test/runtime.test.ts packages/agent/test/scheduler-types.test.ts
+Test Files  8 passed (8)
+Tests  136 passed (136)
 ```
 
 Recorded full verification:
@@ -1147,7 +1147,7 @@ Recorded full verification:
 npm run verify
 typecheck passed
 Test Files  145 passed | 1 skipped (146)
-Tests  1404 passed | 1 skipped (1405)
+Tests  1411 passed | 1 skipped (1412)
 tests passed
 vite build succeeded
 factory-readiness passed
