@@ -393,6 +393,28 @@ describe("agent HTTP routes", () => {
     expect(isAgentSecretSafeText(rejected.body)).toBe(true);
     expectAgentStatusBodyToHideRuntimeMaterial(accepted.body);
   });
+
+  it("applies the same auth policy to agent memory routes", async () => {
+    const config = protectedConfig();
+    const handler = testHandler({ config });
+    const sessionCookie = localRuntimeSessionCookieValue(config);
+    expect(sessionCookie).toBeDefined();
+
+    const rejected = await handler({ method: "GET", url: "/api/agent/memory" });
+    const accepted = await handler({
+      method: "GET",
+      url: "/api/agent/memory",
+      headers: {
+        cookie: `${LOCAL_RUNTIME_SESSION_COOKIE_NAME}=${sessionCookie}`
+      }
+    });
+
+    expect(rejected.status).toBe(401);
+    expect(accepted.status).toBe(200);
+    expect(rejected.body).not.toContain(routeSessionSentinel());
+    expect(accepted.body).not.toContain(routeSessionSentinel());
+    expect(isAgentSecretSafeText(rejected.body)).toBe(true);
+  });
 });
 
 function testHandler(input: {
