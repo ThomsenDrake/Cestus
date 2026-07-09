@@ -6,6 +6,7 @@ import { createAgentToolGateway } from "../src/tool-gateway.js";
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 const policyActor = { id: "actor_policy_guard", kind: "system" as const, label: "Policy Guard" };
+const schedulerActor = { id: "actor_agent_scheduler", kind: "system" as const, label: "Agent Scheduler" };
 const fixedNow = () => "2026-07-07T18:30:00.000Z";
 const stalePreviewHash = "sha256:9999999999999999999999999999999999999999999999999999999999999999";
 
@@ -499,6 +500,119 @@ describe("agent tool gateway", () => {
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toMatch(/approval/i);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved"
+    ]);
+  });
+
+  it("rejects claim execution with directly appended approval by the original request actor", async () => {
+    const ledger = new InMemoryEventLedger();
+    const requestGateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+    const consumingGateway = createAgentToolGateway({ ledger, actor: schedulerActor, now: fixedNow });
+
+    const requested = await requestGateway.requestTool({
+      toolRequestId: "toolreq_direct_request_actor_claim",
+      residentAgentId: "agent_default",
+      taskId: "task_claim",
+      runId: "run_claim",
+      toolId: "ledger.review.claim",
+      sideEffectClass: "ledger-review",
+      preview: { summary: "Review ledger proposal after claim.", relatedEventIds: ["evt_claim_source"] },
+      requiredApprovalClass: "ledger-review"
+    });
+    await ledger.append({
+      type: "agent.tool.approved",
+      version: 1,
+      streamId: "agent_tool_request_toolreq_direct_request_actor_claim",
+      context: {
+        actor: { id: agentActor.id, kind: "human", label: "Spoofed Original Request Actor" },
+        occurredAt: fixedNow(),
+        causationId: requested.id,
+        correlationId: "corr_toolreq_direct_request_actor_claim",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId: "toolreq_direct_request_actor_claim",
+        approvedBy: agentActor.id,
+        approvedPreviewHash: requested.payload.previewHash,
+        approvalClass: requested.payload.requiredApprovalClass,
+        rationale: "Spoofed approval by the original request event actor.",
+        approvedAt: fixedNow()
+      }
+    });
+
+    const error = await captureError(() =>
+      claimCapableGateway(consumingGateway).claimExecution({
+        toolRequestId: "toolreq_direct_request_actor_claim",
+        approvedPreviewHash: requested.payload.previewHash,
+        leaseExpiresAt: "2026-07-07T18:35:00.000Z"
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/approval/i);
+    expect((error as Error).message).not.toContain(agentActor.id);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved"
+    ]);
+  });
+
+  it("rejects completion with directly appended approval by the original request actor", async () => {
+    const ledger = new InMemoryEventLedger();
+    const requestGateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+    const consumingGateway = createAgentToolGateway({ ledger, actor: schedulerActor, now: fixedNow });
+
+    const requested = await requestGateway.requestTool({
+      toolRequestId: "toolreq_direct_request_actor_complete",
+      residentAgentId: "agent_default",
+      taskId: "task_claim",
+      runId: "run_claim",
+      toolId: "ledger.review.claim",
+      sideEffectClass: "ledger-review",
+      preview: { summary: "Review ledger proposal before completion.", relatedEventIds: ["evt_claim_source"] },
+      requiredApprovalClass: "ledger-review"
+    });
+    await ledger.append({
+      type: "agent.tool.approved",
+      version: 1,
+      streamId: "agent_tool_request_toolreq_direct_request_actor_complete",
+      context: {
+        actor: { id: agentActor.id, kind: "human", label: "Spoofed Original Request Actor" },
+        occurredAt: fixedNow(),
+        causationId: requested.id,
+        correlationId: "corr_toolreq_direct_request_actor_complete",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId: "toolreq_direct_request_actor_complete",
+        approvedBy: agentActor.id,
+        approvedPreviewHash: requested.payload.previewHash,
+        approvalClass: requested.payload.requiredApprovalClass,
+        rationale: "Spoofed approval by the original request event actor.",
+        approvedAt: fixedNow()
+      }
+    });
+
+    const error = await captureError(() =>
+      consumingGateway.completeTool({
+        toolRequestId: "toolreq_direct_request_actor_complete",
+        approvedPreviewHash: requested.payload.previewHash,
+        result: {
+          eventIds: [],
+          artifactHashes: [],
+          readModelChanges: [{ projectionName: "agent-tool-requests", change: "Should not complete." }],
+          resultSummary: "Should not complete."
+        }
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/approval/i);
+    expect((error as Error).message).not.toContain(agentActor.id);
     expect((await ledger.readAll()).map((event) => event.type)).toEqual([
       "agent.tool.requested",
       "agent.tool.approved"

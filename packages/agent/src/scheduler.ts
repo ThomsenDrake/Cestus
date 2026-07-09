@@ -159,6 +159,13 @@ async function consumeApprovedRequest(
   if (streamState.completed !== undefined || streamState.denial !== undefined || streamState.failure !== undefined) {
     return notReadyItem(request, "Tool request is no longer open.");
   }
+  if (streamState.executionClaim !== undefined) {
+    return notReadyItem(
+      request,
+      "Tool execution is already claimed and requires inspection before retry.",
+      "execution-claimed"
+    );
+  }
   if (streamState.requestCount > 1) {
     return await failRequest(
       gateway,
@@ -297,15 +304,6 @@ async function consumeApprovedRequest(
     );
   }
 
-  if (streamState.executionClaim !== undefined && !executionClaimLeaseExpired(streamState.executionClaim, now())) {
-    return notReadyItem(
-      request,
-      "Tool execution is already claimed by another scheduler wake.",
-      "execution-claimed",
-      currentPreviewHash
-    );
-  }
-
   let claim: KnowledgeEventOf<"agent.tool.execution.claimed">;
   try {
     claim = await gateway.claimExecution({
@@ -427,7 +425,7 @@ function notReadyItem(
     message,
     currentPreviewHash,
     eventIds: [],
-    allowedNextActions: ["refresh agent status"]
+    allowedNextActions: [...schedulerAllowedNextActions]
   });
 }
 
@@ -668,13 +666,6 @@ function stringArraysEqual(left: readonly string[], right: readonly string[]): b
 
 function claimLeaseExpiresAt(claimedAt: string): string {
   return new Date(Date.parse(claimedAt) + executionClaimLeaseMs).toISOString();
-}
-
-function executionClaimLeaseExpired(
-  claim: KnowledgeEventOf<"agent.tool.execution.claimed">,
-  now: string
-): boolean {
-  return Date.parse(claim.payload.leaseExpiresAt) <= Date.parse(now);
 }
 
 function optionalEventId(eventId: string | undefined): readonly string[] {

@@ -795,6 +795,7 @@ function assertStoredApprovalUsable(
     approval.payload.approvalClass !== request.payload.requiredApprovalClass ||
     approval.payload.approvedPreviewHash !== request.payload.previewHash ||
     approval.context.actor.id === request.payload.requestedBy ||
+    approval.context.actor.id === request.context.actor.id ||
     approval.context.actor.id === gatewayActorId
   ) {
     throw new Error("Stored tool approval is not usable.");

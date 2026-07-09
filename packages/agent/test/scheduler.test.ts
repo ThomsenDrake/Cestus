@@ -119,7 +119,7 @@ describe("agent scheduler wake", () => {
     expect(allItems.find((item) => item.state === "completed")?.eventIds).toHaveLength(2);
   });
 
-  it("skips unexpired execution claims and reclaims expired leases before execution", async () => {
+  it("does not execute or reclaim an expired existing execution claim automatically", async () => {
     const ledger = new InMemoryEventLedger();
     const preview = previewFor("toolreq_scheduler_claim_lease");
     const requested = await requestAndApprove(ledger, preview, "toolreq_scheduler_claim_lease");
@@ -134,29 +134,6 @@ describe("agent scheduler wake", () => {
     });
 
     let executions = 0;
-    const activeLeaseScheduler = createAgentScheduler({
-      ledger,
-      actor: schedulerActor,
-      now: () => "2026-07-09T12:01:00.000Z",
-      descriptors: [fakeDescriptor(preview, {
-        async executeApproved() {
-          executions += 1;
-          throw new Error("unexpired claims must not execute");
-        }
-      })]
-    });
-
-    const activeLease = await activeLeaseScheduler.wake();
-
-    expect(activeLease.completedCount).toBe(0);
-    expect(activeLease.failedCount).toBe(0);
-    expect(activeLease.items[0]).toMatchObject({
-      toolRequestId: "toolreq_scheduler_claim_lease",
-      state: "not-ready",
-      category: "execution-claimed"
-    });
-    expect(executions).toBe(0);
-
     const expiredLeaseScheduler = createAgentScheduler({
       ledger,
       actor: schedulerActor,
@@ -164,12 +141,7 @@ describe("agent scheduler wake", () => {
       descriptors: [fakeDescriptor(preview, {
         async executeApproved() {
           executions += 1;
-          return {
-            eventIds: ["evt_fake_domain_completed"],
-            artifactHashes: [artifactHash],
-            readModelChanges: [{ projectionName: "agent-test", change: "approved tool executed" }],
-            resultSummary: "Approved tool executed after reclaim."
-          };
+          throw new Error("expired claims must not execute automatically");
         }
       })]
     });
@@ -177,10 +149,26 @@ describe("agent scheduler wake", () => {
     const expiredLease = await expiredLeaseScheduler.wake();
     const events = await ledger.readAll();
 
-    expect(expiredLease.completedCount).toBe(1);
-    expect(executions).toBe(1);
-    expect(events.filter((event) => event.type === "agent.tool.execution.claimed")).toHaveLength(2);
-    expect(events.filter((event) => event.type === "agent.tool.completed")).toHaveLength(1);
+    expect(expiredLease).toMatchObject({
+      examinedCount: 1,
+      completedCount: 0,
+      failedCount: 0,
+      blockedCount: 0
+    });
+    expect(expiredLease.items[0]).toMatchObject({
+      toolRequestId: "toolreq_scheduler_claim_lease",
+      state: "not-ready",
+      category: "execution-claimed"
+    });
+    expect(expiredLease.items[0]?.message).toMatch(/claimed/i);
+    expect(expiredLease.items[0]?.allowedNextActions).toEqual(expect.arrayContaining([
+      "refresh agent status",
+      "inspect agent approval queue"
+    ]));
+    expect(executions).toBe(0);
+    expect(events.filter((event) => event.type === "agent.tool.execution.claimed")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.tool.completed")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "agent.tool.failed")).toHaveLength(0);
   });
 
   it("fails closed when an approved request has no descriptor", async () => {
