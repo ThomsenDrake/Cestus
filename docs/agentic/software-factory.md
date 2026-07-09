@@ -92,6 +92,10 @@ The portable workspace, ingestion runtime, workspace ops, and legacy import impl
 - **Recheck approval validity when consumed.** A stored approval is not enough. Runtime resume must revalidate independent human actor, approval class, preview hash, causation/provenance, active locks, current source hashes, and stale state before any gated effect reaches a domain service.
 - **Keep approval cockpits out of the execution path.** The UI and CLI should append human approve/deny decisions and explain risk. They must not directly run PRR sends, provider byte transfer, legal escalation, export, destructive repair, accepted graph review, raw import, or legacy staging.
 - **Test DTO safety as adversarial object safety.** Resident-agent slices exposed leaks through keys, IDs, provider health objects, malformed DTOs, prototype fields, and accessor-triggered throws. Browser DTO and diagnostics tests should cover keys, values, arrays, prototypes, getters, and parser failure paths, not just obvious secret strings.
+- **Make prompt artifacts the remote-model boundary.** Provider calls should consume durable prompt artifact envelopes or typed `inputText` assembled from audited context packs. Do not restore callback-based hash-to-text resolvers, placeholder prompts, raw prompt logs, or ledger events that store production prompt text.
+- **Use live providers where provider behavior is the contract.** Deterministic tests should stay credential-free, but provider/model integration slices should also have explicit live smoke checks against an approved endpoint. Live smoke output must be safe to record: provider IDs, model IDs, hashes, event IDs, counts, categories, and fixed markers only.
+- **Match secret tests to their boundary.** Low-level secret predicates are useful for raw strings, but they are too blunt for whole public DTOs that legitimately contain field names such as provider health, auth labels, or credential-reference categories. Boundary tests should assert that actual values, errors, diagnostics, previews, and logs do not leak unsafe material.
+- **Keep scratch execution state out of durable memory.** `.superpowers/sdd` files are local task scratch. Promote only durable conclusions into specs, implementation plans, claims, readiness records, or commits.
 
 ## Ontology Layer Final Readiness
 
@@ -1050,3 +1054,73 @@ factory-readiness passed
 ```
 
 This slice keeps Cestus as the resident orchestrator for the `ontology-bootstrap` specialist run type. Legacy artifacts enter as evidence-backed dossiers and candidate bundles first; graph-like legacy structure can only inform proposed assertion material tied to exact report, candidate-set, review-bundle, evidence, source, and content hashes. The workflow records review bundles, context-pack refs, run steps, pending ledger-review tool requests, safe memory caveats, live Nous review notes for model-facing acceptance, local-runtime read routes, and a read-only Agent UI surface. It does not accept ontology truth, run accepted graph review, approve staging, execute provider byte transfer, send PRRs, export, escalate legal work, or perform destructive repair. Append-only ledger semantics, provenance, projection rebuildability, human staging/accepted graph separation, high-volume chunk/cursor readiness, and secret-safe diagnostics remain preserved.
+
+## Resident Agent Workflow Integration Readiness
+
+The provider readiness health UX, approval cockpit routes/UI, prompt artifact context resolver, and ontology-bootstrap resident workflow branches were integrated on `neo` on 2026-07-08 after the resident-agent foundation landed.
+
+Integrated child branches:
+
+- `codex/provider-readiness-health-ux`
+- `codex/resident-agent-approval-cockpit-plan`
+- `codex/resident-agent-prompt-artifact-plan`
+- `codex/ontology-bootstrap-resident-workflow-plan`
+
+Final integration commit:
+
+```text
+98d8af2 integrate resident agent workflow slices
+```
+
+Recorded targeted integration verification:
+
+```text
+Test Files  18 passed
+Tests  152 passed
+```
+
+Recorded live Nous provider smoke:
+
+```text
+npm run local:agent:provider-smoke -- --json
+ok true
+provider provider_nous_portal
+model tencent/hy3:free
+marker cestus-live-provider-ok
+```
+
+Recorded prompt artifact live smoke:
+
+```text
+npm run agent:nous:smoke
+ok true
+safe output only: hashes, event IDs, context pack IDs, and omission counts
+```
+
+Recorded ontology-bootstrap live Nous acceptance:
+
+```text
+CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/ontology-bootstrap-nous-live.test.ts
+Test Files  1 passed
+Tests  1 passed
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  143 passed | 1 skipped
+Tests  1373 passed | 1 skipped
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Integration lessons:
+
+- Cestus now has a real resident-agent spine, but the agent still needs execution adapters that consume approved requests through schedulers and domain services. Approval UI remains decision-only.
+- Prompt artifacts are now the durable audit boundary for model calls. Future live-provider and specialist-workflow slices must pass assembled prompt text through the artifact/input contract instead of adding ad hoc resolver shortcuts.
+- Live Nous Portal is the authoritative real-provider acceptance path for the current local provider lane. Standard verification remains deterministic and credential-free unless a task explicitly opts into live provider checks.
+- Ontology bootstrap remains evidence-first: old Cestus artifacts bootstrap a fresh ontology by producing evidence-backed dossiers, review bundles, and proposed assertion material, never accepted graph truth.
+- Shared readiness documentation is valuable but noisy. Future high-volume implementation detail should move into per-slice claim/readiness artifacts, with this file retaining the index and final gate evidence.
