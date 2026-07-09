@@ -201,6 +201,17 @@ export async function handleAgentHttpRoute(
       }
     }
 
+    if (input.request.method === "POST" && path === "/api/agent/scheduler/wake") {
+      if (input.request.body !== undefined && input.request.body.trim().length > 0) {
+        const payload = parseJsonObjectBody(input.request.body, invalidSchedulerWakeBodyDiagnostic);
+        if (!payload.ok || Object.keys(payload.value).length > 0) {
+          return json(400, invalidSchedulerWakeBodyDiagnostic());
+        }
+      }
+
+      return json(200, await runtime.scheduler.wake());
+    }
+
     if (input.request.method === "POST" && path === "/api/agent/tasks") {
       const payload = parseJsonObjectBody(input.request.body, invalidTaskBodyDiagnostic);
       if (!payload.ok) {
@@ -343,6 +354,19 @@ function invalidTaskBodyDiagnostic(): {
 } {
   return diagnostic("Agent task body is invalid.", [
     "send taskId, title, and optional priority as a JSON object"
+  ]);
+}
+
+function invalidSchedulerWakeBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent scheduler wake does not accept tool input.", [
+    "send an empty POST body to wake the scheduler",
+    "use approval routes to append human decisions"
   ]);
 }
 

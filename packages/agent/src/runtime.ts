@@ -21,6 +21,8 @@ import {
   specialistExecutionStatusFor,
   type AgentSpecialistRunType
 } from "./specialists.js";
+import { createAgentScheduler } from "./scheduler.js";
+import type { AgentApprovedToolExecutorDescriptor } from "./scheduler-types.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
 
 const agentCoreVersion = "0.1.0";
@@ -36,6 +38,7 @@ export interface CreateAgentRuntimeInput {
   readonly actor: ActorRef;
   readonly now: () => string;
   readonly providers?: readonly ModelProviderAdapter[];
+  readonly approvedToolExecutors?: readonly AgentApprovedToolExecutorDescriptor[];
 }
 
 export interface InitializeDefaultIdentityInput {
@@ -108,6 +111,12 @@ export interface InvokeAgentModelResult {
 
 export function createAgentRuntime(input: CreateAgentRuntimeInput) {
   const providerRegistry = createProviderRegistry(input.providers ?? []);
+  const scheduler = createAgentScheduler({
+    ledger: input.ledger,
+    actor: input.actor,
+    now: input.now,
+    descriptors: input.approvedToolExecutors ?? []
+  });
 
   return {
     async status(): Promise<AgentStatusDto> {
@@ -481,6 +490,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       };
     },
 
+    scheduler,
     gateway: createAgentToolGateway({ ledger: input.ledger, actor: input.actor, now: input.now })
   };
 }
