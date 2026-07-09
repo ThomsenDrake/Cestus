@@ -325,6 +325,11 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       if (identity === undefined) {
         return failedResult(agentDiagnostic("agent", "Resident identity is not initialized.", ["initialize the default resident identity"]));
       }
+      if (rejectsOperatorPreferenceMemory(input, command.memoryKind)) {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be recorded safely.", ["review memory provenance and safe summary"])
+        );
+      }
 
       const event = memoryRecordedEvent(input, identity.residentAgentId, command, lastValue(identity.eventIds));
       try {
@@ -344,6 +349,11 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       if (identity === undefined || previous === undefined || previous.state !== "active") {
         return failedResult(agentDiagnostic("agent", "Active memory item was not found.", ["refresh memory before superseding"]));
       }
+      if (rejectsOperatorPreferenceMemory(input, command.memoryKind)) {
+        return failedResult(
+          agentDiagnostic("agent", "Memory could not be superseded safely.", ["refresh memory and review provenance"])
+        );
+      }
 
       try {
         const replacement = await appendRuntimeEvent(
@@ -356,20 +366,26 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           ),
           { expectedNextSequence: 1 }
         );
-        const streamEvents = await input.ledger.readStream(memoryStreamId(command.memoryId));
-        const superseded = await appendRuntimeEvent(input.ledger, {
-          type: "agent.memory.superseded",
-          version: 1,
-          streamId: memoryStreamId(command.memoryId),
-          context: agentContext(input, `corr_${command.memoryId}`, input.actor, replacement.id),
-          payload: {
-            memoryId: command.memoryId,
-            supersededByMemoryId: command.supersededByMemoryId,
-            supersededBy: input.actor.id,
-            rationale: command.rationale,
-            supersededAt: input.now()
-          }
-        }, { expectedNextSequence: streamEvents.length + 1 });
+        let superseded: KnowledgeEventOf<"agent.memory.superseded">;
+        try {
+          const streamEvents = await input.ledger.readStream(memoryStreamId(command.memoryId));
+          superseded = await appendRuntimeEvent(input.ledger, {
+            type: "agent.memory.superseded",
+            version: 1,
+            streamId: memoryStreamId(command.memoryId),
+            context: agentContext(input, `corr_${command.memoryId}`, input.actor, replacement.id),
+            payload: {
+              memoryId: command.memoryId,
+              supersededByMemoryId: command.supersededByMemoryId,
+              supersededBy: input.actor.id,
+              rationale: command.rationale,
+              supersededAt: input.now()
+            }
+          }, { expectedNextSequence: streamEvents.length + 1 });
+        } catch {
+          await appendCompensatingMemoryRetraction(input, command.supersededByMemoryId, replacement.id);
+          throw new Error("memory supersession failed");
+        }
         return {
           ok: true,
           memoryId: command.supersededByMemoryId,
@@ -920,6 +936,33 @@ function memoryRecordedEvent(
       ...optionalValue("expiresAt", command.expiresAt)
     }
   };
+}
+
+function rejectsOperatorPreferenceMemory(
+  input: CreateAgentRuntimeInput,
+  memoryKind: AgentMemoryKind | undefined
+): boolean {
+  return memoryKind === "operator-preference" && input.actor.kind !== "human";
+}
+
+async function appendCompensatingMemoryRetraction(
+  input: CreateAgentRuntimeInput,
+  memoryId: string,
+  causationId: string
+): Promise<void> {
+  const streamEvents = await input.ledger.readStream(memoryStreamId(memoryId));
+  await appendRuntimeEvent(input.ledger, {
+    type: "agent.memory.retracted",
+    version: 1,
+    streamId: memoryStreamId(memoryId),
+    context: agentContext(input, `corr_${memoryId}`, input.actor, causationId),
+    payload: {
+      memoryId,
+      retractedBy: input.actor.id,
+      rationale: "Compensating retraction after incomplete supersession.",
+      retractedAt: input.now()
+    }
+  }, { expectedNextSequence: streamEvents.length + 1 });
 }
 
 function optionalValue<Key extends string, Value>(
