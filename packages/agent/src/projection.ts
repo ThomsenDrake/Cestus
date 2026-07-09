@@ -334,6 +334,26 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
         break;
       }
 
+      case "agent.tool.execution.claimed": {
+        const previous = toolRequests.get(event.payload.toolRequestId);
+        if (previous && toolRequestCanAcceptExecutionClaim(previous.state)) {
+          toolRequests.set(
+            event.payload.toolRequestId,
+            freezeProjected({
+              ...previous,
+              state: "executing",
+              executionClaimedBy: event.payload.claimedBy,
+              executionClaimedAt: event.payload.claimedAt,
+              executionLeaseExpiresAt: event.payload.leaseExpiresAt,
+              executionApprovedPreviewHash: event.payload.approvedPreviewHash,
+              executionClaimEventId: event.id,
+              ...nextProvenance(previous, event)
+            })
+          );
+        }
+        break;
+      }
+
       case "agent.tool.denied": {
         const previous = toolRequests.get(event.payload.toolRequestId);
         if (previous) {
@@ -627,6 +647,10 @@ function projectPromptOmissions(omissions: readonly AgentPromptOmissionPayload[]
       })
     )
   );
+}
+
+function toolRequestCanAcceptExecutionClaim(state: ProjectedAgentToolRequest["state"]): boolean {
+  return state === "approved" || state === "executing";
 }
 
 function rememberRunInvocation(

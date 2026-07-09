@@ -32,6 +32,7 @@ type AgentToolGateway = ReturnType<typeof createAgentToolGateway>;
 type ToolRequestEvent =
   | KnowledgeEventOf<"agent.tool.requested">
   | KnowledgeEventOf<"agent.tool.approved">
+  | KnowledgeEventOf<"agent.tool.execution.claimed">
   | KnowledgeEventOf<"agent.tool.denied">
   | KnowledgeEventOf<"agent.tool.completed">
   | KnowledgeEventOf<"agent.tool.failed">;
@@ -40,6 +41,7 @@ interface ToolRequestStreamState {
   readonly request: KnowledgeEventOf<"agent.tool.requested">;
   readonly requestCount: number;
   readonly approval?: KnowledgeEventOf<"agent.tool.approved">;
+  readonly executionClaim?: KnowledgeEventOf<"agent.tool.execution.claimed">;
   readonly denial?: KnowledgeEventOf<"agent.tool.denied">;
   readonly completed?: KnowledgeEventOf<"agent.tool.completed">;
   readonly failure?: KnowledgeEventOf<"agent.tool.failed">;
@@ -59,6 +61,7 @@ const artifactHashPattern = /^sha256:[a-f0-9]{64}$/;
 const arrayIndexNamePattern = /^(0|[1-9]\d*)$/;
 const unsafeDtoKeys = new Set(["__proto__", "constructor", "prototype"]);
 const schedulerAllowedNextActions = ["refresh agent status", "inspect agent approval queue"] as const;
+const executionClaimLeaseMs = 5 * 60 * 1000;
 
 export function createAgentScheduler(input: CreateAgentSchedulerInput) {
   const descriptorRegistry = new Map(
@@ -85,7 +88,7 @@ export function createAgentScheduler(input: CreateAgentSchedulerInput) {
             false,
             ["install or register the approved tool descriptor"]
           )
-          : await consumeApprovedRequest(input.ledger, gateway, input.actor.id, descriptor, request);
+          : await consumeApprovedRequest(input.ledger, gateway, input.actor.id, input.now, descriptor, request);
         items.push(item);
         eventIds.push(...item.eventIds);
       }
@@ -114,7 +117,7 @@ function descriptorKey(toolId: string, toolVersion: string): string {
 }
 
 function isApprovedOpenRequest(request: ProjectedAgentToolRequest): boolean {
-  return request.state === "approved" &&
+  return (request.state === "approved" || request.state === "executing") &&
     request.completedAt === undefined &&
     request.failedAt === undefined &&
     request.deniedAt === undefined;
@@ -124,6 +127,7 @@ async function consumeApprovedRequest(
   ledger: EventLedger,
   gateway: AgentToolGateway,
   schedulerActorId: string,
+  now: () => string,
   descriptor: AgentApprovedToolExecutorDescriptor,
   request: ProjectedAgentToolRequest
 ): Promise<AgentSchedulerItemSummaryDto> {
@@ -293,6 +297,31 @@ async function consumeApprovedRequest(
     );
   }
 
+  if (streamState.executionClaim !== undefined && !executionClaimLeaseExpired(streamState.executionClaim, now())) {
+    return notReadyItem(
+      request,
+      "Tool execution is already claimed by another scheduler wake.",
+      "execution-claimed",
+      currentPreviewHash
+    );
+  }
+
+  let claim: KnowledgeEventOf<"agent.tool.execution.claimed">;
+  try {
+    claim = await gateway.claimExecution({
+      toolRequestId: request.toolRequestId,
+      approvedPreviewHash: approval.payload.approvedPreviewHash,
+      leaseExpiresAt: claimLeaseExpiresAt(now())
+    });
+  } catch {
+    return notReadyItem(
+      request,
+      "Tool execution claim could not be recorded.",
+      "execution-claimed",
+      currentPreviewHash
+    );
+  }
+
   let executionResult: AgentApprovedToolExecutionResult;
   try {
     executionResult = await descriptor.executeApproved({
@@ -317,11 +346,12 @@ async function consumeApprovedRequest(
       "Approved tool execution failed before producing a safe result.",
       true,
       ["inspect scheduler diagnostics"],
-      currentPreviewHash
+      currentPreviewHash,
+      [claim.id]
     );
   }
 
-  return await completeRequest(gateway, request, approval.payload.approvedPreviewHash, executionResult, currentPreviewHash);
+  return await completeRequest(gateway, request, approval.payload.approvedPreviewHash, executionResult, currentPreviewHash, claim.id);
 }
 
 async function completeRequest(
@@ -329,7 +359,8 @@ async function completeRequest(
   request: ProjectedAgentToolRequest,
   approvedPreviewHash: string,
   result: AgentToolResult,
-  currentPreviewHash: string
+  currentPreviewHash: string,
+  claimEventId?: string
 ): Promise<AgentSchedulerItemSummaryDto> {
   try {
     const completed = await gateway.completeTool({
@@ -340,7 +371,7 @@ async function completeRequest(
     return itemForRequest(request, {
       state: "completed",
       currentPreviewHash,
-      eventIds: [completed.id],
+      eventIds: [...optionalEventId(claimEventId), completed.id],
       allowedNextActions: ["refresh agent status"]
     });
   } catch (error) {
@@ -351,7 +382,8 @@ async function completeRequest(
       messageForSanitizationError(error, "Descriptor result failed validation before completion."),
       false,
       ["fix descriptor result validation"],
-      currentPreviewHash
+      currentPreviewHash,
+      optionalEventId(claimEventId)
     );
   }
 }
@@ -363,7 +395,8 @@ async function failRequest(
   message: string,
   retryable: boolean,
   allowedActions: readonly string[],
-  currentPreviewHash?: string
+  currentPreviewHash?: string,
+  priorEventIds: readonly string[] = []
 ): Promise<AgentSchedulerItemSummaryDto> {
   const failed = await gateway.failTool({
     toolRequestId: request.toolRequestId,
@@ -377,16 +410,22 @@ async function failRequest(
     category,
     message,
     currentPreviewHash,
-    eventIds: [failed.id],
+    eventIds: [...priorEventIds, failed.id],
     allowedNextActions: [...allowedActions]
   });
 }
 
-function notReadyItem(request: ProjectedAgentToolRequest, message: string): AgentSchedulerItemSummaryDto {
+function notReadyItem(
+  request: ProjectedAgentToolRequest,
+  message: string,
+  category = "permission-denied",
+  currentPreviewHash?: string
+): AgentSchedulerItemSummaryDto {
   return itemForRequest(request, {
     state: "not-ready",
-    category: "permission-denied",
+    category,
     message,
+    currentPreviewHash,
     eventIds: [],
     allowedNextActions: ["refresh agent status"]
   });
@@ -424,6 +463,7 @@ async function readToolRequestStreamState(
   }
 
   const approval = lastOfType(events, "agent.tool.approved");
+  const executionClaim = lastOfType(events, "agent.tool.execution.claimed");
   const denial = lastOfType(events, "agent.tool.denied");
   const completed = lastOfType(events, "agent.tool.completed");
   const failure = lastOfType(events, "agent.tool.failed");
@@ -431,6 +471,7 @@ async function readToolRequestStreamState(
     request,
     requestCount: requests.length,
     ...(approval === undefined ? {} : { approval }),
+    ...(executionClaim === undefined ? {} : { executionClaim }),
     ...(denial === undefined ? {} : { denial }),
     ...(completed === undefined ? {} : { completed }),
     ...(failure === undefined ? {} : { failure })
@@ -623,6 +664,21 @@ function validateArtifactHash(item: string, label: string): void {
 
 function stringArraysEqual(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((item, index) => item === right[index]);
+}
+
+function claimLeaseExpiresAt(claimedAt: string): string {
+  return new Date(Date.parse(claimedAt) + executionClaimLeaseMs).toISOString();
+}
+
+function executionClaimLeaseExpired(
+  claim: KnowledgeEventOf<"agent.tool.execution.claimed">,
+  now: string
+): boolean {
+  return Date.parse(claim.payload.leaseExpiresAt) <= Date.parse(now);
+}
+
+function optionalEventId(eventId: string | undefined): readonly string[] {
+  return eventId === undefined ? [] : [eventId];
 }
 
 function categoryForSanitizationError(error: unknown, fallback: AgentToolFailureCategory): AgentToolFailureCategory {

@@ -67,6 +67,12 @@ export interface DenyAgentToolInput {
   readonly rationale: string;
 }
 
+export interface ClaimAgentToolExecutionInput {
+  readonly toolRequestId: string;
+  readonly approvedPreviewHash: string;
+  readonly leaseExpiresAt: string;
+}
+
 export interface AgentToolReadModelChange {
   readonly projectionName: string;
   readonly change: string;
@@ -208,6 +214,41 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
       return appendToolEvent(input.ledger, event, nextToolRequestAppendOptions(state));
     },
 
+    async claimExecution(command: ClaimAgentToolExecutionInput) {
+      const state = await readToolRequestState(input.ledger, command.toolRequestId);
+      assertNotClosed(state);
+      const claimedAt = input.now();
+
+      if (state.request.payload.requiredApprovalClass === "none") {
+        throw new Error("Tool execution claims require an approved tool request.");
+      }
+      if (state.approval === undefined) {
+        throw new Error("Human approval is required before claiming this tool request.");
+      }
+      assertStoredApprovalUsable(state.approval, state.request, input.actor.id);
+      assertFreshPreviewHash(command.approvedPreviewHash, state.request.payload.previewHash);
+      assertLeaseExpiresAfterClaim(command.leaseExpiresAt, claimedAt);
+
+      if (state.executionClaim !== undefined && !executionClaimLeaseExpired(state.executionClaim, claimedAt)) {
+        throw new Error("Tool execution is already claimed until its lease expires.");
+      }
+
+      const event: AppendableKnowledgeEvent<"agent.tool.execution.claimed"> = {
+        type: "agent.tool.execution.claimed",
+        version: 1,
+        streamId: toolRequestStreamId(command.toolRequestId),
+        context: agentContext(input, `corr_${command.toolRequestId}`, input.actor, state.latest.id),
+        payload: {
+          toolRequestId: command.toolRequestId,
+          claimedBy: input.actor.id,
+          claimedAt,
+          approvedPreviewHash: command.approvedPreviewHash,
+          leaseExpiresAt: command.leaseExpiresAt
+        }
+      };
+      return appendToolEvent(input.ledger, event, nextToolRequestAppendOptions(state));
+    },
+
     async completeTool(command: CompleteAgentToolInput) {
       const state = await readToolRequestState(input.ledger, command.toolRequestId);
       assertNotClosed(state);
@@ -248,7 +289,7 @@ export function createAgentToolGateway(input: CreateAgentToolGatewayInput) {
           input,
           `corr_${command.toolRequestId}`,
           input.actor,
-          requiresApproval ? state.approval?.id : state.request.id
+          state.latest.id
         ),
         payload: {
           toolRequestId: command.toolRequestId,
@@ -621,6 +662,7 @@ async function appendToolEvent<Type extends ToolRequestEvent["type"]>(
 interface ToolRequestState {
   readonly request: KnowledgeEventOf<"agent.tool.requested">;
   readonly approval?: KnowledgeEventOf<"agent.tool.approved">;
+  readonly executionClaim?: KnowledgeEventOf<"agent.tool.execution.claimed">;
   readonly denial?: KnowledgeEventOf<"agent.tool.denied">;
   readonly completed?: KnowledgeEventOf<"agent.tool.completed">;
   readonly failure?: KnowledgeEventOf<"agent.tool.failed">;
@@ -630,6 +672,7 @@ interface ToolRequestState {
 type ToolRequestEvent =
   | KnowledgeEventOf<"agent.tool.requested">
   | KnowledgeEventOf<"agent.tool.approved">
+  | KnowledgeEventOf<"agent.tool.execution.claimed">
   | KnowledgeEventOf<"agent.tool.denied">
   | KnowledgeEventOf<"agent.tool.completed">
   | KnowledgeEventOf<"agent.tool.failed">;
@@ -650,6 +693,7 @@ async function readToolRequestState(ledger: EventLedger, toolRequestId: string):
   }
 
   const approval = lastOfType(events, "agent.tool.approved");
+  const executionClaim = lastOfType(events, "agent.tool.execution.claimed");
   const denial = lastOfType(events, "agent.tool.denied");
   const completed = lastOfType(events, "agent.tool.completed");
   const failure = lastOfType(events, "agent.tool.failed");
@@ -658,6 +702,7 @@ async function readToolRequestState(ledger: EventLedger, toolRequestId: string):
     request,
     latest: events.at(-1) ?? request,
     ...(approval === undefined ? {} : { approval }),
+    ...(executionClaim === undefined ? {} : { executionClaim }),
     ...(denial === undefined ? {} : { denial }),
     ...(completed === undefined ? {} : { completed }),
     ...(failure === undefined ? {} : { failure })
@@ -717,6 +762,19 @@ function assertFreshPreviewHash(candidateHash: string, expectedHash: string): vo
   if (candidateHash !== expectedHash) {
     throw new Error("Stale approval preview hash does not match the requested preview.");
   }
+}
+
+function assertLeaseExpiresAfterClaim(leaseExpiresAt: string, claimedAt: string): void {
+  if (Date.parse(leaseExpiresAt) <= Date.parse(claimedAt)) {
+    throw new Error("Tool execution claim lease must expire after the claim time.");
+  }
+}
+
+function executionClaimLeaseExpired(
+  claim: KnowledgeEventOf<"agent.tool.execution.claimed">,
+  now: string
+): boolean {
+  return Date.parse(claim.payload.leaseExpiresAt) <= Date.parse(now);
 }
 
 function assertIndependentApprovalActor(actor: ActorRef, requestedBy: string, gatewayActorId: string): void {
