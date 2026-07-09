@@ -111,12 +111,7 @@ async function handleDescriptorlessRequest(
   request: ProjectedAgentToolRequest
 ): Promise<AgentSchedulerItemSummaryDto> {
   const streamState = await readToolRequestStreamState(ledger, request.toolRequestId);
-  if (
-    streamState?.executionClaim !== undefined &&
-    streamState.completed === undefined &&
-    streamState.denial === undefined &&
-    streamState.failure === undefined
-  ) {
+  if (hasOpenExecutionClaim(streamState)) {
     return notReadyItem(
       request,
       "Tool execution is already claimed and requires inspection before retry.",
@@ -124,14 +119,29 @@ async function handleDescriptorlessRequest(
     );
   }
 
-  return await failRequest(
-    gateway,
-    request,
-    "permission-denied",
-    "Approved tool descriptor is unavailable.",
-    false,
-    ["install or register the approved tool descriptor"]
-  );
+  try {
+    return await failRequest(
+      gateway,
+      request,
+      "permission-denied",
+      "Approved tool descriptor is unavailable.",
+      false,
+      ["install or register the approved tool descriptor"]
+    );
+  } catch (error) {
+    const latestState = await readToolRequestStreamState(ledger, request.toolRequestId);
+    if (hasOpenExecutionClaim(latestState)) {
+      return notReadyItem(
+        request,
+        "Tool execution is already claimed and requires inspection before retry.",
+        "execution-claimed"
+      );
+    }
+    if (isTerminalStreamState(latestState)) {
+      return notReadyItem(request, "Tool request is no longer open.");
+    }
+    throw error;
+  }
 }
 
 function descriptorKey(toolId: string, toolVersion: string): string {
@@ -469,6 +479,19 @@ function itemForRequest(
     eventIds: [...(patch.eventIds ?? [])],
     allowedNextActions: [...(patch.allowedNextActions ?? schedulerAllowedNextActions)]
   };
+}
+
+function hasOpenExecutionClaim(streamState: ToolRequestStreamState | undefined): boolean {
+  return streamState?.executionClaim !== undefined &&
+    streamState.completed === undefined &&
+    streamState.denial === undefined &&
+    streamState.failure === undefined;
+}
+
+function isTerminalStreamState(streamState: ToolRequestStreamState | undefined): boolean {
+  return streamState?.completed !== undefined ||
+    streamState?.denial !== undefined ||
+    streamState?.failure !== undefined;
 }
 
 async function readToolRequestStreamState(
