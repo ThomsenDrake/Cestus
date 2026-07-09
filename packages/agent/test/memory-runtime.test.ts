@@ -2,10 +2,42 @@ import { describe, expect, it } from "vitest";
 import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger, type AppendOptions, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { createAgentRuntime } from "../src/runtime.js";
+import type {
+  AgentMemoryMutationResult,
+  RecordAgentMemoryInput,
+  RetractAgentMemoryInput,
+  SupersedeAgentMemoryInput
+} from "../src/runtime-types.js";
 
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
 const now = () => "2026-07-09T13:00:00.000Z";
+const compileTimeMemoryCommandCoverage = {
+  record: {
+    memoryId: "mem_compile_record",
+    scope: "workspace",
+    summary: "Compile-time record coverage.",
+    confidence: 0.7
+  } satisfies RecordAgentMemoryInput,
+  supersede: {
+    memoryId: "mem_compile_old",
+    supersededByMemoryId: "mem_compile_new",
+    scope: "workspace",
+    summary: "Compile-time supersede coverage.",
+    confidence: 0.8,
+    rationale: "Compile-time coverage."
+  } satisfies SupersedeAgentMemoryInput,
+  retract: {
+    memoryId: "mem_compile_old",
+    rationale: "Compile-time coverage."
+  } satisfies RetractAgentMemoryInput,
+  result: {
+    memoryId: "mem_compile_result",
+    eventIds: ["evt_compile_memory"]
+  } satisfies AgentMemoryMutationResult
+} as const;
+
+void compileTimeMemoryCommandCoverage;
 
 describe("agent runtime memory", () => {
   it("records provenance-backed memory without appending ontology truth events", async () => {

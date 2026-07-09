@@ -22,7 +22,15 @@ import {
   type PromptArtifactAuditMetadata,
   type PromptArtifactEnvelope
 } from "./prompt-artifacts.js";
-import type { AgentRuntimeDiagnosticDto, AgentRuntimeResult, AgentStatusDto } from "./runtime-types.js";
+import type {
+  AgentMemoryMutationResult,
+  AgentRuntimeDiagnosticDto,
+  AgentRuntimeResult,
+  AgentStatusDto,
+  RecordAgentMemoryInput,
+  RetractAgentMemoryInput,
+  SupersedeAgentMemoryInput
+} from "./runtime-types.js";
 import {
   approvedAgentSpecialistRunTypes,
   specialistExecutionStatusFor,
@@ -93,27 +101,6 @@ export interface InvokeAgentModelInput {
   readonly promptArtifact?: PromptArtifactEnvelope;
 }
 
-export interface RecordAgentMemoryInput {
-  readonly memoryId: string;
-  readonly scope: AgentMemoryScope;
-  readonly memoryKind?: AgentMemoryKind;
-  readonly summary: string;
-  readonly sourceEventIds?: readonly string[];
-  readonly artifactHashes?: readonly string[];
-  readonly confidence: number;
-  readonly expiresAt?: string;
-}
-
-export interface SupersedeAgentMemoryInput extends RecordAgentMemoryInput {
-  readonly supersededByMemoryId: string;
-  readonly rationale: string;
-}
-
-export interface RetractAgentMemoryInput {
-  readonly memoryId: string;
-  readonly rationale: string;
-}
-
 export interface InitializeDefaultIdentityResult {
   readonly residentAgentId: string;
   readonly alreadyInitialized: boolean;
@@ -135,11 +122,6 @@ export interface InvokeAgentModelResult {
   readonly outputArtifactHash: string;
   readonly eventIds: readonly string[];
   readonly usage?: ModelInvocationResult["usage"] | undefined;
-}
-
-export interface AgentMemoryMutationResult {
-  readonly memoryId: string;
-  readonly eventIds: readonly string[];
 }
 
 export function createAgentRuntime(input: CreateAgentRuntimeInput) {
