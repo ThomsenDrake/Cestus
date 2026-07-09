@@ -20,8 +20,8 @@ Status: ready-for-review
 
 ## Implementation Evidence
 
-- Focused: `npm test -- packages/agent/test/scheduler-types.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts` passed with 6 test files and 93 tests.
-- Full: `npm run verify` passed with typecheck, 145 test files passed, 1 skipped, 1400 tests passed, 1 skipped, Vite build, and factory readiness.
+- Focused: `npm test -- packages/agent/test/scheduler-types.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts` passed with 6 test files and 94 tests after the final request-actor self-approval regression fix.
+- Full: `npm run verify` passed with typecheck, 145 test files passed, 1 skipped, 1401 tests passed, 1 skipped, Vite build, and factory readiness after the final request-actor self-approval regression fix.
 - Whitespace: `git diff --check` had no output.
 - Factory: `npm run factory:check` passed with `factory-readiness passed`.
 
