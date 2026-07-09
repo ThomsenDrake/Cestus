@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AgentWorkspace } from "../src/agent/AgentWorkspace.js";
 import { agentStatusFromJson } from "../src/agent/agent-adapter.js";
 import type { AgentApprovalCockpitDto, AgentStatusDto } from "../src/agent/agent-types.js";
+import { agentMemoryList } from "./fixtures/agent-memory.js";
 
 describe("AgentWorkspace", () => {
   it("renders resident status, providers, tasks, tools, memory, locks, and diagnostics", () => {
@@ -125,7 +126,8 @@ describe("AgentWorkspace", () => {
     expect(within(readiness).getByText("local-binding-healthy")).toBeInTheDocument();
     expect(within(readiness).getByText("remote-prompt-byte-transfer-gated")).toBeInTheDocument();
     expect(within(readiness).getByText("provider-byte-transfer")).toBeInTheDocument();
-    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Refresh agent status"]);
+    expect(screen.getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Record memory" })).toBeInTheDocument();
   });
 
   it("renders ontology bootstrap review state as read-only run evidence", () => {
@@ -237,7 +239,8 @@ describe("AgentWorkspace", () => {
     expect(within(workspace).getByText("1 candidate bundle")).toBeInTheDocument();
     expect(within(workspace).getByText("1 of 2")).toBeInTheDocument();
     expect(within(workspace).getByText("Review staging approval preview")).toBeInTheDocument();
-    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual(["Refresh agent status"]);
+    expect(screen.getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Record memory" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /approve|execute|accept/i })).not.toBeInTheDocument();
   });
 
@@ -334,6 +337,60 @@ describe("AgentWorkspace", () => {
       /sk-live|sk_live|ghp_|OPENAI_API_KEY|DATABASE_PASSWORD|GOOGLE_APPLICATION_CREDENTIALS/i
     );
     expect(workspace.textContent).toContain("api-key-bearer");
+  });
+
+  it("renders filterable working memory with source refs and correction controls", () => {
+    const onRecordMemory = vi.fn();
+    const onSupersedeMemory = vi.fn();
+    const onRetractMemory = vi.fn();
+
+    render(
+      <AgentWorkspace
+        status={agentStatus()}
+        memoryList={agentMemoryList({ filters: { scope: "all", state: "all" } })}
+        loadState="loaded"
+        onRefresh={vi.fn()}
+        onRecordMemory={onRecordMemory}
+        onSupersedeMemory={onSupersedeMemory}
+        onRetractMemory={onRetractMemory}
+      />
+    );
+
+    const memory = screen.getByRole("region", { name: "Agent working memory" });
+    expect(within(memory).getByText("working-memory-not-ontology-truth")).toBeInTheDocument();
+    expect(within(memory).getByText("workspace")).toBeInTheDocument();
+    expect(within(memory).getByText("operator-preference")).toBeInTheDocument();
+    expect(within(memory).getByText("evt_memory_recorded")).toBeInTheDocument();
+    expect(within(memory).getByLabelText("Memory scope")).toBeInTheDocument();
+    expect(within(memory).getByLabelText("Memory state")).toBeInTheDocument();
+
+    fireEvent.change(within(memory).getByLabelText("New memory summary"), {
+      target: { value: "Use concise source-linked memory summaries." }
+    });
+    fireEvent.change(within(memory).getByLabelText("New memory source event IDs"), {
+      target: { value: "evt_agent_task_created" }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
+    expect(onRecordMemory).toHaveBeenCalledWith(expect.objectContaining({
+      summary: "Use concise source-linked memory summaries.",
+      sourceEventIds: ["evt_agent_task_created"]
+    }));
+
+    fireEvent.change(within(memory).getAllByLabelText("Superseding summary")[0]!, {
+      target: { value: "Use compact summaries with source and artifact refs." }
+    });
+    fireEvent.change(within(memory).getAllByLabelText("Superseding rationale")[0]!, {
+      target: { value: "User asked for more provenance detail." }
+    });
+    fireEvent.click(within(memory).getAllByRole("button", { name: "Supersede memory" })[0]!);
+    expect(onSupersedeMemory).toHaveBeenCalled();
+
+    fireEvent.click(within(memory).getAllByRole("button", { name: "Retract memory" })[0]!);
+    expect(onRetractMemory).toHaveBeenCalled();
+
+    for (const forbiddenName of [/send prr/i, /export/i, /clear lock/i, /accepted graph/i, /provider transfer/i, /repair/i]) {
+      expect(within(memory).queryByRole("button", { name: forbiddenName })).not.toBeInTheDocument();
+    }
   });
 });
 

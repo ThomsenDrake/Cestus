@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/5ced/Cestus`
 
 Claimed at: `2026-07-09T13:48:21Z`
 
-Status: `in-progress`
+Status: `ready-for-review`
 
 Owned files:
 
@@ -41,10 +41,25 @@ Stop conditions:
 
 Command evidence:
 
-- Pending.
+- RED `2026-07-09`: `npm test -- packages/ui/test/agent-memory-adapter.test.ts packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx`
+  - Failed as expected before implementation:
+    - `TypeError: adapter.loadMemory is not a function`
+    - `TypeError: adapter.loadMemoryDetail is not a function`
+    - `Unable to find role="region" and name "Agent working memory"`
+- GREEN `2026-07-09`: `npm test -- packages/ui/test/agent-memory-adapter.test.ts packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx`
+  - Passed: `Test Files  3 passed (3)` / `Tests  17 passed (17)`
+- VERIFY `2026-07-09`: `npm run verify`
+  - Passed:
+    - `typecheck passed`
+    - `Test Files  147 passed | 1 skipped (148)`
+    - `Tests  1401 passed | 1 skipped (1402)`
+    - `tests passed`
+    - `factory-readiness passed`
 
 Invariant notes:
 
 - React renders browser-safe DTOs and route results only.
 - Memory remains visible working memory, not accepted ontology truth.
 - UI filters and correction controls are product surface over runtime contracts, not a hidden graph-truth authority.
+- Memory controls call only `recordMemory`, `supersedeMemory`, and `retractMemory`; no PRR send, export, lock clear, accepted-graph, repair, legacy mutation, or provider-byte transfer controls were added.
+- Current agent status/memory route DTOs were sufficient; no scheduler DTO bridge was required for this slice.

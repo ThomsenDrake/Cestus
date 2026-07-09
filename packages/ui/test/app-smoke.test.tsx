@@ -14,6 +14,7 @@ import {
   type RequestsWorkspaceAdapter
 } from "../src/requests/request-adapter.js";
 import { buildTestRequestsWorkspace, createTestRequestsAdapter } from "./request-test-utils.js";
+import { agentMemoryDetail, agentMemoryList } from "./fixtures/agent-memory.js";
 
 describe("Cestus UI bootstrap", () => {
   const operatorStatusAdapter = createStaticOperatorStatusAdapter(appSmokeOperatorStatus);
@@ -107,9 +108,14 @@ describe("Cestus UI bootstrap", () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async (url: RequestInfo | URL) => {
       fetchCalls.push(String(url));
-      const body = String(url).endsWith("/api/agent/approvals")
+      const path = String(url);
+      const body = path.endsWith("/api/agent/approvals")
         ? appSmokeApprovalCockpit()
-        : appSmokeAgentStatus();
+        : path.endsWith("/api/agent/memory?scope=all&state=all")
+          ? agentMemoryList()
+          : path.includes("/api/agent/memory/")
+            ? agentMemoryDetail()
+            : appSmokeAgentStatus();
       return new Response(JSON.stringify(body), {
         status: 200,
         headers: { "content-type": "application/json" }
@@ -123,10 +129,13 @@ describe("Cestus UI bootstrap", () => {
       expect(screen.getByRole("region", { name: "Agent approval cockpit" })).toBeInTheDocument();
       expect(screen.getByText("Fake Local Model Provider")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "New request" })).not.toBeInTheDocument();
-      expect(within(workspace).getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
-        "Refresh agent status"
-      ]);
-      expect(fetchCalls).toEqual(["/api/agent/status", "/api/agent/approvals"]);
+      expect(within(workspace).getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
+      expect(within(workspace).getByRole("button", { name: "Record memory" })).toBeInTheDocument();
+      expect(fetchCalls).toEqual(expect.arrayContaining([
+        "/api/agent/status",
+        "/api/agent/approvals",
+        "/api/agent/memory?scope=all&state=all"
+      ]));
     } finally {
       globalThis.fetch = originalFetch;
     }

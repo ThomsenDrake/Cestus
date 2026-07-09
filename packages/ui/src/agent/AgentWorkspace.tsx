@@ -1,5 +1,11 @@
 import type {
   AgentApprovalCockpitDto,
+  AgentMemoryDetailDto,
+  AgentMemoryFiltersDto,
+  AgentMemoryListDto,
+  RecordMemoryInput,
+  RetractMemoryInput,
+  SupersedeMemoryInput,
   AgentStatusDto,
   OntologyBootstrapRouteDto
 } from "./agent-types.js";
@@ -9,15 +15,23 @@ import type {
   DenyToolRequestInput
 } from "./agent-adapter.js";
 import { AgentApprovalCockpit } from "./AgentApprovalCockpit.js";
+import { AgentMemoryPanel } from "./AgentMemoryPanel.js";
 
 interface AgentWorkspaceProps {
   readonly status: AgentStatusDto | undefined;
   readonly approvalCockpit?: AgentApprovalCockpitDto | undefined;
+  readonly memoryList?: AgentMemoryListDto | undefined;
+  readonly memoryDetail?: AgentMemoryDetailDto | undefined;
   readonly decisionState?: "idle" | "submitting" | "error" | undefined;
   readonly ontologyBootstrapRoutes?: readonly OntologyBootstrapRouteDto[] | undefined;
   readonly loadState: "idle" | "loading" | "loaded" | "error";
   readonly loadError?: string | undefined;
   readonly onRefresh?: (() => void) | undefined;
+  readonly onMemoryFilterChange?: ((filters: AgentMemoryFiltersDto) => void) | undefined;
+  readonly onSelectMemory?: ((memoryId: string) => void) | undefined;
+  readonly onRecordMemory?: ((input: RecordMemoryInput) => void) | undefined;
+  readonly onSupersedeMemory?: ((input: SupersedeMemoryInput) => void) | undefined;
+  readonly onRetractMemory?: ((input: RetractMemoryInput) => void) | undefined;
   readonly onApproveToolRequest?: ((input: ApproveToolRequestInput) => void) | undefined;
   readonly onDenyToolRequest?: ((input: DenyToolRequestInput) => void) | undefined;
 }
@@ -25,10 +39,17 @@ interface AgentWorkspaceProps {
 export function AgentWorkspace({
   status,
   approvalCockpit,
+  memoryList,
+  memoryDetail,
   decisionState = "idle",
   ontologyBootstrapRoutes = [],
   loadState,
   onRefresh,
+  onMemoryFilterChange,
+  onSelectMemory,
+  onRecordMemory,
+  onSupersedeMemory,
+  onRetractMemory,
   onApproveToolRequest,
   onDenyToolRequest
 }: AgentWorkspaceProps) {
@@ -318,22 +339,16 @@ export function AgentWorkspace({
             )}
           </section>
 
-          <section aria-label="Agent memory" className="border border-[var(--console-line)] bg-[var(--console-panel)]">
-            <SectionHeader title="Memory" meta={countLabel(status.activeMemory.length, "memory item")} />
-            {status.activeMemory.length > 0 ? (
-              <ul role="list" className="divide-y divide-[var(--console-line)]">
-                {status.activeMemory.map((memory) => (
-                  <li key={memory.memoryId} className="grid gap-2 px-4 py-3">
-                    <p className="font-mono text-base text-[var(--signal-cyan)] sm:text-sm">{memory.scope}</p>
-                    <p className="text-base text-pretty text-[var(--paper-light)] sm:text-sm">{memory.summary}</p>
-                    <ProvenanceRefs refs={[...memory.eventIds, ...memory.sourceEventIds]} />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyState>No active memory reported.</EmptyState>
-            )}
-          </section>
+          <AgentMemoryPanel
+            memoryList={memoryList}
+            memoryDetail={memoryDetail}
+            loadState={loadState}
+            onFilterChange={onMemoryFilterChange}
+            onSelectMemory={onSelectMemory}
+            onRecordMemory={onRecordMemory}
+            onSupersedeMemory={onSupersedeMemory}
+            onRetractMemory={onRetractMemory}
+          />
         </>
       )}
     </section>
