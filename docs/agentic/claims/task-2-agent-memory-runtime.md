@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/5ced/Cestus`
 
 Claimed at: `2026-07-09T01:30:16Z`
 
-Status: `in-progress`
+Status: `ready-for-review`
 
 Owned files:
 
@@ -47,6 +47,20 @@ Command evidence:
   - First `npm run verify` hit a flaky unrelated failure in `packages/ui/test/agent-app-integration.test.tsx` (`denies provider byte-transfer previews through the Agent adapter only`); direct rerun of that test passed.
   - Second `npm run verify` passed with `Test Files  145 passed | 1 skipped (146)`, `Tests  1385 passed | 1 skipped (1386)`, `tests passed`, and `factory-readiness passed`.
 
+Fix-pass evidence after review:
+
+- RED:
+  - `npm test -- packages/agent/test/memory-runtime.test.ts packages/agent/test/runtime.test.ts packages/agent/test/memory.test.ts`
+  - Observed failures:
+    - `rejects operator preference memory from agent actors without appending a memory event`
+    - `retracts the replacement memory if supersession fails after the replacement append`
+- GREEN:
+  - `npm test -- packages/agent/test/memory-runtime.test.ts packages/agent/test/runtime.test.ts packages/agent/test/memory.test.ts`
+  - Result: `Test Files  3 passed (3)` and `Tests  28 passed (28)`
+- VERIFY:
+  - `npm run verify`
+  - Result: `Test Files  145 passed | 1 skipped (146)`, `Tests  1387 passed | 1 skipped (1388)`, `tests passed`, and `factory-readiness passed`
+
 Invariant notes:
 
 - Runtime memory is a resident-agent aid only, not an ontology authority.
@@ -54,3 +68,5 @@ Invariant notes:
 - `listMemory` and `memoryDetail` rebuild from ledger events and return DTOs without appending runtime writes.
 - Runtime mutations append only `agent.memory.recorded`, `agent.memory.superseded`, and `agent.memory.retracted`; no ontology-truth, PRR send, export, lock-clearing, repair, provider byte transfer, or legacy-source mutation events were added.
 - Recording relies on ontology event validation for provenance and secret-safe summaries, and runtime failures return generic safe diagnostics.
+- `operator-preference` memory is restricted to `human` runtime actors; agent attempts fail with a generic safe diagnostic before any memory event is appended.
+- Supersession now compensates with `agent.memory.retracted` on the replacement stream if the original-memory `agent.memory.superseded` append fails after the replacement commit, preventing both memories from remaining active.

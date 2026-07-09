@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { InMemoryEventLedger, type AppendOptions, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { createAgentRuntime } from "../src/runtime.js";
 
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
@@ -50,6 +51,25 @@ describe("agent runtime memory", () => {
     expect(await ledger.readAll()).toHaveLength(1);
   });
 
+  it("rejects operator preference memory from agent actors without appending a memory event", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: agentActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+
+    const result = await runtime.recordMemory({
+      memoryId: "mem_agent_preference",
+      scope: "workspace",
+      memoryKind: "operator-preference",
+      summary: "Operator prefers source-linked summaries.",
+      sourceEventIds: ["evt_agent_task_created"],
+      confidence: 0.88
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { category: "agent" } });
+    expect(await ledger.readAll()).toHaveLength(1);
+    expect((await runtime.listMemory({ state: "all" })).items).toEqual([]);
+  });
+
   it("lets a human supersede and retract memory through new events only", async () => {
     const ledger = new InMemoryEventLedger();
     const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
@@ -90,8 +110,74 @@ describe("agent runtime memory", () => {
     expect(list.items.find((item) => item.memoryId === "mem_old_style")?.state).toBe("superseded");
     expect(list.items.find((item) => item.memoryId === "mem_new_style")?.state).toBe("retracted");
   });
+
+  it("retracts the replacement memory if supersession fails after the replacement append", async () => {
+    const ledger = new FailOriginalMemorySupersessionLedger("mem_original_context");
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.recordMemory({
+      memoryId: "mem_original_context",
+      scope: "workspace",
+      memoryKind: "operator-preference",
+      summary: "Case owner prefers terse summaries.",
+      sourceEventIds: ["evt_agent_task_created"],
+      confidence: 0.9
+    });
+
+    const result = await runtime.supersedeMemory({
+      memoryId: "mem_original_context",
+      supersededByMemoryId: "mem_replacement_context",
+      scope: "workspace",
+      memoryKind: "operator-preference",
+      summary: "Case owner prefers concise summaries with source IDs.",
+      sourceEventIds: ["evt_agent_task_updated"],
+      confidence: 0.95,
+      rationale: "Preference clarified during review."
+    });
+
+    expect(result).toMatchObject({ ok: false, error: { category: "agent" } });
+    const events = await ledger.readAll();
+    expect(events.map((event) => event.type)).toEqual([
+      "agent.identity.initialized",
+      "agent.memory.recorded",
+      "agent.memory.recorded",
+      "agent.memory.retracted"
+    ]);
+
+    const list = await runtime.listMemory({ state: "all" });
+    expect(list.items.find((item) => item.memoryId === "mem_original_context")?.state).toBe("active");
+    expect(list.items.find((item) => item.memoryId === "mem_replacement_context")?.state).toBe("retracted");
+  });
 });
 
 function unsafeCredentialText(): string {
   return `${"bear" + "er"} unsafe-memory-value`;
+}
+
+class FailOriginalMemorySupersessionLedger implements EventLedger {
+  private readonly ledger = new InMemoryEventLedger();
+  private didFailSupersession = false;
+
+  constructor(private readonly memoryId: string) {}
+
+  async append(event: AppendableKnowledgeEvent, options?: AppendOptions): Promise<KnowledgeEvent> {
+    if (
+      !this.didFailSupersession &&
+      event.type === "agent.memory.superseded" &&
+      event.payload.memoryId === this.memoryId
+    ) {
+      this.didFailSupersession = true;
+      throw new Error("injected supersession append failure");
+    }
+
+    return this.ledger.append(event, options);
+  }
+
+  async readStream(streamId: string): Promise<KnowledgeEvent[]> {
+    return this.ledger.readStream(streamId);
+  }
+
+  async readAll(): Promise<KnowledgeEvent[]> {
+    return this.ledger.readAll();
+  }
 }
