@@ -11,6 +11,7 @@ export type AgentToolRequestState = "requested" | "approved" | "executing" | "de
 export type AgentMemoryState = "active" | "superseded" | "retracted";
 export type AgentPermissionState = "granted" | "revoked";
 export type AgentLockState = "active" | "cleared";
+export type AgentMemoryKind = "operator-preference" | "agent-observation" | "policy-caveat" | "provider-note";
 
 export type AgentTaskPriority = "low" | "normal" | "high" | "urgent";
 export type AgentRunState = "running" | "completed" | "failed";
@@ -231,7 +232,10 @@ export interface ProjectedAgentMemory extends ProjectedAgentProvenance {
   readonly memoryId: string;
   readonly residentAgentId: string;
   readonly scope: AgentMemoryScope;
+  readonly memoryKind: AgentMemoryKind;
   readonly summary: string;
+  readonly recordedBy: string;
+  readonly recordedByKind: "human" | "agent" | "extractor" | "system";
   readonly sourceEventIds: readonly string[];
   readonly artifactHashes: readonly string[];
   readonly confidence: number;

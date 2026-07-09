@@ -6,6 +6,9 @@ import {
   createContextPackRegistry,
   hashAgentContextPack
 } from "../src/context-packs.js";
+import { buildAgentMemorySummaryContextPack } from "../src/memory.js";
+import { buildAgentProjection } from "../src/projection.js";
+import { goldenAgentLedgerEvents } from "./fixtures/golden-agent-ledger.js";
 
 describe("agent context packs", () => {
   it("validates descriptor metadata for explicit context assembly", () => {
@@ -150,6 +153,26 @@ describe("agent context packs", () => {
         sizeBudgetBytes: 1
       })
     ).toThrow(/sizeBudgetBytes must be at least the derived context pack size/i);
+  });
+
+  it("builds an agent-memory summary context pack with scope, policy, and provenance", () => {
+    const projection = buildAgentProjection(goldenAgentLedgerEvents);
+    const ref = buildAgentMemorySummaryContextPack({
+      projection,
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      sizeBudgetBytes: 16_384
+    });
+
+    expect(ref).toMatchObject({
+      contextPackId: "agent-memory-summary.v1",
+      version: 1,
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" }
+    });
+    expect(ref.provenanceRefs).toEqual(expect.arrayContaining(["evt_agent_memory_recorded_workspace_policy"]));
+    expect(ref.safeSummary).toMatch(/working memory/i);
   });
 
   it("rejects arrays with custom enumerable string properties", () => {
