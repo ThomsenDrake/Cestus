@@ -123,4 +123,86 @@ describe("agent scheduler contracts", () => {
     expect(left).toBe(right);
     expect(left).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
+
+  it.each([
+    {
+      label: "unsafe tool request id",
+      patch: { item: { toolRequestId: "toolreq_sk-live-review-token" } }
+    },
+    {
+      label: "unsafe run id",
+      patch: { item: { runId: "API_KEY=run_scheduler_contract" } }
+    },
+    {
+      label: "unsafe tool id",
+      patch: { item: { toolId: "provider.bytes.transfer.sk-live-token" } }
+    },
+    {
+      label: "unsafe tool version",
+      patch: { item: { toolVersion: "ghp_secret_version" } }
+    },
+    {
+      label: "non-canonical approval class",
+      patch: { item: { approvalClass: "human-review" } }
+    },
+    {
+      label: "unsafe category",
+      patch: { item: { category: "password: leaked" } }
+    },
+    {
+      label: "unsafe message",
+      patch: { item: { message: "authorization bearer sk-live-token" } }
+    },
+    {
+      label: "unsafe allowed next action",
+      patch: { allowedNextActions: ["copy API_KEY=sk-live-token to clipboard"] }
+    },
+    {
+      label: "unsafe item-level allowed next action",
+      patch: { item: { allowedNextActions: ["export PRIVATE_KEY to logs"] } }
+    }
+  ])("rejects %s in public scheduler dto parsing", ({ patch }) => {
+    const dto = buildWakeResultDto(patch);
+    const parsed = agentSchedulerWakeResultDtoSchema.safeParse(dto);
+
+    expect(parsed.success).toBe(false);
+  });
 });
+
+function buildWakeResultDto(
+  patch: {
+    item?: Partial<AgentSchedulerWakeResultDto["items"][number]>;
+    allowedNextActions?: AgentSchedulerWakeResultDto["allowedNextActions"];
+  } = {}
+): AgentSchedulerWakeResultDto {
+  const baseItem: AgentSchedulerWakeResultDto["items"][number] = {
+    toolRequestId: "toolreq_scheduler_contract",
+    runId: "run_scheduler_contract",
+    toolId: "agent.test.effect",
+    toolVersion: "1.0.0",
+    state: "completed",
+    approvalClass: "ledger-review",
+    previewHash: safeHash,
+    currentPreviewHash: safeHash,
+    eventIds: ["evt_agent_tool_completed"],
+    allowedNextActions: ["refresh agent status"]
+  };
+
+  return {
+    schemaVersion: "agent-scheduler-wake-result.v1",
+    generatedAt: "2026-07-09T12:00:00.000Z",
+    examinedCount: 1,
+    resumedCount: 1,
+    completedCount: 1,
+    blockedCount: 0,
+    failedCount: 0,
+    eventIds: ["evt_agent_tool_completed"],
+    allowedNextActions: patch.allowedNextActions ?? ["refresh agent status"],
+    items: [
+      {
+        ...baseItem,
+        ...patch.item
+      }
+    ]
+  };
+}

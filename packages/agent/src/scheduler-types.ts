@@ -1,23 +1,44 @@
 import { z } from "zod";
 import type { AgentToolApprovalClass, AgentToolSideEffectClass } from "./projection-types.js";
+import { assertAgentSecretSafeText } from "./secret-safety.js";
 import type { AgentToolPreview, AgentToolReadModelChange, AgentToolResult } from "./tool-gateway.js";
 
 export const agentSchedulerItemStateSchema = z.enum(["not-ready", "blocked", "resumed", "completed", "failed"]);
 
+function secretSafeTextSchema(label: string) {
+  return z.string().min(1).superRefine((value, ctx) => {
+    try {
+      assertAgentSecretSafeText(value, label);
+    } catch (error) {
+      ctx.addIssue({
+        code: "custom",
+        message: error instanceof Error ? error.message : `${label} must be secret-safe.`
+      });
+    }
+  });
+}
+
+function approvalClassIdentifierSchema(label: string) {
+  return secretSafeTextSchema(label).refine(
+    (value) => value !== "none" && value !== "human-review",
+    { message: `${label} must be a canonical approval-class identifier.` }
+  );
+}
+
 export const agentSchedulerItemSummaryDtoSchema = z.object({
-  toolRequestId: z.string().min(1),
-  runId: z.string().min(1),
-  taskId: z.string().min(1).optional(),
-  toolId: z.string().min(1),
-  toolVersion: z.string().min(1),
+  toolRequestId: secretSafeTextSchema("scheduler tool request id"),
+  runId: secretSafeTextSchema("scheduler run id"),
+  taskId: secretSafeTextSchema("scheduler task id").optional(),
+  toolId: secretSafeTextSchema("scheduler tool id"),
+  toolVersion: z.union([z.number(), secretSafeTextSchema("scheduler tool version")]),
   state: agentSchedulerItemStateSchema,
-  approvalClass: z.string().min(1),
+  approvalClass: approvalClassIdentifierSchema("scheduler approval class"),
   previewHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   currentPreviewHash: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(),
-  category: z.string().min(1).optional(),
-  message: z.string().min(1).optional(),
+  category: secretSafeTextSchema("scheduler category").optional(),
+  message: secretSafeTextSchema("scheduler message").optional(),
   eventIds: z.array(z.string().regex(/^evt_[a-zA-Z0-9_-]+$/)),
-  allowedNextActions: z.array(z.string().min(1))
+  allowedNextActions: z.array(secretSafeTextSchema("scheduler allowed next action"))
 });
 
 export const agentSchedulerWakeResultDtoSchema = z.object({
@@ -29,7 +50,7 @@ export const agentSchedulerWakeResultDtoSchema = z.object({
   blockedCount: z.number().int().nonnegative(),
   failedCount: z.number().int().nonnegative(),
   eventIds: z.array(z.string().regex(/^evt_[a-zA-Z0-9_-]+$/)),
-  allowedNextActions: z.array(z.string().min(1)),
+  allowedNextActions: z.array(secretSafeTextSchema("scheduler allowed next action")),
   items: z.array(agentSchedulerItemSummaryDtoSchema)
 });
 
