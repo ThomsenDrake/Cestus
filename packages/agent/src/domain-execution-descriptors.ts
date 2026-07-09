@@ -181,7 +181,7 @@ class InMemoryAgentDomainToolRegistry implements AgentDomainToolRegistry {
   }
 
   list(): readonly AgentDomainToolDescriptor[] {
-    return deepFreeze([...this.descriptors.values()]);
+    return Object.freeze([...this.descriptors.values()]);
   }
 }
 
@@ -213,7 +213,7 @@ function createAgentDomainToolDescriptor(descriptor: unknown): AgentDomainToolDe
 
   assertDescriptorProfileMatchesFamily(family, sideEffectClass, requiredApprovalClass);
 
-  return deepFreeze({
+  return Object.freeze({
     toolId,
     toolVersion,
     family,
@@ -261,25 +261,25 @@ function sanitizeAgentDomainPreview(preview: AgentDomainPreview): AgentDomainPre
     normalized.staleAfter = sanitizeStaleAfter(record.staleAfter);
   }
 
-  return deepFreeze(normalized) as AgentDomainPreview;
+  return Object.freeze(normalized) as AgentDomainPreview;
 }
 
 function sanitizeProjectionHighWaterMarks(value: unknown): readonly AgentDomainPreviewProjectionHighWaterMark[] {
   const marks = sanitizeJsonArray(value, "preview projection high water marks");
-  return deepFreeze(
+  return Object.freeze(
     marks.map((item) => {
       const record = dataRecordFromObject(item, "preview projection high water mark");
       rejectUnsupportedKeys(record, ["projectionName", "highWaterMark"], "preview projection high water mark");
       const projectionName = assertSecretSafeString(record.projectionName, "preview projection name");
       const highWaterMark = assertNonNegativeInteger(record.highWaterMark, "preview projection high water mark");
-      return { projectionName, highWaterMark };
+      return Object.freeze({ projectionName, highWaterMark });
     })
   );
 }
 
 function sanitizeStaleAfter(value: unknown): AgentDomainPreviewStaleAfter {
   const record = sanitizePlainJsonObject(value, "preview stale-after") as Record<string, unknown>;
-  return deepFreeze({
+  return Object.freeze({
     ...record,
     kind: assertSecretSafeString(record.kind, "preview stale-after kind"),
     refs: sanitizeStringArray(record.refs, "preview stale-after ref", true)
@@ -343,7 +343,7 @@ function assertDescriptorProfileMatchesFamily(
 
 function sanitizeRecordArray(value: unknown, label: string): readonly Record<string, unknown>[] {
   const items = sanitizeJsonArray(value, `${label}s`);
-  return deepFreeze(items.map((item) => sanitizePlainJsonObject(item, label) as Record<string, unknown>));
+  return Object.freeze(items.map((item) => Object.freeze(sanitizePlainJsonObject(item, label) as Record<string, unknown>)));
 }
 
 function sanitizeStringArray(value: unknown, label: string, requireNonEmpty: boolean): readonly string[] {
@@ -353,7 +353,7 @@ function sanitizeStringArray(value: unknown, label: string, requireNonEmpty: boo
   if (requireNonEmpty && items.length === 0) {
     throw new Error(`${label}s must not be empty`);
   }
-  return deepFreeze(items);
+  return Object.freeze(items);
 }
 
 function parseArtifactHash(value: unknown, label: string): `sha256:${string}` {
@@ -372,29 +372,46 @@ function assertNonNegativeInteger(value: unknown, label: string): number {
 }
 
 function sanitizePlainJsonObject(value: unknown, label: string): unknown {
-  const record = dataRecordFromObject(value, label);
   const sanitized = Object.create(null) as Record<string, unknown>;
-
-  for (const key of Object.keys(record)) {
-    assertSafeDtoKey(key, label);
-    sanitized[key] = sanitizeJsonValue(record[key], `${label} field`);
+  for (const [key, entryValue] of dataEntriesFromObject(value, label)) {
+    sanitized[key] = sanitizeJsonValue(entryValue, `${label} ${key}`);
   }
-
   return sanitized;
 }
 
 function sanitizeJsonArray(value: unknown, label: string): readonly unknown[] {
   if (!Array.isArray(value)) {
-    throw new Error(`${label} must be an array`);
+    throw new Error(`${label} must be an array.`);
   }
-  return value.map((item) => sanitizeJsonValue(item, label));
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${label} must not contain symbol-keyed fields.`);
+  }
+
+  for (const name of Object.getOwnPropertyNames(value)) {
+    if (name === "length") {
+      continue;
+    }
+    if (!isArrayIndexName(name) || Number(name) >= value.length) {
+      throw new Error(`${label} must not contain custom array fields.`);
+    }
+  }
+
+  const safe: unknown[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (descriptor === undefined || !("value" in descriptor) || !descriptor.enumerable) {
+      throw new Error(`${label} must not contain sparse, hidden, or accessor-backed values.`);
+    }
+    safe.push(sanitizeJsonValue(descriptor.value, `${label} item`));
+  }
+
+  return Object.freeze(safe);
 }
 
 function sanitizeJsonValue(value: unknown, label: string): unknown {
   if (
     value === null ||
-    typeof value === "boolean" ||
-    typeof value === "number"
+    typeof value === "boolean"
   ) {
     return value;
   }
@@ -404,26 +421,30 @@ function sanitizeJsonValue(value: unknown, label: string): unknown {
     return value;
   }
 
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new Error(`${label} must be JSON-compatible.`);
+    }
+    return value;
+  }
+
   if (Array.isArray(value)) {
-    return value.map((item) => sanitizeJsonValue(item, label));
+    return sanitizeJsonArray(value, label);
   }
 
   if (typeof value === "object") {
-    return sanitizePlainJsonObject(value, label);
+    return Object.freeze(sanitizePlainJsonObject(value, label));
   }
 
-  throw new Error(`${label} must be plain JSON data`);
+  throw new Error(`${label} must be JSON-compatible.`);
 }
 
 function dataRecordFromObject(value: unknown, label: string): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`${label} must be a plain object`);
+  const record = Object.create(null) as Record<string, unknown>;
+  for (const [key, entryValue] of dataEntriesFromObject(value, label)) {
+    record[key] = entryValue;
   }
-  const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) {
-    throw new Error(`${label} must be a plain object`);
-  }
-  return value as Record<string, unknown>;
+  return record;
 }
 
 function rejectUnsupportedKeys(
@@ -434,20 +455,18 @@ function rejectUnsupportedKeys(
   const allowedKeys = new Set(supportedKeys);
   for (const key of Object.keys(record)) {
     if (!allowedKeys.has(key)) {
-      throw new Error(`${label} includes an unsupported field`);
+      throw new Error(`${label} contains unsupported fields.`);
     }
   }
 }
 
 function assertSafeDtoKey(key: string, label: string): void {
+  assertAgentSecretSafeText(key, label);
   if (unsafeDtoKeys.has(key)) {
-    throw new Error(`${label} must be a plain JSON object`);
+    throw new Error(`${label} must be safe.`);
   }
-  const normalized = key.toLowerCase();
-  for (const term of secretShapedDtoKeyTerms) {
-    if (normalized.includes(term)) {
-      throw new Error(`${label} field names must be secret-safe`);
-    }
+  if (isSecretShapedDtoKey(key)) {
+    throw new Error(`${label} must be secret-safe.`);
   }
 }
 
@@ -480,21 +499,62 @@ function stabilizeJsonValue(value: unknown): unknown {
   return value;
 }
 
-function deepFreeze<T>(value: T): T {
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      deepFreeze(item);
-    }
-    return Object.freeze(value);
+function dataEntriesFromObject(value: unknown, label: string): Array<readonly [string, unknown]> {
+  if (value === null || typeof value !== "object" || Array.isArray(value) || !isPlainRecord(value)) {
+    throw new Error(`${label} must be a plain JSON object.`);
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${label} must not contain symbol-keyed fields.`);
   }
 
-  if (value !== null && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    for (const nested of Object.values(record)) {
-      deepFreeze(nested);
+  const entries: Array<readonly [string, unknown]> = [];
+  for (const key of Object.getOwnPropertyNames(value).sort()) {
+    assertSafeDtoKey(key, `${label} key`);
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined || !("value" in descriptor)) {
+      throw new Error(`${label} must not contain accessors.`);
     }
-    return Object.freeze(value);
+    if (!descriptor.enumerable) {
+      throw new Error(`${label} must not contain hidden fields.`);
+    }
+    entries.push([key, descriptor.value]);
+  }
+  return entries;
+}
+
+function isSecretShapedDtoKey(value: string): boolean {
+  const segments = normalizeDtoKeySegments(value);
+  if (segments.some((segment) => secretShapedDtoKeyTerms.has(segment))) {
+    return true;
   }
 
-  return value;
+  return hasKeySegments(segments, "api", "key") ||
+    hasKeySegments(segments, "access", "key") ||
+    hasKeySegments(segments, "private", "key");
+}
+
+function normalizeDtoKeySegments(value: string): string[] {
+  return value
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((segment) => segment.length > 0);
+}
+
+function hasKeySegments(segments: readonly string[], ...requiredSegments: readonly string[]): boolean {
+  return requiredSegments.every((segment) => segments.includes(segment));
+}
+
+function isPlainRecord(value: object): value is Record<string, unknown> {
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function isArrayIndexName(value: string): boolean {
+  if (!/^(0|[1-9]\d*)$/.test(value)) {
+    return false;
+  }
+  const index = Number(value);
+  return Number.isSafeInteger(index) && index >= 0 && index < 4_294_967_295 && String(index) === value;
 }
