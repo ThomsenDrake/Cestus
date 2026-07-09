@@ -1030,7 +1030,7 @@ it("uses existing auth policy for scheduler wake routes", async () => {
 
 Add a local test helper that seeds an approved request through the existing gateway and injects a fake descriptor through `agentRuntimeFactory`. The fake descriptor must return only event IDs, artifact hashes, read-model changes, and safe result text.
 
-- [ ] **Step 3: Run targeted failing tests**
+- [x] **Step 3: Run targeted failing tests**
 
 Run:
 
