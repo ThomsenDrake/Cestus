@@ -8,10 +8,27 @@ export type {
 } from "../../../agent/src/approval-queue.js";
 import type { AgentApprovalQueueApprovalClass } from "../../../agent/src/approval-queue.js";
 import type {
+  AgentMemoryDetailDto,
+  AgentMemoryFiltersDto,
+  AgentMemoryListDto,
+  AgentMemoryMutationResult,
+  RecordAgentMemoryInput,
+  RetractAgentMemoryInput,
+  SupersedeAgentMemoryInput,
   AgentStatusDto as RuntimeAgentStatusDto
 } from "../../../agent/src/runtime-types.js";
 
-export type { AgentRuntimeDiagnosticDto } from "../../../agent/src/runtime-types.js";
+export type {
+  AgentMemoryDetailDto,
+  AgentMemoryFiltersDto,
+  AgentMemoryListDto,
+  AgentRuntimeDiagnosticDto
+} from "../../../agent/src/runtime-types.js";
+
+export type RecordMemoryInput = RecordAgentMemoryInput;
+export type SupersedeMemoryInput = SupersedeAgentMemoryInput;
+export type RetractMemoryInput = RetractAgentMemoryInput;
+export type AgentMemoryMutationResultDto = { readonly ok: true } & AgentMemoryMutationResult;
 
 type BrowserAgentToolRequestDto = Omit<
   RuntimeAgentStatusDto["toolRequests"][number],
