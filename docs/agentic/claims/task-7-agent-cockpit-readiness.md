@@ -29,11 +29,11 @@ Verification plan:
 Command evidence:
 
 - Focused: `npm test -- packages/agent/test/cockpit.test.ts packages/agent/test/approval-cockpit.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-task-composer.test.tsx packages/ui/test/agent-run-cockpit.test.tsx packages/ui/test/agent-approval-cockpit.test.tsx packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx packages/ui/test/command-model.test.ts`
-  - Result: `Test Files  12 passed (12)`, `Tests  96 passed (96)`.
+  - Result: `Test Files  12 passed (12)`, `Tests  98 passed (98)`.
 - Final review fix: `npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/ui/test/agent-task-composer.test.tsx packages/ui/test/agent-app-integration.test.tsx packages/ui/test/agent-cockpit-adapter.test.ts`
   - Result: `Test Files  4 passed (4)`, `Tests  31 passed (31)`.
 - Full: `npm run verify`
-  - Result: `typecheck passed`, `Test Files  148 passed | 1 skipped (149)`, `Tests  1407 passed | 1 skipped (1408)`, `tests passed`, Vite production build success, and `factory-readiness passed`.
+  - Result: `typecheck passed`, `Test Files  148 passed | 1 skipped (149)`, `Tests  1409 passed | 1 skipped (1410)`, `tests passed`, Vite production build success, and `factory-readiness passed`.
   - Note: Vite emitted the existing chunk-size warning; the command exited successfully.
 - Whitespace: `git diff --check`
   - Result: no output.

@@ -1138,7 +1138,7 @@ Focused verification:
 ```text
 npm test -- packages/agent/test/cockpit.test.ts packages/agent/test/approval-cockpit.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-task-composer.test.tsx packages/ui/test/agent-run-cockpit.test.tsx packages/ui/test/agent-approval-cockpit.test.tsx packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx packages/ui/test/command-model.test.ts
 Test Files  12 passed (12)
-Tests  96 passed (96)
+Tests  98 passed (98)
 ```
 
 Full verification:
@@ -1147,7 +1147,7 @@ Full verification:
 npm run verify
 typecheck passed
 Test Files  148 passed | 1 skipped
-Tests  1407 passed | 1 skipped
+Tests  1409 passed | 1 skipped
 tests passed
 vite build succeeded
 factory-readiness passed
