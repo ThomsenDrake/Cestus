@@ -171,6 +171,45 @@ describe("agent scheduler wake", () => {
     expect(events.filter((event) => event.type === "agent.tool.failed")).toHaveLength(0);
   });
 
+  it("does not fail an already claimed execution when this scheduler lacks the descriptor", async () => {
+    const ledger = new InMemoryEventLedger();
+    const preview = previewFor("toolreq_claimed_missing_descriptor");
+    const requested = await requestAndApprove(ledger, preview, "toolreq_claimed_missing_descriptor");
+    await claimCapableGateway(createAgentToolGateway({
+      ledger,
+      actor: schedulerActor,
+      now: () => "2026-07-09T12:00:00.000Z"
+    })).claimExecution({
+      toolRequestId: "toolreq_claimed_missing_descriptor",
+      approvedPreviewHash: requested.payload.previewHash,
+      leaseExpiresAt: "2026-07-09T12:05:00.000Z"
+    });
+    const scheduler = createAgentScheduler({
+      ledger,
+      actor: schedulerActor,
+      now: () => "2026-07-09T12:01:00.000Z",
+      descriptors: []
+    });
+
+    const result = await scheduler.wake();
+    const events = await ledger.readAll();
+
+    expect(result).toMatchObject({
+      examinedCount: 1,
+      completedCount: 0,
+      failedCount: 0,
+      blockedCount: 0
+    });
+    expect(result.items[0]).toMatchObject({
+      toolRequestId: "toolreq_claimed_missing_descriptor",
+      state: "not-ready",
+      category: "execution-claimed"
+    });
+    expect(events.filter((event) => event.type === "agent.tool.execution.claimed")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.tool.completed")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "agent.tool.failed")).toHaveLength(0);
+  });
+
   it("fails closed when an approved request has no descriptor", async () => {
     const ledger = new InMemoryEventLedger();
     await requestAndApprove(ledger, previewFor("toolreq_missing_descriptor"), "toolreq_missing_descriptor");
