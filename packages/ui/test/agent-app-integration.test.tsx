@@ -1,53 +1,114 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.js";
 import { createStaticAgentAdapter, type AgentAdapter } from "../src/agent/agent-adapter.js";
-import type { AgentApprovalCockpitDto } from "../src/agent/agent-types.js";
-import type { AgentStatusDto } from "../src/agent/agent-types.js";
+import type {
+  AgentApprovalCockpitDto,
+  AgentCockpitDto,
+  AgentStatusDto,
+  OntologyBootstrapRouteDto
+} from "../src/agent/agent-types.js";
 import { createStaticIngestionWorkspaceAdapter } from "../src/ingestion/ingestion-adapter.js";
 import { createStaticOperatorStatusAdapter } from "../src/operator-status/operator-status-adapter.js";
 import type { OperatorStatusDto } from "../src/operator-status/operator-status-types.js";
 import { createTestRequestsAdapter } from "./request-test-utils.js";
 
 describe("agent app integration", () => {
-  it("opens the Agent module from first-class navigation", async () => {
-    render(
-      <App
-        requestsAdapter={createTestRequestsAdapter()}
-        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
-        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
-        agentAdapter={createStaticAgentAdapter(agentStatus())}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
-
-    const workspace = await screen.findByRole("region", { name: "Resident agent workspace" });
-    expect(within(workspace).getByText("Cestus Agent")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Agent" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Agents Preview" })).not.toBeInTheDocument();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it("keeps the Agent workspace read-only even for risky tool requests", async () => {
+  it("opens the Agent module from first-class navigation and loads cockpit routes without blocking the page", async () => {
+    const loads = {
+      status: 0,
+      cockpit: 0,
+      approvals: 0
+    };
+    let resolveOntologyRoute: ((response: Response) => void) | undefined;
+    const routeLoads: string[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      routeLoads.push(String(url));
+      return await new Promise<Response>((resolve) => {
+        resolveOntologyRoute = resolve;
+      });
+    }) as typeof fetch;
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatusWithOntologyBootstrap(), approvalCockpit(), { cockpit: agentCockpit() }),
+      async loadStatus() {
+        loads.status += 1;
+        return agentStatusWithOntologyBootstrap();
+      },
+      async loadCockpit() {
+        loads.cockpit += 1;
+        return agentCockpit();
+      },
+      async loadApprovalCockpit() {
+        loads.approvals += 1;
+        return approvalCockpit();
+      }
+    };
+
     render(
       <App
         requestsAdapter={createTestRequestsAdapter()}
         ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
         operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
-        agentAdapter={createStaticAgentAdapter(agentStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    try {
+      fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+
+      await screen.findByRole("region", { name: "Give Cestus Agent a task" });
+      const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
+      expect(within(workspace).getByText("Cestus Agent")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Agent" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Agents Preview" })).not.toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Give Cestus Agent a task" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Agent run cockpit" })).toBeInTheDocument();
+
+      await waitFor(() => expect(loads).toEqual({ status: 1, cockpit: 1, approvals: 1 }));
+      expect(routeLoads).toEqual([
+        "/api/agent/specialists/ontology-bootstrap/runs/run_ontology_bootstrap_route"
+      ]);
+      const fallbackReview = screen.getByRole("region", { name: "Ontology bootstrap review" });
+      expect(within(fallbackReview).getByText("ontology-bootstrap")).toBeInTheDocument();
+      expect(within(fallbackReview).getByText("Review pending ontology bootstrap request")).toBeInTheDocument();
+
+      await act(async () => {
+        resolveOntologyRoute?.(new Response(JSON.stringify(ontologyBootstrapRoute()), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        }));
+      });
+      expect(screen.getByRole("region", { name: "Ontology bootstrap review" })).toBeInTheDocument();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("keeps the Agent workspace decision-only even while exposing safe task and run controls", async () => {
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={createStaticAgentAdapter(agentStatus(), approvalCockpit(), { cockpit: agentCockpit() })}
       />
     );
 
     fireEvent.click(screen.getByRole("link", { name: "Agent" }));
-    await screen.findByRole("region", { name: "Resident agent workspace" });
+    await screen.findByRole("region", { name: "Give Cestus Agent a task" });
 
     expect(screen.queryByRole("button", { name: "New request" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /approve|deny|execute|send|export|repair|clear lock/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /execute|send|export|repair|clear lock/i })).not.toBeInTheDocument();
     const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
-    expect(within(workspace).getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
-      "Refresh agent status"
-    ]);
+    expect(within(workspace).getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
+    expect(within(workspace).getByRole("button", { name: "Create task" })).toBeInTheDocument();
+    expect(within(workspace).getByRole("button", { name: "Create task and start run" })).toBeInTheDocument();
   });
 
   it("does not carry selected Command decision rail controls into the Agent module", async () => {
@@ -56,7 +117,7 @@ describe("agent app integration", () => {
         requestsAdapter={createTestRequestsAdapter()}
         ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
         operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
-        agentAdapter={createStaticAgentAdapter(agentStatus())}
+        agentAdapter={createStaticAgentAdapter(agentStatus(), approvalCockpit(), { cockpit: agentCockpit() })}
       />
     );
 
@@ -65,18 +126,175 @@ describe("agent app integration", () => {
 
     fireEvent.click(screen.getByRole("link", { name: "Agent" }));
 
-    const workspace = await screen.findByRole("region", { name: "Resident agent workspace" });
+    await screen.findByRole("region", { name: "Give Cestus Agent a task" });
+    const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
     expect(screen.queryByRole("button", { name: "Back to agent brief" })).not.toBeInTheDocument();
     expect(screen.queryByRole("complementary", { name: "Decision rail" })).not.toBeInTheDocument();
-    expect(within(workspace).getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
-      "Refresh agent status"
-    ]);
+    expect(within(workspace).getByRole("button", { name: "Create task" })).toBeInTheDocument();
+    expect(within(workspace).getByRole("button", { name: "Create task and start run" })).toBeInTheDocument();
   });
 
-  it("approves provider byte-transfer previews through the Agent adapter only", async () => {
-    const approvals: unknown[] = [];
+  it("creates a task through the Agent adapter only, preserves description, and reloads status plus cockpit", async () => {
+    const loads = {
+      status: 0,
+      cockpit: 0,
+      approvals: 0
+    };
+    const creates: unknown[] = [];
     const adapter: AgentAdapter = {
-      ...createStaticAgentAdapter(agentStatus(), approvalCockpit()),
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), { cockpit: agentCockpit() }),
+      async loadStatus() {
+        loads.status += 1;
+        return agentStatus({
+          generatedAt: loads.status === 1 ? "2026-07-07T21:00:00.000Z" : "2026-07-07T21:05:00.000Z"
+        });
+      },
+      async loadCockpit() {
+        loads.cockpit += 1;
+        return agentCockpit({
+          summary: {
+            ...agentCockpit().summary,
+            activeTaskCount: loads.cockpit === 1 ? 1 : 2
+          }
+        });
+      },
+      async loadApprovalCockpit() {
+        loads.approvals += 1;
+        return approvalCockpit();
+      },
+      async createTask(input: unknown) {
+        creates.push(input);
+        return {
+          ok: true as const,
+          taskId: "task_created_from_app",
+          eventIds: ["evt_task_created_from_app"]
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    await screen.findByRole("region", { name: "Give Cestus Agent a task" });
+    fireEvent.change(screen.getByLabelText("Task title"), {
+      target: { value: "Review imported archive" }
+    });
+    fireEvent.change(screen.getByLabelText("Description"), {
+      target: { value: "Preserve the description field from the app composer." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+
+    await waitFor(() => expect(creates).toHaveLength(1));
+    expect(creates).toEqual([expect.objectContaining({
+      title: "Review imported archive",
+      priority: "normal",
+      description: "Preserve the description field from the app composer."
+    })]);
+    expect(String((creates[0] as { readonly taskId: string }).taskId)).toMatch(/^task_review-imported-archive_/);
+    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 1 });
+  });
+
+  it("creates a task and starts a run through the Agent adapter only, then reloads status plus cockpit", async () => {
+    const loads = {
+      status: 0,
+      cockpit: 0,
+      approvals: 0
+    };
+    const creates: unknown[] = [];
+    const starts: unknown[] = [];
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), { cockpit: agentCockpit() }),
+      async loadStatus() {
+        loads.status += 1;
+        return agentStatus();
+      },
+      async loadCockpit() {
+        loads.cockpit += 1;
+        return agentCockpit();
+      },
+      async loadApprovalCockpit() {
+        loads.approvals += 1;
+        return approvalCockpit();
+      },
+      async createTask(input: unknown) {
+        creates.push(input);
+        return {
+          ok: true as const,
+          taskId: "task_created_for_run",
+          eventIds: ["evt_task_created_for_run"]
+        };
+      },
+      async startRun(input: unknown) {
+        starts.push(input);
+        return {
+          ok: true as const,
+          schemaVersion: "agent-run-start-result.v1" as const,
+          runId: "run_created_from_app",
+          eventIds: ["evt_run_started_from_app"]
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    await screen.findByRole("region", { name: "Give Cestus Agent a task" });
+    fireEvent.change(screen.getByLabelText("Task title"), {
+      target: { value: "Triaging evidence cluster" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create task and start run" }));
+
+    await waitFor(() => expect(starts).toHaveLength(1));
+    expect(creates).toHaveLength(1);
+    expect(starts).toEqual([expect.objectContaining({
+      taskId: "task_created_for_run",
+      runType: "evidence-triage",
+      scope: {
+        kind: "workspace",
+        refs: ["ws_case_001"]
+      }
+    })]);
+    expect(String((starts[0] as { readonly runId: string }).runId)).toMatch(/^run_triaging-evidence-cluster_/);
+    expect(loads).toEqual({ status: 3, cockpit: 3, approvals: 1 });
+  });
+
+  it("approves provider byte-transfer previews through the Agent adapter only and reloads status plus cockpit", async () => {
+    const approvals: unknown[] = [];
+    const loads = {
+      status: 0,
+      cockpit: 0,
+      approvals: 0
+    };
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), { cockpit: agentCockpit() }),
+      async loadStatus() {
+        loads.status += 1;
+        return agentStatus({
+          generatedAt: loads.status === 1 ? "2026-07-07T21:00:00.000Z" : "2026-07-07T21:05:00.000Z"
+        });
+      },
+      async loadCockpit() {
+        loads.cockpit += 1;
+        return agentCockpit();
+      },
+      async loadApprovalCockpit() {
+        loads.approvals += 1;
+        return approvalCockpit();
+      },
       async approveToolRequest(input: unknown) {
         approvals.push(input);
         return {
@@ -109,77 +327,36 @@ describe("agent app integration", () => {
       approvedPreviewHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       rationale: "Approved exact provider preview."
     }]);
-    expect(
-      screen.queryByRole("button", { name: /transfer provider bytes|send prr|export|repair|clear lock|accept graph/i })
-    ).not.toBeInTheDocument();
+    const refreshedCockpit = await screen.findByRole("region", { name: "Agent approval cockpit" });
+    expect(within(refreshedCockpit).getByText("0 visible requests")).toBeInTheDocument();
+    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 1 });
   });
 
-  it("denies provider byte-transfer previews through the Agent adapter only", async () => {
-    const approvals: unknown[] = [];
-    const denials: unknown[] = [];
-    const adapter: AgentAdapter = {
-      ...createStaticAgentAdapter(agentStatus(), approvalCockpit()),
-      async approveToolRequest(input: unknown) {
-        approvals.push(input);
-        return {
-          ok: true as const,
-          schemaVersion: "agent-approval-decision-result.v1" as const,
-          eventIds: ["evt_agent_tool_approved_provider_transfer"],
-          approvalCockpit: approvalCockpit({ pendingCount: 0 })
-        };
-      },
-      async denyToolRequest(input: unknown) {
-        denials.push(input);
-        return {
-          ok: true as const,
-          schemaVersion: "agent-approval-decision-result.v1" as const,
-          eventIds: ["evt_agent_tool_denied_provider_transfer"],
-          approvalCockpit: approvalCockpit({ pendingCount: 0 })
-        };
-      }
+  it("refreshes the Agent status, approval cockpit, and cockpit DTO together", async () => {
+    const loads = {
+      status: 0,
+      cockpit: 0,
+      approvals: 0
     };
-
-    render(
-      <App
-        requestsAdapter={createTestRequestsAdapter()}
-        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
-        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
-        agentAdapter={adapter}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
-    await screen.findByRole("region", { name: "Agent approval cockpit" });
-    fireEvent.change(screen.getByLabelText("Decision rationale"), {
-      target: { value: "Provider transfer is not approved for this preview." }
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Deny request" }));
-
-    expect(denials).toEqual([{
-      toolRequestId: "toolreq_provider_transfer",
-      rationale: "Provider transfer is not approved for this preview."
-    }]);
-    expect(approvals).toEqual([]);
-    expect(
-      screen.queryByRole("button", { name: /transfer provider bytes|send prr|export|repair|clear lock|accept graph/i })
-    ).not.toBeInTheDocument();
-  });
-
-  it("refreshes the Agent approval cockpit with agent status", async () => {
-    let statusLoads = 0;
-    let cockpitLoads = 0;
     const adapter: AgentAdapter = {
-      ...createStaticAgentAdapter(agentStatus(), approvalCockpit()),
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), { cockpit: agentCockpit() }),
       async loadStatus() {
-        statusLoads += 1;
-        return agentStatus({
-          generatedAt: statusLoads === 1 ? "2026-07-07T21:00:00.000Z" : "2026-07-07T21:05:00.000Z"
+        loads.status += 1;
+        return agentStatus();
+      },
+      async loadCockpit() {
+        loads.cockpit += 1;
+        return agentCockpit({
+          summary: {
+            ...agentCockpit().summary,
+            activeTaskCount: loads.cockpit === 1 ? 1 : 3
+          }
         });
       },
       async loadApprovalCockpit() {
-        cockpitLoads += 1;
+        loads.approvals += 1;
         return approvalCockpit({
-          pendingCount: cockpitLoads === 1 ? 1 : 0
+          pendingCount: loads.approvals === 1 ? 1 : 0
         });
       }
     };
@@ -201,8 +378,66 @@ describe("agent app integration", () => {
 
     const refreshedCockpit = await screen.findByRole("region", { name: "Agent approval cockpit" });
     expect(within(refreshedCockpit).getByText("0 visible requests")).toBeInTheDocument();
-    expect(statusLoads).toBe(2);
-    expect(cockpitLoads).toBe(2);
+    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 2 });
+  });
+
+  it("shows a safe message when the run start route is unavailable and does not call approval routes", async () => {
+    const approvals: unknown[] = [];
+    const denials: unknown[] = [];
+    const starts: unknown[] = [];
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), { cockpit: agentCockpit() }),
+      async createTask() {
+        return {
+          ok: true as const,
+          taskId: "task_created_for_unavailable_run",
+          eventIds: ["evt_task_created_for_unavailable_run"]
+        };
+      },
+      async startRun(input: unknown) {
+        starts.push(input);
+        throw new Error("Agent run start route returned HTTP 503.");
+      },
+      async approveToolRequest(input: unknown) {
+        approvals.push(input);
+        return {
+          ok: true as const,
+          schemaVersion: "agent-approval-decision-result.v1" as const,
+          eventIds: ["evt_unexpected_approval"],
+          approvalCockpit: approvalCockpit()
+        };
+      },
+      async denyToolRequest(input: unknown) {
+        denials.push(input);
+        return {
+          ok: true as const,
+          schemaVersion: "agent-approval-decision-result.v1" as const,
+          eventIds: ["evt_unexpected_denial"],
+          approvalCockpit: approvalCockpit()
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    await screen.findByRole("region", { name: "Give Cestus Agent a task" });
+    fireEvent.change(screen.getByLabelText("Task title"), {
+      target: { value: "Restart blocked bootstrap" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create task and start run" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Task handoff could not be completed safely.");
+    expect(starts).toHaveLength(1);
+    expect(approvals).toEqual([]);
+    expect(denials).toEqual([]);
   });
 });
 
@@ -286,10 +521,242 @@ function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
         safeDataNotes: "Deterministic local fake provider for app integration tests."
       }
     ],
+    providerReadiness: {
+      schemaVersion: "agent-provider-readiness.v1",
+      generatedAt: "2026-07-09T11:19:00.000Z",
+      cards: [
+        {
+          providerId: "provider_fake_local",
+          label: "Fake Local Model Provider",
+          backendKind: "local-engine",
+          capabilitySummary: ["Local deterministic model"],
+          credentialKindSummary: ["local-no-secret"],
+          state: "works-locally",
+          requiredApprovalClass: "none",
+          credentialHealth: "not-required",
+          dataHandlingPosture: "local-only",
+          safeActionIds: ["action_check_provider_health"]
+        }
+      ],
+      diagnostics: []
+    },
     pendingApprovalCount: 1,
     activeLockCount: 0,
     diagnostics: [],
     ...overrides
+  };
+}
+
+function agentStatusWithOntologyBootstrap(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
+  return agentStatus({
+    tasks: [
+      {
+        taskId: "task_ontology_bootstrap_route",
+        residentAgentId: "agent_default",
+        title: "Bootstrap old Cestus archive",
+        requestedBy: "actor_case_owner",
+        priority: "normal",
+        status: "waiting-for-approval",
+        createdAt: "2026-07-08T16:00:00.000Z",
+        sourceEventIds: [],
+        inputArtifactHashes: [],
+        runId: "run_ontology_bootstrap_route",
+        eventIds: ["evt_bootstrap_task"],
+        causationIds: []
+      }
+    ],
+    runs: [
+      {
+        runId: "run_ontology_bootstrap_route",
+        residentAgentId: "agent_default",
+        runType: "ontology-bootstrap",
+        state: "running",
+        startedBy: "actor_case_owner",
+        startedAt: "2026-07-08T16:00:10.000Z",
+        taskId: "task_ontology_bootstrap_route",
+        workspaceId: "ws_case_001",
+        sourceEventIds: [],
+        inputArtifactHashes: [],
+        relatedEventIds: [],
+        outputArtifactHashes: ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
+        stepIds: ["step_ontology_bootstrap_dossier"],
+        invocationIds: [],
+        toolRequestIds: ["toolreq_ontology_bootstrap_staging_approval"],
+        allowedActions: [],
+        eventIds: ["evt_bootstrap_run"],
+        causationIds: ["evt_bootstrap_task"]
+      }
+    ],
+    toolRequests: [
+      {
+        toolRequestId: "toolreq_ontology_bootstrap_staging_approval",
+        runId: "run_ontology_bootstrap_route",
+        toolId: "legacy.staging.approval.request",
+        toolVersion: "0.1.0",
+        requestedBy: "agent_default",
+        sideEffectClass: "ledger-review",
+        requiredApprovalClass: "ledger-review",
+        previewHash: "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        scope: "Ontology bootstrap legacy_report_001",
+        estimatedEffect: "Human ledger review is required before any follow-up event can be recorded.",
+        state: "requested",
+        requestedAt: "2026-07-08T16:01:00.000Z",
+        sourceEventIds: [],
+        inputArtifactHashes: [],
+        resultEventIds: [],
+        artifactHashes: [],
+        readModelChanges: [],
+        allowedActions: [],
+        eventIds: ["evt_bootstrap_tool"],
+        causationIds: ["evt_bootstrap_run"]
+      }
+    ],
+    ...overrides
+  });
+}
+
+function agentCockpit(overrides: Partial<AgentCockpitDto> = {}): AgentCockpitDto {
+  return {
+    schemaVersion: "agent-cockpit.v1",
+    generatedAt: "2026-07-09T13:00:00.000Z",
+    summary: {
+      activeTaskCount: 1,
+      activeRunCount: 1,
+      pendingApprovalCount: 1,
+      activeLockCount: 0,
+      mergeAfterScheduler: false
+    },
+    taskQueue: [
+      {
+        taskId: "task_provider_review",
+        title: "Review provider approval",
+        priority: "normal",
+        status: "waiting-for-approval",
+        createdAt: "2026-07-07T21:00:00.000Z",
+        runId: "run_provider_review",
+        statusReason: "Awaiting safe review."
+      }
+    ],
+    runQueue: [
+      {
+        runId: "run_provider_review",
+        taskId: "task_provider_review",
+        runType: "evidence-triage",
+        state: "running",
+        startedAt: "2026-07-07T21:00:10.000Z",
+        summary: "Reviewing provider preview evidence.",
+        currentStepCount: 1,
+        modelInvocationCount: 0,
+        pendingApprovalCount: 1,
+        blockedReasonCount: 0
+      }
+    ],
+    selectedRun: {
+      runId: "run_provider_review",
+      taskId: "task_provider_review",
+      runType: "evidence-triage",
+      state: "running",
+      startedAt: "2026-07-07T21:00:10.000Z",
+      summary: "Reviewing provider preview evidence.",
+      currentStepCount: 1,
+      modelInvocationCount: 0,
+      pendingApprovalCount: 1,
+      blockedReasonCount: 0,
+      stepIds: ["step_review_provider_preview"],
+      pendingApprovalIds: ["toolreq_provider_transfer"],
+      blockedReasons: [],
+      modelInvocations: [
+        {
+          invocationId: "inv_provider_review",
+          providerId: "provider_fake_local",
+          modelFamily: "fake-local",
+          status: "completed",
+          inputArtifactHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          outputArtifactHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          usageSummary: "1 prompt, 1 completion",
+          retryable: false
+        }
+      ],
+      contextPacks: [
+        {
+          contextPackId: "ctx_provider_review",
+          contentHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          safeSummary: "Workspace evidence context pack.",
+          generatedAt: "2026-07-09T12:58:00.000Z",
+          provenanceRefs: ["evt_task_created"],
+          sourceEventIds: ["evt_task_created"],
+          artifactHashes: ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
+        }
+      ]
+    },
+    needsNext: [
+      {
+        kind: "approval",
+        severity: "action-required",
+        label: "Review provider transfer preview",
+        relatedTaskId: "task_provider_review",
+        relatedRunId: "run_provider_review",
+        relatedToolRequestId: "toolreq_provider_transfer",
+        safeAction: "review"
+      }
+    ],
+    memorySnippets: [
+      {
+        memoryId: "mem_provider_review",
+        scope: "workspace",
+        summary: "Prior operator approved the same provider preview class.",
+        createdAt: "2026-07-09T12:57:00.000Z",
+        sourceEventIds: ["evt_memory_recorded"],
+        artifactHashes: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
+        confidence: 0.6
+      }
+    ],
+    forbiddenDirectEffects: [
+      "provider-byte-transfer",
+      "prr-send-followup",
+      "export-publication",
+      "destructive-repair",
+      "legal-escalation",
+      "lock-clearing",
+      "accepted-graph-review",
+      "legacy-raw-import",
+      "legacy-staging-execution"
+    ],
+    ...overrides
+  };
+}
+
+function ontologyBootstrapRoute(): OntologyBootstrapRouteDto {
+  return {
+    schemaVersion: "agent-ontology-bootstrap-route.v1",
+    generatedAt: "2026-07-08T16:02:00.000Z",
+    runId: "run_ontology_bootstrap_route",
+    taskId: "task_ontology_bootstrap_route",
+    phase: "staging-review",
+    legacyReportId: "legacy_report_001",
+    reportHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    candidateSetHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    reviewBundleHash: "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    candidateBundleCount: 2,
+    candidateCount: 4,
+    selectedCandidateIds: ["legacy_candidate_001"],
+    blockedRequestedCandidateIds: ["legacy_candidate_missing"],
+    pendingApprovalToolRequestIds: ["toolreq_ontology_bootstrap_staging_approval"],
+    nextCursor: {
+      currentOffset: 0,
+      limit: 2,
+      totalCandidates: 4,
+      nextOffset: 2
+    },
+    nextSafeAction: {
+      actionId: "bootstrap_action_approve_staging",
+      label: "Review staging approval preview",
+      kind: "request-tool",
+      effect: "ledger-review"
+    },
+    runState: "running",
+    outputArtifactHashes: ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
+    stepIds: ["step_ontology_bootstrap_dossier"]
   };
 }
 

@@ -5,11 +5,19 @@ import type { QueueFilter } from "./workspace/command-types.js";
 import { AgentWorkspace } from "./agent/AgentWorkspace.js";
 import {
   httpAgentAdapter,
+  ontologyBootstrapRouteDtoFromJson,
   safeAgentText,
   runtimeUnavailableAgentStatus,
   type AgentAdapter
 } from "./agent/agent-adapter.js";
-import type { AgentApprovalCockpitDto, AgentStatusDto } from "./agent/agent-types.js";
+import type {
+  AgentApprovalCockpitDto,
+  AgentCockpitDto,
+  AgentStatusDto,
+  OntologyBootstrapRouteDto,
+  CreateAgentTaskInput,
+  StartAgentRunInput
+} from "./agent/agent-types.js";
 import { IngestionWorkspace } from "./ingestion/IngestionWorkspace.js";
 import {
   httpIngestionWorkspaceAdapter,
@@ -97,9 +105,11 @@ export function App({
   const [loadedOperatorStatusAdapter, setLoadedOperatorStatusAdapter] = useState<OperatorStatusAdapter | undefined>();
   const [operatorStatusReloadKey, setOperatorStatusReloadKey] = useState(0);
   const [agentStatus, setAgentStatus] = useState<AgentStatusDto | undefined>();
+  const [agentCockpit, setAgentCockpit] = useState<AgentCockpitDto | undefined>();
   const [agentApprovalCockpit, setAgentApprovalCockpit] = useState<AgentApprovalCockpitDto | undefined>();
   const [agentApprovalDecisionState, setAgentApprovalDecisionState] = useState<"idle" | "submitting" | "error">("idle");
   const [agentApprovalDiagnostic, setAgentApprovalDiagnostic] = useState<string | undefined>();
+  const [agentOntologyBootstrapRoutes, setAgentOntologyBootstrapRoutes] = useState<readonly OntologyBootstrapRouteDto[]>([]);
   const [loadedAgentAdapter, setLoadedAgentAdapter] = useState<AgentAdapter | undefined>();
   const [agentLoadState, setAgentLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [agentLoadError, setAgentLoadError] = useState<string | undefined>();
@@ -276,7 +286,12 @@ export function App({
       return;
     }
 
-    if (agentStatus !== undefined && agentApprovalCockpit !== undefined && loadedAgentAdapter === agentAdapter) {
+    if (
+      agentStatus !== undefined &&
+      agentCockpit !== undefined &&
+      agentApprovalCockpit !== undefined &&
+      loadedAgentAdapter === agentAdapter
+    ) {
       return;
     }
 
@@ -285,16 +300,23 @@ export function App({
     setAgentLoadError(undefined);
     setAgentApprovalDiagnostic(undefined);
 
-    Promise.all([agentAdapter.loadStatus(), agentAdapter.loadApprovalCockpit()])
-      .then(([status, cockpit]) => {
+    Promise.all([agentAdapter.loadStatus(), agentAdapter.loadCockpit(), agentAdapter.loadApprovalCockpit()])
+      .then(([status, cockpit, approvalCockpit]) => {
         if (canceled) {
           return;
         }
 
         setAgentStatus(status);
-        setAgentApprovalCockpit(cockpit);
+        setAgentCockpit(cockpit);
+        setAgentApprovalCockpit(approvalCockpit);
         setLoadedAgentAdapter(agentAdapter);
         setAgentLoadState("loaded");
+
+        void loadOntologyBootstrapRoutes(status).then((routes) => {
+          if (!canceled) {
+            setAgentOntologyBootstrapRoutes(routes);
+          }
+        });
       })
       .catch(() => {
         if (canceled) {
@@ -302,7 +324,9 @@ export function App({
         }
 
         setAgentStatus(undefined);
+        setAgentCockpit(undefined);
         setAgentApprovalCockpit(undefined);
+        setAgentOntologyBootstrapRoutes([]);
         setLoadedAgentAdapter(undefined);
         setAgentLoadState("error");
         setAgentLoadError("Agent workspace could not be loaded.");
@@ -311,7 +335,7 @@ export function App({
     return () => {
       canceled = true;
     };
-  }, [agentActive, agentAdapter, agentApprovalCockpit, agentReloadKey, agentStatus, loadedAgentAdapter]);
+  }, [agentActive, agentAdapter, agentApprovalCockpit, agentCockpit, agentReloadKey, agentStatus, loadedAgentAdapter]);
 
   const commandMain = (
     <div className="space-y-6">
@@ -379,12 +403,16 @@ export function App({
   );
   const agentMain = (
     <AgentWorkspace
+      cockpit={agentCockpit}
       status={statusWithAgentApprovalDiagnostic(agentStatus, agentApprovalDiagnostic)}
       approvalCockpit={agentApprovalCockpit}
       decisionState={agentApprovalDecisionState}
+      ontologyBootstrapRoutes={agentOntologyBootstrapRoutes}
       loadState={agentLoadState}
       loadError={agentLoadError}
       onRefresh={handleRefreshAgentStatus}
+      onCreateTask={handleCreateAgentTask}
+      onStartRun={handleStartAgentRun}
       onApproveToolRequest={handleApproveToolRequest}
       onDenyToolRequest={handleDenyToolRequest}
     />
@@ -423,13 +451,45 @@ export function App({
 
   function handleRefreshAgentStatus() {
     setAgentStatus(undefined);
+    setAgentCockpit(undefined);
     setAgentApprovalCockpit(undefined);
+    setAgentOntologyBootstrapRoutes([]);
     setAgentApprovalDecisionState("idle");
     setAgentApprovalDiagnostic(undefined);
     setLoadedAgentAdapter(undefined);
     setAgentLoadState("idle");
     setAgentLoadError(undefined);
     setAgentReloadKey((current) => current + 1);
+  }
+
+  async function handleCreateAgentTask(input: CreateAgentTaskInput) {
+    setAgentApprovalDiagnostic(undefined);
+
+    try {
+      const result = await agentAdapter.createTask(input);
+      await refreshAgentStateAfterMutation();
+      return result;
+    } catch (error: unknown) {
+      setAgentApprovalDiagnostic(
+        safeAgentText(error instanceof Error ? error.message : "Agent task creation could not be completed safely.")
+      );
+      throw error;
+    }
+  }
+
+  async function handleStartAgentRun(input: StartAgentRunInput) {
+    setAgentApprovalDiagnostic(undefined);
+
+    try {
+      const result = await agentAdapter.startRun(input);
+      await refreshAgentStateAfterMutation();
+      return result;
+    } catch (error: unknown) {
+      setAgentApprovalDiagnostic(
+        safeAgentText(error instanceof Error ? error.message : "Agent run start could not be completed safely.")
+      );
+      throw error;
+    }
   }
 
   function handleApproveToolRequest(input: {
@@ -518,6 +578,18 @@ export function App({
           }
         ]);
       });
+  }
+
+  async function refreshAgentStateAfterMutation() {
+    await refreshAgentState({
+      agentAdapter,
+      setAgentStatus,
+      setAgentCockpit,
+      setAgentOntologyBootstrapRoutes,
+      setLoadedAgentAdapter,
+      setAgentLoadState,
+      setAgentLoadError
+    });
   }
 
   async function runIngestionAction(action: () => Promise<IngestionActionResult>) {
@@ -640,11 +712,7 @@ export function App({
     try {
       const result = await decision();
       setAgentApprovalCockpit(result.approvalCockpit);
-      const status = await agentAdapter.loadStatus();
-      setAgentStatus(status);
-      setLoadedAgentAdapter(agentAdapter);
-      setAgentLoadState("loaded");
-      setAgentLoadError(undefined);
+      await refreshAgentStateAfterMutation();
       setAgentApprovalDecisionState("idle");
     } catch (error: unknown) {
       setAgentApprovalDecisionState("error");
@@ -723,6 +791,55 @@ export function App({
       ) : null}
     </>
   );
+}
+
+async function loadOntologyBootstrapRoutes(status: AgentStatusDto): Promise<readonly OntologyBootstrapRouteDto[]> {
+  const runIds = [...new Set(
+    status.runs
+      .filter((run) => run.runType === "ontology-bootstrap")
+      .map((run) => run.runId)
+  )];
+
+  if (runIds.length === 0) {
+    return [];
+  }
+
+  const routes = await Promise.all(
+    runIds.map(async (runId) => {
+      try {
+        const response = await fetch(`/api/agent/specialists/ontology-bootstrap/runs/${encodeURIComponent(runId)}`);
+        if (!response.ok) {
+          return undefined;
+        }
+        return ontologyBootstrapRouteDtoFromJson(await response.json());
+      } catch {
+        return undefined;
+      }
+    })
+  );
+
+  return routes.filter((route): route is OntologyBootstrapRouteDto => route !== undefined);
+}
+
+async function refreshAgentState(input: {
+  readonly agentAdapter: AgentAdapter;
+  readonly setAgentStatus: (status: AgentStatusDto) => void;
+  readonly setAgentCockpit: (cockpit: AgentCockpitDto) => void;
+  readonly setAgentOntologyBootstrapRoutes: (routes: readonly OntologyBootstrapRouteDto[]) => void;
+  readonly setLoadedAgentAdapter: (adapter: AgentAdapter) => void;
+  readonly setAgentLoadState: (state: "idle" | "loading" | "loaded" | "error") => void;
+  readonly setAgentLoadError: (message: string | undefined) => void;
+}) {
+  const [status, cockpit] = await Promise.all([
+    input.agentAdapter.loadStatus(),
+    input.agentAdapter.loadCockpit()
+  ]);
+  input.setAgentStatus(status);
+  input.setAgentCockpit(cockpit);
+  input.setAgentOntologyBootstrapRoutes(await loadOntologyBootstrapRoutes(status));
+  input.setLoadedAgentAdapter(input.agentAdapter);
+  input.setAgentLoadState("loaded");
+  input.setAgentLoadError(undefined);
 }
 
 function operatorStatusForCommand(status: OperatorStatusDto): OperatorStatusDto {
