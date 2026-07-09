@@ -222,6 +222,8 @@ describe("AgentApprovalCockpit", () => {
     ]) {
       expect(screen.queryByRole("button", { name: forbiddenName })).not.toBeInTheDocument();
     }
+
+    expect(screen.queryByRole("region", { name: "Agent run cockpit" })).not.toBeInTheDocument();
   });
 });
 

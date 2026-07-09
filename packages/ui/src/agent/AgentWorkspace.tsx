@@ -12,6 +12,7 @@ import type {
   DenyToolRequestInput
 } from "./agent-adapter.js";
 import { AgentApprovalCockpit } from "./AgentApprovalCockpit.js";
+import { AgentRunCockpit } from "./AgentRunCockpit.js";
 import { AgentTaskComposer } from "./AgentTaskComposer.js";
 
 interface AgentWorkspaceProps {
@@ -106,6 +107,8 @@ export function AgentWorkspace({
               onRefresh={onRefresh}
             />
           )}
+
+          {cockpit === undefined ? null : <AgentRunCockpit cockpit={cockpit} />}
 
           <div className="grid gap-3 md:grid-cols-5">
             <SummaryMetric label="Pending" value={countLabel(status.pendingApprovalCount, "pending approval")} />
