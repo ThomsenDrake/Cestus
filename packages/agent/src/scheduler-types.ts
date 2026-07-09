@@ -42,7 +42,7 @@ export const agentSchedulerItemSummaryDtoSchema = z.object({
   runId: secretSafeTextSchema("scheduler run id"),
   taskId: secretSafeTextSchema("scheduler task id").optional(),
   toolId: secretSafeTextSchema("scheduler tool id"),
-  toolVersion: z.union([z.number(), secretSafeTextSchema("scheduler tool version")]),
+  toolVersion: secretSafeTextSchema("scheduler tool version"),
   state: agentSchedulerItemStateSchema,
   approvalClass: approvalClassIdentifierSchema("scheduler approval class"),
   previewHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
