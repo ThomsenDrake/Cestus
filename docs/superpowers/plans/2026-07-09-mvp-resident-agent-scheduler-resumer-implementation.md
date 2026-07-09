@@ -1210,7 +1210,7 @@ Status: claimed
 
 ## Verification
 
-- Focused: `npm test -- packages/agent/test/scheduler-types.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts`
+- Focused: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts packages/agent/test/runtime.test.ts packages/agent/test/scheduler-types.test.ts`
 - Full: `npm run verify`
 - Whitespace: `git diff --check`
 - Factory: `npm run factory:check`
@@ -1225,20 +1225,20 @@ Recorded: `docs/agentic/claims/task-4-agent-scheduler-readiness.md` was created 
 Run:
 
 ```bash
-npm test -- packages/agent/test/scheduler-types.test.ts packages/agent/test/scheduler.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts
+npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/projection.test.ts packages/agent/test/tool-gateway.test.ts packages/agent/test/scheduler.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-approval-routes.test.ts packages/agent/test/runtime.test.ts packages/agent/test/scheduler-types.test.ts
 ```
 
 Expected:
 
 ```text
-Test Files  6 passed
+Test Files  8 passed
 ```
 
 Observed:
 
 ```text
-Test Files  6 passed (6)
-Tests  97 passed (97)
+Test Files  8 passed (8)
+Tests  136 passed (136)
 ```
 
 - [x] **Step 3: Run full verification**
@@ -1263,7 +1263,7 @@ Observed:
 ```text
 typecheck passed
 Test Files  145 passed | 1 skipped (146)
-Tests  1404 passed | 1 skipped (1405)
+Tests  1411 passed | 1 skipped (1412)
 tests passed
 vite build succeeded
 factory-readiness passed
