@@ -7,6 +7,7 @@ import type {
   ContextPackScope,
   ResolvedContextPack
 } from "./context-packs.js";
+import { buildResolvedContextPack, serializeContextPackPayload } from "./context-packs.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 export type OperationalContextPackId =
@@ -138,6 +139,24 @@ export interface OperationalContextPackReadinessInputs {
 
 export type OperationalContextPackBuilderResult = ResolvedContextPack | BuildContextPackRefInput;
 
+export interface BuildWorkspaceRuntimeStatusContextPackInput {
+  readonly generatedAt: string;
+  readonly policyVersion: string;
+  readonly scope: ContextPackScope;
+  readonly projectionHighWaterMark: number;
+  readonly sizeBudgetBytes: number;
+  readonly runtimeSource: OperationalWorkspaceRuntimeSource;
+}
+
+export interface BuildTaskRunHistoryContextPackInput {
+  readonly generatedAt: string;
+  readonly policyVersion: string;
+  readonly scope: ContextPackScope;
+  readonly projectionHighWaterMark: number;
+  readonly sizeBudgetBytes: number;
+  readonly taskRunHistorySnapshot: OperationalTaskRunHistorySnapshot;
+}
+
 const operationalCapabilities = new Set<OperationalContextPackCapability>([
   "workspace-runtime-status",
   "task-run-history",
@@ -179,6 +198,95 @@ export const operationalContextPackPayloadParsers: Readonly<Record<`${Operationa
   "task-run-history.v1@1": createOperationalPayloadParser("task-run-history.v1", "history"),
   "agent-memory-summary.v1@1": createOperationalPayloadParser("agent-memory-summary.v1", "memory")
 });
+
+/** Builds a resolved, provider-free summary from injected runtime facts only. */
+export function buildWorkspaceRuntimeStatusContextPack(
+  input: BuildWorkspaceRuntimeStatusContextPackInput
+): ResolvedContextPack {
+  assertBuilderMetadata(input, "runtimeSource");
+  const runtime = normalizeRuntimeSource(input.runtimeSource);
+  const provenanceRefs = uniqueStrings([
+    ...runtime.diagnostics.flatMap((diagnostic) => diagnosticIds(diagnostic)),
+    `runtime.status:hwm:${runtime.runtimeHighWaterMark}`
+  ]);
+  return buildWithBudget({
+    contextPackId: "workspace-runtime-status.v1",
+    generatedAt: input.generatedAt,
+    payload: { schemaVersion: "workspace-runtime-status.v1", runtime },
+    safeSummary: `Workspace runtime status at high-water mark ${runtime.runtimeHighWaterMark}.`,
+    provenanceRefs,
+    projectionHighWaterMark: input.projectionHighWaterMark,
+    policyVersion: input.policyVersion,
+    scope: input.scope,
+    sizeBudgetBytes: input.sizeBudgetBytes,
+    stalenessInputs: [{ kind: "runtime-high-water-mark", ref: "runtime.status", value: String(runtime.runtimeHighWaterMark) }]
+  });
+}
+
+/** Builds a resolved pack from a caller-bounded history snapshot, never an AgentProjection. */
+export function buildTaskRunHistoryContextPack(
+  input: BuildTaskRunHistoryContextPackInput
+): ResolvedContextPack {
+  assertBuilderMetadata(input, "taskRunHistorySnapshot");
+  const snapshot = normalizeTaskRunHistorySnapshot(input.taskRunHistorySnapshot);
+  if (snapshot.projectionHighWaterMark !== input.projectionHighWaterMark ||
+    snapshot.projectionSourceRef !== "agent.projection.task-run-history") {
+    throw new Error("blocked.projection-source-mismatch: task/run history snapshot does not match its projection source");
+  }
+  const isEmpty = historyItemCount(snapshot) === 0;
+  const emptyProof = isEmpty ? assertEmptyHistoryProof(snapshot.emptyProof, input, snapshot) : undefined;
+  if (!isEmpty && snapshot.emptyProof !== undefined) {
+    throw new Error("blocked.projection-source-mismatch: non-empty task/run history must not include empty proof");
+  }
+
+  let candidate = snapshot;
+  while (true) {
+    const provenanceRefs = emptyProof === undefined
+      ? uniqueStrings([...candidate.sourceEventIds, ...candidate.artifactHashes])
+      : [emptyProjectionProvenanceRef(emptyProof)];
+    const payload = {
+      schemaVersion: "task-run-history.v1" as const,
+      history: {
+        projectionHighWaterMark: candidate.projectionHighWaterMark,
+        projectionSourceRef: candidate.projectionSourceRef,
+        tasks: candidate.tasks,
+        runs: candidate.runs,
+        modelInvocations: candidate.modelInvocations,
+        toolRequests: candidate.toolRequests,
+        aggregateCounts: candidate.aggregateCounts,
+        sourceEventIds: candidate.sourceEventIds,
+        artifactHashes: candidate.artifactHashes,
+        window: candidate.window,
+        ...(emptyProof === undefined ? {} : { emptyProof })
+      }
+    };
+    try {
+      return buildWithBudget({
+        contextPackId: "task-run-history.v1",
+        generatedAt: input.generatedAt,
+        payload,
+        safeSummary: `${historyItemCount(candidate)} bounded task/run history item${historyItemCount(candidate) === 1 ? "" : "s"}.`,
+        provenanceRefs,
+        projectionHighWaterMark: input.projectionHighWaterMark,
+        sourceEventIds: candidate.sourceEventIds,
+        artifactHashes: candidate.artifactHashes,
+        policyVersion: input.policyVersion,
+        scope: input.scope,
+        sizeBudgetBytes: input.sizeBudgetBytes,
+        stalenessInputs: [{ kind: "projection-high-water-mark", ref: candidate.projectionSourceRef, value: String(input.projectionHighWaterMark) }]
+      });
+    } catch (error) {
+      if (!(error instanceof Error) || !/sizeBudgetBytes must be at least/.test(error.message)) {
+        throw error;
+      }
+      const trimmed = trimQuietHistory(candidate);
+      if (trimmed === undefined || historyItemCount(trimmed) === 0) {
+        throw new Error("blocked.size-budget: no safety-relevant task/run history source fits the size budget");
+      }
+      candidate = trimmed;
+    }
+  }
+}
 
 export function assertOperationalContextPackProviderMetadata(
   value: OperationalContextPackProviderMetadata
@@ -649,4 +757,275 @@ function assertSizeBudgets(value: OperationalContextPackSizeBudgets): void {
       throw new Error("sizeBudgets must contain positive integer byte budgets");
     }
   }
+}
+
+function assertBuilderMetadata(
+  input: BuildWorkspaceRuntimeStatusContextPackInput | BuildTaskRunHistoryContextPackInput,
+  sourceKey: "runtimeSource" | "taskRunHistorySnapshot"
+): void {
+  assertPlainDataObject(input, "operational context pack builder input", [
+    "generatedAt", "policyVersion", "scope", "projectionHighWaterMark", "sizeBudgetBytes", sourceKey
+  ]);
+  assertUtcTimestamp(input.generatedAt, "generatedAt");
+  assertSafeToken(input.policyVersion, "policyVersion", true);
+  assertSafeScope(input.scope);
+  if (!Number.isInteger(input.projectionHighWaterMark) || input.projectionHighWaterMark < 0) {
+    throw new Error("blocked.missing-high-water-mark: projectionHighWaterMark must be a nonnegative integer");
+  }
+  if (!Number.isInteger(input.sizeBudgetBytes) || input.sizeBudgetBytes <= 0) {
+    throw new Error("blocked.size-budget: sizeBudgetBytes must be a positive integer");
+  }
+}
+
+function normalizeRuntimeSource(value: OperationalWorkspaceRuntimeSource): {
+  readonly runtimeHighWaterMark: number;
+  readonly workspaceMounted: boolean;
+  readonly workspaceId?: string;
+  readonly storageStrategy: string;
+  readonly bindPosture: string;
+  readonly authPosture: string;
+  readonly providerStates: readonly AgentContextPackJsonValue[];
+  readonly diagnostics: readonly AgentContextPackJsonValue[];
+  readonly projectionHighWaterMarks: Readonly<Record<string, number>>;
+  readonly omissionCodes: readonly OperationalContextPackOmissionCode[];
+} {
+  assertPlainDataObject(value, "runtime source", [
+    "runtimeHighWaterMark", "workspaceMounted", "workspaceId", "storageStrategy", "bindPosture", "authPosture",
+    "providerStates", "diagnostics", "projectionHighWaterMarks", "omissionCodes"
+  ]);
+  if (!Number.isInteger(value.runtimeHighWaterMark) || value.runtimeHighWaterMark < 0 || typeof value.workspaceMounted !== "boolean") {
+    throw new Error("blocked.invalid-payload-shape: runtime source is incomplete");
+  }
+  for (const [label, safeValue] of [["storageStrategy", value.storageStrategy], ["bindPosture", value.bindPosture], ["authPosture", value.authPosture]] as const) {
+    assertSafeOperationalText(safeValue, label);
+  }
+  if (value.workspaceId !== undefined) {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value.workspaceId)) {
+      throw new Error("blocked.unsafe-diagnostic: workspaceId must be a safe identifier");
+    }
+    assertSafeOperationalText(value.workspaceId, "workspaceId");
+  }
+  assertPlainDataArray(value.providerStates, "runtime providerStates");
+  assertPlainDataArray(value.diagnostics, "runtime diagnostics");
+  const providerStates = value.providerStates.map((item) => cloneSafeOperationalJson(item, "provider state"));
+  const diagnostics = value.diagnostics.map((item) => cloneSafeOperationalJson(item, "diagnostic"));
+  assertPlainDataObject(value.projectionHighWaterMarks, "runtime projection high-water marks");
+  const projectionHighWaterMarks: Record<string, number> = {};
+  for (const [key, highWaterMark] of Object.entries(value.projectionHighWaterMarks)) {
+    assertSafeOperationalText(key, "projection name");
+    if (!Number.isInteger(highWaterMark) || highWaterMark < 0) {
+      throw new Error("blocked.invalid-payload-shape: runtime projection high-water mark is invalid");
+    }
+    projectionHighWaterMarks[key] = highWaterMark;
+  }
+  const omissionCodes = normalizeOmissionCodes(value.omissionCodes);
+  return {
+    runtimeHighWaterMark: value.runtimeHighWaterMark,
+    workspaceMounted: value.workspaceMounted,
+    ...(value.workspaceId === undefined ? {} : { workspaceId: value.workspaceId }),
+    storageStrategy: value.storageStrategy,
+    bindPosture: value.bindPosture,
+    authPosture: value.authPosture,
+    providerStates: sortJsonItems(providerStates),
+    diagnostics: sortJsonItems(diagnostics),
+    projectionHighWaterMarks,
+    omissionCodes
+  };
+}
+
+function normalizeTaskRunHistorySnapshot(value: OperationalTaskRunHistorySnapshot): OperationalTaskRunHistorySnapshot {
+  assertPlainDataObject(value, "task/run history snapshot", [
+    "projectionHighWaterMark", "projectionSourceRef", "tasks", "runs", "modelInvocations", "toolRequests",
+    "aggregateCounts", "sourceEventIds", "artifactHashes", "window", "emptyProof"
+  ]);
+  if (!Number.isInteger(value.projectionHighWaterMark) || value.projectionHighWaterMark < 0) {
+    throw new Error("blocked.missing-high-water-mark: task/run history snapshot requires a nonnegative high-water mark");
+  }
+  assertSafeOperationalText(value.projectionSourceRef, "projectionSourceRef");
+  const normalizeItems = (items: readonly AgentContextPackJsonValue[], label: string) => {
+    assertPlainDataArray(items, label);
+    return sortHistoryItems(items.map((item) => cloneSafeOperationalJson(item, label)));
+  };
+  assertPlainDataObject(value.aggregateCounts, "task/run aggregate counts");
+  const aggregateCounts: Record<string, number> = {};
+  for (const [key, count] of Object.entries(value.aggregateCounts)) {
+    assertSafeOperationalText(key, "aggregate count key");
+    if (!Number.isInteger(count) || count < 0) throw new Error("blocked.invalid-payload-shape: aggregate count is invalid");
+    aggregateCounts[key] = count;
+  }
+  const sourceEventIds = normalizeEventIds(value.sourceEventIds);
+  const artifactHashes = normalizeArtifactHashes(value.artifactHashes);
+  const window = normalizeWindow(value.window);
+  const emptyProof = value.emptyProof === undefined ? undefined : normalizeEmptyProof(value.emptyProof);
+  return {
+    projectionHighWaterMark: value.projectionHighWaterMark,
+    projectionSourceRef: value.projectionSourceRef,
+    tasks: normalizeItems(value.tasks, "task"),
+    runs: normalizeItems(value.runs, "run"),
+    modelInvocations: normalizeItems(value.modelInvocations, "model invocation"),
+    toolRequests: normalizeItems(value.toolRequests, "tool request"),
+    aggregateCounts,
+    sourceEventIds,
+    artifactHashes,
+    window,
+    ...(emptyProof === undefined ? {} : { emptyProof })
+  };
+}
+
+function normalizeWindow(value: OperationalBoundedWindow): OperationalBoundedWindow {
+  assertPlainDataObject(value, "task/run history window", ["order", "limit", "cursor", "hasMore", "totalCount", "omissionCodes"]);
+  assertSafeOperationalText(value.order, "window order");
+  if (!Number.isInteger(value.limit) || value.limit <= 0 || typeof value.hasMore !== "boolean" ||
+    !Number.isInteger(value.totalCount) || value.totalCount < 0) {
+    throw new Error("blocked.unbounded-source: task/run history requires bounded deterministic window metadata");
+  }
+  if (value.cursor !== undefined) assertSafeOperationalText(value.cursor, "window cursor");
+  return { order: value.order, limit: value.limit, ...(value.cursor === undefined ? {} : { cursor: value.cursor }), hasMore: value.hasMore, totalCount: value.totalCount, omissionCodes: normalizeOmissionCodes(value.omissionCodes) };
+}
+
+function normalizeEmptyProof(value: OperationalEmptyProjectionProof): OperationalEmptyProjectionProof {
+  assertPlainDataObject(value, "empty projection proof", ["projectionName", "scope", "projectionHighWaterMark", "sourceEventCount", "generatedAt", "emptyReasonCode"]);
+  assertSafeOperationalText(value.projectionName, "empty proof projection name");
+  assertSafeScope(value.scope);
+  assertUtcTimestamp(value.generatedAt, "empty proof generatedAt");
+  assertSafeOperationalText(value.emptyReasonCode, "empty proof reason");
+  if (!Number.isInteger(value.projectionHighWaterMark) || value.projectionHighWaterMark < 0 || !Number.isInteger(value.sourceEventCount) || value.sourceEventCount < 0) {
+    throw new Error("blocked.projection-source-mismatch: empty proof has invalid counts");
+  }
+  return { ...value };
+}
+
+function assertEmptyHistoryProof(
+  proof: OperationalEmptyProjectionProof | undefined,
+  input: BuildTaskRunHistoryContextPackInput,
+  snapshot: OperationalTaskRunHistorySnapshot
+): OperationalEmptyProjectionProof {
+  if (proof === undefined) throw new Error("blocked.missing-empty-proof: empty task/run history requires proof");
+  if (proof.projectionName !== "agent.projection.task-run-history" || proof.scope.kind !== input.scope.kind || proof.scope.id !== input.scope.id ||
+    proof.projectionHighWaterMark !== input.projectionHighWaterMark || proof.generatedAt !== input.generatedAt || proof.sourceEventCount !== 0 ||
+    snapshot.sourceEventIds.length !== 0 || snapshot.artifactHashes.length !== 0 || snapshot.window.totalCount !== 0 || snapshot.window.hasMore ||
+    Object.values(snapshot.aggregateCounts).some((count) => count !== 0)) {
+    throw new Error("blocked.projection-source-mismatch: empty proof does not match task/run history snapshot");
+  }
+  return proof;
+}
+
+function trimQuietHistory(snapshot: OperationalTaskRunHistorySnapshot): OperationalTaskRunHistorySnapshot | undefined {
+  const groups = ["tasks", "runs", "modelInvocations", "toolRequests"] as const;
+  for (const group of groups) {
+    const items = snapshot[group];
+    const index = [...items].map((item, index) => ({ item, index })).reverse().find(({ item }) => itemState(item) === "completed")?.index;
+    if (index === undefined) continue;
+    const nextItems = items.filter((_, current) => current !== index);
+    const windowOmissions = uniqueOmissionCodes([...snapshot.window.omissionCodes, "omitted.size-budget"]);
+    return { ...snapshot, [group]: nextItems, window: { ...snapshot.window, omissionCodes: windowOmissions } };
+  }
+  return undefined;
+}
+
+function historyItemCount(snapshot: OperationalTaskRunHistorySnapshot): number {
+  return snapshot.tasks.length + snapshot.runs.length + snapshot.modelInvocations.length + snapshot.toolRequests.length;
+}
+
+function sortHistoryItems(items: readonly AgentContextPackJsonValue[]): readonly AgentContextPackJsonValue[] {
+  return [...items].sort((left, right) => {
+    const priority = historyStatePriority(itemState(left)) - historyStatePriority(itemState(right));
+    return priority === 0 ? stableJsonText(left).localeCompare(stableJsonText(right)) : priority;
+  });
+}
+
+function sortJsonItems(items: readonly AgentContextPackJsonValue[]): readonly AgentContextPackJsonValue[] {
+  return [...items].sort((left, right) => stableJsonText(left).localeCompare(stableJsonText(right)));
+}
+
+function itemState(value: AgentContextPackJsonValue): string | undefined {
+  return isOperationalJsonObject(value) && typeof value.state === "string" ? value.state : undefined;
+}
+
+function historyStatePriority(state: string | undefined): number {
+  if (state === "failed" || state === "blocked" || state === "denied" || state === "pending") return 0;
+  if (state === "executing" || state === "approved" || state === "requested" || state === "queued" || state === "running") return 1;
+  if (state === "completed") return 2;
+  return 1;
+}
+
+function normalizeEventIds(value: readonly string[]): readonly string[] {
+  assertPlainDataArray(value, "source event IDs");
+  for (const eventId of value) {
+    if (typeof eventId !== "string" || !/^evt_[a-zA-Z0-9_-]+$/.test(eventId)) throw new Error("blocked.invalid-payload-shape: invalid source event ID");
+    assertSafeOperationalText(eventId, "source event ID");
+  }
+  return uniqueStrings(value);
+}
+
+function normalizeArtifactHashes(value: readonly string[]): readonly string[] {
+  assertPlainDataArray(value, "artifact hashes");
+  for (const hash of value) {
+    if (typeof hash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(hash)) throw new Error("blocked.invalid-payload-shape: invalid artifact hash");
+  }
+  return uniqueStrings(value);
+}
+
+function normalizeOmissionCodes(value: readonly OperationalContextPackOmissionCode[]): readonly OperationalContextPackOmissionCode[] {
+  assertPlainDataArray(value, "omission codes");
+  for (const code of value) if (typeof code !== "string" || !isOperationalOmissionCode(code)) throw new Error("blocked.invalid-payload-shape: invalid omission code");
+  return uniqueOmissionCodes(value);
+}
+
+function uniqueStrings(values: readonly string[]): readonly string[] {
+  return [...new Set(values)].sort();
+}
+
+function uniqueOmissionCodes(values: readonly OperationalContextPackOmissionCode[]): readonly OperationalContextPackOmissionCode[] {
+  return [...new Set(values)].sort() as readonly OperationalContextPackOmissionCode[];
+}
+
+function stableJsonText(value: AgentContextPackJsonValue): string {
+  return Buffer.from(serializeContextPackPayload(value)).toString("utf8");
+}
+
+function diagnosticIds(value: AgentContextPackJsonValue): readonly string[] {
+  if (!isOperationalJsonObject(value)) return [];
+  const diagnosticId = value.diagnosticId;
+  return typeof diagnosticId === "string" && /^diag_[a-zA-Z0-9_-]+$/.test(diagnosticId) ? [diagnosticId] : [];
+}
+
+function cloneSafeOperationalJson(value: AgentContextPackJsonValue, label: string): AgentContextPackJsonValue {
+  if (value === null || typeof value === "boolean" || typeof value === "number") {
+    if (typeof value === "number" && !Number.isFinite(value)) throw new Error("blocked.invalid-payload-shape: non-finite operational value");
+    return value;
+  }
+  if (typeof value === "string") {
+    assertSafeOperationalText(value, label);
+    return value;
+  }
+  if (Array.isArray(value)) {
+    assertPlainDataArray(value, label);
+    return value.map((item) => cloneSafeOperationalJson(item as AgentContextPackJsonValue, label));
+  }
+  if (!isOperationalJsonObject(value)) throw new Error("blocked.invalid-payload-shape: operational value must be JSON");
+  const result: Record<string, AgentContextPackJsonValue> = {};
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  for (const [key, descriptor] of Object.entries(descriptors)) {
+    if (!descriptor.enumerable || !("value" in descriptor)) throw new Error("blocked.invalid-payload-shape: operational value must not contain accessors");
+    assertSafeOperationalText(key, `${label} key`);
+    result[key] = cloneSafeOperationalJson(descriptor.value as AgentContextPackJsonValue, label);
+  }
+  return result;
+}
+
+function assertSafeOperationalText(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string") throw new Error(`blocked.unsafe-diagnostic: ${label} must be text`);
+  assertAgentSecretSafeText(value, label);
+  if (/(?:\/home\/|\\\\|\bprompt\b|model[ -]?output|provider[ -]?error|\bstdout\b|\bstderr\b|\bstack\s*trace\b|\berror:)/i.test(value)) {
+    throw new Error(`blocked.unsafe-diagnostic: ${label} contains unsafe operational material`);
+  }
+}
+
+function buildWithBudget(input: Omit<BuildContextPackRefInput, "version">): ResolvedContextPack {
+  return buildResolvedContextPack({ ...input, version: 1 });
+}
+
+function emptyProjectionProvenanceRef(proof: OperationalEmptyProjectionProof): string {
+  return `empty-projection:${proof.projectionName}:${proof.scope.kind}:${proof.scope.id}:hwm:${proof.projectionHighWaterMark}`;
 }
