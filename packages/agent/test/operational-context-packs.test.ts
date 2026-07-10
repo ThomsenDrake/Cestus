@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertOperationalContextPackProviderMetadata,
+  buildOperationalAgentMemorySummaryContextPack,
   buildTaskRunHistoryContextPack,
   buildWorkspaceRuntimeStatusContextPack,
   buildOperationalContextPackReadinessInputs,
@@ -15,7 +16,6 @@ import {
   type OperationalWorkspaceRuntimeSource
 } from "../src/operational-context-packs.js";
 import { createContextPackRegistry, serializeContextPackPayload, type BuildContextPackRefInput, type ResolvedContextPack } from "../src/context-packs.js";
-import { buildAgentMemorySummaryResolvedContextPack } from "../src/memory.js";
 
 describe("operational context pack contracts", () => {
   const providerMetadata = {
@@ -516,7 +516,7 @@ describe("operational context pack registration and readiness handoff", () => {
       generatedAt: boundedProvider.generatedAt, policyVersion: boundedProvider.policyVersion, scope: boundedProvider.scope,
       projectionHighWaterMark: taskRunHistorySnapshot.projectionHighWaterMark, sizeBudgetBytes: boundedProvider.sizeBudgets.taskRunHistory, taskRunHistorySnapshot
     }));
-    const directMemory = buildAgentMemorySummaryResolvedContextPack({
+    const directMemory = buildOperationalAgentMemorySummaryContextPack({
       generatedAt: boundedProvider.generatedAt, policyVersion: boundedProvider.policyVersion, scope: boundedProvider.scope,
       projectionHighWaterMark: memorySnapshot.projectionHighWaterMark, sizeBudgetBytes: boundedProvider.sizeBudgets.agentMemorySummary, memorySnapshot
     });
@@ -535,6 +535,10 @@ describe("operational context pack registration and readiness handoff", () => {
   });
 
   it("fails closed for deterministic registration conflicts without provider identity checks", () => {
+    expect(() => registerOperationalContextPackBuilders(createContextPackRegistry(), provider({
+      capabilities: ["workspace-runtime-status", "task-run-history"]
+    }))).toThrow("blocked.missing-capability");
+
     const registry = createContextPackRegistry();
     registerOperationalContextPackBuilders(registry, provider());
 

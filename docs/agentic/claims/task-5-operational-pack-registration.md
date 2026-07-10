@@ -43,3 +43,6 @@ is resolved by the approved Task 5 operational descriptor-local
 - GREEN targeted test: `npm test -- packages/agent/test/operational-context-packs.test.ts packages/agent/test/specialist-readiness.test.ts` passed with 2 test files and 44 tests.
 - Full verification: `npm run verify` completed successfully after `typecheck passed`.
 - Scope check: `git diff --check` passed; the implementation changes only `packages/agent/src/operational-context-packs.ts` and `packages/agent/test/operational-context-packs.test.ts`.
+- Review repair RED: the targeted command failed because the canonical operational memory wrapper was absent and fresh registration accepted a provider that omitted a declared capability.
+- Review repair GREEN: `npm test -- packages/agent/test/operational-context-packs.test.ts packages/agent/test/specialist-readiness.test.ts` passed with 2 test files and 44 tests.
+- Review repair full verification: `npm run verify` completed successfully after `typecheck passed`.
