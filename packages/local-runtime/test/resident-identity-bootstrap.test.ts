@@ -115,7 +115,6 @@ describe("local runtime resident identity bootstrap", () => {
     const before = storedEventCount(config.storage.sqlitePath);
     const handler = testHandler(config);
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
     const response = await handler({ method: "GET", url: "/api/agent/status" });
 
     expect(response.status).toBe(200);

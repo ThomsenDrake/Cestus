@@ -58,6 +58,7 @@ export interface CreateAgentRuntimeInput {
   readonly actor: ActorRef;
   readonly now: () => string;
   readonly identityLifecycle?: ResidentIdentityLifecycleDto | (() => ResidentIdentityLifecycleDto);
+  readonly identityLifecycleReady?: () => Promise<ResidentIdentityLifecycleDto>;
   readonly providers?: readonly ModelProviderAdapter[];
   readonly approvedToolExecutors?: readonly AgentApprovedToolExecutorDescriptor[];
 }
@@ -143,14 +144,16 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
 
   return {
     async status(): Promise<AgentStatusDto> {
-      const configuredLifecycle = configuredIdentityLifecycle(input.identityLifecycle);
+      let configuredLifecycle = configuredIdentityLifecycle(input.identityLifecycle);
       let projection: ReturnType<typeof buildAgentProjection>;
       try {
         projection = buildAgentProjection(await input.ledger.readAll());
       } catch (error) {
-        if (configuredLifecycle?.state !== "blocked") {
+        const fallbackLifecycle = await blockedLifecycleAfterProjectionFailure(input, configuredLifecycle);
+        if (fallbackLifecycle === undefined) {
           throw error;
         }
+        configuredLifecycle = fallbackLifecycle;
         projection = buildAgentProjection([]);
       }
       const dto = projection.toDto();
@@ -716,6 +719,31 @@ function configuredIdentityLifecycle(
   input: CreateAgentRuntimeInput["identityLifecycle"]
 ): ResidentIdentityLifecycleDto | undefined {
   return typeof input === "function" ? input() : input;
+}
+
+async function blockedLifecycleAfterProjectionFailure(
+  input: CreateAgentRuntimeInput,
+  lifecycle: ResidentIdentityLifecycleDto | undefined
+): Promise<ResidentIdentityLifecycleDto | undefined> {
+  if (lifecycle?.state === "blocked") {
+    return lifecycle;
+  }
+
+  const latestLifecycle = configuredIdentityLifecycle(input.identityLifecycle);
+  if (latestLifecycle?.state === "blocked") {
+    return latestLifecycle;
+  }
+
+  if (lifecycle?.state !== "initializing" || input.identityLifecycleReady === undefined) {
+    return undefined;
+  }
+
+  try {
+    const readyLifecycle = await input.identityLifecycleReady();
+    return readyLifecycle.state === "blocked" ? readyLifecycle : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function createProviderRegistry(providerAdapters: readonly ModelProviderAdapter[]): RuntimeProviderRegistry {
