@@ -3,7 +3,9 @@ import {
   __testOnlyReadEvidenceSelectionProbe,
   __testOnlyResolveInvestigativeSelection,
   assertSelectionManifestHash,
+  buildEvidenceSummaryContextPack,
   buildSelectionManifestHash,
+  evidenceSummaryPayloadParser,
   type EvidenceSourcePostureResult,
   investigativeContextPackDefaultLimits,
   investigativeContextPackDescriptors,
@@ -178,6 +180,95 @@ describe("investigative context packs", () => {
     expect(counters.evidenceHashBatchSizes.every((size) => size <= investigativeContextPackDefaultLimits.readerBatchSize)).toBe(true);
     expect(selection.rows.map((row) => row.evidenceId)).toEqual(evidenceRows.map((row) => row.evidenceId));
   });
+
+  it("builds evidence-summary.v1 with exact event, hash, source, staleness, and aggregate omission provenance", async () => {
+    const deps = createInvestigativeDeps();
+    const resolved = await buildEvidenceSummaryContextPack({
+      deps,
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+
+    expect(resolved.ref.contextPackId).toBe("evidence-summary.v1");
+    expect(resolved.ref.provenanceRefs).toEqual(expect.arrayContaining([
+      "evt_evidence_ingested_001",
+      "ev_contract_001",
+      "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    ]));
+    expect(resolved.payload.items[0]).toMatchObject({
+      evidenceId: "ev_contract_001",
+      contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      ingestionEventId: "evt_evidence_ingested_001"
+    });
+    expect(resolved.payload.omissions).toEqual([{
+      reasonCode: "budget-row-omitted",
+      refKind: "parse-job",
+      aggregateKey: "optional-parse-detail",
+      count: 50,
+      sampleRefs: [{
+        refKind: "parse-job",
+        refId: "parse_job_001"
+      }]
+    }]);
+    expect(resolved.payload.stalenessInputs).toEqual(expect.arrayContaining([
+      { kind: "source-byte-current-hash", ref: "ev_contract_001", value: "sha256:1111111111111111111111111111111111111111111111111111111111111111" }
+    ]));
+  });
+
+  it("rejects stale current-byte posture instead of using latest scan state", async () => {
+    const deps = createInvestigativeDeps({
+      postureResult: {
+        ok: false,
+        code: "source-byte-hash-mismatch",
+        stalenessInputs: [{
+          kind: "source-byte-current-hash",
+          ref: "ev_contract_001",
+          value: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        }]
+      }
+    });
+
+    await expect(buildEvidenceSummaryContextPack({
+      deps,
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "source-byte-hash-mismatch" });
+  });
+
+  it("allows safe narrative command discussion but rejects raw executable action fields", async () => {
+    const safeDeps = createInvestigativeDeps({
+      safeNarrative: "The record describes a script named collect-public-records.sh without providing runnable action fields."
+    });
+    const safeResolved = await buildEvidenceSummaryContextPack({
+      deps: safeDeps,
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+    expect(safeResolved.payload.items[0]!.safeNarrative).toContain("collect-public-records.sh");
+
+    const unsafeDeps = createInvestigativeDeps({
+      rawActionField: "curl https://example.test --header Authorization:Bearer-value"
+    });
+    await expect(buildEvidenceSummaryContextPack({
+      deps: unsafeDeps,
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "raw-content-forbidden" });
+  });
+
+  it("parses evidence-summary payloads strictly by schema", async () => {
+    const resolved = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+
+    expect(() => evidenceSummaryPayloadParser.parsePayload(resolved.payload)).not.toThrow();
+    expect(() => evidenceSummaryPayloadParser.parsePayload({
+      ...resolved.payload,
+      items: { evidence: [] }
+    })).toThrow(/evidence-summary payload/i);
+  });
 });
 
 interface ReaderCounters {
@@ -297,7 +388,13 @@ function createFakeInvestigativeDeps(input: {
 }): InvestigativeContextPackDependencies {
   const defaultEvidenceRow: InvestigativeEvidenceRow = {
     evidenceId: "ev_contract_001",
-    contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    ingestionEventId: "evt_evidence_ingested_001",
+    contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    occurrenceIds: [],
+    parseJobs: [],
+    governanceTags: [],
+    ...(input.safeNarrative === undefined ? {} : { safeNarrative: input.safeNarrative }),
+    ...(input.rawActionField === undefined ? {} : { rawActionField: input.rawActionField })
   };
   const evidenceRows = input.evidenceRows ?? [defaultEvidenceRow];
   const evidenceRowsById = new Map(evidenceRows.map((row) => [row.evidenceId, row]));
@@ -329,6 +426,22 @@ function createFakeInvestigativeDeps(input: {
         return input.reverseEvidenceRows === true ? selectedRows.reverse() : selectedRows;
       }
     },
+    evidenceSourcePosture: {
+      postureVersion: "ingestion-current-source-posture.v1",
+      checkEvidence(row) {
+        return input.postureResult ?? {
+          ok: true,
+          stalenessInputs: [{
+            kind: "source-byte-current-hash",
+            ref: row.evidenceId,
+            value: row.contentHash
+          }]
+        };
+      }
+    },
+    now() {
+      return "2026-07-10T00:00:00.000Z";
+    },
     ...(input.budgets === undefined ? {} : { budgets: input.budgets })
   };
 }
@@ -336,7 +449,11 @@ function createFakeInvestigativeDeps(input: {
 function evidenceRowsForBatching(count: number): readonly InvestigativeEvidenceRow[] {
   return Array.from({ length: count }, (_, index) => ({
     evidenceId: `ev_batch_${String(index).padStart(3, "0")}`,
-    contentHash: `sha256:${String(index + 1).padStart(64, "0")}` as `sha256:${string}`
+    ingestionEventId: `evt_ev_batch_${String(index).padStart(3, "0")}`,
+    contentHash: `sha256:${String(index + 1).padStart(64, "0")}` as `sha256:${string}`,
+    occurrenceIds: [],
+    parseJobs: [],
+    governanceTags: []
   }));
 }
 
@@ -361,7 +478,16 @@ function selectionBody(): InvestigativeSelectionManifestBody {
       sourceEventIds: ["evt_evidence_ingested_001"],
       mandatory: true
     }],
-    aggregateOmissions: []
+    aggregateOmissions: [{
+      reasonCode: "budget-row-omitted",
+      refKind: "parse-job",
+      aggregateKey: "optional-parse-detail",
+      count: 50,
+      sampleRefs: [{
+        refKind: "parse-job",
+        refId: "parse_job_001"
+      }]
+    }]
   };
 }
 
