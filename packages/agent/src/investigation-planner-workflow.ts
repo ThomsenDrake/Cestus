@@ -5,11 +5,12 @@ import {
   appendSpecialistCompletion,
   appendSpecialistDerivativeStep,
   appendSpecialistFailure,
+  assertSpecialistDerivativeStoreAvailable,
   assertSpecialistStepNotRecorded,
   governanceLockIsActive,
-  hashSpecialistLocalArtifact,
   invokeSpecialistModel,
   prepareSpecialistRun,
+  writeSpecialistDerivativeArtifact,
   type SpecialistRunnerBaseInput
 } from "./specialist-runner-kernel.js";
 
@@ -37,6 +38,7 @@ export async function runInvestigationPlannerWorkflow(
   if (input.investigationId === undefined) {
     return blockedHandoff(input, "Investigation scope is required before planning can begin.");
   }
+  assertSpecialistDerivativeStoreAvailable(input);
   await assertSpecialistStepNotRecorded(input.ledger, input.runId, "step_investigation_planner_local_artifacts");
   const prepared = await prepareSpecialistRun(input, "investigation-planner");
   if (governanceLockIsActive(prepared.contextPackRefs)) {
@@ -49,9 +51,52 @@ export async function runInvestigationPlannerWorkflow(
   if (output === undefined) {
     return await failedModelOutputResult(input, prepared, invocation.eventIds);
   }
-  const planHash = hashSpecialistLocalArtifact({ investigationId: input.investigationId, plan: output.planSummary });
-  const tasksHash = hashSpecialistLocalArtifact({ investigationId: input.investigationId, tasks: output.taskSuggestions });
-  const draftsHash = hashSpecialistLocalArtifact({ investigationId: input.investigationId, drafts: output.prrDraftCandidates });
+  let planArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
+  let tasksArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
+  let draftsArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
+  try {
+    planArtifact = await writeSpecialistDerivativeArtifact({
+      derivativeStore: input.derivativeStore,
+      artifactKind: "investigation-plan-artifact",
+      payload: {
+        schemaVersion: "investigation-planner-handoff.v1",
+        artifactKind: "investigation-plan-artifact",
+        runId: input.runId,
+        taskId: input.taskId,
+        investigationId: input.investigationId,
+        planSummary: output.planSummary
+      }
+    });
+    tasksArtifact = await writeSpecialistDerivativeArtifact({
+      derivativeStore: input.derivativeStore,
+      artifactKind: "task-suggestion-bundle",
+      payload: {
+        schemaVersion: "investigation-planner-handoff.v1",
+        artifactKind: "task-suggestion-bundle",
+        runId: input.runId,
+        taskId: input.taskId,
+        investigationId: input.investigationId,
+        taskSuggestions: [...output.taskSuggestions]
+      }
+    });
+    draftsArtifact = await writeSpecialistDerivativeArtifact({
+      derivativeStore: input.derivativeStore,
+      artifactKind: "draft-prr-candidate-bundle",
+      payload: {
+        schemaVersion: "investigation-planner-handoff.v1",
+        artifactKind: "draft-prr-candidate-bundle",
+        runId: input.runId,
+        taskId: input.taskId,
+        investigationId: input.investigationId,
+        prrDraftCandidates: [...output.prrDraftCandidates]
+      }
+    });
+  } catch {
+    return await failedDerivativeArtifactResult(input, prepared, invocation.eventIds);
+  }
+  const planHash = planArtifact.artifactHash;
+  const tasksHash = tasksArtifact.artifactHash;
+  const draftsHash = draftsArtifact.artifactHash;
   const step = await appendSpecialistDerivativeStep({
     ledger: input.ledger, actor: input.actor, now: input.now, runId: input.runId,
     stepId: "step_investigation_planner_local_artifacts", invocationId,
@@ -145,6 +190,52 @@ async function failedModelOutputResult(
       category: "model-output-invalid",
       code: "investigation-planner-model-output-invalid",
       safeSummary: "Model output failed investigation planner schema validation.",
+      retryable: true
+    }
+  });
+  return Object.freeze({ handoff, eventIds: Object.freeze([...invocationEventIds, failed.id]) });
+}
+
+async function failedDerivativeArtifactResult(
+  input: RunInvestigationPlannerWorkflowInput,
+  prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
+  invocationEventIds: readonly string[]
+): Promise<RunInvestigationPlannerWorkflowResult> {
+  const failed = await appendSpecialistFailure({
+    ledger: input.ledger,
+    actor: input.actor,
+    now: input.now,
+    runId: input.runId,
+    category: "external-effect-failed",
+    message: "Investigation planner derivative artifact storage failed before ledger publication.",
+    retryable: true,
+    allowedActions: ["inspect local derivative artifact storage and retry investigation planning"],
+    ...(invocationEventIds.at(-1) === undefined ? {} : { causationId: invocationEventIds.at(-1) })
+  });
+  const handoff = parseSpecialistWorkflowHandoff({
+    schemaVersion: "agent-specialist-handoff.v1",
+    runType: "investigation-planner",
+    runId: input.runId,
+    taskId: input.taskId,
+    residentAgentId: "agent_default",
+    generatedAt: input.now(),
+    status: "failed",
+    safeSummary: "Investigation planning could not publish local derivative artifacts.",
+    contextPackRefs: prepared.contextPackRefs,
+    promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash,
+    outputArtifacts: [],
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [{
+      actionId: `action_${input.runId}_retry_storage`,
+      label: "Retry investigation planning after derivative storage is healthy",
+      kind: "retry",
+      effect: "none"
+    }],
+    failure: {
+      category: "external-effect-failed",
+      code: "investigation-planner-derivative-storage-failed",
+      safeSummary: "Derivative artifact storage failed before any specialist step or tool request was recorded.",
       retryable: true
     }
   });

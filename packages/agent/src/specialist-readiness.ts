@@ -93,6 +93,7 @@ const adapterFamilyValues = [
   "provider-byte-transfer",
   "prr-correspondence",
   "accepted-graph-review",
+  "contradiction-claim-review",
   "export-report",
   "destructive-repair",
   "legacy-staging"
@@ -455,8 +456,11 @@ function requiredAdapterFamiliesFor(descriptor: SpecialistWorkflowDescriptor): r
   if (descriptor.allowedTools.some((tool) => tool.toolId.startsWith("prr.") && tool.requiredApprovalClass === "external-message-send")) {
     families.add("prr-correspondence");
   }
-  if (descriptor.allowedTools.some((tool) => tool.toolId.startsWith("claim.") || tool.toolId.startsWith("diagnostic."))) {
-    families.add("accepted-graph-review");
+  if (descriptor.allowedTools.some((tool) =>
+    tool.toolId === "diagnostic.investigative-signal.request" ||
+    tool.toolId === "claim.contradiction-link.request"
+  )) {
+    families.add("contradiction-claim-review");
   }
   if (descriptor.allowedTools.some((tool) => tool.toolId.startsWith("governance.export") || tool.toolId.startsWith("report."))) {
     families.add("export-report");

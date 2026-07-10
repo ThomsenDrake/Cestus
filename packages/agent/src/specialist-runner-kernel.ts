@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { Buffer } from "node:buffer";
 import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
 import {
@@ -28,6 +29,7 @@ import { hashAgentToolPreview } from "./tool-gateway.js";
 
 const agentCoreVersion = "0.1.0";
 const agentPackVersions = { core: "0.1.0", agent: "0.1.0" } as const;
+const unsafeJsonObjectKeys = new Set(["__proto__", "constructor", "prototype"]);
 
 export interface SpecialistRunnerModelInvoker {
   invokeModel(command: InvokeAgentModelInput): Promise<AgentRuntimeResult<InvokeAgentModelResult>>;
@@ -40,6 +42,26 @@ export type SpecialistRunnerProviderReadiness =
 export interface SpecialistRunnerProviderTransferApprovalProof {
   readonly currentPreviewInput: RebuildProviderByteTransferCurrentPreviewInput;
   readonly approvedPreviewHash: `sha256:${string}`;
+}
+
+export interface SpecialistDerivativeArtifactStore {
+  put(content: Buffer): Promise<{
+    readonly contentHash: `sha256:${string}`;
+    readonly sizeBytes: number;
+  }>;
+}
+
+export interface SpecialistMountedDerivativeBlobStore {
+  put(content: Buffer): Promise<{
+    readonly contentHash: `sha256:${string}`;
+    readonly sizeBytes: number;
+    readonly path: string;
+  }>;
+}
+
+export interface StoredSpecialistDerivativeArtifact {
+  readonly artifactHash: `sha256:${string}`;
+  readonly sizeBytes: number;
 }
 
 export interface SpecialistRunnerBaseInput {
@@ -57,6 +79,7 @@ export interface SpecialistRunnerBaseInput {
   readonly providerReadiness: SpecialistRunnerProviderReadiness;
   readonly providerTransferApproval?: SpecialistRunnerProviderTransferApprovalProof;
   readonly promptArtifact?: PromptArtifactEnvelope;
+  readonly derivativeStore?: SpecialistDerivativeArtifactStore | undefined;
 }
 
 export interface PreparedSpecialistRun {
@@ -367,7 +390,275 @@ export async function appendSpecialistFailure(input: {
 }
 
 export function hashSpecialistLocalArtifact(value: unknown): `sha256:${string}` {
-  return `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
+  return hashSpecialistArtifactBytes(serializeSpecialistLocalArtifact(value));
+}
+
+export function serializeSpecialistLocalArtifact(value: unknown): Buffer {
+  return Buffer.from(stableSpecialistJson(normalizeSpecialistJsonValue(value, "Specialist derivative artifact")), "utf8");
+}
+
+export function normalizeSpecialistJsonValue(value: unknown, label: string): unknown {
+  return normalizeSpecialistJsonValueInner(value, label, new WeakSet<object>());
+}
+
+export function assertSpecialistDerivativeStoreAvailable(input: SpecialistRunnerBaseInput): void {
+  if (input.derivativeStore === undefined || typeof input.derivativeStore.put !== "function") {
+    throw new Error("Specialist derivative artifact store is required before model invocation.");
+  }
+}
+
+export function createSpecialistDerivativeArtifactStore(
+  blobStore: SpecialistMountedDerivativeBlobStore
+): SpecialistDerivativeArtifactStore {
+  if (blobStore === undefined || typeof blobStore.put !== "function") {
+    throw new Error("Mounted derivative blob store is required.");
+  }
+  return Object.freeze({
+    async put(content: Buffer): Promise<{ readonly contentHash: `sha256:${string}`; readonly sizeBytes: number }> {
+      const stored = normalizeMountedDerivativeStoreResult(await blobStore.put(content));
+      return Object.freeze({
+        contentHash: stored.contentHash,
+        sizeBytes: stored.sizeBytes
+      });
+    }
+  });
+}
+
+export async function writeSpecialistDerivativeArtifact(input: {
+  readonly derivativeStore?: SpecialistDerivativeArtifactStore | undefined;
+  readonly artifactKind: string;
+  readonly payload: unknown;
+}): Promise<StoredSpecialistDerivativeArtifact> {
+  if (input.derivativeStore === undefined || typeof input.derivativeStore.put !== "function") {
+    throw new Error(`Specialist derivative artifact store is required before writing ${input.artifactKind}.`);
+  }
+  const bytes = serializeSpecialistLocalArtifact(input.payload);
+  const expectedHash = hashSpecialistArtifactBytes(bytes);
+  const stored = normalizeDerivativeStoreResult(
+    await input.derivativeStore.put(bytes),
+    input.artifactKind
+  );
+  if (!/^sha256:[a-f0-9]{64}$/.test(stored.contentHash)) {
+    throw new Error(`Specialist derivative store returned an invalid hash for ${input.artifactKind}.`);
+  }
+  if (stored.contentHash !== expectedHash) {
+    throw new Error(`Specialist derivative store returned a stale hash for ${input.artifactKind}.`);
+  }
+  if (stored.sizeBytes !== bytes.byteLength) {
+    throw new Error(`Specialist derivative store returned a stale byte count for ${input.artifactKind}.`);
+  }
+  return Object.freeze({ artifactHash: stored.contentHash, sizeBytes: stored.sizeBytes });
+}
+
+function normalizeDerivativeStoreResult(
+  value: unknown,
+  artifactKind: string
+): { readonly contentHash: `sha256:${string}`; readonly sizeBytes: number } {
+  const normalized = normalizeSpecialistJsonValue(
+    value,
+    `Specialist derivative store result for ${artifactKind}`
+  );
+  if (normalized === null || typeof normalized !== "object" || Array.isArray(normalized)) {
+    throw new Error(`Specialist derivative store result for ${artifactKind} must be a plain object.`);
+  }
+  const record = normalized as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  if (keys.length !== 2 || keys[0] !== "contentHash" || keys[1] !== "sizeBytes") {
+    throw new Error(`Specialist derivative store result for ${artifactKind} must contain exactly contentHash and sizeBytes.`);
+  }
+  const contentHash = record.contentHash;
+  const sizeBytes = record.sizeBytes;
+  if (typeof contentHash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(contentHash)) {
+    throw new Error(`Specialist derivative store returned an invalid hash for ${artifactKind}.`);
+  }
+  if (typeof sizeBytes !== "number" || !Number.isSafeInteger(sizeBytes) || sizeBytes < 0) {
+    throw new Error(`Specialist derivative store returned an invalid byte count for ${artifactKind}.`);
+  }
+  return Object.freeze({
+    contentHash: contentHash as `sha256:${string}`,
+    sizeBytes
+  });
+}
+
+function normalizeMountedDerivativeStoreResult(
+  value: unknown
+): { readonly contentHash: `sha256:${string}`; readonly sizeBytes: number } {
+  const normalized = normalizeSpecialistJsonValue(
+    value,
+    "Mounted specialist derivative blob store result"
+  );
+  if (normalized === null || typeof normalized !== "object" || Array.isArray(normalized)) {
+    throw new Error("Mounted specialist derivative blob store result must be a plain object.");
+  }
+  const record = normalized as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  if (
+    keys.length !== 3 ||
+    keys[0] !== "contentHash" ||
+    keys[1] !== "path" ||
+    keys[2] !== "sizeBytes"
+  ) {
+    throw new Error("Mounted specialist derivative blob store result must contain contentHash, path, and sizeBytes.");
+  }
+  const contentHash = record.contentHash;
+  const sizeBytes = record.sizeBytes;
+  const path = record.path;
+  if (typeof contentHash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(contentHash)) {
+    throw new Error("Mounted specialist derivative blob store returned an invalid hash.");
+  }
+  if (typeof sizeBytes !== "number" || !Number.isSafeInteger(sizeBytes) || sizeBytes < 0) {
+    throw new Error("Mounted specialist derivative blob store returned an invalid byte count.");
+  }
+  if (typeof path !== "string" || path.length === 0) {
+    throw new Error("Mounted specialist derivative blob store returned an invalid path marker.");
+  }
+  return Object.freeze({
+    contentHash: contentHash as `sha256:${string}`,
+    sizeBytes
+  });
+}
+
+function hashSpecialistArtifactBytes(bytes: Buffer): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+function normalizeSpecialistJsonValueInner(value: unknown, label: string, seen: WeakSet<object>): unknown {
+  if (value === null) {
+    return null;
+  }
+  switch (typeof value) {
+    case "string":
+    case "boolean":
+      return value;
+    case "number":
+      if (!Number.isFinite(value)) {
+        throw new Error(`${label} must not contain non-finite numbers.`);
+      }
+      return value;
+    case "object":
+      if (Array.isArray(value)) {
+        return normalizeSpecialistJsonArray(value, label, seen);
+      }
+      return normalizeSpecialistJsonObject(value, label, seen);
+    default:
+      throw new Error(`${label} must be JSON-serializable.`);
+  }
+}
+
+function normalizeSpecialistJsonArray(value: readonly unknown[], label: string, seen: WeakSet<object>): readonly unknown[] {
+  if (seen.has(value)) {
+    throw new Error(`${label} contains a cycle.`);
+  }
+  seen.add(value);
+  try {
+    rejectSymbolKeys(value, label);
+    const ownNames = Object.getOwnPropertyNames(value);
+    const allowed = new Set(["length", ...Array.from({ length: value.length }, (_, index) => String(index))]);
+    for (const key of ownNames) {
+      if (!allowed.has(key)) {
+        throw new Error(`${label} contains an unsupported array property.`);
+      }
+    }
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    if (lengthDescriptor === undefined || !("value" in lengthDescriptor) || typeof lengthDescriptor.value !== "number") {
+      throw new Error(`${label} has an invalid array length descriptor.`);
+    }
+    const items: unknown[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (descriptor === undefined) {
+        throw new Error(`${label} must not contain sparse arrays.`);
+      }
+      if (!descriptor.enumerable || !("value" in descriptor)) {
+        throw new Error(`${label} array items must be enumerable data properties.`);
+      }
+      items.push(normalizeSpecialistJsonValueInner(descriptor.value, `${label}[${index}]`, seen));
+    }
+    return Object.freeze(items);
+  } finally {
+    seen.delete(value);
+  }
+}
+
+function normalizeSpecialistJsonObject(value: object, label: string, seen: WeakSet<object>): Readonly<Record<string, unknown>> {
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new Error(`${label} must use plain JSON objects.`);
+  }
+  if (seen.has(value)) {
+    throw new Error(`${label} contains a cycle.`);
+  }
+  seen.add(value);
+  try {
+    rejectSymbolKeys(value, label);
+    const enumerableKeys = Object.keys(value);
+    const ownNames = Object.getOwnPropertyNames(value);
+    if (ownNames.length !== enumerableKeys.length) {
+      throw new Error(`${label} must not contain non-enumerable properties.`);
+    }
+    const clone: Record<string, unknown> = {};
+    for (const key of enumerableKeys) {
+      if (unsafeJsonObjectKeys.has(key)) {
+        throw new Error(`${label} contains an unsafe key.`);
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (descriptor === undefined || !("value" in descriptor)) {
+        throw new Error(`${label} must contain only own enumerable data properties.`);
+      }
+      clone[key] = normalizeSpecialistJsonValueInner(descriptor.value, `${label}.${key}`, seen);
+    }
+    return Object.freeze(clone);
+  } finally {
+    seen.delete(value);
+  }
+}
+
+function rejectSymbolKeys(value: object, label: string): void {
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${label} must not contain symbol-keyed properties.`);
+  }
+}
+
+function stableSpecialistJson(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+  switch (typeof value) {
+    case "string":
+    case "boolean":
+    case "number":
+      return JSON.stringify(value);
+    case "object":
+      if (Array.isArray(value)) {
+        return `[${stableSpecialistJsonArray(value)}]`;
+      }
+      return stableSpecialistObjectJson(value);
+    default:
+      throw new Error("Specialist derivative artifacts must be JSON-serializable.");
+  }
+}
+
+function stableSpecialistJsonArray(value: readonly unknown[]): string {
+  const parts: string[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (descriptor === undefined || !("value" in descriptor)) {
+      throw new Error("Specialist derivative artifact array was not normalized.");
+    }
+    parts.push(stableSpecialistJson(descriptor.value));
+  }
+  return parts.join(",");
+}
+
+function stableSpecialistObjectJson(value: object): string {
+  const entries = Object.keys(value).sort().map((key) => {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined || !("value" in descriptor)) {
+      throw new Error("Specialist derivative artifact object was not normalized.");
+    }
+    return `${JSON.stringify(key)}:${stableSpecialistJson(descriptor.value)}`;
+  });
+  return `{${entries.join(",")}}`;
 }
 
 export function governanceLockIsActive(contextPackRefs: readonly ContextPackRef[]): boolean {

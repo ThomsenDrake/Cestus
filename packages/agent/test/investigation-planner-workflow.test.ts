@@ -1,8 +1,14 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import {
+  buildAgentProjection,
   createAgentRuntime,
   createContextPackRegistry,
+  createSpecialistDerivativeArtifactStore,
   FakeModelProvider,
   runInvestigationPlannerWorkflow
 } from "../src/index.js";
@@ -15,6 +21,7 @@ describe("investigation planner workflow", () => {
   it("produces only local task and PRR draft candidates from investigation context", async () => {
     const { ledger, runtime } = await preparedRuntime();
     const contextPacks = createPlannerContextPacks();
+    const derivativeStore = createDerivativeStore();
 
     const result = await runInvestigationPlannerWorkflow({
       ledger,
@@ -32,6 +39,7 @@ describe("investigation planner workflow", () => {
         providerId: "provider_fake_local",
         kind: "local-no-secret"
       },
+      derivativeStore,
       investigationId: "inv_scope_001"
     });
 
@@ -40,6 +48,9 @@ describe("investigation planner workflow", () => {
     expect(result.handoff.outputArtifacts.map((artifact) => artifact.artifactKind)).toEqual(expect.arrayContaining([
       "investigation-plan-artifact", "task-suggestion-bundle", "draft-prr-candidate-bundle"
     ]));
+    for (const artifact of result.handoff.outputArtifacts) {
+      await expect(derivativeStore.get(artifact.artifactHash)).resolves.toBeInstanceOf(Buffer);
+    }
     expect(JSON.stringify(result.handoff)).not.toContain("Private witness timeline note");
     const events = await ledger.readAll();
     expect(events.map((event) => event.type)).toEqual(expect.arrayContaining([
@@ -72,12 +83,93 @@ describe("investigation planner workflow", () => {
         providerId: "provider_fake_local",
         kind: "local-no-secret"
       },
+      derivativeStore: createDerivativeStore(),
       ...(investigationId === undefined ? {} : { investigationId })
     });
 
     expect(result.handoff.status).toBe("blocked");
     expect(result.handoff.safeSummary).toMatch(new RegExp(message, "i"));
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
+  });
+
+  it("blocks before model invocation when derivative storage is unavailable", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+
+    await expect(runInvestigationPlannerWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createPlannerContextPacks(),
+      runtime,
+      providerReadiness: providerReadinessDto(),
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret"
+      },
+      investigationId: "inv_scope_001"
+    })).rejects.toThrow(/derivative artifact store/i);
+
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
+  });
+
+  it("records a safe failed handoff when a later derivative write fails after model invocation", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+    const backingStore = createDerivativeStore();
+    let writeCount = 0;
+
+    const result = await runInvestigationPlannerWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createPlannerContextPacks(),
+      runtime,
+      providerReadiness: providerReadinessDto(),
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret"
+      },
+      derivativeStore: {
+        put: async (content) => {
+          writeCount += 1;
+          if (writeCount === 2) {
+            throw new Error("private investigation storage failure");
+          }
+          return await backingStore.put(content);
+        }
+      },
+      investigationId: "inv_scope_001"
+    });
+
+    expect(writeCount).toBe(2);
+    expect(result.handoff).toMatchObject({
+      status: "failed",
+      failure: {
+        category: "external-effect-failed",
+        code: "investigation-planner-derivative-storage-failed",
+        retryable: true
+      },
+      outputArtifacts: [],
+      toolRequestIds: []
+    });
+    expect(JSON.stringify(result.handoff)).not.toContain("private investigation storage failure");
+    const events = await ledger.readAll();
+    const eventTypes = events.map((event) => event.type);
+    expect(eventTypes).toContain("agent.model-invocation.completed");
+    expect(eventTypes).toContain("agent.specialist-run.failed");
+    expect(eventTypes).not.toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).not.toContain("agent.specialist-run.completed");
+    expect(eventTypes).not.toContain("agent.tool.requested");
+    expect(buildAgentProjection(events).runs.get("run_investigation_001")?.state).toBe("failed");
   });
 
   it("records invalid model output as a safe failed handoff without local artifacts", async () => {
@@ -123,6 +215,7 @@ describe("investigation planner workflow", () => {
         providerId: "provider_fake_local",
         kind: "local-no-secret"
       },
+      derivativeStore: createDerivativeStore(),
       investigationId: "inv_scope_001"
     });
 
@@ -207,6 +300,15 @@ function createPlannerContextPacks(governanceLocked = false) {
     });
   }
   return registry;
+}
+
+function createDerivativeStore() {
+  const blobStore = new FileBlobStore(mkdtempSync(join(tmpdir(), "cestus-agent-investigation-planner-")));
+  const derivativeStore = createSpecialistDerivativeArtifactStore(blobStore);
+  return Object.freeze({
+    put: derivativeStore.put,
+    get: blobStore.get.bind(blobStore)
+  });
 }
 
 function providerReadinessDto(): ProviderReadinessDto {

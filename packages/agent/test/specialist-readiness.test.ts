@@ -207,6 +207,26 @@ describe("specialist workflow readiness projection", () => {
     });
   });
 
+  it("reports exact future contradiction claim review family without mapping it to accepted graph readiness", () => {
+    const descriptor = specialistWorkflowDescriptorFor("contradiction-finder");
+
+    const readiness = projectSpecialistWorkflowReadiness(readyInput(descriptor, {
+      availableDomainAdapterFamilies: ["provider-byte-transfer"]
+    }));
+
+    expect(descriptor.allowedTools.map((tool) => tool.toolId)).toEqual(expect.arrayContaining([
+      "diagnostic.investigative-signal.request",
+      "claim.contradiction-link.request"
+    ]));
+    expect(readiness).toMatchObject({
+      status: "blocked",
+      category: "blocked-prerequisite",
+      missingAdapterFamilies: ["contradiction-claim-review"]
+    });
+    expect(readiness.nextSafeActions).not.toContain("register domain adapter family accepted-graph-review");
+    expect(readiness.nextSafeActions).toContain("register domain adapter family contradiction-claim-review");
+  });
+
   it("blocks on active locks and reports only safe lock IDs", () => {
     const descriptor = specialistWorkflowDescriptorFor("timeline-builder");
 

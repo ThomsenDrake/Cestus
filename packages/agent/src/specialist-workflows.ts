@@ -166,8 +166,9 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
         tool("ingestion.provider-parse-approval.request", "ingestion", "external-byte-transfer", "provider-byte-transfer", "Request provider parse approval without parsing."),
         tool("evidence.triage-dossier.write-local", "ingestion", "local-derivative", "none", "Write a local triage dossier."),
         tool("governance.classification.propose", "governance", "ledger-proposal", "human-review", "Propose governance classification decisions for review."),
-        tool("governance.quarantine-review.request", "governance", "ledger-review", "human-review", "Request quarantine or redaction review."),
+        tool("governance.quarantine-review.request", "governance", "ledger-proposal", "human-review", "Request quarantine or redaction review."),
         tool("assertion.candidate-bundle.write-local", "ontology", "local-derivative", "none", "Write a local assertion candidate bundle."),
+        tool("ontology.assertion-proposal.request", "ontology", "ledger-proposal", "human-review", "Request assertion-candidate proposal review without mutating accepted graph truth."),
         tool("agent.memory.record-caveat", "agent", "ledger-proposal", "human-review", "Record a source-linked caveat for future runs.")
       ],
       approvalRequirements: [
@@ -258,7 +259,7 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
       allowedTools: [
         tool("contradiction.sources.read", "ontology", "read-only", "none", "Read paired sources, assertions, and summaries for comparison."),
         tool("contradiction.candidate-dossier.write-local", "agent", "local-derivative", "none", "Write a local contradiction candidate dossier."),
-        tool("diagnostic.investigative-signal.request", "agent", "ledger-review", "human-review", "Request a durable investigative signal review."),
+        tool("diagnostic.investigative-signal.request", "agent", "ledger-review", "ledger-review", "Request a durable investigative signal review."),
         tool("claim.contradiction-link.request", "ontology", "ledger-review", "ledger-review", "Request a contradiction link review without mutating claims."),
         tool("agent.memory.record-caveat", "agent", "ledger-proposal", "human-review", "Record a source-linked caveat for future runs.")
       ],
