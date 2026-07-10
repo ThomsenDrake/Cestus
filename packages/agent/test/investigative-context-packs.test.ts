@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   __testOnlyReadEvidenceSelectionProbe,
   __testOnlyResolveInvestigativeSelection,
+  acceptedGraphProjectionPayloadParser,
   assertSelectionManifestHash,
+  buildAcceptedGraphProjectionContextPack,
   buildEvidenceSummaryContextPack,
   buildSelectionManifestHash,
   evidenceSummaryPayloadParser,
@@ -428,6 +430,123 @@ describe("investigative context packs", () => {
     expect(trimmed.ref.contentHash).toBe(reorderedTrimmed.ref.contentHash);
     expect(trimmed.payload.omissions).toEqual(reorderedTrimmed.payload.omissions);
   });
+
+  it("builds accepted graph context from reviewed projection rows with exact assertion provenance", async () => {
+    const deps = createInvestigativeDeps();
+    const resolved = await buildAcceptedGraphProjectionContextPack({
+      deps,
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    });
+
+    expect(resolved.ref.contextPackId).toBe("accepted-graph-projection.v1");
+    expect(resolved.payload.truthBoundary).toMatchObject({
+      authoritativeForAcceptedGraph: true,
+      readOnlyProjectionTruth: true,
+      canInferNewAcceptedEdges: false,
+      graphMutationRequiresReviewedOntologyEvent: true
+    });
+    expect(resolved.payload.items.assertions[0]).toMatchObject({
+      assertionId: "assertion_contract_vendor_001",
+      evidenceId: "ev_contract_001",
+      evidenceContentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      proposedByEventId: "evt_assertion_proposed_001",
+      acceptedByEventId: "evt_assertion_accepted_001"
+    });
+  });
+
+  it("rejects accepted assertions missing reviewed event or evidence hash provenance", async () => {
+    const deps = createInvestigativeDeps({ acceptedAssertionWithoutEvidenceHash: true });
+
+    await expect(buildAcceptedGraphProjectionContextPack({
+      deps,
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "missing-provenance" });
+  });
+
+  it("rejects accepted graph rows missing row hash or selection provenance", async () => {
+    await expect(buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps({ graphRowHashMismatch: true }),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "selection-row-mismatch" });
+
+    await expect(buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps({ graphMissingSelectedAcceptedEvent: true }),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "missing-provenance" });
+  });
+
+  it("does not infer accepted relationships when relationship projection is unavailable", async () => {
+    const deps = createInvestigativeDeps({ relationshipProjectionUnavailable: true });
+    const resolved = await buildAcceptedGraphProjectionContextPack({
+      deps,
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    });
+
+    expect(resolved.payload.items.relationships).toEqual([]);
+    expect(resolved.payload.omissions).toEqual(expect.arrayContaining([expect.objectContaining({
+      reasonCode: "relationship-projection-unavailable",
+      refKind: "relationship"
+    })]));
+  });
+
+  it("keeps accepted graph query work bounded as unrelated graph rows grow", async () => {
+    const counters = createReaderCounters();
+    const deps = createInvestigativeDeps({ counters, unrelatedGraphRows: 25_000 });
+
+    await buildAcceptedGraphProjectionContextPack({
+      deps,
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    });
+
+    expect(counters.graphReads).toBe(1);
+    expect(counters.assertionIdsRead).toEqual(["assertion_contract_vendor_001"]);
+    expect(counters.unrelatedRowsScanned).toBe(0);
+  });
+
+  it("parses accepted-graph payloads strictly by schema", async () => {
+    const resolved = await buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    });
+
+    expect(() => acceptedGraphProjectionPayloadParser.parsePayload(resolved.payload)).not.toThrow();
+    expect(() => acceptedGraphProjectionPayloadParser.parsePayload({
+      ...resolved.payload,
+      truthBoundary: {
+        authoritativeForAcceptedGraph: true,
+        readOnlyProjectionTruth: true,
+        canInferNewAcceptedEdges: true,
+        graphMutationRequiresReviewedOntologyEvent: true
+      }
+    })).toThrow(/accepted-graph payload/i);
+    expect(() => acceptedGraphProjectionPayloadParser.parsePayload({
+      ...resolved.payload,
+      extra: "unexpected"
+    })).toThrow(/accepted-graph payload/i);
+  });
+
+  it("canonicalizes accepted graph row ordering before deriving content hashes", async () => {
+    const first = await buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    });
+    const second = await buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps({ reverseGraphRows: true }),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    });
+
+    expect(first.payload).toEqual(second.payload);
+    expect(first.ref.contentHash).toBe(second.ref.contentHash);
+  });
 });
 
 interface ReaderCounters {
@@ -480,6 +599,9 @@ interface CreateInvestigativeDepsInput {
   readonly rawActionField?: string;
   readonly acceptedAssertionWithoutEvidenceHash?: boolean;
   readonly relationshipProjectionUnavailable?: boolean;
+  readonly graphRowHashMismatch?: boolean;
+  readonly graphMissingSelectedAcceptedEvent?: boolean;
+  readonly reverseGraphRows?: boolean;
   readonly graphSentinel?: string;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
@@ -520,6 +642,9 @@ function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): Inve
     unrelatedGovernanceRows: input.unrelatedGovernanceRows ?? 0,
     acceptedAssertionWithoutEvidenceHash: input.acceptedAssertionWithoutEvidenceHash ?? false,
     relationshipProjectionUnavailable: input.relationshipProjectionUnavailable ?? false,
+    graphRowHashMismatch: input.graphRowHashMismatch ?? false,
+    graphMissingSelectedAcceptedEvent: input.graphMissingSelectedAcceptedEvent ?? false,
+    reverseGraphRows: input.reverseGraphRows ?? false,
     ...(input.selection === undefined ? {} : { selection: input.selection }),
     ...(input.postureResult === undefined ? {} : { postureResult: input.postureResult }),
     ...(input.safeNarrative === undefined ? {} : { safeNarrative: input.safeNarrative }),
@@ -545,6 +670,9 @@ function createFakeInvestigativeDeps(input: {
   readonly rawActionField?: string;
   readonly acceptedAssertionWithoutEvidenceHash: boolean;
   readonly relationshipProjectionUnavailable: boolean;
+  readonly graphRowHashMismatch: boolean;
+  readonly graphMissingSelectedAcceptedEvent: boolean;
+  readonly reverseGraphRows: boolean;
   readonly graphSentinel?: string;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
@@ -572,12 +700,58 @@ function createFakeInvestigativeDeps(input: {
     evidenceId: `ev_unrelated_${index}`,
     contentHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const
   }));
+  const graph = graphRows({
+    acceptedAssertionWithoutEvidenceHash: input.acceptedAssertionWithoutEvidenceHash,
+    graphRowHashMismatch: input.graphRowHashMismatch,
+    ...(input.graphSentinel === undefined ? {} : { graphSentinel: input.graphSentinel }),
+    reverseGraphRows: input.reverseGraphRows
+  });
+  const graphManifest = selectionManifestForGraph({ missingAcceptedEvent: input.graphMissingSelectedAcceptedEvent });
+  const graphAssertionsById = new Map(graph.assertions.map((row) => [row.assertionId, row]));
+  const graphEntitiesById = new Map(graph.entities.map((row) => [row.entityId, row]));
+  const graphRelationshipsById = new Map(graph.relationships.map((row) => [row.relationshipId, row]));
+  const unrelatedGraphRows = Array.from({ length: input.unrelatedGraphRows }, (_, index) => ({
+    assertionId: `assertion_unrelated_${index}`
+  }));
 
   return {
     selection: input.selection ?? {
       capabilityVersion: "investigative-selection.v1",
-      select() {
+      select(request) {
+        if (request.contextPackId === "accepted-graph-projection.v1") {
+          return {
+            ...graphManifest,
+            scope: request.scope,
+            manifestHash: buildSelectionManifestHash({ ...graphManifest, scope: request.scope })
+          };
+        }
         return input.manifest;
+      }
+    },
+    graphReader: {
+      readAcceptedGraphByIds(request) {
+        input.counters.graphReads += 1;
+        input.counters.assertionIdsRead.push(...request.assertionIds);
+        if (request.assertionIds.some((assertionId) => !graphAssertionsById.has(assertionId))) {
+          input.counters.unrelatedRowsScanned += unrelatedGraphRows.length;
+        }
+        return {
+          assertions: request.assertionIds.flatMap((assertionId) => {
+            const row = graphAssertionsById.get(assertionId);
+            return row === undefined ? [] : [row];
+          }),
+          entities: request.entityIds.flatMap((entityId) => {
+            const row = graphEntitiesById.get(entityId);
+            return row === undefined ? [] : [row];
+          }),
+          relationships: input.relationshipProjectionUnavailable
+            ? []
+            : request.relationshipIds.flatMap((relationshipId) => {
+                const row = graphRelationshipsById.get(relationshipId);
+                return row === undefined ? [] : [row];
+              }),
+          relationshipProjectionAvailable: !input.relationshipProjectionUnavailable
+        };
       }
     },
     evidenceReader: {
@@ -682,6 +856,118 @@ function fixedSelection(body: InvestigativeSelectionManifestBody): Investigative
     select() {
       return manifest;
     }
+  };
+}
+
+function selectionManifestForGraph(input: { readonly missingAcceptedEvent: boolean }): ReturnType<typeof selectionManifest> {
+  const assertionRowHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
+  const vendorEntityRowHash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
+  const agencyEntityRowHash = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
+  const relationshipRowHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as const;
+  const body: InvestigativeSelectionManifestBody = {
+    manifestVersion: "investigative-selection-manifest.v1",
+    scope: { kind: "task", id: "task_graph" },
+    sourceProjectionHighWaterMarks: { graph: 42 },
+    ordering: "ref-kind-ref-id-content-hash-v1",
+    window: {
+      cursor: "cursor_task_graph_0001",
+      offset: 0,
+      limit: 100,
+      stableSort: "ref-kind-ref-id-content-hash-v1"
+    },
+    totalEligibleCount: 4,
+    includedRefs: [
+      {
+        refKind: "assertion",
+        refId: "assertion_contract_vendor_001",
+        sortKey: `assertion/assertion_contract_vendor_001/${assertionRowHash}`,
+        rowHash: assertionRowHash,
+        sourceEventIds: input.missingAcceptedEvent
+          ? ["evt_assertion_proposed_001"]
+          : ["evt_assertion_proposed_001", "evt_assertion_accepted_001"],
+        mandatory: true
+      },
+      {
+        refKind: "entity",
+        refId: "entity_agency_001",
+        sortKey: `entity/entity_agency_001/${agencyEntityRowHash}`,
+        rowHash: agencyEntityRowHash,
+        sourceEventIds: ["evt_entity_resolved_001"],
+        mandatory: true
+      },
+      {
+        refKind: "entity",
+        refId: "entity_vendor_001",
+        sortKey: `entity/entity_vendor_001/${vendorEntityRowHash}`,
+        rowHash: vendorEntityRowHash,
+        sourceEventIds: ["evt_entity_resolved_002"],
+        mandatory: true
+      },
+      {
+        refKind: "relationship",
+        refId: "relationship_contract_awarded_001",
+        sortKey: `relationship/relationship_contract_awarded_001/${relationshipRowHash}`,
+        rowHash: relationshipRowHash,
+        sourceEventIds: ["evt_relationship_accepted_001"],
+        mandatory: false
+      }
+    ],
+    aggregateOmissions: []
+  };
+  return { ...body, manifestHash: buildSelectionManifestHash(body) };
+}
+
+function graphRows(input: {
+  readonly acceptedAssertionWithoutEvidenceHash: boolean;
+  readonly graphRowHashMismatch: boolean;
+  readonly graphSentinel?: string;
+  readonly reverseGraphRows: boolean;
+}) {
+  const assertion = {
+    assertionId: "assertion_contract_vendor_001",
+    evidenceId: "ev_contract_001",
+    evidenceContentHash: (input.acceptedAssertionWithoutEvidenceHash
+      ? ""
+      : "sha256:1111111111111111111111111111111111111111111111111111111111111111") as `sha256:${string}`,
+    proposedByEventId: "evt_assertion_proposed_001",
+    acceptedByEventId: "evt_assertion_accepted_001",
+    sourceEventIds: ["evt_assertion_accepted_001", "evt_assertion_proposed_001"],
+    rowHash: (input.graphRowHashMismatch
+      ? "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      : "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") as `sha256:${string}`,
+    safeStatement: input.graphSentinel ?? "Agency awarded a reviewed contract to the vendor."
+  };
+  const entities = [
+    {
+      entityId: "entity_agency_001",
+      rowHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as `sha256:${string}`,
+      safeLabel: "City Agency",
+      sourceEventIds: ["evt_entity_resolved_001"]
+    },
+    {
+      entityId: "entity_vendor_001",
+      rowHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as `sha256:${string}`,
+      safeLabel: "Vendor LLC",
+      sourceEventIds: ["evt_entity_resolved_002"]
+    }
+  ];
+  const relationships = [
+    {
+      relationshipId: "relationship_contract_awarded_001",
+      acceptedByEventId: "evt_relationship_accepted_001",
+      evidenceId: "ev_contract_001",
+      evidenceContentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111" as `sha256:${string}`,
+      sourceEventIds: ["evt_relationship_accepted_001"],
+      rowHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as `sha256:${string}`,
+      sourceEntityId: "entity_agency_001",
+      targetEntityId: "entity_vendor_001",
+      relationshipType: "awarded_contract_to"
+    }
+  ];
+  return {
+    assertions: [assertion],
+    entities: input.reverseGraphRows ? [...entities].reverse() : entities,
+    relationships: input.reverseGraphRows ? [...relationships].reverse() : relationships
   };
 }
 

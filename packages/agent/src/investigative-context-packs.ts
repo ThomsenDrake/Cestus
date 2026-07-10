@@ -233,6 +233,56 @@ export interface InvestigativeEvidenceReader {
   }): Promise<readonly InvestigativeEvidenceRow[]> | readonly InvestigativeEvidenceRow[];
 }
 
+export interface AcceptedGraphAssertionRow {
+  readonly assertionId: string;
+  readonly evidenceId: string;
+  readonly evidenceContentHash: `sha256:${string}`;
+  readonly proposedByEventId: string;
+  readonly acceptedByEventId: string;
+  readonly sourceEventIds: readonly string[];
+  readonly rowHash: `sha256:${string}`;
+  readonly safeStatement: string;
+}
+
+export interface AcceptedGraphEntityRow {
+  readonly entityId: string;
+  readonly rowHash: `sha256:${string}`;
+  readonly safeLabel: string;
+  readonly sourceEventIds: readonly string[];
+}
+
+export interface AcceptedGraphRelationshipRow {
+  readonly relationshipId: string;
+  readonly acceptedByEventId: string;
+  readonly evidenceId: string;
+  readonly evidenceContentHash: `sha256:${string}`;
+  readonly sourceEventIds: readonly string[];
+  readonly rowHash: `sha256:${string}`;
+  readonly sourceEntityId: string;
+  readonly targetEntityId: string;
+  readonly relationshipType: string;
+}
+
+export interface AcceptedGraphProjectionReader {
+  readAcceptedGraphByIds(input: {
+    readonly assertionIds: readonly string[];
+    readonly entityIds: readonly string[];
+    readonly relationshipIds: readonly string[];
+    readonly highWaterMarks: InvestigativeProjectionHighWaterMarks;
+    readonly limit: number;
+  }): Promise<{
+    readonly assertions: readonly AcceptedGraphAssertionRow[];
+    readonly entities: readonly AcceptedGraphEntityRow[];
+    readonly relationships: readonly AcceptedGraphRelationshipRow[];
+    readonly relationshipProjectionAvailable: boolean;
+  }> | {
+    readonly assertions: readonly AcceptedGraphAssertionRow[];
+    readonly entities: readonly AcceptedGraphEntityRow[];
+    readonly relationships: readonly AcceptedGraphRelationshipRow[];
+    readonly relationshipProjectionAvailable: boolean;
+  };
+}
+
 export interface EvidenceSourcePostureCheckInput {
   readonly evidenceId: string;
   readonly contentHash: `sha256:${string}`;
@@ -268,6 +318,7 @@ export interface InvestigativeContextPackMetadata {
 export interface InvestigativeContextPackDependencies {
   readonly selection: InvestigativeSelectionCapability;
   readonly evidenceReader: InvestigativeEvidenceReader;
+  readonly graphReader: AcceptedGraphProjectionReader;
   readonly evidenceSourcePosture: EvidenceSourcePostureCapability;
   readonly now: () => string;
   readonly metadata: InvestigativeContextPackMetadata;
@@ -312,6 +363,8 @@ export interface InvestigativeContextPackPayloadParser<Payload extends Investiga
 export interface AcceptedGraphProjectionPayload extends InvestigativeContextPackPayloadBase {
   readonly schemaVersion: "accepted-graph-projection.context.v1";
   readonly contextPackId: "accepted-graph-projection.v1";
+  readonly version: 1;
+  readonly ontologyCoreVersion: string;
   readonly truthBoundary: {
     readonly authoritativeForAcceptedGraph: true;
     readonly readOnlyProjectionTruth: true;
@@ -319,10 +372,45 @@ export interface AcceptedGraphProjectionPayload extends InvestigativeContextPack
     readonly graphMutationRequiresReviewedOntologyEvent: true;
   };
   readonly items: {
-    readonly assertions: readonly AgentContextPackJsonValue[];
-    readonly entities: readonly AgentContextPackJsonValue[];
-    readonly relationships: readonly AgentContextPackJsonValue[];
+    readonly assertions: readonly AcceptedGraphAssertionItem[] & readonly AgentContextPackJsonValue[];
+    readonly entities: readonly AcceptedGraphEntityItem[] & readonly AgentContextPackJsonValue[];
+    readonly relationships: readonly AcceptedGraphRelationshipItem[] & readonly AgentContextPackJsonValue[];
   };
+}
+
+export interface AcceptedGraphAssertionItem {
+  readonly assertionId: string;
+  readonly evidenceId: string;
+  readonly evidenceContentHash: `sha256:${string}`;
+  readonly proposedByEventId: string;
+  readonly acceptedByEventId: string;
+  readonly sourceEventIds: readonly string[];
+  readonly rowHash: `sha256:${string}`;
+  readonly safeStatement: string;
+}
+
+export interface AcceptedGraphEntityItem {
+  readonly entityId: string;
+  readonly rowHash: `sha256:${string}`;
+  readonly safeLabel: string;
+  readonly sourceEventIds: readonly string[];
+}
+
+export interface AcceptedGraphRelationshipItem {
+  readonly relationshipId: string;
+  readonly acceptedByEventId: string;
+  readonly evidenceId: string;
+  readonly evidenceContentHash: `sha256:${string}`;
+  readonly sourceEventIds: readonly string[];
+  readonly rowHash: `sha256:${string}`;
+  readonly sourceEntityId: string;
+  readonly targetEntityId: string;
+  readonly relationshipType: string;
+}
+
+export interface ResolvedAcceptedGraphProjectionContextPack {
+  readonly ref: ResolvedContextPack["ref"];
+  readonly payload: AcceptedGraphProjectionPayload;
 }
 
 export interface EvidenceSummaryPayload extends InvestigativeContextPackPayloadBase {
@@ -382,7 +470,8 @@ export const investigativePayloadParserIdentities = Object.freeze({
 
 export const acceptedGraphProjectionPayloadParser = createPayloadParser<AcceptedGraphProjectionPayload>(
   "accepted-graph-projection.v1",
-  "accepted-graph-projection.context.v1"
+  "accepted-graph-projection.context.v1",
+  parseAcceptedGraphProjectionPayload
 );
 export const evidenceSummaryPayloadParser = createPayloadParser<EvidenceSummaryPayload>(
   "evidence-summary.v1",
@@ -553,6 +642,369 @@ export async function buildEvidenceSummaryContextPack(
     stalenessInputs: normalizedStalenessInputs,
     policyVersion: metadata.policyVersion
   });
+}
+
+export async function buildAcceptedGraphProjectionContextPack(
+  input: BuildInvestigativeContextPackInput
+): Promise<ResolvedAcceptedGraphProjectionContextPack> {
+  const selectedManifest = await selectForPack("accepted-graph-projection.v1", input);
+  const manifest = canonicalSelectionManifest(selectedManifest);
+  const assertionRefs = manifest.includedRefs.filter((ref) => ref.refKind === "assertion");
+  const entityRefs = manifest.includedRefs.filter((ref) => ref.refKind === "entity");
+  const relationshipRefs = manifest.includedRefs.filter((ref) => ref.refKind === "relationship");
+  const graphRows = await input.deps.graphReader.readAcceptedGraphByIds({
+    assertionIds: assertionRefs.map((ref) => ref.refId),
+    entityIds: entityRefs.map((ref) => ref.refId),
+    relationshipIds: relationshipRefs.map((ref) => ref.refId),
+    highWaterMarks: manifest.sourceProjectionHighWaterMarks,
+    limit: readerBatchSize
+  });
+  const metadata = canonicalMetadata(input.deps.metadata);
+  const assertions = validateAcceptedGraphAssertions(assertionRefs, graphRows.assertions);
+  const entities = validateAcceptedGraphEntities(entityRefs, graphRows.entities);
+  const relationshipValidation = validateAcceptedGraphRelationships({
+    relationshipRefs,
+    relationshipRows: graphRows.relationships,
+    relationshipProjectionAvailable: graphRows.relationshipProjectionAvailable
+  });
+  const omissions = canonicalOmissions([
+    ...manifest.aggregateOmissions,
+    ...relationshipValidation.omissions
+  ]);
+  const stalenessInputs = canonicalStalenessInputs([
+    ...acceptedGraphHighWaterStalenessInputs(manifest.sourceProjectionHighWaterMarks),
+    ...assertions.map((row) => ({
+      kind: "accepted-assertion-evidence-hash",
+      ref: row.assertionId,
+      value: row.evidenceContentHash
+    })),
+    ...relationshipValidation.relationships.map((row) => ({
+      kind: "accepted-relationship-evidence-hash",
+      ref: row.relationshipId,
+      value: row.evidenceContentHash
+    }))
+  ]);
+  const payload = acceptedGraphProjectionPayloadParser.parsePayload({
+    schemaVersion: "accepted-graph-projection.context.v1",
+    contextPackId: "accepted-graph-projection.v1",
+    version: 1,
+    ontologyCoreVersion: metadata.ontologyCoreVersion,
+    scope: manifest.scope,
+    truthBoundary: {
+      authoritativeForAcceptedGraph: true,
+      readOnlyProjectionTruth: true,
+      canInferNewAcceptedEdges: false,
+      graphMutationRequiresReviewedOntologyEvent: true
+    },
+    selectionManifest: manifest,
+    projectionHighWaterMarks: manifest.sourceProjectionHighWaterMarks,
+    packVersions: metadata.packVersions,
+    items: {
+      assertions: assertions.map(toAcceptedGraphAssertionItem).sort(compareAcceptedGraphAssertionItems),
+      entities: entities.map(toAcceptedGraphEntityItem).sort(compareAcceptedGraphEntityItems),
+      relationships: relationshipValidation.relationships
+        .map(toAcceptedGraphRelationshipItem)
+        .sort(compareAcceptedGraphRelationshipItems)
+    },
+    omissions,
+    stalenessInputs
+  });
+  const provenanceRefs = acceptedGraphProvenanceRefs({
+    manifest,
+    assertions,
+    entities,
+    relationships: relationshipValidation.relationships,
+    metadata
+  });
+  const budget = input.sizeBudgetBytes
+    ?? input.deps.budgets?.["accepted-graph-projection.v1"]
+    ?? investigativeContextPackDefaultLimits.packBudgets["accepted-graph-projection.v1"];
+  const resolved = buildAcceptedGraphResolvedPack({
+    payload,
+    manifest,
+    now: input.deps.now,
+    provenanceRefs,
+    stalenessInputs,
+    policyVersion: metadata.policyVersion
+  });
+  if (resolved.ref.sizeBytes > budget) {
+    throw new InvestigativeContextPackError("context-budget-exceeded", "context-budget-exceeded");
+  }
+  return buildAcceptedGraphResolvedPack({
+    payload,
+    manifest,
+    now: input.deps.now,
+    provenanceRefs,
+    stalenessInputs,
+    policyVersion: metadata.policyVersion,
+    sizeBudgetBytes: budget
+  });
+}
+
+function validateAcceptedGraphAssertions(
+  assertionRefs: readonly InvestigativeSelectionIncludedRef[],
+  assertionRows: readonly AcceptedGraphAssertionRow[]
+): readonly AcceptedGraphAssertionRow[] {
+  const rowsById = mapUniqueRows(assertionRows, (row) => row.assertionId);
+  if (rowsById.size !== assertionRefs.length) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+  return Object.freeze(assertionRefs.map((ref) => {
+    const row = rowsById.get(ref.refId);
+    if (row === undefined) {
+      throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+    }
+    assertAcceptedAssertionRow(row, ref);
+    return row;
+  }));
+}
+
+function validateAcceptedGraphEntities(
+  entityRefs: readonly InvestigativeSelectionIncludedRef[],
+  entityRows: readonly AcceptedGraphEntityRow[]
+): readonly AcceptedGraphEntityRow[] {
+  const rowsById = mapUniqueRows(entityRows, (row) => row.entityId);
+  if (rowsById.size !== entityRefs.length) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+  return Object.freeze(entityRefs.map((ref) => {
+    const row = rowsById.get(ref.refId);
+    if (row === undefined) {
+      throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+    }
+    assertAcceptedEntityRow(row, ref);
+    return row;
+  }));
+}
+
+function validateAcceptedGraphRelationships(input: {
+  readonly relationshipRefs: readonly InvestigativeSelectionIncludedRef[];
+  readonly relationshipRows: readonly AcceptedGraphRelationshipRow[];
+  readonly relationshipProjectionAvailable: boolean;
+}): {
+  readonly relationships: readonly AcceptedGraphRelationshipRow[];
+  readonly omissions: readonly InvestigativeContextOmissionAggregate[];
+} {
+  if (!input.relationshipProjectionAvailable) {
+    return {
+      relationships: Object.freeze([]),
+      omissions: Object.freeze([{
+        reasonCode: "relationship-projection-unavailable",
+        refKind: "relationship",
+        aggregateKey: "ontology.accepted-relationship",
+        count: Math.max(1, input.relationshipRefs.length),
+        sampleRefs: canonicalSampleRefs(input.relationshipRefs.map((ref) => ({
+          refKind: "relationship",
+          refId: ref.refId,
+          ...(ref.rowHash === undefined ? {} : { contentHash: ref.rowHash })
+        })))
+      }])
+    };
+  }
+
+  const rowsById = mapUniqueRows(input.relationshipRows, (row) => row.relationshipId);
+  if (rowsById.size !== input.relationshipRefs.length) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+  const relationships = input.relationshipRefs.map((ref) => {
+    const row = rowsById.get(ref.refId);
+    if (row === undefined) {
+      throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+    }
+    assertAcceptedRelationshipRow(row, ref);
+    return row;
+  });
+  return { relationships: Object.freeze(relationships), omissions: Object.freeze([]) };
+}
+
+function mapUniqueRows<Row>(rows: readonly Row[], getId: (row: Row) => string): Map<string, Row> {
+  const rowsById = new Map<string, Row>();
+  for (const row of rows) {
+    const id = getId(row);
+    if (rowsById.has(id)) {
+      throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+    }
+    rowsById.set(id, row);
+  }
+  return rowsById;
+}
+
+function assertAcceptedAssertionRow(row: AcceptedGraphAssertionRow, ref: InvestigativeSelectionIncludedRef): void {
+  if (!isSafeNonEmptyText(row.assertionId) || row.assertionId !== ref.refId
+    || !isSafeNonEmptyText(row.evidenceId) || !isContentHash(row.evidenceContentHash)
+    || !isSafeNonEmptyText(row.proposedByEventId) || !isSafeNonEmptyText(row.acceptedByEventId)
+    || !isContentHash(row.rowHash) || !isSafeNonEmptyText(row.safeStatement)) {
+    throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
+  }
+  if (ref.rowHash !== row.rowHash) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+  if (!ref.sourceEventIds.includes(row.proposedByEventId) || !ref.sourceEventIds.includes(row.acceptedByEventId)
+    || !row.sourceEventIds.includes(row.proposedByEventId) || !row.sourceEventIds.includes(row.acceptedByEventId)) {
+    throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
+  }
+}
+
+function assertAcceptedEntityRow(row: AcceptedGraphEntityRow, ref: InvestigativeSelectionIncludedRef): void {
+  if (!isSafeNonEmptyText(row.entityId) || row.entityId !== ref.refId || !isContentHash(row.rowHash)
+    || ref.rowHash !== row.rowHash || !isSafeNonEmptyText(row.safeLabel)
+    || row.sourceEventIds.length === 0 || !row.sourceEventIds.every(isSafeNonEmptyText)
+    || !row.sourceEventIds.every((eventId) => ref.sourceEventIds.includes(eventId))) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+}
+
+function assertAcceptedRelationshipRow(row: AcceptedGraphRelationshipRow, ref: InvestigativeSelectionIncludedRef): void {
+  if (!isSafeNonEmptyText(row.relationshipId) || row.relationshipId !== ref.refId
+    || !isSafeNonEmptyText(row.acceptedByEventId) || !isSafeNonEmptyText(row.evidenceId)
+    || !isContentHash(row.evidenceContentHash) || !isContentHash(row.rowHash) || ref.rowHash !== row.rowHash
+    || !isSafeNonEmptyText(row.sourceEntityId) || !isSafeNonEmptyText(row.targetEntityId)
+    || !isSafeNonEmptyText(row.relationshipType)) {
+    throw new InvestigativeContextPackError("accepted-relationship-not-authoritative", "accepted-relationship-not-authoritative");
+  }
+  if (!ref.sourceEventIds.includes(row.acceptedByEventId) || !row.sourceEventIds.includes(row.acceptedByEventId)) {
+    throw new InvestigativeContextPackError("accepted-relationship-not-authoritative", "accepted-relationship-not-authoritative");
+  }
+}
+
+function toAcceptedGraphAssertionItem(row: AcceptedGraphAssertionRow): AcceptedGraphAssertionItem {
+  return {
+    assertionId: row.assertionId,
+    evidenceId: row.evidenceId,
+    evidenceContentHash: row.evidenceContentHash,
+    proposedByEventId: row.proposedByEventId,
+    acceptedByEventId: row.acceptedByEventId,
+    sourceEventIds: Object.freeze([...row.sourceEventIds].sort(compareText)),
+    rowHash: row.rowHash,
+    safeStatement: row.safeStatement
+  };
+}
+
+function toAcceptedGraphEntityItem(row: AcceptedGraphEntityRow): AcceptedGraphEntityItem {
+  return {
+    entityId: row.entityId,
+    rowHash: row.rowHash,
+    safeLabel: row.safeLabel,
+    sourceEventIds: Object.freeze([...row.sourceEventIds].sort(compareText))
+  };
+}
+
+function toAcceptedGraphRelationshipItem(row: AcceptedGraphRelationshipRow): AcceptedGraphRelationshipItem {
+  return {
+    relationshipId: row.relationshipId,
+    acceptedByEventId: row.acceptedByEventId,
+    evidenceId: row.evidenceId,
+    evidenceContentHash: row.evidenceContentHash,
+    sourceEventIds: Object.freeze([...row.sourceEventIds].sort(compareText)),
+    rowHash: row.rowHash,
+    sourceEntityId: row.sourceEntityId,
+    targetEntityId: row.targetEntityId,
+    relationshipType: row.relationshipType
+  };
+}
+
+function compareAcceptedGraphAssertionItems(left: AcceptedGraphAssertionItem, right: AcceptedGraphAssertionItem): number {
+  return compareText(left.assertionId, right.assertionId);
+}
+
+function compareAcceptedGraphEntityItems(left: AcceptedGraphEntityItem, right: AcceptedGraphEntityItem): number {
+  return compareText(left.entityId, right.entityId);
+}
+
+function compareAcceptedGraphRelationshipItems(left: AcceptedGraphRelationshipItem, right: AcceptedGraphRelationshipItem): number {
+  return compareText(left.relationshipId, right.relationshipId);
+}
+
+function acceptedGraphHighWaterStalenessInputs(
+  marks: InvestigativeProjectionHighWaterMarks
+): readonly { readonly kind: string; readonly ref: string; readonly value: string }[] {
+  return Object.freeze(Object.entries(marks)
+    .map(([kind, value]) => ({ kind: "projection-high-water-mark", ref: kind, value: String(value) }))
+    .sort((left, right) => compareByFields([left.kind, left.ref, left.value], [right.kind, right.ref, right.value])));
+}
+
+function acceptedGraphProvenanceRefs(input: {
+  readonly manifest: InvestigativeSelectionManifest;
+  readonly assertions: readonly AcceptedGraphAssertionRow[];
+  readonly entities: readonly AcceptedGraphEntityRow[];
+  readonly relationships: readonly AcceptedGraphRelationshipRow[];
+  readonly metadata: InvestigativeContextPackMetadata;
+}): readonly string[] {
+  const refs = new Set<string>([input.manifest.manifestHash]);
+  for (const ref of input.manifest.includedRefs) {
+    refs.add(ref.refId);
+    if (ref.contentHash !== undefined) {
+      refs.add(ref.contentHash);
+    }
+    if (ref.rowHash !== undefined) {
+      refs.add(ref.rowHash);
+    }
+    for (const eventId of ref.sourceEventIds) {
+      refs.add(eventId);
+    }
+  }
+  for (const row of input.assertions) {
+    refs.add(row.assertionId);
+    refs.add(row.evidenceId);
+    refs.add(row.evidenceContentHash);
+    refs.add(row.proposedByEventId);
+    refs.add(row.acceptedByEventId);
+    refs.add(row.rowHash);
+    for (const eventId of row.sourceEventIds) {
+      refs.add(eventId);
+    }
+  }
+  for (const row of input.entities) {
+    refs.add(row.entityId);
+    refs.add(row.rowHash);
+    for (const eventId of row.sourceEventIds) {
+      refs.add(eventId);
+    }
+  }
+  for (const row of input.relationships) {
+    refs.add(row.relationshipId);
+    refs.add(row.acceptedByEventId);
+    refs.add(row.evidenceId);
+    refs.add(row.evidenceContentHash);
+    refs.add(row.rowHash);
+    for (const eventId of row.sourceEventIds) {
+      refs.add(eventId);
+    }
+  }
+  refs.add(`policy:${input.metadata.policyVersion}`);
+  refs.add(`ontology-core:${input.metadata.ontologyCoreVersion}`);
+  for (const [packId, version] of Object.entries(input.metadata.packVersions)) {
+    refs.add(`pack:${packId}@${version}`);
+  }
+  return Object.freeze([...refs].sort(compareText));
+}
+
+function buildAcceptedGraphResolvedPack(input: {
+  readonly payload: AcceptedGraphProjectionPayload;
+  readonly manifest: InvestigativeSelectionManifest;
+  readonly now: () => string;
+  readonly provenanceRefs: readonly string[];
+  readonly stalenessInputs: readonly { readonly kind: string; readonly ref: string; readonly value: string }[];
+  readonly policyVersion: string;
+  readonly sizeBudgetBytes?: number;
+}): ResolvedAcceptedGraphProjectionContextPack {
+  return buildResolvedContextPack({
+    contextPackId: "accepted-graph-projection.v1",
+    version: 1,
+    generatedAt: input.now(),
+    payload: input.payload,
+    safeSummary: "Provider-safe accepted graph projection",
+    provenanceRefs: input.provenanceRefs,
+    ...(input.manifest.sourceProjectionHighWaterMarks.graph === undefined
+      ? {}
+      : { projectionHighWaterMark: input.manifest.sourceProjectionHighWaterMarks.graph }),
+    sourceEventIds: input.provenanceRefs.filter((ref) => ref.startsWith("evt_")),
+    artifactHashes: input.provenanceRefs.filter((ref) => ref.startsWith("sha256:")),
+    policyVersion: input.policyVersion,
+    scope: input.manifest.scope,
+    ...(input.sizeBudgetBytes === undefined ? {} : { sizeBudgetBytes: input.sizeBudgetBytes }),
+    stalenessInputs: input.stalenessInputs
+  }) as unknown as ResolvedAcceptedGraphProjectionContextPack;
 }
 
 interface EvidenceSummaryBudgetInput {
@@ -892,6 +1344,37 @@ function createPayloadParser<Payload extends InvestigativeContextPackPayloadBase
   });
 }
 
+function parseAcceptedGraphProjectionPayload(payload: unknown): AcceptedGraphProjectionPayload {
+  if (!isPayloadWithExactKeys(payload, [
+    "schemaVersion",
+    "contextPackId",
+    "version",
+    "ontologyCoreVersion",
+    "scope",
+    "truthBoundary",
+    "selectionManifest",
+    "projectionHighWaterMarks",
+    "packVersions",
+    "items",
+    "omissions",
+    "stalenessInputs"
+  ])) {
+    throw new InvestigativeContextPackError("context-payload-missing", "accepted-graph payload invalid");
+  }
+  const value = payload as Record<string, unknown>;
+  if (value.schemaVersion !== "accepted-graph-projection.context.v1"
+    || value.contextPackId !== "accepted-graph-projection.v1" || value.version !== 1
+    || !isSafeNonEmptyText(value.ontologyCoreVersion) || !isScope(value.scope)
+    || !isAcceptedGraphTruthBoundary(value.truthBoundary) || !isSelectionManifest(value.selectionManifest)
+    || !isHighWaterMarks(value.projectionHighWaterMarks) || !isPackVersions(value.packVersions)
+    || !isAcceptedGraphItems(value.items) || !Array.isArray(value.omissions) || !value.omissions.every(isOmission)
+    || !Array.isArray(value.stalenessInputs) || value.stalenessInputs.length === 0
+    || !value.stalenessInputs.every(isStalenessInput)) {
+    throw new InvestigativeContextPackError("context-payload-missing", "accepted-graph payload invalid");
+  }
+  return payload as unknown as AcceptedGraphProjectionPayload;
+}
+
 function parseEvidenceSummaryPayload(payload: unknown): EvidenceSummaryPayload {
   if (!isPayloadWithExactKeys(payload, [
     "schemaVersion",
@@ -919,6 +1402,66 @@ function parseEvidenceSummaryPayload(payload: unknown): EvidenceSummaryPayload {
     throw new InvestigativeContextPackError("context-payload-missing", "evidence-summary payload invalid");
   }
   return payload as unknown as EvidenceSummaryPayload;
+}
+
+function isAcceptedGraphTruthBoundary(value: unknown): boolean {
+  return isExactRecord(value, [
+    "authoritativeForAcceptedGraph",
+    "readOnlyProjectionTruth",
+    "canInferNewAcceptedEdges",
+    "graphMutationRequiresReviewedOntologyEvent"
+  ]) && value.authoritativeForAcceptedGraph === true && value.readOnlyProjectionTruth === true
+    && value.canInferNewAcceptedEdges === false && value.graphMutationRequiresReviewedOntologyEvent === true;
+}
+
+function isAcceptedGraphItems(value: unknown): boolean {
+  return isExactRecord(value, ["assertions", "entities", "relationships"])
+    && Array.isArray(value.assertions) && value.assertions.every(isAcceptedGraphAssertionItem)
+    && Array.isArray(value.entities) && value.entities.every(isAcceptedGraphEntityItem)
+    && Array.isArray(value.relationships) && value.relationships.every(isAcceptedGraphRelationshipItem);
+}
+
+function isAcceptedGraphAssertionItem(value: unknown): boolean {
+  return isExactRecord(value, [
+    "assertionId",
+    "evidenceId",
+    "evidenceContentHash",
+    "proposedByEventId",
+    "acceptedByEventId",
+    "sourceEventIds",
+    "rowHash",
+    "safeStatement"
+  ]) && isSafeNonEmptyText(value.assertionId) && isSafeNonEmptyText(value.evidenceId)
+    && isContentHash(value.evidenceContentHash) && isSafeNonEmptyText(value.proposedByEventId)
+    && isSafeNonEmptyText(value.acceptedByEventId) && Array.isArray(value.sourceEventIds)
+    && value.sourceEventIds.length > 0 && value.sourceEventIds.every(isSafeNonEmptyText)
+    && isContentHash(value.rowHash) && isSafeNonEmptyText(value.safeStatement);
+}
+
+function isAcceptedGraphEntityItem(value: unknown): boolean {
+  return isExactRecord(value, ["entityId", "rowHash", "safeLabel", "sourceEventIds"])
+    && isSafeNonEmptyText(value.entityId) && isContentHash(value.rowHash) && isSafeNonEmptyText(value.safeLabel)
+    && Array.isArray(value.sourceEventIds) && value.sourceEventIds.length > 0
+    && value.sourceEventIds.every(isSafeNonEmptyText);
+}
+
+function isAcceptedGraphRelationshipItem(value: unknown): boolean {
+  return isExactRecord(value, [
+    "relationshipId",
+    "acceptedByEventId",
+    "evidenceId",
+    "evidenceContentHash",
+    "sourceEventIds",
+    "rowHash",
+    "sourceEntityId",
+    "targetEntityId",
+    "relationshipType"
+  ]) && isSafeNonEmptyText(value.relationshipId) && isSafeNonEmptyText(value.acceptedByEventId)
+    && isSafeNonEmptyText(value.evidenceId) && isContentHash(value.evidenceContentHash)
+    && Array.isArray(value.sourceEventIds) && value.sourceEventIds.length > 0
+    && value.sourceEventIds.every(isSafeNonEmptyText) && isContentHash(value.rowHash)
+    && isSafeNonEmptyText(value.sourceEntityId) && isSafeNonEmptyText(value.targetEntityId)
+    && isSafeNonEmptyText(value.relationshipType);
 }
 
 function isScope(value: unknown): boolean {
