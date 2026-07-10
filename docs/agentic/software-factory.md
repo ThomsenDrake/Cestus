@@ -1433,3 +1433,11 @@ factory-readiness passed
 ```
 
 This planning slice keeps Cestus as one resident agent with typed work modes for `prr-negotiation`, `evidence-triage`, `timeline-builder`, `contradiction-finder`, `investigation-planner`, and `report-builder`. The plan allows only inert registry metadata and handoff DTO schemas before scheduler/resumer and domain adapter contracts land. Full workflow execution remains gated, domain-owned, approval-bound, and evidence/proposal-first. No new agent personas, PRR sends, legal escalation, export/publication, provider byte transfer, destructive repair, accepted graph review, or accepted ontology truth are introduced by this planning slice.
+
+## Resident Agent MVP Factory Retrospective
+
+The permanent architectural, review, worktree, deployment, provider-acceptance, and session-hygiene lessons from the first integrated resident-agent MVP are recorded in:
+
+- `docs/agentic/retrospectives/2026-07-10-resident-agent-mvp.md`
+
+Future readiness entries should link to that retrospective and use per-slice claims for detailed command evidence instead of duplicating or continually revising historical test counts here.
