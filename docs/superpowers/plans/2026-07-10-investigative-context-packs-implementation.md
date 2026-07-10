@@ -1546,7 +1546,7 @@ Request a fresh review focused on governance non-authoritativeness and non-trunc
 
 **Interfaces:**
 - Consumes: Completed builders and strict payload parsers from Tasks 3-5 plus operational `ContextPackRegistry`, `ContextPackPayloadResolver.resolve(ref)`, `ContextPackRegistry.buildResolved(id)`, and `assertResolvedContextPacksForExecution`.
-- Produces: `registerInvestigativeContextPacks`, idempotent stable descriptor/parser registration, readiness proof with refs, payload parser dispatch proof, and payload sentinel fixture proof for the prompt-template lane.
+- Produces: `registerInvestigativeContextPacks`, idempotent stable descriptor/parser registration, readiness proof with refs, `buildResolved(id)` parser-dispatch rejection for invalid pack shape, execution-assertion hash/ref integrity proof, and opaque verified sentinel payload proof for the prompt-template lane.
 
 - [ ] **Step 1: Claim Task 6**
 
@@ -1719,8 +1719,7 @@ it("rejects execution assertion when resolved payload hash does not match the re
 });
 
 it("rejects matching-hash resolved payloads whose pack-specific shape is invalid", async () => {
-  const resolver = createInMemoryPayloadResolver();
-  const registry = createContextPackRegistry({ payloadResolver: resolver });
+  const registry = createContextPackRegistry({});
   registry.register({
     descriptor: investigativeContextPackDescriptors[0],
     parsePayload: acceptedGraphProjectionPayloadParser.parsePayload,
@@ -1754,14 +1753,10 @@ it("rejects matching-hash resolved payloads whose pack-specific shape is invalid
       };
     }
   });
-  const invalidResolved = await registry.buildResolved("accepted-graph-projection.v1");
-  resolver.add(invalidResolved);
-  const resolvedFromResolver = await resolver.resolve(invalidResolved.ref);
 
-  expect(() => assertResolvedContextPacksForExecution({
-    refs: [invalidResolved.ref],
-    resolved: [resolvedFromResolver]
-  })).toThrow(/accepted-graph payload/);
+  // This proves parser dispatch during buildResolved(); execution assertion is
+  // not part of this invalid-shape path.
+  await expect(registry.buildResolved("accepted-graph-projection.v1")).rejects.toThrow(/accepted-graph payload/);
 });
 ```
 
@@ -1773,7 +1768,7 @@ Run:
 npm test -- packages/agent/test/investigative-context-packs.test.ts -t "registers investigative|conflicting duplicate|specialist readiness|payload-only|payload hash|invalid shape"
 ```
 
-Expected: fail because registration and operational execution assertion integration are incomplete.
+Expected: fail because registration, `buildResolved(id)` parser dispatch, and operational execution assertion integration are incomplete.
 
 - [ ] **Step 4: Implement registration helper**
 
@@ -1857,7 +1852,7 @@ git add docs/agentic/claims/task-6-investigative-registration-readiness.md packa
 git commit -m "feat: register investigative context packs"
 ```
 
-Request a fresh review focused on stable descriptor/parser/limits registration identity, readiness with refs, and hash-verified parser-resolved payloads.
+Request a fresh review focused on stable descriptor/parser/limits registration identity, readiness with refs, `buildResolved(id)` parser-dispatch rejection, execution-assertion hash/ref integrity, and opaque verified sentinel payloads.
 
 ---
 
@@ -1951,14 +1946,14 @@ Stop for coordinator merge direction after review.
 - Active locks, active restrictions, exact included provenance, source-byte/archive-child staleness inputs, high-water marks, or aggregate omission metadata cannot fit the mandatory envelope.
 - Manifest hash verification includes `manifestHash` in its own hash input.
 - Operational execution assertion returns only `safeSummary`, omits the resolved payload path, skips payload hash/size verification, or allows this lane to construct `VerifiedResolvedContextPack`.
-- A resolved payload has a matching ref hash but invalid pack-specific shape and still reaches any downstream consumer.
+- `buildResolved(id)` returns a resolved envelope instead of rejecting a matching-hash invalid pack-specific shape.
 - A targeted verifier fails after two focused repair attempts.
 - `npm run verify` fails after two focused repair attempts.
 - A schema conflict appears with the approved ontology, ingestion, governance, resident-agent, or operational resolved-context contract.
 
 ## Self-Review Checklist
 
-- Spec coverage: Tasks 1-6 cover descriptors, strict payload parsers, bounded dependencies, selection manifests, non-circular manifest hashes, aggregate omissions, evidence source posture, accepted graph provenance, governance posture, resolved payloads, sentinel fixture proof, and stable descriptor/parser/limits registration.
+- Spec coverage: Tasks 1-6 cover descriptors, strict payload parsers, bounded dependencies, selection manifests, non-circular manifest hashes, aggregate omissions, evidence source posture, accepted graph provenance, governance posture, `buildResolved(id)` parser rejection, resolved payloads, sentinel fixture proof, and stable descriptor/parser/limits registration.
 - TDD coverage: Every production task starts with RED tests and a targeted failing command.
 - Bounded-growth coverage: Tasks 2, 4, and 5 include unrelated-row growth tests with query counters; Task 3 includes bounded evidence output and source-posture checks.
 - Runtime boundary: No task edits local-runtime, orchestrator, cockpit, browser UI, operational packs, PRR packs, specialist workflow prompt definitions, or handoff projections.
