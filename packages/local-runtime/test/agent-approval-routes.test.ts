@@ -265,6 +265,88 @@ describe("agent approval routes", () => {
     expect(response.status).toBe(403);
   });
 
+  it("uses runtime-owned lifecycle before building an approval cockpit from snapshot events", async () => {
+    const sourceLedger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({
+      ledger: sourceLedger,
+      actor: { id: "actor_cestus_agent", kind: "agent", label: "Cestus Agent" },
+      now
+    });
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_runtime_lifecycle",
+      residentAgentId: "agent_default",
+      taskId: "task_runtime_lifecycle",
+      runId: "run_runtime_lifecycle",
+      toolId: "provider.bytes.transfer",
+      sideEffectClass: "external-byte-transfer",
+      requiredApprovalClass: "provider-byte-transfer",
+      preview: {
+        summary: "Use the runtime-owned lifecycle for approval validation.",
+        relatedEventIds: ["evt_runtime_lifecycle"],
+        artifactHashes: ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+        scope: "Selected synthetic evidence excerpts.",
+        estimatedEffect: "Provider byte transfer after human approval."
+      }
+    });
+    let runtimeStatusRead = false;
+    const guardedLedger: EventLedger = {
+      append: (event, options) => sourceLedger.append(event, options),
+      readStream: (streamId) => sourceLedger.readStream(streamId),
+      readAll: async () => {
+        if (!runtimeStatusRead) {
+          throw new Error("runtime lifecycle must be read before approval snapshot");
+        }
+        return sourceLedger.readAll();
+      }
+    };
+    const config = resolveLocalRuntimeConfig({ cwd: mkdtempSync(join(tmpdir(), "cestus-agent-approval-routes-")), env: {} });
+    tempDirs.push(config.cwd);
+    const lifecycle = readyResidentIdentityLifecycle("ws_runtime_lifecycle");
+    const runtime = createAgentRuntime({
+      ledger: sourceLedger,
+      actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
+      now,
+      identityLifecycle: lifecycle
+    });
+    const handle: LocalRuntimeHandle = {
+      runtime: {} as LocalRuntimeHandle["runtime"],
+      ledger: guardedLedger,
+      config,
+      residentIdentity: {
+        lifecycle: () => lifecycle,
+        ready: async () => lifecycle
+      },
+      close() {}
+    };
+
+    const response = await handleAgentHttpRoute({
+      request: {
+        method: "POST",
+        url: "/api/agent/approvals/toolreq_runtime_lifecycle/approve",
+        body: JSON.stringify({
+          approvedPreviewHash: requested.payload.previewHash,
+          rationale: "Approved after the runtime lifecycle was read."
+        })
+      },
+      handle,
+      actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
+      now,
+      agentRuntimeFactory: () => ({
+        status: async () => {
+          runtimeStatusRead = true;
+          return runtime.status();
+        }
+      }) as ReturnType<typeof createAgentRuntime>
+    });
+
+    expect(response?.status).toBe(200);
+    expect(runtimeStatusRead).toBe(true);
+    expect((await sourceLedger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved"
+    ]);
+  });
+
   it("rejects approval when a lock lands after the cockpit snapshot and before append", async () => {
     const ledger = new InterleavingApprovalLedger();
     const gateway = createAgentToolGateway({

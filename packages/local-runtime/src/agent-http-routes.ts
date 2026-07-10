@@ -6,11 +6,11 @@ import {
   createResidentAgentDomainAdapterRegistry,
   createAgentToolGateway,
   isAgentSecretSafeText,
-  notMountedResidentIdentityLifecycle,
   type AgentMemoryKind,
   type AgentMemoryScope,
   type AgentMemoryState,
-  type AgentTaskPriority
+  type AgentTaskPriority,
+  type ResidentIdentityLifecycleDto
 } from "../../agent/src/index.js";
 import type { ActorRef, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import type { LocalRuntimeRequest, LocalRuntimeResponse } from "./http-handler.js";
@@ -222,8 +222,9 @@ export async function handleAgentHttpRoute(
             return json(409, residentIdentityNotReadyDiagnostic());
           }
 
+          const identityLifecycle = (await runtime.status()).identityLifecycle;
           const snapshotEvents = await input.handle.ledger.readAll();
-          const cockpit = approvalCockpitFromEvents(snapshotEvents, input.now);
+          const cockpit = approvalCockpitFromEvents(snapshotEvents, input.now, identityLifecycle);
           const approvalItem = approvalItemById(cockpit, approvalRoute.toolRequestId);
           if (approvalItem === undefined) {
             return json(404, missingApprovalDiagnostic());
@@ -266,8 +267,9 @@ export async function handleAgentHttpRoute(
           return json(409, residentIdentityNotReadyDiagnostic());
         }
 
+        const identityLifecycle = (await runtime.status()).identityLifecycle;
         const snapshotEvents = await input.handle.ledger.readAll();
-        const cockpit = approvalCockpitFromEvents(snapshotEvents, input.now);
+        const cockpit = approvalCockpitFromEvents(snapshotEvents, input.now, identityLifecycle);
         const approvalItem = approvalItemById(cockpit, approvalRoute.toolRequestId);
         if (approvalItem === undefined) {
           return json(404, missingApprovalDiagnostic());
@@ -874,7 +876,8 @@ async function approvalCockpit(runtime: LocalAgentRuntime) {
 
 function approvalCockpitFromEvents(
   events: readonly KnowledgeEvent[],
-  now: () => string
+  now: () => string,
+  identityLifecycle: ResidentIdentityLifecycleDto
 ) {
   const projection = buildAgentProjection(events);
   return buildAgentApprovalCockpit({
@@ -882,18 +885,7 @@ function approvalCockpitFromEvents(
       schemaVersion: "agent-status.v1",
       generatedAt: now(),
       ...projection.toDto(),
-      identityLifecycle: projection.identity === undefined
-        ? notMountedResidentIdentityLifecycle()
-        : {
-            schemaVersion: "resident-identity-lifecycle.v1",
-            state: "ready",
-            residentAgentId: "agent_default",
-            workspaceId: projection.identity.workspaceId,
-            initialized: true,
-            eventIds: projection.identity.eventIds,
-            safeMessage: "Resident identity is ready.",
-            allowedRepairActions: []
-          },
+      identityLifecycle,
       identity: projection.identity,
       providers: [],
       pendingApprovalCount: [...projection.toolRequests.values()].filter((request) => request.state === "requested").length,
