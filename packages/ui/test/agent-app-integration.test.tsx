@@ -21,6 +21,39 @@ describe("agent app integration", () => {
     vi.restoreAllMocks();
   });
 
+  it("renders resident identity lifecycle states without adding execution controls", async () => {
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={createStaticAgentAdapter(
+          agentStatus({
+            identityLifecycle: {
+              schemaVersion: "resident-identity-lifecycle.v1",
+              state: "blocked",
+              residentAgentId: "agent_default",
+              workspaceId: "ws_blocked_identity",
+              initialized: false,
+              eventIds: [],
+              safeMessage: "Resident identity belongs to a different workspace.",
+              allowedRepairActions: ["inspect resident identity events before retrying"]
+            }
+          }),
+          approvalCockpit(),
+          { cockpit: agentCockpit() }
+        )}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    const workspace = await screen.findByRole("region", { name: "Resident agent workspace" });
+
+    expect(within(workspace).getByText("blocked")).toBeInTheDocument();
+    expect(within(workspace).getByText("Resident identity belongs to a different workspace.")).toBeInTheDocument();
+    expect(within(workspace).queryByRole("button", { name: /start run|execute|send|export|repair/i })).not.toBeInTheDocument();
+  });
+
   it("opens the Agent module from first-class navigation and loads cockpit routes without blocking the page", async () => {
     const loads = {
       status: 0,
