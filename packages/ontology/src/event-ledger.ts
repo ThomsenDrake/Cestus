@@ -18,6 +18,19 @@ export interface EventLedger {
   readAll(): Promise<KnowledgeEvent[]>;
 }
 
+export class ConcurrencyConflictError extends Error {
+  readonly code = "CONCURRENCY_CONFLICT" as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "ConcurrencyConflictError";
+  }
+}
+
+export function isConcurrencyConflict(error: unknown): error is ConcurrencyConflictError {
+  return error instanceof ConcurrencyConflictError;
+}
+
 function cloneSnapshot<T>(value: T): T {
   return structuredClone(value);
 }
@@ -30,13 +43,13 @@ export class InMemoryEventLedger implements EventLedger {
     const nextSequence = this.events.filter((stored) => stored.streamId === event.streamId).length + 1;
 
     if (options.expectedGlobalEventCount !== undefined && options.expectedGlobalEventCount !== globalEventCount) {
-      throw new Error(
+      throw new ConcurrencyConflictError(
         `Concurrency conflict for ${event.streamId}: expected global event count ${options.expectedGlobalEventCount}, current global event count ${globalEventCount}`
       );
     }
 
     if (options.expectedNextSequence !== undefined && options.expectedNextSequence !== nextSequence) {
-      throw new Error(
+      throw new ConcurrencyConflictError(
         `Concurrency conflict for ${event.streamId}: expected sequence ${options.expectedNextSequence}, next sequence ${nextSequence}`
       );
     }

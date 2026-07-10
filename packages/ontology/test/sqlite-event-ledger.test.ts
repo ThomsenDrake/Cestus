@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
+import { ConcurrencyConflictError } from "../src/event-ledger.js";
 import { SQLiteEventLedger } from "../src/sqlite-event-ledger.js";
 import { describeEventLedgerContract, evidenceEvent } from "./ledger-contract.test-helper.js";
 
@@ -31,6 +32,18 @@ describeEventLedgerContract("SQLiteEventLedger", {
 });
 
 describe("SQLiteEventLedger", () => {
+  it("throws a structured concurrency error while preserving the message", async () => {
+    const ledger = new SQLiteEventLedger(dbPath());
+    await ledger.append(evidenceEvent("ev_sqlite_conflict"));
+
+    await expect(ledger.append(evidenceEvent("ev_sqlite_conflict"), { expectedNextSequence: 1 }))
+      .rejects.toBeInstanceOf(ConcurrencyConflictError);
+    await expect(ledger.append(evidenceEvent("ev_sqlite_conflict"), { expectedNextSequence: 1 }))
+      .rejects.toThrow("Concurrency conflict");
+
+    ledger.close();
+  });
+
   it("persists and reopens committed events", async () => {
     const path = dbPath();
     const ledger = new SQLiteEventLedger(path);

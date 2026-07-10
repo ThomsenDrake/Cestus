@@ -1,5 +1,6 @@
 import type { ActorRef, AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
-import type { EventLedger } from "../../ontology/src/event-ledger.js";
+import { isConcurrencyConflict, type EventLedger } from "../../ontology/src/event-ledger.js";
+import { isAgentSecretSafeText } from "./secret-safety.js";
 import { approvedAgentSpecialistRunTypes } from "./specialists.js";
 
 export const defaultResidentAgentId = "agent_default" as const;
@@ -74,6 +75,14 @@ export async function ensureDefaultResidentIdentity(
     return lifecycle;
   }
 
+  if (!isPermittedBootstrapActor(input.actor)) {
+    return blockedResidentIdentityLifecycle({
+      workspaceId: input.workspaceId,
+      safeMessage: "Resident identity bootstrap actor is not permitted.",
+      allowedRepairActions: ["use a permitted local bootstrap actor before retrying"]
+    });
+  }
+
   try {
     await input.ledger.append(identityInitializationEvent(input), { expectedNextSequence: 1 });
   } catch (error) {
@@ -122,6 +131,15 @@ export async function readDefaultResidentIdentityLifecycle(
       event.type === "agent.identity.initialized"
   );
 
+  if (events[0]?.type !== "agent.identity.initialized") {
+    return blockedResidentIdentityLifecycle({
+      workspaceId: input.workspaceId,
+      eventIds: events.map((event) => event.id),
+      safeMessage: "Resident identity updates must follow canonical initialization.",
+      allowedRepairActions: ["inspect resident identity events before retrying"]
+    });
+  }
+
   if (initializationEvents.length !== 1) {
     return blockedResidentIdentityLifecycle({
       workspaceId: input.workspaceId,
@@ -132,6 +150,15 @@ export async function readDefaultResidentIdentityLifecycle(
   }
 
   const initializationEvent = initializationEvents[0];
+  if (initializationEvent?.sequence !== 1 || !hasContiguousIdentityEventSequence(events, initializationEvent)) {
+    return blockedResidentIdentityLifecycle({
+      workspaceId: input.workspaceId,
+      eventIds: events.map((event) => event.id),
+      safeMessage: "Resident identity updates must follow canonical initialization.",
+      allowedRepairActions: ["inspect resident identity events before retrying"]
+    });
+  }
+
   if (
     initializationEvent === undefined ||
     initializationEvent.payload.residentAgentId !== defaultResidentAgentId
@@ -150,6 +177,33 @@ export async function readDefaultResidentIdentityLifecycle(
       initialized: true,
       eventIds: [initializationEvent.id],
       safeMessage: "Resident identity belongs to a different workspace.",
+      allowedRepairActions: ["inspect resident identity events before retrying"]
+    });
+  }
+
+  if (!hasCanonicalInitializationContract(initializationEvent)) {
+    return blockedResidentIdentityLifecycle({
+      workspaceId: input.workspaceId,
+      eventIds: [initializationEvent.id],
+      safeMessage: "Resident identity initialization does not match the canonical bootstrap contract.",
+      allowedRepairActions: ["inspect resident identity events before retrying"]
+    });
+  }
+
+  if (!hasValidBootstrapProvenance(initializationEvent)) {
+    return blockedResidentIdentityLifecycle({
+      workspaceId: input.workspaceId,
+      eventIds: [initializationEvent.id],
+      safeMessage: "Resident identity initialization does not have valid bootstrap provenance.",
+      allowedRepairActions: ["inspect resident identity events before retrying"]
+    });
+  }
+
+  if (!hasDefaultResidentIdentityUpdates(events)) {
+    return blockedResidentIdentityLifecycle({
+      workspaceId: input.workspaceId,
+      eventIds: events.map((event) => event.id),
+      safeMessage: "Resident identity updates must bind to the default resident agent.",
       allowedRepairActions: ["inspect resident identity events before retrying"]
     });
   }
@@ -210,6 +264,52 @@ function residentIdentityLifecycle(
   });
 }
 
-function isConcurrencyConflict(error: unknown): boolean {
-  return error instanceof Error && error.message.startsWith("Concurrency conflict");
+function hasCanonicalInitializationContract(
+  event: Extract<KnowledgeEvent, { type: "agent.identity.initialized" }>
+): boolean {
+  return event.payload.label === defaultResidentLabel &&
+    event.payload.policyId === defaultAgentPolicyId &&
+    event.payload.memoryProjectionVersion === defaultMemoryProjectionVersion &&
+    hasExactRunTypes(event.payload.allowedRunTypes);
 }
+
+function hasValidBootstrapProvenance(
+  event: Extract<KnowledgeEvent, { type: "agent.identity.initialized" }>
+): boolean {
+  return event.context.actor.id === event.payload.initializedBy && isPermittedBootstrapActor(event.context.actor);
+}
+
+function hasContiguousIdentityEventSequence(
+  events: readonly KnowledgeEvent[],
+  initializationEvent: Extract<KnowledgeEvent, { type: "agent.identity.initialized" }>
+): boolean {
+  return events.every((event, index) => {
+    if (event.sequence !== index + 1) {
+      return false;
+    }
+
+    return event.type !== "agent.identity.updated" || event.sequence > initializationEvent.sequence;
+  });
+}
+
+function hasDefaultResidentIdentityUpdates(events: readonly KnowledgeEvent[]): boolean {
+  return events.every(
+    (event) => event.type !== "agent.identity.updated" || event.payload.residentAgentId === defaultResidentAgentId
+  );
+}
+
+function hasExactRunTypes(runTypes: readonly string[] | undefined): boolean {
+  return runTypes !== undefined &&
+    runTypes.length === approvedAgentSpecialistRunTypes.length &&
+    runTypes.every((runType, index) => runType === approvedAgentSpecialistRunTypes[index]);
+}
+
+function isPermittedBootstrapActor(actor: ActorRef): boolean {
+  return actor.kind === "system" &&
+    isAgentSecretSafeText(actor.id) &&
+    isAgentSecretSafeText(actor.label) &&
+    !bootstrapProviderIdentityPattern.test(actor.id) &&
+    !bootstrapProviderIdentityPattern.test(actor.label);
+}
+
+const bootstrapProviderIdentityPattern = /provider|credential|oauth|api[\s._-]*key|model/i;

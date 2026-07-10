@@ -3,7 +3,12 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { validateKnowledgeEvent, type KnowledgeEvent } from "./contracts.js";
-import type { AppendableKnowledgeEvent, AppendOptions, EventLedger } from "./event-ledger.js";
+import {
+  ConcurrencyConflictError,
+  type AppendableKnowledgeEvent,
+  type AppendOptions,
+  type EventLedger
+} from "./event-ledger.js";
 
 interface StoredEventRow {
   id: string;
@@ -56,13 +61,13 @@ export class SQLiteEventLedger implements EventLedger {
       const nextSequence = this.nextSequence(event.streamId);
 
       if (options.expectedGlobalEventCount !== undefined && options.expectedGlobalEventCount !== globalEventCount) {
-        throw new Error(
+        throw new ConcurrencyConflictError(
           `Concurrency conflict for ${event.streamId}: expected global event count ${options.expectedGlobalEventCount}, current global event count ${globalEventCount}`
         );
       }
 
       if (options.expectedNextSequence !== undefined && options.expectedNextSequence !== nextSequence) {
-        throw new Error(
+        throw new ConcurrencyConflictError(
           `Concurrency conflict for ${event.streamId}: expected sequence ${options.expectedNextSequence}, next sequence ${nextSequence}`
         );
       }
@@ -97,7 +102,9 @@ export class SQLiteEventLedger implements EventLedger {
           );
       } catch (error) {
         if (this.isConstraintError(error)) {
-          throw new Error(`Concurrency conflict for ${event.streamId}: sequence ${nextSequence} already exists`);
+          throw new ConcurrencyConflictError(
+            `Concurrency conflict for ${event.streamId}: sequence ${nextSequence} already exists`
+          );
         }
         throw error;
       }

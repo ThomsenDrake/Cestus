@@ -24,3 +24,4 @@ Evidence:
 - Targeted: `npm test -- packages/agent/test/identity-bootstrap.test.ts` passed: 1 file, 10 tests.
 - Combined targeted: `npm test -- packages/agent/test/identity-bootstrap.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/ontology/test/agent-contracts.test.ts` passed: 4 files, 85 tests.
 - Verify: `npm run verify` passed.
+- Review remediation: canonical initialization payload/provenance, ordered default-resident updates, provider-shaped bootstrap actor rejection, and structured ledger concurrency conflicts are covered by focused regression tests.
