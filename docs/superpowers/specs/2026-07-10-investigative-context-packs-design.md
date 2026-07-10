@@ -30,7 +30,8 @@ and evidence summaries cannot expose raw document text or provider payloads.
 - Prove pack registration and specialist readiness through injected
   dependencies, not local-runtime or cockpit wiring.
 - Bind exact evidence events, content hashes, source refs, pack versions,
-  projection high-water marks, source staleness inputs, and omission metadata.
+  projection high-water marks, source staleness inputs, and aggregate omission
+  metadata.
 - Keep accepted graph context read-only and traceable to reviewed assertion
   events and evidence hashes.
 - Distinguish resident-agent locks from governance-derived restrictions with
@@ -119,28 +120,30 @@ source truth enters through injected dependencies.
 ## Dependency Boundary
 
 The registration helper and builders receive authoritative inputs through a
-single dependency object. The object may include already-built projections,
-projection-builder functions, and source posture capabilities. It must not hide
-stateful caches that affect payload content.
+single dependency object. Production dependencies are scope-aware bounded
+query/snapshot capabilities, not a required `events: readonly KnowledgeEvent[]`
+or whole-workspace graph, ingestion, governance, or agent projections. Tests may
+adapt in-memory projections behind these interfaces, but production builders
+must not rely on scanning or materializing all rows in a workspace to build one
+context pack.
 
 Logical dependency shape:
 
 ```ts
 interface InvestigativeContextPackDependencies {
   readonly now: () => string;
-  readonly scope: InvestigativeContextPackScope;
   readonly policyVersion: string;
   readonly ontologyCoreVersion: string;
   readonly packVersions: Readonly<Record<string, string>>;
-  readonly events: readonly KnowledgeEvent[];
-  readonly graphProjection: GraphProjection;
-  readonly ingestionProjection: IngestionProjection;
-  readonly governanceProjection: GovernanceProjection;
-  readonly agentProjection: AgentProjection;
+  readonly registrationIdentity: InvestigativeRegistrationIdentity;
+  readonly selection: InvestigativeSelectionCapability;
+  readonly evidenceReader: InvestigativeEvidenceReader;
+  readonly graphReader: AcceptedGraphProjectionReader;
+  readonly governanceReader: GovernancePostureReader;
+  readonly agentLockReader: ResidentAgentLockReader;
+  readonly eventReader: KnowledgeEventReader;
   readonly evidenceSourcePosture: EvidenceSourcePostureCapability;
-  readonly highWaterMarks: InvestigativeProjectionHighWaterMarks;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
-  readonly acceptedRelationshipProjection?: AcceptedRelationshipProjection;
 }
 ```
 
@@ -150,6 +153,62 @@ the injected `now`. Canonical payloads should not include wall-clock values
 unless those values are source event timestamps or explicit injected source
 data. Canonical payload hashes are stable for identical injected authoritative
 inputs.
+
+`registrationIdentity` is a stable deterministic helper identity, such as a
+module ID plus descriptor-schema version and builder descriptor hash. It is not
+the dependency object reference. Two calls with different object instances but
+the same helper-owned descriptor identity and equivalent descriptor contracts are
+idempotent; calls that would register the same ID/version with a different
+descriptor identity, builder name, or descriptor hash are conflicts.
+
+The selection capability is the only production path for choosing rows:
+
+```ts
+interface InvestigativeSelectionCapability {
+  readonly capabilityVersion: "investigative-selection.v1";
+  select(input: InvestigativeSelectionRequest):
+    Promise<InvestigativeSelectionManifest> | InvestigativeSelectionManifest;
+}
+
+interface InvestigativeSelectionManifest {
+  readonly manifestVersion: "investigative-selection-manifest.v1";
+  readonly scope: InvestigativeContextPackScope;
+  readonly sourceProjectionHighWaterMarks: InvestigativeProjectionHighWaterMarks;
+  readonly ordering: InvestigativeSelectionOrdering;
+  readonly window: InvestigativeSelectionWindow;
+  readonly totalEligibleCount: number;
+  readonly includedRefs: readonly InvestigativeSelectionIncludedRef[];
+  readonly aggregateOmissions: readonly InvestigativeContextOmissionAggregate[];
+  readonly manifestHash: `sha256:${string}`;
+}
+```
+
+The manifest is authoritative for pack membership. It records the explicit
+scope, source projection high-water marks, deterministic ordering, cursor or
+window, total eligible count, included IDs and hashes, and bounded aggregate
+omission counts. Workspace scope requires a deterministic page/window or an
+explicit bounded manifest; a single pack is never an unbounded workspace dump.
+
+Builders fetch exact source rows, events, and provenance by manifest-included
+IDs or bounded batches:
+
+- evidence rows by included evidence IDs and content hashes
+- accepted graph rows by included assertion, entity, and relationship IDs
+- governance restrictions by active restriction IDs or bounded active snapshots
+- resident-agent locks by active lock IDs or bounded active snapshots
+- ledger events by exact event IDs referenced by included rows
+
+Reader capabilities must either read at the manifest's source projection
+high-water marks or return row-level provenance that proves the data still
+matches the manifest. If a reader returns a row outside the manifest, omits a
+manifest-included mandatory row, changes a manifest hash, or serves data from an
+incompatible high-water mark, the builder fails closed with a stable code.
+
+The build's memory, output size, and query work are bounded by the selection
+window, mandatory non-truncatable safety posture, and aggregate omission
+buckets. Adding unrelated evidence, assertions, relationships, or governance
+history outside the manifest must not make one pack build allocate, emit, or
+query work proportional to workspace size.
 
 The current-byte/hash posture remains behind an injected capability:
 
@@ -176,17 +235,19 @@ investigative pack builders:
 - `governance-locks.v1`
 
 Registration is idempotent for the same registry and the same helper-owned
-dependency identity. Calling the helper twice with the same registry/deps is a
-no-op after the first successful registration.
+descriptor identity. Calling the helper twice with semantically equivalent
+descriptor identities and builder descriptor hashes is a no-op after the first
+successful registration, even when the dependency object instances differ.
 
 Registration rejects conflicts:
 
 - A target context pack ID is already registered outside the helper.
 - A target context pack ID is registered with a different version, descriptor,
   budget, required provenance kinds, redaction policy, source projection, or
-  builder identity.
-- The helper is called again against the same registry with different deps that
-  would create different builder behavior for the same IDs.
+  stable builder descriptor identity.
+- The helper is called again against the same registry with a different
+  `registrationIdentity`, builder name, builder descriptor hash, or descriptor
+  contract for the same IDs.
 
 The helper may maintain registration bookkeeping for idempotency, but it must
 not cache payloads, source posture, projections, high-water marks, or pack refs.
@@ -200,6 +261,7 @@ The canonical payload passed to `buildContextPackRef` is a strict JSON DTO with:
 - `schemaVersion`
 - `scope`
 - `truthBoundary`
+- `selectionManifest`
 - `projectionHighWaterMarks`
 - `packVersions`
 - `items`
@@ -209,9 +271,16 @@ The canonical payload passed to `buildContextPackRef` is a strict JSON DTO with:
 
 The payload must be normalized through the same DTO safety rules as other agent
 context packs. Accessors, symbols, sparse arrays, custom array properties,
-unexpected prototypes, secret-shaped keys, secret-shaped values, executable
-commands, raw provider errors, raw paths, and raw content are rejected before
-hashing.
+unexpected prototypes, secret-shaped keys, secret-shaped values, raw provider
+errors, raw paths, and raw content are rejected before hashing.
+
+Prompt-facing fields use strict schemas instead of blanket text bans. Safe
+narrative fields may discuss commands when the source evidence is journalistic
+or investigative material about those commands, provided the field is
+secret-safe, raw-content-free, authority-labeled, and within its summary budget.
+Raw or executable action fields such as argv, shell snippets intended for
+execution, runnable command payloads, tool-call payloads, and provider action
+requests are not part of these schemas and are rejected if supplied.
 
 `generatedAt` is ref metadata supplied to `buildContextPackRef`. It is not a
 hidden clock and should not be added to payload unless a future design explicitly
@@ -222,22 +291,30 @@ events are source data and may appear when safe and useful.
 
 The builder input includes one explicit scope:
 
-- `workspace`: all eligible evidence and accepted graph state in the workspace.
+- `workspace`: a deterministic bounded page/window over eligible workspace
+  evidence and accepted graph state, or an explicit bounded workspace selection
+  manifest.
 - `investigation`: refs selected for an investigation.
 - `task`: refs selected for a resident-agent task or run.
 - `selection`: explicit evidence IDs, assertion IDs, entity IDs, relationship
   IDs, PRR IDs, or source collection IDs.
 
 Scope is part of the payload and the `ContextPackRef.scope` field. A builder
-must never widen scope implicitly. If a required source is outside scope, the
-builder records an omission with reason code `scope-excluded` unless the
-excluded source is mandatory for provenance; mandatory provenance missing from
-scope fails with `missing-provenance`.
+must never widen scope implicitly. Scope membership comes from the authoritative
+selection manifest, not from builder-side ledger scans. If a required source is
+outside scope, the builder records an aggregate omission with reason code
+`scope-excluded` unless the excluded source is mandatory for provenance;
+mandatory provenance missing from scope fails with `missing-provenance`.
+
+A workspace-scope request without a deterministic page/window or explicit
+bounded selection manifest is invalid and fails with `selection-window-required`.
+The builder must not convert that request into an all-workspace dump.
 
 ## Deterministic Ordering
 
 All arrays are sorted before hashing:
 
+- selection included refs by manifest sort key, then ref kind, then ref ID
 - assertions by `assertionId`
 - entities by `entityId`
 - relationships by `relationshipId`
@@ -249,11 +326,19 @@ All arrays are sorted before hashing:
 - resident-agent locks by `lockId`
 - event IDs lexicographically
 - content hashes lexicographically
-- omissions by `reasonCode`, then `refKind`, then `refId`
+- aggregate omissions by `reasonCode`, then `refKind`, then aggregate key
+- omission sample refs by `refKind`, then `refId`, then `contentHash`
 - staleness inputs by `kind`, then `ref`, then `value`
 
 Formatting, object key insertion order, and caller array order must not affect
 the canonical payload hash. Semantic changes must affect the hash.
+
+Selection manifests carry their own deterministic ordering, cursor, and window
+metadata. Builders preserve that ordering for included refs and must not
+reselect or re-page rows. Stable cursors and bounded windows prevent omission
+drift: unrelated rows added outside the manifest can change a later manifest's
+`totalEligibleCount` or aggregate omission counts, but they do not change the
+canonical payload for an already selected manifest.
 
 ## Mandatory Fields
 
@@ -265,10 +350,11 @@ These fields are mandatory and cannot be truncated away:
 - scope
 - projection high-water marks
 - pack versions
+- selection manifest identity, scope, ordering, window, and included refs
 - source-byte and archive-child staleness inputs
 - evidence IDs and content hashes for included evidence
 - assertion proposal and acceptance event IDs for accepted graph entries
-- omission metadata
+- aggregate omission metadata
 - truth-boundary fields
 
 If the mandatory envelope exceeds the pack's budget, the builder fails with
@@ -283,24 +369,42 @@ the design requires per-pack budgets and deterministic truncation.
 Budgeting proceeds in this order:
 
 1. Build and validate the mandatory envelope.
-2. Add high-priority scoped rows required for provenance.
+2. Add manifest-included rows required for provenance.
 3. Add optional detail rows in stable order.
-4. Record omitted optional rows in the `omissions` array.
+4. Record omitted optional rows as aggregate omission buckets.
 5. Recompute the payload and fail if mandatory envelope plus omissions cannot
    fit the budget.
 
-Omissions are machine-readable DTOs:
+Active resident-agent locks, active governance-derived restrictions, exact
+included-row provenance, scope, high-water marks, source-byte/archive-child
+staleness inputs, and aggregate omission metadata are mandatory. They cannot be
+truncated away. If they do not fit, the builder fails with
+`context-budget-exceeded`.
+
+Omissions are machine-readable aggregate DTOs:
 
 ```ts
-interface InvestigativeContextOmission {
+interface InvestigativeContextOmissionAggregate {
   readonly reasonCode: InvestigativeOmissionReasonCode;
   readonly refKind: string;
-  readonly refId: string;
+  readonly aggregateKey: string;
   readonly count: number;
+  readonly sampleRefs?: readonly InvestigativeOmissionSampleRef[];
+}
+
+interface InvestigativeOmissionSampleRef {
+  readonly refKind: string;
+  readonly refId: string;
   readonly contentHash?: `sha256:${string}`;
-  readonly sourceEventIds: readonly string[];
 }
 ```
+
+Budget omissions aggregate by reason and ref kind, with deterministic aggregate
+keys when a second dimension is needed, such as source collection, projection
+name, or optional detail type. `sampleRefs` are optional and bounded by a
+per-pack constant. Omission DTOs must not enumerate every excluded row.
+Provenance for included rows remains exact; aggregate omissions explain what was
+left out without pretending to carry exact row provenance for each omitted item.
 
 Stable omission reason codes:
 
@@ -339,12 +443,36 @@ Common failure codes:
 - `provider-payload-forbidden`
 - `accepted-truth-mutation-forbidden`
 - `accepted-relationship-not-authoritative`
+- `selection-window-required`
+- `selection-manifest-stale`
+- `selection-row-mismatch`
+- `selection-cursor-invalid`
 - `duplicate-context-pack-registration`
 - `conflicting-context-pack-registration`
 - `invalid-context-pack-scope`
 
 The builders must not replace these codes with prose-only messages. Error
 messages can exist, but automation should be able to match the code.
+
+## Stale Read Behavior
+
+The selection manifest and all bounded readers must agree on source projection
+high-water marks, included IDs, included hashes, and row-level provenance. A
+builder must not silently refresh the manifest, widen the window, or compensate
+for stale reader results by scanning other projections.
+
+The builder fails with:
+
+- `selection-manifest-stale` when a reader cannot serve the manifest's
+  high-water marks or returns a newer incompatible snapshot.
+- `selection-row-mismatch` when an included row's ID, content hash, projection
+  row hash, or required provenance differs from the manifest.
+- `selection-cursor-invalid` when the manifest cursor/window is malformed,
+  expired by the selection capability, or cannot be replayed deterministically.
+- `projection-lag` when a required projection is behind the manifest.
+
+If the caller wants newer data, it must request a new selection manifest and
+accept the resulting new canonical payload hash.
 
 ## `accepted-graph-projection.v1`
 
@@ -357,16 +485,20 @@ builder, model, workflow, or prompt artifact to mutate accepted state.
 
 The pack includes:
 
-- accepted assertions from `GraphProjection.assertions`
-- resolved entities from `GraphProjection.entities`
+- accepted assertions selected by the authoritative manifest and returned by
+  the accepted graph reader
+- resolved entities selected by the authoritative manifest and returned by the
+  accepted graph reader
 - accepted relationships only when supplied by an authoritative reviewed
-  relationship projection
+  relationship projection through the accepted graph reader
+- the selection manifest identity, scope, ordering, window, total eligible
+  count, included graph refs, and aggregate graph omission counts
 - assertion provenance: `assertionId`, `evidenceId`, `proposedByEventId`,
   `acceptedByEventId`
 - evidence content hash for every accepted assertion
 - ontology core and pack versions
 - projection high-water marks
-- omission records
+- aggregate omission records
 - staleness inputs for projection high-water marks and evidence content hashes
 - truth boundary:
 
@@ -394,6 +526,10 @@ If no authoritative relationship projection is injected, the pack records
 relationship entry is present but lacks accepted event provenance or evidence
 hash provenance, the builder fails with `accepted-relationship-not-authoritative`
 or `missing-provenance`.
+
+The accepted graph reader must return read-only projection truth for manifest
+included IDs. The builder treats the reader as a source of reviewed projection
+state, not as permission to create, resolve, infer, or mutate graph facts.
 
 ### Provenance Requirements
 
@@ -423,7 +559,8 @@ payloads.
 
 The pack includes:
 
-- evidence ID
+- evidence IDs selected by the authoritative manifest and returned by the
+  evidence reader
 - evidence ingestion event ID
 - content hash
 - media type and size when available from `evidence.ingested`
@@ -437,12 +574,15 @@ The pack includes:
   type, completion/failure event ID, retryability
 - provider approval event IDs when relevant, without provider payloads or
   credentials
-- governance tag decisions from governance projection, including source
+- governance tag decisions from the governance posture reader, including source
   `ai` or `human`, active or removed status, confidence, safe rationale, and
   event ID
 - quarantine and tombstone posture
 - source staleness inputs from the injected posture capability
-- omission records
+- the selection manifest identity, scope, ordering, window, total eligible
+  count, included evidence refs and hashes, and aggregate evidence omission
+  counts
+- aggregate omission records
 
 The pack may include safe summary fields only when they are already available as
 secret-safe, raw-content-free summary material. The builder must not open raw
@@ -461,8 +601,9 @@ The pack rejects or omits:
 - credential refs beyond safe credential-free IDs already allowed by upstream
   DTOs
 - absolute source paths or hidden local storage paths
-- executable command text
 - secret-shaped keys or values
+- raw executable action fields, argv arrays, runnable shell snippets intended
+  for execution, tool-call payloads, or provider action requests
 
 Raw and provider material use omission codes such as
 `raw-content-suppressed`, `parse-output-text-suppressed`, and
@@ -470,12 +611,17 @@ Raw and provider material use omission codes such as
 into a mandatory field, the builder fails with `raw-content-forbidden`,
 `provider-payload-forbidden`, or `secret-detected`.
 
+Journalistic evidence may legitimately discuss commands or scripts. Such
+mentions can appear only in safe narrative fields with authority labels and
+secret/raw-content checks; the builder still forbids raw or executable action
+fields.
+
 ### Evidence Staleness
 
 Evidence staleness must reuse the exact current-byte/archive-child hash posture.
 A latest-scan signal is not sufficient.
 
-For regular files, staleness inputs bind:
+For each included evidence row backed by a regular file, staleness inputs bind:
 
 - source collection ID
 - scan batch ID
@@ -486,7 +632,8 @@ For regular files, staleness inputs bind:
 - size when available
 - adapter name/version
 
-For archive children, staleness inputs also bind:
+For each included evidence row backed by an archive child, staleness inputs
+also bind:
 
 - container path ref or safe container ref
 - approved container hash
@@ -523,9 +670,11 @@ The pack includes:
 - quarantine and tombstone summaries
 - open governance incidents
 - network exposure and session posture when active
+- the selection manifest identity, scope, ordering, window, total eligible
+  count, active safety refs, and aggregate non-active omission counts
 - projection high-water marks
 - staleness inputs
-- omission records
+- aggregate omission records
 - truth boundary:
 
 ```ts
@@ -540,8 +689,8 @@ The pack includes:
 
 ### Resident-Agent Locks
 
-Resident-agent locks come from `AgentProjection.locks` where `state` is
-`active`. Each lock entry includes:
+Resident-agent locks come from the resident-agent lock reader where `state` is
+`active`. Each active lock entry includes:
 
 - `sourceLabel: "resident-agent-lock"`
 - lock ID
@@ -552,14 +701,15 @@ Resident-agent locks come from `AgentProjection.locks` where `state` is
 - related event IDs
 - event IDs from projection provenance
 
-Cleared locks may be summarized only as non-active history when budget allows.
-Active locks are mandatory and cannot be omitted.
+Cleared locks may be summarized only as non-active history when budget allows
+and omitted through aggregate omission counts. Active locks are mandatory and
+cannot be omitted or truncated.
 
 ### Governance-Derived Restrictions
 
-Governance-derived restrictions come from `GovernanceProjection` and related
-events. They are not agent locks and must not be labeled as lock-clearable by
-the resident agent.
+Governance-derived restrictions come from the governance posture reader and
+related events. They are not agent locks and must not be labeled as
+lock-clearable by the resident agent.
 
 Restriction sources include:
 
@@ -586,6 +736,8 @@ Each restriction entry includes:
 The pack must preserve the distinction between an active resident-agent lock and
 a governance-derived restriction. A governance restriction can block readiness or
 make an approval stale, but it never proves approval and never clears itself.
+Active governance-derived restrictions are mandatory safety posture and cannot
+be omitted or truncated; optional non-active history may be aggregated.
 
 ## Context Pack Refs
 
@@ -605,6 +757,7 @@ Every produced `ContextPackRef` must include:
 - scope
 - size budget bytes
 - staleness inputs
+- selection manifest hash or equivalent manifest provenance ref
 
 `provenanceRefs` must include at least one required ref kind for each descriptor
 requirement. The implementation plan should set descriptor
@@ -612,6 +765,10 @@ requirement. The implementation plan should set descriptor
 accepted graph and evidence packs, and event IDs for governance locks. When a
 pack includes content hashes, those hashes must also appear in `artifactHashes`
 where the existing `ContextPackRef` contract allows them.
+
+Selection manifest hashes should appear in `provenanceRefs` or `artifactHashes`
+using the existing `ContextPackRef` shape available at implementation time. The
+payload remains the canonical place for the full manifest metadata.
 
 The existing `ContextPackRef` has one `projectionHighWaterMark` field. For
 these packs, that field records the pack's primary freshness marker, while the
@@ -623,9 +780,14 @@ source-specific stale checks use the named payload and staleness inputs.
 ## Replay And Restart Behavior
 
 The builders are pure over injected authoritative inputs. After restart, a
-runtime can rebuild the same pack by re-reading the ledger, rebuilding
-projections, resolving the current source posture capability, and calling the
-same builder.
+runtime can rebuild the same pack by re-reading the ledger, rebuilding or
+opening projections to the manifest high-water marks, resolving the current
+source posture capability, replaying the same authoritative selection manifest,
+and calling the same builder.
+
+If the runtime intentionally wants a new page, newer high-water marks, or a
+different scope, it requests a new selection manifest and receives a different
+canonical payload hash when the selected facts differ.
 
 No payload truth is stored in hidden package state. Registration bookkeeping is
 allowed only to make duplicate helper calls idempotent and conflict-aware.
@@ -639,7 +801,8 @@ This lane proves registration and readiness through tests with injected
 dependencies:
 
 - Create a fresh `ContextPackRegistry`.
-- Call `registerInvestigativeContextPacks(registry, deps)`.
+- Call `registerInvestigativeContextPacks(registry, deps)` with a stable
+  registration identity and bounded in-memory selection/readers.
 - Build the three investigative pack refs.
 - Pass those refs to `projectSpecialistWorkflowReadiness`.
 - Verify specialist readiness no longer reports missing investigative context
@@ -648,7 +811,8 @@ dependencies:
 The design intentionally leaves local-runtime and orchestrator wiring to a
 later integration task. That later task should have one narrow responsibility:
 construct the dependency object from the mounted workspace/runtime and call the
-package-owned registration helper.
+package-owned registration helper. It should not change pack schemas,
+readiness logic, or the bounded selection contract.
 
 ## Testing Expectations
 
@@ -656,17 +820,33 @@ The implementation plan should require failing tests first for:
 
 - descriptor metadata for exactly the three investigative packs
 - idempotent helper registration
-- conflict rejection for duplicate IDs, versions, descriptors, budgets, and
-  builder/dependency identity
+- conflict rejection for duplicate IDs, versions, descriptors, budgets, stable
+  builder descriptor identity, and registration identity
 - stable canonical payload hashes for identical injected inputs
 - no hidden clock usage
+- production builder dependency shape using bounded selection/readers rather
+  than required whole event lists or whole-workspace projections
+- authoritative selection manifests with explicit scope, source projection
+  high-water marks, deterministic ordering/cursor/window, total eligible count,
+  included IDs/hashes, and bounded aggregate omission counts
+- workspace-scope requests requiring a deterministic page/window or explicit
+  bounded selection manifest
+- exact event/provenance fetches by included IDs or bounded batches, with tests
+  proving builders do not scan the whole ledger for one pack
+- build memory, output size, and reader/query work remaining bounded as
+  unrelated evidence, graph rows, and governance history grow
+- stable cursors/selections preventing omission drift when unrelated rows are
+  added outside the manifest
 - deterministic ordering independent of caller order
 - accepted assertions requiring proposal event, acceptance event, evidence ID,
   and evidence content hash
 - accepted relationships included only from an authoritative reviewed projection
 - no inferred accepted relationships
 - evidence summary rejecting raw document text, parse text, provider payloads,
-  provider errors, credentials, hidden paths, and executable command text
+  provider errors, credentials, hidden paths, and raw executable action fields
+- evidence summary permitting safe journalistic narrative that discusses
+  commands when field schemas, authority labels, secret checks, and raw-content
+  checks pass
 - exact regular-file byte hash staleness rejection
 - exact archive container and child hash staleness rejection
 - governance pack separation of resident-agent locks and governance-derived
@@ -674,8 +854,12 @@ The implementation plan should require failing tests first for:
 - governance restrictions never granting approval, clearing locks, or mutating
   evidence or graph state
 - active locks, exact provenance, scope, high-water marks, staleness inputs, and
-  omission metadata never being truncated away
-- deterministic budget omissions with stable omission reason codes
+  aggregate omission metadata never being truncated away
+- deterministic budget omissions with stable omission reason codes, aggregate
+  counts, and bounded sample refs rather than per-row omitted lists
+- stale manifest/read rejection with stable `selection-manifest-stale`,
+  `selection-row-mismatch`, `selection-cursor-invalid`, and
+  `selection-window-required` codes
 - mandatory envelope budget failure with `context-budget-exceeded`
 - specialist readiness with injected pack refs and no runtime/cockpit edits
 
@@ -702,13 +886,22 @@ Reviewers should fail future implementation changes that:
 - replace exact current-byte/archive-child staleness checks with latest-scan
   checks
 - truncate active locks, mandatory provenance, scope, high-water marks,
-  staleness inputs, or omission metadata
+  staleness inputs, or aggregate omission metadata
+- require whole-workspace projections, whole event lists, or ledger scans to
+  build one bounded pack
+- allow workspace scope to produce an unbounded dump instead of a deterministic
+  page/window or explicit bounded selection manifest
+- enumerate every omitted row in omission DTOs instead of bounded aggregate
+  counts and optional bounded samples
+- silently refresh stale manifests, change selection windows, or mask
+  selection/read mismatches instead of failing closed
 - let governance restrictions grant approval, clear locks, release quarantine,
   or mutate graph/evidence state
 - import local-runtime, UI, SQLite, filesystem mount, or orchestrator modules
   into the agent package builders
 - use hidden clocks or payload caches that change content hashes outside
   injected inputs
+- use dependency object identity alone for registration idempotency
 - emit prose-only failure or omission reasons where machine-readable codes are
   required
 
@@ -723,5 +916,5 @@ The safe first implementation slice should be pure package work:
   packs, specialist prompts, or handoff projection files
 
 The package should prove the three production builders and registration helper
-with injected projections, events, and source posture capabilities. Runtime
-wiring remains a later narrow integration task.
+with injected bounded selection, reader, event, and source posture capabilities.
+Runtime wiring remains a later narrow integration task.
