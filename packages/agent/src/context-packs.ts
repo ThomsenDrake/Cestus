@@ -246,12 +246,10 @@ export function buildContextPackRef(input: BuildContextPackRefInput): ContextPac
   return buildResolvedContextPack(input).ref;
 }
 
-export function verifyResolvedContextPack(value: unknown): ResolvedContextPack;
-export function verifyResolvedContextPack(value: unknown, parser: ContextPackPayloadParser): VerifiedResolvedContextPack;
 export function verifyResolvedContextPack(
   value: unknown,
   parser?: ContextPackPayloadParser
-): ResolvedContextPack | VerifiedResolvedContextPack {
+): ResolvedContextPack {
   const resolved = normalizeResolvedContextPack(value);
   const payloadBytes = serializeContextPackPayload(resolved.payload);
   const contentHash = hashStableJson(payloadBytes);
@@ -277,9 +275,7 @@ export function verifyResolvedContextPack(
     throw new Error("blocked.payload-hash-mismatch: parser-normalized payload does not match ref");
   }
 
-  const verified = freezeResolvedContextPack({ ref: resolved.ref, payload: parsedPayload }) as VerifiedResolvedContextPack;
-  verifiedResolvedContextPacks.add(verified);
-  return verified;
+  return freezeResolvedContextPack({ ref: resolved.ref, payload: parsedPayload });
 }
 
 export function assertResolvedContextPacksForExecution(
@@ -388,7 +384,7 @@ export function createContextPackRegistry(options: CreateContextPackRegistryOpti
       if (builder.parsePayload === undefined) {
         throw new Error("blocked.missing-payload-parser");
       }
-      return verifyResolvedContextPack(resolved, builder.parsePayload);
+      return verifyResolvedContextPackForRegistry(resolved, builder.parsePayload);
     },
 
     getDescriptor(contextPackId: string): ContextPackDescriptor | undefined {
@@ -410,6 +406,15 @@ export function createContextPackRegistry(options: CreateContextPackRegistryOpti
       });
     }
   });
+}
+
+function verifyResolvedContextPackForRegistry(
+  value: ResolvedContextPack,
+  parser: ContextPackPayloadParser
+): VerifiedResolvedContextPack {
+  const verified = verifyResolvedContextPack(value, parser) as VerifiedResolvedContextPack;
+  verifiedResolvedContextPacks.add(verified);
+  return verified;
 }
 
 function extractContextPackIdForDuplicateCheck(descriptor: unknown): string | undefined {

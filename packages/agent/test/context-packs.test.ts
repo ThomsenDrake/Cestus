@@ -104,15 +104,14 @@ describe("agent context packs", () => {
     expect(JSON.stringify(missingPayloadRegistry.snapshot())).not.toContain("parsePayload");
   });
 
-  it("only permits verified resolved payloads that exactly cover requested refs for execution", () => {
+  it("rejects directly verified payloads for execution", () => {
     const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
     const verified = verifyResolvedContextPack(resolved, (payload) => payload);
-    const executionPacks = assertResolvedContextPacksForExecution([resolved.ref], [verified]);
 
-    expect(executionPacks[0]?.payload).toEqual(resolvedContextPackSentinelInput.payload);
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [verified])).toThrow(/verified/i);
     expect(() => assertResolvedContextPacksForExecution([resolved.ref], [resolved])).toThrow(/verified/i);
     expect(() => assertResolvedContextPacksForExecution([resolved.ref], [])).toThrow(/missing/i);
-    expect(() => assertResolvedContextPacksForExecution([], [verified])).toThrow(/extra/i);
+    expect(() => assertResolvedContextPacksForExecution([], [verified])).toThrow(/verified/i);
   });
 
   it("does not mint execution authority without a parser", () => {
@@ -171,14 +170,13 @@ describe("agent context packs", () => {
     await expect(registry.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.invalid-payload-shape");
   });
 
-  it("requires serialized resolved packs to be reverified before execution", () => {
+  it("requires serialized resolved packs to return through the registry before execution", () => {
     const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
-    const verified = verifyResolvedContextPack(resolved, (payload) => payload);
-    const reloaded = JSON.parse(JSON.stringify(verified));
+    const reloaded = JSON.parse(JSON.stringify(verifyResolvedContextPack(resolved, (payload) => payload)));
 
     expect(() => assertResolvedContextPacksForExecution([resolved.ref], [reloaded])).toThrow(/verified/i);
     const reverified = verifyResolvedContextPack(reloaded, (payload) => payload);
-    expect(assertResolvedContextPacksForExecution([resolved.ref], [reverified])).toHaveLength(1);
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [reverified])).toThrow(/verified/i);
   });
 
   it("rejects resolver payload hash and size mismatches", async () => {
@@ -213,10 +211,47 @@ describe("agent context packs", () => {
     });
     await expect(registry.buildResolved("workspace-runtime-status.v1")).rejects.toThrow("blocked.payload-schema-mismatch");
 
-    const verified = verifyResolvedContextPack(taskResolved, (payload) => payload);
+    const verified = await registry.buildResolved("task-run-history.v1");
     const mismatchedRef = buildContextPackRef({ ...resolvedContextPackSentinelInput, safeSummary: "Different safe summary." });
     expect(() => assertResolvedContextPacksForExecution([taskResolved.ref, taskResolved.ref], [verified])).toThrow(/duplicate/i);
     expect(() => assertResolvedContextPacksForExecution([mismatchedRef], [verified])).toThrow(/extra|missing/i);
+  });
+
+  it("reserves execution authority for the registry's exact pack parser", async () => {
+    const workspaceInput = {
+      ...resolvedContextPackSentinelInput,
+      contextPackId: "workspace-runtime-status.v1",
+      payload: { runtime: "ready" },
+      safeSummary: "Workspace runtime is ready."
+    };
+    const workspace = buildResolvedContextPack(workspaceInput);
+    const taskHistoryParser = (payload: AgentContextPackJsonValue): AgentContextPackJsonValue => payload;
+
+    expect(() => assertResolvedContextPacksForExecution([workspace.ref], [verifyResolvedContextPack(workspace, (payload) => payload)])).toThrow(/verified/i);
+    expect(() => assertResolvedContextPacksForExecution([workspace.ref], [verifyResolvedContextPack(workspace, taskHistoryParser)])).toThrow(/verified/i);
+
+    const registry = createContextPackRegistry();
+    registry.register({
+      descriptor: { contextPackId: "workspace-runtime-status.v1", version: 1, label: "Runtime status", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "runtime.status" },
+      build: () => workspaceInput,
+      parsePayload(payload) {
+        if (typeof payload !== "object" || payload === null || (payload as { runtime?: unknown }).runtime !== "ready") {
+          throw new Error("invalid workspace runtime payload");
+        }
+        return payload;
+      }
+    });
+
+    const registryResolved = await registry.buildResolved("workspace-runtime-status.v1");
+    expect(assertResolvedContextPacksForExecution([workspace.ref], [registryResolved])).toHaveLength(1);
+
+    const invalidRegistry = createContextPackRegistry();
+    invalidRegistry.register({
+      descriptor: { contextPackId: "workspace-runtime-status.v1", version: 1, label: "Runtime status", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "runtime.status" },
+      build: () => workspaceInput,
+      parsePayload: () => { throw new Error("invalid workspace runtime payload"); }
+    });
+    await expect(invalidRegistry.buildResolved("workspace-runtime-status.v1")).rejects.toThrow("blocked.payload-schema-mismatch");
   });
   it("validates descriptor metadata for explicit context assembly", () => {
     const descriptor = contextPackDescriptorSchema.parse({
