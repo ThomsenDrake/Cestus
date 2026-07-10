@@ -110,6 +110,19 @@ template/renderer identity and the exact context hashes.
 Add an agent-package registry with a shape equivalent to:
 
 ```ts
+type ProductionContextRequirement =
+  | {
+      readonly contextPackId: string;
+      readonly order: number;
+      readonly requirementMode: "always";
+    }
+  | {
+      readonly contextPackId: string;
+      readonly order: number;
+      readonly requirementMode: "when-scope-associated-prr";
+      readonly omissionWhenNotApplicable: "no-associated-prr";
+    };
+
 interface ProductionPromptTemplateRegistration {
   readonly runType: AgentSpecialistRunType;
   readonly promptTemplateId: string;
@@ -121,8 +134,7 @@ interface ProductionPromptTemplateRegistration {
   readonly providerOutputSchemaVersion: number;
   readonly handoffSchemaId: string;
   readonly handoffSchemaVersion: number;
-  readonly requiredContextPackIds: readonly string[];
-  readonly optionalContextPackIds: readonly string[];
+  readonly contextRequirements: readonly ProductionContextRequirement[];
   readonly allowedOmissions: readonly ProductionPromptOmissionRule[];
   readonly safetyClass: "provider-approved";
   readonly transferApprovalClass: "provider-byte-transfer";
@@ -141,15 +153,45 @@ The injected clock is used only for prompt envelope metadata such as
 `generatedAt`. It cannot affect rendered prompt content, rendered prompt hash,
 renderer hash, context ordering, omissions, or provider output schema binding.
 
+### Context Applicability Contract
+
+Context requirements are not a flat `required: true` list. Each requirement has
+a machine-readable `requirementMode` and stable `order`.
+
+- `always` means the pack is required for every run of the template.
+- `when-scope-associated-prr` means the pack is required only when the run/task
+  scope declares an associated PRR request.
+
+The applicability evaluator normalizes the task/run scope fields used by these
+predicates and produces a stable `scopeApplicabilityHash`. For v1, those fields
+are run type, task ID, scope kind, associated PRR request ID when present, and
+the selected PRR read-model ref when present.
+
+For each render attempt, Cestus records an evaluated applicability set:
+
+- applicable context requirements with ordered context pack refs and content
+  hashes,
+- non-applicable conditional requirements with exact omission reason
+  `no-associated-prr`,
+- the `scopeApplicabilityHash`,
+- the ordered requirement modes that were evaluated.
+
+A missing applicable context pack is `required-context-missing` and blocks
+rendering. A non-applicable `when-scope-associated-prr` PRR context requirement
+is not missing provenance; it is a bounded `no-associated-prr` omission. If the
+task/run scope later changes, including adding or removing an associated PRR,
+the `scopeApplicabilityHash` changes and any prior prompt artifact or approval
+is stale.
+
 ### Renderer Ownership
 
 Each production renderer lives in the agent package. It accepts normalized
 inputs:
 
 - run type
-- ordered required context refs
-- ordered optional context refs that were present
-- bounded omissions for optional refs
+- ordered applicable context refs
+- evaluated non-applicable conditional context omissions
+- bounded omissions for optional material
 - registered template metadata
 
 It returns deterministic prompt text plus a render audit:
@@ -159,7 +201,9 @@ It returns deterministic prompt text plus a render audit:
 - provider output schema ID/version
 - handoff schema ID/version
 - ordered context pack IDs and content hashes
+- evaluated context requirement modes
 - omission records
+- scope applicability hash
 - rendered prompt hash
 
 The renderer must not read environment variables, current time, filesystem
@@ -185,6 +229,8 @@ renders without exposing text:
 - `safetyClass`
 - `transferApprovalClass`
 - ordered `contextPackRefs`
+- evaluated `contextRequirements`
+- `scopeApplicabilityHash`
 - bounded `omissions`
 - `safeSummary`
 - `generatedAt`
@@ -203,9 +249,13 @@ trusted authority. Before a runner may invoke a provider, Cestus verifies:
 - provider output schema ID/version match the production registration.
 - handoff schema ID/version match the production registration.
 - safety class and transfer approval class match the production registration.
-- required context pack IDs are present in exact registered order.
-- required context pack content hashes match the current prepared context.
-- optional context refs are present only in registered order when supplied.
+- context requirement modes match the production registration.
+- the evaluated applicability set matches the current task/run scope.
+- applicable context pack IDs are present in exact registered order.
+- applicable context pack content hashes match the current prepared context.
+- non-applicable conditional requirements have exact bounded omission reasons.
+- optional context refs, if introduced by a future template version, are present
+  only in registered order when supplied.
 - omissions are bounded, exact, and allowed by the registration.
 - deterministic re-rendered prompt hash equals the supplied artifact hash.
 - artifact text passes secret-safety and unsafe authority restrictions.
@@ -234,33 +284,48 @@ All six registrations use `promptTemplateVersion: 1`, `rendererVersion: 1`,
 `safetyClass: "provider-approved"`, and
 `transferApprovalClass: "provider-byte-transfer"`.
 
-| Run type | Prompt template | Provider output schema | Handoff schema | Required context packs | Optional context packs |
+| Run type | Prompt template | Provider output schema | Handoff schema | Always-applicable context packs | Conditional context requirements |
 | --- | --- | --- | --- | --- | --- |
 | `prr-negotiation` | `prr-negotiation.review.v1` | `prr-negotiation.review-output.v1` | `prr-negotiation-handoff.v1` | `prr-read-model.v1`, `jurisdiction-pack-summary.v1`, `governance-locks.v1`, `evidence-summary.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | none |
-| `evidence-triage` | `evidence-triage.classify.v1` | `evidence-triage.classify-output.v1` | `evidence-triage-handoff.v1` | `evidence-summary.v1`, `governance-locks.v1`, `prr-read-model.v1`, `accepted-graph-projection.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | none |
-| `timeline-builder` | `timeline-builder.sourced-timeline.v1` | `timeline-builder.sourced-timeline-output.v1` | `timeline-builder-handoff.v1` | `accepted-graph-projection.v1`, `evidence-summary.v1`, `prr-read-model.v1`, `governance-locks.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | none |
-| `contradiction-finder` | `contradiction-finder.candidates.v1` | `contradiction-finder.candidates-output.v1` | `contradiction-finder-handoff.v1` | `accepted-graph-projection.v1`, `evidence-summary.v1`, `prr-read-model.v1`, `timeline-draft-summary.v1`, `governance-locks.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | none |
-| `investigation-planner` | `investigation-planner.next-steps.v1` | `investigation-planner.next-steps-output.v1` | `investigation-planner-handoff.v1` | `accepted-graph-projection.v1`, `evidence-summary.v1`, `prr-read-model.v1`, `timeline-draft-summary.v1`, `contradiction-candidate-summary.v1`, `governance-locks.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | none |
-| `report-builder` | `report-builder.packet-draft.v1` | `report-builder.packet-draft-output.v1` | `report-builder-handoff.v1` | `accepted-graph-projection.v1`, `evidence-summary.v1`, `prr-read-model.v1`, `timeline-draft-summary.v1`, `contradiction-candidate-summary.v1`, `governance-locks.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | none |
+| `evidence-triage` | `evidence-triage.classify.v1` | `evidence-triage.classify-output.v1` | `evidence-triage-handoff.v1` | `evidence-summary.v1`, `governance-locks.v1`, `accepted-graph-projection.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | `prr-read-model.v1` when scope declares an associated PRR request; otherwise `no-associated-prr` |
+| `timeline-builder` | `timeline-builder.sourced-timeline.v1` | `timeline-builder.sourced-timeline-output.v1` | `timeline-builder-handoff.v1` | `accepted-graph-projection.v1`, `evidence-summary.v1`, `governance-locks.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | `prr-read-model.v1` when scope declares an associated PRR request; otherwise `no-associated-prr` |
+| `contradiction-finder` | `contradiction-finder.candidates.v1` | `contradiction-finder.candidates-output.v1` | `contradiction-finder-handoff.v1` | `accepted-graph-projection.v1`, `evidence-summary.v1`, `timeline-draft-summary.v1`, `governance-locks.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | `prr-read-model.v1` when scope declares an associated PRR request; otherwise `no-associated-prr` |
+| `investigation-planner` | `investigation-planner.next-steps.v1` | `investigation-planner.next-steps-output.v1` | `investigation-planner-handoff.v1` | `accepted-graph-projection.v1`, `evidence-summary.v1`, `timeline-draft-summary.v1`, `contradiction-candidate-summary.v1`, `governance-locks.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | `prr-read-model.v1` when scope declares an associated PRR request; otherwise `no-associated-prr` |
+| `report-builder` | `report-builder.packet-draft.v1` | `report-builder.packet-draft-output.v1` | `report-builder-handoff.v1` | `accepted-graph-projection.v1`, `evidence-summary.v1`, `timeline-draft-summary.v1`, `contradiction-candidate-summary.v1`, `governance-locks.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, `workspace-runtime-status.v1` | `prr-read-model.v1` when scope declares an associated PRR request; otherwise `no-associated-prr` |
 
-The MVP registrations have no optional context packs. The omission mechanism is
-still part of the contract because prompt artifacts already support omissions
+`prr-negotiation` always requires a selected `prr-read-model.v1` context pack
+and `jurisdiction-pack-summary.v1`. It is selected-request scoped.
+
+The other five registrations support PRR-linked and non-PRR workflows. When the
+task/run scope declares an associated PRR request, `prr-read-model.v1` is an
+applicable required context pack and absence blocks rendering. When the scope
+has no associated PRR request, absence of `prr-read-model.v1` is an explicit
+bounded `no-associated-prr` omission. This is required for imported public
+datasets, legacy artifact review, proactive investigations, and first-PRR
+planning.
+
+The MVP registrations have no free optional context packs. The omission
+mechanism is still part of the contract because prompt artifacts already support
+omissions, conditional context requirements need bounded not-applicable records,
 and future template versions may introduce optional packs. For version 1,
-absence of any required pack blocks rendering and cannot be represented as an
-omission.
+absence of any applicable required pack blocks rendering and cannot be
+represented as an omission.
 
-Allowed omission categories for optional material, when a template version
-declares optional context, are:
+Allowed omission categories for optional material or conditional applicability
+are:
 
 - `context-budget`
 - `policy-redaction`
 - `raw-content-local-only`
 - `quarantine-or-lock`
 - `optional-pack-unavailable`
+- `no-associated-prr`
 
 Every omission record must include category, source ref, safe summary, and the
-template field or optional context pack it affects. Omission records must never
-hide missing required context.
+template field, optional context pack, or conditional context requirement it
+affects. `no-associated-prr` is allowed only for a non-applicable
+`when-scope-associated-prr` requirement. Omission records must never hide
+missing applicable context.
 
 ## Renderer Content Policy
 
@@ -281,8 +346,17 @@ Production renderer text may include safe IDs, hashes, counts, categories,
 deadline refs, citation refs, governance flags, and short safe summaries from
 context packs. It must not include raw private evidence bodies, raw
 correspondence bodies, source-sensitive excerpts, raw report prose, or provider
-credential material unless the exact context and prompt artifact are covered by
-the provider byte-transfer approval class and current approval proof.
+credential material unless those exact bytes are already present in approved
+context-pack inputs and the exact prompt artifact is covered by the provider
+byte-transfer approval class and current approval proof.
+
+The v1 renderers can render only bytes present in approved context-pack inputs.
+Provider byte-transfer approval authorizes sending the exact generated prompt
+artifact and its bound context bytes or summaries. It does not authorize the
+renderer, runner, or provider integration to fetch raw evidence, raw
+correspondence, local files, or report prose outside those packs. Any future
+raw-content prompt lane needs its own explicit capability, approval class, and
+spec.
 
 ## Provider Output Contracts
 
@@ -411,17 +485,21 @@ Preparation flow:
 1. Load the current run from the agent projection.
 2. Confirm run type, task ID, and `agent_default`.
 3. Look up the production prompt registration for the run type.
-4. Build required context pack refs in the exact registered order.
-5. Block if any required context pack is missing, stale, missing provenance, or
-   fails its own context contract.
-6. Render a production prompt artifact through the package-owned renderer, or
+4. Evaluate context requirement applicability against the current task/run
+   scope and compute `scopeApplicabilityHash`.
+5. Build applicable context pack refs in the exact registered order.
+6. Record bounded omission records for non-applicable conditional requirements.
+7. Block if any applicable context pack is missing, stale, missing provenance,
+   or fails its own context contract.
+8. Render a production prompt artifact through the package-owned renderer, or
    verify a supplied artifact by deterministic re-render.
-7. Return prepared context refs, production registration audit metadata, and
-   prompt artifact.
+9. Return prepared context refs, evaluated applicability metadata, production
+   registration audit metadata, and prompt artifact.
 
-Missing registration, test-only registration, renderer mismatch, required pack
-absence, omission mismatch, stale supplied artifact, hash mismatch, or
-disallowed safety/transfer class fails before model invocation.
+Missing registration, test-only registration, renderer mismatch, applicable
+context absence, context applicability mismatch, omission mismatch, stale
+supplied artifact, hash mismatch, or disallowed safety/transfer class fails
+before model invocation.
 
 The old fallback prompt text helper must be removed or made unreachable for
 provider invocation in the same implementation commit that enforces production
@@ -435,8 +513,11 @@ when:
 
 - the production template registration exists,
 - renderer ID/version/hash match the package-owned registration,
-- required context producers are available,
-- required context refs are current and provenance-backed,
+- context requirement modes match the package-owned registration,
+- the current task/run scope can be evaluated into a stable applicability set,
+- applicable context producers are available,
+- applicable context refs are current and provenance-backed,
+- non-applicable conditional requirements have bounded omission reasons,
 - provider output schema ID/version match the registration,
 - handoff schema ID/version match the registration,
 - safety class and transfer class match the registration,
@@ -458,6 +539,8 @@ must cover:
 - prompt template ID/version,
 - renderer ID/version/hash,
 - input artifact hash,
+- scope applicability hash,
+- evaluated context requirement modes and statuses,
 - ordered context pack IDs and content hashes,
 - evidence or source byte hashes when raw bytes or excerpts are included,
 - omissions,
@@ -465,9 +548,10 @@ must cover:
 - provider output schema ID/version,
 - current provider readiness and active locks.
 
-If any prompt artifact hash, context hash, evidence byte hash, renderer hash,
-provider descriptor, credential ref, lock state, or policy ref changes, the
-approval is stale and the provider call must fail closed before transfer.
+If any prompt artifact hash, context hash, scope applicability hash, evaluated
+omission reason, evidence byte hash, renderer hash, provider descriptor,
+credential ref, lock state, or policy ref changes, the approval is stale and the
+provider call must fail closed before transfer.
 
 ## Diagnostics And Audit
 
@@ -479,6 +563,7 @@ Failures should be structured and secret-safe. Useful categories include:
 - `prompt-artifact-stale`
 - `prompt-artifact-hash-mismatch`
 - `required-context-missing`
+- `context-applicability-mismatch`
 - `optional-omission-invalid`
 - `provider-output-schema-mismatch`
 - `test-template-not-production`
@@ -497,16 +582,23 @@ The implementation plan must keep the migration atomic. No intermediate code
 commit may leave a state where specialist runners can invoke a provider through
 fallback or placeholder prompt synthesis.
 
+The descriptor change for conditional PRR context and the prompt readiness
+enforcement must land in the same approved implementation task. No intermediate
+state may treat conditional PRR absence as generic missing provenance, and no
+intermediate state may consider a placeholder or synthesized prompt provider
+ready.
+
 Recommended task order:
 
 1. Add deterministic tests for all six production template registrations,
-   renderer hashes, context requirements, output schemas, and production/test
-   distinction.
+   renderer hashes, context requirement applicability, output schemas, and
+   production/test distinction.
 2. Add package-owned production renderers and provider output validators.
 3. Add tests that prove missing or mismatched production registration blocks
    before provider invocation.
 4. Remove or disable fallback prompt synthesis and update runner preparation in
-   the same implementation commit as production registry enforcement.
+   the same implementation commit as production registry enforcement and
+   conditional PRR applicability handling.
 5. Update current PRR, evidence triage, and investigation planner runner tests
    to use production renderers or explicitly non-production fixtures that fail
    readiness.
@@ -523,12 +615,23 @@ Deterministic credential-free tests should prove:
 - exactly six production templates are registered;
 - renderer hashes are stable across calls and independent of injected clock;
 - clock changes affect envelope `generatedAt` only, not rendered prompt hash;
-- required context absence blocks before prompt render and provider invocation;
-- optional omissions are bounded and cannot hide missing required packs;
+- applicable required context absence blocks before prompt render and provider
+  invocation;
+- PRR-linked evidence triage, investigation planner, and report builder runs
+  require `prr-read-model.v1` and reject stale or missing PRR context;
+- non-PRR evidence triage, investigation planner, and report builder runs record
+  exact `no-associated-prr` omissions and do not fail readiness for absent PRR
+  context;
+- changing task/run scope between PRR-linked and non-PRR modes stales the prompt
+  artifact and provider byte-transfer approval;
+- optional and conditional omissions are bounded and cannot hide missing
+  applicable packs;
 - supplied artifacts are rejected on renderer mismatch, template mismatch,
-  output schema mismatch, context hash mismatch, omission mismatch, safety class
-  mismatch, transfer class mismatch, or artifact hash mismatch;
+  output schema mismatch, context hash mismatch, context applicability mismatch,
+  omission mismatch, safety class mismatch, transfer class mismatch, or artifact
+  hash mismatch;
 - test prompt capabilities cannot satisfy production readiness;
+- v1 renderers cannot fetch or render bytes outside approved context-pack inputs;
 - provider output schemas reject unsafe authority claims while permitting
   legitimate field-specific narrative text;
 - PRR sends, legal escalation, export, repair, provider byte transfer, accepted
@@ -543,6 +646,10 @@ Live provider acceptance should be separately gated and secret-safe:
 CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/evidence-triage-nous-live.test.ts
 ```
 
+The evidence-triage live acceptance must include at least one non-PRR
+imported-evidence run with a bounded `no-associated-prr` omission, because
+imported evidence triage is a core Cestus workflow.
+
 The visible output may include provider ID, model ID, hashes, event IDs, counts,
 categories, and fixed markers only. It must not print prompt text, provider
 response text, credentials, raw provider errors, raw request bodies, raw
@@ -555,14 +662,23 @@ evidence text, or hidden local paths.
 - `rendererHash` is stable canonical material, not compiled JavaScript or
   environment state.
 - Injected clocks cannot affect rendered prompt bytes or rendered prompt hash.
-- Required context pack absence blocks rendering and provider invocation.
-- Optional omissions are bounded, exact, and versioned.
+- `prr-negotiation` always requires selected `prr-read-model.v1` and
+  `jurisdiction-pack-summary.v1`.
+- For the other five templates, `prr-read-model.v1` is required only when the
+  task/run scope declares an associated PRR request.
+- Non-PRR runs bind exact `no-associated-prr` omissions instead of failing
+  readiness for absent PRR context.
+- Applicable required context pack absence blocks rendering and provider
+  invocation.
+- Conditional and optional omissions are bounded, exact, and versioned.
 - Production readiness rejects arbitrary injected builders and test-only
   renderers.
 - Supplied prompt artifacts are re-verified against the registered production
-  renderer and current ordered context hashes.
+  renderer, evaluated applicability set, omission reasons, and current ordered
+  context hashes.
 - Provider byte-transfer approval binds exact prompt artifact and sent
-  byte/context hashes.
+  byte/context hashes, including scope applicability hash.
+- V1 renderers can render only bytes present in approved context-pack inputs.
 - Model output remains untrusted and cannot accept ontology truth, send PRRs,
   escalate legally, export, clear locks, transfer bytes, or execute repairs.
 - No prompt text or provider response text enters ledger events, diagnostics,
