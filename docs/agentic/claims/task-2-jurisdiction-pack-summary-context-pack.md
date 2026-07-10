@@ -19,8 +19,10 @@ Status: `ready-for-review`
 - Red command: `npm test -- packages/agent/test/prr-context-packs.test.ts` failed as expected because `buildJurisdictionPackSummaryContextPack` was not a function and the strict parser did not yet reject forged generic JSON.
 - Green command: `npm test -- packages/agent/test/prr-context-packs.test.ts` passed with 1 test file and 16 tests.
 - Full verification: `npm run verify` passed with typecheck, tests, UI build, and factory readiness.
+- Needs-fixes RED: `npm test -- packages/agent/test/prr-context-packs.test.ts` failed with the new hash-valid jurisdiction ref attacker test because the parser accepted extra conflicting staleness inputs.
+- Needs-fixes GREEN: `npm test -- packages/agent/test/prr-context-packs.test.ts` passed with 1 test file and 17 tests after requiring the jurisdiction staleness-input array to exactly match the canonical two entries.
 
 ## Review
 
-- Review status: self-reviewed; ready for spec and code-quality review
+- Review status: needs-fixes item addressed; ready for spec and code-quality review
 - Concerns: none recorded
