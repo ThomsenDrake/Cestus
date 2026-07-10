@@ -250,6 +250,16 @@ function statusFromProjection(projection: ReturnType<ReturnType<typeof buildAgen
   return {
     schemaVersion: "agent-status.v1",
     generatedAt: "2026-07-10T15:20:00.000Z",
+    identityLifecycle: {
+      schemaVersion: "resident-identity-lifecycle.v1",
+      state: "ready",
+      residentAgentId: "agent_default",
+      workspaceId: "ws_case_001",
+      initialized: true,
+      eventIds: ["evt_agent_identity"],
+      safeMessage: "Resident identity is ready.",
+      allowedRepairActions: []
+    },
     ...projection,
     providers: [],
     pendingApprovalCount: 0,
