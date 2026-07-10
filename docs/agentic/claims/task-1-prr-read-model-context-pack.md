@@ -19,6 +19,7 @@ Status: `in-progress`
 - Green command: `npm test -- packages/agent/test/prr-context-packs.test.ts` passed: 1 test file, 5 tests.
 - Full verification: `npm run verify` passed: typecheck and repository verification completed with exit code 0.
 - Review fix verification: `npm test -- packages/agent/test/prr-context-packs.test.ts` passed with 8 tests; `npm run verify` passed after the provenance and citation hardening.
+- Reverse-provenance verification: `npm test -- packages/agent/test/prr-context-packs.test.ts` passed with 10 tests; `npm run verify` passed after binding emitted hashes and evidence IDs to selected source refs.
 
 ## Review
 
