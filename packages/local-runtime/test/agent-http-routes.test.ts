@@ -10,6 +10,7 @@ import {
   type AgentToolPreview
 } from "../../agent/src/index.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { LOCAL_RUNTIME_SESSION_COOKIE_NAME, localRuntimeSessionCookieValue } from "../src/auth.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
@@ -38,10 +39,12 @@ describe("agent HTTP routes", () => {
     const body = JSON.parse(response.body) as {
       readonly schemaVersion: string;
       readonly providers: readonly { readonly providerId: string; readonly modelFamilies: readonly string[] }[];
+      readonly identityLifecycle: { readonly state: string };
     };
 
     expect(response.status).toBe(200);
     expect(body.schemaVersion).toBe("agent-status.v1");
+    expect(body.identityLifecycle.state).toBe("not-mounted");
     expect(body.providers).toEqual([
       expect.objectContaining({ providerId: "provider_fake_local", modelFamilies: ["fake-local"] })
     ]);
@@ -125,8 +128,7 @@ describe("agent HTTP routes", () => {
   });
 
   it("creates a durable task through POST /api/agent/tasks", async () => {
-    const cwd = tempDir();
-    const config = resolveLocalRuntimeConfig({ cwd, env: {} });
+    const config = portableConfig("ws_task_route");
     const first = testHandler({ config });
     const response = await first({
       method: "POST",
@@ -153,8 +155,7 @@ describe("agent HTTP routes", () => {
   });
 
   it("accepts and persists urgent task priority through POST /api/agent/tasks", async () => {
-    const cwd = tempDir();
-    const config = resolveLocalRuntimeConfig({ cwd, env: {} });
+    const config = portableConfig("ws_task_urgent");
     const first = testHandler({ config });
     const response = await first({
       method: "POST",
@@ -182,7 +183,7 @@ describe("agent HTTP routes", () => {
   });
 
   it("returns a stable conflict for duplicate task ids", async () => {
-    const handler = testHandler();
+    const handler = testHandler({ config: portableConfig("ws_task_duplicate") });
     const body = JSON.stringify({
       taskId: "task_route_duplicate",
       title: "Inspect duplicate behavior",
@@ -204,7 +205,7 @@ describe("agent HTTP routes", () => {
   });
 
   it("returns a stable conflict when duplicate task ids race", async () => {
-    const handler = testHandler();
+    const handler = testHandler({ config: portableConfig("ws_task_race") });
     const warmup = await handler({
       method: "POST",
       url: "/api/agent/tasks",
@@ -240,7 +241,7 @@ describe("agent HTTP routes", () => {
   });
 
   it("returns a stable conflict when duplicate task ids race on an empty ledger", async () => {
-    const handler = testHandler();
+    const handler = testHandler({ config: portableConfig("ws_task_empty_race") });
     const body = JSON.stringify({
       taskId: "task_route_empty_concurrent_duplicate",
       title: "Inspect empty ledger duplicate behavior",
@@ -466,7 +467,10 @@ describe("agent HTTP routes", () => {
   });
 
   it("preserves safe runtime diagnostics for memory validation failures", async () => {
-    const handler = testHandler({ agentRuntimeFactory: memoryValidationFailureRuntimeFactory() });
+    const handler = testHandler({
+      config: portableConfig("ws_memory_validation"),
+      agentRuntimeFactory: memoryValidationFailureRuntimeFactory()
+    });
     const response = await handler({
       method: "POST",
       url: "/api/agent/memory",
@@ -514,6 +518,25 @@ function tempDir(): string {
   const cwd = mkdtempSync(join(tmpdir(), "cestus-agent-route-"));
   tempDirs.push(cwd);
   return cwd;
+}
+
+function portableConfig(workspaceId: string): ReturnType<typeof resolveLocalRuntimeConfig> {
+  const cwd = tempDir();
+  const workspaceRoot = join(cwd, workspaceId);
+  createPortableWorkspace({
+    rootDir: workspaceRoot,
+    workspaceId,
+    label: `Workspace ${workspaceId}`,
+    createdAt: "2026-07-10T12:00:00.000Z",
+    createdBy: "agent-route-test"
+  });
+  return resolveLocalRuntimeConfig({
+    cwd,
+    env: {
+      CESTUS_LOCAL_STORAGE: "portable-workspace",
+      CESTUS_WORKSPACE_ROOT: workspaceRoot
+    }
+  });
 }
 
 function closeHandler(handler: LocalRuntimeHttpHandler): void {

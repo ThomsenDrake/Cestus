@@ -1,4 +1,5 @@
 import type { AgentProjectionIdentity } from "./projection.js";
+import type { ResidentIdentityLifecycleDto } from "./identity-bootstrap.js";
 import type {
   AgentMemoryDetailDto,
   AgentMemoryFiltersDto,
@@ -20,6 +21,7 @@ export interface AgentRuntimeDiagnosticDto {
 export interface AgentStatusDto extends AgentProjectionDto {
   readonly schemaVersion: "agent-status.v1";
   readonly generatedAt: string;
+  readonly identityLifecycle: ResidentIdentityLifecycleDto;
   readonly identity?: AgentProjectionIdentity | undefined;
   readonly providers: readonly ProviderDescriptor[];
   readonly providerReadiness?: ProviderReadinessDto | undefined;

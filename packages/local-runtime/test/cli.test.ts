@@ -36,8 +36,10 @@ describe("runLocalRuntimeCli", () => {
     const body = JSON.parse(stdout.join("\n")) as {
       readonly schemaVersion: string;
       readonly providers: readonly { readonly providerId: string }[];
+      readonly identityLifecycle: { readonly state: string };
     };
     expect(body.schemaVersion).toBe("agent-status.v1");
+    expect(body.identityLifecycle.state).toBe("not-mounted");
     expect(body.providers).toEqual([expect.objectContaining({ providerId: "provider_fake_local" })]);
     expect(stdout.join("\n")).not.toMatch(/sk_live|password|private key|bearer [a-z0-9._-]+/i);
     expect(await eventTypes(resolveLocalRuntimeConfig({ cwd, env: {} }))).toEqual([]);
@@ -48,12 +50,24 @@ describe("runLocalRuntimeCli", () => {
     const statusStdout: string[] = [];
     const stderr: string[] = [];
     tempDir = mkdtempSync(join(tmpdir(), "cestus-cli-"));
+    const workspaceRoot = join(tempDir, "task-workspace");
+    createPortableWorkspace({
+      rootDir: workspaceRoot,
+      workspaceId: "ws_cli_task",
+      label: "CLI Task Workspace",
+      createdAt: "2026-07-10T12:00:00.000Z",
+      createdBy: "cli-test"
+    });
+    const env = {
+      CESTUS_LOCAL_STORAGE: "portable-workspace",
+      CESTUS_WORKSPACE_ROOT: workspaceRoot
+    };
 
     const exitCode = await runLocalRuntimeCli(
       ["agent-create-task", "--task-id", "task_cli_001", "--title", "Review resident status"],
       {
         cwd: tempDir,
-        env: {},
+        env,
         stdout: (line) => createStdout.push(line),
         stderr: (line) => stderr.push(line)
       }
@@ -68,7 +82,7 @@ describe("runLocalRuntimeCli", () => {
     expect(
       await runLocalRuntimeCli(["agent-status"], {
         cwd: tempDir,
-        env: {},
+        env,
         stdout: (line) => statusStdout.push(line),
         stderr: (line) => stderr.push(line)
       })
@@ -399,6 +413,7 @@ describe("runLocalRuntimeCli", () => {
     expect(output.workspace.workspaceId).toBe("ws_cli_001");
     expect(output.workspace.paths.ledgerPath).toBe(join(workspaceRoot, "ledger", "ontology.sqlite"));
     expect(readFileSync(join(workspaceRoot, "cestus-workspace.json"), "utf8")).toContain('"workspaceId": "ws_cli_001"');
+    expect(await identityEventTypes(join(workspaceRoot, "ledger", "ontology.sqlite"))).toEqual(["agent.identity.initialized"]);
     expect(stdout.join("\n")).not.toMatch(/token|secret|password|oauth|credential|api[_-]?key|private[_-]?key|session/i);
   });
 
@@ -1028,6 +1043,15 @@ async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>):
   const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
   try {
     return (await ledger.readAll()).map((event) => event.type);
+  } finally {
+    ledger.close();
+  }
+}
+
+async function identityEventTypes(path: string): Promise<readonly string[]> {
+  const ledger = new SQLiteEventLedger(path);
+  try {
+    return (await ledger.readStream("agent_identity_agent_default")).map((event) => event.type);
   } finally {
     ledger.close();
   }

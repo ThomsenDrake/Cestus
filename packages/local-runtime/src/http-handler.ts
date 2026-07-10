@@ -15,7 +15,10 @@ import type { LocalIngestionRuntimeFactory } from "./ingestion-runtime-factory.j
 import { createDefaultOperatorStatusProviders } from "./operator-status-providers.js";
 import { handleOperatorStatusRoute } from "./operator-status-routes.js";
 import type { OperatorStatusProviderSet } from "./operator-status.js";
-import { createSqlitePrrRuntime } from "./runtime-factory.js";
+import {
+  createSqlitePrrRuntime,
+  type ResidentIdentityBootstrapExecutor
+} from "./runtime-factory.js";
 
 export interface LocalRuntimeRequest {
   readonly method: string;
@@ -46,6 +49,7 @@ export interface CreateLocalRuntimeHttpHandlerInput {
   readonly ingestionRuntimeFactory?: LocalIngestionRuntimeFactory;
   readonly operatorStatusProviders?: OperatorStatusProviderSet;
   readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
+  readonly residentIdentityBootstrapForTest?: ResidentIdentityBootstrapExecutor;
 }
 
 export function createLocalRuntimeHttpHandler(
@@ -56,7 +60,10 @@ export function createLocalRuntimeHttpHandler(
     actor: input.actor,
     ...(input.now === undefined ? {} : { now: input.now }),
     ...(input.requestIdFactory === undefined ? {} : { requestIdFactory: input.requestIdFactory }),
-    ...(input.deadlineCalculator === undefined ? {} : { deadlineCalculator: input.deadlineCalculator })
+    ...(input.deadlineCalculator === undefined ? {} : { deadlineCalculator: input.deadlineCalculator }),
+    ...(input.residentIdentityBootstrapForTest === undefined
+      ? {}
+      : { residentIdentityBootstrapForTest: input.residentIdentityBootstrapForTest })
   });
   const seedEvents = input.seedEvents ?? prrWorkspaceSeedEvents;
   const defaultOperatorStatusProviders = createDefaultOperatorStatusProviders({

@@ -408,6 +408,15 @@ function cockpitStatusFixture(): AgentStatusDto {
   return {
     schemaVersion: "agent-status.v1",
     generatedAt: now(),
+    identityLifecycle: {
+      schemaVersion: "resident-identity-lifecycle.v1",
+      state: "not-mounted",
+      residentAgentId: "agent_default",
+      initialized: false,
+      eventIds: [],
+      safeMessage: "Resident identity is not mounted.",
+      allowedRepairActions: ["mount a workspace before initializing the resident identity"]
+    },
     identity: undefined,
     tasks: [],
     runs: [],
