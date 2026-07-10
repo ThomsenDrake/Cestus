@@ -198,6 +198,8 @@ function cockpitFixtureWithOptions(input: {
     ],
     handoff: {
       schemaVersion: "agent-specialist-handoff.v1",
+      handoffId: "handoff_run_report_done_0123456789abcdef",
+      handoffRevision: 1,
       runType: "report-builder",
       runId: selectedRunId,
       taskId: "task_unstarted",

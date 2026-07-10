@@ -2,9 +2,9 @@ import { z } from "zod";
 import { providerParseExecuteDescriptor } from "./adapters/provider-byte-transfer.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import {
-  parseSpecialistWorkflowHandoff,
-  type SpecialistNextAction,
-  type SpecialistWorkflowHandoffDto
+  parseLegacySpecialistWorkflowHandoff,
+  type LegacySpecialistWorkflowHandoffDto,
+  type SpecialistNextAction
 } from "./specialist-handoffs.js";
 import {
   appendSpecialistCompletion,
@@ -60,7 +60,7 @@ export interface RunEvidenceTriageWorkflowInput extends SpecialistRunnerBaseInpu
 }
 
 export interface RunEvidenceTriageWorkflowResult {
-  readonly handoff: SpecialistWorkflowHandoffDto;
+  readonly handoff: LegacySpecialistWorkflowHandoffDto;
   readonly eventIds: readonly string[];
 }
 
@@ -148,7 +148,7 @@ export async function runEvidenceTriageWorkflow(
   });
 
   const nextSafeActions = localReviewNextActions(input, output);
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
     runType: "evidence-triage",
     runId: input.runId,
@@ -737,7 +737,7 @@ async function failedModelOutputResult(
     allowedActions: ["retry with a provider that returns the approved evidence triage schema"],
     ...(invocationEventIds.at(-1) === undefined ? {} : { causationId: invocationEventIds.at(-1) })
   });
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
     runType: "evidence-triage",
     runId: input.runId,
@@ -783,7 +783,7 @@ async function failedDerivativeArtifactResult(
     allowedActions: ["inspect local derivative artifact storage and retry evidence triage"],
     ...(invocationEventIds.at(-1) === undefined ? {} : { causationId: invocationEventIds.at(-1) })
   });
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
     runType: "evidence-triage",
     runId: input.runId,
@@ -817,7 +817,7 @@ function blockedHandoff(
   input: RunEvidenceTriageWorkflowInput,
   summary: string
 ): RunEvidenceTriageWorkflowResult {
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
     runType: "evidence-triage",
     runId: input.runId,

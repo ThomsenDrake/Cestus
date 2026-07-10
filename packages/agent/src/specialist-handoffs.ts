@@ -134,6 +134,13 @@ export interface SpecialistWorkflowHandoffDto {
   readonly failure?: SpecialistFailureDto;
 }
 
+export type LegacySpecialistWorkflowHandoffDto = Omit<
+  SpecialistWorkflowHandoffDto,
+  "handoffId" | "handoffRevision"
+> & {
+  readonly durability: "legacy-non-durable";
+};
+
 export type SpecialistWorkflowOutputArtifactDto = SpecialistOutputArtifactRef;
 export type SpecialistWorkflowApprovalRequirementDto = SpecialistApprovalRequirement;
 export type SpecialistWorkflowNextSafeActionDto = SpecialistNextAction;
@@ -186,10 +193,7 @@ const specialistFailureDtoObjectSchema = z.object({
   toolRequestId: safeIdentifierSchema("failure.toolRequestId").optional()
 }).strict();
 
-const specialistWorkflowHandoffObjectSchema = z.object({
-  schemaVersion: z.literal(specialistWorkflowHandoffSchemaVersion),
-  handoffId: z.string().regex(/^handoff_[a-zA-Z0-9_-]+_[a-f0-9]{16}$/).optional(),
-  handoffRevision: z.number().int().positive().optional(),
+const specialistWorkflowHandoffCommonObjectShape = {
   runType: approvedRunTypeSchema,
   runId: safeIdentifierSchema("runId"),
   taskId: safeIdentifierSchema("taskId").optional(),
@@ -204,7 +208,12 @@ const specialistWorkflowHandoffObjectSchema = z.object({
   approvalRequirements: z.array(specialistApprovalRequirementObjectSchema),
   nextSafeActions: z.array(specialistNextActionObjectSchema),
   failure: specialistFailureDtoObjectSchema.optional()
-}).strict().superRefine((value, ctx) => {
+} as const;
+
+function addHandoffStatusIssues(
+  value: { readonly status: typeof handoffStatusValues[number]; readonly failure?: unknown },
+  ctx: z.RefinementCtx
+): void {
   if (value.status !== "failed" && value.failure !== undefined) {
     ctx.addIssue({
       code: "custom",
@@ -220,6 +229,23 @@ const specialistWorkflowHandoffObjectSchema = z.object({
       message: "failure is required when status is failed"
     });
   }
+}
+
+const specialistWorkflowHandoffObjectSchema = z.object({
+  schemaVersion: z.literal(specialistWorkflowHandoffSchemaVersion),
+  handoffId: z.string().regex(/^handoff_[a-zA-Z0-9_-]+_[a-f0-9]{16}$/),
+  handoffRevision: z.number().int().positive(),
+  ...specialistWorkflowHandoffCommonObjectShape
+}).strict().superRefine((value, ctx) => {
+  addHandoffStatusIssues(value, ctx);
+});
+
+const legacySpecialistWorkflowHandoffObjectSchema = z.object({
+  schemaVersion: z.literal(specialistWorkflowHandoffSchemaVersion),
+  durability: z.literal("legacy-non-durable").optional(),
+  ...specialistWorkflowHandoffCommonObjectShape
+}).strict().superRefine((value, ctx) => {
+  addHandoffStatusIssues(value, ctx);
 });
 
 export const specialistOutputArtifactRefSchema = z.unknown()
@@ -272,8 +298,22 @@ export const specialistWorkflowHandoffSchema = z.unknown()
     return freezeSpecialistWorkflowHandoff(parsed);
   });
 
+export const legacySpecialistWorkflowHandoffSchema = z.unknown()
+  .transform((value, ctx): LegacySpecialistWorkflowHandoffDto => {
+    const parsed = parseNormalizedDto(value, legacySpecialistWorkflowHandoffObjectSchema, "$", ctx);
+    if (parsed === z.NEVER) {
+      return z.NEVER;
+    }
+
+    return freezeLegacySpecialistWorkflowHandoff(parsed);
+  });
+
 export function parseSpecialistWorkflowHandoff(value: unknown): SpecialistWorkflowHandoffDto {
   return specialistWorkflowHandoffSchema.parse(value);
+}
+
+export function parseLegacySpecialistWorkflowHandoff(value: unknown): LegacySpecialistWorkflowHandoffDto {
+  return legacySpecialistWorkflowHandoffSchema.parse(value);
 }
 
 export function hashSpecialistWorkflowHandoff(dto: SpecialistWorkflowHandoffDto): `sha256:${string}` {
@@ -489,12 +529,37 @@ function freezeFailureDto(value: z.infer<typeof specialistFailureDtoObjectSchema
 function freezeSpecialistWorkflowHandoff(
   value: z.infer<typeof specialistWorkflowHandoffObjectSchema>
 ): SpecialistWorkflowHandoffDto {
-  // Legacy workflow DTOs remain displayable; durable manifests always provide explicit identity.
-  const legacyHash = hashAgentContextPack(value).slice("sha256:".length, "sha256:".length + 16);
   const handoff: SpecialistWorkflowHandoffDto = {
     schemaVersion: value.schemaVersion,
-    handoffId: value.handoffId ?? `handoff_${value.runId}_${legacyHash}`,
-    handoffRevision: value.handoffRevision ?? 1,
+    handoffId: value.handoffId,
+    handoffRevision: value.handoffRevision,
+    runType: value.runType,
+    runId: value.runId,
+    residentAgentId: value.residentAgentId,
+    generatedAt: value.generatedAt,
+    status: value.status,
+    safeSummary: value.safeSummary,
+    contextPackRefs: Object.freeze([...value.contextPackRefs]),
+    outputArtifacts: Object.freeze(value.outputArtifacts.map((artifact) => freezeOutputArtifactRef(artifact))),
+    toolRequestIds: Object.freeze([...value.toolRequestIds]),
+    approvalRequirements: Object.freeze(
+      value.approvalRequirements.map((requirement) => freezeApprovalRequirement(requirement))
+    ),
+    nextSafeActions: Object.freeze(value.nextSafeActions.map((action) => freezeNextAction(action))),
+    ...(value.taskId === undefined ? {} : { taskId: value.taskId }),
+    ...(value.promptArtifactHash === undefined ? {} : { promptArtifactHash: value.promptArtifactHash }),
+    ...(value.failure === undefined ? {} : { failure: freezeFailureDto(value.failure) })
+  };
+
+  return Object.freeze(handoff);
+}
+
+function freezeLegacySpecialistWorkflowHandoff(
+  value: z.infer<typeof legacySpecialistWorkflowHandoffObjectSchema>
+): LegacySpecialistWorkflowHandoffDto {
+  const handoff: LegacySpecialistWorkflowHandoffDto = {
+    durability: "legacy-non-durable",
+    schemaVersion: value.schemaVersion,
     runType: value.runType,
     runId: value.runId,
     residentAgentId: value.residentAgentId,
