@@ -6,6 +6,8 @@ import {
   buildAgentMemorySummaryContextPack,
   buildAgentMemorySummaryResolvedContextPack
 } from "../src/memory.js";
+import { verifyResolvedContextPack } from "../src/context-packs.js";
+import { operationalContextPackPayloadParsers } from "../src/operational-context-packs.js";
 import { goldenAgentLedgerEvents } from "./fixtures/golden-agent-ledger.js";
 
 describe("agent memory surface", () => {
@@ -160,6 +162,10 @@ describe("agent memory surface", () => {
     const ref = buildAgentMemorySummaryContextPack(input);
 
     expect(ref).toEqual(resolved.ref);
+    expect(verifyResolvedContextPack(
+      resolved,
+      operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]
+    )).toEqual(resolved);
     expect(resolved.payload).toMatchObject({
       schemaVersion: "agent-memory-summary.v1",
       memory: {
@@ -218,6 +224,52 @@ describe("agent memory surface", () => {
       ...input,
       emptyMemoryProof: { ...input.emptyMemoryProof, scope: { kind: "workspace", id: "ws_other_001" } }
     })).toThrow(/projection-source-mismatch/);
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      ...input,
+      emptyMemoryProof: { ...input.emptyMemoryProof, projectionName: "agent.projection.task-run-history" }
+    })).toThrow(/projection-source-mismatch/);
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      ...input,
+      emptyMemoryProof: { ...input.emptyMemoryProof, generatedAt: "2026-07-09T12:30:01.000Z" }
+    })).toThrow(/projection-source-mismatch/);
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      ...input,
+      emptyMemoryProof: { ...input.emptyMemoryProof, sourceEventCount: 1 }
+    })).toThrow(/projection-source-mismatch/);
+  });
+
+  it("blocks unprovenanced active memory instead of recasting it as a proven empty projection", () => {
+    const memorySnapshot = {
+      ...emptyMemorySnapshot(),
+      activeMemory: [{
+        memoryId: "mem_unprovenanced",
+        scope: "workspace",
+        memoryKind: "agent-observation",
+        summary: "This item lacks source evidence.",
+        confidence: 0.4,
+        sourceEventIds: [],
+        artifactHashes: []
+      }],
+      aggregateCounts: { active: 1, totalCount: 1 },
+      window: { ...emptyMemorySnapshot().window, totalCount: 1 }
+    };
+
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      memorySnapshot,
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 0,
+      sizeBudgetBytes: 16_384,
+      emptyMemoryProof: {
+        projectionName: "agent.projection.memory",
+        scope: { kind: "workspace", id: "ws_case_001" },
+        projectionHighWaterMark: 0,
+        sourceEventCount: 0,
+        generatedAt: "2026-07-09T12:30:00.000Z",
+        emptyReasonCode: "first-run"
+      }
+    })).toThrow(/missing-provenance/);
   });
 
   it("keeps bounded item output stable as omitted history grows", () => {
