@@ -161,7 +161,13 @@ export function buildAgentMemorySummaryResolvedContextPack(
     source: {
       generatedAt: input.generatedAt,
       policyVersion: input.policyVersion,
-      scope: { kind: input.scope.kind, id: input.scope.id }
+      scope: { kind: input.scope.kind, id: input.scope.id },
+      sizeBudgetBytes: input.sizeBudgetBytes,
+      stalenessInputs: [{
+        kind: "projection-high-water-mark",
+        ref: "agent.projection.memory",
+        value: String(input.projectionHighWaterMark)
+      }]
     },
     memory: {
       truthBoundary: { authoritativeForOntology: false as const },
@@ -351,7 +357,7 @@ function normalizeMemoryEmptyProof(value: OperationalEmptyProjectionProof): Oper
     throw new Error("blocked.projection-source-mismatch: memory empty proof counts are invalid");
   }
   assertUtcTimestamp(value.generatedAt, "memory empty proof generatedAt");
-  assertSafeIdentifier(value.emptyReasonCode, "memory empty proof reason");
+  assertMachineReadableReasonCode(value.emptyReasonCode, "memory empty proof reason");
   if (typeof value.projectionName !== "string") {
     throw new Error("blocked.projection-source-mismatch: memory empty proof projection is invalid");
   }
@@ -381,7 +387,7 @@ function toMemorySummaryItem(value: unknown): AgentMemorySummaryItemDto {
   if (typeof item.summary !== "string" || item.summary.length === 0) {
     throw new Error("blocked.invalid-payload-shape: active memory item summary is invalid");
   }
-  assertAgentSecretSafeText(item.summary, "active memory item summary");
+  assertOperationalContextSafeText(item.summary, "active memory item summary");
   if (typeof item.confidence !== "number" || !Number.isFinite(item.confidence) || item.confidence < 0 || item.confidence > 1) {
     throw new Error("blocked.invalid-payload-shape: active memory item confidence must be between zero and one");
   }
@@ -541,6 +547,21 @@ function assertSafeIdentifier(value: unknown, label: string): asserts value is s
     throw new Error(`blocked.invalid-payload-shape: ${label} must be a safe identifier`);
   }
   assertAgentSecretSafeText(value, label);
+}
+
+function assertMachineReadableReasonCode(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string" || !/^[a-z][a-z0-9.-]*$/.test(value)) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} must be a machine-readable token`);
+  }
+  assertOperationalContextSafeText(value, label);
+}
+
+export function assertOperationalContextSafeText(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string") throw new Error(`blocked.unsafe-diagnostic: ${label} must be text`);
+  assertAgentSecretSafeText(value, label);
+  if (/(?:\bprompt(?:\s+text)?\b|model[ -]?output|provider[ -]?(?:error|failure|failed)|\bstdout\b|\bstderr\b|\bstack\s*trace\b|\berror:|(?:^|[\s("'])\/(?:[^\s/]+\/)*[^\s/]+)/i.test(value) || /\\/.test(value)) {
+    throw new Error(`blocked.unsafe-diagnostic: ${label} contains unsafe operational material`);
+  }
 }
 
 function assertUtcTimestamp(value: unknown, label: string): asserts value is string {

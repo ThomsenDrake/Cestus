@@ -137,7 +137,11 @@ describe("operational context pack contracts", () => {
     };
     const validWorkspacePayload = {
       schemaVersion: "workspace-runtime-status.v1",
-      source: sourceMetadata,
+      source: {
+        ...sourceMetadata,
+        sizeBudgetBytes: 16_384,
+        stalenessInputs: [{ kind: "projection-high-water-mark", ref: "runtime.status", value: "7" }]
+      },
       runtime: {
         runtimeHighWaterMark: 7,
         workspaceMounted: true,
@@ -153,7 +157,11 @@ describe("operational context pack contracts", () => {
     };
     const validHistoryPayload = {
       schemaVersion: "task-run-history.v1",
-      source: sourceMetadata,
+      source: {
+        ...sourceMetadata,
+        sizeBudgetBytes: 32_768,
+        stalenessInputs: [{ kind: "projection-high-water-mark", ref: "agent.projection.task-run-history", value: "42" }]
+      },
       history: {
         projectionHighWaterMark: 42,
         projectionSourceRef: "agent.projection.task-run-history",
@@ -169,7 +177,11 @@ describe("operational context pack contracts", () => {
     };
     const validMemoryPayload = {
       schemaVersion: "agent-memory-summary.v1",
-      source: sourceMetadata,
+      source: {
+        ...sourceMetadata,
+        sizeBudgetBytes: 16_384,
+        stalenessInputs: [{ kind: "projection-high-water-mark", ref: "agent.projection.memory", value: "42" }]
+      },
       memory: {
         truthBoundary: { authoritativeForOntology: false },
         projectionHighWaterMark: 42,
@@ -645,7 +657,7 @@ describe("operational context pack contracts", () => {
     }
   });
 
-  it("cryptographically binds every non-empty operational payload to exact source metadata", async () => {
+  it("cryptographically binds every operational payload to exact source metadata, budget, and staleness inputs", async () => {
     const runtime = buildWorkspaceRuntimeStatusContextPack({
       generatedAt: providerMetadata.generatedAt,
       policyVersion: providerMetadata.policyVersion,
@@ -716,7 +728,14 @@ describe("operational context pack contracts", () => {
       for (const refPatch of [
         { scope: { kind: "workspace", id: "ws_swapped" } },
         { generatedAt: "2026-07-10T12:00:01.000Z" },
-        { policyVersion: "operational-policy.v2" }
+        { policyVersion: "operational-policy.v2" },
+        { sizeBudgetBytes: resolved.ref.sizeBudgetBytes! + 1 },
+        {
+          stalenessInputs: [
+            ...resolved.ref.stalenessInputs!,
+            { kind: "omission-code", ref: descriptor.sourceProjection, value: "omitted.size-budget" }
+          ]
+        }
       ]) {
         const swappedRef = contextPackRefSchema.parse({ ...resolved.ref, ...refPatch });
         const registry = createContextPackRegistry({ payloadResolver: async () => resolved.payload });
@@ -795,7 +814,7 @@ describe("operational context pack builders", () => {
       toolRequests: [
         {
           toolRequestId: "tool_denied", state: "denied", runId: "run_running", deniedBy: "actor_reviewer",
-          deniedAt: "2026-07-10T10:01:00.000Z", sourceEventIds: ["evt_agent_tool_denied"], artifactHashes: [hash("b")]
+          deniedAt: "2026-07-10T10:01:00.000Z", sourceEventIds: ["evt_agent_tool_denied"], inputArtifactHashes: [hash("b")]
         },
         {
           toolRequestId: "tool_failed", state: "failed", runId: "run_running", approvedBy: "actor_reviewer",
@@ -957,6 +976,53 @@ describe("operational context pack builders", () => {
           requestedAt: "2026-07-10T10:00:00.000Z", resultEventIds: ["evt_tool_result"],
           sourceEventIds: ["evt_tool_requested"]
         }]
+      }),
+      historySnapshot({
+        tasks: [], runs: [], toolRequests: [],
+        modelInvocations: [{
+          invocationId: "model_completed_with_failure", status: "completed", runId: "run_omitted",
+          providerId: "provider_local", modelFamily: "local-model", inputArtifactHash: hash("a"),
+          providerOutputArtifactHash: hash("b"), completedAt: "2026-07-10T11:00:00.000Z",
+          failureCategory: "provider-unavailable", sourceEventIds: ["evt_model_completed_with_failure"]
+        }]
+      }),
+      historySnapshot({
+        tasks: [], runs: [], toolRequests: [],
+        modelInvocations: [{
+          invocationId: "model_failed_with_output", status: "failed", runId: "run_omitted",
+          inputArtifactHash: hash("a"), providerOutputArtifactHash: hash("b"),
+          completedAt: "2026-07-10T11:00:00.000Z", failureCategory: "provider-unavailable",
+          sourceEventIds: ["evt_model_failed_with_output"]
+        }]
+      }),
+      historySnapshot({
+        tasks: [], runs: [], modelInvocations: [],
+        toolRequests: [{
+          toolRequestId: "tool_approved_with_result", state: "approved", runId: "run_omitted",
+          approvedBy: "actor_reviewer", approvedPreviewHash: hash("c"), approvalClass: "human-review",
+          approvedAt: "2026-07-10T10:00:00.000Z", resultEventIds: ["evt_tool_result"],
+          sourceEventIds: ["evt_tool_approved_with_result"]
+        }]
+      }),
+      historySnapshot({
+        tasks: [], runs: [], modelInvocations: [],
+        toolRequests: [{
+          toolRequestId: "tool_completed_with_failure", state: "completed", runId: "run_omitted",
+          approvedBy: "actor_reviewer", approvedPreviewHash: hash("d"), approvalClass: "human-review",
+          approvedAt: "2026-07-10T10:00:00.000Z", completedAt: "2026-07-10T10:01:00.000Z",
+          resultEventIds: ["evt_tool_result"], failedAt: "2026-07-10T10:02:00.000Z",
+          failureCategory: "external-effect-failed", sourceEventIds: ["evt_tool_completed_with_failure"]
+        }]
+      }),
+      historySnapshot({
+        tasks: [], runs: [], modelInvocations: [],
+        toolRequests: [{
+          toolRequestId: "tool_failed_with_result", state: "failed", runId: "run_omitted",
+          approvedBy: "actor_reviewer", approvedPreviewHash: hash("e"), approvalClass: "human-review",
+          approvedAt: "2026-07-10T10:00:00.000Z", failedAt: "2026-07-10T10:01:00.000Z",
+          failureCategory: "external-effect-failed", completedAt: "2026-07-10T10:02:00.000Z",
+          resultEventIds: ["evt_tool_result"], sourceEventIds: ["evt_tool_failed_with_result"]
+        }]
       })
     ];
 
@@ -1065,7 +1131,7 @@ describe("operational context pack builders", () => {
         executionLeaseExpiresAt: "2026-07-10T10:10:45.000Z",
         executionClaimEventId: "evt_agent_tool_claimed",
         sourceEventIds: ["evt_agent_tool_requested"],
-        artifactHashes: [hash("f")]
+        inputArtifactHashes: [hash("f")]
       }],
       sourceEventIds: ["evt_stale_caller_ref"],
       artifactHashes: [hash("9")],
@@ -1238,6 +1304,63 @@ describe("operational context pack builders", () => {
     expect(tasks.map((task) => task.status)).toEqual(expect.arrayContaining(["blocked", "waiting-for-approval"]));
     expect(tasks.map((task) => task.status)).not.toContain("completed");
     expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, sizeBudgetBytes: 1, taskRunHistorySnapshot: snapshot })).toThrow("blocked.size-budget");
+  });
+
+  it("retains the newest highest-priority safety record when all safety history cannot fit", () => {
+    const snapshot = historySnapshot({
+      tasks: [
+        { taskId: "task_blocked_old", status: "blocked", updatedAt: "2026-07-10T09:00:00.000Z", sourceEventIds: ["evt_task_blocked_old"] },
+        { taskId: "task_blocked_new", status: "blocked", updatedAt: "2026-07-10T11:00:00.000Z", sourceEventIds: ["evt_task_blocked_new"] },
+        { taskId: "task_pending", status: "waiting-for-approval", updatedAt: "2026-07-10T10:00:00.000Z", sourceEventIds: ["evt_task_pending"] }
+      ],
+      runs: [],
+      modelInvocations: [{
+        invocationId: "model_failed", status: "failed", runId: "run_omitted", inputArtifactHash: hash("a"),
+        failureCategory: "provider-unavailable", sourceEventIds: ["evt_model_failed"]
+      }],
+      toolRequests: [{
+        toolRequestId: "tool_denied", state: "denied", runId: "run_omitted", deniedBy: "actor_reviewer",
+        deniedAt: "2026-07-10T10:30:00.000Z", sourceEventIds: ["evt_tool_denied"]
+      }],
+      aggregateCounts: { total: 5 },
+      window: { order: "updatedAt:desc", limit: 5, hasMore: false, totalCount: 5, omissionCodes: [] }
+    });
+
+    const singleton = historySnapshot({
+      ...snapshot,
+      tasks: [snapshot.tasks[1]!],
+      modelInvocations: [],
+      toolRequests: [],
+      window: { ...snapshot.window, hasMore: true, omissionCodes: ["omitted.size-budget"] }
+    });
+    const oneRecordBudget = buildTaskRunHistoryContextPack({
+      ...sharedInput,
+      sizeBudgetBytes: 9_999,
+      taskRunHistorySnapshot: singleton
+    }).ref.sizeBytes;
+    const trimmed = buildTaskRunHistoryContextPack({ ...sharedInput, sizeBudgetBytes: oneRecordBudget, taskRunHistorySnapshot: snapshot });
+    const history = (trimmed.payload as unknown as { history: OperationalTaskRunHistorySnapshot }).history;
+    const retainedCount = history.tasks.length + history.runs.length + history.modelInvocations.length + history.toolRequests.length;
+
+    expect(retainedCount).toBe(1);
+    expect(history.tasks).toEqual([expect.objectContaining({ taskId: "task_blocked_new" })]);
+    expect(history.window.omissionCodes).toContain("omitted.size-budget");
+    expect(history.aggregateCounts).toEqual({ total: 5 });
+    expect(trimmed.ref.sourceEventIds).toEqual(["evt_task_blocked_new"]);
+  });
+
+  it("rejects prose empty history reason codes", () => {
+    const empty = historySnapshot({
+      tasks: [], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { total: 0 },
+      sourceEventIds: [], artifactHashes: [],
+      window: { order: "updatedAt:desc", limit: 25, hasMore: false, totalCount: 0, omissionCodes: [] },
+      emptyProof: {
+        projectionName: "agent.projection.task-run-history", scope: sharedInput.scope, projectionHighWaterMark: 42,
+        sourceEventCount: 0, generatedAt: sharedInput.generatedAt, emptyReasonCode: "No history exists yet"
+      }
+    });
+
+    expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, taskRunHistorySnapshot: empty })).toThrow(/machine-readable token|invalid-payload-shape/);
   });
 
   it("closes history provenance over final included items and removes refs owned only by trimmed records", () => {
