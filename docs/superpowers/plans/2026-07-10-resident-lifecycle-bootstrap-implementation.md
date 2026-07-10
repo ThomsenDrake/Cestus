@@ -91,7 +91,7 @@
   - `initializingResidentIdentityLifecycle(workspaceId: string): ResidentIdentityLifecycleDto`
   - `blockedResidentIdentityLifecycle(input): ResidentIdentityLifecycleDto`
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create `docs/agentic/claims/task-1-resident-lifecycle-bootstrap-contract.md`:
 
@@ -125,7 +125,7 @@ git add docs/agentic/claims/task-1-resident-lifecycle-bootstrap-contract.md
 git commit -m "chore: claim resident lifecycle bootstrap contract"
 ```
 
-- [ ] **Step 2: Mark the claim in progress**
+- [x] **Step 2: Mark the claim in progress**
 
 Edit the claim status to `in-progress`, then commit:
 
@@ -134,7 +134,7 @@ git add docs/agentic/claims/task-1-resident-lifecycle-bootstrap-contract.md
 git commit -m "chore: start resident lifecycle bootstrap contract"
 ```
 
-- [ ] **Step 3: Write the RED package tests**
+- [x] **Step 3: Write the RED package tests**
 
 Create `packages/agent/test/identity-bootstrap.test.ts`:
 
@@ -401,7 +401,7 @@ class ConflictThenReadbackLedger implements EventLedger {
 }
 ```
 
-- [ ] **Step 4: Run the RED test**
+- [x] **Step 4: Run the RED test**
 
 Run:
 
@@ -415,7 +415,7 @@ Expected:
 Cannot find module '../src/identity-bootstrap.js'
 ```
 
-- [ ] **Step 5: Implement the bootstrap helper**
+- [x] **Step 5: Implement the bootstrap helper**
 
 Create `packages/agent/src/identity-bootstrap.ts` with the interfaces named above. Required implementation points:
 
@@ -483,7 +483,7 @@ Modify `packages/agent/src/index.ts`:
 export * from "./identity-bootstrap.js";
 ```
 
-- [ ] **Step 6: Run targeted package tests**
+- [x] **Step 6: Run targeted package tests**
 
 Run:
 
@@ -497,7 +497,7 @@ Expected:
 Test Files  4 passed
 ```
 
-- [ ] **Step 7: Run full verification**
+- [x] **Step 7: Run full verification**
 
 Run:
 
@@ -514,7 +514,7 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 8: Record evidence and commit**
+- [x] **Step 8: Record evidence and commit**
 
 Update the claim with RED, targeted, and verify evidence. Commit only the task files:
 
@@ -567,11 +567,11 @@ git commit -m "feat: add resident identity bootstrap contract"
   - HTTP agent mutations that call `ready()` and require `state === "ready"`
   - CLI `create-workspace` success only after bootstrap reaches `ready`
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-2-resident-lifecycle-local-runtime.md` with owned files, worker identity, branch, worktree, UTC timestamp, and status `claimed`. Then change status to `in-progress` and commit that change.
 
-- [ ] **Step 2: Write RED runtime and local-runtime tests**
+- [x] **Step 2: Write RED runtime and local-runtime tests**
 
 Create `packages/local-runtime/test/resident-identity-bootstrap.test.ts`:
 
@@ -984,7 +984,7 @@ it("includes resident identity lifecycle in runtime status without appending fro
 });
 ```
 
-- [ ] **Step 3: Run the RED local runtime tests**
+- [x] **Step 3: Run the RED local runtime tests**
 
 Run:
 
@@ -1004,7 +1004,7 @@ or:
 expected identityLifecycle to be defined
 ```
 
-- [ ] **Step 4: Implement `LocalRuntimeHandle.residentIdentity`**
+- [x] **Step 4: Implement `LocalRuntimeHandle.residentIdentity`**
 
 Modify `packages/local-runtime/src/runtime-factory.ts`:
 
@@ -1120,7 +1120,7 @@ return createAgentRuntime({
 });
 ```
 
-- [ ] **Step 5: Gate agent mutations on readiness**
+- [x] **Step 5: Gate agent mutations on readiness**
 
 Modify `packages/local-runtime/src/agent-http-routes.ts`:
 
@@ -1141,7 +1141,7 @@ Modify `packages/local-runtime/src/agent-http-routes.ts`:
 - keep POST routes human-gated exactly as they are today
 - keep status, cockpit, tool-requests, approvals, and scheduler wake routes read-only with respect to identity initialization
 
-- [ ] **Step 6: Keep status read-only while runtime status owns lifecycle**
+- [x] **Step 6: Keep status read-only while runtime status owns lifecycle**
 
 Modify `packages/local-runtime/src/agent-http-routes.ts`:
 
@@ -1166,7 +1166,7 @@ async function statusWithProviderReadiness(
 
 Do not add another `identityLifecycle` overlay in HTTP handlers. `/api/agent/status`, `/api/agent/cockpit`, and operator status providers must consume `identityLifecycle` from `runtime.status()`, while GET routes stay mutation-free and may report `initializing` if the mount-started promise has not settled.
 
-- [ ] **Step 7: Bootstrap `create-workspace` in the CLI**
+- [x] **Step 7: Bootstrap `create-workspace` in the CLI**
 
 Modify `packages/local-runtime/src/cli.ts`:
 
@@ -1185,7 +1185,7 @@ readonly residentIdentityBootstrapForTest?: (input: {
 - if bootstrap returns non-ready, throw `new Error("Resident identity bootstrap failed.")`
 - do not remove the manifest, layout, or ledger on failure
 
-- [ ] **Step 8: Update existing route and CLI expectations**
+- [x] **Step 8: Update existing route and CLI expectations**
 
 Modify existing tests where they currently assert repo-local agent status writes no events or repo-local task creation succeeds:
 
@@ -1203,7 +1203,7 @@ Modify existing tests where they currently assert repo-local agent status writes
   - portable runtime opening should assert the identity event exists before draft creation.
   - repeated `GET /api/requests/workspace` and `GET /api/health` should not append more identity events.
 
-- [ ] **Step 9: Run targeted local runtime tests**
+- [x] **Step 9: Run targeted local runtime tests**
 
 Run:
 
@@ -1217,7 +1217,7 @@ Expected:
 Test Files  5 passed
 ```
 
-- [ ] **Step 10: Run full verification**
+- [x] **Step 10: Run full verification**
 
 Run:
 
@@ -1234,7 +1234,7 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 11: Record evidence and commit**
+- [x] **Step 11: Record evidence and commit**
 
 Update the claim with RED, targeted, and verify evidence. Commit:
 
@@ -1280,11 +1280,11 @@ git commit -m "feat: bootstrap resident identity on workspace open"
   - Agent cockpit needs and Agent workspace display for identity lifecycle
   - operator agent section state that blocks when lifecycle is `blocked` or `not-mounted`
 
-- [ ] **Step 1: Claim the task**
+- [x] **Step 1: Claim the task**
 
 Create and commit `docs/agentic/claims/task-3-resident-lifecycle-cockpit-integration.md` with owned files and status `claimed`. Change status to `in-progress` and commit that claim update.
 
-- [ ] **Step 2: Write RED cockpit, operator, and browser tests**
+- [x] **Step 2: Write RED cockpit, operator, and browser tests**
 
 Add these focused expectations:
 
@@ -1406,7 +1406,7 @@ it("marks the agent section blocked when resident identity lifecycle is blocked"
 });
 ```
 
-- [ ] **Step 3: Run RED cockpit, operator, and UI tests**
+- [x] **Step 3: Run RED cockpit, operator, and UI tests**
 
 Run:
 
@@ -1420,7 +1420,7 @@ Expected:
 expected resident identity lifecycle need to be first
 ```
 
-- [ ] **Step 4: Add cockpit lifecycle need**
+- [x] **Step 4: Add cockpit lifecycle need**
 
 Modify `packages/agent/src/cockpit.ts`:
 
@@ -1429,7 +1429,7 @@ Modify `packages/agent/src/cockpit.ts`:
 - use `safeAction: "refresh-status"` for blocked and `safeAction: "queued-task"` only for existing task needs
 - do not add execution controls
 
-- [ ] **Step 5: Update operator status section**
+- [x] **Step 5: Update operator status section**
 
 Modify `packages/local-runtime/src/operator-status.ts`:
 
@@ -1441,7 +1441,7 @@ Modify `packages/local-runtime/src/operator-status.ts`:
 - include `identityLifecycle.state` and safe workspace ID in `sourceEvidence` refs
 - convert lifecycle blocked state into an operator diagnostic with safe message and allowed repair actions
 
-- [ ] **Step 6: Update UI parser and component**
+- [x] **Step 6: Update UI parser and component**
 
 Modify `packages/ui/src/agent/agent-adapter.ts`:
 
@@ -1465,7 +1465,7 @@ Modify `packages/ui/src/agent/AgentWorkspace.tsx`:
 - show event IDs through existing provenance refs only when present
 - do not add new buttons beyond refresh and existing queue/memory/approval controls
 
-- [ ] **Step 7: Update fixtures**
+- [x] **Step 7: Update fixtures**
 
 Update local test fixture helpers named `agentStatus`, `readyAgentStatus`, or equivalent static status factories in `packages/ui/test/*.ts*` and `packages/local-runtime/test/*.ts` so every production-shaped `agent-status.v1` fixture includes:
 
@@ -1482,7 +1482,7 @@ identityLifecycle: {
 }
 ```
 
-- [ ] **Step 8: Run targeted cockpit/UI/operator tests**
+- [x] **Step 8: Run targeted cockpit/UI/operator tests**
 
 Run:
 
@@ -1496,7 +1496,7 @@ Expected:
 Test Files  5 passed
 ```
 
-- [ ] **Step 9: Run full verification**
+- [x] **Step 9: Run full verification**
 
 Run:
 
@@ -1513,7 +1513,7 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 10: Record evidence and commit**
+- [x] **Step 10: Record evidence and commit**
 
 Update the claim with RED, targeted, and verify evidence. Commit:
 
@@ -1549,11 +1549,11 @@ git commit -m "feat: surface resident identity lifecycle"
 - Consumes: completed Tasks 1 through 3 with passing targeted tests and `npm run verify`.
 - Produces: readiness evidence that the spec and plan are required durable files and final verification passed.
 
-- [ ] **Step 1: Claim the readiness task**
+- [x] **Step 1: Claim the readiness task**
 
 Create and commit `docs/agentic/claims/task-4-resident-lifecycle-readiness.md` with owned files and status `claimed`. Change status to `in-progress` and commit that claim update.
 
-- [ ] **Step 2: Write the RED readiness check**
+- [x] **Step 2: Write the RED readiness check**
 
 Modify `scripts/check-agent-readiness.mjs` by adding these entries to `requiredFiles` near the resident-agent files:
 
@@ -1582,7 +1582,7 @@ missing docs/superpowers/plans/2026-07-10-resident-lifecycle-bootstrap-implement
 
 Restore the plan path immediately after that local check. Do not commit the temporary move.
 
-- [ ] **Step 3: Append readiness record**
+- [x] **Step 3: Append readiness record**
 
 Append this section to `docs/agentic/software-factory.md`:
 
@@ -1619,11 +1619,11 @@ factory-readiness passed
 ```
 ```
 
-- [ ] **Step 4: Mark all plan tasks complete**
+- [x] **Step 4: Mark all plan tasks complete**
 
 In this plan file, mark Tasks 1 through 4 checklist items complete only after the corresponding commits and reviews exist. Preserve the command evidence in the task claims.
 
-- [ ] **Step 5: Run final targeted cross-boundary tests**
+- [x] **Step 5: Run final targeted cross-boundary tests**
 
 Run:
 
@@ -1637,7 +1637,7 @@ Expected:
 Test Files  7 passed
 ```
 
-- [ ] **Step 6: Run full verification**
+- [x] **Step 6: Run full verification**
 
 Run:
 
@@ -1654,7 +1654,7 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 7: Commit readiness**
+- [x] **Step 7: Commit readiness**
 
 Update the claim with targeted and verify evidence. Commit:
 
