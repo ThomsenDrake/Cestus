@@ -5,8 +5,9 @@
 - Worker: `Codex`
 - Branch: `codex/resident-lifecycle-bootstrap-implementation`
 - Worktree: `/home/drake/.codex/worktrees/14a7/Cestus`
-- Claimed at: `2026-07-10T00:00:00Z`
-- Status: `claimed`
+- Claimed at: `2026-07-10T15:58:16Z`
+- Started at: `2026-07-10T15:58:16Z`
+- Status: `in-progress`
 
 ## Owned Files
 
