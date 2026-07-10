@@ -283,6 +283,44 @@ export interface AcceptedGraphProjectionReader {
   };
 }
 
+export interface ResidentAgentLockReader {
+  readActiveLocksByIds(input: {
+    readonly lockIds: readonly string[];
+    readonly highWaterMarks: InvestigativeProjectionHighWaterMarks;
+    readonly limit: number;
+  }): Promise<readonly ResidentAgentLockRow[]> | readonly ResidentAgentLockRow[];
+}
+
+export interface ResidentAgentLockRow {
+  readonly sourceLabel: "resident-agent-lock";
+  readonly lockId: string;
+  readonly lockKind: string;
+  readonly safeReason: string;
+  readonly activatedBy: string;
+  readonly activatedAt: string;
+  readonly relatedEventIds: readonly string[];
+  readonly projectionEventIds: readonly string[];
+}
+
+export interface GovernancePostureReader {
+  readActiveRestrictionsByIds(input: {
+    readonly restrictionIds: readonly string[];
+    readonly highWaterMarks: InvestigativeProjectionHighWaterMarks;
+    readonly limit: number;
+  }): Promise<readonly GovernanceRestrictionRow[]> | readonly GovernanceRestrictionRow[];
+}
+
+export interface GovernanceRestrictionRow {
+  readonly sourceLabel: "governance-derived-restriction";
+  readonly restrictionId: string;
+  readonly restrictionKind: string;
+  readonly affectedRef: string;
+  readonly sourceEventIds: readonly string[];
+  readonly projectionProvenanceRefs: readonly string[];
+  readonly policyVersion: string;
+  readonly safeReasonCode: string;
+}
+
 export interface EvidenceSourcePostureCheckInput {
   readonly evidenceId: string;
   readonly contentHash: `sha256:${string}`;
@@ -319,6 +357,8 @@ export interface InvestigativeContextPackDependencies {
   readonly selection: InvestigativeSelectionCapability;
   readonly evidenceReader: InvestigativeEvidenceReader;
   readonly graphReader: AcceptedGraphProjectionReader;
+  readonly governanceReader: GovernancePostureReader;
+  readonly agentLockReader: ResidentAgentLockReader;
   readonly evidenceSourcePosture: EvidenceSourcePostureCapability;
   readonly now: () => string;
   readonly metadata: InvestigativeContextPackMetadata;
@@ -449,6 +489,8 @@ export interface ResolvedEvidenceSummaryContextPack {
 export interface GovernanceLocksPayload extends InvestigativeContextPackPayloadBase {
   readonly schemaVersion: "governance-locks.context.v1";
   readonly contextPackId: "governance-locks.v1";
+  readonly version: 1;
+  readonly ontologyCoreVersion: string;
   readonly truthBoundary: {
     readonly authoritativeForApproval: false;
     readonly grantsApproval: false;
@@ -457,9 +499,18 @@ export interface GovernanceLocksPayload extends InvestigativeContextPackPayloadB
     readonly postureKind: "non-authoritative-safety-posture";
   };
   readonly items: {
-    readonly activeLocks: readonly AgentContextPackJsonValue[];
-    readonly governanceRestrictions: readonly AgentContextPackJsonValue[];
+    readonly activeLocks: readonly ResidentAgentLockItem[] & readonly AgentContextPackJsonValue[];
+    readonly governanceRestrictions: readonly GovernanceRestrictionItem[] & readonly AgentContextPackJsonValue[];
   };
+}
+
+export interface ResidentAgentLockItem extends ResidentAgentLockRow {}
+
+export interface GovernanceRestrictionItem extends GovernanceRestrictionRow {}
+
+export interface ResolvedGovernanceLocksContextPack {
+  readonly ref: ResolvedContextPack["ref"];
+  readonly payload: GovernanceLocksPayload;
 }
 
 export const investigativePayloadParserIdentities = Object.freeze({
@@ -480,7 +531,8 @@ export const evidenceSummaryPayloadParser = createPayloadParser<EvidenceSummaryP
 );
 export const governanceLocksPayloadParser = createPayloadParser<GovernanceLocksPayload>(
   "governance-locks.v1",
-  "governance-locks.context.v1"
+  "governance-locks.context.v1",
+  parseGovernanceLocksPayload
 );
 export const investigativeContextPackPayloadParsers = Object.freeze([
   acceptedGraphProjectionPayloadParser,
@@ -736,6 +788,297 @@ export async function buildAcceptedGraphProjectionContextPack(
     policyVersion: metadata.policyVersion,
     sizeBudgetBytes: budget
   });
+}
+
+export async function buildGovernanceLocksContextPack(
+  input: BuildInvestigativeContextPackInput
+): Promise<ResolvedGovernanceLocksContextPack> {
+  const selectedManifest = await selectForPack("governance-locks.v1", input);
+  const manifest = canonicalSelectionManifest(selectedManifest);
+  if (manifest.sourceProjectionHighWaterMarks.governance === undefined
+    || manifest.sourceProjectionHighWaterMarks.agent === undefined) {
+    throw new InvestigativeContextPackError("projection-lag", "projection-lag");
+  }
+  const lockRefs = manifest.includedRefs.filter((ref) => ref.refKind === "resident-agent-lock");
+  const restrictionRefs = manifest.includedRefs.filter((ref) => ref.refKind === "governance-restriction");
+  if (![...lockRefs, ...restrictionRefs].every((ref) => ref.mandatory)) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+  const locks = validateResidentAgentLocks(lockRefs, await readSelectedResidentAgentLocks(input.deps.agentLockReader, manifest, lockRefs));
+  const restrictions = validateGovernanceRestrictions(
+    restrictionRefs,
+    await readSelectedGovernanceRestrictions(input.deps.governanceReader, manifest, restrictionRefs)
+  );
+  const metadata = canonicalMetadata(input.deps.metadata);
+  const stalenessInputs = canonicalStalenessInputs([
+    ...governanceHighWaterStalenessInputs(manifest.sourceProjectionHighWaterMarks),
+    ...locks.flatMap((row) => row.projectionEventIds.map((eventId) => ({
+      kind: "resident-agent-lock-projection-event",
+      ref: row.lockId,
+      value: eventId
+    }))),
+    ...restrictions.flatMap((row) => row.projectionProvenanceRefs.map((provenanceRef) => ({
+      kind: "governance-restriction-projection-provenance",
+      ref: row.restrictionId,
+      value: provenanceRef
+    })))
+  ]);
+  const payload = governanceLocksPayloadParser.parsePayload({
+    schemaVersion: "governance-locks.context.v1",
+    contextPackId: "governance-locks.v1",
+    version: 1,
+    ontologyCoreVersion: metadata.ontologyCoreVersion,
+    scope: manifest.scope,
+    truthBoundary: {
+      authoritativeForApproval: false,
+      grantsApproval: false,
+      clearsApprovalOrLocks: false,
+      mutatesEvidenceOrGraph: false,
+      postureKind: "non-authoritative-safety-posture"
+    },
+    selectionManifest: manifest,
+    projectionHighWaterMarks: manifest.sourceProjectionHighWaterMarks,
+    packVersions: metadata.packVersions,
+    items: {
+      activeLocks: locks.map(toResidentAgentLockItem).sort(compareResidentAgentLockItems),
+      governanceRestrictions: restrictions.map(toGovernanceRestrictionItem).sort(compareGovernanceRestrictionItems)
+    },
+    omissions: canonicalOmissions(manifest.aggregateOmissions),
+    stalenessInputs
+  });
+  const provenanceRefs = governanceProvenanceRefs({ manifest, locks, restrictions, metadata });
+  const budget = input.sizeBudgetBytes
+    ?? input.deps.budgets?.["governance-locks.v1"]
+    ?? investigativeContextPackDefaultLimits.packBudgets["governance-locks.v1"];
+  const resolved = buildGovernanceLocksResolvedPack({
+    payload,
+    manifest,
+    now: input.deps.now,
+    provenanceRefs,
+    stalenessInputs,
+    policyVersion: metadata.policyVersion
+  });
+  if (resolved.ref.sizeBytes > budget) {
+    throw new InvestigativeContextPackError("context-budget-exceeded", "context-budget-exceeded");
+  }
+  return buildGovernanceLocksResolvedPack({
+    payload,
+    manifest,
+    now: input.deps.now,
+    provenanceRefs,
+    stalenessInputs,
+    policyVersion: metadata.policyVersion,
+    sizeBudgetBytes: budget
+  });
+}
+
+async function readSelectedResidentAgentLocks(
+  reader: ResidentAgentLockReader,
+  manifest: InvestigativeSelectionManifest,
+  lockRefs: readonly InvestigativeSelectionIncludedRef[]
+): Promise<readonly ResidentAgentLockRow[]> {
+  const rows: ResidentAgentLockRow[] = [];
+  for (let offset = 0; offset < lockRefs.length; offset += readerBatchSize) {
+    const batch = lockRefs.slice(offset, offset + readerBatchSize);
+    const batchRows = await reader.readActiveLocksByIds({
+      lockIds: batch.map((ref) => ref.refId),
+      highWaterMarks: manifest.sourceProjectionHighWaterMarks,
+      limit: readerBatchSize
+    });
+    rows.push(...batchRows);
+  }
+  return Object.freeze(rows);
+}
+
+async function readSelectedGovernanceRestrictions(
+  reader: GovernancePostureReader,
+  manifest: InvestigativeSelectionManifest,
+  restrictionRefs: readonly InvestigativeSelectionIncludedRef[]
+): Promise<readonly GovernanceRestrictionRow[]> {
+  const rows: GovernanceRestrictionRow[] = [];
+  for (let offset = 0; offset < restrictionRefs.length; offset += readerBatchSize) {
+    const batch = restrictionRefs.slice(offset, offset + readerBatchSize);
+    const batchRows = await reader.readActiveRestrictionsByIds({
+      restrictionIds: batch.map((ref) => ref.refId),
+      highWaterMarks: manifest.sourceProjectionHighWaterMarks,
+      limit: readerBatchSize
+    });
+    rows.push(...batchRows);
+  }
+  return Object.freeze(rows);
+}
+
+function validateResidentAgentLocks(
+  lockRefs: readonly InvestigativeSelectionIncludedRef[],
+  lockRows: readonly ResidentAgentLockRow[]
+): readonly ResidentAgentLockRow[] {
+  const rowsById = mapUniqueRows(lockRows, (row) => row.lockId);
+  if (rowsById.size !== lockRefs.length) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+  return Object.freeze(lockRefs.map((ref) => {
+    const row = rowsById.get(ref.refId);
+    if (row === undefined) {
+      throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+    }
+    assertResidentAgentLockRow(row, ref);
+    return row;
+  }));
+}
+
+function validateGovernanceRestrictions(
+  restrictionRefs: readonly InvestigativeSelectionIncludedRef[],
+  restrictionRows: readonly GovernanceRestrictionRow[]
+): readonly GovernanceRestrictionRow[] {
+  const rowsById = mapUniqueRows(restrictionRows, (row) => row.restrictionId);
+  if (rowsById.size !== restrictionRefs.length) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+  return Object.freeze(restrictionRefs.map((ref) => {
+    const row = rowsById.get(ref.refId);
+    if (row === undefined) {
+      throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+    }
+    assertGovernanceRestrictionRow(row, ref);
+    return row;
+  }));
+}
+
+function assertResidentAgentLockRow(row: ResidentAgentLockRow, ref: InvestigativeSelectionIncludedRef): void {
+  if (row.sourceLabel !== "resident-agent-lock" || row.lockId !== ref.refId || !isSafeNonEmptyText(row.lockKind)
+    || !isSafeNonEmptyText(row.safeReason) || !isSafeNonEmptyText(row.activatedBy) || !isSafeNonEmptyText(row.activatedAt)
+    || row.relatedEventIds.length === 0 || row.projectionEventIds.length === 0
+    || !row.relatedEventIds.every(isEventId) || !row.projectionEventIds.every(isEventId)) {
+    throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
+  }
+  if (!sameStringSet(row.relatedEventIds, ref.sourceEventIds)) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+}
+
+function assertGovernanceRestrictionRow(row: GovernanceRestrictionRow, ref: InvestigativeSelectionIncludedRef): void {
+  if (row.sourceLabel !== "governance-derived-restriction" || row.restrictionId !== ref.refId
+    || !isSafeNonEmptyText(row.restrictionKind) || !isSafeNonEmptyText(row.affectedRef)
+    || row.sourceEventIds.length === 0 || row.projectionProvenanceRefs.length === 0
+    || !row.sourceEventIds.every(isEventId) || !row.projectionProvenanceRefs.every(isSafeNonEmptyText)
+    || !isSafeNonEmptyText(row.policyVersion) || !isSafeNonEmptyText(row.safeReasonCode)) {
+    throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
+  }
+  if (!sameStringSet(row.sourceEventIds, ref.sourceEventIds)) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+}
+
+function toResidentAgentLockItem(row: ResidentAgentLockRow): ResidentAgentLockItem {
+  return {
+    sourceLabel: "resident-agent-lock",
+    lockId: row.lockId,
+    lockKind: row.lockKind,
+    safeReason: row.safeReason,
+    activatedBy: row.activatedBy,
+    activatedAt: row.activatedAt,
+    relatedEventIds: Object.freeze([...row.relatedEventIds].sort(compareText)),
+    projectionEventIds: Object.freeze([...row.projectionEventIds].sort(compareText))
+  };
+}
+
+function toGovernanceRestrictionItem(row: GovernanceRestrictionRow): GovernanceRestrictionItem {
+  return {
+    sourceLabel: "governance-derived-restriction",
+    restrictionId: row.restrictionId,
+    restrictionKind: row.restrictionKind,
+    affectedRef: row.affectedRef,
+    sourceEventIds: Object.freeze([...row.sourceEventIds].sort(compareText)),
+    projectionProvenanceRefs: Object.freeze([...row.projectionProvenanceRefs].sort(compareText)),
+    policyVersion: row.policyVersion,
+    safeReasonCode: row.safeReasonCode
+  };
+}
+
+function compareResidentAgentLockItems(left: ResidentAgentLockItem, right: ResidentAgentLockItem): number {
+  return compareText(left.lockId, right.lockId);
+}
+
+function compareGovernanceRestrictionItems(left: GovernanceRestrictionItem, right: GovernanceRestrictionItem): number {
+  return compareText(left.restrictionId, right.restrictionId);
+}
+
+function governanceHighWaterStalenessInputs(
+  marks: InvestigativeProjectionHighWaterMarks
+): readonly { readonly kind: string; readonly ref: string; readonly value: string }[] {
+  return Object.freeze(Object.entries(marks)
+    .filter(([kind]) => kind === "governance" || kind === "agent")
+    .map(([kind, value]) => ({ kind: "projection-high-water-mark", ref: kind, value: String(value) }))
+    .sort((left, right) => compareByFields([left.kind, left.ref, left.value], [right.kind, right.ref, right.value])));
+}
+
+function governanceProvenanceRefs(input: {
+  readonly manifest: InvestigativeSelectionManifest;
+  readonly locks: readonly ResidentAgentLockRow[];
+  readonly restrictions: readonly GovernanceRestrictionRow[];
+  readonly metadata: InvestigativeContextPackMetadata;
+}): readonly string[] {
+  const refs = new Set<string>([input.manifest.manifestHash]);
+  for (const ref of input.manifest.includedRefs) {
+    refs.add(ref.refId);
+    for (const eventId of ref.sourceEventIds) {
+      refs.add(eventId);
+    }
+  }
+  for (const row of input.locks) {
+    refs.add(row.lockId);
+    for (const eventId of row.relatedEventIds) {
+      refs.add(eventId);
+    }
+    for (const eventId of row.projectionEventIds) {
+      refs.add(eventId);
+    }
+  }
+  for (const row of input.restrictions) {
+    refs.add(row.restrictionId);
+    for (const eventId of row.sourceEventIds) {
+      refs.add(eventId);
+    }
+    for (const provenanceRef of row.projectionProvenanceRefs) {
+      refs.add(provenanceRef);
+    }
+    refs.add(`policy:${row.policyVersion}`);
+  }
+  refs.add(`policy:${input.metadata.policyVersion}`);
+  refs.add(`ontology-core:${input.metadata.ontologyCoreVersion}`);
+  for (const [packId, version] of Object.entries(input.metadata.packVersions)) {
+    refs.add(`pack:${packId}@${version}`);
+  }
+  return Object.freeze([...refs].sort(compareText));
+}
+
+function buildGovernanceLocksResolvedPack(input: {
+  readonly payload: GovernanceLocksPayload;
+  readonly manifest: InvestigativeSelectionManifest;
+  readonly now: () => string;
+  readonly provenanceRefs: readonly string[];
+  readonly stalenessInputs: readonly { readonly kind: string; readonly ref: string; readonly value: string }[];
+  readonly policyVersion: string;
+  readonly sizeBudgetBytes?: number;
+}): ResolvedGovernanceLocksContextPack {
+  return buildResolvedContextPack({
+    contextPackId: "governance-locks.v1",
+    version: 1,
+    generatedAt: input.now(),
+    payload: input.payload,
+    safeSummary: "Provider-safe governance lock posture",
+    provenanceRefs: input.provenanceRefs,
+    projectionHighWaterMark: Math.max(
+      input.manifest.sourceProjectionHighWaterMarks.governance ?? 0,
+      input.manifest.sourceProjectionHighWaterMarks.agent ?? 0
+    ),
+    sourceEventIds: input.provenanceRefs.filter((ref) => ref.startsWith("evt_")),
+    artifactHashes: input.provenanceRefs.filter((ref) => ref.startsWith("sha256:")),
+    policyVersion: input.policyVersion,
+    scope: input.manifest.scope,
+    ...(input.sizeBudgetBytes === undefined ? {} : { sizeBudgetBytes: input.sizeBudgetBytes }),
+    stalenessInputs: input.stalenessInputs
+  }) as unknown as ResolvedGovernanceLocksContextPack;
 }
 
 async function readSelectedAcceptedGraphRows(
@@ -1451,6 +1794,37 @@ function parseEvidenceSummaryPayload(payload: unknown): EvidenceSummaryPayload {
   return payload as unknown as EvidenceSummaryPayload;
 }
 
+function parseGovernanceLocksPayload(payload: unknown): GovernanceLocksPayload {
+  if (!isPayloadWithExactKeys(payload, [
+    "schemaVersion",
+    "contextPackId",
+    "version",
+    "ontologyCoreVersion",
+    "scope",
+    "truthBoundary",
+    "selectionManifest",
+    "projectionHighWaterMarks",
+    "packVersions",
+    "items",
+    "omissions",
+    "stalenessInputs"
+  ])) {
+    throw new InvestigativeContextPackError("context-payload-missing", "governance-locks payload invalid");
+  }
+  const value = payload as Record<string, unknown>;
+  if (value.schemaVersion !== "governance-locks.context.v1" || value.contextPackId !== "governance-locks.v1" || value.version !== 1
+    || !isSafeNonEmptyText(value.ontologyCoreVersion) || !isScope(value.scope) || !isGovernanceTruthBoundary(value.truthBoundary)
+    || !isSelectionManifest(value.selectionManifest) || !hasGovernanceHighWaterMarks(value.projectionHighWaterMarks)
+    || !hasGovernanceHighWaterMarks((value.selectionManifest as Record<string, unknown>).sourceProjectionHighWaterMarks)
+    || !isPackVersions(value.packVersions) || !isGovernanceLocksItems(value.items)
+    || !Array.isArray(value.omissions) || !value.omissions.every(isOmission)
+    || !Array.isArray(value.stalenessInputs) || value.stalenessInputs.length === 0
+    || !value.stalenessInputs.every(isStalenessInput) || !hasGovernanceHighWaterStaleness(value.stalenessInputs)) {
+    throw new InvestigativeContextPackError("context-payload-missing", "governance-locks payload invalid");
+  }
+  return payload as unknown as GovernanceLocksPayload;
+}
+
 function isAcceptedGraphTruthBoundary(value: unknown): boolean {
   return isExactRecord(value, [
     "authoritativeForAcceptedGraph",
@@ -1459,6 +1833,60 @@ function isAcceptedGraphTruthBoundary(value: unknown): boolean {
     "graphMutationRequiresReviewedOntologyEvent"
   ]) && value.authoritativeForAcceptedGraph === true && value.readOnlyProjectionTruth === true
     && value.canInferNewAcceptedEdges === false && value.graphMutationRequiresReviewedOntologyEvent === true;
+}
+
+function isGovernanceTruthBoundary(value: unknown): boolean {
+  return isExactRecord(value, [
+    "authoritativeForApproval",
+    "grantsApproval",
+    "clearsApprovalOrLocks",
+    "mutatesEvidenceOrGraph",
+    "postureKind"
+  ]) && value.authoritativeForApproval === false && value.grantsApproval === false
+    && value.clearsApprovalOrLocks === false && value.mutatesEvidenceOrGraph === false
+    && value.postureKind === "non-authoritative-safety-posture";
+}
+
+function isGovernanceLocksItems(value: unknown): boolean {
+  return isExactRecord(value, ["activeLocks", "governanceRestrictions"])
+    && Array.isArray(value.activeLocks) && value.activeLocks.every(isResidentAgentLockItem)
+    && Array.isArray(value.governanceRestrictions) && value.governanceRestrictions.every(isGovernanceRestrictionItem);
+}
+
+function isResidentAgentLockItem(value: unknown): boolean {
+  return isExactRecord(value, [
+    "sourceLabel",
+    "lockId",
+    "lockKind",
+    "safeReason",
+    "activatedBy",
+    "activatedAt",
+    "relatedEventIds",
+    "projectionEventIds"
+  ]) && value.sourceLabel === "resident-agent-lock" && isSafeNonEmptyText(value.lockId)
+    && isSafeNonEmptyText(value.lockKind) && isSafeNonEmptyText(value.safeReason)
+    && isSafeNonEmptyText(value.activatedBy) && isSafeNonEmptyText(value.activatedAt)
+    && Array.isArray(value.relatedEventIds) && value.relatedEventIds.length > 0
+    && value.relatedEventIds.every(isEventId) && Array.isArray(value.projectionEventIds)
+    && value.projectionEventIds.length > 0 && value.projectionEventIds.every(isEventId);
+}
+
+function isGovernanceRestrictionItem(value: unknown): boolean {
+  return isExactRecord(value, [
+    "sourceLabel",
+    "restrictionId",
+    "restrictionKind",
+    "affectedRef",
+    "sourceEventIds",
+    "projectionProvenanceRefs",
+    "policyVersion",
+    "safeReasonCode"
+  ]) && value.sourceLabel === "governance-derived-restriction" && isSafeNonEmptyText(value.restrictionId)
+    && isSafeNonEmptyText(value.restrictionKind) && isSafeNonEmptyText(value.affectedRef)
+    && Array.isArray(value.sourceEventIds) && value.sourceEventIds.length > 0 && value.sourceEventIds.every(isEventId)
+    && Array.isArray(value.projectionProvenanceRefs) && value.projectionProvenanceRefs.length > 0
+    && value.projectionProvenanceRefs.every(isSafeNonEmptyText) && isSafeNonEmptyText(value.policyVersion)
+    && isSafeNonEmptyText(value.safeReasonCode);
 }
 
 function isAcceptedGraphItems(value: unknown): boolean {
@@ -1516,9 +1944,26 @@ function hasGraphHighWaterMark(value: unknown): boolean {
   return isHighWaterMarks(value) && isNonnegativeInteger((value as Record<string, unknown>).graph);
 }
 
+function hasGovernanceHighWaterMarks(value: unknown): boolean {
+  return isHighWaterMarks(value) && isNonnegativeInteger((value as Record<string, unknown>).governance)
+    && isNonnegativeInteger((value as Record<string, unknown>).agent);
+}
+
 function hasGraphHighWaterStaleness(value: readonly unknown[]): boolean {
   return value.some((input) => isExactRecord(input, ["kind", "ref", "value"])
     && input.kind === "projection-high-water-mark" && input.ref === "graph" && isSafeNonEmptyText(input.value));
+}
+
+function hasGovernanceHighWaterStaleness(value: readonly unknown[]): boolean {
+  const highWaterRefs = new Set(value
+    .filter(isProjectionHighWaterStalenessInput)
+    .map((input) => input.ref));
+  return highWaterRefs.has("governance") && highWaterRefs.has("agent");
+}
+
+function isProjectionHighWaterStalenessInput(value: unknown): value is { readonly kind: string; readonly ref: string; readonly value: string } {
+  return isExactRecord(value, ["kind", "ref", "value"])
+    && value.kind === "projection-high-water-mark" && isSafeNonEmptyText(value.ref) && isSafeNonEmptyText(value.value);
 }
 
 function isScope(value: unknown): boolean {

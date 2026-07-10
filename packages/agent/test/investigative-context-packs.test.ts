@@ -6,8 +6,10 @@ import {
   assertSelectionManifestHash,
   buildAcceptedGraphProjectionContextPack,
   buildEvidenceSummaryContextPack,
+  buildGovernanceLocksContextPack,
   buildSelectionManifestHash,
   evidenceSummaryPayloadParser,
+  governanceLocksPayloadParser,
   type EvidenceSourcePostureResult,
   investigativeContextPackDefaultLimits,
   investigativeContextPackDescriptors,
@@ -612,6 +614,110 @@ describe("investigative context packs", () => {
     expect(first.payload).toEqual(second.payload);
     expect(first.ref.contentHash).toBe(second.ref.contentHash);
   });
+
+  it("separates active resident-agent locks from governance-derived restrictions", async () => {
+    const resolved = await buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    });
+
+    expect(resolved.payload.truthBoundary).toMatchObject({
+      authoritativeForApproval: false,
+      grantsApproval: false,
+      clearsApprovalOrLocks: false,
+      mutatesEvidenceOrGraph: false,
+      postureKind: "non-authoritative-safety-posture"
+    });
+    expect(resolved.payload.items.activeLocks[0]).toMatchObject({
+      sourceLabel: "resident-agent-lock",
+      lockId: "lock_sensitive_export_001"
+    });
+    expect(resolved.payload.items.governanceRestrictions[0]).toMatchObject({
+      sourceLabel: "governance-derived-restriction",
+      restrictionId: "restriction_quarantine_ev_contract_001"
+    });
+  });
+
+  it("fails instead of truncating active locks or restrictions out of budget", async () => {
+    await expect(buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps({ budgets: { "governance-locks.v1": 128 } }),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "context-budget-exceeded" });
+  });
+
+  it("keeps governance query work bounded as unrelated governance history grows", async () => {
+    const counters = createReaderCounters();
+    await buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps({ counters, unrelatedGovernanceRows: 50_000 }),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    });
+
+    expect(counters.agentLockReads).toBe(1);
+    expect(counters.governanceReads).toBe(1);
+    expect(counters.unrelatedRowsScanned).toBe(0);
+  });
+
+  it("parses governance-locks payloads strictly by schema", async () => {
+    const resolved = await buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    });
+
+    expect(() => governanceLocksPayloadParser.parsePayload(resolved.payload)).not.toThrow();
+    expect(() => governanceLocksPayloadParser.parsePayload({
+      ...resolved.payload,
+      truthBoundary: {
+        authoritativeForApproval: true,
+        grantsApproval: true,
+        clearsApprovalOrLocks: false,
+        mutatesEvidenceOrGraph: false,
+        postureKind: "non-authoritative-safety-posture"
+      }
+    })).toThrow(/governance-locks payload/i);
+  });
+
+  it("rejects governance posture rows without event and projection provenance", async () => {
+    await expect(buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps({ governanceMissingProvenance: true }),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "missing-provenance" });
+  });
+
+  it("enforces governance locks as non-authoritative safety posture only", async () => {
+    const resolved = await buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    });
+    const activeLock = resolved.payload.items.activeLocks[0] as Record<string, unknown>;
+    const governanceRestriction = resolved.payload.items.governanceRestrictions[0] as Record<string, unknown>;
+
+    expect(() => governanceLocksPayloadParser.parsePayload({
+      ...resolved.payload,
+      items: {
+        ...resolved.payload.items,
+        activeLocks: [{
+          ...activeLock,
+          clearsLock: true
+        }]
+      }
+    })).toThrow(/governance-locks payload/i);
+    expect(() => governanceLocksPayloadParser.parsePayload({
+      ...resolved.payload,
+      items: {
+        ...resolved.payload.items,
+        governanceRestrictions: [{
+          ...governanceRestriction,
+          grantsApproval: true
+        }]
+      }
+    })).toThrow(/governance-locks payload/i);
+  });
 });
 
 interface ReaderCounters {
@@ -674,6 +780,7 @@ interface CreateInvestigativeDepsInput {
   readonly graphAssertionCount?: number;
   readonly reverseGraphRows?: boolean;
   readonly graphSentinel?: string;
+  readonly governanceMissingProvenance?: boolean;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
   readonly evidenceRows?: readonly InvestigativeEvidenceRow[];
@@ -720,6 +827,7 @@ function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): Inve
     graphMissingHighWaterMark: input.graphMissingHighWaterMark ?? false,
     graphAssertionCount: input.graphAssertionCount ?? 1,
     reverseGraphRows: input.reverseGraphRows ?? false,
+    governanceMissingProvenance: input.governanceMissingProvenance ?? false,
     ...(input.selection === undefined ? {} : { selection: input.selection }),
     ...(input.postureResult === undefined ? {} : { postureResult: input.postureResult }),
     ...(input.safeNarrative === undefined ? {} : { safeNarrative: input.safeNarrative }),
@@ -753,6 +861,7 @@ function createFakeInvestigativeDeps(input: {
   readonly graphAssertionCount: number;
   readonly reverseGraphRows: boolean;
   readonly graphSentinel?: string;
+  readonly governanceMissingProvenance: boolean;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
   readonly evidenceRows?: readonly InvestigativeEvidenceRow[];
@@ -799,6 +908,14 @@ function createFakeInvestigativeDeps(input: {
   const unrelatedGraphRows = Array.from({ length: input.unrelatedGraphRows }, (_, index) => ({
     assertionId: `assertion_unrelated_${index}`
   }));
+  const lockRows = [residentAgentLockRow(input.governanceMissingProvenance)];
+  const restrictionRows = [governanceRestrictionRow(input.governanceMissingProvenance)];
+  const governanceManifest = selectionManifestForGovernance();
+  const lockRowsById = new Map(lockRows.map((row) => [row.lockId, row]));
+  const restrictionRowsById = new Map(restrictionRows.map((row) => [row.restrictionId, row]));
+  const unrelatedGovernanceRows = Array.from({ length: input.unrelatedGovernanceRows }, (_, index) => ({
+    restrictionId: `restriction_unrelated_${index}`
+  }));
 
   return {
     selection: input.selection ?? {
@@ -809,6 +926,13 @@ function createFakeInvestigativeDeps(input: {
             ...graphManifest,
             scope: request.scope,
             manifestHash: buildSelectionManifestHash({ ...graphManifest, scope: request.scope })
+          };
+        }
+        if (request.contextPackId === "governance-locks.v1") {
+          return {
+            ...governanceManifest,
+            scope: request.scope,
+            manifestHash: buildSelectionManifestHash({ ...governanceManifest, scope: request.scope })
           };
         }
         return input.manifest;
@@ -855,6 +979,30 @@ function createFakeInvestigativeDeps(input: {
           return row === undefined ? [] : [row];
         });
         return input.reverseEvidenceRows === true ? selectedRows.reverse() : selectedRows;
+      }
+    },
+    agentLockReader: {
+      readActiveLocksByIds(request) {
+        input.counters.agentLockReads += 1;
+        if (request.lockIds.some((lockId) => !lockRowsById.has(lockId))) {
+          input.counters.unrelatedRowsScanned += unrelatedGovernanceRows.length;
+        }
+        return request.lockIds.flatMap((lockId) => {
+          const row = lockRowsById.get(lockId);
+          return row === undefined ? [] : [row];
+        });
+      }
+    },
+    governanceReader: {
+      readActiveRestrictionsByIds(request) {
+        input.counters.governanceReads += 1;
+        if (request.restrictionIds.some((restrictionId) => !restrictionRowsById.has(restrictionId))) {
+          input.counters.unrelatedRowsScanned += unrelatedGovernanceRows.length;
+        }
+        return request.restrictionIds.flatMap((restrictionId) => {
+          const row = restrictionRowsById.get(restrictionId);
+          return row === undefined ? [] : [row];
+        });
       }
     },
     evidenceSourcePosture: {
@@ -1011,6 +1159,66 @@ function selectionManifestForGraph(input: {
     aggregateOmissions: []
   };
   return { ...body, manifestHash: buildSelectionManifestHash(body) };
+}
+
+function selectionManifestForGovernance(): ReturnType<typeof selectionManifest> {
+  const body: InvestigativeSelectionManifestBody = {
+    manifestVersion: "investigative-selection-manifest.v1",
+    scope: { kind: "task", id: "task_governance" },
+    sourceProjectionHighWaterMarks: { governance: 55, agent: 56 },
+    ordering: "ref-kind-ref-id-content-hash-v1",
+    window: {
+      cursor: "cursor_task_governance_0001",
+      offset: 0,
+      limit: 100,
+      stableSort: "ref-kind-ref-id-content-hash-v1"
+    },
+    totalEligibleCount: 2,
+    includedRefs: [
+      {
+        refKind: "resident-agent-lock",
+        refId: "lock_sensitive_export_001",
+        sortKey: "resident-agent-lock/lock_sensitive_export_001",
+        sourceEventIds: ["evt_agent_lock_activated_001"],
+        mandatory: true
+      },
+      {
+        refKind: "governance-restriction",
+        refId: "restriction_quarantine_ev_contract_001",
+        sortKey: "governance-restriction/restriction_quarantine_ev_contract_001",
+        sourceEventIds: ["evt_governance_restriction_001"],
+        mandatory: true
+      }
+    ],
+    aggregateOmissions: []
+  };
+  return { ...body, manifestHash: buildSelectionManifestHash(body) };
+}
+
+function residentAgentLockRow(missingProvenance: boolean) {
+  return {
+    sourceLabel: "resident-agent-lock" as const,
+    lockId: "lock_sensitive_export_001",
+    lockKind: "sensitive-export-block",
+    safeReason: "Sensitive export requires independent human review.",
+    activatedBy: "resident-agent",
+    activatedAt: "2026-07-10T00:00:00.000Z",
+    relatedEventIds: missingProvenance ? [] : ["evt_agent_lock_activated_001"],
+    projectionEventIds: missingProvenance ? [] : ["evt_agent_projection_checkpoint_001"]
+  };
+}
+
+function governanceRestrictionRow(missingProvenance: boolean) {
+  return {
+    sourceLabel: "governance-derived-restriction" as const,
+    restrictionId: "restriction_quarantine_ev_contract_001",
+    restrictionKind: "quarantine",
+    affectedRef: "evidence:ev_contract_001",
+    sourceEventIds: missingProvenance ? [] : ["evt_governance_restriction_001"],
+    projectionProvenanceRefs: missingProvenance ? [] : ["evt_governance_projection_checkpoint_001"],
+    policyVersion: "policy.v1",
+    safeReasonCode: "evidence-quarantine-active"
+  };
 }
 
 function graphRows(input: {
