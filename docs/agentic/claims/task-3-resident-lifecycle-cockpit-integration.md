@@ -1,6 +1,6 @@
 # Task 3 Claim: Resident Lifecycle Cockpit Integration
 
-- Plan: `.superpowers/sdd/task-3-brief.md`
+- Plan: `docs/superpowers/plans/2026-07-10-resident-lifecycle-bootstrap-implementation.md`
 - Task: `Task 3: Cockpit, UI, And Operator Lifecycle Presentation`
 - Worker: `Codex`
 - Branch: `codex/resident-lifecycle-bootstrap-implementation`
