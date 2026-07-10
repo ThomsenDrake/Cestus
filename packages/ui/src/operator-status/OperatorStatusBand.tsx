@@ -90,8 +90,8 @@ export function OperatorStatusBand({
       />
       <span className="flex min-w-0 items-start justify-between gap-3">
         <span className="min-w-0">
-          <span className="truncate text-base font-semibold text-[var(--paper-light)] sm:text-sm">{section.label}</span>
-          <span className="mt-1 text-base text-[var(--muted-amber)] sm:text-sm">{section.headline}</span>
+          <span className="block truncate text-base font-semibold text-[var(--paper-light)] sm:text-sm">{section.label}</span>
+          <span className="mt-1 block text-base text-[var(--muted-amber)] sm:text-sm">{section.headline}</span>
         </span>
         <span className={`shrink-0 border px-2 py-1 font-mono text-base sm:text-sm ${stateToneClasses[section.state]}`}>
           {stateLabel(section.state)}
@@ -100,13 +100,13 @@ export function OperatorStatusBand({
       <span className="mt-4 grid gap-2 sm:grid-cols-2">
         {section.metrics.map((metric) => (
           <span key={metric.metricId} className="min-w-0 border-t border-[var(--console-line)] pt-2">
-            <span className="truncate text-base text-[var(--muted-amber)] sm:text-sm">{metric.label}</span>
-            <span className={`mt-1 font-mono text-base sm:text-sm ${metricToneClasses[metric.tone]}`}>{metric.value}</span>
+            <span className="block truncate text-base text-[var(--muted-amber)] sm:text-sm">{metric.label}</span>
+            <span className={`mt-1 block font-mono text-base sm:text-sm ${metricToneClasses[metric.tone]}`}>{metric.value}</span>
           </span>
         ))}
       </span>
       {primaryAction === undefined ? null : (
-        <span className="mt-4 border-t border-[var(--console-line)] pt-3 font-mono text-base text-[var(--signal-amber)] sm:text-sm">
+        <span className="mt-4 block border-t border-[var(--console-line)] pt-3 font-mono text-base text-[var(--signal-amber)] sm:text-sm">
           {primaryAction.label}
         </span>
       )}
