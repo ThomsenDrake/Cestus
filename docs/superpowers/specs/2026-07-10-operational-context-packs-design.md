@@ -71,9 +71,11 @@ Then add a package-owned operational context-pack module in `packages/agent`, li
 The context-pack core owns these new generic surfaces:
 
 1. A builder helper that returns `ResolvedContextPack` from the same canonical payload bytes used to derive `ref.contentHash` and `ref.sizeBytes`.
-2. A `ContextPackRegistry.buildResolved(contextPackId)` API. Existing `build(contextPackId)` remains ref-only and returns `buildResolved(contextPackId).ref` for compatibility.
-3. A typed payload resolver/store interface for restart-safe content-addressed resolution. Resolution is keyed by the full `ContextPackRef`, not only by a free hash string, and must reverify canonical bytes before returning an envelope.
-4. Serialization helpers for canonical context-pack payload bytes, reused by hashing, local persistence, and resolver verification.
+2. A `ContextPackRegistry.buildResolved(contextPackId)` API. Existing `build(contextPackId)` remains truly ref-only compatible: it accepts validated legacy `ContextPackRef` builder results directly and never requires payload resolution.
+3. Shared internal builder-result normalization with separate ref and resolved paths. The ref path validates IDs, versions, provenance, size, and descriptor requirements. The resolved path requires a returned/raw payload envelope or uses a typed resolver; without either, it fails with a machine-readable missing-payload block.
+4. A typed payload resolver/store interface for restart-safe content-addressed resolution. Resolution is keyed by the full `ContextPackRef`, not only by a free hash string, and must reverify canonical bytes before returning an envelope.
+5. A registry-owned pack-specific payload parser capability keyed by exact `contextPackId` and `version`. Parser functions are registration-time capabilities, not descriptor DTO fields, and are not serialized in snapshots or logs.
+6. Serialization helpers for canonical context-pack payload bytes, reused by hashing, local persistence, and resolver verification.
 
 The operational module owns four public surfaces:
 
@@ -88,12 +90,14 @@ The builders take normalized, caller-supplied authoritative inputs. They do not 
 
 ## Resolved Envelope And Payload Resolution
 
-`ResolvedContextPack` binds a safe payload to its ref. The binding is valid only when:
+`ResolvedContextPack` binds a safe payload to its ref. The generic hash/size binding is valid only when:
 
 - `payload` canonicalizes to the exact UTF-8 JSON bytes used for `ref.contentHash`.
 - `ref.contentHash` equals `sha256:<hex digest>` of those bytes.
 - `ref.sizeBytes` equals the byte length of those bytes.
 - `ref.contextPackId`, `ref.version`, `generatedAt`, scope, policy version, source event IDs, artifact hashes, high-water marks, size budget, and staleness inputs all validate through existing context-pack schemas.
+
+The envelope becomes production-resolved only when the exact pack-specific payload parser registered for `ref.contextPackId` and `ref.version` also accepts and normalizes the payload.
 
 `buildContextPackRef(input)` remains a compatibility helper for callers that only need a ref. The new canonical builder should be shaped like:
 
@@ -103,15 +107,23 @@ function buildResolvedContextPack(input: BuildContextPackRefInput): ResolvedCont
 
 `buildResolvedContextPack(input).ref` must be byte-for-byte equivalent to the current `buildContextPackRef(input)` behavior for compatible inputs, so existing tests that assert ref hashes remain valid.
 
-The registry should accept production builders that return:
+The registry should accept builders that return:
 
 - a `ResolvedContextPack`
 - a `BuildContextPackRefInput` that can be normalized into a resolved envelope
-- a trusted `ContextPackRef` only when a configured resolver can retrieve and verify the payload
+- a validated legacy `ContextPackRef`
 
 The registry should expose:
 
 ```ts
+type ContextPackPayloadParser = (payload: AgentContextPackJsonValue) => AgentContextPackJsonValue;
+
+interface ContextPackBuilder {
+  readonly descriptor: ContextPackDescriptor;
+  readonly parsePayload?: ContextPackPayloadParser;
+  build(): ContextPackBuilderResult | Promise<ContextPackBuilderResult>;
+}
+
 interface ContextPackRegistry {
   register(builder: ContextPackBuilder): void;
   build(contextPackId: string): Promise<ContextPackRef>;
@@ -122,7 +134,21 @@ interface ContextPackRegistry {
 }
 ```
 
-Ref-only build remains compatible with readiness and cockpit status. Production execution uses `buildResolved()` or an exact resolver capability.
+Ref-only build remains compatible with readiness and cockpit status. Its internal normalization accepts:
+
+- a trusted `ContextPackRef`, including legacy builders that cannot supply payload bytes.
+- a raw build input, normalized to a ref through `buildContextPackRef()`.
+- a `ResolvedContextPack`, normalized to `envelope.ref`.
+
+`build()` never calls the payload resolver and never requires a payload parser. This preserves ordinary readiness builds that intentionally operate on refs and safe summaries only.
+
+Production execution uses `buildResolved()` or an exact resolver capability. Its internal normalization accepts:
+
+- a `ResolvedContextPack`, after canonical hash/size verification and exact pack-specific parser validation.
+- a raw build input, after building a resolved envelope and validating that envelope with the exact pack-specific parser.
+- a legacy `ContextPackRef` only when the registry has a typed resolver that can retrieve and verify the payload for that full ref.
+
+If a builder returns only a ref and no resolver is configured, `buildResolved()` fails with `blocked.missing-payload`. If no exact parser is registered for the ref's context pack ID/version, resolution fails with `blocked.missing-payload-parser`. If a parser for another ID/version is supplied or the payload shape is invalid, resolution fails with `blocked.payload-schema-mismatch` or `blocked.invalid-payload-shape`. The exact error text may vary, but the machine-readable code must be present.
 
 Restart-safe resolution may be implemented as local content-addressed persistence or as an injected capability:
 
@@ -132,9 +158,31 @@ interface ContextPackPayloadResolver {
 }
 ```
 
-A resolver must reject a missing payload, a payload whose canonical hash differs from `ref.contentHash`, a byte-size mismatch, context pack ID/version mismatch, unsafe DTO content, or stale/untrusted ref-only material. It must not accept arbitrary hash-to-text callbacks or untyped string lookup functions.
+A resolver must reject a missing payload, a payload whose canonical hash differs from `ref.contentHash`, a byte-size mismatch, context pack ID/version mismatch, unsafe DTO content, stale/untrusted ref-only material, missing exact parser capability, or invalid pack-specific payload shape. It must not accept arbitrary hash-to-text callbacks or untyped string lookup functions.
 
 Payloads may be persisted in a content-addressed store keyed by `contentHash` with enough surrounding metadata to verify the full `ContextPackRef`. The ledger, diagnostics, cockpit DTOs, public logs, and readiness status may store refs and safe summaries, but not payload bodies. Prompt artifact rendering may consume resolved payloads to build provider-approved prompt text under the existing prompt artifact approval and persistence rules.
+
+## Pack-Specific Payload Schemas
+
+Generic JSON DTO safety plus a matching hash is necessary, but not sufficient. A payload that is safe JSON and has the expected hash could still be shaped like the wrong context pack. The registry therefore owns pack-specific payload parser capabilities keyed by exact durable schema identity:
+
+```text
+<contextPackId>@<version>
+```
+
+Descriptor `contextPackId` and `version` remain the durable payload schema identity for this lane. Do not serialize parser functions into `ContextPackDescriptor`, `ContextPackRegistrySnapshot`, ledger events, diagnostics, cockpit DTOs, or public logs. If a later compatible payload schema identity is needed, it may add an explicit `payloadSchemaId`/version field through a separate backward-compatible design, but this plan does not introduce one.
+
+Production builders register their parser capability alongside the builder. For example, operational builders register exact parsers for:
+
+- `workspace-runtime-status.v1@1`
+- `task-run-history.v1@1`
+- `agent-memory-summary.v1@1`
+
+Investigative and PRR lanes must register parsers for their own pack IDs and versions when they produce envelopes.
+
+The registry validates pack-specific payload shape after canonical hash and byte-size verification. This order matters: first prove bytes match the ref, then prove those bytes are valid for the exact pack schema. A malicious or buggy resolver that returns a payload/ref pair with a matching hash but the wrong payload shape must still fail production resolution.
+
+Builder-level parser functions are not part of descriptor identity and are not compared as serialized DTOs. Duplicate registration conflict checks compare descriptor identity and the package-owned registration key, and production resolution additionally requires the exact parser capability for the final ID/version.
 
 ## Source Model
 
@@ -386,6 +434,10 @@ Required code families:
 - `blocked.size-budget`
 - `blocked.unsafe-diagnostic`
 - `blocked.conflicting-registration`
+- `blocked.missing-payload`
+- `blocked.missing-payload-parser`
+- `blocked.payload-schema-mismatch`
+- `blocked.invalid-payload-shape`
 
 Builders may add narrower codes when tests define them, but they must stay stable, lowercase, and command-free.
 
@@ -418,6 +470,8 @@ Registration rejects:
 
 The helper does not weaken `ContextPackRegistry` validation. It layers package-owned duplicate safety on top of the existing registry.
 
+Operational production registration must include exact payload parsers for all three operational pack IDs. Ref-only legacy registrations may omit parsers only for ref-only `build()` compatibility; they cannot satisfy `buildResolved()` or provider execution unless an exact parser and resolver are supplied.
+
 ## Readiness Handoff
 
 The provider module exports a helper that builds the three refs and returns:
@@ -449,6 +503,7 @@ Builder failures are fail-closed and safe:
 - Empty memory or history without empty proof fails with `blocked.missing-empty-proof`.
 - Projection/source mismatch fails before hashing.
 - Payload resolution mismatch fails before prompt rendering or provider transfer.
+- Missing payload parser or invalid pack-specific payload shape fails before a resolved envelope can be used for production execution.
 - A production execution path that only has refs and safe summaries fails closed instead of silently rendering a prompt without pack payload facts.
 
 No error includes raw provider errors, prompt text, credentials, raw output, raw source content, or hidden filesystem paths.
@@ -459,6 +514,7 @@ This lane owns:
 
 - Generic `ResolvedContextPack` and context-pack payload serialization/resolution APIs in `packages/agent`.
 - Registry support for `buildResolved()` while keeping existing ref-only `build()` compatible.
+- Registry-owned pack-specific payload parser capability keyed by exact context pack ID/version.
 - Operational pack builders and provider registration that produce resolved envelopes.
 - A package-level fixture with a safe sentinel fact present only in payload, absent from `safeSummary`, so prompt/provider acceptance can prove payload observability.
 
@@ -485,7 +541,9 @@ The implementation plan should require focused package-level tests that prove:
 - Readiness handoff returns `contextPackRefs`, `currentProjectionHighWaterMarks`, descriptors, blocking codes, and omission codes without invoking cockpit or runtime integration code.
 - `ResolvedContextPack` canonical serialization produces ref hashes and sizes that exactly match payload bytes.
 - `ContextPackRegistry.buildResolved()` returns payload envelopes while `build()` remains ref-only compatible.
+- A legacy ref-only builder can still satisfy `build()`, fails `buildResolved()` without a resolver, and succeeds through `buildResolved()` only with an exact resolver and parser.
 - A content-addressed resolver rejects missing, mismatched, unsafe, or ref-only payloads and does not accept arbitrary hash-to-text callbacks.
+- An attacker-controlled payload/ref pair with matching hash but invalid pack-specific shape is rejected by the registered parser.
 - Production execution readiness rejects applicable refs without resolved payloads.
 - A safe sentinel fact that appears only in payload, not `safeSummary`, is observable through the resolved-envelope prompt/provider acceptance fixture.
 
