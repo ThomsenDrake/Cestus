@@ -20,8 +20,11 @@ Status: `ready-for-review`
 - Red command: `npm test -- packages/agent/test/prr-context-packs.test.ts` failed as expected because `registerPrrContextPackBuilders` was not a function.
 - Green command: `npm test -- packages/agent/test/prr-context-packs.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/prr-negotiation-workflow.test.ts` passed with 3 test files and 82 tests.
 - Full verification: `npm run verify` passed with typecheck, tests, Vite build, and factory readiness.
+- Review-fix RED: `npm test -- packages/agent/test/prr-context-packs.test.ts` failed as expected because the PRR descriptor's `content-hash` gate had no raw hash provenance and the registration wrapper replaced a supplied builder's receiver.
+- Review-fix GREEN: `npm test -- packages/agent/test/prr-context-packs.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/prr-negotiation-workflow.test.ts` passed with 3 test files and 84 tests.
+- Review-fix full verification: `npm run verify` passed with typecheck, tests, Vite build, and factory readiness.
 
 ## Review
 
-- Review status: self-reviewed
+- Review status: needs-fixes findings addressed; self-reviewed
 - Concerns: none recorded

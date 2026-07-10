@@ -629,6 +629,31 @@ describe("PRR context pack registration", () => {
     });
   });
 
+  it("preserves the supplied builder receiver when the registry invokes build", async () => {
+    const registry = createContextPackRegistry();
+    const prrRegistration = prrRegistrationForTest();
+    const builder = {
+      descriptor: prrRegistration.descriptor,
+      owner: "caller",
+      build() {
+        if (this.owner !== "caller") {
+          throw new Error("builder receiver was not preserved");
+        }
+        return buildPrrReadModelContextPack(basePrrInput());
+      }
+    };
+
+    registerPrrContextPackBuilders({
+      registry,
+      prrReadModel: { ...prrRegistration, builder },
+      jurisdictionPackSummary: jurisdictionRegistrationForTest()
+    });
+
+    await expect(registry.buildResolved("prr-read-model.v1")).resolves.toMatchObject({
+      ref: { contextPackId: "prr-read-model.v1" }
+    });
+  });
+
   it("conflicts on duplicate ID and version with a different parser identity", () => {
     const registry = createContextPackRegistry();
 
@@ -700,6 +725,21 @@ describe("PRR context pack registration", () => {
       })
     ).toThrow(/conflict|already registered/i);
   });
+
+  it("fails closed when the supplied registry does not expose buildResolved", () => {
+    const registryWithoutBuildResolved = {
+      ...createContextPackRegistry(),
+      buildResolved: undefined
+    } as never;
+
+    expect(() =>
+      registerPrrContextPackBuilders({
+        registry: registryWithoutBuildResolved,
+        prrReadModel: prrRegistrationForTest(),
+        jurisdictionPackSummary: jurisdictionRegistrationForTest()
+      })
+    ).toThrow(/schema-conflict|buildResolved/i);
+  });
 });
 
 function prrRegistrationForTest(
@@ -714,7 +754,7 @@ function prrRegistrationForTest(
     version: 1,
     label: "Selected request PRR read model",
     maxBytes: overrides.maxBytes ?? 32_768,
-    requiredProvenanceKinds: ["event-id"],
+    requiredProvenanceKinds: ["event-id", "content-hash"],
     redactionPolicy: "safe-normalized-summary",
     sourceProjection: "prr.projection.selected-request"
   };
