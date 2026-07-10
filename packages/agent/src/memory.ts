@@ -133,6 +133,7 @@ export function buildAgentMemorySummaryContextPack(input: BuildAgentMemorySummar
 export function buildAgentMemorySummaryResolvedContextPack(
   input: BuildAgentMemorySummaryContextPackInput
 ): ResolvedContextPack {
+  assertMemoryBuilderMetadata(input);
   const snapshot = normalizeMemorySnapshot(input);
   if (snapshot.projectionHighWaterMark !== input.projectionHighWaterMark ||
     snapshot.projectionSourceRef !== "agent.projection.memory") {
@@ -212,6 +213,35 @@ export function buildAgentMemorySummaryResolvedContextPack(
 
 interface NormalizedMemorySnapshot extends OperationalAgentMemorySnapshot {
   readonly lifecycleProvenanceRefs: readonly string[];
+}
+
+function assertMemoryBuilderMetadata(input: unknown): asserts input is BuildAgentMemorySummaryContextPackInput {
+  assertPlainOwnDataObject(input, "memory builder input", [
+    "generatedAt", "policyVersion", "scope", "projectionHighWaterMark", "sizeBudgetBytes", "memorySnapshot",
+    "projection", "emptyMemoryProof", "maxItems"
+  ]);
+  assertUtcTimestamp(input.generatedAt, "generatedAt");
+  assertMachineReadableReasonCode(input.policyVersion, "policyVersion");
+  assertMemoryBuilderScope(input.scope);
+  if (typeof input.projectionHighWaterMark !== "number" || !Number.isInteger(input.projectionHighWaterMark) ||
+    input.projectionHighWaterMark < 0) {
+    throw new Error("blocked.missing-high-water-mark: projectionHighWaterMark must be a nonnegative integer");
+  }
+  if (typeof input.sizeBudgetBytes !== "number" || !Number.isInteger(input.sizeBudgetBytes) || input.sizeBudgetBytes <= 0) {
+    throw new Error("blocked.size-budget: sizeBudgetBytes must be a positive integer");
+  }
+}
+
+function assertMemoryBuilderScope(value: unknown): asserts value is ContextPackScope {
+  assertPlainOwnDataObject(value, "memory builder scope", ["kind", "id"]);
+  if (typeof value.kind !== "string" || !/^[a-z][a-z0-9_-]*$/.test(value.kind)) {
+    throw new Error("blocked.invalid-payload-shape: scope.kind must be a safe machine-readable identifier");
+  }
+  assertOperationalContextSafeText(value.kind, "scope.kind");
+  if (typeof value.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value.id)) {
+    throw new Error("blocked.invalid-payload-shape: scope.id must be a safe identifier");
+  }
+  assertAgentSecretSafeText(value.id, "scope.id");
 }
 
 function normalizeMemorySnapshot(input: BuildAgentMemorySummaryContextPackInput): NormalizedMemorySnapshot {
