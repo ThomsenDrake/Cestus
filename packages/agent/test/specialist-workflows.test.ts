@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { createResidentAgentDomainAdapterRegistry } from "../src/domain-execution-adapter-registry.js";
+import { approvalClassForSideEffect } from "../src/permission-policy.js";
 import { approvedAgentSpecialistRunTypes, specialistExecutionStatusFor } from "../src/specialists.js";
 import {
   specialistWorkflowDescriptorFor,
@@ -136,6 +138,38 @@ describe("MVP specialist workflow descriptors", () => {
         expect.arrayContaining(["agent.scheduler-resumer.v1", "agent.domain-adapter.v1"])
       );
     }
+  });
+
+  it("declares evidence triage review queues as inert specialist request metadata", () => {
+    const descriptor = specialistWorkflowDescriptorFor("evidence-triage");
+    const adapterRegistry = createResidentAgentDomainAdapterRegistry();
+    const reviewQueueToolIds = [
+      "governance.classification.propose",
+      "governance.quarantine-review.request",
+      "ontology.assertion-proposal.request"
+    ];
+
+    for (const toolId of reviewQueueToolIds) {
+      const tool = descriptor.allowedTools.find((candidate) => candidate.toolId === toolId);
+      expect(tool).toMatchObject({
+        sideEffectClass: "ledger-proposal",
+        requiredApprovalClass: "human-review"
+      });
+      expect(() => adapterRegistry.require(toolId, "0.1.0")).toThrow(/not found/i);
+    }
+  });
+
+  it("keeps future diagnostic review descriptors aligned with the tool permission matrix", () => {
+    const descriptor = specialistWorkflowDescriptorFor("contradiction-finder");
+    const diagnostic = descriptor.allowedTools.find((tool) =>
+      tool.toolId === "diagnostic.investigative-signal.request"
+    );
+
+    expect(diagnostic).toMatchObject({
+      sideEffectClass: "ledger-review",
+      requiredApprovalClass: "ledger-review"
+    });
+    expect(diagnostic?.requiredApprovalClass).toBe(approvalClassForSideEffect(diagnostic!.sideEffectClass));
   });
 
   it("exposes a frozen registry snapshot for browser-safe inspection", () => {

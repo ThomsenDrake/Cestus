@@ -31,6 +31,38 @@ describe("agent tool gateway", () => {
     expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
   });
 
+  it("keeps human-review approval aligned with the ontology side-effect matrix", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    await expect(gateway.requestTool({
+      toolRequestId: "toolreq_bad_human_review_matrix",
+      residentAgentId: "agent_default",
+      taskId: "task_review_matrix",
+      runId: "run_review_matrix",
+      toolId: "claim.review.request",
+      sideEffectClass: "ledger-review",
+      preview: { summary: "Request accepted-graph review.", relatedEventIds: ["evt_review_source"] },
+      requiredApprovalClass: "human-review"
+    })).rejects.toThrow(/sideEffectClass risk|requiredApprovalClass/i);
+
+    expect(await ledger.readAll()).toEqual([]);
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_good_human_review_matrix",
+      residentAgentId: "agent_default",
+      taskId: "task_review_matrix",
+      runId: "run_review_matrix",
+      toolId: "governance.classification.propose",
+      sideEffectClass: "ledger-proposal",
+      preview: { summary: "Queue an inert human review.", relatedEventIds: ["evt_review_source"] },
+      requiredApprovalClass: "human-review"
+    });
+
+    expect(requested.payload.requiredApprovalClass).toBe("human-review");
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
+  });
+
   it("requires human approval and exact preview hash before completion", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });

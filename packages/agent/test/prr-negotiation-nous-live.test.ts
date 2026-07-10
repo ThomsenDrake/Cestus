@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ProviderParseApprovalService } from "../../ingestion/src/provider-adapter.js";
+import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import {
   SecretMaterial,
@@ -13,6 +15,7 @@ import {
   createContextPackRegistry,
   createNousPortalProvider,
   createProviderCapabilityDescriptor,
+  createSpecialistDerivativeArtifactStore,
   hashAgentToolPreview,
   promptArtifactAuditMetadata,
   rebuildProviderByteTransferCurrentPreview,
@@ -82,6 +85,7 @@ liveDescribe("live Nous PRR negotiation workflow acceptance", () => {
       runType: "prr-negotiation",
       scope: { kind: "workspace", refs: ["ws_live_prr"] }
     });
+    const derivativeStore = createDerivativeStore();
 
     const remoteEvidence = await appendLivePromptEvidence(ledger);
     const contextPacks = createLiveContextPacks(remoteEvidence);
@@ -114,6 +118,7 @@ liveDescribe("live Nous PRR negotiation workflow acceptance", () => {
         providerId,
         kind: "api-key-bearer"
       },
+      derivativeStore,
       prrRequestId,
       correspondenceId,
       jurisdictionRuleRefs: ["rule_foia_deadline_001"],
@@ -124,6 +129,7 @@ liveDescribe("live Nous PRR negotiation workflow acceptance", () => {
     expect(["ready-for-review", "waiting-for-approval"]).toContain(result.handoff.status);
     expect(result.handoff.outputArtifacts).toHaveLength(1);
     expect(result.handoff.outputArtifacts[0]?.artifactHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+    await expect(derivativeStore.get(result.handoff.outputArtifacts[0]!.artifactHash)).resolves.toBeInstanceOf(Buffer);
     expect(result.handoff.promptArtifactHash).toMatch(/^sha256:[a-f0-9]{64}$/);
 
     const events = await ledger.readAll();
@@ -156,6 +162,15 @@ liveDescribe("live Nous PRR negotiation workflow acceptance", () => {
     assertNoSensitiveLiveMaterial(JSON.stringify({ events, handoff: result.handoff }), env);
   }, 90_000);
 });
+
+function createDerivativeStore() {
+  const blobStore = new FileBlobStore(mkdtempSync(join(tmpdir(), "cestus-agent-prr-live-")));
+  const derivativeStore = createSpecialistDerivativeArtifactStore(blobStore);
+  return Object.freeze({
+    put: derivativeStore.put,
+    get: blobStore.get.bind(blobStore)
+  });
+}
 
 function createLiveContextPacks(remoteRefs: RemotePromptEvidenceRefs): ContextPackRegistry {
   const registry = createContextPackRegistry();
@@ -411,7 +426,7 @@ function followUpApprovalPreview(): PrrNegotiationFollowUpApprovalPreviewInput {
       renderedBodyHash,
       attachments: [],
       requiresLegalConfirmation: false,
-      providerIdempotencyKey: "followup_prr_req_live_corr_live_001"
+      providerIdempotencyKey: "followup_prr_req_live_001_corr_prr_live_001"
     },
     requestState: {
       requestCreatedEventId: "evt_prr_created_live_001",
