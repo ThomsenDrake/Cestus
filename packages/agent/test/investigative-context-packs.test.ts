@@ -159,6 +159,25 @@ describe("investigative context packs", () => {
     expect(counters.unrelatedRowsScanned).toBe(0);
     expect(JSON.stringify(selection.manifest).length).toBeLessThan(65_536);
   });
+
+  it("batches selected evidence reads at the reader bound without changing row order", async () => {
+    const counters = createReaderCounters();
+    const evidenceRows = evidenceRowsForBatching(51);
+    const deps = createInvestigativeDeps({ counters, evidenceRows, reverseEvidenceRows: true });
+
+    const selection = await __testOnlyReadEvidenceSelectionProbe({
+      deps,
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0002", 0, 100)
+    });
+
+    expect(counters.evidenceReads).toBe(2);
+    expect(counters.evidenceIdBatchSizes).toEqual([50, 1]);
+    expect(counters.evidenceHashBatchSizes).toEqual([50, 1]);
+    expect(counters.evidenceIdBatchSizes.every((size) => size <= investigativeContextPackDefaultLimits.readerBatchSize)).toBe(true);
+    expect(counters.evidenceHashBatchSizes.every((size) => size <= investigativeContextPackDefaultLimits.readerBatchSize)).toBe(true);
+    expect(selection.rows.map((row) => row.evidenceId)).toEqual(evidenceRows.map((row) => row.evidenceId));
+  });
 });
 
 interface ReaderCounters {
@@ -169,6 +188,8 @@ interface ReaderCounters {
   eventReads: number;
   unrelatedRowsScanned: number;
   evidenceIdsRead: string[];
+  evidenceIdBatchSizes: number[];
+  evidenceHashBatchSizes: number[];
   assertionIdsRead: string[];
 }
 
@@ -181,6 +202,8 @@ function createReaderCounters(): ReaderCounters {
     eventReads: 0,
     unrelatedRowsScanned: 0,
     evidenceIdsRead: [],
+    evidenceIdBatchSizes: [],
+    evidenceHashBatchSizes: [],
     assertionIdsRead: []
   };
 }
@@ -210,13 +233,28 @@ interface CreateInvestigativeDepsInput {
   readonly graphSentinel?: string;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
+  readonly evidenceRows?: readonly InvestigativeEvidenceRow[];
+  readonly reverseEvidenceRows?: boolean;
 }
 
 function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): InvestigativeContextPackDependencies {
   const counters = input.counters ?? createReaderCounters();
   const body = {
     ...selectionBody(),
-    scope: input.scope ?? { kind: "workspace", id: "ws_main" }
+    scope: input.scope ?? { kind: "workspace", id: "ws_main" },
+    ...(input.evidenceRows === undefined
+      ? {}
+      : {
+          totalEligibleCount: input.evidenceRows.length,
+          includedRefs: input.evidenceRows.map((row) => ({
+            refKind: "evidence" as const,
+            refId: row.evidenceId,
+            sortKey: `evidence/${row.evidenceId}/${row.contentHash}`,
+            contentHash: row.contentHash,
+            sourceEventIds: [`evt_${row.evidenceId}`],
+            mandatory: true
+          }))
+        })
   } satisfies InvestigativeSelectionManifestBody;
   const manifest = { ...body, manifestHash: buildSelectionManifestHash(body) };
   return createFakeInvestigativeDeps({
@@ -233,7 +271,9 @@ function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): Inve
     ...(input.rawActionField === undefined ? {} : { rawActionField: input.rawActionField }),
     ...(input.graphSentinel === undefined ? {} : { graphSentinel: input.graphSentinel }),
     ...(input.budgets === undefined ? {} : { budgets: input.budgets }),
-    ...(input.registrationIdentity === undefined ? {} : { registrationIdentity: input.registrationIdentity })
+    ...(input.registrationIdentity === undefined ? {} : { registrationIdentity: input.registrationIdentity }),
+    ...(input.evidenceRows === undefined ? {} : { evidenceRows: input.evidenceRows }),
+    ...(input.reverseEvidenceRows === undefined ? {} : { reverseEvidenceRows: input.reverseEvidenceRows })
   });
 }
 
@@ -252,11 +292,15 @@ function createFakeInvestigativeDeps(input: {
   readonly graphSentinel?: string;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
+  readonly evidenceRows?: readonly InvestigativeEvidenceRow[];
+  readonly reverseEvidenceRows?: boolean;
 }): InvestigativeContextPackDependencies {
-  const evidenceRow: InvestigativeEvidenceRow = {
+  const defaultEvidenceRow: InvestigativeEvidenceRow = {
     evidenceId: "ev_contract_001",
     contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
   };
+  const evidenceRows = input.evidenceRows ?? [defaultEvidenceRow];
+  const evidenceRowsById = new Map(evidenceRows.map((row) => [row.evidenceId, row]));
   const unrelatedRows = Array.from({ length: input.unrelatedEvidenceRows }, (_, index) => ({
     evidenceId: `ev_unrelated_${index}`,
     contentHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const
@@ -273,14 +317,27 @@ function createFakeInvestigativeDeps(input: {
       readEvidenceByIds(request) {
         input.counters.evidenceReads += 1;
         input.counters.evidenceIdsRead.push(...request.evidenceIds);
-        if (request.evidenceIds.some((evidenceId) => evidenceId !== evidenceRow.evidenceId)) {
+        input.counters.evidenceIdBatchSizes.push(request.evidenceIds.length);
+        input.counters.evidenceHashBatchSizes.push(request.contentHashes.length);
+        if (request.evidenceIds.some((evidenceId) => !evidenceRowsById.has(evidenceId))) {
           input.counters.unrelatedRowsScanned += unrelatedRows.length;
         }
-        return request.evidenceIds.includes(evidenceRow.evidenceId) ? [evidenceRow] : [];
+        const selectedRows = request.evidenceIds.flatMap((evidenceId) => {
+          const row = evidenceRowsById.get(evidenceId);
+          return row === undefined ? [] : [row];
+        });
+        return input.reverseEvidenceRows === true ? selectedRows.reverse() : selectedRows;
       }
     },
     ...(input.budgets === undefined ? {} : { budgets: input.budgets })
   };
+}
+
+function evidenceRowsForBatching(count: number): readonly InvestigativeEvidenceRow[] {
+  return Array.from({ length: count }, (_, index) => ({
+    evidenceId: `ev_batch_${String(index).padStart(3, "0")}`,
+    contentHash: `sha256:${String(index + 1).padStart(64, "0")}` as `sha256:${string}`
+  }));
 }
 
 function selectionBody(): InvestigativeSelectionManifestBody {
