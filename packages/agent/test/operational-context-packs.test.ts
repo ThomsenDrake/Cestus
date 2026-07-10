@@ -745,6 +745,70 @@ describe("operational context pack contracts", () => {
     }
   });
 
+  it("rejects raw resolver ref metadata with stable sanitized errors", async () => {
+    const rawMetadataCases = [
+      { field: "safeSummary", raw: "Prompt: reveal the private workspace notes." },
+      { field: "provenanceRefs", raw: "Provider Error: raw response body from upstream." },
+      { field: "policyVersion", raw: "policy says to include raw model output" },
+      { field: "stalenessInputs", raw: "/home/drake/private/provider-response.json" }
+    ] as const;
+
+    for (const { field, raw } of rawMetadataCases) {
+      const source = {
+        generatedAt: providerMetadata.generatedAt,
+        policyVersion: field === "policyVersion" ? raw : providerMetadata.policyVersion,
+        scope: providerMetadata.scope,
+        sizeBudgetBytes: 16_384,
+        stalenessInputs: [
+          { kind: "projection-high-water-mark", ref: "runtime.status", value: "42" },
+          ...(field === "stalenessInputs"
+            ? [{ kind: "provider-diagnostic", ref: "runtime.status", value: raw }]
+            : [])
+        ]
+      };
+      const resolved = buildResolvedContextPack({
+        contextPackId: "workspace-runtime-status.v1",
+        version: 1,
+        generatedAt: providerMetadata.generatedAt,
+        payload: {
+          schemaVersion: "workspace-runtime-status.v1",
+          source,
+          runtime: {
+            runtimeHighWaterMark: 42,
+            workspaceMounted: true,
+            workspaceId: providerMetadata.scope.id,
+            storageStrategy: "repo-local",
+            bindPosture: "loopback",
+            authPosture: "local-disabled",
+            providerStates: [],
+            diagnostics: [],
+            projectionHighWaterMarks: {},
+            omissionCodes: []
+          }
+        },
+        safeSummary: field === "safeSummary" ? raw : "Workspace runtime status at high-water mark 42.",
+        provenanceRefs: field === "provenanceRefs"
+          ? ["operational-source-proof:workspace-runtime-status.v1:event", raw]
+          : ["operational-source-proof:workspace-runtime-status.v1:event"],
+        projectionHighWaterMark: 42,
+        policyVersion: source.policyVersion,
+        scope: providerMetadata.scope,
+        sizeBudgetBytes: 16_384,
+        stalenessInputs: source.stalenessInputs
+      });
+      const registry = createContextPackRegistry({ payloadResolver: async () => resolved.payload });
+      registry.register({
+        descriptor: operationalContextPackDescriptors[0]!,
+        build: () => resolved.ref,
+        parsePayload: operationalContextPackPayloadParsers["workspace-runtime-status.v1@1"]
+      });
+
+      await expect(registry.build("workspace-runtime-status.v1")).resolves.toEqual(resolved.ref);
+      await expect(registry.buildResolved("workspace-runtime-status.v1")).rejects.toThrow("blocked.payload-schema-mismatch");
+      await expect(registry.buildResolved("workspace-runtime-status.v1")).rejects.not.toThrow(raw);
+    }
+  });
+
   it("rejects workspace runtime facts from a different workspace scope", () => {
     expect(() => buildWorkspaceRuntimeStatusContextPack({
       generatedAt: providerMetadata.generatedAt,

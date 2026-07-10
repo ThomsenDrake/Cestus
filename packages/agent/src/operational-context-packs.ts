@@ -778,6 +778,7 @@ function createOperationalPayloadParser(
     } else {
       assertAgentMemoryPayloadSection(requiredJsonField(payload, "memory", schemaVersion), schemaVersion);
     }
+    assertOperationalSourceMetadataSemantics(payload, schemaVersion, requiredSection);
     if (ref !== undefined) {
       assertOperationalRefSemantics(payload, ref, schemaVersion, requiredSection);
     }
@@ -848,7 +849,7 @@ function assertOperationalPayloadEnvelope(
 function assertOperationalSourceMetadata(value: AgentContextPackJsonValue, schemaVersion: OperationalContextPackId): void {
   assertJsonObjectWithAllowedKeys(value, schemaVersion, ["generatedAt", "policyVersion", "scope", "sizeBudgetBytes", "stalenessInputs"]);
   assertUtcTimestamp(requiredJsonField(value, "generatedAt", schemaVersion), "source.generatedAt");
-  assertStringField(value, "policyVersion", schemaVersion);
+  assertSafeToken(requiredJsonField(value, "policyVersion", schemaVersion), "source.policyVersion", true);
   assertScopePayloadField(value, "scope", schemaVersion);
   assertPositiveIntegerField(value, "sizeBudgetBytes", schemaVersion);
   for (const stalenessInput of assertJsonArrayField(value, "stalenessInputs", schemaVersion)) {
@@ -857,6 +858,29 @@ function assertOperationalSourceMetadata(value: AgentContextPackJsonValue, schem
       assertStringField(stalenessInput, key, schemaVersion);
     }
   }
+}
+
+function assertOperationalSourceMetadataSemantics(
+  payload: { readonly [key: string]: AgentContextPackJsonValue },
+  schemaVersion: OperationalContextPackId,
+  sectionName: string
+): void {
+  const source = requiredJsonField(payload, "source", schemaVersion);
+  const section = requiredJsonField(payload, sectionName, schemaVersion);
+  if (!isOperationalJsonObject(source) || !isOperationalJsonObject(section) || !Array.isArray(source.stalenessInputs)) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  const projectionHighWaterMark = schemaVersion === "workspace-runtime-status.v1"
+    ? section.runtimeHighWaterMark
+    : section.projectionHighWaterMark;
+  if (typeof projectionHighWaterMark !== "number") {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  assertOperationalStalenessInputs(
+    source.stalenessInputs as unknown as readonly ContextPackStalenessInput[],
+    schemaVersion,
+    projectionHighWaterMark
+  );
 }
 
 function assertWorkspaceRuntimePayloadSection(value: AgentContextPackJsonValue, schemaVersion: OperationalContextPackId): void {
@@ -1046,6 +1070,7 @@ function assertOperationalRefSemantics(
   schemaVersion: OperationalContextPackId,
   sectionName: string
 ): void {
+  assertOperationalRefMetadata(ref, schemaVersion);
   if (ref.contextPackId !== schemaVersion || ref.version !== 1 || ref.policyVersion === undefined || ref.scope === undefined ||
     ref.projectionHighWaterMark === undefined) {
     throw new Error(`invalid ${schemaVersion} payload`);
@@ -1098,6 +1123,49 @@ function assertOperationalRefSemantics(
       proof.generatedAt !== ref.generatedAt || proof.projectionHighWaterMark !== ref.projectionHighWaterMark) {
       throw new Error(`invalid ${schemaVersion} payload`);
     }
+  }
+}
+
+function assertOperationalRefMetadata(ref: ContextPackRef, schemaVersion: OperationalContextPackId): void {
+  assertSafeOperationalText(ref.safeSummary, "ref.safeSummary");
+  for (const provenanceRef of ref.provenanceRefs) {
+    if (typeof provenanceRef !== "string" || !/^[a-z][A-Za-z0-9._-]*(?::[A-Za-z0-9._-]+)*$/.test(provenanceRef)) {
+      throw new Error(`invalid ${schemaVersion} payload`);
+    }
+    assertAgentSecretSafeText(provenanceRef, "ref.provenanceRef");
+  }
+  if (ref.policyVersion === undefined || ref.scope === undefined || ref.projectionHighWaterMark === undefined || ref.stalenessInputs === undefined) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  assertSafeToken(ref.policyVersion, "ref.policyVersion", true);
+  assertSafeScope(ref.scope);
+  assertOperationalStalenessInputs(ref.stalenessInputs, schemaVersion, ref.projectionHighWaterMark);
+}
+
+function assertOperationalStalenessInputs(
+  stalenessInputs: readonly ContextPackStalenessInput[],
+  schemaVersion: OperationalContextPackId,
+  projectionHighWaterMark: number
+): void {
+  const projectionRef = schemaVersion === "workspace-runtime-status.v1"
+    ? "runtime.status"
+    : schemaVersion === "task-run-history.v1"
+      ? "agent.projection.task-run-history"
+      : "agent.projection.memory";
+  const highWaterInputs = stalenessInputs.filter((input) => input.kind === "projection-high-water-mark");
+  if (highWaterInputs.length !== 1 || highWaterInputs[0]?.ref !== projectionRef ||
+    highWaterInputs[0]?.value !== String(projectionHighWaterMark)) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  for (const input of stalenessInputs) {
+    if (input.kind === "projection-high-water-mark") {
+      continue;
+    }
+    if (schemaVersion === "workspace-runtime-status.v1" && input.kind === "omission-code" &&
+      input.ref === projectionRef && isOperationalOmissionCode(input.value)) {
+      continue;
+    }
+    throw new Error(`invalid ${schemaVersion} payload`);
   }
 }
 
