@@ -6,7 +6,7 @@ Worker: Codex
 Branch: codex/resident-lifecycle-bootstrap-implementation
 Worktree: /home/drake/.codex/worktrees/14a7/Cestus
 Claimed-at: 2026-07-10T14:48:18Z
-Status: in-progress
+Status: completed
 
 Owned files:
 - `packages/agent/src/identity-bootstrap.ts`
@@ -18,3 +18,9 @@ Targeted commands:
 - `npm test -- packages/agent/test/identity-bootstrap.test.ts`
 - `npm test -- packages/agent/test/identity-bootstrap.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/ontology/test/agent-contracts.test.ts`
 - `npm run verify`
+
+Evidence:
+- RED: `npm test -- packages/agent/test/identity-bootstrap.test.ts` failed as expected with `Cannot find module '../src/identity-bootstrap.js'`.
+- Targeted: `npm test -- packages/agent/test/identity-bootstrap.test.ts` passed: 1 file, 10 tests.
+- Combined targeted: `npm test -- packages/agent/test/identity-bootstrap.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/ontology/test/agent-contracts.test.ts` passed: 4 files, 85 tests.
+- Verify: `npm run verify` passed.
