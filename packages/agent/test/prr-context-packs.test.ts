@@ -174,6 +174,38 @@ describe("selected request PRR read model context pack", () => {
       .toThrow(/payload-schema-mismatch|correspondence|artifact/i);
   });
 
+  it("rejects coordinated source-ref ID renames and rendered-hash swaps", () => {
+    const resolved = buildPrrReadModelContextPack(basePrrInput());
+    const forged = structuredClone(resolved.payload) as {
+      sourceRefs: {
+        correspondence: { id: string }[];
+        evidence: { id: string }[];
+      };
+      correspondence: {
+        outbound: { correspondenceId: string; bodyHash?: string; evidenceIds: string[]; attachmentEvidenceIds: string[] }[];
+      };
+    };
+
+    forged.sourceRefs.evidence[0]!.id = "ev_unrelated";
+    forged.correspondence.outbound[0]!.evidenceIds = ["ev_unrelated"];
+    forged.correspondence.outbound[0]!.attachmentEvidenceIds = ["ev_unrelated"];
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forged), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|provenance|source/i);
+
+    const forgedCorrespondence = structuredClone(resolved.payload) as typeof forged;
+    forgedCorrespondence.sourceRefs.correspondence.forEach((sourceRef) => {
+      sourceRef.id = sourceRef.id.replace("corr_selected_followup", "corr_selected_followup_unrelated");
+    });
+    forgedCorrespondence.correspondence.outbound[0]!.correspondenceId = "corr_selected_followup_unrelated";
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forgedCorrespondence), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|provenance|source/i);
+
+    const forgedRenderedHash = structuredClone(resolved.payload) as typeof forged;
+    forgedRenderedHash.correspondence.outbound[0]!.bodyHash = renderedBodyHash;
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forgedRenderedHash), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|provenance|source/i);
+  });
+
   it("rejects forged evidence IDs absent from selected evidence source refs", () => {
     const resolved = buildPrrReadModelContextPack(basePrrInput());
     const forged = structuredClone(resolved.payload) as {
