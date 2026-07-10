@@ -9,18 +9,20 @@ This design defines the first production context-pack builders and runtime regis
 - `prr-read-model.v1`
 - `jurisdiction-pack-summary.v1`
 
-These packs unblock resident-agent specialist workflows that need PRR context, especially `prr-negotiation`, without broadening authority, leaking unrelated request state, or weakening Cestus's append-only and provenance-first invariants.
+These packs unblock resident-agent specialist workflows that need PRR context, especially `prr-negotiation`, without broadening authority, leaking unrelated request state, or weakening Cestus's append-only and provenance-first invariants. The builders produce provider-safe resolved envelopes against the shared operational context-pack resolver contract; refs alone are not sufficient for prompt rendering.
 
 The first production contract is selected-request scoped. A PRR run receives only the selected request context plus bounded proof that other PRRs were intentionally excluded. Workspace-wide PRR aggregation is not the default and belongs in a separately named pack or a later version with its own approval.
 
 ## Goals
 
-- Build deterministic, hash-addressed context refs for one selected PRR request.
+- Build deterministic, content-addressed resolved context envelopes for one selected PRR request.
 - Bind the selected request stream, correspondence state, evidence hashes, jurisdiction pack artifact hash, pack name/version, projection high-water marks, and staleness inputs.
 - Summarize lifecycle state, deadlines, fee and narrowing posture, correspondence posture, cited jurisdiction rules, diagnostics, gates, and safe source refs without raw private content.
 - Keep legal posture advisory and cited to exact jurisdiction rule IDs plus the jurisdiction artifact content hash.
 - Preserve active send, legal, and governance gates as non-truncatable context.
 - Make omissions explicit and machine-readable without enumerating unrelated request IDs.
+- Keep ledger events, readiness DTOs, and audit manifests ref-only while production prompt rendering resolves bounded selected-request payloads locally.
+- Verify resolved payload bytes exactly against the ref content hash and size before any provider invocation.
 - Register builders idempotently while rejecting conflicting duplicate ID/version/builder bindings.
 - Keep the packs read-only. They never send, follow up, appeal, confirm escalation, clear locks, grant approval, or execute domain effects.
 
@@ -33,11 +35,40 @@ The first production contract is selected-request scoped. A PRR run receives onl
 - Raw provider metadata, provider message/thread IDs in remote context, credentials, credential refs, local paths, or raw provider errors.
 - New PRR lifecycle events or jurisdiction-pack semantics.
 - Legal advice or uncited legal conclusions.
-- Changes to operational or investigative context packs, specialist prompt templates, handoffs, or orchestrator files owned by other lanes.
+- Implementing the shared provider-safe `ResolvedContextPack` resolver contract; that is owned by the operational lane.
+- Changes to operational or investigative context packs, specialist prompt templates, handoffs, or orchestrator files owned by other lanes, except consuming the operational resolver contract through its approved public surface.
 
 ## Existing Context
 
 The resident-agent workflow design declares `prr-read-model.v1` and `jurisdiction-pack-summary.v1` as required context packs for PRR and downstream specialist modes. The generic context-pack registry already validates descriptors, refs, size budgets, provenance refs, stable hashes, scopes, artifact hashes, projection high-water marks, and staleness inputs.
+
+The generic registry currently returns refs, and existing provider prompt text can only see context-pack IDs, hashes, and `safeSummary` values. That is not enough for PRR negotiation, because the selected request deadline, fee posture, correspondence state, gates, and jurisdiction rules are payload facts rather than ref metadata.
+
+The operational lane owns the shared provider-safe resolved-envelope and content-addressed resolver contract. This PRR design depends on that contract but does not implement arbitrary hash-to-text lookup behavior.
+
+## Resolved Payload Contract
+
+Both PRR builders produce a provider-safe resolved envelope:
+
+```ts
+interface ResolvedContextPack {
+  readonly ref: ContextPackRef;
+  readonly payload: AgentContextPackJsonValue;
+}
+```
+
+The resolved envelope is content-addressed:
+
+- `ref.contentHash` is the stable hash of the canonical normalized `payload`.
+- `ref.sizeBytes` is the byte length of those exact canonical payload bytes.
+- `ref.contextPackId`, `ref.version`, `ref.scope`, `ref.sourceEventIds`, `ref.artifactHashes`, `ref.projectionHighWaterMark`, and `ref.stalenessInputs` summarize and bind the payload but do not replace it.
+- the payload is normalized through the same provider-safe JSON boundary used for context-pack hashing.
+
+Ledger events, readiness DTOs, prompt manifests, approval previews, and durable audit records continue to store or reference `ContextPackRef` values only. They must not persist the PRR payload bytes.
+
+Production prompt rendering resolves the selected PRR payloads locally through the operational content-addressed resolver and includes the exact verified payload bytes in the prompt artifact text. Before rendering or invoking a provider, the renderer recomputes the payload hash and size and compares them to the ref. A missing payload, mismatched payload hash, mismatched payload size, wrong context pack ID/version, wrong selected-request scope, or stale resolver result blocks provider invocation with a safe error.
+
+The resolver contract must not be an arbitrary hash-to-text callback. Callers supply or obtain bounded `ResolvedContextPack` envelopes from approved context-pack builders or an approved local resolver that has already normalized and verified the payload against the ref.
 
 The PRR package already owns lifecycle events, projections, read API DTOs, jurisdiction packs, deadline calculation, diagnostics, stalling detection, legal escalation gates, correspondence services, and evidence bridge behavior. These packs must project from those authoritative inputs rather than duplicating domain authority inside the agent package.
 
@@ -68,7 +99,7 @@ Future investigation-level or workspace-level PRR summaries must be separate con
 
 ## PRR Read Model Pack
 
-`prr-read-model.v1` summarizes only the selected request. Its payload includes:
+`prr-read-model.v1` summarizes only the selected request. Its resolved payload includes:
 
 - schema version and selected request scope.
 - request lifecycle summary: request ID, current status, agency display label, jurisdiction pack ref, selected request stream head event ID, and selected request stream sequence or high-water mark.
@@ -91,13 +122,13 @@ The pack must exclude:
 - uncited legal conclusions.
 - unrelated PRR request IDs or details.
 
-Where the PRR read model contains fields that are useful locally but unsafe for provider context, the builder records a safe summary plus a machine-readable omission.
+Where the PRR read model contains fields that are useful locally but unsafe for provider context, the builder records a safe payload summary plus a machine-readable omission. The `safeSummary` in the ref is only a short audit summary; deadline dates, fee posture, correspondence state, gate checks, and other selected-request facts required by PRR negotiation belong in the resolved payload and must not rely on ref metadata.
 
 ## Jurisdiction Pack Summary
 
 `jurisdiction-pack-summary.v1` binds the selected request jurisdiction. It requires the selected request's jurisdiction pack name/version and the jurisdiction artifact content hash.
 
-The payload includes:
+The resolved payload includes:
 
 - schema version and selected request scope.
 - `packName`, `packVersion`, jurisdiction label, and `jurisdictionArtifactHash`.
@@ -107,7 +138,7 @@ The payload includes:
 - advisory legal posture notes tied to exact rule IDs and the artifact hash.
 - omissions for missing rule categories or categories outside the selected request's pack.
 
-Version alone is not a staleness proof. The jurisdiction artifact content hash is mandatory for a usable pack ref. If the selected request names a jurisdiction pack but the artifact hash or exact pack content cannot be supplied, the builder fails closed with `missing-provenance`.
+Version alone is not a staleness proof. The jurisdiction artifact content hash is mandatory for a usable resolved envelope. If the selected request names a jurisdiction pack but the artifact hash or exact pack content cannot be supplied, the builder fails closed with `missing-provenance`.
 
 Legal posture is always advisory. A statement about deadline, fee, exemption, appeal, enforcement, or escalation posture must cite exact jurisdiction rule IDs and the jurisdiction artifact hash. Missing legal categories are explicit omissions, not invented conclusions.
 
@@ -125,7 +156,7 @@ If these gates exceed the size budget, the builder returns `context-budget-excee
 
 ## Provenance And Staleness
 
-Both packs must bind enough data for a future runner to detect stale context before model invocation or approval consumption.
+Both packs must bind enough data for a future runner to detect stale context before model invocation or approval consumption. Ref fields are the durable staleness and audit surface; resolved payloads are prompt-local bytes verified against those refs.
 
 `prr-read-model.v1` provenance includes:
 
@@ -157,7 +188,7 @@ Staleness inputs include, at minimum:
 
 Builders are pure functions over injected inputs. They do not read ambient time, scan global workspace state, or inspect unrelated records.
 
-The caller supplies `generatedAt`. Identical normalized inputs, including `generatedAt`, must produce identical canonical payloads, content hashes, source refs, omissions, and safe summaries.
+The caller supplies `generatedAt`. Identical normalized inputs, including `generatedAt`, must produce identical resolved payloads, canonical payload bytes, content hashes, source refs, omissions, and safe summaries.
 
 Canonical ordering rules:
 
@@ -168,7 +199,7 @@ Canonical ordering rules:
 - diagnostics by event ID, then diagnostic ID.
 - omissions by stable kind and reason.
 
-Every payload is normalized through the existing context-pack DTO safety boundary so accessors, symbols, sparse arrays, custom prototypes, unsafe keys, and secret-shaped values are rejected before hashing.
+Every payload is normalized through the existing context-pack DTO safety boundary so accessors, symbols, sparse arrays, custom prototypes, unsafe keys, and secret-shaped values are rejected before hashing. Verification recomputes the hash and size from the normalized payload immediately before prompt rendering.
 
 ## Runtime Registration
 
@@ -186,7 +217,7 @@ Descriptors must use conservative limits and safe policies:
 - source projection names that identify PRR projection and jurisdiction pack artifacts.
 - bounded max bytes suitable for selected-request context.
 
-Shared registry integration remains a narrow implementation task. Operational packs, investigative packs, specialist prompt templates, handoffs, and orchestrator files are outside this design's implementation scope.
+Shared registry integration remains a narrow implementation task. Operational packs, investigative packs, specialist prompt templates, handoffs, and orchestrator files are outside this design's implementation scope. The only prompt-rendering dependency is the operational lane's shared resolved-envelope contract: PRR code supplies verified selected-request resolved envelopes and does not add a generic hash-to-text callback.
 
 ## Error Handling
 
@@ -218,6 +249,9 @@ Implementation is test-driven. Required tests include:
 - legal advisory notes require exact rule IDs and jurisdiction artifact hash.
 - missing rule categories produce machine-readable omissions.
 - identical injected inputs produce identical context hashes.
+- both builders return resolved envelopes whose payload hash and size exactly match the ref.
+- selected deadline and jurisdiction-rule sentinel facts are present in resolved payloads, absent from `safeSummary`, and reach production prompt rendering only after ref hash and size verification.
+- payload mismatch or missing local resolution blocks provider invocation before any provider call.
 - hostile DTO structures and secret-shaped keys or values are rejected before hashing.
 - registration is idempotent for the same ID/version/builder and conflicts for a different builder.
 - builders have no send, follow-up, appeal, escalation-confirmation, lock-clear, approval-grant, or domain-effect path.
@@ -232,3 +266,5 @@ npm run factory:check
 ## Approval Record
 
 The approved direction is selected-request scoped context for the first production PRR context-pack contract. `prr-read-model.v1` uses `scope: { kind: "prr-request", id }`, exact selected request stream and correspondence/evidence bindings, bounded aggregate omission proof for other PRRs, non-truncatable active gates, deterministic canonical output, and a no-effects boundary. `jurisdiction-pack-summary.v1` binds the selected request jurisdiction by pack name, version, exact rule IDs, and jurisdiction artifact content hash.
+
+The amended integration direction is that both PRR builders produce provider-safe `ResolvedContextPack { ref, payload }` envelopes against the operational lane's shared content-addressed resolver contract. Durable ledger/events/readiness surfaces keep refs only; production prompt rendering resolves the bounded selected-request and jurisdiction payloads locally, verifies exact hash and size, and includes those approved bytes in the prompt artifact. Missing or mismatched resolution blocks provider invocation, and no arbitrary hash-to-text callback is allowed.
