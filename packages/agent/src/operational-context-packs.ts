@@ -806,7 +806,7 @@ function normalizeRuntimeSource(value: OperationalWorkspaceRuntimeSource): {
     throw new Error("blocked.invalid-payload-shape: runtime source is incomplete");
   }
   for (const [label, safeValue] of [["storageStrategy", value.storageStrategy], ["bindPosture", value.bindPosture], ["authPosture", value.authPosture]] as const) {
-    assertSafeOperationalText(safeValue, label);
+    assertMachineReadableOperationalToken(safeValue, label);
   }
   if (value.workspaceId !== undefined) {
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value.workspaceId)) {
@@ -1096,8 +1096,15 @@ function requiredSafeProviderState(value: Record<string, unknown>, key: string):
 
 function requiredSafeOperationalField(value: Record<string, unknown>, key: string, label: string): string {
   const field = value[key];
-  assertSafeOperationalText(field, `${label} ${key}`);
+  assertMachineReadableOperationalToken(field, `${label} ${key}`);
   return field;
+}
+
+function assertMachineReadableOperationalToken(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string" || !/^[a-z][a-z0-9._-]*$/.test(value)) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} must be a machine-readable token`);
+  }
+  assertSafeOperationalText(value, label);
 }
 
 function assertSafeOperationalText(value: unknown, label: string): asserts value is string {
