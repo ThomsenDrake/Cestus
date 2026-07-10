@@ -66,6 +66,31 @@ describe("specialist handoff projection", () => {
     }));
   });
 
+  it("fails closed on conflicting final-output events for the same run task and type", async () => {
+    const fixture = handoffFixture();
+    const conflictingFinalOutput = specialistStepEvent(fixture, {
+      id: "evt_final_output_conflicting",
+      stepId: "step_run_handoff_001_second_final_output",
+      payload: {
+        summary: "Conflicting final durable output artifacts were persisted.",
+        stepKind: "final-output",
+        stepSchemaId: "evidence-triage-final-output.v1",
+        idempotencyKey: "specialist-final-output:run_handoff_001:task_handoff_001:evidence-triage:ready-for-review:conflict",
+        outputArtifactHashes: [hash333]
+      }
+    });
+
+    const projection = await project([
+      ...validRecordedEvents(fixture),
+      conflictingFinalOutput
+    ], new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)));
+
+    expect(projection.state).toBe("inconsistent");
+    expect(projection.diagnostics).toContainEqual(expect.objectContaining({
+      code: "conflicting-final-output"
+    }));
+  });
+
   it("projects handoff-pending after prepared when manifest is bound but not recorded", async () => {
     const fixture = handoffFixture();
     const manifests = new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest));
@@ -178,23 +203,39 @@ describe("specialist handoff projection", () => {
     expect(afterTask.selectedHandoff).toEqual(fixture.manifest.handoff);
   });
 
-  it("requires completed task causation through recorded handoff and completed run", async () => {
-    const cases: Array<readonly [string, readonly KnowledgeEvent[]]> = [
+  it("fails closed when terminal run state is not caused by the matching recorded handoff", async () => {
+    const cases: Array<readonly [string, readonly KnowledgeEvent[], string]> = [
       ["failed terminal", [
         ...validRecordedEvents(handoffFixture()),
         failedRunEvent(handoffFixture(), { causationId: handoffFixture().recordedEventId }),
         taskStatusEvent(handoffFixture(), "completed", { causationId: "evt_run_failed" })
-      ]],
+      ], "terminal-status-mismatch"],
       ["missing completed-run causation", [
         ...validRecordedEvents(handoffFixture()),
         completedRunEvent(handoffFixture()),
         taskStatusEvent(handoffFixture(), "completed", { causationId: "evt_run_completed" })
-      ]],
+      ], "terminal-causation-mismatch"],
       ["unrelated completed-run causation", [
         ...validRecordedEvents(handoffFixture()),
         completedRunEvent(handoffFixture(), { causationId: "evt_unrelated_handoff" }),
         taskStatusEvent(handoffFixture(), "completed", { causationId: "evt_run_completed" })
-      ]],
+      ], "terminal-causation-mismatch"]
+    ];
+
+    for (const [label, events, code] of cases) {
+      const fixture = handoffFixture();
+      const projection = await project(
+        events,
+        new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest))
+      );
+
+      expect(projection.state, label).toBe("inconsistent");
+      expect(projection.diagnostics, label).toContainEqual(expect.objectContaining({ code }));
+    }
+  });
+
+  it("requires completed task causation after the completed run terminal", async () => {
+    const cases: Array<readonly [string, readonly KnowledgeEvent[]]> = [
       ["task completion before terminal", [
         ...validRecordedEvents(handoffFixture()),
         taskStatusEvent(handoffFixture(), "completed", { causationId: "evt_run_completed" }),
@@ -569,6 +610,34 @@ describe("specialist handoff projection", () => {
       recordedEvent(changedOutput)
     ], [first, changedOutput]);
 
+    const changedPrompt = handoffFixture({
+      handoffRevision: 2,
+      promptArtifactHash: hash555,
+      supersedesHandoffId: first.manifest.handoffId,
+      supersedesEventId: first.recordedEventId,
+      preparedEventId: "evt_handoff_prepared_changed_prompt",
+      recordedEventId: "evt_handoff_recorded_changed_prompt"
+    });
+    await expectSupersessionViolation([
+      ...validRecordedEvents(first),
+      preparedEvent(changedPrompt),
+      recordedEvent(changedPrompt)
+    ], [first, changedPrompt]);
+
+    const changedContext = handoffFixture({
+      handoffRevision: 2,
+      contextPackRefs: [contextPackRef(hash555)],
+      supersedesHandoffId: first.manifest.handoffId,
+      supersedesEventId: first.recordedEventId,
+      preparedEventId: "evt_handoff_prepared_changed_context",
+      recordedEventId: "evt_handoff_recorded_changed_context"
+    });
+    await expectSupersessionViolation([
+      ...validRecordedEvents(first),
+      preparedEvent(changedContext),
+      recordedEvent(changedContext)
+    ], [first, changedContext]);
+
     const cycleHead = handoffFixture({
       handoffRevision: 2,
       supersedesHandoffId: "handoff_run_handoff_001_eeeeeeeeeeeeeeee",
@@ -678,6 +747,8 @@ function handoffFixture(options: {
   readonly handoffId?: string;
   readonly handoffRevision?: number;
   readonly outputArtifacts?: readonly BuildSpecialistHandoffManifestInput["outputArtifacts"][number][];
+  readonly contextPackRefs?: readonly BuildSpecialistHandoffManifestInput["contextPackRefs"][number][];
+  readonly promptArtifactHash?: `sha256:${string}`;
   readonly supersedesHandoffId?: string;
   readonly supersedesEventId?: string;
   readonly finalOutputEventId?: string;
@@ -717,8 +788,8 @@ function handoffFixture(options: {
     stateKind: status === "failed" ? "failed" : status === "ready-for-review" ? "completed" : "resumable",
     finalOutputStepId: "step_run_handoff_001_final_output",
     finalOutputEventId,
-    contextPackRefs: [contextPackRef()],
-    promptArtifactHash: hash111,
+    contextPackRefs: options.contextPackRefs ?? [contextPackRef()],
+    promptArtifactHash: options.promptArtifactHash ?? hash111,
     outputArtifacts,
     toolRequestIds: ["toolreq_handoff_review"],
     approvalRequirements: status === "waiting-for-approval"
@@ -992,11 +1063,11 @@ function streamIdFor(type: KnowledgeEvent["type"], payload: unknown): string {
   return `agent_${type.replace(/\./g, "_")}`;
 }
 
-function contextPackRef() {
+function contextPackRef(contentHash: `sha256:${string}` = hash444) {
   return {
     contextPackId: "task-run-history.v1",
     version: 1,
-    contentHash: hash444,
+    contentHash,
     sizeBytes: 256,
     generatedAt: "2026-07-10T14:55:00.000Z",
     safeSummary: "Prior task and run history.",
