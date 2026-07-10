@@ -27,3 +27,6 @@
 - Final targeted: `npm test -- packages/agent/test/identity-bootstrap.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/operator-status.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx` passed: 7 files, 114 tests.
 - Verify: `npm run verify` passed: typecheck, tests, Vite build, and factory readiness.
 - Post-correction verify: `npm run verify` passed on `cb1c052` after Task 4 Step 4 was returned to pending for Gate D/final review: typecheck, tests, Vite build, and factory readiness.
+- Gate D review: whole-branch review found SQLite contention/readback, corrupted-status visibility, and initializing operator-status defects; fixes landed in `1f77b542` and `45b7edab`.
+- Final review: post-fix review found no findings for the immediate corrupted-status race; ordinary initializing status remains visible, and projection failures are only masked when the resident identity lifecycle is blocked.
+- Final verify: `npm run verify` passed on `45b7edab`: typecheck, 172 test files / 1,756 tests passed (3 skipped), Vite build, and factory readiness.

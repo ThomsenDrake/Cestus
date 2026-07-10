@@ -1,6 +1,6 @@
 # Task 2 Claim: Resident Lifecycle Local Runtime
 
-- Plan: `.superpowers/sdd/task-2-brief.md`
+- Plan: `docs/superpowers/plans/2026-07-10-resident-lifecycle-bootstrap-implementation.md`
 - Task: `Task 2: Local Runtime Create And Mount Bootstrap`
 - Worker: `Codex`
 - Branch: `codex/resident-lifecycle-bootstrap-implementation`

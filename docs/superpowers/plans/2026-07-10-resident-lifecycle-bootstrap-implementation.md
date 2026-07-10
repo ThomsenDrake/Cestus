@@ -1619,7 +1619,7 @@ factory-readiness passed
 ```
 ```
 
-- [ ] **Step 4: Mark all plan tasks complete**
+- [x] **Step 4: Mark all plan tasks complete**
 
 In this plan file, mark Tasks 1 through 4 checklist items complete only after the corresponding commits and reviews exist. Preserve the command evidence in the task claims.
 
@@ -1679,13 +1679,13 @@ git commit -m "docs: record resident lifecycle bootstrap readiness"
 
 ## Final Completion Checklist
 
-- [ ] All task claims are committed and marked `ready-for-review` or `merged` as appropriate.
-- [ ] Gate A, Gate B, Gate C, and Gate D reviews are complete.
-- [ ] Every task recorded RED, targeted PASS, and `npm run verify` evidence.
-- [ ] No production implementation touched `packages/workspace/src/index.ts`.
-- [ ] No context-pack, prompt-template, handoff, or specialist-runner files changed.
-- [ ] No provider identity, credential reference, model name, OAuth account, API key, or backend adapter metadata appears in identity bootstrap events.
-- [ ] Local-runtime `create-workspace` leaves a valid recoverable workspace on bootstrap failure.
-- [ ] Status, detect, verify, and workspace-ops reads remain mutation-free.
-- [ ] Workspace switch and copied-ledger tests pass.
-- [ ] Final `git status --short` is clean.
+- [x] All task claims are committed and marked `ready-for-review` or `merged` as appropriate.
+- [x] Gate A, Gate B, Gate C, and Gate D reviews are complete.
+- [x] Every task recorded RED, targeted PASS, and `npm run verify` evidence.
+- [x] No production implementation touched `packages/workspace/src/index.ts`.
+- [x] No context-pack, prompt-template, handoff, or specialist-runner files changed.
+- [x] No provider identity, credential reference, model name, OAuth account, API key, or backend adapter metadata appears in identity bootstrap events.
+- [x] Local-runtime `create-workspace` leaves a valid recoverable workspace on bootstrap failure.
+- [x] Status, detect, verify, and workspace-ops reads remain mutation-free.
+- [x] Workspace switch and copied-ledger tests pass.
+- [x] Final `git status --short` is clean.
