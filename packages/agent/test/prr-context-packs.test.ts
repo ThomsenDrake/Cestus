@@ -113,6 +113,47 @@ describe("selected request PRR read model context pack", () => {
       .toThrow(/payload-schema-mismatch|prr-read-model|payload|schema/i);
   });
 
+  it("rejects forged matching-ref payload provenance outside the selected request stream and artifacts", () => {
+    const resolved = buildPrrReadModelContextPack(basePrrInput());
+    const payload = structuredClone(resolved.payload) as {
+      diagnostics: { eventId: string }[];
+      sourceRefs: {
+        correspondence: { id: string; contentHash: string; sourceEventId: string }[];
+        evidence: { id: string; contentHash: string; sourceEventId: string }[];
+      };
+      gates: { checks: { sourceEventIds?: string[]; evidenceHashes?: string[] }[] }[];
+    };
+
+    payload.diagnostics[0]!.eventId = "evt_prr_unrelated";
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, payload), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|provenance|source/i);
+
+    const forgedCorrespondence = structuredClone(resolved.payload) as typeof payload;
+    forgedCorrespondence.sourceRefs.correspondence[0]!.sourceEventId = "evt_prr_unrelated";
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forgedCorrespondence), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|provenance|source/i);
+
+    const forgedCorrespondenceId = structuredClone(resolved.payload) as typeof payload;
+    forgedCorrespondenceId.sourceRefs.correspondence[0]!.id = "corr_unrelated";
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forgedCorrespondenceId), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|correspondence/i);
+
+    const forgedEvidenceId = structuredClone(resolved.payload) as typeof payload;
+    forgedEvidenceId.sourceRefs.evidence[0]!.id = "ev_unrelated";
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forgedEvidenceId), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|evidence/i);
+
+    const forgedArtifact = structuredClone(resolved.payload) as typeof payload;
+    forgedArtifact.sourceRefs.evidence[0]!.contentHash = bodyHash;
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forgedArtifact), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|artifact/i);
+
+    const forgedGate = structuredClone(resolved.payload) as typeof payload;
+    forgedGate.gates[0]!.checks[0]!.sourceEventIds = ["evt_prr_unrelated"];
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forgedGate), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|provenance|source/i);
+  });
+
   it("rejects wrong scope, unrelated request IDs, raw bodies, provider refs, and truncatable active gates", () => {
     expect(() =>
       buildPrrReadModelContextPack({
@@ -156,7 +197,58 @@ describe("selected request PRR read model context pack", () => {
       }))
     ).toThrow(/context-budget-exceeded|gate/i);
   });
+
+  it("requires selected-stream hash provenance and bound gate evidence", () => {
+    expect(() => buildPrrReadModelContextPack(basePrrInput({
+      correspondenceHashes: [{ id: "corr_selected_followup_body", contentHash: bodyHash } as never]
+    }))).toThrow(/source.*event|provenance/i);
+
+    expect(() => buildPrrReadModelContextPack(basePrrInput({
+      gates: [{
+        ...selectedGates()[0]!,
+        checks: [{
+          ...selectedGates()[0]!.checks[0]!,
+          evidenceHashes: [bodyHash]
+        }]
+      }]
+    }))).toThrow(/gate evidence|provenance/i);
+  });
+
+  it("fails closed when active deadline, exemption, or legal escalation citations are absent", () => {
+    expect(() => buildPrrReadModelContextPack(basePrrInput({
+      request: { ...selectedRequest(), activeDeadline: { ...selectedRequest().activeDeadline!, citedRules: [] } }
+    }))).toThrow(/citation|payload-schema/i);
+
+    expect(() => buildPrrReadModelContextPack(basePrrInput({
+      request: { ...selectedRequest(), exemptions: [{ exemptionId: "ex_selected", claimedBy: "agency", citedRules: [] }] }
+    }))).toThrow(/citation|payload-schema/i);
+
+    expect(() => buildPrrReadModelContextPack(basePrrInput({
+      request: { ...selectedRequest(), legalEscalation: { confirmedBy: "actor_investigator", rationale: "Required", citedRules: [], evidenceIds: ["ev_selected_attachment"] } }
+    }))).toThrow(/citation|payload-schema/i);
+  });
 });
+
+function forgeResolved(
+  resolved: ReturnType<typeof buildPrrReadModelContextPack>,
+  payload: unknown
+) {
+  return buildResolvedContextPack({
+    contextPackId: resolved.ref.contextPackId,
+    version: resolved.ref.version,
+    generatedAt: resolved.ref.generatedAt,
+    payload,
+    safeSummary: resolved.ref.safeSummary,
+    provenanceRefs: resolved.ref.provenanceRefs,
+    ...(resolved.ref.sourceEventIds === undefined ? {} : { sourceEventIds: resolved.ref.sourceEventIds }),
+    ...(resolved.ref.artifactHashes === undefined ? {} : { artifactHashes: resolved.ref.artifactHashes }),
+    ...(resolved.ref.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: resolved.ref.projectionHighWaterMark }),
+    ...(resolved.ref.policyVersion === undefined ? {} : { policyVersion: resolved.ref.policyVersion }),
+    ...(resolved.ref.scope === undefined ? {} : { scope: resolved.ref.scope }),
+    ...(resolved.ref.sizeBudgetBytes === undefined ? {} : { sizeBudgetBytes: resolved.ref.sizeBudgetBytes }),
+    ...(resolved.ref.stalenessInputs === undefined ? {} : { stalenessInputs: resolved.ref.stalenessInputs })
+  });
+}
 
 function basePrrInput(
   overrides: Partial<BuildPrrReadModelContextPackInput> = {}

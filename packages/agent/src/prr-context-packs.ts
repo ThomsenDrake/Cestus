@@ -4,6 +4,7 @@ import {
   serializeContextPackPayload,
   verifyResolvedContextPack,
   type AgentContextPackJsonValue,
+  type ContextPackRef,
   type ContextPackPayloadParser,
   type ResolvedContextPack
 } from "./context-packs.js";
@@ -36,7 +37,7 @@ export interface PrrWorkspaceOmissionMetadata {
 export interface PrrContextPackHashRef {
   readonly id: string;
   readonly contentHash: `sha256:${string}`;
-  readonly sourceEventId?: string;
+  readonly sourceEventId: string;
 }
 
 export interface PrrContextGateSnapshot {
@@ -91,7 +92,12 @@ const scopeSchema = z.object({ kind: z.literal("prr-request"), id: z.string().mi
 const hashRefSchema = z.object({
   id: z.string().min(1),
   contentHash: hashSchema,
-  sourceEventId: eventIdSchema.optional()
+  sourceEventId: eventIdSchema
+}).strict();
+const citedRuleSchema = z.object({
+  label: z.string(),
+  citation: z.string(),
+  jurisdictionPack: z.object({ name: z.string(), version: z.string() }).strict()
 }).strict();
 const gateCheckSchema = z.object({
   id: z.string().min(1),
@@ -126,12 +132,12 @@ const payloadSchema = z.object({
     deadlineDate: z.string().min(1), source: z.enum(["estimated", "confirmed"]),
     confidence: z.string().optional(), explanation: z.string().optional(),
     confirmedBy: z.string().optional(), rationale: z.string().optional(),
-    citedRules: z.array(z.object({ label: z.string(), citation: z.string(), jurisdictionPack: z.object({ name: z.string(), version: z.string() }).strict() }).strict())
+    citedRules: z.array(citedRuleSchema).min(1)
   }).strict().nullable(),
   fee: z.object({ amountCents: z.number().int(), currency: z.string(), challenged: z.boolean() }).strict().nullable(),
   narrowing: z.object({ narrowingId: z.string(), proposedScope: z.string(), proposedBy: z.string(), acceptedScope: z.string().optional(), acceptedBy: z.string().optional() }).strict().nullable(),
   correspondence: z.object({ outbound: z.array(z.object({ correspondenceId: z.string(), subject: z.string(), occurredAt: z.string(), bodyHash: hashSchema.optional(), evidenceIds: z.array(z.string()), attachmentEvidenceIds: z.array(z.string()), approvedBy: z.string().optional() }).strict()), inbound: z.array(z.object({ correspondenceId: z.string(), subject: z.string(), occurredAt: z.string(), bodyHash: hashSchema.optional(), evidenceIds: z.array(z.string()), attachmentEvidenceIds: z.array(z.string()), approvedBy: z.string().optional() }).strict()) }).strict(),
-  production: z.object({ batches: z.array(z.object({ productionId: z.string(), label: z.string(), receivedAt: z.string(), evidenceIds: z.array(z.string()) }).strict()), evidenceIds: z.array(z.string()), exemptions: z.array(z.object({ exemptionId: z.string(), claimedBy: z.string(), citedRules: z.array(z.object({ label: z.string(), citation: z.string(), jurisdictionPack: z.object({ name: z.string(), version: z.string() }).strict() }).strict()) }).strict()), denial: z.object({ denialId: z.string(), receivedAt: z.string(), reason: z.string() }).strict().nullable(), appeal: z.object({ appealId: z.string(), correspondenceId: z.string(), filedAt: z.string(), approvedBy: z.string() }).strict().nullable(), stalling: z.object({ possible: z.boolean(), confirmed: z.boolean(), signals: z.array(z.object({ kind: z.string(), explanation: z.string() }).strict()) }).strict(), escalation: z.object({ confirmedBy: z.string(), rationale: z.string(), evidenceIds: z.array(z.string()) }).strict().nullable() }).strict(),
+  production: z.object({ batches: z.array(z.object({ productionId: z.string(), label: z.string(), receivedAt: z.string(), evidenceIds: z.array(z.string()) }).strict()), evidenceIds: z.array(z.string()), exemptions: z.array(z.object({ exemptionId: z.string(), claimedBy: z.string(), citedRules: z.array(citedRuleSchema).min(1) }).strict()), denial: z.object({ denialId: z.string(), receivedAt: z.string(), reason: z.string() }).strict().nullable(), appeal: z.object({ appealId: z.string(), correspondenceId: z.string(), filedAt: z.string(), approvedBy: z.string() }).strict().nullable(), stalling: z.object({ possible: z.boolean(), confirmed: z.boolean(), signals: z.array(z.object({ kind: z.string(), explanation: z.string() }).strict()) }).strict(), escalation: z.object({ confirmedBy: z.string(), rationale: z.string(), citedRules: z.array(citedRuleSchema).min(1), evidenceIds: z.array(z.string()) }).strict().nullable() }).strict(),
   diagnostics: z.array(z.object({ eventId: eventIdSchema, type: z.string(), occurredAt: z.string() }).strict()),
   gates: z.array(gateSchema),
   sourceRefs: z.object({ correspondence: z.array(hashRefSchema), evidence: z.array(hashRefSchema) }).strict(),
@@ -143,8 +149,68 @@ export const prrReadModelPayloadParser: ContextPackPayloadParser = (payload, ref
   if (ref !== undefined && (ref.contextPackId !== "prr-read-model.v1" || ref.version !== 1 || ref.scope?.kind !== "prr-request" || ref.scope.id !== parsed.scope.id)) {
     throw new Error("invalid prr-read-model payload ref");
   }
+  assertPayloadProvenanceBindings(parsed, ref);
   return parsed as unknown as AgentContextPackJsonValue;
 };
+
+function assertPayloadProvenanceBindings(
+  payload: z.infer<typeof payloadSchema>,
+  ref: ContextPackRef | undefined
+): void {
+  const sourceEventIds = new Set(payload.requestStream.sourceEventIds);
+  if (sourceEventIds.size !== payload.requestStream.sourceEventIds.length) {
+    throw new Error("duplicate selected request stream source event IDs");
+  }
+  const assertSelectedSourceEvent = (eventId: string): void => {
+    if (!sourceEventIds.has(eventId)) throw new Error("unrelated selected request provenance event");
+  };
+  for (const diagnostic of payload.diagnostics) assertSelectedSourceEvent(diagnostic.eventId);
+  for (const sourceRef of [...payload.sourceRefs.correspondence, ...payload.sourceRefs.evidence]) {
+    assertSelectedSourceEvent(sourceRef.sourceEventId);
+  }
+  for (const gate of payload.gates) for (const check of gate.checks) {
+    for (const eventId of check.sourceEventIds ?? []) assertSelectedSourceEvent(eventId);
+  }
+
+  const correspondenceIds = [...payload.correspondence.outbound, ...payload.correspondence.inbound]
+    .map((correspondence) => correspondence.correspondenceId);
+  for (const sourceRef of payload.sourceRefs.correspondence) {
+    if (!correspondenceIds.some((id) => sourceRef.id === id || sourceRef.id.startsWith(`${id}_`))) {
+      throw new Error("unrelated correspondence reference");
+    }
+  }
+  const evidenceIds = new Set([
+    ...payload.correspondence.outbound.flatMap((correspondence) => [...correspondence.evidenceIds, ...correspondence.attachmentEvidenceIds]),
+    ...payload.correspondence.inbound.flatMap((correspondence) => [...correspondence.evidenceIds, ...correspondence.attachmentEvidenceIds]),
+    ...payload.production.evidenceIds,
+    ...payload.production.batches.flatMap((batch) => batch.evidenceIds),
+    ...(payload.production.escalation?.evidenceIds ?? [])
+  ]);
+  for (const sourceRef of payload.sourceRefs.evidence) {
+    if (!evidenceIds.has(sourceRef.id)) throw new Error("unrelated evidence reference");
+  }
+  const evidenceHashes = new Set(payload.sourceRefs.evidence.map((sourceRef) => sourceRef.contentHash));
+  for (const gate of payload.gates) for (const check of gate.checks) {
+    for (const evidenceHash of check.evidenceHashes ?? []) {
+      if (!evidenceHashes.has(evidenceHash)) throw new Error("unbound gate evidence hash");
+    }
+  }
+
+  if (ref !== undefined) {
+    if (!sameStringSet(ref.sourceEventIds, payload.requestStream.sourceEventIds) || !sameStringSet(ref.provenanceRefs, payload.requestStream.sourceEventIds)) {
+      throw new Error("resolved context pack source-event provenance mismatch");
+    }
+    const artifactHashes = [...payload.sourceRefs.correspondence, ...payload.sourceRefs.evidence]
+      .map((sourceRef) => sourceRef.contentHash);
+    if (!sameStringSet(ref.artifactHashes, artifactHashes)) {
+      throw new Error("resolved context pack artifact provenance mismatch");
+    }
+  }
+}
+
+function sameStringSet(left: readonly string[] | undefined, right: readonly string[]): boolean {
+  return left !== undefined && left.length === new Set(left).size && left.length === right.length && left.every((value) => right.includes(value));
+}
 
 export function buildPrrReadModelContextPack(input: BuildPrrReadModelContextPackInput): ResolvedContextPack {
   assertOwnKeys(input, ["generatedAt", "policyVersion", "scope", "request", "timeline", "requestStream", "projectionHighWaterMark", "workspace", "correspondenceHashes", "evidenceHashes", "gates", "sizeBudgetBytes"], "input");
@@ -158,7 +224,7 @@ export function buildPrrReadModelContextPack(input: BuildPrrReadModelContextPack
   const workspace = normalizeWorkspace(input.workspace, input.projectionHighWaterMark);
   const correspondence = normalizeHashRefs(input.correspondenceHashes ?? [], stream.sourceEventIds, "correspondence");
   const evidence = normalizeHashRefs(input.evidenceHashes ?? [], stream.sourceEventIds, "evidence");
-  const gates = normalizeGates(input.gates, stream.sourceEventIds);
+  const gates = normalizeGates(input.gates, stream.sourceEventIds, evidence.map((ref) => ref.contentHash));
   const payload = buildPayload(input, stream, correspondence, evidence, gates, workspace);
   const budget = input.sizeBudgetBytes;
   if (budget !== undefined && serializeContextPackPayload(buildGateOnlyPayload(payload)).byteLength > budget) {
@@ -203,7 +269,7 @@ function buildPayload(input: BuildPrrReadModelContextPackInput, stream: PrrSelec
     fee: request.feeEstimate === undefined ? null : { amountCents: request.feeEstimate.amountCents, currency: request.feeEstimate.currency, challenged: request.feeEstimate.challenged },
     narrowing: request.scopeNarrowing === undefined ? null : pick(request.scopeNarrowing, ["narrowingId", "proposedScope", "proposedBy", "acceptedScope", "acceptedBy"]),
     correspondence: { outbound: request.latestOutboundCorrespondence === undefined ? [] : [safeCorrespondence(request.latestOutboundCorrespondence)], inbound: request.latestInboundCorrespondence === undefined ? [] : [safeCorrespondence(request.latestInboundCorrespondence)] },
-    production: { batches: request.productionBatches.map((batch) => ({ ...batch, evidenceIds: [...batch.evidenceIds].sort() })), evidenceIds: [...request.productionEvidenceIds].sort(), exemptions: request.exemptions.map((item) => ({ exemptionId: item.exemptionId, claimedBy: item.claimedBy, citedRules: item.citedRules.map(safeRule) })), denial: request.denial === undefined ? null : pick(request.denial, ["denialId", "receivedAt", "reason"]), appeal: request.appeal === undefined ? null : pick(request.appeal, ["appealId", "correspondenceId", "filedAt", "approvedBy"]), stalling: { possible: request.possibleStalling, confirmed: request.confirmedStalling, signals: request.stallingSignals.map((signal) => ({ ...signal })) }, escalation: request.legalEscalation === undefined ? null : { confirmedBy: request.legalEscalation.confirmedBy, rationale: request.legalEscalation.rationale, evidenceIds: [...request.legalEscalation.evidenceIds].sort() } },
+    production: { batches: request.productionBatches.map((batch) => ({ ...batch, evidenceIds: [...batch.evidenceIds].sort() })), evidenceIds: [...request.productionEvidenceIds].sort(), exemptions: request.exemptions.map((item) => ({ exemptionId: item.exemptionId, claimedBy: item.claimedBy, citedRules: item.citedRules.map(safeRule) })), denial: request.denial === undefined ? null : pick(request.denial, ["denialId", "receivedAt", "reason"]), appeal: request.appeal === undefined ? null : pick(request.appeal, ["appealId", "correspondenceId", "filedAt", "approvedBy"]), stalling: { possible: request.possibleStalling, confirmed: request.confirmedStalling, signals: request.stallingSignals.map((signal) => ({ ...signal })) }, escalation: request.legalEscalation === undefined ? null : { confirmedBy: request.legalEscalation.confirmedBy, rationale: request.legalEscalation.rationale, citedRules: request.legalEscalation.citedRules.map(safeRule), evidenceIds: [...request.legalEscalation.evidenceIds].sort() } },
     diagnostics: input.timeline.map((entry) => ({ eventId: entry.eventId, type: entry.type, occurredAt: entry.occurredAt })).sort(byJson),
     sourceRefs: { correspondence, evidence },
     omissions
@@ -235,19 +301,26 @@ function normalizeWorkspace(workspace: PrrWorkspaceOmissionMetadata | undefined,
 function normalizeHashRefs(refs: readonly PrrContextPackHashRef[], sourceEventIds: readonly string[], label: string): readonly PrrContextPackHashRef[] {
   return refs.map((ref) => {
     const parsed = hashRefSchema.parse(ref);
-    if (parsed.sourceEventId !== undefined && !sourceEventIds.includes(parsed.sourceEventId)) throw new Error(`unrelated ${label} source event`);
+    if (!sourceEventIds.includes(parsed.sourceEventId)) throw new Error(`unrelated ${label} source event`);
     return {
       id: parsed.id,
       contentHash: parsed.contentHash as `sha256:${string}`,
-      ...(parsed.sourceEventId === undefined ? {} : { sourceEventId: parsed.sourceEventId })
+      sourceEventId: parsed.sourceEventId
     };
   }).sort(byJson);
 }
 
-function normalizeGates(gates: readonly PrrContextGateSnapshot[], sourceEventIds: readonly string[]): readonly PrrContextGateSnapshot[] {
+function normalizeGates(
+  gates: readonly PrrContextGateSnapshot[],
+  sourceEventIds: readonly string[],
+  evidenceHashes: readonly string[]
+): readonly PrrContextGateSnapshot[] {
   return gates.map((gate) => {
     const parsed = gateSchema.parse(gate);
-    for (const check of parsed.checks) for (const eventId of check.sourceEventIds ?? []) if (!sourceEventIds.includes(eventId)) throw new Error("unrelated gate source event");
+    for (const check of parsed.checks) {
+      for (const eventId of check.sourceEventIds ?? []) if (!sourceEventIds.includes(eventId)) throw new Error("unrelated gate source event");
+      for (const evidenceHash of check.evidenceHashes ?? []) if (!evidenceHashes.includes(evidenceHash)) throw new Error("unbound gate evidence hash");
+    }
     return {
       gateId: parsed.gateId,
       kind: parsed.kind,
