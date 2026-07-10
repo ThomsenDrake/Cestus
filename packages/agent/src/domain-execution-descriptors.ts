@@ -49,6 +49,7 @@ export type AgentDomainToolFamily =
   | "provider-byte-transfer"
   | "prr-correspondence"
   | "accepted-graph-review"
+  | "contradiction-claim-review"
   | "export-report"
   | "destructive-repair"
   | "legacy-staging";
@@ -132,6 +133,7 @@ const allowedDescriptorProfilesByFamily: Record<
   "provider-byte-transfer": new Set(["external-byte-transfer|provider-byte-transfer"]),
   "prr-correspondence": new Set(["external-message-send|external-message-send"]),
   "accepted-graph-review": new Set(["ledger-review|ledger-review"]),
+  "contradiction-claim-review": new Set(["ledger-review|ledger-review"]),
   "export-report": new Set(["export-or-publication|export-or-publication"]),
   "destructive-repair": new Set(["destructive-or-repair|destructive-or-repair"]),
   "legacy-staging": new Set(["ledger-review|ledger-review", "ledger-proposal|none"])
@@ -305,6 +307,7 @@ function parseFamily(value: unknown): AgentDomainToolFamily {
     case "provider-byte-transfer":
     case "prr-correspondence":
     case "accepted-graph-review":
+    case "contradiction-claim-review":
     case "export-report":
     case "destructive-repair":
     case "legacy-staging":

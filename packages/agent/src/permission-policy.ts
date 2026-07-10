@@ -1,5 +1,6 @@
 export type AgentApprovalClass =
   | "none"
+  | "human-review"
   | "provider-byte-transfer"
   | "external-message-send"
   | "legal-escalation"
