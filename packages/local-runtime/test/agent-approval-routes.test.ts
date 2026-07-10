@@ -293,6 +293,26 @@ describe("agent approval routes", () => {
       runtime: {} as LocalRuntimeHandle["runtime"],
       ledger,
       config,
+      residentIdentity: {
+        lifecycle: () => ({
+          schemaVersion: "resident-identity-lifecycle.v1",
+          state: "not-mounted",
+          residentAgentId: "agent_default",
+          initialized: false,
+          eventIds: [],
+          safeMessage: "Resident identity is not mounted.",
+          allowedRepairActions: ["mount a workspace before initializing the resident identity"]
+        }),
+        ready: async () => ({
+          schemaVersion: "resident-identity-lifecycle.v1",
+          state: "not-mounted",
+          residentAgentId: "agent_default",
+          initialized: false,
+          eventIds: [],
+          safeMessage: "Resident identity is not mounted.",
+          allowedRepairActions: ["mount a workspace before initializing the resident identity"]
+        })
+      },
       close() {}
     };
     const response = await handleAgentHttpRoute({

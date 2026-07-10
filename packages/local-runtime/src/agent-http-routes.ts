@@ -6,6 +6,7 @@ import {
   createResidentAgentDomainAdapterRegistry,
   createAgentToolGateway,
   isAgentSecretSafeText,
+  notMountedResidentIdentityLifecycle,
   type AgentMemoryKind,
   type AgentMemoryScope,
   type AgentMemoryState,
@@ -21,7 +22,6 @@ import { buildLocalAgentProviderReadiness } from "./agent-provider-readiness.js"
 import { handleAgentOntologyBootstrapRoute } from "./agent-ontology-bootstrap-routes.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
-const defaultIdentityStreamId = "agent_identity_agent_default";
 const approvalDetailSchemaVersion = "agent-approval-detail.v1" as const;
 const localSpecialistContractIds = Object.freeze([
   "agent.scheduler-resumer.v1",
@@ -66,6 +66,9 @@ export async function handleAgentHttpRoute(
     });
 
     if (path.startsWith("/api/agent/specialists/ontology-bootstrap/")) {
+      if (input.request.method !== "GET" && !await requireResidentIdentityReady(input)) {
+        return json(409, residentIdentityNotReadyDiagnostic());
+      }
       const ontologyBootstrapResponse = await handleAgentOntologyBootstrapRoute({
         request: input.request,
         handle: input.handle,
@@ -114,9 +117,8 @@ export async function handleAgentHttpRoute(
             return json(400, invalidMemoryBodyDiagnostic());
           }
 
-          const initialized = await ensureDefaultIdentity(runtime, input);
-          if (!initialized.ok) {
-            return json(500, initialized.body);
+          if (!await requireResidentIdentityReady(input)) {
+            return json(409, residentIdentityNotReadyDiagnostic());
           }
 
           return memoryMutationResponse(await runtime.recordMemory(command));
@@ -128,9 +130,8 @@ export async function handleAgentHttpRoute(
             return json(400, invalidMemoryBodyDiagnostic());
           }
 
-          const initialized = await ensureDefaultIdentity(runtime, input);
-          if (!initialized.ok) {
-            return json(500, initialized.body);
+          if (!await requireResidentIdentityReady(input)) {
+            return json(409, residentIdentityNotReadyDiagnostic());
           }
 
           return memoryMutationResponse(await runtime.supersedeMemory(command));
@@ -141,9 +142,8 @@ export async function handleAgentHttpRoute(
           return json(400, invalidMemoryBodyDiagnostic());
         }
 
-        const initialized = await ensureDefaultIdentity(runtime, input);
-        if (!initialized.ok) {
-          return json(500, initialized.body);
+        if (!await requireResidentIdentityReady(input)) {
+          return json(409, residentIdentityNotReadyDiagnostic());
         }
 
         return memoryMutationResponse(await runtime.retractMemory(command));
@@ -311,9 +311,8 @@ export async function handleAgentHttpRoute(
         return json(400, invalidTaskBodyDiagnostic());
       }
 
-      const initialized = await ensureDefaultIdentity(runtime, input);
-      if (!initialized.ok) {
-        return json(500, initialized.body);
+      if (!await requireResidentIdentityReady(input)) {
+        return json(409, residentIdentityNotReadyDiagnostic());
       }
 
       const status = await runtime.status();
@@ -345,44 +344,15 @@ export async function handleAgentHttpRoute(
 
 type LocalAgentRuntime = ReturnType<LocalAgentRuntimeFactory>;
 
-async function ensureDefaultIdentity(
-  runtime: LocalAgentRuntime,
-  input: HandleAgentHttpRouteInput
-): Promise<{ readonly ok: true } | { readonly ok: false; readonly body: unknown }> {
-  const command = {
-    workspaceId: input.handle.mountedWorkspace?.workspaceId ?? "ws_local_runtime",
-    initializedBy: input.actor.id
-  };
-
-  const result = await initializeDefaultIdentityRaceSafe(runtime, command);
-
-  if (result.ok) {
-    return { ok: true };
-  }
-
-  return {
-    ok: false,
-    body: diagnostic("Agent identity could not be initialized.", [
-      "inspect the local agent runtime configuration"
-    ])
-  };
+async function requireResidentIdentityReady(input: HandleAgentHttpRouteInput): Promise<boolean> {
+  return (await input.handle.residentIdentity.ready()).state === "ready";
 }
 
-async function initializeDefaultIdentityRaceSafe(
-  runtime: LocalAgentRuntime,
-  command: {
-    readonly workspaceId: string;
-    readonly initializedBy: string;
-  }
-): ReturnType<LocalAgentRuntime["initializeDefaultIdentity"]> {
-  try {
-    return await runtime.initializeDefaultIdentity(command);
-  } catch (error) {
-    if (!isDefaultIdentityConflict(error)) {
-      throw error;
-    }
-    return await runtime.initializeDefaultIdentity(command);
-  }
+function residentIdentityNotReadyDiagnostic() {
+  return diagnostic("Resident identity is not ready for this workspace.", [
+    "mount or create a portable workspace",
+    "refresh agent status"
+  ]);
 }
 
 async function statusWithProviderReadiness(
@@ -720,12 +690,6 @@ function isDuplicateTaskConflict(error: unknown, taskId: string): boolean {
     error.message.includes(`agent_task_${taskId}`);
 }
 
-function isDefaultIdentityConflict(error: unknown): boolean {
-  return error instanceof Error &&
-    error.message.includes("Concurrency conflict") &&
-    error.message.includes(defaultIdentityStreamId);
-}
-
 function isAgentTaskId(value: unknown): value is string {
   return typeof value === "string" && /^task_[a-zA-Z0-9_-]+$/.test(value) && isAgentSecretSafeText(value);
 }
@@ -906,6 +870,18 @@ function approvalCockpitFromEvents(
       schemaVersion: "agent-status.v1",
       generatedAt: now(),
       ...projection.toDto(),
+      identityLifecycle: projection.identity === undefined
+        ? notMountedResidentIdentityLifecycle()
+        : {
+            schemaVersion: "resident-identity-lifecycle.v1",
+            state: "ready",
+            residentAgentId: "agent_default",
+            workspaceId: projection.identity.workspaceId,
+            initialized: true,
+            eventIds: projection.identity.eventIds,
+            safeMessage: "Resident identity is ready.",
+            allowedRepairActions: []
+          },
       identity: projection.identity,
       providers: [],
       pendingApprovalCount: [...projection.toolRequests.values()].filter((request) => request.state === "requested").length,

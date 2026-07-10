@@ -59,6 +59,31 @@ describe("agent runtime core", () => {
     expect(status.identity?.workspaceId).toBe("ws_case_001");
   });
 
+  it("includes resident identity lifecycle in runtime status without appending from status reads", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({
+      ledger,
+      actor: humanActor,
+      now: fixedNow,
+      identityLifecycle: () => ({
+        schemaVersion: "resident-identity-lifecycle.v1",
+        state: "not-mounted",
+        residentAgentId: "agent_default",
+        initialized: false,
+        eventIds: [],
+        safeMessage: "Portable workspace is not mounted.",
+        allowedRepairActions: ["mount or create a portable workspace"]
+      })
+    });
+
+    const before = await ledger.readAll();
+    const status = await runtime.status();
+    const after = await ledger.readAll();
+
+    expect(status.identityLifecycle.state).toBe("not-mounted");
+    expect(after).toHaveLength(before.length);
+  });
+
   it("keeps memory reads read-only and rebuilt from ledger events", async () => {
     const ledger = new InMemoryEventLedger();
     const runtime = createAgentRuntime({ ledger, actor: humanActor, now: fixedNow });

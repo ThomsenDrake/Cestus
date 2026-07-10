@@ -15,6 +15,9 @@ import {
 import { createLocalRuntimeHttpHandler } from "./http-handler.js";
 import { startLocalRuntimeServer } from "./server.js";
 import { createPortableWorkspace, portableWorkspacePaths, readPortableWorkspaceManifest } from "../../workspace/src/index.js";
+import { ensureDefaultResidentIdentity, type ResidentIdentityLifecycleDto } from "../../agent/src/identity-bootstrap.js";
+import type { ActorRef } from "../../ontology/src/contracts.js";
+import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { agentProviderSmokeResultSchema, runLiveNousProviderSmoke } from "./agent-provider-smoke.js";
 
 export interface LocalRuntimeCliDependencies {
@@ -30,6 +33,12 @@ export interface LocalRuntimeCliDependencies {
     readonly title: string;
     readonly priority?: string;
   }) => Promise<unknown>;
+  readonly residentIdentityBootstrapForTest?: (input: {
+    readonly ledger: SQLiteEventLedger;
+    readonly workspaceId: string;
+    readonly actor: ActorRef;
+    readonly now: () => string;
+  }) => Promise<ResidentIdentityLifecycleDto>;
 }
 
 export async function runLocalRuntimeCli(
@@ -66,6 +75,20 @@ export async function runLocalRuntimeCli(
         ...createWorkspaceInput,
         rootDir: resolve(dependencies.cwd ?? process.cwd(), createWorkspaceInput.rootDir)
       });
+      const ledger = new SQLiteEventLedger(workspace.paths.ledgerPath);
+      try {
+        const lifecycle = await (dependencies.residentIdentityBootstrapForTest ?? ensureDefaultResidentIdentity)({
+          ledger,
+          workspaceId: workspace.workspaceId,
+          actor: { id: "actor_local_workspace_bootstrap", kind: "system", label: "Local Workspace Bootstrap" },
+          now: () => new Date().toISOString()
+        });
+        if (lifecycle.state !== "ready") {
+          throw new Error("Resident identity bootstrap failed.");
+        }
+      } finally {
+        ledger.close();
+      }
       stdout(
         JSON.stringify(
           {

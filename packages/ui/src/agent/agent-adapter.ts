@@ -97,6 +97,16 @@ const identitySchema = z.object({
   eventIds: eventIdsSchema,
   causationIds: eventIdsSchema
 }).strict();
+const identityLifecycleSchema = z.object({
+  schemaVersion: z.literal("resident-identity-lifecycle.v1"),
+  state: z.enum(["not-mounted", "initializing", "ready", "blocked"]),
+  residentAgentId: z.literal("agent_default"),
+  workspaceId: z.string().min(1).optional(),
+  initialized: z.boolean(),
+  eventIds: eventIdsSchema,
+  safeMessage: z.string().min(1),
+  allowedRepairActions: z.array(z.string().min(1))
+}).strict();
 
 const providerSchema = z.object({
   providerId: z.string().min(1),
@@ -571,6 +581,7 @@ const modelInvocationSchema = z.object({
 const agentStatusDtoSchema = z.object({
   schemaVersion: z.literal("agent-status.v1"),
   generatedAt: z.string().datetime(),
+  identityLifecycle: identityLifecycleSchema,
   residentAgentId: z.string().min(1).optional(),
   identity: identitySchema.optional(),
   tasks: z.array(taskSchema),
@@ -1116,6 +1127,15 @@ export function runtimeUnavailableAgentStatus(input: {
   return agentStatusFromJson({
     schemaVersion: "agent-status.v1",
     generatedAt: safeGeneratedAt(input.generatedAt),
+    identityLifecycle: {
+      schemaVersion: "resident-identity-lifecycle.v1",
+      state: "not-mounted",
+      residentAgentId: "agent_default",
+      initialized: false,
+      eventIds: [],
+      safeMessage: message,
+      allowedRepairActions: ["start the local runtime", "refresh agent status"]
+    },
     tasks: [],
     runs: [],
     toolRequests: [],
