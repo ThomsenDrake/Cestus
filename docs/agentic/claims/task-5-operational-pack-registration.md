@@ -6,7 +6,7 @@
 - Branch: `codex/operational-context-packs-spec`
 - Worktree: `/home/drake/.codex/worktrees/a559/Cestus`
 - Claimed at: `2026-07-10T16:54:10Z`
-- Status: blocked
+- Status: in-progress
 
 ## Owned Files
 
@@ -23,7 +23,7 @@
   orchestrator integration files.
 - Record RED, GREEN, and full verification evidence before ready-for-review.
 
-## Blocker
+## Resolved Blocker
 
 Task 1's current `ContextPackRegistry` requires every listed
 `requiredProvenanceKinds` entry. Task 2's operational history and memory
@@ -32,8 +32,8 @@ builders correctly produce event provenance for non-empty snapshots and
 empty-projection provenance for proven-empty snapshots. Consequently,
 `registry.build()` rejects every non-empty operational history or memory pack
 before Task 5 can satisfy its registered-builder contract. Resolving this
-requires an approved core registry provenance "either/or" capability or an
-approved descriptor contract change; neither is within Task 5's owned files.
+is resolved by the approved Task 5 operational descriptor-local
+`operational-source-proof` marker. The Task 1 registry remains unchanged.
 
 ## Evidence
 
