@@ -59,7 +59,9 @@ const requiredFiles = [
   "packages/agent/test/domain-execution-adapter-registry.test.ts",
   "docs/superpowers/plans/2026-07-09-resident-agent-memory-context-surface-implementation.md",
   "docs/superpowers/specs/2026-07-09-mvp-specialist-workflows-design.md",
-  "docs/superpowers/plans/2026-07-09-mvp-specialist-workflows-implementation.md"
+  "docs/superpowers/plans/2026-07-09-mvp-specialist-workflows-implementation.md",
+  "docs/superpowers/specs/2026-07-10-resident-lifecycle-bootstrap-design.md",
+  "docs/superpowers/plans/2026-07-10-resident-lifecycle-bootstrap-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
