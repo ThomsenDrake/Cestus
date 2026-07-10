@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   assertResolvedContextPacksForExecution,
@@ -8,6 +9,7 @@ import {
   createContextPackRegistry,
   hashAgentContextPack,
   serializeContextPackPayload,
+  type AgentContextPackJsonValue,
   verifyResolvedContextPack
 } from "../src/context-packs.js";
 import { buildAgentMemorySummaryContextPack } from "../src/memory.js";
@@ -23,14 +25,17 @@ describe("agent context packs", () => {
     expect(resolved.ref).toEqual(ref);
     expect(resolved.payload).toEqual(resolvedContextPackSentinelInput.payload);
     expect(resolved.ref.contentHash).toBe(hashAgentContextPack(resolved.payload));
-    expect(resolved.ref.sizeBytes).toBe(Buffer.byteLength(serializeContextPackPayload(resolved.payload), "utf8"));
+    const payloadBytes = serializeContextPackPayload(resolved.payload);
+    expect(Buffer.from(payloadBytes).toString("utf8")).toBe('{"fact":"payload_sentinel_case_budget_review_window_42"}');
+    expect(resolved.ref.sizeBytes).toBe(payloadBytes.byteLength);
+    expect(resolved.ref.contentHash).toBe(`sha256:${createHash("sha256").update(payloadBytes).digest("hex")}`);
     expect(Object.isFrozen(resolved)).toBe(true);
     expect(resolved.ref.safeSummary).not.toContain("payload_sentinel_case_budget_review_window_42");
   });
 
   it("requires hash, size, identity, DTO, and exact parser validation before execution", () => {
     const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
-    const parser = (payload: unknown) => {
+    const parser = (payload: AgentContextPackJsonValue): AgentContextPackJsonValue => {
       if (typeof payload !== "object" || payload === null || (payload as { fact?: unknown }).fact !== "payload_sentinel_case_budget_review_window_42") {
         throw new Error("invalid task-run-history payload");
       }
@@ -108,6 +113,48 @@ describe("agent context packs", () => {
     expect(() => assertResolvedContextPacksForExecution([resolved.ref], [resolved])).toThrow(/verified/i);
     expect(() => assertResolvedContextPacksForExecution([resolved.ref], [])).toThrow(/missing/i);
     expect(() => assertResolvedContextPacksForExecution([], [verified])).toThrow(/extra/i);
+  });
+
+  it("does not mint execution authority without a parser", () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const unparsed = verifyResolvedContextPack(resolved);
+
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [unparsed])).toThrow(/verified/i);
+  });
+
+  it("uses parser-normalized payloads only when their canonical bytes still match the ref", () => {
+    const resolved = buildResolvedContextPack({
+      ...resolvedContextPackSentinelInput,
+      payload: { fact: "payload_sentinel_case_budget_review_window_42", unknown: "strip-this" }
+    });
+    const normalized = verifyResolvedContextPack(resolved, (payload) => ({
+      unknown: (payload as { unknown: string }).unknown,
+      fact: (payload as { fact: string }).fact
+    }));
+
+    expect(normalized.payload).toEqual(resolved.payload);
+    expect(() => verifyResolvedContextPack(resolved, (payload) => ({ fact: (payload as { fact: string }).fact }))).toThrow("blocked.payload-hash-mismatch");
+    expect(() => verifyResolvedContextPack(resolved, () => ({ fact: "changed" }))).toThrow("blocked.payload-hash-mismatch");
+  });
+
+  it("uses blocked codes for unsafe envelopes and missing resolver payloads", async () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const unsafe = { ...resolved, payload: ["safe"] as string[] & { extra?: string } };
+    unsafe.payload.extra = "unsafe";
+    expect(() => verifyResolvedContextPack(unsafe, (payload) => payload)).toThrow("blocked.invalid-payload-shape");
+
+    const registerLegacyBuilder = (registry: ReturnType<typeof createContextPackRegistry>) => registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => resolved.ref,
+      parsePayload: (payload) => payload
+    });
+    const undefinedRegistry = createContextPackRegistry({ payloadResolver: async () => undefined as never });
+    registerLegacyBuilder(undefinedRegistry);
+    await expect(undefinedRegistry.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.missing-payload");
+
+    const nullRegistry = createContextPackRegistry({ payloadResolver: async () => null as never });
+    registerLegacyBuilder(nullRegistry);
+    await expect(nullRegistry.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.missing-payload");
   });
   it("validates descriptor metadata for explicit context assembly", () => {
     const descriptor = contextPackDescriptorSchema.parse({
