@@ -794,12 +794,56 @@ function toEvidenceSummaryItem(row: InvestigativeEvidenceRow): EvidenceSummaryIt
     ...(row.sourceCollectionId === undefined ? {} : { sourceCollectionId: row.sourceCollectionId }),
     ...(row.scanBatchId === undefined ? {} : { scanBatchId: row.scanBatchId }),
     ...(row.importBatchId === undefined ? {} : { importBatchId: row.importBatchId }),
-    occurrenceIds: row.occurrenceIds,
-    parseJobs: row.parseJobs,
-    governanceTags: row.governanceTags,
+    occurrenceIds: Object.freeze([...row.occurrenceIds].sort(compareText)),
+    parseJobs: Object.freeze([...row.parseJobs]
+      .map((parseJob) => Object.freeze({ ...parseJob }))
+      .sort(compareParseJobs)),
+    governanceTags: Object.freeze([...row.governanceTags]
+      .map((tag) => Object.freeze({ ...tag }))
+      .sort(compareGovernanceTags)),
     ...(row.duplicateGroup === undefined ? {} : { duplicateGroup: row.duplicateGroup }),
     ...(row.safeNarrative === undefined ? {} : { safeNarrative: row.safeNarrative })
   };
+}
+
+function compareParseJobs(
+  left: InvestigativeEvidenceRow["parseJobs"][number],
+  right: InvestigativeEvidenceRow["parseJobs"][number]
+): number {
+  return compareByFields(
+    [
+      left.parseJobId,
+      left.lane,
+      left.parserName,
+      left.parserVersion,
+      left.state,
+      left.outputHash ?? "",
+      left.outputMediaType ?? "",
+      left.terminalEventId ?? "",
+      left.retryable === undefined ? "" : String(left.retryable)
+    ],
+    [
+      right.parseJobId,
+      right.lane,
+      right.parserName,
+      right.parserVersion,
+      right.state,
+      right.outputHash ?? "",
+      right.outputMediaType ?? "",
+      right.terminalEventId ?? "",
+      right.retryable === undefined ? "" : String(right.retryable)
+    ]
+  );
+}
+
+function compareGovernanceTags(
+  left: InvestigativeEvidenceRow["governanceTags"][number],
+  right: InvestigativeEvidenceRow["governanceTags"][number]
+): number {
+  return compareByFields(
+    [left.tag, left.source, left.state, left.eventId, left.confidence === undefined ? "" : String(left.confidence), left.safeRationale ?? ""],
+    [right.tag, right.source, right.state, right.eventId, right.confidence === undefined ? "" : String(right.confidence), right.safeRationale ?? ""]
+  );
 }
 
 function compareEvidenceRowsBySelectionOrder(

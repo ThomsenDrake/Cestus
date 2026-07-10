@@ -389,6 +389,45 @@ describe("investigative context packs", () => {
       expect.objectContaining({ reasonCode: "budget-row-omitted", refKind: "parse-job", count: expect.any(Number) })
     ]));
   });
+
+  it("canonicalizes nested evidence details before hashing and budget trimming", async () => {
+    const canonical = nestedDetailEvidenceRow();
+    const reversed = {
+      ...canonical,
+      occurrenceIds: [...canonical.occurrenceIds].reverse(),
+      parseJobs: [...canonical.parseJobs].reverse(),
+      governanceTags: [...canonical.governanceTags].reverse()
+    } satisfies InvestigativeEvidenceRow;
+    const full = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({ evidenceRows: [canonical] }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+    const reorderedFull = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({ evidenceRows: [reversed] }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+    const budget = full.ref.sizeBytes - 150;
+    const trimmed = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({ evidenceRows: [canonical] }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100),
+      sizeBudgetBytes: budget
+    });
+    const reorderedTrimmed = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({ evidenceRows: [reversed] }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100),
+      sizeBudgetBytes: budget
+    });
+
+    expect(full.payload).toEqual(reorderedFull.payload);
+    expect(full.ref.contentHash).toBe(reorderedFull.ref.contentHash);
+    expect(trimmed.payload).toEqual(reorderedTrimmed.payload);
+    expect(trimmed.ref.contentHash).toBe(reorderedTrimmed.ref.contentHash);
+    expect(trimmed.payload.omissions).toEqual(reorderedTrimmed.payload.omissions);
+  });
 });
 
 interface ReaderCounters {
@@ -601,6 +640,23 @@ function evidenceRow(evidenceId: string, ingestionEventId: string): Investigativ
     occurrenceIds: [],
     parseJobs: [],
     governanceTags: []
+  };
+}
+
+function nestedDetailEvidenceRow(): InvestigativeEvidenceRow {
+  return {
+    ...evidenceRow("ev_contract_001", "evt_evidence_ingested_001"),
+    occurrenceIds: ["occurrence_c", "occurrence_a", "occurrence_b"],
+    parseJobs: [
+      { parseJobId: "parse_job_c", lane: "extract", parserName: `parser_${"c".repeat(300)}`, parserVersion: "v1", state: "complete" },
+      { parseJobId: "parse_job_a", lane: "extract", parserName: `parser_${"a".repeat(300)}`, parserVersion: "v1", state: "complete" },
+      { parseJobId: "parse_job_b", lane: "extract", parserName: `parser_${"b".repeat(300)}`, parserVersion: "v1", state: "complete" }
+    ],
+    governanceTags: [
+      { tag: "zeta", source: "human", state: "removed", eventId: "evt_tag_zeta" },
+      { tag: "alpha", source: "ai", state: "removed", eventId: "evt_tag_alpha" },
+      { tag: "active", source: "human", state: "active", eventId: "evt_tag_active" }
+    ]
   };
 }
 

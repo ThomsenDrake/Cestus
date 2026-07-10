@@ -25,3 +25,4 @@ Implement only the provider-safe `buildEvidenceSummaryContextPack` and its stric
 - Strictly validate complete evidence-summary v1 payload structure, including nested rows, manifests, omissions, staleness inputs, and fixed-shape records.
 - Canonicalize manifest, item, omission, sample, staleness, and provenance ordering before resolved-pack hashing.
 - Trim optional parse and removed-governance detail into bounded `budget-row-omitted` aggregates before failing mandatory-over-budget payloads.
+- Canonicalize occurrence IDs, parse jobs, and governance tags before hashing and optional-detail trimming so reader ordering cannot alter payload hashes or omission samples.
