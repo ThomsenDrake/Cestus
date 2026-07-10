@@ -329,23 +329,69 @@ function canonicalSelectionManifestBody(
     ordering: manifest.ordering,
     window: Object.freeze({ ...manifest.window }),
     totalEligibleCount: manifest.totalEligibleCount,
-    includedRefs: Object.freeze(manifest.includedRefs.map((ref) => Object.freeze({
+    includedRefs: Object.freeze([...manifest.includedRefs]
+      .sort(compareIncludedRefs)
+      .map((ref) => Object.freeze({
       refKind: ref.refKind,
       refId: ref.refId,
       sortKey: ref.sortKey,
       ...(ref.contentHash === undefined ? {} : { contentHash: ref.contentHash }),
       ...(ref.rowHash === undefined ? {} : { rowHash: ref.rowHash }),
-      sourceEventIds: Object.freeze([...ref.sourceEventIds]),
+      sourceEventIds: Object.freeze([...ref.sourceEventIds].sort(compareText)),
       mandatory: ref.mandatory
     }))),
-    aggregateOmissions: Object.freeze(manifest.aggregateOmissions.map((omission) => Object.freeze({
+    aggregateOmissions: Object.freeze([...manifest.aggregateOmissions]
+      .sort(compareOmissionAggregates)
+      .map((omission) => Object.freeze({
       reasonCode: omission.reasonCode,
       refKind: omission.refKind,
       aggregateKey: omission.aggregateKey,
       count: omission.count,
       ...(omission.sampleRefs === undefined
         ? {}
-        : { sampleRefs: Object.freeze(omission.sampleRefs.map((sample) => Object.freeze({ ...sample }))) })
+        : {
+            sampleRefs: Object.freeze([...omission.sampleRefs]
+              .sort(compareOmissionSampleRefs)
+              .map((sample) => Object.freeze({ ...sample })))
+          })
     })))
   });
+}
+
+function compareIncludedRefs(left: InvestigativeSelectionIncludedRef, right: InvestigativeSelectionIncludedRef): number {
+  return compareByFields(
+    [left.sortKey, left.refKind, left.refId, left.contentHash ?? "", left.rowHash ?? ""],
+    [right.sortKey, right.refKind, right.refId, right.contentHash ?? "", right.rowHash ?? ""]
+  );
+}
+
+function compareOmissionAggregates(
+  left: InvestigativeContextOmissionAggregate,
+  right: InvestigativeContextOmissionAggregate
+): number {
+  return compareByFields(
+    [left.reasonCode, left.refKind, left.aggregateKey],
+    [right.reasonCode, right.refKind, right.aggregateKey]
+  );
+}
+
+function compareOmissionSampleRefs(left: InvestigativeOmissionSampleRef, right: InvestigativeOmissionSampleRef): number {
+  return compareByFields(
+    [left.refKind, left.refId, left.contentHash ?? ""],
+    [right.refKind, right.refId, right.contentHash ?? ""]
+  );
+}
+
+function compareByFields(left: readonly string[], right: readonly string[]): number {
+  for (let index = 0; index < left.length; index += 1) {
+    const comparison = compareText(left[index]!, right[index]!);
+    if (comparison !== 0) {
+      return comparison;
+    }
+  }
+  return 0;
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }

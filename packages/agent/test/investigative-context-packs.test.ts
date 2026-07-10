@@ -61,6 +61,27 @@ describe("investigative context packs", () => {
     expect(() => assertSelectionManifestHash(manifest)).not.toThrow();
   });
 
+  it("hashes equivalent selection manifests identically despite caller-supplied array order", () => {
+    const body = permutationSelectionBody();
+    const reordered = {
+      ...body,
+      includedRefs: [...body.includedRefs].reverse().map((ref) => ({
+        ...ref,
+        sourceEventIds: [...ref.sourceEventIds].reverse()
+      })),
+      aggregateOmissions: [...body.aggregateOmissions].reverse().map((omission) => ({
+        ...omission,
+        ...(omission.sampleRefs === undefined ? {} : { sampleRefs: [...omission.sampleRefs].reverse() })
+      }))
+    } satisfies InvestigativeSelectionManifestBody;
+    const hash = buildSelectionManifestHash(body);
+    const reorderedHash = buildSelectionManifestHash(reordered);
+
+    expect(reorderedHash).toBe(hash);
+    expect(() => assertSelectionManifestHash({ ...body, manifestHash: hash })).not.toThrow();
+    expect(() => assertSelectionManifestHash({ ...reordered, manifestHash: hash })).not.toThrow();
+  });
+
   it("rejects a no-fixed-point manifest hash computed over manifestHash itself", () => {
     const body = selectionBody();
     const bodyHash = buildSelectionManifestHash(body);
@@ -98,4 +119,53 @@ function selectionBody(): InvestigativeSelectionManifestBody {
 function selectionManifest() {
   const body = selectionBody();
   return { ...body, manifestHash: buildSelectionManifestHash(body) };
+}
+
+function permutationSelectionBody(): InvestigativeSelectionManifestBody {
+  const contentHash = "sha256:1111111111111111111111111111111111111111111111111111111111111111" as const;
+  const rowHash = "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const;
+
+  return {
+    ...selectionBody(),
+    includedRefs: [
+      {
+        refKind: "relationship",
+        refId: "rel_002",
+        sortKey: "relationship/rel_002/sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        rowHash,
+        sourceEventIds: ["evt_relationship_002", "evt_relationship_001"],
+        mandatory: false
+      },
+      {
+        refKind: "evidence",
+        refId: "ev_001",
+        sortKey: "evidence/ev_001/sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        contentHash,
+        sourceEventIds: ["evt_evidence_002", "evt_evidence_001"],
+        mandatory: true
+      }
+    ],
+    aggregateOmissions: [
+      {
+        reasonCode: "size-budget",
+        refKind: "evidence",
+        aggregateKey: "evidence:budget",
+        count: 2,
+        sampleRefs: [
+          { refKind: "evidence", refId: "ev_002", contentHash: rowHash },
+          { refKind: "evidence", refId: "ev_001", contentHash }
+        ]
+      },
+      {
+        reasonCode: "out-of-scope",
+        refKind: "relationship",
+        aggregateKey: "relationship:scope",
+        count: 1,
+        sampleRefs: [
+          { refKind: "relationship", refId: "rel_002", contentHash: rowHash },
+          { refKind: "relationship", refId: "rel_001", contentHash }
+        ]
+      }
+    ]
+  };
 }
