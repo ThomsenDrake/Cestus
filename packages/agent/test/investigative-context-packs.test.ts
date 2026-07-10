@@ -657,6 +657,7 @@ describe("investigative context packs", () => {
 
     expect(counters.agentLockReads).toBe(1);
     expect(counters.governanceReads).toBe(1);
+    expect(counters.eventReads).toBe(1);
     expect(counters.unrelatedRowsScanned).toBe(0);
   });
 
@@ -680,9 +681,52 @@ describe("investigative context packs", () => {
     })).toThrow(/governance-locks payload/i);
   });
 
+  it("rejects governance-locks payloads whose top-level scope or high-water marks diverge from the selection manifest", async () => {
+    const resolved = await buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    });
+
+    expect(() => governanceLocksPayloadParser.parsePayload({
+      ...resolved.payload,
+      scope: { kind: "task", id: "task_other" }
+    })).toThrow(/governance-locks payload/i);
+    expect(() => governanceLocksPayloadParser.parsePayload({
+      ...resolved.payload,
+      projectionHighWaterMarks: { governance: 55, agent: 57 }
+    })).toThrow(/governance-locks payload/i);
+  });
+
   it("rejects governance posture rows without event and projection provenance", async () => {
     await expect(buildGovernanceLocksContextPack({
       deps: createInvestigativeDeps({ governanceMissingProvenance: true }),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "missing-provenance" });
+  });
+
+  it("verifies governance lock and restriction provenance through bounded event reads", async () => {
+    const counters = createReaderCounters();
+    await buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps({ counters }),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    });
+
+    expect(counters.eventReads).toBe(1);
+    expect(counters.eventIdBatchSizes).toEqual([4]);
+    expect(counters.eventIdsRead).toEqual([
+      "evt_agent_lock_activated_001",
+      "evt_agent_projection_checkpoint_001",
+      "evt_governance_projection_checkpoint_001",
+      "evt_governance_restriction_001"
+    ]);
+  });
+
+  it("fails closed when governance event readback omits referenced provenance", async () => {
+    await expect(buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps({ governanceMissingEventReadback: true }),
       scope: { kind: "task", id: "task_governance" },
       window: windowFor("cursor_task_governance_0001", 0, 100)
     })).rejects.toMatchObject({ code: "missing-provenance" });
@@ -732,6 +776,8 @@ interface ReaderCounters {
   evidenceHashBatchSizes: number[];
   assertionIdsRead: string[];
   graphIdBatchSizes: number[];
+  eventIdsRead: string[];
+  eventIdBatchSizes: number[];
 }
 
 function createReaderCounters(): ReaderCounters {
@@ -746,7 +792,9 @@ function createReaderCounters(): ReaderCounters {
     evidenceIdBatchSizes: [],
     evidenceHashBatchSizes: [],
     assertionIdsRead: [],
-    graphIdBatchSizes: []
+    graphIdBatchSizes: [],
+    eventIdsRead: [],
+    eventIdBatchSizes: []
   };
 }
 
@@ -781,6 +829,7 @@ interface CreateInvestigativeDepsInput {
   readonly reverseGraphRows?: boolean;
   readonly graphSentinel?: string;
   readonly governanceMissingProvenance?: boolean;
+  readonly governanceMissingEventReadback?: boolean;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
   readonly evidenceRows?: readonly InvestigativeEvidenceRow[];
@@ -828,6 +877,7 @@ function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): Inve
     graphAssertionCount: input.graphAssertionCount ?? 1,
     reverseGraphRows: input.reverseGraphRows ?? false,
     governanceMissingProvenance: input.governanceMissingProvenance ?? false,
+    governanceMissingEventReadback: input.governanceMissingEventReadback ?? false,
     ...(input.selection === undefined ? {} : { selection: input.selection }),
     ...(input.postureResult === undefined ? {} : { postureResult: input.postureResult }),
     ...(input.safeNarrative === undefined ? {} : { safeNarrative: input.safeNarrative }),
@@ -862,6 +912,7 @@ function createFakeInvestigativeDeps(input: {
   readonly reverseGraphRows: boolean;
   readonly graphSentinel?: string;
   readonly governanceMissingProvenance: boolean;
+  readonly governanceMissingEventReadback: boolean;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
   readonly evidenceRows?: readonly InvestigativeEvidenceRow[];
@@ -913,6 +964,8 @@ function createFakeInvestigativeDeps(input: {
   const governanceManifest = selectionManifestForGovernance();
   const lockRowsById = new Map(lockRows.map((row) => [row.lockId, row]));
   const restrictionRowsById = new Map(restrictionRows.map((row) => [row.restrictionId, row]));
+  const governanceEventRows = governanceEventSummaries(input.governanceMissingEventReadback);
+  const governanceEventRowsById = new Map(governanceEventRows.map((row) => [row.eventId, row]));
   const unrelatedGovernanceRows = Array.from({ length: input.unrelatedGovernanceRows }, (_, index) => ({
     restrictionId: `restriction_unrelated_${index}`
   }));
@@ -1001,6 +1054,17 @@ function createFakeInvestigativeDeps(input: {
         }
         return request.restrictionIds.flatMap((restrictionId) => {
           const row = restrictionRowsById.get(restrictionId);
+          return row === undefined ? [] : [row];
+        });
+      }
+    },
+    eventReader: {
+      readEventsByIds(request) {
+        input.counters.eventReads += 1;
+        input.counters.eventIdsRead.push(...request.eventIds);
+        input.counters.eventIdBatchSizes.push(request.eventIds.length);
+        return request.eventIds.flatMap((eventId) => {
+          const row = governanceEventRowsById.get(eventId);
           return row === undefined ? [] : [row];
         });
       }
@@ -1219,6 +1283,40 @@ function governanceRestrictionRow(missingProvenance: boolean) {
     policyVersion: "policy.v1",
     safeReasonCode: "evidence-quarantine-active"
   };
+}
+
+function governanceEventSummaries(missingEventReadback: boolean) {
+  const rows = [
+    {
+      eventId: "evt_agent_lock_activated_001",
+      type: "agent.lock.activated",
+      contentHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const,
+      ontologyCoreVersion: "ontology.v1",
+      packVersions: { agent: "agent.v1" }
+    },
+    {
+      eventId: "evt_agent_projection_checkpoint_001",
+      type: "agent.projection.checkpointed",
+      contentHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const,
+      ontologyCoreVersion: "ontology.v1",
+      packVersions: { agent: "agent.v1" }
+    },
+    {
+      eventId: "evt_governance_projection_checkpoint_001",
+      type: "governance.projection.checkpointed",
+      contentHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const,
+      ontologyCoreVersion: "ontology.v1",
+      packVersions: { governance: "governance.v1" }
+    },
+    {
+      eventId: "evt_governance_restriction_001",
+      type: "governance.restriction.active",
+      contentHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as const,
+      ontologyCoreVersion: "ontology.v1",
+      packVersions: { governance: "governance.v1" }
+    }
+  ];
+  return missingEventReadback ? rows.filter((row) => row.eventId !== "evt_governance_projection_checkpoint_001") : rows;
 }
 
 function graphRows(input: {
