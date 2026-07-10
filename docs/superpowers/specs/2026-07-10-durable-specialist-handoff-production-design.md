@@ -71,12 +71,14 @@ Durable handoff production uses this sequence:
 3. `agent.specialist-handoff.recorded`.
 4. Projection readback of the recorded handoff.
 5. `agent.specialist-run.completed` or `agent.specialist-run.failed`.
-6. `agent.task.status.changed` to a terminal task status when a task is linked.
+6. `agent.task.status.changed` to a causally linked task status transition when
+   a task is linked.
 
 The run is not terminally successful until the handoff projector verifies the
 recorded handoff. Task success is not projected until the run terminal event and
-verified handoff binding exist. A historical terminal run event that appears
-before a valid recorded handoff is inconsistent state, not success.
+verified handoff binding exist. Waiting and blocked handoffs do not complete the
+task. A historical terminal run event that appears before a valid recorded
+handoff is inconsistent state, not success.
 
 ## Final-Output Step
 
@@ -162,7 +164,9 @@ Canonical manifest bytes use deterministic JSON:
 The manifest content hash is computed from those bytes. The handoff DTO inside
 the manifest must independently parse through `specialistWorkflowHandoffSchema`.
 `handoffDtoHash` is required and must be computed from the canonical handoff DTO
-using the same JSON rules.
+using the same JSON rules. `handoffId` is inserted before manifest and DTO hash
+calculation. `handoffManifestHash` and `handoffDtoHash` are never inputs to
+`handoffId`, so the design has no hash fixed point.
 
 `safeSummary` must match exactly across:
 
@@ -222,18 +226,39 @@ Payload fields repeat the prepared compact binding and add:
 
 Causation points to the prepared event. It may be appended only after the
 projector verifies the manifest, DTO, final-output step, run identity, status,
-summary, artifact hashes, tool request IDs, and event refs.
+summary, artifact hashes, tool request IDs, and event refs. `verifiedAt` must
+come from the runner or runtime's injected clock. It is part of the recorded
+event only and must not be included in manifest bytes, handoff DTO bytes,
+`handoffManifestHash`, or `handoffDtoHash`.
 
 ## Deterministic IDs And Idempotency
 
-`handoffId` is deterministic for a run result:
+`handoffId` is deterministic before manifest serialization. It is derived from a
+pre-manifest identity seed:
 
 ```text
-handoff_${runId}_${first16(sha256(canonical run/task/type/status/output-hashes/manifest-hash))}
+{
+  runId,
+  taskIdOrNone,
+  runType,
+  status,
+  finalOutputEventId,
+  outputArtifactHashes,
+  handoffRevision,
+  supersedesHandoffIdOrNone
+}
 ```
 
-Supersessions use a new manifest hash and therefore a new handoff ID. The
-manifest records the superseded handoff ID.
+The ID format is:
+
+```text
+handoff_${runId}_${first16(sha256(canonical pre-manifest identity seed))}
+```
+
+The manifest and canonical handoff DTO include this already-known `handoffId`;
+their hashes are computed afterward. Supersessions use a new
+`handoffRevision` and `supersedesHandoffId`, so they get a new pre-manifest
+identity and a new handoff ID without depending on a manifest hash.
 
 `idempotencyKey` is:
 
@@ -242,9 +267,10 @@ specialist-handoff:${runId}:${taskId-or-none}:${runType}:${status}:${handoffMani
 ```
 
 All append helpers must use `streamId = agent_run_${runId}` for run-side
-handoff lifecycle events and `expectedNextSequence = currentRunStreamLength + 1`.
-Task terminal events use the task stream and `expectedNextSequence =
-currentTaskStreamLength + 1`.
+handoff lifecycle events and `expectedNextSequence = lastRunStreamSequence + 1`
+when the event-store read contract exposes the last stream sequence. Empty
+streams expect sequence `1`. Task status events use the task stream and
+`expectedNextSequence = lastTaskStreamSequence + 1`.
 
 ## Append Order And Recovery
 
@@ -259,11 +285,29 @@ currentTaskStreamLength + 1`.
 7. Append `agent.specialist-handoff.recorded`.
 8. Project/read back recorded handoff and compare exact DTO/hash/summary.
 9. Append run terminal event:
-   - `completed` for ready, blocked, or waiting-for-approval handoff statuses
-     that represent successful local specialist work.
+   - `completed` for a `ready-for-review` handoff when the local specialist work
+     has finished.
+   - `completed` for `waiting-for-approval` or `blocked` only when the approved
+     run contract explicitly treats the local specialist work as complete while
+     leaving the task suspended or blocked.
    - `failed` for a specialist result whose canonical handoff status is
      `failed`.
-10. Append terminal task status when a task is linked.
+   The terminal run event's causation must point to the verified recorded
+   handoff event.
+10. Append a causally linked task status transition when a task is linked.
+
+Task status mapping is exact:
+
+- `ready-for-review`: may transition the linked task according to the approved
+  task contract, including `completed` only when human review of the handoff is
+  the next product step and no runtime resume is required.
+- `waiting-for-approval`: transitions or remains `waiting-for-approval`; it must
+  not mark the task completed.
+- `blocked`: transitions or remains `blocked`; it is resumable and must not mark
+  the task completed.
+- `failed`: transitions the task to `failed` only when the specialist result is
+  terminal. Retryability and allowed actions from the failed handoff remain
+  visible in run and handoff projections.
 
 ### Restart Recovery
 
@@ -277,8 +321,10 @@ Recovery reads the run stream and agent projection, never caller memory.
   `handoffManifestHash`, verify it, then append recorded.
 - Recorded exists and no terminal run event: read back the handoff projector and
   append the correct terminal run event.
-- Terminal run exists and no task terminal event: append the task terminal only
-  if the terminal run is caused by or follows a verified recorded handoff.
+- Terminal run exists and no task status transition after handoff: append only
+  the task status allowed by the verified handoff status and the approved task
+  contract, with causation pointing to the terminal run event or recorded
+  handoff event.
 - Terminal run exists before a verified recorded handoff: mark the run
   inconsistent in the handoff projection. Do not show success.
 
@@ -298,15 +344,17 @@ the writer rereads the relevant stream and follows these rules:
   manifest hash, and idempotency key exists, continue. If the same handoff ID
   has different compact refs, project conflict and stop.
 - Recorded conflict: if an exact recorded event for the same prepared event
-  exists, continue. If another recorded event conflicts with the prepared event
-  or manifest hash, project conflict and stop.
+  exists, continue and reuse that event, including its original `verifiedAt`.
+  Do not generate a second timestamped record. If another recorded event
+  conflicts with the prepared event or manifest hash, project conflict and stop.
 - Terminal run conflict: if an exact terminal run event exists after the
   recorded handoff and its output hashes agree, continue. If terminal state
   appears before handoff or disagrees with handoff output/status, project
   inconsistent state and stop.
-- Task terminal conflict: if the task is already terminal from the same run and
-  verified handoff path, continue. If it is terminal from a different run or
-  without verified handoff causation, project task conflict and stop.
+- Task status conflict: if the task already has the same allowed status from the
+  same run and verified handoff path, continue. If it has an incompatible status,
+  comes from a different run, or lacks verified handoff causation, project task
+  conflict and stop.
 
 Conflicts must be secret-safe and inspectable. They must not produce a terminal
 success handoff.
@@ -319,15 +367,17 @@ The handoff projector returns structured states:
 - `output-persisted`: exact final-output step exists, but no prepared handoff.
 - `handoff-pending`: prepared event exists and names a manifest hash.
 - `handoff-recorded`: recorded event exists and manifest verification passes.
-- `task-completed`: terminal run and terminal task state follow verified
-  recorded handoff.
+- `task-completed`: a verified recorded handoff exists, the run has terminal
+  state after that handoff, and the linked task has an actual `completed`
+  `agent.task.status.changed` event caused by or following the verified handoff.
 - `inconsistent`: any hash, state, sequence, supersession, terminal-order, or
   manifest conflict.
 
 Only `handoff-recorded` can emit a canonical
-`SpecialistWorkflowHandoffDto`. `task-completed` is a stronger state used for
-task lifecycle display. `output-persisted` and `handoff-pending` are resumable,
-not successful.
+`SpecialistWorkflowHandoffDto`. `task-completed` is a stronger state used only
+when task lifecycle replay proves completion. `waiting-for-approval`, `blocked`,
+and terminal failed task mappings must not project as `task-completed`.
+`output-persisted` and `handoff-pending` are resumable, not successful.
 
 ## Failure Semantics
 
@@ -397,7 +447,8 @@ Runner helpers should make the protocol hard to misuse:
 - require exact final-output step schema before preparation
 - write/readback artifacts before ledger references them
 - append prepared and recorded with expected sequence
-- read back through the handoff projector before terminal run/task events
+- read back through the handoff projector before terminal run and task status
+  events
 - return handoff DTOs only after projection readback
 
 Runners must not treat returned service values, caller DTOs, or completed-run
@@ -439,7 +490,7 @@ hidden canonical state, or local synthesis from run hashes.
 
 2. Runner lifecycle slice:
    - shared runner-kernel helpers for final-output, prepared, recorded, readback,
-     terminal run, and terminal task order
+     terminal run, and causally linked task status order
    - adoption by PRR negotiation, evidence triage, investigation planner, and
      ontology bootstrap in small follow-up tasks
 
@@ -467,6 +518,9 @@ Core tests should prove:
   final-output state.
 - final-output steps require exact step kind, schema, idempotency key, and
   complete output hash set.
+- handoff ID generation uses only the pre-manifest identity seed and does not
+  include `handoffManifestHash` or `handoffDtoHash`; tests must prove there is no
+  hash fixed-point or circular dependency.
 - manifest canonical serialization produces stable hashes and rejects hostile
   structures.
 - projector rebuilds a handoff after restart from ledger events plus manifest
@@ -476,6 +530,11 @@ Core tests should prove:
   ref mismatch, terminal-before-handoff, and supersession cycles fail closed.
 - expected-sequence race readback is idempotent for exact matches and
   inconsistent for conflicting matches.
+- recorded-event retry reuses an already committed exact `verifiedAt` instead
+  of appending a second timestamped event.
+- task status mapping distinguishes ready-for-review, waiting-for-approval,
+  blocked, and failed handoffs; `task-completed` requires an actual completed
+  task event after verified handoff.
 - pre-output infrastructure failure can terminally fail without a handoff.
 - specialist result status `failed` requires a verified failed handoff before
   terminal run failure.
