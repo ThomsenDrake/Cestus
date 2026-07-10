@@ -1,6 +1,6 @@
 # Final Review Operational Context Pack Fixes
 
-Task: latest whole-branch Important review repairs for operational context packs
+Task: latest whole-branch Critical and Important review repairs for operational context packs
 
 Branch: `codex/operational-context-packs-spec`
 
@@ -12,6 +12,8 @@ Status: complete
 
 Owned files changed:
 
+- `packages/agent/src/context-packs.ts`
+- `packages/agent/test/context-packs.test.ts`
 - `packages/agent/src/operational-context-packs.ts`
 - `packages/agent/test/operational-context-packs.test.ts`
 - `packages/agent/src/memory.ts`
@@ -28,24 +30,17 @@ Command:
 npm test -- packages/agent/test/operational-context-packs.test.ts packages/agent/test/memory.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/specialist-readiness.test.ts
 ```
 
-Result: failed as expected with 6 review-defect failures and 106 passing tests.
+Result: failed as expected with 10 review-defect failures and 112 passing tests.
 
-Expected failures:
+Expected failures covered:
 
-- Matching-hash resolver readback accepted payloads that violated runtime token, empty-proof, projection-source, proof high-water, source-count, and bounded-window semantics.
-- History rejected canonical per-entity fields and valid task statuses including `waiting-for-approval` and `canceled`.
-- History retained caller and trimmed-record provenance instead of closing refs over final included items.
-- Direct memory snapshots invoked accessors and accepted invalid memory enums, confidence, refs, and window metadata.
-- Authoritative empty memory accepted artifact provenance.
-
-Focused audit RED commands:
-
-```bash
-npm test -- packages/agent/test/memory.test.ts
-npm test -- packages/agent/test/operational-context-packs.test.ts -t "requires an authoritative proof for empty history"
-```
-
-Results: each failed on its new regression assertion. The first exposed non-canonical projection-adapter provenance at parser verification; the second exposed stale source refs being erased from an authoritative empty history snapshot instead of rejected.
+- Generic parsers did not receive the exact ref and parser/resolver failures exposed hostile messages.
+- Matching-hash resolver payloads could contradict runtime HWM, empty-proof scope/generatedAt, and ref source arrays.
+- History accepted noncanonical task `pending`, duplicate IDs, inconsistent links, and unprovenanced items.
+- Non-empty history and memory accepted zero or insufficient window and aggregate totals.
+- Exact memory parsing accepted active memory with no durable source.
+- Registration invoked accessor-backed metadata and reread mutable provider metadata and methods.
+- Operational provider failures exposed hostile paths, credentials, and payload text.
 
 ## GREEN Evidence
 
@@ -55,9 +50,9 @@ Command:
 npm test -- packages/agent/test/operational-context-packs.test.ts packages/agent/test/memory.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/specialist-readiness.test.ts
 ```
 
-Result: passed with 4 test files and 112 tests.
+Result: passed with 4 test files and 122 tests.
 
-Focused audit GREEN results: memory passed with 16 tests; authoritative-empty history passed with 1 selected test and 24 skipped.
+`npm run typecheck` also passed during the focused repair cycle. `git diff --check` passed, and the projection-growth test now verifies deterministic top-N output under input reversal while the adapter retains only the bounded candidate set.
 
 ## Full Verification Evidence
 
@@ -67,6 +62,6 @@ Command:
 npm run verify
 ```
 
-Result: passed with `typecheck passed`, 171 passed test files / 3 skipped, 1762 passed tests / 3 skipped, Vite production build, and `factory-readiness passed`.
+Result: passed with `typecheck passed`, 171 passed test files / 3 skipped, 1772 passed tests / 3 skipped, Vite production build, and `factory-readiness passed`.
 
 Existing non-blocking output remained limited to Node SQLite experimental warnings plus the established Vite browser-externalization and chunk-size warnings.
