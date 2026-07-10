@@ -4,16 +4,16 @@
 
 **Goal:** Build package-owned investigative context-pack builders and registration for `evidence-summary.v1`, `accepted-graph-projection.v1`, and `governance-locks.v1` with bounded selection, exact provenance, aggregate omissions, and hash-verified resolved payloads.
 
-**Architecture:** The operational generic resolved-context contract lands first and owns `ResolvedContextPack { ref, payload }`, content-addressed payload verification, pack-specific payload parser dispatch keyed by `contextPackId/version`, and authoritative resolve-and-parse APIs. This package lane adds investigative builders in `packages/agent` that consume scope-aware selection and bounded reader capabilities, produce provider-safe resolved envelopes, supply strict payload parsers for all three schemas, and register only through an exported helper. Local-runtime, orchestrator, cockpit, PRR packs, operational packs, specialist prompt definitions, prompt-template provider assembly, and handoff projections are out of scope.
+**Architecture:** The operational generic resolved-context contract lands first and owns `ResolvedContextPack { ref, payload }`, `ContextPackBuilder` with optional `parsePayload`, `ContextPackRegistry`, content-addressed payload verification, `ContextPackPayloadResolver.resolve(ref)`, `ContextPackRegistry.buildResolved(id)`, opaque `VerifiedResolvedContextPack`, and `assertResolvedContextPacksForExecution({ refs, resolved })`. This package lane adds investigative builders in `packages/agent` that consume scope-aware selection and bounded reader capabilities, produce provider-safe resolved envelopes, supply strict pack-specific payload parsers for all three schemas through builder registration, and register only through an exported helper. Local-runtime, orchestrator, cockpit, PRR packs, operational packs, specialist prompt definitions, prompt-template provider assembly, and handoff projections are out of scope.
 
 **Tech Stack:** TypeScript, Vitest, Zod, Node `crypto`, existing `packages/agent` context-pack APIs, operational resolved-context APIs, injected ontology/ingestion/governance/agent projection readers.
 
 ## Global Constraints
 
 - This plan starts only after the operational generic resolved-context contract is merged into this branch.
-- Required shared exports before Task 1: `ResolvedContextPack`, `ResolvedContextPackBuilder`, `ResolvedContextPackPayloadParser`, `ResolvedContextPackRegistry`, `ContextPackPayloadResolver`, `createResolvedContextPackRegistry`, `buildResolvedContextPack`, `verifyResolvedContextPack`, `createContextPackPayloadResolver`, and `resolveAndParseContextPack` from `packages/agent/src/context-packs.ts` or a re-exported package-owned module.
-- Required operational registry shape before Task 1: `ResolvedContextPackPayloadParser<Payload>.contextPackId: string`, `ResolvedContextPackPayloadParser<Payload>.version: number`, `ResolvedContextPackPayloadParser<Payload>.parserIdentity: object`, `ResolvedContextPackPayloadParser<Payload>.parsePayload(payload: unknown): Payload`, `ResolvedContextPackBuilder<BuildRequest, Payload>.payloadParser: ResolvedContextPackPayloadParser<Payload>`, `ResolvedContextPackBuilder<BuildRequest, Payload>.buildResolved(input: BuildRequest): ResolvedContextPack<Payload> | Promise<ResolvedContextPack<Payload>>`, `ResolvedContextPackRegistry.registerResolved<BuildRequest, Payload>(builder: ResolvedContextPackBuilder<BuildRequest, Payload>): void`, `ResolvedContextPackRegistry.buildResolved<BuildRequest>(contextPackId: string, input: BuildRequest): Promise<ResolvedContextPack>`, and `resolveAndParseContextPack(ref: ContextPackRef, resolver: ContextPackPayloadResolver, registry: ResolvedContextPackRegistry): Promise<ResolvedContextPack>`.
-- Operational resolution must verify hash and size first, then dispatch the exact parser registered for `contextPackId/version`; a matching hash with an invalid parsed shape must fail before any downstream prompt-template lane consumes the payload.
+- Required shared exports before Task 1: `ResolvedContextPack`, `VerifiedResolvedContextPack`, `ContextPackBuilder`, `ContextPackRegistry`, `ContextPackPayloadResolver`, `createContextPackRegistry`, and `assertResolvedContextPacksForExecution` from `packages/agent/src/context-packs.ts` or a re-exported package-owned module.
+- Required operational registry shape before Task 1: the exported `ContextPackBuilder` type has `descriptor`, `build`, and optional `parsePayload(payload: unknown)`, `ContextPackRegistry.register(builder: ContextPackBuilder): void`, `ContextPackRegistry.buildResolved(contextPackId: string): Promise<ResolvedContextPack>`, `createContextPackRegistry({ payloadResolver? }: { readonly payloadResolver?: ContextPackPayloadResolver }): ContextPackRegistry`, `ContextPackPayloadResolver.resolve(ref: ContextPackRef): Promise<ResolvedContextPack>`, and `assertResolvedContextPacksForExecution({ refs, resolved }: { readonly refs: readonly ContextPackRef[]; readonly resolved: readonly ResolvedContextPack[] }): readonly VerifiedResolvedContextPack[]`.
+- Operational execution assertion must verify hash and size first, then dispatch the exact `parsePayload` registered for `contextPackId/version`; a matching hash with an invalid parsed shape must fail before any downstream prompt-template lane consumes the payload. `VerifiedResolvedContextPack` is opaque and must never be constructed by this lane.
 - If those shared exports are missing or their signatures do not match this plan, stop before claiming Task 1 and ask the coordinator to rebase this lane after the operational context lane.
 - Do not edit local-runtime, orchestrator, scheduler, cockpit, browser UI, operational packs, PRR packs, specialist workflow prompt definitions, handoff projections, or resident-agent runtime wiring in this lane.
 - Do not introduce SQLite, filesystem mount, local-runtime, or portable-workspace imports into `packages/agent/src/investigative-context-packs.ts`.
@@ -252,6 +252,13 @@ export interface InvestigativePayloadParserIdentity {
   readonly parserHash: `sha256:${string}`;
 }
 
+export interface InvestigativeContextPackPayloadParser<Payload extends InvestigativeContextPackPayloadBase> {
+  readonly contextPackId: Payload["contextPackId"];
+  readonly version: 1;
+  readonly parserIdentity: InvestigativePayloadParserIdentity;
+  parsePayload(payload: unknown): Payload;
+}
+
 export interface AcceptedGraphProjectionPayload extends InvestigativeContextPackPayloadBase {
   readonly schemaVersion: "accepted-graph-projection.context.v1";
   readonly contextPackId: "accepted-graph-projection.v1";
@@ -290,10 +297,10 @@ export interface GovernanceLocksPayload extends InvestigativeContextPackPayloadB
   };
 }
 
-export const acceptedGraphProjectionPayloadParser: ResolvedContextPackPayloadParser<AcceptedGraphProjectionPayload>;
-export const evidenceSummaryPayloadParser: ResolvedContextPackPayloadParser<EvidenceSummaryPayload>;
-export const governanceLocksPayloadParser: ResolvedContextPackPayloadParser<GovernanceLocksPayload>;
-export const investigativeContextPackPayloadParsers: readonly ResolvedContextPackPayloadParser<InvestigativeContextPackPayloadBase>[];
+export const acceptedGraphProjectionPayloadParser: InvestigativeContextPackPayloadParser<AcceptedGraphProjectionPayload>;
+export const evidenceSummaryPayloadParser: InvestigativeContextPackPayloadParser<EvidenceSummaryPayload>;
+export const governanceLocksPayloadParser: InvestigativeContextPackPayloadParser<GovernanceLocksPayload>;
+export const investigativeContextPackPayloadParsers: readonly InvestigativeContextPackPayloadParser<InvestigativeContextPackPayloadBase>[];
 ```
 
 `builderDescriptorHash` and `limitsHash` must be computed from
@@ -302,7 +309,7 @@ and the descriptor/parser schema versions. Changing a v1 budget, reader batch
 size, omission sample limit, or selection window limit changes the stable
 registration identity and must be reviewed as a v1 behavior change.
 
-The parser registered for a descriptor must be keyed by exact `contextPackId/version`. It must run after the operational resolver verifies `ref.contentHash` and `ref.sizeBytes`, and it must reject payloads whose hash matches the ref but whose shape violates the pack-specific schema.
+The parser registered for a descriptor must be keyed by exact `contextPackId/version` through the builder's optional `parsePayload` function. Stable parser identity metadata may be inspected for registration conflict checks, but proof of a valid resolved payload must come from `assertResolvedContextPacksForExecution` returning an opaque `VerifiedResolvedContextPack` after resolver output has been supplied. The parser must run after operational code verifies `ref.contentHash` and `ref.sizeBytes`, and it must reject payloads whose hash matches the ref but whose shape violates the pack-specific schema.
 
 Reader row interfaces should be added in the task that first uses them and kept in the same file. All reader methods must accept exact included IDs and `limit: 50`; no method may accept a whole projection object.
 
@@ -316,7 +323,7 @@ Reader row interfaces should be added in the task that first uses them and kept 
 - Read: `packages/agent/src/prompt-artifacts.ts`
 
 **Interfaces:**
-- Consumes: Operational lane exports `ResolvedContextPack`, `ResolvedContextPackBuilder`, `ResolvedContextPackPayloadParser`, `ResolvedContextPackRegistry`, `ContextPackPayloadResolver`, `createResolvedContextPackRegistry`, `buildResolvedContextPack`, `verifyResolvedContextPack`, `createContextPackPayloadResolver`, and `resolveAndParseContextPack`.
+- Consumes: Operational lane exports `ResolvedContextPack`, `VerifiedResolvedContextPack`, `ContextPackBuilder`, `ContextPackRegistry`, `ContextPackPayloadResolver`, `createContextPackRegistry`, and `assertResolvedContextPacksForExecution`.
 - Produces: A yes/no gate for Task 1.
 
 - [ ] **Step 1: Verify the dependency landed**
@@ -324,7 +331,7 @@ Reader row interfaces should be added in the task that first uses them and kept 
 Run:
 
 ```bash
-rg -n "ResolvedContextPack|ResolvedContextPackBuilder|ResolvedContextPackPayloadParser|ResolvedContextPackRegistry|ContextPackPayloadResolver|createResolvedContextPackRegistry|buildResolvedContextPack|verifyResolvedContextPack|createContextPackPayloadResolver|resolveAndParseContextPack" packages/agent/src packages/agent/test
+rg -n "ResolvedContextPack|VerifiedResolvedContextPack|ContextPackBuilder|ContextPackRegistry|ContextPackPayloadResolver|createContextPackRegistry|assertResolvedContextPacksForExecution|buildResolved" packages/agent/src packages/agent/test
 ```
 
 Expected: output includes all required symbols in `packages/agent/src/context-packs.ts` or a re-exported operational context module.
@@ -494,8 +501,7 @@ Create `packages/agent/src/investigative-context-packs.ts` with the shared inter
 import {
   hashAgentContextPack,
   type AgentContextPackJsonValue,
-  type ContextPackDescriptor,
-  type ResolvedContextPackPayloadParser
+  type ContextPackDescriptor
 } from "./context-packs.js";
 
 export const INVESTIGATIVE_CONTEXT_PACK_IDS = Object.freeze([
@@ -766,9 +772,11 @@ function windowFor(cursor: string, offset: number, limit: number) {
   } as const;
 }
 
-function createInvestigativeDeps(input: {
+interface CreateInvestigativeDepsInput {
   readonly counters?: ReaderCounters;
   readonly selection?: InvestigativeSelectionCapability;
+  readonly scope?: InvestigativeContextPackScope;
+  readonly window?: InvestigativeSelectionWindow;
   readonly unrelatedEvidenceRows?: number;
   readonly unrelatedGraphRows?: number;
   readonly unrelatedGovernanceRows?: number;
@@ -780,7 +788,9 @@ function createInvestigativeDeps(input: {
   readonly graphSentinel?: string;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
-} = {}): InvestigativeContextPackDependencies {
+}
+
+function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): InvestigativeContextPackDependencies {
   const counters = input.counters ?? createReaderCounters();
   const body = selectionBody();
   const manifest = { ...body, manifestHash: buildSelectionManifestHash(body) };
@@ -827,6 +837,10 @@ export interface InvestigativeContextPackBuildRequest {
 }
 
 export interface BuildInvestigativeContextPackInput extends InvestigativeContextPackBuildRequest {
+  readonly deps: InvestigativeContextPackDependencies;
+}
+
+export interface RegisterInvestigativeContextPacksInput extends InvestigativeContextPackBuildRequest {
   readonly deps: InvestigativeContextPackDependencies;
 }
 
@@ -1100,7 +1114,7 @@ Implement `buildEvidenceSummaryContextPack` so it:
 - rejects unsafe raw/action fields
 - includes safe narrative fields only as narrative
 - aggregates omissions from manifest and budget trimming
-- builds `ResolvedContextPack` through `buildResolvedContextPack`
+- returns provider-safe `ResolvedContextPack { ref, payload }` with `ref.contentHash` and `ref.sizeBytes` derived from the canonical payload by the operational content-addressed resolved-context path
 - exports `evidenceSummaryPayloadParser` with strict required sections, exact `contextPackId: "evidence-summary.v1"`, version `1`, and no unknown top-level keys
 
 - [ ] **Step 5: Run targeted tests**
@@ -1531,7 +1545,7 @@ Request a fresh review focused on governance non-authoritativeness and non-trunc
 - Modify: `packages/agent/src/index.ts`
 
 **Interfaces:**
-- Consumes: Completed builders and strict payload parsers from Tasks 3-5 plus operational resolved-context registry/resolver/parser verification from Task 0.
+- Consumes: Completed builders and strict payload parsers from Tasks 3-5 plus operational `ContextPackRegistry`, `ContextPackPayloadResolver.resolve(ref)`, `ContextPackRegistry.buildResolved(id)`, and `assertResolvedContextPacksForExecution`.
 - Produces: `registerInvestigativeContextPacks`, idempotent stable descriptor/parser registration, readiness proof with refs, payload parser dispatch proof, and payload sentinel fixture proof for the prompt-template lane.
 
 - [ ] **Step 1: Claim Task 6**
@@ -1540,17 +1554,44 @@ Create and commit the claim file with status `claimed`, then update it to `in-pr
 
 - [ ] **Step 2: Write RED registration and resolved-payload tests**
 
-Update imports to include `registerInvestigativeContextPacks`, `createResolvedContextPackRegistry`, `createContextPackPayloadResolver`, `resolveAndParseContextPack`, `buildResolvedContextPack`, and all three investigative payload parsers.
+Update imports to include `registerInvestigativeContextPacks` and all three investigative payload parsers from `../src/investigative-context-packs.js`. Update context-pack imports to include `createContextPackRegistry`, `assertResolvedContextPacksForExecution`, and the `ContextPackPayloadResolver`, `ContextPackRef`, and `ResolvedContextPack` types.
 
 Append tests:
 
 ```ts
-it("registers investigative context packs idempotently by stable descriptor identity", async () => {
-  const registry = createResolvedContextPackRegistry();
-  const deps = createInvestigativeDeps();
+function createRegistrationInput(input: CreateInvestigativeDepsInput = {}): RegisterInvestigativeContextPacksInput {
+  return {
+    deps: createInvestigativeDeps(input),
+    scope: input.scope ?? { kind: "task", id: "task_graph" },
+    window: input.window ?? windowFor("cursor_task_graph_0001", 0, 100)
+  };
+}
 
-  registerInvestigativeContextPacks(registry, deps);
-  registerInvestigativeContextPacks(registry, createInvestigativeDeps());
+function createInMemoryPayloadResolver() {
+  const resolvedByHash = new Map<string, ResolvedContextPack>();
+  const resolver: ContextPackPayloadResolver & {
+    add(pack: ResolvedContextPack): void;
+  } = {
+    add(pack) {
+      resolvedByHash.set(pack.ref.contentHash, pack);
+    },
+    async resolve(ref: ContextPackRef) {
+      const resolved = resolvedByHash.get(ref.contentHash);
+      if (resolved === undefined) {
+        throw new Error(`missing resolved context pack for ${ref.contentHash}`);
+      }
+      return resolved;
+    }
+  };
+  return resolver;
+}
+
+it("registers investigative context packs idempotently by stable descriptor identity", async () => {
+  const registry = createContextPackRegistry({});
+  const input = createRegistrationInput();
+
+  registerInvestigativeContextPacks(registry, input);
+  registerInvestigativeContextPacks(registry, createRegistrationInput());
 
   expect(registry.listDescriptors().map((descriptor) => descriptor.contextPackId)).toEqual([
     "accepted-graph-projection.v1",
@@ -1560,10 +1601,10 @@ it("registers investigative context packs idempotently by stable descriptor iden
 });
 
 it("rejects conflicting duplicate investigative registration", () => {
-  const registry = createResolvedContextPackRegistry();
-  registerInvestigativeContextPacks(registry, createInvestigativeDeps());
+  const registry = createContextPackRegistry({});
+  registerInvestigativeContextPacks(registry, createRegistrationInput());
 
-  expect(() => registerInvestigativeContextPacks(registry, createInvestigativeDeps({
+  expect(() => registerInvestigativeContextPacks(registry, createRegistrationInput({
     registrationIdentity: {
       moduleId: "packages/agent/src/investigative-context-packs",
       descriptorSchemaVersion: "investigative-context-pack-descriptor.v1",
@@ -1576,19 +1617,29 @@ it("rejects conflicting duplicate investigative registration", () => {
   }))).toThrow(/conflicting-context-pack-registration/);
 });
 
-it("satisfies specialist readiness through injected investigative refs", async () => {
-  const registry = createResolvedContextPackRegistry();
-  registerInvestigativeContextPacks(registry, createInvestigativeDeps());
+it("rejects conflicting duplicate investigative registration with a different captured build request", () => {
+  const registry = createContextPackRegistry({});
+  registerInvestigativeContextPacks(registry, createRegistrationInput());
 
-  const request = {
+  expect(() => registerInvestigativeContextPacks(registry, createRegistrationInput({
+    scope: { kind: "task", id: "task_other" },
+    window: windowFor("cursor_task_other_0001", 0, 100)
+  }))).toThrow(/conflicting-context-pack-registration/);
+});
+
+it("satisfies specialist readiness through injected investigative refs", async () => {
+  const resolver = createInMemoryPayloadResolver();
+  const registry = createContextPackRegistry({ payloadResolver: resolver });
+  registerInvestigativeContextPacks(registry, createRegistrationInput({
     scope: { kind: "workspace", id: "ws_main" },
     window: windowFor("cursor_ws_main_0001", 0, 100)
-  };
+  }));
   const resolved = await Promise.all([
-    registry.buildResolved("accepted-graph-projection.v1", request),
-    registry.buildResolved("evidence-summary.v1", request),
-    registry.buildResolved("governance-locks.v1", request)
+    registry.buildResolved("accepted-graph-projection.v1"),
+    registry.buildResolved("evidence-summary.v1"),
+    registry.buildResolved("governance-locks.v1")
   ]);
+  resolved.forEach((pack) => resolver.add(pack));
   const refs = resolved.map((pack) => pack.ref);
 
   const readiness = projectSpecialistWorkflowReadiness(createReadinessInput({ refs }));
@@ -1616,16 +1667,15 @@ function createReadinessInput(input: { readonly refs: readonly ContextPackRef[] 
   };
 }
 
-it("keeps a payload-only investigative fact available after authoritative resolve-and-parse", async () => {
-  const registry = createResolvedContextPackRegistry();
-  registerInvestigativeContextPacks(registry, createInvestigativeDeps({
-      graphSentinel: "payload-only-sentinel-contract-fact-314159"
-    }));
+it("keeps a payload-only investigative fact available after operational execution assertion", async () => {
+  const resolver = createInMemoryPayloadResolver();
+  const registry = createContextPackRegistry({ payloadResolver: resolver });
+  registerInvestigativeContextPacks(registry, createRegistrationInput({
+    graphSentinel: "payload-only-sentinel-contract-fact-314159"
+  }));
 
-  const resolved = await registry.buildResolved("accepted-graph-projection.v1", {
-    scope: { kind: "task", id: "task_graph" },
-    window: windowFor("cursor_task_graph_0001", 0, 100)
-  });
+  const resolved = await registry.buildResolved("accepted-graph-projection.v1");
+  resolver.add(resolved);
 
   expect(resolved.ref.safeSummary).not.toContain("payload-only-sentinel-contract-fact-314159");
   const serializedAuditSurface = JSON.stringify({
@@ -1636,65 +1686,82 @@ it("keeps a payload-only investigative fact available after authoritative resolv
   });
   expect(serializedAuditSurface).not.toContain("payload-only-sentinel-contract-fact-314159");
 
-  const resolver = createContextPackPayloadResolver([resolved]);
-  const parsed = await resolveAndParseContextPack(resolved.ref, resolver, registry);
+  const resolvedFromResolver = await resolver.resolve(resolved.ref);
+  const verified = assertResolvedContextPacksForExecution({
+    refs: [resolved.ref],
+    resolved: [resolvedFromResolver]
+  });
 
-  expect(JSON.stringify(parsed.payload)).toContain("payload-only-sentinel-contract-fact-314159");
+  expect(verified).toHaveLength(1);
+  expect(JSON.stringify(resolvedFromResolver.payload)).toContain("payload-only-sentinel-contract-fact-314159");
 });
 
 // The prompt-template lane consumes this sentinel fixture in its own tests and
 // live provider gate. This package lane stops at parser-verified resolved
 // payload availability and ref/audit-surface exclusion.
 
-it("rejects authoritative resolve-and-parse when resolved payload hash does not match the ref", async () => {
-  const registry = createResolvedContextPackRegistry();
-  registerInvestigativeContextPacks(registry, createInvestigativeDeps());
-  const resolved = await registry.buildResolved("accepted-graph-projection.v1", {
-    scope: { kind: "task", id: "task_graph" },
-    window: windowFor("cursor_task_graph_0001", 0, 100)
-  });
+it("rejects execution assertion when resolved payload hash does not match the ref", async () => {
+  const resolver = createInMemoryPayloadResolver();
+  const registry = createContextPackRegistry({ payloadResolver: resolver });
+  registerInvestigativeContextPacks(registry, createRegistrationInput());
+  const resolved = await registry.buildResolved("accepted-graph-projection.v1");
   const tampered = {
     ref: resolved.ref,
     payload: { ...resolved.payload, items: { assertions: [], entities: [], relationships: [] } }
   };
+  resolver.add(tampered);
 
-  const resolver = createContextPackPayloadResolver([tampered]);
-  await expect(resolveAndParseContextPack(resolved.ref, resolver, registry)).rejects.toMatchObject({ code: "context-payload-hash-mismatch" });
+  const resolvedFromResolver = await resolver.resolve(resolved.ref);
+  expect(() => assertResolvedContextPacksForExecution({
+    refs: [resolved.ref],
+    resolved: [resolvedFromResolver]
+  })).toThrow(/context-payload-hash-mismatch/);
 });
 
 it("rejects matching-hash resolved payloads whose pack-specific shape is invalid", async () => {
-  const registry = createResolvedContextPackRegistry();
-  registerInvestigativeContextPacks(registry, createInvestigativeDeps());
-  const invalidResolved = buildResolvedContextPack({
-    contextPackId: "accepted-graph-projection.v1",
-    version: 1,
-    generatedAt: "2026-07-10T12:00:00.000Z",
-    payload: {
-      schemaVersion: "accepted-graph-projection.context.v1",
-      contextPackId: "accepted-graph-projection.v1",
-      scope: { kind: "task", id: "task_graph" },
-      truthBoundary: {
-        authoritativeForAcceptedGraph: true,
-        readOnlyProjectionTruth: true,
-        canInferNewAcceptedEdges: true,
-        graphMutationRequiresReviewedOntologyEvent: true
-      },
-      selectionManifest: selectionManifest(),
-      projectionHighWaterMarks: { graph: 12 },
-      packVersions: { core: "0.1.0" },
-      items: { assertions: [], entities: [], relationships: [] },
-      omissions: [],
-      stalenessInputs: []
-    },
-    safeSummary: "One accepted graph payload.",
-    provenanceRefs: ["evt_assertion_accepted_001", "sha256:1111111111111111111111111111111111111111111111111111111111111111"],
-    sourceEventIds: ["evt_assertion_accepted_001"],
-    artifactHashes: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
-    scope: { kind: "task", id: "task_graph" }
+  const resolver = createInMemoryPayloadResolver();
+  const registry = createContextPackRegistry({ payloadResolver: resolver });
+  registry.register({
+    descriptor: investigativeContextPackDescriptors[0],
+    parsePayload: acceptedGraphProjectionPayloadParser.parsePayload,
+    build() {
+      return {
+        contextPackId: "accepted-graph-projection.v1",
+        version: 1,
+        generatedAt: "2026-07-10T12:00:00.000Z",
+        payload: {
+          schemaVersion: "accepted-graph-projection.context.v1",
+          contextPackId: "accepted-graph-projection.v1",
+          scope: { kind: "task", id: "task_graph" },
+          truthBoundary: {
+            authoritativeForAcceptedGraph: true,
+            readOnlyProjectionTruth: true,
+            canInferNewAcceptedEdges: true,
+            graphMutationRequiresReviewedOntologyEvent: true
+          },
+          selectionManifest: selectionManifest(),
+          projectionHighWaterMarks: { graph: 12 },
+          packVersions: { core: "0.1.0" },
+          items: { assertions: [], entities: [], relationships: [] },
+          omissions: [],
+          stalenessInputs: []
+        },
+        safeSummary: "One accepted graph payload.",
+        provenanceRefs: ["evt_assertion_accepted_001", "sha256:1111111111111111111111111111111111111111111111111111111111111111"],
+        sourceEventIds: ["evt_assertion_accepted_001"],
+        artifactHashes: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
+        scope: { kind: "task", id: "task_graph" }
+      };
+    }
   });
-  const resolver = createContextPackPayloadResolver([invalidResolved]);
+  const invalidResolved = await registry.buildResolved("accepted-graph-projection.v1");
+  resolver.add(invalidResolved);
+  const resolvedFromResolver = await resolver.resolve(invalidResolved.ref);
 
-  await expect(resolveAndParseContextPack(invalidResolved.ref, resolver, registry)).rejects.toThrow(/accepted-graph payload/);
+  expect(() => assertResolvedContextPacksForExecution({
+    refs: [invalidResolved.ref],
+    resolved: [resolvedFromResolver]
+  })).toThrow(/accepted-graph payload/);
 });
 ```
 
@@ -1706,7 +1773,7 @@ Run:
 npm test -- packages/agent/test/investigative-context-packs.test.ts -t "registers investigative|conflicting duplicate|specialist readiness|payload-only|payload hash|invalid shape"
 ```
 
-Expected: fail because registration and operational resolve-and-parse integration are incomplete.
+Expected: fail because registration and operational execution assertion integration are incomplete.
 
 - [ ] **Step 4: Implement registration helper**
 
@@ -1716,16 +1783,15 @@ Implement:
 const registeredRegistries = new WeakMap<object, string>();
 
 export function registerInvestigativeContextPacks(
-  registry: ResolvedContextPackRegistry,
-  deps: InvestigativeContextPackDependencies
+  registry: ContextPackRegistry,
+  input: RegisterInvestigativeContextPacksInput
 ): void {
-  const identityKey = [
-    deps.registrationIdentity.builderDescriptorHash,
-    deps.registrationIdentity.parserSchemaVersion,
-    deps.registrationIdentity.payloadParserHash,
-    deps.registrationIdentity.limitsVersion,
-    deps.registrationIdentity.limitsHash
-  ].join(":");
+  const { deps, scope, window, sizeBudgetBytes } = input;
+  const identityKey = hashAgentContextPack({
+    registrationIdentity: deps.registrationIdentity,
+    capturedBuildRequest: { scope, window: window ?? null, sizeBudgetBytes: sizeBudgetBytes ?? null },
+    registeredContextPackIds: investigativeContextPackDescriptors.map((descriptor) => `${descriptor.contextPackId}@${descriptor.version}`)
+  });
   const existing = registeredRegistries.get(registry);
   if (existing !== undefined) {
     if (existing !== identityKey) {
@@ -1741,20 +1807,20 @@ export function registerInvestigativeContextPacks(
     }
   }
 
-  registry.registerResolved({
+  registry.register({
     descriptor: investigativeContextPackDescriptors[0],
-    payloadParser: acceptedGraphProjectionPayloadParser,
-    buildResolved: (request: InvestigativeContextPackBuildRequest) => buildAcceptedGraphProjectionContextPack({ ...request, deps })
+    parsePayload: acceptedGraphProjectionPayloadParser.parsePayload,
+    build: () => buildAcceptedGraphProjectionContextPack({ deps, scope, window, sizeBudgetBytes })
   });
-  registry.registerResolved({
+  registry.register({
     descriptor: investigativeContextPackDescriptors[1],
-    payloadParser: evidenceSummaryPayloadParser,
-    buildResolved: (request: InvestigativeContextPackBuildRequest) => buildEvidenceSummaryContextPack({ ...request, deps })
+    parsePayload: evidenceSummaryPayloadParser.parsePayload,
+    build: () => buildEvidenceSummaryContextPack({ deps, scope, window, sizeBudgetBytes })
   });
-  registry.registerResolved({
+  registry.register({
     descriptor: investigativeContextPackDescriptors[2],
-    payloadParser: governanceLocksPayloadParser,
-    buildResolved: (request: InvestigativeContextPackBuildRequest) => buildGovernanceLocksContextPack({ ...request, deps })
+    parsePayload: governanceLocksPayloadParser.parsePayload,
+    build: () => buildGovernanceLocksContextPack({ deps, scope, window, sizeBudgetBytes })
   });
   registeredRegistries.set(registry, identityKey);
 }
@@ -1884,7 +1950,7 @@ Stop for coordinator merge direction after review.
 - Governance pack grants approval, clears a lock, releases quarantine, or mutates evidence/graph state.
 - Active locks, active restrictions, exact included provenance, source-byte/archive-child staleness inputs, high-water marks, or aggregate omission metadata cannot fit the mandatory envelope.
 - Manifest hash verification includes `manifestHash` in its own hash input.
-- Operational resolve-and-parse returns only `safeSummary`, omits the resolved payload, or skips payload hash/size verification.
+- Operational execution assertion returns only `safeSummary`, omits the resolved payload path, skips payload hash/size verification, or allows this lane to construct `VerifiedResolvedContextPack`.
 - A resolved payload has a matching ref hash but invalid pack-specific shape and still reaches any downstream consumer.
 - A targeted verifier fails after two focused repair attempts.
 - `npm run verify` fails after two focused repair attempts.
