@@ -75,7 +75,8 @@ The context-pack core owns these new generic surfaces:
 3. Shared internal builder-result normalization with separate ref and resolved paths. The ref path validates IDs, versions, provenance, size, and descriptor requirements. The resolved path requires a returned/raw payload envelope or uses a typed resolver; without either, it fails with a machine-readable missing-payload block.
 4. A typed payload resolver/store interface for restart-safe content-addressed resolution. Resolution is keyed by the full `ContextPackRef`, not only by a free hash string, and must reverify canonical bytes before returning an envelope.
 5. A registry-owned pack-specific payload parser capability keyed by exact `contextPackId` and `version`. Parser functions are registration-time capabilities, not descriptor DTO fields, and are not serialized in snapshots or logs.
-6. Serialization helpers for canonical context-pack payload bytes, reused by hashing, local persistence, and resolver verification.
+6. An authoritative registry method or opaque/branded verified result for production rendering. A plain serializable field such as `parserVerification: "ok"` is never trusted.
+7. Serialization helpers for canonical context-pack payload bytes, reused by hashing, local persistence, and resolver verification.
 
 The operational module owns four public surfaces:
 
@@ -150,6 +151,8 @@ Production execution uses `buildResolved()` or an exact resolver capability. Its
 
 If a builder returns only a ref and no resolver is configured, `buildResolved()` fails with `blocked.missing-payload`. If no exact parser is registered for the ref's context pack ID/version, resolution fails with `blocked.missing-payload-parser`. If a parser for another ID/version is supplied or the payload shape is invalid, resolution fails with `blocked.payload-schema-mismatch` or `blocked.invalid-payload-shape`. The exact error text may vary, but the machine-readable code must be present.
 
+The authority for "verified and parser-checked" is not a serializable envelope field. The registry should expose either a method that returns only after canonical hash/size verification and exact parser validation, or an opaque/branded result that cannot be forged through JSON. Serialized or reloaded envelopes lose any in-memory verified status and must pass through the resolver/registry validation path again before production prompt rendering or provider transfer.
+
 Restart-safe resolution may be implemented as local content-addressed persistence or as an injected capability:
 
 ```ts
@@ -183,6 +186,8 @@ Investigative and PRR lanes must register parsers for their own pack IDs and ver
 The registry validates pack-specific payload shape after canonical hash and byte-size verification. This order matters: first prove bytes match the ref, then prove those bytes are valid for the exact pack schema. A malicious or buggy resolver that returns a payload/ref pair with a matching hash but the wrong payload shape must still fail production resolution.
 
 Builder-level parser functions are not part of descriptor identity and are not compared as serialized DTOs. Duplicate registration conflict checks compare descriptor identity and the package-owned registration key, and production resolution additionally requires the exact parser capability for the final ID/version.
+
+An attacker-controlled payload that includes a field such as `parserVerification: "ok"`, `verified: true`, or any other serialized marker must not bypass parser validation. Those fields may be rejected by the pack-specific parser or ignored as ordinary payload data, but they are never authoritative.
 
 ## Source Model
 
@@ -504,6 +509,7 @@ Builder failures are fail-closed and safe:
 - Projection/source mismatch fails before hashing.
 - Payload resolution mismatch fails before prompt rendering or provider transfer.
 - Missing payload parser or invalid pack-specific payload shape fails before a resolved envelope can be used for production execution.
+- Forged serialized verification markers fail to bypass canonical resolver/parser checks.
 - A production execution path that only has refs and safe summaries fails closed instead of silently rendering a prompt without pack payload facts.
 
 No error includes raw provider errors, prompt text, credentials, raw output, raw source content, or hidden filesystem paths.
@@ -544,6 +550,7 @@ The implementation plan should require focused package-level tests that prove:
 - A legacy ref-only builder can still satisfy `build()`, fails `buildResolved()` without a resolver, and succeeds through `buildResolved()` only with an exact resolver and parser.
 - A content-addressed resolver rejects missing, mismatched, unsafe, or ref-only payloads and does not accept arbitrary hash-to-text callbacks.
 - An attacker-controlled payload/ref pair with matching hash but invalid pack-specific shape is rejected by the registered parser.
+- A forged serialized verification marker such as `parserVerification: "ok"` does not bypass canonical hash/size checks plus exact parser validation.
 - Production execution readiness rejects applicable refs without resolved payloads.
 - A safe sentinel fact that appears only in payload, not `safeSummary`, is observable through the resolved-envelope prompt/provider acceptance fixture.
 
