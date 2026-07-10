@@ -476,8 +476,7 @@ function finalOutputScopeKey(context: ProjectionContext, event: FinalOutputEvent
   return [
     event.payload.runId,
     runIdentity?.taskId ?? "",
-    runIdentity?.runType ?? "",
-    event.payload.stepId
+    runIdentity?.runType ?? ""
   ].join("\u0000");
 }
 
@@ -724,6 +723,8 @@ function sameSupersessionAnchor(prior: VerifiedHandoffRecord, next: VerifiedHand
     prior.handoff.status === next.handoff.status &&
     prior.manifest.finalOutputStepId === next.manifest.finalOutputStepId &&
     prior.manifest.finalOutputEventId === next.manifest.finalOutputEventId &&
+    prior.manifest.promptArtifactHash === next.manifest.promptArtifactHash &&
+    sameCanonicalValue(prior.manifest.contextPackRefs, next.manifest.contextPackRefs) &&
     sameStringArray(outputArtifactHashes(prior.manifest), outputArtifactHashes(next.manifest)) &&
     sameStringArray(prior.handoff.toolRequestIds, next.handoff.toolRequestIds) &&
     sameStringArray(prior.manifest.sourceEventIds, next.manifest.sourceEventIds) &&
@@ -756,6 +757,30 @@ function validateTerminalOrder(context: ProjectionContext, verified: readonly Ve
       continue;
     }
 
+    if (terminal.event.context.causationId !== selected.recorded.id) {
+      addDiagnostic(context, {
+        code: "terminal-causation-mismatch",
+        message: "Terminal run state must be caused by the verified recorded handoff.",
+        event: terminal.event,
+        handoffId: selected.handoff.handoffId,
+        relatedEventIds: [selected.recorded.id],
+        artifactHashes: terminal.event.type === "agent.specialist-run.completed" ? terminal.event.payload.outputArtifactHashes : []
+      });
+      continue;
+    }
+
+    if (!terminalMatchesHandoffStatus(terminal.event, selected.handoff.status)) {
+      addDiagnostic(context, {
+        code: "terminal-status-mismatch",
+        message: "Terminal run state must agree with the verified handoff status.",
+        event: terminal.event,
+        handoffId: selected.handoff.handoffId,
+        relatedEventIds: [selected.recorded.id],
+        artifactHashes: terminal.event.type === "agent.specialist-run.completed" ? terminal.event.payload.outputArtifactHashes : []
+      });
+      continue;
+    }
+
     if (terminal.event.type === "agent.specialist-run.completed" &&
       !sameStringArray(terminal.event.payload.outputArtifactHashes, outputArtifactHashes(selected.manifest))) {
       addDiagnostic(context, {
@@ -768,6 +793,12 @@ function validateTerminalOrder(context: ProjectionContext, verified: readonly Ve
       });
     }
   }
+}
+
+function terminalMatchesHandoffStatus(terminal: RunTerminalEvent, status: HandoffStatus): boolean {
+  return terminal.type === "agent.specialist-run.failed"
+    ? status === "failed"
+    : status !== "failed";
 }
 
 function isTaskCompleted(
@@ -823,6 +854,8 @@ function sameCompletionAnchor(prior: VerifiedHandoffRecord, next: VerifiedHandof
     prior.handoff.status === next.handoff.status &&
     prior.manifest.finalOutputStepId === next.manifest.finalOutputStepId &&
     prior.manifest.finalOutputEventId === next.manifest.finalOutputEventId &&
+    prior.manifest.promptArtifactHash === next.manifest.promptArtifactHash &&
+    sameCanonicalValue(prior.manifest.contextPackRefs, next.manifest.contextPackRefs) &&
     sameStringArray(outputArtifactHashes(prior.manifest), outputArtifactHashes(next.manifest)) &&
     sameStringArray(prior.handoff.toolRequestIds, next.handoff.toolRequestIds) &&
     sameStringArray(prior.manifest.sourceEventIds, next.manifest.sourceEventIds) &&
