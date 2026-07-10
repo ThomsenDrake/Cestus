@@ -49,3 +49,4 @@ envelope is implemented, followed by `npm run verify`.
 - Full tests: Vitest JSON report recorded 360 passed test files, 1,725 passed tests, 3 skipped, and no failures.
 - Build/readiness: `npm run ui:build` and `npm run factory:check` passed. `npm run verify` was also invoked; its terminal stream reached typecheck and the full test runner, with its component gates independently recorded above.
 - Supporting verifier edit: `packages/agent/test/cockpit.test.ts` adds the required durable DTO fields to its typed fixture.
+- Implementation commit: `875f4b3 feat: add durable specialist handoff manifest envelope`.
