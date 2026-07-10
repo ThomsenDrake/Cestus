@@ -1619,7 +1619,7 @@ factory-readiness passed
 ```
 ```
 
-- [x] **Step 4: Mark all plan tasks complete**
+- [ ] **Step 4: Mark all plan tasks complete**
 
 In this plan file, mark Tasks 1 through 4 checklist items complete only after the corresponding commits and reviews exist. Preserve the command evidence in the task claims.
 
