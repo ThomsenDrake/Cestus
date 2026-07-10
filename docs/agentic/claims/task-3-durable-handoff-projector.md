@@ -18,7 +18,6 @@ Scope:
 - packages/agent/src/index.ts
 - packages/agent/test/projection.test.ts
 - packages/agent/test/cockpit.test.ts
-- .superpowers/sdd/task-3-report.md
 
 RED:
 - Command: npm test -- packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/projection.test.ts packages/agent/test/cockpit.test.ts
@@ -41,3 +40,7 @@ Evidence:
 - Typecheck: `npm run typecheck` passed.
 - Full verification: first `npm run verify` attempt cleared typecheck but Vitest exited with SIGTERM 143 after SQLite experimental warnings and no test failure output. Immediate rerun of `npm run verify` passed: typecheck; 172 passed test files, 3 skipped; 1,742 passed tests, 3 skipped; Vite production build; factory-readiness passed.
 - Implementation commit: this `feat: project durable specialist handoffs from ledger state` commit.
+- Review-fix RED: added coverage for unscoped multi-run replay, strict task-completed causation, prepared/recorded causation, and revision-without-supersession rejection. `npm test -- packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/projection.test.ts packages/agent/test/cockpit.test.ts` failed as expected with 3 failing projector assertions: cross-run final-output conflict, failed terminal accepted as task-completed, and wrong prepared causation accepted.
+- Review-fix GREEN: the same targeted command passed with 3 test files and 35 tests after grouping final outputs per run/task/type/final-output scope and enforcing ledger causation for prepared, recorded, completed-run, and completed-task events.
+- Review-fix verification: first `npm run verify` caught a TypeScript-only optional `taskId` fixture issue in the new multi-run test. After tightening that fixture, the targeted command passed again with 3 files and 35 tests, and `npm run verify` passed: typecheck; 172 passed test files, 3 skipped; 1,745 passed tests, 3 skipped; Vite production build; factory-readiness passed.
+- Review-fix cleanup: removed tracked `.superpowers/sdd/task-3-report.md`; durable evidence now lives in this claim file.

@@ -111,6 +111,53 @@ describe("specialist handoff projection", () => {
     expect(taskScopedProjection.handoffs).toEqual([]);
   });
 
+  it("accepts an unscoped multi-run ledger without cross-run final-output conflicts", async () => {
+    const first = handoffFixture({
+      runId: "run_handoff_multi_001",
+      taskId: "task_handoff_multi_001",
+      finalOutputEventId: "evt_final_output_multi_001"
+    });
+    const second = handoffFixture({
+      runId: "run_handoff_multi_002",
+      taskId: "task_handoff_multi_002",
+      finalOutputEventId: "evt_final_output_multi_002"
+    });
+    const firstCorrection = handoffFixture({
+      runId: first.runId,
+      taskId: first.taskId!,
+      finalOutputEventId: first.finalOutputEventId,
+      handoffRevision: 2,
+      supersedesHandoffId: first.manifest.handoffId,
+      supersedesEventId: first.recordedEventId,
+      safeSummary: "Corrected safe presentation for the first multi-run handoff."
+    });
+    const manifests = new ManifestMap()
+      .put(first.manifestHash, canonicalSpecialistHandoffJson(first.manifest))
+      .put(firstCorrection.manifestHash, canonicalSpecialistHandoffJson(firstCorrection.manifest))
+      .put(second.manifestHash, canonicalSpecialistHandoffJson(second.manifest));
+
+    const projection = await project([
+      ...validRecordedEvents(first),
+      preparedEvent(firstCorrection),
+      recordedEvent(firstCorrection),
+      ...validRecordedEvents(second)
+    ], manifests);
+
+    expect(projection.state).toBe("handoff-recorded");
+    expect(projection.diagnostics).toEqual([]);
+    expect(projection.handoffs.map((handoff) => handoff.handoffId)).toEqual([
+      first.manifest.handoffId,
+      firstCorrection.manifest.handoffId,
+      second.manifest.handoffId
+    ]);
+    expect(projection.selectedHandoff?.handoffId).toBe(second.manifest.handoffId);
+    expect(projection.history).toContainEqual(expect.objectContaining({
+      state: "handoff-recorded",
+      handoffId: first.manifest.handoffId,
+      supersededByHandoffId: firstCorrection.manifest.handoffId
+    }));
+  });
+
   it("projects task-completed only after an actual completed task event follows the verified handoff", async () => {
     const fixture = handoffFixture();
     const manifests = new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest));
@@ -129,6 +176,52 @@ describe("specialist handoff projection", () => {
 
     expect(afterTask.state).toBe("task-completed");
     expect(afterTask.selectedHandoff).toEqual(fixture.manifest.handoff);
+  });
+
+  it("requires completed task causation through recorded handoff and completed run", async () => {
+    const cases: Array<readonly [string, readonly KnowledgeEvent[]]> = [
+      ["failed terminal", [
+        ...validRecordedEvents(handoffFixture()),
+        failedRunEvent(handoffFixture(), { causationId: handoffFixture().recordedEventId }),
+        taskStatusEvent(handoffFixture(), "completed", { causationId: "evt_run_failed" })
+      ]],
+      ["missing completed-run causation", [
+        ...validRecordedEvents(handoffFixture()),
+        completedRunEvent(handoffFixture()),
+        taskStatusEvent(handoffFixture(), "completed", { causationId: "evt_run_completed" })
+      ]],
+      ["unrelated completed-run causation", [
+        ...validRecordedEvents(handoffFixture()),
+        completedRunEvent(handoffFixture(), { causationId: "evt_unrelated_handoff" }),
+        taskStatusEvent(handoffFixture(), "completed", { causationId: "evt_run_completed" })
+      ]],
+      ["task completion before terminal", [
+        ...validRecordedEvents(handoffFixture()),
+        taskStatusEvent(handoffFixture(), "completed", { causationId: "evt_run_completed" }),
+        completedRunEvent(handoffFixture(), { causationId: handoffFixture().recordedEventId })
+      ]],
+      ["missing task causation", [
+        ...validRecordedEvents(handoffFixture()),
+        completedRunEvent(handoffFixture(), { causationId: handoffFixture().recordedEventId }),
+        taskStatusEvent(handoffFixture(), "completed")
+      ]],
+      ["unrelated task causation", [
+        ...validRecordedEvents(handoffFixture()),
+        completedRunEvent(handoffFixture(), { causationId: handoffFixture().recordedEventId }),
+        taskStatusEvent(handoffFixture(), "completed", { causationId: "evt_unrelated_terminal" })
+      ]]
+    ];
+
+    for (const [label, events] of cases) {
+      const fixture = handoffFixture();
+      const projection = await project(
+        events,
+        new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest))
+      );
+
+      expect(projection.state, label).toBe("handoff-recorded");
+      expect(projection.selectedHandoff?.handoffId, label).toBe(fixture.manifest.handoffId);
+    }
   });
 
   it("does not synthesize a handoff from completed-run output hashes", async () => {
@@ -315,6 +408,58 @@ describe("specialist handoff projection", () => {
     expect(projection.state).toBe("handoff-recorded");
     expect(projection.selectedHandoff).toEqual(correction.manifest.handoff);
     expect(projection.diagnostics).toEqual([]);
+  });
+
+  it("rejects handoff causation and revision supersession violations", async () => {
+    const first = handoffFixture();
+    const correction = handoffFixture({
+      handoffRevision: 2,
+      supersedesHandoffId: first.manifest.handoffId,
+      supersedesEventId: first.recordedEventId,
+      safeSummary: "Corrected safe handoff presentation."
+    });
+    const revisionWithoutSupersession = handoffFixture({
+      handoffRevision: 2,
+      preparedEventId: "evt_handoff_prepared_revision_without_supersession",
+      recordedEventId: "evt_handoff_recorded_revision_without_supersession"
+    });
+
+    const cases: Array<readonly [string, readonly KnowledgeEvent[], readonly HandoffFixture[], string]> = [
+      ["wrong first prepared causation", [
+        startedEvent(first),
+        finalOutputStepEvent(first),
+        preparedEvent(first, "evt_unrelated_final_output"),
+        recordedEvent(first)
+      ], [first], "handoff-causation-mismatch"],
+      ["wrong supersession prepared causation", [
+        ...validRecordedEvents(first),
+        preparedEvent(correction, "evt_unrelated_recorded"),
+        recordedEvent(correction)
+      ], [first, correction], "handoff-causation-mismatch"],
+      ["wrong recorded causation", [
+        startedEvent(first),
+        finalOutputStepEvent(first),
+        preparedEvent(first),
+        recordedEvent(first, "evt_unrelated_prepared")
+      ], [first], "handoff-causation-mismatch"],
+      ["higher revision without supersedesHandoffId", [
+        startedEvent(revisionWithoutSupersession),
+        finalOutputStepEvent(revisionWithoutSupersession),
+        preparedEvent(revisionWithoutSupersession),
+        recordedEvent(revisionWithoutSupersession)
+      ], [revisionWithoutSupersession], "supersession-violation"]
+    ];
+
+    for (const [label, events, fixtures, code] of cases) {
+      const manifests = new ManifestMap();
+      for (const fixture of fixtures) {
+        manifests.put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest));
+      }
+
+      const projection = await project(events, manifests);
+      expect(projection.state, label).toBe("inconsistent");
+      expect(projection.diagnostics, label).toContainEqual(expect.objectContaining({ code }));
+    }
   });
 
   it("rejects supersession cycles, cross-run supersession, missing prior handoff, and changed output refs", async () => {
@@ -687,15 +832,21 @@ function specialistStepEvent(
   });
 }
 
-function preparedEvent(fixture: HandoffFixture): KnowledgeEventOf<"agent.specialist-handoff.prepared"> {
+function preparedEvent(
+  fixture: HandoffFixture,
+  causationId = fixture.manifest.supersedesEventId ?? fixture.finalOutputEventId
+): KnowledgeEventOf<"agent.specialist-handoff.prepared"> {
   return agentEvent("agent.specialist-handoff.prepared", fixture.preparedEventId, fixture.preparedPayload, {
-    causationId: fixture.manifest.supersedesEventId ?? fixture.finalOutputEventId
+    causationId
   });
 }
 
-function recordedEvent(fixture: HandoffFixture): KnowledgeEventOf<"agent.specialist-handoff.recorded"> {
+function recordedEvent(
+  fixture: HandoffFixture,
+  causationId = fixture.preparedEventId
+): KnowledgeEventOf<"agent.specialist-handoff.recorded"> {
   return agentEvent("agent.specialist-handoff.recorded", fixture.recordedEventId, fixture.recordedPayload, {
-    causationId: fixture.preparedEventId
+    causationId
   });
 }
 
