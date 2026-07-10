@@ -502,6 +502,17 @@ function deriveNeedsNext(input: {
   readonly specialistHandoffs: readonly SpecialistWorkflowHandoffDto[];
 }): AgentCockpitNeedDto[] {
   const needs: AgentCockpitNeedDto[] = [];
+  if (
+    input.status.identityLifecycle.state === "blocked" ||
+    input.status.identityLifecycle.state === "not-mounted"
+  ) {
+    needs.push({
+      kind: "lock",
+      severity: "action-required",
+      label: input.status.identityLifecycle.safeMessage,
+      safeAction: "refresh-status"
+    });
+  }
   const approvalNeed = approvalNeedFromCockpit(input.approvalCockpit);
   if (approvalNeed !== undefined) {
     needs.push(approvalNeed);
@@ -543,7 +554,7 @@ function deriveNeedsNext(input: {
       severity: "info",
       label: `Queued for scheduler readiness: ${task.title}`,
       relatedTaskId: task.taskId,
-      safeAction: "inspect-queue"
+      safeAction: "queued-task"
     });
   }
 

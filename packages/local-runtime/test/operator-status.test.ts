@@ -13,6 +13,31 @@ import { buildOperatorStatusDto } from "../src/operator-status.js";
 describe("operator status aggregation", () => {
   const now = () => "2026-07-06T21:00:00.000Z";
 
+  it("marks the agent section blocked when resident identity lifecycle is blocked", async () => {
+    const status = await buildOperatorStatusDto({
+      now,
+      runtime: { available: true, safeMessage: "runtime ready" },
+      agent: async () => ({
+        ...agentStatus(),
+        identityLifecycle: {
+          schemaVersion: "resident-identity-lifecycle.v1",
+          state: "blocked",
+          residentAgentId: "agent_default",
+          workspaceId: "ws_blocked_identity",
+          initialized: false,
+          eventIds: [],
+          safeMessage: "Resident identity belongs to a different workspace.",
+          allowedRepairActions: ["inspect resident identity events before retrying"]
+        }
+      })
+    });
+
+    expect(status.sections.find((section) => section.sectionId === "agent")).toMatchObject({
+      state: "blocked",
+      headline: "Resident identity requires attention"
+    });
+  });
+
   it("reports mounted workspace, ingestion action gate, legacy samples, and PRR readiness", async () => {
     const status = await buildOperatorStatusDto({
       now,

@@ -21,6 +21,31 @@ const hashD = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
 const hashE = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 describe("agent cockpit dto", () => {
+  it("surfaces resident identity lifecycle as the first cockpit need when blocked", () => {
+    const cockpit = buildAgentCockpit({
+      status: {
+        ...statusFixture(),
+        identityLifecycle: {
+          schemaVersion: "resident-identity-lifecycle.v1",
+          state: "blocked",
+          residentAgentId: "agent_default",
+          workspaceId: "ws_blocked_identity",
+          initialized: false,
+          eventIds: [],
+          safeMessage: "Resident identity belongs to a different workspace.",
+          allowedRepairActions: ["inspect resident identity events before retrying"]
+        }
+      }
+    });
+
+    expect(cockpit.needsNext[0]).toMatchObject({
+      kind: "lock",
+      severity: "action-required",
+      label: "Resident identity belongs to a different workspace.",
+      safeAction: "refresh-status"
+    });
+  });
+
   it("summarizes task queue, active run, approvals, and what the agent needs next", () => {
     const cockpit = buildAgentCockpit({
       status: statusFixture(),
@@ -63,7 +88,7 @@ describe("agent cockpit dto", () => {
     });
     expect(cockpit.needsNext).toContainEqual(expect.objectContaining({
       kind: "queued-task",
-      safeAction: "inspect-queue",
+      safeAction: "queued-task",
       relatedTaskId: "task_unstarted"
     }));
     expect(cockpit.specialists.registry.schemaVersion).toBe("agent-specialist-workflow-registry.v1");

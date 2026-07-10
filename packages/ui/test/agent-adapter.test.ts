@@ -8,6 +8,25 @@ import {
 import type { AgentStatusDto } from "../src/agent/agent-types.js";
 
 describe("agent UI adapter", () => {
+  it("parses resident identity lifecycle without leaking blocked diagnostic text", () => {
+    const parsed = agentStatusFromJson({
+      ...agentStatus(),
+      identityLifecycle: {
+        schemaVersion: "resident-identity-lifecycle.v1",
+        state: "blocked",
+        residentAgentId: "agent_default",
+        workspaceId: "ws_blocked_identity",
+        initialized: false,
+        eventIds: ["evt_agent_identity"],
+        safeMessage: "Resident identity stream could not be read safely.",
+        allowedRepairActions: ["inspect resident identity events before retrying"]
+      }
+    });
+
+    expect(parsed.identityLifecycle.state).toBe("blocked");
+    expect(JSON.stringify(parsed)).not.toMatch(/authorization:\s*bearer|sk_live|password|private key/i);
+  });
+
   it("parses agent-status.v1 and freezes browser DTOs", async () => {
     const status = agentStatusFromJson(agentStatus({
       diagnostics: [
