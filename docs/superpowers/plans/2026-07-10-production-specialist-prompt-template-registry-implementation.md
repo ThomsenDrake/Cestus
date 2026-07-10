@@ -11,15 +11,16 @@
 ## Global Constraints
 
 - Approved spec: `docs/superpowers/specs/2026-07-10-production-specialist-prompt-template-registry-design.md`.
-- Start implementation only after the operational resolved-context-pack lane has landed its shared `ResolvedContextPack { ref, payload }` and content-addressed resolver contract.
+- Start implementation only after the operational resolved-context-pack lane has landed its authoritative `VerifiedResolvedContextPack` or exact resolve-and-parse contract.
 - Resolved payloads consumed by prompt preparation must already be pack-parser verified by the registered context-pack system after hash and size verification.
 - Do not create a generic context-pack payload resolver in this lane. Consume the landed operational exports; if they are absent or incompatible, stop before editing production code.
 - Do not create a competing context-pack parser registry in this lane.
+- Prompt code must not manufacture or trust caller-supplied verification metadata. It may record audit rows derived from authoritative verified envelopes.
 - Prompt artifacts are the sole provider text boundary.
 - Production renderers consume ordered, hash-verified resolved context payload envelopes and render canonical bounded provider-safe content, not only refs, hashes, or `safeSummary`.
 - Ledger events, audit DTOs, cockpit DTOs, diagnostics, claims, readiness notes, and logs store refs, hashes, counts, statuses, and safe summaries only; they never store resolved payloads, production prompt text, or provider response text.
 - Model output is untrusted structured input and cannot accept ontology truth, send PRRs, escalate legally, export, clear locks, transfer new provider bytes, or execute repairs.
-- Deterministic tests are credential-free. Real Nous checks are separately gated by `CESTUS_AGENT_LIVE_NOUS=1` and must be safe to record.
+- Deterministic tests are credential-free. Real Nous checks are separately gated by `CESTUS_AGENT_LIVE_NOUS=1`, must be safe to record, and are required for completion of this implementation.
 - The workflow descriptor applicability change, fallback removal, resolved payload readiness enforcement, and production prompt readiness enforcement must land in one implementation commit.
 - Each implementation task requires a claim file in `docs/agentic/claims/`, RED test evidence, targeted GREEN evidence, `npm run verify`, a task commit, then review.
 
@@ -51,26 +52,20 @@
 
 ## Shared Interfaces Expected From The Operational Lane
 
-Workers must consume these from the landed operational resolved-context contract. If the names differ, stop and ask the coordinator to map the final operational API before editing this lane.
+Workers must consume these from the landed operational resolved-context contract. Replace the exact type and method names below with the final operational API once that lane commits its correction. If the final operational API is absent or incompatible, stop and ask the coordinator to map it before editing this lane.
 
 ```ts
-export interface ResolvedContextPack {
+export interface VerifiedResolvedContextPack {
   readonly ref: ContextPackRef;
   readonly payload: AgentContextPackJsonValue;
-  readonly parserVerification: {
-    readonly contextPackId: string;
-    readonly version: number;
-    readonly schemaId: string;
-    readonly verification: "hash-size-parser-ok";
-  };
 }
 
 export interface ContextPackPayloadResolver {
-  resolve(ref: ContextPackRef): Promise<ResolvedContextPack>;
+  resolveVerified(ref: ContextPackRef): Promise<VerifiedResolvedContextPack>;
 }
 ```
 
-The operational resolver owns local loading, content addressing, stable JSON hashing, byte-size verification, and exact pack-specific parser validation keyed by `contextPackId` and version. This lane may perform production-template-specific checks against the parser-verified resolved envelope, but it must not create alternate file, network, hash-to-text, provider-side, or parser-registry resolvers.
+The operational resolver owns local loading, content addressing, stable JSON hashing, byte-size verification, and exact pack-specific parser validation keyed by `contextPackId` and version. The operational result must be authoritative, such as an opaque or branded verified envelope returned by the registered context-pack resolver. Prompt code must not manufacture or trust a plain verification metadata field. This lane may perform production-template-specific checks against the verified resolved envelope, but it must not create alternate file, network, hash-to-text, provider-side, or parser-registry resolvers.
 
 ## Task 0: Dependency Gate And Claim Discipline
 
@@ -78,7 +73,7 @@ The operational resolver owns local loading, content addressing, stable JSON has
 - Create during execution: `docs/agentic/claims/task-0-production-specialist-dependency-gate.md`
 
 **Interfaces:**
-- Consumes: operational `ResolvedContextPack` and `ContextPackPayloadResolver` exports from `packages/agent/src/context-packs.ts`.
+- Consumes: operational `VerifiedResolvedContextPack` and exact resolve-and-parse resolver exports from `packages/agent/src/context-packs.ts`.
 - Produces: committed claim and confirmation that implementation can begin after the operational lane.
 
 - [ ] **Step 1: Create the task claim**
@@ -115,10 +110,10 @@ git commit -m "chore: claim production specialist dependency gate"
 Run:
 
 ```bash
-rg -n "ResolvedContextPack|ContextPackPayloadResolver|parserVerification|hash-size-parser-ok|resolve\\(ref: ContextPackRef\\)" packages/agent/src/context-packs.ts packages/agent/src/index.ts
+rg -n "VerifiedResolvedContextPack|ContextPackPayloadResolver|resolveVerified|resolveAndParse|verified resolved" packages/agent/src/context-packs.ts packages/agent/src/index.ts
 ```
 
-Expected: matches for the operational exported resolved pack type, resolver interface, parser verification metadata, and index export. If this command has no matches, stop before editing this lane.
+Expected: matches for the operational exported verified envelope type, exact resolve-and-parse API, and index export. If this command has no matches, stop before editing this lane.
 
 - [ ] **Step 3: Verify the operational context-pack suite still passes**
 
@@ -151,7 +146,7 @@ Review gate: spec review confirms this lane is sequenced after the operational r
 - Create during execution: `docs/agentic/claims/task-1-production-specialist-registrations.md`
 
 **Interfaces:**
-- Consumes: `AgentSpecialistRunType`, `ContextPackRef`, `AgentContextPackJsonValue`, `ResolvedContextPack`.
+- Consumes: `AgentSpecialistRunType`, `ContextPackRef`, `AgentContextPackJsonValue`, operational `VerifiedResolvedContextPack`.
 - Produces:
   - `productionSpecialistPromptRegistrations: readonly ProductionSpecialistPromptRegistration[]`
   - `productionSpecialistPromptRegistrationFor(runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">): ProductionSpecialistPromptRegistration`
@@ -366,7 +361,7 @@ Review gate: spec review checks exact six registrations, context requirements, s
 - Create during execution: `docs/agentic/claims/task-2-production-prompt-artifact-binding.md`
 
 **Interfaces:**
-- Consumes: `ResolvedContextPack`, production registration metadata from Task 1.
+- Consumes: operational `VerifiedResolvedContextPack`, production registration metadata from Task 1.
 - Produces:
   - `PromptArtifactProductionBinding`
   - `PromptArtifactResolvedPayloadAudit`
@@ -388,6 +383,7 @@ Extend `packages/agent/test/prompt-artifacts.test.ts` with assertions that:
 
 ```ts
 it("binds production renderer metadata and resolved payload audits without exposing payloads in audit metadata", () => {
+  const verifiedResolvedEvidenceSummary = operationalVerifiedContextFixture.resolveVerified(contextPackRef);
   const envelope = buildPromptArtifact({
     promptTemplateId: "evidence-triage.classify.v1",
     promptTemplateVersion: 1,
@@ -418,14 +414,10 @@ it("binds production renderer metadata and resolved payload audits without expos
         contextPackId: "evidence-summary.v1",
         contentHash: contextPackRef.contentHash,
         sizeBytes: contextPackRef.sizeBytes,
-        schemaId: "evidence-summary.v1",
-        verification: "hash-size-parser-ok"
+        schemaId: "evidence-summary.v1"
       }]
     },
-    resolvedContextPacks: [{
-      ref: contextPackRef,
-      payload: { sentinel: "payload-only-fact" }
-    }]
+    resolvedContextPacks: [verifiedResolvedEvidenceSummary]
   });
 
   const audit = promptArtifactAuditMetadata(envelope);
@@ -436,6 +428,7 @@ it("binds production renderer metadata and resolved payload audits without expos
 ```
 
 Add tamper tests that mutate `text`, `production.renderedPromptHash`, and `production.scopeApplicabilityHash` in a serialized envelope and assert `parsePromptArtifactEnvelope()` rejects the tampered bytes.
+The `operationalVerifiedContextFixture` must be the final operational resolver test fixture from Task 0 or a direct call to the final operational resolve-and-parse API; do not create it with a plain object literal in this lane.
 
 - [ ] **Step 3: Run RED**
 
@@ -457,7 +450,6 @@ export interface PromptArtifactResolvedPayloadAudit {
   readonly contentHash: string;
   readonly sizeBytes: number;
   readonly schemaId: string;
-  readonly verification: "hash-size-parser-ok";
 }
 
 export interface PromptArtifactEvaluatedContextRequirement {
@@ -483,7 +475,7 @@ export interface PromptArtifactProductionBinding {
 }
 ```
 
-Add optional `production?: PromptArtifactProductionBinding` to `PromptArtifactManifest`, `PromptArtifactAuditMetadata`, and `BuildPromptArtifactInput`. Add optional local-only `resolvedContextPacks?: readonly ResolvedContextPack[]` to `PromptArtifactEnvelope` and `BuildPromptArtifactInput`; keep it out of `PromptArtifactAuditMetadata`.
+Add optional `production?: PromptArtifactProductionBinding` to `PromptArtifactManifest`, `PromptArtifactAuditMetadata`, and `BuildPromptArtifactInput`. Add optional local-only `resolvedContextPacks?: readonly VerifiedResolvedContextPack[]` to `PromptArtifactEnvelope` and `BuildPromptArtifactInput`; keep it out of `PromptArtifactAuditMetadata`.
 
 Hashing and parsing rules:
 
@@ -491,7 +483,8 @@ Hashing and parsing rules:
 - `renderedPromptHash` covers prompt text bytes only.
 - `resolvedContextPacks` may be serialized in local envelopes but never appears in audit metadata.
 - `assertPromptArtifactCanTransferToRemoteProvider()` requires `provider-approved`, `provider-byte-transfer`, and a complete `production` binding when `runType` is one of the six MVP specialist modes.
-- Production prompt artifact construction accepts only resolved context envelopes that carry the operational parser verification marker for the matching `contextPackId` and version.
+- Production prompt artifact construction accepts only authoritative verified resolved context envelopes returned by the operational registered context-pack resolver. It must not accept caller-supplied plain objects that merely contain matching metadata.
+- `resolvedPayloadAudits` are derived from the authoritative verified envelopes after construction; they are not a verification proof and must not be accepted as a substitute for the operational verified envelope.
 
 - [ ] **Step 5: Run GREEN and full verification**
 
@@ -578,7 +571,8 @@ Add RED tests for:
 
 - `no-associated-prr` omission for non-PRR evidence triage, planner, and report builder.
 - PRR-linked evidence triage, planner, and report builder requiring `prr-read-model.v1`.
-- matching-hash and matching-size resolved payload envelopes rejected when the operational parser verification is absent, references the wrong `contextPackId` or version, or marks the pack-specific shape invalid.
+- matching-hash and matching-size payloads with invalid pack-specific shape rejected by the operational resolver or registry call before the renderer receives an envelope.
+- forged plain objects that imitate the verified envelope shape rejected before render.
 - supplied artifact rejected on renderer hash, rendered prompt hash, payload audit, scope hash, output schema, handoff schema, safety class, transfer class, and omission mismatch.
 - renderer with only refs/hashes/summaries rejected by `verifyProductionSpecialistPromptArtifact()`.
 
@@ -616,7 +610,7 @@ export interface RenderProductionSpecialistPromptInput {
   readonly taskId: string;
   readonly generatedAt: string;
   readonly scope: ProductionRunScope;
-  readonly resolvedContextPacks: readonly ResolvedContextPack[];
+  readonly resolvedContextPacks: readonly VerifiedResolvedContextPack[];
   readonly omissions?: readonly PromptArtifactOmission[];
 }
 ```
@@ -626,7 +620,7 @@ Rendering rules:
 - Resolve registration by `runType`.
 - Evaluate applicability before rendering.
 - Require one resolved payload envelope for every applicable context requirement in registered order.
-- Verify every resolved envelope's `ref.contentHash`, `ref.sizeBytes`, `ref.contextPackId`, `ref.version`, and operational parser verification against the expected requirement and payload.
+- Accept only verified envelopes returned by the operational registered resolver, then verify each envelope's `ref.contentHash`, `ref.sizeBytes`, `ref.contextPackId`, and `ref.version` against the expected requirement and payload.
 - Render deterministic prompt text from package-owned template material and canonical payload field renderers.
 - Include provider-output JSON schema instructions and authority restrictions in every template.
 - Build `PromptArtifactEnvelope` with production binding and resolved payload local envelope retention.
@@ -723,7 +717,8 @@ Update `packages/agent/test/specialist-runner-kernel.test.ts` with:
 - `prepareSpecialistRun()` rejects missing production registration before provider invocation.
 - `prepareSpecialistRun()` rejects missing payload resolver before provider invocation.
 - `prepareSpecialistRun()` rejects payload hash mismatch before provider invocation.
-- `prepareSpecialistRun()` rejects a matching-hash payload whose operational parser verification says the pack-specific payload shape is invalid.
+- `prepareSpecialistRun()` rejects a matching-hash payload whose pack-specific shape is invalid because the operational resolver fails before returning a verified envelope.
+- `prepareSpecialistRun()` rejects forged plain resolved-payload objects before provider invocation.
 - non-PRR evidence triage render records `no-associated-prr`.
 - a fake runtime spy is not called when preparation fails.
 - a supplied test prompt artifact with matching hashes but no production binding is rejected.
@@ -757,17 +752,17 @@ Modify `packages/agent/src/specialist-readiness.ts`:
 
 - Add `scope: ProductionRunScope`.
 - Add production registrations from Task 1.
-- Add `resolvedContextPacks: readonly ResolvedContextPack[]` or resolved payload verification inputs from the operational contract.
+- Add `resolvedContextPacks: readonly VerifiedResolvedContextPack[]` or resolved payload verification inputs from the operational contract.
 - Evaluate applicability with Task 3 helpers.
 - Report bounded omissions without payloads.
-- Reject missing production registration, test-only registration, missing resolved payload audit, stale ref, stale payload, pack-specific parser failure, active locks, missing approvals, and provider posture gaps.
+- Reject missing production registration, test-only registration, missing resolved payload audit, stale ref, stale payload, operational resolver pack-specific parser failure, forged verified-envelope objects, active locks, missing approvals, and provider posture gaps.
 
 Modify `packages/agent/src/specialist-runner-kernel.ts`:
 
 - Add `productionPromptRegistry` or imported package-owned registry from Task 1.
 - Add `contextPayloadResolver: ContextPackPayloadResolver` to `SpecialistRunnerBaseInput`.
 - Build context refs, evaluate applicability, resolve every applicable ref through the resolver, render or verify a production prompt artifact, then return prepared data.
-- Treat operational parser verification failures as preparation failures before model invocation, even when the payload hash and size match the ref.
+- Treat operational resolver parser failures as preparation failures before model invocation, even when the payload hash and size match the ref.
 - Remove the generated workspace-safe fallback from provider execution. Delete or isolate `promptText()` so no provider path can call it.
 - Require production prompt artifact binding before `invokeSpecialistModel()`.
 
@@ -987,7 +982,7 @@ git add docs/agentic/claims/task-7-production-specialist-nous-acceptance.md
 git commit -m "chore: claim production specialist nous acceptance"
 ```
 
-- [ ] **Step 2: Write RED live-test changes without credentials**
+- [ ] **Step 2: Write RED live-test changes**
 
 Modify `packages/agent/test/evidence-triage-nous-live.test.ts` so the live test:
 
@@ -1010,9 +1005,9 @@ npm test -- packages/agent/test/evidence-triage-nous-live.test.ts packages/agent
 
 Expected: PASS with live suites skipped unless `CESTUS_AGENT_LIVE_NOUS=1` is set.
 
-- [ ] **Step 4: Run gated live Nous acceptance when credentials are available**
+- [ ] **Step 4: Run gated live Nous acceptance**
 
-Run only in a credentialed environment:
+Run in the repository's shared live-provider environment:
 
 ```bash
 CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/evidence-triage-nous-live.test.ts
@@ -1020,7 +1015,7 @@ CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/prr-negotiation-nous-li
 
 Expected: PASS. Visible output may include provider ID, model ID, hashes, event IDs, counts, categories, and fixed markers only.
 
-If credentials are unavailable, record `not-run: missing CESTUS_AGENT_NOUS_API_KEY` in the claim and continue only after deterministic verification passes. Do not fake a live pass.
+Missing Nous credentials, provider unavailability, or live-provider setup failure is a stop condition. Escalate to the coordinator; do not mark this task complete, do not substitute deterministic fakes, and do not record a live acceptance pass.
 
 - [ ] **Step 5: Run full verification**
 
@@ -1070,7 +1065,7 @@ Run:
 npm test -- packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/prompt-artifacts.test.ts packages/agent/test/specialist-workflows.test.ts packages/agent/test/specialist-readiness.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts
 ```
 
-Expected: PASS with live suites skipped unless the live flag is set.
+Expected: PASS with live suites skipped unless the live flag is set. This deterministic command does not satisfy the required live Nous completion gate.
 
 - [ ] **Step 3: Run repository verification**
 
@@ -1101,7 +1096,7 @@ Expected:
 Update the final claim with:
 
 - focused deterministic suite result,
-- live Nous result or explicit credential-unavailable note,
+- live Nous result,
 - `npm run verify` result,
 - fallback scan result,
 - leakage scan result,
@@ -1135,7 +1130,7 @@ Do not merge until all blocking review findings are resolved with new commits an
 - Stop before implementation if the operational resolved-context contract is absent or incompatible.
 - Stop on prompt leakage, resolved payload leakage into audit surfaces, provider credential exposure, output-schema ambiguity, unsafe external-effect semantics, schema conflict, or repeated verifier failure.
 - If Task 4 cannot keep descriptor applicability, fallback removal, and readiness enforcement atomic, stop and ask the coordinator to split the migration behind a provider-invocation kill switch.
-- If live Nous credentials are unavailable, keep deterministic results committed and record the gated acceptance as not run because credentials are unavailable.
+- If live Nous credentials or provider availability fail, stop and escalate. Deterministic fakes cannot substitute for the required live Nous sentinel gate.
 
 ## Execution Handoff
 
