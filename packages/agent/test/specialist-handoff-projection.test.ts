@@ -387,6 +387,33 @@ describe("specialist handoff projection", () => {
     }));
   });
 
+  it("fails closed when prepared events reuse a handoffId with different compact bindings", async () => {
+    const first = handoffFixture();
+    const conflictingPrepared = handoffFixture({
+      handoffId: first.manifest.handoffId,
+      handoffRevision: 1,
+      safeSummary: "Conflicting prepared summary under the same durable handoff ID.",
+      preparedEventId: "evt_handoff_prepared_conflicting_same_handoff_id",
+      recordedEventId: "evt_handoff_recorded_conflicting_same_handoff_id"
+    });
+
+    const projection = await project([
+      startedEvent(first),
+      finalOutputStepEvent(first),
+      preparedEvent(first),
+      preparedEvent(conflictingPrepared)
+    ], new ManifestMap()
+      .put(first.manifestHash, canonicalSpecialistHandoffJson(first.manifest))
+      .put(conflictingPrepared.manifestHash, canonicalSpecialistHandoffJson(conflictingPrepared.manifest)));
+
+    expect(projection.state).toBe("inconsistent");
+    expect(projection.selectedHandoff).toBeUndefined();
+    expect(projection.diagnostics).toContainEqual(expect.objectContaining({
+      code: "conflicting-prepared",
+      handoffId: first.manifest.handoffId
+    }));
+  });
+
   it("accepts presentation correction only as an incremented revision with supersedesHandoffId and a new handoffId", async () => {
     const first = handoffFixture();
     const correction = handoffFixture({
@@ -408,6 +435,44 @@ describe("specialist handoff projection", () => {
     expect(projection.state).toBe("handoff-recorded");
     expect(projection.selectedHandoff).toEqual(correction.manifest.handoff);
     expect(projection.diagnostics).toEqual([]);
+  });
+
+  it("keeps task-completed after a valid post-terminal presentation supersession", async () => {
+    const first = handoffFixture();
+    const correction = handoffFixture({
+      handoffRevision: 2,
+      supersedesHandoffId: first.manifest.handoffId,
+      supersedesEventId: first.recordedEventId,
+      safeSummary: "Corrected safe presentation after task completion."
+    });
+    const manifests = new ManifestMap()
+      .put(first.manifestHash, canonicalSpecialistHandoffJson(first.manifest))
+      .put(correction.manifestHash, canonicalSpecialistHandoffJson(correction.manifest));
+
+    const projection = await project([
+      ...validRecordedEvents(first),
+      completedRunEvent(first, { causationId: first.recordedEventId }),
+      taskStatusEvent(first, "completed", { causationId: "evt_run_completed" }),
+      preparedEvent(correction),
+      recordedEvent(correction)
+    ], manifests);
+
+    expect(projection.state).toBe("task-completed");
+    expect(projection.selectedHandoff).toEqual(correction.manifest.handoff);
+    expect(projection.selectedHandoff?.handoffRevision).toBe(2);
+    expect(projection.handoffs.map((handoff) => handoff.handoffId)).toEqual([
+      first.manifest.handoffId,
+      correction.manifest.handoffId
+    ]);
+    expect(projection.history).toContainEqual(expect.objectContaining({
+      state: "handoff-recorded",
+      handoffId: first.manifest.handoffId,
+      supersededByHandoffId: correction.manifest.handoffId
+    }));
+    expect(projection.history).toContainEqual(expect.objectContaining({
+      state: "task-completed",
+      handoffId: correction.manifest.handoffId
+    }));
   });
 
   it("rejects handoff causation and revision supersession violations", async () => {
