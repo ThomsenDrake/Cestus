@@ -6,7 +6,7 @@
 
 **Architecture:** Keep pure package builders in `packages/agent/src/prr-context-packs.ts`, fed by authoritative PRR read models, selected request streams, jurisdiction pack artifacts, and bounded workspace metadata. The builders return provider-safe `ResolvedContextPack { ref, payload }` envelopes from the shared operational content-addressed contract; durable ledgers/readiness keep refs only, while production prompt rendering resolves and verifies payload bytes locally. Keep package registration separate from local-runtime assembly, and make the local-runtime task pass only selected request state plus O(1) aggregate omission proof into the builders.
 
-**Tech Stack:** TypeScript, Zod-free plain DTO builders where possible, shared `ResolvedContextPack`/`ContextPackRef`/registry helpers, Vitest, PRR projection/read API contracts, local-runtime SQLite PRR handle, Markdown factory claims.
+**Tech Stack:** TypeScript, strict repo-consistent structured schemas, shared `ResolvedContextPack`/`ContextPackRef`/registry/parser helpers, Vitest, PRR projection/read API contracts, local-runtime SQLite PRR handle, Markdown factory claims.
 
 ## Global Constraints
 
@@ -20,10 +20,12 @@
 - `jurisdiction-pack-summary.v1` binds the selected request jurisdiction by pack name, pack version, exact rule IDs, and jurisdiction artifact content hash.
 - Active send, legal, and governance gates are non-truncatable; if they cannot fit, the builder fails closed.
 - Both PRR builders return resolved envelopes whose `payload` canonical hash and byte size exactly match `ref.contentHash` and `ref.sizeBytes`.
+- PRR registrations supply strict payload parsers keyed by context pack ID/version; the operational resolver applies them after hash/size verification.
 - Ledger events, prompt manifests, readiness DTOs, approval previews, and durable audit records carry refs only; selected PRR payload bytes are local prompt-rendering inputs.
-- Production prompt rendering resolves bounded selected-request payloads locally, verifies exact hash and size, and includes those approved bytes before provider invocation.
-- Missing payload resolution, payload/ref mismatch, wrong context pack ID/version, wrong selected-request scope, or stale resolver output blocks provider invocation.
+- Production prompt rendering resolves bounded selected-request payloads locally, verifies exact hash and size, applies the exact parser, and includes those approved bytes before provider invocation.
+- Missing payload resolution, payload/ref mismatch, parser rejection, wrong context pack ID/version, wrong selected-request scope, or stale resolver output blocks provider invocation.
 - Do not add an arbitrary hash-to-text callback.
+- Deterministic fake-invoker tests prove prompt construction and pre-provider blocking only; the prompt/orchestrator lane's real Nous sentinel gate is the acceptance proof for live provider execution.
 - Builders are deterministic for identical injected inputs; callers supply `generatedAt`.
 - Builders never send, follow up, appeal, confirm escalation, clear locks, grant approval, or execute domain effects.
 - Every task starts with a durable claim, failing tests, a targeted red command, production code, targeted green command, `npm run verify`, commit, and review handoff.
@@ -46,9 +48,13 @@
 - `scripts/check-agent-readiness.mjs`: final readiness task adds the approved spec and this plan.
 - `docs/agentic/software-factory.md`: final readiness task records targeted and full verification evidence.
 
-## Operational Dependency
+## Prerequisites And Rebase Gates
 
-The operational lane owns the shared resolved-context contract. Before Task 1 implementation, verify that `packages/agent/src/context-packs.ts` or the operational lane's approved public export provides this exact semantic surface:
+### Package Builder Gate For Tasks 1-3
+
+Tasks 1 through 3 require the landed operational resolved-envelope, registry, and strict payload-parser contract. They do not require prompt-template rendering integration.
+
+Before Task 1 implementation, verify that `packages/agent/src/context-packs.ts` or the operational lane's approved public export provides this exact semantic surface:
 
 ```ts
 export interface ResolvedContextPack<
@@ -62,7 +68,17 @@ export interface ContextPackResolver {
   resolve(ref: ContextPackRef): Promise<ResolvedContextPack>;
 }
 
+export interface ContextPackPayloadParser<
+  Payload extends AgentContextPackJsonValue = AgentContextPackJsonValue
+> {
+  readonly contextPackId: string;
+  readonly version: number;
+  readonly parserId: string;
+  parse(payload: AgentContextPackJsonValue): Payload;
+}
+
 export interface ResolvedContextPackRegistry extends ContextPackRegistry {
+  registerPayloadParser(parser: ContextPackPayloadParser): void;
   buildResolved(contextPackId: string): Promise<ResolvedContextPack>;
 }
 
@@ -72,24 +88,66 @@ export function buildResolvedContextPack(
 
 export function verifyResolvedContextPack(input: ResolvedContextPack): ResolvedContextPack;
 
+export function parseResolvedContextPack(
+  input: ResolvedContextPack,
+  parser: ContextPackPayloadParser
+): ResolvedContextPack;
+
 export function createContextPackResolver(
-  resolvedPacks: readonly ResolvedContextPack[]
+  resolvedPacks: readonly ResolvedContextPack[],
+  parsers: readonly ContextPackPayloadParser[]
 ): ContextPackResolver;
 ```
 
-The operational prompt-rendering lane must also expose a provider invocation path that consumes a `ContextPackResolver`, verifies each resolved payload against the requested ref immediately before rendering, and blocks invocation on missing or mismatched payloads. If this shared contract is absent, named differently, or semantically weaker, stop with `schema-conflict` and hand the branch back to the coordinator before implementing PRR code.
+The resolver contract must verify hash and size before applying the parser for the exact `contextPackId` and `version`. A payload that is generic safe JSON and has a matching ref hash still fails when the registered parser rejects its shape.
 
-Run this preflight before Task 1:
+If this shared package contract is absent, named differently, or semantically weaker, stop with `schema-conflict` and hand the branch back to the coordinator before implementing Tasks 1 through 3.
+
+Run this package preflight before Task 1:
 
 ```bash
-rg -n "ResolvedContextPack|buildResolvedContextPack|verifyResolvedContextPack|ContextPackResolver|createContextPackResolver|buildResolved" packages/agent/src
+rg -n "ResolvedContextPack|buildResolvedContextPack|verifyResolvedContextPack|ContextPackResolver|ContextPackPayloadParser|registerPayloadParser|parseResolvedContextPack|createContextPackResolver|buildResolved" packages/agent/src
 ```
 
 Expected:
 
 ```text
-packages/agent/src/context-packs.ts exports the resolved context contract, or an approved operational module re-exports the same contract through packages/agent/src/index.ts.
+packages/agent/src/context-packs.ts exports the resolved context and parser contract, or an approved operational module re-exports the same contract through packages/agent/src/index.ts.
 ```
+
+### Prompt Rendering Gate For Task 4
+
+Task 4's production rendering regression additionally requires the landed prompt-template/resolved-payload rendering lane. That lane must expose:
+
+- a provider invocation preparation path that consumes a `ContextPackResolver`;
+- local prompt rendering that verifies hash, size, parser, and selected scope before including payload bytes;
+- an approved complete `prr-negotiation` resolved-context fixture helper for every required context pack, including `governance-locks.v1`, `evidence-summary.v1`, `agent-memory-summary.v1`, `task-run-history.v1`, and `workspace-runtime-status.v1`, or an equivalent public fixture registration helper;
+- the final selected-PRR task/run applicability contract.
+
+The plan expects the prompt lane to expose this helper shape, or an equivalent approved helper with the same semantics:
+
+```ts
+export function buildCompletePrrNegotiationResolvedContextFixture(input: {
+  readonly selectedPrrReadModel: import("../../src/context-packs.js").ResolvedContextPack;
+  readonly selectedJurisdictionPackSummary: import("../../src/context-packs.js").ResolvedContextPack;
+  readonly selectedPrrScope: { readonly kind: "prr-request"; readonly id: string };
+  readonly generatedAt: string;
+  readonly omitContextPackIds?: readonly string[];
+}): {
+  readonly selectedPrrRunScope: import("../../src/runtime.js").AgentRunScopeInput;
+  readonly contextPackResolver: import("../../src/context-packs.js").ContextPackResolver;
+  readonly resolvedPacks: readonly import("../../src/context-packs.js").ResolvedContextPack[];
+  registerFixtureBuilders(registry: import("../../src/context-packs.js").ResolvedContextPackRegistry): void;
+};
+```
+
+The helper must assert that `specialistWorkflowDescriptorFor("prr-negotiation").contextPacks` is fully represented except for IDs explicitly listed in `omitContextPackIds`, and it must use the final selected-PRR applicability contract for `selectedPrrRunScope`.
+
+Do not block Tasks 1 through 3 on this prompt-rendering gate. If this gate is missing when Task 4 begins, stop Task 4 with `schema-conflict` and hand off to the prompt/orchestrator owner.
+
+### Runtime Adapter Rebase Gate For Task 4
+
+Task 4 edits in `packages/local-runtime` must rebase after the lifecycle and shared-runtime owners land their selected-PRR runtime scope and adapter contract changes. If the selected-PRR task/run scope, PRR lifecycle projections, or shared runtime registration APIs differ from this plan, update the Task 4 test to the landed contract before writing production code and record the rebase in the task claim.
 
 ## Shared Interfaces
 
@@ -156,9 +214,27 @@ export interface BuildPrrReadModelContextPackInput {
   readonly sizeBudgetBytes?: number;
 }
 
+export type PrrReadModelContextPackPayload = import("./context-packs.js").AgentContextPackJsonValue & {
+  readonly schemaVersion: "prr-read-model-context.v1";
+  readonly scope: PrrSelectedRequestScope;
+  readonly lifecycle: import("./context-packs.js").AgentContextPackJsonValue;
+  readonly requestStream: PrrSelectedRequestStreamProof;
+  readonly deadline: import("./context-packs.js").AgentContextPackJsonValue;
+  readonly fee: import("./context-packs.js").AgentContextPackJsonValue;
+  readonly narrowing: import("./context-packs.js").AgentContextPackJsonValue;
+  readonly correspondence: import("./context-packs.js").AgentContextPackJsonValue;
+  readonly production: import("./context-packs.js").AgentContextPackJsonValue;
+  readonly diagnostics: readonly import("./context-packs.js").AgentContextPackJsonValue[];
+  readonly gates: readonly PrrContextGateSnapshot[];
+  readonly omissions: readonly import("./context-packs.js").AgentContextPackJsonValue[];
+};
+
 export function buildPrrReadModelContextPack(
   input: BuildPrrReadModelContextPackInput
 ): import("./context-packs.js").ResolvedContextPack;
+
+export const prrReadModelPayloadParser:
+  import("./context-packs.js").ContextPackPayloadParser<PrrReadModelContextPackPayload>;
 ```
 
 Task 2 adds:
@@ -176,18 +252,40 @@ export interface BuildJurisdictionPackSummaryContextPackInput {
   readonly sizeBudgetBytes?: number;
 }
 
+export type JurisdictionPackSummaryContextPackPayload = import("./context-packs.js").AgentContextPackJsonValue & {
+  readonly schemaVersion: "jurisdiction-pack-summary-context.v1";
+  readonly scope: PrrSelectedRequestScope;
+  readonly packName: string;
+  readonly packVersion: string;
+  readonly jurisdiction: string;
+  readonly jurisdictionArtifactHash: `sha256:${string}`;
+  readonly citedRules: readonly import("./context-packs.js").AgentContextPackJsonValue[];
+  readonly advisoryPosture: import("./context-packs.js").AgentContextPackJsonValue;
+  readonly omissions: readonly import("./context-packs.js").AgentContextPackJsonValue[];
+};
+
 export function buildJurisdictionPackSummaryContextPack(
   input: BuildJurisdictionPackSummaryContextPackInput
 ): import("./context-packs.js").ResolvedContextPack;
+
+export const jurisdictionPackSummaryPayloadParser:
+  import("./context-packs.js").ContextPackPayloadParser<JurisdictionPackSummaryContextPackPayload>;
 ```
 
 Task 3 adds:
 
 ```ts
+export interface PrrContextPackRegistrationEntry {
+  readonly descriptor: import("./context-packs.js").ContextPackDescriptor;
+  readonly builder: import("./context-packs.js").ContextPackBuilder;
+  readonly payloadParser: import("./context-packs.js").ContextPackPayloadParser;
+  readonly registrationIdentity: string;
+}
+
 export interface RegisterPrrContextPackBuildersInput {
   readonly registry: import("./context-packs.js").ResolvedContextPackRegistry;
-  readonly prrReadModelBuilder: import("./context-packs.js").ContextPackBuilder;
-  readonly jurisdictionPackSummaryBuilder: import("./context-packs.js").ContextPackBuilder;
+  readonly prrReadModel: PrrContextPackRegistrationEntry;
+  readonly jurisdictionPackSummary: PrrContextPackRegistrationEntry;
 }
 
 export function registerPrrContextPackBuilders(input: RegisterPrrContextPackBuildersInput): void;
@@ -277,10 +375,15 @@ Create `packages/agent/test/prr-context-packs.test.ts` with these Task 1 tests:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { verifyResolvedContextPack } from "../src/context-packs.js";
+import {
+  buildResolvedContextPack,
+  parseResolvedContextPack,
+  verifyResolvedContextPack
+} from "../src/context-packs.js";
 import type { PrrRequestReadModel, PrrTimelineEntry } from "../../prr/src/projection.js";
 import {
   buildPrrReadModelContextPack,
+  prrReadModelPayloadParser,
   type BuildPrrReadModelContextPackInput,
   type PrrContextGateSnapshot
 } from "../src/prr-context-packs.js";
@@ -362,6 +465,29 @@ describe("selected request PRR read model context pack", () => {
         workspace: { totalPrrRequestCount: 3 }
       }))
     ).toThrow(/missing-provenance|other PRR requests/i);
+  });
+
+  it("rejects a matching-ref attacker payload that is generic JSON but not the PRR payload shape", () => {
+    const attackerResolved = buildResolvedContextPack({
+      contextPackId: "prr-read-model.v1",
+      version: 1,
+      generatedAt,
+      payload: {
+        schemaVersion: "attacker-controlled-json.v1",
+        scope: { kind: "prr-request", id: "prr_req_selected" },
+        deadline: "2026-08-07"
+      },
+      safeSummary: "Attacker-built safe JSON with a matching ref hash.",
+      provenanceRefs: ["evt_prr_selected_created"],
+      sourceEventIds: ["evt_prr_selected_created"],
+      projectionHighWaterMark: 77,
+      scope: { kind: "prr-request", id: "prr_req_selected" },
+      sizeBudgetBytes: 16_384
+    });
+
+    expect(() => verifyResolvedContextPack(attackerResolved)).not.toThrow();
+    expect(() => parseResolvedContextPack(attackerResolved, prrReadModelPayloadParser))
+      .toThrow(/prr-read-model|payload|schema/i);
   });
 
   it("rejects wrong scope, unrelated request IDs, raw bodies, provider refs, and truncatable active gates", () => {
@@ -547,11 +673,13 @@ Implementation requirements:
 - Reject unsupported own keys on `workspace` such as `otherRequestIds`.
 - If `workspace.totalPrrRequestCount` is greater than `1`, require `workspace.otherRequests` with `omittedCount === totalPrrRequestCount - 1`.
 - Build a payload with selected request status, jurisdiction pack ref, deadline posture, fee/narrowing posture, correspondence IDs and hashes, production/exemption/denial/appeal/stalling/escalation posture, diagnostics from selected input only, gates, source refs, and omissions.
+- Define and export `prrReadModelPayloadParser` with a strict repo-consistent structured schema for `PrrReadModelContextPackPayload`.
+- The parser must reject missing required sections, unknown top-level fields, mismatched `schemaVersion`, wrong selected-request scope, unrelated request ID fields, raw body/provider metadata fields, and unsafe omission shapes.
 - Keep deadline/gate/correspondence facts in `resolved.payload`; keep `resolved.ref.safeSummary` as a short audit summary that does not carry the selected deadline sentinel.
 - Exclude raw body fields, raw rendered bodies, unrestricted recipients, raw provider metadata, provider message/thread IDs, raw provider errors, credential refs, local paths, and unrelated request IDs.
 - Put `gates` into the payload before optional material and fail with `context-budget-exceeded: non-truncatable gates exceed size budget` if the gate-only payload would exceed the budget.
 - Use `buildResolvedContextPack()` with `contextPackId: "prr-read-model.v1"`, `version: 1`, `payload`, `scope`, `sourceEventIds`, `artifactHashes`, `projectionHighWaterMark`, `policyVersion`, `sizeBudgetBytes`, and staleness inputs.
-- Return the verified `ResolvedContextPack`; do not return a bare `ContextPackRef`.
+- Return the verified and parsed `ResolvedContextPack`; do not return a bare `ContextPackRef`.
 - Canonically sort event refs, correspondence refs, evidence hashes, diagnostics, and omissions.
 - Throw safe errors only.
 
@@ -618,7 +746,7 @@ Create `docs/agentic/claims/task-2-jurisdiction-pack-summary-context-pack.md` wi
 
 - [ ] **Step 2: Write failing jurisdiction pack tests**
 
-Extend the existing top-level import from `../src/prr-context-packs.js` to include `buildJurisdictionPackSummaryContextPack`, then append these tests to `packages/agent/test/prr-context-packs.test.ts`:
+Extend the existing top-level import from `../src/prr-context-packs.js` to include `buildJurisdictionPackSummaryContextPack` and `jurisdictionPackSummaryPayloadParser`, then append these tests to `packages/agent/test/prr-context-packs.test.ts`:
 
 ```ts
 const jurisdictionArtifactHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as const;
@@ -715,6 +843,30 @@ describe("selected request jurisdiction pack summary context pack", () => {
     expect(JSON.stringify(ref)).not.toMatch(/legal advice|definitive/i);
     expect(ref.sizeBytes).toBeGreaterThan(0);
   });
+
+  it("rejects a matching-ref attacker payload that is generic JSON but not the jurisdiction payload shape", () => {
+    const attackerResolved = buildResolvedContextPack({
+      contextPackId: "jurisdiction-pack-summary.v1",
+      version: 1,
+      generatedAt,
+      payload: {
+        schemaVersion: "attacker-controlled-json.v1",
+        scope: { kind: "prr-request", id: "prr_req_selected" },
+        ruleIds: ["federal-determination-20-working-days"]
+      },
+      safeSummary: "Attacker-built safe JSON with a matching jurisdiction ref hash.",
+      provenanceRefs: ["evt_prr_selected_created", jurisdictionArtifactHash],
+      sourceEventIds: ["evt_prr_selected_created"],
+      artifactHashes: [jurisdictionArtifactHash],
+      projectionHighWaterMark: 77,
+      scope: { kind: "prr-request", id: "prr_req_selected" },
+      sizeBudgetBytes: 16_384
+    });
+
+    expect(() => verifyResolvedContextPack(attackerResolved)).not.toThrow();
+    expect(() => parseResolvedContextPack(attackerResolved, jurisdictionPackSummaryPayloadParser))
+      .toThrow(/jurisdiction-pack-summary|payload|schema/i);
+  });
 });
 
 function jurisdictionInput(): Parameters<typeof buildJurisdictionPackSummaryContextPack>[0] {
@@ -772,12 +924,14 @@ Modify `packages/agent/src/prr-context-packs.ts`:
 - Validate selected request jurisdiction pack name/version matches the supplied jurisdiction pack.
 - Require `jurisdictionArtifactHash`.
 - Require every included rule to have at least one citation.
+- Define and export `jurisdictionPackSummaryPayloadParser` with a strict repo-consistent structured schema for `JurisdictionPackSummaryContextPackPayload`.
+- The parser must reject missing pack binding fields, unknown top-level fields, mismatched `schemaVersion`, absent artifact hash, uncited rules, definitive legal conclusions, and rule entries without exact rule IDs.
 - Build payload with pack name, pack version, jurisdiction label, artifact hash, cited rules sorted by category and rule ID, advisory posture, and omissions for absent categories among `deadline`, `fee`, `exemption`, `appeal`, and `enforcement`.
 - Keep exact rule IDs, citations, and advisory legal posture in `resolved.payload`; keep `resolved.ref.safeSummary` short enough that rule sentinels are not required there.
 - Include provenance refs for selected request event ID, artifact hash, and each rule ref in the form `jurisdiction-rule:<pack>@<version>:<ruleId>`.
 - Include staleness inputs for artifact hash and selected request pack binding.
 - Exclude definitive legal conclusions.
-- Use `buildResolvedContextPack()` and return the verified `ResolvedContextPack`; do not return a bare `ContextPackRef`.
+- Use `buildResolvedContextPack()` and return the verified and parsed `ResolvedContextPack`; do not return a bare `ContextPackRef`.
 
 - [ ] **Step 5: Run targeted green command**
 
@@ -834,7 +988,7 @@ Hand off Task 2 for spec and code-quality review. Reviewers must confirm artifac
 - Modify: `packages/agent/src/index.ts`
 
 **Interfaces:**
-- Consumes: Task 1 and Task 2 builders, `ContextPackRegistry`.
+- Consumes: Task 1 and Task 2 builders and parsers, `ResolvedContextPackRegistry`.
 - Produces: `registerPrrContextPackBuilders(input: RegisterPrrContextPackBuildersInput): void` and public package exports.
 
 - [ ] **Step 1: Claim and start the task**
@@ -843,24 +997,22 @@ Create `docs/agentic/claims/task-3-prr-context-pack-registration.md`, commit it 
 
 - [ ] **Step 2: Write failing registration tests**
 
-Extend the existing top-level import from `../src/context-packs.js` to include `createContextPackRegistry` and `type ContextPackBuilder`, extend the existing top-level import from `../src/prr-context-packs.js` to include `registerPrrContextPackBuilders`, then append these tests to `packages/agent/test/prr-context-packs.test.ts`:
+Extend the existing top-level import from `../src/context-packs.js` to include `createContextPackRegistry` and `type ContextPackPayloadParser`. Extend the existing top-level import from `../src/prr-context-packs.js` to include `registerPrrContextPackBuilders`, `prrReadModelPayloadParser`, `jurisdictionPackSummaryPayloadParser`, and `type PrrContextPackRegistrationEntry`, then append these tests to `packages/agent/test/prr-context-packs.test.ts`:
 
 ```ts
 describe("PRR context pack registration", () => {
-  it("registers the two PRR builders and allows same-builder idempotent registration", async () => {
+  it("registers builders and parsers using stable descriptor/parser registration identity", async () => {
     const registry = createContextPackRegistry();
-    const prrBuilder = prrBuilderForTest();
-    const jurisdictionBuilder = jurisdictionBuilderForTest();
 
     registerPrrContextPackBuilders({
       registry,
-      prrReadModelBuilder: prrBuilder,
-      jurisdictionPackSummaryBuilder: jurisdictionBuilder
+      prrReadModel: prrRegistrationForTest(),
+      jurisdictionPackSummary: jurisdictionRegistrationForTest()
     });
     registerPrrContextPackBuilders({
       registry,
-      prrReadModelBuilder: prrBuilder,
-      jurisdictionPackSummaryBuilder: jurisdictionBuilder
+      prrReadModel: prrRegistrationForTest(),
+      jurisdictionPackSummary: jurisdictionRegistrationForTest()
     });
 
     expect(registry.snapshot().contextPackIds).toEqual([
@@ -875,54 +1027,100 @@ describe("PRR context pack registration", () => {
     });
   });
 
-  it("conflicts on duplicate ID and version with a different builder", () => {
+  it("conflicts on duplicate ID and version with a different parser identity", () => {
     const registry = createContextPackRegistry();
-    const prrBuilder = prrBuilderForTest();
-    const jurisdictionBuilder = jurisdictionBuilderForTest();
 
     registerPrrContextPackBuilders({
       registry,
-      prrReadModelBuilder: prrBuilder,
-      jurisdictionPackSummaryBuilder: jurisdictionBuilder
+      prrReadModel: prrRegistrationForTest(),
+      jurisdictionPackSummary: jurisdictionRegistrationForTest()
     });
 
     expect(() =>
       registerPrrContextPackBuilders({
         registry,
-        prrReadModelBuilder: prrBuilderForTest(),
-        jurisdictionPackSummaryBuilder: jurisdictionBuilder
+        prrReadModel: prrRegistrationForTest({ parserId: "prr-read-model-payload-parser.fork" }),
+        jurisdictionPackSummary: jurisdictionRegistrationForTest()
       })
-    ).toThrow(/conflict|already registered/i);
+    ).toThrow(/parser|conflict|already registered/i);
+  });
+
+  it("conflicts on duplicate ID and version with a descriptor mismatch", () => {
+    const registry = createContextPackRegistry();
+
+    registerPrrContextPackBuilders({
+      registry,
+      prrReadModel: prrRegistrationForTest(),
+      jurisdictionPackSummary: jurisdictionRegistrationForTest()
+    });
+
+    expect(() =>
+      registerPrrContextPackBuilders({
+        registry,
+        prrReadModel: prrRegistrationForTest({ maxBytes: 65_536 }),
+        jurisdictionPackSummary: jurisdictionRegistrationForTest()
+      })
+    ).toThrow(/descriptor|conflict|already registered/i);
   });
 });
 
-function prrBuilderForTest(): ContextPackBuilder {
+function prrRegistrationForTest(
+  overrides: { readonly parserId?: string; readonly maxBytes?: number } = {}
+): PrrContextPackRegistrationEntry {
+  const descriptor = {
+    contextPackId: "prr-read-model.v1",
+    version: 1,
+    label: "Selected request PRR read model",
+    maxBytes: overrides.maxBytes ?? 32_768,
+    requiredProvenanceKinds: ["event-id", "content-hash"],
+    redactionPolicy: "safe-normalized-summary",
+    sourceProjection: "prr.projection.selected-request"
+  };
+  const payloadParser = parserWithId(prrReadModelPayloadParser, overrides.parserId);
   return {
-    descriptor: {
-      contextPackId: "prr-read-model.v1",
-      version: 1,
-      label: "Selected request PRR read model",
-      maxBytes: 32_768,
-      requiredProvenanceKinds: ["event-id", "content-hash"],
-      redactionPolicy: "safe-normalized-summary",
-      sourceProjection: "prr.projection.selected-request"
-    },
-    build: () => buildPrrReadModelContextPack(basePrrInput())
+    descriptor,
+    payloadParser,
+    registrationIdentity: "packages/agent/prr-context-packs:prr-read-model.v1@1",
+    builder: {
+      descriptor,
+      build: () => buildPrrReadModelContextPack(basePrrInput())
+    }
   };
 }
 
-function jurisdictionBuilderForTest(): ContextPackBuilder {
+function jurisdictionRegistrationForTest(): PrrContextPackRegistrationEntry {
+  const descriptor = {
+    contextPackId: "jurisdiction-pack-summary.v1",
+    version: 1,
+    label: "Selected request jurisdiction pack summary",
+    maxBytes: 16_384,
+    requiredProvenanceKinds: ["event-id", "content-hash"],
+    redactionPolicy: "safe-normalized-summary",
+    sourceProjection: "prr.jurisdiction-pack.selected-request"
+  };
   return {
-    descriptor: {
-      contextPackId: "jurisdiction-pack-summary.v1",
-      version: 1,
-      label: "Selected request jurisdiction pack summary",
-      maxBytes: 16_384,
-      requiredProvenanceKinds: ["event-id", "content-hash"],
-      redactionPolicy: "safe-normalized-summary",
-      sourceProjection: "prr.jurisdiction-pack.selected-request"
-    },
-    build: () => buildJurisdictionPackSummaryContextPack(jurisdictionInput())
+    descriptor,
+    payloadParser: jurisdictionPackSummaryPayloadParser,
+    registrationIdentity: "packages/agent/prr-context-packs:jurisdiction-pack-summary.v1@1",
+    builder: {
+      descriptor,
+      build: () => buildJurisdictionPackSummaryContextPack(jurisdictionInput())
+    }
+  };
+}
+
+function parserWithId(
+  parser: ContextPackPayloadParser,
+  parserId: string | undefined
+): ContextPackPayloadParser {
+  if (parserId === undefined) {
+    return parser;
+  }
+  return {
+    contextPackId: parser.contextPackId,
+    version: parser.version,
+    parserId,
+    parse: (payload) => parser.parse(payload)
   };
 }
 ```
@@ -945,12 +1143,14 @@ registerPrrContextPackBuilders is not a function
 
 Modify `packages/agent/src/prr-context-packs.ts`:
 
-- Add module-local `WeakMap<ResolvedContextPackRegistry, Map<string, ContextPackBuilder>>`.
+- Add module-local `WeakMap<ResolvedContextPackRegistry, Map<string, { descriptorHash: string; parserId: string; registrationIdentity: string }>>`.
 - Use key `"<contextPackId>@<version>"`.
-- If the key was registered through this helper with the same builder object, return without calling `registry.register()`.
-- If the key was registered through this helper with a different builder object, throw a safe conflict error.
-- If `registry.getDescriptor(contextPackId)` exists but the helper has no matching builder identity, throw a safe conflict error.
+- Compute `descriptorHash` from the canonical descriptor fields, not from object identity.
+- Treat registration as idempotent only when `descriptorHash`, `payloadParser.parserId`, and `registrationIdentity` match the prior registration.
+- If any of those stable identities differ for the same ID/version, throw a safe conflict error.
+- If `registry.getDescriptor(contextPackId)` exists but the helper has no matching stable descriptor/parser registration identity, throw a safe conflict error.
 - Require the shared registry to expose `buildResolved(contextPackId)`; if only bare refs are available, stop on `schema-conflict`.
+- Register the payload parser before the builder for each pack.
 - Register `prr-read-model.v1` before `jurisdiction-pack-summary.v1`.
 
 Modify `packages/agent/src/index.ts`:
@@ -1031,12 +1231,12 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createContextPackRegistry,
-  createContextPackResolver,
   prepareSpecialistRun,
   verifyResolvedContextPack,
   type SpecialistRunnerModelInvoker
 } from "../../agent/src/index.js";
 import { createAgentRuntime } from "../../agent/src/runtime.js";
+import { buildCompletePrrNegotiationResolvedContextFixture } from "../../agent/test/fixtures/resolved-context-packs.js";
 import { PrrLifecycleService } from "../../prr/src/lifecycle.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime } from "../src/runtime-factory.js";
@@ -1145,6 +1345,13 @@ describe("local runtime selected PRR context pack registration", () => {
       const jurisdictionResolved = await registry.buildResolved("jurisdiction-pack-summary.v1");
       expect(prrResolved.ref.safeSummary).not.toContain("2026-08-07");
       expect(jurisdictionResolved.ref.safeSummary).not.toContain("federal-determination-20-working-days");
+      const completeContext = buildCompletePrrNegotiationResolvedContextFixture({
+        selectedPrrReadModel: prrResolved,
+        selectedJurisdictionPackSummary: jurisdictionResolved,
+        selectedPrrScope: { kind: "prr-request", id: "prr_req_selected" },
+        generatedAt: now()
+      });
+      completeContext.registerFixtureBuilders(registry);
 
       const agentRuntime = createAgentRuntime({ ledger: handle.ledger, actor, now });
       await agentRuntime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
@@ -1158,7 +1365,7 @@ describe("local runtime selected PRR context pack registration", () => {
         runId: "run_prr_negotiation",
         taskId: "task_prr_negotiation",
         runType: "prr-negotiation",
-        scope: { kind: "workspace", refs: ["ws_case_001"] }
+        scope: completeContext.selectedPrrRunScope
       });
 
       const runtime = fakeInvoker();
@@ -1167,7 +1374,7 @@ describe("local runtime selected PRR context pack registration", () => {
         actor,
         now,
         contextPacks: registry,
-        contextPackResolver: createContextPackResolver([prrResolved, jurisdictionResolved]),
+        contextPackResolver: completeContext.contextPackResolver,
         runId: "run_prr_negotiation",
         taskId: "task_prr_negotiation",
         providerId: "provider_fake_local",
@@ -1189,16 +1396,29 @@ describe("local runtime selected PRR context pack registration", () => {
         ref: prrResolved.ref,
         payload: { ...prrResolved.payload, forgedDeadline: "2099-01-01" }
       };
-      expect(() => createContextPackResolver([forgedPrr, jurisdictionResolved]))
+      expect(() => buildCompletePrrNegotiationResolvedContextFixture({
+        selectedPrrReadModel: forgedPrr,
+        selectedJurisdictionPackSummary: jurisdictionResolved,
+        selectedPrrScope: { kind: "prr-request", id: "prr_req_selected" },
+        generatedAt: now()
+      }))
         .toThrow(/context pack payload.*hash|size|mismatch/i);
       expect(runtime.invokeModel).not.toHaveBeenCalled();
 
+      const missingPrrContext = buildCompletePrrNegotiationResolvedContextFixture({
+        selectedPrrReadModel: prrResolved,
+        selectedJurisdictionPackSummary: jurisdictionResolved,
+        selectedPrrScope: { kind: "prr-request", id: "prr_req_selected" },
+        generatedAt: now(),
+        omitContextPackIds: ["prr-read-model.v1"]
+      });
+      missingPrrContext.registerFixtureBuilders(registry);
       await expect(prepareSpecialistRun({
         ledger: handle.ledger,
         actor,
         now,
         contextPacks: registry,
-        contextPackResolver: createContextPackResolver([jurisdictionResolved]),
+        contextPackResolver: missingPrrContext.contextPackResolver,
         runId: "run_prr_negotiation",
         taskId: "task_prr_negotiation",
         providerId: "provider_fake_local",
@@ -1289,6 +1509,9 @@ Implementation requirements:
 - Register package builders through `registerPrrContextPackBuilders()` so `registry.buildResolved()` returns verified `ResolvedContextPack` envelopes.
 - Use the operational `createContextPackResolver()`/provider rendering path only through its approved public exports; do not implement a local hash-to-text callback.
 - If production rendering does not yet accept `contextPackResolver` or does not verify hash/size before prompt rendering, stop on `schema-conflict` and hand off to the operational lane.
+- In the prompt regression, use the prompt lane's complete `prr-negotiation` resolved-context fixture helper so every required pack is represented; do not register only the two PRR packs.
+- Bind the run with the final selected-PRR applicability scope from that helper, not the older workspace-only scope.
+- Keep `fakeInvoker()` deterministic and credential-free. Record that this test proves prompt construction and pre-provider blocking only; live provider execution remains covered by the prompt/orchestrator real Nous sentinel gate.
 - Do not import or modify specialist runner/orchestrator/prompt template files in this PRR task.
 - Do not append ledger events, request tool approvals, send correspondence, or clear locks.
 
@@ -1334,7 +1557,7 @@ git commit -m "feat: register local runtime prr context packs"
 
 - [ ] **Step 8: Review gate**
 
-Hand off Task 4 for review. Reviewers must confirm the runtime adapter is a narrow registration helper, passes only selected request plus aggregate proof into package builders, produces resolved envelopes, exercises production prompt rendering through the operational resolver contract, blocks missing/mismatched payloads before provider invocation, does not touch shared workflow orchestration, and has no external effects.
+Hand off Task 4 for review. Reviewers must confirm the runtime adapter is a narrow registration helper, passes only selected request plus aggregate proof into package builders, produces resolved envelopes, uses complete `prr-negotiation` required-pack fixtures, binds the final selected-PRR run scope, exercises production prompt rendering through the operational resolver contract, blocks missing/mismatched payloads before provider invocation, does not touch shared workflow orchestration, and has no external effects. Reviewers should treat the fake invoker as deterministic pre-provider coverage only; live execution confidence remains with the prompt/orchestrator real Nous sentinel gate.
 
 ---
 
@@ -1421,7 +1644,7 @@ npm run verify
 <paste fresh passing summary>
 ```
 
-The context-pack builders remain selected-request scoped and return verified `ResolvedContextPack { ref, payload }` envelopes. Unrelated PRR request IDs never enter `prr-read-model.v1`; only aggregate omitted count and projection high-water proof are recorded. Jurisdiction staleness is bound by pack name, version, exact rule IDs, and jurisdiction artifact content hash. Production prompt rendering includes selected deadline and rule payload sentinels only after local hash/size verification, while ledger/events/readiness surfaces keep refs only. Active send, legal, and governance gates remain non-truncatable, and the builders have no path to send, follow up, appeal, confirm escalation, clear locks, grant approval, or execute domain effects.
+The context-pack builders remain selected-request scoped and return verified `ResolvedContextPack { ref, payload }` envelopes. Unrelated PRR request IDs never enter `prr-read-model.v1`; only aggregate omitted count and projection high-water proof are recorded. Jurisdiction staleness is bound by pack name, version, exact rule IDs, and jurisdiction artifact content hash. Production prompt rendering includes selected deadline and rule payload sentinels only after local hash, size, strict parser, and selected-scope verification, while ledger/events/readiness surfaces keep refs only. The deterministic fake invoker proves prompt construction and pre-provider blocking only; live provider execution is covered by the prompt/orchestrator real Nous sentinel gate. Active send, legal, and governance gates remain non-truncatable, and the builders have no path to send, follow up, appeal, confirm escalation, clear locks, grant approval, or execute domain effects.
 ```
 
 - [ ] **Step 6: Run documentation gates**
@@ -1473,13 +1696,15 @@ Hand off the whole branch for spec-compliance review and code-quality review. Re
 
 - `prr-read-model.v1` builds from selected request inputs only.
 - Both PRR builders return resolved envelopes whose payload hash and byte size exactly match the ref.
+- Both PRR builders supply strict payload parsers keyed by context pack ID/version, and attacker-built matching-ref invalid payload shapes are rejected by those parsers.
 - Unrelated request IDs never enter context, safe summaries, provenance refs, staleness inputs, errors, diagnostics, or tests.
 - Pack size is independent of unrelated request count except for O(1) aggregate omitted count/high-water proof.
 - `jurisdiction-pack-summary.v1` binds jurisdiction pack name, version, exact rule IDs, citations, and artifact content hash.
-- Selected deadline and jurisdiction-rule sentinels are absent from `safeSummary`, present in verified payloads, and included in production prompt rendering after resolver verification.
-- Missing or mismatched payload resolution blocks provider invocation before the model invoker is called.
+- Selected deadline and jurisdiction-rule sentinels are absent from `safeSummary`, present in verified payloads, and included in production prompt rendering after resolver and parser verification.
+- Missing, mismatched, or parser-invalid payload resolution blocks provider invocation before the model invoker is called.
 - Active send, legal, and governance gates are included or the builder fails closed.
 - Builders and registration are deterministic and reject hostile DTO structures.
-- Package registration is idempotent for same builders and conflicts for duplicate ID/version with a different builder.
+- Package registration is idempotent for the same stable descriptor/parser/producer registration identity and conflicts for duplicate ID/version with different descriptor or parser identity.
 - Local runtime registration is narrow and does not change specialist prompt templates, handoffs, runners, orchestration, or domain execution adapters.
+- Deterministic fake-invoker tests are not treated as live provider execution proof; the prompt/orchestrator real Nous sentinel gate remains the live provider acceptance gate.
 - Targeted tests, `npm run verify`, `git diff --check`, and `npm run factory:check` pass.
