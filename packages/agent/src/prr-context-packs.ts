@@ -9,6 +9,7 @@ import {
   type ResolvedContextPack
 } from "./context-packs.js";
 import type { PrrRequestReadModel, PrrTimelineEntry } from "../../prr/src/projection.js";
+import { jurisdictionPackSchema, type JurisdictionPack } from "../../prr/src/jurisdiction-packs.js";
 
 export interface PrrSelectedRequestScope {
   readonly kind: "prr-request";
@@ -86,6 +87,31 @@ export interface PrrReadModelContextPackPayload {
   readonly omissions: readonly AgentContextPackJsonValue[];
 }
 
+export interface BuildJurisdictionPackSummaryContextPackInput {
+  readonly generatedAt: string;
+  readonly policyVersion?: string;
+  readonly scope: PrrSelectedRequestScope;
+  readonly selectedRequestEventId: string;
+  readonly selectedRequestJurisdictionPack: { readonly name: string; readonly version: string };
+  readonly jurisdictionPack: JurisdictionPack;
+  readonly jurisdictionArtifactHash: `sha256:${string}`;
+  readonly projectionHighWaterMark?: number;
+  readonly sizeBudgetBytes?: number;
+}
+
+export interface JurisdictionPackSummaryContextPackPayload {
+  readonly schemaVersion: "jurisdiction-pack-summary-context.v1";
+  readonly scope: PrrSelectedRequestScope;
+  readonly selectedRequestEventId: string;
+  readonly packName: string;
+  readonly packVersion: string;
+  readonly jurisdiction: string;
+  readonly jurisdictionArtifactHash: `sha256:${string}`;
+  readonly citedRules: readonly AgentContextPackJsonValue[];
+  readonly advisoryPosture: AgentContextPackJsonValue;
+  readonly omissions: readonly AgentContextPackJsonValue[];
+}
+
 const hashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const eventIdSchema = z.string().regex(/^evt_[A-Za-z0-9_-]+$/);
 const scopeSchema = z.object({ kind: z.literal("prr-request"), id: z.string().min(1) }).strict();
@@ -144,6 +170,44 @@ const payloadSchema = z.object({
   omissions: z.array(z.object({ kind: z.literal("all-other-prr-requests"), reason: z.literal("out-of-scope-selected-request"), omittedCount: z.number().int().positive(), projectionHighWaterMark: z.number().int().nonnegative() }).strict())
 }).strict();
 
+const jurisdictionRuleCategoryOrder = ["deadline", "fee", "exemption", "appeal", "enforcement"] as const;
+const jurisdictionRuleKindSchema = z.enum(jurisdictionRuleCategoryOrder);
+const jurisdictionCitationSchema = z.object({
+  label: z.string().min(1),
+  citation: z.string().min(1),
+  url: z.string().url()
+}).strict();
+const jurisdictionSummaryRuleSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  kind: jurisdictionRuleKindSchema,
+  description: z.string().min(1),
+  citations: z.array(jurisdictionCitationSchema).min(1),
+  agentWarning: z.string().min(1)
+}).strict();
+const jurisdictionOmissionSchema = z.object({
+  kind: z.literal("jurisdiction-rule-category"),
+  reason: z.literal("absent-from-selected-pack"),
+  category: jurisdictionRuleKindSchema
+}).strict();
+const jurisdictionSummaryPayloadSchema = z.object({
+  schemaVersion: z.literal("jurisdiction-pack-summary-context.v1"),
+  scope: scopeSchema,
+  selectedRequestEventId: eventIdSchema,
+  packName: z.string().min(1),
+  packVersion: z.string().min(1),
+  jurisdiction: z.string().min(1),
+  jurisdictionArtifactHash: hashSchema,
+  citedRules: z.array(jurisdictionSummaryRuleSchema).min(1),
+  advisoryPosture: z.object({
+    kind: z.literal("advisory-only"),
+    jurisdictionArtifactHash: hashSchema,
+    ruleIds: z.array(z.string().min(1)).min(1),
+    note: z.literal("Cited rule summaries are advisory workflow guidance only.")
+  }).strict(),
+  omissions: z.array(jurisdictionOmissionSchema)
+}).strict();
+
 export const prrReadModelPayloadParser: ContextPackPayloadParser = (payload, ref) => {
   const parsed = payloadSchema.parse(payload);
   if (ref !== undefined && (ref.contextPackId !== "prr-read-model.v1" || ref.version !== 1 || ref.scope?.kind !== "prr-request" || ref.scope.id !== parsed.scope.id)) {
@@ -152,6 +216,154 @@ export const prrReadModelPayloadParser: ContextPackPayloadParser = (payload, ref
   assertPayloadProvenanceBindings(parsed, ref);
   return parsed as unknown as AgentContextPackJsonValue;
 };
+
+export const jurisdictionPackSummaryPayloadParser: ContextPackPayloadParser = (payload, ref) => {
+  const parsed = jurisdictionSummaryPayloadSchema.parse(payload);
+  const expectedPackRef = `${parsed.packName}@${parsed.packVersion}`;
+  const expectedRuleRefs = parsed.citedRules.map((rule) =>
+    `jurisdiction-rule:${expectedPackRef}:${rule.id}`
+  ).sort();
+  const ruleIds = parsed.citedRules.map((rule) => rule.id);
+
+  if (new Set(ruleIds).size !== ruleIds.length || !isJurisdictionRuleOrder(parsed.citedRules)) {
+    throw new Error("invalid jurisdiction-pack-summary rule ordering or IDs");
+  }
+  if (!sameStringSet(parsed.advisoryPosture.ruleIds, ruleIds) ||
+    parsed.advisoryPosture.jurisdictionArtifactHash !== parsed.jurisdictionArtifactHash) {
+    throw new Error("invalid jurisdiction-pack-summary advisory binding");
+  }
+  if (!hasExpectedJurisdictionOmissions(parsed.citedRules, parsed.omissions)) {
+    throw new Error("invalid jurisdiction-pack-summary omissions");
+  }
+  if (ref !== undefined) {
+    if (ref.contextPackId !== "jurisdiction-pack-summary.v1" || ref.version !== 1 ||
+      ref.scope?.kind !== "prr-request" || ref.scope.id !== parsed.scope.id) {
+      throw new Error("invalid jurisdiction-pack-summary payload ref");
+    }
+    if (!sameStringSet(ref.sourceEventIds, [parsed.selectedRequestEventId]) ||
+      !sameStringSet(ref.artifactHashes, [parsed.jurisdictionArtifactHash]) ||
+      !sameStringSet(ref.provenanceRefs, [parsed.selectedRequestEventId, parsed.jurisdictionArtifactHash, ...expectedRuleRefs])) {
+      throw new Error("invalid jurisdiction-pack-summary provenance binding");
+    }
+    const artifactStaleness = ref.stalenessInputs?.find((input) => input.kind === "jurisdiction-pack-artifact-hash");
+    const requestStaleness = ref.stalenessInputs?.find((input) => input.kind === "selected-request-jurisdiction-pack");
+    if (artifactStaleness?.ref !== expectedPackRef || artifactStaleness.value !== parsed.jurisdictionArtifactHash ||
+      requestStaleness?.ref !== parsed.scope.id || requestStaleness.value !== expectedPackRef) {
+      throw new Error("invalid jurisdiction-pack-summary staleness binding");
+    }
+  }
+  return parsed as unknown as AgentContextPackJsonValue;
+};
+
+export function buildJurisdictionPackSummaryContextPack(
+  input: BuildJurisdictionPackSummaryContextPackInput
+): ResolvedContextPack {
+  assertOwnKeys(input, ["generatedAt", "policyVersion", "scope", "selectedRequestEventId", "selectedRequestJurisdictionPack", "jurisdictionPack", "jurisdictionArtifactHash", "projectionHighWaterMark", "sizeBudgetBytes"], "jurisdiction context pack input");
+  const scope = scopeSchema.parse(input.scope);
+  const selectedRequestEventId = eventIdSchema.parse(input.selectedRequestEventId);
+  const selectedPack = z.object({ name: z.string().min(1), version: z.string().min(1) }).strict()
+    .parse(input.selectedRequestJurisdictionPack);
+  if (typeof input.jurisdictionArtifactHash !== "string" || !hashSchema.safeParse(input.jurisdictionArtifactHash).success) {
+    throw new Error("missing-provenance: jurisdiction artifact hash is required");
+  }
+  const jurisdictionPack = jurisdictionPackSchema.parse(input.jurisdictionPack);
+  if (selectedPack.name !== jurisdictionPack.name || selectedPack.version !== jurisdictionPack.version) {
+    throw new Error("selected request jurisdiction pack must match supplied jurisdiction pack");
+  }
+  const payload = buildJurisdictionPackSummaryPayload(scope, selectedRequestEventId, jurisdictionPack, input.jurisdictionArtifactHash);
+  if (input.sizeBudgetBytes !== undefined && serializeContextPackPayload(payload).byteLength > input.sizeBudgetBytes) {
+    throw new Error("context-budget-exceeded: jurisdiction summary payload exceeds size budget");
+  }
+  const packRef = `${jurisdictionPack.name}@${jurisdictionPack.version}`;
+  const ruleRefs = payload.citedRules.map((rule) =>
+    `jurisdiction-rule:${packRef}:${(rule as { readonly id: string }).id}`
+  );
+  const resolved = buildResolvedContextPack({
+    contextPackId: "jurisdiction-pack-summary.v1",
+    version: 1,
+    generatedAt: input.generatedAt,
+    payload,
+    safeSummary: `Advisory jurisdiction summary for ${jurisdictionPack.jurisdiction}.`,
+    provenanceRefs: [selectedRequestEventId, input.jurisdictionArtifactHash, ...ruleRefs].sort(),
+    sourceEventIds: [selectedRequestEventId],
+    artifactHashes: [input.jurisdictionArtifactHash],
+    ...(input.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: input.projectionHighWaterMark }),
+    ...(input.policyVersion === undefined ? {} : { policyVersion: input.policyVersion }),
+    scope,
+    ...(input.sizeBudgetBytes === undefined ? {} : { sizeBudgetBytes: input.sizeBudgetBytes }),
+    stalenessInputs: [
+      { kind: "jurisdiction-pack-artifact-hash", ref: packRef, value: input.jurisdictionArtifactHash },
+      { kind: "selected-request-jurisdiction-pack", ref: scope.id, value: packRef }
+    ]
+  });
+  return verifyResolvedContextPack(resolved, jurisdictionPackSummaryPayloadParser);
+}
+
+function buildJurisdictionPackSummaryPayload(
+  scope: PrrSelectedRequestScope,
+  selectedRequestEventId: string,
+  jurisdictionPack: JurisdictionPack,
+  jurisdictionArtifactHash: `sha256:${string}`
+): JurisdictionPackSummaryContextPackPayload {
+  const citedRules = [...jurisdictionPack.rules].map((rule) => {
+    if (rule.citations.length === 0) throw new Error("jurisdiction rule citation is required");
+    return {
+      id: rule.id,
+      label: rule.label,
+      kind: rule.kind,
+      description: rule.description,
+      citations: [...rule.citations].sort(byJson),
+      agentWarning: rule.agentWarning
+    };
+  }).sort(compareJurisdictionRules);
+  const ruleIds = citedRules.map((rule) => rule.id);
+  const includedCategories = new Set(citedRules.map((rule) => rule.kind));
+  return {
+    schemaVersion: "jurisdiction-pack-summary-context.v1",
+    scope,
+    selectedRequestEventId,
+    packName: jurisdictionPack.name,
+    packVersion: jurisdictionPack.version,
+    jurisdiction: jurisdictionPack.jurisdiction,
+    jurisdictionArtifactHash,
+    citedRules,
+    advisoryPosture: {
+      kind: "advisory-only",
+      jurisdictionArtifactHash,
+      ruleIds,
+      note: "Cited rule summaries are advisory workflow guidance only."
+    },
+    omissions: jurisdictionRuleCategoryOrder.filter((category) => !includedCategories.has(category)).map((category) => ({
+      kind: "jurisdiction-rule-category" as const,
+      reason: "absent-from-selected-pack" as const,
+      category
+    }))
+  };
+}
+
+function compareJurisdictionRules(
+  left: { readonly kind: string; readonly id: string },
+  right: { readonly kind: string; readonly id: string }
+): number {
+  return jurisdictionRuleCategoryOrder.indexOf(left.kind as typeof jurisdictionRuleCategoryOrder[number]) -
+    jurisdictionRuleCategoryOrder.indexOf(right.kind as typeof jurisdictionRuleCategoryOrder[number]) ||
+    left.id.localeCompare(right.id);
+}
+
+function isJurisdictionRuleOrder(rules: readonly { readonly kind: string; readonly id: string }[]): boolean {
+  return rules.every((rule, index) => index === 0 || compareJurisdictionRules(rules[index - 1]!, rule) < 0);
+}
+
+function hasExpectedJurisdictionOmissions(
+  rules: readonly { readonly kind: string }[],
+  omissions: readonly { readonly kind: string; readonly reason: string; readonly category: string }[]
+): boolean {
+  const categories = new Set(rules.map((rule) => rule.kind));
+  const expected = jurisdictionRuleCategoryOrder.filter((category) => !categories.has(category));
+  return omissions.length === expected.length && omissions.every((omission, index) =>
+    omission.kind === "jurisdiction-rule-category" && omission.reason === "absent-from-selected-pack" && omission.category === expected[index]
+  );
+}
 
 function assertPayloadProvenanceBindings(
   payload: z.infer<typeof payloadSchema>,
