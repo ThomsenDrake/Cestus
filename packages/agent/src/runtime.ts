@@ -143,13 +143,22 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
 
   return {
     async status(): Promise<AgentStatusDto> {
-      const projection = buildAgentProjection(await input.ledger.readAll());
+      const configuredLifecycle = configuredIdentityLifecycle(input.identityLifecycle);
+      let projection: ReturnType<typeof buildAgentProjection>;
+      try {
+        projection = buildAgentProjection(await input.ledger.readAll());
+      } catch (error) {
+        if (configuredLifecycle?.state !== "blocked") {
+          throw error;
+        }
+        projection = buildAgentProjection([]);
+      }
       const dto = projection.toDto();
       return Object.freeze({
         schemaVersion: "agent-status.v1",
         generatedAt: input.now(),
         ...dto,
-        identityLifecycle: currentIdentityLifecycle(input.identityLifecycle, projection.identity),
+        identityLifecycle: currentIdentityLifecycle(configuredLifecycle, projection.identity),
         identity: projection.identity,
         providers: Object.freeze([...providerRegistry.providers.values()].map((provider) => provider.descriptor)),
         pendingApprovalCount: [...projection.toolRequests.values()].filter((request) => request.state === "requested").length,
@@ -682,12 +691,9 @@ interface RuntimeProviderRegistry {
 }
 
 function currentIdentityLifecycle(
-  input: CreateAgentRuntimeInput["identityLifecycle"],
+  input: ResidentIdentityLifecycleDto | undefined,
   identity: ReturnType<typeof buildAgentProjection>["identity"]
 ): ResidentIdentityLifecycleDto {
-  if (typeof input === "function") {
-    return input();
-  }
   if (input !== undefined) {
     return input;
   }
@@ -704,6 +710,12 @@ function currentIdentityLifecycle(
     safeMessage: "Resident identity is ready.",
     allowedRepairActions: Object.freeze([])
   });
+}
+
+function configuredIdentityLifecycle(
+  input: CreateAgentRuntimeInput["identityLifecycle"]
+): ResidentIdentityLifecycleDto | undefined {
+  return typeof input === "function" ? input() : input;
 }
 
 function createProviderRegistry(providerAdapters: readonly ModelProviderAdapter[]): RuntimeProviderRegistry {

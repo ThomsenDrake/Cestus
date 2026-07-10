@@ -636,6 +636,9 @@ function agentState(agent: AgentStatusDto): OperatorReadinessState {
   ) {
     return "blocked";
   }
+  if (agent.identityLifecycle.state === "initializing") {
+    return "degraded";
+  }
   if (
     agent.diagnostics.some((diagnostic) => diagnostic.severity === "error") ||
     hasBlockingAgentLock(agent)
@@ -669,6 +672,9 @@ function headlineForAgent(agent: AgentStatusDto, state: OperatorReadinessState):
   }
   if (agent.identityLifecycle.state === "not-mounted") {
     return "Resident workspace is not mounted";
+  }
+  if (agent.identityLifecycle.state === "initializing") {
+    return "Resident identity is initializing";
   }
   if (hasBlockingAgentLock(agent)) {
     return "Agent lock is active";
