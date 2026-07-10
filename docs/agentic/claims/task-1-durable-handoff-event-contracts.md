@@ -7,7 +7,7 @@ Task 1: Event Contracts And Final-Output Step Semantics from
 
 ## Status
 
-claimed
+ready-for-review
 
 ## Claim
 
@@ -29,4 +29,12 @@ new strict event contracts are implemented, followed by `npm run verify`.
 
 ## Handoff
 
-Pending implementation and verification evidence.
+- RED: `npm test -- packages/ontology/test/agent-contracts.test.ts` failed as
+  expected with 2 failures because final-output fields and specialist-handoff
+  event types were not contracted.
+- GREEN: `npm test -- packages/ontology/test/agent-contracts.test.ts` passed:
+  1 file, 49 tests.
+- Verify: `npm run verify` passed: typecheck; 170 test files, 1,715 tests
+  passed, 3 skipped; Vite production build; factory readiness.
+- Commit: pending task commit.
+- Reviewer notes: pending spec and code-quality review.

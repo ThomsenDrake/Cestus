@@ -52,6 +52,97 @@ function agentEvent(id: string, type: string, streamId: string, payload: Record<
 }
 
 describe("resident agent event contracts", () => {
+  it("accepts final-output specialist steps while keeping ordinary steps valid", () => {
+    const finalOutput = agentEvent(
+      "evt_final_output",
+      "agent.specialist-run.step.recorded",
+      "agent_run_run_handoff_001",
+      {
+        runId: "run_handoff_001",
+        stepId: "step_run_handoff_001_final_output",
+        summary: "Final durable output artifacts are persisted.",
+        stepKind: "final-output",
+        stepSchemaId: "evidence-triage-final-output.v1",
+        idempotencyKey: "specialist-final-output:run_handoff_001:task_handoff_001:evidence-triage:ready-for-review:sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        inputArtifactHashes: [hash111],
+        outputArtifactHashes: [hash222, hash333]
+      }
+    );
+
+    expect(validateKnowledgeEvent(finalOutput).success).toBe(true);
+    expect(
+      validateKnowledgeEvent({
+        ...finalOutput,
+        id: "evt_final_output_unknown",
+        payload: { ...finalOutput.payload, bulkyDto: { hidden: true } }
+      }).success
+    ).toBe(false);
+
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_audit_step",
+          "agent.specialist-run.step.recorded",
+          "agent_run_run_handoff_001",
+          {
+            runId: "run_handoff_001",
+            stepId: "step_run_handoff_001_audit",
+            summary: "Audit step remains valid but is not final output.",
+            outputArtifactHashes: [hash111]
+          }
+        )
+      ).success
+    ).toBe(true);
+  });
+
+  it("accepts compact handoff prepared and recorded events on the run stream", () => {
+    const compactBinding = {
+      handoffId: "handoff_run_handoff_001_0123456789abcdef",
+      handoffRevision: 1,
+      idempotencyKey: "specialist-handoff:run_handoff_001:task_handoff_001:evidence-triage:ready-for-review:sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      handoffManifestHash: hash222,
+      handoffDtoHash: hash333,
+      runId: "run_handoff_001",
+      taskId: "task_handoff_001",
+      runType: "evidence-triage",
+      residentAgentId: "agent_default",
+      status: "ready-for-review",
+      safeSummary: "Evidence triage handoff is ready for human review.",
+      finalOutputStepId: "step_run_handoff_001_final_output",
+      finalOutputEventId: "evt_final_output",
+      contextPackHashes: [hash111],
+      promptArtifactHash: hash111,
+      outputArtifactHashes: [hash222],
+      toolRequestIds: [],
+      sourceEventIds: ["evt_source_001"],
+      relatedEventIds: ["evt_final_output"]
+    };
+
+    const prepared = agentEvent(
+      "evt_handoff_prepared",
+      "agent.specialist-handoff.prepared",
+      "agent_run_run_handoff_001",
+      compactBinding
+    );
+    expect(validateKnowledgeEvent(prepared).success).toBe(true);
+    expect(validateKnowledgeEvent({ ...prepared, streamId: "agent_handoff_handoff_run_handoff_001_0123456789abcdef" }).success).toBe(false);
+
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_handoff_recorded",
+          "agent.specialist-handoff.recorded",
+          "agent_run_run_handoff_001",
+          {
+            ...compactBinding,
+            preparedEventId: "evt_handoff_prepared",
+            verifiedAt: "2026-07-10T14:00:00.000Z"
+          }
+        )
+      ).success
+    ).toBe(true);
+  });
+
   it("accepts the default resident identity and agent actor kind", () => {
     expect(
       validateKnowledgeEvent({
