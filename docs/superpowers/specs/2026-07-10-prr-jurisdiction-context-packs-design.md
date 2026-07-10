@@ -22,8 +22,8 @@ The first production contract is selected-request scoped. A PRR run receives onl
 - Preserve active send, legal, and governance gates as non-truncatable context.
 - Make omissions explicit and machine-readable without enumerating unrelated request IDs.
 - Keep ledger events, readiness DTOs, and audit manifests ref-only while production prompt rendering resolves bounded selected-request payloads locally.
-- Verify resolved payload bytes exactly against the ref content hash and size before any provider invocation.
-- Register builders idempotently while rejecting conflicting duplicate ID/version/builder bindings.
+- Verify resolved payload bytes exactly against the ref content hash and size before any provider invocation, then parse the payload through the exact PRR pack parser keyed by context pack ID and version.
+- Register builders and parsers idempotently by stable descriptor/parser/producer identity while rejecting conflicting duplicate ID/version bindings.
 - Keep the packs read-only. They never send, follow up, appeal, confirm escalation, clear locks, grant approval, or execute domain effects.
 
 ## Non-Goals
@@ -64,9 +64,16 @@ The resolved envelope is content-addressed:
 - `ref.contextPackId`, `ref.version`, `ref.scope`, `ref.sourceEventIds`, `ref.artifactHashes`, `ref.projectionHighWaterMark`, and `ref.stalenessInputs` summarize and bind the payload but do not replace it.
 - the payload is normalized through the same provider-safe JSON boundary used for context-pack hashing.
 
+Hash and size verification are necessary but not sufficient. The operational resolved-envelope registry/parser contract must apply a strict payload parser after hash/size verification and before prompt rendering. PRR registration supplies exact parsers for:
+
+- `prr-read-model.v1` version `1`.
+- `jurisdiction-pack-summary.v1` version `1`.
+
+Each parser is keyed by context pack ID and version, validates the pack-specific payload shape, rejects unknown or missing required fields, and returns a frozen typed payload. Generic JSON safety cannot substitute for these pack-specific parsers. An attacker who builds a matching ref/hash for a generic JSON object with the wrong PRR payload shape must still be rejected before prompt rendering.
+
 Ledger events, readiness DTOs, prompt manifests, approval previews, and durable audit records continue to store or reference `ContextPackRef` values only. They must not persist the PRR payload bytes.
 
-Production prompt rendering resolves the selected PRR payloads locally through the operational content-addressed resolver and includes the exact verified payload bytes in the prompt artifact text. Before rendering or invoking a provider, the renderer recomputes the payload hash and size and compares them to the ref. A missing payload, mismatched payload hash, mismatched payload size, wrong context pack ID/version, wrong selected-request scope, or stale resolver result blocks provider invocation with a safe error.
+Production prompt rendering resolves the selected PRR payloads locally through the operational content-addressed resolver and includes the exact verified and parsed payload bytes in the prompt artifact text. Before rendering or invoking a provider, the renderer recomputes the payload hash and size, compares them to the ref, and applies the registered parser for that ref's ID/version. A missing payload, mismatched payload hash, mismatched payload size, missing parser, parser rejection, wrong context pack ID/version, wrong selected-request scope, or stale resolver result blocks provider invocation with a safe error.
 
 The resolver contract must not be an arbitrary hash-to-text callback. Callers supply or obtain bounded `ResolvedContextPack` envelopes from approved context-pack builders or an approved local resolver that has already normalized and verified the payload against the ref.
 
@@ -188,7 +195,7 @@ Staleness inputs include, at minimum:
 
 Builders are pure functions over injected inputs. They do not read ambient time, scan global workspace state, or inspect unrelated records.
 
-The caller supplies `generatedAt`. Identical normalized inputs, including `generatedAt`, must produce identical resolved payloads, canonical payload bytes, content hashes, source refs, omissions, and safe summaries.
+The caller supplies `generatedAt`. Identical normalized inputs, including `generatedAt`, must produce identical resolved payloads, canonical payload bytes, typed parser results, content hashes, source refs, omissions, and safe summaries.
 
 Canonical ordering rules:
 
@@ -199,7 +206,7 @@ Canonical ordering rules:
 - diagnostics by event ID, then diagnostic ID.
 - omissions by stable kind and reason.
 
-Every payload is normalized through the existing context-pack DTO safety boundary so accessors, symbols, sparse arrays, custom prototypes, unsafe keys, and secret-shaped values are rejected before hashing. Verification recomputes the hash and size from the normalized payload immediately before prompt rendering.
+Every payload is normalized through the existing context-pack DTO safety boundary so accessors, symbols, sparse arrays, custom prototypes, unsafe keys, and secret-shaped values are rejected before hashing. Verification recomputes the hash and size from the normalized payload immediately before prompt rendering, then runs the strict pack parser registered for the exact ID/version.
 
 ## Runtime Registration
 
@@ -208,7 +215,7 @@ Registration should be narrow and explicit. The first runtime integration regist
 - `prr-read-model.v1`
 - `jurisdiction-pack-summary.v1`
 
-The registration operation is idempotent when the same context pack ID, version, and builder identity are registered more than once. It conflicts when the same ID/version is registered with a different builder or incompatible descriptor.
+The registration operation is idempotent when the same context pack ID, version, descriptor identity, parser identity, and producer registration identity are registered more than once. It conflicts when the same ID/version is registered with a different descriptor, parser, or incompatible producer registration. Idempotency must not rely only on a freshly allocated builder function or dependency object identity.
 
 Descriptors must use conservative limits and safe policies:
 
@@ -216,6 +223,7 @@ Descriptors must use conservative limits and safe policies:
 - `requiredProvenanceKinds`: event IDs and content/artifact hashes as applicable.
 - source projection names that identify PRR projection and jurisdiction pack artifacts.
 - bounded max bytes suitable for selected-request context.
+- strict parser registration for the exact context pack ID/version.
 
 Shared registry integration remains a narrow implementation task. Operational packs, investigative packs, specialist prompt templates, handoffs, and orchestrator files are outside this design's implementation scope. The only prompt-rendering dependency is the operational lane's shared resolved-envelope contract: PRR code supplies verified selected-request resolved envelopes and does not add a generic hash-to-text callback.
 
@@ -250,10 +258,12 @@ Implementation is test-driven. Required tests include:
 - missing rule categories produce machine-readable omissions.
 - identical injected inputs produce identical context hashes.
 - both builders return resolved envelopes whose payload hash and size exactly match the ref.
-- selected deadline and jurisdiction-rule sentinel facts are present in resolved payloads, absent from `safeSummary`, and reach production prompt rendering only after ref hash and size verification.
+- PRR registrations supply exact parsers keyed by ID/version, and the resolver applies them after hash/size verification.
+- an attacker-built resolved envelope with a matching ref/hash but invalid PRR payload shape is rejected by the parser before prompt rendering.
+- selected deadline and jurisdiction-rule sentinel facts are present in resolved payloads, absent from `safeSummary`, and reach production prompt rendering only after ref hash, size, and parser verification.
 - payload mismatch or missing local resolution blocks provider invocation before any provider call.
 - hostile DTO structures and secret-shaped keys or values are rejected before hashing.
-- registration is idempotent for the same ID/version/builder and conflicts for a different builder.
+- registration is idempotent for the same ID/version/stable descriptor/parser/producer identity and conflicts for different descriptor or parser identity.
 - builders have no send, follow-up, appeal, escalation-confirmation, lock-clear, approval-grant, or domain-effect path.
 
 Documentation validation for this design is:
@@ -267,4 +277,4 @@ npm run factory:check
 
 The approved direction is selected-request scoped context for the first production PRR context-pack contract. `prr-read-model.v1` uses `scope: { kind: "prr-request", id }`, exact selected request stream and correspondence/evidence bindings, bounded aggregate omission proof for other PRRs, non-truncatable active gates, deterministic canonical output, and a no-effects boundary. `jurisdiction-pack-summary.v1` binds the selected request jurisdiction by pack name, version, exact rule IDs, and jurisdiction artifact content hash.
 
-The amended integration direction is that both PRR builders produce provider-safe `ResolvedContextPack { ref, payload }` envelopes against the operational lane's shared content-addressed resolver contract. Durable ledger/events/readiness surfaces keep refs only; production prompt rendering resolves the bounded selected-request and jurisdiction payloads locally, verifies exact hash and size, and includes those approved bytes in the prompt artifact. Missing or mismatched resolution blocks provider invocation, and no arbitrary hash-to-text callback is allowed.
+The amended integration direction is that both PRR builders produce provider-safe `ResolvedContextPack { ref, payload }` envelopes against the operational lane's shared content-addressed resolver and strict parser contract. Durable ledger/events/readiness surfaces keep refs only; production prompt rendering resolves the bounded selected-request and jurisdiction payloads locally, verifies exact hash and size, parses with the registered ID/version parser, and includes those approved bytes in the prompt artifact. Missing, mismatched, or parser-invalid resolution blocks provider invocation, and no arbitrary hash-to-text callback is allowed.
