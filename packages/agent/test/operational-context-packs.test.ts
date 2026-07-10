@@ -46,12 +46,41 @@ describe("operational context pack contracts", () => {
     expect(operationalContextPackProviderRegistrationKey(reversed)).toBe(expected);
   });
 
-  it("rejects unsafe provider metadata, empty capabilities, and unknown capabilities", () => {
+  it("rejects unsafe provider metadata, unsafe extras, empty capabilities, and unknown capabilities without invoking getters", () => {
     expect(() => assertOperationalContextPackProviderMetadata({ ...providerMetadata, scope: { kind: "workspace", id: "/home/drake/private/workspace" } })).toThrow(/safe|scope/i);
     expect(() => assertOperationalContextPackProviderMetadata({ ...providerMetadata, providerId: "provider failed with raw provider error" })).toThrow(/safe/i);
     expect(() => assertOperationalContextPackProviderMetadata({ ...providerMetadata, policyVersion: "Bearer secret-value" })).toThrow(/safe/i);
+    expect(() => assertOperationalContextPackProviderMetadata({ ...providerMetadata, rawProviderError: "Bearer secret-value" } as never)).toThrow(/unexpected|secret|safe/i);
+    expect(() =>
+      assertOperationalContextPackProviderMetadata({
+        ...providerMetadata,
+        scope: { kind: "workspace", id: "ws_case_001", rawPath: "/home/drake/private/workspace" }
+      } as never)
+    ).toThrow(/unexpected|secret|safe|scope/i);
+    expect(() =>
+      assertOperationalContextPackProviderMetadata({
+        ...providerMetadata,
+        sizeBudgets: {
+          ...providerMetadata.sizeBudgets,
+          credentialHint: "api key sk-live-value"
+        }
+      } as never)
+    ).toThrow(/unexpected|secret|safe|sizeBudgets/i);
     expect(() => assertOperationalContextPackProviderMetadata({ ...providerMetadata, capabilities: [] })).toThrow(/capabilit/i);
     expect(() => assertOperationalContextPackProviderMetadata({ ...providerMetadata, capabilities: ["unknown-capability"] as never })).toThrow(/capabilit/i);
+
+    let getterInvoked = false;
+    const metadataWithAccessor = { ...providerMetadata } as Record<string, unknown>;
+    Object.defineProperty(metadataWithAccessor, "rawProviderError", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return "Bearer secret-value";
+      }
+    });
+
+    expect(() => assertOperationalContextPackProviderMetadata(metadataWithAccessor as never)).toThrow(/accessor|unexpected|safe/i);
+    expect(getterInvoked).toBe(false);
   });
 
   it("uses bounded operational provider methods rather than a full projection method", async () => {
@@ -90,6 +119,57 @@ describe("operational context pack contracts", () => {
   });
 
   it("provides exact non-serialized parsers for all package-owned pack identities", () => {
+    const validWindow = {
+      order: "updated-desc",
+      limit: 25,
+      hasMore: false,
+      totalCount: 1,
+      omissionCodes: []
+    };
+    const validWorkspacePayload = {
+      schemaVersion: "workspace-runtime-status.v1",
+      runtime: {
+        runtimeHighWaterMark: 7,
+        workspaceMounted: true,
+        workspaceId: "ws_case_001",
+        storageStrategy: "repo-local",
+        bindPosture: "loopback",
+        authPosture: "local-disabled",
+        providerStates: [],
+        diagnostics: [],
+        projectionHighWaterMarks: { agent: 42 },
+        omissionCodes: []
+      }
+    };
+    const validHistoryPayload = {
+      schemaVersion: "task-run-history.v1",
+      history: {
+        projectionHighWaterMark: 42,
+        projectionSourceRef: "agent.projection.task-run-history",
+        tasks: [],
+        runs: [],
+        modelInvocations: [],
+        toolRequests: [],
+        aggregateCounts: { tasks: 0 },
+        sourceEventIds: ["evt_agent_task_created"],
+        artifactHashes: [],
+        window: validWindow
+      }
+    };
+    const validMemoryPayload = {
+      schemaVersion: "agent-memory-summary.v1",
+      memory: {
+        truthBoundary: { authoritativeForOntology: false },
+        projectionHighWaterMark: 42,
+        projectionSourceRef: "agent.projection.memory",
+        activeMemory: [],
+        aggregateCounts: { active: 0 },
+        sourceEventIds: ["evt_agent_memory_created"],
+        artifactHashes: [],
+        window: validWindow
+      }
+    };
+
     expect(Object.keys(operationalContextPackPayloadParsers).sort()).toEqual([
       "agent-memory-summary.v1@1",
       "task-run-history.v1@1",
@@ -97,11 +177,19 @@ describe("operational context pack contracts", () => {
     ]);
     expect(JSON.stringify(operationalContextPackDescriptors)).not.toContain("parsePayload");
 
-    expect(operationalContextPackPayloadParsers["workspace-runtime-status.v1@1"]({ schemaVersion: "workspace-runtime-status.v1", runtime: {} })).toEqual({ schemaVersion: "workspace-runtime-status.v1", runtime: {} });
+    expect(operationalContextPackPayloadParsers["workspace-runtime-status.v1@1"](validWorkspacePayload)).toEqual(validWorkspacePayload);
     expect(() => operationalContextPackPayloadParsers["workspace-runtime-status.v1@1"]({ schemaVersion: "task-run-history.v1", history: {} })).toThrow(/workspace-runtime-status/i);
-    expect(operationalContextPackPayloadParsers["task-run-history.v1@1"]({ schemaVersion: "task-run-history.v1", history: {} })).toEqual({ schemaVersion: "task-run-history.v1", history: {} });
+    expect(() => operationalContextPackPayloadParsers["workspace-runtime-status.v1@1"]({ schemaVersion: "workspace-runtime-status.v1", runtime: null })).toThrow(/workspace-runtime-status/i);
+    expect(() => operationalContextPackPayloadParsers["workspace-runtime-status.v1@1"]({ schemaVersion: "workspace-runtime-status.v1", runtime: { workspaceMounted: true } })).toThrow(/workspace-runtime-status/i);
+
+    expect(operationalContextPackPayloadParsers["task-run-history.v1@1"](validHistoryPayload)).toEqual(validHistoryPayload);
     expect(() => operationalContextPackPayloadParsers["task-run-history.v1@1"]({ schemaVersion: "agent-memory-summary.v1", memory: {} })).toThrow(/task-run-history/i);
-    expect(operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({ schemaVersion: "agent-memory-summary.v1", memory: {} })).toEqual({ schemaVersion: "agent-memory-summary.v1", memory: {} });
+    expect(() => operationalContextPackPayloadParsers["task-run-history.v1@1"]({ schemaVersion: "task-run-history.v1", history: null })).toThrow(/task-run-history/i);
+    expect(() => operationalContextPackPayloadParsers["task-run-history.v1@1"]({ schemaVersion: "task-run-history.v1", history: { tasks: [] } })).toThrow(/task-run-history/i);
+
+    expect(operationalContextPackPayloadParsers["agent-memory-summary.v1@1"](validMemoryPayload)).toEqual(validMemoryPayload);
     expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({ schemaVersion: "workspace-runtime-status.v1", runtime: {} })).toThrow(/agent-memory-summary/i);
+    expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({ schemaVersion: "agent-memory-summary.v1", memory: null })).toThrow(/agent-memory-summary/i);
+    expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({ schemaVersion: "agent-memory-summary.v1", memory: { activeMemory: [] } })).toThrow(/agent-memory-summary/i);
   });
 });
