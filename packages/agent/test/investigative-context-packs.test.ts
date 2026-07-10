@@ -479,6 +479,20 @@ describe("investigative context packs", () => {
     })).rejects.toMatchObject({ code: "missing-provenance" });
   });
 
+  it("rejects accepted graph rows with source events outside the selection manifest", async () => {
+    await expect(buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps({ graphAssertionExtraSourceEvent: true }),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "selection-row-mismatch" });
+
+    await expect(buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps({ graphRelationshipExtraSourceEvent: true }),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "selection-row-mismatch" });
+  });
+
   it("does not infer accepted relationships when relationship projection is unavailable", async () => {
     const deps = createInvestigativeDeps({ relationshipProjectionUnavailable: true });
     const resolved = await buildAcceptedGraphProjectionContextPack({
@@ -509,12 +523,39 @@ describe("investigative context packs", () => {
     expect(counters.unrelatedRowsScanned).toBe(0);
   });
 
+  it("batches accepted graph reads at the declared reader limit", async () => {
+    const counters = createReaderCounters();
+
+    await buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps({ counters, graphAssertionCount: 51 }),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    });
+
+    expect(counters.graphReads).toBe(2);
+    expect(counters.graphIdBatchSizes).toEqual([50, 4]);
+    expect(counters.graphIdBatchSizes.every((size) => size <= investigativeContextPackDefaultLimits.readerBatchSize)).toBe(true);
+    expect(counters.assertionIdsRead).toHaveLength(51);
+    expect(counters.assertionIdsRead[0]).toBe("assertion_contract_vendor_001");
+    expect(counters.assertionIdsRead[50]).toBe("assertion_contract_vendor_051");
+  });
+
+  it("requires accepted graph selection manifests to carry graph high-water provenance", async () => {
+    await expect(buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps({ graphMissingHighWaterMark: true }),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "projection-lag" });
+  });
+
   it("parses accepted-graph payloads strictly by schema", async () => {
     const resolved = await buildAcceptedGraphProjectionContextPack({
       deps: createInvestigativeDeps(),
       scope: { kind: "task", id: "task_graph" },
       window: windowFor("cursor_task_graph_0001", 0, 100)
     });
+    const assertionItem = resolved.payload.items.assertions[0] as Record<string, unknown>;
+    const relationshipItem = resolved.payload.items.relationships[0] as Record<string, unknown>;
 
     expect(() => acceptedGraphProjectionPayloadParser.parsePayload(resolved.payload)).not.toThrow();
     expect(() => acceptedGraphProjectionPayloadParser.parsePayload({
@@ -529,6 +570,30 @@ describe("investigative context packs", () => {
     expect(() => acceptedGraphProjectionPayloadParser.parsePayload({
       ...resolved.payload,
       extra: "unexpected"
+    })).toThrow(/accepted-graph payload/i);
+    expect(() => acceptedGraphProjectionPayloadParser.parsePayload({
+      ...resolved.payload,
+      projectionHighWaterMarks: {}
+    })).toThrow(/accepted-graph payload/i);
+    expect(() => acceptedGraphProjectionPayloadParser.parsePayload({
+      ...resolved.payload,
+      items: {
+        ...resolved.payload.items,
+        assertions: [{
+          ...assertionItem,
+          sourceEventIds: ["evt_assertion_proposed_001"]
+        }]
+      }
+    })).toThrow(/accepted-graph payload/i);
+    expect(() => acceptedGraphProjectionPayloadParser.parsePayload({
+      ...resolved.payload,
+      items: {
+        ...resolved.payload.items,
+        relationships: [{
+          ...relationshipItem,
+          sourceEventIds: ["not-an-event"]
+        }]
+      }
     })).toThrow(/accepted-graph payload/i);
   });
 
@@ -560,6 +625,7 @@ interface ReaderCounters {
   evidenceIdBatchSizes: number[];
   evidenceHashBatchSizes: number[];
   assertionIdsRead: string[];
+  graphIdBatchSizes: number[];
 }
 
 function createReaderCounters(): ReaderCounters {
@@ -573,7 +639,8 @@ function createReaderCounters(): ReaderCounters {
     evidenceIdsRead: [],
     evidenceIdBatchSizes: [],
     evidenceHashBatchSizes: [],
-    assertionIdsRead: []
+    assertionIdsRead: [],
+    graphIdBatchSizes: []
   };
 }
 
@@ -601,6 +668,10 @@ interface CreateInvestigativeDepsInput {
   readonly relationshipProjectionUnavailable?: boolean;
   readonly graphRowHashMismatch?: boolean;
   readonly graphMissingSelectedAcceptedEvent?: boolean;
+  readonly graphAssertionExtraSourceEvent?: boolean;
+  readonly graphRelationshipExtraSourceEvent?: boolean;
+  readonly graphMissingHighWaterMark?: boolean;
+  readonly graphAssertionCount?: number;
   readonly reverseGraphRows?: boolean;
   readonly graphSentinel?: string;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
@@ -644,6 +715,10 @@ function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): Inve
     relationshipProjectionUnavailable: input.relationshipProjectionUnavailable ?? false,
     graphRowHashMismatch: input.graphRowHashMismatch ?? false,
     graphMissingSelectedAcceptedEvent: input.graphMissingSelectedAcceptedEvent ?? false,
+    graphAssertionExtraSourceEvent: input.graphAssertionExtraSourceEvent ?? false,
+    graphRelationshipExtraSourceEvent: input.graphRelationshipExtraSourceEvent ?? false,
+    graphMissingHighWaterMark: input.graphMissingHighWaterMark ?? false,
+    graphAssertionCount: input.graphAssertionCount ?? 1,
     reverseGraphRows: input.reverseGraphRows ?? false,
     ...(input.selection === undefined ? {} : { selection: input.selection }),
     ...(input.postureResult === undefined ? {} : { postureResult: input.postureResult }),
@@ -672,6 +747,10 @@ function createFakeInvestigativeDeps(input: {
   readonly relationshipProjectionUnavailable: boolean;
   readonly graphRowHashMismatch: boolean;
   readonly graphMissingSelectedAcceptedEvent: boolean;
+  readonly graphAssertionExtraSourceEvent: boolean;
+  readonly graphRelationshipExtraSourceEvent: boolean;
+  readonly graphMissingHighWaterMark: boolean;
+  readonly graphAssertionCount: number;
   readonly reverseGraphRows: boolean;
   readonly graphSentinel?: string;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
@@ -703,10 +782,17 @@ function createFakeInvestigativeDeps(input: {
   const graph = graphRows({
     acceptedAssertionWithoutEvidenceHash: input.acceptedAssertionWithoutEvidenceHash,
     graphRowHashMismatch: input.graphRowHashMismatch,
+    graphAssertionExtraSourceEvent: input.graphAssertionExtraSourceEvent,
+    graphRelationshipExtraSourceEvent: input.graphRelationshipExtraSourceEvent,
+    graphAssertionCount: input.graphAssertionCount,
     ...(input.graphSentinel === undefined ? {} : { graphSentinel: input.graphSentinel }),
     reverseGraphRows: input.reverseGraphRows
   });
-  const graphManifest = selectionManifestForGraph({ missingAcceptedEvent: input.graphMissingSelectedAcceptedEvent });
+  const graphManifest = selectionManifestForGraph({
+    missingAcceptedEvent: input.graphMissingSelectedAcceptedEvent,
+    missingHighWaterMark: input.graphMissingHighWaterMark,
+    assertionCount: input.graphAssertionCount
+  });
   const graphAssertionsById = new Map(graph.assertions.map((row) => [row.assertionId, row]));
   const graphEntitiesById = new Map(graph.entities.map((row) => [row.entityId, row]));
   const graphRelationshipsById = new Map(graph.relationships.map((row) => [row.relationshipId, row]));
@@ -732,6 +818,7 @@ function createFakeInvestigativeDeps(input: {
       readAcceptedGraphByIds(request) {
         input.counters.graphReads += 1;
         input.counters.assertionIdsRead.push(...request.assertionIds);
+        input.counters.graphIdBatchSizes.push(request.assertionIds.length + request.entityIds.length + request.relationshipIds.length);
         if (request.assertionIds.some((assertionId) => !graphAssertionsById.has(assertionId))) {
           input.counters.unrelatedRowsScanned += unrelatedGraphRows.length;
         }
@@ -859,15 +946,33 @@ function fixedSelection(body: InvestigativeSelectionManifestBody): Investigative
   };
 }
 
-function selectionManifestForGraph(input: { readonly missingAcceptedEvent: boolean }): ReturnType<typeof selectionManifest> {
-  const assertionRowHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
+function selectionManifestForGraph(input: {
+  readonly missingAcceptedEvent: boolean;
+  readonly missingHighWaterMark: boolean;
+  readonly assertionCount: number;
+}): ReturnType<typeof selectionManifest> {
   const vendorEntityRowHash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
   const agencyEntityRowHash = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
   const relationshipRowHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as const;
+  const assertionRefs = Array.from({ length: input.assertionCount }, (_, index) => {
+    const ordinal = index + 1;
+    const assertionId = graphAssertionId(ordinal);
+    const assertionRowHash = graphAssertionRowHash(ordinal);
+    return {
+      refKind: "assertion" as const,
+      refId: assertionId,
+      sortKey: `assertion/${assertionId}/${assertionRowHash}`,
+      rowHash: assertionRowHash,
+      sourceEventIds: input.missingAcceptedEvent && ordinal === 1
+        ? [graphProposedEventId(ordinal)]
+        : [graphProposedEventId(ordinal), graphAcceptedEventId(ordinal)],
+      mandatory: true
+    };
+  });
   const body: InvestigativeSelectionManifestBody = {
     manifestVersion: "investigative-selection-manifest.v1",
     scope: { kind: "task", id: "task_graph" },
-    sourceProjectionHighWaterMarks: { graph: 42 },
+    sourceProjectionHighWaterMarks: input.missingHighWaterMark ? {} : { graph: 42 },
     ordering: "ref-kind-ref-id-content-hash-v1",
     window: {
       cursor: "cursor_task_graph_0001",
@@ -875,18 +980,9 @@ function selectionManifestForGraph(input: { readonly missingAcceptedEvent: boole
       limit: 100,
       stableSort: "ref-kind-ref-id-content-hash-v1"
     },
-    totalEligibleCount: 4,
+    totalEligibleCount: assertionRefs.length + 3,
     includedRefs: [
-      {
-        refKind: "assertion",
-        refId: "assertion_contract_vendor_001",
-        sortKey: `assertion/assertion_contract_vendor_001/${assertionRowHash}`,
-        rowHash: assertionRowHash,
-        sourceEventIds: input.missingAcceptedEvent
-          ? ["evt_assertion_proposed_001"]
-          : ["evt_assertion_proposed_001", "evt_assertion_accepted_001"],
-        mandatory: true
-      },
+      ...assertionRefs,
       {
         refKind: "entity",
         refId: "entity_agency_001",
@@ -920,23 +1016,33 @@ function selectionManifestForGraph(input: { readonly missingAcceptedEvent: boole
 function graphRows(input: {
   readonly acceptedAssertionWithoutEvidenceHash: boolean;
   readonly graphRowHashMismatch: boolean;
+  readonly graphAssertionExtraSourceEvent: boolean;
+  readonly graphRelationshipExtraSourceEvent: boolean;
+  readonly graphAssertionCount: number;
   readonly graphSentinel?: string;
   readonly reverseGraphRows: boolean;
 }) {
-  const assertion = {
-    assertionId: "assertion_contract_vendor_001",
-    evidenceId: "ev_contract_001",
-    evidenceContentHash: (input.acceptedAssertionWithoutEvidenceHash
-      ? ""
-      : "sha256:1111111111111111111111111111111111111111111111111111111111111111") as `sha256:${string}`,
-    proposedByEventId: "evt_assertion_proposed_001",
-    acceptedByEventId: "evt_assertion_accepted_001",
-    sourceEventIds: ["evt_assertion_accepted_001", "evt_assertion_proposed_001"],
-    rowHash: (input.graphRowHashMismatch
-      ? "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-      : "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") as `sha256:${string}`,
-    safeStatement: input.graphSentinel ?? "Agency awarded a reviewed contract to the vendor."
-  };
+  const assertions = Array.from({ length: input.graphAssertionCount }, (_, index) => {
+    const ordinal = index + 1;
+    return {
+      assertionId: graphAssertionId(ordinal),
+      evidenceId: "ev_contract_001",
+      evidenceContentHash: (input.acceptedAssertionWithoutEvidenceHash && ordinal === 1
+        ? ""
+        : "sha256:1111111111111111111111111111111111111111111111111111111111111111") as `sha256:${string}`,
+      proposedByEventId: graphProposedEventId(ordinal),
+      acceptedByEventId: graphAcceptedEventId(ordinal),
+      sourceEventIds: [
+        graphAcceptedEventId(ordinal),
+        graphProposedEventId(ordinal),
+        ...(input.graphAssertionExtraSourceEvent && ordinal === 1 ? ["evt_assertion_stale_extra_001"] : [])
+      ],
+      rowHash: (input.graphRowHashMismatch && ordinal === 1
+        ? "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        : graphAssertionRowHash(ordinal)) as `sha256:${string}`,
+      safeStatement: input.graphSentinel ?? `Agency awarded reviewed contract statement ${ordinal}.`
+    };
+  });
   const entities = [
     {
       entityId: "entity_agency_001",
@@ -957,7 +1063,10 @@ function graphRows(input: {
       acceptedByEventId: "evt_relationship_accepted_001",
       evidenceId: "ev_contract_001",
       evidenceContentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111" as `sha256:${string}`,
-      sourceEventIds: ["evt_relationship_accepted_001"],
+      sourceEventIds: [
+        "evt_relationship_accepted_001",
+        ...(input.graphRelationshipExtraSourceEvent ? ["evt_relationship_stale_extra_001"] : [])
+      ],
       rowHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as `sha256:${string}`,
       sourceEntityId: "entity_agency_001",
       targetEntityId: "entity_vendor_001",
@@ -965,10 +1074,26 @@ function graphRows(input: {
     }
   ];
   return {
-    assertions: [assertion],
+    assertions: input.reverseGraphRows ? [...assertions].reverse() : assertions,
     entities: input.reverseGraphRows ? [...entities].reverse() : entities,
     relationships: input.reverseGraphRows ? [...relationships].reverse() : relationships
   };
+}
+
+function graphAssertionId(ordinal: number): string {
+  return `assertion_contract_vendor_${String(ordinal).padStart(3, "0")}`;
+}
+
+function graphProposedEventId(ordinal: number): string {
+  return `evt_assertion_proposed_${String(ordinal).padStart(3, "0")}`;
+}
+
+function graphAcceptedEventId(ordinal: number): string {
+  return `evt_assertion_accepted_${String(ordinal).padStart(3, "0")}`;
+}
+
+function graphAssertionRowHash(ordinal: number): `sha256:${string}` {
+  return `sha256:${String(ordinal).padStart(64, "a")}` as `sha256:${string}`;
 }
 
 function selectionBody(): InvestigativeSelectionManifestBody {

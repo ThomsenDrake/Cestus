@@ -649,16 +649,13 @@ export async function buildAcceptedGraphProjectionContextPack(
 ): Promise<ResolvedAcceptedGraphProjectionContextPack> {
   const selectedManifest = await selectForPack("accepted-graph-projection.v1", input);
   const manifest = canonicalSelectionManifest(selectedManifest);
+  if (manifest.sourceProjectionHighWaterMarks.graph === undefined) {
+    throw new InvestigativeContextPackError("projection-lag", "projection-lag");
+  }
   const assertionRefs = manifest.includedRefs.filter((ref) => ref.refKind === "assertion");
   const entityRefs = manifest.includedRefs.filter((ref) => ref.refKind === "entity");
   const relationshipRefs = manifest.includedRefs.filter((ref) => ref.refKind === "relationship");
-  const graphRows = await input.deps.graphReader.readAcceptedGraphByIds({
-    assertionIds: assertionRefs.map((ref) => ref.refId),
-    entityIds: entityRefs.map((ref) => ref.refId),
-    relationshipIds: relationshipRefs.map((ref) => ref.refId),
-    highWaterMarks: manifest.sourceProjectionHighWaterMarks,
-    limit: readerBatchSize
-  });
+  const graphRows = await readSelectedAcceptedGraphRows(input.deps.graphReader, manifest);
   const metadata = canonicalMetadata(input.deps.metadata);
   const assertions = validateAcceptedGraphAssertions(assertionRefs, graphRows.assertions);
   const entities = validateAcceptedGraphEntities(entityRefs, graphRows.entities);
@@ -738,6 +735,45 @@ export async function buildAcceptedGraphProjectionContextPack(
     stalenessInputs,
     policyVersion: metadata.policyVersion,
     sizeBudgetBytes: budget
+  });
+}
+
+async function readSelectedAcceptedGraphRows(
+  reader: AcceptedGraphProjectionReader,
+  manifest: InvestigativeSelectionManifest
+): Promise<{
+  readonly assertions: readonly AcceptedGraphAssertionRow[];
+  readonly entities: readonly AcceptedGraphEntityRow[];
+  readonly relationships: readonly AcceptedGraphRelationshipRow[];
+  readonly relationshipProjectionAvailable: boolean;
+}> {
+  const graphRefs = manifest.includedRefs.filter((ref) => ref.refKind === "assertion"
+    || ref.refKind === "entity" || ref.refKind === "relationship");
+  const assertions: AcceptedGraphAssertionRow[] = [];
+  const entities: AcceptedGraphEntityRow[] = [];
+  const relationships: AcceptedGraphRelationshipRow[] = [];
+  let relationshipProjectionAvailable = true;
+
+  for (let offset = 0; offset < graphRefs.length; offset += readerBatchSize) {
+    const batch = graphRefs.slice(offset, offset + readerBatchSize);
+    const batchRows = await reader.readAcceptedGraphByIds({
+      assertionIds: batch.filter((ref) => ref.refKind === "assertion").map((ref) => ref.refId),
+      entityIds: batch.filter((ref) => ref.refKind === "entity").map((ref) => ref.refId),
+      relationshipIds: batch.filter((ref) => ref.refKind === "relationship").map((ref) => ref.refId),
+      highWaterMarks: manifest.sourceProjectionHighWaterMarks,
+      limit: readerBatchSize
+    });
+    assertions.push(...batchRows.assertions);
+    entities.push(...batchRows.entities);
+    relationships.push(...batchRows.relationships);
+    relationshipProjectionAvailable = relationshipProjectionAvailable && batchRows.relationshipProjectionAvailable;
+  }
+
+  return Object.freeze({
+    assertions: Object.freeze(assertions),
+    entities: Object.freeze(entities),
+    relationships: Object.freeze(relationships),
+    relationshipProjectionAvailable
   });
 }
 
@@ -833,7 +869,9 @@ function assertAcceptedAssertionRow(row: AcceptedGraphAssertionRow, ref: Investi
   if (!isSafeNonEmptyText(row.assertionId) || row.assertionId !== ref.refId
     || !isSafeNonEmptyText(row.evidenceId) || !isContentHash(row.evidenceContentHash)
     || !isSafeNonEmptyText(row.proposedByEventId) || !isSafeNonEmptyText(row.acceptedByEventId)
-    || !isContentHash(row.rowHash) || !isSafeNonEmptyText(row.safeStatement)) {
+    || !isEventId(row.proposedByEventId) || !isEventId(row.acceptedByEventId)
+    || !isContentHash(row.rowHash) || !isSafeNonEmptyText(row.safeStatement)
+    || !row.sourceEventIds.every(isEventId)) {
     throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
   }
   if (ref.rowHash !== row.rowHash) {
@@ -843,13 +881,16 @@ function assertAcceptedAssertionRow(row: AcceptedGraphAssertionRow, ref: Investi
     || !row.sourceEventIds.includes(row.proposedByEventId) || !row.sourceEventIds.includes(row.acceptedByEventId)) {
     throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
   }
+  if (!sameStringSet(row.sourceEventIds, ref.sourceEventIds)) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
 }
 
 function assertAcceptedEntityRow(row: AcceptedGraphEntityRow, ref: InvestigativeSelectionIncludedRef): void {
   if (!isSafeNonEmptyText(row.entityId) || row.entityId !== ref.refId || !isContentHash(row.rowHash)
     || ref.rowHash !== row.rowHash || !isSafeNonEmptyText(row.safeLabel)
-    || row.sourceEventIds.length === 0 || !row.sourceEventIds.every(isSafeNonEmptyText)
-    || !row.sourceEventIds.every((eventId) => ref.sourceEventIds.includes(eventId))) {
+    || row.sourceEventIds.length === 0 || !row.sourceEventIds.every(isEventId)
+    || !sameStringSet(row.sourceEventIds, ref.sourceEventIds)) {
     throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
   }
 }
@@ -857,10 +898,14 @@ function assertAcceptedEntityRow(row: AcceptedGraphEntityRow, ref: Investigative
 function assertAcceptedRelationshipRow(row: AcceptedGraphRelationshipRow, ref: InvestigativeSelectionIncludedRef): void {
   if (!isSafeNonEmptyText(row.relationshipId) || row.relationshipId !== ref.refId
     || !isSafeNonEmptyText(row.acceptedByEventId) || !isSafeNonEmptyText(row.evidenceId)
+    || !isEventId(row.acceptedByEventId)
     || !isContentHash(row.evidenceContentHash) || !isContentHash(row.rowHash) || ref.rowHash !== row.rowHash
     || !isSafeNonEmptyText(row.sourceEntityId) || !isSafeNonEmptyText(row.targetEntityId)
-    || !isSafeNonEmptyText(row.relationshipType)) {
+    || !isSafeNonEmptyText(row.relationshipType) || !row.sourceEventIds.every(isEventId)) {
     throw new InvestigativeContextPackError("accepted-relationship-not-authoritative", "accepted-relationship-not-authoritative");
+  }
+  if (!sameStringSet(row.sourceEventIds, ref.sourceEventIds)) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
   }
   if (!ref.sourceEventIds.includes(row.acceptedByEventId) || !row.sourceEventIds.includes(row.acceptedByEventId)) {
     throw new InvestigativeContextPackError("accepted-relationship-not-authoritative", "accepted-relationship-not-authoritative");
@@ -1366,10 +1411,12 @@ function parseAcceptedGraphProjectionPayload(payload: unknown): AcceptedGraphPro
     || value.contextPackId !== "accepted-graph-projection.v1" || value.version !== 1
     || !isSafeNonEmptyText(value.ontologyCoreVersion) || !isScope(value.scope)
     || !isAcceptedGraphTruthBoundary(value.truthBoundary) || !isSelectionManifest(value.selectionManifest)
-    || !isHighWaterMarks(value.projectionHighWaterMarks) || !isPackVersions(value.packVersions)
+    || !hasGraphHighWaterMark(value.projectionHighWaterMarks)
+    || !hasGraphHighWaterMark((value.selectionManifest as Record<string, unknown>).sourceProjectionHighWaterMarks)
+    || !isPackVersions(value.packVersions)
     || !isAcceptedGraphItems(value.items) || !Array.isArray(value.omissions) || !value.omissions.every(isOmission)
     || !Array.isArray(value.stalenessInputs) || value.stalenessInputs.length === 0
-    || !value.stalenessInputs.every(isStalenessInput)) {
+    || !value.stalenessInputs.every(isStalenessInput) || !hasGraphHighWaterStaleness(value.stalenessInputs)) {
     throw new InvestigativeContextPackError("context-payload-missing", "accepted-graph payload invalid");
   }
   return payload as unknown as AcceptedGraphProjectionPayload;
@@ -1432,9 +1479,10 @@ function isAcceptedGraphAssertionItem(value: unknown): boolean {
     "rowHash",
     "safeStatement"
   ]) && isSafeNonEmptyText(value.assertionId) && isSafeNonEmptyText(value.evidenceId)
-    && isContentHash(value.evidenceContentHash) && isSafeNonEmptyText(value.proposedByEventId)
-    && isSafeNonEmptyText(value.acceptedByEventId) && Array.isArray(value.sourceEventIds)
-    && value.sourceEventIds.length > 0 && value.sourceEventIds.every(isSafeNonEmptyText)
+    && isContentHash(value.evidenceContentHash) && isEventId(value.proposedByEventId)
+    && isEventId(value.acceptedByEventId) && Array.isArray(value.sourceEventIds)
+    && value.sourceEventIds.length > 0 && value.sourceEventIds.every(isEventId)
+    && value.sourceEventIds.includes(value.proposedByEventId) && value.sourceEventIds.includes(value.acceptedByEventId)
     && isContentHash(value.rowHash) && isSafeNonEmptyText(value.safeStatement);
 }
 
@@ -1442,7 +1490,7 @@ function isAcceptedGraphEntityItem(value: unknown): boolean {
   return isExactRecord(value, ["entityId", "rowHash", "safeLabel", "sourceEventIds"])
     && isSafeNonEmptyText(value.entityId) && isContentHash(value.rowHash) && isSafeNonEmptyText(value.safeLabel)
     && Array.isArray(value.sourceEventIds) && value.sourceEventIds.length > 0
-    && value.sourceEventIds.every(isSafeNonEmptyText);
+    && value.sourceEventIds.every(isEventId);
 }
 
 function isAcceptedGraphRelationshipItem(value: unknown): boolean {
@@ -1456,12 +1504,21 @@ function isAcceptedGraphRelationshipItem(value: unknown): boolean {
     "sourceEntityId",
     "targetEntityId",
     "relationshipType"
-  ]) && isSafeNonEmptyText(value.relationshipId) && isSafeNonEmptyText(value.acceptedByEventId)
+  ]) && isSafeNonEmptyText(value.relationshipId) && isEventId(value.acceptedByEventId)
     && isSafeNonEmptyText(value.evidenceId) && isContentHash(value.evidenceContentHash)
     && Array.isArray(value.sourceEventIds) && value.sourceEventIds.length > 0
-    && value.sourceEventIds.every(isSafeNonEmptyText) && isContentHash(value.rowHash)
+    && value.sourceEventIds.every(isEventId) && value.sourceEventIds.includes(value.acceptedByEventId) && isContentHash(value.rowHash)
     && isSafeNonEmptyText(value.sourceEntityId) && isSafeNonEmptyText(value.targetEntityId)
     && isSafeNonEmptyText(value.relationshipType);
+}
+
+function hasGraphHighWaterMark(value: unknown): boolean {
+  return isHighWaterMarks(value) && isNonnegativeInteger((value as Record<string, unknown>).graph);
+}
+
+function hasGraphHighWaterStaleness(value: readonly unknown[]): boolean {
+  return value.some((input) => isExactRecord(input, ["kind", "ref", "value"])
+    && input.kind === "projection-high-water-mark" && input.ref === "graph" && isSafeNonEmptyText(input.value));
 }
 
 function isScope(value: unknown): boolean {
@@ -1616,6 +1673,24 @@ function assertSafeNonEmptyText(value: string, label: string): void {
 
 function isContentHash(value: unknown): value is `sha256:${string}` {
   return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+}
+
+function isEventId(value: unknown): value is string {
+  return typeof value === "string" && /^evt_[a-zA-Z0-9_-]+$/.test(value) && isSafeNonEmptyText(value);
+}
+
+function sameStringSet(left: readonly string[], right: readonly string[]): boolean {
+  const leftSet = new Set(left);
+  const rightSet = new Set(right);
+  if (leftSet.size !== rightSet.size) {
+    return false;
+  }
+  for (const value of leftSet) {
+    if (!rightSet.has(value)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function isPayloadWithExactKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
