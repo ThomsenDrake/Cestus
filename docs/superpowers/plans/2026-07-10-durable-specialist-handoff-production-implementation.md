@@ -91,12 +91,13 @@ Read these files before claiming any implementation task:
 - Modify `packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
   - Adopt durable handoff helpers for ontology bootstrap without graph acceptance.
 
-### Shared Runtime And Browser Integration Files
+### Local Runtime And Shared Cockpit Schema Files
 
 - Create `packages/local-runtime/src/agent-handoff-projection.ts`
   - Adapt mounted workspace `FileBlobStore` derivative manifest reads into the agent projector without exposing server storage to UI modules.
 - Modify `packages/agent/src/cockpit.ts`
   - Add strict browser-safe `handoffDiagnostics` support to `BuildAgentCockpitInput` and `agentCockpitDtoSchema`.
+  - Make `buildAgentCockpit` emit `handoffDiagnostics` on every DTO, defaulting to a frozen empty array when none are supplied.
 - Modify `packages/local-runtime/src/agent-http-routes.ts`
   - Feed verified specialist handoffs into `buildAgentCockpit({ specialistHandoffs })`.
   - Surface partial/inconsistent projection as `handoffDiagnostics`, not handoff success.
@@ -105,6 +106,9 @@ Read these files before claiming any implementation task:
   - Production route DTO tests for verified, pending, missing manifest, and inconsistent states.
 - Modify `packages/agent/test/cockpit.test.ts`
   - Package-level schema and builder tests for strict `handoffDiagnostics`.
+
+### Browser Integration Files
+
 - Modify `packages/ui/src/agent/agent-adapter.ts`
   - Parse production-shaped `agent-cockpit.v1` route DTOs containing durable handoff fields and `handoffDiagnostics`.
 - Modify `packages/ui/test/agent-cockpit-adapter.test.ts`
@@ -132,8 +136,8 @@ Read these files before claiming any implementation task:
 4. Merge Task 4 after Tasks 1-3 and after the production prompt atomic migration. Task 4 must rebase onto the prompt migration result, preserve its finalized prompt/output contracts, and then add two-phase handoff lifecycle helpers.
 5. Merge Task 5 and Task 6 after Task 4. They may run in separate worktrees, but both must rebase on the finalized prompt/output contracts and the Task 4 lifecycle helpers before touching workflow tests.
 6. Orchestrator implementation waits for both the production prompt atomic migration and this handoff lane's Tasks 1-6. It must not consume provisional prompt artifacts or provisional handoff lifecycle helpers.
-7. Merge Task 7 only after lifecycle/runtime owners for scheduler, resumer, domain adapters, and local runtime route contracts have landed on the target branch. Rebase before editing `packages/local-runtime/src/agent-http-routes.ts`, `packages/agent/src/cockpit.ts`, or browser adapter schemas.
-8. Merge Task 8 after Task 7 exposes production-shaped cockpit DTOs with `handoffDiagnostics`.
+7. Merge Task 7 only after lifecycle/runtime owners for scheduler, resumer, domain adapters, and local runtime route contracts have landed on the target branch. Rebase before editing `packages/local-runtime/src/agent-http-routes.ts` or `packages/agent/src/cockpit.ts`.
+8. Merge Task 8 after Task 7 exposes production-shaped cockpit DTOs with `handoffDiagnostics`. Rebase Task 8 before editing browser adapter schemas or React cockpit files.
 9. Merge Task 9 last. It records readiness and final verification evidence.
 
 ## Review Gates
@@ -1161,9 +1165,6 @@ Request spec and code-quality reviews before shared runtime integration starts.
 - Modify: `packages/agent/test/cockpit.test.ts`
 - Modify: `packages/local-runtime/test/agent-http-routes.test.ts`
 - Modify: `packages/local-runtime/test/agent-cockpit-routes.test.ts`
-- Modify: `packages/ui/src/agent/agent-adapter.ts`
-- Modify: `packages/ui/test/agent-cockpit-adapter.test.ts`
-- Modify: `packages/ui/test/agent-adapter.test.ts`
 
 **Interfaces:**
 
@@ -1197,6 +1198,7 @@ export interface AgentCockpitHandoffDiagnosticDto {
 ```
 
 - `packages/agent/src/cockpit.ts` must extend `BuildAgentCockpitInput` with `handoffDiagnostics?: readonly AgentCockpitHandoffDiagnosticDto[]` and `agentCockpitDtoSchema` with strict `handoffDiagnostics: z.array(agentCockpitHandoffDiagnosticDtoSchema)`.
+- `buildAgentCockpit` must always emit a `handoffDiagnostics` property. When `input.handoffDiagnostics` is missing, it must use a frozen empty array and the returned DTO must preserve that frozen empty array after `agentCockpitDtoSchema.parse`.
 - Manifest bytes must be read from `new FileBlobStore(handle.mountedWorkspace.paths.derivativeRoot).get(hash)`.
 - If `handle.mountedWorkspace` is absent and the ledger contains handoff events, return a diagnostic and no handoff DTOs.
 
@@ -1264,15 +1266,9 @@ expect(body.handoffDiagnostics).toEqual([
 Add package-level tests to `packages/agent/test/cockpit.test.ts`:
 
 ```ts
+it("emits a frozen empty handoffDiagnostics array when none are supplied", () => {});
 it("includes strict browser-safe handoffDiagnostics in cockpit DTOs", () => {});
 it("rejects handoffDiagnostics with raw manifest bytes, blob paths, or unknown fields", () => {});
-```
-
-Add browser schema tests to `packages/ui/test/agent-cockpit-adapter.test.ts` or `packages/ui/test/agent-adapter.test.ts`:
-
-```ts
-it("parses production cockpit handoffDiagnostics without importing server-only projector code", () => {});
-it("rejects malformed handoffDiagnostics instead of treating partial state as success", () => {});
 ```
 
 - [ ] **Step 4: Run RED command**
@@ -1280,7 +1276,7 @@ it("rejects malformed handoffDiagnostics instead of treating partial state as su
 Run:
 
 ```bash
-npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/agent/test/cockpit.test.ts packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-adapter.test.ts
+npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/agent/test/cockpit.test.ts
 ```
 
 Expected: FAIL because local runtime does not project handoff manifests into cockpit DTOs and cockpit schemas do not yet define `handoffDiagnostics`.
@@ -1293,9 +1289,10 @@ Create `packages/local-runtime/src/agent-handoff-projection.ts` and use it in th
 - Instantiate `FileBlobStore` only inside local-runtime code and only for `mountedWorkspace.paths.derivativeRoot`.
 - Call `buildSpecialistHandoffProjection({ events, manifestReader })`.
 - Extend `packages/agent/src/cockpit.ts` with strict `AgentCockpitHandoffDiagnosticDto`, `BuildAgentCockpitInput.handoffDiagnostics`, and `agentCockpitDtoSchema.shape.handoffDiagnostics`.
+- Make `buildAgentCockpit` pass `handoffDiagnostics: Object.freeze([...parsedDiagnostics])` when supplied and a frozen empty array when omitted, so every production `agent-cockpit.v1` DTO has the same top-level shape.
 - Map projector diagnostics into `handoffDiagnostics` with safe code, message, allowed repair actions, related event IDs, and artifact hashes only.
 - Pass `projection.handoffs` and `handoffDiagnostics` into `buildAgentCockpit({ specialistHandoffs, handoffDiagnostics })`.
-- Extend `packages/ui/src/agent/agent-adapter.ts` so browser parsing accepts strict `handoffDiagnostics` and rejects unknown diagnostic fields.
+- Do not edit `packages/ui/src/agent/agent-adapter.ts`, `packages/ui/src/agent/AgentRunCockpit.tsx`, or UI tests in this task.
 - Do not expose blob paths, local filesystem paths, raw manifest bytes, raw DTO content outside the DTO schema, or server-only storage objects.
 
 - [ ] **Step 6: Run GREEN command**
@@ -1303,7 +1300,7 @@ Create `packages/local-runtime/src/agent-handoff-projection.ts` and use it in th
 Run:
 
 ```bash
-npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/agent/test/cockpit.test.ts packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-adapter.test.ts
+npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/agent/test/cockpit.test.ts
 ```
 
 Expected: PASS.
@@ -1321,7 +1318,7 @@ Expected: PASS.
 Update the claim, then commit:
 
 ```bash
-git add docs/agentic/claims/task-7-durable-handoff-local-runtime-projection.md packages/local-runtime/src/agent-handoff-projection.ts packages/agent/src/cockpit.ts packages/local-runtime/src/agent-http-routes.ts packages/agent/test/cockpit.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/ui/src/agent/agent-adapter.ts packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-adapter.test.ts
+git add docs/agentic/claims/task-7-durable-handoff-local-runtime-projection.md packages/local-runtime/src/agent-handoff-projection.ts packages/agent/src/cockpit.ts packages/local-runtime/src/agent-http-routes.ts packages/agent/test/cockpit.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts
 git commit -m "feat: project durable specialist handoffs in local runtime"
 ```
 
@@ -1357,10 +1354,12 @@ Expected: a claim-only commit.
 
 - [ ] **Step 2: Write RED browser tests**
 
-Update UI tests with production-shaped route fixtures that include durable handoff fields:
+Update UI tests with production-shaped route fixtures that include durable handoff fields and Task 7's stable `handoffDiagnostics` top-level array:
 
 ```ts
-it("parses production-shaped cockpit DTOs with durable handoff identity", () => {});
+it("parses production-shaped cockpit DTOs with durable handoff identity and stable empty handoffDiagnostics", () => {});
+it("parses production cockpit handoffDiagnostics without importing server-only projector code", () => {});
+it("rejects malformed handoffDiagnostics instead of treating partial state as success", () => {});
 it("renders selected-run handoff only for exact run, task, and run type", () => {});
 it("renders pending or inconsistent handoff diagnostics as unavailable or resumable state", () => {});
 it("does not render generic run start, provider execution, PRR send, graph acceptance, or hidden mutation controls", () => {});
@@ -1391,11 +1390,11 @@ Run:
 npm test -- packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-run-cockpit.test.tsx packages/ui/test/agent-workspace.test.tsx
 ```
 
-Expected: FAIL because browser schemas do not yet parse durable handoff fields or diagnostics.
+Expected: FAIL because browser schemas do not yet parse durable handoff fields or Task 7's required `handoffDiagnostics` field.
 
 - [ ] **Step 4: Implement browser parsing and display**
 
-Modify `packages/ui/src/agent/agent-adapter.ts` so its schema accepts the same durable handoff fields that Task 7 returns. Keep parsing strict. If a route DTO contains partial handoff diagnostics, parse them as read-only display facts.
+Modify `packages/ui/src/agent/agent-adapter.ts` so its schema accepts the same durable handoff fields and strict `handoffDiagnostics` array that Task 7 returns. Keep parsing strict. Require `handoffDiagnostics` to be present as an array in production route DTO fixtures, including the empty-array case, and parse diagnostics as read-only display facts.
 
 Modify `packages/ui/src/agent/AgentRunCockpit.tsx` so:
 
