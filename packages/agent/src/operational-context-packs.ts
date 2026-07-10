@@ -9,7 +9,10 @@ import type {
   ResolvedContextPack
 } from "./context-packs.js";
 import { buildResolvedContextPack, serializeContextPackPayload } from "./context-packs.js";
-import { buildAgentMemorySummaryResolvedContextPack } from "./memory.js";
+import {
+  buildAgentMemorySummaryResolvedContextPack,
+  type BuildAgentMemorySummaryContextPackInput
+} from "./memory.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 export type OperationalContextPackId =
@@ -381,6 +384,10 @@ export function registerOperationalContextPackBuilders(
     }
   }
 
+  if (!hasAllOperationalCapabilities(metadata.capabilities)) {
+    throw new Error("blocked.missing-capability: operational provider does not declare every required capability");
+  }
+
   if (state === undefined) {
     const nextState = new Map<OperationalContextPackId, { readonly registrationKey: string; readonly descriptorFingerprint: string }>();
     operationalContextPackRegistrationState.set(registry, nextState);
@@ -395,6 +402,13 @@ export function registerOperationalContextPackBuilders(
     contextPackIds: Object.freeze(operationalContextPackDescriptors.map((descriptor) => descriptor.contextPackId as OperationalContextPackId)),
     registrationKey
   });
+}
+
+/** Builds bounded resolved envelopes and ref-only readiness inputs without runtime adapters. */
+export function buildOperationalAgentMemorySummaryContextPack(
+  input: BuildAgentMemorySummaryContextPackInput
+): ResolvedContextPack {
+  return withOperationalSourceProof(buildAgentMemorySummaryResolvedContextPack(input));
 }
 
 /** Builds bounded resolved envelopes and ref-only readiness inputs without runtime adapters. */
@@ -428,11 +442,11 @@ export async function buildOperationalContextPackReadinessInputs(
       projectionHighWaterMark: taskRunHistorySnapshot.projectionHighWaterMark,
       sizeBudgetBytes: metadata.sizeBudgets.taskRunHistory, taskRunHistorySnapshot
     }),
-    withOperationalSourceProof(buildAgentMemorySummaryResolvedContextPack({
+    buildOperationalAgentMemorySummaryContextPack({
       generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
       projectionHighWaterMark: agentMemorySnapshot.projectionHighWaterMark,
       sizeBudgetBytes: metadata.sizeBudgets.agentMemorySummary, memorySnapshot: agentMemorySnapshot
-    }))
+    })
   ]);
   const omissionCodes = Object.freeze([...uniqueStrings([
     ...runtimeSource.omissionCodes,
@@ -481,11 +495,11 @@ function operationalContextPackBuilder(
         });
       }
       const memorySnapshot = await provider.agentMemorySnapshot();
-      return withOperationalSourceProof(buildAgentMemorySummaryResolvedContextPack({
+      return buildOperationalAgentMemorySummaryContextPack({
         generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
         projectionHighWaterMark: memorySnapshot.projectionHighWaterMark,
         sizeBudgetBytes: metadata.sizeBudgets.agentMemorySummary, memorySnapshot
-      }));
+      });
     }
   });
 }
