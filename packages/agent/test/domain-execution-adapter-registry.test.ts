@@ -19,7 +19,7 @@ import {
   type AgentToolFailureCategory
 } from "../src/index.js";
 
-const expectedFamilyCounts: Readonly<Record<AgentDomainToolFamily, number>> = Object.freeze({
+const expectedFamilyCounts: Readonly<Partial<Record<AgentDomainToolFamily, number>>> = Object.freeze({
   "provider-byte-transfer": 2,
   "prr-correspondence": 2,
   "accepted-graph-review": 1,
@@ -28,7 +28,7 @@ const expectedFamilyCounts: Readonly<Record<AgentDomainToolFamily, number>> = Ob
   "legacy-staging": 2
 });
 
-const expectedProfiles: Readonly<Record<AgentDomainToolFamily, ReadonlySet<string>>> = Object.freeze({
+const expectedProfiles: Readonly<Partial<Record<AgentDomainToolFamily, ReadonlySet<string>>>> = Object.freeze({
   "provider-byte-transfer": new Set(["external-byte-transfer|provider-byte-transfer"]),
   "prr-correspondence": new Set(["external-message-send|external-message-send"]),
   "accepted-graph-review": new Set(["ledger-review|ledger-review"]),
@@ -37,7 +37,7 @@ const expectedProfiles: Readonly<Record<AgentDomainToolFamily, ReadonlySet<strin
   "legacy-staging": new Set(["ledger-review|ledger-review", "ledger-proposal|none"])
 });
 
-const authoritativeTargets: Readonly<Record<AgentDomainToolFamily, ReadonlySet<string>>> = Object.freeze({
+const authoritativeTargets: Readonly<Partial<Record<AgentDomainToolFamily, ReadonlySet<string>>>> = Object.freeze({
   "provider-byte-transfer": new Set(["IngestionRuntime.providerExecutionService"]),
   "prr-correspondence": new Set([
     "PrrCorrespondenceService.sendInitialRequest",
@@ -55,7 +55,7 @@ const authoritativeTargets: Readonly<Record<AgentDomainToolFamily, ReadonlySet<s
   "legacy-staging": new Set(["legacy.import-runtime"])
 });
 
-const expectedPreviewBuilderIds: Readonly<Record<AgentDomainToolFamily, string>> = Object.freeze({
+const expectedPreviewBuilderIds: Readonly<Partial<Record<AgentDomainToolFamily, string>>> = Object.freeze({
   "provider-byte-transfer": buildProviderByteTransferApprovalPreview.name,
   "prr-correspondence": buildPrrCorrespondenceApprovalPreview.name,
   "accepted-graph-review": buildAcceptedGraphReviewApprovalPreview.name,
@@ -141,8 +141,8 @@ describe("resident-agent domain adapter registry", () => {
       expect(descriptor.targetDomainService.length).toBeGreaterThan(0);
       expect(descriptor.forbiddenEffects.length).toBeGreaterThan(0);
       expect(descriptor.forbiddenEffects).not.toContain(descriptor.executionEffect);
-      expect(authoritativeTargets[descriptor.family].has(descriptor.targetDomainService)).toBe(true);
-      expect(expectedProfiles[descriptor.family].has(
+      expect(authoritativeTargets[descriptor.family]?.has(descriptor.targetDomainService)).toBe(true);
+      expect(expectedProfiles[descriptor.family]?.has(
         `${descriptor.sideEffectClass}|${descriptor.requiredApprovalClass}`
       )).toBe(true);
       for (const category of descriptor.safeFailureCategories) {
