@@ -5,8 +5,11 @@ import {
 } from "../src/context-packs.js";
 import type { PrrRequestReadModel, PrrTimelineEntry } from "../../prr/src/projection.js";
 import {
+  buildJurisdictionPackSummaryContextPack,
   buildPrrReadModelContextPack,
+  jurisdictionPackSummaryPayloadParser,
   prrReadModelPayloadParser,
+  type BuildJurisdictionPackSummaryContextPackInput,
   type BuildPrrReadModelContextPackInput,
   type PrrContextGateSnapshot
 } from "../src/prr-context-packs.js";
@@ -15,6 +18,7 @@ const generatedAt = "2026-07-10T12:00:00.000Z";
 const bodyHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
 const renderedBodyHash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
 const evidenceHash = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" as const;
+const jurisdictionArtifactHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" as const;
 
 describe("selected request PRR read model context pack", () => {
   it("builds prr-read-model.v1 for only the selected request with stream proof and O(1) unrelated omission", () => {
@@ -442,4 +446,160 @@ function selectedGates(): readonly PrrContextGateSnapshot[] {
       detail: "Legal escalation requires an explicit confirmation event."
     }]
   }];
+}
+
+describe("selected request jurisdiction pack summary context pack", () => {
+  it("binds pack name, version, artifact hash, exact rule IDs, and advisory legal posture", () => {
+    const resolved = buildJurisdictionPackSummaryContextPack(jurisdictionInput());
+    const ref = resolved.ref;
+
+    expect(ref).toMatchObject({
+      contextPackId: "jurisdiction-pack-summary.v1",
+      version: 1,
+      scope: { kind: "prr-request", id: "prr_req_selected" },
+      projectionHighWaterMark: 77
+    });
+    expect(ref.provenanceRefs).toEqual(expect.arrayContaining([
+      "evt_prr_selected_created",
+      jurisdictionArtifactHash,
+      "jurisdiction-rule:us-federal-foia@0.1.0:federal-determination-20-working-days"
+    ]));
+    expect(ref.artifactHashes).toEqual([jurisdictionArtifactHash]);
+    expect(ref.stalenessInputs).toEqual(expect.arrayContaining([
+      { kind: "jurisdiction-pack-artifact-hash", ref: "us-federal-foia@0.1.0", value: jurisdictionArtifactHash },
+      { kind: "selected-request-jurisdiction-pack", ref: "prr_req_selected", value: "us-federal-foia@0.1.0" }
+    ]));
+    expect(verifyResolvedContextPack(resolved, jurisdictionPackSummaryPayloadParser).ref).toEqual(ref);
+    expect(JSON.stringify(resolved.payload)).toContain("federal-determination-20-working-days");
+    expect(ref.safeSummary).not.toContain("federal-determination-20-working-days");
+  });
+
+  it("fails without artifact hash, mismatched selected request pack, or uncited legal category", () => {
+    expect(() =>
+      buildJurisdictionPackSummaryContextPack({
+        ...jurisdictionInput(),
+        jurisdictionArtifactHash: undefined as never
+      })
+    ).toThrow(/artifact hash/i);
+
+    expect(() =>
+      buildJurisdictionPackSummaryContextPack({
+        ...jurisdictionInput(),
+        selectedRequestJurisdictionPack: { name: "florida-public-records", version: "0.1.0" }
+      })
+    ).toThrow(/selected request jurisdiction/i);
+
+    expect(() =>
+      buildJurisdictionPackSummaryContextPack({
+        ...jurisdictionInput(),
+        jurisdictionPack: {
+          ...jurisdictionInput().jurisdictionPack,
+          rules: [{
+            ...jurisdictionInput().jurisdictionPack.rules[0]!,
+            citations: []
+          }]
+        }
+      })
+    ).toThrow(/citation|rule/i);
+  });
+
+  it("records machine-readable omissions for missing rule categories", () => {
+    const resolved = buildJurisdictionPackSummaryContextPack(jurisdictionInput());
+    const payload = resolved.payload as { readonly omissions: readonly { readonly kind: string; readonly reason: string; readonly category: string }[] };
+
+    expect(resolved.ref.safeSummary).toMatch(/advisory/i);
+    expect(JSON.stringify(resolved.ref)).not.toMatch(/legal advice|definitive/i);
+    expect(resolved.ref.sizeBytes).toBeGreaterThan(0);
+    expect(payload.omissions).toEqual([
+      { kind: "jurisdiction-rule-category", reason: "absent-from-selected-pack", category: "fee" },
+      { kind: "jurisdiction-rule-category", reason: "absent-from-selected-pack", category: "exemption" },
+      { kind: "jurisdiction-rule-category", reason: "absent-from-selected-pack", category: "appeal" },
+      { kind: "jurisdiction-rule-category", reason: "absent-from-selected-pack", category: "enforcement" }
+    ]);
+  });
+
+  it("rejects a matching-ref attacker payload that is generic JSON but not the jurisdiction payload shape", () => {
+    const attackerResolved = buildResolvedContextPack({
+      contextPackId: "jurisdiction-pack-summary.v1",
+      version: 1,
+      generatedAt,
+      payload: {
+        schemaVersion: "attacker-controlled-json.v1",
+        scope: { kind: "prr-request", id: "prr_req_selected" },
+        ruleIds: ["federal-determination-20-working-days"]
+      },
+      safeSummary: "Attacker-built safe JSON with a matching jurisdiction ref hash.",
+      provenanceRefs: ["evt_prr_selected_created", jurisdictionArtifactHash],
+      sourceEventIds: ["evt_prr_selected_created"],
+      artifactHashes: [jurisdictionArtifactHash],
+      projectionHighWaterMark: 77,
+      scope: { kind: "prr-request", id: "prr_req_selected" },
+      sizeBudgetBytes: 16_384
+    });
+
+    expect(() => verifyResolvedContextPack(attackerResolved)).not.toThrow();
+    expect(() => verifyResolvedContextPack(attackerResolved, jurisdictionPackSummaryPayloadParser))
+      .toThrow(/payload-schema-mismatch/);
+  });
+
+  it("rejects a hash-valid payload that turns the advisory posture into legal advice", () => {
+    const resolved = buildJurisdictionPackSummaryContextPack(jurisdictionInput());
+    const payload = resolved.payload as Record<string, unknown>;
+    const attackerResolved = buildResolvedContextPack({
+      contextPackId: resolved.ref.contextPackId,
+      version: resolved.ref.version,
+      generatedAt: resolved.ref.generatedAt,
+      payload: {
+        ...payload,
+        advisoryPosture: {
+          ...(payload.advisoryPosture as Record<string, unknown>),
+          note: "This is legal advice."
+        }
+      },
+      safeSummary: resolved.ref.safeSummary,
+      provenanceRefs: resolved.ref.provenanceRefs,
+      sizeBudgetBytes: 16_384,
+      ...(resolved.ref.sourceEventIds === undefined ? {} : { sourceEventIds: resolved.ref.sourceEventIds }),
+      ...(resolved.ref.artifactHashes === undefined ? {} : { artifactHashes: resolved.ref.artifactHashes }),
+      ...(resolved.ref.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: resolved.ref.projectionHighWaterMark }),
+      ...(resolved.ref.policyVersion === undefined ? {} : { policyVersion: resolved.ref.policyVersion }),
+      ...(resolved.ref.scope === undefined ? {} : { scope: resolved.ref.scope }),
+      ...(resolved.ref.stalenessInputs === undefined ? {} : { stalenessInputs: resolved.ref.stalenessInputs })
+    });
+
+    expect(() => verifyResolvedContextPack(attackerResolved, jurisdictionPackSummaryPayloadParser))
+      .toThrow(/payload-schema-mismatch/);
+  });
+});
+
+function jurisdictionInput(): BuildJurisdictionPackSummaryContextPackInput {
+  return {
+    generatedAt,
+    policyVersion: "agent-policy-v1",
+    scope: { kind: "prr-request", id: "prr_req_selected" },
+    selectedRequestEventId: "evt_prr_selected_created",
+    selectedRequestJurisdictionPack: { name: "us-federal-foia", version: "0.1.0" },
+    jurisdictionPack: {
+      name: "us-federal-foia",
+      version: "0.1.0",
+      jurisdiction: "US Federal",
+      description: "Federal FOIA starter jurisdiction pack for selected request context.",
+      agentGuidance: "Use cited rules as advisory workflow guidance, not legal advice.",
+      rules: [{
+        id: "federal-determination-20-working-days",
+        label: "20 working days determination estimate",
+        kind: "deadline",
+        description: "Federal FOIA determination timing guidance for selected request context.",
+        citations: [{
+          label: "5 U.S.C. 552(a)(6)(A)(i)",
+          citation: "5 U.S.C. 552(a)(6)(A)(i)",
+          url: "https://www.justice.gov/oip/freedom-information-act-5-usc-552"
+        }],
+        agentWarning: "Confirm tolling and receipt facts before legal escalation language."
+      }]
+    },
+    jurisdictionArtifactHash,
+    projectionHighWaterMark: 77,
+    sizeBudgetBytes: 16_384
+  };
 }
