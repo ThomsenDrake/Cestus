@@ -13,6 +13,17 @@ import {
   buildAgentMemorySummaryResolvedContextPack,
   type BuildAgentMemorySummaryContextPackInput
 } from "./memory.js";
+import type {
+  AgentFailureCategory,
+  AgentModelInvocationStatus,
+  AgentRunState,
+  AgentSpecialistRunType,
+  AgentTaskPriority,
+  AgentTaskStatus,
+  AgentToolApprovalClass,
+  AgentToolRequestState,
+  AgentToolSideEffectClass
+} from "./projection-types.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 export type OperationalContextPackId =
@@ -76,13 +87,131 @@ export interface OperationalBoundedWindow {
   readonly omissionCodes: readonly OperationalContextPackOmissionCode[];
 }
 
+export type OperationalTaskSummaryStatus = AgentTaskStatus | "pending";
+
+export interface OperationalTaskSummaryDto {
+  readonly taskId: string;
+  readonly status: OperationalTaskSummaryStatus;
+  readonly priority?: AgentTaskPriority;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
+  readonly residentAgentId?: string;
+  readonly requestedBy?: string;
+  readonly runId?: string;
+  readonly statusReasonCode?: string;
+  readonly sourceEventIds?: readonly string[];
+  readonly inputArtifactHashes?: readonly string[];
+}
+
+export interface OperationalRunSummaryDto {
+  readonly runId: string;
+  readonly state: AgentRunState;
+  readonly runType?: AgentSpecialistRunType;
+  readonly residentAgentId?: string;
+  readonly startedBy?: string;
+  readonly startedAt?: string;
+  readonly completedAt?: string;
+  readonly failedAt?: string;
+  readonly taskId?: string;
+  readonly workspaceId?: string;
+  readonly investigationId?: string;
+  readonly sourceEventIds?: readonly string[];
+  readonly inputArtifactHashes?: readonly string[];
+  readonly relatedEventIds?: readonly string[];
+  readonly outputArtifactHashes?: readonly string[];
+  readonly stepCount?: number;
+  readonly invocationIds?: readonly string[];
+  readonly toolRequestIds?: readonly string[];
+  readonly failureCategory?: AgentFailureCategory;
+  readonly retryable?: boolean;
+  readonly allowedActions?: readonly string[];
+  readonly summaryCode?: string;
+}
+
+export interface OperationalModelInvocationSummaryDto {
+  readonly invocationId: string;
+  readonly status: AgentModelInvocationStatus;
+  readonly runId?: string;
+  readonly providerId?: string;
+  readonly modelFamily?: string;
+  readonly safetyClass?: "workspace-safe" | "public-safe" | "sensitive-local-only" | "provider-approved";
+  readonly requestedAt?: string;
+  readonly completedAt?: string;
+  readonly inputArtifactHash?: string;
+  readonly providerOutputArtifactHash?: string;
+  readonly promptTemplateId?: string;
+  readonly promptTemplateVersion?: number;
+  readonly runType?: AgentSpecialistRunType;
+  readonly contextPackRefs?: readonly OperationalContextPackLinkDto[];
+  readonly omissionCount?: number;
+  readonly transferApprovalClass?: "none" | "provider-byte-transfer";
+  readonly usage?: OperationalModelInvocationUsageDto;
+  readonly failureCategory?: AgentFailureCategory;
+  readonly retryable?: boolean;
+  readonly allowedActions?: readonly string[];
+  readonly sourceEventIds?: readonly string[];
+}
+
+export interface OperationalContextPackLinkDto {
+  readonly contextPackId: string;
+  readonly version: number;
+  readonly contentHash: string;
+}
+
+export interface OperationalModelInvocationUsageDto {
+  readonly inputTokens?: number;
+  readonly outputTokens?: number;
+  readonly totalTokens?: number;
+}
+
+export interface OperationalToolReadModelChangeDto {
+  readonly projectionName: string;
+  readonly change: string;
+  readonly relatedIds?: readonly string[];
+}
+
+export interface OperationalToolRequestSummaryDto {
+  readonly toolRequestId: string;
+  readonly state: AgentToolRequestState;
+  readonly runId?: string;
+  readonly toolId?: string;
+  readonly toolVersion?: string;
+  readonly requestedBy?: string;
+  readonly sideEffectClass?: AgentToolSideEffectClass;
+  readonly requiredApprovalClass?: AgentToolApprovalClass;
+  readonly previewHash?: string;
+  readonly scope?: string;
+  readonly requestedAt?: string;
+  readonly sourceEventIds?: readonly string[];
+  readonly inputArtifactHashes?: readonly string[];
+  readonly approvedBy?: string;
+  readonly approvedPreviewHash?: string;
+  readonly approvalClass?: AgentToolApprovalClass;
+  readonly approvedAt?: string;
+  readonly executionClaimedBy?: string;
+  readonly executionClaimedAt?: string;
+  readonly executionLeaseExpiresAt?: string;
+  readonly executionApprovedPreviewHash?: string;
+  readonly executionClaimEventId?: string;
+  readonly deniedBy?: string;
+  readonly deniedAt?: string;
+  readonly completedAt?: string;
+  readonly resultEventIds?: readonly string[];
+  readonly artifactHashes?: readonly string[];
+  readonly readModelChanges?: readonly OperationalToolReadModelChangeDto[];
+  readonly failedAt?: string;
+  readonly failureCategory?: AgentFailureCategory;
+  readonly retryable?: boolean;
+  readonly allowedActions?: readonly string[];
+}
+
 export interface OperationalTaskRunHistorySnapshot {
   readonly projectionHighWaterMark: number;
   readonly projectionSourceRef: string;
-  readonly tasks: readonly AgentContextPackJsonValue[];
-  readonly runs: readonly AgentContextPackJsonValue[];
-  readonly modelInvocations: readonly AgentContextPackJsonValue[];
-  readonly toolRequests: readonly AgentContextPackJsonValue[];
+  readonly tasks: readonly OperationalTaskSummaryDto[];
+  readonly runs: readonly OperationalRunSummaryDto[];
+  readonly modelInvocations: readonly OperationalModelInvocationSummaryDto[];
+  readonly toolRequests: readonly OperationalToolRequestSummaryDto[];
   readonly aggregateCounts: Readonly<Record<string, number>>;
   readonly sourceEventIds: readonly string[];
   readonly artifactHashes: readonly string[];
@@ -169,9 +298,33 @@ const operationalCapabilities = new Set<OperationalContextPackCapability>([
   "agent-memory-summary"
 ]);
 
-const historyStates = new Set([
-  "completed", "blocked", "denied", "failed", "executing", "approved", "requested", "queued", "running", "pending"
+const taskStatuses = new Set<OperationalTaskSummaryStatus>([
+  "queued", "running", "waiting-for-approval", "blocked", "completed", "failed", "canceled", "pending"
 ]);
+const taskPriorities = new Set<AgentTaskPriority>(["low", "normal", "high", "urgent"]);
+const runStates = new Set<AgentRunState>(["running", "completed", "failed"]);
+const modelInvocationStatuses = new Set<AgentModelInvocationStatus>(["requested", "completed", "failed"]);
+const toolRequestStates = new Set<AgentToolRequestState>(["requested", "approved", "executing", "denied", "completed", "failed"]);
+const specialistRunTypes = new Set<AgentSpecialistRunType>([
+  "ontology-bootstrap", "prr-negotiation", "evidence-triage", "timeline-builder", "contradiction-finder",
+  "investigation-planner", "report-builder"
+]);
+const failureCategories = new Set<AgentFailureCategory>([
+  "provider-unavailable", "provider-rate-limited", "credential-missing", "credential-revoked", "approval-required",
+  "approval-denied", "approval-stale", "permission-denied", "secret-detected", "legal-lock-active", "lock-active",
+  "projection-lag", "context-budget-exceeded", "missing-provenance", "provenance-missing", "model-output-invalid",
+  "domain-gate-failed", "stale-source", "external-effect-failed", "data-loss-risk"
+]);
+const toolSideEffectClasses = new Set<AgentToolSideEffectClass>([
+  "read-only", "local-derivative", "ledger-proposal", "ledger-review", "external-byte-transfer",
+  "external-message-send", "export-or-publication", "destructive-or-repair", "legal-escalation"
+]);
+const toolApprovalClasses = new Set<AgentToolApprovalClass>([
+  "none", "human-review", "provider-byte-transfer", "external-message-send", "export-or-publication",
+  "destructive-or-repair", "legal-escalation", "ledger-review"
+]);
+const memoryScopes = new Set(["workspace", "investigation", "task", "provider", "policy"]);
+const memoryKinds = new Set(["operator-preference", "agent-observation", "policy-caveat", "provider-note"]);
 
 const providerStates = new Set(["ready", "degraded", "unavailable", "disabled", "blocked"]);
 
@@ -644,9 +797,9 @@ function assertWorkspaceRuntimePayloadSection(value: AgentContextPackJsonValue, 
   assertNonnegativeIntegerField(value, "runtimeHighWaterMark", schemaVersion);
   assertBooleanField(value, "workspaceMounted", schemaVersion);
   assertOptionalSafeIdentifierField(value, "workspaceId", schemaVersion);
-  assertStringField(value, "storageStrategy", schemaVersion);
-  assertStringField(value, "bindPosture", schemaVersion);
-  assertStringField(value, "authPosture", schemaVersion);
+  for (const key of ["storageStrategy", "bindPosture", "authPosture"] as const) {
+    assertMachineReadableOperationalToken(requiredJsonField(value, key, schemaVersion), `runtime ${key}`);
+  }
   for (const providerState of assertJsonArrayField(value, "providerStates", schemaVersion)) {
     projectRuntimeProviderState(providerState);
   }
@@ -672,18 +825,13 @@ function assertTaskRunHistoryPayloadSection(value: AgentContextPackJsonValue, sc
     "emptyProof"
   ]);
   assertCommonProjectionPayloadSection(value, schemaVersion);
-  for (const task of assertJsonArrayField(value, "tasks", schemaVersion)) {
-    projectTaskHistoryItem(task);
-  }
-  for (const run of assertJsonArrayField(value, "runs", schemaVersion)) {
-    projectRunHistoryItem(run);
-  }
-  for (const modelInvocation of assertJsonArrayField(value, "modelInvocations", schemaVersion)) {
-    projectModelInvocationHistoryItem(modelInvocation);
-  }
-  for (const toolRequest of assertJsonArrayField(value, "toolRequests", schemaVersion)) {
-    projectToolRequestHistoryItem(toolRequest);
-  }
+  const tasks = assertJsonArrayField(value, "tasks", schemaVersion).map(projectTaskHistoryItem);
+  const runs = assertJsonArrayField(value, "runs", schemaVersion).map(projectRunHistoryItem);
+  const modelInvocations = assertJsonArrayField(value, "modelInvocations", schemaVersion).map(projectModelInvocationHistoryItem);
+  const toolRequests = assertJsonArrayField(value, "toolRequests", schemaVersion).map(projectToolRequestHistoryItem);
+  const items = [...tasks, ...runs, ...modelInvocations, ...toolRequests];
+  assertProjectionPayloadSemantics(value, schemaVersion, "agent.projection.task-run-history", items.length);
+  assertHistoryProvenanceMatches(value, items, schemaVersion);
 }
 
 function assertAgentMemoryPayloadSection(value: AgentContextPackJsonValue, schemaVersion: OperationalContextPackId): void {
@@ -705,13 +853,11 @@ function assertAgentMemoryPayloadSection(value: AgentContextPackJsonValue, schem
   }
   assertCommonProjectionPayloadSection(value, schemaVersion);
   const activeMemory = assertJsonArrayField(value, "activeMemory", schemaVersion);
-  const window = requiredJsonField(value, "window", schemaVersion);
-  if (isOperationalJsonObject(window) && typeof window.limit === "number" && activeMemory.length > window.limit) {
-    throw new Error(`invalid ${schemaVersion} payload`);
-  }
   for (const memory of activeMemory) {
     assertMemoryPayloadItem(memory, schemaVersion);
   }
+  assertProjectionPayloadSemantics(value, schemaVersion, "agent.projection.memory", activeMemory.length);
+  assertMemoryProvenanceMatches(value, activeMemory, schemaVersion);
 }
 
 function assertCommonProjectionPayloadSection(
@@ -758,6 +904,40 @@ function assertEmptyProofField(value: { readonly [key: string]: AgentContextPack
   assertNonnegativeIntegerField(emptyProof, "sourceEventCount", schemaVersion);
   assertUtcTimestamp(requiredJsonField(emptyProof, "generatedAt", schemaVersion), "emptyProof.generatedAt");
   assertStringField(emptyProof, "emptyReasonCode", schemaVersion);
+}
+
+function assertProjectionPayloadSemantics(
+  value: { readonly [key: string]: AgentContextPackJsonValue },
+  schemaVersion: OperationalContextPackId,
+  expectedProjectionSource: "agent.projection.task-run-history" | "agent.projection.memory",
+  visibleItemCount: number
+): void {
+  if (requiredJsonField(value, "projectionSourceRef", schemaVersion) !== expectedProjectionSource) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  const window = requiredJsonField(value, "window", schemaVersion);
+  if (!isOperationalJsonObject(window) || typeof window.limit !== "number" || visibleItemCount > window.limit) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  const isEmpty = visibleItemCount === 0;
+  const hasEmptyProof = hasJsonField(value, "emptyProof");
+  if (isEmpty !== hasEmptyProof) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  if (!isEmpty) return;
+
+  const emptyProof = requiredJsonField(value, "emptyProof", schemaVersion);
+  const sourceEventIds = assertJsonArrayField(value, "sourceEventIds", schemaVersion);
+  const artifactHashes = assertJsonArrayField(value, "artifactHashes", schemaVersion);
+  const aggregateCounts = requiredJsonField(value, "aggregateCounts", schemaVersion);
+  if (!isOperationalJsonObject(emptyProof) || !isOperationalJsonObject(aggregateCounts) ||
+    emptyProof.projectionName !== expectedProjectionSource ||
+    emptyProof.projectionHighWaterMark !== value.projectionHighWaterMark ||
+    emptyProof.sourceEventCount !== 0 || sourceEventIds.length !== 0 || artifactHashes.length !== 0 ||
+    window.totalCount !== 0 || window.hasMore !== false ||
+    Object.values(aggregateCounts).some((count) => count !== 0)) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
 }
 
 function assertScopePayloadField(value: { readonly [key: string]: AgentContextPackJsonValue }, key: string, schemaVersion: OperationalContextPackId): void {
@@ -1089,26 +1269,30 @@ function normalizeTaskRunHistorySnapshot(value: OperationalTaskRunHistorySnapsho
     if (!Number.isInteger(count) || count < 0) throw new Error("blocked.invalid-payload-shape: aggregate count is invalid");
     aggregateCounts[key] = count;
   }
-  const sourceEventIds = normalizeEventIds(value.sourceEventIds);
-  const artifactHashes = normalizeArtifactHashes(value.artifactHashes);
+  const callerSourceEventIds = normalizeEventIds(value.sourceEventIds);
+  const callerArtifactHashes = normalizeArtifactHashes(value.artifactHashes);
+  if (visibleItemCount === 0 && (callerSourceEventIds.length !== 0 || callerArtifactHashes.length !== 0)) {
+    throw new Error("blocked.projection-source-mismatch: empty task/run history must not retain item provenance");
+  }
   const window = normalizeWindow(value.window);
   if (visibleItemCount > window.limit) {
     throw new Error("blocked.unbounded-source: task/run history visible items exceed the bounded window limit");
   }
   const emptyProof = value.emptyProof === undefined ? undefined : normalizeEmptyProof(value.emptyProof);
-  return {
+  const normalized = {
     projectionHighWaterMark: value.projectionHighWaterMark,
     projectionSourceRef: value.projectionSourceRef,
-    tasks: sortHistoryItems(value.tasks.map(projectTaskHistoryItem)),
-    runs: sortHistoryItems(value.runs.map(projectRunHistoryItem)),
-    modelInvocations: sortHistoryItems(value.modelInvocations.map(projectModelInvocationHistoryItem)),
-    toolRequests: sortHistoryItems(value.toolRequests.map(projectToolRequestHistoryItem)),
+    tasks: sortHistoryItems(value.tasks.map((item) => projectTaskHistoryItem(item as unknown as AgentContextPackJsonValue))),
+    runs: sortHistoryItems(value.runs.map((item) => projectRunHistoryItem(item as unknown as AgentContextPackJsonValue))),
+    modelInvocations: sortHistoryItems(value.modelInvocations.map((item) => projectModelInvocationHistoryItem(item as unknown as AgentContextPackJsonValue))),
+    toolRequests: sortHistoryItems(value.toolRequests.map((item) => projectToolRequestHistoryItem(item as unknown as AgentContextPackJsonValue))),
     aggregateCounts,
-    sourceEventIds,
-    artifactHashes,
+    sourceEventIds: [],
+    artifactHashes: [],
     window,
     ...(emptyProof === undefined ? {} : { emptyProof })
   };
+  return closeHistoryProvenance(normalized);
 }
 
 function normalizeWindow(value: OperationalBoundedWindow): OperationalBoundedWindow {
@@ -1157,7 +1341,11 @@ function trimQuietHistory(snapshot: OperationalTaskRunHistorySnapshot): Operatio
     if (index === undefined) continue;
     const nextItems = items.filter((_, current) => current !== index);
     const windowOmissions = uniqueOmissionCodes([...snapshot.window.omissionCodes, "omitted.size-budget"]);
-    return { ...snapshot, [group]: nextItems, window: { ...snapshot.window, omissionCodes: windowOmissions } };
+    return closeHistoryProvenance({
+      ...snapshot,
+      [group]: nextItems,
+      window: { ...snapshot.window, omissionCodes: windowOmissions }
+    });
   }
   return undefined;
 }
@@ -1166,10 +1354,12 @@ function historyItemCount(snapshot: OperationalTaskRunHistorySnapshot): number {
   return snapshot.tasks.length + snapshot.runs.length + snapshot.modelInvocations.length + snapshot.toolRequests.length;
 }
 
-function sortHistoryItems(items: readonly AgentContextPackJsonValue[]): readonly AgentContextPackJsonValue[] {
+function sortHistoryItems<T>(items: readonly T[]): readonly T[] {
   return [...items].sort((left, right) => {
     const priority = historyStatePriority(itemState(left)) - historyStatePriority(itemState(right));
-    return priority === 0 ? stableJsonText(left).localeCompare(stableJsonText(right)) : priority;
+    return priority === 0
+      ? stableJsonText(left as unknown as AgentContextPackJsonValue).localeCompare(stableJsonText(right as unknown as AgentContextPackJsonValue))
+      : priority;
   });
 }
 
@@ -1177,12 +1367,15 @@ function sortJsonItems(items: readonly AgentContextPackJsonValue[]): readonly Ag
   return [...items].sort((left, right) => stableJsonText(left).localeCompare(stableJsonText(right)));
 }
 
-function itemState(value: AgentContextPackJsonValue): string | undefined {
-  return isOperationalJsonObject(value) && typeof value.state === "string" ? value.state : undefined;
+function itemState(value: unknown): string | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const item = value as { readonly state?: unknown; readonly status?: unknown };
+  if (typeof item.status === "string") return item.status;
+  return typeof item.state === "string" ? item.state : undefined;
 }
 
 function historyStatePriority(state: string | undefined): number {
-  if (state === "failed" || state === "blocked" || state === "denied" || state === "pending") return 0;
+  if (state === "failed" || state === "blocked" || state === "denied" || state === "pending" || state === "waiting-for-approval") return 0;
   if (state === "executing" || state === "approved" || state === "requested" || state === "queued" || state === "running") return 1;
   if (state === "completed") return 2;
   return 1;
@@ -1246,35 +1439,339 @@ function projectRuntimeDiagnostic(value: AgentContextPackJsonValue): AgentContex
   };
 }
 
-function projectTaskHistoryItem(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
-  return projectHistoryItem(value, "task", "taskId");
-}
-
-function projectRunHistoryItem(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
-  return projectHistoryItem(value, "run", "runId");
-}
-
-function projectModelInvocationHistoryItem(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
-  return projectHistoryItem(value, "model invocation", "invocationId");
-}
-
-function projectToolRequestHistoryItem(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
-  return projectHistoryItem(value, "tool request", "requestId");
-}
-
-function projectHistoryItem(
-  value: AgentContextPackJsonValue,
-  label: string,
-  identifierKey: "taskId" | "runId" | "invocationId" | "requestId"
-): AgentContextPackJsonValue {
-  const item = assertStrictOperationalObject(value, label, [identifierKey, "state", "category", "sourceEventIds", "artifactHashes"]);
+function projectTaskHistoryItem(value: AgentContextPackJsonValue): OperationalTaskSummaryDto {
+  const item = assertStrictOperationalObject(value, "task", [
+    "taskId", "status", "priority", "createdAt", "updatedAt", "residentAgentId", "requestedBy", "runId",
+    "statusReasonCode", "sourceEventIds", "inputArtifactHashes"
+  ]);
   return {
-    [identifierKey]: requiredSafeIdentifier(item, identifierKey, label),
-    state: requiredSafeState(item, "state", label),
-    ...(item.category === undefined ? {} : { category: requiredSafeOperationalField(item, "category", label) }),
-    ...(item.sourceEventIds === undefined ? {} : { sourceEventIds: normalizeEventIds(item.sourceEventIds as readonly string[]) }),
-    ...(item.artifactHashes === undefined ? {} : { artifactHashes: normalizeArtifactHashes(item.artifactHashes as readonly string[]) })
+    taskId: requiredSafeIdentifier(item, "taskId", "task"),
+    status: requiredEnum(item, "status", taskStatuses, "task") as OperationalTaskSummaryStatus,
+    ...optionalEnumProperty(item, "priority", taskPriorities, "task"),
+    ...optionalTimestampProperty(item, "createdAt", "task"),
+    ...optionalTimestampProperty(item, "updatedAt", "task"),
+    ...optionalIdentifierProperty(item, "residentAgentId", "task"),
+    ...optionalIdentifierProperty(item, "requestedBy", "task"),
+    ...optionalIdentifierProperty(item, "runId", "task"),
+    ...optionalTokenProperty(item, "statusReasonCode", "task"),
+    ...optionalEventIdsProperty(item, "sourceEventIds"),
+    ...optionalArtifactHashesProperty(item, "inputArtifactHashes")
   };
+}
+
+function projectRunHistoryItem(value: AgentContextPackJsonValue): OperationalRunSummaryDto {
+  const item = assertStrictOperationalObject(value, "run", [
+    "runId", "state", "runType", "residentAgentId", "startedBy", "startedAt", "completedAt", "failedAt",
+    "taskId", "workspaceId", "investigationId", "sourceEventIds", "inputArtifactHashes", "relatedEventIds",
+    "outputArtifactHashes", "stepCount", "invocationIds", "toolRequestIds", "failureCategory", "retryable",
+    "allowedActions", "summaryCode"
+  ]);
+  return {
+    runId: requiredSafeIdentifier(item, "runId", "run"),
+    state: requiredEnum(item, "state", runStates, "run") as AgentRunState,
+    ...optionalEnumProperty(item, "runType", specialistRunTypes, "run"),
+    ...optionalIdentifierProperty(item, "residentAgentId", "run"),
+    ...optionalIdentifierProperty(item, "startedBy", "run"),
+    ...optionalTimestampProperty(item, "startedAt", "run"),
+    ...optionalTimestampProperty(item, "completedAt", "run"),
+    ...optionalTimestampProperty(item, "failedAt", "run"),
+    ...optionalIdentifierProperty(item, "taskId", "run"),
+    ...optionalIdentifierProperty(item, "workspaceId", "run"),
+    ...optionalIdentifierProperty(item, "investigationId", "run"),
+    ...optionalEventIdsProperty(item, "sourceEventIds"),
+    ...optionalArtifactHashesProperty(item, "inputArtifactHashes"),
+    ...optionalEventIdsProperty(item, "relatedEventIds"),
+    ...optionalArtifactHashesProperty(item, "outputArtifactHashes"),
+    ...optionalNonnegativeIntegerProperty(item, "stepCount", "run"),
+    ...optionalIdentifierArrayProperty(item, "invocationIds", "run"),
+    ...optionalIdentifierArrayProperty(item, "toolRequestIds", "run"),
+    ...optionalEnumProperty(item, "failureCategory", failureCategories, "run"),
+    ...optionalBooleanProperty(item, "retryable", "run"),
+    ...optionalTokenArrayProperty(item, "allowedActions", "run"),
+    ...optionalTokenProperty(item, "summaryCode", "run")
+  };
+}
+
+function projectModelInvocationHistoryItem(value: AgentContextPackJsonValue): OperationalModelInvocationSummaryDto {
+  const item = assertStrictOperationalObject(value, "model invocation", [
+    "invocationId", "status", "runId", "providerId", "modelFamily", "safetyClass", "requestedAt", "completedAt",
+    "inputArtifactHash", "providerOutputArtifactHash", "promptTemplateId", "promptTemplateVersion", "runType",
+    "contextPackRefs", "omissionCount", "transferApprovalClass", "usage", "failureCategory", "retryable",
+    "allowedActions", "sourceEventIds"
+  ]);
+  return {
+    invocationId: requiredSafeIdentifier(item, "invocationId", "model invocation"),
+    status: requiredEnum(item, "status", modelInvocationStatuses, "model invocation") as AgentModelInvocationStatus,
+    ...optionalIdentifierProperty(item, "runId", "model invocation"),
+    ...optionalIdentifierProperty(item, "providerId", "model invocation"),
+    ...optionalIdentifierProperty(item, "modelFamily", "model invocation"),
+    ...optionalEnumProperty(item, "safetyClass", new Set(["workspace-safe", "public-safe", "sensitive-local-only", "provider-approved"]), "model invocation"),
+    ...optionalTimestampProperty(item, "requestedAt", "model invocation"),
+    ...optionalTimestampProperty(item, "completedAt", "model invocation"),
+    ...optionalArtifactHashProperty(item, "inputArtifactHash", "model invocation"),
+    ...optionalArtifactHashProperty(item, "providerOutputArtifactHash", "model invocation"),
+    ...optionalIdentifierProperty(item, "promptTemplateId", "model invocation"),
+    ...optionalPositiveIntegerProperty(item, "promptTemplateVersion", "model invocation"),
+    ...optionalEnumProperty(item, "runType", specialistRunTypes, "model invocation"),
+    ...optionalContextPackRefsProperty(item),
+    ...optionalNonnegativeIntegerProperty(item, "omissionCount", "model invocation"),
+    ...optionalEnumProperty(item, "transferApprovalClass", new Set(["none", "provider-byte-transfer"]), "model invocation"),
+    ...optionalUsageProperty(item),
+    ...optionalEnumProperty(item, "failureCategory", failureCategories, "model invocation"),
+    ...optionalBooleanProperty(item, "retryable", "model invocation"),
+    ...optionalTokenArrayProperty(item, "allowedActions", "model invocation"),
+    ...optionalEventIdsProperty(item, "sourceEventIds")
+  };
+}
+
+function projectToolRequestHistoryItem(value: AgentContextPackJsonValue): OperationalToolRequestSummaryDto {
+  const item = assertStrictOperationalObject(value, "tool request", [
+    "toolRequestId", "state", "runId", "toolId", "toolVersion", "requestedBy", "sideEffectClass",
+    "requiredApprovalClass", "previewHash", "scope", "requestedAt", "sourceEventIds", "inputArtifactHashes",
+    "approvedBy", "approvedPreviewHash", "approvalClass", "approvedAt", "executionClaimedBy", "executionClaimedAt",
+    "executionLeaseExpiresAt", "executionApprovedPreviewHash", "executionClaimEventId", "deniedBy", "deniedAt",
+    "completedAt", "resultEventIds", "artifactHashes", "readModelChanges", "failedAt", "failureCategory",
+    "retryable", "allowedActions"
+  ]);
+  return {
+    toolRequestId: requiredSafeIdentifier(item, "toolRequestId", "tool request"),
+    state: requiredEnum(item, "state", toolRequestStates, "tool request") as AgentToolRequestState,
+    ...optionalIdentifierProperty(item, "runId", "tool request"),
+    ...optionalIdentifierProperty(item, "toolId", "tool request"),
+    ...optionalIdentifierProperty(item, "toolVersion", "tool request"),
+    ...optionalIdentifierProperty(item, "requestedBy", "tool request"),
+    ...optionalEnumProperty(item, "sideEffectClass", toolSideEffectClasses, "tool request"),
+    ...optionalEnumProperty(item, "requiredApprovalClass", toolApprovalClasses, "tool request"),
+    ...optionalArtifactHashProperty(item, "previewHash", "tool request"),
+    ...optionalTokenProperty(item, "scope", "tool request"),
+    ...optionalTimestampProperty(item, "requestedAt", "tool request"),
+    ...optionalEventIdsProperty(item, "sourceEventIds"),
+    ...optionalArtifactHashesProperty(item, "inputArtifactHashes"),
+    ...optionalIdentifierProperty(item, "approvedBy", "tool request"),
+    ...optionalArtifactHashProperty(item, "approvedPreviewHash", "tool request"),
+    ...optionalEnumProperty(item, "approvalClass", toolApprovalClasses, "tool request"),
+    ...optionalTimestampProperty(item, "approvedAt", "tool request"),
+    ...optionalIdentifierProperty(item, "executionClaimedBy", "tool request"),
+    ...optionalTimestampProperty(item, "executionClaimedAt", "tool request"),
+    ...optionalTimestampProperty(item, "executionLeaseExpiresAt", "tool request"),
+    ...optionalArtifactHashProperty(item, "executionApprovedPreviewHash", "tool request"),
+    ...optionalEventIdProperty(item, "executionClaimEventId", "tool request"),
+    ...optionalIdentifierProperty(item, "deniedBy", "tool request"),
+    ...optionalTimestampProperty(item, "deniedAt", "tool request"),
+    ...optionalTimestampProperty(item, "completedAt", "tool request"),
+    ...optionalEventIdsProperty(item, "resultEventIds"),
+    ...optionalArtifactHashesProperty(item, "artifactHashes"),
+    ...optionalReadModelChangesProperty(item),
+    ...optionalTimestampProperty(item, "failedAt", "tool request"),
+    ...optionalEnumProperty(item, "failureCategory", failureCategories, "tool request"),
+    ...optionalBooleanProperty(item, "retryable", "tool request"),
+    ...optionalTokenArrayProperty(item, "allowedActions", "tool request")
+  };
+}
+
+function requiredEnum(
+  value: Record<string, unknown>,
+  key: string,
+  allowed: ReadonlySet<string>,
+  label: string
+): string {
+  const field = value[key];
+  if (typeof field !== "string" || !allowed.has(field)) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} ${key} is invalid`);
+  }
+  return field;
+}
+
+function optionalEnumProperty(
+  value: Record<string, unknown>, key: string, allowed: ReadonlySet<string>, label: string
+): Record<string, string> {
+  return value[key] === undefined ? {} : { [key]: requiredEnum(value, key, allowed, label) };
+}
+
+function optionalIdentifierProperty(value: Record<string, unknown>, key: string, label: string): Record<string, string> {
+  return value[key] === undefined ? {} : { [key]: requiredSafeIdentifier(value, key, label) };
+}
+
+function optionalTokenProperty(value: Record<string, unknown>, key: string, label: string): Record<string, string> {
+  return value[key] === undefined ? {} : { [key]: requiredSafeOperationalField(value, key, label) };
+}
+
+function optionalTimestampProperty(value: Record<string, unknown>, key: string, label: string): Record<string, string> {
+  if (value[key] === undefined) return {};
+  assertUtcTimestamp(value[key], `${label} ${key}`);
+  return { [key]: value[key] as string };
+}
+
+function optionalBooleanProperty(value: Record<string, unknown>, key: string, label: string): Record<string, boolean> {
+  if (value[key] === undefined) return {};
+  if (typeof value[key] !== "boolean") throw new Error(`blocked.invalid-payload-shape: ${label} ${key} must be boolean`);
+  return { [key]: value[key] as boolean };
+}
+
+function optionalNonnegativeIntegerProperty(value: Record<string, unknown>, key: string, label: string): Record<string, number> {
+  if (value[key] === undefined) return {};
+  if (!Number.isInteger(value[key]) || (value[key] as number) < 0) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} ${key} must be a nonnegative integer`);
+  }
+  return { [key]: value[key] as number };
+}
+
+function optionalPositiveIntegerProperty(value: Record<string, unknown>, key: string, label: string): Record<string, number> {
+  if (value[key] === undefined) return {};
+  if (!Number.isInteger(value[key]) || (value[key] as number) <= 0) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} ${key} must be a positive integer`);
+  }
+  return { [key]: value[key] as number };
+}
+
+function optionalEventIdsProperty(value: Record<string, unknown>, key: string): Record<string, readonly string[]> {
+  return value[key] === undefined ? {} : { [key]: normalizeEventIds(value[key] as readonly string[]) };
+}
+
+function optionalEventIdProperty(value: Record<string, unknown>, key: string, label: string): Record<string, string> {
+  if (value[key] === undefined) return {};
+  const normalized = normalizeEventIds([value[key] as string]);
+  if (normalized.length !== 1) throw new Error(`blocked.invalid-payload-shape: ${label} ${key} is invalid`);
+  return { [key]: normalized[0]! };
+}
+
+function optionalArtifactHashesProperty(value: Record<string, unknown>, key: string): Record<string, readonly string[]> {
+  return value[key] === undefined ? {} : { [key]: normalizeArtifactHashes(value[key] as readonly string[]) };
+}
+
+function optionalArtifactHashProperty(value: Record<string, unknown>, key: string, label: string): Record<string, string> {
+  if (value[key] === undefined) return {};
+  const normalized = normalizeArtifactHashes([value[key] as string]);
+  if (normalized.length !== 1) throw new Error(`blocked.invalid-payload-shape: ${label} ${key} is invalid`);
+  return { [key]: normalized[0]! };
+}
+
+function optionalIdentifierArrayProperty(value: Record<string, unknown>, key: string, label: string): Record<string, readonly string[]> {
+  if (value[key] === undefined) return {};
+  assertPlainDataArray(value[key], `${label} ${key}`);
+  const normalized = (value[key] as readonly unknown[]).map((entry) => {
+    if (typeof entry !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(entry)) {
+      throw new Error(`blocked.invalid-payload-shape: ${label} ${key} contains an invalid identifier`);
+    }
+    assertSafeOperationalText(entry, `${label} ${key}`);
+    return entry;
+  });
+  return { [key]: uniqueStrings(normalized) };
+}
+
+function optionalTokenArrayProperty(value: Record<string, unknown>, key: string, label: string): Record<string, readonly string[]> {
+  if (value[key] === undefined) return {};
+  assertPlainDataArray(value[key], `${label} ${key}`);
+  const normalized = (value[key] as readonly unknown[]).map((entry) => {
+    assertMachineReadableOperationalToken(entry, `${label} ${key}`);
+    return entry;
+  });
+  return { [key]: uniqueStrings(normalized) };
+}
+
+function optionalUsageProperty(value: Record<string, unknown>): Record<string, OperationalModelInvocationUsageDto> {
+  if (value.usage === undefined) return {};
+  assertPlainDataObject(value.usage, "model invocation usage", ["inputTokens", "outputTokens", "totalTokens"]);
+  const usage = value.usage as Record<string, unknown>;
+  const normalized = {
+    ...optionalNonnegativeIntegerProperty(usage, "inputTokens", "model invocation usage"),
+    ...optionalNonnegativeIntegerProperty(usage, "outputTokens", "model invocation usage"),
+    ...optionalNonnegativeIntegerProperty(usage, "totalTokens", "model invocation usage")
+  };
+  return { usage: normalized };
+}
+
+function optionalContextPackRefsProperty(value: Record<string, unknown>): Record<string, readonly OperationalContextPackLinkDto[]> {
+  if (value.contextPackRefs === undefined) return {};
+  assertPlainDataArray(value.contextPackRefs, "model invocation contextPackRefs");
+  const contextPackRefs = (value.contextPackRefs as readonly unknown[]).map((entry) => {
+    assertPlainDataObject(entry, "model invocation context pack ref", ["contextPackId", "version", "contentHash"]);
+    const ref = entry as Record<string, unknown>;
+    const contextPackId = requiredSafeIdentifier(ref, "contextPackId", "model invocation context pack ref");
+    if (!Number.isInteger(ref.version) || (ref.version as number) <= 0) {
+      throw new Error("blocked.invalid-payload-shape: model invocation context pack ref version is invalid");
+    }
+    const contentHash = normalizeArtifactHashes([ref.contentHash as string])[0]!;
+    return { contextPackId, version: ref.version as number, contentHash };
+  }).sort((left, right) => left.contextPackId.localeCompare(right.contextPackId) || left.version - right.version);
+  return { contextPackRefs };
+}
+
+function optionalReadModelChangesProperty(value: Record<string, unknown>): Record<string, readonly OperationalToolReadModelChangeDto[]> {
+  if (value.readModelChanges === undefined) return {};
+  assertPlainDataArray(value.readModelChanges, "tool request readModelChanges");
+  const readModelChanges = (value.readModelChanges as readonly unknown[]).map((entry) => {
+    assertPlainDataObject(entry, "tool read-model change", ["projectionName", "change", "relatedIds"]);
+    const change = entry as Record<string, unknown>;
+    const projectionName = requiredSafeOperationalField(change, "projectionName", "tool read-model change");
+    const changeCode = requiredSafeOperationalField(change, "change", "tool read-model change");
+    return {
+      projectionName,
+      change: changeCode,
+      ...optionalIdentifierArrayProperty(change, "relatedIds", "tool read-model change")
+    };
+  }).sort((left, right) => left.projectionName.localeCompare(right.projectionName) || left.change.localeCompare(right.change));
+  return { readModelChanges };
+}
+
+function closeHistoryProvenance(snapshot: OperationalTaskRunHistorySnapshot): OperationalTaskRunHistorySnapshot {
+  const provenance = historyProvenance([
+    ...snapshot.tasks,
+    ...snapshot.runs,
+    ...snapshot.modelInvocations,
+    ...snapshot.toolRequests
+  ]);
+  return { ...snapshot, sourceEventIds: provenance.sourceEventIds, artifactHashes: provenance.artifactHashes };
+}
+
+function historyProvenance(items: readonly unknown[]): { readonly sourceEventIds: readonly string[]; readonly artifactHashes: readonly string[] } {
+  const sourceEventIds: string[] = [];
+  const artifactHashes: string[] = [];
+  for (const item of items) {
+    const record = item as Record<string, unknown>;
+    for (const key of ["sourceEventIds", "relatedEventIds", "resultEventIds"] as const) {
+      if (Array.isArray(record[key])) sourceEventIds.push(...record[key] as string[]);
+    }
+    if (typeof record.executionClaimEventId === "string") sourceEventIds.push(record.executionClaimEventId);
+    for (const key of ["inputArtifactHashes", "outputArtifactHashes", "artifactHashes"] as const) {
+      if (Array.isArray(record[key])) artifactHashes.push(...record[key] as string[]);
+    }
+    for (const key of ["inputArtifactHash", "providerOutputArtifactHash"] as const) {
+      if (typeof record[key] === "string") artifactHashes.push(record[key] as string);
+    }
+  }
+  return { sourceEventIds: uniqueStrings(sourceEventIds), artifactHashes: uniqueStrings(artifactHashes) };
+}
+
+function assertHistoryProvenanceMatches(
+  value: { readonly [key: string]: AgentContextPackJsonValue },
+  items: readonly unknown[],
+  schemaVersion: OperationalContextPackId
+): void {
+  const expected = historyProvenance(items);
+  assertExactStringArray(requiredJsonField(value, "sourceEventIds", schemaVersion), expected.sourceEventIds, schemaVersion);
+  assertExactStringArray(requiredJsonField(value, "artifactHashes", schemaVersion), expected.artifactHashes, schemaVersion);
+}
+
+function assertMemoryProvenanceMatches(
+  value: { readonly [key: string]: AgentContextPackJsonValue },
+  items: readonly AgentContextPackJsonValue[],
+  schemaVersion: OperationalContextPackId
+): void {
+  const sourceEventIds = uniqueStrings(items.flatMap((item) => (item as { sourceEventIds: readonly string[] }).sourceEventIds));
+  const artifactHashes = uniqueStrings(items.flatMap((item) => (item as { artifactHashes: readonly string[] }).artifactHashes));
+  assertExactStringArray(requiredJsonField(value, "sourceEventIds", schemaVersion), sourceEventIds, schemaVersion);
+  assertExactStringArray(requiredJsonField(value, "artifactHashes", schemaVersion), artifactHashes, schemaVersion);
+}
+
+function assertExactStringArray(
+  actual: AgentContextPackJsonValue,
+  expected: readonly string[],
+  schemaVersion: OperationalContextPackId
+): void {
+  if (!Array.isArray(actual) || actual.length !== expected.length || actual.some((entry, index) => entry !== expected[index])) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
 }
 
 function assertMemoryPayloadItem(value: AgentContextPackJsonValue, schemaVersion: OperationalContextPackId): void {
@@ -1289,8 +1786,8 @@ function assertMemoryPayloadItem(value: AgentContextPackJsonValue, schemaVersion
     "expiresAt"
   ]);
   requiredSafeIdentifier(item, "memoryId", "memory item");
-  requiredSafeOperationalField(item, "scope", "memory item");
-  requiredSafeOperationalField(item, "memoryKind", "memory item");
+  requiredEnum(item, "scope", memoryScopes, "memory item");
+  requiredEnum(item, "memoryKind", memoryKinds, "memory item");
   const summary = item.summary;
   if (typeof summary !== "string" || summary.length === 0) {
     throw new Error(`invalid ${schemaVersion} payload`);
@@ -1331,14 +1828,6 @@ function requiredSafeIdentifier(
     throw new Error(`blocked.invalid-payload-shape: ${label} ${key} must be a safe identifier`);
   }
   assertSafeOperationalText(field, `${label} ${key}`);
-  return field;
-}
-
-function requiredSafeState(value: Record<string, unknown>, key: string, label: string): string {
-  const field = value[key];
-  if (typeof field !== "string" || !historyStates.has(field)) {
-    throw new Error(`blocked.invalid-payload-shape: ${label} state is invalid`);
-  }
   return field;
 }
 

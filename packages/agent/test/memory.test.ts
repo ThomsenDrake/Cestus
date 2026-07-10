@@ -281,7 +281,7 @@ describe("agent memory surface", () => {
         {
           memoryId: "mem_second",
           scope: "workspace",
-          memoryKind: "working-note",
+          memoryKind: "agent-observation",
           summary: "Second visible memory item.",
           confidence: 0.7,
           sourceEventIds: ["evt_agent_memory_second"],
@@ -301,6 +301,76 @@ describe("agent memory surface", () => {
       projectionHighWaterMark: 42,
       sizeBudgetBytes: 16_384
     })).toThrow("blocked.unbounded-source");
+  });
+
+  it("rejects accessor-backed direct memory snapshots without invoking getters", () => {
+    let getterInvoked = false;
+    const memorySnapshot = { ...boundedMemorySnapshot() } as Record<string, unknown>;
+    Object.defineProperty(memorySnapshot, "window", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return boundedMemorySnapshot().window;
+      }
+    });
+
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      memorySnapshot: memorySnapshot as never,
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 42,
+      sizeBudgetBytes: 16_384
+    })).toThrow(/accessor|plain|payload-shape/);
+    expect(getterInvoked).toBe(false);
+  });
+
+  it("strictly validates direct memory item enums, confidence, refs, and complete window metadata", () => {
+    const base = boundedMemorySnapshot();
+    const firstItem = base.activeMemory[0]!;
+    const invalidSnapshots = [
+      { ...base, activeMemory: [{ ...firstItem, scope: "global" }] },
+      { ...base, activeMemory: [{ ...firstItem, memoryKind: "working-note" }] },
+      { ...base, activeMemory: [{ ...firstItem, confidence: 1.01 }] },
+      { ...base, activeMemory: [{ ...firstItem, sourceEventIds: ["not_an_event"] }] },
+      { ...base, activeMemory: [{ ...firstItem, artifactHashes: ["sha256:not-a-hash"] }] },
+      { ...base, window: { ...base.window, order: "newest records first" } },
+      { ...base, window: { ...base.window, hasMore: "yes" } },
+      { ...base, window: { ...base.window, totalCount: -1 } },
+      { ...base, window: { ...base.window, omissionCodes: ["omitted.unknown"] } }
+    ];
+
+    for (const memorySnapshot of invalidSnapshots) {
+      expect(() => buildAgentMemorySummaryResolvedContextPack({
+        memorySnapshot: memorySnapshot as never,
+        generatedAt: "2026-07-09T12:30:00.000Z",
+        policyVersion: "agent-policy-v1",
+        scope: { kind: "workspace", id: "ws_case_001" },
+        projectionHighWaterMark: 42,
+        sizeBudgetBytes: 16_384
+      })).toThrow(/blocked\.(invalid-payload-shape|unbounded-source)|UTC timestamp/);
+    }
+  });
+
+  it("rejects authoritative empty memory snapshots that retain artifact provenance", () => {
+    const input = {
+      memorySnapshot: { ...emptyMemorySnapshot(), artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"] },
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 0,
+      sizeBudgetBytes: 16_384,
+      emptyMemoryProof: {
+        projectionName: "agent.projection.memory",
+        scope: { kind: "workspace", id: "ws_case_001" },
+        projectionHighWaterMark: 0,
+        sourceEventCount: 0,
+        generatedAt: "2026-07-09T12:30:00.000Z",
+        emptyReasonCode: "empty.active-memory"
+      }
+    } as const;
+
+    expect(() => buildAgentMemorySummaryResolvedContextPack(input)).toThrow("blocked.projection-source-mismatch");
   });
 
   it("rejects empty proof when aggregate counts report active memory outside the bounded window", () => {
@@ -369,6 +439,10 @@ describe("agent memory surface", () => {
     expect(large.ref.provenanceRefs).toHaveLength(small.ref.provenanceRefs.length);
     expect(large.ref.provenanceRefs).toHaveLength(51);
     expect(large.ref.sizeBytes).toBe(small.ref.sizeBytes);
+    expect(verifyResolvedContextPack(
+      large,
+      operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]
+    )).toEqual(large);
   });
 
   it("builds a stable empty-memory summary pack for first-run workspaces", () => {
