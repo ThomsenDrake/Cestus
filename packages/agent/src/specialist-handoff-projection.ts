@@ -121,28 +121,53 @@ export async function buildSpecialistHandoffProjection(
     history.push(outputPersistedEntry(finalOutput));
   }
 
-  const preparedById = new Map<string, PreparedRecord>();
+  const preparedByEventId = new Map<string, PreparedRecord>();
+  const preparedByHandoffId = new Map<string, PreparedRecord>();
   for (const prepared of context.prepared) {
-    const prior = preparedById.get(prepared.event.id);
-    if (prior === undefined) {
-      preparedById.set(prepared.event.id, { event: prepared.event, index: prepared.index });
-      history.push(handoffPendingEntry(prepared.event));
-      continue;
-    }
-
-    if (!sameCanonicalValue(prior.event.payload, prepared.event.payload)) {
+    const record = { event: prepared.event, index: prepared.index };
+    const priorByEventId = preparedByEventId.get(prepared.event.id);
+    if (priorByEventId !== undefined && !sameCanonicalValue(priorByEventId.event.payload, prepared.event.payload)) {
       addDiagnostic(context, {
         code: "conflicting-prepared",
         message: "Conflicting prepared handoff events share an event id.",
         event: prepared.event,
+        handoffId: prepared.event.payload.handoffId,
+        relatedEventIds: [priorByEventId.event.id],
         artifactHashes: [prepared.event.payload.handoffManifestHash]
+      });
+      continue;
+    }
+    if (priorByEventId !== undefined) {
+      continue;
+    }
+
+    preparedByEventId.set(prepared.event.id, record);
+
+    const priorByHandoffId = preparedByHandoffId.get(prepared.event.payload.handoffId);
+    if (priorByHandoffId === undefined) {
+      preparedByHandoffId.set(prepared.event.payload.handoffId, record);
+      history.push(handoffPendingEntry(prepared.event));
+      continue;
+    }
+
+    if (!sameCanonicalValue(priorByHandoffId.event.payload, prepared.event.payload)) {
+      addDiagnostic(context, {
+        code: "conflicting-prepared",
+        message: "Prepared handoff events reuse a handoff ID with different compact bindings.",
+        event: prepared.event,
+        handoffId: prepared.event.payload.handoffId,
+        relatedEventIds: [priorByHandoffId.event.id],
+        artifactHashes: [
+          priorByHandoffId.event.payload.handoffManifestHash,
+          prepared.event.payload.handoffManifestHash
+        ]
       });
     }
   }
 
   const verified: VerifiedHandoffRecord[] = [];
   for (const recorded of context.recorded) {
-    const prepared = preparedById.get(recorded.event.payload.preparedEventId);
+    const prepared = preparedByEventId.get(recorded.event.payload.preparedEventId);
     if (prepared === undefined) {
       addDiagnostic(context, {
         code: "recorded-without-prepared",
@@ -249,7 +274,7 @@ export async function buildSpecialistHandoffProjection(
     });
   }
 
-  if (selectedRecord !== undefined && isTaskCompleted(context, selectedRecord)) {
+  if (selectedRecord !== undefined && isTaskCompleted(context, selectedRecord, verified)) {
     history.push(taskCompletedEntry(selectedRecord));
     return freezeProjection({
       state: "task-completed",
@@ -745,16 +770,37 @@ function validateTerminalOrder(context: ProjectionContext, verified: readonly Ve
   }
 }
 
-function isTaskCompleted(context: ProjectionContext, selected: VerifiedHandoffRecord): boolean {
+function isTaskCompleted(
+  context: ProjectionContext,
+  selected: VerifiedHandoffRecord,
+  verified: readonly VerifiedHandoffRecord[]
+): boolean {
   if (selected.handoff.status !== "ready-for-review" || selected.handoff.taskId === undefined) {
     return false;
   }
 
+  if (hasCompletedTaskChain(context, selected)) {
+    return true;
+  }
+
+  return verified.some((record) =>
+    record.recordedIndex < selected.recordedIndex &&
+    sameCompletionAnchor(record, selected) &&
+    hasCompletedTaskChain(context, record)
+  );
+}
+
+function hasCompletedTaskChain(context: ProjectionContext, record: VerifiedHandoffRecord): boolean {
+  if (record.handoff.status !== "ready-for-review" || record.handoff.taskId === undefined) {
+    return false;
+  }
+
   const terminal = context.terminals.find((item) =>
-    item.index > selected.recordedIndex &&
+    item.index > record.recordedIndex &&
     item.event.type === "agent.specialist-run.completed" &&
-    item.event.payload.runId === selected.handoff.runId &&
-    item.event.context.causationId === selected.recorded.id
+    item.event.payload.runId === record.handoff.runId &&
+    item.event.context.causationId === record.recorded.id &&
+    sameStringArray(item.event.payload.outputArtifactHashes, outputArtifactHashes(record.manifest))
   );
   if (terminal === undefined) {
     return false;
@@ -762,11 +808,25 @@ function isTaskCompleted(context: ProjectionContext, selected: VerifiedHandoffRe
 
   return context.taskStatuses.some((item) =>
     item.index > terminal.index &&
-    item.event.payload.taskId === selected.handoff.taskId &&
-    item.event.payload.runId === selected.handoff.runId &&
+    item.event.payload.taskId === record.handoff.taskId &&
+    item.event.payload.runId === record.handoff.runId &&
     item.event.payload.status === "completed" &&
     item.event.context.causationId === terminal.event.id
   );
+}
+
+function sameCompletionAnchor(prior: VerifiedHandoffRecord, next: VerifiedHandoffRecord): boolean {
+  return prior.handoff.runId === next.handoff.runId &&
+    prior.handoff.taskId === next.handoff.taskId &&
+    prior.handoff.runType === next.handoff.runType &&
+    prior.handoff.residentAgentId === next.handoff.residentAgentId &&
+    prior.handoff.status === next.handoff.status &&
+    prior.manifest.finalOutputStepId === next.manifest.finalOutputStepId &&
+    prior.manifest.finalOutputEventId === next.manifest.finalOutputEventId &&
+    sameStringArray(outputArtifactHashes(prior.manifest), outputArtifactHashes(next.manifest)) &&
+    sameStringArray(prior.handoff.toolRequestIds, next.handoff.toolRequestIds) &&
+    sameStringArray(prior.manifest.sourceEventIds, next.manifest.sourceEventIds) &&
+    sameStringArray(prior.manifest.relatedEventIds, next.manifest.relatedEventIds);
 }
 
 function outputPersistedEntry(finalOutput: IndexedEvent<FinalOutputEvent>): SpecialistHandoffProjectionEntry {
