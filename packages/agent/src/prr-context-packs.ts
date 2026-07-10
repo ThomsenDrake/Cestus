@@ -1,9 +1,14 @@
 import { z } from "zod";
 import {
   buildResolvedContextPack,
+  contextPackDescriptorSchema,
+  hashAgentContextPack,
   serializeContextPackPayload,
   verifyResolvedContextPack,
   type AgentContextPackJsonValue,
+  type ContextPackBuilder,
+  type ContextPackDescriptor,
+  type ContextPackRegistry,
   type ContextPackRef,
   type ContextPackPayloadParser,
   type ResolvedContextPack
@@ -112,6 +117,30 @@ export interface JurisdictionPackSummaryContextPackPayload {
   readonly omissions: readonly AgentContextPackJsonValue[];
 }
 
+export interface PrrContextPackRegistrationEntry {
+  readonly descriptor: ContextPackDescriptor;
+  readonly payloadParser: ContextPackPayloadParser;
+  readonly registrationIdentity: string;
+  readonly builder: Omit<ContextPackBuilder, "parsePayload">;
+}
+
+export interface RegisterPrrContextPackBuildersInput {
+  readonly registry: ContextPackRegistry;
+  readonly prrReadModel: PrrContextPackRegistrationEntry;
+  readonly jurisdictionPackSummary: PrrContextPackRegistrationEntry;
+}
+
+interface RegisteredPrrContextPackIdentity {
+  readonly descriptorHash: string;
+  readonly parserId: string;
+  readonly registrationIdentity: string;
+}
+
+const prrContextPackRegistrations = new WeakMap<ContextPackRegistry, Map<string, RegisteredPrrContextPackIdentity>>();
+const parserIdentityProperty = "cestusContextPackParserId";
+const prrReadModelContextPackId = "prr-read-model.v1";
+const jurisdictionPackSummaryContextPackId = "jurisdiction-pack-summary.v1";
+
 const hashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const eventIdSchema = z.string().regex(/^evt_[A-Za-z0-9_-]+$/);
 const scopeSchema = z.object({ kind: z.literal("prr-request"), id: z.string().min(1) }).strict();
@@ -208,16 +237,16 @@ const jurisdictionSummaryPayloadSchema = z.object({
   omissions: z.array(jurisdictionOmissionSchema)
 }).strict();
 
-export const prrReadModelPayloadParser: ContextPackPayloadParser = (payload, ref) => {
+export const prrReadModelPayloadParser = withContextPackParserIdentity("prr-read-model-payload-parser.v1", (payload, ref) => {
   const parsed = payloadSchema.parse(payload);
   if (ref !== undefined && (ref.contextPackId !== "prr-read-model.v1" || ref.version !== 1 || ref.scope?.kind !== "prr-request" || ref.scope.id !== parsed.scope.id)) {
     throw new Error("invalid prr-read-model payload ref");
   }
   assertPayloadProvenanceBindings(parsed, ref);
   return parsed as unknown as AgentContextPackJsonValue;
-};
+});
 
-export const jurisdictionPackSummaryPayloadParser: ContextPackPayloadParser = (payload, ref) => {
+export const jurisdictionPackSummaryPayloadParser = withContextPackParserIdentity("jurisdiction-pack-summary-payload-parser.v1", (payload, ref) => {
   const parsed = jurisdictionSummaryPayloadSchema.parse(payload);
   const expectedPackRef = `${parsed.packName}@${parsed.packVersion}`;
   const expectedRuleRefs = parsed.citedRules.map((rule) =>
@@ -254,7 +283,111 @@ export const jurisdictionPackSummaryPayloadParser: ContextPackPayloadParser = (p
     }
   }
   return parsed as unknown as AgentContextPackJsonValue;
-};
+});
+
+export function registerPrrContextPackBuilders(input: RegisterPrrContextPackBuildersInput): void {
+  if (typeof (input.registry as unknown as { readonly buildResolved?: unknown }).buildResolved !== "function") {
+    throw new Error("schema-conflict: context pack registry must expose buildResolved(contextPackId)");
+  }
+
+  const registrations = prrContextPackRegistrations.get(input.registry) ?? new Map<string, RegisteredPrrContextPackIdentity>();
+  prrContextPackRegistrations.set(input.registry, registrations);
+  registerPrrContextPackBuilder(input.registry, registrations, input.prrReadModel, prrReadModelContextPackId);
+  registerPrrContextPackBuilder(
+    input.registry,
+    registrations,
+    input.jurisdictionPackSummary,
+    jurisdictionPackSummaryContextPackId
+  );
+}
+
+function registerPrrContextPackBuilder(
+  registry: ContextPackRegistry,
+  registrations: Map<string, RegisteredPrrContextPackIdentity>,
+  entry: PrrContextPackRegistrationEntry,
+  expectedContextPackId: string
+): void {
+  const descriptor = contextPackDescriptorSchema.parse(entry.descriptor);
+  if (descriptor.contextPackId !== expectedContextPackId || descriptor.version !== 1) {
+    throw new Error(`schema-conflict: expected ${expectedContextPackId}@1 registration`);
+  }
+  const descriptorHash = canonicalDescriptorHash(descriptor);
+  if (canonicalDescriptorHash(contextPackDescriptorSchema.parse(entry.builder.descriptor)) !== descriptorHash) {
+    throw new Error(`schema-conflict: builder descriptor does not match ${descriptor.contextPackId}`);
+  }
+  const key = `${descriptor.contextPackId}@${descriptor.version}`;
+  const identity = Object.freeze({
+    descriptorHash,
+    parserId: contextPackParserIdentity(entry.payloadParser),
+    registrationIdentity: requireRegistrationIdentity(entry.registrationIdentity)
+  });
+  const prior = registrations.get(key);
+  if (prior !== undefined) {
+    if (sameRegistrationIdentity(prior, identity)) {
+      return;
+    }
+    throw new Error(`context pack registration conflict for ${key}`);
+  }
+  if (registry.getDescriptor(descriptor.contextPackId) !== undefined) {
+    throw new Error(`context pack registration conflict for ${key}: registry already has no stable helper identity`);
+  }
+
+  registry.register({
+    descriptor,
+    parsePayload: entry.payloadParser,
+    build: entry.builder.build
+  });
+  registrations.set(key, identity);
+}
+
+function canonicalDescriptorHash(descriptor: ContextPackDescriptor): string {
+  return hashAgentContextPack({
+    contextPackId: descriptor.contextPackId,
+    version: descriptor.version,
+    label: descriptor.label,
+    maxBytes: descriptor.maxBytes,
+    requiredProvenanceKinds: [...descriptor.requiredProvenanceKinds].sort(),
+    redactionPolicy: descriptor.redactionPolicy,
+    sourceProjection: descriptor.sourceProjection
+  });
+}
+
+function contextPackParserIdentity(parser: ContextPackPayloadParser): string {
+  const metadata = Object.getOwnPropertyDescriptor(parser, parserIdentityProperty);
+  if (metadata === undefined || !("value" in metadata) || typeof metadata.value !== "string" || metadata.value.length === 0) {
+    throw new Error("schema-conflict: context pack payload parser requires stable own identity metadata");
+  }
+  return metadata.value;
+}
+
+function requireRegistrationIdentity(value: string): string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error("schema-conflict: context pack registration requires a stable identity");
+  }
+  return value;
+}
+
+function sameRegistrationIdentity(
+  left: RegisteredPrrContextPackIdentity,
+  right: RegisteredPrrContextPackIdentity
+): boolean {
+  return left.descriptorHash === right.descriptorHash &&
+    left.parserId === right.parserId &&
+    left.registrationIdentity === right.registrationIdentity;
+}
+
+function withContextPackParserIdentity(
+  parserId: string,
+  parser: ContextPackPayloadParser
+): ContextPackPayloadParser {
+  Object.defineProperty(parser, parserIdentityProperty, {
+    value: parserId,
+    enumerable: false,
+    writable: false,
+    configurable: false
+  });
+  return parser;
+}
 
 export function buildJurisdictionPackSummaryContextPack(
   input: BuildJurisdictionPackSummaryContextPackInput

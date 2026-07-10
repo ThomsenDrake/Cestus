@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildResolvedContextPack,
-  verifyResolvedContextPack
+  createContextPackRegistry,
+  verifyResolvedContextPack,
+  type ContextPackPayloadParser
 } from "../src/context-packs.js";
 import type { PrrRequestReadModel, PrrTimelineEntry } from "../../prr/src/projection.js";
 import {
@@ -9,9 +11,11 @@ import {
   buildPrrReadModelContextPack,
   jurisdictionPackSummaryPayloadParser,
   prrReadModelPayloadParser,
+  registerPrrContextPackBuilders,
   type BuildJurisdictionPackSummaryContextPackInput,
   type BuildPrrReadModelContextPackInput,
-  type PrrContextGateSnapshot
+  type PrrContextGateSnapshot,
+  type PrrContextPackRegistrationEntry
 } from "../src/prr-context-packs.js";
 
 const generatedAt = "2026-07-10T12:00:00.000Z";
@@ -597,6 +601,171 @@ describe("selected request jurisdiction pack summary context pack", () => {
       .toThrow(/payload-schema-mismatch/);
   });
 });
+
+describe("PRR context pack registration", () => {
+  it("registers builders with stable descriptor, parser, and registration identity", async () => {
+    const registry = createContextPackRegistry();
+
+    registerPrrContextPackBuilders({
+      registry,
+      prrReadModel: prrRegistrationForTest(),
+      jurisdictionPackSummary: jurisdictionRegistrationForTest()
+    });
+    registerPrrContextPackBuilders({
+      registry,
+      prrReadModel: prrRegistrationForTest(),
+      jurisdictionPackSummary: jurisdictionRegistrationForTest()
+    });
+
+    expect(registry.snapshot().contextPackIds).toEqual([
+      "prr-read-model.v1",
+      "jurisdiction-pack-summary.v1"
+    ]);
+    await expect(registry.buildResolved("prr-read-model.v1")).resolves.toMatchObject({
+      ref: { contextPackId: "prr-read-model.v1" }
+    });
+    await expect(registry.buildResolved("jurisdiction-pack-summary.v1")).resolves.toMatchObject({
+      ref: { contextPackId: "jurisdiction-pack-summary.v1" }
+    });
+  });
+
+  it("conflicts on duplicate ID and version with a different parser identity", () => {
+    const registry = createContextPackRegistry();
+
+    registerPrrContextPackBuilders({
+      registry,
+      prrReadModel: prrRegistrationForTest(),
+      jurisdictionPackSummary: jurisdictionRegistrationForTest()
+    });
+
+    expect(() =>
+      registerPrrContextPackBuilders({
+        registry,
+        prrReadModel: prrRegistrationForTest({ parserId: "prr-read-model-payload-parser.fork" }),
+        jurisdictionPackSummary: jurisdictionRegistrationForTest()
+      })
+    ).toThrow(/parser|conflict|already registered/i);
+  });
+
+  it("conflicts on duplicate ID and version with a descriptor mismatch", () => {
+    const registry = createContextPackRegistry();
+
+    registerPrrContextPackBuilders({
+      registry,
+      prrReadModel: prrRegistrationForTest(),
+      jurisdictionPackSummary: jurisdictionRegistrationForTest()
+    });
+
+    expect(() =>
+      registerPrrContextPackBuilders({
+        registry,
+        prrReadModel: prrRegistrationForTest({ maxBytes: 65_536 }),
+        jurisdictionPackSummary: jurisdictionRegistrationForTest()
+      })
+    ).toThrow(/descriptor|conflict|already registered/i);
+  });
+
+  it("conflicts on duplicate ID and version with a different registration identity", () => {
+    const registry = createContextPackRegistry();
+
+    registerPrrContextPackBuilders({
+      registry,
+      prrReadModel: prrRegistrationForTest(),
+      jurisdictionPackSummary: jurisdictionRegistrationForTest()
+    });
+
+    expect(() =>
+      registerPrrContextPackBuilders({
+        registry,
+        prrReadModel: prrRegistrationForTest({ registrationIdentity: "packages/agent/prr-context-packs:fork" }),
+        jurisdictionPackSummary: jurisdictionRegistrationForTest()
+      })
+    ).toThrow(/registration|conflict|already registered/i);
+  });
+
+  it("conflicts when the registry already has the descriptor without this helper identity", () => {
+    const registry = createContextPackRegistry();
+    const registration = prrRegistrationForTest();
+    registry.register({
+      descriptor: registration.descriptor,
+      parsePayload: registration.payloadParser,
+      build: registration.builder.build
+    });
+
+    expect(() =>
+      registerPrrContextPackBuilders({
+        registry,
+        prrReadModel: registration,
+        jurisdictionPackSummary: jurisdictionRegistrationForTest()
+      })
+    ).toThrow(/conflict|already registered/i);
+  });
+});
+
+function prrRegistrationForTest(
+  overrides: {
+    readonly parserId?: string;
+    readonly maxBytes?: number;
+    readonly registrationIdentity?: string;
+  } = {}
+): PrrContextPackRegistrationEntry {
+  const descriptor = {
+    contextPackId: "prr-read-model.v1",
+    version: 1,
+    label: "Selected request PRR read model",
+    maxBytes: overrides.maxBytes ?? 32_768,
+    requiredProvenanceKinds: ["event-id"],
+    redactionPolicy: "safe-normalized-summary",
+    sourceProjection: "prr.projection.selected-request"
+  };
+  return {
+    descriptor,
+    payloadParser: parserWithId(prrReadModelPayloadParser, overrides.parserId),
+    registrationIdentity: overrides.registrationIdentity ?? "packages/agent/prr-context-packs:prr-read-model.v1@1",
+    builder: {
+      descriptor,
+      build: () => buildPrrReadModelContextPack(basePrrInput())
+    }
+  };
+}
+
+function jurisdictionRegistrationForTest(): PrrContextPackRegistrationEntry {
+  const descriptor = {
+    contextPackId: "jurisdiction-pack-summary.v1",
+    version: 1,
+    label: "Selected request jurisdiction pack summary",
+    maxBytes: 16_384,
+    requiredProvenanceKinds: ["event-id", "content-hash"],
+    redactionPolicy: "safe-normalized-summary",
+    sourceProjection: "prr.jurisdiction-pack.selected-request"
+  };
+  return {
+    descriptor,
+    payloadParser: jurisdictionPackSummaryPayloadParser,
+    registrationIdentity: "packages/agent/prr-context-packs:jurisdiction-pack-summary.v1@1",
+    builder: {
+      descriptor,
+      build: () => buildJurisdictionPackSummaryContextPack(jurisdictionInput())
+    }
+  };
+}
+
+function parserWithId(
+  parser: ContextPackPayloadParser,
+  parserId: string | undefined
+): ContextPackPayloadParser {
+  if (parserId === undefined) {
+    return parser;
+  }
+  const parserWithStableId: ContextPackPayloadParser = (payload, ref) => parser(payload, ref);
+  Object.defineProperty(parserWithStableId, "cestusContextPackParserId", {
+    value: parserId,
+    enumerable: false,
+    writable: false,
+    configurable: false
+  });
+  return parserWithStableId;
+}
 
 function jurisdictionInput(): BuildJurisdictionPackSummaryContextPackInput {
   return {
