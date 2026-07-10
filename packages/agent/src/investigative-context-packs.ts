@@ -171,6 +171,54 @@ export interface InvestigativeSelectionManifest extends InvestigativeSelectionMa
   readonly manifestHash: `sha256:${string}`;
 }
 
+export interface InvestigativeContextPackBuildRequest {
+  readonly scope: InvestigativeContextPackScope;
+  readonly window?: InvestigativeSelectionWindow;
+  readonly sizeBudgetBytes?: number;
+}
+
+export interface InvestigativeSelectionCapability {
+  readonly capabilityVersion: "investigative-selection.v1";
+  select(input: {
+    readonly contextPackId: InvestigativeContextPackId;
+    readonly scope: InvestigativeContextPackScope;
+    readonly sizeBudgetBytes: number;
+    readonly window?: InvestigativeSelectionWindow;
+  }): Promise<InvestigativeSelectionManifest> | InvestigativeSelectionManifest;
+}
+
+export interface InvestigativeEvidenceRow {
+  readonly evidenceId: string;
+  readonly contentHash: `sha256:${string}`;
+}
+
+export interface InvestigativeEvidenceReader {
+  readEvidenceByIds(input: {
+    readonly evidenceIds: readonly string[];
+    readonly contentHashes: readonly `sha256:${string}`[];
+    readonly highWaterMarks: InvestigativeProjectionHighWaterMarks;
+    readonly limit: number;
+  }): Promise<readonly InvestigativeEvidenceRow[]> | readonly InvestigativeEvidenceRow[];
+}
+
+export interface EvidenceSourcePostureResult {
+  readonly posture: string;
+}
+
+export interface InvestigativeContextPackDependencies {
+  readonly selection: InvestigativeSelectionCapability;
+  readonly evidenceReader: InvestigativeEvidenceReader;
+  readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
+}
+
+export interface BuildInvestigativeContextPackInput extends InvestigativeContextPackBuildRequest {
+  readonly deps: InvestigativeContextPackDependencies;
+}
+
+export interface RegisterInvestigativeContextPacksInput extends InvestigativeContextPackBuildRequest {
+  readonly deps: InvestigativeContextPackDependencies;
+}
+
 export interface InvestigativeContextPackPayloadBase {
   readonly schemaVersion: string;
   readonly contextPackId: InvestigativeContextPackId;
@@ -271,6 +319,62 @@ export function assertSelectionManifestHash(manifest: InvestigativeSelectionMani
   if (manifest.manifestHash !== expected) {
     throw new InvestigativeContextPackError("selection-manifest-hash-mismatch", "selection-manifest-hash-mismatch");
   }
+}
+
+const readerBatchSize = investigativeContextPackDefaultLimits.readerBatchSize;
+
+async function selectForPack(
+  contextPackId: InvestigativeContextPackId,
+  input: BuildInvestigativeContextPackInput
+): Promise<InvestigativeSelectionManifest> {
+  if (input.scope.kind === "workspace" && input.window === undefined) {
+    throw new InvestigativeContextPackError("selection-window-required", "selection-window-required");
+  }
+  const sizeBudgetBytes = input.sizeBudgetBytes
+    ?? input.deps.budgets?.[contextPackId]
+    ?? investigativeContextPackDefaultLimits.packBudgets[contextPackId];
+  const manifest = await input.deps.selection.select({
+    contextPackId,
+    scope: input.scope,
+    sizeBudgetBytes,
+    ...(input.window === undefined ? {} : { window: input.window })
+  });
+  assertSelectionManifestHash(manifest);
+  if (manifest.scope.kind !== input.scope.kind || manifest.scope.id !== input.scope.id) {
+    throw new InvestigativeContextPackError("invalid-context-pack-scope", "invalid-context-pack-scope");
+  }
+  return manifest;
+}
+
+function includedIds(
+  manifest: InvestigativeSelectionManifest,
+  refKind: InvestigativeSelectionIncludedRef["refKind"]
+): readonly string[] {
+  return Object.freeze(manifest.includedRefs.filter((ref) => ref.refKind === refKind).map((ref) => ref.refId));
+}
+
+export async function __testOnlyResolveInvestigativeSelection(
+  input: BuildInvestigativeContextPackInput & { readonly contextPackId: InvestigativeContextPackId }
+): Promise<InvestigativeSelectionManifest> {
+  return selectForPack(input.contextPackId, input);
+}
+
+export async function __testOnlyReadEvidenceSelectionProbe(
+  input: BuildInvestigativeContextPackInput
+): Promise<{ readonly manifest: InvestigativeSelectionManifest; readonly rows: readonly InvestigativeEvidenceRow[] }> {
+  const manifest = await selectForPack("evidence-summary.v1", input);
+  const evidenceIds = includedIds(manifest, "evidence");
+  const contentHashes = manifest.includedRefs
+    .filter((ref) => ref.refKind === "evidence")
+    .map((ref) => ref.contentHash)
+    .filter((hash): hash is `sha256:${string}` => hash !== undefined);
+  const rows = await input.deps.evidenceReader.readEvidenceByIds({
+    evidenceIds,
+    contentHashes,
+    highWaterMarks: manifest.sourceProjectionHighWaterMarks,
+    limit: readerBatchSize
+  });
+  return Object.freeze({ manifest, rows: Object.freeze([...rows]) });
 }
 
 function parserIdentity(

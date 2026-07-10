@@ -1,11 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
+  __testOnlyReadEvidenceSelectionProbe,
+  __testOnlyResolveInvestigativeSelection,
   assertSelectionManifestHash,
   buildSelectionManifestHash,
+  type EvidenceSourcePostureResult,
   investigativeContextPackDefaultLimits,
   investigativeContextPackDescriptors,
   investigativeContextPackPayloadParsers,
-  type InvestigativeSelectionManifestBody
+  InvestigativeContextPackError,
+  type InvestigativeContextPackDependencies,
+  type InvestigativeContextPackId,
+  type InvestigativeContextPackScope,
+  type InvestigativeEvidenceRow,
+  type InvestigativeRegistrationIdentity,
+  type InvestigativeSelectionCapability,
+  type InvestigativeSelectionManifestBody,
+  type InvestigativeSelectionWindow
 } from "../src/investigative-context-packs.js";
 import { hashAgentContextPack } from "../src/context-packs.js";
 
@@ -89,7 +100,188 @@ describe("investigative context packs", () => {
 
     expect(() => assertSelectionManifestHash({ ...body, manifestHash: selfIncludingHash })).toThrow(/selection-manifest-hash-mismatch/);
   });
+
+  it("requires workspace scope to provide a deterministic window", async () => {
+    const deps = createInvestigativeDeps({
+      selection: {
+        capabilityVersion: "investigative-selection.v1",
+        select() {
+          throw new Error("selection should not be called without a window");
+        }
+      }
+    });
+
+    await expect(__testOnlyResolveInvestigativeSelection({
+      contextPackId: "evidence-summary.v1",
+      deps,
+      scope: { kind: "workspace", id: "ws_main" }
+    })).rejects.toMatchObject({ code: "selection-window-required" });
+  });
+
+  it("propagates stale cursor failures before reading projection rows", async () => {
+    const counters = createReaderCounters();
+    const deps = createInvestigativeDeps({
+      counters,
+      selection: {
+        capabilityVersion: "investigative-selection.v1",
+        select() {
+          throw new InvestigativeContextPackError("selection-cursor-invalid", "selection-cursor-invalid");
+        }
+      }
+    });
+
+    await expect(__testOnlyResolveInvestigativeSelection({
+      contextPackId: "evidence-summary.v1",
+      deps,
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_stale", 0, 100)
+    })).rejects.toMatchObject({ code: "selection-cursor-invalid" });
+    expect(counters.evidenceReads).toBe(0);
+    expect(counters.eventReads).toBe(0);
+  });
+
+  it("keeps query work bounded as unrelated evidence rows grow", async () => {
+    const counters = createReaderCounters();
+    const deps = createInvestigativeDeps({
+      counters,
+      unrelatedEvidenceRows: 10_000
+    });
+
+    const selection = await __testOnlyReadEvidenceSelectionProbe({
+      deps,
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+
+    expect(selection.rows).toHaveLength(1);
+    expect(counters.evidenceReads).toBe(1);
+    expect(counters.evidenceIdsRead).toEqual(["ev_contract_001"]);
+    expect(counters.unrelatedRowsScanned).toBe(0);
+    expect(JSON.stringify(selection.manifest).length).toBeLessThan(65_536);
+  });
 });
+
+interface ReaderCounters {
+  evidenceReads: number;
+  graphReads: number;
+  governanceReads: number;
+  agentLockReads: number;
+  eventReads: number;
+  unrelatedRowsScanned: number;
+  evidenceIdsRead: string[];
+  assertionIdsRead: string[];
+}
+
+function createReaderCounters(): ReaderCounters {
+  return {
+    evidenceReads: 0,
+    graphReads: 0,
+    governanceReads: 0,
+    agentLockReads: 0,
+    eventReads: 0,
+    unrelatedRowsScanned: 0,
+    evidenceIdsRead: [],
+    assertionIdsRead: []
+  };
+}
+
+function windowFor(cursor: string, offset: number, limit: number): InvestigativeSelectionWindow {
+  return {
+    cursor,
+    offset,
+    limit,
+    stableSort: "ref-kind-ref-id-content-hash-v1"
+  };
+}
+
+interface CreateInvestigativeDepsInput {
+  readonly counters?: ReaderCounters;
+  readonly selection?: InvestigativeSelectionCapability;
+  readonly scope?: InvestigativeContextPackScope;
+  readonly window?: InvestigativeSelectionWindow;
+  readonly unrelatedEvidenceRows?: number;
+  readonly unrelatedGraphRows?: number;
+  readonly unrelatedGovernanceRows?: number;
+  readonly postureResult?: EvidenceSourcePostureResult;
+  readonly safeNarrative?: string;
+  readonly rawActionField?: string;
+  readonly acceptedAssertionWithoutEvidenceHash?: boolean;
+  readonly relationshipProjectionUnavailable?: boolean;
+  readonly graphSentinel?: string;
+  readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
+  readonly registrationIdentity?: InvestigativeRegistrationIdentity;
+}
+
+function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): InvestigativeContextPackDependencies {
+  const counters = input.counters ?? createReaderCounters();
+  const body = {
+    ...selectionBody(),
+    scope: input.scope ?? { kind: "workspace", id: "ws_main" }
+  } satisfies InvestigativeSelectionManifestBody;
+  const manifest = { ...body, manifestHash: buildSelectionManifestHash(body) };
+  return createFakeInvestigativeDeps({
+    counters,
+    manifest,
+    unrelatedEvidenceRows: input.unrelatedEvidenceRows ?? 0,
+    unrelatedGraphRows: input.unrelatedGraphRows ?? 0,
+    unrelatedGovernanceRows: input.unrelatedGovernanceRows ?? 0,
+    acceptedAssertionWithoutEvidenceHash: input.acceptedAssertionWithoutEvidenceHash ?? false,
+    relationshipProjectionUnavailable: input.relationshipProjectionUnavailable ?? false,
+    ...(input.selection === undefined ? {} : { selection: input.selection }),
+    ...(input.postureResult === undefined ? {} : { postureResult: input.postureResult }),
+    ...(input.safeNarrative === undefined ? {} : { safeNarrative: input.safeNarrative }),
+    ...(input.rawActionField === undefined ? {} : { rawActionField: input.rawActionField }),
+    ...(input.graphSentinel === undefined ? {} : { graphSentinel: input.graphSentinel }),
+    ...(input.budgets === undefined ? {} : { budgets: input.budgets }),
+    ...(input.registrationIdentity === undefined ? {} : { registrationIdentity: input.registrationIdentity })
+  });
+}
+
+function createFakeInvestigativeDeps(input: {
+  readonly counters: ReaderCounters;
+  readonly manifest: ReturnType<typeof selectionManifest>;
+  readonly selection?: InvestigativeSelectionCapability;
+  readonly unrelatedEvidenceRows: number;
+  readonly unrelatedGraphRows: number;
+  readonly unrelatedGovernanceRows: number;
+  readonly postureResult?: EvidenceSourcePostureResult;
+  readonly safeNarrative?: string;
+  readonly rawActionField?: string;
+  readonly acceptedAssertionWithoutEvidenceHash: boolean;
+  readonly relationshipProjectionUnavailable: boolean;
+  readonly graphSentinel?: string;
+  readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
+  readonly registrationIdentity?: InvestigativeRegistrationIdentity;
+}): InvestigativeContextPackDependencies {
+  const evidenceRow: InvestigativeEvidenceRow = {
+    evidenceId: "ev_contract_001",
+    contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  };
+  const unrelatedRows = Array.from({ length: input.unrelatedEvidenceRows }, (_, index) => ({
+    evidenceId: `ev_unrelated_${index}`,
+    contentHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const
+  }));
+
+  return {
+    selection: input.selection ?? {
+      capabilityVersion: "investigative-selection.v1",
+      select() {
+        return input.manifest;
+      }
+    },
+    evidenceReader: {
+      readEvidenceByIds(request) {
+        input.counters.evidenceReads += 1;
+        input.counters.evidenceIdsRead.push(...request.evidenceIds);
+        if (request.evidenceIds.some((evidenceId) => evidenceId !== evidenceRow.evidenceId)) {
+          input.counters.unrelatedRowsScanned += unrelatedRows.length;
+        }
+        return request.evidenceIds.includes(evidenceRow.evidenceId) ? [evidenceRow] : [];
+      }
+    },
+    ...(input.budgets === undefined ? {} : { budgets: input.budgets })
+  };
+}
 
 function selectionBody(): InvestigativeSelectionManifestBody {
   return {

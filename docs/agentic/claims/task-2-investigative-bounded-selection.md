@@ -6,7 +6,7 @@
 - Branch: `codex/investigative-context-packs-design`
 - Worktree: `/home/drake/.codex/worktrees/18b9/Cestus`
 - Claimed at: `2026-07-10T00:00:00Z`
-- Status: `claimed`
+- Status: `ready-for-review`
 
 ## Owned Files
 
