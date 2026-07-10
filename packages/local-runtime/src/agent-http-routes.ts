@@ -218,6 +218,10 @@ export async function handleAgentHttpRoute(
             return json(400, invalidApprovalBodyDiagnostic());
           }
 
+          if (!await requireResidentIdentityReady(input)) {
+            return json(409, residentIdentityNotReadyDiagnostic());
+          }
+
           const snapshotEvents = await input.handle.ledger.readAll();
           const cockpit = approvalCockpitFromEvents(snapshotEvents, input.now);
           const approvalItem = approvalItemById(cockpit, approvalRoute.toolRequestId);
@@ -258,6 +262,10 @@ export async function handleAgentHttpRoute(
           return json(400, invalidDenialBodyDiagnostic());
         }
 
+        if (!await requireResidentIdentityReady(input)) {
+          return json(409, residentIdentityNotReadyDiagnostic());
+        }
+
         const snapshotEvents = await input.handle.ledger.readAll();
         const cockpit = approvalCockpitFromEvents(snapshotEvents, input.now);
         const approvalItem = approvalItemById(cockpit, approvalRoute.toolRequestId);
@@ -295,6 +303,10 @@ export async function handleAgentHttpRoute(
         if (!payload.ok || Object.keys(payload.value).length > 0) {
           return json(400, invalidSchedulerWakeBodyDiagnostic());
         }
+      }
+
+      if (!await requireResidentIdentityReady(input)) {
+        return json(409, residentIdentityNotReadyDiagnostic());
       }
 
       return json(200, await runtime.scheduler.wake());

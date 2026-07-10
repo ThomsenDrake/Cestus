@@ -17,7 +17,11 @@ import {
   defaultLocalAgentRuntimeFactory,
   type LocalAgentRuntimeFactory
 } from "../src/agent-runtime-factory.js";
-import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
+import {
+  createLocalRuntimeHttpHandler,
+  type CreateLocalRuntimeHttpHandlerInput,
+  type LocalRuntimeHttpHandler
+} from "../src/http-handler.js";
 
 const handlers: LocalRuntimeHttpHandler[] = [];
 const tempDirs: string[] = [];
@@ -389,12 +393,7 @@ describe("agent HTTP routes", () => {
   });
 
   it("uses existing auth policy for scheduler wake routes", async () => {
-    const handler = testHandler({
-      env: {
-        CESTUS_LOCAL_BIND: "lan",
-        CESTUS_LOCAL_AUTH_TOKEN: "route-secret"
-      }
-    });
+    const handler = testHandler({ config: protectedPortableConfig() });
 
     const rejected = await handler({ method: "POST", url: "/api/agent/scheduler/wake" });
     const accepted = await handler({
@@ -502,13 +501,17 @@ function testHandler(input: {
   readonly config?: ReturnType<typeof resolveLocalRuntimeConfig>;
   readonly env?: Record<string, string | undefined>;
   readonly agentRuntimeFactory?: LocalAgentRuntimeFactory;
+  readonly residentIdentityBootstrapForTest?: CreateLocalRuntimeHttpHandlerInput["residentIdentityBootstrapForTest"];
 } = {}) {
   const config = input.config ?? resolveLocalRuntimeConfig({ cwd: tempDir(), env: input.env ?? {} });
   const handler = createLocalRuntimeHttpHandler({
     config,
     actor: { id: "actor_agent_route", kind: "human", label: "Agent Route Test" },
     now: () => "2026-07-07T20:00:00.000Z",
-    ...(input.agentRuntimeFactory === undefined ? {} : { agentRuntimeFactory: input.agentRuntimeFactory })
+    ...(input.agentRuntimeFactory === undefined ? {} : { agentRuntimeFactory: input.agentRuntimeFactory }),
+    ...(input.residentIdentityBootstrapForTest === undefined
+      ? {}
+      : { residentIdentityBootstrapForTest: input.residentIdentityBootstrapForTest })
   });
   handlers.push(handler);
   return handler;
@@ -560,7 +563,7 @@ async function seededApprovedToolHandler(
   toolRequestId = "toolreq_scheduler_route",
   descriptorFactory: (preview: AgentToolPreview) => AgentApprovedToolExecutorDescriptor = schedulerWakeDescriptor
 ) {
-  const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
+  const config = portableConfig("ws_scheduler_route");
   const preview = schedulerWakePreview(toolRequestId);
   const previewHash = hashAgentToolPreview(preview);
   const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
@@ -595,12 +598,40 @@ async function seededApprovedToolHandler(
     config,
     handler: testHandler({
       config,
+      residentIdentityBootstrapForTest: async ({ workspaceId }) => readyResidentIdentityLifecycle(workspaceId),
       agentRuntimeFactory: (input) => defaultLocalAgentRuntimeFactory({
         ...input,
         approvedToolExecutors: [descriptorFactory(preview)]
       })
     }),
     previewHash
+  };
+}
+
+function readyResidentIdentityLifecycle(workspaceId: string) {
+  return {
+    schemaVersion: "resident-identity-lifecycle.v1" as const,
+    state: "ready" as const,
+    residentAgentId: "agent_default" as const,
+    workspaceId,
+    initialized: true,
+    eventIds: [],
+    safeMessage: "Resident identity is ready.",
+    allowedRepairActions: []
+  };
+}
+
+function protectedPortableConfig(): ReturnType<typeof resolveLocalRuntimeConfig> {
+  const config = portableConfig("ws_protected_scheduler");
+  return {
+    ...config,
+    http: {
+      ...config.http,
+      host: "0.0.0.0",
+      bindMode: "lan",
+      authRequired: true,
+      authToken: "route-secret"
+    }
   };
 }
 

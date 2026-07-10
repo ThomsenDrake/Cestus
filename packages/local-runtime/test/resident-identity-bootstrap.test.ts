@@ -121,6 +121,42 @@ describe("local runtime resident identity bootstrap", () => {
     expect(await eventTypes(config.storage.sqlitePath)).toEqual([]);
   });
 
+  it("blocks approval and scheduler mutations when no workspace is mounted without appending events", async () => {
+    const cwd = tempDir();
+    const config = resolveLocalRuntimeConfig({ cwd, env: {} });
+    const handler = testHandler(config);
+    const expected = {
+      ok: false,
+      diagnostic: {
+        message: "Resident identity is not ready for this workspace.",
+        allowedRepairActions: ["mount or create a portable workspace", "refresh agent status"]
+      }
+    };
+
+    const approve = await handler({
+      method: "POST",
+      url: "/api/agent/approvals/toolreq_not_mounted/approve",
+      body: JSON.stringify({
+        approvedPreviewHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        rationale: "Approved only after a mounted resident identity is ready."
+      })
+    });
+    const deny = await handler({
+      method: "POST",
+      url: "/api/agent/approvals/toolreq_not_mounted/deny",
+      body: JSON.stringify({ rationale: "Denied until a mounted resident identity is ready." })
+    });
+    const wake = await handler({ method: "POST", url: "/api/agent/scheduler/wake", body: JSON.stringify({}) });
+
+    expect(approve.status).toBe(409);
+    expect(deny.status).toBe(409);
+    expect(wake.status).toBe(409);
+    expect(JSON.parse(approve.body)).toEqual(expected);
+    expect(JSON.parse(deny.body)).toEqual(expected);
+    expect(JSON.parse(wake.body)).toEqual(expected);
+    expect(await eventTypes(config.storage.sqlitePath)).toEqual([]);
+  });
+
   it("blocks copied ledger workspace identity mismatch without appending a second identity", async () => {
     const cwd = tempDir();
     const firstRoot = join(cwd, "case-a");

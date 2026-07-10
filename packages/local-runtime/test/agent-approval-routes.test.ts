@@ -9,6 +9,7 @@ import {
 import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger, type AppendOptions, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { handleAgentHttpRoute } from "../src/agent-http-routes.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
@@ -294,24 +295,8 @@ describe("agent approval routes", () => {
       ledger,
       config,
       residentIdentity: {
-        lifecycle: () => ({
-          schemaVersion: "resident-identity-lifecycle.v1",
-          state: "not-mounted",
-          residentAgentId: "agent_default",
-          initialized: false,
-          eventIds: [],
-          safeMessage: "Resident identity is not mounted.",
-          allowedRepairActions: ["mount a workspace before initializing the resident identity"]
-        }),
-        ready: async () => ({
-          schemaVersion: "resident-identity-lifecycle.v1",
-          state: "not-mounted",
-          residentAgentId: "agent_default",
-          initialized: false,
-          eventIds: [],
-          safeMessage: "Resident identity is not mounted.",
-          allowedRepairActions: ["mount a workspace before initializing the resident identity"]
-        })
+        lifecycle: () => readyResidentIdentityLifecycle("ws_interleaved_approval"),
+        ready: async () => readyResidentIdentityLifecycle("ws_interleaved_approval")
       },
       close() {}
     };
@@ -346,7 +331,8 @@ async function seededHandler(input: SeedToolRequestInput | string = "toolreq_pro
   const handler = createLocalRuntimeHttpHandler({
     config: seeded.config,
     actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
-    now
+    now,
+    residentIdentityBootstrapForTest: async ({ workspaceId }) => readyResidentIdentityLifecycle(workspaceId)
   });
   handlers.push(handler);
   return { ...seeded, handler };
@@ -365,7 +351,7 @@ async function seedToolRequest(input: SeedToolRequestInput | string = "toolreq_p
   const toolRequestId = request.toolRequestId ?? "toolreq_provider_transfer";
   const cwd = mkdtempSync(join(tmpdir(), "cestus-agent-approval-routes-"));
   tempDirs.push(cwd);
-  const config = resolveLocalRuntimeConfig({ cwd, env: {} });
+  const config = portableConfig(cwd, "ws_approval_routes");
   const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
   try {
     const gateway = createAgentToolGateway({
@@ -437,6 +423,37 @@ async function seedToolRequest(input: SeedToolRequestInput | string = "toolreq_p
   } finally {
     ledger.close();
   }
+}
+
+function portableConfig(cwd: string, workspaceId: string): ReturnType<typeof resolveLocalRuntimeConfig> {
+  const workspaceRoot = join(cwd, workspaceId);
+  createPortableWorkspace({
+    rootDir: workspaceRoot,
+    workspaceId,
+    label: `Workspace ${workspaceId}`,
+    createdAt: "2026-07-10T12:00:00.000Z",
+    createdBy: "agent-approval-routes-test"
+  });
+  return resolveLocalRuntimeConfig({
+    cwd,
+    env: {
+      CESTUS_LOCAL_STORAGE: "portable-workspace",
+      CESTUS_WORKSPACE_ROOT: workspaceRoot
+    }
+  });
+}
+
+function readyResidentIdentityLifecycle(workspaceId: string) {
+  return {
+    schemaVersion: "resident-identity-lifecycle.v1" as const,
+    state: "ready" as const,
+    residentAgentId: "agent_default" as const,
+    workspaceId,
+    initialized: true,
+    eventIds: [],
+    safeMessage: "Resident identity is ready.",
+    allowedRepairActions: []
+  };
 }
 
 async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>): Promise<readonly string[]> {
