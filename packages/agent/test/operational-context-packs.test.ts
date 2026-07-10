@@ -3,16 +3,19 @@ import {
   assertOperationalContextPackProviderMetadata,
   buildTaskRunHistoryContextPack,
   buildWorkspaceRuntimeStatusContextPack,
+  buildOperationalContextPackReadinessInputs,
   operationalContextPackDescriptors,
   operationalContextPackPayloadParsers,
   operationalContextPackProviderRegistrationKey,
+  registerOperationalContextPackBuilders,
   type OperationalAgentMemorySnapshot,
   type OperationalContextPackBuilderResult,
   type OperationalContextPackProvider,
   type OperationalTaskRunHistorySnapshot,
   type OperationalWorkspaceRuntimeSource
 } from "../src/operational-context-packs.js";
-import { serializeContextPackPayload, type BuildContextPackRefInput, type ResolvedContextPack } from "../src/context-packs.js";
+import { createContextPackRegistry, serializeContextPackPayload, type BuildContextPackRefInput, type ResolvedContextPack } from "../src/context-packs.js";
+import { buildAgentMemorySummaryResolvedContextPack } from "../src/memory.js";
 
 describe("operational context pack contracts", () => {
   const providerMetadata = {
@@ -34,9 +37,8 @@ describe("operational context pack contracts", () => {
       ["task-run-history.v1", 1],
       ["agent-memory-summary.v1", 1]
     ]);
-    expect(operationalContextPackDescriptors.find((descriptor) => descriptor.contextPackId === "workspace-runtime-status.v1")?.requiredProvenanceKinds).toContain("event-id");
-    for (const descriptor of operationalContextPackDescriptors.slice(1)) {
-      expect(descriptor.requiredProvenanceKinds).toEqual(expect.arrayContaining(["event-id", "empty-projection"]));
+    for (const descriptor of operationalContextPackDescriptors) {
+      expect(descriptor.requiredProvenanceKinds).toEqual(["operational-source-proof"]);
     }
   });
 
@@ -275,7 +277,7 @@ describe("operational context pack builders", () => {
     });
     expect(first.ref.sizeBytes).toBe(serializeContextPackPayload(first.payload).byteLength);
     expect(first.payload).toMatchObject({ schemaVersion: "workspace-runtime-status.v1", runtime: runtimeSource });
-    expect(first.ref.provenanceRefs).toEqual(["diag_runtime_001", "runtime.status:hwm:9"]);
+    expect(first.ref.provenanceRefs).toEqual(["diag_runtime_001", "operational-source-proof:workspace-runtime-status.v1:event", "runtime.status:hwm:9"]);
   });
 
   it("blocks unsafe runtime diagnostics and storage facts before they reach the resolved envelope", () => {
@@ -393,7 +395,10 @@ describe("operational context pack builders", () => {
         }
       }
     });
-    expect(resolved.ref.provenanceRefs).toEqual(["empty-projection:agent.projection.task-run-history:workspace:ws_case_001:hwm:42"]);
+    expect(resolved.ref.provenanceRefs).toEqual([
+      "operational-source-proof:task-run-history.v1:empty-projection",
+      "empty-projection:agent.projection.task-run-history:workspace:ws_case_001:hwm:42"
+    ]);
   });
 
   it("keeps bounded snapshot output independent of unrelated historical total growth", () => {
@@ -436,3 +441,175 @@ describe("operational context pack builders", () => {
 function hash(character: string): string {
   return `sha256:${character.repeat(64)}`;
 }
+
+describe("operational context pack registration and readiness handoff", () => {
+  function provider(overrides: Partial<OperationalContextPackProvider> = {}): OperationalContextPackProvider {
+    return {
+      providerId: "local_workspace_provider",
+      capabilities: ["workspace-runtime-status", "task-run-history", "agent-memory-summary"],
+      policyVersion: "operational-policy.v1",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      sizeBudgets: { workspaceRuntimeStatus: 16_384, taskRunHistory: 32_768, agentMemorySummary: 16_384 },
+      async workspaceRuntimeStatus() {
+        return {
+          runtimeHighWaterMark: 9,
+          workspaceMounted: true,
+          workspaceId: "ws_case_001",
+          storageStrategy: "repo-local",
+          bindPosture: "loopback",
+          authPosture: "local-disabled",
+          providerStates: [{ providerId: "provider_local", state: "ready" }],
+          diagnostics: [{ diagnosticId: "diag_runtime_001", category: "runtime-ready" }],
+          projectionHighWaterMarks: { agent: 42 },
+          omissionCodes: ["omitted.raw-paths"]
+        };
+      },
+      async taskRunHistorySnapshot() {
+        return {
+          projectionHighWaterMark: 42,
+          projectionSourceRef: "agent.projection.task-run-history",
+          tasks: [{ taskId: "task_blocked", state: "blocked", sourceEventIds: ["evt_agent_task_blocked"] }],
+          runs: [], modelInvocations: [], toolRequests: [],
+          aggregateCounts: { total: 1 },
+          sourceEventIds: ["evt_agent_task_blocked"], artifactHashes: [],
+          window: { order: "updatedAt:desc", limit: 25, hasMore: false, totalCount: 1, omissionCodes: ["omitted.out-of-scope"] }
+        };
+      },
+      async agentMemorySnapshot() {
+        return {
+          projectionHighWaterMark: 42,
+          projectionSourceRef: "agent.projection.memory",
+          activeMemory: [{
+            memoryId: "mem_current", scope: "workspace", memoryKind: "working-note", summary: "Current bounded memory.",
+            confidence: 0.8, sourceEventIds: ["evt_agent_memory_recorded"], artifactHashes: []
+          }],
+          aggregateCounts: { active: 1, totalCount: 1 },
+          sourceEventIds: ["evt_agent_memory_recorded"], artifactHashes: [],
+          window: { order: "createdAt:asc", limit: 25, hasMore: false, totalCount: 1, omissionCodes: ["omitted.size-budget"] }
+        };
+      },
+      ...overrides
+    };
+  }
+
+  it("registers async bounded builders with exact parsers and idempotent deterministic metadata", async () => {
+    const registry = createContextPackRegistry();
+    const boundedProvider = provider();
+    const first = registerOperationalContextPackBuilders(registry, boundedProvider);
+    const second = registerOperationalContextPackBuilders(registry, provider());
+
+    expect(first).toEqual({
+      contextPackIds: ["workspace-runtime-status.v1", "task-run-history.v1", "agent-memory-summary.v1"],
+      registrationKey: "operational-context-packs:local_workspace_provider:operational-policy.v1:workspace:ws_case_001:agent-memory-summary,task-run-history,workspace-runtime-status"
+    });
+    expect(second).toEqual(first);
+    const [runtimeSource, taskRunHistorySnapshot, memorySnapshot] = await Promise.all([
+      boundedProvider.workspaceRuntimeStatus(), boundedProvider.taskRunHistorySnapshot(), boundedProvider.agentMemorySnapshot()
+    ]);
+    await expect(registry.buildResolved("workspace-runtime-status.v1")).resolves.toEqual(buildWorkspaceRuntimeStatusContextPack({
+      generatedAt: boundedProvider.generatedAt, policyVersion: boundedProvider.policyVersion, scope: boundedProvider.scope,
+      projectionHighWaterMark: runtimeSource.runtimeHighWaterMark, sizeBudgetBytes: boundedProvider.sizeBudgets.workspaceRuntimeStatus, runtimeSource
+    }));
+    await expect(registry.build("task-run-history.v1")).resolves.toMatchObject({ contextPackId: "task-run-history.v1" });
+    await expect(registry.buildResolved("task-run-history.v1")).resolves.toEqual(buildTaskRunHistoryContextPack({
+      generatedAt: boundedProvider.generatedAt, policyVersion: boundedProvider.policyVersion, scope: boundedProvider.scope,
+      projectionHighWaterMark: taskRunHistorySnapshot.projectionHighWaterMark, sizeBudgetBytes: boundedProvider.sizeBudgets.taskRunHistory, taskRunHistorySnapshot
+    }));
+    const directMemory = buildAgentMemorySummaryResolvedContextPack({
+      generatedAt: boundedProvider.generatedAt, policyVersion: boundedProvider.policyVersion, scope: boundedProvider.scope,
+      projectionHighWaterMark: memorySnapshot.projectionHighWaterMark, sizeBudgetBytes: boundedProvider.sizeBudgets.agentMemorySummary, memorySnapshot
+    });
+    const registeredMemory = await registry.buildResolved("agent-memory-summary.v1");
+    expect(registeredMemory.payload).toEqual(directMemory.payload);
+    expect(registeredMemory.ref).toMatchObject({
+      contextPackId: directMemory.ref.contextPackId,
+      version: directMemory.ref.version,
+      contentHash: directMemory.ref.contentHash,
+      sizeBytes: directMemory.ref.sizeBytes
+    });
+    expect(registeredMemory.ref.provenanceRefs).toEqual(expect.arrayContaining([
+      ...directMemory.ref.provenanceRefs,
+      "operational-source-proof:agent-memory-summary.v1:event"
+    ]));
+  });
+
+  it("fails closed for deterministic registration conflicts without provider identity checks", () => {
+    const registry = createContextPackRegistry();
+    registerOperationalContextPackBuilders(registry, provider());
+
+    expect(() => registerOperationalContextPackBuilders(registry, provider({ policyVersion: "operational-policy.v2" }))).toThrow("blocked.conflicting-registration");
+    expect(() => registerOperationalContextPackBuilders(registry, provider({ scope: { kind: "workspace", id: "ws_other_001" } }))).toThrow("blocked.conflicting-registration");
+    expect(() => registerOperationalContextPackBuilders(registry, provider({ capabilities: ["workspace-runtime-status", "task-run-history"] }))).toThrow("blocked.conflicting-registration");
+
+    const conflictingRegistry = createContextPackRegistry();
+    conflictingRegistry.register({
+      descriptor: { ...operationalContextPackDescriptors[0]!, label: "Altered runtime status" },
+      build: () => buildWorkspaceRuntimeStatusContextPack({
+        generatedAt: "2026-07-10T12:00:00.000Z", policyVersion: "operational-policy.v1", scope: { kind: "workspace", id: "ws_case_001" },
+        projectionHighWaterMark: 42, sizeBudgetBytes: 16_384,
+        runtimeSource: { runtimeHighWaterMark: 9, workspaceMounted: true, storageStrategy: "repo-local", bindPosture: "loopback", authPosture: "local-disabled", providerStates: [], diagnostics: [], projectionHighWaterMarks: {}, omissionCodes: [] }
+      }),
+      parsePayload: operationalContextPackPayloadParsers["workspace-runtime-status.v1@1"]
+    });
+    expect(() => registerOperationalContextPackBuilders(conflictingRegistry, provider())).toThrow("blocked.conflicting-registration");
+  });
+
+  it("registers non-empty and authoritative-empty history and memory with source proof markers and real provenance", async () => {
+    const emptyProvider = provider({
+      async taskRunHistorySnapshot() {
+        return {
+          projectionHighWaterMark: 42, projectionSourceRef: "agent.projection.task-run-history",
+          tasks: [], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { total: 0 }, sourceEventIds: [], artifactHashes: [],
+          window: { order: "updatedAt:desc", limit: 25, hasMore: false, totalCount: 0, omissionCodes: [] },
+          emptyProof: { projectionName: "agent.projection.task-run-history", scope: { kind: "workspace", id: "ws_case_001" }, projectionHighWaterMark: 42, sourceEventCount: 0, generatedAt: "2026-07-10T12:00:00.000Z", emptyReasonCode: "empty" }
+        };
+      },
+      async agentMemorySnapshot() {
+        return {
+          projectionHighWaterMark: 42, projectionSourceRef: "agent.projection.memory", activeMemory: [], aggregateCounts: { active: 0, totalCount: 0 }, sourceEventIds: [], artifactHashes: [],
+          window: { order: "createdAt:asc", limit: 25, hasMore: false, totalCount: 0, omissionCodes: [] },
+          emptyProof: { projectionName: "agent.projection.memory", scope: { kind: "workspace", id: "ws_case_001" }, projectionHighWaterMark: 42, sourceEventCount: 0, generatedAt: "2026-07-10T12:00:00.000Z", emptyReasonCode: "empty" }
+        };
+      }
+    });
+    const registry = createContextPackRegistry();
+    registerOperationalContextPackBuilders(registry, emptyProvider);
+
+    const nonEmptyRegistry = createContextPackRegistry();
+    registerOperationalContextPackBuilders(nonEmptyRegistry, provider());
+    const nonEmptyHistory = await nonEmptyRegistry.buildResolved("task-run-history.v1");
+    const nonEmptyMemory = await nonEmptyRegistry.build("agent-memory-summary.v1");
+    expect(nonEmptyHistory.ref.provenanceRefs).toEqual(expect.arrayContaining(["evt_agent_task_blocked", "operational-source-proof:task-run-history.v1:event"]));
+    expect(nonEmptyMemory.provenanceRefs).toEqual(expect.arrayContaining(["evt_agent_memory_recorded", "operational-source-proof:agent-memory-summary.v1:event"]));
+
+    const emptyHistory = await registry.buildResolved("task-run-history.v1");
+    const emptyMemory = await registry.build("agent-memory-summary.v1");
+    expect(emptyHistory.ref.provenanceRefs).toEqual(expect.arrayContaining([
+      "empty-projection:agent.projection.task-run-history:workspace:ws_case_001:hwm:42",
+      "operational-source-proof:task-run-history.v1:empty-projection"
+    ]));
+    expect(emptyMemory.provenanceRefs).toEqual(expect.arrayContaining([
+      "empty-projection:agent.projection.memory:workspace:ws_case_001:hwm:42",
+      "operational-source-proof:agent-memory-summary.v1:empty-projection"
+    ]));
+  });
+
+  it("builds readiness inputs from bounded async snapshots and reports a missing capability stably", async () => {
+    const inputs = await buildOperationalContextPackReadinessInputs(provider());
+    expect(inputs.resolvedContextPacks).toHaveLength(3);
+    expect(inputs.contextPackRefs).toHaveLength(3);
+    expect(inputs.descriptors).toEqual(operationalContextPackDescriptors);
+    expect(inputs.blockingReasons).toEqual([]);
+    expect(inputs.omissionCodes).toEqual(["omitted.out-of-scope", "omitted.raw-paths", "omitted.size-budget"]);
+    expect(inputs.currentProjectionHighWaterMarks).toEqual({
+      "workspace-runtime-status.v1": 9,
+      "task-run-history.v1": 42,
+      "agent-memory-summary.v1": 42
+    });
+
+    await expect(buildOperationalContextPackReadinessInputs(provider({ capabilities: ["workspace-runtime-status"] }))).resolves.toMatchObject({
+      resolvedContextPacks: [], contextPackRefs: [], blockingReasons: ["blocked.missing-capability"]
+    });
+  });
+});

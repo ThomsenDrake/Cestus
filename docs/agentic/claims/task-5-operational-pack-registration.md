@@ -6,7 +6,7 @@
 - Branch: `codex/operational-context-packs-spec`
 - Worktree: `/home/drake/.codex/worktrees/a559/Cestus`
 - Claimed at: `2026-07-10T16:54:10Z`
-- Status: in-progress
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -39,3 +39,7 @@ is resolved by the approved Task 5 operational descriptor-local
 
 - RED targeted test: `npm test -- packages/agent/test/operational-context-packs.test.ts packages/agent/test/specialist-readiness.test.ts` failed as expected because the Task 5 helper exports were missing.
 - Scope-restored targeted test: the same command fails with `Context pack task-run-history.v1 is missing required provenance kind empty-projection` after restoring the unowned Task 1 registry file.
+- Resolution RED: the targeted command failed with the expected absent `operational-source-proof` markers before the Task 5 descriptor revision.
+- GREEN targeted test: `npm test -- packages/agent/test/operational-context-packs.test.ts packages/agent/test/specialist-readiness.test.ts` passed with 2 test files and 44 tests.
+- Full verification: `npm run verify` completed successfully after `typecheck passed`.
+- Scope check: `git diff --check` passed; the implementation changes only `packages/agent/src/operational-context-packs.ts` and `packages/agent/test/operational-context-packs.test.ts`.
