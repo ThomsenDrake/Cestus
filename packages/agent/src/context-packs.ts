@@ -53,6 +53,24 @@ export interface BuildContextPackRefInput {
   readonly stalenessInputs?: readonly ContextPackStalenessInput[];
 }
 
+export interface ResolvedContextPack {
+  readonly ref: ContextPackRef;
+  readonly payload: AgentContextPackJsonValue;
+}
+
+declare const verifiedResolvedContextPackBrand: unique symbol;
+
+export type VerifiedResolvedContextPack = ResolvedContextPack & {
+  readonly [verifiedResolvedContextPackBrand]: true;
+};
+
+export type ContextPackPayloadParser = (payload: AgentContextPackJsonValue) => unknown;
+
+export type ContextPackPayloadResolver = (ref: ContextPackRef) =>
+  | AgentContextPackJsonValue
+  | ResolvedContextPack
+  | Promise<AgentContextPackJsonValue | ResolvedContextPack>;
+
 export interface ContextPackScope {
   readonly kind: string;
   readonly id: string;
@@ -64,10 +82,11 @@ export interface ContextPackStalenessInput {
   readonly value: string;
 }
 
-export type ContextPackBuilderResult = ContextPackRef | BuildContextPackRefInput;
+export type ContextPackBuilderResult = ContextPackRef | ResolvedContextPack | BuildContextPackRefInput;
 
 export interface ContextPackBuilder {
   readonly descriptor: ContextPackDescriptor;
+  readonly parsePayload?: ContextPackPayloadParser;
   build(): ContextPackBuilderResult | Promise<ContextPackBuilderResult>;
 }
 
@@ -79,9 +98,14 @@ export interface ContextPackRegistrySnapshot {
 export interface ContextPackRegistry {
   register(builder: ContextPackBuilder): void;
   build(contextPackId: string): Promise<ContextPackRef>;
+  buildResolved(contextPackId: string): Promise<VerifiedResolvedContextPack>;
   getDescriptor(contextPackId: string): ContextPackDescriptor | undefined;
   listDescriptors(): readonly ContextPackDescriptor[];
   snapshot(): ContextPackRegistrySnapshot;
+}
+
+export interface CreateContextPackRegistryOptions {
+  readonly payloadResolver?: ContextPackPayloadResolver;
 }
 
 const contentHashPattern = /^sha256:[a-f0-9]{64}$/;
@@ -110,6 +134,7 @@ const contextPackStalenessInputSchema = z.object({
   value: agentSecretSafeTextSchema("stalenessInput.value")
 }).strict();
 const builtContextPackRefs = new WeakSet<object>();
+const verifiedResolvedContextPacks = new WeakSet<object>();
 
 const contextPackDescriptorObjectSchema = z.object({
   contextPackId: contextPackIdSchema,
@@ -174,16 +199,23 @@ export const contextPackRefSchema = z.unknown()
       return z.NEVER;
     }
 
-    return freezeContextPackRef(ref);
+    const parsedRef = freezeContextPackRef(ref);
+    builtContextPackRefs.add(parsedRef);
+    return parsedRef;
   });
 
 export function hashAgentContextPack(value: unknown): string {
-  return hashStableJson(stableJsonForAgentContextPack(value));
+  return hashStableJson(serializeContextPackPayload(value));
 }
 
-export function buildContextPackRef(input: BuildContextPackRefInput): ContextPackRef {
+export function serializeContextPackPayload(value: unknown): string {
+  return stableJsonForAgentContextPack(value);
+}
+
+export function buildResolvedContextPack(input: BuildContextPackRefInput): ResolvedContextPack {
   const parsed = parseNormalizedDtoOrThrow(input, buildContextPackRefInputObjectSchema, "$");
-  const payloadJson = stringifyJsonDtoValue(parsed.payload);
+  const payload = normalizeJsonDtoValue(parsed.payload, "$.payload");
+  const payloadJson = stringifyJsonDtoValue(payload);
   const contentHash = hashStableJson(payloadJson);
   const sizeBytes = Buffer.byteLength(payloadJson, "utf8");
   if (parsed.sizeBudgetBytes !== undefined && parsed.sizeBudgetBytes < sizeBytes) {
@@ -207,15 +239,81 @@ export function buildContextPackRef(input: BuildContextPackRefInput): ContextPac
   };
 
   const parsedRef = contextPackRefSchema.parse(ref);
-  builtContextPackRefs.add(parsedRef);
-
-  return parsedRef;
+  return freezeResolvedContextPack({ ref: parsedRef, payload });
 }
 
-export function createContextPackRegistry(): ContextPackRegistry {
+export function buildContextPackRef(input: BuildContextPackRefInput): ContextPackRef {
+  return buildResolvedContextPack(input).ref;
+}
+
+export function verifyResolvedContextPack(
+  value: unknown,
+  parser?: ContextPackPayloadParser
+): VerifiedResolvedContextPack {
+  const resolved = normalizeResolvedContextPack(value);
+  const payloadJson = stringifyJsonDtoValue(resolved.payload);
+  const contentHash = hashStableJson(payloadJson);
+  if (contentHash !== resolved.ref.contentHash) {
+    throw new Error("blocked.payload-hash-mismatch: resolved payload hash does not match ref");
+  }
+  const sizeBytes = Buffer.byteLength(payloadJson, "utf8");
+  if (sizeBytes !== resolved.ref.sizeBytes) {
+    throw new Error("blocked.payload-size-mismatch: resolved payload size does not match ref");
+  }
+  if (parser !== undefined) {
+    try {
+      parser(resolved.payload);
+    } catch (error) {
+      throw new Error(`blocked.payload-schema-mismatch: ${error instanceof Error ? error.message : "parser rejected payload"}`);
+    }
+  }
+
+  const verified = freezeResolvedContextPack(resolved) as VerifiedResolvedContextPack;
+  verifiedResolvedContextPacks.add(verified);
+  return verified;
+}
+
+export function assertResolvedContextPacksForExecution(
+  refs: readonly ContextPackRef[],
+  resolvedPacks: readonly ResolvedContextPack[]
+): readonly VerifiedResolvedContextPack[] {
+  const expected = new Map<string, ContextPackRef>();
+  for (const ref of refs) {
+    const parsedRef = contextPackRefSchema.parse(ref);
+    const key = contextPackRefKey(parsedRef);
+    if (expected.has(key)) {
+      throw new Error("blocked.duplicate-context-pack-ref");
+    }
+    expected.set(key, parsedRef);
+  }
+
+  const matched = new Map<string, VerifiedResolvedContextPack>();
+  for (const resolved of resolvedPacks) {
+    if (!isVerifiedResolvedContextPack(resolved)) {
+      throw new Error("blocked.unverified-resolved-context-pack");
+    }
+    const key = contextPackRefKey(resolved.ref);
+    if (!expected.has(key)) {
+      throw new Error("blocked.extra-resolved-context-pack");
+    }
+    if (matched.has(key)) {
+      throw new Error("blocked.duplicate-resolved-context-pack");
+    }
+    matched.set(key, resolved);
+  }
+
+  if (matched.size !== expected.size) {
+    throw new Error("blocked.missing-resolved-context-pack");
+  }
+  return Object.freeze([...expected.keys()].map((key) => matched.get(key) as VerifiedResolvedContextPack));
+}
+
+export function createContextPackRegistry(options: CreateContextPackRegistryOptions = {}): ContextPackRegistry {
+  const payloadResolver = options.payloadResolver;
   const builders = new Map<string, {
     readonly descriptor: ContextPackDescriptor;
     readonly build: () => ContextPackBuilderResult | Promise<ContextPackBuilderResult>;
+    readonly parsePayload?: ContextPackPayloadParser;
   }>();
 
   return Object.freeze({
@@ -231,9 +329,11 @@ export function createContextPackRegistry(): ContextPackRegistry {
         throw new Error(`Context pack ${descriptor.contextPackId} is already registered`);
       }
       const build = builder.build.bind(builder);
+      const parsePayload = builder.parsePayload;
       builders.set(descriptor.contextPackId, Object.freeze({
         descriptor,
-        build
+        build,
+        ...(parsePayload === undefined ? {} : { parsePayload })
       }));
     },
 
@@ -244,22 +344,39 @@ export function createContextPackRegistry(): ContextPackRegistry {
         throw new Error(`Context pack ${contextPackId} is not registered`);
       }
 
-      const ref = normalizeContextPackBuilderResult(await builder.build());
-      if (ref.contextPackId !== builder.descriptor.contextPackId) {
-        throw new Error(`Context pack ${contextPackId} builder returned ref for ${ref.contextPackId}`);
-      }
-      if (ref.version !== builder.descriptor.version) {
-        throw new Error(`Context pack ${contextPackId} builder returned version ${ref.version}`);
-      }
-      if (ref.provenanceRefs.length === 0) {
-        throw new Error(`Context pack ${contextPackId} returned no provenanceRefs`);
-      }
-      if (ref.sizeBytes > builder.descriptor.maxBytes) {
-        throw new Error(`Context pack ${contextPackId} exceeds maxBytes ${builder.descriptor.maxBytes}: ${ref.sizeBytes} bytes`);
-      }
-      assertRequiredProvenanceKinds(contextPackId, builder.descriptor, ref);
+      return assertRegistryContextPackRef(contextPackId, builder.descriptor, normalizeContextPackBuilderResultForRef(await builder.build()));
+    },
 
-      return ref;
+    async buildResolved(contextPackId: string): Promise<VerifiedResolvedContextPack> {
+      assertSafeContextPackLookupId(contextPackId);
+      const builder = builders.get(contextPackId);
+      if (builder === undefined) {
+        throw new Error(`Context pack ${contextPackId} is not registered`);
+      }
+
+      const result = await builder.build();
+      const ref = assertRegistryContextPackRef(contextPackId, builder.descriptor, normalizeContextPackBuilderResultForRef(result));
+      let resolved: ResolvedContextPack;
+      if (isBuildContextPackRefInput(result)) {
+        resolved = buildResolvedContextPack(result);
+      } else if (looksLikeResolvedContextPack(result)) {
+        resolved = normalizeResolvedContextPack(result);
+      } else {
+        if (payloadResolver === undefined) {
+          throw new Error("blocked.missing-payload");
+        }
+        const resolvedOrPayload = await payloadResolver(ref);
+        resolved = looksLikeResolvedContextPack(resolvedOrPayload)
+          ? normalizeResolvedContextPack(resolvedOrPayload)
+          : freezeResolvedContextPack({ ref, payload: normalizeJsonDtoValue(resolvedOrPayload, "$.payload") });
+      }
+      if (!contextPackRefsEqual(ref, resolved.ref)) {
+        throw new Error("blocked.payload-ref-mismatch");
+      }
+      if (builder.parsePayload === undefined) {
+        throw new Error("blocked.missing-payload-parser");
+      }
+      return verifyResolvedContextPack(resolved, builder.parsePayload);
     },
 
     getDescriptor(contextPackId: string): ContextPackDescriptor | undefined {
@@ -301,15 +418,37 @@ function extractContextPackIdForDuplicateCheck(descriptor: unknown): string | un
   return contextPackIdDescriptor.value;
 }
 
-function normalizeContextPackBuilderResult(result: ContextPackBuilderResult): ContextPackRef {
+function assertRegistryContextPackRef(
+  contextPackId: string,
+  descriptor: ContextPackDescriptor,
+  ref: ContextPackRef
+): ContextPackRef {
+  if (ref.contextPackId !== descriptor.contextPackId) {
+    throw new Error(`Context pack ${contextPackId} builder returned ref for ${ref.contextPackId}`);
+  }
+  if (ref.version !== descriptor.version) {
+    throw new Error(`Context pack ${contextPackId} builder returned version ${ref.version}`);
+  }
+  if (ref.provenanceRefs.length === 0) {
+    throw new Error(`Context pack ${contextPackId} returned no provenanceRefs`);
+  }
+  if (ref.sizeBytes > descriptor.maxBytes) {
+    throw new Error(`Context pack ${contextPackId} exceeds maxBytes ${descriptor.maxBytes}: ${ref.sizeBytes} bytes`);
+  }
+  assertRequiredProvenanceKinds(contextPackId, descriptor, ref);
+  return ref;
+}
+
+function normalizeContextPackBuilderResultForRef(result: ContextPackBuilderResult): ContextPackRef {
   if (isBuiltContextPackRef(result)) {
     return result;
   }
-
-  if (looksLikeUntrustedContextPackRef(result)) {
-    throw new Error("Context pack builder returned an untrusted context pack ref; use buildContextPackRef(...) or return raw build input");
+  if (looksLikeResolvedContextPack(result)) {
+    return normalizeResolvedContextPack(result).ref;
   }
-
+  if (looksLikeUntrustedContextPackRef(result)) {
+    throw new Error("Context pack builder returned an untrusted context pack ref; use contextPackRefSchema.parse(...), buildContextPackRef(...), or return raw build input");
+  }
   return buildContextPackRef(result);
 }
 
@@ -324,6 +463,72 @@ function looksLikeUntrustedContextPackRef(value: unknown): boolean {
 
   return Object.getOwnPropertyDescriptor(value, "contentHash") !== undefined ||
     Object.getOwnPropertyDescriptor(value, "sizeBytes") !== undefined;
+}
+
+function isBuildContextPackRefInput(value: unknown): value is BuildContextPackRefInput {
+  if (typeof value !== "object" || value === null || looksLikeResolvedContextPack(value)) {
+    return false;
+  }
+  return Object.getOwnPropertyDescriptor(value, "payload") !== undefined &&
+    Object.getOwnPropertyDescriptor(value, "ref") === undefined;
+}
+
+function looksLikeResolvedContextPack(value: unknown): value is ResolvedContextPack {
+  return typeof value === "object" && value !== null &&
+    Object.getOwnPropertyDescriptor(value, "ref") !== undefined &&
+    Object.getOwnPropertyDescriptor(value, "payload") !== undefined;
+}
+
+function normalizeResolvedContextPack(value: unknown): ResolvedContextPack {
+  if (!looksLikeResolvedContextPack(value)) {
+    throw new Error("blocked.missing-payload");
+  }
+  const normalized = normalizeJsonDtoValue(value, "$");
+  if (typeof normalized !== "object" || normalized === null || Array.isArray(normalized)) {
+    throw new Error("blocked.invalid-resolved-context-pack");
+  }
+  const normalizedEnvelope = normalized as { readonly [key: string]: AgentContextPackJsonValue };
+  const refValue = normalizedEnvelope.ref;
+  const payload = normalizedEnvelope.payload;
+  if (refValue === undefined || payload === undefined) {
+    throw new Error("blocked.missing-payload");
+  }
+  const ref = contextPackRefSchema.parse(refValue);
+  return freezeResolvedContextPack({ ref, payload });
+}
+
+function freezeResolvedContextPack(resolved: ResolvedContextPack): ResolvedContextPack {
+  return Object.freeze({
+    ref: resolved.ref,
+    payload: freezeJsonDtoValue(resolved.payload)
+  });
+}
+
+function freezeJsonDtoValue(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
+  if (Array.isArray(value)) {
+    return Object.freeze(value.map(freezeJsonDtoValue));
+  }
+  if (typeof value === "object" && value !== null) {
+    const frozen = Object.create(null) as Record<string, AgentContextPackJsonValue>;
+    for (const [key, child] of Object.entries(value)) {
+      frozen[key] = freezeJsonDtoValue(child);
+    }
+    return Object.freeze(frozen);
+  }
+  return value;
+}
+
+function isVerifiedResolvedContextPack(value: unknown): value is VerifiedResolvedContextPack {
+  return typeof value === "object" && value !== null && verifiedResolvedContextPacks.has(value);
+}
+
+function contextPackRefKey(ref: ContextPackRef): string {
+  return stringifyJsonDtoValue(normalizeJsonDtoValue(ref, "$.ref"));
+}
+
+function contextPackRefsEqual(left: ContextPackRef, right: ContextPackRef): boolean {
+  return stringifyJsonDtoValue(normalizeJsonDtoValue(left, "$.left")) ===
+    stringifyJsonDtoValue(normalizeJsonDtoValue(right, "$.right"));
 }
 
 function assertSafeContextPackLookupId(contextPackId: unknown): asserts contextPackId is string {
