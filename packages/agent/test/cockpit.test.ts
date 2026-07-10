@@ -12,6 +12,7 @@ import type {
   ProjectedAgentModelInvocation
 } from "../src/projection-types.js";
 import type { AgentStatusDto } from "../src/runtime-types.js";
+import type { SpecialistWorkflowHandoffDto } from "../src/specialist-handoffs.js";
 
 const hashA = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const hashB = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -61,15 +62,25 @@ describe("agent cockpit dto", () => {
       safeAction: "review-approval"
     });
     expect(cockpit.needsNext).toContainEqual(expect.objectContaining({
-      kind: "run-start",
-      safeAction: "start-run",
+      kind: "queued-task",
+      safeAction: "inspect-queue",
       relatedTaskId: "task_unstarted"
     }));
+    expect(cockpit.specialists.registry.schemaVersion).toBe("agent-specialist-workflow-registry.v1");
+    expect(cockpit.specialists.registry.descriptors.map((descriptor) => descriptor.runType)).toEqual([
+      "prr-negotiation",
+      "evidence-triage",
+      "timeline-builder",
+      "contradiction-finder",
+      "investigation-planner",
+      "report-builder"
+    ]);
+    expect(cockpit.specialists.readiness.every((readiness) => readiness.executionReady === false)).toBe(true);
     expect(cockpit.forbiddenDirectEffects).toContain("provider-byte-transfer");
     expect(JSON.stringify(cockpit)).not.toMatch(/raw-token|authorization|bearer|sk_live|password/i);
   });
 
-  it("projects model invocation audit, context packs, memory snippets, and final handoff refs", () => {
+  it("projects model invocation audit, context packs, memory snippets, and does not invent handoffs from run hashes", () => {
     const cockpit = buildAgentCockpit({
       status: statusFixture({ completedRun: true }),
       generatedAt: "2026-07-09T12:05:00.000Z",
@@ -83,23 +94,140 @@ describe("agent cockpit dto", () => {
       status: "completed",
       inputArtifactHash: hashA,
       outputArtifactHash: hashB,
+      omissionCount: 2,
       usageSummary: "12 input, 8 output, 20 total"
     }));
     expect(cockpit.selectedRun?.contextPacks).toContainEqual(expect.objectContaining({
       contextPackId: "task-run-history.v1",
       contentHash: hashC,
-      safeSummary: "Prior agent task history."
+      safeSummary: "Prior agent task history.",
+      stalenessInputCount: 3
     }));
     expect(cockpit.memorySnippets).toContainEqual(expect.objectContaining({
       memoryId: "mem_case_goal",
       scope: "investigation",
       summary: "Keep PRR drafts human-reviewed."
     }));
-    expect(cockpit.selectedRun?.handoff).toMatchObject({
-      state: "ready-for-human-review",
-      summary: "Draft report outline produced.",
-      artifactHashes: [hashD]
+    expect(cockpit.selectedRun?.handoff).toBeUndefined();
+    expect(cockpit.needsNext).not.toContainEqual(expect.objectContaining({
+      kind: "handoff",
+      relatedRunId: "run_report_done"
+    }));
+  });
+
+  it("projects canonical specialist handoffs when the runtime supplies real handoff DTOs", () => {
+    const cockpit = buildAgentCockpit({
+      status: statusFixture({ completedRun: true }),
+      generatedAt: "2026-07-09T12:06:00.000Z",
+      selectedRunId: "run_report_done",
+      specialistHandoffs: [reportBuilderHandoffFixture()]
     });
+
+    expect(cockpit.selectedRun?.handoff).toMatchObject({
+      schemaVersion: "agent-specialist-handoff.v1",
+      runType: "report-builder",
+      runId: "run_report_done",
+      status: "ready-for-review",
+      safeSummary: "Draft report outline ready for human review.",
+      outputArtifacts: [expect.objectContaining({
+        artifactId: "artifact_report_outline",
+        artifactKind: "report-outline",
+        schemaId: "report-builder-handoff.v1",
+        artifactHash: hashD
+      })],
+      nextSafeActions: [expect.objectContaining({
+        actionId: "action_review_report_outline",
+        effect: "none"
+      })]
+    });
+    expect(cockpit.needsNext).toContainEqual(expect.objectContaining({
+      kind: "handoff",
+      relatedRunId: "run_report_done",
+      safeAction: "review-handoff"
+    }));
+  });
+
+  it("ignores supplied specialist handoffs that do not exactly match run, run type, and task", () => {
+    const wrongRunType = {
+      ...reportBuilderHandoffFixture(),
+      runType: "evidence-triage"
+    } satisfies SpecialistWorkflowHandoffDto;
+    const wrongTask = {
+      ...reportBuilderHandoffFixture(),
+      taskId: "task_other_report"
+    } satisfies SpecialistWorkflowHandoffDto;
+    const cockpit = buildAgentCockpit({
+      status: statusFixture({ completedRun: true }),
+      generatedAt: "2026-07-09T12:06:30.000Z",
+      selectedRunId: "run_report_done",
+      specialistHandoffs: [wrongRunType, wrongTask]
+    });
+
+    expect(cockpit.selectedRun?.handoff).toBeUndefined();
+    expect(cockpit.needsNext).not.toContainEqual(expect.objectContaining({
+      kind: "handoff",
+      relatedRunId: "run_report_done"
+    }));
+  });
+
+  it("surfaces blocked canonical specialist readiness with exact missing contracts, context, provider, and adapters", () => {
+    const { providerReadiness: _providerReadiness, ...statusWithoutProviderReadiness } = statusFixture();
+    const cockpit = buildAgentCockpit({
+      status: {
+        ...statusWithoutProviderReadiness,
+        locks: [],
+        activeLockCount: 0
+      },
+      generatedAt: "2026-07-09T12:07:00.000Z",
+      availableSpecialistContracts: ["agent.scheduler-resumer.v1", "agent.domain-adapter.v1"],
+      availableDomainAdapterFamilies: [
+        "provider-byte-transfer",
+        "prr-correspondence",
+        "accepted-graph-review",
+        "export-report",
+        "destructive-repair",
+        "legacy-staging"
+      ]
+    });
+
+    const contradiction = cockpit.specialists.readiness.find((readiness) =>
+      readiness.runType === "contradiction-finder"
+    );
+
+    expect(cockpit.specialists.readiness).toHaveLength(6);
+    expect(contradiction).toMatchObject({
+      schemaVersion: "agent-specialist-workflow-readiness.v1",
+      runType: "contradiction-finder",
+      residentAgentId: "agent_default",
+      status: "blocked",
+      category: "blocked-provenance",
+      contextReady: false,
+      executionReady: false,
+      missingContractIds: [],
+      missingProviderStates: [expect.objectContaining({
+        providerId: "provider:missing",
+        state: "provider-unavailable",
+        safeActionIds: ["action_choose_provider"]
+      })],
+      missingPromptTemplateIds: ["contradiction-finder.candidates.v1"]
+    });
+    expect(contradiction?.missingContextPackIds).toEqual(expect.arrayContaining([
+      "accepted-graph-projection.v1",
+      "timeline-draft-summary.v1",
+      "workspace-runtime-status.v1"
+    ]));
+    expect(contradiction?.missingAdapterFamilies).toEqual(["contradiction-claim-review"]);
+    expect(contradiction?.nextSafeActions).toEqual(expect.arrayContaining([
+      "build context pack accepted-graph-projection.v1",
+      "action_choose_provider",
+      "register domain adapter family contradiction-claim-review",
+      "keep specialist execution disabled until a workflow runner is approved"
+    ]));
+    expect(contradiction?.nextSafeActions).not.toContain("register contract agent.scheduler-resumer.v1");
+    expect(contradiction?.nextSafeActions).not.toContain("register domain adapter family provider-byte-transfer");
+    expect(cockpit.specialists.readiness.flatMap((readiness) => readiness.missingContractIds)).not.toEqual(
+      expect.arrayContaining(["agent.scheduler-resumer.v1", "agent.domain-adapter.v1"])
+    );
   });
 
   it("counts current blockers from pending approvals and active locks without treating retryable invocation failures as current blocks", () => {
@@ -184,6 +312,46 @@ function approvalCockpitFixture(): AgentApprovalCockpitDto {
   });
 }
 
+function reportBuilderHandoffFixture(): SpecialistWorkflowHandoffDto {
+  return {
+    schemaVersion: "agent-specialist-handoff.v1",
+    runType: "report-builder",
+    runId: "run_report_done",
+    taskId: "task_report_done",
+    residentAgentId: "agent_default",
+    generatedAt: "2026-07-09T11:16:00.000Z",
+    status: "ready-for-review",
+    safeSummary: "Draft report outline ready for human review.",
+    contextPackRefs: [{
+      contextPackId: "task-run-history.v1",
+      version: 1,
+      contentHash: hashC,
+      sizeBytes: 120,
+      generatedAt: "2026-07-09T11:12:00.000Z",
+      safeSummary: "Prior agent task history.",
+      provenanceRefs: ["evt_task_report_done"],
+      sourceEventIds: ["evt_task_report_done"],
+      artifactHashes: [hashA]
+    }],
+    outputArtifacts: [{
+      artifactId: "artifact_report_outline",
+      artifactKind: "report-outline",
+      schemaId: "report-builder-handoff.v1",
+      artifactHash: hashD,
+      safeSummary: "Local draft outline artifact."
+    }],
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [{
+      actionId: "action_review_report_outline",
+      label: "Review draft report outline",
+      kind: "review",
+      effect: "none",
+      artifactId: "artifact_report_outline"
+    }]
+  };
+}
+
 function statusFixture(options: {
   readonly completedRun?: boolean;
   readonly tasks?: AgentStatusDto["tasks"];
@@ -262,7 +430,12 @@ function statusFixture(options: {
     safeSummary: "Prior agent task history.",
     provenanceRefs: ["evt_task_report_done"],
     sourceEventIds: ["evt_task_report_done"],
-    artifactHashes: [hashA]
+    artifactHashes: [hashA],
+    stalenessInputs: [
+      { kind: "projection", ref: "agent-projection", value: "18" },
+      { kind: "event", ref: "evt_task_report_done", value: "present" },
+      { kind: "artifact", ref: hashA, value: "sha256-bound" }
+    ]
   } satisfies ProjectedAgentContextPackRef;
 
   const runProviderReview = {
@@ -388,7 +561,18 @@ function statusFixture(options: {
       status: "completed",
       requestedAt: "2026-07-09T11:13:00.000Z",
       contextPackRefs: [completedContextPack],
-      omissions: [],
+      omissions: [
+        {
+          reason: "context-budget",
+          sourceRef: "evidence:oversized-video",
+          safeSummary: "Oversized video transcript was omitted."
+        },
+        {
+          reason: "policy-filter",
+          sourceRef: "evidence:sealed-record",
+          safeSummary: "Sealed record summary was omitted."
+        }
+      ],
       providerOutputArtifactHash: hashB,
       completedAt: "2026-07-09T11:13:10.000Z",
       usage: {
@@ -421,12 +605,20 @@ function statusFixture(options: {
       memoryId: "mem_case_goal",
       residentAgentId: "agent_default",
       scope: "investigation",
+      memoryKind: "agent-observation",
       summary: "Keep PRR drafts human-reviewed.",
+      recordedBy: "actor_cestus_agent",
+      recordedByKind: "agent",
       sourceEventIds: ["evt_mem_case_goal"],
       artifactHashes: [hashD],
       confidence: 0.8,
       createdAt: "2026-07-09T10:50:00.000Z",
       state: "active",
+      memoryHistoryEntries: [{
+        eventId: "evt_mem_case_goal",
+        eventType: "agent.memory.recorded",
+        occurredAt: "2026-07-09T10:50:00.000Z"
+      }],
       eventIds: ["evt_mem_case_goal"],
       causationIds: ["evt_task_provider_review"]
     }],

@@ -47,3 +47,7 @@ Implementation log:
 - `2026-07-09T09:52:50Z`: Review-fix RED verified the no-selected-run fixture and long-meta assertions failed before the fix landed.
 - `2026-07-09T09:52:58Z`: Review-fix targeted pass succeeded with `Test Files  3 passed (3)` and `Tests  19 passed (19)`.
 - `2026-07-09T09:53:25Z`: Review-fix `npm run verify` passed with `typecheck passed`, `Test Files  148 passed | 1 skipped (149)`, `Tests  1404 passed | 1 skipped (1405)`, `tests passed`, Vite production build success, and `factory-readiness passed`.
+- Post-`neo` correction: the run cockpit remains read-only, displays canonical specialist readiness and actual handoffs only, and exposes no generic run-start or domain execution affordance.
+- Final independent-review correction: run cards are selectable, but selected-run detail/audit/handoff panels render canonical detail only when the server-selected detail DTO matches the selected run ID. Selecting another run falls back to that run's summary and does not leak another run's audit or handoff.
+- Final independent-review correction: context pack audit rows render the canonical `omissionCount` and `stalenessInputCount` fields, and specialist readiness rows render descriptor identity/purpose plus missing context, stale context, missing projection high-water marks, missing provenance context, provider, prompt, approval, lock, and adapter blockers.
+- Remaining blocker: actual `agent-specialist-handoff.v1` DTO display is supported only when supplied by runtime state; this cockpit slice does not create a durable production handoff source.

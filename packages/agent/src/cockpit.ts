@@ -1,8 +1,25 @@
 import { z } from "zod";
 import type { AgentApprovalCockpitDto } from "./approval-cockpit.js";
-import { providerReadinessDtoSchema } from "./provider-readiness.js";
+import { providerReadinessDtoSchema, type ProviderReadinessDto } from "./provider-readiness.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import type { AgentStatusDto } from "./runtime-types.js";
+import {
+  agentSpecialistWorkflowReadinessDtoSchema,
+  parseSpecialistWorkflowReadinessDto,
+  projectSpecialistWorkflowReadiness,
+  type SpecialistWorkflowReadinessDto
+} from "./specialist-readiness.js";
+import {
+  specialistWorkflowDescriptors,
+  specialistWorkflowRegistrySnapshot,
+  type SpecialistWorkflowRegistrySnapshot
+} from "./specialist-workflows.js";
+import type { AgentDomainToolFamily } from "./domain-execution-descriptors.js";
+import {
+  parseSpecialistWorkflowHandoff,
+  specialistWorkflowHandoffSchema,
+  type SpecialistWorkflowHandoffDto
+} from "./specialist-handoffs.js";
 
 const schemaVersion = "agent-cockpit.v1" as const;
 
@@ -18,7 +35,6 @@ const forbiddenDirectEffects = [
   "legacy-raw-import",
   "legacy-staging-execution"
 ] as const;
-
 function secretSafeStringSchema(label: string) {
   return z.string().min(1).superRefine((value, ctx) => {
     try {
@@ -50,12 +66,22 @@ const memoryIdSchema = secretSafeIdentifierSchema("memoryId", /^mem_[a-zA-Z0-9_-
 const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const safeActionSchema = secretSafeIdentifierSchema("safeAction", /^[a-z][a-z-]*$/);
 
+function addSchemaIssues(ctx: z.RefinementCtx, error: z.ZodError): void {
+  for (const issue of error.issues) {
+    ctx.addIssue({
+      code: "custom",
+      path: issue.path,
+      message: issue.message
+    });
+  }
+}
+
 export const agentCockpitNeedDtoSchema = z.object({
   kind: z.enum([
     "approval",
     "lock",
     "retry",
-    "run-start",
+    "queued-task",
     "handoff",
     "provider-readiness",
     "quiet"
@@ -95,6 +121,7 @@ export const agentCockpitModelAuditDtoSchema = z.object({
   status: z.enum(["requested", "completed", "failed"]),
   inputArtifactHash: contentHashSchema,
   outputArtifactHash: contentHashSchema.optional(),
+  omissionCount: z.number().int().nonnegative(),
   usageSummary: secretSafeStringSchema("usage summary").optional(),
   failureCategory: secretSafeStringSchema("failure category").optional(),
   retryable: z.boolean().optional()
@@ -106,15 +133,87 @@ export const agentCockpitContextPackDtoSchema = z.object({
   safeSummary: secretSafeStringSchema("context pack safe summary"),
   generatedAt: z.string().datetime(),
   provenanceRefs: z.array(secretSafeStringSchema("context pack provenance ref")).min(1),
+  stalenessInputCount: z.number().int().nonnegative(),
   sourceEventIds: z.array(eventIdSchema).optional(),
   artifactHashes: z.array(contentHashSchema).optional()
 }).strict();
 
-export const agentCockpitHandoffDtoSchema = z.object({
-  state: z.literal("ready-for-human-review"),
-  summary: secretSafeStringSchema("handoff summary"),
-  artifactHashes: z.array(contentHashSchema).min(1),
-  relatedEventIds: z.array(eventIdSchema)
+export const agentCockpitHandoffDtoSchema = specialistWorkflowHandoffSchema;
+
+const specialistWorkflowRegistrySnapshotObjectSchema = z.object({
+  schemaVersion: z.literal("agent-specialist-workflow-registry.v1"),
+  descriptors: z.array(z.object({
+    runType: z.enum([
+      "prr-negotiation",
+      "evidence-triage",
+      "timeline-builder",
+      "contradiction-finder",
+      "investigation-planner",
+      "report-builder"
+    ]),
+    residentIdentity: z.literal("agent_default"),
+    label: secretSafeStringSchema("specialist label"),
+    purpose: secretSafeStringSchema("specialist purpose"),
+    executionEnabled: z.literal(false),
+    prerequisiteContractIds: z.array(secretSafeStringSchema("specialist prerequisite contract id")),
+    contextPacks: z.array(z.object({
+      contextPackId: secretSafeStringSchema("specialist context pack id"),
+      required: z.boolean(),
+      purpose: secretSafeStringSchema("specialist context pack purpose")
+    }).strict()),
+    promptTemplate: z.object({
+      promptTemplateId: secretSafeStringSchema("specialist prompt template id"),
+      promptTemplateVersion: z.number().int().positive(),
+      outputSchemaId: secretSafeStringSchema("specialist output schema id"),
+      safetyClass: z.enum(["workspace-safe", "public-safe", "sensitive-local-only", "provider-approved"]),
+      transferApprovalClass: z.enum(["none", "provider-byte-transfer"])
+    }).strict(),
+    allowedTools: z.array(z.object({
+      toolId: secretSafeStringSchema("specialist tool id"),
+      domainOwner: secretSafeStringSchema("specialist tool domain owner"),
+      sideEffectClass: secretSafeStringSchema("specialist side effect class"),
+      requiredApprovalClass: secretSafeStringSchema("specialist required approval class"),
+      purpose: secretSafeStringSchema("specialist tool purpose")
+    }).strict()),
+    approvalRequirements: z.array(z.object({
+      approvalClass: secretSafeStringSchema("specialist approval class"),
+      requiredWhen: secretSafeStringSchema("specialist approval requiredWhen")
+    }).strict()),
+    outputArtifacts: z.array(z.object({
+      artifactKind: secretSafeStringSchema("specialist output artifact kind"),
+      schemaId: secretSafeStringSchema("specialist output schema id"),
+      purpose: secretSafeStringSchema("specialist output purpose")
+    }).strict()),
+    handoffSchemaId: secretSafeStringSchema("specialist handoff schema id"),
+    failureModes: z.array(secretSafeStringSchema("specialist failure mode"))
+  }).strict())
+}).strict();
+
+const specialistWorkflowRegistrySnapshotSchema = z.unknown()
+  .transform((value, ctx): SpecialistWorkflowRegistrySnapshot => {
+    const result = specialistWorkflowRegistrySnapshotObjectSchema.safeParse(value);
+    if (!result.success) {
+      addSchemaIssues(ctx, result.error);
+      return z.NEVER;
+    }
+
+    return result.data as SpecialistWorkflowRegistrySnapshot;
+  });
+
+const agentCockpitSpecialistReadinessDtoSchema = z.unknown()
+  .transform((value, ctx): SpecialistWorkflowReadinessDto => {
+    const result = agentSpecialistWorkflowReadinessDtoSchema.safeParse(value);
+    if (!result.success) {
+      addSchemaIssues(ctx, result.error);
+      return z.NEVER;
+    }
+
+    return result.data as SpecialistWorkflowReadinessDto;
+  });
+
+export const agentCockpitSpecialistsDtoSchema = z.object({
+  registry: specialistWorkflowRegistrySnapshotSchema,
+  readiness: z.array(agentCockpitSpecialistReadinessDtoSchema)
 }).strict();
 
 export const agentCockpitRunCardDtoSchema = z.object({
@@ -172,6 +271,7 @@ export const agentCockpitDtoSchema = z.object({
   selectedRun: agentCockpitSelectedRunDtoSchema.optional(),
   needsNext: z.array(agentCockpitNeedDtoSchema),
   memorySnippets: z.array(agentCockpitMemorySnippetDtoSchema),
+  specialists: agentCockpitSpecialistsDtoSchema,
   forbiddenDirectEffects: z.array(secretSafeStringSchema("forbidden direct effect")),
   providerReadiness: providerReadinessDtoSchema.optional()
 }).strict();
@@ -184,6 +284,7 @@ export type AgentCockpitHandoffDto = z.infer<typeof agentCockpitHandoffDtoSchema
 export type AgentCockpitRunCardDto = z.infer<typeof agentCockpitRunCardDtoSchema>;
 export type AgentCockpitSelectedRunDto = z.infer<typeof agentCockpitSelectedRunDtoSchema>;
 export type AgentCockpitMemorySnippetDto = z.infer<typeof agentCockpitMemorySnippetDtoSchema>;
+export type AgentCockpitSpecialistsDto = z.infer<typeof agentCockpitSpecialistsDtoSchema>;
 export type AgentCockpitDto = z.infer<typeof agentCockpitDtoSchema>;
 
 export interface BuildAgentCockpitInput {
@@ -192,6 +293,10 @@ export interface BuildAgentCockpitInput {
   readonly selectedRunId?: string;
   readonly generatedAt?: string;
   readonly mergeAfterScheduler?: boolean;
+  readonly specialistReadiness?: readonly SpecialistWorkflowReadinessDto[];
+  readonly specialistHandoffs?: readonly SpecialistWorkflowHandoffDto[];
+  readonly availableSpecialistContracts?: readonly string[];
+  readonly availableDomainAdapterFamilies?: readonly AgentDomainToolFamily[];
 }
 
 export function buildAgentCockpit(input: BuildAgentCockpitInput): AgentCockpitDto {
@@ -201,6 +306,15 @@ export function buildAgentCockpit(input: BuildAgentCockpitInput): AgentCockpitDt
   const modelInvocations = input.status.modelInvocations ?? [];
   const toolRequests = input.status.toolRequests;
   const activeLocks = input.status.locks.filter((lock) => lock.state === "active");
+  const specialistHandoffs = (input.specialistHandoffs ?? []).map(parseSpecialistWorkflowHandoff);
+  const specialists = projectSpecialists({
+    generatedAt,
+    providerReadiness: input.status.providerReadiness,
+    activeLocks,
+    suppliedReadiness: input.specialistReadiness ?? [],
+    availableContracts: input.availableSpecialistContracts ?? [],
+    availableDomainAdapterFamilies: input.availableDomainAdapterFamilies ?? []
+  });
   const taskCards = [...input.status.tasks]
     .sort(compareTasks)
     .map((task) => ({
@@ -221,13 +335,14 @@ export function buildAgentCockpit(input: BuildAgentCockpitInput): AgentCockpitDt
   const selectedRunRecord = selectRun(input.status, input.selectedRunId);
   const selectedRun = selectedRunRecord === undefined
     ? undefined
-    : projectSelectedRun(selectedRunRecord, input.status.tasks, modelInvocations, toolRequests, activeLocks);
+    : projectSelectedRun(selectedRunRecord, input.status.tasks, modelInvocations, toolRequests, activeLocks, specialistHandoffs);
 
   const needsNext = deriveNeedsNext({
     status: input.status,
     approvalCockpit: input.approvalCockpit,
     taskCards,
-    selectedRun
+    selectedRun,
+    specialistHandoffs
   });
 
   const dto = agentCockpitDtoSchema.parse({
@@ -260,6 +375,7 @@ export function buildAgentCockpit(input: BuildAgentCockpitInput): AgentCockpitDt
         artifactHashes: [...memory.artifactHashes],
         confidence: memory.confidence
       })),
+    specialists,
     forbiddenDirectEffects: [...forbiddenDirectEffects],
     ...(input.status.providerReadiness === undefined ? {} : { providerReadiness: input.status.providerReadiness })
   });
@@ -296,13 +412,14 @@ function projectSelectedRun(
   tasks: AgentStatusDto["tasks"],
   modelInvocations: readonly NonNullable<AgentStatusDto["modelInvocations"]>[number][],
   toolRequests: AgentStatusDto["toolRequests"],
-  activeLocks: readonly AgentStatusDto["locks"][number][]
+  activeLocks: readonly AgentStatusDto["locks"][number][],
+  specialistHandoffs: readonly SpecialistWorkflowHandoffDto[]
 ): AgentCockpitSelectedRunDto {
   const runInvocations = modelInvocationsForRun(run, modelInvocations);
   const runToolRequests = toolRequestsForRun(run, toolRequests);
   const blockedReasons = blockedReasonsForRun(run, taskForRun(run, tasks), runToolRequests, activeLocks);
   const contextPacks = uniqueContextPacks(runInvocations);
-  const handoff = handoffForRun(run);
+  const handoff = handoffForRun(run, specialistHandoffs);
 
   return {
     ...projectRunCard(run, tasks, modelInvocations, toolRequests, activeLocks),
@@ -317,6 +434,7 @@ function projectSelectedRun(
         modelFamily: invocation.modelFamily,
         status: invocation.status,
         inputArtifactHash: invocation.inputArtifactHash,
+        omissionCount: invocation.omissions.length,
         ...(invocation.providerOutputArtifactHash === undefined
           ? {}
           : { outputArtifactHash: invocation.providerOutputArtifactHash }),
@@ -345,8 +463,18 @@ function uniqueContextPacks(
           safeSummary: contextPackRef.safeSummary,
           generatedAt: contextPackRef.generatedAt,
           provenanceRefs: [...contextPackRef.provenanceRefs],
+          stalenessInputCount: contextPackRef.stalenessInputs?.length ?? 0,
           ...(contextPackRef.sourceEventIds === undefined ? {} : { sourceEventIds: [...contextPackRef.sourceEventIds] }),
           ...(contextPackRef.artifactHashes === undefined ? {} : { artifactHashes: [...contextPackRef.artifactHashes] })
+        });
+      } else {
+        const existing = packsByKey.get(key)!;
+        packsByKey.set(key, {
+          ...existing,
+          stalenessInputCount: Math.max(
+            existing.stalenessInputCount,
+            contextPackRef.stalenessInputs?.length ?? 0
+          )
         });
       }
     }
@@ -355,17 +483,15 @@ function uniqueContextPacks(
   return [...packsByKey.values()].sort((left, right) => left.generatedAt.localeCompare(right.generatedAt));
 }
 
-function handoffForRun(run: AgentStatusDto["runs"][number]): AgentCockpitHandoffDto | undefined {
-  if (run.state !== "completed" || run.outputArtifactHashes.length === 0) {
-    return undefined;
-  }
-
-  return {
-    state: "ready-for-human-review",
-    summary: run.summary ?? `${run.runType} run completed.`,
-    artifactHashes: [...run.outputArtifactHashes],
-    relatedEventIds: [...run.relatedEventIds.filter((eventId) => eventId.startsWith("evt_"))]
-  };
+function handoffForRun(
+  run: AgentStatusDto["runs"][number],
+  specialistHandoffs: readonly SpecialistWorkflowHandoffDto[]
+): AgentCockpitHandoffDto | undefined {
+  return specialistHandoffs.find((handoff) =>
+    handoff.runId === run.runId &&
+    handoff.runType === run.runType &&
+    handoff.taskId === run.taskId
+  );
 }
 
 function deriveNeedsNext(input: {
@@ -373,6 +499,7 @@ function deriveNeedsNext(input: {
   readonly approvalCockpit: AgentApprovalCockpitDto | undefined;
   readonly taskCards: readonly AgentCockpitTaskCardDto[];
   readonly selectedRun: AgentCockpitSelectedRunDto | undefined;
+  readonly specialistHandoffs: readonly SpecialistWorkflowHandoffDto[];
 }): AgentCockpitNeedDto[] {
   const needs: AgentCockpitNeedDto[] = [];
   const approvalNeed = approvalNeedFromCockpit(input.approvalCockpit);
@@ -412,16 +539,16 @@ function deriveNeedsNext(input: {
 
   for (const task of input.taskCards.filter((card) => card.status === "queued" && card.runId === undefined)) {
     needs.push({
-      kind: "run-start",
+      kind: "queued-task",
       severity: "info",
-      label: `Start ${task.title}`,
+      label: `Queued for scheduler readiness: ${task.title}`,
       relatedTaskId: task.taskId,
-      safeAction: "start-run"
+      safeAction: "inspect-queue"
     });
   }
 
   for (const run of input.status.runs) {
-    const handoff = handoffForRun(run);
+    const handoff = handoffForRun(run, input.specialistHandoffs);
     if (handoff !== undefined) {
       needs.push({
         kind: "handoff",
@@ -484,10 +611,10 @@ function retryNeedFromStatus(status: AgentStatusDto): AgentCockpitNeedDto | unde
     return {
       kind: "retry",
       severity: "warning",
-      label: `Retry ${retryableRun.runType} run`,
+      label: `Review retryable ${retryableRun.runType} run`,
       relatedTaskId: retryableRun.taskId,
       relatedRunId: retryableRun.runId,
-      safeAction: "retry-run"
+      safeAction: "inspect-retry"
     };
   }
 
@@ -498,13 +625,58 @@ function retryNeedFromStatus(status: AgentStatusDto): AgentCockpitNeedDto | unde
     return {
       kind: "retry",
       severity: "warning",
-      label: `Retry ${retryableInvocation.modelFamily} model step`,
+      label: `Review retryable ${retryableInvocation.modelFamily} model step`,
       relatedRunId: retryableInvocation.runId,
-      safeAction: "retry-run"
+      safeAction: "inspect-retry"
     };
   }
 
   return undefined;
+}
+
+function projectSpecialists(input: {
+  readonly generatedAt: string;
+  readonly providerReadiness: ProviderReadinessDto | undefined;
+  readonly activeLocks: readonly AgentStatusDto["locks"][number][];
+  readonly suppliedReadiness: readonly SpecialistWorkflowReadinessDto[];
+  readonly availableContracts: readonly string[];
+  readonly availableDomainAdapterFamilies: readonly AgentDomainToolFamily[];
+}): AgentCockpitSpecialistsDto {
+  const registry = specialistWorkflowRegistrySnapshot();
+  const suppliedByRunType = new Map(
+    input.suppliedReadiness.map((readiness) => {
+      const parsed = parseSpecialistWorkflowReadinessDto(readiness);
+      return [parsed.runType, parsed] as const;
+    })
+  );
+  const providerReadiness = input.providerReadiness ?? providerReadinessDtoSchema.parse({
+    schemaVersion: "agent-provider-readiness.v1",
+    generatedAt: input.generatedAt,
+    cards: [],
+    diagnostics: []
+  });
+
+  return {
+    registry,
+    readiness: specialistWorkflowDescriptors.map((descriptor) =>
+      suppliedByRunType.get(descriptor.runType) ?? projectSpecialistWorkflowReadiness({
+        runType: descriptor.runType,
+        descriptor,
+        availableContracts: input.availableContracts,
+        contextPackRefs: [],
+        promptTemplateRegistrations: [],
+        providerReadiness,
+        availableDomainAdapterFamilies: input.availableDomainAdapterFamilies,
+        currentProjectionHighWaterMarks: {},
+        activeLocks: input.activeLocks.map((lock) => ({
+          lockId: lock.lockId,
+          category: lock.kind,
+          safeSummary: lock.reason
+        })),
+        satisfiedApprovalClasses: []
+      })
+    )
+  };
 }
 
 function blockedReasonsForRun(

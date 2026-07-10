@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { createHttpAgentAdapter } from "../src/agent/agent-adapter.js";
+import { buildAgentCockpit } from "../../agent/src/cockpit.js";
+import {
+  createHttpAgentAdapter,
+  runtimeUnavailableAgentStatus
+} from "../src/agent/agent-adapter.js";
 
 describe("agent cockpit adapter", () => {
   it("loads cockpit from the local runtime API", async () => {
@@ -53,7 +57,7 @@ describe("agent cockpit adapter", () => {
     );
   });
 
-  it("creates tasks and starts runs through the safe runtime routes only", async () => {
+  it("queues tasks through the safe runtime route only", async () => {
     const fetchCalls: Array<{ readonly path: string; readonly init: RequestInit | undefined }> = [];
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = new URL(String(input), "http://localhost").pathname;
@@ -71,18 +75,14 @@ describe("agent cockpit adapter", () => {
       }
 
       return new Response(JSON.stringify({
-        ok: true,
-        schemaVersion: "agent-run-start-result.v1",
-        runId: "run_adapter_review",
-        eventIds: ["evt_run_started"]
+        error: { message: `Unexpected route ${path}` }
       }), {
-        status: 200,
+        status: 404,
         headers: { "content-type": "application/json" }
       });
     });
     const adapter = createHttpAgentAdapter({ fetcher });
     const createTask = requireMethod(adapter, "createTask");
-    const startRun = requireMethod(adapter, "startRun");
 
     await expect(createTask({
       taskId: "task_adapter_review",
@@ -95,23 +95,10 @@ describe("agent cockpit adapter", () => {
       eventIds: ["evt_task_created", "evt_task_queued"]
     });
 
-    await expect(startRun({
-      runId: "run_adapter_review",
-      taskId: "task_adapter_review",
-      runType: "evidence-triage",
-      scope: { kind: "workspace", refs: ["ws_case_001"] },
-      sourceEventIds: ["evt_task_created"],
-      inputArtifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
-    })).resolves.toEqual({
-      ok: true,
-      schemaVersion: "agent-run-start-result.v1",
-      runId: "run_adapter_review",
-      eventIds: ["evt_run_started"]
-    });
+    expect((adapter as unknown as Record<string, unknown>).startRun).toBeUndefined();
 
     expect(fetchCalls.map((call) => call.path)).toEqual([
-      "/api/agent/tasks",
-      "/api/agent/runs"
+      "/api/agent/tasks"
     ]);
     expect(JSON.parse(String(fetchCalls[0]?.init?.body))).toEqual({
       taskId: "task_adapter_review",
@@ -119,20 +106,12 @@ describe("agent cockpit adapter", () => {
       priority: "high",
       description: "Carry the investigator task note through the route."
     });
-    expect(JSON.parse(String(fetchCalls[1]?.init?.body))).toEqual({
-      runId: "run_adapter_review",
-      taskId: "task_adapter_review",
-      runType: "evidence-triage",
-      scope: { kind: "workspace", refs: ["ws_case_001"] },
-      sourceEventIds: ["evt_task_created"],
-      inputArtifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
-    });
     expect(fetchCalls.map((call) => call.path).join(" ")).not.toMatch(
-      /scheduler\/wake|provider-transfer|prr|export|repair|legal|accepted-graph|legacy.*import|staging/i
+      /\/api\/agent\/runs|scheduler\/wake|provider-transfer|prr|export|repair|legal|accepted-graph|legacy.*import|staging/i
     );
   });
 
-  it("redacts unsafe runtime failures for cockpit and run routes", async () => {
+  it("redacts unsafe runtime failures for cockpit and task routes", async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL) => {
       const path = new URL(String(input), "http://localhost").pathname;
       if (path === "/api/agent/cockpit") {
@@ -156,21 +135,19 @@ describe("agent cockpit adapter", () => {
     });
     const adapter = createHttpAgentAdapter({ fetcher });
     const loadCockpit = requireMethod(adapter, "loadCockpit");
-    const startRun = requireMethod(adapter, "startRun");
+    const createTask = requireMethod(adapter, "createTask");
 
     await expect(loadCockpit()).rejects.toThrow("Agent cockpit route returned an invalid DTO.");
-    await expect(startRun({
-      runId: "run_adapter_invalid",
+    await expect(createTask({
       taskId: "task_adapter_invalid",
-      runType: "evidence-triage",
-      scope: { kind: "workspace", refs: ["ws_case_001"] }
+      title: "Adapter invalid task",
+      priority: "normal"
     })).rejects.toThrow("[path redacted]");
 
-    await startRun({
-      runId: "run_adapter_invalid",
+    await createTask({
       taskId: "task_adapter_invalid",
-      runType: "evidence-triage",
-      scope: { kind: "workspace", refs: ["ws_case_001"] }
+      title: "Adapter invalid task",
+      priority: "normal"
     }).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       expect(message).not.toMatch(/bearer|raw-value|sk_live|\/tmp\/run-secrets/i);
@@ -305,6 +282,7 @@ function cockpitDto(overrides: Partial<Record<string, unknown>> = {}) {
         status: "completed",
         inputArtifactHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         outputArtifactHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        omissionCount: 0,
         usageSummary: "1 prompt, 1 completion",
         retryable: false
       }],
@@ -314,15 +292,10 @@ function cockpitDto(overrides: Partial<Record<string, unknown>> = {}) {
         safeSummary: "Workspace evidence context pack.",
         generatedAt: "2026-07-09T01:58:00.000Z",
         provenanceRefs: ["evt_task_created"],
+        stalenessInputCount: 0,
         sourceEventIds: ["evt_task_created"],
         artifactHashes: ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
       }],
-      handoff: {
-        state: "ready-for-human-review",
-        summary: "Ready for operator review.",
-        artifactHashes: ["sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"],
-        relatedEventIds: ["evt_run_started"]
-      }
     },
     needsNext: [{
       kind: "approval",
@@ -342,6 +315,10 @@ function cockpitDto(overrides: Partial<Record<string, unknown>> = {}) {
       artifactHashes: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
       confidence: 0.6
     }],
+    specialists: buildAgentCockpit({
+      status: runtimeUnavailableAgentStatus({ generatedAt: "2026-07-09T02:00:00.000Z" }),
+      generatedAt: "2026-07-09T02:00:00.000Z"
+    }).specialists,
     forbiddenDirectEffects: [
       "provider-byte-transfer",
       "prr-send-followup",

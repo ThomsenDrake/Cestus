@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import type {
-  AgentCockpitContextPackDto,
   AgentCockpitDto,
   AgentCockpitMemorySnippetDto,
   AgentCockpitModelAuditDto
@@ -16,8 +15,19 @@ const cockpitViews: readonly CockpitView[] = ["Queue", "Run", "Audit", "Handoff"
 
 export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
   const [view, setView] = useState<CockpitView>("Queue");
-  const selectedRunRecord = cockpit.selectedRun;
-  const activeRun = selectedRunRecord ?? cockpit.runQueue[0];
+  const serverSelectedRun = cockpit.selectedRun;
+  const [selectedRunId, setSelectedRunId] = useState<string | undefined>(
+    serverSelectedRun?.runId ?? cockpit.runQueue[0]?.runId
+  );
+  const selectedRunSummary =
+    cockpit.runQueue.find((run) => run.runId === selectedRunId) ??
+    (serverSelectedRun?.runId === selectedRunId ? serverSelectedRun : undefined) ??
+    cockpit.runQueue[0] ??
+    serverSelectedRun;
+  const selectedRunRecord = serverSelectedRun?.runId === selectedRunSummary?.runId
+    ? serverSelectedRun
+    : undefined;
+  const activeRun = selectedRunRecord ?? selectedRunSummary;
 
   const summary = useMemo(() => {
     const doingLabel = activeRun === undefined
@@ -34,7 +44,7 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
         label: "Blocked",
         value: countLabel(selectedRunRecord?.blockedReasons.length ?? activeRun?.blockedReasonCount ?? 0, "blocked reason")
       },
-      { label: "Changed", value: countLabel(selectedRunRecord?.handoff?.artifactHashes.length ?? 0, "handoff artifact") },
+      { label: "Changed", value: countLabel(selectedRunRecord?.handoff?.outputArtifacts.length ?? 0, "handoff artifact") },
       {
         label: "Evidence",
         value: countLabel((selectedRunRecord?.modelInvocations.length ?? activeRun?.modelInvocationCount ?? 0) + cockpit.memorySnippets.length, "evidence item")
@@ -121,6 +131,20 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
                         <InlineStat label="Model audits" value={countLabel(run.modelInvocationCount, "audit")} />
                         <InlineStat label="Needs" value={countLabel(run.pendingApprovalCount, "approval")} />
                         <InlineStat label="Blocked" value={countLabel(run.blockedReasonCount, "reason")} />
+                        <div className="min-w-0">
+                          <dt className="sr-only">Selection</dt>
+                          <dd>
+                            <button
+                              type="button"
+                              aria-label={`Select run ${run.runId}`}
+                              aria-pressed={selected}
+                              onClick={() => setSelectedRunId(run.runId)}
+                              className="min-h-10 border border-[var(--console-line)] px-3 py-2 text-base text-[var(--signal-cyan)] sm:min-h-9 sm:text-sm"
+                            >
+                              Select
+                            </button>
+                          </dd>
+                        </div>
                       </dl>
                     </li>
                   );
@@ -128,6 +152,58 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
               </ul>
             ) : (
               <EmptyState>No runs are currently queued.</EmptyState>
+            )}
+          </section>
+
+          <section aria-label="Specialist workflow readiness" className="space-y-2">
+            <SectionHeader
+              title="Specialist readiness"
+              meta={countLabel(cockpit.specialists.readiness.length, "specialist")}
+            />
+            {cockpit.specialists.readiness.length > 0 ? (
+              <ul role="list" className="divide-y divide-[var(--console-line)] border border-[var(--console-line)] bg-[var(--console-panel)]">
+                {cockpit.specialists.readiness.map((readiness) => {
+                  const descriptor = cockpit.specialists.registry.descriptors.find((candidate) =>
+                    candidate.runType === readiness.runType
+                  );
+                  return (
+                    <li key={readiness.runType} className="grid gap-3 px-4 py-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
+                      <div className="min-w-0">
+                        <p className="text-base font-medium text-[var(--paper-light)] sm:text-sm">
+                          {descriptor?.label ?? readiness.runType}
+                        </p>
+                        <p className="mt-1 break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">
+                          {readiness.runType} | {descriptor?.residentIdentity ?? "agent_default"}
+                        </p>
+                        {descriptor?.purpose === undefined ? null : (
+                          <p className="mt-2 text-base text-[var(--paper-light)] sm:text-sm">{descriptor.purpose}</p>
+                        )}
+                        <p className="mt-2 font-mono text-base text-[var(--signal-amber)] sm:text-sm">
+                          {readiness.status} | {readiness.category}
+                        </p>
+                        <p className="mt-1 font-mono text-base text-[var(--muted-amber)] sm:text-sm">
+                          executionReady: {String(readiness.executionReady)}
+                        </p>
+                      </div>
+                      <dl className="grid gap-2 md:grid-cols-2">
+                        <InlineStat label="Contracts" value={listLabel(readiness.missingContractIds)} />
+                        <InlineStat label="Missing context" value={listLabel(readiness.missingContextPackIds)} />
+                        <InlineStat label="Stale context" value={listLabel(readiness.staleContextPackIds)} />
+                        <InlineStat label="Projection HW" value={listLabel(readiness.missingProjectionHighWaterMarkIds)} />
+                        <InlineStat label="Provenance ctx" value={listLabel(readiness.missingProvenanceContextPackIds)} />
+                        <InlineStat label="Provider" value={readiness.missingProviderStates.map((state) => `${state.providerId}:${state.state}`).join(", ") || "ready"} />
+                        <InlineStat label="Adapters" value={listLabel(readiness.missingAdapterFamilies)} />
+                        <InlineStat label="Prompts" value={listLabel(readiness.missingPromptTemplateIds)} />
+                        <InlineStat label="Approvals" value={listLabel(readiness.missingApprovalClasses)} />
+                        <InlineStat label="Locks" value={listLabel(readiness.activeLockIds)} />
+                        <InlineStat label="Next" value={listLabel(readiness.nextSafeActions)} />
+                      </dl>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <EmptyState>No specialist readiness was reported.</EmptyState>
             )}
           </section>
         </section>
@@ -245,6 +321,7 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
                           <InlineStat label="Status" value={audit.status} />
                           <InlineStat label="Input hash" value={audit.inputArtifactHash} breakAll />
                           <InlineStat label="Output hash" value={audit.outputArtifactHash ?? "not reported"} breakAll />
+                          <InlineStat label="Omissions" value={countLabel(audit.omissionCount, "omission")} />
                           <InlineStat label="Usage" value={audit.usageSummary ?? "usage not reported"} />
                           {audit.failureCategory === undefined ? null : <InlineStat label="Failure" value={audit.failureCategory} />}
                         </dl>
@@ -268,8 +345,7 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
                           <p className="mt-2 text-base text-[var(--paper-light)] sm:text-sm">{pack.safeSummary}</p>
                         </div>
                         <dl className="grid gap-2 md:grid-cols-2">
-                          <InlineStat label="Omission count" value={countLabel(contextPackOmissionCount(pack), "omission")} />
-                          <InlineStat label="Staleness inputs" value={countLabel(contextPackStalenessInputCount(pack), "staleness input")} />
+                          <InlineStat label="Staleness inputs" value={countLabel(pack.stalenessInputCount, "staleness input")} />
                           <InlineStat label="Generated" value={pack.generatedAt} />
                           <InlineStat label="Provenance refs" value={countLabel(pack.provenanceRefs.length, "ref")} />
                         </dl>
@@ -327,33 +403,57 @@ export function AgentRunCockpit({ cockpit }: AgentRunCockpitProps) {
             )
           ) : (
             <section className="border border-[var(--console-line)] bg-[var(--console-panel)]">
-              <SectionHeader title="Handoff artifacts" meta={selectedRunRecord.handoff.state} />
+              <SectionHeader title="Handoff artifacts" meta={selectedRunRecord.handoff.status} />
               <div className="space-y-4 px-4 py-4">
-                <p className="text-base text-[var(--paper-light)] sm:text-sm">{selectedRunRecord.handoff.summary}</p>
+                <p className="text-base text-[var(--paper-light)] sm:text-sm">{selectedRunRecord.handoff.safeSummary}</p>
                 <div className="space-y-2">
-                  <SubsectionHeader title="Artifact hashes" />
-                  <ul role="list" className="divide-y divide-[var(--console-line)] border border-[var(--console-line)] bg-[var(--console-void)]/48">
-                    {selectedRunRecord.handoff.artifactHashes.map((artifactHash) => (
-                      <li key={artifactHash} className="px-4 py-2 break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">
-                        {artifactHash}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="space-y-2">
-                  <SubsectionHeader title="Related evidence" />
-                  {selectedRunRecord.handoff.relatedEventIds.length > 0 ? (
+                  <SubsectionHeader title="Output artifacts" />
+                  {selectedRunRecord.handoff.outputArtifacts.length > 0 ? (
                     <ul role="list" className="divide-y divide-[var(--console-line)] border border-[var(--console-line)] bg-[var(--console-void)]/48">
-                      {selectedRunRecord.handoff.relatedEventIds.map((eventId) => (
-                        <li key={eventId} className="px-4 py-2 break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">
-                          {eventId}
+                      {selectedRunRecord.handoff.outputArtifacts.map((artifact) => (
+                        <li key={artifact.artifactId} className="grid gap-2 px-4 py-2 md:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
+                          <div className="min-w-0">
+                            <p className="break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">{artifact.artifactId}</p>
+                            <p className="mt-1 text-base text-[var(--paper-light)] sm:text-sm">{artifact.artifactKind} | {artifact.schemaId}</p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">{artifact.artifactHash}</p>
+                            <p className="mt-1 text-base text-[var(--muted-amber)] sm:text-sm">{artifact.safeSummary}</p>
+                          </div>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <EmptyState>No related evidence events were reported.</EmptyState>
+                    <EmptyState>No output artifacts were reported.</EmptyState>
                   )}
                 </div>
+                <div className="space-y-2">
+                  <SubsectionHeader title="Context packs" />
+                  {selectedRunRecord.handoff.contextPackRefs.length > 0 ? (
+                    <ul role="list" className="divide-y divide-[var(--console-line)] border border-[var(--console-line)] bg-[var(--console-void)]/48">
+                      {selectedRunRecord.handoff.contextPackRefs.map((pack) => (
+                        <li key={`${pack.contextPackId}:${pack.contentHash}`} className="grid gap-1 px-4 py-2">
+                          <p className="break-all font-mono text-base text-[var(--signal-cyan)] sm:text-sm">{pack.contextPackId}</p>
+                          <p className="break-all font-mono text-base text-[var(--muted-amber)] sm:text-sm">{pack.contentHash}</p>
+                          <p className="text-base text-[var(--paper-light)] sm:text-sm">{pack.safeSummary}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <EmptyState>No context pack refs were reported.</EmptyState>
+                  )}
+                </div>
+                <dl className="grid gap-3 md:grid-cols-3">
+                  <InlineStat label="Tool requests" value={listLabel(selectedRunRecord.handoff.toolRequestIds)} />
+                  <InlineStat
+                    label="Approvals"
+                    value={listLabel(selectedRunRecord.handoff.approvalRequirements.map((approval) => approval.approvalClass))}
+                  />
+                  <InlineStat
+                    label="Next safe actions"
+                    value={listLabel(selectedRunRecord.handoff.nextSafeActions.map((action) => action.label))}
+                  />
+                </dl>
               </div>
             </section>
           )}
@@ -440,10 +540,6 @@ function countLabel(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-function contextPackStalenessInputCount(pack: AgentCockpitContextPackDto): number {
-  return (pack.sourceEventIds?.length ?? 0) + (pack.artifactHashes?.length ?? 0);
-}
-
-function contextPackOmissionCount(pack: AgentCockpitContextPackDto): number {
-  return Math.max(pack.provenanceRefs.length - contextPackStalenessInputCount(pack), 0);
+function listLabel(values: readonly string[]): string {
+  return values.length === 0 ? "none" : values.join(", ");
 }

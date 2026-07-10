@@ -32,7 +32,7 @@ Verification:
 Stop conditions:
 
 - The composer needs raw provider bytes, raw prompt text, secret-bearing diagnostics, or direct domain-service execution.
-- Start controls bypass callback-only UI boundaries or attempt forbidden provider transfer, PRR send, export, repair, lock clearing, accepted graph, scheduler wake, import, or staging actions.
+- Any generic run-start controls appear, or controls attempt forbidden provider transfer, PRR send, export, repair, lock clearing, accepted graph, scheduler wake, import, or staging actions.
 - Any change would weaken append-only ledger semantics, provenance requirements, projection rebuildability, or approval-gated runtime safety.
 
 Implementation log:
@@ -48,3 +48,6 @@ Implementation log:
 - Inline review RED: `npm test -- packages/ui/test/agent-task-composer.test.tsx packages/ui/test/agent-cockpit-adapter.test.ts packages/local-runtime/test/agent-http-routes.test.ts` failed because the composer/adapter dropped `description` and the runtime route rejected it.
 - Inline review GREEN: `npm test -- packages/ui/test/agent-task-composer.test.tsx packages/ui/test/agent-cockpit-adapter.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/ui/test/agent-workspace.test.tsx packages/ui/test/agent-adapter.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/agent/test/cockpit.test.ts` passed with 7 test files and 53 tests.
 - Inline review full verification: `npm run verify` passed with `typecheck passed`, `Test Files  147 passed | 1 skipped (148)`, `Tests  1400 passed | 1 skipped (1401)`, `tests passed`, Vite production build success, and `factory-readiness passed`.
+- Post-`neo` correction: the composer is queue-only and now renders only persisted task fields (`title`, optional `description`, `priority`, generated `taskId`). Editable specialist/run type and scope controls were removed because the task route does not persist those values; specialist readiness remains in the separate read-only run cockpit.
+- Post-`neo` targeted evidence: `npm test -- packages/ui/test/agent-task-composer.test.tsx packages/ui/test/agent-app-integration.test.tsx` passed with 2 test files and 18 tests.
+- Final independent-review correction: after a successful queue operation the proposed generated `taskId` rotates, so repeated same-title queue submissions do not reuse the same local task ID. The submitted payload still contains only the persisted task fields shown by the form.

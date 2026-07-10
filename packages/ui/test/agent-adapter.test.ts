@@ -138,12 +138,22 @@ describe("agent UI adapter", () => {
           memoryId: "mem_provider_secret",
           residentAgentId: "agent_default",
           scope: "provider",
+          memoryKind: "provider-note",
           summary: "Do not remember sk-live-memory, sk_live_memory, ghp_memory, OPENAI_API_KEY, DATABASE_PASSWORD, or GOOGLE_APPLICATION_CREDENTIALS.",
+          recordedBy: "actor_cestus_agent",
+          recordedByKind: "agent",
           sourceEventIds: ["evt_memory_secret"],
           artifactHashes: [],
           confidence: 0.8,
           createdAt: "2026-07-07T21:02:00.000Z",
           state: "active",
+          memoryHistoryEntries: [
+            {
+              eventId: "evt_memory_recorded",
+              eventType: "agent.memory.recorded",
+              occurredAt: "2026-07-07T21:02:00.000Z"
+            }
+          ],
           eventIds: ["evt_memory_recorded"],
           causationIds: []
         }
@@ -189,7 +199,7 @@ describe("agent UI adapter", () => {
   });
 
   it("accepts future approval identifiers in status tool requests", () => {
-    const futureApprovalStatus: AgentStatusDto = {
+    const futureApprovalStatus = {
       ...agentStatus(),
       toolRequests: [
         {
@@ -254,7 +264,6 @@ describe("agent UI adapter", () => {
     const adapter = createStaticAgentAdapter(agentStatus());
     const loadCockpit = requireStaticMethod(adapter, "loadCockpit");
     const createTask = requireStaticMethod(adapter, "createTask");
-    const startRun = requireStaticMethod(adapter, "startRun");
 
     await expect(loadCockpit()).resolves.toMatchObject({
       schemaVersion: "agent-cockpit.v1"
@@ -267,12 +276,61 @@ describe("agent UI adapter", () => {
       title: "Static adapter task",
       priority: "normal"
     })).rejects.toThrow("Static agent adapter cannot create tasks.");
-    await expect(startRun({
-      runId: "run_static_adapter",
-      taskId: "task_static_adapter",
-      runType: "evidence-triage",
-      scope: { kind: "workspace", refs: ["ws_case_001"] }
-    })).rejects.toThrow("Static agent adapter cannot start runs.");
+    expect((adapter as unknown as Record<string, unknown>).startRun).toBeUndefined();
+  });
+
+  it("loads real-shaped status DTOs with model invocations and executing tool claims", async () => {
+    const payload = agentStatus({
+      runs: [agentRun()],
+      modelInvocations: [agentModelInvocation()],
+      toolRequests: [{
+        ...agentToolRequest(),
+        state: "executing",
+        executionClaimedBy: "agent_scheduler_resumer",
+        executionClaimedAt: "2026-07-07T21:02:30.000Z",
+        executionLeaseExpiresAt: "2026-07-07T21:07:30.000Z",
+        executionApprovedPreviewHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        executionClaimEventId: "evt_tool_execution_claimed",
+        failedAt: undefined,
+        failureCategory: undefined,
+        failureMessage: undefined,
+        retryable: undefined
+      }]
+    });
+    const fetcher = vi.fn(async () =>
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      })
+    );
+    const adapter = createHttpAgentAdapter({ fetcher });
+
+    const loaded = await adapter.loadStatus();
+    const parsed = agentStatusFromJson(payload);
+
+    expect(loaded.schemaVersion).toBe("agent-status.v1");
+    expect(loaded.diagnostics).toEqual([]);
+    expect(loaded.modelInvocations?.[0]).toMatchObject({
+      invocationId: "inv_provider_review",
+      runId: "run_provider_review",
+      contextPackRefs: [expect.objectContaining({
+        contextPackId: "task-run-history.v1",
+        stalenessInputs: [expect.objectContaining({ kind: "projection" })]
+      })],
+      omissions: [expect.objectContaining({
+        reason: "context-budget",
+        sourceRef: "evidence:large-attachment"
+      })]
+    });
+    expect(loaded.toolRequests[0]).toMatchObject({
+      state: "executing",
+      executionClaimedBy: "agent_scheduler_resumer",
+      executionClaimedAt: "2026-07-07T21:02:30.000Z",
+      executionLeaseExpiresAt: "2026-07-07T21:07:30.000Z",
+      executionApprovedPreviewHash: "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      executionClaimEventId: "evt_tool_execution_claimed"
+    });
+    expect(parsed.modelInvocations?.[0]?.omissions).toHaveLength(1);
   });
 });
 
@@ -330,7 +388,7 @@ function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
   };
 }
 
-function agentRun() {
+function agentRun(): AgentStatusDto["runs"][number] {
   return {
     runId: "run_provider_review",
     residentAgentId: "agent_default",
@@ -386,5 +444,61 @@ function agentToolRequest(): AgentStatusDto["toolRequests"][number] {
     allowedActions: [],
     eventIds: ["evt_tool_failed"],
     causationIds: ["evt_tool_requested"]
+  };
+}
+
+function agentModelInvocation(): NonNullable<AgentStatusDto["modelInvocations"]>[number] {
+  return {
+    invocationId: "inv_provider_review",
+    runId: "run_provider_review",
+    providerId: "provider_fake_local",
+    modelFamily: "fake-local",
+    inputArtifactHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    safetyClass: "workspace-safe",
+    status: "completed",
+    requestedAt: "2026-07-07T21:02:00.000Z",
+    contextPackRefs: [{
+      contextPackId: "task-run-history.v1",
+      version: 1,
+      contentHash: "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      sizeBytes: 128,
+      generatedAt: "2026-07-07T21:01:00.000Z",
+      safeSummary: "Prior task history.",
+      provenanceRefs: ["evt_task_created"],
+      projectionHighWaterMark: 17,
+      sourceEventIds: ["evt_task_created"],
+      artifactHashes: ["sha256:4444444444444444444444444444444444444444444444444444444444444444"],
+      policyVersion: "agent-policy.v1",
+      scope: {
+        kind: "task",
+        id: "task_provider_review"
+      },
+      sizeBudgetBytes: 2048,
+      stalenessInputs: [{
+        kind: "projection",
+        ref: "agent-projection",
+        value: "17"
+      }]
+    }],
+    promptTemplateId: "evidence-triage.summary.v1",
+    promptTemplateVersion: 1,
+    runType: "evidence-triage",
+    safePromptSummary: "Summarize provider review readiness.",
+    omissions: [{
+      reason: "context-budget",
+      sourceRef: "evidence:large-attachment",
+      safeSummary: "Large attachment omitted from prompt artifact."
+    }],
+    transferApprovalClass: "none",
+    providerOutputArtifactHash: "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    completedAt: "2026-07-07T21:02:10.000Z",
+    usage: {
+      inputTokens: 12,
+      outputTokens: 5,
+      totalTokens: 17
+    },
+    allowedActions: [],
+    eventIds: ["evt_model_requested", "evt_model_completed"],
+    causationIds: ["evt_run_started"]
   };
 }

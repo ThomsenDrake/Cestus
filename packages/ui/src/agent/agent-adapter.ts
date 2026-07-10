@@ -1,17 +1,25 @@
 import { z } from "zod";
-import { agentCockpitDtoSchema as canonicalAgentCockpitDtoSchema } from "../../../agent/src/cockpit.js";
+import {
+  agentCockpitDtoSchema as canonicalAgentCockpitDtoSchema,
+  buildAgentCockpit
+} from "../../../agent/src/cockpit.js";
 import { providerReadinessDtoSchema } from "../../../agent/src/provider-readiness.js";
 import type {
   AgentCockpitDto,
   AgentApprovalCockpitDto,
   AgentApprovalDecisionResultDto,
-  AgentRunStartResultDto,
+  AgentMemoryDetailDto,
+  AgentMemoryFiltersDto,
+  AgentMemoryListDto,
+  AgentMemoryMutationResultDto,
   AgentRuntimeDiagnosticDto,
   AgentStatusDto,
   AgentTaskCreateResultDto,
   CreateAgentTaskInput,
   OntologyBootstrapRouteDto,
-  StartAgentRunInput
+  RecordMemoryInput,
+  RetractMemoryInput,
+  SupersedeMemoryInput
 } from "./agent-types.js";
 
 export interface AgentAdapter {
@@ -20,7 +28,11 @@ export interface AgentAdapter {
   loadApprovalCockpit(): Promise<AgentApprovalCockpitDto>;
   loadOntologyBootstrapRoute(runId: string): Promise<OntologyBootstrapRouteDto>;
   createTask(input: CreateAgentTaskInput): Promise<AgentTaskCreateResultDto>;
-  startRun(input: StartAgentRunInput): Promise<AgentRunStartResultDto>;
+  loadMemory(filters?: AgentMemoryFiltersDto): Promise<AgentMemoryListDto>;
+  loadMemoryDetail(memoryId: string): Promise<AgentMemoryDetailDto>;
+  recordMemory(input: RecordMemoryInput): Promise<AgentMemoryMutationResultDto>;
+  supersedeMemory(input: SupersedeMemoryInput): Promise<AgentMemoryMutationResultDto>;
+  retractMemory(input: RetractMemoryInput): Promise<AgentMemoryMutationResultDto>;
   approveToolRequest(input: ApproveToolRequestInput): Promise<AgentApprovalDecisionResultDto>;
   denyToolRequest(input: DenyToolRequestInput): Promise<AgentApprovalDecisionResultDto>;
 }
@@ -47,7 +59,6 @@ export interface StaticAgentAdapterOptions {
   readonly cockpit?: AgentCockpitDto;
   readonly loadOntologyBootstrapRoute?: (runId: string) => Promise<OntologyBootstrapRouteDto>;
   readonly createTask?: (input: CreateAgentTaskInput) => Promise<AgentTaskCreateResultDto>;
-  readonly startRun?: (input: StartAgentRunInput) => Promise<AgentRunStartResultDto>;
   readonly approveToolRequest?: (input: ApproveToolRequestInput) => Promise<AgentApprovalDecisionResultDto>;
   readonly denyToolRequest?: (input: DenyToolRequestInput) => Promise<AgentApprovalDecisionResultDto>;
 }
@@ -189,7 +200,7 @@ const toolRequestSchema = z.object({
   previewHash: z.string().min(1),
   scope: z.string().min(1),
   estimatedEffect: z.string().min(1),
-  state: z.enum(["requested", "approved", "denied", "completed", "failed"]),
+  state: z.enum(["requested", "approved", "executing", "denied", "completed", "failed"]),
   requestedAt: z.string().datetime(),
   sourceEventIds: eventIdsSchema,
   inputArtifactHashes: z.array(z.string().min(1)),
@@ -198,6 +209,11 @@ const toolRequestSchema = z.object({
   approvalClass: extensibleApprovalClassSchema.optional(),
   approvalRationale: z.string().min(1).optional(),
   approvedAt: z.string().datetime().optional(),
+  executionClaimedBy: z.string().min(1).optional(),
+  executionClaimedAt: z.string().datetime().optional(),
+  executionLeaseExpiresAt: z.string().datetime().optional(),
+  executionApprovedPreviewHash: z.string().min(1).optional(),
+  executionClaimEventId: z.string().min(1).optional(),
   deniedBy: z.string().min(1).optional(),
   denialRationale: z.string().min(1).optional(),
   deniedAt: z.string().datetime().optional(),
@@ -219,13 +235,21 @@ const memorySchema = z.object({
   memoryId: z.string().min(1),
   residentAgentId: z.string().min(1),
   scope: z.enum(["workspace", "investigation", "task", "provider", "policy"]),
+  memoryKind: z.enum(["operator-preference", "agent-observation", "policy-caveat", "provider-note"]),
   summary: z.string().min(1),
+  recordedBy: z.string().min(1),
+  recordedByKind: z.enum(["human", "agent", "extractor", "system"]),
   sourceEventIds: eventIdsSchema,
   artifactHashes: z.array(z.string().min(1)),
   confidence: z.number().min(0).max(1),
   createdAt: z.string().datetime(),
   expiresAt: z.string().datetime().optional(),
   state: z.enum(["active", "superseded", "retracted"]),
+  memoryHistoryEntries: z.array(z.object({
+    eventId: z.string().min(1),
+    eventType: z.enum(["agent.memory.recorded", "agent.memory.superseded", "agent.memory.retracted"]),
+    occurredAt: z.string().datetime()
+  }).strict()),
   supersededByMemoryId: z.string().min(1).optional(),
   supersededBy: z.string().min(1).optional(),
   supersededAt: z.string().datetime().optional(),
@@ -287,7 +311,20 @@ const contextPackRefSchema = z.object({
   generatedAt: z.string().datetime(),
   safeSummary: z.string().min(1),
   provenanceRefs: z.array(z.string().min(1)).min(1),
-  projectionHighWaterMark: z.number().int().nonnegative().optional()
+  projectionHighWaterMark: z.number().int().nonnegative().optional(),
+  sourceEventIds: z.array(z.string().min(1)).optional(),
+  artifactHashes: z.array(z.string().min(1)).optional(),
+  policyVersion: z.string().min(1).optional(),
+  scope: z.object({
+    kind: z.string().min(1),
+    id: z.string().min(1)
+  }).strict().optional(),
+  sizeBudgetBytes: z.number().int().positive().optional(),
+  stalenessInputs: z.array(z.object({
+    kind: z.string().min(1),
+    ref: z.string().min(1),
+    value: z.string().min(1)
+  }).strict()).optional()
 }).strict();
 
 const affectedRefSchema = z.object({
@@ -455,6 +492,82 @@ const agentApprovalDecisionResultDtoSchema = z.object({
   approvalCockpit: agentApprovalCockpitDtoSchema
 }).strict();
 
+const agentMemoryTruthBoundarySchema = z.object({
+  authoritativeForOntology: z.literal(false),
+  label: z.literal("working-memory-not-ontology-truth"),
+  graphEffectRequires: z.literal("evidence-backed-proposed-assertion-or-reviewed-reasoning")
+}).strict();
+
+const agentMemoryFiltersDtoSchema = z.object({
+  scope: z.enum(["workspace", "investigation", "task", "provider", "policy", "all"]).optional(),
+  state: z.enum(["active", "superseded", "retracted", "all"]).optional()
+}).strict();
+
+const agentMemoryHistoryEntryDtoSchema = z.object({
+  eventId: z.string().min(1),
+  eventType: z.enum(["agent.memory.recorded", "agent.memory.superseded", "agent.memory.retracted"]),
+  occurredAt: z.string().datetime().optional()
+}).strict();
+
+const agentMemoryListDtoSchema = z.object({
+  schemaVersion: z.literal("agent-memory-list.v1"),
+  generatedAt: z.string().datetime(),
+  filters: agentMemoryFiltersDtoSchema,
+  truthBoundary: agentMemoryTruthBoundarySchema,
+  items: z.array(memorySchema)
+}).strict();
+
+const agentMemoryDetailDtoSchema = z.object({
+  schemaVersion: z.literal("agent-memory-detail.v1"),
+  generatedAt: z.string().datetime(),
+  truthBoundary: agentMemoryTruthBoundarySchema,
+  memory: memorySchema,
+  history: z.array(agentMemoryHistoryEntryDtoSchema)
+}).strict();
+
+const agentMemoryMutationResultDtoSchema = z.object({
+  ok: z.literal(true),
+  memoryId: z.string().min(1),
+  eventIds: z.array(z.string().min(1))
+}).strict();
+
+const modelInvocationSchema = z.object({
+  invocationId: z.string().min(1),
+  runId: z.string().min(1),
+  providerId: z.string().min(1),
+  modelFamily: z.string().min(1),
+  inputArtifactHash: z.string().min(1),
+  safetyClass: z.enum(["workspace-safe", "public-safe", "sensitive-local-only", "provider-approved"]),
+  status: z.enum(["requested", "completed", "failed"]),
+  requestedAt: z.string().datetime(),
+  credentialRefId: z.string().min(1).optional(),
+  credentialKind: z.string().min(1).optional(),
+  contextPackRefs: z.array(contextPackRefSchema),
+  promptTemplateId: z.string().min(1).optional(),
+  promptTemplateVersion: z.number().int().positive().optional(),
+  runType: runSchema.shape.runType.optional(),
+  safePromptSummary: z.string().min(1).optional(),
+  omissions: z.array(z.object({
+    reason: z.string().min(1),
+    sourceRef: z.string().min(1),
+    safeSummary: z.string().min(1)
+  }).strict()),
+  transferApprovalClass: z.enum(["none", "provider-byte-transfer"]).optional(),
+  providerOutputArtifactHash: z.string().min(1).optional(),
+  completedAt: z.string().datetime().optional(),
+  usage: z.object({
+    inputTokens: z.number().int().nonnegative().optional(),
+    outputTokens: z.number().int().nonnegative().optional(),
+    totalTokens: z.number().int().nonnegative().optional()
+  }).strict().optional(),
+  failureCategory: agentFailureCategorySchema.optional(),
+  failureMessage: z.string().min(1).optional(),
+  retryable: z.boolean().optional(),
+  allowedActions: z.array(z.string().min(1)),
+  eventIds: eventIdsSchema,
+  causationIds: eventIdsSchema
+}).strict();
+
 const agentStatusDtoSchema = z.object({
   schemaVersion: z.literal("agent-status.v1"),
   generatedAt: z.string().datetime(),
@@ -462,6 +575,7 @@ const agentStatusDtoSchema = z.object({
   identity: identitySchema.optional(),
   tasks: z.array(taskSchema),
   runs: z.array(runSchema),
+  modelInvocations: z.array(modelInvocationSchema).optional(),
   toolRequests: z.array(toolRequestSchema),
   activeMemory: z.array(memorySchema),
   permissions: z.array(permissionSchema),
@@ -522,7 +636,7 @@ const agentCockpitNeedDtoSchema = z.object({
     "approval",
     "lock",
     "retry",
-    "run-start",
+    "queued-task",
     "handoff",
     "provider-readiness",
     "quiet"
@@ -565,6 +679,8 @@ const agentCockpitContextPackDtoSchema = z.object({
   safeSummary: z.string().min(1),
   generatedAt: z.string().datetime(),
   provenanceRefs: z.array(z.string().min(1)).min(1),
+  omissionCount: z.number().int().nonnegative(),
+  stalenessInputCount: z.number().int().nonnegative(),
   sourceEventIds: z.array(z.string().min(1)).optional(),
   artifactHashes: z.array(contentHashSchema).optional()
 }).strict();
@@ -630,13 +746,6 @@ const agentCockpitDtoSchema = z.object({
 const agentTaskCreateResultDtoSchema = z.object({
   ok: z.literal(true),
   taskId: z.string().min(1),
-  eventIds: eventIdsSchema
-}).strict();
-
-const agentRunStartResultDtoSchema = z.object({
-  ok: z.literal(true),
-  schemaVersion: z.literal("agent-run-start-result.v1"),
-  runId: z.string().min(1),
   eventIds: eventIdsSchema
 }).strict();
 
@@ -710,6 +819,72 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
       return readRouteDto(response, "Agent ontology bootstrap route", ontologyBootstrapRouteDtoFromJson);
     },
 
+    async loadMemory(filters: AgentMemoryFiltersDto = {}) {
+      const params = new URLSearchParams();
+      if (filters.scope !== undefined) {
+        params.set("scope", filters.scope);
+      }
+      if (filters.state !== undefined) {
+        params.set("state", filters.state);
+      }
+      const suffix = params.toString();
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/memory${suffix.length === 0 ? "" : `?${suffix}`}`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken })
+      });
+      return agentMemoryListFromJson(await readRouteJson(response, "Agent memory"));
+    },
+
+    async loadMemoryDetail(memoryId: string) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/memory/${encodeURIComponent(memoryId)}`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken })
+      });
+      return agentMemoryDetailFromJson(await readRouteJson(response, "Agent memory detail"));
+    },
+
+    async recordMemory(input: RecordMemoryInput) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/memory`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: memoryRecordBody(input)
+      });
+      return agentMemoryMutationResultFromJson(await readRouteJson(response, "Agent memory mutation"));
+    },
+
+    async supersedeMemory(input: SupersedeMemoryInput) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/memory/${encodeURIComponent(input.memoryId)}/supersede`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: memorySupersedeBody(input)
+      });
+      return agentMemoryMutationResultFromJson(await readRouteJson(response, "Agent memory mutation"));
+    },
+
+    async retractMemory(input: RetractMemoryInput) {
+      const response = await fetchAgentRoute({
+        path: `${baseUrl}/api/agent/memory/${encodeURIComponent(input.memoryId)}/retract`,
+        credentials,
+        fetcher,
+        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
+        method: "POST",
+        body: {
+          rationale: input.rationale
+        }
+      });
+      return agentMemoryMutationResultFromJson(await readRouteJson(response, "Agent memory mutation"));
+    },
+
     async createTask(input: CreateAgentTaskInput) {
       const response = await fetchAgentRoute({
         path: `${baseUrl}/api/agent/tasks`,
@@ -725,25 +900,6 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
         }
       });
       return readRouteDto(response, "Agent task creation", agentTaskCreateResultFromJson);
-    },
-
-    async startRun(input: StartAgentRunInput) {
-      const response = await fetchAgentRoute({
-        path: `${baseUrl}/api/agent/runs`,
-        credentials,
-        fetcher,
-        ...(options.authToken === undefined ? {} : { authToken: options.authToken }),
-        method: "POST",
-        body: {
-          runId: input.runId,
-          taskId: input.taskId,
-          runType: input.runType,
-          scope: input.scope,
-          ...(input.sourceEventIds === undefined ? {} : { sourceEventIds: input.sourceEventIds }),
-          ...(input.inputArtifactHashes === undefined ? {} : { inputArtifactHashes: input.inputArtifactHashes })
-        }
-      });
-      return readRouteDto(response, "Agent run start", agentRunStartResultFromJson);
     },
 
     async approveToolRequest(input: ApproveToolRequestInput) {
@@ -779,18 +935,47 @@ export function createHttpAgentAdapter(options: HttpAgentAdapterOptions = {}): A
 
 export const httpAgentAdapter = createHttpAgentAdapter();
 
+function isMemoryListDto(value: AgentMemoryListDto | StaticAgentAdapterOptions | undefined): value is AgentMemoryListDto {
+  return typeof value === "object" &&
+    value !== null &&
+    (value as { readonly schemaVersion?: unknown }).schemaVersion === "agent-memory-list.v1";
+}
+
+function isStaticAgentAdapterOptions(
+  value: AgentMemoryListDto | readonly AgentMemoryDetailDto[] | StaticAgentAdapterOptions | undefined
+): value is StaticAgentAdapterOptions {
+  return typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    (value as { readonly schemaVersion?: unknown }).schemaVersion === undefined;
+}
+
 export function createStaticAgentAdapter(
-  dto: AgentStatusDto,
+  dto?: AgentStatusDto,
   approvalCockpit?: AgentApprovalCockpitDto,
-  options: StaticAgentAdapterOptions = {}
+  third?: AgentMemoryListDto | StaticAgentAdapterOptions,
+  fourth: readonly AgentMemoryDetailDto[] | StaticAgentAdapterOptions = [],
+  fifth: StaticAgentAdapterOptions = {}
 ): AgentAdapter {
-  const stored = agentStatusFromJson(dto);
+  const stored = agentStatusFromJson(dto ?? runtimeUnavailableAgentStatus());
   const storedApprovalCockpit = agentApprovalCockpitFromJson(
     approvalCockpit ?? emptyApprovalCockpit(stored.generatedAt)
   );
+  const memoryList = isMemoryListDto(third) ? third : undefined;
+  const memoryDetails = Array.isArray(fourth) ? fourth : [];
+  const options: StaticAgentAdapterOptions = isMemoryListDto(third)
+    ? (isStaticAgentAdapterOptions(fourth) ? fourth : fifth)
+    : (isStaticAgentAdapterOptions(third) ? third : {});
   const storedCockpit = options.cockpit === undefined
     ? buildStaticCockpit(stored, storedApprovalCockpit)
     : agentCockpitFromJson(options.cockpit);
+  const storedMemoryList = agentMemoryListFromJson(memoryList ?? emptyMemoryList(stored.generatedAt));
+  const storedMemoryDetails = new Map(
+    memoryDetails.map((detail) => {
+      const parsed = agentMemoryDetailFromJson(detail);
+      return [parsed.memory.memoryId, parsed] as const;
+    })
+  );
 
   return Object.freeze({
     async loadStatus() {
@@ -819,11 +1004,40 @@ export function createStaticAgentAdapter(
       throw new Error("Static agent adapter cannot create tasks.");
     },
 
-    async startRun(input: StartAgentRunInput) {
-      if (options.startRun !== undefined) {
-        return deepFreeze(deepClone(await options.startRun(input)));
+    async loadMemory(filters: AgentMemoryFiltersDto = {}) {
+      return deepFreeze(deepClone(filterMemoryList(storedMemoryList, filters)));
+    },
+
+    async loadMemoryDetail(memoryId: string) {
+      const storedDetail = storedMemoryDetails.get(memoryId);
+      if (storedDetail !== undefined) {
+        return deepFreeze(deepClone(storedDetail));
       }
-      throw new Error("Static agent adapter cannot start runs.");
+
+      const memory = storedMemoryList.items.find((item) => item.memoryId === memoryId);
+      if (memory === undefined) {
+        throw new Error("Memory not found.");
+      }
+
+      return deepFreeze(deepClone({
+        schemaVersion: "agent-memory-detail.v1",
+        generatedAt: storedMemoryList.generatedAt,
+        truthBoundary: storedMemoryList.truthBoundary,
+        memory,
+        history: memory.memoryHistoryEntries
+      } satisfies AgentMemoryDetailDto));
+    },
+
+    async recordMemory() {
+      throw new Error("Static agent adapter cannot record memory.");
+    },
+
+    async supersedeMemory() {
+      throw new Error("Static agent adapter cannot supersede memory.");
+    },
+
+    async retractMemory() {
+      throw new Error("Static agent adapter cannot retract memory.");
     },
 
     async approveToolRequest(input: ApproveToolRequestInput) {
@@ -862,15 +1076,23 @@ export function agentTaskCreateResultFromJson(value: unknown): AgentTaskCreateRe
   );
 }
 
-export function agentRunStartResultFromJson(value: unknown): AgentRunStartResultDto {
-  return deepFreeze(
-    agentRunStartResultDtoSchema.parse(safeAgentValue(value)) as AgentRunStartResultDto
-  );
-}
-
 export function agentApprovalDecisionResultFromJson(value: unknown): AgentApprovalDecisionResultDto {
   return deepFreeze(
     agentApprovalDecisionResultDtoSchema.parse(safeAgentValue(value)) as AgentApprovalDecisionResultDto
+  );
+}
+
+export function agentMemoryListFromJson(value: unknown): AgentMemoryListDto {
+  return deepFreeze(agentMemoryListDtoSchema.parse(safeAgentValue(value)) as AgentMemoryListDto);
+}
+
+export function agentMemoryDetailFromJson(value: unknown): AgentMemoryDetailDto {
+  return deepFreeze(agentMemoryDetailDtoSchema.parse(safeAgentValue(value)) as AgentMemoryDetailDto);
+}
+
+export function agentMemoryMutationResultFromJson(value: unknown): AgentMemoryMutationResultDto {
+  return deepFreeze(
+    agentMemoryMutationResultDtoSchema.parse(safeAgentValue(value)) as AgentMemoryMutationResultDto
   );
 }
 
@@ -1076,55 +1298,11 @@ function buildStaticCockpit(
   status: AgentStatusDto,
   approvalCockpit: AgentApprovalCockpitDto
 ): AgentCockpitDto {
-  const activeTaskCount = status.tasks.filter((task) => !["completed", "failed", "canceled"].includes(task.status)).length;
-  const activeRunCount = status.runs.filter((run) => run.state === "running").length;
-
   try {
-    return agentCockpitFromJson({
-      schemaVersion: "agent-cockpit.v1",
-      generatedAt: safeGeneratedAt(status.generatedAt),
-      summary: {
-        activeTaskCount,
-        activeRunCount,
-        pendingApprovalCount: Math.max(status.pendingApprovalCount, approvalCockpit.summary.pendingCount),
-        activeLockCount: status.activeLockCount,
-        mergeAfterScheduler: false
-      },
-      taskQueue: status.tasks.map((task) => ({
-        taskId: task.taskId,
-        title: task.title,
-        priority: task.priority,
-        status: task.status,
-        createdAt: task.createdAt,
-        ...(task.runId === undefined ? {} : { runId: task.runId }),
-        ...(task.statusReason === undefined ? {} : { statusReason: task.statusReason })
-      })),
-      runQueue: status.runs.map((run) => ({
-        runId: run.runId,
-        ...(run.taskId === undefined ? {} : { taskId: run.taskId }),
-        runType: run.runType,
-        state: run.state,
-        startedAt: run.startedAt,
-        ...(run.summary === undefined ? {} : { summary: run.summary }),
-        currentStepCount: run.stepIds.length,
-        modelInvocationCount: run.invocationIds.length,
-        pendingApprovalCount: run.toolRequestIds.length,
-        blockedReasonCount: run.failureMessage === undefined ? 0 : 1
-      })),
-      needsNext: [],
-      memorySnippets: status.activeMemory
-        .filter((memory) => memory.state === "active")
-        .map((memory) => ({
-          memoryId: memory.memoryId,
-          scope: memory.scope,
-          summary: memory.summary,
-          createdAt: memory.createdAt,
-          sourceEventIds: [...memory.sourceEventIds],
-          artifactHashes: [...memory.artifactHashes],
-          confidence: memory.confidence
-        })),
-      forbiddenDirectEffects: canonicalForbiddenDirectEffects,
-      ...(status.providerReadiness === undefined ? {} : { providerReadiness: status.providerReadiness })
+    return buildAgentCockpit({
+      status,
+      approvalCockpit,
+      mergeAfterScheduler: false
     });
   } catch {
     return emptyStaticCockpit(status.generatedAt);
@@ -1158,8 +1336,67 @@ function emptyStaticCockpit(generatedAt: string): AgentCockpitDto {
     runQueue: [],
     needsNext: [],
     memorySnippets: [],
+    specialists: buildAgentCockpit({
+      status: runtimeUnavailableAgentStatus({ generatedAt }),
+      mergeAfterScheduler: false
+    }).specialists,
     forbiddenDirectEffects: canonicalForbiddenDirectEffects
   });
+}
+
+function emptyMemoryList(generatedAt: string): AgentMemoryListDto {
+  return agentMemoryListFromJson({
+    schemaVersion: "agent-memory-list.v1",
+    generatedAt: safeGeneratedAt(generatedAt),
+    filters: {
+      scope: "all",
+      state: "active"
+    },
+    truthBoundary: {
+      authoritativeForOntology: false,
+      label: "working-memory-not-ontology-truth",
+      graphEffectRequires: "evidence-backed-proposed-assertion-or-reviewed-reasoning"
+    },
+    items: []
+  });
+}
+
+function filterMemoryList(
+  memoryList: AgentMemoryListDto,
+  filters: AgentMemoryFiltersDto
+): AgentMemoryListDto {
+  const scope = filters.scope ?? memoryList.filters.scope ?? "all";
+  const state = filters.state ?? memoryList.filters.state ?? "active";
+  return agentMemoryListFromJson({
+    ...memoryList,
+    filters: { scope, state },
+    items: memoryList.items.filter((item) => {
+      const scopeMatch = scope === "all" || item.scope === scope;
+      const stateMatch = state === "all" || item.state === state;
+      return scopeMatch && stateMatch;
+    })
+  });
+}
+
+function memoryRecordBody(input: RecordMemoryInput): Record<string, unknown> {
+  return {
+    memoryId: input.memoryId,
+    scope: input.scope,
+    ...(input.memoryKind === undefined ? {} : { memoryKind: input.memoryKind }),
+    summary: input.summary,
+    ...(input.sourceEventIds === undefined ? {} : { sourceEventIds: [...input.sourceEventIds] }),
+    ...(input.artifactHashes === undefined ? {} : { artifactHashes: [...input.artifactHashes] }),
+    confidence: input.confidence,
+    ...(input.expiresAt === undefined ? {} : { expiresAt: input.expiresAt })
+  };
+}
+
+function memorySupersedeBody(input: SupersedeMemoryInput): Record<string, unknown> {
+  return {
+    ...memoryRecordBody(input),
+    supersededByMemoryId: input.supersededByMemoryId,
+    rationale: input.rationale
+  };
 }
 
 function safeAgentValue(value: unknown): unknown {

@@ -12,10 +12,12 @@ import {
 import type {
   AgentApprovalCockpitDto,
   AgentCockpitDto,
+  AgentMemoryDetailDto,
+  AgentMemoryFiltersDto,
+  AgentMemoryListDto,
   AgentStatusDto,
   OntologyBootstrapRouteDto,
-  CreateAgentTaskInput,
-  StartAgentRunInput
+  CreateAgentTaskInput
 } from "./agent/agent-types.js";
 import { IngestionWorkspace } from "./ingestion/IngestionWorkspace.js";
 import {
@@ -106,10 +108,18 @@ export function App({
   const [agentStatus, setAgentStatus] = useState<AgentStatusDto | undefined>();
   const [agentCockpit, setAgentCockpit] = useState<AgentCockpitDto | undefined>();
   const [agentApprovalCockpit, setAgentApprovalCockpit] = useState<AgentApprovalCockpitDto | undefined>();
+  const [agentMemoryList, setAgentMemoryList] = useState<AgentMemoryListDto | undefined>();
+  const [agentMemoryDetail, setAgentMemoryDetail] = useState<AgentMemoryDetailDto | undefined>();
+  const [agentMemoryFilters, setAgentMemoryFilters] = useState<AgentMemoryFiltersDto>({
+    scope: "all",
+    state: "all"
+  });
+  const [selectedAgentMemoryId, setSelectedAgentMemoryId] = useState<string | undefined>();
   const [agentApprovalDecisionState, setAgentApprovalDecisionState] = useState<"idle" | "submitting" | "error">("idle");
   const [agentApprovalDiagnostic, setAgentApprovalDiagnostic] = useState<string | undefined>();
   const [agentOntologyBootstrapRoutes, setAgentOntologyBootstrapRoutes] = useState<readonly OntologyBootstrapRouteDto[]>([]);
-  const [loadedAgentAdapter, setLoadedAgentAdapter] = useState<AgentAdapter | undefined>();
+  const [, setLoadedAgentAdapter] = useState<AgentAdapter | undefined>();
+  const [agentMemoryDiagnostic, setAgentMemoryDiagnostic] = useState<string | undefined>();
   const [agentLoadState, setAgentLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [agentLoadError, setAgentLoadError] = useState<string | undefined>();
   const [agentReloadKey, setAgentReloadKey] = useState(0);
@@ -285,22 +295,19 @@ export function App({
       return;
     }
 
-    if (
-      agentStatus !== undefined &&
-      agentCockpit !== undefined &&
-      agentApprovalCockpit !== undefined &&
-      loadedAgentAdapter === agentAdapter
-    ) {
-      return;
-    }
-
     let canceled = false;
     setAgentLoadState("loading");
     setAgentLoadError(undefined);
     setAgentApprovalDiagnostic(undefined);
+    setAgentMemoryDiagnostic(undefined);
 
-    Promise.all([agentAdapter.loadStatus(), agentAdapter.loadCockpit(), agentAdapter.loadApprovalCockpit()])
-      .then(([status, cockpit, approvalCockpit]) => {
+    Promise.all([
+      agentAdapter.loadStatus(),
+      agentAdapter.loadCockpit(),
+      agentAdapter.loadApprovalCockpit(),
+      agentAdapter.loadMemory(agentMemoryFilters)
+    ])
+      .then(([status, cockpit, approvalCockpit, memory]) => {
         if (canceled) {
           return;
         }
@@ -308,6 +315,8 @@ export function App({
         setAgentStatus(status);
         setAgentCockpit(cockpit);
         setAgentApprovalCockpit(approvalCockpit);
+        setAgentMemoryList(memory);
+        setSelectedAgentMemoryId((current) => selectVisibleMemoryId(memory, current));
         setLoadedAgentAdapter(agentAdapter);
         setAgentLoadState("loaded");
 
@@ -327,6 +336,9 @@ export function App({
         setAgentApprovalCockpit(undefined);
         setAgentOntologyBootstrapRoutes([]);
         setLoadedAgentAdapter(undefined);
+        setAgentMemoryList(undefined);
+        setAgentMemoryDetail(undefined);
+        setSelectedAgentMemoryId(undefined);
         setAgentLoadState("error");
         setAgentLoadError("Agent workspace could not be loaded.");
       });
@@ -334,7 +346,41 @@ export function App({
     return () => {
       canceled = true;
     };
-  }, [agentActive, agentAdapter, agentApprovalCockpit, agentCockpit, agentReloadKey, agentStatus, loadedAgentAdapter]);
+  }, [agentActive, agentAdapter, agentMemoryFilters, agentReloadKey]);
+
+  useEffect(() => {
+    if (!agentActive || agentMemoryList === undefined) {
+      return;
+    }
+
+    const memoryId = selectedAgentMemoryId ?? agentMemoryList.items[0]?.memoryId;
+    if (memoryId === undefined) {
+      setAgentMemoryDetail(undefined);
+      return;
+    }
+
+    let canceled = false;
+    agentAdapter
+      .loadMemoryDetail(memoryId)
+      .then((detail) => {
+        if (canceled) {
+          return;
+        }
+
+        setAgentMemoryDetail(detail);
+      })
+      .catch(() => {
+        if (canceled) {
+          return;
+        }
+
+        setAgentMemoryDetail(undefined);
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [agentActive, agentAdapter, agentMemoryList, selectedAgentMemoryId]);
 
   const commandMain = (
     <div className="space-y-6">
@@ -403,15 +449,24 @@ export function App({
   const agentMain = (
     <AgentWorkspace
       cockpit={agentCockpit}
-      status={statusWithAgentApprovalDiagnostic(agentStatus, agentApprovalDiagnostic)}
+      status={statusWithAgentDiagnostics(agentStatus, [
+        agentApprovalDiagnostic,
+        agentMemoryDiagnostic
+      ])}
       approvalCockpit={agentApprovalCockpit}
+      memoryList={agentMemoryList}
+      memoryDetail={agentMemoryDetail}
       decisionState={agentApprovalDecisionState}
       ontologyBootstrapRoutes={agentOntologyBootstrapRoutes}
       loadState={agentLoadState}
       loadError={agentLoadError}
       onRefresh={handleRefreshAgentStatus}
       onCreateTask={handleCreateAgentTask}
-      onStartRun={handleStartAgentRun}
+      onMemoryFilterChange={setAgentMemoryFilters}
+      onSelectMemory={setSelectedAgentMemoryId}
+      onRecordMemory={handleRecordMemory}
+      onSupersedeMemory={handleSupersedeMemory}
+      onRetractMemory={handleRetractMemory}
       onApproveToolRequest={handleApproveToolRequest}
       onDenyToolRequest={handleDenyToolRequest}
     />
@@ -453,9 +508,12 @@ export function App({
     setAgentCockpit(undefined);
     setAgentApprovalCockpit(undefined);
     setAgentOntologyBootstrapRoutes([]);
+    setAgentMemoryList(undefined);
+    setAgentMemoryDetail(undefined);
+    setSelectedAgentMemoryId(undefined);
     setAgentApprovalDecisionState("idle");
     setAgentApprovalDiagnostic(undefined);
-    setLoadedAgentAdapter(undefined);
+    setAgentMemoryDiagnostic(undefined);
     setAgentLoadState("idle");
     setAgentLoadError(undefined);
     setAgentReloadKey((current) => current + 1);
@@ -476,21 +534,6 @@ export function App({
     }
   }
 
-  async function handleStartAgentRun(input: StartAgentRunInput) {
-    setAgentApprovalDiagnostic(undefined);
-
-    try {
-      const result = await agentAdapter.startRun(input);
-      await refreshAgentStateAfterMutation();
-      return result;
-    } catch (error: unknown) {
-      setAgentApprovalDiagnostic(
-        safeAgentText(error instanceof Error ? error.message : "Agent run start could not be completed safely.")
-      );
-      throw error;
-    }
-  }
-
   function handleApproveToolRequest(input: {
     readonly toolRequestId: string;
     readonly approvedPreviewHash: string;
@@ -504,6 +547,18 @@ export function App({
     readonly rationale: string;
   }) {
     void runAgentApprovalDecision(() => agentAdapter.denyToolRequest(input));
+  }
+
+  function handleRecordMemory(input: Parameters<AgentAdapter["recordMemory"]>[0]) {
+    void runAgentMemoryMutation(() => agentAdapter.recordMemory(input));
+  }
+
+  function handleSupersedeMemory(input: Parameters<AgentAdapter["supersedeMemory"]>[0]) {
+    void runAgentMemoryMutation(() => agentAdapter.supersedeMemory(input));
+  }
+
+  function handleRetractMemory(input: Parameters<AgentAdapter["retractMemory"]>[0]) {
+    void runAgentMemoryMutation(() => agentAdapter.retractMemory(input));
   }
 
   function handleNewRequest() {
@@ -579,16 +634,25 @@ export function App({
       });
   }
 
-  async function refreshAgentStateAfterMutation() {
-    await refreshAgentState({
-      agentAdapter,
-      setAgentStatus,
-      setAgentCockpit,
-      setAgentOntologyBootstrapRoutes,
-      setLoadedAgentAdapter,
-      setAgentLoadState,
-      setAgentLoadError
-    });
+  async function refreshAgentStateAfterMutation(preferredMemoryId?: string) {
+    const [status, cockpit, approvalCockpit, memory] = await Promise.all([
+      agentAdapter.loadStatus(),
+      agentAdapter.loadCockpit(),
+      agentAdapter.loadApprovalCockpit(),
+      agentAdapter.loadMemory(agentMemoryFilters)
+    ]);
+    setAgentStatus(status);
+    setAgentCockpit(cockpit);
+    setAgentApprovalCockpit(approvalCockpit);
+    setAgentMemoryList(memory);
+    setSelectedAgentMemoryId((current) => selectVisibleMemoryId(memory, preferredMemoryId ?? current));
+    if (memory.items.length === 0) {
+      setAgentMemoryDetail(undefined);
+    }
+    setAgentOntologyBootstrapRoutes(await loadOntologyBootstrapRoutes(agentAdapter, status));
+    setLoadedAgentAdapter(agentAdapter);
+    setAgentLoadState("loaded");
+    setAgentLoadError(undefined);
   }
 
   async function runIngestionAction(action: () => Promise<IngestionActionResult>) {
@@ -721,6 +785,21 @@ export function App({
     }
   }
 
+  async function runAgentMemoryMutation(
+    mutation: () => Promise<{ readonly memoryId: string }>
+  ) {
+    setAgentMemoryDiagnostic(undefined);
+
+    try {
+      const result = await mutation();
+      await refreshAgentStateAfterMutation(result.memoryId);
+    } catch (error: unknown) {
+      setAgentMemoryDiagnostic(
+        safeAgentText(error instanceof Error ? error.message : "Agent memory could not be updated.")
+      );
+    }
+  }
+
   const commandOrRequestsModeLabel = requestsActive ? "Requests" : "Command";
   const modeLabel = agentActive ? "Agent" : ingestionActive ? "Ingestion" : commandOrRequestsModeLabel;
   const searchLabel = requestsActive
@@ -819,27 +898,6 @@ async function loadOntologyBootstrapRoutes(
   return routes.filter((route): route is OntologyBootstrapRouteDto => route !== undefined);
 }
 
-async function refreshAgentState(input: {
-  readonly agentAdapter: AgentAdapter;
-  readonly setAgentStatus: (status: AgentStatusDto) => void;
-  readonly setAgentCockpit: (cockpit: AgentCockpitDto) => void;
-  readonly setAgentOntologyBootstrapRoutes: (routes: readonly OntologyBootstrapRouteDto[]) => void;
-  readonly setLoadedAgentAdapter: (adapter: AgentAdapter) => void;
-  readonly setAgentLoadState: (state: "idle" | "loading" | "loaded" | "error") => void;
-  readonly setAgentLoadError: (message: string | undefined) => void;
-}) {
-  const [status, cockpit] = await Promise.all([
-    input.agentAdapter.loadStatus(),
-    input.agentAdapter.loadCockpit()
-  ]);
-  input.setAgentStatus(status);
-  input.setAgentCockpit(cockpit);
-  input.setAgentOntologyBootstrapRoutes(await loadOntologyBootstrapRoutes(input.agentAdapter, status));
-  input.setLoadedAgentAdapter(input.agentAdapter);
-  input.setAgentLoadState("loaded");
-  input.setAgentLoadError(undefined);
-}
-
 function operatorStatusForCommand(status: OperatorStatusDto): OperatorStatusDto {
   return {
     ...status,
@@ -849,31 +907,44 @@ function operatorStatusForCommand(status: OperatorStatusDto): OperatorStatusDto 
   };
 }
 
-function statusWithAgentApprovalDiagnostic(
+function statusWithAgentDiagnostics(
   status: AgentStatusDto | undefined,
-  diagnosticMessage: string | undefined
+  diagnosticMessages: readonly (string | undefined)[]
 ): AgentStatusDto | undefined {
-  if (diagnosticMessage === undefined) {
+  const messages = diagnosticMessages.filter((message): message is string => message !== undefined);
+  if (messages.length === 0) {
     return status;
   }
 
   if (status === undefined) {
-    return runtimeUnavailableAgentStatus({ message: diagnosticMessage });
+    const [message] = messages;
+    return runtimeUnavailableAgentStatus(message === undefined ? {} : { message });
   }
 
   return {
     ...status,
     diagnostics: [
       ...status.diagnostics,
-      {
-        diagnosticId: "diag_agent_approval_decision",
-        severity: "error",
-        category: "agent",
-        message: diagnosticMessage,
+      ...messages.map((message, index) => ({
+        diagnosticId: `diag_agent_workspace_${index + 1}`,
+        severity: "error" as const,
+        category: "agent" as const,
+        message,
         allowedRepairActions: ["refresh agent status"]
-      }
+      }))
     ]
   };
+}
+
+function selectVisibleMemoryId(
+  memoryList: AgentMemoryListDto,
+  preferredMemoryId: string | undefined
+): string | undefined {
+  if (preferredMemoryId !== undefined && memoryList.items.some((item) => item.memoryId === preferredMemoryId)) {
+    return preferredMemoryId;
+  }
+
+  return memoryList.items[0]?.memoryId;
 }
 
 function renderRequestsMain({

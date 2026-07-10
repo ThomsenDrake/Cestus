@@ -38,6 +38,17 @@ interface MarkRequestSentInput {
   rawMetadata: Record<string, string>;
 }
 
+interface MarkFollowUpSentInput {
+  prrRequestId: string;
+  correspondenceId: string;
+  provider: CorrespondenceProvider;
+  providerMessageId: string;
+  subject: string;
+  bodyHash: string;
+  sentAt: string;
+  approvedBy: string;
+}
+
 export class PrrLifecycleService {
   constructor(private readonly dependencies: PrrLifecycleDependencies) {}
 
@@ -78,6 +89,45 @@ export class PrrLifecycleService {
     };
 
     return this.appendTyped(event, "prr.request.sent", events.length + 1);
+  }
+
+  async markFollowUpSent(input: MarkFollowUpSentInput): Promise<KnowledgeEventOf<"prr.followup.sent">> {
+    const events = await this.dependencies.ledger.readStream(input.prrRequestId);
+    const created = events.find((event) => event.type === "prr.request.created");
+
+    if (created === undefined) {
+      throw new Error(`Cannot send follow-up for ${input.prrRequestId} before it is created`);
+    }
+
+    const initialSent = events.find((event) => event.type === "prr.request.sent");
+    if (initialSent === undefined) {
+      throw new Error(`Cannot send follow-up for ${input.prrRequestId} before the initial request is sent`);
+    }
+
+    if (events.some((event) => event.type === "prr.request.closed")) {
+      throw new Error(`Cannot send follow-up for closed request ${input.prrRequestId}`);
+    }
+
+    const duplicate = events.find(
+      (event) =>
+        (event.type === "prr.request.sent" || event.type === "prr.followup.sent") &&
+        event.payload.correspondenceId === input.correspondenceId
+    );
+    if (duplicate !== undefined) {
+      throw new Error(
+        `Cannot send duplicate correspondence ${input.correspondenceId} for request ${input.prrRequestId}`
+      );
+    }
+
+    const event: AppendableKnowledgeEvent<"prr.followup.sent"> = {
+      type: "prr.followup.sent",
+      version: 1,
+      streamId: input.prrRequestId,
+      context: this.context(created.context.correlationId, initialSent.id),
+      payload: input
+    };
+
+    return this.appendTyped(event, "prr.followup.sent", events.length + 1);
   }
 
   private context(correlationId: string, causationId?: string): AppendableKnowledgeEvent["context"] {

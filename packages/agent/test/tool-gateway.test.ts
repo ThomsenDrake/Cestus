@@ -6,6 +6,7 @@ import { createAgentToolGateway } from "../src/tool-gateway.js";
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 const policyActor = { id: "actor_policy_guard", kind: "system" as const, label: "Policy Guard" };
+const schedulerActor = { id: "actor_agent_scheduler", kind: "system" as const, label: "Agent Scheduler" };
 const fixedNow = () => "2026-07-07T18:30:00.000Z";
 const stalePreviewHash = "sha256:9999999999999999999999999999999999999999999999999999999999999999";
 
@@ -27,6 +28,38 @@ describe("agent tool gateway", () => {
 
     expect(requested.type).toBe("agent.tool.requested");
     expect(requested.payload.requiredApprovalClass).toBe("provider-byte-transfer");
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
+  });
+
+  it("keeps human-review approval aligned with the ontology side-effect matrix", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    await expect(gateway.requestTool({
+      toolRequestId: "toolreq_bad_human_review_matrix",
+      residentAgentId: "agent_default",
+      taskId: "task_review_matrix",
+      runId: "run_review_matrix",
+      toolId: "claim.review.request",
+      sideEffectClass: "ledger-review",
+      preview: { summary: "Request accepted-graph review.", relatedEventIds: ["evt_review_source"] },
+      requiredApprovalClass: "human-review"
+    })).rejects.toThrow(/sideEffectClass risk|requiredApprovalClass/i);
+
+    expect(await ledger.readAll()).toEqual([]);
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_good_human_review_matrix",
+      residentAgentId: "agent_default",
+      taskId: "task_review_matrix",
+      runId: "run_review_matrix",
+      toolId: "governance.classification.propose",
+      sideEffectClass: "ledger-proposal",
+      preview: { summary: "Queue an inert human review.", relatedEventIds: ["evt_review_source"] },
+      requiredApprovalClass: "human-review"
+    });
+
+    expect(requested.payload.requiredApprovalClass).toBe("human-review");
     expect((await ledger.readAll()).map((event) => event.type)).toEqual(["agent.tool.requested"]);
   });
 
@@ -68,6 +101,105 @@ describe("agent tool gateway", () => {
         result: { eventIds: [], artifactHashes: [], readModelChanges: [] }
       })
     ).rejects.toThrow(/stale/i);
+  });
+
+  it("claims approved tool execution with a lease before external effects run", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_execution_claim",
+      residentAgentId: "agent_default",
+      taskId: "task_claim",
+      runId: "run_claim",
+      toolId: "ledger.review.claim",
+      sideEffectClass: "ledger-review",
+      preview: { summary: "Review ledger proposal after claim.", relatedEventIds: ["evt_claim_source"] },
+      requiredApprovalClass: "ledger-review"
+    });
+    await gateway.approveTool({
+      toolRequestId: "toolreq_execution_claim",
+      approvedPreviewHash: requested.payload.previewHash,
+      actor: humanActor,
+      rationale: "Human approved the exact claim preview."
+    });
+
+    const claimed = await claimCapableGateway(gateway).claimExecution({
+      toolRequestId: "toolreq_execution_claim",
+      approvedPreviewHash: requested.payload.previewHash,
+      leaseExpiresAt: "2026-07-07T18:35:00.000Z"
+    });
+
+    expect(claimed.type).toBe("agent.tool.execution.claimed");
+    expect(claimed.payload).toEqual({
+      toolRequestId: "toolreq_execution_claim",
+      claimedBy: agentActor.id,
+      claimedAt: fixedNow(),
+      approvedPreviewHash: requested.payload.previewHash,
+      leaseExpiresAt: "2026-07-07T18:35:00.000Z"
+    });
+    await expect(
+      claimCapableGateway(gateway).claimExecution({
+        toolRequestId: "toolreq_execution_claim",
+        approvedPreviewHash: requested.payload.previewHash,
+        leaseExpiresAt: "2026-07-07T18:36:00.000Z"
+      })
+    ).rejects.toThrow(/claim|lease|execution/i);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved",
+      "agent.tool.execution.claimed"
+    ]);
+  });
+
+  it("allows re-claiming approved execution after the previous lease expires", async () => {
+    const ledger = new InMemoryEventLedger();
+    const firstGateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    const requested = await firstGateway.requestTool({
+      toolRequestId: "toolreq_execution_reclaim",
+      residentAgentId: "agent_default",
+      taskId: "task_claim",
+      runId: "run_claim",
+      toolId: "ledger.review.claim",
+      sideEffectClass: "ledger-review",
+      preview: { summary: "Review ledger proposal after re-claim.", relatedEventIds: ["evt_claim_source"] },
+      requiredApprovalClass: "ledger-review"
+    });
+    await firstGateway.approveTool({
+      toolRequestId: "toolreq_execution_reclaim",
+      approvedPreviewHash: requested.payload.previewHash,
+      actor: humanActor,
+      rationale: "Human approved the exact re-claim preview."
+    });
+    await claimCapableGateway(firstGateway).claimExecution({
+      toolRequestId: "toolreq_execution_reclaim",
+      approvedPreviewHash: requested.payload.previewHash,
+      leaseExpiresAt: "2026-07-07T18:31:00.000Z"
+    });
+
+    const laterGateway = createAgentToolGateway({
+      ledger,
+      actor: agentActor,
+      now: () => "2026-07-07T18:32:00.000Z"
+    });
+    const reclaimed = await claimCapableGateway(laterGateway).claimExecution({
+      toolRequestId: "toolreq_execution_reclaim",
+      approvedPreviewHash: requested.payload.previewHash,
+      leaseExpiresAt: "2026-07-07T18:37:00.000Z"
+    });
+
+    expect(reclaimed.payload).toMatchObject({
+      toolRequestId: "toolreq_execution_reclaim",
+      claimedAt: "2026-07-07T18:32:00.000Z",
+      leaseExpiresAt: "2026-07-07T18:37:00.000Z"
+    });
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved",
+      "agent.tool.execution.claimed",
+      "agent.tool.execution.claimed"
+    ]);
   });
 
   it("rejects duplicate changed-preview requests so old approvals cannot be reused", async () => {
@@ -400,6 +532,119 @@ describe("agent tool gateway", () => {
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toMatch(/approval/i);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved"
+    ]);
+  });
+
+  it("rejects claim execution with directly appended approval by the original request actor", async () => {
+    const ledger = new InMemoryEventLedger();
+    const requestGateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+    const consumingGateway = createAgentToolGateway({ ledger, actor: schedulerActor, now: fixedNow });
+
+    const requested = await requestGateway.requestTool({
+      toolRequestId: "toolreq_direct_request_actor_claim",
+      residentAgentId: "agent_default",
+      taskId: "task_claim",
+      runId: "run_claim",
+      toolId: "ledger.review.claim",
+      sideEffectClass: "ledger-review",
+      preview: { summary: "Review ledger proposal after claim.", relatedEventIds: ["evt_claim_source"] },
+      requiredApprovalClass: "ledger-review"
+    });
+    await ledger.append({
+      type: "agent.tool.approved",
+      version: 1,
+      streamId: "agent_tool_request_toolreq_direct_request_actor_claim",
+      context: {
+        actor: { id: agentActor.id, kind: "human", label: "Spoofed Original Request Actor" },
+        occurredAt: fixedNow(),
+        causationId: requested.id,
+        correlationId: "corr_toolreq_direct_request_actor_claim",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId: "toolreq_direct_request_actor_claim",
+        approvedBy: agentActor.id,
+        approvedPreviewHash: requested.payload.previewHash,
+        approvalClass: requested.payload.requiredApprovalClass,
+        rationale: "Spoofed approval by the original request event actor.",
+        approvedAt: fixedNow()
+      }
+    });
+
+    const error = await captureError(() =>
+      claimCapableGateway(consumingGateway).claimExecution({
+        toolRequestId: "toolreq_direct_request_actor_claim",
+        approvedPreviewHash: requested.payload.previewHash,
+        leaseExpiresAt: "2026-07-07T18:35:00.000Z"
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/approval/i);
+    expect((error as Error).message).not.toContain(agentActor.id);
+    expect((await ledger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved"
+    ]);
+  });
+
+  it("rejects completion with directly appended approval by the original request actor", async () => {
+    const ledger = new InMemoryEventLedger();
+    const requestGateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+    const consumingGateway = createAgentToolGateway({ ledger, actor: schedulerActor, now: fixedNow });
+
+    const requested = await requestGateway.requestTool({
+      toolRequestId: "toolreq_direct_request_actor_complete",
+      residentAgentId: "agent_default",
+      taskId: "task_claim",
+      runId: "run_claim",
+      toolId: "ledger.review.claim",
+      sideEffectClass: "ledger-review",
+      preview: { summary: "Review ledger proposal before completion.", relatedEventIds: ["evt_claim_source"] },
+      requiredApprovalClass: "ledger-review"
+    });
+    await ledger.append({
+      type: "agent.tool.approved",
+      version: 1,
+      streamId: "agent_tool_request_toolreq_direct_request_actor_complete",
+      context: {
+        actor: { id: agentActor.id, kind: "human", label: "Spoofed Original Request Actor" },
+        occurredAt: fixedNow(),
+        causationId: requested.id,
+        correlationId: "corr_toolreq_direct_request_actor_complete",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        toolRequestId: "toolreq_direct_request_actor_complete",
+        approvedBy: agentActor.id,
+        approvedPreviewHash: requested.payload.previewHash,
+        approvalClass: requested.payload.requiredApprovalClass,
+        rationale: "Spoofed approval by the original request event actor.",
+        approvedAt: fixedNow()
+      }
+    });
+
+    const error = await captureError(() =>
+      consumingGateway.completeTool({
+        toolRequestId: "toolreq_direct_request_actor_complete",
+        approvedPreviewHash: requested.payload.previewHash,
+        result: {
+          eventIds: [],
+          artifactHashes: [],
+          readModelChanges: [{ projectionName: "agent-tool-requests", change: "Should not complete." }],
+          resultSummary: "Should not complete."
+        }
+      })
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/approval/i);
+    expect((error as Error).message).not.toContain(agentActor.id);
     expect((await ledger.readAll()).map((event) => event.type)).toEqual([
       "agent.tool.requested",
       "agent.tool.approved"
@@ -799,6 +1044,34 @@ describe("agent tool gateway", () => {
     ).rejects.toThrow(/failed/i);
   });
 
+  it("records extended failure categories for domain execution scaffolding", async () => {
+    const ledger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
+
+    await gateway.requestTool({
+      toolRequestId: "toolreq_domain_stale_source",
+      residentAgentId: "agent_default",
+      taskId: "task_domain",
+      runId: "run_domain",
+      toolId: "provider.bytes.transfer",
+      toolVersion: "0.1.0",
+      sideEffectClass: "external-byte-transfer",
+      preview: { summary: "Resume the approved provider transfer.", relatedEventIds: ["evt_provider_preview"] },
+      requiredApprovalClass: "provider-byte-transfer"
+    });
+
+    const failed = await gateway.failTool({
+      toolRequestId: "toolreq_domain_stale_source",
+      category: "stale-source",
+      message: "Approved source hashes no longer match the current evidence state.",
+      retryable: false,
+      allowedActions: ["request a fresh approval for the current source hashes"]
+    });
+
+    expect(failed.type).toBe("agent.tool.failed");
+    expect(failed.payload.category).toBe("stale-source");
+  });
+
   it("does not let denial or failure overwrite terminal request state", async () => {
     const ledger = new InMemoryEventLedger();
     const gateway = createAgentToolGateway({ ledger, actor: agentActor, now: fixedNow });
@@ -972,6 +1245,27 @@ type AgentPreviewWithSymbol = {
   readonly summary: string;
   readonly [key: symbol]: string;
 };
+
+type ClaimCapableGateway = ReturnType<typeof createAgentToolGateway> & {
+  readonly claimExecution: (command: {
+    readonly toolRequestId: string;
+    readonly approvedPreviewHash: string;
+    readonly leaseExpiresAt: string;
+  }) => Promise<{
+    readonly type: "agent.tool.execution.claimed";
+    readonly payload: {
+      readonly toolRequestId: string;
+      readonly claimedBy: string;
+      readonly claimedAt: string;
+      readonly approvedPreviewHash: string;
+      readonly leaseExpiresAt: string;
+    };
+  }>;
+};
+
+function claimCapableGateway(gateway: ReturnType<typeof createAgentToolGateway>): ClaimCapableGateway {
+  return gateway as unknown as ClaimCapableGateway;
+}
 
 type InterleavedLifecycleEventType = "agent.tool.denied" | "agent.tool.failed";
 

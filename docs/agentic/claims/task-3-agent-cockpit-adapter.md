@@ -24,7 +24,7 @@ Targeted commands:
 - `npm run verify`
 
 Invariant notes:
-- The browser adapter may call only `/api/agent/cockpit`, `/api/agent/tasks`, and `/api/agent/runs` for this slice.
+- The browser adapter may call cockpit, task, approval, memory, scheduler wake, and ontology-bootstrap routes for this slice; it must not expose or call a generic `/api/agent/runs` route.
 - The adapter must stay browser-safe and must not introduce Node-only imports.
 - Runtime and malformed JSON failures must stay secret-safe and must not echo raw unsafe text.
 
@@ -34,9 +34,10 @@ Command evidence:
 - Verify: `npm run verify` passed with `typecheck passed`, `Test Files  146 passed | 1 skipped (147)`, `Tests  1392 passed | 1 skipped (1393)`, `tests passed`, `vite build` succeeded, and `factory-readiness passed`.
 
 Self-review notes:
-- Added browser-safe cockpit, task-create, and run-start adapter methods using the existing fetch/redaction helpers and strict local route schemas.
+- Added browser-safe cockpit and task-create adapter methods using the existing fetch/redaction helpers and strict local route schemas; the corrected adapter exposes no generic run-start method.
 - Static adapters now expose frozen cockpit fixtures and safe default mutation failures, with optional explicit test-double overrides for mutation methods.
-- The adapter route surface remains limited to `/api/agent/cockpit`, `/api/agent/tasks`, and `/api/agent/runs`; no scheduler wake, provider transfer, PRR send, export, repair, legal escalation, accepted graph review, legacy import, or staging paths were added.
+- The adapter route surface keeps generic run-start absent; no provider transfer, PRR send, export, repair, legal escalation, accepted graph review, legacy import, or staging paths were added.
+- Final independent-review correction: `agent-status.v1` browser parsing now accepts real-shaped `modelInvocations` and preserves `executing` tool-request claim metadata (`executionClaimedBy`, `executionClaimedAt`, `executionLeaseExpiresAt`, `executionApprovedPreviewHash`, and `executionClaimEventId`) instead of falling back to runtime-unavailable status.
 
 Review-fix recorded at: 2026-07-09T02:02:19Z
 

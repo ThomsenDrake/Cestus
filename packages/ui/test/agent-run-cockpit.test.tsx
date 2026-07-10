@@ -1,8 +1,12 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { buildAgentCockpit } from "../../agent/src/cockpit.js";
 import { AgentRunCockpit } from "../src/agent/AgentRunCockpit.js";
-import { agentCockpitFromJson } from "../src/agent/agent-adapter.js";
+import {
+  agentCockpitFromJson,
+  runtimeUnavailableAgentStatus
+} from "../src/agent/agent-adapter.js";
 import type { AgentCockpitDto } from "../src/agent/agent-types.js";
 
 describe("AgentRunCockpit", () => {
@@ -19,6 +23,15 @@ describe("AgentRunCockpit", () => {
     expect(within(region).getAllByText(/task_unstarted/).length).toBeGreaterThan(0);
     expect(within(region).getAllByText(/run_report_done/).length).toBeGreaterThan(0);
     expect(within(region).getAllByText(/run_provider_review/).length).toBeGreaterThan(0);
+    expect(within(region).getByRole("region", { name: "Specialist workflow readiness" })).toBeInTheDocument();
+    expect(within(region).getAllByText(/contradiction-claim-review/).length).toBeGreaterThan(0);
+    expect(within(region).getByText("PRR Negotiation")).toBeInTheDocument();
+    expect(within(region).getAllByText(/agent_default/).length).toBeGreaterThan(0);
+    expect(within(region).getByText("Draft follow-ups, deadline reviews, fee challenges, and escalation posture notes without sending anything.")).toBeInTheDocument();
+    expect(within(region).getByText("timeline-draft-summary.v1")).toBeInTheDocument();
+    expect(within(region).getByText("accepted-graph-projection.v1")).toBeInTheDocument();
+    expect(within(region).getByText("workspace-runtime-status.v1")).toBeInTheDocument();
+    expect(within(region).getAllByText("executionReady: false").length).toBeGreaterThan(0);
 
     for (const forbiddenName of [
       /approve/i,
@@ -84,16 +97,42 @@ describe("AgentRunCockpit", () => {
     expect(within(region).getByText("12 input, 8 output, 20 total")).toBeInTheDocument();
     expect(within(region).getByText("task-run-history.v1")).toBeInTheDocument();
     expect(within(region).getByText("sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")).toBeInTheDocument();
-    expect(within(region).getByText("1 omission")).toBeInTheDocument();
-    expect(within(region).getByText("2 staleness inputs")).toBeInTheDocument();
+    expect(within(region).getByText("2 omissions")).toBeInTheDocument();
+    expect(within(region).getByText("3 staleness inputs")).toBeInTheDocument();
     expect(within(region).getByText("mem_case_goal")).toBeInTheDocument();
     expect(within(region).getByText("0.82")).toBeInTheDocument();
 
     fireEvent.click(within(region).getByRole("tab", { name: "Handoff" }));
-    expect(within(region).getByText("ready-for-human-review")).toBeInTheDocument();
-    expect(within(region).getByText("Draft report outline produced.")).toBeInTheDocument();
+    expect(within(region).getByText("ready-for-review")).toBeInTheDocument();
+    expect(within(region).getByText("Draft report outline ready for human review.")).toBeInTheDocument();
+    expect(within(region).getByText("artifact_report_outline")).toBeInTheDocument();
+    expect(within(region).getByText("report-outline | report-builder-handoff.v1")).toBeInTheDocument();
     expect(within(region).getByText("sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")).toBeInTheDocument();
-    expect(within(region).getByText("evt_report_done")).toBeInTheDocument();
+    expect(within(region).getByText("task-run-history.v1")).toBeInTheDocument();
+    expect(within(region).getByText("toolreq_provider_review")).toBeInTheDocument();
+    expect(within(region).getByText("human-review")).toBeInTheDocument();
+    expect(within(region).getByText("Review draft report outline")).toBeInTheDocument();
+  });
+
+  it("selects run cards without showing another run's selected detail, audit, or handoff", () => {
+    render(<AgentRunCockpit cockpit={cockpitFixture()} />);
+
+    const region = screen.getByRole("region", { name: "Agent run cockpit" });
+
+    fireEvent.click(within(region).getByRole("button", { name: "Select run run_provider_review" }));
+    fireEvent.click(within(region).getByRole("tab", { name: "Audit" }));
+
+    expect(within(region).getByRole("region", { name: "Active queued run" })).toBeInTheDocument();
+    expect(within(region).getByText("run_provider_review")).toBeInTheDocument();
+    expect(within(region).getByText("evidence-triage")).toBeInTheDocument();
+    expect(within(region).queryByText("inv_report_done")).not.toBeInTheDocument();
+    expect(within(region).queryByText("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).not.toBeInTheDocument();
+
+    fireEvent.click(within(region).getByRole("tab", { name: "Handoff" }));
+    expect(within(region).getByRole("region", { name: "Active queued run" })).toBeInTheDocument();
+    expect(within(region).getByText("run_provider_review")).toBeInTheDocument();
+    expect(within(region).queryByText("Draft report outline ready for human review.")).not.toBeInTheDocument();
+    expect(within(region).queryByText("artifact_report_outline")).not.toBeInTheDocument();
   });
 });
 
@@ -131,6 +170,7 @@ function cockpitFixtureWithOptions(input: {
         status: "completed",
         inputArtifactHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         outputArtifactHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        omissionCount: 2,
         usageSummary: "12 input, 8 output, 20 total"
       },
       {
@@ -139,6 +179,7 @@ function cockpitFixtureWithOptions(input: {
         modelFamily: "fake-local",
         status: "failed",
         inputArtifactHash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        omissionCount: 0,
         failureCategory: "model-output-invalid",
         retryable: true
       }
@@ -150,16 +191,83 @@ function cockpitFixtureWithOptions(input: {
         safeSummary: "Prior agent task history.",
         generatedAt: "2026-07-09T12:01:00.000Z",
         provenanceRefs: ["evt_task_history_001", "evt_task_history_002", "evt_task_history_003"],
+        stalenessInputCount: 3,
         sourceEventIds: ["evt_task_history_001"],
         artifactHashes: ["sha256:9999999999999999999999999999999999999999999999999999999999999999"]
       }
     ],
     handoff: {
-      state: "ready-for-human-review",
-      summary: "Draft report outline produced.",
-      artifactHashes: ["sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"],
-      relatedEventIds: ["evt_report_done"]
+      schemaVersion: "agent-specialist-handoff.v1",
+      runType: "report-builder",
+      runId: selectedRunId,
+      taskId: "task_unstarted",
+      residentAgentId: "agent_default",
+      generatedAt: "2026-07-09T12:02:00.000Z",
+      status: "ready-for-review",
+      safeSummary: "Draft report outline ready for human review.",
+      contextPackRefs: [
+        {
+          contextPackId: "task-run-history.v1",
+          version: 1,
+          contentHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          sizeBytes: 120,
+          generatedAt: "2026-07-09T12:01:00.000Z",
+          safeSummary: "Prior agent task history.",
+          provenanceRefs: ["evt_task_history_001"],
+          sourceEventIds: ["evt_task_history_001"],
+          artifactHashes: ["sha256:9999999999999999999999999999999999999999999999999999999999999999"]
+        }
+      ],
+      outputArtifacts: [
+        {
+          artifactId: "artifact_report_outline",
+          artifactKind: "report-outline",
+          schemaId: "report-builder-handoff.v1",
+          artifactHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          safeSummary: "Local draft outline artifact."
+        }
+      ],
+      toolRequestIds: ["toolreq_provider_review"],
+      approvalRequirements: [
+        {
+          approvalClass: "human-review",
+          reason: "Human review before use.",
+          toolRequestId: "toolreq_provider_review"
+        }
+      ],
+      nextSafeActions: [
+        {
+          actionId: "action_review_report_outline",
+          label: "Review draft report outline",
+          kind: "review",
+          effect: "none",
+          artifactId: "artifact_report_outline"
+        }
+      ]
     }
+  };
+
+  const specialists = buildAgentCockpit({
+    status: runtimeUnavailableAgentStatus({ generatedAt: "2026-07-09T12:10:00.000Z" }),
+    generatedAt: "2026-07-09T12:10:00.000Z"
+  }).specialists;
+  const specialistsWithVisibleBlockers = {
+    ...specialists,
+    readiness: specialists.readiness.map((readiness) =>
+      readiness.runType === "contradiction-finder"
+        ? {
+            ...readiness,
+            staleContextPackIds: ["timeline-draft-summary.v1"],
+            missingProjectionHighWaterMarkIds: ["accepted-graph-projection.v1"],
+            missingProvenanceContextPackIds: ["workspace-runtime-status.v1"],
+            nextSafeActions: [
+              ...readiness.nextSafeActions,
+              "refresh projection freshness for timeline-draft-summary.v1",
+              "refresh projection freshness for accepted-graph-projection.v1"
+            ]
+          }
+        : readiness
+    )
   };
 
   return agentCockpitFromJson({
@@ -255,6 +363,7 @@ function cockpitFixtureWithOptions(input: {
       "accepted-graph-review",
       "legacy-raw-import",
       "legacy-staging-execution"
-    ]
+    ],
+    specialists: specialistsWithVisibleBlockers
   });
 }
