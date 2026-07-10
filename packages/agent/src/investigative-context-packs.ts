@@ -1,8 +1,11 @@
 import {
+  buildResolvedContextPack,
   hashAgentContextPack,
   type AgentContextPackJsonValue,
-  type ContextPackDescriptor
+  type ContextPackDescriptor,
+  type ResolvedContextPack
 } from "./context-packs.js";
+import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 export type InvestigativeContextPackId =
   | "evidence-summary.v1"
@@ -189,7 +192,36 @@ export interface InvestigativeSelectionCapability {
 
 export interface InvestigativeEvidenceRow {
   readonly evidenceId: string;
+  readonly ingestionEventId: string;
   readonly contentHash: `sha256:${string}`;
+  readonly mediaType?: string;
+  readonly sizeBytes?: number;
+  readonly sourceCollectionId?: string;
+  readonly scanBatchId?: string;
+  readonly importBatchId?: string;
+  readonly occurrenceIds: readonly string[];
+  readonly parseJobs: readonly {
+    readonly parseJobId: string;
+    readonly lane: string;
+    readonly parserName: string;
+    readonly parserVersion: string;
+    readonly state: string;
+    readonly outputHash?: `sha256:${string}`;
+    readonly outputMediaType?: string;
+    readonly terminalEventId?: string;
+    readonly retryable?: boolean;
+  }[];
+  readonly governanceTags: readonly {
+    readonly tag: string;
+    readonly source: "ai" | "human";
+    readonly state: "active" | "removed";
+    readonly confidence?: number;
+    readonly safeRationale?: string;
+    readonly eventId: string;
+  }[];
+  readonly duplicateGroup?: { readonly groupId: string; readonly memberCount: number };
+  readonly safeNarrative?: string;
+  readonly rawActionField?: string;
 }
 
 export interface InvestigativeEvidenceReader {
@@ -201,13 +233,37 @@ export interface InvestigativeEvidenceReader {
   }): Promise<readonly InvestigativeEvidenceRow[]> | readonly InvestigativeEvidenceRow[];
 }
 
-export interface EvidenceSourcePostureResult {
-  readonly posture: string;
+export interface EvidenceSourcePostureCheckInput {
+  readonly evidenceId: string;
+  readonly contentHash: `sha256:${string}`;
+}
+
+export type EvidenceSourcePostureResult =
+  | {
+      readonly ok: true;
+      readonly stalenessInputs: readonly { readonly kind: string; readonly ref: string; readonly value: string }[];
+    }
+  | {
+      readonly ok: false;
+      readonly code:
+        | "source-posture-unavailable"
+        | "stale-source"
+        | "source-byte-hash-mismatch"
+        | "archive-container-hash-mismatch"
+        | "archive-child-hash-mismatch";
+      readonly stalenessInputs: readonly { readonly kind: string; readonly ref: string; readonly value: string }[];
+    };
+
+export interface EvidenceSourcePostureCapability {
+  readonly postureVersion: "ingestion-current-source-posture.v1";
+  checkEvidence(input: EvidenceSourcePostureCheckInput): Promise<EvidenceSourcePostureResult> | EvidenceSourcePostureResult;
 }
 
 export interface InvestigativeContextPackDependencies {
   readonly selection: InvestigativeSelectionCapability;
   readonly evidenceReader: InvestigativeEvidenceReader;
+  readonly evidenceSourcePosture: EvidenceSourcePostureCapability;
+  readonly now: () => string;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
 }
 
@@ -265,7 +321,33 @@ export interface AcceptedGraphProjectionPayload extends InvestigativeContextPack
 export interface EvidenceSummaryPayload extends InvestigativeContextPackPayloadBase {
   readonly schemaVersion: "evidence-summary.context.v1";
   readonly contextPackId: "evidence-summary.v1";
-  readonly items: readonly AgentContextPackJsonValue[];
+  readonly version: 1;
+  readonly truthBoundary: {
+    readonly evidenceIsReadOnly: true;
+    readonly rawContentExcluded: true;
+  };
+  readonly items: readonly EvidenceSummaryItem[] & readonly AgentContextPackJsonValue[];
+}
+
+export interface EvidenceSummaryItem {
+  readonly evidenceId: string;
+  readonly ingestionEventId: string;
+  readonly contentHash: `sha256:${string}`;
+  readonly mediaType?: string;
+  readonly sizeBytes?: number;
+  readonly sourceCollectionId?: string;
+  readonly scanBatchId?: string;
+  readonly importBatchId?: string;
+  readonly occurrenceIds: readonly string[];
+  readonly parseJobs: InvestigativeEvidenceRow["parseJobs"];
+  readonly governanceTags: InvestigativeEvidenceRow["governanceTags"];
+  readonly duplicateGroup?: InvestigativeEvidenceRow["duplicateGroup"];
+  readonly safeNarrative?: string;
+}
+
+export interface ResolvedEvidenceSummaryContextPack {
+  readonly ref: ResolvedContextPack["ref"];
+  readonly payload: EvidenceSummaryPayload;
 }
 
 export interface GovernanceLocksPayload extends InvestigativeContextPackPayloadBase {
@@ -296,7 +378,8 @@ export const acceptedGraphProjectionPayloadParser = createPayloadParser<Accepted
 );
 export const evidenceSummaryPayloadParser = createPayloadParser<EvidenceSummaryPayload>(
   "evidence-summary.v1",
-  "evidence-summary.context.v1"
+  "evidence-summary.context.v1",
+  parseEvidenceSummaryPayload
 );
 export const governanceLocksPayloadParser = createPayloadParser<GovernanceLocksPayload>(
   "governance-locks.v1",
@@ -384,6 +467,148 @@ export async function __testOnlyReadEvidenceSelectionProbe(
   return Object.freeze({ manifest, rows: Object.freeze(rows) });
 }
 
+export async function buildEvidenceSummaryContextPack(
+  input: BuildInvestigativeContextPackInput
+): Promise<ResolvedEvidenceSummaryContextPack> {
+  const manifest = await selectForPack("evidence-summary.v1", input);
+  const evidenceRefs = manifest.includedRefs.filter((ref) => ref.refKind === "evidence");
+  const rows = await readSelectedEvidenceRows(input.deps.evidenceReader, manifest, evidenceRefs);
+  const stalenessInputs: { kind: string; ref: string; value: string }[] = [];
+  const items: EvidenceSummaryItem[] = [];
+
+  for (const ref of evidenceRefs) {
+    const row = rows.get(ref.refId);
+    if (row === undefined || ref.contentHash === undefined || row.contentHash !== ref.contentHash) {
+      throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+    }
+    if (row.rawActionField !== undefined) {
+      throw new InvestigativeContextPackError("raw-content-forbidden", "raw-content-forbidden");
+    }
+    assertEvidenceNarrativeSafety(row);
+    const posture = await input.deps.evidenceSourcePosture.checkEvidence({
+      evidenceId: row.evidenceId,
+      contentHash: row.contentHash
+    });
+    stalenessInputs.push(...posture.stalenessInputs);
+    if (!posture.ok) {
+      throw new InvestigativeContextPackError(posture.code, posture.code);
+    }
+    items.push(toEvidenceSummaryItem(row));
+  }
+
+  const provenanceRefs = new Set<string>();
+  for (const ref of evidenceRefs) {
+    provenanceRefs.add(ref.refId);
+    if (ref.contentHash !== undefined) {
+      provenanceRefs.add(ref.contentHash);
+    }
+    for (const eventId of ref.sourceEventIds) {
+      provenanceRefs.add(eventId);
+    }
+    const row = rows.get(ref.refId);
+    if (row !== undefined) {
+      provenanceRefs.add(row.ingestionEventId);
+    }
+  }
+
+  const payload: EvidenceSummaryPayload = {
+    schemaVersion: "evidence-summary.context.v1",
+    contextPackId: "evidence-summary.v1",
+    version: 1,
+    scope: manifest.scope,
+    truthBoundary: {
+      evidenceIsReadOnly: true,
+      rawContentExcluded: true
+    },
+    selectionManifest: manifest,
+    projectionHighWaterMarks: manifest.sourceProjectionHighWaterMarks,
+    packVersions: {},
+    items: items as unknown as EvidenceSummaryPayload["items"],
+    omissions: manifest.aggregateOmissions,
+    stalenessInputs
+  };
+  const parsedPayload = evidenceSummaryPayloadParser.parsePayload(payload);
+  const resolved = buildResolvedContextPack({
+    contextPackId: "evidence-summary.v1",
+    version: 1,
+    generatedAt: input.deps.now(),
+    payload: parsedPayload,
+    safeSummary: "Provider-safe evidence summary",
+    provenanceRefs: [...provenanceRefs].sort(compareText),
+    sourceEventIds: [...provenanceRefs].filter((ref) => ref.startsWith("evt_")).sort(compareText),
+    artifactHashes: [...provenanceRefs].filter((ref) => ref.startsWith("sha256:")).sort(compareText),
+    scope: manifest.scope,
+    stalenessInputs
+  });
+  const budget = input.sizeBudgetBytes
+    ?? input.deps.budgets?.["evidence-summary.v1"]
+    ?? investigativeContextPackDefaultLimits.packBudgets["evidence-summary.v1"];
+  if (resolved.ref.sizeBytes > budget) {
+    throw new InvestigativeContextPackError("context-budget-exceeded", "context-budget-exceeded");
+  }
+  return resolved as unknown as ResolvedEvidenceSummaryContextPack;
+}
+
+async function readSelectedEvidenceRows(
+  reader: InvestigativeEvidenceReader,
+  manifest: InvestigativeSelectionManifest,
+  evidenceRefs: readonly InvestigativeSelectionIncludedRef[]
+): Promise<ReadonlyMap<string, InvestigativeEvidenceRow>> {
+  const rows = new Map<string, InvestigativeEvidenceRow>();
+  for (let offset = 0; offset < evidenceRefs.length; offset += readerBatchSize) {
+    const batch = evidenceRefs.slice(offset, offset + readerBatchSize);
+    const batchRows = await reader.readEvidenceByIds({
+      evidenceIds: batch.map((ref) => ref.refId),
+      contentHashes: batch.map((ref) => ref.contentHash).filter((hash): hash is `sha256:${string}` => hash !== undefined),
+      highWaterMarks: manifest.sourceProjectionHighWaterMarks,
+      limit: readerBatchSize
+    });
+    for (const row of batchRows) {
+      if (rows.has(row.evidenceId)) {
+        throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+      }
+      rows.set(row.evidenceId, row);
+    }
+  }
+  if (rows.size !== evidenceRefs.length || [...rows.keys()].some((id) => !evidenceRefs.some((ref) => ref.refId === id))) {
+    throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
+  }
+  return rows;
+}
+
+function assertEvidenceNarrativeSafety(row: InvestigativeEvidenceRow): void {
+  try {
+    if (row.safeNarrative !== undefined) {
+      assertAgentSecretSafeText(row.safeNarrative, "safeNarrative");
+    }
+    for (const tag of row.governanceTags) {
+      if (tag.safeRationale !== undefined) {
+        assertAgentSecretSafeText(tag.safeRationale, "safeRationale");
+      }
+    }
+  } catch {
+    throw new InvestigativeContextPackError("secret-detected", "secret-detected");
+  }
+}
+
+function toEvidenceSummaryItem(row: InvestigativeEvidenceRow): EvidenceSummaryItem {
+  return {
+    evidenceId: row.evidenceId,
+    ingestionEventId: row.ingestionEventId,
+    contentHash: row.contentHash,
+    ...(row.mediaType === undefined ? {} : { mediaType: row.mediaType }),
+    ...(row.sizeBytes === undefined ? {} : { sizeBytes: row.sizeBytes }),
+    ...(row.sourceCollectionId === undefined ? {} : { sourceCollectionId: row.sourceCollectionId }),
+    ...(row.scanBatchId === undefined ? {} : { scanBatchId: row.scanBatchId }),
+    ...(row.importBatchId === undefined ? {} : { importBatchId: row.importBatchId }),
+    occurrenceIds: row.occurrenceIds,
+    parseJobs: row.parseJobs,
+    governanceTags: row.governanceTags,
+    ...(row.duplicateGroup === undefined ? {} : { duplicateGroup: row.duplicateGroup }),
+    ...(row.safeNarrative === undefined ? {} : { safeNarrative: row.safeNarrative })
+  };
+}
+
 function compareEvidenceRowsBySelectionOrder(
   left: InvestigativeEvidenceRow,
   right: InvestigativeEvidenceRow,
@@ -414,7 +639,8 @@ function parserIdentity(
 
 function createPayloadParser<Payload extends InvestigativeContextPackPayloadBase>(
   contextPackId: Payload["contextPackId"],
-  schemaVersion: Payload["schemaVersion"]
+  schemaVersion: Payload["schemaVersion"],
+  parseStrictPayload?: (payload: unknown) => Payload
 ): InvestigativeContextPackPayloadParser<Payload> {
   return Object.freeze({
     contextPackId,
@@ -424,9 +650,47 @@ function createPayloadParser<Payload extends InvestigativeContextPackPayloadBase
       if (!isPayloadWithIdentity(payload, contextPackId, schemaVersion)) {
         throw new InvestigativeContextPackError("context-payload-missing", "investigative-context-payload-invalid");
       }
-      return payload as Payload;
+      return parseStrictPayload === undefined ? payload as Payload : parseStrictPayload(payload);
     }
   });
+}
+
+function parseEvidenceSummaryPayload(payload: unknown): EvidenceSummaryPayload {
+  if (!isPayloadWithExactKeys(payload, [
+    "schemaVersion",
+    "contextPackId",
+    "version",
+    "scope",
+    "truthBoundary",
+    "selectionManifest",
+    "projectionHighWaterMarks",
+    "packVersions",
+    "items",
+    "omissions",
+    "stalenessInputs"
+  ])) {
+    throw new InvestigativeContextPackError("context-payload-missing", "evidence-summary payload invalid");
+  }
+  const value = payload as Record<string, unknown>;
+  if (value.schemaVersion !== "evidence-summary.context.v1" || value.contextPackId !== "evidence-summary.v1" || value.version !== 1
+    || !isPlainObject(value.scope) || !isPlainObject(value.truthBoundary) || !isPlainObject(value.selectionManifest)
+    || !isPlainObject(value.projectionHighWaterMarks) || !isPlainObject(value.packVersions)
+    || !Array.isArray(value.items) || !Array.isArray(value.omissions) || !Array.isArray(value.stalenessInputs)) {
+    throw new InvestigativeContextPackError("context-payload-missing", "evidence-summary payload invalid");
+  }
+  return payload as unknown as EvidenceSummaryPayload;
+}
+
+function isPayloadWithExactKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  return isPlainObject(value) && Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function isPayloadWithIdentity(
