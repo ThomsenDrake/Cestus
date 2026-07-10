@@ -92,10 +92,30 @@ describe("MVP specialist workflow descriptors", () => {
 
   it("keeps runtime execution fail-closed for every MVP mode", () => {
     for (const runType of mvpRunTypes) {
+      const descriptor = specialistWorkflowDescriptorFor(runType);
+      const status = specialistExecutionStatusFor(runType);
+
       expect(specialistExecutionStatusFor(runType)).toMatchObject({
         enabled: false,
-        diagnosticCode: "AGENT_SPECIALIST_WORKFLOW_NOT_ENABLED"
+        diagnosticCode: "AGENT_SPECIALIST_WORKFLOW_NOT_ENABLED",
+        registeredWorkflowMode: true,
+        residentAgentId: "agent_default",
+        executionReady: false,
+        prerequisiteContractIds: descriptor.prerequisiteContractIds,
+        requiredContextPackIds: descriptor.contextPacks.map((pack) => pack.contextPackId),
+        missingExecutionCapabilities: [
+          "specialist workflow runner",
+          "model provider readiness",
+          "domain adapter readiness"
+        ]
       });
+      expect(status.allowedRepairActions).toContain(
+        `wire specialist workflow readiness for ${descriptor.prerequisiteContractIds.join(", ")}`
+      );
+      expect(status.allowedRepairActions).toContain(
+        `construct required context packs: ${descriptor.contextPacks.map((pack) => pack.contextPackId).join(", ")}`
+      );
+      expect(status.allowedRepairActions.join(" ")).not.toMatch(/\bland\b|contracts are absent|contracts still need/i);
     }
   });
 
