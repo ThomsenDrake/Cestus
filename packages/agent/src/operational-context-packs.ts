@@ -6,10 +6,12 @@ import type {
   ContextPackRef,
   ContextPackRegistry,
   ContextPackScope,
+  ContextPackStalenessInput,
   ResolvedContextPack
 } from "./context-packs.js";
 import { buildResolvedContextPack, serializeContextPackPayload } from "./context-packs.js";
 import {
+  assertOperationalContextSafeText,
   buildAgentMemorySummaryResolvedContextPack,
   type BuildAgentMemorySummaryContextPackInput
 } from "./memory.js";
@@ -73,6 +75,8 @@ export interface OperationalContextPackSourceMetadata {
   readonly generatedAt: string;
   readonly policyVersion: string;
   readonly scope: ContextPackScope;
+  readonly sizeBudgetBytes: number;
+  readonly stalenessInputs: readonly ContextPackStalenessInput[];
 }
 
 export interface OperationalEmptyProjectionProof {
@@ -392,20 +396,21 @@ export function buildWorkspaceRuntimeStatusContextPack(
     ...runtime.diagnostics.flatMap((diagnostic) => diagnosticIds(diagnostic)),
     `runtime.status:hwm:${runtime.runtimeHighWaterMark}`
   ]);
+  const stalenessInputs = [
+    { kind: "projection-high-water-mark", ref: "runtime.status", value: String(input.projectionHighWaterMark) },
+    ...runtime.omissionCodes.map((code) => ({ kind: "omission-code", ref: "runtime.status", value: code }))
+  ];
   return buildWithBudget({
     contextPackId: "workspace-runtime-status.v1",
     generatedAt: input.generatedAt,
-    payload: { schemaVersion: "workspace-runtime-status.v1", source: operationalSourceMetadata(input), runtime },
+    payload: { schemaVersion: "workspace-runtime-status.v1", source: operationalSourceMetadata(input, stalenessInputs), runtime },
     safeSummary: `Workspace runtime status at high-water mark ${runtime.runtimeHighWaterMark}.`,
     provenanceRefs,
     projectionHighWaterMark: input.projectionHighWaterMark,
     policyVersion: input.policyVersion,
     scope: input.scope,
     sizeBudgetBytes: input.sizeBudgetBytes,
-    stalenessInputs: [
-      { kind: "projection-high-water-mark", ref: "runtime.status", value: String(input.projectionHighWaterMark) },
-      ...runtime.omissionCodes.map((code) => ({ kind: "omission-code", ref: "runtime.status", value: code }))
-    ]
+    stalenessInputs
   });
 }
 
@@ -426,13 +431,18 @@ export function buildTaskRunHistoryContextPack(
   }
 
   let candidate = snapshot;
+  const stalenessInputs = [{
+    kind: "projection-high-water-mark",
+    ref: "agent.projection.task-run-history",
+    value: String(input.projectionHighWaterMark)
+  }];
   while (true) {
     const provenanceRefs = emptyProof === undefined
       ? uniqueStrings([operationalSourceProof("task-run-history.v1", "event"), ...candidate.sourceEventIds, ...candidate.artifactHashes])
       : [operationalSourceProof("task-run-history.v1", "empty-projection"), emptyProjectionProvenanceRef(emptyProof)];
     const payload = {
       schemaVersion: "task-run-history.v1" as const,
-      source: operationalSourceMetadata(input),
+      source: operationalSourceMetadata(input, stalenessInputs),
       history: {
         projectionHighWaterMark: candidate.projectionHighWaterMark,
         projectionSourceRef: candidate.projectionSourceRef,
@@ -460,7 +470,7 @@ export function buildTaskRunHistoryContextPack(
         policyVersion: input.policyVersion,
         scope: input.scope,
         sizeBudgetBytes: input.sizeBudgetBytes,
-        stalenessInputs: [{ kind: "projection-high-water-mark", ref: candidate.projectionSourceRef, value: String(input.projectionHighWaterMark) }]
+        stalenessInputs
       });
     } catch (error) {
       if (!(error instanceof Error) || !/sizeBudgetBytes must be at least/.test(error.message)) {
@@ -836,10 +846,17 @@ function assertOperationalPayloadEnvelope(
 }
 
 function assertOperationalSourceMetadata(value: AgentContextPackJsonValue, schemaVersion: OperationalContextPackId): void {
-  assertJsonObjectWithAllowedKeys(value, schemaVersion, ["generatedAt", "policyVersion", "scope"]);
+  assertJsonObjectWithAllowedKeys(value, schemaVersion, ["generatedAt", "policyVersion", "scope", "sizeBudgetBytes", "stalenessInputs"]);
   assertUtcTimestamp(requiredJsonField(value, "generatedAt", schemaVersion), "source.generatedAt");
   assertStringField(value, "policyVersion", schemaVersion);
   assertScopePayloadField(value, "scope", schemaVersion);
+  assertPositiveIntegerField(value, "sizeBudgetBytes", schemaVersion);
+  for (const stalenessInput of assertJsonArrayField(value, "stalenessInputs", schemaVersion)) {
+    assertJsonObjectWithAllowedKeys(stalenessInput, schemaVersion, ["kind", "ref", "value"]);
+    for (const key of ["kind", "ref", "value"] as const) {
+      assertStringField(stalenessInput, key, schemaVersion);
+    }
+  }
 }
 
 function assertWorkspaceRuntimePayloadSection(value: AgentContextPackJsonValue, schemaVersion: OperationalContextPackId): void {
@@ -966,7 +983,7 @@ function assertEmptyProofField(value: { readonly [key: string]: AgentContextPack
   assertNonnegativeIntegerField(emptyProof, "projectionHighWaterMark", schemaVersion);
   assertNonnegativeIntegerField(emptyProof, "sourceEventCount", schemaVersion);
   assertUtcTimestamp(requiredJsonField(emptyProof, "generatedAt", schemaVersion), "emptyProof.generatedAt");
-  assertStringField(emptyProof, "emptyReasonCode", schemaVersion);
+  assertMachineReadableOperationalToken(requiredJsonField(emptyProof, "emptyReasonCode", schemaVersion), "emptyProof.emptyReasonCode");
 }
 
 function assertProjectionPayloadSemantics(
@@ -1039,8 +1056,14 @@ function assertOperationalRefSemantics(
   }
   const sourceScope = source.scope;
   if (source.generatedAt !== ref.generatedAt || source.policyVersion !== ref.policyVersion ||
+    source.sizeBudgetBytes !== ref.sizeBudgetBytes ||
     sourceScope === undefined || !isOperationalJsonObject(sourceScope) ||
     sourceScope.kind !== ref.scope.kind || sourceScope.id !== ref.scope.id) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  const sourceStalenessInputs = source.stalenessInputs;
+  if (!Array.isArray(sourceStalenessInputs) || ref.stalenessInputs === undefined ||
+    stableJsonText(sourceStalenessInputs) !== stableJsonText(ref.stalenessInputs as unknown as AgentContextPackJsonValue)) {
     throw new Error(`invalid ${schemaVersion} payload`);
   }
   const section = requiredJsonField(payload, sectionName, schemaVersion);
@@ -1490,7 +1513,7 @@ function normalizeEmptyProof(value: OperationalEmptyProjectionProof): Operationa
   assertSafeOperationalText(value.projectionName, "empty proof projection name");
   assertSafeScope(value.scope);
   assertUtcTimestamp(value.generatedAt, "empty proof generatedAt");
-  assertSafeOperationalText(value.emptyReasonCode, "empty proof reason");
+  assertMachineReadableOperationalToken(value.emptyReasonCode, "empty proof reason");
   if (!Number.isInteger(value.projectionHighWaterMark) || value.projectionHighWaterMark < 0 || !Number.isInteger(value.sourceEventCount) || value.sourceEventCount < 0) {
     throw new Error("blocked.projection-source-mismatch: empty proof has invalid counts");
   }
@@ -1514,19 +1537,27 @@ function assertEmptyHistoryProof(
 
 function trimQuietHistory(snapshot: OperationalTaskRunHistorySnapshot): OperationalTaskRunHistorySnapshot | undefined {
   const groups = ["tasks", "runs", "modelInvocations", "toolRequests"] as const;
-  for (const group of groups) {
-    const items = snapshot[group];
-    const index = [...items].map((item, index) => ({ item, index })).reverse().find(({ item }) => itemState(item) === "completed")?.index;
-    if (index === undefined) continue;
-    const nextItems = items.filter((_, current) => current !== index);
-    const windowOmissions = uniqueOmissionCodes([...snapshot.window.omissionCodes, "omitted.size-budget"]);
-    return closeHistoryProvenance({
-      ...snapshot,
-      [group]: nextItems,
-      window: { ...snapshot.window, omissionCodes: windowOmissions }
-    });
-  }
-  return undefined;
+  const candidates = groups.flatMap((group) => snapshot[group].map((item, index) => ({ group, item, index })));
+  const safetyCount = candidates.filter(({ item }) => historyStatePriority(itemState(item)) === 0).length;
+  const removable = candidates.filter(({ item }) =>
+    historyStatePriority(itemState(item)) !== 0 || safetyCount > 1
+  ).sort((left, right) => {
+    const byPriority = historyStatePriority(itemState(right.item)) - historyStatePriority(itemState(left.item));
+    if (byPriority !== 0) return byPriority;
+    const byTimestamp = historyItemTimestamp(left.item).localeCompare(historyItemTimestamp(right.item));
+    if (byTimestamp !== 0) return byTimestamp;
+    return stableJsonText(left.item as unknown as AgentContextPackJsonValue)
+      .localeCompare(stableJsonText(right.item as unknown as AgentContextPackJsonValue));
+  });
+  const removed = removable[0];
+  if (removed === undefined) return undefined;
+  const nextItems = snapshot[removed.group].filter((_, index) => index !== removed.index);
+  const windowOmissions = uniqueOmissionCodes([...snapshot.window.omissionCodes, "omitted.size-budget"]);
+  return closeHistoryProvenance({
+    ...snapshot,
+    [removed.group]: nextItems,
+    window: { ...snapshot.window, omissionCodes: windowOmissions }
+  });
 }
 
 function historyItemCount(snapshot: OperationalTaskRunHistorySnapshot): number {
@@ -1558,6 +1589,15 @@ function historyStatePriority(state: string | undefined): number {
   if (state === "executing" || state === "approved" || state === "requested" || state === "queued" || state === "running") return 1;
   if (state === "completed") return 2;
   return 1;
+}
+
+function historyItemTimestamp(value: unknown): string {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return "";
+  const item = value as Record<string, unknown>;
+  for (const key of ["updatedAt", "failedAt", "deniedAt", "completedAt", "executionClaimedAt", "approvedAt", "requestedAt", "startedAt", "createdAt"] as const) {
+    if (typeof item[key] === "string") return item[key];
+  }
+  return "";
 }
 
 function normalizeEventIds(value: readonly string[]): readonly string[] {
@@ -1756,13 +1796,16 @@ function projectToolRequestHistoryItem(value: AgentContextPackJsonValue): Operat
 
 function assertRunLifecycle(run: OperationalRunSummaryDto): void {
   if (run.state === "completed" && (run.completedAt === undefined || run.failedAt !== undefined ||
-    run.failureCategory !== undefined || run.retryable === true)) {
+    run.failureCategory !== undefined || run.retryable !== undefined || run.allowedActions !== undefined)) {
     throw new Error("blocked.invalid-payload-shape: completed run lifecycle is inconsistent");
   }
-  if (run.state === "failed" && (run.failedAt === undefined || run.failureCategory === undefined || run.completedAt !== undefined)) {
+  if (run.state === "failed" && (run.failedAt === undefined || run.failureCategory === undefined ||
+    run.completedAt !== undefined)) {
     throw new Error("blocked.invalid-payload-shape: failed run lifecycle is inconsistent");
   }
-  if (run.state === "running" && (run.completedAt !== undefined || run.failedAt !== undefined)) {
+  if (run.state === "running" && (run.completedAt !== undefined || run.failedAt !== undefined ||
+    run.failureCategory !== undefined || run.retryable !== undefined || run.allowedActions !== undefined ||
+    run.outputArtifactHashes !== undefined)) {
     throw new Error("blocked.invalid-payload-shape: running run lifecycle is inconsistent");
   }
 }
@@ -1770,15 +1813,19 @@ function assertRunLifecycle(run: OperationalRunSummaryDto): void {
 function assertModelInvocationLifecycle(invocation: OperationalModelInvocationSummaryDto): void {
   if (invocation.status === "completed" && (invocation.runId === undefined || invocation.providerId === undefined ||
     invocation.modelFamily === undefined || invocation.inputArtifactHash === undefined ||
-    invocation.providerOutputArtifactHash === undefined || invocation.completedAt === undefined)) {
+    invocation.providerOutputArtifactHash === undefined || invocation.completedAt === undefined ||
+    invocation.failureCategory !== undefined || invocation.retryable !== undefined || invocation.allowedActions !== undefined)) {
     throw new Error("blocked.invalid-payload-shape: completed model invocation lifecycle is incomplete");
   }
   if (invocation.status === "failed" && (invocation.runId === undefined || invocation.inputArtifactHash === undefined ||
-    invocation.failureCategory === undefined)) {
+    invocation.failureCategory === undefined || invocation.completedAt !== undefined ||
+    invocation.providerOutputArtifactHash !== undefined || invocation.usage !== undefined)) {
     throw new Error("blocked.invalid-payload-shape: failed model invocation lifecycle is incomplete");
   }
   if (invocation.status === "requested" && (invocation.runId === undefined || invocation.inputArtifactHash === undefined ||
-    invocation.requestedAt === undefined || invocation.completedAt !== undefined || invocation.providerOutputArtifactHash !== undefined)) {
+    invocation.requestedAt === undefined || invocation.completedAt !== undefined || invocation.providerOutputArtifactHash !== undefined ||
+    invocation.failureCategory !== undefined || invocation.retryable !== undefined || invocation.allowedActions !== undefined ||
+    invocation.usage !== undefined)) {
     throw new Error("blocked.invalid-payload-shape: requested model invocation lifecycle is inconsistent");
   }
 }
@@ -1804,8 +1851,24 @@ function assertToolRequestLifecycle(tool: OperationalToolRequestSummaryDto): voi
   if (tool.state === "failed" && (tool.failedAt === undefined || tool.failureCategory === undefined)) {
     throw new Error("blocked.invalid-payload-shape: failed tool request lifecycle is incomplete");
   }
+  if (tool.state === "approved" && [...executionFields, ...terminalFields].some((field) => field !== undefined)) {
+    throw new Error("blocked.invalid-payload-shape: approved tool request lifecycle is inconsistent");
+  }
+  if (tool.state === "executing" && terminalFields.some((field) => field !== undefined)) {
+    throw new Error("blocked.invalid-payload-shape: executing tool request lifecycle is inconsistent");
+  }
+  if (tool.state === "completed" && (tool.deniedBy !== undefined || tool.deniedAt !== undefined ||
+    tool.failedAt !== undefined || tool.failureCategory !== undefined || tool.retryable !== undefined || tool.allowedActions !== undefined)) {
+    throw new Error("blocked.invalid-payload-shape: completed tool request lifecycle is inconsistent");
+  }
+  if (tool.state === "failed" && (tool.deniedBy !== undefined || tool.deniedAt !== undefined ||
+    tool.completedAt !== undefined || hasResult)) {
+    throw new Error("blocked.invalid-payload-shape: failed tool request lifecycle is inconsistent");
+  }
   if (tool.state === "denied" && (tool.deniedBy === undefined || tool.deniedAt === undefined ||
-    approvalFields.some((field) => field !== undefined) || executionFields.some((field) => field !== undefined))) {
+    approvalFields.some((field) => field !== undefined) || executionFields.some((field) => field !== undefined) ||
+    tool.completedAt !== undefined || tool.failedAt !== undefined || tool.failureCategory !== undefined ||
+    tool.retryable !== undefined || tool.allowedActions !== undefined || hasResult)) {
     throw new Error("blocked.invalid-payload-shape: denied tool request lifecycle is inconsistent");
   }
   if (tool.state === "requested" && [...approvalFields, ...executionFields, ...terminalFields].some((field) => field !== undefined)) {
@@ -2032,11 +2095,14 @@ function operationalSourceMetadata(input: {
   readonly generatedAt: string;
   readonly policyVersion: string;
   readonly scope: ContextPackScope;
-}): OperationalContextPackSourceMetadata {
+  readonly sizeBudgetBytes: number;
+}, stalenessInputs: readonly ContextPackStalenessInput[]): OperationalContextPackSourceMetadata {
   return {
     generatedAt: input.generatedAt,
     policyVersion: input.policyVersion,
-    scope: { kind: input.scope.kind, id: input.scope.id }
+    scope: { kind: input.scope.kind, id: input.scope.id },
+    sizeBudgetBytes: input.sizeBudgetBytes,
+    stalenessInputs: stalenessInputs.map((entry) => ({ ...entry }))
   };
 }
 
@@ -2189,11 +2255,7 @@ function assertMachineReadableOperationalToken(value: unknown, label: string): a
 }
 
 function assertSafeOperationalText(value: unknown, label: string): asserts value is string {
-  if (typeof value !== "string") throw new Error(`blocked.unsafe-diagnostic: ${label} must be text`);
-  assertAgentSecretSafeText(value, label);
-  if (/(?:\/home\/|\\\\|\bprompt\b|model[ -]?output|provider[ -]?error|\bstdout\b|\bstderr\b|\bstack\s*trace\b|\berror:)/i.test(value)) {
-    throw new Error(`blocked.unsafe-diagnostic: ${label} contains unsafe operational material`);
-  }
+  assertOperationalContextSafeText(value, label);
 }
 
 function buildWithBudget(input: Omit<BuildContextPackRefInput, "version">): ResolvedContextPack {

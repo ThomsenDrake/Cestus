@@ -352,6 +352,34 @@ describe("agent memory surface", () => {
     }
   });
 
+  it("rejects prohibited raw operational material from direct memory builder summaries", () => {
+    const unsafeSummaries = [
+      "Provider error: upstream returned the raw response body.",
+      "Provider failed after returning the raw response body.",
+      "Prompt text: summarize every private workspace record.",
+      "Model output contained an unrestricted completion.",
+      "Stack trace at /tmp/provider-response.json:42",
+      "Raw portable path: /home/drake/private/workspace.json"
+    ];
+
+    for (const summary of unsafeSummaries) {
+      const base = boundedMemorySnapshot({ totalCount: 1, omissionCodes: [] });
+      const memorySnapshot = {
+        ...base,
+        activeMemory: [{ ...base.activeMemory[0]!, summary }],
+        window: { ...base.window, hasMore: false }
+      };
+      expect(() => buildAgentMemorySummaryResolvedContextPack({
+        memorySnapshot,
+        generatedAt: "2026-07-09T12:30:00.000Z",
+        policyVersion: "agent-policy-v1",
+        scope: { kind: "workspace", id: "ws_case_001" },
+        projectionHighWaterMark: 42,
+        sizeBudgetBytes: 16_384
+      })).toThrow("blocked.unsafe-diagnostic");
+    }
+  });
+
   it("rejects authoritative empty memory snapshots that retain artifact provenance", () => {
     const input = {
       memorySnapshot: { ...emptyMemorySnapshot(), artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"] },
