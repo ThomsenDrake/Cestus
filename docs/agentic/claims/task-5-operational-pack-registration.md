@@ -46,3 +46,5 @@ is resolved by the approved Task 5 operational descriptor-local
 - Review repair RED: the targeted command failed because the canonical operational memory wrapper was absent and fresh registration accepted a provider that omitted a declared capability.
 - Review repair GREEN: `npm test -- packages/agent/test/operational-context-packs.test.ts packages/agent/test/specialist-readiness.test.ts` passed with 2 test files and 44 tests.
 - Review repair full verification: `npm run verify` completed successfully after `typecheck passed`.
+- Re-review targeted test: added `expect(registeredMemory).toEqual(directMemory)` and the required targeted command passed with 2 test files and 44 tests.
+- Re-review full verification: `npm run verify` completed successfully after `typecheck passed`.

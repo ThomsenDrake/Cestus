@@ -521,6 +521,7 @@ describe("operational context pack registration and readiness handoff", () => {
       projectionHighWaterMark: memorySnapshot.projectionHighWaterMark, sizeBudgetBytes: boundedProvider.sizeBudgets.agentMemorySummary, memorySnapshot
     });
     const registeredMemory = await registry.buildResolved("agent-memory-summary.v1");
+    expect(registeredMemory).toEqual(directMemory);
     expect(registeredMemory.payload).toEqual(directMemory.payload);
     expect(registeredMemory.ref).toMatchObject({
       contextPackId: directMemory.ref.contextPackId,
