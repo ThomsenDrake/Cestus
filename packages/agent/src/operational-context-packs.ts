@@ -4,10 +4,12 @@ import type {
   ContextPackDescriptor,
   ContextPackPayloadParser,
   ContextPackRef,
+  ContextPackRegistry,
   ContextPackScope,
   ResolvedContextPack
 } from "./context-packs.js";
 import { buildResolvedContextPack, serializeContextPackPayload } from "./context-packs.js";
+import { buildAgentMemorySummaryResolvedContextPack } from "./memory.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 export type OperationalContextPackId =
@@ -44,6 +46,7 @@ export type OperationalContextPackBlockingCode =
   | "blocked.payload-hash-mismatch"
   | "blocked.payload-schema-mismatch"
   | "blocked.invalid-payload-shape"
+  | "blocked.missing-capability"
   | "blocked.conflicting-registration";
 
 export interface OperationalContextPackSizeBudgets {
@@ -169,13 +172,18 @@ const historyStates = new Set([
 
 const providerStates = new Set(["ready", "degraded", "unavailable", "disabled", "blocked"]);
 
+const operationalContextPackRegistrationState = new WeakMap<ContextPackRegistry, Map<OperationalContextPackId, {
+  readonly registrationKey: string;
+  readonly descriptorFingerprint: string;
+}>>();
+
 export const operationalContextPackDescriptors: readonly ContextPackDescriptor[] = Object.freeze([
   Object.freeze({
     contextPackId: "workspace-runtime-status.v1",
     version: 1,
     label: "Workspace runtime status",
     maxBytes: 16_384,
-    requiredProvenanceKinds: Object.freeze(["event-id"]),
+    requiredProvenanceKinds: Object.freeze(["operational-source-proof"]),
     redactionPolicy: "operational-safe-summary",
     sourceProjection: "runtime.status"
   }),
@@ -184,7 +192,7 @@ export const operationalContextPackDescriptors: readonly ContextPackDescriptor[]
     version: 1,
     label: "Task and run history",
     maxBytes: 32_768,
-    requiredProvenanceKinds: Object.freeze(["event-id", "empty-projection"]),
+    requiredProvenanceKinds: Object.freeze(["operational-source-proof"]),
     redactionPolicy: "operational-safe-summary",
     sourceProjection: "agent.projection.task-run-history"
   }),
@@ -193,7 +201,7 @@ export const operationalContextPackDescriptors: readonly ContextPackDescriptor[]
     version: 1,
     label: "Agent memory summary",
     maxBytes: 16_384,
-    requiredProvenanceKinds: Object.freeze(["event-id", "empty-projection"]),
+    requiredProvenanceKinds: Object.freeze(["operational-source-proof"]),
     redactionPolicy: "operational-safe-summary",
     sourceProjection: "agent.projection.memory"
   })
@@ -212,6 +220,7 @@ export function buildWorkspaceRuntimeStatusContextPack(
   assertBuilderMetadata(input, "runtimeSource");
   const runtime = normalizeRuntimeSource(input.runtimeSource);
   const provenanceRefs = uniqueStrings([
+    operationalSourceProof("workspace-runtime-status.v1", "event"),
     ...runtime.diagnostics.flatMap((diagnostic) => diagnosticIds(diagnostic)),
     `runtime.status:hwm:${runtime.runtimeHighWaterMark}`
   ]);
@@ -251,8 +260,8 @@ export function buildTaskRunHistoryContextPack(
   let candidate = snapshot;
   while (true) {
     const provenanceRefs = emptyProof === undefined
-      ? uniqueStrings([...candidate.sourceEventIds, ...candidate.artifactHashes])
-      : [emptyProjectionProvenanceRef(emptyProof)];
+      ? uniqueStrings([operationalSourceProof("task-run-history.v1", "event"), ...candidate.sourceEventIds, ...candidate.artifactHashes])
+      : [operationalSourceProof("task-run-history.v1", "empty-projection"), emptyProjectionProvenanceRef(emptyProof)];
     const payload = {
       schemaVersion: "task-run-history.v1" as const,
       history: {
@@ -343,6 +352,187 @@ export function operationalContextPackProviderRegistrationKey(
     assertAgentSecretSafeText(segment, "operational context pack registration key segment");
   }
   return segments.join(":");
+}
+
+/** Registers the package-owned, async bounded operational pack builders. */
+export function registerOperationalContextPackBuilders(
+  registry: ContextPackRegistry,
+  provider: OperationalContextPackProvider
+): OperationalContextPackRegistrationResult {
+  const metadata = operationalProviderMetadata(provider);
+  const registrationKey = operationalContextPackProviderRegistrationKey(metadata);
+  assertOperationalProviderCapabilities(provider);
+  const state = operationalContextPackRegistrationState.get(registry);
+
+  for (const descriptor of operationalContextPackDescriptors) {
+    const contextPackId = descriptor.contextPackId as OperationalContextPackId;
+    const descriptorFingerprint = operationalDescriptorFingerprint(descriptor);
+    const registered = state?.get(contextPackId);
+    const existingDescriptor = registry.getDescriptor(contextPackId);
+    if (registered !== undefined) {
+      if (registered.registrationKey !== registrationKey || registered.descriptorFingerprint !== descriptorFingerprint ||
+        existingDescriptor === undefined || operationalDescriptorFingerprint(existingDescriptor) !== descriptorFingerprint) {
+        throw new Error("blocked.conflicting-registration: operational context pack registration conflicts with existing registration");
+      }
+      continue;
+    }
+    if (existingDescriptor !== undefined) {
+      throw new Error("blocked.conflicting-registration: operational context pack ID is already registered by another builder");
+    }
+  }
+
+  if (state === undefined) {
+    const nextState = new Map<OperationalContextPackId, { readonly registrationKey: string; readonly descriptorFingerprint: string }>();
+    operationalContextPackRegistrationState.set(registry, nextState);
+    for (const descriptor of operationalContextPackDescriptors) {
+      const contextPackId = descriptor.contextPackId as OperationalContextPackId;
+      registry.register(operationalContextPackBuilder(descriptor, provider));
+      nextState.set(contextPackId, { registrationKey, descriptorFingerprint: operationalDescriptorFingerprint(descriptor) });
+    }
+  }
+
+  return Object.freeze({
+    contextPackIds: Object.freeze(operationalContextPackDescriptors.map((descriptor) => descriptor.contextPackId as OperationalContextPackId)),
+    registrationKey
+  });
+}
+
+/** Builds bounded resolved envelopes and ref-only readiness inputs without runtime adapters. */
+export async function buildOperationalContextPackReadinessInputs(
+  provider: OperationalContextPackProvider
+): Promise<OperationalContextPackReadinessInputs> {
+  const metadata = operationalProviderMetadata(provider);
+  assertOperationalContextPackProviderMetadata(metadata);
+  if (!hasAllOperationalCapabilities(metadata.capabilities)) {
+    return Object.freeze({
+      resolvedContextPacks: Object.freeze([]),
+      contextPackRefs: Object.freeze([]),
+      currentProjectionHighWaterMarks: Object.freeze({}),
+      descriptors: operationalContextPackDescriptors,
+      blockingReasons: Object.freeze(["blocked.missing-capability"] as const),
+      omissionCodes: Object.freeze([])
+    });
+  }
+  assertOperationalProviderCapabilities(provider);
+  const [runtimeSource, taskRunHistorySnapshot, agentMemorySnapshot] = await Promise.all([
+    provider.workspaceRuntimeStatus(), provider.taskRunHistorySnapshot(), provider.agentMemorySnapshot()
+  ]);
+  const resolvedContextPacks = Object.freeze([
+    buildWorkspaceRuntimeStatusContextPack({
+      generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
+      projectionHighWaterMark: runtimeSource.runtimeHighWaterMark,
+      sizeBudgetBytes: metadata.sizeBudgets.workspaceRuntimeStatus, runtimeSource
+    }),
+    buildTaskRunHistoryContextPack({
+      generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
+      projectionHighWaterMark: taskRunHistorySnapshot.projectionHighWaterMark,
+      sizeBudgetBytes: metadata.sizeBudgets.taskRunHistory, taskRunHistorySnapshot
+    }),
+    withOperationalSourceProof(buildAgentMemorySummaryResolvedContextPack({
+      generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
+      projectionHighWaterMark: agentMemorySnapshot.projectionHighWaterMark,
+      sizeBudgetBytes: metadata.sizeBudgets.agentMemorySummary, memorySnapshot: agentMemorySnapshot
+    }))
+  ]);
+  const omissionCodes = Object.freeze([...uniqueStrings([
+    ...runtimeSource.omissionCodes,
+    ...taskRunHistorySnapshot.window.omissionCodes,
+    ...agentMemorySnapshot.window.omissionCodes
+  ])].sort() as OperationalContextPackOmissionCode[]);
+  return Object.freeze({
+    resolvedContextPacks,
+    contextPackRefs: Object.freeze(resolvedContextPacks.map((resolved) => resolved.ref)),
+    currentProjectionHighWaterMarks: Object.freeze({
+      "workspace-runtime-status.v1": runtimeSource.runtimeHighWaterMark,
+      "task-run-history.v1": taskRunHistorySnapshot.projectionHighWaterMark,
+      "agent-memory-summary.v1": agentMemorySnapshot.projectionHighWaterMark
+    }),
+    descriptors: operationalContextPackDescriptors,
+    blockingReasons: Object.freeze([]),
+    omissionCodes
+  });
+}
+
+function operationalContextPackBuilder(
+  descriptor: ContextPackDescriptor,
+  provider: OperationalContextPackProvider
+): { readonly descriptor: ContextPackDescriptor; readonly parsePayload: ContextPackPayloadParser; build(): Promise<ResolvedContextPack> } {
+  const contextPackId = descriptor.contextPackId as OperationalContextPackId;
+  return Object.freeze({
+    descriptor,
+    parsePayload: operationalContextPackPayloadParsers[`${contextPackId}@1`],
+    async build(): Promise<ResolvedContextPack> {
+      const metadata = operationalProviderMetadata(provider);
+      assertOperationalContextPackProviderMetadata(metadata);
+      if (contextPackId === "workspace-runtime-status.v1") {
+        const runtimeSource = await provider.workspaceRuntimeStatus();
+        return buildWorkspaceRuntimeStatusContextPack({
+          generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
+          projectionHighWaterMark: runtimeSource.runtimeHighWaterMark,
+          sizeBudgetBytes: metadata.sizeBudgets.workspaceRuntimeStatus, runtimeSource
+        });
+      }
+      if (contextPackId === "task-run-history.v1") {
+        const taskRunHistorySnapshot = await provider.taskRunHistorySnapshot();
+        return buildTaskRunHistoryContextPack({
+          generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
+          projectionHighWaterMark: taskRunHistorySnapshot.projectionHighWaterMark,
+          sizeBudgetBytes: metadata.sizeBudgets.taskRunHistory, taskRunHistorySnapshot
+        });
+      }
+      const memorySnapshot = await provider.agentMemorySnapshot();
+      return withOperationalSourceProof(buildAgentMemorySummaryResolvedContextPack({
+        generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
+        projectionHighWaterMark: memorySnapshot.projectionHighWaterMark,
+        sizeBudgetBytes: metadata.sizeBudgets.agentMemorySummary, memorySnapshot
+      }));
+    }
+  });
+}
+
+function operationalProviderMetadata(provider: OperationalContextPackProvider): OperationalContextPackProviderMetadata {
+  return {
+    providerId: provider.providerId,
+    capabilities: provider.capabilities,
+    policyVersion: provider.policyVersion,
+    generatedAt: provider.generatedAt,
+    scope: provider.scope,
+    sizeBudgets: provider.sizeBudgets
+  };
+}
+
+function assertOperationalProviderCapabilities(provider: OperationalContextPackProvider): void {
+  if (typeof provider.workspaceRuntimeStatus !== "function" || typeof provider.taskRunHistorySnapshot !== "function" ||
+    typeof provider.agentMemorySnapshot !== "function") {
+    throw new Error("blocked.missing-capability: operational provider lacks a required bounded source method");
+  }
+}
+
+function hasAllOperationalCapabilities(capabilities: readonly OperationalContextPackCapability[]): boolean {
+  return [...operationalCapabilities].every((capability) => capabilities.includes(capability));
+}
+
+function operationalDescriptorFingerprint(descriptor: ContextPackDescriptor): string {
+  return new TextDecoder().decode(serializeContextPackPayload(descriptor));
+}
+
+function operationalSourceProof(
+  contextPackId: OperationalContextPackId,
+  sourceKind: "event" | "empty-projection"
+): string {
+  return `operational-source-proof:${contextPackId}:${sourceKind}`;
+}
+
+function withOperationalSourceProof(resolved: ResolvedContextPack): ResolvedContextPack {
+  const sourceKind = resolved.ref.provenanceRefs.some((ref) => ref.startsWith("empty-projection:"))
+    ? "empty-projection"
+    : "event";
+  const proof = operationalSourceProof(resolved.ref.contextPackId as OperationalContextPackId, sourceKind);
+  if (resolved.ref.provenanceRefs.includes(proof)) return resolved;
+  return Object.freeze({
+    ref: Object.freeze({ ...resolved.ref, provenanceRefs: Object.freeze(uniqueStrings([...resolved.ref.provenanceRefs, proof])) }),
+    payload: resolved.payload
+  });
 }
 
 function createOperationalPayloadParser(
