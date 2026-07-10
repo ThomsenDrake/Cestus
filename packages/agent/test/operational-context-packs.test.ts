@@ -188,6 +188,10 @@ describe("operational context pack contracts", () => {
     expect(() => operationalContextPackPayloadParsers["task-run-history.v1@1"]({ schemaVersion: "task-run-history.v1", history: { tasks: [] } })).toThrow(/task-run-history/i);
 
     expect(operationalContextPackPayloadParsers["agent-memory-summary.v1@1"](validMemoryPayload)).toEqual(validMemoryPayload);
+    expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({
+      schemaVersion: "agent-memory-summary.v1",
+      memory: { ...validMemoryPayload.memory, truthBoundary: { authoritativeForOntology: true } }
+    })).toThrow(/agent-memory-summary/i);
     expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({ schemaVersion: "workspace-runtime-status.v1", runtime: {} })).toThrow(/agent-memory-summary/i);
     expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({ schemaVersion: "agent-memory-summary.v1", memory: null })).toThrow(/agent-memory-summary/i);
     expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({ schemaVersion: "agent-memory-summary.v1", memory: { activeMemory: [] } })).toThrow(/agent-memory-summary/i);
