@@ -6,7 +6,7 @@ Worker: Codex
 Branch: codex/resident-lifecycle-bootstrap-implementation
 Worktree: /home/drake/.codex/worktrees/14a7/Cestus
 Claimed-at: 2026-07-10T14:48:18Z
-Status: claimed
+Status: in-progress
 
 Owned files:
 - `packages/agent/src/identity-bootstrap.ts`
