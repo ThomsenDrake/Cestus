@@ -27,6 +27,8 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
     ledger: input.handle.ledger,
     actor: input.actor,
     now: input.now,
+    identityLifecycle: () => input.handle.residentIdentity.lifecycle(),
+    identityLifecycleReady: () => input.handle.residentIdentity.ready(),
     providers: configuredProviders.providers,
     approvedToolExecutors: input.approvedToolExecutors ?? []
   });

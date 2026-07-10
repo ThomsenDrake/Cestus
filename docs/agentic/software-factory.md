@@ -1441,3 +1441,34 @@ The permanent architectural, review, worktree, deployment, provider-acceptance, 
 - `docs/agentic/retrospectives/2026-07-10-resident-agent-mvp.md`
 
 Future readiness entries should link to that retrospective and use per-slice claims for detailed command evidence instead of duplicating or continually revising historical test counts here.
+
+## Resident Lifecycle Bootstrap Plan Readiness
+
+The resident lifecycle bootstrap plan was prepared from the approved design spec on 2026-07-10.
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-10-resident-lifecycle-bootstrap-design.md`
+- `docs/superpowers/plans/2026-07-10-resident-lifecycle-bootstrap-implementation.md`
+
+The implementation initializes the one default resident identity `agent_default` from local-runtime create and mount/open flows only. Low-level workspace helpers, status reads, detection, and verification remain mutation-free. Bootstrap is append-or-readback, blocks copied or corrupted identity streams, and keeps providers as execution backends rather than resident identities.
+
+Recorded targeted command evidence:
+
+```text
+npm test -- packages/agent/test/identity-bootstrap.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/ontology/test/agent-contracts.test.ts
+
+npm test -- packages/agent/test/runtime.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/http-handler.test.ts
+
+npm test -- packages/agent/test/cockpit.test.ts packages/local-runtime/test/operator-status.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx
+```
+
+Final verification evidence:
+
+```text
+npm run verify
+typecheck passed
+tests passed
+vite build succeeded
+factory-readiness passed
+```

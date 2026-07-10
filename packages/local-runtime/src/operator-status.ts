@@ -435,11 +435,18 @@ async function buildAgentSection(
           tone: agent.providers.length > 0 ? "healthy" : "attention"
         }
       ],
-      diagnostics: agentDiagnostics(agent.diagnostics),
+      diagnostics: [
+        ...identityLifecycleDiagnostics(agent),
+        ...agentDiagnostics(agent.diagnostics)
+      ],
       sourceEvidence: [
         sourceEvidence("src_agent_status", "agent-status.v1", "agent", "resident agent status", [
           { label: "schemaVersion", value: agent.schemaVersion },
           { label: "generatedAt", value: safeMessage(agent.generatedAt) },
+          { label: "identityLifecycleState", value: agent.identityLifecycle.state },
+          ...(agent.identityLifecycle.workspaceId === undefined
+            ? []
+            : [{ label: "identityLifecycleWorkspaceId", value: safeMessage(agent.identityLifecycle.workspaceId) }]),
           ...(agent.residentAgentId === undefined
             ? []
             : [{ label: "residentAgentId", value: safeMessage(agent.residentAgentId) }])
@@ -624,6 +631,15 @@ function ingestionState(
 
 function agentState(agent: AgentStatusDto): OperatorReadinessState {
   if (
+    agent.identityLifecycle.state === "blocked" ||
+    agent.identityLifecycle.state === "not-mounted"
+  ) {
+    return "blocked";
+  }
+  if (agent.identityLifecycle.state === "initializing") {
+    return "degraded";
+  }
+  if (
     agent.diagnostics.some((diagnostic) => diagnostic.severity === "error") ||
     hasBlockingAgentLock(agent)
   ) {
@@ -651,6 +667,15 @@ function hasBlockingAgentLock(agent: AgentStatusDto): boolean {
 }
 
 function headlineForAgent(agent: AgentStatusDto, state: OperatorReadinessState): string {
+  if (agent.identityLifecycle.state === "blocked") {
+    return "Resident identity requires attention";
+  }
+  if (agent.identityLifecycle.state === "not-mounted") {
+    return "Resident workspace is not mounted";
+  }
+  if (agent.identityLifecycle.state === "initializing") {
+    return "Resident identity is initializing";
+  }
   if (hasBlockingAgentLock(agent)) {
     return "Agent lock is active";
   }
@@ -728,6 +753,23 @@ function agentDiagnostics(
       value: safeMessage(action)
     }))
   }));
+}
+
+function identityLifecycleDiagnostics(agent: AgentStatusDto): OperatorDiagnosticDto[] {
+  if (agent.identityLifecycle.state !== "blocked") {
+    return [];
+  }
+
+  return [{
+    diagnosticId: "diag_agent_identity_lifecycle_blocked",
+    severity: "error",
+    category: "agent",
+    message: safeMessage(agent.identityLifecycle.safeMessage),
+    refs: agent.identityLifecycle.allowedRepairActions.slice(0, 3).map((action) => ({
+      label: "allowedRepairAction",
+      value: safeMessage(action)
+    }))
+  }];
 }
 
 function prrDiagnostics(
