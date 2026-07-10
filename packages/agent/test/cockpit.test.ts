@@ -315,6 +315,8 @@ function approvalCockpitFixture(): AgentApprovalCockpitDto {
 function reportBuilderHandoffFixture(): SpecialistWorkflowHandoffDto {
   return {
     schemaVersion: "agent-specialist-handoff.v1",
+    handoffId: "handoff_run_report_done_0123456789abcdef",
+    handoffRevision: 1,
     runType: "report-builder",
     runId: "run_report_done",
     taskId: "task_report_done",
