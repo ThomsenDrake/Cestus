@@ -4,24 +4,26 @@
 
 **Goal:** Build package-owned investigative context-pack builders and registration for `evidence-summary.v1`, `accepted-graph-projection.v1`, and `governance-locks.v1` with bounded selection, exact provenance, aggregate omissions, and hash-verified resolved payloads.
 
-**Architecture:** The operational generic resolved-context contract lands first and owns `ResolvedContextPack { ref, payload }`, content-addressed payload verification, pack-specific payload parser dispatch keyed by `contextPackId/version`, and provider prompt rendering. This package lane adds investigative builders in `packages/agent` that consume scope-aware selection and bounded reader capabilities, produce provider-safe resolved envelopes, supply strict payload parsers for all three schemas, and register only through an exported helper. Local-runtime, orchestrator, cockpit, PRR packs, operational packs, specialist prompt definitions, and handoff projections are out of scope.
+**Architecture:** The operational generic resolved-context contract lands first and owns `ResolvedContextPack { ref, payload }`, content-addressed payload verification, pack-specific payload parser dispatch keyed by `contextPackId/version`, and authoritative resolve-and-parse APIs. This package lane adds investigative builders in `packages/agent` that consume scope-aware selection and bounded reader capabilities, produce provider-safe resolved envelopes, supply strict payload parsers for all three schemas, and register only through an exported helper. Local-runtime, orchestrator, cockpit, PRR packs, operational packs, specialist prompt definitions, prompt-template provider assembly, and handoff projections are out of scope.
 
 **Tech Stack:** TypeScript, Vitest, Zod, Node `crypto`, existing `packages/agent` context-pack APIs, operational resolved-context APIs, injected ontology/ingestion/governance/agent projection readers.
 
 ## Global Constraints
 
 - This plan starts only after the operational generic resolved-context contract is merged into this branch.
-- Required shared exports before Task 1: `ResolvedContextPack`, `ResolvedContextPackBuilder`, `ResolvedContextPackPayloadParser`, `ResolvedContextPackRegistry`, `createResolvedContextPackRegistry`, `buildResolvedContextPack`, `verifyResolvedContextPack`, `createContextPackPayloadResolver`, and `renderResolvedContextPacksForPrompt` from `packages/agent/src/context-packs.ts` or a re-exported package-owned module.
-- Required operational registry shape before Task 1: `ResolvedContextPackPayloadParser<Payload>.contextPackId: string`, `ResolvedContextPackPayloadParser<Payload>.version: number`, `ResolvedContextPackPayloadParser<Payload>.parserIdentity: object`, `ResolvedContextPackPayloadParser<Payload>.parsePayload(payload: unknown): Payload`, `ResolvedContextPackBuilder<BuildRequest, Payload>.payloadParser: ResolvedContextPackPayloadParser<Payload>`, `ResolvedContextPackBuilder<BuildRequest, Payload>.buildResolved(input: BuildRequest): ResolvedContextPack<Payload> | Promise<ResolvedContextPack<Payload>>`, `ResolvedContextPackRegistry.registerResolved<BuildRequest, Payload>(builder: ResolvedContextPackBuilder<BuildRequest, Payload>): void`, and `ResolvedContextPackRegistry.buildResolved<BuildRequest>(contextPackId: string, input: BuildRequest): Promise<ResolvedContextPack>`.
-- Operational resolution must verify hash and size first, then dispatch the exact parser registered for `contextPackId/version`; a matching hash with an invalid parsed shape must fail before prompt rendering.
+- Required shared exports before Task 1: `ResolvedContextPack`, `ResolvedContextPackBuilder`, `ResolvedContextPackPayloadParser`, `ResolvedContextPackRegistry`, `ContextPackPayloadResolver`, `createResolvedContextPackRegistry`, `buildResolvedContextPack`, `verifyResolvedContextPack`, `createContextPackPayloadResolver`, and `resolveAndParseContextPack` from `packages/agent/src/context-packs.ts` or a re-exported package-owned module.
+- Required operational registry shape before Task 1: `ResolvedContextPackPayloadParser<Payload>.contextPackId: string`, `ResolvedContextPackPayloadParser<Payload>.version: number`, `ResolvedContextPackPayloadParser<Payload>.parserIdentity: object`, `ResolvedContextPackPayloadParser<Payload>.parsePayload(payload: unknown): Payload`, `ResolvedContextPackBuilder<BuildRequest, Payload>.payloadParser: ResolvedContextPackPayloadParser<Payload>`, `ResolvedContextPackBuilder<BuildRequest, Payload>.buildResolved(input: BuildRequest): ResolvedContextPack<Payload> | Promise<ResolvedContextPack<Payload>>`, `ResolvedContextPackRegistry.registerResolved<BuildRequest, Payload>(builder: ResolvedContextPackBuilder<BuildRequest, Payload>): void`, `ResolvedContextPackRegistry.buildResolved<BuildRequest>(contextPackId: string, input: BuildRequest): Promise<ResolvedContextPack>`, and `resolveAndParseContextPack(ref: ContextPackRef, resolver: ContextPackPayloadResolver, registry: ResolvedContextPackRegistry): Promise<ResolvedContextPack>`.
+- Operational resolution must verify hash and size first, then dispatch the exact parser registered for `contextPackId/version`; a matching hash with an invalid parsed shape must fail before any downstream prompt-template lane consumes the payload.
 - If those shared exports are missing or their signatures do not match this plan, stop before claiming Task 1 and ask the coordinator to rebase this lane after the operational context lane.
 - Do not edit local-runtime, orchestrator, scheduler, cockpit, browser UI, operational packs, PRR packs, specialist workflow prompt definitions, handoff projections, or resident-agent runtime wiring in this lane.
 - Do not introduce SQLite, filesystem mount, local-runtime, or portable-workspace imports into `packages/agent/src/investigative-context-packs.ts`.
+- Do not package-export or register investigative production builders until `buildEvidenceSummaryContextPack`, `buildAcceptedGraphProjectionContextPack`, and `buildGovernanceLocksContextPack` are all complete in Tasks 3-5.
 - Builders receive only injected bounded capabilities: selection, accepted-graph reader, evidence reader, governance posture reader, resident-agent lock reader, event reader, and source-posture checker.
 - Builders never accept `events: readonly KnowledgeEvent[]` or whole-workspace graph, ingestion, governance, or agent projections as production dependencies.
 - Workspace scope requires a deterministic page/window or explicit bounded selection manifest; one pack is never an unbounded workspace dump.
-- Default pack budgets: `evidence-summary.v1` = 65,536 bytes, `accepted-graph-projection.v1` = 65,536 bytes, `governance-locks.v1` = 32,768 bytes.
-- Default selection window limit: 100 included refs. Default reader batch size: 50 IDs. Default omission sample limit: 3 refs per aggregate bucket.
+- Export configurable v1 limits through `investigativeContextPackDefaultLimits` with `limitsVersion: "investigative-context-pack-limits.v1"` and per-pack descriptor identity.
+- Exported v1 default pack budgets: `evidence-summary.v1` = 65,536 bytes, `accepted-graph-projection.v1` = 65,536 bytes, `governance-locks.v1` = 32,768 bytes.
+- Exported v1 default selection window limit: 100 included refs. Exported v1 reader batch size: 50 IDs. Exported v1 omission sample limit: 3 refs per aggregate bucket.
 - Active resident-agent locks, active governance-derived restrictions, exact included-row provenance, scope, high-water marks, source-byte/archive-child staleness inputs, and aggregate omission metadata are mandatory and fail with `context-budget-exceeded` if they do not fit.
 - `InvestigativeSelectionManifest.manifestHash` is the SHA-256 of the canonical manifest body with `manifestHash` omitted.
 - Stable failure and omission reason codes are machine-readable; UI prose is outside this lane.
@@ -35,9 +37,9 @@
 
 ## File Structure
 
-- Create `packages/agent/src/investigative-context-packs.ts`: public investigative pack IDs, descriptors, bounded dependency interfaces, DTO types, strict payload parsers, error codes, manifest body hashing/verification, pack builders, and `registerInvestigativeContextPacks`.
-- Create `packages/agent/test/investigative-context-packs.test.ts`: focused tests for descriptors, manifest hashing, bounded selection/readers, each pack builder, registration, readiness, stale-source rejection, omission aggregation, payload resolution, and sentinel rendering.
-- Modify `packages/agent/src/index.ts`: export `./investigative-context-packs.js`.
+- Create `packages/agent/src/investigative-context-packs.ts`: investigative pack IDs, descriptors, configurable default limits, bounded dependency interfaces, DTO types, strict payload parsers, error codes, manifest body hashing/verification, pack builders, and `registerInvestigativeContextPacks`.
+- Create `packages/agent/test/investigative-context-packs.test.ts`: focused tests for descriptors, manifest hashing, bounded selection/readers, each pack builder, registration, readiness, stale-source rejection, omission aggregation, payload resolution, and sentinel payload fixture proof.
+- Modify `packages/agent/src/index.ts` in Task 6 only after all three production builders and parser registrations exist: export `./investigative-context-packs.js`.
 - Read but do not modify unless the operational lane already changed them and a compile fix is required: `packages/agent/src/context-packs.ts`, `packages/agent/src/specialist-readiness.ts`, `packages/agent/src/specialist-workflows.ts`, `packages/agent/src/prompt-artifacts.ts`.
 
 ## Shared Interfaces To Implement In `investigative-context-packs.ts`
@@ -101,9 +103,22 @@ export interface InvestigativeRegistrationIdentity {
   readonly moduleId: "packages/agent/src/investigative-context-packs";
   readonly descriptorSchemaVersion: "investigative-context-pack-descriptor.v1";
   readonly parserSchemaVersion: "investigative-context-pack-payload-parser.v1";
+  readonly limitsVersion: "investigative-context-pack-limits.v1";
   readonly builderDescriptorHash: `sha256:${string}`;
   readonly payloadParserHash: `sha256:${string}`;
+  readonly limitsHash: `sha256:${string}`;
 }
+
+export interface InvestigativeContextPackDefaultLimits {
+  readonly limitsVersion: "investigative-context-pack-limits.v1";
+  readonly descriptorSchemaVersion: "investigative-context-pack-descriptor.v1";
+  readonly packBudgets: Readonly<Record<InvestigativeContextPackId, number>>;
+  readonly selectionWindowLimit: 100;
+  readonly readerBatchSize: 50;
+  readonly omissionSampleLimit: 3;
+}
+
+export const investigativeContextPackDefaultLimits: InvestigativeContextPackDefaultLimits;
 
 export interface InvestigativeContextPackScope {
   readonly kind: "workspace" | "investigation" | "task" | "selection";
@@ -281,6 +296,12 @@ export const governanceLocksPayloadParser: ResolvedContextPackPayloadParser<Gove
 export const investigativeContextPackPayloadParsers: readonly ResolvedContextPackPayloadParser<InvestigativeContextPackPayloadBase>[];
 ```
 
+`builderDescriptorHash` and `limitsHash` must be computed from
+`investigativeContextPackDescriptors`, `investigativeContextPackDefaultLimits`,
+and the descriptor/parser schema versions. Changing a v1 budget, reader batch
+size, omission sample limit, or selection window limit changes the stable
+registration identity and must be reviewed as a v1 behavior change.
+
 The parser registered for a descriptor must be keyed by exact `contextPackId/version`. It must run after the operational resolver verifies `ref.contentHash` and `ref.sizeBytes`, and it must reject payloads whose hash matches the ref but whose shape violates the pack-specific schema.
 
 Reader row interfaces should be added in the task that first uses them and kept in the same file. All reader methods must accept exact included IDs and `limit: 50`; no method may accept a whole projection object.
@@ -295,7 +316,7 @@ Reader row interfaces should be added in the task that first uses them and kept 
 - Read: `packages/agent/src/prompt-artifacts.ts`
 
 **Interfaces:**
-- Consumes: Operational lane exports `ResolvedContextPack`, `ResolvedContextPackBuilder`, `ResolvedContextPackPayloadParser`, `ResolvedContextPackRegistry`, `createResolvedContextPackRegistry`, `buildResolvedContextPack`, `verifyResolvedContextPack`, `createContextPackPayloadResolver`, and `renderResolvedContextPacksForPrompt`.
+- Consumes: Operational lane exports `ResolvedContextPack`, `ResolvedContextPackBuilder`, `ResolvedContextPackPayloadParser`, `ResolvedContextPackRegistry`, `ContextPackPayloadResolver`, `createResolvedContextPackRegistry`, `buildResolvedContextPack`, `verifyResolvedContextPack`, `createContextPackPayloadResolver`, and `resolveAndParseContextPack`.
 - Produces: A yes/no gate for Task 1.
 
 - [ ] **Step 1: Verify the dependency landed**
@@ -303,7 +324,7 @@ Reader row interfaces should be added in the task that first uses them and kept 
 Run:
 
 ```bash
-rg -n "ResolvedContextPack|ResolvedContextPackBuilder|ResolvedContextPackPayloadParser|ResolvedContextPackRegistry|createResolvedContextPackRegistry|buildResolvedContextPack|verifyResolvedContextPack|createContextPackPayloadResolver|renderResolvedContextPacksForPrompt" packages/agent/src packages/agent/test
+rg -n "ResolvedContextPack|ResolvedContextPackBuilder|ResolvedContextPackPayloadParser|ResolvedContextPackRegistry|ContextPackPayloadResolver|createResolvedContextPackRegistry|buildResolvedContextPack|verifyResolvedContextPack|createContextPackPayloadResolver|resolveAndParseContextPack" packages/agent/src packages/agent/test
 ```
 
 Expected: output includes all required symbols in `packages/agent/src/context-packs.ts` or a re-exported operational context module.
@@ -330,7 +351,6 @@ If Step 1 does not find all symbols, do not create a claim and do not edit files
 - Create: `docs/agentic/claims/task-1-investigative-context-contracts.md`
 - Create: `packages/agent/src/investigative-context-packs.ts`
 - Create: `packages/agent/test/investigative-context-packs.test.ts`
-- Modify: `packages/agent/src/index.ts`
 
 **Interfaces:**
 - Consumes: Shared resolved-context exports from Task 0.
@@ -358,6 +378,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertSelectionManifestHash,
   buildSelectionManifestHash,
+  investigativeContextPackDefaultLimits,
   investigativeContextPackDescriptors,
   investigativeContextPackPayloadParsers,
   type InvestigativeSelectionManifestBody
@@ -389,6 +410,21 @@ describe("investigative context packs", () => {
       "investigative-context-pack-payload-parser.v1",
       "investigative-context-pack-payload-parser.v1"
     ]);
+  });
+
+  it("declares configurable v1 default limits with descriptor identity", () => {
+    expect(investigativeContextPackDefaultLimits).toEqual({
+      limitsVersion: "investigative-context-pack-limits.v1",
+      descriptorSchemaVersion: "investigative-context-pack-descriptor.v1",
+      packBudgets: {
+        "accepted-graph-projection.v1": 65_536,
+        "evidence-summary.v1": 65_536,
+        "governance-locks.v1": 32_768
+      },
+      selectionWindowLimit: 100,
+      readerBatchSize: 50,
+      omissionSampleLimit: 3
+    });
   });
 
   it("computes manifestHash from the canonical manifest body without manifestHash", () => {
@@ -468,12 +504,25 @@ export const INVESTIGATIVE_CONTEXT_PACK_IDS = Object.freeze([
   "governance-locks.v1"
 ] as const);
 
+export const investigativeContextPackDefaultLimits = Object.freeze({
+  limitsVersion: "investigative-context-pack-limits.v1",
+  descriptorSchemaVersion: "investigative-context-pack-descriptor.v1",
+  packBudgets: Object.freeze({
+    "accepted-graph-projection.v1": 65_536,
+    "evidence-summary.v1": 65_536,
+    "governance-locks.v1": 32_768
+  }),
+  selectionWindowLimit: 100,
+  readerBatchSize: 50,
+  omissionSampleLimit: 3
+} satisfies InvestigativeContextPackDefaultLimits);
+
 export const investigativeContextPackDescriptors = Object.freeze([
   Object.freeze({
     contextPackId: "accepted-graph-projection.v1",
     version: 1,
     label: "Accepted graph projection",
-    maxBytes: 65_536,
+    maxBytes: investigativeContextPackDefaultLimits.packBudgets["accepted-graph-projection.v1"],
     requiredProvenanceKinds: Object.freeze(["event-id", "content-hash"]),
     redactionPolicy: "provider-safe-resolved-payload",
     sourceProjection: "ontology.accepted-graph"
@@ -482,7 +531,7 @@ export const investigativeContextPackDescriptors = Object.freeze([
     contextPackId: "evidence-summary.v1",
     version: 1,
     label: "Evidence summary",
-    maxBytes: 65_536,
+    maxBytes: investigativeContextPackDefaultLimits.packBudgets["evidence-summary.v1"],
     requiredProvenanceKinds: Object.freeze(["event-id", "content-hash", "evidence-id"]),
     redactionPolicy: "provider-safe-resolved-payload",
     sourceProjection: "ingestion.evidence"
@@ -491,7 +540,7 @@ export const investigativeContextPackDescriptors = Object.freeze([
     contextPackId: "governance-locks.v1",
     version: 1,
     label: "Governance locks",
-    maxBytes: 32_768,
+    maxBytes: investigativeContextPackDefaultLimits.packBudgets["governance-locks.v1"],
     requiredProvenanceKinds: Object.freeze(["event-id"]),
     redactionPolicy: "provider-safe-resolved-payload",
     sourceProjection: "governance-and-agent-locks"
@@ -562,7 +611,7 @@ function canonicalSelectionManifestBody(manifest: InvestigativeSelectionManifest
 }
 ```
 
-Add `export * from "./investigative-context-packs.js";` to `packages/agent/src/index.ts`.
+Do not export this module from `packages/agent/src/index.ts` in Task 1. The package index export is delayed until Task 6 after all three production builders, payload parsers, and registration exist.
 
 - [ ] **Step 6: Run targeted tests**
 
@@ -589,7 +638,7 @@ Expected: typecheck, tests, UI build, and factory readiness pass.
 Run:
 
 ```bash
-git add docs/agentic/claims/task-1-investigative-context-contracts.md packages/agent/src/investigative-context-packs.ts packages/agent/test/investigative-context-packs.test.ts packages/agent/src/index.ts
+git add docs/agentic/claims/task-1-investigative-context-contracts.md packages/agent/src/investigative-context-packs.ts packages/agent/test/investigative-context-packs.test.ts
 git commit -m "feat: add investigative context pack contracts"
 ```
 
@@ -614,6 +663,8 @@ Create and commit `docs/agentic/claims/task-2-investigative-bounded-selection.md
 
 - [ ] **Step 2: Write RED bounded-selection tests**
 
+Update the test import from `../src/investigative-context-packs.js` to include `__testOnlyResolveInvestigativeSelection`, `__testOnlyReadEvidenceSelectionProbe`, and `InvestigativeContextPackError`.
+
 Append tests:
 
 ```ts
@@ -627,7 +678,8 @@ it("requires workspace scope to provide a deterministic window", async () => {
     }
   });
 
-  await expect(buildEvidenceSummaryContextPack({
+  await expect(__testOnlyResolveInvestigativeSelection({
+    contextPackId: "evidence-summary.v1",
     deps,
     scope: { kind: "workspace", id: "ws_main" }
   })).rejects.toMatchObject({ code: "selection-window-required" });
@@ -645,7 +697,8 @@ it("propagates stale cursor failures before reading projection rows", async () =
     }
   });
 
-  await expect(buildEvidenceSummaryContextPack({
+  await expect(__testOnlyResolveInvestigativeSelection({
+    contextPackId: "evidence-summary.v1",
     deps,
     scope: { kind: "workspace", id: "ws_main" },
     window: windowFor("cursor_stale", 0, 100)
@@ -661,17 +714,17 @@ it("keeps query work bounded as unrelated evidence rows grow", async () => {
     unrelatedEvidenceRows: 10_000
   });
 
-  const resolved = await buildEvidenceSummaryContextPack({
+  const selection = await __testOnlyReadEvidenceSelectionProbe({
     deps,
     scope: { kind: "workspace", id: "ws_main" },
     window: windowFor("cursor_ws_main_0001", 0, 100)
   });
 
-  expect(resolved.payload.items).toHaveLength(1);
+  expect(selection.rows).toHaveLength(1);
   expect(counters.evidenceReads).toBe(1);
   expect(counters.evidenceIdsRead).toEqual(["ev_contract_001"]);
   expect(counters.unrelatedRowsScanned).toBe(0);
-  expect(JSON.stringify(resolved.payload).length).toBeLessThan(65_536);
+  expect(JSON.stringify(selection.manifest).length).toBeLessThan(65_536);
 });
 ```
 
@@ -777,13 +830,7 @@ export interface BuildInvestigativeContextPackInput extends InvestigativeContext
   readonly deps: InvestigativeContextPackDependencies;
 }
 
-const defaultBudgets: Readonly<Record<InvestigativeContextPackId, number>> = Object.freeze({
-  "accepted-graph-projection.v1": 65_536,
-  "evidence-summary.v1": 65_536,
-  "governance-locks.v1": 32_768
-});
-
-const readerBatchSize = 50;
+const readerBatchSize = investigativeContextPackDefaultLimits.readerBatchSize;
 
 async function selectForPack(
   contextPackId: InvestigativeContextPackId,
@@ -792,7 +839,7 @@ async function selectForPack(
   if (input.scope.kind === "workspace" && input.window === undefined) {
     throw new InvestigativeContextPackError("selection-window-required", "selection-window-required");
   }
-  const sizeBudgetBytes = input.sizeBudgetBytes ?? input.deps.budgets?.[contextPackId] ?? defaultBudgets[contextPackId];
+  const sizeBudgetBytes = input.sizeBudgetBytes ?? input.deps.budgets?.[contextPackId] ?? investigativeContextPackDefaultLimits.packBudgets[contextPackId];
   const manifest = await input.deps.selection.select({
     contextPackId,
     scope: input.scope,
@@ -811,7 +858,35 @@ function includedIds(manifest: InvestigativeSelectionManifest, refKind: Investig
 }
 ```
 
-Add stub builders that call `selectForPack`, read evidence IDs in one bounded batch, and return a minimal resolved evidence payload through `buildResolvedContextPack`. The accepted graph and governance builders can return valid empty payloads in this task as long as Task 3-5 replace them with complete behavior.
+Add only private selection/reader helpers plus these test-only probes:
+
+```ts
+export async function __testOnlyResolveInvestigativeSelection(
+  input: BuildInvestigativeContextPackInput & { readonly contextPackId: InvestigativeContextPackId }
+): Promise<InvestigativeSelectionManifest> {
+  return selectForPack(input.contextPackId, input);
+}
+
+export async function __testOnlyReadEvidenceSelectionProbe(
+  input: BuildInvestigativeContextPackInput
+): Promise<{ readonly manifest: InvestigativeSelectionManifest; readonly rows: readonly InvestigativeEvidenceRow[] }> {
+  const manifest = await selectForPack("evidence-summary.v1", input);
+  const evidenceIds = includedIds(manifest, "evidence");
+  const contentHashes = manifest.includedRefs
+    .filter((ref) => ref.refKind === "evidence")
+    .map((ref) => ref.contentHash)
+    .filter((hash): hash is `sha256:${string}` => hash !== undefined);
+  const rows = await input.deps.evidenceReader.readEvidenceByIds({
+    evidenceIds,
+    contentHashes,
+    highWaterMarks: manifest.sourceProjectionHighWaterMarks,
+    limit: investigativeContextPackDefaultLimits.readerBatchSize
+  });
+  return Object.freeze({ manifest, rows: Object.freeze([...rows]) });
+}
+```
+
+The `__testOnly*` functions are non-production helpers, are not registered as context-pack builders, and must not be exported from `packages/agent/src/index.ts`. Do not create `buildAcceptedGraphProjectionContextPack`, `buildEvidenceSummaryContextPack`, `buildGovernanceLocksContextPack`, or any valid empty production builder in Task 2.
 
 - [ ] **Step 5: Run targeted tests**
 
@@ -1447,24 +1522,25 @@ Request a fresh review focused on governance non-authoritativeness and non-trunc
 
 ---
 
-## Task 6: Registration, Readiness, And Resolved Payload Rendering
+## Task 6: Registration, Readiness, And Resolved Payload Verification
 
 **Files:**
 - Create: `docs/agentic/claims/task-6-investigative-registration-readiness.md`
 - Modify: `packages/agent/src/investigative-context-packs.ts`
 - Modify: `packages/agent/test/investigative-context-packs.test.ts`
+- Modify: `packages/agent/src/index.ts`
 
 **Interfaces:**
-- Consumes: Completed builders and strict payload parsers from Tasks 3-5 plus operational resolved-context renderer from Task 0.
-- Produces: `registerInvestigativeContextPacks`, idempotent stable descriptor/parser registration, readiness proof with refs, payload parser dispatch proof, and payload sentinel rendering proof.
+- Consumes: Completed builders and strict payload parsers from Tasks 3-5 plus operational resolved-context registry/resolver/parser verification from Task 0.
+- Produces: `registerInvestigativeContextPacks`, idempotent stable descriptor/parser registration, readiness proof with refs, payload parser dispatch proof, and payload sentinel fixture proof for the prompt-template lane.
 
 - [ ] **Step 1: Claim Task 6**
 
 Create and commit the claim file with status `claimed`, then update it to `in-progress`.
 
-- [ ] **Step 2: Write RED registration and renderer tests**
+- [ ] **Step 2: Write RED registration and resolved-payload tests**
 
-Update imports to include `registerInvestigativeContextPacks`, `createResolvedContextPackRegistry`, `createContextPackPayloadResolver`, `renderResolvedContextPacksForPrompt`, `buildResolvedContextPack`, and all three investigative payload parsers.
+Update imports to include `registerInvestigativeContextPacks`, `createResolvedContextPackRegistry`, `createContextPackPayloadResolver`, `resolveAndParseContextPack`, `buildResolvedContextPack`, and all three investigative payload parsers.
 
 Append tests:
 
@@ -1492,8 +1568,10 @@ it("rejects conflicting duplicate investigative registration", () => {
       moduleId: "packages/agent/src/investigative-context-packs",
       descriptorSchemaVersion: "investigative-context-pack-descriptor.v1",
       parserSchemaVersion: "investigative-context-pack-payload-parser.v1",
+      limitsVersion: "investigative-context-pack-limits.v1",
       builderDescriptorHash: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-      payloadParserHash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      payloadParserHash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      limitsHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
     }
   }))).toThrow(/conflicting-context-pack-registration/);
 });
@@ -1538,30 +1616,40 @@ function createReadinessInput(input: { readonly refs: readonly ContextPackRef[] 
   };
 }
 
-it("renders a payload-only investigative fact after exact hash verification", async () => {
-  const resolved = await buildAcceptedGraphProjectionContextPack({
-    deps: createInvestigativeDeps({
+it("keeps a payload-only investigative fact available after authoritative resolve-and-parse", async () => {
+  const registry = createResolvedContextPackRegistry();
+  registerInvestigativeContextPacks(registry, createInvestigativeDeps({
       graphSentinel: "payload-only-sentinel-contract-fact-314159"
-    }),
+    }));
+
+  const resolved = await registry.buildResolved("accepted-graph-projection.v1", {
     scope: { kind: "task", id: "task_graph" },
     window: windowFor("cursor_task_graph_0001", 0, 100)
   });
 
   expect(resolved.ref.safeSummary).not.toContain("payload-only-sentinel-contract-fact-314159");
+  const serializedAuditSurface = JSON.stringify({
+    contextPackRefs: [resolved.ref],
+    provenanceRefs: resolved.ref.provenanceRefs,
+    sourceEventIds: resolved.ref.sourceEventIds ?? [],
+    artifactHashes: resolved.ref.artifactHashes ?? []
+  });
+  expect(serializedAuditSurface).not.toContain("payload-only-sentinel-contract-fact-314159");
 
   const resolver = createContextPackPayloadResolver([resolved]);
-  const promptText = await renderResolvedContextPacksForPrompt({
-    runType: "evidence-triage",
-    contextPackRefs: [resolved.ref],
-    resolver
-  });
+  const parsed = await resolveAndParseContextPack(resolved.ref, resolver, registry);
 
-  expect(promptText).toContain("payload-only-sentinel-contract-fact-314159");
+  expect(JSON.stringify(parsed.payload)).toContain("payload-only-sentinel-contract-fact-314159");
 });
 
-it("rejects prompt rendering when resolved payload hash does not match the ref", async () => {
-  const resolved = await buildAcceptedGraphProjectionContextPack({
-    deps: createInvestigativeDeps(),
+// The prompt-template lane consumes this sentinel fixture in its own tests and
+// live provider gate. This package lane stops at parser-verified resolved
+// payload availability and ref/audit-surface exclusion.
+
+it("rejects authoritative resolve-and-parse when resolved payload hash does not match the ref", async () => {
+  const registry = createResolvedContextPackRegistry();
+  registerInvestigativeContextPacks(registry, createInvestigativeDeps());
+  const resolved = await registry.buildResolved("accepted-graph-projection.v1", {
     scope: { kind: "task", id: "task_graph" },
     window: windowFor("cursor_task_graph_0001", 0, 100)
   });
@@ -1571,14 +1659,12 @@ it("rejects prompt rendering when resolved payload hash does not match the ref",
   };
 
   const resolver = createContextPackPayloadResolver([tampered]);
-  await expect(renderResolvedContextPacksForPrompt({
-    runType: "evidence-triage",
-    contextPackRefs: [resolved.ref],
-    resolver
-  })).rejects.toMatchObject({ code: "context-payload-hash-mismatch" });
+  await expect(resolveAndParseContextPack(resolved.ref, resolver, registry)).rejects.toMatchObject({ code: "context-payload-hash-mismatch" });
 });
 
 it("rejects matching-hash resolved payloads whose pack-specific shape is invalid", async () => {
+  const registry = createResolvedContextPackRegistry();
+  registerInvestigativeContextPacks(registry, createInvestigativeDeps());
   const invalidResolved = buildResolvedContextPack({
     contextPackId: "accepted-graph-projection.v1",
     version: 1,
@@ -1608,11 +1694,7 @@ it("rejects matching-hash resolved payloads whose pack-specific shape is invalid
   });
   const resolver = createContextPackPayloadResolver([invalidResolved]);
 
-  await expect(renderResolvedContextPacksForPrompt({
-    runType: "evidence-triage",
-    contextPackRefs: [invalidResolved.ref],
-    resolver
-  })).rejects.toThrow(/accepted-graph payload/);
+  await expect(resolveAndParseContextPack(invalidResolved.ref, resolver, registry)).rejects.toThrow(/accepted-graph payload/);
 });
 ```
 
@@ -1624,7 +1706,7 @@ Run:
 npm test -- packages/agent/test/investigative-context-packs.test.ts -t "registers investigative|conflicting duplicate|specialist readiness|payload-only|payload hash|invalid shape"
 ```
 
-Expected: fail because registration and renderer integration are incomplete.
+Expected: fail because registration and operational resolve-and-parse integration are incomplete.
 
 - [ ] **Step 4: Implement registration helper**
 
@@ -1640,7 +1722,9 @@ export function registerInvestigativeContextPacks(
   const identityKey = [
     deps.registrationIdentity.builderDescriptorHash,
     deps.registrationIdentity.parserSchemaVersion,
-    deps.registrationIdentity.payloadParserHash
+    deps.registrationIdentity.payloadParserHash,
+    deps.registrationIdentity.limitsVersion,
+    deps.registrationIdentity.limitsHash
   ].join(":");
   const existing = registeredRegistries.get(registry);
   if (existing !== undefined) {
@@ -1676,6 +1760,8 @@ export function registerInvestigativeContextPacks(
 }
 ```
 
+Add `export * from "./investigative-context-packs.js";` to `packages/agent/src/index.ts` in this task, after all production builders and payload parsers are present.
+
 - [ ] **Step 5: Run targeted tests**
 
 Run:
@@ -1701,11 +1787,11 @@ Expected: verification passes.
 Run:
 
 ```bash
-git add docs/agentic/claims/task-6-investigative-registration-readiness.md packages/agent/src/investigative-context-packs.ts packages/agent/test/investigative-context-packs.test.ts
+git add docs/agentic/claims/task-6-investigative-registration-readiness.md packages/agent/src/investigative-context-packs.ts packages/agent/test/investigative-context-packs.test.ts packages/agent/src/index.ts
 git commit -m "feat: register investigative context packs"
 ```
 
-Request a fresh review focused on stable registration identity, readiness with refs, and hash-verified payload rendering.
+Request a fresh review focused on stable descriptor/parser/limits registration identity, readiness with refs, and hash-verified parser-resolved payloads.
 
 ---
 
@@ -1798,15 +1884,15 @@ Stop for coordinator merge direction after review.
 - Governance pack grants approval, clears a lock, releases quarantine, or mutates evidence/graph state.
 - Active locks, active restrictions, exact included provenance, source-byte/archive-child staleness inputs, high-water marks, or aggregate omission metadata cannot fit the mandatory envelope.
 - Manifest hash verification includes `manifestHash` in its own hash input.
-- Prompt rendering uses only `safeSummary` or skips resolved payload hash/size verification.
-- A resolved payload has a matching ref hash but invalid pack-specific shape and still reaches prompt rendering.
+- Operational resolve-and-parse returns only `safeSummary`, omits the resolved payload, or skips payload hash/size verification.
+- A resolved payload has a matching ref hash but invalid pack-specific shape and still reaches any downstream consumer.
 - A targeted verifier fails after two focused repair attempts.
 - `npm run verify` fails after two focused repair attempts.
 - A schema conflict appears with the approved ontology, ingestion, governance, resident-agent, or operational resolved-context contract.
 
 ## Self-Review Checklist
 
-- Spec coverage: Tasks 1-6 cover descriptors, strict payload parsers, bounded dependencies, selection manifests, non-circular manifest hashes, aggregate omissions, evidence source posture, accepted graph provenance, governance posture, resolved payloads, prompt rendering, and stable descriptor/parser registration.
+- Spec coverage: Tasks 1-6 cover descriptors, strict payload parsers, bounded dependencies, selection manifests, non-circular manifest hashes, aggregate omissions, evidence source posture, accepted graph provenance, governance posture, resolved payloads, sentinel fixture proof, and stable descriptor/parser/limits registration.
 - TDD coverage: Every production task starts with RED tests and a targeted failing command.
 - Bounded-growth coverage: Tasks 2, 4, and 5 include unrelated-row growth tests with query counters; Task 3 includes bounded evidence output and source-posture checks.
 - Runtime boundary: No task edits local-runtime, orchestrator, cockpit, browser UI, operational packs, PRR packs, specialist workflow prompt definitions, or handoff projections.
