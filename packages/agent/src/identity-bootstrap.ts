@@ -95,7 +95,15 @@ export async function ensureDefaultResidentIdentity(
     }
   }
 
-  return readDefaultResidentIdentityLifecycle(input);
+  const readback = await readDefaultResidentIdentityLifecycle(input);
+  if (readback.state === "not-mounted") {
+    return blockedResidentIdentityLifecycle({
+      workspaceId: input.workspaceId,
+      safeMessage: "Resident identity bootstrap could not be verified by readback.",
+      allowedRepairActions: ["inspect resident identity events before retrying"]
+    });
+  }
+  return readback;
 }
 
 export async function readDefaultResidentIdentityLifecycle(

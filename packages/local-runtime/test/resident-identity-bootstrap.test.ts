@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   defaultResidentIdentityStreamId,
@@ -91,6 +92,42 @@ describe("local runtime resident identity bootstrap", () => {
 
     expect(before).toEqual(["agent.identity.initialized"]);
     expect(await identityEventTypes(config.storage.sqlitePath)).toEqual(before);
+  });
+
+  it("returns blocked agent status for a malformed resident identity row without mutating the ledger", async () => {
+    const cwd = tempDir();
+    const workspaceRoot = join(cwd, "malformed-identity");
+    createPortableWorkspace({
+      rootDir: workspaceRoot,
+      workspaceId: "ws_malformed_identity",
+      label: "Malformed Identity Workspace",
+      createdAt: "2026-07-10T12:00:00.000Z",
+      createdBy: "runtime-test"
+    });
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_STORAGE: "portable-workspace",
+        CESTUS_WORKSPACE_ROOT: workspaceRoot
+      }
+    });
+    insertMalformedIdentityRow(config.storage.sqlitePath);
+    const before = storedEventCount(config.storage.sqlitePath);
+    const handler = testHandler(config);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const response = await handler({ method: "GET", url: "/api/agent/status" });
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(response.body)).toMatchObject({
+      schemaVersion: "agent-status.v1",
+      identityLifecycle: {
+        state: "blocked",
+        workspaceId: "ws_malformed_identity",
+        safeMessage: "Resident identity stream could not be read safely."
+      }
+    });
+    expect(storedEventCount(config.storage.sqlitePath)).toBe(before);
   });
 
   it("blocks agent task mutation when no workspace is mounted", async () => {
@@ -366,6 +403,47 @@ async function identityEventTypes(path: string): Promise<readonly string[]> {
 
 async function eventTypes(path: string): Promise<readonly string[]> {
   return withLedger(path, async (ledger) => (await ledger.readAll()).map((event) => event.type));
+}
+
+function insertMalformedIdentityRow(path: string): void {
+  const ledger = new SQLiteEventLedger(path);
+  ledger.close();
+  const database = new DatabaseSync(path);
+  try {
+    database.prepare(`
+      INSERT INTO ontology_events (
+        id, type, version, stream_id, stream_sequence, context_json, payload_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "evt_malformed_identity",
+      "agent.identity.initialized",
+      1,
+      defaultResidentIdentityStreamId,
+      1,
+      JSON.stringify({
+        actor,
+        occurredAt: now(),
+        correlationId: "corr_malformed_identity",
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      }),
+      JSON.stringify({ residentAgentId: "agent_default" })
+    );
+  } finally {
+    database.close();
+  }
+}
+
+function storedEventCount(path: string): number {
+  const database = new DatabaseSync(path, { readOnly: true });
+  try {
+    const row = database.prepare("SELECT COUNT(*) AS event_count FROM ontology_events").get() as {
+      event_count: number | bigint;
+    };
+    return Number(row.event_count);
+  } finally {
+    database.close();
+  }
 }
 
 async function copyIdentityRows(from: string, to: string): Promise<void> {

@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import {
@@ -269,6 +270,29 @@ describe("resident identity bootstrap", () => {
     const result = await ensureDefaultResidentIdentity({ ledger, actor, now, workspaceId });
     expect(result.state).toBe("blocked");
     expect(result.safeMessage).toBe("Resident identity belongs to a different workspace.");
+  });
+
+  it("blocks SQLite contention when conflict readback does not prove an identity", async () => {
+    const path = sqlitePath();
+    const ledger = new SQLiteEventLedger(path);
+    const lock = new DatabaseSync(path);
+    lock.exec("BEGIN IMMEDIATE");
+
+    try {
+      const result = await ensureDefaultResidentIdentity({ ledger, actor, now, workspaceId });
+
+      expect(result).toMatchObject({
+        state: "blocked",
+        workspaceId,
+        initialized: false,
+        eventIds: []
+      });
+      expect(await ledger.readStream(defaultResidentIdentityStreamId)).toEqual([]);
+    } finally {
+      lock.exec("ROLLBACK");
+      lock.close();
+      ledger.close();
+    }
   });
 
   it("blocks unreadable or corrupted identity streams with safe diagnostics", async () => {

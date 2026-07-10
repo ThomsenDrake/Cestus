@@ -38,6 +38,36 @@ describe("operator status aggregation", () => {
     });
   });
 
+  it("keeps initializing resident identity visible without reporting the agent ready", async () => {
+    const status = await buildOperatorStatusDto({
+      now,
+      runtime: { available: true, safeMessage: "runtime ready" },
+      agent: async () => ({
+        ...agentStatus(),
+        identityLifecycle: {
+          schemaVersion: "resident-identity-lifecycle.v1",
+          state: "initializing",
+          residentAgentId: "agent_default",
+          workspaceId: "ws_initializing_identity",
+          initialized: false,
+          eventIds: [],
+          safeMessage: "Resident identity initialization is in progress.",
+          allowedRepairActions: []
+        }
+      })
+    });
+    const agent = status.sections.find((section) => section.sectionId === "agent");
+
+    expect(agent).toMatchObject({
+      state: "degraded",
+      headline: "Resident identity is initializing"
+    });
+    expect(agent?.sourceEvidence[0]?.refs).toContainEqual({
+      label: "identityLifecycleState",
+      value: "initializing"
+    });
+  });
+
   it("reports mounted workspace, ingestion action gate, legacy samples, and PRR readiness", async () => {
     const status = await buildOperatorStatusDto({
       now,
