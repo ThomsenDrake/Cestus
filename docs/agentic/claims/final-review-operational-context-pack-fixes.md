@@ -44,6 +44,12 @@ Result: passed with 4 test files and 130 tests.
 
 The final focused suite covers payload/ref swaps across source metadata, size budgets, and staleness inputs for all three operational packs; direct memory-builder rejection of raw provider failures, prompt/model output, stack traces, and raw paths; contradictory lifecycle state; deterministic safety-record trimming; and machine-readable empty reasons.
 
+## Critical Re-Review Repair
+
+RED: the exact targeted command failed with 1 new regression failure and 130 passing tests. A resolver-backed legacy ref with hash-consistent raw prompt text in `safeSummary` was accepted by `buildResolved()`; the regression matrix also covers raw provider prose in `provenanceRefs`, raw model-output prose in `policyVersion`, and a raw path in an extra staleness input. Each case confirms legacy ref-only `build()` remains available.
+
+GREEN: the same command passed with 4 test files and 131 tests. Operational parsers now apply safe-text or machine-reference validation to resolver ref metadata, enforce a machine-readable policy token, and accept only the pack-specific high-water and workspace omission staleness shapes. Resolver failures return only `blocked.payload-schema-mismatch`, without echoing raw material.
+
 ## Full Verification Evidence
 
 Command:
@@ -52,6 +58,6 @@ Command:
 npm run verify
 ```
 
-Result: passed with `typecheck passed`, 171 passed test files / 3 skipped, 1780 passed tests / 3 skipped, Vite production build, and `factory-readiness passed`.
+Result: passed with `typecheck passed`, 171 passed test files / 3 skipped, 1781 passed tests / 3 skipped, Vite production build, and `factory-readiness passed` after the resolver-metadata repair.
 
 Non-blocking output was limited to the established Node SQLite experimental warnings plus Vite browser-externalization and chunk-size warnings.
