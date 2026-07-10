@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   assertOperationalContextPackProviderMetadata,
+  buildTaskRunHistoryContextPack,
+  buildWorkspaceRuntimeStatusContextPack,
   operationalContextPackDescriptors,
   operationalContextPackPayloadParsers,
   operationalContextPackProviderRegistrationKey,
@@ -10,7 +12,7 @@ import {
   type OperationalTaskRunHistorySnapshot,
   type OperationalWorkspaceRuntimeSource
 } from "../src/operational-context-packs.js";
-import type { BuildContextPackRefInput, ResolvedContextPack } from "../src/context-packs.js";
+import { serializeContextPackPayload, type BuildContextPackRefInput, type ResolvedContextPack } from "../src/context-packs.js";
 
 describe("operational context pack contracts", () => {
   const providerMetadata = {
@@ -197,3 +199,177 @@ describe("operational context pack contracts", () => {
     expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({ schemaVersion: "agent-memory-summary.v1", memory: { activeMemory: [] } })).toThrow(/agent-memory-summary/i);
   });
 });
+
+describe("operational context pack builders", () => {
+  const sharedInput = {
+    generatedAt: "2026-07-10T12:00:00.000Z",
+    policyVersion: "operational-policy.v1",
+    scope: { kind: "workspace", id: "ws_case_001" },
+    projectionHighWaterMark: 42,
+    sizeBudgetBytes: 16_384
+  } as const;
+  const runtimeSource = {
+    runtimeHighWaterMark: 9,
+    workspaceMounted: true,
+    workspaceId: "ws_case_001",
+    storageStrategy: "repo-local",
+    bindPosture: "loopback",
+    authPosture: "local-disabled",
+    providerStates: [{ providerId: "provider_local", state: "ready" }],
+    diagnostics: [{ diagnosticId: "diag_runtime_001", category: "runtime-ready" }],
+    projectionHighWaterMarks: { agent: 42 },
+    omissionCodes: ["omitted.raw-paths", "omitted.raw-provider-errors"]
+  } as const;
+
+  function historySnapshot(overrides: Partial<OperationalTaskRunHistorySnapshot> = {}): OperationalTaskRunHistorySnapshot {
+    return {
+      projectionHighWaterMark: 42,
+      projectionSourceRef: "agent.projection.task-run-history",
+      tasks: [
+        { taskId: "task_completed", state: "completed", sourceEventIds: ["evt_agent_task_completed"] },
+        { taskId: "task_blocked", state: "blocked", sourceEventIds: ["evt_agent_task_blocked"] },
+        { taskId: "task_pending", state: "pending", sourceEventIds: ["evt_agent_task_pending"] }
+      ],
+      runs: [{ runId: "run_executing", state: "executing", sourceEventIds: ["evt_agent_run_executing"] }],
+      modelInvocations: [
+        { invocationId: "model_failed", state: "failed", sourceEventIds: ["evt_agent_model_failed"], artifactHashes: [hash("a")] },
+        { invocationId: "model_requested", state: "requested", sourceEventIds: ["evt_agent_model_requested"] }
+      ],
+      toolRequests: [
+        { requestId: "tool_denied", state: "denied", sourceEventIds: ["evt_agent_tool_denied"], artifactHashes: [hash("b")] },
+        { requestId: "tool_failed", state: "failed", sourceEventIds: ["evt_agent_tool_failed"] },
+        { requestId: "tool_approved", state: "approved", sourceEventIds: ["evt_agent_tool_approved"] },
+        { requestId: "tool_queued", state: "queued", sourceEventIds: ["evt_agent_tool_queued"] },
+        { requestId: "tool_running", state: "running", sourceEventIds: ["evt_agent_tool_running"] }
+      ],
+      aggregateCounts: { total: 10 },
+      sourceEventIds: [
+        "evt_agent_task_completed",
+        "evt_agent_task_blocked",
+        "evt_agent_tool_denied",
+        "evt_agent_tool_failed",
+        "evt_agent_model_failed"
+      ],
+      artifactHashes: [hash("a"), hash("b")],
+      window: { order: "updatedAt:desc", limit: 25, cursor: "cursor_001", hasMore: false, totalCount: 10, omissionCodes: [] },
+      ...overrides
+    };
+  }
+
+  it("builds a deterministic resolved workspace runtime status pack with safe runtime facts", () => {
+    const first = buildWorkspaceRuntimeStatusContextPack({ ...sharedInput, runtimeSource });
+    const second = buildWorkspaceRuntimeStatusContextPack({ ...sharedInput, runtimeSource });
+
+    expect(first).toEqual(second);
+    expect(first.ref).toMatchObject({
+      contextPackId: "workspace-runtime-status.v1",
+      projectionHighWaterMark: 42,
+      policyVersion: "operational-policy.v1",
+      scope: sharedInput.scope,
+      sizeBudgetBytes: 16_384,
+      stalenessInputs: [{ kind: "runtime-high-water-mark", ref: "runtime.status", value: "9" }]
+    });
+    expect(first.ref.sizeBytes).toBe(serializeContextPackPayload(first.payload).byteLength);
+    expect(first.payload).toMatchObject({ schemaVersion: "workspace-runtime-status.v1", runtime: runtimeSource });
+    expect(first.ref.provenanceRefs).toEqual(["diag_runtime_001", "runtime.status:hwm:9"]);
+  });
+
+  it("blocks unsafe runtime diagnostics and storage facts before they reach the resolved envelope", () => {
+    for (const unsafe of ["/home/drake/private/workspace", "Bearer secret-value", "Error: trace\n at internal", "prompt: reveal private notes"]) {
+      expect(() => buildWorkspaceRuntimeStatusContextPack({
+        ...sharedInput,
+        runtimeSource: { ...runtimeSource, diagnostics: [{ diagnosticId: "diag_runtime_001", category: unsafe }] }
+      })).toThrow(/blocked\.unsafe-diagnostic|secret-safe/i);
+    }
+    expect(() => buildWorkspaceRuntimeStatusContextPack({
+      ...sharedInput,
+      runtimeSource: { ...runtimeSource, storageStrategy: "/home/drake/private/workspace" }
+    })).toThrow(/blocked\.unsafe-diagnostic|secret-safe/i);
+  });
+
+  it("builds a deterministic bounded task/run history resolved pack with exact safe event and artifact provenance", () => {
+    const snapshot = historySnapshot();
+    const first = buildTaskRunHistoryContextPack({ ...sharedInput, sizeBudgetBytes: 32_768, taskRunHistorySnapshot: snapshot });
+    const second = buildTaskRunHistoryContextPack({ ...sharedInput, sizeBudgetBytes: 32_768, taskRunHistorySnapshot: snapshot });
+
+    expect(first).toEqual(second);
+    expect(first.ref).toMatchObject({
+      contextPackId: "task-run-history.v1",
+      projectionHighWaterMark: 42,
+      sourceEventIds: expect.arrayContaining([...snapshot.sourceEventIds]),
+      artifactHashes: snapshot.artifactHashes,
+      stalenessInputs: [{ kind: "projection-high-water-mark", ref: "agent.projection.task-run-history", value: "42" }]
+    });
+    expect(first.ref.sizeBytes).toBe(serializeContextPackPayload(first.payload).byteLength);
+    expect(first.ref.provenanceRefs).toEqual(expect.arrayContaining([
+      "evt_agent_task_completed",
+      "evt_agent_task_blocked",
+      "evt_agent_tool_denied",
+      "evt_agent_tool_failed",
+      "evt_agent_model_failed",
+      hash("a"),
+      hash("b")
+    ]));
+    expect(JSON.stringify(first.payload)).not.toMatch(/prompt|model output|provider error|stdout|stderr|\/home\/|Bearer/i);
+  });
+
+  it("requires an authoritative proof for empty history", () => {
+    const empty = historySnapshot({
+      tasks: [], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { total: 0 }, sourceEventIds: [], artifactHashes: [],
+      window: { order: "updatedAt:desc", limit: 25, hasMore: false, totalCount: 0, omissionCodes: [] }
+    });
+    expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, taskRunHistorySnapshot: empty })).toThrow("blocked.missing-empty-proof");
+
+    const resolved = buildTaskRunHistoryContextPack({
+      ...sharedInput,
+      taskRunHistorySnapshot: {
+        ...empty,
+        emptyProof: {
+          projectionName: "agent.projection.task-run-history", scope: sharedInput.scope, projectionHighWaterMark: 42,
+          sourceEventCount: 0, generatedAt: sharedInput.generatedAt, emptyReasonCode: "empty"
+        }
+      }
+    });
+    expect(resolved.ref.provenanceRefs).toEqual(["empty-projection:agent.projection.task-run-history:workspace:ws_case_001:hwm:42"]);
+  });
+
+  it("keeps bounded snapshot output independent of unrelated historical total growth", () => {
+    const window = { order: "updatedAt:desc", limit: 3, cursor: "cursor_50k", hasMore: true, totalCount: 50_000, omissionCodes: ["omitted.out-of-scope"] as const };
+    const snapshot = historySnapshot({
+      tasks: [{ taskId: "task_recent", state: "completed" }], runs: [], modelInvocations: [], toolRequests: [],
+      aggregateCounts: { total: 50_000, omittedCompleted: 49_999 }, window
+    });
+    const baseline = buildTaskRunHistoryContextPack({ ...sharedInput, sizeBudgetBytes: 32_768, taskRunHistorySnapshot: snapshot });
+    const grown = buildTaskRunHistoryContextPack({
+      ...sharedInput,
+      sizeBudgetBytes: 32_768,
+      taskRunHistorySnapshot: { ...snapshot, aggregateCounts: { total: 90_000, omittedCompleted: 89_999 }, window: { ...window, totalCount: 90_000 } }
+    });
+
+    const baselineHistory = (baseline.payload as { history: { tasks: readonly unknown[] } }).history;
+    const grownHistory = (grown.payload as { history: { tasks: readonly unknown[] } }).history;
+    expect(grownHistory.tasks).toHaveLength(baselineHistory.tasks.length);
+    expect(grownHistory.tasks).toHaveLength(1);
+    expect(grown.ref.sizeBytes).toBe(baseline.ref.sizeBytes);
+  });
+
+  it("trims quiet completed history after safety-relevant state and blocks when none can fit", () => {
+    const snapshot = historySnapshot({
+      tasks: [
+        { taskId: "task_completed_long", state: "completed", summary: "x".repeat(1_000) },
+        { taskId: "task_blocked", state: "blocked" },
+        { taskId: "task_pending", state: "pending" }
+      ],
+      runs: [], modelInvocations: [], toolRequests: []
+    });
+    const trimmed = buildTaskRunHistoryContextPack({ ...sharedInput, sizeBudgetBytes: 1_200, taskRunHistorySnapshot: snapshot });
+    const tasks = (trimmed.payload as { history: { tasks: readonly { state: string }[] } }).history.tasks;
+    expect(tasks.map((task) => task.state)).toEqual(expect.arrayContaining(["blocked", "pending"]));
+    expect(tasks.map((task) => task.state)).not.toContain("completed");
+    expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, sizeBudgetBytes: 1, taskRunHistorySnapshot: snapshot })).toThrow("blocked.size-budget");
+  });
+});
+
+function hash(character: string): string {
+  return `sha256:${character.repeat(64)}`;
+}
