@@ -136,6 +136,41 @@ describe("specialist handoff projection", () => {
     expect(taskScopedProjection.handoffs).toEqual([]);
   });
 
+  it("dedupes exact recorded retries and fails closed on changed recorded timestamps", async () => {
+    const fixture = handoffFixture();
+    const exactRetry = {
+      ...recordedEvent(fixture),
+      id: "evt_handoff_recorded_exact_retry"
+    } as KnowledgeEvent;
+    const exactRetryProjection = await project([
+      ...validRecordedEvents(fixture),
+      exactRetry
+    ], new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)));
+
+    expect(exactRetryProjection.state).toBe("handoff-recorded");
+    expect(exactRetryProjection.handoffs).toEqual([fixture.manifest.handoff]);
+
+    const changedTimestamp = {
+      ...recordedEvent(fixture),
+      id: "evt_handoff_recorded_changed_timestamp",
+      payload: {
+        ...recordedEvent(fixture).payload,
+        verifiedAt: "2026-07-10T15:02:00.000Z"
+      }
+    } as KnowledgeEvent;
+    const conflictingRetryProjection = await project([
+      ...validRecordedEvents(fixture),
+      changedTimestamp,
+      completedRunEvent(fixture, { causationId: "evt_handoff_recorded_changed_timestamp" }),
+      taskStatusEvent(fixture, "completed", { causationId: "evt_run_completed" })
+    ], new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)));
+
+    expect(conflictingRetryProjection.state).toBe("inconsistent");
+    expect(conflictingRetryProjection.diagnostics).toContainEqual(expect.objectContaining({
+      code: "conflicting-recorded"
+    }));
+  });
+
   it("accepts an unscoped multi-run ledger without cross-run final-output conflicts", async () => {
     const first = handoffFixture({
       runId: "run_handoff_multi_001",

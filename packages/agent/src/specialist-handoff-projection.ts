@@ -166,6 +166,7 @@ export async function buildSpecialistHandoffProjection(
   }
 
   const verified: VerifiedHandoffRecord[] = [];
+  const recordedByPreparedEventId = new Map<string, RecordedRecord>();
   for (const recorded of context.recorded) {
     const prepared = preparedByEventId.get(recorded.event.payload.preparedEventId);
     if (prepared === undefined) {
@@ -179,6 +180,24 @@ export async function buildSpecialistHandoffProjection(
       continue;
     }
 
+    const priorRecorded = recordedByPreparedEventId.get(recorded.event.payload.preparedEventId);
+    if (priorRecorded !== undefined) {
+      if (!sameRecordedRetry(priorRecorded.event, recorded.event)) {
+        addDiagnostic(context, {
+          code: "conflicting-recorded",
+          message: "Recorded handoff events reuse a prepared event with different readback bindings.",
+          event: recorded.event,
+          handoffId: recorded.event.payload.handoffId,
+          relatedEventIds: [priorRecorded.event.id, recorded.event.payload.preparedEventId],
+          artifactHashes: [
+            priorRecorded.event.payload.handoffManifestHash,
+            recorded.event.payload.handoffManifestHash
+          ]
+        });
+      }
+      continue;
+    }
+
     if (prepared.index >= recorded.index) {
       addDiagnostic(context, {
         code: "recorded-before-prepared",
@@ -189,6 +208,8 @@ export async function buildSpecialistHandoffProjection(
       });
       continue;
     }
+
+    recordedByPreparedEventId.set(recorded.event.payload.preparedEventId, { event: recorded.event, index: recorded.index });
 
     if (!handoffCausationIsValid(prepared.event, recorded.event)) {
       addDiagnostic(context, {
@@ -495,6 +516,11 @@ function handoffCausationIsValid(prepared: HandoffPreparedEvent, recorded: Hando
   return expectedPreparedCausation !== undefined &&
     prepared.context.causationId === expectedPreparedCausation &&
     recorded.context.causationId === prepared.id;
+}
+
+function sameRecordedRetry(left: HandoffRecordedEvent, right: HandoffRecordedEvent): boolean {
+  return left.context.causationId === right.context.causationId &&
+    sameCanonicalValue(left.payload, right.payload);
 }
 
 async function readAndVerifyManifest(
