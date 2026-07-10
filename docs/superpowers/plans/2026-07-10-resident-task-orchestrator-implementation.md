@@ -8,27 +8,144 @@
 
 **Tech Stack:** TypeScript, Vitest, Zod event contracts, append-only ontology ledger, existing `packages/agent` runtime, existing local runtime routes, existing provider-byte-transfer approval contracts, live Nous provider wiring.
 
-## Prerequisite Commit Gate
+## Prerequisite Implementation Readiness Gate
 
-Do not claim Task 1 until the implementation branch is based on a `neo` commit that contains every prerequisite below. Verify with:
+Design/spec commits are required reading, not proof that executable code exists. Do not claim Task 1 until the implementation branch is based on a `neo` commit where the source files, exports, and targeted tests below are present and passing. The Task 1 claim must record:
+
+- the merged implementation base commit from `git rev-parse HEAD`;
+- the implementation commits that introduced each prerequisite lane;
+- the exact output of every prerequisite `rg` and `npm test` command in this section;
+- any prerequisite that is intentionally inapplicable to the first non-PRR evidence-triage vertical.
+
+Required reading before Task 1:
+
+- `docs/superpowers/specs/2026-07-10-resident-task-orchestrator-design.md`
+- `docs/superpowers/specs/2026-07-10-resident-lifecycle-bootstrap-design.md`
+- `docs/superpowers/plans/2026-07-10-resident-lifecycle-bootstrap-implementation.md`
+- `docs/superpowers/specs/2026-07-10-operational-context-packs-design.md`
+- `docs/superpowers/plans/2026-07-10-operational-context-packs-implementation.md`
+- `docs/superpowers/specs/2026-07-10-investigative-context-packs-design.md`
+- `docs/superpowers/plans/2026-07-10-investigative-context-packs-implementation.md`
+- `docs/superpowers/specs/2026-07-10-production-specialist-prompt-template-registry-design.md`
+- `docs/superpowers/plans/2026-07-10-production-specialist-prompt-template-registry-implementation.md`
+- `docs/superpowers/specs/2026-07-10-durable-specialist-handoff-production-design.md`
+- `docs/superpowers/plans/2026-07-10-durable-specialist-handoff-production-implementation.md`
+- `docs/superpowers/specs/2026-07-10-prr-jurisdiction-context-packs-design.md`
+- `docs/superpowers/plans/2026-07-10-prr-jurisdiction-context-packs-implementation.md`
+
+### Lifecycle Bootstrap Readiness
+
+Mounted workspaces must project canonical `agent_default` ready before orchestration can claim or mutate tasks.
+
+Required source and exports:
+
+- `packages/agent/src/identity-bootstrap.ts` exports `defaultResidentAgentId`, `defaultResidentIdentityStreamId`, `ensureDefaultResidentIdentity`, and `ResidentIdentityLifecycleDto`.
+- `packages/agent/src/runtime-types.ts` exposes `identityLifecycle` on agent status DTOs.
+- `packages/local-runtime/src/runtime-factory.ts` or the landed runtime factory module exposes `LocalRuntimeHandle.residentIdentity.ready(): Promise<ResidentIdentityLifecycleDto>`.
+- Task and memory mutation routes await lifecycle `ready`; read-only status/detect/verify paths do not append identity events.
+
+Preflight:
 
 ```bash
-git merge-base --is-ancestor b0f4e23 HEAD
-git merge-base --is-ancestor b7790e8 HEAD
-git merge-base --is-ancestor 9d30c1e HEAD
-git merge-base --is-ancestor 7b7efaa HEAD
-git merge-base --is-ancestor c5eab94 HEAD
-git merge-base --is-ancestor 0f5ff01 HEAD
+rg -n "defaultResidentAgentId|defaultResidentIdentityStreamId|ensureDefaultResidentIdentity|ResidentIdentityLifecycleDto|identityLifecycle|residentIdentity\\.ready" packages/agent/src packages/local-runtime/src packages/agent/test packages/local-runtime/test
+npm test -- packages/agent/test/identity-bootstrap.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts
 ```
 
-- [ ] `b0f4e23` from `codex/operational-context-packs-spec`: operational context packs expose typed content-addressed `ResolvedContextPack { ref, payload }` for `workspace-runtime-status.v1`, `task-run-history.v1`, and `agent-memory-summary.v1`.
-- [ ] `b7790e8` from `codex/investigative-context-packs-design`: investigative packs expose resolved payload capability for evidence, accepted graph, timeline, contradictions, and governance locks.
-- [ ] `9d30c1e` from `codex/prr-context-pack-design`: PRR packs expose resolved payload capability for selected request and jurisdiction posture, with inapplicability for non-PRR tasks.
-- [ ] `7b7efaa` from `codex/production-specialist-prompt-template-registry-spec`: prompt/workflow descriptors expose context applicability and render prompts from verified resolved payload bytes.
-- [ ] `c5eab94` from `codex/durable-specialist-handoffs-spec`: durable handoff capability exposes canonical prepared manifest, recorded/readback protocol, and handoff event vocabulary.
-- [ ] `0f5ff01` from this branch: approved resident task orchestrator design spec is present.
+Expected: all required symbols exist, every listed test passes, and runtime status can report `identityLifecycle.state === "ready"` for a mounted workspace before queued-task orchestration starts.
 
-Stop if any prerequisite commit is absent, if the handoff lane changes the final-output to prepared to recorded/readback to run-terminal order, or if the prompt lane cannot identify applicable packs before provider dispatch.
+### Operational Resolved Context Readiness
+
+Required source and exports:
+
+- `packages/agent/src/context-packs.ts` exports `ResolvedContextPack`, opaque `VerifiedResolvedContextPack`, `ContextPackPayloadResolver`, `buildResolvedContextPack`, `verifyResolvedContextPack`, `assertResolvedContextPacksForExecution`, `createContextPackRegistry`, and `ContextPackRegistry.buildResolved()`.
+- `packages/agent/src/operational-context-packs.ts` exports builders/registration for `workspace-runtime-status.v1`, `task-run-history.v1`, and `agent-memory-summary.v1`, including exact payload parsers.
+- `packages/agent/test/fixtures/resolved-context-pack-sentinel.ts` exports the sentinel fixture used by prompt/orchestrator live acceptance.
+
+Preflight:
+
+```bash
+rg -n "VerifiedResolvedContextPack|assertResolvedContextPacksForExecution|buildResolvedContextPack|verifyResolvedContextPack|buildResolved\\(|workspace-runtime-status\\.v1|task-run-history\\.v1|agent-memory-summary\\.v1|resolved-context-pack-sentinel" packages/agent/src packages/agent/test
+npm test -- packages/agent/test/context-packs.test.ts packages/agent/test/operational-context-packs.test.ts packages/agent/test/memory.test.ts packages/agent/test/specialist-readiness.test.ts
+```
+
+Expected: execution verification is produced only by registry/execution code after hash, size, and exact parser checks. A caller-supplied serializable field such as `ok`, `verified`, or `parserVerification` is ignored or rejected and cannot satisfy provider execution readiness.
+
+### Investigative Context Readiness
+
+The investigative lane in this batch produces exactly:
+
+- `evidence-summary.v1`
+- `accepted-graph-projection.v1`
+- `governance-locks.v1`
+
+Timeline and contradiction packs are not part of this prerequisite batch. They remain explicit readiness blockers only for specialist modes whose prompt/workflow descriptor marks them applicable. The first non-PRR evidence-triage vertical must not require `timeline-draft-summary.v1` or `contradiction-candidate-summary.v1`.
+
+Required source and exports:
+
+- `packages/agent/src/investigative-context-packs.ts` exports `buildEvidenceSummaryContextPack`, `buildAcceptedGraphProjectionContextPack`, `buildGovernanceLocksContextPack`, their exact payload parsers, and `registerInvestigativeContextPacks`.
+
+Preflight:
+
+```bash
+rg -n "buildEvidenceSummaryContextPack|buildAcceptedGraphProjectionContextPack|buildGovernanceLocksContextPack|evidence-summary\\.v1|accepted-graph-projection\\.v1|governance-locks\\.v1|registerInvestigativeContextPacks" packages/agent/src packages/agent/test
+npm test -- packages/agent/test/investigative-context-packs.test.ts packages/agent/test/specialist-readiness.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/prompt-artifacts.test.ts
+```
+
+Expected: all three investigative packs can be built as resolved envelopes and parser-verified by the operational context system. No plan or readiness claim may state that timeline, contradiction, or all six specialist modes are execution-ready from this three-pack batch.
+
+### Prompt Applicability And Production Rendering Readiness
+
+Required source and exports:
+
+- `packages/agent/src/production-specialist-prompts.ts` exports production prompt registrations, renderer verification, context applicability evaluation, `renderProductionSpecialistPrompt()`, and strict provider output validation.
+- `packages/agent/src/specialist-workflows.ts` exposes conditional context requirement modes, including PRR requirements as `when-scope-associated-prr` for non-PRR evidence triage.
+- Provider preparation rejects ref-only prompt synthesis and requires verified resolved payloads for every applicable pack.
+
+Preflight:
+
+```bash
+rg -n "renderProductionSpecialistPrompt|verifyProductionSpecialistPromptArtifact|ProductionContextRequirement|when-scope-associated-prr|no-associated-prr|promptText\\(" packages/agent/src packages/agent/test
+npm test -- packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/prompt-artifacts.test.ts packages/agent/test/specialist-workflows.test.ts packages/agent/test/specialist-readiness.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts
+```
+
+Expected: non-PRR evidence triage records `no-associated-prr` instead of blocking on PRR context; PRR-linked modes remain blocked until PRR packs exist.
+
+### Durable Handoff Readiness
+
+Required source and exports:
+
+- `packages/agent/src/specialist-handoff-manifest.ts` exports manifest hashing and verification helpers.
+- `packages/agent/src/specialist-handoff-projection.ts` exports projector states including `handoff-pending` and verified recorded/readback states.
+- `packages/agent/src/specialist-runner-kernel.ts` exposes the final-output to prepared to recorded/readback to run-terminal helper sequence.
+
+Preflight:
+
+```bash
+rg -n "specialist-handoff\\.prepared|specialist-handoff\\.recorded|handoff-pending|final-output|readback|VerifiedSpecialistHandoff|prepare.*record.*readback" packages/ontology/src packages/agent/src packages/agent/test
+npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/specialist-handoff-manifest.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-runner-kernel.test.ts
+```
+
+Expected: task success cannot project until verified handoff readback exists, and no code path can synthesize a handoff from run output hashes alone.
+
+### PRR Pack Readiness
+
+PRR context packs can land independently of the first non-PRR evidence-triage vertical. They are not required to complete the first non-PRR evidence-triage gate. They are required before PRR-linked evidence triage, PRR negotiation, PRR-linked planner/report modes, or any selected-request workflow can be execution-ready.
+
+Required source and exports when a PRR-linked mode is applicable:
+
+- `packages/agent/src/prr-context-packs.ts` exports builders/registration for `prr-read-model.v1` and `jurisdiction-pack-summary.v1`.
+- `packages/local-runtime/src/agent-prr-context-packs.ts` registers selected-request runtime inputs without scanning unrelated PRRs.
+
+Preflight for PRR-linked modes:
+
+```bash
+rg -n "prr-read-model\\.v1|jurisdiction-pack-summary\\.v1|buildPrrReadModelContextPack|buildJurisdictionPackSummaryContextPack|registerPrrContextPacks" packages/agent/src packages/local-runtime/src packages/agent/test packages/local-runtime/test
+npm test -- packages/agent/test/prr-context-packs.test.ts packages/local-runtime/test/agent-prr-context-packs.test.ts packages/agent/test/specialist-readiness.test.ts
+```
+
+Expected: PRR-linked modes remain blocked if this preflight is absent or failing. Non-PRR evidence triage records PRR context as inapplicable and can continue.
+
+Stop if any required source/export/test for the first evidence-triage vertical is absent, if the mounted workspace cannot prove `agent_default` ready, if the handoff lane changes the final-output to prepared to recorded/readback to run-terminal order, if the prompt lane cannot identify applicable packs before provider dispatch, or if configured live Nous provider credentials are unavailable for the mandatory acceptance gate.
 
 ## Required Lane Interfaces
 
@@ -40,29 +157,23 @@ export interface ResolvedContextPack {
   readonly payload: AgentContextPackJsonValue;
 }
 
-export interface ResolvedContextPackVerification {
-  readonly ok: boolean;
-  readonly contentHash: string;
-  readonly byteLength: number;
-  readonly schemaId: string;
-  readonly provenanceEventIds: readonly string[];
-  readonly failureReason?: string;
+declare const verifiedResolvedContextPackBrand: unique symbol;
+
+export type VerifiedResolvedContextPack = ResolvedContextPack & {
+  readonly [verifiedResolvedContextPackBrand]: true;
+};
+
+export interface ContextPackPayloadResolver {
+  resolve(ref: ContextPackRef): Promise<ResolvedContextPack>;
 }
 
-export interface ResolvedContextPackRegistry {
-  resolve(input: {
-    readonly contextPackId: string;
-    readonly ref: ContextPackRef;
-    readonly taskId: string;
-    readonly runType: AgentSpecialistRunType;
-  }): Promise<ResolvedContextPack>;
-
-  verify(input: {
-    readonly contextPackId: string;
-    readonly resolved: ResolvedContextPack;
-  }): Promise<ResolvedContextPackVerification>;
-}
+export function assertResolvedContextPacksForExecution(input: {
+  readonly refs: readonly ContextPackRef[];
+  readonly resolved: readonly ResolvedContextPack[];
+}): readonly VerifiedResolvedContextPack[];
 ```
+
+The orchestrator consumes only opaque `VerifiedResolvedContextPack` values returned by the operational registry/execution assertion after local resolve, hash check, size check, and exact parser validation. It never trusts a caller-supplied object with `ok: true`, `verified: true`, `parserVerification`, or equivalent serializable proof.
 
 ```ts
 export interface SpecialistContextApplicabilityPlan {
@@ -82,7 +193,7 @@ export interface SpecialistPromptWorkflowRenderer {
   render(input: {
     readonly taskId: string;
     readonly runType: AgentSpecialistRunType;
-    readonly applicableResolvedPacks: readonly ResolvedContextPack[];
+    readonly applicableResolvedPacks: readonly VerifiedResolvedContextPack[];
     readonly providerPosture: AgentProviderPosture;
   }): Promise<PromptArtifactEnvelope>;
 }
@@ -130,7 +241,7 @@ The orchestrator must never ledger raw resolved payloads, cockpit raw payloads, 
 Each implementation task below starts with an implementation claim, ends with a commit, and leaves the repo ready for the next task.
 
 - Claim file path pattern: `docs/agentic/claims/resident-task-orchestrator-task-N.md`.
-- Claim content includes worker/thread ID, branch name, task number, start timestamp, prerequisite commit check output, and owned files.
+- Claim content includes worker/thread ID, branch name, task number, start timestamp, owned files, merged implementation base commit, prerequisite implementation commits, prerequisite preflight command output, and any prerequisite intentionally inapplicable to that task's mode.
 - Every task follows this sequence: write RED tests, run the targeted command and capture the expected RED failure in the claim file, implement the smallest production change, rerun the targeted command, run `npm run verify`, update the claim to complete, commit.
 - After Tasks 2, 5, 8, and 11, request review using `superpowers:requesting-code-review`.
 - Stop if a task needs to edit a prerequisite lane's owned spec/design files, weakens append-only ledger rebuildability, allows self-approval, sends domain effects outside domain services, or requires placeholder prompts or synthetic handoffs.
@@ -301,6 +412,7 @@ git commit -m "feat: add resident task orchestration claims"
   - `does not expose resolved payload bytes in cockpit projection`
   - `does not include resolved payload bytes in approval preview or logs`
   - `rejects ref only fake dispatch readiness`
+  - `rejects caller supplied ok verified or parserVerification fields as execution proof`
 
 **Expected RED:** Tests fail because current context pack handling is ref-only and prompt rendering cannot prove payload-byte consumption.
 
@@ -310,7 +422,7 @@ git commit -m "feat: add resident task orchestration claims"
 - [ ] Keep inapplicable pack IDs and reasons in projection diagnostics without blocking dispatch.
 - [ ] Build checkpoint context bindings from `{ contextPackId, ref, contentHash, byteLength, schemaId, provenanceEventIds }`.
 - [ ] Add a payload leakage assertion helper for tests that scans ledger event JSON, cockpit DTOs, approval previews, and captured logger records.
-- [ ] Make production provider dispatch depend on successful local resolution and verification for every applicable pack.
+- [ ] Make production provider dispatch depend on successful local resolution plus operational `assertResolvedContextPacksForExecution()` or the landed equivalent that returns opaque `VerifiedResolvedContextPack` values for every applicable pack.
 - [ ] Preserve advisory readiness from context refs for status screens only.
 
 **Verify:**
@@ -443,6 +555,8 @@ git commit -m "feat: sequence resident runs through durable handoffs"
   - `optional runtime wake service composes task orchestrator tick then approved tool scheduler wake with separate summaries`
   - `http route labels task orchestration and approved tool scheduling separately`
   - `http route returns suspended approval and handoff pending projection without payload bytes`
+  - `task orchestrator tick blocks when resident identity lifecycle is not ready`
+  - `task orchestrator tick proceeds only after mounted workspace resident identity is ready`
 
 **Expected RED:** Tests fail because runtime exposes only the approved-tool scheduler wake path.
 
@@ -452,6 +566,7 @@ git commit -m "feat: sequence resident runs through durable handoffs"
 - [ ] Add a local runtime route such as `POST /api/agent/task-orchestrator/tick`.
 - [ ] If a composed wake endpoint is added, return separate `taskOrchestrator` and `approvedToolScheduler` summaries and keep ownership names explicit.
 - [ ] Ensure local runtime construction injects the real context resolver, prompt renderer, provider registry, approval reader, runner registry, and handoff capability.
+- [ ] Require `LocalRuntimeHandle.residentIdentity.ready()` or the landed lifecycle-ready equivalent before orchestrator task mutation and claim attempts.
 - [ ] Do not extend `createAgentScheduler().wake()` for queued-task orchestration.
 
 **Verify:**
@@ -488,6 +603,8 @@ git commit -m "feat: expose resident task orchestrator runtime tick"
   - `evidence triage restart after handoff readback completes run and task terminal`
   - `evidence triage rejects ref only fake readiness`
   - `evidence triage never calls approved tool scheduler for task claims`
+  - `non prr evidence triage does not require prr timeline or contradiction packs`
+  - `prr linked evidence triage remains blocked until prr packs are ready`
 
 **Expected RED:** Tests fail because the full orchestrated vertical path is incomplete.
 
@@ -497,6 +614,7 @@ git commit -m "feat: expose resident task orchestrator runtime tick"
 - [ ] Prove queue to claim to plan to context to approval wait to reclaim to provider to final output to handoff to run terminal to task terminal.
 - [ ] Insert restart reconstruction assertions at every crash boundary from the spec.
 - [ ] Ensure the task projection shows `handoff-pending` whenever the handoff protocol is incomplete.
+- [ ] Prove the first vertical uses only applicable operational and investigative packs plus conditional PRR omissions, without claiming timeline, contradiction, PRR-linked, or all-specialist execution readiness.
 - [ ] Assert every event stream can be replayed from scratch into the same projection.
 
 **Verify:**
@@ -533,7 +651,7 @@ git commit -m "test: cover resident evidence triage orchestration"
 - [ ] Add a sentinel fact into an applicable resolved investigative context payload only.
 - [ ] Render prompt artifact from verified payload bytes and bind the prompt artifact hash into the approval checkpoint.
 - [ ] Require exact provider-byte-transfer approval covering provider, model, prompt hash, and context hash set.
-- [ ] Dispatch through the real Nous provider only when live env and secrets are present.
+- [ ] Dispatch through the configured real Nous provider; unavailable provider configuration or repo-local secret setup blocks feature completion and escalates to the coordinator.
 - [ ] Assert structured model output contains the sentinel fact in the expected schema field.
 - [ ] Assert no sentinel raw payload appears in ledger events, cockpit DTOs, approval previews, or logs.
 - [ ] Keep offline fake provider tests separate and unable to satisfy live provider execution readiness.
@@ -549,7 +667,7 @@ git add docs/agentic/claims/resident-task-orchestrator-task-9.md packages/agent/
 git commit -m "test: add live nous resident orchestration acceptance"
 ```
 
-Stop if live Nous secrets are unavailable in the repo-local setup, if provider readiness can be satisfied by an offline fake, or if the sentinel appears outside the provider request and structured provider output.
+Stop and escalate if the configured live Nous provider or repo-local secret setup is unavailable. The feature cannot be marked complete without this live acceptance. Also stop if provider readiness can be satisfied by an offline fake or if the sentinel appears outside the provider request and structured provider output.
 
 ## Task 10: Cockpit And Human Handoff Projection
 
@@ -607,6 +725,12 @@ git commit -m "feat: show resident task orchestration in cockpit"
 - [ ] Add readiness checks named in `scripts/check-agent-readiness.mjs` for:
   - resident task orchestrator spec
   - resident task orchestrator implementation plan
+  - resident lifecycle bootstrap semantic preflight
+  - operational resolved-context semantic preflight
+  - investigative three-pack semantic preflight
+  - prompt applicability and production rendering semantic preflight
+  - durable handoff semantic preflight
+  - conditional PRR pack semantic preflight for PRR-linked modes
   - orchestration event contracts
   - deterministic claim stream helper
   - resolved context verification tests
@@ -623,7 +747,7 @@ git commit -m "feat: show resident task orchestration in cockpit"
 - [ ] Register the plan and required orchestrator files in `scripts/check-agent-readiness.mjs`.
 - [ ] Confirm the script rejects forbidden unfinished markers in the new plan, spec, and test names.
 - [ ] Confirm all implementation claims are completed and committed.
-- [ ] Prepare a review summary with prerequisite commits, task commits, test commands, live Nous result, and any accepted residual risk.
+- [ ] Prepare a review summary with merged implementation base commit, prerequisite implementation commits, task commits, preflight command output, target test commands, live Nous result, and any accepted residual risk.
 
 **Verify:**
 
@@ -642,13 +766,15 @@ git commit -m "chore: register resident task orchestrator readiness"
 
 ## Merge Order
 
-1. Merge prerequisite lane branches into `neo`: operational resolved context packs, investigative resolved context packs, PRR context packs, prompt template applicability/rendering, and durable handoff protocol.
-2. Rebase the resident task orchestrator implementation branch onto that updated `neo`.
-3. Execute Tasks 1 through 11 in order, one commit per task.
-4. Do not start Task 6 until the durable handoff canonical event/artifact contract is present in the implementation base.
-5. Do not start Task 8 until Tasks 1 through 7 have passed `npm run verify`.
-6. Do not start Task 9 until Task 8 deterministic acceptance passes and repo-local Nous secrets are confirmed.
-7. Open final review only after Task 11 passes full verification.
+1. Merge implementation lanes into `neo` in dependency order: resident lifecycle bootstrap, operational resolved context packs, investigative three-pack resolved context packs, production prompt applicability/rendering, and durable handoff protocol.
+2. PRR context packs may merge before or after the first non-PRR evidence-triage vertical. They are mandatory only before PRR-linked modes are marked execution-ready.
+3. Rebase the resident task orchestrator implementation branch onto the updated `neo`.
+4. Execute the semantic preflight gate and record actual implementation base/prerequisite commits in the Task 1 claim.
+5. Execute Tasks 1 through 11 in order, one commit per task.
+6. Do not start Task 6 until the durable handoff canonical event/artifact contract is present in the implementation base.
+7. Do not start Task 8 until Tasks 1 through 7 have passed `npm run verify`.
+8. Do not start Task 9 until Task 8 deterministic acceptance passes and repo-local Nous configuration is available.
+9. Open final review only after Task 11 passes full verification and live Nous sentinel acceptance passes.
 
 ## Evidence-Triage Vertical Acceptance Gate
 
@@ -657,8 +783,8 @@ The feature is not complete until the following sequence is proven by determinis
 1. A queued evidence-triage task is selected by deterministic priority and claimed on `agent_task_orchestration_${taskId}_${runType}`.
 2. The orchestrator creates a stable attempt ID for retry generation `0` and records a durable planning/context checkpoint.
 3. Workflow applicability marks only relevant packs applicable; non-PRR `prr-read-model.v1` is advisory/inapplicable and does not block.
-4. Every applicable pack is locally resolved to `ResolvedContextPack { ref, payload }` and verified for content hash, size, schema, provenance, and staleness before transfer.
-5. The prompt renderer consumes verified payload bytes, creates a prompt artifact hash, and no payload bytes enter ledger, cockpit, logs, approval preview, or handoff metadata.
+4. Every applicable pack is locally resolved to `ResolvedContextPack { ref, payload }`, then converted by the operational registry/execution assertion into opaque `VerifiedResolvedContextPack` after content hash, size, schema/parser, provenance, and staleness checks.
+5. The prompt renderer consumes only opaque verified payload results, creates a prompt artifact hash, and no payload bytes enter ledger, cockpit, logs, approval preview, or handoff metadata.
 6. Missing exact provider-byte-transfer approval creates a suspended checkpoint and releases the worker lease.
 7. Valid exact approval causes idempotent reclaim with the same attempt ID and a higher lease claim generation.
 8. Real Nous dispatch runs only after approval and verified payload resolution.
@@ -671,7 +797,7 @@ The feature is not complete until the following sequence is proven by determinis
 
 ## Stop Conditions
 
-- Missing prerequisite lane commit or changed cross-lane interface semantics.
+- Missing prerequisite source/export/test readiness, unrecorded implementation base/prerequisite commits, or changed cross-lane interface semantics.
 - Any design pressure to extend `createAgentScheduler().wake()` so it owns queued-task orchestration.
 - Any self-approval path, synthetic provider-byte-transfer proof, synthetic domain proof, or synthetic handoff.
 - Any domain effect outside approved-tool scheduler and domain services.
@@ -679,4 +805,5 @@ The feature is not complete until the following sequence is proven by determinis
 - Any terminal projection from runner output hashes without verified handoff readback.
 - Any old-source mutation, accepted-graph-truth acceptance, governance lock clearing, PRR submission, export, or legal escalation.
 - Any restart boundary that cannot be reconstructed from append-only events.
+- Unavailable configured live Nous provider or repo-local secret setup for mandatory acceptance.
 - Repeated verifier failure after a systematic debugging pass and one focused correction attempt.
