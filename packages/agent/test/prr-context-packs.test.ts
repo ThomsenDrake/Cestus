@@ -121,6 +121,15 @@ describe("selected request PRR read model context pack", () => {
         correspondence: { id: string; contentHash: string; sourceEventId: string }[];
         evidence: { id: string; contentHash: string; sourceEventId: string }[];
       };
+      correspondence: {
+        outbound: { bodyHash?: string; evidenceIds: string[]; attachmentEvidenceIds: string[] }[];
+        inbound: { bodyHash?: string; evidenceIds: string[]; attachmentEvidenceIds: string[] }[];
+      };
+      production: {
+        evidenceIds: string[];
+        batches: { evidenceIds: string[] }[];
+        escalation: { confirmedBy: string; rationale: string; citedRules: { label: string; citation: string; jurisdictionPack: { name: string; version: string } }[]; evidenceIds: string[] } | null;
+      };
       gates: { checks: { sourceEventIds?: string[]; evidenceHashes?: string[] }[] }[];
     };
 
@@ -152,6 +161,48 @@ describe("selected request PRR read model context pack", () => {
     forgedGate.gates[0]!.checks[0]!.sourceEventIds = ["evt_prr_unrelated"];
     expect(() => verifyResolvedContextPack(forgeResolved(resolved, forgedGate), prrReadModelPayloadParser))
       .toThrow(/payload-schema-mismatch|provenance|source/i);
+  });
+
+  it("rejects forged correspondence hashes that lack a selected correspondence source ref", () => {
+    const resolved = buildPrrReadModelContextPack(basePrrInput());
+    const forged = structuredClone(resolved.payload) as {
+      correspondence: { outbound: { bodyHash?: string }[] };
+    };
+    forged.correspondence.outbound[0]!.bodyHash = evidenceHash;
+
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forged), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|correspondence|artifact/i);
+  });
+
+  it("rejects forged evidence IDs absent from selected evidence source refs", () => {
+    const resolved = buildPrrReadModelContextPack(basePrrInput());
+    const forged = structuredClone(resolved.payload) as {
+      correspondence: { outbound: { evidenceIds: string[] }[] };
+      production: {
+        evidenceIds: string[];
+        batches: { evidenceIds: string[] }[];
+        escalation: { confirmedBy: string; rationale: string; citedRules: { label: string; citation: string; jurisdictionPack: { name: string; version: string } }[]; evidenceIds: string[] } | null;
+      };
+    };
+
+    forged.correspondence.outbound[0]!.evidenceIds.push("ev_unrelated");
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forged), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|evidence/i);
+
+    const forgedProduction = structuredClone(resolved.payload) as typeof forged;
+    forgedProduction.production.evidenceIds.push("ev_unrelated");
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forgedProduction), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|evidence/i);
+
+    const forgedEscalation = structuredClone(resolved.payload) as typeof forged;
+    forgedEscalation.production.escalation = {
+      confirmedBy: "actor_investigator",
+      rationale: "Required",
+      citedRules: [{ label: "20 working days", citation: "5 U.S.C. 552(a)(6)(A)(i)", jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" } }],
+      evidenceIds: ["ev_unrelated"]
+    };
+    expect(() => verifyResolvedContextPack(forgeResolved(resolved, forgedEscalation), prrReadModelPayloadParser))
+      .toThrow(/payload-schema-mismatch|evidence/i);
   });
 
   it("rejects wrong scope, unrelated request IDs, raw bodies, provider refs, and truncatable active gates", () => {

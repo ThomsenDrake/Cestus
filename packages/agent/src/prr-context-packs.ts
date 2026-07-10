@@ -179,6 +179,13 @@ function assertPayloadProvenanceBindings(
       throw new Error("unrelated correspondence reference");
     }
   }
+  for (const correspondence of [...payload.correspondence.outbound, ...payload.correspondence.inbound]) {
+    if (correspondence.bodyHash !== undefined && !payload.sourceRefs.correspondence.some((sourceRef) =>
+      sourceRef.contentHash === correspondence.bodyHash && (sourceRef.id === correspondence.correspondenceId || sourceRef.id.startsWith(`${correspondence.correspondenceId}_`))
+    )) {
+      throw new Error("unbound correspondence body hash");
+    }
+  }
   const evidenceIds = new Set([
     ...payload.correspondence.outbound.flatMap((correspondence) => [...correspondence.evidenceIds, ...correspondence.attachmentEvidenceIds]),
     ...payload.correspondence.inbound.flatMap((correspondence) => [...correspondence.evidenceIds, ...correspondence.attachmentEvidenceIds]),
@@ -188,6 +195,11 @@ function assertPayloadProvenanceBindings(
   ]);
   for (const sourceRef of payload.sourceRefs.evidence) {
     if (!evidenceIds.has(sourceRef.id)) throw new Error("unrelated evidence reference");
+  }
+  for (const evidenceId of evidenceIds) {
+    if (!payload.sourceRefs.evidence.some((sourceRef) => sourceRef.id === evidenceId)) {
+      throw new Error("unbound evidence reference");
+    }
   }
   const evidenceHashes = new Set(payload.sourceRefs.evidence.map((sourceRef) => sourceRef.contentHash));
   for (const gate of payload.gates) for (const check of gate.checks) {
