@@ -163,6 +163,12 @@ const operationalCapabilities = new Set<OperationalContextPackCapability>([
   "agent-memory-summary"
 ]);
 
+const historyStates = new Set([
+  "completed", "blocked", "denied", "failed", "executing", "approved", "requested", "queued", "running", "pending"
+]);
+
+const providerStates = new Set(["ready", "degraded", "unavailable", "disabled", "blocked"]);
+
 export const operationalContextPackDescriptors: readonly ContextPackDescriptor[] = Object.freeze([
   Object.freeze({
     contextPackId: "workspace-runtime-status.v1",
@@ -219,7 +225,10 @@ export function buildWorkspaceRuntimeStatusContextPack(
     policyVersion: input.policyVersion,
     scope: input.scope,
     sizeBudgetBytes: input.sizeBudgetBytes,
-    stalenessInputs: [{ kind: "runtime-high-water-mark", ref: "runtime.status", value: String(runtime.runtimeHighWaterMark) }]
+    stalenessInputs: [
+      { kind: "runtime-high-water-mark", ref: "runtime.status", value: String(runtime.runtimeHighWaterMark) },
+      ...runtime.omissionCodes.map((code) => ({ kind: "omission-code", ref: "runtime.status", value: code }))
+    ]
   });
 }
 
@@ -807,8 +816,8 @@ function normalizeRuntimeSource(value: OperationalWorkspaceRuntimeSource): {
   }
   assertPlainDataArray(value.providerStates, "runtime providerStates");
   assertPlainDataArray(value.diagnostics, "runtime diagnostics");
-  const providerStates = value.providerStates.map((item) => cloneSafeOperationalJson(item, "provider state"));
-  const diagnostics = value.diagnostics.map((item) => cloneSafeOperationalJson(item, "diagnostic"));
+  const providerStates = value.providerStates.map(projectRuntimeProviderState);
+  const diagnostics = value.diagnostics.map(projectRuntimeDiagnostic);
   assertPlainDataObject(value.projectionHighWaterMarks, "runtime projection high-water marks");
   const projectionHighWaterMarks: Record<string, number> = {};
   for (const [key, highWaterMark] of Object.entries(value.projectionHighWaterMarks)) {
@@ -842,10 +851,11 @@ function normalizeTaskRunHistorySnapshot(value: OperationalTaskRunHistorySnapsho
     throw new Error("blocked.missing-high-water-mark: task/run history snapshot requires a nonnegative high-water mark");
   }
   assertSafeOperationalText(value.projectionSourceRef, "projectionSourceRef");
-  const normalizeItems = (items: readonly AgentContextPackJsonValue[], label: string) => {
-    assertPlainDataArray(items, label);
-    return sortHistoryItems(items.map((item) => cloneSafeOperationalJson(item, label)));
-  };
+  assertPlainDataArray(value.tasks, "tasks");
+  assertPlainDataArray(value.runs, "runs");
+  assertPlainDataArray(value.modelInvocations, "model invocations");
+  assertPlainDataArray(value.toolRequests, "tool requests");
+  const visibleItemCount = value.tasks.length + value.runs.length + value.modelInvocations.length + value.toolRequests.length;
   assertPlainDataObject(value.aggregateCounts, "task/run aggregate counts");
   const aggregateCounts: Record<string, number> = {};
   for (const [key, count] of Object.entries(value.aggregateCounts)) {
@@ -856,14 +866,17 @@ function normalizeTaskRunHistorySnapshot(value: OperationalTaskRunHistorySnapsho
   const sourceEventIds = normalizeEventIds(value.sourceEventIds);
   const artifactHashes = normalizeArtifactHashes(value.artifactHashes);
   const window = normalizeWindow(value.window);
+  if (visibleItemCount > window.limit) {
+    throw new Error("blocked.unbounded-source: task/run history visible items exceed the bounded window limit");
+  }
   const emptyProof = value.emptyProof === undefined ? undefined : normalizeEmptyProof(value.emptyProof);
   return {
     projectionHighWaterMark: value.projectionHighWaterMark,
     projectionSourceRef: value.projectionSourceRef,
-    tasks: normalizeItems(value.tasks, "task"),
-    runs: normalizeItems(value.runs, "run"),
-    modelInvocations: normalizeItems(value.modelInvocations, "model invocation"),
-    toolRequests: normalizeItems(value.toolRequests, "tool request"),
+    tasks: sortHistoryItems(value.tasks.map(projectTaskHistoryItem)),
+    runs: sortHistoryItems(value.runs.map(projectRunHistoryItem)),
+    modelInvocations: sortHistoryItems(value.modelInvocations.map(projectModelInvocationHistoryItem)),
+    toolRequests: sortHistoryItems(value.toolRequests.map(projectToolRequestHistoryItem)),
     aggregateCounts,
     sourceEventIds,
     artifactHashes,
@@ -990,28 +1003,101 @@ function diagnosticIds(value: AgentContextPackJsonValue): readonly string[] {
   return typeof diagnosticId === "string" && /^diag_[a-zA-Z0-9_-]+$/.test(diagnosticId) ? [diagnosticId] : [];
 }
 
-function cloneSafeOperationalJson(value: AgentContextPackJsonValue, label: string): AgentContextPackJsonValue {
-  if (value === null || typeof value === "boolean" || typeof value === "number") {
-    if (typeof value === "number" && !Number.isFinite(value)) throw new Error("blocked.invalid-payload-shape: non-finite operational value");
-    return value;
+function projectRuntimeProviderState(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
+  const provider = assertStrictOperationalObject(value, "provider state", ["providerId", "state", "category"]);
+  return {
+    providerId: requiredSafeIdentifier(provider, "providerId", "provider state"),
+    state: requiredSafeProviderState(provider, "state"),
+    ...(provider.category === undefined ? {} : { category: requiredSafeOperationalField(provider, "category", "provider state") })
+  };
+}
+
+function projectRuntimeDiagnostic(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
+  const diagnostic = assertStrictOperationalObject(value, "diagnostic", ["diagnosticId", "category"]);
+  return {
+    diagnosticId: requiredSafeIdentifier(diagnostic, "diagnosticId", "diagnostic", "diag_"),
+    category: requiredSafeOperationalField(diagnostic, "category", "diagnostic")
+  };
+}
+
+function projectTaskHistoryItem(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
+  return projectHistoryItem(value, "task", "taskId");
+}
+
+function projectRunHistoryItem(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
+  return projectHistoryItem(value, "run", "runId");
+}
+
+function projectModelInvocationHistoryItem(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
+  return projectHistoryItem(value, "model invocation", "invocationId");
+}
+
+function projectToolRequestHistoryItem(value: AgentContextPackJsonValue): AgentContextPackJsonValue {
+  return projectHistoryItem(value, "tool request", "requestId");
+}
+
+function projectHistoryItem(
+  value: AgentContextPackJsonValue,
+  label: string,
+  identifierKey: "taskId" | "runId" | "invocationId" | "requestId"
+): AgentContextPackJsonValue {
+  const item = assertStrictOperationalObject(value, label, [identifierKey, "state", "category", "sourceEventIds", "artifactHashes"]);
+  return {
+    [identifierKey]: requiredSafeIdentifier(item, identifierKey, label),
+    state: requiredSafeState(item, "state", label),
+    ...(item.category === undefined ? {} : { category: requiredSafeOperationalField(item, "category", label) }),
+    ...(item.sourceEventIds === undefined ? {} : { sourceEventIds: normalizeEventIds(item.sourceEventIds as readonly string[]) }),
+    ...(item.artifactHashes === undefined ? {} : { artifactHashes: normalizeArtifactHashes(item.artifactHashes as readonly string[]) })
+  };
+}
+
+function assertStrictOperationalObject(
+  value: AgentContextPackJsonValue,
+  label: string,
+  allowedKeys: readonly string[]
+): Record<string, unknown> {
+  try {
+    assertPlainDataObject(value, label, allowedKeys);
+  } catch (error) {
+    throw new Error(`blocked.invalid-payload-shape: ${error instanceof Error ? error.message : `${label} is invalid`}`);
   }
-  if (typeof value === "string") {
-    assertSafeOperationalText(value, label);
-    return value;
+  return value;
+}
+
+function requiredSafeIdentifier(
+  value: Record<string, unknown>,
+  key: string,
+  label: string,
+  prefix?: string
+): string {
+  const field = value[key];
+  if (typeof field !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(field) || (prefix !== undefined && !field.startsWith(prefix))) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} ${key} must be a safe identifier`);
   }
-  if (Array.isArray(value)) {
-    assertPlainDataArray(value, label);
-    return value.map((item) => cloneSafeOperationalJson(item as AgentContextPackJsonValue, label));
+  assertSafeOperationalText(field, `${label} ${key}`);
+  return field;
+}
+
+function requiredSafeState(value: Record<string, unknown>, key: string, label: string): string {
+  const field = value[key];
+  if (typeof field !== "string" || !historyStates.has(field)) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} state is invalid`);
   }
-  if (!isOperationalJsonObject(value)) throw new Error("blocked.invalid-payload-shape: operational value must be JSON");
-  const result: Record<string, AgentContextPackJsonValue> = {};
-  const descriptors = Object.getOwnPropertyDescriptors(value);
-  for (const [key, descriptor] of Object.entries(descriptors)) {
-    if (!descriptor.enumerable || !("value" in descriptor)) throw new Error("blocked.invalid-payload-shape: operational value must not contain accessors");
-    assertSafeOperationalText(key, `${label} key`);
-    result[key] = cloneSafeOperationalJson(descriptor.value as AgentContextPackJsonValue, label);
+  return field;
+}
+
+function requiredSafeProviderState(value: Record<string, unknown>, key: string): string {
+  const field = value[key];
+  if (typeof field !== "string" || !providerStates.has(field)) {
+    throw new Error("blocked.invalid-payload-shape: provider state is invalid");
   }
-  return result;
+  return field;
+}
+
+function requiredSafeOperationalField(value: Record<string, unknown>, key: string, label: string): string {
+  const field = value[key];
+  assertSafeOperationalText(field, `${label} ${key}`);
+  return field;
 }
 
 function assertSafeOperationalText(value: unknown, label: string): asserts value is string {
