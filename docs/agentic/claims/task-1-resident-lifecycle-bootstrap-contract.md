@@ -26,3 +26,4 @@ Evidence:
 - Verify: `npm run verify` passed.
 - Review remediation: canonical initialization payload/provenance, ordered default-resident updates, provider-shaped bootstrap actor rejection, and structured ledger concurrency conflicts are covered by focused regression tests.
 - Re-review remediation: named provider identities are rejected, secret-safe human operators are accepted, and SQLite `BEGIN IMMEDIATE` contention is normalized as a structured concurrency conflict.
+- Stream binding remediation: every event returned for the resident identity stream must carry `agent_identity_agent_default` before lifecycle readback can return ready.
