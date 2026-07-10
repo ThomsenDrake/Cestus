@@ -38,6 +38,7 @@ import {
 } from "./specialists.js";
 import { createAgentScheduler } from "./scheduler.js";
 import type { AgentApprovedToolExecutorDescriptor } from "./scheduler-types.js";
+import { assertAgentSecretSafeText } from "./secret-safety.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
 
 const agentCoreVersion = "0.1.0";
@@ -99,6 +100,7 @@ export interface InvokeAgentModelInput {
   readonly credentialRef: CredentialReference;
   readonly safetyClass?: "workspace-safe" | "public-safe" | "sensitive-local-only" | "provider-approved";
   readonly promptArtifact?: PromptArtifactEnvelope;
+  readonly returnOutputText?: boolean;
 }
 
 export interface InitializeDefaultIdentityResult {
@@ -122,6 +124,7 @@ export interface InvokeAgentModelResult {
   readonly outputArtifactHash: string;
   readonly eventIds: readonly string[];
   readonly usage?: ModelInvocationResult["usage"] | undefined;
+  readonly outputText?: string | undefined;
 }
 
 export function createAgentRuntime(input: CreateAgentRuntimeInput) {
@@ -601,6 +604,19 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           allowedActions: ["inspect provider adapter output validation"]
         });
       }
+      if (command.returnOutputText === true) {
+        try {
+          assertAgentSecretSafeText(safeProviderResult.outputText, "provider output text");
+        } catch {
+          return await failModelInvocation(input.ledger, input, command, requested, {
+            diagnosticCategory: "provider",
+            eventCategory: "model-output-invalid",
+            message: "Provider returned unsafe output.",
+            retryable: false,
+            allowedActions: ["inspect provider adapter output validation"]
+          });
+        }
+      }
       const usage = safeProviderResult.usage;
 
       const completedEvent: AppendableKnowledgeEvent<"agent.model-invocation.completed"> = {
@@ -639,6 +655,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
         invocationId: command.invocationId,
         outputArtifactHash: safeProviderResult.outputArtifactHash,
         usage,
+        ...(command.returnOutputText === true ? { outputText: safeProviderResult.outputText } : {}),
         eventIds: Object.freeze([requested.id, completed.id])
       };
     },
