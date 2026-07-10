@@ -36,5 +36,6 @@ new strict event contracts are implemented, followed by `npm run verify`.
   1 file, 49 tests.
 - Verify: `npm run verify` passed: typecheck; 170 test files, 1,715 tests
   passed, 3 skipped; Vite production build; factory readiness.
-- Commit: pending task commit.
-- Reviewer notes: pending spec and code-quality review.
+- Commit: `f7bcfdb feat: add durable specialist handoff event contracts`.
+- Reviewer notes: first review found stale commit evidence; this claim records
+  `f7bcfdb` before re-review.
