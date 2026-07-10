@@ -1,0 +1,32 @@
+# Task 1 Durable Handoff Event Contracts
+
+## Task
+
+Task 1: Event Contracts And Final-Output Step Semantics from
+`.superpowers/sdd/task-1-brief.md`.
+
+## Status
+
+claimed
+
+## Claim
+
+- Worker: Codex
+- Branch: `codex/durable-specialist-handoffs-core`
+- Worktree: `/home/drake/.codex/worktrees/1542/Cestus`
+- Claimed at (UTC): 2026-07-10T00:00:00.000Z
+
+## Files
+
+- `docs/agentic/claims/task-1-durable-handoff-event-contracts.md`
+- `packages/ontology/src/contracts.ts`
+- `packages/ontology/test/agent-contracts.test.ts`
+
+## Acceptance
+
+`npm test -- packages/ontology/test/agent-contracts.test.ts` passes after the
+new strict event contracts are implemented, followed by `npm run verify`.
+
+## Handoff
+
+Pending implementation and verification evidence.
