@@ -319,24 +319,26 @@ describe("agent memory surface", () => {
   });
 
   it("keeps projection-adapter provenance and output bounded as active memory grows", () => {
-    const build = (projection: AgentProjection) => buildAgentMemorySummaryResolvedContextPack({
+    const build = (projection: AgentProjection, maxItems: number) => buildAgentMemorySummaryResolvedContextPack({
       projection,
       generatedAt: "2026-07-09T12:30:00.000Z",
       policyVersion: "agent-policy-v1",
       scope: { kind: "workspace", id: "ws_case_001" },
       projectionHighWaterMark: 42,
-      sizeBudgetBytes: 1_000_000,
-      maxItems: 25
+      sizeBudgetBytes: 100_000_000,
+      maxItems
     });
-    const small = build(projectionWithActiveMemory(25));
-    const large = build(projectionWithActiveMemory(10_000));
-    const largePayload = large.payload as { memory: { activeMemory: unknown[]; aggregateCounts: Record<string, number> } };
+    const projection = projectionWithActiveMemory(10_000);
+    const small = build(projection, 25);
+    const large = build(projection, 10_000);
+    const largePayload = large.payload as { memory: { activeMemory: { memoryId: string }[]; aggregateCounts: Record<string, number> } };
 
     expect(largePayload.memory.activeMemory).toHaveLength(25);
     expect(largePayload.memory.aggregateCounts.active).toBe(10_000);
+    expect(largePayload.memory.activeMemory[0]?.memoryId).toBe("mem_projection_09999");
     expect(large.ref.provenanceRefs).toHaveLength(small.ref.provenanceRefs.length);
     expect(large.ref.provenanceRefs).toHaveLength(51);
-    expect(large.ref.sizeBytes - small.ref.sizeBytes).toBeLessThan(16);
+    expect(large.ref.sizeBytes).toBe(small.ref.sizeBytes);
   });
 
   it("builds a stable empty-memory summary pack for first-run workspaces", () => {
@@ -426,7 +428,7 @@ function projectionWithActiveMemory(count: number): AgentProjection {
       sourceEventIds: [`evt_agent_memory_source_${index}`],
       artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
       eventIds: [`evt_agent_memory_recorded_${index}`],
-      createdAt: "2026-07-09T12:00:00.000Z"
+      createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, count - index)).toISOString()
     }))
   } as unknown as AgentProjection;
 }

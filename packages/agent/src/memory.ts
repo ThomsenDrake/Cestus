@@ -78,6 +78,8 @@ interface AgentMemorySummaryItemDto {
   readonly expiresAt?: string | undefined;
 }
 
+const maximumProjectionMemoryWindowItems = 25;
+
 export function buildAgentMemoryList(input: BuildAgentMemoryListInput): AgentMemoryListDto {
   const filters = deepFreeze({
     scope: input.filters?.scope ?? "all",
@@ -131,8 +133,7 @@ export function buildAgentMemorySummaryResolvedContextPack(
     throw new Error("blocked.projection-source-mismatch: memory snapshot does not match its projection source");
   }
   const items = snapshot.activeMemory
-    .map(toMemorySummaryItem)
-    .sort((left, right) => left.memoryId.localeCompare(right.memoryId));
+    .map(toMemorySummaryItem);
   if (items.some((memory) => memory.sourceEventIds.length === 0 && memory.artifactHashes.length === 0)) {
     throw new Error("blocked.missing-provenance: active memory items require source event IDs or artifact hashes");
   }
@@ -200,9 +201,14 @@ function normalizeMemorySnapshot(input: BuildAgentMemorySummaryContextPackInput)
   }
 
   const totalActiveMemoryCount = input.projection.activeMemory.length;
+  const effectiveWindowLimit = Math.min(
+    Math.max(1, Math.floor(input.maxItems ?? maximumProjectionMemoryWindowItems)),
+    maximumProjectionMemoryWindowItems
+  );
   const activeMemory = input.projection.activeMemory
-    .slice(0, input.maxItems ?? 25)
+    .slice()
     .sort(compareMemory)
+    .slice(0, effectiveWindowLimit);
   const sourceEventIds = unique(activeMemory.flatMap((memory) => memory.sourceEventIds));
   const artifactHashes = unique(activeMemory.flatMap((memory) => memory.artifactHashes));
   return {
@@ -223,7 +229,7 @@ function normalizeMemorySnapshot(input: BuildAgentMemorySummaryContextPackInput)
     artifactHashes,
     window: {
       order: "createdAt:asc",
-      limit: input.maxItems ?? 25,
+      limit: effectiveWindowLimit,
       hasMore: totalActiveMemoryCount > activeMemory.length,
       totalCount: totalActiveMemoryCount,
       omissionCodes: []
