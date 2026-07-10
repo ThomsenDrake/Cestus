@@ -179,6 +179,71 @@ describe("agent memory surface", () => {
     expect(JSON.stringify(resolved.payload)).not.toMatch(/accepted ontology|ontology truth/i);
   });
 
+  it("validates operational source metadata before normalizing direct memory snapshots", () => {
+    const invalidMetadata = [
+      { label: "unrestricted scope path", error: /scope/i, overrides: { scope: { kind: "workspace", id: "/home/drake/private" } } },
+      { label: "prose policy version", error: /policyVersion/i, overrides: { policyVersion: "policy version one" } },
+      { label: "invalid generated time", error: /generatedAt/i, overrides: { generatedAt: "not-a-utc-timestamp" } },
+      { label: "negative high-water mark", error: /high-water-mark/i, overrides: { projectionHighWaterMark: -1 } },
+      { label: "nonpositive size budget", error: /size-budget/i, overrides: { sizeBudgetBytes: 0 } }
+    ];
+
+    for (const buildMemoryPack of [
+      buildAgentMemorySummaryResolvedContextPack,
+      buildAgentMemorySummaryContextPack
+    ]) {
+      for (const { label, error, overrides } of invalidMetadata) {
+        let snapshotRead = false;
+        const memorySnapshot = { ...boundedMemorySnapshot() } as Record<string, unknown>;
+        Object.defineProperty(memorySnapshot, "activeMemory", {
+          enumerable: true,
+          get() {
+            snapshotRead = true;
+            return boundedMemorySnapshot().activeMemory;
+          }
+        });
+
+        expect(() => buildMemoryPack({
+          memorySnapshot: memorySnapshot as never,
+          generatedAt: "2026-07-09T12:30:00.000Z",
+          policyVersion: "agent-policy-v1",
+          scope: { kind: "workspace", id: "ws_case_001" },
+          projectionHighWaterMark: 42,
+          sizeBudgetBytes: 16_384,
+          ...overrides
+        })).toThrow(error);
+        expect(snapshotRead, label).toBe(false);
+      }
+    }
+  });
+
+  it("rejects accessor-backed direct memory-builder input without invoking accessors", () => {
+    let getterInvoked = false;
+    const input = {
+      memorySnapshot: boundedMemorySnapshot(),
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 42,
+      sizeBudgetBytes: 16_384
+    } as Record<string, unknown>;
+    Object.defineProperty(input, "generatedAt", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return "2026-07-09T12:30:00.000Z";
+      }
+    });
+
+    for (const buildMemoryPack of [
+      buildAgentMemorySummaryResolvedContextPack,
+      buildAgentMemorySummaryContextPack
+    ]) {
+      expect(() => buildMemoryPack(input as never)).toThrow(/accessor|plain object|payload-shape/i);
+      expect(getterInvoked).toBe(false);
+    }
+  });
+
   it("requires an authoritative proof before summarizing an empty memory projection", () => {
     expect(() => buildAgentMemorySummaryResolvedContextPack({
       memorySnapshot: emptyMemorySnapshot(),
