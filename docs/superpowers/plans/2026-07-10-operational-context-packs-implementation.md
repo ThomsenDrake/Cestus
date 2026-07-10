@@ -16,8 +16,14 @@
 - Builders are deterministic for identical injected inputs. `generatedAt` is caller-supplied; builders do not read wall-clock time, process state, filesystem state, network state, random values, or environment variables.
 - Scope, policy version, size budget, and projection high-water marks are mandatory typed fields for every operational pack, including explicit empty-projection cases.
 - Every production context-pack builder in this lane returns a `ResolvedContextPack` or raw build input that the registry normalizes into one. Ref-only builders are compatibility fixtures and cannot satisfy production provider execution.
+- `ContextPackRegistry.build()` remains truly ref-only compatible: it accepts validated legacy `ContextPackRef` builder results and never requires payload resolution or a payload parser.
+- `ContextPackRegistry.buildResolved()` requires a returned/raw payload envelope or a configured typed resolver; a legacy ref-only builder without resolver support fails with `blocked.missing-payload`.
 - `ResolvedContextPack.ref.contentHash` and `ref.sizeBytes` must exactly match the canonical UTF-8 payload bytes.
 - Payload resolution is by full `ContextPackRef` and verified canonical bytes. Do not add arbitrary hash-to-text callbacks.
+- Production payload resolution also requires an exact pack-specific parser keyed by `contextPackId` and `version`; matching hash/size alone is not sufficient.
+- Parser functions are builder/registry capabilities, not descriptor DTO fields, and are never serialized into snapshots, ledger events, diagnostics, cockpit DTOs, or logs.
+- Verification authority is an authoritative registry method or opaque/branded in-memory result, not a serializable field such as `parserVerification: "ok"`.
+- Serialized or reloaded envelopes must pass through canonical hash/size verification and the registered ID/version parser again before production rendering.
 - Do not expose payload bodies in ledger events, diagnostics, cockpit DTOs, public logs, readiness summaries, or browser/operator DTOs.
 - Empty memory and empty task/run history are valid only with explicit empty-projection proof, current high-water mark, scope, source event count, and staleness inputs.
 - No pack includes raw portable paths, raw provider errors, prompts, model output, credentials, provider runtime material, unrestricted local paths, or private source bodies.
@@ -79,20 +85,24 @@ Use statuses in this order: `claimed`, `in-progress`, `ready-for-review`, `revie
 Generic context-pack core:
 
 - `ResolvedContextPack`: `{ readonly ref: ContextPackRef; readonly payload: AgentContextPackJsonValue }`.
+- `VerifiedResolvedContextPack`: opaque/branded result produced only by registry/execution verification after hash/size and exact parser checks.
 - `buildResolvedContextPack(input: BuildContextPackRefInput): ResolvedContextPack`.
 - `serializeContextPackPayload(payload: AgentContextPackJsonValue): Uint8Array`.
-- `verifyResolvedContextPack(envelope: ResolvedContextPack): ResolvedContextPack`.
+- `ContextPackPayloadParser`: `(payload: AgentContextPackJsonValue) => AgentContextPackJsonValue`.
+- `verifyResolvedContextPack(envelope: ResolvedContextPack, parser?: ContextPackPayloadParser): ResolvedContextPack`.
 - `ContextPackPayloadResolver`: `resolve(ref: ContextPackRef): Promise<ResolvedContextPack>`.
-- `assertResolvedContextPacksForExecution(input: { readonly refs: readonly ContextPackRef[]; readonly resolved: readonly ResolvedContextPack[] }): readonly ResolvedContextPack[]`.
+- `assertResolvedContextPacksForExecution(input: { readonly refs: readonly ContextPackRef[]; readonly resolved: readonly ResolvedContextPack[] }): readonly VerifiedResolvedContextPack[]`.
+- `ContextPackBuilder.parsePayload?: ContextPackPayloadParser`.
 - `ContextPackRegistry.buildResolved(contextPackId: string): Promise<ResolvedContextPack>`.
 - `createContextPackRegistry(input?: { readonly payloadResolver?: ContextPackPayloadResolver }): ContextPackRegistry`.
+- Shared internal normalization functions may stay private, but tests must pin behavior for ref-only and resolved paths.
 
 Operational module:
 
 - `OperationalContextPackId`: the union of `workspace-runtime-status.v1`, `task-run-history.v1`, and `agent-memory-summary.v1`.
 - `OperationalContextPackCapability`: `workspace-runtime-status`, `task-run-history`, and `agent-memory-summary`.
 - `OperationalContextPackOmissionCode`: machine-readable codes including `omitted.raw-paths`, `omitted.raw-provider-errors`, `omitted.prompts`, `omitted.model-output`, `omitted.credentials`, `omitted.raw-source-content`, `omitted.out-of-scope`, and `omitted.size-budget`.
-- `OperationalContextPackBlockingCode`: machine-readable codes including `blocked.missing-scope`, `blocked.missing-high-water-mark`, `blocked.missing-empty-proof`, `blocked.projection-stale`, `blocked.projection-source-mismatch`, `blocked.size-budget`, `blocked.unsafe-diagnostic`, `blocked.unbounded-source`, `blocked.missing-payload`, `blocked.payload-hash-mismatch`, and `blocked.conflicting-registration`.
+- `OperationalContextPackBlockingCode`: machine-readable codes including `blocked.missing-scope`, `blocked.missing-high-water-mark`, `blocked.missing-empty-proof`, `blocked.projection-stale`, `blocked.projection-source-mismatch`, `blocked.size-budget`, `blocked.unsafe-diagnostic`, `blocked.unbounded-source`, `blocked.missing-payload`, `blocked.missing-payload-parser`, `blocked.payload-hash-mismatch`, `blocked.payload-schema-mismatch`, `blocked.invalid-payload-shape`, and `blocked.conflicting-registration`.
 - `OperationalContextPackSizeBudgets`: per-pack byte budgets.
 - `OperationalEmptyProjectionProof`: projection name, scope, projection high-water mark, source event count, generatedAt, and empty reason code.
 - `OperationalBoundedWindow`: deterministic `order`, `limit`, optional `cursor`, `hasMore`, `totalCount`, and `omissionCodes`.
@@ -130,10 +140,17 @@ Implementation requirements:
 - `buildContextPackRef(input)` returns the same ref as `buildResolvedContextPack(input).ref` for the same payload.
 - `serializeContextPackPayload()` canonicalizes object keys, rejects unsafe DTOs, and produces the bytes hashed in the ref.
 - `verifyResolvedContextPack()` rejects forged hashes, byte-size mismatches, unsafe payloads, context ID/version mismatches, and untrusted ref-only material.
+- `verifyResolvedContextPack(envelope, parser)` rejects an attacker-controlled payload/ref pair whose hash and size match but whose pack-specific shape is invalid.
+- A forged serialized field such as `parserVerification: "ok"` or `verified: true` does not bypass parser validation.
+- Serializing and reloading a resolved envelope strips any in-memory verified authority; production execution must call the registry/execution verifier again.
+- A parser registered for `task-run-history.v1@1` cannot satisfy resolution of `workspace-runtime-status.v1@1`.
 - `createContextPackRegistry().buildResolved(id)` returns a verified envelope when a builder returns raw build input or `ResolvedContextPack`.
-- `createContextPackRegistry().build(id)` remains ref-only compatible and returns the same ref as `buildResolved(id).ref`.
-- A builder that returns only a trusted `ContextPackRef` fails `buildResolved()` with `blocked.missing-payload` unless the registry has a `ContextPackPayloadResolver`.
+- `createContextPackRegistry().build(id)` remains ref-only compatible and returns the expected ref for raw build input, resolved envelopes, and validated legacy ref-only builders.
+- `build()` never calls the configured resolver and does not require a payload parser.
+- A legacy ref-only builder regression fixture proves `build()` succeeds, `buildResolved()` fails with `blocked.missing-payload` without a resolver, and `buildResolved()` succeeds with an exact resolver and exact parser.
 - A resolver keyed by full `ContextPackRef` can resolve a ref-only builder result, and the registry rejects resolver payload hash/size mismatches.
+- `buildResolved()` fails with `blocked.missing-payload-parser` when a payload is available but no exact parser exists for the builder's `contextPackId` and `version`.
+- Descriptor snapshots and registry snapshots do not serialize `parsePayload` functions.
 - `assertResolvedContextPacksForExecution()` rejects missing payloads, duplicate refs, mismatched hashes, and extra unresolved refs.
 - Sentinel fixture has safe fact `payload_sentinel_case_budget_review_window_42` only in payload, never in `safeSummary`; execution assertion can retrieve the sentinel through resolved payloads, while ref-only summaries cannot.
 
@@ -143,16 +160,20 @@ Implementation requirements:
 npm test -- packages/agent/test/context-packs.test.ts
 ```
 
-Expected RED failure: missing `ResolvedContextPack`, `buildResolvedContextPack`, `buildResolved`, resolver, execution assertion, and sentinel fixture exports.
+Expected RED failure: missing `ResolvedContextPack`, `buildResolvedContextPack`, `buildResolved`, parser, resolver, execution assertion, and sentinel fixture exports.
 
 **Implementation steps:**
 - Add the generic envelope interfaces to `packages/agent/src/context-packs.ts`.
 - Factor existing payload normalization/stable JSON into exported canonical serialization helpers without weakening DTO safety.
-- Implement `buildResolvedContextPack(input)` and make `buildContextPackRef(input)` return `buildResolvedContextPack(input).ref`.
+- Implement `buildResolvedContextPack(input)` and keep `buildContextPackRef(input)` byte-compatible by returning that envelope's ref.
 - Expand `ContextPackBuilderResult` to support `ResolvedContextPack`, raw `BuildContextPackRefInput`, and compatibility `ContextPackRef`.
-- Add `buildResolved()` to registry; keep `build()` returning refs.
+- Add optional `parsePayload` to `ContextPackBuilder`, outside the descriptor DTO.
+- Add separate internal normalization paths: one for `build()` that accepts refs directly and never resolves payloads, and one for `buildResolved()` that requires payload bytes or resolver readback.
+- Add `buildResolved()` to registry; keep `build()` returning refs without resolver/parser requirements.
 - Add optional resolver injection to `createContextPackRegistry({ payloadResolver })`.
-- Implement `verifyResolvedContextPack()` and `assertResolvedContextPacksForExecution()`.
+- Implement `verifyResolvedContextPack()` with optional parser validation and `assertResolvedContextPacksForExecution()`.
+- Represent verified execution-ready envelopes with an opaque/branded return type or registry-owned method result that cannot be manufactured by JSON fields.
+- Ensure reload paths treat serialized envelopes as unverified input and rerun parser validation.
 - Add the sentinel fixture in `packages/agent/test/fixtures/resolved-context-pack-sentinel.ts`.
 - Export new generic APIs from `packages/agent/src/index.ts`.
 
@@ -174,7 +195,7 @@ npm run verify
 - Commit implementation and evidence with message `feat: resolve context pack payload envelopes`.
 
 **Review gate:**
-- Reviewers confirm ref-only readiness compatibility remains intact, resolved payloads are hash/size verified, no payloads are added to ledger/cockpit/log DTOs, and no arbitrary hash-to-text callback exists.
+- Reviewers confirm ref-only readiness compatibility remains intact, `buildResolved()` is strict about payload/resolver/parser availability, pack-specific schema validation rejects matching-hash invalid payloads, no payloads are added to ledger/cockpit/log DTOs, and no arbitrary hash-to-text callback exists.
 
 ## Task 2: Operational Provider Contracts And Descriptors
 
@@ -191,6 +212,7 @@ npm run verify
 - Provider metadata validation rejects unsafe scope IDs such as `/home/drake/private/workspace`, raw provider-error text, credential-shaped text, empty capabilities, and unknown capabilities.
 - Provider contract tests compile against bounded methods `workspaceRuntimeStatus()`, `taskRunHistorySnapshot()`, and `agentMemorySnapshot()`, not a required full `agentProjection()` method.
 - Operational builder return types are `ResolvedContextPack` or raw build inputs that the registry can normalize into `ResolvedContextPack`.
+- Operational registration supplies exact parser capabilities for `workspace-runtime-status.v1@1`, `task-run-history.v1@1`, and `agent-memory-summary.v1@1`; those parser functions are not serialized into descriptors.
 
 **Targeted RED command:**
 
@@ -203,6 +225,7 @@ Expected RED failure: missing `../src/operational-context-packs.js` exports.
 **Implementation steps:**
 - Add the operational shared types and descriptor constants in `packages/agent/src/operational-context-packs.ts`.
 - Add `assertOperationalContextPackProviderMetadata()`.
+- Add exact payload parsers for the three operational pack payload schemas.
 - Add `operationalContextPackProviderRegistrationKey()`.
 - Export the module from `packages/agent/src/index.ts`.
 - Keep the new module free of local-runtime, SQLite, filesystem, HTTP, React, and cockpit imports.
@@ -225,7 +248,7 @@ npm run verify
 - Commit implementation and evidence with message `feat: add operational context pack contracts`.
 
 **Review gate:**
-- Reviewers confirm the provider boundary is bounded and capability-oriented, descriptor IDs do not collide with parallel lanes, return types support resolved envelopes, and registration-key validation has no object-identity dependency.
+- Reviewers confirm the provider boundary is bounded and capability-oriented, descriptor IDs do not collide with parallel lanes, return types support resolved envelopes, payload parsers are exact and non-serialized, and registration-key validation has no object-identity dependency.
 
 ## Task 3: Canonical Memory Builder Evolution
 
@@ -364,6 +387,7 @@ npm run verify
 **RED tests first:**
 - `registerOperationalContextPackBuilders(registry, provider)` registers the three descriptors/builders and returns the deterministic registration key.
 - Registered builders produce `ResolvedContextPack` via `registry.buildResolved(id)` and refs via `registry.build(id)`.
+- Registered builders include exact pack-specific payload parsers, and `registry.buildResolved(id)` rejects matching-hash payloads that fail those parsers.
 - Re-registering with a different provider object but identical deterministic metadata and descriptor set is idempotent.
 - Re-registering with a different `policyVersion`, different scope, different capability set, or altered descriptor for an already registered operational pack ID throws `blocked.conflicting-registration`.
 - Registration conflict behavior does not rely on object identity.
@@ -384,6 +408,7 @@ Expected RED failure: missing registration and readiness helper exports.
 - Add `registerOperationalContextPackBuilders(registry, provider)`.
 - Track registration state by deterministic provider key and pack ID. Use module-private registry state, such as a `WeakMap<ContextPackRegistry, Map<OperationalContextPackId, string>>`, plus descriptor comparison, not object identity alone.
 - Register builders that delegate to `workspaceRuntimeStatus()`, `taskRunHistorySnapshot()`, and `agentMemorySnapshot()` and then call the production pack builders.
+- Attach exact `parsePayload` functions to every operational builder registration.
 - Add `buildOperationalContextPackReadinessInputs(provider)` that builds all available operational resolved envelopes and returns resolved envelopes, refs, descriptors, high-water marks, blocking codes, and omission codes.
 - If a provider lacks a required capability for this lane, return or throw a machine-readable blocking code according to the final function contract; tests must pin the chosen behavior.
 
@@ -405,7 +430,7 @@ npm run verify
 - Commit implementation and evidence with message `feat: register operational context pack providers`.
 
 **Review gate:**
-- Reviewers confirm package-level registration is narrow, deterministic, idempotent, conflict-detecting, async-capable, resolved-envelope aware, and ready for a later runtime integration lane without editing shared integration files.
+- Reviewers confirm package-level registration is narrow, deterministic, idempotent, conflict-detecting, async-capable, resolved-envelope aware, exact-parser aware, and ready for a later runtime integration lane without editing shared integration files.
 
 ## Task 6: Final Verification And Runtime Integration Handoff
 
@@ -429,8 +454,10 @@ npm run verify
 - The sentinel fact is exactly `payload_sentinel_case_budget_review_window_42`.
 - The sentinel fact appears in `ResolvedContextPack.payload`.
 - The sentinel fact does not appear in `ContextPackRef.safeSummary`, descriptor labels, omission summaries, readiness summaries, diagnostics, or public logs.
+- The sentinel payload fixture passes only through the parser for its exact context pack ID/version.
 - `assertResolvedContextPacksForExecution()` accepts the sentinel fixture when the matching resolved envelope is present.
 - `assertResolvedContextPacksForExecution()` rejects the same ref when only a ref-only fixture is supplied.
+- A forged `parserVerification: "ok"` marker in the serialized payload does not satisfy execution readiness.
 - Prompt-template/prompt-runner lane must consume this fixture in its production or live-provider acceptance test and prove provider-visible prompt text can observe the sentinel payload fact.
 
 **Runtime integration handoff to record in the claim:**
@@ -438,6 +465,7 @@ npm run verify
 - The adapter may use `buildAgentProjection(await ledger.readAll())` today, but it must immediately produce bounded `OperationalTaskRunHistorySnapshot` and `OperationalAgentMemorySnapshot` windows with source high-water marks, total counts, deterministic ordering/cursor/window metadata, and aggregate omissions.
 - The adapter supplies caller-owned `generatedAt`, `scope`, `policyVersion`, and `sizeBudgets`.
 - The integration task registers a restart-safe `ContextPackPayloadResolver` or content-addressed payload store and calls `registry.buildResolved(id)` for provider execution.
+- The integration task registers exact pack-specific parsers for every operational, PRR, evidence, graph, governance, jurisdiction, timeline, and contradiction pack ID/version it resolves.
 - The integration task calls `buildOperationalContextPackReadinessInputs(provider)`.
 - The integration task passes returned `contextPackRefs` and `currentProjectionHighWaterMarks` to existing specialist readiness/cockpit integration points.
 - The integration task passes returned `resolvedContextPacks` or equivalent resolver capability to the prompt lane.
@@ -474,3 +502,6 @@ Implementation is complete only when:
 - The final handoff names exact integration inputs for the later runtime/cockpit and prompt lanes.
 - Scalability tests prove unrelated historical growth does not increase operational pack output or force unbounded full-projection materialization.
 - Resolved-envelope tests prove production execution cannot proceed from refs and safe summaries alone.
+- Legacy ref-only tests prove ordinary readiness builds still work without payload resolution.
+- Pack-specific parser tests prove matching-hash invalid payloads cannot become production-resolved envelopes.
+- Forged verification marker tests prove serialized payload fields cannot create trusted parser-verification authority.
