@@ -6,7 +6,7 @@
 - Branch: `codex/operational-context-packs-spec`
 - Worktree: `/home/drake/.codex/worktrees/a559/Cestus`
 - Claimed at: `2026-07-10T16:54:10Z`
-- Status: claimed
+- Status: in-progress
 
 ## Owned Files
 
