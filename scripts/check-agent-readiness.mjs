@@ -66,7 +66,8 @@ const requiredFiles = [
   "docs/superpowers/plans/2026-07-10-durable-specialist-handoff-production-implementation.md",
   "docs/superpowers/specs/2026-07-10-prr-jurisdiction-context-packs-design.md",
   "docs/superpowers/plans/2026-07-10-prr-jurisdiction-context-packs-implementation.md",
-  "docs/superpowers/specs/2026-07-10-resident-task-orchestrator-design.md"
+  "docs/superpowers/specs/2026-07-10-resident-task-orchestrator-design.md",
+  "docs/superpowers/plans/2026-07-10-resident-task-orchestrator-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
