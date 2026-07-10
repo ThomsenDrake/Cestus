@@ -3,7 +3,8 @@ import { buildAgentProjection } from "../src/projection.js";
 import {
   buildAgentMemoryDetail,
   buildAgentMemoryList,
-  buildAgentMemorySummaryContextPack
+  buildAgentMemorySummaryContextPack,
+  buildAgentMemorySummaryResolvedContextPack
 } from "../src/memory.js";
 import { goldenAgentLedgerEvents } from "./fixtures/golden-agent-ledger.js";
 
@@ -48,6 +49,7 @@ describe("agent memory surface", () => {
       generatedAt: "2026-07-09T12:30:00.000Z",
       policyVersion: "agent-policy-v1",
       scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 42,
       sizeBudgetBytes: 16_384
     });
 
@@ -58,6 +60,12 @@ describe("agent memory surface", () => {
     expect(ref.provenanceRefs).toEqual(expect.arrayContaining(["evt_agent_policy_installed_default"]));
     expect(ref.safeSummary).toMatch(/working memory/i);
     expect(ref.sizeBytes).toBeLessThanOrEqual(16_384);
+    expect(ref.projectionHighWaterMark).toBe(42);
+    expect(ref.stalenessInputs).toEqual([{
+      kind: "projection-high-water-mark",
+      ref: "agent.projection.memory",
+      value: "42"
+    }]);
     expect(JSON.stringify(ref)).not.toContain("raw evidence");
   });
 
@@ -137,6 +145,101 @@ describe("agent memory surface", () => {
     ]);
   });
 
+  it("keeps the ref wrapper aligned with the canonical resolved builder for a bounded snapshot", () => {
+    const memorySnapshot = boundedMemorySnapshot();
+    const input = {
+      memorySnapshot,
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 42,
+      sizeBudgetBytes: 16_384
+    };
+
+    const resolved = buildAgentMemorySummaryResolvedContextPack(input);
+    const ref = buildAgentMemorySummaryContextPack(input);
+
+    expect(ref).toEqual(resolved.ref);
+    expect(resolved.payload).toMatchObject({
+      schemaVersion: "agent-memory-summary.v1",
+      memory: {
+        truthBoundary: { authoritativeForOntology: false },
+        projectionHighWaterMark: 42,
+        sourceEventIds: ["evt_agent_policy_installed_default"],
+        artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+      }
+    });
+    expect(JSON.stringify(resolved.payload)).not.toMatch(/accepted ontology|ontology truth/i);
+  });
+
+  it("requires an authoritative proof before summarizing an empty memory projection", () => {
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      memorySnapshot: emptyMemorySnapshot(),
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 0,
+      sizeBudgetBytes: 16_384
+    })).toThrow(/missing-empty-proof/);
+  });
+
+  it("builds a stable proven empty-memory summary pack and rejects mismatched proof sources", () => {
+    const input = {
+      memorySnapshot: emptyMemorySnapshot(),
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 0,
+      sizeBudgetBytes: 16_384,
+      emptyMemoryProof: {
+        projectionName: "agent.projection.memory",
+        scope: { kind: "workspace", id: "ws_case_001" },
+        projectionHighWaterMark: 0,
+        sourceEventCount: 0,
+        generatedAt: "2026-07-09T12:30:00.000Z",
+        emptyReasonCode: "first-run"
+      }
+    };
+
+    expect(buildAgentMemorySummaryContextPack(input)).toMatchObject({
+      provenanceRefs: ["empty-projection:agent.projection.memory:workspace:ws_case_001:hwm:0"],
+      projectionHighWaterMark: 0,
+      stalenessInputs: [{
+        kind: "projection-high-water-mark",
+        ref: "agent.projection.memory",
+        value: "0"
+      }]
+    });
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      ...input,
+      emptyMemoryProof: { ...input.emptyMemoryProof, projectionHighWaterMark: 1 }
+    })).toThrow(/projection-source-mismatch/);
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      ...input,
+      emptyMemoryProof: { ...input.emptyMemoryProof, scope: { kind: "workspace", id: "ws_other_001" } }
+    })).toThrow(/projection-source-mismatch/);
+  });
+
+  it("keeps bounded item output stable as omitted history grows", () => {
+    const small = boundedMemorySnapshot({ totalCount: 10_000, omissionCodes: ["omitted.out-of-scope"] });
+    const large = boundedMemorySnapshot({ totalCount: 100_000, omissionCodes: ["omitted.out-of-scope", "omitted.size-budget"] });
+    const build = (memorySnapshot: ReturnType<typeof boundedMemorySnapshot>) => buildAgentMemorySummaryResolvedContextPack({
+      memorySnapshot,
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 42,
+      sizeBudgetBytes: 16_384
+    });
+
+    const smallPayload = build(small).payload as { memory: { activeMemory: unknown[]; aggregateCounts: Record<string, number> } };
+    const largePayload = build(large).payload as { memory: { activeMemory: unknown[]; aggregateCounts: Record<string, number> } };
+
+    expect(largePayload.memory.activeMemory).toHaveLength(smallPayload.memory.activeMemory.length);
+    expect(largePayload.memory.aggregateCounts.totalCount).toBe(100_000);
+    expect(smallPayload.memory.aggregateCounts.totalCount).toBe(10_000);
+  });
+
   it("builds a stable empty-memory summary pack for first-run workspaces", () => {
     const projection = buildAgentProjection([]);
 
@@ -145,6 +248,15 @@ describe("agent memory surface", () => {
       generatedAt: "2026-07-09T12:30:00.000Z",
       policyVersion: "agent-policy-v1",
       scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 0,
+      emptyMemoryProof: {
+        projectionName: "agent.projection.memory",
+        scope: { kind: "workspace", id: "ws_case_001" },
+        projectionHighWaterMark: 0,
+        sourceEventCount: 0,
+        generatedAt: "2026-07-09T12:30:00.000Z",
+        emptyReasonCode: "first-run"
+      },
       sizeBudgetBytes: 16_384
     });
 
@@ -155,7 +267,7 @@ describe("agent memory surface", () => {
       scope: { kind: "workspace", id: "ws_case_001" },
       sourceEventIds: [],
       artifactHashes: [],
-      provenanceRefs: ["agent.projection.memory.empty"],
+      provenanceRefs: ["empty-projection:agent.projection.memory:workspace:ws_case_001:hwm:0"],
       stalenessInputs: [{
         kind: "projection-high-water-mark",
         ref: "agent.projection.memory",
@@ -165,6 +277,44 @@ describe("agent memory surface", () => {
     expect(ref.safeSummary).toBe("0 active working memory items; not ontology truth.");
   });
 });
+
+function boundedMemorySnapshot(overrides: Partial<{ totalCount: number; omissionCodes: readonly "omitted.out-of-scope"[] | readonly ("omitted.out-of-scope" | "omitted.size-budget")[] }> = {}) {
+  return {
+    projectionHighWaterMark: 42,
+    projectionSourceRef: "agent.projection.memory",
+    activeMemory: [{
+      memoryId: "mem_workspace_policy",
+      scope: "workspace",
+      memoryKind: "policy-caveat",
+      summary: "Use the workspace policy before proposing actions.",
+      confidence: 0.9,
+      sourceEventIds: ["evt_agent_policy_installed_default"],
+      artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+    }],
+    aggregateCounts: { active: 1, totalCount: overrides.totalCount ?? 10_000 },
+    sourceEventIds: ["evt_agent_policy_installed_default"],
+    artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+    window: {
+      order: "createdAt:asc",
+      limit: 1,
+      hasMore: true,
+      totalCount: overrides.totalCount ?? 10_000,
+      omissionCodes: overrides.omissionCodes ?? ["omitted.out-of-scope"]
+    }
+  };
+}
+
+function emptyMemorySnapshot() {
+  return {
+    projectionHighWaterMark: 0,
+    projectionSourceRef: "agent.projection.memory",
+    activeMemory: [],
+    aggregateCounts: { active: 0, totalCount: 0 },
+    sourceEventIds: [],
+    artifactHashes: [],
+    window: { order: "createdAt:asc", limit: 25, hasMore: false, totalCount: 0, omissionCodes: [] }
+  };
+}
 
 function agentContext(occurredAt: string) {
   return {

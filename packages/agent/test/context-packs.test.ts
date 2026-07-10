@@ -404,6 +404,7 @@ describe("agent context packs", () => {
       generatedAt: "2026-07-09T12:30:00.000Z",
       policyVersion: "agent-policy-v1",
       scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 42,
       sizeBudgetBytes: 16_384
     });
 

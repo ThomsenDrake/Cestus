@@ -6,7 +6,7 @@
 - Branch: `codex/operational-context-packs-spec`
 - Worktree: `/home/drake/.codex/worktrees/a559/Cestus`
 - Claimed at: `2026-07-10T00:00:00Z`
-- Status: in-progress
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -21,3 +21,12 @@
 Evolve the existing agent-memory summary builder into one canonical resolved
 context-pack implementation, retaining the ref builder only as a compatibility
 wrapper. Preserve append-only provenance and projection rebuildability.
+
+## Evidence
+
+- Claim commit: `0ac9c35 chore: claim task 3`.
+- In-progress commit: `81387d9 chore: start task 3`.
+- RED targeted test: `npm test -- packages/agent/test/memory.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/operational-context-packs.test.ts` failed as expected with six failures: the resolved builder was absent, bounded snapshots were unsupported, projection high-water marks were omitted, and empty memory used the legacy provenance ref.
+- GREEN targeted test: the same command passed with 3 test files and 61 tests.
+- Typecheck passed.
+- Full verification was invoked twice. Each attempt passed typecheck and started Vitest, but Vitest exited before printing a summary and before `npm run verify` reached its chained build/readiness steps. Independent `npm run ui:build` and `npm run factory:check` passed; the Vite build retains its existing chunk-size warning.
