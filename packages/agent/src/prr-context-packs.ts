@@ -335,7 +335,7 @@ function registerPrrContextPackBuilder(
   registry.register({
     descriptor,
     parsePayload: entry.payloadParser,
-    build: entry.builder.build
+    build: entry.builder.build.bind(entry.builder)
   });
   registrations.set(key, identity);
 }
@@ -594,14 +594,16 @@ function trustedPrrProvenanceRefs(
   evidenceRefs: readonly { readonly id: string; readonly contentHash: string; readonly sourceEventId: string }[],
   correspondences: readonly { readonly correspondenceId: string; readonly bodyHash?: string | undefined }[]
 ): readonly string[] {
-  return [
+  return [...new Set([
     ...sourceEventIds,
+    ...correspondenceRefs.map((ref) => ref.contentHash),
+    ...evidenceRefs.map((ref) => ref.contentHash),
     ...correspondenceRefs.map((ref) => canonicalSourceRefProvenance("correspondence", ref)),
     ...evidenceRefs.map((ref) => canonicalSourceRefProvenance("evidence", ref)),
     ...correspondences.flatMap((correspondence) => correspondence.bodyHash === undefined ? [] : [
       JSON.stringify(["prr-context-correspondence-body.v1", correspondence.correspondenceId, correspondence.bodyHash])
     ])
-  ].sort();
+  ])].sort();
 }
 
 function canonicalSourceRefProvenance(
