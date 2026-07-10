@@ -209,8 +209,17 @@ function assertPayloadProvenanceBindings(
   }
 
   if (ref !== undefined) {
-    if (!sameStringSet(ref.sourceEventIds, payload.requestStream.sourceEventIds) || !sameStringSet(ref.provenanceRefs, payload.requestStream.sourceEventIds)) {
+    if (!sameStringSet(ref.sourceEventIds, payload.requestStream.sourceEventIds)) {
       throw new Error("resolved context pack source-event provenance mismatch");
+    }
+    const expectedProvenanceRefs = trustedPrrProvenanceRefs(
+      payload.requestStream.sourceEventIds,
+      payload.sourceRefs.correspondence,
+      payload.sourceRefs.evidence,
+      [...payload.correspondence.outbound, ...payload.correspondence.inbound]
+    );
+    if (!sameStringSet(ref.provenanceRefs, expectedProvenanceRefs)) {
+      throw new Error("resolved context pack source-ref provenance mismatch");
     }
     const artifactHashes = [...payload.sourceRefs.correspondence, ...payload.sourceRefs.evidence]
       .map((sourceRef) => sourceRef.contentHash);
@@ -222,6 +231,29 @@ function assertPayloadProvenanceBindings(
 
 function sameStringSet(left: readonly string[] | undefined, right: readonly string[]): boolean {
   return left !== undefined && left.length === new Set(left).size && left.length === right.length && left.every((value) => right.includes(value));
+}
+
+function trustedPrrProvenanceRefs(
+  sourceEventIds: readonly string[],
+  correspondenceRefs: readonly { readonly id: string; readonly contentHash: string; readonly sourceEventId: string }[],
+  evidenceRefs: readonly { readonly id: string; readonly contentHash: string; readonly sourceEventId: string }[],
+  correspondences: readonly { readonly correspondenceId: string; readonly bodyHash?: string | undefined }[]
+): readonly string[] {
+  return [
+    ...sourceEventIds,
+    ...correspondenceRefs.map((ref) => canonicalSourceRefProvenance("correspondence", ref)),
+    ...evidenceRefs.map((ref) => canonicalSourceRefProvenance("evidence", ref)),
+    ...correspondences.flatMap((correspondence) => correspondence.bodyHash === undefined ? [] : [
+      JSON.stringify(["prr-context-correspondence-body.v1", correspondence.correspondenceId, correspondence.bodyHash])
+    ])
+  ].sort();
+}
+
+function canonicalSourceRefProvenance(
+  kind: "correspondence" | "evidence",
+  ref: { readonly id: string; readonly contentHash: string; readonly sourceEventId: string }
+): string {
+  return JSON.stringify(["prr-context-source-ref.v1", kind, ref.id, ref.contentHash, ref.sourceEventId]);
 }
 
 export function buildPrrReadModelContextPack(input: BuildPrrReadModelContextPackInput): ResolvedContextPack {
@@ -238,6 +270,15 @@ export function buildPrrReadModelContextPack(input: BuildPrrReadModelContextPack
   const evidence = normalizeHashRefs(input.evidenceHashes ?? [], stream.sourceEventIds, "evidence");
   const gates = normalizeGates(input.gates, stream.sourceEventIds, evidence.map((ref) => ref.contentHash));
   const payload = buildPayload(input, stream, correspondence, evidence, gates, workspace);
+  const provenanceRefs = trustedPrrProvenanceRefs(
+    stream.sourceEventIds,
+    correspondence,
+    evidence,
+    [
+      ...(input.request.latestOutboundCorrespondence === undefined ? [] : [input.request.latestOutboundCorrespondence]),
+      ...(input.request.latestInboundCorrespondence === undefined ? [] : [input.request.latestInboundCorrespondence])
+    ]
+  );
   const budget = input.sizeBudgetBytes;
   if (budget !== undefined && serializeContextPackPayload(buildGateOnlyPayload(payload)).byteLength > budget) {
     throw new Error("context-budget-exceeded: non-truncatable gates exceed size budget");
@@ -253,7 +294,7 @@ export function buildPrrReadModelContextPack(input: BuildPrrReadModelContextPack
     generatedAt: input.generatedAt,
     payload,
     safeSummary: `Selected PRR ${input.scope.id} status ${input.request.status}.`,
-    provenanceRefs: stream.sourceEventIds,
+    provenanceRefs,
     sourceEventIds: stream.sourceEventIds,
     artifactHashes,
     projectionHighWaterMark: input.projectionHighWaterMark,
