@@ -21,6 +21,18 @@ describe("OperatorCockpit", () => {
     expect(within(cockpit).queryByRole("button", { name: /PRR\/Investigations/ })).not.toBeInTheDocument();
   });
 
+  it("stacks band labels and metrics so compact columns cannot merge adjacent text", () => {
+    render(<OperatorCockpit status={operatorStatusFixture} />);
+
+    const workspaceBand = screen.getByRole("tab", { name: /Workspace/ });
+
+    expect(within(workspaceBand).getByText("Workspace")).toHaveClass("block", "truncate");
+    expect(within(workspaceBand).getByText("Mounted portable workspace")).toHaveClass("block");
+    expect(within(workspaceBand).getByText("Ledger events")).toHaveClass("block", "truncate");
+    expect(within(workspaceBand).getByText("42")).toHaveClass("block");
+    expect(within(workspaceBand).getByText("Show workspace verify")).toHaveClass("block");
+  });
+
   it("selects a band and shows diagnostics and source evidence in the detail panel", () => {
     render(<OperatorCockpit status={operatorStatusFixture} />);
 
