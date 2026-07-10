@@ -1,4 +1,10 @@
-import { buildContextPackRef, type ContextPackRef, type ContextPackScope } from "./context-packs.js";
+import {
+  buildResolvedContextPack,
+  type ContextPackRef,
+  type ContextPackScope,
+  type ResolvedContextPack
+} from "./context-packs.js";
+import type { OperationalAgentMemorySnapshot, OperationalEmptyProjectionProof } from "./operational-context-packs.js";
 import type { AgentProjection } from "./projection.js";
 import type {
   AgentMemoryEventType,
@@ -49,11 +55,15 @@ export interface BuildAgentMemoryListInput {
 }
 
 export interface BuildAgentMemorySummaryContextPackInput {
-  readonly projection: AgentProjection;
   readonly generatedAt: string;
-  readonly policyVersion?: string;
-  readonly scope?: ContextPackScope;
-  readonly sizeBudgetBytes?: number;
+  readonly policyVersion: string;
+  readonly scope: ContextPackScope;
+  readonly projectionHighWaterMark: number;
+  readonly sizeBudgetBytes: number;
+  readonly memorySnapshot?: OperationalAgentMemorySnapshot;
+  /** Compatibility adapter input. It is immediately reduced to a bounded snapshot. */
+  readonly projection?: AgentProjection;
+  readonly emptyMemoryProof?: OperationalEmptyProjectionProof;
   readonly maxItems?: number;
 }
 
@@ -67,6 +77,14 @@ interface AgentMemorySummaryItemDto {
   readonly artifactHashes: readonly string[];
   readonly expiresAt?: string | undefined;
 }
+
+const maximumProjectionMemoryWindowItems = 25;
+const memoryScopes = new Set<AgentMemoryScope>(["workspace", "investigation", "task", "provider", "policy"]);
+const memoryKinds = new Set<AgentMemoryKind>(["operator-preference", "agent-observation", "policy-caveat", "provider-note"]);
+const memoryOmissionCodes = new Set([
+  "omitted.raw-paths", "omitted.raw-provider-errors", "omitted.prompts", "omitted.model-output", "omitted.credentials",
+  "omitted.raw-source-content", "omitted.out-of-scope", "omitted.size-budget"
+]);
 
 export function buildAgentMemoryList(input: BuildAgentMemoryListInput): AgentMemoryListDto {
   const filters = deepFreeze({
@@ -109,13 +127,143 @@ export function buildAgentMemoryDetail(input: {
 }
 
 export function buildAgentMemorySummaryContextPack(input: BuildAgentMemorySummaryContextPackInput): ContextPackRef {
-  const active = [...input.projection.activeMemory].sort(compareMemory).slice(0, input.maxItems ?? 25);
-  const activeWithRealProvenance = active.filter(
-    (memory) => memory.sourceEventIds.length > 0 || memory.artifactHashes.length > 0
-  );
+  return buildAgentMemorySummaryResolvedContextPack(input).ref;
+}
+
+export function buildAgentMemorySummaryResolvedContextPack(
+  input: BuildAgentMemorySummaryContextPackInput
+): ResolvedContextPack {
+  assertMemoryBuilderMetadata(input);
+  const snapshot = normalizeMemorySnapshot(input);
+  if (snapshot.projectionHighWaterMark !== input.projectionHighWaterMark ||
+    snapshot.projectionSourceRef !== "agent.projection.memory") {
+    throw new Error("blocked.projection-source-mismatch: memory snapshot does not match its projection source");
+  }
+  const items = snapshot.activeMemory
+    .map(toMemorySummaryItem);
+  if (items.some((memory) => memory.sourceEventIds.length === 0 && memory.artifactHashes.length === 0)) {
+    throw new Error("blocked.missing-provenance: active memory items require source event IDs or artifact hashes");
+  }
+  const isEmpty = items.length === 0;
+  const emptyProof = input.emptyMemoryProof ?? snapshot.emptyProof;
+  if (!isEmpty && emptyProof !== undefined) {
+    throw new Error("blocked.projection-source-mismatch: non-empty memory must not include empty proof");
+  }
+  const normalizedEmptyProof = isEmpty ? assertEmptyMemoryProof(emptyProof, input, snapshot) : undefined;
+  const provenanceRefs = isEmpty
+    ? [emptyProjectionProvenanceRef(normalizedEmptyProof!)]
+    : unique([
+      ...snapshot.lifecycleProvenanceRefs,
+      ...snapshot.sourceEventIds,
+      ...snapshot.artifactHashes
+    ]);
   const payload = {
-    truthBoundary: memoryTruthBoundary(),
-    items: activeWithRealProvenance.map<AgentMemorySummaryItemDto>((memory) => ({
+    schemaVersion: "agent-memory-summary.v1",
+    source: {
+      generatedAt: input.generatedAt,
+      policyVersion: input.policyVersion,
+      scope: { kind: input.scope.kind, id: input.scope.id },
+      sizeBudgetBytes: input.sizeBudgetBytes,
+      stalenessInputs: [{
+        kind: "projection-high-water-mark",
+        ref: "agent.projection.memory",
+        value: String(input.projectionHighWaterMark)
+      }]
+    },
+    memory: {
+      truthBoundary: { authoritativeForOntology: false as const },
+      projectionHighWaterMark: snapshot.projectionHighWaterMark,
+      projectionSourceRef: snapshot.projectionSourceRef,
+      activeMemory: items,
+      aggregateCounts: snapshot.aggregateCounts,
+      sourceEventIds: snapshot.sourceEventIds,
+      artifactHashes: snapshot.artifactHashes,
+      window: snapshot.window,
+      ...(normalizedEmptyProof === undefined ? {} : { emptyProof: normalizedEmptyProof })
+    }
+  };
+
+  try {
+    return buildResolvedContextPack({
+    contextPackId: "agent-memory-summary.v1",
+    version: 1,
+    generatedAt: input.generatedAt,
+    payload,
+    safeSummary: `${items.length} active working memory item${items.length === 1 ? "" : "s"}; not ontology truth.`,
+    provenanceRefs,
+    projectionHighWaterMark: input.projectionHighWaterMark,
+    sourceEventIds: snapshot.sourceEventIds,
+    artifactHashes: snapshot.artifactHashes,
+    policyVersion: input.policyVersion,
+    scope: input.scope,
+    sizeBudgetBytes: input.sizeBudgetBytes,
+    stalenessInputs: [{
+      kind: "projection-high-water-mark",
+      ref: "agent.projection.memory",
+      value: String(input.projectionHighWaterMark)
+    }]
+    });
+  } catch (error) {
+    if (error instanceof Error && /sizeBudgetBytes must be at least/.test(error.message)) {
+      throw new Error("blocked.size-budget: no bounded safe memory payload fits the size budget");
+    }
+    throw error;
+  }
+}
+
+interface NormalizedMemorySnapshot extends OperationalAgentMemorySnapshot {
+  readonly lifecycleProvenanceRefs: readonly string[];
+}
+
+function assertMemoryBuilderMetadata(input: unknown): asserts input is BuildAgentMemorySummaryContextPackInput {
+  assertPlainOwnDataObject(input, "memory builder input", [
+    "generatedAt", "policyVersion", "scope", "projectionHighWaterMark", "sizeBudgetBytes", "memorySnapshot",
+    "projection", "emptyMemoryProof", "maxItems"
+  ]);
+  assertUtcTimestamp(input.generatedAt, "generatedAt");
+  assertMachineReadableReasonCode(input.policyVersion, "policyVersion");
+  assertMemoryBuilderScope(input.scope);
+  if (typeof input.projectionHighWaterMark !== "number" || !Number.isInteger(input.projectionHighWaterMark) ||
+    input.projectionHighWaterMark < 0) {
+    throw new Error("blocked.missing-high-water-mark: projectionHighWaterMark must be a nonnegative integer");
+  }
+  if (typeof input.sizeBudgetBytes !== "number" || !Number.isInteger(input.sizeBudgetBytes) || input.sizeBudgetBytes <= 0) {
+    throw new Error("blocked.size-budget: sizeBudgetBytes must be a positive integer");
+  }
+}
+
+function assertMemoryBuilderScope(value: unknown): asserts value is ContextPackScope {
+  assertPlainOwnDataObject(value, "memory builder scope", ["kind", "id"]);
+  if (typeof value.kind !== "string" || !/^[a-z][a-z0-9_-]*$/.test(value.kind)) {
+    throw new Error("blocked.invalid-payload-shape: scope.kind must be a safe machine-readable identifier");
+  }
+  assertOperationalContextSafeText(value.kind, "scope.kind");
+  if (typeof value.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value.id)) {
+    throw new Error("blocked.invalid-payload-shape: scope.id must be a safe identifier");
+  }
+  assertAgentSecretSafeText(value.id, "scope.id");
+}
+
+function normalizeMemorySnapshot(input: BuildAgentMemorySummaryContextPackInput): NormalizedMemorySnapshot {
+  if (input.memorySnapshot !== undefined) {
+    return normalizeDirectMemorySnapshot(input.memorySnapshot);
+  }
+  if (input.projection === undefined) {
+    throw new Error("blocked.unbounded-source: memorySnapshot is required when no projection compatibility input is provided");
+  }
+
+  const totalActiveMemoryCount = input.projection.activeMemory.length;
+  const effectiveWindowLimit = Math.min(
+    Math.max(1, Math.floor(input.maxItems ?? maximumProjectionMemoryWindowItems)),
+    maximumProjectionMemoryWindowItems
+  );
+  const activeMemory = selectTopMemory(input.projection.activeMemory, effectiveWindowLimit);
+  const sourceEventIds = unique(activeMemory.flatMap((memory) => memory.sourceEventIds)).slice().sort();
+  const artifactHashes = unique(activeMemory.flatMap((memory) => memory.artifactHashes)).slice().sort();
+  return {
+    projectionHighWaterMark: input.projectionHighWaterMark,
+    projectionSourceRef: "agent.projection.memory",
+    activeMemory: activeMemory.map((memory) => ({
       memoryId: memory.memoryId,
       scope: memory.scope,
       memoryKind: memory.memoryKind,
@@ -124,34 +272,195 @@ export function buildAgentMemorySummaryContextPack(input: BuildAgentMemorySummar
       sourceEventIds: memory.sourceEventIds,
       artifactHashes: memory.artifactHashes,
       ...(memory.expiresAt === undefined ? {} : { expiresAt: memory.expiresAt })
-    }))
-  };
-  const sourceEventIds = unique(activeWithRealProvenance.flatMap((memory) => memory.sourceEventIds));
-  const artifactHashes = unique(activeWithRealProvenance.flatMap((memory) => memory.artifactHashes));
-  const provenanceRefs = unique(
-    activeWithRealProvenance.length === 0
-      ? ["agent.projection.memory.empty"]
-      : activeWithRealProvenance.flatMap((memory) => [...memory.eventIds, ...memory.sourceEventIds, ...memory.artifactHashes])
-  );
-
-  return buildContextPackRef({
-    contextPackId: "agent-memory-summary.v1",
-    version: 1,
-    generatedAt: input.generatedAt,
-    payload,
-    safeSummary: `${activeWithRealProvenance.length} active working memory item${activeWithRealProvenance.length === 1 ? "" : "s"}; not ontology truth.`,
-    provenanceRefs,
+    })),
+    aggregateCounts: { active: totalActiveMemoryCount, totalCount: totalActiveMemoryCount },
     sourceEventIds,
     artifactHashes,
-    ...(input.policyVersion === undefined ? {} : { policyVersion: input.policyVersion }),
-    ...(input.scope === undefined ? {} : { scope: input.scope }),
-    ...(input.sizeBudgetBytes === undefined ? {} : { sizeBudgetBytes: input.sizeBudgetBytes }),
-    stalenessInputs: [{
-      kind: "projection-high-water-mark",
-      ref: "agent.projection.memory",
-      value: String(sourceEventIds.length)
-    }]
+    window: {
+      order: "createdAt:asc",
+      limit: effectiveWindowLimit,
+      hasMore: totalActiveMemoryCount > activeMemory.length,
+      totalCount: totalActiveMemoryCount,
+      omissionCodes: []
+    },
+    lifecycleProvenanceRefs: unique(activeMemory.flatMap((memory) => memory.eventIds))
+  };
+}
+
+function normalizeDirectMemorySnapshot(value: OperationalAgentMemorySnapshot): NormalizedMemorySnapshot {
+  assertPlainOwnDataObject(value, "memory snapshot", [
+    "projectionHighWaterMark", "projectionSourceRef", "activeMemory", "aggregateCounts", "sourceEventIds",
+    "artifactHashes", "window", "emptyProof"
+  ]);
+  if (!Number.isInteger(value.projectionHighWaterMark) || value.projectionHighWaterMark < 0) {
+    throw new Error("blocked.invalid-payload-shape: memory snapshot projectionHighWaterMark is invalid");
+  }
+  if (value.projectionSourceRef !== "agent.projection.memory") {
+    throw new Error("blocked.projection-source-mismatch: memory snapshot does not match its projection source");
+  }
+  assertPlainOwnDataArray(value.activeMemory, "memory snapshot activeMemory");
+  const activeMemory = value.activeMemory.map(toMemorySummaryItem);
+  const aggregateCounts = normalizeMemoryAggregateCounts(value.aggregateCounts);
+  const sourceEventIds = normalizeMemoryEventIds(value.sourceEventIds, "memory snapshot sourceEventIds");
+  const artifactHashes = normalizeMemoryArtifactHashes(value.artifactHashes, "memory snapshot artifactHashes");
+  const window = normalizeMemoryWindow(value.window);
+  if (activeMemory.length > window.limit) {
+    throw new Error("blocked.unbounded-source: active memory exceeds the bounded window limit");
+  }
+  if (window.totalCount < activeMemory.length || (window.hasMore && window.totalCount <= activeMemory.length)) {
+    throw new Error("blocked.unbounded-source: memory window does not cover visible active memory");
+  }
+  if (aggregateCounts.active! < activeMemory.length || aggregateCounts.totalCount! < activeMemory.length) {
+    throw new Error("blocked.projection-source-mismatch: memory aggregate counts do not cover visible active memory");
+  }
+  const derivedSourceEventIds = unique(activeMemory.flatMap((item) => item.sourceEventIds)).slice().sort();
+  const derivedArtifactHashes = unique(activeMemory.flatMap((item) => item.artifactHashes)).slice().sort();
+  if (!sameStringSet(sourceEventIds, derivedSourceEventIds) || !sameStringSet(artifactHashes, derivedArtifactHashes)) {
+    throw new Error("blocked.projection-source-mismatch: memory snapshot provenance does not match included memory items");
+  }
+  const emptyProof = value.emptyProof === undefined ? undefined : normalizeMemoryEmptyProof(value.emptyProof);
+  return {
+    projectionHighWaterMark: value.projectionHighWaterMark,
+    projectionSourceRef: "agent.projection.memory",
+    activeMemory: activeMemory as unknown as OperationalAgentMemorySnapshot["activeMemory"],
+    aggregateCounts,
+    sourceEventIds: derivedSourceEventIds,
+    artifactHashes: derivedArtifactHashes,
+    window,
+    ...(emptyProof === undefined ? {} : { emptyProof }),
+    lifecycleProvenanceRefs: []
+  };
+}
+
+function normalizeMemoryAggregateCounts(value: Readonly<Record<string, number>>): Readonly<Record<string, number>> {
+  assertPlainOwnDataObject(value, "memory snapshot aggregateCounts");
+  const normalized: Record<string, number> = {};
+  for (const [key, count] of Object.entries(value)) {
+    assertSafeIdentifier(key, "memory aggregate count key");
+    if (!Number.isInteger(count) || count < 0) {
+      throw new Error("blocked.invalid-payload-shape: memory aggregate count is invalid");
+    }
+    normalized[key] = count;
+  }
+  if (!Number.isInteger(normalized.active) || !Number.isInteger(normalized.totalCount)) {
+    throw new Error("blocked.invalid-payload-shape: memory aggregate counts require active and totalCount");
+  }
+  return normalized;
+}
+
+function normalizeMemoryWindow(value: OperationalAgentMemorySnapshot["window"]): OperationalAgentMemorySnapshot["window"] {
+  assertPlainOwnDataObject(value, "memory snapshot window", ["order", "limit", "cursor", "hasMore", "totalCount", "omissionCodes"]);
+  if (typeof value.order !== "string" || !/^[A-Za-z][A-Za-z0-9._-]*:(?:asc|desc)$/.test(value.order)) {
+    throw new Error("blocked.unbounded-source: memory window order is invalid");
+  }
+  if (!Number.isInteger(value.limit) || value.limit <= 0 || typeof value.hasMore !== "boolean" ||
+    !Number.isInteger(value.totalCount) || value.totalCount < 0) {
+    throw new Error("blocked.unbounded-source: memory window metadata is invalid");
+  }
+  if (value.cursor !== undefined) assertSafeIdentifier(value.cursor, "memory window cursor");
+  assertPlainOwnDataArray(value.omissionCodes, "memory window omissionCodes");
+  const omissionCodes = value.omissionCodes.map((code) => {
+    if (typeof code !== "string" || !memoryOmissionCodes.has(code)) {
+      throw new Error("blocked.invalid-payload-shape: memory window omission code is invalid");
+    }
+    return code;
   });
+  return {
+    order: value.order,
+    limit: value.limit,
+    ...(value.cursor === undefined ? {} : { cursor: value.cursor }),
+    hasMore: value.hasMore,
+    totalCount: value.totalCount,
+    omissionCodes: [...new Set(omissionCodes)].sort() as OperationalAgentMemorySnapshot["window"]["omissionCodes"]
+  };
+}
+
+function normalizeMemoryEmptyProof(value: OperationalEmptyProjectionProof): OperationalEmptyProjectionProof {
+  assertPlainOwnDataObject(value, "memory empty proof", [
+    "projectionName", "scope", "projectionHighWaterMark", "sourceEventCount", "generatedAt", "emptyReasonCode"
+  ]);
+  assertPlainOwnDataObject(value.scope, "memory empty proof scope", ["kind", "id"]);
+  assertSafeIdentifier(value.scope.kind, "memory empty proof scope kind");
+  assertSafeIdentifier(value.scope.id, "memory empty proof scope id");
+  if (!Number.isInteger(value.projectionHighWaterMark) || value.projectionHighWaterMark < 0 ||
+    !Number.isInteger(value.sourceEventCount) || value.sourceEventCount < 0) {
+    throw new Error("blocked.projection-source-mismatch: memory empty proof counts are invalid");
+  }
+  assertUtcTimestamp(value.generatedAt, "memory empty proof generatedAt");
+  assertMachineReadableReasonCode(value.emptyReasonCode, "memory empty proof reason");
+  if (typeof value.projectionName !== "string") {
+    throw new Error("blocked.projection-source-mismatch: memory empty proof projection is invalid");
+  }
+  assertAgentSecretSafeText(value.projectionName, "memory empty proof projection");
+  return {
+    projectionName: value.projectionName,
+    scope: { kind: value.scope.kind, id: value.scope.id },
+    projectionHighWaterMark: value.projectionHighWaterMark,
+    sourceEventCount: value.sourceEventCount,
+    generatedAt: value.generatedAt,
+    emptyReasonCode: value.emptyReasonCode
+  };
+}
+
+function toMemorySummaryItem(value: unknown): AgentMemorySummaryItemDto {
+  assertPlainOwnDataObject(value, "active memory item", [
+    "memoryId", "scope", "memoryKind", "summary", "confidence", "sourceEventIds", "artifactHashes", "expiresAt"
+  ]);
+  const item = value;
+  assertSafeIdentifier(item.memoryId, "active memory item memoryId");
+  if (typeof item.scope !== "string" || !memoryScopes.has(item.scope as AgentMemoryScope)) {
+    throw new Error("blocked.invalid-payload-shape: active memory item scope is invalid");
+  }
+  if (typeof item.memoryKind !== "string" || !memoryKinds.has(item.memoryKind as AgentMemoryKind)) {
+    throw new Error("blocked.invalid-payload-shape: active memory item memoryKind is invalid");
+  }
+  if (typeof item.summary !== "string" || item.summary.length === 0) {
+    throw new Error("blocked.invalid-payload-shape: active memory item summary is invalid");
+  }
+  assertOperationalContextSafeText(item.summary, "active memory item summary");
+  if (typeof item.confidence !== "number" || !Number.isFinite(item.confidence) || item.confidence < 0 || item.confidence > 1) {
+    throw new Error("blocked.invalid-payload-shape: active memory item confidence must be between zero and one");
+  }
+  const sourceEventIds = normalizeMemoryEventIds(item.sourceEventIds, "active memory item sourceEventIds");
+  const artifactHashes = normalizeMemoryArtifactHashes(item.artifactHashes, "active memory item artifactHashes");
+  if (item.expiresAt !== undefined) assertUtcTimestamp(item.expiresAt, "active memory item expiresAt");
+  return {
+    memoryId: item.memoryId,
+    scope: item.scope as AgentMemoryScope,
+    memoryKind: item.memoryKind as AgentMemoryKind,
+    summary: item.summary,
+    confidence: item.confidence,
+    sourceEventIds,
+    artifactHashes,
+    ...(item.expiresAt === undefined ? {} : { expiresAt: item.expiresAt as string })
+  };
+}
+
+function assertEmptyMemoryProof(
+  proof: OperationalEmptyProjectionProof | undefined,
+  input: BuildAgentMemorySummaryContextPackInput,
+  snapshot: NormalizedMemorySnapshot
+): OperationalEmptyProjectionProof {
+  if (proof === undefined) {
+    throw new Error("blocked.missing-empty-proof: empty memory projection requires proof");
+  }
+  const normalizedProof = normalizeMemoryEmptyProof(proof);
+  const lifecycleCount = snapshot.aggregateCounts.totalCount;
+  const provesLifecycleOmission = lifecycleCount === 0 || snapshot.window.omissionCodes.includes("omitted.out-of-scope");
+  if (normalizedProof.projectionName !== "agent.projection.memory" ||
+    normalizedProof.scope.kind !== input.scope.kind || normalizedProof.scope.id !== input.scope.id ||
+    normalizedProof.projectionHighWaterMark !== input.projectionHighWaterMark ||
+    snapshot.aggregateCounts.active !== 0 || !provesLifecycleOmission ||
+    snapshot.window.totalCount !== 0 || snapshot.window.hasMore ||
+    snapshot.sourceEventIds.length !== 0 || snapshot.artifactHashes.length !== 0 ||
+    normalizedProof.sourceEventCount !== lifecycleCount || normalizedProof.generatedAt !== input.generatedAt) {
+    throw new Error("blocked.projection-source-mismatch: empty memory proof does not match the memory projection");
+  }
+  return normalizedProof;
+}
+
+function emptyProjectionProvenanceRef(proof: OperationalEmptyProjectionProof): string {
+  return `empty-projection:${proof.projectionName}:${proof.scope.kind}:${proof.scope.id}:hwm:${proof.projectionHighWaterMark}`;
 }
 
 function memoryTruthBoundary(): AgentMemoryTruthBoundaryDto {
@@ -167,6 +476,27 @@ function compareMemory(left: ProjectedAgentMemory, right: ProjectedAgentMemory):
   return byCreatedAt === 0 ? left.memoryId.localeCompare(right.memoryId) : byCreatedAt;
 }
 
+function selectTopMemory(
+  memories: readonly ProjectedAgentMemory[],
+  limit: number
+): readonly ProjectedAgentMemory[] {
+  const selected: ProjectedAgentMemory[] = [];
+  for (const memory of memories) {
+    let low = 0;
+    let high = selected.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (compareMemory(memory, selected[middle]!) < 0) high = middle;
+      else low = middle + 1;
+    }
+    if (low < limit) {
+      selected.splice(low, 0, memory);
+      if (selected.length > limit) selected.pop();
+    }
+  }
+  return selected;
+}
+
 function historyFor(memory: ProjectedAgentMemory): readonly AgentMemoryHistoryEntryDto[] {
   return deepFreeze(memory.memoryHistoryEntries.map((entry) => ({
     eventId: entry.eventId,
@@ -177,6 +507,104 @@ function historyFor(memory: ProjectedAgentMemory): readonly AgentMemoryHistoryEn
 
 function unique(values: readonly string[]): readonly string[] {
   return deepFreeze([...new Set(values)]);
+}
+
+function normalizeMemoryEventIds(value: unknown, label: string): readonly string[] {
+  assertPlainOwnDataArray(value, label);
+  const normalized = value.map((eventId) => {
+    if (typeof eventId !== "string" || !/^evt_[A-Za-z0-9_-]+$/.test(eventId)) {
+      throw new Error(`blocked.invalid-payload-shape: ${label} contains an invalid event ID`);
+    }
+    assertAgentSecretSafeText(eventId, label);
+    return eventId;
+  });
+  return [...new Set(normalized)].sort();
+}
+
+function normalizeMemoryArtifactHashes(value: unknown, label: string): readonly string[] {
+  assertPlainOwnDataArray(value, label);
+  const normalized = value.map((hash) => {
+    if (typeof hash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(hash)) {
+      throw new Error(`blocked.invalid-payload-shape: ${label} contains an invalid artifact hash`);
+    }
+    return hash;
+  });
+  return [...new Set(normalized)].sort();
+}
+
+function assertPlainOwnDataObject(
+  value: unknown,
+  label: string,
+  allowedKeys?: readonly string[]
+): asserts value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} must be a plain object`);
+  }
+  if (Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} must not contain symbols`);
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const allowed = allowedKeys === undefined ? undefined : new Set(allowedKeys);
+  for (const [key, descriptor] of Object.entries(descriptors)) {
+    if (allowed !== undefined && !allowed.has(key)) {
+      throw new Error(`blocked.invalid-payload-shape: ${label} contains an unexpected field`);
+    }
+    if (!descriptor.enumerable || !("value" in descriptor)) {
+      throw new Error(`blocked.invalid-payload-shape: ${label} must not contain accessors`);
+    }
+  }
+}
+
+function assertPlainOwnDataArray(value: unknown, label: string): asserts value is unknown[] {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} must be a plain array`);
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const indexes = Object.keys(descriptors).filter((key) => key !== "length");
+  if (indexes.length !== value.length) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} must be dense`);
+  }
+  for (const key of indexes) {
+    const descriptor = descriptors[key];
+    if (!/^(0|[1-9][0-9]*)$/.test(key) || descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) {
+      throw new Error(`blocked.invalid-payload-shape: ${label} must contain only own data items`);
+    }
+  }
+}
+
+function assertSafeIdentifier(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value)) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} must be a safe identifier`);
+  }
+  assertAgentSecretSafeText(value, label);
+}
+
+function assertMachineReadableReasonCode(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string" || !/^[a-z][a-z0-9.-]*$/.test(value)) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} must be a machine-readable token`);
+  }
+  assertOperationalContextSafeText(value, label);
+}
+
+export function assertOperationalContextSafeText(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string") throw new Error(`blocked.unsafe-diagnostic: ${label} must be text`);
+  assertAgentSecretSafeText(value, label);
+  if (/(?:\bprompt(?:\s+text)?\b|model[ -]?output|provider[ -]?(?:error|failure|failed)|\bstdout\b|\bstderr\b|\bstack\s*trace\b|\berror:|(?:^|[\s("'])\/(?:[^\s/]+\/)*[^\s/]+)/i.test(value) || /\\/.test(value)) {
+    throw new Error(`blocked.unsafe-diagnostic: ${label} contains unsafe operational material`);
+  }
+}
+
+function assertUtcTimestamp(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string" || Number.isNaN(Date.parse(value)) || !value.endsWith("Z")) {
+    throw new Error(`blocked.invalid-payload-shape: ${label} must be a UTC timestamp`);
+  }
+  assertAgentSecretSafeText(value, label);
+}
+
+function sameStringSet(left: readonly string[], right: readonly string[]): boolean {
+  const normalizedLeft = [...new Set(left)].sort();
+  const normalizedRight = [...new Set(right)].sort();
+  return normalizedLeft.length === normalizedRight.length && normalizedLeft.every((value, index) => value === normalizedRight[index]);
 }
 
 function deepFreeze<T>(value: T): T {
