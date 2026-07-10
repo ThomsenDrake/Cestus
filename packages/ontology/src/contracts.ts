@@ -402,7 +402,17 @@ const agentSpecialistHandoffStatusSchema = z.enum([
   "failed"
 ]);
 
-const agentSpecialistHandoffCompactBindingSchema = z.object({
+function expectedAgentSpecialistHandoffIdempotencyKey(value: {
+  readonly runId: string;
+  readonly taskId?: string | undefined;
+  readonly runType: string;
+  readonly status: string;
+  readonly handoffManifestHash: string;
+}): string {
+  return `specialist-handoff:${value.runId}:${value.taskId ?? "none"}:${value.runType}:${value.status}:${value.handoffManifestHash}`;
+}
+
+const agentSpecialistHandoffCompactBindingObjectSchema = z.object({
   handoffId: z.string().regex(/^handoff_[a-zA-Z0-9_-]+_[a-f0-9]{16}$/),
   handoffRevision: z.number().int().positive(),
   idempotencyKey: z.string().min(1),
@@ -426,12 +436,28 @@ const agentSpecialistHandoffCompactBindingSchema = z.object({
   supersedesEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/).optional()
 }).strict();
 
+function addAgentSpecialistHandoffIdempotencyIssue(
+  value: z.infer<typeof agentSpecialistHandoffCompactBindingObjectSchema>,
+  ctx: z.RefinementCtx
+): void {
+  if (value.idempotencyKey !== expectedAgentSpecialistHandoffIdempotencyKey(value)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["idempotencyKey"],
+      message: "must match the deterministic specialist handoff idempotency key"
+    });
+  }
+}
+
+const agentSpecialistHandoffCompactBindingSchema = agentSpecialistHandoffCompactBindingObjectSchema
+  .superRefine((value, ctx) => addAgentSpecialistHandoffIdempotencyIssue(value, ctx));
+
 const agentSpecialistHandoffPreparedPayloadSchema = agentSpecialistHandoffCompactBindingSchema;
 
-const agentSpecialistHandoffRecordedPayloadSchema = agentSpecialistHandoffCompactBindingSchema.extend({
+const agentSpecialistHandoffRecordedPayloadSchema = agentSpecialistHandoffCompactBindingObjectSchema.extend({
   preparedEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
   verifiedAt: z.string().datetime()
-}).strict();
+}).strict().superRefine((value, ctx) => addAgentSpecialistHandoffIdempotencyIssue(value, ctx));
 
 const agentSpecialistRunCompletedPayloadSchema = z.object({
   runId: agentRunIdSchema,

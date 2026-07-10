@@ -111,6 +111,48 @@ describe("specialist handoff projection", () => {
     }));
   });
 
+  it("fails closed instead of pending when prepared manifest readback is unsafe", async () => {
+    const missing = handoffFixture({ runId: "run_prepared_missing_manifest" });
+    await expectInconsistent([
+      startedEvent(missing),
+      finalOutputStepEvent(missing),
+      preparedEvent(missing)
+    ], new ManifestMap(), "manifest-missing");
+
+    const malformed = handoffFixture({ runId: "run_prepared_malformed_manifest" });
+    await expectInconsistent([
+      startedEvent(malformed),
+      finalOutputStepEvent(malformed),
+      preparedEvent(malformed)
+    ], new ManifestMap().put(malformed.manifestHash, Buffer.from("{not json", "utf8")), "manifest-malformed");
+
+    const missingOutput = handoffFixture({ runId: "run_prepared_missing_final_output" });
+    await expectInconsistent([
+      startedEvent(missingOutput),
+      preparedEvent(missingOutput)
+    ], new ManifestMap().put(missingOutput.manifestHash, canonicalSpecialistHandoffJson(missingOutput.manifest)), "final-output-mismatch");
+
+    const wrongCausation = handoffFixture({ runId: "run_prepared_wrong_causation" });
+    await expectInconsistent([
+      startedEvent(wrongCausation),
+      finalOutputStepEvent(wrongCausation),
+      preparedEvent(wrongCausation, "evt_unrelated_final_output")
+    ], new ManifestMap().put(wrongCausation.manifestHash, canonicalSpecialistHandoffJson(wrongCausation.manifest)), "handoff-causation-mismatch");
+  });
+
+  it("fails closed on nondeterministic handoff idempotency keys", async () => {
+    const fixture = handoffFixture({
+      preparedPayloadOverride: { idempotencyKey: "not-deterministic" },
+      recordedPayloadOverride: { idempotencyKey: "not-deterministic" }
+    });
+
+    await expectInconsistent(
+      validRecordedEvents(fixture),
+      new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)),
+      "idempotency-key-mismatch"
+    );
+  });
+
   it("projects handoff-recorded only after manifest readback verifies", async () => {
     const fixture = handoffFixture();
     const manifests = new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest));
