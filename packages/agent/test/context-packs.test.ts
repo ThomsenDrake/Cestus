@@ -1,16 +1,290 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
+  assertResolvedContextPacksForExecution,
   buildContextPackRef,
+  buildResolvedContextPack,
   contextPackDescriptorSchema,
   contextPackRefSchema,
   createContextPackRegistry,
-  hashAgentContextPack
+  hashAgentContextPack,
+  serializeContextPackPayload,
+  type AgentContextPackJsonValue,
+  verifyResolvedContextPack
 } from "../src/context-packs.js";
 import { buildAgentMemorySummaryContextPack } from "../src/memory.js";
 import { buildAgentProjection } from "../src/projection.js";
 import { goldenAgentLedgerEvents } from "./fixtures/golden-agent-ledger.js";
+import { resolvedContextPackSentinelInput } from "./fixtures/resolved-context-pack-sentinel.js";
 
 describe("agent context packs", () => {
+  it("builds a frozen resolved envelope and preserves ref-only hash compatibility", () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const ref = buildContextPackRef(resolvedContextPackSentinelInput);
+
+    expect(resolved.ref).toEqual(ref);
+    expect(resolved.payload).toEqual(resolvedContextPackSentinelInput.payload);
+    expect(resolved.ref.contentHash).toBe(hashAgentContextPack(resolved.payload));
+    const payloadBytes = serializeContextPackPayload(resolved.payload);
+    expect(Buffer.from(payloadBytes).toString("utf8")).toBe('{"fact":"payload_sentinel_case_budget_review_window_42"}');
+    expect(resolved.ref.sizeBytes).toBe(payloadBytes.byteLength);
+    expect(resolved.ref.contentHash).toBe(`sha256:${createHash("sha256").update(payloadBytes).digest("hex")}`);
+    expect(Object.isFrozen(resolved)).toBe(true);
+    expect(resolved.ref.safeSummary).not.toContain("payload_sentinel_case_budget_review_window_42");
+  });
+
+  it("requires hash, size, identity, DTO, and exact parser validation before execution", () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const parser = (payload: AgentContextPackJsonValue): AgentContextPackJsonValue => {
+      if (typeof payload !== "object" || payload === null || (payload as { fact?: unknown }).fact !== "payload_sentinel_case_budget_review_window_42") {
+        throw new Error("invalid task-run-history payload");
+      }
+      return payload;
+    };
+
+    expect(verifyResolvedContextPack(resolved, parser)).toEqual(resolved);
+    expect(() => verifyResolvedContextPack({ ...resolved, ref: { ...resolved.ref, contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111" } }, parser)).toThrow(/hash/i);
+    expect(() => verifyResolvedContextPack({ ...resolved, ref: { ...resolved.ref, sizeBytes: 1 } }, parser)).toThrow(/size/i);
+    expect(() => verifyResolvedContextPack({ ...resolved, ref: { ...resolved.ref, version: 2 } }, parser)).toThrow(/version|identity/i);
+    expect(() => verifyResolvedContextPack({ ...resolved, payload: { wrong: "shape" }, parserVerification: "ok", verified: true }, parser)).toThrow(/hash|invalid/i);
+    expect(() => verifyResolvedContextPack(buildResolvedContextPack({ ...resolvedContextPackSentinelInput, payload: { wrong: "shape" } }), parser)).toThrow("blocked.payload-schema-mismatch");
+  });
+
+  it("passes the exact resolved ref to parsers while preserving one-argument parsers", () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    let receivedRef: unknown;
+
+    expect(verifyResolvedContextPack(resolved, (payload, ref) => {
+      receivedRef = ref;
+      return payload;
+    })).toEqual(resolved);
+    expect(receivedRef).toEqual(resolved.ref);
+    expect(verifyResolvedContextPack(resolved, (payload) => payload)).toEqual(resolved);
+  });
+
+  it("keeps parser and resolver failure messages secret-safe", async () => {
+    const hostile = "/home/drake/private token=sk-hostile provider payload body";
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    expect(() => verifyResolvedContextPack(resolved, () => {
+      throw new Error(hostile);
+    })).toThrow(/^blocked\.payload-schema-mismatch$/);
+
+    const registry = createContextPackRegistry({ payloadResolver: async () => {
+      throw new Error(hostile);
+    } });
+    registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => resolved.ref,
+      parsePayload: (payload) => payload
+    });
+
+    await expect(registry.buildResolved("task-run-history.v1")).rejects.toThrow(/^blocked\.payload-resolution-failed$/);
+    await expect(registry.buildResolved("task-run-history.v1")).rejects.not.toThrow(hostile);
+  });
+
+  it("keeps registry build ref-only and requires exact resolver/parser capabilities for resolved builds", async () => {
+    const legacyRef = buildContextPackRef(resolvedContextPackSentinelInput);
+    let resolverCalls = 0;
+    const registry = createContextPackRegistry({
+      payloadResolver: async (ref) => {
+        resolverCalls += 1;
+        expect(ref).toEqual(legacyRef);
+        return resolvedContextPackSentinelInput.payload;
+      }
+    });
+    registry.register({
+      descriptor: {
+        contextPackId: "task-run-history.v1",
+        version: 1,
+        label: "Task history",
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event-id"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      build: () => legacyRef,
+      parsePayload(payload) {
+        if (typeof payload !== "object" || payload === null || (payload as { fact?: unknown }).fact !== "payload_sentinel_case_budget_review_window_42") {
+          throw new Error("invalid task-run-history payload");
+        }
+        return payload;
+      }
+    });
+
+    await expect(registry.build("task-run-history.v1")).resolves.toEqual(legacyRef);
+    expect(resolverCalls).toBe(0);
+    await expect(registry.buildResolved("task-run-history.v1")).resolves.toMatchObject({ ref: legacyRef });
+    expect(resolverCalls).toBe(1);
+  });
+
+  it("blocks resolved builds without payloads or exact parsers and never serializes parser functions", async () => {
+    const legacyRef = buildContextPackRef(resolvedContextPackSentinelInput);
+    const missingPayloadRegistry = createContextPackRegistry();
+    missingPayloadRegistry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => legacyRef,
+      parsePayload: (payload) => payload
+    });
+    await expect(missingPayloadRegistry.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.missing-payload");
+
+    const missingParserRegistry = createContextPackRegistry();
+    missingParserRegistry.register({
+      descriptor: { contextPackId: "workspace-runtime-status.v1", version: 1, label: "Runtime status", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "runtime.status" },
+      build: () => ({ ...resolvedContextPackSentinelInput, contextPackId: "workspace-runtime-status.v1" })
+    });
+    await expect(missingParserRegistry.buildResolved("workspace-runtime-status.v1")).rejects.toThrow("blocked.missing-payload-parser");
+    expect(JSON.stringify(missingPayloadRegistry.snapshot())).not.toContain("parsePayload");
+  });
+
+  it("rejects directly verified payloads for execution", () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const verified = verifyResolvedContextPack(resolved, (payload) => payload);
+
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [verified])).toThrow(/verified/i);
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [resolved])).toThrow(/verified/i);
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [])).toThrow(/missing/i);
+    expect(() => assertResolvedContextPacksForExecution([], [verified])).toThrow(/verified/i);
+  });
+
+  it("does not mint execution authority without a parser", () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const unparsed = verifyResolvedContextPack(resolved);
+
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [unparsed])).toThrow(/verified/i);
+  });
+
+  it("uses parser-normalized payloads only when their canonical bytes still match the ref", () => {
+    const resolved = buildResolvedContextPack({
+      ...resolvedContextPackSentinelInput,
+      payload: { fact: "payload_sentinel_case_budget_review_window_42", unknown: "strip-this" }
+    });
+    const normalized = verifyResolvedContextPack(resolved, (payload) => ({
+      unknown: (payload as { unknown: string }).unknown,
+      fact: (payload as { fact: string }).fact
+    }));
+
+    expect(normalized.payload).toEqual(resolved.payload);
+    expect(() => verifyResolvedContextPack(resolved, (payload) => ({ fact: (payload as { fact: string }).fact }))).toThrow("blocked.payload-hash-mismatch");
+    expect(() => verifyResolvedContextPack(resolved, () => ({ fact: "changed" }))).toThrow("blocked.payload-hash-mismatch");
+  });
+
+  it("uses blocked codes for unsafe envelopes and missing resolver payloads", async () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const unsafe = { ...resolved, payload: ["safe"] as string[] & { extra?: string } };
+    unsafe.payload.extra = "unsafe";
+    expect(() => verifyResolvedContextPack(unsafe, (payload) => payload)).toThrow("blocked.invalid-payload-shape");
+
+    const registerLegacyBuilder = (registry: ReturnType<typeof createContextPackRegistry>) => registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => resolved.ref,
+      parsePayload: (payload) => payload
+    });
+    const undefinedRegistry = createContextPackRegistry({ payloadResolver: async () => undefined as never });
+    registerLegacyBuilder(undefinedRegistry);
+    await expect(undefinedRegistry.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.missing-payload");
+
+    const nullRegistry = createContextPackRegistry({ payloadResolver: async () => null as never });
+    registerLegacyBuilder(nullRegistry);
+    await expect(nullRegistry.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.missing-payload");
+  });
+
+  it("rejects unsafe raw resolver payloads with a machine-readable blocked code", async () => {
+    const ref = buildContextPackRef(resolvedContextPackSentinelInput);
+    const unsafePayload = ["safe"] as string[] & { extra?: string };
+    unsafePayload.extra = "unsafe";
+    const registry = createContextPackRegistry({ payloadResolver: async () => unsafePayload as never });
+    registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => ref,
+      parsePayload: (payload) => payload
+    });
+
+    await expect(registry.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.invalid-payload-shape");
+  });
+
+  it("requires serialized resolved packs to return through the registry before execution", () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const reloaded = JSON.parse(JSON.stringify(verifyResolvedContextPack(resolved, (payload) => payload)));
+
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [reloaded])).toThrow(/verified/i);
+    const reverified = verifyResolvedContextPack(reloaded, (payload) => payload);
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [reverified])).toThrow(/verified/i);
+  });
+
+  it("rejects resolver payload hash and size mismatches", async () => {
+    const ref = buildContextPackRef(resolvedContextPackSentinelInput);
+    const register = (registry: ReturnType<typeof createContextPackRegistry>, builtRef = ref) => registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => builtRef,
+      parsePayload: (payload) => payload
+    });
+    const hashMismatch = createContextPackRegistry({ payloadResolver: async () => ({ fact: "wrong" }) });
+    register(hashMismatch);
+    await expect(hashMismatch.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.payload-hash-mismatch");
+
+    const sizeMismatchRef = contextPackRefSchema.parse({ ...ref, sizeBytes: ref.sizeBytes + 1 });
+    const sizeMismatch = createContextPackRegistry({ payloadResolver: async () => resolvedContextPackSentinelInput.payload });
+    register(sizeMismatch, sizeMismatchRef);
+    await expect(sizeMismatch.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.payload-size-mismatch");
+  });
+
+  it("requires the exact registered parser and rejects duplicate or mismatched execution refs", async () => {
+    const taskResolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const registry = createContextPackRegistry();
+    registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => taskResolved,
+      parsePayload: (payload) => payload
+    });
+    registry.register({
+      descriptor: { contextPackId: "workspace-runtime-status.v1", version: 1, label: "Runtime status", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "runtime.status" },
+      build: () => ({ ...resolvedContextPackSentinelInput, contextPackId: "workspace-runtime-status.v1" }),
+      parsePayload: () => { throw new Error("workspace runtime payload required"); }
+    });
+    await expect(registry.buildResolved("workspace-runtime-status.v1")).rejects.toThrow("blocked.payload-schema-mismatch");
+
+    const verified = await registry.buildResolved("task-run-history.v1");
+    const mismatchedRef = buildContextPackRef({ ...resolvedContextPackSentinelInput, safeSummary: "Different safe summary." });
+    expect(() => assertResolvedContextPacksForExecution([taskResolved.ref, taskResolved.ref], [verified])).toThrow(/duplicate/i);
+    expect(() => assertResolvedContextPacksForExecution([mismatchedRef], [verified])).toThrow(/extra|missing/i);
+  });
+
+  it("reserves execution authority for the registry's exact pack parser", async () => {
+    const workspaceInput = {
+      ...resolvedContextPackSentinelInput,
+      contextPackId: "workspace-runtime-status.v1",
+      payload: { runtime: "ready" },
+      safeSummary: "Workspace runtime is ready."
+    };
+    const workspace = buildResolvedContextPack(workspaceInput);
+    const taskHistoryParser = (payload: AgentContextPackJsonValue): AgentContextPackJsonValue => payload;
+
+    expect(() => assertResolvedContextPacksForExecution([workspace.ref], [verifyResolvedContextPack(workspace, (payload) => payload)])).toThrow(/verified/i);
+    expect(() => assertResolvedContextPacksForExecution([workspace.ref], [verifyResolvedContextPack(workspace, taskHistoryParser)])).toThrow(/verified/i);
+
+    const registry = createContextPackRegistry();
+    registry.register({
+      descriptor: { contextPackId: "workspace-runtime-status.v1", version: 1, label: "Runtime status", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "runtime.status" },
+      build: () => workspaceInput,
+      parsePayload(payload) {
+        if (typeof payload !== "object" || payload === null || (payload as { runtime?: unknown }).runtime !== "ready") {
+          throw new Error("invalid workspace runtime payload");
+        }
+        return payload;
+      }
+    });
+
+    const registryResolved = await registry.buildResolved("workspace-runtime-status.v1");
+    expect(assertResolvedContextPacksForExecution([workspace.ref], [registryResolved])).toHaveLength(1);
+
+    const invalidRegistry = createContextPackRegistry();
+    invalidRegistry.register({
+      descriptor: { contextPackId: "workspace-runtime-status.v1", version: 1, label: "Runtime status", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "runtime.status" },
+      build: () => workspaceInput,
+      parsePayload: () => { throw new Error("invalid workspace runtime payload"); }
+    });
+    await expect(invalidRegistry.buildResolved("workspace-runtime-status.v1")).rejects.toThrow("blocked.payload-schema-mismatch");
+  });
   it("validates descriptor metadata for explicit context assembly", () => {
     const descriptor = contextPackDescriptorSchema.parse({
       contextPackId: "accepted-graph-projection.v1",
@@ -162,6 +436,7 @@ describe("agent context packs", () => {
       generatedAt: "2026-07-09T12:30:00.000Z",
       policyVersion: "agent-policy-v1",
       scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 42,
       sizeBudgetBytes: 16_384
     });
 
