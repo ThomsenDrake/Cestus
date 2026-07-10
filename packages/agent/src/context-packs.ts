@@ -64,7 +64,7 @@ export type VerifiedResolvedContextPack = ResolvedContextPack & {
   readonly [verifiedResolvedContextPackBrand]: true;
 };
 
-export type ContextPackPayloadParser = (payload: AgentContextPackJsonValue) => unknown;
+export type ContextPackPayloadParser = (payload: AgentContextPackJsonValue) => AgentContextPackJsonValue;
 
 export type ContextPackPayloadResolver = (ref: ContextPackRef) =>
   | AgentContextPackJsonValue
@@ -208,16 +208,16 @@ export function hashAgentContextPack(value: unknown): string {
   return hashStableJson(serializeContextPackPayload(value));
 }
 
-export function serializeContextPackPayload(value: unknown): string {
-  return stableJsonForAgentContextPack(value);
+export function serializeContextPackPayload(value: unknown): Uint8Array {
+  return Buffer.from(stableJsonForAgentContextPack(value), "utf8");
 }
 
 export function buildResolvedContextPack(input: BuildContextPackRefInput): ResolvedContextPack {
   const parsed = parseNormalizedDtoOrThrow(input, buildContextPackRefInputObjectSchema, "$");
   const payload = normalizeJsonDtoValue(parsed.payload, "$.payload");
-  const payloadJson = stringifyJsonDtoValue(payload);
-  const contentHash = hashStableJson(payloadJson);
-  const sizeBytes = Buffer.byteLength(payloadJson, "utf8");
+  const payloadBytes = serializeContextPackPayload(payload);
+  const contentHash = hashStableJson(payloadBytes);
+  const sizeBytes = payloadBytes.byteLength;
   if (parsed.sizeBudgetBytes !== undefined && parsed.sizeBudgetBytes < sizeBytes) {
     throw new Error("sizeBudgetBytes must be at least the derived context pack size");
   }
@@ -246,29 +246,38 @@ export function buildContextPackRef(input: BuildContextPackRefInput): ContextPac
   return buildResolvedContextPack(input).ref;
 }
 
+export function verifyResolvedContextPack(value: unknown): ResolvedContextPack;
+export function verifyResolvedContextPack(value: unknown, parser: ContextPackPayloadParser): VerifiedResolvedContextPack;
 export function verifyResolvedContextPack(
   value: unknown,
   parser?: ContextPackPayloadParser
-): VerifiedResolvedContextPack {
+): ResolvedContextPack | VerifiedResolvedContextPack {
   const resolved = normalizeResolvedContextPack(value);
-  const payloadJson = stringifyJsonDtoValue(resolved.payload);
-  const contentHash = hashStableJson(payloadJson);
+  const payloadBytes = serializeContextPackPayload(resolved.payload);
+  const contentHash = hashStableJson(payloadBytes);
   if (contentHash !== resolved.ref.contentHash) {
     throw new Error("blocked.payload-hash-mismatch: resolved payload hash does not match ref");
   }
-  const sizeBytes = Buffer.byteLength(payloadJson, "utf8");
+  const sizeBytes = payloadBytes.byteLength;
   if (sizeBytes !== resolved.ref.sizeBytes) {
     throw new Error("blocked.payload-size-mismatch: resolved payload size does not match ref");
   }
-  if (parser !== undefined) {
-    try {
-      parser(resolved.payload);
-    } catch (error) {
-      throw new Error(`blocked.payload-schema-mismatch: ${error instanceof Error ? error.message : "parser rejected payload"}`);
-    }
+  if (parser === undefined) {
+    return resolved;
   }
 
-  const verified = freezeResolvedContextPack(resolved) as VerifiedResolvedContextPack;
+  let parsedPayload: AgentContextPackJsonValue;
+  try {
+    parsedPayload = normalizeJsonDtoValue(parser(resolved.payload), "$.parsedPayload");
+  } catch (error) {
+    throw new Error(`blocked.payload-schema-mismatch: ${error instanceof Error ? error.message : "parser rejected payload"}`);
+  }
+  const parsedPayloadBytes = serializeContextPackPayload(parsedPayload);
+  if (hashStableJson(parsedPayloadBytes) !== resolved.ref.contentHash || parsedPayloadBytes.byteLength !== resolved.ref.sizeBytes) {
+    throw new Error("blocked.payload-hash-mismatch: parser-normalized payload does not match ref");
+  }
+
+  const verified = freezeResolvedContextPack({ ref: resolved.ref, payload: parsedPayload }) as VerifiedResolvedContextPack;
   verifiedResolvedContextPacks.add(verified);
   return verified;
 }
@@ -366,6 +375,9 @@ export function createContextPackRegistry(options: CreateContextPackRegistryOpti
           throw new Error("blocked.missing-payload");
         }
         const resolvedOrPayload = await payloadResolver(ref);
+        if (resolvedOrPayload === undefined || resolvedOrPayload === null) {
+          throw new Error("blocked.missing-payload");
+        }
         resolved = looksLikeResolvedContextPack(resolvedOrPayload)
           ? normalizeResolvedContextPack(resolvedOrPayload)
           : freezeResolvedContextPack({ ref, payload: normalizeJsonDtoValue(resolvedOrPayload, "$.payload") });
@@ -483,7 +495,12 @@ function normalizeResolvedContextPack(value: unknown): ResolvedContextPack {
   if (!looksLikeResolvedContextPack(value)) {
     throw new Error("blocked.missing-payload");
   }
-  const normalized = normalizeJsonDtoValue(value, "$");
+  let normalized: AgentContextPackJsonValue;
+  try {
+    normalized = normalizeJsonDtoValue(value, "$");
+  } catch (error) {
+    throw new Error(`blocked.invalid-payload-shape: ${error instanceof Error ? error.message : "resolved payload is unsafe"}`);
+  }
   if (typeof normalized !== "object" || normalized === null || Array.isArray(normalized)) {
     throw new Error("blocked.invalid-resolved-context-pack");
   }
@@ -616,8 +633,8 @@ function stringifyJsonDtoValue(value: AgentContextPackJsonValue): string {
   return json;
 }
 
-function hashStableJson(json: string): string {
-  const digest = createHash("sha256").update(json).digest("hex");
+function hashStableJson(bytes: Uint8Array): string {
+  const digest = createHash("sha256").update(bytes).digest("hex");
 
   return `sha256:${digest}`;
 }
