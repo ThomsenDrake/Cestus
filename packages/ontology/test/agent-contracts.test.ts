@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateKnowledgeEvent } from "../src/contracts.js";
+import { eventContracts, validateKnowledgeEvent } from "../src/contracts.js";
 
 const context = {
   actor: { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" },
@@ -17,6 +17,27 @@ const humanContext = {
 const hash111 = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
 const hash222 = "sha256:2222222222222222222222222222222222222222222222222222222222222222";
 const hash333 = "sha256:3333333333333333333333333333333333333333333333333333333333333333";
+const adapterFailureCategories = [
+  "approval-required",
+  "approval-denied",
+  "approval-stale",
+  "provider-unavailable",
+  "provider-rate-limited",
+  "credential-missing",
+  "credential-revoked",
+  "model-output-invalid",
+  "secret-detected",
+  "permission-denied",
+  "legal-lock-active",
+  "lock-active",
+  "projection-lag",
+  "context-budget-exceeded",
+  "missing-provenance",
+  "domain-gate-failed",
+  "stale-source",
+  "external-effect-failed",
+  "data-loss-risk"
+] as const;
 
 function agentEvent(id: string, type: string, streamId: string, payload: Record<string, unknown>) {
   return {
@@ -209,6 +230,53 @@ describe("resident agent event contracts", () => {
     ).toBe(false);
   });
 
+  it("records memory kind while requiring provenance and non-authoritative guidance", () => {
+    const result = validateKnowledgeEvent({
+      id: "evt_agent_memory_recorded_operator_pref",
+      type: "agent.memory.recorded",
+      version: 1,
+      streamId: "agent_memory_mem_operator_preference",
+      sequence: 1,
+      context,
+      payload: {
+        memoryId: "mem_operator_preference",
+        residentAgentId: "agent_default",
+        scope: "workspace",
+        memoryKind: "operator-preference",
+        summary: "Case owner prefers concise PRR draft summaries.",
+        sourceEventIds: ["evt_agent_task_created"],
+        confidence: 0.9,
+        createdAt: "2026-07-09T12:00:00.000Z"
+      }
+    });
+
+    expect(result.success).toBe(true);
+    expect(eventContracts["agent.memory.recorded"].agentGuidance).toMatch(/not accepted graph state/i);
+    expect(eventContracts["agent.memory.recorded"].agentGuidance).toMatch(/forbidden autonomous effects/i);
+  });
+
+  it("rejects memory records without source events or artifact hashes", () => {
+    expect(
+      validateKnowledgeEvent({
+        id: "evt_agent_memory_recorded_unproven",
+        type: "agent.memory.recorded",
+        version: 1,
+        streamId: "agent_memory_mem_unproven",
+        sequence: 1,
+        context,
+        payload: {
+          memoryId: "mem_unproven",
+          residentAgentId: "agent_default",
+          scope: "investigation",
+          memoryKind: "agent-observation",
+          summary: "Agency X is connected to Vendor Y.",
+          confidence: 0.7,
+          createdAt: "2026-07-09T12:00:00.000Z"
+        }
+      }).success
+    ).toBe(false);
+  });
+
   it("requires strict read model change summaries on completed tools", () => {
     const completedPayload = {
       toolRequestId: "toolreq_001",
@@ -268,6 +336,71 @@ describe("resident agent event contracts", () => {
       ).success
     ).toBe(false);
   });
+
+  it("validates tool execution claim events for scheduler reservations", () => {
+    const claimPayload = {
+      toolRequestId: "toolreq_001",
+      claimedBy: "actor_agent_scheduler",
+      claimedAt: "2026-07-07T18:09:00.000Z",
+      approvedPreviewHash: hash222,
+      leaseExpiresAt: "2026-07-07T18:14:00.000Z"
+    };
+
+    const claimEvent = agentEvent(
+      "evt_agent_tool_execution_claimed",
+      "agent.tool.execution.claimed",
+      "agent_tool_request_toolreq_001",
+      claimPayload
+    );
+
+    expect(validateKnowledgeEvent(claimEvent).success).toBe(true);
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_tool_execution_claimed_expired",
+          "agent.tool.execution.claimed",
+          "agent_tool_request_toolreq_001",
+          { ...claimPayload, leaseExpiresAt: "2026-07-07T18:09:00.000Z" }
+        )
+      ).success
+    ).toBe(false);
+    expect(
+      validateKnowledgeEvent({ ...claimEvent, streamId: "wrong_stream" }).success
+    ).toBe(false);
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_tool_execution_claimed_extra",
+          "agent.tool.execution.claimed",
+          "agent_tool_request_toolreq_001",
+          { ...claimPayload, unsafe: true }
+        )
+      ).success
+    ).toBe(false);
+  });
+
+  it.each(adapterFailureCategories)(
+    "accepts adapter-facing tool failure category %s",
+    (category) => {
+      expect(
+        validateKnowledgeEvent(
+          agentEvent(
+            `evt_agent_tool_failed_${category.replaceAll("-", "_")}`,
+            "agent.tool.failed",
+            "agent_tool_request_toolreq_failure_category",
+            {
+              toolRequestId: "toolreq_failure_category",
+              failedAt: "2026-07-07T18:11:00.000Z",
+              category,
+              message: "Execution stopped behind an explicit domain gate.",
+              retryable: false,
+              allowedActions: ["request a fresh approval after the blocking state changes"]
+            }
+          )
+        ).success
+      ).toBe(true);
+    }
+  );
 
   it.each([
     {

@@ -11,8 +11,11 @@ Status: `ready-for-review`
 ## Progress
 
 - 2026-07-09T13:58:33Z: Claimed task and began RED test setup for app-level cockpit integration.
-- 2026-07-09T14:08:18Z: Wired app-level cockpit load, refresh, task creation, run start, and decision reload flow. Targeted tests and `npm run verify` passed.
+- 2026-07-09T14:08:18Z: Wired app-level cockpit load, refresh, task queueing, and decision reload flow. Targeted tests and `npm run verify` passed.
 - 2026-07-09T14:16:30Z: Closed review finding by moving ontology-bootstrap route reads behind the injected `AgentAdapter`, then reran the expanded targeted suite and full `npm run verify`.
+- Post-`neo` correction: app integration exposes no generic run-start callback, refreshes cockpit state after task/approval/memory mutations, and preserves returned memory selection when visible.
+- Post-`neo` targeted evidence: `npm test -- packages/ui/test/agent-task-composer.test.tsx packages/ui/test/agent-app-integration.test.tsx` passed with 2 test files and 18 tests.
+- Final independent-review correction: app-level status parsing keeps model invocation audit state and executing tool-claim metadata intact, while task queueing remains queue-only and the generated task ID rotates after successful creation.
 
 ## Evidence
 

@@ -32,14 +32,21 @@ Command evidence:
   - Result: `Test Files  12 passed (12)`, `Tests  98 passed (98)`.
 - Final review fix: `npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/ui/test/agent-task-composer.test.tsx packages/ui/test/agent-app-integration.test.tsx packages/ui/test/agent-cockpit-adapter.test.ts`
   - Result: `Test Files  4 passed (4)`, `Tests  31 passed (31)`.
-- Full: `npm run verify`
-  - Result: `typecheck passed`, `Test Files  148 passed | 1 skipped (149)`, `Tests  1409 passed | 1 skipped (1410)`, `tests passed`, Vite production build success, and `factory-readiness passed`.
-  - Note: Vite emitted the existing chunk-size warning; the command exited successfully.
+- Post-`neo` correction targeted UI regression: `npm test -- packages/ui/test/agent-task-composer.test.tsx packages/ui/test/agent-app-integration.test.tsx`
+  - Result: `Test Files  2 passed (2)`, `Tests  18 passed (18)`.
+- Full coordinator verification: `npm run verify`
+  - Result from unrestricted writable shell: `typecheck passed`, `Test Files  170 passed | 3 skipped (173)`, `Tests  1708 passed | 3 skipped (1711)`, Vite build passed, and `factory-readiness passed`.
+- Final independent-review focused regression: `npm test -- packages/ui/test/agent-adapter.test.ts packages/agent/test/cockpit.test.ts packages/ui/test/agent-run-cockpit.test.tsx packages/ui/test/agent-task-composer.test.tsx`
+  - Result: `Test Files  4 passed (4)`, `Tests  33 passed (33)`.
 - Whitespace: `git diff --check`
   - Result: no output.
 
 Readiness notes:
 
-- The Agent workspace can create tasks, start safe runs through runtime routes, refresh cockpit/status state, and approve or deny through existing decision routes.
+- The Agent workspace can queue tasks through runtime task routes, refresh cockpit/status/memory state, record memory through memory routes, and approve or deny through existing decision routes.
+- The Agent workspace exposes no generic run-start route, adapter method, app callback, or UI control. Specialist readiness is read-only and every MVP specialist remains `executionReady: false`.
+- Context pack audit counts are now canonical DTO fields: `omissionCount` is projected from model invocation omissions, and `stalenessInputCount` is projected from context-pack staleness inputs. The cockpit no longer infers these counts from provenance/source/artifact arrays.
+- Specialist readiness reports the landed scheduler/domain contracts and registered domain adapter families as available while still surfacing missing context packs, stale context, missing projection high-water marks, missing provenance context packs, provider/template/approval/lock blockers, and the missing `contradiction-claim-review` adapter family.
+- Actual specialist handoffs are displayed only when supplied as matching `agent-specialist-handoff.v1` DTOs bound to the selected run's `runId`, `runType`, and `taskId`. A durable production handoff source remains an explicit blocker for future specialist workflow slices.
 - No route or button directly sends PRRs, transfers provider bytes, exports, clears legal locks, executes repairs, accepts graph truth, imports legacy material, or stages legacy material.
-- Scheduler wake remains merge-after-scheduler. If the scheduler branch lands an overlapping contract, route wiring must adapt to that landed contract before merge.
+- Scheduler wake follows the landed scheduler contract. Ontology bootstrap remains the only specialist-specific executable route preserved by this cockpit merge.

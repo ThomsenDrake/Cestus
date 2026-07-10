@@ -2,11 +2,20 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { isAgentSecretSafeText } from "../../agent/src/index.js";
+import {
+  createAgentToolGateway,
+  hashAgentToolPreview,
+  isAgentSecretSafeText,
+  type AgentApprovedToolExecutorDescriptor,
+  type AgentToolPreview
+} from "../../agent/src/index.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { LOCAL_RUNTIME_SESSION_COOKIE_NAME, localRuntimeSessionCookieValue } from "../src/auth.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
-import type { LocalAgentRuntimeFactory } from "../src/agent-runtime-factory.js";
+import {
+  defaultLocalAgentRuntimeFactory,
+  type LocalAgentRuntimeFactory
+} from "../src/agent-runtime-factory.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
 
 const handlers: LocalRuntimeHttpHandler[] = [];
@@ -282,6 +291,121 @@ describe("agent HTTP routes", () => {
     expect(isAgentSecretSafeText(response.body)).toBe(true);
   });
 
+  it("wakes the resident agent scheduler without accepting tool input", async () => {
+    const { handler } = await seededApprovedToolHandler();
+    const emptyObject = await seededApprovedToolHandler("toolreq_scheduler_route_empty_object");
+
+    const rejected = await handler({
+      method: "POST",
+      url: "/api/agent/scheduler/wake",
+      body: JSON.stringify({ toolRequestId: "toolreq_must_not_be_routed" })
+    });
+    const accepted = await handler({
+      method: "POST",
+      url: "/api/agent/scheduler/wake"
+    });
+    const acceptedEmptyObject = await emptyObject.handler({
+      method: "POST",
+      url: "/api/agent/scheduler/wake",
+      body: JSON.stringify({})
+    });
+
+    expect(rejected.status).toBe(400);
+    expect(accepted.status).toBe(200);
+    expect(acceptedEmptyObject.status).toBe(200);
+    const body = JSON.parse(accepted.body) as {
+      readonly schemaVersion: string;
+      readonly examinedCount: number;
+      readonly completedCount: number;
+      readonly eventIds: readonly string[];
+    };
+    expect(body.schemaVersion).toBe("agent-scheduler-wake-result.v1");
+    expect(body.examinedCount).toBe(1);
+    expect(body.completedCount).toBe(1);
+    expect(body.eventIds).toEqual(expect.arrayContaining([expect.stringMatching(/^evt_/)]));
+    expect(accepted.body).not.toMatch(/prr\.request\.sent|legal-escalation|accepted graph|provider byte transfer/i);
+  });
+
+  it("does not double-execute an approved descriptor across concurrent scheduler wake posts", async () => {
+    const previewBarrier = createBarrier(2);
+    let executions = 0;
+    const { handler, config } = await seededApprovedToolHandler(
+      "toolreq_scheduler_route_concurrent_claim",
+      (preview) => schedulerWakeDescriptor(preview, {
+        async buildCurrentPreview() {
+          await previewBarrier.arrive();
+          return {
+            preview,
+            sourceEventIds: ["evt_source_route_review"],
+            inputArtifactHashes: [schedulerWakeArtifactHash()],
+            provenanceRefs: ["evt_source_route_review", schedulerWakeArtifactHash()],
+            activeLocks: [],
+            freshnessChecks: [{
+              name: "agent-projection",
+              expected: "high-watermark:1",
+              actual: "high-watermark:1",
+              ok: true
+            }]
+          };
+        },
+        async executeApproved() {
+          executions += 1;
+          await Promise.resolve();
+          return {
+            eventIds: ["evt_scheduler_route_domain_completed"],
+            artifactHashes: [schedulerWakeArtifactHash()],
+            readModelChanges: [{
+              projectionName: "agent-route-test",
+              change: "scheduler wake route completed approved work"
+            }],
+            resultSummary: "Scheduler wake route completed approved work."
+          };
+        }
+      })
+    );
+
+    const responses = await Promise.all([
+      handler({ method: "POST", url: "/api/agent/scheduler/wake" }),
+      handler({ method: "POST", url: "/api/agent/scheduler/wake" })
+    ]);
+
+    expect(responses.map((response) => response.status).sort((left, right) => left - right)).toEqual([200, 200]);
+    const bodies = responses.map((response) => JSON.parse(response.body) as {
+      readonly completedCount: number;
+      readonly failedCount: number;
+      readonly items: readonly { readonly state: string; readonly eventIds: readonly string[] }[];
+    });
+    const items = bodies.flatMap((body) => body.items);
+    const types = await eventTypes(config);
+    expect(executions).toBe(1);
+    expect(bodies.reduce((sum, body) => sum + body.completedCount, 0)).toBe(1);
+    expect(bodies.reduce((sum, body) => sum + body.failedCount, 0)).toBe(0);
+    expect(items.filter((item) => item.state === "completed")).toHaveLength(1);
+    expect(items.filter((item) => item.state === "not-ready" || item.state === "blocked")).toHaveLength(1);
+    expect(items.find((item) => item.state === "completed")?.eventIds).toHaveLength(2);
+    expect(types.filter((type) => type === "agent.tool.execution.claimed")).toHaveLength(1);
+    expect(types.filter((type) => type === "agent.tool.completed")).toHaveLength(1);
+  });
+
+  it("uses existing auth policy for scheduler wake routes", async () => {
+    const handler = testHandler({
+      env: {
+        CESTUS_LOCAL_BIND: "lan",
+        CESTUS_LOCAL_AUTH_TOKEN: "route-secret"
+      }
+    });
+
+    const rejected = await handler({ method: "POST", url: "/api/agent/scheduler/wake" });
+    const accepted = await handler({
+      method: "POST",
+      url: "/api/agent/scheduler/wake",
+      headers: { authorization: "Bearer route-secret" }
+    });
+
+    expect(rejected.status).toBe(401);
+    expect(accepted.status).toBe(200);
+  });
+
   it("uses existing auth policy for protected agent routes", async () => {
     const config = protectedConfig();
     const handler = testHandler({ config });
@@ -317,6 +441,56 @@ describe("agent HTTP routes", () => {
     expect(isAgentSecretSafeText(rejectedCockpit.body)).toBe(true);
     expectAgentStatusBodyToHideRuntimeMaterial(accepted.body);
     expectAgentStatusBodyToHideRuntimeMaterial(acceptedCockpit.body);
+  });
+
+  it("applies the same auth policy to agent memory routes", async () => {
+    const config = protectedConfig();
+    const handler = testHandler({ config });
+    const sessionCookie = localRuntimeSessionCookieValue(config);
+    expect(sessionCookie).toBeDefined();
+
+    const rejected = await handler({ method: "GET", url: "/api/agent/memory" });
+    const accepted = await handler({
+      method: "GET",
+      url: "/api/agent/memory",
+      headers: {
+        cookie: `${LOCAL_RUNTIME_SESSION_COOKIE_NAME}=${sessionCookie}`
+      }
+    });
+
+    expect(rejected.status).toBe(401);
+    expect(accepted.status).toBe(200);
+    expect(rejected.body).not.toContain(routeSessionSentinel());
+    expect(accepted.body).not.toContain(routeSessionSentinel());
+    expect(isAgentSecretSafeText(rejected.body)).toBe(true);
+  });
+
+  it("preserves safe runtime diagnostics for memory validation failures", async () => {
+    const handler = testHandler({ agentRuntimeFactory: memoryValidationFailureRuntimeFactory() });
+    const response = await handler({
+      method: "POST",
+      url: "/api/agent/memory",
+      body: JSON.stringify({
+        memoryId: "mem_route_diagnostic",
+        scope: "workspace",
+        memoryKind: "agent-observation",
+        summary: "Source text sentinel that must not echo back.",
+        sourceEventIds: ["evt_route_diagnostic"],
+        confidence: 0.8
+      })
+    });
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.body)).toEqual({
+      ok: false,
+      diagnostic: {
+        message: "Memory could not be recorded safely.",
+        allowedRepairActions: ["review memory provenance and safe summary"]
+      }
+    });
+    expect(response.body).not.toContain("Source text sentinel that must not echo back.");
+    expect(response.body).not.toContain("evt_route_diagnostic");
+    expect(isAgentSecretSafeText(response.body)).toBe(true);
   });
 });
 
@@ -357,6 +531,105 @@ async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>):
   } finally {
     ledger.close();
   }
+}
+
+async function seededApprovedToolHandler(
+  toolRequestId = "toolreq_scheduler_route",
+  descriptorFactory: (preview: AgentToolPreview) => AgentApprovedToolExecutorDescriptor = schedulerWakeDescriptor
+) {
+  const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
+  const preview = schedulerWakePreview(toolRequestId);
+  const previewHash = hashAgentToolPreview(preview);
+  const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
+  try {
+    const gateway = createAgentToolGateway({
+      ledger,
+      actor: { id: "actor_cestus_agent", kind: "agent", label: "Cestus Agent" },
+      now: () => "2026-07-07T20:00:00.000Z"
+    });
+    await gateway.requestTool({
+      toolRequestId,
+      residentAgentId: "agent_default",
+      taskId: "task_scheduler_route",
+      runId: "run_scheduler_route",
+      toolId: "agent.test.route-wake",
+      toolVersion: "1.0.0",
+      sideEffectClass: "ledger-review",
+      requiredApprovalClass: "ledger-review",
+      preview
+    });
+    await gateway.approveTool({
+      toolRequestId,
+      actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
+      approvedPreviewHash: previewHash,
+      rationale: "Approved exact scheduler route preview."
+    });
+  } finally {
+    ledger.close();
+  }
+
+  return {
+    config,
+    handler: testHandler({
+      config,
+      agentRuntimeFactory: (input) => defaultLocalAgentRuntimeFactory({
+        ...input,
+        approvedToolExecutors: [descriptorFactory(preview)]
+      })
+    }),
+    previewHash
+  };
+}
+
+function schedulerWakePreview(toolRequestId: string): AgentToolPreview {
+  return {
+    summary: `Review approved scheduler route request ${toolRequestId}.`,
+    relatedEventIds: ["evt_source_route_review"],
+    artifactHashes: [schedulerWakeArtifactHash()]
+  };
+}
+
+function schedulerWakeDescriptor(
+  preview: AgentToolPreview,
+  overrides: Partial<AgentApprovedToolExecutorDescriptor> = {}
+): AgentApprovedToolExecutorDescriptor {
+  return {
+    toolId: "agent.test.route-wake",
+    toolVersion: "1.0.0",
+    sideEffectClass: "ledger-review",
+    approvalClass: "ledger-review",
+    async buildCurrentPreview() {
+      return {
+        preview,
+        sourceEventIds: ["evt_source_route_review"],
+        inputArtifactHashes: [schedulerWakeArtifactHash()],
+        provenanceRefs: ["evt_source_route_review", schedulerWakeArtifactHash()],
+        activeLocks: [],
+        freshnessChecks: [{
+          name: "agent-projection",
+          expected: "high-watermark:1",
+          actual: "high-watermark:1",
+          ok: true
+        }]
+      };
+    },
+    async executeApproved() {
+      return {
+        eventIds: ["evt_scheduler_route_domain_completed"],
+        artifactHashes: [schedulerWakeArtifactHash()],
+        readModelChanges: [{
+          projectionName: "agent-route-test",
+          change: "scheduler wake route completed approved work"
+        }],
+        resultSummary: "Scheduler wake route completed approved work."
+      };
+    },
+    ...overrides
+  };
+}
+
+function schedulerWakeArtifactHash(): `sha256:${string}` {
+  return "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 }
 
 function protectedConfig(): ReturnType<typeof resolveLocalRuntimeConfig> {
@@ -426,6 +699,81 @@ function nousStatusRuntimeFactory(): LocalAgentRuntimeFactory {
     createTask: async () => ({ ok: true, taskId: "task_route", eventIds: [] }),
     startRun: async () => ({ ok: true, runId: "run_route", eventIds: [] }),
     invokeModel: async () => ({ ok: false, error: { severity: "error", category: "provider", message: "unused" } }),
+    scheduler: {
+      wake: async () => ({
+        schemaVersion: "agent-scheduler-wake-result.v1",
+        generatedAt: "2026-07-07T20:00:00.000Z",
+        examinedCount: 0,
+        resumedCount: 0,
+        completedCount: 0,
+        blockedCount: 0,
+        failedCount: 0,
+        eventIds: [],
+        allowedNextActions: [],
+        items: []
+      })
+    },
+    gateway: {}
+  })) as unknown as LocalAgentRuntimeFactory;
+}
+
+function memoryValidationFailureRuntimeFactory(): LocalAgentRuntimeFactory {
+  return (() => ({
+    status: async () => ({
+      schemaVersion: "agent-status.v1",
+      generatedAt: "2026-07-07T20:00:00.000Z",
+      identity: undefined,
+      tasks: [],
+      runs: [],
+      toolRequests: [],
+      permissions: [],
+      locks: [],
+      memories: [],
+      modelInvocations: [],
+      providerReadiness: undefined,
+      providers: [],
+      pendingApprovalCount: 0,
+      activeLockCount: 0,
+      diagnostics: []
+    }),
+    listMemory: async () => ({ schemaVersion: "agent-memory-list.v1", generatedAt: "2026-07-07T20:00:00.000Z", truthBoundary: { authoritativeForOntology: false, scope: "working-memory" }, filters: { scope: "all", state: "active" }, items: [] }),
+    memoryDetail: async () => undefined,
+    initializeDefaultIdentity: async () => ({
+      ok: true,
+      residentAgentId: "agent_default",
+      alreadyInitialized: false,
+      eventIds: []
+    }),
+    recordMemory: async () => ({
+      ok: false,
+      error: {
+        severity: "error",
+        category: "agent",
+        message: "Memory could not be recorded safely.",
+        allowedRepairActions: ["review memory provenance and safe summary"]
+      }
+    }),
+    supersedeMemory: async () => ({
+      ok: false,
+      error: {
+        severity: "error",
+        category: "agent",
+        message: "Memory could not be superseded safely.",
+        allowedRepairActions: ["refresh memory and review provenance"]
+      }
+    }),
+    retractMemory: async () => ({
+      ok: false,
+      error: {
+        severity: "error",
+        category: "agent",
+        message: "Memory could not be retracted safely.",
+        allowedRepairActions: ["refresh memory and review rationale"]
+      }
+    }),
+    createTask: async () => ({ ok: true, taskId: "task_route", eventIds: [] }),
+    startRun: async () => ({ ok: true, runId: "run_route", eventIds: [] }),
+    invokeModel: async () => ({ ok: false, error: { severity: "error", category: "provider", message: "unused" } }),
     gateway: {}
   })) as unknown as LocalAgentRuntimeFactory;
 }
@@ -442,4 +790,22 @@ function expectAgentStatusBodyToHideRuntimeMaterial(body: string): void {
   expect(body).not.toContain(providerSetupSentinel());
   expect(body).not.toContain(routeSessionSentinel());
   expect(body).not.toMatch(/runtime-provider-material|authorization:\s*bearer|provider error|response body|private key|password=|secret=/i);
+}
+
+function createBarrier(count: number): { readonly arrive: () => Promise<void> } {
+  let arrivals = 0;
+  let release: (() => void) | undefined;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  return {
+    async arrive() {
+      arrivals += 1;
+      if (arrivals >= count) {
+        release?.();
+      }
+      await released;
+    }
+  };
 }

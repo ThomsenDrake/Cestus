@@ -4,7 +4,11 @@
 
 **Goal:** Build the minimally viable resident-agent cockpit where an investigator can give Cestus Agent a task, understand task and run state, inspect audit material, review approvals, and see what the agent needs next without moving domain execution into React.
 
-**Architecture:** Add a browser-safe `agent-cockpit.v1` DTO in `packages/agent` that composes existing status, approval cockpit, run, model invocation, context pack, memory, and provider-readiness state into an operational workspace model. Expose read state and narrow safe action routes through local runtime, then render dense cockpit components in the Agent workspace. Task creation and safe run start append agent events through runtime routes only; scheduler wake is displayed only when an upstream scheduler route is present, and no UI path executes risky domain effects.
+**Superseding correction after `neo` merge:** The implemented MVP is queue-only and read-only for generic specialist work. It creates local agent tasks, reads task/run audit state, reads canonical specialist readiness and handoffs, reviews approval decisions through existing approval routes, records memory through memory routes, and preserves the specialist-specific ontology-bootstrap route. It does not expose a generic run-start route, adapter method, app callback, or UI control.
+
+**Final independent-review correction:** Context pack audit counts are explicit DTO fields, not inferred UI metrics: `omissionCount` comes from model invocation omissions and `stalenessInputCount` comes from context-pack staleness inputs. Specialist handoffs are displayed only when supplied as exact `agent-specialist-handoff.v1` DTOs bound to the selected run's `runId`, `runType`, and `taskId`; a durable production handoff source remains a future specialist-workflow blocker. Specialist readiness projects landed local scheduler/domain contracts and registered domain adapter families as available while keeping missing context, projection/provenance freshness, provider/template/approval/lock state, and `contradiction-claim-review` fail-closed.
+
+**Architecture:** Add a browser-safe `agent-cockpit.v1` DTO in `packages/agent` that composes existing status, approval cockpit, run, model invocation, context pack, memory, canonical specialist registry/readiness/handoff, and provider-readiness state into an operational workspace model. Expose read state and queue-only task creation through local runtime, then render dense cockpit components in the Agent workspace. Scheduler wake is displayed or called only through the landed scheduler contract, and no UI path executes generic specialist workflows or risky domain effects.
 
 **Tech Stack:** TypeScript, Zod, Vitest, React, Testing Library, existing `packages/agent` projections/runtime DTOs, existing approval cockpit DTOs/routes, local-runtime HTTP handler, and current `packages/ui/src/agent` adapter/component patterns.
 
@@ -12,10 +16,10 @@
 
 - Use `docs/superpowers/specs/2026-07-07-cestus-resident-agent-design.md` and `docs/superpowers/specs/2026-07-07-resident-agent-execution-approval-design.md` as the design source.
 - Preserve append-only ledger semantics, provenance requirements, projection rebuildability, human-approved PRR send gates, legal escalation locks, provider byte-transfer approvals, secret-safe credential references, evidence-first legacy bootstrap, and portable workspace compatibility.
-- React may render browser-safe DTOs, create tasks through existing task routes, call safe run-start routes when present, navigate, refresh, and approve or deny through existing decision routes.
+- React may render browser-safe DTOs, create tasks through existing task routes, navigate, refresh, approve or deny through existing decision routes, record/correct/retract memory through memory routes, and call only landed specialist-specific routes such as ontology bootstrap.
 - React must not directly send PRRs, transfer provider bytes, export, clear legal locks, execute repairs, accept graph truth, import legacy material, stage legacy material, mutate portable storage truth, call provider adapters, or duplicate domain validation.
 - Generic scheduler wake wiring is merge-after-scheduler. Do not create `POST /api/agent/scheduler/wake` in this plan unless the scheduler branch has already landed that exact contract.
-- If generic run routes conflict with a scheduler branch, adapt to the landed scheduler contract before merging this branch.
+- Do not add or preserve a generic `POST /api/agent/runs` route. Scheduler integration must follow the landed scheduler contract, and generic specialist execution remains disabled until a future approved slice provides a real runner contract.
 - The Agent workspace should be dense and operational for investigators and newsroom users, not a marketing page or hero layout.
 - Deterministic tests use fake/static DTOs and in-memory ledgers. Live provider behavior remains covered by existing explicit live smoke lanes and is not part of this UI slice.
 - All browser DTO parsing and failure states must be secret-safe, including malformed runtime JSON, DTO keys, diagnostic values, provider labels, run summaries, context pack summaries, and memory snippets.
@@ -26,30 +30,30 @@
 
 No new design spec is required before this plan. The resident-agent design already names Agent status, task history, tool requests, memory view, provider settings, specialist launchers, and runtime task/run surfaces. The execution/approval design already requires task lifecycle, run state, model invocation audit, context pack summaries, approval cockpit UX, resume history, and human handoff. Coordinator guidance narrows the MVP product shape to:
 
-- `Give Cestus Agent a task` -> choose or derive run type -> choose scope -> show provider, readiness, and approval posture -> create task and start a safe run when the route exists.
+- `Give Cestus Agent a task` -> enter the persisted task fields -> show provider, readiness, and approval posture in read-only cockpit panels -> queue the task through the task route.
 - Show task queue, run detail, run steps, model invocation audit summaries, context pack summaries, memory snippets, pending approvals, blocked reasons, and final handoff artifacts.
 - Answer what the resident is watching, what it is doing, what it needs from the human, what is blocked, what changed, and what evidence supports it.
 
-The existing code already has `AgentStatusDto`, approval cockpit routes, task creation routes, runtime `startRun`, ontology-bootstrap specialist launch/read routes, model invocation audit projection fields, and read-only Agent workspace panels. The missing exact slice is a unified cockpit/task/run interface and browser adapter actions that hand work to the resident agent without turning the browser into an executor.
+The existing code already has `AgentStatusDto`, approval cockpit routes, task creation routes, scheduler wake, memory routes, ontology-bootstrap specialist launch/read routes, model invocation audit projection fields, and read-only Agent workspace panels. The missing exact slice is a unified cockpit/task/run interface and browser adapter actions that queue work for the resident agent without turning the browser into an executor or claiming generic specialist execution.
 
 ## File Structure
 
 - Create `packages/agent/src/cockpit.ts`: `agent-cockpit.v1` DTO schemas and `buildAgentCockpit`.
 - Create `packages/agent/test/cockpit.test.ts`: DTO projection, needs-next, run audit, handoff, and secret-safety tests.
 - Modify `packages/agent/src/index.ts`: export the cockpit DTO surface.
-- Modify `packages/local-runtime/src/agent-http-routes.ts`: expose `GET /api/agent/cockpit` and a narrow `POST /api/agent/runs` only if the scheduler branch has not provided a conflicting contract.
-- Create `packages/local-runtime/test/agent-cockpit-routes.test.ts`: local route tests for cockpit read, safe task creation regression, safe run start, duplicate rejection, and no scheduler wake.
+- Modify `packages/local-runtime/src/agent-http-routes.ts`: expose `GET /api/agent/cockpit`, preserve `POST /api/agent/tasks`, preserve `POST /api/agent/scheduler/wake`, and keep generic `POST /api/agent/runs` absent.
+- Create `packages/local-runtime/test/agent-cockpit-routes.test.ts`: local route tests for cockpit read, task creation regression, generic run-route absence, and no hidden scheduler/domain effects.
 - Modify `packages/ui/src/agent/agent-types.ts`: export cockpit DTO and action result types.
-- Modify `packages/ui/src/agent/agent-adapter.ts`: parse/load cockpit DTOs and call task/run routes.
-- Create `packages/ui/test/agent-cockpit-adapter.test.ts`: adapter fetch, parsing, redaction, task creation, safe run start, and forbidden route tests.
-- Create `packages/ui/src/agent/AgentTaskComposer.tsx`: task handoff form with run type and scope controls.
-- Create `packages/ui/test/agent-task-composer.test.tsx`: form behavior, readiness posture, disabled states, and forbidden-button tests.
+- Modify `packages/ui/src/agent/agent-adapter.ts`: parse/load cockpit DTOs and call task, approval, memory, scheduler, and ontology-bootstrap routes without a generic run-start method.
+- Create `packages/ui/test/agent-cockpit-adapter.test.ts`: adapter fetch, parsing, redaction, task creation, generic run-start absence, and forbidden route tests.
+- Create `packages/ui/src/agent/AgentTaskComposer.tsx`: queue-only task form with only the fields persisted by the task route.
+- Create `packages/ui/test/agent-task-composer.test.tsx`: form behavior, exact queued payload coverage, posture display, and forbidden-button tests.
 - Create `packages/ui/src/agent/AgentRunCockpit.tsx`: task queue, run detail, steps, model audit, context packs, memory snippets, blocked reasons, and handoff artifacts.
 - Create `packages/ui/test/agent-run-cockpit.test.tsx`: dense run-state rendering and blocked/handoff behavior tests.
 - Modify `packages/ui/src/agent/AgentWorkspace.tsx`: compose the task handoff, run cockpit, existing approval cockpit, providers, diagnostics, tool ledger, and memory.
-- Modify `packages/ui/src/App.tsx`: load status, approval cockpit, ontology routes, and cockpit state; wire create task and run start callbacks.
+- Modify `packages/ui/src/App.tsx`: load status, approval cockpit, memory, ontology routes, and cockpit state; wire task queueing, approval decisions, and memory mutations through full state refreshes.
 - Modify `packages/ui/test/agent-workspace.test.tsx`: workspace integration expectations.
-- Modify `packages/ui/test/agent-app-integration.test.tsx`: app-level task/run action wiring and no forbidden route calls.
+- Modify `packages/ui/test/agent-app-integration.test.tsx`: app-level task queueing, approval, memory refresh, cockpit refresh, and no forbidden route calls.
 - Modify `packages/ui/test/app-smoke.test.tsx`: keep Agent route smoke passing.
 - Modify `packages/ui/test/command-model.test.ts`: keep Command agent brief decoupled from cockpit internals.
 - Modify `docs/agentic/software-factory.md`: append readiness evidence after implementation.
@@ -66,7 +70,7 @@ The existing code already has `AgentStatusDto`, approval cockpit routes, task cr
 ## Review Gates
 
 - Gate A after Task 1: DTO review for browser safety, needs-next derivation, model audit coverage, handoff refs, and no hidden execution semantics.
-- Gate B after Task 2: route review for append-only task/run events, local-runtime auth reuse, narrow route overlap, and no scheduler wake or domain execution.
+- Gate B after Task 2: route review for read-only cockpit state, truthful task creation, generic run-route absence, landed scheduler wake preservation, local-runtime auth reuse, narrow route overlap, and no domain execution.
 - Gate C after Tasks 3 through 6: UI review for dense operational ergonomics, browser-safe parsing, disabled unsafe actions, and no forbidden buttons or route calls.
 - Gate D after Task 7: factory readiness review before merge.
 
@@ -177,8 +181,8 @@ describe("agent cockpit dto", () => {
       safeAction: "review-approval"
     });
     expect(cockpit.needsNext).toContainEqual(expect.objectContaining({
-      kind: "run-start",
-      safeAction: "start-run",
+      kind: "queued-task",
+      safeAction: "inspect-queue",
       relatedTaskId: "task_unstarted"
     }));
     expect(cockpit.forbiddenDirectEffects).toContain("provider-byte-transfer");
@@ -249,7 +253,7 @@ Create `packages/agent/src/cockpit.ts` with:
   1. pending approval from approval cockpit,
   2. active lock,
   3. failed retryable run or invocation,
-  4. queued task without run,
+  4. queued task without a run and without any execution affordance,
   5. completed run with handoff artifacts,
   6. provider readiness action,
   7. quiet status.
@@ -298,7 +302,7 @@ git commit -m "feat: add resident agent cockpit dto"
 
 - Escalate if a useful cockpit DTO requires raw evidence text, raw prompt text, provider output text, credential values, local filesystem secrets, or non-rebuildable state.
 
-## Task 2: Local Runtime Cockpit And Safe Run Routes
+## Task 2: Local Runtime Cockpit And Queue-Only Routes
 
 **Files:**
 - Modify: `packages/local-runtime/src/agent-http-routes.ts`
@@ -307,9 +311,9 @@ git commit -m "feat: add resident agent cockpit dto"
 - Create: `docs/agentic/claims/task-2-agent-cockpit-routes.md`
 
 **Interfaces:**
-- Consumes: `buildAgentCockpit`, current `runtime.status()`, current `buildAgentApprovalCockpit`, existing `POST /api/agent/tasks`, and `runtime.startRun`.
+- Consumes: `buildAgentCockpit`, current `runtime.status()`, current `buildAgentApprovalCockpit`, existing `POST /api/agent/tasks`, landed `POST /api/agent/scheduler/wake`, approval routes, memory routes, and the specialist-specific ontology-bootstrap route.
 - Produces: `GET /api/agent/cockpit`.
-- Produces: `POST /api/agent/runs` only as a safe event-appending run-start route. If a scheduler branch has already landed a conflicting run route, adapt this task to the landed contract and keep this plan's acceptance criteria.
+- Keeps generic `POST /api/agent/runs` absent. It must not validate, append, schedule, or execute generic specialist work.
 
 - [x] **Step 1: Claim the task**
 
@@ -320,8 +324,8 @@ Create and commit `docs/agentic/claims/task-2-agent-cockpit-routes.md` with owne
 Create `packages/local-runtime/test/agent-cockpit-routes.test.ts` with tests that prove:
 
 - `GET /api/agent/cockpit` returns `agent-cockpit.v1`.
-- `POST /api/agent/runs` starts a run by appending only `agent.specialist-run.started` and the task `running` status event.
-- `POST /api/agent/runs` rejects missing tasks, duplicate run IDs, unsupported run types, unsafe IDs, and extra body keys.
+- `POST /api/agent/runs` is not exposed and does not call runtime start methods.
+- Generic run-route subpaths fail closed before domain semantics are considered.
 - No request path calls scheduler wake, provider invocation, PRR send, provider byte transfer, export, legal escalation, repair, accepted graph review, legacy import, or legacy staging.
 
 Use this test shape:
@@ -343,7 +347,7 @@ it("returns cockpit DTO from current runtime status and approval queue", async (
   expect(JSON.stringify(body)).not.toMatch(/raw-token|authorization|bearer|sk_live|password/i);
 });
 
-it("starts a safe specialist run without executing the specialist workflow", async () => {
+it("does not expose a generic specialist run route", async () => {
   const context = await routeContext();
   await seedIdentityAndTask(context);
 
@@ -359,17 +363,10 @@ it("starts a safe specialist run without executing the specialist workflow", asy
     })
   });
 
-  expect(response.status).toBe(200);
-  expect(JSON.parse(response.body)).toMatchObject({
-    ok: true,
-    schemaVersion: "agent-run-start-result.v1",
-    runId: "run_route_review"
-  });
+  expect(response).toBeUndefined();
   expect(await eventTypes(context)).toEqual([
     "agent.identity.initialized",
     "agent.task.created",
-    "agent.task.status.changed",
-    "agent.specialist-run.started",
     "agent.task.status.changed"
   ]);
 });
@@ -389,29 +386,17 @@ Expected before implementation:
 expected 200 received 404
 ```
 
-- [x] **Step 4: Implement read and safe run routes**
+- [x] **Step 4: Implement read routes and preserve queue-only behavior**
 
 Modify `packages/local-runtime/src/agent-http-routes.ts`:
 
 - Add `GET /api/agent/cockpit` after status and approval helpers are available.
 - Build cockpit from `runtime.status()` and `buildAgentApprovalCockpit`.
-- Add `POST /api/agent/runs` with body keys exactly `runId`, `taskId`, `runType`, `scope`, `sourceEventIds`, and `inputArtifactHashes`.
-- Validate `runId` with `^run_[a-zA-Z0-9_-]+$`, `taskId` with `^task_[a-zA-Z0-9_-]+$`, approved run types with existing specialist vocabulary, and scope as `{ kind: "workspace" | "investigation", refs: string[] }`.
-- Reject duplicate run IDs with HTTP 409.
-- Reject missing tasks with HTTP 404 and a safe diagnostic.
-- Call `runtime.startRun` only. Do not call execution loop, scheduler wake, ontology-bootstrap workflow, provider adapters, ingestion, PRR, governance, workspace ops, or ontology review services.
-- Return:
-
-```ts
-{
-  ok: true,
-  schemaVersion: "agent-run-start-result.v1",
-  runId,
-  eventIds
-}
-```
-
-If the scheduler branch has already provided a generic run-start route, preserve this route's tests by changing the path and adapter to the scheduler branch's accepted path rather than creating duplicate local-runtime contracts.
+- Keep `POST /api/agent/tasks` as the only generic work-handoff mutation in this slice.
+- Preserve landed `POST /api/agent/scheduler/wake` semantics exactly.
+- Preserve approval approve/deny routes, memory routes and provenance fields, and the ontology-bootstrap specialist-specific executable route.
+- Do not add `POST /api/agent/runs` or generic run subpaths.
+- Do not call execution loop, generic scheduler execution, provider adapters, ingestion, PRR, governance, workspace ops, ontology review services, or `runtime.startRun` from the generic cockpit routes.
 
 - [x] **Step 5: Run targeted passing command**
 
@@ -439,13 +424,13 @@ git commit -m "feat: expose resident agent cockpit routes"
 **Acceptance criteria:**
 
 - Cockpit read route is browser-safe.
-- Run-start route appends only agent run/task status events.
+- Generic `POST /api/agent/runs` and generic run subpaths are absent and do not call runtime start methods.
 - Existing task route behavior remains intact.
-- Scheduler wake remains absent unless provided by another landed branch.
+- Landed scheduler wake semantics are preserved.
 
 **Escalation conditions:**
 
-- Escalate on route contract conflict with the scheduler branch, schema conflict in run state vocabulary, or any need to call domain execution services from these routes.
+- Escalate on any pressure to add a generic run-start route, route contract conflict with the scheduler branch, schema conflict in run state vocabulary, or any need to call domain execution services from these routes.
 
 ## Task 3: Browser Adapter For Cockpit And Task Handoff
 
@@ -457,9 +442,9 @@ git commit -m "feat: expose resident agent cockpit routes"
 - Create: `docs/agentic/claims/task-3-agent-cockpit-adapter.md`
 
 **Interfaces:**
-- Consumes: `AgentCockpitDto`, `GET /api/agent/cockpit`, `POST /api/agent/tasks`, and safe run-start route from Task 2 or the landed scheduler branch.
-- Produces: adapter methods `loadCockpit()`, `createTask(input)`, and `startRun(input)`.
-- Produces: `CreateAgentTaskInput`, `StartAgentRunInput`, `AgentTaskCreateResultDto`, and `AgentRunStartResultDto` browser types.
+- Consumes: `AgentCockpitDto`, `GET /api/agent/cockpit`, `POST /api/agent/tasks`, approval routes, memory routes, scheduler wake, and ontology-bootstrap specialist routes.
+- Produces: adapter methods `loadCockpit()` and `createTask(input)` without a generic `startRun(input)` method.
+- Produces: `CreateAgentTaskInput` and `AgentTaskCreateResultDto` browser types.
 
 - [x] **Step 1: Claim the task**
 
@@ -471,7 +456,7 @@ Create `packages/ui/test/agent-cockpit-adapter.test.ts` with tests that prove:
 
 - `loadCockpit()` calls `/api/agent/cockpit` and parses `agent-cockpit.v1`.
 - `createTask()` calls `/api/agent/tasks` with exactly task fields.
-- `startRun()` calls the safe run-start route with exactly run fields.
+- The adapter exposes no generic `startRun()` method and calls no generic run route.
 - Malformed runtime values become safe adapter errors or rejected promises without echoing raw text.
 - No adapter method calls scheduler wake, provider transfer, PRR send, export, repair, legal escalation, accepted graph review, legacy import, or staging paths.
 
@@ -480,8 +465,7 @@ Use fetch call assertions such as:
 ```ts
 expect(fetchCalls.map((call) => call.path)).toEqual([
   "/api/agent/cockpit",
-  "/api/agent/tasks",
-  "/api/agent/runs"
+  "/api/agent/tasks"
 ]);
 expect(fetchCalls.map((call) => call.path).join(" ")).not.toMatch(
   /scheduler\/wake|provider-transfer|prr|export|repair|legal|accepted-graph|legacy.*import|staging/i
@@ -513,10 +497,9 @@ Modify `packages/ui/src/agent/agent-adapter.ts`:
 ```ts
 loadCockpit(): Promise<AgentCockpitDto>;
 createTask(input: CreateAgentTaskInput): Promise<AgentTaskCreateResultDto>;
-startRun(input: StartAgentRunInput): Promise<AgentRunStartResultDto>;
 ```
 
-- Add strict Zod schemas matching `agent-cockpit.v1`, task create result, and run start result.
+- Add strict Zod schemas matching `agent-cockpit.v1` and task create result.
 - Implement HTTP methods using existing `fetchAgentRoute`.
 - Keep `createStaticAgentAdapter` returning frozen cockpit fixtures and throwing safe errors for mutation methods unless explicit test doubles override them.
 - Redact URL paths in error messages with the existing redaction helper.
@@ -547,10 +530,10 @@ git commit -m "feat: add agent cockpit browser adapter"
 **Acceptance criteria:**
 
 - Browser adapter parses cockpit DTOs without Node-only imports.
-- Task and run methods call only agent runtime routes.
+- Task methods call only agent runtime task routes, and generic run-start methods are absent.
 - Static adapter remains safe for tests and story-like fixtures.
 
-## Task 4: Task Composer And Safe Handoff Controls
+## Task 4: Queue-Only Task Composer And Readiness Posture
 
 **Files:**
 - Create: `packages/ui/src/agent/AgentTaskComposer.tsx`
@@ -560,8 +543,8 @@ git commit -m "feat: add agent cockpit browser adapter"
 - Create: `docs/agentic/claims/task-4-agent-task-composer.md`
 
 **Interfaces:**
-- Consumes: `AgentCockpitDto`, `AgentStatusDto`, `CreateAgentTaskInput`, `StartAgentRunInput`, `createTask`, and `startRun` callbacks.
-- Produces: a browser-only task handoff form that proposes safe task/run IDs, run type, scope, and scope refs.
+- Consumes: `AgentCockpitDto`, `AgentStatusDto`, `CreateAgentTaskInput`, and `createTask` callback.
+- Produces: a browser-only task queue form that proposes a safe task ID and submits only the fields persisted by the task route: `taskId`, `title`, `priority`, and optional `description`.
 
 - [x] **Step 1: Claim the task**
 
@@ -572,13 +555,12 @@ Create and commit `docs/agentic/claims/task-4-agent-task-composer.md`, then mark
 Create `packages/ui/test/agent-task-composer.test.tsx` with tests that prove:
 
 - The form renders as `aria-label="Give Cestus Agent a task"`.
-- Title input derives safe `task_` and `run_` IDs for preview.
-- Run type uses identity allowed run types.
-- Scope kind is a segmented or select control with workspace and investigation.
+- Title input derives a safe `task_` ID for preview.
+- The form does not render editable specialist, run type, scope kind, or scope refs controls because those values are not persisted by the task route.
 - Provider/readiness/approval posture is visible before submit.
 - Create task button calls `onCreateTask`.
-- Create and start run button calls `onCreateTask` then `onStartRun` only when run start is available and the selected run type is allowed.
-- Start controls are disabled with a clear safe message when run start route is unavailable, active locks block handoff, or provider readiness is unavailable.
+- No start-run button or callback is exposed.
+- A regression proves queued input contains exactly the visible persisted fields and no discarded specialist/scope affordance.
 - No button label matches provider transfer, PRR send, export, repair, lock clearing, accepted graph, scheduler wake, import, or staging execution.
 
 - [x] **Step 3: Run targeted failing command**
@@ -599,14 +581,13 @@ Failed to resolve import "../src/agent/AgentTaskComposer.js"
 
 Create `AgentTaskComposer.tsx`:
 
-- Use a compact fieldset layout with title, optional description, priority, run type, scope kind, and scope ref.
-- Generate proposed IDs from safe title slugs and a timestamp/random suffix. The UI-generated IDs are proposals only; route validation remains authoritative.
-- Show readiness posture from cockpit summary: provider count, active locks, pending approvals, and merge-after-scheduler note.
+- Use a compact fieldset layout with title, optional description, and priority only.
+- Generate proposed task IDs from safe title slugs and a timestamp/random suffix. The UI-generated IDs are proposals only; route validation remains authoritative.
+- Show task-adjacent posture from cockpit summary: provider count, active locks, pending approvals, and merge-after-scheduler note.
+- Leave specialist workflow readiness in the separate read-only run cockpit readiness section.
 - Expose only:
-  - `Create task`
-  - `Create task and start run`
+  - `Queue task`
   - `Refresh`
-- Disable `Create task and start run` when `onStartRun` is absent, selected run type is not allowed, active locks include data-loss or secret locks, or task title/scope refs are invalid.
 - Render safe diagnostics from callback errors without raw runtime text.
 
 Modify `AgentWorkspace.tsx` to render the composer above task/run state when cockpit DTO is present.
@@ -637,8 +618,8 @@ git commit -m "feat: add resident agent task composer"
 **Acceptance criteria:**
 
 - The primary workflow starts with giving the resident agent a task.
-- The UI can create a task and can start a safe run only through provided callbacks.
-- The form makes readiness and approval posture visible before handoff.
+- The UI can queue a task only through the task callback and exposes no generic run-start callback.
+- The form shows only persisted task fields; specialist readiness remains visible in the separate read-only run cockpit.
 - The UI does not render forbidden execution controls.
 
 ## Task 5: Run Cockpit Panels
@@ -741,7 +722,7 @@ git commit -m "feat: add resident agent run cockpit"
 
 **Interfaces:**
 - Consumes: extended `AgentAdapter`, `AgentWorkspace`, `AgentTaskComposer`, `AgentRunCockpit`, and existing approval cockpit wiring.
-- Produces: app-level load, refresh, create task, safe run start, approve, and deny behavior.
+- Produces: app-level load, refresh, task queueing, approval decisions, memory mutations, and ontology-bootstrap route reads without generic run-start behavior.
 
 - [x] **Step 1: Claim the task**
 
@@ -754,9 +735,10 @@ Modify `packages/ui/test/agent-app-integration.test.tsx` to prove:
 - Opening the Agent module loads status, approval cockpit, cockpit DTO, and ontology bootstrap routes without blocking the page.
 - Refresh reloads status, approval cockpit, and cockpit DTO.
 - Create task calls only `agentAdapter.createTask`, then reloads cockpit and status.
-- Start run calls only `agentAdapter.startRun`, then reloads cockpit and status.
+- No app callback calls a generic `agentAdapter.startRun`.
 - Approval decisions still call only approval decision methods and reload cockpit/status after success.
-- If run start route is unavailable, the app shows a safe message and does not call forbidden routes.
+- Memory record/supersede/retract calls reload status, cockpit, approval cockpit, memory list, and ontology route state so `agent-cockpit.v1` memory snippets do not go stale.
+- No unavailable run-start state is presented as an actionable workflow, and forbidden routes are not called.
 
 - [x] **Step 3: Run targeted failing command**
 
@@ -777,13 +759,14 @@ expected loadCockpit to have been called
 Modify `App.tsx`:
 
 - Add cockpit state beside existing `agentStatus` and `agentApprovalCockpit`.
-- Load status, approval cockpit, cockpit, and ontology bootstrap routes when the Agent module is active.
+- Load status, cockpit, approval cockpit, memory, and ontology bootstrap routes when the Agent module is active.
 - Refresh all agent state together.
-- Add `handleCreateAgentTask` and `handleStartAgentRun` callbacks.
-- After create/start success, reload status and cockpit exactly once.
+- Add `handleCreateAgentTask` only for generic task queueing.
+- After task creation, reload status and cockpit exactly once through the shared state refresh.
 - Keep approval handlers updating approval cockpit from decision result and reloading status/cockpit.
+- Keep memory mutation handlers using the same shared state refresh, preserving selection of the returned memory ID when visible.
 - Convert adapter errors to safe UI diagnostics.
-- Do not call scheduler wake in this task.
+- Do not call scheduler wake or generic run start in this task.
 
 Modify command and smoke tests only to preserve existing Agent brief behavior and route smoke.
 
@@ -812,10 +795,11 @@ git commit -m "feat: wire resident agent cockpit app flow"
 
 **Acceptance criteria:**
 
-- App-level Agent workspace can create tasks and start safe runs through adapter methods only.
+- App-level Agent workspace can queue tasks through adapter methods only.
 - App-level approval behavior remains decision-only.
+- App-level memory mutations refresh embedded cockpit memory snippets as well as the memory panel.
 - Command agent brief does not import cockpit internals.
-- No scheduler wake route is called unless a landed scheduler adapter explicitly provides it in a subsequent branch integration.
+- No generic run-start route is called. Scheduler wake remains limited to the landed scheduler route contract.
 
 ## Task 7: Verification And Readiness
 
@@ -885,7 +869,7 @@ Append a `Resident Agent Cockpit Task Run Interface Readiness` section to `docs/
 - focused verification command and observed pass summary;
 - `npm run verify` summary;
 - `git diff --check` summary;
-- statement that the UI creates tasks, starts safe runs only through runtime routes, refreshes, navigates, and approves/denies through decision routes;
+- statement that the UI queues tasks only through the task route, refreshes, navigates, manages memory through memory routes, and approves/denies through decision routes;
 - statement that no route or button directly sends PRRs, transfers provider bytes, exports, clears legal locks, executes repairs, accepts graph truth, imports legacy material, or stages legacy material;
 - statement that scheduler wake remains merge-after-scheduler and route wiring must adapt to the landed scheduler branch if contracts overlap.
 
@@ -910,10 +894,12 @@ git commit -m "docs: record resident agent cockpit readiness"
 The resident-agent cockpit/task/run interface slice is complete when:
 
 - `agent-cockpit.v1` builds from current status, approval cockpit, model invocation audit, context pack, memory, provider readiness, and run state.
-- Local runtime exposes cockpit read state and safe task/run handoff routes without domain execution.
-- Browser adapter parses cockpit DTOs and calls only task, run-start, approval, deny, and refresh routes.
-- The Agent workspace supports the primary workflow: give Cestus Agent a task, choose or derive run type, choose scope, show readiness/approval posture, create task, and start safe run when route support exists.
+- Local runtime exposes cockpit read state and queue-only task handoff routes without generic domain execution.
+- Browser adapter parses cockpit DTOs and calls only task, approval, memory, ontology-bootstrap, scheduler-wake, and refresh routes; it has no generic run-start route.
+- The Agent workspace supports the primary workflow: give Cestus Agent a task with only persisted task fields, show readiness/approval posture in read-only cockpit panels, and queue the task.
 - The Agent workspace shows task queue, run detail, run steps, model invocation audit summaries, context pack summaries, memory snippets, pending approvals, blocked reasons, and final handoff artifacts.
+- Context pack audit summaries use canonical `omissionCount` and `stalenessInputCount`; the UI must not infer omission or staleness counts from provenance/source/artifact refs.
+- Final handoff artifacts appear only when runtime supplies matching canonical handoff DTOs for the selected run; absence of a durable production handoff source remains explicit future work, not an invented cockpit projection.
 - The cockpit answers what the resident is watching, what it is doing, what it needs from the human, what is blocked, what changed, and what evidence supports it.
 - No UI control or local-runtime route directly sends PRRs, transfers provider bytes, exports, clears legal locks, executes repairs, accepts graph truth, imports legacy material, or stages legacy material.
 - Scheduler wake remains separate unless the scheduler branch has landed the exact route contract and this branch has adapted to it.

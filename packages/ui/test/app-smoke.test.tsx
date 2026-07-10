@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { PrrWorkspaceDto } from "../../prr/src/read-api.js";
 import { prrWorkspaceSeedEvents } from "../../prr/src/workspace-seed.js";
+import { buildAgentCockpit } from "../../agent/src/cockpit.js";
 import { App } from "../src/App.js";
 import type { AgentApprovalCockpitDto, AgentCockpitDto, AgentStatusDto } from "../src/agent/agent-types.js";
 import { createStaticOperatorStatusAdapter } from "../src/operator-status/operator-status-adapter.js";
@@ -14,6 +15,7 @@ import {
   type RequestsWorkspaceAdapter
 } from "../src/requests/request-adapter.js";
 import { buildTestRequestsWorkspace, createTestRequestsAdapter } from "./request-test-utils.js";
+import { agentMemoryDetail, agentMemoryList } from "./fixtures/agent-memory.js";
 
 describe("Cestus UI bootstrap", () => {
   const operatorStatusAdapter = createStaticOperatorStatusAdapter(appSmokeOperatorStatus);
@@ -107,12 +109,16 @@ describe("Cestus UI bootstrap", () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async (url: RequestInfo | URL) => {
       fetchCalls.push(String(url));
-      const requestUrl = String(url);
-      const body = requestUrl.endsWith("/api/agent/approvals")
+      const path = String(url);
+      const body = path.endsWith("/api/agent/approvals")
         ? appSmokeApprovalCockpit()
-        : requestUrl.endsWith("/api/agent/cockpit")
+        : path.endsWith("/api/agent/cockpit")
           ? appSmokeAgentCockpit()
-          : appSmokeAgentStatus();
+          : path.endsWith("/api/agent/memory?scope=all&state=all")
+            ? agentMemoryList()
+            : path.includes("/api/agent/memory/")
+              ? agentMemoryDetail()
+              : appSmokeAgentStatus();
       return new Response(JSON.stringify(body), {
         status: 200,
         headers: { "content-type": "application/json" }
@@ -129,7 +135,15 @@ describe("Cestus UI bootstrap", () => {
       expect(screen.getByText("Fake Local Model Provider")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "New request" })).not.toBeInTheDocument();
       expect(within(workspace).getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
-      expect(fetchCalls).toEqual(["/api/agent/status", "/api/agent/cockpit", "/api/agent/approvals"]);
+      expect(within(workspace).getByRole("button", { name: "Queue task" })).toBeInTheDocument();
+      expect(within(workspace).queryByRole("button", { name: /start run/i })).not.toBeInTheDocument();
+      expect(within(workspace).getByRole("button", { name: "Record memory" })).toBeInTheDocument();
+      expect(fetchCalls).toEqual(expect.arrayContaining([
+        "/api/agent/status",
+        "/api/agent/cockpit",
+        "/api/agent/approvals",
+        "/api/agent/memory?scope=all&state=all"
+      ]));
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -486,39 +500,11 @@ function appSmokeApprovalCockpit(): AgentApprovalCockpitDto {
 }
 
 function appSmokeAgentCockpit(): AgentCockpitDto {
-  return {
-    schemaVersion: "agent-cockpit.v1",
-    generatedAt: "2026-07-07T21:00:00.000Z",
-    summary: {
-      activeTaskCount: 0,
-      activeRunCount: 0,
-      pendingApprovalCount: 0,
-      activeLockCount: 0,
-      mergeAfterScheduler: false
-    },
-    taskQueue: [],
-    runQueue: [],
-    needsNext: [
-      {
-        kind: "quiet",
-        severity: "info",
-        label: "No active resident work is queued.",
-        safeAction: "review"
-      }
-    ],
-    memorySnippets: [],
-    forbiddenDirectEffects: [
-      "provider-byte-transfer",
-      "prr-send-followup",
-      "export-publication",
-      "destructive-repair",
-      "legal-escalation",
-      "lock-clearing",
-      "accepted-graph-review",
-      "legacy-raw-import",
-      "legacy-staging-execution"
-    ]
-  };
+  return buildAgentCockpit({
+    status: appSmokeAgentStatus(),
+    approvalCockpit: appSmokeApprovalCockpit(),
+    generatedAt: "2026-07-07T21:00:00.000Z"
+  });
 }
 
 const appSmokeOperatorStatus: OperatorStatusDto = {

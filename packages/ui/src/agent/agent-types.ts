@@ -7,6 +7,7 @@ export type {
   AgentCockpitNeedDto,
   AgentCockpitRunCardDto,
   AgentCockpitSelectedRunDto,
+  AgentCockpitSpecialistsDto,
   AgentCockpitTaskCardDto
 } from "../../../agent/src/cockpit.js";
 export type {
@@ -17,26 +18,30 @@ export type {
   AgentApprovalQueueApprovalClass,
   AgentApprovalQueueItemDto
 } from "../../../agent/src/approval-queue.js";
-import type { AgentApprovalQueueApprovalClass } from "../../../agent/src/approval-queue.js";
 import type { AgentTaskPriority } from "../../../agent/src/projection-types.js";
 import type {
+  AgentMemoryDetailDto,
+  AgentMemoryFiltersDto,
+  AgentMemoryListDto,
+  AgentMemoryMutationResult,
+  RecordAgentMemoryInput,
+  RetractAgentMemoryInput,
+  SupersedeAgentMemoryInput,
   AgentStatusDto as RuntimeAgentStatusDto
 } from "../../../agent/src/runtime-types.js";
-import type { AgentSpecialistRunType } from "../../../agent/src/specialists.js";
 
-export type { AgentRuntimeDiagnosticDto } from "../../../agent/src/runtime-types.js";
+export type {
+  AgentMemoryDetailDto,
+  AgentMemoryFiltersDto,
+  AgentMemoryListDto,
+  AgentRuntimeDiagnosticDto
+} from "../../../agent/src/runtime-types.js";
 
-type BrowserAgentToolRequestDto = Omit<
-  RuntimeAgentStatusDto["toolRequests"][number],
-  "requiredApprovalClass" | "approvalClass"
-> & {
-  readonly requiredApprovalClass: AgentApprovalQueueApprovalClass;
-  readonly approvalClass?: AgentApprovalQueueApprovalClass | undefined;
-};
-
-export type AgentStatusDto = Omit<RuntimeAgentStatusDto, "toolRequests"> & {
-  readonly toolRequests: readonly BrowserAgentToolRequestDto[];
-};
+export type RecordMemoryInput = RecordAgentMemoryInput;
+export type SupersedeMemoryInput = SupersedeAgentMemoryInput;
+export type RetractMemoryInput = RetractAgentMemoryInput;
+export type AgentMemoryMutationResultDto = { readonly ok: true } & AgentMemoryMutationResult;
+export type AgentStatusDto = RuntimeAgentStatusDto;
 
 export interface OntologyBootstrapRouteDto {
   readonly schemaVersion: "agent-ontology-bootstrap-route.v1";
@@ -77,26 +82,8 @@ export interface CreateAgentTaskInput {
   readonly description?: string;
 }
 
-export interface StartAgentRunInput {
-  readonly runId: string;
-  readonly taskId: string;
-  readonly runType: AgentSpecialistRunType;
-  readonly scope:
-    | { readonly kind: "workspace"; readonly refs: readonly string[] }
-    | { readonly kind: "investigation"; readonly refs: readonly string[] };
-  readonly sourceEventIds?: readonly string[];
-  readonly inputArtifactHashes?: readonly string[];
-}
-
 export interface AgentTaskCreateResultDto {
   readonly ok: true;
   readonly taskId: string;
-  readonly eventIds: readonly string[];
-}
-
-export interface AgentRunStartResultDto {
-  readonly ok: true;
-  readonly schemaVersion: "agent-run-start-result.v1";
-  readonly runId: string;
   readonly eventIds: readonly string[];
 }

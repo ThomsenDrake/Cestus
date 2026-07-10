@@ -1,9 +1,19 @@
 export * from "./context-packs.js";
+export * from "./memory.js";
 export * from "./prompt-artifacts.js";
 export * from "./cockpit.js";
 export * from "./approval-cockpit.js";
 export * from "./approval-queue.js";
 export * from "./execution-loop.js";
+export * from "./adapters/legacy-staging.js";
+export * from "./adapters/accepted-graph-review.js";
+export * from "./adapters/export-report.js";
+export * from "./adapters/provider-byte-transfer.js";
+export * from "./adapters/prr-correspondence.js";
+export * from "./adapters/destructive-repair.js";
+export * from "./domain-execution-descriptors.js";
+export * from "./domain-execution-adapter-registry.js";
+export * from "./domain-execution-dispatcher.js";
 export * from "./execution-types.js";
 export * from "./projection.js";
 export * from "./projection-types.js";
@@ -28,9 +38,18 @@ export {
   type CredentialReferenceStatus
 } from "./credential-reference.js";
 export * from "./secret-store.js";
+export * from "./scheduler-types.js";
+export * from "./scheduler.js";
 export {
   approvedAgentSpecialistRunTypes,
   specialistExecutionStatusFor,
   type AgentSpecialistRunType
 } from "./specialists.js";
+export * from "./specialist-workflows.js";
+export * from "./specialist-handoffs.js";
+export * from "./specialist-readiness.js";
+export * from "./specialist-runner-kernel.js";
+export * from "./prr-negotiation-workflow.js";
+export * from "./investigation-planner-workflow.js";
+export * from "./evidence-triage-workflow.js";
 export * from "./tool-gateway.js";

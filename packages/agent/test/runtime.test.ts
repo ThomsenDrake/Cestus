@@ -59,6 +59,29 @@ describe("agent runtime core", () => {
     expect(status.identity?.workspaceId).toBe("ws_case_001");
   });
 
+  it("keeps memory reads read-only and rebuilt from ledger events", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now: fixedNow });
+
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.recordMemory({
+      memoryId: "mem_runtime_read_only",
+      scope: "workspace",
+      memoryKind: "agent-observation",
+      summary: "Working memory must stay a read-only projection surface.",
+      sourceEventIds: ["evt_agent_task_created_runtime"],
+      confidence: 0.75
+    });
+    const beforeReads = await ledger.readAll();
+    const list = await runtime.listMemory({ state: "active" });
+    const detail = await runtime.memoryDetail("mem_runtime_read_only");
+    const afterReads = await ledger.readAll();
+
+    expect(afterReads).toHaveLength(beforeReads.length);
+    expect(list.items.map((item) => item.memoryId)).toEqual(["mem_runtime_read_only"]);
+    expect(detail?.memory.memoryId).toBe("mem_runtime_read_only");
+  });
+
   it("invokes fake providers through resident-agent events only", async () => {
     const ledger = new InMemoryEventLedger();
     const runtime = createAgentRuntime({
@@ -242,6 +265,61 @@ describe("agent runtime core", () => {
     expect(result.ok && Object.keys(result.usage ?? {})).toEqual(["inputUnits", "outputUnits"]);
     expect(resultJson).not.toContain("sk-live-value");
     expect(ledgerJson).toContain("agent.model-invocation.completed");
+    expect(ledgerJson).not.toContain("sk-live-value");
+  });
+
+  it("can return safe provider output text for local structured workflow parsing without appending it", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = await createPreparedRuntime(ledger, [
+      new FakeModelProvider({
+        providerId: "provider_fake_local",
+        modelFamilies: ["fake-local"],
+        responseText: "{\"summary\":\"safe structured output\"}"
+      })
+    ]);
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_structured_output",
+      runId: "run_fake_model",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      inputArtifactHash,
+      credentialRef: { credentialRefId: "agent_credref_local", providerId: "provider_fake_local", kind: "local-no-secret" },
+      returnOutputText: true
+    });
+
+    const ledgerJson = JSON.stringify(await ledger.readAll());
+    expect(result).toMatchObject({ ok: true, outputText: "{\"summary\":\"safe structured output\"}" });
+    expect(ledgerJson).toContain("agent.model-invocation.completed");
+    expect(ledgerJson).not.toContain("safe structured output");
+  });
+
+  it("refuses captured provider output text that is not secret-safe", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = await createPreparedRuntime(ledger, [
+      new FakeModelProvider({
+        providerId: "provider_fake_local",
+        modelFamilies: ["fake-local"],
+        responseText: "api key sk-live-value"
+      })
+    ]);
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_unsafe_structured_output",
+      runId: "run_fake_model",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      inputArtifactHash,
+      credentialRef: { credentialRefId: "agent_credref_local", providerId: "provider_fake_local", kind: "local-no-secret" },
+      returnOutputText: true
+    });
+
+    const events = await ledger.readAll();
+    const ledgerJson = JSON.stringify(events);
+    expect(result).toMatchObject({ ok: false, error: { category: "provider", severity: "error" } });
+    expect(events.map((event) => event.type)).toContain("agent.model-invocation.failed");
+    expect(events.map((event) => event.type)).not.toContain("agent.model-invocation.completed");
+    expect(JSON.stringify(result)).not.toContain("sk-live-value");
     expect(ledgerJson).not.toContain("sk-live-value");
   });
 

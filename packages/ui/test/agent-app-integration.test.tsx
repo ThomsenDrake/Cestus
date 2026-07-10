@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { buildAgentCockpit } from "../../agent/src/cockpit.js";
 import { App } from "../src/App.js";
 import { createStaticAgentAdapter, type AgentAdapter } from "../src/agent/agent-adapter.js";
 import type {
@@ -13,6 +14,7 @@ import { createStaticIngestionWorkspaceAdapter } from "../src/ingestion/ingestio
 import { createStaticOperatorStatusAdapter } from "../src/operator-status/operator-status-adapter.js";
 import type { OperatorStatusDto } from "../src/operator-status/operator-status-types.js";
 import { createTestRequestsAdapter } from "./request-test-utils.js";
+import { agentMemoryList } from "./fixtures/agent-memory.js";
 
 describe("agent app integration", () => {
   afterEach(() => {
@@ -81,7 +83,7 @@ describe("agent app integration", () => {
     }
   });
 
-  it("keeps the Agent workspace decision-only even while exposing safe task and run controls", async () => {
+  it("keeps the Agent workspace decision-only while exposing queue and memory controls", async () => {
     render(
       <App
         requestsAdapter={createTestRequestsAdapter()}
@@ -98,8 +100,11 @@ describe("agent app integration", () => {
     expect(screen.queryByRole("button", { name: /execute|send|export|repair|clear lock/i })).not.toBeInTheDocument();
     const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
     expect(within(workspace).getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
-    expect(within(workspace).getByRole("button", { name: "Create task" })).toBeInTheDocument();
-    expect(within(workspace).getByRole("button", { name: "Create task and start run" })).toBeInTheDocument();
+    expect(within(workspace).getByRole("button", { name: "Queue task" })).toBeInTheDocument();
+    expect(within(workspace).queryByRole("button", { name: /start run/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve exact preview" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Deny request" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Record memory" })).toBeInTheDocument();
   });
 
   it("does not carry selected Command decision rail controls into the Agent module", async () => {
@@ -121,8 +126,10 @@ describe("agent app integration", () => {
     const workspace = screen.getByRole("region", { name: "Resident agent workspace" });
     expect(screen.queryByRole("button", { name: "Back to agent brief" })).not.toBeInTheDocument();
     expect(screen.queryByRole("complementary", { name: "Decision rail" })).not.toBeInTheDocument();
-    expect(within(workspace).getByRole("button", { name: "Create task" })).toBeInTheDocument();
-    expect(within(workspace).getByRole("button", { name: "Create task and start run" })).toBeInTheDocument();
+    expect(within(workspace).getByRole("button", { name: "Queue task" })).toBeInTheDocument();
+    expect(within(workspace).queryByRole("button", { name: /start run/i })).not.toBeInTheDocument();
+    expect(within(workspace).getByRole("button", { name: "Refresh agent status" })).toBeInTheDocument();
+    expect(within(workspace).getByRole("button", { name: "Record memory" })).toBeInTheDocument();
   });
 
   it("creates a task through the Agent adapter only, preserves description, and reloads status plus cockpit", async () => {
@@ -180,7 +187,7 @@ describe("agent app integration", () => {
     fireEvent.change(screen.getByLabelText("Description"), {
       target: { value: "Preserve the description field from the app composer." }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create task" }));
+    fireEvent.click(screen.getByRole("button", { name: "Queue task" }));
 
     await waitFor(() => expect(creates).toHaveLength(1));
     expect(creates).toEqual([expect.objectContaining({
@@ -189,17 +196,16 @@ describe("agent app integration", () => {
       description: "Preserve the description field from the app composer."
     })]);
     expect(String((creates[0] as { readonly taskId: string }).taskId)).toMatch(/^task_review-imported-archive_/);
-    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 1 });
+    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 2 });
   });
 
-  it("creates a task and starts a run through the Agent adapter only, then reloads status plus cockpit", async () => {
+  it("queues a task through the Agent adapter without exposing generic run start", async () => {
     const loads = {
       status: 0,
       cockpit: 0,
       approvals: 0
     };
     const creates: unknown[] = [];
-    const starts: unknown[] = [];
     const adapter: AgentAdapter = {
       ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), { cockpit: agentCockpit() }),
       async loadStatus() {
@@ -221,15 +227,6 @@ describe("agent app integration", () => {
           taskId: "task_created_for_run",
           eventIds: ["evt_task_created_for_run"]
         };
-      },
-      async startRun(input: unknown) {
-        starts.push(input);
-        return {
-          ok: true as const,
-          schemaVersion: "agent-run-start-result.v1" as const,
-          runId: "run_created_from_app",
-          eventIds: ["evt_run_started_from_app"]
-        };
       }
     };
 
@@ -247,20 +244,15 @@ describe("agent app integration", () => {
     fireEvent.change(screen.getByLabelText("Task title"), {
       target: { value: "Triaging evidence cluster" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create task and start run" }));
+    fireEvent.click(screen.getByRole("button", { name: "Queue task" }));
 
-    await waitFor(() => expect(starts).toHaveLength(1));
-    expect(creates).toHaveLength(1);
-    expect(starts).toEqual([expect.objectContaining({
-      taskId: "task_created_for_run",
-      runType: "evidence-triage",
-      scope: {
-        kind: "workspace",
-        refs: ["ws_case_001"]
-      }
+    await waitFor(() => expect(creates).toHaveLength(1));
+    expect(creates).toEqual([expect.objectContaining({
+      title: "Triaging evidence cluster",
+      priority: "normal"
     })]);
-    expect(String((starts[0] as { readonly runId: string }).runId)).toMatch(/^run_triaging-evidence-cluster_/);
-    expect(loads).toEqual({ status: 3, cockpit: 3, approvals: 1 });
+    expect(screen.queryByRole("button", { name: /start run/i })).not.toBeInTheDocument();
+    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 2 });
   });
 
   it("approves provider byte-transfer previews through the Agent adapter only and reloads status plus cockpit", async () => {
@@ -284,7 +276,9 @@ describe("agent app integration", () => {
       },
       async loadApprovalCockpit() {
         loads.approvals += 1;
-        return approvalCockpit();
+        return approvalCockpit({
+          pendingCount: loads.approvals === 1 ? 1 : 0
+        });
       },
       async approveToolRequest(input: unknown) {
         approvals.push(input);
@@ -320,7 +314,7 @@ describe("agent app integration", () => {
     }]);
     const refreshedCockpit = await screen.findByRole("region", { name: "Agent approval cockpit" });
     expect(within(refreshedCockpit).getByText("0 visible requests")).toBeInTheDocument();
-    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 1 });
+    expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 2 });
   });
 
   it("refreshes the Agent status, approval cockpit, and cockpit DTO together", async () => {
@@ -372,22 +366,13 @@ describe("agent app integration", () => {
     expect(loads).toEqual({ status: 2, cockpit: 2, approvals: 2 });
   });
 
-  it("shows a safe message when the run start route is unavailable and does not call approval routes", async () => {
+  it("shows a safe message when task queueing fails and does not call approval routes", async () => {
     const approvals: unknown[] = [];
     const denials: unknown[] = [];
-    const starts: unknown[] = [];
     const adapter: AgentAdapter = {
       ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), { cockpit: agentCockpit() }),
       async createTask() {
-        return {
-          ok: true as const,
-          taskId: "task_created_for_unavailable_run",
-          eventIds: ["evt_task_created_for_unavailable_run"]
-        };
-      },
-      async startRun(input: unknown) {
-        starts.push(input);
-        throw new Error("Agent run start route returned HTTP 503.");
+        throw new Error("Agent task queue route returned HTTP 503.");
       },
       async approveToolRequest(input: unknown) {
         approvals.push(input);
@@ -423,12 +408,277 @@ describe("agent app integration", () => {
     fireEvent.change(screen.getByLabelText("Task title"), {
       target: { value: "Restart blocked bootstrap" }
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create task and start run" }));
+    fireEvent.click(screen.getByRole("button", { name: "Queue task" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Task handoff could not be completed safely.");
-    expect(starts).toHaveLength(1);
     expect(approvals).toEqual([]);
     expect(denials).toEqual([]);
+  });
+
+  it("records and retracts agent memory through memory-only adapter handlers", async () => {
+    const memoryRecords: unknown[] = [];
+    const memoryRetractions: unknown[] = [];
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), agentMemoryList()),
+      async recordMemory(input: unknown) {
+        memoryRecords.push(input);
+        return {
+          ok: true as const,
+          memoryId: "mem_workspace_new",
+          eventIds: ["evt_memory_recorded_new"]
+        };
+      },
+      async retractMemory(input: unknown) {
+        memoryRetractions.push(input);
+        return {
+          ok: true as const,
+          memoryId: "mem_workspace_preference",
+          eventIds: ["evt_memory_retracted"]
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    const memory = await screen.findByRole("region", { name: "Agent working memory" });
+    fireEvent.change(within(memory).getByLabelText("New memory summary"), {
+      target: { value: "Keep summaries source-linked and compact." }
+    });
+    fireEvent.change(within(memory).getByLabelText("New memory source event IDs"), {
+      target: { value: "evt_agent_task_created" }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
+    fireEvent.click(within(memory).getByRole("button", { name: "Retract memory mem_workspace_preference" }));
+
+    expect(memoryRecords).toEqual([expect.objectContaining({
+      summary: "Keep summaries source-linked and compact.",
+      sourceEventIds: ["evt_agent_task_created"]
+    })]);
+    expect(memoryRetractions).toEqual([{
+      memoryId: "mem_workspace_preference",
+      rationale: "No longer useful."
+    }]);
+    expect(
+      screen.queryByRole("button", { name: /send prr|export|clear lock|accepted graph|provider transfer|repair/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("refreshes cockpit memory snippets after recording agent memory", async () => {
+    let recorded = false;
+    let cockpitLoads = 0;
+    const newMemory = {
+      ...agentMemoryList().items[0]!,
+      memoryId: "mem_workspace_new",
+      summary: "New cockpit memory snippet.",
+      sourceEventIds: ["evt_agent_task_created"],
+      createdAt: "2026-07-09T15:10:00.000Z",
+      memoryHistoryEntries: [
+        {
+          eventId: "evt_memory_recorded_new",
+          eventType: "agent.memory.recorded" as const,
+          occurredAt: "2026-07-09T15:10:00.000Z"
+        }
+      ],
+      eventIds: ["evt_memory_recorded_new"],
+      causationIds: ["evt_agent_task_created"]
+    };
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), agentMemoryList()),
+      async loadCockpit() {
+        cockpitLoads += 1;
+        return agentCockpit({
+          memorySnippets: recorded
+            ? [{
+                memoryId: "mem_workspace_new",
+                scope: "workspace",
+                summary: "New cockpit memory snippet.",
+                createdAt: "2026-07-09T15:10:00.000Z",
+                sourceEventIds: ["evt_agent_task_created"],
+                artifactHashes: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
+                confidence: 0.9
+              }]
+            : agentCockpit().memorySnippets
+        });
+      },
+      async loadMemory(filters) {
+        return agentMemoryList({
+          filters: {
+            scope: filters?.scope ?? "all",
+            state: filters?.state ?? "all"
+          },
+          items: recorded ? [newMemory, ...agentMemoryList().items] : agentMemoryList().items
+        });
+      },
+      async loadMemoryDetail(memoryId) {
+        const memory = memoryId === "mem_workspace_new"
+          ? newMemory
+          : agentMemoryList().items.find((item) => item.memoryId === memoryId) ?? agentMemoryList().items[0]!;
+        return {
+          schemaVersion: "agent-memory-detail.v1",
+          generatedAt: "2026-07-09T15:10:00.000Z",
+          truthBoundary: agentMemoryList().truthBoundary,
+          memory,
+          history: memory.memoryHistoryEntries
+        };
+      },
+      async recordMemory() {
+        recorded = true;
+        return {
+          ok: true as const,
+          memoryId: "mem_workspace_new",
+          eventIds: ["evt_memory_recorded_new"]
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    const runCockpit = await screen.findByRole("region", { name: "Agent run cockpit" });
+    fireEvent.click(within(runCockpit).getByRole("tab", { name: "Audit" }));
+    expect(within(runCockpit).getByText("Prior operator approved the same provider preview class.")).toBeInTheDocument();
+
+    const memory = await screen.findByRole("region", { name: "Agent working memory" });
+    fireEvent.change(within(memory).getByLabelText("New memory summary"), {
+      target: { value: "New cockpit memory snippet." }
+    });
+    fireEvent.change(within(memory).getByLabelText("New memory source event IDs"), {
+      target: { value: "evt_agent_task_created" }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
+
+    expect(await within(runCockpit).findByText("New cockpit memory snippet.")).toBeInTheDocument();
+    expect(await within(memory).findByText("mem_workspace_new")).toBeInTheDocument();
+    expect(cockpitLoads).toBeGreaterThanOrEqual(2);
+  });
+
+  it("submits operator-supplied supersede provenance instead of stale memory refs", async () => {
+    const supersedes: unknown[] = [];
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), agentMemoryList()),
+      async supersedeMemory(input: unknown) {
+        supersedes.push(input);
+        return {
+          ok: true as const,
+          memoryId: "mem_workspace_preference_sup",
+          eventIds: ["evt_memory_replacement", "evt_memory_superseded"]
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    const memory = await screen.findByRole("region", { name: "Agent working memory" });
+    fireEvent.change(within(memory).getByLabelText("Superseding summary mem_workspace_preference"), {
+      target: { value: "Use concise summaries with fresh provenance." }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding rationale mem_workspace_preference"), {
+      target: { value: "Operator replaced the original note after review." }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding source event IDs mem_workspace_preference"), {
+      target: { value: "evt_memory_review_update" }
+    });
+    fireEvent.change(within(memory).getByLabelText("Superseding artifact hashes mem_workspace_preference"), {
+      target: { value: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Supersede memory mem_workspace_preference" }));
+
+    expect(supersedes).toEqual([expect.objectContaining({
+      memoryId: "mem_workspace_preference",
+      sourceEventIds: ["evt_memory_review_update"],
+      artifactHashes: ["sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"]
+    })]);
+    expect(JSON.stringify(supersedes)).not.toContain("evt_memory_recorded");
+    expect(JSON.stringify(supersedes)).not.toContain("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  });
+
+  it("falls back to the first visible filtered memory after a mutation hides the returned memory id", async () => {
+    const memoryLoads: unknown[] = [];
+    const detailLoads: string[] = [];
+    const adapter: AgentAdapter = {
+      ...createStaticAgentAdapter(agentStatus(), approvalCockpit(), agentMemoryList()),
+      async loadMemory(filters) {
+        memoryLoads.push(filters ?? {});
+        return agentMemoryList({
+          filters: {
+            scope: filters?.scope ?? "all",
+            state: filters?.state ?? "all"
+          },
+          items: filters?.scope === "provider"
+            ? [agentMemoryList().items[1]!]
+            : agentMemoryList().items
+        });
+      },
+      async loadMemoryDetail(memoryId) {
+        detailLoads.push(memoryId);
+        const item = agentMemoryList().items.find((memory) => memory.memoryId === memoryId) ?? agentMemoryList().items[1]!;
+        return {
+          schemaVersion: "agent-memory-detail.v1",
+          generatedAt: "2026-07-09T15:00:00.000Z",
+          truthBoundary: agentMemoryList().truthBoundary,
+          memory: item,
+          history: item.memoryHistoryEntries
+        };
+      },
+      async recordMemory() {
+        return {
+          ok: true as const,
+          memoryId: "mem_workspace_hidden_by_filter",
+          eventIds: ["evt_memory_recorded_hidden"]
+        };
+      }
+    };
+
+    render(
+      <App
+        requestsAdapter={createTestRequestsAdapter()}
+        ingestionAdapter={createStaticIngestionWorkspaceAdapter({ mounted: false, diagnostics: [] })}
+        operatorStatusAdapter={createStaticOperatorStatusAdapter(operatorStatus())}
+        agentAdapter={adapter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Agent" }));
+    const memory = await screen.findByRole("region", { name: "Agent working memory" });
+    fireEvent.change(within(memory).getByLabelText("Memory scope"), {
+      target: { value: "provider" }
+    });
+    expect(await within(memory).findByText("mem_provider_note")).toBeInTheDocument();
+
+    fireEvent.change(within(memory).getByLabelText("New memory summary"), {
+      target: { value: "Provider-safe reminder." }
+    });
+    fireEvent.change(within(memory).getByLabelText("New memory source event IDs"), {
+      target: { value: "evt_provider_preview" }
+    });
+    fireEvent.click(within(memory).getByRole("button", { name: "Record memory" }));
+
+    expect(await within(memory).findByText("mem_provider_note")).toBeInTheDocument();
+    expect(detailLoads.at(-1)).toBe("mem_provider_note");
+    expect(memoryLoads).toContainEqual({ scope: "provider", state: "all" });
   });
 });
 
@@ -664,6 +914,7 @@ function agentCockpit(overrides: Partial<AgentCockpitDto> = {}): AgentCockpitDto
           status: "completed",
           inputArtifactHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           outputArtifactHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          omissionCount: 0,
           usageSummary: "1 prompt, 1 completion",
           retryable: false
         }
@@ -675,6 +926,7 @@ function agentCockpit(overrides: Partial<AgentCockpitDto> = {}): AgentCockpitDto
           safeSummary: "Workspace evidence context pack.",
           generatedAt: "2026-07-09T12:58:00.000Z",
           provenanceRefs: ["evt_task_created"],
+          stalenessInputCount: 0,
           sourceEventIds: ["evt_task_created"],
           artifactHashes: ["sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
         }
@@ -713,6 +965,10 @@ function agentCockpit(overrides: Partial<AgentCockpitDto> = {}): AgentCockpitDto
       "legacy-raw-import",
       "legacy-staging-execution"
     ],
+    specialists: buildAgentCockpit({
+      status: agentStatus(),
+      generatedAt: "2026-07-09T13:00:00.000Z"
+    }).specialists,
     ...overrides
   };
 }

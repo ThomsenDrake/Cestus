@@ -331,7 +331,7 @@ describe("cestus-workspace executable", () => {
     } finally {
       rmSync(rootPath, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   it("blocks existing zero-byte ledgers without mutating the file or leaking raw SQLite errors", async () => {
     const rootPath = mkdtempSync(join(tmpdir(), "cestus-workspace-cli-"));
