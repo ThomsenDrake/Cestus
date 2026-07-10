@@ -116,8 +116,8 @@ export async function buildSpecialistHandoffProjection(
   const context = collectContext(input);
   const history: SpecialistHandoffProjectionEntry[] = [];
 
-  const finalOutput = selectFinalOutput(context);
-  if (finalOutput !== undefined) {
+  const finalOutputs = selectFinalOutputs(context);
+  for (const finalOutput of finalOutputs) {
     history.push(outputPersistedEntry(finalOutput));
   }
 
@@ -165,6 +165,18 @@ export async function buildSpecialistHandoffProjection(
       continue;
     }
 
+    if (!handoffCausationIsValid(prepared.event, recorded.event)) {
+      addDiagnostic(context, {
+        code: "handoff-causation-mismatch",
+        message: "Prepared and recorded handoff causation must follow final-output, prior recorded handoff, and prepared event IDs.",
+        event: recorded.event,
+        handoffId: recorded.event.payload.handoffId,
+        relatedEventIds: [prepared.event.id, prepared.event.payload.finalOutputEventId],
+        artifactHashes: [recorded.event.payload.handoffManifestHash]
+      });
+      continue;
+    }
+
     if (!compactBindingsAgree(prepared.event.payload, recorded.event.payload)) {
       addDiagnostic(context, {
         code: "compact-binding-mismatch",
@@ -183,7 +195,7 @@ export async function buildSpecialistHandoffProjection(
     }
 
     const manifest = manifestResult.manifest;
-    const bindingError = validateBindingAgainstManifest(context, prepared.event, recorded.event, manifest, finalOutput);
+    const bindingError = validateBindingAgainstManifest(context, prepared.event, recorded.event, manifest);
     if (bindingError !== undefined) {
       addDiagnostic(context, {
         code: bindingError,
@@ -267,7 +279,7 @@ export async function buildSpecialistHandoffProjection(
     });
   }
 
-  if (finalOutput !== undefined) {
+  if (finalOutputs.length > 0) {
     return freezeProjection({
       state: "output-persisted",
       handoffs: [],
@@ -403,31 +415,45 @@ function isExactFinalOutput(event: FinalOutputEvent): boolean {
     event.payload.outputArtifactHashes !== undefined;
 }
 
-function selectFinalOutput(context: ProjectionContext): IndexedEvent<FinalOutputEvent> | undefined {
+function selectFinalOutputs(context: ProjectionContext): readonly IndexedEvent<FinalOutputEvent>[] {
   if (context.finalOutputs.length === 0) {
-    return undefined;
+    return [];
   }
 
-  const first = context.finalOutputs[0];
-  if (first === undefined) {
-    return undefined;
-  }
-  const rest = context.finalOutputs.slice(1);
-  for (const next of rest) {
-    if (!sameFinalOutput(first.event, next.event)) {
+  const firstByScope = new Map<string, IndexedEvent<FinalOutputEvent>>();
+  for (const finalOutput of context.finalOutputs) {
+    const scope = finalOutputScopeKey(context, finalOutput.event);
+    const prior = firstByScope.get(scope);
+    if (prior === undefined) {
+      firstByScope.set(scope, finalOutput);
+      continue;
+    }
+
+    if (!sameFinalOutput(prior.event, finalOutput.event)) {
       addDiagnostic(context, {
         code: "conflicting-final-output",
         message: "Conflicting final-output step events exist for the same projection scope.",
-        event: next.event,
-        relatedEventIds: [first.event.id, next.event.id],
+        event: finalOutput.event,
+        relatedEventIds: [prior.event.id, finalOutput.event.id],
         artifactHashes: [
-          ...(first.event.payload.outputArtifactHashes ?? []),
-          ...(next.event.payload.outputArtifactHashes ?? [])
+          ...(prior.event.payload.outputArtifactHashes ?? []),
+          ...(finalOutput.event.payload.outputArtifactHashes ?? [])
         ]
       });
     }
   }
-  return first;
+
+  return context.finalOutputs;
+}
+
+function finalOutputScopeKey(context: ProjectionContext, event: FinalOutputEvent): string {
+  const runIdentity = context.runIdentities.get(event.payload.runId);
+  return [
+    event.payload.runId,
+    runIdentity?.taskId ?? "",
+    runIdentity?.runType ?? "",
+    event.payload.stepId
+  ].join("\u0000");
 }
 
 function sameFinalOutput(left: FinalOutputEvent, right: FinalOutputEvent): boolean {
@@ -436,6 +462,15 @@ function sameFinalOutput(left: FinalOutputEvent, right: FinalOutputEvent): boole
     left.payload.stepSchemaId === right.payload.stepSchemaId &&
     left.payload.idempotencyKey === right.payload.idempotencyKey &&
     sameStringArray(left.payload.outputArtifactHashes ?? [], right.payload.outputArtifactHashes ?? []);
+}
+
+function handoffCausationIsValid(prepared: HandoffPreparedEvent, recorded: HandoffRecordedEvent): boolean {
+  const expectedPreparedCausation = prepared.payload.supersedesHandoffId === undefined
+    ? prepared.payload.finalOutputEventId
+    : prepared.payload.supersedesEventId;
+  return expectedPreparedCausation !== undefined &&
+    prepared.context.causationId === expectedPreparedCausation &&
+    recorded.context.causationId === prepared.id;
 }
 
 async function readAndVerifyManifest(
@@ -519,8 +554,7 @@ function validateBindingAgainstManifest(
   context: ProjectionContext,
   prepared: HandoffPreparedEvent,
   recorded: HandoffRecordedEvent,
-  manifest: SpecialistHandoffManifest,
-  finalOutput: IndexedEvent<FinalOutputEvent> | undefined
+  manifest: SpecialistHandoffManifest
 ): string | undefined {
   if (!compactBindingMatchesManifest(prepared.payload, manifest) || !compactBindingMatchesManifest(recorded.payload, manifest)) {
     return "compact-binding-mismatch";
@@ -535,7 +569,8 @@ function validateBindingAgainstManifest(
     return "compact-binding-mismatch";
   }
 
-  if (finalOutput === undefined || finalOutput.event.id !== manifest.finalOutputEventId) {
+  const finalOutput = findFinalOutputForManifest(context, manifest);
+  if (finalOutput === undefined) {
     return "final-output-mismatch";
   }
 
@@ -551,6 +586,16 @@ function validateBindingAgainstManifest(
   }
 
   return undefined;
+}
+
+function findFinalOutputForManifest(
+  context: ProjectionContext,
+  manifest: SpecialistHandoffManifest
+): IndexedEvent<FinalOutputEvent> | undefined {
+  return context.finalOutputs.find((item) =>
+    item.event.id === manifest.finalOutputEventId &&
+    item.event.payload.runId === manifest.runId
+  );
 }
 
 function compactBindingsAgree(
@@ -609,6 +654,18 @@ function validateVerifiedHandoffs(context: ProjectionContext, records: readonly 
   }
 
   for (const record of records) {
+    if (record.handoff.handoffRevision > 1 && record.manifest.supersedesHandoffId === undefined) {
+      addDiagnostic(context, {
+        code: "supersession-violation",
+        message: "Higher-revision handoffs must explicitly supersede a prior recorded handoff.",
+        event: record.recorded,
+        handoffId: record.handoff.handoffId,
+        relatedEventIds: [record.recorded.id],
+        artifactHashes: [record.manifestHash]
+      });
+      continue;
+    }
+
     if (record.manifest.supersedesHandoffId === undefined) {
       continue;
     }
@@ -649,30 +706,27 @@ function sameSupersessionAnchor(prior: VerifiedHandoffRecord, next: VerifiedHand
 }
 
 function validateTerminalOrder(context: ProjectionContext, verified: readonly VerifiedHandoffRecord[]): void {
-  const firstRecordedIndex = verified.reduce<number | undefined>(
-    (minimum, record) => minimum === undefined ? record.recordedIndex : Math.min(minimum, record.recordedIndex),
-    undefined
-  );
-
   for (const terminal of context.terminals) {
-    if (terminal.event.type === "agent.specialist-run.failed" && firstRecordedIndex === undefined && context.finalOutputs.length === 0) {
+    const sameRunRecords = verified.filter((record) => record.handoff.runId === terminal.event.payload.runId);
+    const sameRunFinalOutputs = context.finalOutputs.filter((item) => item.event.payload.runId === terminal.event.payload.runId);
+
+    if (terminal.event.type === "agent.specialist-run.failed" && sameRunRecords.length === 0 && sameRunFinalOutputs.length === 0) {
       continue;
     }
 
-    if (firstRecordedIndex === undefined || terminal.index < firstRecordedIndex) {
+    const beforeTerminal = sameRunRecords.filter((record) => record.recordedIndex < terminal.index);
+    if (beforeTerminal.length === 0) {
       addDiagnostic(context, {
         code: "terminal-before-handoff",
         message: "Terminal run state appears before a verified recorded handoff.",
         event: terminal.event,
-        relatedEventIds: verified.map((record) => record.recorded.id),
+        relatedEventIds: sameRunRecords.map((record) => record.recorded.id),
         artifactHashes: terminal.event.type === "agent.specialist-run.completed" ? terminal.event.payload.outputArtifactHashes : []
       });
       continue;
     }
 
-    const selected = [...verified]
-      .filter((record) => record.handoff.runId === terminal.event.payload.runId && record.recordedIndex < terminal.index)
-      .at(-1);
+    const selected = beforeTerminal.at(-1);
     if (selected === undefined) {
       continue;
     }
@@ -698,17 +752,20 @@ function isTaskCompleted(context: ProjectionContext, selected: VerifiedHandoffRe
 
   const terminal = context.terminals.find((item) =>
     item.index > selected.recordedIndex &&
-    item.event.payload.runId === selected.handoff.runId
+    item.event.type === "agent.specialist-run.completed" &&
+    item.event.payload.runId === selected.handoff.runId &&
+    item.event.context.causationId === selected.recorded.id
   );
   if (terminal === undefined) {
     return false;
   }
 
   return context.taskStatuses.some((item) =>
-    item.index > selected.recordedIndex &&
+    item.index > terminal.index &&
     item.event.payload.taskId === selected.handoff.taskId &&
     item.event.payload.runId === selected.handoff.runId &&
-    item.event.payload.status === "completed"
+    item.event.payload.status === "completed" &&
+    item.event.context.causationId === terminal.event.id
   );
 }
 
