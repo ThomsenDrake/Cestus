@@ -269,6 +269,126 @@ describe("investigative context packs", () => {
       items: { evidence: [] }
     })).toThrow(/evidence-summary payload/i);
   });
+
+  it("binds injected policy, ontology, and pack versions into canonical payload provenance", async () => {
+    const first = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({
+        metadata: {
+          policyVersion: "policy.v1",
+          ontologyCoreVersion: "ontology.v1",
+          packVersions: { ingestion: "ingestion.v1" }
+        }
+      }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+    const second = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({
+        metadata: {
+          policyVersion: "policy.v2",
+          ontologyCoreVersion: "ontology.v2",
+          packVersions: { ingestion: "ingestion.v2" }
+        }
+      }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+
+    expect(first.payload.packVersions).toEqual({ ingestion: "ingestion.v1" });
+    expect(first.payload.ontologyCoreVersion).toBe("ontology.v1");
+    expect(first.ref.policyVersion).toBe("policy.v1");
+    expect(first.ref.contentHash).not.toBe(second.ref.contentHash);
+  });
+
+  it("rejects evidence rows whose ingestion event is not selected provenance", async () => {
+    const row = evidenceRow("ev_contract_001", "evt_swapped_001");
+    await expect(buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({
+        evidenceRows: [row],
+        selection: fixedSelection({ ...selectionBody(), scope: { kind: "workspace", id: "ws_main" } })
+      }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    })).rejects.toMatchObject({ code: "selection-row-mismatch" });
+  });
+
+  it("rejects malformed nested evidence-summary sections", async () => {
+    const resolved = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+    const invalidPayloads = [
+      { ...resolved.payload, truthBoundary: { evidenceIsReadOnly: false, rawContentExcluded: true } },
+      { ...resolved.payload, items: [{ evidenceId: "ev_bad" }] },
+      { ...resolved.payload, omissions: [{ reasonCode: "budget-row-omitted" }] },
+      { ...resolved.payload, stalenessInputs: [] },
+      { ...resolved.payload, selectionManifest: { manifestVersion: "investigative-selection-manifest.v1" } },
+      { ...resolved.payload, packVersions: {} },
+      { ...resolved.payload, packVersions: { ingestion: 1 } }
+    ];
+
+    for (const payload of invalidPayloads) {
+      expect(() => evidenceSummaryPayloadParser.parsePayload(payload)).toThrow(/evidence-summary payload/i);
+    }
+  });
+
+  it("canonicalizes equivalent selected evidence ordering before deriving content hashes", async () => {
+    const rows = [evidenceRow("ev_alpha_001", "evt_ev_alpha_001"), evidenceRow("ev_beta_001", "evt_ev_beta_001")];
+    const body = {
+      ...selectionBodyForRows(rows),
+      scope: { kind: "workspace" as const, id: "ws_main" }
+    } satisfies InvestigativeSelectionManifestBody;
+    const reversed = {
+      ...body,
+      includedRefs: [...body.includedRefs].reverse().map((ref) => ({ ...ref, sourceEventIds: [...ref.sourceEventIds].reverse() })),
+      aggregateOmissions: [...body.aggregateOmissions].reverse()
+    } satisfies InvestigativeSelectionManifestBody;
+    const first = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({ evidenceRows: rows, selection: fixedSelection(body) }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+    const second = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({ evidenceRows: rows, selection: fixedSelection(reversed) }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+
+    expect(first.payload).toEqual(second.payload);
+    expect(first.ref.contentHash).toBe(second.ref.contentHash);
+  });
+
+  it("trims optional parse details into aggregate omissions before rejecting the context budget", async () => {
+    const row = {
+      ...evidenceRow("ev_contract_001", "evt_evidence_ingested_001"),
+      parseJobs: Array.from({ length: 10 }, (_, index) => ({
+        parseJobId: `parse_job_${index}`,
+        lane: "extract",
+        parserName: "parser",
+        parserVersion: "v1",
+        state: "complete",
+        outputHash: `sha256:${"a".repeat(60)}${String(index).padStart(4, "0")}` as `sha256:${string}`
+      }))
+    } satisfies InvestigativeEvidenceRow;
+    const full = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({ evidenceRows: [row] }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+    const trimmed = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({ evidenceRows: [row] }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100),
+      sizeBudgetBytes: full.ref.sizeBytes - 500
+    });
+
+    expect(trimmed.ref.sizeBytes).toBeLessThanOrEqual(full.ref.sizeBytes - 500);
+    expect(trimmed.payload.items[0]!.parseJobs.length).toBeLessThan(row.parseJobs.length);
+    expect(trimmed.payload.omissions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ reasonCode: "budget-row-omitted", refKind: "parse-job", count: expect.any(Number) })
+    ]));
+  });
 });
 
 interface ReaderCounters {
@@ -326,6 +446,11 @@ interface CreateInvestigativeDepsInput {
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
   readonly evidenceRows?: readonly InvestigativeEvidenceRow[];
   readonly reverseEvidenceRows?: boolean;
+  readonly metadata?: {
+    readonly policyVersion: string;
+    readonly ontologyCoreVersion: string;
+    readonly packVersions: Readonly<Record<string, string>>;
+  };
 }
 
 function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): InvestigativeContextPackDependencies {
@@ -342,7 +467,7 @@ function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): Inve
             refId: row.evidenceId,
             sortKey: `evidence/${row.evidenceId}/${row.contentHash}`,
             contentHash: row.contentHash,
-            sourceEventIds: [`evt_${row.evidenceId}`],
+            sourceEventIds: [row.ingestionEventId],
             mandatory: true
           }))
         })
@@ -364,7 +489,8 @@ function createInvestigativeDeps(input: CreateInvestigativeDepsInput = {}): Inve
     ...(input.budgets === undefined ? {} : { budgets: input.budgets }),
     ...(input.registrationIdentity === undefined ? {} : { registrationIdentity: input.registrationIdentity }),
     ...(input.evidenceRows === undefined ? {} : { evidenceRows: input.evidenceRows }),
-    ...(input.reverseEvidenceRows === undefined ? {} : { reverseEvidenceRows: input.reverseEvidenceRows })
+    ...(input.reverseEvidenceRows === undefined ? {} : { reverseEvidenceRows: input.reverseEvidenceRows }),
+    ...(input.metadata === undefined ? {} : { metadata: input.metadata })
   });
 }
 
@@ -385,6 +511,11 @@ function createFakeInvestigativeDeps(input: {
   readonly registrationIdentity?: InvestigativeRegistrationIdentity;
   readonly evidenceRows?: readonly InvestigativeEvidenceRow[];
   readonly reverseEvidenceRows?: boolean;
+  readonly metadata?: {
+    readonly policyVersion: string;
+    readonly ontologyCoreVersion: string;
+    readonly packVersions: Readonly<Record<string, string>>;
+  };
 }): InvestigativeContextPackDependencies {
   const defaultEvidenceRow: InvestigativeEvidenceRow = {
     evidenceId: "ev_contract_001",
@@ -442,6 +573,11 @@ function createFakeInvestigativeDeps(input: {
     now() {
       return "2026-07-10T00:00:00.000Z";
     },
+    metadata: input.metadata ?? {
+      policyVersion: "policy.v1",
+      ontologyCoreVersion: "ontology.v1",
+      packVersions: { ingestion: "ingestion.v1" }
+    },
     ...(input.budgets === undefined ? {} : { budgets: input.budgets })
   };
 }
@@ -455,6 +591,42 @@ function evidenceRowsForBatching(count: number): readonly InvestigativeEvidenceR
     parseJobs: [],
     governanceTags: []
   }));
+}
+
+function evidenceRow(evidenceId: string, ingestionEventId: string): InvestigativeEvidenceRow {
+  return {
+    evidenceId,
+    ingestionEventId,
+    contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    occurrenceIds: [],
+    parseJobs: [],
+    governanceTags: []
+  };
+}
+
+function selectionBodyForRows(rows: readonly InvestigativeEvidenceRow[]): InvestigativeSelectionManifestBody {
+  return {
+    ...selectionBody(),
+    totalEligibleCount: rows.length,
+    includedRefs: rows.map((row) => ({
+      refKind: "evidence" as const,
+      refId: row.evidenceId,
+      sortKey: `evidence/${row.evidenceId}/${row.contentHash}`,
+      contentHash: row.contentHash,
+      sourceEventIds: [row.ingestionEventId],
+      mandatory: true
+    }))
+  };
+}
+
+function fixedSelection(body: InvestigativeSelectionManifestBody): InvestigativeSelectionCapability {
+  const manifest = { ...body, manifestHash: buildSelectionManifestHash(body) };
+  return {
+    capabilityVersion: "investigative-selection.v1",
+    select() {
+      return manifest;
+    }
+  };
 }
 
 function selectionBody(): InvestigativeSelectionManifestBody {

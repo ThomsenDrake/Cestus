@@ -259,11 +259,18 @@ export interface EvidenceSourcePostureCapability {
   checkEvidence(input: EvidenceSourcePostureCheckInput): Promise<EvidenceSourcePostureResult> | EvidenceSourcePostureResult;
 }
 
+export interface InvestigativeContextPackMetadata {
+  readonly policyVersion: string;
+  readonly ontologyCoreVersion: string;
+  readonly packVersions: Readonly<Record<string, string>>;
+}
+
 export interface InvestigativeContextPackDependencies {
   readonly selection: InvestigativeSelectionCapability;
   readonly evidenceReader: InvestigativeEvidenceReader;
   readonly evidenceSourcePosture: EvidenceSourcePostureCapability;
   readonly now: () => string;
+  readonly metadata: InvestigativeContextPackMetadata;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
 }
 
@@ -322,6 +329,7 @@ export interface EvidenceSummaryPayload extends InvestigativeContextPackPayloadB
   readonly schemaVersion: "evidence-summary.context.v1";
   readonly contextPackId: "evidence-summary.v1";
   readonly version: 1;
+  readonly ontologyCoreVersion: string;
   readonly truthBoundary: {
     readonly evidenceIsReadOnly: true;
     readonly rawContentExcluded: true;
@@ -470,7 +478,8 @@ export async function __testOnlyReadEvidenceSelectionProbe(
 export async function buildEvidenceSummaryContextPack(
   input: BuildInvestigativeContextPackInput
 ): Promise<ResolvedEvidenceSummaryContextPack> {
-  const manifest = await selectForPack("evidence-summary.v1", input);
+  const selectedManifest = await selectForPack("evidence-summary.v1", input);
+  const manifest = canonicalSelectionManifest(selectedManifest);
   const evidenceRefs = manifest.includedRefs.filter((ref) => ref.refKind === "evidence");
   const rows = await readSelectedEvidenceRows(input.deps.evidenceReader, manifest, evidenceRefs);
   const stalenessInputs: { kind: string; ref: string; value: string }[] = [];
@@ -483,6 +492,9 @@ export async function buildEvidenceSummaryContextPack(
     }
     if (row.rawActionField !== undefined) {
       throw new InvestigativeContextPackError("raw-content-forbidden", "raw-content-forbidden");
+    }
+    if (!ref.sourceEventIds.includes(row.ingestionEventId)) {
+      throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
     }
     assertEvidenceNarrativeSafety(row);
     const posture = await input.deps.evidenceSourcePosture.checkEvidence({
@@ -511,42 +523,223 @@ export async function buildEvidenceSummaryContextPack(
     }
   }
 
-  const payload: EvidenceSummaryPayload = {
-    schemaVersion: "evidence-summary.context.v1",
-    contextPackId: "evidence-summary.v1",
-    version: 1,
-    scope: manifest.scope,
-    truthBoundary: {
-      evidenceIsReadOnly: true,
-      rawContentExcluded: true
-    },
-    selectionManifest: manifest,
-    projectionHighWaterMarks: manifest.sourceProjectionHighWaterMarks,
-    packVersions: {},
-    items: items as unknown as EvidenceSummaryPayload["items"],
-    omissions: manifest.aggregateOmissions,
-    stalenessInputs
-  };
-  const parsedPayload = evidenceSummaryPayloadParser.parsePayload(payload);
-  const resolved = buildResolvedContextPack({
-    contextPackId: "evidence-summary.v1",
-    version: 1,
-    generatedAt: input.deps.now(),
-    payload: parsedPayload,
-    safeSummary: "Provider-safe evidence summary",
-    provenanceRefs: [...provenanceRefs].sort(compareText),
-    sourceEventIds: [...provenanceRefs].filter((ref) => ref.startsWith("evt_")).sort(compareText),
-    artifactHashes: [...provenanceRefs].filter((ref) => ref.startsWith("sha256:")).sort(compareText),
-    scope: manifest.scope,
-    stalenessInputs
-  });
   const budget = input.sizeBudgetBytes
     ?? input.deps.budgets?.["evidence-summary.v1"]
     ?? investigativeContextPackDefaultLimits.packBudgets["evidence-summary.v1"];
-  if (resolved.ref.sizeBytes > budget) {
+  const metadata = canonicalMetadata(input.deps.metadata);
+  const normalizedStalenessInputs = canonicalStalenessInputs(stalenessInputs);
+  const normalizedItems = [...items].sort((left, right) => compareText(left.evidenceId, right.evidenceId));
+  const fitted = fitEvidenceSummaryBudget({
+    manifest,
+    metadata,
+    items: normalizedItems,
+    omissions: canonicalOmissions(manifest.aggregateOmissions),
+    stalenessInputs: normalizedStalenessInputs,
+    budget
+  });
+  if (fitted === undefined) {
     throw new InvestigativeContextPackError("context-budget-exceeded", "context-budget-exceeded");
   }
-  return resolved as unknown as ResolvedEvidenceSummaryContextPack;
+  provenanceRefs.add(`policy:${metadata.policyVersion}`);
+  provenanceRefs.add(`ontology-core:${metadata.ontologyCoreVersion}`);
+  for (const [packId, version] of Object.entries(metadata.packVersions)) {
+    provenanceRefs.add(`pack:${packId}@${version}`);
+  }
+  return buildEvidenceSummaryResolvedPack({
+    payload: fitted.payload,
+    manifest,
+    now: input.deps.now,
+    provenanceRefs: [...provenanceRefs].sort(compareText),
+    stalenessInputs: normalizedStalenessInputs,
+    policyVersion: metadata.policyVersion
+  });
+}
+
+interface EvidenceSummaryBudgetInput {
+  readonly manifest: InvestigativeSelectionManifest;
+  readonly metadata: InvestigativeContextPackMetadata;
+  readonly items: readonly EvidenceSummaryItem[];
+  readonly omissions: readonly InvestigativeContextOmissionAggregate[];
+  readonly stalenessInputs: readonly { readonly kind: string; readonly ref: string; readonly value: string }[];
+  readonly budget: number;
+}
+
+function fitEvidenceSummaryBudget(input: EvidenceSummaryBudgetInput): { readonly payload: EvidenceSummaryPayload } | undefined {
+  let items = input.items;
+  let omissions = input.omissions;
+  while (true) {
+    const payload = createEvidenceSummaryPayload({ ...input, items, omissions });
+    const size = buildResolvedContextPack({
+      contextPackId: "evidence-summary.v1",
+      version: 1,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+      payload,
+      safeSummary: "Provider-safe evidence summary",
+      provenanceRefs: ["evidence-summary-budget-probe"]
+    }).ref.sizeBytes;
+    if (size <= input.budget) {
+      return { payload };
+    }
+    const trimmed = trimOneOptionalEvidenceDetail(items);
+    if (trimmed === undefined) {
+      return undefined;
+    }
+    items = trimmed.items;
+    omissions = appendBudgetOmission(omissions, trimmed.omission);
+  }
+}
+
+function createEvidenceSummaryPayload(input: Omit<EvidenceSummaryBudgetInput, "budget">): EvidenceSummaryPayload {
+  return evidenceSummaryPayloadParser.parsePayload({
+    schemaVersion: "evidence-summary.context.v1",
+    contextPackId: "evidence-summary.v1",
+    version: 1,
+    ontologyCoreVersion: input.metadata.ontologyCoreVersion,
+    scope: input.manifest.scope,
+    truthBoundary: { evidenceIsReadOnly: true, rawContentExcluded: true },
+    selectionManifest: input.manifest,
+    projectionHighWaterMarks: input.manifest.sourceProjectionHighWaterMarks,
+    packVersions: input.metadata.packVersions,
+    items: input.items,
+    omissions: input.omissions,
+    stalenessInputs: input.stalenessInputs
+  });
+}
+
+function buildEvidenceSummaryResolvedPack(input: {
+  readonly payload: EvidenceSummaryPayload;
+  readonly manifest: InvestigativeSelectionManifest;
+  readonly now: () => string;
+  readonly provenanceRefs: readonly string[];
+  readonly stalenessInputs: readonly { readonly kind: string; readonly ref: string; readonly value: string }[];
+  readonly policyVersion: string;
+}): ResolvedEvidenceSummaryContextPack {
+  return buildResolvedContextPack({
+    contextPackId: "evidence-summary.v1",
+    version: 1,
+    generatedAt: input.now(),
+    payload: input.payload,
+    safeSummary: "Provider-safe evidence summary",
+    provenanceRefs: input.provenanceRefs,
+    sourceEventIds: input.provenanceRefs.filter((ref) => ref.startsWith("evt_")),
+    artifactHashes: input.provenanceRefs.filter((ref) => ref.startsWith("sha256:")),
+    policyVersion: input.policyVersion,
+    scope: input.manifest.scope,
+    stalenessInputs: input.stalenessInputs
+  }) as unknown as ResolvedEvidenceSummaryContextPack;
+}
+
+function canonicalSelectionManifest(manifest: InvestigativeSelectionManifest): InvestigativeSelectionManifest {
+  const body = canonicalSelectionManifestBody(manifest);
+  return Object.freeze({ ...body, manifestHash: buildSelectionManifestHash(body) });
+}
+
+function canonicalMetadata(metadata: InvestigativeContextPackMetadata): InvestigativeContextPackMetadata {
+  assertSafeNonEmptyText(metadata.policyVersion, "policyVersion");
+  assertSafeNonEmptyText(metadata.ontologyCoreVersion, "ontologyCoreVersion");
+  const entries = Object.entries(metadata.packVersions);
+  if (entries.length === 0) {
+    throw new InvestigativeContextPackError("missing-provenance", "packVersions must not be empty");
+  }
+  const packVersions = Object.fromEntries(entries
+    .map(([packId, version]) => {
+      assertSafeNonEmptyText(packId, "packVersions key");
+      assertSafeNonEmptyText(version, "packVersions value");
+      return [packId, version] as const;
+    })
+    .sort(([left], [right]) => compareText(left, right)));
+  return Object.freeze({
+    policyVersion: metadata.policyVersion,
+    ontologyCoreVersion: metadata.ontologyCoreVersion,
+    packVersions: Object.freeze(packVersions)
+  });
+}
+
+function canonicalStalenessInputs(
+  inputs: readonly { readonly kind: string; readonly ref: string; readonly value: string }[]
+): readonly { readonly kind: string; readonly ref: string; readonly value: string }[] {
+  return Object.freeze([...inputs]
+    .map((input) => Object.freeze({ ...input }))
+    .sort((left, right) => compareByFields([left.kind, left.ref, left.value], [right.kind, right.ref, right.value])));
+}
+
+function canonicalOmissions(
+  omissions: readonly InvestigativeContextOmissionAggregate[]
+): readonly InvestigativeContextOmissionAggregate[] {
+  return canonicalSelectionManifestBody({
+    manifestVersion: "investigative-selection-manifest.v1",
+    scope: { kind: "selection", id: "omissions" },
+    sourceProjectionHighWaterMarks: {},
+    ordering: "ref-kind-ref-id-content-hash-v1",
+    window: { cursor: "omissions", offset: 0, limit: 1, stableSort: "ref-kind-ref-id-content-hash-v1" },
+    totalEligibleCount: 0,
+    includedRefs: [],
+    aggregateOmissions: omissions
+  }).aggregateOmissions;
+}
+
+function trimOneOptionalEvidenceDetail(items: readonly EvidenceSummaryItem[]): {
+  readonly items: readonly EvidenceSummaryItem[];
+  readonly omission: InvestigativeContextOmissionAggregate;
+} | undefined {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index]!;
+    if (item.parseJobs.length > 0) {
+      const parseJob = item.parseJobs[item.parseJobs.length - 1]!;
+      return {
+        items: Object.freeze(items.map((candidate, candidateIndex) => candidateIndex === index
+          ? { ...candidate, parseJobs: candidate.parseJobs.slice(0, -1) }
+          : candidate)),
+        omission: {
+          reasonCode: "budget-row-omitted",
+          refKind: "parse-job",
+          aggregateKey: "evidence-summary-optional-parse-detail",
+          count: 1,
+          sampleRefs: [{ refKind: "parse-job", refId: parseJob.parseJobId }]
+        }
+      };
+    }
+    const removedTagIndex = item.governanceTags.findIndex((tag) => tag.state === "removed");
+    if (removedTagIndex >= 0) {
+      const tag = item.governanceTags[removedTagIndex]!;
+      return {
+        items: Object.freeze(items.map((candidate, candidateIndex) => candidateIndex === index
+          ? { ...candidate, governanceTags: candidate.governanceTags.filter((_, tagIndex) => tagIndex !== removedTagIndex) }
+          : candidate)),
+        omission: {
+          reasonCode: "budget-row-omitted",
+          refKind: "governance-tag",
+          aggregateKey: "evidence-summary-optional-governance-detail",
+          count: 1,
+          sampleRefs: [{ refKind: "governance-tag", refId: `${item.evidenceId}:${tag.tag}` }]
+        }
+      };
+    }
+  }
+  return undefined;
+}
+
+function appendBudgetOmission(
+  omissions: readonly InvestigativeContextOmissionAggregate[],
+  omission: InvestigativeContextOmissionAggregate
+): readonly InvestigativeContextOmissionAggregate[] {
+  const existing = omissions.find((candidate) => candidate.reasonCode === omission.reasonCode
+    && candidate.refKind === omission.refKind && candidate.aggregateKey === omission.aggregateKey);
+  if (existing === undefined) {
+    return canonicalOmissions([...omissions, omission]);
+  }
+  return canonicalOmissions(omissions.map((candidate) => candidate === existing
+    ? {
+        ...candidate,
+        count: candidate.count + omission.count,
+        sampleRefs: canonicalSampleRefs([...(candidate.sampleRefs ?? []), ...(omission.sampleRefs ?? [])])
+      }
+    : candidate));
+}
+
+function canonicalSampleRefs(samples: readonly InvestigativeOmissionSampleRef[]): readonly InvestigativeOmissionSampleRef[] {
+  return Object.freeze([...samples].sort(compareOmissionSampleRefs)
+    .slice(0, investigativeContextPackDefaultLimits.omissionSampleLimit));
 }
 
 async function readSelectedEvidenceRows(
@@ -660,6 +853,7 @@ function parseEvidenceSummaryPayload(payload: unknown): EvidenceSummaryPayload {
     "schemaVersion",
     "contextPackId",
     "version",
+    "ontologyCoreVersion",
     "scope",
     "truthBoundary",
     "selectionManifest",
@@ -673,12 +867,168 @@ function parseEvidenceSummaryPayload(payload: unknown): EvidenceSummaryPayload {
   }
   const value = payload as Record<string, unknown>;
   if (value.schemaVersion !== "evidence-summary.context.v1" || value.contextPackId !== "evidence-summary.v1" || value.version !== 1
-    || !isPlainObject(value.scope) || !isPlainObject(value.truthBoundary) || !isPlainObject(value.selectionManifest)
-    || !isPlainObject(value.projectionHighWaterMarks) || !isPlainObject(value.packVersions)
-    || !Array.isArray(value.items) || !Array.isArray(value.omissions) || !Array.isArray(value.stalenessInputs)) {
+    || !isSafeNonEmptyText(value.ontologyCoreVersion) || !isScope(value.scope) || !isEvidenceTruthBoundary(value.truthBoundary)
+    || !isSelectionManifest(value.selectionManifest) || !isHighWaterMarks(value.projectionHighWaterMarks)
+    || !isPackVersions(value.packVersions) || !Array.isArray(value.items) || !value.items.every(isEvidenceSummaryItem)
+    || !Array.isArray(value.omissions) || !value.omissions.every(isOmission) || !Array.isArray(value.stalenessInputs)
+    || value.stalenessInputs.length === 0 || !value.stalenessInputs.every(isStalenessInput)) {
     throw new InvestigativeContextPackError("context-payload-missing", "evidence-summary payload invalid");
   }
   return payload as unknown as EvidenceSummaryPayload;
+}
+
+function isScope(value: unknown): boolean {
+  return isExactRecord(value, ["kind", "id"]) && isSafeNonEmptyText(value.kind) && isSafeNonEmptyText(value.id);
+}
+
+function isEvidenceTruthBoundary(value: unknown): boolean {
+  return isExactRecord(value, ["evidenceIsReadOnly", "rawContentExcluded"])
+    && value.evidenceIsReadOnly === true && value.rawContentExcluded === true;
+}
+
+function isHighWaterMarks(value: unknown): boolean {
+  return isPlainObject(value) && Object.values(value).every(isNonnegativeInteger);
+}
+
+function isPackVersions(value: unknown): boolean {
+  return isPlainObject(value) && Object.keys(value).length > 0
+    && Object.entries(value).every(([packId, version]) => isSafeNonEmptyText(packId) && isSafeNonEmptyText(version));
+}
+
+function isStalenessInput(value: unknown): boolean {
+  return isExactRecord(value, ["kind", "ref", "value"])
+    && isSafeNonEmptyText(value.kind) && isSafeNonEmptyText(value.ref) && isSafeNonEmptyText(value.value);
+}
+
+function isOmission(value: unknown): boolean {
+  if (!isPlainObject(value) || !hasOnlyKeys(value, ["reasonCode", "refKind", "aggregateKey", "count", "sampleRefs"])
+    || !hasRequiredKeys(value, ["reasonCode", "refKind", "aggregateKey", "count"])
+    || !isSafeNonEmptyText(value.reasonCode) || !isSafeNonEmptyText(value.refKind)
+    || !isSafeNonEmptyText(value.aggregateKey) || !isPositiveInteger(value.count)) {
+    return false;
+  }
+  return value.sampleRefs === undefined || (Array.isArray(value.sampleRefs) && value.sampleRefs.every(isOmissionSampleRef));
+}
+
+function isOmissionSampleRef(value: unknown): boolean {
+  return isPlainObject(value) && hasOnlyKeys(value, ["refKind", "refId", "contentHash"])
+    && hasRequiredKeys(value, ["refKind", "refId"])
+    && isSafeNonEmptyText(value.refKind) && isSafeNonEmptyText(value.refId)
+    && (value.contentHash === undefined || isContentHash(value.contentHash));
+}
+
+function isEvidenceSummaryItem(value: unknown): boolean {
+  if (!isPlainObject(value) || !hasOnlyKeys(value, [
+    "evidenceId", "ingestionEventId", "contentHash", "mediaType", "sizeBytes", "sourceCollectionId", "scanBatchId", "importBatchId",
+    "occurrenceIds", "parseJobs", "governanceTags", "duplicateGroup", "safeNarrative"
+  ]) || !hasRequiredKeys(value, ["evidenceId", "ingestionEventId", "contentHash", "occurrenceIds", "parseJobs", "governanceTags"])
+    || !isSafeNonEmptyText(value.evidenceId) || !isSafeNonEmptyText(value.ingestionEventId) || !isContentHash(value.contentHash)
+    || !Array.isArray(value.occurrenceIds) || !value.occurrenceIds.every(isSafeNonEmptyText)
+    || !Array.isArray(value.parseJobs) || !value.parseJobs.every(isParseJob)
+    || !Array.isArray(value.governanceTags) || !value.governanceTags.every(isGovernanceTag)) {
+    return false;
+  }
+  return (value.mediaType === undefined || isSafeNonEmptyText(value.mediaType))
+    && (value.sizeBytes === undefined || isNonnegativeInteger(value.sizeBytes))
+    && (value.sourceCollectionId === undefined || isSafeNonEmptyText(value.sourceCollectionId))
+    && (value.scanBatchId === undefined || isSafeNonEmptyText(value.scanBatchId))
+    && (value.importBatchId === undefined || isSafeNonEmptyText(value.importBatchId))
+    && (value.safeNarrative === undefined || isSafeNonEmptyText(value.safeNarrative))
+    && (value.duplicateGroup === undefined || (isExactRecord(value.duplicateGroup, ["groupId", "memberCount"])
+      && isSafeNonEmptyText(value.duplicateGroup.groupId) && isPositiveInteger(value.duplicateGroup.memberCount)));
+}
+
+function isParseJob(value: unknown): boolean {
+  return isPlainObject(value) && hasOnlyKeys(value, ["parseJobId", "lane", "parserName", "parserVersion", "state", "outputHash", "outputMediaType", "terminalEventId", "retryable"])
+    && hasRequiredKeys(value, ["parseJobId", "lane", "parserName", "parserVersion", "state"])
+    && isSafeNonEmptyText(value.parseJobId) && isSafeNonEmptyText(value.lane) && isSafeNonEmptyText(value.parserName)
+    && isSafeNonEmptyText(value.parserVersion) && isSafeNonEmptyText(value.state)
+    && (value.outputHash === undefined || isContentHash(value.outputHash))
+    && (value.outputMediaType === undefined || isSafeNonEmptyText(value.outputMediaType))
+    && (value.terminalEventId === undefined || isSafeNonEmptyText(value.terminalEventId))
+    && (value.retryable === undefined || typeof value.retryable === "boolean");
+}
+
+function isGovernanceTag(value: unknown): boolean {
+  return isPlainObject(value) && hasOnlyKeys(value, ["tag", "source", "state", "confidence", "safeRationale", "eventId"])
+    && hasRequiredKeys(value, ["tag", "source", "state", "eventId"])
+    && isSafeNonEmptyText(value.tag) && (value.source === "ai" || value.source === "human")
+    && (value.state === "active" || value.state === "removed") && isSafeNonEmptyText(value.eventId)
+    && (value.confidence === undefined || (typeof value.confidence === "number" && value.confidence >= 0 && value.confidence <= 1))
+    && (value.safeRationale === undefined || isSafeNonEmptyText(value.safeRationale));
+}
+
+function isSelectionManifest(value: unknown): boolean {
+  if (!isExactRecord(value, ["manifestVersion", "scope", "sourceProjectionHighWaterMarks", "ordering", "window", "totalEligibleCount", "includedRefs", "aggregateOmissions", "manifestHash"])
+    || value.manifestVersion !== "investigative-selection-manifest.v1" || value.ordering !== "ref-kind-ref-id-content-hash-v1"
+    || !isScope(value.scope) || !isHighWaterMarks(value.sourceProjectionHighWaterMarks) || !isSelectionWindow(value.window)
+    || !isNonnegativeInteger(value.totalEligibleCount) || !Array.isArray(value.includedRefs)
+    || !value.includedRefs.every(isIncludedRef) || !Array.isArray(value.aggregateOmissions) || !value.aggregateOmissions.every(isOmission)
+    || !isContentHash(value.manifestHash)) {
+    return false;
+  }
+  try {
+    assertSelectionManifestHash(value as unknown as InvestigativeSelectionManifest);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isSelectionWindow(value: unknown): boolean {
+  return isExactRecord(value, ["cursor", "offset", "limit", "stableSort"]) && isSafeNonEmptyText(value.cursor)
+    && isNonnegativeInteger(value.offset) && isPositiveInteger(value.limit)
+    && value.stableSort === "ref-kind-ref-id-content-hash-v1";
+}
+
+function isIncludedRef(value: unknown): boolean {
+  return isPlainObject(value) && hasOnlyKeys(value, ["refKind", "refId", "sortKey", "contentHash", "rowHash", "sourceEventIds", "mandatory"])
+    && hasRequiredKeys(value, ["refKind", "refId", "sortKey", "sourceEventIds", "mandatory"])
+    && isSafeNonEmptyText(value.refKind) && isSafeNonEmptyText(value.refId) && isSafeNonEmptyText(value.sortKey)
+    && Array.isArray(value.sourceEventIds) && value.sourceEventIds.every(isSafeNonEmptyText) && typeof value.mandatory === "boolean"
+    && (value.contentHash === undefined || isContentHash(value.contentHash)) && (value.rowHash === undefined || isContentHash(value.rowHash));
+}
+
+function isExactRecord(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  return isPlainObject(value) && Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return Object.keys(value).every((key) => keys.includes(key));
+}
+
+function hasRequiredKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return keys.every((key) => Object.hasOwn(value, key));
+}
+
+function isSafeNonEmptyText(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0) {
+    return false;
+  }
+  try {
+    assertAgentSecretSafeText(value, "evidence-summary payload");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isNonnegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return isNonnegativeInteger(value) && value > 0;
+}
+
+function assertSafeNonEmptyText(value: string, label: string): void {
+  if (!isSafeNonEmptyText(value)) {
+    throw new InvestigativeContextPackError("secret-detected", `${label} must be non-empty and secret-safe`);
+  }
+}
+
+function isContentHash(value: unknown): value is `sha256:${string}` {
+  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
 }
 
 function isPayloadWithExactKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
