@@ -18,8 +18,9 @@ Status: `in-progress`
 - Red command: `npm test -- packages/agent/test/prr-context-packs.test.ts` failed as expected because `../src/prr-context-packs.js` did not exist.
 - Green command: `npm test -- packages/agent/test/prr-context-packs.test.ts` passed: 1 test file, 5 tests.
 - Full verification: `npm run verify` passed: typecheck and repository verification completed with exit code 0.
+- Review fix verification: `npm test -- packages/agent/test/prr-context-packs.test.ts` passed with 8 tests; `npm run verify` passed after the provenance and citation hardening.
 
 ## Review
 
-- Review status: self-reviewed
+- Review status: fixes implemented; self-reviewed
 - Concerns: none recorded
