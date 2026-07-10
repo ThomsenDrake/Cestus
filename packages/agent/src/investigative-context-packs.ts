@@ -321,6 +321,21 @@ export interface GovernanceRestrictionRow {
   readonly safeReasonCode: string;
 }
 
+export interface KnowledgeEventSummary {
+  readonly eventId: string;
+  readonly type: string;
+  readonly contentHash?: `sha256:${string}`;
+  readonly ontologyCoreVersion?: string;
+  readonly packVersions?: Readonly<Record<string, string>>;
+}
+
+export interface KnowledgeEventReader {
+  readEventsByIds(input: {
+    readonly eventIds: readonly string[];
+    readonly limit: number;
+  }): Promise<readonly KnowledgeEventSummary[]> | readonly KnowledgeEventSummary[];
+}
+
 export interface EvidenceSourcePostureCheckInput {
   readonly evidenceId: string;
   readonly contentHash: `sha256:${string}`;
@@ -359,6 +374,7 @@ export interface InvestigativeContextPackDependencies {
   readonly graphReader: AcceptedGraphProjectionReader;
   readonly governanceReader: GovernancePostureReader;
   readonly agentLockReader: ResidentAgentLockReader;
+  readonly eventReader: KnowledgeEventReader;
   readonly evidenceSourcePosture: EvidenceSourcePostureCapability;
   readonly now: () => string;
   readonly metadata: InvestigativeContextPackMetadata;
@@ -809,9 +825,15 @@ export async function buildGovernanceLocksContextPack(
     restrictionRefs,
     await readSelectedGovernanceRestrictions(input.deps.governanceReader, manifest, restrictionRefs)
   );
+  const events = await readGovernanceProvenanceEvents(input.deps.eventReader, collectGovernanceEventIds(locks, restrictions));
   const metadata = canonicalMetadata(input.deps.metadata);
   const stalenessInputs = canonicalStalenessInputs([
     ...governanceHighWaterStalenessInputs(manifest.sourceProjectionHighWaterMarks),
+    ...events.map((event) => ({
+      kind: "governance-provenance-event-hash",
+      ref: event.eventId,
+      value: event.contentHash
+    })),
     ...locks.flatMap((row) => row.projectionEventIds.map((eventId) => ({
       kind: "resident-agent-lock-projection-event",
       ref: row.lockId,
@@ -846,7 +868,7 @@ export async function buildGovernanceLocksContextPack(
     omissions: canonicalOmissions(manifest.aggregateOmissions),
     stalenessInputs
   });
-  const provenanceRefs = governanceProvenanceRefs({ manifest, locks, restrictions, metadata });
+  const provenanceRefs = governanceProvenanceRefs({ manifest, locks, restrictions, events, metadata });
   const budget = input.sizeBudgetBytes
     ?? input.deps.budgets?.["governance-locks.v1"]
     ?? investigativeContextPackDefaultLimits.packBudgets["governance-locks.v1"];
@@ -870,6 +892,67 @@ export async function buildGovernanceLocksContextPack(
     policyVersion: metadata.policyVersion,
     sizeBudgetBytes: budget
   });
+}
+
+function collectGovernanceEventIds(
+  locks: readonly ResidentAgentLockRow[],
+  restrictions: readonly GovernanceRestrictionRow[]
+): readonly string[] {
+  const ids = new Set<string>();
+  for (const row of locks) {
+    for (const eventId of row.relatedEventIds) {
+      ids.add(eventId);
+    }
+    for (const eventId of row.projectionEventIds) {
+      ids.add(eventId);
+    }
+  }
+  for (const row of restrictions) {
+    for (const eventId of row.sourceEventIds) {
+      ids.add(eventId);
+    }
+    for (const provenanceRef of row.projectionProvenanceRefs) {
+      if (isEventId(provenanceRef)) {
+        ids.add(provenanceRef);
+      }
+    }
+  }
+  return Object.freeze([...ids].sort(compareText));
+}
+
+async function readGovernanceProvenanceEvents(
+  reader: KnowledgeEventReader,
+  eventIds: readonly string[]
+): Promise<readonly Required<KnowledgeEventSummary>[]> {
+  const rows: KnowledgeEventSummary[] = [];
+  for (let offset = 0; offset < eventIds.length; offset += readerBatchSize) {
+    const batch = eventIds.slice(offset, offset + readerBatchSize);
+    const batchRows = await reader.readEventsByIds({
+      eventIds: batch,
+      limit: readerBatchSize
+    });
+    rows.push(...batchRows);
+  }
+  return validateKnowledgeEventSummaries(eventIds, rows);
+}
+
+function validateKnowledgeEventSummaries(
+  eventIds: readonly string[],
+  rows: readonly KnowledgeEventSummary[]
+): readonly Required<KnowledgeEventSummary>[] {
+  const rowsById = mapUniqueRows(rows, (row) => row.eventId);
+  if (rowsById.size !== eventIds.length) {
+    throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
+  }
+  return Object.freeze(eventIds.map((eventId) => {
+    const row = rowsById.get(eventId);
+    if (row === undefined || row.eventId !== eventId || !isEventId(row.eventId) || !isSafeNonEmptyText(row.type)
+      || !isContentHash(row.contentHash) || !isSafeNonEmptyText(row.ontologyCoreVersion)
+      || !isPackVersions(row.packVersions)) {
+      throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
+    }
+    return row as Required<KnowledgeEventSummary>;
+  }));
 }
 
 async function readSelectedResidentAgentLocks(
@@ -1016,6 +1099,7 @@ function governanceProvenanceRefs(input: {
   readonly manifest: InvestigativeSelectionManifest;
   readonly locks: readonly ResidentAgentLockRow[];
   readonly restrictions: readonly GovernanceRestrictionRow[];
+  readonly events: readonly Required<KnowledgeEventSummary>[];
   readonly metadata: InvestigativeContextPackMetadata;
 }): readonly string[] {
   const refs = new Set<string>([input.manifest.manifestHash]);
@@ -1043,6 +1127,14 @@ function governanceProvenanceRefs(input: {
       refs.add(provenanceRef);
     }
     refs.add(`policy:${row.policyVersion}`);
+  }
+  for (const row of input.events) {
+    refs.add(row.eventId);
+    refs.add(row.contentHash);
+    refs.add(`ontology-core:${row.ontologyCoreVersion}`);
+    for (const [packId, version] of Object.entries(row.packVersions)) {
+      refs.add(`pack:${packId}@${version}`);
+    }
   }
   refs.add(`policy:${input.metadata.policyVersion}`);
   refs.add(`ontology-core:${input.metadata.ontologyCoreVersion}`);
@@ -1816,6 +1908,8 @@ function parseGovernanceLocksPayload(payload: unknown): GovernanceLocksPayload {
     || !isSafeNonEmptyText(value.ontologyCoreVersion) || !isScope(value.scope) || !isGovernanceTruthBoundary(value.truthBoundary)
     || !isSelectionManifest(value.selectionManifest) || !hasGovernanceHighWaterMarks(value.projectionHighWaterMarks)
     || !hasGovernanceHighWaterMarks((value.selectionManifest as Record<string, unknown>).sourceProjectionHighWaterMarks)
+    || !sameScope(value.scope, (value.selectionManifest as Record<string, unknown>).scope)
+    || !sameHighWaterMarks(value.projectionHighWaterMarks, (value.selectionManifest as Record<string, unknown>).sourceProjectionHighWaterMarks)
     || !isPackVersions(value.packVersions) || !isGovernanceLocksItems(value.items)
     || !Array.isArray(value.omissions) || !value.omissions.every(isOmission)
     || !Array.isArray(value.stalenessInputs) || value.stalenessInputs.length === 0
@@ -1966,8 +2060,22 @@ function isProjectionHighWaterStalenessInput(value: unknown): value is { readonl
     && value.kind === "projection-high-water-mark" && isSafeNonEmptyText(value.ref) && isSafeNonEmptyText(value.value);
 }
 
-function isScope(value: unknown): boolean {
+function isScope(value: unknown): value is InvestigativeContextPackScope {
   return isExactRecord(value, ["kind", "id"]) && isSafeNonEmptyText(value.kind) && isSafeNonEmptyText(value.id);
+}
+
+function sameScope(left: unknown, right: unknown): boolean {
+  return isScope(left) && isScope(right) && left.kind === right.kind && left.id === right.id;
+}
+
+function sameHighWaterMarks(left: unknown, right: unknown): boolean {
+  if (!isHighWaterMarks(left) || !isHighWaterMarks(right)) {
+    return false;
+  }
+  const leftEntries = Object.entries(left).sort(([leftKey], [rightKey]) => compareText(leftKey, rightKey));
+  const rightEntries = Object.entries(right).sort(([leftKey], [rightKey]) => compareText(leftKey, rightKey));
+  return leftEntries.length === rightEntries.length
+    && leftEntries.every(([key, value], index) => key === rightEntries[index]![0] && value === rightEntries[index]![1]);
 }
 
 function isEvidenceTruthBoundary(value: unknown): boolean {
@@ -1975,7 +2083,7 @@ function isEvidenceTruthBoundary(value: unknown): boolean {
     && value.evidenceIsReadOnly === true && value.rawContentExcluded === true;
 }
 
-function isHighWaterMarks(value: unknown): boolean {
+function isHighWaterMarks(value: unknown): value is Record<string, number> {
   return isPlainObject(value) && Object.values(value).every(isNonnegativeInteger);
 }
 
