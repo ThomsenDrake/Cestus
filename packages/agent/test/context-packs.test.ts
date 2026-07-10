@@ -156,6 +156,68 @@ describe("agent context packs", () => {
     registerLegacyBuilder(nullRegistry);
     await expect(nullRegistry.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.missing-payload");
   });
+
+  it("rejects unsafe raw resolver payloads with a machine-readable blocked code", async () => {
+    const ref = buildContextPackRef(resolvedContextPackSentinelInput);
+    const unsafePayload = ["safe"] as string[] & { extra?: string };
+    unsafePayload.extra = "unsafe";
+    const registry = createContextPackRegistry({ payloadResolver: async () => unsafePayload as never });
+    registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => ref,
+      parsePayload: (payload) => payload
+    });
+
+    await expect(registry.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.invalid-payload-shape");
+  });
+
+  it("requires serialized resolved packs to be reverified before execution", () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const verified = verifyResolvedContextPack(resolved, (payload) => payload);
+    const reloaded = JSON.parse(JSON.stringify(verified));
+
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [reloaded])).toThrow(/verified/i);
+    const reverified = verifyResolvedContextPack(reloaded, (payload) => payload);
+    expect(assertResolvedContextPacksForExecution([resolved.ref], [reverified])).toHaveLength(1);
+  });
+
+  it("rejects resolver payload hash and size mismatches", async () => {
+    const ref = buildContextPackRef(resolvedContextPackSentinelInput);
+    const register = (registry: ReturnType<typeof createContextPackRegistry>, builtRef = ref) => registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => builtRef,
+      parsePayload: (payload) => payload
+    });
+    const hashMismatch = createContextPackRegistry({ payloadResolver: async () => ({ fact: "wrong" }) });
+    register(hashMismatch);
+    await expect(hashMismatch.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.payload-hash-mismatch");
+
+    const sizeMismatchRef = contextPackRefSchema.parse({ ...ref, sizeBytes: ref.sizeBytes + 1 });
+    const sizeMismatch = createContextPackRegistry({ payloadResolver: async () => resolvedContextPackSentinelInput.payload });
+    register(sizeMismatch, sizeMismatchRef);
+    await expect(sizeMismatch.buildResolved("task-run-history.v1")).rejects.toThrow("blocked.payload-size-mismatch");
+  });
+
+  it("requires the exact registered parser and rejects duplicate or mismatched execution refs", async () => {
+    const taskResolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    const registry = createContextPackRegistry();
+    registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => taskResolved,
+      parsePayload: (payload) => payload
+    });
+    registry.register({
+      descriptor: { contextPackId: "workspace-runtime-status.v1", version: 1, label: "Runtime status", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "runtime.status" },
+      build: () => ({ ...resolvedContextPackSentinelInput, contextPackId: "workspace-runtime-status.v1" }),
+      parsePayload: () => { throw new Error("workspace runtime payload required"); }
+    });
+    await expect(registry.buildResolved("workspace-runtime-status.v1")).rejects.toThrow("blocked.payload-schema-mismatch");
+
+    const verified = verifyResolvedContextPack(taskResolved, (payload) => payload);
+    const mismatchedRef = buildContextPackRef({ ...resolvedContextPackSentinelInput, safeSummary: "Different safe summary." });
+    expect(() => assertResolvedContextPacksForExecution([taskResolved.ref, taskResolved.ref], [verified])).toThrow(/duplicate/i);
+    expect(() => assertResolvedContextPacksForExecution([mismatchedRef], [verified])).toThrow(/extra|missing/i);
+  });
   it("validates descriptor metadata for explicit context assembly", () => {
     const descriptor = contextPackDescriptorSchema.parse({
       contextPackId: "accepted-graph-projection.v1",

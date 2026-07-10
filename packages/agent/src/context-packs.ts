@@ -380,7 +380,7 @@ export function createContextPackRegistry(options: CreateContextPackRegistryOpti
         }
         resolved = looksLikeResolvedContextPack(resolvedOrPayload)
           ? normalizeResolvedContextPack(resolvedOrPayload)
-          : freezeResolvedContextPack({ ref, payload: normalizeJsonDtoValue(resolvedOrPayload, "$.payload") });
+          : freezeResolvedContextPack({ ref, payload: normalizeRawResolvedPayload(resolvedOrPayload) });
       }
       if (!contextPackRefsEqual(ref, resolved.ref)) {
         throw new Error("blocked.payload-ref-mismatch");
@@ -512,6 +512,14 @@ function normalizeResolvedContextPack(value: unknown): ResolvedContextPack {
   }
   const ref = contextPackRefSchema.parse(refValue);
   return freezeResolvedContextPack({ ref, payload });
+}
+
+function normalizeRawResolvedPayload(value: unknown): AgentContextPackJsonValue {
+  try {
+    return normalizeJsonDtoValue(value, "$.payload");
+  } catch (error) {
+    throw new Error(`blocked.invalid-payload-shape: ${error instanceof Error ? error.message : "resolved payload is unsafe"}`);
+  }
 }
 
 function freezeResolvedContextPack(resolved: ResolvedContextPack): ResolvedContextPack {
