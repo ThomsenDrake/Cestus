@@ -117,6 +117,9 @@ export class SQLiteEventLedger implements EventLedger {
       if (transactionOpen) {
         this.rollbackTransaction();
       }
+      if (this.isContentionError(error)) {
+        throw new ConcurrencyConflictError(`Concurrency conflict for ${event.streamId}: SQLite database contention`);
+      }
       throw error;
     }
   }
@@ -201,6 +204,13 @@ export class SQLiteEventLedger implements EventLedger {
       (error as NodeJS.ErrnoException).code === "ERR_SQLITE_ERROR" &&
       error.message.includes("constraint")
     );
+  }
+
+  private isContentionError(error: unknown): boolean {
+    return error instanceof Error &&
+      "code" in error &&
+      (error as NodeJS.ErrnoException).code === "ERR_SQLITE_ERROR" &&
+      /database is (?:busy|locked)|SQLITE_(?:BUSY|LOCKED)/i.test(error.message);
   }
 
   private rollbackTransaction(): void {

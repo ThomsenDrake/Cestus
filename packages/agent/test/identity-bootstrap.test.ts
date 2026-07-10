@@ -32,6 +32,11 @@ const nonCanonicalInitializationPayloads: readonly [
   ["allowed run types", { allowedRunTypes: ["ontology-bootstrap"] }],
   ["memory projection version", { memoryProjectionVersion: "0.2.0" }]
 ];
+const namedProviderActors: readonly [string, { readonly id: string; readonly kind: "system"; readonly label: string }][] = [
+  ["openai", { id: "openai", kind: "system", label: "Local Runtime" }],
+  ["xai", { id: "actor_local_runtime", kind: "system", label: "xai" }],
+  ["anthropic", { id: "anthropic", kind: "system", label: "Local Runtime" }]
+];
 
 afterEach(() => {
   for (const dir of tempDirs.splice(0)) {
@@ -183,6 +188,31 @@ describe("resident identity bootstrap", () => {
     expect(result.safeMessage).toBe("Resident identity bootstrap actor is not permitted.");
     expect(JSON.stringify(result)).not.toMatch(/provider_remote|remote provider/i);
     expect(await ledger.readStream(defaultResidentIdentityStreamId)).toEqual([]);
+  });
+
+  it.each(namedProviderActors)("blocks the named provider actor %s without persisting it", async (_provider, providerActor) => {
+    const ledger = new InMemoryEventLedger();
+    const result = await ensureDefaultResidentIdentity({ ledger, actor: providerActor, now, workspaceId });
+
+    expect(result.state).toBe("blocked");
+    expect(result.safeMessage).toBe("Resident identity bootstrap actor is not permitted.");
+    expect(JSON.stringify(result)).not.toContain(providerActor.id);
+    expect(JSON.stringify(result)).not.toContain(providerActor.label);
+    expect(await ledger.readStream(defaultResidentIdentityStreamId)).toEqual([]);
+  });
+
+  it("allows a secret-safe human operator to bootstrap the resident identity", async () => {
+    const ledger = new InMemoryEventLedger();
+    const operator = { id: "actor_local_operator", kind: "human" as const, label: "Local Operator" };
+
+    const result = await ensureDefaultResidentIdentity({ ledger, actor: operator, now, workspaceId });
+    const events = await ledger.readStream(defaultResidentIdentityStreamId);
+
+    expect(result.state).toBe("ready");
+    expect(events[0]).toMatchObject({
+      context: { actor: operator },
+      payload: { initializedBy: operator.id }
+    });
   });
 
   it("blocks duplicate initialization events instead of choosing one", async () => {

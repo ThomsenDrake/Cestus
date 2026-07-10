@@ -305,11 +305,11 @@ function hasExactRunTypes(runTypes: readonly string[] | undefined): boolean {
 }
 
 function isPermittedBootstrapActor(actor: ActorRef): boolean {
-  return actor.kind === "system" &&
+  return (actor.kind === "system" || actor.kind === "human") &&
     isAgentSecretSafeText(actor.id) &&
     isAgentSecretSafeText(actor.label) &&
     !bootstrapProviderIdentityPattern.test(actor.id) &&
     !bootstrapProviderIdentityPattern.test(actor.label);
 }
 
-const bootstrapProviderIdentityPattern = /provider|credential|oauth|api[\s._-]*key|model/i;
+const bootstrapProviderIdentityPattern = /provider|credential|oauth|api[\s._-]*key|model|backend|openai|xai|anthropic/i;
