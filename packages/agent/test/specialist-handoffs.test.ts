@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildContextPackRef } from "../src/context-packs.js";
 import {
   hashSpecialistWorkflowHandoff,
+  parseLegacySpecialistWorkflowHandoff,
   parseSpecialistWorkflowHandoff
 } from "../src/specialist-handoffs.js";
 
@@ -16,9 +17,58 @@ const contextPack = buildContextPackRef({
 });
 
 describe("specialist workflow handoffs", () => {
+  it("rejects missing durable handoff identity fields", () => {
+    expect(() =>
+      parseSpecialistWorkflowHandoff({
+        schemaVersion: "agent-specialist-handoff.v1",
+        runType: "evidence-triage",
+        runId: "run_evidence_triage_001",
+        residentAgentId: "agent_default",
+        generatedAt: "2026-07-09T12:01:00.000Z",
+        status: "ready-for-review",
+        safeSummary: "Evidence triage dossier is ready for review.",
+        contextPackRefs: [contextPack],
+        outputArtifacts: [],
+        toolRequestIds: [],
+        approvalRequirements: [],
+        nextSafeActions: []
+      })
+    ).toThrow(/handoffId|handoffRevision|required/i);
+  });
+
+  it("labels identity-less pre-durable workflow handoffs as legacy and non-durable", () => {
+    const legacy = parseLegacySpecialistWorkflowHandoff({
+      schemaVersion: "agent-specialist-handoff.v1",
+      runType: "evidence-triage",
+      runId: "run_evidence_triage_legacy",
+      residentAgentId: "agent_default",
+      generatedAt: "2026-07-09T12:01:00.000Z",
+      status: "ready-for-review",
+      safeSummary: "Legacy workflow handoff is display-only.",
+      contextPackRefs: [contextPack],
+      outputArtifacts: [],
+      toolRequestIds: [],
+      approvalRequirements: [],
+      nextSafeActions: []
+    });
+
+    expect(legacy.durability).toBe("legacy-non-durable");
+    expect("handoffId" in legacy).toBe(false);
+    expect("handoffRevision" in legacy).toBe(false);
+    expect(() =>
+      parseLegacySpecialistWorkflowHandoff({
+        ...legacy,
+        handoffId: "handoff_run_evidence_triage_legacy_0123456789abcdef",
+        handoffRevision: 1
+      })
+    ).toThrow(/unsupported|unrecognized/i);
+  });
+
   it("parses and hashes a browser-safe handoff", () => {
     const handoff = parseSpecialistWorkflowHandoff({
       schemaVersion: "agent-specialist-handoff.v1",
+      handoffId: "handoff_run_evidence_triage_001_0123456789abcdef",
+      handoffRevision: 1,
       runType: "evidence-triage",
       runId: "run_evidence_triage_001",
       taskId: "task_evidence_triage_001",
@@ -49,6 +99,8 @@ describe("specialist workflow handoffs", () => {
     });
 
     expect(handoff.runType).toBe("evidence-triage");
+    expect(handoff.handoffId).toBe("handoff_run_evidence_triage_001_0123456789abcdef");
+    expect(handoff.handoffRevision).toBe(1);
     expect(hashSpecialistWorkflowHandoff(handoff)).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(JSON.stringify(handoff)).not.toMatch(/assertion\.accepted|entity\.resolved|relationship\.accepted/i);
     expect(Object.isFrozen(handoff)).toBe(true);
@@ -62,6 +114,8 @@ describe("specialist workflow handoffs", () => {
     expect(() =>
       parseSpecialistWorkflowHandoff({
         schemaVersion: "agent-specialist-handoff.v1",
+        handoffId: "handoff_run_report_builder_001_0123456789abcdef",
+        handoffRevision: 1,
         runType: "report-builder",
         runId: "run_report_builder_001",
         residentAgentId: "agent_default",
@@ -79,6 +133,8 @@ describe("specialist workflow handoffs", () => {
     expect(() =>
       parseSpecialistWorkflowHandoff({
         schemaVersion: "agent-specialist-handoff.v1",
+        handoffId: "handoff_run_report_builder_001_0123456789abcdef",
+        handoffRevision: 1,
         runType: "report-builder",
         runId: "run_report_builder_001",
         residentAgentId: "agent_default",
@@ -99,6 +155,8 @@ describe("specialist workflow handoffs", () => {
     expect(() =>
       parseSpecialistWorkflowHandoff({
         schemaVersion: "agent-specialist-handoff.v1",
+        handoffId: "handoff_run_contradiction_finder_001_0123456789abcdef",
+        handoffRevision: 1,
         runType: "contradiction-finder",
         runId: "run_contradiction_finder_001",
         residentAgentId: "agent_default",
@@ -116,6 +174,8 @@ describe("specialist workflow handoffs", () => {
     expect(() =>
       parseSpecialistWorkflowHandoff({
         schemaVersion: "agent-specialist-handoff.v1",
+        handoffId: "handoff_run_timeline_builder_001_0123456789abcdef",
+        handoffRevision: 1,
         runType: "timeline-builder",
         runId: "run_timeline_builder_001",
         residentAgentId: "agent_default",
