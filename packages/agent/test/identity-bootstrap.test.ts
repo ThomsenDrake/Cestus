@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
-import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
+import {
+  ConcurrencyConflictError,
+  InMemoryEventLedger,
+  type EventLedger
+} from "../../ontology/src/event-ledger.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import {
   defaultResidentAgentId,
@@ -19,6 +23,15 @@ const now = () => "2026-07-10T12:00:00.000Z";
 const workspaceId = "ws_bootstrap_001";
 const otherWorkspaceId = "ws_bootstrap_other";
 const tempDirs: string[] = [];
+const nonCanonicalInitializationPayloads: readonly [
+  string,
+  Partial<AppendableKnowledgeEvent<"agent.identity.initialized">["payload"]>
+][] = [
+  ["label", { label: "Unexpected Agent" }],
+  ["policy", { policyId: "agent_policy_other" }],
+  ["allowed run types", { allowedRunTypes: ["ontology-bootstrap"] }],
+  ["memory projection version", { memoryProjectionVersion: "0.2.0" }]
+];
 
 afterEach(() => {
   for (const dir of tempDirs.splice(0)) {
@@ -89,6 +102,87 @@ describe("resident identity bootstrap", () => {
     const result = await readDefaultResidentIdentityLifecycle({ ledger, workspaceId });
     expect(result.state).toBe("ready");
     expect(result.eventIds).toHaveLength(1);
+  });
+
+  it.each(nonCanonicalInitializationPayloads)("blocks an initialization with a noncanonical %s", async (_field, payload) => {
+    const ledger = new InMemoryEventLedger();
+    await ledger.append({
+      ...identityAppendEvent(workspaceId),
+      payload: { ...identityAppendEvent(workspaceId).payload, ...payload }
+    });
+
+    const result = await readDefaultResidentIdentityLifecycle({ ledger, workspaceId });
+    expect(result.state).toBe("blocked");
+    expect(result.safeMessage).toBe("Resident identity initialization does not match the canonical bootstrap contract.");
+  });
+
+  it("blocks an initialization without bootstrap actor provenance", async () => {
+    const ledger = new InMemoryEventLedger();
+    await ledger.append({
+      ...identityAppendEvent(workspaceId),
+      context: {
+        ...identityAppendEvent(workspaceId).context,
+        actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" }
+      }
+    });
+
+    const result = await readDefaultResidentIdentityLifecycle({ ledger, workspaceId });
+    expect(result.state).toBe("blocked");
+    expect(result.safeMessage).toBe("Resident identity initialization does not have valid bootstrap provenance.");
+  });
+
+  it("blocks an identity update that precedes initialization", async () => {
+    const ledger = new InMemoryEventLedger();
+    await ledger.append(identityUpdateEvent(defaultResidentAgentId));
+
+    const result = await readDefaultResidentIdentityLifecycle({ ledger, workspaceId });
+    expect(result.state).toBe("blocked");
+    expect(result.safeMessage).toBe("Resident identity updates must follow canonical initialization.");
+  });
+
+  it("blocks an identity update for another resident", async () => {
+    const ledger = new ReadbackLedger([
+      identityEvent(workspaceId, 1),
+      {
+        id: "evt_identity_other_2",
+        sequence: 2,
+        ...identityUpdateEvent("agent_other")
+      }
+    ]);
+
+    const result = await readDefaultResidentIdentityLifecycle({ ledger, workspaceId });
+    expect(result.state).toBe("blocked");
+    expect(result.safeMessage).toBe("Resident identity updates must bind to the default resident agent.");
+  });
+
+  it("blocks identity updates whose stream sequence is not contiguous", async () => {
+    const ledger = new ReadbackLedger([
+      identityEvent(workspaceId, 1),
+      {
+        id: "evt_identity_update_3",
+        sequence: 3,
+        ...identityUpdateEvent(defaultResidentAgentId)
+      }
+    ]);
+
+    const result = await readDefaultResidentIdentityLifecycle({ ledger, workspaceId });
+    expect(result.state).toBe("blocked");
+    expect(result.safeMessage).toBe("Resident identity updates must follow canonical initialization.");
+  });
+
+  it("blocks provider-shaped bootstrap actors without exposing their values", async () => {
+    const ledger = new InMemoryEventLedger();
+    const result = await ensureDefaultResidentIdentity({
+      ledger,
+      actor: { id: "provider_remote", kind: "system", label: "Remote Provider" },
+      now,
+      workspaceId
+    });
+
+    expect(result.state).toBe("blocked");
+    expect(result.safeMessage).toBe("Resident identity bootstrap actor is not permitted.");
+    expect(JSON.stringify(result)).not.toMatch(/provider_remote|remote provider/i);
+    expect(await ledger.readStream(defaultResidentIdentityStreamId)).toEqual([]);
   });
 
   it("blocks duplicate initialization events instead of choosing one", async () => {
@@ -231,6 +325,27 @@ function identityEvent(id: string, sequence: number): KnowledgeEvent {
   };
 }
 
+function identityUpdateEvent(residentAgentId: string): AppendableKnowledgeEvent<"agent.identity.updated"> {
+  return {
+    type: "agent.identity.updated",
+    version: 1,
+    streamId: defaultResidentIdentityStreamId,
+    context: {
+      actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
+      occurredAt: "2026-07-10T12:01:00.000Z",
+      correlationId: "corr_identity_update",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      residentAgentId,
+      updatedBy: "actor_case_owner",
+      rationale: "Reviewed label update.",
+      label: "Cestus Agent"
+    }
+  };
+}
+
 async function identityEventTypes(ledger: EventLedger): Promise<readonly string[]> {
   return (await ledger.readStream(defaultResidentIdentityStreamId)).map((event) => event.type);
 }
@@ -248,7 +363,9 @@ class ConflictThenReadbackLedger implements EventLedger {
 
   async append(): Promise<KnowledgeEvent> {
     this.appendCalls += 1;
-    throw new Error("Concurrency conflict for agent_identity_agent_default: expected sequence 1, next sequence 2");
+    throw new ConcurrencyConflictError(
+      "Concurrency conflict for agent_identity_agent_default: expected sequence 1, next sequence 2"
+    );
   }
 
   async readStream(): Promise<KnowledgeEvent[]> {
@@ -256,6 +373,22 @@ class ConflictThenReadbackLedger implements EventLedger {
     if (this.readCalls === 1) {
       return [];
     }
+    return [...this.streamEvents];
+  }
+
+  async readAll(): Promise<KnowledgeEvent[]> {
+    return [...this.streamEvents];
+  }
+}
+
+class ReadbackLedger implements EventLedger {
+  constructor(private readonly streamEvents: readonly KnowledgeEvent[]) {}
+
+  async append(): Promise<KnowledgeEvent> {
+    throw new Error("unused append");
+  }
+
+  async readStream(): Promise<KnowledgeEvent[]> {
     return [...this.streamEvents];
   }
 
