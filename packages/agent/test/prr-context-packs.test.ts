@@ -542,6 +542,32 @@ describe("selected request jurisdiction pack summary context pack", () => {
       .toThrow(/payload-schema-mismatch/);
   });
 
+  it("rejects a hash-valid jurisdiction ref with extra conflicting staleness inputs", () => {
+    const resolved = buildJurisdictionPackSummaryContextPack(jurisdictionInput());
+    const attackerResolved = buildResolvedContextPack({
+      contextPackId: resolved.ref.contextPackId,
+      version: resolved.ref.version,
+      generatedAt: resolved.ref.generatedAt,
+      payload: resolved.payload,
+      safeSummary: resolved.ref.safeSummary,
+      provenanceRefs: resolved.ref.provenanceRefs,
+      sizeBudgetBytes: 16_384,
+      ...(resolved.ref.sourceEventIds === undefined ? {} : { sourceEventIds: resolved.ref.sourceEventIds }),
+      ...(resolved.ref.artifactHashes === undefined ? {} : { artifactHashes: resolved.ref.artifactHashes }),
+      ...(resolved.ref.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: resolved.ref.projectionHighWaterMark }),
+      ...(resolved.ref.policyVersion === undefined ? {} : { policyVersion: resolved.ref.policyVersion }),
+      ...(resolved.ref.scope === undefined ? {} : { scope: resolved.ref.scope }),
+      stalenessInputs: [
+        { kind: "jurisdiction-pack-artifact-hash", ref: "us-federal-foia@0.1.0", value: jurisdictionArtifactHash },
+        { kind: "selected-request-jurisdiction-pack", ref: "prr_req_selected", value: "us-federal-foia@0.1.0" },
+        { kind: "jurisdiction-pack-artifact-hash", ref: "us-federal-foia@0.1.0", value: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" }
+      ]
+    });
+
+    expect(() => verifyResolvedContextPack(attackerResolved, jurisdictionPackSummaryPayloadParser))
+      .toThrow(/payload-schema-mismatch|staleness/i);
+  });
+
   it("rejects a hash-valid payload that turns the advisory posture into legal advice", () => {
     const resolved = buildJurisdictionPackSummaryContextPack(jurisdictionInput());
     const payload = resolved.payload as Record<string, unknown>;

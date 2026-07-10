@@ -245,10 +245,11 @@ export const jurisdictionPackSummaryPayloadParser: ContextPackPayloadParser = (p
       !sameStringSet(ref.provenanceRefs, [parsed.selectedRequestEventId, parsed.jurisdictionArtifactHash, ...expectedRuleRefs])) {
       throw new Error("invalid jurisdiction-pack-summary provenance binding");
     }
-    const artifactStaleness = ref.stalenessInputs?.find((input) => input.kind === "jurisdiction-pack-artifact-hash");
-    const requestStaleness = ref.stalenessInputs?.find((input) => input.kind === "selected-request-jurisdiction-pack");
-    if (artifactStaleness?.ref !== expectedPackRef || artifactStaleness.value !== parsed.jurisdictionArtifactHash ||
-      requestStaleness?.ref !== parsed.scope.id || requestStaleness.value !== expectedPackRef) {
+    const expectedStalenessInputs = [
+      { kind: "jurisdiction-pack-artifact-hash", ref: expectedPackRef, value: parsed.jurisdictionArtifactHash },
+      { kind: "selected-request-jurisdiction-pack", ref: parsed.scope.id, value: expectedPackRef }
+    ];
+    if (!sameStalenessInputs(ref.stalenessInputs, expectedStalenessInputs)) {
       throw new Error("invalid jurisdiction-pack-summary staleness binding");
     }
   }
@@ -443,6 +444,15 @@ function assertPayloadProvenanceBindings(
 
 function sameStringSet(left: readonly string[] | undefined, right: readonly string[]): boolean {
   return left !== undefined && left.length === new Set(left).size && left.length === right.length && left.every((value) => right.includes(value));
+}
+
+function sameStalenessInputs(
+  left: ContextPackRef["stalenessInputs"],
+  right: readonly { readonly kind: string; readonly ref: string; readonly value: string }[]
+): boolean {
+  return left !== undefined && left.length === right.length && left.every((input, index) =>
+    input.kind === right[index]!.kind && input.ref === right[index]!.ref && input.value === right[index]!.value
+  );
 }
 
 function trustedPrrProvenanceRefs(
