@@ -363,18 +363,35 @@ export async function __testOnlyReadEvidenceSelectionProbe(
   input: BuildInvestigativeContextPackInput
 ): Promise<{ readonly manifest: InvestigativeSelectionManifest; readonly rows: readonly InvestigativeEvidenceRow[] }> {
   const manifest = await selectForPack("evidence-summary.v1", input);
-  const evidenceIds = includedIds(manifest, "evidence");
-  const contentHashes = manifest.includedRefs
-    .filter((ref) => ref.refKind === "evidence")
-    .map((ref) => ref.contentHash)
-    .filter((hash): hash is `sha256:${string}` => hash !== undefined);
-  const rows = await input.deps.evidenceReader.readEvidenceByIds({
-    evidenceIds,
-    contentHashes,
-    highWaterMarks: manifest.sourceProjectionHighWaterMarks,
-    limit: readerBatchSize
-  });
-  return Object.freeze({ manifest, rows: Object.freeze([...rows]) });
+  const evidenceRefs = manifest.includedRefs.filter((ref) => ref.refKind === "evidence");
+  const rowOrder = new Map(evidenceRefs.map((ref, index) => [ref.refId, index]));
+  const rows: InvestigativeEvidenceRow[] = [];
+
+  for (let offset = 0; offset < evidenceRefs.length; offset += readerBatchSize) {
+    const batch = evidenceRefs.slice(offset, offset + readerBatchSize);
+    const batchRows = await input.deps.evidenceReader.readEvidenceByIds({
+      evidenceIds: batch.map((ref) => ref.refId),
+      contentHashes: batch
+        .map((ref) => ref.contentHash)
+        .filter((hash): hash is `sha256:${string}` => hash !== undefined),
+      highWaterMarks: manifest.sourceProjectionHighWaterMarks,
+      limit: readerBatchSize
+    });
+    rows.push(...batchRows);
+  }
+
+  rows.sort((left, right) => compareEvidenceRowsBySelectionOrder(left, right, rowOrder));
+  return Object.freeze({ manifest, rows: Object.freeze(rows) });
+}
+
+function compareEvidenceRowsBySelectionOrder(
+  left: InvestigativeEvidenceRow,
+  right: InvestigativeEvidenceRow,
+  rowOrder: ReadonlyMap<string, number>
+): number {
+  const orderDifference = (rowOrder.get(left.evidenceId) ?? Number.MAX_SAFE_INTEGER)
+    - (rowOrder.get(right.evidenceId) ?? Number.MAX_SAFE_INTEGER);
+  return orderDifference === 0 ? compareText(left.evidenceId, right.evidenceId) : orderDifference;
 }
 
 function parserIdentity(
