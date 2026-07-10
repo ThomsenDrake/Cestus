@@ -373,15 +373,64 @@ const agentSpecialistRunStartedPayloadSchema = z.object({
   inputArtifactHashes: agentArtifactHashesSchema.optional()
 }).strict();
 
+const agentSpecialistRunStepKindSchema = z.enum([
+  "audit",
+  "model-review",
+  "tool-request",
+  "local-derivative",
+  "final-output"
+]);
+
 const agentSpecialistRunStepRecordedPayloadSchema = z.object({
   runId: agentRunIdSchema,
   stepId: agentRunStepIdSchema,
   summary: secretSafeTextSchema,
+  stepKind: agentSpecialistRunStepKindSchema.optional(),
+  stepSchemaId: secretSafeStringSchema.min(1).optional(),
+  idempotencyKey: secretSafeStringSchema.min(1).optional(),
   sourceEventIds: agentSourceEventIdsSchema.optional(),
   inputArtifactHashes: agentArtifactHashesSchema.optional(),
   outputArtifactHashes: agentArtifactHashesSchema.optional(),
   invocationId: agentInvocationIdSchema.optional(),
   toolRequestId: agentToolRequestIdSchema.optional()
+}).strict();
+
+const agentSpecialistHandoffStatusSchema = z.enum([
+  "ready-for-review",
+  "waiting-for-approval",
+  "blocked",
+  "failed"
+]);
+
+const agentSpecialistHandoffCompactBindingSchema = z.object({
+  handoffId: z.string().regex(/^handoff_[a-zA-Z0-9_-]+_[a-f0-9]{16}$/),
+  handoffRevision: z.number().int().positive(),
+  idempotencyKey: z.string().min(1),
+  handoffManifestHash: contentHashSchema,
+  handoffDtoHash: contentHashSchema,
+  runId: z.string().regex(/^run_[a-zA-Z0-9_-]+$/),
+  taskId: z.string().regex(/^task_[a-zA-Z0-9_-]+$/).optional(),
+  runType: agentSpecialistRunTypeSchema,
+  residentAgentId: z.literal("agent_default"),
+  status: agentSpecialistHandoffStatusSchema,
+  safeSummary: secretSafeStringSchema,
+  finalOutputStepId: z.string().min(3),
+  finalOutputEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
+  contextPackHashes: z.array(contentHashSchema),
+  promptArtifactHash: contentHashSchema.optional(),
+  outputArtifactHashes: z.array(contentHashSchema),
+  toolRequestIds: z.array(z.string().regex(/^toolreq_[a-zA-Z0-9_-]+$/)),
+  sourceEventIds: z.array(z.string().regex(/^evt_[a-zA-Z0-9_-]+$/)),
+  relatedEventIds: z.array(z.string().regex(/^evt_[a-zA-Z0-9_-]+$/)),
+  supersedesHandoffId: z.string().regex(/^handoff_[a-zA-Z0-9_-]+_[a-f0-9]{16}$/).optional(),
+  supersedesEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/).optional()
+}).strict();
+
+const agentSpecialistHandoffPreparedPayloadSchema = agentSpecialistHandoffCompactBindingSchema;
+
+const agentSpecialistHandoffRecordedPayloadSchema = agentSpecialistHandoffCompactBindingSchema.extend({
+  preparedEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
+  verifiedAt: z.string().datetime()
 }).strict();
 
 const agentSpecialistRunCompletedPayloadSchema = z.object({
@@ -1163,6 +1212,8 @@ export const payloadSchemas = {
   "agent.specialist-run.step.recorded": agentSpecialistRunStepRecordedPayloadSchema,
   "agent.specialist-run.completed": agentSpecialistRunCompletedPayloadSchema,
   "agent.specialist-run.failed": agentSpecialistRunFailedPayloadSchema,
+  "agent.specialist-handoff.prepared": agentSpecialistHandoffPreparedPayloadSchema,
+  "agent.specialist-handoff.recorded": agentSpecialistHandoffRecordedPayloadSchema,
   "agent.model-invocation.requested": agentModelInvocationRequestedPayloadSchema,
   "agent.model-invocation.completed": agentModelInvocationCompletedPayloadSchema,
   "agent.model-invocation.failed": agentModelInvocationFailedPayloadSchema,
@@ -1376,6 +1427,20 @@ export const eventContracts = {
     description: "Records a secret-safe specialist run failure and allowed repair actions.",
     agentGuidance: "Required provenance fields: runId, failedAt, category, message, retryable, and allowedActions. Forbidden autonomous effects: failure recovery must not clear locks, approve tools, or retry external effects without the required gate.",
     invariants: ["runId must route the stream", "message must be secret-safe", "allowedActions must be explicit"]
+  },
+  "agent.specialist-handoff.prepared": {
+    type: "agent.specialist-handoff.prepared",
+    version: 1,
+    description: "Records a compact, content-addressed specialist handoff prepared from a final output step.",
+    agentGuidance: "Required provenance fields: handoffId, handoffRevision, runId, finalOutputStepId, finalOutputEventId, manifest and DTO hashes, and all source artifact references. Store no raw DTO or output content. Forbidden autonomous effects: preparation does not approve, dispatch, or accept the handoff.",
+    invariants: ["runId must route the stream", "handoff artifacts are content-addressed", "final output references are explicit"]
+  },
+  "agent.specialist-handoff.recorded": {
+    type: "agent.specialist-handoff.recorded",
+    version: 1,
+    description: "Records verification of a prepared compact specialist handoff on its originating run stream.",
+    agentGuidance: "Required provenance fields: the complete compact binding, preparedEventId, verifiedAt, and final-output references. Store no raw DTO or output content. Forbidden autonomous effects: recording does not execute a tool, send a message, or accept graph state.",
+    invariants: ["runId must route the stream", "preparedEventId is explicit", "verification is append-only"]
   },
   "agent.model-invocation.requested": {
     type: "agent.model-invocation.requested",
@@ -1934,6 +1999,10 @@ function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): stri
   }
 
   if (type.startsWith("agent.specialist-run.")) {
+    return `agent_run_${agentPayload.runId}`;
+  }
+
+  if (type.startsWith("agent.specialist-handoff.")) {
     return `agent_run_${agentPayload.runId}`;
   }
 
