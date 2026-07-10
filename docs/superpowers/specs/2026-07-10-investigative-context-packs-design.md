@@ -13,9 +13,9 @@ Cestus Agent. It defines production builders and package-owned registration for:
 
 These packs are required by the approved resident-agent execution and MVP
 specialist workflow designs. They give specialist runs safe, deterministic,
-content-addressed context about evidence, accepted graph truth, and governance
-posture without editing local-runtime, cockpit, orchestrator, operational packs,
-PRR packs, prompts, or handoff projections in this lane.
+content-addressed resolved context about evidence, accepted graph truth, and
+governance posture without editing local-runtime, cockpit, orchestrator,
+operational packs, PRR packs, prompts, or handoff projections in this lane.
 
 The core product truth is unchanged: the append-only ledger is canonical,
 projections are rebuildable, accepted graph state comes only from reviewed
@@ -32,6 +32,9 @@ and evidence summaries cannot expose raw document text or provider payloads.
 - Bind exact evidence events, content hashes, source refs, pack versions,
   projection high-water marks, source staleness inputs, and aggregate omission
   metadata.
+- Produce provider-safe resolved context-pack envelopes where the ref carries
+  audit identity and the payload carries the bounded rows available to prompt
+  rendering after exact hash verification.
 - Keep accepted graph context read-only and traceable to reviewed assertion
   events and evidence hashes.
 - Distinguish resident-agent locks from governance-derived restrictions with
@@ -66,6 +69,10 @@ The design composes existing contracts:
 - `packages/agent/src/context-packs.ts` owns `ContextPackDescriptor`,
   `ContextPackRef`, `buildContextPackRef`, stable JSON hashing, strict DTO
   normalization, budget checks, and registry behavior.
+- The operational context lane owns the shared generic
+  `ResolvedContextPack { ref, payload }` and content-addressed resolution
+  contract. This investigative lane must produce envelopes compatible with that
+  contract rather than treating refs as the full provider context.
 - `packages/agent/src/specialist-readiness.ts` checks required context pack
   refs, projection high-water marks, active locks, provider posture, prompt
   template registration, and adapter families.
@@ -102,9 +109,9 @@ The module exports:
 
 ```ts
 registerInvestigativeContextPacks(registry, deps)
-buildAcceptedGraphProjectionContextPack(input)
-buildEvidenceSummaryContextPack(input)
-buildGovernanceLocksContextPack(input)
+buildAcceptedGraphProjectionContextPack(input): ResolvedContextPack
+buildEvidenceSummaryContextPack(input): ResolvedContextPack
+buildGovernanceLocksContextPack(input): ResolvedContextPack
 ```
 
 The implementation plan should keep these public names unless a compile-time
@@ -170,7 +177,7 @@ interface InvestigativeSelectionCapability {
     Promise<InvestigativeSelectionManifest> | InvestigativeSelectionManifest;
 }
 
-interface InvestigativeSelectionManifest {
+interface InvestigativeSelectionManifestBody {
   readonly manifestVersion: "investigative-selection-manifest.v1";
   readonly scope: InvestigativeContextPackScope;
   readonly sourceProjectionHighWaterMarks: InvestigativeProjectionHighWaterMarks;
@@ -179,6 +186,10 @@ interface InvestigativeSelectionManifest {
   readonly totalEligibleCount: number;
   readonly includedRefs: readonly InvestigativeSelectionIncludedRef[];
   readonly aggregateOmissions: readonly InvestigativeContextOmissionAggregate[];
+}
+
+interface InvestigativeSelectionManifest
+  extends InvestigativeSelectionManifestBody {
   readonly manifestHash: `sha256:${string}`;
 }
 ```
@@ -188,6 +199,15 @@ scope, source projection high-water marks, deterministic ordering, cursor or
 window, total eligible count, included IDs and hashes, and bounded aggregate
 omission counts. Workspace scope requires a deterministic page/window or an
 explicit bounded manifest; a single pack is never an unbounded workspace dump.
+
+`manifestHash` is the SHA-256 of the canonical
+`InvestigativeSelectionManifestBody`. The canonical manifest body is the parsed
+manifest with `manifestHash` omitted. The hash itself must never be part of the
+bytes it hashes. Parsers and builders verify manifests by normalizing the body,
+recomputing the body hash, and comparing it to `manifestHash`; any
+self-including hash, placeholder hash, fixed-point attempt, or mismatched body
+hash fails with `selection-manifest-hash-mismatch` or a more specific manifest
+parse error when the implementation defines one.
 
 Builders fetch exact source rows, events, and provenance by manifest-included
 IDs or bounded batches:
@@ -228,11 +248,17 @@ not only latest scan IDs.
 ## Registration Contract
 
 `registerInvestigativeContextPacks(registry, deps)` registers exactly the three
-investigative pack builders:
+investigative resolved pack builders:
 
 - `accepted-graph-projection.v1`
 - `evidence-summary.v1`
 - `governance-locks.v1`
+
+Registration exposes enough descriptor metadata for readiness to reason over
+refs and enough resolver metadata for prompt execution to retrieve the
+hash-verified payload. If the shared registry distinguishes ref builders from
+resolved builders at implementation time, this lane must use the resolved
+builder path and project refs only for readiness, ledger, and audit DTOs.
 
 Registration is idempotent for the same registry and the same helper-owned
 descriptor identity. Calling the helper twice with semantically equivalent
@@ -255,8 +281,26 @@ Every `build()` call rebuilds from the injected authoritative inputs.
 
 ## Common Pack Envelope
 
-Each builder returns a `ContextPackRef` created through `buildContextPackRef`.
-The canonical payload passed to `buildContextPackRef` is a strict JSON DTO with:
+Each builder produces a provider-safe resolved envelope compatible with the
+shared operational context contract:
+
+```ts
+interface ResolvedContextPack<Payload extends StrictJsonDto = StrictJsonDto> {
+  readonly ref: ContextPackRef;
+  readonly payload: Payload;
+}
+```
+
+The operational context lane owns this generic contract. This spec names the
+shape so investigative builders do not accidentally return refs alone. The
+implementation should import or conform to the shared contract rather than
+creating an incompatible local fork. `StrictJsonDto` here means the existing
+normalized JSON DTO shape accepted by the context-pack hashing and safety
+boundary: plain objects, arrays, strings, numbers, booleans, and null, with no
+accessors, symbols, sparse arrays, unexpected prototypes, functions, or unsafe
+keys/values.
+
+The resolved `payload` is a strict JSON DTO with:
 
 - `schemaVersion`
 - `scope`
@@ -268,6 +312,13 @@ The canonical payload passed to `buildContextPackRef` is a strict JSON DTO with:
 - `omissions`
 - `stalenessInputs`
 - pack-specific summaries
+
+The resolved `ref` is created through `buildContextPackRef` from that exact
+canonical payload. `ref.contentHash` is the SHA-256 of the canonical payload,
+`ref.sizeBytes` is the canonical payload size, and `ref.provenanceRefs`,
+`sourceEventIds`, `artifactHashes`, `projectionHighWaterMark`, `scope`,
+`policyVersion`, `sizeBudgetBytes`, and `stalenessInputs` identify the payload
+for readiness, audit, and replay.
 
 The payload must be normalized through the same DTO safety rules as other agent
 context packs. Accessors, symbols, sparse arrays, custom array properties,
@@ -286,6 +337,37 @@ requests are not part of these schemas and are rejected if supplied.
 hidden clock and should not be added to payload unless a future design explicitly
 needs it as source data. Domain event timestamps already present in source
 events are source data and may appear when safe and useful.
+
+`safeSummary` is safe metadata for cockpit, readiness, and audit DTOs. It is not
+the pack payload and must not be treated as a replacement for `payload` during
+production prompt rendering.
+
+Only the ref, hash, and provenance fields enter ledger or audit DTOs. The
+bounded rows live in the resolved payload and are made available to prompt
+execution through the shared content-addressed resolver after exact hash and
+size verification.
+
+## Provider Prompt Resolution
+
+Production prompt execution must resolve each investigative context pack ref
+through the shared content-addressed context-pack resolver before rendering
+provider input. The renderer receives `ResolvedContextPack` envelopes, verifies
+that each payload's canonical hash and size match `ref.contentHash` and
+`ref.sizeBytes`, then renders the bounded rows from `payload`.
+
+Prompt execution must fail closed if:
+
+- a required payload cannot be resolved for a ref
+- the canonical payload hash differs from `ref.contentHash`
+- the canonical payload size differs from `ref.sizeBytes`
+- the payload schema, pack version, projection high-water marks, scope, or
+  selection manifest hash no longer matches the ref metadata
+- the renderer would fall back to `safeSummary` as the only context body
+
+`safeSummary` may appear in audit logs and prompt-artifact metadata, but it is
+not sufficient context for production specialist reasoning. Facts that are too
+detailed for `safeSummary` but allowed by the provider-safe payload schema must
+remain available to the renderer after exact hash verification.
 
 ## Scope Semantics
 
@@ -445,8 +527,12 @@ Common failure codes:
 - `accepted-relationship-not-authoritative`
 - `selection-window-required`
 - `selection-manifest-stale`
+- `selection-manifest-hash-mismatch`
 - `selection-row-mismatch`
 - `selection-cursor-invalid`
+- `context-payload-missing`
+- `context-payload-hash-mismatch`
+- `context-payload-size-mismatch`
 - `duplicate-context-pack-registration`
 - `conflicting-context-pack-registration`
 - `invalid-context-pack-scope`
@@ -465,6 +551,9 @@ The builder fails with:
 
 - `selection-manifest-stale` when a reader cannot serve the manifest's
   high-water marks or returns a newer incompatible snapshot.
+- `selection-manifest-hash-mismatch` when the canonical manifest body hash does
+  not match `manifestHash`, including any manifest whose hash was computed over
+  a structure containing `manifestHash` itself.
 - `selection-row-mismatch` when an included row's ID, content hash, projection
   row hash, or required provenance differs from the manifest.
 - `selection-cursor-invalid` when the manifest cursor/window is malformed,
@@ -739,9 +828,9 @@ make an approval stale, but it never proves approval and never clears itself.
 Active governance-derived restrictions are mandatory safety posture and cannot
 be omitted or truncated; optional non-active history may be aggregated.
 
-## Context Pack Refs
+## Context Pack Refs And Payloads
 
-Every produced `ContextPackRef` must include:
+Every produced `ResolvedContextPack.ref` must include:
 
 - `contextPackId`
 - version `1`
@@ -769,6 +858,13 @@ where the existing `ContextPackRef` contract allows them.
 Selection manifest hashes should appear in `provenanceRefs` or `artifactHashes`
 using the existing `ContextPackRef` shape available at implementation time. The
 payload remains the canonical place for the full manifest metadata.
+
+Every produced `ResolvedContextPack.payload` must contain the bounded rows
+defined by the pack-specific schema. The payload is provider-safe but may carry
+structured investigative facts that are not repeated in `safeSummary`. Ledger,
+projection, approval, handoff, and audit DTOs should store or project the ref
+and provenance, not the payload body. Prompt construction resolves the payload
+by content hash when the model actually needs context.
 
 The existing `ContextPackRef` has one `projectionHighWaterMark` field. For
 these packs, that field records the pack's primary freshness marker, while the
@@ -803,16 +899,20 @@ dependencies:
 - Create a fresh `ContextPackRegistry`.
 - Call `registerInvestigativeContextPacks(registry, deps)` with a stable
   registration identity and bounded in-memory selection/readers.
-- Build the three investigative pack refs.
-- Pass those refs to `projectSpecialistWorkflowReadiness`.
+- Build the three investigative `ResolvedContextPack` envelopes.
+- Pass `resolved.map(({ ref }) => ref)` to `projectSpecialistWorkflowReadiness`.
 - Verify specialist readiness no longer reports missing investigative context
   packs when other prerequisites are supplied.
+- Verify the production prompt renderer resolves each payload by ref,
+  hash-checks it, and renders payload rows rather than substituting
+  `safeSummary`.
 
 The design intentionally leaves local-runtime and orchestrator wiring to a
 later integration task. That later task should have one narrow responsibility:
 construct the dependency object from the mounted workspace/runtime and call the
-package-owned registration helper. It should not change pack schemas,
-readiness logic, or the bounded selection contract.
+package-owned registration helper or shared resolver hook. It should not change
+pack schemas, readiness logic, resolved-envelope semantics, or the bounded
+selection contract.
 
 ## Testing Expectations
 
@@ -829,6 +929,10 @@ The implementation plan should require failing tests first for:
 - authoritative selection manifests with explicit scope, source projection
   high-water marks, deterministic ordering/cursor/window, total eligible count,
   included IDs/hashes, and bounded aggregate omission counts
+- selection `manifestHash` computed from the canonical manifest body that omits
+  `manifestHash`
+- manifest parsing/verification rejecting self-including hashes, placeholder
+  hashes, and fixed-point attempts with a no-fixed-point regression test
 - workspace-scope requests requiring a deterministic page/window or explicit
   bounded selection manifest
 - exact event/provenance fetches by included IDs or bounded batches, with tests
@@ -858,9 +962,20 @@ The implementation plan should require failing tests first for:
 - deterministic budget omissions with stable omission reason codes, aggregate
   counts, and bounded sample refs rather than per-row omitted lists
 - stale manifest/read rejection with stable `selection-manifest-stale`,
-  `selection-row-mismatch`, `selection-cursor-invalid`, and
-  `selection-window-required` codes
+  `selection-manifest-hash-mismatch`, `selection-row-mismatch`,
+  `selection-cursor-invalid`, and `selection-window-required` codes
 - mandatory envelope budget failure with `context-budget-exceeded`
+- builders returning provider-safe `ResolvedContextPack { ref, payload }`
+  envelopes whose ref content hash and size verify against the canonical
+  payload
+- ledger, projection, approval, handoff, and audit DTOs carrying only refs,
+  hashes, and provenance, not resolved payload bodies
+- production prompt rendering resolving payloads by ref and failing on missing,
+  hash-mismatched, or size-mismatched payloads instead of sending only
+  `safeSummary`
+- a sentinel investigative fact that exists only in `payload`, not
+  `safeSummary`, and is available to the production renderer after exact hash
+  verification
 - specialist readiness with injected pack refs and no runtime/cockpit edits
 
 Suggested documentation validation for the design slice:
@@ -893,8 +1008,16 @@ Reviewers should fail future implementation changes that:
   page/window or explicit bounded selection manifest
 - enumerate every omitted row in omission DTOs instead of bounded aggregate
   counts and optional bounded samples
+- compute `manifestHash` over a structure that includes `manifestHash`, accept
+  a fixed-point manifest hash, or skip canonical body-hash verification
 - silently refresh stale manifests, change selection windows, or mask
   selection/read mismatches instead of failing closed
+- return refs alone from investigative builders, discard resolved payloads, or
+  let production prompt execution render `safeSummary` as the only context body
+- write resolved payload bodies into ledger, projection, approval, handoff, or
+  audit DTOs instead of content-addressed refs, hashes, and provenance
+- send a prompt with unresolved, missing, hash-mismatched, or size-mismatched
+  context-pack payloads
 - let governance restrictions grant approval, clear locks, release quarantine,
   or mutate graph/evidence state
 - import local-runtime, UI, SQLite, filesystem mount, or orchestrator modules
@@ -917,4 +1040,6 @@ The safe first implementation slice should be pure package work:
 
 The package should prove the three production builders and registration helper
 with injected bounded selection, reader, event, and source posture capabilities.
-Runtime wiring remains a later narrow integration task.
+It should also prove compatibility with the shared `ResolvedContextPack`
+contract, body-only manifest hashing, and provider prompt resolution from
+hash-verified payloads. Runtime wiring remains a later narrow integration task.
