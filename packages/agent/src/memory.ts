@@ -216,10 +216,7 @@ function normalizeMemorySnapshot(input: BuildAgentMemorySummaryContextPackInput)
     Math.max(1, Math.floor(input.maxItems ?? maximumProjectionMemoryWindowItems)),
     maximumProjectionMemoryWindowItems
   );
-  const activeMemory = input.projection.activeMemory
-    .slice()
-    .sort(compareMemory)
-    .slice(0, effectiveWindowLimit);
+  const activeMemory = selectTopMemory(input.projection.activeMemory, effectiveWindowLimit);
   const sourceEventIds = unique(activeMemory.flatMap((memory) => memory.sourceEventIds)).slice().sort();
   const artifactHashes = unique(activeMemory.flatMap((memory) => memory.artifactHashes)).slice().sort();
   return {
@@ -268,6 +265,12 @@ function normalizeDirectMemorySnapshot(value: OperationalAgentMemorySnapshot): N
   const window = normalizeMemoryWindow(value.window);
   if (activeMemory.length > window.limit) {
     throw new Error("blocked.unbounded-source: active memory exceeds the bounded window limit");
+  }
+  if (window.totalCount < activeMemory.length || (window.hasMore && window.totalCount <= activeMemory.length)) {
+    throw new Error("blocked.unbounded-source: memory window does not cover visible active memory");
+  }
+  if (aggregateCounts.active! < activeMemory.length || aggregateCounts.totalCount! < activeMemory.length) {
+    throw new Error("blocked.projection-source-mismatch: memory aggregate counts do not cover visible active memory");
   }
   const derivedSourceEventIds = unique(activeMemory.flatMap((item) => item.sourceEventIds)).slice().sort();
   const derivedArtifactHashes = unique(activeMemory.flatMap((item) => item.artifactHashes)).slice().sort();
@@ -428,6 +431,27 @@ function memoryTruthBoundary(): AgentMemoryTruthBoundaryDto {
 function compareMemory(left: ProjectedAgentMemory, right: ProjectedAgentMemory): number {
   const byCreatedAt = left.createdAt.localeCompare(right.createdAt);
   return byCreatedAt === 0 ? left.memoryId.localeCompare(right.memoryId) : byCreatedAt;
+}
+
+function selectTopMemory(
+  memories: readonly ProjectedAgentMemory[],
+  limit: number
+): readonly ProjectedAgentMemory[] {
+  const selected: ProjectedAgentMemory[] = [];
+  for (const memory of memories) {
+    let low = 0;
+    let high = selected.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (compareMemory(memory, selected[middle]!) < 0) high = middle;
+      else low = middle + 1;
+    }
+    if (low < limit) {
+      selected.splice(low, 0, memory);
+      if (selected.length > limit) selected.pop();
+    }
+  }
+  return selected;
 }
 
 function historyFor(memory: ProjectedAgentMemory): readonly AgentMemoryHistoryEntryDto[] {

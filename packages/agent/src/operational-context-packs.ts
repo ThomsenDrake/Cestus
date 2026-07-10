@@ -87,7 +87,7 @@ export interface OperationalBoundedWindow {
   readonly omissionCodes: readonly OperationalContextPackOmissionCode[];
 }
 
-export type OperationalTaskSummaryStatus = AgentTaskStatus | "pending";
+export type OperationalTaskSummaryStatus = AgentTaskStatus;
 
 export interface OperationalTaskSummaryDto {
   readonly taskId: string;
@@ -299,7 +299,7 @@ const operationalCapabilities = new Set<OperationalContextPackCapability>([
 ]);
 
 const taskStatuses = new Set<OperationalTaskSummaryStatus>([
-  "queued", "running", "waiting-for-approval", "blocked", "completed", "failed", "canceled", "pending"
+  "queued", "running", "waiting-for-approval", "blocked", "completed", "failed", "canceled"
 ]);
 const taskPriorities = new Set<AgentTaskPriority>(["low", "normal", "high", "urgent"]);
 const runStates = new Set<AgentRunState>(["running", "completed", "failed"]);
@@ -518,9 +518,9 @@ export function registerOperationalContextPackBuilders(
   registry: ContextPackRegistry,
   provider: OperationalContextPackProvider
 ): OperationalContextPackRegistrationResult {
-  const metadata = operationalProviderMetadata(provider);
+  const capturedProvider = captureOperationalProvider(provider);
+  const metadata = capturedProvider.metadata;
   const registrationKey = operationalContextPackProviderRegistrationKey(metadata);
-  assertOperationalProviderCapabilities(provider);
   const state = operationalContextPackRegistrationState.get(registry);
 
   for (const descriptor of operationalContextPackDescriptors) {
@@ -549,7 +549,7 @@ export function registerOperationalContextPackBuilders(
     operationalContextPackRegistrationState.set(registry, nextState);
     for (const descriptor of operationalContextPackDescriptors) {
       const contextPackId = descriptor.contextPackId as OperationalContextPackId;
-      registry.register(operationalContextPackBuilder(descriptor, provider));
+      registry.register(operationalContextPackBuilder(descriptor, capturedProvider));
       nextState.set(contextPackId, { registrationKey, descriptorFingerprint: operationalDescriptorFingerprint(descriptor) });
     }
   }
@@ -571,8 +571,8 @@ export function buildOperationalAgentMemorySummaryContextPack(
 export async function buildOperationalContextPackReadinessInputs(
   provider: OperationalContextPackProvider
 ): Promise<OperationalContextPackReadinessInputs> {
-  const metadata = operationalProviderMetadata(provider);
-  assertOperationalContextPackProviderMetadata(metadata);
+  const capturedProvider = captureOperationalProvider(provider);
+  const metadata = capturedProvider.metadata;
   if (!hasAllOperationalCapabilities(metadata.capabilities)) {
     return Object.freeze({
       resolvedContextPacks: Object.freeze([]),
@@ -583,9 +583,10 @@ export async function buildOperationalContextPackReadinessInputs(
       omissionCodes: Object.freeze([])
     });
   }
-  assertOperationalProviderCapabilities(provider);
   const [runtimeSource, taskRunHistorySnapshot, agentMemorySnapshot] = await Promise.all([
-    provider.workspaceRuntimeStatus(), provider.taskRunHistorySnapshot(), provider.agentMemorySnapshot()
+    callOperationalProvider(capturedProvider.workspaceRuntimeStatus),
+    callOperationalProvider(capturedProvider.taskRunHistorySnapshot),
+    callOperationalProvider(capturedProvider.agentMemorySnapshot)
   ]);
   const resolvedContextPacks = Object.freeze([
     buildWorkspaceRuntimeStatusContextPack({
@@ -625,17 +626,16 @@ export async function buildOperationalContextPackReadinessInputs(
 
 function operationalContextPackBuilder(
   descriptor: ContextPackDescriptor,
-  provider: OperationalContextPackProvider
+  provider: CapturedOperationalProvider
 ): { readonly descriptor: ContextPackDescriptor; readonly parsePayload: ContextPackPayloadParser; build(): Promise<ResolvedContextPack> } {
   const contextPackId = descriptor.contextPackId as OperationalContextPackId;
   return Object.freeze({
     descriptor,
     parsePayload: operationalContextPackPayloadParsers[`${contextPackId}@1`],
     async build(): Promise<ResolvedContextPack> {
-      const metadata = operationalProviderMetadata(provider);
-      assertOperationalContextPackProviderMetadata(metadata);
+      const metadata = provider.metadata;
       if (contextPackId === "workspace-runtime-status.v1") {
-        const runtimeSource = await provider.workspaceRuntimeStatus();
+        const runtimeSource = await callOperationalProvider(provider.workspaceRuntimeStatus);
         return buildWorkspaceRuntimeStatusContextPack({
           generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
           projectionHighWaterMark: runtimeSource.runtimeHighWaterMark,
@@ -643,14 +643,14 @@ function operationalContextPackBuilder(
         });
       }
       if (contextPackId === "task-run-history.v1") {
-        const taskRunHistorySnapshot = await provider.taskRunHistorySnapshot();
+        const taskRunHistorySnapshot = await callOperationalProvider(provider.taskRunHistorySnapshot);
         return buildTaskRunHistoryContextPack({
           generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
           projectionHighWaterMark: taskRunHistorySnapshot.projectionHighWaterMark,
           sizeBudgetBytes: metadata.sizeBudgets.taskRunHistory, taskRunHistorySnapshot
         });
       }
-      const memorySnapshot = await provider.agentMemorySnapshot();
+      const memorySnapshot = await callOperationalProvider(provider.agentMemorySnapshot);
       return buildOperationalAgentMemorySummaryContextPack({
         generatedAt: metadata.generatedAt, policyVersion: metadata.policyVersion, scope: metadata.scope,
         projectionHighWaterMark: memorySnapshot.projectionHighWaterMark,
@@ -660,21 +660,61 @@ function operationalContextPackBuilder(
   });
 }
 
-function operationalProviderMetadata(provider: OperationalContextPackProvider): OperationalContextPackProviderMetadata {
-  return {
-    providerId: provider.providerId,
-    capabilities: provider.capabilities,
-    policyVersion: provider.policyVersion,
-    generatedAt: provider.generatedAt,
-    scope: provider.scope,
-    sizeBudgets: provider.sizeBudgets
-  };
+interface CapturedOperationalProvider {
+  readonly metadata: OperationalContextPackProviderMetadata;
+  readonly workspaceRuntimeStatus: () => Promise<OperationalWorkspaceRuntimeSource>;
+  readonly taskRunHistorySnapshot: () => Promise<OperationalTaskRunHistorySnapshot>;
+  readonly agentMemorySnapshot: () => Promise<OperationalAgentMemorySnapshot>;
 }
 
-function assertOperationalProviderCapabilities(provider: OperationalContextPackProvider): void {
-  if (typeof provider.workspaceRuntimeStatus !== "function" || typeof provider.taskRunHistorySnapshot !== "function" ||
-    typeof provider.agentMemorySnapshot !== "function") {
-    throw new Error("blocked.missing-capability: operational provider lacks a required bounded source method");
+function captureOperationalProvider(provider: OperationalContextPackProvider): CapturedOperationalProvider {
+  if (typeof provider !== "object" || provider === null) {
+    throw new Error("blocked.invalid-payload-shape");
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(provider);
+  const ownValue = (key: string): unknown => {
+    const descriptor = descriptors[key];
+    if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) {
+      throw new Error("blocked.invalid-payload-shape");
+    }
+    return descriptor.value;
+  };
+  const metadata = {
+    providerId: ownValue("providerId"),
+    capabilities: ownValue("capabilities"),
+    policyVersion: ownValue("policyVersion"),
+    generatedAt: ownValue("generatedAt"),
+    scope: ownValue("scope"),
+    sizeBudgets: ownValue("sizeBudgets")
+  } as OperationalContextPackProviderMetadata;
+  assertOperationalContextPackProviderMetadata(metadata);
+  const method = <T>(key: string): (() => Promise<T>) => {
+    const value = ownValue(key);
+    if (typeof value !== "function") {
+      throw new Error("blocked.missing-capability");
+    }
+    return value.bind(provider) as () => Promise<T>;
+  };
+  return Object.freeze({
+    metadata: Object.freeze({
+      providerId: metadata.providerId,
+      capabilities: Object.freeze([...metadata.capabilities]),
+      policyVersion: metadata.policyVersion,
+      generatedAt: metadata.generatedAt,
+      scope: Object.freeze({ ...metadata.scope }),
+      sizeBudgets: Object.freeze({ ...metadata.sizeBudgets })
+    }),
+    workspaceRuntimeStatus: method<OperationalWorkspaceRuntimeSource>("workspaceRuntimeStatus"),
+    taskRunHistorySnapshot: method<OperationalTaskRunHistorySnapshot>("taskRunHistorySnapshot"),
+    agentMemorySnapshot: method<OperationalAgentMemorySnapshot>("agentMemorySnapshot")
+  });
+}
+
+async function callOperationalProvider<T>(method: () => Promise<T>): Promise<T> {
+  try {
+    return await method();
+  } catch {
+    throw new Error("blocked.operational-provider-failed");
   }
 }
 
@@ -709,7 +749,7 @@ function createOperationalPayloadParser(
   schemaVersion: OperationalContextPackId,
   requiredSection: string
 ): ContextPackPayloadParser {
-  return (payload) => {
+  return (payload, ref) => {
     assertOperationalPayloadEnvelope(payload, schemaVersion, requiredSection);
     if (schemaVersion === "workspace-runtime-status.v1") {
       assertWorkspaceRuntimePayloadSection(requiredJsonField(payload, "runtime", schemaVersion), schemaVersion);
@@ -717,6 +757,9 @@ function createOperationalPayloadParser(
       assertTaskRunHistoryPayloadSection(requiredJsonField(payload, "history", schemaVersion), schemaVersion);
     } else {
       assertAgentMemoryPayloadSection(requiredJsonField(payload, "memory", schemaVersion), schemaVersion);
+    }
+    if (ref !== undefined) {
+      assertOperationalRefSemantics(payload, ref, schemaVersion, requiredSection);
     }
     return payload;
   };
@@ -831,6 +874,8 @@ function assertTaskRunHistoryPayloadSection(value: AgentContextPackJsonValue, sc
   const toolRequests = assertJsonArrayField(value, "toolRequests", schemaVersion).map(projectToolRequestHistoryItem);
   const items = [...tasks, ...runs, ...modelInvocations, ...toolRequests];
   assertProjectionPayloadSemantics(value, schemaVersion, "agent.projection.task-run-history", items.length);
+  assertHistoryIdentityAndLinks(tasks, runs, modelInvocations, toolRequests);
+  assertHistoryItemsHaveProvenance(items);
   assertHistoryProvenanceMatches(value, items, schemaVersion);
 }
 
@@ -916,8 +961,20 @@ function assertProjectionPayloadSemantics(
     throw new Error(`invalid ${schemaVersion} payload`);
   }
   const window = requiredJsonField(value, "window", schemaVersion);
-  if (!isOperationalJsonObject(window) || typeof window.limit !== "number" || visibleItemCount > window.limit) {
+  const aggregateCounts = requiredJsonField(value, "aggregateCounts", schemaVersion);
+  if (!isOperationalJsonObject(window) || !isOperationalJsonObject(aggregateCounts) || typeof window.limit !== "number" ||
+    typeof window.totalCount !== "number" || typeof window.hasMore !== "boolean" ||
+    visibleItemCount > window.limit || window.totalCount < visibleItemCount ||
+    (window.hasMore && window.totalCount <= visibleItemCount)) {
     throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  if (expectedProjectionSource === "agent.projection.memory") {
+    if (typeof aggregateCounts.active !== "number" || typeof aggregateCounts.totalCount !== "number" ||
+      aggregateCounts.active < visibleItemCount || aggregateCounts.totalCount < visibleItemCount) {
+      throw new Error(`invalid ${schemaVersion} payload`);
+    }
+  } else {
+    assertHistoryAggregateCountsCoverVisibleItems(aggregateCounts, value, visibleItemCount, schemaVersion);
   }
   const isEmpty = visibleItemCount === 0;
   const hasEmptyProof = hasJsonField(value, "emptyProof");
@@ -929,7 +986,6 @@ function assertProjectionPayloadSemantics(
   const emptyProof = requiredJsonField(value, "emptyProof", schemaVersion);
   const sourceEventIds = assertJsonArrayField(value, "sourceEventIds", schemaVersion);
   const artifactHashes = assertJsonArrayField(value, "artifactHashes", schemaVersion);
-  const aggregateCounts = requiredJsonField(value, "aggregateCounts", schemaVersion);
   if (!isOperationalJsonObject(emptyProof) || !isOperationalJsonObject(aggregateCounts) ||
     emptyProof.projectionName !== expectedProjectionSource ||
     emptyProof.projectionHighWaterMark !== value.projectionHighWaterMark ||
@@ -938,6 +994,70 @@ function assertProjectionPayloadSemantics(
     Object.values(aggregateCounts).some((count) => count !== 0)) {
     throw new Error(`invalid ${schemaVersion} payload`);
   }
+}
+
+function assertOperationalRefSemantics(
+  payload: { readonly [key: string]: AgentContextPackJsonValue },
+  ref: ContextPackRef,
+  schemaVersion: OperationalContextPackId,
+  sectionName: string
+): void {
+  if (ref.contextPackId !== schemaVersion || ref.version !== 1 || ref.policyVersion === undefined || ref.scope === undefined ||
+    ref.projectionHighWaterMark === undefined) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  const section = requiredJsonField(payload, sectionName, schemaVersion);
+  if (!isOperationalJsonObject(section)) throw new Error(`invalid ${schemaVersion} payload`);
+  const expectedProjection = schemaVersion === "workspace-runtime-status.v1" ? "runtime.status" :
+    schemaVersion === "task-run-history.v1" ? "agent.projection.task-run-history" : "agent.projection.memory";
+  const payloadHighWaterMark = schemaVersion === "workspace-runtime-status.v1"
+    ? section.runtimeHighWaterMark
+    : section.projectionHighWaterMark;
+  const highWaterInputs = ref.stalenessInputs?.filter((input) => input.kind === "projection-high-water-mark") ?? [];
+  if (payloadHighWaterMark !== ref.projectionHighWaterMark || highWaterInputs.length !== 1 ||
+    highWaterInputs[0]?.ref !== expectedProjection || highWaterInputs[0]?.value !== String(ref.projectionHighWaterMark)) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  if (schemaVersion !== "workspace-runtime-status.v1") {
+    if (section.projectionSourceRef !== expectedProjection) throw new Error(`invalid ${schemaVersion} payload`);
+    assertExactStringArray(section.sourceEventIds as AgentContextPackJsonValue, ref.sourceEventIds ?? [], schemaVersion);
+    assertExactStringArray(section.artifactHashes as AgentContextPackJsonValue, ref.artifactHashes ?? [], schemaVersion);
+  } else if ((ref.sourceEventIds?.length ?? 0) !== 0 || (ref.artifactHashes?.length ?? 0) !== 0) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  const emptyProof = section.emptyProof;
+  if (emptyProof !== undefined && isOperationalJsonObject(emptyProof)) {
+    const proof = emptyProof;
+    const proofScope = proof.scope;
+    if (proofScope === undefined || !isOperationalJsonObject(proofScope) || proofScope.kind !== ref.scope.kind || proofScope.id !== ref.scope.id ||
+      proof.generatedAt !== ref.generatedAt || proof.projectionHighWaterMark !== ref.projectionHighWaterMark) {
+      throw new Error(`invalid ${schemaVersion} payload`);
+    }
+  }
+}
+
+function assertHistoryAggregateCountsCoverVisibleItems(
+  aggregateCounts: { readonly [key: string]: AgentContextPackJsonValue },
+  value: { readonly [key: string]: AgentContextPackJsonValue },
+  visibleItemCount: number,
+  schemaVersion: OperationalContextPackId
+): void {
+  if (typeof aggregateCounts.total === "number") {
+    if (aggregateCounts.total < visibleItemCount) throw new Error(`blocked.projection-source-mismatch: invalid ${schemaVersion} aggregate counts`);
+    return;
+  }
+  const families = ["tasks", "runs", "modelInvocations", "toolRequests"] as const;
+  let covered = 0;
+  let hasFamilyCount = false;
+  for (const family of families) {
+    if (typeof aggregateCounts[family] === "number") {
+      hasFamilyCount = true;
+      const visible = Array.isArray(value[family]) ? value[family].length : 0;
+      if ((aggregateCounts[family] as number) < visible) throw new Error(`blocked.projection-source-mismatch: invalid ${schemaVersion} aggregate counts`);
+      covered += aggregateCounts[family] as number;
+    }
+  }
+  if (!hasFamilyCount || covered < visibleItemCount) throw new Error(`blocked.projection-source-mismatch: invalid ${schemaVersion} aggregate counts`);
 }
 
 function assertScopePayloadField(value: { readonly [key: string]: AgentContextPackJsonValue }, key: string, schemaVersion: OperationalContextPackId): void {
@@ -1261,7 +1381,6 @@ function normalizeTaskRunHistorySnapshot(value: OperationalTaskRunHistorySnapsho
   assertPlainDataArray(value.runs, "runs");
   assertPlainDataArray(value.modelInvocations, "model invocations");
   assertPlainDataArray(value.toolRequests, "tool requests");
-  const visibleItemCount = value.tasks.length + value.runs.length + value.modelInvocations.length + value.toolRequests.length;
   assertPlainDataObject(value.aggregateCounts, "task/run aggregate counts");
   const aggregateCounts: Record<string, number> = {};
   for (const [key, count] of Object.entries(value.aggregateCounts)) {
@@ -1271,21 +1390,34 @@ function normalizeTaskRunHistorySnapshot(value: OperationalTaskRunHistorySnapsho
   }
   const callerSourceEventIds = normalizeEventIds(value.sourceEventIds);
   const callerArtifactHashes = normalizeArtifactHashes(value.artifactHashes);
+  const window = normalizeWindow(value.window);
+  const emptyProof = value.emptyProof === undefined ? undefined : normalizeEmptyProof(value.emptyProof);
+  const tasks = sortHistoryItems(value.tasks.map((item) => projectTaskHistoryItem(item as unknown as AgentContextPackJsonValue)));
+  const runs = sortHistoryItems(value.runs.map((item) => projectRunHistoryItem(item as unknown as AgentContextPackJsonValue)));
+  const modelInvocations = sortHistoryItems(value.modelInvocations.map((item) => projectModelInvocationHistoryItem(item as unknown as AgentContextPackJsonValue)));
+  const toolRequests = sortHistoryItems(value.toolRequests.map((item) => projectToolRequestHistoryItem(item as unknown as AgentContextPackJsonValue)));
+  const visibleItemCount = tasks.length + runs.length + modelInvocations.length + toolRequests.length;
   if (visibleItemCount === 0 && (callerSourceEventIds.length !== 0 || callerArtifactHashes.length !== 0)) {
     throw new Error("blocked.projection-source-mismatch: empty task/run history must not retain item provenance");
   }
-  const window = normalizeWindow(value.window);
-  if (visibleItemCount > window.limit) {
-    throw new Error("blocked.unbounded-source: task/run history visible items exceed the bounded window limit");
+  if (visibleItemCount > window.limit || window.totalCount < visibleItemCount || (window.hasMore && window.totalCount <= visibleItemCount)) {
+    throw new Error("blocked.unbounded-source: task/run history window does not cover visible items");
   }
-  const emptyProof = value.emptyProof === undefined ? undefined : normalizeEmptyProof(value.emptyProof);
+  assertHistoryAggregateCountsCoverVisibleItems(
+    aggregateCounts as unknown as { readonly [key: string]: AgentContextPackJsonValue },
+    { tasks, runs, modelInvocations, toolRequests } as unknown as { readonly [key: string]: AgentContextPackJsonValue },
+    visibleItemCount,
+    "task-run-history.v1"
+  );
+  assertHistoryIdentityAndLinks(tasks, runs, modelInvocations, toolRequests);
+  assertHistoryItemsHaveProvenance([...tasks, ...runs, ...modelInvocations, ...toolRequests]);
   const normalized = {
     projectionHighWaterMark: value.projectionHighWaterMark,
     projectionSourceRef: value.projectionSourceRef,
-    tasks: sortHistoryItems(value.tasks.map((item) => projectTaskHistoryItem(item as unknown as AgentContextPackJsonValue))),
-    runs: sortHistoryItems(value.runs.map((item) => projectRunHistoryItem(item as unknown as AgentContextPackJsonValue))),
-    modelInvocations: sortHistoryItems(value.modelInvocations.map((item) => projectModelInvocationHistoryItem(item as unknown as AgentContextPackJsonValue))),
-    toolRequests: sortHistoryItems(value.toolRequests.map((item) => projectToolRequestHistoryItem(item as unknown as AgentContextPackJsonValue))),
+    tasks,
+    runs,
+    modelInvocations,
+    toolRequests,
     aggregateCounts,
     sourceEventIds: [],
     artifactHashes: [],
@@ -1375,7 +1507,7 @@ function itemState(value: unknown): string | undefined {
 }
 
 function historyStatePriority(state: string | undefined): number {
-  if (state === "failed" || state === "blocked" || state === "denied" || state === "pending" || state === "waiting-for-approval") return 0;
+  if (state === "failed" || state === "blocked" || state === "denied" || state === "waiting-for-approval") return 0;
   if (state === "executing" || state === "approved" || state === "requested" || state === "queued" || state === "running") return 1;
   if (state === "completed") return 2;
   return 1;
@@ -1724,6 +1856,74 @@ function closeHistoryProvenance(snapshot: OperationalTaskRunHistorySnapshot): Op
   return { ...snapshot, sourceEventIds: provenance.sourceEventIds, artifactHashes: provenance.artifactHashes };
 }
 
+function assertHistoryIdentityAndLinks(
+  tasks: readonly OperationalTaskSummaryDto[],
+  runs: readonly OperationalRunSummaryDto[],
+  modelInvocations: readonly OperationalModelInvocationSummaryDto[],
+  toolRequests: readonly OperationalToolRequestSummaryDto[]
+): void {
+  assertUniqueHistoryIds(tasks, "taskId");
+  assertUniqueHistoryIds(runs, "runId");
+  assertUniqueHistoryIds(modelInvocations, "invocationId");
+  assertUniqueHistoryIds(toolRequests, "toolRequestId");
+  const tasksById = new Map(tasks.map((task) => [task.taskId, task]));
+  const runsById = new Map(runs.map((run) => [run.runId, run]));
+  const invocationsById = new Map(modelInvocations.map((invocation) => [invocation.invocationId, invocation]));
+  const toolsById = new Map(toolRequests.map((tool) => [tool.toolRequestId, tool]));
+
+  if (runs.length > 0) {
+    for (const task of tasks) {
+      if (task.runId !== undefined) {
+        const run = runsById.get(task.runId);
+        if (run === undefined || (run.taskId !== undefined && run.taskId !== task.taskId)) {
+          throw new Error("blocked.projection-source-mismatch: task/run links are inconsistent");
+        }
+      }
+    }
+  }
+  if (tasks.length > 0) {
+    for (const run of runs) {
+      if (run.taskId !== undefined && !tasksById.has(run.taskId)) {
+        throw new Error("blocked.projection-source-mismatch: run/task links are inconsistent");
+      }
+    }
+  }
+  for (const run of runs) {
+    if (modelInvocations.length > 0 && run.invocationIds?.some((id) => !invocationsById.has(id))) {
+      throw new Error("blocked.projection-source-mismatch: run/model links are inconsistent");
+    }
+    if (toolRequests.length > 0 && run.toolRequestIds?.some((id) => !toolsById.has(id))) {
+      throw new Error("blocked.projection-source-mismatch: run/tool links are inconsistent");
+    }
+  }
+  for (const invocation of modelInvocations) {
+    if (invocation.runId !== undefined && runs.length > 0 && !runsById.has(invocation.runId)) {
+      throw new Error("blocked.projection-source-mismatch: model/run links are inconsistent");
+    }
+  }
+  for (const tool of toolRequests) {
+    if (tool.runId !== undefined && runs.length > 0 && !runsById.has(tool.runId)) {
+      throw new Error("blocked.projection-source-mismatch: tool/run links are inconsistent");
+    }
+  }
+}
+
+function assertUniqueHistoryIds(items: readonly object[], idKey: string): void {
+  const ids = items.map((item) => (item as Record<string, unknown>)[idKey] as string);
+  if (new Set(ids).size !== ids.length) {
+    throw new Error("blocked.invalid-payload-shape: duplicate history entity ID");
+  }
+}
+
+function assertHistoryItemsHaveProvenance(items: readonly unknown[]): void {
+  for (const item of items) {
+    const provenance = historyProvenance([item]);
+    if (provenance.sourceEventIds.length === 0 && provenance.artifactHashes.length === 0) {
+      throw new Error("blocked.missing-provenance: every history item requires a durable source");
+    }
+  }
+}
+
 function historyProvenance(items: readonly unknown[]): { readonly sourceEventIds: readonly string[]; readonly artifactHashes: readonly string[] } {
   const sourceEventIds: string[] = [];
   const artifactHashes: string[] = [];
@@ -1736,7 +1936,7 @@ function historyProvenance(items: readonly unknown[]): { readonly sourceEventIds
     for (const key of ["inputArtifactHashes", "outputArtifactHashes", "artifactHashes"] as const) {
       if (Array.isArray(record[key])) artifactHashes.push(...record[key] as string[]);
     }
-    for (const key of ["inputArtifactHash", "providerOutputArtifactHash"] as const) {
+    for (const key of ["inputArtifactHash", "providerOutputArtifactHash", "previewHash", "approvedPreviewHash", "executionApprovedPreviewHash"] as const) {
       if (typeof record[key] === "string") artifactHashes.push(record[key] as string);
     }
   }
@@ -1798,7 +1998,11 @@ function assertMemoryPayloadItem(value: AgentContextPackJsonValue, schemaVersion
     throw new Error(`invalid ${schemaVersion} payload`);
   }
   normalizeEventIds(item.sourceEventIds as readonly string[]);
-  normalizeArtifactHashes(item.artifactHashes as readonly string[]);
+  const sourceEventIds = normalizeEventIds(item.sourceEventIds as readonly string[]);
+  const artifactHashes = normalizeArtifactHashes(item.artifactHashes as readonly string[]);
+  if (sourceEventIds.length === 0 && artifactHashes.length === 0) {
+    throw new Error(`invalid ${schemaVersion} payload: missing provenance`);
+  }
   if (item.expiresAt !== undefined) {
     assertUtcTimestamp(item.expiresAt, "memory item expiresAt");
   }

@@ -47,7 +47,39 @@ describe("agent context packs", () => {
     expect(() => verifyResolvedContextPack({ ...resolved, ref: { ...resolved.ref, sizeBytes: 1 } }, parser)).toThrow(/size/i);
     expect(() => verifyResolvedContextPack({ ...resolved, ref: { ...resolved.ref, version: 2 } }, parser)).toThrow(/version|identity/i);
     expect(() => verifyResolvedContextPack({ ...resolved, payload: { wrong: "shape" }, parserVerification: "ok", verified: true }, parser)).toThrow(/hash|invalid/i);
-    expect(() => verifyResolvedContextPack(buildResolvedContextPack({ ...resolvedContextPackSentinelInput, payload: { wrong: "shape" } }), parser)).toThrow(/invalid/i);
+    expect(() => verifyResolvedContextPack(buildResolvedContextPack({ ...resolvedContextPackSentinelInput, payload: { wrong: "shape" } }), parser)).toThrow("blocked.payload-schema-mismatch");
+  });
+
+  it("passes the exact resolved ref to parsers while preserving one-argument parsers", () => {
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    let receivedRef: unknown;
+
+    expect(verifyResolvedContextPack(resolved, (payload, ref) => {
+      receivedRef = ref;
+      return payload;
+    })).toEqual(resolved);
+    expect(receivedRef).toEqual(resolved.ref);
+    expect(verifyResolvedContextPack(resolved, (payload) => payload)).toEqual(resolved);
+  });
+
+  it("keeps parser and resolver failure messages secret-safe", async () => {
+    const hostile = "/home/drake/private token=sk-hostile provider payload body";
+    const resolved = buildResolvedContextPack(resolvedContextPackSentinelInput);
+    expect(() => verifyResolvedContextPack(resolved, () => {
+      throw new Error(hostile);
+    })).toThrow(/^blocked\.payload-schema-mismatch$/);
+
+    const registry = createContextPackRegistry({ payloadResolver: async () => {
+      throw new Error(hostile);
+    } });
+    registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => resolved.ref,
+      parsePayload: (payload) => payload
+    });
+
+    await expect(registry.buildResolved("task-run-history.v1")).rejects.toThrow(/^blocked\.payload-resolution-failed$/);
+    await expect(registry.buildResolved("task-run-history.v1")).rejects.not.toThrow(hostile);
   });
 
   it("keeps registry build ref-only and requires exact resolver/parser capabilities for resolved builds", async () => {

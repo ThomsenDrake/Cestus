@@ -64,7 +64,10 @@ export type VerifiedResolvedContextPack = ResolvedContextPack & {
   readonly [verifiedResolvedContextPackBrand]: true;
 };
 
-export type ContextPackPayloadParser = (payload: AgentContextPackJsonValue) => AgentContextPackJsonValue;
+export type ContextPackPayloadParser = (
+  payload: AgentContextPackJsonValue,
+  ref?: ContextPackRef
+) => AgentContextPackJsonValue;
 
 export type ContextPackPayloadResolver = (ref: ContextPackRef) =>
   | AgentContextPackJsonValue
@@ -266,9 +269,9 @@ export function verifyResolvedContextPack(
 
   let parsedPayload: AgentContextPackJsonValue;
   try {
-    parsedPayload = normalizeJsonDtoValue(parser(resolved.payload), "$.parsedPayload");
-  } catch (error) {
-    throw new Error(`blocked.payload-schema-mismatch: ${error instanceof Error ? error.message : "parser rejected payload"}`);
+    parsedPayload = normalizeJsonDtoValue(parser(resolved.payload, resolved.ref), "$.parsedPayload");
+  } catch {
+    throw new Error("blocked.payload-schema-mismatch");
   }
   const parsedPayloadBytes = serializeContextPackPayload(parsedPayload);
   if (hashStableJson(parsedPayloadBytes) !== resolved.ref.contentHash || parsedPayloadBytes.byteLength !== resolved.ref.sizeBytes) {
@@ -370,7 +373,12 @@ export function createContextPackRegistry(options: CreateContextPackRegistryOpti
         if (payloadResolver === undefined) {
           throw new Error("blocked.missing-payload");
         }
-        const resolvedOrPayload = await payloadResolver(ref);
+        let resolvedOrPayload: AgentContextPackJsonValue | ResolvedContextPack;
+        try {
+          resolvedOrPayload = await payloadResolver(ref);
+        } catch {
+          throw new Error("blocked.payload-resolution-failed");
+        }
         if (resolvedOrPayload === undefined || resolvedOrPayload === null) {
           throw new Error("blocked.missing-payload");
         }
@@ -503,8 +511,8 @@ function normalizeResolvedContextPack(value: unknown): ResolvedContextPack {
   let normalized: AgentContextPackJsonValue;
   try {
     normalized = normalizeJsonDtoValue(value, "$");
-  } catch (error) {
-    throw new Error(`blocked.invalid-payload-shape: ${error instanceof Error ? error.message : "resolved payload is unsafe"}`);
+  } catch {
+    throw new Error("blocked.invalid-payload-shape");
   }
   if (typeof normalized !== "object" || normalized === null || Array.isArray(normalized)) {
     throw new Error("blocked.invalid-resolved-context-pack");
@@ -522,8 +530,8 @@ function normalizeResolvedContextPack(value: unknown): ResolvedContextPack {
 function normalizeRawResolvedPayload(value: unknown): AgentContextPackJsonValue {
   try {
     return normalizeJsonDtoValue(value, "$.payload");
-  } catch (error) {
-    throw new Error(`blocked.invalid-payload-shape: ${error instanceof Error ? error.message : "resolved payload is unsafe"}`);
+  } catch {
+    throw new Error("blocked.invalid-payload-shape");
   }
 }
 

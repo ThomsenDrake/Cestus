@@ -154,7 +154,7 @@ describe("operational context pack contracts", () => {
         runs: [],
         modelInvocations: [],
         toolRequests: [],
-        aggregateCounts: { tasks: 0 },
+        aggregateCounts: { tasks: 1 },
         sourceEventIds: ["evt_agent_task_created"],
         artifactHashes: [],
         window: validWindow
@@ -560,6 +560,82 @@ describe("operational context pack contracts", () => {
       await expect(registry.buildResolved(contextPackId)).rejects.toThrow("blocked.payload-schema-mismatch");
     }
   });
+
+  it("binds resolver-readback operational semantics to the exact ref metadata", async () => {
+    const cases = [
+      {
+        contextPackId: "workspace-runtime-status.v1" as const,
+        descriptorIndex: 0,
+        payload: {
+          schemaVersion: "workspace-runtime-status.v1",
+          runtime: { runtimeHighWaterMark: 41, workspaceMounted: true, storageStrategy: "repo-local", bindPosture: "loopback", authPosture: "local-disabled", providerStates: [], diagnostics: [], projectionHighWaterMarks: {}, omissionCodes: [] }
+        },
+        sourceEventIds: [] as string[],
+        artifactHashes: [] as string[]
+      },
+      {
+        contextPackId: "task-run-history.v1" as const,
+        descriptorIndex: 1,
+        payload: {
+          schemaVersion: "task-run-history.v1",
+          history: {
+            projectionHighWaterMark: 42, projectionSourceRef: "agent.projection.task-run-history",
+            tasks: [], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { total: 0 },
+            sourceEventIds: [], artifactHashes: [],
+            window: { order: "updatedAt:desc", limit: 25, hasMore: false, totalCount: 0, omissionCodes: [] },
+            emptyProof: { projectionName: "agent.projection.task-run-history", scope: { kind: "workspace", id: "ws_wrong" }, projectionHighWaterMark: 42, sourceEventCount: 0, generatedAt: "2026-07-10T12:00:01.000Z", emptyReasonCode: "empty.task-run-history" }
+          }
+        },
+        sourceEventIds: [] as string[],
+        artifactHashes: [] as string[]
+      },
+      {
+        contextPackId: "agent-memory-summary.v1" as const,
+        descriptorIndex: 2,
+        payload: {
+          schemaVersion: "agent-memory-summary.v1",
+          memory: {
+            truthBoundary: { authoritativeForOntology: false }, projectionHighWaterMark: 42, projectionSourceRef: "agent.projection.memory",
+            activeMemory: [{ memoryId: "mem_current", scope: "workspace", memoryKind: "agent-observation", summary: "Current bounded memory.", confidence: 0.8, sourceEventIds: ["evt_payload_only"], artifactHashes: [] }],
+            aggregateCounts: { active: 1, totalCount: 1 }, sourceEventIds: ["evt_payload_only"], artifactHashes: [],
+            window: { order: "createdAt:asc", limit: 25, hasMore: false, totalCount: 1, omissionCodes: [] }
+          }
+        },
+        sourceEventIds: ["evt_ref_only"],
+        artifactHashes: [] as string[]
+      },
+      {
+        contextPackId: "task-run-history.v1" as const,
+        descriptorIndex: 1,
+        payload: {
+          schemaVersion: "task-run-history.v1",
+          history: {
+            projectionHighWaterMark: 42, projectionSourceRef: "agent.projection.task-run-history",
+            tasks: [{ taskId: "task_unprovenanced", status: "queued", sourceEventIds: [], inputArtifactHashes: [] }],
+            runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { total: 1 },
+            sourceEventIds: [], artifactHashes: [],
+            window: { order: "updatedAt:desc", limit: 25, hasMore: false, totalCount: 1, omissionCodes: [] }
+          }
+        },
+        sourceEventIds: [] as string[],
+        artifactHashes: [] as string[]
+      }
+    ];
+
+    for (const testCase of cases) {
+      const resolved = buildResolvedContextPack({
+        contextPackId: testCase.contextPackId, version: 1, generatedAt: providerMetadata.generatedAt,
+        payload: testCase.payload, safeSummary: "Ref-bound operational payload.",
+        provenanceRefs: [`operational-source-proof:${testCase.contextPackId}:event`],
+        projectionHighWaterMark: 42, sourceEventIds: testCase.sourceEventIds, artifactHashes: testCase.artifactHashes,
+        policyVersion: providerMetadata.policyVersion, scope: providerMetadata.scope, sizeBudgetBytes: 32_768,
+        stalenessInputs: [{ kind: "projection-high-water-mark", ref: operationalContextPackDescriptors[testCase.descriptorIndex]!.sourceProjection, value: "42" }]
+      });
+      const registry = createContextPackRegistry({ payloadResolver: async () => resolved.payload });
+      registry.register({ descriptor: operationalContextPackDescriptors[testCase.descriptorIndex]!, build: () => resolved.ref, parsePayload: operationalContextPackPayloadParsers[`${testCase.contextPackId}@1`] });
+      await expect(registry.buildResolved(testCase.contextPackId)).rejects.toThrow("blocked.payload-schema-mismatch");
+    }
+  });
 });
 
 describe("operational context pack builders", () => {
@@ -590,7 +666,7 @@ describe("operational context pack builders", () => {
       tasks: [
         { taskId: "task_completed", status: "completed", sourceEventIds: ["evt_agent_task_completed"] },
         { taskId: "task_blocked", status: "blocked", sourceEventIds: ["evt_agent_task_blocked"] },
-        { taskId: "task_pending", status: "pending", sourceEventIds: ["evt_agent_task_pending"] },
+        { taskId: "task_approval", status: "waiting-for-approval", sourceEventIds: ["evt_agent_task_approval"] },
         { taskId: "task_queued", status: "queued", sourceEventIds: ["evt_agent_task_queued"] },
         { taskId: "task_running", status: "running", sourceEventIds: ["evt_agent_task_running"] }
       ],
@@ -686,6 +762,33 @@ describe("operational context pack builders", () => {
     });
 
     expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, taskRunHistorySnapshot: snapshot })).toThrow("blocked.unbounded-source");
+  });
+
+  it("rejects noncanonical task status, duplicate IDs, inconsistent links, and unprovenanced history", () => {
+    const invalidSnapshots: OperationalTaskRunHistorySnapshot[] = [
+      historySnapshot({ tasks: [{ taskId: "task_pending", status: "pending" as never, sourceEventIds: ["evt_pending"] }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { total: 1 }, window: { order: "updatedAt:desc", limit: 4, hasMore: false, totalCount: 1, omissionCodes: [] } }),
+      historySnapshot({ tasks: [{ taskId: "task_dup", status: "queued", sourceEventIds: ["evt_one"] }, { taskId: "task_dup", status: "blocked", sourceEventIds: ["evt_two"] }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { total: 2 }, window: { order: "updatedAt:desc", limit: 4, hasMore: false, totalCount: 2, omissionCodes: [] } }),
+      historySnapshot({ tasks: [{ taskId: "task_one", status: "running", runId: "run_one", sourceEventIds: ["evt_task"] }], runs: [{ runId: "run_two", state: "running", taskId: "task_one", sourceEventIds: ["evt_run"] }], modelInvocations: [], toolRequests: [], aggregateCounts: { total: 2 }, window: { order: "updatedAt:desc", limit: 4, hasMore: false, totalCount: 2, omissionCodes: [] } }),
+      historySnapshot({ tasks: [], runs: [{ runId: "run_one", state: "running", invocationIds: ["model_missing"], sourceEventIds: ["evt_run"] }], modelInvocations: [{ invocationId: "model_other", status: "requested", runId: "run_one", sourceEventIds: ["evt_model"] }], toolRequests: [], aggregateCounts: { total: 2 }, window: { order: "updatedAt:desc", limit: 4, hasMore: false, totalCount: 2, omissionCodes: [] } }),
+      historySnapshot({ tasks: [{ taskId: "task_unprovenanced", status: "queued", sourceEventIds: [], inputArtifactHashes: [] }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { total: 1 }, window: { order: "updatedAt:desc", limit: 4, hasMore: false, totalCount: 1, omissionCodes: [] } })
+    ];
+
+    for (const taskRunHistorySnapshot of invalidSnapshots) {
+      expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, taskRunHistorySnapshot })).toThrow(/blocked\.(invalid-payload-shape|projection-source-mismatch|missing-provenance)/);
+    }
+  });
+
+  it("rejects non-empty history whose window or aggregate totals do not cover visible items", () => {
+    for (const patch of [
+      { aggregateCounts: { total: 0 } },
+      { window: { order: "updatedAt:desc", limit: 25, hasMore: false, totalCount: 0, omissionCodes: [] } },
+      { window: { order: "updatedAt:desc", limit: 25, hasMore: true, totalCount: 1, omissionCodes: [] } }
+    ]) {
+      expect(() => buildTaskRunHistoryContextPack({
+        ...sharedInput,
+        taskRunHistorySnapshot: historySnapshot({ tasks: [{ taskId: "task_one", status: "queued", sourceEventIds: ["evt_task_one"] }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { total: 1 }, window: { order: "updatedAt:desc", limit: 25, hasMore: false, totalCount: 1, omissionCodes: [] }, ...patch })
+      })).toThrow(/blocked\.(unbounded-source|projection-source-mismatch)/);
+    }
   });
 
   it("preserves canonical per-entity statuses and safe operational handoff fields", () => {
@@ -892,7 +995,7 @@ describe("operational context pack builders", () => {
   it("keeps bounded snapshot output independent of unrelated historical total growth", () => {
     const window = { order: "updatedAt:desc", limit: 3, cursor: "cursor_50k", hasMore: true, totalCount: 50_000, omissionCodes: ["omitted.out-of-scope"] as const };
     const snapshot = historySnapshot({
-      tasks: [{ taskId: "task_recent", status: "completed" }], runs: [], modelInvocations: [], toolRequests: [],
+      tasks: [{ taskId: "task_recent", status: "completed", sourceEventIds: ["evt_task_recent"] }], runs: [], modelInvocations: [], toolRequests: [],
       aggregateCounts: { total: 50_000, omittedCompleted: 49_999 }, window
     });
     const baseline = buildTaskRunHistoryContextPack({ ...sharedInput, sizeBudgetBytes: 32_768, taskRunHistorySnapshot: snapshot });
@@ -912,15 +1015,15 @@ describe("operational context pack builders", () => {
   it("trims quiet completed history after safety-relevant state and blocks when none can fit", () => {
     const snapshot = historySnapshot({
       tasks: [
-        { taskId: `task_completed_${"x".repeat(1_000)}`, status: "completed" },
-        { taskId: "task_blocked", status: "blocked" },
-        { taskId: "task_pending", status: "pending" }
+        { taskId: `task_completed_${"x".repeat(1_000)}`, status: "completed", sourceEventIds: ["evt_task_completed_quiet"] },
+        { taskId: "task_blocked", status: "blocked", sourceEventIds: ["evt_task_blocked_safe"] },
+        { taskId: "task_approval", status: "waiting-for-approval", sourceEventIds: ["evt_task_approval"] }
       ],
       runs: [], modelInvocations: [], toolRequests: []
     });
     const trimmed = buildTaskRunHistoryContextPack({ ...sharedInput, sizeBudgetBytes: 1_200, taskRunHistorySnapshot: snapshot });
     const tasks = (trimmed.payload as { history: { tasks: readonly { status: string }[] } }).history.tasks;
-    expect(tasks.map((task) => task.status)).toEqual(expect.arrayContaining(["blocked", "pending"]));
+    expect(tasks.map((task) => task.status)).toEqual(expect.arrayContaining(["blocked", "waiting-for-approval"]));
     expect(tasks.map((task) => task.status)).not.toContain("completed");
     expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, sizeBudgetBytes: 1, taskRunHistorySnapshot: snapshot })).toThrow("blocked.size-budget");
   });
@@ -1059,6 +1162,60 @@ describe("operational context pack registration and readiness handoff", () => {
       ...directMemory.ref.provenanceRefs,
       "operational-source-proof:agent-memory-summary.v1:event"
     ]));
+  });
+
+  it("rejects accessor-backed provider metadata without invoking getters", () => {
+    let getterInvoked = false;
+    const accessorProvider = provider() as unknown as Record<string, unknown>;
+    Object.defineProperty(accessorProvider, "policyVersion", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return "operational-policy.v1";
+      }
+    });
+
+    expect(() => registerOperationalContextPackBuilders(createContextPackRegistry(), accessorProvider as never)).toThrow(/blocked\.invalid-payload-shape|accessor/);
+    expect(getterInvoked).toBe(false);
+  });
+
+  it("captures provider metadata and methods at registration", async () => {
+    const mutable = provider() as OperationalContextPackProvider & {
+      policyVersion: string;
+      generatedAt: string;
+      scope: { kind: string; id: string };
+      sizeBudgets: { workspaceRuntimeStatus: number; taskRunHistory: number; agentMemorySummary: number };
+    };
+    const registry = createContextPackRegistry();
+    registerOperationalContextPackBuilders(registry, mutable);
+    const originalRuntimeMethod = mutable.workspaceRuntimeStatus;
+    mutable.policyVersion = "operational-policy.v9";
+    mutable.generatedAt = "2026-07-11T12:00:00.000Z";
+    mutable.scope = { kind: "workspace", id: "ws_mutated" };
+    mutable.sizeBudgets = { workspaceRuntimeStatus: 1, taskRunHistory: 1, agentMemorySummary: 1 };
+    mutable.workspaceRuntimeStatus = async () => { throw new Error("mutated provider method"); };
+
+    const resolved = await registry.buildResolved("workspace-runtime-status.v1");
+    expect(resolved.ref).toMatchObject({
+      policyVersion: "operational-policy.v1",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      sizeBudgetBytes: 16_384
+    });
+    expect(originalRuntimeMethod).not.toBe(mutable.workspaceRuntimeStatus);
+  });
+
+  it("wraps hostile operational provider failures in a fixed blocking code", async () => {
+    const hostile = "/home/drake/private token=sk-hostile provider payload body";
+    const registry = createContextPackRegistry();
+    registerOperationalContextPackBuilders(registry, provider({
+      async workspaceRuntimeStatus() {
+        throw new Error(hostile);
+      }
+    }));
+
+    await expect(registry.buildResolved("workspace-runtime-status.v1")).rejects.toThrow(/^blocked\.operational-provider-failed$/);
+    await expect(registry.buildResolved("workspace-runtime-status.v1")).rejects.not.toThrow(hostile);
   });
 
   it("fails closed for deterministic registration conflicts without provider identity checks", () => {

@@ -398,6 +398,46 @@ describe("agent memory surface", () => {
     })).toThrow(/projection-source-mismatch/);
   });
 
+  it("rejects non-empty memory whose window or aggregate totals do not cover visible items", () => {
+    const base = boundedMemorySnapshot({ totalCount: 1, omissionCodes: [] });
+    const invalid = [
+      { ...base, aggregateCounts: { active: 0, totalCount: 0 } },
+      { ...base, window: { ...base.window, totalCount: 0, hasMore: false } },
+      { ...base, window: { ...base.window, totalCount: 1, hasMore: true } }
+    ];
+    for (const memorySnapshot of invalid) {
+      expect(() => buildAgentMemorySummaryResolvedContextPack({
+        memorySnapshot,
+        generatedAt: "2026-07-09T12:30:00.000Z",
+        policyVersion: "agent-policy-v1",
+        scope: { kind: "workspace", id: "ws_case_001" },
+        projectionHighWaterMark: 42,
+        sizeBudgetBytes: 16_384
+      })).toThrow(/blocked\.(unbounded-source|projection-source-mismatch)/);
+    }
+  });
+
+  it("rejects unprovenanced active memory through the exact payload parser", () => {
+    const resolved = buildAgentMemorySummaryResolvedContextPack({
+      memorySnapshot: {
+        ...boundedMemorySnapshot({ totalCount: 1, omissionCodes: [] }),
+        window: { ...boundedMemorySnapshot({ totalCount: 1, omissionCodes: [] }).window, hasMore: false }
+      },
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 42,
+      sizeBudgetBytes: 16_384
+    });
+    const payload = structuredClone(resolved.payload) as { memory: { activeMemory: Array<{ sourceEventIds: string[]; artifactHashes: string[] }>; sourceEventIds: string[]; artifactHashes: string[] } };
+    payload.memory.activeMemory[0]!.sourceEventIds = [];
+    payload.memory.activeMemory[0]!.artifactHashes = [];
+    payload.memory.sourceEventIds = [];
+    payload.memory.artifactHashes = [];
+
+    expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"](payload as never, resolved.ref)).toThrow(/provenance|payload/i);
+  });
+
   it("keeps bounded item output stable as omitted history grows", () => {
     const small = boundedMemorySnapshot({ totalCount: 10_000, omissionCodes: ["omitted.out-of-scope"] });
     const large = boundedMemorySnapshot({ totalCount: 100_000, omissionCodes: ["omitted.out-of-scope", "omitted.size-budget"] });
@@ -439,6 +479,8 @@ describe("agent memory surface", () => {
     expect(large.ref.provenanceRefs).toHaveLength(small.ref.provenanceRefs.length);
     expect(large.ref.provenanceRefs).toHaveLength(51);
     expect(large.ref.sizeBytes).toBe(small.ref.sizeBytes);
+    const reversed = build({ ...projection, activeMemory: [...projection.activeMemory].reverse() } as AgentProjection, 25);
+    expect((reversed.payload as { memory: { activeMemory: { memoryId: string }[] } }).memory.activeMemory).toEqual(largePayload.memory.activeMemory);
     expect(verifyResolvedContextPack(
       large,
       operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]
