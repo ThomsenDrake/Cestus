@@ -12,7 +12,7 @@ Worktree: `/home/drake/.codex/worktrees/a559/Cestus`
 
 Claimed at: `2026-07-10T14:50:06Z`
 
-Status: `ready-for-review`
+Status: `complete`
 
 Owned files:
 
@@ -43,3 +43,14 @@ Evidence:
 - Full gate: `npm run verify` passed.
 - The resolver is keyed by the complete `ContextPackRef`; `build()` remains ref-only and never invokes it.
 - Resolved execution requires in-memory verification after canonical hash/size checks and the exact builder parser; snapshots contain descriptors only and never parser functions or payloads.
+
+Review hardening recorded at: `2026-07-10T15:19:22Z`
+
+Additional evidence:
+
+- Commit `1a761a5` made parser-less verification untrusted, used canonical UTF-8 bytes for hash/size, and required parser-normalized payload bytes to continue matching the ref before registry authority is granted.
+- Commit `1ebd135` wrapped unsafe raw resolver payloads as `blocked.invalid-payload-shape` and added resolver/reload/execution assertion regressions.
+- Commit `e6b8223` restricted execution-ready authority to the registry-owned exact parser path; public `verifyResolvedContextPack()` remains unbranded even with a caller-supplied parser.
+- Final targeted gate: `npm test -- packages/agent/test/context-packs.test.ts` passed with 46 tests.
+- Final full gate: `npm run verify` passed.
+- Review: task-scoped re-review approved with no Critical, Important, or Minor findings.
