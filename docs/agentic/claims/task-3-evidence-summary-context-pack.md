@@ -17,3 +17,11 @@
 ## Scope
 
 Implement only the provider-safe `buildEvidenceSummaryContextPack` and its strict payload parser. Do not implement accepted graph, governance locks, registration, package exports, or readiness evidence.
+
+## Review Fixes
+
+- Bound injected policy, ontology-core, and pack-version metadata into canonical payload bytes and ref provenance.
+- Reject rows whose ingestion event is absent from the selected evidence ref provenance.
+- Strictly validate complete evidence-summary v1 payload structure, including nested rows, manifests, omissions, staleness inputs, and fixed-shape records.
+- Canonicalize manifest, item, omission, sample, staleness, and provenance ordering before resolved-pack hashing.
+- Trim optional parse and removed-governance detail into bounded `budget-row-omitted` aggregates before failing mandatory-over-budget payloads.
