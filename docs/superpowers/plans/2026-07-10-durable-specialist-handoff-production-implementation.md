@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Preserve append-only ledger semantics. Corrections, retries, revisions, and supersessions are new events.
-- Build handoffs only from exact run, task, type, terminal or explicitly resumable ledger state, content-addressed artifact hashes, tool request IDs, source and related event IDs, context provenance, and safe failure state.
+- Build first handoffs only from exact run, task, type, exact final-output preterminal/resumable ledger state, content-addressed artifact hashes, tool request IDs, source and related event IDs, context provenance, and safe failure state. Run terminal state must follow verified recorded handoff; historical terminal-before-handoff state is inconsistent only.
 - Do not synthesize handoffs from completed-run hashes, caller DTOs, returned service values, browser fixture state, or unindexed blob-store scans.
 - A handoff is valid only after manifest hash readback and projector verification.
 - Task success must not project until a verified handoff binding exists and the task has the correct causally linked status transition.
@@ -95,18 +95,23 @@ Read these files before claiming any implementation task:
 
 - Create `packages/local-runtime/src/agent-handoff-projection.ts`
   - Adapt mounted workspace `FileBlobStore` derivative manifest reads into the agent projector without exposing server storage to UI modules.
+- Modify `packages/agent/src/cockpit.ts`
+  - Add strict browser-safe `handoffDiagnostics` support to `BuildAgentCockpitInput` and `agentCockpitDtoSchema`.
 - Modify `packages/local-runtime/src/agent-http-routes.ts`
   - Feed verified specialist handoffs into `buildAgentCockpit({ specialistHandoffs })`.
-  - Surface partial/inconsistent projection as safe cockpit diagnostics, not handoff success.
+  - Surface partial/inconsistent projection as `handoffDiagnostics`, not handoff success.
 - Modify `packages/local-runtime/test/agent-http-routes.test.ts`
 - Modify `packages/local-runtime/test/agent-cockpit-routes.test.ts`
   - Production route DTO tests for verified, pending, missing manifest, and inconsistent states.
+- Modify `packages/agent/test/cockpit.test.ts`
+  - Package-level schema and builder tests for strict `handoffDiagnostics`.
 - Modify `packages/ui/src/agent/agent-adapter.ts`
-  - Parse production-shaped `agent-cockpit.v1` route DTOs containing durable handoff fields.
-- Modify `packages/ui/src/agent/AgentRunCockpit.tsx`
-  - Display verified handoffs and partial-state diagnostics for the selected exact run only.
+  - Parse production-shaped `agent-cockpit.v1` route DTOs containing durable handoff fields and `handoffDiagnostics`.
 - Modify `packages/ui/test/agent-cockpit-adapter.test.ts`
 - Modify `packages/ui/test/agent-adapter.test.ts`
+  - Browser parsing tests for strict `handoffDiagnostics`.
+- Modify `packages/ui/src/agent/AgentRunCockpit.tsx`
+  - Display verified handoffs and partial-state diagnostics for the selected exact run only.
 - Modify `packages/ui/test/agent-run-cockpit.test.tsx`
 - Modify `packages/ui/test/agent-workspace.test.tsx`
   - Browser schema, exact-selection, no-synthesis, and import-boundary tests.
@@ -122,13 +127,14 @@ Read these files before claiming any implementation task:
 ## Merge Order
 
 1. Merge this plan after coordinator approval. Do not implement from this branch until execution is approved.
-2. Merge Task 1 first. It is the event-contract addition and must be ahead of any runner or runtime branch. If `agent.specialist-handoff.*` schema shape conflicts with another lane, stop for coordinator merge ordering.
-3. Merge Tasks 2 and 3 after Task 1. These are core artifact and projector work and can be reviewed together only if both have their own RED tests, commits, and review verdicts.
-4. Merge Task 4 after Tasks 1-3. Runner adoption must not start until the kernel helper can recover and fail closed.
-5. Merge Task 5 and Task 6 after Task 4. They may run in separate worktrees, but neither branch may merge before core projector and kernel tasks are green on `npm run verify`.
-6. Merge Task 7 only after lifecycle/runtime owners for scheduler, resumer, domain adapters, and local runtime route contracts have landed on the target branch. Rebase before editing `packages/local-runtime/src/agent-http-routes.ts`.
-7. Merge Task 8 after Task 7 exposes production-shaped cockpit DTOs.
-8. Merge Task 9 last. It records readiness and final verification evidence.
+2. Merge Tasks 1-3 as the independent core handoff lane: event contracts, manifest identity/hashing, and projector readback. These tasks must land before any runner, local-runtime, browser, or orchestrator branch consumes `agent.specialist-handoff.*`.
+3. Let the production prompt atomic migration lane land next because it also edits `packages/agent/src/specialist-runner-kernel.ts` and the PRR, evidence-triage, investigation-planner, and ontology-bootstrap workflow tests. If that lane changes prompt/output artifact names, final-output schema IDs, or helper signatures, stop and rebase this plan's implementation tasks before editing shared files.
+4. Merge Task 4 after Tasks 1-3 and after the production prompt atomic migration. Task 4 must rebase onto the prompt migration result, preserve its finalized prompt/output contracts, and then add two-phase handoff lifecycle helpers.
+5. Merge Task 5 and Task 6 after Task 4. They may run in separate worktrees, but both must rebase on the finalized prompt/output contracts and the Task 4 lifecycle helpers before touching workflow tests.
+6. Orchestrator implementation waits for both the production prompt atomic migration and this handoff lane's Tasks 1-6. It must not consume provisional prompt artifacts or provisional handoff lifecycle helpers.
+7. Merge Task 7 only after lifecycle/runtime owners for scheduler, resumer, domain adapters, and local runtime route contracts have landed on the target branch. Rebase before editing `packages/local-runtime/src/agent-http-routes.ts`, `packages/agent/src/cockpit.ts`, or browser adapter schemas.
+8. Merge Task 8 after Task 7 exposes production-shaped cockpit DTOs with `handoffDiagnostics`.
+9. Merge Task 9 last. It records readiness and final verification evidence.
 
 ## Review Gates
 
@@ -509,6 +515,8 @@ Create `packages/agent/test/specialist-handoff-manifest.test.ts` with tests name
 it("computes handoffId from the pre-manifest seed without manifest or DTO hashes", () => {});
 it("changes manifest and DTO hashes without changing handoffId when only safe presentation changes", () => {});
 it("changes handoffId when final output event, output hash set, status, revision, or supersession changes", () => {});
+it("documents that same-seed presentation hash separation is not an appendable same-revision correction", () => {});
+it("computes a new handoffId for a real presentation correction with incremented revision and supersession", () => {});
 it("builds the canonical handoff DTO internally from ledger-bound refs", () => {});
 it("rejects caller-supplied DTO mismatch instead of accepting synthetic provenance", () => {});
 it("requires exact safeSummary and compact-ref agreement across manifest and DTO", () => {});
@@ -544,6 +552,38 @@ expect(hashSpecialistWorkflowHandoff(manifest.handoff)).not.toBe(hashSpecialistW
 expect(JSON.stringify(seed)).not.toContain("handoffManifestHash");
 expect(JSON.stringify(seed)).not.toContain("handoffDtoHash");
 ```
+
+Then add a correction-oriented identity test so the hash-separation fixture is not misread as an appendable revision:
+
+```ts
+const sameRevisionPresentationChange = buildSpecialistHandoffManifest({
+  ...manifestInput,
+  handoffId,
+  safeSummary: "Updated safe presentation summary."
+});
+expect(sameRevisionPresentationChange.handoffId).toBe(handoffId);
+expect(sameRevisionPresentationChange.handoffRevision).toBe(1);
+
+const correctionSeed = {
+  ...seed,
+  handoffRevision: 2,
+  supersedesHandoffId: handoffId
+} as const;
+const correctionHandoffId = computeSpecialistHandoffId(correctionSeed);
+const correction = buildSpecialistHandoffManifest({
+  ...manifestInput,
+  handoffId: correctionHandoffId,
+  handoffRevision: 2,
+  supersedesHandoffId: handoffId,
+  supersedesEventId: "evt_handoff_recorded"
+});
+
+expect(correctionHandoffId).not.toBe(handoffId);
+expect(correction.handoffRevision).toBe(2);
+expect(correction.supersedesHandoffId).toBe(handoffId);
+```
+
+This test proves hash separation only. It is not permission to append a second same-revision handoff with the unchanged `handoffId`; Task 3 must project that shape as a conflict unless it is a valid supersession with incremented `handoffRevision`, prior-handoff causation, and a new handoff ID.
 
 Update `packages/agent/test/specialist-handoffs.test.ts` so existing fixture handoffs include `handoffId` and `handoffRevision`.
 
@@ -702,6 +742,8 @@ it("fails closed when safeSummary, status, refs, output hashes, tool requests, s
 it("marks terminal-before-handoff historical state inconsistent", async () => {});
 it("keeps waiting-for-approval, blocked, and failed outcomes out of task-completed", async () => {});
 it("selects the latest valid non-superseded handoff and preserves prior handoffs", async () => {});
+it("marks a same-revision presentation change with the unchanged handoffId and different manifest hash inconsistent", async () => {});
+it("accepts presentation correction only as an incremented revision with supersedesHandoffId and a new handoffId", async () => {});
 it("rejects supersession cycles, cross-run supersession, missing prior handoff, and changed output refs", async () => {});
 ```
 
@@ -1114,10 +1156,14 @@ Request spec and code-quality reviews before shared runtime integration starts.
 
 - Create: `docs/agentic/claims/task-7-durable-handoff-local-runtime-projection.md`
 - Create: `packages/local-runtime/src/agent-handoff-projection.ts`
+- Modify: `packages/agent/src/cockpit.ts`
 - Modify: `packages/local-runtime/src/agent-http-routes.ts`
+- Modify: `packages/agent/test/cockpit.test.ts`
 - Modify: `packages/local-runtime/test/agent-http-routes.test.ts`
 - Modify: `packages/local-runtime/test/agent-cockpit-routes.test.ts`
-- Modify: `packages/agent/test/cockpit.test.ts`
+- Modify: `packages/ui/src/agent/agent-adapter.ts`
+- Modify: `packages/ui/test/agent-cockpit-adapter.test.ts`
+- Modify: `packages/ui/test/agent-adapter.test.ts`
 
 **Interfaces:**
 
@@ -1134,8 +1180,23 @@ export async function projectLocalAgentHandoffsForCockpit(input: {
   readonly handle: LocalRuntimeHandle;
   readonly events: readonly KnowledgeEvent[];
 }): Promise<LocalAgentHandoffProjectionResult>;
+
+export interface AgentCockpitHandoffDiagnosticDto {
+  readonly schemaVersion: "agent-cockpit-handoff-diagnostic.v1";
+  readonly runId: string;
+  readonly taskId?: string;
+  readonly runType?: string;
+  readonly state: "no-output" | "output-persisted" | "handoff-pending" | "inconsistent";
+  readonly severity: "info" | "warning" | "error";
+  readonly code: string;
+  readonly message: string;
+  readonly allowedRepairActions: readonly string[];
+  readonly relatedEventIds: readonly string[];
+  readonly artifactHashes: readonly `sha256:${string}`[];
+}
 ```
 
+- `packages/agent/src/cockpit.ts` must extend `BuildAgentCockpitInput` with `handoffDiagnostics?: readonly AgentCockpitHandoffDiagnosticDto[]` and `agentCockpitDtoSchema` with strict `handoffDiagnostics: z.array(agentCockpitHandoffDiagnosticDtoSchema)`.
 - Manifest bytes must be read from `new FileBlobStore(handle.mountedWorkspace.paths.derivativeRoot).get(hash)`.
 - If `handle.mountedWorkspace` is absent and the ledger contains handoff events, return a diagnostic and no handoff DTOs.
 
@@ -1158,6 +1219,7 @@ Before editing, rebase onto the target branch that includes lifecycle/runtime ow
 sed -n '1,220p' packages/local-runtime/src/runtime-factory.ts
 sed -n '1,220p' packages/local-runtime/src/agent-runtime-factory.ts
 sed -n '1,240p' packages/local-runtime/src/agent-http-routes.ts
+sed -n '1,220p' packages/agent/src/cockpit.ts
 sed -n '1,120p' packages/ontology/src/blob-store.ts
 ```
 
@@ -1173,6 +1235,7 @@ it("does not return a handoff for output-persisted or handoff-pending state", as
 it("returns a safe diagnostic for missing or hash-mismatched manifest bytes", async () => {});
 it("does not scan blobs or accept caller DTOs when no ledger-bound manifest exists", async () => {});
 it("passes production-shaped handoff DTOs through buildAgentCockpit", async () => {});
+it("projects partial handoff states into strict cockpit handoffDiagnostics", async () => {});
 ```
 
 Each successful route DTO test must assert:
@@ -1183,15 +1246,44 @@ expect(body.selectedRun.handoff.handoffRevision).toBe(1);
 expect(body.selectedRun.handoff.safeSummary).toBe(recorded.payload.safeSummary);
 ```
 
+Each partial-state route DTO test must assert:
+
+```ts
+expect(body.selectedRun?.handoff).toBeUndefined();
+expect(body.handoffDiagnostics).toEqual([
+  expect.objectContaining({
+    schemaVersion: "agent-cockpit-handoff-diagnostic.v1",
+    runId: "run_handoff_001",
+    state: "handoff-pending",
+    severity: "warning",
+    allowedRepairActions: expect.arrayContaining(["resume handoff recording"])
+  })
+]);
+```
+
+Add package-level tests to `packages/agent/test/cockpit.test.ts`:
+
+```ts
+it("includes strict browser-safe handoffDiagnostics in cockpit DTOs", () => {});
+it("rejects handoffDiagnostics with raw manifest bytes, blob paths, or unknown fields", () => {});
+```
+
+Add browser schema tests to `packages/ui/test/agent-cockpit-adapter.test.ts` or `packages/ui/test/agent-adapter.test.ts`:
+
+```ts
+it("parses production cockpit handoffDiagnostics without importing server-only projector code", () => {});
+it("rejects malformed handoffDiagnostics instead of treating partial state as success", () => {});
+```
+
 - [ ] **Step 4: Run RED command**
 
 Run:
 
 ```bash
-npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/agent/test/cockpit.test.ts
+npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/agent/test/cockpit.test.ts packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-adapter.test.ts
 ```
 
-Expected: FAIL because local runtime does not project handoff manifests into cockpit DTOs.
+Expected: FAIL because local runtime does not project handoff manifests into cockpit DTOs and cockpit schemas do not yet define `handoffDiagnostics`.
 
 - [ ] **Step 5: Implement local runtime adapter**
 
@@ -1200,8 +1292,10 @@ Create `packages/local-runtime/src/agent-handoff-projection.ts` and use it in th
 - Read `events` once from `input.handle.ledger.readAll()`.
 - Instantiate `FileBlobStore` only inside local-runtime code and only for `mountedWorkspace.paths.derivativeRoot`.
 - Call `buildSpecialistHandoffProjection({ events, manifestReader })`.
-- Pass `projection.handoffs` into `buildAgentCockpit({ specialistHandoffs })`.
-- Include safe diagnostics for partial or inconsistent projection states in a route-safe field already accepted by the cockpit DTO, or extend the cockpit DTO in `packages/agent/src/cockpit.ts` with a tested `handoffDiagnostics` browser-safe field if no field exists.
+- Extend `packages/agent/src/cockpit.ts` with strict `AgentCockpitHandoffDiagnosticDto`, `BuildAgentCockpitInput.handoffDiagnostics`, and `agentCockpitDtoSchema.shape.handoffDiagnostics`.
+- Map projector diagnostics into `handoffDiagnostics` with safe code, message, allowed repair actions, related event IDs, and artifact hashes only.
+- Pass `projection.handoffs` and `handoffDiagnostics` into `buildAgentCockpit({ specialistHandoffs, handoffDiagnostics })`.
+- Extend `packages/ui/src/agent/agent-adapter.ts` so browser parsing accepts strict `handoffDiagnostics` and rejects unknown diagnostic fields.
 - Do not expose blob paths, local filesystem paths, raw manifest bytes, raw DTO content outside the DTO schema, or server-only storage objects.
 
 - [ ] **Step 6: Run GREEN command**
@@ -1209,7 +1303,7 @@ Create `packages/local-runtime/src/agent-handoff-projection.ts` and use it in th
 Run:
 
 ```bash
-npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/agent/test/cockpit.test.ts
+npm test -- packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/agent/test/cockpit.test.ts packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-adapter.test.ts
 ```
 
 Expected: PASS.
@@ -1227,7 +1321,7 @@ Expected: PASS.
 Update the claim, then commit:
 
 ```bash
-git add docs/agentic/claims/task-7-durable-handoff-local-runtime-projection.md packages/local-runtime/src/agent-handoff-projection.ts packages/local-runtime/src/agent-http-routes.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/agent/test/cockpit.test.ts
+git add docs/agentic/claims/task-7-durable-handoff-local-runtime-projection.md packages/local-runtime/src/agent-handoff-projection.ts packages/agent/src/cockpit.ts packages/local-runtime/src/agent-http-routes.ts packages/agent/test/cockpit.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/agent-cockpit-routes.test.ts packages/ui/src/agent/agent-adapter.ts packages/ui/test/agent-cockpit-adapter.test.ts packages/ui/test/agent-adapter.test.ts
 git commit -m "feat: project durable specialist handoffs in local runtime"
 ```
 
