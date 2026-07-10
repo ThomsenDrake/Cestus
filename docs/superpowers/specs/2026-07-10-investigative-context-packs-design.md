@@ -70,7 +70,8 @@ The design composes existing contracts:
   `ContextPackRef`, `buildContextPackRef`, stable JSON hashing, strict DTO
   normalization, budget checks, and registry behavior.
 - The operational context lane owns the shared generic
-  `ResolvedContextPack { ref, payload }` and content-addressed resolution
+  `ResolvedContextPack { ref, payload }`, callable `ContextPackPayloadResolver`,
+  registry `buildResolved(id)`, and opaque `VerifiedResolvedContextPack`
   contract. This investigative lane must produce envelopes compatible with that
   contract rather than treating refs as the full provider context.
 - `packages/agent/src/specialist-readiness.ts` checks required context pack
@@ -255,10 +256,12 @@ investigative resolved pack builders:
 - `governance-locks.v1`
 
 Registration exposes enough descriptor metadata for readiness to reason over
-refs and enough resolver metadata for prompt execution to retrieve the
-hash-verified payload. If the shared registry distinguishes ref builders from
-resolved builders at implementation time, this lane must use the resolved
-builder path and project refs only for readiness, ledger, and audit DTOs.
+refs and enough parser metadata for `ContextPackRegistry.buildResolved(id)` to
+return an opaque `VerifiedResolvedContextPack` after exact hash, size, and
+pack-specific parser verification. If the shared registry distinguishes ref
+builders from resolved builders at implementation time, this lane must use the
+resolved builder path and project refs only for readiness, ledger, and audit
+DTOs.
 
 Registration is idempotent for the same registry and the same helper-owned
 descriptor identity. Calling the helper twice with semantically equivalent
@@ -344,16 +347,33 @@ production prompt rendering.
 
 Only the ref, hash, and provenance fields enter ledger or audit DTOs. The
 bounded rows live in the resolved payload and are made available to prompt
-execution through the shared content-addressed resolver after exact hash and
-size verification.
+execution through the shared content-addressed resolver and registry assertion
+path after exact hash and size verification.
 
 ## Provider Prompt Resolution
 
 Production prompt execution must resolve each investigative context pack ref
 through the shared content-addressed context-pack resolver before rendering
-provider input. The renderer receives `ResolvedContextPack` envelopes, verifies
-that each payload's canonical hash and size match `ref.contentHash` and
-`ref.sizeBytes`, then renders the bounded rows from `payload`.
+provider input. In the landed operational contract, `ContextPackPayloadResolver`
+is a callable capability:
+
+```ts
+type ContextPackPayloadResolver = (
+  ref: ContextPackRef
+) =>
+  | AgentContextPackJsonValue
+  | ResolvedContextPack
+  | Promise<AgentContextPackJsonValue | ResolvedContextPack>;
+```
+
+The registry owns exact hash, size, and registered pack-specific parser
+verification: `ContextPackRegistry.buildResolved(id)` returns
+`Promise<VerifiedResolvedContextPack>`. Execution readiness is checked with
+`assertResolvedContextPacksForExecution(refs, resolvedPacks)`, using two
+positional arguments. That assertion accepts only registry-verified/branded
+packs; plain, tampered, or JSON-reloaded `ResolvedContextPack` values must fail
+until reverified through the registry. This lane must not manufacture the
+opaque brand or add a parallel verifier.
 
 Prompt execution must fail closed if:
 
@@ -367,7 +387,7 @@ Prompt execution must fail closed if:
 `safeSummary` may appear in audit logs and prompt-artifact metadata, but it is
 not sufficient context for production specialist reasoning. Facts that are too
 detailed for `safeSummary` but allowed by the provider-safe payload schema must
-remain available to the renderer after exact hash verification.
+remain available to the prompt-template lane after exact hash verification.
 
 ## Scope Semantics
 
@@ -899,13 +919,14 @@ dependencies:
 - Create a fresh `ContextPackRegistry`.
 - Call `registerInvestigativeContextPacks(registry, deps)` with a stable
   registration identity and bounded in-memory selection/readers.
-- Build the three investigative `ResolvedContextPack` envelopes.
+- Build the three investigative `VerifiedResolvedContextPack` envelopes through
+  `registry.buildResolved(id)`.
 - Pass `resolved.map(({ ref }) => ref)` to `projectSpecialistWorkflowReadiness`.
 - Verify specialist readiness no longer reports missing investigative context
   packs when other prerequisites are supplied.
-- Verify the production prompt renderer resolves each payload by ref,
-  hash-checks it, and renders payload rows rather than substituting
-  `safeSummary`.
+- Verify a sentinel investigative fact exists in the verified resolved payload,
+  not in `safeSummary` or serialized ref/audit surfaces, and leave production
+  renderer consumption of that fixture to the prompt-template lane.
 
 The design intentionally leaves local-runtime and orchestrator wiring to a
 later integration task. That later task should have one narrow responsibility:
@@ -1041,5 +1062,6 @@ The safe first implementation slice should be pure package work:
 The package should prove the three production builders and registration helper
 with injected bounded selection, reader, event, and source posture capabilities.
 It should also prove compatibility with the shared `ResolvedContextPack`
-contract, body-only manifest hashing, and provider prompt resolution from
-hash-verified payloads. Runtime wiring remains a later narrow integration task.
+contract, opaque `VerifiedResolvedContextPack` execution assertion, body-only
+manifest hashing, and provider-safe payload availability after hash
+verification. Runtime wiring remains a later narrow integration task.
