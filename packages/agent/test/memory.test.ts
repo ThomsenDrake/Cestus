@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAgentProjection } from "../src/projection.js";
+import type { AgentProjection } from "../src/projection.js";
 import {
   buildAgentMemoryDetail,
   buildAgentMemoryList,
@@ -272,6 +273,31 @@ describe("agent memory surface", () => {
     })).toThrow(/missing-provenance/);
   });
 
+  it("rejects empty proof when aggregate counts report active memory outside the bounded window", () => {
+    const memorySnapshot = {
+      ...emptyMemorySnapshot(),
+      aggregateCounts: { active: 1, totalCount: 1 },
+      window: { ...emptyMemorySnapshot().window, hasMore: true, totalCount: 1 }
+    };
+
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      memorySnapshot,
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 0,
+      sizeBudgetBytes: 16_384,
+      emptyMemoryProof: {
+        projectionName: "agent.projection.memory",
+        scope: { kind: "workspace", id: "ws_case_001" },
+        projectionHighWaterMark: 0,
+        sourceEventCount: 0,
+        generatedAt: "2026-07-09T12:30:00.000Z",
+        emptyReasonCode: "first-run"
+      }
+    })).toThrow(/projection-source-mismatch/);
+  });
+
   it("keeps bounded item output stable as omitted history grows", () => {
     const small = boundedMemorySnapshot({ totalCount: 10_000, omissionCodes: ["omitted.out-of-scope"] });
     const large = boundedMemorySnapshot({ totalCount: 100_000, omissionCodes: ["omitted.out-of-scope", "omitted.size-budget"] });
@@ -290,6 +316,27 @@ describe("agent memory surface", () => {
     expect(largePayload.memory.activeMemory).toHaveLength(smallPayload.memory.activeMemory.length);
     expect(largePayload.memory.aggregateCounts.totalCount).toBe(100_000);
     expect(smallPayload.memory.aggregateCounts.totalCount).toBe(10_000);
+  });
+
+  it("keeps projection-adapter provenance and output bounded as active memory grows", () => {
+    const build = (projection: AgentProjection) => buildAgentMemorySummaryResolvedContextPack({
+      projection,
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 42,
+      sizeBudgetBytes: 1_000_000,
+      maxItems: 25
+    });
+    const small = build(projectionWithActiveMemory(25));
+    const large = build(projectionWithActiveMemory(10_000));
+    const largePayload = large.payload as { memory: { activeMemory: unknown[]; aggregateCounts: Record<string, number> } };
+
+    expect(largePayload.memory.activeMemory).toHaveLength(25);
+    expect(largePayload.memory.aggregateCounts.active).toBe(10_000);
+    expect(large.ref.provenanceRefs).toHaveLength(small.ref.provenanceRefs.length);
+    expect(large.ref.provenanceRefs).toHaveLength(51);
+    expect(large.ref.sizeBytes - small.ref.sizeBytes).toBeLessThan(16);
   });
 
   it("builds a stable empty-memory summary pack for first-run workspaces", () => {
@@ -366,6 +413,22 @@ function emptyMemorySnapshot() {
     artifactHashes: [],
     window: { order: "createdAt:asc", limit: 25, hasMore: false, totalCount: 0, omissionCodes: [] }
   };
+}
+
+function projectionWithActiveMemory(count: number): AgentProjection {
+  return {
+    activeMemory: Array.from({ length: count }, (_, index) => ({
+      memoryId: `mem_projection_${String(index).padStart(5, "0")}`,
+      scope: "workspace",
+      memoryKind: "agent-observation",
+      summary: "A bounded projection memory item.",
+      confidence: 0.5,
+      sourceEventIds: [`evt_agent_memory_source_${index}`],
+      artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+      eventIds: [`evt_agent_memory_recorded_${index}`],
+      createdAt: "2026-07-09T12:00:00.000Z"
+    }))
+  } as unknown as AgentProjection;
 }
 
 function agentContext(occurredAt: string) {

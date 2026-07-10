@@ -141,7 +141,7 @@ export function buildAgentMemorySummaryResolvedContextPack(
   const provenanceRefs = isEmpty
     ? [emptyProjectionProvenanceRef(assertEmptyMemoryProof(emptyProof, input, snapshot))]
     : unique([
-      ...projectionLifecycleProvenanceRefs(input.projection),
+      ...snapshot.lifecycleProvenanceRefs,
       ...snapshot.sourceEventIds,
       ...snapshot.artifactHashes
     ]);
@@ -187,17 +187,22 @@ export function buildAgentMemorySummaryResolvedContextPack(
   }
 }
 
-function normalizeMemorySnapshot(input: BuildAgentMemorySummaryContextPackInput): OperationalAgentMemorySnapshot {
+interface NormalizedMemorySnapshot extends OperationalAgentMemorySnapshot {
+  readonly lifecycleProvenanceRefs: readonly string[];
+}
+
+function normalizeMemorySnapshot(input: BuildAgentMemorySummaryContextPackInput): NormalizedMemorySnapshot {
   if (input.memorySnapshot !== undefined) {
-    return input.memorySnapshot;
+    return { ...input.memorySnapshot, lifecycleProvenanceRefs: [] };
   }
   if (input.projection === undefined) {
     throw new Error("blocked.unbounded-source: memorySnapshot is required when no projection compatibility input is provided");
   }
 
-  const activeMemory = [...input.projection.activeMemory]
+  const totalActiveMemoryCount = input.projection.activeMemory.length;
+  const activeMemory = input.projection.activeMemory
+    .slice(0, input.maxItems ?? 25)
     .sort(compareMemory)
-    .slice(0, input.maxItems ?? 25);
   const sourceEventIds = unique(activeMemory.flatMap((memory) => memory.sourceEventIds));
   const artifactHashes = unique(activeMemory.flatMap((memory) => memory.artifactHashes));
   return {
@@ -213,16 +218,17 @@ function normalizeMemorySnapshot(input: BuildAgentMemorySummaryContextPackInput)
       artifactHashes: memory.artifactHashes,
       ...(memory.expiresAt === undefined ? {} : { expiresAt: memory.expiresAt })
     })),
-    aggregateCounts: { active: activeMemory.length, totalCount: input.projection.activeMemory.length },
+    aggregateCounts: { active: totalActiveMemoryCount, totalCount: totalActiveMemoryCount },
     sourceEventIds,
     artifactHashes,
     window: {
       order: "createdAt:asc",
       limit: input.maxItems ?? 25,
-      hasMore: input.projection.activeMemory.length > activeMemory.length,
-      totalCount: input.projection.activeMemory.length,
+      hasMore: totalActiveMemoryCount > activeMemory.length,
+      totalCount: totalActiveMemoryCount,
       omissionCodes: []
-    }
+    },
+    lifecycleProvenanceRefs: unique(activeMemory.flatMap((memory) => memory.eventIds))
   };
 }
 
@@ -251,7 +257,7 @@ function toMemorySummaryItem(value: unknown): AgentMemorySummaryItemDto {
 function assertEmptyMemoryProof(
   proof: OperationalEmptyProjectionProof | undefined,
   input: BuildAgentMemorySummaryContextPackInput,
-  snapshot: OperationalAgentMemorySnapshot
+  snapshot: NormalizedMemorySnapshot
 ): OperationalEmptyProjectionProof {
   if (proof === undefined) {
     throw new Error("blocked.missing-empty-proof: empty memory projection requires proof");
@@ -259,6 +265,9 @@ function assertEmptyMemoryProof(
   if (proof.projectionName !== "agent.projection.memory" ||
     proof.scope.kind !== input.scope.kind || proof.scope.id !== input.scope.id ||
     proof.projectionHighWaterMark !== input.projectionHighWaterMark ||
+    snapshot.aggregateCounts.active !== 0 || snapshot.aggregateCounts.totalCount !== 0 ||
+    snapshot.window.totalCount !== 0 || snapshot.window.hasMore ||
+    snapshot.sourceEventIds.length !== 0 || proof.sourceEventCount !== 0 ||
     proof.sourceEventCount !== snapshot.sourceEventIds.length || proof.generatedAt !== input.generatedAt) {
     throw new Error("blocked.projection-source-mismatch: empty memory proof does not match the memory projection");
   }
@@ -267,13 +276,6 @@ function assertEmptyMemoryProof(
 
 function emptyProjectionProvenanceRef(proof: OperationalEmptyProjectionProof): string {
   return `empty-projection:${proof.projectionName}:${proof.scope.kind}:${proof.scope.id}:hwm:${proof.projectionHighWaterMark}`;
-}
-
-function projectionLifecycleProvenanceRefs(projection: AgentProjection | undefined): readonly string[] {
-  if (projection === undefined) {
-    return [];
-  }
-  return projection.activeMemory.flatMap((memory) => memory.eventIds);
 }
 
 function memoryTruthBoundary(): AgentMemoryTruthBoundaryDto {
