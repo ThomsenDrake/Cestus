@@ -222,6 +222,9 @@ export function buildWorkspaceRuntimeStatusContextPack(
 ): ResolvedContextPack {
   assertBuilderMetadata(input, "runtimeSource");
   const runtime = normalizeRuntimeSource(input.runtimeSource);
+  if (runtime.runtimeHighWaterMark !== input.projectionHighWaterMark) {
+    throw new Error("blocked.projection-source-mismatch: workspace runtime high-water mark does not match the context pack ref high-water mark");
+  }
   const provenanceRefs = uniqueStrings([
     operationalSourceProof("workspace-runtime-status.v1", "event"),
     ...runtime.diagnostics.flatMap((diagnostic) => diagnosticIds(diagnostic)),
@@ -238,7 +241,7 @@ export function buildWorkspaceRuntimeStatusContextPack(
     scope: input.scope,
     sizeBudgetBytes: input.sizeBudgetBytes,
     stalenessInputs: [
-      { kind: "runtime-high-water-mark", ref: "runtime.status", value: String(runtime.runtimeHighWaterMark) },
+      { kind: "projection-high-water-mark", ref: "runtime.status", value: String(input.projectionHighWaterMark) },
       ...runtime.omissionCodes.map((code) => ({ kind: "omission-code", ref: "runtime.status", value: code }))
     ]
   });
@@ -644,8 +647,12 @@ function assertWorkspaceRuntimePayloadSection(value: AgentContextPackJsonValue, 
   assertStringField(value, "storageStrategy", schemaVersion);
   assertStringField(value, "bindPosture", schemaVersion);
   assertStringField(value, "authPosture", schemaVersion);
-  assertJsonArrayField(value, "providerStates", schemaVersion);
-  assertJsonArrayField(value, "diagnostics", schemaVersion);
+  for (const providerState of assertJsonArrayField(value, "providerStates", schemaVersion)) {
+    projectRuntimeProviderState(providerState);
+  }
+  for (const diagnostic of assertJsonArrayField(value, "diagnostics", schemaVersion)) {
+    projectRuntimeDiagnostic(diagnostic);
+  }
   assertNumberRecordField(value, "projectionHighWaterMarks", schemaVersion);
   assertOmissionCodesField(value, "omissionCodes", schemaVersion);
 }
@@ -665,10 +672,18 @@ function assertTaskRunHistoryPayloadSection(value: AgentContextPackJsonValue, sc
     "emptyProof"
   ]);
   assertCommonProjectionPayloadSection(value, schemaVersion);
-  assertJsonArrayField(value, "tasks", schemaVersion);
-  assertJsonArrayField(value, "runs", schemaVersion);
-  assertJsonArrayField(value, "modelInvocations", schemaVersion);
-  assertJsonArrayField(value, "toolRequests", schemaVersion);
+  for (const task of assertJsonArrayField(value, "tasks", schemaVersion)) {
+    projectTaskHistoryItem(task);
+  }
+  for (const run of assertJsonArrayField(value, "runs", schemaVersion)) {
+    projectRunHistoryItem(run);
+  }
+  for (const modelInvocation of assertJsonArrayField(value, "modelInvocations", schemaVersion)) {
+    projectModelInvocationHistoryItem(modelInvocation);
+  }
+  for (const toolRequest of assertJsonArrayField(value, "toolRequests", schemaVersion)) {
+    projectToolRequestHistoryItem(toolRequest);
+  }
 }
 
 function assertAgentMemoryPayloadSection(value: AgentContextPackJsonValue, schemaVersion: OperationalContextPackId): void {
@@ -689,7 +704,14 @@ function assertAgentMemoryPayloadSection(value: AgentContextPackJsonValue, schem
     throw new Error(`invalid ${schemaVersion} payload`);
   }
   assertCommonProjectionPayloadSection(value, schemaVersion);
-  assertJsonArrayField(value, "activeMemory", schemaVersion);
+  const activeMemory = assertJsonArrayField(value, "activeMemory", schemaVersion);
+  const window = requiredJsonField(value, "window", schemaVersion);
+  if (isOperationalJsonObject(window) && typeof window.limit === "number" && activeMemory.length > window.limit) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  for (const memory of activeMemory) {
+    assertMemoryPayloadItem(memory, schemaVersion);
+  }
 }
 
 function assertCommonProjectionPayloadSection(
@@ -1255,13 +1277,43 @@ function projectHistoryItem(
   };
 }
 
+function assertMemoryPayloadItem(value: AgentContextPackJsonValue, schemaVersion: OperationalContextPackId): void {
+  const item = assertStrictOperationalObject(value, "memory item", [
+    "memoryId",
+    "scope",
+    "memoryKind",
+    "summary",
+    "confidence",
+    "sourceEventIds",
+    "artifactHashes",
+    "expiresAt"
+  ]);
+  requiredSafeIdentifier(item, "memoryId", "memory item");
+  requiredSafeOperationalField(item, "scope", "memory item");
+  requiredSafeOperationalField(item, "memoryKind", "memory item");
+  const summary = item.summary;
+  if (typeof summary !== "string" || summary.length === 0) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  assertSafeOperationalText(summary, "memory item summary");
+  const confidence = item.confidence;
+  if (typeof confidence !== "number" || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  normalizeEventIds(item.sourceEventIds as readonly string[]);
+  normalizeArtifactHashes(item.artifactHashes as readonly string[]);
+  if (item.expiresAt !== undefined) {
+    assertUtcTimestamp(item.expiresAt, "memory item expiresAt");
+  }
+}
+
 function assertStrictOperationalObject(
   value: AgentContextPackJsonValue,
   label: string,
   allowedKeys: readonly string[]
 ): Record<string, unknown> {
   try {
-    assertPlainDataObject(value, label, allowedKeys);
+    assertJsonObjectWithAllowedKeys(value, label, allowedKeys);
   } catch (error) {
     throw new Error(`blocked.invalid-payload-shape: ${error instanceof Error ? error.message : `${label} is invalid`}`);
   }

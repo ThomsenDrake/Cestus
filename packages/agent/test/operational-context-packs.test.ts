@@ -15,7 +15,7 @@ import {
   type OperationalTaskRunHistorySnapshot,
   type OperationalWorkspaceRuntimeSource
 } from "../src/operational-context-packs.js";
-import { createContextPackRegistry, serializeContextPackPayload, type BuildContextPackRefInput, type ResolvedContextPack } from "../src/context-packs.js";
+import { buildResolvedContextPack, createContextPackRegistry, serializeContextPackPayload, type BuildContextPackRefInput, type ResolvedContextPack } from "../src/context-packs.js";
 
 describe("operational context pack contracts", () => {
   const providerMetadata = {
@@ -200,6 +200,176 @@ describe("operational context pack contracts", () => {
     expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({ schemaVersion: "agent-memory-summary.v1", memory: null })).toThrow(/agent-memory-summary/i);
     expect(() => operationalContextPackPayloadParsers["agent-memory-summary.v1@1"]({ schemaVersion: "agent-memory-summary.v1", memory: { activeMemory: [] } })).toThrow(/agent-memory-summary/i);
   });
+
+  it("rejects nested operational payload fields and malformed nested refs in the exact parsers", () => {
+    const validWindow = { order: "updated-desc", limit: 25, hasMore: false, totalCount: 1, omissionCodes: [] };
+    const validWorkspacePayload = {
+      schemaVersion: "workspace-runtime-status.v1",
+      runtime: {
+        runtimeHighWaterMark: 42,
+        workspaceMounted: true,
+        workspaceId: "ws_case_001",
+        storageStrategy: "repo-local",
+        bindPosture: "loopback",
+        authPosture: "local-disabled",
+        providerStates: [{ providerId: "provider_local", state: "ready", category: "provider-ready" }],
+        diagnostics: [{ diagnosticId: "diag_runtime_001", category: "runtime-ready" }],
+        projectionHighWaterMarks: { agent: 42 },
+        omissionCodes: []
+      }
+    };
+    const validHistoryPayload = {
+      schemaVersion: "task-run-history.v1",
+      history: {
+        projectionHighWaterMark: 42,
+        projectionSourceRef: "agent.projection.task-run-history",
+        tasks: [{ taskId: "task_one", state: "completed", sourceEventIds: ["evt_agent_task_one"] }],
+        runs: [{ runId: "run_one", state: "running", artifactHashes: [hash("c")] }],
+        modelInvocations: [{ invocationId: "model_one", state: "failed", sourceEventIds: ["evt_agent_model_one"] }],
+        toolRequests: [{ requestId: "tool_one", state: "approved", artifactHashes: [hash("d")] }],
+        aggregateCounts: { total: 4 },
+        sourceEventIds: ["evt_agent_task_one", "evt_agent_model_one"],
+        artifactHashes: [hash("c"), hash("d")],
+        window: validWindow
+      }
+    };
+    const validMemoryPayload = {
+      schemaVersion: "agent-memory-summary.v1",
+      memory: {
+        truthBoundary: { authoritativeForOntology: false },
+        projectionHighWaterMark: 42,
+        projectionSourceRef: "agent.projection.memory",
+        activeMemory: [{
+          memoryId: "mem_current",
+          scope: "workspace",
+          memoryKind: "working-note",
+          summary: "Current bounded memory.",
+          confidence: 0.8,
+          sourceEventIds: ["evt_agent_memory_recorded"],
+          artifactHashes: [hash("e")]
+        }],
+        aggregateCounts: { active: 1, totalCount: 1 },
+        sourceEventIds: ["evt_agent_memory_recorded"],
+        artifactHashes: [hash("e")],
+        window: validWindow
+      }
+    };
+
+    const parserRejectCases = [
+      ["workspace-runtime-status.v1@1", { ...validWorkspacePayload, runtime: { ...validWorkspacePayload.runtime, providerStates: [{ providerId: "provider_local", state: "ready", providerBody: "opaque-json" }] } }],
+      ["workspace-runtime-status.v1@1", { ...validWorkspacePayload, runtime: { ...validWorkspacePayload.runtime, providerStates: [{ providerId: "provider_local", state: "ready", rawProviderMaterial: "opaque-json" }] } }],
+      ["workspace-runtime-status.v1@1", { ...validWorkspacePayload, runtime: { ...validWorkspacePayload.runtime, providerStates: [{ providerId: "provider_local", state: "maybe-ready" }] } }],
+      ["workspace-runtime-status.v1@1", { ...validWorkspacePayload, runtime: { ...validWorkspacePayload.runtime, diagnostics: [{ diagnosticId: "diag_runtime_001", category: "runtime-ready", rawProviderError: "opaque-json" }] } }],
+      ["workspace-runtime-status.v1@1", { ...validWorkspacePayload, runtime: { ...validWorkspacePayload.runtime, providerStates: [{ providerId: "provider_local", state: "ready", category: "human readable provider status" }] } }],
+      ["task-run-history.v1@1", { ...validHistoryPayload, history: { ...validHistoryPayload.history, tasks: [{ taskId: "task_one", state: "completed", promptText: "opaque" }] } }],
+      ["task-run-history.v1@1", { ...validHistoryPayload, history: { ...validHistoryPayload.history, modelInvocations: [{ invocationId: "model_one", state: "failed", modelOutput: "opaque" }] } }],
+      ["task-run-history.v1@1", { ...validHistoryPayload, history: { ...validHistoryPayload.history, toolRequests: [{ requestId: "tool_one", state: "failed", output: "opaque" }] } }],
+      ["task-run-history.v1@1", { ...validHistoryPayload, history: { ...validHistoryPayload.history, runs: [{ runId: "run_one", state: "unknown", sourceEventIds: ["evt_agent_run_one"] }] } }],
+      ["task-run-history.v1@1", { ...validHistoryPayload, history: { ...validHistoryPayload.history, tasks: [{ taskId: "task_one", state: "completed", sourceEventIds: ["not_an_event"] }] } }],
+      ["task-run-history.v1@1", { ...validHistoryPayload, history: { ...validHistoryPayload.history, toolRequests: [{ requestId: "tool_one", state: "approved", artifactHashes: ["sha256:not-a-real-hash"] }] } }],
+      ["agent-memory-summary.v1@1", { ...validMemoryPayload, memory: { ...validMemoryPayload.memory, activeMemory: [{ ...validMemoryPayload.memory.activeMemory[0], arbitraryField: "opaque" }] } }],
+      ["agent-memory-summary.v1@1", { ...validMemoryPayload, memory: { ...validMemoryPayload.memory, activeMemory: [{ ...validMemoryPayload.memory.activeMemory[0], raw: "opaque" }] } }],
+      ["agent-memory-summary.v1@1", { ...validMemoryPayload, memory: { ...validMemoryPayload.memory, activeMemory: [{ ...validMemoryPayload.memory.activeMemory[0], sourceEventIds: ["not_an_event"] }] } }],
+      ["agent-memory-summary.v1@1", { ...validMemoryPayload, memory: { ...validMemoryPayload.memory, activeMemory: [{ ...validMemoryPayload.memory.activeMemory[0], artifactHashes: ["sha256:not-a-real-hash"] }] } }]
+    ] as const;
+
+    for (const [parserKey, payload] of parserRejectCases) {
+      expect(() => operationalContextPackPayloadParsers[parserKey](payload)).toThrow(/payload|shape|status|source/i);
+    }
+  });
+
+  it("rejects matching-hash nested invalid payloads after resolver readback", async () => {
+    const invalidPayloads = [
+      {
+        contextPackId: "workspace-runtime-status.v1" as const,
+        descriptorIndex: 0,
+        payload: {
+          schemaVersion: "workspace-runtime-status.v1",
+          runtime: {
+            runtimeHighWaterMark: 42,
+            workspaceMounted: true,
+            workspaceId: "ws_case_001",
+            storageStrategy: "repo-local",
+            bindPosture: "loopback",
+            authPosture: "local-disabled",
+            providerStates: [{ providerId: "provider_local", state: "ready", providerBody: "opaque-json" }],
+            diagnostics: [{ diagnosticId: "diag_runtime_001", category: "runtime-ready", rawProviderError: "opaque-json" }],
+            projectionHighWaterMarks: { agent: 42 },
+            omissionCodes: []
+          }
+        }
+      },
+      {
+        contextPackId: "task-run-history.v1" as const,
+        descriptorIndex: 1,
+        payload: {
+          schemaVersion: "task-run-history.v1",
+          history: {
+            projectionHighWaterMark: 42,
+            projectionSourceRef: "agent.projection.task-run-history",
+            tasks: [{ taskId: "task_one", state: "completed", promptText: "opaque", sourceEventIds: ["evt_agent_task_one"] }],
+            runs: [],
+            modelInvocations: [{ invocationId: "model_one", state: "failed", modelOutput: "opaque" }],
+            toolRequests: [{ requestId: "tool_one", state: "failed", output: "opaque" }],
+            aggregateCounts: { total: 3 },
+            sourceEventIds: ["evt_agent_task_one"],
+            artifactHashes: [],
+            window: { order: "updated-desc", limit: 25, hasMore: false, totalCount: 3, omissionCodes: [] }
+          }
+        }
+      },
+      {
+        contextPackId: "agent-memory-summary.v1" as const,
+        descriptorIndex: 2,
+        payload: {
+          schemaVersion: "agent-memory-summary.v1",
+          memory: {
+            truthBoundary: { authoritativeForOntology: false },
+            projectionHighWaterMark: 42,
+            projectionSourceRef: "agent.projection.memory",
+            activeMemory: [{
+              memoryId: "mem_current",
+              scope: "workspace",
+              memoryKind: "working-note",
+              summary: "Current bounded memory.",
+              confidence: 0.8,
+              sourceEventIds: ["evt_agent_memory_recorded"],
+              artifactHashes: [],
+              raw: "opaque"
+            }],
+            aggregateCounts: { active: 1, totalCount: 1 },
+            sourceEventIds: ["evt_agent_memory_recorded"],
+            artifactHashes: [],
+            window: { order: "createdAt:asc", limit: 25, hasMore: false, totalCount: 1, omissionCodes: [] }
+          }
+        }
+      }
+    ];
+
+    for (const { contextPackId, descriptorIndex, payload } of invalidPayloads) {
+      const resolved = buildResolvedContextPack({
+        contextPackId,
+        version: 1,
+        generatedAt: providerMetadata.generatedAt,
+        payload,
+        safeSummary: "Resolved operational payload fixture.",
+        provenanceRefs: [`operational-source-proof:${contextPackId}:event`],
+        projectionHighWaterMark: 42,
+        policyVersion: providerMetadata.policyVersion,
+        scope: providerMetadata.scope,
+        sizeBudgetBytes: 32_768,
+        stalenessInputs: [{ kind: "projection-high-water-mark", ref: contextPackId, value: "42" }]
+      });
+      const registry = createContextPackRegistry({ payloadResolver: async () => resolved.payload });
+      registry.register({
+        descriptor: operationalContextPackDescriptors[descriptorIndex]!,
+        build: () => resolved.ref,
+        parsePayload: operationalContextPackPayloadParsers[`${contextPackId}@1`]
+      });
+
+      await expect(registry.buildResolved(contextPackId)).rejects.toThrow("blocked.payload-schema-mismatch");
+    }
+  });
 });
 
 describe("operational context pack builders", () => {
@@ -211,7 +381,7 @@ describe("operational context pack builders", () => {
     sizeBudgetBytes: 16_384
   } as const;
   const runtimeSource = {
-    runtimeHighWaterMark: 9,
+    runtimeHighWaterMark: 42,
     workspaceMounted: true,
     workspaceId: "ws_case_001",
     storageStrategy: "repo-local",
@@ -270,14 +440,21 @@ describe("operational context pack builders", () => {
       scope: sharedInput.scope,
       sizeBudgetBytes: 16_384,
       stalenessInputs: expect.arrayContaining([
-        { kind: "runtime-high-water-mark", ref: "runtime.status", value: "9" },
+        { kind: "projection-high-water-mark", ref: "runtime.status", value: "42" },
         { kind: "omission-code", ref: "runtime.status", value: "omitted.raw-paths" },
         { kind: "omission-code", ref: "runtime.status", value: "omitted.raw-provider-errors" }
       ])
     });
     expect(first.ref.sizeBytes).toBe(serializeContextPackPayload(first.payload).byteLength);
     expect(first.payload).toMatchObject({ schemaVersion: "workspace-runtime-status.v1", runtime: runtimeSource });
-    expect(first.ref.provenanceRefs).toEqual(["diag_runtime_001", "operational-source-proof:workspace-runtime-status.v1:event", "runtime.status:hwm:9"]);
+    expect(first.ref.provenanceRefs).toEqual(["diag_runtime_001", "operational-source-proof:workspace-runtime-status.v1:event", "runtime.status:hwm:42"]);
+  });
+
+  it("requires workspace runtime status refs to match runtime high-water mark", () => {
+    expect(() => buildWorkspaceRuntimeStatusContextPack({
+      ...sharedInput,
+      runtimeSource: { ...runtimeSource, runtimeHighWaterMark: 9 }
+    })).toThrow("blocked.projection-source-mismatch");
   });
 
   it("blocks unsafe runtime diagnostics and storage facts before they reach the resolved envelope", () => {
@@ -453,7 +630,7 @@ describe("operational context pack registration and readiness handoff", () => {
       sizeBudgets: { workspaceRuntimeStatus: 16_384, taskRunHistory: 32_768, agentMemorySummary: 16_384 },
       async workspaceRuntimeStatus() {
         return {
-          runtimeHighWaterMark: 9,
+          runtimeHighWaterMark: 42,
           workspaceMounted: true,
           workspaceId: "ws_case_001",
           storageStrategy: "repo-local",
@@ -553,7 +730,7 @@ describe("operational context pack registration and readiness handoff", () => {
       build: () => buildWorkspaceRuntimeStatusContextPack({
         generatedAt: "2026-07-10T12:00:00.000Z", policyVersion: "operational-policy.v1", scope: { kind: "workspace", id: "ws_case_001" },
         projectionHighWaterMark: 42, sizeBudgetBytes: 16_384,
-        runtimeSource: { runtimeHighWaterMark: 9, workspaceMounted: true, storageStrategy: "repo-local", bindPosture: "loopback", authPosture: "local-disabled", providerStates: [], diagnostics: [], projectionHighWaterMarks: {}, omissionCodes: [] }
+        runtimeSource: { runtimeHighWaterMark: 42, workspaceMounted: true, storageStrategy: "repo-local", bindPosture: "loopback", authPosture: "local-disabled", providerStates: [], diagnostics: [], projectionHighWaterMarks: {}, omissionCodes: [] }
       }),
       parsePayload: operationalContextPackPayloadParsers["workspace-runtime-status.v1@1"]
     });
@@ -608,7 +785,7 @@ describe("operational context pack registration and readiness handoff", () => {
     expect(inputs.blockingReasons).toEqual([]);
     expect(inputs.omissionCodes).toEqual(["omitted.out-of-scope", "omitted.raw-paths", "omitted.size-budget"]);
     expect(inputs.currentProjectionHighWaterMarks).toEqual({
-      "workspace-runtime-status.v1": 9,
+      "workspace-runtime-status.v1": 42,
       "task-run-history.v1": 42,
       "agent-memory-summary.v1": 42
     });

@@ -194,6 +194,10 @@ interface NormalizedMemorySnapshot extends OperationalAgentMemorySnapshot {
 
 function normalizeMemorySnapshot(input: BuildAgentMemorySummaryContextPackInput): NormalizedMemorySnapshot {
   if (input.memorySnapshot !== undefined) {
+    if (!Number.isInteger(input.memorySnapshot.window.limit) || input.memorySnapshot.window.limit <= 0 ||
+      input.memorySnapshot.activeMemory.length > input.memorySnapshot.window.limit) {
+      throw new Error("blocked.unbounded-source: active memory exceeds the bounded window limit");
+    }
     return { ...input.memorySnapshot, lifecycleProvenanceRefs: [] };
   }
   if (input.projection === undefined) {
