@@ -274,6 +274,16 @@ function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
   return agentStatusFromJson({
     schemaVersion: "agent-status.v1",
     generatedAt: "2026-07-09T02:00:00.000Z",
+    identityLifecycle: {
+      schemaVersion: "resident-identity-lifecycle.v1",
+      state: "ready",
+      residentAgentId: "agent_default",
+      workspaceId: "ws_case_001",
+      initialized: true,
+      eventIds: ["evt_agent_identity"],
+      safeMessage: "Resident identity is ready.",
+      allowedRepairActions: []
+    },
     residentAgentId: "agent_default",
     identity: {
       residentAgentId: "agent_default",

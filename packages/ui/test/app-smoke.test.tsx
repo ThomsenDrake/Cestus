@@ -415,6 +415,16 @@ function appSmokeAgentStatus(): AgentStatusDto {
   return {
     schemaVersion: "agent-status.v1",
     generatedAt: "2026-07-07T21:00:00.000Z",
+    identityLifecycle: {
+      schemaVersion: "resident-identity-lifecycle.v1",
+      state: "ready",
+      residentAgentId: "agent_default",
+      workspaceId: "ws_case_001",
+      initialized: true,
+      eventIds: ["evt_agent_identity"],
+      safeMessage: "Resident identity is ready.",
+      allowedRepairActions: []
+    },
     residentAgentId: "agent_default",
     identity: {
       residentAgentId: "agent_default",

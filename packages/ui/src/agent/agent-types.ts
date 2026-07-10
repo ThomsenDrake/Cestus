@@ -18,6 +18,10 @@ export type {
   AgentApprovalQueueApprovalClass,
   AgentApprovalQueueItemDto
 } from "../../../agent/src/approval-queue.js";
+export type {
+  ResidentIdentityLifecycleDto,
+  ResidentIdentityLifecycleState
+} from "../../../agent/src/identity-bootstrap.js";
 import type { AgentTaskPriority } from "../../../agent/src/projection-types.js";
 import type {
   AgentMemoryDetailDto,

@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
 
@@ -20,7 +21,7 @@ afterEach(() => {
 
 describe("agent memory HTTP routes", () => {
   it("records, lists, supersedes, details, and retracts memory without hidden effects", async () => {
-    const config = resolveLocalRuntimeConfig({ cwd: tempDir(), env: {} });
+    const config = portableConfig("ws_memory_route");
     const handler = testHandler({ config });
     const recorded = await handler({
       method: "POST",
@@ -169,6 +170,25 @@ function tempDir(): string {
   const cwd = mkdtempSync(join(tmpdir(), "cestus-agent-memory-route-"));
   tempDirs.push(cwd);
   return cwd;
+}
+
+function portableConfig(workspaceId: string): ReturnType<typeof resolveLocalRuntimeConfig> {
+  const cwd = tempDir();
+  const workspaceRoot = join(cwd, workspaceId);
+  createPortableWorkspace({
+    rootDir: workspaceRoot,
+    workspaceId,
+    label: `Workspace ${workspaceId}`,
+    createdAt: "2026-07-10T12:00:00.000Z",
+    createdBy: "agent-memory-route-test"
+  });
+  return resolveLocalRuntimeConfig({
+    cwd,
+    env: {
+      CESTUS_LOCAL_STORAGE: "portable-workspace",
+      CESTUS_WORKSPACE_ROOT: workspaceRoot
+    }
+  });
 }
 
 function closeHandler(handler: LocalRuntimeHttpHandler): void {

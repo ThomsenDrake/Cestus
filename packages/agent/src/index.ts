@@ -1,5 +1,6 @@
 export * from "./context-packs.js";
 export * from "./operational-context-packs.js";
+export * from "./identity-bootstrap.js";
 export * from "./memory.js";
 export * from "./prompt-artifacts.js";
 export * from "./cockpit.js";

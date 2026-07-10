@@ -62,6 +62,7 @@ export function AgentWorkspace({
   onDenyToolRequest
 }: AgentWorkspaceProps) {
   const identity = status?.identity;
+  const identityLifecycle = status?.identityLifecycle;
   const activeLocks = status?.locks.filter((lock) => lock.state === "active") ?? [];
   const requestedTools = status?.toolRequests.filter((request) => request.state === "requested") ?? [];
   const runsById = new Map((status?.runs ?? []).map((run) => [run.runId, run]));
@@ -143,6 +144,16 @@ export function AgentWorkspace({
                 <StatRow label="Workspace" value={identity?.workspaceId ?? "workspace not reported"} />
                 <StatRow label="Policy" value={identity?.policyId ?? "policy not reported"} />
                 <StatRow label="Run types" value={identity?.allowedRunTypes.join(", ") || "no run types reported"} />
+                <StatRow label="Lifecycle" value={identityLifecycle?.state ?? "not reported"} />
+                {identityLifecycle === undefined || identityLifecycle.state === "ready" ? null : (
+                  <StatRow label="Lifecycle note" value={identityLifecycle.safeMessage} />
+                )}
+                {identityLifecycle === undefined || identityLifecycle.eventIds.length === 0 ? null : (
+                  <div className="grid gap-2 px-4 py-3 sm:grid-cols-[10rem_minmax(0,1fr)]">
+                    <dt className="text-base font-medium text-[var(--paper-light)] sm:text-sm">Lifecycle provenance</dt>
+                    <dd className="min-w-0"><ProvenanceRefs refs={identityLifecycle.eventIds} /></dd>
+                  </div>
+                )}
               </dl>
             </section>
 

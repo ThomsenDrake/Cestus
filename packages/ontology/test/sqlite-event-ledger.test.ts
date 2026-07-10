@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
+import { ConcurrencyConflictError, isConcurrencyConflict } from "../src/event-ledger.js";
 import { SQLiteEventLedger } from "../src/sqlite-event-ledger.js";
 import { describeEventLedgerContract, evidenceEvent } from "./ledger-contract.test-helper.js";
 
@@ -31,6 +32,42 @@ describeEventLedgerContract("SQLiteEventLedger", {
 });
 
 describe("SQLiteEventLedger", () => {
+  it("throws a structured concurrency error while preserving the message", async () => {
+    const ledger = new SQLiteEventLedger(dbPath());
+    await ledger.append(evidenceEvent("ev_sqlite_conflict"));
+
+    await expect(ledger.append(evidenceEvent("ev_sqlite_conflict"), { expectedNextSequence: 1 }))
+      .rejects.toBeInstanceOf(ConcurrencyConflictError);
+    await expect(ledger.append(evidenceEvent("ev_sqlite_conflict"), { expectedNextSequence: 1 }))
+      .rejects.toThrow("Concurrency conflict");
+
+    ledger.close();
+  });
+
+  it("normalizes BEGIN IMMEDIATE locked errors as structured concurrency conflicts", async () => {
+    const ledger = new SQLiteEventLedger(dbPath());
+    const db = (ledger as unknown as { db: { exec(statement: string): void } }).db;
+    const originalExec = db.exec.bind(db);
+
+    db.exec = (statement: string) => {
+      if (statement === "BEGIN IMMEDIATE") {
+        throw Object.assign(new Error("database is locked"), { code: "ERR_SQLITE_ERROR" });
+      }
+      originalExec(statement);
+    };
+
+    try {
+      await ledger.append(evidenceEvent("ev_sqlite_locked"));
+      throw new Error("expected SQLite contention to reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConcurrencyConflictError);
+      expect(isConcurrencyConflict(error)).toBe(true);
+      expect((error as Error).message).toBe("Concurrency conflict for evidence_ev_sqlite_locked: SQLite database contention");
+    } finally {
+      ledger.close();
+    }
+  });
+
   it("persists and reopens committed events", async () => {
     const path = dbPath();
     const ledger = new SQLiteEventLedger(path);

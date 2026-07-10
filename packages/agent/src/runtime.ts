@@ -40,6 +40,10 @@ import { createAgentScheduler } from "./scheduler.js";
 import type { AgentApprovedToolExecutorDescriptor } from "./scheduler-types.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
+import {
+  notMountedResidentIdentityLifecycle,
+  type ResidentIdentityLifecycleDto
+} from "./identity-bootstrap.js";
 
 const agentCoreVersion = "0.1.0";
 const agentPackVersions = { core: "0.1.0", agent: "0.1.0" } as const;
@@ -53,6 +57,8 @@ export interface CreateAgentRuntimeInput {
   readonly ledger: EventLedger;
   readonly actor: ActorRef;
   readonly now: () => string;
+  readonly identityLifecycle?: ResidentIdentityLifecycleDto | (() => ResidentIdentityLifecycleDto);
+  readonly identityLifecycleReady?: () => Promise<ResidentIdentityLifecycleDto>;
   readonly providers?: readonly ModelProviderAdapter[];
   readonly approvedToolExecutors?: readonly AgentApprovedToolExecutorDescriptor[];
 }
@@ -138,12 +144,24 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
 
   return {
     async status(): Promise<AgentStatusDto> {
-      const projection = buildAgentProjection(await input.ledger.readAll());
+      let configuredLifecycle = configuredIdentityLifecycle(input.identityLifecycle);
+      let projection: ReturnType<typeof buildAgentProjection>;
+      try {
+        projection = buildAgentProjection(await input.ledger.readAll());
+      } catch (error) {
+        const fallbackLifecycle = await blockedLifecycleAfterProjectionFailure(input, configuredLifecycle);
+        if (fallbackLifecycle === undefined) {
+          throw error;
+        }
+        configuredLifecycle = fallbackLifecycle;
+        projection = buildAgentProjection([]);
+      }
       const dto = projection.toDto();
       return Object.freeze({
         schemaVersion: "agent-status.v1",
         generatedAt: input.now(),
         ...dto,
+        identityLifecycle: currentIdentityLifecycle(configuredLifecycle, projection.identity),
         identity: projection.identity,
         providers: Object.freeze([...providerRegistry.providers.values()].map((provider) => provider.descriptor)),
         pendingApprovalCount: [...projection.toolRequests.values()].filter((request) => request.state === "requested").length,
@@ -673,6 +691,59 @@ interface RuntimeProviderRecord {
 interface RuntimeProviderRegistry {
   readonly providers: ReadonlyMap<string, RuntimeProviderRecord>;
   readonly diagnostics: readonly AgentRuntimeDiagnosticDto[];
+}
+
+function currentIdentityLifecycle(
+  input: ResidentIdentityLifecycleDto | undefined,
+  identity: ReturnType<typeof buildAgentProjection>["identity"]
+): ResidentIdentityLifecycleDto {
+  if (input !== undefined) {
+    return input;
+  }
+  if (identity === undefined) {
+    return notMountedResidentIdentityLifecycle();
+  }
+  return Object.freeze({
+    schemaVersion: "resident-identity-lifecycle.v1",
+    state: "ready",
+    residentAgentId: "agent_default",
+    workspaceId: identity.workspaceId,
+    initialized: true,
+    eventIds: Object.freeze([...identity.eventIds]),
+    safeMessage: "Resident identity is ready.",
+    allowedRepairActions: Object.freeze([])
+  });
+}
+
+function configuredIdentityLifecycle(
+  input: CreateAgentRuntimeInput["identityLifecycle"]
+): ResidentIdentityLifecycleDto | undefined {
+  return typeof input === "function" ? input() : input;
+}
+
+async function blockedLifecycleAfterProjectionFailure(
+  input: CreateAgentRuntimeInput,
+  lifecycle: ResidentIdentityLifecycleDto | undefined
+): Promise<ResidentIdentityLifecycleDto | undefined> {
+  if (lifecycle?.state === "blocked") {
+    return lifecycle;
+  }
+
+  const latestLifecycle = configuredIdentityLifecycle(input.identityLifecycle);
+  if (latestLifecycle?.state === "blocked") {
+    return latestLifecycle;
+  }
+
+  if (lifecycle?.state !== "initializing" || input.identityLifecycleReady === undefined) {
+    return undefined;
+  }
+
+  try {
+    const readyLifecycle = await input.identityLifecycleReady();
+    return readyLifecycle.state === "blocked" ? readyLifecycle : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function createProviderRegistry(providerAdapters: readonly ModelProviderAdapter[]): RuntimeProviderRegistry {

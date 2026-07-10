@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
+import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
   createLocalRuntimeHttpHandler,
@@ -115,6 +116,9 @@ describe("createLocalRuntimeHttpHandler", () => {
       requestIdFactory: () => "prr_portable_city_budget"
     });
     const health = await first({ method: "GET", url: "/api/health" });
+    const initialIdentityEvents = await waitForIdentityEvents(join(workspaceRoot, "ledger", "ontology.sqlite"));
+    await first({ method: "GET", url: "/api/requests/workspace" });
+    await first({ method: "GET", url: "/api/health" });
 
     const created = await first({
       method: "POST",
@@ -138,6 +142,8 @@ describe("createLocalRuntimeHttpHandler", () => {
       workspaceId: "ws_runtime_001"
     });
     expect(health.body).not.toContain(workspaceRoot);
+    expect(initialIdentityEvents).toEqual(["agent.identity.initialized"]);
+    expect(await identityEventTypes(join(workspaceRoot, "ledger", "ontology.sqlite"))).toEqual(initialIdentityEvents);
     expect(created.status).toBe(200);
     expect(JSON.parse(created.body)).toMatchObject({
       ok: true,
@@ -418,4 +424,24 @@ function invalidDraftRequestBodyDiagnostic() {
       allowedRepairActions: ["send agency, requester, jurisdiction, request text, and received timestamp"]
     }
   };
+}
+
+async function identityEventTypes(path: string): Promise<readonly string[]> {
+  const ledger = new SQLiteEventLedger(path);
+  try {
+    return (await ledger.readStream("agent_identity_agent_default")).map((event) => event.type);
+  } finally {
+    ledger.close();
+  }
+}
+
+async function waitForIdentityEvents(path: string): Promise<readonly string[]> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const events = await identityEventTypes(path);
+    if (events.length > 0) {
+      return events;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error("resident identity bootstrap did not complete");
 }

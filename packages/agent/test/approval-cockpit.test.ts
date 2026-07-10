@@ -519,7 +519,21 @@ function agentStatus(overrides: Partial<AgentStatusDto> = {}): AgentStatusDto {
     pendingApprovalCount: 0,
     activeLockCount: 0,
     diagnostics: [],
-    ...overrides
+    ...overrides,
+    identityLifecycle: overrides.identityLifecycle ?? readyIdentityLifecycle()
+  };
+}
+
+function readyIdentityLifecycle() {
+  return {
+    schemaVersion: "resident-identity-lifecycle.v1" as const,
+    state: "ready" as const,
+    residentAgentId: "agent_default" as const,
+    workspaceId: "ws_case_001",
+    initialized: true,
+    eventIds: ["evt_agent_identity"],
+    safeMessage: "Resident identity is ready.",
+    allowedRepairActions: []
   };
 }
 

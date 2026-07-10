@@ -9,6 +9,7 @@ import {
 import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { InMemoryEventLedger, type AppendOptions, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
+import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { handleAgentHttpRoute } from "../src/agent-http-routes.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
@@ -264,6 +265,88 @@ describe("agent approval routes", () => {
     expect(response.status).toBe(403);
   });
 
+  it("uses runtime-owned lifecycle before building an approval cockpit from snapshot events", async () => {
+    const sourceLedger = new InMemoryEventLedger();
+    const gateway = createAgentToolGateway({
+      ledger: sourceLedger,
+      actor: { id: "actor_cestus_agent", kind: "agent", label: "Cestus Agent" },
+      now
+    });
+    const requested = await gateway.requestTool({
+      toolRequestId: "toolreq_runtime_lifecycle",
+      residentAgentId: "agent_default",
+      taskId: "task_runtime_lifecycle",
+      runId: "run_runtime_lifecycle",
+      toolId: "provider.bytes.transfer",
+      sideEffectClass: "external-byte-transfer",
+      requiredApprovalClass: "provider-byte-transfer",
+      preview: {
+        summary: "Use the runtime-owned lifecycle for approval validation.",
+        relatedEventIds: ["evt_runtime_lifecycle"],
+        artifactHashes: ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+        scope: "Selected synthetic evidence excerpts.",
+        estimatedEffect: "Provider byte transfer after human approval."
+      }
+    });
+    let runtimeStatusRead = false;
+    const guardedLedger: EventLedger = {
+      append: (event, options) => sourceLedger.append(event, options),
+      readStream: (streamId) => sourceLedger.readStream(streamId),
+      readAll: async () => {
+        if (!runtimeStatusRead) {
+          throw new Error("runtime lifecycle must be read before approval snapshot");
+        }
+        return sourceLedger.readAll();
+      }
+    };
+    const config = resolveLocalRuntimeConfig({ cwd: mkdtempSync(join(tmpdir(), "cestus-agent-approval-routes-")), env: {} });
+    tempDirs.push(config.cwd);
+    const lifecycle = readyResidentIdentityLifecycle("ws_runtime_lifecycle");
+    const runtime = createAgentRuntime({
+      ledger: sourceLedger,
+      actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
+      now,
+      identityLifecycle: lifecycle
+    });
+    const handle: LocalRuntimeHandle = {
+      runtime: {} as LocalRuntimeHandle["runtime"],
+      ledger: guardedLedger,
+      config,
+      residentIdentity: {
+        lifecycle: () => lifecycle,
+        ready: async () => lifecycle
+      },
+      close() {}
+    };
+
+    const response = await handleAgentHttpRoute({
+      request: {
+        method: "POST",
+        url: "/api/agent/approvals/toolreq_runtime_lifecycle/approve",
+        body: JSON.stringify({
+          approvedPreviewHash: requested.payload.previewHash,
+          rationale: "Approved after the runtime lifecycle was read."
+        })
+      },
+      handle,
+      actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
+      now,
+      agentRuntimeFactory: () => ({
+        status: async () => {
+          runtimeStatusRead = true;
+          return runtime.status();
+        }
+      }) as ReturnType<typeof createAgentRuntime>
+    });
+
+    expect(response?.status).toBe(200);
+    expect(runtimeStatusRead).toBe(true);
+    expect((await sourceLedger.readAll()).map((event) => event.type)).toEqual([
+      "agent.tool.requested",
+      "agent.tool.approved"
+    ]);
+  });
+
   it("rejects approval when a lock lands after the cockpit snapshot and before append", async () => {
     const ledger = new InterleavingApprovalLedger();
     const gateway = createAgentToolGateway({
@@ -293,6 +376,10 @@ describe("agent approval routes", () => {
       runtime: {} as LocalRuntimeHandle["runtime"],
       ledger,
       config,
+      residentIdentity: {
+        lifecycle: () => readyResidentIdentityLifecycle("ws_interleaved_approval"),
+        ready: async () => readyResidentIdentityLifecycle("ws_interleaved_approval")
+      },
       close() {}
     };
     const response = await handleAgentHttpRoute({
@@ -326,7 +413,8 @@ async function seededHandler(input: SeedToolRequestInput | string = "toolreq_pro
   const handler = createLocalRuntimeHttpHandler({
     config: seeded.config,
     actor: { id: "actor_case_owner", kind: "human", label: "Case Owner" },
-    now
+    now,
+    residentIdentityBootstrapForTest: async ({ workspaceId }) => readyResidentIdentityLifecycle(workspaceId)
   });
   handlers.push(handler);
   return { ...seeded, handler };
@@ -345,7 +433,7 @@ async function seedToolRequest(input: SeedToolRequestInput | string = "toolreq_p
   const toolRequestId = request.toolRequestId ?? "toolreq_provider_transfer";
   const cwd = mkdtempSync(join(tmpdir(), "cestus-agent-approval-routes-"));
   tempDirs.push(cwd);
-  const config = resolveLocalRuntimeConfig({ cwd, env: {} });
+  const config = portableConfig(cwd, "ws_approval_routes");
   const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
   try {
     const gateway = createAgentToolGateway({
@@ -417,6 +505,37 @@ async function seedToolRequest(input: SeedToolRequestInput | string = "toolreq_p
   } finally {
     ledger.close();
   }
+}
+
+function portableConfig(cwd: string, workspaceId: string): ReturnType<typeof resolveLocalRuntimeConfig> {
+  const workspaceRoot = join(cwd, workspaceId);
+  createPortableWorkspace({
+    rootDir: workspaceRoot,
+    workspaceId,
+    label: `Workspace ${workspaceId}`,
+    createdAt: "2026-07-10T12:00:00.000Z",
+    createdBy: "agent-approval-routes-test"
+  });
+  return resolveLocalRuntimeConfig({
+    cwd,
+    env: {
+      CESTUS_LOCAL_STORAGE: "portable-workspace",
+      CESTUS_WORKSPACE_ROOT: workspaceRoot
+    }
+  });
+}
+
+function readyResidentIdentityLifecycle(workspaceId: string) {
+  return {
+    schemaVersion: "resident-identity-lifecycle.v1" as const,
+    state: "ready" as const,
+    residentAgentId: "agent_default" as const,
+    workspaceId,
+    initialized: true,
+    eventIds: [],
+    safeMessage: "Resident identity is ready.",
+    allowedRepairActions: []
+  };
 }
 
 async function eventTypes(config: ReturnType<typeof resolveLocalRuntimeConfig>): Promise<readonly string[]> {
