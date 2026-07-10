@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
-import { parseSpecialistWorkflowHandoff, type SpecialistWorkflowHandoffDto } from "./specialist-handoffs.js";
+import {
+  parseLegacySpecialistWorkflowHandoff,
+  type LegacySpecialistWorkflowHandoffDto
+} from "./specialist-handoffs.js";
 import {
   appendSpecialistCompletion,
   appendSpecialistDerivativeStep,
@@ -28,7 +31,7 @@ export interface RunInvestigationPlannerWorkflowInput extends SpecialistRunnerBa
 }
 
 export interface RunInvestigationPlannerWorkflowResult {
-  readonly handoff: SpecialistWorkflowHandoffDto;
+  readonly handoff: LegacySpecialistWorkflowHandoffDto;
   readonly eventIds: readonly string[];
 }
 
@@ -109,7 +112,7 @@ export async function runInvestigationPlannerWorkflow(
     summary: "Investigation planning artifacts are ready for review; no external action was requested.",
     outputArtifactHashes: [planHash, tasksHash, draftsHash], relatedEventIds: [step.id]
   });
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1", runType: "investigation-planner", runId: input.runId, taskId: input.taskId,
     residentAgentId: "agent_default", generatedAt: input.now(), status: "ready-for-review",
     safeSummary: "Investigation plan, local task suggestions, and PRR draft candidates are ready for review.",
@@ -133,7 +136,7 @@ function blockedHandoff(
   summary: string,
   contextPackRefs: readonly import("./context-packs.js").ContextPackRef[] = []
 ): RunInvestigationPlannerWorkflowResult {
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1", runType: "investigation-planner", runId: input.runId, taskId: input.taskId,
     residentAgentId: "agent_default", generatedAt: input.now(), status: "blocked", safeSummary: summary,
     contextPackRefs, outputArtifacts: [], toolRequestIds: [], approvalRequirements: [],
@@ -166,7 +169,7 @@ async function failedModelOutputResult(
     allowedActions: ["retry with a provider that returns the approved investigation planner schema"],
     ...(invocationEventIds.at(-1) === undefined ? {} : { causationId: invocationEventIds.at(-1) })
   });
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
     runType: "investigation-planner",
     runId: input.runId,
@@ -212,7 +215,7 @@ async function failedDerivativeArtifactResult(
     allowedActions: ["inspect local derivative artifact storage and retry investigation planning"],
     ...(invocationEventIds.at(-1) === undefined ? {} : { causationId: invocationEventIds.at(-1) })
   });
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
     runType: "investigation-planner",
     runId: input.runId,
