@@ -116,6 +116,8 @@ export interface SpecialistFailureDto {
 
 export interface SpecialistWorkflowHandoffDto {
   readonly schemaVersion: typeof specialistWorkflowHandoffSchemaVersion;
+  readonly handoffId: string;
+  readonly handoffRevision: number;
   readonly runType: AgentSpecialistRunType;
   readonly runId: string;
   readonly taskId?: string;
@@ -131,6 +133,11 @@ export interface SpecialistWorkflowHandoffDto {
   readonly nextSafeActions: readonly SpecialistNextAction[];
   readonly failure?: SpecialistFailureDto;
 }
+
+export type SpecialistWorkflowOutputArtifactDto = SpecialistOutputArtifactRef;
+export type SpecialistWorkflowApprovalRequirementDto = SpecialistApprovalRequirement;
+export type SpecialistWorkflowNextSafeActionDto = SpecialistNextAction;
+export type SpecialistWorkflowFailureDto = SpecialistFailureDto;
 
 const contentHashSchema = z.string().regex(contentHashPattern)
   .transform((value) => value as `sha256:${string}`);
@@ -181,6 +188,8 @@ const specialistFailureDtoObjectSchema = z.object({
 
 const specialistWorkflowHandoffObjectSchema = z.object({
   schemaVersion: z.literal(specialistWorkflowHandoffSchemaVersion),
+  handoffId: z.string().regex(/^handoff_[a-zA-Z0-9_-]+_[a-f0-9]{16}$/).optional(),
+  handoffRevision: z.number().int().positive().optional(),
   runType: approvedRunTypeSchema,
   runId: safeIdentifierSchema("runId"),
   taskId: safeIdentifierSchema("taskId").optional(),
@@ -480,8 +489,12 @@ function freezeFailureDto(value: z.infer<typeof specialistFailureDtoObjectSchema
 function freezeSpecialistWorkflowHandoff(
   value: z.infer<typeof specialistWorkflowHandoffObjectSchema>
 ): SpecialistWorkflowHandoffDto {
+  // Legacy workflow DTOs remain displayable; durable manifests always provide explicit identity.
+  const legacyHash = hashAgentContextPack(value).slice("sha256:".length, "sha256:".length + 16);
   const handoff: SpecialistWorkflowHandoffDto = {
     schemaVersion: value.schemaVersion,
+    handoffId: value.handoffId ?? `handoff_${value.runId}_${legacyHash}`,
+    handoffRevision: value.handoffRevision ?? 1,
     runType: value.runType,
     runId: value.runId,
     residentAgentId: value.residentAgentId,
