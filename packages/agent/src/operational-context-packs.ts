@@ -69,6 +69,12 @@ export interface OperationalContextPackSizeBudgets {
   readonly agentMemorySummary: number;
 }
 
+export interface OperationalContextPackSourceMetadata {
+  readonly generatedAt: string;
+  readonly policyVersion: string;
+  readonly scope: ContextPackScope;
+}
+
 export interface OperationalEmptyProjectionProof {
   readonly projectionName: string;
   readonly scope: ContextPackScope;
@@ -378,6 +384,9 @@ export function buildWorkspaceRuntimeStatusContextPack(
   if (runtime.runtimeHighWaterMark !== input.projectionHighWaterMark) {
     throw new Error("blocked.projection-source-mismatch: workspace runtime high-water mark does not match the context pack ref high-water mark");
   }
+  if (input.scope.kind === "workspace" && runtime.workspaceId !== undefined && runtime.workspaceId !== input.scope.id) {
+    throw new Error("blocked.projection-source-mismatch: workspace runtime does not match the context pack scope");
+  }
   const provenanceRefs = uniqueStrings([
     operationalSourceProof("workspace-runtime-status.v1", "event"),
     ...runtime.diagnostics.flatMap((diagnostic) => diagnosticIds(diagnostic)),
@@ -386,7 +395,7 @@ export function buildWorkspaceRuntimeStatusContextPack(
   return buildWithBudget({
     contextPackId: "workspace-runtime-status.v1",
     generatedAt: input.generatedAt,
-    payload: { schemaVersion: "workspace-runtime-status.v1", runtime },
+    payload: { schemaVersion: "workspace-runtime-status.v1", source: operationalSourceMetadata(input), runtime },
     safeSummary: `Workspace runtime status at high-water mark ${runtime.runtimeHighWaterMark}.`,
     provenanceRefs,
     projectionHighWaterMark: input.projectionHighWaterMark,
@@ -423,6 +432,7 @@ export function buildTaskRunHistoryContextPack(
       : [operationalSourceProof("task-run-history.v1", "empty-projection"), emptyProjectionProvenanceRef(emptyProof)];
     const payload = {
       schemaVersion: "task-run-history.v1" as const,
+      source: operationalSourceMetadata(input),
       history: {
         projectionHighWaterMark: candidate.projectionHighWaterMark,
         projectionSourceRef: candidate.projectionSourceRef,
@@ -817,11 +827,19 @@ function assertOperationalPayloadEnvelope(
   schemaVersion: OperationalContextPackId,
   section: string
 ): asserts payload is { readonly [key: string]: AgentContextPackJsonValue } {
-  assertJsonObjectWithAllowedKeys(payload, schemaVersion, ["schemaVersion", section]);
+  assertJsonObjectWithAllowedKeys(payload, schemaVersion, ["schemaVersion", "source", section]);
   const payloadSchemaVersion = requiredJsonField(payload, "schemaVersion", schemaVersion);
   if (payloadSchemaVersion !== schemaVersion) {
     throw new Error(`invalid ${schemaVersion} payload`);
   }
+  assertOperationalSourceMetadata(requiredJsonField(payload, "source", schemaVersion), schemaVersion);
+}
+
+function assertOperationalSourceMetadata(value: AgentContextPackJsonValue, schemaVersion: OperationalContextPackId): void {
+  assertJsonObjectWithAllowedKeys(value, schemaVersion, ["generatedAt", "policyVersion", "scope"]);
+  assertUtcTimestamp(requiredJsonField(value, "generatedAt", schemaVersion), "source.generatedAt");
+  assertStringField(value, "policyVersion", schemaVersion);
+  assertScopePayloadField(value, "scope", schemaVersion);
 }
 
 function assertWorkspaceRuntimePayloadSection(value: AgentContextPackJsonValue, schemaVersion: OperationalContextPackId): void {
@@ -989,9 +1007,18 @@ function assertProjectionPayloadSemantics(
   if (!isOperationalJsonObject(emptyProof) || !isOperationalJsonObject(aggregateCounts) ||
     emptyProof.projectionName !== expectedProjectionSource ||
     emptyProof.projectionHighWaterMark !== value.projectionHighWaterMark ||
-    emptyProof.sourceEventCount !== 0 || sourceEventIds.length !== 0 || artifactHashes.length !== 0 ||
-    window.totalCount !== 0 || window.hasMore !== false ||
-    Object.values(aggregateCounts).some((count) => count !== 0)) {
+    sourceEventIds.length !== 0 || artifactHashes.length !== 0 ||
+    window.totalCount !== 0 || window.hasMore !== false) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  if (expectedProjectionSource === "agent.projection.memory") {
+    const omissionCodes = Array.isArray(window.omissionCodes) ? window.omissionCodes : [];
+    if (aggregateCounts.active !== 0 || typeof aggregateCounts.totalCount !== "number" ||
+      emptyProof.sourceEventCount !== aggregateCounts.totalCount ||
+      (aggregateCounts.totalCount > 0 && !omissionCodes.includes("omitted.out-of-scope"))) {
+      throw new Error(`invalid ${schemaVersion} payload`);
+    }
+  } else if (emptyProof.sourceEventCount !== 0 || Object.values(aggregateCounts).some((count) => count !== 0)) {
     throw new Error(`invalid ${schemaVersion} payload`);
   }
 }
@@ -1004,6 +1031,16 @@ function assertOperationalRefSemantics(
 ): void {
   if (ref.contextPackId !== schemaVersion || ref.version !== 1 || ref.policyVersion === undefined || ref.scope === undefined ||
     ref.projectionHighWaterMark === undefined) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  const source = requiredJsonField(payload, "source", schemaVersion);
+  if (!isOperationalJsonObject(source)) {
+    throw new Error(`invalid ${schemaVersion} payload`);
+  }
+  const sourceScope = source.scope;
+  if (source.generatedAt !== ref.generatedAt || source.policyVersion !== ref.policyVersion ||
+    sourceScope === undefined || !isOperationalJsonObject(sourceScope) ||
+    sourceScope.kind !== ref.scope.kind || sourceScope.id !== ref.scope.id) {
     throw new Error(`invalid ${schemaVersion} payload`);
   }
   const section = requiredJsonField(payload, sectionName, schemaVersion);
@@ -1022,8 +1059,13 @@ function assertOperationalRefSemantics(
     if (section.projectionSourceRef !== expectedProjection) throw new Error(`invalid ${schemaVersion} payload`);
     assertExactStringArray(section.sourceEventIds as AgentContextPackJsonValue, ref.sourceEventIds ?? [], schemaVersion);
     assertExactStringArray(section.artifactHashes as AgentContextPackJsonValue, ref.artifactHashes ?? [], schemaVersion);
-  } else if ((ref.sourceEventIds?.length ?? 0) !== 0 || (ref.artifactHashes?.length ?? 0) !== 0) {
-    throw new Error(`invalid ${schemaVersion} payload`);
+  } else {
+    if ((ref.sourceEventIds?.length ?? 0) !== 0 || (ref.artifactHashes?.length ?? 0) !== 0) {
+      throw new Error(`invalid ${schemaVersion} payload`);
+    }
+    if (ref.scope.kind === "workspace" && typeof section.workspaceId === "string" && section.workspaceId !== ref.scope.id) {
+      throw new Error(`invalid ${schemaVersion} payload`);
+    }
   }
   const emptyProof = section.emptyProof;
   if (emptyProof !== undefined && isOperationalJsonObject(emptyProof)) {
@@ -1392,6 +1434,11 @@ function normalizeTaskRunHistorySnapshot(value: OperationalTaskRunHistorySnapsho
   const callerArtifactHashes = normalizeArtifactHashes(value.artifactHashes);
   const window = normalizeWindow(value.window);
   const emptyProof = value.emptyProof === undefined ? undefined : normalizeEmptyProof(value.emptyProof);
+  const rawVisibleItemCount = value.tasks.length + value.runs.length + value.modelInvocations.length + value.toolRequests.length;
+  if (rawVisibleItemCount > window.limit || window.totalCount < rawVisibleItemCount ||
+    (window.hasMore && window.totalCount <= rawVisibleItemCount)) {
+    throw new Error("blocked.unbounded-source: task/run history window does not cover visible items");
+  }
   const tasks = sortHistoryItems(value.tasks.map((item) => projectTaskHistoryItem(item as unknown as AgentContextPackJsonValue)));
   const runs = sortHistoryItems(value.runs.map((item) => projectRunHistoryItem(item as unknown as AgentContextPackJsonValue)));
   const modelInvocations = sortHistoryItems(value.modelInvocations.map((item) => projectModelInvocationHistoryItem(item as unknown as AgentContextPackJsonValue)));
@@ -1598,7 +1645,7 @@ function projectRunHistoryItem(value: AgentContextPackJsonValue): OperationalRun
     "outputArtifactHashes", "stepCount", "invocationIds", "toolRequestIds", "failureCategory", "retryable",
     "allowedActions", "summaryCode"
   ]);
-  return {
+  const projected: OperationalRunSummaryDto = {
     runId: requiredSafeIdentifier(item, "runId", "run"),
     state: requiredEnum(item, "state", runStates, "run") as AgentRunState,
     ...optionalEnumProperty(item, "runType", specialistRunTypes, "run"),
@@ -1622,6 +1669,8 @@ function projectRunHistoryItem(value: AgentContextPackJsonValue): OperationalRun
     ...optionalTokenArrayProperty(item, "allowedActions", "run"),
     ...optionalTokenProperty(item, "summaryCode", "run")
   };
+  assertRunLifecycle(projected);
+  return projected;
 }
 
 function projectModelInvocationHistoryItem(value: AgentContextPackJsonValue): OperationalModelInvocationSummaryDto {
@@ -1631,7 +1680,7 @@ function projectModelInvocationHistoryItem(value: AgentContextPackJsonValue): Op
     "contextPackRefs", "omissionCount", "transferApprovalClass", "usage", "failureCategory", "retryable",
     "allowedActions", "sourceEventIds"
   ]);
-  return {
+  const projected: OperationalModelInvocationSummaryDto = {
     invocationId: requiredSafeIdentifier(item, "invocationId", "model invocation"),
     status: requiredEnum(item, "status", modelInvocationStatuses, "model invocation") as AgentModelInvocationStatus,
     ...optionalIdentifierProperty(item, "runId", "model invocation"),
@@ -1654,6 +1703,8 @@ function projectModelInvocationHistoryItem(value: AgentContextPackJsonValue): Op
     ...optionalTokenArrayProperty(item, "allowedActions", "model invocation"),
     ...optionalEventIdsProperty(item, "sourceEventIds")
   };
+  assertModelInvocationLifecycle(projected);
+  return projected;
 }
 
 function projectToolRequestHistoryItem(value: AgentContextPackJsonValue): OperationalToolRequestSummaryDto {
@@ -1665,7 +1716,7 @@ function projectToolRequestHistoryItem(value: AgentContextPackJsonValue): Operat
     "completedAt", "resultEventIds", "artifactHashes", "readModelChanges", "failedAt", "failureCategory",
     "retryable", "allowedActions"
   ]);
-  return {
+  const projected: OperationalToolRequestSummaryDto = {
     toolRequestId: requiredSafeIdentifier(item, "toolRequestId", "tool request"),
     state: requiredEnum(item, "state", toolRequestStates, "tool request") as AgentToolRequestState,
     ...optionalIdentifierProperty(item, "runId", "tool request"),
@@ -1699,6 +1750,67 @@ function projectToolRequestHistoryItem(value: AgentContextPackJsonValue): Operat
     ...optionalBooleanProperty(item, "retryable", "tool request"),
     ...optionalTokenArrayProperty(item, "allowedActions", "tool request")
   };
+  assertToolRequestLifecycle(projected);
+  return projected;
+}
+
+function assertRunLifecycle(run: OperationalRunSummaryDto): void {
+  if (run.state === "completed" && (run.completedAt === undefined || run.failedAt !== undefined ||
+    run.failureCategory !== undefined || run.retryable === true)) {
+    throw new Error("blocked.invalid-payload-shape: completed run lifecycle is inconsistent");
+  }
+  if (run.state === "failed" && (run.failedAt === undefined || run.failureCategory === undefined || run.completedAt !== undefined)) {
+    throw new Error("blocked.invalid-payload-shape: failed run lifecycle is inconsistent");
+  }
+  if (run.state === "running" && (run.completedAt !== undefined || run.failedAt !== undefined)) {
+    throw new Error("blocked.invalid-payload-shape: running run lifecycle is inconsistent");
+  }
+}
+
+function assertModelInvocationLifecycle(invocation: OperationalModelInvocationSummaryDto): void {
+  if (invocation.status === "completed" && (invocation.runId === undefined || invocation.providerId === undefined ||
+    invocation.modelFamily === undefined || invocation.inputArtifactHash === undefined ||
+    invocation.providerOutputArtifactHash === undefined || invocation.completedAt === undefined)) {
+    throw new Error("blocked.invalid-payload-shape: completed model invocation lifecycle is incomplete");
+  }
+  if (invocation.status === "failed" && (invocation.runId === undefined || invocation.inputArtifactHash === undefined ||
+    invocation.failureCategory === undefined)) {
+    throw new Error("blocked.invalid-payload-shape: failed model invocation lifecycle is incomplete");
+  }
+  if (invocation.status === "requested" && (invocation.runId === undefined || invocation.inputArtifactHash === undefined ||
+    invocation.requestedAt === undefined || invocation.completedAt !== undefined || invocation.providerOutputArtifactHash !== undefined)) {
+    throw new Error("blocked.invalid-payload-shape: requested model invocation lifecycle is inconsistent");
+  }
+}
+
+function assertToolRequestLifecycle(tool: OperationalToolRequestSummaryDto): void {
+  const approvalFields = [tool.approvedBy, tool.approvedPreviewHash, tool.approvalClass, tool.approvedAt];
+  const executionFields = [tool.executionClaimedBy, tool.executionClaimedAt, tool.executionLeaseExpiresAt,
+    tool.executionApprovedPreviewHash, tool.executionClaimEventId];
+  const hasResult = (tool.resultEventIds?.length ?? 0) + (tool.artifactHashes?.length ?? 0) +
+    (tool.readModelChanges?.length ?? 0) > 0;
+  const terminalFields = [tool.deniedBy, tool.deniedAt, tool.completedAt, tool.failedAt, tool.failureCategory,
+    tool.retryable, hasResult ? true : undefined];
+  if (["approved", "executing", "completed", "failed"].includes(tool.state) && approvalFields.some((field) => field === undefined)) {
+    throw new Error("blocked.invalid-payload-shape: tool request approval lifecycle is incomplete");
+  }
+  if (tool.state === "executing" && [tool.executionClaimedBy, tool.executionClaimedAt,
+    tool.executionLeaseExpiresAt, tool.executionClaimEventId].some((field) => field === undefined)) {
+    throw new Error("blocked.invalid-payload-shape: executing tool request claim is incomplete");
+  }
+  if (tool.state === "completed" && (tool.completedAt === undefined || !hasResult)) {
+    throw new Error("blocked.invalid-payload-shape: completed tool request result is incomplete");
+  }
+  if (tool.state === "failed" && (tool.failedAt === undefined || tool.failureCategory === undefined)) {
+    throw new Error("blocked.invalid-payload-shape: failed tool request lifecycle is incomplete");
+  }
+  if (tool.state === "denied" && (tool.deniedBy === undefined || tool.deniedAt === undefined ||
+    approvalFields.some((field) => field !== undefined) || executionFields.some((field) => field !== undefined))) {
+    throw new Error("blocked.invalid-payload-shape: denied tool request lifecycle is inconsistent");
+  }
+  if (tool.state === "requested" && [...approvalFields, ...executionFields, ...terminalFields].some((field) => field !== undefined)) {
+    throw new Error("blocked.invalid-payload-shape: requested tool request lifecycle is inconsistent");
+  }
 }
 
 function requiredEnum(
@@ -1875,7 +1987,7 @@ function assertHistoryIdentityAndLinks(
     for (const task of tasks) {
       if (task.runId !== undefined) {
         const run = runsById.get(task.runId);
-        if (run === undefined || (run.taskId !== undefined && run.taskId !== task.taskId)) {
+        if (run !== undefined && run.taskId !== undefined && run.taskId !== task.taskId) {
           throw new Error("blocked.projection-source-mismatch: task/run links are inconsistent");
         }
       }
@@ -1883,29 +1995,49 @@ function assertHistoryIdentityAndLinks(
   }
   if (tasks.length > 0) {
     for (const run of runs) {
-      if (run.taskId !== undefined && !tasksById.has(run.taskId)) {
+      const task = run.taskId === undefined ? undefined : tasksById.get(run.taskId);
+      if (task !== undefined && task.runId !== undefined && task.runId !== run.runId) {
         throw new Error("blocked.projection-source-mismatch: run/task links are inconsistent");
       }
     }
   }
   for (const run of runs) {
-    if (modelInvocations.length > 0 && run.invocationIds?.some((id) => !invocationsById.has(id))) {
+    if (run.invocationIds?.some((id) => {
+      const invocation = invocationsById.get(id);
+      return invocation !== undefined && invocation.runId !== undefined && invocation.runId !== run.runId;
+    })) {
       throw new Error("blocked.projection-source-mismatch: run/model links are inconsistent");
     }
-    if (toolRequests.length > 0 && run.toolRequestIds?.some((id) => !toolsById.has(id))) {
+    if (run.toolRequestIds?.some((id) => {
+      const tool = toolsById.get(id);
+      return tool !== undefined && tool.runId !== undefined && tool.runId !== run.runId;
+    })) {
       throw new Error("blocked.projection-source-mismatch: run/tool links are inconsistent");
     }
   }
-  for (const invocation of modelInvocations) {
-    if (invocation.runId !== undefined && runs.length > 0 && !runsById.has(invocation.runId)) {
-      throw new Error("blocked.projection-source-mismatch: model/run links are inconsistent");
+  for (const run of runs) {
+    if (run.state === "running") continue;
+    const linkedInvocationIds = new Set(run.invocationIds ?? []);
+    const linkedToolIds = new Set(run.toolRequestIds ?? []);
+    if (modelInvocations.some((invocation) => (invocation.runId === run.runId || linkedInvocationIds.has(invocation.invocationId)) &&
+      invocation.status === "requested") ||
+      toolRequests.some((tool) => (tool.runId === run.runId || linkedToolIds.has(tool.toolRequestId)) &&
+        (tool.state === "requested" || tool.state === "executing"))) {
+      throw new Error("blocked.projection-source-mismatch: terminal run has nonterminal linked work");
     }
   }
-  for (const tool of toolRequests) {
-    if (tool.runId !== undefined && runs.length > 0 && !runsById.has(tool.runId)) {
-      throw new Error("blocked.projection-source-mismatch: tool/run links are inconsistent");
-    }
-  }
+}
+
+function operationalSourceMetadata(input: {
+  readonly generatedAt: string;
+  readonly policyVersion: string;
+  readonly scope: ContextPackScope;
+}): OperationalContextPackSourceMetadata {
+  return {
+    generatedAt: input.generatedAt,
+    policyVersion: input.policyVersion,
+    scope: { kind: input.scope.kind, id: input.scope.id }
+  };
 }
 
 function assertUniqueHistoryIds(items: readonly object[], idKey: string): void {

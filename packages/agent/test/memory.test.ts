@@ -398,6 +398,46 @@ describe("agent memory surface", () => {
     })).toThrow(/projection-source-mismatch/);
   });
 
+  it("accepts lifecycle-empty active memory with a nonzero source count and stable omission proof", () => {
+    const memorySnapshot = {
+      ...emptyMemorySnapshot(),
+      projectionHighWaterMark: 3,
+      aggregateCounts: { active: 0, totalCount: 3 },
+      window: { ...emptyMemorySnapshot().window, omissionCodes: ["omitted.out-of-scope"] as const }
+    };
+    const input = {
+      memorySnapshot,
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 3,
+      sizeBudgetBytes: 16_384,
+      emptyMemoryProof: {
+        projectionName: "agent.projection.memory",
+        scope: { kind: "workspace", id: "ws_case_001" },
+        projectionHighWaterMark: 3,
+        sourceEventCount: 3,
+        generatedAt: "2026-07-09T12:30:00.000Z",
+        emptyReasonCode: "empty.active-memory"
+      }
+    } as const;
+
+    const resolved = buildAgentMemorySummaryResolvedContextPack(input);
+    expect(resolved.payload).toMatchObject({
+      source: { generatedAt: input.generatedAt, policyVersion: input.policyVersion, scope: input.scope },
+      memory: {
+        activeMemory: [],
+        aggregateCounts: { active: 0, totalCount: 3 },
+        window: { totalCount: 0, omissionCodes: ["omitted.out-of-scope"] },
+        emptyProof: { sourceEventCount: 3 }
+      }
+    });
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      ...input,
+      emptyMemoryProof: { ...input.emptyMemoryProof, sourceEventCount: 2 }
+    })).toThrow("blocked.projection-source-mismatch");
+  });
+
   it("rejects non-empty memory whose window or aggregate totals do not cover visible items", () => {
     const base = boundedMemorySnapshot({ totalCount: 1, omissionCodes: [] });
     const invalid = [

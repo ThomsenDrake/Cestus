@@ -158,6 +158,11 @@ export function buildAgentMemorySummaryResolvedContextPack(
     ]);
   const payload = {
     schemaVersion: "agent-memory-summary.v1",
+    source: {
+      generatedAt: input.generatedAt,
+      policyVersion: input.policyVersion,
+      scope: { kind: input.scope.kind, id: input.scope.id }
+    },
     memory: {
       truthBoundary: { authoritativeForOntology: false as const },
       projectionHighWaterMark: snapshot.projectionHighWaterMark,
@@ -404,13 +409,15 @@ function assertEmptyMemoryProof(
     throw new Error("blocked.missing-empty-proof: empty memory projection requires proof");
   }
   const normalizedProof = normalizeMemoryEmptyProof(proof);
+  const lifecycleCount = snapshot.aggregateCounts.totalCount;
+  const provesLifecycleOmission = lifecycleCount === 0 || snapshot.window.omissionCodes.includes("omitted.out-of-scope");
   if (normalizedProof.projectionName !== "agent.projection.memory" ||
     normalizedProof.scope.kind !== input.scope.kind || normalizedProof.scope.id !== input.scope.id ||
     normalizedProof.projectionHighWaterMark !== input.projectionHighWaterMark ||
-    snapshot.aggregateCounts.active !== 0 || snapshot.aggregateCounts.totalCount !== 0 ||
+    snapshot.aggregateCounts.active !== 0 || !provesLifecycleOmission ||
     snapshot.window.totalCount !== 0 || snapshot.window.hasMore ||
-    snapshot.sourceEventIds.length !== 0 || snapshot.artifactHashes.length !== 0 || normalizedProof.sourceEventCount !== 0 ||
-    normalizedProof.sourceEventCount !== snapshot.sourceEventIds.length || normalizedProof.generatedAt !== input.generatedAt) {
+    snapshot.sourceEventIds.length !== 0 || snapshot.artifactHashes.length !== 0 ||
+    normalizedProof.sourceEventCount !== lifecycleCount || normalizedProof.generatedAt !== input.generatedAt) {
     throw new Error("blocked.projection-source-mismatch: empty memory proof does not match the memory projection");
   }
   return normalizedProof;
