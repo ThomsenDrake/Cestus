@@ -6,7 +6,7 @@ Worker identity: Codex
 Branch: `codex/prr-context-pack-design`
 Worktree path: `/home/drake/.codex/worktrees/3076/Cestus`
 Claimed at UTC: `2026-07-10T22:10:35Z`
-Status: `claimed`
+Status: `in-progress`
 
 ## Owned Files
 
