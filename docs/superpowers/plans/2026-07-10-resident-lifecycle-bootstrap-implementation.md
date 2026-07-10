@@ -32,11 +32,11 @@
 - `packages/agent/src/identity-bootstrap.ts`: new package-level append-or-readback helper, lifecycle DTOs, canonical identity proof, and secret-safe blocked diagnostics.
 - `packages/agent/test/identity-bootstrap.test.ts`: focused helper tests for canonical readback, duplicate streams, workspace mismatch, append conflict, corrupted stream, and concurrent opens.
 - `packages/agent/src/index.ts`: export the new bootstrap helper and DTO types.
-- `packages/agent/src/runtime-types.ts`: add `ResidentIdentityLifecycleDto` to `AgentStatusDto`.
-- `packages/agent/src/runtime.ts`: project bare agent runtime identity lifecycle from ledger projection without appending from status reads.
+- `packages/agent/src/runtime-types.ts`: add `ResidentIdentityLifecycleDto` to `AgentStatusDto` in the local-runtime bootstrap task.
+- `packages/agent/src/runtime.ts`: project agent runtime identity lifecycle from the injected runtime lifecycle provider without appending from status reads.
 - `packages/local-runtime/src/runtime-factory.ts`: start process-local resident identity bootstrap for portable workspace mounts and expose lifecycle readiness on `LocalRuntimeHandle`.
-- `packages/local-runtime/src/agent-runtime-factory.ts`: pass readiness/lifecycle context into agent runtime creation where needed.
-- `packages/local-runtime/src/agent-http-routes.ts`: overlay lifecycle DTOs on status/cockpit responses and gate task/memory mutation on readiness instead of silently initializing identity.
+- `packages/local-runtime/src/agent-runtime-factory.ts`: pass a lifecycle provider into agent runtime creation so runtime status owns `identityLifecycle`.
+- `packages/local-runtime/src/agent-http-routes.ts`: gate task/memory mutation on readiness instead of silently initializing identity; status routes stay read-only and do not overlay duplicate lifecycle fields.
 - `packages/local-runtime/src/http-handler.ts`: expose mount bootstrap lifecycle through the handler without changing auth or workspace verification behavior.
 - `packages/local-runtime/src/cli.ts`: bootstrap identity after successful `create-workspace` ledger open and return visible failure without deleting created workspace files.
 - `packages/local-runtime/test/resident-identity-bootstrap.test.ts`: local runtime create/mount/restart/remount/workspace-switch tests.
@@ -56,8 +56,8 @@
 ## Merge Dependencies
 
 - Task 1 must land before Task 2 and Task 3 because it defines the shared bootstrap contract.
-- Task 2 must land before Task 3 because browser and operator surfaces should parse real runtime DTOs, not provisional fixture-only fields.
-- Task 3 should merge after any active context-pack, prompt-template, handoff, or specialist-runner lanes, then rebase and rerun its cross-boundary UI/runtime tests.
+- Task 2 must land before Task 3 because it establishes the stable runtime DTO/status field that browser and operator surfaces consume.
+- Task 3 should merge after any active context-pack, prompt-template, handoff, specialist-runner, shared runtime, or UI adapter lanes, then rebase and rerun its cross-boundary UI/runtime tests.
 - Task 4 runs last after Tasks 1 through 3 pass and reviews are complete.
 
 ## Review Gates
@@ -89,6 +89,7 @@
   - `readDefaultResidentIdentityLifecycle(input): Promise<ResidentIdentityLifecycleDto>`
   - `notMountedResidentIdentityLifecycle(): ResidentIdentityLifecycleDto`
   - `initializingResidentIdentityLifecycle(workspaceId: string): ResidentIdentityLifecycleDto`
+  - `blockedResidentIdentityLifecycle(input): ResidentIdentityLifecycleDto`
 
 - [ ] **Step 1: Claim the task**
 
@@ -437,6 +438,29 @@ export interface ResidentIdentityLifecycleDto {
   readonly safeMessage: string;
   readonly allowedRepairActions: readonly string[];
 }
+
+export interface BlockedResidentIdentityLifecycleInput {
+  readonly workspaceId?: string | undefined;
+  readonly initialized?: boolean;
+  readonly eventIds?: readonly string[];
+  readonly safeMessage: string;
+  readonly allowedRepairActions: readonly string[];
+}
+
+export function blockedResidentIdentityLifecycle(
+  input: BlockedResidentIdentityLifecycleInput
+): ResidentIdentityLifecycleDto {
+  return Object.freeze({
+    schemaVersion: "resident-identity-lifecycle.v1",
+    state: "blocked",
+    residentAgentId: defaultResidentAgentId,
+    ...(input.workspaceId === undefined ? {} : { workspaceId: input.workspaceId }),
+    initialized: input.initialized ?? false,
+    eventIds: Object.freeze([...(input.eventIds ?? [])]),
+    safeMessage: input.safeMessage,
+    allowedRepairActions: Object.freeze([...input.allowedRepairActions])
+  });
+}
 ```
 
 The helper must:
@@ -450,6 +474,7 @@ The helper must:
 - block duplicate initialization events
 - block initialization whose `payload.workspaceId` differs from the supplied workspace ID
 - block unreadable stream errors without echoing raw errors
+- return all blocked outcomes through `blockedResidentIdentityLifecycle()` so runtime catch paths never invent ad hoc DTO shapes
 - never inspect provider descriptors or credential references
 
 Modify `packages/agent/src/index.ts`:
@@ -520,6 +545,9 @@ git commit -m "feat: add resident identity bootstrap contract"
 **Files:**
 - Create: `docs/agentic/claims/task-2-resident-lifecycle-local-runtime.md`
 - Create: `packages/local-runtime/test/resident-identity-bootstrap.test.ts`
+- Modify: `packages/agent/src/runtime-types.ts`
+- Modify: `packages/agent/src/runtime.ts`
+- Modify: `packages/agent/test/runtime.test.ts`
 - Modify: `packages/local-runtime/src/runtime-factory.ts`
 - Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
 - Modify: `packages/local-runtime/src/agent-http-routes.ts`
@@ -530,10 +558,12 @@ git commit -m "feat: add resident identity bootstrap contract"
 - Modify: `packages/local-runtime/test/http-handler.test.ts`
 
 **Interfaces:**
-- Consumes from Task 1: `ensureDefaultResidentIdentity`, `readDefaultResidentIdentityLifecycle`, `notMountedResidentIdentityLifecycle`, `initializingResidentIdentityLifecycle`, and `ResidentIdentityLifecycleDto`.
+- Consumes from Task 1: `ensureDefaultResidentIdentity`, `readDefaultResidentIdentityLifecycle`, `notMountedResidentIdentityLifecycle`, `initializingResidentIdentityLifecycle`, `blockedResidentIdentityLifecycle`, and `ResidentIdentityLifecycleDto`.
 - Produces:
   - `LocalRuntimeHandle.residentIdentity.lifecycle(): ResidentIdentityLifecycleDto`
   - `LocalRuntimeHandle.residentIdentity.ready(): Promise<ResidentIdentityLifecycleDto>`
+  - `CreateAgentRuntimeInput.identityLifecycle?: ResidentIdentityLifecycleDto | (() => ResidentIdentityLifecycleDto)`
+  - `AgentStatusDto.identityLifecycle: ResidentIdentityLifecycleDto`
   - HTTP agent mutations that call `ready()` and require `state === "ready"`
   - CLI `create-workspace` success only after bootstrap reaches `ready`
 
@@ -541,7 +571,7 @@ git commit -m "feat: add resident identity bootstrap contract"
 
 Create and commit `docs/agentic/claims/task-2-resident-lifecycle-local-runtime.md` with owned files, worker identity, branch, worktree, UTC timestamp, and status `claimed`. Then change status to `in-progress` and commit that change.
 
-- [ ] **Step 2: Write RED local runtime tests**
+- [ ] **Step 2: Write RED runtime and local-runtime tests**
 
 Create `packages/local-runtime/test/resident-identity-bootstrap.test.ts`:
 
@@ -558,7 +588,11 @@ import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { runLocalRuntimeCli } from "../src/cli.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
-import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
+import {
+  createLocalRuntimeHttpHandler,
+  type CreateLocalRuntimeHttpHandlerInput,
+  type LocalRuntimeHttpHandler
+} from "../src/http-handler.js";
 
 const actor = { id: "actor_local_runtime_test", kind: "human" as const, label: "Local Runtime Test" };
 const now = () => "2026-07-10T13:00:00.000Z";
@@ -571,9 +605,10 @@ afterEach(() => {
 });
 
 describe("local runtime resident identity bootstrap", () => {
-  it("bootstraps identity when opening a portable workspace before agent mutation", async () => {
+  it("shows initializing after mount-open starts bootstrap, then agent mutation awaits the same ready promise", async () => {
     const cwd = tempDir();
     const workspaceRoot = join(cwd, "external-case");
+    const gate = deferred<void>();
     createPortableWorkspace({
       rootDir: workspaceRoot,
       workspaceId: "ws_runtime_bootstrap",
@@ -589,9 +624,23 @@ describe("local runtime resident identity bootstrap", () => {
       }
     });
 
-    const handler = testHandler(config);
-    const status = await handler({ method: "GET", url: "/api/agent/status" });
-    const task = await handler({
+    const handler = testHandler(config, {
+      residentIdentityBootstrapForTest: async (input) => {
+        await gate.promise;
+        return ensureDefaultResidentIdentity(input);
+      }
+    });
+    const initializing = await handler({ method: "GET", url: "/api/agent/status" });
+    await handler({ method: "GET", url: "/api/agent/status" });
+
+    expect(JSON.parse(initializing.body).identityLifecycle).toMatchObject({
+      state: "initializing",
+      workspaceId: "ws_runtime_bootstrap"
+    });
+    expect(await identityEventTypes(config.storage.sqlitePath)).toEqual([]);
+
+    gate.resolve();
+    const taskPromise = handler({
       method: "POST",
       url: "/api/agent/tasks",
       body: JSON.stringify({
@@ -600,19 +649,20 @@ describe("local runtime resident identity bootstrap", () => {
         priority: "normal"
       })
     });
+    const task = await taskPromise;
+    const ready = await waitForAgentIdentityState(handler, "ready");
 
-    expect(status.status).toBe(200);
-    expect(JSON.parse(status.body).identityLifecycle).toMatchObject({
+    expect(task.status).toBe(200);
+    expect(ready.identityLifecycle).toMatchObject({
       state: "ready",
       workspaceId: "ws_runtime_bootstrap"
     });
-    expect(task.status).toBe(200);
     expect(await identityEventTypes(config.storage.sqlitePath)).toEqual(["agent.identity.initialized"]);
   });
 
   it("keeps status reads mutation-free after mount bootstrap completes", async () => {
     const { config, handler } = portableHandler("ws_status_readonly");
-    await handler({ method: "GET", url: "/api/agent/status" });
+    await waitForAgentIdentityState(handler, "ready");
     const before = await identityEventTypes(config.storage.sqlitePath);
     await handler({ method: "GET", url: "/api/agent/status" });
     await handler({ method: "GET", url: "/api/agent/cockpit" });
@@ -685,14 +735,14 @@ describe("local runtime resident identity bootstrap", () => {
       }
     });
     const handler = testHandler(config);
-    const status = await handler({ method: "GET", url: "/api/agent/status" });
+    const status = await waitForAgentIdentityState(handler, "blocked");
     const task = await handler({
       method: "POST",
       url: "/api/agent/tasks",
       body: JSON.stringify({ taskId: "task_copied_case", title: "Copied case", priority: "normal" })
     });
 
-    expect(JSON.parse(status.body).identityLifecycle).toMatchObject({
+    expect(status.identityLifecycle).toMatchObject({
       state: "blocked",
       workspaceId: "ws_copied_case"
     });
@@ -705,8 +755,8 @@ describe("local runtime resident identity bootstrap", () => {
     const first = portableHandler("ws_switch_first", cwd);
     const second = portableHandler("ws_switch_second", cwd);
 
-    await first.handler({ method: "GET", url: "/api/agent/status" });
-    await second.handler({ method: "GET", url: "/api/agent/status" });
+    await waitForAgentIdentityState(first.handler, "ready");
+    await waitForAgentIdentityState(second.handler, "ready");
 
     expect(JSON.parse((await first.handler({ method: "GET", url: "/api/agent/status" })).body).identityLifecycle.workspaceId)
       .toBe("ws_switch_first");
@@ -740,7 +790,7 @@ describe("local runtime resident identity bootstrap", () => {
       }
     );
     const retry = await runLocalRuntimeCli(
-      ["agent-status"],
+      ["agent-create-task", "--task-id", "task_retry_after_create_failure", "--title", "Retry after create failure"],
       {
         cwd,
         env: {
@@ -758,10 +808,60 @@ describe("local runtime resident identity bootstrap", () => {
     expect(retry).toBe(0);
     expect(await identityEventTypes(join(workspaceRoot, "ledger", "ontology.sqlite"))).toEqual(["agent.identity.initialized"]);
   });
+
+  it("requires a new runtime open to retry after an unexpected bootstrap failure", async () => {
+    const cwd = tempDir();
+    const workspaceRoot = join(cwd, "retry-case");
+    createPortableWorkspace({
+      rootDir: workspaceRoot,
+      workspaceId: "ws_retry_case",
+      label: "Retry Case",
+      createdAt: "2026-07-10T12:00:00.000Z",
+      createdBy: "runtime-test"
+    });
+    const config = resolveLocalRuntimeConfig({
+      cwd,
+      env: {
+        CESTUS_LOCAL_STORAGE: "portable-workspace",
+        CESTUS_WORKSPACE_ROOT: workspaceRoot
+      }
+    });
+    const failureGate = deferred<void>();
+    const failing = testHandler(config, {
+      residentIdentityBootstrapForTest: async () => {
+        await failureGate.promise;
+        throw new Error("injected unexpected failure");
+      }
+    });
+
+    expect(JSON.parse((await failing({ method: "GET", url: "/api/agent/status" })).body).identityLifecycle.state)
+      .toBe("initializing");
+    failureGate.resolve();
+    await expect(waitForAgentIdentityState(failing, "blocked")).resolves.toMatchObject({
+      identityLifecycle: {
+        state: "blocked",
+        workspaceId: "ws_retry_case"
+      }
+    });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(JSON.parse((await failing({ method: "GET", url: "/api/agent/status" })).body).identityLifecycle.state)
+      .toBe("blocked");
+    expect(await identityEventTypes(config.storage.sqlitePath)).toEqual([]);
+
+    failing.close();
+    const retrying = testHandler(config);
+    const ready = await waitForAgentIdentityState(retrying, "ready");
+
+    expect(ready.identityLifecycle.workspaceId).toBe("ws_retry_case");
+    expect(await identityEventTypes(config.storage.sqlitePath)).toEqual(["agent.identity.initialized"]);
+  });
 });
 
-function testHandler(config: ReturnType<typeof resolveLocalRuntimeConfig>) {
-  const handler = createLocalRuntimeHttpHandler({ config, actor, now });
+function testHandler(
+  config: ReturnType<typeof resolveLocalRuntimeConfig>,
+  dependencies: Pick<CreateLocalRuntimeHttpHandlerInput, "residentIdentityBootstrapForTest"> = {}
+) {
+  const handler = createLocalRuntimeHttpHandler({ config, actor, now, ...dependencies });
   handlers.push(handler);
   return handler;
 }
@@ -828,6 +928,60 @@ async function copyIdentityRows(from: string, to: string): Promise<void> {
     target.close();
   }
 }
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+  return { promise, resolve, reject };
+}
+
+async function waitForAgentIdentityState(
+  handler: LocalRuntimeHttpHandler,
+  state: "ready" | "blocked"
+) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const response = await handler({ method: "GET", url: "/api/agent/status" });
+    const body = JSON.parse(response.body);
+    if (body.identityLifecycle.state === state) {
+      return body;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error(`agent identity lifecycle did not reach ${state}`);
+}
+```
+
+Modify `packages/agent/test/runtime.test.ts`:
+
+```ts
+it("includes resident identity lifecycle in runtime status without appending from status reads", async () => {
+  const ledger = new InMemoryEventLedger();
+  const runtime = createAgentRuntime({
+    ledger,
+    actor: humanActor,
+    now: fixedNow,
+    identityLifecycle: () => ({
+      schemaVersion: "resident-identity-lifecycle.v1",
+      state: "not-mounted",
+      residentAgentId: "agent_default",
+      initialized: false,
+      eventIds: [],
+      safeMessage: "Portable workspace is not mounted.",
+      allowedRepairActions: ["mount or create a portable workspace"]
+    })
+  });
+
+  const before = await ledger.readAll();
+  const status = await runtime.status();
+  const after = await ledger.readAll();
+
+  expect(status.identityLifecycle.state).toBe("not-mounted");
+  expect(after).toHaveLength(before.length);
+});
 ```
 
 - [ ] **Step 3: Run the RED local runtime tests**
@@ -835,7 +989,7 @@ async function copyIdentityRows(from: string, to: string): Promise<void> {
 Run:
 
 ```bash
-npm test -- packages/local-runtime/test/resident-identity-bootstrap.test.ts
+npm test -- packages/agent/test/runtime.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts
 ```
 
 Expected:
@@ -857,14 +1011,25 @@ Modify `packages/local-runtime/src/runtime-factory.ts`:
 - import the Task 1 helper
 - add a `LocalResidentIdentityBootstrap` interface with `lifecycle()` and `ready()`
 - add `residentIdentity` to `LocalRuntimeHandle`
-- for `portable-workspace`, start bootstrap immediately after opening `SQLiteEventLedger`
+- add an optional `residentIdentityBootstrapForTest` dependency to `LocalRuntimeFactoryDependencies` for deterministic delayed/failing bootstrap tests
+- for `portable-workspace`, start exactly one bootstrap promise immediately after opening `SQLiteEventLedger`
 - for non-portable strategies, return `notMountedResidentIdentityLifecycle()`
+- status callers read `lifecycle()` and never create or retry the bootstrap promise
+- mutation callers and `create-workspace` await the existing `ready()` promise
+- if the bootstrap promise returns a blocked result or rejects, keep returning the blocked lifecycle until the runtime is closed and reopened
 - keep `mountPortableWorkspace()` failure behavior unchanged
 - never bootstrap inside `mountPortableWorkspace()` or workspace-ops verification
 
 The implementation shape should be:
 
 ```ts
+export type ResidentIdentityBootstrapExecutor = (input: {
+  readonly ledger: EventLedger;
+  readonly workspaceId: string;
+  readonly actor: ActorRef;
+  readonly now: () => string;
+}) => Promise<ResidentIdentityLifecycleDto>;
+
 export interface LocalResidentIdentityBootstrap {
   lifecycle(): ResidentIdentityLifecycleDto;
   ready(): Promise<ResidentIdentityLifecycleDto>;
@@ -875,6 +1040,7 @@ function createResidentIdentityBootstrap(input: {
   readonly workspaceId?: string | undefined;
   readonly actor: ActorRef;
   readonly now: () => string;
+  readonly bootstrap?: ResidentIdentityBootstrapExecutor | undefined;
 }): LocalResidentIdentityBootstrap {
   if (input.workspaceId === undefined) {
     const lifecycle = notMountedResidentIdentityLifecycle();
@@ -882,7 +1048,8 @@ function createResidentIdentityBootstrap(input: {
   }
 
   let lifecycle = initializingResidentIdentityLifecycle(input.workspaceId);
-  const ready = ensureDefaultResidentIdentity({
+  const runBootstrap = input.bootstrap ?? ensureDefaultResidentIdentity;
+  const ready = runBootstrap({
     ledger: input.ledger,
     actor: input.actor,
     now: input.now,
@@ -891,7 +1058,11 @@ function createResidentIdentityBootstrap(input: {
     lifecycle = result;
     return result;
   }).catch(() => {
-    lifecycle = blockedResidentIdentityLifecycle(input.workspaceId);
+    lifecycle = blockedResidentIdentityLifecycle({
+      workspaceId: input.workspaceId,
+      safeMessage: "Resident identity bootstrap failed during workspace open.",
+      allowedRepairActions: ["close and reopen the workspace runtime", "inspect resident identity events before retrying"]
+    });
     return lifecycle;
   });
 
@@ -900,6 +1071,54 @@ function createResidentIdentityBootstrap(input: {
 ```
 
 Use a local `currentRuntimeNow(now?: PrrRuntimeNow): () => string` helper so bootstrap timestamps match existing runtime tests.
+
+Modify `packages/local-runtime/src/http-handler.ts` so `CreateLocalRuntimeHttpHandlerInput` accepts the same optional `residentIdentityBootstrapForTest` hook and passes it into `createSqlitePrrRuntime()`. This hook exists only for deterministic tests; production runtime open always uses `ensureDefaultResidentIdentity()`.
+
+Modify `packages/agent/src/runtime-types.ts`:
+
+```ts
+import type { ResidentIdentityLifecycleDto } from "./identity-bootstrap.js";
+
+export interface AgentStatusDto extends AgentProjectionDto {
+  readonly schemaVersion: "agent-status.v1";
+  readonly generatedAt: string;
+  readonly identityLifecycle: ResidentIdentityLifecycleDto;
+  readonly identity?: AgentProjectionIdentity | undefined;
+  readonly providers: readonly ProviderDescriptor[];
+  readonly providerReadiness?: ProviderReadinessDto | undefined;
+  readonly pendingApprovalCount: number;
+  readonly activeLockCount: number;
+  readonly diagnostics: readonly AgentRuntimeDiagnosticDto[];
+}
+```
+
+Modify `packages/agent/src/runtime.ts`:
+
+```ts
+export interface CreateAgentRuntimeInput {
+  readonly ledger: EventLedger;
+  readonly actor: ActorRef;
+  readonly now: () => string;
+  readonly identityLifecycle?: ResidentIdentityLifecycleDto | (() => ResidentIdentityLifecycleDto);
+  readonly providers?: readonly ModelProviderAdapter[];
+  readonly approvedToolExecutors?: readonly AgentApprovedToolExecutorDescriptor[];
+}
+```
+
+In `status()`, set `identityLifecycle` by calling the provided lifecycle function when present. If omitted, derive a read-only fallback from the current projection: projection identity present is `ready`; projection identity absent is `not-mounted`. This fallback must not append events.
+
+Modify `packages/local-runtime/src/agent-runtime-factory.ts` so the default factory passes the handle lifecycle into the agent runtime:
+
+```ts
+return createAgentRuntime({
+  ledger: input.handle.ledger,
+  actor: input.actor,
+  now: input.now,
+  identityLifecycle: () => input.handle.residentIdentity.lifecycle(),
+  providers: configuredProviders.providers,
+  approvedToolExecutors: input.approvedToolExecutors ?? []
+});
+```
 
 - [ ] **Step 5: Gate agent mutations on readiness**
 
@@ -922,7 +1141,7 @@ Modify `packages/local-runtime/src/agent-http-routes.ts`:
 - keep POST routes human-gated exactly as they are today
 - keep status, cockpit, tool-requests, approvals, and scheduler wake routes read-only with respect to identity initialization
 
-- [ ] **Step 6: Overlay lifecycle onto status and cockpit DTOs**
+- [ ] **Step 6: Keep status read-only while runtime status owns lifecycle**
 
 Modify `packages/local-runtime/src/agent-http-routes.ts`:
 
@@ -940,13 +1159,12 @@ async function statusWithProviderReadiness(
   ]);
   return {
     ...status,
-    identityLifecycle: input.handle.residentIdentity.lifecycle(),
     providerReadiness
   };
 }
 ```
 
-Use this lifecycle in `/api/agent/status`, `/api/agent/cockpit`, and operator status providers through the existing agent status provider.
+Do not add another `identityLifecycle` overlay in HTTP handlers. `/api/agent/status`, `/api/agent/cockpit`, and operator status providers must consume `identityLifecycle` from `runtime.status()`, while GET routes stay mutation-free and may report `initializing` if the mount-started promise has not settled.
 
 - [ ] **Step 7: Bootstrap `create-workspace` in the CLI**
 
@@ -990,13 +1208,13 @@ Modify existing tests where they currently assert repo-local agent status writes
 Run:
 
 ```bash
-npm test -- packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/http-handler.test.ts
+npm test -- packages/agent/test/runtime.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/http-handler.test.ts
 ```
 
 Expected:
 
 ```text
-Test Files  4 passed
+Test Files  5 passed
 ```
 
 - [ ] **Step 10: Run full verification**
@@ -1021,18 +1239,18 @@ factory-readiness passed
 Update the claim with RED, targeted, and verify evidence. Commit:
 
 ```bash
-git add docs/agentic/claims/task-2-resident-lifecycle-local-runtime.md packages/local-runtime/src/runtime-factory.ts packages/local-runtime/src/agent-runtime-factory.ts packages/local-runtime/src/agent-http-routes.ts packages/local-runtime/src/http-handler.ts packages/local-runtime/src/cli.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/http-handler.test.ts
+git add docs/agentic/claims/task-2-resident-lifecycle-local-runtime.md packages/agent/src/runtime-types.ts packages/agent/src/runtime.ts packages/agent/test/runtime.test.ts packages/local-runtime/src/runtime-factory.ts packages/local-runtime/src/agent-runtime-factory.ts packages/local-runtime/src/agent-http-routes.ts packages/local-runtime/src/http-handler.ts packages/local-runtime/src/cli.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/http-handler.test.ts
 git commit -m "feat: bootstrap resident identity on workspace open"
 ```
 
 **Acceptance Criteria:**
 
 - Portable runtime open starts resident identity bootstrap.
-- Runtime status exposes ready/not-mounted/blocked lifecycle without writing from status reads.
+- Runtime status owns and exposes initializing/ready/not-mounted/blocked lifecycle without writing from status reads.
 - Task and memory mutation routes require lifecycle `ready`.
 - Repo-local runtime no longer creates hidden `ws_local_runtime` resident identity through HTTP or CLI mutation routes.
 - `create-workspace` opens the new ledger, bootstraps identity, and leaves recoverable workspace files on failure.
-- Restart, remount, and workspace switch behavior are deterministic.
+- Restart, remount, workspace switch, and unexpected bootstrap-failure retry behavior are deterministic.
 
 **Rollback/Escalation:**
 
@@ -1041,14 +1259,11 @@ git commit -m "feat: bootstrap resident identity on workspace open"
 
 ---
 
-### Task 3: Agent Status DTO, Cockpit, UI, And Operator Integration
+### Task 3: Cockpit, UI, And Operator Lifecycle Presentation
 
 **Files:**
 - Create: `docs/agentic/claims/task-3-resident-lifecycle-cockpit-integration.md`
-- Modify: `packages/agent/src/runtime-types.ts`
-- Modify: `packages/agent/src/runtime.ts`
 - Modify: `packages/agent/src/cockpit.ts`
-- Modify: `packages/agent/test/runtime.test.ts`
 - Modify: `packages/agent/test/cockpit.test.ts`
 - Modify: `packages/local-runtime/src/operator-status.ts`
 - Modify: `packages/local-runtime/test/operator-status.test.ts`
@@ -1059,9 +1274,8 @@ git commit -m "feat: bootstrap resident identity on workspace open"
 - Modify: `packages/ui/test/agent-app-integration.test.tsx`
 
 **Interfaces:**
-- Consumes from Task 1 and Task 2: `ResidentIdentityLifecycleDto` and HTTP status `identityLifecycle`.
+- Consumes from Task 1 and Task 2: `ResidentIdentityLifecycleDto` and the stable `AgentStatusDto.identityLifecycle` runtime field.
 - Produces:
-  - `AgentStatusDto.identityLifecycle: ResidentIdentityLifecycleDto`
   - browser parser schema support for `identityLifecycle`
   - Agent cockpit needs and Agent workspace display for identity lifecycle
   - operator agent section state that blocks when lifecycle is `blocked` or `not-mounted`
@@ -1070,38 +1284,9 @@ git commit -m "feat: bootstrap resident identity on workspace open"
 
 Create and commit `docs/agentic/claims/task-3-resident-lifecycle-cockpit-integration.md` with owned files and status `claimed`. Change status to `in-progress` and commit that claim update.
 
-- [ ] **Step 2: Write RED DTO and cockpit tests**
+- [ ] **Step 2: Write RED cockpit, operator, and browser tests**
 
 Add these focused expectations:
-
-In `packages/agent/test/runtime.test.ts`:
-
-```ts
-it("includes resident identity lifecycle in runtime status without appending from status reads", async () => {
-  const ledger = new InMemoryEventLedger();
-  const runtime = createAgentRuntime({
-    ledger,
-    actor: humanActor,
-    now: fixedNow,
-    identityLifecycle: {
-      schemaVersion: "resident-identity-lifecycle.v1",
-      state: "not-mounted",
-      residentAgentId: "agent_default",
-      initialized: false,
-      eventIds: [],
-      safeMessage: "Portable workspace is not mounted.",
-      allowedRepairActions: ["mount or create a portable workspace"]
-    }
-  });
-
-  const before = await ledger.readAll();
-  const status = await runtime.status();
-  const after = await ledger.readAll();
-
-  expect(status.identityLifecycle.state).toBe("not-mounted");
-  expect(after).toHaveLength(before.length);
-});
-```
 
 In `packages/agent/test/cockpit.test.ts`:
 
@@ -1221,48 +1406,21 @@ it("marks the agent section blocked when resident identity lifecycle is blocked"
 });
 ```
 
-- [ ] **Step 3: Run RED DTO and UI tests**
+- [ ] **Step 3: Run RED cockpit, operator, and UI tests**
 
 Run:
 
 ```bash
-npm test -- packages/agent/test/runtime.test.ts packages/agent/test/cockpit.test.ts packages/local-runtime/test/operator-status.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx
+npm test -- packages/agent/test/cockpit.test.ts packages/local-runtime/test/operator-status.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx
 ```
 
 Expected:
 
 ```text
-identityLifecycle is missing
+expected resident identity lifecycle need to be first
 ```
 
-- [ ] **Step 4: Add lifecycle to runtime status types**
-
-Modify `packages/agent/src/runtime-types.ts`:
-
-```ts
-import type { ResidentIdentityLifecycleDto } from "./identity-bootstrap.js";
-
-export interface AgentStatusDto extends AgentProjectionDto {
-  readonly schemaVersion: "agent-status.v1";
-  readonly generatedAt: string;
-  readonly identityLifecycle: ResidentIdentityLifecycleDto;
-  readonly identity?: AgentProjectionIdentity | undefined;
-  readonly providers: readonly ProviderDescriptor[];
-  readonly providerReadiness?: ProviderReadinessDto | undefined;
-  readonly pendingApprovalCount: number;
-  readonly activeLockCount: number;
-  readonly diagnostics: readonly AgentRuntimeDiagnosticDto[];
-}
-```
-
-Modify `packages/agent/src/runtime.ts` so `createAgentRuntime` accepts an optional `identityLifecycle` in `CreateAgentRuntimeInput`. If omitted, derive a read-only status from the current projection:
-
-- projection identity present: `ready`
-- projection identity absent: `not-mounted`
-
-This status derivation must not append events.
-
-- [ ] **Step 5: Add cockpit lifecycle need**
+- [ ] **Step 4: Add cockpit lifecycle need**
 
 Modify `packages/agent/src/cockpit.ts`:
 
@@ -1271,7 +1429,7 @@ Modify `packages/agent/src/cockpit.ts`:
 - use `safeAction: "refresh-status"` for blocked and `safeAction: "queued-task"` only for existing task needs
 - do not add execution controls
 
-- [ ] **Step 6: Update operator status section**
+- [ ] **Step 5: Update operator status section**
 
 Modify `packages/local-runtime/src/operator-status.ts`:
 
@@ -1283,7 +1441,7 @@ Modify `packages/local-runtime/src/operator-status.ts`:
 - include `identityLifecycle.state` and safe workspace ID in `sourceEvidence` refs
 - convert lifecycle blocked state into an operator diagnostic with safe message and allowed repair actions
 
-- [ ] **Step 7: Update UI parser and component**
+- [ ] **Step 6: Update UI parser and component**
 
 Modify `packages/ui/src/agent/agent-adapter.ts`:
 
@@ -1307,7 +1465,7 @@ Modify `packages/ui/src/agent/AgentWorkspace.tsx`:
 - show event IDs through existing provenance refs only when present
 - do not add new buttons beyond refresh and existing queue/memory/approval controls
 
-- [ ] **Step 8: Update fixtures**
+- [ ] **Step 7: Update fixtures**
 
 Update local test fixture helpers named `agentStatus`, `readyAgentStatus`, or equivalent static status factories in `packages/ui/test/*.ts*` and `packages/local-runtime/test/*.ts` so every production-shaped `agent-status.v1` fixture includes:
 
@@ -1324,21 +1482,21 @@ identityLifecycle: {
 }
 ```
 
-- [ ] **Step 9: Run targeted DTO/UI/operator tests**
+- [ ] **Step 8: Run targeted cockpit/UI/operator tests**
 
 Run:
 
 ```bash
-npm test -- packages/agent/test/runtime.test.ts packages/agent/test/cockpit.test.ts packages/local-runtime/test/operator-status.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx
+npm test -- packages/agent/test/cockpit.test.ts packages/local-runtime/test/operator-status.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx
 ```
 
 Expected:
 
 ```text
-Test Files  6 passed
+Test Files  5 passed
 ```
 
-- [ ] **Step 10: Run full verification**
+- [ ] **Step 9: Run full verification**
 
 Run:
 
@@ -1355,18 +1513,18 @@ vite build succeeded
 factory-readiness passed
 ```
 
-- [ ] **Step 11: Record evidence and commit**
+- [ ] **Step 10: Record evidence and commit**
 
 Update the claim with RED, targeted, and verify evidence. Commit:
 
 ```bash
-git add docs/agentic/claims/task-3-resident-lifecycle-cockpit-integration.md packages/agent/src/runtime-types.ts packages/agent/src/runtime.ts packages/agent/src/cockpit.ts packages/agent/test/runtime.test.ts packages/agent/test/cockpit.test.ts packages/local-runtime/src/operator-status.ts packages/local-runtime/test/operator-status.test.ts packages/ui/src/agent/agent-adapter.ts packages/ui/src/agent/agent-types.ts packages/ui/src/agent/AgentWorkspace.tsx packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx
+git add docs/agentic/claims/task-3-resident-lifecycle-cockpit-integration.md packages/agent/src/cockpit.ts packages/agent/test/cockpit.test.ts packages/local-runtime/src/operator-status.ts packages/local-runtime/test/operator-status.test.ts packages/ui/src/agent/agent-adapter.ts packages/ui/src/agent/agent-types.ts packages/ui/src/agent/AgentWorkspace.tsx packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx
 git commit -m "feat: surface resident identity lifecycle"
 ```
 
 **Acceptance Criteria:**
 
-- `agent-status.v1` includes lifecycle state in runtime and browser DTOs.
+- Browser and operator DTO parsing consume the Task 2 `agent-status.v1` lifecycle field.
 - Agent cockpit and UI show not-mounted, ready, and blocked states.
 - Operator status treats not-mounted and blocked identity lifecycle as blocked.
 - Status/cockpit rendering does not append identity events.
@@ -1445,9 +1603,9 @@ Recorded targeted command evidence:
 ```text
 npm test -- packages/agent/test/identity-bootstrap.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/ontology/test/agent-contracts.test.ts
 
-npm test -- packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/http-handler.test.ts
+npm test -- packages/agent/test/runtime.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/cli.test.ts packages/local-runtime/test/http-handler.test.ts
 
-npm test -- packages/agent/test/runtime.test.ts packages/agent/test/cockpit.test.ts packages/local-runtime/test/operator-status.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx
+npm test -- packages/agent/test/cockpit.test.ts packages/local-runtime/test/operator-status.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx packages/ui/test/app-smoke.test.tsx
 ```
 
 Final verification evidence:
@@ -1470,13 +1628,13 @@ In this plan file, mark Tasks 1 through 4 checklist items complete only after th
 Run:
 
 ```bash
-npm test -- packages/agent/test/identity-bootstrap.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/operator-status.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx
+npm test -- packages/agent/test/identity-bootstrap.test.ts packages/agent/test/runtime.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts packages/local-runtime/test/agent-http-routes.test.ts packages/local-runtime/test/operator-status.test.ts packages/ui/test/agent-adapter.test.ts packages/ui/test/agent-app-integration.test.tsx
 ```
 
 Expected:
 
 ```text
-Test Files  6 passed
+Test Files  7 passed
 ```
 
 - [ ] **Step 6: Run full verification**
