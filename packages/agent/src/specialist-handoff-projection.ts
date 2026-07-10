@@ -121,6 +121,7 @@ export async function buildSpecialistHandoffProjection(
     history.push(outputPersistedEntry(finalOutput));
   }
 
+  const pendingPreparedRecords: PreparedRecord[] = [];
   const preparedByEventId = new Map<string, PreparedRecord>();
   const preparedByHandoffId = new Map<string, PreparedRecord>();
   for (const prepared of context.prepared) {
@@ -146,7 +147,7 @@ export async function buildSpecialistHandoffProjection(
     const priorByHandoffId = preparedByHandoffId.get(prepared.event.payload.handoffId);
     if (priorByHandoffId === undefined) {
       preparedByHandoffId.set(prepared.event.payload.handoffId, record);
-      history.push(handoffPendingEntry(prepared.event));
+      pendingPreparedRecords.push(record);
       continue;
     }
 
@@ -162,6 +163,12 @@ export async function buildSpecialistHandoffProjection(
           prepared.event.payload.handoffManifestHash
         ]
       });
+    }
+  }
+
+  for (const prepared of pendingPreparedRecords) {
+    if (await validatePreparedHandoff(context, prepared.event)) {
+      history.push(handoffPendingEntry(prepared.event));
     }
   }
 
@@ -509,12 +516,50 @@ function sameFinalOutput(left: FinalOutputEvent, right: FinalOutputEvent): boole
     sameStringArray(left.payload.outputArtifactHashes ?? [], right.payload.outputArtifactHashes ?? []);
 }
 
-function handoffCausationIsValid(prepared: HandoffPreparedEvent, recorded: HandoffRecordedEvent): boolean {
+async function validatePreparedHandoff(context: ProjectionContext, prepared: HandoffPreparedEvent): Promise<boolean> {
+  if (!preparedHandoffCausationIsValid(prepared)) {
+    addDiagnostic(context, {
+      code: "handoff-causation-mismatch",
+      message: "Prepared handoff causation must point to final output or the superseded recorded handoff.",
+      event: prepared,
+      handoffId: prepared.payload.handoffId,
+      relatedEventIds: [prepared.payload.finalOutputEventId],
+      artifactHashes: [prepared.payload.handoffManifestHash]
+    });
+    return false;
+  }
+
+  const manifestResult = await readAndVerifyManifest(context, prepared);
+  if (!manifestResult.ok) {
+    return false;
+  }
+
+  const bindingError = validatePreparedBindingAgainstManifest(context, prepared, manifestResult.manifest);
+  if (bindingError !== undefined) {
+    addDiagnostic(context, {
+      code: bindingError,
+      message: "Prepared handoff compact binding, manifest, DTO, or final-output refs disagree.",
+      event: prepared,
+      handoffId: prepared.payload.handoffId,
+      relatedEventIds: [manifestResult.manifest.finalOutputEventId],
+      artifactHashes: [prepared.payload.handoffManifestHash, ...prepared.payload.outputArtifactHashes]
+    });
+    return false;
+  }
+
+  return true;
+}
+
+function preparedHandoffCausationIsValid(prepared: HandoffPreparedEvent): boolean {
   const expectedPreparedCausation = prepared.payload.supersedesHandoffId === undefined
     ? prepared.payload.finalOutputEventId
     : prepared.payload.supersedesEventId;
   return expectedPreparedCausation !== undefined &&
-    prepared.context.causationId === expectedPreparedCausation &&
+    prepared.context.causationId === expectedPreparedCausation;
+}
+
+function handoffCausationIsValid(prepared: HandoffPreparedEvent, recorded: HandoffRecordedEvent): boolean {
+  return preparedHandoffCausationIsValid(prepared) &&
     recorded.context.causationId === prepared.id;
 }
 
@@ -525,21 +570,21 @@ function sameRecordedRetry(left: HandoffRecordedEvent, right: HandoffRecordedEve
 
 async function readAndVerifyManifest(
   context: ProjectionContext,
-  recorded: HandoffRecordedEvent
+  event: HandoffPreparedEvent | HandoffRecordedEvent
 ): Promise<
   | { readonly ok: true; readonly manifest: SpecialistHandoffManifest; readonly handoff: SpecialistWorkflowHandoffDto }
   | { readonly ok: false }
 > {
   let bytes: Buffer;
   try {
-    bytes = await context.manifestReader.get(recorded.payload.handoffManifestHash as ContentHash);
+    bytes = await context.manifestReader.get(event.payload.handoffManifestHash as ContentHash);
   } catch {
     addDiagnostic(context, {
       code: "manifest-missing",
       message: "Recorded handoff manifest is not available by its content hash.",
-      event: recorded,
-      handoffId: recorded.payload.handoffId,
-      artifactHashes: [recorded.payload.handoffManifestHash]
+      event,
+      handoffId: event.payload.handoffId,
+      artifactHashes: [event.payload.handoffManifestHash]
     });
     return { ok: false };
   }
@@ -552,20 +597,20 @@ async function readAndVerifyManifest(
     addDiagnostic(context, {
       code: "manifest-malformed",
       message: "Recorded handoff manifest bytes are not parseable canonical JSON.",
-      event: recorded,
-      handoffId: recorded.payload.handoffId,
-      artifactHashes: [recorded.payload.handoffManifestHash, rawHash]
+      event,
+      handoffId: event.payload.handoffId,
+      artifactHashes: [event.payload.handoffManifestHash, rawHash]
     });
     return { ok: false };
   }
 
-  if (rawHash !== recorded.payload.handoffManifestHash) {
+  if (rawHash !== event.payload.handoffManifestHash) {
     addDiagnostic(context, {
       code: "manifest-hash-mismatch",
       message: "Recorded handoff manifest bytes do not match the ledger content hash.",
-      event: recorded,
-      handoffId: recorded.payload.handoffId,
-      artifactHashes: [recorded.payload.handoffManifestHash, rawHash]
+      event,
+      handoffId: event.payload.handoffId,
+      artifactHashes: [event.payload.handoffManifestHash, rawHash]
     });
     return { ok: false };
   }
@@ -573,8 +618,8 @@ async function readAndVerifyManifest(
   try {
     const handoff = verifySpecialistHandoffManifest({
       manifest: parsed,
-      handoffManifestHash: recorded.payload.handoffManifestHash as ContentHash,
-      verifiedAt: recorded.payload.verifiedAt
+      handoffManifestHash: event.payload.handoffManifestHash as ContentHash,
+      ...("verifiedAt" in event.payload ? { verifiedAt: event.payload.verifiedAt } : {})
     });
     return { ok: true, manifest: parsed as SpecialistHandoffManifest, handoff };
   } catch (error) {
@@ -582,9 +627,9 @@ async function readAndVerifyManifest(
     addDiagnostic(context, {
       code: manifestVerificationCode(message),
       message: "Recorded handoff manifest failed DTO verification.",
-      event: recorded,
-      handoffId: recorded.payload.handoffId,
-      artifactHashes: [recorded.payload.handoffManifestHash]
+      event,
+      handoffId: event.payload.handoffId,
+      artifactHashes: [event.payload.handoffManifestHash]
     });
     return { ok: false };
   }
@@ -606,7 +651,32 @@ function validateBindingAgainstManifest(
   recorded: HandoffRecordedEvent,
   manifest: SpecialistHandoffManifest
 ): string | undefined {
-  if (!compactBindingMatchesManifest(prepared.payload, manifest) || !compactBindingMatchesManifest(recorded.payload, manifest)) {
+  const preparedError = validatePreparedBindingAgainstManifest(context, prepared, manifest);
+  if (preparedError !== undefined) {
+    return preparedError;
+  }
+
+  if (!handoffIdempotencyKeyIsDeterministic(recorded.payload)) {
+    return "idempotency-key-mismatch";
+  }
+
+  if (!compactBindingMatchesManifest(recorded.payload, manifest)) {
+    return "compact-binding-mismatch";
+  }
+
+  return undefined;
+}
+
+function validatePreparedBindingAgainstManifest(
+  context: ProjectionContext,
+  prepared: HandoffPreparedEvent,
+  manifest: SpecialistHandoffManifest
+): string | undefined {
+  if (!handoffIdempotencyKeyIsDeterministic(prepared.payload)) {
+    return "idempotency-key-mismatch";
+  }
+
+  if (!compactBindingMatchesManifest(prepared.payload, manifest)) {
     return "compact-binding-mismatch";
   }
 
@@ -636,6 +706,16 @@ function validateBindingAgainstManifest(
   }
 
   return undefined;
+}
+
+function expectedHandoffIdempotencyKey(payload: HandoffPreparedEvent["payload"] | HandoffRecordedEvent["payload"]): string {
+  return `specialist-handoff:${payload.runId}:${payload.taskId ?? "none"}:${payload.runType}:${payload.status}:${payload.handoffManifestHash}`;
+}
+
+function handoffIdempotencyKeyIsDeterministic(
+  payload: HandoffPreparedEvent["payload"] | HandoffRecordedEvent["payload"]
+): boolean {
+  return payload.idempotencyKey === expectedHandoffIdempotencyKey(payload);
 }
 
 function findFinalOutputForManifest(

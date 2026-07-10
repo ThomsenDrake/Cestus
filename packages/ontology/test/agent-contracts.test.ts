@@ -141,6 +141,20 @@ describe("resident agent event contracts", () => {
         )
       ).success
     ).toBe(true);
+
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_handoff_prepared_bad_idempotency",
+          "agent.specialist-handoff.prepared",
+          "agent_run_run_handoff_001",
+          {
+            ...compactBinding,
+            idempotencyKey: "not-deterministic"
+          }
+        )
+      ).success
+    ).toBe(false);
   });
 
   it("accepts the default resident identity and agent actor kind", () => {
