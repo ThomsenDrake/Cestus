@@ -117,6 +117,15 @@ export async function readDefaultResidentIdentityLifecycle(
     return notMountedResidentIdentityLifecycle();
   }
 
+  if (events.some((event) => event.streamId !== defaultResidentIdentityStreamId)) {
+    return blockedResidentIdentityLifecycle({
+      workspaceId: input.workspaceId,
+      eventIds: events.map((event) => event.id),
+      safeMessage: "Resident identity stream contains events bound to a different stream.",
+      allowedRepairActions: ["inspect resident identity events before retrying"]
+    });
+  }
+
   if (events.some((event) => event.type !== "agent.identity.initialized" && event.type !== "agent.identity.updated")) {
     return blockedResidentIdentityLifecycle({
       workspaceId: input.workspaceId,

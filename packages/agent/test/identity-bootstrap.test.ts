@@ -160,6 +160,21 @@ describe("resident identity bootstrap", () => {
     expect(result.safeMessage).toBe("Resident identity updates must bind to the default resident agent.");
   });
 
+  it("blocks a canonical-looking identity event returned from another stream", async () => {
+    const wrongStreamId = "agent_identity_other";
+    const ledger = new ReadbackLedger([
+      {
+        ...identityEvent(workspaceId, 1),
+        streamId: wrongStreamId
+      }
+    ]);
+
+    const result = await readDefaultResidentIdentityLifecycle({ ledger, workspaceId });
+    expect(result.state).toBe("blocked");
+    expect(result.safeMessage).toBe("Resident identity stream contains events bound to a different stream.");
+    expect(JSON.stringify(result)).not.toContain(wrongStreamId);
+  });
+
   it("blocks identity updates whose stream sequence is not contiguous", async () => {
     const ledger = new ReadbackLedger([
       identityEvent(workspaceId, 1),
