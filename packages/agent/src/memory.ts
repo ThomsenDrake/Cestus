@@ -132,8 +132,10 @@ export function buildAgentMemorySummaryResolvedContextPack(
   }
   const items = snapshot.activeMemory
     .map(toMemorySummaryItem)
-    .filter((memory) => memory.sourceEventIds.length > 0 || memory.artifactHashes.length > 0)
     .sort((left, right) => left.memoryId.localeCompare(right.memoryId));
+  if (items.some((memory) => memory.sourceEventIds.length === 0 && memory.artifactHashes.length === 0)) {
+    throw new Error("blocked.missing-provenance: active memory items require source event IDs or artifact hashes");
+  }
   const isEmpty = items.length === 0;
   const emptyProof = input.emptyMemoryProof ?? snapshot.emptyProof;
   const provenanceRefs = isEmpty
@@ -146,7 +148,7 @@ export function buildAgentMemorySummaryResolvedContextPack(
   const payload = {
     schemaVersion: "agent-memory-summary.v1",
     memory: {
-      truthBoundary: memoryTruthBoundary(),
+      truthBoundary: { authoritativeForOntology: false as const },
       projectionHighWaterMark: snapshot.projectionHighWaterMark,
       projectionSourceRef: snapshot.projectionSourceRef,
       activeMemory: items,
