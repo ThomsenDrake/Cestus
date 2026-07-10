@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { buildAgentCockpit } from "../src/cockpit.js";
 import { buildAgentProjection } from "../src/projection.js";
+import type { AgentStatusDto } from "../src/runtime-types.js";
 import { goldenAgentLedgerEvents } from "./fixtures/golden-agent-ledger.js";
 
 const hash111 = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
@@ -179,6 +181,14 @@ describe("buildAgentProjection", () => {
       "evt_agent_tool_completed_provider_transfer"
     ]);
 
+    const cockpit = buildAgentCockpit({
+      status: statusFromProjection(projection.toDto()),
+      selectedRunId: "run_completed_triage",
+      generatedAt: "2026-07-10T15:20:00.000Z"
+    });
+    expect(cockpit.selectedRun?.handoff).toBeUndefined();
+    expect(cockpit.needsNext.some((action) => action.kind === "handoff")).toBe(false);
+
     const failedRun = projection.runs.get("run_failed_triage");
     expect(failedRun?.state).toBe("failed");
     expect(failedRun?.failureCategory).toBe("projection-lag");
@@ -234,6 +244,18 @@ function tryRuntimeMapClear(map: ReadonlyMap<string, unknown>): void {
   } catch {
     // Immutable map snapshots may reject runtime mutation attempts.
   }
+}
+
+function statusFromProjection(projection: ReturnType<ReturnType<typeof buildAgentProjection>["toDto"]>): AgentStatusDto {
+  return {
+    schemaVersion: "agent-status.v1",
+    generatedAt: "2026-07-10T15:20:00.000Z",
+    ...projection,
+    providers: [],
+    pendingApprovalCount: 0,
+    activeLockCount: projection.locks.filter((lock) => lock.state === "active").length,
+    diagnostics: []
+  };
 }
 
 function modelInvocationAuditEvents(): Parameters<typeof buildAgentProjection>[0] {
