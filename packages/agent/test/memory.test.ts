@@ -273,6 +273,36 @@ describe("agent memory surface", () => {
     })).toThrow(/missing-provenance/);
   });
 
+  it("rejects direct memory snapshots whose visible active memory exceeds the bounded window", () => {
+    const memorySnapshot = {
+      ...boundedMemorySnapshot(),
+      activeMemory: [
+        ...boundedMemorySnapshot().activeMemory,
+        {
+          memoryId: "mem_second",
+          scope: "workspace",
+          memoryKind: "working-note",
+          summary: "Second visible memory item.",
+          confidence: 0.7,
+          sourceEventIds: ["evt_agent_memory_second"],
+          artifactHashes: []
+        }
+      ],
+      aggregateCounts: { active: 2, totalCount: 2 },
+      sourceEventIds: ["evt_agent_policy_installed_default", "evt_agent_memory_second"],
+      window: { ...boundedMemorySnapshot().window, limit: 1, totalCount: 2, hasMore: true }
+    };
+
+    expect(() => buildAgentMemorySummaryResolvedContextPack({
+      memorySnapshot,
+      generatedAt: "2026-07-09T12:30:00.000Z",
+      policyVersion: "agent-policy-v1",
+      scope: { kind: "workspace", id: "ws_case_001" },
+      projectionHighWaterMark: 42,
+      sizeBudgetBytes: 16_384
+    })).toThrow("blocked.unbounded-source");
+  });
+
   it("rejects empty proof when aggregate counts report active memory outside the bounded window", () => {
     const memorySnapshot = {
       ...emptyMemorySnapshot(),
