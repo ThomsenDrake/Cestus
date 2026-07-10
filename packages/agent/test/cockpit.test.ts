@@ -109,6 +109,7 @@ describe("agent cockpit dto", () => {
       summary: "Keep PRR drafts human-reviewed."
     }));
     expect(cockpit.selectedRun?.handoff).toBeUndefined();
+    expect(cockpit.needsNext.some((action) => action.kind === "handoff")).toBe(false);
     expect(cockpit.needsNext).not.toContainEqual(expect.objectContaining({
       kind: "handoff",
       relatedRunId: "run_report_done"

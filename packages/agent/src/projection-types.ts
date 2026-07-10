@@ -17,6 +17,19 @@ export type AgentMemoryKind = "operator-preference" | "agent-observation" | "pol
 export type AgentTaskPriority = "low" | "normal" | "high" | "urgent";
 export type AgentRunState = "running" | "completed" | "failed";
 export type AgentModelInvocationStatus = "requested" | "completed" | "failed";
+export type AgentSpecialistFinalOutputStepKind =
+  | "audit"
+  | "model-review"
+  | "tool-request"
+  | "local-derivative"
+  | "final-output";
+export type SpecialistHandoffProjectionState =
+  | "no-output"
+  | "output-persisted"
+  | "handoff-pending"
+  | "handoff-recorded"
+  | "task-completed"
+  | "inconsistent";
 export type AgentSpecialistRunType =
   | "ontology-bootstrap"
   | "prr-negotiation"
