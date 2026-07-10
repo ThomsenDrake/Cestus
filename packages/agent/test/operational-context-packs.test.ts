@@ -267,7 +267,11 @@ describe("operational context pack builders", () => {
       policyVersion: "operational-policy.v1",
       scope: sharedInput.scope,
       sizeBudgetBytes: 16_384,
-      stalenessInputs: [{ kind: "runtime-high-water-mark", ref: "runtime.status", value: "9" }]
+      stalenessInputs: expect.arrayContaining([
+        { kind: "runtime-high-water-mark", ref: "runtime.status", value: "9" },
+        { kind: "omission-code", ref: "runtime.status", value: "omitted.raw-paths" },
+        { kind: "omission-code", ref: "runtime.status", value: "omitted.raw-provider-errors" }
+      ])
     });
     expect(first.ref.sizeBytes).toBe(serializeContextPackPayload(first.payload).byteLength);
     expect(first.payload).toMatchObject({ schemaVersion: "workspace-runtime-status.v1", runtime: runtimeSource });
@@ -285,6 +289,40 @@ describe("operational context pack builders", () => {
       ...sharedInput,
       runtimeSource: { ...runtimeSource, storageStrategy: "/home/drake/private/workspace" }
     })).toThrow(/blocked\.unsafe-diagnostic|secret-safe/i);
+  });
+
+  it("rejects unbounded visible history before projecting any of its item arrays", () => {
+    const snapshot = historySnapshot({
+      tasks: [{ taskId: "task_one", state: "completed" }],
+      runs: [{ runId: "run_one", state: "running" }],
+      modelInvocations: [{ invocationId: "model_one", state: "requested" }],
+      toolRequests: [{ requestId: "tool_one", state: "approved" }],
+      window: { order: "updatedAt:desc", limit: 1, hasMore: true, totalCount: 4, omissionCodes: [] }
+    });
+
+    expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, taskRunHistorySnapshot: snapshot })).toThrow("blocked.unbounded-source");
+  });
+
+  it("rejects unallowlisted runtime and history fields rather than serializing safe-looking raw material", () => {
+    const unsafeRuntimeSources = [
+      { ...runtimeSource, providerStates: [{ providerId: "provider_local", state: "ready", authorizationHeader: "opaque" }] },
+      { ...runtimeSource, providerStates: [{ providerId: "provider_local", state: "ready", providerBody: "safe-looking-json" }] },
+      { ...runtimeSource, diagnostics: [{ diagnosticId: "diag_runtime_001", category: "runtime-ready", providerError: "safe-looking" }] },
+      { ...runtimeSource, providerStates: [{ providerId: "/tmp/provider", state: "ready" }] }
+    ];
+    for (const unsafeRuntimeSource of unsafeRuntimeSources) {
+      expect(() => buildWorkspaceRuntimeStatusContextPack({ ...sharedInput, runtimeSource: unsafeRuntimeSource as never })).toThrow(/blocked\.(unsafe-diagnostic|invalid-payload-shape)/);
+    }
+
+    const unsafeSnapshots = [
+      historySnapshot({ tasks: [{ taskId: "task_one", state: "completed", rawValue: "raw model output" }], runs: [], modelInvocations: [], toolRequests: [] }),
+      historySnapshot({ tasks: [], runs: [{ runId: "run_one", state: "running", credentials: "opaque" }], modelInvocations: [], toolRequests: [] }),
+      historySnapshot({ tasks: [], runs: [], modelInvocations: [{ invocationId: "model_one", state: "failed", output: "neutral raw output" }], toolRequests: [] }),
+      historySnapshot({ tasks: [], runs: [], modelInvocations: [], toolRequests: [{ requestId: "tool_one", state: "failed", result: "raw tool output" }] })
+    ];
+    for (const taskRunHistorySnapshot of unsafeSnapshots) {
+      expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, taskRunHistorySnapshot })).toThrow("blocked.invalid-payload-shape");
+    }
   });
 
   it("builds a deterministic bounded task/run history resolved pack with exact safe event and artifact provenance", () => {
@@ -356,7 +394,7 @@ describe("operational context pack builders", () => {
   it("trims quiet completed history after safety-relevant state and blocks when none can fit", () => {
     const snapshot = historySnapshot({
       tasks: [
-        { taskId: "task_completed_long", state: "completed", summary: "x".repeat(1_000) },
+        { taskId: `task_completed_${"x".repeat(1_000)}`, state: "completed" },
         { taskId: "task_blocked", state: "blocked" },
         { taskId: "task_pending", state: "pending" }
       ],
