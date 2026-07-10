@@ -61,6 +61,9 @@ Recent completed Cestus slices exposed a few recurring failure modes. Treat thes
 - Treat shared readiness history as append-only coordination state. When multiple slices append to `docs/agentic/software-factory.md`, preserve all readiness evidence and prefer additive section merges; if the file becomes noisy, move future detailed evidence into per-slice claim/readiness files and keep the factory document as an index.
 - Treat `.superpowers/sdd` as scratch execution state. Do not merge transient SDD planning files into durable repo memory unless a human explicitly promotes them into a spec, plan, claim, readiness note, or commit summary.
 - Archive or clean up child threads only after their final answer, branch ancestry, clean worktree, and verification evidence agree. Leave newly approved implementation lanes unarchived if they are the next active work.
+- Browser adapters must parse the real runtime DTO, not a reduced fixture shape. Keep strict status schemas in parity with projection fields such as model invocations and execution claims, and test them with a production-shaped route payload so parsing cannot silently fall back to an unavailable state.
+- Keep browser-shared projectors capability-injected. Local runtime may discover registered contracts and adapter families, but React-importable modules must not import executable registries or server adapters; review Vite externalization warnings and bundle-size jumps as architecture signals.
+- UI controls and audit labels must map to durable facts. Do not render inputs the command discards, rotate client-generated IDs after successful creation, bind handoffs by run/task/type, prevent selected-run detail leakage, and project omissions, staleness, provenance, and readiness from their exact canonical fields rather than inferred counts.
 
 ## Workflow Decision
 
