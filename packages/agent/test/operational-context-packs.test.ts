@@ -283,12 +283,27 @@ describe("operational context pack builders", () => {
       expect(() => buildWorkspaceRuntimeStatusContextPack({
         ...sharedInput,
         runtimeSource: { ...runtimeSource, diagnostics: [{ diagnosticId: "diag_runtime_001", category: unsafe }] }
-      })).toThrow(/blocked\.unsafe-diagnostic|secret-safe/i);
+      })).toThrow(/blocked\.(unsafe-diagnostic|invalid-payload-shape)|secret-safe/i);
     }
     expect(() => buildWorkspaceRuntimeStatusContextPack({
       ...sharedInput,
       runtimeSource: { ...runtimeSource, storageStrategy: "/home/drake/private/workspace" }
-    })).toThrow(/blocked\.unsafe-diagnostic|secret-safe/i);
+    })).toThrow(/blocked\.(unsafe-diagnostic|invalid-payload-shape)|secret-safe/i);
+  });
+
+  it("accepts only machine-readable runtime postures and operational categories", () => {
+    for (const runtimeSourcePatch of [
+      { storageStrategy: "/tmp/provider-response.json" },
+      { bindPosture: "binds to the local loopback interface" },
+      { authPosture: "authentication is disabled for this workspace" },
+      { providerStates: [{ providerId: "provider_local", state: "ready", category: "provider failed with arbitrary prose" }] },
+      { diagnostics: [{ diagnosticId: "diag_runtime_001", category: "/tmp/provider-response.json" }] }
+    ]) {
+      expect(() => buildWorkspaceRuntimeStatusContextPack({
+        ...sharedInput,
+        runtimeSource: { ...runtimeSource, ...runtimeSourcePatch } as never
+      })).toThrow("blocked.invalid-payload-shape");
+    }
   });
 
   it("rejects unbounded visible history before projecting any of its item arrays", () => {
@@ -321,6 +336,16 @@ describe("operational context pack builders", () => {
       historySnapshot({ tasks: [], runs: [], modelInvocations: [], toolRequests: [{ requestId: "tool_one", state: "failed", result: "raw tool output" }] })
     ];
     for (const taskRunHistorySnapshot of unsafeSnapshots) {
+      expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, taskRunHistorySnapshot })).toThrow("blocked.invalid-payload-shape");
+    }
+
+    const proseCategorySnapshots = [
+      historySnapshot({ tasks: [{ taskId: "task_one", state: "completed", category: "human readable task failure" }], runs: [], modelInvocations: [], toolRequests: [] }),
+      historySnapshot({ tasks: [], runs: [{ runId: "run_one", state: "running", category: "human readable run failure" }], modelInvocations: [], toolRequests: [] }),
+      historySnapshot({ tasks: [], runs: [], modelInvocations: [{ invocationId: "model_one", state: "failed", category: "human readable model failure" }], toolRequests: [] }),
+      historySnapshot({ tasks: [], runs: [], modelInvocations: [], toolRequests: [{ requestId: "tool_one", state: "failed", category: "human readable tool failure" }] })
+    ];
+    for (const taskRunHistorySnapshot of proseCategorySnapshots) {
       expect(() => buildTaskRunHistoryContextPack({ ...sharedInput, taskRunHistorySnapshot })).toThrow("blocked.invalid-payload-shape");
     }
   });
