@@ -44,8 +44,9 @@ registered template content while still satisfying production readiness.
 - Treat model output as untrusted structured input. Output can create local
   artifacts, review suggestions, or approval requests only through existing
   gates.
-- Keep production prompt text and provider response text out of ledger events,
-  diagnostics, browser DTOs, claims, readiness notes, and logs.
+- Keep resolved context payloads, production prompt text, and provider response
+  text out of ledger events, diagnostics, browser DTOs, audit DTOs, cockpit
+  DTOs, claims, readiness notes, and logs.
 
 ## Non-Goals
 
@@ -55,7 +56,8 @@ registered template content while still satisfying production readiness.
 - Creating new PRR send, legal escalation, export, repair, provider-transfer,
   contradiction-review, or accepted-graph execution paths.
 - Letting test prompt builders satisfy production execution readiness.
-- Storing production prompt text in append-only ledger events or public DTOs.
+- Storing resolved context payloads, production prompt text, or provider
+  response text in append-only ledger events or public DTOs.
 
 ## Existing Context
 
@@ -92,7 +94,10 @@ renderer hashes, output validators, and prompt artifact validation logic.
 Injection remains useful, but only around the edges:
 
 - Context-pack registries provide authoritative `ContextPackRef` values.
-- Artifact stores persist envelopes and local derivative outputs.
+- The operational resolved-context-pack contract provides typed, local,
+  content-addressed `ResolvedContextPack { ref, payload }` envelopes for
+  applicable packs.
+- Artifact stores persist prompt envelopes and local derivative outputs.
 - Clocks supply envelope metadata such as `generatedAt`.
 - Runtime/provider capabilities invoke models after prompt artifact policy
   checks pass.
@@ -101,7 +106,8 @@ Injection remains useful, but only around the edges:
 Injected code cannot provide alternate production prompt text or alternate
 template material. A supplied prompt artifact is production-valid only when
 Cestus can re-render or otherwise verify it against the exact registered
-template/renderer identity and the exact context hashes.
+template/renderer identity, the evaluated applicability set, the exact context
+hashes, and the resolved context payload envelopes.
 
 ## Architecture
 
@@ -122,6 +128,15 @@ type ProductionContextRequirement =
       readonly requirementMode: "when-scope-associated-prr";
       readonly omissionWhenNotApplicable: "no-associated-prr";
     };
+
+interface ResolvedContextPack {
+  readonly ref: ContextPackRef;
+  readonly payload: AgentContextPackJsonValue;
+}
+
+interface ProductionContextPackResolver {
+  resolve(ref: ContextPackRef): Promise<ResolvedContextPack>;
+}
 
 interface ProductionPromptTemplateRegistration {
   readonly runType: AgentSpecialistRunType;
@@ -145,9 +160,9 @@ interface ProductionPromptTemplateRegistration {
 material, not an environment-dependent hash of compiled JavaScript. The
 canonical material should be explicit package data, such as renderer ID,
 renderer version, template ID, template version, static template sections,
-rendering policy version, context ordering policy, omission policy, and output
-contract refs, serialized as stable JSON. The hash must be reproducible across
-machines, builds, and test runs.
+rendering policy version, payload rendering policy, context ordering policy,
+omission policy, and output contract refs, serialized as stable JSON. The hash
+must be reproducible across machines, builds, and test runs.
 
 The injected clock is used only for prompt envelope metadata such as
 `generatedAt`. It cannot affect rendered prompt content, rendered prompt hash,
@@ -183,16 +198,50 @@ task/run scope later changes, including adding or removing an associated PRR,
 the `scopeApplicabilityHash` changes and any prior prompt artifact or approval
 is stale.
 
+### Resolved Context Payload Contract
+
+Every applicable context requirement must be resolved before production
+rendering through the shared operational `ResolvedContextPack { ref, payload }`
+contract. A `ContextPackRef` alone is audit metadata; it is not sufficient
+provider input for production specialist rendering.
+
+Resolution is capability-injected, but the capability is not an arbitrary
+hash-to-text callback. It is a typed local content-addressed resolver that:
+
+- accepts a concrete `ContextPackRef`, not a bare hash string,
+- loads only the local payload addressed by that ref,
+- verifies the payload's stable JSON content hash equals `ref.contentHash`,
+- verifies the byte size equals `ref.sizeBytes` and stays within the registered
+  context-pack descriptor budget,
+- validates the payload against the registered context-pack payload schema for
+  `contextPackId` and version,
+- returns the exact `{ ref, payload }` envelope that passed those checks.
+
+Missing payload, hash mismatch, size mismatch, schema mismatch, unexpected pack
+ID/version, stale provenance inputs, or unsafe payload material blocks before
+prompt rendering and before provider invocation. Such a run cannot satisfy
+production readiness.
+
+Arbitrary hash-to-text callbacks, provider-side resolvers, filesystem path
+lookups, environment lookups, network fetches, or callback-shaped "give me text
+for this hash" APIs remain forbidden on the production path.
+
 ### Renderer Ownership
 
 Each production renderer lives in the agent package. It accepts normalized
 inputs:
 
 - run type
-- ordered applicable context refs
+- ordered, hash-verified resolved context pack envelopes
 - evaluated non-applicable conditional context omissions
 - bounded omissions for optional material
 - registered template metadata
+
+It embeds canonical bounded provider-safe content from each resolved payload,
+not only `ContextPackRef` IDs, hashes, or `safeSummary` text. Each template owns
+the field-level rendering rules for its required packs, including which payload
+fields may be sent, size caps, redaction behavior, ordering, and labels that
+tell the provider the payload is untrusted context.
 
 It returns deterministic prompt text plus a render audit:
 
@@ -201,14 +250,16 @@ It returns deterministic prompt text plus a render audit:
 - provider output schema ID/version
 - handoff schema ID/version
 - ordered context pack IDs and content hashes
+- ordered resolved context pack schema IDs or descriptor versions
 - evaluated context requirement modes
 - omission records
 - scope applicability hash
 - rendered prompt hash
 
 The renderer must not read environment variables, current time, filesystem
-paths, provider settings, credential refs, or mutable runtime state. It only
-reads its arguments and package-owned template material.
+paths, provider settings, credential refs, mutable runtime state, or callback
+resolvers. It only reads its resolved payload arguments and package-owned
+template material.
 
 ### Prompt Artifact Manifest Extension
 
@@ -222,6 +273,7 @@ renders without exposing text:
 - `rendererId`
 - `rendererVersion`
 - `rendererHash`
+- `renderedPromptHash`
 - `providerOutputSchemaId`
 - `providerOutputSchemaVersion`
 - `handoffSchemaId`
@@ -238,6 +290,13 @@ renders without exposing text:
 Ledger model-invocation events may record this audit metadata and context refs,
 but never prompt text or provider response text.
 
+The local prompt artifact envelope may retain the resolved context payload
+envelopes needed for deterministic local re-rendering and inspection. Those
+payloads are not part of ledger events, audit DTOs, cockpit DTOs, claims, logs,
+or readiness notes. Full payload content may appear only inside the local prompt
+artifact envelope and inside the approved provider request bytes derived from
+that envelope.
+
 ### Supplied Prompt Artifact Verification
 
 An externally supplied prompt artifact is treated as a persisted copy, not as
@@ -253,11 +312,14 @@ trusted authority. Before a runner may invoke a provider, Cestus verifies:
 - the evaluated applicability set matches the current task/run scope.
 - applicable context pack IDs are present in exact registered order.
 - applicable context pack content hashes match the current prepared context.
+- every applicable context ref resolves to a payload envelope whose hash, size,
+  and schema match the ref and descriptor.
 - non-applicable conditional requirements have exact bounded omission reasons.
 - optional context refs, if introduced by a future template version, are present
   only in registered order when supplied.
 - omissions are bounded, exact, and allowed by the registration.
-- deterministic re-rendered prompt hash equals the supplied artifact hash.
+- deterministic re-rendered prompt hash equals the supplied rendered prompt hash
+  and prompt artifact hash.
 - artifact text passes secret-safety and unsafe authority restrictions.
 
 If any check fails, the run blocks or fails before model invocation.
@@ -343,12 +405,13 @@ outputs:
   paths, auth headers, or secret-shaped material.
 
 Production renderer text may include safe IDs, hashes, counts, categories,
-deadline refs, citation refs, governance flags, and short safe summaries from
-context packs. It must not include raw private evidence bodies, raw
-correspondence bodies, source-sensitive excerpts, raw report prose, or provider
-credential material unless those exact bytes are already present in approved
-context-pack inputs and the exact prompt artifact is covered by the provider
-byte-transfer approval class and current approval proof.
+deadline refs, citation refs, governance flags, and canonical bounded
+provider-safe payload fields from resolved context packs. It must not include
+raw private evidence bodies, raw correspondence bodies, source-sensitive
+excerpts, raw report prose, or provider credential material unless those exact
+bytes are already present in approved context-pack inputs and the exact prompt
+artifact is covered by the provider byte-transfer approval class and current
+approval proof.
 
 The v1 renderers can render only bytes present in approved context-pack inputs.
 Provider byte-transfer approval authorizes sending the exact generated prompt
@@ -357,6 +420,11 @@ renderer, runner, or provider integration to fetch raw evidence, raw
 correspondence, local files, or report prose outside those packs. Any future
 raw-content prompt lane needs its own explicit capability, approval class, and
 spec.
+
+Each v1 renderer must make the provider's task possible from the resolved
+payloads. A prompt that lists only IDs, hashes, and `safeSummary` values is not
+production-valid because the provider would lack evidence, PRR, graph, memory,
+or history content to classify or draft against.
 
 ## Provider Output Contracts
 
@@ -488,18 +556,23 @@ Preparation flow:
 4. Evaluate context requirement applicability against the current task/run
    scope and compute `scopeApplicabilityHash`.
 5. Build applicable context pack refs in the exact registered order.
-6. Record bounded omission records for non-applicable conditional requirements.
-7. Block if any applicable context pack is missing, stale, missing provenance,
+6. Resolve every applicable ref to a typed local `ResolvedContextPack` payload
+   envelope through the content-addressed resolver.
+7. Verify each resolved payload envelope matches the ref hash, size, schema,
+   context-pack ID/version, provenance, and descriptor budget.
+8. Record bounded omission records for non-applicable conditional requirements.
+9. Block if any applicable context pack is missing, stale, missing provenance,
    or fails its own context contract.
-8. Render a production prompt artifact through the package-owned renderer, or
+10. Render a production prompt artifact through the package-owned renderer, or
    verify a supplied artifact by deterministic re-render.
-9. Return prepared context refs, evaluated applicability metadata, production
-   registration audit metadata, and prompt artifact.
+11. Return prepared context refs, evaluated applicability metadata, production
+   registration audit metadata, payload-resolution audit metadata, and prompt
+   artifact.
 
 Missing registration, test-only registration, renderer mismatch, applicable
-context absence, context applicability mismatch, omission mismatch, stale
-supplied artifact, hash mismatch, or disallowed safety/transfer class fails
-before model invocation.
+context absence, context payload absence, context payload mismatch, context
+applicability mismatch, omission mismatch, stale supplied artifact, hash
+mismatch, or disallowed safety/transfer class fails before model invocation.
 
 The old fallback prompt text helper must be removed or made unreachable for
 provider invocation in the same implementation commit that enforces production
@@ -517,6 +590,8 @@ when:
 - the current task/run scope can be evaluated into a stable applicability set,
 - applicable context producers are available,
 - applicable context refs are current and provenance-backed,
+- every applicable context ref can be resolved to a typed local payload envelope
+  that verifies hash, size, schema, and descriptor budget,
 - non-applicable conditional requirements have bounded omission reasons,
 - provider output schema ID/version match the registration,
 - handoff schema ID/version match the registration,
@@ -531,27 +606,29 @@ builders, and `production: false` test capabilities cannot satisfy readiness.
 ## Transfer Approval Binding
 
 Provider byte-transfer approval binds the exact prompt artifact and the exact
-bytes or context summaries sent. The approval preview and consume-time proof
-must cover:
+rendered bytes sent. The approval preview and consume-time proof must cover:
 
 - provider ID and credential ref ID,
 - run ID and task ID,
 - prompt template ID/version,
 - renderer ID/version/hash,
 - input artifact hash,
+- rendered prompt hash,
 - scope applicability hash,
 - evaluated context requirement modes and statuses,
 - ordered context pack IDs and content hashes,
+- ordered resolved payload verification status for each applicable pack,
 - evidence or source byte hashes when raw bytes or excerpts are included,
 - omissions,
 - safety class and transfer class,
 - provider output schema ID/version,
 - current provider readiness and active locks.
 
-If any prompt artifact hash, context hash, scope applicability hash, evaluated
-omission reason, evidence byte hash, renderer hash, provider descriptor,
-credential ref, lock state, or policy ref changes, the approval is stale and the
-provider call must fail closed before transfer.
+If any prompt artifact hash, rendered prompt hash, context hash, resolved
+payload verification result, scope applicability hash, evaluated omission
+reason, evidence byte hash, renderer hash, provider descriptor, credential ref,
+lock state, or policy ref changes, the approval is stale and the provider call
+must fail closed before transfer.
 
 ## Diagnostics And Audit
 
@@ -563,6 +640,10 @@ Failures should be structured and secret-safe. Useful categories include:
 - `prompt-artifact-stale`
 - `prompt-artifact-hash-mismatch`
 - `required-context-missing`
+- `context-payload-missing`
+- `context-payload-hash-mismatch`
+- `context-payload-size-mismatch`
+- `context-payload-schema-invalid`
 - `context-applicability-mismatch`
 - `optional-omission-invalid`
 - `provider-output-schema-mismatch`
@@ -572,9 +653,10 @@ Failures should be structured and secret-safe. Useful categories include:
 - `secret-detected`
 
 Diagnostics may record IDs, versions, hashes, counts, categories, event IDs,
-and safe summaries. They must not record prompt text, provider output text,
-credentials, raw provider errors, raw private evidence, raw correspondence,
-raw report prose, hidden local paths, or executable repair commands.
+payload verification statuses, and safe summaries. They must not record
+resolved payloads, prompt text, provider output text, credentials, raw provider
+errors, raw private evidence, raw correspondence, raw report prose, hidden
+local paths, or executable repair commands.
 
 ## Atomic Migration Requirement
 
@@ -588,17 +670,23 @@ state may treat conditional PRR absence as generic missing provenance, and no
 intermediate state may consider a placeholder or synthesized prompt provider
 ready.
 
+The resolved payload contract is part of that same production-readiness
+closure. No intermediate implementation commit may mark a specialist
+production-ready, or allow provider invocation, when applicable packs have only
+refs/hashes/summaries and no hash-verified resolved payload envelopes.
+
 Recommended task order:
 
 1. Add deterministic tests for all six production template registrations,
-   renderer hashes, context requirement applicability, output schemas, and
-   production/test distinction.
-2. Add package-owned production renderers and provider output validators.
-3. Add tests that prove missing or mismatched production registration blocks
-   before provider invocation.
+   renderer hashes, context requirement applicability, resolved payload
+   verification, output schemas, and production/test distinction.
+2. Add package-owned production renderers, resolved payload rendering policies,
+   and provider output validators.
+3. Add tests that prove missing or mismatched production registration and
+   missing or mismatched resolved payloads block before provider invocation.
 4. Remove or disable fallback prompt synthesis and update runner preparation in
-   the same implementation commit as production registry enforcement and
-   conditional PRR applicability handling.
+   the same implementation commit as production registry enforcement,
+   conditional PRR applicability handling, and resolved payload readiness.
 5. Update current PRR, evidence triage, and investigation planner runner tests
    to use production renderers or explicitly non-production fixtures that fail
    readiness.
@@ -617,6 +705,17 @@ Deterministic credential-free tests should prove:
 - clock changes affect envelope `generatedAt` only, not rendered prompt hash;
 - applicable required context absence blocks before prompt render and provider
   invocation;
+- every applicable context ref must resolve through the typed local
+  content-addressed `ResolvedContextPack { ref, payload }` resolver before
+  rendering;
+- missing payloads, hash mismatches, size mismatches, schema mismatches, and
+  stale resolved payload envelopes block before prompt render and provider
+  invocation;
+- arbitrary hash-to-text callbacks, provider-side resolvers, path fetches, and
+  network fetches cannot satisfy production readiness;
+- production renderers embed canonical bounded provider-safe content from
+  resolved payloads, and a renderer that emits only IDs, hashes, and
+  `safeSummary` values is rejected;
 - PRR-linked evidence triage, investigation planner, and report builder runs
   require `prr-read-model.v1` and reject stale or missing PRR context;
 - non-PRR evidence triage, investigation planner, and report builder runs record
@@ -628,8 +727,8 @@ Deterministic credential-free tests should prove:
   applicable packs;
 - supplied artifacts are rejected on renderer mismatch, template mismatch,
   output schema mismatch, context hash mismatch, context applicability mismatch,
-  omission mismatch, safety class mismatch, transfer class mismatch, or artifact
-  hash mismatch;
+  resolved payload mismatch, omission mismatch, safety class mismatch, transfer
+  class mismatch, rendered prompt hash mismatch, or artifact hash mismatch;
 - test prompt capabilities cannot satisfy production readiness;
 - v1 renderers cannot fetch or render bytes outside approved context-pack inputs;
 - provider output schemas reject unsafe authority claims while permitting
@@ -637,7 +736,8 @@ Deterministic credential-free tests should prove:
 - PRR sends, legal escalation, export, repair, provider byte transfer, accepted
   graph review, and durable claim links remain approval-gated;
 - ledger events, diagnostics, DTOs, claims, and logs store hashes/audit metadata
-  only, never production prompt text or provider response text;
+  only, never resolved payloads, production prompt text, or provider response
+  text;
 - fallback prompt synthesis cannot invoke a provider.
 
 Live provider acceptance should be separately gated and secret-safe:
@@ -650,10 +750,15 @@ The evidence-triage live acceptance must include at least one non-PRR
 imported-evidence run with a bounded `no-associated-prr` omission, because
 imported evidence triage is a core Cestus workflow.
 
+The real Nous acceptance must include a safe sentinel fact that appears only in
+a resolved context pack payload, not in that pack's `safeSummary`, and must
+verify the provider's structured output reflects that sentinel. This sentinel
+check must cover the non-PRR imported-evidence evidence-triage path.
+
 The visible output may include provider ID, model ID, hashes, event IDs, counts,
 categories, and fixed markers only. It must not print prompt text, provider
 response text, credentials, raw provider errors, raw request bodies, raw
-evidence text, or hidden local paths.
+evidence text, resolved payload text, or hidden local paths.
 
 ## Acceptance Criteria
 
@@ -674,14 +779,21 @@ evidence text, or hidden local paths.
 - Production readiness rejects arbitrary injected builders and test-only
   renderers.
 - Supplied prompt artifacts are re-verified against the registered production
-  renderer, evaluated applicability set, omission reasons, and current ordered
-  context hashes.
-- Provider byte-transfer approval binds exact prompt artifact and sent
-  byte/context hashes, including scope applicability hash.
-- V1 renderers can render only bytes present in approved context-pack inputs.
+  renderer, evaluated applicability set, omission reasons, current ordered
+  context hashes, and resolved payload verification results.
+- Provider byte-transfer approval binds exact prompt artifact, rendered prompt
+  bytes, sent byte/context hashes, and scope applicability hash.
+- V1 renderers can render only bytes present in approved, hash-verified
+  context-pack payload inputs.
+- Ledger events, audit DTOs, logs, cockpit DTOs, claims, and readiness notes
+  expose refs/hashes/audit metadata only; full resolved payloads appear only in
+  the local prompt artifact envelope and approved provider request.
+- Arbitrary hash-to-text callbacks remain forbidden; context resolution is
+  typed, local, content-addressed, and verifies hash, size, and schema.
 - Model output remains untrusted and cannot accept ontology truth, send PRRs,
   escalate legally, export, clear locks, transfer bytes, or execute repairs.
 - No prompt text or provider response text enters ledger events, diagnostics,
-  DTOs, claims, readiness docs, or logs.
+  DTOs, claims, readiness docs, or logs; resolved payloads obey the same
+  local-only audit boundary.
 - No implementation commit leaves fallback prompt synthesis able to invoke a
   provider.
