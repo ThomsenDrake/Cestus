@@ -7,7 +7,10 @@ import {
 } from "./adapters/prr-correspondence.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
-import { parseSpecialistWorkflowHandoff, type SpecialistWorkflowHandoffDto } from "./specialist-handoffs.js";
+import {
+  parseLegacySpecialistWorkflowHandoff,
+  type LegacySpecialistWorkflowHandoffDto
+} from "./specialist-handoffs.js";
 import {
   appendSpecialistCompletion,
   appendSpecialistDerivativeStep,
@@ -38,7 +41,7 @@ export interface RunPrrNegotiationWorkflowInput extends SpecialistRunnerBaseInpu
 }
 
 export interface RunPrrNegotiationWorkflowResult {
-  readonly handoff: SpecialistWorkflowHandoffDto;
+  readonly handoff: LegacySpecialistWorkflowHandoffDto;
   readonly eventIds: readonly string[];
 }
 
@@ -116,7 +119,7 @@ export async function runPrrNegotiationWorkflow(
     outputArtifactHashes: [draftHash],
     relatedEventIds: [draftStep.id, ...(approval === undefined ? [] : [approval.requested.id])]
   });
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1", runType: "prr-negotiation", runId: input.runId, taskId: input.taskId,
     residentAgentId: "agent_default", generatedAt: input.now(), status: approval === undefined ? "ready-for-review" : "waiting-for-approval",
     safeSummary: approval === undefined
@@ -167,7 +170,7 @@ async function failedModelOutputResult(
     allowedActions: ["retry with a provider that returns the approved PRR negotiation schema"],
     ...(invocationEventIds.at(-1) === undefined ? {} : { causationId: invocationEventIds.at(-1) })
   });
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
     runType: "prr-negotiation",
     runId: input.runId,
@@ -213,7 +216,7 @@ async function failedDerivativeArtifactResult(
     allowedActions: ["inspect local derivative artifact storage and retry PRR negotiation"],
     ...(invocationEventIds.at(-1) === undefined ? {} : { causationId: invocationEventIds.at(-1) })
   });
-  const handoff = parseSpecialistWorkflowHandoff({
+  const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
     runType: "prr-negotiation",
     runId: input.runId,

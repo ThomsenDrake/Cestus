@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildContextPackRef } from "../src/context-packs.js";
 import {
   hashSpecialistWorkflowHandoff,
+  parseLegacySpecialistWorkflowHandoff,
   parseSpecialistWorkflowHandoff
 } from "../src/specialist-handoffs.js";
 
@@ -16,6 +17,53 @@ const contextPack = buildContextPackRef({
 });
 
 describe("specialist workflow handoffs", () => {
+  it("rejects missing durable handoff identity fields", () => {
+    expect(() =>
+      parseSpecialistWorkflowHandoff({
+        schemaVersion: "agent-specialist-handoff.v1",
+        runType: "evidence-triage",
+        runId: "run_evidence_triage_001",
+        residentAgentId: "agent_default",
+        generatedAt: "2026-07-09T12:01:00.000Z",
+        status: "ready-for-review",
+        safeSummary: "Evidence triage dossier is ready for review.",
+        contextPackRefs: [contextPack],
+        outputArtifacts: [],
+        toolRequestIds: [],
+        approvalRequirements: [],
+        nextSafeActions: []
+      })
+    ).toThrow(/handoffId|handoffRevision|required/i);
+  });
+
+  it("labels identity-less pre-durable workflow handoffs as legacy and non-durable", () => {
+    const legacy = parseLegacySpecialistWorkflowHandoff({
+      schemaVersion: "agent-specialist-handoff.v1",
+      runType: "evidence-triage",
+      runId: "run_evidence_triage_legacy",
+      residentAgentId: "agent_default",
+      generatedAt: "2026-07-09T12:01:00.000Z",
+      status: "ready-for-review",
+      safeSummary: "Legacy workflow handoff is display-only.",
+      contextPackRefs: [contextPack],
+      outputArtifacts: [],
+      toolRequestIds: [],
+      approvalRequirements: [],
+      nextSafeActions: []
+    });
+
+    expect(legacy.durability).toBe("legacy-non-durable");
+    expect("handoffId" in legacy).toBe(false);
+    expect("handoffRevision" in legacy).toBe(false);
+    expect(() =>
+      parseLegacySpecialistWorkflowHandoff({
+        ...legacy,
+        handoffId: "handoff_run_evidence_triage_legacy_0123456789abcdef",
+        handoffRevision: 1
+      })
+    ).toThrow(/unsupported|unrecognized/i);
+  });
+
   it("parses and hashes a browser-safe handoff", () => {
     const handoff = parseSpecialistWorkflowHandoff({
       schemaVersion: "agent-specialist-handoff.v1",
