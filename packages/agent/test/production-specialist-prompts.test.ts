@@ -53,9 +53,11 @@ describe("production specialist prompt registrations", () => {
   });
 
   it("keeps renderer hashes stable across registration lookups", () => {
-    expect(productionSpecialistPromptRegistrations.map((registration) => registration.rendererHash)).toEqual(
+    const registeredHashes = productionSpecialistPromptRegistrations.map((registration) => registration.rendererHash);
+    expect(registeredHashes).toEqual(
       productionSpecialistPromptRegistrations.map((registration) => productionSpecialistPromptRegistrationFor(registration.runType).rendererHash)
     );
+    expect(new Set(registeredHashes)).toHaveLength(productionSpecialistPromptRegistrations.length);
   });
 
   it("requires a complete production binding before every production run type can transfer", () => {
@@ -1089,6 +1091,45 @@ describe("production specialist prompt registrations", () => {
 
     expect(artifact.text).toContain("TASK_HISTORY_ALLOWED_SENTINEL_427");
     expect(artifact.text).not.toContain("TASK_HISTORY_FORBIDDEN_FIELD_427");
+  });
+
+  it("renders authoritative memory summaries while excluding unregistered memory fields", async () => {
+    const registry = rendererContextPackRegistry({
+      "agent-memory-summary.v1": {
+        memory: {
+          activeMemory: [{
+            memoryId: "memory_001",
+            scope: "task",
+            memoryKind: "agent-observation",
+            summary: "MEMORY_AUTHORITATIVE_SUMMARY_SENTINEL_427",
+            confidence: 0.8,
+            sourceEventIds: ["evt_memory_001"],
+            artifactHashes: [hash],
+            expiresAt: "2026-07-12T12:00:00.000Z",
+            unregisteredProviderField: "MEMORY_UNREGISTERED_FIELD_SENTINEL_427"
+          }],
+          aggregateCounts: { active: 1 },
+          sourceEventIds: ["evt_memory_001"],
+          artifactHashes: [hash]
+        }
+      }
+    });
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+
+    const artifact = renderProductionSpecialistPrompt({
+      runType: "evidence-triage",
+      runId: "run_memory_allowlist_001",
+      taskId: "task_memory_allowlist_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+      resolvedContextPacks,
+      omissions: []
+    });
+
+    expect(artifact.text).toContain("MEMORY_AUTHORITATIVE_SUMMARY_SENTINEL_427");
+    expect(artifact.text).toContain("memoryKind");
+    expect(artifact.text).toContain("confidence");
+    expect(artifact.text).not.toContain("MEMORY_UNREGISTERED_FIELD_SENTINEL_427");
   });
 
   it("binds scope applicability to the task identity", async () => {

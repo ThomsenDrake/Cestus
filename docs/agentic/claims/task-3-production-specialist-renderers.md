@@ -27,3 +27,6 @@
 - Review-fix verify: `npm run verify` passed after the renderer change. Registered payload rendering is bounded, ordered, labelled with pack identity and content hash, and excludes fields outside its package-owned allowlists.
 - Authoritative-shape review fix: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 file and 50 tests after replacing synthetic/general rendering with registered per-pack field renderers.
 - Authoritative-shape verify: `npm run verify` passed; prompt text and payload values are not recorded in this claim.
+- Renderer-policy review-fix RED: the targeted prompt renderer suite failed as expected because the synthetic memory item field registration omitted an authoritative summary field; 50 other tests passed.
+- Renderer-policy review-fix GREEN: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 test file and 51 tests. The registered policy material is now the source for renderer field collections and per-pack renderer definitions, including authoritative memory fields.
+- Renderer-policy review-fix verify: `npm run verify` completed successfully. Durable evidence records no production prompt text or resolved payload content.
