@@ -26,6 +26,12 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it("keeps renderer hashes stable across registration lookups", () => {
+    expect(productionSpecialistPromptRegistrations.map((registration) => registration.rendererHash)).toEqual(
+      productionSpecialistPromptRegistrations.map((registration) => productionSpecialistPromptRegistrationFor(registration.runType).rendererHash)
+    );
+  });
+
   it("requires selected PRR context only where the approved spec requires it", () => {
     const prr = productionSpecialistPromptRegistrationFor("prr-negotiation");
     expect(prr.contextRequirements).toEqual(expect.arrayContaining([
@@ -64,12 +70,109 @@ describe("production specialist prompt registrations", () => {
     expect(parsed.runType).toBe("evidence-triage");
   });
 
+  it("rejects narrative completed-effect claims in every representative reference schema", () => {
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "prr-negotiation",
+      value: {
+        draftSummary: "Review the request before any follow-up.",
+        requestFollowUpApproval: false,
+        citedRuleRefs: ["The agency sent the response"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
+      }
+    })).toThrow(/reference|authority|external effect/i);
+
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "timeline-builder",
+      value: {
+        timelineItems: [{
+          itemId: "timeline_001",
+          date: "2026-07-10",
+          precision: "day",
+          evidenceRefs: ["The evidence was exported"],
+          assertionRefs: [],
+          prrEventRefs: [],
+          summary: "Evidence is available for review.",
+          uncertaintyCategories: []
+        }],
+        omissionReasons: [],
+        unresolvedPrompts: []
+      }
+    })).toThrow(/reference|authority|external effect/i);
+
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "contradiction-finder",
+      value: {
+        candidates: [{
+          candidateId: "contradiction_001",
+          comparedSourceRefs: ["The legal escalation completed", "ev_report_001"],
+          evidenceIds: [],
+          evidenceContentHashes: [],
+          assertionIds: [],
+          timelineItemIds: [],
+          category: "direct-conflict",
+          confidence: 0.5,
+          rationale: "The sources disagree.",
+          alternativeExplanations: [],
+          requiredReviewerAction: "review"
+        }]
+      }
+    })).toThrow(/reference|authority|external effect/i);
+
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "investigation-planner",
+      value: {
+        planSummary: "Review the open leads.",
+        objectiveRefs: ["The report was published"],
+        gapIds: [],
+        taskCandidates: [],
+        prrDraftCandidates: []
+      }
+    })).toThrow(/reference|authority|external effect/i);
+  });
+
+  it("accepts canonical identifiers in reference fields while rejecting authority claims in narrative fields", () => {
+    expect(validateProductionSpecialistProviderOutput({
+      runType: "report-builder",
+      value: {
+        reportPacketId: "packet_001",
+        outlineRefs: ["outline_report-001"],
+        draftSectionRefs: ["section_report-001"],
+        citationMapRefs: ["citation_map-001"],
+        includedEvidenceIds: ["ev_report_001"],
+        excludedEvidenceIds: [],
+        governancePolicyRefs: ["policy_governance-001"],
+        sensitiveOptInRequirements: [],
+        legalReviewFlags: [],
+        exportPublicationApprovalRefs: ["approval_export-001"],
+        packetSummary: "This is a draft packet for review."
+      }
+    }).runType).toBe("report-builder");
+
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "Evidence needs review.",
+        safeSummaries: ["Provider byte-transfer approved."],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    })).toThrow(/authority|external effect|ontology/i);
+  });
+
   it("rejects provider output that claims external effects or accepted ontology truth", () => {
     expect(() => validateProductionSpecialistProviderOutput({
       runType: "report-builder",
       value: {
         reportPacketId: "packet_unsafe_001",
-        outlineRefs: [],
+        outlineRefs: ["The report was published"],
         draftSectionRefs: [],
         citationMapRefs: [],
         includedEvidenceIds: [],
