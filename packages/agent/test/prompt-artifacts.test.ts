@@ -58,6 +58,37 @@ contextPackRegistry.register({
   parsePayload: (payload) => payload
 });
 
+for (const contextPackId of [
+  "governance-locks.v1",
+  "accepted-graph-projection.v1",
+  "agent-memory-summary.v1",
+  "task-run-history.v1",
+  "workspace-runtime-status.v1",
+  "prr-read-model.v1",
+  "extra-context.v1"
+]) {
+  contextPackRegistry.register({
+    descriptor: {
+      contextPackId,
+      version: 1,
+      label: `Test ${contextPackId}`,
+      maxBytes: 16_384,
+      requiredProvenanceKinds: ["event-id"],
+      redactionPolicy: "safe-summary",
+      sourceProjection: "agent.projection"
+    },
+    build: () => ({
+      contextPackId,
+      version: 1,
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      payload: { contextPackId },
+      safeSummary: `One verified ${contextPackId}.`,
+      provenanceRefs: ["evt_evidence_summary_001"]
+    }),
+    parsePayload: (payload) => payload
+  });
+}
+
 describe("resident agent prompt artifacts", () => {
   it("binds durable prompt envelopes to context pack refs and audit metadata", () => {
     const envelope = buildPromptArtifact({
@@ -127,13 +158,14 @@ describe("resident agent prompt artifacts", () => {
   });
 
   it("binds production renderer metadata and resolved payload audits without exposing payloads in audit metadata", async () => {
-    const verifiedResolvedEvidenceSummary = await contextPackRegistry.buildResolved("evidence-summary.v1");
+    const verifiedResolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = verifiedResolvedContextPacks.map((resolved) => resolved.ref);
+    const verifiedResolvedEvidenceSummary = verifiedResolvedContextPacks[0];
+    if (verifiedResolvedEvidenceSummary === undefined) {
+      throw new Error("Expected evidence summary context pack");
+    }
     const contextPackRef = verifiedResolvedEvidenceSummary.ref;
-    const verifiedResolvedContextPacks = assertResolvedContextPacksForExecution(
-      [contextPackRef],
-      [verifiedResolvedEvidenceSummary]
-    );
-    expect(verifiedResolvedContextPacks).toHaveLength(1);
+    expect(verifiedResolvedContextPacks).toHaveLength(6);
     expect(verifiedResolvedContextPacks[0]).toBe(verifiedResolvedEvidenceSummary);
     const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
     const envelope = buildPromptArtifact({
@@ -143,7 +175,7 @@ describe("resident agent prompt artifacts", () => {
       runType: "evidence-triage",
       safetyClass: "provider-approved",
       transferApprovalClass: "provider-byte-transfer",
-      contextPackRefs: [contextPackRef],
+      contextPackRefs,
       text: "Rendered prompt contains bounded payload content.",
       safeSummary: "Provider-approved evidence triage prompt artifact.",
       production: {
@@ -156,20 +188,10 @@ describe("resident agent prompt artifacts", () => {
         handoffSchemaId: registration.handoffSchemaId,
         handoffSchemaVersion: registration.handoffSchemaVersion,
         scopeApplicabilityHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-        evaluatedContextRequirements: [{
-          contextPackId: "evidence-summary.v1",
-          requirementMode: "always",
-          status: "applicable",
-          contentHash: contextPackRef.contentHash
-        }],
-        resolvedPayloadAudits: [{
-          contextPackId: "evidence-summary.v1",
-          contentHash: contextPackRef.contentHash,
-          sizeBytes: contextPackRef.sizeBytes,
-          schemaId: "evidence-summary.v1"
-        }]
+        evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(contextPackRefs),
+        resolvedPayloadAudits: payloadAudits(contextPackRefs)
       },
-      resolvedContextPacks: [verifiedResolvedEvidenceSummary]
+      resolvedContextPacks: verifiedResolvedContextPacks
     });
 
     const audit = promptArtifactAuditMetadata(envelope);
@@ -184,7 +206,8 @@ describe("resident agent prompt artifacts", () => {
     ["rendered prompt hash", (serialized: { manifest: { production: { renderedPromptHash: string } } }) => { serialized.manifest.production.renderedPromptHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"; }],
     ["scope applicability hash", (serialized: { manifest: { production: { scopeApplicabilityHash: string } } }) => { serialized.manifest.production.scopeApplicabilityHash = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"; }]
   ])("rejects serialized production artifact tampering of %s", async (_field, tamper) => {
-    const verifiedResolvedEvidenceSummary = await contextPackRegistry.buildResolved("evidence-summary.v1");
+    const verifiedResolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = verifiedResolvedContextPacks.map((resolved) => resolved.ref);
     const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
     const envelope = buildPromptArtifact({
       promptTemplateId: registration.promptTemplateId,
@@ -193,11 +216,11 @@ describe("resident agent prompt artifacts", () => {
       runType: "evidence-triage",
       safetyClass: "provider-approved",
       transferApprovalClass: "provider-byte-transfer",
-      contextPackRefs: [verifiedResolvedEvidenceSummary.ref],
+      contextPackRefs,
       text: "Rendered prompt contains bounded payload content.",
       safeSummary: "Provider-approved evidence triage prompt artifact.",
-      production: productionBinding(verifiedResolvedEvidenceSummary.ref),
-      resolvedContextPacks: [verifiedResolvedEvidenceSummary]
+      production: productionBinding(contextPackRefs),
+      resolvedContextPacks: verifiedResolvedContextPacks
     });
     const serialized = JSON.parse(Buffer.from(serializePromptArtifactEnvelope(envelope)).toString("utf8"));
 
@@ -207,7 +230,8 @@ describe("resident agent prompt artifacts", () => {
   });
 
   it("rejects forged and reloaded resolved packs for production artifact construction", async () => {
-    const verifiedResolvedEvidenceSummary = await contextPackRegistry.buildResolved("evidence-summary.v1");
+    const verifiedResolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = verifiedResolvedContextPacks.map((resolved) => resolved.ref);
     const baseInput = {
       promptTemplateId: "evidence-triage.classify.v1",
       promptTemplateVersion: 1,
@@ -215,17 +239,94 @@ describe("resident agent prompt artifacts", () => {
       runType: "evidence-triage" as const,
       safetyClass: "provider-approved" as const,
       transferApprovalClass: "provider-byte-transfer" as const,
-      contextPackRefs: [verifiedResolvedEvidenceSummary.ref],
+      contextPackRefs,
       text: "Rendered prompt contains bounded payload content.",
       safeSummary: "Provider-approved evidence triage prompt artifact.",
-      production: productionBinding(verifiedResolvedEvidenceSummary.ref)
+      production: productionBinding(contextPackRefs)
     };
-    const forged = { ...verifiedResolvedEvidenceSummary };
-    const reloaded = JSON.parse(JSON.stringify(verifiedResolvedEvidenceSummary));
+    const firstResolved = verifiedResolvedContextPacks[0];
+    if (firstResolved === undefined) {
+      throw new Error("Expected evidence summary context pack");
+    }
+    const forged = { ...firstResolved };
+    const reloaded = JSON.parse(JSON.stringify(firstResolved));
 
-    expect(() => buildPromptArtifact({ ...baseInput, resolvedContextPacks: [forged] as never })).toThrow(/unverified|verified/i);
-    expect(() => buildPromptArtifact({ ...baseInput, resolvedContextPacks: [reloaded] as never })).toThrow(/unverified|verified/i);
+    expect(() => buildPromptArtifact({ ...baseInput, resolvedContextPacks: [forged, ...verifiedResolvedContextPacks.slice(1)] as never })).toThrow(/unverified|verified/i);
+    expect(() => buildPromptArtifact({ ...baseInput, resolvedContextPacks: [reloaded, ...verifiedResolvedContextPacks.slice(1)] as never })).toThrow(/unverified|verified/i);
     expect(() => buildPromptArtifact(baseInput)).toThrow(/require.*resolved/i);
+  });
+
+  it("rejects a partial evaluated requirement list for evidence triage", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+    const evaluatedContextRequirements = evaluatedEvidenceTriageRequirements(contextPackRefs);
+
+    expect(() => buildProductionEvidenceTriageArtifact({
+      contextPackRefs,
+      resolvedContextPacks,
+      evaluatedContextRequirements: evaluatedContextRequirements.slice(0, 1)
+    })).toThrow(/complete|registered|requirement/i);
+  });
+
+  it("rejects evaluated requirements that are not in registered order", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+
+    expect(() => buildProductionEvidenceTriageArtifact({
+      contextPackRefs,
+      resolvedContextPacks,
+      evaluatedContextRequirements: [...evaluatedEvidenceTriageRequirements(contextPackRefs)].reverse()
+    })).toThrow(/order|registered|requirement/i);
+  });
+
+  it("rejects a context ref not represented by an applicable registered requirement", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const extraResolved = await contextPackRegistry.buildResolved("extra-context.v1");
+    const contextPackRefs = [...resolvedContextPacks.map((resolved) => resolved.ref), extraResolved.ref];
+
+    expect(() => buildProductionEvidenceTriageArtifact({
+      contextPackRefs,
+      resolvedContextPacks: [...resolvedContextPacks, extraResolved],
+      evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(contextPackRefs)
+    })).toThrow(/context pack ref|registered|requirement/i);
+  });
+
+  it("permits a conditional PRR requirement to be not applicable only with no-associated-prr", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+    const evaluatedContextRequirements = evaluatedEvidenceTriageRequirements(contextPackRefs);
+
+    expect(() => buildProductionEvidenceTriageArtifact({
+      contextPackRefs,
+      resolvedContextPacks,
+      evaluatedContextRequirements
+    })).not.toThrow();
+    expect(() => buildProductionEvidenceTriageArtifact({
+      contextPackRefs,
+      resolvedContextPacks,
+      evaluatedContextRequirements: evaluatedContextRequirements.map((requirement) => requirement.contextPackId === "prr-read-model.v1"
+        ? { ...requirement, omissionReason: "not-associated-prr" as never }
+        : requirement)
+    })).toThrow(/no-associated-prr/i);
+  });
+
+  it("preserves the evaluator-supplied scope hash and rejects serialized scope-hash tampering", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+    const scopeApplicabilityHash = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+    const envelope = buildProductionEvidenceTriageArtifact({
+      contextPackRefs,
+      resolvedContextPacks,
+      evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(contextPackRefs),
+      scopeApplicabilityHash
+    });
+
+    expect(envelope.manifest.production?.scopeApplicabilityHash).toBe(scopeApplicabilityHash);
+    const serialized = JSON.parse(Buffer.from(serializePromptArtifactEnvelope(envelope)).toString("utf8")) as {
+      manifest: { production: { scopeApplicabilityHash: string } };
+    };
+    serialized.manifest.production.scopeApplicabilityHash = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    expect(() => parsePromptArtifactEnvelope(Buffer.from(JSON.stringify(serialized)))).toThrow(/hash mismatch/i);
   });
 
   it("rejects unsafe prompt text before it can reach a provider", () => {
@@ -362,7 +463,78 @@ describe("resident agent prompt artifacts", () => {
   });
 });
 
-function productionBinding(contextPackRef: ContextPackRef) {
+async function resolvedEvidenceTriageContextPacks() {
+  const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
+  const resolved = await Promise.all(registration.contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always")
+    .map((requirement) => contextPackRegistry.buildResolved(requirement.contextPackId)));
+  return assertResolvedContextPacksForExecution(resolved.map((contextPack) => contextPack.ref), resolved);
+}
+
+function evaluatedEvidenceTriageRequirements(contextPackRefs: readonly ContextPackRef[]) {
+  const refsById = new Map(contextPackRefs.map((contextPackRef) => [contextPackRef.contextPackId, contextPackRef]));
+  return productionSpecialistPromptRegistrationFor("evidence-triage").contextRequirements.map((requirement) => {
+    const contextPackRef = refsById.get(requirement.contextPackId);
+    return contextPackRef === undefined
+      ? {
+        contextPackId: requirement.contextPackId,
+        requirementMode: requirement.requirementMode,
+        status: "not-applicable" as const,
+        omissionReason: "no-associated-prr" as const
+      }
+      : {
+        contextPackId: requirement.contextPackId,
+        requirementMode: requirement.requirementMode,
+        status: "applicable" as const,
+        contentHash: contextPackRef.contentHash
+      };
+  });
+}
+
+function payloadAudits(contextPackRefs: readonly ContextPackRef[]) {
+  return contextPackRefs.map((contextPackRef) => ({
+    contextPackId: contextPackRef.contextPackId,
+    contentHash: contextPackRef.contentHash,
+    sizeBytes: contextPackRef.sizeBytes,
+    schemaId: contextPackRef.contextPackId
+  }));
+}
+
+function buildProductionEvidenceTriageArtifact(input: {
+  readonly contextPackRefs: readonly ContextPackRef[];
+  readonly resolvedContextPacks: readonly Awaited<ReturnType<typeof resolvedEvidenceTriageContextPacks>>[number][];
+  readonly evaluatedContextRequirements: ReturnType<typeof evaluatedEvidenceTriageRequirements>;
+  readonly scopeApplicabilityHash?: string;
+}) {
+  const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
+  return buildPromptArtifact({
+    promptTemplateId: registration.promptTemplateId,
+    promptTemplateVersion: registration.promptTemplateVersion,
+    generatedAt: "2026-07-10T12:00:00.000Z",
+    runType: "evidence-triage",
+    safetyClass: "provider-approved",
+    transferApprovalClass: "provider-byte-transfer",
+    contextPackRefs: input.contextPackRefs,
+    text: "Rendered prompt contains bounded payload content.",
+    safeSummary: "Provider-approved evidence triage prompt artifact.",
+    production: {
+      rendererId: registration.rendererId,
+      rendererVersion: registration.rendererVersion,
+      rendererHash: registration.rendererHash,
+      renderedPromptHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      providerOutputSchemaId: registration.providerOutputSchemaId,
+      providerOutputSchemaVersion: registration.providerOutputSchemaVersion,
+      handoffSchemaId: registration.handoffSchemaId,
+      handoffSchemaVersion: registration.handoffSchemaVersion,
+      scopeApplicabilityHash: input.scopeApplicabilityHash ?? "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      evaluatedContextRequirements: input.evaluatedContextRequirements,
+      resolvedPayloadAudits: payloadAudits(input.contextPackRefs)
+    },
+    resolvedContextPacks: input.resolvedContextPacks
+  });
+}
+
+function productionBinding(contextPackRefs: readonly ContextPackRef[]) {
   const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
   return {
     rendererId: registration.rendererId,
@@ -374,18 +546,8 @@ function productionBinding(contextPackRef: ContextPackRef) {
     handoffSchemaId: registration.handoffSchemaId,
     handoffSchemaVersion: registration.handoffSchemaVersion,
     scopeApplicabilityHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    evaluatedContextRequirements: [{
-      contextPackId: "evidence-summary.v1",
-      requirementMode: "always" as const,
-      status: "applicable" as const,
-      contentHash: contextPackRef.contentHash
-    }],
-    resolvedPayloadAudits: [{
-      contextPackId: "evidence-summary.v1",
-      contentHash: contextPackRef.contentHash,
-      sizeBytes: contextPackRef.sizeBytes,
-      schemaId: "evidence-summary.v1"
-    }]
+    evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(contextPackRefs),
+    resolvedPayloadAudits: payloadAudits(contextPackRefs)
   };
 }
 

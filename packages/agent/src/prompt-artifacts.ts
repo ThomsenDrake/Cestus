@@ -444,48 +444,65 @@ function normalizeProductionBinding(
     throw new Error("Production resolved payload audits do not match authoritative context packs");
   }
   const expectedRenderedPromptHash = hashPromptText(text);
-  const expectedScopeApplicabilityHash = hashAgentContextPack({
-    evaluatedContextRequirements: production.evaluatedContextRequirements
-  });
-  if (
-    !options.deriveHashes &&
-    (production.renderedPromptHash !== expectedRenderedPromptHash ||
-      production.scopeApplicabilityHash !== expectedScopeApplicabilityHash)
-  ) {
+  if (!options.deriveHashes && production.renderedPromptHash !== expectedRenderedPromptHash) {
     throw new Error("Production prompt binding hash mismatch");
   }
 
   return freezePromptArtifactProductionBinding({
     ...production,
     renderedPromptHash: expectedRenderedPromptHash,
-    scopeApplicabilityHash: expectedScopeApplicabilityHash,
     resolvedPayloadAudits: expectedAudits
   });
 }
 
 function assertEvaluatedContextRequirements(
   evaluated: readonly PromptArtifactEvaluatedContextRequirement[],
-  registered: readonly { readonly contextPackId: string; readonly requirementMode: "always" | "when-scope-associated-prr" }[],
+  registered: readonly {
+    readonly contextPackId: string;
+    readonly order: number;
+    readonly requirementMode: "always" | "when-scope-associated-prr";
+    readonly omissionWhenNotApplicable?: "no-associated-prr";
+  }[],
   refs: readonly ContextPackRef[]
 ): void {
-  const refsById = new Map(refs.map((ref) => [ref.contextPackId, ref]));
-  const registeredById = new Map(registered.map((requirement) => [requirement.contextPackId, requirement]));
-  const evaluatedIds = new Set<string>();
-  for (const requirement of evaluated) {
-    if (evaluatedIds.has(requirement.contextPackId)) {
-      throw new Error("Production context requirements must not duplicate a context pack ID");
+  if (evaluated.length !== registered.length) {
+    throw new Error("Production context requirements must include the complete registered requirement list");
+  }
+
+  const applicable = evaluated.filter((requirement) => requirement.status === "applicable");
+  if (refs.length !== applicable.length) {
+    throw new Error("Production context pack refs must exactly match applicable registered requirements");
+  }
+
+  for (let index = 0; index < registered.length; index += 1) {
+    const registeredRequirement = registered[index];
+    const evaluatedRequirement = evaluated[index];
+    if (registeredRequirement === undefined || evaluatedRequirement === undefined) {
+      throw new Error("Production context requirements must include the complete registered requirement list");
     }
-    evaluatedIds.add(requirement.contextPackId);
-    const registeredRequirement = registeredById.get(requirement.contextPackId);
-    if (registeredRequirement === undefined || registeredRequirement.requirementMode !== requirement.requirementMode) {
+    if (
+      registeredRequirement.order !== index ||
+      evaluatedRequirement.contextPackId !== registeredRequirement.contextPackId ||
+      evaluatedRequirement.requirementMode !== registeredRequirement.requirementMode
+    ) {
       throw new Error("Production context requirement does not match the registered specialist renderer");
     }
-    const ref = refsById.get(requirement.contextPackId);
-    if (requirement.status === "applicable") {
-      if (ref === undefined || requirement.contentHash !== ref.contentHash) {
+
+    if (evaluatedRequirement.status === "applicable") {
+      const ref = refs[applicable.indexOf(evaluatedRequirement)];
+      if (
+        ref === undefined ||
+        ref.contextPackId !== evaluatedRequirement.contextPackId ||
+        evaluatedRequirement.contentHash !== ref.contentHash
+      ) {
         throw new Error("Applicable production context requirement does not match a context pack ref");
       }
-    } else if (requirement.requirementMode !== "when-scope-associated-prr" || ref !== undefined) {
+    } else if (
+      registeredRequirement.contextPackId !== "prr-read-model.v1" ||
+      registeredRequirement.requirementMode !== "when-scope-associated-prr" ||
+      registeredRequirement.omissionWhenNotApplicable !== "no-associated-prr" ||
+      evaluatedRequirement.omissionReason !== "no-associated-prr"
+    ) {
       throw new Error("Production context requirement is not validly omitted");
     }
   }
