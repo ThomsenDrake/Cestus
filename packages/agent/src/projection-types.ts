@@ -175,6 +175,35 @@ export interface ProjectedAgentModelInvocationUsage {
   readonly totalTokens?: number | undefined;
 }
 
+export interface ProjectedAgentProductionContextRequirement {
+  readonly contextPackId: string;
+  readonly requirementMode: "always" | "when-scope-associated-prr";
+  readonly status: "applicable" | "not-applicable";
+  readonly contentHash?: string | undefined;
+  readonly omissionReason?: "no-associated-prr" | undefined;
+}
+
+export interface ProjectedAgentResolvedPayloadAudit {
+  readonly contextPackId: string;
+  readonly contentHash: string;
+  readonly sizeBytes: number;
+  readonly schemaId: string;
+}
+
+export interface ProjectedAgentProductionPromptAudit {
+  readonly rendererId: string;
+  readonly rendererVersion: number;
+  readonly rendererHash: string;
+  readonly renderedPromptHash: string;
+  readonly providerOutputSchemaId: string;
+  readonly providerOutputSchemaVersion: number;
+  readonly handoffSchemaId: string;
+  readonly handoffSchemaVersion: number;
+  readonly scopeApplicabilityHash: string;
+  readonly evaluatedContextRequirements: readonly ProjectedAgentProductionContextRequirement[];
+  readonly resolvedPayloadAudits: readonly ProjectedAgentResolvedPayloadAudit[];
+}
+
 export interface ProjectedAgentModelInvocation extends ProjectedAgentProvenance {
   readonly invocationId: string;
   readonly runId: string;
@@ -193,6 +222,7 @@ export interface ProjectedAgentModelInvocation extends ProjectedAgentProvenance 
   readonly safePromptSummary?: string | undefined;
   readonly omissions: readonly ProjectedAgentPromptArtifactOmission[];
   readonly transferApprovalClass?: "none" | "provider-byte-transfer" | undefined;
+  readonly production?: ProjectedAgentProductionPromptAudit | undefined;
   readonly providerOutputArtifactHash?: string | undefined;
   readonly completedAt?: string | undefined;
   readonly usage?: ProjectedAgentModelInvocationUsage | undefined;

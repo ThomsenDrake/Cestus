@@ -453,6 +453,13 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       const matchedPromptAudit = promptAudit.ok && promptAudit.metadata.inputArtifactHash === command.inputArtifactHash
         ? promptAudit.metadata
         : undefined;
+      if (matchedPromptAudit !== undefined && requiresProductionPromptAudit(matchedPromptAudit) && matchedPromptAudit.production === undefined) {
+        return failedResult(agentDiagnostic(
+          "policy",
+          "Production prompt audit binding is required before model invocation.",
+          ["render a production prompt artifact with its approved audit binding"]
+        ));
+      }
 
       const requestedEvent: AppendableKnowledgeEvent<"agent.model-invocation.requested"> = {
         type: "agent.model-invocation.requested",
@@ -869,8 +876,25 @@ function promptAuditPayload(metadata: PromptArtifactAuditMetadata | undefined) {
     runType: metadata.runType,
     safePromptSummary: metadata.safeSummary,
     omissions: metadata.omissions.map((omission) => ({ ...omission })),
-    transferApprovalClass: metadata.transferApprovalClass
+    transferApprovalClass: metadata.transferApprovalClass,
+    ...optionalValue("production", metadata.production === undefined ? undefined : {
+      rendererId: metadata.production.rendererId,
+      rendererVersion: metadata.production.rendererVersion,
+      rendererHash: metadata.production.rendererHash,
+      renderedPromptHash: metadata.production.renderedPromptHash,
+      providerOutputSchemaId: metadata.production.providerOutputSchemaId,
+      providerOutputSchemaVersion: metadata.production.providerOutputSchemaVersion,
+      handoffSchemaId: metadata.production.handoffSchemaId,
+      handoffSchemaVersion: metadata.production.handoffSchemaVersion,
+      scopeApplicabilityHash: metadata.production.scopeApplicabilityHash,
+      evaluatedContextRequirements: metadata.production.evaluatedContextRequirements.map((requirement) => ({ ...requirement })),
+      resolvedPayloadAudits: metadata.production.resolvedPayloadAudits.map((audit) => ({ ...audit }))
+    })
   };
+}
+
+function requiresProductionPromptAudit(metadata: PromptArtifactAuditMetadata): boolean {
+  return metadata.runType !== "ontology-bootstrap";
 }
 
 function requiresPromptArtifactForProvider(descriptor: ProviderDescriptor): boolean {
