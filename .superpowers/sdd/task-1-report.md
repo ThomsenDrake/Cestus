@@ -87,3 +87,10 @@ Status: DONE
 - GREEN: the same focused command passed with 1 file and 21 tests after PRR completed-effect matching evaluated punctuation-delimited clauses, preserving `Public filing instructions say the request should be mailed to the records office.` while rejecting a separate completed-effect clause.
 - Diagnostics: shared `safeText` now rejects generic error, failure, and timeout diagnostics, including `Error: upstream request timed out` and `HTTP 429: request timed out`.
 - Verify: `npm run verify` passed: typecheck, test suite, Vite build, and factory readiness. Node emitted only its existing experimental SQLite warnings.
+
+## Provider Transfer Completion P1 Fix
+
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 1 expected regression and 21 passing tests because `Provider byte transfer completion was recorded.` was accepted in a narrative field.
+- GREEN: the same focused command passed with 1 file and 22 tests after shared provider-byte-transfer authority matching rejected `completion` as an effect term alongside the existing approval, grant, completed, and authorization forms.
+- Coverage: the exact completion claim is rejected through both `evidence-triage.safeSummaries` and `report-builder.outlineRefs`; prior positive command-like narrative evidence remains covered by the focused suite.
+- Verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warnings.
