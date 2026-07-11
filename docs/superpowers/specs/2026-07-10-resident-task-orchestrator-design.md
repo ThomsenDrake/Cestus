@@ -42,7 +42,7 @@ The orchestrator composes these landed contracts:
 - `agent.model-invocation.*` records model invocation requests, prompt audit metadata, outputs, and safe failures.
 - `agent.tool.*` records approval requests, approvals, denials, approved execution claims, completions, and failures.
 - `packages/agent/src/scheduler.ts` consumes approved tool requests only and records `agent.tool.execution.claimed` before domain execution.
-- `packages/agent/src/context-packs.ts` defines `ContextPackRef`, context pack builders, stable hashes, size budgets, provenance requirements, and staleness inputs.
+- `packages/agent/src/context-packs.ts` defines `ContextPackRef`, context pack builders, stable hashes, size budgets, provenance requirements, staleness inputs, callable `ContextPackPayloadResolver`, and positional `assertResolvedContextPacksForExecution(refs, resolvedPacks)` verification.
 - `packages/agent/src/prompt-artifacts.ts` defines prompt artifact envelopes and provider transfer safety classes.
 - `packages/agent/src/provider-selection.ts` selects provider capability by task sensitivity and policy.
 - `packages/agent/src/specialist-runner-kernel.ts` validates provider byte-transfer proof before remote specialist invocation.
@@ -362,7 +362,7 @@ The durable-handoff lane owns:
 - preterminal and recoverable handoff protocol
 - cockpit-ready handoff DTO projection
 
-The orchestrator depends on a narrow capability:
+The orchestrator depends on a narrow orchestrator-owned capability:
 
 ```ts
 interface DurableSpecialistHandoffCapability {
@@ -372,7 +372,14 @@ interface DurableSpecialistHandoffCapability {
 }
 ```
 
-The exact type names and canonical event names belong to the durable-handoff lane. The orchestrator spec requires only the semantics above.
+The landed durable-handoff lane exposes `buildSpecialistHandoffManifest()`,
+`verifySpecialistHandoffManifest()`, strict
+`agent.specialist-handoff.prepared` / `agent.specialist-handoff.recorded`
+events, and `buildSpecialistHandoffProjection()`. The orchestrator implements
+the narrow capability above as an adapter over those contracts; it must not
+assume that prerequisite packages export speculative `prepare()`, `bind()`, or
+`readback()` methods. Canonical manifest identity, event validation, and
+projection readback remain owned by the durable-handoff lane.
 
 Task completion requires:
 
@@ -512,7 +519,15 @@ Restart tests must cover each crash boundary:
 - after terminal run completion and before terminal orchestration completion
 - after terminal orchestration completion and before terminal task status
 
-The real Nous acceptance uses repo-local secret setup. Offline fake providers can satisfy deterministic contract tests but cannot satisfy provider execution readiness for the live acceptance gate. A ref-only fake cannot pass the live gate because the sentinel fact is present only in resolved payload bytes and the structured model output must reflect it.
+The real Nous acceptance loads `/home/drake/Projects/Cestus/.env` by path only
+without copying or printing values. Offline deterministic test providers may
+satisfy an explicitly injected local test posture so contract tests can reach
+dispatch, but they cannot satisfy or impersonate the live remote-provider
+acceptance gate. A ref-only test provider cannot pass the live gate because the
+sentinel fact is present only in resolved payload bytes and the structured model
+output must reflect it. Completion requires three consecutive live GREEN runs;
+safe failure diagnostics may expose categories, counts, finish status, and
+schema issue paths/codes only.
 
 Forbidden effects must be asserted absent:
 
@@ -575,9 +590,9 @@ The implementation plan should require:
 - handoff-pending recovery tests using the durable-handoff lane's exact manifest and canonical event
 - negative tests for every forbidden effect
 - restart reconstruction tests from ledger plus artifact stores
-- deterministic fake-provider contract tests
-- deterministic negative tests proving a ref-only fake cannot satisfy production provider dispatch readiness
-- live Nous evidence-triage acceptance with repo-local secret setup and resolved-payload sentinel propagation
+- deterministic test-provider contract tests under an explicitly injected local test posture
+- deterministic negative tests proving a ref-only test provider cannot satisfy production provider dispatch readiness or the live remote-provider gate
+- live Nous evidence-triage acceptance using `/home/drake/Projects/Cestus/.env` by path only and resolved-payload sentinel propagation
 - route and cockpit DTO tests proving ownership labels and no direct risky controls
 - `npm run verify`
 
