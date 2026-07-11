@@ -68,3 +68,9 @@ Status: DONE
 - RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 3 expected regressions: `prr-negotiation` advertised `no-associated-prr`, `The PRR was faxed.` was accepted as a completed send effect, and `Cookie: sessionid=provider-session-secret` was accepted in a narrative field.
 - GREEN: the same focused command passed with 1 file and 16 tests after `prr-negotiation` received the standard omission list while the five conditional-PRR registrations retained `no-associated-prr`; shared authority matching added faxed PRR sends; and shared `safeText` rejected `Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, and `X-API-Key` header forms across narratives, IDs, and refs.
 - Verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warnings.
+
+## Remaining Production Output Contract P1 Fix
+
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 2 expected regressions because `Provider byte-transfer approval was completed.`, `Approval for the provider byte transfer was granted.`, session header forms, `C:/Users/name/provider-response.json`, and `Provider failure: timeout` were accepted.
+- GREEN: the same focused command passed with 1 file and 18 tests after the shared `safeText` path rejected provider-byte-transfer approval/grant/completed/authorized wording in either order across narrative, identifier, and reference fields; common auth/session/token/cookie/API-key `:` or `=` headers; combined provider diagnostics including failure and timeout; and Windows forward-slash user paths. Public `https://` evidence remains valid under the existing coverage.
+- Verify: `npm run verify` passed: typecheck, test suite, Vite build, and factory readiness. Node emitted only its existing experimental SQLite warnings.

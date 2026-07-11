@@ -376,6 +376,71 @@ describe("production specialist prompt registrations", () => {
     }).runType).toBe("evidence-triage");
   });
 
+  it("rejects provider-transfer approval claims through narrative, identifier, and reference fields", () => {
+    for (const claim of [
+      "Provider byte-transfer approval was completed.",
+      "Approval for the provider byte transfer was granted."
+    ]) {
+      expect(() => validateProductionSpecialistProviderOutput({
+        runType: "evidence-triage",
+        value: {
+          dossierSummary: "Evidence needs review.",
+          safeSummaries: [claim],
+          governanceFlags: [],
+          duplicateGroups: [],
+          evidenceGaps: [],
+          assertionCandidates: [],
+          requestProviderParseApproval: false,
+          requestGovernanceReview: false,
+          requestQuarantineReview: false,
+          requestAssertionProposalReview: false
+        }
+      })).toThrow(/authority|external effect|ontology/i);
+    }
+
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "report-builder",
+      value: {
+        reportPacketId: "packet_provider_byte_transfer_approval_granted",
+        outlineRefs: ["Provider byte-transfer approval was completed."],
+        draftSectionRefs: [],
+        citationMapRefs: [],
+        includedEvidenceIds: [],
+        excludedEvidenceIds: [],
+        governancePolicyRefs: [],
+        sensitiveOptInRequirements: [],
+        legalReviewFlags: [],
+        exportPublicationApprovalRefs: [],
+        packetSummary: "This is a draft packet for review."
+      }
+    })).toThrow(/authority|external effect|ontology/i);
+  });
+
+  it("rejects session headers, provider diagnostics, and Windows forward-slash user paths", () => {
+    for (const unsafeNarrative of [
+      "Session: provider-session-secret",
+      "X-Session-Id: provider-session-secret",
+      "C:/Users/name/provider-response.json",
+      "Provider failure: timeout"
+    ]) {
+      expect(() => validateProductionSpecialistProviderOutput({
+        runType: "evidence-triage",
+        value: {
+          dossierSummary: unsafeNarrative,
+          safeSummaries: [],
+          governanceFlags: [],
+          duplicateGroups: [],
+          evidenceGaps: [],
+          assertionCandidates: [],
+          requestProviderParseApproval: false,
+          requestGovernanceReview: false,
+          requestQuarantineReview: false,
+          requestAssertionProposalReview: false
+        }
+      })).toThrow(/secret-safe|provider error|hidden local path/i);
+    }
+  });
+
   it("requires normalized safe dates for timeline ranges", () => {
     const timeline = (start: string, end: string) => validateProductionSpecialistProviderOutput({
       runType: "timeline-builder",

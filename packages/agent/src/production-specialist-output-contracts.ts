@@ -20,7 +20,7 @@ const hasAuthorityClaim = (value: string) => {
   return (
     hasCompletedEffect(normalized, /\b(?:prr|public records request|request|response)\b/, /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/) ||
     hasCompletedEffect(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
-    hasSubjectAction(normalized, /\bprovider byte transfer\b/, /\b(?:human )?approved\b/) ||
+    hasSubjectAction(normalized, /\bprovider byte transfer\b/, /\b(?:approval|approv(?:e|ed)|grant(?:ed)?|completed|authori[sz](?:e|ed|ation))\b/) ||
     hasCompletedEffect(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/) ||
     hasCompletedEffect(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed)\b/) ||
     hasCompletedEffect(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
@@ -30,13 +30,13 @@ const hasAuthorityClaim = (value: string) => {
 };
 const hasRawProviderError = (value: string) =>
   /\b(?:provider|model|api|openai|nous)\b/i.test(value) &&
-  /\b(?:http|status|rate[ -]?limit|error|exception|stack|response[ -]?body)\b/i.test(value);
+  /\b(?:diagnostic|failure|failed|error|exception|stack|timeout|timed out|rate[ -]?limit(?:ed)?|status|https?|response(?:[ -]?body)?)\b/i.test(value);
 const hasHiddenLocalPath = (value: string) =>
   /\bfile:\/\/\//i.test(value) ||
   /(?:^|[\s("'])\/(?!\/)(?:[^/\s]+\/)+[^/\s]+/.test(value) ||
-  /\b[a-z]:\\Users\\/i.test(value);
+  /\b[a-z]:[\\/]Users[\\/][^\\/\s]+(?:[\\/][^\\/\s]+)*/i.test(value);
 const hasAuthenticationHeader = (value: string) =>
-  /\b(?:authorization|proxy-authorization|cookie|set-cookie|x-api-key)\s*:/i.test(value);
+  /\b(?:authorization|proxy-authorization|authentication|auth|cookie|set-cookie|(?:x-)?(?:api[-_]?key|auth(?:entication)?|access[-_]?token|session(?:[-_]?id)?|token))\s*[:=]/i.test(value);
 const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((value, ctx) => {
   try {
     assertAgentSecretSafeText(value, label);
