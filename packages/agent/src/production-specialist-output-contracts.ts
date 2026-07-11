@@ -14,11 +14,19 @@ const hasSubjectAction = (value: string, subject: RegExp, action: RegExp) => sub
 const hasCompletedEffect = (value: string, subject: RegExp, action: RegExp) =>
   hasSubjectAction(value, subject, action) || hasSubjectAction(value, subject, /\bcompleted\b/);
 
+const hasCompletedPrrEffect = (value: string) => {
+  const subject = /\b(?:prr|public records request|request|response)\b/;
+  const action = /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/;
+
+  return hasSubjectAction(value, subject, /\bcompleted\b/) ||
+    (hasSubjectAction(value, subject, action) && !/\b(?:instruction|instructions|policy|policies|step|steps|procedure|procedures|guidance|guideline|guidelines|should|must|may|might|can|could|would|will)\b/.test(value));
+};
+
 const hasAuthorityClaim = (value: string) => {
   const normalized = normalizeAuthorityClaimText(value);
 
   return (
-    hasCompletedEffect(normalized, /\b(?:prr|public records request|request|response)\b/, /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/) ||
+    hasCompletedPrrEffect(normalized) ||
     hasCompletedEffect(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
     hasSubjectAction(normalized, /\bprovider byte transfer\b/, /\b(?:approval|approv(?:e|ed)|grant(?:ed)?|completed|authori[sz](?:e|ed|ation))\b/) ||
     hasCompletedEffect(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/) ||
@@ -29,8 +37,9 @@ const hasAuthorityClaim = (value: string) => {
   );
 };
 const hasRawProviderError = (value: string) =>
-  /\b(?:provider|model|api|openai|nous)\b/i.test(value) &&
-  /\b(?:diagnostic|failure|failed|error|exception|stack|timeout|timed out|rate[ -]?limit(?:ed)?|status|https?|response(?:[ -]?body)?)\b/i.test(value);
+  (/\b(?:provider|model|api|openai|nous)\b/i.test(value) &&
+    /\b(?:diagnostic|failure|failed|error|exception|stack|timeout|timed out|rate[ -]?limit(?:ed)?|status|https?|response(?:[ -]?body)?)\b/i.test(value)) ||
+  /\b[a-z][a-z0-9_-]{2,}\s+(?:diagnostic|failure|failed|error|exception|timeout|timed out)\s*:/i.test(value);
 const hasHiddenLocalPath = (value: string) =>
   /\bfile:\/\/\//i.test(value) ||
   /(?:^|[\s("'])\/(?!\/)(?:[^/\s]+\/)+[^/\s]+/.test(value) ||
@@ -65,7 +74,7 @@ const ref = safeText("provider output reference").max(200).superRefine((value, c
   }
 });
 const hash = z.string().regex(/^sha256:[a-f0-9]{64}$/);
-const normalizedDate = z.string().regex(/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/);
+const normalizedDate = safeText("timeline date").regex(/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/);
 
 const prrNegotiationReviewOutputSchema = z.object({
   draftSummary: shortSafeText("PRR negotiation draft summary"),
