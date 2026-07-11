@@ -105,6 +105,66 @@ describe("production specialist prompt registrations", () => {
     expect(getterInvoked).toBe(false);
   });
 
+  it("rejects an outer runType accessor without invoking its getter", () => {
+    let getterInvoked = false;
+    const input = {
+      value: validEvidenceTriageOutput()
+    };
+    Object.defineProperty(input, "runType", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return "evidence-triage";
+      }
+    });
+
+    expect(() => validateProductionSpecialistProviderOutput(input as unknown as {
+      readonly runType: "evidence-triage";
+      readonly value: unknown;
+    })).toThrow(/JSON DTO-safe/i);
+    expect(getterInvoked).toBe(false);
+  });
+
+  it("rejects an outer value accessor without invoking its getter", () => {
+    let getterInvoked = false;
+    const input = {
+      runType: "evidence-triage"
+    };
+    Object.defineProperty(input, "value", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return validEvidenceTriageOutput();
+      }
+    });
+
+    expect(() => validateProductionSpecialistProviderOutput(input as unknown as {
+      readonly runType: "evidence-triage";
+      readonly value: unknown;
+    })).toThrow(/JSON DTO-safe/i);
+    expect(getterInvoked).toBe(false);
+  });
+
+  it("rejects a changing outer runType getter before it can mismatch the parsed schema", () => {
+    let getterInvocations = 0;
+    const input = {
+      value: validEvidenceTriageOutput()
+    };
+    Object.defineProperty(input, "runType", {
+      enumerable: true,
+      get() {
+        getterInvocations += 1;
+        return getterInvocations === 1 ? "evidence-triage" : "report-builder";
+      }
+    });
+
+    expect(() => validateProductionSpecialistProviderOutput(input as unknown as {
+      readonly runType: "evidence-triage";
+      readonly value: unknown;
+    })).toThrow(/JSON DTO-safe/i);
+    expect(getterInvocations).toBe(0);
+  });
+
   it("rejects symbol-keyed and custom-prototype provider objects", () => {
     const symbolKeyed = validEvidenceTriageOutput();
     Object.defineProperty(symbolKeyed, Symbol("provider-output"), { enumerable: true, value: "unexpected" });
