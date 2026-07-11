@@ -80,3 +80,10 @@ Status: DONE
 - RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 3 expected regressions: `Anthropic error: timeout` was accepted, `Public filing instructions say the request should be mailed to the records office.` was rejected as a completed PRR effect, and an unsafe date bound did not report the shared raw-provider-diagnostic rejection.
 - GREEN: the same focused command passed with 1 file and 20 tests after shared `safeText` rejected generic diagnostic-shaped provider failures, PRR send/file/fax/mail matching required a completed effect rather than instructions, and dates used `safeText` before the existing normalized-date regex.
 - Verify: `npm run verify` passed: typecheck, test suite, Vite build, and factory readiness. Node emitted only its existing experimental SQLite warnings.
+
+## Remaining Review P1 Fix
+
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with the completed effect `The PRR was filed; filing instructions are attached.` accepted because instruction wording elsewhere in the field suppressed the effect match.
+- GREEN: the same focused command passed with 1 file and 21 tests after PRR completed-effect matching evaluated punctuation-delimited clauses, preserving `Public filing instructions say the request should be mailed to the records office.` while rejecting a separate completed-effect clause.
+- Diagnostics: shared `safeText` now rejects generic error, failure, and timeout diagnostics, including `Error: upstream request timed out` and `HTTP 429: request timed out`.
+- Verify: `npm run verify` passed: typecheck, test suite, Vite build, and factory readiness. Node emitted only its existing experimental SQLite warnings.
