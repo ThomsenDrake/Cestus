@@ -7,7 +7,7 @@
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Base commit: `01e68142`
 - Claimed at: `2026-07-11T08:19:07Z`
-- Status: `in-progress`
+- Status: `blocked`
 
 ## Owned Files
 
@@ -41,3 +41,15 @@ Stop and report blocked for an operational API mismatch, schema conflict,
 prompt/payload/provider-response leakage, provider credential need, unsafe
 external-effect semantics, or repeated verifier failure after two focused
 repair attempts.
+
+## Blocked Evidence
+
+- RED command failed as expected with descriptor applicability, readiness, and
+  provider-fallback gaps.
+- Targeted GREEN command passed: 4 test files and 103 tests.
+- Fallback synthesis search returned no matches.
+- `npm run verify` passed typecheck but the full suite still failed after two
+  focused compatibility repairs. Remaining failures are stale specialist/cockpit
+  DTO expectations and workflow fixtures without production-ready resolved
+  context envelopes. No unsafe prompt, payload, provider-response, or credential
+  material is recorded here.
