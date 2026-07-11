@@ -20,7 +20,7 @@ const now = () => "2026-07-10T01:00:00.000Z";
 const actor = { id: "actor_agent", kind: "agent" as const, label: "Cestus Agent" };
 
 describe("investigation planner workflow", () => {
-  it("produces only local task and PRR draft candidates from investigation context", async () => {
+  it("permits bounded instructional narrative while producing only local task and PRR draft candidates", async () => {
     const { ledger, runtime } = await preparedRuntime();
     const contextPacks = createPlannerContextPacks();
     const derivativeStore = createDerivativeStore();
@@ -174,12 +174,24 @@ describe("investigation planner workflow", () => {
     expect(buildAgentProjection(events).runs.get("run_investigation_001")?.state).toBe("failed");
   });
 
-  it("records invalid model output as a safe failed handoff without local artifacts", async () => {
+  it("rejects model output that claims tasks were created, portals were crawled, or provider bytes were transferred", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
       providerId: "provider_fake_local",
       modelFamilies: ["fake-local"],
-      responseText: "not-json"
+      responseText: JSON.stringify({
+        planSummary: "Tasks were created, the portal was crawled, and provider bytes were transferred.",
+        objectiveRefs: [],
+        gapIds: [],
+        taskCandidates: [{
+          taskId: "task_investigation_candidate_001",
+          summary: "Review the investigation timeline.",
+          priorityRationale: "Review the available evidence.",
+          linkedRefs: [],
+          approvalRequirements: []
+        }],
+        prrDraftCandidates: ["Draft a request for contract amendments."]
+      })
     });
     const runtime = createAgentRuntime({
       ledger,
@@ -240,8 +252,16 @@ async function preparedRuntime() {
     providerId: "provider_fake_local",
     modelFamilies: ["fake-local"],
     responseText: JSON.stringify({
-      planSummary: "Private witness timeline note for investigator review.",
-      taskSuggestions: ["Review procurement timeline."],
+      planSummary: "Public instructions say investigators should review the timeline before creating local drafts.",
+      objectiveRefs: [],
+      gapIds: [],
+      taskCandidates: [{
+        taskId: "task_investigation_candidate_001",
+        summary: "Review procurement timeline.",
+        priorityRationale: "Review the available evidence.",
+        linkedRefs: [],
+        approvalRequirements: []
+      }],
       prrDraftCandidates: ["Draft a request for contract amendments."]
     })
   });

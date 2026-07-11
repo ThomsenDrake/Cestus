@@ -71,7 +71,9 @@ const hasAuthorityClaim = (value: string) => {
   return (
     hasCompletedPrrEffect(normalized) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
-    hasAuthorityEffectUnlessInstruction(normalized, /\bprovider(?: byte)? transfer\b/, /\b(?:approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|performed|authori[sz](?:e|ed|ation))\b/) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:provider(?: byte)? transfer|provider bytes?)\b/, /\b(?:approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|performed|transferred|authori[sz](?:e|ed|ation))\b/) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:tasks?|review task)\b/, /\b(?:created|launched)\b/, hasDirectOrFirstPersonSubjectAction) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:portal|site)\b/, /\b(?:crawled|scraped)\b/, hasDirectOrFirstPersonSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/, hasDirectOrFirstPersonSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed|ran successfully)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||

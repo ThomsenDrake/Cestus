@@ -76,15 +76,18 @@ interface AuthoritativePrrFollowUpFixture {
 }
 
 describe("PRR negotiation workflow", () => {
-  it("builds declared context, invokes the configured model boundary, drafts locally, and requests follow-up approval", async () => {
+  it("permits bounded instructional narrative while drafting locally and requesting follow-up approval", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
       providerId: "provider_fake_local",
       modelFamilies: ["fake-local"],
       responseText: JSON.stringify({
-        draftSummary: "Private case narrative for investigator review only.",
+        draftSummary: "Public instructions say staff should mail a follow-up only after human review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -232,7 +235,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private case narrative for investigator review only.",
         requestFollowUpApproval: false,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -304,7 +310,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private negotiation advisory for investigator review only.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -398,7 +407,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private negotiation advisory for investigator review only.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -493,7 +505,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -553,7 +568,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -615,7 +633,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -693,7 +714,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -762,7 +786,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -821,7 +848,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private case narrative for investigator review only.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -965,12 +995,19 @@ describe("PRR negotiation workflow", () => {
     ]));
   });
 
-  it("records invalid model output as a safe failed handoff without requesting tools", async () => {
+  it("rejects model output that claims a follow-up was sent, legal escalation completed, or a lock was cleared", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
       providerId: "provider_fake_local",
       modelFamilies: ["fake-local"],
-      responseText: "not-json"
+      responseText: JSON.stringify({
+        draftSummary: "The follow-up was sent, legal escalation was completed, and the lock was cleared.",
+        requestFollowUpApproval: false,
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
+      })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
     await runtime.initializeDefaultIdentity({ workspaceId: "ws_prr" });
@@ -1640,7 +1677,10 @@ class CountingRemoteProvider implements ModelProviderAdapter {
       outputText: JSON.stringify({
         draftSummary: "Remote private case narrative for review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       }),
       outputArtifactHash: hashText(`remote:${request.invocationId}`),
       usage: { inputUnits: 13, outputUnits: 17 }

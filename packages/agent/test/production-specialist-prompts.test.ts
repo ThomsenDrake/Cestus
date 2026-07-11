@@ -65,6 +65,28 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it("binds timeline, contradiction, and report renderers to strict provider output schemas", async () => {
+    for (const [runType, providerOutputSchemaId] of [
+      ["timeline-builder", "timeline-builder.sourced-timeline-output.v1"],
+      ["contradiction-finder", "contradiction-finder.candidates-output.v1"],
+      ["report-builder", "report-builder.packet-draft-output.v1"]
+    ] as const) {
+      const registry = rendererContextPackRegistry();
+      const artifact = renderProductionSpecialistPrompt({
+        runType,
+        runId: `run_${runType}_output_contract`,
+        taskId: `task_${runType}_output_contract`,
+        generatedAt: "2026-07-11T12:00:00.000Z",
+        scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+        resolvedContextPacks: await resolvedRendererPacks(registry, runType, false),
+        omissions: []
+      });
+
+      expect(artifact.manifest.production?.providerOutputSchemaId).toBe(providerOutputSchemaId);
+      expect(artifact.text).toContain(providerOutputSchemaId);
+    }
+  });
+
   it("keeps renderer hashes stable across registration lookups", () => {
     const registeredHashes = productionSpecialistPromptRegistrations.map((registration) => registration.rendererHash);
     expect(registeredHashes).toEqual(
@@ -667,6 +689,50 @@ describe("production specialist prompt registrations", () => {
       "Provider byte transfer must be completed; it was completed."
     ]) {
       expect(() => triage(claim)).toThrow(/authority|external effect|ontology/i);
+    }
+  });
+
+  it("rejects completed task, crawl, and plural provider-byte effects while retaining bounded instructions", () => {
+    const triage = (dossierSummary: string) => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary,
+        safeSummaries: [],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    });
+
+    for (const claim of [
+      "Tasks were created.",
+      "We created the review task.",
+      "The review task must be created; it was created.",
+      "task_was_created",
+      "The portal was crawled.",
+      "We scraped the site.",
+      "The portal should be crawled; it was crawled.",
+      "portal_was_scraped",
+      "Provider bytes were transferred.",
+      "We transferred provider bytes.",
+      "Provider bytes must be transferred; they were transferred.",
+      "provider_bytes_were_transferred"
+    ]) {
+      expect(() => triage(claim)).toThrow(/authority|external effect|ontology/i);
+    }
+
+    for (const instruction of [
+      "Create a review task.",
+      "The investigator should crawl the portal after approval.",
+      "Provider bytes must not be transferred without approval.",
+      "Task candidate: review the public records after a human decision."
+    ]) {
+      expect(triage(instruction).runType).toBe("evidence-triage");
     }
   });
 
@@ -1643,7 +1709,7 @@ function taskRunHistory(summary: string) {
 
 async function resolvedRendererPacks(
   registry: ReturnType<typeof rendererContextPackRegistry>,
-  runType: "evidence-triage" | "investigation-planner" | "report-builder",
+  runType: "evidence-triage" | "timeline-builder" | "contradiction-finder" | "investigation-planner" | "report-builder",
   includePrr: boolean
 ) {
   const requirements = productionSpecialistPromptRegistrationFor(runType).contextRequirements

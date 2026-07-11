@@ -2,6 +2,10 @@ import { z } from "zod";
 import { providerParseExecuteDescriptor } from "./adapters/provider-byte-transfer.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import {
+  validateProductionSpecialistProviderOutput,
+  type EvidenceTriageClassifyOutput
+} from "./production-specialist-output-contracts.js";
+import {
   parseLegacySpecialistWorkflowHandoff,
   type LegacySpecialistWorkflowHandoffDto,
   type SpecialistNextAction
@@ -20,39 +24,9 @@ import {
   type SpecialistRunnerBaseInput
 } from "./specialist-runner-kernel.js";
 import type { AgentToolPreview } from "./tool-gateway.js";
-const safeModelText = z.string().min(1).max(500).superRefine((value, ctx) => {
-  try { assertAgentSecretSafeText(value, "evidence triage model output"); } catch { ctx.addIssue({ code: "custom", message: "model output must be secret-safe" }); }
-});
-const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/);
-const outputSchema = z.object({
-  dossierSummary: safeModelText,
-  safeSummaries: z.array(safeModelText).min(1).max(24),
-  governanceFlags: z.array(z.object({
-    evidenceId: evidenceIdSchema,
-    tag: safeModelText,
-    confidence: z.number().min(0).max(1),
-    rationale: safeModelText
-  }).strict()).max(24),
-  duplicateGroups: z.array(z.object({
-    groupId: z.string().regex(/^dup_[a-zA-Z0-9_-]+$/),
-    evidenceIds: z.array(evidenceIdSchema).min(1).max(24),
-    rationale: safeModelText
-  }).strict()).max(24),
-  evidenceGaps: z.array(safeModelText).max(24),
-  assertionCandidates: z.array(z.object({
-    candidateId: z.string().regex(/^cand_[a-zA-Z0-9_-]+$/),
-    evidenceId: evidenceIdSchema,
-    predicate: safeModelText,
-    confidence: z.number().min(0).max(1),
-    rationale: safeModelText
-  }).strict()).max(24),
-  requestProviderParseApproval: z.boolean(),
-  requestGovernanceReview: z.boolean(),
-  requestQuarantineReview: z.boolean(),
-  requestAssertionProposalReview: z.boolean()
-}).strict();
 
-type EvidenceTriageModelOutput = z.infer<typeof outputSchema>;
+const evidenceIdSchema = z.string().regex(/^ev_[a-zA-Z0-9_-]+$/);
+type EvidenceTriageModelOutput = EvidenceTriageClassifyOutput;
 
 export interface RunEvidenceTriageWorkflowInput extends SpecialistRunnerBaseInput {
   readonly evidenceIds: readonly string[];
@@ -180,9 +154,13 @@ export async function runEvidenceTriageWorkflow(
   });
 }
 
-function parseModelOutput(outputText: string): EvidenceTriageModelOutput | undefined {
+function parseModelOutput(outputText: string) {
   try {
-    return outputSchema.parse(JSON.parse(outputText));
+    const output = validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: JSON.parse(outputText)
+    });
+    return output.runType === "evidence-triage" ? output.value : undefined;
   } catch {
     return undefined;
   }
