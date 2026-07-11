@@ -271,6 +271,50 @@ describe("production specialist prompt registrations", () => {
     }).runType).toBe("evidence-triage");
   });
 
+  it("rejects completed-effect nominalizations in narrative fields", () => {
+    for (const claim of [
+      "The PRR delivery was completed.",
+      "The PRR submission was completed.",
+      "The publication was completed.",
+      "The entity resolution was completed.",
+      "The lock clearing was completed."
+    ]) {
+      expect(() => validateProductionSpecialistProviderOutput({
+        runType: "evidence-triage",
+        value: {
+          dossierSummary: "Evidence needs review.",
+          safeSummaries: [claim],
+          governanceFlags: [],
+          duplicateGroups: [],
+          evidenceGaps: [],
+          assertionCandidates: [],
+          requestProviderParseApproval: false,
+          requestGovernanceReview: false,
+          requestQuarantineReview: false,
+          requestAssertionProposalReview: false
+        }
+      })).toThrow(/authority|external effect|ontology/i);
+    }
+  });
+
+  it("rejects raw provider errors and hidden local paths in narrative fields", () => {
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "Provider error 429 from /home/user/provider-response.json",
+        safeSummaries: [],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    })).toThrow(/provider error|hidden local path/i);
+  });
+
   it("requires normalized safe dates for timeline ranges", () => {
     const timeline = (start: string, end: string) => validateProductionSpecialistProviderOutput({
       runType: "timeline-builder",

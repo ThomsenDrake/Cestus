@@ -5,28 +5,31 @@ import type { AgentSpecialistRunType } from "./specialists.js";
 type ProductionRunType = Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
 
 const normalizeAuthorityClaimText = (value: string) => value
-  .replaceAll("_", " ")
-  .replaceAll("-", " ")
+  .replace(/[^a-zA-Z0-9]+/g, " ")
   .replace(/\s+/g, " ")
   .trim()
   .toLowerCase();
 
 const hasSubjectAction = (value: string, subject: RegExp, action: RegExp) => subject.test(value) && action.test(value);
+const hasCompletedEffect = (value: string, subject: RegExp, action: RegExp) =>
+  hasSubjectAction(value, subject, action) || hasSubjectAction(value, subject, /\bcompleted\b/);
 
 const hasAuthorityClaim = (value: string) => {
   const normalized = normalizeAuthorityClaimText(value);
 
   return (
-    hasSubjectAction(normalized, /\b(?:prr|public records request|request|response)\b/, /\b(?:sent|emailed|mailed|filed|submitted|delivered|transferred|uploaded|published)\b/) ||
-    hasSubjectAction(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|completed|sent|filed|escalated|approved)\b/) ||
+    hasCompletedEffect(normalized, /\b(?:prr|public records request|request|response)\b/, /\b(?:sent|emailed|mailed|filed|submitted|delivered|transferred|uploaded|published)\b/) ||
+    hasCompletedEffect(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
     hasSubjectAction(normalized, /\bprovider byte transfer\b/, /\b(?:human )?approved\b/) ||
-    hasSubjectAction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/) ||
-    hasSubjectAction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed|completed)\b/) ||
-    hasSubjectAction(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
-    hasSubjectAction(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||
-    hasSubjectAction(normalized, /\b(?:legal|export|governance )?lock\b/, /\bcleared\b/)
+    hasCompletedEffect(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/) ||
+    hasCompletedEffect(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed)\b/) ||
+    hasCompletedEffect(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
+    hasCompletedEffect(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||
+    hasCompletedEffect(normalized, /\b(?:legal|export|governance )?lock\b/, /\bcleared\b/)
   );
 };
+const hasRawProviderError = (value: string) => /\bprovider\s+error\b/i.test(value);
+const hasHiddenLocalPath = (value: string) => /(?:^|[\s("'])\/(?:home|Users)(?:\/|$)/.test(value);
 const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((value, ctx) => {
   try {
     assertAgentSecretSafeText(value, label);
@@ -36,19 +39,17 @@ const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((va
   if (hasAuthorityClaim(value)) {
     ctx.addIssue({ code: "custom", message: `${label} must not claim authority, an external effect, or accepted ontology truth` });
   }
+  if (hasRawProviderError(value)) {
+    ctx.addIssue({ code: "custom", message: `${label} must not include a raw provider error` });
+  }
+  if (hasHiddenLocalPath(value)) {
+    ctx.addIssue({ code: "custom", message: `${label} must not include a hidden local path` });
+  }
 });
 const shortSafeText = (label: string) => safeText(label).max(500);
 const id = (prefix: string) => safeText(`${prefix} identifier`).regex(new RegExp(`^${prefix}[a-zA-Z0-9_-]+$`));
 const canonicalReferencePattern = /^(?:sha256:[a-f0-9]{64}|(?=[a-zA-Z0-9._:-]{3,200}$)(?=[a-zA-Z0-9._:-]*[_:.])[a-zA-Z][a-zA-Z0-9._:-]*)$/;
-const ref = z.string().min(1).max(200).superRefine((value, ctx) => {
-  try {
-    assertAgentSecretSafeText(value, "provider output reference");
-  } catch {
-    ctx.addIssue({ code: "custom", message: "provider output reference must be secret-safe" });
-  }
-  if (hasAuthorityClaim(value)) {
-    ctx.addIssue({ code: "custom", message: "provider output reference must not claim authority, an external effect, or accepted ontology truth" });
-  }
+const ref = safeText("provider output reference").max(200).superRefine((value, ctx) => {
   if (!canonicalReferencePattern.test(value)) {
     ctx.addIssue({ code: "custom", message: "provider output reference must be a canonical identifier or sha256 hash" });
   }
