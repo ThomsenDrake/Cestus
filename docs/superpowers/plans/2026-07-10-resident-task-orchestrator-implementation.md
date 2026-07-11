@@ -57,7 +57,7 @@ Expected: all required symbols exist, every listed test passes, and runtime stat
 
 Required source and exports:
 
-- `packages/agent/src/context-packs.ts` exports `ResolvedContextPack`, opaque `VerifiedResolvedContextPack`, `ContextPackPayloadResolver`, `buildResolvedContextPack`, `verifyResolvedContextPack`, `assertResolvedContextPacksForExecution`, `createContextPackRegistry`, and `ContextPackRegistry.buildResolved()`.
+- `packages/agent/src/context-packs.ts` exports `ResolvedContextPack`, opaque `VerifiedResolvedContextPack`, callable `ContextPackPayloadResolver`, `buildResolvedContextPack`, `verifyResolvedContextPack`, positional `assertResolvedContextPacksForExecution(refs, resolvedPacks)`, `createContextPackRegistry`, and `ContextPackRegistry.buildResolved()`.
 - `packages/agent/src/operational-context-packs.ts` exports builders/registration for `workspace-runtime-status.v1`, `task-run-history.v1`, and `agent-memory-summary.v1`, including exact payload parsers.
 - `packages/agent/test/fixtures/resolved-context-pack-sentinel.ts` exports the sentinel fixture used by prompt/orchestrator live acceptance.
 
@@ -97,7 +97,8 @@ Expected: all three investigative packs can be built as resolved envelopes and p
 
 Required source and exports:
 
-- `packages/agent/src/production-specialist-prompts.ts` exports production prompt registrations, renderer verification, context applicability evaluation, `renderProductionSpecialistPrompt()`, and strict provider output validation.
+- `packages/agent/src/production-specialist-prompts.ts` exports production prompt registrations, renderer verification, context applicability evaluation, and `renderProductionSpecialistPrompt()`.
+- `packages/agent/src/production-specialist-output-contracts.ts` exports strict `validateProductionSpecialistProviderOutput()` validation.
 - `packages/agent/src/specialist-workflows.ts` exposes conditional context requirement modes, including PRR requirements as `when-scope-associated-prr` for non-PRR evidence triage.
 - Provider preparation rejects ref-only prompt synthesis and requires verified resolved payloads for every applicable pack.
 
@@ -114,18 +115,19 @@ Expected: non-PRR evidence triage records `no-associated-prr` instead of blockin
 
 Required source and exports:
 
-- `packages/agent/src/specialist-handoff-manifest.ts` exports manifest hashing and verification helpers.
-- `packages/agent/src/specialist-handoff-projection.ts` exports projector states including `handoff-pending` and verified recorded/readback states.
-- `packages/agent/src/specialist-runner-kernel.ts` exposes the final-output to prepared to recorded/readback to run-terminal helper sequence.
+- `packages/agent/src/specialist-handoff-manifest.ts` exports manifest hashing, `buildSpecialistHandoffManifest()`, and `verifySpecialistHandoffManifest()`.
+- `packages/agent/src/specialist-handoff-projection.ts` exports `buildSpecialistHandoffProjection()` and projector states including `handoff-pending` and verified recorded/readback states.
+- `packages/ontology/src/contracts.ts` owns strict `agent.specialist-handoff.prepared` and `agent.specialist-handoff.recorded` event contracts.
+- Task 6 owns the thin orchestrator adapter and runner sequencing that connect final output, manifest storage, prepared/recorded events, projection readback, and run terminal state. Do not require speculative prerequisite `prepare()`/`record()`/`readback()` exports.
 
 Preflight:
 
 ```bash
-rg -n "specialist-handoff\\.prepared|specialist-handoff\\.recorded|handoff-pending|final-output|readback|VerifiedSpecialistHandoff|prepare.*record.*readback" packages/ontology/src packages/agent/src packages/agent/test
+rg -n "specialist-handoff\\.prepared|specialist-handoff\\.recorded|handoff-pending|buildSpecialistHandoffManifest|verifySpecialistHandoffManifest|buildSpecialistHandoffProjection|final-output|readback" packages/ontology/src packages/agent/src packages/agent/test
 npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/specialist-handoff-manifest.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/specialist-runner-kernel.test.ts
 ```
 
-Expected: task success cannot project until verified handoff readback exists, and no code path can synthesize a handoff from run output hashes alone.
+Expected: the canonical manifest, event, and projection contracts exist; projection cannot treat output hashes alone as a verified handoff. Task 6 must add the orchestrator-owned sequencing adapter before orchestration can project task success.
 
 ### PRR Pack Readiness
 
@@ -145,11 +147,15 @@ npm test -- packages/agent/test/prr-context-packs.test.ts packages/local-runtime
 
 Expected: PRR-linked modes remain blocked if this preflight is absent or failing. Non-PRR evidence triage records PRR context as inapplicable and can continue.
 
-Stop if any required source/export/test for the first evidence-triage vertical is absent, if the mounted workspace cannot prove `agent_default` ready, if the handoff lane changes the final-output to prepared to recorded/readback to run-terminal order, if the prompt lane cannot identify applicable packs before provider dispatch, or if configured live Nous provider credentials are unavailable for the mandatory acceptance gate.
+Stop if any required source/export/test for the first evidence-triage vertical is absent, if the mounted workspace cannot prove `agent_default` ready, if the handoff contracts cannot support final-output to prepared to recorded/readback to run-terminal order, if the prompt lane cannot identify applicable packs before provider dispatch, or if configured live Nous provider credentials are unavailable for the mandatory acceptance gate.
 
 ## Required Lane Interfaces
 
-The implementation must consume these interfaces from the prerequisite lanes. If an interface lands with a different exact exported name, create a thin orchestrator adapter and preserve the semantics below.
+The implementation consumes the landed prerequisite interfaces below. Do not
+recreate the provisional object-style resolver or renderer facades from the
+design discussion. Where orchestration needs one cohesive capability, add a
+thin orchestrator-owned adapter over these exports without widening their
+authority.
 
 ```ts
 export interface ResolvedContextPack {
@@ -163,62 +169,75 @@ export type VerifiedResolvedContextPack = ResolvedContextPack & {
   readonly [verifiedResolvedContextPackBrand]: true;
 };
 
-export interface ContextPackPayloadResolver {
-  resolve(ref: ContextPackRef): Promise<ResolvedContextPack>;
-}
+export type ContextPackPayloadResolver = (ref: ContextPackRef) =>
+  | AgentContextPackJsonValue
+  | ResolvedContextPack
+  | Promise<AgentContextPackJsonValue | ResolvedContextPack>;
 
-export function assertResolvedContextPacksForExecution(input: {
-  readonly refs: readonly ContextPackRef[];
-  readonly resolved: readonly ResolvedContextPack[];
-}): readonly VerifiedResolvedContextPack[];
+export function assertResolvedContextPacksForExecution(
+  refs: readonly ContextPackRef[],
+  resolvedPacks: readonly ResolvedContextPack[]
+): readonly VerifiedResolvedContextPack[];
 ```
 
 The orchestrator consumes only opaque `VerifiedResolvedContextPack` values returned by the operational registry/execution assertion after local resolve, hash check, size check, and exact parser validation. It never trusts a caller-supplied object with `ok: true`, `verified: true`, `parserVerification`, or equivalent serializable proof.
 
 ```ts
-export interface SpecialistContextApplicabilityPlan {
-  readonly applicablePackIds: readonly string[];
-  readonly inapplicablePackIds: readonly string[];
-  readonly reasonByPackId: Readonly<Record<string, string>>;
-}
+export function evaluateProductionContextRequirements(
+  input: EvaluateProductionContextRequirementsInput
+): EvaluatedProductionContext;
 
-export interface SpecialistPromptWorkflowRenderer {
-  contextApplicability(input: {
-    readonly taskId: string;
-    readonly runType: AgentSpecialistRunType;
-    readonly taskKind: string;
-    readonly taskPayload: AgentJsonValue;
-  }): SpecialistContextApplicabilityPlan;
+export function renderProductionSpecialistPrompt(
+  input: RenderProductionSpecialistPromptInput
+): PromptArtifactEnvelope;
 
-  render(input: {
-    readonly taskId: string;
-    readonly runType: AgentSpecialistRunType;
-    readonly applicableResolvedPacks: readonly VerifiedResolvedContextPack[];
-    readonly providerPosture: AgentProviderPosture;
-  }): Promise<PromptArtifactEnvelope>;
-}
+export function verifyProductionSpecialistPromptArtifact(
+  input: VerifyProductionSpecialistPromptArtifactInput
+): PromptArtifactEnvelope;
+
+export function productionSpecialistPromptRegistrationFor(
+  runType: ProductionRunType
+): ProductionSpecialistPromptRegistration;
 ```
 
+Applicability comes from the exact production registration and
+`evaluateProductionContextRequirements()`. Prompt construction and verification
+use the landed canonical renderer functions; the orchestrator must not create a
+parallel prompt facade or ad hoc text path.
+
 ```ts
+// Orchestrator-owned adapter over the landed handoff manifest, ledger-event,
+// content-addressed storage, and projection/readback contracts.
 export interface DurableSpecialistHandoffCapability {
   prepare(input: {
     readonly taskId: string;
     readonly runId: string;
     readonly attemptId: string;
     readonly finalOutputArtifactRef: ContentAddressedArtifactRef;
-  }): Promise<PreparedSpecialistHandoffManifest>;
+  }): Promise<SpecialistHandoffManifest>;
 
   record(input: {
-    readonly preparedManifest: PreparedSpecialistHandoffManifest;
+    readonly preparedManifest: SpecialistHandoffManifest;
     readonly expectedSequence: number;
-  }): Promise<RecordedSpecialistHandoff>;
+  }): Promise<{
+    readonly preparedEvent: KnowledgeEventOf<"agent.specialist-handoff.prepared">;
+    readonly recordedEvent: KnowledgeEventOf<"agent.specialist-handoff.recorded">;
+  }>;
 
   readback(input: {
     readonly handoffId: string;
     readonly manifestHash: string;
-  }): Promise<VerifiedSpecialistHandoff>;
+  }): Promise<SpecialistWorkflowHandoffDto>;
 }
 ```
+
+The adapter must delegate manifest identity and verification to
+`buildSpecialistHandoffManifest()` and `verifySpecialistHandoffManifest()`,
+append the landed `agent.specialist-handoff.prepared` and
+`agent.specialist-handoff.recorded` events, and prove readback through
+`buildSpecialistHandoffProjection()`. The interface above is orchestrator-owned;
+it is not evidence that prerequisite packages export speculative
+`prepare`/`record`/`readback` functions.
 
 The orchestrator must never ledger raw resolved payloads, cockpit raw payloads, log raw payloads, synthetic approvals, synthetic domain proof, synthetic handoffs, accepted graph truth, legal escalation, PRR submission, exports, lock clearing, or old-source mutation.
 
@@ -442,10 +461,15 @@ git commit -m "feat: verify resolved context before resident dispatch"
 - `docs/agentic/claims/resident-task-orchestrator-task-5.md`
 - `packages/agent/src/task-orchestrator.ts`
 - `packages/agent/src/task-orchestrator-types.ts`
+- `packages/agent/src/task-orchestrator-approval.ts`
 - `packages/agent/src/provider-selection.ts`
-- `packages/agent/src/approvals.ts`
 - `packages/agent/test/task-orchestrator-approval.test.ts`
 - `packages/agent/test/provider-selection.test.ts`
+
+Read, but do not modify unless a focused verifier proves a narrow supporting
+change is required: `packages/agent/src/adapters/provider-byte-transfer.ts`,
+`packages/agent/src/tool-gateway.ts`, and
+`packages/agent/src/specialist-runner-kernel.ts`.
 
 **Tests first:**
 
@@ -465,7 +489,7 @@ git commit -m "feat: verify resolved context before resident dispatch"
 **Implementation:**
 
 - [ ] Add provider posture checkpoint fields: provider ID, model ID, policy version, capability IDs, prompt artifact hash, context binding hashes, approval requirement ID.
-- [ ] Reuse existing provider-byte-transfer approval reader and validator exactly. Do not add alternate approval proof.
+- [ ] Implement the orchestrator-owned approval adapter in `task-orchestrator-approval.ts` by reusing `rebuildProviderByteTransferCurrentPreview()`, strict tool-gateway approval events, and the specialist runner's consume-time proof semantics. Do not add alternate approval proof or duplicate those validators.
 - [ ] Add suspended checkpoint state and claim release when approval is required.
 - [ ] On later tick, reclaim the task stream idempotently, verify approval again from durable proof, and resume from the checkpoint.
 - [ ] Ensure canceled status after approval but before dispatch wins over provider invocation.
@@ -476,7 +500,7 @@ git commit -m "feat: verify resolved context before resident dispatch"
 npm test -- packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-selection.test.ts
 npm run verify
 git status --short
-git add docs/agentic/claims/resident-task-orchestrator-task-5.md packages/agent/src/task-orchestrator.ts packages/agent/src/task-orchestrator-types.ts packages/agent/src/provider-selection.ts packages/agent/src/approvals.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-selection.test.ts
+git add docs/agentic/claims/resident-task-orchestrator-task-5.md packages/agent/src/task-orchestrator.ts packages/agent/src/task-orchestrator-types.ts packages/agent/src/task-orchestrator-approval.ts packages/agent/src/provider-selection.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/provider-selection.test.ts
 git commit -m "feat: suspend resident tasks for exact provider approval"
 ```
 
@@ -593,7 +617,7 @@ git commit -m "feat: expose resident task orchestrator runtime tick"
 **Tests first:**
 
 - [ ] Add integration tests named:
-  - `evidence triage queue claim plan context approval wait reclaim fake provider final output handoff run terminal task terminal`
+  - `evidence triage queue claim plan context approval wait reclaim deterministic test provider final output handoff run terminal task terminal`
   - `evidence triage restart before claim reconstructs queued`
   - `evidence triage restart after claim reconstructs active attempt`
   - `evidence triage restart after context checkpoint reconstructs context bindings`
@@ -610,7 +634,7 @@ git commit -m "feat: expose resident task orchestrator runtime tick"
 
 **Implementation:**
 
-- [ ] Wire the deterministic fake provider only for contract and integration tests; mark it unable to satisfy provider execution readiness.
+- [ ] Wire the deterministic test provider only for offline contract and integration tests. It may satisfy an explicitly injected local test posture so deterministic orchestration reaches dispatch, but it must remain unable to satisfy the live remote-provider acceptance gate or impersonate Nous readiness.
 - [ ] Prove queue to claim to plan to context to approval wait to reclaim to provider to final output to handoff to run terminal to task terminal.
 - [ ] Insert restart reconstruction assertions at every crash boundary from the spec.
 - [ ] Ensure the task projection shows `handoff-pending` whenever the handoff protocol is incomplete.
@@ -635,7 +659,6 @@ git commit -m "test: cover resident evidence triage orchestration"
 
 - `docs/agentic/claims/resident-task-orchestrator-task-9.md`
 - `packages/agent/test/task-orchestrator-evidence-triage-live.test.ts`
-- `packages/agent/test/evidence-triage-nous-live.test.ts`
 - `packages/agent/src/task-orchestrator-context.ts`
 - `packages/agent/src/task-orchestrator.ts`
 
@@ -644,30 +667,37 @@ git commit -m "test: cover resident evidence triage orchestration"
 - [ ] Add live test named `real nous evidence triage emits structured output containing resolved payload sentinel`.
 - [ ] Add live negative test named `live readiness fails when sentinel exists only behind unresolved context ref`.
 
-**Expected RED:** With `CESTUS_AGENT_LIVE_NOUS=1` and repo-local secret setup, tests fail because live task orchestration does not yet prove resolved payload bytes reach the structured model output.
+**Expected RED:** With `/home/drake/Projects/Cestus/.env` loaded by path and `CESTUS_AGENT_LIVE_NOUS=1`, tests fail because live task orchestration does not yet prove resolved payload bytes reach the structured model output.
 
 **Implementation:**
 
 - [ ] Add a sentinel fact into an applicable resolved investigative context payload only.
 - [ ] Render prompt artifact from verified payload bytes and bind the prompt artifact hash into the approval checkpoint.
 - [ ] Require exact provider-byte-transfer approval covering provider, model, prompt hash, and context hash set.
-- [ ] Dispatch through the configured real Nous provider; unavailable provider configuration or repo-local secret setup blocks feature completion and escalates to the coordinator.
+- [ ] Dispatch through the configured real Nous provider; unavailable configuration in `/home/drake/Projects/Cestus/.env` blocks feature completion and escalates to the coordinator. Never copy the file or print its values.
 - [ ] Assert structured model output contains the sentinel fact in the expected schema field.
 - [ ] Assert no sentinel raw payload appears in ledger events, cockpit DTOs, approval previews, or logs.
-- [ ] Keep offline fake provider tests separate and unable to satisfy live provider execution readiness.
+- [ ] Keep offline test-provider coverage separate and unable to satisfy the live remote-provider acceptance gate.
+- [ ] Treat the completed Wave 3 `evidence-triage-nous-live.test.ts` as a read-only prerequisite. Do not edit or duplicate its provider contract; the new test must prove the additional orchestrator path.
+- [ ] Require three consecutive live GREEN runs before recording Task 9 complete. On failure, diagnostics may expose only fixed statuses, HTTP status, finish reason, output character count, JSON validity, exact-key validity, and schema issue paths/codes, never prompt/output/payload values.
 
 **Verify:**
 
 ```bash
 npm test -- packages/agent/test/task-orchestrator-evidence-triage-live.test.ts
-CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/task-orchestrator-evidence-triage-live.test.ts
+set -a
+. /home/drake/Projects/Cestus/.env
+set +a
+for attempt in 1 2 3; do
+  CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/task-orchestrator-evidence-triage-live.test.ts || exit 1
+done
 npm run verify
 git status --short
-git add docs/agentic/claims/resident-task-orchestrator-task-9.md packages/agent/test/task-orchestrator-evidence-triage-live.test.ts packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/src/task-orchestrator-context.ts packages/agent/src/task-orchestrator.ts
+git add docs/agentic/claims/resident-task-orchestrator-task-9.md packages/agent/test/task-orchestrator-evidence-triage-live.test.ts packages/agent/src/task-orchestrator-context.ts packages/agent/src/task-orchestrator.ts
 git commit -m "test: add live nous resident orchestration acceptance"
 ```
 
-Stop and escalate if the configured live Nous provider or repo-local secret setup is unavailable. The feature cannot be marked complete without this live acceptance. Also stop if provider readiness can be satisfied by an offline fake or if the sentinel appears outside the provider request and structured provider output.
+Stop and escalate if the configured live Nous provider or root project environment is unavailable. The feature cannot be marked complete without this live acceptance. Also stop if an offline test provider can impersonate the live remote-provider gate or if the sentinel appears outside the provider request, validated local derivative output, and in-process sentinel assertion.
 
 ## Task 10: Cockpit And Human Handoff Projection
 
@@ -755,7 +785,12 @@ git commit -m "feat: show resident task orchestration in cockpit"
 git diff --check
 npm run factory:check
 npm test -- packages/agent/test/task-orchestrator-events.test.ts packages/agent/test/task-orchestrator-projection.test.ts packages/agent/test/task-orchestrator-claims.test.ts packages/agent/test/task-orchestrator-context.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts
-CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/task-orchestrator-evidence-triage-live.test.ts
+set -a
+. /home/drake/Projects/Cestus/.env
+set +a
+for attempt in 1 2 3; do
+  CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/task-orchestrator-evidence-triage-live.test.ts || exit 1
+done
 npm run verify
 git status --short
 git add docs/agentic/claims/resident-task-orchestrator-task-11.md scripts/check-agent-readiness.mjs docs/superpowers/plans/2026-07-10-resident-task-orchestrator-implementation.md
@@ -805,5 +840,5 @@ The feature is not complete until the following sequence is proven by determinis
 - Any terminal projection from runner output hashes without verified handoff readback.
 - Any old-source mutation, accepted-graph-truth acceptance, governance lock clearing, PRR submission, export, or legal escalation.
 - Any restart boundary that cannot be reconstructed from append-only events.
-- Unavailable configured live Nous provider or repo-local secret setup for mandatory acceptance.
+- Unavailable configured live Nous provider or `/home/drake/Projects/Cestus/.env` setup for mandatory acceptance.
 - Repeated verifier failure after a systematic debugging pass and one focused correction attempt.
