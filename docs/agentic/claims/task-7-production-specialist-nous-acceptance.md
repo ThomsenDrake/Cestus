@@ -37,7 +37,14 @@ or record a live acceptance pass without the gated provider result.
 - Claim commit: `f8f46e08 chore: claim production specialist nous acceptance`.
 - Deterministic compile/skip path passed: 2 test files and 2 tests skipped with
   `CESTUS_AGENT_LIVE_NOUS` unset.
-- Live acceptance is blocked: both required suites stopped before provider setup
-  because the local Nous authentication binding is unavailable. No fake provider
-  was substituted, no live acceptance pass was recorded, and `npm run verify`
-  was not run after this required external dependency stop.
+- The shared live-provider environment was loaded from
+  `/home/drake/Projects/Cestus/.env` by path only; no environment values were
+  recorded.
+- Live authentication and provider invocation proceeded, but both workflows
+  returned failed handoffs because their provider responses did not validate the
+  required production structured-output contracts. No response text was logged
+  or serialized.
+- Completing this acceptance requires a production renderer or provider-output
+  contract change outside Task 7. No fake provider was substituted, no live
+  acceptance pass was recorded, and `npm run verify` was not run after this
+  scoped stop.
