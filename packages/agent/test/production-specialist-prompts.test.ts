@@ -441,6 +441,42 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it("rejects raw provider diagnostics without relying on a provider allowlist", () => {
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "Anthropic error: timeout",
+        safeSummaries: [],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    })).toThrow(/raw provider error/i);
+  });
+
+  it("allows PRR filing instructions that do not claim completion", () => {
+    expect(validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "Public filing instructions say the request should be mailed to the records office.",
+        safeSummaries: ["The policy instructs staff to send the request after review."],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    }).runType).toBe("evidence-triage");
+  });
+
   it("requires normalized safe dates for timeline ranges", () => {
     const timeline = (start: string, end: string) => validateProductionSpecialistProviderOutput({
       runType: "timeline-builder",
@@ -463,6 +499,7 @@ describe("production specialist prompt registrations", () => {
     expect(timeline("2026-01", "2026-02-03").runType).toBe("timeline-builder");
     expect(() => timeline("sk-live-secret", "2026-02-03")).toThrow();
     expect(() => timeline("The report was published", "2026-02-03")).toThrow();
+    expect(() => timeline("Anthropic error: timeout", "2026-02-03")).toThrow(/raw provider error/i);
   });
 
   it("applies secret and authority validation to identifier fields", () => {

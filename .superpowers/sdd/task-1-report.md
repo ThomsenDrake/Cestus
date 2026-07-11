@@ -74,3 +74,9 @@ Status: DONE
 - RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 2 expected regressions because `Provider byte-transfer approval was completed.`, `Approval for the provider byte transfer was granted.`, session header forms, `C:/Users/name/provider-response.json`, and `Provider failure: timeout` were accepted.
 - GREEN: the same focused command passed with 1 file and 18 tests after the shared `safeText` path rejected provider-byte-transfer approval/grant/completed/authorized wording in either order across narrative, identifier, and reference fields; common auth/session/token/cookie/API-key `:` or `=` headers; combined provider diagnostics including failure and timeout; and Windows forward-slash user paths. Public `https://` evidence remains valid under the existing coverage.
 - Verify: `npm run verify` passed: typecheck, test suite, Vite build, and factory readiness. Node emitted only its existing experimental SQLite warnings.
+
+## Review Findings Fix
+
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 3 expected regressions: `Anthropic error: timeout` was accepted, `Public filing instructions say the request should be mailed to the records office.` was rejected as a completed PRR effect, and an unsafe date bound did not report the shared raw-provider-diagnostic rejection.
+- GREEN: the same focused command passed with 1 file and 20 tests after shared `safeText` rejected generic diagnostic-shaped provider failures, PRR send/file/fax/mail matching required a completed effect rather than instructions, and dates used `safeText` before the existing normalized-date regex.
+- Verify: `npm run verify` passed: typecheck, test suite, Vite build, and factory readiness. Node emitted only its existing experimental SQLite warnings.
