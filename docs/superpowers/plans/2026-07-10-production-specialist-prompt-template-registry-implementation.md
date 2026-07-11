@@ -924,6 +924,7 @@ Review gate: code-quality review checks approval staleness and DTO leakage.
 - Modify: `packages/agent/src/prr-negotiation-workflow.ts`
 - Modify: `packages/agent/src/evidence-triage-workflow.ts`
 - Modify: `packages/agent/src/investigation-planner-workflow.ts`
+- Modify: `packages/agent/src/production-specialist-output-contracts.ts` (coordinator-approved narrow Task 6 support for completed-effect authority claim grammar)
 - Modify: `packages/agent/test/prr-negotiation-workflow.test.ts`
 - Modify: `packages/agent/test/evidence-triage-workflow.test.ts`
 - Modify: `packages/agent/test/investigation-planner-workflow.test.ts`
@@ -974,6 +975,18 @@ The integration points must preserve existing local-only behavior:
 - Evidence triage may create local triage artifacts and review suggestions only through existing gates.
 - Investigation planner may create local plan artifacts and PRR draft candidates only through existing gates.
 
+Coordinator-approved Task 6 support: extend the shared production output
+validator's existing clause-aware authority-claim machinery for completed
+effects only. The expansion covers durable/local task creation or launch,
+portal/site crawl or scrape completion, and provider-byte transfer completion
+including plural phrasing. Reuse the existing passive, direct, first-person,
+pronoun-after-delimiter, punctuation/underscore-normalized, and modal-aware
+helpers; do not add a workflow-local post-validator or raw keyword blacklist.
+Preserve bounded proposal, instruction, and policy language such as `Create a
+review task`, `The investigator should crawl the portal after approval`,
+`Provider bytes must not be transferred without approval`, and non-executed
+task-candidate descriptions.
+
 - [ ] **Step 5: Run GREEN and full verification**
 
 Run:
@@ -990,7 +1003,7 @@ Expected: PASS.
 Update claim evidence and commit:
 
 ```bash
-git add packages/agent/src/prr-negotiation-workflow.ts packages/agent/src/evidence-triage-workflow.ts packages/agent/src/investigation-planner-workflow.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/agent/test/production-specialist-prompts.test.ts docs/agentic/claims/task-6-production-output-validation.md
+git add packages/agent/src/prr-negotiation-workflow.ts packages/agent/src/evidence-triage-workflow.ts packages/agent/src/investigation-planner-workflow.ts packages/agent/src/production-specialist-output-contracts.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/agent/test/production-specialist-prompts.test.ts docs/agentic/claims/task-6-production-output-validation.md
 git commit -m "feat: validate production specialist model outputs"
 ```
 
