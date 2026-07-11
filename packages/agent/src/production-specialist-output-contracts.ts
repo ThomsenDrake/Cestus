@@ -35,7 +35,7 @@ const hasDirectSubjectAction = (value: string, subject: RegExp, action: RegExp) 
 
 const hasDirectOrFirstPersonSubjectAction = (value: string, subject: RegExp, action: RegExp) =>
   hasDirectSubjectAction(value, subject, action) ||
-  new RegExp(`\\b(?:i|we)\\s+(?:${action.source})\\s+(?:(?:the|a|an|this|that)\\s+)?(?:${subject.source})`, action.flags).test(value);
+  new RegExp(`\\b(?:i|we)\\s+(?:${action.source})\\s+(?:(?:the|a|an|this|that|one|two|three|several|multiple|\\d+)\\s+)?(?:${subject.source})`, action.flags).test(value);
 
 const hasAuthorityEffectUnlessInstruction = (
   value: string,
@@ -71,9 +71,9 @@ const hasAuthorityClaim = (value: string) => {
   return (
     hasCompletedPrrEffect(normalized) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
-    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:provider(?: byte)? transfer|provider bytes?)\b/, /\b(?:approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|performed|transferred|authori[sz](?:e|ed|ation))\b/) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:provider(?: byte)? transfers?|provider bytes?)\b/, /\b(?:approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|performed|transferred|authori[sz](?:e|ed|ation))\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:tasks?|review task)\b/, /\b(?:created|launched)\b/, hasDirectOrFirstPersonSubjectAction) ||
-    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:portal|site)\b/, /\b(?:crawled|scraped)\b/, hasDirectOrFirstPersonSubjectAction) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:portal|sites?)\b/, /\b(?:crawled|scraped)\b/, hasDirectOrFirstPersonSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/, hasDirectOrFirstPersonSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed|ran successfully)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||

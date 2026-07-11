@@ -712,14 +712,20 @@ describe("production specialist prompt registrations", () => {
     for (const claim of [
       "Tasks were created.",
       "We created the review task.",
+      "We created three tasks.",
+      "We launched multiple tasks.",
       "The review task must be created; it was created.",
       "task_was_created",
       "The portal was crawled.",
       "We scraped the site.",
+      "Sites were scraped.",
+      "We crawled the sites.",
       "The portal should be crawled; it was crawled.",
       "portal_was_scraped",
       "Provider bytes were transferred.",
       "We transferred provider bytes.",
+      "Provider byte transfers were completed.",
+      "We completed provider byte transfers.",
       "Provider bytes must be transferred; they were transferred.",
       "provider_bytes_were_transferred"
     ]) {
