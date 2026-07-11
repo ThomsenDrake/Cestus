@@ -14,14 +14,22 @@ const hasSubjectAction = (value: string, subject: RegExp, action: RegExp) => sub
 const hasCompletedEffect = (value: string, subject: RegExp, action: RegExp) =>
   hasSubjectAction(value, subject, action) || hasSubjectAction(value, subject, /\bcompleted\b/);
 
+const hasInstructionBeforeAction = (value: string, instructionModal: RegExp, action: RegExp) => {
+  const instructionMatch = instructionModal.exec(value);
+  const actionMatch = action.exec(value);
+
+  return instructionMatch !== null && actionMatch !== null && instructionMatch.index < actionMatch.index;
+};
+
 const hasCompletedPrrEffect = (value: string) => {
   const subject = /\b(?:prr|public records request|request|response)\b/;
   const action = /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/;
+  const completed = /\bcompleted\b/;
   const instructionModal = /\b(?:should|must|may|might|can|could|would|will)\b/;
 
   return value.split(/[,;.!?]+/).some((clause) =>
-    hasSubjectAction(clause, subject, /\bcompleted\b/) ||
-    (hasSubjectAction(clause, subject, action) && !instructionModal.test(clause))
+    (hasSubjectAction(clause, subject, completed) && !hasInstructionBeforeAction(clause, instructionModal, completed)) ||
+    (hasSubjectAction(clause, subject, action) && !hasInstructionBeforeAction(clause, instructionModal, action))
   );
 };
 
