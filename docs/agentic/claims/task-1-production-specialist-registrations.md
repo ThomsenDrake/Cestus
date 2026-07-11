@@ -37,3 +37,6 @@
 - Remaining review P1 RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 1 expected regression because `OpenAI API returned HTTP 429 rate limit exceeded` was accepted in an ordinary narrative field.
 - Remaining review P1 GREEN: the same focused command passed with 1 file and 15 tests after shared `safeText` rejected combined provider/model/API/OpenAI/Nous diagnostic signals and `file:///...`, POSIX, or Windows user local paths while retaining public `https://` URLs.
 - Remaining review P1 verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warnings.
+- Production output contract review P1 RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 3 expected regressions: `prr-negotiation` allowed `no-associated-prr`, `The PRR was faxed.` was accepted, and a `Cookie:` session header was accepted in a narrative field.
+- Production output contract review P1 GREEN: the same focused command passed with 1 file and 16 tests after registrations received run-type-specific omission lists, shared authority matching recognized faxed PRR sends, and shared `safeText` rejected authentication and cookie headers.
+- Production output contract review P1 verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warnings.

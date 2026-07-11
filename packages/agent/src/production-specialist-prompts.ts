@@ -13,17 +13,18 @@ export interface ProductionSpecialistPromptRegistration {
   readonly safetyClass: "provider-approved"; readonly transferApprovalClass: "provider-byte-transfer";
 }
 
-const allowedOmissions = Object.freeze(["context-budget", "policy-redaction", "raw-content-local-only", "quarantine-or-lock", "optional-pack-unavailable", "no-associated-prr"] as const);
+const standardAllowedOmissions = Object.freeze(["context-budget", "policy-redaction", "raw-content-local-only", "quarantine-or-lock", "optional-pack-unavailable"] as const);
+const conditionalPrrAllowedOmissions = Object.freeze([...standardAllowedOmissions, "no-associated-prr"] as const);
 const conditionalPrr = (order: number): ProductionContextRequirement => Object.freeze({ contextPackId: "prr-read-model.v1", order, requirementMode: "when-scope-associated-prr", omissionWhenNotApplicable: "no-associated-prr" });
 const always = (contextPackIds: readonly string[]): readonly ProductionContextRequirement[] => Object.freeze(contextPackIds.map((contextPackId, order) => Object.freeze({ contextPackId, order, requirementMode: "always" as const })));
 
 const definitions: readonly Omit<ProductionSpecialistPromptRegistration, "rendererHash">[] = Object.freeze([
-  definition("prr-negotiation", "prr-negotiation.review.v1", "prr-negotiation.review-output.v1", always(["prr-read-model.v1", "jurisdiction-pack-summary.v1", "governance-locks.v1", "evidence-summary.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"])),
-  definition("evidence-triage", "evidence-triage.classify.v1", "evidence-triage.classify-output.v1", withConditionalPrr(["evidence-summary.v1", "governance-locks.v1", "accepted-graph-projection.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"])),
-  definition("timeline-builder", "timeline-builder.sourced-timeline.v1", "timeline-builder.sourced-timeline-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"])),
-  definition("contradiction-finder", "contradiction-finder.candidates.v1", "contradiction-finder.candidates-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "timeline-draft-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"])),
-  definition("investigation-planner", "investigation-planner.next-steps.v1", "investigation-planner.next-steps-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "timeline-draft-summary.v1", "contradiction-candidate-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"])),
-  definition("report-builder", "report-builder.packet-draft.v1", "report-builder.packet-draft-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "timeline-draft-summary.v1", "contradiction-candidate-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]))
+  definition("prr-negotiation", "prr-negotiation.review.v1", "prr-negotiation.review-output.v1", always(["prr-read-model.v1", "jurisdiction-pack-summary.v1", "governance-locks.v1", "evidence-summary.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), standardAllowedOmissions),
+  definition("evidence-triage", "evidence-triage.classify.v1", "evidence-triage.classify-output.v1", withConditionalPrr(["evidence-summary.v1", "governance-locks.v1", "accepted-graph-projection.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions),
+  definition("timeline-builder", "timeline-builder.sourced-timeline.v1", "timeline-builder.sourced-timeline-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions),
+  definition("contradiction-finder", "contradiction-finder.candidates.v1", "contradiction-finder.candidates-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "timeline-draft-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions),
+  definition("investigation-planner", "investigation-planner.next-steps.v1", "investigation-planner.next-steps-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "timeline-draft-summary.v1", "contradiction-candidate-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions),
+  definition("report-builder", "report-builder.packet-draft.v1", "report-builder.packet-draft-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "timeline-draft-summary.v1", "contradiction-candidate-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions)
 ]);
 
 export const productionSpecialistPromptRegistrations: readonly ProductionSpecialistPromptRegistration[] = Object.freeze(definitions.map((definition) => Object.freeze({ ...definition, rendererHash: hashCanonicalRendererMaterial(definition) })));
@@ -35,7 +36,7 @@ export function productionSpecialistPromptRegistrationFor(runType: ProductionRun
   return registration;
 }
 
-function definition(runType: ProductionRunType, promptTemplateId: string, providerOutputSchemaId: string, contextRequirements: readonly ProductionContextRequirement[]): Omit<ProductionSpecialistPromptRegistration, "rendererHash"> {
+function definition(runType: ProductionRunType, promptTemplateId: string, providerOutputSchemaId: string, contextRequirements: readonly ProductionContextRequirement[], allowedOmissions: readonly ProductionPromptOmissionCategory[]): Omit<ProductionSpecialistPromptRegistration, "rendererHash"> {
   return Object.freeze({ runType, promptTemplateId, promptTemplateVersion: 1, rendererId: `${runType}.renderer.v1`, rendererVersion: 1, providerOutputSchemaId, providerOutputSchemaVersion: 1, handoffSchemaId: `${runType}-handoff.v1`, handoffSchemaVersion: 1, contextRequirements, allowedOmissions, safetyClass: "provider-approved", transferApprovalClass: "provider-byte-transfer" });
 }
 

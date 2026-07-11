@@ -38,6 +38,7 @@ describe("production specialist prompt registrations", () => {
       expect.objectContaining({ contextPackId: "prr-read-model.v1", requirementMode: "always" }),
       expect.objectContaining({ contextPackId: "jurisdiction-pack-summary.v1", requirementMode: "always" })
     ]));
+    expect(prr.allowedOmissions).not.toContain("no-associated-prr");
 
     for (const runType of ["evidence-triage", "timeline-builder", "contradiction-finder", "investigation-planner", "report-builder"] as const) {
       const registration = productionSpecialistPromptRegistrationFor(runType);
@@ -48,6 +49,7 @@ describe("production specialist prompt registrations", () => {
           omissionWhenNotApplicable: "no-associated-prr"
         })
       ]));
+      expect(registration.allowedOmissions).toContain("no-associated-prr");
     }
   });
 
@@ -190,6 +192,7 @@ describe("production specialist prompt registrations", () => {
     for (const claim of [
       "The PRR response was sent.",
       "The PRR response was emailed.",
+      "The PRR was faxed.",
       "Legal escalation was completed.",
       "The report packet was published.",
       "The repair was performed.",
@@ -313,6 +316,24 @@ describe("production specialist prompt registrations", () => {
         requestAssertionProposalReview: false
       }
     })).toThrow(/provider error|hidden local path/i);
+  });
+
+  it("rejects cookie-style authentication headers in narrative fields", () => {
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "Cookie: sessionid=provider-session-secret",
+        safeSummaries: [],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    })).toThrow(/secret-safe/i);
   });
 
   it("rejects broader provider diagnostics and local path forms without rejecting public URLs", () => {

@@ -62,3 +62,9 @@ Status: DONE
 - RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 1 expected regression because `OpenAI API returned HTTP 429 rate limit exceeded` was accepted in an ordinary narrative field.
 - GREEN: the same focused command passed with 1 file and 15 tests after the shared `safeText` path rejected combined provider/model/API/OpenAI/Nous diagnostic signals and local `file:///...`, POSIX, and Windows user paths. The exact `file:///home/user/provider-response.json` and `C:\\Users\\user\\provider-response.json` cases are covered; ordinary `https://example.org/report.pdf` evidence remains valid.
 - Verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warnings.
+
+## Production Output Contract Review P1 Fix
+
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 3 expected regressions: `prr-negotiation` advertised `no-associated-prr`, `The PRR was faxed.` was accepted as a completed send effect, and `Cookie: sessionid=provider-session-secret` was accepted in a narrative field.
+- GREEN: the same focused command passed with 1 file and 16 tests after `prr-negotiation` received the standard omission list while the five conditional-PRR registrations retained `no-associated-prr`; shared authority matching added faxed PRR sends; and shared `safeText` rejected `Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, and `X-API-Key` header forms across narratives, IDs, and refs.
+- Verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warnings.

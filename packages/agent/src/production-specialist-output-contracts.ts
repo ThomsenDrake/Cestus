@@ -18,7 +18,7 @@ const hasAuthorityClaim = (value: string) => {
   const normalized = normalizeAuthorityClaimText(value);
 
   return (
-    hasCompletedEffect(normalized, /\b(?:prr|public records request|request|response)\b/, /\b(?:sent|emailed|mailed|filed|submitted|delivered|transferred|uploaded|published)\b/) ||
+    hasCompletedEffect(normalized, /\b(?:prr|public records request|request|response)\b/, /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/) ||
     hasCompletedEffect(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
     hasSubjectAction(normalized, /\bprovider byte transfer\b/, /\b(?:human )?approved\b/) ||
     hasCompletedEffect(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/) ||
@@ -35,6 +35,8 @@ const hasHiddenLocalPath = (value: string) =>
   /\bfile:\/\/\//i.test(value) ||
   /(?:^|[\s("'])\/(?!\/)(?:[^/\s]+\/)+[^/\s]+/.test(value) ||
   /\b[a-z]:\\Users\\/i.test(value);
+const hasAuthenticationHeader = (value: string) =>
+  /\b(?:authorization|proxy-authorization|cookie|set-cookie|x-api-key)\s*:/i.test(value);
 const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((value, ctx) => {
   try {
     assertAgentSecretSafeText(value, label);
@@ -49,6 +51,9 @@ const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((va
   }
   if (hasHiddenLocalPath(value)) {
     ctx.addIssue({ code: "custom", message: `${label} must not include a hidden local path` });
+  }
+  if (hasAuthenticationHeader(value)) {
+    ctx.addIssue({ code: "custom", message: `${label} must be secret-safe` });
   }
 });
 const shortSafeText = (label: string) => safeText(label).max(500);
