@@ -37,6 +37,7 @@ import {
   type ProductionRunScope,
   type ProductionSpecialistPromptRegistration
 } from "./production-specialist-prompts.js";
+import { mintProductionSpecialistInvocationProof } from "./production-specialist-invocation-proof.js";
 import { hashAgentToolPreview } from "./tool-gateway.js";
 
 const agentCoreVersion = "0.1.0";
@@ -191,6 +192,15 @@ export async function invokeSpecialistModel(
   const current = await currentProductionSpecialistRun(input, binding.runType, binding.generatedAt);
   verifyProductionSpecialistPromptArtifact({ ...current.renderInput, artifact: prepared.promptArtifact });
   await assertProviderReadinessAllowsInvocation(input, prepared.promptArtifact);
+  const productionInvocationProof = mintProductionSpecialistInvocationProof({
+    runId: input.runId,
+    taskId: input.taskId,
+    providerId: input.providerId,
+    modelFamily: input.modelFamily,
+    credentialRefId: input.credentialRef.credentialRefId,
+    inputArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash,
+    promptArtifact: prepared.promptArtifact
+  });
   const result = await input.runtime.invokeModel({
     invocationId,
     runId: input.runId,
@@ -200,6 +210,7 @@ export async function invokeSpecialistModel(
     safetyClass: prepared.promptArtifact.manifest.safetyClass,
     credentialRef: input.credentialRef,
     promptArtifact: prepared.promptArtifact,
+    productionInvocationProof,
     returnOutputText: true
   });
   if (!result.ok || result.outputText === undefined) {

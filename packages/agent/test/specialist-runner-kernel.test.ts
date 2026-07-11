@@ -218,6 +218,33 @@ describe("production specialist run preparation", () => {
       .rejects.toThrow(/does not belong to the current invocation input/i);
     expect(current.invocationCount()).toBe(0);
   });
+
+  it("passes a runner-issued production invocation proof to the runtime after approval checks", async () => {
+    const fixture = await runnerFixture();
+    const calls: unknown[] = [];
+    const input: SpecialistRunnerBaseInput = {
+      ...fixture.input,
+      runtime: {
+        async invokeModel(command) {
+          calls.push(command);
+          return {
+            ok: true,
+            invocationId: command.invocationId,
+            outputArtifactHash: runnerHash,
+            eventIds: [],
+            outputText: "Safe specialist output."
+          };
+        }
+      }
+    };
+    const prepared = await prepareSpecialistRun(input, "evidence-triage");
+
+    await expect(invokeSpecialistModel(input, prepared, "inv_runner_proof_001")).resolves.toMatchObject({
+      outputArtifactHash: runnerHash
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual(expect.objectContaining({ productionInvocationProof: expect.anything() }));
+  });
 });
 
 const runnerContextPackIds = [
@@ -358,8 +385,6 @@ function runnerContextPackRegistry(options: {
 }
 
 function runnerParserIdentity(contextPackId: typeof runnerContextPackIds[number]): string {
-  if (contextPackId === "timeline-draft-summary.v1") return "timeline-draft-summary.production-test-parser.v1";
-  if (contextPackId === "contradiction-candidate-summary.v1") return "contradiction-candidate-summary.production-test-parser.v1";
   return contextPackId;
 }
 

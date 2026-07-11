@@ -82,6 +82,7 @@ export {
 } from "./specialists.js";
 export * from "./specialist-workflows.js";
 export * from "./specialist-handoffs.js";
+export * from "./specialist-handoff-hash.js";
 export * from "./specialist-handoff-manifest.js";
 export * from "./specialist-handoff-projection.js";
 export * from "./specialist-readiness.js";

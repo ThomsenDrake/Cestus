@@ -95,6 +95,15 @@ describe("production specialist prompt registrations", () => {
     expect(new Set(registeredHashes)).toHaveLength(productionSpecialistPromptRegistrations.length);
   });
 
+  it("uses package-owned non-test parser identities for every production renderer", () => {
+    for (const registration of productionSpecialistPromptRegistrations) {
+      const parserIdentities = Object.values(
+        productionSpecialistRendererMaterialFor(registration.runType).payloadRenderers
+      ).map((renderer) => renderer.parserIdentity);
+      expect(parserIdentities).not.toContainEqual(expect.stringMatching(/(?:test|placeholder)/i));
+    }
+  });
+
   it("binds renderer hashes to every canonical provider-facing literal and payload policy", () => {
     const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
     const material = productionSpecialistRendererMaterialFor("evidence-triage");
@@ -759,7 +768,10 @@ describe("production specialist prompt registrations", () => {
       "Provider byte transfer is approved.",
       "A human approved the provider byte transfer.",
       "The provider byte transfer was performed.",
-      "The request was filed."
+      "The request was filed.",
+      "P.R.R. was filed.",
+      "P R R was submitted.",
+      "P. R. R. was delivered."
     ]) {
       expect(() => validateProductionSpecialistProviderOutput({
         runType: "evidence-triage",
@@ -1554,6 +1566,57 @@ describe("production specialist prompt registrations", () => {
     expect(first.scopeApplicabilityHash).not.toBe(second.scopeApplicabilityHash);
   });
 
+  it("fails closed for PRR negotiation without a selected PRR and binds the selected PRR ref hash", async () => {
+    const noAssociatedPrrRegistry = rendererContextPackRegistry();
+    const noAssociatedPrrPacks = await resolvedRendererPacks(noAssociatedPrrRegistry, "prr-negotiation", true);
+    const base = {
+      runType: "prr-negotiation" as const,
+      taskId: "task_prr_scope_binding_001",
+      scope: { kind: "prr-request", refs: ["prr_selected_001"] },
+      resolvedContextPacks: noAssociatedPrrPacks
+    };
+
+    expect(() => evaluateProductionContextRequirements(base)).toThrow(/associated PRR/i);
+
+    const selectedPrrPayload = {
+      ...(defaultRendererPayload("prr-read-model.v1") as Record<string, unknown>),
+      scope: { kind: "prr-request", id: "prr_selected_001" }
+    };
+    const firstRegistry = rendererContextPackRegistry({
+      "prr-read-model.v1": selectedPrrPayload
+    }, {}, new Set(), {
+      "prr-read-model.v1": { kind: "prr-request", id: "prr_selected_001" }
+    });
+    const secondRegistry = rendererContextPackRegistry({
+      "prr-read-model.v1": {
+        ...selectedPrrPayload,
+        scope: { kind: "prr-request", id: "prr_selected_001" },
+        diagnostics: [{ code: "prr-context-revised" }]
+      }
+    }, {}, new Set(), {
+      "prr-read-model.v1": { kind: "prr-request", id: "prr_selected_001" }
+    });
+    const scope = {
+      kind: "prr-request",
+      refs: ["prr_selected_001"],
+      associatedPrrRequestId: "prr_selected_001"
+    };
+    const first = evaluateProductionContextRequirements({
+      runType: "prr-negotiation",
+      taskId: base.taskId,
+      scope,
+      resolvedContextPacks: await resolvedRendererPacks(firstRegistry, "prr-negotiation", true)
+    });
+    const second = evaluateProductionContextRequirements({
+      runType: "prr-negotiation",
+      taskId: base.taskId,
+      scope,
+      resolvedContextPacks: await resolvedRendererPacks(secondRegistry, "prr-negotiation", true)
+    });
+
+    expect(first.scopeApplicabilityHash).not.toBe(second.scopeApplicabilityHash);
+  });
+
   it("records no-associated-prr only for non-PRR triage, planner, and report scopes", async () => {
     for (const runType of ["evidence-triage", "investigation-planner", "report-builder"] as const) {
       const registry = rendererContextPackRegistry();
@@ -1867,11 +1930,7 @@ function rendererParser(
 }
 
 function productionParserIdentity(contextPackId: typeof rendererPackIds[number]): string {
-  switch (contextPackId) {
-    case "timeline-draft-summary.v1": return "timeline-draft-summary.production-test-parser.v1";
-    case "contradiction-candidate-summary.v1": return "contradiction-candidate-summary.production-test-parser.v1";
-    default: return contextPackId;
-  }
+  return contextPackId;
 }
 
 function parseRendererPayload(

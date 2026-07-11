@@ -334,9 +334,9 @@ function plannerContextPackParser(contextPackId: string) {
   };
   Object.defineProperty(parser, "cestusContextPackParserId", {
     value: contextPackId === "timeline-draft-summary.v1"
-      ? "timeline-draft-summary.production-test-parser.v1"
+      ? "timeline-draft-summary.v1"
       : contextPackId === "contradiction-candidate-summary.v1"
-        ? "contradiction-candidate-summary.production-test-parser.v1"
+        ? "contradiction-candidate-summary.v1"
         : contextPackId,
     enumerable: false,
     configurable: false,

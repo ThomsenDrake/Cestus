@@ -9,7 +9,7 @@ import {
   type AgentApprovalQueueOutput,
   type AgentApprovalQueueRequestDto
 } from "./approval-queue.js";
-import { contextPackRefSchema } from "./context-packs.js";
+import { browserSafeContextPackRefSchema } from "./browser-safe-context-refs.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import type { AgentStatusDto } from "./runtime-types.js";
 
@@ -103,7 +103,7 @@ const approvalQueueRiskSchema = z.object({
   approvalClass: approvalClassIdentifierSchema("approval cockpit risk approval class"),
   previewSummary: secretSafeIdentifierSchema("approval cockpit risk preview summary"),
   affectedRefs: z.array(affectedRefSchema),
-  contextPackRefs: z.array(contextPackRefSchema),
+  contextPackRefs: z.array(browserSafeContextPackRefSchema),
   activeLocks: z.array(approvalQueueLockSchema),
   blockingReasons: z.array(secretSafeIdentifierSchema("approval cockpit blocking reason"))
 }).strict();
@@ -151,7 +151,7 @@ const cockpitItemSchema = z.object({
   stale: z.boolean(),
   executableByApproval: z.literal(false),
   affectedRefs: z.array(affectedRefSchema),
-  contextPackRefs: z.array(contextPackRefSchema),
+  contextPackRefs: z.array(browserSafeContextPackRefSchema),
   activeLocks: z.array(approvalQueueLockSchema),
   blockingReasons: z.array(secretSafeIdentifierSchema("approval cockpit blocking reason")),
   risk: approvalQueueRiskSchema,
