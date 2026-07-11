@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildAgentProjection,
   buildResolvedContextPack,
   createAgentRuntime,
   createContextPackRegistry,
@@ -121,6 +122,7 @@ describe("local runtime selected PRR context pack registration", () => {
 
       const prrResolved = await registry.buildResolved("prr-read-model.v1");
       expect(prrResolved.ref.artifactHashes).toEqual(expect.arrayContaining([selectedBodyHash, selectedEvidenceHash]));
+      expect(prrResolved.ref.provenanceRefs).toEqual(expect.arrayContaining([selectedBodyHash, selectedEvidenceHash]));
       expect(JSON.stringify(prrResolved.payload)).toContain("corr_selected_sent");
       expect(JSON.stringify(prrResolved.payload)).toContain(selectedBodyHash);
       expect(JSON.stringify(prrResolved.payload)).toContain(selectedEvidenceHash);
@@ -161,12 +163,15 @@ describe("local runtime selected PRR context pack registration", () => {
         requestedBy: actor.id,
         priority: "normal"
       });
+      const selectedScope = selectedPrrRunScope("prr_req_selected");
       await agentRuntime.startRun({
         runId: "run_prr_negotiation",
         taskId: "task_prr_negotiation",
         runType: "prr-negotiation",
-        scope: { kind: "workspace", refs: ["ws_case_001"] }
+        scope: selectedScope
       });
+      expect(buildAgentProjection(await handle.ledger.readAll()).runs.get("run_prr_negotiation")?.investigationId)
+        .toBe("prr_req_selected");
 
       const runtime = fakeInvoker();
       const prepared = await prepareSpecialistRun({
@@ -174,7 +179,7 @@ describe("local runtime selected PRR context pack registration", () => {
         actor,
         now,
         contextPacks: registry,
-        scope: selectedPrrRunScope("prr_req_selected"),
+        scope: selectedScope,
         runId: "run_prr_negotiation",
         taskId: "task_prr_negotiation",
         providerId: "provider_fake_local",
@@ -293,7 +298,7 @@ function createTestHandle(requestIds: readonly string[] = []): LocalRuntimeHandl
 }
 
 function selectedPrrRunScope(prrRequestId: string) {
-  return { kind: "prr-negotiation", refs: ["ws_case_001", prrRequestId], associatedPrrRequestId: prrRequestId } as const;
+  return { kind: "investigation", refs: [prrRequestId, "ws_case_001"], associatedPrrRequestId: prrRequestId } as const;
 }
 
 function registerRemainingPrrNegotiationContextPacks(
