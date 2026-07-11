@@ -201,6 +201,7 @@ describe("production specialist prompt registrations", () => {
       "The ontology is now accepted.",
       "Provider byte transfer is approved.",
       "A human approved the provider byte transfer.",
+      "The provider byte transfer was performed.",
       "The request was filed."
     ]) {
       expect(() => validateProductionSpecialistProviderOutput({
