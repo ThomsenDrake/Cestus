@@ -102,10 +102,49 @@ export interface PreparedSpecialistRun {
   readonly promptArtifact: PromptArtifactEnvelope;
 }
 
+interface PreparedSpecialistRunBinding {
+  readonly input: SpecialistRunnerBaseInput;
+  readonly runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
+  readonly generatedAt: string;
+}
+
+interface CurrentProductionSpecialistRun {
+  readonly descriptor: SpecialistWorkflowDescriptor;
+  readonly contextPackRefs: readonly ContextPackRef[];
+  readonly renderInput: {
+    readonly runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
+    readonly runId: string;
+    readonly taskId: string;
+    readonly generatedAt: string;
+    readonly scope: ProductionRunScope;
+    readonly resolvedContextPacks: ReturnType<typeof assertResolvedContextPacksForExecution>;
+  };
+}
+
+const preparedSpecialistRunBindings = new WeakMap<PreparedSpecialistRun, PreparedSpecialistRunBinding>();
+
 export async function prepareSpecialistRun(
   input: SpecialistRunnerBaseInput,
   runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">
 ): Promise<PreparedSpecialistRun> {
+  const current = await currentProductionSpecialistRun(input, runType, input.now());
+  const promptArtifact = input.promptArtifact === undefined
+    ? renderProductionSpecialistPrompt(current.renderInput)
+    : verifyProductionSpecialistPromptArtifact({ ...current.renderInput, artifact: input.promptArtifact });
+  const prepared = Object.freeze({
+    descriptor: current.descriptor,
+    contextPackRefs: Object.freeze(current.contextPackRefs),
+    promptArtifact
+  });
+  preparedSpecialistRunBindings.set(prepared, Object.freeze({ input, runType, generatedAt: current.renderInput.generatedAt }));
+  return prepared;
+}
+
+async function currentProductionSpecialistRun(
+  input: SpecialistRunnerBaseInput,
+  runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">,
+  generatedAt: string
+): Promise<CurrentProductionSpecialistRun> {
   const descriptor = specialistWorkflowDescriptorFor(runType);
   const registration = productionRegistrationFor(input, runType, descriptor);
   const run = buildAgentProjection(await input.ledger.readAll()).runs.get(input.runId);
@@ -129,15 +168,11 @@ export async function prepareSpecialistRun(
     runType,
     runId: input.runId,
     taskId: input.taskId,
-    generatedAt: input.now(),
+    generatedAt,
     scope,
     resolvedContextPacks: verifiedResolvedContextPacks
   };
-  const promptArtifact = input.promptArtifact === undefined
-    ? renderProductionSpecialistPrompt(renderInput)
-    : verifyProductionSpecialistPromptArtifact({ ...renderInput, artifact: input.promptArtifact });
-
-  return Object.freeze({ descriptor, contextPackRefs: Object.freeze(contextPackRefs), promptArtifact });
+  return Object.freeze({ descriptor, contextPackRefs: Object.freeze(contextPackRefs), renderInput });
 }
 
 export async function invokeSpecialistModel(
@@ -149,6 +184,12 @@ export async function invokeSpecialistModel(
   readonly outputArtifactHash: `sha256:${string}`;
   readonly eventIds: readonly string[];
 }> {
+  const binding = preparedSpecialistRunBindings.get(prepared);
+  if (binding === undefined || binding.input !== input) {
+    throw new Error("Prepared specialist run does not belong to the current invocation input.");
+  }
+  const current = await currentProductionSpecialistRun(input, binding.runType, binding.generatedAt);
+  verifyProductionSpecialistPromptArtifact({ ...current.renderInput, artifact: prepared.promptArtifact });
   await assertProviderReadinessAllowsInvocation(input, prepared.promptArtifact);
   const result = await input.runtime.invokeModel({
     invocationId,

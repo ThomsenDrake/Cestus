@@ -68,3 +68,24 @@ repair attempts.
 - `npm test -- packages/agent/test/specialist-workflows.test.ts packages/agent/test/specialist-readiness.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/production-specialist-prompts.test.ts`: passed, 4 files and 103 tests.
 - Fallback synthesis search returned no matches.
 - `git diff --check`: passed.
+
+## Review-Finding Closure
+
+- Direct invocation regression: a renderer-verified prepared prompt from one
+  run is rejected when passed to another run's input, and that run's runtime
+  spy remains at zero invocations.
+- `PreparedSpecialistRun` remains usable by existing callers, but provider
+  invocation now requires an internal preparation capability for the exact
+  input object and re-verifies the registered production artifact against the
+  current run, task, scope, and registry-resolved context before the provider
+  boundary.
+- `npm test -- packages/agent/test/specialist-runner-kernel.test.ts`: passed,
+  1 file and 11 tests.
+- `npm test -- packages/agent/test/specialist-workflows.test.ts packages/agent/test/specialist-readiness.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/production-specialist-prompts.test.ts`: passed, 4 files and 104 tests.
+- `rg -n "safe context-pack references only|Use only safe context-pack identifiers|promptText\\(" packages/agent/src packages/agent/test`: returned no matches.
+- `npm run verify`: passed, including typecheck, the full test suite, and the
+  factory readiness gate.
+- `git diff --check`: passed after recording this evidence.
+
+No production prompt text, resolved payload values, provider response text,
+credentials, or unsafe diagnostics are recorded in this claim.
