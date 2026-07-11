@@ -14,6 +14,8 @@
 - `packages/agent/src/prompt-artifacts.ts`
 - `packages/agent/test/prompt-artifacts.test.ts`
 - `packages/agent/test/production-specialist-prompts.test.ts`
+- `packages/agent/test/runtime.test.ts`
+- `packages/agent/test/prr-negotiation-workflow.test.ts`
 
 ## Notes
 
@@ -29,7 +31,10 @@
 - Full verification: `npm run verify` passed with typecheck and the full test/factory suite.
 - Review repair RED targeted test: `npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts` failed as expected because partial, out-of-order, and extra context bindings were accepted and the supplied scope hash was overwritten.
 - Review repair GREEN targeted test: `npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts` passed with 2 test files and 57 tests.
-- Review repair verification: `npm run verify` passed typecheck but retains two pre-existing baseline failures in `packages/agent/test/runtime.test.ts` and `packages/agent/test/prr-negotiation-workflow.test.ts`. An isolated `093c508b` checkout reproduced the same two failures unchanged; the targeted Task 2 suite is green.
+- Verifier repair RED: `npm test -- packages/agent/test/runtime.test.ts packages/agent/test/prr-negotiation-workflow.test.ts` reproduced the two expected failures. The generic runtime fixture used production `evidence-triage` without a production binding; the PRR remote fixture supplied only unbound refs.
+- Verifier repair GREEN: `npm test -- packages/agent/test/runtime.test.ts packages/agent/test/prr-negotiation-workflow.test.ts` passed with 2 test files and 33 tests after moving the generic artifact to `ontology-bootstrap` and building the PRR artifact from registered, branded resolved context packs.
+- Verifier repair Task 2 suite: `npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/production-specialist-prompts.test.ts` passed with 2 test files and 57 tests.
+- Verifier repair full verification: `npm run verify` passed typecheck, 1,996 tests (3 skipped), Vite build, and factory readiness.
 
 ## Self-Review
 

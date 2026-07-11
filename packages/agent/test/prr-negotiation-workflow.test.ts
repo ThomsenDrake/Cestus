@@ -16,6 +16,7 @@ import {
   buildAgentProjection,
   buildPrrCorrespondenceApprovalPreview,
   buildPromptArtifact,
+  assertResolvedContextPacksForExecution,
   createAgentRuntime,
   createAgentToolGateway,
   createContextPackRegistry,
@@ -25,6 +26,7 @@ import {
   FakeModelProvider,
   hashAgentToolPreview,
   promptArtifactAuditMetadata,
+  productionSpecialistPromptRegistrationFor,
   prrFollowUpExecuteDescriptor,
   rebuildPrrCorrespondenceCurrentPreview,
   rebuildProviderByteTransferCurrentPreview,
@@ -1045,6 +1047,7 @@ function createWorkflowContextPacks(
         redactionPolicy: "safe-summary-only",
         sourceProjection: "test-projection"
       },
+      parsePayload: (payload) => payload,
       build: () => {
         builtIds.push(contextPackId);
         return {
@@ -1331,28 +1334,49 @@ function providerReadinessDto(
 async function providerApprovedPromptArtifact(
   contextPacks: ReturnType<typeof createContextPackRegistry>
 ) {
-  const contextPackIds = [
-    "prr-read-model.v1",
-    "jurisdiction-pack-summary.v1",
-    "governance-locks.v1",
-    "evidence-summary.v1",
-    "agent-memory-summary.v1",
-    "task-run-history.v1",
-    "workspace-runtime-status.v1"
-  ];
-  const contextPackRefs = await Promise.all(contextPackIds.map(async (contextPackId) =>
-    await contextPacks.build(contextPackId)
+  const registration = productionSpecialistPromptRegistrationFor("prr-negotiation");
+  const resolvedContextPacks = await Promise.all(registration.contextRequirements.map(async (requirement) =>
+    await contextPacks.buildResolved(requirement.contextPackId)
   ));
+  const contextPackRefs = resolvedContextPacks.map((contextPack) => contextPack.ref);
+  const verifiedResolvedContextPacks = assertResolvedContextPacksForExecution(
+    contextPackRefs,
+    resolvedContextPacks
+  );
   return buildPromptArtifact({
-    promptTemplateId: "prr-negotiation.review.v1",
-    promptTemplateVersion: 1,
+    promptTemplateId: registration.promptTemplateId,
+    promptTemplateVersion: registration.promptTemplateVersion,
     generatedAt: now(),
     runType: "prr-negotiation",
     safetyClass: "provider-approved",
     transferApprovalClass: "provider-byte-transfer",
     contextPackRefs,
     text: "Use safe context hashes to draft a PRR negotiation review JSON object.",
-    safeSummary: "Provider-approved PRR negotiation prompt artifact."
+    safeSummary: "Provider-approved PRR negotiation prompt artifact.",
+    production: {
+      rendererId: registration.rendererId,
+      rendererVersion: registration.rendererVersion,
+      rendererHash: registration.rendererHash,
+      renderedPromptHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      providerOutputSchemaId: registration.providerOutputSchemaId,
+      providerOutputSchemaVersion: registration.providerOutputSchemaVersion,
+      handoffSchemaId: registration.handoffSchemaId,
+      handoffSchemaVersion: registration.handoffSchemaVersion,
+      scopeApplicabilityHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      evaluatedContextRequirements: registration.contextRequirements.map((requirement, index) => ({
+        contextPackId: requirement.contextPackId,
+        requirementMode: requirement.requirementMode,
+        status: "applicable" as const,
+        contentHash: contextPackRefs[index]!.contentHash
+      })),
+      resolvedPayloadAudits: contextPackRefs.map((contextPackRef) => ({
+        contextPackId: contextPackRef.contextPackId,
+        contentHash: contextPackRef.contentHash,
+        sizeBytes: contextPackRef.sizeBytes,
+        schemaId: contextPackRef.contextPackId
+      }))
+    },
+    resolvedContextPacks: verifiedResolvedContextPacks
   });
 }
 
@@ -1384,6 +1408,7 @@ async function providerTransferApprovalProof(
   const providerJobId = remoteProviderJobId;
   const sourceCollectionId = remoteSourceCollectionId;
   const importBatchId = remoteImportBatchId;
+  const approvedPromptArtifact = providerByteTransferPromptArtifactAudit(promptArtifact);
   const approval = await new ProviderParseApprovalService({ ledger, actor: human }).approveProviderBatch({
     providerJobId,
     sourceCollectionId,
@@ -1415,7 +1440,7 @@ async function providerTransferApprovalProof(
     }],
     approvedProviderCapability: providerCapability,
     approvedProviderReadiness: providerReadiness,
-    approvedPromptArtifact: promptArtifactAuditMetadata(promptArtifact),
+    approvedPromptArtifact,
     excerptPolicy: "send-full-technically-eligible",
     providerRegistry: { require: () => providerCapability },
     readProviderReadiness: async () => ({
@@ -1424,7 +1449,7 @@ async function providerTransferApprovalProof(
       cards: [providerReadiness],
       diagnostics: []
     }),
-    readPromptArtifactAudit: async () => promptArtifactAuditMetadata(promptArtifact),
+    readPromptArtifactAudit: async () => approvedPromptArtifact,
     toolRequestId: "toolreq_provider_transfer_prr_001",
     toolId: "provider.bytes.transfer",
     toolVersion: "0.1.0",
@@ -1452,6 +1477,13 @@ async function providerTransferApprovalProof(
     rationale: "Approve provider byte transfer for the PRR negotiation prompt."
   });
   return { currentPreviewInput, approvedPreviewHash };
+}
+
+function providerByteTransferPromptArtifactAudit(
+  promptArtifact: Awaited<ReturnType<typeof providerApprovedPromptArtifact>>
+) {
+  const { production: _production, ...audit } = promptArtifactAuditMetadata(promptArtifact);
+  return audit;
 }
 
 async function appendRemotePromptEvidence(
