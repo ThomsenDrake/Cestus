@@ -274,6 +274,84 @@ describe("production specialist prompt registrations", () => {
     }).runType).toBe("evidence-triage");
   });
 
+  it("allows non-PRR authority policy and instruction language", () => {
+    const triage = (dossierSummary: string) => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary,
+        safeSummaries: [],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    });
+
+    for (const instruction of [
+      "Provider byte transfer approval is required before upload.",
+      "Legal escalation must be approved by a human reviewer.",
+      "The repair should be executed after review."
+    ]) {
+      expect(triage(instruction).runType).toBe("evidence-triage");
+    }
+  });
+
+  it("keeps non-PRR authority completion matching shared across narrative, identifier, and reference fields", () => {
+    const triage = (dossierSummary: string) => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary,
+        safeSummaries: [],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    });
+    const report = (reportPacketId: string, outlineRefs: string[], packetSummary = "This is a draft packet for review.") =>
+      validateProductionSpecialistProviderOutput({
+        runType: "report-builder",
+        value: {
+          reportPacketId,
+          outlineRefs,
+          draftSectionRefs: [],
+          citationMapRefs: [],
+          includedEvidenceIds: [],
+          excludedEvidenceIds: [],
+          governancePolicyRefs: [],
+          sensitiveOptInRequirements: [],
+          legalReviewFlags: [],
+          exportPublicationApprovalRefs: [],
+          packetSummary
+        }
+      });
+
+    for (const completedClaim of [
+      "Provider byte transfer approval was completed.",
+      "Legal escalation was approved.",
+      "The repair was executed."
+    ]) {
+      expect(() => triage(completedClaim)).toThrow(/authority|external effect|ontology/i);
+    }
+
+    expect(report(
+      "packet_provider_byte_transfer_approval_is_required_before_upload",
+      ["policy_repair_should_be_executed_after_review"],
+      "Legal escalation must be approved by a human reviewer."
+    ).runType).toBe("report-builder");
+    expect(() => report("packet_provider_byte_transfer_approval_was_completed", [])).toThrow(/authority|external effect|ontology/i);
+    expect(() => report("packet_001", ["legal_escalation_was_approved"])).toThrow(/authority|external effect|ontology/i);
+    expect(() => report("packet_001", ["repair_was_executed"])).toThrow(/authority|external effect|ontology/i);
+  });
+
   it("rejects completed-effect nominalizations in narrative fields", () => {
     for (const claim of [
       "The PRR delivery was completed.",
