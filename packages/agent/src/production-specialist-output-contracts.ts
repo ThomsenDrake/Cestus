@@ -54,11 +54,11 @@ const hasCompletedPrrEffect = (value: string) =>
   hasSubjectAction(
     value,
     /\b(?:prr|public records request|request|response)\b/,
-    /\b(?:was|were|has been|have been|had been)\s+(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/
+    /\b(?:was|were|has been|have been|had been)\s+(?:sent|emailed|mailed|faxed|filed|submitted|delivered|dispatched|transferred|uploaded|published)\b/
   ) || hasAuthorityEffectUnlessInstruction(
     value,
     /\b(?:prr|public records request|request|response)\b/,
-    /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/
+    /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|dispatched|transferred|uploaded|published)\b/
   );
 
 const hasAuthorityClaim = (value: string) => {
@@ -67,9 +67,9 @@ const hasAuthorityClaim = (value: string) => {
   return (
     hasCompletedPrrEffect(normalized) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
-    hasAuthorityEffectUnlessInstruction(normalized, /\bprovider byte transfer\b/, /\b(?:approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|authori[sz](?:e|ed|ation))\b/) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\bprovider(?: byte)? transfer\b/, /\b(?:approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|authori[sz](?:e|ed|ation))\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/, hasDirectSubjectAction) ||
-    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed)\b/) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed|ran successfully)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:legal|export|governance )?lock\b/, /\bcleared\b/)
