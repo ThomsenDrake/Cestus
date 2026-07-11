@@ -63,3 +63,16 @@ does not rerun the completed live Nous gate.
 - Final leakage scan: classified as intentional references only: 4 test fixture/assertion references, 13 plan/spec references, and 10 historical or safe-negative retrospective/claim references. No production source, DTO, diagnostic, readiness, or report value exposed prompt text, resolved payload content, provider output, request bodies, or credentials.
 - Live Nous was not rerun. The fixes change deterministic import boundaries, parser identity, prompt applicability, runtime proof gating, and authority-text rejection; they do not change the live-only provider acceptance path. Task 7 records three consecutive final live green runs in `docs/agentic/claims/task-7-production-specialist-nous-acceptance.md`.
 - `git diff --check`: PASS.
+
+## Final Review Re-Fix Evidence
+
+- Updated at: `2026-07-11T17:52:18Z`.
+- Review findings addressed: public handoff/cockpit context refs rejected payload-shaped unknown fields; specialist readiness stopped treating ref-shaped or JSON-reloaded resolved packs as authoritative parser-verified context; production output validation rejected punctuation- and separator-obfuscated completed PRR effect claims.
+- RED: `npm test -- packages/agent/test/specialist-handoffs.test.ts packages/agent/test/specialist-readiness.test.ts packages/agent/test/production-specialist-prompts.test.ts` failed with the 3 expected regressions across public context refs, readiness verification, and separator-obfuscated PRR authority matching.
+- GREEN: the same focused command passed with `3` test files and `106` tests after the fixes.
+- Adjacent GREEN: `npm test -- packages/agent/test/specialist-handoffs.test.ts packages/agent/test/specialist-readiness.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/operational-context-packs.test.ts packages/agent/test/prompt-artifacts.test.ts packages/agent/test/approval-cockpit.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/evidence-triage-workflow.test.ts` passed with `8` test files and `204` tests.
+- Typecheck repair: the first full `npm run verify` attempt failed only on `exactOptionalPropertyTypes` at the handoff freeze boundary after the strict ref schema. The handoff parser now normalizes frozen context refs through the browser-safe parser instead of weakening DTO validation.
+- Final verify at `2026-07-11T17:54:51Z`: `npm run verify` passed with typecheck, `178 passed | 3 skipped` test files, `2055 passed | 3 skipped` tests, Vite build, and factory readiness. The only notices were the existing experimental Node SQLite warnings and the existing Vite chunk-size warning.
+- Final hygiene: `git diff --check` and `npm run factory:check` passed.
+- Final fallback scan: `rg -n "fallback prompt|placeholder prompt|synthesized prompt|buildPromptText|prompt text fallback|missing production template" packages/agent/src packages/local-runtime/src packages/ui/src` returned no matches (expected `rg` exit status 1).
+- Final changed-file leakage scan: matches were limited to existing safe test fixtures/sentinel assertions and public schema/status terms such as credential health labels. No changed production source exposed prompt text, raw provider response text, raw request bodies, credentials, or resolved payload values in DTO/log/claim material.

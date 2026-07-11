@@ -771,7 +771,12 @@ describe("production specialist prompt registrations", () => {
       "The request was filed.",
       "P.R.R. was filed.",
       "P R R was submitted.",
-      "P. R. R. was delivered."
+      "P. R. R. was delivered.",
+      "The P-R-R was filed.",
+      "The P/R/R was submitted.",
+      "The P_R_R was delivered.",
+      "The P--R--R was mailed.",
+      "The P\u2014R\u2014R was faxed."
     ]) {
       expect(() => validateProductionSpecialistProviderOutput({
         runType: "evidence-triage",

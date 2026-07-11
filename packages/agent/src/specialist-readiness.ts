@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   browserSafeContextRefsMatch,
+  parseAuthoritativeBrowserSafeResolvedContextPackRef,
   parseBrowserSafeContextPackRef
 } from "./browser-safe-context-refs.js";
 import type { ContextPackRef, VerifiedResolvedContextPack } from "./context-packs.js";
@@ -423,7 +424,7 @@ function missingBrowserSafeResolvedContextPackIds(
   const resolvedById = new Map<string, ContextPackRef>();
   try {
     for (const resolved of resolvedContextPacks) {
-      const ref = parseBrowserSafeContextPackRef(resolved.ref);
+      const ref = parseAuthoritativeBrowserSafeResolvedContextPackRef(resolved);
       if (resolvedById.has(ref.contextPackId)) return Object.freeze([...requiredContextPackIds]);
       resolvedById.set(ref.contextPackId, ref);
     }
