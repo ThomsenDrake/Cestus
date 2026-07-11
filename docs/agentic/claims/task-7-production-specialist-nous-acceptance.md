@@ -6,7 +6,7 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at: `2026-07-11T12:48:53Z`
-- Status: claimed
+- Status: blocked
 
 ## Owned Files
 
@@ -31,3 +31,13 @@ triage. Keep all visible and serialized evidence secret-safe.
 Stop and escalate on missing Nous credentials, provider unavailability, or any
 live-provider setup failure. Do not replace the live run with deterministic fakes
 or record a live acceptance pass without the gated provider result.
+
+## Evidence
+
+- Claim commit: `f8f46e08 chore: claim production specialist nous acceptance`.
+- Deterministic compile/skip path passed: 2 test files and 2 tests skipped with
+  `CESTUS_AGENT_LIVE_NOUS` unset.
+- Live acceptance is blocked: both required suites stopped before provider setup
+  because the local Nous authentication binding is unavailable. No fake provider
+  was substituted, no live acceptance pass was recorded, and `npm run verify`
+  was not run after this required external dependency stop.
