@@ -17,8 +17,19 @@ const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((va
 });
 const shortSafeText = (label: string) => safeText(label).max(500);
 const id = (prefix: string) => z.string().regex(new RegExp(`^${prefix}[a-zA-Z0-9_-]+$`));
+const canonicalReferencePattern = /^(?:sha256:[a-f0-9]{64}|(?=[a-zA-Z0-9._:-]{3,200}$)(?=[a-zA-Z0-9._:-]*[_:.])[a-zA-Z][a-zA-Z0-9._:-]*)$/;
 const ref = z.string().min(1).max(200).superRefine((value, ctx) => {
-  try { assertAgentSecretSafeText(value, "provider output reference"); } catch { ctx.addIssue({ code: "custom", message: "provider output reference must be secret-safe" }); }
+  try {
+    assertAgentSecretSafeText(value, "provider output reference");
+  } catch {
+    ctx.addIssue({ code: "custom", message: "provider output reference must be secret-safe" });
+  }
+  if (authorityClaimPattern.test(value)) {
+    ctx.addIssue({ code: "custom", message: "provider output reference must not claim authority, an external effect, or accepted ontology truth" });
+  }
+  if (!canonicalReferencePattern.test(value)) {
+    ctx.addIssue({ code: "custom", message: "provider output reference must be a canonical identifier or sha256 hash" });
+  }
 });
 const hash = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 
