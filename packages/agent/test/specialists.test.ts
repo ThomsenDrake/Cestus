@@ -37,6 +37,8 @@ describe("resident agent specialist registry", () => {
       executionReady: false,
       prerequisiteContractIds: [],
       requiredContextPackIds: [],
+      alwaysContextPackIds: [],
+      conditionalContextPackIds: [],
       missingExecutionCapabilities: [
         "specialist workflow descriptor",
         "specialist workflow runner",
@@ -64,6 +66,12 @@ describe("resident agent specialist registry", () => {
         executionReady: false,
         prerequisiteContractIds: descriptor.prerequisiteContractIds,
         requiredContextPackIds: descriptor.contextPacks.map((pack) => pack.contextPackId),
+        alwaysContextPackIds: descriptor.contextPacks
+          .filter((pack) => pack.requirementMode === "always")
+          .map((pack) => pack.contextPackId),
+        conditionalContextPackIds: descriptor.contextPacks
+          .filter((pack) => pack.requirementMode === "when-scope-associated-prr")
+          .map((pack) => pack.contextPackId),
         missingExecutionCapabilities: [
           "specialist workflow runner",
           "model provider readiness",

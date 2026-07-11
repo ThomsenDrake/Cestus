@@ -16,6 +16,7 @@ import {
   buildAgentProjection,
   buildPrrCorrespondenceApprovalPreview,
   buildPromptArtifact,
+  assertResolvedContextPacksForExecution,
   createAgentRuntime,
   createAgentToolGateway,
   createContextPackRegistry,
@@ -25,13 +26,17 @@ import {
   FakeModelProvider,
   hashAgentToolPreview,
   promptArtifactAuditMetadata,
+  productionSpecialistPromptRegistrationFor,
+  renderProductionSpecialistPrompt,
   prrFollowUpExecuteDescriptor,
   rebuildPrrCorrespondenceCurrentPreview,
   rebuildProviderByteTransferCurrentPreview,
   runPrrNegotiationWorkflow
 } from "../src/index.js";
+import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import type {
   AgentApprovedToolExecutionInput,
+  AgentContextPackJsonValue,
   ModelInvocationRequest,
   ModelInvocationResult,
   ModelProviderAdapter,
@@ -71,15 +76,18 @@ interface AuthoritativePrrFollowUpFixture {
 }
 
 describe("PRR negotiation workflow", () => {
-  it("builds declared context, invokes the configured model boundary, drafts locally, and requests follow-up approval", async () => {
+  it("permits bounded instructional narrative while drafting locally and requesting follow-up approval", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
       providerId: "provider_fake_local",
       modelFamilies: ["fake-local"],
       responseText: JSON.stringify({
-        draftSummary: "Private case narrative for investigator review only.",
+        draftSummary: "Public instructions say staff should mail a follow-up only after human review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -227,7 +235,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private case narrative for investigator review only.",
         requestFollowUpApproval: false,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -299,7 +310,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private negotiation advisory for investigator review only.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -393,7 +407,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private negotiation advisory for investigator review only.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -488,7 +505,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -548,7 +568,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -610,7 +633,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -688,7 +714,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -757,7 +786,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Draft a narrow follow-up for records staff review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -816,7 +848,10 @@ describe("PRR negotiation workflow", () => {
       responseText: JSON.stringify({
         draftSummary: "Private case narrative for investigator review only.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
@@ -928,6 +963,7 @@ describe("PRR negotiation workflow", () => {
       runtime,
       providerReadiness: remoteReadiness,
       promptArtifact,
+      scope: { kind: "prr-request", refs: ["prr_req_001"], associatedPrrRequestId: "prr_req_001" },
       runId: "run_prr_001",
       taskId: "task_prr_001",
       providerId: "provider_remote_model",
@@ -959,12 +995,19 @@ describe("PRR negotiation workflow", () => {
     ]));
   });
 
-  it("records invalid model output as a safe failed handoff without requesting tools", async () => {
+  it("rejects model output that claims a follow-up was sent, legal escalation completed, or a lock was cleared", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
       providerId: "provider_fake_local",
       modelFamilies: ["fake-local"],
-      responseText: "not-json"
+      responseText: JSON.stringify({
+        draftSummary: "The follow-up was sent, legal escalation was completed, and the lock was cleared.",
+        requestFollowUpApproval: false,
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
+      })
     });
     const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
     await runtime.initializeDefaultIdentity({ workspaceId: "ws_prr" });
@@ -1045,23 +1088,131 @@ function createWorkflowContextPacks(
         redactionPolicy: "safe-summary-only",
         sourceProjection: "test-projection"
       },
+      parsePayload: workflowContextPackParser(contextPackId),
       build: () => {
         builtIds.push(contextPackId);
         return {
           contextPackId,
           version: 1,
           generatedAt: now(),
-          payload: { refs: ["evt_context_001"] },
+          payload: workflowContextPayload(contextPackId),
           safeSummary: `${contextPackId} is safe for planning.`,
           provenanceRefs: ["event:evt_context_001", remoteEvidenceId, remoteRefs.evidenceEventId, remoteEvidenceHash],
           sourceEventIds: ["evt_context_001", remoteRefs.evidenceEventId, remoteRefs.linkEventId],
           artifactHashes: [remoteEvidenceHash],
+          ...(contextPackId === "prr-read-model.v1" ? { scope: { kind: "prr-request", id: "prr_req_001" } } : {}),
           sizeBudgetBytes: 16_384
         };
       }
     });
   }
   return registry;
+}
+
+function workflowContextPackParser(contextPackId: string) {
+  const parser = (payload: AgentContextPackJsonValue, ref?: { readonly contextPackId: string }): AgentContextPackJsonValue => {
+    if (ref?.contextPackId !== contextPackId || !isWorkflowContextPayloadForPack(contextPackId, payload)) {
+      throw new Error("invalid workflow context pack payload");
+    }
+    return payload;
+  };
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: contextPackId,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  registerContextPackPayloadParserAuthority(parser);
+  return parser;
+}
+
+function isWorkflowContextPayloadForPack(contextPackId: string, payload: AgentContextPackJsonValue): boolean {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return false;
+  const value = payload as Readonly<Record<string, AgentContextPackJsonValue>>;
+  switch (contextPackId) {
+    case "prr-read-model.v1":
+      return "lifecycle" in value && "requestStream" in value && "diagnostics" in value && "gates" in value;
+    case "jurisdiction-pack-summary.v1":
+      return "packName" in value && "packVersion" in value && "citedRules" in value;
+    case "governance-locks.v1":
+    case "accepted-graph-projection.v1":
+      return "items" in value;
+    case "evidence-summary.v1":
+      return Array.isArray(value.items);
+    case "agent-memory-summary.v1":
+      return "memory" in value;
+    case "task-run-history.v1":
+      return "history" in value;
+    case "workspace-runtime-status.v1":
+      return "runtime" in value;
+    default:
+      return false;
+  }
+}
+
+function workflowContextPayload(contextPackId: string): unknown {
+  switch (contextPackId) {
+    case "prr-read-model.v1":
+      return {
+        scope: { kind: "prr-request", id: "prr_req_001" },
+        lifecycle: { status: "sent", agencyName: "Example Agency", jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" } },
+        requestStream: { requestCreatedEventId: "evt_prr_created_001", streamHeadEventId: "evt_prr_initial_sent_001", streamHighWaterMark: 7, sourceEventIds: ["evt_prr_created_001", "evt_prr_initial_sent_001"] },
+        deadline: { deadlineDate: "2026-08-01", source: "jurisdiction-pack", confidence: 0.9, explanation: "Statutory response window." },
+        fee: null,
+        narrowing: null,
+        correspondence: {
+          outbound: [{ correspondenceId: "corr_prr_initial_setup", subject: "Public records request", occurredAt: now(), evidenceIds: [remoteEvidenceId], attachmentEvidenceIds: [] }],
+          inbound: []
+        },
+        production: {
+          batches: [],
+          evidenceIds: [remoteEvidenceId],
+          exemptions: [],
+          denial: null,
+          appeal: null,
+          stalling: { possible: false, confirmed: false, signals: [] },
+          escalation: null
+        },
+        diagnostics: [{ code: "prr-ready", category: "workflow", safeSummary: "PRR context is ready.", sourceEventIds: ["evt_prr_created_001"], artifactHashes: [] }],
+        gates: [{ gateId: "provider-transfer", kind: "provider-byte-transfer", ready: true, locked: false }],
+        sourceRefs: { correspondence: [], evidence: [{ id: remoteEvidenceId, contentHash: remoteEvidenceHash, sourceEventId: remoteEvidenceEventId }] },
+        omissions: []
+      };
+    case "jurisdiction-pack-summary.v1":
+      return {
+        packName: "us-federal-foia",
+        packVersion: "0.1.0",
+        jurisdiction: "US federal",
+        citedRules: [{ label: "FOIA response deadline", citation: "5 USC 552(a)(6)(A)" }],
+        advisoryPosture: { summary: "Advisory only." },
+        omissions: []
+      };
+    case "governance-locks.v1":
+      return {
+        items: {
+          activeLocks: [{
+            lockId: "lock_provider_review_001",
+            lockKind: "provider-byte-transfer",
+            safeReason: "Remote provider transfer requires approval.",
+            activatedBy: "agent_default",
+            activatedAt: now(),
+            relatedEventIds: ["evt_context_001"],
+            projectionEventIds: ["evt_context_001"]
+          }],
+          governanceRestrictions: []
+        }
+      };
+    case "evidence-summary.v1":
+      return { items: [{ evidenceId: remoteEvidenceId, ingestionEventId: remoteEvidenceEventId, contentHash: remoteEvidenceHash, occurrenceIds: ["occurrence_remote_001"], parseJobs: [], governanceTags: [], safeNarrative: "Remote evidence approved for provider prompt transfer." }] };
+    case "agent-memory-summary.v1":
+      return { memory: { activeMemory: [{ memoryId: "memory_prr_001", scope: "workspace", memoryKind: "agent-observation", summary: "Use conservative PRR follow-up language.", confidence: 0.8, sourceEventIds: ["evt_context_001"], artifactHashes: [] }], aggregateCounts: { active: 1 }, sourceEventIds: ["evt_context_001"], artifactHashes: [] } };
+    case "task-run-history.v1":
+      return { history: { projectionHighWaterMark: 7, projectionSourceRef: "agent.projection.task-run-history", tasks: [{ taskId: "task_prr_001", status: "running", statusReasonCode: "prr-negotiation" }], runs: [{ runId: "run_prr_001", state: "running", runType: "prr-negotiation", taskId: "task_prr_001", sourceEventIds: ["evt_context_001"] }], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1, runs: 1 }, sourceEventIds: ["evt_context_001"], artifactHashes: [], window: { order: "created-at", limit: 2, hasMore: false, totalCount: 2, omissionCodes: [] } } };
+    case "workspace-runtime-status.v1":
+      return { runtime: { runtimeHighWaterMark: 7, workspaceMounted: true, workspaceId: "ws_prr", storageStrategy: "local", bindPosture: "bound", authPosture: "ready", providerStates: [{ providerId: "provider_remote_model", state: "requires-approval", reasonCode: "provider-byte-transfer" }], diagnostics: [], projectionHighWaterMarks: { agent: 7 }, omissionCodes: [] } };
+    default:
+      return { items: [{ itemId: `${contextPackId}_item_001`, summary: `${contextPackId} summary.` }], omissions: [] };
+  }
 }
 
 function createDerivativeStore() {
@@ -1331,28 +1482,23 @@ function providerReadinessDto(
 async function providerApprovedPromptArtifact(
   contextPacks: ReturnType<typeof createContextPackRegistry>
 ) {
-  const contextPackIds = [
-    "prr-read-model.v1",
-    "jurisdiction-pack-summary.v1",
-    "governance-locks.v1",
-    "evidence-summary.v1",
-    "agent-memory-summary.v1",
-    "task-run-history.v1",
-    "workspace-runtime-status.v1"
-  ];
-  const contextPackRefs = await Promise.all(contextPackIds.map(async (contextPackId) =>
-    await contextPacks.build(contextPackId)
+  const registration = productionSpecialistPromptRegistrationFor("prr-negotiation");
+  const resolvedContextPacks = await Promise.all(registration.contextRequirements.map(async (requirement) =>
+    await contextPacks.buildResolved(requirement.contextPackId)
   ));
-  return buildPromptArtifact({
-    promptTemplateId: "prr-negotiation.review.v1",
-    promptTemplateVersion: 1,
-    generatedAt: now(),
-    runType: "prr-negotiation",
-    safetyClass: "provider-approved",
-    transferApprovalClass: "provider-byte-transfer",
+  const contextPackRefs = resolvedContextPacks.map((contextPack) => contextPack.ref);
+  const verifiedResolvedContextPacks = assertResolvedContextPacksForExecution(
     contextPackRefs,
-    text: "Use safe context hashes to draft a PRR negotiation review JSON object.",
-    safeSummary: "Provider-approved PRR negotiation prompt artifact."
+    resolvedContextPacks
+  );
+  return renderProductionSpecialistPrompt({
+    runType: "prr-negotiation",
+    runId: "run_prr_001",
+    taskId: "task_prr_001",
+    generatedAt: now(),
+    scope: { kind: "prr-request", refs: ["prr_req_001"], associatedPrrRequestId: "prr_req_001" },
+    resolvedContextPacks: verifiedResolvedContextPacks,
+    omissions: []
   });
 }
 
@@ -1384,6 +1530,7 @@ async function providerTransferApprovalProof(
   const providerJobId = remoteProviderJobId;
   const sourceCollectionId = remoteSourceCollectionId;
   const importBatchId = remoteImportBatchId;
+  const approvedPromptArtifact = providerByteTransferPromptArtifactAudit(promptArtifact);
   const approval = await new ProviderParseApprovalService({ ledger, actor: human }).approveProviderBatch({
     providerJobId,
     sourceCollectionId,
@@ -1415,7 +1562,7 @@ async function providerTransferApprovalProof(
     }],
     approvedProviderCapability: providerCapability,
     approvedProviderReadiness: providerReadiness,
-    approvedPromptArtifact: promptArtifactAuditMetadata(promptArtifact),
+    approvedPromptArtifact,
     excerptPolicy: "send-full-technically-eligible",
     providerRegistry: { require: () => providerCapability },
     readProviderReadiness: async () => ({
@@ -1424,7 +1571,7 @@ async function providerTransferApprovalProof(
       cards: [providerReadiness],
       diagnostics: []
     }),
-    readPromptArtifactAudit: async () => promptArtifactAuditMetadata(promptArtifact),
+    readPromptArtifactAudit: async () => approvedPromptArtifact,
     toolRequestId: "toolreq_provider_transfer_prr_001",
     toolId: "provider.bytes.transfer",
     toolVersion: "0.1.0",
@@ -1452,6 +1599,12 @@ async function providerTransferApprovalProof(
     rationale: "Approve provider byte transfer for the PRR negotiation prompt."
   });
   return { currentPreviewInput, approvedPreviewHash };
+}
+
+function providerByteTransferPromptArtifactAudit(
+  promptArtifact: Awaited<ReturnType<typeof providerApprovedPromptArtifact>>
+) {
+  return promptArtifactAuditMetadata(promptArtifact);
 }
 
 async function appendRemotePromptEvidence(
@@ -1524,7 +1677,10 @@ class CountingRemoteProvider implements ModelProviderAdapter {
       outputText: JSON.stringify({
         draftSummary: "Remote private case narrative for review.",
         requestFollowUpApproval: true,
-        citedRuleRefs: ["rule_foia_deadline_001"]
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
       }),
       outputArtifactHash: hashText(`remote:${request.invocationId}`),
       usage: { inputUnits: 13, outputUnits: 17 }

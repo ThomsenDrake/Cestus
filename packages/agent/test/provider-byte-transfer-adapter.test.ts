@@ -115,6 +115,11 @@ describe("provider byte-transfer execution adapters", () => {
       providerBindingRefId: credentialRefId,
       providerApprovalEventId: prepared.approval.id,
       promptArtifactHash: prepared.promptAudit.inputArtifactHash,
+      renderedPromptHash: hash("a"),
+      scopeApplicabilityHash: hash("d"),
+      providerOutputSchemaId: "evidence-triage.classify-output.v1",
+      handoffSchemaId: "evidence-triage-handoff.v1",
+      resolvedPayloadVerificationStatus: "verified",
       excerptPolicy: "send-full-technically-eligible",
       eligibleMediaTypes: ["application/pdf"],
       maxBytesPerFile: 5000,
@@ -130,17 +135,43 @@ describe("provider byte-transfer execution adapters", () => {
       byteCount: 422,
       mediaType: "application/pdf"
     }]);
+    expect(preview.promptArtifact).toMatchObject({
+      production: {
+        rendererId: "evidence-triage.classify.renderer",
+        renderedPromptHash: hash("a"),
+        scopeApplicabilityHash: hash("d"),
+        providerOutputSchemaId: "evidence-triage.classify-output.v1",
+        handoffSchemaId: "evidence-triage-handoff.v1",
+        resolvedPayloadAudits: [{
+          contextPackId: "provider-transfer.v1",
+          contentHash: prepared.promptAudit.contextPackRefs[0]!.contentHash
+        }]
+      }
+    });
     expect(preview.affectedRefs).toEqual(expect.arrayContaining([
       expect.objectContaining({ kind: "evidence", id: evidenceId, hash: evidenceHash, byteCount: 422 }),
       expect.objectContaining({ kind: "provider-approval", id: prepared.approval.id }),
-      expect.objectContaining({ kind: "provider-readiness", id: providerId, providerBindingRefId: credentialRefId })
+      expect.objectContaining({ kind: "provider-readiness", id: providerId, providerBindingRefId: credentialRefId }),
+      expect.objectContaining({
+        kind: "prompt-artifact-audit",
+        renderedPromptHash: hash("a"),
+        scopeApplicabilityHash: hash("d"),
+        providerOutputSchemaId: "evidence-triage.classify-output.v1",
+        handoffSchemaId: "evidence-triage-handoff.v1"
+      })
     ]));
     expect(current.sourceEventIds).toEqual([
       prepared.approval.id,
       prepared.evidence.id,
       prepared.link.id
     ].sort());
-    expect(current.inputArtifactHashes).toEqual([evidenceHash, prepared.promptAudit.inputArtifactHash]);
+    expect(current.inputArtifactHashes).toEqual(expect.arrayContaining([
+      evidenceHash,
+      prepared.promptAudit.inputArtifactHash,
+      hash("9"),
+      hash("a"),
+      hash("d")
+    ]));
     expect(current.provenanceRefs).toEqual(expect.arrayContaining([
       providerJobId,
       prepared.approval.id,
@@ -161,9 +192,63 @@ describe("provider byte-transfer execution adapters", () => {
       }]
     });
     expect(changedByteCount.idempotencyKey).not.toBe(preview.idempotencyKey);
+    for (const promptArtifact of [
+      { ...prepared.promptAudit, production: { ...prepared.promptAudit.production!, renderedPromptHash: hash("b") } },
+      { ...prepared.promptAudit, production: { ...prepared.promptAudit.production!, scopeApplicabilityHash: hash("e") } },
+      {
+        ...prepared.promptAudit,
+        contextPackRefs: [
+          ...prepared.promptAudit.contextPackRefs,
+          {
+            ...prepared.promptAudit.contextPackRefs[0]!,
+            contextPackId: "prr-read-model.v1",
+            contentHash: hash("f")
+          }
+        ],
+        production: {
+          ...prepared.promptAudit.production!,
+          evaluatedContextRequirements: [
+            prepared.promptAudit.production!.evaluatedContextRequirements[0]!,
+            {
+              contextPackId: "prr-read-model.v1",
+              requirementMode: "when-scope-associated-prr" as const,
+              status: "applicable" as const,
+              contentHash: hash("f")
+            }
+          ],
+          resolvedPayloadAudits: [
+            ...prepared.promptAudit.production!.resolvedPayloadAudits,
+            {
+              contextPackId: "prr-read-model.v1",
+              contentHash: hash("f"),
+              sizeBytes: 100,
+              schemaId: "prr-read-model.v1"
+            }
+          ]
+        }
+      },
+      {
+        ...prepared.promptAudit,
+        production: {
+          ...prepared.promptAudit.production!,
+          resolvedPayloadAudits: [{
+            contextPackId: "provider-transfer.v1",
+            contentHash: prepared.promptAudit.contextPackRefs[0]!.contentHash,
+            sizeBytes: 421,
+            schemaId: "provider-transfer.v1"
+          }]
+        }
+      }
+    ]) {
+      expect(buildProviderByteTransferApprovalPreview({
+        ...previewInputFromCurrent(prepared.context, preview),
+        promptArtifact
+      }).idempotencyKey).not.toBe(preview.idempotencyKey);
+    }
     const serialized = JSON.stringify(preview);
     expect(serialized).not.toContain(prepared.promptText);
-    expect(serialized).not.toMatch(/documentBody|inputText|providerResponse|authorization/i);
+    expect(serialized).not.toMatch(/documentBody|inputText|providerResponse|authorization|hiddenPath/i);
+    expect(serialized).not.toContain("resolved-payload-sentinel");
   });
 
   it("rejects unknown metadata and swapped or forged public preview bindings", async () => {
@@ -247,7 +332,13 @@ describe("provider byte-transfer execution adapters", () => {
     }));
 
     const promptChanged = await prepareTransfer();
-    promptChanged.current.promptAudit = { ...promptChanged.promptAudit, inputArtifactHash: changedHash };
+    promptChanged.current.promptAudit = {
+      ...promptChanged.promptAudit,
+      production: {
+        ...promptChanged.promptAudit.production!,
+        scopeApplicabilityHash: changedHash
+      }
+    };
     const promptCurrent = await rebuildProviderByteTransferCurrentPreview(rebuildInput(promptChanged.context));
     expect(promptCurrent.freshnessChecks).toContainEqual(expect.objectContaining({
       name: "prompt-artifact-audit",
@@ -416,7 +507,8 @@ describe("provider byte-transfer execution adapters", () => {
       toolVersion: providerByteTransferDescriptor.toolVersion,
       sideEffectClass: providerByteTransferDescriptor.sideEffectClass,
       requiredApprovalClass: "provider-byte-transfer",
-      preview: current.preview
+      preview: current.preview,
+      inputArtifactHashes: current.inputArtifactHashes
     });
     await gateway.approveTool({
       toolRequestId: requested.payload.toolRequestId,
@@ -519,11 +611,11 @@ async function prepareTransfer(): Promise<PreparedTransfer> {
     maxBytesPerFile: 5000
   });
   const promptText = "Parse the approved evidence under the reviewed transfer policy.";
-  const promptAudit = promptArtifactAuditMetadata(buildPromptArtifact({
+  const promptAudit = withProductionAudit(promptArtifactAuditMetadata(buildPromptArtifact({
     promptTemplateId: "provider-document-parse",
     promptTemplateVersion: 1,
     generatedAt: "2026-07-09T20:00:00.000Z",
-    runType: "ontology-bootstrap",
+    runType: "evidence-triage",
     safetyClass: "provider-approved",
     transferApprovalClass: "provider-byte-transfer",
     contextPackRefs: [buildContextPackRef({
@@ -538,7 +630,7 @@ async function prepareTransfer(): Promise<PreparedTransfer> {
     })],
     text: promptText,
     safeSummary: "Provider document parsing instructions."
-  }));
+  })));
   const current: MutableCurrentState = {
     capability: providerCapability,
     readiness: readinessDto(readinessCard),
@@ -572,6 +664,44 @@ async function prepareTransfer(): Promise<PreparedTransfer> {
     readPromptArtifactAudit: async () => current.promptAudit
   };
   return { ledger, evidence, link, approval, promptAudit, promptText, current, context };
+}
+
+function withProductionAudit(audit: PromptArtifactAuditMetadata): PromptArtifactAuditMetadata {
+  const contextPackRef = audit.contextPackRefs[0];
+  if (contextPackRef === undefined) {
+    throw new Error("Expected provider transfer context pack reference.");
+  }
+  return {
+    ...audit,
+    production: {
+      rendererId: "evidence-triage.classify.renderer",
+      rendererVersion: 1,
+      rendererHash: hash("9"),
+      renderedPromptHash: hash("a"),
+      providerOutputSchemaId: "evidence-triage.classify-output.v1",
+      providerOutputSchemaVersion: 1,
+      handoffSchemaId: "evidence-triage-handoff.v1",
+      handoffSchemaVersion: 1,
+      scopeApplicabilityHash: hash("d"),
+      evaluatedContextRequirements: [{
+        contextPackId: "provider-transfer.v1",
+        requirementMode: "always",
+        status: "applicable",
+        contentHash: contextPackRef.contentHash
+      }, {
+        contextPackId: "prr-read-model.v1",
+        requirementMode: "when-scope-associated-prr",
+        status: "not-applicable",
+        omissionReason: "no-associated-prr"
+      }],
+      resolvedPayloadAudits: [{
+        contextPackId: "provider-transfer.v1",
+        contentHash: contextPackRef.contentHash,
+        sizeBytes: 422,
+        schemaId: "provider-transfer.v1"
+      }]
+    }
+  };
 }
 
 function rebuildInput(

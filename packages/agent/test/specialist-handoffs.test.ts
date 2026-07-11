@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildContextPackRef } from "../src/context-packs.js";
 import {
-  hashSpecialistWorkflowHandoff,
   parseLegacySpecialistWorkflowHandoff,
   parseSpecialistWorkflowHandoff
 } from "../src/specialist-handoffs.js";
+import { hashSpecialistWorkflowHandoff } from "../src/specialist-handoff-hash.js";
 
 const contextPack = buildContextPackRef({
   contextPackId: "evidence-summary.v1",
@@ -108,6 +108,31 @@ describe("specialist workflow handoffs", () => {
     expect(Object.isFrozen(handoff.outputArtifacts)).toBe(true);
     expect(Object.isFrozen(handoff.approvalRequirements)).toBe(true);
     expect(Object.isFrozen(handoff.nextSafeActions)).toBe(true);
+  });
+
+  it("rejects payload-shaped fields inside public context-pack refs", () => {
+    expect(() =>
+      parseSpecialistWorkflowHandoff({
+        schemaVersion: "agent-specialist-handoff.v1",
+        handoffId: "handoff_run_evidence_triage_001_0123456789abcdef",
+        handoffRevision: 1,
+        runType: "evidence-triage",
+        runId: "run_evidence_triage_001",
+        taskId: "task_evidence_triage_001",
+        residentAgentId: "agent_default",
+        generatedAt: "2026-07-09T12:01:00.000Z",
+        status: "ready-for-review",
+        safeSummary: "Evidence triage dossier is ready for review.",
+        contextPackRefs: [{
+          ...contextPack,
+          payload: { rawEvidenceText: "Resolved context payload must remain local-only." }
+        }],
+        outputArtifacts: [],
+        toolRequestIds: [],
+        approvalRequirements: [],
+        nextSafeActions: []
+      })
+    ).toThrow(/payload|unrecognized|unsupported/i);
   });
 
   it("rejects unsafe fields, raw content keys, and secret-shaped text", () => {

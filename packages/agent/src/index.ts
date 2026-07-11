@@ -1,9 +1,41 @@
-export * from "./context-packs.js";
+export {
+  buildContextPackRef,
+  buildResolvedContextPack,
+  contextPackDescriptorSchema,
+  contextPackRefSchema,
+  createContextPackRegistry,
+  hashAgentContextPack,
+  hasVerifiedResolvedContextPackParserAuthority,
+  serializeContextPackPayload,
+  verifiedResolvedContextPackVerificationIdentity,
+  verifyResolvedContextPack,
+  assertResolvedContextPacksForExecution
+} from "./context-packs.js";
+export type {
+  AgentContextPackJsonValue,
+  BuildContextPackRefInput,
+  ContextPackBuilder,
+  ContextPackBuilderResult,
+  ContextPackDescriptor,
+  ContextPackPayloadParser,
+  ContextPackPayloadResolver,
+  ContextPackRef,
+  ContextPackRegistry,
+  ContextPackRegistrySnapshot,
+  ContextPackScope,
+  ContextPackStalenessInput,
+  CreateContextPackRegistryOptions,
+  ResolvedContextPack,
+  VerifiedResolvedContextPack,
+  VerifiedResolvedContextPackVerificationIdentity
+} from "./context-packs.js";
 export * from "./prr-context-packs.js";
 export * from "./operational-context-packs.js";
 export * from "./identity-bootstrap.js";
 export * from "./memory.js";
 export * from "./prompt-artifacts.js";
+export * from "./production-specialist-output-contracts.js";
+export * from "./production-specialist-prompts.js";
 export * from "./cockpit.js";
 export * from "./approval-cockpit.js";
 export * from "./approval-queue.js";
@@ -50,6 +82,7 @@ export {
 } from "./specialists.js";
 export * from "./specialist-workflows.js";
 export * from "./specialist-handoffs.js";
+export * from "./specialist-handoff-hash.js";
 export * from "./specialist-handoff-manifest.js";
 export * from "./specialist-handoff-projection.js";
 export * from "./specialist-readiness.js";

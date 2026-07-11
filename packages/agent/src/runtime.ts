@@ -22,6 +22,10 @@ import {
   type PromptArtifactAuditMetadata,
   type PromptArtifactEnvelope
 } from "./prompt-artifacts.js";
+import {
+  consumeProductionSpecialistInvocationProof,
+  type ProductionSpecialistInvocationProof
+} from "./production-specialist-invocation-proof.js";
 import type {
   AgentMemoryMutationResult,
   AgentRuntimeDiagnosticDto,
@@ -106,6 +110,7 @@ export interface InvokeAgentModelInput {
   readonly credentialRef: CredentialReference;
   readonly safetyClass?: "workspace-safe" | "public-safe" | "sensitive-local-only" | "provider-approved";
   readonly promptArtifact?: PromptArtifactEnvelope;
+  readonly productionInvocationProof?: ProductionSpecialistInvocationProof;
   readonly returnOutputText?: boolean;
 }
 
@@ -446,14 +451,41 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
 
     async invokeModel(command: InvokeAgentModelInput): Promise<AgentRuntimeResult<InvokeAgentModelResult>> {
       const projection = buildAgentProjection(await input.ledger.readAll());
-      if (!projection.runs.has(command.runId)) {
+      const run = projection.runs.get(command.runId);
+      if (run === undefined) {
         return failedResult(agentDiagnostic("agent", "Agent run was not found.", ["start the specialist run before invoking a model"]));
       }
       const promptAudit = auditPromptArtifact(command.promptArtifact);
       const matchedPromptAudit = promptAudit.ok && promptAudit.metadata.inputArtifactHash === command.inputArtifactHash
         ? promptAudit.metadata
         : undefined;
-
+      if (requiresProductionPromptAudit(run.runType) && !consumeProductionSpecialistInvocationProof({
+        proof: command.productionInvocationProof,
+        runId: command.runId,
+        taskId: run.taskId ?? "",
+        providerId: command.providerId,
+        modelFamily: command.modelFamily,
+        credentialRefId: command.credentialRef.credentialRefId,
+        inputArtifactHash: command.inputArtifactHash,
+        promptArtifact: command.promptArtifact as PromptArtifactEnvelope
+      })) {
+        return failedResult(agentDiagnostic(
+          "policy",
+          "Production specialist invocation proof is required before model invocation.",
+          ["invoke through the specialist runner with current provider approval"]
+        ));
+      }
+      if (requiresProductionPromptAudit(run.runType) && (
+        !promptAudit.ok ||
+        promptAudit.metadata.inputArtifactHash !== command.inputArtifactHash ||
+        promptAudit.metadata.production === undefined
+      )) {
+        return failedResult(agentDiagnostic(
+          "policy",
+          "Production prompt audit binding is required before model invocation.",
+          ["render a production prompt artifact with its approved audit binding"]
+        ));
+      }
       const requestedEvent: AppendableKnowledgeEvent<"agent.model-invocation.requested"> = {
         type: "agent.model-invocation.requested",
         version: 1,
@@ -462,7 +494,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           input,
           `corr_${command.invocationId}`,
           input.actor,
-          lastValue(projection.runs.get(command.runId)?.eventIds ?? [])
+          lastValue(run.eventIds)
         ),
         payload: {
           invocationId: command.invocationId,
@@ -869,8 +901,25 @@ function promptAuditPayload(metadata: PromptArtifactAuditMetadata | undefined) {
     runType: metadata.runType,
     safePromptSummary: metadata.safeSummary,
     omissions: metadata.omissions.map((omission) => ({ ...omission })),
-    transferApprovalClass: metadata.transferApprovalClass
+    transferApprovalClass: metadata.transferApprovalClass,
+    ...optionalValue("production", metadata.production === undefined ? undefined : {
+      rendererId: metadata.production.rendererId,
+      rendererVersion: metadata.production.rendererVersion,
+      rendererHash: metadata.production.rendererHash,
+      renderedPromptHash: metadata.production.renderedPromptHash,
+      providerOutputSchemaId: metadata.production.providerOutputSchemaId,
+      providerOutputSchemaVersion: metadata.production.providerOutputSchemaVersion,
+      handoffSchemaId: metadata.production.handoffSchemaId,
+      handoffSchemaVersion: metadata.production.handoffSchemaVersion,
+      scopeApplicabilityHash: metadata.production.scopeApplicabilityHash,
+      evaluatedContextRequirements: metadata.production.evaluatedContextRequirements.map((requirement) => ({ ...requirement })),
+      resolvedPayloadAudits: metadata.production.resolvedPayloadAudits.map((audit) => ({ ...audit }))
+    })
   };
+}
+
+function requiresProductionPromptAudit(runType: AgentSpecialistRunType): boolean {
+  return runType !== "ontology-bootstrap";
 }
 
 function requiresPromptArtifactForProvider(descriptor: ProviderDescriptor): boolean {

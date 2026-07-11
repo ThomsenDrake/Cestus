@@ -13,12 +13,14 @@ import {
   runInvestigationPlannerWorkflow
 } from "../src/index.js";
 import type { ProviderReadinessDto } from "../src/index.js";
+import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
+import type { AgentContextPackJsonValue } from "../src/index.js";
 
 const now = () => "2026-07-10T01:00:00.000Z";
 const actor = { id: "actor_agent", kind: "agent" as const, label: "Cestus Agent" };
 
 describe("investigation planner workflow", () => {
-  it("produces only local task and PRR draft candidates from investigation context", async () => {
+  it("permits bounded instructional narrative while producing only local task and PRR draft candidates", async () => {
     const { ledger, runtime } = await preparedRuntime();
     const contextPacks = createPlannerContextPacks();
     const derivativeStore = createDerivativeStore();
@@ -172,12 +174,24 @@ describe("investigation planner workflow", () => {
     expect(buildAgentProjection(events).runs.get("run_investigation_001")?.state).toBe("failed");
   });
 
-  it("records invalid model output as a safe failed handoff without local artifacts", async () => {
+  it("rejects model output that claims tasks were created, portals were crawled, or provider bytes were transferred", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
       providerId: "provider_fake_local",
       modelFamilies: ["fake-local"],
-      responseText: "not-json"
+      responseText: JSON.stringify({
+        planSummary: "Tasks were created, the portal was crawled, and provider bytes were transferred.",
+        objectiveRefs: [],
+        gapIds: [],
+        taskCandidates: [{
+          taskId: "task_investigation_candidate_001",
+          summary: "Review the investigation timeline.",
+          priorityRationale: "Review the available evidence.",
+          linkedRefs: [],
+          approvalRequirements: []
+        }],
+        prrDraftCandidates: ["Draft a request for contract amendments."]
+      })
     });
     const runtime = createAgentRuntime({
       ledger,
@@ -238,8 +252,16 @@ async function preparedRuntime() {
     providerId: "provider_fake_local",
     modelFamilies: ["fake-local"],
     responseText: JSON.stringify({
-      planSummary: "Private witness timeline note for investigator review.",
-      taskSuggestions: ["Review procurement timeline."],
+      planSummary: "Public instructions say investigators should review the timeline before creating local drafts.",
+      objectiveRefs: [],
+      gapIds: [],
+      taskCandidates: [{
+        taskId: "task_investigation_candidate_001",
+        summary: "Review procurement timeline.",
+        priorityRationale: "Review the available evidence.",
+        linkedRefs: [],
+        approvalRequirements: []
+      }],
       prrDraftCandidates: ["Draft a request for contract amendments."]
     })
   });
@@ -282,11 +304,12 @@ function createPlannerContextPacks(governanceLocked = false) {
         redactionPolicy: "safe-summary-only",
         sourceProjection: "test-projection"
       },
+      parsePayload: plannerContextPackParser(contextPackId),
       build: () => ({
         contextPackId,
         version: 1,
         generatedAt: now(),
-        payload: { governanceLocked: contextPackId === "governance-locks.v1" && governanceLocked },
+        payload: plannerContextPayload(contextPackId),
         safeSummary: contextPackId === "governance-locks.v1" && governanceLocked
           ? "Quarantine hold present."
           : `${contextPackId} is safe for planning.`,
@@ -300,6 +323,77 @@ function createPlannerContextPacks(governanceLocked = false) {
     });
   }
   return registry;
+}
+
+function plannerContextPackParser(contextPackId: string) {
+  const parser = (payload: AgentContextPackJsonValue, ref?: { readonly contextPackId: string }): AgentContextPackJsonValue => {
+    if (ref?.contextPackId !== contextPackId || !isPlannerContextPayloadForPack(contextPackId, payload)) {
+      throw new Error("invalid investigation planner context pack payload");
+    }
+    return payload;
+  };
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: contextPackId === "timeline-draft-summary.v1"
+      ? "timeline-draft-summary.v1"
+      : contextPackId === "contradiction-candidate-summary.v1"
+        ? "contradiction-candidate-summary.v1"
+        : contextPackId,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  registerContextPackPayloadParserAuthority(parser);
+  return parser;
+}
+
+function isPlannerContextPayloadForPack(contextPackId: string, payload: AgentContextPackJsonValue): boolean {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return false;
+  const value = payload as Readonly<Record<string, AgentContextPackJsonValue>>;
+  switch (contextPackId) {
+    case "accepted-graph-projection.v1": {
+      const items = value.items as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return items !== undefined && Array.isArray(items.assertions) && Array.isArray(items.entities) && Array.isArray(items.relationships);
+    }
+    case "evidence-summary.v1":
+    case "timeline-draft-summary.v1":
+    case "contradiction-candidate-summary.v1":
+      return Array.isArray(value.items);
+    case "governance-locks.v1": {
+      const items = value.items as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return items !== undefined && Array.isArray(items.activeLocks) && Array.isArray(items.governanceRestrictions);
+    }
+    case "agent-memory-summary.v1": {
+      const memory = value.memory as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return memory !== undefined && Array.isArray(memory.activeMemory) && Array.isArray(memory.sourceEventIds) && Array.isArray(memory.artifactHashes);
+    }
+    case "task-run-history.v1": {
+      const history = value.history as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return history !== undefined && Array.isArray(history.tasks) && Array.isArray(history.runs) && Array.isArray(history.modelInvocations) && Array.isArray(history.toolRequests);
+    }
+    case "workspace-runtime-status.v1": {
+      const runtime = value.runtime as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return runtime !== undefined && Array.isArray(runtime.providerStates) && Array.isArray(runtime.diagnostics) && Array.isArray(runtime.omissionCodes);
+    }
+    case "prr-read-model.v1":
+      return value.lifecycle !== undefined && value.requestStream !== undefined && Array.isArray(value.diagnostics) && Array.isArray(value.gates) && Array.isArray(value.omissions);
+    default:
+      return false;
+  }
+}
+
+function plannerContextPayload(contextPackId: string): AgentContextPackJsonValue {
+  switch (contextPackId) {
+    case "accepted-graph-projection.v1": return { items: { assertions: [{ assertionId: "assertion_planner_001", evidenceId: "ev_planner_001", evidenceContentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", proposedByEventId: "evt_planner_context_001", acceptedByEventId: "evt_planner_context_001", sourceEventIds: ["evt_planner_context_001"], rowHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", safeStatement: "Verified planning graph statement." }], entities: [], relationships: [] } };
+    case "evidence-summary.v1": return { items: [{ evidenceId: "ev_planner_001", ingestionEventId: "evt_planner_context_001", contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111", occurrenceIds: ["occurrence_planner_001"], safeNarrative: "Verified planning evidence." }] };
+    case "timeline-draft-summary.v1": return { items: [{ itemId: "timeline_planner_001", summary: "Verified timeline item." }], omissions: [] };
+    case "contradiction-candidate-summary.v1": return { items: [{ candidateId: "contradiction_planner_001", rationale: "Verified contradiction candidate." }], omissions: [] };
+    case "governance-locks.v1": return { items: { activeLocks: [], governanceRestrictions: [{ restrictionId: "restriction_planner_001", restrictionKind: "review", affectedRef: "inv_scope_001", sourceEventIds: ["evt_planner_context_001"], projectionProvenanceRefs: ["evt_planner_context_001"], policyVersion: "v1", safeReasonCode: "review-required" }] } };
+    case "agent-memory-summary.v1": return { memory: { activeMemory: [{ memoryId: "memory_planner_001", scope: "investigation", memoryKind: "summary", summary: "Verified planning memory.", confidence: 1, sourceEventIds: ["evt_planner_context_001"], artifactHashes: [] }], aggregateCounts: { active: 1 }, sourceEventIds: ["evt_planner_context_001"], artifactHashes: [] } };
+    case "task-run-history.v1": return { history: { projectionHighWaterMark: 1, projectionSourceRef: "agent.projection.task-run-history", tasks: [{ taskId: "task_investigation_001", status: "running", priority: "normal", statusReasonCode: "Planning context prepared." }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1 }, sourceEventIds: ["evt_planner_context_001"], artifactHashes: [] } };
+    case "workspace-runtime-status.v1": return { runtime: { runtimeHighWaterMark: 1, workspaceMounted: true, storageStrategy: "local", bindPosture: "bound", authPosture: "none", providerStates: [], diagnostics: [], projectionHighWaterMarks: { agent: 1 }, omissionCodes: [] } };
+    case "prr-read-model.v1": return { lifecycle: {}, requestStream: {}, diagnostics: [], gates: [], omissions: [] };
+    default: throw new Error(`Unknown planner context pack ${contextPackId}`);
+  }
 }
 
 function createDerivativeStore() {

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { AppendableKnowledgeEvent, KnowledgeEvent } from "../../ontology/src/contracts.js";
 import {
   buildPrrCorrespondenceApprovalPreview,
@@ -6,6 +5,7 @@ import {
   type BuildPrrCorrespondencePreviewInput
 } from "./adapters/prr-correspondence.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
+import { validateProductionSpecialistProviderOutput } from "./production-specialist-output-contracts.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
 import {
   parseLegacySpecialistWorkflowHandoff,
@@ -23,15 +23,6 @@ import {
   writeSpecialistDerivativeArtifact,
   type SpecialistRunnerBaseInput
 } from "./specialist-runner-kernel.js";
-
-const safeModelText = z.string().min(1).max(500).superRefine((value, ctx) => {
-  try { assertAgentSecretSafeText(value, "PRR negotiation model output"); } catch { ctx.addIssue({ code: "custom", message: "model output must be secret-safe" }); }
-});
-const outputSchema = z.object({
-  draftSummary: safeModelText,
-  requestFollowUpApproval: z.boolean(),
-  citedRuleRefs: z.array(safeModelText).max(12)
-}).strict();
 
 export interface RunPrrNegotiationWorkflowInput extends SpecialistRunnerBaseInput {
   readonly prrRequestId: string;
@@ -70,9 +61,17 @@ export async function runPrrNegotiationWorkflow(
   const toolRequestId = `toolreq_${input.runId}_followup`;
   const followUpPreflight = preflightFollowUpApprovalPreview(input, toolRequestId);
   assertSpecialistDerivativeStoreAvailable(input);
-  const prepared = await prepareSpecialistRun(input, "prr-negotiation");
+  const runnerInput: SpecialistRunnerBaseInput = {
+    ...input,
+    scope: input.scope ?? Object.freeze({
+      kind: "prr-request",
+      refs: Object.freeze([input.prrRequestId]),
+      associatedPrrRequestId: input.prrRequestId
+    })
+  };
+  const prepared = await prepareSpecialistRun(runnerInput, "prr-negotiation");
   const invocationId = `inv_${input.runId}_prr_negotiation`;
-  const invocation = await invokeSpecialistModel(input, prepared, invocationId);
+  const invocation = await invokeSpecialistModel(runnerInput, prepared, invocationId);
   const output = parseModelOutput(invocation.outputText);
   if (output === undefined) {
     return await failedModelOutputResult(input, prepared, invocation.eventIds);
@@ -146,9 +145,13 @@ export async function runPrrNegotiationWorkflow(
   });
 }
 
-function parseModelOutput(outputText: string): z.infer<typeof outputSchema> | undefined {
+function parseModelOutput(outputText: string) {
   try {
-    return outputSchema.parse(JSON.parse(outputText));
+    const output = validateProductionSpecialistProviderOutput({
+      runType: "prr-negotiation",
+      value: JSON.parse(outputText)
+    });
+    return output.runType === "prr-negotiation" ? output.value : undefined;
   } catch {
     return undefined;
   }

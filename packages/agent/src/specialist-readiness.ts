@@ -1,12 +1,19 @@
 import { z } from "zod";
-import { contextPackRefSchema, type ContextPackRef } from "./context-packs.js";
+import {
+  browserSafeContextRefsMatch,
+  parseAuthoritativeBrowserSafeResolvedContextPackRef,
+  parseBrowserSafeContextPackRef
+} from "./browser-safe-context-refs.js";
+import type { ContextPackRef, VerifiedResolvedContextPack } from "./context-packs.js";
 import type { AgentDomainToolFamily } from "./domain-execution-descriptors.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import type { AgentToolApprovalClass } from "./projection-types.js";
 import {
-  type PromptArtifactTemplateRegistration,
-  type PromptArtifactTemplateRegistrySnapshot
-} from "./prompt-artifacts.js";
+  productionSpecialistPromptRegistrationFor,
+  productionSpecialistPromptRegistrations,
+  type ProductionRunScope,
+  type ProductionSpecialistPromptRegistration
+} from "./production-specialist-registration-metadata.js";
 import {
   providerReadinessDtoSchema,
   providerSetupCardSchema,
@@ -44,10 +51,10 @@ export interface ProjectSpecialistWorkflowReadinessInput {
   readonly runType: AgentSpecialistRunType;
   readonly descriptor: SpecialistWorkflowDescriptor;
   readonly availableContracts: readonly string[];
+  readonly scope: ProductionRunScope;
   readonly contextPackRefs: readonly ContextPackRef[];
-  readonly promptTemplateRegistrations:
-    | readonly PromptArtifactTemplateRegistration[]
-    | PromptArtifactTemplateRegistrySnapshot;
+  readonly resolvedContextPacks: readonly VerifiedResolvedContextPack[];
+  readonly productionPromptRegistrations?: readonly ProductionSpecialistPromptRegistration[];
   readonly providerReadiness: ProviderReadinessDto | { readonly cards: readonly ProviderSetupCard[] };
   readonly availableDomainAdapterFamilies: readonly AgentDomainToolFamily[];
   readonly currentProjectionHighWaterMarks: Readonly<Record<string, number>>;
@@ -65,6 +72,8 @@ export interface SpecialistWorkflowReadinessDto {
   readonly executionReady: false;
   readonly missingContractIds: readonly string[];
   readonly missingContextPackIds: readonly string[];
+  readonly missingResolvedContextPackIds: readonly string[];
+  readonly contextOmissions: readonly { readonly reason: "no-associated-prr"; readonly sourceRef: string }[];
   readonly staleContextPackIds: readonly string[];
   readonly missingProjectionHighWaterMarkIds: readonly string[];
   readonly missingProvenanceContextPackIds: readonly string[];
@@ -153,6 +162,11 @@ export const agentSpecialistWorkflowReadinessDtoSchema = z.object({
   executionReady: z.literal(false),
   missingContractIds: z.array(secretSafeTextSchema("missing contract id")),
   missingContextPackIds: z.array(secretSafeTextSchema("missing context pack id")),
+  missingResolvedContextPackIds: z.array(secretSafeTextSchema("missing resolved context pack id")),
+  contextOmissions: z.array(z.object({
+    reason: z.literal("no-associated-prr"),
+    sourceRef: secretSafeTextSchema("context omission source ref")
+  }).strict()),
   staleContextPackIds: z.array(secretSafeTextSchema("stale context pack id")),
   missingProjectionHighWaterMarkIds: z.array(secretSafeTextSchema("missing projection high-water mark id")),
   missingProvenanceContextPackIds: z.array(secretSafeTextSchema("missing provenance context pack id")),
@@ -168,7 +182,8 @@ export const agentSpecialistWorkflowReadinessDtoSchema = z.object({
     value.missingProviderStates.length > 0 ||
     value.missingAdapterFamilies.length > 0;
   const provenanceBlocked = value.missingContextPackIds.length > 0 ||
-    value.missingProvenanceContextPackIds.length > 0;
+    value.missingProvenanceContextPackIds.length > 0 ||
+    value.missingResolvedContextPackIds.length > 0;
   const projectionBlocked = value.staleContextPackIds.length > 0 ||
     value.missingProjectionHighWaterMarkIds.length > 0;
   const lockBlocked = value.activeLockIds.length > 0;
@@ -231,9 +246,7 @@ export function projectSpecialistWorkflowReadiness(
 ): SpecialistWorkflowReadinessDto {
   assertDescriptorMatchesRunType(input);
 
-  const requiredContextPackIds = input.descriptor.contextPacks
-    .filter((pack) => pack.required)
-    .map((pack) => pack.contextPackId);
+  const requiredContextPackIds = applicableContextPackIds(input);
   const refsById = contextRefsById(input.contextPackRefs);
   const missingContextPackIds = requiredContextPackIds.filter((contextPackId) => !refsById.has(contextPackId));
   const missingProjectionHighWaterMarkIds = requiredContextPackIds.filter((contextPackId) => {
@@ -251,14 +264,33 @@ export function projectSpecialistWorkflowReadiness(
     const ref = refsById.get(contextPackId);
     return ref !== undefined && ref.provenanceRefs.length === 0;
   });
+  let missingResolvedContextPackIds: readonly string[] = [];
+  let contextOmissions = boundedContextOmissions(input);
+  if (
+    missingContextPackIds.length === 0 &&
+    missingProjectionHighWaterMarkIds.length === 0 &&
+    staleContextPackIds.length === 0 &&
+    missingProvenanceContextPackIds.length === 0
+  ) {
+    try {
+      missingResolvedContextPackIds = missingBrowserSafeResolvedContextPackIds(
+        requiredContextPackIds,
+        refsById,
+        input.resolvedContextPacks
+      );
+    } catch {
+      missingResolvedContextPackIds = Object.freeze([...requiredContextPackIds]);
+    }
+  }
   const contextPackRefsReady = missingContextPackIds.length === 0 &&
     missingProjectionHighWaterMarkIds.length === 0 &&
     staleContextPackIds.length === 0 &&
-    missingProvenanceContextPackIds.length === 0;
+    missingProvenanceContextPackIds.length === 0 &&
+    missingResolvedContextPackIds.length === 0;
 
   const missingContractIds = input.descriptor.prerequisiteContractIds
     .filter((contractId) => !input.availableContracts.includes(contractId));
-  const missingPromptTemplateIds = hasPromptTemplateRegistration(input)
+  const missingPromptTemplateIds = hasProductionPromptRegistration(input)
     ? []
     : [input.descriptor.promptTemplate.promptTemplateId];
   const providerState = providerReadinessBlockers(input);
@@ -271,6 +303,7 @@ export function projectSpecialistWorkflowReadiness(
   const { status, category } = statusFor({
     missingContractIds,
     missingContextPackIds,
+    missingResolvedContextPackIds,
     missingProjectionHighWaterMarkIds,
     staleContextPackIds,
     missingProvenanceContextPackIds,
@@ -291,6 +324,8 @@ export function projectSpecialistWorkflowReadiness(
     executionReady: false,
     missingContractIds,
     missingContextPackIds,
+    missingResolvedContextPackIds,
+    contextOmissions,
     staleContextPackIds,
     missingProjectionHighWaterMarkIds,
     missingProvenanceContextPackIds,
@@ -328,6 +363,11 @@ export function parseSpecialistWorkflowReadinessDto(value: unknown): SpecialistW
     executionReady: false,
     missingContractIds: Object.freeze([...parsed.missingContractIds]),
     missingContextPackIds: Object.freeze([...parsed.missingContextPackIds]),
+    missingResolvedContextPackIds: Object.freeze([...parsed.missingResolvedContextPackIds]),
+    contextOmissions: Object.freeze(parsed.contextOmissions.map((omission) => Object.freeze({
+      reason: omission.reason,
+      sourceRef: omission.sourceRef
+    }))),
     staleContextPackIds: Object.freeze([...parsed.staleContextPackIds]),
     missingProjectionHighWaterMarkIds: Object.freeze([...parsed.missingProjectionHighWaterMarkIds]),
     missingProvenanceContextPackIds: Object.freeze([...parsed.missingProvenanceContextPackIds]),
@@ -368,7 +408,7 @@ function assertDescriptorMatchesRunType(input: ProjectSpecialistWorkflowReadines
 function contextRefsById(contextPackRefs: readonly ContextPackRef[]): ReadonlyMap<string, ContextPackRef> {
   const refs = new Map<string, ContextPackRef>();
   for (const refInput of contextPackRefs) {
-    const ref = contextPackRefSchema.parse(refInput);
+    const ref = parseBrowserSafeContextPackRef(refInput);
     if (!refs.has(ref.contextPackId)) {
       refs.set(ref.contextPackId, ref);
     }
@@ -376,17 +416,69 @@ function contextRefsById(contextPackRefs: readonly ContextPackRef[]): ReadonlyMa
   return refs;
 }
 
-function hasPromptTemplateRegistration(input: ProjectSpecialistWorkflowReadinessInput): boolean {
-  const registrations: readonly PromptArtifactTemplateRegistration[] =
-    "templates" in input.promptTemplateRegistrations
-      ? input.promptTemplateRegistrations.templates
-      : input.promptTemplateRegistrations;
+function missingBrowserSafeResolvedContextPackIds(
+  requiredContextPackIds: readonly string[],
+  refsById: ReadonlyMap<string, ContextPackRef>,
+  resolvedContextPacks: readonly VerifiedResolvedContextPack[]
+): readonly string[] {
+  const resolvedById = new Map<string, ContextPackRef>();
+  try {
+    for (const resolved of resolvedContextPacks) {
+      const ref = parseAuthoritativeBrowserSafeResolvedContextPackRef(resolved);
+      if (resolvedById.has(ref.contextPackId)) return Object.freeze([...requiredContextPackIds]);
+      resolvedById.set(ref.contextPackId, ref);
+    }
+  } catch {
+    return Object.freeze([...requiredContextPackIds]);
+  }
+  if (resolvedById.size !== requiredContextPackIds.length) return Object.freeze([...requiredContextPackIds]);
+  return Object.freeze(requiredContextPackIds.filter((contextPackId) => {
+    const expected = refsById.get(contextPackId);
+    const resolved = resolvedById.get(contextPackId);
+    return expected === undefined || resolved === undefined || !browserSafeContextRefsMatch(expected, resolved);
+  }));
+}
 
-  return registrations.some((registration) =>
-    registration.runType === input.runType &&
-    registration.promptTemplateId === input.descriptor.promptTemplate.promptTemplateId &&
-    registration.promptTemplateVersion === input.descriptor.promptTemplate.promptTemplateVersion
+function hasProductionPromptRegistration(input: ProjectSpecialistWorkflowReadinessInput): boolean {
+  const expected = productionSpecialistPromptRegistrationFor(
+    input.runType as Exclude<AgentSpecialistRunType, "ontology-bootstrap">
   );
+  const registrations = input.productionPromptRegistrations ?? productionSpecialistPromptRegistrations;
+  return registrations.some((registration) =>
+    registration.runType === expected.runType &&
+    registration.promptTemplateId === expected.promptTemplateId &&
+    registration.promptTemplateVersion === expected.promptTemplateVersion &&
+    registration.rendererId === expected.rendererId &&
+    registration.rendererVersion === expected.rendererVersion &&
+    registration.rendererHash === expected.rendererHash &&
+    registration.providerOutputSchemaId === input.descriptor.promptTemplate.providerOutputSchemaId &&
+    registration.providerOutputSchemaVersion === input.descriptor.promptTemplate.providerOutputSchemaVersion &&
+    registration.handoffSchemaId === input.descriptor.promptTemplate.handoffSchemaId &&
+    registration.handoffSchemaVersion === input.descriptor.promptTemplate.handoffSchemaVersion &&
+    registration.safetyClass === "provider-approved" &&
+    registration.transferApprovalClass === "provider-byte-transfer"
+  );
+}
+
+function applicableContextPackIds(input: ProjectSpecialistWorkflowReadinessInput): readonly string[] {
+  const hasAssociatedPrr = input.scope.associatedPrrRequestId !== undefined;
+  return input.descriptor.contextPacks
+    .filter((pack) => pack.requirementMode === "always" || hasAssociatedPrr)
+    .map((pack) => pack.contextPackId);
+}
+
+function boundedContextOmissions(
+  input: ProjectSpecialistWorkflowReadinessInput
+): readonly { readonly reason: "no-associated-prr"; readonly sourceRef: string }[] {
+  if (input.scope.associatedPrrRequestId !== undefined) {
+    return Object.freeze([]);
+  }
+  return Object.freeze(input.descriptor.contextPacks
+    .filter((pack) => pack.requirementMode === "when-scope-associated-prr")
+    .map((pack) => Object.freeze({
+      reason: "no-associated-prr" as const,
+      sourceRef: pack.contextPackId
+    })));
 }
 
 function providerReadinessBlockers(
@@ -484,6 +576,7 @@ function missingProviderApprovalClasses(
 function statusFor(input: {
   readonly missingContractIds: readonly string[];
   readonly missingContextPackIds: readonly string[];
+  readonly missingResolvedContextPackIds: readonly string[];
   readonly missingProjectionHighWaterMarkIds: readonly string[];
   readonly staleContextPackIds: readonly string[];
   readonly missingProvenanceContextPackIds: readonly string[];
@@ -499,7 +592,11 @@ function statusFor(input: {
   if (input.missingContractIds.length > 0) {
     return { status: "blocked", category: "blocked-prerequisite" };
   }
-  if (input.missingContextPackIds.length > 0 || input.missingProvenanceContextPackIds.length > 0) {
+  if (
+    input.missingContextPackIds.length > 0 ||
+    input.missingResolvedContextPackIds.length > 0 ||
+    input.missingProvenanceContextPackIds.length > 0
+  ) {
     return { status: "blocked", category: "blocked-provenance" };
   }
   if (input.missingProjectionHighWaterMarkIds.length > 0 || input.staleContextPackIds.length > 0) {

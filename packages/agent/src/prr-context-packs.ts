@@ -3,6 +3,7 @@ import {
   buildResolvedContextPack,
   contextPackDescriptorSchema,
   hashAgentContextPack,
+  registerContextPackPayloadParserAuthority,
   serializeContextPackPayload,
   verifyResolvedContextPack,
   type AgentContextPackJsonValue,
@@ -237,7 +238,7 @@ const jurisdictionSummaryPayloadSchema = z.object({
   omissions: z.array(jurisdictionOmissionSchema)
 }).strict();
 
-export const prrReadModelPayloadParser = withContextPackParserIdentity("prr-read-model-payload-parser.v1", (payload, ref) => {
+export const prrReadModelPayloadParser = withContextPackParserIdentity("prr-read-model.v1", (payload, ref) => {
   const parsed = payloadSchema.parse(payload);
   if (ref !== undefined && (ref.contextPackId !== "prr-read-model.v1" || ref.version !== 1 || ref.scope?.kind !== "prr-request" || ref.scope.id !== parsed.scope.id)) {
     throw new Error("invalid prr-read-model payload ref");
@@ -246,7 +247,7 @@ export const prrReadModelPayloadParser = withContextPackParserIdentity("prr-read
   return parsed as unknown as AgentContextPackJsonValue;
 });
 
-export const jurisdictionPackSummaryPayloadParser = withContextPackParserIdentity("jurisdiction-pack-summary-payload-parser.v1", (payload, ref) => {
+export const jurisdictionPackSummaryPayloadParser = withContextPackParserIdentity("jurisdiction-pack-summary.v1", (payload, ref) => {
   const parsed = jurisdictionSummaryPayloadSchema.parse(payload);
   const expectedPackRef = `${parsed.packName}@${parsed.packVersion}`;
   const expectedRuleRefs = parsed.citedRules.map((rule) =>
@@ -386,6 +387,7 @@ function withContextPackParserIdentity(
     writable: false,
     configurable: false
   });
+  registerContextPackPayloadParserAuthority(parser);
   return parser;
 }
 

@@ -986,7 +986,7 @@ describe("investigative context packs", () => {
     }))).toThrow(/conflicting-context-pack-registration/);
   });
 
-  it("satisfies specialist readiness through injected investigative refs", async () => {
+  it("keeps injected investigative refs visible while ref-only readiness remains blocked", async () => {
     const resolver = createInMemoryPayloadResolver();
     const registry = createContextPackRegistry({ payloadResolver: resolver });
     registerInvestigativeContextPacks(registry, createRegistrationInput({
@@ -1002,7 +1002,7 @@ describe("investigative context packs", () => {
     const refs = resolved.map((pack) => pack.ref);
 
     const readiness = projectSpecialistWorkflowReadiness(createReadinessInput({ refs }));
-    expect(readiness.contextReady).toBe(true);
+    expect(readiness.contextReady).toBe(false);
     expect(readiness.missingContextPackIds).not.toContain("accepted-graph-projection.v1");
     expect(readiness.missingContextPackIds).not.toContain("evidence-summary.v1");
     expect(readiness.missingContextPackIds).not.toContain("governance-locks.v1");
@@ -1012,6 +1012,11 @@ describe("investigative context packs", () => {
       "governance-locks.v1"
     ]));
     expect(readiness.missingProjectionHighWaterMarkIds).not.toEqual(expect.arrayContaining([
+      "accepted-graph-projection.v1",
+      "evidence-summary.v1",
+      "governance-locks.v1"
+    ]));
+    expect(readiness.missingResolvedContextPackIds).toEqual(expect.arrayContaining([
       "accepted-graph-projection.v1",
       "evidence-summary.v1",
       "governance-locks.v1"
@@ -1376,13 +1381,15 @@ function createReadinessInput(input: { readonly refs: readonly ContextPackRef[] 
   };
   const suppliedIds = new Set(input.refs.map((ref) => ref.contextPackId));
   const supportingRefs = descriptor.contextPacks
-    .filter((pack) => pack.required && !suppliedIds.has(pack.contextPackId))
+    .filter((pack) => pack.requirementMode === "always" && !suppliedIds.has(pack.contextPackId))
     .map((pack) => readinessContextRef(pack.contextPackId, currentProjectionHighWaterMarks[pack.contextPackId] ?? 1));
   return {
     runType: "evidence-triage",
     descriptor,
     availableContracts: [...descriptor.prerequisiteContractIds],
+    scope: { kind: "imported-evidence", refs: ["ev_investigative_001"] },
     contextPackRefs: [...supportingRefs, ...input.refs],
+    resolvedContextPacks: [],
     currentProjectionHighWaterMarks,
     activeLocks: [],
     providerReadiness: {
@@ -1399,12 +1406,6 @@ function createReadinessInput(input: { readonly refs: readonly ContextPackRef[] 
         safeActionIds: []
       }]
     },
-    promptTemplateRegistrations: [{
-      runType: "evidence-triage",
-      promptTemplateId: descriptor.promptTemplate.promptTemplateId,
-      promptTemplateVersion: descriptor.promptTemplate.promptTemplateVersion,
-      label: "Evidence triage prompt"
-    }],
     availableDomainAdapterFamilies: ["provider-byte-transfer", "contradiction-claim-review"],
     satisfiedApprovalClasses: []
   };

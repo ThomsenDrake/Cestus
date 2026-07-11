@@ -8,7 +8,8 @@ type SpecialistDomainOwner = "agent" | "prr" | "ingestion" | "ontology" | "gover
 
 export interface SpecialistContextPackRequirement {
   readonly contextPackId: string;
-  readonly required: boolean;
+  readonly requirementMode: "always" | "when-scope-associated-prr";
+  readonly omissionWhenNotApplicable?: "no-associated-prr";
   readonly purpose: string;
 }
 
@@ -16,6 +17,10 @@ export interface SpecialistPromptTemplateDescriptor {
   readonly promptTemplateId: string;
   readonly promptTemplateVersion: number;
   readonly outputSchemaId: string;
+  readonly providerOutputSchemaId: string;
+  readonly providerOutputSchemaVersion: number;
+  readonly handoffSchemaId: string;
+  readonly handoffSchemaVersion: number;
   readonly safetyClass: SpecialistPromptSafetyClass;
   readonly transferApprovalClass: SpecialistPromptTransferApprovalClass;
 }
@@ -153,7 +158,7 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
       contextPacks: [
         contextPack("evidence-summary.v1", "Summarize evidence metadata, hashes, media types, and safe summaries."),
         contextPack("governance-locks.v1", "Surface quarantine, redaction, and provider-transfer locks."),
-        contextPack("prr-read-model.v1", "Tie productions back to request state and correspondence context."),
+        conditionalPrrContextPack("Tie productions back to request state and correspondence context."),
         contextPack("accepted-graph-projection.v1", "Avoid duplicates against accepted assertions and entities."),
         contextPack("agent-memory-summary.v1", "Preserve prior caveats and review notes."),
         contextPack("task-run-history.v1", "Expose earlier triage attempts, approvals, and denials."),
@@ -204,7 +209,7 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
       contextPacks: [
         contextPack("accepted-graph-projection.v1", "Reference accepted assertions, entities, relationships, and provenance."),
         contextPack("evidence-summary.v1", "Provide date-bearing evidence metadata and summaries."),
-        contextPack("prr-read-model.v1", "Include request timeline entries and correspondence summaries."),
+        conditionalPrrContextPack("Include request timeline entries and correspondence summaries."),
         contextPack("governance-locks.v1", "Expose governance, export, and provider-transfer locks."),
         contextPack("agent-memory-summary.v1", "Carry forward timeline caveats and prior notes."),
         contextPack("task-run-history.v1", "Preserve prior draft attempts and omissions."),
@@ -248,7 +253,7 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
       contextPacks: [
         contextPack("accepted-graph-projection.v1", "Reference accepted assertions and provenance for comparison."),
         contextPack("evidence-summary.v1", "Provide evidence summaries and content hashes for paired comparisons."),
-        contextPack("prr-read-model.v1", "Include agency statements, correspondence, and request-linked context."),
+        conditionalPrrContextPack("Include agency statements, correspondence, and request-linked context."),
         contextPack("timeline-draft-summary.v1", "Compare against prior sourced timeline artifacts and uncertainty flags."),
         contextPack("governance-locks.v1", "Expose governance, legal, and provider-transfer locks."),
         contextPack("agent-memory-summary.v1", "Preserve prior contradiction caveats and review notes."),
@@ -294,7 +299,7 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
       contextPacks: [
         contextPack("accepted-graph-projection.v1", "Reference accepted facts and provenance relevant to the investigation."),
         contextPack("evidence-summary.v1", "Summarize known evidence and unresolved gaps."),
-        contextPack("prr-read-model.v1", "Provide current PRR posture, deadlines, and correspondence context."),
+        conditionalPrrContextPack("Provide current PRR posture, deadlines, and correspondence context."),
         contextPack("timeline-draft-summary.v1", "Use prior timeline uncertainty and omissions to plan next steps."),
         contextPack("contradiction-candidate-summary.v1", "Incorporate open contradiction candidates and reviewer decisions."),
         contextPack("governance-locks.v1", "Expose legal, governance, and provider-transfer locks."),
@@ -343,7 +348,7 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
       contextPacks: [
         contextPack("accepted-graph-projection.v1", "Reference accepted facts and provenance for reporting."),
         contextPack("evidence-summary.v1", "Summarize evidence metadata, safe excerpts, and exclusions."),
-        contextPack("prr-read-model.v1", "Include PRR posture, correspondence summaries, and request context."),
+        conditionalPrrContextPack("Include PRR posture, correspondence summaries, and request context."),
         contextPack("timeline-draft-summary.v1", "Reference prior sourced timelines and uncertainty notes."),
         contextPack("contradiction-candidate-summary.v1", "Capture unresolved contradictions and review decisions."),
         contextPack("governance-locks.v1", "Expose export, legal, and provider-transfer locks."),
@@ -393,19 +398,45 @@ function buildDescriptors(): readonly SpecialistWorkflowDescriptor[] {
 function contextPack(contextPackId: string, purpose: string): SpecialistContextPackRequirement {
   return Object.freeze({
     contextPackId,
-    required: true,
+    requirementMode: "always",
+    purpose
+  });
+}
+
+function conditionalPrrContextPack(purpose: string): SpecialistContextPackRequirement {
+  return Object.freeze({
+    contextPackId: "prr-read-model.v1",
+    requirementMode: "when-scope-associated-prr",
+    omissionWhenNotApplicable: "no-associated-prr",
     purpose
   });
 }
 
 function promptTemplate(runType: MvpSpecialistRunType): SpecialistPromptTemplateDescriptor {
+  const providerOutputSchemaId = providerOutputSchemaIdFor(runType);
+  const handoffSchemaId = `${runType}-handoff.v1`;
   return Object.freeze({
     promptTemplateId: promptTemplateIdFor(runType),
     promptTemplateVersion: 1,
-    outputSchemaId: `${runType}-handoff.v1`,
+    outputSchemaId: providerOutputSchemaId,
+    providerOutputSchemaId,
+    providerOutputSchemaVersion: 1,
+    handoffSchemaId,
+    handoffSchemaVersion: 1,
     safetyClass: "provider-approved",
     transferApprovalClass: "provider-byte-transfer"
   });
+}
+
+function providerOutputSchemaIdFor(runType: MvpSpecialistRunType): string {
+  switch (runType) {
+    case "prr-negotiation": return "prr-negotiation.review-output.v1";
+    case "evidence-triage": return "evidence-triage.classify-output.v1";
+    case "timeline-builder": return "timeline-builder.sourced-timeline-output.v1";
+    case "contradiction-finder": return "contradiction-finder.candidates-output.v1";
+    case "investigation-planner": return "investigation-planner.next-steps-output.v1";
+    case "report-builder": return "report-builder.packet-draft-output.v1";
+  }
 }
 
 function promptTemplateIdFor(runType: MvpSpecialistRunType): string {
