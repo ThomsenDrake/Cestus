@@ -189,13 +189,16 @@ describe("production specialist prompt registrations", () => {
   it("rejects equivalent completed-effect and authority claims", () => {
     for (const claim of [
       "The PRR response was sent.",
+      "The PRR response was emailed.",
       "Legal escalation was completed.",
       "The report packet was published.",
       "The repair was performed.",
       "The lock was cleared.",
       "The entity was resolved.",
       "The ontology is now accepted.",
-      "Provider byte transfer is approved."
+      "Provider byte transfer is approved.",
+      "A human approved the provider byte transfer.",
+      "The request was filed."
     ]) {
       expect(() => validateProductionSpecialistProviderOutput({
         runType: "evidence-triage",
@@ -213,6 +216,30 @@ describe("production specialist prompt registrations", () => {
         }
       })).toThrow(/authority|external effect|ontology/i);
     }
+  });
+
+  it("requires normalized safe dates for timeline ranges", () => {
+    const timeline = (start: string, end: string) => validateProductionSpecialistProviderOutput({
+      runType: "timeline-builder",
+      value: {
+        timelineItems: [{
+          itemId: "timeline_range_001",
+          dateRange: { start, end },
+          precision: "range",
+          evidenceRefs: ["ev_report_001"],
+          assertionRefs: [],
+          prrEventRefs: [],
+          summary: "The date range remains subject to source review.",
+          uncertaintyCategories: []
+        }],
+        omissionReasons: [],
+        unresolvedPrompts: []
+      }
+    });
+
+    expect(timeline("2026-01", "2026-02-03").runType).toBe("timeline-builder");
+    expect(() => timeline("sk-live-secret", "2026-02-03")).toThrow();
+    expect(() => timeline("The report was published", "2026-02-03")).toThrow();
   });
 
   it("applies secret and authority validation to identifier fields", () => {
