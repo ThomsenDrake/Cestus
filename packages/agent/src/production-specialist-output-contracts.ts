@@ -193,19 +193,35 @@ export type ProductionSpecialistProviderOutput =
   | { readonly runType: "report-builder"; readonly value: ReportBuilderPacketDraftOutput };
 
 export function validateProductionSpecialistProviderOutput(input: { readonly runType: ProductionRunType; readonly value: unknown }): ProductionSpecialistProviderOutput {
-  switch (input.runType) {
-    case "prr-negotiation": return deepFreeze({ runType: input.runType, value: parseProviderOutput(prrNegotiationReviewOutputSchema, input.value) });
-    case "evidence-triage": return deepFreeze({ runType: input.runType, value: parseProviderOutput(evidenceTriageClassifyOutputSchema, input.value) });
-    case "timeline-builder": return deepFreeze({ runType: input.runType, value: parseProviderOutput(timelineBuilderSourcedTimelineOutputSchema, input.value) });
-    case "contradiction-finder": return deepFreeze({ runType: input.runType, value: parseProviderOutput(contradictionFinderCandidatesOutputSchema, input.value) });
-    case "investigation-planner": return deepFreeze({ runType: input.runType, value: parseProviderOutput(investigationPlannerNextStepsOutputSchema, input.value) });
-    case "report-builder": return deepFreeze({ runType: input.runType, value: parseProviderOutput(reportBuilderPacketDraftOutputSchema, input.value) });
+  const envelope = normalizeProviderOutputEnvelope(input);
+
+  switch (envelope.runType) {
+    case "prr-negotiation": return deepFreeze({ runType: envelope.runType, value: parseProviderOutput(prrNegotiationReviewOutputSchema, envelope.value) });
+    case "evidence-triage": return deepFreeze({ runType: envelope.runType, value: parseProviderOutput(evidenceTriageClassifyOutputSchema, envelope.value) });
+    case "timeline-builder": return deepFreeze({ runType: envelope.runType, value: parseProviderOutput(timelineBuilderSourcedTimelineOutputSchema, envelope.value) });
+    case "contradiction-finder": return deepFreeze({ runType: envelope.runType, value: parseProviderOutput(contradictionFinderCandidatesOutputSchema, envelope.value) });
+    case "investigation-planner": return deepFreeze({ runType: envelope.runType, value: parseProviderOutput(investigationPlannerNextStepsOutputSchema, envelope.value) });
+    case "report-builder": return deepFreeze({ runType: envelope.runType, value: parseProviderOutput(reportBuilderPacketDraftOutputSchema, envelope.value) });
     default: throw new Error("Unsupported production specialist run type.");
   }
 }
 
 function parseProviderOutput<T>(schema: z.ZodType<T>, value: unknown): T {
-  return schema.parse(normalizeProviderOutputJsonValue(value, "$.value", new WeakSet<object>()));
+  return schema.parse(value);
+}
+
+function normalizeProviderOutputEnvelope(input: unknown): { readonly runType: unknown; readonly value: unknown } {
+  const normalized = normalizeProviderOutputJsonValue(input, "$", new WeakSet<object>());
+  if (normalized === null || Array.isArray(normalized) || typeof normalized !== "object") {
+    throw new Error("$ must be JSON DTO-safe.");
+  }
+
+  const envelope = normalized as Record<string, unknown>;
+  if (Object.keys(envelope).length !== 2 || !("runType" in envelope) || !("value" in envelope)) {
+    throw new Error("$ must be JSON DTO-safe.");
+  }
+
+  return { runType: envelope.runType, value: envelope.value };
 }
 
 function normalizeProviderOutputJsonValue(value: unknown, path: string, seen: WeakSet<object>): unknown {
