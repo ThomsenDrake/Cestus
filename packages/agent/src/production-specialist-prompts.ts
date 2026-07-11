@@ -76,28 +76,6 @@ const always = (contextPackIds: readonly string[]): readonly ProductionContextRe
 const maximumPayloadFieldTextCharacters = 512;
 const maximumPayloadArrayItems = 16;
 const maximumRenderedPayloadSectionBytes = 16_384;
-const graphAssertionFieldRules = Object.freeze(["assertionId", "evidenceId", "evidenceContentHash", "proposedByEventId", "acceptedByEventId", "sourceEventIds", "rowHash", "safeStatement"] as const);
-const graphEntityFieldRules = Object.freeze(["entityId", "rowHash", "safeLabel", "sourceEventIds"] as const);
-const graphRelationshipFieldRules = Object.freeze(["relationshipId", "acceptedByEventId", "evidenceId", "evidenceContentHash", "sourceEventIds", "rowHash", "sourceEntityId", "targetEntityId", "relationshipType"] as const);
-const evidenceSummaryFieldRules = Object.freeze(["evidenceId", "ingestionEventId", "contentHash", "mediaType", "sizeBytes", "sourceCollectionId", "scanBatchId", "importBatchId", "occurrenceIds", "safeNarrative"] as const);
-const parseJobFieldRules = Object.freeze(["parseJobId", "lane", "parserName", "parserVersion", "state", "outputHash", "outputMediaType", "terminalEventId", "retryable"] as const);
-const governanceTagFieldRules = Object.freeze(["tag", "source", "state", "confidence", "safeRationale", "eventId"] as const);
-const lockFieldRules = Object.freeze(["lockId", "lockKind", "safeReason", "activatedBy", "activatedAt", "relatedEventIds", "projectionEventIds"] as const);
-const restrictionFieldRules = Object.freeze(["restrictionId", "restrictionKind", "affectedRef", "sourceEventIds", "projectionProvenanceRefs", "policyVersion", "safeReasonCode"] as const);
-const memoryFieldRules = Object.freeze(["memoryId", "kind", "scope", "state", "safeSummary", "sourceEventIds", "artifactHashes"] as const);
-const taskFieldRules = Object.freeze(["taskId", "status", "priority", "createdAt", "updatedAt", "residentAgentId", "requestedBy", "runId", "statusReasonCode", "sourceEventIds", "inputArtifactHashes"] as const);
-const runFieldRules = Object.freeze(["runId", "state", "runType", "residentAgentId", "startedBy", "startedAt", "completedAt", "failedAt", "taskId", "workspaceId", "investigationId", "sourceEventIds", "inputArtifactHashes", "outputArtifactHashes", "failureCategory", "retryable", "summaryCode"] as const);
-const invocationFieldRules = Object.freeze(["invocationId", "status", "runId", "providerId", "modelFamily", "requestedAt", "completedAt", "inputArtifactHash", "providerOutputArtifactHash", "promptTemplateId", "runType", "omissionCount", "failureCategory", "retryable", "sourceEventIds"] as const);
-const toolRequestFieldRules = Object.freeze(["toolRequestId", "state", "runId", "toolId", "toolVersion", "requestedBy", "sideEffectClass", "requiredApprovalClass", "previewHash", "scope", "requestedAt", "sourceEventIds", "inputArtifactHashes", "artifactHashes", "failureCategory", "retryable"] as const);
-const providerStateFieldRules = Object.freeze(["providerId", "state", "reasonCode", "updatedAt"] as const);
-const diagnosticFieldRules = Object.freeze(["code", "category", "safeSummary", "sourceEventIds", "artifactHashes"] as const);
-const prrLifecycleFieldRules = Object.freeze(["status", "agencyName"] as const);
-const prrStreamFieldRules = Object.freeze(["requestCreatedEventId", "streamHeadEventId", "streamHighWaterMark", "sourceEventIds"] as const);
-const prrDeadlineFieldRules = Object.freeze(["deadlineDate", "source", "confidence", "explanation", "confirmedBy", "rationale"] as const);
-const prrFeeFieldRules = Object.freeze(["amountCents", "currency", "challenged"] as const);
-const prrNarrowingFieldRules = Object.freeze(["narrowingId", "proposedScope", "proposedBy", "acceptedScope", "acceptedBy"] as const);
-const placeholderItemFieldRules = Object.freeze(["itemId", "candidateId", "summary", "rationale", "evidenceIds", "assertionIds", "timelineItemIds"] as const);
-
 interface RegisteredPayloadRenderer {
   readonly contextPackId: string;
   readonly label: string;
@@ -106,41 +84,102 @@ interface RegisteredPayloadRenderer {
 }
 
 const payloadRenderingPolicyMaterial = Object.freeze({
-  version: 1,
+  version: 2,
   redactionBehavior: "exclude-unregistered-fields",
   maximumPayloadFieldTextCharacters,
   maximumPayloadArrayItems,
-  renderers: "registered-authoritative-payload-shapes.v1",
-  contextPackIds: [
-    "accepted-graph-projection.v1",
-    "evidence-summary.v1",
-    "timeline-draft-summary.v1",
-    "contradiction-candidate-summary.v1",
-    "governance-locks.v1",
-    "agent-memory-summary.v1",
-    "task-run-history.v1",
-    "workspace-runtime-status.v1",
-    "prr-read-model.v1",
-    "jurisdiction-pack-summary.v1"
-  ]
+  maximumRenderedPayloadSectionBytes,
+  fieldRules: {
+    graphAssertion: ["assertionId", "evidenceId", "evidenceContentHash", "proposedByEventId", "acceptedByEventId", "sourceEventIds", "rowHash", "safeStatement"],
+    graphEntity: ["entityId", "rowHash", "safeLabel", "sourceEventIds"],
+    graphRelationship: ["relationshipId", "acceptedByEventId", "evidenceId", "evidenceContentHash", "sourceEventIds", "rowHash", "sourceEntityId", "targetEntityId", "relationshipType"],
+    evidenceSummary: ["evidenceId", "ingestionEventId", "contentHash", "mediaType", "sizeBytes", "sourceCollectionId", "scanBatchId", "importBatchId", "occurrenceIds", "safeNarrative"],
+    parseJob: ["parseJobId", "lane", "parserName", "parserVersion", "state", "outputHash", "outputMediaType", "terminalEventId", "retryable"],
+    governanceTag: ["tag", "source", "state", "confidence", "safeRationale", "eventId"],
+    lock: ["lockId", "lockKind", "safeReason", "activatedBy", "activatedAt", "relatedEventIds", "projectionEventIds"],
+    restriction: ["restrictionId", "restrictionKind", "affectedRef", "sourceEventIds", "projectionProvenanceRefs", "policyVersion", "safeReasonCode"],
+    memory: ["memoryId", "scope", "memoryKind", "summary", "confidence", "sourceEventIds", "artifactHashes", "expiresAt"],
+    memoryContainer: ["aggregateCounts", "sourceEventIds", "artifactHashes"],
+    task: ["taskId", "status", "priority", "createdAt", "updatedAt", "residentAgentId", "requestedBy", "runId", "statusReasonCode", "sourceEventIds", "inputArtifactHashes"],
+    run: ["runId", "state", "runType", "residentAgentId", "startedBy", "startedAt", "completedAt", "failedAt", "taskId", "workspaceId", "investigationId", "sourceEventIds", "inputArtifactHashes", "outputArtifactHashes", "failureCategory", "retryable", "summaryCode"],
+    invocation: ["invocationId", "status", "runId", "providerId", "modelFamily", "requestedAt", "completedAt", "inputArtifactHash", "providerOutputArtifactHash", "promptTemplateId", "runType", "omissionCount", "failureCategory", "retryable", "sourceEventIds"],
+    toolRequest: ["toolRequestId", "state", "runId", "toolId", "toolVersion", "requestedBy", "sideEffectClass", "requiredApprovalClass", "previewHash", "scope", "requestedAt", "sourceEventIds", "inputArtifactHashes", "artifactHashes", "failureCategory", "retryable"],
+    providerState: ["providerId", "state", "reasonCode", "updatedAt"],
+    diagnostic: ["code", "category", "safeSummary", "sourceEventIds", "artifactHashes"],
+    prrLifecycle: ["status", "agencyName"],
+    prrStream: ["requestCreatedEventId", "streamHeadEventId", "streamHighWaterMark", "sourceEventIds"],
+    prrDeadline: ["deadlineDate", "source", "confidence", "explanation", "confirmedBy", "rationale"],
+    prrFee: ["amountCents", "currency", "challenged"],
+    prrNarrowing: ["narrowingId", "proposedScope", "proposedBy", "acceptedScope", "acceptedBy"],
+    correspondence: ["correspondenceId", "subject", "occurredAt", "bodyHash", "evidenceIds", "attachmentEvidenceIds", "approvedBy"],
+    productionBatch: ["productionId", "label", "receivedAt", "evidenceIds"],
+    production: ["evidenceIds"],
+    productionExemption: ["exemptionId", "claimedBy"],
+    productionDenial: ["denialId", "receivedAt", "reason"],
+    productionAppeal: ["appealId", "correspondenceId", "filedAt", "approvedBy"],
+    productionStalling: ["possible", "confirmed"],
+    productionStallingSignal: ["kind", "explanation"],
+    productionEscalation: ["confirmedBy", "rationale", "evidenceIds"],
+    prrGate: ["gateId", "kind", "ready", "locked"],
+    prrSourceReference: ["id", "contentHash", "sourceEventId"],
+    prrOmission: ["kind", "reason", "omittedCount", "projectionHighWaterMark"],
+    jurisdiction: ["packName", "packVersion", "jurisdiction"],
+    citedRule: ["label", "citation"],
+    advisoryPosture: ["summary", "status", "safeSummary"],
+    placeholderItem: ["itemId", "candidateId", "summary", "rationale", "evidenceIds", "assertionIds", "timelineItemIds"],
+    omissions: ["omissions"],
+    evidenceDuplicateGroup: ["groupId", "memberCount"],
+    runtime: ["runtimeHighWaterMark", "workspaceMounted", "workspaceId", "storageStrategy", "bindPosture", "authPosture", "projectionHighWaterMarks", "omissionCodes"],
+    historyContainer: ["projectionHighWaterMark", "projectionSourceRef", "aggregateCounts", "sourceEventIds", "artifactHashes"]
+  },
+  renderers: {
+    "accepted-graph-projection.v1": { label: "Accepted graph projection", kind: "accepted-graph-projection.v1", fieldRules: ["graphAssertion", "graphEntity", "graphRelationship"] },
+    "evidence-summary.v1": { label: "Evidence summary", kind: "evidence-summary.v1", fieldRules: ["evidenceSummary", "parseJob", "governanceTag", "evidenceDuplicateGroup"] },
+    "timeline-draft-summary.v1": { label: "Timeline draft summary", kind: "placeholder-summary.v1", fieldRules: ["placeholderItem", "omissions"] },
+    "contradiction-candidate-summary.v1": { label: "Contradiction candidate summary", kind: "placeholder-summary.v1", fieldRules: ["placeholderItem", "omissions"] },
+    "governance-locks.v1": { label: "Governance locks", kind: "governance-locks.v1", fieldRules: ["lock", "restriction"] },
+    "agent-memory-summary.v1": { label: "Agent memory summary", kind: "agent-memory-summary.v1", fieldRules: ["memory", "memoryContainer"] },
+    "task-run-history.v1": { label: "Task and run history", kind: "task-run-history.v1", fieldRules: ["task", "run", "invocation", "toolRequest", "historyContainer"] },
+    "workspace-runtime-status.v1": { label: "Workspace runtime status", kind: "workspace-runtime-status.v1", fieldRules: ["runtime", "providerState", "diagnostic"] },
+    "prr-read-model.v1": { label: "PRR read model", kind: "prr-read-model.v1", fieldRules: ["prrLifecycle", "prrStream", "prrDeadline", "prrFee", "prrNarrowing", "correspondence", "productionBatch", "production", "productionExemption", "productionDenial", "productionAppeal", "productionStalling", "productionStallingSignal", "productionEscalation", "diagnostic", "prrGate", "prrSourceReference", "prrOmission"] },
+    "jurisdiction-pack-summary.v1": { label: "Jurisdiction pack summary", kind: "jurisdiction-pack-summary.v1", fieldRules: ["jurisdiction", "citedRule", "advisoryPosture", "omissions"] }
+  }
 });
 
+const { fieldRules } = payloadRenderingPolicyMaterial;
+const graphAssertionFieldRules = fieldRules.graphAssertion;
+const graphEntityFieldRules = fieldRules.graphEntity;
+const graphRelationshipFieldRules = fieldRules.graphRelationship;
+const evidenceSummaryFieldRules = fieldRules.evidenceSummary;
+const parseJobFieldRules = fieldRules.parseJob;
+const governanceTagFieldRules = fieldRules.governanceTag;
+const lockFieldRules = fieldRules.lock;
+const restrictionFieldRules = fieldRules.restriction;
+const memoryFieldRules = fieldRules.memory;
+const taskFieldRules = fieldRules.task;
+const runFieldRules = fieldRules.run;
+const invocationFieldRules = fieldRules.invocation;
+const toolRequestFieldRules = fieldRules.toolRequest;
+const providerStateFieldRules = fieldRules.providerState;
+const diagnosticFieldRules = fieldRules.diagnostic;
+const prrLifecycleFieldRules = fieldRules.prrLifecycle;
+const prrStreamFieldRules = fieldRules.prrStream;
+const prrDeadlineFieldRules = fieldRules.prrDeadline;
+const prrFeeFieldRules = fieldRules.prrFee;
+const prrNarrowingFieldRules = fieldRules.prrNarrowing;
+const placeholderItemFieldRules = fieldRules.placeholderItem;
+
 const payloadRenderersByContextPackId: Readonly<Record<string, RegisteredPayloadRenderer>> = Object.freeze({
-  "accepted-graph-projection.v1": renderer("accepted-graph-projection.v1", "Accepted graph projection", renderAcceptedGraphProjectionPayload),
-  "evidence-summary.v1": Object.freeze({
-    contextPackId: "evidence-summary.v1",
-    label: "Evidence summary",
-    redactionBehavior: "exclude-unregistered-fields",
-    render: renderEvidenceSummaryPayload
-  }),
-  "timeline-draft-summary.v1": renderer("timeline-draft-summary.v1", "Timeline draft summary", renderTimelineDraftSummaryPayload),
-  "contradiction-candidate-summary.v1": renderer("contradiction-candidate-summary.v1", "Contradiction candidate summary", renderContradictionCandidateSummaryPayload),
-  "governance-locks.v1": renderer("governance-locks.v1", "Governance locks", renderGovernanceLocksPayload),
-  "agent-memory-summary.v1": renderer("agent-memory-summary.v1", "Agent memory summary", renderAgentMemorySummaryPayload),
-  "task-run-history.v1": renderer("task-run-history.v1", "Task and run history", renderTaskRunHistoryPayload),
-  "workspace-runtime-status.v1": renderer("workspace-runtime-status.v1", "Workspace runtime status", renderWorkspaceRuntimeStatusPayload),
-  "prr-read-model.v1": renderer("prr-read-model.v1", "PRR read model", renderPrrReadModelPayload),
-  "jurisdiction-pack-summary.v1": renderer("jurisdiction-pack-summary.v1", "Jurisdiction pack summary", renderJurisdictionPackSummaryPayload)
+  "accepted-graph-projection.v1": renderer("accepted-graph-projection.v1", renderAcceptedGraphProjectionPayload),
+  "evidence-summary.v1": renderer("evidence-summary.v1", renderEvidenceSummaryPayload),
+  "timeline-draft-summary.v1": renderer("timeline-draft-summary.v1", renderTimelineDraftSummaryPayload),
+  "contradiction-candidate-summary.v1": renderer("contradiction-candidate-summary.v1", renderContradictionCandidateSummaryPayload),
+  "governance-locks.v1": renderer("governance-locks.v1", renderGovernanceLocksPayload),
+  "agent-memory-summary.v1": renderer("agent-memory-summary.v1", renderAgentMemorySummaryPayload),
+  "task-run-history.v1": renderer("task-run-history.v1", renderTaskRunHistoryPayload),
+  "workspace-runtime-status.v1": renderer("workspace-runtime-status.v1", renderWorkspaceRuntimeStatusPayload),
+  "prr-read-model.v1": renderer("prr-read-model.v1", renderPrrReadModelPayload),
+  "jurisdiction-pack-summary.v1": renderer("jurisdiction-pack-summary.v1", renderJurisdictionPackSummaryPayload)
 });
 
 const definitions: readonly Omit<ProductionSpecialistPromptRegistration, "rendererHash">[] = Object.freeze([
@@ -430,10 +469,11 @@ function renderCanonicalProductionPrompt(input: {
   return text;
 }
 
-function renderer(contextPackId: string, label: string, render: (payload: unknown) => readonly string[]): RegisteredPayloadRenderer {
+function renderer(contextPackId: keyof typeof payloadRenderingPolicyMaterial.renderers, render: (payload: unknown) => readonly string[]): RegisteredPayloadRenderer {
+  const policy = payloadRenderingPolicyMaterial.renderers[contextPackId];
   return Object.freeze({
     contextPackId,
-    label,
+    label: policy.label,
     redactionBehavior: "exclude-unregistered-fields",
     render
   });
@@ -459,7 +499,7 @@ function renderEvidenceSummaryPayload(payload: unknown): readonly string[] {
       ...renderAllowedRecordFields(`Evidence ${index + 1}`, itemRecord, evidenceSummaryFieldRules),
       ...renderRecordList(`Evidence ${index + 1} parse job`, itemRecord?.parseJobs, parseJobFieldRules),
       ...renderRecordList(`Evidence ${index + 1} governance tag`, itemRecord?.governanceTags, governanceTagFieldRules),
-      ...renderAllowedRecordFields(`Evidence ${index + 1} duplicate group`, itemRecord?.duplicateGroup, ["groupId", "memberCount"])
+      ...renderAllowedRecordFields(`Evidence ${index + 1} duplicate group`, itemRecord?.duplicateGroup, fieldRules.evidenceDuplicateGroup)
     ];
   }));
 }
@@ -476,7 +516,7 @@ function renderAgentMemorySummaryPayload(payload: unknown): readonly string[] {
   const memory = jsonRecord(jsonRecord(payload)?.memory);
   return freezeRendered([
     ...renderRecordList("Active memory", memory?.activeMemory, memoryFieldRules),
-    ...renderAllowedRecordFields("Memory", memory, ["aggregateCounts", "sourceEventIds", "artifactHashes"])
+    ...renderAllowedRecordFields("Memory", memory, fieldRules.memoryContainer)
   ]);
 }
 
@@ -487,14 +527,14 @@ function renderTaskRunHistoryPayload(payload: unknown): readonly string[] {
     ...renderRecordList("Run", history?.runs, runFieldRules),
     ...renderRecordList("Model invocation", history?.modelInvocations, invocationFieldRules),
     ...renderRecordList("Tool request", history?.toolRequests, toolRequestFieldRules),
-    ...renderAllowedRecordFields("History", history, ["projectionHighWaterMark", "projectionSourceRef", "aggregateCounts", "sourceEventIds", "artifactHashes"])
+    ...renderAllowedRecordFields("History", history, fieldRules.historyContainer)
   ]);
 }
 
 function renderWorkspaceRuntimeStatusPayload(payload: unknown): readonly string[] {
   const runtime = jsonRecord(jsonRecord(payload)?.runtime);
   return freezeRendered([
-    ...renderAllowedRecordFields("Runtime", runtime, ["runtimeHighWaterMark", "workspaceMounted", "workspaceId", "storageStrategy", "bindPosture", "authPosture", "projectionHighWaterMarks", "omissionCodes"]),
+    ...renderAllowedRecordFields("Runtime", runtime, fieldRules.runtime),
     ...renderRecordList("Provider state", runtime?.providerStates, providerStateFieldRules),
     ...renderRecordList("Runtime diagnostic", runtime?.diagnostics, diagnosticFieldRules)
   ]);
@@ -511,43 +551,42 @@ function renderPrrReadModelPayload(payload: unknown): readonly string[] {
     ...renderCorrespondence(record?.correspondence),
     ...renderProduction(record?.production),
     ...renderRecordList("PRR diagnostic", record?.diagnostics, diagnosticFieldRules),
-    ...renderRecordList("PRR gate", record?.gates, ["gateId", "kind", "ready", "locked"]),
-    ...renderRecordList("PRR source reference", jsonRecord(record?.sourceRefs)?.correspondence, ["id", "contentHash", "sourceEventId"]),
-    ...renderRecordList("PRR source reference", jsonRecord(record?.sourceRefs)?.evidence, ["id", "contentHash", "sourceEventId"]),
-    ...renderRecordList("PRR omission", record?.omissions, ["kind", "reason", "omittedCount", "projectionHighWaterMark"])
+    ...renderRecordList("PRR gate", record?.gates, fieldRules.prrGate),
+    ...renderRecordList("PRR source reference", jsonRecord(record?.sourceRefs)?.correspondence, fieldRules.prrSourceReference),
+    ...renderRecordList("PRR source reference", jsonRecord(record?.sourceRefs)?.evidence, fieldRules.prrSourceReference),
+    ...renderRecordList("PRR omission", record?.omissions, fieldRules.prrOmission)
   ]);
 }
 
 function renderCorrespondence(value: unknown): readonly string[] {
   const record = jsonRecord(value);
-  const fields = ["correspondenceId", "subject", "occurredAt", "bodyHash", "evidenceIds", "attachmentEvidenceIds", "approvedBy"];
   return freezeRendered([
-    ...renderRecordList("Outbound correspondence", record?.outbound, fields),
-    ...renderRecordList("Inbound correspondence", record?.inbound, fields)
+    ...renderRecordList("Outbound correspondence", record?.outbound, fieldRules.correspondence),
+    ...renderRecordList("Inbound correspondence", record?.inbound, fieldRules.correspondence)
   ]);
 }
 
 function renderProduction(value: unknown): readonly string[] {
   const record = jsonRecord(value);
   return freezeRendered([
-    ...renderRecordList("Production batch", record?.batches, ["productionId", "label", "receivedAt", "evidenceIds"]),
-    ...renderAllowedRecordFields("Production", record, ["evidenceIds"]),
-    ...renderRecordList("Production exemption", record?.exemptions, ["exemptionId", "claimedBy"]),
-    ...renderAllowedRecordFields("Production denial", record?.denial, ["denialId", "receivedAt", "reason"]),
-    ...renderAllowedRecordFields("Production appeal", record?.appeal, ["appealId", "correspondenceId", "filedAt", "approvedBy"]),
-    ...renderAllowedRecordFields("Production stalling", record?.stalling, ["possible", "confirmed"]),
-    ...renderRecordList("Production stalling signal", jsonRecord(record?.stalling)?.signals, ["kind", "explanation"]),
-    ...renderAllowedRecordFields("Production escalation", record?.escalation, ["confirmedBy", "rationale", "evidenceIds"])
+    ...renderRecordList("Production batch", record?.batches, fieldRules.productionBatch),
+    ...renderAllowedRecordFields("Production", record, fieldRules.production),
+    ...renderRecordList("Production exemption", record?.exemptions, fieldRules.productionExemption),
+    ...renderAllowedRecordFields("Production denial", record?.denial, fieldRules.productionDenial),
+    ...renderAllowedRecordFields("Production appeal", record?.appeal, fieldRules.productionAppeal),
+    ...renderAllowedRecordFields("Production stalling", record?.stalling, fieldRules.productionStalling),
+    ...renderRecordList("Production stalling signal", jsonRecord(record?.stalling)?.signals, fieldRules.productionStallingSignal),
+    ...renderAllowedRecordFields("Production escalation", record?.escalation, fieldRules.productionEscalation)
   ]);
 }
 
 function renderJurisdictionPackSummaryPayload(payload: unknown): readonly string[] {
   const record = jsonRecord(payload);
   return freezeRendered([
-    ...renderAllowedRecordFields("Jurisdiction pack", record, ["packName", "packVersion", "jurisdiction"]),
-    ...renderRecordList("Cited rule", record?.citedRules, ["label", "citation"]),
-    ...renderAllowedRecordFields("Advisory posture", record?.advisoryPosture, ["summary", "status", "safeSummary"]),
-    ...renderAllowedRecordFields("Jurisdiction pack", record, ["omissions"])
+    ...renderAllowedRecordFields("Jurisdiction pack", record, fieldRules.jurisdiction),
+    ...renderRecordList("Cited rule", record?.citedRules, fieldRules.citedRule),
+    ...renderAllowedRecordFields("Advisory posture", record?.advisoryPosture, fieldRules.advisoryPosture),
+    ...renderAllowedRecordFields("Jurisdiction pack", record, fieldRules.omissions)
   ]);
 }
 
@@ -563,7 +602,7 @@ function renderPlaceholderSummaryPayload(payload: unknown, label: string): reado
   const record = jsonRecord(payload);
   return freezeRendered([
     ...renderRecordList(label, record?.items, placeholderItemFieldRules),
-    ...renderAllowedRecordFields(label, record, ["omissions"])
+    ...renderAllowedRecordFields(label, record, fieldRules.omissions)
   ]);
 }
 
@@ -653,7 +692,7 @@ function withConditionalPrr(alwaysPacks: readonly string[]): readonly Production
 
 function hashCanonicalRendererMaterial(registration: Omit<ProductionSpecialistPromptRegistration, "rendererHash">): `sha256:${string}` {
   const material = {
-    rendererPolicyVersion: 1,
+    rendererPolicyVersion: payloadRenderingPolicyMaterial.version,
     payloadRenderingPolicy: payloadRenderingPolicyMaterial,
     contextOrderingPolicy: "registration-order-v1",
     omissionPolicy: "registered-bounded-omissions-v1",
