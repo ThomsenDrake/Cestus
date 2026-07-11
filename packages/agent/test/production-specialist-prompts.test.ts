@@ -218,6 +218,59 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it("rejects normalized authority variants across narrative, identifier, and reference fields", () => {
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "The PRR was filed.",
+        safeSummaries: ["The provider byte transfer was human-approved."],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    })).toThrow(/authority|external effect|ontology/i);
+
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "report-builder",
+      value: {
+        reportPacketId: "packet_prr_was_emailed",
+        outlineRefs: ["Legal escalation was performed."],
+        draftSectionRefs: [],
+        citationMapRefs: [],
+        includedEvidenceIds: [],
+        excludedEvidenceIds: [],
+        governancePolicyRefs: [],
+        sensitiveOptInRequirements: [],
+        legalReviewFlags: [],
+        exportPublicationApprovalRefs: [],
+        packetSummary: "This remains a draft packet for review."
+      }
+    })).toThrow(/authority|external effect|ontology/i);
+  });
+
+  it("allows command-like narrative evidence that does not claim a completed effect", () => {
+    expect(validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "The policy instructs staff to send a PRR response only after review.",
+        safeSummaries: ["The evidence describes the steps for filing a request and makes no execution claim."],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    }).runType).toBe("evidence-triage");
+  });
+
   it("requires normalized safe dates for timeline ranges", () => {
     const timeline = (start: string, end: string) => validateProductionSpecialistProviderOutput({
       runType: "timeline-builder",

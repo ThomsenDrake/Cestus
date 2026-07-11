@@ -4,8 +4,29 @@ import type { AgentSpecialistRunType } from "./specialists.js";
 
 type ProductionRunType = Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
 
-const authorityClaimPattern = /\b(?:sent|published|exported|delivered|transferred|uploaded|executed|completed)\b|\b(?:prr response (?:was |has been )?(?:sent|emailed)|(?:the )?(?:prr )?request (?:was |has been )?filed|accepted (?:graph|ontology|assertion|relationship)|(?:the )?ontology (?:is |was |has been |now )?(?:now )?accepted|(?:entity|entities|relationship) (?:was |is |has been )?(?:resolved|accepted)|(?:the )?(?:legal|export|governance )?lock (?:was |has been )?cleared|(?:the )?(?:repair|remediation) (?:was |has been )?(?:performed|executed|completed)|(?:provider byte[- ]transfer (?:is |was |has been )?approved|(?:a )?human approved the provider byte[- ]transfer))\b/i;
-const hasAuthorityClaim = (value: string) => authorityClaimPattern.test(value.replaceAll("_", " ").replaceAll("-", " "));
+const normalizeAuthorityClaimText = (value: string) => value
+  .replaceAll("_", " ")
+  .replaceAll("-", " ")
+  .replace(/\s+/g, " ")
+  .trim()
+  .toLowerCase();
+
+const hasSubjectAction = (value: string, subject: RegExp, action: RegExp) => subject.test(value) && action.test(value);
+
+const hasAuthorityClaim = (value: string) => {
+  const normalized = normalizeAuthorityClaimText(value);
+
+  return (
+    hasSubjectAction(normalized, /\b(?:prr|public records request|request|response)\b/, /\b(?:sent|emailed|mailed|filed|submitted|delivered|transferred|uploaded|published)\b/) ||
+    hasSubjectAction(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|completed|sent|filed|escalated|approved)\b/) ||
+    hasSubjectAction(normalized, /\bprovider byte transfer\b/, /\b(?:human )?approved\b/) ||
+    hasSubjectAction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/) ||
+    hasSubjectAction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed|completed)\b/) ||
+    hasSubjectAction(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
+    hasSubjectAction(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||
+    hasSubjectAction(normalized, /\b(?:legal|export|governance )?lock\b/, /\bcleared\b/)
+  );
+};
 const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((value, ctx) => {
   try {
     assertAgentSecretSafeText(value, label);

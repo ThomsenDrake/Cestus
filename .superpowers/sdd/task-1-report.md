@@ -43,3 +43,10 @@ Status: DONE
 - RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 2 expected regressions: equivalent authority claims including `The PRR response was emailed.`, `A human approved the provider byte transfer.`, and `The request was filed.` were accepted, and `dateRange.start: "sk-live-secret"` was accepted.
 - GREEN: the same focused command passed with 1 file and 10 tests after shared authority matching covered the new completed PRR send, provider-transfer approval, and request-filing variants; `dateRange.start` and `.end` now require the same normalized date syntax as `date`.
 - Verify: `npm run verify` passed.
+
+## Re-review P1 Authority-Matching Fix
+
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 1 expected regression and 11 passing tests because `The PRR was filed.` and `The provider byte transfer was human-approved.` were accepted in narrative fields.
+- GREEN: the same focused command passed with 1 file and 12 tests after normalized structural subject/action matching rejected `packet_prr_was_emailed`, `The PRR was filed.`, `Legal escalation was performed.`, and `The provider byte transfer was human-approved.` across representative identifier, narrative, and reference fields.
+- Coverage: the matcher normalizes underscores, hyphens, and whitespace; it rejects completed PRR/request/response effects, legal-escalation effects, and provider byte-transfer approval in either word order while continuing to reject export/publication, repair execution, ontology/entity/relationship acceptance or resolution, and lock clearing. A command-like evidence statement about filing steps without a completed-effect claim remains accepted.
+- Verify: `npm run verify` passed: typecheck, tests, Vite build, and factory readiness. Node emitted only its existing experimental SQLite warning.
