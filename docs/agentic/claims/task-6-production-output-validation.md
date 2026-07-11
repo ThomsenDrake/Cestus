@@ -33,3 +33,7 @@
 - Diff check: `git diff --check` passed.
 - Review: inline Task 6 spec review confirmed validation remains advisory-only, shared across output fields, secret-safe, and cannot grant ontology truth or external effects.
 - Completed at (UTC): `2026-07-11T12:39:28Z`.
+- Critical review-fix RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with the new plural passive and quantified first-person completed-effect regressions accepted by the shared matcher.
+- Critical review-fix GREEN: the same focused command passed with 1 file and 60 tests after the shared grammar covered quantified first-person task creation/launch, plural portal/site crawl or scrape, and plural provider-byte transfer completion variants without changing modal, instruction, proposal, or policy handling.
+- Critical review-fix verification: the Task 6 focused suite passed with 4 files and 89 tests; `npm run verify` and `git diff --check` passed. Node emitted only the existing experimental SQLite warning.
+- Review-fix completed at (UTC): `2026-07-11T12:45:44Z`.
