@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  evaluateProductionContextRequirements,
   productionSpecialistPromptRegistrationFor,
   productionSpecialistPromptRegistrations,
+  renderProductionSpecialistPrompt,
+  verifyProductionSpecialistPromptArtifact,
   validateProductionSpecialistProviderOutput
 } from "../src/production-specialist-prompts.js";
 import {
   assertPromptArtifactCanTransferToRemoteProvider,
   buildPromptArtifact
 } from "../src/prompt-artifacts.js";
-import { buildContextPackRef } from "../src/context-packs.js";
+import { buildContextPackRef, createContextPackRegistry } from "../src/context-packs.js";
 
 describe("production specialist prompt registrations", () => {
   const validEvidenceTriageOutput = () => ({
@@ -1008,4 +1011,254 @@ describe("production specialist prompt registrations", () => {
       }
     })).toThrow(/authority|external effect|ontology/i);
   });
+
+  it("renders payload-only sentinel content and keeps clock changes out of rendered prompt hash", async () => {
+    const registry = rendererContextPackRegistry({
+      "evidence-summary.v1": {
+        evidence: [{ evidenceId: "ev_imported_001", safeFact: "PAYLOAD_SENTINEL_CITY_LEDGER_427" }]
+      }
+    });
+    const resolved = await resolvedRendererPacks(registry, "evidence-triage", false);
+    const input = {
+      runType: "evidence-triage" as const,
+      runId: "run_render_001",
+      taskId: "task_render_001",
+      scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+      resolvedContextPacks: resolved,
+      omissions: []
+    };
+    const first = renderProductionSpecialistPrompt({ ...input, generatedAt: "2026-07-10T12:00:00.000Z" });
+    const second = renderProductionSpecialistPrompt({ ...input, generatedAt: "2026-07-10T12:05:00.000Z" });
+
+    expect(first.text).toContain("PAYLOAD_SENTINEL_CITY_LEDGER_427");
+    expect(first.text).not.toContain("Evidence summary does not include the sentinel.");
+    expect(first.text).toContain("dossierSummary");
+    expect(first.text).toMatch(/send PRRs/i);
+    expect(first.text).toMatch(/accept ontology truth/i);
+    expect(first.manifest.production?.renderedPromptHash).toBe(second.manifest.production?.renderedPromptHash);
+    expect(first.manifest.inputArtifactHash).not.toBe(second.manifest.inputArtifactHash);
+  });
+
+  it("binds scope applicability to the task identity", async () => {
+    const registry = rendererContextPackRegistry();
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+    const base = {
+      runType: "evidence-triage" as const,
+      scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+      resolvedContextPacks
+    };
+
+    const first = evaluateProductionContextRequirements({ ...base, taskId: "task_scope_001" });
+    const second = evaluateProductionContextRequirements({ ...base, taskId: "task_scope_002" });
+
+    expect(first.scopeApplicabilityHash).not.toBe(second.scopeApplicabilityHash);
+  });
+
+  it("records no-associated-prr only for non-PRR triage, planner, and report scopes", async () => {
+    for (const runType of ["evidence-triage", "investigation-planner", "report-builder"] as const) {
+      const registry = rendererContextPackRegistry();
+      const resolvedContextPacks = await resolvedRendererPacks(registry, runType, false);
+      const artifact = renderProductionSpecialistPrompt({
+        runType,
+        runId: `run_${runType}`,
+        taskId: `task_${runType}`,
+        generatedAt: "2026-07-10T12:00:00.000Z",
+        scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+        resolvedContextPacks,
+        omissions: []
+      });
+
+      expect(artifact.manifest.omissions).toEqual([expect.objectContaining({
+        reason: "no-associated-prr",
+        sourceRef: "prr-read-model.v1"
+      })]);
+      expect(artifact.manifest.production?.evaluatedContextRequirements).toContainEqual(expect.objectContaining({
+        contextPackId: "prr-read-model.v1",
+        status: "not-applicable",
+        omissionReason: "no-associated-prr"
+      }));
+    }
+  });
+
+  it("requires the PRR read model for PRR-linked triage, planner, and report scopes", async () => {
+    for (const runType of ["evidence-triage", "investigation-planner", "report-builder"] as const) {
+      const registry = rendererContextPackRegistry();
+      const resolvedContextPacks = await resolvedRendererPacks(registry, runType, false);
+
+      expect(() => renderProductionSpecialistPrompt({
+        runType,
+        runId: `run_prr_${runType}`,
+        taskId: `task_prr_${runType}`,
+        generatedAt: "2026-07-10T12:00:00.000Z",
+        scope: { kind: "prr", refs: ["prr_001"], associatedPrrRequestId: "prr_001" },
+        resolvedContextPacks,
+        omissions: []
+      })).toThrow(/prr-read-model|missing/i);
+    }
+  });
+
+  it("rejects matching-hash invalid evidence pack shapes before renderer envelope creation", async () => {
+    const registry = rendererContextPackRegistry({
+      "evidence-summary.v1": { evidence: "not-an-array" }
+    });
+
+    await expect(registry.buildResolved("evidence-summary.v1")).rejects.toThrow(/payload-schema-mismatch/i);
+  });
+
+  it("rejects forged plain objects that imitate verified resolved context envelopes", async () => {
+    const registry = rendererContextPackRegistry();
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+    const first = resolvedContextPacks[0];
+    if (first === undefined) throw new Error("Expected evidence summary pack.");
+
+    expect(() => renderProductionSpecialistPrompt({
+      runType: "evidence-triage",
+      runId: "run_forged_001",
+      taskId: "task_forged_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+      resolvedContextPacks: [{ ...first }, ...resolvedContextPacks.slice(1)],
+      omissions: []
+    })).toThrow(/unverified|verified/i);
+  });
+
+  it("rejects supplied artifacts that mismatch current renderer bindings and payload state", async () => {
+    const registry = rendererContextPackRegistry();
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+    const source = {
+      runType: "evidence-triage" as const,
+      runId: "run_verify_001",
+      taskId: "task_verify_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+      resolvedContextPacks,
+      omissions: []
+    };
+    const artifact = renderProductionSpecialistPrompt(source);
+    const production = artifact.manifest.production;
+    if (production === undefined) throw new Error("Expected production binding.");
+    const mismatched = (manifest: typeof artifact.manifest) => ({ ...artifact, manifest });
+    const badHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, production: { ...production, rendererId: "wrong.renderer.v1" }
+    }) })).toThrow(/renderer identity/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, production: { ...production, rendererHash: badHash }
+    }) })).toThrow(/renderer hash/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, production: { ...production, renderedPromptHash: badHash }
+    }) })).toThrow(/rendered prompt hash/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, inputArtifactHash: badHash
+    }) })).toThrow(/artifact hash/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, contextPackRefs: [...artifact.manifest.contextPackRefs].reverse()
+    }) })).toThrow(/context order|context hashes/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, production: { ...production, scopeApplicabilityHash: badHash }
+    }) })).toThrow(/scope hash/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, production: { ...production, providerOutputSchemaId: "wrong.output.v1" }
+    }) })).toThrow(/output schema/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, production: { ...production, handoffSchemaId: "wrong.handoff.v1" }
+    }) })).toThrow(/handoff schema/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, safetyClass: "workspace-safe"
+    }) })).toThrow(/safety class/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, transferApprovalClass: "none"
+    }) })).toThrow(/transfer class/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, production: { ...production, resolvedPayloadAudits: [] }
+    }) })).toThrow(/payload audit/i);
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: mismatched({
+      ...artifact.manifest, omissions: []
+    }) })).toThrow(/omission/i);
+  });
+
+  it("rejects artifact verification that supplies only refs, hashes, and summaries", async () => {
+    const registry = rendererContextPackRegistry();
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+    const source = {
+      runType: "evidence-triage" as const,
+      runId: "run_ref_only_001",
+      taskId: "task_ref_only_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+      resolvedContextPacks,
+      omissions: []
+    };
+    const artifact = renderProductionSpecialistPrompt(source);
+    const refsOnly = { ...artifact };
+    delete (refsOnly as { resolvedContextPacks?: unknown }).resolvedContextPacks;
+
+    expect(() => verifyProductionSpecialistPromptArtifact({ ...source, artifact: refsOnly })).toThrow(/resolved context packs|payload/i);
+  });
 });
+
+const rendererPackIds = [
+  "accepted-graph-projection.v1",
+  "evidence-summary.v1",
+  "timeline-draft-summary.v1",
+  "contradiction-candidate-summary.v1",
+  "governance-locks.v1",
+  "agent-memory-summary.v1",
+  "task-run-history.v1",
+  "workspace-runtime-status.v1",
+  "prr-read-model.v1"
+] as const;
+
+function rendererContextPackRegistry(payloads: Readonly<Record<string, unknown>> = {}) {
+  const registry = createContextPackRegistry();
+  for (const contextPackId of rendererPackIds) {
+    registry.register({
+      descriptor: {
+        contextPackId,
+        version: 1,
+        label: `Renderer ${contextPackId}`,
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event-id"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      build: () => ({
+        contextPackId,
+        version: 1,
+        generatedAt: "2026-07-10T12:00:00.000Z",
+        payload: payloads[contextPackId] ?? defaultRendererPayload(contextPackId),
+        safeSummary: contextPackId === "evidence-summary.v1"
+          ? "Evidence summary does not include the sentinel."
+          : `Verified ${contextPackId} summary.`,
+        provenanceRefs: ["evt_renderer_context_001"]
+      }),
+      parsePayload: (payload) => {
+        const evidence = typeof payload === "object" && payload !== null && !Array.isArray(payload)
+          ? (payload as Readonly<Record<string, unknown>>).evidence
+          : undefined;
+        if (contextPackId === "evidence-summary.v1" && !Array.isArray(evidence)) {
+          throw new Error("invalid evidence summary payload");
+        }
+        return payload;
+      }
+    });
+  }
+  return registry;
+}
+
+function defaultRendererPayload(contextPackId: string): unknown {
+  return contextPackId === "evidence-summary.v1"
+    ? { evidence: [{ evidenceId: "ev_imported_001", safeFact: "Verified evidence is available." }] }
+    : { contextPackId, fact: "Verified payload content is available." };
+}
+
+async function resolvedRendererPacks(
+  registry: ReturnType<typeof rendererContextPackRegistry>,
+  runType: "evidence-triage" | "investigation-planner" | "report-builder",
+  includePrr: boolean
+) {
+  const requirements = productionSpecialistPromptRegistrationFor(runType).contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always" || includePrr);
+  return Promise.all(requirements.map((requirement) => registry.buildResolved(requirement.contextPackId)));
+}
