@@ -98,18 +98,152 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
   payloadSectionLineSeparator: "\n",
   sectionSeparator: "\n\n",
   providerOutputInstructions: {
-    "prr-negotiation": "Required JSON fields: draftSummary (string), requestFollowUpApproval (boolean), citedRuleRefs (string[]), deadlineNotes (string[]), feeOrStallingSignals (string[]), unresolvedQuestions (string[]).",
-    "evidence-triage": "Required JSON fields: dossierSummary (string), safeSummaries (string[]), governanceFlags ({ evidenceId, tag, confidence, rationale }[]), duplicateGroups ({ groupId, evidenceIds, rationale }[]), evidenceGaps (string[]), assertionCandidates ({ candidateId, evidenceId, predicate, confidence, rationale }[]), requestProviderParseApproval (boolean), requestGovernanceReview (boolean), requestQuarantineReview (boolean), requestAssertionProposalReview (boolean).",
-    "timeline-builder": "Required JSON fields: timelineItems ({ itemId, date or dateRange, precision, evidenceRefs, assertionRefs, prrEventRefs, summary, uncertaintyCategories }[]), omissionReasons (string[]), unresolvedPrompts (string[]).",
-    "contradiction-finder": "Required JSON field: candidates ({ candidateId, comparedSourceRefs, evidenceIds, evidenceContentHashes, assertionIds, timelineItemIds, category, confidence, rationale, alternativeExplanations, requiredReviewerAction }[]).",
-    "investigation-planner": "Required JSON fields: planSummary (string), objectiveRefs (string[]), gapIds (string[]), taskCandidates ({ taskId, summary, priorityRationale, linkedRefs, approvalRequirements }[]), prrDraftCandidates (string[]).",
-    "report-builder": "Required JSON fields: reportPacketId (string), outlineRefs (string[]), draftSectionRefs (string[]), citationMapRefs (string[]), includedEvidenceIds (string[]), excludedEvidenceIds (string[]), governancePolicyRefs (string[]), sensitiveOptInRequirements (string[]), legalReviewFlags (string[]), exportPublicationApprovalRefs (string[]), packetSummary (string)."
+    "prr-negotiation": outputInstruction({
+      skeleton: {
+        draftSummary: "Advisory PRR follow-up draft is ready for human review.",
+        requestFollowUpApproval: false,
+        citedRuleRefs: ["rule_context_ref_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
+      },
+      guidance: [
+        "Use exact cited rule refs from verified jurisdiction-pack-summary.v1 context, preferring a Cited rule ruleRef value; leave citedRuleRefs empty rather than inventing or copying citation prose.",
+        "draftSummary must be advisory draft language for human review. Do not claim that a follow-up, send, or legal escalation occurred.",
+        "requestFollowUpApproval is a boolean; set true only when verified context supports asking a human to approve the domain-supplied follow-up draft.",
+        "Array defaults: citedRuleRefs, deadlineNotes, feeOrStallingSignals, and unresolvedQuestions may be [] when no grounded context supports entries."
+      ]
+    }),
+    "evidence-triage": outputInstruction({
+      skeleton: {
+        dossierSummary: "Imported evidence dossier is ready for human review.",
+        safeSummaries: ["Distinctive verified evidence fact or token from evidence-summary.v1 payload."],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: ["Human review should inspect classification and assertion candidates."],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: true,
+        requestQuarantineReview: true,
+        requestAssertionProposalReview: true
+      },
+      guidance: [
+        "safeSummaries must preserve distinctive, relevant facts/tokens from verified evidence-summary.v1 payload content; copy unusual ledger, location, code, or identifier tokens exactly when relevant.",
+        "requestProviderParseApproval must remain false unless verified context explicitly requires a new external provider parse approval.",
+        "governanceFlags object shape: {\"evidenceId\":\"ev_context_001\",\"tag\":\"review\",\"confidence\":0.5,\"rationale\":\"Review rationale.\"}.",
+        "duplicateGroups object shape: {\"groupId\":\"dup_context_001\",\"evidenceIds\":[\"ev_context_001\"],\"rationale\":\"Duplicate rationale.\"}.",
+        "assertionCandidates object shape: {\"candidateId\":\"cand_context_001\",\"evidenceId\":\"ev_context_001\",\"predicate\":\"record.status\",\"confidence\":0.5,\"rationale\":\"Candidate rationale.\"}.",
+        "Identifier patterns: evidenceId ev_..., groupId dup_..., candidateId cand_.... Empty arrays are safe defaults when no grounded verified context supports an item."
+      ]
+    }),
+    "timeline-builder": outputInstruction({
+      skeleton: {
+        timelineItems: [{
+          itemId: "timeline_context_001",
+          date: "2026-01-01",
+          precision: "day",
+          evidenceRefs: ["ev_context_001"],
+          assertionRefs: [],
+          prrEventRefs: [],
+          summary: "Sourced timeline item is ready for review.",
+          uncertaintyCategories: []
+        }],
+        omissionReasons: [],
+        unresolvedPrompts: []
+      },
+      guidance: [
+        "timelineItems object shape requires itemId, date or dateRange, precision, evidenceRefs, assertionRefs, prrEventRefs, summary, and uncertaintyCategories.",
+        "Identifier patterns: itemId timeline_...; refs must be canonical identifiers or sha256 hashes.",
+        "Precision enum choices: year, month, day, range, unknown. Uncertainty enum choices: date-uncertain, source-conflict, incomplete-source, inference-required.",
+        "Use [] for timelineItems, omissionReasons, or unresolvedPrompts when verified context does not support grounded entries."
+      ]
+    }),
+    "contradiction-finder": outputInstruction({
+      skeleton: {
+        candidates: [{
+          candidateId: "contradiction_context_001",
+          comparedSourceRefs: ["ev_context_001", "assertion_context_002"],
+          evidenceIds: ["ev_context_001"],
+          evidenceContentHashes: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
+          assertionIds: [],
+          timelineItemIds: [],
+          category: "direct-conflict",
+          confidence: 0.5,
+          rationale: "Sources require human contradiction review.",
+          alternativeExplanations: [],
+          requiredReviewerAction: "review"
+        }]
+      },
+      guidance: [
+        "candidates object shape requires candidateId, comparedSourceRefs, evidenceIds, evidenceContentHashes, assertionIds, timelineItemIds, category, confidence, rationale, alternativeExplanations, and requiredReviewerAction.",
+        "Identifier patterns: candidateId contradiction_..., evidenceIds ev_..., timelineItemIds timeline_..., hashes sha256:<64 lowercase hex>.",
+        "Category enum choices: direct-conflict, timeline-conflict, attribution-conflict, quantitative-conflict, scope-conflict.",
+        "requiredReviewerAction enum choices: review, request-evidence, request-claim-link-review. candidates may be [] when no grounded conflict is present."
+      ]
+    }),
+    "investigation-planner": outputInstruction({
+      skeleton: {
+        planSummary: "Investigation plan is ready for human review.",
+        objectiveRefs: [],
+        gapIds: [],
+        taskCandidates: [{
+          taskId: "task_context_001",
+          summary: "Review the verified evidence gap.",
+          priorityRationale: "The gap affects next-step planning.",
+          linkedRefs: ["ev_context_001"],
+          approvalRequirements: ["human-review"]
+        }],
+        prrDraftCandidates: []
+      },
+      guidance: [
+        "taskCandidates object shape requires taskId, summary, priorityRationale, linkedRefs, and approvalRequirements.",
+        "Identifier patterns: taskId task_...; refs must be canonical identifiers or sha256 hashes.",
+        "approvalRequirements enum choices: human-review, external-message-send, provider-byte-transfer, legal-escalation, export-or-publication.",
+        "Use [] for objectiveRefs, gapIds, taskCandidates, or prrDraftCandidates when no grounded verified context supports entries."
+      ]
+    }),
+    "report-builder": outputInstruction({
+      skeleton: {
+        reportPacketId: "packet_context_001",
+        outlineRefs: [],
+        draftSectionRefs: [],
+        citationMapRefs: [],
+        includedEvidenceIds: ["ev_context_001"],
+        excludedEvidenceIds: [],
+        governancePolicyRefs: [],
+        sensitiveOptInRequirements: [],
+        legalReviewFlags: [],
+        exportPublicationApprovalRefs: [],
+        packetSummary: "Draft report packet is ready for human review."
+      },
+      guidance: [
+        "reportPacketId pattern: packet_.... Evidence arrays use ev_... identifiers; all other refs must be canonical identifiers or sha256 hashes.",
+        "packetSummary must describe a draft for review only and must not claim export, publication, acceptance, or legal escalation.",
+        "Use [] for arrays when verified context does not support grounded entries."
+      ]
+    })
   } satisfies Readonly<Record<ProductionRunType, string>>
 });
 const standardAllowedOmissions = Object.freeze(["context-budget", "policy-redaction", "raw-content-local-only", "quarantine-or-lock", "optional-pack-unavailable"] as const);
 const conditionalPrrAllowedOmissions = Object.freeze([...standardAllowedOmissions, "no-associated-prr"] as const);
 const conditionalPrr = (order: number): ProductionContextRequirement => Object.freeze({ contextPackId: "prr-read-model.v1", order, requirementMode: "when-scope-associated-prr", omissionWhenNotApplicable: "no-associated-prr" });
 const always = (contextPackIds: readonly string[]): readonly ProductionContextRequirement[] => Object.freeze(contextPackIds.map((contextPackId, order) => Object.freeze({ contextPackId, order, requirementMode: "always" as const })));
+
+function outputInstruction(input: {
+  readonly skeleton: unknown;
+  readonly guidance: readonly string[];
+}): string {
+  return [
+    "Provider output requirements:",
+    "Return exactly one JSON object and nothing else.",
+    "Do not use Markdown, code fences, a preamble, labels, trailing commentary, or unknown fields.",
+    "Use exactly the skeleton fields; keep string values concise, secret-safe, and grounded in verified context.",
+    "Replace example prose and IDs with grounded context values rather than copying them blindly.",
+    "Do not add unknown fields; when no verified context supports an array item, use [] as the safe default.",
+    ...input.guidance,
+    `Skeleton JSON: ${JSON.stringify(input.skeleton, null, 2)}`
+  ].join("\n");
+}
 
 interface PayloadRenderingLimits {
   readonly redactionBehavior: "exclude-unregistered-fields";
@@ -163,7 +297,7 @@ const payloadRenderingPolicyMaterial = Object.freeze({
     prrSourceReference: ["id", "contentHash", "sourceEventId"],
     prrOmission: ["kind", "reason", "omittedCount", "projectionHighWaterMark"],
     jurisdiction: ["packName", "packVersion", "jurisdiction"],
-    citedRule: ["label", "citation"],
+    citedRule: ["ruleRef", "label", "citation"],
     advisoryPosture: ["summary", "status", "safeSummary"],
     placeholderItem: ["itemId", "candidateId", "summary", "rationale", "evidenceIds", "assertionIds", "timelineItemIds"],
     omissions: ["omissions"],

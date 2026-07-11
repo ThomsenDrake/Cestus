@@ -6,10 +6,10 @@ import { describe, expect, it } from "vitest";
 import { ProviderParseApprovalService } from "../../ingestion/src/provider-adapter.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import {
   SecretMaterial,
   StaticSecretStore,
-  buildPromptArtifact,
   createAgentRuntime,
   createAgentToolGateway,
   createContextPackRegistry,
@@ -19,10 +19,12 @@ import {
   hashAgentToolPreview,
   promptArtifactAuditMetadata,
   rebuildProviderByteTransferCurrentPreview,
+  renderProductionSpecialistPrompt,
   runPrrNegotiationWorkflow
 } from "../src/index.js";
 import type {
   ContextPackRegistry,
+  AgentContextPackJsonValue,
   ProviderReadinessDto,
   ProviderSetupCard,
   PrrNegotiationFollowUpApprovalPreviewInput,
@@ -49,6 +51,7 @@ const bodyHash = hashText("live follow up body");
 const renderedBodyHash = hashText("live follow up rendered body");
 const subjectHash = hashText("Live PRR follow-up");
 const capabilityRef = hashText("live gmail capability");
+const prrScope = { kind: "prr-negotiation", refs: ["ws_live_prr", prrRequestId], associatedPrrRequestId: prrRequestId } as const;
 
 interface RemotePromptEvidenceRefs {
   readonly evidenceEventId: string;
@@ -122,7 +125,8 @@ liveDescribe("live Nous PRR negotiation workflow acceptance", () => {
       prrRequestId,
       correspondenceId,
       jurisdictionRuleRefs: ["rule_foia_deadline_001"],
-      followUpApprovalPreview: followUpApprovalPreview()
+      followUpApprovalPreview: followUpApprovalPreview(),
+      scope: prrScope
     });
 
     expect(result.handoff.residentAgentId).toBe("agent_default");
@@ -159,7 +163,7 @@ liveDescribe("live Nous PRR negotiation workflow acceptance", () => {
       expect(result.handoff.toolRequestIds).toHaveLength(0);
     }
 
-    assertNoSensitiveLiveMaterial(JSON.stringify({ events, handoff: result.handoff }), env);
+    assertNoSensitiveLiveMaterial(JSON.stringify({ events, handoff: result.handoff }), env, promptArtifact.text);
   }, 90_000);
 });
 
@@ -197,25 +201,22 @@ function createLiveContextPacks(remoteRefs: RemotePromptEvidenceRefs): ContextPa
         contextPackId,
         version: 1,
         generatedAt: now(),
-        payload: {
-          prrRequestId,
-          correspondenceId,
-          citedRuleRefs: ["rule_foia_deadline_001"],
-          providerBoundary: "provider-byte-transfer-approved"
-        },
+        payload: liveContextPayload(contextPackId, remoteRefs),
         safeSummary: `${contextPackId} contains safe live acceptance references.`,
         provenanceRefs: ["event:evt_context_live_001", remoteEvidenceId, remoteRefs.evidenceEventId, remoteEvidenceHash],
         sourceEventIds: ["evt_context_live_001", remoteRefs.evidenceEventId, remoteRefs.linkEventId],
         artifactHashes: [remoteEvidenceHash],
-        sizeBudgetBytes: 16_384
-      })
+        sizeBudgetBytes: 16_384,
+        ...(contextPackId === "prr-read-model.v1" ? { scope: { kind: "prr-request", id: prrRequestId } } : {})
+      }),
+      parsePayload: liveContextPayloadParser(contextPackId)
     });
   }
   return registry;
 }
 
 async function providerApprovedPromptArtifact(contextPacks: ContextPackRegistry) {
-  const contextPackRefs = await Promise.all([
+  const resolvedContextPacks = await Promise.all([
     "prr-read-model.v1",
     "jurisdiction-pack-summary.v1",
     "governance-locks.v1",
@@ -223,31 +224,38 @@ async function providerApprovedPromptArtifact(contextPacks: ContextPackRegistry)
     "agent-memory-summary.v1",
     "task-run-history.v1",
     "workspace-runtime-status.v1"
-  ].map(async (contextPackId) => await contextPacks.build(contextPackId)));
-  return buildPromptArtifact({
-    promptTemplateId: "prr-negotiation.review.v1",
-    promptTemplateVersion: 1,
-    generatedAt: now(),
+  ].map(async (contextPackId) => await contextPacks.buildResolved(contextPackId)));
+  return renderProductionSpecialistPrompt({
     runType: "prr-negotiation",
-    safetyClass: "provider-approved",
-    transferApprovalClass: "provider-byte-transfer",
-    contextPackRefs,
-    text: strictPrrNegotiationPrompt(),
-    safeSummary: "Provider-approved live PRR negotiation prompt artifact."
+    runId: "run_prr_live_001",
+    taskId: "task_prr_live_001",
+    generatedAt: now(),
+    scope: prrScope,
+    resolvedContextPacks
   });
 }
 
-function strictPrrNegotiationPrompt(): string {
-  return [
-    "Return only one JSON object and no markdown.",
-    "The object must have exactly these keys: draftSummary, requestFollowUpApproval, citedRuleRefs.",
-    "draftSummary must be a short safe review summary for a local PRR follow-up draft.",
-    "requestFollowUpApproval must be a boolean.",
-    "citedRuleRefs must be an array containing only safe rule reference strings.",
-    "Use this exact minimal valid shape if unsure:",
-    "{\"draftSummary\":\"Local PRR follow-up draft is ready for human review.\",\"requestFollowUpApproval\":false,\"citedRuleRefs\":[\"rule_foia_deadline_001\"]}",
-    "Do not include extra keys. Do not claim anything was sent, approved, escalated, exported, or accepted as graph truth."
-  ].join("\n");
+function liveContextPayload(contextPackId: string, remoteRefs: RemotePromptEvidenceRefs): AgentContextPackJsonValue {
+  switch (contextPackId) {
+    case "prr-read-model.v1": return { scope: { kind: "prr-request", id: prrRequestId }, lifecycle: { status: "sent", agencyName: "Agency", jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" } }, requestStream: { requestCreatedEventId: remoteRefs.evidenceEventId, streamHeadEventId: remoteRefs.linkEventId, streamHighWaterMark: 1, sourceEventIds: [remoteRefs.evidenceEventId] }, deadline: null, fee: null, narrowing: null, correspondence: { outbound: [], inbound: [] }, production: { batches: [] }, diagnostics: [], gates: [{ gateId: "gate_live_001", kind: "follow-up", ready: true, locked: false }], sourceRefs: {}, omissions: [] };
+    case "jurisdiction-pack-summary.v1": return { packName: "us-federal-foia", packVersion: "0.1.0", jurisdiction: "US Federal", citedRules: [{ ruleRef: "rule_foia_deadline_001", label: "FOIA response timing", citation: "5 USC 552(a)(6)" }], advisoryPosture: { summary: "Advisory only.", status: "review" }, omissions: [] };
+    case "governance-locks.v1": return { items: { activeLocks: [{ lockId: "lock_prr_review_001", lockKind: "review", safeReason: "Human review is required.", activatedBy: "actor_provider_reviewer", activatedAt: now(), relatedEventIds: [remoteRefs.evidenceEventId], projectionEventIds: [remoteRefs.linkEventId] }], governanceRestrictions: [] } };
+    case "evidence-summary.v1": return { items: [{ evidenceId: remoteEvidenceId, ingestionEventId: remoteRefs.evidenceEventId, contentHash: remoteEvidenceHash, mediaType: "text/plain", sizeBytes: 422, sourceCollectionId, importBatchId, occurrenceIds: ["occ_live_prompt_001"], parseJobs: [], governanceTags: [], safeNarrative: "PRR evidence is available for review." }] };
+    case "agent-memory-summary.v1": return { memory: { activeMemory: ["PRR follow-up requires review."], aggregateCounts: { active: 1 }, sourceEventIds: [remoteRefs.evidenceEventId], artifactHashes: [remoteEvidenceHash] } };
+    case "task-run-history.v1": return { history: { projectionHighWaterMark: 1, projectionSourceRef: "agent.projection.task-run-history", tasks: [{ taskId: "task_prr_live_001", status: "running", priority: "normal", runId: "run_prr_live_001", sourceEventIds: [remoteRefs.evidenceEventId] }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1 }, sourceEventIds: [remoteRefs.evidenceEventId], artifactHashes: [remoteEvidenceHash] } };
+    case "workspace-runtime-status.v1": return { runtime: { runtimeHighWaterMark: 1, workspaceMounted: true, storageStrategy: "local", bindPosture: "bound", authPosture: "none", providerStates: [], diagnostics: [], projectionHighWaterMarks: { agent: 1 }, omissionCodes: [] } };
+    default: throw new Error(`Unsupported live context pack ${contextPackId}`);
+  }
+}
+
+function liveContextPayloadParser(contextPackId: string) {
+  const parser = (payload: AgentContextPackJsonValue): AgentContextPackJsonValue => {
+    if (payload === null || typeof payload !== "object" || Array.isArray(payload)) throw new Error(`Invalid ${contextPackId} live payload`);
+    return payload;
+  };
+  Object.defineProperty(parser, "cestusContextPackParserId", { value: contextPackId });
+  registerContextPackPayloadParserAuthority(parser);
+  return parser;
 }
 
 function providerReadinessDto(modelFamily: string): ProviderReadinessDto {
@@ -479,11 +487,11 @@ function loadNousEnv(cwd: string): {
   };
 }
 
-function assertNoSensitiveLiveMaterial(serialized: string, liveEnv: ReturnType<typeof loadNousEnv>): void {
+function assertNoSensitiveLiveMaterial(serialized: string, liveEnv: ReturnType<typeof loadNousEnv>, promptText?: string): void {
   if (liveEnv.apiKey !== undefined && serialized.includes(liveEnv.apiKey)) {
     throw new Error("Live acceptance leaked provider auth material.");
   }
-  if (serialized.includes(strictPrrNegotiationPrompt())) {
+  if (promptText !== undefined && serialized.includes(promptText)) {
     throw new Error("Live acceptance persisted prompt text.");
   }
   if (/authorization\s*[:=]|Bearer\s+/i.test(serialized)) {

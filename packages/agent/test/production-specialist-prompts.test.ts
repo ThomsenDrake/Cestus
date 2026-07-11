@@ -148,6 +148,74 @@ describe("production specialist prompt registrations", () => {
     expect(hashProductionSpecialistRendererMaterial(changedTruncationLiteral)).not.toBe(registration.rendererHash);
   });
 
+  it("renders output-only instructions with validator-valid JSON skeletons for every run type", async () => {
+    for (const registration of productionSpecialistPromptRegistrations) {
+      const artifact = await renderedArtifactForRunType(registration.runType);
+      const instruction = extractRenderedOutputInstruction(artifact.text);
+
+      expect(instruction).toContain("Return exactly one JSON object");
+      expect(instruction).toContain("Do not use Markdown");
+      expect(instruction).toContain("code fences");
+      expect(instruction).toContain("preamble");
+      expect(instruction).toContain("trailing commentary");
+      expect(instruction).toContain("unknown fields");
+      expect(instruction).toContain("concise");
+      expect(instruction).not.toContain("```");
+
+      const skeleton = extractSkeletonJson(instruction);
+      expect(validateProductionSpecialistProviderOutput({
+        runType: registration.runType,
+        value: skeleton
+      }).runType).toBe(registration.runType);
+    }
+  });
+
+  it("renders run-specific output guidance from canonical material", async () => {
+    const evidenceArtifact = await renderedArtifactForRunType("evidence-triage");
+    const evidenceInstruction = extractRenderedOutputInstruction(evidenceArtifact.text);
+    expect(evidenceInstruction).toContain("safeSummaries");
+    expect(evidenceInstruction).toContain("distinctive");
+    expect(evidenceInstruction).toContain("evidence-summary.v1");
+    expect(evidenceInstruction).not.toContain("PAYLOAD_SENTINEL_CITY_LEDGER_427");
+
+    const prrArtifact = await renderedArtifactForRunType("prr-negotiation");
+    const prrInstruction = extractRenderedOutputInstruction(prrArtifact.text);
+    expect(prrInstruction).toContain("exact cited rule refs");
+    expect(prrInstruction).toContain("jurisdiction-pack-summary.v1");
+    expect(prrInstruction).toContain("advisory draft");
+    expect(prrInstruction).toContain("Do not claim that a follow-up, send, or legal escalation occurred");
+  });
+
+  it("binds renderer hash and rendered text to output instruction material", async () => {
+    const registry = rendererContextPackRegistry();
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+    const input = {
+      runType: "evidence-triage" as const,
+      runId: "run_instruction_material_001",
+      taskId: "task_instruction_material_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_material_001"] },
+      resolvedContextPacks,
+      omissions: []
+    };
+    const material = productionSpecialistRendererMaterialFor("evidence-triage");
+    const changedInstruction = {
+      ...material,
+      template: {
+        ...material.template,
+        providerOutputInstructions: {
+          ...material.template.providerOutputInstructions,
+          "evidence-triage": material.template.providerOutputInstructions["evidence-triage"]
+            .replace("Return exactly one JSON object", "Return exactly one JSON object with deterministic Task 7 framing")
+        }
+      }
+    };
+
+    expect(hashProductionSpecialistRendererMaterial(changedInstruction)).not.toBe(hashProductionSpecialistRendererMaterial(material));
+    expect(renderProductionSpecialistPromptBytesForMaterialTest(input, changedInstruction))
+      .not.toBe(renderProductionSpecialistPromptBytesForMaterialTest(input, material));
+  });
+
   it("uses canonical renderer material for provider-visible bytes as well as the renderer hash", async () => {
     const registry = rendererContextPackRegistry();
     const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
@@ -1715,10 +1783,83 @@ function taskRunHistory(summary: string) {
 
 async function resolvedRendererPacks(
   registry: ReturnType<typeof rendererContextPackRegistry>,
-  runType: "evidence-triage" | "timeline-builder" | "contradiction-finder" | "investigation-planner" | "report-builder",
+  runType: typeof productionSpecialistPromptRegistrations[number]["runType"],
   includePrr: boolean
 ) {
   const requirements = productionSpecialistPromptRegistrationFor(runType).contextRequirements
     .filter((requirement) => requirement.requirementMode === "always" || includePrr);
   return Promise.all(requirements.map((requirement) => registry.buildResolved(requirement.contextPackId)));
+}
+
+async function renderedArtifactForRunType(
+  runType: typeof productionSpecialistPromptRegistrations[number]["runType"]
+) {
+  const associatedPrrRequestId = "prr_selected_001";
+  const includePrr = runType === "prr-negotiation";
+  const registry = includePrr
+    ? rendererContextPackRegistry({
+      "prr-read-model.v1": {
+        ...(defaultRendererPayload("prr-read-model.v1") as Record<string, unknown>),
+        scope: { kind: "prr-request", id: associatedPrrRequestId }
+      }
+    }, {}, new Set(), {
+      "prr-read-model.v1": { kind: "prr-request", id: associatedPrrRequestId }
+    })
+    : rendererContextPackRegistry();
+  return renderProductionSpecialistPrompt({
+    runType,
+    runId: `run_${runType}_instruction_001`,
+    taskId: `task_${runType}_instruction_001`,
+    generatedAt: "2026-07-10T12:00:00.000Z",
+    scope: includePrr
+      ? { kind: "prr-negotiation", refs: ["ws_renderer", associatedPrrRequestId], associatedPrrRequestId }
+      : { kind: "imported-evidence", refs: ["ev_imported_001"] },
+    resolvedContextPacks: await resolvedRendererPacks(registry, runType, includePrr),
+    omissions: []
+  });
+}
+
+function extractRenderedOutputInstruction(text: string): string {
+  const start = text.indexOf("Provider output requirements:");
+  expect(start).toBeGreaterThanOrEqual(0);
+  const end = text.indexOf("\n\nHandoff schema:", start);
+  expect(end).toBeGreaterThan(start);
+  return text.slice(start, end);
+}
+
+function extractSkeletonJson(instruction: string): unknown {
+  const markerIndex = instruction.indexOf("Skeleton JSON:");
+  expect(markerIndex).toBeGreaterThanOrEqual(0);
+  const jsonStart = instruction.indexOf("{", markerIndex);
+  expect(jsonStart).toBeGreaterThan(markerIndex);
+  const jsonEnd = matchingJsonObjectEnd(instruction, jsonStart);
+  return JSON.parse(instruction.slice(jsonStart, jsonEnd + 1));
+}
+
+function matchingJsonObjectEnd(value: string, start: number): number {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < value.length; index += 1) {
+    const char = value[index];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+    if (char === "\"") {
+      inString = true;
+    } else if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  throw new Error("Could not find the end of the JSON skeleton.");
 }

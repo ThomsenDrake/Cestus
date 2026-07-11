@@ -6,7 +6,7 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at: `2026-07-11T12:48:53Z`
-- Status: in-progress
+- Status: ready-for-review
 
 ## Owned Files
 
@@ -58,3 +58,23 @@ or record a live acceptance pass without the gated provider result.
   may be loaded from `/home/drake/Projects/Cestus/.env` by path only; values
   must not be copied, printed, or recorded.
 - Resumed at: `2026-07-11T13:02:00Z`.
+- RED evidence: `npm test -- packages/agent/test/production-specialist-prompts.test.ts`
+  failed with 3 expected renderer-instruction contract failures before the
+  canonical output-only skeleton material was added.
+- Deterministic renderer suite passed after the renderer-instruction support:
+  `npm test -- packages/agent/test/production-specialist-prompts.test.ts`
+  reported 1 test file and 63 tests passed.
+- Deterministic live-suite compile path passed after the live-test wiring fix:
+  `npm test -- packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts`
+  reported 2 test files and 2 tests skipped with `CESTUS_AGENT_LIVE_NOUS`
+  unset.
+- The required gated live Nous command was run with the shared environment
+  loaded from `/home/drake/Projects/Cestus/.env` by path only. It reported 2
+  test files and 2 tests passed. The live assertions exercised the production
+  renderer, non-PRR imported-evidence omission, resolved-payload-only sentinel
+  check, structured safe output reflection, and secret-safe ledger/handoff
+  serialization without logging provider output text or prompt text.
+- Full verification passed: `npm run verify` reported `typecheck passed`, 178
+  test files passed with 3 skipped, 2041 tests passed with 3 skipped, `tests
+  passed`, Vite build succeeded, and `factory-readiness passed`.
+- `git diff --check` passed.
