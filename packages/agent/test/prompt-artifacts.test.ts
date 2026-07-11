@@ -201,6 +201,40 @@ describe("resident agent prompt artifacts", () => {
     expect(envelope.resolvedContextPacks?.[0]).toBe(verifiedResolvedEvidenceSummary);
   });
 
+  it("round-trips production resolved payload envelopes through authoritative parse verification", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+    const envelope = buildProductionEvidenceTriageArtifact({
+      contextPackRefs,
+      resolvedContextPacks,
+      evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(contextPackRefs)
+    });
+
+    const serialized = serializePromptArtifactEnvelope(envelope);
+    const parsed = parsePromptArtifactEnvelope(serialized);
+
+    expect(parsed.resolvedContextPacks).toHaveLength(resolvedContextPacks.length);
+    expect(parsed.resolvedContextPacks?.map((resolved) => resolved.ref)).toEqual(contextPackRefs);
+    expect(() => assertResolvedContextPacksForExecution(contextPackRefs, parsed.resolvedContextPacks ?? [])).not.toThrow();
+    expect(JSON.stringify(promptArtifactAuditMetadata(parsed))).not.toContain("payload-only-fact");
+  });
+
+  it("rejects persisted production payload tampering before retaining a resolved envelope", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+    const envelope = buildProductionEvidenceTriageArtifact({
+      contextPackRefs,
+      resolvedContextPacks,
+      evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(contextPackRefs)
+    });
+    const serialized = JSON.parse(Buffer.from(serializePromptArtifactEnvelope(envelope)).toString("utf8")) as {
+      resolvedContextPacks: Array<{ payload: { fact: string } }>;
+    };
+    serialized.resolvedContextPacks[0]!.payload.fact = "tampered-persisted-payload";
+
+    expect(() => parsePromptArtifactEnvelope(Buffer.from(JSON.stringify(serialized)))).toThrow(/payload|verified|hash/i);
+  });
+
   it.each([
     ["text", (serialized: { text: string }) => { serialized.text = "Tampered provider prompt text."; }],
     ["rendered prompt hash", (serialized: { manifest: { production: { renderedPromptHash: string } } }) => { serialized.manifest.production.renderedPromptHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"; }],

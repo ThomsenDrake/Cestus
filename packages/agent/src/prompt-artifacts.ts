@@ -280,7 +280,7 @@ export function parsePromptArtifactEnvelope(bytes: string | Uint8Array): PromptA
     throw new Error("Prompt artifact envelope must be valid JSON");
   }
 
-  return normalizePromptArtifactEnvelope(parsedJson);
+  return normalizePromptArtifactEnvelope(parsedJson, { preserveVerifiedResolvedContextPacks: true });
 }
 
 export function assertPromptArtifactCanTransferToRemoteProvider(envelope: PromptArtifactEnvelope): void {
@@ -388,7 +388,7 @@ function normalizePromptArtifactEnvelope(
   }
 
   const resolvedContextPacks = options.preserveVerifiedResolvedContextPacks
-    ? resolveAuthoritativeContextPacks(envelope, parsed.manifest.contextPackRefs)
+    ? resolveAuthoritativeContextPacks(envelope, parsed.manifest.contextPackRefs, production !== undefined)
     : undefined;
   const { production: _production, ...manifestWithoutProduction } = parsed.manifest;
   return freezePromptArtifactEnvelope({
@@ -538,7 +538,8 @@ function isProductionRunType(runType: AgentSpecialistRunType): runType is Exclud
 
 function resolveAuthoritativeContextPacks(
   input: unknown,
-  refs: readonly ContextPackRef[]
+  refs: readonly ContextPackRef[],
+  reverifyPersistedUntrustedPacks = false
 ): readonly VerifiedResolvedContextPack[] | undefined {
   if (typeof input !== "object" || input === null) {
     return undefined;
@@ -550,7 +551,11 @@ function resolveAuthoritativeContextPacks(
   if (!descriptor.enumerable || !("value" in descriptor) || !Array.isArray(descriptor.value)) {
     throw new Error("resolvedContextPacks must be JSON DTO-safe");
   }
-  return assertResolvedContextPacksForExecution(refs, descriptor.value as readonly VerifiedResolvedContextPack[]);
+  return assertResolvedContextPacksForExecution(
+    refs,
+    descriptor.value as readonly VerifiedResolvedContextPack[],
+    { reverifyPersistedUntrustedPacks }
+  );
 }
 
 function addSecretSafeIssue(value: string, label: string, ctx: z.RefinementCtx): void {
