@@ -531,6 +531,7 @@ describe("production specialist prompt registrations", () => {
 
     expect(() => triage("The PRR was filed; filing instructions are attached.")).toThrow(/authority|external effect|ontology/i);
     expect(() => triage("The PRR was filed, and it should be visible in the portal tomorrow.")).toThrow(/authority|external effect|ontology/i);
+    expect(() => triage("The PRR was filed and should be logged.")).toThrow(/authority|external effect|ontology/i);
     expect(() => triage("Error: upstream request timed out")).toThrow(/raw provider error/i);
     expect(() => triage("HTTP 429: request timed out")).toThrow(/raw provider error/i);
     expect(triage("Public filing instructions say the request should be mailed to the records office.").runType).toBe("evidence-triage");
