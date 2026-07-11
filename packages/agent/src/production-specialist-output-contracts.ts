@@ -33,6 +33,10 @@ const hasPronounCompletedPassiveAction = (value: string, action: RegExp) =>
 const hasDirectSubjectAction = (value: string, subject: RegExp, action: RegExp) =>
   new RegExp(`${subject.source}\\s+(?:(?:is|are|was|were|has been|have been|had been|has|have|had)\\s+)?(?:${action.source})`, action.flags).test(value);
 
+const hasDirectOrFirstPersonSubjectAction = (value: string, subject: RegExp, action: RegExp) =>
+  hasDirectSubjectAction(value, subject, action) ||
+  new RegExp(`\\b(?:i|we)\\s+(?:${action.source})\\s+(?:(?:the|a|an|this|that)\\s+)?(?:${subject.source})`, action.flags).test(value);
+
 const hasAuthorityEffectUnlessInstruction = (
   value: string,
   subject: RegExp,
@@ -68,7 +72,7 @@ const hasAuthorityClaim = (value: string) => {
     hasCompletedPrrEffect(normalized) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\bprovider(?: byte)? transfer\b/, /\b(?:approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|authori[sz](?:e|ed|ation))\b/) ||
-    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/, hasDirectSubjectAction) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/, hasDirectOrFirstPersonSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed|ran successfully)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||

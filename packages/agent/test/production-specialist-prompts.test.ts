@@ -363,6 +363,30 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  const triageSafeSummary = (safeSummary: string) => validateProductionSpecialistProviderOutput({
+    runType: "evidence-triage",
+    value: {
+      dossierSummary: "Evidence needs review.",
+      safeSummaries: [safeSummary],
+      governanceFlags: [],
+      duplicateGroups: [],
+      evidenceGaps: [],
+      assertionCandidates: [],
+      requestProviderParseApproval: false,
+      requestGovernanceReview: false,
+      requestQuarantineReview: false,
+      requestAssertionProposalReview: false
+    }
+  });
+
+  it("rejects active-voice publication authority claims", () => {
+    expect(() => triageSafeSummary("I published the report.")).toThrow(/authority|external effect|ontology/i);
+  });
+
+  it("rejects active-voice export authority claims", () => {
+    expect(() => triageSafeSummary("We exported the evidence.")).toThrow(/authority|external effect|ontology/i);
+  });
+
   it("allows ordinary error and publication wording in safe source evidence", () => {
     const parsed = validateProductionSpecialistProviderOutput({
       runType: "evidence-triage",
