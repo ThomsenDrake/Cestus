@@ -6,7 +6,7 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at: `2026-07-11T12:48:53Z`
-- Status: ready-for-review
+- Status: blocked
 
 ## Owned Files
 
@@ -78,3 +78,23 @@ or record a live acceptance pass without the gated provider result.
   test files passed with 3 skipped, 2041 tests passed with 3 skipped, `tests
   passed`, Vite build succeeded, and `factory-readiness passed`.
 - `git diff --check` passed.
+- Review fix required: the sentinel reflection assertion must not read the
+  persisted `safe-evidence-summaries` derivative artifact, because that proves
+  the sentinel-bearing provider output reached local derivative storage.
+- Review-fix WIP changed the evidence-triage live test to observe sentinel
+  reflection at the derivative-store `put(Buffer)` boundary, redact the sentinel
+  before delegating to file-backed derivative storage, and assert every
+  persisted derivative artifact referenced by the handoff lacks the sentinel.
+- Review-fix deterministic compile/skip path passed:
+  `npm test -- packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts`
+  reported 2 test files and 2 tests skipped with `CESTUS_AGENT_LIVE_NOUS`
+  unset.
+- Review-fix live RED/GREEN is blocked: the required live Nous command was run
+  three times with `/home/drake/Projects/Cestus/.env` loaded by path only, and
+  each attempt returned failed handoffs for both live workflows before the new
+  derivative-storage sentinel assertion could execute. No provider response
+  text, prompt text, raw request bodies, credentials, or environment values were
+  logged, scraped, or recorded. No fake provider was substituted.
+- Next escalation: provider-native structured-output support or live-provider
+  capability correction is needed before this review fix can record live GREEN.
+  `npm run verify` and a final commit were not run after the blocked live gate.
