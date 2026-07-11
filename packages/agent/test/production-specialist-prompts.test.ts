@@ -1039,6 +1039,58 @@ describe("production specialist prompt registrations", () => {
     expect(first.manifest.inputArtifactHash).not.toBe(second.manifest.inputArtifactHash);
   });
 
+  it("renders only approved evidence-summary fields", async () => {
+    const registry = rendererContextPackRegistry({
+      "evidence-summary.v1": {
+        evidence: [{
+          evidenceId: "ev_imported_001",
+          safeFact: "EVIDENCE_ALLOWED_SENTINEL_427",
+          forbiddenProviderField: "EVIDENCE_FORBIDDEN_FIELD_427"
+        }],
+        forbiddenTopLevelField: "EVIDENCE_FORBIDDEN_TOP_LEVEL_427"
+      }
+    });
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+
+    const artifact = renderProductionSpecialistPrompt({
+      runType: "evidence-triage",
+      runId: "run_evidence_allowlist_001",
+      taskId: "task_evidence_allowlist_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+      resolvedContextPacks,
+      omissions: []
+    });
+
+    expect(artifact.text).toContain("EVIDENCE_ALLOWED_SENTINEL_427");
+    expect(artifact.text).not.toContain("EVIDENCE_FORBIDDEN_FIELD_427");
+    expect(artifact.text).not.toContain("EVIDENCE_FORBIDDEN_TOP_LEVEL_427");
+  });
+
+  it("excludes unregistered fields from non-evidence context packs", async () => {
+    const registry = rendererContextPackRegistry({
+      "task-run-history.v1": {
+        contextPackId: "task-run-history.v1",
+        fact: "TASK_HISTORY_ALLOWED_SENTINEL_427",
+        forbiddenProviderField: "TASK_HISTORY_FORBIDDEN_FIELD_427"
+      }
+    });
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+
+    const artifact = renderProductionSpecialistPrompt({
+      runType: "evidence-triage",
+      runId: "run_non_evidence_allowlist_001",
+      taskId: "task_non_evidence_allowlist_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+      resolvedContextPacks,
+      omissions: []
+    });
+
+    expect(artifact.text).toContain("TASK_HISTORY_ALLOWED_SENTINEL_427");
+    expect(artifact.text).not.toContain("TASK_HISTORY_FORBIDDEN_FIELD_427");
+  });
+
   it("binds scope applicability to the task identity", async () => {
     const registry = rendererContextPackRegistry();
     const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);

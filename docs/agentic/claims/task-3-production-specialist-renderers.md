@@ -22,3 +22,6 @@
 - GREEN: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 test file and 48 tests.
 - Verify: `npm run verify` passed typecheck, 178 test files with 3 skipped, 2004 tests with 3 skipped, the UI production build, and factory readiness.
 - Boundary review: deterministic tests are credential-free; durable evidence records no production prompt text or resolved payload content.
+- Review-fix RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` produced the expected 2 failures when generic payload serialization transferred unregistered fields.
+- Review-fix GREEN: the same targeted command passed all 50 tests after registered per-pack field renderers excluded unregistered fields while retaining allowed sentinel fields.
+- Review-fix verify: `npm run verify` passed after the renderer change. Registered payload rendering is bounded, ordered, labelled with pack identity and content hash, and excludes fields outside its package-owned allowlists.

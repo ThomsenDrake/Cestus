@@ -73,6 +73,75 @@ const conditionalPrrAllowedOmissions = Object.freeze([...standardAllowedOmission
 const conditionalPrr = (order: number): ProductionContextRequirement => Object.freeze({ contextPackId: "prr-read-model.v1", order, requirementMode: "when-scope-associated-prr", omissionWhenNotApplicable: "no-associated-prr" });
 const always = (contextPackIds: readonly string[]): readonly ProductionContextRequirement[] => Object.freeze(contextPackIds.map((contextPackId, order) => Object.freeze({ contextPackId, order, requirementMode: "always" as const })));
 
+const maximumPayloadFieldTextCharacters = 512;
+const maximumPayloadArrayItems = 16;
+const maximumRenderedPayloadSectionBytes = 16_384;
+const evidenceSummaryFieldRules = Object.freeze([
+  "evidenceId",
+  "safeFact",
+  "safeSummary",
+  "summary",
+  "category",
+  "sourceRef",
+  "contentHash"
+] as const);
+const generalContextPackFieldRules = Object.freeze([
+  "contextPackId",
+  "fact",
+  "status",
+  "itemId",
+  "summary",
+  "safeFact",
+  "refs",
+  "ids"
+] as const);
+
+interface RegisteredPayloadRenderer {
+  readonly contextPackId: string;
+  readonly label: string;
+  readonly redactionBehavior: "exclude-unregistered-fields";
+  readonly render: (payload: unknown) => readonly string[];
+}
+
+const payloadRenderingPolicyMaterial = Object.freeze({
+  version: 1,
+  redactionBehavior: "exclude-unregistered-fields",
+  maximumPayloadFieldTextCharacters,
+  maximumPayloadArrayItems,
+  evidenceSummary: { collection: "evidence", fields: evidenceSummaryFieldRules },
+  generalContextPack: { fields: generalContextPackFieldRules },
+  contextPackIds: [
+    "accepted-graph-projection.v1",
+    "evidence-summary.v1",
+    "timeline-draft-summary.v1",
+    "contradiction-candidate-summary.v1",
+    "governance-locks.v1",
+    "agent-memory-summary.v1",
+    "task-run-history.v1",
+    "workspace-runtime-status.v1",
+    "prr-read-model.v1",
+    "jurisdiction-pack-summary.v1"
+  ]
+});
+
+const payloadRenderersByContextPackId: Readonly<Record<string, RegisteredPayloadRenderer>> = Object.freeze({
+  "accepted-graph-projection.v1": generalPayloadRenderer("accepted-graph-projection.v1", "Accepted graph projection"),
+  "evidence-summary.v1": Object.freeze({
+    contextPackId: "evidence-summary.v1",
+    label: "Evidence summary",
+    redactionBehavior: "exclude-unregistered-fields",
+    render: renderEvidenceSummaryPayload
+  }),
+  "timeline-draft-summary.v1": generalPayloadRenderer("timeline-draft-summary.v1", "Timeline draft summary"),
+  "contradiction-candidate-summary.v1": generalPayloadRenderer("contradiction-candidate-summary.v1", "Contradiction candidate summary"),
+  "governance-locks.v1": generalPayloadRenderer("governance-locks.v1", "Governance locks"),
+  "agent-memory-summary.v1": generalPayloadRenderer("agent-memory-summary.v1", "Agent memory summary"),
+  "task-run-history.v1": generalPayloadRenderer("task-run-history.v1", "Task and run history"),
+  "workspace-runtime-status.v1": generalPayloadRenderer("workspace-runtime-status.v1", "Workspace runtime status"),
+  "prr-read-model.v1": generalPayloadRenderer("prr-read-model.v1", "PRR read model"),
+  "jurisdiction-pack-summary.v1": generalPayloadRenderer("jurisdiction-pack-summary.v1", "Jurisdiction pack summary")
+});
+
 const definitions: readonly Omit<ProductionSpecialistPromptRegistration, "rendererHash">[] = Object.freeze([
   definition("prr-negotiation", "prr-negotiation.review.v1", "prr-negotiation.review-output.v1", always(["prr-read-model.v1", "jurisdiction-pack-summary.v1", "governance-locks.v1", "evidence-summary.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), standardAllowedOmissions),
   definition("evidence-triage", "evidence-triage.classify.v1", "evidence-triage.classify-output.v1", withConditionalPrr(["evidence-summary.v1", "governance-locks.v1", "accepted-graph-projection.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions),
@@ -316,12 +385,25 @@ function renderCanonicalProductionPrompt(input: {
   readonly omissions: readonly PromptArtifactOmission[];
 }): string {
   const payloadSections = input.resolvedContextPacks.map((resolved) => {
-    const payload = stableJson(resolved.payload);
-    assertAgentSecretSafeText(payload, `${resolved.ref.contextPackId} payload`);
-    if (Buffer.byteLength(payload, "utf8") > 16_384 || payload === "{}" || payload === "[]" || payload === "null") {
+    const renderer = payloadRenderersByContextPackId[resolved.ref.contextPackId];
+    if (renderer === undefined) {
+      throw new Error(`Production context pack ${resolved.ref.contextPackId} has no registered payload renderer`);
+    }
+    const renderedFields = renderer.render(resolved.payload);
+    if (renderedFields.length === 0) {
       throw new Error(`Production context pack ${resolved.ref.contextPackId} has no bounded provider-useful payload content`);
     }
-    return `Context pack ${resolved.ref.contextPackId} (${resolved.ref.contentHash}):\n${payload}`;
+    const section = [
+      `Context pack ID: ${resolved.ref.contextPackId}`,
+      `Content hash: ${resolved.ref.contentHash}`,
+      `Pack label: ${renderer.label}`,
+      ...renderedFields
+    ].join("\n");
+    assertAgentSecretSafeText(section, `${resolved.ref.contextPackId} rendered fields`);
+    if (Buffer.byteLength(section, "utf8") > maximumRenderedPayloadSectionBytes) {
+      throw new Error(`Production context pack ${resolved.ref.contextPackId} exceeds the rendered payload section budget`);
+    }
+    return section;
   });
   const omissionSections = input.omissions.map((omission) =>
     `Context omission: ${stableJson({ reason: omission.reason, sourceRef: omission.sourceRef, safeSummary: omission.safeSummary })}`
@@ -345,6 +427,66 @@ function renderCanonicalProductionPrompt(input: {
     }
   }
   return text;
+}
+
+function generalPayloadRenderer(contextPackId: string, label: string): RegisteredPayloadRenderer {
+  return Object.freeze({
+    contextPackId,
+    label,
+    redactionBehavior: "exclude-unregistered-fields",
+    render: (payload: unknown) => renderAllowedRecordFields("Context", payload, generalContextPackFieldRules)
+  });
+}
+
+function renderEvidenceSummaryPayload(payload: unknown): readonly string[] {
+  const record = jsonRecord(payload);
+  const evidence = record?.evidence;
+  if (!Array.isArray(evidence)) return Object.freeze([]);
+
+  const rendered = evidence
+    .slice(0, maximumPayloadArrayItems)
+    .flatMap((item, index) => renderAllowedRecordFields(`Evidence ${index + 1}`, item, evidenceSummaryFieldRules));
+  return Object.freeze(rendered);
+}
+
+function renderAllowedRecordFields(
+  label: string,
+  value: unknown,
+  allowedFields: readonly string[]
+): readonly string[] {
+  const record = jsonRecord(value);
+  if (record === undefined) return Object.freeze([]);
+
+  const rendered = allowedFields.flatMap((field) => {
+    const renderedValue = renderAllowedFieldValue(record[field]);
+    return renderedValue === undefined ? [] : [`${label} ${field}: ${renderedValue}`];
+  });
+  return Object.freeze(rendered);
+}
+
+function renderAllowedFieldValue(value: unknown): string | undefined {
+  if (typeof value === "string") return stableJson(truncatePayloadText(value));
+  if (typeof value === "number" || typeof value === "boolean") return stableJson(value);
+  if (!Array.isArray(value)) return undefined;
+
+  const boundedValues: Array<string | number | boolean> = [];
+  for (const item of value.slice(0, maximumPayloadArrayItems)) {
+    if (typeof item === "string") boundedValues.push(truncatePayloadText(item));
+    else if (typeof item === "number" || typeof item === "boolean") boundedValues.push(item);
+  }
+  return boundedValues.length === 0 ? undefined : stableJson(boundedValues);
+}
+
+function jsonRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Readonly<Record<string, unknown>>
+    : undefined;
+}
+
+function truncatePayloadText(value: string): string {
+  return value.length <= maximumPayloadFieldTextCharacters
+    ? value
+    : `${value.slice(0, maximumPayloadFieldTextCharacters)} [truncated]`;
 }
 
 function payloadAudits(
@@ -379,14 +521,14 @@ function withConditionalPrr(alwaysPacks: readonly string[]): readonly Production
 function hashCanonicalRendererMaterial(registration: Omit<ProductionSpecialistPromptRegistration, "rendererHash">): `sha256:${string}` {
   const material = {
     rendererPolicyVersion: 1,
-    payloadRenderingPolicy: "registered-provider-safe-payload-fields-v1",
+    payloadRenderingPolicy: payloadRenderingPolicyMaterial,
     contextOrderingPolicy: "registration-order-v1",
     omissionPolicy: "registered-bounded-omissions-v1",
     staticTemplateSections: [
       commonAuthorityInstruction,
       commonReviewInstruction,
       providerOutputInstructions[registration.runType],
-      "verified-payload-context-with-canonical-stable-json-v1"
+      "verified-payload-context-with-registered-field-renderers-v1"
     ],
     registration
   };
