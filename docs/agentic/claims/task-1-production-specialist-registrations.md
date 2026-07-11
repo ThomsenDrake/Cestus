@@ -6,7 +6,7 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at (UTC): `2026-07-11T02:05:32Z`
-- Status: `in-progress`
+- Status: `ready-for-review`
 
 ## Owned Files
 
@@ -19,3 +19,6 @@
 ## Evidence
 
 - Claim created before task implementation or test edits.
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed as expected because `../src/production-specialist-prompts.js` did not exist.
+- GREEN: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 file and 4 tests.
+- Verify: `npm run verify` passed: typecheck, 178 passed / 3 skipped test files, 1,950 passed / 3 skipped tests, Vite build, and factory readiness.

@@ -4,6 +4,8 @@ export * from "./operational-context-packs.js";
 export * from "./identity-bootstrap.js";
 export * from "./memory.js";
 export * from "./prompt-artifacts.js";
+export * from "./production-specialist-output-contracts.js";
+export * from "./production-specialist-prompts.js";
 export * from "./cockpit.js";
 export * from "./approval-cockpit.js";
 export * from "./approval-queue.js";
