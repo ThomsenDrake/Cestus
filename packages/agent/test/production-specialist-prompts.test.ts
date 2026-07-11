@@ -102,15 +102,17 @@ describe("production specialist prompt registrations", () => {
     expect(material.template.sectionOrder).toEqual([
       "Template:",
       "Run:",
-      "authority-instruction",
-      "provider-output-line",
-      "provider-output-schema-instruction",
-      "handoff-line",
-      "review-instruction",
-      "omission-line",
       "verified-context-marker",
-      "payload-section"
+      "payload-section",
+      "omission-line",
+      "verified-context-end-marker",
+      "authority-instruction",
+      "review-instruction",
+      "handoff-line",
+      "provider-output-line",
+      "provider-output-schema-instruction"
     ]);
+    expect(material.template.verifiedContextEndMarker).toBe("End verified payload context.");
     expect(material.template.contextPackIdLine).toBe("Context pack ID: {contextPackId}");
     expect(material.template.contentHashLine).toBe("Content hash: {contentHash}");
     expect(material.template.packLabelLine).toBe("Pack label: {packLabel}");
@@ -170,6 +172,41 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it("delimits every payload section before post-context controlling instructions", async () => {
+    for (const registration of productionSpecialistPromptRegistrations) {
+      const artifact = await renderedArtifactForRunType(registration.runType);
+      const contextStart = artifact.text.indexOf("Verified payload context follows:");
+      const contextEnd = artifact.text.indexOf("End verified payload context.");
+
+      expect(contextStart).toBeGreaterThanOrEqual(0);
+      expect(contextEnd).toBeGreaterThan(contextStart);
+      for (const ref of artifact.manifest.contextPackRefs) {
+        const payloadSection = artifact.text.indexOf(`Context pack ID: ${ref.contextPackId}`);
+        expect(payloadSection).toBeGreaterThan(contextStart);
+        expect(payloadSection).toBeLessThan(contextEnd);
+      }
+      for (const instruction of [
+        "Authority:",
+        "State uncertainty, preserve provenance references",
+        "Handoff schema:",
+        "Return only JSON conforming to",
+        "Provider output requirements:"
+      ]) {
+        expect(artifact.text.indexOf(instruction)).toBeGreaterThan(contextEnd);
+      }
+    }
+  });
+
+  it("renders each run type output instruction as the final prompt section", async () => {
+    for (const registration of productionSpecialistPromptRegistrations) {
+      const artifact = await renderedArtifactForRunType(registration.runType);
+      const instruction = productionSpecialistRendererMaterialFor(registration.runType)
+        .template.providerOutputInstructions[registration.runType];
+      expect(extractRenderedOutputInstruction(artifact.text)).toBe(instruction);
+      expect(artifact.text.trimEnd().endsWith(instruction)).toBe(true);
+    }
+  });
+
   it("renders run-specific output guidance from canonical material", async () => {
     const evidenceArtifact = await renderedArtifactForRunType("evidence-triage");
     const evidenceInstruction = extractRenderedOutputInstruction(evidenceArtifact.text);
@@ -177,6 +214,13 @@ describe("production specialist prompt registrations", () => {
     expect(evidenceInstruction).toContain("distinctive");
     expect(evidenceInstruction).toContain("evidence-summary.v1");
     expect(evidenceInstruction).not.toContain("PAYLOAD_SENTINEL_CITY_LEDGER_427");
+    expect(evidenceInstruction).toContain("Every narrative, identifier, and reference value must remain advisory");
+    expect(evidenceInstruction).toContain("must not claim completed external effects or accepted ontology truth");
+    expect(evidenceInstruction).toContain("dossierSummary, safeSummaries, evidenceGaps, and every rationale or predicate field");
+    expect(evidenceInstruction).toContain("local review, candidate, or proposal language only");
+    expect(evidenceInstruction).toContain("a PRR, follow-up, provider byte transfer, task, crawl, export, repair, or legal escalation occurred");
+    expect(evidenceInstruction).toContain("assertions, entities, relationships, or graph facts were proposed, accepted, recorded, resolved, or linked");
+    expect(evidenceInstruction).toContain("Use [] for assertionCandidates unless verified context supports a validator-safe candidate");
 
     const prrArtifact = await renderedArtifactForRunType("prr-negotiation");
     const prrInstruction = extractRenderedOutputInstruction(prrArtifact.text);
@@ -206,7 +250,10 @@ describe("production specialist prompt registrations", () => {
         providerOutputInstructions: {
           ...material.template.providerOutputInstructions,
           "evidence-triage": material.template.providerOutputInstructions["evidence-triage"]
-            .replace("Return exactly one JSON object", "Return exactly one JSON object with deterministic Task 7 framing")
+            .replace(
+              "Every narrative, identifier, and reference value must remain advisory and must not claim completed external effects or accepted ontology truth.",
+              "Every narrative, identifier, and reference value must remain advisory for deterministic Task 7 framing."
+            )
         }
       }
     };
@@ -214,6 +261,53 @@ describe("production specialist prompt registrations", () => {
     expect(hashProductionSpecialistRendererMaterial(changedInstruction)).not.toBe(hashProductionSpecialistRendererMaterial(material));
     expect(renderProductionSpecialistPromptBytesForMaterialTest(input, changedInstruction))
       .not.toBe(renderProductionSpecialistPromptBytesForMaterialTest(input, material));
+  });
+
+  it("binds context end marker and canonical section order to renderer hashes and rendered text", async () => {
+    const registry = rendererContextPackRegistry();
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+    const input = {
+      runType: "evidence-triage" as const,
+      runId: "run_context_order_material_001",
+      taskId: "task_context_order_material_001",
+      generatedAt: "2026-07-11T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_context_order_001"] },
+      resolvedContextPacks,
+      omissions: []
+    };
+    const material = productionSpecialistRendererMaterialFor("evidence-triage");
+    const changedEndMarker = {
+      ...material,
+      template: {
+        ...material.template,
+        verifiedContextEndMarker: "End bounded verified payload context."
+      }
+    };
+    const changedOrder = {
+      ...material,
+      template: {
+        ...material.template,
+        sectionOrder: [
+          "Template:",
+          "Run:",
+          "verified-context-marker",
+          "payload-section",
+          "omission-line",
+          "verified-context-end-marker",
+          "authority-instruction",
+          "handoff-line",
+          "review-instruction",
+          "provider-output-line",
+          "provider-output-schema-instruction"
+        ]
+      }
+    };
+
+    for (const changed of [changedEndMarker, changedOrder]) {
+      expect(hashProductionSpecialistRendererMaterial(changed)).not.toBe(hashProductionSpecialistRendererMaterial(material));
+      expect(renderProductionSpecialistPromptBytesForMaterialTest(input, changed))
+        .not.toBe(renderProductionSpecialistPromptBytesForMaterialTest(input, material));
+    }
   });
 
   it("uses canonical renderer material for provider-visible bytes as well as the renderer hash", async () => {
@@ -1822,9 +1916,7 @@ async function renderedArtifactForRunType(
 function extractRenderedOutputInstruction(text: string): string {
   const start = text.indexOf("Provider output requirements:");
   expect(start).toBeGreaterThanOrEqual(0);
-  const end = text.indexOf("\n\nHandoff schema:", start);
-  expect(end).toBeGreaterThan(start);
-  return text.slice(start, end);
+  return text.slice(start).trimEnd();
 }
 
 function extractSkeletonJson(instruction: string): unknown {

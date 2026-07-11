@@ -6,7 +6,7 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at: `2026-07-11T12:48:53Z`
-- Status: in-progress
+- Status: complete
 
 ## Owned Files
 
@@ -166,3 +166,63 @@ or record a live acceptance pass without the gated provider result.
   character count, JSON-syntax-valid boolean, exact top-level-key boolean, and
   Zod issue paths/codes; no values, messages, prompt text, output text, request
   bodies, credentials, or payload text may be printed or persisted.
+- Renderer-order RED evidence: `npm test --
+  packages/agent/test/production-specialist-prompts.test.ts` reported 1 test
+  file with 4 expected failures and 62 passing tests before the canonical
+  renderer material changed. The failures covered the old section order, absent
+  end marker, non-final output instruction, and unbound end-marker rendering.
+- Renderer-order GREEN evidence: the focused renderer suite reported 1 test
+  file and 66 passing tests. The canonical material now binds the verified
+  context end marker and the final ordering through the renderer hash; each
+  registered output instruction remains validator-valid and is the final
+  provider-visible prompt section.
+- Deterministic Task 7 suite after the renderer-order correction: `npm test --
+  packages/agent/test/openai-compatible-provider.test.ts
+  packages/agent/test/production-specialist-prompts.test.ts
+  packages/agent/test/evidence-triage-nous-live.test.ts
+  packages/agent/test/prr-negotiation-nous-live.test.ts` reported 2 test files
+  passed, 2 skipped, 75 tests passed, and 2 skipped with the live gate unset.
+- Live renderer-order gate attempt 1 loaded
+  `/home/drake/Projects/Cestus/.env` by path only and reported PRR negotiation
+  passed while evidence triage returned a failed handoff. No environment values,
+  prompt text, provider output text, request bodies, credentials, or payload
+  text were recorded.
+- A temporary uncommitted test-only evidence-triage provider classifier was
+  added after the failed handoff. Its safe result was HTTP status `200`, finish
+  reason `stop`, output character count `1153`, JSON syntax valid `true`, exact
+  top-level keys `true`, and Zod issue path/code pairs
+  `dossierSummary/custom` and
+  `assertionCandidates/[index]/[unknown-key]/custom`. It printed and persisted
+  no values, messages, prompt text, provider output text, request bodies,
+  credentials, or payload text.
+- Stop condition: the output is syntactically exact at the top level but fails
+  semantic production-output validation. The classifier does not identify a
+  concrete renderer-order or schema-identity repair within Task 7, so the live
+  acceptance cannot achieve three consecutive GREEN runs. `npm run verify` and
+  the Task 7 completion commit were not run; the pre-report `git diff --check`
+  passed.
+- Controller-approved validator-parity repair: canonical final-output material
+  now states that every narrative, identifier, and reference value must remain
+  advisory and cannot claim completed external effects or accepted ontology
+  truth. Evidence-triage guidance also constrains its narrative, rationale, and
+  predicate fields to local review/candidate/proposal language and requires an
+  empty assertion-candidate list unless verified context supports a
+  validator-safe candidate.
+- RED evidence for the parity repair: `npm test --
+  packages/agent/test/production-specialist-prompts.test.ts` reported 1 test
+  file with 2 expected failures and 64 passing tests. The new instruction
+  assertions were absent and mutating the absent canonical sentence did not
+  change the renderer hash or rendered bytes.
+- GREEN evidence: the focused renderer suite reported 1 test file and 66
+  passing tests. The deterministic Task 7 suite reported 2 test files passed,
+  2 skipped, 75 tests passed, and 2 skipped with the live gate unset.
+- The temporary test-only classifier-assisted live gate passed with 2 test
+  files and 2 tests. The classifier was then removed before final acceptance.
+- Three consecutive final live Nous gates, sourced from
+  `/home/drake/Projects/Cestus/.env` by path only, each reported 2 test files
+  and 2 tests passed. No classifier output, prompt text, provider output text,
+  request bodies, credentials, environment values, or payload text were
+  printed or persisted.
+- Final verification: `npm run verify` reported `typecheck passed`, 178 test
+  files passed with 3 skipped, 2046 tests passed with 3 skipped, `tests
+  passed`, Vite build succeeded, and `factory-readiness passed`.
