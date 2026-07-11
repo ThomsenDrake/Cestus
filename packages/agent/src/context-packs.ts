@@ -64,6 +64,11 @@ export type VerifiedResolvedContextPack = ResolvedContextPack & {
   readonly [verifiedResolvedContextPackBrand]: true;
 };
 
+export interface AssertResolvedContextPacksForExecutionOptions {
+  /** Rehydrates persisted, hash-bound payload envelopes after byte verification. */
+  readonly reverifyPersistedUntrustedPacks?: boolean;
+}
+
 export type ContextPackPayloadParser = (
   payload: AgentContextPackJsonValue,
   ref?: ContextPackRef
@@ -283,7 +288,8 @@ export function verifyResolvedContextPack(
 
 export function assertResolvedContextPacksForExecution(
   refs: readonly ContextPackRef[],
-  resolvedPacks: readonly ResolvedContextPack[]
+  resolvedPacks: readonly ResolvedContextPack[],
+  options: AssertResolvedContextPacksForExecutionOptions = {}
 ): readonly VerifiedResolvedContextPack[] {
   const expected = new Map<string, ContextPackRef>();
   for (const ref of refs) {
@@ -297,17 +303,22 @@ export function assertResolvedContextPacksForExecution(
 
   const matched = new Map<string, VerifiedResolvedContextPack>();
   for (const resolved of resolvedPacks) {
-    if (!isVerifiedResolvedContextPack(resolved)) {
+    const verified = isVerifiedResolvedContextPack(resolved)
+      ? resolved
+      : options.reverifyPersistedUntrustedPacks
+        ? verifyResolvedContextPackForRegistry(resolved, (payload) => payload)
+        : undefined;
+    if (verified === undefined) {
       throw new Error("blocked.unverified-resolved-context-pack");
     }
-    const key = contextPackRefKey(resolved.ref);
+    const key = contextPackRefKey(verified.ref);
     if (!expected.has(key)) {
       throw new Error("blocked.extra-resolved-context-pack");
     }
     if (matched.has(key)) {
       throw new Error("blocked.duplicate-resolved-context-pack");
     }
-    matched.set(key, resolved);
+    matched.set(key, verified);
   }
 
   if (matched.size !== expected.size) {

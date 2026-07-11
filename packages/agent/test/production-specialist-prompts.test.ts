@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   evaluateProductionContextRequirements,
+  hashProductionSpecialistRendererMaterial,
   productionSpecialistPromptRegistrationFor,
   productionSpecialistPromptRegistrations,
+  productionSpecialistRendererMaterialFor,
   renderProductionSpecialistPrompt,
   verifyProductionSpecialistPromptArtifact,
   validateProductionSpecialistProviderOutput
@@ -11,7 +13,11 @@ import {
   assertPromptArtifactCanTransferToRemoteProvider,
   buildPromptArtifact
 } from "../src/prompt-artifacts.js";
-import { buildContextPackRef, createContextPackRegistry } from "../src/context-packs.js";
+import {
+  buildContextPackRef,
+  createContextPackRegistry,
+  type AgentContextPackJsonValue
+} from "../src/context-packs.js";
 
 describe("production specialist prompt registrations", () => {
   const validEvidenceTriageOutput = () => ({
@@ -58,6 +64,48 @@ describe("production specialist prompt registrations", () => {
       productionSpecialistPromptRegistrations.map((registration) => productionSpecialistPromptRegistrationFor(registration.runType).rendererHash)
     );
     expect(new Set(registeredHashes)).toHaveLength(productionSpecialistPromptRegistrations.length);
+  });
+
+  it("binds renderer hashes to canonical template labels, payload paths, and redaction rules", () => {
+    const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
+    const material = productionSpecialistRendererMaterialFor("evidence-triage");
+
+    expect(material.template.sectionOrder).toEqual([
+      "Template:",
+      "Run:",
+      "authority-instruction",
+      "provider-output-line",
+      "provider-output-schema-instruction",
+      "handoff-line",
+      "review-instruction",
+      "omission-line",
+      "verified-context-marker",
+      "payload-section"
+    ]);
+    expect(material.template.payloadSectionLines).toEqual([
+      "Context pack ID:",
+      "Content hash:",
+      "Pack label:",
+      "registered-fields"
+    ]);
+    expect(material.payloadRenderers["evidence-summary.v1"]).toEqual(expect.objectContaining({
+      label: "Evidence summary",
+      kind: "evidence-summary.v1",
+      collectionPaths: expect.arrayContaining([
+        expect.objectContaining({ path: "items", label: "Evidence", fieldRule: "evidenceSummary" })
+      ])
+    }));
+    expect(material.limits.redactionBehavior).toBe("exclude-unregistered-fields");
+    expect(hashProductionSpecialistRendererMaterial(material)).toBe(registration.rendererHash);
+
+    const changedMaterial = {
+      ...material,
+      template: {
+        ...material.template,
+        verifiedContextMarker: "Changed verified-context marker:"
+      }
+    };
+    expect(hashProductionSpecialistRendererMaterial(changedMaterial)).not.toBe(registration.rendererHash);
   });
 
   it("requires a complete production binding before every production run type can transfer", () => {
@@ -1190,12 +1238,14 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
-  it("rejects matching-hash invalid evidence pack shapes before renderer envelope creation", async () => {
-    const registry = rendererContextPackRegistry({
-      "evidence-summary.v1": { evidence: "not-an-array" }
-    });
+  it("rejects matching-hash invalid pack-specific payload shapes before renderer envelope creation", async () => {
+    for (const contextPackId of rendererPackIds) {
+      const registry = rendererContextPackRegistry({
+        [contextPackId]: { invalid: "not the registered payload shape" }
+      });
 
-    await expect(registry.buildResolved("evidence-summary.v1")).rejects.toThrow(/payload-schema-mismatch/i);
+      await expect(registry.buildResolved(contextPackId)).rejects.toThrow(/payload-schema-mismatch/i);
+    }
   });
 
   it("rejects forged plain objects that imitate verified resolved context envelopes", async () => {
@@ -1327,18 +1377,52 @@ function rendererContextPackRegistry(payloads: Readonly<Record<string, unknown>>
           : `Verified ${contextPackId} summary.`,
         provenanceRefs: ["evt_renderer_context_001"]
       }),
-      parsePayload: (payload) => {
-        const items = typeof payload === "object" && payload !== null && !Array.isArray(payload)
-          ? (payload as Readonly<Record<string, unknown>>).items
-          : undefined;
-        if (contextPackId === "evidence-summary.v1" && !Array.isArray(items)) {
-          throw new Error("invalid evidence summary payload");
-        }
-        return payload;
-      }
+      parsePayload: (payload) => parseRendererPayload(contextPackId, payload)
     });
   }
   return registry;
+}
+
+function parseRendererPayload(
+  contextPackId: typeof rendererPackIds[number],
+  payload: AgentContextPackJsonValue
+): AgentContextPackJsonValue {
+  const record = asRecord(payload);
+  const items = asRecord(record?.items);
+  const memory = asRecord(record?.memory);
+  const history = asRecord(record?.history);
+  const runtime = asRecord(record?.runtime);
+
+  const valid = (() => {
+    switch (contextPackId) {
+      case "accepted-graph-projection.v1":
+        return items !== undefined && Array.isArray(items.assertions) && Array.isArray(items.entities) && Array.isArray(items.relationships);
+      case "evidence-summary.v1":
+      case "timeline-draft-summary.v1":
+      case "contradiction-candidate-summary.v1":
+        return Array.isArray(record?.items);
+      case "governance-locks.v1":
+        return items !== undefined && Array.isArray(items.activeLocks) && Array.isArray(items.governanceRestrictions);
+      case "agent-memory-summary.v1":
+        return memory !== undefined && Array.isArray(memory.activeMemory) && Array.isArray(memory.sourceEventIds) && Array.isArray(memory.artifactHashes);
+      case "task-run-history.v1":
+        return history !== undefined && Array.isArray(history.tasks) && Array.isArray(history.runs) && Array.isArray(history.modelInvocations) && Array.isArray(history.toolRequests);
+      case "workspace-runtime-status.v1":
+        return runtime !== undefined && Array.isArray(runtime.providerStates) && Array.isArray(runtime.diagnostics) && Array.isArray(runtime.omissionCodes);
+      case "prr-read-model.v1":
+        return record !== undefined && asRecord(record.lifecycle) !== undefined && asRecord(record.requestStream) !== undefined && Array.isArray(record.diagnostics) && Array.isArray(record.gates) && Array.isArray(record.omissions);
+      case "jurisdiction-pack-summary.v1":
+        return record !== undefined && typeof record.packName === "string" && typeof record.packVersion === "string" && Array.isArray(record.citedRules) && Array.isArray(record.omissions);
+    }
+  })();
+  if (!valid) throw new Error(`invalid ${contextPackId} payload`);
+  return payload;
+}
+
+function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Readonly<Record<string, unknown>>
+    : undefined;
 }
 
 function defaultRendererPayload(contextPackId: string): unknown {
