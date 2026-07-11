@@ -3,6 +3,7 @@ import {
   buildResolvedContextPack,
   contextPackDescriptorSchema,
   hashAgentContextPack,
+  registerContextPackPayloadParserAuthority,
   serializeContextPackPayload,
   verifyResolvedContextPack,
   type AgentContextPackJsonValue,
@@ -386,6 +387,7 @@ function withContextPackParserIdentity(
     writable: false,
     configurable: false
   });
+  registerContextPackPayloadParserAuthority(parser);
   return parser;
 }
 

@@ -5,7 +5,7 @@ import {
   buildContextPackRef,
   createContextPackRegistry
 } from "../src/context-packs.js";
-import type { ContextPackRef } from "../src/context-packs.js";
+import type { AgentContextPackJsonValue, ContextPackRef } from "../src/context-packs.js";
 import {
   assertPromptArtifactCanTransferToRemoteProvider,
   buildPromptArtifact,
@@ -55,16 +55,19 @@ contextPackRegistry.register({
     safeSummary: "One verified evidence summary.",
     provenanceRefs: ["evt_evidence_summary_001"]
   }),
-  parsePayload: (payload) => payload
+  parsePayload: permissiveProductionShapedParser("evidence-summary.v1")
 });
 
 for (const contextPackId of [
   "governance-locks.v1",
   "accepted-graph-projection.v1",
+  "timeline-draft-summary.v1",
+  "contradiction-candidate-summary.v1",
   "agent-memory-summary.v1",
   "task-run-history.v1",
   "workspace-runtime-status.v1",
   "prr-read-model.v1",
+  "jurisdiction-pack-summary.v1",
   "extra-context.v1"
 ]) {
   contextPackRegistry.register({
@@ -85,7 +88,7 @@ for (const contextPackId of [
       safeSummary: `One verified ${contextPackId}.`,
       provenanceRefs: ["evt_evidence_summary_001"]
     }),
-    parsePayload: (payload) => payload
+    parsePayload: permissiveProductionShapedParser(contextPackId)
   });
 }
 
@@ -212,6 +215,20 @@ describe("resident agent prompt artifacts", () => {
     });
 
     expect(() => assertPromptArtifactCanTransferToRemoteProvider(generic)).toThrow(/production.*verify|verification|renderer/i);
+  });
+
+  it("rejects production-shaped generic artifacts for all six production run types", async () => {
+    for (const registration of [
+      "prr-negotiation",
+      "evidence-triage",
+      "timeline-builder",
+      "contradiction-finder",
+      "investigation-planner",
+      "report-builder"
+    ] as const) {
+      const generic = await genericProductionShapedArtifact(registration);
+      expect(() => assertPromptArtifactCanTransferToRemoteProvider(generic)).toThrow(/renderer verification|production renderer verification/i);
+    }
   });
 
   it("does not manufacture verified payload envelopes from serialized production artifacts", async () => {
@@ -650,6 +667,80 @@ function productionBinding(contextPackRefs: readonly ContextPackRef[]) {
     evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(contextPackRefs),
     resolvedPayloadAudits: payloadAudits(contextPackRefs)
   };
+}
+
+async function genericProductionShapedArtifact(runType: Parameters<typeof productionSpecialistPromptRegistrationFor>[0]) {
+  const registration = productionSpecialistPromptRegistrationFor(runType);
+  const resolvedContextPacks = await Promise.all(registration.contextRequirements
+    .filter((requirement) => requirement.requirementMode === "always")
+    .map((requirement) => contextPackRegistry.buildResolved(requirement.contextPackId)));
+  const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+  const evaluatedContextRequirements = registration.contextRequirements.map((requirement) => {
+    const ref = contextPackRefs.find((contextPackRef) => contextPackRef.contextPackId === requirement.contextPackId);
+    return ref === undefined
+      ? {
+        contextPackId: requirement.contextPackId,
+        requirementMode: requirement.requirementMode,
+        status: "not-applicable" as const,
+        omissionReason: "no-associated-prr" as const
+      }
+      : {
+        contextPackId: requirement.contextPackId,
+        requirementMode: requirement.requirementMode,
+        status: "applicable" as const,
+        contentHash: ref.contentHash
+      };
+  });
+  const text = [
+    `Template: ${registration.promptTemplateId}@${registration.promptTemplateVersion}`,
+    `Return only JSON conforming to ${registration.providerOutputSchemaId}@${registration.providerOutputSchemaVersion}.`,
+    `Handoff schema: ${registration.handoffSchemaId}@${registration.handoffSchemaVersion}.`,
+    "Verified payload context follows:",
+    ...contextPackRefs.flatMap((ref) => [
+      `Context pack ID: ${ref.contextPackId}`,
+      `Content hash: ${ref.contentHash}`
+    ])
+  ].join("\n");
+
+  return buildPromptArtifact({
+    promptTemplateId: registration.promptTemplateId,
+    promptTemplateVersion: registration.promptTemplateVersion,
+    generatedAt: "2026-07-10T12:00:00.000Z",
+    runType,
+    safetyClass: "provider-approved",
+    transferApprovalClass: "provider-byte-transfer",
+    contextPackRefs,
+    text,
+    safeSummary: "Production-shaped generic prompt artifact.",
+    omissions: evaluatedContextRequirements
+      .filter((requirement) => requirement.status === "not-applicable")
+      .map(() => ({ reason: "no-associated-prr", sourceRef: "prr-read-model.v1", safeSummary: "PRR context is not applicable." })),
+    production: {
+      rendererId: registration.rendererId,
+      rendererVersion: registration.rendererVersion,
+      rendererHash: registration.rendererHash,
+      renderedPromptHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      providerOutputSchemaId: registration.providerOutputSchemaId,
+      providerOutputSchemaVersion: registration.providerOutputSchemaVersion,
+      handoffSchemaId: registration.handoffSchemaId,
+      handoffSchemaVersion: registration.handoffSchemaVersion,
+      scopeApplicabilityHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      evaluatedContextRequirements,
+      resolvedPayloadAudits: payloadAudits(contextPackRefs)
+    },
+    resolvedContextPacks
+  });
+}
+
+function permissiveProductionShapedParser(contextPackId: string) {
+  const parser = (payload: AgentContextPackJsonValue): AgentContextPackJsonValue => payload;
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: contextPackId,
+    enumerable: false,
+    writable: false,
+    configurable: false
+  });
+  return parser;
 }
 
 function unsafeCredentialLikeText(): string {

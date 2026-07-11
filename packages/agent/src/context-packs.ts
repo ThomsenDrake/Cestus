@@ -145,6 +145,8 @@ const contextPackStalenessInputSchema = z.object({
 const builtContextPackRefs = new WeakSet<object>();
 const verifiedResolvedContextPacks = new WeakSet<object>();
 const verifiedResolvedContextPackVerificationIdentities = new WeakMap<object, VerifiedResolvedContextPackVerificationIdentity>();
+const registryOwnedContextPackPayloadParsers = new WeakSet<object>();
+const verifiedResolvedContextPackParserAuthorities = new WeakMap<object, object>();
 const parserIdentityProperty = "cestusContextPackParserId";
 
 const contextPackDescriptorObjectSchema = z.object({
@@ -334,6 +336,28 @@ export function verifiedResolvedContextPackVerificationIdentity(
   return verifiedResolvedContextPackVerificationIdentities.get(value);
 }
 
+/** Package-owned parser modules call this once for each authoritative implementation. */
+export function registerContextPackPayloadParserAuthority(parser: ContextPackPayloadParser): void {
+  contextPackParserIdentity(parser);
+  registryOwnedContextPackPayloadParsers.add(parser);
+}
+
+export function hasVerifiedResolvedContextPackParserAuthority(
+  value: unknown,
+  contextPackId: string,
+  parserIdentity: string
+): boolean {
+  if (!isVerifiedResolvedContextPack(value)) {
+    return false;
+  }
+  const identity = verifiedResolvedContextPackVerificationIdentities.get(value);
+  return identity !== undefined &&
+    identity.contextPackId === contextPackId &&
+    identity.version === value.ref.version &&
+    identity.parserIdentity === parserIdentity &&
+    verifiedResolvedContextPackParserAuthorities.has(value);
+}
+
 export function createContextPackRegistry(options: CreateContextPackRegistryOptions = {}): ContextPackRegistry {
   const payloadResolver = options.payloadResolver;
   const builders = new Map<string, {
@@ -447,6 +471,9 @@ function verifyResolvedContextPackForRegistry(
       version: verified.ref.version,
       parserIdentity
     }));
+  }
+  if (registryOwnedContextPackPayloadParsers.has(parser)) {
+    verifiedResolvedContextPackParserAuthorities.set(verified, Object.freeze({}));
   }
   return verified;
 }

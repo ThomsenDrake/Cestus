@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 import {
   assertResolvedContextPacksForExecution,
   hashAgentContextPack,
-  verifiedResolvedContextPackVerificationIdentity,
+  hasVerifiedResolvedContextPackParserAuthority,
   type VerifiedResolvedContextPack
 } from "./context-packs.js";
 import {
@@ -76,6 +76,12 @@ export interface VerifyProductionSpecialistPromptArtifactInput extends RenderPro
   readonly artifact: PromptArtifactEnvelope;
 }
 
+const rendererVerifiedProductionPromptArtifacts = new WeakSet<object>();
+
+export function isProductionSpecialistPromptArtifactRendererVerified(value: unknown): boolean {
+  return typeof value === "object" && value !== null && rendererVerifiedProductionPromptArtifacts.has(value);
+}
+
 const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTemplateMaterial = Object.freeze({
   sectionOrder: ["Template:", "Run:", "authority-instruction", "provider-output-line", "provider-output-schema-instruction", "handoff-line", "review-instruction", "omission-line", "verified-context-marker", "payload-section"],
   templateLine: "Template: {promptTemplateId}@{promptTemplateVersion}",
@@ -112,11 +118,6 @@ interface PayloadRenderingLimits {
   readonly maximumRenderedPayloadSectionBytes: number;
   readonly truncationSuffix: string;
   readonly fieldLineFormat: string;
-}
-
-interface RegisteredPayloadRenderer {
-  readonly contextPackId: string;
-  readonly render: (payload: unknown, limits: PayloadRenderingLimits) => readonly string[];
 }
 
 const payloadRenderingPolicyMaterial = Object.freeze({
@@ -184,42 +185,6 @@ const payloadRenderingPolicyMaterial = Object.freeze({
   }
 });
 
-const { fieldRules } = payloadRenderingPolicyMaterial;
-const graphAssertionFieldRules = fieldRules.graphAssertion;
-const graphEntityFieldRules = fieldRules.graphEntity;
-const graphRelationshipFieldRules = fieldRules.graphRelationship;
-const evidenceSummaryFieldRules = fieldRules.evidenceSummary;
-const parseJobFieldRules = fieldRules.parseJob;
-const governanceTagFieldRules = fieldRules.governanceTag;
-const lockFieldRules = fieldRules.lock;
-const restrictionFieldRules = fieldRules.restriction;
-const memoryFieldRules = fieldRules.memory;
-const taskFieldRules = fieldRules.task;
-const runFieldRules = fieldRules.run;
-const invocationFieldRules = fieldRules.invocation;
-const toolRequestFieldRules = fieldRules.toolRequest;
-const providerStateFieldRules = fieldRules.providerState;
-const diagnosticFieldRules = fieldRules.diagnostic;
-const prrLifecycleFieldRules = fieldRules.prrLifecycle;
-const prrStreamFieldRules = fieldRules.prrStream;
-const prrDeadlineFieldRules = fieldRules.prrDeadline;
-const prrFeeFieldRules = fieldRules.prrFee;
-const prrNarrowingFieldRules = fieldRules.prrNarrowing;
-const placeholderItemFieldRules = fieldRules.placeholderItem;
-
-const payloadRenderersByContextPackId: Readonly<Record<string, RegisteredPayloadRenderer>> = Object.freeze({
-  "accepted-graph-projection.v1": renderer("accepted-graph-projection.v1", renderAcceptedGraphProjectionPayload),
-  "evidence-summary.v1": renderer("evidence-summary.v1", renderEvidenceSummaryPayload),
-  "timeline-draft-summary.v1": renderer("timeline-draft-summary.v1", renderTimelineDraftSummaryPayload),
-  "contradiction-candidate-summary.v1": renderer("contradiction-candidate-summary.v1", renderContradictionCandidateSummaryPayload),
-  "governance-locks.v1": renderer("governance-locks.v1", renderGovernanceLocksPayload),
-  "agent-memory-summary.v1": renderer("agent-memory-summary.v1", renderAgentMemorySummaryPayload),
-  "task-run-history.v1": renderer("task-run-history.v1", renderTaskRunHistoryPayload),
-  "workspace-runtime-status.v1": renderer("workspace-runtime-status.v1", renderWorkspaceRuntimeStatusPayload),
-  "prr-read-model.v1": renderer("prr-read-model.v1", renderPrrReadModelPayload),
-  "jurisdiction-pack-summary.v1": renderer("jurisdiction-pack-summary.v1", renderJurisdictionPackSummaryPayload)
-});
-
 const definitions: readonly Omit<ProductionSpecialistPromptRegistration, "rendererHash">[] = Object.freeze([
   definition("prr-negotiation", "prr-negotiation.review.v1", "prr-negotiation.review-output.v1", always(["prr-read-model.v1", "jurisdiction-pack-summary.v1", "governance-locks.v1", "evidence-summary.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), standardAllowedOmissions),
   definition("evidence-triage", "evidence-triage.classify.v1", "evidence-triage.classify-output.v1", withConditionalPrr(["evidence-summary.v1", "governance-locks.v1", "accepted-graph-projection.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions),
@@ -236,6 +201,7 @@ export interface ProductionSpecialistRendererMaterial {
   readonly version: 1;
   readonly registration: Omit<ProductionSpecialistPromptRegistration, "rendererHash">;
   readonly template: CanonicalProductionPromptTemplateMaterial;
+  readonly fieldRules: typeof payloadRenderingPolicyMaterial.fieldRules;
   readonly payloadRenderers: typeof payloadRenderingPolicyMaterial.renderers;
   readonly limits: PayloadRenderingLimits;
 }
@@ -302,7 +268,7 @@ export function renderProductionSpecialistPrompt(
     material: productionSpecialistRendererMaterialFor(input.runType)
   });
 
-  return buildPromptArtifact({
+  const artifact = buildPromptArtifact({
     promptTemplateId: registration.promptTemplateId,
     promptTemplateVersion: registration.promptTemplateVersion,
     generatedAt: input.generatedAt,
@@ -328,6 +294,8 @@ export function renderProductionSpecialistPrompt(
     },
     resolvedContextPacks
   });
+  rendererVerifiedProductionPromptArtifacts.add(artifact);
+  return artifact;
 }
 
 export function verifyProductionSpecialistPromptArtifact(
@@ -419,6 +387,9 @@ function evaluateAndResolveProductionContext(
   }
 
   const hasAssociatedPrr = scope.associatedPrrRequestId !== undefined;
+  if (hasAssociatedPrr && !scope.refs.includes(scope.associatedPrrRequestId as string)) {
+    throw new Error("Production run scope must include the associated PRR request in scope refs");
+  }
   const requirements = registration.contextRequirements.map((requirement) => {
     const applicable = requirement.requirementMode === "always" || hasAssociatedPrr;
     const resolved = packsById.get(requirement.contextPackId);
@@ -440,6 +411,9 @@ function evaluateAndResolveProductionContext(
       throw new Error(`Production context requirement ${requirement.contextPackId} has an invalid ref`);
     }
     assertProductionParserIdentity(resolved);
+    if (requirement.contextPackId === "prr-read-model.v1" && hasAssociatedPrr) {
+      assertAssociatedPrrContext(resolved, scope.associatedPrrRequestId as string);
+    }
     return Object.freeze({
       contextPackId: requirement.contextPackId,
       requirementMode: requirement.requirementMode,
@@ -490,6 +464,20 @@ function evaluateAndResolveProductionContext(
   });
 }
 
+function assertAssociatedPrrContext(
+  resolved: VerifiedResolvedContextPack,
+  associatedPrrRequestId: string
+): void {
+  if (resolved.ref.scope?.kind !== "prr-request" || resolved.ref.scope.id !== associatedPrrRequestId) {
+    throw new Error("Production PRR read-model ref scope does not match the associated PRR request");
+  }
+  const payload = jsonRecord(resolved.payload);
+  const payloadScope = jsonRecord(payload?.scope);
+  if (payloadScope?.kind !== "prr-request" || payloadScope.id !== associatedPrrRequestId) {
+    throw new Error("Production PRR read-model payload scope does not match the associated PRR request");
+  }
+}
+
 function assertCanonicalOmissions(
   supplied: readonly PromptArtifactOmission[] | undefined,
   expected: readonly PromptArtifactOmission[]
@@ -503,15 +491,15 @@ function assertProductionParserIdentity(resolved: VerifiedResolvedContextPack): 
   const rendererMaterial = payloadRenderingPolicyMaterial.renderers[
     resolved.ref.contextPackId as keyof typeof payloadRenderingPolicyMaterial.renderers
   ];
-  const identity = verifiedResolvedContextPackVerificationIdentity(resolved);
   if (
     rendererMaterial === undefined ||
-    identity === undefined ||
-    identity.contextPackId !== resolved.ref.contextPackId ||
-    identity.version !== resolved.ref.version ||
-    identity.parserIdentity !== rendererMaterial.parserIdentity
+    !hasVerifiedResolvedContextPackParserAuthority(
+      resolved,
+      resolved.ref.contextPackId,
+      rendererMaterial.parserIdentity
+    )
   ) {
-    throw new Error(`Production context pack ${resolved.ref.contextPackId} has an invalid parser identity`);
+    throw new Error(`Production context pack ${resolved.ref.contextPackId} has no approved parser authority`);
   }
 }
 
@@ -582,12 +570,16 @@ function renderCanonicalProductionPrompt(input: {
 }): string {
   const { template, limits } = input.material;
   const payloadSections = input.resolvedContextPacks.map((resolved) => {
-    const renderer = payloadRenderersByContextPackId[resolved.ref.contextPackId];
     const rendererMaterial = input.material.payloadRenderers[resolved.ref.contextPackId as keyof typeof input.material.payloadRenderers];
-    if (renderer === undefined || rendererMaterial === undefined) {
+    if (rendererMaterial === undefined) {
       throw new Error(`Production context pack ${resolved.ref.contextPackId} has no registered payload renderer`);
     }
-    const renderedFields = renderer.render(resolved.payload, limits);
+    const renderedFields = renderPayloadWithMaterial(
+      resolved.payload,
+      rendererMaterial,
+      input.material.fieldRules,
+      limits
+    );
     if (renderedFields.length === 0) {
       throw new Error(`Production context pack ${resolved.ref.contextPackId} has no bounded provider-useful payload content`);
     }
@@ -634,138 +626,63 @@ function renderCanonicalProductionPrompt(input: {
   return text;
 }
 
-function renderer(contextPackId: keyof typeof payloadRenderingPolicyMaterial.renderers, render: (payload: unknown, limits: PayloadRenderingLimits) => readonly string[]): RegisteredPayloadRenderer {
-  return Object.freeze({
-    contextPackId,
-    render
-  });
-}
-
-function renderAcceptedGraphProjectionPayload(payload: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  const items = jsonRecord(payload)?.items;
-  const record = jsonRecord(items);
-  return freezeRendered([
-    ...renderRecordList("Accepted assertion", record?.assertions, graphAssertionFieldRules, limits),
-    ...renderRecordList("Accepted entity", record?.entities, graphEntityFieldRules, limits),
-    ...renderRecordList("Accepted relationship", record?.relationships, graphRelationshipFieldRules, limits)
-  ]);
-}
-
-function renderEvidenceSummaryPayload(payload: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  const record = jsonRecord(payload);
-  const evidence = record?.items;
-  if (!Array.isArray(evidence)) return Object.freeze([]);
-  return freezeRendered(evidence.slice(0, limits.maximumPayloadArrayItems).flatMap((item, index) => {
-    const itemRecord = jsonRecord(item);
-    return [
-      ...renderAllowedRecordFields(`Evidence ${index + 1}`, itemRecord, evidenceSummaryFieldRules, limits),
-      ...renderRecordList(`Evidence ${index + 1} parse job`, itemRecord?.parseJobs, parseJobFieldRules, limits),
-      ...renderRecordList(`Evidence ${index + 1} governance tag`, itemRecord?.governanceTags, governanceTagFieldRules, limits),
-      ...renderAllowedRecordFields(`Evidence ${index + 1} duplicate group`, itemRecord?.duplicateGroup, fieldRules.evidenceDuplicateGroup, limits)
-    ];
+function renderPayloadWithMaterial(
+  payload: unknown,
+  renderer: typeof payloadRenderingPolicyMaterial.renderers[keyof typeof payloadRenderingPolicyMaterial.renderers],
+  fieldRules: typeof payloadRenderingPolicyMaterial.fieldRules,
+  limits: PayloadRenderingLimits
+): readonly string[] {
+  return freezeRendered(renderer.collectionPaths.flatMap((pathRule) => {
+    const allowedFields = fieldRules[pathRule.fieldRule as keyof typeof fieldRules];
+    if (allowedFields === undefined) {
+      throw new Error(`Production renderer material is missing field rule ${pathRule.fieldRule}`);
+    }
+    return resolveRendererCollectionPath(payload, pathRule.path, limits).flatMap(({ value, indexes }) => {
+      const records = Array.isArray(value)
+        ? value.slice(0, limits.maximumPayloadArrayItems).map((item, index) => ({ value: item, indexes: [...indexes, index] }))
+        : [{ value, indexes }];
+      return records.flatMap((record) => renderAllowedRecordFields(
+        rendererPathLabel(pathRule.label, record.indexes),
+        record.value,
+        allowedFields,
+        limits
+      ));
+    });
   }));
 }
 
-function renderGovernanceLocksPayload(payload: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  const items = jsonRecord(jsonRecord(payload)?.items);
-  return freezeRendered([
-    ...renderRecordList("Active lock", items?.activeLocks, lockFieldRules, limits),
-    ...renderRecordList("Governance restriction", items?.governanceRestrictions, restrictionFieldRules, limits)
-  ]);
+function resolveRendererCollectionPath(
+  payload: unknown,
+  path: string,
+  limits: PayloadRenderingLimits
+): readonly { readonly value: unknown; readonly indexes: readonly number[] }[] {
+  if (path.length === 0) return Object.freeze([{ value: payload, indexes: Object.freeze([]) }]);
+  return path.split(".").reduce<readonly { readonly value: unknown; readonly indexes: readonly number[] }[]>((current, segment) => {
+    const isCollection = segment.endsWith("[]");
+    const key = isCollection ? segment.slice(0, -2) : segment;
+    const nextValues: { readonly value: unknown; readonly indexes: readonly number[] }[] = [];
+    for (const { value, indexes } of current) {
+      const next = jsonRecord(value)?.[key];
+      if (!isCollection) {
+        if (next !== undefined) nextValues.push({ value: next, indexes });
+        continue;
+      }
+      if (!Array.isArray(next)) continue;
+      next.slice(0, limits.maximumPayloadArrayItems).forEach((item, index) => {
+        nextValues.push({ value: item, indexes: Object.freeze([...indexes, index]) });
+      });
+    }
+    return Object.freeze(nextValues);
+  }, Object.freeze([{ value: payload, indexes: Object.freeze([]) }]));
 }
 
-function renderAgentMemorySummaryPayload(payload: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  const memory = jsonRecord(jsonRecord(payload)?.memory);
-  return freezeRendered([
-    ...renderRecordList("Active memory", memory?.activeMemory, memoryFieldRules, limits),
-    ...renderAllowedRecordFields("Memory", memory, fieldRules.memoryContainer, limits)
-  ]);
-}
-
-function renderTaskRunHistoryPayload(payload: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  const history = jsonRecord(jsonRecord(payload)?.history);
-  return freezeRendered([
-    ...renderRecordList("Task", history?.tasks, taskFieldRules, limits),
-    ...renderRecordList("Run", history?.runs, runFieldRules, limits),
-    ...renderRecordList("Model invocation", history?.modelInvocations, invocationFieldRules, limits),
-    ...renderRecordList("Tool request", history?.toolRequests, toolRequestFieldRules, limits),
-    ...renderAllowedRecordFields("History", history, fieldRules.historyContainer, limits)
-  ]);
-}
-
-function renderWorkspaceRuntimeStatusPayload(payload: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  const runtime = jsonRecord(jsonRecord(payload)?.runtime);
-  return freezeRendered([
-    ...renderAllowedRecordFields("Runtime", runtime, fieldRules.runtime, limits),
-    ...renderRecordList("Provider state", runtime?.providerStates, providerStateFieldRules, limits),
-    ...renderRecordList("Runtime diagnostic", runtime?.diagnostics, diagnosticFieldRules, limits)
-  ]);
-}
-
-function renderPrrReadModelPayload(payload: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  const record = jsonRecord(payload);
-  return freezeRendered([
-    ...renderAllowedRecordFields("PRR lifecycle", record?.lifecycle, prrLifecycleFieldRules, limits),
-    ...renderAllowedRecordFields("PRR request stream", record?.requestStream, prrStreamFieldRules, limits),
-    ...renderAllowedRecordFields("PRR deadline", record?.deadline, prrDeadlineFieldRules, limits),
-    ...renderAllowedRecordFields("PRR fee", record?.fee, prrFeeFieldRules, limits),
-    ...renderAllowedRecordFields("PRR narrowing", record?.narrowing, prrNarrowingFieldRules, limits),
-    ...renderCorrespondence(record?.correspondence, limits),
-    ...renderProduction(record?.production, limits),
-    ...renderRecordList("PRR diagnostic", record?.diagnostics, diagnosticFieldRules, limits),
-    ...renderRecordList("PRR gate", record?.gates, fieldRules.prrGate, limits),
-    ...renderRecordList("PRR source reference", jsonRecord(record?.sourceRefs)?.correspondence, fieldRules.prrSourceReference, limits),
-    ...renderRecordList("PRR source reference", jsonRecord(record?.sourceRefs)?.evidence, fieldRules.prrSourceReference, limits),
-    ...renderRecordList("PRR omission", record?.omissions, fieldRules.prrOmission, limits)
-  ]);
-}
-
-function renderCorrespondence(value: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  const record = jsonRecord(value);
-  return freezeRendered([
-    ...renderRecordList("Outbound correspondence", record?.outbound, fieldRules.correspondence, limits),
-    ...renderRecordList("Inbound correspondence", record?.inbound, fieldRules.correspondence, limits)
-  ]);
-}
-
-function renderProduction(value: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  const record = jsonRecord(value);
-  return freezeRendered([
-    ...renderRecordList("Production batch", record?.batches, fieldRules.productionBatch, limits),
-    ...renderAllowedRecordFields("Production", record, fieldRules.production, limits),
-    ...renderRecordList("Production exemption", record?.exemptions, fieldRules.productionExemption, limits),
-    ...renderAllowedRecordFields("Production denial", record?.denial, fieldRules.productionDenial, limits),
-    ...renderAllowedRecordFields("Production appeal", record?.appeal, fieldRules.productionAppeal, limits),
-    ...renderAllowedRecordFields("Production stalling", record?.stalling, fieldRules.productionStalling, limits),
-    ...renderRecordList("Production stalling signal", jsonRecord(record?.stalling)?.signals, fieldRules.productionStallingSignal, limits),
-    ...renderAllowedRecordFields("Production escalation", record?.escalation, fieldRules.productionEscalation, limits)
-  ]);
-}
-
-function renderJurisdictionPackSummaryPayload(payload: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  const record = jsonRecord(payload);
-  return freezeRendered([
-    ...renderAllowedRecordFields("Jurisdiction pack", record, fieldRules.jurisdiction, limits),
-    ...renderRecordList("Cited rule", record?.citedRules, fieldRules.citedRule, limits),
-    ...renderAllowedRecordFields("Advisory posture", record?.advisoryPosture, fieldRules.advisoryPosture, limits),
-    ...renderAllowedRecordFields("Jurisdiction pack", record, fieldRules.omissions, limits)
-  ]);
-}
-
-function renderTimelineDraftSummaryPayload(payload: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  return renderPlaceholderSummaryPayload(payload, "Timeline item", limits);
-}
-
-function renderContradictionCandidateSummaryPayload(payload: unknown, limits: PayloadRenderingLimits): readonly string[] {
-  return renderPlaceholderSummaryPayload(payload, "Contradiction candidate", limits);
-}
-
-function renderPlaceholderSummaryPayload(payload: unknown, label: string, limits: PayloadRenderingLimits): readonly string[] {
-  const record = jsonRecord(payload);
-  return freezeRendered([
-    ...renderRecordList(label, record?.items, placeholderItemFieldRules, limits),
-    ...renderAllowedRecordFields(label, record, fieldRules.omissions, limits)
-  ]);
+function rendererPathLabel(label: string, indexes: readonly number[]): string {
+  let consumedIndexes = 0;
+  const withParentIndexes = label.replaceAll(/\{index\}/g, () => String((indexes[consumedIndexes++] ?? 0) + 1));
+  const finalIndex = indexes[indexes.length - 1];
+  return finalIndex === undefined || consumedIndexes === indexes.length
+    ? withParentIndexes
+    : `${withParentIndexes} ${finalIndex + 1}`;
 }
 
 function renderRecordList(label: string, value: unknown, allowedFields: readonly string[], limits: PayloadRenderingLimits): readonly string[] {
@@ -872,6 +789,7 @@ function canonicalRegisteredRendererMaterial(
     version: 1,
     registration: Object.freeze({ ...registration }),
     template: canonicalProductionPromptTemplateMaterial,
+    fieldRules: payloadRenderingPolicyMaterial.fieldRules,
     payloadRenderers: payloadRenderingPolicyMaterial.renderers,
     limits: Object.freeze({
       redactionBehavior: payloadRenderingPolicyMaterial.redactionBehavior,
