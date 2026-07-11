@@ -194,12 +194,134 @@ export type ProductionSpecialistProviderOutput =
 
 export function validateProductionSpecialistProviderOutput(input: { readonly runType: ProductionRunType; readonly value: unknown }): ProductionSpecialistProviderOutput {
   switch (input.runType) {
-    case "prr-negotiation": return Object.freeze({ runType: input.runType, value: prrNegotiationReviewOutputSchema.parse(input.value) });
-    case "evidence-triage": return Object.freeze({ runType: input.runType, value: evidenceTriageClassifyOutputSchema.parse(input.value) });
-    case "timeline-builder": return Object.freeze({ runType: input.runType, value: timelineBuilderSourcedTimelineOutputSchema.parse(input.value) });
-    case "contradiction-finder": return Object.freeze({ runType: input.runType, value: contradictionFinderCandidatesOutputSchema.parse(input.value) });
-    case "investigation-planner": return Object.freeze({ runType: input.runType, value: investigationPlannerNextStepsOutputSchema.parse(input.value) });
-    case "report-builder": return Object.freeze({ runType: input.runType, value: reportBuilderPacketDraftOutputSchema.parse(input.value) });
+    case "prr-negotiation": return deepFreeze({ runType: input.runType, value: parseProviderOutput(prrNegotiationReviewOutputSchema, input.value) });
+    case "evidence-triage": return deepFreeze({ runType: input.runType, value: parseProviderOutput(evidenceTriageClassifyOutputSchema, input.value) });
+    case "timeline-builder": return deepFreeze({ runType: input.runType, value: parseProviderOutput(timelineBuilderSourcedTimelineOutputSchema, input.value) });
+    case "contradiction-finder": return deepFreeze({ runType: input.runType, value: parseProviderOutput(contradictionFinderCandidatesOutputSchema, input.value) });
+    case "investigation-planner": return deepFreeze({ runType: input.runType, value: parseProviderOutput(investigationPlannerNextStepsOutputSchema, input.value) });
+    case "report-builder": return deepFreeze({ runType: input.runType, value: parseProviderOutput(reportBuilderPacketDraftOutputSchema, input.value) });
     default: throw new Error("Unsupported production specialist run type.");
   }
+}
+
+function parseProviderOutput<T>(schema: z.ZodType<T>, value: unknown): T {
+  return schema.parse(normalizeProviderOutputJsonValue(value, "$.value", new WeakSet<object>()));
+}
+
+function normalizeProviderOutputJsonValue(value: unknown, path: string, seen: WeakSet<object>): unknown {
+  if (value === null) {
+    return null;
+  }
+
+  switch (typeof value) {
+    case "string":
+    case "boolean":
+      return value;
+    case "number":
+      if (!Number.isFinite(value)) {
+        throw new Error(`${path} must be JSON DTO-safe.`);
+      }
+      return value;
+    case "object":
+      return Array.isArray(value)
+        ? normalizeProviderOutputJsonArray(value, path, seen)
+        : normalizeProviderOutputJsonObject(value, path, seen);
+    default:
+      throw new Error(`${path} must be JSON DTO-safe.`);
+  }
+}
+
+function normalizeProviderOutputJsonArray(value: readonly unknown[], path: string, seen: WeakSet<object>): unknown[] {
+  if (Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${path} must be JSON DTO-safe.`);
+  }
+  if (seen.has(value)) {
+    throw new Error(`${path} must be JSON DTO-safe.`);
+  }
+
+  seen.add(value);
+  try {
+    const descriptors = Object.getOwnPropertyDescriptors(value) as Record<string, PropertyDescriptor>;
+    const lengthDescriptor = descriptors.length;
+    const length = lengthDescriptor !== undefined && "value" in lengthDescriptor
+      ? lengthDescriptor.value
+      : undefined;
+    if (typeof length !== "number" || !Number.isSafeInteger(length) || length < 0) {
+      throw new Error(`${path} must be JSON DTO-safe.`);
+    }
+
+    const items: unknown[] = new Array(length);
+    let itemCount = 0;
+    for (const key of Object.keys(descriptors)) {
+      if (key === "length") {
+        continue;
+      }
+      if (!isCanonicalArrayIndexKey(key)) {
+        throw new Error(`${path} must be JSON DTO-safe.`);
+      }
+
+      const descriptor = descriptors[key];
+      const index = Number(key);
+      if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor) || index >= length) {
+        throw new Error(`${path} must be JSON DTO-safe.`);
+      }
+      items[index] = normalizeProviderOutputJsonValue(descriptor.value, `${path}[${index}]`, seen);
+      itemCount += 1;
+    }
+    if (itemCount !== length) {
+      throw new Error(`${path} must be JSON DTO-safe.`);
+    }
+
+    return items;
+  } finally {
+    seen.delete(value);
+  }
+}
+
+function normalizeProviderOutputJsonObject(value: object, path: string, seen: WeakSet<object>): Record<string, unknown> {
+  const prototype = Object.getPrototypeOf(value);
+  if ((prototype !== Object.prototype && prototype !== null) || Object.getOwnPropertySymbols(value).length > 0) {
+    throw new Error(`${path} must be JSON DTO-safe.`);
+  }
+  if (seen.has(value)) {
+    throw new Error(`${path} must be JSON DTO-safe.`);
+  }
+
+  seen.add(value);
+  try {
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const normalized = Object.create(null) as Record<string, unknown>;
+    for (const key of Object.keys(descriptors)) {
+      const descriptor = descriptors[key];
+      if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) {
+        throw new Error(`${path} must be JSON DTO-safe.`);
+      }
+      normalized[key] = normalizeProviderOutputJsonValue(descriptor.value, `${path}.${key}`, seen);
+    }
+    return normalized;
+  } finally {
+    seen.delete(value);
+  }
+}
+
+function isCanonicalArrayIndexKey(key: string): boolean {
+  if (!/^(0|[1-9][0-9]*)$/.test(key)) {
+    return false;
+  }
+  const index = Number(key);
+  return Number.isSafeInteger(index) && index < 2 ** 32 - 1;
+}
+
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (value === null || typeof value !== "object" || seen.has(value)) {
+    return value;
+  }
+
+  seen.add(value);
+  for (const descriptor of Object.values(Object.getOwnPropertyDescriptors(value))) {
+    if ("value" in descriptor) {
+      deepFreeze(descriptor.value, seen);
+    }
+  }
+  return Object.freeze(value);
 }

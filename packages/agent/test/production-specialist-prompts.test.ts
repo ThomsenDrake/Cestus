@@ -6,6 +6,24 @@ import {
 } from "../src/production-specialist-prompts.js";
 
 describe("production specialist prompt registrations", () => {
+  const validEvidenceTriageOutput = () => ({
+    dossierSummary: "Evidence needs review.",
+    safeSummaries: ["The source remains available for review."],
+    governanceFlags: [{
+      evidenceId: "ev_001",
+      tag: "review",
+      confidence: 0.5,
+      rationale: "Review the source evidence."
+    }],
+    duplicateGroups: [],
+    evidenceGaps: [],
+    assertionCandidates: [],
+    requestProviderParseApproval: false,
+    requestGovernanceReview: false,
+    requestQuarantineReview: false,
+    requestAssertionProposalReview: false
+  });
+
   it("registers exactly the six approved production templates", () => {
     expect(productionSpecialistPromptRegistrations.map((registration) => registration.promptTemplateId)).toEqual([
       "prr-negotiation.review.v1",
@@ -70,6 +88,78 @@ describe("production specialist prompt registrations", () => {
       }
     });
     expect(parsed.runType).toBe("evidence-triage");
+  });
+
+  it("rejects accessor-backed provider output without invoking its getter", () => {
+    const value = validEvidenceTriageOutput();
+    let getterInvoked = false;
+    Object.defineProperty(value, "dossierSummary", {
+      enumerable: true,
+      get() {
+        getterInvoked = true;
+        return "This getter must not run.";
+      }
+    });
+
+    expect(() => validateProductionSpecialistProviderOutput({ runType: "evidence-triage", value })).toThrow(/JSON DTO-safe/i);
+    expect(getterInvoked).toBe(false);
+  });
+
+  it("rejects symbol-keyed and custom-prototype provider objects", () => {
+    const symbolKeyed = validEvidenceTriageOutput();
+    Object.defineProperty(symbolKeyed, Symbol("provider-output"), { enumerable: true, value: "unexpected" });
+
+    class ProviderOutput {
+      readonly dossierSummary = "Evidence needs review.";
+      readonly safeSummaries = ["The source remains available for review."];
+      readonly governanceFlags = [];
+      readonly duplicateGroups = [];
+      readonly evidenceGaps = [];
+      readonly assertionCandidates = [];
+      readonly requestProviderParseApproval = false;
+      readonly requestGovernanceReview = false;
+      readonly requestQuarantineReview = false;
+      readonly requestAssertionProposalReview = false;
+    }
+
+    for (const value of [symbolKeyed, new ProviderOutput()]) {
+      expect(() => validateProductionSpecialistProviderOutput({ runType: "evidence-triage", value })).toThrow(/JSON DTO-safe/i);
+    }
+  });
+
+  it("rejects sparse and custom provider arrays with unsupported own properties", () => {
+    const sparse = validEvidenceTriageOutput();
+    sparse.safeSummaries = new Array(1);
+    const customPrototype = validEvidenceTriageOutput();
+    Object.setPrototypeOf(customPrototype.safeSummaries, { unexpected: true });
+    const extraProperty = validEvidenceTriageOutput();
+    Object.defineProperty(extraProperty.safeSummaries, "unexpected", { enumerable: true, value: "unexpected" });
+
+    for (const value of [sparse, customPrototype, extraProperty]) {
+      expect(() => validateProductionSpecialistProviderOutput({ runType: "evidence-triage", value })).toThrow(/JSON DTO-safe/i);
+    }
+  });
+
+  it("rejects unsupported JSON values and deeply freezes parsed provider output", () => {
+    for (const unsafeValue of [undefined, () => undefined, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const value = validEvidenceTriageOutput();
+      value.safeSummaries = [unsafeValue as unknown as string];
+      expect(() => validateProductionSpecialistProviderOutput({ runType: "evidence-triage", value })).toThrow(/JSON DTO-safe/i);
+    }
+
+    const parsed = validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: validEvidenceTriageOutput()
+    });
+    expect(Object.isFrozen(parsed)).toBe(true);
+    expect(parsed.runType).toBe("evidence-triage");
+    if (parsed.runType !== "evidence-triage") {
+      throw new Error("Expected evidence-triage output.");
+    }
+    expect(Object.isFrozen(parsed.value)).toBe(true);
+    expect(Object.isFrozen(parsed.value.safeSummaries)).toBe(true);
+    expect(Object.isFrozen(parsed.value.governanceFlags)).toBe(true);
+    expect(Object.isFrozen(parsed.value.governanceFlags[0])).toBe(true);
   });
 
   it("rejects ontology-bootstrap provider output at runtime", () => {
