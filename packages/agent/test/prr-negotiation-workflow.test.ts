@@ -27,6 +27,7 @@ import {
   hashAgentToolPreview,
   promptArtifactAuditMetadata,
   productionSpecialistPromptRegistrationFor,
+  renderProductionSpecialistPrompt,
   prrFollowUpExecuteDescriptor,
   rebuildPrrCorrespondenceCurrentPreview,
   rebuildProviderByteTransferCurrentPreview,
@@ -34,6 +35,7 @@ import {
 } from "../src/index.js";
 import type {
   AgentApprovedToolExecutionInput,
+  AgentContextPackJsonValue,
   ModelInvocationRequest,
   ModelInvocationResult,
   ModelProviderAdapter,
@@ -1047,14 +1049,14 @@ function createWorkflowContextPacks(
         redactionPolicy: "safe-summary-only",
         sourceProjection: "test-projection"
       },
-      parsePayload: (payload) => payload,
+      parsePayload: workflowContextPackParser(contextPackId),
       build: () => {
         builtIds.push(contextPackId);
         return {
           contextPackId,
           version: 1,
           generatedAt: now(),
-          payload: { refs: ["evt_context_001"] },
+          payload: workflowContextPayload(contextPackId),
           safeSummary: `${contextPackId} is safe for planning.`,
           provenanceRefs: ["event:evt_context_001", remoteEvidenceId, remoteRefs.evidenceEventId, remoteEvidenceHash],
           sourceEventIds: ["evt_context_001", remoteRefs.evidenceEventId, remoteRefs.linkEventId],
@@ -1065,6 +1067,81 @@ function createWorkflowContextPacks(
     });
   }
   return registry;
+}
+
+function workflowContextPackParser(contextPackId: string) {
+  const parser = (payload: AgentContextPackJsonValue): AgentContextPackJsonValue => payload;
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: contextPackId,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  return parser;
+}
+
+function workflowContextPayload(contextPackId: string): unknown {
+  switch (contextPackId) {
+    case "prr-read-model.v1":
+      return {
+        lifecycle: { status: "sent", agencyName: "Example Agency", jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" } },
+        requestStream: { requestCreatedEventId: "evt_prr_created_001", streamHeadEventId: "evt_prr_initial_sent_001", streamHighWaterMark: 7, sourceEventIds: ["evt_prr_created_001", "evt_prr_initial_sent_001"] },
+        deadline: { deadlineDate: "2026-08-01", source: "jurisdiction-pack", confidence: 0.9, explanation: "Statutory response window." },
+        fee: null,
+        narrowing: null,
+        correspondence: {
+          outbound: [{ correspondenceId: "corr_prr_initial_setup", subject: "Public records request", occurredAt: now(), evidenceIds: [remoteEvidenceId], attachmentEvidenceIds: [] }],
+          inbound: []
+        },
+        production: {
+          batches: [],
+          evidenceIds: [remoteEvidenceId],
+          exemptions: [],
+          denial: null,
+          appeal: null,
+          stalling: { possible: false, confirmed: false, signals: [] },
+          escalation: null
+        },
+        diagnostics: [{ code: "prr-ready", category: "workflow", safeSummary: "PRR context is ready.", sourceEventIds: ["evt_prr_created_001"], artifactHashes: [] }],
+        gates: [{ gateId: "provider-transfer", kind: "provider-byte-transfer", ready: true, locked: false }],
+        sourceRefs: { correspondence: [], evidence: [{ id: remoteEvidenceId, contentHash: remoteEvidenceHash, sourceEventId: remoteEvidenceEventId }] },
+        omissions: []
+      };
+    case "jurisdiction-pack-summary.v1":
+      return {
+        packName: "us-federal-foia",
+        packVersion: "0.1.0",
+        jurisdiction: "US federal",
+        citedRules: [{ label: "FOIA response deadline", citation: "5 USC 552(a)(6)(A)" }],
+        advisoryPosture: { summary: "Advisory only." },
+        omissions: []
+      };
+    case "governance-locks.v1":
+      return {
+        items: {
+          activeLocks: [{
+            lockId: "lock_provider_review_001",
+            lockKind: "provider-byte-transfer",
+            safeReason: "Remote provider transfer requires approval.",
+            activatedBy: "agent_default",
+            activatedAt: now(),
+            relatedEventIds: ["evt_context_001"],
+            projectionEventIds: ["evt_context_001"]
+          }],
+          governanceRestrictions: []
+        }
+      };
+    case "evidence-summary.v1":
+      return { items: [{ evidenceId: remoteEvidenceId, ingestionEventId: remoteEvidenceEventId, contentHash: remoteEvidenceHash, occurrenceIds: ["occurrence_remote_001"], parseJobs: [], governanceTags: [], safeNarrative: "Remote evidence approved for provider prompt transfer." }] };
+    case "agent-memory-summary.v1":
+      return { memory: { activeMemory: [{ memoryId: "memory_prr_001", scope: "workspace", memoryKind: "agent-observation", summary: "Use conservative PRR follow-up language.", confidence: 0.8, sourceEventIds: ["evt_context_001"], artifactHashes: [] }], aggregateCounts: { active: 1 }, sourceEventIds: ["evt_context_001"], artifactHashes: [] } };
+    case "task-run-history.v1":
+      return { history: { projectionHighWaterMark: 7, projectionSourceRef: "agent.projection.task-run-history", tasks: [{ taskId: "task_prr_001", status: "running", statusReasonCode: "prr-negotiation" }], runs: [{ runId: "run_prr_001", state: "running", runType: "prr-negotiation", taskId: "task_prr_001", sourceEventIds: ["evt_context_001"] }], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1, runs: 1 }, sourceEventIds: ["evt_context_001"], artifactHashes: [], window: { order: "created-at", limit: 2, hasMore: false, totalCount: 2, omissionCodes: [] } } };
+    case "workspace-runtime-status.v1":
+      return { runtime: { runtimeHighWaterMark: 7, workspaceMounted: true, workspaceId: "ws_prr", storageStrategy: "local", bindPosture: "bound", authPosture: "ready", providerStates: [{ providerId: "provider_remote_model", state: "requires-approval", reasonCode: "provider-byte-transfer" }], diagnostics: [], projectionHighWaterMarks: { agent: 7 }, omissionCodes: [] } };
+    default:
+      return { items: [{ itemId: `${contextPackId}_item_001`, summary: `${contextPackId} summary.` }], omissions: [] };
+  }
 }
 
 function createDerivativeStore() {
@@ -1343,40 +1420,14 @@ async function providerApprovedPromptArtifact(
     contextPackRefs,
     resolvedContextPacks
   );
-  return buildPromptArtifact({
-    promptTemplateId: registration.promptTemplateId,
-    promptTemplateVersion: registration.promptTemplateVersion,
-    generatedAt: now(),
+  return renderProductionSpecialistPrompt({
     runType: "prr-negotiation",
-    safetyClass: "provider-approved",
-    transferApprovalClass: "provider-byte-transfer",
-    contextPackRefs,
-    text: "Use safe context hashes to draft a PRR negotiation review JSON object.",
-    safeSummary: "Provider-approved PRR negotiation prompt artifact.",
-    production: {
-      rendererId: registration.rendererId,
-      rendererVersion: registration.rendererVersion,
-      rendererHash: registration.rendererHash,
-      renderedPromptHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      providerOutputSchemaId: registration.providerOutputSchemaId,
-      providerOutputSchemaVersion: registration.providerOutputSchemaVersion,
-      handoffSchemaId: registration.handoffSchemaId,
-      handoffSchemaVersion: registration.handoffSchemaVersion,
-      scopeApplicabilityHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      evaluatedContextRequirements: registration.contextRequirements.map((requirement, index) => ({
-        contextPackId: requirement.contextPackId,
-        requirementMode: requirement.requirementMode,
-        status: "applicable" as const,
-        contentHash: contextPackRefs[index]!.contentHash
-      })),
-      resolvedPayloadAudits: contextPackRefs.map((contextPackRef) => ({
-        contextPackId: contextPackRef.contextPackId,
-        contentHash: contextPackRef.contentHash,
-        sizeBytes: contextPackRef.sizeBytes,
-        schemaId: contextPackRef.contextPackId
-      }))
-    },
-    resolvedContextPacks: verifiedResolvedContextPacks
+    runId: "run_prr_001",
+    taskId: "task_prr_001",
+    generatedAt: now(),
+    scope: { kind: "prr-request", refs: ["prr_req_001"], associatedPrrRequestId: "prr_req_001" },
+    resolvedContextPacks: verifiedResolvedContextPacks,
+    omissions: []
   });
 }
 

@@ -3,6 +3,7 @@ import {
   hashAgentContextPack,
   type AgentContextPackJsonValue,
   type ContextPackDescriptor,
+  type ContextPackPayloadParser,
   type ContextPackRef,
   type ContextPackRegistry,
   type ResolvedContextPack
@@ -579,6 +580,11 @@ export const investigativeRegistrationIdentity = Object.freeze({
 } satisfies InvestigativeRegistrationIdentity);
 
 const registeredRegistries = new WeakMap<object, string>();
+const parserIdentityProperty = "cestusContextPackParserId";
+
+attachRegistryParserIdentity(parseAcceptedGraphPayloadForRegistry, "accepted-graph-projection.v1");
+attachRegistryParserIdentity(parseEvidenceSummaryPayloadForRegistry, "evidence-summary.v1");
+attachRegistryParserIdentity(parseGovernanceLocksPayloadForRegistry, "governance-locks.v1");
 
 export function registerInvestigativeContextPacks(
   registry: ContextPackRegistry,
@@ -647,6 +653,15 @@ function parseEvidenceSummaryPayloadForRegistry(payload: AgentContextPackJsonVal
 
 function parseGovernanceLocksPayloadForRegistry(payload: AgentContextPackJsonValue, ref?: ContextPackRef): AgentContextPackJsonValue {
   return governanceLocksPayloadParser.parsePayload(payload, ref) as unknown as AgentContextPackJsonValue;
+}
+
+function attachRegistryParserIdentity(parser: ContextPackPayloadParser, parserIdentity: string): void {
+  Object.defineProperty(parser, parserIdentityProperty, {
+    value: parserIdentity,
+    enumerable: false,
+    writable: false,
+    configurable: false
+  });
 }
 
 function asResolvedContextPack(
