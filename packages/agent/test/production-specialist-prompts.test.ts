@@ -17,6 +17,7 @@ import {
 import {
   buildContextPackRef,
   createContextPackRegistry,
+  registerContextPackPayloadParserAuthority,
   type AgentContextPackJsonValue
 } from "../src/context-packs.js";
 
@@ -145,6 +146,18 @@ describe("production specialist prompt registrations", () => {
     expect(renderProductionSpecialistPromptBytesForMaterialTest(input, changed))
       .not.toBe(renderProductionSpecialistPromptBytesForMaterialTest(input, material));
     expect(renderProductionSpecialistPromptBytesForMaterialTest(input, changed)).toContain("Pack identity:");
+
+    const changedFieldGrammar = {
+      ...material,
+      fieldRules: {
+        ...material.fieldRules,
+        evidenceSummary: material.fieldRules.evidenceSummary.filter((field) => field !== "safeNarrative")
+      }
+    };
+
+    expect(hashProductionSpecialistRendererMaterial(changedFieldGrammar)).not.toBe(hashProductionSpecialistRendererMaterial(material));
+    expect(renderProductionSpecialistPromptBytesForMaterialTest(input, changedFieldGrammar))
+      .not.toBe(renderProductionSpecialistPromptBytesForMaterialTest(input, material));
   });
 
   it("requires a complete production binding before every production run type can transfer", () => {
@@ -1126,6 +1139,7 @@ describe("production specialist prompt registrations", () => {
     expect(first.text).toMatch(/accept ontology truth/i);
     expect(first.manifest.production?.renderedPromptHash).toBe(second.manifest.production?.renderedPromptHash);
     expect(first.manifest.inputArtifactHash).not.toBe(second.manifest.inputArtifactHash);
+    expect(() => assertPromptArtifactCanTransferToRemoteProvider(first)).not.toThrow();
   });
 
   it("renders only approved evidence-summary fields", async () => {
@@ -1277,6 +1291,43 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it("rejects associated PRRs outside the scope and swapped PRR context", async () => {
+    const registry = rendererContextPackRegistry();
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", true);
+    const input = {
+      runType: "evidence-triage" as const,
+      runId: "run_swapped_prr_001",
+      taskId: "task_swapped_prr_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      resolvedContextPacks,
+      omissions: []
+    };
+
+    expect(() => renderProductionSpecialistPrompt({
+      ...input,
+      scope: { kind: "prr", refs: ["prr_other_001"], associatedPrrRequestId: "prr_selected_001" }
+    })).toThrow(/associated PRR|scope/i);
+    expect(() => renderProductionSpecialistPrompt({
+      ...input,
+      scope: { kind: "prr", refs: ["prr_selected_001"], associatedPrrRequestId: "prr_selected_001" }
+    })).toThrow(/prr-read-model.*scope|associated PRR/i);
+
+    const payloadSwappedRegistry = rendererContextPackRegistry({
+      "prr-read-model.v1": {
+        ...(defaultRendererPayload("prr-read-model.v1") as Record<string, unknown>),
+        scope: { kind: "prr-request", id: "prr_other_001" }
+      }
+    }, {}, new Set(), {
+      "prr-read-model.v1": { kind: "prr-request", id: "prr_selected_001" }
+    });
+    const payloadSwappedPacks = await resolvedRendererPacks(payloadSwappedRegistry, "evidence-triage", true);
+    expect(() => renderProductionSpecialistPrompt({
+      ...input,
+      resolvedContextPacks: payloadSwappedPacks,
+      scope: { kind: "prr", refs: ["prr_selected_001"], associatedPrrRequestId: "prr_selected_001" }
+    })).toThrow(/prr-read-model.*payload scope|associated PRR/i);
+  });
+
   it("rejects matching-hash invalid pack-specific payload shapes before renderer envelope creation", async () => {
     for (const contextPackId of rendererPackIds) {
       const registry = rendererContextPackRegistry({
@@ -1318,7 +1369,22 @@ describe("production specialist prompt registrations", () => {
       scope: { kind: "imported-evidence", refs: ["ev_foreign_parser_001"] },
       resolvedContextPacks,
       omissions: []
-    })).toThrow(/parser identity/i);
+    })).toThrow(/parser authority|approved parser/i);
+  });
+
+  it("rejects an exact-ID permissive parser before production rendering", async () => {
+    const registry = rendererContextPackRegistry({}, {}, new Set(["evidence-summary.v1"]));
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+
+    expect(() => renderProductionSpecialistPrompt({
+      runType: "evidence-triage",
+      runId: "run_exact_id_permissive_001",
+      taskId: "task_exact_id_permissive_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_exact_id_001"] },
+      resolvedContextPacks,
+      omissions: []
+    })).toThrow(/parser authority|approved parser/i);
   });
 
   it("rejects malformed production scopes before applicability is evaluated", async () => {
@@ -1440,7 +1506,9 @@ const rendererPackIds = [
 
 function rendererContextPackRegistry(
   payloads: Readonly<Record<string, unknown>> = {},
-  parserIdentities: Readonly<Partial<Record<typeof rendererPackIds[number], string>>> = {}
+  parserIdentities: Readonly<Partial<Record<typeof rendererPackIds[number], string>>> = {},
+  permissiveExactIdParsers: ReadonlySet<typeof rendererPackIds[number]> = new Set(),
+  refScopes: Readonly<Partial<Record<typeof rendererPackIds[number], { readonly kind: string; readonly id: string }>>> = {}
 ) {
   const registry = createContextPackRegistry();
   for (const contextPackId of rendererPackIds) {
@@ -1462,11 +1530,15 @@ function rendererContextPackRegistry(
         safeSummary: contextPackId === "evidence-summary.v1"
           ? "Evidence summary does not include the sentinel."
           : `Verified ${contextPackId} summary.`,
-        provenanceRefs: ["evt_renderer_context_001"]
+        provenanceRefs: ["evt_renderer_context_001"],
+        ...(refScopes[contextPackId] === undefined ? {} : { scope: refScopes[contextPackId] })
       }),
       parsePayload: rendererParser(
         parserIdentities[contextPackId] ?? productionParserIdentity(contextPackId),
-        (payload) => parseRendererPayload(contextPackId, payload)
+        permissiveExactIdParsers.has(contextPackId)
+          ? (payload) => payload
+          : (payload) => parseRendererPayload(contextPackId, payload),
+        !permissiveExactIdParsers.has(contextPackId)
       )
     });
   }
@@ -1475,7 +1547,8 @@ function rendererContextPackRegistry(
 
 function rendererParser(
   parserIdentity: string,
-  parser: (payload: AgentContextPackJsonValue) => AgentContextPackJsonValue
+  parser: (payload: AgentContextPackJsonValue) => AgentContextPackJsonValue,
+  registryOwned = true
 ) {
   Object.defineProperty(parser, "cestusContextPackParserId", {
     value: parserIdentity,
@@ -1483,6 +1556,7 @@ function rendererParser(
     writable: false,
     configurable: false
   });
+  if (registryOwned) registerContextPackPayloadParserAuthority(parser);
   return parser;
 }
 

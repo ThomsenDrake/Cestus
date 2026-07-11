@@ -1,6 +1,7 @@
 import {
   buildResolvedContextPack,
   hashAgentContextPack,
+  registerContextPackPayloadParserAuthority,
   type AgentContextPackJsonValue,
   type ContextPackDescriptor,
   type ContextPackPayloadParser,
@@ -662,6 +663,7 @@ function attachRegistryParserIdentity(parser: ContextPackPayloadParser, parserId
     writable: false,
     configurable: false
   });
+  registerContextPackPayloadParserAuthority(parser);
 }
 
 function asResolvedContextPack(

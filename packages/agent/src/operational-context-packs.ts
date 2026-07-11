@@ -9,7 +9,7 @@ import type {
   ContextPackStalenessInput,
   ResolvedContextPack
 } from "./context-packs.js";
-import { buildResolvedContextPack, serializeContextPackPayload } from "./context-packs.js";
+import { buildResolvedContextPack, registerContextPackPayloadParserAuthority, serializeContextPackPayload } from "./context-packs.js";
 import {
   assertOperationalContextSafeText,
   buildAgentMemorySummaryResolvedContextPack,
@@ -790,6 +790,7 @@ function createOperationalPayloadParser(
     writable: false,
     configurable: false
   });
+  registerContextPackPayloadParserAuthority(parser);
   return parser;
 }
 

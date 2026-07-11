@@ -20,6 +20,7 @@ import {
   createAgentRuntime,
   createAgentToolGateway,
   createContextPackRegistry,
+  registerContextPackPayloadParserAuthority,
   createSpecialistDerivativeArtifactStore,
   createPrrFollowUpExecutionAdapter,
   createProviderCapabilityDescriptor,
@@ -1061,6 +1062,7 @@ function createWorkflowContextPacks(
           provenanceRefs: ["event:evt_context_001", remoteEvidenceId, remoteRefs.evidenceEventId, remoteEvidenceHash],
           sourceEventIds: ["evt_context_001", remoteRefs.evidenceEventId, remoteRefs.linkEventId],
           artifactHashes: [remoteEvidenceHash],
+          ...(contextPackId === "prr-read-model.v1" ? { scope: { kind: "prr-request", id: "prr_req_001" } } : {}),
           sizeBudgetBytes: 16_384
         };
       }
@@ -1077,6 +1079,7 @@ function workflowContextPackParser(contextPackId: string) {
     configurable: false,
     writable: false
   });
+  registerContextPackPayloadParserAuthority(parser);
   return parser;
 }
 
@@ -1084,6 +1087,7 @@ function workflowContextPayload(contextPackId: string): unknown {
   switch (contextPackId) {
     case "prr-read-model.v1":
       return {
+        scope: { kind: "prr-request", id: "prr_req_001" },
         lifecycle: { status: "sent", agencyName: "Example Agency", jurisdictionPack: { name: "us-federal-foia", version: "0.1.0" } },
         requestStream: { requestCreatedEventId: "evt_prr_created_001", streamHeadEventId: "evt_prr_initial_sent_001", streamHighWaterMark: 7, sourceEventIds: ["evt_prr_created_001", "evt_prr_initial_sent_001"] },
         deadline: { deadlineDate: "2026-08-01", source: "jurisdiction-pack", confidence: 0.9, explanation: "Statutory response window." },
