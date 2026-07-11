@@ -7,7 +7,7 @@
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Base commit: `68a8c091`
 - Claimed at: `2026-07-11T09:06:25Z`
-- Status: `in-progress`
+- Status: `ready-for-review`
 
 ## Owned Files
 
@@ -22,6 +22,8 @@
 - `packages/agent/src/projection-types.ts`
 - `packages/agent/test/runtime.test.ts`
 - `packages/agent/test/projection.test.ts`
+- `packages/agent/test/prr-negotiation-workflow.test.ts` (supporting verifier fixture preserving production audit binding)
+- `packages/agent/test/evidence-triage-workflow.test.ts` (supporting verifier fixture using real production prompt audit)
 
 ## Scope
 
@@ -69,3 +71,44 @@ or repeated verifier failure after two focused repair attempts.
   and resolved payload audit metadata; it must never contain production prompt
   text, provider response text, resolved payload values, credentials, request
   bodies, hidden paths, or generic metadata bags.
+
+## Verification Scope Block
+
+- Targeted Task 5 RED: failed as intended because the ontology event contract,
+  strict provider-transfer parser, runtime append path, and projection did not
+  yet carry the production audit binding.
+- Targeted Task 5 GREEN: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts` passed with 4 files and 96 tests.
+- `npm run verify` is blocked by the existing unowned test
+  `packages/agent/test/prr-negotiation-workflow.test.ts`. Its
+  `providerByteTransferPromptArtifactAudit()` helper explicitly removes the
+  production binding before building a provider-transfer approval proof. The
+  new required production parser correctly rejects that incomplete audit.
+- The necessary safe supporting change is to preserve the existing production
+  audit object in that helper. It is outside the coordinator-approved Task 5
+  ownership list, so no out-of-scope file was edited and no commit was made.
+
+## Completion Evidence
+
+- Supporting verifier fixture repair: `packages/agent/test/prr-negotiation-workflow.test.ts`
+  now preserves the existing production audit binding in the provider-transfer
+  proof helper.
+- Supporting verifier fixture repair: `packages/agent/test/evidence-triage-workflow.test.ts`
+  now builds provider-parse preview prompt audit metadata through the real
+  production evidence-triage renderer and parser-verified context packs, with
+  evidence IDs, evidence events, link events, and content hashes bound in the
+  prompt artifact audit.
+- Provider-transfer previews deduplicate artifact hash refs after production
+  audit hashes are included, preserving the downstream exact-preview contract.
+- `npm test -- packages/agent/test/prr-negotiation-workflow.test.ts -t "requires exact provider byte-transfer approval before invoking a remote provider"`:
+  passed, 1 test and 11 skipped tests.
+- `npm test -- packages/agent/test/evidence-triage-workflow.test.ts`: passed,
+  1 file and 11 tests.
+- `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/evidence-triage-workflow.test.ts`:
+  passed, 6 files and 119 tests.
+- `npm run verify`: passed typecheck, 178 test files with 3 skipped, 2036 tests
+  with 3 skipped, UI production build, and factory readiness.
+- `git diff --check`: passed.
+
+No production prompt text, provider response text, resolved payload values,
+credentials, request bodies, hidden paths, or generic metadata bags are recorded
+in this claim.

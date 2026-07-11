@@ -226,6 +226,7 @@ describe("buildAgentProjection", () => {
       safePromptSummary: "Prompt artifact assembled from safe context pack summaries.",
       omissions: [promptOmission()],
       transferApprovalClass: "provider-byte-transfer",
+      production: productionPromptAuditBinding(),
       providerOutputArtifactHash: hash333,
       usage: { inputTokens: 10, outputTokens: 12, totalTokens: 22 },
       eventIds: [
@@ -234,7 +235,9 @@ describe("buildAgentProjection", () => {
       ]
     });
     expect(invocation?.inputArtifactHash).not.toBe(invocation?.providerOutputArtifactHash);
-    expect(JSON.stringify(dto)).not.toContain("Use the listed context pack summaries");
+    const serialized = JSON.stringify(dto);
+    expect(serialized).not.toContain("Use the listed context pack summaries");
+    expect(serialized).not.toContain("resolved-payload-sentinel");
   });
 });
 
@@ -311,7 +314,8 @@ function modelInvocationAuditEvents(): Parameters<typeof buildAgentProjection>[0
         runType: "evidence-triage",
         safePromptSummary: "Prompt artifact assembled from safe context pack summaries.",
         omissions: [promptOmission()],
-        transferApprovalClass: "provider-byte-transfer"
+        transferApprovalClass: "provider-byte-transfer",
+        production: productionPromptAuditBinding()
       }
     },
     {
@@ -377,6 +381,37 @@ function promptOmission(): Record<string, unknown> {
     reason: "budget",
     sourceRef: "evidence-summary.v1",
     safeSummary: "One evidence pack was omitted because the size budget was reached."
+  };
+}
+
+function productionPromptAuditBinding(): Record<string, unknown> {
+  return {
+    rendererId: "evidence-triage.classify.renderer",
+    rendererVersion: 1,
+    rendererHash: hash111,
+    renderedPromptHash: hash222,
+    providerOutputSchemaId: "evidence-triage.classify-output.v1",
+    providerOutputSchemaVersion: 1,
+    handoffSchemaId: "evidence-triage-handoff.v1",
+    handoffSchemaVersion: 1,
+    scopeApplicabilityHash: hash333,
+    evaluatedContextRequirements: [{
+      contextPackId: "task-run-history.v1",
+      requirementMode: "always",
+      status: "applicable",
+      contentHash: hash111
+    }, {
+      contextPackId: "prr-read-model.v1",
+      requirementMode: "when-scope-associated-prr",
+      status: "not-applicable",
+      omissionReason: "no-associated-prr"
+    }],
+    resolvedPayloadAudits: [{
+      contextPackId: "task-run-history.v1",
+      contentHash: hash111,
+      sizeBytes: 512,
+      schemaId: "task-run-history.v1"
+    }]
   };
 }
 

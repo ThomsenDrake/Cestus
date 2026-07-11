@@ -1567,8 +1567,7 @@ async function providerTransferApprovalProof(
 function providerByteTransferPromptArtifactAudit(
   promptArtifact: Awaited<ReturnType<typeof providerApprovedPromptArtifact>>
 ) {
-  const { production: _production, ...audit } = promptArtifactAuditMetadata(promptArtifact);
-  return audit;
+  return promptArtifactAuditMetadata(promptArtifact);
 }
 
 async function appendRemotePromptEvidence(

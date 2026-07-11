@@ -234,6 +234,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
             safePromptSummary: event.payload.safePromptSummary,
             omissions: projectPromptOmissions(event.payload.omissions ?? []),
             transferApprovalClass: event.payload.transferApprovalClass,
+            production: projectProductionPromptAudit(event.payload.production),
             allowedActions: freezeArray([]),
             ...nextProvenance(undefined, event)
           })
@@ -619,6 +620,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
 type AgentModelRequestedEvent = Extract<KnowledgeEvent, { type: "agent.model-invocation.requested" }>;
 type AgentContextPackRefPayload = NonNullable<AgentModelRequestedEvent["payload"]["contextPackRefs"]>[number];
 type AgentPromptOmissionPayload = NonNullable<AgentModelRequestedEvent["payload"]["omissions"]>[number];
+type AgentProductionPromptAuditPayload = NonNullable<AgentModelRequestedEvent["payload"]["production"]>;
 
 function projectContextPackRefs(refs: readonly AgentContextPackRefPayload[]): readonly ProjectedAgentContextPackRef[] {
   return freezeArray(
@@ -668,6 +670,36 @@ function projectPromptOmissions(omissions: readonly AgentPromptOmissionPayload[]
       })
     )
   );
+}
+
+function projectProductionPromptAudit(production: AgentProductionPromptAuditPayload | undefined) {
+  if (production === undefined) {
+    return undefined;
+  }
+  return freezeProjected({
+    rendererId: production.rendererId,
+    rendererVersion: production.rendererVersion,
+    rendererHash: production.rendererHash,
+    renderedPromptHash: production.renderedPromptHash,
+    providerOutputSchemaId: production.providerOutputSchemaId,
+    providerOutputSchemaVersion: production.providerOutputSchemaVersion,
+    handoffSchemaId: production.handoffSchemaId,
+    handoffSchemaVersion: production.handoffSchemaVersion,
+    scopeApplicabilityHash: production.scopeApplicabilityHash,
+    evaluatedContextRequirements: freezeArray(production.evaluatedContextRequirements.map((requirement) => freezeProjected({
+      contextPackId: requirement.contextPackId,
+      requirementMode: requirement.requirementMode,
+      status: requirement.status,
+      contentHash: requirement.contentHash,
+      omissionReason: requirement.omissionReason
+    }))),
+    resolvedPayloadAudits: freezeArray(production.resolvedPayloadAudits.map((audit) => freezeProjected({
+      contextPackId: audit.contextPackId,
+      contentHash: audit.contentHash,
+      sizeBytes: audit.sizeBytes,
+      schemaId: audit.schemaId
+    })))
+  });
 }
 
 function toolRequestCanAcceptExecutionClaim(state: ProjectedAgentToolRequest["state"]): boolean {

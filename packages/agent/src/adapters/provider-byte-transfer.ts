@@ -15,7 +15,7 @@ import type {
   AgentDomainToolDescriptor
 } from "../domain-execution-descriptors.js";
 import { buildAgentProjection } from "../projection.js";
-import type { PromptArtifactAuditMetadata } from "../prompt-artifacts.js";
+import type { PromptArtifactAuditMetadata, PromptArtifactProductionBinding } from "../prompt-artifacts.js";
 import {
   createProviderCapabilityDescriptor,
   type ProviderCapabilityDescriptor,
@@ -789,6 +789,7 @@ function buildProviderByteTransferPreview(input: BuildProviderByteTransferPrevie
   const consequence = `Approval would allow ${totalBytes} bytes of selected evidence to leave this machine for ${input.providerCapability.label}; this adapter does not transfer bytes because the ingestion provider execution service is unavailable.`;
   assertAgentSecretSafeText(consequence, "provider byte-transfer consequence");
   const readinessRef = sha256(stableJson(input.providerReadiness));
+  const production = input.promptArtifact.production;
   const normalizedInputHash = sha256(stableJson({
     providerJobId: input.providerJobId,
     sourceCollectionId: input.sourceCollectionId,
@@ -854,7 +855,19 @@ function buildProviderByteTransferPreview(input: BuildProviderByteTransferPrevie
         kind: "prompt-artifact-audit",
         id: input.promptArtifact.inputArtifactHash,
         hash: input.promptArtifact.inputArtifactHash,
-        transferApprovalClass: input.promptArtifact.transferApprovalClass
+        transferApprovalClass: input.promptArtifact.transferApprovalClass,
+        ...(production === undefined ? {} : {
+          rendererId: production.rendererId,
+          rendererVersion: production.rendererVersion,
+          rendererHash: production.rendererHash,
+          renderedPromptHash: production.renderedPromptHash,
+          providerOutputSchemaId: production.providerOutputSchemaId,
+          providerOutputSchemaVersion: production.providerOutputSchemaVersion,
+          handoffSchemaId: production.handoffSchemaId,
+          handoffSchemaVersion: production.handoffSchemaVersion,
+          scopeApplicabilityHash: production.scopeApplicabilityHash,
+          resolvedPayloadVerificationStatus: "verified"
+        })
       }
     ],
     expectedOutputs: [{
@@ -875,6 +888,7 @@ function buildProviderByteTransferPreview(input: BuildProviderByteTransferPrevie
       providerApprovalEventId: input.providerApproval.eventId,
       evidenceBindings: input.evidenceBindings,
       promptArtifactHash: input.promptArtifact.inputArtifactHash,
+      production: input.promptArtifact.production,
       providerAdapterVersion: input.providerCapability.adapterVersion
     })),
     staleAfter: {
@@ -885,15 +899,17 @@ function buildProviderByteTransferPreview(input: BuildProviderByteTransferPrevie
         input.providerCapability.adapterVersion,
         input.credentialRefId,
         input.promptArtifact.inputArtifactHash,
+        ...productionAuditRefs(input.promptArtifact),
         ...sourceEventIdsForInput(input),
         ...input.evidenceBindings.map((binding) => binding.contentHash)
       ]
     },
     relatedEventIds: sourceEventIdsForInput(input),
-    artifactHashes: [
+    artifactHashes: uniqueStrings([
       ...input.evidenceBindings.map((binding) => binding.contentHash),
-      input.promptArtifact.inputArtifactHash
-    ],
+      input.promptArtifact.inputArtifactHash,
+      ...productionArtifactHashes(input.promptArtifact)
+    ]),
     provenanceRefs: provenanceRefsForInput(input),
     providerJobId: input.providerJobId,
     sourceCollectionId: input.sourceCollectionId,
@@ -908,6 +924,13 @@ function buildProviderByteTransferPreview(input: BuildProviderByteTransferPrevie
     evidenceBindings: input.evidenceBindings.map((binding) => ({ ...binding })),
     promptArtifactHash: input.promptArtifact.inputArtifactHash,
     promptArtifact: copyPlain(input.promptArtifact),
+    ...(production === undefined ? {} : {
+      renderedPromptHash: production.renderedPromptHash,
+      scopeApplicabilityHash: production.scopeApplicabilityHash,
+      providerOutputSchemaId: production.providerOutputSchemaId,
+      handoffSchemaId: production.handoffSchemaId,
+      resolvedPayloadVerificationStatus: "verified"
+    }),
     excerptPolicy: input.excerptPolicy,
     eligibleMediaTypes: [...input.providerApproval.eligibleMediaTypes],
     maxBytesPerFile: input.providerApproval.maxBytesPerFile,
@@ -1009,7 +1032,8 @@ function sourceEventIdsForInput(input: BuildProviderByteTransferPreviewInput): r
 function inputArtifactHashesFor(snapshot: CurrentSnapshot): readonly string[] {
   return Object.freeze([
     ...snapshot.evidenceBindings.map((binding) => binding.contentHash),
-    snapshot.promptArtifact.inputArtifactHash
+    snapshot.promptArtifact.inputArtifactHash,
+    ...productionArtifactHashes(snapshot.promptArtifact)
   ]);
 }
 
@@ -1023,6 +1047,7 @@ function provenanceRefsFor(context: ValidatedContext, snapshot: CurrentSnapshot)
     snapshot.providerCapability.adapterVersion,
     context.credentialRefId,
     snapshot.promptArtifact.inputArtifactHash,
+    ...productionAuditRefs(snapshot.promptArtifact),
     ...snapshot.evidenceBindings.flatMap((binding) => [
       binding.evidenceId,
       binding.evidenceEventId,
@@ -1042,12 +1067,54 @@ function provenanceRefsForInput(input: BuildProviderByteTransferPreviewInput): r
     input.providerCapability.adapterVersion,
     input.credentialRefId,
     input.promptArtifact.inputArtifactHash,
+    ...productionAuditRefs(input.promptArtifact),
     ...input.evidenceBindings.flatMap((binding) => [
       binding.evidenceId,
       binding.evidenceEventId,
       binding.linkEventId,
       binding.contentHash
     ])
+  ]);
+}
+
+function productionArtifactHashes(promptArtifact: PromptArtifactAuditMetadata): readonly string[] {
+  const production = promptArtifact.production;
+  if (production === undefined) {
+    return [];
+  }
+  return Object.freeze([
+    production.rendererHash,
+    production.renderedPromptHash,
+    production.scopeApplicabilityHash,
+    ...production.evaluatedContextRequirements.flatMap((requirement) => requirement.contentHash === undefined ? [] : [requirement.contentHash]),
+    ...production.resolvedPayloadAudits.map((audit) => audit.contentHash)
+  ]);
+}
+
+function uniqueStrings(values: readonly string[]): readonly string[] {
+  return Object.freeze([...new Set(values)]);
+}
+
+function productionAuditRefs(promptArtifact: PromptArtifactAuditMetadata): readonly string[] {
+  const production = promptArtifact.production;
+  if (production === undefined) {
+    return [];
+  }
+  return Object.freeze([
+    production.rendererId,
+    String(production.rendererVersion),
+    production.providerOutputSchemaId,
+    String(production.providerOutputSchemaVersion),
+    production.handoffSchemaId,
+    String(production.handoffSchemaVersion),
+    ...productionArtifactHashes(promptArtifact),
+    ...production.evaluatedContextRequirements.flatMap((requirement) => [
+      requirement.contextPackId,
+      requirement.requirementMode,
+      requirement.status,
+      ...(requirement.omissionReason === undefined ? [] : [requirement.omissionReason])
+    ]),
+    ...production.resolvedPayloadAudits.flatMap((audit) => [audit.contextPackId, audit.schemaId, String(audit.sizeBytes)])
   ]);
 }
 
@@ -1319,7 +1386,7 @@ function parsePromptArtifactAudit(value: unknown, label: string): PromptArtifact
   const record = dataRecordFromObject(clonePlainJson(value, label), label);
   rejectUnsupportedKeys(record, new Set([
     "inputArtifactHash", "promptTemplateId", "promptTemplateVersion", "runType", "safetyClass",
-    "transferApprovalClass", "contextPackRefs", "omissions", "safeSummary"
+    "transferApprovalClass", "contextPackRefs", "omissions", "safeSummary", "production"
   ]), label);
   const inputArtifactHash = readHashProperty(record, "inputArtifactHash", label);
   const safetyClass = readStringProperty(record, "safetyClass", label);
@@ -1347,6 +1414,12 @@ function parsePromptArtifactAudit(value: unknown, label: string): PromptArtifact
       safeSummary: readStringProperty(omission, "safeSummary", `${label} omission`)
     });
   });
+  const production = Object.hasOwn(record, "production")
+    ? parseProductionPromptAudit(readDataProperty(record, "production", label), `${label} production`, contextPackRefs)
+    : undefined;
+  if (runType !== "ontology-bootstrap" && production === undefined) {
+    throw new Error(`${label} production run types require a production audit binding.`);
+  }
   return Object.freeze({
     inputArtifactHash,
     promptTemplateId: readStringProperty(record, "promptTemplateId", label),
@@ -1356,8 +1429,123 @@ function parsePromptArtifactAudit(value: unknown, label: string): PromptArtifact
     transferApprovalClass: transferApprovalClass as PromptArtifactAuditMetadata["transferApprovalClass"],
     contextPackRefs: Object.freeze(contextPackRefs) as readonly ContextPackRef[],
     omissions: Object.freeze(omissionValues),
-    safeSummary: readStringProperty(record, "safeSummary", label)
+    safeSummary: readStringProperty(record, "safeSummary", label),
+    ...(production === undefined ? {} : { production })
   });
+}
+
+function parseProductionPromptAudit(
+  value: unknown,
+  label: string,
+  contextPackRefs: readonly ContextPackRef[]
+): PromptArtifactProductionBinding {
+  const record = dataRecordFromObject(clonePlainJson(value, label), label);
+  rejectUnsupportedKeys(record, new Set([
+    "rendererId", "rendererVersion", "rendererHash", "renderedPromptHash", "providerOutputSchemaId",
+    "providerOutputSchemaVersion", "handoffSchemaId", "handoffSchemaVersion", "scopeApplicabilityHash",
+    "evaluatedContextRequirements", "resolvedPayloadAudits"
+  ]), label);
+  const requirements = readPlainObjectArray(record, "evaluatedContextRequirements", label).map((requirement) => {
+    rejectUnsupportedKeys(requirement, new Set([
+      "contextPackId", "requirementMode", "status", "contentHash", "omissionReason"
+    ]), `${label} context requirement`);
+    const requirementMode = readStringProperty(requirement, "requirementMode", `${label} context requirement`);
+    if (requirementMode !== "always" && requirementMode !== "when-scope-associated-prr") {
+      throw new Error(`${label} context requirement mode is unsupported.`);
+    }
+    const status = readStringProperty(requirement, "status", `${label} context requirement`);
+    if (status !== "applicable" && status !== "not-applicable") {
+      throw new Error(`${label} context requirement status is unsupported.`);
+    }
+    const contentHash = Object.hasOwn(requirement, "contentHash")
+      ? readHashProperty(requirement, "contentHash", `${label} context requirement`)
+      : undefined;
+    const omissionReason = Object.hasOwn(requirement, "omissionReason")
+      ? readStringProperty(requirement, "omissionReason", `${label} context requirement`)
+      : undefined;
+    if (status === "applicable" && (contentHash === undefined || omissionReason !== undefined)) {
+      throw new Error(`${label} applicable context requirements require contentHash and no omission reason.`);
+    }
+    if (
+      status === "not-applicable" && (
+        requirementMode !== "when-scope-associated-prr" ||
+        contentHash !== undefined ||
+        omissionReason !== "no-associated-prr"
+      )
+    ) {
+      throw new Error(`${label} not-applicable context requirements require conditional PRR mode and no-associated-prr.`);
+    }
+    return Object.freeze({
+      contextPackId: readProductionAuditId(requirement, "contextPackId", `${label} context requirement`),
+      requirementMode,
+      status,
+      ...(contentHash === undefined ? {} : { contentHash }),
+      ...(omissionReason === undefined ? {} : { omissionReason: "no-associated-prr" as const })
+    });
+  });
+  if (requirements.length === 0 || new Set(requirements.map((requirement) => requirement.contextPackId)).size !== requirements.length) {
+    throw new Error(`${label} context requirements must be non-empty and unique.`);
+  }
+  const payloadAudits = readPlainObjectArray(record, "resolvedPayloadAudits", label).map((audit) => {
+    rejectUnsupportedKeys(audit, new Set(["contextPackId", "contentHash", "sizeBytes", "schemaId"]), `${label} resolved payload audit`);
+    return Object.freeze({
+      contextPackId: readProductionAuditId(audit, "contextPackId", `${label} resolved payload audit`),
+      contentHash: readHashProperty(audit, "contentHash", `${label} resolved payload audit`),
+      sizeBytes: readNonNegativeInteger(audit, "sizeBytes", `${label} resolved payload audit`),
+      schemaId: readProductionAuditId(audit, "schemaId", `${label} resolved payload audit`)
+    });
+  });
+  if (payloadAudits.length === 0 || new Set(payloadAudits.map((audit) => audit.contextPackId)).size !== payloadAudits.length) {
+    throw new Error(`${label} resolved payload audits must be non-empty and unique.`);
+  }
+  for (const requirement of requirements) {
+    const audit = payloadAudits.find((candidate) => candidate.contextPackId === requirement.contextPackId);
+    const contextPackRef = requirement.status === "applicable"
+      ? contextPackRefs.find((ref) => ref.contextPackId === requirement.contextPackId)
+      : undefined;
+    if (requirement.status === "applicable" && (audit === undefined || audit.contentHash !== requirement.contentHash)) {
+      throw new Error(`${label} applicable context requirements require a matching resolved payload audit.`);
+    }
+    if (requirement.status === "applicable" && (contextPackRef === undefined || contextPackRef.contentHash !== requirement.contentHash)) {
+      throw new Error(`${label} applicable context requirements require a matching context pack ref.`);
+    }
+    if (requirement.status === "not-applicable" && audit !== undefined) {
+      throw new Error(`${label} not-applicable context requirements must not include a resolved payload audit.`);
+    }
+  }
+  if (contextPackRefs.some((ref) => !requirements.some((requirement) =>
+    requirement.status === "applicable" &&
+    requirement.contextPackId === ref.contextPackId &&
+    requirement.contentHash === ref.contentHash
+  ))) {
+    throw new Error(`${label} context pack refs require matching applicable production context requirements.`);
+  }
+  if (payloadAudits.some((audit) => !requirements.some((requirement) =>
+    requirement.contextPackId === audit.contextPackId && requirement.status === "applicable"
+  ))) {
+    throw new Error(`${label} resolved payload audits require applicable context requirements.`);
+  }
+  return Object.freeze({
+    rendererId: readProductionAuditId(record, "rendererId", label),
+    rendererVersion: readPositiveInteger(record, "rendererVersion", label),
+    rendererHash: readHashProperty(record, "rendererHash", label),
+    renderedPromptHash: readHashProperty(record, "renderedPromptHash", label),
+    providerOutputSchemaId: readProductionAuditId(record, "providerOutputSchemaId", label),
+    providerOutputSchemaVersion: readPositiveInteger(record, "providerOutputSchemaVersion", label),
+    handoffSchemaId: readProductionAuditId(record, "handoffSchemaId", label),
+    handoffSchemaVersion: readPositiveInteger(record, "handoffSchemaVersion", label),
+    scopeApplicabilityHash: readHashProperty(record, "scopeApplicabilityHash", label),
+    evaluatedContextRequirements: Object.freeze(requirements) as PromptArtifactProductionBinding["evaluatedContextRequirements"],
+    resolvedPayloadAudits: Object.freeze(payloadAudits) as PromptArtifactProductionBinding["resolvedPayloadAudits"]
+  });
+}
+
+function readProductionAuditId(record: Record<string, unknown>, key: string, label: string): string {
+  const value = readStringProperty(record, key, label);
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,199}$/.test(value)) {
+    throw new Error(`${label} field ${key} must be a bounded safe ID.`);
+  }
+  return value;
 }
 
 function readExcerptPolicy(record: Record<string, unknown>, key: string, label: string): ExcerptPolicy {

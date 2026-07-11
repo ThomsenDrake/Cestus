@@ -305,6 +305,73 @@ const agentPromptArtifactOmissionSchema = z.object({
   sourceRef: secretSafeStringSchema.min(1),
   safeSummary: secretSafeTextSchema
 }).strict();
+const agentProductionAuditIdSchema = agentSecretSafeIdSchema(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,199}$/);
+const agentProductionContextRequirementSchema = z.object({
+  contextPackId: agentProductionAuditIdSchema,
+  requirementMode: z.enum(["always", "when-scope-associated-prr"]),
+  status: z.enum(["applicable", "not-applicable"]),
+  contentHash: contentHashSchema.optional(),
+  omissionReason: z.literal("no-associated-prr").optional()
+}).strict().superRefine((requirement, ctx) => {
+  if (requirement.status === "applicable" && (requirement.contentHash === undefined || requirement.omissionReason !== undefined)) {
+    ctx.addIssue({ code: "custom", message: "applicable production context requirements require contentHash and no omissionReason" });
+  }
+  if (
+    requirement.status === "not-applicable" && (
+      requirement.requirementMode !== "when-scope-associated-prr" ||
+      requirement.contentHash !== undefined ||
+      requirement.omissionReason !== "no-associated-prr"
+    )
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message: "not-applicable production context requirements require conditional PRR mode, no contentHash, and no-associated-prr"
+    });
+  }
+});
+const agentProductionResolvedPayloadAuditSchema = z.object({
+  contextPackId: agentProductionAuditIdSchema,
+  contentHash: contentHashSchema,
+  sizeBytes: z.number().int().nonnegative(),
+  schemaId: agentProductionAuditIdSchema
+}).strict();
+const agentProductionPromptAuditBindingSchema = z.object({
+  rendererId: agentProductionAuditIdSchema,
+  rendererVersion: z.number().int().positive(),
+  rendererHash: contentHashSchema,
+  renderedPromptHash: contentHashSchema,
+  providerOutputSchemaId: agentProductionAuditIdSchema,
+  providerOutputSchemaVersion: z.number().int().positive(),
+  handoffSchemaId: agentProductionAuditIdSchema,
+  handoffSchemaVersion: z.number().int().positive(),
+  scopeApplicabilityHash: contentHashSchema,
+  evaluatedContextRequirements: z.array(agentProductionContextRequirementSchema).min(1),
+  resolvedPayloadAudits: z.array(agentProductionResolvedPayloadAuditSchema).min(1)
+}).strict().superRefine((binding, ctx) => {
+  const requirementsByPackId = new Map(binding.evaluatedContextRequirements.map((requirement) => [requirement.contextPackId, requirement]));
+  if (requirementsByPackId.size !== binding.evaluatedContextRequirements.length) {
+    ctx.addIssue({ code: "custom", path: ["evaluatedContextRequirements"], message: "production context requirements must be unique by contextPackId" });
+  }
+  const auditsByPackId = new Map(binding.resolvedPayloadAudits.map((audit) => [audit.contextPackId, audit]));
+  if (auditsByPackId.size !== binding.resolvedPayloadAudits.length) {
+    ctx.addIssue({ code: "custom", path: ["resolvedPayloadAudits"], message: "production resolved payload audits must be unique by contextPackId" });
+  }
+  for (const requirement of binding.evaluatedContextRequirements) {
+    const audit = auditsByPackId.get(requirement.contextPackId);
+    if (requirement.status === "applicable" && (audit === undefined || audit.contentHash !== requirement.contentHash)) {
+      ctx.addIssue({ code: "custom", path: ["resolvedPayloadAudits"], message: "applicable production context requirements require a matching resolved payload audit" });
+    }
+    if (requirement.status === "not-applicable" && audit !== undefined) {
+      ctx.addIssue({ code: "custom", path: ["resolvedPayloadAudits"], message: "not-applicable production context requirements must not have a resolved payload audit" });
+    }
+  }
+  for (const audit of binding.resolvedPayloadAudits) {
+    const requirement = requirementsByPackId.get(audit.contextPackId);
+    if (requirement === undefined || requirement.status !== "applicable") {
+      ctx.addIssue({ code: "custom", path: ["resolvedPayloadAudits"], message: "resolved payload audits require an applicable context requirement" });
+    }
+  }
+});
 const agentReadModelChangeSchema = z.object({
   projectionName: secretSafeStringSchema.min(1),
   change: secretSafeTextSchema,
@@ -493,7 +560,8 @@ const agentModelInvocationRequestedPayloadSchema = z.object({
   runType: agentSpecialistRunTypeSchema.optional(),
   safePromptSummary: secretSafeTextSchema.optional(),
   omissions: z.array(agentPromptArtifactOmissionSchema).optional(),
-  transferApprovalClass: z.enum(["none", "provider-byte-transfer"]).optional()
+  transferApprovalClass: z.enum(["none", "provider-byte-transfer"]).optional(),
+  production: agentProductionPromptAuditBindingSchema.optional()
 }).strict();
 
 const agentModelInvocationCompletedPayloadSchema = z.object({

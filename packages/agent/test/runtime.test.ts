@@ -503,6 +503,30 @@ describe("agent runtime core", () => {
     expect(ledgerJson).not.toContain(promptArtifact.text);
     expect(requestedPayload?.inputArtifactHash).not.toBe(providerOutputArtifactHash);
   });
+
+  it("blocks new production remote invocations without a production audit binding before appending a request", async () => {
+    const ledger = new InMemoryEventLedger();
+    const remoteProvider = new CountingRemoteProvider();
+    const runtime = await createPreparedRuntime(ledger, [remoteProvider]);
+    const promptArtifact = productionPromptArtifactWithoutBinding();
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_remote_missing_production_audit",
+      runId: "run_fake_model",
+      providerId: "provider_remote_model",
+      modelFamily: "remote-safe",
+      inputArtifactHash: promptArtifact.manifest.inputArtifactHash,
+      safetyClass: "provider-approved",
+      credentialRef: remoteCredentialRef(),
+      promptArtifact
+    } as Parameters<typeof runtime.invokeModel>[0]);
+
+    expect(result).toMatchObject({ ok: false, error: { category: "policy", severity: "error" } });
+    expect(remoteProvider.calls).toHaveLength(0);
+    expect(modelRequestedPayloads(await ledger.readAll())).not.toContainEqual(
+      expect.objectContaining({ invocationId: "inv_remote_missing_production_audit" })
+    );
+  });
 });
 
 async function createPreparedRuntime(
@@ -536,6 +560,22 @@ function remoteCredentialRef() {
 
 function providerApprovedPromptArtifact(): PromptArtifactEnvelope {
   return promptArtifact("provider-approved", "provider-byte-transfer");
+}
+
+function productionPromptArtifactWithoutBinding(): PromptArtifactEnvelope {
+  const artifact = providerApprovedPromptArtifact();
+  return buildPromptArtifact({
+    promptTemplateId: "evidence-triage.classify.v1",
+    promptTemplateVersion: 1,
+    generatedAt: "2026-07-08T12:01:00.000Z",
+    runType: "evidence-triage",
+    safetyClass: "provider-approved",
+    transferApprovalClass: "provider-byte-transfer",
+    contextPackRefs: artifact.manifest.contextPackRefs,
+    text: artifact.text,
+    safeSummary: artifact.manifest.safeSummary,
+    omissions: artifact.manifest.omissions
+  });
 }
 
 function localOnlyPromptArtifact(): PromptArtifactEnvelope {
