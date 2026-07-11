@@ -28,8 +28,13 @@ const hasAuthorityClaim = (value: string) => {
     hasCompletedEffect(normalized, /\b(?:legal|export|governance )?lock\b/, /\bcleared\b/)
   );
 };
-const hasRawProviderError = (value: string) => /\bprovider\s+error\b/i.test(value);
-const hasHiddenLocalPath = (value: string) => /(?:^|[\s("'])\/(?:home|Users)(?:\/|$)/.test(value);
+const hasRawProviderError = (value: string) =>
+  /\b(?:provider|model|api|openai|nous)\b/i.test(value) &&
+  /\b(?:http|status|rate[ -]?limit|error|exception|stack|response[ -]?body)\b/i.test(value);
+const hasHiddenLocalPath = (value: string) =>
+  /\bfile:\/\/\//i.test(value) ||
+  /(?:^|[\s("'])\/(?!\/)(?:[^/\s]+\/)+[^/\s]+/.test(value) ||
+  /\b[a-z]:\\Users\\/i.test(value);
 const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((value, ctx) => {
   try {
     assertAgentSecretSafeText(value, label);

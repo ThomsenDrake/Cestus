@@ -315,6 +315,46 @@ describe("production specialist prompt registrations", () => {
     })).toThrow(/provider error|hidden local path/i);
   });
 
+  it("rejects broader provider diagnostics and local path forms without rejecting public URLs", () => {
+    for (const unsafeNarrative of [
+      "OpenAI API returned HTTP 429 rate limit exceeded",
+      "file:///home/user/provider-response.json",
+      "C:\\Users\\user\\provider-response.json"
+    ]) {
+      expect(() => validateProductionSpecialistProviderOutput({
+        runType: "evidence-triage",
+        value: {
+          dossierSummary: unsafeNarrative,
+          safeSummaries: [],
+          governanceFlags: [],
+          duplicateGroups: [],
+          evidenceGaps: [],
+          assertionCandidates: [],
+          requestProviderParseApproval: false,
+          requestGovernanceReview: false,
+          requestQuarantineReview: false,
+          requestAssertionProposalReview: false
+        }
+      })).toThrow(/provider error|hidden local path/i);
+    }
+
+    expect(validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "Public evidence is available at https://example.org/report.pdf.",
+        safeSummaries: [],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    }).runType).toBe("evidence-triage");
+  });
+
   it("requires normalized safe dates for timeline ranges", () => {
     const timeline = (start: string, end: string) => validateProductionSpecialistProviderOutput({
       runType: "timeline-builder",
