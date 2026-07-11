@@ -131,6 +131,7 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
       },
       guidance: [
         "safeSummaries must preserve distinctive, relevant facts/tokens from verified evidence-summary.v1 payload content; copy unusual ledger, location, code, or identifier tokens exactly when relevant.",
+        "Only safeSummaries may repeat distinctive narrative facts or tokens from verified evidence-summary.v1 content. Do not copy those facts or tokens into dossierSummary, evidenceGaps, or any governance, duplicate, or assertion candidate rationale or predicate.",
         "For dossierSummary, safeSummaries, evidenceGaps, and every rationale or predicate field, use local review, candidate, or proposal language only. Never say a PRR, follow-up, provider byte transfer, task, crawl, export, repair, or legal escalation occurred.",
         "Never say assertions, entities, relationships, or graph facts were proposed, accepted, recorded, resolved, or linked. Use [] for assertionCandidates unless verified context supports a validator-safe candidate without completed-effect or accepted-truth wording.",
         "requestProviderParseApproval must remain false unless verified context explicitly requires a new external provider parse approval.",
@@ -257,6 +258,7 @@ interface PayloadRenderingLimits {
   readonly maximumRenderedPayloadSectionBytes: number;
   readonly truncationSuffix: string;
   readonly fieldLineFormat: string;
+  readonly promptControlLiteralEscapes: Readonly<Record<string, string>>;
 }
 
 const payloadRenderingPolicyMaterial = Object.freeze({
@@ -267,6 +269,15 @@ const payloadRenderingPolicyMaterial = Object.freeze({
   maximumRenderedPayloadSectionBytes: 16_384,
   truncationSuffix: " [truncated]",
   fieldLineFormat: "{label} {field}: {value}",
+  promptControlLiteralEscapes: Object.freeze({
+    "Verified payload context follows:": "\\u0056erified payload context follows:",
+    "End verified payload context.": "\\u0045nd verified payload context.",
+    "Authority:": "\\u0041uthority:",
+    "State uncertainty, preserve provenance references": "\\u0053tate uncertainty, preserve provenance references",
+    "Handoff schema:": "\\u0048andoff schema:",
+    "Return only JSON conforming to": "\\u0052eturn only JSON conforming to",
+    "Provider output requirements:": "\\u0050rovider output requirements:"
+  }),
   fieldRules: {
     graphAssertion: ["assertionId", "evidenceId", "evidenceContentHash", "proposedByEventId", "acceptedByEventId", "sourceEventIds", "rowHash", "safeStatement"],
     graphEntity: ["entityId", "rowHash", "safeLabel", "sourceEventIds"],
@@ -856,7 +867,7 @@ function renderAllowedRecordFields(
 }
 
 function renderAllowedFieldValue(value: unknown, limits: PayloadRenderingLimits): string | undefined {
-  if (typeof value === "string") return stableJson(truncatePayloadText(value, limits));
+  if (typeof value === "string") return escapePromptControlLiterals(stableJson(truncatePayloadText(value, limits)), limits);
   if (typeof value === "number" || typeof value === "boolean") return stableJson(value);
   if (!Array.isArray(value)) return undefined;
 
@@ -865,7 +876,14 @@ function renderAllowedFieldValue(value: unknown, limits: PayloadRenderingLimits)
     if (typeof item === "string") boundedValues.push(truncatePayloadText(item, limits));
     else if (typeof item === "number" || typeof item === "boolean") boundedValues.push(item);
   }
-  return boundedValues.length === 0 ? undefined : stableJson(boundedValues);
+  return boundedValues.length === 0 ? undefined : escapePromptControlLiterals(stableJson(boundedValues), limits);
+}
+
+function escapePromptControlLiterals(renderedJson: string, limits: PayloadRenderingLimits): string {
+  return Object.entries(limits.promptControlLiteralEscapes).reduce(
+    (rendered, [literal, escapedLiteral]) => rendered.replaceAll(literal, escapedLiteral),
+    renderedJson
+  );
 }
 
 function jsonRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
@@ -937,7 +955,8 @@ function canonicalRegisteredRendererMaterial(
       maximumPayloadArrayItems: payloadRenderingPolicyMaterial.maximumPayloadArrayItems,
       maximumRenderedPayloadSectionBytes: payloadRenderingPolicyMaterial.maximumRenderedPayloadSectionBytes,
       truncationSuffix: payloadRenderingPolicyMaterial.truncationSuffix,
-      fieldLineFormat: payloadRenderingPolicyMaterial.fieldLineFormat
+      fieldLineFormat: payloadRenderingPolicyMaterial.fieldLineFormat,
+      promptControlLiteralEscapes: payloadRenderingPolicyMaterial.promptControlLiteralEscapes
     })
   });
 }

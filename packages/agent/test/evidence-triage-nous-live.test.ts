@@ -136,15 +136,24 @@ liveDescribe("live Nous evidence triage workflow acceptance", () => {
     expect(result.handoff.residentAgentId).toBe("agent_default");
     expect(result.handoff.status).toBe("ready-for-review");
     expect(result.handoff.outputArtifacts.length).toBeGreaterThanOrEqual(6);
+    const artifactBuffers = await Promise.all(result.handoff.outputArtifacts.map(async (artifact) => ({
+      artifact,
+      buffer: await derivativeStore.get(artifact.artifactHash)
+    })));
     for (const artifact of result.handoff.outputArtifacts) {
       expect(artifact.artifactHash).toMatch(/^sha256:[a-f0-9]{64}$/);
       await expect(derivativeStore.get(artifact.artifactHash)).resolves.toBeInstanceOf(Buffer);
     }
     expect(result.handoff.promptArtifactHash).toMatch(/^sha256:[a-f0-9]{64}$/);
     const safeSummariesArtifact = result.handoff.outputArtifacts.find((artifact) => artifact.artifactKind === "safe-evidence-summaries");
-    const providerSafeOutput = (await derivativeStore.get(safeSummariesArtifact!.artifactHash)).toString("utf8");
+    const providerSafeOutput = artifactBuffers.find(({ artifact }) => artifact.artifactHash === safeSummariesArtifact!.artifactHash)!.buffer.toString("utf8");
     const parsedProviderSafeOutput = JSON.parse(providerSafeOutput) as { readonly safeSummaries?: readonly string[] };
     expect(parsedProviderSafeOutput.safeSummaries?.some((summary) => summary.includes(payloadSentinel))).toBe(true);
+    for (const { artifact, buffer } of artifactBuffers) {
+      if (artifact.artifactKind !== "safe-evidence-summaries") {
+        expect(buffer.toString("utf8")).not.toContain(payloadSentinel);
+      }
+    }
 
     const events = await ledger.readAll();
     const eventTypes = events.map((event) => event.type);
