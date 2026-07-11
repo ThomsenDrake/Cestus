@@ -8,7 +8,7 @@
 - Branch: `codex/task-4-accepted-graph-context-pack`
 - Worktree: `/home/drake/.codex/worktrees/18b9/Cestus`
 - Claimed at: `2026-07-11T00:15:24Z`
-- Status: `claimed`
+- Status: `in-progress`
 
 ## Owned Files
 
