@@ -25,3 +25,6 @@
 - Re-review fix RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 2 expected regressions: equivalent completed-effect/authority claims were accepted and an `ev_sk-live-...` identifier bypassed secret safety.
 - Re-review fix GREEN: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 file and 9 tests after authority matching covered passive/copular wording and identifiers used the shared secret-safety and authority checks.
 - Re-review fix verify: `npm run verify` passed.
+- Re-review P1 RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with the new equivalent authority claims accepted and `dateRange.start: "sk-live-secret"` accepted.
+- Re-review P1 GREEN: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 file and 10 tests after PRR email, request filing, and human provider-transfer approval variants were rejected and range bounds required normalized dates.
+- Re-review P1 verify: `npm run verify` passed.

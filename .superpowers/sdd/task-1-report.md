@@ -37,3 +37,9 @@ Status: DONE
 - GREEN: the same focused command passed with 9 tests after completed PRR send, legal escalation, export/publication, repair execution, ontology acceptance, entity/relationship acceptance or resolution, lock clearing, and provider byte-transfer approval claims were rejected across text and identifier fields.
 - ID coverage: secret-shaped `ev_sk-live-...` and authority-shaped `packet_report_was_published` identifiers are rejected.
 - Verify: `npm run verify` passed.
+
+## Re-review P1 Fix
+
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 2 expected regressions: equivalent authority claims including `The PRR response was emailed.`, `A human approved the provider byte transfer.`, and `The request was filed.` were accepted, and `dateRange.start: "sk-live-secret"` was accepted.
+- GREEN: the same focused command passed with 1 file and 10 tests after shared authority matching covered the new completed PRR send, provider-transfer approval, and request-filing variants; `dateRange.start` and `.end` now require the same normalized date syntax as `date`.
+- Verify: `npm run verify` passed.

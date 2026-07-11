@@ -4,7 +4,7 @@ import type { AgentSpecialistRunType } from "./specialists.js";
 
 type ProductionRunType = Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
 
-const authorityClaimPattern = /\b(?:sent|published|exported|delivered|transferred|uploaded|executed|completed)\b|\b(?:accepted (?:graph|ontology|assertion|relationship)|(?:the )?ontology (?:is |was |has been |now )?(?:now )?accepted|(?:entity|entities|relationship) (?:was |is |has been )?(?:resolved|accepted)|(?:the )?(?:legal|export|governance )?lock (?:was |has been )?cleared|(?:the )?(?:repair|remediation) (?:was |has been )?(?:performed|executed|completed)|provider byte[- ]transfer (?:is |was |has been )?approved)\b/i;
+const authorityClaimPattern = /\b(?:sent|published|exported|delivered|transferred|uploaded|executed|completed)\b|\b(?:prr response (?:was |has been )?(?:sent|emailed)|(?:the )?(?:prr )?request (?:was |has been )?filed|accepted (?:graph|ontology|assertion|relationship)|(?:the )?ontology (?:is |was |has been |now )?(?:now )?accepted|(?:entity|entities|relationship) (?:was |is |has been )?(?:resolved|accepted)|(?:the )?(?:legal|export|governance )?lock (?:was |has been )?cleared|(?:the )?(?:repair|remediation) (?:was |has been )?(?:performed|executed|completed)|(?:provider byte[- ]transfer (?:is |was |has been )?approved|(?:a )?human approved the provider byte[- ]transfer))\b/i;
 const hasAuthorityClaim = (value: string) => authorityClaimPattern.test(value.replaceAll("_", " ").replaceAll("-", " "));
 const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((value, ctx) => {
   try {
@@ -33,6 +33,7 @@ const ref = z.string().min(1).max(200).superRefine((value, ctx) => {
   }
 });
 const hash = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+const normalizedDate = z.string().regex(/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/);
 
 const prrNegotiationReviewOutputSchema = z.object({
   draftSummary: shortSafeText("PRR negotiation draft summary"),
@@ -61,7 +62,7 @@ const evidenceTriageClassifyOutputSchema = z.object({
 
 const timelineBuilderSourcedTimelineOutputSchema = z.object({
   timelineItems: z.array(z.object({
-    itemId: id("timeline_"), date: z.string().regex(/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/).optional(), dateRange: z.object({ start: z.string().min(4).max(32), end: z.string().min(4).max(32) }).strict().optional(),
+    itemId: id("timeline_"), date: normalizedDate.optional(), dateRange: z.object({ start: normalizedDate, end: normalizedDate }).strict().optional(),
     precision: z.enum(["year", "month", "day", "range", "unknown"]), evidenceRefs: z.array(ref).max(24), assertionRefs: z.array(ref).max(24), prrEventRefs: z.array(ref).max(24),
     summary: shortSafeText("timeline item summary"), uncertaintyCategories: z.array(z.enum(["date-uncertain", "source-conflict", "incomplete-source", "inference-required"])).max(8)
   }).strict().superRefine((value, ctx) => {
