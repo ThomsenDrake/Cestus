@@ -1015,7 +1015,7 @@ describe("production specialist prompt registrations", () => {
   it("renders payload-only sentinel content and keeps clock changes out of rendered prompt hash", async () => {
     const registry = rendererContextPackRegistry({
       "evidence-summary.v1": {
-        evidence: [{ evidenceId: "ev_imported_001", safeFact: "PAYLOAD_SENTINEL_CITY_LEDGER_427" }]
+        items: [evidenceSummaryItem("PAYLOAD_SENTINEL_CITY_LEDGER_427")]
       }
     });
     const resolved = await resolvedRendererPacks(registry, "evidence-triage", false);
@@ -1042,9 +1042,8 @@ describe("production specialist prompt registrations", () => {
   it("renders only approved evidence-summary fields", async () => {
     const registry = rendererContextPackRegistry({
       "evidence-summary.v1": {
-        evidence: [{
-          evidenceId: "ev_imported_001",
-          safeFact: "EVIDENCE_ALLOWED_SENTINEL_427",
+        items: [{
+          ...evidenceSummaryItem("EVIDENCE_ALLOWED_SENTINEL_427"),
           forbiddenProviderField: "EVIDENCE_FORBIDDEN_FIELD_427"
         }],
         forbiddenTopLevelField: "EVIDENCE_FORBIDDEN_TOP_LEVEL_427"
@@ -1070,9 +1069,10 @@ describe("production specialist prompt registrations", () => {
   it("excludes unregistered fields from non-evidence context packs", async () => {
     const registry = rendererContextPackRegistry({
       "task-run-history.v1": {
-        contextPackId: "task-run-history.v1",
-        fact: "TASK_HISTORY_ALLOWED_SENTINEL_427",
-        forbiddenProviderField: "TASK_HISTORY_FORBIDDEN_FIELD_427"
+        history: {
+          ...taskRunHistory("TASK_HISTORY_ALLOWED_SENTINEL_427"),
+          forbiddenProviderField: "TASK_HISTORY_FORBIDDEN_FIELD_427"
+        }
       }
     });
     const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
@@ -1259,7 +1259,8 @@ const rendererPackIds = [
   "agent-memory-summary.v1",
   "task-run-history.v1",
   "workspace-runtime-status.v1",
-  "prr-read-model.v1"
+  "prr-read-model.v1",
+  "jurisdiction-pack-summary.v1"
 ] as const;
 
 function rendererContextPackRegistry(payloads: Readonly<Record<string, unknown>> = {}) {
@@ -1286,10 +1287,10 @@ function rendererContextPackRegistry(payloads: Readonly<Record<string, unknown>>
         provenanceRefs: ["evt_renderer_context_001"]
       }),
       parsePayload: (payload) => {
-        const evidence = typeof payload === "object" && payload !== null && !Array.isArray(payload)
-          ? (payload as Readonly<Record<string, unknown>>).evidence
+        const items = typeof payload === "object" && payload !== null && !Array.isArray(payload)
+          ? (payload as Readonly<Record<string, unknown>>).items
           : undefined;
-        if (contextPackId === "evidence-summary.v1" && !Array.isArray(evidence)) {
+        if (contextPackId === "evidence-summary.v1" && !Array.isArray(items)) {
           throw new Error("invalid evidence summary payload");
         }
         return payload;
@@ -1300,9 +1301,29 @@ function rendererContextPackRegistry(payloads: Readonly<Record<string, unknown>>
 }
 
 function defaultRendererPayload(contextPackId: string): unknown {
-  return contextPackId === "evidence-summary.v1"
-    ? { evidence: [{ evidenceId: "ev_imported_001", safeFact: "Verified evidence is available." }] }
-    : { contextPackId, fact: "Verified payload content is available." };
+  switch (contextPackId) {
+    case "evidence-summary.v1": return { items: [evidenceSummaryItem("Verified evidence is available.")] };
+    case "accepted-graph-projection.v1": return { items: { assertions: [{ assertionId: "assertion_001", evidenceId: "ev_imported_001", evidenceContentHash: hash, proposedByEventId: "evt_proposed_001", acceptedByEventId: "evt_accepted_001", sourceEventIds: ["evt_proposed_001"], rowHash: hash, safeStatement: "Verified graph statement." }], entities: [], relationships: [] } };
+    case "governance-locks.v1": return { items: { activeLocks: [{ lockId: "lock_001", lockKind: "review", safeReason: "Review required.", activatedBy: "agent_001", activatedAt: "2026-07-10T12:00:00.000Z", relatedEventIds: ["evt_lock_001"], projectionEventIds: ["evt_lock_001"] }], governanceRestrictions: [] } };
+    case "agent-memory-summary.v1": return { memory: { activeMemory: ["Verified memory."], aggregateCounts: { active: 1 }, sourceEventIds: ["evt_memory_001"], artifactHashes: [] } };
+    case "task-run-history.v1": return { history: taskRunHistory("Verified task history.") };
+    case "workspace-runtime-status.v1": return { runtime: { runtimeHighWaterMark: 1, workspaceMounted: true, storageStrategy: "local", bindPosture: "bound", authPosture: "none", providerStates: [], diagnostics: [], projectionHighWaterMarks: { agent: 1 }, omissionCodes: [] } };
+    case "prr-read-model.v1": return { lifecycle: { status: "draft", agencyName: "Agency", jurisdictionPack: { name: "pack", version: "1" } }, requestStream: { requestCreatedEventId: "evt_prr_001", streamHeadEventId: "evt_prr_001", streamHighWaterMark: 1, sourceEventIds: ["evt_prr_001"] }, deadline: null, fee: null, narrowing: null, correspondence: [], production: {}, diagnostics: [], gates: [], sourceRefs: {}, omissions: [] };
+    case "jurisdiction-pack-summary.v1": return { packName: "pack", packVersion: "1", jurisdiction: "test", citedRules: [], advisoryPosture: { summary: "Advisory only." }, omissions: [] };
+    case "timeline-draft-summary.v1": return { items: [{ itemId: "timeline_001", summary: "Verified timeline item." }], omissions: [] };
+    case "contradiction-candidate-summary.v1": return { items: [{ candidateId: "contradiction_001", rationale: "Verified candidate." }], omissions: [] };
+    default: throw new Error(`Unknown renderer context pack ${contextPackId}`);
+  }
+}
+
+const hash = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
+
+function evidenceSummaryItem(safeNarrative: string) {
+  return { evidenceId: "ev_imported_001", ingestionEventId: "evt_ingested_001", contentHash: hash, occurrenceIds: ["occurrence_001"], parseJobs: [], governanceTags: [], safeNarrative };
+}
+
+function taskRunHistory(summary: string) {
+  return { projectionHighWaterMark: 1, projectionSourceRef: "agent.projection.task-run-history", tasks: [{ taskId: "task_001", status: "queued", statusReasonCode: summary }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1 }, sourceEventIds: ["evt_task_001"], artifactHashes: [], window: { order: "created-at", limit: 1, hasMore: false, totalCount: 1, omissionCodes: [] } };
 }
 
 async function resolvedRendererPacks(

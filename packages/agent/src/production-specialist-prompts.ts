@@ -76,25 +76,27 @@ const always = (contextPackIds: readonly string[]): readonly ProductionContextRe
 const maximumPayloadFieldTextCharacters = 512;
 const maximumPayloadArrayItems = 16;
 const maximumRenderedPayloadSectionBytes = 16_384;
-const evidenceSummaryFieldRules = Object.freeze([
-  "evidenceId",
-  "safeFact",
-  "safeSummary",
-  "summary",
-  "category",
-  "sourceRef",
-  "contentHash"
-] as const);
-const generalContextPackFieldRules = Object.freeze([
-  "contextPackId",
-  "fact",
-  "status",
-  "itemId",
-  "summary",
-  "safeFact",
-  "refs",
-  "ids"
-] as const);
+const graphAssertionFieldRules = Object.freeze(["assertionId", "evidenceId", "evidenceContentHash", "proposedByEventId", "acceptedByEventId", "sourceEventIds", "rowHash", "safeStatement"] as const);
+const graphEntityFieldRules = Object.freeze(["entityId", "rowHash", "safeLabel", "sourceEventIds"] as const);
+const graphRelationshipFieldRules = Object.freeze(["relationshipId", "acceptedByEventId", "evidenceId", "evidenceContentHash", "sourceEventIds", "rowHash", "sourceEntityId", "targetEntityId", "relationshipType"] as const);
+const evidenceSummaryFieldRules = Object.freeze(["evidenceId", "ingestionEventId", "contentHash", "mediaType", "sizeBytes", "sourceCollectionId", "scanBatchId", "importBatchId", "occurrenceIds", "safeNarrative"] as const);
+const parseJobFieldRules = Object.freeze(["parseJobId", "lane", "parserName", "parserVersion", "state", "outputHash", "outputMediaType", "terminalEventId", "retryable"] as const);
+const governanceTagFieldRules = Object.freeze(["tag", "source", "state", "confidence", "safeRationale", "eventId"] as const);
+const lockFieldRules = Object.freeze(["lockId", "lockKind", "safeReason", "activatedBy", "activatedAt", "relatedEventIds", "projectionEventIds"] as const);
+const restrictionFieldRules = Object.freeze(["restrictionId", "restrictionKind", "affectedRef", "sourceEventIds", "projectionProvenanceRefs", "policyVersion", "safeReasonCode"] as const);
+const memoryFieldRules = Object.freeze(["memoryId", "kind", "scope", "state", "safeSummary", "sourceEventIds", "artifactHashes"] as const);
+const taskFieldRules = Object.freeze(["taskId", "status", "priority", "createdAt", "updatedAt", "residentAgentId", "requestedBy", "runId", "statusReasonCode", "sourceEventIds", "inputArtifactHashes"] as const);
+const runFieldRules = Object.freeze(["runId", "state", "runType", "residentAgentId", "startedBy", "startedAt", "completedAt", "failedAt", "taskId", "workspaceId", "investigationId", "sourceEventIds", "inputArtifactHashes", "outputArtifactHashes", "failureCategory", "retryable", "summaryCode"] as const);
+const invocationFieldRules = Object.freeze(["invocationId", "status", "runId", "providerId", "modelFamily", "requestedAt", "completedAt", "inputArtifactHash", "providerOutputArtifactHash", "promptTemplateId", "runType", "omissionCount", "failureCategory", "retryable", "sourceEventIds"] as const);
+const toolRequestFieldRules = Object.freeze(["toolRequestId", "state", "runId", "toolId", "toolVersion", "requestedBy", "sideEffectClass", "requiredApprovalClass", "previewHash", "scope", "requestedAt", "sourceEventIds", "inputArtifactHashes", "artifactHashes", "failureCategory", "retryable"] as const);
+const providerStateFieldRules = Object.freeze(["providerId", "state", "reasonCode", "updatedAt"] as const);
+const diagnosticFieldRules = Object.freeze(["code", "category", "safeSummary", "sourceEventIds", "artifactHashes"] as const);
+const prrLifecycleFieldRules = Object.freeze(["status", "agencyName"] as const);
+const prrStreamFieldRules = Object.freeze(["requestCreatedEventId", "streamHeadEventId", "streamHighWaterMark", "sourceEventIds"] as const);
+const prrDeadlineFieldRules = Object.freeze(["deadlineDate", "source", "confidence", "explanation", "confirmedBy", "rationale"] as const);
+const prrFeeFieldRules = Object.freeze(["amountCents", "currency", "challenged"] as const);
+const prrNarrowingFieldRules = Object.freeze(["narrowingId", "proposedScope", "proposedBy", "acceptedScope", "acceptedBy"] as const);
+const placeholderItemFieldRules = Object.freeze(["itemId", "candidateId", "summary", "rationale", "evidenceIds", "assertionIds", "timelineItemIds"] as const);
 
 interface RegisteredPayloadRenderer {
   readonly contextPackId: string;
@@ -108,8 +110,7 @@ const payloadRenderingPolicyMaterial = Object.freeze({
   redactionBehavior: "exclude-unregistered-fields",
   maximumPayloadFieldTextCharacters,
   maximumPayloadArrayItems,
-  evidenceSummary: { collection: "evidence", fields: evidenceSummaryFieldRules },
-  generalContextPack: { fields: generalContextPackFieldRules },
+  renderers: "registered-authoritative-payload-shapes.v1",
   contextPackIds: [
     "accepted-graph-projection.v1",
     "evidence-summary.v1",
@@ -125,21 +126,21 @@ const payloadRenderingPolicyMaterial = Object.freeze({
 });
 
 const payloadRenderersByContextPackId: Readonly<Record<string, RegisteredPayloadRenderer>> = Object.freeze({
-  "accepted-graph-projection.v1": generalPayloadRenderer("accepted-graph-projection.v1", "Accepted graph projection"),
+  "accepted-graph-projection.v1": renderer("accepted-graph-projection.v1", "Accepted graph projection", renderAcceptedGraphProjectionPayload),
   "evidence-summary.v1": Object.freeze({
     contextPackId: "evidence-summary.v1",
     label: "Evidence summary",
     redactionBehavior: "exclude-unregistered-fields",
     render: renderEvidenceSummaryPayload
   }),
-  "timeline-draft-summary.v1": generalPayloadRenderer("timeline-draft-summary.v1", "Timeline draft summary"),
-  "contradiction-candidate-summary.v1": generalPayloadRenderer("contradiction-candidate-summary.v1", "Contradiction candidate summary"),
-  "governance-locks.v1": generalPayloadRenderer("governance-locks.v1", "Governance locks"),
-  "agent-memory-summary.v1": generalPayloadRenderer("agent-memory-summary.v1", "Agent memory summary"),
-  "task-run-history.v1": generalPayloadRenderer("task-run-history.v1", "Task and run history"),
-  "workspace-runtime-status.v1": generalPayloadRenderer("workspace-runtime-status.v1", "Workspace runtime status"),
-  "prr-read-model.v1": generalPayloadRenderer("prr-read-model.v1", "PRR read model"),
-  "jurisdiction-pack-summary.v1": generalPayloadRenderer("jurisdiction-pack-summary.v1", "Jurisdiction pack summary")
+  "timeline-draft-summary.v1": renderer("timeline-draft-summary.v1", "Timeline draft summary", renderTimelineDraftSummaryPayload),
+  "contradiction-candidate-summary.v1": renderer("contradiction-candidate-summary.v1", "Contradiction candidate summary", renderContradictionCandidateSummaryPayload),
+  "governance-locks.v1": renderer("governance-locks.v1", "Governance locks", renderGovernanceLocksPayload),
+  "agent-memory-summary.v1": renderer("agent-memory-summary.v1", "Agent memory summary", renderAgentMemorySummaryPayload),
+  "task-run-history.v1": renderer("task-run-history.v1", "Task and run history", renderTaskRunHistoryPayload),
+  "workspace-runtime-status.v1": renderer("workspace-runtime-status.v1", "Workspace runtime status", renderWorkspaceRuntimeStatusPayload),
+  "prr-read-model.v1": renderer("prr-read-model.v1", "PRR read model", renderPrrReadModelPayload),
+  "jurisdiction-pack-summary.v1": renderer("jurisdiction-pack-summary.v1", "Jurisdiction pack summary", renderJurisdictionPackSummaryPayload)
 });
 
 const definitions: readonly Omit<ProductionSpecialistPromptRegistration, "rendererHash">[] = Object.freeze([
@@ -429,24 +430,152 @@ function renderCanonicalProductionPrompt(input: {
   return text;
 }
 
-function generalPayloadRenderer(contextPackId: string, label: string): RegisteredPayloadRenderer {
+function renderer(contextPackId: string, label: string, render: (payload: unknown) => readonly string[]): RegisteredPayloadRenderer {
   return Object.freeze({
     contextPackId,
     label,
     redactionBehavior: "exclude-unregistered-fields",
-    render: (payload: unknown) => renderAllowedRecordFields("Context", payload, generalContextPackFieldRules)
+    render
   });
+}
+
+function renderAcceptedGraphProjectionPayload(payload: unknown): readonly string[] {
+  const items = jsonRecord(payload)?.items;
+  const record = jsonRecord(items);
+  return freezeRendered([
+    ...renderRecordList("Accepted assertion", record?.assertions, graphAssertionFieldRules),
+    ...renderRecordList("Accepted entity", record?.entities, graphEntityFieldRules),
+    ...renderRecordList("Accepted relationship", record?.relationships, graphRelationshipFieldRules)
+  ]);
 }
 
 function renderEvidenceSummaryPayload(payload: unknown): readonly string[] {
   const record = jsonRecord(payload);
-  const evidence = record?.evidence;
+  const evidence = record?.items;
   if (!Array.isArray(evidence)) return Object.freeze([]);
+  return freezeRendered(evidence.slice(0, maximumPayloadArrayItems).flatMap((item, index) => {
+    const itemRecord = jsonRecord(item);
+    return [
+      ...renderAllowedRecordFields(`Evidence ${index + 1}`, itemRecord, evidenceSummaryFieldRules),
+      ...renderRecordList(`Evidence ${index + 1} parse job`, itemRecord?.parseJobs, parseJobFieldRules),
+      ...renderRecordList(`Evidence ${index + 1} governance tag`, itemRecord?.governanceTags, governanceTagFieldRules),
+      ...renderAllowedRecordFields(`Evidence ${index + 1} duplicate group`, itemRecord?.duplicateGroup, ["groupId", "memberCount"])
+    ];
+  }));
+}
 
-  const rendered = evidence
-    .slice(0, maximumPayloadArrayItems)
-    .flatMap((item, index) => renderAllowedRecordFields(`Evidence ${index + 1}`, item, evidenceSummaryFieldRules));
-  return Object.freeze(rendered);
+function renderGovernanceLocksPayload(payload: unknown): readonly string[] {
+  const items = jsonRecord(jsonRecord(payload)?.items);
+  return freezeRendered([
+    ...renderRecordList("Active lock", items?.activeLocks, lockFieldRules),
+    ...renderRecordList("Governance restriction", items?.governanceRestrictions, restrictionFieldRules)
+  ]);
+}
+
+function renderAgentMemorySummaryPayload(payload: unknown): readonly string[] {
+  const memory = jsonRecord(jsonRecord(payload)?.memory);
+  return freezeRendered([
+    ...renderRecordList("Active memory", memory?.activeMemory, memoryFieldRules),
+    ...renderAllowedRecordFields("Memory", memory, ["aggregateCounts", "sourceEventIds", "artifactHashes"])
+  ]);
+}
+
+function renderTaskRunHistoryPayload(payload: unknown): readonly string[] {
+  const history = jsonRecord(jsonRecord(payload)?.history);
+  return freezeRendered([
+    ...renderRecordList("Task", history?.tasks, taskFieldRules),
+    ...renderRecordList("Run", history?.runs, runFieldRules),
+    ...renderRecordList("Model invocation", history?.modelInvocations, invocationFieldRules),
+    ...renderRecordList("Tool request", history?.toolRequests, toolRequestFieldRules),
+    ...renderAllowedRecordFields("History", history, ["projectionHighWaterMark", "projectionSourceRef", "aggregateCounts", "sourceEventIds", "artifactHashes"])
+  ]);
+}
+
+function renderWorkspaceRuntimeStatusPayload(payload: unknown): readonly string[] {
+  const runtime = jsonRecord(jsonRecord(payload)?.runtime);
+  return freezeRendered([
+    ...renderAllowedRecordFields("Runtime", runtime, ["runtimeHighWaterMark", "workspaceMounted", "workspaceId", "storageStrategy", "bindPosture", "authPosture", "projectionHighWaterMarks", "omissionCodes"]),
+    ...renderRecordList("Provider state", runtime?.providerStates, providerStateFieldRules),
+    ...renderRecordList("Runtime diagnostic", runtime?.diagnostics, diagnosticFieldRules)
+  ]);
+}
+
+function renderPrrReadModelPayload(payload: unknown): readonly string[] {
+  const record = jsonRecord(payload);
+  return freezeRendered([
+    ...renderAllowedRecordFields("PRR lifecycle", record?.lifecycle, prrLifecycleFieldRules),
+    ...renderAllowedRecordFields("PRR request stream", record?.requestStream, prrStreamFieldRules),
+    ...renderAllowedRecordFields("PRR deadline", record?.deadline, prrDeadlineFieldRules),
+    ...renderAllowedRecordFields("PRR fee", record?.fee, prrFeeFieldRules),
+    ...renderAllowedRecordFields("PRR narrowing", record?.narrowing, prrNarrowingFieldRules),
+    ...renderCorrespondence(record?.correspondence),
+    ...renderProduction(record?.production),
+    ...renderRecordList("PRR diagnostic", record?.diagnostics, diagnosticFieldRules),
+    ...renderRecordList("PRR gate", record?.gates, ["gateId", "kind", "ready", "locked"]),
+    ...renderRecordList("PRR source reference", jsonRecord(record?.sourceRefs)?.correspondence, ["id", "contentHash", "sourceEventId"]),
+    ...renderRecordList("PRR source reference", jsonRecord(record?.sourceRefs)?.evidence, ["id", "contentHash", "sourceEventId"]),
+    ...renderRecordList("PRR omission", record?.omissions, ["kind", "reason", "omittedCount", "projectionHighWaterMark"])
+  ]);
+}
+
+function renderCorrespondence(value: unknown): readonly string[] {
+  const record = jsonRecord(value);
+  const fields = ["correspondenceId", "subject", "occurredAt", "bodyHash", "evidenceIds", "attachmentEvidenceIds", "approvedBy"];
+  return freezeRendered([
+    ...renderRecordList("Outbound correspondence", record?.outbound, fields),
+    ...renderRecordList("Inbound correspondence", record?.inbound, fields)
+  ]);
+}
+
+function renderProduction(value: unknown): readonly string[] {
+  const record = jsonRecord(value);
+  return freezeRendered([
+    ...renderRecordList("Production batch", record?.batches, ["productionId", "label", "receivedAt", "evidenceIds"]),
+    ...renderAllowedRecordFields("Production", record, ["evidenceIds"]),
+    ...renderRecordList("Production exemption", record?.exemptions, ["exemptionId", "claimedBy"]),
+    ...renderAllowedRecordFields("Production denial", record?.denial, ["denialId", "receivedAt", "reason"]),
+    ...renderAllowedRecordFields("Production appeal", record?.appeal, ["appealId", "correspondenceId", "filedAt", "approvedBy"]),
+    ...renderAllowedRecordFields("Production stalling", record?.stalling, ["possible", "confirmed"]),
+    ...renderRecordList("Production stalling signal", jsonRecord(record?.stalling)?.signals, ["kind", "explanation"]),
+    ...renderAllowedRecordFields("Production escalation", record?.escalation, ["confirmedBy", "rationale", "evidenceIds"])
+  ]);
+}
+
+function renderJurisdictionPackSummaryPayload(payload: unknown): readonly string[] {
+  const record = jsonRecord(payload);
+  return freezeRendered([
+    ...renderAllowedRecordFields("Jurisdiction pack", record, ["packName", "packVersion", "jurisdiction"]),
+    ...renderRecordList("Cited rule", record?.citedRules, ["label", "citation"]),
+    ...renderAllowedRecordFields("Advisory posture", record?.advisoryPosture, ["summary", "status", "safeSummary"]),
+    ...renderAllowedRecordFields("Jurisdiction pack", record, ["omissions"])
+  ]);
+}
+
+function renderTimelineDraftSummaryPayload(payload: unknown): readonly string[] {
+  return renderPlaceholderSummaryPayload(payload, "Timeline item");
+}
+
+function renderContradictionCandidateSummaryPayload(payload: unknown): readonly string[] {
+  return renderPlaceholderSummaryPayload(payload, "Contradiction candidate");
+}
+
+function renderPlaceholderSummaryPayload(payload: unknown, label: string): readonly string[] {
+  const record = jsonRecord(payload);
+  return freezeRendered([
+    ...renderRecordList(label, record?.items, placeholderItemFieldRules),
+    ...renderAllowedRecordFields(label, record, ["omissions"])
+  ]);
+}
+
+function renderRecordList(label: string, value: unknown, allowedFields: readonly string[]): readonly string[] {
+  if (!Array.isArray(value)) return Object.freeze([]);
+  return freezeRendered(value.slice(0, maximumPayloadArrayItems).flatMap((item, index) =>
+    renderAllowedRecordFields(`${label} ${index + 1}`, item, allowedFields)
+  ));
+}
+
+function freezeRendered(values: readonly string[]): readonly string[] {
+  return Object.freeze([...values]);
 }
 
 function renderAllowedRecordFields(
@@ -478,9 +607,13 @@ function renderAllowedFieldValue(value: unknown): string | undefined {
 }
 
 function jsonRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
+  return isPlainRecord(value)
     ? value as Readonly<Record<string, unknown>>
     : undefined;
+}
+
+function isPlainRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function truncatePayloadText(value: string): string {

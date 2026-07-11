@@ -25,3 +25,5 @@
 - Review-fix RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` produced the expected 2 failures when generic payload serialization transferred unregistered fields.
 - Review-fix GREEN: the same targeted command passed all 50 tests after registered per-pack field renderers excluded unregistered fields while retaining allowed sentinel fields.
 - Review-fix verify: `npm run verify` passed after the renderer change. Registered payload rendering is bounded, ordered, labelled with pack identity and content hash, and excludes fields outside its package-owned allowlists.
+- Authoritative-shape review fix: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 file and 50 tests after replacing synthetic/general rendering with registered per-pack field renderers.
+- Authoritative-shape verify: `npm run verify` passed; prompt text and payload values are not recorded in this claim.
