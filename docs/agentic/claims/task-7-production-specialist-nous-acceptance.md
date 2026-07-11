@@ -6,10 +6,12 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at: `2026-07-11T12:48:53Z`
-- Status: blocked
+- Status: in-progress
 
 ## Owned Files
 
+- `packages/agent/src/production-specialist-prompts.ts` (coordinator-approved narrow renderer-instruction support)
+- `packages/agent/test/production-specialist-prompts.test.ts` (coordinator-approved renderer instruction/validator parity tests)
 - `packages/agent/test/evidence-triage-nous-live.test.ts`
 - `packages/agent/test/prr-negotiation-nous-live.test.ts`
 - `docs/agentic/claims/task-7-production-specialist-nous-acceptance.md`
@@ -48,3 +50,11 @@ or record a live acceptance pass without the gated provider result.
   contract change outside Task 7. No fake provider was substituted, no live
   acceptance pass was recorded, and `npm run verify` was not run after this
   scoped stop.
+- Coordinator unblock: approved a narrow Task 7 renderer-instruction expansion
+  in `packages/agent/src/production-specialist-prompts.ts` and deterministic
+  tests in `packages/agent/test/production-specialist-prompts.test.ts`.
+  Validators must not be relaxed; prompt artifacts, approvals, provider calls,
+  and live output secrecy remain unchanged. The shared live-provider environment
+  may be loaded from `/home/drake/Projects/Cestus/.env` by path only; values
+  must not be copied, printed, or recorded.
+- Resumed at: `2026-07-11T13:02:00Z`.
