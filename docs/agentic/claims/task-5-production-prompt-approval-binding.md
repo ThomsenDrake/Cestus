@@ -7,7 +7,7 @@
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Base commit: `68a8c091`
 - Claimed at: `2026-07-11T09:06:25Z`
-- Status: `claimed`
+- Status: `blocked`
 
 ## Owned Files
 
@@ -39,3 +39,15 @@ versions, statuses, and summaries.
 Stop and report blocked for prompt, resolved-payload, or provider-response
 leakage; schema conflict; credential exposure; unsafe external-effect semantics;
 or repeated verifier failure after two focused repair attempts.
+
+## Blocked Evidence
+
+- Before RED test edits, Task 5 contract inspection found a schema conflict:
+  `agent.model-invocation.requested` is strict in the ontology event contract
+  and currently allows only the pre-Task-5 prompt audit fields. The required
+  production audit binding has no permitted event payload field.
+- The Task 5 source ownership list excludes `packages/ontology/src/contracts.ts`.
+  Adding production metadata in the owned runtime file would therefore fail the
+  append-time schema validation instead of producing the required durable event.
+- No prompt text, resolved payload values, provider response text, credentials,
+  raw request bodies, or hidden paths were recorded.
