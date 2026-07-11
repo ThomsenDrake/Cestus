@@ -330,6 +330,59 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it("rejects pronoun-led completed authority claims after a delimiter for every authority category", () => {
+    const triage = (dossierSummary: string) => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary,
+        safeSummaries: [],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    });
+
+    for (const claim of [
+      "The PRR must be filed; it was filed.",
+      "The report must be published; it was published.",
+      "Legal escalation must be approved; it was approved.",
+      "The repair should be executed; it was executed.",
+      "The ontology must be accepted; it was accepted.",
+      "The entity must be resolved; it was resolved.",
+      "The relationship must be accepted; it was accepted.",
+      "The lock should be cleared; it was cleared.",
+      "Provider byte transfer approval must be granted; it was granted.",
+      "Provider byte transfer must be completed; it was completed."
+    ]) {
+      expect(() => triage(claim)).toThrow(/authority|external effect|ontology/i);
+    }
+  });
+
+  it("allows ordinary error and publication wording in safe source evidence", () => {
+    const parsed = validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "Source review identifies an error in the date.",
+        safeSummaries: ["The report cites a published 2023 public record."],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    });
+
+    expect(parsed.runType).toBe("evidence-triage");
+  });
+
   it("keeps non-PRR authority completion matching shared across narrative, identifier, and reference fields", () => {
     const triage = (dossierSummary: string) => validateProductionSpecialistProviderOutput({
       runType: "evidence-triage",

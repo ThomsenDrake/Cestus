@@ -27,13 +27,26 @@ const hasCompletedPassiveAction = (value: string, subject: RegExp, action: RegEx
     new RegExp(`\\b(?:was|were|has been|have been|had been)\\s+(?:${action.source})`, action.flags)
   );
 
-const hasAuthorityEffectUnlessInstruction = (value: string, subject: RegExp, action: RegExp) => {
-  const instructionModal = /\b(?:should|must|may|might|can|could|would|will)\b/;
+const hasPronounCompletedPassiveAction = (value: string, action: RegExp) =>
+  new RegExp(`\\b(?:it|this|that|they|these|those)\\s+(?:was|were|has been|have been|had been)\\s+(?:${action.source})`, action.flags).test(value);
 
-  return value.split(/[,;.!?]+/).some((clause) =>
+const hasDirectSubjectAction = (value: string, subject: RegExp, action: RegExp) =>
+  new RegExp(`${subject.source}\\s+(?:(?:is|are|was|were|has been|have been|had been|has|have|had)\\s+)?(?:${action.source})`, action.flags).test(value);
+
+const hasAuthorityEffectUnlessInstruction = (
+  value: string,
+  subject: RegExp,
+  action: RegExp,
+  actionMatcher = hasSubjectAction
+) => {
+  const instructionModal = /\b(?:should|must|may|might|can|could|would|will)\b/;
+  const clauses = value.split(/[,;.!?]+/);
+
+  return clauses.some((clause, index) =>
     hasCompletedPassiveAction(clause, subject, action) ||
-    (hasSubjectAction(clause, subject, completionTerm) && !hasInstructionBeforeAction(clause, instructionModal, completionTerm)) ||
-    (hasSubjectAction(clause, subject, action) && !hasInstructionBeforeAction(clause, instructionModal, action))
+    (index > 0 && subject.test(clauses[index - 1]!) && hasPronounCompletedPassiveAction(clause, action)) ||
+    (actionMatcher(clause, subject, completionTerm) && !hasInstructionBeforeAction(clause, instructionModal, completionTerm)) ||
+    (actionMatcher(clause, subject, action) && !hasInstructionBeforeAction(clause, instructionModal, action))
   );
 };
 
@@ -55,7 +68,7 @@ const hasAuthorityClaim = (value: string) => {
     hasCompletedPrrEffect(normalized) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\bprovider byte transfer\b/, /\b(?:approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|authori[sz](?:e|ed|ation))\b/) ||
-    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/) ||
+    hasAuthorityEffectUnlessInstruction(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/, hasDirectSubjectAction) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed)\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
     hasAuthorityEffectUnlessInstruction(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||
@@ -66,7 +79,7 @@ const hasRawProviderError = (value: string) =>
   (/\b(?:provider|model|api|openai|nous)\b/i.test(value) &&
     /\b(?:diagnostic|failure|failed|error|exception|stack|timeout|timed out|rate[ -]?limit(?:ed)?|status|https?|response(?:[ -]?body)?)\b/i.test(value)) ||
   /\b[a-z][a-z0-9_-]{2,}\s+(?:diagnostic|failure|failed|error|exception|timeout|timed out)\s*:/i.test(value) ||
-  /\b(?:error|errors|exception|failure|failures|failed|timeout|timeouts|timed out)\b/i.test(value) ||
+  /\b(?:error|errors|exception|failure|failures|failed|timeout|timeouts|timed out)\s*:\s*\S/i.test(value) ||
   /\bhttps?\s+\d{3}\s*:/i.test(value);
 const hasHiddenLocalPath = (value: string) =>
   /\bfile:\/\/\//i.test(value) ||
