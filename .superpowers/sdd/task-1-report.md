@@ -30,3 +30,10 @@ Status: DONE
 - GREEN: the same focused command passed with 7 tests after reference fields were restricted to canonical delimiter-bearing identifiers or `sha256:` hashes and gained authority-claim rejection.
 - Coverage: report-builder `outlineRefs`, PRR `citedRuleRefs`, timeline `evidenceRefs`, contradiction `comparedSourceRefs`, and investigation-planner `objectiveRefs` reject narrative completed-effect claims; canonical report references remain valid; narrative `safeSummaries` still permits command-like evidence wording but rejects authority claims.
 - Verify: `npm run verify` passed (typecheck, test suite, Vite build, and factory readiness).
+
+## Re-review Finding Fix
+
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 2 expected regressions: passive/copular completed-effect and authority wording was accepted, and identifier fields bypassed secret-safety validation.
+- GREEN: the same focused command passed with 9 tests after completed PRR send, legal escalation, export/publication, repair execution, ontology acceptance, entity/relationship acceptance or resolution, lock clearing, and provider byte-transfer approval claims were rejected across text and identifier fields.
+- ID coverage: secret-shaped `ev_sk-live-...` and authority-shaped `packet_report_was_published` identifiers are rejected.
+- Verify: `npm run verify` passed.

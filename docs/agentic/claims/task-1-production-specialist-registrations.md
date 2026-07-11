@@ -22,3 +22,6 @@
 - RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed as expected because `../src/production-specialist-prompts.js` did not exist.
 - GREEN: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 file and 4 tests.
 - Verify: `npm run verify` passed: typecheck, 178 passed / 3 skipped test files, 1,950 passed / 3 skipped tests, Vite build, and factory readiness.
+- Re-review fix RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 2 expected regressions: equivalent completed-effect/authority claims were accepted and an `ev_sk-live-...` identifier bypassed secret safety.
+- Re-review fix GREEN: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 file and 9 tests after authority matching covered passive/copular wording and identifiers used the shared secret-safety and authority checks.
+- Re-review fix verify: `npm run verify` passed.

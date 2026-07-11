@@ -185,4 +185,68 @@ describe("production specialist prompt registrations", () => {
       }
     })).toThrow(/authority|external effect|ontology/i);
   });
+
+  it("rejects equivalent completed-effect and authority claims", () => {
+    for (const claim of [
+      "The PRR response was sent.",
+      "Legal escalation was completed.",
+      "The report packet was published.",
+      "The repair was performed.",
+      "The lock was cleared.",
+      "The entity was resolved.",
+      "The ontology is now accepted.",
+      "Provider byte transfer is approved."
+    ]) {
+      expect(() => validateProductionSpecialistProviderOutput({
+        runType: "evidence-triage",
+        value: {
+          dossierSummary: "Evidence needs review.",
+          safeSummaries: [claim],
+          governanceFlags: [],
+          duplicateGroups: [],
+          evidenceGaps: [],
+          assertionCandidates: [],
+          requestProviderParseApproval: false,
+          requestGovernanceReview: false,
+          requestQuarantineReview: false,
+          requestAssertionProposalReview: false
+        }
+      })).toThrow(/authority|external effect|ontology/i);
+    }
+  });
+
+  it("applies secret and authority validation to identifier fields", () => {
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "Evidence needs review.",
+        safeSummaries: [],
+        governanceFlags: [{ evidenceId: "ev_sk-live-secret", tag: "review", confidence: 0.5, rationale: "Review the evidence." }],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    })).toThrow(/secret-safe/i);
+
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "report-builder",
+      value: {
+        reportPacketId: "packet_report_was_published",
+        outlineRefs: [],
+        draftSectionRefs: [],
+        citationMapRefs: [],
+        includedEvidenceIds: [],
+        excludedEvidenceIds: [],
+        governancePolicyRefs: [],
+        sensitiveOptInRequirements: [],
+        legalReviewFlags: [],
+        exportPublicationApprovalRefs: [],
+        packetSummary: "This is a draft packet for review."
+      }
+    })).toThrow(/authority|external effect|ontology/i);
+  });
 });

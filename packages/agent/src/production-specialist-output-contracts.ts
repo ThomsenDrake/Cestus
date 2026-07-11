@@ -4,19 +4,20 @@ import type { AgentSpecialistRunType } from "./specialists.js";
 
 type ProductionRunType = Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
 
-const authorityClaimPattern = /\b(?:sent|published|exported|delivered|transferred|uploaded|executed|completed)\b|\b(?:accepted (?:graph|ontology|assertion|relationship)|ontology (?:accepted|updated)|(?:entity|entities) resolved|relationship accepted|(?:legal|export|governance) lock cleared|provider byte-transfer approved)\b/i;
+const authorityClaimPattern = /\b(?:sent|published|exported|delivered|transferred|uploaded|executed|completed)\b|\b(?:accepted (?:graph|ontology|assertion|relationship)|(?:the )?ontology (?:is |was |has been |now )?(?:now )?accepted|(?:entity|entities|relationship) (?:was |is |has been )?(?:resolved|accepted)|(?:the )?(?:legal|export|governance )?lock (?:was |has been )?cleared|(?:the )?(?:repair|remediation) (?:was |has been )?(?:performed|executed|completed)|provider byte[- ]transfer (?:is |was |has been )?approved)\b/i;
+const hasAuthorityClaim = (value: string) => authorityClaimPattern.test(value.replaceAll("_", " ").replaceAll("-", " "));
 const safeText = (label: string) => z.string().min(1).max(2_000).superRefine((value, ctx) => {
   try {
     assertAgentSecretSafeText(value, label);
   } catch {
     ctx.addIssue({ code: "custom", message: `${label} must be secret-safe` });
   }
-  if (authorityClaimPattern.test(value)) {
+  if (hasAuthorityClaim(value)) {
     ctx.addIssue({ code: "custom", message: `${label} must not claim authority, an external effect, or accepted ontology truth` });
   }
 });
 const shortSafeText = (label: string) => safeText(label).max(500);
-const id = (prefix: string) => z.string().regex(new RegExp(`^${prefix}[a-zA-Z0-9_-]+$`));
+const id = (prefix: string) => safeText(`${prefix} identifier`).regex(new RegExp(`^${prefix}[a-zA-Z0-9_-]+$`));
 const canonicalReferencePattern = /^(?:sha256:[a-f0-9]{64}|(?=[a-zA-Z0-9._:-]{3,200}$)(?=[a-zA-Z0-9._:-]*[_:.])[a-zA-Z][a-zA-Z0-9._:-]*)$/;
 const ref = z.string().min(1).max(200).superRefine((value, ctx) => {
   try {
@@ -24,7 +25,7 @@ const ref = z.string().min(1).max(200).superRefine((value, ctx) => {
   } catch {
     ctx.addIssue({ code: "custom", message: "provider output reference must be secret-safe" });
   }
-  if (authorityClaimPattern.test(value)) {
+  if (hasAuthorityClaim(value)) {
     ctx.addIssue({ code: "custom", message: "provider output reference must not claim authority, an external effect, or accepted ontology truth" });
   }
   if (!canonicalReferencePattern.test(value)) {
