@@ -21,9 +21,7 @@ const hasInstructionBeforeAction = (value: string, instructionModal: RegExp, act
   return instructionMatch !== null && actionMatch !== null && instructionMatch.index < actionMatch.index;
 };
 
-const hasCompletedPrrEffect = (value: string) => {
-  const subject = /\b(?:prr|public records request|request|response)\b/;
-  const action = /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/;
+const hasCompletedEffectUnlessInstruction = (value: string, subject: RegExp, action: RegExp) => {
   const completed = /\bcompleted\b/;
   const instructionModal = /\b(?:should|must|may|might|can|could|would|will)\b/;
 
@@ -33,15 +31,22 @@ const hasCompletedPrrEffect = (value: string) => {
   );
 };
 
+const hasCompletedPrrEffect = (value: string) =>
+  hasCompletedEffectUnlessInstruction(
+    value,
+    /\b(?:prr|public records request|request|response)\b/,
+    /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/
+  );
+
 const hasAuthorityClaim = (value: string) => {
   const normalized = normalizeAuthorityClaimText(value);
 
   return (
     hasCompletedPrrEffect(normalized) ||
-    hasCompletedEffect(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
-    hasSubjectAction(normalized, /\bprovider byte transfer\b/, /\b(?:approval|approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|authori[sz](?:e|ed|ation))\b/) ||
+    hasCompletedEffectUnlessInstruction(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
+    hasCompletedEffectUnlessInstruction(normalized, /\bprovider byte transfer\b/, /\b(?:approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|authori[sz](?:e|ed|ation))\b/) ||
     hasCompletedEffect(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/) ||
-    hasCompletedEffect(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed)\b/) ||
+    hasCompletedEffectUnlessInstruction(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed)\b/) ||
     hasCompletedEffect(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
     hasCompletedEffect(normalized, /\b(?:entity|entities|relationship)\b/, /\b(?:resolved|accepted)\b/) ||
     hasCompletedEffect(normalized, /\b(?:legal|export|governance )?lock\b/, /\bcleared\b/)
