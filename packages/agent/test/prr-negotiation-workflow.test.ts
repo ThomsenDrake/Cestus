@@ -20,7 +20,6 @@ import {
   createAgentRuntime,
   createAgentToolGateway,
   createContextPackRegistry,
-  registerContextPackPayloadParserAuthority,
   createSpecialistDerivativeArtifactStore,
   createPrrFollowUpExecutionAdapter,
   createProviderCapabilityDescriptor,
@@ -34,6 +33,7 @@ import {
   rebuildProviderByteTransferCurrentPreview,
   runPrrNegotiationWorkflow
 } from "../src/index.js";
+import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import type {
   AgentApprovedToolExecutionInput,
   AgentContextPackJsonValue,
@@ -1072,7 +1072,12 @@ function createWorkflowContextPacks(
 }
 
 function workflowContextPackParser(contextPackId: string) {
-  const parser = (payload: AgentContextPackJsonValue): AgentContextPackJsonValue => payload;
+  const parser = (payload: AgentContextPackJsonValue, ref?: { readonly contextPackId: string }): AgentContextPackJsonValue => {
+    if (ref?.contextPackId !== contextPackId || !isWorkflowContextPayloadForPack(contextPackId, payload)) {
+      throw new Error("invalid workflow context pack payload");
+    }
+    return payload;
+  };
   Object.defineProperty(parser, "cestusContextPackParserId", {
     value: contextPackId,
     enumerable: false,
@@ -1081,6 +1086,30 @@ function workflowContextPackParser(contextPackId: string) {
   });
   registerContextPackPayloadParserAuthority(parser);
   return parser;
+}
+
+function isWorkflowContextPayloadForPack(contextPackId: string, payload: AgentContextPackJsonValue): boolean {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return false;
+  const value = payload as Readonly<Record<string, AgentContextPackJsonValue>>;
+  switch (contextPackId) {
+    case "prr-read-model.v1":
+      return "lifecycle" in value && "requestStream" in value && "diagnostics" in value && "gates" in value;
+    case "jurisdiction-pack-summary.v1":
+      return "packName" in value && "packVersion" in value && "citedRules" in value;
+    case "governance-locks.v1":
+    case "accepted-graph-projection.v1":
+      return "items" in value;
+    case "evidence-summary.v1":
+      return Array.isArray(value.items);
+    case "agent-memory-summary.v1":
+      return "memory" in value;
+    case "task-run-history.v1":
+      return "history" in value;
+    case "workspace-runtime-status.v1":
+      return "runtime" in value;
+    default:
+      return false;
+  }
 }
 
 function workflowContextPayload(contextPackId: string): unknown {

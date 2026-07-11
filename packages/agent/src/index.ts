@@ -1,4 +1,34 @@
-export * from "./context-packs.js";
+export {
+  buildContextPackRef,
+  buildResolvedContextPack,
+  contextPackDescriptorSchema,
+  contextPackRefSchema,
+  createContextPackRegistry,
+  hashAgentContextPack,
+  hasVerifiedResolvedContextPackParserAuthority,
+  serializeContextPackPayload,
+  verifiedResolvedContextPackVerificationIdentity,
+  verifyResolvedContextPack,
+  assertResolvedContextPacksForExecution
+} from "./context-packs.js";
+export type {
+  AgentContextPackJsonValue,
+  BuildContextPackRefInput,
+  ContextPackBuilder,
+  ContextPackBuilderResult,
+  ContextPackDescriptor,
+  ContextPackPayloadParser,
+  ContextPackPayloadResolver,
+  ContextPackRef,
+  ContextPackRegistry,
+  ContextPackRegistrySnapshot,
+  ContextPackScope,
+  ContextPackStalenessInput,
+  CreateContextPackRegistryOptions,
+  ResolvedContextPack,
+  VerifiedResolvedContextPack,
+  VerifiedResolvedContextPackVerificationIdentity
+} from "./context-packs.js";
 export * from "./prr-context-packs.js";
 export * from "./operational-context-packs.js";
 export * from "./identity-bootstrap.js";

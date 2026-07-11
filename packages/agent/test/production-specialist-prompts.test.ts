@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as publicAgentApi from "../src/index.js";
 import {
   evaluateProductionContextRequirements,
   hashProductionSpecialistRendererMaterial,
@@ -38,6 +39,10 @@ describe("production specialist prompt registrations", () => {
     requestGovernanceReview: false,
     requestQuarantineReview: false,
     requestAssertionProposalReview: false
+  });
+
+  it("does not expose parser authority registration through the public package API", () => {
+    expect("registerContextPackPayloadParserAuthority" in publicAgentApi).toBe(false);
   });
 
   it("registers exactly the six approved production templates", () => {
