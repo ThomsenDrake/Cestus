@@ -30,7 +30,11 @@ const hasAuthorityEffectUnlessInstruction = (value: string, subject: RegExp, act
 };
 
 const hasCompletedPrrEffect = (value: string) =>
-  hasAuthorityEffectUnlessInstruction(
+  hasSubjectAction(
+    value,
+    /\b(?:prr|public records request|request|response)\b/,
+    /\b(?:was|were|has been|have been|had been)\s+(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/
+  ) || hasAuthorityEffectUnlessInstruction(
     value,
     /\b(?:prr|public records request|request|response)\b/,
     /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/
