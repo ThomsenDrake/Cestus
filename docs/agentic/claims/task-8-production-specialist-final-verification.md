@@ -54,8 +54,8 @@ does not rerun the completed live Nous gate.
 ## Final Review Fix Evidence
 
 - Code implementation range: `e09cdf9b..ecf3691e` records the original Task 0-7 production-specialist implementation and review repair.
-- Final reviewed range: `e09cdf9b..0ae4455b` includes Task 8 evidence commits `6c691d82` and `4fce216a`, plus final-review remediation commit `0ae4455b` (`fix: close production specialist final review gaps`).
-- Verified head: `0ae4455be90f8373c793340cbb2430efebac9d05`.
+- Final branch review range: `e09cdf9b..HEAD`. The review package should include the original Task 0-7 implementation, Task 8 evidence commits `6c691d82` and `4fce216a`, final-review remediation commit `0ae4455b` (`fix: close production specialist final review gaps`), and this final safe evidence update.
+- Verified code head: `0ae4455be90f8373c793340cbb2430efebac9d05`.
 - `npm run verify`: PASS at the verified head. Typecheck, Vite build, and factory readiness passed; full Vitest evidence was `178 passed | 3 skipped` test files and `2053 passed | 3 skipped` tests. The only notices were existing experimental Node SQLite warnings.
 - Focused Task 8 deterministic suite: PASS with `11 passed | 2 skipped` test files and `213 passed | 2 skipped` tests.
 - Final-review RED/GREEN suites: RED produced the six expected failures for browser reachability, parser identity, punctuated PRR authority wording, selected-PRR applicability, runner invocation proof, and direct runtime invocation. GREEN passed the required four suites with `4 passed` test files and `134 passed` tests; the broader affected suite passed `9` test files and `179` tests.
