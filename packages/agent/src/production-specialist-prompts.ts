@@ -14,12 +14,28 @@ import {
   type PromptArtifactResolvedPayloadAudit
 } from "./prompt-artifacts.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
-import type { AgentSpecialistRunType } from "./specialists.js";
+import {
+  productionSpecialistPromptRegistrationFor,
+  productionSpecialistPromptRegistrations,
+  type ProductionContextRequirement,
+  type ProductionContextRequirementMode,
+  type ProductionPromptOmissionCategory,
+  type ProductionRunScope,
+  type ProductionRunType,
+  type ProductionSpecialistPromptRegistration
+} from "./production-specialist-registration-metadata.js";
 export { validateProductionSpecialistProviderOutput, type ProductionSpecialistProviderOutput } from "./production-specialist-output-contracts.js";
+export {
+  productionSpecialistPromptRegistrationFor,
+  productionSpecialistPromptRegistrations,
+  type ProductionContextRequirement,
+  type ProductionContextRequirementMode,
+  type ProductionPromptOmissionCategory,
+  type ProductionRunScope,
+  type ProductionRunType,
+  type ProductionSpecialistPromptRegistration
+} from "./production-specialist-registration-metadata.js";
 
-type ProductionRunType = Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
-export type ProductionContextRequirementMode = "always" | "when-scope-associated-prr";
-export type ProductionPromptOmissionCategory = "context-budget" | "policy-redaction" | "raw-content-local-only" | "quarantine-or-lock" | "optional-pack-unavailable" | "no-associated-prr";
 
 type CanonicalProductionPromptTemplateMaterial = {
   readonly sectionOrder: readonly string[];
@@ -39,19 +55,6 @@ type CanonicalProductionPromptTemplateMaterial = {
   readonly sectionSeparator: string;
   readonly providerOutputInstructions: Readonly<Record<ProductionRunType, string>>;
 };
-
-export interface ProductionContextRequirement { readonly contextPackId: string; readonly order: number; readonly requirementMode: ProductionContextRequirementMode; readonly omissionWhenNotApplicable?: "no-associated-prr"; }
-export interface ProductionSpecialistPromptRegistration {
-  readonly runType: ProductionRunType; readonly promptTemplateId: string; readonly promptTemplateVersion: 1; readonly rendererId: string; readonly rendererVersion: 1; readonly rendererHash: `sha256:${string}`;
-  readonly providerOutputSchemaId: string; readonly providerOutputSchemaVersion: 1; readonly handoffSchemaId: string; readonly handoffSchemaVersion: 1; readonly contextRequirements: readonly ProductionContextRequirement[]; readonly allowedOmissions: readonly ProductionPromptOmissionCategory[];
-  readonly safetyClass: "provider-approved"; readonly transferApprovalClass: "provider-byte-transfer";
-}
-
-export interface ProductionRunScope {
-  readonly kind: string;
-  readonly refs: readonly string[];
-  readonly associatedPrrRequestId?: string;
-}
 
 export interface EvaluateProductionContextRequirementsInput {
   readonly runType: ProductionRunType;
@@ -229,11 +232,6 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
     })
   } satisfies Readonly<Record<ProductionRunType, string>>
 });
-const standardAllowedOmissions = Object.freeze(["context-budget", "policy-redaction", "raw-content-local-only", "quarantine-or-lock", "optional-pack-unavailable"] as const);
-const conditionalPrrAllowedOmissions = Object.freeze([...standardAllowedOmissions, "no-associated-prr"] as const);
-const conditionalPrr = (order: number): ProductionContextRequirement => Object.freeze({ contextPackId: "prr-read-model.v1", order, requirementMode: "when-scope-associated-prr", omissionWhenNotApplicable: "no-associated-prr" });
-const always = (contextPackIds: readonly string[]): readonly ProductionContextRequirement[] => Object.freeze(contextPackIds.map((contextPackId, order) => Object.freeze({ contextPackId, order, requirementMode: "always" as const })));
-
 function outputInstruction(input: {
   readonly skeleton: unknown;
   readonly guidance: readonly string[];
@@ -324,8 +322,8 @@ const payloadRenderingPolicyMaterial = Object.freeze({
   renderers: {
     "accepted-graph-projection.v1": { label: "Accepted graph projection", kind: "accepted-graph-projection.v1", parserIdentity: "accepted-graph-projection.v1", fieldRules: ["graphAssertion", "graphEntity", "graphRelationship"], collectionPaths: [{ path: "items.assertions", label: "Accepted assertion", fieldRule: "graphAssertion" }, { path: "items.entities", label: "Accepted entity", fieldRule: "graphEntity" }, { path: "items.relationships", label: "Accepted relationship", fieldRule: "graphRelationship" }] },
     "evidence-summary.v1": { label: "Evidence summary", kind: "evidence-summary.v1", parserIdentity: "evidence-summary.v1", fieldRules: ["evidenceSummary", "parseJob", "governanceTag", "evidenceDuplicateGroup"], collectionPaths: [{ path: "items", label: "Evidence", fieldRule: "evidenceSummary" }, { path: "items[].parseJobs", label: "Evidence {index} parse job", fieldRule: "parseJob" }, { path: "items[].governanceTags", label: "Evidence {index} governance tag", fieldRule: "governanceTag" }, { path: "items[].duplicateGroup", label: "Evidence {index} duplicate group", fieldRule: "evidenceDuplicateGroup" }] },
-    "timeline-draft-summary.v1": { label: "Timeline draft summary", kind: "placeholder-summary.v1", parserIdentity: "timeline-draft-summary.production-test-parser.v1", fieldRules: ["placeholderItem", "omissions"], collectionPaths: [{ path: "items", label: "Timeline item", fieldRule: "placeholderItem" }, { path: "", label: "Timeline item", fieldRule: "omissions" }] },
-    "contradiction-candidate-summary.v1": { label: "Contradiction candidate summary", kind: "placeholder-summary.v1", parserIdentity: "contradiction-candidate-summary.production-test-parser.v1", fieldRules: ["placeholderItem", "omissions"], collectionPaths: [{ path: "items", label: "Contradiction candidate", fieldRule: "placeholderItem" }, { path: "", label: "Contradiction candidate", fieldRule: "omissions" }] },
+    "timeline-draft-summary.v1": { label: "Timeline draft summary", kind: "timeline-draft-summary.v1", parserIdentity: "timeline-draft-summary.v1", fieldRules: ["placeholderItem", "omissions"], collectionPaths: [{ path: "items", label: "Timeline item", fieldRule: "placeholderItem" }, { path: "", label: "Timeline item", fieldRule: "omissions" }] },
+    "contradiction-candidate-summary.v1": { label: "Contradiction candidate summary", kind: "contradiction-candidate-summary.v1", parserIdentity: "contradiction-candidate-summary.v1", fieldRules: ["placeholderItem", "omissions"], collectionPaths: [{ path: "items", label: "Contradiction candidate", fieldRule: "placeholderItem" }, { path: "", label: "Contradiction candidate", fieldRule: "omissions" }] },
     "governance-locks.v1": { label: "Governance locks", kind: "governance-locks.v1", parserIdentity: "governance-locks.v1", fieldRules: ["lock", "restriction"], collectionPaths: [{ path: "items.activeLocks", label: "Active lock", fieldRule: "lock" }, { path: "items.governanceRestrictions", label: "Governance restriction", fieldRule: "restriction" }] },
     "agent-memory-summary.v1": { label: "Agent memory summary", kind: "agent-memory-summary.v1", parserIdentity: "agent-memory-summary.v1", fieldRules: ["memory", "memoryContainer"], collectionPaths: [{ path: "memory.activeMemory", label: "Active memory", fieldRule: "memory" }, { path: "memory", label: "Memory", fieldRule: "memoryContainer" }] },
     "task-run-history.v1": { label: "Task and run history", kind: "task-run-history.v1", parserIdentity: "task-run-history.v1", fieldRules: ["task", "run", "invocation", "toolRequest", "historyContainer"], collectionPaths: [{ path: "history.tasks", label: "Task", fieldRule: "task" }, { path: "history.runs", label: "Run", fieldRule: "run" }, { path: "history.modelInvocations", label: "Model invocation", fieldRule: "invocation" }, { path: "history.toolRequests", label: "Tool request", fieldRule: "toolRequest" }, { path: "history", label: "History", fieldRule: "historyContainer" }] },
@@ -334,18 +332,6 @@ const payloadRenderingPolicyMaterial = Object.freeze({
     "jurisdiction-pack-summary.v1": { label: "Jurisdiction pack summary", kind: "jurisdiction-pack-summary.v1", parserIdentity: "jurisdiction-pack-summary.v1", fieldRules: ["jurisdiction", "citedRule", "advisoryPosture", "omissions"], collectionPaths: [{ path: "", label: "Jurisdiction pack", fieldRule: "jurisdiction" }, { path: "citedRules", label: "Cited rule", fieldRule: "citedRule" }, { path: "advisoryPosture", label: "Advisory posture", fieldRule: "advisoryPosture" }, { path: "", label: "Jurisdiction pack", fieldRule: "omissions" }] }
   }
 });
-
-const definitions: readonly Omit<ProductionSpecialistPromptRegistration, "rendererHash">[] = Object.freeze([
-  definition("prr-negotiation", "prr-negotiation.review.v1", "prr-negotiation.review-output.v1", always(["prr-read-model.v1", "jurisdiction-pack-summary.v1", "governance-locks.v1", "evidence-summary.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), standardAllowedOmissions),
-  definition("evidence-triage", "evidence-triage.classify.v1", "evidence-triage.classify-output.v1", withConditionalPrr(["evidence-summary.v1", "governance-locks.v1", "accepted-graph-projection.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions),
-  definition("timeline-builder", "timeline-builder.sourced-timeline.v1", "timeline-builder.sourced-timeline-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions),
-  definition("contradiction-finder", "contradiction-finder.candidates.v1", "contradiction-finder.candidates-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "timeline-draft-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions),
-  definition("investigation-planner", "investigation-planner.next-steps.v1", "investigation-planner.next-steps-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "timeline-draft-summary.v1", "contradiction-candidate-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions),
-  definition("report-builder", "report-builder.packet-draft.v1", "report-builder.packet-draft-output.v1", withConditionalPrr(["accepted-graph-projection.v1", "evidence-summary.v1", "timeline-draft-summary.v1", "contradiction-candidate-summary.v1", "governance-locks.v1", "agent-memory-summary.v1", "task-run-history.v1", "workspace-runtime-status.v1"]), conditionalPrrAllowedOmissions)
-]);
-
-export const productionSpecialistPromptRegistrations: readonly ProductionSpecialistPromptRegistration[] = Object.freeze(definitions.map((definition) => Object.freeze({ ...definition, rendererHash: hashCanonicalRendererMaterial(definition) })));
-const registrationByRunType = new Map<ProductionRunType, ProductionSpecialistPromptRegistration>(productionSpecialistPromptRegistrations.map((registration) => [registration.runType, registration]));
 
 export interface ProductionSpecialistRendererMaterial {
   readonly version: 1;
@@ -367,12 +353,6 @@ export function hashProductionSpecialistRendererMaterial(
   material: ProductionSpecialistRendererMaterial
 ): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(stableJson(material)).digest("hex")}`;
-}
-
-export function productionSpecialistPromptRegistrationFor(runType: ProductionRunType): ProductionSpecialistPromptRegistration {
-  const registration = registrationByRunType.get(runType);
-  if (registration === undefined) throw new Error(`No production specialist prompt registration for ${runType}`);
-  return registration;
 }
 
 export function evaluateProductionContextRequirements(
@@ -537,6 +517,9 @@ function evaluateAndResolveProductionContext(
   }
 
   const hasAssociatedPrr = scope.associatedPrrRequestId !== undefined;
+  if (input.runType === "prr-negotiation" && !hasAssociatedPrr) {
+    throw new Error("PRR negotiation requires an associated PRR request.");
+  }
   if (hasAssociatedPrr && !scope.refs.includes(scope.associatedPrrRequestId as string)) {
     throw new Error("Production run scope must include the associated PRR request in scope refs");
   }
@@ -600,6 +583,18 @@ function evaluateAndResolveProductionContext(
       ...(hasAssociatedPrr ? { associatedPrrRequestId: scope.associatedPrrRequestId } : {})
     },
     applicableContextPackIds: applicableIds,
+    ...(hasAssociatedPrr ? {
+      selectedPrrReadModel: (() => {
+        const selected = packsById.get("prr-read-model.v1");
+        if (selected === undefined) throw new Error("Production PRR read-model context is missing");
+        return {
+          contextPackId: selected.ref.contextPackId,
+          version: selected.ref.version,
+          contentHash: selected.ref.contentHash,
+          scope: selected.ref.scope
+        };
+      })()
+    } : {}),
     omissions
   }) as `sha256:${string}`;
 
@@ -921,23 +916,9 @@ function sameCanonicalJson(left: unknown, right: unknown): boolean {
   return stableJson(left) === stableJson(right);
 }
 
-function definition(runType: ProductionRunType, promptTemplateId: string, providerOutputSchemaId: string, contextRequirements: readonly ProductionContextRequirement[], allowedOmissions: readonly ProductionPromptOmissionCategory[]): Omit<ProductionSpecialistPromptRegistration, "rendererHash"> {
-  return Object.freeze({ runType, promptTemplateId, promptTemplateVersion: 1, rendererId: `${runType}.renderer.v1`, rendererVersion: 1, providerOutputSchemaId, providerOutputSchemaVersion: 1, handoffSchemaId: `${runType}-handoff.v1`, handoffSchemaVersion: 1, contextRequirements, allowedOmissions, safetyClass: "provider-approved", transferApprovalClass: "provider-byte-transfer" });
-}
-
 function withoutRendererHash(registration: ProductionSpecialistPromptRegistration): Omit<ProductionSpecialistPromptRegistration, "rendererHash"> {
   const { rendererHash: _rendererHash, ...withoutHash } = registration;
   return withoutHash;
-}
-
-function withConditionalPrr(alwaysPacks: readonly string[]): readonly ProductionContextRequirement[] {
-  const requirements = always(alwaysPacks).map((requirement) => ({ ...requirement }));
-  requirements.push(conditionalPrr(requirements.length));
-  return Object.freeze(requirements.map((requirement) => Object.freeze(requirement)));
-}
-
-function hashCanonicalRendererMaterial(registration: Omit<ProductionSpecialistPromptRegistration, "rendererHash">): `sha256:${string}` {
-  return hashProductionSpecialistRendererMaterial(canonicalRegisteredRendererMaterial(registration));
 }
 
 function canonicalRegisteredRendererMaterial(

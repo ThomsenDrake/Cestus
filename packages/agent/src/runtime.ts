@@ -22,6 +22,10 @@ import {
   type PromptArtifactAuditMetadata,
   type PromptArtifactEnvelope
 } from "./prompt-artifacts.js";
+import {
+  consumeProductionSpecialistInvocationProof,
+  type ProductionSpecialistInvocationProof
+} from "./production-specialist-invocation-proof.js";
 import type {
   AgentMemoryMutationResult,
   AgentRuntimeDiagnosticDto,
@@ -106,6 +110,7 @@ export interface InvokeAgentModelInput {
   readonly credentialRef: CredentialReference;
   readonly safetyClass?: "workspace-safe" | "public-safe" | "sensitive-local-only" | "provider-approved";
   readonly promptArtifact?: PromptArtifactEnvelope;
+  readonly productionInvocationProof?: ProductionSpecialistInvocationProof;
   readonly returnOutputText?: boolean;
 }
 
@@ -454,6 +459,22 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
       const matchedPromptAudit = promptAudit.ok && promptAudit.metadata.inputArtifactHash === command.inputArtifactHash
         ? promptAudit.metadata
         : undefined;
+      if (requiresProductionPromptAudit(run.runType) && !consumeProductionSpecialistInvocationProof({
+        proof: command.productionInvocationProof,
+        runId: command.runId,
+        taskId: run.taskId ?? "",
+        providerId: command.providerId,
+        modelFamily: command.modelFamily,
+        credentialRefId: command.credentialRef.credentialRefId,
+        inputArtifactHash: command.inputArtifactHash,
+        promptArtifact: command.promptArtifact as PromptArtifactEnvelope
+      })) {
+        return failedResult(agentDiagnostic(
+          "policy",
+          "Production specialist invocation proof is required before model invocation.",
+          ["invoke through the specialist runner with current provider approval"]
+        ));
+      }
       if (requiresProductionPromptAudit(run.runType) && (
         !promptAudit.ok ||
         promptAudit.metadata.inputArtifactHash !== command.inputArtifactHash ||
@@ -465,7 +486,6 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           ["render a production prompt artifact with its approved audit binding"]
         ));
       }
-
       const requestedEvent: AppendableKnowledgeEvent<"agent.model-invocation.requested"> = {
         type: "agent.model-invocation.requested",
         version: 1,

@@ -61,9 +61,17 @@ export async function runPrrNegotiationWorkflow(
   const toolRequestId = `toolreq_${input.runId}_followup`;
   const followUpPreflight = preflightFollowUpApprovalPreview(input, toolRequestId);
   assertSpecialistDerivativeStoreAvailable(input);
-  const prepared = await prepareSpecialistRun(input, "prr-negotiation");
+  const runnerInput: SpecialistRunnerBaseInput = {
+    ...input,
+    scope: input.scope ?? Object.freeze({
+      kind: "prr-request",
+      refs: Object.freeze([input.prrRequestId]),
+      associatedPrrRequestId: input.prrRequestId
+    })
+  };
+  const prepared = await prepareSpecialistRun(runnerInput, "prr-negotiation");
   const invocationId = `inv_${input.runId}_prr_negotiation`;
-  const invocation = await invokeSpecialistModel(input, prepared, invocationId);
+  const invocation = await invokeSpecialistModel(runnerInput, prepared, invocationId);
   const output = parseModelOutput(invocation.outputText);
   if (output === undefined) {
     return await failedModelOutputResult(input, prepared, invocation.eventIds);

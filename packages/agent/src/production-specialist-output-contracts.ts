@@ -5,6 +5,7 @@ import type { AgentSpecialistRunType } from "./specialists.js";
 type ProductionRunType = Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
 
 const normalizeAuthorityClaimText = (value: string) => value
+  .replace(/\bp(?:[\s.]+)r(?:[\s.]+)r\.?(?=\s|$|[,;!?])/gi, "PRR")
   .replace(/[^a-zA-Z0-9,;.!?]+/g, " ")
   .replace(/\s+/g, " ")
   .trim()

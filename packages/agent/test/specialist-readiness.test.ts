@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildContextPackRef,
@@ -81,6 +83,33 @@ const readinessResolvedById = new Map(await Promise.all(readinessContextPackIds.
 })));
 
 describe("specialist workflow readiness projection", () => {
+  it("keeps the cockpit browser import graph free of Node-backed prompt and context modules", () => {
+    const root = resolve(import.meta.dirname, "..");
+    const visited = new Set<string>();
+    const reachable = new Set<string>();
+    const visit = (file: string) => {
+      if (visited.has(file)) return;
+      visited.add(file);
+      const source = readFileSync(file, "utf8");
+      for (const match of source.matchAll(/(?:^|\n)(import\s+(?!type\b)[^;]+from\s+["'])(\.[^"']+)["']/g)) {
+        const specifier = match[2];
+        if (specifier === undefined) continue;
+        const target = resolve(file, "..", specifier.replace(/\.js$/, ".ts"));
+        reachable.add(target);
+        visit(target);
+      }
+    };
+
+    visit(resolve(root, "../ui/src/agent/agent-adapter.ts"));
+
+    expect([...reachable]).not.toContainEqual(expect.stringMatching(/production-specialist-prompts\.ts$/));
+    expect([...reachable]).not.toContainEqual(expect.stringMatching(/prompt-artifacts\.ts$/));
+    expect([...reachable]).not.toContainEqual(expect.stringMatching(/context-packs\.ts$/));
+    for (const file of reachable) {
+      expect(readFileSync(file, "utf8")).not.toMatch(/node:(?:crypto|buffer)|\bBuffer\b/);
+    }
+  });
+
   it("blocks the plan sample when timeline-builder is missing the domain adapter contract", () => {
     const descriptor = specialistWorkflowDescriptorFor("timeline-builder");
 
@@ -571,8 +600,6 @@ function createReadinessContextPackRegistry() {
 }
 
 function readinessParserIdentity(contextPackId: typeof readinessContextPackIds[number]): string {
-  if (contextPackId === "timeline-draft-summary.v1") return "timeline-draft-summary.production-test-parser.v1";
-  if (contextPackId === "contradiction-candidate-summary.v1") return "contradiction-candidate-summary.production-test-parser.v1";
   return contextPackId;
 }
 

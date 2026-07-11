@@ -8,7 +8,7 @@ import {
   hashSpecialistHandoffManifest,
   verifySpecialistHandoffManifest
 } from "../src/specialist-handoff-manifest.js";
-import { hashSpecialistWorkflowHandoff } from "../src/specialist-handoffs.js";
+import { hashSpecialistWorkflowHandoff } from "../src/specialist-handoff-hash.js";
 
 const hash111 = "sha256:1111111111111111111111111111111111111111111111111111111111111111" as const;
 const hash222 = "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const;

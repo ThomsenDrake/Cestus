@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildContextPackRef } from "../src/context-packs.js";
 import {
-  hashSpecialistWorkflowHandoff,
   parseLegacySpecialistWorkflowHandoff,
   parseSpecialistWorkflowHandoff
 } from "../src/specialist-handoffs.js";
+import { hashSpecialistWorkflowHandoff } from "../src/specialist-handoff-hash.js";
 
 const contextPack = buildContextPackRef({
   contextPackId: "evidence-summary.v1",

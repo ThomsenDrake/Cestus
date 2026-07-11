@@ -1,20 +1,18 @@
 import { z } from "zod";
 import {
-  assertResolvedContextPacksForExecution,
-  contextPackRefSchema,
-  type ContextPackRef,
-  type VerifiedResolvedContextPack
-} from "./context-packs.js";
+  browserSafeContextRefsMatch,
+  parseBrowserSafeContextPackRef
+} from "./browser-safe-context-refs.js";
+import type { ContextPackRef, VerifiedResolvedContextPack } from "./context-packs.js";
 import type { AgentDomainToolFamily } from "./domain-execution-descriptors.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import type { AgentToolApprovalClass } from "./projection-types.js";
 import {
-  evaluateProductionContextRequirements,
   productionSpecialistPromptRegistrationFor,
   productionSpecialistPromptRegistrations,
   type ProductionRunScope,
   type ProductionSpecialistPromptRegistration
-} from "./production-specialist-prompts.js";
+} from "./production-specialist-registration-metadata.js";
 import {
   providerReadinessDtoSchema,
   providerSetupCardSchema,
@@ -274,20 +272,11 @@ export function projectSpecialistWorkflowReadiness(
     missingProvenanceContextPackIds.length === 0
   ) {
     try {
-      const applicableRefs = requiredContextPackIds.map((contextPackId) => refsById.get(contextPackId) as ContextPackRef);
-      const resolvedContextPacks = assertResolvedContextPacksForExecution(
-        applicableRefs,
+      missingResolvedContextPackIds = missingBrowserSafeResolvedContextPackIds(
+        requiredContextPackIds,
+        refsById,
         input.resolvedContextPacks
       );
-      contextOmissions = evaluateProductionContextRequirements({
-        runType: input.runType as Exclude<AgentSpecialistRunType, "ontology-bootstrap">,
-        taskId: `readiness_${input.runType}`,
-        scope: input.scope,
-        resolvedContextPacks
-      }).omissions.map((omission) => Object.freeze({
-        reason: "no-associated-prr" as const,
-        sourceRef: omission.sourceRef
-      }));
     } catch {
       missingResolvedContextPackIds = Object.freeze([...requiredContextPackIds]);
     }
@@ -418,12 +407,35 @@ function assertDescriptorMatchesRunType(input: ProjectSpecialistWorkflowReadines
 function contextRefsById(contextPackRefs: readonly ContextPackRef[]): ReadonlyMap<string, ContextPackRef> {
   const refs = new Map<string, ContextPackRef>();
   for (const refInput of contextPackRefs) {
-    const ref = contextPackRefSchema.parse(refInput);
+    const ref = parseBrowserSafeContextPackRef(refInput);
     if (!refs.has(ref.contextPackId)) {
       refs.set(ref.contextPackId, ref);
     }
   }
   return refs;
+}
+
+function missingBrowserSafeResolvedContextPackIds(
+  requiredContextPackIds: readonly string[],
+  refsById: ReadonlyMap<string, ContextPackRef>,
+  resolvedContextPacks: readonly VerifiedResolvedContextPack[]
+): readonly string[] {
+  const resolvedById = new Map<string, ContextPackRef>();
+  try {
+    for (const resolved of resolvedContextPacks) {
+      const ref = parseBrowserSafeContextPackRef(resolved.ref);
+      if (resolvedById.has(ref.contextPackId)) return Object.freeze([...requiredContextPackIds]);
+      resolvedById.set(ref.contextPackId, ref);
+    }
+  } catch {
+    return Object.freeze([...requiredContextPackIds]);
+  }
+  if (resolvedById.size !== requiredContextPackIds.length) return Object.freeze([...requiredContextPackIds]);
+  return Object.freeze(requiredContextPackIds.filter((contextPackId) => {
+    const expected = refsById.get(contextPackId);
+    const resolved = resolvedById.get(contextPackId);
+    return expected === undefined || resolved === undefined || !browserSafeContextRefsMatch(expected, resolved);
+  }));
 }
 
 function hasProductionPromptRegistration(input: ProjectSpecialistWorkflowReadinessInput): boolean {
