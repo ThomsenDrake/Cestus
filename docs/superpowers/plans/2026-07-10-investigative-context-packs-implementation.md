@@ -4,7 +4,7 @@
 
 **Goal:** Build package-owned investigative context-pack builders and registration for `evidence-summary.v1`, `accepted-graph-projection.v1`, and `governance-locks.v1` with bounded selection, exact provenance, aggregate omissions, and hash-verified resolved payloads.
 
-**Architecture:** The operational generic resolved-context contract lands first and owns `ResolvedContextPack { ref, payload }`, `ContextPackBuilder` with optional `parsePayload`, `ContextPackRegistry`, content-addressed payload verification, `ContextPackPayloadResolver.resolve(ref)`, `ContextPackRegistry.buildResolved(id)`, opaque `VerifiedResolvedContextPack`, and `assertResolvedContextPacksForExecution({ refs, resolved })`. This package lane adds investigative builders in `packages/agent` that consume scope-aware selection and bounded reader capabilities, produce provider-safe resolved envelopes, supply strict pack-specific payload parsers for all three schemas through builder registration, and register only through an exported helper. Local-runtime, orchestrator, cockpit, PRR packs, operational packs, specialist prompt definitions, prompt-template provider assembly, and handoff projections are out of scope.
+**Architecture:** The operational generic resolved-context contract lands first and owns `ResolvedContextPack { ref, payload }`, `ContextPackBuilder` with optional `parsePayload`, `ContextPackRegistry`, content-addressed payload verification, callable `ContextPackPayloadResolver(ref)`, `ContextPackRegistry.buildResolved(id)`, opaque `VerifiedResolvedContextPack`, and `assertResolvedContextPacksForExecution(refs, resolvedPacks)`. This package lane adds investigative builders in `packages/agent` that consume scope-aware selection and bounded reader capabilities, produce provider-safe resolved envelopes, supply strict pack-specific payload parsers for all three schemas through builder registration, and register only through an exported helper. Local-runtime, orchestrator, cockpit, PRR packs, operational packs, specialist prompt definitions, prompt-template provider assembly, and handoff projections are out of scope.
 
 **Tech Stack:** TypeScript, Vitest, Zod, Node `crypto`, existing `packages/agent` context-pack APIs, operational resolved-context APIs, injected ontology/ingestion/governance/agent projection readers.
 
@@ -12,7 +12,7 @@
 
 - This plan starts only after the operational generic resolved-context contract is merged into this branch.
 - Required shared exports before Task 1: `ResolvedContextPack`, `VerifiedResolvedContextPack`, `ContextPackBuilder`, `ContextPackRegistry`, `ContextPackPayloadResolver`, `createContextPackRegistry`, and `assertResolvedContextPacksForExecution` from `packages/agent/src/context-packs.ts` or a re-exported package-owned module.
-- Required operational registry shape before Task 1: the exported `ContextPackBuilder` type has `descriptor`, `build`, and optional `parsePayload(payload: unknown)`, `ContextPackRegistry.register(builder: ContextPackBuilder): void`, `ContextPackRegistry.buildResolved(contextPackId: string): Promise<ResolvedContextPack>`, `createContextPackRegistry({ payloadResolver? }: { readonly payloadResolver?: ContextPackPayloadResolver }): ContextPackRegistry`, `ContextPackPayloadResolver.resolve(ref: ContextPackRef): Promise<ResolvedContextPack>`, and `assertResolvedContextPacksForExecution({ refs, resolved }: { readonly refs: readonly ContextPackRef[]; readonly resolved: readonly ResolvedContextPack[] }): readonly VerifiedResolvedContextPack[]`.
+- Required operational registry shape before Task 1: the exported `ContextPackBuilder` type has `descriptor`, `build`, and optional `parsePayload(payload: AgentContextPackJsonValue, ref?: ContextPackRef): AgentContextPackJsonValue`, `ContextPackRegistry.register(builder: ContextPackBuilder): void`, `ContextPackRegistry.buildResolved(contextPackId: string): Promise<VerifiedResolvedContextPack>`, `createContextPackRegistry({ payloadResolver? }: { readonly payloadResolver?: ContextPackPayloadResolver }): ContextPackRegistry`, `ContextPackPayloadResolver` is a callable capability `(ref: ContextPackRef) => AgentContextPackJsonValue | ResolvedContextPack | Promise<AgentContextPackJsonValue | ResolvedContextPack>`, and `assertResolvedContextPacksForExecution(refs: readonly ContextPackRef[], resolvedPacks: readonly ResolvedContextPack[]): readonly VerifiedResolvedContextPack[]`.
 - Operational execution assertion must verify hash and size first, then dispatch the exact `parsePayload` registered for `contextPackId/version`; a matching hash with an invalid parsed shape must fail before any downstream prompt-template lane consumes the payload. `VerifiedResolvedContextPack` is opaque and must never be constructed by this lane.
 - If those shared exports are missing or their signatures do not match this plan, stop before claiming Task 1 and ask the coordinator to rebase this lane after the operational context lane.
 - Do not edit local-runtime, orchestrator, scheduler, cockpit, browser UI, operational packs, PRR packs, specialist workflow prompt definitions, handoff projections, or resident-agent runtime wiring in this lane.
@@ -309,7 +309,7 @@ and the descriptor/parser schema versions. Changing a v1 budget, reader batch
 size, omission sample limit, or selection window limit changes the stable
 registration identity and must be reviewed as a v1 behavior change.
 
-The parser registered for a descriptor must be keyed by exact `contextPackId/version` through the builder's optional `parsePayload` function. Stable parser identity metadata may be inspected for registration conflict checks, but proof of a valid resolved payload must come from `assertResolvedContextPacksForExecution` returning an opaque `VerifiedResolvedContextPack` after resolver output has been supplied. The parser must run after operational code verifies `ref.contentHash` and `ref.sizeBytes`, and it must reject payloads whose hash matches the ref but whose shape violates the pack-specific schema.
+The parser registered for a descriptor must be keyed by exact `contextPackId/version` through the builder's optional `parsePayload` function. Stable parser identity metadata may be inspected for registration conflict checks, but proof of a valid resolved payload must come from `ContextPackRegistry.buildResolved(id)` returning an opaque `VerifiedResolvedContextPack`, and execution proof must use `assertResolvedContextPacksForExecution(refs, resolvedPacks)` with registry-verified/branded packs. The parser must run after operational code verifies `ref.contentHash` and `ref.sizeBytes`, and it must reject payloads whose hash matches the ref but whose shape violates the pack-specific schema.
 
 Reader row interfaces should be added in the task that first uses them and kept in the same file. All reader methods must accept exact included IDs and `limit: 50`; no method may accept a whole projection object.
 
@@ -1545,8 +1545,8 @@ Request a fresh review focused on governance non-authoritativeness and non-trunc
 - Modify: `packages/agent/src/index.ts`
 
 **Interfaces:**
-- Consumes: Completed builders and strict payload parsers from Tasks 3-5 plus operational `ContextPackRegistry`, `ContextPackPayloadResolver.resolve(ref)`, `ContextPackRegistry.buildResolved(id)`, and `assertResolvedContextPacksForExecution`.
-- Produces: `registerInvestigativeContextPacks`, idempotent stable descriptor/parser registration, readiness proof with refs, `buildResolved(id)` parser-dispatch rejection for invalid pack shape, execution-assertion hash/ref integrity proof, and opaque verified sentinel payload proof for the prompt-template lane.
+- Consumes: Completed builders and strict payload parsers from Tasks 3-5 plus operational `ContextPackRegistry`, callable `ContextPackPayloadResolver(ref)`, `ContextPackRegistry.buildResolved(id)`, and `assertResolvedContextPacksForExecution(refs, resolvedPacks)`.
+- Produces: `registerInvestigativeContextPacks`, idempotent stable descriptor/parser registration, readiness proof with refs, `buildResolved(id)` hash/size/parser-dispatch rejection for invalid payloads, execution-assertion rejection for unverified/tampered resolved envelopes, and opaque verified sentinel payload proof for the prompt-template lane.
 
 - [ ] **Step 1: Claim Task 6**
 
@@ -1554,7 +1554,7 @@ Create and commit the claim file with status `claimed`, then update it to `in-pr
 
 - [ ] **Step 2: Write RED registration and resolved-payload tests**
 
-Update imports to include `registerInvestigativeContextPacks` and all three investigative payload parsers from `../src/investigative-context-packs.js`. Update context-pack imports to include `createContextPackRegistry`, `assertResolvedContextPacksForExecution`, and the `ContextPackPayloadResolver`, `ContextPackRef`, and `ResolvedContextPack` types.
+Update imports to include `registerInvestigativeContextPacks` and all three investigative payload parsers from `../src/investigative-context-packs.js`. Update context-pack imports to include `createContextPackRegistry`, `assertResolvedContextPacksForExecution`, and the `ContextPackPayloadResolver`, `ContextPackRef`, `ResolvedContextPack`, and `VerifiedResolvedContextPack` types.
 
 Append tests:
 
@@ -1569,19 +1569,17 @@ function createRegistrationInput(input: CreateInvestigativeDepsInput = {}): Regi
 
 function createInMemoryPayloadResolver() {
   const resolvedByHash = new Map<string, ResolvedContextPack>();
-  const resolver: ContextPackPayloadResolver & {
-    add(pack: ResolvedContextPack): void;
-  } = {
-    add(pack) {
-      resolvedByHash.set(pack.ref.contentHash, pack);
-    },
-    async resolve(ref: ContextPackRef) {
-      const resolved = resolvedByHash.get(ref.contentHash);
-      if (resolved === undefined) {
-        throw new Error(`missing resolved context pack for ${ref.contentHash}`);
-      }
-      return resolved;
+  const resolver = (async (ref: ContextPackRef) => {
+    const resolved = resolvedByHash.get(ref.contentHash);
+    if (resolved === undefined) {
+      throw new Error(`missing resolved context pack for ${ref.contentHash}`);
     }
+    return resolved;
+  }) as ContextPackPayloadResolver & {
+    add(pack: ResolvedContextPack): void;
+  };
+  resolver.add = (pack) => {
+    resolvedByHash.set(pack.ref.contentHash, pack);
   };
   return resolver;
 }
@@ -1686,11 +1684,8 @@ it("keeps a payload-only investigative fact available after operational executio
   });
   expect(serializedAuditSurface).not.toContain("payload-only-sentinel-contract-fact-314159");
 
-  const resolvedFromResolver = await resolver.resolve(resolved.ref);
-  const verified = assertResolvedContextPacksForExecution({
-    refs: [resolved.ref],
-    resolved: [resolvedFromResolver]
-  });
+  const resolvedFromResolver = await resolver(resolved.ref) as VerifiedResolvedContextPack;
+  const verified = assertResolvedContextPacksForExecution([resolved.ref], [resolvedFromResolver]);
 
   expect(verified).toHaveLength(1);
   expect(JSON.stringify(resolvedFromResolver.payload)).toContain("payload-only-sentinel-contract-fact-314159");
@@ -1700,7 +1695,7 @@ it("keeps a payload-only investigative fact available after operational executio
 // live provider gate. This package lane stops at parser-verified resolved
 // payload availability and ref/audit-surface exclusion.
 
-it("rejects execution assertion when resolved payload hash does not match the ref", async () => {
+it("rejects execution assertion when resolver output is not registry verified", async () => {
   const resolver = createInMemoryPayloadResolver();
   const registry = createContextPackRegistry({ payloadResolver: resolver });
   registerInvestigativeContextPacks(registry, createRegistrationInput());
@@ -1711,11 +1706,29 @@ it("rejects execution assertion when resolved payload hash does not match the re
   };
   resolver.add(tampered);
 
-  const resolvedFromResolver = await resolver.resolve(resolved.ref);
-  expect(() => assertResolvedContextPacksForExecution({
-    refs: [resolved.ref],
-    resolved: [resolvedFromResolver]
-  })).toThrow(/context-payload-hash-mismatch/);
+  const resolvedFromResolver = await resolver(resolved.ref);
+  expect(() => assertResolvedContextPacksForExecution([resolved.ref], [resolvedFromResolver as ResolvedContextPack])).toThrow(/unverified|hash|verified/);
+});
+
+it("rejects buildResolved when a resolved payload hash does not match the ref", async () => {
+  const validResolved = await buildAcceptedGraphProjectionContextPack({
+    deps: createInvestigativeDeps(),
+    scope: { kind: "task", id: "task_graph" },
+    window: windowFor("cursor_task_graph_0001", 0, 100)
+  });
+  const resolver = createInMemoryPayloadResolver();
+  resolver.add({
+    ref: validResolved.ref,
+    payload: { ...validResolved.payload, items: { assertions: [], entities: [], relationships: [] } }
+  });
+  const registry = createContextPackRegistry({ payloadResolver: resolver });
+  registry.register({
+    descriptor: investigativeContextPackDescriptors[0],
+    parsePayload: acceptedGraphProjectionPayloadParser.parsePayload,
+    build: () => validResolved.ref
+  });
+
+  await expect(registry.buildResolved("accepted-graph-projection.v1")).rejects.toThrow(/payload-hash-mismatch/);
 });
 
 it("rejects matching-hash resolved payloads whose pack-specific shape is invalid", async () => {
@@ -1768,7 +1781,7 @@ Run:
 npm test -- packages/agent/test/investigative-context-packs.test.ts -t "registers investigative|conflicting duplicate|specialist readiness|payload-only|payload hash|invalid shape"
 ```
 
-Expected: fail because registration, `buildResolved(id)` parser dispatch, and operational execution assertion integration are incomplete.
+Expected: fail because registration, `buildResolved(id)` hash/parser dispatch, and operational execution assertion integration are incomplete.
 
 - [ ] **Step 4: Implement registration helper**
 
@@ -1852,7 +1865,7 @@ git add docs/agentic/claims/task-6-investigative-registration-readiness.md packa
 git commit -m "feat: register investigative context packs"
 ```
 
-Request a fresh review focused on stable descriptor/parser/limits registration identity, readiness with refs, `buildResolved(id)` parser-dispatch rejection, execution-assertion hash/ref integrity, and opaque verified sentinel payloads.
+Request a fresh review focused on stable descriptor/parser/limits registration identity, readiness with refs, `buildResolved(id)` hash and parser-dispatch rejection, execution-assertion rejection for unverified resolved envelopes, and opaque verified sentinel payloads.
 
 ---
 
