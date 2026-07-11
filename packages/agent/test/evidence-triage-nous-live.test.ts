@@ -6,11 +6,10 @@ import { describe, expect, it } from "vitest";
 import { ProviderParseApprovalService } from "../../ingestion/src/provider-adapter.js";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import {
   SecretMaterial,
   StaticSecretStore,
-  buildContextPackRef,
-  buildPromptArtifact,
   buildProviderByteTransferApprovalPreview,
   createAgentRuntime,
   createAgentToolGateway,
@@ -21,11 +20,13 @@ import {
   hashAgentToolPreview,
   promptArtifactAuditMetadata,
   providerParseExecuteDescriptor,
+  renderProductionSpecialistPrompt,
   rebuildProviderByteTransferCurrentPreview,
   runEvidenceTriageWorkflow
 } from "../src/index.js";
 import type {
   AgentToolPreview,
+  AgentContextPackJsonValue,
   ContextPackRegistry,
   ProviderReadinessDto,
   ProviderSetupCard,
@@ -48,6 +49,8 @@ const remoteEvidenceHash = hashText("live evidence triage approved prompt eviden
 const providerJobId = "provider_live_evidence_triage_prompt_001";
 const sourceCollectionId = "src_live_evidence_triage_prompt";
 const importBatchId = "imp_live_evidence_triage_prompt_001";
+const payloadSentinel = "PAYLOAD_SENTINEL_CITY_LEDGER_427";
+const importedEvidenceScope = { kind: "imported-evidence", refs: ["ev_live_imported_non_prr_001"] } as const;
 
 interface RemotePromptEvidenceRefs {
   readonly evidenceEventId: string;
@@ -89,6 +92,13 @@ liveDescribe("live Nous evidence triage workflow acceptance", () => {
     const remoteEvidence = await appendLivePromptEvidence(ledger);
     const contextPacks = createLiveContextPacks(remoteEvidence);
     const promptArtifact = await providerApprovedPromptArtifact(contextPacks);
+    const evidenceSummary = promptArtifact.resolvedContextPacks?.find((pack) => pack.ref.contextPackId === "evidence-summary.v1");
+    expect(evidenceSummary?.ref.safeSummary).not.toContain(payloadSentinel);
+    expect(JSON.stringify(evidenceSummary?.payload)).toContain(payloadSentinel);
+    expect(promptArtifact.manifest.contextPackRefs.map((ref) => ref.contextPackId)).not.toContain("prr-read-model.v1");
+    expect(promptArtifact.manifest.omissions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ reason: "no-associated-prr", sourceRef: "prr-read-model.v1" })
+    ]));
     const providerCapability = providerCapabilityDescriptor(modelFamily);
     const providerReadiness = providerReadinessDto(modelFamily).cards[0]!;
     const proof = await providerTransferApprovalProof({
@@ -119,7 +129,8 @@ liveDescribe("live Nous evidence triage workflow acceptance", () => {
       },
       derivativeStore,
       evidenceIds: [remoteEvidenceId],
-      providerParseApprovalPreview: providerParsePreview()
+      providerParseApprovalPreview: providerParsePreview(promptArtifact, remoteEvidence),
+      scope: importedEvidenceScope
     });
 
     expect(result.handoff.residentAgentId).toBe("agent_default");
@@ -130,6 +141,10 @@ liveDescribe("live Nous evidence triage workflow acceptance", () => {
       await expect(derivativeStore.get(artifact.artifactHash)).resolves.toBeInstanceOf(Buffer);
     }
     expect(result.handoff.promptArtifactHash).toMatch(/^sha256:[a-f0-9]{64}$/);
+    const safeSummariesArtifact = result.handoff.outputArtifacts.find((artifact) => artifact.artifactKind === "safe-evidence-summaries");
+    const providerSafeOutput = (await derivativeStore.get(safeSummariesArtifact!.artifactHash)).toString("utf8");
+    const parsedProviderSafeOutput = JSON.parse(providerSafeOutput) as { readonly safeSummaries?: readonly string[] };
+    expect(parsedProviderSafeOutput.safeSummaries?.some((summary) => summary.includes(payloadSentinel))).toBe(true);
 
     const events = await ledger.readAll();
     const eventTypes = events.map((event) => event.type);
@@ -172,7 +187,7 @@ liveDescribe("live Nous evidence triage workflow acceptance", () => {
       requiredApprovalClass: "provider-byte-transfer"
     });
 
-    assertNoSensitiveLiveMaterial(JSON.stringify({ events, handoff: result.handoff }), env);
+    assertNoSensitiveLiveMaterial(JSON.stringify({ events, handoff: result.handoff }), env, promptArtifact.text, providerSafeOutput);
   }, 90_000);
 });
 
@@ -190,7 +205,6 @@ function createLiveContextPacks(remoteRefs: RemotePromptEvidenceRefs): ContextPa
   for (const contextPackId of [
     "evidence-summary.v1",
     "governance-locks.v1",
-    "prr-read-model.v1",
     "accepted-graph-projection.v1",
     "agent-memory-summary.v1",
     "task-run-history.v1",
@@ -210,60 +224,58 @@ function createLiveContextPacks(remoteRefs: RemotePromptEvidenceRefs): ContextPa
         contextPackId,
         version: 1,
         generatedAt: now(),
-        payload: {
-          evidenceIds: [remoteEvidenceId],
-          providerBoundary: "provider-byte-transfer-approved"
-        },
+        payload: liveContextPayload(contextPackId, remoteRefs),
         safeSummary: `${contextPackId} contains safe live evidence triage references.`,
         provenanceRefs: ["event:evt_context_live_evidence_001", remoteEvidenceId, remoteRefs.evidenceEventId, remoteEvidenceHash],
         sourceEventIds: ["evt_context_live_evidence_001", remoteRefs.evidenceEventId, remoteRefs.linkEventId],
         artifactHashes: [remoteEvidenceHash],
         sizeBudgetBytes: 16_384
-      })
+      }),
+      parsePayload: liveContextPayloadParser(contextPackId)
     });
   }
   return registry;
 }
 
 async function providerApprovedPromptArtifact(contextPacks: ContextPackRegistry) {
-  const contextPackRefs = await Promise.all([
+  const resolvedContextPacks = await Promise.all([
     "evidence-summary.v1",
     "governance-locks.v1",
-    "prr-read-model.v1",
     "accepted-graph-projection.v1",
     "agent-memory-summary.v1",
     "task-run-history.v1",
     "workspace-runtime-status.v1"
-  ].map(async (contextPackId) => await contextPacks.build(contextPackId)));
-  return buildPromptArtifact({
-    promptTemplateId: "evidence-triage.classify.v1",
-    promptTemplateVersion: 1,
-    generatedAt: now(),
+  ].map(async (contextPackId) => await contextPacks.buildResolved(contextPackId)));
+  return renderProductionSpecialistPrompt({
     runType: "evidence-triage",
-    safetyClass: "provider-approved",
-    transferApprovalClass: "provider-byte-transfer",
-    contextPackRefs,
-    text: strictEvidenceTriagePrompt(),
-    safeSummary: "Provider-approved live evidence triage prompt artifact."
+    runId,
+    taskId,
+    generatedAt: now(),
+    scope: importedEvidenceScope,
+    resolvedContextPacks
   });
 }
 
-function strictEvidenceTriagePrompt(): string {
-  return [
-    "Return only one JSON object and no markdown.",
-    "The object must have exactly these keys: dossierSummary, safeSummaries, governanceFlags, duplicateGroups, evidenceGaps, assertionCandidates, requestProviderParseApproval, requestGovernanceReview, requestQuarantineReview, requestAssertionProposalReview.",
-    "dossierSummary must be a short safe review summary.",
-    "safeSummaries and evidenceGaps must be arrays of short safe strings.",
-    "governanceFlags must be an array of objects with evidenceId, tag, confidence, rationale.",
-    "duplicateGroups must be an array of objects with groupId, evidenceIds, rationale.",
-    "assertionCandidates must be an array of objects with candidateId, evidenceId, predicate, confidence, rationale.",
-    "requestGovernanceReview, requestQuarantineReview, and requestAssertionProposalReview must be true so the review-request branch is exercised.",
-    "requestProviderParseApproval must be false.",
-    "Use this exact minimal valid shape if unsure:",
-    `{"dossierSummary":"Evidence triage dossier is ready for review.","safeSummaries":["One safe evidence summary is ready."],"governanceFlags":[{"evidenceId":"${remoteEvidenceId}","tag":"review_requested","confidence":0.5,"rationale":"Human governance review is requested."}],"duplicateGroups":[],"evidenceGaps":["Human review should inspect classification and assertion candidates."],"assertionCandidates":[{"candidateId":"cand_live_001","evidenceId":"${remoteEvidenceId}","predicate":"record.status","confidence":0.5,"rationale":"Human domain proposal review is requested."}],"requestProviderParseApproval":false,"requestGovernanceReview":true,"requestQuarantineReview":true,"requestAssertionProposalReview":true}`,
-    `Use evidenceId ${remoteEvidenceId} if you include any evidence-linked object.`,
-    "Do not include extra keys. Do not claim anything was sent, approved, escalated, exported, published, transferred, accepted, resolved, or accepted as graph truth."
-  ].join("\n");
+function liveContextPayload(contextPackId: string, remoteRefs: RemotePromptEvidenceRefs): AgentContextPackJsonValue {
+  switch (contextPackId) {
+    case "evidence-summary.v1": return { items: [{ evidenceId: remoteEvidenceId, ingestionEventId: remoteRefs.evidenceEventId, contentHash: remoteEvidenceHash, mediaType: "text/plain", sizeBytes: 422, sourceCollectionId, importBatchId, occurrenceIds: ["occ_live_evidence_triage_prompt_001"], parseJobs: [], governanceTags: [], safeNarrative: payloadSentinel }] };
+    case "accepted-graph-projection.v1": return { items: { assertions: [{ assertionId: "assertion_live_001", evidenceId: remoteEvidenceId, evidenceContentHash: remoteEvidenceHash, proposedByEventId: remoteRefs.evidenceEventId, acceptedByEventId: remoteRefs.linkEventId, sourceEventIds: [remoteRefs.evidenceEventId], rowHash: remoteEvidenceHash, safeStatement: "Imported evidence requires human review." }], entities: [], relationships: [] } };
+    case "governance-locks.v1": return { items: { activeLocks: [{ lockId: "lock_live_review_001", lockKind: "review", safeReason: "Human review is required.", activatedBy: "actor_provider_reviewer", activatedAt: now(), relatedEventIds: [remoteRefs.evidenceEventId], projectionEventIds: [remoteRefs.linkEventId] }], governanceRestrictions: [] } };
+    case "agent-memory-summary.v1": return { memory: { activeMemory: ["Imported evidence triage is pending review."], aggregateCounts: { active: 1 }, sourceEventIds: [remoteRefs.evidenceEventId], artifactHashes: [remoteEvidenceHash] } };
+    case "task-run-history.v1": return { history: { projectionHighWaterMark: 1, projectionSourceRef: "agent.projection.task-run-history", tasks: [{ taskId, status: "running", priority: "normal", runId, sourceEventIds: [remoteRefs.evidenceEventId] }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1 }, sourceEventIds: [remoteRefs.evidenceEventId], artifactHashes: [remoteEvidenceHash] } };
+    case "workspace-runtime-status.v1": return { runtime: { runtimeHighWaterMark: 1, workspaceMounted: true, storageStrategy: "local", bindPosture: "bound", authPosture: "none", providerStates: [], diagnostics: [], projectionHighWaterMarks: { agent: 1 }, omissionCodes: [] } };
+    default: throw new Error(`Unsupported live context pack ${contextPackId}`);
+  }
+}
+
+function liveContextPayloadParser(contextPackId: string) {
+  const parser = (payload: AgentContextPackJsonValue): AgentContextPackJsonValue => {
+    if (payload === null || typeof payload !== "object" || Array.isArray(payload)) throw new Error(`Invalid ${contextPackId} live payload`);
+    return payload;
+  };
+  Object.defineProperty(parser, "cestusContextPackParserId", { value: contextPackId });
+  registerContextPackPayloadParserAuthority(parser);
+  return parser;
 }
 
 function providerReadinessDto(modelFamily: string): ProviderReadinessDto {
@@ -385,7 +397,10 @@ async function providerTransferApprovalProof(input: {
   return { currentPreviewInput, approvedPreviewHash };
 }
 
-function providerParsePreview(): AgentToolPreview {
+function providerParsePreview(
+  promptArtifact: Awaited<ReturnType<typeof providerApprovedPromptArtifact>>,
+  remoteEvidence: RemotePromptEvidenceRefs
+): AgentToolPreview {
   return buildProviderByteTransferApprovalPreview({
     toolRequestId: "toolreq_evidence_triage_live_provider_parse",
     toolId: providerParseExecuteDescriptor.toolId,
@@ -415,33 +430,13 @@ function providerParsePreview(): AgentToolPreview {
     },
     evidenceBindings: [{
       evidenceId: remoteEvidenceId,
-      evidenceEventId: "evt_live_evidence_triage_prompt_evidence_001",
-      linkEventId: "evt_live_evidence_triage_prompt_link_001",
+      evidenceEventId: remoteEvidence.evidenceEventId,
+      linkEventId: remoteEvidence.linkEventId,
       contentHash: remoteEvidenceHash,
       byteCount: 422,
       mediaType: "text/plain"
     }],
-    promptArtifact: {
-      inputArtifactHash: hashText("provider parse preview prompt"),
-      promptTemplateId: "evidence-triage.classify.v1",
-      promptTemplateVersion: 1,
-      runType: "evidence-triage",
-      safetyClass: "provider-approved",
-      transferApprovalClass: "provider-byte-transfer",
-      contextPackRefs: [buildContextPackRef({
-        contextPackId: "evidence-summary.v1",
-        version: 1,
-        generatedAt: now(),
-        payload: { evidenceIds: [remoteEvidenceId] },
-        safeSummary: "Evidence summary approved for live provider parse preview.",
-        provenanceRefs: [remoteEvidenceId, "evt_live_evidence_triage_prompt_evidence_001", remoteEvidenceHash],
-        sourceEventIds: ["evt_live_evidence_triage_prompt_evidence_001", "evt_live_evidence_triage_prompt_link_001"],
-        artifactHashes: [remoteEvidenceHash],
-        sizeBudgetBytes: 16_384
-      })],
-      omissions: [],
-      safeSummary: "Provider-approved evidence triage parse prompt audit."
-    },
+    promptArtifact: promptArtifactAuditMetadata(promptArtifact),
     excerptPolicy: "send-full-technically-eligible",
     governanceTags: ["public_record"],
     activeLocks: [],
@@ -518,12 +513,15 @@ function loadNousEnv(cwd: string): {
   };
 }
 
-function assertNoSensitiveLiveMaterial(serialized: string, liveEnv: ReturnType<typeof loadNousEnv>): void {
+function assertNoSensitiveLiveMaterial(serialized: string, liveEnv: ReturnType<typeof loadNousEnv>, promptText: string, providerSafeOutput: string): void {
   if (liveEnv.apiKey !== undefined && serialized.includes(liveEnv.apiKey)) {
     throw new Error("Live acceptance leaked provider auth material.");
   }
-  if (serialized.includes(strictEvidenceTriagePrompt())) {
+  if (serialized.includes(promptText)) {
     throw new Error("Live acceptance persisted prompt text.");
+  }
+  if (serialized.includes(providerSafeOutput) || serialized.includes(payloadSentinel)) {
+    throw new Error("Live acceptance persisted provider or resolved-payload text.");
   }
   if (/authorization\s*[:=]|Bearer\s+/i.test(serialized)) {
     throw new Error("Live acceptance leaked provider auth header material.");
