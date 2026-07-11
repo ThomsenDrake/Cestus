@@ -61,3 +61,33 @@ factory-readiness passed
 ```
 
 Review pending.
+
+## Review Fix Evidence
+
+Initial Task 4 review returned `NEEDS FIXES` for:
+
+- PRR negotiation regression using a workspace-only durable run scope.
+- PRR descriptor/content-hash provenance coverage ambiguity.
+- Adapter materializing full workspace DTOs before filtering selected gates.
+
+Fixes applied:
+
+- The regression now starts the durable run with the selected PRR as the durable investigation ref and uses the same selected PRR in production `associatedPrrRequestId`.
+- Content-hash binding is asserted where correspondence/evidence hashes are applicable; descriptor required provenance remains unconditional event ID because draft-only selected PRRs may not have content hashes.
+- The adapter now builds send and legal gate snapshots from only the selected read model, without constructing a workspace-wide PRR DTO.
+
+Post-fix verification:
+
+```text
+npm test -- packages/local-runtime/test/agent-prr-context-packs.test.ts packages/agent/test/prr-context-packs.test.ts
+Test Files  2 passed (2)
+Tests  28 passed (28)
+
+npm run verify
+typecheck passed
+Test Files  179 passed | 3 skipped (182)
+Tests  2059 passed | 3 skipped (2062)
+tests passed
+vite build succeeded
+factory-readiness passed
+```

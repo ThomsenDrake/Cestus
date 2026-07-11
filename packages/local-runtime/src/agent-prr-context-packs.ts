@@ -13,7 +13,6 @@ import {
 } from "../../agent/src/index.js";
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 import { buildPrrProjection, type PrrRequestReadModel, type PrrTimelineEntry } from "../../prr/src/projection.js";
-import { buildPrrWorkspaceDto, type PrrWorkspaceDtoGateSummary } from "../../prr/src/read-api.js";
 import { resolveJurisdictionPack } from "../../prr/src/draft-events.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
@@ -121,16 +120,14 @@ async function selectedPrrSnapshot(input: RegisterLocalRuntimeSelectedPrrContext
     throw new Error("prr-request-missing: selected PRR request is missing from the local runtime projection");
   }
   const timeline = projection.timelineForRequest(input.prrRequestId);
-  const dto = buildPrrWorkspaceDto(projection, { now: input.now() });
+  const evidenceHashes = evidenceHashesById(events);
   return Object.freeze({
     request: sanitizedRequest(request),
     timeline,
     totalPrrRequestCount: projection.requests.size,
     projectionHighWaterMark: events.length,
-    evidenceHashesById: evidenceHashesById(events),
-    gates: dto.gates
-      .filter((gate) => gate.prrRequestId === input.prrRequestId)
-      .map(toContextGateSnapshot)
+    evidenceHashesById: evidenceHashes,
+    gates: selectedGateSnapshots(request, evidenceHashes)
   });
 }
 
@@ -304,19 +301,113 @@ function evidenceHashesById(events: readonly KnowledgeEvent[]): ReadonlyMap<stri
   return hashesById;
 }
 
-function toContextGateSnapshot(gate: PrrWorkspaceDtoGateSummary): PrrContextGateSnapshot {
+function selectedGateSnapshots(
+  request: PrrRequestReadModel,
+  evidenceHashes: ReadonlyMap<string, `sha256:${string}`>
+): readonly PrrContextGateSnapshot[] {
+  return [
+    gateSnapshot(request.prrRequestId, "send", [
+      gateCheck("draft-body", false, true, request.requestText.trim().length > 0
+        ? "Request text exists, but send readiness must be backed by an explicit review event."
+        : "No request text is available from replay."),
+      gateCheck("recipient", false, true, request.agency.email === undefined
+        ? "Agency email is absent from replayed request state."
+        : "Agency contact exists, but recipient readiness must be backed by an explicit review event."),
+      gateCheck("subject", false, true, "Subject readiness has no event-backed review in this slice."),
+      gateCheck("citations", false, true, "Jurisdiction citations are guidance only until reviewed for this draft."),
+      gateCheck("attachments", false, true, "Attachment readiness requires explicit review event evidence."),
+      gateCheck("risk-review", false, true, "Risk review cannot be inferred from request estimates."),
+      gateCheck(
+        "provider-ready",
+        request.latestOutboundCorrespondence !== undefined,
+        request.latestOutboundCorrespondence === undefined,
+        request.latestOutboundCorrespondence !== undefined
+          ? "Outbound correspondence exists in replayed events."
+          : "No outbound provider event proves send capability."
+      )
+    ]),
+    gateSnapshot(request.prrRequestId, "legal-escalation", [
+      gateCheck(
+        "confirmed-deadline-or-stalling",
+        request.activeDeadline?.source === "confirmed" || request.confirmedStalling,
+        !(request.activeDeadline?.source === "confirmed" || request.confirmedStalling),
+        request.activeDeadline?.source === "confirmed"
+          ? "A confirmed deadline exists in replayed events."
+          : request.confirmedStalling
+            ? "User-confirmed stalling exists in replayed events."
+            : "Estimated deadlines alone do not satisfy legal escalation."
+      ),
+      gateCheck(
+        "jurisdiction-guidance",
+        (request.legalEscalation?.citedRules.length ?? 0) > 0,
+        (request.legalEscalation?.citedRules.length ?? 0) === 0,
+        (request.legalEscalation?.citedRules.length ?? 0) > 0
+          ? "Legal escalation cited rules are present in replayed events."
+          : "No escalation-specific cited rules are present."
+      ),
+      gateCheck(
+        "correspondence-evidence",
+        (request.legalEscalation?.evidenceIds.length ?? 0) > 0,
+        (request.legalEscalation?.evidenceIds.length ?? 0) === 0,
+        (request.legalEscalation?.evidenceIds.length ?? 0) > 0
+          ? "Escalation evidence IDs are present in replayed events."
+          : "No escalation correspondence evidence is present.",
+        legalEvidenceHashes(request.legalEscalation?.evidenceIds ?? [], evidenceHashes)
+      ),
+      gateCheck(
+        "user-confirmed-escalation",
+        request.legalEscalation !== undefined,
+        request.legalEscalation === undefined,
+        request.legalEscalation !== undefined
+          ? "A user-confirmed legal escalation event exists."
+          : "Legal escalation requires an explicit user confirmation event."
+      )
+    ])
+  ];
+}
+
+function gateSnapshot(
+  prrRequestId: string,
+  kind: PrrContextGateSnapshot["kind"],
+  checks: readonly PrrContextGateSnapshot["checks"][number][]
+): PrrContextGateSnapshot {
+  const ready = checks.every((check) => check.ready);
   return {
-    gateId: `${gate.prrRequestId}:${gate.kind}`,
-    kind: gate.kind,
-    ready: gate.ready,
-    locked: gate.locked,
-    checks: gate.checks.map((check) => ({
-      id: check.id,
-      ready: check.ready,
-      locked: check.locked,
-      detail: check.detail
-    }))
+    gateId: `${prrRequestId}:${kind}`,
+    kind,
+    ready,
+    locked: !ready || checks.some((check) => check.locked),
+    checks
   };
+}
+
+function gateCheck(
+  id: string,
+  ready: boolean,
+  locked: boolean,
+  detail: string,
+  evidenceHashes: readonly `sha256:${string}`[] = []
+): PrrContextGateSnapshot["checks"][number] {
+  return {
+    id,
+    ready,
+    locked,
+    detail,
+    ...(evidenceHashes.length === 0 ? {} : { evidenceHashes })
+  };
+}
+
+function legalEvidenceHashes(
+  evidenceIds: readonly string[],
+  hashesById: ReadonlyMap<string, `sha256:${string}`>
+): readonly `sha256:${string}`[] {
+  return evidenceIds.map((evidenceId) => {
+    const hash = hashesById.get(evidenceId);
+    if (hash === undefined) {
+      throw new Error("missing-provenance: legal gate evidence hash is missing");
+    }
+    return hash;
+  }).sort();
 }
 
 function byJson<T>(left: T, right: T): number {
