@@ -5,6 +5,7 @@ import {
   buildPromptArtifact,
   createAgentRuntime,
   createContextPackRegistry,
+  invokeSpecialistModel,
   prepareSpecialistRun,
   productionSpecialistPromptRegistrationFor,
   productionSpecialistPromptRegistrations,
@@ -203,6 +204,20 @@ describe("production specialist run preparation", () => {
       .rejects.toThrow(/production binding|production specialist prompt artifact/i);
     expect(fixture.invocationCount()).toBe(0);
   });
+
+  it("rejects a prepared prompt reused for a different run before provider invocation", async () => {
+    const original = await runnerFixture();
+    const prepared = await prepareSpecialistRun(original.input, "evidence-triage");
+    const current = await runnerFixture({
+      runId: "run_runner_test_002",
+      taskId: "task_runner_test_002",
+      workspaceId: "ws_runner_test_002"
+    });
+
+    await expect(invokeSpecialistModel(current.input, prepared, "inv_runner_test_002"))
+      .rejects.toThrow(/does not belong to the current invocation input/i);
+    expect(current.invocationCount()).toBe(0);
+  });
 });
 
 const runnerContextPackIds = [
@@ -218,23 +233,31 @@ const runnerContextPackIds = [
   "jurisdiction-pack-summary.v1"
 ] as const;
 
-async function runnerFixture(patch: { readonly contextPacks?: ContextPackRegistry } = {}) {
+async function runnerFixture(patch: {
+  readonly contextPacks?: ContextPackRegistry;
+  readonly runId?: string;
+  readonly taskId?: string;
+  readonly workspaceId?: string;
+} = {}) {
+  const runId = patch.runId ?? "run_runner_test_001";
+  const taskId = patch.taskId ?? "task_runner_test_001";
+  const workspaceId = patch.workspaceId ?? "ws_runner_test";
   const ledger = new InMemoryEventLedger();
   const actor = { id: "actor_runner_test", kind: "agent" as const, label: "Runner Test" };
   const now = () => "2026-07-11T08:00:00.000Z";
   const lifecycle = createAgentRuntime({ ledger, actor, now, providers: [] });
-  await lifecycle.initializeDefaultIdentity({ workspaceId: "ws_runner_test" });
+  await lifecycle.initializeDefaultIdentity({ workspaceId });
   await lifecycle.createTask({
-    taskId: "task_runner_test_001",
+    taskId,
     title: "Prepare specialist run",
     requestedBy: "actor_runner_test",
     priority: "normal"
   });
   await lifecycle.startRun({
-    runId: "run_runner_test_001",
-    taskId: "task_runner_test_001",
+    runId,
+    taskId,
     runType: "evidence-triage",
-    scope: { kind: "workspace", refs: ["ws_runner_test"] }
+    scope: { kind: "workspace", refs: [workspaceId] }
   });
 
   let invocations = 0;
@@ -245,8 +268,8 @@ async function runnerFixture(patch: { readonly contextPacks?: ContextPackRegistr
       contextPacks: patch.contextPacks ?? runnerContextPackRegistry(),
       scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
       productionPromptRegistrations: productionSpecialistPromptRegistrations,
-      runId: "run_runner_test_001",
-      taskId: "task_runner_test_001",
+      runId,
+      taskId,
       providerId: "provider_local_test",
       modelFamily: "local-test",
       credentialRef: { credentialRefId: "agent_credref_local_test", providerId: "provider_local_test", kind: "local-no-secret" as const },
