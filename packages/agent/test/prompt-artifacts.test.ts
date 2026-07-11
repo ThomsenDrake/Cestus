@@ -1,6 +1,11 @@
 import { Buffer } from "node:buffer";
 import { describe, expect, it } from "vitest";
-import { buildContextPackRef } from "../src/context-packs.js";
+import {
+  assertResolvedContextPacksForExecution,
+  buildContextPackRef,
+  createContextPackRegistry
+} from "../src/context-packs.js";
+import type { ContextPackRef } from "../src/context-packs.js";
 import {
   assertPromptArtifactCanTransferToRemoteProvider,
   buildPromptArtifact,
@@ -10,6 +15,7 @@ import {
   promptArtifactAuditMetadata,
   serializePromptArtifactEnvelope
 } from "../src/prompt-artifacts.js";
+import { productionSpecialistPromptRegistrationFor } from "../src/production-specialist-prompts.js";
 
 const contextPackRef = buildContextPackRef({
   contextPackId: "task-run-history.v1",
@@ -28,6 +34,28 @@ const contextPackRef = buildContextPackRef({
     ref: "agent.projection",
     value: "42"
   }]
+});
+
+const contextPackRegistry = createContextPackRegistry();
+contextPackRegistry.register({
+  descriptor: {
+    contextPackId: "evidence-summary.v1",
+    version: 1,
+    label: "Evidence summary",
+    maxBytes: 16_384,
+    requiredProvenanceKinds: ["event-id"],
+    redactionPolicy: "safe-summary",
+    sourceProjection: "agent.projection"
+  },
+  build: () => ({
+    contextPackId: "evidence-summary.v1",
+    version: 1,
+    generatedAt: "2026-07-10T12:00:00.000Z",
+    payload: { fact: "payload-only-fact" },
+    safeSummary: "One verified evidence summary.",
+    provenanceRefs: ["evt_evidence_summary_001"]
+  }),
+  parsePayload: (payload) => payload
 });
 
 describe("resident agent prompt artifacts", () => {
@@ -96,6 +124,108 @@ describe("resident agent prompt artifacts", () => {
     };
     tampered.text = "Tampered provider-approved prompt text.";
     expect(() => parsePromptArtifactEnvelope(Buffer.from(JSON.stringify(tampered)))).toThrow(/hash mismatch/i);
+  });
+
+  it("binds production renderer metadata and resolved payload audits without exposing payloads in audit metadata", async () => {
+    const verifiedResolvedEvidenceSummary = await contextPackRegistry.buildResolved("evidence-summary.v1");
+    const contextPackRef = verifiedResolvedEvidenceSummary.ref;
+    const verifiedResolvedContextPacks = assertResolvedContextPacksForExecution(
+      [contextPackRef],
+      [verifiedResolvedEvidenceSummary]
+    );
+    expect(verifiedResolvedContextPacks).toHaveLength(1);
+    expect(verifiedResolvedContextPacks[0]).toBe(verifiedResolvedEvidenceSummary);
+    const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
+    const envelope = buildPromptArtifact({
+      promptTemplateId: registration.promptTemplateId,
+      promptTemplateVersion: registration.promptTemplateVersion,
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      runType: "evidence-triage",
+      safetyClass: "provider-approved",
+      transferApprovalClass: "provider-byte-transfer",
+      contextPackRefs: [contextPackRef],
+      text: "Rendered prompt contains bounded payload content.",
+      safeSummary: "Provider-approved evidence triage prompt artifact.",
+      production: {
+        rendererId: registration.rendererId,
+        rendererVersion: registration.rendererVersion,
+        rendererHash: registration.rendererHash,
+        renderedPromptHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        providerOutputSchemaId: registration.providerOutputSchemaId,
+        providerOutputSchemaVersion: registration.providerOutputSchemaVersion,
+        handoffSchemaId: registration.handoffSchemaId,
+        handoffSchemaVersion: registration.handoffSchemaVersion,
+        scopeApplicabilityHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        evaluatedContextRequirements: [{
+          contextPackId: "evidence-summary.v1",
+          requirementMode: "always",
+          status: "applicable",
+          contentHash: contextPackRef.contentHash
+        }],
+        resolvedPayloadAudits: [{
+          contextPackId: "evidence-summary.v1",
+          contentHash: contextPackRef.contentHash,
+          sizeBytes: contextPackRef.sizeBytes,
+          schemaId: "evidence-summary.v1"
+        }]
+      },
+      resolvedContextPacks: [verifiedResolvedEvidenceSummary]
+    });
+
+    const audit = promptArtifactAuditMetadata(envelope);
+    expect(audit.production?.renderedPromptHash).toMatch(/^sha256:/);
+    expect(JSON.stringify(audit)).not.toContain("payload-only-fact");
+    expect(JSON.stringify(audit)).not.toContain("Rendered prompt contains bounded payload content");
+    expect(envelope.resolvedContextPacks?.[0]).toBe(verifiedResolvedEvidenceSummary);
+  });
+
+  it.each([
+    ["text", (serialized: { text: string }) => { serialized.text = "Tampered provider prompt text."; }],
+    ["rendered prompt hash", (serialized: { manifest: { production: { renderedPromptHash: string } } }) => { serialized.manifest.production.renderedPromptHash = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"; }],
+    ["scope applicability hash", (serialized: { manifest: { production: { scopeApplicabilityHash: string } } }) => { serialized.manifest.production.scopeApplicabilityHash = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"; }]
+  ])("rejects serialized production artifact tampering of %s", async (_field, tamper) => {
+    const verifiedResolvedEvidenceSummary = await contextPackRegistry.buildResolved("evidence-summary.v1");
+    const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
+    const envelope = buildPromptArtifact({
+      promptTemplateId: registration.promptTemplateId,
+      promptTemplateVersion: registration.promptTemplateVersion,
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      runType: "evidence-triage",
+      safetyClass: "provider-approved",
+      transferApprovalClass: "provider-byte-transfer",
+      contextPackRefs: [verifiedResolvedEvidenceSummary.ref],
+      text: "Rendered prompt contains bounded payload content.",
+      safeSummary: "Provider-approved evidence triage prompt artifact.",
+      production: productionBinding(verifiedResolvedEvidenceSummary.ref),
+      resolvedContextPacks: [verifiedResolvedEvidenceSummary]
+    });
+    const serialized = JSON.parse(Buffer.from(serializePromptArtifactEnvelope(envelope)).toString("utf8"));
+
+    tamper(serialized);
+
+    expect(() => parsePromptArtifactEnvelope(Buffer.from(JSON.stringify(serialized)))).toThrow(/hash mismatch/i);
+  });
+
+  it("rejects forged and reloaded resolved packs for production artifact construction", async () => {
+    const verifiedResolvedEvidenceSummary = await contextPackRegistry.buildResolved("evidence-summary.v1");
+    const baseInput = {
+      promptTemplateId: "evidence-triage.classify.v1",
+      promptTemplateVersion: 1,
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      runType: "evidence-triage" as const,
+      safetyClass: "provider-approved" as const,
+      transferApprovalClass: "provider-byte-transfer" as const,
+      contextPackRefs: [verifiedResolvedEvidenceSummary.ref],
+      text: "Rendered prompt contains bounded payload content.",
+      safeSummary: "Provider-approved evidence triage prompt artifact.",
+      production: productionBinding(verifiedResolvedEvidenceSummary.ref)
+    };
+    const forged = { ...verifiedResolvedEvidenceSummary };
+    const reloaded = JSON.parse(JSON.stringify(verifiedResolvedEvidenceSummary));
+
+    expect(() => buildPromptArtifact({ ...baseInput, resolvedContextPacks: [forged] as never })).toThrow(/unverified|verified/i);
+    expect(() => buildPromptArtifact({ ...baseInput, resolvedContextPacks: [reloaded] as never })).toThrow(/unverified|verified/i);
+    expect(() => buildPromptArtifact(baseInput)).toThrow(/require.*resolved/i);
   });
 
   it("rejects unsafe prompt text before it can reach a provider", () => {
@@ -231,6 +361,33 @@ describe("resident agent prompt artifacts", () => {
     ).toThrow(/run type/i);
   });
 });
+
+function productionBinding(contextPackRef: ContextPackRef) {
+  const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
+  return {
+    rendererId: registration.rendererId,
+    rendererVersion: registration.rendererVersion,
+    rendererHash: registration.rendererHash,
+    renderedPromptHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    providerOutputSchemaId: registration.providerOutputSchemaId,
+    providerOutputSchemaVersion: registration.providerOutputSchemaVersion,
+    handoffSchemaId: registration.handoffSchemaId,
+    handoffSchemaVersion: registration.handoffSchemaVersion,
+    scopeApplicabilityHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    evaluatedContextRequirements: [{
+      contextPackId: "evidence-summary.v1",
+      requirementMode: "always" as const,
+      status: "applicable" as const,
+      contentHash: contextPackRef.contentHash
+    }],
+    resolvedPayloadAudits: [{
+      contextPackId: "evidence-summary.v1",
+      contentHash: contextPackRef.contentHash,
+      sizeBytes: contextPackRef.sizeBytes,
+      schemaId: "evidence-summary.v1"
+    }]
+  };
+}
 
 function unsafeCredentialLikeText(): string {
   return ["Author", "ization", ": ", "Bear", "er", " ", "raw-provider-material"].join("");
