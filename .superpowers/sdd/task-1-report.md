@@ -56,3 +56,9 @@ Status: DONE
 - RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 2 expected regressions: `The PRR delivery was completed.`, `The PRR submission was completed.`, `The publication was completed.`, `The entity resolution was completed.`, and `The lock clearing was completed.` bypassed authority matching, and `Provider error 429 from /home/user/provider-response.json` was accepted in a narrative field.
 - GREEN: the same focused command passed with 1 file and 14 tests after punctuation-aware normalization and structural subject/completed-effect matching rejected the nominalizations. The shared `safeText` path now rejects raw provider errors and common hidden local paths (`/home/...`, `/Users/...`) for narrative fields, IDs, and refs without blocking ordinary public URLs.
 - Verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warning.
+
+## Remaining Review P1 Fix
+
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 1 expected regression because `OpenAI API returned HTTP 429 rate limit exceeded` was accepted in an ordinary narrative field.
+- GREEN: the same focused command passed with 1 file and 15 tests after the shared `safeText` path rejected combined provider/model/API/OpenAI/Nous diagnostic signals and local `file:///...`, POSIX, and Windows user paths. The exact `file:///home/user/provider-response.json` and `C:\\Users\\user\\provider-response.json` cases are covered; ordinary `https://example.org/report.pdf` evidence remains valid.
+- Verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warnings.
