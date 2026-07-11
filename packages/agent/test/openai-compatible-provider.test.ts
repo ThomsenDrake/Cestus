@@ -120,6 +120,61 @@ describe("OpenAI-compatible chat provider", () => {
     expect(calls[0]?.body).not.toContain(fixtureProviderMaterial);
   });
 
+  it("sends deterministic Nous sampling without claiming structured output support", async () => {
+    const calls: CapturedFetchCall[] = [];
+    const provider = createNousPortalProvider({
+      secretStore: fixtureStoreForNous(),
+      fetch: captureFetch(calls, successfulResponse())
+    });
+
+    await provider.invoke({
+      invocationId: "inv_nous_temperature_zero",
+      runId: "run_nous_001",
+      modelFamily: "tencent/hy3:free",
+      inputArtifactHash,
+      inputText: providerInputText,
+      credentialRef: {
+        credentialRefId: "agent_credref_nous_portal",
+        providerId: "provider_nous_portal",
+        kind: "api-key-bearer"
+      }
+    });
+
+    const body = JSON.parse(calls[0]?.body ?? "{}") as Record<string, unknown>;
+    expect(body.temperature).toBe(0);
+    expect(body).not.toHaveProperty("response_format");
+    expect(provider.describe()).toMatchObject({
+      supportsStructuredOutput: false,
+      supportsToolCalling: false
+    });
+  });
+
+  it("validates configured sampling temperature while preserving zero", () => {
+    expect(() => new OpenAICompatibleChatProvider({
+      providerId: "provider_nous_portal",
+      label: "Nous Portal",
+      endpointUrl: "https://inference-api.nousresearch.com/v1/chat/completions",
+      modelId: "tencent/hy3:free",
+      credentialRefId: "agent_credref_nous_portal",
+      secretStore: fixtureStoreForNous(),
+      fetch: captureFetch([], successfulResponse()),
+      temperature: 0
+    })).not.toThrow();
+
+    for (const temperature of [-0.1, 2.1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => new OpenAICompatibleChatProvider({
+        providerId: "provider_nous_portal",
+        label: "Nous Portal",
+        endpointUrl: "https://inference-api.nousresearch.com/v1/chat/completions",
+        modelId: "tencent/hy3:free",
+        credentialRefId: "agent_credref_nous_portal",
+        secretStore: fixtureStoreForNous(),
+        fetch: captureFetch([], successfulResponse()),
+        temperature
+      })).toThrow(/temperature/i);
+    }
+  });
+
   it("requires runtime-supplied input text before any remote request", async () => {
     const calls: CapturedFetchCall[] = [];
     const provider = createNousPortalProvider({

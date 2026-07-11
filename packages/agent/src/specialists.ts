@@ -20,6 +20,8 @@ export interface SpecialistExecutionStatus {
   readonly executionReady: false;
   readonly prerequisiteContractIds: readonly string[];
   readonly requiredContextPackIds: readonly string[];
+  readonly alwaysContextPackIds: readonly string[];
+  readonly conditionalContextPackIds: readonly string[];
   readonly missingExecutionCapabilities: readonly string[];
   readonly allowedRepairActions: readonly string[];
 }
@@ -34,6 +36,12 @@ export function specialistExecutionStatusFor(runType: string): SpecialistExecuti
     const descriptor = specialistWorkflowDescriptorFor(runType as AgentSpecialistRunType);
     const prerequisiteContractIds = Object.freeze([...descriptor.prerequisiteContractIds]);
     const requiredContextPackIds = Object.freeze(descriptor.contextPacks.map((pack) => pack.contextPackId));
+    const alwaysContextPackIds = Object.freeze(descriptor.contextPacks
+      .filter((pack) => pack.requirementMode === "always")
+      .map((pack) => pack.contextPackId));
+    const conditionalContextPackIds = Object.freeze(descriptor.contextPacks
+      .filter((pack) => pack.requirementMode === "when-scope-associated-prr")
+      .map((pack) => pack.contextPackId));
 
     return Object.freeze({
       enabled: false,
@@ -43,6 +51,8 @@ export function specialistExecutionStatusFor(runType: string): SpecialistExecuti
       executionReady: false,
       prerequisiteContractIds,
       requiredContextPackIds,
+      alwaysContextPackIds,
+      conditionalContextPackIds,
       missingExecutionCapabilities: Object.freeze([
         "specialist workflow runner",
         "model provider readiness",
@@ -69,6 +79,8 @@ function unregisteredSpecialistStatus(): SpecialistExecutionStatus {
     executionReady: false,
     prerequisiteContractIds: Object.freeze([]),
     requiredContextPackIds: Object.freeze([]),
+    alwaysContextPackIds: Object.freeze([]),
+    conditionalContextPackIds: Object.freeze([]),
     missingExecutionCapabilities: Object.freeze([
       "specialist workflow descriptor",
       "specialist workflow runner",

@@ -3,7 +3,6 @@ import { z } from "zod";
 import type { AgentContextPackJsonValue, ContextPackRef } from "./context-packs.js";
 import {
   parseSpecialistWorkflowHandoff,
-  hashSpecialistWorkflowHandoff,
   specialistApprovalRequirementSchema,
   specialistFailureDtoSchema,
   specialistNextActionSchema,
@@ -15,6 +14,7 @@ import {
   type SpecialistWorkflowNextSafeActionDto,
   type SpecialistWorkflowOutputArtifactDto
 } from "./specialist-handoffs.js";
+import { hashSpecialistWorkflowHandoff } from "./specialist-handoff-hash.js";
 
 export const specialistHandoffManifestSchemaVersion = "agent-specialist-handoff-manifest.v1" as const;
 

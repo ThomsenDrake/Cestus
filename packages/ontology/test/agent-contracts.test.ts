@@ -219,8 +219,70 @@ describe("resident agent event contracts", () => {
           "agent_model_invocation_inv_001",
           modelInvocationPromptAuditPayload()
         )
-      ).success
+    ).success
     ).toBe(true);
+  });
+
+  it("accepts a strict production prompt audit binding while keeping historical prompt audits replay-valid", () => {
+    const productionEvent = agentEvent(
+      "evt_agent_model_requested_production_audit",
+      "agent.model-invocation.requested",
+      "agent_model_invocation_inv_001",
+      { ...modelInvocationPromptAuditPayload(), production: productionPromptAuditBinding() }
+    );
+
+    expect(validateKnowledgeEvent(productionEvent).success).toBe(true);
+    expect(validateKnowledgeEvent(
+      agentEvent(
+        "evt_agent_model_requested_historical_audit",
+        "agent.model-invocation.requested",
+        "agent_model_invocation_inv_001",
+        modelInvocationPromptAuditPayload()
+      )
+    ).success).toBe(true);
+  });
+
+  it.each([
+    ["unknown production field", { unexpected: "metadata-bag" }],
+    ["unknown resolved payload field", {
+      resolvedPayloadAudits: [{
+        contextPackId: "task-run-history.v1",
+        contentHash: hash222,
+        sizeBytes: 512,
+        schemaId: "task-run-history.v1",
+        resolvedPayload: "must-not-appear"
+      }]
+    }],
+    ["applicable requirement with omission", {
+      evaluatedContextRequirements: [{
+        contextPackId: "task-run-history.v1",
+        requirementMode: "always",
+        status: "applicable",
+        contentHash: hash222,
+        omissionReason: "no-associated-prr"
+      }]
+    }],
+    ["not-applicable requirement with content hash", {
+      evaluatedContextRequirements: [{
+        contextPackId: "prr-read-model.v1",
+        requirementMode: "when-scope-associated-prr",
+        status: "not-applicable",
+        contentHash: hash222,
+        omissionReason: "no-associated-prr"
+      }]
+    }]
+  ])("rejects invalid production prompt audit binding: %s", (_name, patch) => {
+    expect(validateKnowledgeEvent(
+      agentEvent(
+        "evt_agent_model_requested_invalid_production_audit",
+        "agent.model-invocation.requested",
+        "agent_model_invocation_inv_001",
+        {
+          ...modelInvocationPromptAuditPayload(),
+          production: { ...productionPromptAuditBinding(), ...patch }
+        }
+      )
+    ).success).toBe(false);
   });
 
   it.each([
@@ -691,6 +753,37 @@ function modelInvocationPromptAuditPayload(): Record<string, unknown> {
       }
     ],
     transferApprovalClass: "provider-byte-transfer"
+  };
+}
+
+function productionPromptAuditBinding(): Record<string, unknown> {
+  return {
+    rendererId: "evidence-triage.classify.renderer",
+    rendererVersion: 1,
+    rendererHash: hash111,
+    renderedPromptHash: hash222,
+    providerOutputSchemaId: "evidence-triage.classify-output.v1",
+    providerOutputSchemaVersion: 1,
+    handoffSchemaId: "evidence-triage-handoff.v1",
+    handoffSchemaVersion: 1,
+    scopeApplicabilityHash: hash333,
+    evaluatedContextRequirements: [{
+      contextPackId: "task-run-history.v1",
+      requirementMode: "always",
+      status: "applicable",
+      contentHash: hash222
+    }, {
+      contextPackId: "prr-read-model.v1",
+      requirementMode: "when-scope-associated-prr",
+      status: "not-applicable",
+      omissionReason: "no-associated-prr"
+    }],
+    resolvedPayloadAudits: [{
+      contextPackId: "task-run-history.v1",
+      contentHash: hash222,
+      sizeBytes: 512,
+      schemaId: "task-run-history.v1"
+    }]
   };
 }
 

@@ -1,12 +1,21 @@
 import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
+  assertResolvedContextPacksForExecution,
   contextPackRefSchema,
   hashAgentContextPack,
+  serializeContextPackPayload,
   type AgentContextPackJsonValue,
   type ContextPackRef,
-  type ContextPackStalenessInput
+  type ContextPackStalenessInput,
+  type VerifiedResolvedContextPack
 } from "./context-packs.js";
+import {
+  isProductionSpecialistPromptArtifactRendererVerified,
+  productionSpecialistPromptRegistrationFor,
+  productionSpecialistPromptRegistrations
+} from "./production-specialist-prompts.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import { approvedAgentSpecialistRunTypes, type AgentSpecialistRunType } from "./specialists.js";
 
@@ -26,6 +35,35 @@ export interface PromptArtifactOmission {
   readonly safeSummary: string;
 }
 
+export interface PromptArtifactResolvedPayloadAudit {
+  readonly contextPackId: string;
+  readonly contentHash: string;
+  readonly sizeBytes: number;
+  readonly schemaId: string;
+}
+
+export interface PromptArtifactEvaluatedContextRequirement {
+  readonly contextPackId: string;
+  readonly requirementMode: "always" | "when-scope-associated-prr";
+  readonly status: "applicable" | "not-applicable";
+  readonly contentHash?: string | undefined;
+  readonly omissionReason?: "no-associated-prr" | undefined;
+}
+
+export interface PromptArtifactProductionBinding {
+  readonly rendererId: string;
+  readonly rendererVersion: number;
+  readonly rendererHash: string;
+  readonly renderedPromptHash: string;
+  readonly providerOutputSchemaId: string;
+  readonly providerOutputSchemaVersion: number;
+  readonly handoffSchemaId: string;
+  readonly handoffSchemaVersion: number;
+  readonly scopeApplicabilityHash: string;
+  readonly evaluatedContextRequirements: readonly PromptArtifactEvaluatedContextRequirement[];
+  readonly resolvedPayloadAudits: readonly PromptArtifactResolvedPayloadAudit[];
+}
+
 export interface PromptArtifactManifest {
   readonly inputArtifactHash: string;
   readonly promptTemplateId: string;
@@ -37,11 +75,17 @@ export interface PromptArtifactManifest {
   readonly contextPackRefs: readonly ContextPackRef[];
   readonly omissions: readonly PromptArtifactOmission[];
   readonly safeSummary: string;
+  readonly production?: PromptArtifactProductionBinding;
 }
 
 export interface PromptArtifactEnvelope {
   readonly manifest: PromptArtifactManifest;
   readonly text: string;
+  readonly resolvedContextPacks?: readonly VerifiedResolvedContextPack[];
+}
+
+export interface ParsePromptArtifactEnvelopeOptions {
+  readonly authoritativeResolvedContextPacks?: readonly VerifiedResolvedContextPack[];
 }
 
 export interface PromptArtifactAuditMetadata {
@@ -54,6 +98,7 @@ export interface PromptArtifactAuditMetadata {
   readonly contextPackRefs: readonly ContextPackRef[];
   readonly omissions: readonly PromptArtifactOmission[];
   readonly safeSummary: string;
+  readonly production?: PromptArtifactProductionBinding;
 }
 
 export interface BuildPromptArtifactInput {
@@ -67,6 +112,8 @@ export interface BuildPromptArtifactInput {
   readonly text: string;
   readonly safeSummary: string;
   readonly omissions?: readonly PromptArtifactOmission[];
+  readonly production?: PromptArtifactProductionBinding;
+  readonly resolvedContextPacks?: readonly VerifiedResolvedContextPack[];
 }
 
 export interface PromptArtifactResolver {
@@ -110,6 +157,42 @@ const promptArtifactOmissionObjectSchema = z.object({
   safeSummary: agentSecretSafeTextSchema("omission.safeSummary")
 }).strict();
 
+const promptArtifactResolvedPayloadAuditObjectSchema = z.object({
+  contextPackId: agentSecretSafeTextSchema("production.resolvedPayloadAudit.contextPackId"),
+  contentHash: z.string().regex(contentHashPattern),
+  sizeBytes: z.number().int().nonnegative(),
+  schemaId: agentSecretSafeTextSchema("production.resolvedPayloadAudit.schemaId")
+}).strict();
+
+const promptArtifactEvaluatedContextRequirementObjectSchema = z.object({
+  contextPackId: agentSecretSafeTextSchema("production.evaluatedContextRequirement.contextPackId"),
+  requirementMode: z.enum(["always", "when-scope-associated-prr"]),
+  status: z.enum(["applicable", "not-applicable"]),
+  contentHash: z.string().regex(contentHashPattern).optional(),
+  omissionReason: z.enum(["no-associated-prr"]).optional()
+}).strict().superRefine((value, ctx) => {
+  if (value.status === "applicable" && (value.contentHash === undefined || value.omissionReason !== undefined)) {
+    ctx.addIssue({ code: "custom", message: "Applicable context requirements require contentHash and no omissionReason" });
+  }
+  if (value.status === "not-applicable" && (value.contentHash !== undefined || value.omissionReason !== "no-associated-prr")) {
+    ctx.addIssue({ code: "custom", message: "Non-applicable context requirements require no-associated-prr and no contentHash" });
+  }
+});
+
+const promptArtifactProductionBindingObjectSchema = z.object({
+  rendererId: agentSecretSafeTextSchema("production.rendererId"),
+  rendererVersion: z.number().int().positive(),
+  rendererHash: z.string().regex(contentHashPattern),
+  renderedPromptHash: z.string().regex(contentHashPattern),
+  providerOutputSchemaId: agentSecretSafeTextSchema("production.providerOutputSchemaId"),
+  providerOutputSchemaVersion: z.number().int().positive(),
+  handoffSchemaId: agentSecretSafeTextSchema("production.handoffSchemaId"),
+  handoffSchemaVersion: z.number().int().positive(),
+  scopeApplicabilityHash: z.string().regex(contentHashPattern),
+  evaluatedContextRequirements: z.array(promptArtifactEvaluatedContextRequirementObjectSchema),
+  resolvedPayloadAudits: z.array(promptArtifactResolvedPayloadAuditObjectSchema)
+}).strict();
+
 const buildPromptArtifactInputObjectSchema = z.object({
   promptTemplateId: agentSecretSafeTextSchema("promptTemplateId"),
   promptTemplateVersion: z.number().int().positive(),
@@ -120,7 +203,9 @@ const buildPromptArtifactInputObjectSchema = z.object({
   contextPackRefs: z.array(contextPackRefSchema).min(1),
   text: agentSecretSafeTextSchema("promptArtifact.text"),
   safeSummary: agentSecretSafeTextSchema("safeSummary"),
-  omissions: z.array(promptArtifactOmissionObjectSchema).optional()
+  omissions: z.array(promptArtifactOmissionObjectSchema).optional(),
+  production: promptArtifactProductionBindingObjectSchema.optional(),
+  resolvedContextPacks: z.array(z.unknown()).optional()
 }).strict();
 
 const promptArtifactManifestObjectSchema = z.object({
@@ -133,14 +218,15 @@ const promptArtifactManifestObjectSchema = z.object({
   transferApprovalClass: transferApprovalClassSchema,
   contextPackRefs: z.array(contextPackRefSchema).min(1),
   omissions: z.array(promptArtifactOmissionObjectSchema),
-  safeSummary: agentSecretSafeTextSchema("safeSummary")
+  safeSummary: agentSecretSafeTextSchema("safeSummary"),
+  production: promptArtifactProductionBindingObjectSchema.optional()
 }).strict();
 
 const promptArtifactEnvelopeObjectSchema = z.object({
   manifest: promptArtifactManifestObjectSchema,
-  text: agentSecretSafeTextSchema("promptArtifact.text")
+  text: agentSecretSafeTextSchema("promptArtifact.text"),
+  resolvedContextPacks: z.array(z.unknown()).optional()
 }).strict();
-
 const promptArtifactTemplateRegistrationObjectSchema = z.object({
   runType: runTypeSchema,
   promptTemplateId: agentSecretSafeTextSchema("promptTemplateId"),
@@ -151,6 +237,13 @@ const promptArtifactTemplateRegistrationObjectSchema = z.object({
 export function buildPromptArtifact(input: BuildPromptArtifactInput): PromptArtifactEnvelope {
   const parsed = parseNormalizedDtoOrThrow(input, buildPromptArtifactInputObjectSchema, "$");
   const omissions = parsed.omissions ?? [];
+  const resolvedContextPacks = resolveAuthoritativeContextPacks(input, parsed.contextPackRefs);
+  if (parsed.production !== undefined && resolvedContextPacks === undefined) {
+    throw new Error("Production prompt artifacts require resolved context packs");
+  }
+  const production = parsed.production === undefined
+    ? undefined
+    : normalizeProductionBinding(parsed.production, parsed, parsed.text, resolvedContextPacks, { deriveHashes: true });
   const manifestWithoutHash = {
     promptTemplateId: parsed.promptTemplateId,
     promptTemplateVersion: parsed.promptTemplateVersion,
@@ -160,7 +253,8 @@ export function buildPromptArtifact(input: BuildPromptArtifactInput): PromptArti
     transferApprovalClass: parsed.transferApprovalClass,
     contextPackRefs: parsed.contextPackRefs,
     omissions,
-    safeSummary: parsed.safeSummary
+    safeSummary: parsed.safeSummary,
+    ...(production === undefined ? {} : { production })
   };
   const inputArtifactHash = computePromptArtifactHash({
     manifest: manifestWithoutHash,
@@ -172,17 +266,36 @@ export function buildPromptArtifact(input: BuildPromptArtifactInput): PromptArti
       inputArtifactHash,
       ...manifestWithoutHash
     },
-    text: parsed.text
+    text: parsed.text,
+    ...(resolvedContextPacks === undefined ? {} : { resolvedContextPacks })
   });
 }
 
 export function serializePromptArtifactEnvelope(envelope: PromptArtifactEnvelope): Uint8Array {
   const parsed = normalizePromptArtifactEnvelope(envelope);
+  const resolvedContextPacks = resolveAuthoritativeContextPacks(envelope, parsed.manifest.contextPackRefs);
+  if (parsed.manifest.production !== undefined && resolvedContextPacks === undefined) {
+    throw new Error("Production prompt artifacts require resolved context packs");
+  }
+  const production = parsed.manifest.production === undefined
+    ? undefined
+    : normalizeProductionBinding(parsed.manifest.production, parsed.manifest, parsed.text, resolvedContextPacks);
+  const serializable = freezePromptArtifactEnvelope({
+    manifest: {
+      ...parsed.manifest,
+      ...(production === undefined ? {} : { production })
+    },
+    text: parsed.text,
+    ...(resolvedContextPacks === undefined ? {} : { resolvedContextPacks })
+  });
 
-  return Buffer.from(stableJsonForPromptArtifact(parsed), "utf8");
+  return Buffer.from(stableJsonForPromptArtifact(serializable), "utf8");
 }
 
-export function parsePromptArtifactEnvelope(bytes: string | Uint8Array): PromptArtifactEnvelope {
+export function parsePromptArtifactEnvelope(
+  bytes: string | Uint8Array,
+  options: ParsePromptArtifactEnvelopeOptions = {}
+): PromptArtifactEnvelope {
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(typeof bytes === "string" ? bytes : Buffer.from(bytes).toString("utf8"));
@@ -190,7 +303,27 @@ export function parsePromptArtifactEnvelope(bytes: string | Uint8Array): PromptA
     throw new Error("Prompt artifact envelope must be valid JSON");
   }
 
-  return normalizePromptArtifactEnvelope(parsedJson);
+  const parsed = normalizePromptArtifactEnvelope(parsedJson);
+  if (options.authoritativeResolvedContextPacks === undefined || parsed.manifest.production === undefined) {
+    return parsed;
+  }
+
+  const resolvedContextPacks = rehydrateProductionResolvedContextPacks(
+    parsedJson,
+    parsed.manifest.contextPackRefs,
+    options.authoritativeResolvedContextPacks
+  );
+  const production = normalizeProductionBinding(
+    parsed.manifest.production,
+    parsed.manifest,
+    parsed.text,
+    resolvedContextPacks
+  );
+  return freezePromptArtifactEnvelope({
+    manifest: { ...parsed.manifest, production },
+    text: parsed.text,
+    resolvedContextPacks
+  });
 }
 
 export function assertPromptArtifactCanTransferToRemoteProvider(envelope: PromptArtifactEnvelope): void {
@@ -200,6 +333,24 @@ export function assertPromptArtifactCanTransferToRemoteProvider(envelope: Prompt
     parsed.manifest.transferApprovalClass !== "provider-byte-transfer"
   ) {
     throw new Error("Prompt artifact is not approved for provider transfer");
+  }
+  if (isProductionRunType(parsed.manifest.runType) && parsed.manifest.production === undefined) {
+    throw new Error("Production prompt artifact requires a complete production binding");
+  }
+  if (isProductionRunType(parsed.manifest.runType)) {
+    assertProductionPromptTransferBoundary(envelope, parsed);
+  }
+}
+
+function assertProductionPromptTransferBoundary(
+  envelope: PromptArtifactEnvelope,
+  parsed: PromptArtifactEnvelope
+): void {
+  if (parsed.manifest.production === undefined) {
+    throw new Error("Production prompt artifact requires a complete production binding");
+  }
+  if (!isProductionSpecialistPromptArtifactRendererVerified(envelope)) {
+    throw new Error("Production prompt artifacts require production renderer verification before provider transfer");
   }
 }
 
@@ -262,12 +413,16 @@ export function promptArtifactAuditMetadata(envelope: PromptArtifactEnvelope): P
     transferApprovalClass: parsed.manifest.transferApprovalClass,
     contextPackRefs: parsed.manifest.contextPackRefs,
     omissions: parsed.manifest.omissions,
-    safeSummary: parsed.manifest.safeSummary
+    safeSummary: parsed.manifest.safeSummary,
+    ...(parsed.manifest.production === undefined ? {} : { production: parsed.manifest.production })
   });
 }
 
 function normalizePromptArtifactEnvelope(envelope: unknown): PromptArtifactEnvelope {
   const parsed = parseNormalizedDtoOrThrow(envelope, promptArtifactEnvelopeObjectSchema, "$");
+  const production = parsed.manifest.production === undefined
+    ? undefined
+    : normalizeProductionBinding(parsed.manifest.production, parsed.manifest, parsed.text);
   const expectedHash = computePromptArtifactHash({
     manifest: {
       promptTemplateId: parsed.manifest.promptTemplateId,
@@ -278,7 +433,8 @@ function normalizePromptArtifactEnvelope(envelope: unknown): PromptArtifactEnvel
       transferApprovalClass: parsed.manifest.transferApprovalClass,
       contextPackRefs: parsed.manifest.contextPackRefs,
       omissions: parsed.manifest.omissions,
-      safeSummary: parsed.manifest.safeSummary
+      safeSummary: parsed.manifest.safeSummary,
+      ...(production === undefined ? {} : { production })
     },
     text: parsed.text
   });
@@ -286,7 +442,14 @@ function normalizePromptArtifactEnvelope(envelope: unknown): PromptArtifactEnvel
     throw new Error("Prompt artifact hash mismatch");
   }
 
-  return freezePromptArtifactEnvelope(parsed);
+  const { production: _production, ...manifestWithoutProduction } = parsed.manifest;
+  return freezePromptArtifactEnvelope({
+    manifest: {
+      ...manifestWithoutProduction,
+      ...(production === undefined ? {} : { production })
+    },
+    text: parsed.text
+  });
 }
 
 function computePromptArtifactHash(input: {
@@ -297,6 +460,210 @@ function computePromptArtifactHash(input: {
     manifest: input.manifest,
     text: input.text
   });
+}
+
+function normalizeProductionBinding(
+  production: PromptArtifactProductionBinding | z.infer<typeof promptArtifactProductionBindingObjectSchema>,
+  manifest: Pick<PromptArtifactManifest, "runType" | "promptTemplateId" | "promptTemplateVersion" | "contextPackRefs">,
+  text: string,
+  verifiedResolvedContextPacks?: readonly VerifiedResolvedContextPack[],
+  options: { readonly deriveHashes?: boolean } = {}
+): PromptArtifactProductionBinding {
+  if (!isProductionRunType(manifest.runType)) {
+    throw new Error("Production prompt binding is not supported for this run type");
+  }
+  const registration = productionSpecialistPromptRegistrationFor(manifest.runType);
+  if (
+    manifest.promptTemplateId !== registration.promptTemplateId ||
+    manifest.promptTemplateVersion !== registration.promptTemplateVersion ||
+    production.rendererId !== registration.rendererId ||
+    production.rendererVersion !== registration.rendererVersion ||
+    production.rendererHash !== registration.rendererHash ||
+    production.providerOutputSchemaId !== registration.providerOutputSchemaId ||
+    production.providerOutputSchemaVersion !== registration.providerOutputSchemaVersion ||
+    production.handoffSchemaId !== registration.handoffSchemaId ||
+    production.handoffSchemaVersion !== registration.handoffSchemaVersion
+  ) {
+    throw new Error("Production prompt binding does not match the registered specialist renderer");
+  }
+
+  assertEvaluatedContextRequirements(production.evaluatedContextRequirements, registration.contextRequirements, manifest.contextPackRefs);
+  const expectedAudits = verifiedResolvedContextPacks === undefined
+    ? auditsFromContextPackRefs(manifest.contextPackRefs)
+    : auditsFromVerifiedResolvedContextPacks(verifiedResolvedContextPacks);
+  if (hashAgentContextPack(production.resolvedPayloadAudits) !== hashAgentContextPack(expectedAudits)) {
+    throw new Error("Production resolved payload audits do not match authoritative context packs");
+  }
+  const expectedRenderedPromptHash = hashPromptText(text);
+  if (!options.deriveHashes && production.renderedPromptHash !== expectedRenderedPromptHash) {
+    throw new Error("Production prompt binding hash mismatch");
+  }
+
+  return freezePromptArtifactProductionBinding({
+    ...production,
+    renderedPromptHash: expectedRenderedPromptHash,
+    resolvedPayloadAudits: expectedAudits
+  });
+}
+
+function assertEvaluatedContextRequirements(
+  evaluated: readonly PromptArtifactEvaluatedContextRequirement[],
+  registered: readonly {
+    readonly contextPackId: string;
+    readonly order: number;
+    readonly requirementMode: "always" | "when-scope-associated-prr";
+    readonly omissionWhenNotApplicable?: "no-associated-prr";
+  }[],
+  refs: readonly ContextPackRef[]
+): void {
+  if (evaluated.length !== registered.length) {
+    throw new Error("Production context requirements must include the complete registered requirement list");
+  }
+
+  const applicable = evaluated.filter((requirement) => requirement.status === "applicable");
+  if (refs.length !== applicable.length) {
+    throw new Error("Production context pack refs must exactly match applicable registered requirements");
+  }
+
+  for (let index = 0; index < registered.length; index += 1) {
+    const registeredRequirement = registered[index];
+    const evaluatedRequirement = evaluated[index];
+    if (registeredRequirement === undefined || evaluatedRequirement === undefined) {
+      throw new Error("Production context requirements must include the complete registered requirement list");
+    }
+    if (
+      registeredRequirement.order !== index ||
+      evaluatedRequirement.contextPackId !== registeredRequirement.contextPackId ||
+      evaluatedRequirement.requirementMode !== registeredRequirement.requirementMode
+    ) {
+      throw new Error("Production context requirement does not match the registered specialist renderer");
+    }
+
+    if (evaluatedRequirement.status === "applicable") {
+      const ref = refs[applicable.indexOf(evaluatedRequirement)];
+      if (
+        ref === undefined ||
+        ref.contextPackId !== evaluatedRequirement.contextPackId ||
+        evaluatedRequirement.contentHash !== ref.contentHash
+      ) {
+        throw new Error("Applicable production context requirement does not match a context pack ref");
+      }
+    } else if (
+      registeredRequirement.contextPackId !== "prr-read-model.v1" ||
+      registeredRequirement.requirementMode !== "when-scope-associated-prr" ||
+      registeredRequirement.omissionWhenNotApplicable !== "no-associated-prr" ||
+      evaluatedRequirement.omissionReason !== "no-associated-prr"
+    ) {
+      throw new Error("Production context requirement is not validly omitted");
+    }
+  }
+}
+
+function auditsFromVerifiedResolvedContextPacks(
+  resolvedContextPacks: readonly VerifiedResolvedContextPack[]
+): readonly PromptArtifactResolvedPayloadAudit[] {
+  return Object.freeze(resolvedContextPacks.map((resolved) => Object.freeze({
+    contextPackId: resolved.ref.contextPackId,
+    contentHash: resolved.ref.contentHash,
+    sizeBytes: resolved.ref.sizeBytes,
+    schemaId: resolved.ref.contextPackId
+  })));
+}
+
+function auditsFromContextPackRefs(refs: readonly ContextPackRef[]): readonly PromptArtifactResolvedPayloadAudit[] {
+  return Object.freeze(refs.map((ref) => Object.freeze({
+    contextPackId: ref.contextPackId,
+    contentHash: ref.contentHash,
+    sizeBytes: ref.sizeBytes,
+    schemaId: ref.contextPackId
+  })));
+}
+
+function hashPromptText(text: string): string {
+  return `sha256:${createHash("sha256").update(Buffer.from(text, "utf8")).digest("hex")}`;
+}
+
+function isProductionRunType(runType: AgentSpecialistRunType): runType is Exclude<AgentSpecialistRunType, "ontology-bootstrap"> {
+  return productionSpecialistPromptRegistrations.some((registration) => registration.runType === runType);
+}
+
+function resolveAuthoritativeContextPacks(
+  input: unknown,
+  refs: readonly ContextPackRef[]
+): readonly VerifiedResolvedContextPack[] | undefined {
+  if (typeof input !== "object" || input === null) {
+    return undefined;
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(input, "resolvedContextPacks");
+  if (descriptor === undefined) {
+    return undefined;
+  }
+  if (!descriptor.enumerable || !("value" in descriptor) || !Array.isArray(descriptor.value)) {
+    throw new Error("resolvedContextPacks must be JSON DTO-safe");
+  }
+  return assertResolvedContextPacksForExecution(
+    refs,
+    descriptor.value as readonly VerifiedResolvedContextPack[]
+  );
+}
+
+function rehydrateProductionResolvedContextPacks(
+  input: unknown,
+  refs: readonly ContextPackRef[],
+  authoritativeResolvedContextPacks: readonly VerifiedResolvedContextPack[]
+): readonly VerifiedResolvedContextPack[] {
+  const authoritative = assertResolvedContextPacksForExecution(refs, authoritativeResolvedContextPacks);
+  const persisted = persistedResolvedContextPacks(input);
+  if (persisted.length !== authoritative.length) {
+    throw new Error("Persisted resolvedContextPacks do not match authoritative context packs");
+  }
+
+  for (let index = 0; index < authoritative.length; index += 1) {
+    const persistedPack = persisted[index];
+    const verifiedPack = authoritative[index];
+    if (persistedPack === undefined || verifiedPack === undefined) {
+      throw new Error("Persisted resolvedContextPacks do not match authoritative context packs");
+    }
+    const persistedRecord = jsonRecord(persistedPack);
+    if (persistedRecord === undefined || persistedRecord.ref === undefined || persistedRecord.payload === undefined) {
+      throw new Error("Persisted resolvedContextPacks must contain ref and payload");
+    }
+
+    const persistedRef = contextPackRefSchema.parse(persistedRecord.ref);
+    if (!sameContextPackBytes(persistedRef, verifiedPack.ref) || !sameContextPackBytes(persistedRecord.payload, verifiedPack.payload)) {
+      throw new Error("Persisted resolvedContextPacks do not match authoritative context packs");
+    }
+  }
+
+  return authoritative;
+}
+
+function persistedResolvedContextPacks(input: unknown): readonly AgentContextPackJsonValue[] {
+  if (typeof input !== "object" || input === null) {
+    throw new Error("Persisted production prompt artifact requires resolvedContextPacks");
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(input, "resolvedContextPacks");
+  if (descriptor === undefined) {
+    throw new Error("Persisted production prompt artifact requires resolvedContextPacks");
+  }
+  if (!descriptor.enumerable || !("value" in descriptor)) {
+    throw new Error("resolvedContextPacks must be JSON DTO-safe");
+  }
+  const normalized = normalizeJsonDtoValue(descriptor.value, "$.resolvedContextPacks");
+  if (!Array.isArray(normalized)) {
+    throw new Error("resolvedContextPacks must be JSON DTO-safe");
+  }
+  return normalized;
+}
+
+function jsonRecord(value: AgentContextPackJsonValue): Readonly<Record<string, AgentContextPackJsonValue>> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Readonly<Record<string, AgentContextPackJsonValue>>
+    : undefined;
+}
+
+function sameContextPackBytes(left: unknown, right: unknown): boolean {
+  return Buffer.from(serializeContextPackPayload(left)).equals(Buffer.from(serializeContextPackPayload(right)));
 }
 
 function addSecretSafeIssue(value: string, label: string, ctx: z.RefinementCtx): void {
@@ -445,14 +812,21 @@ function assertSafeContentHash(value: string, label: string): void {
   }
 }
 
-function freezePromptArtifactEnvelope(envelope: z.infer<typeof promptArtifactEnvelopeObjectSchema>): PromptArtifactEnvelope {
+function freezePromptArtifactEnvelope(envelope: {
+  readonly manifest: PromptArtifactManifest;
+  readonly text: string;
+  readonly resolvedContextPacks?: readonly VerifiedResolvedContextPack[];
+}): PromptArtifactEnvelope {
   return Object.freeze({
     manifest: freezePromptArtifactManifest(envelope.manifest),
-    text: envelope.text
+    text: envelope.text,
+    ...(envelope.resolvedContextPacks === undefined
+      ? {}
+      : { resolvedContextPacks: Object.freeze([...envelope.resolvedContextPacks]) })
   });
 }
 
-function freezePromptArtifactManifest(manifest: z.infer<typeof promptArtifactManifestObjectSchema>): PromptArtifactManifest {
+function freezePromptArtifactManifest(manifest: PromptArtifactManifest): PromptArtifactManifest {
   return Object.freeze({
     inputArtifactHash: manifest.inputArtifactHash,
     promptTemplateId: manifest.promptTemplateId,
@@ -463,7 +837,8 @@ function freezePromptArtifactManifest(manifest: z.infer<typeof promptArtifactMan
     transferApprovalClass: manifest.transferApprovalClass,
     contextPackRefs: Object.freeze([...manifest.contextPackRefs]),
     omissions: Object.freeze(manifest.omissions.map(freezePromptArtifactOmission)),
-    safeSummary: manifest.safeSummary
+    safeSummary: manifest.safeSummary,
+    ...(manifest.production === undefined ? {} : { production: freezePromptArtifactProductionBinding(manifest.production) })
   });
 }
 
@@ -472,6 +847,35 @@ function freezePromptArtifactOmission(omission: z.infer<typeof promptArtifactOmi
     reason: omission.reason,
     sourceRef: omission.sourceRef,
     safeSummary: omission.safeSummary
+  });
+}
+
+function freezePromptArtifactProductionBinding(
+  production: PromptArtifactProductionBinding
+): PromptArtifactProductionBinding {
+  return Object.freeze({
+    rendererId: production.rendererId,
+    rendererVersion: production.rendererVersion,
+    rendererHash: production.rendererHash,
+    renderedPromptHash: production.renderedPromptHash,
+    providerOutputSchemaId: production.providerOutputSchemaId,
+    providerOutputSchemaVersion: production.providerOutputSchemaVersion,
+    handoffSchemaId: production.handoffSchemaId,
+    handoffSchemaVersion: production.handoffSchemaVersion,
+    scopeApplicabilityHash: production.scopeApplicabilityHash,
+    evaluatedContextRequirements: Object.freeze(production.evaluatedContextRequirements.map((requirement) => Object.freeze({
+      contextPackId: requirement.contextPackId,
+      requirementMode: requirement.requirementMode,
+      status: requirement.status,
+      ...(requirement.contentHash === undefined ? {} : { contentHash: requirement.contentHash }),
+      ...(requirement.omissionReason === undefined ? {} : { omissionReason: requirement.omissionReason })
+    }))),
+    resolvedPayloadAudits: Object.freeze(production.resolvedPayloadAudits.map((audit) => Object.freeze({
+      contextPackId: audit.contextPackId,
+      contentHash: audit.contentHash,
+      sizeBytes: audit.sizeBytes,
+      schemaId: audit.schemaId
+    })))
   });
 }
 

@@ -9,8 +9,6 @@ import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import type { AppendableKnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import {
   buildAgentProjection,
-  buildContextPackRef,
-  buildPromptArtifact,
   buildProviderByteTransferApprovalPreview,
   createAgentRuntime,
   createContextPackRegistry,
@@ -20,6 +18,7 @@ import {
   promptArtifactAuditMetadata,
   providerParseExecuteDescriptor,
   rebuildProviderByteTransferCurrentPreview,
+  renderProductionSpecialistPrompt,
   runEvidenceTriageWorkflow,
   type ModelInvocationRequest,
   type ModelInvocationResult,
@@ -28,6 +27,8 @@ import {
   type ProviderReadinessDto,
   type ProviderSetupCard
 } from "../src/index.js";
+import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
+import type { AgentContextPackJsonValue } from "../src/index.js";
 
 const now = () => "2026-07-10T02:30:00.000Z";
 const actor = { id: "actor_agent", kind: "agent" as const, label: "Cestus Agent" };
@@ -36,7 +37,7 @@ const promptArtifactHash = hashText("triage prompt artifact");
 const providerParseHuman = { id: "actor_provider_reviewer", kind: "human" as const, label: "Provider Reviewer" };
 
 describe("evidence triage workflow", () => {
-  it("writes source-bound local artifacts and blocks instead of queueing provider parse", async () => {
+  it("permits bounded instructional narrative while writing source-bound local artifacts", async () => {
     const { ledger, runtime } = await preparedRuntime(modelOutput());
     const providerPreview = await providerParseCurrentPreview(ledger);
     const builtContextPackIds: string[] = [];
@@ -64,12 +65,12 @@ describe("evidence triage workflow", () => {
     expect(builtContextPackIds).toEqual(expect.arrayContaining([
       "evidence-summary.v1",
       "governance-locks.v1",
-      "prr-read-model.v1",
       "accepted-graph-projection.v1",
       "agent-memory-summary.v1",
       "task-run-history.v1",
       "workspace-runtime-status.v1"
     ]));
+    expect(builtContextPackIds).not.toContain("prr-read-model.v1");
     expect(result.handoff.outputArtifacts.map((artifact) => artifact.artifactKind)).toEqual(expect.arrayContaining([
       "triage-dossier",
       "safe-evidence-summaries",
@@ -147,7 +148,7 @@ describe("evidence triage workflow", () => {
 
     const result = await runEvidenceTriageWorkflow({
       ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
-      providerParseApprovalPreview: providerParsePreviewInput()
+      providerParseApprovalPreview: await providerParsePreviewInput()
     });
 
     expect(result.handoff.status).toBe("ready-for-review");
@@ -173,7 +174,7 @@ describe("evidence triage workflow", () => {
     await expect(runEvidenceTriageWorkflow({
       ...baseRunInput(mismatched.ledger, mismatched.runtime, createTriageContextPacks([])),
       evidenceIds: ["ev_triage_001", "ev_triage_002"],
-      providerParseApprovalPreview: providerParsePreviewInput()
+      providerParseApprovalPreview: await providerParsePreviewInput()
     })).rejects.toThrow(/exactly match/i);
     expectNoPreflightEffects(await mismatched.ledger.readAll());
 
@@ -181,7 +182,7 @@ describe("evidence triage workflow", () => {
     await expect(runEvidenceTriageWorkflow({
       ...baseRunInput(malformed.ledger, malformed.runtime, createTriageContextPacks([])),
       evidenceIds: ["not_evidence"],
-      providerParseApprovalPreview: providerParsePreviewInput()
+      providerParseApprovalPreview: await providerParsePreviewInput()
     })).rejects.toThrow(/well-formed/i);
     expectNoPreflightEffects(await malformed.ledger.readAll());
   });
@@ -217,7 +218,7 @@ describe("evidence triage workflow", () => {
 
       const result = await runEvidenceTriageWorkflow({
         ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
-        providerParseApprovalPreview: providerParsePreviewInput()
+        providerParseApprovalPreview: await providerParsePreviewInput()
       });
 
       expect(result.handoff).toMatchObject({
@@ -242,7 +243,7 @@ describe("evidence triage workflow", () => {
     await expect(runEvidenceTriageWorkflow({
       ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
       derivativeStore: undefined,
-      providerParseApprovalPreview: providerParsePreviewInput()
+      providerParseApprovalPreview: await providerParsePreviewInput()
     })).rejects.toThrow(/derivative artifact store/i);
 
     expectNoPreflightEffects(await ledger.readAll());
@@ -263,7 +264,7 @@ describe("evidence triage workflow", () => {
     await expect(runEvidenceTriageWorkflow({
       ...baseRunInput(hostile.ledger, hostile.runtime, createTriageContextPacks([])),
       evidenceIds: hostileEvidenceIds as readonly string[],
-      providerParseApprovalPreview: providerParsePreviewInput()
+      providerParseApprovalPreview: await providerParsePreviewInput()
     })).rejects.toThrow(/data properties/i);
     expect(getterCalls).toBe(0);
     expectNoPreflightEffects(await hostile.ledger.readAll());
@@ -290,7 +291,7 @@ describe("evidence triage workflow", () => {
     const input = {
       ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
       evidenceIds,
-      providerParseApprovalPreview: providerParsePreviewInput()
+      providerParseApprovalPreview: await providerParsePreviewInput()
     };
 
     const result = await runEvidenceTriageWorkflow(input);
@@ -318,7 +319,7 @@ describe("evidence triage workflow", () => {
           return await store.put(content);
         }
       },
-      providerParseApprovalPreview: providerParsePreviewInput()
+      providerParseApprovalPreview: await providerParsePreviewInput()
     });
 
     expect(writeCount).toBe(4);
@@ -342,7 +343,7 @@ describe("evidence triage workflow", () => {
 
   it("rejects hostile provider-preview data before invoking getters, models, or tools", async () => {
     let getterCalls = 0;
-    const accessorPreview = { ...providerParsePreviewInput() };
+    const accessorPreview = { ...await providerParsePreviewInput() };
     Object.defineProperty(accessorPreview, "toolId", {
       enumerable: true,
       get() {
@@ -358,7 +359,7 @@ describe("evidence triage workflow", () => {
     expect(getterCalls).toBe(0);
     expectNoPreflightEffects(await accessor.ledger.readAll());
 
-    const nested = providerParsePreviewInput();
+    const nested = await providerParsePreviewInput();
     const binding = { ...(nested.evidenceBindings as readonly Record<string, unknown>[])[0] };
     Object.defineProperty(binding, "evidenceId", {
       enumerable: true,
@@ -389,18 +390,20 @@ describe("evidence triage workflow", () => {
       const { ledger, runtime } = await preparedRuntime(modelOutput());
       await expect(runEvidenceTriageWorkflow({
         ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
-        providerParseApprovalPreview: { ...providerParsePreviewInput(), ...patch }
+        providerParseApprovalPreview: { ...await providerParsePreviewInput(), ...patch }
       })).rejects.toThrow(expected);
       expectNoPreflightEffects(await ledger.readAll());
     }
   });
 
-  it("records invalid model output as a safe failed handoff without tool requests", async () => {
-    const { ledger, runtime } = await preparedRuntime("not-json");
+  it("rejects model output that claims an assertion was proposed, accepted, or added to the accepted graph", async () => {
+    const { ledger, runtime } = await preparedRuntime(modelOutput({
+      dossierSummary: "The assertion was proposed, accepted, and added to the accepted graph."
+    }));
 
     const result = await runEvidenceTriageWorkflow({
       ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
-      providerParseApprovalPreview: providerParsePreviewInput()
+      providerParseApprovalPreview: await providerParsePreviewInput()
     });
 
     expect(result.handoff).toMatchObject({
@@ -418,7 +421,7 @@ describe("evidence triage workflow", () => {
     const { ledger, runtime } = await preparedRuntime(modelOutput({ requestProviderParseApproval: false }));
     const input = {
       ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
-      providerParseApprovalPreview: providerParsePreviewInput()
+      providerParseApprovalPreview: await providerParsePreviewInput()
     };
 
     await runEvidenceTriageWorkflow(input);
@@ -487,7 +490,10 @@ function createDerivativeStore() {
   });
 }
 
-function createTriageContextPacks(builtIds: string[]) {
+function createTriageContextPacks(
+  builtIds: string[],
+  binding: { readonly evidenceEventId?: string; readonly linkEventId?: string } = {}
+) {
   const registry = createContextPackRegistry();
   for (const contextPackId of [
     "evidence-summary.v1",
@@ -508,19 +514,26 @@ function createTriageContextPacks(builtIds: string[]) {
         redactionPolicy: "safe-summary-only",
         sourceProjection: "test-projection"
       },
+      parsePayload: triageContextPackParser(contextPackId),
       build: () => {
         builtIds.push(contextPackId);
         return {
           contextPackId,
           version: 1,
           generatedAt: now(),
-          payload: {
-            evidenceIds: ["ev_triage_001"],
-            duplicateCheck: contextPackId === "accepted-graph-projection.v1"
-          },
+          payload: triageContextPayload(contextPackId),
           safeSummary: `${contextPackId} contains safe triage references.`,
-          provenanceRefs: ["event:evt_triage_context_001", "ev_triage_001", evidenceHash],
-          sourceEventIds: ["evt_triage_context_001"],
+          provenanceRefs: [
+            "event:evt_triage_context_001",
+            "ev_triage_001",
+            ...(binding.evidenceEventId === undefined ? [] : [binding.evidenceEventId]),
+            evidenceHash
+          ],
+          sourceEventIds: [
+            "evt_triage_context_001",
+            ...(binding.evidenceEventId === undefined ? [] : [binding.evidenceEventId]),
+            ...(binding.linkEventId === undefined ? [] : [binding.linkEventId])
+          ],
           artifactHashes: [evidenceHash],
           sizeBudgetBytes: 16_384
         };
@@ -530,9 +543,72 @@ function createTriageContextPacks(builtIds: string[]) {
   return registry;
 }
 
+function triageContextPackParser(contextPackId: string) {
+  const parser = (payload: AgentContextPackJsonValue, ref?: { readonly contextPackId: string }): AgentContextPackJsonValue => {
+    if (ref?.contextPackId !== contextPackId || !isTriageContextPayloadForPack(contextPackId, payload)) {
+      throw new Error("invalid triage context pack payload");
+    }
+    return payload;
+  };
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: contextPackId,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  registerContextPackPayloadParserAuthority(parser);
+  return parser;
+}
+
+function isTriageContextPayloadForPack(contextPackId: string, payload: AgentContextPackJsonValue): boolean {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return false;
+  const value = payload as Readonly<Record<string, AgentContextPackJsonValue>>;
+  switch (contextPackId) {
+    case "evidence-summary.v1":
+      return Array.isArray(value.items);
+    case "governance-locks.v1": {
+      const items = value.items as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return items !== undefined && Array.isArray(items.activeLocks) && Array.isArray(items.governanceRestrictions);
+    }
+    case "accepted-graph-projection.v1": {
+      const items = value.items as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return items !== undefined && Array.isArray(items.assertions) && Array.isArray(items.entities) && Array.isArray(items.relationships);
+    }
+    case "agent-memory-summary.v1": {
+      const memory = value.memory as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return memory !== undefined && Array.isArray(memory.activeMemory) && Array.isArray(memory.sourceEventIds) && Array.isArray(memory.artifactHashes);
+    }
+    case "task-run-history.v1": {
+      const history = value.history as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return history !== undefined && Array.isArray(history.tasks) && Array.isArray(history.runs) && Array.isArray(history.modelInvocations) && Array.isArray(history.toolRequests);
+    }
+    case "workspace-runtime-status.v1": {
+      const runtime = value.runtime as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return runtime !== undefined && Array.isArray(runtime.providerStates) && Array.isArray(runtime.diagnostics) && Array.isArray(runtime.omissionCodes);
+    }
+    case "prr-read-model.v1":
+      return value.lifecycle !== undefined && value.requestStream !== undefined && Array.isArray(value.diagnostics) && Array.isArray(value.gates) && Array.isArray(value.omissions);
+    default:
+      return false;
+  }
+}
+
+function triageContextPayload(contextPackId: string): AgentContextPackJsonValue {
+  switch (contextPackId) {
+    case "evidence-summary.v1": return { items: [{ evidenceId: "ev_triage_001", ingestionEventId: "evt_triage_context_001", contentHash: evidenceHash, occurrenceIds: ["occurrence_triage_001"], safeNarrative: "Verified triage evidence." }] };
+    case "governance-locks.v1": return { items: { activeLocks: [], governanceRestrictions: [{ restrictionId: "restriction_triage_001", restrictionKind: "review", affectedRef: "ev_triage_001", sourceEventIds: ["evt_triage_context_001"], projectionProvenanceRefs: ["evt_triage_context_001"], policyVersion: "v1", safeReasonCode: "review-required" }] } };
+    case "accepted-graph-projection.v1": return { items: { assertions: [{ assertionId: "assertion_triage_001", evidenceId: "ev_triage_001", evidenceContentHash: evidenceHash, proposedByEventId: "evt_triage_context_001", acceptedByEventId: "evt_triage_context_001", sourceEventIds: ["evt_triage_context_001"], rowHash: evidenceHash, safeStatement: "Verified triage graph statement." }], entities: [], relationships: [] } };
+    case "agent-memory-summary.v1": return { memory: { activeMemory: [{ memoryId: "memory_triage_001", scope: "task", memoryKind: "summary", summary: "Verified triage memory.", confidence: 1, sourceEventIds: ["evt_triage_context_001"], artifactHashes: [] }], aggregateCounts: { active: 1 }, sourceEventIds: ["evt_triage_context_001"], artifactHashes: [] } };
+    case "task-run-history.v1": return { history: { projectionHighWaterMark: 1, projectionSourceRef: "agent.projection.task-run-history", tasks: [{ taskId: "task_evidence_triage_001", status: "running", priority: "normal", statusReasonCode: "Triage context prepared." }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1 }, sourceEventIds: ["evt_triage_context_001"], artifactHashes: [] } };
+    case "workspace-runtime-status.v1": return { runtime: { runtimeHighWaterMark: 1, workspaceMounted: true, storageStrategy: "local", bindPosture: "bound", authPosture: "none", providerStates: [], diagnostics: [], projectionHighWaterMarks: { agent: 1 }, omissionCodes: [] } };
+    case "prr-read-model.v1": return { lifecycle: {}, requestStream: {}, diagnostics: [], gates: [], omissions: [] };
+    default: throw new Error(`Unknown triage context pack ${contextPackId}`);
+  }
+}
+
 function modelOutput(patch: Record<string, unknown> = {}) {
   return JSON.stringify({
-    dossierSummary: "Sensitive model note for local dossier only.",
+    dossierSummary: "Public instructions say investigators should classify evidence before requesting review.",
     safeSummaries: ["Sensitive model note for local summary only."],
     governanceFlags: [{
       evidenceId: "ev_triage_001",
@@ -561,7 +637,7 @@ function modelOutput(patch: Record<string, unknown> = {}) {
   });
 }
 
-function providerParsePreviewInput() {
+async function providerParsePreviewInput() {
   return buildProviderByteTransferApprovalPreview({
     toolRequestId: "toolreq_evidence_triage_provider_parse",
     toolId: providerParseExecuteDescriptor.toolId,
@@ -586,7 +662,7 @@ function providerParsePreviewInput() {
       byteCount: 422,
       mediaType: "application/pdf"
     }],
-    promptArtifact: promptAudit("evt_evidence_triage_001", "evt_evidence_link_triage_001"),
+    promptArtifact: await promptAudit("evt_evidence_triage_001", "evt_evidence_link_triage_001"),
     excerptPolicy: "send-full-technically-eligible" as const,
     governanceTags: ["public_record"],
     activeLocks: [],
@@ -615,7 +691,7 @@ async function providerParseCurrentPreview(ledger: InMemoryEventLedger) {
     eligibleMediaTypes: ["application/pdf"],
     maxBytesPerFile: 10_000
   });
-  const audit = promptAudit(evidence.id, link.id);
+  const audit = await promptAudit(evidence.id, link.id);
   const currentPreviewInput = {
     ledger,
     reviewer: providerParseHuman,
@@ -692,27 +768,23 @@ function providerApproval(eventId: string) {
   };
 }
 
-function promptAudit(evidenceEventId: string, linkEventId: string) {
-  return promptArtifactAuditMetadata(buildPromptArtifact({
-    promptTemplateId: "evidence-triage.classify.v1",
-    promptTemplateVersion: 1,
-    generatedAt: now(),
+async function promptAudit(evidenceEventId: string, linkEventId: string) {
+  const registry = createTriageContextPacks([], { evidenceEventId, linkEventId });
+  const resolvedContextPacks = await Promise.all([
+    "evidence-summary.v1",
+    "governance-locks.v1",
+    "accepted-graph-projection.v1",
+    "agent-memory-summary.v1",
+    "task-run-history.v1",
+    "workspace-runtime-status.v1"
+  ].map(async (contextPackId) => await registry.buildResolved(contextPackId)));
+  return promptArtifactAuditMetadata(renderProductionSpecialistPrompt({
     runType: "evidence-triage",
-    safetyClass: "provider-approved",
-    transferApprovalClass: "provider-byte-transfer",
-    contextPackRefs: [buildContextPackRef({
-      contextPackId: "evidence-summary.v1",
-      version: 1,
-      generatedAt: now(),
-      payload: { evidenceIds: ["ev_triage_001"] },
-      safeSummary: "Evidence summary approved for provider parse preview.",
-      provenanceRefs: ["ev_triage_001", evidenceEventId, evidenceHash],
-      sourceEventIds: [evidenceEventId, linkEventId],
-      artifactHashes: [evidenceHash],
-      sizeBudgetBytes: 16_384
-    })],
-    text: "Parse approved evidence only after provider byte-transfer approval.",
-    safeSummary: "Provider-approved evidence triage parse prompt audit."
+    runId: "run_evidence_triage_001",
+    taskId: "task_evidence_triage_001",
+    generatedAt: now(),
+    scope: { kind: "imported-evidence", refs: ["ev_triage_001"] },
+    resolvedContextPacks
   }));
 }
 

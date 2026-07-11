@@ -5,6 +5,7 @@ import {
   buildContextPackRef,
   buildPromptArtifact,
   createAgentRuntime,
+  hashAgentContextPack,
   type ModelInvocationRequest,
   type ModelInvocationResult,
   type ModelProviderAdapter,
@@ -127,7 +128,7 @@ describe("agent runtime core", () => {
     await runtime.startRun({
       runId: "run_fake_model",
       taskId: "task_fake_model",
-      runType: "evidence-triage",
+      runType: "ontology-bootstrap",
       scope: { kind: "workspace", refs: ["ws_case_001"] }
     });
     const result = await runtime.invokeModel({
@@ -503,6 +504,98 @@ describe("agent runtime core", () => {
     expect(ledgerJson).not.toContain(promptArtifact.text);
     expect(requestedPayload?.inputArtifactHash).not.toBe(providerOutputArtifactHash);
   });
+
+  it("blocks all MVP production run types before appending a request when the prompt audit is absent, invalid, stale, or missing its binding", async () => {
+    const ledger = new InMemoryEventLedger();
+    const remoteProvider = new CountingRemoteProvider();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now: fixedNow, providers: [remoteProvider] });
+    const invalidPromptArtifact = unsafePromptArtifact();
+    const hashMismatchedPromptArtifact = providerApprovedPromptArtifact();
+
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    for (const runType of productionRunTypes) {
+      const runId = `run_production_${runType}`;
+      await runtime.startRun({
+        runId,
+        runType,
+        scope: { kind: "workspace", refs: ["ws_case_001"] }
+      });
+
+      const missingBindingPromptArtifact = productionPromptArtifactWithoutBinding(runType);
+      const cases: readonly {
+        readonly name: string;
+        readonly promptArtifact?: PromptArtifactEnvelope;
+        readonly inputArtifactHash: string;
+      }[] = [
+        { name: "absent", inputArtifactHash },
+        {
+          name: "invalid",
+          promptArtifact: invalidPromptArtifact,
+          inputArtifactHash: invalidPromptArtifact.manifest.inputArtifactHash
+        },
+        {
+          name: "hash-mismatched",
+          promptArtifact: hashMismatchedPromptArtifact,
+          inputArtifactHash
+        },
+        {
+          name: "missing-production-binding",
+          promptArtifact: missingBindingPromptArtifact,
+          inputArtifactHash: missingBindingPromptArtifact.manifest.inputArtifactHash
+        }
+      ];
+
+      for (const testCase of cases) {
+        const result = await runtime.invokeModel({
+          invocationId: `inv_${runType}_${testCase.name}`,
+          runId,
+          providerId: "provider_remote_model",
+          modelFamily: "remote-safe",
+          inputArtifactHash: testCase.inputArtifactHash,
+          safetyClass: "provider-approved",
+          credentialRef: remoteCredentialRef(),
+          ...(testCase.promptArtifact === undefined ? {} : { promptArtifact: testCase.promptArtifact })
+        });
+
+        expect(result).toMatchObject({ ok: false, error: { category: "policy", severity: "error" } });
+      }
+    }
+
+    expect(remoteProvider.calls).toHaveLength(0);
+    expect(modelRequestedPayloads(await ledger.readAll())).toHaveLength(0);
+  });
+
+  it("rejects direct production invocation with an otherwise bound artifact before provider transfer", async () => {
+    const ledger = new InMemoryEventLedger();
+    const remoteProvider = new CountingRemoteProvider();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now: fixedNow, providers: [remoteProvider] });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({ taskId: "task_direct_production", title: "Direct production", requestedBy: humanActor.id, priority: "normal" });
+    await runtime.startRun({
+      runId: "run_direct_production",
+      taskId: "task_direct_production",
+      runType: "evidence-triage",
+      scope: { kind: "workspace", refs: ["ws_case_001"] }
+    });
+    const artifact = productionPromptArtifactWithBinding("evidence-triage");
+
+    const result = await runtime.invokeModel({
+      invocationId: "inv_direct_production",
+      runId: "run_direct_production",
+      providerId: "provider_remote_model",
+      modelFamily: "remote-safe",
+      inputArtifactHash: artifact.manifest.inputArtifactHash,
+      credentialRef: remoteCredentialRef(),
+      promptArtifact: artifact
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { category: "policy", severity: "error", message: expect.stringMatching(/production specialist invocation proof/i) }
+    });
+    expect(remoteProvider.calls).toHaveLength(0);
+    expect(modelRequestedPayloads(await ledger.readAll())).toHaveLength(0);
+  });
 });
 
 async function createPreparedRuntime(
@@ -520,7 +613,7 @@ async function beforePreparedInvoke(runtime: ReturnType<typeof createAgentRuntim
   await runtime.startRun({
     runId: "run_fake_model",
     taskId: "task_fake_model",
-    runType: "evidence-triage",
+    runType: "ontology-bootstrap",
     scope: { kind: "workspace", refs: ["ws_case_001"] }
   });
 }
@@ -536,6 +629,61 @@ function remoteCredentialRef() {
 
 function providerApprovedPromptArtifact(): PromptArtifactEnvelope {
   return promptArtifact("provider-approved", "provider-byte-transfer");
+}
+
+const productionRunTypes = [
+  "prr-negotiation",
+  "evidence-triage",
+  "timeline-builder",
+  "contradiction-finder",
+  "investigation-planner",
+  "report-builder"
+] as const;
+
+function productionPromptArtifactWithoutBinding(runType: typeof productionRunTypes[number]): PromptArtifactEnvelope {
+  const artifact = providerApprovedPromptArtifact();
+  return buildPromptArtifact({
+    promptTemplateId: `${runType}.test.v1`,
+    promptTemplateVersion: 1,
+    generatedAt: "2026-07-08T12:01:00.000Z",
+    runType,
+    safetyClass: "provider-approved",
+    transferApprovalClass: "provider-byte-transfer",
+    contextPackRefs: artifact.manifest.contextPackRefs,
+    text: artifact.text,
+    safeSummary: artifact.manifest.safeSummary,
+    omissions: artifact.manifest.omissions
+  });
+}
+
+function productionPromptArtifactWithBinding(runType: typeof productionRunTypes[number]): PromptArtifactEnvelope {
+  const artifact = providerApprovedPromptArtifact();
+  const production = {
+    rendererId: `${runType}.renderer.v1`,
+    rendererVersion: 1,
+    rendererHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    renderedPromptHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    providerOutputSchemaId: `${runType}.output.v1`,
+    providerOutputSchemaVersion: 1,
+    handoffSchemaId: `${runType}.handoff.v1`,
+    handoffSchemaVersion: 1,
+    scopeApplicabilityHash: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    evaluatedContextRequirements: [],
+    resolvedPayloadAudits: []
+  };
+  const manifest = {
+    ...artifact.manifest,
+    promptTemplateId: `${runType}.test.v1`,
+    runType,
+    production
+  };
+  return {
+    ...artifact,
+    manifest: {
+      ...manifest,
+      inputArtifactHash: hashAgentContextPack({ manifest, text: artifact.text })
+    }
+  } as PromptArtifactEnvelope;
 }
 
 function localOnlyPromptArtifact(): PromptArtifactEnvelope {
@@ -576,10 +724,10 @@ function promptArtifact(
   });
 
   return buildPromptArtifact({
-    promptTemplateId: "resident-agent-context-pack.v1",
+    promptTemplateId: "ontology-bootstrap.context-pack.v1",
     promptTemplateVersion: 1,
     generatedAt: "2026-07-08T12:01:00.000Z",
-    runType: "evidence-triage",
+    runType: "ontology-bootstrap",
     safetyClass,
     transferApprovalClass,
     contextPackRefs: [contextPackRef],

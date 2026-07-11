@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
+import {
+  hasVerifiedResolvedContextPackBrand,
+  markVerifiedResolvedContextPack
+} from "./verified-context-pack-brand.js";
 
 export type AgentContextPackJsonValue =
   | null
@@ -63,6 +67,12 @@ declare const verifiedResolvedContextPackBrand: unique symbol;
 export type VerifiedResolvedContextPack = ResolvedContextPack & {
   readonly [verifiedResolvedContextPackBrand]: true;
 };
+
+export interface VerifiedResolvedContextPackVerificationIdentity {
+  readonly contextPackId: string;
+  readonly version: number;
+  readonly parserIdentity: string;
+}
 
 export type ContextPackPayloadParser = (
   payload: AgentContextPackJsonValue,
@@ -137,7 +147,10 @@ const contextPackStalenessInputSchema = z.object({
   value: agentSecretSafeTextSchema("stalenessInput.value")
 }).strict();
 const builtContextPackRefs = new WeakSet<object>();
-const verifiedResolvedContextPacks = new WeakSet<object>();
+const verifiedResolvedContextPackVerificationIdentities = new WeakMap<object, VerifiedResolvedContextPackVerificationIdentity>();
+const registryOwnedContextPackPayloadParsers = new WeakSet<object>();
+const verifiedResolvedContextPackParserAuthorities = new WeakMap<object, object>();
+const parserIdentityProperty = "cestusContextPackParserId";
 
 const contextPackDescriptorObjectSchema = z.object({
   contextPackId: contextPackIdSchema,
@@ -300,20 +313,52 @@ export function assertResolvedContextPacksForExecution(
     if (!isVerifiedResolvedContextPack(resolved)) {
       throw new Error("blocked.unverified-resolved-context-pack");
     }
-    const key = contextPackRefKey(resolved.ref);
+    const verified = resolved;
+    const key = contextPackRefKey(verified.ref);
     if (!expected.has(key)) {
       throw new Error("blocked.extra-resolved-context-pack");
     }
     if (matched.has(key)) {
       throw new Error("blocked.duplicate-resolved-context-pack");
     }
-    matched.set(key, resolved);
+    matched.set(key, verified);
   }
 
   if (matched.size !== expected.size) {
     throw new Error("blocked.missing-resolved-context-pack");
   }
   return Object.freeze([...expected.keys()].map((key) => matched.get(key) as VerifiedResolvedContextPack));
+}
+
+export function verifiedResolvedContextPackVerificationIdentity(
+  value: unknown
+): VerifiedResolvedContextPackVerificationIdentity | undefined {
+  if (!isVerifiedResolvedContextPack(value)) {
+    return undefined;
+  }
+  return verifiedResolvedContextPackVerificationIdentities.get(value);
+}
+
+/** Package-owned parser modules call this once for each authoritative implementation. */
+export function registerContextPackPayloadParserAuthority(parser: ContextPackPayloadParser): void {
+  contextPackParserIdentity(parser);
+  registryOwnedContextPackPayloadParsers.add(parser);
+}
+
+export function hasVerifiedResolvedContextPackParserAuthority(
+  value: unknown,
+  contextPackId: string,
+  parserIdentity: string
+): boolean {
+  if (!isVerifiedResolvedContextPack(value)) {
+    return false;
+  }
+  const identity = verifiedResolvedContextPackVerificationIdentities.get(value);
+  return identity !== undefined &&
+    identity.contextPackId === contextPackId &&
+    identity.version === value.ref.version &&
+    identity.parserIdentity === parserIdentity &&
+    verifiedResolvedContextPackParserAuthorities.has(value);
 }
 
 export function createContextPackRegistry(options: CreateContextPackRegistryOptions = {}): ContextPackRegistry {
@@ -421,8 +466,32 @@ function verifyResolvedContextPackForRegistry(
   parser: ContextPackPayloadParser
 ): VerifiedResolvedContextPack {
   const verified = verifyResolvedContextPack(value, parser) as VerifiedResolvedContextPack;
-  verifiedResolvedContextPacks.add(verified);
+  markVerifiedResolvedContextPack(verified);
+  const parserIdentity = contextPackParserIdentity(parser);
+  if (parserIdentity !== undefined) {
+    verifiedResolvedContextPackVerificationIdentities.set(verified, Object.freeze({
+      contextPackId: verified.ref.contextPackId,
+      version: verified.ref.version,
+      parserIdentity
+    }));
+  }
+  if (registryOwnedContextPackPayloadParsers.has(parser)) {
+    verifiedResolvedContextPackParserAuthorities.set(verified, Object.freeze({}));
+  }
   return verified;
+}
+
+function contextPackParserIdentity(parser: ContextPackPayloadParser): string | undefined {
+  const descriptor = Object.getOwnPropertyDescriptor(parser, parserIdentityProperty);
+  if (descriptor === undefined) {
+    return undefined;
+  }
+  if (!descriptor.enumerable && !descriptor.configurable && !descriptor.writable &&
+    "value" in descriptor && typeof descriptor.value === "string" && descriptor.value.length > 0) {
+    assertAgentSecretSafeText(descriptor.value, "contextPackParserIdentity");
+    return descriptor.value;
+  }
+  throw new Error("blocked.invalid-payload-parser-identity");
 }
 
 function extractContextPackIdForDuplicateCheck(descriptor: unknown): string | undefined {
@@ -557,7 +626,7 @@ function freezeJsonDtoValue(value: AgentContextPackJsonValue): AgentContextPackJ
 }
 
 function isVerifiedResolvedContextPack(value: unknown): value is VerifiedResolvedContextPack {
-  return typeof value === "object" && value !== null && verifiedResolvedContextPacks.has(value);
+  return hasVerifiedResolvedContextPackBrand(value);
 }
 
 function contextPackRefKey(ref: ContextPackRef): string {

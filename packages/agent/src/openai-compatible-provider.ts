@@ -31,6 +31,7 @@ export interface OpenAICompatibleChatProviderOptions {
   readonly requestTags?: readonly string[];
   readonly includeReasoning?: boolean;
   readonly reasoningEffort?: NousReasoningEffort;
+  readonly temperature?: number;
 }
 
 export interface CreateNousPortalProviderInput {
@@ -41,6 +42,7 @@ export interface CreateNousPortalProviderInput {
   readonly requestTags?: readonly string[];
   readonly includeReasoning?: boolean;
   readonly reasoningEffort?: NousReasoningEffort;
+  readonly temperature?: number;
 }
 
 export type NousReasoningEffort = "none" | "low" | "high";
@@ -81,6 +83,7 @@ const chatCompletionResponseSchema = z.object({
 }).passthrough();
 const requestTagsSchema = z.array(nonEmptySecretSafeTextSchema).max(20);
 const reasoningEffortSchema = z.enum(["none", "low", "high"]);
+const temperatureSchema = z.number().finite().min(0).max(2);
 
 export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
   private readonly descriptor: ProviderDescriptor;
@@ -94,6 +97,7 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
   private readonly requestTags: readonly string[];
   private readonly includeReasoning: boolean | undefined;
   private readonly reasoningEffort: NousReasoningEffort | undefined;
+  private readonly temperature: number | undefined;
 
   constructor(options: OpenAICompatibleChatProviderOptions) {
     const endpointUrl = endpointSchema.parse(options.endpointUrl);
@@ -116,6 +120,7 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
     this.reasoningEffort = options.reasoningEffort === undefined
       ? undefined
       : reasoningEffortSchema.parse(options.reasoningEffort);
+    this.temperature = parseTemperature(options.temperature);
     this.descriptor = freezeProviderDescriptor(providerDescriptorSchema.parse({
       providerId: options.providerId,
       label: options.label,
@@ -159,7 +164,8 @@ export class OpenAICompatibleChatProvider implements ModelProviderAdapter {
         max_tokens: this.maxTokens,
         ...(this.requestTags.length === 0 ? {} : { tags: [...this.requestTags] }),
         ...(this.includeReasoning === undefined ? {} : { include_reasoning: this.includeReasoning }),
-        ...(this.reasoningEffort === undefined ? {} : { reasoning: { effort: this.reasoningEffort } })
+        ...(this.reasoningEffort === undefined ? {} : { reasoning: { effort: this.reasoningEffort } }),
+        ...(this.temperature === undefined ? {} : { temperature: this.temperature })
       })
     });
 
@@ -229,6 +235,7 @@ export function createNousPortalProvider(input: CreateNousPortalProviderInput): 
     requestTags: input.requestTags ?? defaultNousPortalRequestTags,
     includeReasoning: input.includeReasoning ?? false,
     reasoningEffort: input.reasoningEffort ?? "none",
+    temperature: input.temperature ?? 0,
     safeDataNotes: "Remote OpenAI-compatible Nous Portal chat provider. Prompts leave this machine only after provider policy allows it."
   });
 }
@@ -247,6 +254,17 @@ function requireInputText(request: ModelInvocationRequest): string {
   const parsed = nonEmptySecretSafeTextSchema.safeParse(request.inputText);
   if (!parsed.success) {
     throw new Error("inputText must be non-empty and secret-safe.");
+  }
+  return parsed.data;
+}
+
+function parseTemperature(value: number | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const parsed = temperatureSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error("temperature must be a finite number between 0 and 2.");
   }
   return parsed.data;
 }
