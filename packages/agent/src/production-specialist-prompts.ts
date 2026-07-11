@@ -30,7 +30,9 @@ type CanonicalProductionPromptTemplateMaterial = {
   readonly reviewInstruction: string;
   readonly omissionLine: string;
   readonly verifiedContextMarker: string;
-  readonly payloadSectionLines: readonly string[];
+  readonly contextPackIdLine: string;
+  readonly contentHashLine: string;
+  readonly packLabelLine: string;
   readonly payloadSectionLineSeparator: string;
   readonly sectionSeparator: string;
   readonly providerOutputInstructions: Readonly<Record<ProductionRunType, string>>;
@@ -83,7 +85,9 @@ const canonicalProductionPromptTemplateMaterial: CanonicalProductionPromptTempla
   reviewInstruction: "State uncertainty, preserve provenance references, and request the required human review. Do not claim an approval, accepted fact, or external action has occurred. Do not return credentials, raw provider errors, hidden local paths, or authentication headers.",
   omissionLine: "Context omission: {stable-json-omission}",
   verifiedContextMarker: "Verified payload context follows:",
-  payloadSectionLines: ["Context pack ID:", "Content hash:", "Pack label:", "registered-fields"],
+  contextPackIdLine: "Context pack ID: {contextPackId}",
+  contentHashLine: "Content hash: {contentHash}",
+  packLabelLine: "Pack label: {packLabel}",
   payloadSectionLineSeparator: "\n",
   sectionSeparator: "\n\n",
   providerOutputInstructions: {
@@ -116,6 +120,7 @@ const payloadRenderingPolicyMaterial = Object.freeze({
   maximumPayloadFieldTextCharacters,
   maximumPayloadArrayItems,
   maximumRenderedPayloadSectionBytes,
+  truncationSuffix: " [truncated]",
   fieldLineFormat: "{label} {field}: {value}",
   fieldRules: {
     graphAssertion: ["assertionId", "evidenceId", "evidenceContentHash", "proposedByEventId", "acceptedByEventId", "sourceEventIds", "rowHash", "safeStatement"],
@@ -227,7 +232,14 @@ export interface ProductionSpecialistRendererMaterial {
   readonly registration: Omit<ProductionSpecialistPromptRegistration, "rendererHash">;
   readonly template: CanonicalProductionPromptTemplateMaterial;
   readonly payloadRenderers: typeof payloadRenderingPolicyMaterial.renderers;
-  readonly limits: Pick<typeof payloadRenderingPolicyMaterial, "redactionBehavior" | "maximumPayloadFieldTextCharacters" | "maximumPayloadArrayItems" | "maximumRenderedPayloadSectionBytes" | "fieldLineFormat">;
+  readonly limits: {
+    readonly redactionBehavior: "exclude-unregistered-fields";
+    readonly maximumPayloadFieldTextCharacters: number;
+    readonly maximumPayloadArrayItems: number;
+    readonly maximumRenderedPayloadSectionBytes: number;
+    readonly truncationSuffix: string;
+    readonly fieldLineFormat: string;
+  };
 }
 
 export function productionSpecialistRendererMaterialFor(
@@ -484,9 +496,9 @@ function renderCanonicalProductionPrompt(input: {
       throw new Error(`Production context pack ${resolved.ref.contextPackId} has no bounded provider-useful payload content`);
     }
     const section = [
-      `Context pack ID: ${resolved.ref.contextPackId}`,
-      `Content hash: ${resolved.ref.contentHash}`,
-      `Pack label: ${renderer.label}`,
+      renderTemplateLine(template.contextPackIdLine, { contextPackId: resolved.ref.contextPackId }),
+      renderTemplateLine(template.contentHashLine, { contentHash: resolved.ref.contentHash }),
+      renderTemplateLine(template.packLabelLine, { packLabel: renderer.label }),
       ...renderedFields
     ].join(template.payloadSectionLineSeparator);
     assertAgentSecretSafeText(section, `${resolved.ref.contextPackId} rendered fields`);
@@ -496,15 +508,15 @@ function renderCanonicalProductionPrompt(input: {
     return section;
   });
   const omissionSections = input.omissions.map((omission) =>
-    `Context omission: ${stableJson({ reason: omission.reason, sourceRef: omission.sourceRef, safeSummary: omission.safeSummary })}`
+    renderTemplateLine(template.omissionLine, { "stable-json-omission": stableJson({ reason: omission.reason, sourceRef: omission.sourceRef, safeSummary: omission.safeSummary }) })
   );
   const text = [
-    `Template: ${input.registration.promptTemplateId}@${input.registration.promptTemplateVersion}`,
-    `Run: ${stableJson({ runId: input.runId, taskId: input.taskId, runType: input.registration.runType })}`,
+    renderTemplateLine(template.templateLine, { promptTemplateId: input.registration.promptTemplateId, promptTemplateVersion: input.registration.promptTemplateVersion }),
+    renderTemplateLine(template.runLine, { "stable-json-run": stableJson({ runId: input.runId, taskId: input.taskId, runType: input.registration.runType }) }),
     template.authorityInstruction,
-    `Return only JSON conforming to ${input.registration.providerOutputSchemaId}@${input.registration.providerOutputSchemaVersion}.`,
+    renderTemplateLine(template.providerOutputLine, { providerOutputSchemaId: input.registration.providerOutputSchemaId, providerOutputSchemaVersion: input.registration.providerOutputSchemaVersion }),
     template.providerOutputInstructions[input.registration.runType],
-    `Handoff schema: ${input.registration.handoffSchemaId}@${input.registration.handoffSchemaVersion}.`,
+    renderTemplateLine(template.handoffLine, { handoffSchemaId: input.registration.handoffSchemaId, handoffSchemaVersion: input.registration.handoffSchemaVersion }),
     template.reviewInstruction,
     ...omissionSections,
     template.verifiedContextMarker,
@@ -711,7 +723,7 @@ function isPlainRecord(value: unknown): value is Readonly<Record<string, unknown
 function truncatePayloadText(value: string): string {
   return value.length <= maximumPayloadFieldTextCharacters
     ? value
-    : `${value.slice(0, maximumPayloadFieldTextCharacters)} [truncated]`;
+    : `${value.slice(0, maximumPayloadFieldTextCharacters)}${payloadRenderingPolicyMaterial.truncationSuffix}`;
 }
 
 function payloadAudits(
@@ -760,9 +772,17 @@ function canonicalRegisteredRendererMaterial(
       maximumPayloadFieldTextCharacters: payloadRenderingPolicyMaterial.maximumPayloadFieldTextCharacters,
       maximumPayloadArrayItems: payloadRenderingPolicyMaterial.maximumPayloadArrayItems,
       maximumRenderedPayloadSectionBytes: payloadRenderingPolicyMaterial.maximumRenderedPayloadSectionBytes,
+      truncationSuffix: payloadRenderingPolicyMaterial.truncationSuffix,
       fieldLineFormat: payloadRenderingPolicyMaterial.fieldLineFormat
     })
   });
+}
+
+function renderTemplateLine(template: string, values: Readonly<Record<string, string | number>>): string {
+  return Object.entries(values).reduce(
+    (rendered, [key, value]) => rendered.replace(`{${key}}`, String(value)),
+    template
+  );
 }
 
 function stableJson(value: unknown): string {

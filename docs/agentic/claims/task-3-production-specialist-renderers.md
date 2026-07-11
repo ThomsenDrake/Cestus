@@ -34,3 +34,6 @@
 - Renderer/artifact review-fix GREEN: the same targeted command passed 2 files and 71 tests. Renderer hashes now bind canonical section grammar, registered renderer paths/labels, field rules, redaction behavior, and limits; all registered renderer-pack fixtures reject invalid payload shapes in their registry parser before rendering.
 - Durable artifact review-fix: serialized production envelopes retain locally re-verified context payload envelopes after parse, reject tampered persisted payload bytes, and audit DTOs remain payload-free.
 - Final verify: `npm run verify` passed typecheck, 178 test files with 3 skipped, 2010 tests with 3 skipped, the UI production build, and factory readiness (exit code 0). Status remains `ready-for-review`.
+- Authoritative rehydration review-fix RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/prompt-artifacts.test.ts packages/agent/test/context-packs.test.ts` produced the expected 4 failures; 1 test file and 116 tests passed.
+- Authoritative rehydration review-fix GREEN: the same targeted command passed 3 test files and 121 tests.
+- Authoritative rehydration review-fix verify: `npm run verify` passed typecheck and completed successfully. Status remains `ready-for-review`.

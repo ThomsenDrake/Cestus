@@ -66,7 +66,7 @@ describe("production specialist prompt registrations", () => {
     expect(new Set(registeredHashes)).toHaveLength(productionSpecialistPromptRegistrations.length);
   });
 
-  it("binds renderer hashes to canonical template labels, payload paths, and redaction rules", () => {
+  it("binds renderer hashes to every canonical provider-facing literal and payload policy", () => {
     const registration = productionSpecialistPromptRegistrationFor("evidence-triage");
     const material = productionSpecialistRendererMaterialFor("evidence-triage");
 
@@ -82,12 +82,9 @@ describe("production specialist prompt registrations", () => {
       "verified-context-marker",
       "payload-section"
     ]);
-    expect(material.template.payloadSectionLines).toEqual([
-      "Context pack ID:",
-      "Content hash:",
-      "Pack label:",
-      "registered-fields"
-    ]);
+    expect(material.template.contextPackIdLine).toBe("Context pack ID: {contextPackId}");
+    expect(material.template.contentHashLine).toBe("Content hash: {contentHash}");
+    expect(material.template.packLabelLine).toBe("Pack label: {packLabel}");
     expect(material.payloadRenderers["evidence-summary.v1"]).toEqual(expect.objectContaining({
       label: "Evidence summary",
       kind: "evidence-summary.v1",
@@ -96,16 +93,30 @@ describe("production specialist prompt registrations", () => {
       ])
     }));
     expect(material.limits.redactionBehavior).toBe("exclude-unregistered-fields");
+    expect(material.limits.truncationSuffix).toBe(" [truncated]");
     expect(hashProductionSpecialistRendererMaterial(material)).toBe(registration.rendererHash);
+    for (const registered of productionSpecialistPromptRegistrations) {
+      expect(hashProductionSpecialistRendererMaterial(
+        productionSpecialistRendererMaterialFor(registered.runType)
+      )).toBe(registered.rendererHash);
+    }
 
-    const changedMaterial = {
+    const changedLayoutLiteral = {
       ...material,
       template: {
         ...material.template,
-        verifiedContextMarker: "Changed verified-context marker:"
+        contextPackIdLine: "Context ID: {contextPackId}"
       }
     };
-    expect(hashProductionSpecialistRendererMaterial(changedMaterial)).not.toBe(registration.rendererHash);
+    const changedTruncationLiteral = {
+      ...material,
+      limits: {
+        ...material.limits,
+        truncationSuffix: " [trimmed]"
+      }
+    };
+    expect(hashProductionSpecialistRendererMaterial(changedLayoutLiteral)).not.toBe(registration.rendererHash);
+    expect(hashProductionSpecialistRendererMaterial(changedTruncationLiteral)).not.toBe(registration.rendererHash);
   });
 
   it("requires a complete production binding before every production run type can transfer", () => {

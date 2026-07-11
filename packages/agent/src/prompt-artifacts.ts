@@ -5,6 +5,7 @@ import {
   assertResolvedContextPacksForExecution,
   contextPackRefSchema,
   hashAgentContextPack,
+  serializeContextPackPayload,
   type AgentContextPackJsonValue,
   type ContextPackRef,
   type ContextPackStalenessInput,
@@ -80,6 +81,10 @@ export interface PromptArtifactEnvelope {
   readonly manifest: PromptArtifactManifest;
   readonly text: string;
   readonly resolvedContextPacks?: readonly VerifiedResolvedContextPack[];
+}
+
+export interface ParsePromptArtifactEnvelopeOptions {
+  readonly authoritativeResolvedContextPacks?: readonly VerifiedResolvedContextPack[];
 }
 
 export interface PromptArtifactAuditMetadata {
@@ -267,12 +272,30 @@ export function buildPromptArtifact(input: BuildPromptArtifactInput): PromptArti
 }
 
 export function serializePromptArtifactEnvelope(envelope: PromptArtifactEnvelope): Uint8Array {
-  const parsed = normalizePromptArtifactEnvelope(envelope, { preserveVerifiedResolvedContextPacks: true });
+  const parsed = normalizePromptArtifactEnvelope(envelope);
+  const resolvedContextPacks = resolveAuthoritativeContextPacks(envelope, parsed.manifest.contextPackRefs);
+  if (parsed.manifest.production !== undefined && resolvedContextPacks === undefined) {
+    throw new Error("Production prompt artifacts require resolved context packs");
+  }
+  const production = parsed.manifest.production === undefined
+    ? undefined
+    : normalizeProductionBinding(parsed.manifest.production, parsed.manifest, parsed.text, resolvedContextPacks);
+  const serializable = freezePromptArtifactEnvelope({
+    manifest: {
+      ...parsed.manifest,
+      ...(production === undefined ? {} : { production })
+    },
+    text: parsed.text,
+    ...(resolvedContextPacks === undefined ? {} : { resolvedContextPacks })
+  });
 
-  return Buffer.from(stableJsonForPromptArtifact(parsed), "utf8");
+  return Buffer.from(stableJsonForPromptArtifact(serializable), "utf8");
 }
 
-export function parsePromptArtifactEnvelope(bytes: string | Uint8Array): PromptArtifactEnvelope {
+export function parsePromptArtifactEnvelope(
+  bytes: string | Uint8Array,
+  options: ParsePromptArtifactEnvelopeOptions = {}
+): PromptArtifactEnvelope {
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(typeof bytes === "string" ? bytes : Buffer.from(bytes).toString("utf8"));
@@ -280,7 +303,27 @@ export function parsePromptArtifactEnvelope(bytes: string | Uint8Array): PromptA
     throw new Error("Prompt artifact envelope must be valid JSON");
   }
 
-  return normalizePromptArtifactEnvelope(parsedJson, { preserveVerifiedResolvedContextPacks: true });
+  const parsed = normalizePromptArtifactEnvelope(parsedJson);
+  if (options.authoritativeResolvedContextPacks === undefined || parsed.manifest.production === undefined) {
+    return parsed;
+  }
+
+  const resolvedContextPacks = rehydrateProductionResolvedContextPacks(
+    parsedJson,
+    parsed.manifest.contextPackRefs,
+    options.authoritativeResolvedContextPacks
+  );
+  const production = normalizeProductionBinding(
+    parsed.manifest.production,
+    parsed.manifest,
+    parsed.text,
+    resolvedContextPacks
+  );
+  return freezePromptArtifactEnvelope({
+    manifest: { ...parsed.manifest, production },
+    text: parsed.text,
+    resolvedContextPacks
+  });
 }
 
 export function assertPromptArtifactCanTransferToRemoteProvider(envelope: PromptArtifactEnvelope): void {
@@ -360,10 +403,7 @@ export function promptArtifactAuditMetadata(envelope: PromptArtifactEnvelope): P
   });
 }
 
-function normalizePromptArtifactEnvelope(
-  envelope: unknown,
-  options: { readonly preserveVerifiedResolvedContextPacks?: boolean } = {}
-): PromptArtifactEnvelope {
+function normalizePromptArtifactEnvelope(envelope: unknown): PromptArtifactEnvelope {
   const parsed = parseNormalizedDtoOrThrow(envelope, promptArtifactEnvelopeObjectSchema, "$");
   const production = parsed.manifest.production === undefined
     ? undefined
@@ -387,17 +427,13 @@ function normalizePromptArtifactEnvelope(
     throw new Error("Prompt artifact hash mismatch");
   }
 
-  const resolvedContextPacks = options.preserveVerifiedResolvedContextPacks
-    ? resolveAuthoritativeContextPacks(envelope, parsed.manifest.contextPackRefs, production !== undefined)
-    : undefined;
   const { production: _production, ...manifestWithoutProduction } = parsed.manifest;
   return freezePromptArtifactEnvelope({
     manifest: {
       ...manifestWithoutProduction,
       ...(production === undefined ? {} : { production })
     },
-    text: parsed.text,
-    ...(resolvedContextPacks === undefined ? {} : { resolvedContextPacks })
+    text: parsed.text
   });
 }
 
@@ -412,7 +448,7 @@ function computePromptArtifactHash(input: {
 }
 
 function normalizeProductionBinding(
-  production: z.infer<typeof promptArtifactProductionBindingObjectSchema>,
+  production: PromptArtifactProductionBinding | z.infer<typeof promptArtifactProductionBindingObjectSchema>,
   manifest: Pick<PromptArtifactManifest, "runType" | "promptTemplateId" | "promptTemplateVersion" | "contextPackRefs">,
   text: string,
   verifiedResolvedContextPacks?: readonly VerifiedResolvedContextPack[],
@@ -538,8 +574,7 @@ function isProductionRunType(runType: AgentSpecialistRunType): runType is Exclud
 
 function resolveAuthoritativeContextPacks(
   input: unknown,
-  refs: readonly ContextPackRef[],
-  reverifyPersistedUntrustedPacks = false
+  refs: readonly ContextPackRef[]
 ): readonly VerifiedResolvedContextPack[] | undefined {
   if (typeof input !== "object" || input === null) {
     return undefined;
@@ -553,9 +588,67 @@ function resolveAuthoritativeContextPacks(
   }
   return assertResolvedContextPacksForExecution(
     refs,
-    descriptor.value as readonly VerifiedResolvedContextPack[],
-    { reverifyPersistedUntrustedPacks }
+    descriptor.value as readonly VerifiedResolvedContextPack[]
   );
+}
+
+function rehydrateProductionResolvedContextPacks(
+  input: unknown,
+  refs: readonly ContextPackRef[],
+  authoritativeResolvedContextPacks: readonly VerifiedResolvedContextPack[]
+): readonly VerifiedResolvedContextPack[] {
+  const authoritative = assertResolvedContextPacksForExecution(refs, authoritativeResolvedContextPacks);
+  const persisted = persistedResolvedContextPacks(input);
+  if (persisted.length !== authoritative.length) {
+    throw new Error("Persisted resolvedContextPacks do not match authoritative context packs");
+  }
+
+  for (let index = 0; index < authoritative.length; index += 1) {
+    const persistedPack = persisted[index];
+    const verifiedPack = authoritative[index];
+    if (persistedPack === undefined || verifiedPack === undefined) {
+      throw new Error("Persisted resolvedContextPacks do not match authoritative context packs");
+    }
+    const persistedRecord = jsonRecord(persistedPack);
+    if (persistedRecord === undefined || persistedRecord.ref === undefined || persistedRecord.payload === undefined) {
+      throw new Error("Persisted resolvedContextPacks must contain ref and payload");
+    }
+
+    const persistedRef = contextPackRefSchema.parse(persistedRecord.ref);
+    if (!sameContextPackBytes(persistedRef, verifiedPack.ref) || !sameContextPackBytes(persistedRecord.payload, verifiedPack.payload)) {
+      throw new Error("Persisted resolvedContextPacks do not match authoritative context packs");
+    }
+  }
+
+  return authoritative;
+}
+
+function persistedResolvedContextPacks(input: unknown): readonly AgentContextPackJsonValue[] {
+  if (typeof input !== "object" || input === null) {
+    throw new Error("Persisted production prompt artifact requires resolvedContextPacks");
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(input, "resolvedContextPacks");
+  if (descriptor === undefined) {
+    throw new Error("Persisted production prompt artifact requires resolvedContextPacks");
+  }
+  if (!descriptor.enumerable || !("value" in descriptor)) {
+    throw new Error("resolvedContextPacks must be JSON DTO-safe");
+  }
+  const normalized = normalizeJsonDtoValue(descriptor.value, "$.resolvedContextPacks");
+  if (!Array.isArray(normalized)) {
+    throw new Error("resolvedContextPacks must be JSON DTO-safe");
+  }
+  return normalized;
+}
+
+function jsonRecord(value: AgentContextPackJsonValue): Readonly<Record<string, AgentContextPackJsonValue>> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Readonly<Record<string, AgentContextPackJsonValue>>
+    : undefined;
+}
+
+function sameContextPackBytes(left: unknown, right: unknown): boolean {
+  return Buffer.from(serializeContextPackPayload(left)).equals(Buffer.from(serializeContextPackPayload(right)));
 }
 
 function addSecretSafeIssue(value: string, label: string, ctx: z.RefinementCtx): void {
