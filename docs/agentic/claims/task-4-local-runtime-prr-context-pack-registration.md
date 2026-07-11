@@ -6,7 +6,8 @@
 - Branch: `codex/prr-context-pack-design`
 - Worktree: `/home/drake/.codex/worktrees/3076/Cestus`
 - Claimed at: 2026-07-11T22:28:26Z
-- Status: in-progress
+- Completed at: 2026-07-11T22:42:36Z
+- Status: ready-for-review
 
 ## Scope
 
@@ -26,4 +27,37 @@ Owned files:
 
 ## Evidence
 
-Pending RED tests, targeted verification, full `npm run verify`, and review.
+RED:
+
+```text
+npm test -- packages/local-runtime/test/agent-prr-context-packs.test.ts
+Test Files  1 failed (1)
+Tests  1 failed | 3 passed (4)
+Failure: raw metadata or provider references are not allowed in PRR context packs
+```
+
+Targeted green:
+
+```text
+npm test -- packages/local-runtime/test/agent-prr-context-packs.test.ts
+Test Files  1 passed (1)
+Tests  4 passed (4)
+
+npm test -- packages/local-runtime/test/agent-prr-context-packs.test.ts packages/agent/test/prr-context-packs.test.ts
+Test Files  2 passed (2)
+Tests  28 passed (28)
+```
+
+Full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  179 passed | 3 skipped (182)
+Tests  2059 passed | 3 skipped (2062)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Review pending.
