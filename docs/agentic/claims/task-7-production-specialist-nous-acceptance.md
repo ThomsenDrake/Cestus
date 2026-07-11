@@ -6,7 +6,7 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at: `2026-07-11T12:48:53Z`
-- Status: in-progress
+- Status: blocked
 
 ## Owned Files
 
@@ -115,3 +115,34 @@ or record a live acceptance pass without the gated provider result.
   ledger events and handoff DTOs do not contain sentinel, prompt text,
   credentials, raw request bodies, or raw provider response as a whole.
 - Resumed at: `2026-07-11T13:33:00Z`.
+- Provider sampling RED evidence: `npm test -- packages/agent/test/openai-compatible-provider.test.ts`
+  failed with 2 expected request-body failures before provider source changes:
+  Nous did not send `temperature: 0`, and invalid configured temperatures were
+  accepted.
+- Provider sampling GREEN evidence: `npm test -- packages/agent/test/openai-compatible-provider.test.ts`
+  reported 1 test file and 9 tests passed. The deterministic tests prove Nous
+  defaults to `temperature: 0`, does not send `response_format`, preserves
+  unsupported structured-output descriptor posture, and rejects non-finite or
+  out-of-range temperatures.
+- Sentinel review correction: removed the dirty derivative-store redaction WIP
+  and restored the accepted shape that reads the validated
+  `safe-evidence-summaries` derivative artifact, parses it, and asserts its
+  allowed `safeSummaries` field reflects the sentinel. The secrecy assertion
+  remains on serialized ledger events and handoff DTOs; this is validated local
+  derivative artifact content, not raw provider-response persistence.
+- Deterministic Task 7 suite passed:
+  `npm test -- packages/agent/test/openai-compatible-provider.test.ts packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts`
+  reported 2 test files passed, 2 skipped, 72 tests passed, and 2 skipped with
+  `CESTUS_AGENT_LIVE_NOUS` unset.
+- Required live Nous gate was run three consecutive times with
+  `/home/drake/Projects/Cestus/.env` loaded by path only. Attempt 1 failed
+  because the PRR negotiation handoff status was `failed` while evidence triage
+  passed. Attempt 2 failed the same PRR negotiation handoff status assertion
+  while evidence triage passed. Attempt 3 failed both the PRR negotiation and
+  evidence-triage handoff status assertions. No provider response text, prompt
+  text, raw request bodies, credentials, or environment values were logged,
+  scraped, printed, or recorded. No fake provider was substituted, no validator
+  was weakened, and no `response_format` or structured-output claim was added.
+- Stop condition reached: temperature-zero sampling did not produce three
+  consecutive live GREEN runs. `npm run verify`, `git diff --check`, and a
+  completion commit were not run after this blocked live gate.
