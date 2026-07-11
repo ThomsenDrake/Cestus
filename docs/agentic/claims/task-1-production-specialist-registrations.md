@@ -28,3 +28,6 @@
 - Re-review P1 RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with the new equivalent authority claims accepted and `dateRange.start: "sk-live-secret"` accepted.
 - Re-review P1 GREEN: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 file and 10 tests after PRR email, request filing, and human provider-transfer approval variants were rejected and range bounds required normalized dates.
 - Re-review P1 verify: `npm run verify` passed.
+- Re-review P1 authority-matching RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with the new narrative authority variants accepted; the focused suite reported 1 failure and 11 passing tests.
+- Re-review P1 authority-matching GREEN: the same focused command passed with 1 file and 12 tests after normalized subject/action matching rejected PRR/request/response sends and filings, legal escalation completion, and provider byte-transfer approval across narrative, identifier, and reference paths while retaining non-effect command-like evidence text.
+- Re-review P1 authority-matching verify: `npm run verify` passed: typecheck, tests, Vite build, and factory readiness; Node emitted only its existing experimental SQLite warning.
