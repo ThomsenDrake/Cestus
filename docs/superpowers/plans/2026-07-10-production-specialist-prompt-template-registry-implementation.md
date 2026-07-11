@@ -1012,10 +1012,10 @@ Review gate: spec review checks no output validator grants ontology truth or ext
 ## Task 7: Gated Live Nous Acceptance With Payload Sentinel
 
 **Files:**
-- Modify: `packages/agent/src/production-specialist-prompts.ts` (coordinator-approved narrow Task 7 support for deterministic output-only renderer instructions)
+- Modify: `packages/agent/src/production-specialist-prompts.ts` (coordinator-approved narrow Task 7 support for deterministic output-only renderer instructions and canonical context-delimited final output instruction ordering)
 - Modify: `packages/agent/src/openai-compatible-provider.ts` (coordinator-approved Task 7 support for deterministic sampling; structured output remains unsupported)
 - Modify: `packages/agent/test/openai-compatible-provider.test.ts` (coordinator-approved request-body tests)
-- Modify: `packages/agent/test/production-specialist-prompts.test.ts` (coordinator-approved renderer instruction/validator parity tests)
+- Modify: `packages/agent/test/production-specialist-prompts.test.ts` (coordinator-approved renderer instruction/validator parity and renderer-order tests)
 - Modify: `packages/agent/test/evidence-triage-nous-live.test.ts`
 - Modify: `packages/agent/test/prr-negotiation-nous-live.test.ts`
 - Create during execution: `docs/agentic/claims/task-7-production-specialist-nous-acceptance.md`
@@ -1079,6 +1079,34 @@ assert serialized ledger events and handoff DTOs do not contain the sentinel,
 prompt text, credentials, raw request bodies, or raw provider response as a
 whole, and record in the claim that this is a validated derivative artifact,
 not raw provider-response persistence.
+
+Coordinator-approved Task 7 renderer-order correction: preserve the current
+uncommitted deterministic sampling source/test WIP, and fix the evidence-backed
+live-output root cause by moving all controlling instructions after clearly
+delimited verified payload context. Add a canonical end-of-context marker such
+as `End verified payload context.` to the renderer material. Render sections in
+this order: template/run metadata, verified-context start marker, payload
+sections, bounded omission metadata, context end marker, authority instruction,
+review instruction, handoff line, provider output schema identity line, and the
+full provider-output schema instruction with exact JSON skeleton as the final
+prompt section. Keep this inside canonical renderer material so `rendererHash`
+and artifact verification bind the marker and ordering. Do not duplicate or
+mutate payload text, weaken validators, add noncanonical prompt text, raise max
+tokens, add response healing, claim structured-output support, or move
+instructions outside the prompt artifact.
+
+Add deterministic tests in `packages/agent/test/production-specialist-prompts.test.ts`
+that prove every payload section occurs between the start and end markers,
+authority/review/output instructions occur after the context end marker, the
+run-type output instruction is the final prompt section, order or end-marker
+mutation changes renderer hash and rendered text, and all six skeletons still
+parse and validate. If a live call still returns a failed handoff, add only a
+temporary uncommitted test classifier around the provider invocation that
+reports HTTP status, finish reason, output character count, JSON-syntax-valid
+boolean, exact top-level-key boolean, and Zod issue paths/codes. It must never
+print or persist values, messages, prompt text, provider output text, request
+bodies, credentials, or payload text. Use that classification to repair a
+concrete renderer/schema mismatch or escalate with the precise category.
 
 Modify `packages/agent/test/evidence-triage-nous-live.test.ts` so the live test:
 
