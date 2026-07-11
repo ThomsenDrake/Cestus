@@ -576,10 +576,10 @@ function promptArtifact(
   });
 
   return buildPromptArtifact({
-    promptTemplateId: "resident-agent-context-pack.v1",
+    promptTemplateId: "ontology-bootstrap.context-pack.v1",
     promptTemplateVersion: 1,
     generatedAt: "2026-07-08T12:01:00.000Z",
-    runType: "evidence-triage",
+    runType: "ontology-bootstrap",
     safetyClass,
     transferApprovalClass,
     contextPackRefs: [contextPackRef],
