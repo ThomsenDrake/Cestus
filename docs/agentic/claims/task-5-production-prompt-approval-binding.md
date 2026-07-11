@@ -112,3 +112,27 @@ or repeated verifier failure after two focused repair attempts.
 No production prompt text, provider response text, resolved payload values,
 credentials, request bodies, hidden paths, or generic metadata bags are recorded
 in this claim.
+
+## Review-Fix Evidence
+
+- Review blocker repaired: `runtime.invokeModel()` now determines production
+  status from the loaded run projection before constructing a request event.
+  All six MVP production run types require a successfully normalized prompt
+  audit whose input artifact hash exactly matches the invocation and whose
+  audit includes the production binding. Absent, invalid, hash-mismatched, and
+  missing-binding artifacts return a safe policy failure before a request event
+  is appended or a provider is called.
+- RED: `npm test -- packages/agent/test/runtime.test.ts` failed as expected
+  before the runtime change. The new production guard test observed the legacy
+  runtime failure after request-event construction for an absent artifact.
+- GREEN: `npm test -- packages/agent/test/runtime.test.ts` passed with 1 file
+  and 22 tests. The loop covers each of the six MVP run types for absent,
+  invalid, hash-mismatched, and missing-production-binding artifacts and
+  asserts zero provider calls and zero model-request events.
+- Regression suite: `npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/evidence-triage-workflow.test.ts` passed with 6 files and 119 tests.
+- `npm run verify` passed with typecheck, the full test suite, UI production
+  build, and factory readiness. `git diff --check` passed.
+
+No production prompt text, provider response text, resolved payload values,
+credentials, request bodies, hidden paths, or generic metadata bags are recorded
+in this review-fix evidence.
