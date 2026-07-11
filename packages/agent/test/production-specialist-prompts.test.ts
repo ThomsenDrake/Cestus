@@ -294,7 +294,10 @@ describe("production specialist prompt registrations", () => {
     for (const instruction of [
       "Provider byte transfer approval is required before upload.",
       "Legal escalation must be approved by a human reviewer.",
-      "The repair should be executed after review."
+      "The repair should be executed after review.",
+      "The report should be published after review.",
+      "The graph must be accepted by a human reviewer.",
+      "The lock should be cleared only after approval."
     ]) {
       expect(triage(instruction).runType).toBe("evidence-triage");
     }
@@ -358,7 +361,11 @@ describe("production specialist prompt registrations", () => {
       "The PRR submission was completed.",
       "The publication was completed.",
       "The entity resolution was completed.",
-      "The lock clearing was completed."
+      "The lock clearing was completed.",
+      "The legal escalation completion was recorded.",
+      "The entity resolution completion was recorded.",
+      "Lock clearing completion was recorded.",
+      "Provider byte transfer is complete."
     ]) {
       expect(() => validateProductionSpecialistProviderOutput({
         runType: "evidence-triage",
