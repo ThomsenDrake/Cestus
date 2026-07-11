@@ -1472,3 +1472,50 @@ tests passed
 vite build succeeded
 factory-readiness passed
 ```
+
+## Investigative Context Packs Final Readiness
+
+The investigative context-pack package lane reached final factory readiness on 2026-07-11 on branch `codex/task-4-accepted-graph-context-pack`.
+
+Final commit before the readiness note:
+
+```text
+db044f0f chore: mark investigative context final readiness in progress
+```
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-10-investigative-context-packs-design.md`
+- `docs/superpowers/plans/2026-07-10-investigative-context-packs-implementation.md`
+
+Recorded targeted command evidence:
+
+```text
+npm test -- packages/agent/test/investigative-context-packs.test.ts
+Test Files  1 passed (1)
+Tests  47 passed (47)
+```
+
+Recorded cross-package readiness evidence:
+
+```text
+npm test -- packages/agent/test/investigative-context-packs.test.ts packages/agent/test/specialist-readiness.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/prompt-artifacts.test.ts
+Test Files  4 passed (4)
+Tests  127 passed (127)
+```
+
+Recorded final verification evidence:
+
+```text
+npm run verify
+typecheck passed
+Test Files  176 passed | 3 skipped (179)
+Tests  1912 passed | 3 skipped (1915)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+Review status for Tasks 1-6: all six investigative context-pack task claims are marked `ready-for-review` before this final handoff. The claims cover contracts/descriptors, bounded selection, evidence summary, accepted graph projection, governance locks, and registration/readiness. Task 3 records review fixes for evidence-summary payload safety and deterministic hashing; Task 6 records the final registration, resolved-payload, typecheck, full investigative, context-pack, full verification, and whitespace evidence. A final fresh review is still required for the Task 7 handoff before coordinator merge direction.
+
+This lane adds package-owned investigative builders and registration for `evidence-summary.v1`, `accepted-graph-projection.v1`, and `governance-locks.v1` only. Runtime/orchestrator integration remains deferred to a narrow later task that constructs the mounted-workspace dependency object and calls the package-owned registration helper without changing pack schemas, readiness logic, resolved-envelope semantics, prompt rendering, or bounded selection contracts.
