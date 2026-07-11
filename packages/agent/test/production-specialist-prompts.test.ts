@@ -303,6 +303,33 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it("rejects non-PRR completed effects after an earlier modal instruction", () => {
+    const triage = (dossierSummary: string) => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary,
+        safeSummaries: [],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    });
+
+    for (const claim of [
+      "The report must be published and was published.",
+      "Legal escalation must be approved and was approved.",
+      "The repair should be executed and was executed.",
+      "The lock should be cleared and was cleared."
+    ]) {
+      expect(() => triage(claim)).toThrow(/authority|external effect|ontology/i);
+    }
+  });
+
   it("keeps non-PRR authority completion matching shared across narrative, identifier, and reference fields", () => {
     const triage = (dossierSummary: string) => validateProductionSpecialistProviderOutput({
       runType: "evidence-triage",

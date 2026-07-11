@@ -20,10 +20,18 @@ const hasInstructionBeforeAction = (value: string, instructionModal: RegExp, act
   return instructionMatch !== null && actionMatch !== null && instructionMatch.index < actionMatch.index;
 };
 
+const hasCompletedPassiveAction = (value: string, subject: RegExp, action: RegExp) =>
+  hasSubjectAction(
+    value,
+    subject,
+    new RegExp(`\\b(?:was|were|has been|have been|had been)\\s+(?:${action.source})`, action.flags)
+  );
+
 const hasAuthorityEffectUnlessInstruction = (value: string, subject: RegExp, action: RegExp) => {
   const instructionModal = /\b(?:should|must|may|might|can|could|would|will)\b/;
 
   return value.split(/[,;.!?]+/).some((clause) =>
+    hasCompletedPassiveAction(clause, subject, action) ||
     (hasSubjectAction(clause, subject, completionTerm) && !hasInstructionBeforeAction(clause, instructionModal, completionTerm)) ||
     (hasSubjectAction(clause, subject, action) && !hasInstructionBeforeAction(clause, instructionModal, action))
   );
