@@ -4,6 +4,11 @@ import {
   productionSpecialistPromptRegistrations,
   validateProductionSpecialistProviderOutput
 } from "../src/production-specialist-prompts.js";
+import {
+  assertPromptArtifactCanTransferToRemoteProvider,
+  buildPromptArtifact
+} from "../src/prompt-artifacts.js";
+import { buildContextPackRef } from "../src/context-packs.js";
 
 describe("production specialist prompt registrations", () => {
   const validEvidenceTriageOutput = () => ({
@@ -48,6 +53,33 @@ describe("production specialist prompt registrations", () => {
     expect(productionSpecialistPromptRegistrations.map((registration) => registration.rendererHash)).toEqual(
       productionSpecialistPromptRegistrations.map((registration) => productionSpecialistPromptRegistrationFor(registration.runType).rendererHash)
     );
+  });
+
+  it("requires a complete production binding before every production run type can transfer", () => {
+    const ref = buildContextPackRef({
+      contextPackId: "task-run-history.v1",
+      version: 1,
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      payload: { task: "run_001" },
+      safeSummary: "One task history item.",
+      provenanceRefs: ["evt_task_001"]
+    });
+
+    for (const registration of productionSpecialistPromptRegistrations) {
+      const artifact = buildPromptArtifact({
+        promptTemplateId: registration.promptTemplateId,
+        promptTemplateVersion: registration.promptTemplateVersion,
+        generatedAt: "2026-07-10T12:00:00.000Z",
+        runType: registration.runType,
+        safetyClass: "provider-approved",
+        transferApprovalClass: "provider-byte-transfer",
+        contextPackRefs: [ref],
+        text: "Provider prompt text requires a registered production binding.",
+        safeSummary: "Provider-approved specialist prompt artifact."
+      });
+
+      expect(() => assertPromptArtifactCanTransferToRemoteProvider(artifact)).toThrow(/production binding/i);
+    }
   });
 
   it("requires selected PRR context only where the approved spec requires it", () => {
