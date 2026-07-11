@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildContextPackRef,
+  createContextPackRegistry,
   parseSpecialistWorkflowReadinessDto,
   projectSpecialistWorkflowReadiness,
   specialistWorkflowDescriptorFor,
@@ -9,6 +10,8 @@ import {
   type ProviderSetupCard,
   type SpecialistWorkflowDescriptor
 } from "../src/index.js";
+import { productionSpecialistPromptRegistrations } from "../src/production-specialist-prompts.js";
+import { registerContextPackPayloadParserAuthority, type AgentContextPackJsonValue } from "../src/context-packs.js";
 
 const generatedAt = "2026-07-09T12:00:00.000Z";
 const currentProjectionHighWaterMarks = {
@@ -58,6 +61,25 @@ const blockedProviderCard: ProviderSetupCard = {
   safeActionIds: ["action_link_provider_credential"]
 };
 
+const readinessContextPackIds = [
+  "accepted-graph-projection.v1",
+  "evidence-summary.v1",
+  "timeline-draft-summary.v1",
+  "contradiction-candidate-summary.v1",
+  "governance-locks.v1",
+  "agent-memory-summary.v1",
+  "task-run-history.v1",
+  "workspace-runtime-status.v1",
+  "prr-read-model.v1",
+  "jurisdiction-pack-summary.v1"
+] as const;
+
+const readinessRegistry = createReadinessContextPackRegistry();
+const readinessResolvedById = new Map(await Promise.all(readinessContextPackIds.map(async (contextPackId) => {
+  const resolved = await readinessRegistry.buildResolved(contextPackId);
+  return [contextPackId, resolved] as const;
+})));
+
 describe("specialist workflow readiness projection", () => {
   it("blocks the plan sample when timeline-builder is missing the domain adapter contract", () => {
     const descriptor = specialistWorkflowDescriptorFor("timeline-builder");
@@ -66,8 +88,10 @@ describe("specialist workflow readiness projection", () => {
       runType: "timeline-builder",
       descriptor,
       availableContracts: ["agent.scheduler-resumer.v1"],
+      scope: { kind: "investigation", refs: ["inv_001"] },
       contextPackRefs: [],
-      promptTemplateRegistrations: [],
+      resolvedContextPacks: [],
+      productionPromptRegistrations: [],
       providerReadiness: providerReadinessDto([readyProviderCard]),
       availableDomainAdapterFamilies: ["provider-byte-transfer"],
       currentProjectionHighWaterMarks,
@@ -132,7 +156,7 @@ describe("specialist workflow readiness projection", () => {
     const descriptor = specialistWorkflowDescriptorFor("timeline-builder");
 
     const readiness = projectSpecialistWorkflowReadiness(readyInput(descriptor, {
-      promptTemplateRegistrations: []
+      productionPromptRegistrations: []
     }));
 
     expect(readiness).toMatchObject({
@@ -142,6 +166,68 @@ describe("specialist workflow readiness projection", () => {
       contextReady: false,
       executionReady: false
     });
+  });
+
+  it("treats absent PRR context as a bounded omission for non-PRR imported evidence readiness", () => {
+    const descriptor = specialistWorkflowDescriptorFor("evidence-triage");
+    const readiness = projectSpecialistWorkflowReadiness(readyInput(descriptor, {
+      scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+      contextPackRefs: refsFor(descriptor).filter((ref) => ref.contextPackId !== "prr-read-model.v1"),
+      resolvedContextPacks: resolvedRefsFor(descriptor),
+      productionPromptRegistrations: productionSpecialistPromptRegistrations
+    } as never));
+
+    expect(readiness.contextReady).toBe(true);
+    expect(readiness.missingContextPackIds).toEqual([]);
+    expect(readiness.contextOmissions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ reason: "no-associated-prr", sourceRef: "prr-read-model.v1" })
+    ]));
+  });
+
+  it("requires PRR context for PRR-linked runs but not for non-PRR evidence triage, planning, and report building", () => {
+    for (const runType of ["evidence-triage", "investigation-planner", "report-builder"] as const) {
+      const descriptor = specialistWorkflowDescriptorFor(runType);
+      const withoutPrr = refsFor(descriptor).filter((ref) => ref.contextPackId !== "prr-read-model.v1");
+
+      expect(projectSpecialistWorkflowReadiness(readyInput(descriptor, {
+        scope: { kind: "imported-evidence", refs: ["ev_imported_001"] },
+        contextPackRefs: withoutPrr,
+        resolvedContextPacks: [] as never,
+        productionPromptRegistrations: productionSpecialistPromptRegistrations
+      } as never)).missingContextPackIds).toEqual([]);
+
+      expect(projectSpecialistWorkflowReadiness(readyInput(descriptor, {
+        scope: {
+          kind: "prr-request",
+          refs: ["prr_selected_001"],
+          associatedPrrRequestId: "prr_selected_001"
+        },
+        contextPackRefs: withoutPrr,
+        resolvedContextPacks: [] as never,
+        productionPromptRegistrations: productionSpecialistPromptRegistrations
+      } as never)).missingContextPackIds).toEqual(["prr-read-model.v1"]);
+    }
+  });
+
+  it("blocks prompt readiness without authoritative resolved payloads or with thin test-only registrations", () => {
+    const descriptor = specialistWorkflowDescriptorFor("timeline-builder");
+    const withoutPayloads = projectSpecialistWorkflowReadiness(readyInput(descriptor, {
+      scope: { kind: "investigation", refs: ["inv_001"] },
+      resolvedContextPacks: [] as never,
+      productionPromptRegistrations: productionSpecialistPromptRegistrations
+    } as never));
+    expect(withoutPayloads.contextReady).toBe(false);
+
+    const thinRegistration = projectSpecialistWorkflowReadiness(readyInput(descriptor, {
+      scope: { kind: "investigation", refs: ["inv_001"] },
+      productionPromptRegistrations: [{
+        runType: descriptor.runType,
+        promptTemplateId: descriptor.promptTemplate.promptTemplateId,
+        promptTemplateVersion: 1,
+        production: false
+      }] as never
+    } as never));
+    expect(thinRegistration.missingPromptTemplateIds).toEqual([descriptor.promptTemplate.promptTemplateId]);
   });
 
   it("blocks for missing or unready providers, but waits for provider byte-transfer approval when that is the only gap", () => {
@@ -407,13 +493,10 @@ function readyInput(
     runType: descriptor.runType,
     descriptor,
     availableContracts: [...descriptor.prerequisiteContractIds],
+    scope: { kind: "investigation", refs: ["inv_001"] },
     contextPackRefs: refsFor(descriptor),
-    promptTemplateRegistrations: [{
-      runType: descriptor.runType,
-      promptTemplateId: descriptor.promptTemplate.promptTemplateId,
-      promptTemplateVersion: descriptor.promptTemplate.promptTemplateVersion,
-      label: `${descriptor.label} prompt`
-    }],
+    resolvedContextPacks: resolvedRefsFor(descriptor),
+    productionPromptRegistrations: productionSpecialistPromptRegistrations,
     providerReadiness: providerReadinessDto([readyProviderCard]),
     availableDomainAdapterFamilies: ["provider-byte-transfer", "prr-correspondence"],
     currentProjectionHighWaterMarks,
@@ -441,6 +524,56 @@ function contextRef(contextPackId: string, projectionHighWaterMark: number): Con
     projectionHighWaterMark,
     sourceEventIds: ["evt_context_source"]
   });
+}
+
+function resolvedRefsFor(descriptor: SpecialistWorkflowDescriptor) {
+  return descriptor.contextPacks
+    .filter((pack) => pack.requirementMode === "always")
+    .map((pack) => {
+      const resolved = readinessResolvedById.get(pack.contextPackId as typeof readinessContextPackIds[number]);
+      if (resolved === undefined) throw new Error(`Missing readiness context fixture for ${pack.contextPackId}`);
+      return resolved;
+    });
+}
+
+function createReadinessContextPackRegistry() {
+  const registry = createContextPackRegistry();
+  for (const contextPackId of readinessContextPackIds) {
+    const parser = (payload: AgentContextPackJsonValue) => payload;
+    Object.defineProperty(parser, "cestusContextPackParserId", {
+      value: readinessParserIdentity(contextPackId), enumerable: false, writable: false, configurable: false
+    });
+    registerContextPackPayloadParserAuthority(parser);
+    registry.register({
+      descriptor: {
+        contextPackId,
+        version: 1,
+        label: `Readiness ${contextPackId}`,
+        maxBytes: 16_384,
+        requiredProvenanceKinds: ["event-id"],
+        redactionPolicy: "safe-summary",
+        sourceProjection: "agent.projection"
+      },
+      parsePayload: parser,
+      build: () => ({
+        contextPackId,
+        version: 1,
+        generatedAt,
+        payload: { contextPackId, projectionHighWaterMark: 12 },
+        safeSummary: `Safe summary for ${contextPackId}.`,
+        provenanceRefs: ["evt_context_source"],
+        projectionHighWaterMark: 12,
+        sourceEventIds: ["evt_context_source"]
+      })
+    });
+  }
+  return registry;
+}
+
+function readinessParserIdentity(contextPackId: typeof readinessContextPackIds[number]): string {
+  if (contextPackId === "timeline-draft-summary.v1") return "timeline-draft-summary.production-test-parser.v1";
+  if (contextPackId === "contradiction-candidate-summary.v1") return "contradiction-candidate-summary.production-test-parser.v1";
+  return contextPackId;
 }
 
 function providerReadinessDto(cards: readonly ProviderSetupCard[]): ProviderReadinessDto {

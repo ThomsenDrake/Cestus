@@ -7,7 +7,7 @@ import {
   type RebuildProviderByteTransferCurrentPreviewInput
 } from "./adapters/provider-byte-transfer.js";
 import {
-  buildPromptArtifact,
+  assertPromptArtifactCanTransferToRemoteProvider,
   promptArtifactAuditMetadata,
   type PromptArtifactEnvelope
 } from "./prompt-artifacts.js";
@@ -21,10 +21,22 @@ import {
 } from "./provider-readiness.js";
 import type { InvokeAgentModelInput, InvokeAgentModelResult } from "./runtime.js";
 import type { AgentRuntimeResult } from "./runtime-types.js";
-import type { ContextPackRef, ContextPackRegistry } from "./context-packs.js";
+import {
+  assertResolvedContextPacksForExecution,
+  type ContextPackRef,
+  type ContextPackRegistry
+} from "./context-packs.js";
 import type { AgentFailureCategory } from "./projection-types.js";
 import { specialistWorkflowDescriptorFor, type SpecialistWorkflowDescriptor } from "./specialist-workflows.js";
 import type { AgentSpecialistRunType } from "./specialists.js";
+import {
+  productionSpecialistPromptRegistrationFor,
+  productionSpecialistPromptRegistrations,
+  renderProductionSpecialistPrompt,
+  verifyProductionSpecialistPromptArtifact,
+  type ProductionRunScope,
+  type ProductionSpecialistPromptRegistration
+} from "./production-specialist-prompts.js";
 import { hashAgentToolPreview } from "./tool-gateway.js";
 
 const agentCoreVersion = "0.1.0";
@@ -69,6 +81,8 @@ export interface SpecialistRunnerBaseInput {
   readonly actor: ActorRef;
   readonly now: () => string;
   readonly contextPacks: ContextPackRegistry;
+  readonly scope?: ProductionRunScope;
+  readonly productionPromptRegistrations?: readonly ProductionSpecialistPromptRegistration[];
   readonly runId: string;
   readonly taskId: string;
   readonly providerId: string;
@@ -93,6 +107,7 @@ export async function prepareSpecialistRun(
   runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">
 ): Promise<PreparedSpecialistRun> {
   const descriptor = specialistWorkflowDescriptorFor(runType);
+  const registration = productionRegistrationFor(input, runType, descriptor);
   const run = buildAgentProjection(await input.ledger.readAll()).runs.get(input.runId);
   if (run === undefined || run.runType !== runType || run.residentAgentId !== "agent_default") {
     throw new Error("Specialist workflow requires a matching agent_default run.");
@@ -101,22 +116,26 @@ export async function prepareSpecialistRun(
     throw new Error("Specialist workflow task does not match the target run.");
   }
 
-  const contextPackRefs = await Promise.all(
-    descriptor.contextPacks.map(async (requirement) => await input.contextPacks.build(requirement.contextPackId))
+  const scope: ProductionRunScope = input.scope ?? Object.freeze({ kind: "task", refs: Object.freeze([input.taskId]) });
+  const applicableRequirements = registration.contextRequirements.filter((requirement) =>
+    requirement.requirementMode === "always" || scope.associatedPrrRequestId !== undefined
   );
-  const generated = buildPromptArtifact({
-    promptTemplateId: descriptor.promptTemplate.promptTemplateId,
-    promptTemplateVersion: descriptor.promptTemplate.promptTemplateVersion,
-    generatedAt: input.now(),
+  const resolvedContextPacks = await Promise.all(
+    applicableRequirements.map(async (requirement) => await input.contextPacks.buildResolved(requirement.contextPackId))
+  );
+  const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+  const verifiedResolvedContextPacks = assertResolvedContextPacksForExecution(contextPackRefs, resolvedContextPacks);
+  const renderInput = {
     runType,
-    safetyClass: "workspace-safe",
-    transferApprovalClass: "none",
-    contextPackRefs,
-    text: promptText(runType, contextPackRefs),
-    safeSummary: `${descriptor.label} prompt contains safe context-pack references only.`
-  });
-  const promptArtifact = input.promptArtifact ?? generated;
-  assertPromptMatchesRun(promptArtifact, runType, contextPackRefs);
+    runId: input.runId,
+    taskId: input.taskId,
+    generatedAt: input.now(),
+    scope,
+    resolvedContextPacks: verifiedResolvedContextPacks
+  };
+  const promptArtifact = input.promptArtifact === undefined
+    ? renderProductionSpecialistPrompt(renderInput)
+    : verifyProductionSpecialistPromptArtifact({ ...renderInput, artifact: input.promptArtifact });
 
   return Object.freeze({ descriptor, contextPackRefs: Object.freeze(contextPackRefs), promptArtifact });
 }
@@ -156,6 +175,7 @@ async function assertProviderReadinessAllowsInvocation(
   input: SpecialistRunnerBaseInput,
   promptArtifact: PromptArtifactEnvelope
 ): Promise<void> {
+  assertPromptArtifactCanTransferToRemoteProvider(promptArtifact);
   const card = providerReadinessCards(input.providerReadiness).find((candidate) => candidate.providerId === input.providerId);
   if (card === undefined) {
     throw new Error("Selected provider readiness is unavailable for specialist invocation.");
@@ -271,6 +291,45 @@ function providerReadinessCards(
     return providerReadinessDtoSchema.parse(providerReadiness).cards;
   }
   return providerReadiness.cards.map((card) => providerSetupCardSchema.parse(card));
+}
+
+function productionRegistrationFor(
+  input: SpecialistRunnerBaseInput,
+  runType: Exclude<AgentSpecialistRunType, "ontology-bootstrap">,
+  descriptor: SpecialistWorkflowDescriptor
+): ProductionSpecialistPromptRegistration {
+  const canonical = productionSpecialistPromptRegistrationFor(runType);
+  const registrations = input.productionPromptRegistrations ?? productionSpecialistPromptRegistrations;
+  const registration = registrations.find((candidate) =>
+    candidate.runType === canonical.runType &&
+    candidate.promptTemplateId === canonical.promptTemplateId &&
+    candidate.promptTemplateVersion === canonical.promptTemplateVersion &&
+    candidate.rendererId === canonical.rendererId &&
+    candidate.rendererVersion === canonical.rendererVersion &&
+    candidate.rendererHash === canonical.rendererHash &&
+    candidate.providerOutputSchemaId === canonical.providerOutputSchemaId &&
+    candidate.providerOutputSchemaVersion === canonical.providerOutputSchemaVersion &&
+    candidate.handoffSchemaId === canonical.handoffSchemaId &&
+    candidate.handoffSchemaVersion === canonical.handoffSchemaVersion &&
+    candidate.safetyClass === "provider-approved" &&
+    candidate.transferApprovalClass === "provider-byte-transfer"
+  );
+  if (registration === undefined) {
+    throw new Error("Production specialist prompt registration is unavailable for this run.");
+  }
+  if (
+    descriptor.promptTemplate.promptTemplateId !== registration.promptTemplateId ||
+    descriptor.promptTemplate.promptTemplateVersion !== registration.promptTemplateVersion ||
+    descriptor.promptTemplate.providerOutputSchemaId !== registration.providerOutputSchemaId ||
+    descriptor.promptTemplate.providerOutputSchemaVersion !== registration.providerOutputSchemaVersion ||
+    descriptor.promptTemplate.handoffSchemaId !== registration.handoffSchemaId ||
+    descriptor.promptTemplate.handoffSchemaVersion !== registration.handoffSchemaVersion ||
+    descriptor.promptTemplate.safetyClass !== registration.safetyClass ||
+    descriptor.promptTemplate.transferApprovalClass !== registration.transferApprovalClass
+  ) {
+    throw new Error("Specialist workflow descriptor does not match the production prompt registration.");
+  }
+  return registration;
 }
 
 export async function assertSpecialistStepNotRecorded(
@@ -680,28 +739,4 @@ function typedGovernanceLockIsActive(ref: ContextPackRef): boolean {
 
 function sameOrderedStrings(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
-}
-
-function promptText(runType: string, refs: readonly ContextPackRef[]): string {
-  return [
-    `${runType} structured local-derivative request`,
-    "Use only safe context-pack identifiers, hashes, and summaries.",
-    "Return JSON only. Do not authorize sends, legal escalation, graph acceptance, export, publication, repair, or provider transfer.",
-    ...refs.map((ref) => `context=${ref.contextPackId} hash=${ref.contentHash} summary=${ref.safeSummary}`)
-  ].join("\n");
-}
-
-function assertPromptMatchesRun(
-  artifact: PromptArtifactEnvelope,
-  runType: AgentSpecialistRunType,
-  refs: readonly ContextPackRef[]
-): void {
-  if (artifact.manifest.runType !== runType) {
-    throw new Error("Prompt artifact run type does not match specialist workflow.");
-  }
-  const expected = refs.map((ref) => ref.contentHash).sort().join(",");
-  const actual = artifact.manifest.contextPackRefs.map((ref) => ref.contentHash).sort().join(",");
-  if (actual !== expected) {
-    throw new Error("Prompt artifact context provenance does not match the current workflow context.");
-  }
 }

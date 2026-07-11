@@ -158,13 +158,18 @@ const specialistWorkflowRegistrySnapshotObjectSchema = z.object({
     prerequisiteContractIds: z.array(secretSafeStringSchema("specialist prerequisite contract id")),
     contextPacks: z.array(z.object({
       contextPackId: secretSafeStringSchema("specialist context pack id"),
-      required: z.boolean(),
+      requirementMode: z.enum(["always", "when-scope-associated-prr"]),
+      omissionWhenNotApplicable: z.literal("no-associated-prr").optional(),
       purpose: secretSafeStringSchema("specialist context pack purpose")
     }).strict()),
     promptTemplate: z.object({
       promptTemplateId: secretSafeStringSchema("specialist prompt template id"),
       promptTemplateVersion: z.number().int().positive(),
       outputSchemaId: secretSafeStringSchema("specialist output schema id"),
+      providerOutputSchemaId: secretSafeStringSchema("specialist provider output schema id"),
+      providerOutputSchemaVersion: z.number().int().positive(),
+      handoffSchemaId: secretSafeStringSchema("specialist prompt handoff schema id"),
+      handoffSchemaVersion: z.number().int().positive(),
       safetyClass: z.enum(["workspace-safe", "public-safe", "sensitive-local-only", "provider-approved"]),
       transferApprovalClass: z.enum(["none", "provider-byte-transfer"])
     }).strict(),
@@ -674,8 +679,9 @@ function projectSpecialists(input: {
         runType: descriptor.runType,
         descriptor,
         availableContracts: input.availableContracts,
+        scope: { kind: "workspace", refs: [] },
         contextPackRefs: [],
-        promptTemplateRegistrations: [],
+        resolvedContextPacks: [],
         providerReadiness,
         availableDomainAdapterFamilies: input.availableDomainAdapterFamilies,
         currentProjectionHighWaterMarks: {},

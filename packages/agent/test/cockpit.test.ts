@@ -235,7 +235,7 @@ describe("agent cockpit dto", () => {
         state: "provider-unavailable",
         safeActionIds: ["action_choose_provider"]
       })],
-      missingPromptTemplateIds: ["contradiction-finder.candidates.v1"]
+      missingPromptTemplateIds: []
     });
     expect(contradiction?.missingContextPackIds).toEqual(expect.arrayContaining([
       "accepted-graph-projection.v1",

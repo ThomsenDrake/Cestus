@@ -140,6 +140,32 @@ describe("MVP specialist workflow descriptors", () => {
     }
   });
 
+  it("binds descriptor context applicability and production schema identities to the approved registry", () => {
+    const prr = specialistWorkflowDescriptorFor("prr-negotiation");
+    expect(prr.contextPacks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ contextPackId: "prr-read-model.v1", requirementMode: "always" }),
+      expect.objectContaining({ contextPackId: "jurisdiction-pack-summary.v1", requirementMode: "always" })
+    ]));
+
+    for (const runType of ["evidence-triage", "timeline-builder", "contradiction-finder", "investigation-planner", "report-builder"] as const) {
+      const descriptor = specialistWorkflowDescriptorFor(runType);
+      expect(descriptor.contextPacks).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          contextPackId: "prr-read-model.v1",
+          requirementMode: "when-scope-associated-prr",
+          omissionWhenNotApplicable: "no-associated-prr"
+        })
+      ]));
+      expect(descriptor.promptTemplate).toMatchObject({
+        promptTemplateId: expectedPromptTemplateIdsByRunType[runType],
+        providerOutputSchemaId: `${runType}.${runType === "evidence-triage" ? "classify" : runType === "timeline-builder" ? "sourced-timeline" : runType === "contradiction-finder" ? "candidates" : runType === "investigation-planner" ? "next-steps" : "packet-draft"}-output.v1`,
+        providerOutputSchemaVersion: 1,
+        handoffSchemaId: `${runType}-handoff.v1`,
+        handoffSchemaVersion: 1
+      });
+    }
+  });
+
   it("declares evidence triage review queues as inert specialist request metadata", () => {
     const descriptor = specialistWorkflowDescriptorFor("evidence-triage");
     const adapterRegistry = createResidentAgentDomainAdapterRegistry();
