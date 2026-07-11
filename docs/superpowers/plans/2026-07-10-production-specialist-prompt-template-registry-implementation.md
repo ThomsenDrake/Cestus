@@ -11,8 +11,8 @@
 ## Global Constraints
 
 - Approved spec: `docs/superpowers/specs/2026-07-10-production-specialist-prompt-template-registry-design.md`.
-- Start implementation only after the operational resolved-context-pack lane has landed `ContextPackPayloadResolver.resolve(ref): Promise<ResolvedContextPack>`, `VerifiedResolvedContextPack`, and `assertResolvedContextPacksForExecution({ refs, resolved }): readonly VerifiedResolvedContextPack[]`.
-- Resolved payloads consumed by prompt preparation must be pack-parser verified by the registered context-pack system after hash and size verification through `assertResolvedContextPacksForExecution()`.
+- Start implementation only after the operational resolved-context-pack lane has landed callable `ContextPackPayloadResolver`, `ContextPackRegistry.buildResolved(id): Promise<VerifiedResolvedContextPack>`, `VerifiedResolvedContextPack`, and `assertResolvedContextPacksForExecution(refs, resolvedPacks): readonly VerifiedResolvedContextPack[]`.
+- Resolved payloads consumed by prompt preparation must be pack-parser verified by the registered context-pack system after hash and size verification through registry-owned `buildResolved()` and ordered `assertResolvedContextPacksForExecution(refs, resolvedPacks)`.
 - Do not create a generic context-pack payload resolver in this lane. Consume the landed operational exports; if they are absent or incompatible, stop before editing production code.
 - Do not create a competing context-pack parser registry in this lane.
 - Prompt code must not manufacture or trust caller-supplied verification metadata. It may record audit rows derived from authoritative verified envelopes.
@@ -60,22 +60,28 @@ export interface ResolvedContextPack {
   readonly payload: AgentContextPackJsonValue;
 }
 
-export interface VerifiedResolvedContextPack {
-  readonly ref: ContextPackRef;
-  readonly payload: AgentContextPackJsonValue;
+declare const verifiedResolvedContextPackBrand: unique symbol;
+
+export type VerifiedResolvedContextPack = ResolvedContextPack & {
+  readonly [verifiedResolvedContextPackBrand]: true;
+};
+
+export type ContextPackPayloadResolver = (ref: ContextPackRef) =>
+  | AgentContextPackJsonValue
+  | ResolvedContextPack
+  | Promise<AgentContextPackJsonValue | ResolvedContextPack>;
+
+export interface ContextPackRegistry {
+  buildResolved(contextPackId: string): Promise<VerifiedResolvedContextPack>;
 }
 
-export interface ContextPackPayloadResolver {
-  resolve(ref: ContextPackRef): Promise<ResolvedContextPack>;
-}
-
-export function assertResolvedContextPacksForExecution(input: {
-  readonly refs: readonly ContextPackRef[];
-  readonly resolved: readonly ResolvedContextPack[];
-}): readonly VerifiedResolvedContextPack[];
+export function assertResolvedContextPacksForExecution(
+  refs: readonly ContextPackRef[],
+  resolvedPacks: readonly ResolvedContextPack[]
+): readonly VerifiedResolvedContextPack[];
 ```
 
-The operational resolver owns local loading and content addressing. The operational registry assertion owns stable JSON hashing, byte-size verification, and exact pack-specific parser validation keyed by `contextPackId` and version. Prompt code calls the resolver for local bytes, passes the expected refs and resolved payloads to `assertResolvedContextPacksForExecution()`, and sends only that authoritative assertion result to production renderers. If the final operational type is branded or opaque, copy it exactly and do not widen it to a constructible plain object shape. Prompt code must not manufacture or trust a plain verification metadata field. This lane may perform production-template-specific checks against the verified resolved envelope, but it must not create alternate file, network, hash-to-text, provider-side, or parser-registry resolvers.
+The operational resolver owns local loading and content addressing. The operational registry owns stable JSON hashing, byte-size verification, exact pack-specific parser validation keyed by `contextPackId` and version, and the opaque/branded `VerifiedResolvedContextPack` result. Prompt code may call a `ContextPackPayloadResolver` as `resolver(ref)` only for local bytes, but a callable resolver result is not execution-ready by itself. Production prompt preparation must obtain registry-owned verified envelopes, usually with `ContextPackRegistry.buildResolved(id)`, pass the expected refs and verified envelopes to `assertResolvedContextPacksForExecution(refs, resolvedPacks)`, and send only that authoritative assertion result to production renderers. Prompt code must not manufacture verification, trust a plain verification metadata field, accept plain reloaded envelopes, or widen the branded type to a constructible plain object shape. This lane may perform production-template-specific checks against the verified resolved envelope, but it must not create alternate file, network, hash-to-text, provider-side, or parser-registry resolvers.
 
 ## Task 0: Dependency Gate And Claim Discipline
 
@@ -83,7 +89,7 @@ The operational resolver owns local loading and content addressing. The operatio
 - Create during execution: `docs/agentic/claims/task-0-production-specialist-dependency-gate.md`
 
 **Interfaces:**
-- Consumes: operational `ResolvedContextPack`, `VerifiedResolvedContextPack`, `ContextPackPayloadResolver`, and `assertResolvedContextPacksForExecution` exports from `packages/agent/src/context-packs.ts`.
+- Consumes: operational `ResolvedContextPack`, `VerifiedResolvedContextPack`, callable `ContextPackPayloadResolver`, `ContextPackRegistry.buildResolved`, and `assertResolvedContextPacksForExecution` exports from `packages/agent/src/context-packs.ts`.
 - Produces: committed claim and confirmation that implementation can begin after the operational lane.
 
 - [ ] **Step 1: Create the task claim**
@@ -120,10 +126,10 @@ git commit -m "chore: claim production specialist dependency gate"
 Run:
 
 ```bash
-rg -n "ResolvedContextPack|VerifiedResolvedContextPack|ContextPackPayloadResolver|assertResolvedContextPacksForExecution|resolve\\(ref: ContextPackRef\\)" packages/agent/src/context-packs.ts packages/agent/src/index.ts
+rg -n "ResolvedContextPack|VerifiedResolvedContextPack|ContextPackPayloadResolver|assertResolvedContextPacksForExecution|buildResolved\\(contextPackId: string\\)|=> AgentContextPackJsonValue" packages/agent/src/context-packs.ts packages/agent/src/index.ts
 ```
 
-Expected: matches for the operational exported local resolved envelope type, opaque verified envelope type, resolver interface, authoritative execution assertion, resolver method, and index export. If this command has no matches, stop before editing this lane.
+Expected: matches for the operational exported local resolved envelope type, opaque verified envelope type, callable resolver type, registry `buildResolved` method, authoritative execution assertion, and index export. If this command has no matches, stop before editing this lane.
 
 - [ ] **Step 3: Verify the operational context-pack suite still passes**
 
@@ -393,13 +399,14 @@ Extend `packages/agent/test/prompt-artifacts.test.ts` with assertions that:
 
 ```ts
 it("binds production renderer metadata and resolved payload audits without exposing payloads in audit metadata", async () => {
-  const resolvedEvidenceSummary = await contextPayloadResolver.resolve(contextPackRef);
-  const verifiedResolvedContextPacks = assertResolvedContextPacksForExecution({
-    refs: [contextPackRef],
-    resolved: [resolvedEvidenceSummary]
-  });
+  const verifiedResolvedEvidenceSummary = await contextPackRegistry.buildResolved("evidence-summary.v1");
+  const contextPackRef = verifiedResolvedEvidenceSummary.ref;
+  const verifiedResolvedContextPacks = assertResolvedContextPacksForExecution(
+    [contextPackRef],
+    [verifiedResolvedEvidenceSummary]
+  );
   expect(verifiedResolvedContextPacks).toHaveLength(1);
-  const verifiedResolvedEvidenceSummary = verifiedResolvedContextPacks[0]!;
+  expect(verifiedResolvedContextPacks[0]).toBe(verifiedResolvedEvidenceSummary);
   const envelope = buildPromptArtifact({
     promptTemplateId: "evidence-triage.classify.v1",
     promptTemplateVersion: 1,
@@ -444,7 +451,7 @@ it("binds production renderer metadata and resolved payload audits without expos
 ```
 
 Add tamper tests that mutate `text`, `production.renderedPromptHash`, and `production.scopeApplicabilityHash` in a serialized envelope and assert `parsePromptArtifactEnvelope()` rejects the tampered bytes.
-The `contextPayloadResolver` fixture and `assertResolvedContextPacksForExecution()` call must come from the final operational contract confirmed in Task 0. Do not create verified envelopes with a plain object literal in this lane.
+The `contextPackRegistry.buildResolved()` fixture and `assertResolvedContextPacksForExecution(refs, resolvedPacks)` call must come from the final operational contract confirmed in Task 0. Do not create verified envelopes with a plain object literal, `verifyResolvedContextPack()`, serialized/reloaded data, or a caller-supplied marker in this lane.
 
 - [ ] **Step 3: Run RED**
 
@@ -499,7 +506,7 @@ Hashing and parsing rules:
 - `renderedPromptHash` covers prompt text bytes only.
 - `resolvedContextPacks` may be serialized in local envelopes but never appears in audit metadata.
 - `assertPromptArtifactCanTransferToRemoteProvider()` requires `provider-approved`, `provider-byte-transfer`, and a complete `production` binding when `runType` is one of the six MVP specialist modes.
-- Production prompt artifact construction accepts only authoritative verified resolved context envelopes returned by `assertResolvedContextPacksForExecution({ refs, resolved })`. It must not accept caller-supplied plain objects that merely contain matching metadata.
+- Production prompt artifact construction accepts only authoritative verified resolved context envelopes returned by `assertResolvedContextPacksForExecution(refs, resolvedPacks)` over registry-owned branded results. It must not accept caller-supplied plain objects that merely contain matching metadata.
 - `resolvedPayloadAudits` are derived from the authoritative verified envelopes after construction; they are not a verification proof and must not be accepted as a substitute for the operational verified envelope.
 
 - [ ] **Step 5: Run GREEN and full verification**
@@ -587,7 +594,7 @@ Add RED tests for:
 
 - `no-associated-prr` omission for non-PRR evidence triage, planner, and report builder.
 - PRR-linked evidence triage, planner, and report builder requiring `prr-read-model.v1`.
-- matching-hash and matching-size payloads with invalid pack-specific shape rejected by `assertResolvedContextPacksForExecution()` before the renderer receives an envelope.
+- matching-hash and matching-size payloads with invalid pack-specific shape rejected by `assertResolvedContextPacksForExecution(refs, resolvedPacks)` before the renderer receives an envelope.
 - forged plain objects that imitate the verified envelope shape rejected before render.
 - supplied artifact rejected on renderer hash, rendered prompt hash, payload audit, scope hash, output schema, handoff schema, safety class, transfer class, and omission mismatch.
 - renderer with only refs/hashes/summaries rejected by `verifyProductionSpecialistPromptArtifact()`.
@@ -636,7 +643,7 @@ Rendering rules:
 - Resolve registration by `runType`.
 - Evaluate applicability before rendering.
 - Require one resolved payload envelope for every applicable context requirement in registered order.
-- Accept only verified envelopes returned by `assertResolvedContextPacksForExecution({ refs, resolved })`, then verify each envelope's `ref.contentHash`, `ref.sizeBytes`, `ref.contextPackId`, and `ref.version` against the expected requirement and payload.
+- Accept only verified envelopes returned by `assertResolvedContextPacksForExecution(refs, resolvedPacks)` over registry-owned branded results, then verify each envelope's `ref.contentHash`, `ref.sizeBytes`, `ref.contextPackId`, and `ref.version` against the expected requirement and payload.
 - Render deterministic prompt text from package-owned template material and canonical payload field renderers.
 - Include provider-output JSON schema instructions and authority restrictions in every template.
 - Build `PromptArtifactEnvelope` with production binding and resolved payload local envelope retention.
@@ -683,7 +690,7 @@ Review gate: spec review checks renderer ownership, deterministic hashes, payloa
 - Create during execution: `docs/agentic/claims/task-4-production-readiness-fallback-closure.md`
 
 **Interfaces:**
-- Consumes: Task 3 production registry/renderers, operational `ContextPackPayloadResolver`, and `assertResolvedContextPacksForExecution`.
+- Consumes: Task 3 production registry/renderers, operational `ContextPackRegistry.buildResolved`, callable `ContextPackPayloadResolver`, and `assertResolvedContextPacksForExecution`.
 - Produces: no reachable fallback provider prompt synthesis, conditional PRR applicability in workflow descriptors, and production prompt readiness enforcement.
 
 - [ ] **Step 1: Claim the task**
@@ -733,7 +740,7 @@ Update `packages/agent/test/specialist-runner-kernel.test.ts` with:
 - `prepareSpecialistRun()` rejects missing production registration before provider invocation.
 - `prepareSpecialistRun()` rejects missing payload resolver before provider invocation.
 - `prepareSpecialistRun()` rejects payload hash mismatch before provider invocation.
-- `prepareSpecialistRun()` rejects a matching-hash payload whose pack-specific shape is invalid because `assertResolvedContextPacksForExecution()` fails before returning a verified envelope.
+- `prepareSpecialistRun()` rejects a matching-hash payload whose pack-specific shape is invalid because `assertResolvedContextPacksForExecution(refs, resolvedPacks)` fails before returning a verified envelope.
 - `prepareSpecialistRun()` rejects forged plain resolved-payload objects before provider invocation.
 - non-PRR evidence triage render records `no-associated-prr`.
 - a fake runtime spy is not called when preparation fails.
@@ -768,7 +775,7 @@ Modify `packages/agent/src/specialist-readiness.ts`:
 
 - Add `scope: ProductionRunScope`.
 - Add production registrations from Task 1.
-- Add `resolvedContextPacks: readonly VerifiedResolvedContextPack[]` derived from `assertResolvedContextPacksForExecution()`.
+- Add `resolvedContextPacks: readonly VerifiedResolvedContextPack[]` derived from `ContextPackRegistry.buildResolved(id)` and `assertResolvedContextPacksForExecution(refs, resolvedPacks)`.
 - Evaluate applicability with Task 3 helpers.
 - Report bounded omissions without payloads.
 - Reject missing production registration, test-only registration, missing resolved payload audit, stale ref, stale payload, operational assertion pack-specific parser failure, forged verified-envelope objects, active locks, missing approvals, and provider posture gaps.
@@ -776,8 +783,8 @@ Modify `packages/agent/src/specialist-readiness.ts`:
 Modify `packages/agent/src/specialist-runner-kernel.ts`:
 
 - Add `productionPromptRegistry` or imported package-owned registry from Task 1.
-- Add `contextPayloadResolver: ContextPackPayloadResolver` to `SpecialistRunnerBaseInput`.
-- Build context refs, evaluate applicability, resolve every applicable ref through `contextPayloadResolver.resolve(ref)`, call `assertResolvedContextPacksForExecution({ refs, resolved })`, pass only the returned verified envelopes to the renderer, render or verify a production prompt artifact, then return prepared data.
+- Add `contextPacks: ContextPackRegistry` or the existing injected registry capability to `SpecialistRunnerBaseInput`; do not replace it with an unbranded local payload resolver.
+- Build context refs, evaluate applicability, resolve every applicable pack through `contextPacks.buildResolved(contextPackId)`, call `assertResolvedContextPacksForExecution(refs, resolvedPacks)`, pass only the returned verified envelopes to the renderer, render or verify a production prompt artifact, then return prepared data. If a `ContextPackPayloadResolver` is used inside an operational fixture, call it as `resolver(ref)`, never `resolver.resolve(ref)`, and never treat its plain result as verified.
 - Treat operational assertion parser failures as preparation failures before model invocation, even when the payload hash and size match the ref.
 - Remove the generated workspace-safe fallback from provider execution. Delete or isolate `promptText()` so no provider path can call it.
 - Require production prompt artifact binding before `invokeSpecialistModel()`.

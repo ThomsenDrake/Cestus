@@ -94,9 +94,11 @@ renderer hashes, output validators, and prompt artifact validation logic.
 Injection remains useful, but only around the edges:
 
 - Context-pack registries provide authoritative `ContextPackRef` values.
-- The operational resolved-context-pack contract provides typed, local,
-  content-addressed `ResolvedContextPack { ref, payload }` envelopes for
-  applicable packs.
+- The operational resolved-context-pack contract provides callable local
+  payload resolvers, registry-owned `ContextPackRegistry.buildResolved(id)`
+  verification that returns opaque/branded `VerifiedResolvedContextPack`
+  envelopes for applicable packs, and ordered
+  `assertResolvedContextPacksForExecution(refs, resolvedPacks)` checks.
 - Artifact stores persist prompt envelopes and local derivative outputs.
 - Clocks supply envelope metadata such as `generatedAt`.
 - Runtime/provider capabilities invoke models after prompt artifact policy
@@ -134,9 +136,25 @@ interface ResolvedContextPack {
   readonly payload: AgentContextPackJsonValue;
 }
 
-interface ProductionContextPackResolver {
-  resolve(ref: ContextPackRef): Promise<ResolvedContextPack>;
+type ContextPackPayloadResolver = (ref: ContextPackRef) =>
+  | AgentContextPackJsonValue
+  | ResolvedContextPack
+  | Promise<AgentContextPackJsonValue | ResolvedContextPack>;
+
+declare const verifiedResolvedContextPackBrand: unique symbol;
+
+type VerifiedResolvedContextPack = ResolvedContextPack & {
+  readonly [verifiedResolvedContextPackBrand]: true;
+};
+
+interface ContextPackRegistry {
+  buildResolved(contextPackId: string): Promise<VerifiedResolvedContextPack>;
 }
+
+declare function assertResolvedContextPacksForExecution(
+  refs: readonly ContextPackRef[],
+  resolvedPacks: readonly ResolvedContextPack[]
+): readonly VerifiedResolvedContextPack[];
 
 interface ProductionPromptTemplateRegistration {
   readonly runType: AgentSpecialistRunType;
@@ -200,13 +218,21 @@ is stale.
 
 ### Resolved Context Payload Contract
 
-Every applicable context requirement must be resolved before production
-rendering through the shared operational `ResolvedContextPack { ref, payload }`
-contract. A `ContextPackRef` alone is audit metadata; it is not sufficient
-provider input for production specialist rendering.
+Every applicable context requirement must be resolved and verified before
+production rendering through the shared operational resolved-context contract.
+A `ContextPackRef` alone is audit metadata; it is not sufficient provider input
+for production specialist rendering.
 
 Resolution is capability-injected, but the capability is not an arbitrary
-hash-to-text callback. It is a typed local content-addressed resolver that:
+hash-to-text callback. The low-level `ContextPackPayloadResolver` is callable
+as `resolver(ref)` and may return local payload bytes or a local
+`ResolvedContextPack { ref, payload }` envelope, but that local envelope is not
+proof of execution readiness. The authoritative production path must consume
+registry-owned verified results, such as `ContextPackRegistry.buildResolved(id)`
+or the final operational equivalent, and then bind the exact ordered set with
+`assertResolvedContextPacksForExecution(refs, resolvedPacks)`.
+
+The operational registry validation step:
 
 - accepts a concrete `ContextPackRef`, not a bare hash string,
 - loads only the local payload addressed by that ref,
@@ -215,7 +241,8 @@ hash-to-text callback. It is a typed local content-addressed resolver that:
   context-pack descriptor budget,
 - validates the payload against the registered context-pack payload schema for
   `contextPackId` and version,
-- returns the exact `{ ref, payload }` envelope that passed those checks.
+- returns an opaque/branded `VerifiedResolvedContextPack` envelope that prompt
+  code cannot manufacture from a plain object or reloaded JSON.
 
 Missing payload, hash mismatch, size mismatch, schema mismatch, unexpected pack
 ID/version, stale provenance inputs, or unsafe payload material blocks before
@@ -556,10 +583,12 @@ Preparation flow:
 4. Evaluate context requirement applicability against the current task/run
    scope and compute `scopeApplicabilityHash`.
 5. Build applicable context pack refs in the exact registered order.
-6. Resolve every applicable ref to a typed local `ResolvedContextPack` payload
-   envelope through the content-addressed resolver.
-7. Verify each resolved payload envelope matches the ref hash, size, schema,
-   context-pack ID/version, provenance, and descriptor budget.
+6. Resolve and verify every applicable pack through the operational
+   context-pack registry, such as `ContextPackRegistry.buildResolved(id)`,
+   yielding opaque/branded `VerifiedResolvedContextPack` envelopes.
+7. Call `assertResolvedContextPacksForExecution(refs, resolvedPacks)` with the
+   current ordered refs and registry-owned verified envelopes; plain reloaded
+   envelopes or forged objects must fail.
 8. Record bounded omission records for non-applicable conditional requirements.
 9. Block if any applicable context pack is missing, stale, missing provenance,
    or fails its own context contract.
@@ -693,8 +722,9 @@ Recommended task order:
 6. Add or update gated live Nous acceptance for the production renderer/provider
    boundary. Existing PRR and evidence triage live paths are the best first
    candidates because they already exercise provider-byte-transfer proof.
-7. Run focused tests, live gated smoke when credentials are available,
-   `npm run verify`, and factory checks before committing readiness evidence.
+7. Run focused tests, the required live gated smoke in the shared
+   live-provider environment, `npm run verify`, and factory checks before
+   committing readiness evidence.
 
 ## Testing Expectations
 
@@ -706,8 +736,9 @@ Deterministic credential-free tests should prove:
 - applicable required context absence blocks before prompt render and provider
   invocation;
 - every applicable context ref must resolve through the typed local
-  content-addressed `ResolvedContextPack { ref, payload }` resolver before
-  rendering;
+  content-addressed context-pack system and must reach rendering only as an
+  opaque/branded `VerifiedResolvedContextPack` returned by registry-owned
+  verification such as `ContextPackRegistry.buildResolved(id)`;
 - missing payloads, hash mismatches, size mismatches, schema mismatches, and
   stale resolved payload envelopes block before prompt render and provider
   invocation;
