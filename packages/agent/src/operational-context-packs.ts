@@ -769,7 +769,7 @@ function createOperationalPayloadParser(
   schemaVersion: OperationalContextPackId,
   requiredSection: string
 ): ContextPackPayloadParser {
-  return (payload, ref) => {
+  const parser: ContextPackPayloadParser = (payload, ref) => {
     assertOperationalPayloadEnvelope(payload, schemaVersion, requiredSection);
     if (schemaVersion === "workspace-runtime-status.v1") {
       assertWorkspaceRuntimePayloadSection(requiredJsonField(payload, "runtime", schemaVersion), schemaVersion);
@@ -784,6 +784,13 @@ function createOperationalPayloadParser(
     }
     return payload;
   };
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: schemaVersion,
+    enumerable: false,
+    writable: false,
+    configurable: false
+  });
+  return parser;
 }
 
 function assertPlainDataObject(

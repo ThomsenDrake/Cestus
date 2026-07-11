@@ -5,6 +5,7 @@ import {
   productionSpecialistPromptRegistrationFor,
   productionSpecialistPromptRegistrations,
   productionSpecialistRendererMaterialFor,
+  renderProductionSpecialistPromptBytesForMaterialTest,
   renderProductionSpecialistPrompt,
   verifyProductionSpecialistPromptArtifact,
   validateProductionSpecialistProviderOutput
@@ -117,6 +118,33 @@ describe("production specialist prompt registrations", () => {
     };
     expect(hashProductionSpecialistRendererMaterial(changedLayoutLiteral)).not.toBe(registration.rendererHash);
     expect(hashProductionSpecialistRendererMaterial(changedTruncationLiteral)).not.toBe(registration.rendererHash);
+  });
+
+  it("uses canonical renderer material for provider-visible bytes as well as the renderer hash", async () => {
+    const registry = rendererContextPackRegistry();
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+    const input = {
+      runType: "evidence-triage" as const,
+      runId: "run_material_001",
+      taskId: "task_material_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_material_001"] },
+      resolvedContextPacks,
+      omissions: []
+    };
+    const material = productionSpecialistRendererMaterialFor("evidence-triage");
+    const changed = {
+      ...material,
+      template: {
+        ...material.template,
+        contextPackIdLine: "Pack identity: {contextPackId}"
+      }
+    };
+
+    expect(hashProductionSpecialistRendererMaterial(changed)).not.toBe(hashProductionSpecialistRendererMaterial(material));
+    expect(renderProductionSpecialistPromptBytesForMaterialTest(input, changed))
+      .not.toBe(renderProductionSpecialistPromptBytesForMaterialTest(input, material));
+    expect(renderProductionSpecialistPromptBytesForMaterialTest(input, changed)).toContain("Pack identity:");
   });
 
   it("requires a complete production binding before every production run type can transfer", () => {
@@ -1276,6 +1304,51 @@ describe("production specialist prompt registrations", () => {
     })).toThrow(/unverified|verified/i);
   });
 
+  it("rejects production packs branded by a foreign parser identity", async () => {
+    const registry = rendererContextPackRegistry({}, {
+      "evidence-summary.v1": "foreign-permissive-parser.v1"
+    });
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+
+    expect(() => renderProductionSpecialistPrompt({
+      runType: "evidence-triage",
+      runId: "run_foreign_parser_001",
+      taskId: "task_foreign_parser_001",
+      generatedAt: "2026-07-10T12:00:00.000Z",
+      scope: { kind: "imported-evidence", refs: ["ev_foreign_parser_001"] },
+      resolvedContextPacks,
+      omissions: []
+    })).toThrow(/parser identity/i);
+  });
+
+  it("rejects malformed production scopes before applicability is evaluated", async () => {
+    const registry = rendererContextPackRegistry();
+    const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
+    const input = {
+      runType: "evidence-triage" as const,
+      taskId: "task_scope_validation_001",
+      resolvedContextPacks
+    };
+    const accessorScope = { refs: ["ev_scope_001"] } as Record<string, unknown>;
+    Object.defineProperty(accessorScope, "kind", { enumerable: true, get: () => "imported-evidence" });
+    const symbolScope = { kind: "imported-evidence", refs: ["ev_scope_001"] };
+    Object.defineProperty(symbolScope, Symbol("scope"), { value: "unexpected" });
+    const sparseRefs = new Array<string>(1);
+
+    for (const scope of [
+      Object.create(null),
+      accessorScope,
+      symbolScope,
+      { kind: "", refs: ["ev_scope_001"] },
+      { kind: "imported-evidence", refs: sparseRefs },
+      { kind: "imported-evidence", refs: [""] },
+      { kind: "imported-evidence", refs: ["ev_scope_001"], associatedPrrRequestId: "" },
+      { kind: "imported-evidence", refs: ["ev_scope_001"], associatedPrrRequestId: 1 }
+    ]) {
+      expect(() => evaluateProductionContextRequirements({ ...input, scope: scope as never })).toThrow(/scope|plain|safe|refs|associated/i);
+    }
+  });
+
   it("rejects supplied artifacts that mismatch current renderer bindings and payload state", async () => {
     const registry = rendererContextPackRegistry();
     const resolvedContextPacks = await resolvedRendererPacks(registry, "evidence-triage", false);
@@ -1365,7 +1438,10 @@ const rendererPackIds = [
   "jurisdiction-pack-summary.v1"
 ] as const;
 
-function rendererContextPackRegistry(payloads: Readonly<Record<string, unknown>> = {}) {
+function rendererContextPackRegistry(
+  payloads: Readonly<Record<string, unknown>> = {},
+  parserIdentities: Readonly<Partial<Record<typeof rendererPackIds[number], string>>> = {}
+) {
   const registry = createContextPackRegistry();
   for (const contextPackId of rendererPackIds) {
     registry.register({
@@ -1388,10 +1464,34 @@ function rendererContextPackRegistry(payloads: Readonly<Record<string, unknown>>
           : `Verified ${contextPackId} summary.`,
         provenanceRefs: ["evt_renderer_context_001"]
       }),
-      parsePayload: (payload) => parseRendererPayload(contextPackId, payload)
+      parsePayload: rendererParser(
+        parserIdentities[contextPackId] ?? productionParserIdentity(contextPackId),
+        (payload) => parseRendererPayload(contextPackId, payload)
+      )
     });
   }
   return registry;
+}
+
+function rendererParser(
+  parserIdentity: string,
+  parser: (payload: AgentContextPackJsonValue) => AgentContextPackJsonValue
+) {
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: parserIdentity,
+    enumerable: false,
+    writable: false,
+    configurable: false
+  });
+  return parser;
+}
+
+function productionParserIdentity(contextPackId: typeof rendererPackIds[number]): string {
+  switch (contextPackId) {
+    case "timeline-draft-summary.v1": return "timeline-draft-summary.production-test-parser.v1";
+    case "contradiction-candidate-summary.v1": return "contradiction-candidate-summary.production-test-parser.v1";
+    default: return contextPackId;
+  }
 }
 
 function parseRendererPayload(

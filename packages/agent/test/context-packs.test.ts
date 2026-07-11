@@ -9,6 +9,7 @@ import {
   createContextPackRegistry,
   hashAgentContextPack,
   serializeContextPackPayload,
+  verifiedResolvedContextPackVerificationIdentity,
   type AgentContextPackJsonValue,
   verifyResolvedContextPack
 } from "../src/context-packs.js";
@@ -284,6 +285,31 @@ describe("agent context packs", () => {
       parsePayload: () => { throw new Error("invalid workspace runtime payload"); }
     });
     await expect(invalidRegistry.buildResolved("workspace-runtime-status.v1")).rejects.toThrow("blocked.payload-schema-mismatch");
+  });
+
+  it("carries the registered parser identity on registry-owned execution envelopes", async () => {
+    const registry = createContextPackRegistry();
+    const parser = (payload: AgentContextPackJsonValue): AgentContextPackJsonValue => payload;
+    Object.defineProperty(parser, "cestusContextPackParserId", {
+      value: "task-run-history.v1",
+      enumerable: false,
+      writable: false,
+      configurable: false
+    });
+    registry.register({
+      descriptor: { contextPackId: "task-run-history.v1", version: 1, label: "Task history", maxBytes: 16_384, requiredProvenanceKinds: ["event-id"], redactionPolicy: "safe-summary", sourceProjection: "agent.projection" },
+      build: () => resolvedContextPackSentinelInput,
+      parsePayload: parser
+    });
+
+    const resolved = await registry.buildResolved("task-run-history.v1");
+
+    expect(verifiedResolvedContextPackVerificationIdentity(resolved)).toEqual({
+      contextPackId: "task-run-history.v1",
+      version: 1,
+      parserIdentity: "task-run-history.v1"
+    });
+    expect(verifiedResolvedContextPackVerificationIdentity({ ...resolved })).toBeUndefined();
   });
   it("validates descriptor metadata for explicit context assembly", () => {
     const descriptor = contextPackDescriptorSchema.parse({

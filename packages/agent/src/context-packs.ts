@@ -64,6 +64,12 @@ export type VerifiedResolvedContextPack = ResolvedContextPack & {
   readonly [verifiedResolvedContextPackBrand]: true;
 };
 
+export interface VerifiedResolvedContextPackVerificationIdentity {
+  readonly contextPackId: string;
+  readonly version: number;
+  readonly parserIdentity: string;
+}
+
 export type ContextPackPayloadParser = (
   payload: AgentContextPackJsonValue,
   ref?: ContextPackRef
@@ -138,6 +144,8 @@ const contextPackStalenessInputSchema = z.object({
 }).strict();
 const builtContextPackRefs = new WeakSet<object>();
 const verifiedResolvedContextPacks = new WeakSet<object>();
+const verifiedResolvedContextPackVerificationIdentities = new WeakMap<object, VerifiedResolvedContextPackVerificationIdentity>();
+const parserIdentityProperty = "cestusContextPackParserId";
 
 const contextPackDescriptorObjectSchema = z.object({
   contextPackId: contextPackIdSchema,
@@ -317,6 +325,15 @@ export function assertResolvedContextPacksForExecution(
   return Object.freeze([...expected.keys()].map((key) => matched.get(key) as VerifiedResolvedContextPack));
 }
 
+export function verifiedResolvedContextPackVerificationIdentity(
+  value: unknown
+): VerifiedResolvedContextPackVerificationIdentity | undefined {
+  if (!isVerifiedResolvedContextPack(value)) {
+    return undefined;
+  }
+  return verifiedResolvedContextPackVerificationIdentities.get(value);
+}
+
 export function createContextPackRegistry(options: CreateContextPackRegistryOptions = {}): ContextPackRegistry {
   const payloadResolver = options.payloadResolver;
   const builders = new Map<string, {
@@ -423,7 +440,28 @@ function verifyResolvedContextPackForRegistry(
 ): VerifiedResolvedContextPack {
   const verified = verifyResolvedContextPack(value, parser) as VerifiedResolvedContextPack;
   verifiedResolvedContextPacks.add(verified);
+  const parserIdentity = contextPackParserIdentity(parser);
+  if (parserIdentity !== undefined) {
+    verifiedResolvedContextPackVerificationIdentities.set(verified, Object.freeze({
+      contextPackId: verified.ref.contextPackId,
+      version: verified.ref.version,
+      parserIdentity
+    }));
+  }
   return verified;
+}
+
+function contextPackParserIdentity(parser: ContextPackPayloadParser): string | undefined {
+  const descriptor = Object.getOwnPropertyDescriptor(parser, parserIdentityProperty);
+  if (descriptor === undefined) {
+    return undefined;
+  }
+  if (!descriptor.enumerable && !descriptor.configurable && !descriptor.writable &&
+    "value" in descriptor && typeof descriptor.value === "string" && descriptor.value.length > 0) {
+    assertAgentSecretSafeText(descriptor.value, "contextPackParserIdentity");
+    return descriptor.value;
+  }
+  throw new Error("blocked.invalid-payload-parser-identity");
 }
 
 function extractContextPackIdForDuplicateCheck(descriptor: unknown): string | undefined {

@@ -11,7 +11,15 @@
 ## Owned Files
 
 - `packages/agent/src/production-specialist-prompts.ts`
+- `packages/agent/src/prompt-artifacts.ts`
+- `packages/agent/src/context-packs.ts`
+- `packages/agent/src/investigative-context-packs.ts`
+- `packages/agent/src/operational-context-packs.ts`
+- `packages/agent/src/prr-context-packs.ts`
 - `packages/agent/test/production-specialist-prompts.test.ts`
+- `packages/agent/test/prompt-artifacts.test.ts`
+- `packages/agent/test/context-packs.test.ts`
+- `packages/agent/test/prr-negotiation-workflow.test.ts` (supporting verifier fixture for stricter production transfer gate)
 - `docs/agentic/claims/task-3-production-specialist-renderers.md`
 
 ## Evidence
@@ -37,3 +45,8 @@
 - Authoritative rehydration review-fix RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/prompt-artifacts.test.ts packages/agent/test/context-packs.test.ts` produced the expected 4 failures; 1 test file and 116 tests passed.
 - Authoritative rehydration review-fix GREEN: the same targeted command passed 3 test files and 121 tests.
 - Authoritative rehydration review-fix verify: `npm run verify` passed typecheck and completed successfully. Status remains `ready-for-review`.
+- Boundary review-fix RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/prompt-artifacts.test.ts packages/agent/test/context-packs.test.ts` produced the expected 5 boundary failures for missing parser identity metadata, renderer-material byte rendering, foreign parser identity acceptance, malformed production scope acceptance, and generic production-shaped provider transfer. Existing coverage reported 121 passing tests.
+- Boundary review-fix GREEN: the same targeted command passed 3 test files and 126 tests. Production transfer now requires production renderer verification, canonical parser identity matching, strict task/PRR scope shape, and renderer-material-bound provider bytes.
+- PRR verifier repair: `npm test -- packages/agent/test/prr-negotiation-workflow.test.ts` passed 1 test file and 12 tests after the PRR workflow fixture stopped fabricating a production prompt artifact and exercised the registered PRR renderer path.
+- Boundary + PRR regression: `npm test -- packages/agent/test/production-specialist-prompts.test.ts packages/agent/test/prompt-artifacts.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/prr-negotiation-workflow.test.ts` passed 4 test files and 138 tests.
+- Latest full verify: `npm run verify` passed typecheck, 178 test files with 3 skipped, 2017 tests with 3 skipped, UI production build, and factory readiness. Durable evidence records no production prompt text or resolved payload content.

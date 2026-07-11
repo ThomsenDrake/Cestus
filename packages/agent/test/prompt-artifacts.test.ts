@@ -201,6 +201,19 @@ describe("resident agent prompt artifacts", () => {
     expect(envelope.resolvedContextPacks?.[0]).toBe(verifiedResolvedEvidenceSummary);
   });
 
+  it("does not let generic construction transfer arbitrary text with a complete production binding", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const generic = buildProductionEvidenceTriageArtifact({
+      contextPackRefs: resolvedContextPacks.map((resolved) => resolved.ref),
+      resolvedContextPacks,
+      evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(
+        resolvedContextPacks.map((resolved) => resolved.ref)
+      )
+    });
+
+    expect(() => assertPromptArtifactCanTransferToRemoteProvider(generic)).toThrow(/production.*verify|verification|renderer/i);
+  });
+
   it("does not manufacture verified payload envelopes from serialized production artifacts", async () => {
     const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
     const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);

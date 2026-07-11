@@ -6,6 +6,7 @@ import {
   contextPackRefSchema,
   hashAgentContextPack,
   serializeContextPackPayload,
+  verifiedResolvedContextPackVerificationIdentity,
   type AgentContextPackJsonValue,
   type ContextPackRef,
   type ContextPackStalenessInput,
@@ -226,6 +227,18 @@ const promptArtifactEnvelopeObjectSchema = z.object({
   text: agentSecretSafeTextSchema("promptArtifact.text"),
   resolvedContextPacks: z.array(z.unknown()).optional()
 }).strict();
+const productionParserIdentitiesByContextPackId = Object.freeze({
+  "accepted-graph-projection.v1": "accepted-graph-projection.v1",
+  "evidence-summary.v1": "evidence-summary.v1",
+  "timeline-draft-summary.v1": "timeline-draft-summary.production-test-parser.v1",
+  "contradiction-candidate-summary.v1": "contradiction-candidate-summary.production-test-parser.v1",
+  "governance-locks.v1": "governance-locks.v1",
+  "agent-memory-summary.v1": "agent-memory-summary.v1",
+  "task-run-history.v1": "task-run-history.v1",
+  "workspace-runtime-status.v1": "workspace-runtime-status.v1",
+  "prr-read-model.v1": "prr-read-model.v1",
+  "jurisdiction-pack-summary.v1": "jurisdiction-pack-summary.v1"
+} as const);
 
 const promptArtifactTemplateRegistrationObjectSchema = z.object({
   runType: runTypeSchema,
@@ -336,6 +349,57 @@ export function assertPromptArtifactCanTransferToRemoteProvider(envelope: Prompt
   }
   if (isProductionRunType(parsed.manifest.runType) && parsed.manifest.production === undefined) {
     throw new Error("Production prompt artifact requires a complete production binding");
+  }
+  if (isProductionRunType(parsed.manifest.runType)) {
+    assertProductionPromptTransferBoundary(envelope, parsed);
+  }
+}
+
+function assertProductionPromptTransferBoundary(
+  envelope: PromptArtifactEnvelope,
+  parsed: PromptArtifactEnvelope
+): void {
+  if (parsed.manifest.production === undefined) {
+    throw new Error("Production prompt artifact requires a complete production binding");
+  }
+  const registration = productionSpecialistPromptRegistrationFor(
+    parsed.manifest.runType as Exclude<AgentSpecialistRunType, "ontology-bootstrap">
+  );
+  const resolvedContextPacks = resolveAuthoritativeContextPacks(envelope, parsed.manifest.contextPackRefs);
+  if (resolvedContextPacks === undefined) {
+    throw new Error("Production prompt artifacts require production renderer verification before provider transfer");
+  }
+
+  for (const resolved of resolvedContextPacks) {
+    const expectedParserIdentity = productionParserIdentitiesByContextPackId[
+      resolved.ref.contextPackId as keyof typeof productionParserIdentitiesByContextPackId
+    ];
+    const actualIdentity = verifiedResolvedContextPackVerificationIdentity(resolved);
+    if (
+      expectedParserIdentity === undefined ||
+      actualIdentity === undefined ||
+      actualIdentity.contextPackId !== resolved.ref.contextPackId ||
+      actualIdentity.version !== resolved.ref.version ||
+      actualIdentity.parserIdentity !== expectedParserIdentity
+    ) {
+      throw new Error("Production prompt artifact requires production renderer parser verification before provider transfer");
+    }
+  }
+
+  const requiredFragments = [
+    `Template: ${registration.promptTemplateId}@${registration.promptTemplateVersion}`,
+    `Return only JSON conforming to ${registration.providerOutputSchemaId}@${registration.providerOutputSchemaVersion}.`,
+    `Handoff schema: ${registration.handoffSchemaId}@${registration.handoffSchemaVersion}.`,
+    "Verified payload context follows:",
+    ...parsed.manifest.contextPackRefs.flatMap((ref) => [
+      `Context pack ID: ${ref.contextPackId}`,
+      `Content hash: ${ref.contentHash}`
+    ])
+  ];
+  for (const fragment of requiredFragments) {
+    if (!parsed.text.includes(fragment)) {
+      throw new Error("Production prompt artifacts require production renderer verification before provider transfer");
+    }
   }
 }
 
