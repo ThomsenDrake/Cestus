@@ -50,3 +50,16 @@ does not rerun the completed live Nous gate.
 - Required final reviews remain for the factory controller to dispatch: spec,
   code-quality, and verification. This worker did not perform those reviews.
 - Concerns: none from the prescribed verification and scan gates.
+
+## Final Review Fix Evidence
+
+- Code implementation range: `e09cdf9b..ecf3691e` records the original Task 0-7 production-specialist implementation and review repair.
+- Final reviewed range: `e09cdf9b..0ae4455b` includes Task 8 evidence commits `6c691d82` and `4fce216a`, plus final-review remediation commit `0ae4455b` (`fix: close production specialist final review gaps`).
+- Verified head: `0ae4455be90f8373c793340cbb2430efebac9d05`.
+- `npm run verify`: PASS at the verified head. Typecheck, Vite build, and factory readiness passed; full Vitest evidence was `178 passed | 3 skipped` test files and `2053 passed | 3 skipped` tests. The only notices were existing experimental Node SQLite warnings.
+- Focused Task 8 deterministic suite: PASS with `11 passed | 2 skipped` test files and `213 passed | 2 skipped` tests.
+- Final-review RED/GREEN suites: RED produced the six expected failures for browser reachability, parser identity, punctuated PRR authority wording, selected-PRR applicability, runner invocation proof, and direct runtime invocation. GREEN passed the required four suites with `4 passed` test files and `134 passed` tests; the broader affected suite passed `9` test files and `179` tests.
+- Final fallback scan: PASS with no matches (expected `rg` exit status 1).
+- Final leakage scan: classified as intentional references only: 4 test fixture/assertion references, 13 plan/spec references, and 10 historical or safe-negative retrospective/claim references. No production source, DTO, diagnostic, readiness, or report value exposed prompt text, resolved payload content, provider output, request bodies, or credentials.
+- Live Nous was not rerun. The fixes change deterministic import boundaries, parser identity, prompt applicability, runtime proof gating, and authority-text rejection; they do not change the live-only provider acceptance path. Task 7 records three consecutive final live green runs in `docs/agentic/claims/task-7-production-specialist-nous-acceptance.md`.
+- `git diff --check`: PASS.
