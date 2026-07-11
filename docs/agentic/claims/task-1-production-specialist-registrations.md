@@ -52,3 +52,6 @@
 - Provider transfer completion P1 RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 1 expected regression and 21 passing tests because `Provider byte transfer completion was recorded.` was accepted in a narrative field.
 - Provider transfer completion P1 GREEN: the same focused command passed with 1 file and 22 tests after provider byte-transfer authority matching rejected `completion` alongside the existing approval, grant, completed, and authorization terms across narrative and reference fields.
 - Provider transfer completion P1 verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warnings.
+- Remaining Task 1 review fix RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 1 expected regression and 21 passing tests because `The PRR was filed, and it should be visible in the portal tomorrow.` was accepted.
+- Remaining Task 1 review fix GREEN: the same focused command passed with 1 file and 22 tests after authority normalization preserved clause punctuation and PRR completed-effect matching evaluated comma-delimited subclauses; `Public filing instructions say the request should be mailed to the records office.` remains accepted.
+- Remaining Task 1 review fix verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warnings.

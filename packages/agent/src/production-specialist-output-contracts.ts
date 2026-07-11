@@ -5,7 +5,7 @@ import type { AgentSpecialistRunType } from "./specialists.js";
 type ProductionRunType = Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
 
 const normalizeAuthorityClaimText = (value: string) => value
-  .replace(/[^a-zA-Z0-9]+/g, " ")
+  .replace(/[^a-zA-Z0-9,;.!?]+/g, " ")
   .replace(/\s+/g, " ")
   .trim()
   .toLowerCase();
@@ -19,7 +19,7 @@ const hasCompletedPrrEffect = (value: string) => {
   const action = /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/;
   const instructionModal = /\b(?:should|must|may|might|can|could|would|will)\b/;
 
-  return value.split(/[;.!?]+/).some((clause) =>
+  return value.split(/[,;.!?]+/).some((clause) =>
     hasSubjectAction(clause, subject, /\bcompleted\b/) ||
     (hasSubjectAction(clause, subject, action) && !instructionModal.test(clause))
   );
