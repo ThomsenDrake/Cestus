@@ -477,6 +477,29 @@ describe("production specialist prompt registrations", () => {
     }).runType).toBe("evidence-triage");
   });
 
+  it("rejects completed PRR effects and generic diagnostics without rejecting filing instructions", () => {
+    const triage = (dossierSummary: string) => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary,
+        safeSummaries: [],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    });
+
+    expect(() => triage("The PRR was filed; filing instructions are attached.")).toThrow(/authority|external effect|ontology/i);
+    expect(() => triage("Error: upstream request timed out")).toThrow(/raw provider error/i);
+    expect(() => triage("HTTP 429: request timed out")).toThrow(/raw provider error/i);
+    expect(triage("Public filing instructions say the request should be mailed to the records office.").runType).toBe("evidence-triage");
+  });
+
   it("requires normalized safe dates for timeline ranges", () => {
     const timeline = (start: string, end: string) => validateProductionSpecialistProviderOutput({
       runType: "timeline-builder",

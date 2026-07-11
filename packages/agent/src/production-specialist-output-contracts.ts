@@ -17,9 +17,12 @@ const hasCompletedEffect = (value: string, subject: RegExp, action: RegExp) =>
 const hasCompletedPrrEffect = (value: string) => {
   const subject = /\b(?:prr|public records request|request|response)\b/;
   const action = /\b(?:sent|emailed|mailed|faxed|filed|submitted|delivered|transferred|uploaded|published)\b/;
+  const instructionModal = /\b(?:should|must|may|might|can|could|would|will)\b/;
 
-  return hasSubjectAction(value, subject, /\bcompleted\b/) ||
-    (hasSubjectAction(value, subject, action) && !/\b(?:instruction|instructions|policy|policies|step|steps|procedure|procedures|guidance|guideline|guidelines|should|must|may|might|can|could|would|will)\b/.test(value));
+  return value.split(/[;.!?]+/).some((clause) =>
+    hasSubjectAction(clause, subject, /\bcompleted\b/) ||
+    (hasSubjectAction(clause, subject, action) && !instructionModal.test(clause))
+  );
 };
 
 const hasAuthorityClaim = (value: string) => {
@@ -39,7 +42,9 @@ const hasAuthorityClaim = (value: string) => {
 const hasRawProviderError = (value: string) =>
   (/\b(?:provider|model|api|openai|nous)\b/i.test(value) &&
     /\b(?:diagnostic|failure|failed|error|exception|stack|timeout|timed out|rate[ -]?limit(?:ed)?|status|https?|response(?:[ -]?body)?)\b/i.test(value)) ||
-  /\b[a-z][a-z0-9_-]{2,}\s+(?:diagnostic|failure|failed|error|exception|timeout|timed out)\s*:/i.test(value);
+  /\b[a-z][a-z0-9_-]{2,}\s+(?:diagnostic|failure|failed|error|exception|timeout|timed out)\s*:/i.test(value) ||
+  /\b(?:error|errors|exception|failure|failures|failed|timeout|timeouts|timed out)\b/i.test(value) ||
+  /\bhttps?\s+\d{3}\s*:/i.test(value);
 const hasHiddenLocalPath = (value: string) =>
   /\bfile:\/\/\//i.test(value) ||
   /(?:^|[\s("'])\/(?!\/)(?:[^/\s]+\/)+[^/\s]+/.test(value) ||
