@@ -28,6 +28,8 @@ import {
   type ProviderReadinessDto,
   type ProviderSetupCard
 } from "../src/index.js";
+import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
+import type { AgentContextPackJsonValue } from "../src/index.js";
 
 const now = () => "2026-07-10T02:30:00.000Z";
 const actor = { id: "actor_agent", kind: "agent" as const, label: "Cestus Agent" };
@@ -64,12 +66,12 @@ describe("evidence triage workflow", () => {
     expect(builtContextPackIds).toEqual(expect.arrayContaining([
       "evidence-summary.v1",
       "governance-locks.v1",
-      "prr-read-model.v1",
       "accepted-graph-projection.v1",
       "agent-memory-summary.v1",
       "task-run-history.v1",
       "workspace-runtime-status.v1"
     ]));
+    expect(builtContextPackIds).not.toContain("prr-read-model.v1");
     expect(result.handoff.outputArtifacts.map((artifact) => artifact.artifactKind)).toEqual(expect.arrayContaining([
       "triage-dossier",
       "safe-evidence-summaries",
@@ -508,16 +510,14 @@ function createTriageContextPacks(builtIds: string[]) {
         redactionPolicy: "safe-summary-only",
         sourceProjection: "test-projection"
       },
+      parsePayload: triageContextPackParser(contextPackId),
       build: () => {
         builtIds.push(contextPackId);
         return {
           contextPackId,
           version: 1,
           generatedAt: now(),
-          payload: {
-            evidenceIds: ["ev_triage_001"],
-            duplicateCheck: contextPackId === "accepted-graph-projection.v1"
-          },
+          payload: triageContextPayload(contextPackId),
           safeSummary: `${contextPackId} contains safe triage references.`,
           provenanceRefs: ["event:evt_triage_context_001", "ev_triage_001", evidenceHash],
           sourceEventIds: ["evt_triage_context_001"],
@@ -528,6 +528,69 @@ function createTriageContextPacks(builtIds: string[]) {
     });
   }
   return registry;
+}
+
+function triageContextPackParser(contextPackId: string) {
+  const parser = (payload: AgentContextPackJsonValue, ref?: { readonly contextPackId: string }): AgentContextPackJsonValue => {
+    if (ref?.contextPackId !== contextPackId || !isTriageContextPayloadForPack(contextPackId, payload)) {
+      throw new Error("invalid triage context pack payload");
+    }
+    return payload;
+  };
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: contextPackId,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  registerContextPackPayloadParserAuthority(parser);
+  return parser;
+}
+
+function isTriageContextPayloadForPack(contextPackId: string, payload: AgentContextPackJsonValue): boolean {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return false;
+  const value = payload as Readonly<Record<string, AgentContextPackJsonValue>>;
+  switch (contextPackId) {
+    case "evidence-summary.v1":
+      return Array.isArray(value.items);
+    case "governance-locks.v1": {
+      const items = value.items as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return items !== undefined && Array.isArray(items.activeLocks) && Array.isArray(items.governanceRestrictions);
+    }
+    case "accepted-graph-projection.v1": {
+      const items = value.items as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return items !== undefined && Array.isArray(items.assertions) && Array.isArray(items.entities) && Array.isArray(items.relationships);
+    }
+    case "agent-memory-summary.v1": {
+      const memory = value.memory as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return memory !== undefined && Array.isArray(memory.activeMemory) && Array.isArray(memory.sourceEventIds) && Array.isArray(memory.artifactHashes);
+    }
+    case "task-run-history.v1": {
+      const history = value.history as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return history !== undefined && Array.isArray(history.tasks) && Array.isArray(history.runs) && Array.isArray(history.modelInvocations) && Array.isArray(history.toolRequests);
+    }
+    case "workspace-runtime-status.v1": {
+      const runtime = value.runtime as Readonly<Record<string, AgentContextPackJsonValue>> | undefined;
+      return runtime !== undefined && Array.isArray(runtime.providerStates) && Array.isArray(runtime.diagnostics) && Array.isArray(runtime.omissionCodes);
+    }
+    case "prr-read-model.v1":
+      return value.lifecycle !== undefined && value.requestStream !== undefined && Array.isArray(value.diagnostics) && Array.isArray(value.gates) && Array.isArray(value.omissions);
+    default:
+      return false;
+  }
+}
+
+function triageContextPayload(contextPackId: string): AgentContextPackJsonValue {
+  switch (contextPackId) {
+    case "evidence-summary.v1": return { items: [{ evidenceId: "ev_triage_001", ingestionEventId: "evt_triage_context_001", contentHash: evidenceHash, occurrenceIds: ["occurrence_triage_001"], safeNarrative: "Verified triage evidence." }] };
+    case "governance-locks.v1": return { items: { activeLocks: [], governanceRestrictions: [{ restrictionId: "restriction_triage_001", restrictionKind: "review", affectedRef: "ev_triage_001", sourceEventIds: ["evt_triage_context_001"], projectionProvenanceRefs: ["evt_triage_context_001"], policyVersion: "v1", safeReasonCode: "review-required" }] } };
+    case "accepted-graph-projection.v1": return { items: { assertions: [{ assertionId: "assertion_triage_001", evidenceId: "ev_triage_001", evidenceContentHash: evidenceHash, proposedByEventId: "evt_triage_context_001", acceptedByEventId: "evt_triage_context_001", sourceEventIds: ["evt_triage_context_001"], rowHash: evidenceHash, safeStatement: "Verified triage graph statement." }], entities: [], relationships: [] } };
+    case "agent-memory-summary.v1": return { memory: { activeMemory: [{ memoryId: "memory_triage_001", scope: "task", memoryKind: "summary", summary: "Verified triage memory.", confidence: 1, sourceEventIds: ["evt_triage_context_001"], artifactHashes: [] }], aggregateCounts: { active: 1 }, sourceEventIds: ["evt_triage_context_001"], artifactHashes: [] } };
+    case "task-run-history.v1": return { history: { projectionHighWaterMark: 1, projectionSourceRef: "agent.projection.task-run-history", tasks: [{ taskId: "task_evidence_triage_001", status: "running", priority: "normal", statusReasonCode: "Triage context prepared." }], runs: [], modelInvocations: [], toolRequests: [], aggregateCounts: { tasks: 1 }, sourceEventIds: ["evt_triage_context_001"], artifactHashes: [] } };
+    case "workspace-runtime-status.v1": return { runtime: { runtimeHighWaterMark: 1, workspaceMounted: true, storageStrategy: "local", bindPosture: "bound", authPosture: "none", providerStates: [], diagnostics: [], projectionHighWaterMarks: { agent: 1 }, omissionCodes: [] } };
+    case "prr-read-model.v1": return { lifecycle: {}, requestStream: {}, diagnostics: [], gates: [], omissions: [] };
+    default: throw new Error(`Unknown triage context pack ${contextPackId}`);
+  }
 }
 
 function modelOutput(patch: Record<string, unknown> = {}) {

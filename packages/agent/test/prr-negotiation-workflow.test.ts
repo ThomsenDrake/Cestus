@@ -933,6 +933,7 @@ describe("PRR negotiation workflow", () => {
       runtime,
       providerReadiness: remoteReadiness,
       promptArtifact,
+      scope: { kind: "prr-request", refs: ["prr_req_001"], associatedPrrRequestId: "prr_req_001" },
       runId: "run_prr_001",
       taskId: "task_prr_001",
       providerId: "provider_remote_model",
