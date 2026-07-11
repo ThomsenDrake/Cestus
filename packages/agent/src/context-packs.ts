@@ -64,11 +64,6 @@ export type VerifiedResolvedContextPack = ResolvedContextPack & {
   readonly [verifiedResolvedContextPackBrand]: true;
 };
 
-export interface AssertResolvedContextPacksForExecutionOptions {
-  /** Rehydrates persisted, hash-bound payload envelopes after byte verification. */
-  readonly reverifyPersistedUntrustedPacks?: boolean;
-}
-
 export type ContextPackPayloadParser = (
   payload: AgentContextPackJsonValue,
   ref?: ContextPackRef
@@ -288,8 +283,7 @@ export function verifyResolvedContextPack(
 
 export function assertResolvedContextPacksForExecution(
   refs: readonly ContextPackRef[],
-  resolvedPacks: readonly ResolvedContextPack[],
-  options: AssertResolvedContextPacksForExecutionOptions = {}
+  resolvedPacks: readonly ResolvedContextPack[]
 ): readonly VerifiedResolvedContextPack[] {
   const expected = new Map<string, ContextPackRef>();
   for (const ref of refs) {
@@ -303,14 +297,10 @@ export function assertResolvedContextPacksForExecution(
 
   const matched = new Map<string, VerifiedResolvedContextPack>();
   for (const resolved of resolvedPacks) {
-    const verified = isVerifiedResolvedContextPack(resolved)
-      ? resolved
-      : options.reverifyPersistedUntrustedPacks
-        ? verifyResolvedContextPackForRegistry(resolved, (payload) => payload)
-        : undefined;
-    if (verified === undefined) {
+    if (!isVerifiedResolvedContextPack(resolved)) {
       throw new Error("blocked.unverified-resolved-context-pack");
     }
+    const verified = resolved;
     const key = contextPackRefKey(verified.ref);
     if (!expected.has(key)) {
       throw new Error("blocked.extra-resolved-context-pack");

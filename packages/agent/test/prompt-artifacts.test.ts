@@ -201,7 +201,7 @@ describe("resident agent prompt artifacts", () => {
     expect(envelope.resolvedContextPacks?.[0]).toBe(verifiedResolvedEvidenceSummary);
   });
 
-  it("round-trips production resolved payload envelopes through authoritative parse verification", async () => {
+  it("does not manufacture verified payload envelopes from serialized production artifacts", async () => {
     const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
     const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
     const envelope = buildProductionEvidenceTriageArtifact({
@@ -213,13 +213,43 @@ describe("resident agent prompt artifacts", () => {
     const serialized = serializePromptArtifactEnvelope(envelope);
     const parsed = parsePromptArtifactEnvelope(serialized);
 
-    expect(parsed.resolvedContextPacks).toHaveLength(resolvedContextPacks.length);
-    expect(parsed.resolvedContextPacks?.map((resolved) => resolved.ref)).toEqual(contextPackRefs);
-    expect(() => assertResolvedContextPacksForExecution(contextPackRefs, parsed.resolvedContextPacks ?? [])).not.toThrow();
+    expect(parsed.resolvedContextPacks).toBeUndefined();
+    expect(() => assertResolvedContextPacksForExecution(contextPackRefs, parsed.resolvedContextPacks ?? [])).toThrow(/missing/i);
     expect(JSON.stringify(promptArtifactAuditMetadata(parsed))).not.toContain("payload-only-fact");
   });
 
-  it("rejects persisted production payload tampering before retaining a resolved envelope", async () => {
+  it("keeps execution assertion limited to registry-owned envelopes and its two positional arguments", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+    const plain = JSON.parse(JSON.stringify(resolvedContextPacks[0])) as unknown;
+
+    expect(assertResolvedContextPacksForExecution.length).toBe(2);
+    expect(() => assertResolvedContextPacksForExecution(
+      contextPackRefs,
+      [plain, ...resolvedContextPacks.slice(1)] as never
+    )).toThrow(/unverified|verified/i);
+  });
+
+  it("rehydrates production payload envelopes only from supplied registry authority", async () => {
+    const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
+    const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
+    const envelope = buildProductionEvidenceTriageArtifact({
+      contextPackRefs,
+      resolvedContextPacks,
+      evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(contextPackRefs)
+    });
+
+    const parsed = parsePromptArtifactEnvelope(serializePromptArtifactEnvelope(envelope), {
+      authoritativeResolvedContextPacks: resolvedContextPacks
+    });
+
+    expect(parsed.resolvedContextPacks).toHaveLength(resolvedContextPacks.length);
+    expect(parsed.resolvedContextPacks?.[0]).toBe(resolvedContextPacks[0]);
+    expect(parsed.resolvedContextPacks?.map((resolved) => resolved.ref)).toEqual(contextPackRefs);
+    expect(() => assertResolvedContextPacksForExecution(contextPackRefs, parsed.resolvedContextPacks ?? [])).not.toThrow();
+  });
+
+  it("rejects persisted production payload, ref, and order tampering against registry authority", async () => {
     const resolvedContextPacks = await resolvedEvidenceTriageContextPacks();
     const contextPackRefs = resolvedContextPacks.map((resolved) => resolved.ref);
     const envelope = buildProductionEvidenceTriageArtifact({
@@ -228,11 +258,35 @@ describe("resident agent prompt artifacts", () => {
       evaluatedContextRequirements: evaluatedEvidenceTriageRequirements(contextPackRefs)
     });
     const serialized = JSON.parse(Buffer.from(serializePromptArtifactEnvelope(envelope)).toString("utf8")) as {
-      resolvedContextPacks: Array<{ payload: { fact: string } }>;
+      resolvedContextPacks: Array<{ ref: ContextPackRef; payload: { fact: string } }>;
     };
-    serialized.resolvedContextPacks[0]!.payload.fact = "tampered-persisted-payload";
+    const first = serialized.resolvedContextPacks[0];
+    if (first === undefined) throw new Error("Expected persisted evidence summary payload.");
+    const tamperedPayload = { fact: "tampered-persisted-payload" };
+    const { contentHash: _contentHash, sizeBytes: _sizeBytes, ...tamperedRefInput } = first.ref;
+    const tamperedRef = buildContextPackRef({ ...tamperedRefInput, payload: tamperedPayload });
+    serialized.resolvedContextPacks[0] = { ref: tamperedRef, payload: tamperedPayload };
 
-    expect(() => parsePromptArtifactEnvelope(Buffer.from(JSON.stringify(serialized)))).toThrow(/payload|verified|hash/i);
+    expect(() => parsePromptArtifactEnvelope(Buffer.from(JSON.stringify(serialized)), {
+      authoritativeResolvedContextPacks: resolvedContextPacks
+    })).toThrow(/authoritative|payload|ref/i);
+
+    const reordered = JSON.parse(Buffer.from(serializePromptArtifactEnvelope(envelope)).toString("utf8")) as {
+      resolvedContextPacks: unknown[];
+    };
+    reordered.resolvedContextPacks.reverse();
+    expect(() => parsePromptArtifactEnvelope(Buffer.from(JSON.stringify(reordered)), {
+      authoritativeResolvedContextPacks: resolvedContextPacks
+    })).toThrow(/authoritative|order|ref/i);
+
+    const missingPayloads = JSON.parse(Buffer.from(serializePromptArtifactEnvelope(envelope)).toString("utf8")) as {
+      resolvedContextPacks?: unknown;
+    };
+    delete missingPayloads.resolvedContextPacks;
+
+    expect(() => parsePromptArtifactEnvelope(Buffer.from(JSON.stringify(missingPayloads)), {
+      authoritativeResolvedContextPacks: resolvedContextPacks
+    })).toThrow(/resolvedContextPacks/i);
   });
 
   it.each([
