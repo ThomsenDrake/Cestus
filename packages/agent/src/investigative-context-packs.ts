@@ -3,6 +3,7 @@ import {
   hashAgentContextPack,
   type AgentContextPackJsonValue,
   type ContextPackDescriptor,
+  type ContextPackRef,
   type ContextPackRegistry,
   type ResolvedContextPack
 } from "./context-packs.js";
@@ -28,6 +29,7 @@ export type InvestigativeContextPackFailureCode =
   | "accepted-truth-mutation-forbidden"
   | "accepted-relationship-not-authoritative"
   | "selection-window-required"
+  | "selection-window-limit-exceeded"
   | "selection-manifest-stale"
   | "selection-manifest-hash-mismatch"
   | "selection-row-mismatch"
@@ -370,6 +372,11 @@ export interface InvestigativeContextPackMetadata {
 }
 
 export interface InvestigativeContextPackDependencies {
+  readonly now: () => string;
+  readonly policyVersion: string;
+  readonly ontologyCoreVersion: string;
+  readonly packVersions: Readonly<Record<string, string>>;
+  readonly registrationIdentity: InvestigativeRegistrationIdentity;
   readonly selection: InvestigativeSelectionCapability;
   readonly evidenceReader: InvestigativeEvidenceReader;
   readonly graphReader: AcceptedGraphProjectionReader;
@@ -377,9 +384,6 @@ export interface InvestigativeContextPackDependencies {
   readonly agentLockReader: ResidentAgentLockReader;
   readonly eventReader: KnowledgeEventReader;
   readonly evidenceSourcePosture: EvidenceSourcePostureCapability;
-  readonly now: () => string;
-  readonly metadata: InvestigativeContextPackMetadata;
-  readonly registrationIdentity: InvestigativeRegistrationIdentity;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
 }
 
@@ -415,7 +419,7 @@ export interface InvestigativeContextPackPayloadParser<Payload extends Investiga
   readonly contextPackId: Payload["contextPackId"];
   readonly version: 1;
   readonly parserIdentity: InvestigativePayloadParserIdentity;
-  parsePayload(payload: unknown): Payload;
+  parsePayload(payload: unknown, ref?: ContextPackRef): Payload;
 }
 
 export interface AcceptedGraphProjectionPayload extends InvestigativeContextPackPayloadBase {
@@ -633,16 +637,16 @@ function registrationBuildInput(input: RegisterInvestigativeContextPacksInput): 
   };
 }
 
-function parseAcceptedGraphPayloadForRegistry(payload: AgentContextPackJsonValue): AgentContextPackJsonValue {
-  return acceptedGraphProjectionPayloadParser.parsePayload(payload) as unknown as AgentContextPackJsonValue;
+function parseAcceptedGraphPayloadForRegistry(payload: AgentContextPackJsonValue, ref?: ContextPackRef): AgentContextPackJsonValue {
+  return acceptedGraphProjectionPayloadParser.parsePayload(payload, ref) as unknown as AgentContextPackJsonValue;
 }
 
-function parseEvidenceSummaryPayloadForRegistry(payload: AgentContextPackJsonValue): AgentContextPackJsonValue {
-  return evidenceSummaryPayloadParser.parsePayload(payload) as unknown as AgentContextPackJsonValue;
+function parseEvidenceSummaryPayloadForRegistry(payload: AgentContextPackJsonValue, ref?: ContextPackRef): AgentContextPackJsonValue {
+  return evidenceSummaryPayloadParser.parsePayload(payload, ref) as unknown as AgentContextPackJsonValue;
 }
 
-function parseGovernanceLocksPayloadForRegistry(payload: AgentContextPackJsonValue): AgentContextPackJsonValue {
-  return governanceLocksPayloadParser.parsePayload(payload) as unknown as AgentContextPackJsonValue;
+function parseGovernanceLocksPayloadForRegistry(payload: AgentContextPackJsonValue, ref?: ContextPackRef): AgentContextPackJsonValue {
+  return governanceLocksPayloadParser.parsePayload(payload, ref) as unknown as AgentContextPackJsonValue;
 }
 
 function asResolvedContextPack(
@@ -683,6 +687,9 @@ async function selectForPack(
     ...(input.window === undefined ? {} : { window: input.window })
   });
   assertSelectionManifestHash(manifest);
+  if (manifest.includedRefs.length > investigativeContextPackDefaultLimits.selectionWindowLimit) {
+    throw new InvestigativeContextPackError("selection-window-limit-exceeded", "selection-window-limit-exceeded");
+  }
   if (manifest.scope.kind !== input.scope.kind || manifest.scope.id !== input.scope.id) {
     throw new InvestigativeContextPackError("invalid-context-pack-scope", "invalid-context-pack-scope");
   }
@@ -732,6 +739,9 @@ export async function buildEvidenceSummaryContextPack(
 ): Promise<ResolvedEvidenceSummaryContextPack> {
   const selectedManifest = await selectForPack("evidence-summary.v1", input);
   const manifest = canonicalSelectionManifest(selectedManifest);
+  if (manifest.sourceProjectionHighWaterMarks.ingestion === undefined) {
+    throw new InvestigativeContextPackError("projection-lag", "projection-lag");
+  }
   const evidenceRefs = manifest.includedRefs.filter((ref) => ref.refKind === "evidence");
   const rows = await readSelectedEvidenceRows(input.deps.evidenceReader, manifest, evidenceRefs);
   const stalenessInputs: { kind: string; ref: string; value: string }[] = [];
@@ -749,6 +759,7 @@ export async function buildEvidenceSummaryContextPack(
       throw new InvestigativeContextPackError("selection-row-mismatch", "selection-row-mismatch");
     }
     assertEvidenceNarrativeSafety(row);
+    assertEvidenceOptionalDetailProvenance(row);
     const posture = await input.deps.evidenceSourcePosture.checkEvidence({
       evidenceId: row.evidenceId,
       contentHash: row.contentHash
@@ -778,7 +789,7 @@ export async function buildEvidenceSummaryContextPack(
   const budget = input.sizeBudgetBytes
     ?? input.deps.budgets?.["evidence-summary.v1"]
     ?? investigativeContextPackDefaultLimits.packBudgets["evidence-summary.v1"];
-  const metadata = canonicalMetadata(input.deps.metadata);
+  const metadata = canonicalMetadata(input.deps);
   const normalizedStalenessInputs = canonicalStalenessInputs(stalenessInputs);
   const normalizedItems = [...items].sort((left, right) => compareText(left.evidenceId, right.evidenceId));
   const fitted = fitEvidenceSummaryBudget({
@@ -792,6 +803,19 @@ export async function buildEvidenceSummaryContextPack(
   if (fitted === undefined) {
     throw new InvestigativeContextPackError("context-budget-exceeded", "context-budget-exceeded");
   }
+  for (const item of fitted.payload.items) {
+    for (const parseJob of item.parseJobs) {
+      if (parseJob.outputHash !== undefined) {
+        provenanceRefs.add(parseJob.outputHash);
+      }
+      if (parseJob.terminalEventId !== undefined) {
+        provenanceRefs.add(parseJob.terminalEventId);
+      }
+    }
+    for (const governanceTag of item.governanceTags) {
+      provenanceRefs.add(governanceTag.eventId);
+    }
+  }
   provenanceRefs.add(`policy:${metadata.policyVersion}`);
   provenanceRefs.add(`ontology-core:${metadata.ontologyCoreVersion}`);
   for (const [packId, version] of Object.entries(metadata.packVersions)) {
@@ -803,7 +827,8 @@ export async function buildEvidenceSummaryContextPack(
     now: input.deps.now,
     provenanceRefs: [...provenanceRefs].sort(compareText),
     stalenessInputs: normalizedStalenessInputs,
-    policyVersion: metadata.policyVersion
+    policyVersion: metadata.policyVersion,
+    sizeBudgetBytes: budget
   });
 }
 
@@ -819,7 +844,7 @@ export async function buildAcceptedGraphProjectionContextPack(
   const entityRefs = manifest.includedRefs.filter((ref) => ref.refKind === "entity");
   const relationshipRefs = manifest.includedRefs.filter((ref) => ref.refKind === "relationship");
   const graphRows = await readSelectedAcceptedGraphRows(input.deps.graphReader, manifest);
-  const metadata = canonicalMetadata(input.deps.metadata);
+  const metadata = canonicalMetadata(input.deps);
   const assertions = validateAcceptedGraphAssertions(assertionRefs, graphRows.assertions);
   const entities = validateAcceptedGraphEntities(entityRefs, graphRows.entities);
   const relationshipValidation = validateAcceptedGraphRelationships({
@@ -921,7 +946,7 @@ export async function buildGovernanceLocksContextPack(
     await readSelectedGovernanceRestrictions(input.deps.governanceReader, manifest, restrictionRefs)
   );
   const events = await readGovernanceProvenanceEvents(input.deps.eventReader, collectGovernanceEventIds(locks, restrictions));
-  const metadata = canonicalMetadata(input.deps.metadata);
+  const metadata = canonicalMetadata(input.deps);
   const stalenessInputs = canonicalStalenessInputs([
     ...governanceHighWaterStalenessInputs(manifest.sourceProjectionHighWaterMarks),
     ...events.map((event) => ({
@@ -1640,6 +1665,7 @@ function buildEvidenceSummaryResolvedPack(input: {
   readonly provenanceRefs: readonly string[];
   readonly stalenessInputs: readonly { readonly kind: string; readonly ref: string; readonly value: string }[];
   readonly policyVersion: string;
+  readonly sizeBudgetBytes: number;
 }): ResolvedEvidenceSummaryContextPack {
   return buildResolvedContextPack({
     contextPackId: "evidence-summary.v1",
@@ -1648,10 +1674,12 @@ function buildEvidenceSummaryResolvedPack(input: {
     payload: input.payload,
     safeSummary: "Provider-safe evidence summary",
     provenanceRefs: input.provenanceRefs,
+    projectionHighWaterMark: input.manifest.sourceProjectionHighWaterMarks.ingestion as number,
     sourceEventIds: input.provenanceRefs.filter((ref) => ref.startsWith("evt_")),
     artifactHashes: input.provenanceRefs.filter((ref) => ref.startsWith("sha256:")),
     policyVersion: input.policyVersion,
     scope: input.manifest.scope,
+    sizeBudgetBytes: input.sizeBudgetBytes,
     stalenessInputs: input.stalenessInputs
   }) as unknown as ResolvedEvidenceSummaryContextPack;
 }
@@ -1811,6 +1839,22 @@ function assertEvidenceNarrativeSafety(row: InvestigativeEvidenceRow): void {
   }
 }
 
+function assertEvidenceOptionalDetailProvenance(row: InvestigativeEvidenceRow): void {
+  for (const parseJob of row.parseJobs) {
+    if (parseJob.outputHash !== undefined && !isContentHash(parseJob.outputHash)) {
+      throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
+    }
+    if (parseJob.terminalEventId !== undefined && !isEventId(parseJob.terminalEventId)) {
+      throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
+    }
+  }
+  for (const tag of row.governanceTags) {
+    if (!isEventId(tag.eventId)) {
+      throw new InvestigativeContextPackError("missing-provenance", "missing-provenance");
+    }
+  }
+}
+
 function toEvidenceSummaryItem(row: InvestigativeEvidenceRow): EvidenceSummaryItem {
   return {
     evidenceId: row.evidenceId,
@@ -1910,11 +1954,13 @@ function createPayloadParser<Payload extends InvestigativeContextPackPayloadBase
     contextPackId,
     version: 1,
     parserIdentity: investigativePayloadParserIdentities[contextPackId],
-    parsePayload(payload: unknown): Payload {
+    parsePayload(payload: unknown, ref?: ContextPackRef): Payload {
       if (!isPayloadWithIdentity(payload, contextPackId, schemaVersion)) {
         throw new InvestigativeContextPackError("context-payload-missing", "investigative-context-payload-invalid");
       }
-      return parseStrictPayload === undefined ? payload as Payload : parseStrictPayload(payload);
+      const parsedPayload = parseStrictPayload === undefined ? payload as Payload : parseStrictPayload(payload);
+      assertPayloadMatchesContextPackRef(parsedPayload, ref);
+      return parsedPayload;
     }
   });
 }
@@ -1943,6 +1989,8 @@ function parseAcceptedGraphProjectionPayload(payload: unknown): AcceptedGraphPro
     || !isAcceptedGraphTruthBoundary(value.truthBoundary) || !isSelectionManifest(value.selectionManifest)
     || !hasGraphHighWaterMark(value.projectionHighWaterMarks)
     || !hasGraphHighWaterMark((value.selectionManifest as Record<string, unknown>).sourceProjectionHighWaterMarks)
+    || !sameScope(value.scope, (value.selectionManifest as Record<string, unknown>).scope)
+    || !sameHighWaterMarks(value.projectionHighWaterMarks, (value.selectionManifest as Record<string, unknown>).sourceProjectionHighWaterMarks)
     || !isPackVersions(value.packVersions)
     || !isAcceptedGraphItems(value.items) || !Array.isArray(value.omissions) || !value.omissions.every(isOmission)
     || !Array.isArray(value.stalenessInputs) || value.stalenessInputs.length === 0
@@ -1972,7 +2020,10 @@ function parseEvidenceSummaryPayload(payload: unknown): EvidenceSummaryPayload {
   const value = payload as Record<string, unknown>;
   if (value.schemaVersion !== "evidence-summary.context.v1" || value.contextPackId !== "evidence-summary.v1" || value.version !== 1
     || !isSafeNonEmptyText(value.ontologyCoreVersion) || !isScope(value.scope) || !isEvidenceTruthBoundary(value.truthBoundary)
-    || !isSelectionManifest(value.selectionManifest) || !isHighWaterMarks(value.projectionHighWaterMarks)
+    || !isSelectionManifest(value.selectionManifest) || !hasEvidenceHighWaterMark(value.projectionHighWaterMarks)
+    || !hasEvidenceHighWaterMark((value.selectionManifest as Record<string, unknown>).sourceProjectionHighWaterMarks)
+    || !sameScope(value.scope, (value.selectionManifest as Record<string, unknown>).scope)
+    || !sameHighWaterMarks(value.projectionHighWaterMarks, (value.selectionManifest as Record<string, unknown>).sourceProjectionHighWaterMarks)
     || !isPackVersions(value.packVersions) || !Array.isArray(value.items) || !value.items.every(isEvidenceSummaryItem)
     || !Array.isArray(value.omissions) || !value.omissions.every(isOmission) || !Array.isArray(value.stalenessInputs)
     || value.stalenessInputs.length === 0 || !value.stalenessInputs.every(isStalenessInput)) {
@@ -2012,6 +2063,33 @@ function parseGovernanceLocksPayload(payload: unknown): GovernanceLocksPayload {
     throw new InvestigativeContextPackError("context-payload-missing", "governance-locks payload invalid");
   }
   return payload as unknown as GovernanceLocksPayload;
+}
+
+function assertPayloadMatchesContextPackRef(payload: InvestigativeContextPackPayloadBase, ref: ContextPackRef | undefined): void {
+  if (ref === undefined) {
+    return;
+  }
+  if (ref.contextPackId !== payload.contextPackId || ref.version !== 1
+    || ref.scope === undefined || !sameScope(ref.scope, payload.scope)) {
+    throw new InvestigativeContextPackError("context-payload-missing", `${payload.contextPackId} payload invalid`);
+  }
+  const expectedHighWaterMark = refProjectionHighWaterMarkForPayload(payload);
+  if (expectedHighWaterMark === undefined || ref.projectionHighWaterMark !== expectedHighWaterMark) {
+    throw new InvestigativeContextPackError("context-payload-missing", `${payload.contextPackId} payload invalid`);
+  }
+}
+
+function refProjectionHighWaterMarkForPayload(payload: InvestigativeContextPackPayloadBase): number | undefined {
+  if (payload.contextPackId === "accepted-graph-projection.v1") {
+    return payload.projectionHighWaterMarks.graph;
+  }
+  if (payload.contextPackId === "evidence-summary.v1") {
+    return payload.projectionHighWaterMarks.ingestion;
+  }
+  if (payload.projectionHighWaterMarks.governance === undefined || payload.projectionHighWaterMarks.agent === undefined) {
+    return undefined;
+  }
+  return Math.max(payload.projectionHighWaterMarks.governance, payload.projectionHighWaterMarks.agent);
 }
 
 function isAcceptedGraphTruthBoundary(value: unknown): boolean {
@@ -2133,6 +2211,10 @@ function hasGraphHighWaterMark(value: unknown): boolean {
   return isHighWaterMarks(value) && isNonnegativeInteger((value as Record<string, unknown>).graph);
 }
 
+function hasEvidenceHighWaterMark(value: unknown): boolean {
+  return isHighWaterMarks(value) && isNonnegativeInteger((value as Record<string, unknown>).ingestion);
+}
+
 function hasGovernanceHighWaterMarks(value: unknown): boolean {
   return isHighWaterMarks(value) && isNonnegativeInteger((value as Record<string, unknown>).governance)
     && isNonnegativeInteger((value as Record<string, unknown>).agent);
@@ -2237,7 +2319,7 @@ function isParseJob(value: unknown): boolean {
     && isSafeNonEmptyText(value.parserVersion) && isSafeNonEmptyText(value.state)
     && (value.outputHash === undefined || isContentHash(value.outputHash))
     && (value.outputMediaType === undefined || isSafeNonEmptyText(value.outputMediaType))
-    && (value.terminalEventId === undefined || isSafeNonEmptyText(value.terminalEventId))
+    && (value.terminalEventId === undefined || isEventId(value.terminalEventId))
     && (value.retryable === undefined || typeof value.retryable === "boolean");
 }
 
@@ -2245,7 +2327,7 @@ function isGovernanceTag(value: unknown): boolean {
   return isPlainObject(value) && hasOnlyKeys(value, ["tag", "source", "state", "confidence", "safeRationale", "eventId"])
     && hasRequiredKeys(value, ["tag", "source", "state", "eventId"])
     && isSafeNonEmptyText(value.tag) && (value.source === "ai" || value.source === "human")
-    && (value.state === "active" || value.state === "removed") && isSafeNonEmptyText(value.eventId)
+    && (value.state === "active" || value.state === "removed") && isEventId(value.eventId)
     && (value.confidence === undefined || (typeof value.confidence === "number" && value.confidence >= 0 && value.confidence <= 1))
     && (value.safeRationale === undefined || isSafeNonEmptyText(value.safeRationale));
 }

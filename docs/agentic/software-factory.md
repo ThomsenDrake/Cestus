@@ -1519,3 +1519,43 @@ factory-readiness passed
 Review status for Tasks 1-6: all six investigative context-pack task claims are marked `ready-for-review` before this final handoff. The claims cover contracts/descriptors, bounded selection, evidence summary, accepted graph projection, governance locks, and registration/readiness. Task 3 records review fixes for evidence-summary payload safety and deterministic hashing; Task 6 records the final registration, resolved-payload, typecheck, full investigative, context-pack, full verification, and whitespace evidence. A final fresh review is still required for the Task 7 handoff before coordinator merge direction.
 
 This lane adds package-owned investigative builders and registration for `evidence-summary.v1`, `accepted-graph-projection.v1`, and `governance-locks.v1` only. Runtime/orchestrator integration remains deferred to a narrow later task that constructs the mounted-workspace dependency object and calls the package-owned registration helper without changing pack schemas, readiness logic, resolved-envelope semantics, prompt rendering, or bounded selection contracts.
+
+### Final Review Repair Evidence
+
+Branch-wide final review repair on `codex/task-4-accepted-graph-context-pack` addressed the investigative context-pack blockers without changing runtime/orchestrator/cockpit/local-runtime wiring, prompt rendering, operational/PRR packs, specialist prompts, handoff projections, or adding SQLite/filesystem/local-runtime/portable-workspace imports.
+
+RED evidence:
+
+```text
+npm test -- packages/agent/test/investigative-context-packs.test.ts
+Test Files  1 failed (1)
+Tests  10 failed | 47 passed (57)
+```
+
+The RED failures covered evidence ref freshness/budget metadata, true specialist readiness proof, over-limit selection rejection before reader work, registry parser/ref scope and high-water divergence, optional evidence detail provenance, top-level dependency metadata, and archive posture rejection coverage.
+
+GREEN evidence:
+
+```text
+npm test -- packages/agent/test/investigative-context-packs.test.ts
+Test Files  1 passed (1)
+Tests  57 passed (57)
+
+npm test -- packages/agent/test/investigative-context-packs.test.ts packages/agent/test/specialist-readiness.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/prompt-artifacts.test.ts
+Test Files  4 passed (4)
+Tests  137 passed (137)
+
+npm run typecheck
+typecheck passed
+
+npm run verify
+typecheck passed
+Test Files  176 passed | 3 skipped (179)
+Tests  1922 passed | 3 skipped (1925)
+tests passed
+vite build succeeded
+factory-readiness passed
+
+git diff --check
+no output
+```

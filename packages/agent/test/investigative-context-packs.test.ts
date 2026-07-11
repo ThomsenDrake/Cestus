@@ -29,6 +29,7 @@ import {
 } from "../src/investigative-context-packs.js";
 import {
   assertResolvedContextPacksForExecution,
+  buildResolvedContextPack,
   createContextPackRegistry,
   hashAgentContextPack,
   type AgentContextPackJsonValue,
@@ -160,6 +161,25 @@ describe("investigative context packs", () => {
     expect(counters.eventReads).toBe(0);
   });
 
+  it("rejects selection manifests above the exported window limit before reader work", async () => {
+    const counters = createReaderCounters();
+    const deps = createInvestigativeDeps({
+      counters,
+      selection: fixedSelection(overLimitSelectionBody())
+    });
+
+    await expect(__testOnlyReadEvidenceSelectionProbe({
+      deps,
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_oversized", 0, investigativeContextPackDefaultLimits.selectionWindowLimit)
+    })).rejects.toMatchObject({ code: "selection-window-limit-exceeded" });
+    expect(counters.evidenceReads).toBe(0);
+    expect(counters.graphReads).toBe(0);
+    expect(counters.governanceReads).toBe(0);
+    expect(counters.agentLockReads).toBe(0);
+    expect(counters.eventReads).toBe(0);
+  });
+
   it("keeps query work bounded as unrelated evidence rows grow", async () => {
     const counters = createReaderCounters();
     const deps = createInvestigativeDeps({
@@ -213,6 +233,8 @@ describe("investigative context packs", () => {
       "ev_contract_001",
       "sha256:1111111111111111111111111111111111111111111111111111111111111111"
     ]));
+    expect(resolved.ref.projectionHighWaterMark).toBe(13);
+    expect(resolved.ref.sizeBudgetBytes).toBe(investigativeContextPackDefaultLimits.packBudgets["evidence-summary.v1"]);
     expect(resolved.payload.items[0]).toMatchObject({
       evidenceId: "ev_contract_001",
       contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
@@ -233,6 +255,97 @@ describe("investigative context packs", () => {
     ]));
   });
 
+  it("includes optional evidence detail hashes and events in resolved ref provenance", async () => {
+    const row = {
+      ...evidenceRow("ev_contract_001", "evt_evidence_ingested_001"),
+      parseJobs: [{
+        parseJobId: "parse_job_provenance_001",
+        lane: "extract",
+        parserName: "contract-parser",
+        parserVersion: "v1",
+        state: "complete",
+        outputHash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" as const,
+        terminalEventId: "evt_parse_job_terminal_001"
+      }],
+      governanceTags: [{
+        tag: "sensitive",
+        source: "human" as const,
+        state: "active" as const,
+        eventId: "evt_governance_tag_001"
+      }]
+    } satisfies InvestigativeEvidenceRow;
+
+    const resolved = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps({ evidenceRows: [row] }),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+
+    expect(resolved.payload.items[0]!.parseJobs[0]).toMatchObject({
+      outputHash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      terminalEventId: "evt_parse_job_terminal_001"
+    });
+    expect(resolved.payload.items[0]!.governanceTags[0]).toMatchObject({
+      eventId: "evt_governance_tag_001"
+    });
+    expect(resolved.ref.provenanceRefs).toEqual(expect.arrayContaining([
+      "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "evt_parse_job_terminal_001",
+      "evt_governance_tag_001"
+    ]));
+    expect(resolved.ref.artifactHashes).toEqual(expect.arrayContaining([
+      "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    ]));
+    expect(resolved.ref.sourceEventIds).toEqual(expect.arrayContaining([
+      "evt_parse_job_terminal_001",
+      "evt_governance_tag_001"
+    ]));
+  });
+
+  it("fails closed for malformed optional evidence detail event and hash fields", async () => {
+    const cases: readonly InvestigativeEvidenceRow[] = [
+      {
+        ...evidenceRow("ev_contract_001", "evt_evidence_ingested_001"),
+        parseJobs: [{
+          parseJobId: "parse_job_bad_hash",
+          lane: "extract",
+          parserName: "contract-parser",
+          parserVersion: "v1",
+          state: "complete",
+          outputHash: "sha256:not-a-real-hash" as `sha256:${string}`
+        }]
+      },
+      {
+        ...evidenceRow("ev_contract_001", "evt_evidence_ingested_001"),
+        parseJobs: [{
+          parseJobId: "parse_job_bad_event",
+          lane: "extract",
+          parserName: "contract-parser",
+          parserVersion: "v1",
+          state: "complete",
+          terminalEventId: "parse_job_terminal_001"
+        }]
+      },
+      {
+        ...evidenceRow("ev_contract_001", "evt_evidence_ingested_001"),
+        governanceTags: [{
+          tag: "sensitive",
+          source: "human",
+          state: "active",
+          eventId: "governance_tag_001"
+        }]
+      }
+    ];
+
+    for (const row of cases) {
+      await expect(buildEvidenceSummaryContextPack({
+        deps: createInvestigativeDeps({ evidenceRows: [row] }),
+        scope: { kind: "workspace", id: "ws_main" },
+        window: windowFor("cursor_ws_main_0001", 0, 100)
+      })).rejects.toMatchObject({ code: "missing-provenance" });
+    }
+  });
+
   it("rejects stale current-byte posture instead of using latest scan state", async () => {
     const deps = createInvestigativeDeps({
       postureResult: {
@@ -251,6 +364,29 @@ describe("investigative context packs", () => {
       scope: { kind: "workspace", id: "ws_main" },
       window: windowFor("cursor_ws_main_0001", 0, 100)
     })).rejects.toMatchObject({ code: "source-byte-hash-mismatch" });
+  });
+
+  it.each([
+    "archive-container-hash-mismatch",
+    "archive-child-hash-mismatch"
+  ] as const)("rejects %s source posture through the injected capability", async (code) => {
+    const deps = createInvestigativeDeps({
+      postureResult: {
+        ok: false,
+        code,
+        stalenessInputs: [{
+          kind: code,
+          ref: "ev_contract_001",
+          value: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+        }]
+      }
+    });
+
+    await expect(buildEvidenceSummaryContextPack({
+      deps,
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    })).rejects.toMatchObject({ code });
   });
 
   it("allows safe narrative command discussion but rejects raw executable action fields", async () => {
@@ -316,6 +452,38 @@ describe("investigative context packs", () => {
     expect(first.payload.ontologyCoreVersion).toBe("ontology.v1");
     expect(first.ref.policyVersion).toBe("policy.v1");
     expect(first.ref.contentHash).not.toBe(second.ref.contentHash);
+  });
+
+  it("accepts the approved top-level dependency metadata shape without nested metadata", async () => {
+    const base = createInvestigativeDeps({
+      metadata: {
+        policyVersion: "policy.legacy",
+        ontologyCoreVersion: "ontology.legacy",
+        packVersions: { ingestion: "ingestion.legacy" }
+      }
+    }) as InvestigativeContextPackDependencies & {
+      readonly metadata?: unknown;
+      readonly policyVersion?: string;
+      readonly ontologyCoreVersion?: string;
+      readonly packVersions?: Readonly<Record<string, string>>;
+    };
+    const { metadata: _metadata, ...withoutNestedMetadata } = base;
+    const deps = {
+      ...withoutNestedMetadata,
+      policyVersion: "policy.top-level",
+      ontologyCoreVersion: "ontology.top-level",
+      packVersions: { ingestion: "ingestion.top-level" }
+    } as unknown as InvestigativeContextPackDependencies;
+
+    const resolved = await buildEvidenceSummaryContextPack({
+      deps,
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+
+    expect(resolved.ref.policyVersion).toBe("policy.top-level");
+    expect(resolved.payload.ontologyCoreVersion).toBe("ontology.top-level");
+    expect(resolved.payload.packVersions).toEqual({ ingestion: "ingestion.top-level" });
   });
 
   it("rejects evidence rows whose ingestion event is not selected provenance", async () => {
@@ -834,9 +1002,20 @@ describe("investigative context packs", () => {
     const refs = resolved.map((pack) => pack.ref);
 
     const readiness = projectSpecialistWorkflowReadiness(createReadinessInput({ refs }));
+    expect(readiness.contextReady).toBe(true);
     expect(readiness.missingContextPackIds).not.toContain("accepted-graph-projection.v1");
     expect(readiness.missingContextPackIds).not.toContain("evidence-summary.v1");
     expect(readiness.missingContextPackIds).not.toContain("governance-locks.v1");
+    expect(readiness.staleContextPackIds).not.toEqual(expect.arrayContaining([
+      "accepted-graph-projection.v1",
+      "evidence-summary.v1",
+      "governance-locks.v1"
+    ]));
+    expect(readiness.missingProjectionHighWaterMarkIds).not.toEqual(expect.arrayContaining([
+      "accepted-graph-projection.v1",
+      "evidence-summary.v1",
+      "governance-locks.v1"
+    ]));
   });
 
   it("keeps a payload-only investigative fact available after operational execution assertion", async () => {
@@ -904,6 +1083,88 @@ describe("investigative context packs", () => {
     });
 
     await expect(registry.buildResolved("accepted-graph-projection.v1")).rejects.toThrow(/payload-hash-mismatch/);
+  });
+
+  it("rejects accepted graph payloads whose ref scope or high-water mark diverges in buildResolved", async () => {
+    const resolved = await buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    });
+
+    await expectRegistryBuildResolvedRejects(
+      resolvedWithRef(resolved, { scope: { kind: "task", id: "task_other" } }),
+      "accepted-graph-projection.v1"
+    );
+    await expectRegistryBuildResolvedRejects(
+      resolvedWithRef(resolved, { projectionHighWaterMark: 43 }),
+      "accepted-graph-projection.v1"
+    );
+  });
+
+  it("rejects evidence summary payloads whose ref scope or high-water mark diverges in buildResolved", async () => {
+    const resolved = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+
+    await expectRegistryBuildResolvedRejects(
+      resolvedWithRef(resolved, { scope: { kind: "workspace", id: "ws_other" } }),
+      "evidence-summary.v1"
+    );
+    await expectRegistryBuildResolvedRejects(
+      resolvedWithRef(resolved, { projectionHighWaterMark: 14 }),
+      "evidence-summary.v1"
+    );
+  });
+
+  it("rejects governance lock payloads whose ref scope or high-water mark diverges in buildResolved", async () => {
+    const resolved = await buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    });
+
+    await expectRegistryBuildResolvedRejects(
+      resolvedWithRef(resolved, { scope: { kind: "task", id: "task_other" } }),
+      "governance-locks.v1"
+    );
+    await expectRegistryBuildResolvedRejects(
+      resolvedWithRef(resolved, { projectionHighWaterMark: 55 }),
+      "governance-locks.v1"
+    );
+  });
+
+  it("rejects payload scope and high-water values that diverge from the embedded selection manifest in buildResolved", async () => {
+    const acceptedGraph = await buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    });
+    const evidenceSummary = await buildEvidenceSummaryContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    });
+    const governanceLocks = await buildGovernanceLocksContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_governance" },
+      window: windowFor("cursor_task_governance_0001", 0, 100)
+    });
+
+    await expectRegistryBuildResolvedRejects(
+      rebuildResolvedWithPayload(acceptedGraph, { ...acceptedGraph.payload, scope: { kind: "task", id: "task_other" } }),
+      "accepted-graph-projection.v1"
+    );
+    await expectRegistryBuildResolvedRejects(
+      rebuildResolvedWithPayload(evidenceSummary, { ...evidenceSummary.payload, projectionHighWaterMarks: { ...evidenceSummary.payload.projectionHighWaterMarks, ingestion: 14 } }),
+      "evidence-summary.v1"
+    );
+    await expectRegistryBuildResolvedRejects(
+      rebuildResolvedWithPayload(governanceLocks, { ...governanceLocks.payload, scope: { kind: "task", id: "task_other" } }),
+      "governance-locks.v1"
+    );
   });
 
   it("rejects matching-hash resolved payloads whose pack-specific shape is invalid", async () => {
@@ -1022,18 +1283,107 @@ function createInMemoryPayloadResolver() {
   return resolver;
 }
 
+async function expectRegistryBuildResolvedRejects(
+  resolved: ResolvedContextPack,
+  contextPackId: InvestigativeContextPackId
+): Promise<void> {
+  const registry = createContextPackRegistry({});
+  const descriptor = investigativeContextPackDescriptors.find((candidate) => candidate.contextPackId === contextPackId);
+  if (descriptor === undefined) {
+    throw new Error(`missing descriptor for ${contextPackId}`);
+  }
+  registry.register({
+    descriptor,
+    parsePayload(payload, ref) {
+      return parsePayloadForContextPackId(contextPackId, payload, ref);
+    },
+    build() {
+      return resolved;
+    }
+  });
+
+  await expect(registry.buildResolved(contextPackId)).rejects.toThrow(/payload-schema-mismatch/);
+}
+
+function parsePayloadForContextPackId(
+  contextPackId: InvestigativeContextPackId,
+  payload: AgentContextPackJsonValue,
+  ref?: ContextPackRef
+): AgentContextPackJsonValue {
+  const parseAcceptedGraph = acceptedGraphProjectionPayloadParser.parsePayload as unknown as (
+    payload: AgentContextPackJsonValue,
+    ref?: ContextPackRef
+  ) => AgentContextPackJsonValue;
+  const parseEvidenceSummary = evidenceSummaryPayloadParser.parsePayload as unknown as (
+    payload: AgentContextPackJsonValue,
+    ref?: ContextPackRef
+  ) => AgentContextPackJsonValue;
+  const parseGovernanceLocks = governanceLocksPayloadParser.parsePayload as unknown as (
+    payload: AgentContextPackJsonValue,
+    ref?: ContextPackRef
+  ) => AgentContextPackJsonValue;
+
+  if (contextPackId === "accepted-graph-projection.v1") {
+    return parseAcceptedGraph(payload, ref);
+  }
+  if (contextPackId === "evidence-summary.v1") {
+    return parseEvidenceSummary(payload, ref);
+  }
+  return parseGovernanceLocks(payload, ref);
+}
+
+function resolvedWithRef(
+  resolved: { readonly ref: ContextPackRef; readonly payload: unknown },
+  refPatch: Partial<ContextPackRef>
+): ResolvedContextPack {
+  return {
+    ref: { ...resolved.ref, ...refPatch },
+    payload: resolved.payload
+  } as ResolvedContextPack;
+}
+
+function rebuildResolvedWithPayload(
+  resolved: { readonly ref: ContextPackRef },
+  payload: unknown
+): ResolvedContextPack {
+  return buildResolvedContextPack({
+    contextPackId: resolved.ref.contextPackId,
+    version: resolved.ref.version,
+    generatedAt: resolved.ref.generatedAt,
+    payload,
+    safeSummary: resolved.ref.safeSummary,
+    provenanceRefs: resolved.ref.provenanceRefs,
+    ...(resolved.ref.projectionHighWaterMark === undefined ? {} : { projectionHighWaterMark: resolved.ref.projectionHighWaterMark }),
+    ...(resolved.ref.sourceEventIds === undefined ? {} : { sourceEventIds: resolved.ref.sourceEventIds }),
+    ...(resolved.ref.artifactHashes === undefined ? {} : { artifactHashes: resolved.ref.artifactHashes }),
+    ...(resolved.ref.policyVersion === undefined ? {} : { policyVersion: resolved.ref.policyVersion }),
+    ...(resolved.ref.scope === undefined ? {} : { scope: resolved.ref.scope }),
+    ...(resolved.ref.sizeBudgetBytes === undefined ? {} : { sizeBudgetBytes: resolved.ref.sizeBudgetBytes }),
+    ...(resolved.ref.stalenessInputs === undefined ? {} : { stalenessInputs: resolved.ref.stalenessInputs })
+  });
+}
+
 function createReadinessInput(input: { readonly refs: readonly ContextPackRef[] }): Parameters<typeof projectSpecialistWorkflowReadiness>[0] {
   const descriptor = specialistWorkflowDescriptorFor("evidence-triage");
+  const currentProjectionHighWaterMarks: Record<string, number> = {
+    "accepted-graph-projection.v1": 42,
+    "evidence-summary.v1": 13,
+    "governance-locks.v1": 56,
+    "prr-read-model.v1": 3,
+    "agent-memory-summary.v1": 4,
+    "task-run-history.v1": 5,
+    "workspace-runtime-status.v1": 6
+  };
+  const suppliedIds = new Set(input.refs.map((ref) => ref.contextPackId));
+  const supportingRefs = descriptor.contextPacks
+    .filter((pack) => pack.required && !suppliedIds.has(pack.contextPackId))
+    .map((pack) => readinessContextRef(pack.contextPackId, currentProjectionHighWaterMarks[pack.contextPackId] ?? 1));
   return {
     runType: "evidence-triage",
     descriptor,
     availableContracts: [...descriptor.prerequisiteContractIds],
-    contextPackRefs: input.refs,
-    currentProjectionHighWaterMarks: {
-      "accepted-graph-projection.v1": 42,
-      "evidence-summary.v1": 13,
-      "governance-locks.v1": 56
-    },
+    contextPackRefs: [...supportingRefs, ...input.refs],
+    currentProjectionHighWaterMarks,
     activeLocks: [],
     providerReadiness: {
       cards: [{
@@ -1051,13 +1401,30 @@ function createReadinessInput(input: { readonly refs: readonly ContextPackRef[] 
     },
     promptTemplateRegistrations: [{
       runType: "evidence-triage",
-      promptTemplateId: "evidence-triage.v1",
-      promptTemplateVersion: 1,
+      promptTemplateId: descriptor.promptTemplate.promptTemplateId,
+      promptTemplateVersion: descriptor.promptTemplate.promptTemplateVersion,
       label: "Evidence triage prompt"
     }],
     availableDomainAdapterFamilies: ["provider-byte-transfer", "contradiction-claim-review"],
     satisfiedApprovalClasses: []
   };
+}
+
+function readinessContextRef(contextPackId: string, projectionHighWaterMark: number): ContextPackRef {
+  const eventId = `evt_${contextPackId.replace(/[^a-zA-Z0-9_]/g, "_")}_ready`;
+  return buildResolvedContextPack({
+    contextPackId,
+    version: 1,
+    generatedAt: "2026-07-10T00:00:00.000Z",
+    payload: { contextPackId, projectionHighWaterMark },
+    safeSummary: `${contextPackId} readiness fixture`,
+    provenanceRefs: [eventId],
+    projectionHighWaterMark,
+    sourceEventIds: [eventId],
+    policyVersion: "policy.v1",
+    scope: { kind: "workspace", id: "ws_main" },
+    sizeBudgetBytes: 65_536
+  }).ref;
 }
 
 interface CreateInvestigativeDepsInput {
@@ -1338,11 +1705,9 @@ function createFakeInvestigativeDeps(input: {
     now() {
       return "2026-07-10T00:00:00.000Z";
     },
-    metadata: input.metadata ?? {
-      policyVersion: "policy.v1",
-      ontologyCoreVersion: "ontology.v1",
-      packVersions: { ingestion: "ingestion.v1" }
-    },
+    policyVersion: input.metadata?.policyVersion ?? "policy.v1",
+    ontologyCoreVersion: input.metadata?.ontologyCoreVersion ?? "ontology.v1",
+    packVersions: input.metadata?.packVersions ?? { ingestion: "ingestion.v1" },
     registrationIdentity: input.registrationIdentity ?? investigativeRegistrationIdentity,
     ...(input.budgets === undefined ? {} : { budgets: input.budgets })
   };
@@ -1687,6 +2052,27 @@ function selectionBody(): InvestigativeSelectionManifestBody {
         refId: "parse_job_001"
       }]
     }]
+  };
+}
+
+function overLimitSelectionBody(): InvestigativeSelectionManifestBody {
+  const count = investigativeContextPackDefaultLimits.selectionWindowLimit + 1;
+  return {
+    ...selectionBody(),
+    scope: { kind: "workspace", id: "ws_main" },
+    totalEligibleCount: count,
+    includedRefs: Array.from({ length: count }, (_, index) => {
+      const ordinal = String(index + 1).padStart(3, "0");
+      const contentHash = `sha256:${String(index + 1).padStart(64, "0")}` as `sha256:${string}`;
+      return {
+        refKind: "evidence" as const,
+        refId: `ev_over_limit_${ordinal}`,
+        sortKey: `evidence/ev_over_limit_${ordinal}/${contentHash}`,
+        contentHash,
+        sourceEventIds: [`evt_over_limit_${ordinal}`],
+        mandatory: true
+      };
+    })
   };
 }
 
