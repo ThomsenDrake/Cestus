@@ -6,7 +6,7 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at (UTC): `2026-07-11T12:19:01Z`
-- Status: `in-progress`
+- Status: `ready-for-review`
 
 ## Owned Files
 
@@ -26,5 +26,10 @@
 - RED: `npm test -- packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/agent/test/production-specialist-prompts.test.ts` failed as expected with exactly three workflow regressions. Existing workflow-local parsers accepted completed-effect or ontology-authority claims and produced non-failed handoffs.
 - Blocked at (UTC): `2026-07-11T12:23:35Z`.
 - Coordinator unblock at `2026-07-11T12:31:56Z`: approved a narrow shared output-contract expansion in `packages/agent/src/production-specialist-output-contracts.ts`; the shared validator remains the owner and workflow-local post-validators remain forbidden.
-- GREEN: pending after shared validator extension and workflow integration.
-- Verify: pending.
+- Shared-validator RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with one expected regression because the shared authority matcher accepted the newly covered completed-effect families.
+- Shared-validator GREEN: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` passed with 1 file and 60 tests after the clause-aware shared matcher covered completed task creation/launch, portal/site crawl or scrape, and plural provider-byte transfer claims while allowing bounded proposal, instruction, and policy language.
+- GREEN: `npm test -- packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/agent/test/production-specialist-prompts.test.ts` passed with 4 files and 89 tests. Each workflow validates immediately after JSON parse and before its first local derivative, review/approval request, or handoff construction.
+- Verify: `npm run verify` passed: typecheck, full tests, Vite build, and factory readiness. Node emitted only the existing experimental SQLite warning.
+- Diff check: `git diff --check` passed.
+- Review: inline Task 6 spec review confirmed validation remains advisory-only, shared across output fields, secret-safe, and cannot grant ontology truth or external effects.
+- Completed at (UTC): `2026-07-11T12:39:28Z`.

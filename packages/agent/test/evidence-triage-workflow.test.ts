@@ -37,7 +37,7 @@ const promptArtifactHash = hashText("triage prompt artifact");
 const providerParseHuman = { id: "actor_provider_reviewer", kind: "human" as const, label: "Provider Reviewer" };
 
 describe("evidence triage workflow", () => {
-  it("writes source-bound local artifacts and blocks instead of queueing provider parse", async () => {
+  it("permits bounded instructional narrative while writing source-bound local artifacts", async () => {
     const { ledger, runtime } = await preparedRuntime(modelOutput());
     const providerPreview = await providerParseCurrentPreview(ledger);
     const builtContextPackIds: string[] = [];
@@ -396,8 +396,10 @@ describe("evidence triage workflow", () => {
     }
   });
 
-  it("records invalid model output as a safe failed handoff without tool requests", async () => {
-    const { ledger, runtime } = await preparedRuntime("not-json");
+  it("rejects model output that claims an assertion was proposed, accepted, or added to the accepted graph", async () => {
+    const { ledger, runtime } = await preparedRuntime(modelOutput({
+      dossierSummary: "The assertion was proposed, accepted, and added to the accepted graph."
+    }));
 
     const result = await runEvidenceTriageWorkflow({
       ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
@@ -606,7 +608,7 @@ function triageContextPayload(contextPackId: string): AgentContextPackJsonValue 
 
 function modelOutput(patch: Record<string, unknown> = {}) {
   return JSON.stringify({
-    dossierSummary: "Sensitive model note for local dossier only.",
+    dossierSummary: "Public instructions say investigators should classify evidence before requesting review.",
     safeSummaries: ["Sensitive model note for local summary only."],
     governanceFlags: [{
       evidenceId: "ev_triage_001",

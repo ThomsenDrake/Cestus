@@ -1,5 +1,4 @@
-import { z } from "zod";
-import { assertAgentSecretSafeText } from "./secret-safety.js";
+import { validateProductionSpecialistProviderOutput } from "./production-specialist-output-contracts.js";
 import {
   parseLegacySpecialistWorkflowHandoff,
   type LegacySpecialistWorkflowHandoffDto
@@ -16,15 +15,6 @@ import {
   writeSpecialistDerivativeArtifact,
   type SpecialistRunnerBaseInput
 } from "./specialist-runner-kernel.js";
-
-const safeModelText = z.string().min(1).max(500).superRefine((value, ctx) => {
-  try { assertAgentSecretSafeText(value, "investigation planner model output"); } catch { ctx.addIssue({ code: "custom", message: "model output must be secret-safe" }); }
-});
-const outputSchema = z.object({
-  planSummary: safeModelText,
-  taskSuggestions: z.array(safeModelText).min(1).max(12),
-  prrDraftCandidates: z.array(safeModelText).min(1).max(12)
-}).strict();
 
 export interface RunInvestigationPlannerWorkflowInput extends SpecialistRunnerBaseInput {
   readonly investigationId?: string;
@@ -54,6 +44,7 @@ export async function runInvestigationPlannerWorkflow(
   if (output === undefined) {
     return await failedModelOutputResult(input, prepared, invocation.eventIds);
   }
+  const taskSuggestions = output.taskCandidates.map((candidate) => candidate.summary);
   let planArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
   let tasksArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
   let draftsArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
@@ -79,7 +70,7 @@ export async function runInvestigationPlannerWorkflow(
         runId: input.runId,
         taskId: input.taskId,
         investigationId: input.investigationId,
-        taskSuggestions: [...output.taskSuggestions]
+        taskSuggestions
       }
     });
     draftsArtifact = await writeSpecialistDerivativeArtifact({
@@ -145,9 +136,13 @@ function blockedHandoff(
   return Object.freeze({ handoff, eventIds: Object.freeze([]) });
 }
 
-function parseModelOutput(outputText: string): z.infer<typeof outputSchema> | undefined {
+function parseModelOutput(outputText: string) {
   try {
-    return outputSchema.parse(JSON.parse(outputText));
+    const output = validateProductionSpecialistProviderOutput({
+      runType: "investigation-planner",
+      value: JSON.parse(outputText)
+    });
+    return output.runType === "investigation-planner" ? output.value : undefined;
   } catch {
     return undefined;
   }
