@@ -7,11 +7,14 @@
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Base commit: `68a8c091`
 - Claimed at: `2026-07-11T09:06:25Z`
-- Status: `blocked`
+- Status: `in-progress`
 
 ## Owned Files
 
 - `docs/agentic/claims/task-5-production-prompt-approval-binding.md`
+- `docs/superpowers/plans/2026-07-10-production-specialist-prompt-template-registry-implementation.md` (approval-scoped Task 5 ownership amendment)
+- `packages/ontology/src/contracts.ts` (coordinator-approved supporting event contract)
+- `packages/ontology/test/agent-contracts.test.ts` (coordinator-approved supporting event contract tests)
 - `packages/agent/src/adapters/provider-byte-transfer.ts`
 - `packages/agent/test/provider-byte-transfer-adapter.test.ts`
 - `packages/agent/src/runtime.ts`
@@ -51,3 +54,18 @@ or repeated verifier failure after two focused repair attempts.
   append-time schema validation instead of producing the required durable event.
 - No prompt text, resolved payload values, provider response text, credentials,
   raw request bodies, or hidden paths were recorded.
+
+## Coordinator Approval To Resume
+
+- Coordinator approved a focused supporting ontology event-contract update for
+  `agent.model-invocation.requested` v1 after the schema-conflict stop.
+- The approval expands Task 5 ownership only to
+  `packages/ontology/src/contracts.ts`,
+  `packages/ontology/test/agent-contracts.test.ts`, and the Task 5 plan/claim
+  lines needed to record the support.
+- The ontology binding remains optional for historical replay, while the new
+  production runtime path must require it for the six MVP production run types.
+- The binding may contain only hashes, IDs, versions, applicability statuses,
+  and resolved payload audit metadata; it must never contain production prompt
+  text, provider response text, resolved payload values, credentials, request
+  bodies, hidden paths, or generic metadata bags.

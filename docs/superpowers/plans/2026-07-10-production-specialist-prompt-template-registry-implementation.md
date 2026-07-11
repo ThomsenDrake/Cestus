@@ -824,6 +824,8 @@ Review gate: spec review checks this commit is atomic for descriptor applicabili
 ## Task 5: Provider Transfer Approval And Audit Projection Binding
 
 **Files:**
+- Modify by coordinator-approved support: `packages/ontology/src/contracts.ts`
+- Modify by coordinator-approved support: `packages/ontology/test/agent-contracts.test.ts`
 - Modify: `packages/agent/src/adapters/provider-byte-transfer.ts`
 - Modify: `packages/agent/test/provider-byte-transfer-adapter.test.ts`
 - Modify: `packages/agent/src/runtime.ts`
@@ -848,6 +850,15 @@ git commit -m "chore: claim production prompt approval binding"
 
 - [ ] **Step 2: Write RED approval and audit tests**
 
+Coordinator-approved support after schema-conflict stop:
+
+- Add optional strict `production` audit binding to `agent.model-invocation.requested` v1 in `packages/ontology/src/contracts.ts` so old ledger events remain replay-valid.
+- Mirror only safe `PromptArtifactProductionBinding` fields: renderer ID/version/hash, rendered prompt hash, provider output schema ID/version, handoff schema ID/version, scope applicability hash, evaluated context requirement ID/mode/status/contentHash-or-`no-associated-prr`, and resolved payload audit contextPackId/contentHash/sizeBytes/schemaId.
+- Use strict nested schemas, hash patterns, bounded safe IDs, nonnegative sizes, positive versions, and applicable/not-applicable cross-field rules. Reject unknown fields and generic metadata bags.
+- Runtime must require this production binding for the six MVP production run types; ontology parsing must keep it optional for historical replay.
+- Add ontology RED/GREEN tests for valid production audit metadata, unknown/nested unsafe fields, invalid requirement status combinations, and backward-compatible old events.
+- Provider-transfer preview/freshness, runtime append, projection DTOs, and consume-time approval checks must bind the same normalized production audit object without prompt text, provider response text, resolved payload values, credentials, request bodies, hidden paths, or generic metadata bags.
+
 Extend `packages/agent/test/provider-byte-transfer-adapter.test.ts` to assert:
 
 - preview output includes `renderedPromptHash`, `scopeApplicabilityHash`, `providerOutputSchemaId`, `handoffSchemaId`, and resolved payload verification status.
@@ -866,7 +877,7 @@ Extend `packages/agent/test/runtime.test.ts` and `packages/agent/test/projection
 Run:
 
 ```bash
-npm test -- packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts
+npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts
 ```
 
 Expected: FAIL because the production prompt audit fields are not yet bound.
@@ -890,7 +901,7 @@ Modify `packages/agent/src/runtime.ts`, `packages/agent/src/projection.ts`, and 
 Run:
 
 ```bash
-npm test -- packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts
+npm test -- packages/ontology/test/agent-contracts.test.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts
 npm run verify
 ```
 
@@ -901,7 +912,7 @@ Expected: PASS.
 Update claim evidence and commit:
 
 ```bash
-git add packages/agent/src/adapters/provider-byte-transfer.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/src/runtime.ts packages/agent/src/projection.ts packages/agent/src/projection-types.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts docs/agentic/claims/task-5-production-prompt-approval-binding.md
+git add packages/ontology/src/contracts.ts packages/ontology/test/agent-contracts.test.ts packages/agent/src/adapters/provider-byte-transfer.ts packages/agent/test/provider-byte-transfer-adapter.test.ts packages/agent/src/runtime.ts packages/agent/src/projection.ts packages/agent/src/projection-types.ts packages/agent/test/runtime.test.ts packages/agent/test/projection.test.ts docs/agentic/claims/task-5-production-prompt-approval-binding.md
 git commit -m "feat: bind provider transfer to production prompt audit"
 ```
 
