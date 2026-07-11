@@ -1012,6 +1012,8 @@ Review gate: spec review checks no output validator grants ontology truth or ext
 ## Task 7: Gated Live Nous Acceptance With Payload Sentinel
 
 **Files:**
+- Modify: `packages/agent/src/production-specialist-prompts.ts` (coordinator-approved narrow Task 7 support for deterministic output-only renderer instructions)
+- Modify: `packages/agent/test/production-specialist-prompts.test.ts` (coordinator-approved renderer instruction/validator parity tests)
 - Modify: `packages/agent/test/evidence-triage-nous-live.test.ts`
 - Modify: `packages/agent/test/prr-negotiation-nous-live.test.ts`
 - Create during execution: `docs/agentic/claims/task-7-production-specialist-nous-acceptance.md`
@@ -1030,6 +1032,28 @@ git commit -m "chore: claim production specialist nous acceptance"
 ```
 
 - [ ] **Step 2: Write RED live-test changes**
+
+Coordinator-approved Task 7 renderer-instruction support: strengthen canonical
+production renderer material in `packages/agent/src/production-specialist-prompts.ts`
+so every registered run type has deterministic output-only framing and a valid
+JSON skeleton. The instructions must require exactly one JSON object, no
+Markdown/code fences/preamble/trailing commentary, no unknown fields, concise
+values, every required field and nested shape, valid identifier/enum guidance,
+safe empty-array defaults, and examples that pass
+`validateProductionSpecialistProviderOutput()` for their run type. For evidence
+triage, require `safeSummaries` to preserve distinctive facts/tokens from
+verified `evidence-summary.v1` payload content without naming the live sentinel.
+For PRR negotiation, require exact cited rule refs from verified context,
+advisory draft language, and no claim that follow-up/send/escalation occurred.
+Keep the instructions in canonical renderer material so `rendererHash` and
+artifact verification bind drift. Do not relax validators, bypass approval,
+substitute fake invocation, scrape responses, or log provider output.
+
+Add deterministic tests in `packages/agent/test/production-specialist-prompts.test.ts`
+that extract the rendered output instruction, prove every skeleton parses as
+JSON and passes `validateProductionSpecialistProviderOutput()` for its run type,
+prove all six registrations have output-only framing, and prove renderer hash
+and rendered text change on instruction mutation.
 
 Modify `packages/agent/test/evidence-triage-nous-live.test.ts` so the live test:
 
@@ -1057,7 +1081,7 @@ Expected: PASS with live suites skipped unless `CESTUS_AGENT_LIVE_NOUS=1` is set
 Run in the repository's shared live-provider environment:
 
 ```bash
-CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/evidence-triage-nous-live.test.ts
+set -a; . /home/drake/Projects/Cestus/.env; set +a; CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/evidence-triage-nous-live.test.ts
 ```
 
 Expected: PASS. Visible output may include provider ID, model ID, hashes, event IDs, counts, categories, and fixed markers only.
