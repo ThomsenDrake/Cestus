@@ -6,7 +6,7 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at: 2026-07-11T00:00:00Z
-- Status: claimed
+- Status: in-progress
 
 ## Owned Files
 
@@ -17,3 +17,4 @@
 ## Evidence
 
 - Claim created before Task 3 test or renderer changes.
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed as expected because renderer exports are absent.
