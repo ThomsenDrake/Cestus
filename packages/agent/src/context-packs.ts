@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
+import {
+  hasVerifiedResolvedContextPackBrand,
+  markVerifiedResolvedContextPack
+} from "./verified-context-pack-brand.js";
 
 export type AgentContextPackJsonValue =
   | null
@@ -143,7 +147,6 @@ const contextPackStalenessInputSchema = z.object({
   value: agentSecretSafeTextSchema("stalenessInput.value")
 }).strict();
 const builtContextPackRefs = new WeakSet<object>();
-const verifiedResolvedContextPacks = new WeakSet<object>();
 const verifiedResolvedContextPackVerificationIdentities = new WeakMap<object, VerifiedResolvedContextPackVerificationIdentity>();
 const registryOwnedContextPackPayloadParsers = new WeakSet<object>();
 const verifiedResolvedContextPackParserAuthorities = new WeakMap<object, object>();
@@ -463,7 +466,7 @@ function verifyResolvedContextPackForRegistry(
   parser: ContextPackPayloadParser
 ): VerifiedResolvedContextPack {
   const verified = verifyResolvedContextPack(value, parser) as VerifiedResolvedContextPack;
-  verifiedResolvedContextPacks.add(verified);
+  markVerifiedResolvedContextPack(verified);
   const parserIdentity = contextPackParserIdentity(parser);
   if (parserIdentity !== undefined) {
     verifiedResolvedContextPackVerificationIdentities.set(verified, Object.freeze({
@@ -623,7 +626,7 @@ function freezeJsonDtoValue(value: AgentContextPackJsonValue): AgentContextPackJ
 }
 
 function isVerifiedResolvedContextPack(value: unknown): value is VerifiedResolvedContextPack {
-  return typeof value === "object" && value !== null && verifiedResolvedContextPacks.has(value);
+  return hasVerifiedResolvedContextPackBrand(value);
 }
 
 function contextPackRefKey(ref: ContextPackRef): string {

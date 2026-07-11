@@ -259,6 +259,30 @@ describe("specialist workflow readiness projection", () => {
     expect(thinRegistration.missingPromptTemplateIds).toEqual([descriptor.promptTemplate.promptTemplateId]);
   });
 
+  it("blocks context readiness when resolved context packs are ref-shaped or JSON-reloaded instead of authoritative parser-verified results", () => {
+    const descriptor = specialistWorkflowDescriptorFor("timeline-builder");
+    const verified = resolvedRefsFor(descriptor);
+    const refOnly = verified.map((resolved) => ({ ref: resolved.ref }));
+    const reloaded = JSON.parse(JSON.stringify(verified)) as unknown;
+    const alwaysApplicableContextPackIds = descriptor.contextPacks
+      .filter((pack) => pack.requirementMode === "always")
+      .map((pack) => pack.contextPackId);
+
+    for (const resolvedContextPacks of [refOnly, reloaded]) {
+      const readiness = projectSpecialistWorkflowReadiness(readyInput(descriptor, {
+        resolvedContextPacks: resolvedContextPacks as never
+      }));
+
+      expect(readiness).toMatchObject({
+        status: "blocked",
+        category: "blocked-provenance",
+        contextReady: false,
+        executionReady: false,
+        missingResolvedContextPackIds: alwaysApplicableContextPackIds
+      });
+    }
+  });
+
   it("blocks for missing or unready providers, but waits for provider byte-transfer approval when that is the only gap", () => {
     const descriptor = specialistWorkflowDescriptorFor("timeline-builder");
 

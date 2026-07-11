@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { browserSafeContextPackRefSchema } from "./browser-safe-context-refs.js";
+import {
+  browserSafeContextPackRefSchema,
+  parseBrowserSafeContextPackRef
+} from "./browser-safe-context-refs.js";
 import type { AgentContextPackJsonValue, ContextPackRef } from "./context-packs.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import { approvedAgentSpecialistRunTypes, type AgentSpecialistRunType } from "./specialists.js";
@@ -530,7 +533,7 @@ function freezeSpecialistWorkflowHandoff(
     generatedAt: value.generatedAt,
     status: value.status,
     safeSummary: value.safeSummary,
-    contextPackRefs: Object.freeze([...value.contextPackRefs]),
+    contextPackRefs: freezeContextPackRefs(value.contextPackRefs),
     outputArtifacts: Object.freeze(value.outputArtifacts.map((artifact) => freezeOutputArtifactRef(artifact))),
     toolRequestIds: Object.freeze([...value.toolRequestIds]),
     approvalRequirements: Object.freeze(
@@ -557,7 +560,7 @@ function freezeLegacySpecialistWorkflowHandoff(
     generatedAt: value.generatedAt,
     status: value.status,
     safeSummary: value.safeSummary,
-    contextPackRefs: Object.freeze([...value.contextPackRefs]),
+    contextPackRefs: freezeContextPackRefs(value.contextPackRefs),
     outputArtifacts: Object.freeze(value.outputArtifacts.map((artifact) => freezeOutputArtifactRef(artifact))),
     toolRequestIds: Object.freeze([...value.toolRequestIds]),
     approvalRequirements: Object.freeze(
@@ -570,4 +573,10 @@ function freezeLegacySpecialistWorkflowHandoff(
   };
 
   return Object.freeze(handoff);
+}
+
+function freezeContextPackRefs(
+  value: readonly z.infer<typeof browserSafeContextPackRefSchema>[]
+): readonly ContextPackRef[] {
+  return Object.freeze(value.map((ref) => parseBrowserSafeContextPackRef(ref)));
 }
