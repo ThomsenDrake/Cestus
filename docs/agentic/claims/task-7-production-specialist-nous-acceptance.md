@@ -6,11 +6,13 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at: `2026-07-11T12:48:53Z`
-- Status: blocked
+- Status: in-progress
 
 ## Owned Files
 
 - `packages/agent/src/production-specialist-prompts.ts` (coordinator-approved narrow renderer-instruction support)
+- `packages/agent/src/openai-compatible-provider.ts` (coordinator-approved deterministic sampling support; structured output remains unsupported)
+- `packages/agent/test/openai-compatible-provider.test.ts` (coordinator-approved request-body tests)
 - `packages/agent/test/production-specialist-prompts.test.ts` (coordinator-approved renderer instruction/validator parity tests)
 - `packages/agent/test/evidence-triage-nous-live.test.ts`
 - `packages/agent/test/prr-negotiation-nous-live.test.ts`
@@ -98,3 +100,18 @@ or record a live acceptance pass without the gated provider result.
 - Next escalation: provider-native structured-output support or live-provider
   capability correction is needed before this review fix can record live GREEN.
   `npm run verify` and a final commit were not run after the blocked live gate.
+- Coordinator unblock: approved provider-native correction by deterministic
+  sampling, not fake structured-output support. `response_format` remains
+  forbidden for this Nous model; live canaries showed `temperature: 0` with the
+  exact-JSON prompt returned valid JSON in repeated attempts. The provider
+  descriptor must continue to report structured output as unsupported.
+- Coordinator clarified the sentinel derivative boundary: a validated local
+  `safe-evidence-summaries` derivative artifact may contain the distinctive
+  safe sentinel fact derived from verified payload content. The dirty
+  derivative-store redaction WIP must be removed because it silently rewrites
+  production output before persistence and does not prove a production redaction
+  contract. The live test must read the persisted safe derivative, parse it,
+  assert `safeSummaries` reflects the sentinel, and still prove serialized
+  ledger events and handoff DTOs do not contain sentinel, prompt text,
+  credentials, raw request bodies, or raw provider response as a whole.
+- Resumed at: `2026-07-11T13:33:00Z`.

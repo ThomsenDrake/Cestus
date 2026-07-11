@@ -1013,6 +1013,8 @@ Review gate: spec review checks no output validator grants ontology truth or ext
 
 **Files:**
 - Modify: `packages/agent/src/production-specialist-prompts.ts` (coordinator-approved narrow Task 7 support for deterministic output-only renderer instructions)
+- Modify: `packages/agent/src/openai-compatible-provider.ts` (coordinator-approved Task 7 support for deterministic sampling; structured output remains unsupported)
+- Modify: `packages/agent/test/openai-compatible-provider.test.ts` (coordinator-approved request-body tests)
 - Modify: `packages/agent/test/production-specialist-prompts.test.ts` (coordinator-approved renderer instruction/validator parity tests)
 - Modify: `packages/agent/test/evidence-triage-nous-live.test.ts`
 - Modify: `packages/agent/test/prr-negotiation-nous-live.test.ts`
@@ -1055,6 +1057,29 @@ JSON and passes `validateProductionSpecialistProviderOutput()` for its run type,
 prove all six registrations have output-only framing, and prove renderer hash
 and rendered text change on instruction mutation.
 
+Coordinator-approved Task 7 provider correction: add optional `temperature` to
+`OpenAICompatibleChatProviderOptions` and `CreateNousPortalProviderInput`,
+validate it as a finite number in the supported `0..2` range while preserving
+zero, include it in the OpenAI-compatible request body only when configured,
+and make `createNousPortalProvider()` default to `temperature: 0`. Add
+deterministic request-body tests proving the Nous default sends
+`temperature: 0` and does not send `response_format`. Keep the descriptor
+honest: structured output remains unsupported. Do not add `response_format`,
+schema-strict claims, tool calling, seed, output healing, response scraping, or
+validator relaxation.
+
+Coordinator clarification for sentinel review correction: a validated local
+`safe-evidence-summaries` derivative artifact may contain a distinctive safe
+fact derived from a verified payload. The synthetic sentinel is that safe fact
+and is required to prove payload observability. Remove the uncommitted
+test-only derivative-store redaction/observation wrapper; restore the
+acceptance shape that reads the persisted safe derivative, parses it, and
+asserts an allowed `safeSummaries` field reflects the sentinel. Continue to
+assert serialized ledger events and handoff DTOs do not contain the sentinel,
+prompt text, credentials, raw request bodies, or raw provider response as a
+whole, and record in the claim that this is a validated derivative artifact,
+not raw provider-response persistence.
+
 Modify `packages/agent/test/evidence-triage-nous-live.test.ts` so the live test:
 
 - creates a non-PRR run scope such as `{ kind: "imported-evidence", refs: ["ev_live_imported_non_prr_001"] }`;
@@ -1084,7 +1109,10 @@ Run in the repository's shared live-provider environment:
 set -a; . /home/drake/Projects/Cestus/.env; set +a; CESTUS_AGENT_LIVE_NOUS=1 npm test -- packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/evidence-triage-nous-live.test.ts
 ```
 
-Expected: PASS. Visible output may include provider ID, model ID, hashes, event IDs, counts, categories, and fixed markers only.
+Expected: PASS. Because this gate was flaky before the deterministic sampling
+correction, require three consecutive live GREEN runs before recording
+completion. Visible output may include provider ID, model ID, hashes, event
+IDs, counts, categories, and fixed markers/statuses only.
 
 Missing Nous credentials, provider unavailability, or live-provider setup failure is a stop condition. Escalate to the coordinator; do not mark this task complete, do not substitute deterministic fakes, and do not record a live acceptance pass.
 
