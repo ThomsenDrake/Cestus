@@ -10,21 +10,35 @@ import {
   buildSelectionManifestHash,
   evidenceSummaryPayloadParser,
   governanceLocksPayloadParser,
+  registerInvestigativeContextPacks,
   type EvidenceSourcePostureResult,
   investigativeContextPackDefaultLimits,
   investigativeContextPackDescriptors,
   investigativeContextPackPayloadParsers,
+  investigativeRegistrationIdentity,
   InvestigativeContextPackError,
   type InvestigativeContextPackDependencies,
   type InvestigativeContextPackId,
   type InvestigativeContextPackScope,
   type InvestigativeEvidenceRow,
   type InvestigativeRegistrationIdentity,
+  type RegisterInvestigativeContextPacksInput,
   type InvestigativeSelectionCapability,
   type InvestigativeSelectionManifestBody,
   type InvestigativeSelectionWindow
 } from "../src/investigative-context-packs.js";
-import { hashAgentContextPack } from "../src/context-packs.js";
+import {
+  assertResolvedContextPacksForExecution,
+  createContextPackRegistry,
+  hashAgentContextPack,
+  type AgentContextPackJsonValue,
+  type ContextPackPayloadResolver,
+  type ContextPackRef,
+  type ResolvedContextPack,
+  type VerifiedResolvedContextPack
+} from "../src/context-packs.js";
+import { projectSpecialistWorkflowReadiness } from "../src/specialist-readiness.js";
+import { specialistWorkflowDescriptorFor } from "../src/specialist-workflows.js";
 
 describe("investigative context packs", () => {
   it("declares exactly the three investigative descriptors", () => {
@@ -762,6 +776,182 @@ describe("investigative context packs", () => {
       }
     })).toThrow(/governance-locks payload/i);
   });
+
+  it("registers investigative context packs idempotently by stable descriptor identity", () => {
+    const registry = createContextPackRegistry({});
+    const input = createRegistrationInput();
+
+    registerInvestigativeContextPacks(registry, input);
+    registerInvestigativeContextPacks(registry, createRegistrationInput());
+
+    expect(registry.listDescriptors().map((descriptor) => descriptor.contextPackId)).toEqual([
+      "accepted-graph-projection.v1",
+      "evidence-summary.v1",
+      "governance-locks.v1"
+    ]);
+  });
+
+  it("rejects conflicting duplicate investigative registration", () => {
+    const registry = createContextPackRegistry({});
+    registerInvestigativeContextPacks(registry, createRegistrationInput());
+
+    expect(() => registerInvestigativeContextPacks(registry, createRegistrationInput({
+      registrationIdentity: {
+        moduleId: "packages/agent/src/investigative-context-packs",
+        descriptorSchemaVersion: "investigative-context-pack-descriptor.v1",
+        parserSchemaVersion: "investigative-context-pack-payload-parser.v1",
+        limitsVersion: "investigative-context-pack-limits.v1",
+        builderDescriptorHash: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        payloadParserHash: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        limitsHash: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    }))).toThrow(/conflicting-context-pack-registration/);
+  });
+
+  it("rejects conflicting duplicate investigative registration with a different captured build request", () => {
+    const registry = createContextPackRegistry({});
+    registerInvestigativeContextPacks(registry, createRegistrationInput());
+
+    expect(() => registerInvestigativeContextPacks(registry, createRegistrationInput({
+      scope: { kind: "task", id: "task_other" },
+      window: windowFor("cursor_task_other_0001", 0, 100)
+    }))).toThrow(/conflicting-context-pack-registration/);
+  });
+
+  it("satisfies specialist readiness through injected investigative refs", async () => {
+    const resolver = createInMemoryPayloadResolver();
+    const registry = createContextPackRegistry({ payloadResolver: resolver });
+    registerInvestigativeContextPacks(registry, createRegistrationInput({
+      scope: { kind: "workspace", id: "ws_main" },
+      window: windowFor("cursor_ws_main_0001", 0, 100)
+    }));
+    const resolved = await Promise.all([
+      registry.buildResolved("accepted-graph-projection.v1"),
+      registry.buildResolved("evidence-summary.v1"),
+      registry.buildResolved("governance-locks.v1")
+    ]);
+    resolved.forEach((pack) => resolver.add(pack));
+    const refs = resolved.map((pack) => pack.ref);
+
+    const readiness = projectSpecialistWorkflowReadiness(createReadinessInput({ refs }));
+    expect(readiness.missingContextPackIds).not.toContain("accepted-graph-projection.v1");
+    expect(readiness.missingContextPackIds).not.toContain("evidence-summary.v1");
+    expect(readiness.missingContextPackIds).not.toContain("governance-locks.v1");
+  });
+
+  it("keeps a payload-only investigative fact available after operational execution assertion", async () => {
+    const resolver = createInMemoryPayloadResolver();
+    const registry = createContextPackRegistry({ payloadResolver: resolver });
+    registerInvestigativeContextPacks(registry, createRegistrationInput({
+      graphSentinel: "payload-only-sentinel-contract-fact-314159"
+    }));
+
+    const resolved = await registry.buildResolved("accepted-graph-projection.v1");
+    resolver.add(resolved);
+
+    expect(resolved.ref.safeSummary).not.toContain("payload-only-sentinel-contract-fact-314159");
+    const serializedAuditSurface = JSON.stringify({
+      contextPackRefs: [resolved.ref],
+      provenanceRefs: resolved.ref.provenanceRefs,
+      sourceEventIds: resolved.ref.sourceEventIds ?? [],
+      artifactHashes: resolved.ref.artifactHashes ?? []
+    });
+    expect(serializedAuditSurface).not.toContain("payload-only-sentinel-contract-fact-314159");
+
+    const resolvedFromResolver = await resolver(resolved.ref) as VerifiedResolvedContextPack;
+    const verified = assertResolvedContextPacksForExecution([resolved.ref], [resolvedFromResolver]);
+
+    expect(verified).toHaveLength(1);
+    expect(JSON.stringify(resolvedFromResolver.payload)).toContain("payload-only-sentinel-contract-fact-314159");
+  });
+
+  it("rejects execution assertion when resolver output is not registry verified", async () => {
+    const resolver = createInMemoryPayloadResolver();
+    const registry = createContextPackRegistry({ payloadResolver: resolver });
+    registerInvestigativeContextPacks(registry, createRegistrationInput());
+    const resolved = await registry.buildResolved("accepted-graph-projection.v1");
+    const resolvedPayload = resolved.payload as { readonly [key: string]: AgentContextPackJsonValue };
+    const tampered = {
+      ref: resolved.ref,
+      payload: { ...resolvedPayload, items: { assertions: [], entities: [], relationships: [] } } as AgentContextPackJsonValue
+    };
+    resolver.add(tampered);
+
+    const resolvedFromResolver = await resolver(resolved.ref);
+    expect(() => assertResolvedContextPacksForExecution([resolved.ref], [resolvedFromResolver as ResolvedContextPack]))
+      .toThrow(/unverified|hash|verified/);
+  });
+
+  it("rejects buildResolved when a resolved payload hash does not match the ref", async () => {
+    const validResolved = await buildAcceptedGraphProjectionContextPack({
+      deps: createInvestigativeDeps(),
+      scope: { kind: "task", id: "task_graph" },
+      window: windowFor("cursor_task_graph_0001", 0, 100)
+    });
+    const resolver = createInMemoryPayloadResolver();
+    const validPayload = validResolved.payload as unknown as { readonly [key: string]: AgentContextPackJsonValue };
+    resolver.add({
+      ref: validResolved.ref,
+      payload: { ...validPayload, items: { assertions: [], entities: [], relationships: [] } } as AgentContextPackJsonValue
+    });
+    const registry = createContextPackRegistry({ payloadResolver: resolver });
+    registry.register({
+      descriptor: investigativeContextPackDescriptors[0]!,
+      parsePayload(payload) {
+        return acceptedGraphProjectionPayloadParser.parsePayload(payload) as unknown as AgentContextPackJsonValue;
+      },
+      build: () => validResolved.ref
+    });
+
+    await expect(registry.buildResolved("accepted-graph-projection.v1")).rejects.toThrow(/payload-hash-mismatch/);
+  });
+
+  it("rejects matching-hash resolved payloads whose pack-specific shape is invalid", async () => {
+    const registry = createContextPackRegistry({});
+    let parserCalls = 0;
+    registry.register({
+      descriptor: investigativeContextPackDescriptors[0]!,
+      parsePayload(payload, ref) {
+        parserCalls += 1;
+        void ref;
+        return acceptedGraphProjectionPayloadParser.parsePayload(payload) as unknown as AgentContextPackJsonValue;
+      },
+      build() {
+        return {
+          contextPackId: "accepted-graph-projection.v1",
+          version: 1,
+          generatedAt: "2026-07-10T12:00:00.000Z",
+          payload: {
+            schemaVersion: "accepted-graph-projection.context.v1",
+            contextPackId: "accepted-graph-projection.v1",
+            version: 1,
+            ontologyCoreVersion: "ontology.v1",
+            scope: { kind: "task", id: "task_graph" },
+            truthBoundary: {
+              authoritativeForAcceptedGraph: true,
+              readOnlyProjectionTruth: true,
+              canInferNewAcceptedEdges: true,
+              graphMutationRequiresReviewedOntologyEvent: true
+            },
+            selectionManifest: acceptedGraphInvalidShapeSelectionManifest(),
+            projectionHighWaterMarks: { graph: 12 },
+            packVersions: { core: "0.1.0" },
+            items: { assertions: [], entities: [], relationships: [] },
+            omissions: [],
+            stalenessInputs: []
+          },
+          safeSummary: "One accepted graph payload.",
+          provenanceRefs: ["evt_assertion_accepted_001", "sha256:1111111111111111111111111111111111111111111111111111111111111111"],
+          sourceEventIds: ["evt_assertion_accepted_001"],
+          artifactHashes: ["sha256:1111111111111111111111111111111111111111111111111111111111111111"],
+          scope: { kind: "task", id: "task_graph" }
+        };
+      }
+    });
+
+    await expect(registry.buildResolved("accepted-graph-projection.v1")).rejects.toThrow(/payload-schema-mismatch/);
+    expect(parserCalls).toBe(1);
+  });
 });
 
 interface ReaderCounters {
@@ -804,6 +994,69 @@ function windowFor(cursor: string, offset: number, limit: number): Investigative
     offset,
     limit,
     stableSort: "ref-kind-ref-id-content-hash-v1"
+  };
+}
+
+function createRegistrationInput(input: CreateInvestigativeDepsInput = {}): RegisterInvestigativeContextPacksInput {
+  return {
+    deps: createInvestigativeDeps(input),
+    scope: input.scope ?? { kind: "task", id: "task_graph" },
+    window: input.window ?? windowFor("cursor_task_graph_0001", 0, 100)
+  };
+}
+
+function createInMemoryPayloadResolver() {
+  const resolvedByHash = new Map<string, ResolvedContextPack>();
+  const resolver = (async (ref: ContextPackRef) => {
+    const resolved = resolvedByHash.get(ref.contentHash);
+    if (resolved === undefined) {
+      throw new Error(`missing resolved context pack for ${ref.contentHash}`);
+    }
+    return resolved;
+  }) as ContextPackPayloadResolver & {
+    add(pack: ResolvedContextPack): void;
+  };
+  resolver.add = (pack) => {
+    resolvedByHash.set(pack.ref.contentHash, pack);
+  };
+  return resolver;
+}
+
+function createReadinessInput(input: { readonly refs: readonly ContextPackRef[] }): Parameters<typeof projectSpecialistWorkflowReadiness>[0] {
+  const descriptor = specialistWorkflowDescriptorFor("evidence-triage");
+  return {
+    runType: "evidence-triage",
+    descriptor,
+    availableContracts: [...descriptor.prerequisiteContractIds],
+    contextPackRefs: input.refs,
+    currentProjectionHighWaterMarks: {
+      "accepted-graph-projection.v1": 42,
+      "evidence-summary.v1": 13,
+      "governance-locks.v1": 56
+    },
+    activeLocks: [],
+    providerReadiness: {
+      cards: [{
+        providerId: "provider_local_ready",
+        label: "Local ready provider",
+        backendKind: "local-engine",
+        capabilitySummary: ["schema output", "text"],
+        credentialKindSummary: ["local-no-secret"],
+        state: "ready",
+        requiredApprovalClass: "none",
+        credentialHealth: "not-required",
+        dataHandlingPosture: "local-only",
+        safeActionIds: []
+      }]
+    },
+    promptTemplateRegistrations: [{
+      runType: "evidence-triage",
+      promptTemplateId: "evidence-triage.v1",
+      promptTemplateVersion: 1,
+      label: "Evidence triage prompt"
+    }],
+    availableDomainAdapterFamilies: ["provider-byte-transfer", "contradiction-claim-review"],
+    satisfiedApprovalClasses: []
   };
 }
 
@@ -1090,6 +1343,7 @@ function createFakeInvestigativeDeps(input: {
       ontologyCoreVersion: "ontology.v1",
       packVersions: { ingestion: "ingestion.v1" }
     },
+    registrationIdentity: input.registrationIdentity ?? investigativeRegistrationIdentity,
     ...(input.budgets === undefined ? {} : { budgets: input.budgets })
   };
 }
@@ -1438,6 +1692,25 @@ function selectionBody(): InvestigativeSelectionManifestBody {
 
 function selectionManifest() {
   const body = selectionBody();
+  return { ...body, manifestHash: buildSelectionManifestHash(body) };
+}
+
+function acceptedGraphInvalidShapeSelectionManifest() {
+  const body: InvestigativeSelectionManifestBody = {
+    manifestVersion: "investigative-selection-manifest.v1",
+    scope: { kind: "task", id: "task_graph" },
+    sourceProjectionHighWaterMarks: { graph: 12 },
+    ordering: "ref-kind-ref-id-content-hash-v1",
+    window: {
+      cursor: "cursor_task_graph_0001",
+      offset: 0,
+      limit: 100,
+      stableSort: "ref-kind-ref-id-content-hash-v1"
+    },
+    totalEligibleCount: 0,
+    includedRefs: [],
+    aggregateOmissions: []
+  };
   return { ...body, manifestHash: buildSelectionManifestHash(body) };
 }
 

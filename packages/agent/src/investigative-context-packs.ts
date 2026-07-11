@@ -3,6 +3,7 @@ import {
   hashAgentContextPack,
   type AgentContextPackJsonValue,
   type ContextPackDescriptor,
+  type ContextPackRegistry,
   type ResolvedContextPack
 } from "./context-packs.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
@@ -378,6 +379,7 @@ export interface InvestigativeContextPackDependencies {
   readonly evidenceSourcePosture: EvidenceSourcePostureCapability;
   readonly now: () => string;
   readonly metadata: InvestigativeContextPackMetadata;
+  readonly registrationIdentity: InvestigativeRegistrationIdentity;
   readonly budgets?: Partial<Record<InvestigativeContextPackId, number>>;
 }
 
@@ -555,6 +557,99 @@ export const investigativeContextPackPayloadParsers = Object.freeze([
   evidenceSummaryPayloadParser,
   governanceLocksPayloadParser
 ] as const);
+
+export const investigativeRegistrationIdentity = Object.freeze({
+  moduleId: "packages/agent/src/investigative-context-packs",
+  descriptorSchemaVersion: "investigative-context-pack-descriptor.v1",
+  parserSchemaVersion: "investigative-context-pack-payload-parser.v1",
+  limitsVersion: "investigative-context-pack-limits.v1",
+  builderDescriptorHash: hashAgentContextPack({
+    descriptorSchemaVersion: "investigative-context-pack-descriptor.v1",
+    descriptors: investigativeContextPackDescriptors
+  }) as `sha256:${string}`,
+  payloadParserHash: hashAgentContextPack({
+    parserSchemaVersion: "investigative-context-pack-payload-parser.v1",
+    parsers: investigativeContextPackPayloadParsers.map((parser) => parser.parserIdentity)
+  }) as `sha256:${string}`,
+  limitsHash: hashAgentContextPack(investigativeContextPackDefaultLimits) as `sha256:${string}`
+} satisfies InvestigativeRegistrationIdentity);
+
+const registeredRegistries = new WeakMap<object, string>();
+
+export function registerInvestigativeContextPacks(
+  registry: ContextPackRegistry,
+  input: RegisterInvestigativeContextPacksInput
+): void {
+  const { deps, scope, window, sizeBudgetBytes } = input;
+  const identityKey = hashAgentContextPack({
+    registrationIdentity: deps.registrationIdentity,
+    capturedBuildRequest: {
+      scope,
+      window: window ?? null,
+      sizeBudgetBytes: sizeBudgetBytes ?? null
+    },
+    registeredContextPackIds: investigativeContextPackDescriptors.map((descriptor) =>
+      `${descriptor.contextPackId}@${descriptor.version}`
+    )
+  });
+  const existing = registeredRegistries.get(registry);
+  if (existing !== undefined) {
+    if (existing !== identityKey) {
+      throw new InvestigativeContextPackError("conflicting-context-pack-registration", "conflicting-context-pack-registration");
+    }
+    return;
+  }
+
+  for (const descriptor of investigativeContextPackDescriptors) {
+    if (registry.getDescriptor(descriptor.contextPackId) !== undefined) {
+      throw new InvestigativeContextPackError("duplicate-context-pack-registration", "duplicate-context-pack-registration");
+    }
+  }
+
+  registry.register({
+    descriptor: investigativeContextPackDescriptors[0] as ContextPackDescriptor,
+    parsePayload: parseAcceptedGraphPayloadForRegistry,
+    build: async () => asResolvedContextPack(await buildAcceptedGraphProjectionContextPack(registrationBuildInput(input)))
+  });
+  registry.register({
+    descriptor: investigativeContextPackDescriptors[1] as ContextPackDescriptor,
+    parsePayload: parseEvidenceSummaryPayloadForRegistry,
+    build: async () => asResolvedContextPack(await buildEvidenceSummaryContextPack(registrationBuildInput(input)))
+  });
+  registry.register({
+    descriptor: investigativeContextPackDescriptors[2] as ContextPackDescriptor,
+    parsePayload: parseGovernanceLocksPayloadForRegistry,
+    build: async () => asResolvedContextPack(await buildGovernanceLocksContextPack(registrationBuildInput(input)))
+  });
+  registeredRegistries.set(registry, identityKey);
+}
+
+function registrationBuildInput(input: RegisterInvestigativeContextPacksInput): BuildInvestigativeContextPackInput {
+  return {
+    deps: input.deps,
+    scope: input.scope,
+    ...(input.window === undefined ? {} : { window: input.window }),
+    ...(input.sizeBudgetBytes === undefined ? {} : { sizeBudgetBytes: input.sizeBudgetBytes })
+  };
+}
+
+function parseAcceptedGraphPayloadForRegistry(payload: AgentContextPackJsonValue): AgentContextPackJsonValue {
+  return acceptedGraphProjectionPayloadParser.parsePayload(payload) as unknown as AgentContextPackJsonValue;
+}
+
+function parseEvidenceSummaryPayloadForRegistry(payload: AgentContextPackJsonValue): AgentContextPackJsonValue {
+  return evidenceSummaryPayloadParser.parsePayload(payload) as unknown as AgentContextPackJsonValue;
+}
+
+function parseGovernanceLocksPayloadForRegistry(payload: AgentContextPackJsonValue): AgentContextPackJsonValue {
+  return governanceLocksPayloadParser.parsePayload(payload) as unknown as AgentContextPackJsonValue;
+}
+
+function asResolvedContextPack(
+  resolved: ResolvedAcceptedGraphProjectionContextPack | ResolvedEvidenceSummaryContextPack | ResolvedGovernanceLocksContextPack
+): ResolvedContextPack {
+  return resolved as unknown as ResolvedContextPack;
+}
 
 export function buildSelectionManifestHash(
   body: InvestigativeSelectionManifestBody | InvestigativeSelectionManifest
