@@ -465,6 +465,30 @@ describe("production specialist prompt registrations", () => {
     }
   });
 
+  it("rejects completed-effect authority synonyms in narrative fields", () => {
+    for (const claim of [
+      "The PRR was dispatched.",
+      "The provider transfer was completed.",
+      "The repair ran successfully."
+    ]) {
+      expect(() => validateProductionSpecialistProviderOutput({
+        runType: "evidence-triage",
+        value: {
+          dossierSummary: "Evidence needs review.",
+          safeSummaries: [claim],
+          governanceFlags: [],
+          duplicateGroups: [],
+          evidenceGaps: [],
+          assertionCandidates: [],
+          requestProviderParseApproval: false,
+          requestGovernanceReview: false,
+          requestQuarantineReview: false,
+          requestAssertionProposalReview: false
+        }
+      })).toThrow(/authority|external effect|ontology/i);
+    }
+  });
+
   it("rejects raw provider errors and hidden local paths in narrative fields", () => {
     expect(() => validateProductionSpecialistProviderOutput({
       runType: "evidence-triage",
