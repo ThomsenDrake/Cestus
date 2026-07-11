@@ -50,3 +50,9 @@ Status: DONE
 - GREEN: the same focused command passed with 1 file and 12 tests after normalized structural subject/action matching rejected `packet_prr_was_emailed`, `The PRR was filed.`, `Legal escalation was performed.`, and `The provider byte transfer was human-approved.` across representative identifier, narrative, and reference fields.
 - Coverage: the matcher normalizes underscores, hyphens, and whitespace; it rejects completed PRR/request/response effects, legal-escalation effects, and provider byte-transfer approval in either word order while continuing to reject export/publication, repair execution, ontology/entity/relationship acceptance or resolution, and lock clearing. A command-like evidence statement about filing steps without a completed-effect claim remains accepted.
 - Verify: `npm run verify` passed: typecheck, tests, Vite build, and factory readiness. Node emitted only its existing experimental SQLite warning.
+
+## Review Finding Fix
+
+- RED: `npm test -- packages/agent/test/production-specialist-prompts.test.ts` failed with 2 expected regressions: `The PRR delivery was completed.`, `The PRR submission was completed.`, `The publication was completed.`, `The entity resolution was completed.`, and `The lock clearing was completed.` bypassed authority matching, and `Provider error 429 from /home/user/provider-response.json` was accepted in a narrative field.
+- GREEN: the same focused command passed with 1 file and 14 tests after punctuation-aware normalization and structural subject/completed-effect matching rejected the nominalizations. The shared `safeText` path now rejects raw provider errors and common hidden local paths (`/home/...`, `/Users/...`) for narrative fields, IDs, and refs without blocking ordinary public URLs.
+- Verify: `npm run verify` passed; Node emitted only its existing experimental SQLite warning.
