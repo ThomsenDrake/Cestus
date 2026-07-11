@@ -6,14 +6,14 @@
 - Branch: `codex/production-specialist-prompt-template-registry-spec`
 - Worktree: `/home/drake/.codex/worktrees/cde7/Cestus`
 - Claimed at: `2026-07-11T12:48:53Z`
-- Status: blocked
+- Status: in-progress
 
 ## Owned Files
 
-- `packages/agent/src/production-specialist-prompts.ts` (coordinator-approved narrow renderer-instruction support)
+- `packages/agent/src/production-specialist-prompts.ts` (coordinator-approved narrow renderer-instruction and renderer-order support)
 - `packages/agent/src/openai-compatible-provider.ts` (coordinator-approved deterministic sampling support; structured output remains unsupported)
 - `packages/agent/test/openai-compatible-provider.test.ts` (coordinator-approved request-body tests)
-- `packages/agent/test/production-specialist-prompts.test.ts` (coordinator-approved renderer instruction/validator parity tests)
+- `packages/agent/test/production-specialist-prompts.test.ts` (coordinator-approved renderer instruction/validator parity and renderer-order tests)
 - `packages/agent/test/evidence-triage-nous-live.test.ts`
 - `packages/agent/test/prr-negotiation-nous-live.test.ts`
 - `docs/agentic/claims/task-7-production-specialist-nous-acceptance.md`
@@ -146,3 +146,23 @@ or record a live acceptance pass without the gated provider result.
 - Stop condition reached: temperature-zero sampling did not produce three
   consecutive live GREEN runs. `npm run verify`, `git diff --check`, and a
   completion commit were not run after this blocked live gate.
+- Coordinator unblock: approved a narrow Task 7 canonical renderer-order
+  correction in `packages/agent/src/production-specialist-prompts.ts` and
+  `packages/agent/test/production-specialist-prompts.test.ts`, retaining the
+  existing temperature-zero provider WIP. Evidence-backed canaries showed the
+  configured Nous model follows the exact PRR JSON schema when the strict
+  skeleton is the final instruction. The renderer must add a canonical
+  end-of-context marker, keep verified payloads between start/end context
+  markers, and move authority, review, handoff, provider schema identity, and
+  the full provider-output JSON skeleton after the context end marker, with the
+  output instruction as the final prompt section. The change must remain inside
+  canonical renderer material so renderer hashes and artifact verification bind
+  the ordering.
+- The coordinator explicitly forbids raising max tokens, adding response
+  healing, relaxing validators, claiming structured-output support, duplicating
+  or mutating payload text, adding a second noncanonical prompt, or placing
+  instructions outside the prompt artifact. If live validation still fails,
+  temporary diagnostics may report only HTTP status, finish reason, output
+  character count, JSON-syntax-valid boolean, exact top-level-key boolean, and
+  Zod issue paths/codes; no values, messages, prompt text, output text, request
+  bodies, credentials, or payload text may be printed or persisted.
