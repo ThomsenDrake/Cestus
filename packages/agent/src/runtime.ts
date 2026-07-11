@@ -446,14 +446,19 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
 
     async invokeModel(command: InvokeAgentModelInput): Promise<AgentRuntimeResult<InvokeAgentModelResult>> {
       const projection = buildAgentProjection(await input.ledger.readAll());
-      if (!projection.runs.has(command.runId)) {
+      const run = projection.runs.get(command.runId);
+      if (run === undefined) {
         return failedResult(agentDiagnostic("agent", "Agent run was not found.", ["start the specialist run before invoking a model"]));
       }
       const promptAudit = auditPromptArtifact(command.promptArtifact);
       const matchedPromptAudit = promptAudit.ok && promptAudit.metadata.inputArtifactHash === command.inputArtifactHash
         ? promptAudit.metadata
         : undefined;
-      if (matchedPromptAudit !== undefined && requiresProductionPromptAudit(matchedPromptAudit) && matchedPromptAudit.production === undefined) {
+      if (requiresProductionPromptAudit(run.runType) && (
+        !promptAudit.ok ||
+        promptAudit.metadata.inputArtifactHash !== command.inputArtifactHash ||
+        promptAudit.metadata.production === undefined
+      )) {
         return failedResult(agentDiagnostic(
           "policy",
           "Production prompt audit binding is required before model invocation.",
@@ -469,7 +474,7 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
           input,
           `corr_${command.invocationId}`,
           input.actor,
-          lastValue(projection.runs.get(command.runId)?.eventIds ?? [])
+          lastValue(run.eventIds)
         ),
         payload: {
           invocationId: command.invocationId,
@@ -893,8 +898,8 @@ function promptAuditPayload(metadata: PromptArtifactAuditMetadata | undefined) {
   };
 }
 
-function requiresProductionPromptAudit(metadata: PromptArtifactAuditMetadata): boolean {
-  return metadata.runType !== "ontology-bootstrap";
+function requiresProductionPromptAudit(runType: AgentSpecialistRunType): boolean {
+  return runType !== "ontology-bootstrap";
 }
 
 function requiresPromptArtifactForProvider(descriptor: ProviderDescriptor): boolean {
