@@ -6,7 +6,7 @@
 - Branch: `codex/prr-context-pack-design`
 - Worktree: `/home/drake/.codex/worktrees/3076/Cestus`
 - Claimed at: 2026-07-11T22:28:26Z
-- Status: claimed
+- Status: in-progress
 
 ## Scope
 
