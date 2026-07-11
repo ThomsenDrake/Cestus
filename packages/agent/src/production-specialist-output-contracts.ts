@@ -200,5 +200,6 @@ export function validateProductionSpecialistProviderOutput(input: { readonly run
     case "contradiction-finder": return Object.freeze({ runType: input.runType, value: contradictionFinderCandidatesOutputSchema.parse(input.value) });
     case "investigation-planner": return Object.freeze({ runType: input.runType, value: investigationPlannerNextStepsOutputSchema.parse(input.value) });
     case "report-builder": return Object.freeze({ runType: input.runType, value: reportBuilderPacketDraftOutputSchema.parse(input.value) });
+    default: throw new Error("Unsupported production specialist run type.");
   }
 }

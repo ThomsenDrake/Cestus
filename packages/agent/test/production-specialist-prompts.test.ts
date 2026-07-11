@@ -72,6 +72,20 @@ describe("production specialist prompt registrations", () => {
     expect(parsed.runType).toBe("evidence-triage");
   });
 
+  it("rejects ontology-bootstrap provider output at runtime", () => {
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "ontology-bootstrap",
+      value: {}
+    } as unknown as Parameters<typeof validateProductionSpecialistProviderOutput>[0])).toThrow(/unsupported production specialist run type/i);
+  });
+
+  it("rejects arbitrary provider output run types at runtime", () => {
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "untrusted-run-type",
+      value: {}
+    } as unknown as Parameters<typeof validateProductionSpecialistProviderOutput>[0])).toThrow(/unsupported production specialist run type/i);
+  });
+
   it("rejects narrative completed-effect claims in every representative reference schema", () => {
     expect(() => validateProductionSpecialistProviderOutput({
       runType: "prr-negotiation",
