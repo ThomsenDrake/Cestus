@@ -416,6 +416,41 @@ describe("production specialist prompt registrations", () => {
     })).toThrow(/authority|external effect|ontology/i);
   });
 
+  it("rejects provider byte-transfer completion claims in narrative and reference fields", () => {
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "evidence-triage",
+      value: {
+        dossierSummary: "Evidence needs review.",
+        safeSummaries: ["Provider byte transfer completion was recorded."],
+        governanceFlags: [],
+        duplicateGroups: [],
+        evidenceGaps: [],
+        assertionCandidates: [],
+        requestProviderParseApproval: false,
+        requestGovernanceReview: false,
+        requestQuarantineReview: false,
+        requestAssertionProposalReview: false
+      }
+    })).toThrow(/authority|external effect|ontology/i);
+
+    expect(() => validateProductionSpecialistProviderOutput({
+      runType: "report-builder",
+      value: {
+        reportPacketId: "packet_001",
+        outlineRefs: ["Provider byte transfer completion was recorded."],
+        draftSectionRefs: [],
+        citationMapRefs: [],
+        includedEvidenceIds: [],
+        excludedEvidenceIds: [],
+        governancePolicyRefs: [],
+        sensitiveOptInRequirements: [],
+        legalReviewFlags: [],
+        exportPublicationApprovalRefs: [],
+        packetSummary: "This is a draft packet for review."
+      }
+    })).toThrow(/authority|external effect|ontology/i);
+  });
+
   it("rejects session headers, provider diagnostics, and Windows forward-slash user paths", () => {
     for (const unsafeNarrative of [
       "Session: provider-session-secret",

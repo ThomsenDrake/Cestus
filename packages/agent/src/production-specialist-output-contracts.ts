@@ -31,7 +31,7 @@ const hasAuthorityClaim = (value: string) => {
   return (
     hasCompletedPrrEffect(normalized) ||
     hasCompletedEffect(normalized, /\b(?:legal escalation|escalation)\b/, /\b(?:performed|executed|sent|filed|escalated|approved)\b/) ||
-    hasSubjectAction(normalized, /\bprovider byte transfer\b/, /\b(?:approval|approv(?:e|ed)|grant(?:ed)?|completed|authori[sz](?:e|ed|ation))\b/) ||
+    hasSubjectAction(normalized, /\bprovider byte transfer\b/, /\b(?:approval|approv(?:e|ed)|grant(?:ed)?|complet(?:ed|ion)|authori[sz](?:e|ed|ation))\b/) ||
     hasCompletedEffect(normalized, /\b(?:report|packet|publication|export|evidence)\b/, /\b(?:exported|published)\b/) ||
     hasCompletedEffect(normalized, /\b(?:repair|remediation)\b/, /\b(?:performed|executed)\b/) ||
     hasCompletedEffect(normalized, /\b(?:graph|ontology|assertion|relationship)\b/, /\baccepted\b/) ||
