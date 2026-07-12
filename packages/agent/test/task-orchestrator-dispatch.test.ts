@@ -162,6 +162,7 @@ describe("task orchestrator runner dispatch", () => {
     const claim = await appendClaim(ledger, taskId);
     await appendDispatchContextReadyCheckpoint(ledger, taskId, claim, providerPolicy);
     const dispatchCalls: string[] = [];
+    const handoffCalls: string[] = [];
     const orchestrator = createTaskOrchestrator({
       ledger,
       now: () => baseNow,
@@ -207,12 +208,26 @@ describe("task orchestrator runner dispatch", () => {
           };
         }
       },
-      handoffCapability: {}
+      handoffCapability: {
+        async prepare(input: Parameters<typeof appendSpecialistFinalOutputStep>[0]) {
+          handoffCalls.push("prepare");
+          return await appendSpecialistFinalOutputStep(input);
+        },
+        async bind(input: Parameters<typeof recordSpecialistHandoff>[0]) {
+          handoffCalls.push("bind");
+          return await recordSpecialistHandoff(input);
+        },
+        async readback(input: { readonly recorded: RecordSpecialistHandoffResult }) {
+          handoffCalls.push("readback");
+          return input.recorded;
+        }
+      }
     });
 
     const summary = await orchestrator.tick();
 
     expect(dispatchCalls).toEqual(["dispatch"]);
+    expect(handoffCalls).toEqual(["prepare", "bind", "readback"]);
     expect(summary.sideEffectsScheduled).toEqual([
       expect.stringMatching(/^runner-dispatch:/),
       `runner-handoff-completed:${taskId}:${runId}`

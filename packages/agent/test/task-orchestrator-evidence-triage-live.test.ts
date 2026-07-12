@@ -33,6 +33,7 @@ import {
 } from "../src/index.js";
 import { buildTaskOrchestratorProjection } from "../src/task-orchestrator-projection.js";
 import {
+  createTaskOrchestratorHandoffCapability,
   createTaskOrchestrator,
   type TaskOrchestratorRunnerRegistry
 } from "../src/task-orchestrator.js";
@@ -424,7 +425,7 @@ async function prepareLiveOrchestrator(input: {
     providerRegistry: capabilityRegistry,
     approvalReader,
     runnerRegistry,
-    handoffCapability: {}
+    handoffCapability: createTaskOrchestratorHandoffCapability()
   });
   return {
     ledger,

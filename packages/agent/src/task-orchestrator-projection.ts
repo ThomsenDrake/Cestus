@@ -361,6 +361,10 @@ function projectAttempt(input: {
   } else if (approvalSuspensionRelease !== undefined && latestCheckpoint?.checkpointKind === "approval-wait") {
     state = "blocked";
     diagnosticReason = "release-checkpoint-mismatch";
+  } else if (latestCheckpoint?.checkpointKind === "runner-dispatching") {
+    state = "handoff-pending";
+    diagnosticReason = "handoff-readback-missing";
+    recoverable = true;
   } else if (activeLease?.expired === true) {
     state = "stale-claim-recoverable";
     diagnosticReason = "claim-lease-expired";

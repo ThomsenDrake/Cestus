@@ -13,6 +13,7 @@ import type { ProviderReadinessDto } from "./provider-readiness.js";
 import type { AgentSchedulerWakeResultDto } from "./scheduler-types.js";
 import type { SpecialistWorkflowDescriptor } from "./specialist-workflows.js";
 import type {
+  TaskOrchestratorHandoffCapability,
   TaskOrchestratorRunnerRegistry
 } from "./task-orchestrator.js";
 import type {
@@ -71,11 +72,7 @@ export interface AgentTaskOrchestratorApprovalReader {
   inspect(input: InspectTaskOrchestratorProviderApprovalInput): Promise<TaskOrchestratorProviderApprovalInspection>;
 }
 
-export interface AgentTaskOrchestratorHandoffCapability {
-  prepare(input: unknown): Promise<unknown> | unknown;
-  bind(input: unknown): Promise<unknown> | unknown;
-  readback(input: unknown): Promise<unknown> | unknown;
-}
+export type AgentTaskOrchestratorHandoffCapability = TaskOrchestratorHandoffCapability;
 
 export interface AgentTaskOrchestratorRuntimeCapabilities {
   readonly schemaVersion: "agent-task-orchestrator-runtime-capabilities.v1";

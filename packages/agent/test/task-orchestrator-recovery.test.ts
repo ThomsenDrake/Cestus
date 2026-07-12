@@ -12,6 +12,7 @@ import {
   type SpecialistHandoffManifestStore
 } from "../src/specialist-runner-kernel.js";
 import {
+  createTaskOrchestratorHandoffCapability,
   createTaskOrchestrator,
   type TaskOrchestratorRunnerRegistry
 } from "../src/task-orchestrator.js";
@@ -112,14 +113,17 @@ describe("task orchestrator evidence triage recovery", () => {
     }));
     expect(runnerCalls).toEqual([`${fixture.taskId}:${fixture.runId}`]);
     const secondSummary = await orchestrator.tick();
-    expect(secondSummary.sideEffectsScheduled).toEqual([`runner-dispatch:${fixture.taskId}:${fixture.activeClaim!.payload.attemptId}`]);
+    expect(secondSummary.sideEffectsScheduled).toEqual([]);
     expect(runnerCalls).toEqual([
-      `${fixture.taskId}:${fixture.runId}`,
       `${fixture.taskId}:${fixture.runId}`
     ]);
+    expect(buildTaskOrchestratorProjection(await fixture.ledger.readAll(), { now }).tasks.get(fixture.taskId)).toMatchObject({
+      state: "handoff-pending",
+      diagnosticReason: "handoff-readback-missing"
+    });
   });
 
-  it("evidence triage restart after runner dispatch checkpoint before provider call remains recoverable", async () => {
+  it("evidence triage restart after runner dispatch checkpoint does not duplicate runner side effects", async () => {
     const fixture = await approvedSuspendedAttempt("dispatch_checkpoint_crash", { activeAfterApproval: true });
     await appendRunnerDispatchingCheckpoint(fixture.ledger, fixture.activeClaim!, fixture.proof);
     const runnerCalls: string[] = [];
@@ -131,8 +135,12 @@ describe("task orchestrator evidence triage recovery", () => {
 
     const summary = await orchestrator.tick();
 
-    expect(runnerCalls).toEqual([`${fixture.taskId}:${fixture.runId}`]);
-    expect(summary.sideEffectsScheduled).toEqual([`runner-dispatch:${fixture.taskId}:${fixture.activeClaim!.payload.attemptId}`]);
+    expect(runnerCalls).toEqual([]);
+    expect(summary.sideEffectsScheduled).toEqual([]);
+    expect(buildTaskOrchestratorProjection(await fixture.ledger.readAll(), { now }).tasks.get(fixture.taskId)).toMatchObject({
+      state: "handoff-pending",
+      diagnosticReason: "handoff-readback-missing"
+    });
   });
 
   it("evidence triage restart after approval blocks dispatch without durable context-ready proof", async () => {
@@ -362,7 +370,7 @@ function recoveryOrchestrator(
     providerRegistry: createProviderRegistry.withDefaultsForTest(),
     approvalReader: { inspect: async () => ({ status: "approved", approvalEventId: "evt_task8_recovery_approval" }) },
     runnerRegistry,
-    handoffCapability: {}
+    handoffCapability: createTaskOrchestratorHandoffCapability()
   });
 }
 
