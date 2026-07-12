@@ -131,6 +131,12 @@ interface ResidentLoopBudget {
   readonly approvalTtlMs: number;
 }
 
+interface ResidentWorkflowDescriptorBinding {
+  readonly workflowDescriptorId: string;
+  readonly workflowDescriptorVersion: string;
+  readonly workflowDescriptorHash: `sha256:${string}`;
+}
+
 interface ResidentToolAllowlistEntry {
   readonly toolId: string;
   readonly toolVersion: string;
@@ -147,6 +153,7 @@ interface ResidentPlanPolicy {
   readonly policyHash: `sha256:${string}`;
   readonly residentAgentId: "agent_default";
   readonly runMode: ResidentRunMode;
+  readonly workflowDescriptor: ResidentWorkflowDescriptorBinding;
   readonly multiStepEnabled: boolean;
   readonly budget: ResidentLoopBudget;
   readonly toolAllowlist: readonly ResidentToolAllowlistEntry[];
@@ -233,6 +240,7 @@ interface ResidentPlanRecord {
   readonly runId: string;
   readonly residentAgentId: "agent_default";
   readonly runMode: ResidentRunMode;
+  readonly workflowDescriptor: ResidentWorkflowDescriptorBinding;
   readonly policyVersion: string;
   readonly policyHash: `sha256:${string}`;
   readonly authority: ResidentLoopAuthorityBinding;
@@ -251,6 +259,9 @@ interface ResidentObservationRecord {
   readonly taskId: string;
   readonly attemptId: string;
   readonly runId: string;
+  readonly residentAgentId: "agent_default";
+  readonly runMode: ResidentRunMode;
+  readonly workflowDescriptor: ResidentWorkflowDescriptorBinding;
   readonly planId: string;
   readonly planRecordEventId: string;
   readonly stepOrdinal: number;
@@ -260,10 +271,13 @@ interface ResidentObservationRecord {
   readonly artifactHashes: readonly `sha256:${string}`[];
   readonly toolRequestId?: string;
   readonly modelInvocationEventId?: string;
+  readonly policyVersion: string;
   readonly policyHash: `sha256:${string}`;
+  readonly contextPackRefs: readonly { readonly contextPackId: string; readonly contentHash: `sha256:${string}` }[];
   readonly authority: ResidentLoopAuthorityBinding;
   readonly budget: { readonly consumed: ResidentLoopBudgetUsage; readonly remaining: ResidentLoopBudgetUsage };
   readonly causationId: string;
+  readonly correlationId: string;
 }
 
 interface ResidentToolStepRecord {
@@ -271,6 +285,9 @@ interface ResidentToolStepRecord {
   readonly taskId: string;
   readonly attemptId: string;
   readonly runId: string;
+  readonly residentAgentId: "agent_default";
+  readonly runMode: ResidentRunMode;
+  readonly workflowDescriptor: ResidentWorkflowDescriptorBinding;
   readonly planId: string;
   readonly planRecordEventId: string;
   readonly stepOrdinal: number;
@@ -285,9 +302,14 @@ interface ResidentToolStepRecord {
   readonly toolEventIds: readonly string[];
   readonly inputArtifactHashes: readonly `sha256:${string}`[];
   readonly resultArtifactHashes: readonly `sha256:${string}`[];
+  readonly sourceEventIds: readonly string[];
+  readonly contextPackRefs: readonly { readonly contextPackId: string; readonly contentHash: `sha256:${string}` }[];
+  readonly policyVersion: string;
   readonly policyHash: `sha256:${string}`;
   readonly authority: ResidentLoopAuthorityBinding;
+  readonly budget: { readonly consumed: ResidentLoopBudgetUsage; readonly remaining: ResidentLoopBudgetUsage };
   readonly causationId: string;
+  readonly correlationId: string;
 }
 ```
 
@@ -312,6 +334,30 @@ with changed policy, plan revision, scope, source/context hash, tool/version,
 budget, preview, authority, or causation is a visible conflict, not a retry.
 Recovery follows ledger references only and never scans blobs, uses caller
 memory, or infers success from a returned object.
+
+## Plan-Binding Readback And Equality
+
+`planRecordEventId` is mandatory on every observation, tool-step, and terminal
+or resumable result. Before appending or projecting any of those records, the
+loop must read the exact `planRecordEventId` from the authoritative mounted
+ledger and reject the operation unless its immutable plan fields exactly equal
+the dependent record's taskId, attemptId, runId, residentAgentId, runMode,
+workflowDescriptor, policyVersion, policyHash, sourceEventIds, contextPackRefs,
+budget, authority, causationId, and correlationId. The dependent record must also use the exact
+`planId` carried by that read-back plan where it has a plan ID field.
+
+`workflowDescriptor` equality includes its exact descriptor ID, version, and
+hash; matching only the run mode, a descriptor family, or a compatible version
+is invalid.
+
+This equality validation is mandatory even when a dependent record carries all
+bindings directly. Direct fields make a projection inspectable without a
+second lookup; exact plan readback prevents a forged or cross-plan record from
+combining otherwise plausible values. A stale/mismatched plan record, missing
+plan readback, changed budget/authority/context/source, or differing
+causation/correlation fails closed before the append or effect. The failure is
+a secret-safe provenance or persistence outcome, never a synthesized replan,
+fallback record, or inferred completion.
 
 ## Plan / Observe / Tool / Replan Policy
 
@@ -459,9 +505,15 @@ interface ResidentLoopTerminalOrResumableResult {
   readonly attemptId: string;
   readonly runId: string;
   readonly residentAgentId: "agent_default";
+  readonly runMode: ResidentRunMode;
+  readonly workflowDescriptor: ResidentWorkflowDescriptorBinding;
+  readonly planRecordEventId: string;
   readonly policyHash: `sha256:${string}`;
+  readonly policyVersion: string;
+  readonly sourceEventIds: readonly string[];
+  readonly contextPackRefs: readonly { readonly contextPackId: string; readonly contentHash: `sha256:${string}` }[];
   readonly authority: ResidentLoopAuthorityBinding;
-  readonly finalPlanRecordEventId?: string;
+  readonly budget: { readonly consumed: ResidentLoopBudgetUsage; readonly remaining: ResidentLoopBudgetUsage };
   readonly finalObservationEventId: string;
   readonly handoffReadback?: {
     readonly recordedEventId: string;
@@ -473,6 +525,7 @@ interface ResidentLoopTerminalOrResumableResult {
     readonly nextSafeAction: string;
   };
   readonly causationId: string;
+  readonly correlationId: string;
 }
 ```
 
