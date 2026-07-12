@@ -81,3 +81,42 @@ context.
 - Superseding disposition: Task 100 is `ready-for-review` after this repair
   commit; Wave 0A remains stopped, and this repair worker neither performs the
   fresh review nor merges into `neo`.
+
+## Repair Attempt 2 — Append-Only Registry-History Repair
+
+This forward-only attempt is authorized only by the coordinator-issued scoped
+authorization in task thread `019f56d2-eb3b-7293-b7b9-bf0329f604b9`. It names
+the governing design at `811458d2` and plan at `68fe8e87`, permits Task 100
+append-only registry-history repair only, requires GPT-5.6 Terra / Extra High,
+authorizes `superpowers:subagent-driven-development`, test-driven development,
+documentation RED/GREEN, fresh task review, and verification-before-completion,
+and stops after one verified repair commit for a separately model-pinned fresh
+re-review. It does not authorize Wave 0A work, dispatch, self-review approval,
+rebasing, or a merge into `neo`.
+
+- Repair branch and worktree:
+  `codex/task-100-append-only-history-repair` /
+  `/home/drake/.codex/worktrees/a0b9/Cestus` at
+  `80fd7f1205bf4f71e7fa6713b236c67af39f75d9` before this forward-only commit.
+- Historical provenance chain:
+  `01b2a83cc3028ca1f854be8e5efcbaa9cd211d96` (claim),
+  `8a20fffde1a0ef48d2acbb91768806c91ebe63a7` (program controls), and
+  `80fd7f1205bf4f71e7fa6713b236c67af39f75d9` (first review-record repair).
+- RED safe command evidence: `node
+  /tmp/cestus-task-100-append-only-history-audit.mjs` exited 1 with
+  `RED: RV-0-A-001 does not exactly match 8a20fffd` and
+  `RED: RV-0-A-004 correction record is missing`.
+- GREEN safe command evidence: the same focused audit exited 0 after restoring
+  RV-0-A-001 byte-for-byte and appending RV-0-A-004; `git diff --check` exited
+  0 with no output; and `npm run factory:check` exited 0 with
+  `factory-readiness passed`.
+- Full-verification evidence: the initial `npm run verify` reported
+  `tsc: command not found`, so the permitted isolated-worktree `npm ci`
+  restored pinned dependencies. A fresh `npm run verify` then completed after
+  typecheck, deterministic tests, Vite build, and factory readiness; it is
+  rerun after the completion record before commit.
+- Disposition: RV-0-A-004 is explicitly non-dispatchable despite containing a
+  present non-authorizing Approval record. RV-0-A-005 supersedes only Task 100
+  status and review context. The prior `needs-changes` verdict remains durable,
+  fresh review is pending, Wave 0A stays stopped, and this repairer will not
+  self-approve, merge, or start another task.
