@@ -1,11 +1,18 @@
 import { createHash } from "node:crypto";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import {
+  canonicalSpecialistHandoffMaterialBytes,
+  canonicalSpecialistHandoffJson,
+  parseSpecialistHandoffMaterial,
   verifySpecialistHandoffManifest,
-  type SpecialistHandoffManifest
+  type SpecialistHandoffManifest,
+  type SpecialistHandoffMaterial
 } from "./specialist-handoff-manifest.js";
 import type { SpecialistWorkflowHandoffDto } from "./specialist-handoffs.js";
+import { productionSpecialistPromptRegistrationFor } from "./production-specialist-prompts.js";
 import type { SpecialistHandoffProjectionState } from "./projection-types.js";
+import { specialistWorkflowDescriptorFor } from "./specialist-workflows.js";
+import type { AgentSpecialistRunType } from "./specialists.js";
 
 type HandoffStatus = SpecialistWorkflowHandoffDto["status"];
 type ContentHash = `sha256:${string}`;
@@ -97,6 +104,7 @@ interface ProjectionContext {
   readonly runId: string | undefined;
   readonly taskId: string | undefined;
   readonly runIdentities: ReadonlyMap<string, RunIdentity>;
+  readonly runStartedEvents: ReadonlyMap<string, readonly IndexedEvent<RunStartedEvent>[]>;
   readonly finalOutputs: readonly IndexedEvent<FinalOutputEvent>[];
   readonly prepared: readonly IndexedEvent<HandoffPreparedEvent>[];
   readonly recorded: readonly IndexedEvent<HandoffRecordedEvent>[];
@@ -116,7 +124,7 @@ export async function buildSpecialistHandoffProjection(
   const context = collectContext(input);
   const history: SpecialistHandoffProjectionEntry[] = [];
 
-  const finalOutputs = selectFinalOutputs(context);
+  const finalOutputs = await selectFinalOutputs(context);
   for (const finalOutput of finalOutputs) {
     history.push(outputPersistedEntry(finalOutput));
   }
@@ -351,16 +359,17 @@ export async function buildSpecialistHandoffProjection(
 
 function collectContext(input: BuildSpecialistHandoffProjectionInput): ProjectionContext {
   const runIdentities = new Map<string, RunIdentity>();
-  for (const event of input.events) {
+  const runStartedEvents = new Map<string, IndexedEvent<RunStartedEvent>[]>();
+  input.events.forEach((event, index) => {
     if (event.type === "agent.specialist-run.started") {
-      runIdentities.set(event.payload.runId, {
-        runId: event.payload.runId,
-        ...(event.payload.taskId === undefined ? {} : { taskId: event.payload.taskId }),
-        runType: event.payload.runType,
-        residentAgentId: event.payload.residentAgentId
-      });
+      const started = runStartedEvents.get(event.payload.runId) ?? [];
+      started.push({ event, index });
+      runStartedEvents.set(event.payload.runId, started);
+      if (!runIdentities.has(event.payload.runId)) {
+        runIdentities.set(event.payload.runId, runIdentityForStartedEvent(event));
+      }
     }
-  }
+  });
 
   const finalOutputs: IndexedEvent<FinalOutputEvent>[] = [];
   const prepared: IndexedEvent<HandoffPreparedEvent>[] = [];
@@ -403,12 +412,22 @@ function collectContext(input: BuildSpecialistHandoffProjectionInput): Projectio
     runId: input.runId,
     taskId: input.taskId,
     runIdentities,
+    runStartedEvents,
     finalOutputs,
     prepared,
     recorded,
     terminals,
     taskStatuses,
     diagnostics: []
+  };
+}
+
+function runIdentityForStartedEvent(event: RunStartedEvent): RunIdentity {
+  return {
+    runId: event.payload.runId,
+    ...(event.payload.taskId === undefined ? {} : { taskId: event.payload.taskId }),
+    runType: event.payload.runType,
+    residentAgentId: event.payload.residentAgentId
   };
 }
 
@@ -465,16 +484,18 @@ function isExactFinalOutput(event: FinalOutputEvent): boolean {
   return event.payload.stepKind === "final-output" &&
     event.payload.stepSchemaId !== undefined &&
     event.payload.idempotencyKey !== undefined &&
+    event.payload.handoffMaterialArtifactHash !== undefined &&
     event.payload.outputArtifactHashes !== undefined;
 }
 
-function selectFinalOutputs(context: ProjectionContext): readonly IndexedEvent<FinalOutputEvent>[] {
+async function selectFinalOutputs(context: ProjectionContext): Promise<readonly IndexedEvent<FinalOutputEvent>[]> {
   if (context.finalOutputs.length === 0) {
     return [];
   }
 
   const firstByScope = new Map<string, IndexedEvent<FinalOutputEvent>>();
   for (const finalOutput of context.finalOutputs) {
+    await validateFinalOutputForProjection(context, finalOutput.event);
     const scope = finalOutputScopeKey(context, finalOutput.event);
     const prior = firstByScope.get(scope);
     if (prior === undefined) {
@@ -482,7 +503,7 @@ function selectFinalOutputs(context: ProjectionContext): readonly IndexedEvent<F
       continue;
     }
 
-    if (!sameFinalOutput(prior.event, finalOutput.event)) {
+    if (!sameFinalOutput(prior.event, finalOutput.event) && !(await isSupersessionFinalOutput(context, prior.event, finalOutput.event))) {
       addDiagnostic(context, {
         code: "conflicting-final-output",
         message: "Conflicting final-output step events exist for the same projection scope.",
@@ -499,6 +520,226 @@ function selectFinalOutputs(context: ProjectionContext): readonly IndexedEvent<F
   return context.finalOutputs;
 }
 
+async function validateFinalOutputForProjection(
+  context: ProjectionContext,
+  finalOutput: FinalOutputEvent
+): Promise<void> {
+  const runStartedEvents = context.runStartedEvents.get(finalOutput.payload.runId) ?? [];
+  const runStarted = runStartedEvents[0];
+  if (runStarted === undefined || runStartedEvents.length !== 1) {
+    addDiagnostic(context, {
+      code: "run-identity-mismatch",
+      message: "Final-output step requires exactly one ledger-bound run identity.",
+      event: finalOutput
+    });
+    return;
+  }
+
+  const runIdentity = runIdentityForStartedEvent(runStarted.event);
+  const expectedStepSchemaId = authoritativeFinalOutputStepSchemaId(runIdentity.runType);
+  if (
+    finalOutput.payload.stepKind !== "final-output" ||
+    expectedStepSchemaId === undefined ||
+    finalOutput.payload.stepSchemaId !== expectedStepSchemaId ||
+    finalOutput.payload.idempotencyKey === undefined ||
+    finalOutput.payload.handoffMaterialArtifactHash === undefined ||
+    finalOutput.payload.outputArtifactHashes === undefined
+  ) {
+    addDiagnostic(context, {
+      code: "final-output-mismatch",
+      message: "Final-output step does not match production schema authority or durable handoff bindings.",
+      event: finalOutput,
+      artifactHashes: finalOutput.payload.outputArtifactHashes ?? []
+    });
+    return;
+  }
+
+  const material = await readFinalOutputMaterialForProjection(
+    context,
+    finalOutput,
+    finalOutput.payload.handoffMaterialArtifactHash as ContentHash
+  );
+  if (material === undefined) {
+    return;
+  }
+
+  const inputHashes = new Set(finalOutput.payload.inputArtifactHashes ?? []);
+  const outputHashes = finalOutput.payload.outputArtifactHashes ?? [];
+  const eventIds = new Set(context.events.map((event) => event.id));
+  if (finalOutput.payload.idempotencyKey !== expectedFinalOutputIdempotencyKey(
+    finalOutput.payload.runId,
+    runIdentity.taskId,
+    runIdentity.runType,
+    material,
+    finalOutput.payload.handoffMaterialArtifactHash as ContentHash
+  )) {
+    addDiagnostic(context, {
+      code: "idempotency-key-mismatch",
+      message: "Final-output step idempotency key does not match its ledger-bound material identity.",
+      event: finalOutput,
+      artifactHashes: [finalOutput.payload.handoffMaterialArtifactHash as ContentHash]
+    });
+    return;
+  }
+  if (
+    !sameStringArray(outputHashes, material.outputArtifacts.map((artifact) => artifact.artifactHash)) ||
+    !material.contextPackRefs.every((ref) =>
+      inputHashes.has(ref.contentHash) &&
+      (ref.artifactHashes ?? []).every((hash) => inputHashes.has(hash)) &&
+      (ref.sourceEventIds ?? []).every((id) => eventIds.has(id))
+    ) ||
+    (material.promptArtifactHash !== undefined && !inputHashes.has(material.promptArtifactHash)) ||
+    !material.sourceEventIds.every((id) => eventIds.has(id)) ||
+    !material.relatedEventIds.every((id) => eventIds.has(id)) ||
+    !toolRequestsAreLedgerBoundForMaterial(context, finalOutput.payload.runId, material)
+  ) {
+    addDiagnostic(context, {
+      code: "final-output-mismatch",
+      message: "Final-output durable material disagrees with ledger-bound artifacts, events, or tool requests.",
+      event: finalOutput,
+      artifactHashes: outputHashes
+    });
+  }
+}
+
+function expectedFinalOutputIdempotencyKey(
+  runId: string,
+  taskId: string | undefined,
+  runType: string,
+  material: Pick<SpecialistHandoffMaterial, "status">,
+  materialHash: ContentHash
+): string {
+  return `specialist-final-output:${runId}:${taskId ?? "none"}:${runType}:${material.status}:${materialHash}`;
+}
+
+async function readFinalOutputMaterialForProjection(
+  context: ProjectionContext,
+  event: FinalOutputEvent,
+  contentHash: ContentHash
+): Promise<SpecialistHandoffMaterial | undefined> {
+  let bytes: Buffer;
+  try {
+    bytes = await context.manifestReader.get(contentHash);
+  } catch {
+    addDiagnostic(context, {
+      code: "handoff-material-missing",
+      message: "Final-output handoff material is unavailable by its ledger-bound content hash.",
+      event,
+      artifactHashes: [contentHash]
+    });
+    return undefined;
+  }
+  if (!Buffer.isBuffer(bytes) || hashBuffer(bytes) !== contentHash) {
+    addDiagnostic(context, {
+      code: "handoff-material-hash-mismatch",
+      message: "Final-output handoff material bytes do not match the ledger content hash.",
+      event,
+      artifactHashes: [contentHash, ...(Buffer.isBuffer(bytes) ? [hashBuffer(bytes)] : [])]
+    });
+    return undefined;
+  }
+  try {
+    const material = parseSpecialistHandoffMaterial(JSON.parse(bytes.toString("utf8")) as unknown);
+    if (!canonicalSpecialistHandoffMaterialBytes(material).equals(bytes)) {
+      throw new Error("noncanonical");
+    }
+    return material;
+  } catch {
+    addDiagnostic(context, {
+      code: "handoff-material-mismatch",
+      message: "Final-output handoff material bytes are noncanonical or malformed.",
+      event,
+      artifactHashes: [contentHash]
+    });
+    return undefined;
+  }
+}
+
+async function isSupersessionFinalOutput(
+  context: ProjectionContext,
+  prior: FinalOutputEvent,
+  candidate: FinalOutputEvent
+): Promise<boolean> {
+  if (
+    prior.payload.runId !== candidate.payload.runId ||
+    prior.payload.stepId !== candidate.payload.stepId ||
+    prior.payload.stepSchemaId !== candidate.payload.stepSchemaId ||
+    !sameStringArray(prior.payload.inputArtifactHashes ?? [], candidate.payload.inputArtifactHashes ?? []) ||
+    !sameStringArray(prior.payload.outputArtifactHashes ?? [], candidate.payload.outputArtifactHashes ?? [])
+  ) {
+    return false;
+  }
+  return await finalOutputMaterialIsAnchoredSupersession(context, candidate);
+}
+
+async function finalOutputMaterialIsAnchoredSupersession(
+  context: ProjectionContext,
+  candidate: FinalOutputEvent
+): Promise<boolean> {
+  const materialHash = candidate.payload.handoffMaterialArtifactHash as ContentHash | undefined;
+  if (materialHash === undefined) {
+    return false;
+  }
+  const material = await readCanonicalMaterialByHash(context, materialHash);
+  if (
+    material === undefined ||
+    material.supersedesHandoffId === undefined ||
+    material.supersedesEventId === undefined
+  ) {
+    return false;
+  }
+  const priorRecorded = context.recorded.find((record) =>
+    record.event.id === material.supersedesEventId &&
+    record.event.payload.handoffId === material.supersedesHandoffId &&
+    record.event.payload.runId === candidate.payload.runId
+  );
+  if (priorRecorded === undefined) {
+    return false;
+  }
+  const priorMaterial = await readCanonicalMaterialByHash(
+    context,
+    priorRecorded.event.payload.handoffMaterialArtifactHash as ContentHash
+  );
+  return priorMaterial !== undefined && sameSupersessionMaterialAnchor(priorMaterial, material);
+}
+
+async function readCanonicalMaterialByHash(
+  context: ProjectionContext,
+  contentHash: ContentHash
+): Promise<SpecialistHandoffMaterial | undefined> {
+  let bytes: Buffer;
+  try {
+    bytes = await context.manifestReader.get(contentHash);
+  } catch {
+    return undefined;
+  }
+  if (!Buffer.isBuffer(bytes) || hashBuffer(bytes) !== contentHash) {
+    return undefined;
+  }
+  try {
+    const material = parseSpecialistHandoffMaterial(JSON.parse(bytes.toString("utf8")) as unknown);
+    return canonicalSpecialistHandoffMaterialBytes(material).equals(bytes) ? material : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function sameSupersessionMaterialAnchor(
+  prior: SpecialistHandoffMaterial,
+  next: SpecialistHandoffMaterial
+): boolean {
+  return prior.status === next.status &&
+    sameCanonicalValue(prior.contextPackRefs, next.contextPackRefs) &&
+    prior.promptArtifactHash === next.promptArtifactHash &&
+    sameCanonicalValue(prior.outputArtifacts, next.outputArtifacts) &&
+    sameStringArray(prior.outputArtifacts.map((item) => item.artifactHash), next.outputArtifacts.map((item) => item.artifactHash)) &&
+    sameStringArray(prior.toolRequestIds, next.toolRequestIds) &&
+    sameCanonicalValue(prior.approvalRequirements, next.approvalRequirements) &&
+    sameCanonicalValue(prior.failure, next.failure) &&
+    sameStringArray(prior.sourceEventIds, next.sourceEventIds) &&
+    sameStringArray(prior.relatedEventIds, next.relatedEventIds);
+}
+
 function finalOutputScopeKey(context: ProjectionContext, event: FinalOutputEvent): string {
   const runIdentity = context.runIdentities.get(event.payload.runId);
   return [
@@ -513,6 +754,8 @@ function sameFinalOutput(left: FinalOutputEvent, right: FinalOutputEvent): boole
     left.payload.stepId === right.payload.stepId &&
     left.payload.stepSchemaId === right.payload.stepSchemaId &&
     left.payload.idempotencyKey === right.payload.idempotencyKey &&
+    left.payload.handoffMaterialArtifactHash === right.payload.handoffMaterialArtifactHash &&
+    sameStringArray(left.payload.inputArtifactHashes ?? [], right.payload.inputArtifactHashes ?? []) &&
     sameStringArray(left.payload.outputArtifactHashes ?? [], right.payload.outputArtifactHashes ?? []);
 }
 
@@ -572,7 +815,7 @@ async function readAndVerifyManifest(
   context: ProjectionContext,
   event: HandoffPreparedEvent | HandoffRecordedEvent
 ): Promise<
-  | { readonly ok: true; readonly manifest: SpecialistHandoffManifest; readonly handoff: SpecialistWorkflowHandoffDto }
+  | { readonly ok: true; readonly manifest: SpecialistHandoffManifest; readonly handoff: SpecialistWorkflowHandoffDto; readonly material: SpecialistHandoffMaterial }
   | { readonly ok: false }
 > {
   let bytes: Buffer;
@@ -621,7 +864,10 @@ async function readAndVerifyManifest(
       handoffManifestHash: event.payload.handoffManifestHash as ContentHash,
       ...("verifiedAt" in event.payload ? { verifiedAt: event.payload.verifiedAt } : {})
     });
-    return { ok: true, manifest: parsed as SpecialistHandoffManifest, handoff };
+    const manifest = parsed as SpecialistHandoffManifest;
+    const materialResult = await readAndVerifyMaterial(context, event, manifest);
+    if (!materialResult.ok) return { ok: false };
+    return { ok: true, manifest, handoff, material: materialResult.material };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Handoff manifest verification failed.";
     addDiagnostic(context, {
@@ -633,6 +879,78 @@ async function readAndVerifyManifest(
     });
     return { ok: false };
   }
+}
+
+async function readAndVerifyMaterial(
+  context: ProjectionContext,
+  event: HandoffPreparedEvent | HandoffRecordedEvent,
+  manifest: SpecialistHandoffManifest
+): Promise<{ readonly ok: true; readonly material: SpecialistHandoffMaterial } | { readonly ok: false }> {
+  const expectedHash = event.payload.handoffMaterialArtifactHash as ContentHash;
+  let bytes: Buffer;
+  try {
+    bytes = await context.manifestReader.get(expectedHash);
+  } catch {
+    addDiagnostic(context, {
+      code: "handoff-material-missing",
+      message: "Ledger-bound handoff material is unavailable by its content hash.",
+      event,
+      handoffId: event.payload.handoffId,
+      artifactHashes: [expectedHash]
+    });
+    return { ok: false };
+  }
+  if (hashBuffer(bytes) !== expectedHash) {
+    addDiagnostic(context, {
+      code: "handoff-material-hash-mismatch",
+      message: "Handoff material bytes do not match the ledger content hash.",
+      event,
+      handoffId: event.payload.handoffId,
+      artifactHashes: [expectedHash, hashBuffer(bytes)]
+    });
+    return { ok: false };
+  }
+  try {
+    const material = parseSpecialistHandoffMaterial(JSON.parse(bytes.toString("utf8")) as unknown);
+    const mismatch = materialMismatchField(material, manifest);
+    if (!canonicalSpecialistHandoffMaterialBytes(material).equals(bytes) || mismatch !== undefined) {
+      throw new Error(mismatch ?? "canonical-bytes");
+    }
+    return { ok: true, material };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "unknown";
+    addDiagnostic(context, {
+      code: "handoff-material-mismatch",
+      message: `Handoff material bytes are noncanonical or disagree with the manifest (${detail}).`,
+      event,
+      handoffId: event.payload.handoffId,
+      artifactHashes: [expectedHash]
+    });
+    return { ok: false };
+  }
+}
+
+function materialMismatchField(material: SpecialistHandoffMaterial, manifest: SpecialistHandoffManifest): string | undefined {
+  const comparisons: Array<readonly [string, unknown, unknown]> = [
+    ["status", material.status, manifest.status],
+    ["safeSummary", material.safeSummary, manifest.safeSummary],
+    ["contextPackRefs", material.contextPackRefs, manifest.contextPackRefs],
+    ["promptArtifactHash", material.promptArtifactHash, manifest.promptArtifactHash],
+    ["outputArtifacts", material.outputArtifacts, manifest.outputArtifacts],
+    ["toolRequestIds", material.toolRequestIds, manifest.toolRequestIds],
+    ["approvalRequirements", material.approvalRequirements, manifest.approvalRequirements],
+    ["nextSafeActions", material.nextSafeActions, manifest.nextSafeActions],
+    ["failure", material.failure, manifest.failure],
+    ["sourceEventIds", material.sourceEventIds, manifest.sourceEventIds],
+    ["relatedEventIds", material.relatedEventIds, manifest.relatedEventIds],
+    ["supersedesHandoffId", material.supersedesHandoffId, manifest.supersedesHandoffId],
+    ["supersedesEventId", material.supersedesEventId, manifest.supersedesEventId]
+  ];
+  for (const [field, left, right] of comparisons) {
+    if (left === undefined && right === undefined) continue;
+    if (left === undefined || right === undefined || !sameCanonicalValue(left, right)) return field;
+  }
+  return undefined;
 }
 
 function manifestVerificationCode(message: string): string {
@@ -680,13 +998,18 @@ function validatePreparedBindingAgainstManifest(
     return "compact-binding-mismatch";
   }
 
-  const runIdentity = context.runIdentities.get(manifest.runId);
-  if (runIdentity !== undefined && (
+  const runStartedEvents = context.runStartedEvents.get(manifest.runId) ?? [];
+  const runStarted = runStartedEvents[0];
+  if (runStarted === undefined || runStartedEvents.length !== 1) {
+    return "run-identity-mismatch";
+  }
+  const runIdentity = runIdentityForStartedEvent(runStarted.event);
+  if (
     runIdentity.taskId !== manifest.taskId ||
     runIdentity.runType !== manifest.runType ||
     runIdentity.residentAgentId !== manifest.residentAgentId
-  )) {
-    return "compact-binding-mismatch";
+  ) {
+    return "run-identity-mismatch";
   }
 
   const finalOutput = findFinalOutputForManifest(context, manifest);
@@ -695,17 +1018,72 @@ function validatePreparedBindingAgainstManifest(
   }
 
   const finalPayload = finalOutput.event.payload;
+  const inputHashes = new Set(finalPayload.inputArtifactHashes ?? []);
+  const eventIds = new Set(context.events.map((event) => event.id));
+  const expectedStepSchemaId = authoritativeFinalOutputStepSchemaId(runIdentity.runType);
+  if (!toolRequestsAreLedgerBound(context, manifest)) {
+    return "tool-request-mismatch";
+  }
   if (
     finalPayload.stepKind !== "final-output" ||
-    finalPayload.stepSchemaId === undefined ||
+    expectedStepSchemaId === undefined ||
+    finalPayload.stepSchemaId !== expectedStepSchemaId ||
     finalPayload.idempotencyKey === undefined ||
+    finalPayload.handoffMaterialArtifactHash !== manifest.handoffMaterialArtifactHash ||
     finalPayload.stepId !== manifest.finalOutputStepId ||
-    !sameStringArray(finalPayload.outputArtifactHashes ?? [], outputArtifactHashes(manifest))
+    !sameStringArray(finalPayload.outputArtifactHashes ?? [], outputArtifactHashes(manifest)) ||
+    !manifest.contextPackRefs.every((ref) =>
+      inputHashes.has(ref.contentHash) &&
+      (ref.artifactHashes ?? []).every((hash) => inputHashes.has(hash)) &&
+      (ref.sourceEventIds ?? []).every((id) => eventIds.has(id))
+    ) ||
+    (manifest.promptArtifactHash !== undefined && !inputHashes.has(manifest.promptArtifactHash)) ||
+    !manifest.sourceEventIds.every((id) => eventIds.has(id)) ||
+    !manifest.relatedEventIds.every((id) => eventIds.has(id))
   ) {
     return "final-output-mismatch";
   }
 
   return undefined;
+}
+
+function toolRequestsAreLedgerBound(
+  context: ProjectionContext,
+  manifest: SpecialistHandoffManifest
+): boolean {
+  return toolRequestsAreLedgerBoundForMaterial(context, manifest.runId, manifest);
+}
+
+function toolRequestsAreLedgerBoundForMaterial(
+  context: ProjectionContext,
+  runId: string,
+  material: Pick<SpecialistHandoffMaterial, "toolRequestIds" | "approvalRequirements" | "nextSafeActions" | "failure">
+): boolean {
+  const topLevelToolRequestIds = new Set(material.toolRequestIds);
+  if (!nestedHandoffToolRequestIds(material).every((toolRequestId) => topLevelToolRequestIds.has(toolRequestId))) {
+    return false;
+  }
+  return material.toolRequestIds.every((toolRequestId) => context.events.some((event) =>
+    event.type === "agent.tool.requested" &&
+    event.payload.toolRequestId === toolRequestId &&
+    event.payload.runId === runId
+  ));
+}
+
+function nestedHandoffToolRequestIds(
+  handoff: Pick<SpecialistHandoffManifest, "approvalRequirements" | "nextSafeActions" | "failure">
+): readonly string[] {
+  const requestIds: string[] = [];
+  for (const requirement of handoff.approvalRequirements) {
+    if (requirement.toolRequestId !== undefined) requestIds.push(requirement.toolRequestId);
+  }
+  for (const action of handoff.nextSafeActions) {
+    if (action.toolRequestId !== undefined) requestIds.push(action.toolRequestId);
+  }
+  if (handoff.failure?.toolRequestId !== undefined) {
+    requestIds.push(handoff.failure.toolRequestId);
+  }
+  return requestIds;
 }
 
 function expectedHandoffIdempotencyKey(payload: HandoffPreparedEvent["payload"] | HandoffRecordedEvent["payload"]): string {
@@ -743,6 +1121,7 @@ function compactBindingMatchesManifest(
   return payload.handoffId === manifest.handoffId &&
     payload.handoffRevision === manifest.handoffRevision &&
     payload.handoffDtoHash === manifest.handoffDtoHash &&
+    payload.handoffMaterialArtifactHash === manifest.handoffMaterialArtifactHash &&
     payload.runId === manifest.runId &&
     payload.taskId === manifest.taskId &&
     payload.runType === manifest.runType &&
@@ -828,11 +1207,13 @@ function sameSupersessionAnchor(prior: VerifiedHandoffRecord, next: VerifiedHand
     prior.handoff.residentAgentId === next.handoff.residentAgentId &&
     prior.handoff.status === next.handoff.status &&
     prior.manifest.finalOutputStepId === next.manifest.finalOutputStepId &&
-    prior.manifest.finalOutputEventId === next.manifest.finalOutputEventId &&
     prior.manifest.promptArtifactHash === next.manifest.promptArtifactHash &&
     sameCanonicalValue(prior.manifest.contextPackRefs, next.manifest.contextPackRefs) &&
+    sameCanonicalValue(prior.manifest.outputArtifacts, next.manifest.outputArtifacts) &&
     sameStringArray(outputArtifactHashes(prior.manifest), outputArtifactHashes(next.manifest)) &&
     sameStringArray(prior.handoff.toolRequestIds, next.handoff.toolRequestIds) &&
+    sameCanonicalValue(prior.manifest.approvalRequirements, next.manifest.approvalRequirements) &&
+    sameCanonicalValue(prior.manifest.failure, next.manifest.failure) &&
     sameStringArray(prior.manifest.sourceEventIds, next.manifest.sourceEventIds) &&
     sameStringArray(prior.manifest.relatedEventIds, next.manifest.relatedEventIds);
 }
@@ -959,13 +1340,32 @@ function sameCompletionAnchor(prior: VerifiedHandoffRecord, next: VerifiedHandof
     prior.handoff.residentAgentId === next.handoff.residentAgentId &&
     prior.handoff.status === next.handoff.status &&
     prior.manifest.finalOutputStepId === next.manifest.finalOutputStepId &&
-    prior.manifest.finalOutputEventId === next.manifest.finalOutputEventId &&
     prior.manifest.promptArtifactHash === next.manifest.promptArtifactHash &&
     sameCanonicalValue(prior.manifest.contextPackRefs, next.manifest.contextPackRefs) &&
+    sameCanonicalValue(prior.manifest.outputArtifacts, next.manifest.outputArtifacts) &&
     sameStringArray(outputArtifactHashes(prior.manifest), outputArtifactHashes(next.manifest)) &&
     sameStringArray(prior.handoff.toolRequestIds, next.handoff.toolRequestIds) &&
+    sameCanonicalValue(prior.manifest.approvalRequirements, next.manifest.approvalRequirements) &&
+    sameCanonicalValue(prior.manifest.failure, next.manifest.failure) &&
     sameStringArray(prior.manifest.sourceEventIds, next.manifest.sourceEventIds) &&
     sameStringArray(prior.manifest.relatedEventIds, next.manifest.relatedEventIds);
+}
+
+function authoritativeFinalOutputStepSchemaId(runType: string): string | undefined {
+  if (runType === "ontology-bootstrap") {
+    return undefined;
+  }
+  try {
+    const typedRunType = runType as Exclude<AgentSpecialistRunType, "ontology-bootstrap">;
+    const descriptor = specialistWorkflowDescriptorFor(typedRunType);
+    const registration = productionSpecialistPromptRegistrationFor(typedRunType);
+    if (descriptor.promptTemplate.handoffSchemaId !== registration.handoffSchemaId) {
+      return undefined;
+    }
+    return registration.handoffSchemaId;
+  } catch {
+    return undefined;
+  }
 }
 
 function outputPersistedEntry(finalOutput: IndexedEvent<FinalOutputEvent>): SpecialistHandoffProjectionEntry {
@@ -1068,7 +1468,10 @@ function sameStringArray(left: readonly string[], right: readonly string[]): boo
 }
 
 function sameCanonicalValue(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  if (left === undefined || right === undefined) {
+    return left === right;
+  }
+  return canonicalSpecialistHandoffJson(left).equals(canonicalSpecialistHandoffJson(right));
 }
 
 function hashBuffer(bytes: Buffer): ContentHash {

@@ -2,16 +2,21 @@ import { describe, expect, it } from "vitest";
 import { buildContextPackRef } from "../src/context-packs.js";
 import {
   buildSpecialistHandoffManifest,
+  buildSpecialistHandoffMaterial,
   canonicalSpecialistHandoffJson,
+  canonicalSpecialistHandoffMaterialBytes,
   computeSpecialistHandoffId,
   hashCanonicalSpecialistHandoffJson,
   hashSpecialistHandoffManifest,
+  hashSpecialistHandoffMaterial,
+  parseSpecialistHandoffMaterial,
   verifySpecialistHandoffManifest
 } from "../src/specialist-handoff-manifest.js";
 import { hashSpecialistWorkflowHandoff } from "../src/specialist-handoff-hash.js";
 
 const hash111 = "sha256:1111111111111111111111111111111111111111111111111111111111111111" as const;
 const hash222 = "sha256:2222222222222222222222222222222222222222222222222222222222222222" as const;
+const hash333 = "sha256:3333333333333333333333333333333333333333333333333333333333333333" as const;
 const contextPack = buildContextPackRef({
   contextPackId: "evidence-summary.v1",
   version: 1,
@@ -35,6 +40,7 @@ const manifestInput = {
   stateKind: "completed",
   finalOutputStepId: "step_run_handoff_001_final_output",
   finalOutputEventId: "evt_final_output",
+  handoffMaterialArtifactHash: hash333,
   contextPackRefs: [contextPack],
   promptArtifactHash: hash111,
   outputArtifacts: [{
@@ -71,6 +77,51 @@ const seed = {
 } as const;
 
 describe("specialist handoff manifest", () => {
+  it("canonicalizes strict pre-manifest handoff material without circular handoff identity fields", () => {
+    const material = buildSpecialistHandoffMaterial({
+      status: manifestInput.status,
+      safeSummary: manifestInput.safeSummary,
+      contextPackRefs: manifestInput.contextPackRefs,
+      promptArtifactHash: manifestInput.promptArtifactHash,
+      outputArtifacts: manifestInput.outputArtifacts,
+      toolRequestIds: manifestInput.toolRequestIds,
+      approvalRequirements: manifestInput.approvalRequirements,
+      nextSafeActions: manifestInput.nextSafeActions,
+      sourceEventIds: manifestInput.sourceEventIds,
+      relatedEventIds: manifestInput.relatedEventIds
+    });
+    const bytes = canonicalSpecialistHandoffMaterialBytes(material);
+
+    expect(material.schemaVersion).toBe("agent-specialist-handoff-material.v1");
+    expect(hashSpecialistHandoffMaterial(material)).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(parseSpecialistHandoffMaterial(JSON.parse(bytes.toString("utf8")))).toEqual(material);
+    expect(bytes.toString("utf8")).not.toMatch(/handoffId|handoffRevision|handoffManifestHash|handoffDtoHash/);
+  });
+
+  it.each([
+    ["handoff identity", { handoffId: "handoff_run_unsafe_0123456789abcdef" }],
+    ["raw prompt", { rawPrompt: "hidden provider prompt" }],
+    ["raw evidence", { evidenceBody: "raw evidence" }],
+    ["provider output", { providerOutput: "raw provider output" }],
+    ["credentials", { credentialRef: "secret" }],
+    ["path", { path: "/home/private/artifact" }],
+    ["command", { command: "rm -rf workspace" }],
+    ["accepted state", { assertionAccepted: true }]
+  ])("rejects forbidden handoff material fields: %s", (_label, forbidden) => {
+    expect(() => buildSpecialistHandoffMaterial({
+      status: manifestInput.status,
+      safeSummary: manifestInput.safeSummary,
+      contextPackRefs: manifestInput.contextPackRefs,
+      outputArtifacts: manifestInput.outputArtifacts,
+      toolRequestIds: [],
+      approvalRequirements: [],
+      nextSafeActions: manifestInput.nextSafeActions,
+      sourceEventIds: manifestInput.sourceEventIds,
+      relatedEventIds: manifestInput.relatedEventIds,
+      ...forbidden
+    } as never)).toThrow();
+  });
+
   it("computes handoffId from the pre-manifest seed without manifest or DTO hashes", () => {
     const handoffId = computeSpecialistHandoffId(seed);
 
