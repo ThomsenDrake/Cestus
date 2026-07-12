@@ -149,3 +149,106 @@ Fresh model-pinned review is required. This author does not self-approve,
 create an implementation plan, begin Task 113, dispatch implementation work,
 or merge into `neo` or an integration branch. Stop at the written Lane T
 specification approval gate.
+
+## Repair Correction RC-105-01 — Stable Fingerprints and Scope-Atomic Admission
+
+This append-only repair record preserves the original claim and evidence. It
+supersedes only the prior `ready-for-review` status while the two fresh-review
+findings are repaired.
+
+- Repair authorization: coordinator-issued Task 105 Lane T specification-review
+  repair only under the Standing Coordinator Delegation. The authorized range
+  is one verified documentation repair commit and a fresh model-pinned
+  re-review; it excludes Task 113, implementation planning, production work,
+  dispatch, and any merge.
+- Repair worker: Codex Task 105 Lane T specification repairer, using the
+  coordinator/user-confirmed GPT-5.6 Terra / Extra High configuration.
+- Repair claimed at: `2026-07-12T21:10:04Z`.
+- Repair base: `19a2cef6c5de94a277e6d35742f8a2b549014f7`.
+- Review findings: the prior fingerprint description allowed append-assigned or
+  evaluator-variable `requestId` and `requestedAt` values to perturb duplicate
+  matching; and per-dedupe-key uniqueness did not serialize distinct
+  high-water candidates sharing a cooldown/budget scope.
+- Root cause: the design required a hash of a “complete normalized request
+  snapshot” but did not distinguish stable semantic identity from append
+  envelope fields; separately, its read-then-append protocol guarded only a
+  candidate dedupe key, leaving the shared policy admission decision outside
+  the append atomicity boundary.
+- Repair RED: the focused inline Node audit exited 1 with
+  `RED: Task 105 repair audit missing: stable fingerprint input,
+  append-assigned fields excluded, deterministic request ID, repeated
+  evaluation contract, scope gate key, atomic scope admission, conflict
+  reevaluation, distinct candidate concurrency assertion`.
+- Repair status: repairing. The following sections record GREEN evidence,
+  verification, and the fresh re-review handoff after the narrowed repair is
+  complete.
+
+### Reproducible Repair Audit
+
+The focused documentation audit below reads only the owned specification. Its
+RED baseline was run before the repair. The first GREEN invocation corrected
+only three audit-text extraction literals (Markdown backticks, the derived-key
+location, and the transaction sentence's article); it did not change the
+specification or replace a missing product assertion.
+
+```bash
+node --input-type=module --eval '
+import fs from "node:fs";
+const path = "docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md";
+const spec = fs.readFileSync(path, "utf8");
+const fingerprintStart = spec.indexOf("interface ProposedTriggerRequestFingerprintInputV1");
+const fingerprintEnd = spec.indexOf("interface ProposedTriggerAdmissionScopeV1", fingerprintStart);
+const fingerprint = fingerprintStart < 0 || fingerprintEnd < 0 ? "" : spec.slice(fingerprintStart, fingerprintEnd);
+const scopeStart = fingerprintEnd;
+const scopeEnd = spec.indexOf("```", scopeStart);
+const scope = scopeStart < 0 || scopeEnd < 0 ? "" : spec.slice(scopeStart, scopeEnd);
+const required = [
+  ["stable fingerprint input", ["fingerprintVersion", "descriptorRevision", "policyArtifactHash", "sourceRefs", "sourceHighWaterMark", "workspaceIdentityEventId", "causationId"].every((field) => fingerprint.includes(field))],
+  ["append-assigned fields excluded", fingerprint && !["requestId", "requestedAt", "notBefore", "correlationId"].some((field) => fingerprint.includes(field))],
+  ["deterministic request ID and readback binding", spec.includes("`requestId` is deterministically derived") && spec.includes("context.occurredAt") && spec.includes("not fingerprint input")],
+  ["repeated evaluation contract", spec.includes("repeated identical evaluation") && spec.includes("same `requestFingerprint`") && spec.includes("`dedupe-conflict`")],
+  ["scope gate key", spec.includes("`triggerGateKey`") && ["subjectScope", "budgetScope"].every((field) => scope.includes(field)) && !scope.includes("sourceHighWaterMark")],
+  ["atomic scope admission", spec.includes("an atomic conditional append in one\n   mounted-ledger transaction") && spec.includes("Per-dedupe-\n   key uniqueness is necessary but insufficient")],
+  ["conflict reevaluation", spec.includes("re-read and re-evaluate") && spec.includes("never retries an old\n   snapshot")],
+  ["repeated-evaluation assertion", spec.includes("repeated identical evaluation attempts") && spec.includes("different\n  append times")],
+  ["distinct-candidate concurrency assertion", spec.includes("concurrent distinct candidates") && spec.includes("same `triggerGateKey`") && spec.includes("losing candidate must re-read and re-evaluate")]
+];
+const missing = required.filter(([, ok]) => !ok).map(([name]) => name);
+if (missing.length) {
+  console.error(`RED: Task 105 repair audit missing: ${missing.join(", ")}`);
+  process.exit(1);
+}
+console.log(`GREEN: Task 105 repair audit passed (${required.length} assertions).`);
+'
+```
+
+- GREEN result: the audit exited 0 with
+  `GREEN: Task 105 repair audit passed (9 assertions).`
+- Evidence reproducibility correction: the first committed-text rendering of
+  three newline probes double-escaped their JavaScript literals. This repair
+  changes only those claim-code escapes; rerunning the exact extracted claim
+  command now produces the GREEN result above. It makes no specification or
+  product-contract change.
+- Whitespace: `git diff --check` exited 0 with no output.
+- Factory readiness: `npm run factory:check` exited 0 with
+  `factory-readiness passed`.
+- Full verification: `npm run verify` exited 0 with typecheck passed, 189 test
+  files passed with 3 skipped, 2,228 tests passed with 5 skipped, a successful
+  Vite production build (with the existing chunk-size warning), and
+  `factory-readiness passed`.
+- Repair self-review: `requestFingerprint` now has one exact stable input;
+  append event ID, sequence, time, decision `notBefore`, and correlation fields
+  cannot perturb it; the deterministic request ID and separate readback bind
+  retain durable identity. `triggerGateKey` is deliberately source-independent
+  within its cooldown/budget scope, and the one atomic conditional append
+  rechecks that scope before the only permitted durable write. Failed scope
+  admission discards stale snapshots and re-evaluates instead of broadening
+  work, advancing high-water, writing fallback state, or fabricating success.
+  No prompt/effect, mounted-authority, append-only/replay, provenance,
+  approval, handoff, secret-safe, pre-CF-1, ownership, or team-scope invariant
+  was weakened.
+- Live-provider gate: not applicable. The repaired specification still forbids
+  model and provider invocation in the trigger evaluator.
+- Repair status: ready-for-review. A fresh model-pinned re-review is required;
+  this repairer does not self-approve, create Task 113, begin production work,
+  or merge into `neo` or an integration branch.

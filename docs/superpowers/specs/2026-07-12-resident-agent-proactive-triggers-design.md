@@ -52,6 +52,7 @@ interface ProposedResidentTriggerRequestV1 {
   requestId: string;
   dedupeKey: string;
   requestFingerprint: string;
+  triggerGateKey: string;
   residentAgentId: "agent_default";
   workspaceId: string;
   triggerId: string;
@@ -62,19 +63,62 @@ interface ProposedResidentTriggerRequestV1 {
   sourceRefs: readonly TriggerSourceRef[];
   sourceHighWaterMark: TriggerHighWaterMark;
   requestedRunType: string;
-  requestedAt: string;
-  notBefore?: string;
   provenance: TriggerRequestProvenance;
+}
+
+interface ProposedTriggerRequestFingerprintInputV1 {
+  fingerprintVersion: "resident-trigger-request-fingerprint.v1";
+  residentAgentId: "agent_default";
+  workspaceId: string;
+  triggerId: string;
+  triggerFamily: TriggerFamily;
+  descriptorRevision: string;
+  policyVersion: string;
+  policyArtifactHash: string;
+  subjectRef: TriggerSubjectRef;
+  requestedRunType: string;
+  sourceRefs: readonly TriggerSourceRef[];
+  sourceHighWaterMark: TriggerHighWaterMark;
+  workspaceIdentityEventId: string;
+  causationId: string;
+}
+
+interface ProposedTriggerAdmissionScopeV1 {
+  workspaceId: string;
+  residentAgentId: "agent_default";
+  triggerId: string;
+  policyVersion: string;
+  policyArtifactHash: string;
+  subjectScope: string;
+  budgetScope: string;
 }
 ```
 
-`dedupeKey` is a SHA-256 hash of canonical JSON containing the workspace ID,
-resident identity, trigger ID and descriptor revision, policy version,
-subject-ref type and ID, requested run type, ordered source identities, and
-the candidate high-water mark. `requestFingerprint` hashes the complete
-normalized request snapshot. Neither value includes raw source bytes, prompt
-text, a credential, a provider response, or a local file path outside the
-mounted workspace identity.
+`requestFingerprint` is exactly the SHA-256 hash of canonical JSON for
+`ProposedTriggerRequestFingerprintInputV1`. `sourceRefs` are sorted by source
+stream ID, sequence, and event ID before hashing. The input deliberately
+excludes `requestId`, event ID, event sequence, append time, `requestedAt`,
+`notBefore`, and correlation ID. Those are append or decision-envelope fields,
+not stable request semantics. `requestId` is deterministically derived from
+the fingerprint (`trq_${base32(requestFingerprint)}`); it is never
+append-assigned. The eventual correlation ID is likewise derived after hashing
+from the fingerprint, so it cannot create a circular or per-evaluation value.
+
+`dedupeKey` is the SHA-256 hash of canonical JSON containing the dedupe
+version and `requestFingerprint`. `triggerGateKey` is the SHA-256 hash of
+canonical `ProposedTriggerAdmissionScopeV1`; it identifies the shared
+cooldown/budget scope and intentionally excludes source high-water and the
+dedupe key. Different source candidates in the same policy scope therefore
+share one admission key. The fingerprint, dedupe key, and gate key exclude raw
+source bytes, prompt text, credentials, provider responses, and local file
+paths outside the mounted workspace identity.
+
+The append event's ID, stream sequence, and `context.occurredAt` bind the
+durable record at commit time and are verified during readback, but they are
+not fingerprint input. A repeated identical evaluation with a different append
+attempt time must calculate the same `requestFingerprint`, `requestId`, and
+`dedupeKey`, then return exact duplicate readback rather than a
+`dedupe-conflict`.
 
 The append protocol is fail-closed and idempotent:
 
@@ -83,15 +127,27 @@ The append protocol is fail-closed and idempotent:
 2. Normalize all inputs into plain own-data values before any await or append.
    Reject inherited properties, accessors, sparse arrays, symbols, and unknown
    fields rather than rereading caller objects later.
-3. Calculate the deterministic `dedupeKey` and request fingerprint. A matching
-   existing request is a successful no-append result only after exact ledger
-   readback proves the same key and fingerprint.
-4. For a new eligible candidate, append only the proposed trigger-request
-   record. The append must use a ledger uniqueness/concurrency guard on the
-   dedupe key or equivalent deterministic request stream.
-5. Read back the exact committed event by ID and verify its resident identity,
-   policy/hash, source identities, high-water mark, causation, and fingerprint
-   before returning a requested decision.
+3. Calculate the deterministic fingerprint, request ID, dedupe key, and
+   `triggerGateKey`. A matching existing request is a successful no-append
+   result only after exact ledger readback proves the same key, fingerprint,
+   deterministic request ID, and gate scope.
+4. For a new eligible candidate, perform an atomic conditional append in one
+   mounted-ledger transaction serialized by `triggerGateKey`. Inside that
+   transaction, re-read the current scope's request records, cooldown, budget,
+   policy/hash, locks, and high-water projection; append the one proposed
+   trigger request only if every admission condition still holds. Per-dedupe-
+   key uniqueness is necessary but insufficient for this shared-scope check.
+   The transaction writes no separate gate, cache, fallback, or projection
+   record: the request is its sole permitted durable mutation.
+5. If scope serialization or its conditional check conflicts, discard the
+   candidate snapshot, re-read and re-evaluate from authoritative state, and
+   then return the newly applicable duplicate, cooldown, budget, stale,
+   unavailable, or request result. A bounded evaluator never retries an old
+   snapshot or spins indefinitely after repeated contention.
+6. Read back the exact committed event by ID and verify its resident identity,
+   policy/hash, source identities, high-water mark, causation, fingerprint,
+   deterministic request ID, and gate scope before returning a requested
+   decision.
 
 If a concurrent append finds the same `dedupeKey` with a different fingerprint,
 the evaluator returns a secret-safe `dedupe-conflict` diagnostic and appends
@@ -316,9 +372,14 @@ or effect gate.
 Task 113 implementation and Lane A acceptance must prove, with deterministic
 credential-free tests, that:
 
-- repeated identical input, restart replay, and a concurrent duplicate append
-  produce one request and exact duplicate readback;
+- repeated identical evaluation attempts, including attempts at different
+  append times, produce the same stable `requestFingerprint`, deterministic
+  `requestId`, and `dedupeKey`, then one request and exact duplicate readback;
 - a same-key/different-fingerprint collision fails closed;
+- concurrent distinct candidates with different source high-water marks but the
+  same `triggerGateKey` are admitted through one atomic conditional append:
+  with a one-request budget or active cooldown, exactly one can append and the
+  losing candidate must re-read and re-evaluate to a no-append decision;
 - cooldown and budget denial make no append and do not advance high-water;
 - a request advances high-water only after exact append readback, and replay
   rebuilds the same provenance and ordering;
