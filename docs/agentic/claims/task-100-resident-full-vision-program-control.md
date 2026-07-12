@@ -120,3 +120,22 @@ rebasing, or a merge into `neo`.
   status and review context. The prior `needs-changes` verdict remains durable,
   fresh review is pending, Wave 0A stays stopped, and this repairer will not
   self-approve, merge, or start another task.
+
+## Coordinator Integration Disposition
+
+- Fresh review: reviewer task `019f57d6-8a5d-7210-87f8-c0b5b16e70f1` approved
+  append-only repair `6e4d2ef19a404941686517345612af93f2b09cc6` after checking
+  RV-0-A-001 restoration, preservation of RV-0-A-002/003, mandatory labels,
+  scope, and documentation gates.
+- Merge: coordinator branch `codex/resident-agent-full-vision-program-plan`
+  integrated the reviewed task branch at
+  `8fdb17d15b5356f6d825e7fc18ec178c1cc7d57a`. The only conflict was the stale
+  add/add implementation plan; the coordinator retained current plan
+  `68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab`. No branch was merged into `neo`.
+- Verification: the staged coordinator merge passed `NODE_NO_WARNINGS=1 npm
+  run verify`: typecheck passed; 189 test files passed with 3 skipped; 2,228
+  tests passed with 5 skipped; Vite built with its existing chunk-size warning;
+  and factory readiness passed.
+- Status: merged. The registry's RV-0-A-006 is the authoritative append-only
+  integration decision. Wave 0A may proceed only through separately scoped
+  coordinator authorizations; this Task 100 work never self-dispatches a lane.

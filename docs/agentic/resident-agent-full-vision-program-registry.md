@@ -133,3 +133,29 @@ explicit implementation authorization.
 - Merge readiness: not-ready; Wave 0A remains stopped, this repairer has no self-merge authority, and the coordinator alone may later integrate after fresh review
 - Archive check: one scoped repair commit and clean-worktree confirmation remain required; no fresh review verdict, coordinator merge decision, or archive action exists
 - Supersession: this record supersedes status only for RV-0-A-002 and RV-0-A-003; it neither deletes nor revises their evidence, and RV-0-A-001 remains the immutable historical missing-Approval-record negative control restored byte-for-byte from 8a20fffd.
+
+## RV-0-A-006 — Task 100 fresh review approval and coordinator integration
+
+- Recorded at: 2026-07-12T19:46:22Z
+- Role: coordinator
+- Lane and wave: A / 0 (program-control coordination record)
+- Task ID and claim: task-100-resident-full-vision-program-control / docs/agentic/claims/task-100-resident-full-vision-program-control.md
+- Task thread ID: 019f57ba-549a-7561-87f7-f8b4df908bd8 (repairer); 019f57d6-8a5d-7210-87f8-c0b5b16e70f1 (fresh reviewer)
+- Branch and worktree: codex/resident-agent-full-vision-program-plan / /home/drake/.codex/worktrees/664b/Cestus
+- Base commit and required head: 80fd7f1205bf4f71e7fa6713b236c67af39f75d9 / 6e4d2ef19a404941686517345612af93f2b09cc6
+- Model configuration: GPT-5.6 Terra / Extra High, confirmed by the user for the repair and review sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/agentic/resident-agent-full-vision-program-registry.md; docs/agentic/claims/task-100-resident-full-vision-program-control.md
+- Forbidden files: every production, test, runtime, UI, provider, shared-contract, program-plan, template, and acceptance-matrix file
+- Dependencies and required merged commits: 01b2a83cc3028ca1f854be8e5efcbaa9cd211d96 (claim), 8a20fffde1a0ef48d2acbb91768806c91ebe63a7 (program controls), 80fd7f1205bf4f71e7fa6713b236c67af39f75d9 (first repair), and 6e4d2ef19a404941686517345612af93f2b09cc6 (approved append-only repair); merge commit 8fdb17d15b5356f6d825e7fc18ec178c1cc7d57a records the integration.
+- Approval record: the Standing Coordinator Delegation at governing spec 811458d2 authorizes this scoped Task 100 repair and coordinator integration under plan 68fe8e87; it names Task 100 append-only registry-history repair only, stops before Wave 0A until fresh review and merge complete, authorizes superpowers:subagent-driven-development, documentation RED/GREEN, fresh review, and verification-before-completion, and prohibits a merge into neo.
+- Claim status: merged
+- RED command and observed failure: node /tmp/cestus-task-100-append-only-history-audit.mjs / exit 1 with `RED: RV-0-A-001 does not exactly match 8a20fffd` and `RED: RV-0-A-004 correction record is missing`, recorded before repair commit 6e4d2ef19a404941686517345612af93f2b09cc6.
+- GREEN command and observed result: node /tmp/cestus-task-100-append-only-history-audit.mjs / exit 0 with historical-byte and non-dispatchable-correction proof; git diff --check and npm run factory:check exited 0; the coordinator also resolved the sole stale-plan add/add merge conflict in favor of plan 68fe8e87.
+- Full verification: NODE_NO_WARNINGS=1 npm run verify / exit 0 on the staged coordinator merge: typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite built with its existing chunk-size warning; factory-readiness passed.
+- Live-provider gate: not-applicable; Task 100 is documentation-only and has no provider behavior
+- Review verdict: approved / fresh reviewer task 019f57d6-8a5d-7210-87f8-c0b5b16e70f1 approved repair commit 6e4d2ef19a404941686517345612af93f2b09cc6 after confirming RV-0-A-001 restoration, RV-0-A-002/003 preservation, scoped files, mandatory labels, and gates.
+- Rebase record: no rebase was needed; coordinator integration branch 68fe8e87 merged the reviewed task branch at 8fdb17d15b5356f6d825e7fc18ec178c1cc7d57a, retaining the current authorization-plan amendment when resolving the stale add/add plan.
+- Merge readiness: merged / coordinator integration commit 8fdb17d15b5356f6d825e7fc18ec178c1cc7d57a; no merge into neo occurred.
+- Archive check: repairer and reviewer final answers exist, task branch ancestry reaches the coordinator integration branch, and their worktrees are clean; archive remains coordinator-administered after this truthful integration record is committed and verified.
+- Supersession: this record supersedes Task 100 status and review context only. RV-0-A-001 through RV-0-A-005 remain immutable durable evidence; Wave 0A becomes dependency-ready only after this record's commit and verification gate.
