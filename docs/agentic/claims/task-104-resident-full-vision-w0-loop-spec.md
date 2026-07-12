@@ -3,7 +3,7 @@
 - Governing specification: `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e`
 - Governing plan: `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab`
 - Task and lane: Task 104 / L / Wave 0A
-- Status: claimed
+- Status: ready-for-review
 - Branch: `codex/task-104-resident-full-vision-w0-loop-spec`
 - Worktree: `/home/drake/.codex/worktrees/task-104-resident-full-vision-w0-loop-spec`
 - Base commit: `52bc6b6dc81373d6026e7465becde75bd1c6448e`
@@ -54,8 +54,64 @@ Every other tracked file is forbidden.
   establish accepted ontology truth, broaden authority, or self-approve an
   external or irreversible effect.
 
-## Initial Claim State
+## Documentation RED/GREEN And Self-Review
 
-Documentation RED/GREEN, self-review, full verification, and fresh review are
-pending. This claim will be advanced append-only with the observed commands,
-outputs, and stop state after the sole Task 104 specification is produced.
+The following focused audit reads only the Task 104 specification. It is the
+documentation RED/GREEN contract for this task.
+
+```bash
+node --input-type=module --eval '
+import fs from "node:fs";
+const path = "docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md";
+let spec = "";
+try { spec = fs.readFileSync(path, "utf8"); } catch {
+  console.error("RED: bounded-loop specification is absent");
+  process.exit(1);
+}
+const assertions = [
+  ["policy", spec.includes("ResidentPlanPolicy")],
+  ["plan", spec.includes("ResidentPlanRecord")],
+  ["observation", spec.includes("ResidentObservationRecord")],
+  ["tool step", spec.includes("ResidentToolStepRecord")],
+  ["hard budgets", spec.includes("Hard Maximums")],
+  ["allowlist", spec.includes("Tool Allowlist")],
+  ["approval suspension", spec.includes("Approval Suspension")],
+  ["terminal/resumable", spec.includes("Terminal And Resumable")],
+  ["mounted no fallback", spec.includes("no fallback")],
+  ["handoff readback", spec.includes("handoff readback")],
+  ["ownership", spec.includes("Ownership")],
+  ["pre-CF-1", spec.includes("pre-CF-1")]
+];
+const missing = assertions.filter(([, ok]) => !ok).map(([name]) => name);
+if (missing.length > 0) {
+  console.error(`RED: Task 104 coverage missing: ${missing.join(", ")}`);
+  process.exit(1);
+}
+console.log(`GREEN: Task 104 bounded-loop coverage audit passed (${assertions.length} assertions).`);
+'
+```
+
+- RED: before the specification existed, the audit exited 1 with
+  `RED: bounded-loop specification is absent`.
+- GREEN: after the specification was written, the same audit exited 0 with
+  `GREEN: Task 104 bounded-loop coverage audit passed (12 assertions).`
+- Whitespace: `git diff --check` exited 0 with no output before staging; the
+  staged check is rerun immediately before the task commit.
+- Factory readiness: `npm run factory:check` exited 0 with
+  `factory-readiness passed`.
+- Full verification: the first `npm run verify` was blocked because the fresh
+  isolated worktree lacked the lockfile-pinned `tsc`; `npm ci --ignore-scripts`
+  restored declared dependencies without changing tracked files, then a fresh
+  `npm run verify` exited 0.
+- Self-review: all budgets have finite hard ceilings and lower profile limits;
+  matching is exact tool ID/version; a replan cannot broaden authority;
+  suspension rechecks independent approval consumption, current policy, mount,
+  lock, provenance, and budget; completion requires durable handoff readback;
+  failures are terminal or anchored resumable states; no fallback storage,
+  newsroom/team scope, raw secrets, or production ownership drift appears.
+
+## Review And Stop
+
+Fresh Lane L specification review and written coordinator L-spec approval are
+pending. This author does not self-approve, create Task 112, dispatch a worker,
+merge, or modify any non-owned file.
