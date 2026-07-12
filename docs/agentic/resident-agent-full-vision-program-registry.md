@@ -159,3 +159,78 @@ explicit implementation authorization.
 - Merge readiness: merged / coordinator integration commit 8fdb17d15b5356f6d825e7fc18ec178c1cc7d57a; no merge into neo occurred.
 - Archive check: repairer and reviewer final answers exist, task branch ancestry reaches the coordinator integration branch, and their worktrees are clean; archive remains coordinator-administered after this truthful integration record is committed and verified.
 - Supersession: this record supersedes Task 100 status and review context only. RV-0-A-001 through RV-0-A-005 remain immutable durable evidence; Wave 0A becomes dependency-ready only after this record's commit and verification gate.
+
+## RV-0-R-001 — Task 101 runtime-composition specification dispatch
+
+- Recorded at: 2026-07-12T19:50:27Z
+- Role: coordinator
+- Lane and wave: R / 0
+- Task ID and claim: task-101-resident-full-vision-w0-runtime-spec / docs/agentic/claims/task-101-resident-full-vision-w0-runtime-spec.md
+- Task thread ID: 019f57e0-a28b-71b1-97ed-3097291068ef
+- Branch and worktree: codex/task-101-resident-full-vision-w0-runtime-spec / /home/drake/.codex/worktrees/6bb5/Cestus
+- Base commit and required head: bb41ee02d7061f838917d378bccf17a6a6ad9e80 / this coordinator dispatch record's enclosing commit before Task 101 starts
+- Model configuration: GPT-5.6 Terra / Extra High, confirmed by the user for child sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-runtime-composition-design.md; docs/agentic/claims/task-101-resident-full-vision-w0-runtime-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 100 controls and integration at bb41ee02d7061f838917d378bccf17a6a6ad9e80; no lane contract is frozen and no production dependency applies
+- Approval record: coordinator-issued authorization under Standing Coordinator Delegation authorizes Task 101 only to create its lane specification and claim using superpowers:subagent-driven-development, documentation RED/GREEN, fresh review, and verification-before-completion; wave stop is its committed R specification followed by coordinator spec review and lane approval; no Task 109, production code, or merge into neo is authorized.
+- Claim status: claimed
+- RED command and observed failure: pending in Task 101's documentation-only work order
+- GREEN command and observed result: pending git diff --check, npm run factory:check, and npm run verify in Task 101
+- Full verification: pending in Task 101
+- Live-provider gate: not-applicable for this specification-only task; its design must define later provider acceptance where relevant
+- Review verdict: pending / fresh Task 101 spec review after its commit
+- Rebase record: initial worktree is clean at bb41ee02d7061f838917d378bccf17a6a6ad9e80; no rebase applies before its independent specification work
+- Merge readiness: not-ready; Task 101 cannot merge or begin a plan/implementation task
+- Archive check: provisioned task has no final answer, commit, verification, review, or merge state
+
+## RV-0-H-001 — Task 102 durable-handoffs specification dispatch
+
+- Recorded at: 2026-07-12T19:50:27Z
+- Role: coordinator
+- Lane and wave: H / 0
+- Task ID and claim: task-102-resident-full-vision-w0-handoff-spec / docs/agentic/claims/task-102-resident-full-vision-w0-handoff-spec.md
+- Task thread ID: 019f57e0-a408-7c02-9f1b-9d2f25cc83af
+- Branch and worktree: codex/task-102-resident-full-vision-w0-handoff-spec / /home/drake/.codex/worktrees/f3a3/Cestus
+- Base commit and required head: bb41ee02d7061f838917d378bccf17a6a6ad9e80 / this coordinator dispatch record's enclosing commit before Task 102 starts
+- Model configuration: GPT-5.6 Terra / Extra High, confirmed by the user for child sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-durable-handoffs-design.md; docs/agentic/claims/task-102-resident-full-vision-w0-handoff-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 100 controls and integration at bb41ee02d7061f838917d378bccf17a6a6ad9e80; no lane contract is frozen and no production dependency applies
+- Approval record: coordinator-issued authorization under Standing Coordinator Delegation authorizes Task 102 only to create its lane specification and claim using superpowers:subagent-driven-development, documentation RED/GREEN, fresh review, and verification-before-completion; wave stop is its committed H specification followed by coordinator spec review and lane approval; no Task 110, production code, or merge into neo is authorized.
+- Claim status: claimed
+- RED command and observed failure: pending in Task 102's documentation-only work order
+- GREEN command and observed result: pending git diff --check, npm run factory:check, and npm run verify in Task 102
+- Full verification: pending in Task 102
+- Live-provider gate: not-applicable for this specification-only task; its design must define later handoff/provider acceptance where relevant
+- Review verdict: pending / fresh Task 102 spec review after its commit
+- Rebase record: initial worktree is clean at bb41ee02d7061f838917d378bccf17a6a6ad9e80; no rebase applies before its independent specification work
+- Merge readiness: not-ready; Task 102 cannot merge or begin a plan/implementation task
+- Archive check: provisioned task has no final answer, commit, verification, review, or merge state
+
+## RV-0-W-001 — Task 103 wake-and-portable-lifecycle specification dispatch
+
+- Recorded at: 2026-07-12T19:50:27Z
+- Role: coordinator
+- Lane and wave: W / 0
+- Task ID and claim: task-103-resident-full-vision-w0-wake-spec / docs/agentic/claims/task-103-resident-full-vision-w0-wake-spec.md
+- Task thread ID: 019f57e0-a36d-7970-b766-5388149c673d
+- Branch and worktree: codex/task-103-resident-full-vision-w0-wake-spec / /home/drake/.codex/worktrees/4a49/Cestus
+- Base commit and required head: bb41ee02d7061f838917d378bccf17a6a6ad9e80 / this coordinator dispatch record's enclosing commit before Task 103 starts
+- Model configuration: GPT-5.6 Terra / Extra High, confirmed by the user for child sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md; docs/agentic/claims/task-103-resident-full-vision-w0-wake-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 100 controls and integration at bb41ee02d7061f838917d378bccf17a6a6ad9e80; no lane contract is frozen and no production dependency applies
+- Approval record: coordinator-issued authorization under Standing Coordinator Delegation authorizes Task 103 only to create its lane specification and claim using superpowers:subagent-driven-development, documentation RED/GREEN, fresh review, and verification-before-completion; wave stop is its committed W specification followed by coordinator spec review and lane approval; no Task 111, production code, or merge into neo is authorized.
+- Claim status: claimed
+- RED command and observed failure: pending in Task 103's documentation-only work order
+- GREEN command and observed result: pending git diff --check, npm run factory:check, and npm run verify in Task 103
+- Full verification: pending in Task 103
+- Live-provider gate: not-applicable for this specification-only task; its design must define later lifecycle/provider acceptance where relevant
+- Review verdict: pending / fresh Task 103 spec review after its commit
+- Rebase record: initial worktree is clean at bb41ee02d7061f838917d378bccf17a6a6ad9e80; no rebase applies before its independent specification work
+- Merge readiness: not-ready; Task 103 cannot merge or begin a plan/implementation task
+- Archive check: provisioned task has no final answer, commit, verification, review, or merge state
