@@ -54,3 +54,30 @@ required dependency, or repeated verifier failure.
   pinned dependencies: typecheck passed; 189 test files passed with 3 skipped;
   2,228 tests passed with 5 skipped; Vite built with its existing chunk-size
   warning; and factory readiness passed.
+
+## Review-Record Repair
+
+The coordinator-supplied Task 100 review verdict requires a documentation-only
+repair before a separately model-pinned fresh re-review. The review found that
+the RV-0-A-001 negative-control audit omitted the mandatory `Approval record`
+field, and that no later registry entry truthfully superseded the unfinished
+RV-0-A-002 state with the Task 100 commits, verification evidence, and review
+context.
+
+- Repair branch and worktree: `codex/task-100-review-record-repair` /
+  `/home/drake/.codex/worktrees/b88e/Cestus`.
+- Repair ownership: only this claim and
+  `docs/agentic/resident-agent-full-vision-program-registry.md`.
+- Documentation RED: the focused RV-0-A-001 mandatory-field audit exited 1
+  with `RED: RV-0-A-001 is missing mandatory field(s): Approval record`.
+- Documentation GREEN: the focused mandatory-field audit passed with every
+  mandatory field and an explicit non-authorizing Approval record; `git diff
+  --check` exited 0 with no output; and `npm run factory:check` passed.
+- Full verification: the initial `npm run verify` found absent dependencies
+  (`tsc: command not found`), so `npm ci` restored the pinned tree. The fresh
+  `npm run verify` then exited 0: typecheck passed; 189 test files passed with
+  3 skipped; 2,228 tests passed with 5 skipped; Vite built with its existing
+  chunk-size warning; and factory readiness passed.
+- Superseding disposition: Task 100 is `ready-for-review` after this repair
+  commit; Wave 0A remains stopped, and this repair worker neither performs the
+  fresh review nor merges into `neo`.
