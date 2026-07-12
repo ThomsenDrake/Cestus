@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Governing specification: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md at commit 56bf62b4.
+- Governing specification: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md at commit 811458d2.
 - Preserve one resident identity, agent_default. Providers, harnesses, credentials, and subscriptions are backends, never resident identities.
 - Preserve append-only ledger semantics, exact provenance, rebuildable projections, independent-human approval consumption, and durable handoff readback.
 - The mounted workspace identity, ledger, artifact store, policy, and active locks are authoritative. Disconnect or identity mismatch permits no internal fallback write.
@@ -80,7 +80,7 @@ You are the <lane> <spec-author|plan-author> for Cestus.
 Host requirement: GPT-5.6 Terra with Extra High reasoning. Stop and report if unavailable; do not select a fallback.
 Worktree and branch: <absolute path> / <branch>; base commit: <SHA>.
 Read AGENTS.md, .agents/skills/cestus-software-factory/SKILL.md,
-docs/agentic/software-factory.md, the umbrella design at 56bf62b4,
+docs/agentic/software-factory.md, the umbrella design at 811458d2,
 and the named predecessor documents.
 Allowed files: <complete list>. Forbidden files: every other production,
 test, runtime, UI, provider, and shared-contract file.
@@ -92,6 +92,15 @@ Stop point: <exact user-approval gate>.
 ### Required implementation-authorization message
 
 Plan approval is not implicit permission to execute. Before implementation, repair, or a review requiring executable task work, the coordinator or user must send and record this complete message.
+
+Under the Standing Coordinator Delegation in the governing specification at
+`811458d2`, every reference in this plan to a **new authorization message**
+means a new, scoped, coordinator-issued message and durable registry record
+unless the user elects to supply it. It is not a request for a new user prompt.
+The coordinator still names the exact spec and plan commits, task range, wave
+stop, `superpowers:subagent-driven-development` authorization, TDD, fresh
+review, verification-before-completion, GPT-5.6 Terra / Extra High, and the
+no-self-merge rule; an incomplete message keeps the child at its gate.
 
 ~~~text
 The referenced spec <exact path>@<commit> and implementation plan <exact path>@<commit> are approved.
@@ -133,7 +142,10 @@ Every approved implementation plan contains these executable steps:
 4. Implement the smallest change in owned files. Never change a shared contract, default runtime factory, shared provider configuration, route, or cockpit file unless the freeze assigns it.
 5. Run the focused GREEN command, named cross-lane command, npm run verify, and git diff --check.
 6. Commit only owned files and claim evidence. A fresh reviewer leads with defects, missing tests, spec drift, invariant violations, and verification gaps.
-7. A repair requires a new authorization message. After two focused repair attempts without verifier recovery, mark blocked and escalate.
+7. A repair requires a new scoped authorization message issued and recorded by
+   the coordinator under standing delegation (or supplied by the user); it does
+   not require a new user prompt. After two focused repair attempts without
+   verifier recovery, mark blocked and escalate.
 
 Every lane plan includes actual test code, the RED command and expected failure, the implementation change, focused GREEN command, exact commit scope, fresh review command, and live-provider gate. Program command vocabulary:
 
@@ -438,5 +450,4 @@ The coordinator alone decides merge, push, cleanup, and archive after registry f
 
 ## Completion Criteria
 
-This program plan is ready for implementation approval when this checklist is satisfied, documentation checks and full verification pass, and the plan is committed. A user must then send the exact implementation-authorization message for the precise Wave 0 range. Approval of this plan alone does not authorize child dispatch, superpowers:subagent-driven-development, or production changes.
-
+This program plan is ready for implementation approval when this checklist is satisfied, documentation checks and full verification pass, and the plan is committed. Under the Standing Coordinator Delegation at `811458d2`, the coordinator must then send and record the exact scoped implementation-authorization message for the precise Wave 0 range; a user may supply the same message. Approval of this plan alone does not authorize child dispatch, superpowers:subagent-driven-development, or production changes.
