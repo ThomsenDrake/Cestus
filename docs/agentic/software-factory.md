@@ -800,6 +800,49 @@ git diff --check
 no output
 ```
 
+## PRR And Jurisdiction Context Packs Plan Readiness
+
+The selected-request PRR and jurisdiction context-pack implementation completed from the approved design spec on 2026-07-11 on branch `codex/prr-context-pack-design`.
+
+Task commits recorded in this retained worktree:
+
+```text
+10761a7..b33a121 Task 1 selected PRR read-model context pack
+b33a121..dbf1dd0 Task 2 jurisdiction pack summary context pack
+dbf1dd0..f3cc658 Task 3 package registration and parser authority
+233b795b feat: register local runtime prr context packs
+4f09a8cb fix: close local runtime prr context pack review gaps
+```
+
+Required design and plan files:
+
+- `docs/superpowers/specs/2026-07-10-prr-jurisdiction-context-packs-design.md`
+- `docs/superpowers/plans/2026-07-10-prr-jurisdiction-context-packs-implementation.md`
+
+Recorded targeted command evidence:
+
+```text
+npm test -- packages/agent/test/prr-context-packs.test.ts packages/agent/test/context-packs.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/local-runtime/test/agent-prr-context-packs.test.ts
+Test Files  4 passed (4)
+Tests  89 passed (89)
+```
+
+Recorded full verification:
+
+```text
+npm run verify
+typecheck passed
+Test Files  179 passed | 3 skipped (182)
+Tests  2059 passed | 3 skipped (2062)
+tests passed
+vite build succeeded
+factory-readiness passed
+```
+
+The context-pack builders remain selected-request scoped and return verified `ResolvedContextPack { ref, payload }` envelopes. Unrelated PRR request IDs never enter `prr-read-model.v1`; only aggregate omitted count and projection high-water proof are recorded. Jurisdiction staleness is bound by pack name, version, exact rule IDs, citations, and jurisdiction artifact content hash.
+
+Production prompt rendering includes selected deadline and rule payload sentinels only after local hash, size, strict parser, and selected-scope verification, while ledger/events/readiness surfaces keep refs only. The deterministic fake invoker proves prompt construction and pre-provider blocking only; live provider execution is covered by the prompt/orchestrator real Nous sentinel gate. Active send, legal, and governance gates remain non-truncatable, and the builders have no path to send, follow up, appeal, confirm escalation, clear locks, grant approval, or execute domain effects.
+
 This slice uses fake execution only. Approval does not execute tools directly; the runtime resumes only after matching independent human approval and current preview, lock, provenance, and secret-safety checks.
 
 Live provider byte transfer, PRR send/follow-up, legal escalation, export/publication, destructive repair, accepted graph review execution, local runtime routes, CLI approval commands, and browser cockpit UI remain follow-up slices.
