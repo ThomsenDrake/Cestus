@@ -801,3 +801,30 @@ explicit implementation authorization.
 - Merge readiness: merged / coordinator integration commit fb4580d57da9fa6d7a5871ff7bc99bf583f2f0e4; no merge into neo occurred.
 - Archive check: task branch ancestry reaches the coordinator integration branch and the author worktree is clean; retain author and reviewers until final handoffs and durable evidence are reconciled.
 - Supersession: this record supersedes RV-0-U-001 and RV-0-U-002 only for Task 107 review, lane-approval, verification, and merge status; all prior dispatch and repair evidence remains immutable history.
+
+## RV-0-T-005 — Task 105 autonomous recovery checkpoint and fresh section-local repair dispatch
+
+- Recorded at: 2026-07-12T23:57:04Z
+- Role: coordinator recovery checkpoint
+- Lane and wave: T / 0A
+- Task ID and claim: task-105-resident-full-vision-w0-trigger-spec / docs/agentic/claims/task-105-resident-full-vision-w0-trigger-spec.md
+- Task thread ID: /root/task105_trigger_recovery (fresh implementer); a separately fresh reviewer is required after its verified commit
+- Branch and worktree: codex/task-105-resident-full-vision-w0-trigger-recovery / /home/drake/.codex/worktrees/task-105-resident-full-vision-w0-trigger-recovery
+- Base commit and required head: ffb3a52abfbae1595a321c43b948961fa603d961 / one forward-only Task 105 owned-file recovery commit from that base, followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; the coordinator treats reported GPT-5 as satisfying this configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md; docs/agentic/claims/task-105-resident-full-vision-w0-trigger-spec.md
+- Forbidden files: every other task file, including the registry, production, test, runtime, UI, provider, shared-contract, program-plan, template, and acceptance-matrix files
+- Dependencies and required merged commits: Task 105 specification 19a2cef6; first repair b6361ea6; second repair ffb3a52a; final fresh-review defect in RV-0-T-004; no shared contract is frozen and no production dependency applies
+- Approval record: under the Standing Coordinator Delegation at governing spec c7dc10b9, the coordinator supersedes the historical hold and authorizes Task 105 append-only documentation-only registry-history recovery only under plan 0b5726ec. Allowed range is Task 105 only; wave stop is one verified recovery commit plus a separately fresh model-pinned re-review, before Task 113, Wave 0B, provider invocation, production work, dispatch, or merge. The coordinator explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: recovery-dispatched; the fresh worker must append, not revise, the claim and must commit the claim evidence with only its two owned files.
+- RED command and observed failure: the preserved RC-105-02 audit fails its intended counterfactual because deleting `cooldownScopeSelector`, `budgetScopeSelector`, or `policySubjectScope` only from `ProposedTriggerAdmissionScopeV1` still passes; it extracts `scope` but tests those terms with document-global `spec.includes`.
+- GREEN command and observed result: pending fresh recovery audit. It must extract the fenced `ProposedTriggerAdmissionScopeV1` section, assert the exact non-optional persisted selector and policy-subject/subject-reference fields there, and reject in-memory deletion or optionalization counterfactuals before running git diff --check and npm run factory:check.
+- Full verification: pending recovery-owned npm run verify before the commit; earlier green verification is preserved but cannot override the fresh-review defect.
+- Live-provider gate: not-applicable; this documentation-only recovery invokes no provider and does not change provider behavior.
+- Review verdict: pending / a separately fresh reviewer must inspect the recovery diff and run a materially independent section-local/counterfactual check after the recovery commit.
+- Rebase record: the recovery branch starts from preserved head ffb3a52a in a distinct worktree; no rebase applies before review.
+- Merge readiness: not-ready; only the coordinator may integrate an approved recovery branch into the program integration branch, never into neo.
+- Archive check: RV-0-T-001 through RV-0-T-004, the original branch, two repairs, and all review evidence remain retained and immutable; the fresh recovery requires a final handoff, clean worktree, verification, fresh review, and coordinator integration state.
+- Root-cause checkpoint: RV-0-T-004's user-decision hold is superseded by the approved autonomous-recovery contract at c7dc10b9 and 0b5726ec, not deleted. The contract text already contains the required persisted selectors and immutable derivation. The verification proof was weak because its audit queried global document text instead of the extracted persisted scope interface, so the correct recovery is a fresh worker plus a section-local, field-sensitive, in-memory counterfactual audit—not another product-contract expansion.
+- Supersession: this record supersedes RV-0-T-004 only for coordinator recovery status and authorization. RV-0-T-004 remains immutable evidence of the exhausted historical repair sequence and final review defect.
