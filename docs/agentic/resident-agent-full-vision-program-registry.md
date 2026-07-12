@@ -645,3 +645,81 @@ explicit implementation authorization.
 - Rebase record: initial isolated worktree is clean at e165bb45; no rebase applies before independent Lane A specification work.
 - Merge readiness: not-ready; Task 108 cannot create Task 116, production work, invoke a provider, or merge into neo.
 - Archive check: provisioned worker has no final answer, commit, verification, review, or merge state.
+
+## RV-0-U-002 — Task 107 cockpit-audit review repair dispatch
+
+- Recorded at: 2026-07-12T22:04:41Z
+- Role: coordinator
+- Lane and wave: U / 0A
+- Task ID and claim: task-107-resident-full-vision-w0-cockpit-spec / docs/agentic/claims/task-107-resident-full-vision-w0-cockpit-spec.md
+- Task thread ID: /root/task107_cockpit_spec (original author and scoped repairer); /root/review_task107_spec (fresh reviewer)
+- Branch and worktree: codex/task-107-resident-full-vision-w0-cockpit-spec / /home/drake/.codex/worktrees/task-107-resident-full-vision-w0-cockpit-spec
+- Base commit and required head: 754f89466a8321f853b60f4465a989e3bff03d89 / one Task 107 owned-file audit-strengthening repair commit, followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-cockpit-design.md; docs/agentic/claims/task-107-resident-full-vision-w0-cockpit-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 107 claim 7c799318 and specification 754f8946; fresh review finding below; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued scoped repair authorization under the Standing Coordinator Delegation names governing spec @811458d2, plan @68fe8e87, Task 107 cockpit-audit strengthening only, and the Wave 0A re-review stop; it explicitly authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibits Task 115, production work, and a merge into neo.
+- Claim status: repairing; the repairer must append the claim forward-only and stop after a verified repair commit for fresh review.
+- RED command and observed failure: pending repair-owned focused section audit which must fail if strict plain-own-data/adversarial parsing or safe-command-only/no provider-tool invocation clauses are removed or weakened.
+- GREEN command and observed result: pending repair-owned focused section audit, git diff --check, and npm run factory:check after concrete cockpit safety clauses and counterfactual rejection are complete.
+- Full verification: pending repair-owned npm run verify before the repair commit.
+- Live-provider gate: not-applicable; this documentation-only repair invokes no provider and changes no provider behavior.
+- Review verdict: needs-changes / fresh reviewer /root/review_task107_spec proved that the original audit still passed after replacing the strict DTO/parser or supported-command section with unsafe text, even though the prose contract itself met the required boundaries.
+- Rebase record: no rebase applies; the scoped repair starts from reviewed head 754f8946 on the existing isolated Lane U branch.
+- Merge readiness: not-ready; no coordinator lane approval or merge may occur until fresh re-review approves the repair.
+- Archive check: original author final handoff exists, but repair handoff, re-review, integration, and current clean-worktree confirmation remain required.
+- Supersession: this record supersedes RV-0-U-001 only for current review and repair status. The original dispatch remains immutable history.
+
+## RV-0-W-003 — Task 103 second focused revalidation-audit repair dispatch
+
+- Recorded at: 2026-07-12T22:11:06Z
+- Role: coordinator
+- Lane and wave: W / 0A
+- Task ID and claim: task-103-resident-full-vision-w0-wake-spec / docs/agentic/claims/task-103-resident-full-vision-w0-wake-spec.md
+- Task thread ID: /root/task103_wake_repair (repairer); /root/review_task103_repair (fresh re-reviewer)
+- Branch and worktree: codex/task-103-resident-full-vision-w0-wake-spec-repair / /home/drake/.codex/worktrees/task-103-resident-full-vision-w0-wake-spec-repair
+- Base commit and required head: babf8f8466f0702cc96b3ba6645816fcddef4a7a / one final Task 103 owned-file audit-strengthening repair commit, followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md; docs/agentic/claims/task-103-resident-full-vision-w0-wake-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 103 original specification 9581c04d and first repair babf8f84; fresh re-review finding below; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued second focused repair authorization under the Standing Coordinator Delegation names governing spec @811458d2, plan @68fe8e87, Task 103 same-identity revalidation-audit strengthening only, and the Wave 0A re-review stop; it explicitly authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibits Task 111, production work, and a merge into neo.
+- Claim status: repairing; this is the final permitted focused Task 103 repair attempt. The repairer must append the claim forward-only and stop after a verified repair commit for fresh review.
+- RED command and observed failure: pending repair-owned section-local audit which must fail if same-identity revalidation is absent or ordered after recovery/running, or if the post-reconnect active-claim checkpoint/readback contract is removed.
+- GREEN command and observed result: pending repair-owned section-local counterfactual-sensitive audit, git diff --check, and npm run factory:check after same-identity ordering and checkpoint/readback enforcement are complete.
+- Full verification: pending repair-owned npm run verify before the repair commit.
+- Live-provider gate: not-applicable; this documentation-only repair invokes no provider and changes no provider behavior.
+- Review verdict: needs-changes / fresh re-reviewer /root/review_task103_repair found that the first repair audit does not fail when the same-identity revalidation-before-recovering/running requirement is deleted, despite the lifecycle prose being otherwise sound.
+- Rebase record: no rebase applies; the scoped repair starts from reviewed head babf8f84 in the existing isolated Lane W repair worktree.
+- Merge readiness: not-ready; no coordinator lane approval or merge may occur until fresh re-review approves the final focused repair.
+- Archive check: two repair attempts are now tracked; final repair handoff, re-review, integration, and current clean-worktree confirmation remain required.
+- Supersession: this record supersedes RV-0-W-002 only for current repair status. The original dispatch and first repair evidence remain immutable history.
+
+## RV-0-A-008 — Task 108 acceptance-audit review repair dispatch
+
+- Recorded at: 2026-07-12T22:15:00Z
+- Role: coordinator
+- Lane and wave: A / 0A
+- Task ID and claim: task-108-resident-full-vision-w0-acceptance-spec / docs/agentic/claims/task-108-resident-full-vision-w0-acceptance-spec.md
+- Task thread ID: /root/task108_acceptance_spec (original author and scoped repairer); /root/review_task108_spec (fresh reviewer)
+- Branch and worktree: codex/task-108-resident-full-vision-w0-acceptance-spec / /home/drake/.codex/worktrees/task-108-resident-full-vision-w0-acceptance-spec
+- Base commit and required head: eda08b6ca64ea48e405cc5ed83213630f8769d94 / one Task 108 owned-file audit-strengthening repair commit, followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-acceptance-design.md; docs/agentic/claims/task-108-resident-full-vision-w0-acceptance-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 108 claim 6c5e889e and specification eda08b6c; fresh review finding below; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued scoped repair authorization under the Standing Coordinator Delegation names governing spec @811458d2, plan @68fe8e87, Task 108 acceptance-audit strengthening only, and the Wave 0A re-review stop; it explicitly authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibits Task 116, production work, live provider invocation, and a merge into neo.
+- Claim status: repairing; the repairer must append the claim forward-only and stop after a verified repair commit for fresh review.
+- RED command and observed failure: pending repair-owned section-local audit which must fail if the Browser DTO, Browser-Closed, And Tailnet Acceptance section is absent or weakened, including its DTO parity, browser-closed, served-checkout desktop/mobile/tailnet, and control-semantics obligations.
+- GREEN command and observed result: pending repair-owned focused section audit, git diff --check, and npm run factory:check after browser/tailnet counterfactual sensitivity is complete.
+- Full verification: pending repair-owned npm run verify before the repair commit.
+- Live-provider gate: not-applicable; this documentation-only repair invokes no provider and changes no provider behavior.
+- Review verdict: needs-changes / fresh reviewer /root/review_task108_spec proved the original document-global audit still passed after deleting the browser/tailnet acceptance section, even though the architecture prose covered it.
+- Rebase record: no rebase applies; the scoped repair starts from reviewed head eda08b6c on the existing isolated Lane A branch.
+- Merge readiness: not-ready; no coordinator lane approval or merge may occur until fresh re-review approves the repair.
+- Archive check: original author final handoff exists, but repair handoff, re-review, integration, and current clean-worktree confirmation remain required.
+- Supersession: this record supersedes RV-0-A-007 only for current review and repair status. The initial Task 100 records remain unrelated immutable history.
