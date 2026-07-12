@@ -70,7 +70,16 @@ Concurrent workers claim tasks in repo-local files so the assignment survives ch
 
 ## Stop Conditions
 
-Stop when a dependency is unavailable, a verifier fails after two focused repair attempts, a schema choice conflicts with the ontology spec, a storage change risks data loss, or a task needs credentials or unavailable external services.
+Stop the current child task when a dependency is unavailable, a verifier fails
+after two focused repair attempts, a schema choice conflicts with the ontology
+spec, a storage change risks data loss, or a task needs credentials or
+unavailable external services. Return structured evidence to the assigned
+coordinator. Under an approved standing delegation, the coordinator treats
+repeated repair failure as an internal root-cause checkpoint: preserve the
+failed attempts, change tactics or agents, issue a fresh bounded authorization,
+and continue. Ask the user only when recovery requires changing approved
+product scope, safety/truth invariants, accepting data-loss or irreversible
+risk, using unofficial credentials, or accepting changed external behavior.
 
 ## Lessons From Completed Parallel Slices
 
