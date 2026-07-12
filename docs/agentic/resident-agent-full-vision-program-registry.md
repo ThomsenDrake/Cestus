@@ -234,3 +234,55 @@ explicit implementation authorization.
 - Rebase record: initial worktree is clean at bb41ee02d7061f838917d378bccf17a6a6ad9e80; no rebase applies before its independent specification work
 - Merge readiness: not-ready; Task 103 cannot merge or begin a plan/implementation task
 - Archive check: provisioned task has no final answer, commit, verification, review, or merge state
+
+## RV-0-R-002 — Task 101 runtime-composition specification fresh review, lane approval, and integration
+
+- Recorded at: 2026-07-12T20:39:55Z
+- Role: coordinator
+- Lane and wave: R / 0A
+- Task ID and claim: task-101-resident-full-vision-w0-runtime-spec / docs/agentic/claims/task-101-resident-full-vision-w0-runtime-spec.md
+- Task thread ID: 019f57e0-a28b-71b1-97ed-3097291068ef (author); /root/review_task101_repair (fresh reviewer)
+- Branch and worktree: codex/task-101-resident-full-vision-w0-runtime-spec / /home/drake/.codex/worktrees/6bb5/Cestus; integrated on codex/resident-agent-full-vision-program-plan / /home/drake/.codex/worktrees/664b/Cestus
+- Base commit and required head: bb41ee02d7061f838917d378bccf17a6a6ad9e80 / 05e85392367964a3869a55832703f504dd0fe3da
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for this child author, repair, and fresh review session
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-runtime-composition-design.md; docs/agentic/claims/task-101-resident-full-vision-w0-runtime-spec.md
+- Forbidden files: every other task file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 100 controls and integration at bb41ee02d7061f838917d378bccf17a6a6ad9e80; no lane contract was frozen and no production dependency applied
+- Approval record: coordinator-issued scoped authorization under the Standing Coordinator Delegation named governing spec @811458d2, plan @68fe8e87, Task 101 only, and the Wave 0A lane-spec stop; it explicitly authorized superpowers:subagent-driven-development, documentation RED/GREEN, fresh review, and verification-before-completion, and prohibited a merge into neo. This record approves only the completed written Lane R specification; it does not authorize Task 109 or production work.
+- Claim status: merged
+- RED command and observed failure: the Task 101 focused documentation audit exited 1 before the specification existed, reporting all ten required design families absent; the repair audit then exited 1 before the readiness and handoff-store repair, reporting all five required assertions absent.
+- GREEN command and observed result: the Task 101 and repair focused audits exited 0; the repair audit printed `GREEN: readiness is structurally and invocation distinct; handoff material/manifest persistence is type-distinct and order-verified`; `git diff --check` and `npm run factory:check` exited 0.
+- Full verification: NODE_NO_WARNINGS=1 npm run verify / exit 0 on the integrated checkout: typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite built with its existing chunk-size warning; factory-readiness passed.
+- Live-provider gate: not-applicable for this specification-only lane; the Lane R specification defines later provider-bearing acceptance without invoking a provider here.
+- Review verdict: approved / independent fresh reviewer /root/review_task101_repair approved repair commit 05e85392367964a3869a55832703f504dd0fe3da; the coordinator reviewed scope, ancestry, and fresh integrated verification before recording Lane R approval.
+- Rebase record: no rebase was needed; bb41ee02d7061f838917d378bccf17a6a6ad9e80 was an ancestor of the reviewed task head, and conflict-free merge commit 639cec709f0139463c14c98803a920c298aea96b integrated it after registry dispatch commit 82669edec0b36c5b73f5d462f4bf77c3a554c059.
+- Merge readiness: merged / coordinator integration commit 639cec709f0139463c14c98803a920c298aea96b; no merge into neo occurred.
+- Archive check: task branch ancestry reaches the coordinator integration branch and the author worktree is clean; do not archive until the author/reviewer final handoffs and this registry record are reconciled by the coordinator.
+- Supersession: this record supersedes RV-0-R-001 only for Task 101 review, lane-approval, verification, and merge status; the dispatch record remains immutable evidence.
+
+## RV-0-H-002 — Task 102 durable-handoffs specification fresh review, lane approval, and integration
+
+- Recorded at: 2026-07-12T20:39:55Z
+- Role: coordinator
+- Lane and wave: H / 0A
+- Task ID and claim: task-102-resident-full-vision-w0-handoff-spec / docs/agentic/claims/task-102-resident-full-vision-w0-handoff-spec.md
+- Task thread ID: 019f57e0-a408-7c02-9f1b-9d2f25cc83af (author); /root/review_task102_repair (fresh reviewer)
+- Branch and worktree: codex/task-102-resident-full-vision-w0-handoff-spec / /home/drake/.codex/worktrees/f3a3/Cestus; integrated on codex/resident-agent-full-vision-program-plan / /home/drake/.codex/worktrees/664b/Cestus
+- Base commit and required head: bb41ee02d7061f838917d378bccf17a6a6ad9e80 / 5a80480c93920a37df45bd606ea12e0fe57e1e2d
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for this child author, repair, and fresh review session
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-durable-handoffs-design.md; docs/agentic/claims/task-102-resident-full-vision-w0-handoff-spec.md
+- Forbidden files: every other task file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 100 controls and integration at bb41ee02d7061f838917d378bccf17a6a6ad9e80; no lane contract was frozen and no production dependency applied
+- Approval record: coordinator-issued scoped authorization under the Standing Coordinator Delegation named governing spec @811458d2, plan @68fe8e87, Task 102 only, and the Wave 0A lane-spec stop; it explicitly authorized superpowers:subagent-driven-development, documentation RED/GREEN, fresh review, and verification-before-completion, and prohibited a merge into neo. This record approves only the completed written Lane H specification; it does not authorize Task 110 or production work.
+- Claim status: merged
+- RED command and observed failure: the Task 102 coverage audit exited 1 before the specification existed; the RC-102-01 reproducible repair audit then exited 1 before its append-only correction, authority-bound v2 manifest, strict v1 replay boundary, lifecycle, provenance, and evidence requirements existed.
+- GREEN command and observed result: the Task 102 audit and RC-102-01 repair audit exited 0; the repair audit printed `GREEN: Task 102 repair audit passed (11 assertions).`; `git diff --check` and `npm run factory:check` exited 0.
+- Full verification: NODE_NO_WARNINGS=1 npm run verify / exit 0 on the integrated checkout: typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite built with its existing chunk-size warning; factory-readiness passed.
+- Live-provider gate: not-applicable for this specification-only lane; the Lane H specification defines later handoff/provider acceptance without invoking a provider here.
+- Review verdict: approved / independent fresh reviewer /root/review_task102_repair approved repair commit 5a80480c93920a37df45bd606ea12e0fe57e1e2d; the coordinator reviewed scope, ancestry, and fresh integrated verification before recording Lane H approval.
+- Rebase record: no rebase was needed; bb41ee02d7061f838917d378bccf17a6a6ad9e80 was an ancestor of the reviewed task head, and conflict-free merge commit 391e96fa32db4ecb38bc0bb19ebd859f1d3ec817 integrated it after Task 101 without overlapping-file changes.
+- Merge readiness: merged / coordinator integration commit 391e96fa32db4ecb38bc0bb19ebd859f1d3ec817; no merge into neo occurred.
+- Archive check: task branch ancestry reaches the coordinator integration branch and the author worktree is clean; do not archive until the author/reviewer final handoffs and this registry record are reconciled by the coordinator.
+- Supersession: this record supersedes RV-0-H-001 only for Task 102 review, lane-approval, verification, and merge status; the dispatch record remains immutable evidence.
