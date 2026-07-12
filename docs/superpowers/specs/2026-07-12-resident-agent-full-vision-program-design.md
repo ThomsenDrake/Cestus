@@ -355,6 +355,48 @@ Every child task, implementer, repair task, and reviewer uses GPT-5.6 Terra with
 Extra High reasoning. The task must stop if the destination host cannot provide
 that exact configuration. Silent fallback is forbidden.
 
+### Standing Coordinator Delegation
+
+Approval of this umbrella program and its governing implementation plan grants
+the dedicated program coordinator standing authority to operate the approved
+factory without returning routine checkpoints to the user. Within an approved
+wave and its stated file ownership, the coordinator may:
+
+- Issue the exact implementation-authorization message required by this spec.
+- Approve and dispatch a focused review repair in response to a reviewer
+  finding.
+- Reuse or replace stale implementers and reviewers.
+- Restore lockfile-defined dependencies in isolated worktrees.
+- Run coordinator-controlled network, live-provider, socket, IPC, and Git
+  metadata gates.
+- Rebase dependent worktrees after contract merges.
+- Advance to the next task or lane whose recorded dependencies and approval
+  gates are already satisfied.
+- Perform task review, merge-readiness, cleanup, and archival administration.
+
+The coordinator must still send and record a complete authorization message to
+each implementation or repair child. Standing delegation changes who supplies
+that message; it does not weaken the requirement to name the exact spec, plan,
+task range, wave stop, `superpowers:subagent-driven-development`, TDD, fresh
+review, verification, model configuration, and no-self-merge rule.
+
+The coordinator escalates to the user only when work would require:
+
+- A new product decision not governed by the approved umbrella design.
+- Scope outside the approved program or current wave.
+- A changed safety, approval, portable-storage, or ontology-truth invariant.
+- Data-loss risk or an irreversible recovery decision.
+- Unofficial credential or subscription-token extraction.
+- Acceptance of a provider limitation that changes promised product behavior.
+- More than two focused repair attempts without recovery.
+- Proceeding without GPT-5.6 Terra Extra High when that configuration is still
+  mandated.
+
+Ordinary `needs-changes` reviews, missing dependencies, stale reviewers,
+sandbox restrictions, coordinator live gates, merge conflicts with an
+unambiguous contract-preserving resolution, and documentation corrections are
+not user escalation conditions.
+
 Every implementation task follows:
 
 ```text
