@@ -233,3 +233,110 @@ console.log(`GREEN: Task 104 descriptor-binding audit passed (${records.length +
   build, and factory-readiness gates.
 - Repair status: ready-for-review. Fresh model-pinned re-review remains
   mandatory; no Task 112, production work, dispatch, or merge is authorized.
+
+## Repair RC-104-02 — Binding-Audit Precision Repair
+
+This final permitted focused repair strengthens only the Task 104
+documentation audit. It preserves RC-104-01-B's accepted durable-record
+contract and all previous evidence; it supersedes the earlier audit's
+document-wide descriptor and optional-field checks.
+
+- Repair authorization: coordinator-issued Task 104 documentation-audit
+  strengthening only, limited to the two owned documentation files. It forbids
+  Task 112, production work, dispatch, and merge.
+- Review trigger: fresh re-review found that RC-104-01-B accepted a missing
+  descriptor-ID/version/hash equality clause and optional fields such as
+  `readonly contextPackRefs?:`.
+- Repairer: Codex, Task 104 Lane L final focused review repairer, on the
+  user-confirmed GPT-5.6 Terra / Extra High configuration.
+- Repair claimed at: `2026-07-12T21:21:15Z`.
+
+### Precise binding RED/GREEN audit
+
+```bash
+node --input-type=module --eval '
+import fs from "node:fs";
+const spec = fs.readFileSync("docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md", "utf8");
+const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const block = (document, name) => {
+  const start = document.indexOf(`interface ${name}`);
+  const end = document.indexOf("\n}", start);
+  return start < 0 || end < 0 ? "" : document.slice(start, end + 2);
+};
+const section = (document, name) => {
+  const start = document.indexOf(`## ${name}`);
+  const end = document.indexOf("\n## ", start + 1);
+  return start < 0 ? "" : document.slice(start, end < 0 ? document.length : end);
+};
+const replaceInBlock = (document, name, from, to) => {
+  const start = document.indexOf(`interface ${name}`);
+  const end = document.indexOf("\n}", start);
+  if (start < 0 || end < 0) return document;
+  const value = document.slice(start, end + 2);
+  return document.slice(0, start) + value.replace(from, to) + document.slice(end + 2);
+};
+const direct = (value, field, type) => new RegExp(`(^|\\n)\\s*readonly\\s+${escape(field)}\\s*:\\s*${escape(type)};`).test(value);
+const recordFields = [
+  ["taskId", "string"], ["attemptId", "string"], ["runId", "string"],
+  ["residentAgentId", "\"agent_default\""], ["runMode", "ResidentRunMode"],
+  ["workflowDescriptor", "ResidentWorkflowDescriptorBinding"],
+  ["planRecordEventId", "string"], ["policyVersion", "string"],
+  ["policyHash", "`sha256:${string}`"], ["sourceEventIds", "readonly string[]"],
+  ["contextPackRefs", "readonly { readonly contextPackId: string; readonly contentHash: `sha256:${string}` }[]"],
+  ["budget", "{ readonly consumed: ResidentLoopBudgetUsage; readonly remaining: ResidentLoopBudgetUsage }"],
+  ["authority", "ResidentLoopAuthorityBinding"], ["causationId", "string"],
+  ["correlationId", "string"]
+];
+const inspect = (document) => {
+  const missing = [];
+  for (const [label, name] of [["observation", "ResidentObservationRecord"], ["tool-step", "ResidentToolStepRecord"], ["result", "ResidentLoopTerminalOrResumableResult"]]) {
+    const value = block(document, name);
+    for (const [field, type] of recordFields) if (!direct(value, field, type)) missing.push(`${label}.${field}`);
+  }
+  if (!direct(block(document, "ResidentPlanRecord"), "workflowDescriptor", "ResidentWorkflowDescriptorBinding")) missing.push("plan.workflowDescriptor");
+  const descriptor = block(document, "ResidentWorkflowDescriptorBinding");
+  for (const [field, type] of [["workflowDescriptorId", "string"], ["workflowDescriptorVersion", "string"], ["workflowDescriptorHash", "`sha256:${string}`"]]) if (!direct(descriptor, field, type)) missing.push(`descriptor.${field}`);
+  const readback = section(document, "Plan-Binding Readback And Equality");
+  const clauses = [
+    ["exact mounted-ledger plan readback", "must read the exact `planRecordEventId` from the authoritative mounted\nledger"],
+    ["exact descriptor ID/version/hash equality", "`workflowDescriptor` equality includes its exact descriptor ID, version, and\nhash;"],
+    ["descriptor family/version rejection", "matching only the run mode, a descriptor family, or a compatible version\nis invalid."],
+    ["fail-closed equality", "causation/correlation fails closed before the append or effect"]
+  ];
+  for (const [name, clause] of clauses) if (!readback.includes(clause)) missing.push(`plan-readback.${name}`);
+  return missing;
+};
+const actual = inspect(spec);
+const descriptorClause = "`workflowDescriptor` equality includes its exact descriptor ID, version, and\nhash; matching only the run mode, a descriptor family, or a compatible version\nis invalid.\n\n";
+const counterfactuals = [
+  ["optional observation contextPackRefs", replaceInBlock(spec, "ResidentObservationRecord", "readonly contextPackRefs:", "readonly contextPackRefs?:")],
+  ["optional result sourceEventIds", replaceInBlock(spec, "ResidentLoopTerminalOrResumableResult", "readonly sourceEventIds: readonly string[];", "readonly sourceEventIds?: readonly string[];")],
+  ["missing descriptor equality clause", spec.replace(descriptorClause, "")]
+];
+const missed = counterfactuals.filter(([, candidate]) => inspect(candidate).length === 0).map(([name]) => name);
+if (actual.length > 0 || missed.length > 0) {
+  console.error(`RED: Task 104 precise binding audit missing: ${[...actual, ...missed.map((name) => `counterfactual:${name}`)].join(", ")}`);
+  process.exit(1);
+}
+console.log(`GREEN: Task 104 precise binding audit passed (3 records; ${counterfactuals.length} counterfactual omissions rejected).`);
+'
+```
+
+- RED: before RC-104-02, a reproduction of RC-104-01-B's legacy audit exited
+  1 with `RED: RC-104-01-B legacy audit accepts missing descriptor equality and
+  optional contextPackRefs.` The legacy audit therefore could not prove the
+  intended contract.
+- Counterfactual RED requirements: the precise audit must reject (1) optional
+  observation `contextPackRefs`, (2) optional result `sourceEventIds`, and
+  (3) removal of the exact descriptor ID/version/hash equality clause.
+- GREEN: the exact audit exited 0 with `GREEN: Task 104 precise binding audit
+  passed (3 records; 3 counterfactual omissions rejected).`
+- Whitespace: `git diff --check` and staged `git diff --cached --check` both
+  exited 0 with no output.
+- Factory readiness: `npm run factory:check` exited 0 with
+  `factory-readiness passed`.
+- Full verification: `npm run verify` exited 0 after its typecheck, test, UI
+  build, and factory-readiness gates.
+- Repair status: ready-for-review. This is the final permitted focused Task 104
+  repair attempt; fresh model-pinned re-review remains required and no Task
+  112, production work, dispatch, or merge is authorized.
