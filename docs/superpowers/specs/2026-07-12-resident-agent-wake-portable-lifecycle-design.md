@@ -565,3 +565,144 @@ two focused repair attempts without verifier recovery.
   versioned secret-safe contracts with no fabricated durable evidence.
 - Route, owner, consumer, test, live acceptance, rebase, merge, and stop
   boundaries align with the governing program plan.
+
+## Review Repair: Durable Active-Claim Reconciliation After Reconnect
+
+This append-only review repair makes the governing portable-workspace
+disconnect requirement executable without changing the original Task 103
+scope. It remains a proposed contract until Task 117 freezes names, schemas,
+and the sole production owner.
+
+### Outage Observation Without a Fallback Append
+
+When authority invalidates while a wake cycle has an active orchestration
+claim, the supervisor takes one bounded, normalized, secret-safe ephemeral
+`WorkspaceOutageObservation`. It binds the expected workspace ID, opaque
+supervisor epoch, exact `claimId`, exact `attemptId`, the prior mounted claim
+event/lease reference, the last valid authority evidence, the last valid
+high-water proof, policy version/digest, lock-state digest, causation ID,
+correlation ID, closed outage category, and `outageObservedAt` timestamp.
+The snapshot is only admissible when all of those facts came from mounted
+readback before authority invalidated; a missing exact claim or attempt is a
+fail-closed diagnostic, not permission to guess a release.
+
+No fallback append occurs while the mount is unavailable. In particular, the
+ephemeral observation does not append a release, checkpoint, diagnostic,
+queue item, retry journal, projection update, or artifact to internal storage.
+It gives the blocked result an explicitly ephemeral diagnostic marker and
+invalidates the old authority token. The process may retain this one bounded
+observation only until same-identity revalidation determines whether durable
+reconciliation is possible; it cannot use the observation as a replay source
+or a synthetic continuation.
+
+### Same-Identity Revalidation And Durable Reconciliation
+
+Before any claim release, checkpoint, wake, provider call, tool call, or
+artifact write after an outage, `WorkspaceAvailabilityAuthority.revalidate()`
+must grant a new authority for the same workspace ID. The new authority must
+read back the manifest identity, resident identity binding, mounted ledger and
+artifact-store identity, non-regressed high-water proof, policy version/digest,
+and active lock-state digest. It must also rebuild the exact claim and attempt
+from the mounted ledger. A different identity, unreadable mount, missing claim
+or attempt, changed policy/locks, swapped artifact store, regressed high-water,
+or failed readback remains `workspace-unavailable` or its more specific
+fail-closed category and performs no append.
+
+After successful same-identity revalidation, and before the supervisor may
+enter `recovering` or `running`, the authoritative claim service must append
+and read back exactly one durable active-claim reconciliation record for the
+observed active claim/attempt. The record has resumable
+`workspace-unavailable` state and one of these dispositions:
+
+- `released`: the normal orchestration claim-release transition releases the
+  exact active claim/attempt for ordinary later acquisition.
+- `checkpointed`: when a release is not legal for the reconstructed claim
+  state, an explicit workspace-unavailable checkpoint blocks effect execution
+  and records the exact resume boundary for the existing claim service.
+
+The proposed freeze input is an
+`agent.wake.workspace-unavailable.checkpointed` record with a literal v1
+schema version and a `claimDisposition` of `"released" | "checkpointed"`.
+Task 117 may freeze a separately named claim-release event for the first
+disposition, but it must preserve the same fields and readback rule. The
+record must bind:
+
+```ts
+interface WorkspaceUnavailableClaimReconciliationV1 {
+  readonly schemaVersion: "resident-wake-workspace-unavailable.v1";
+  readonly outcome: "workspace-unavailable";
+  readonly resumable: true;
+  readonly claimDisposition: "released" | "checkpointed";
+  readonly workspaceId: string;
+  readonly residentId: "agent_default";
+  readonly supervisorEpoch: string;
+  readonly claimId: string;
+  readonly attemptId: string;
+  readonly outageObservation: {
+    readonly safeObservationId: string;
+    readonly outageObservedAt: string;
+    readonly category: "workspace-unavailable" | "workspace-identity-mismatch" | "workspace-readback-failed";
+    readonly priorClaimEventId: string;
+    readonly priorClaimLeaseId: string;
+    readonly priorAuthorityEvidenceId: string;
+    readonly highWaterBeforeOutage: string;
+  };
+  readonly causation: {
+    readonly causationId: string;
+    readonly correlationId: string;
+  };
+  readonly revalidatedAuthority: {
+    readonly identityEventId: string;
+    readonly authorityEvidenceId: string;
+    readonly highWaterAfterRevalidation: string;
+    readonly policyVersion: string;
+    readonly policyDigest: string;
+    readonly lockStateDigest: string;
+    readonly supervisorLeaseEventId: string;
+  };
+  readonly reconciliationIdempotencyKey: string;
+}
+```
+
+The idempotency key is derived from the workspace ID, supervisor epoch,
+claimId, attemptId, safe outage-observation ID, and prior claim event. A retry
+first reads the mounted ledger for that exact key; it reuses only a matching
+readback and otherwise appends once. The completion result is valid only after
+the appended release or workspace-unavailable checkpoint and its exact mounted
+ledger readback agree on the claim/attempt, causation, authority evidence,
+high-water, policy, and locks. An in-memory release result, a return value
+without readback, or a generic reconnect diagnostic is not reconciliation.
+
+### Normal Claim Recovery
+
+Normal claim recovery begins only after that durable reconciliation readback.
+The supervisor reconstructs the task, claim, attempt, approvals, locks,
+budgets, handoffs, and artifacts from the mounted ledger, then uses the
+ordinary orchestration claim-acquisition path. It never reuses the invalidated
+authority, pre-outage callback, prompt, provider result, in-memory claim, or
+old execution lease. A released claim can be acquired as a new normal attempt;
+a checkpointed claim follows the existing claim service's explicit resumable
+path. Both paths re-run normal approval, provenance, freshness, lock, budget,
+and authority checks before any later effect boundary.
+
+### Repair Deterministic Acceptance
+
+The focused W deterministic suite must include a fixture with one mounted
+active claim and attempt, a captured last-valid authority/high-water/policy/
+lock snapshot, and an injected mount loss. It proves all of the following:
+
+1. Mount loss records only the bounded ephemeral observation and makes zero
+   append calls to the mounted ledger or every internal fallback store.
+2. Reconnect with the same identity and matching mounted authority facts
+   appends and reads back exactly one released or workspace-unavailable
+   checkpoint record that contains the exact claimId, attemptId,
+   outageObservedAt, causation/correlation, authority evidence, both
+   high-water proofs, policy version/digest, and lock-state digest.
+3. A duplicate reconnect signal with the same idempotency key reads the prior
+   record and cannot append a second release/checkpoint.
+4. An identity mismatch, changed policy or lock digest, regressed high-water,
+   swapped artifact root, unreadable mount, or missing claim/attempt performs
+   no reconciliation append and leaves normal wake/effects blocked.
+5. Only after the durable reconciliation readback does recovery obtain work by
+   the normal claim recovery path; the test proves that no pre-outage callback
+   or execution lease is reused.
