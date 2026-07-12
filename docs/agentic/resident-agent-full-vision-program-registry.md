@@ -361,3 +361,29 @@ explicit implementation authorization.
 - Rebase record: initial isolated worktree is clean at 52bc6b6dc81373d6026e7465becde75bd1c6448e; no rebase applies before independent Lane P specification work.
 - Merge readiness: not-ready; Task 106 cannot create Task 114, production work, or merge into neo.
 - Archive check: provisioned worker has no final answer, commit, verification, review, or merge state.
+
+## RV-0-P-002 — Task 106 stale-author replacement dispatch
+
+- Recorded at: 2026-07-12T20:59:33Z
+- Role: coordinator
+- Lane and wave: P / 0A
+- Task ID and claim: task-106-resident-full-vision-w0-provider-spec / docs/agentic/claims/task-106-resident-full-vision-w0-provider-spec.md
+- Task thread ID: /root/task106_provider_spec (interrupted after its claim-only commit); /root/task106_provider_recovery (replacement author)
+- Branch and worktree: codex/task-106-resident-full-vision-w0-provider-spec-recovery / /home/drake/.codex/worktrees/task-106-resident-full-vision-w0-provider-spec-recovery
+- Base commit and required head: 6fb76fb1d0a13d3e8f2b38b059cd07f39d036636 / one replacement-owned Task 106 specification commit, pending fresh review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md; docs/agentic/claims/task-106-resident-full-vision-w0-provider-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: the original claim-only commit 6fb76fb1d0a13d3e8f2b38b059cd07f39d036636; Task 100 program controls and the current approved Lane R and H records; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued replacement authorization under the Standing Coordinator Delegation names governing spec @811458d2, plan @68fe8e87, Task 106 only, and the Wave 0A lane-spec stop; it explicitly authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion; it prohibits Task 114, production work, and a merge into neo.
+- Claim status: replacement dispatched; the replacement must preserve the original claim evidence and append its forward-only handoff/status record before changing the owned specification.
+- RED command and observed failure: pending replacement-owned focused documentation audit before the Lane P specification exists.
+- GREEN command and observed result: pending replacement-owned focused documentation audit, git diff --check, and npm run factory:check after the specification is complete.
+- Full verification: pending replacement-owned npm run verify before the task commit.
+- Live-provider gate: not-applicable for this specification-only task; it must define the later real approved Nous live acceptance and credential posture without invoking a provider here.
+- Review verdict: pending / fresh Task 106 spec review after the replacement commit.
+- Rebase record: no rebase is needed for the replacement because it begins at the original claim-only commit; the original in-progress worktree is preserved without rewrite or mutation.
+- Merge readiness: not-ready; Task 106 cannot create Task 114, production work, invoke a provider, or merge into neo.
+- Archive check: the original author is retained as historical claim evidence; neither original nor replacement may be archived until their final handoffs, clean worktrees, ancestry, verification, review, and coordinator merge state agree.
+- Supersession: this record supersedes RV-0-P-001 only for worker assignment and current claim status. The initial dispatch, claim, and original author evidence remain append-only history.
