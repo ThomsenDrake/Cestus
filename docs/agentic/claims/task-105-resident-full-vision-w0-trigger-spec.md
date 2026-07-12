@@ -3,7 +3,7 @@
 - Governing specification: `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e`
 - Governing plan: `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab`
 - Task and lane: Task 105 / T / Wave 0A
-- Status: claimed
+- Status: ready-for-review
 - Branch: `codex/task-105-resident-full-vision-w0-trigger-spec`
 - Worktree: `/home/drake/.codex/worktrees/task-105-resident-full-vision-w0-trigger-spec`
 - Base commit: `52bc6b6dc81373d6026e7465becde75bd1c6448e`
@@ -66,3 +66,86 @@ Every other tracked file is forbidden.
 This claim is intentionally committed before any Task 105 specification edit.
 The next claim update records the reproducible RED/GREEN evidence, self-review,
 verification, and review handoff.
+
+## Documentation RED Evidence
+
+- RED command: an inline Node coverage audit of
+  `docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md`
+  and this claim requiring the Task 105 scope, durable dedupe/readback,
+  cooldown/budget, high-water/no-advance rule, source provenance,
+  no-prompt/no-effect boundary, single-resident adoption, mounted authority/no
+  fallback, handoff/diagnostic, pre-CF-1 ownership, initial-family/failure, and
+  out-of-scope team coverage.
+- Observed RED result: exit 1 before the specification existed with
+  `RED: Task 105 proactive-trigger specification missing: durable deduplicated
+  request contract, cooldown and budget accounting, high-water correctness,
+  source provenance, no prompt and no effect boundary, single resident
+  adoption, mounted authority and no fallback, handoff and diagnostics,
+  pre-CF-1 ownership, initial trigger families and failures, out-of-scope team
+  posture`.
+
+## Documentation GREEN, Verification, and Self-Review
+
+The following reproducible audit is the Task 105 documentation RED/GREEN
+command. It reads only the owned specification and claim.
+
+```bash
+node --input-type=module --eval '
+import fs from "node:fs";
+const specPath = "docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md";
+const claimPath = "docs/agentic/claims/task-105-resident-full-vision-w0-trigger-spec.md";
+const spec = fs.existsSync(specPath) ? fs.readFileSync(specPath, "utf8") : "";
+const claim = fs.readFileSync(claimPath, "utf8");
+const required = [
+  ["Task 105 claim and scope", claim.includes("Task 105 / T / Wave 0A") && claim.includes("Every other tracked file is forbidden")],
+  ["durable deduplicated request contract", spec.includes("## Durable, Deduplicated Trigger Requests") && spec.includes("dedupeKey") && spec.includes("readback")],
+  ["cooldown and budget accounting", spec.includes("## Cooldown and Budget Policy") && spec.includes("cooldown") && spec.includes("budget")],
+  ["high-water correctness", spec.includes("## Source Provenance and High-Water Marks") && spec.includes("high-water") && spec.includes("does not advance")],
+  ["source provenance", spec.includes("sourceEventId") && spec.includes("contentHash") && spec.includes("policyVersion")],
+  ["no prompt and no effect boundary", spec.includes("## No-Prompt, No-Effect Boundary") && spec.includes("model invocation") && spec.includes("domain effect")],
+  ["single resident adoption", spec.includes("## Safe Adoption by the One Resident") && spec.includes("agent_default") && spec.includes("independently governed")],
+  ["mounted authority and no fallback", spec.includes("## Workspace Authority, Durability, and Recovery") && spec.includes("no fallback") && spec.includes("workspace identity")],
+  ["handoff and diagnostics", spec.includes("durable handoff") && spec.includes("secret-safe")],
+  ["pre-CF-1 ownership", spec.includes("## Pre-CF-1 Interface and Ownership Boundary") && spec.includes("Task 117") && spec.includes("non-canonical")],
+  ["initial trigger families and failures", spec.includes("## Initial Trigger Families") && spec.includes("## Failure Injection and Later Verification") && spec.includes("duplicate") && spec.includes("stale")],
+  ["out-of-scope team posture", spec.includes("Newsroom") && spec.includes("team") && spec.includes("out of scope")]
+];
+const missing = required.filter(([, ok]) => !ok).map(([name]) => name);
+if (missing.length) {
+  console.error(`RED: Task 105 proactive-trigger specification missing: ${missing.join(", ")}`);
+  process.exit(1);
+}
+console.log(`GREEN: Task 105 proactive-trigger coverage audit passed (${required.length} assertions).`);
+'
+```
+
+- GREEN result: the audit exited 0 with
+  `GREEN: Task 105 proactive-trigger coverage audit passed (12 assertions).`
+- Dependency restoration: this isolated worktree initially lacked its
+  lockfile-pinned tools (`tsc: command not found`); `npm ci --ignore-scripts`
+  restored them without changing tracked files.
+- Whitespace: `git diff --check` exited 0 with no output.
+- Factory readiness: `npm run factory:check` exited 0 with
+  `factory-readiness passed`.
+- Full verification: `npm run verify` exited 0 with typecheck passed, 189 test
+  files passed with 3 skipped, 2,228 tests passed with 5 skipped, a successful
+  Vite production build (with the existing chunk-size warning), and
+  `factory-readiness passed`.
+- Live-provider gate: not applicable. This specification forbids model and
+  provider invocation; later implementation must remain deterministic and
+  credential-free at the trigger boundary.
+- Self-review: the specification proposes only pre-CF-1 interfaces; makes
+  `agent_default`, mounted-workspace authority, append-only/read-back-only
+  durability, exact source provenance, replayable high-water state,
+  no-fallback storage, secret-safe diagnostics, independently governed
+  approval consumption, and later durable handoff readback explicit; assigns
+  every cross-lane boundary without taking other-lane ownership; and excludes
+  newsroom/team scope. No placeholder, implementation-plan, Task 113, or
+  production-code authorization is present.
+
+## Review Handoff and Stop
+
+Fresh model-pinned review is required. This author does not self-approve,
+create an implementation plan, begin Task 113, dispatch implementation work,
+or merge into `neo` or an integration branch. Stop at the written Lane T
+specification approval gate.
