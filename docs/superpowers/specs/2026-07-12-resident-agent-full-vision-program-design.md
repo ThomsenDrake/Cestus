@@ -378,6 +378,24 @@ files. They do not merge themselves. The coordinator owns rebases, merge order,
 unrestricted verifier reruns, live provider gates, worktree cleanup, thread
 archival, and final push decisions.
 
+An implementation plan approval is not implicit permission to choose an
+execution process. Every coordinator or user approval message that authorizes a
+child task to begin implementation must explicitly state that the approved plan
+may be executed using `superpowers:subagent-driven-development` when that skill
+is relevant. The approval must identify the exact approved spec and plan, the
+allowed task range, and any wave stop point. A child task must remain at its
+implementation gate when the approval message omits this explicit process
+authorization.
+
+The standard approval wording is:
+
+```text
+The referenced spec and implementation plan are approved. Execute the approved
+task range using superpowers:subagent-driven-development, test-driven
+development, fresh task reviews, and verification-before-completion. Stop at
+the stated wave boundary and do not merge into neo.
+```
+
 ## Merge Gates
 
 - Merge shared event and DTO contracts before their consumers.
@@ -443,4 +461,3 @@ The program is complete when:
   visibly unavailable with evidence-backed feasibility records.
 - Full verification, factory readiness, portable failure injection, live
   provider checks, and tailnet UI verification pass from the served checkout.
-
