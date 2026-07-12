@@ -723,3 +723,29 @@ explicit implementation authorization.
 - Merge readiness: not-ready; no coordinator lane approval or merge may occur until fresh re-review approves the repair.
 - Archive check: original author final handoff exists, but repair handoff, re-review, integration, and current clean-worktree confirmation remain required.
 - Supersession: this record supersedes RV-0-A-007 only for current review and repair status. The initial Task 100 records remain unrelated immutable history.
+
+## RV-0-U-003 — Task 107 cockpit specification fresh re-review, lane approval, and integration
+
+- Recorded at: 2026-07-12T22:20:07Z
+- Role: coordinator
+- Lane and wave: U / 0A
+- Task ID and claim: task-107-resident-full-vision-w0-cockpit-spec / docs/agentic/claims/task-107-resident-full-vision-w0-cockpit-spec.md
+- Task thread ID: /root/task107_cockpit_spec (author and repairer); /root/review_task107_spec (initial reviewer); /root/review_task107_repair (fresh re-reviewer)
+- Branch and worktree: codex/task-107-resident-full-vision-w0-cockpit-spec / /home/drake/.codex/worktrees/task-107-resident-full-vision-w0-cockpit-spec; integrated on codex/resident-agent-full-vision-program-plan / /home/drake/.codex/worktrees/664b/Cestus
+- Base commit and required head: e3fd8533 / 005d7a02e318bffb79299291d33b55c0176f4ea6
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for author, repair, and fresh review sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-cockpit-design.md; docs/agentic/claims/task-107-resident-full-vision-w0-cockpit-spec.md
+- Forbidden files: every other task file, including production, test, runtime, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 107 claim 7c799318; specification 754f8946; audit repair 005d7a02; no shared contract was frozen and no production dependency applied
+- Approval record: coordinator-issued Task 107 and scoped-repair authorizations under the Standing Coordinator Delegation named governing spec @811458d2, plan @68fe8e87, and the Wave 0A lane-spec/re-review stops; each explicitly authorized superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibited Task 115, production work, provider invocation, and a merge into neo. This record approves only the completed written Lane U specification.
+- Claim status: merged
+- RED command and observed failure: the original loose audit was shown to pass after unsafe parser or command-section substitutions; repair RED then failed before section-local extractors, concrete clause checks, and eight counterfactual rejections existed.
+- GREEN command and observed result: the final repair audit printed `GREEN: Task 107 counterfactual cockpit audit passed (8 unsafe substitutions rejected).`; git diff --check and npm run factory:check exited 0.
+- Full verification: NODE_NO_WARNINGS=1 npm run verify / exit 0 on the integrated checkout: typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite built with its existing chunk-size warning; factory-readiness passed.
+- Live-provider gate: not-applicable for this specification-only lane; its design defines later provider setup/cockpit acceptance without invoking a provider here.
+- Review verdict: approved / independent fresh reviewer /root/review_task107_repair approved 005d7a02e318bffb79299291d33b55c0176f4ea6 after verifying concrete parser, command, provider, readback, authority, and no-fallback audit clauses with eight rejected counterfactuals.
+- Rebase record: no rebase was needed; the reviewed Lane U branch was additive and conflict-free merge commit fb4580d57da9fa6d7a5871ff7bc99bf583f2f0e4 integrated it after current coordinator records.
+- Merge readiness: merged / coordinator integration commit fb4580d57da9fa6d7a5871ff7bc99bf583f2f0e4; no merge into neo occurred.
+- Archive check: task branch ancestry reaches the coordinator integration branch and the author worktree is clean; retain author and reviewers until final handoffs and durable evidence are reconciled.
+- Supersession: this record supersedes RV-0-U-001 and RV-0-U-002 only for Task 107 review, lane-approval, verification, and merge status; all prior dispatch and repair evidence remains immutable history.
