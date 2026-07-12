@@ -698,6 +698,32 @@ explicit implementation authorization.
 - Archive check: two repair attempts are now tracked; final repair handoff, re-review, integration, and current clean-worktree confirmation remain required.
 - Supersession: this record supersedes RV-0-W-002 only for current repair status. The original dispatch and first repair evidence remain immutable history.
 
+## RV-0-W-004 — Task 103 wake-lifecycle specification final review, lane approval, and integration
+
+- Recorded at: 2026-07-12T22:24:58Z
+- Role: coordinator
+- Lane and wave: W / 0A
+- Task ID and claim: task-103-resident-full-vision-w0-wake-spec / docs/agentic/claims/task-103-resident-full-vision-w0-wake-spec.md
+- Task thread ID: 019f57e0-a36d-7970-b766-5388149c673d (original author); /root/task103_wake_repair (repairer); /root/review_task103_spec and /root/review_task103_repair (prior fresh reviewers); /root/task103_wake_repair/review_task103_final_repair (final fresh reviewer)
+- Branch and worktree: codex/task-103-resident-full-vision-w0-wake-spec-repair / /home/drake/.codex/worktrees/task-103-resident-full-vision-w0-wake-spec-repair; integrated on codex/resident-agent-full-vision-program-plan / /home/drake/.codex/worktrees/664b/Cestus
+- Base commit and required head: bb41ee02d7061f838917d378bccf17a6a6ad9e80 / 2620e51e
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for author, repair, and fresh review sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md; docs/agentic/claims/task-103-resident-full-vision-w0-wake-spec.md
+- Forbidden files: every other task file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 103 claim daf5db5e; specification 9581c04d; lifecycle repair babf8f84; final audit repair 2620e51e; no shared contract was frozen and no production dependency applied
+- Approval record: coordinator-issued Task 103 and scoped-repair authorizations under the Standing Coordinator Delegation named governing spec @811458d2, plan @68fe8e87, and the Wave 0A lane-spec/re-review stops; each explicitly authorized superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibited Task 111, production work, and a merge into neo. This record approves only the completed written Lane W specification.
+- Claim status: merged
+- RED command and observed failure: original Task 103 placeholder audit notation was superseded by executable audits; lifecycle repair RED failed before same-identity post-reconnect active-claim reconciliation existed; final audit RED failed before exact revalidation-before-recovery ordering and counterfactual checks existed.
+- GREEN command and observed result: the final audit printed `GREEN: Task 103 counterfactual lifecycle audit passed: exact same-identity revalidation precedes recovery and durable checkpoint/readback, and all counterfactuals fail.`; git diff --check and npm run factory:check exited 0.
+- Full verification: NODE_NO_WARNINGS=1 npm run verify / exit 0 on the integrated checkout: typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite built with its existing chunk-size warning; factory-readiness passed.
+- Live-provider gate: not-applicable for this specification-only lane; it defines later wake/provider behavior without invoking a provider here.
+- Review verdict: approved / final independent reviewer /root/task103_wake_repair/review_task103_final_repair approved 2620e51e after verifying same-identity revalidation ordering, post-reconnect checkpoint/readback, and three rejected lifecycle counterfactuals. The earlier claim that RV-0-W-001 was absent was disproven by authoritative coordinator history and did not require a registry rewrite.
+- Rebase record: no rebase was needed; the reviewed Lane W repair branch was additive and conflict-free merge commit 70e7a3c2085f4280cdb72bb1884eeb3ffc78783d integrated it after current coordinator records.
+- Merge readiness: merged / coordinator integration commit 70e7a3c2085f4280cdb72bb1884eeb3ffc78783d; no merge into neo occurred.
+- Archive check: task branch ancestry reaches the coordinator integration branch and the repair worktree is clean; retain author and reviewers until final handoffs and durable evidence are reconciled.
+- Supersession: this record supersedes RV-0-W-001 through RV-0-W-003 only for Task 103 review, lane-approval, verification, and merge status; all prior dispatch and repair evidence remains immutable history.
+
 ## RV-0-A-008 — Task 108 acceptance-audit review repair dispatch
 
 - Recorded at: 2026-07-12T22:15:00Z
