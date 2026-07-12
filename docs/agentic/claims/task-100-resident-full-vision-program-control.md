@@ -10,7 +10,7 @@
 - Base commit: `c68f4fce838a17b35cee762e9a2916d1b42da379`
 - Claimed at: `2026-07-12T16:45:55Z`
 - Model configuration: GPT-5.6 Terra / Extra High
-- Status: claimed
+- Status: ready-for-review
 
 ## Ownership
 
@@ -39,7 +39,18 @@ required dependency, or repeated verifier failure.
 
 - Documentation RED: `npm run factory:check` and `git diff --check` after a
   registry audit that intentionally lacks an authorization message and records
-  itself as non-dispatchable.
+  itself as non-dispatchable. Observed 2026-07-12: `factory-readiness passed`
+  and `git diff --check` exited 0 with no output; the audit remained
+  non-dispatchable because it omitted the approval record.
 - Documentation GREEN: `npm run factory:check`, `git diff --check`, and
   `npm run verify` after the durable controls are complete.
 - Completion: one scoped documentation commit followed by a fresh task review.
+
+## GREEN Evidence
+
+- `npm run factory:check` passed with `factory-readiness passed`.
+- `git diff --check` exited 0 with no output.
+- `npm run verify` exited 0 after `npm ci` restored this isolated worktree's
+  pinned dependencies: typecheck passed; 189 test files passed with 3 skipped;
+  2,228 tests passed with 5 skipped; Vite built with its existing chunk-size
+  warning; and factory readiness passed.
