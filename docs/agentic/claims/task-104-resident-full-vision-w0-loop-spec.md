@@ -115,3 +115,121 @@ console.log(`GREEN: Task 104 bounded-loop coverage audit passed (${assertions.le
 Fresh Lane L specification review and written coordinator L-spec approval are
 pending. This author does not self-approve, create Task 112, dispatch a worker,
 merge, or modify any non-owned file.
+
+## Repair RC-104-01 — Record Binding And Plan-Equality Review Repair
+
+This forward-only repair preserves the initial Task 104 claim and documentation
+evidence above. It supersedes only the prior insufficient record-binding
+contract; it does not rewrite the prior specification or claim evidence.
+
+- Repair authorization: coordinator-issued Task 104 append-only Lane L
+  specification-review repair under the Standing Coordinator Delegation. The
+  repair is limited to the two owned documentation files and forbids Task 112,
+  production work, dispatch, and merge.
+- Review trigger: P1 fresh-review finding that `ResidentObservationRecord`,
+  `ResidentToolStepRecord`, and `ResidentLoopTerminalOrResumableResult` did not
+  directly bind every invariant field or require exact immutable plan-record
+  readback/equality through `planRecordEventId`.
+- Repairer: Codex, Task 104 Lane L specification repairer, using the
+  user-confirmed GPT-5.6 Terra / Extra High configuration.
+- Repair claimed at: `2026-07-12T21:04:11Z`.
+- Repair base: `b5113756` (`docs: define resident bounded loop policy`).
+
+### Focused binding RED/GREEN audit
+
+```bash
+node --input-type=module --eval '
+import fs from "node:fs";
+const spec = fs.readFileSync("docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md", "utf8");
+const block = (name) => {
+  const start = spec.indexOf(`interface ${name}`);
+  const end = spec.indexOf("\n}", start);
+  return start < 0 || end < 0 ? "" : spec.slice(start, end + 2);
+};
+const required = [
+  "taskId", "attemptId", "runId", "residentAgentId", "runMode",
+  "policyVersion", "policyHash", "sourceEventIds", "contextPackRefs",
+  "budget", "authority", "causationId", "correlationId", "planRecordEventId"
+];
+const records = [
+  ["observation", block("ResidentObservationRecord")],
+  ["tool step", block("ResidentToolStepRecord")],
+  ["result", block("ResidentLoopTerminalOrResumableResult")]
+];
+const missing = records.flatMap(([name, value]) => required
+  .filter((field) => !value.includes(`readonly ${field}`))
+  .map((field) => `${name}.${field}`));
+const hasReadback = spec.includes("## Plan-Binding Readback And Equality") &&
+  spec.includes("must read the exact `planRecordEventId`") &&
+  spec.includes("sourceEventIds, contextPackRefs, budget, authority") &&
+  spec.includes("causationId, and correlationId");
+if (!hasReadback) missing.push("mandatory exact plan-record readback/equality");
+if (missing.length > 0) {
+  console.error(`RED: Task 104 binding repair audit missing: ${missing.join(", ")}`);
+  process.exit(1);
+}
+console.log(`GREEN: Task 104 binding repair audit passed (${records.length} records).`);
+'
+```
+
+- RED: before this repair, the audit exited 1 and reported missing direct
+  resident/run-mode/policy/context/correlation bindings in the observation,
+  tool-step, and result records; missing tool-step source/budget bindings;
+  missing result plan/source/context/budget/correlation bindings; and missing
+  mandatory exact plan-record readback/equality.
+- GREEN: after the repair, the same audit exited 0 with
+  `GREEN: Task 104 binding repair audit passed (3 records).`
+- Repair contract: every affected record now carries all invariant bindings
+  directly, `planRecordEventId` is mandatory, and the new
+  `Plan-Binding Readback And Equality` section requires mounted-ledger exact
+  equality before append or projection. A mismatch fails closed and cannot
+  synthesize a replan, fallback record, or completion.
+- Whitespace: `git diff --check` exited 0 with no output.
+- Factory readiness: `npm run factory:check` exited 0 with
+  `factory-readiness passed`.
+- Full verification: `npm run verify` exited 0 after its typecheck, test, UI
+  build, and factory-readiness gates.
+- Repair status: ready-for-review. Fresh model-pinned re-review is required
+  before any coordinator approval. The repairer does not self-approve, create
+  Task 112, dispatch, or merge.
+
+### Repair correction RC-104-01-B — Exact workflow descriptor binding
+
+The final scoped repair review found that a typed `runMode` alone is not an
+exact workflow descriptor binding. This append-only correction strengthens
+RC-104-01: `ResidentPlanPolicy`, `ResidentPlanRecord`,
+`ResidentObservationRecord`, `ResidentToolStepRecord`, and
+`ResidentLoopTerminalOrResumableResult` now bind a descriptor ID, version, and
+hash; plan-readback equality rejects family, run-mode-only, or compatible-
+version matching.
+
+```bash
+node --input-type=module --eval '
+import fs from "node:fs";
+const spec = fs.readFileSync("docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md", "utf8");
+const block = (name) => { const start = spec.indexOf(`interface ${name}`); const end = spec.indexOf("\n}", start); return start < 0 || end < 0 ? "" : spec.slice(start, end + 2); };
+const required = ["taskId", "attemptId", "runId", "residentAgentId", "runMode", "workflowDescriptor", "policyVersion", "policyHash", "sourceEventIds", "contextPackRefs", "budget", "authority", "causationId", "correlationId", "planRecordEventId"];
+const records = [["observation", block("ResidentObservationRecord")], ["tool step", block("ResidentToolStepRecord")], ["result", block("ResidentLoopTerminalOrResumableResult")]];
+const missing = records.flatMap(([name, value]) => required.filter((field) => !value.includes(`readonly ${field}`)).map((field) => `${name}.${field}`));
+const plan = block("ResidentPlanRecord");
+if (!plan.includes("readonly workflowDescriptor")) missing.push("plan.workflowDescriptor");
+const hasReadback = spec.includes("## Plan-Binding Readback And Equality") && spec.includes("must read the exact `planRecordEventId`") && spec.includes("workflowDescriptor") && spec.includes("causationId, and correlationId");
+if (!hasReadback) missing.push("workflow descriptor exact plan-record readback/equality");
+if (missing.length > 0) { console.error(`RED: Task 104 descriptor-binding audit missing: ${missing.join(", ")}`); process.exit(1); }
+console.log(`GREEN: Task 104 descriptor-binding audit passed (${records.length + 1} records).`);
+'
+```
+
+- RED: the strengthened audit exited 1 before RC-104-01-B, reporting missing
+  `workflowDescriptor` bindings on plan, observation, tool-step, and result
+  records plus missing descriptor-aware plan-readback equality.
+- GREEN: after RC-104-01-B, the same audit exited 0 with
+  `GREEN: Task 104 descriptor-binding audit passed (4 records).`
+- Whitespace: `git diff --check` and staged `git diff --cached --check` both
+  exited 0 with no output.
+- Factory readiness: `npm run factory:check` exited 0 with
+  `factory-readiness passed`.
+- Full verification: `npm run verify` exited 0 after its typecheck, test, UI
+  build, and factory-readiness gates.
+- Repair status: ready-for-review. Fresh model-pinned re-review remains
+  mandatory; no Task 112, production work, dispatch, or merge is authorized.
