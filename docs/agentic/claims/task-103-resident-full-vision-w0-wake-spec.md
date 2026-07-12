@@ -189,3 +189,97 @@ NODE
   changes. The subsequent `npm run verify` exited 0 with `typecheck passed`,
   189 passed and 3 skipped test files, 2228 passed and 5 skipped tests, a
   successful Vite build, and `factory-readiness passed`.
+
+## Review Repair Record — Counterfactual-Sensitive Lifecycle Audit
+
+Recorded at: 2026-07-12T22:12:21Z
+
+This final permitted Task 103 repair responds to fresh re-review. The earlier
+repair already made the lifecycle contract sound; this record strengthens only
+its executable documentation audit. The audit now extracts the exact
+same-identity reconciliation section, requires the normative ordering before
+`recovering` or `running`, requires the post-reconnect active-claim
+checkpoint/readback wording, and proves that removing or reversing those facts
+fails in memory. No lifecycle contract, Task 111 plan, production file, or
+runtime behavior changes in this repair.
+
+### Documentation RED/GREEN Audit Command
+
+```bash
+node --input-type=module <<'NODE'
+import { readFileSync } from "node:fs";
+
+const spec = readFileSync("docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md", "utf8");
+const claim = readFileSync("docs/agentic/claims/task-103-resident-full-vision-w0-wake-spec.md", "utf8");
+const repairRecordHeading = "## Review Repair Record — Counterfactual-Sensitive Lifecycle Audit";
+const lifecycleStart = "### Same-Identity Revalidation And Durable Reconciliation";
+const lifecycleEnd = "### Normal Claim Recovery";
+const revalidation = "`WorkspaceAvailabilityAuthority.revalidate()` must grant a new authority for the same workspace ID.";
+const orderedReconciliation = "After successful same-identity revalidation, and before the supervisor may enter `recovering` or `running`, the authoritative claim service must append and read back exactly one durable active-claim reconciliation record for the observed active claim/attempt.";
+const checkpointReadback = "The completion result is valid only after the appended release or workspace-unavailable checkpoint and its exact mounted ledger readback agree";
+
+function normalize(value) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function extractLifecycleSection(document) {
+  const start = document.indexOf(lifecycleStart);
+  const end = start < 0 ? -1 : document.indexOf(lifecycleEnd, start);
+  return start >= 0 && end > start ? document.slice(start, end) : "";
+}
+
+function auditLifecycleSection(section) {
+  const normalized = normalize(section);
+  const missing = [];
+  for (const requirement of [revalidation, orderedReconciliation, checkpointReadback]) {
+    if (!normalized.includes(requirement)) missing.push(requirement);
+  }
+  const indexes = [revalidation, orderedReconciliation, checkpointReadback].map((requirement) => normalized.indexOf(requirement));
+  if (indexes.every((index) => index >= 0) && !(indexes[0] < indexes[1] && indexes[1] < indexes[2])) {
+    missing.push("ordered: revalidation -> reconciliation -> checkpoint/readback");
+  }
+  return missing;
+}
+
+const lifecycle = extractLifecycleSection(spec);
+const failures = [];
+if (!claim.includes(repairRecordHeading)) failures.push("claim:counterfactual lifecycle repair record");
+if (!lifecycle) failures.push("spec:exact lifecycle section");
+for (const missing of auditLifecycleSection(lifecycle)) failures.push(`lifecycle:${missing}`);
+
+const normalizedLifecycle = normalize(lifecycle);
+const counterfactuals = [
+  ["removed same-identity revalidation", normalizedLifecycle.replace(revalidation, "A remembered authority may be reused after reconnect.")],
+  ["reversed recovery ordering", normalizedLifecycle.replace(orderedReconciliation, "Before successful same-identity revalidation, the authoritative claim service may append a reconciliation record and enter `recovering` or `running`.")],
+  ["removed checkpoint readback", normalizedLifecycle.replace(checkpointReadback, "A generic reconnect diagnostic is sufficient")]
+];
+for (const [name, counterfactual] of counterfactuals) {
+  if (auditLifecycleSection(counterfactual).length === 0) failures.push(`counterfactual:${name}:audit unexpectedly passed`);
+}
+
+if (failures.length > 0) {
+  console.error(`RED: Task 103 counterfactual lifecycle audit failed as expected: ${failures.join(" | ")}`);
+  process.exit(1);
+}
+
+console.log("GREEN: Task 103 counterfactual lifecycle audit passed: exact same-identity revalidation precedes recovery and durable checkpoint/readback, and all counterfactuals fail.");
+NODE
+```
+
+### Observed Documentation Evidence
+
+- RED command: before this record was appended, the command exited 1 with
+  `RED: Task 103 counterfactual lifecycle audit failed as expected:
+  claim:counterfactual lifecycle repair record`.
+- GREEN command: the exact command was rerun after appending this record and
+  reported `GREEN: Task 103 counterfactual lifecycle audit passed: exact
+  same-identity revalidation precedes recovery and durable
+  checkpoint/readback, and all counterfactuals fail.`
+
+### Final Repair Gate Evidence
+
+- `git diff --check` exited 0 with no output.
+- `npm run factory:check` reported `factory-readiness passed`.
+- `npm run verify` exited 0 with `typecheck passed`, 189 passed and 3 skipped
+  test files, 2228 passed and 5 skipped tests, a successful Vite build, and
+  `factory-readiness passed`.
