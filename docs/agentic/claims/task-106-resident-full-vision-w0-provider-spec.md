@@ -64,3 +64,108 @@ Every other tracked file is forbidden.
   required live-provider reference gate where provider behavior is accepted.
 - Newsroom/team scope, multi-user authorization, shared hosting, and
   autonomous external effects remain out of scope.
+
+## Replacement Author Handoff and Execution Record
+
+This append-only record supersedes the original author only for current Task
+106 execution. The claim metadata, original branch/worktree, original
+claim-only commit `6fb76fb1969fc074066ea5f5fbeb4e101bb3ced5`, and all text
+above remain historical evidence and are not rewritten.
+
+- Recorded at: `2026-07-12T21:01:51Z`
+- Replacement branch and worktree:
+  `codex/task-106-resident-full-vision-w0-provider-spec-recovery` /
+  `/home/drake/.codex/worktrees/task-106-resident-full-vision-w0-provider-spec-recovery`
+- Replacement base: `6fb76fb1969fc074066ea5f5fbeb4e101bb3ced5`
+- Original worktree disposition: preserved without mutation; no original
+  specification or uncommitted work was used as task evidence.
+- Current status: `in-progress` (replacement documentation-only work order).
+- Coordinator handoff basis: `RV-0-P-002` supersedes `RV-0-P-001` only for
+  assignment/status and requires this forward-only handoff before the owned
+  specification changes.
+- Host configuration: GPT-5.6 Terra / Extra High, user-confirmed for this
+  replacement; no fallback was selected.
+
+### Documentation RED
+
+The following reproducible audit was run before the specification existed:
+
+```bash
+node --input-type=module - <<'NODE'
+import { existsSync, readFileSync } from 'node:fs';
+const path = 'docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md';
+const required = [
+  '## Scope, Ownership, And Non-Canonical Boundaries',
+  '## Resident Identity And Mounted-Workspace Authority',
+  '## Provider Policy And Readiness',
+  '## Credential References And OS Secret Resolution',
+  '## Provider Capability Contracts',
+  '## Audited Prompt And Provider-Byte Boundary',
+  '## Provider-Specific Feasibility',
+  '## Diagnostics, Provenance, And Durable Handoffs',
+  '## Acceptance And Verification',
+  '## Deferred Decisions And Stop Conditions',
+  'BYOK',
+  'OS secret',
+  'local model',
+  'Nous',
+  'Codex',
+  'xAI',
+  'agent_default',
+  'no fallback',
+  'independent human approval',
+  'credential-free',
+  'real approved Nous',
+  'unofficial token'
+];
+if (!existsSync(path)) {
+  console.error(`RED provider-spec coverage audit: ${path} is absent; ${required.length} required assertions are untestable.`);
+  process.exit(1);
+}
+const text = readFileSync(path, 'utf8');
+const missing = required.filter((needle) => !text.includes(needle));
+if (missing.length > 0) {
+  console.error(`RED provider-spec coverage audit: missing ${missing.length} assertion(s): ${missing.join(' | ')}`);
+  process.exit(1);
+}
+console.log(`GREEN provider-spec coverage audit: ${required.length} required assertions present.`);
+NODE
+```
+
+Observed result: exit `1` with `RED provider-spec coverage audit:
+docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md
+is absent; 22 required assertions are untestable.` This failure is the
+expected absence-of-architecture control, not a verifier failure.
+
+### Documentation GREEN
+
+The same coverage audit exited `0` and printed `GREEN provider-spec coverage
+audit: 22 required assertions present.` after the Lane P specification was
+written. `git diff --check && npm run factory:check` then exited `0`; the
+factory command printed `factory-readiness passed` and the whitespace check
+printed no output.
+
+The first full-verification attempt was blocked before typechecking because
+this isolated recovery worktree did not yet have lockfile dependencies:
+`sh: line 1: tsc: command not found`. The replacement restored only the
+lockfile-defined ignored dependency tree with `npm ci --ignore-scripts`, which
+exited `0` and changed no tracked file. The final `npm run verify` rerun then
+exited `0`, observed through the replacement's `cestus106_verify_pass` exit
+sentinel after the full script completed. Because the verify script chains its
+gates, this proves its typecheck, deterministic tests, UI build, and factory
+readiness all completed successfully. No live provider was invoked.
+
+### Replacement Completion Handoff
+
+- Status: `ready-for-review`; this forward-only status supersedes the
+  replacement record's earlier `in-progress` status and does not self-approve.
+- Scoped task commit contents: only this claim and
+  `docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md`.
+- Live-provider gate: `not-applicable` to this specification-only task. The
+  specification defines, but does not run, later real approved Nous acceptance.
+- Review verdict: `pending` a fresh independent Task 106 specification review.
+- Merge readiness: `not-ready`; Task 106 cannot begin Task 114, implement
+  provider code, provision a credential, invoke a provider, or merge into
+  `neo`.
+- Stop point: wait for fresh review and written coordinator Lane P
+  specification approval.
