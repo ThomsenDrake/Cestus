@@ -517,3 +517,29 @@ explicit implementation authorization.
 - Merge readiness: merged / coordinator integration commit 541718453155158ffe2189e9b53bf10416970de1; no merge into neo occurred.
 - Archive check: recovery branch ancestry reaches the coordinator integration branch and its worktree is clean; retain original/replacement threads and worktrees until their final handoffs, clean state, and durable evidence are reconciled.
 - Supersession: this record supersedes RV-0-P-001 and RV-0-P-002 only for Task 106 review, lane-approval, verification, and merge status; earlier dispatch and replacement evidence remain immutable history.
+
+## RV-0-L-004 — Task 104 bounded-loop specification final review, lane approval, and integration
+
+- Recorded at: 2026-07-12T21:33:25Z
+- Role: coordinator
+- Lane and wave: L / 0A
+- Task ID and claim: task-104-resident-full-vision-w0-loop-spec / docs/agentic/claims/task-104-resident-full-vision-w0-loop-spec.md
+- Task thread ID: /root/task104_loop_spec (author and repairer); /root/review_task104_spec and /root/review_task104_repair (prior fresh reviewers); /root/review_task104_final (final fresh reviewer)
+- Branch and worktree: codex/task-104-resident-full-vision-w0-loop-spec / /home/drake/.codex/worktrees/task-104-resident-full-vision-w0-loop-spec; integrated on codex/resident-agent-full-vision-program-plan / /home/drake/.codex/worktrees/664b/Cestus
+- Base commit and required head: 52bc6b6dc81373d6026e7465becde75bd1c6448e / baa980e04f126ce06f41398fc45169f112321e39
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for author, repair, and fresh review sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md; docs/agentic/claims/task-104-resident-full-vision-w0-loop-spec.md
+- Forbidden files: every other task file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 104 claim 917e8e13; specification b5113756; provenance binding repair 0828332; final audit repair baa980e0; no shared contract was frozen and no production dependency applied
+- Approval record: coordinator-issued Task 104 and scoped-repair authorizations under the Standing Coordinator Delegation named governing spec @811458d2, plan @68fe8e87, and the Wave 0A lane-spec/re-review stops; each explicitly authorized superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibited Task 112, production work, and a merge into neo. This record approves only the completed written Lane L specification.
+- Claim status: merged
+- RED command and observed failure: the original absent-spec audit failed before Lane L existed; later repair audits failed before immutable record bindings existed, before exact workflow descriptor binding existed, and before section-local counterfactual-sensitive checks could reject optional fields or removed descriptor-equality language.
+- GREEN command and observed result: the final focused audit printed `GREEN: Task 104 precise binding audit passed (3 records; 3 counterfactual omissions rejected).`; git diff --check and npm run factory:check exited 0.
+- Full verification: NODE_NO_WARNINGS=1 npm run verify / exit 0 on the integrated checkout: typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite built with its existing chunk-size warning; factory-readiness passed.
+- Live-provider gate: not-applicable for this specification-only lane; the Lane L specification defines later policy/readiness consumption without invoking a provider here.
+- Review verdict: approved / final independent reviewer /root/review_task104_final approved baa980e04f126ce06f41398fc45169f112321e39 after verifying non-optional section-local bindings, exact descriptor equality/fail-closed clauses, and counterfactual audit sensitivity.
+- Rebase record: no rebase was needed; the reviewed Lane L branch was additive and conflict-free merge commit 0db0522d0476c75d15d587374d32463b321d296d integrated it after current coordinator records.
+- Merge readiness: merged / coordinator integration commit 0db0522d0476c75d15d587374d32463b321d296d; no merge into neo occurred.
+- Archive check: task branch ancestry reaches the coordinator integration branch and the author worktree is clean; retain author and reviewers until final handoffs and durable evidence are reconciled.
+- Supersession: this record supersedes RV-0-L-001 through RV-0-L-003 only for Task 104 review, lane-approval, verification, and merge status; all prior dispatch and repair evidence remains immutable history.
