@@ -465,3 +465,29 @@ explicit implementation authorization.
 - Merge readiness: not-ready; no coordinator lane approval or merge may occur until fresh re-review approves the final focused repair.
 - Archive check: two repair attempts are now tracked; final repair handoff, re-review, integration, and current clean-worktree confirmation remain required.
 - Supersession: this record supersedes RV-0-L-002 only for current repair status. The original dispatch and first repair evidence remain immutable history.
+
+## RV-0-T-003 — Task 105 second focused admission-scope repair dispatch
+
+- Recorded at: 2026-07-12T21:25:12Z
+- Role: coordinator
+- Lane and wave: T / 0A
+- Task ID and claim: task-105-resident-full-vision-w0-trigger-spec / docs/agentic/claims/task-105-resident-full-vision-w0-trigger-spec.md
+- Task thread ID: /root/task105_trigger_spec (original author and second scoped repairer); /root/review_task105_repair (fresh re-reviewer)
+- Branch and worktree: codex/task-105-resident-full-vision-w0-trigger-spec / /home/drake/.codex/worktrees/task-105-resident-full-vision-w0-trigger-spec
+- Base commit and required head: b6361ea6de4334f46d136872f2d225d8a0eacc0f / one final Task 105 owned-file admission-scope repair commit, followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md; docs/agentic/claims/task-105-resident-full-vision-w0-trigger-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 105 specification commit 19a2cef6 and first repair b6361ea6; the fresh re-review finding below; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued second focused repair authorization under the Standing Coordinator Delegation names governing spec @811458d2, plan @68fe8e87, Task 105 trigger-admission-scope derivation only, and the Wave 0A re-review stop; it explicitly authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibits Task 113, production work, and a merge into neo.
+- Claim status: repairing; this is the final permitted focused Task 105 repair attempt. The repairer must append the claim forward-only and stop after a verified repair commit for fresh review.
+- RED command and observed failure: pending repair-owned focused audit which must fail if candidate-controlled scope can alter `triggerGateKey`, if policy/request inputs cannot deterministically reconstruct the shared admission scope, or if equal-policy-scope/different-high-water candidates do not derive one gate key before atomic append.
+- GREEN command and observed result: pending repair-owned focused documentation audit, git diff --check, and npm run factory:check after deterministic policy/request scope derivation and readback are complete.
+- Full verification: pending repair-owned npm run verify before the repair commit.
+- Live-provider gate: not-applicable; this documentation-only repair invokes no provider and changes no provider behavior.
+- Review verdict: needs-changes / fresh re-reviewer /root/review_task105_repair found that `budgetScope` is unconstrained by the declared immutable policy fields and that acceptance supplied a precomputed gate key rather than proving equal policy scope deterministically derives the same key.
+- Rebase record: no rebase applies; the scoped repair starts from reviewed head b6361ea6 on the existing isolated Lane T branch.
+- Merge readiness: not-ready; no coordinator lane approval or merge may occur until fresh re-review approves the final focused repair.
+- Archive check: two repair attempts are now tracked; final repair handoff, re-review, integration, and current clean-worktree confirmation remain required.
+- Supersession: this record supersedes RV-0-T-002 only for current repair status. The original dispatch and first repair evidence remain immutable history.
