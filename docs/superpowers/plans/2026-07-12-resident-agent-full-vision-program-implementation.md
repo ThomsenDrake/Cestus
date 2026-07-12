@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Governing specification: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md at commit 811458d2.
+- Governing specification: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md at commit c7dc10b9.
 - Preserve one resident identity, agent_default. Providers, harnesses, credentials, and subscriptions are backends, never resident identities.
 - Preserve append-only ledger semantics, exact provenance, rebuildable projections, independent-human approval consumption, and durable handoff readback.
 - The mounted workspace identity, ledger, artifact store, policy, and active locks are authoritative. Disconnect or identity mismatch permits no internal fallback write.
@@ -80,7 +80,7 @@ You are the <lane> <spec-author|plan-author> for Cestus.
 Host requirement: GPT-5.6 Terra with Extra High reasoning. Stop and report if unavailable; do not select a fallback.
 Worktree and branch: <absolute path> / <branch>; base commit: <SHA>.
 Read AGENTS.md, .agents/skills/cestus-software-factory/SKILL.md,
-docs/agentic/software-factory.md, the umbrella design at 811458d2,
+docs/agentic/software-factory.md, the umbrella design at c7dc10b9,
 and the named predecessor documents.
 Allowed files: <complete list>. Forbidden files: every other production,
 test, runtime, UI, provider, and shared-contract file.
@@ -94,7 +94,7 @@ Stop point: <exact user-approval gate>.
 Plan approval is not implicit permission to execute. Before implementation, repair, or a review requiring executable task work, the coordinator or user must send and record this complete message.
 
 Under the Standing Coordinator Delegation in the governing specification at
-`811458d2`, every reference in this plan to a **new authorization message**
+`c7dc10b9`, every reference in this plan to a **new authorization message**
 means a new, scoped, coordinator-issued message and durable registry record
 unless the user elects to supply it. It is not a request for a new user prompt.
 The coordinator still names the exact spec and plan commits, task range, wave
@@ -455,4 +455,4 @@ The coordinator alone decides merge, push, cleanup, and archive after registry f
 
 ## Completion Criteria
 
-This program plan is ready for implementation approval when this checklist is satisfied, documentation checks and full verification pass, and the plan is committed. Under the Standing Coordinator Delegation at `811458d2`, the coordinator must then send and record the exact scoped implementation-authorization message for the precise Wave 0 range; a user may supply the same message. Approval of this plan alone does not authorize child dispatch, superpowers:subagent-driven-development, or production changes.
+This program plan is ready for implementation approval when this checklist is satisfied, documentation checks and full verification pass, and the plan is committed. Under the Standing Coordinator Delegation at `c7dc10b9`, the coordinator must then send and record the exact scoped implementation-authorization message for the precise Wave 0 range; a user may supply the same message. Approval of this plan alone does not authorize child dispatch, superpowers:subagent-driven-development, or production changes.
