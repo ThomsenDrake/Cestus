@@ -23,7 +23,13 @@ Before editing, read:
 - Run `npm run verify` before committing.
 - Commit after each completed task.
 - Do not weaken append-only ledger semantics, provenance requirements, or projection rebuildability.
-- Stop and escalate on data-loss risk, schema conflict, unavailable dependency, or repeated verifier failure.
+- Stop child-task execution and escalate to the assigned coordinator on data-loss
+  risk, schema conflict, unavailable dependency, or repeated verifier failure.
+  Repeated failure is a coordinator recovery checkpoint, not automatically a
+  user prompt. The coordinator changes tactics, replaces stale agents, and
+  continues within the approved contract; human escalation is reserved for a
+  required product, scope, safety, data-loss, credential, or external-behavior
+  decision.
 
 ## Review Rules
 

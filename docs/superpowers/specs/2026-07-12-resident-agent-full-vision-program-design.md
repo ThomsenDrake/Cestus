@@ -365,6 +365,10 @@ wave and its stated file ownership, the coordinator may:
 - Issue the exact implementation-authorization message required by this spec.
 - Approve and dispatch a focused review repair in response to a reviewer
   finding.
+- Continue beyond a child lane's ordinary repair-attempt threshold by recording
+  a root-cause checkpoint, replacing the implementer or reviewer, changing the
+  counterfactual audit or repair tactic, and issuing a new bounded
+  authorization that remains inside the approved contract.
 - Reuse or replace stale implementers and reviewers.
 - Restore lockfile-defined dependencies in isolated worktrees.
 - Run coordinator-controlled network, live-provider, socket, IPC, and Git
@@ -388,7 +392,6 @@ The coordinator escalates to the user only when work would require:
 - Data-loss risk or an irreversible recovery decision.
 - Unofficial credential or subscription-token extraction.
 - Acceptance of a provider limitation that changes promised product behavior.
-- More than two focused repair attempts without recovery.
 - Proceeding without GPT-5.6 Terra Extra High when that configuration is still
   mandated.
 
@@ -396,6 +399,14 @@ Ordinary `needs-changes` reviews, missing dependencies, stale reviewers,
 sandbox restrictions, coordinator live gates, merge conflicts with an
 unambiguous contract-preserving resolution, and documentation corrections are
 not user escalation conditions.
+
+Repair-count exhaustion by itself is also not a user escalation condition.
+After two focused attempts, the coordinator must append a root-cause record,
+stop and preserve the failing child, select a fresh implementer and reviewer or
+a materially different verification tactic, issue a new exact scoped
+authorization, and continue. It escalates only if that root-cause analysis
+shows the approved contract cannot be satisfied without one of the genuine
+user decisions listed above.
 
 Every implementation task follows:
 
@@ -479,7 +490,9 @@ Stop a lane on:
 - Portable-workspace identity mismatch.
 - Provider integration requiring unofficial token extraction.
 - External dependency unavailable for a mandatory acceptance gate.
-- More than two focused repair attempts without verifier recovery.
+- Repeated repair failure whose root-cause analysis proves that satisfying the
+  approved contract requires a genuine user decision listed in the Standing
+  Coordinator Delegation section.
 - Unavailable GPT-5.6 Terra Extra High configuration.
 
 ## Completion Criteria
