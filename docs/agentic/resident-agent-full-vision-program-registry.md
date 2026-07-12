@@ -387,3 +387,29 @@ explicit implementation authorization.
 - Merge readiness: not-ready; Task 106 cannot create Task 114, production work, invoke a provider, or merge into neo.
 - Archive check: the original author is retained as historical claim evidence; neither original nor replacement may be archived until their final handoffs, clean worktrees, ancestry, verification, review, and coordinator merge state agree.
 - Supersession: this record supersedes RV-0-P-001 only for worker assignment and current claim status. The initial dispatch, claim, and original author evidence remain append-only history.
+
+## RV-0-L-002 — Task 104 provenance-binding review repair dispatch
+
+- Recorded at: 2026-07-12T21:02:34Z
+- Role: coordinator
+- Lane and wave: L / 0A
+- Task ID and claim: task-104-resident-full-vision-w0-loop-spec / docs/agentic/claims/task-104-resident-full-vision-w0-loop-spec.md
+- Task thread ID: /root/task104_loop_spec (original author and scoped repairer); /root/review_task104_spec (fresh reviewer)
+- Branch and worktree: codex/task-104-resident-full-vision-w0-loop-spec / /home/drake/.codex/worktrees/task-104-resident-full-vision-w0-loop-spec
+- Base commit and required head: b511375609b1bc5d970b15f1453f66a0f9327b97 / one Task 104 owned-file repair commit, followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md; docs/agentic/claims/task-104-resident-full-vision-w0-loop-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 104 original claim and specification commits 917e8e13 and b5113756; the fresh review finding below; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued repair authorization under the Standing Coordinator Delegation names governing spec @811458d2, plan @68fe8e87, Task 104 provenance-binding repair only, and the Wave 0A re-review stop; it explicitly authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibits Task 112, production work, and a merge into neo.
+- Claim status: repairing; the repairer must append the claim forward-only and stop after a verified repair commit for fresh review.
+- RED command and observed failure: pending repair-owned focused documentation audit which must fail if the observation, tool-step, or terminal/resumable record lacks each invariant binding or mandatory exact referenced-plan readback/equality validation.
+- GREEN command and observed result: pending repair-owned focused documentation audit, git diff --check, and npm run factory:check after the direct or exactly revalidated immutable bindings are complete.
+- Full verification: pending repair-owned npm run verify before the repair commit.
+- Live-provider gate: not-applicable; this documentation-only repair invokes no provider and changes no provider behavior.
+- Review verdict: needs-changes / fresh reviewer /root/review_task104_spec found that `ResidentObservationRecord`, `ResidentToolStepRecord`, and the terminal/resumable result omit direct invariant bindings or an exact specified immutable `planRecordEventId` revalidation mechanism, allowing insufficiently self-proving cross-run or stale-context records.
+- Rebase record: no rebase applies; the scoped repair starts from reviewed head b5113756 on the existing isolated Lane L branch.
+- Merge readiness: not-ready; no coordinator lane approval or merge may occur until fresh re-review approves the repair.
+- Archive check: original author final handoff exists, but repair handoff, re-review, integration, and current clean-worktree confirmation remain required.
+- Supersession: this record supersedes RV-0-L-001 only for current review and repair status. The original dispatch and its evidence remain immutable history.
