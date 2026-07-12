@@ -15,8 +15,10 @@ import {
   type SpecialistWorkflowOutputArtifactDto
 } from "./specialist-handoffs.js";
 import { hashSpecialistWorkflowHandoff } from "./specialist-handoff-hash.js";
+import { assertAgentSecretSafeText } from "./secret-safety.js";
 
 export const specialistHandoffManifestSchemaVersion = "agent-specialist-handoff-manifest.v1" as const;
+export const specialistHandoffMaterialSchemaVersion = "agent-specialist-handoff-material.v1" as const;
 
 type SpecialistHandoffStatus = "ready-for-review" | "waiting-for-approval" | "blocked" | "failed";
 
@@ -44,6 +46,7 @@ export interface BuildSpecialistHandoffManifestInput {
   readonly stateKind: "completed" | "failed" | "resumable";
   readonly finalOutputStepId: string;
   readonly finalOutputEventId: string;
+  readonly handoffMaterialArtifactHash: `sha256:${string}`;
   readonly contextPackRefs: readonly ContextPackRef[];
   readonly promptArtifactHash?: `sha256:${string}`;
   readonly outputArtifacts: readonly SpecialistWorkflowOutputArtifactDto[];
@@ -77,6 +80,7 @@ export interface SpecialistHandoffManifest {
   readonly stateKind: "completed" | "failed" | "resumable";
   readonly finalOutputStepId: string;
   readonly finalOutputEventId: string;
+  readonly handoffMaterialArtifactHash: `sha256:${string}`;
   readonly contextPackRefs: readonly ContextPackRef[];
   readonly promptArtifactHash?: `sha256:${string}`;
   readonly outputArtifacts: readonly SpecialistWorkflowOutputArtifactDto[];
@@ -89,6 +93,26 @@ export interface SpecialistHandoffManifest {
   readonly supersedesHandoffId?: string;
   readonly supersedesEventId?: string;
   readonly handoff: SpecialistWorkflowHandoffDto;
+}
+
+export interface BuildSpecialistHandoffMaterialInput {
+  readonly status: SpecialistHandoffStatus;
+  readonly safeSummary: string;
+  readonly contextPackRefs: readonly ContextPackRef[];
+  readonly promptArtifactHash?: `sha256:${string}`;
+  readonly outputArtifacts: readonly SpecialistWorkflowOutputArtifactDto[];
+  readonly toolRequestIds: readonly string[];
+  readonly approvalRequirements: readonly SpecialistWorkflowApprovalRequirementDto[];
+  readonly nextSafeActions: readonly SpecialistWorkflowNextSafeActionDto[];
+  readonly failure?: SpecialistWorkflowFailureDto;
+  readonly sourceEventIds: readonly string[];
+  readonly relatedEventIds: readonly string[];
+  readonly supersedesHandoffId?: string;
+  readonly supersedesEventId?: string;
+}
+
+export interface SpecialistHandoffMaterial extends BuildSpecialistHandoffMaterialInput {
+  readonly schemaVersion: typeof specialistHandoffMaterialSchemaVersion;
 }
 
 const contentHashPattern = /^sha256:[a-f0-9]{64}$/;
@@ -114,6 +138,7 @@ const buildInputSchema = z.object({
   stateKind: stateKindSchema,
   finalOutputStepId: safeStringSchema,
   finalOutputEventId: eventIdSchema,
+  handoffMaterialArtifactHash: contentHashSchema,
   contextPackRefs: z.array(z.unknown()),
   promptArtifactHash: contentHashSchema.optional(),
   outputArtifacts: z.array(specialistOutputArtifactRefSchema),
@@ -141,6 +166,7 @@ const manifestSchema = z.object({
   stateKind: stateKindSchema,
   finalOutputStepId: safeStringSchema,
   finalOutputEventId: eventIdSchema,
+  handoffMaterialArtifactHash: contentHashSchema,
   contextPackRefs: z.array(z.unknown()),
   promptArtifactHash: contentHashSchema.optional(),
   outputArtifacts: z.array(specialistOutputArtifactRefSchema),
@@ -154,6 +180,33 @@ const manifestSchema = z.object({
   supersedesEventId: eventIdSchema.optional(),
   handoff: specialistWorkflowHandoffSchema
 }).strict().superRefine((value, ctx) => addStateKindIssue(value, ctx));
+
+const handoffMaterialInputSchema = z.object({
+  status: statusSchema,
+  safeSummary: safeStringSchema,
+  contextPackRefs: z.array(z.unknown()),
+  promptArtifactHash: contentHashSchema.optional(),
+  outputArtifacts: z.array(specialistOutputArtifactRefSchema),
+  toolRequestIds: z.array(safeStringSchema),
+  approvalRequirements: z.array(specialistApprovalRequirementSchema),
+  nextSafeActions: z.array(specialistNextActionSchema),
+  failure: specialistFailureDtoSchema.optional(),
+  sourceEventIds: z.array(eventIdSchema),
+  relatedEventIds: z.array(eventIdSchema),
+  supersedesHandoffId: handoffIdSchema.optional(),
+  supersedesEventId: eventIdSchema.optional()
+}).strict().superRefine((value, ctx) => {
+  if ((value.status === "failed") !== (value.failure !== undefined)) {
+    ctx.addIssue({ code: "custom", path: ["failure"], message: "failure must match failed status" });
+  }
+  if ((value.supersedesHandoffId === undefined) !== (value.supersedesEventId === undefined)) {
+    ctx.addIssue({ code: "custom", path: ["supersedesHandoffId"], message: "supersession anchors must appear together" });
+  }
+});
+
+const handoffMaterialSchema = handoffMaterialInputSchema.extend({
+  schemaVersion: z.literal(specialistHandoffMaterialSchemaVersion)
+}).strict();
 
 export function computeSpecialistHandoffId(seed: SpecialistHandoffIdentitySeed): string {
   const normalized = normalizeJsonValue(seed, "$") as Record<string, AgentContextPackJsonValue>;
@@ -181,6 +234,86 @@ export function hashCanonicalSpecialistHandoffJson(value: unknown): `sha256:${st
 
 export function hashSpecialistHandoffManifest(manifest: unknown): `sha256:${string}` {
   return hashCanonicalSpecialistHandoffJson(manifest);
+}
+
+export function buildSpecialistHandoffMaterial(input: BuildSpecialistHandoffMaterialInput): SpecialistHandoffMaterial {
+  const parsed = handoffMaterialInputSchema.parse(normalizeJsonValue(input, "$"));
+  assertHandoffMaterialSemanticSafety(parsed);
+  return freezeHandoffMaterial({
+    schemaVersion: specialistHandoffMaterialSchemaVersion,
+    status: parsed.status,
+    safeSummary: parsed.safeSummary,
+    contextPackRefs: parsed.contextPackRefs.map((ref) => parseContextPackRef(ref)),
+    ...(parsed.promptArtifactHash === undefined ? {} : { promptArtifactHash: parsed.promptArtifactHash }),
+    outputArtifacts: parsed.outputArtifacts,
+    toolRequestIds: parsed.toolRequestIds,
+    approvalRequirements: parsed.approvalRequirements,
+    nextSafeActions: parsed.nextSafeActions,
+    ...(parsed.failure === undefined ? {} : { failure: parsed.failure }),
+    sourceEventIds: parsed.sourceEventIds,
+    relatedEventIds: parsed.relatedEventIds,
+    ...(parsed.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: parsed.supersedesHandoffId }),
+    ...(parsed.supersedesEventId === undefined ? {} : { supersedesEventId: parsed.supersedesEventId })
+  });
+}
+
+export function parseSpecialistHandoffMaterial(value: unknown): SpecialistHandoffMaterial {
+  const parsed = handoffMaterialSchema.parse(normalizeJsonValue(value, "$"));
+  assertHandoffMaterialSemanticSafety(parsed);
+  return freezeHandoffMaterial({
+    schemaVersion: parsed.schemaVersion,
+    status: parsed.status,
+    safeSummary: parsed.safeSummary,
+    contextPackRefs: parsed.contextPackRefs.map((ref) => parseContextPackRef(ref)),
+    ...(parsed.promptArtifactHash === undefined ? {} : { promptArtifactHash: parsed.promptArtifactHash }),
+    outputArtifacts: parsed.outputArtifacts,
+    toolRequestIds: parsed.toolRequestIds,
+    approvalRequirements: parsed.approvalRequirements,
+    nextSafeActions: parsed.nextSafeActions,
+    ...(parsed.failure === undefined ? {} : { failure: parsed.failure }),
+    sourceEventIds: parsed.sourceEventIds,
+    relatedEventIds: parsed.relatedEventIds,
+    ...(parsed.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: parsed.supersedesHandoffId }),
+    ...(parsed.supersedesEventId === undefined ? {} : { supersedesEventId: parsed.supersedesEventId })
+  });
+}
+
+function assertHandoffMaterialSemanticSafety(value: unknown): void {
+  const strings: string[] = [];
+  collectMaterialStrings(value, strings);
+  for (const item of strings) {
+    assertAgentSecretSafeText(item, "specialist handoff material");
+    if (
+      /(?:^|[\s("'])\/(?:home|Users|var|tmp|etc)\//i.test(item) ||
+      /\bfile:\/\//i.test(item) ||
+      /(?:^|\s)(?:sudo\s+|rm\s+-rf\b|curl\s+[^ ]+\s*\||bash\s+-c\b|sh\s+-c\b)/i.test(item) ||
+      /\b(?:assertion|relationship|entity|graph (?:fact|state))\b.{0,40}\b(?:accepted|resolved)\b/i.test(item)
+    ) {
+      throw new Error("Specialist handoff material must not contain paths, commands, or accepted-state claims.");
+    }
+  }
+}
+
+function collectMaterialStrings(value: unknown, output: string[]): void {
+  if (typeof value === "string") {
+    output.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectMaterialStrings(item, output);
+    return;
+  }
+  if (value !== null && typeof value === "object") {
+    for (const item of Object.values(value as Record<string, unknown>)) collectMaterialStrings(item, output);
+  }
+}
+
+export function canonicalSpecialistHandoffMaterialBytes(value: unknown): Buffer {
+  return canonicalSpecialistHandoffJson(parseSpecialistHandoffMaterial(value));
+}
+
+export function hashSpecialistHandoffMaterial(value: unknown): `sha256:${string}` {
+  return hashCanonicalSpecialistHandoffJson(parseSpecialistHandoffMaterial(value));
 }
 
 export function buildSpecialistHandoffManifest(input: BuildSpecialistHandoffManifestInput): SpecialistHandoffManifest {
@@ -233,6 +366,7 @@ export function buildSpecialistHandoffManifest(input: BuildSpecialistHandoffMani
     stateKind: parsed.stateKind,
     finalOutputStepId: parsed.finalOutputStepId,
     finalOutputEventId: parsed.finalOutputEventId,
+    handoffMaterialArtifactHash: parsed.handoffMaterialArtifactHash,
     contextPackRefs: handoff.contextPackRefs,
     ...(handoff.promptArtifactHash === undefined ? {} : { promptArtifactHash: handoff.promptArtifactHash }),
     outputArtifacts: handoff.outputArtifacts,
@@ -357,6 +491,35 @@ function parseContextPackRef(value: unknown): ContextPackRef {
     ...(parsed.scope === undefined ? {} : { scope: Object.freeze({ ...parsed.scope }) }),
     ...(parsed.sizeBudgetBytes === undefined ? {} : { sizeBudgetBytes: parsed.sizeBudgetBytes }),
     ...(parsed.stalenessInputs === undefined ? {} : { stalenessInputs: Object.freeze(parsed.stalenessInputs.map((item) => Object.freeze({ ...item }))) })
+  });
+}
+
+function freezeHandoffMaterial(value: {
+  readonly schemaVersion: typeof specialistHandoffMaterialSchemaVersion;
+  readonly status: SpecialistHandoffStatus;
+  readonly safeSummary: string;
+  readonly contextPackRefs: readonly ContextPackRef[];
+  readonly promptArtifactHash?: `sha256:${string}`;
+  readonly outputArtifacts: readonly SpecialistWorkflowOutputArtifactDto[];
+  readonly toolRequestIds: readonly string[];
+  readonly approvalRequirements: readonly SpecialistWorkflowApprovalRequirementDto[];
+  readonly nextSafeActions: readonly SpecialistWorkflowNextSafeActionDto[];
+  readonly failure?: SpecialistWorkflowFailureDto;
+  readonly sourceEventIds: readonly string[];
+  readonly relatedEventIds: readonly string[];
+  readonly supersedesHandoffId?: string;
+  readonly supersedesEventId?: string;
+}): SpecialistHandoffMaterial {
+  return Object.freeze({
+    ...value,
+    contextPackRefs: Object.freeze([...value.contextPackRefs]),
+    outputArtifacts: Object.freeze(value.outputArtifacts.map((item) => Object.freeze({ ...item }))),
+    toolRequestIds: Object.freeze([...value.toolRequestIds]),
+    approvalRequirements: Object.freeze(value.approvalRequirements.map((item) => Object.freeze({ ...item }))),
+    nextSafeActions: Object.freeze(value.nextSafeActions.map((item) => Object.freeze({ ...item }))),
+    sourceEventIds: Object.freeze([...value.sourceEventIds]),
+    relatedEventIds: Object.freeze([...value.relatedEventIds]),
+    ...(value.failure === undefined ? {} : { failure: Object.freeze({ ...value.failure }) })
   });
 }
 

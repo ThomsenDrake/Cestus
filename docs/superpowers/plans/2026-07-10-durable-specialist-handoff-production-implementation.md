@@ -816,6 +816,19 @@ Request spec and code-quality reviews before Task 4 starts.
 
 ## Task 4: Runner Kernel Two-Phase Lifecycle Helpers
 
+### Coordinator-Approved Handoff-Material Amendment
+
+Task 4 also owns the strict `agent-specialist-handoff-material.v1` boundary.
+Tests must prove canonical secret-safe material persistence and exact-byte
+readback before final-output append; optional legacy step parsing and required
+new prepared/recorded material hashes; production-registration/descriptor
+schema authority; manifest derivation from ledger identity plus verified
+material rather than caller metadata; projector rejection of missing, swapped,
+stale, or mismatched material; exact output hash equality; ledger/artifact
+authority for context, source, related, tool, and supersession refs; full prior
+supersession-anchor comparison; append race recovery; and original
+`verifiedAt` idempotency. Orphaned pre-event material is never scan-discovered.
+
 **Files:**
 
 - Create: `docs/agentic/claims/task-4-durable-handoff-runner-kernel.md`

@@ -63,6 +63,7 @@ describe("resident agent event contracts", () => {
         summary: "Final durable output artifacts are persisted.",
         stepKind: "final-output",
         stepSchemaId: "evidence-triage-final-output.v1",
+        handoffMaterialArtifactHash: hash333,
         idempotencyKey: "specialist-final-output:run_handoff_001:task_handoff_001:evidence-triage:ready-for-review:sha256:1111111111111111111111111111111111111111111111111111111111111111",
         inputArtifactHashes: [hash111],
         outputArtifactHashes: [hash222, hash333]
@@ -91,8 +92,54 @@ describe("resident agent event contracts", () => {
             outputArtifactHashes: [hash111]
           }
         )
-      ).success
-    ).toBe(true);
+    ).success
+  ).toBe(true);
+  });
+
+  it("keeps handoff material optional on ordinary and legacy steps but requires it on compact handoff bindings", () => {
+    const legacyFinalOutput = agentEvent(
+      "evt_legacy_final_output",
+      "agent.specialist-run.step.recorded",
+      "agent_run_run_handoff_legacy",
+      {
+        runId: "run_handoff_legacy",
+        stepId: "step_run_handoff_legacy_final_output",
+        summary: "Legacy final output remains replay-valid.",
+        stepKind: "final-output",
+        stepSchemaId: "evidence-triage-final-output.v1",
+        idempotencyKey: "legacy-final-output",
+        outputArtifactHashes: [hash222]
+      }
+    );
+    expect(validateKnowledgeEvent(legacyFinalOutput).success).toBe(true);
+
+    const preparedWithoutMaterial = agentEvent(
+      "evt_handoff_prepared_without_material",
+      "agent.specialist-handoff.prepared",
+      "agent_run_run_handoff_001",
+      {
+        handoffId: "handoff_run_handoff_001_0123456789abcdef",
+        handoffRevision: 1,
+        idempotencyKey: `specialist-handoff:run_handoff_001:task_handoff_001:evidence-triage:ready-for-review:${hash222}`,
+        handoffManifestHash: hash222,
+        handoffDtoHash: hash333,
+        runId: "run_handoff_001",
+        taskId: "task_handoff_001",
+        runType: "evidence-triage",
+        residentAgentId: "agent_default",
+        status: "ready-for-review",
+        safeSummary: "Evidence triage handoff is ready for human review.",
+        finalOutputStepId: "step_run_handoff_001_final_output",
+        finalOutputEventId: "evt_final_output",
+        contextPackHashes: [hash111],
+        promptArtifactHash: hash111,
+        outputArtifactHashes: [hash222],
+        toolRequestIds: [],
+        sourceEventIds: ["evt_source_001"],
+        relatedEventIds: ["evt_final_output"]
+      }
+    );
+    expect(validateKnowledgeEvent(preparedWithoutMaterial).success).toBe(false);
   });
 
   it("accepts compact handoff prepared and recorded events on the run stream", () => {
@@ -110,6 +157,7 @@ describe("resident agent event contracts", () => {
       safeSummary: "Evidence triage handoff is ready for human review.",
       finalOutputStepId: "step_run_handoff_001_final_output",
       finalOutputEventId: "evt_final_output",
+      handoffMaterialArtifactHash: hash333,
       contextPackHashes: [hash111],
       promptArtifactHash: hash111,
       outputArtifactHashes: [hash222],
