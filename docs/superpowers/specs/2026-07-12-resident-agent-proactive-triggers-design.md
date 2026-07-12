@@ -52,6 +52,7 @@ interface ProposedResidentTriggerRequestV1 {
   requestId: string;
   dedupeKey: string;
   requestFingerprint: string;
+  admissionScope: ProposedTriggerAdmissionScopeV1;
   triggerGateKey: string;
   residentAgentId: "agent_default";
   workspaceId: string;
@@ -83,14 +84,22 @@ interface ProposedTriggerRequestFingerprintInputV1 {
   causationId: string;
 }
 
+type ProposedTriggerAdmissionScopeSelectorV1 =
+  | "workspace-trigger"
+  | "workspace-trigger-subject";
+
 interface ProposedTriggerAdmissionScopeV1 {
+  admissionScopeVersion: "resident-trigger-admission-scope.v1";
   workspaceId: string;
   residentAgentId: "agent_default";
   triggerId: string;
   policyVersion: string;
   policyArtifactHash: string;
-  subjectScope: string;
-  budgetScope: string;
+  cooldownScopeSelector: ProposedTriggerAdmissionScopeSelectorV1;
+  budgetScopeSelector: ProposedTriggerAdmissionScopeSelectorV1;
+  policySubjectScope: "none" | "subject-ref";
+  scopedSubjectRef?: TriggerSubjectRef;
+  policySourcePartition: string;
 }
 ```
 
@@ -105,13 +114,40 @@ append-assigned. The eventual correlation ID is likewise derived after hashing
 from the fingerprint, so it cannot create a circular or per-evaluation value.
 
 `dedupeKey` is the SHA-256 hash of canonical JSON containing the dedupe
-version and `requestFingerprint`. `triggerGateKey` is the SHA-256 hash of
-canonical `ProposedTriggerAdmissionScopeV1`; it identifies the shared
-cooldown/budget scope and intentionally excludes source high-water and the
-dedupe key. Different source candidates in the same policy scope therefore
-share one admission key. The fingerprint, dedupe key, and gate key exclude raw
-source bytes, prompt text, credentials, provider responses, and local file
-paths outside the mounted workspace identity.
+version and `requestFingerprint`. `admissionScope` is a persisted immutable
+snapshot derived by `deriveAdmissionScope(authoritativePolicy, verifiedRequest)`
+before append; it is not caller-controlled input. `triggerGateKey` is the
+SHA-256 hash of canonical `ProposedTriggerAdmissionScopeV1`; it identifies the
+shared cooldown/budget scope and intentionally excludes source high-water and
+the dedupe key. Different source candidates in the same policy scope therefore
+share one admission key. The fingerprint, dedupe key, admission scope, and gate
+key exclude raw source bytes, prompt text, credentials, provider responses, and
+local file paths outside the mounted workspace identity.
+
+`deriveAdmissionScope` uses only the verified request's `workspaceId`,
+`residentAgentId`, `triggerId`, normalized `subjectRef`, `policyVersion`, and
+`policyArtifactHash`, plus the mounted authoritative policy's immutable
+`subjectScope`, `sourcePartition`, `cooldownScopeSelector`, and
+`budgetScopeSelector`. No candidate may supply a `budgetScope`,
+`cooldownScope`, scope key, or selector. Normalization rejects any such
+candidate-selected or unknown field before an append or await.
+
+The permitted selectors are finite. `workspace-trigger` requires policy
+`subjectScope: "none"` and stores no `scopedSubjectRef`.
+`workspace-trigger-subject` requires `subjectScope: "subject-ref"` and stores
+the exact normalized request subject reference already verified against the
+descriptor and source facts. `cooldownScopeSelector` and
+`budgetScopeSelector` must be equal; otherwise the policy is invalid and no
+append occurs. This Wave 0 design deliberately rejects distinct overlapping
+cooldown and budget selectors rather than pretending one gate can serialize
+two partially overlapping domains. `sourcePartition` remains an immutable
+policy input for source high-water reconstruction, not a candidate-selected
+admission-scope dimension.
+
+The derived scope is persisted in the request and also deterministically
+reconstructed at append and readback. The derived/persisted scope must be
+exactly equal, and `triggerGateKey` must equal the canonical hash of that
+scope; mismatch is a secret-safe invalid-scope result with no append.
 
 The append event's ID, stream sequence, and `context.occurredAt` bind the
 durable record at commit time and are verified during readback, but they are
@@ -127,10 +163,11 @@ The append protocol is fail-closed and idempotent:
 2. Normalize all inputs into plain own-data values before any await or append.
    Reject inherited properties, accessors, sparse arrays, symbols, and unknown
    fields rather than rereading caller objects later.
-3. Calculate the deterministic fingerprint, request ID, dedupe key, and
-   `triggerGateKey`. A matching existing request is a successful no-append
-   result only after exact ledger readback proves the same key, fingerprint,
-   deterministic request ID, and gate scope.
+3. Calculate the deterministic fingerprint, request ID, dedupe key, derived
+   admission scope, and `triggerGateKey`. A matching existing request is a
+   successful no-append result only after exact ledger readback reconstructs
+   the admission scope and proves it exactly equal to the persisted scope, key,
+   fingerprint, deterministic request ID, and gate key.
 4. For a new eligible candidate, perform an atomic conditional append in one
    mounted-ledger transaction serialized by `triggerGateKey`. Inside that
    transaction, re-read the current scope's request records, cooldown, budget,
@@ -144,10 +181,11 @@ The append protocol is fail-closed and idempotent:
    then return the newly applicable duplicate, cooldown, budget, stale,
    unavailable, or request result. A bounded evaluator never retries an old
    snapshot or spins indefinitely after repeated contention.
-6. Read back the exact committed event by ID and verify its resident identity,
-   policy/hash, source identities, high-water mark, causation, fingerprint,
-   deterministic request ID, and gate scope before returning a requested
-   decision.
+6. Read back the exact committed event by ID and reconstruct the admission
+   scope from the authoritative policy and verified request fields. Verify its
+   resident identity, policy/hash, source identities, high-water mark,
+   causation, fingerprint, deterministic request ID, persisted scope exactly
+   equal to reconstruction, and gate key before returning a requested decision.
 
 If a concurrent append finds the same `dedupeKey` with a different fingerprint,
 the evaluator returns a secret-safe `dedupe-conflict` diagnostic and appends
@@ -160,22 +198,24 @@ non-requested and resumable; it never receives a fabricated success result.
 Each descriptor declares an immutable policy reference and one bounded trigger
 budget. The proposed policy fields are `policyVersion`, `policyArtifactHash`,
 `cooldownMs`, `maxRequests`, `budgetWindowMs`, `subjectScope`, and
-`sourcePartition`. The policy artifact is mounted-authoritative, versioned,
-and provenance-bound; an in-process environment variable or browser setting
-cannot silently replace it.
+`sourcePartition`, `cooldownScopeSelector`, and `budgetScopeSelector`. The
+policy artifact is mounted-authoritative, versioned, and provenance-bound; an
+in-process environment variable or browser setting cannot silently replace it.
 
-Cooldown is evaluated per `(workspaceId, residentAgentId, triggerId,
-policyVersion, subjectScope)`. It begins at the recorded request event time,
-not at an ephemeral evaluator clock. Its projection is rebuilt from matching
-read-back request records. During cooldown, the evaluator returns a
-`cooldown-active` decision with a safe `notBefore` time and makes no append.
+Cooldown is evaluated per the verified, derived `admissionScope`, whose
+policy-defined cooldown and budget scope inputs must pass the equal-selector
+rule above. It begins at the recorded request event time, not at an ephemeral
+evaluator clock. Its projection is rebuilt from matching read-back request
+records whose reconstructed admission scope is exactly equal. During cooldown,
+the evaluator returns a `cooldown-active` decision with a safe `notBefore`
+time and makes no append.
 
 The trigger budget counts only read-back request records in its policy-defined
-window and scope. It contains no model-token, provider-byte, tool, or approval
-budget because trigger evaluation performs none of those actions. A
-budget-exhausted decision makes no append and remains eligible for a later
-evaluation after the authoritative window changes. The bounded-loop lane owns
-the distinct execution budgets that apply after adoption.
+window and derived admission scope. It contains no model-token, provider-byte,
+tool, or approval budget because trigger evaluation performs none of those
+actions. A budget-exhausted decision makes no append and remains eligible for a
+later evaluation after the authoritative window changes. The bounded-loop lane
+owns the distinct execution budgets that apply after adoption.
 
 Neither cooldown nor budget denial advances source state. This is deliberate:
 advancing it would silently discard an unrequested authoritative change. A
@@ -376,10 +416,19 @@ credential-free tests, that:
   append times, produce the same stable `requestFingerprint`, deterministic
   `requestId`, and `dedupeKey`, then one request and exact duplicate readback;
 - a same-key/different-fingerprint collision fails closed;
-- concurrent distinct candidates with different source high-water marks but the
-  same `triggerGateKey` are admitted through one atomic conditional append:
-  with a one-request budget or active cooldown, exactly one can append and the
-  losing candidate must re-read and re-evaluate to a no-append decision;
+- equal-policy-scope/different-high-water candidates deterministically derive
+  the same persisted `admissionScope` and `triggerGateKey` from the immutable
+  policy and verified request facts, then are admitted through one atomic
+  conditional append: with a one-request budget or active cooldown, exactly
+  one can append and the losing candidate must re-read and re-evaluate to a
+  no-append decision;
+- equal-policy-scope/different-high-water candidates must derive the same
+  `triggerGateKey` before the atomic append; a difference is an invalid-scope
+  result, never a second serialization domain;
+- a candidate-selected `budgetScope`, `cooldownScope`, selector, or gate key
+  is rejected as an unknown field before append; an altered scope in a request,
+  duplicate, or readback counterfactual fails exact reconstruction and returns
+  an invalid-scope result with no append or high-water advance;
 - cooldown and budget denial make no append and do not advance high-water;
 - a request advances high-water only after exact append readback, and replay
   rebuilds the same provenance and ordering;

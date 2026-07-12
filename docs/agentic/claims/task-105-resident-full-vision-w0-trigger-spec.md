@@ -252,3 +252,94 @@ console.log(`GREEN: Task 105 repair audit passed (${required.length} assertions)
 - Repair status: ready-for-review. A fresh model-pinned re-review is required;
   this repairer does not self-approve, create Task 113, begin production work,
   or merge into `neo` or an integration branch.
+
+## Repair Correction RC-105-02 — Deterministic Trigger Admission Scope
+
+This forward-only final focused repair preserves all preceding Task 105 claim,
+review, and repair evidence. It supersedes the prior `ready-for-review` status
+only while it repairs the fresh re-review finding about candidate-controllable
+trigger admission scope derivation.
+
+- Repair authorization: coordinator-issued Task 105 trigger-admission-scope
+  derivation repair only under the Standing Coordinator Delegation. This is the
+  final permitted focused repair attempt and authorizes one verified commit and
+  fresh model-pinned re-review; it excludes Task 113, implementation planning,
+  production work, dispatch, and any merge.
+- Repair worker: Codex Task 105 Lane T final focused repairer, using the
+  coordinator/user-confirmed GPT-5.6 Terra / Extra High configuration.
+- Repair claimed at: `2026-07-12T21:26:42Z`.
+- Repair base: `b6361ea6de4334f46d136872f2d225d8a0eacc0f`.
+- Review finding: `ProposedTriggerAdmissionScopeV1.budgetScope` was an
+  unconstrained string while policy declared only `subjectScope` and
+  `sourcePartition`; it was neither bound to an exact immutable derivation nor
+  persisted/reconstructed for readback, so a forged or candidate-specific
+  scope could derive another gate key and bypass shared-scope serialization.
+- Root cause: the previous repair supplied atomicity after an imprecise scope
+  boundary. A dedupe candidate could choose a different scope label without
+  changing the verified policy or source high-water facts, so the transaction
+  guard did not necessarily represent the policy's actual cooldown/budget
+  admission domain.
+- Repair RED: the focused inline Node audit exited 1 with
+  `RED: Task 105 final scope-derivation audit missing: persisted admission
+  scope, finite policy selectors, exact derivation, policy cooldown and budget
+  inputs, scope selector consistency, candidate scope rejected, readback
+  reconstruction, equal scope high-water rule, altered scope counterfactual`.
+- Repair status: repairing. The next record supplies reproducible GREEN,
+  verification, and fresh-re-review evidence.
+
+### Reproducible Final Scope-Derivation Audit
+
+The following focused documentation audit reads only the owned specification.
+Its RED baseline was run before RC-105-02 changed the scope contract.
+
+```bash
+node --input-type=module --eval '
+import fs from "node:fs";
+const spec = fs.readFileSync("docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md", "utf8");
+const scopeStart = spec.indexOf("interface ProposedTriggerAdmissionScopeV1");
+const scopeEnd = spec.indexOf(String.fromCharCode(96).repeat(3), scopeStart);
+const scope = scopeStart < 0 || scopeEnd < 0 ? "" : spec.slice(scopeStart, scopeEnd);
+const required = [
+  ["persisted admission scope", spec.includes("admissionScope: ProposedTriggerAdmissionScopeV1")],
+  ["finite policy selectors", spec.includes("type ProposedTriggerAdmissionScopeSelectorV1") && spec.includes("workspace-trigger-subject")],
+  ["exact derivation", spec.includes("deriveAdmissionScope") && spec.includes("authoritative policy") && spec.includes("verified request")],
+  ["policy cooldown and budget inputs", spec.includes("cooldownScopeSelector") && spec.includes("budgetScopeSelector")],
+  ["scope selector consistency", spec.includes("must be equal") && spec.includes("policy is invalid")],
+  ["candidate scope rejected", spec.includes("candidate-selected") && spec.includes("unknown field")],
+  ["readback reconstruction", /reconstruct the admission\s+scope/.test(spec) && spec.includes("exactly equal")],
+  ["equal scope high-water rule", spec.includes("equal-policy-scope/different-high-water") && /same\s+.{0,12}triggerGateKey/.test(spec)],
+  ["altered scope counterfactual", spec.includes("altered scope") && spec.includes("no append")]
+];
+const missing = required.filter(([, ok]) => !ok).map(([name]) => name);
+if (missing.length) {
+  console.error("RED: Task 105 final scope-derivation audit missing: " + missing.join(", "));
+  process.exit(1);
+}
+console.log("GREEN: Task 105 final scope-derivation audit passed (" + required.length + " assertions).");
+'
+```
+
+- GREEN result: the audit exited 0 with
+  GREEN: Task 105 final scope-derivation audit passed (9 assertions).
+- Whitespace: git diff --check exited 0 with no output.
+- Factory readiness: npm run factory:check exited 0 with
+  factory-readiness passed.
+- Full verification: npm run verify exited 0 with typecheck passed, 189 test
+  files passed with 3 skipped, 2,228 tests passed with 5 skipped, a successful
+  Vite production build (with the existing chunk-size warning), and
+  factory-readiness passed.
+- Final repair self-review: admission scope is persisted and deterministically
+  reconstructed from only verified request identity/subject fields and immutable
+  policy scope selectors. Candidate-selected scope, selector, and key fields
+  are unknown/rejected; policy selector mismatch fails closed; reconstructed
+  scope and canonical gate key must exactly match readback. Equal-policy-scope/
+  different-high-water candidates therefore share the one admission gate before
+  append. No prompt/effect, append-only, provenance/high-water, mounted
+  authority, fallback, approval, handoff, secret-safe, pre-CF-1, ownership, or
+  team-scope invariant was weakened.
+- Live-provider gate: not applicable. Trigger evaluation still forbids model
+  and provider invocation.
+- Final repair status: ready-for-review. Fresh model-pinned re-review is
+  required. This repairer does not self-approve, begin Task 113 or production
+  work, create an implementation plan, dispatch work, or merge into `neo` or
+  an integration branch.
