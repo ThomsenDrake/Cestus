@@ -37,7 +37,17 @@ Never weaken these Cestus contracts:
 - Local-first solo mode must preserve a path to small newsroom/nonprofit team mode.
 - AI-legibility matters: contracts, tests, specs, and handoffs must be readable by generic coding agents.
 
-Stop and escalate on data-loss risk, schema conflict, unavailable dependency, credential need, external-service dependency, verifier failure after two focused repair attempts, or any task that would bypass those invariants.
+Stop the current child task and escalate to its assigned coordinator on
+data-loss risk, schema conflict, unavailable dependency, credential need,
+external-service dependency, verifier failure after two focused repair
+attempts, or any task that would bypass those invariants. For a program with an
+approved standing coordinator delegation, this is an internal recovery gate,
+not automatically a user prompt: the coordinator records the root cause,
+changes tactics or replaces the implementer/reviewer, issues a new scoped
+authorization, and continues within the approved contract. Escalate to the
+user only when recovery requires a new product or scope decision, a changed
+safety or truth invariant, an irreversible/data-loss choice, unofficial
+credentials, or acceptance of changed external behavior.
 
 ## Operating Lessons
 
@@ -71,6 +81,12 @@ Recent completed Cestus slices exposed a few recurring failure modes. Treat thes
 - User-facing execution controls must invoke an approved executable path. A control that only appends lifecycle metadata is a queue or proposal control and must be labeled as such; never present it as starting or completing agent work.
 - Integrate resident-agent execution in dependency order: scheduler/resumer, authoritative domain adapters, specialist runners, then cockpit/bridges. Downstream design may proceed against stable DTOs, but dependent implementation must rebase after upstream contracts land and run cross-boundary tests before merge.
 - Verify the checkout that will actually run. Rebuild ignored output such as `dist` from the target checkout, rerun sandbox-blocked gates in an unrestricted coordinator environment, keep dependency setup from churning lockfiles, and record spawned worker/reviewer session IDs with lane/task/role names before archiving them after integration.
+- Treat repair-count exhaustion as a root-cause checkpoint. After two focused
+  attempts, stop that child, preserve its evidence, use a fresh agent or a
+  different counterfactual test, and continue under a new coordinator-issued
+  scope. Do not turn a bounded documentation, test, or implementation repair
+  into a user approval loop when the approved contract already determines the
+  correct outcome.
 
 Detailed evidence and remaining gaps from the first resident-agent MVP integration are recorded in `docs/agentic/retrospectives/2026-07-10-resident-agent-mvp.md`.
 
@@ -149,7 +165,11 @@ Operating style:
 - Plan first if implementation tasks are not approved.
 - During implementation, use a task-scoped branch/worktree, durable claims, failing tests first, exact targeted commands, `npm run verify`, commits per task, and review gates.
 - Preserve append-only ledger semantics, provenance, projection rebuildability, human-approved send gates, legal escalation locks, and AI-legible contracts.
-- Stop on data-loss risk, schema conflict, unavailable dependency, credential need, external-service dependency, or repeated verifier failure.
+- Stop this child and return structured evidence to the coordinator on
+  data-loss risk, schema conflict, unavailable dependency, credential need,
+  external-service dependency, or repeated verifier failure. Do not ask the
+  user for routine repair authorization when a standing coordinator delegation
+  governs the program.
 
 Begin by reading the required context and reporting the first clarifying question or first task checkpoint.
 ```
