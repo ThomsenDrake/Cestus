@@ -4,8 +4,15 @@ import {
   FakeModelProvider,
   buildContextPackRef,
   buildPromptArtifact,
+  createContextPackRegistry,
   createAgentRuntime,
+  createProviderRegistry,
   hashAgentContextPack,
+  hashAgentToolPreview,
+  specialistWorkflowDescriptorFor,
+  type AgentApprovedToolExecutorDescriptor,
+  type AgentTaskOrchestratorRuntimeCapabilities,
+  type AgentToolPreview,
   type ModelInvocationRequest,
   type ModelInvocationResult,
   type ModelProviderAdapter,
@@ -14,6 +21,7 @@ import {
 } from "../src/index.js";
 
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
+const agentRuntimeActor = { id: "actor_runtime_agent", kind: "agent" as const, label: "Runtime Agent" };
 const fixedNow = () => "2026-07-07T19:00:00.000Z";
 const inputArtifactHash = "sha256:4444444444444444444444444444444444444444444444444444444444444444";
 const providerOutputArtifactHash = "sha256:7777777777777777777777777777777777777777777777777777777777777777";
@@ -83,6 +91,184 @@ describe("agent runtime core", () => {
 
     expect(status.identityLifecycle.state).toBe("not-mounted");
     expect(after).toHaveLength(before.length);
+  });
+
+  it("runtime exposes task orchestrator tick separately from approved tool scheduler wake", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({
+      ledger,
+      actor: humanActor,
+      now: fixedNow,
+      taskOrchestratorCapabilities: taskOrchestratorCapabilitiesForTest()
+    });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_runtime_orchestrator_tick",
+      title: "Runtime task orchestrator tick",
+      requestedBy: humanActor.id,
+      priority: "urgent"
+    });
+
+    const taskSummary = await runtime.tickTaskOrchestrator();
+    const schedulerSummary = await runtime.scheduler.wake();
+
+    expect(taskSummary.claimed).toContainEqual(expect.objectContaining({
+      taskId: "task_runtime_orchestrator_tick",
+      runType: "evidence-triage"
+    }));
+    expect(schedulerSummary.schemaVersion).toBe("agent-scheduler-wake-result.v1");
+    expect((await ledger.readAll()).map((event) => event.type)).toContain("agent.task.orchestration.claimed");
+  });
+
+  it("task orchestrator tick does not call createAgentScheduler wake", async () => {
+    const ledger = new InMemoryEventLedger();
+    const preview = schedulerPreview("toolreq_runtime_scheduler_separation");
+    let executions = 0;
+    const runtime = createAgentRuntime({
+      ledger,
+      actor: agentRuntimeActor,
+      now: fixedNow,
+      approvedToolExecutors: [schedulerDescriptor(preview, () => { executions += 1; })],
+      taskOrchestratorCapabilities: taskOrchestratorCapabilitiesForTest()
+    });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_runtime_scheduler_separation",
+      title: "Do not wake scheduler from task tick",
+      requestedBy: humanActor.id,
+      priority: "high"
+    });
+    await requestApprovedTool(runtime, preview, "toolreq_runtime_scheduler_separation");
+
+    await runtime.tickTaskOrchestrator();
+
+    expect(executions).toBe(0);
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.tool.completed");
+  });
+
+  it("approved tool scheduler wake does not claim queued tasks", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now: fixedNow });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_scheduler_must_not_claim",
+      title: "Scheduler must not claim queued tasks",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+
+    await runtime.scheduler.wake();
+
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.task.orchestration.claimed");
+  });
+
+  it("optional runtime wake service composes task orchestrator tick then approved tool scheduler wake with separate summaries", async () => {
+    const ledger = new InMemoryEventLedger();
+    const preview = schedulerPreview("toolreq_runtime_composed_wake");
+    let executions = 0;
+    const runtime = createAgentRuntime({
+      ledger,
+      actor: agentRuntimeActor,
+      now: fixedNow,
+      approvedToolExecutors: [schedulerDescriptor(preview, () => { executions += 1; })],
+      taskOrchestratorCapabilities: taskOrchestratorCapabilitiesForTest()
+    });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_runtime_composed_wake",
+      title: "Compose task tick and scheduler wake",
+      requestedBy: humanActor.id,
+      priority: "urgent"
+    });
+    await requestApprovedTool(runtime, preview, "toolreq_runtime_composed_wake");
+
+    const wake = await runtime.wakeResidentAgent();
+
+    expect(wake).toMatchObject({
+      schemaVersion: "agent-runtime-wake-result.v1",
+      taskOrchestrator: {
+        claimed: [expect.objectContaining({ taskId: "task_runtime_composed_wake" })]
+      },
+      approvedToolScheduler: {
+        schemaVersion: "agent-scheduler-wake-result.v1",
+        completedCount: 1
+      }
+    });
+    expect(executions).toBe(1);
+  });
+
+  it("task orchestrator tick blocks when resident identity lifecycle is not ready", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({
+      ledger,
+      actor: humanActor,
+      now: fixedNow,
+      identityLifecycleReady: async () => ({
+        schemaVersion: "resident-identity-lifecycle.v1",
+        state: "not-mounted",
+        residentAgentId: "agent_default",
+        initialized: false,
+        eventIds: [],
+        safeMessage: "Resident identity is not mounted.",
+        allowedRepairActions: ["mount or create a portable workspace"]
+      })
+    });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_runtime_not_ready",
+      title: "Do not claim when lifecycle is not ready",
+      requestedBy: humanActor.id,
+      priority: "urgent"
+    });
+
+    await expect(runtime.tickTaskOrchestrator()).rejects.toThrow(/resident identity.*not ready/i);
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.task.orchestration.claimed");
+  });
+
+  it("task orchestrator tick fails closed before claim when runtime capabilities are not registered", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now: fixedNow });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_runtime_missing_orchestrator_caps",
+      title: "Do not claim without orchestration capabilities",
+      requestedBy: humanActor.id,
+      priority: "urgent"
+    });
+
+    await expect(runtime.tickTaskOrchestrator()).rejects.toThrow(/capabilities.*not registered/i);
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.task.orchestration.claimed");
+  });
+
+  it("task orchestrator tick proceeds only after mounted workspace resident identity is ready", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({
+      ledger,
+      actor: humanActor,
+      now: fixedNow,
+      taskOrchestratorCapabilities: taskOrchestratorCapabilitiesForTest(),
+      identityLifecycleReady: async () => ({
+        schemaVersion: "resident-identity-lifecycle.v1",
+        state: "ready",
+        residentAgentId: "agent_default",
+        workspaceId: "ws_case_001",
+        initialized: true,
+        eventIds: [],
+        safeMessage: "Resident identity is ready.",
+        allowedRepairActions: []
+      })
+    });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_runtime_ready",
+      title: "Claim after resident identity readiness",
+      requestedBy: humanActor.id,
+      priority: "urgent"
+    });
+
+    const summary = await runtime.tickTaskOrchestrator();
+
+    expect(summary.claimed).toContainEqual(expect.objectContaining({ taskId: "task_runtime_ready" }));
   });
 
   it("keeps memory reads read-only and rebuilt from ledger events", async () => {
@@ -616,6 +802,105 @@ async function beforePreparedInvoke(runtime: ReturnType<typeof createAgentRuntim
     runType: "ontology-bootstrap",
     scope: { kind: "workspace", refs: ["ws_case_001"] }
   });
+}
+
+async function requestApprovedTool(
+  runtime: ReturnType<typeof createAgentRuntime>,
+  preview: AgentToolPreview,
+  toolRequestId: string
+): Promise<void> {
+  await runtime.gateway.requestTool({
+    toolRequestId,
+    residentAgentId: "agent_default",
+    taskId: "task_runtime_scheduler_route",
+    runId: "run_runtime_scheduler_route",
+    toolId: "agent.test.runtime-scheduler",
+    toolVersion: "1.0.0",
+    sideEffectClass: "ledger-review",
+    requiredApprovalClass: "ledger-review",
+    preview
+  });
+  await runtime.gateway.approveTool({
+    toolRequestId,
+    actor: humanActor,
+    approvedPreviewHash: hashAgentToolPreview(preview),
+    rationale: "Human approved exact runtime scheduler preview."
+  });
+}
+
+function schedulerPreview(toolRequestId: string): AgentToolPreview {
+  return {
+    summary: `Runtime scheduler preview ${toolRequestId}.`,
+    relatedEventIds: ["evt_runtime_scheduler_source"],
+    artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+  };
+}
+
+function schedulerDescriptor(preview: AgentToolPreview, onExecute: () => void): AgentApprovedToolExecutorDescriptor {
+  return {
+    toolId: "agent.test.runtime-scheduler",
+    toolVersion: "1.0.0",
+    sideEffectClass: "ledger-review",
+    approvalClass: "ledger-review",
+    async buildCurrentPreview() {
+      return {
+        preview,
+        sourceEventIds: ["evt_runtime_scheduler_source"],
+        inputArtifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+        provenanceRefs: ["evt_runtime_scheduler_source", "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+        activeLocks: [],
+        freshnessChecks: [{
+          name: "agent-projection",
+          expected: "high-watermark:1",
+          actual: "high-watermark:1",
+          ok: true
+        }]
+      };
+    },
+    async executeApproved() {
+      onExecute();
+      return {
+        eventIds: ["evt_runtime_scheduler_domain_completed"],
+        artifactHashes: ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+        readModelChanges: [{
+          projectionName: "agent-runtime-test",
+          change: "approved scheduler work completed"
+        }],
+        resultSummary: "Approved scheduler work completed."
+      };
+    }
+  };
+}
+
+function taskOrchestratorCapabilitiesForTest(): AgentTaskOrchestratorRuntimeCapabilities {
+  return {
+    schemaVersion: "agent-task-orchestrator-runtime-capabilities.v1",
+    workflowRegistry: { require: specialistWorkflowDescriptorFor },
+    contextRegistry: createContextPackRegistry(),
+    promptRendererRegistry: {
+      async render() {
+        throw new Error("Test task orchestrator prompt renderer should not be invoked by Task 7 runtime composition tests.");
+      }
+    },
+    providerRegistry: createProviderRegistry.withDefaultsForTest(),
+    approvalReader: { inspect: async () => ({ status: "waiting" as const, reason: "test approval reader" }) },
+    runnerRegistry: {
+      async dispatch() {
+        throw new Error("Test task orchestrator runner should not be dispatched by Task 7 runtime composition tests.");
+      }
+    },
+    handoffCapability: {
+      prepare() {
+        throw new Error("Test task orchestrator handoff prepare should not be invoked by Task 7 runtime composition tests.");
+      },
+      bind() {
+        throw new Error("Test task orchestrator handoff bind should not be invoked by Task 7 runtime composition tests.");
+      },
+      readback() {
+        throw new Error("Test task orchestrator handoff readback should not be invoked by Task 7 runtime composition tests.");
+      }
+    }
+  };
 }
 
 function remoteCredentialRef() {

@@ -116,12 +116,29 @@ describe("evidence triage workflow", () => {
       "agent.model-invocation.requested",
       "agent.model-invocation.completed",
       "agent.specialist-run.step.recorded",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
       "agent.specialist-run.completed"
     ]));
+    const events = await ledger.readAll();
+    const finalOutputIndex = events.findIndex((event) =>
+      event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output"
+    );
+    const preparedIndex = events.findIndex((event) => event.type === "agent.specialist-handoff.prepared");
+    const recordedIndex = events.findIndex((event) => event.type === "agent.specialist-handoff.recorded");
+    const completedIndex = events.findIndex((event) => event.type === "agent.specialist-run.completed");
+    expect(finalOutputIndex).toBeGreaterThanOrEqual(0);
+    expect(finalOutputIndex).toBeLessThan(preparedIndex);
+    expect(preparedIndex).toBeLessThan(recordedIndex);
+    expect(recordedIndex).toBeLessThan(completedIndex);
     const outputArtifactHashes = result.handoff.outputArtifacts.map((artifact) => artifact.artifactHash);
-    const completed = (await ledger.readAll()).find((event): event is Extract<Awaited<ReturnType<InMemoryEventLedger["readAll"]>>[number], { type: "agent.specialist-run.completed" }> =>
+    const recorded = events.find((event): event is Extract<Awaited<ReturnType<InMemoryEventLedger["readAll"]>>[number], { type: "agent.specialist-handoff.recorded" }> =>
+      event.type === "agent.specialist-handoff.recorded"
+    );
+    const completed = events.find((event): event is Extract<Awaited<ReturnType<InMemoryEventLedger["readAll"]>>[number], { type: "agent.specialist-run.completed" }> =>
       event.type === "agent.specialist-run.completed"
     );
+    expect(completed?.context.causationId).toBe(recorded?.id);
     expect(completed?.payload.outputArtifactHashes).toEqual(outputArtifactHashes);
     const projectedRun = buildAgentProjection(await ledger.readAll()).runs.get("run_evidence_triage_001");
     expect(projectedRun?.state).toBe("completed");
@@ -145,10 +162,11 @@ describe("evidence triage workflow", () => {
 
   it("treats governance, quarantine, and assertion booleans as local review suggestions only", async () => {
     const { ledger, runtime } = await preparedRuntime(modelOutput({ requestProviderParseApproval: false }));
+    const providerPreview = await providerParseCurrentPreview(ledger);
 
     const result = await runEvidenceTriageWorkflow({
       ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
-      providerParseApprovalPreview: await providerParsePreviewInput()
+      providerParseApprovalPreview: providerPreview.current.preview
     });
 
     expect(result.handoff.status).toBe("ready-for-review");
@@ -229,10 +247,13 @@ describe("evidence triage workflow", () => {
       });
       expect(JSON.stringify(result.handoff)).not.toContain("Foreign evidence reference");
 
-      const eventTypes = (await ledger.readAll()).map((event) => event.type);
+      const events = await ledger.readAll();
+      const eventTypes = events.map((event) => event.type);
       expect(eventTypes).toContain("agent.model-invocation.completed");
+      expect(eventTypes).toContain("agent.specialist-handoff.prepared");
+      expect(eventTypes).toContain("agent.specialist-handoff.recorded");
       expect(eventTypes).toContain("agent.specialist-run.failed");
-      expect(eventTypes).not.toContain("agent.specialist-run.step.recorded");
+      expectDurableFailedHandoffSequence(events);
       expect(eventTypes).not.toContain("agent.tool.requested");
     }
   });
@@ -288,10 +309,11 @@ describe("evidence triage workflow", () => {
       runType: "evidence-triage",
       scope: { kind: "workspace", refs: ["ws_triage"] }
     });
+    const providerPreview = await providerParseCurrentPreview(ledger);
     const input = {
       ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
       evidenceIds,
-      providerParseApprovalPreview: await providerParsePreviewInput()
+      providerParseApprovalPreview: providerPreview.current.preview
     };
 
     const result = await runEvidenceTriageWorkflow(input);
@@ -307,22 +329,27 @@ describe("evidence triage workflow", () => {
     const { ledger, runtime } = await preparedRuntime(modelOutput());
     const store = createDerivativeStore();
     let writeCount = 0;
+    let failedDerivativeWrite = false;
+    const failingDerivativeStore = {
+      put: async (content: Buffer) => {
+        writeCount += 1;
+        if (writeCount === 4) {
+          failedDerivativeWrite = true;
+          throw new Error("simulated private storage failure");
+        }
+        return await store.put(content);
+      },
+      get: store.get
+    };
 
     const result = await runEvidenceTriageWorkflow({
       ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
-      derivativeStore: {
-        put: async (content) => {
-          writeCount += 1;
-          if (writeCount === 4) {
-            throw new Error("simulated private storage failure");
-          }
-          return await store.put(content);
-        }
-      },
+      derivativeStore: failingDerivativeStore,
       providerParseApprovalPreview: await providerParsePreviewInput()
     });
 
-    expect(writeCount).toBe(4);
+    expect(failedDerivativeWrite).toBe(true);
+    expect(writeCount).toBeGreaterThan(4);
     expect(result.handoff).toMatchObject({
       status: "failed",
       failure: {
@@ -334,10 +361,13 @@ describe("evidence triage workflow", () => {
       toolRequestIds: []
     });
     expect(JSON.stringify(result.handoff)).not.toContain("simulated private storage failure");
-    const eventTypes = (await ledger.readAll()).map((event) => event.type);
+    const events = await ledger.readAll();
+    const eventTypes = events.map((event) => event.type);
     expect(eventTypes).toContain("agent.model-invocation.completed");
+    expect(eventTypes).toContain("agent.specialist-handoff.prepared");
+    expect(eventTypes).toContain("agent.specialist-handoff.recorded");
     expect(eventTypes).toContain("agent.specialist-run.failed");
-    expect(eventTypes).not.toContain("agent.specialist-run.step.recorded");
+    expectDurableFailedHandoffSequence(events);
     expect(eventTypes).not.toContain("agent.tool.requested");
   });
 
@@ -410,18 +440,22 @@ describe("evidence triage workflow", () => {
       status: "failed",
       failure: { category: "model-output-invalid", retryable: true }
     });
-    const eventTypes = (await ledger.readAll()).map((event) => event.type);
+    const events = await ledger.readAll();
+    const eventTypes = events.map((event) => event.type);
     expect(eventTypes).toContain("agent.model-invocation.completed");
+    expect(eventTypes).toContain("agent.specialist-handoff.prepared");
+    expect(eventTypes).toContain("agent.specialist-handoff.recorded");
     expect(eventTypes).toContain("agent.specialist-run.failed");
-    expect(eventTypes).not.toContain("agent.specialist-run.step.recorded");
+    expectDurableFailedHandoffSequence(events);
     expect(eventTypes).not.toContain("agent.tool.requested");
   });
 
   it("is replay-safe and refuses to duplicate the local derivative step", async () => {
     const { ledger, runtime } = await preparedRuntime(modelOutput({ requestProviderParseApproval: false }));
+    const providerPreview = await providerParseCurrentPreview(ledger);
     const input = {
       ...baseRunInput(ledger, runtime, createTriageContextPacks([])),
-      providerParseApprovalPreview: await providerParsePreviewInput()
+      providerParseApprovalPreview: providerPreview.current.preview
     };
 
     await runEvidenceTriageWorkflow(input);
@@ -490,6 +524,41 @@ function createDerivativeStore() {
   });
 }
 
+function expectDurableFailedHandoffSequence(
+  events: readonly Awaited<ReturnType<InMemoryEventLedger["readAll"]>>[number][]
+): void {
+  expect(eventIndex(events, "agent.specialist-run.step.recorded", "final-output")).toBeLessThan(
+    eventIndex(events, "agent.specialist-handoff.prepared")
+  );
+  expect(eventIndex(events, "agent.specialist-handoff.prepared")).toBeLessThan(
+    eventIndex(events, "agent.specialist-handoff.recorded")
+  );
+  expect(eventIndex(events, "agent.specialist-handoff.recorded")).toBeLessThan(
+    eventIndex(events, "agent.specialist-run.failed")
+  );
+  expect(events.some((event) =>
+    event.type === "agent.specialist-run.step.recorded" &&
+    event.payload.stepId === "step_evidence_triage_local_artifacts"
+  )).toBe(false);
+}
+
+function eventIndex(
+  events: readonly Awaited<ReturnType<InMemoryEventLedger["readAll"]>>[number][],
+  type: string,
+  stepKind?: string
+): number {
+  const index = events.findIndex((event) =>
+    event.type === type && (
+      stepKind === undefined ||
+      (event.payload as Record<string, unknown>).stepKind === stepKind
+    )
+  );
+  if (index < 0) {
+    throw new Error(`Expected ${type} ${stepKind ?? ""} in ledger.`);
+  }
+  return index;
+}
+
 function createTriageContextPacks(
   builtIds: string[],
   binding: { readonly evidenceEventId?: string; readonly linkEventId?: string } = {}
@@ -530,11 +599,10 @@ function createTriageContextPacks(
             evidenceHash
           ],
           sourceEventIds: [
-            "evt_triage_context_001",
             ...(binding.evidenceEventId === undefined ? [] : [binding.evidenceEventId]),
             ...(binding.linkEventId === undefined ? [] : [binding.linkEventId])
           ],
-          artifactHashes: [evidenceHash],
+          artifactHashes: binding.evidenceEventId === undefined ? [] : [evidenceHash],
           sizeBudgetBytes: 16_384
         };
       }

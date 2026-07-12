@@ -1,5 +1,9 @@
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { providerParseExecuteDescriptor } from "./adapters/provider-byte-transfer.js";
+import { serializeContextPackPayload } from "./context-packs.js";
+import { buildSpecialistHandoffMaterial } from "./specialist-handoff-manifest.js";
 import { assertAgentSecretSafeText } from "./secret-safety.js";
 import {
   validateProductionSpecialistProviderOutput,
@@ -11,16 +15,18 @@ import {
   type SpecialistNextAction
 } from "./specialist-handoffs.js";
 import {
-  appendSpecialistCompletion,
   appendSpecialistDerivativeStep,
-  appendSpecialistFailure,
+  appendSpecialistFinalOutputStep,
   assertSpecialistDerivativeStoreAvailable,
   assertSpecialistStepNotRecorded,
+  finalizeSpecialistRunAfterHandoff,
   invokeSpecialistModel,
   normalizeSpecialistJsonValue,
   prepareSpecialistRun,
+  recordSpecialistHandoff,
   writeSpecialistDerivativeArtifact,
   type SpecialistDerivativeArtifactStore,
+  type SpecialistHandoffManifestStore,
   type SpecialistRunnerBaseInput
 } from "./specialist-runner-kernel.js";
 import type { AgentToolPreview } from "./tool-gateway.js";
@@ -109,18 +115,6 @@ export async function runEvidenceTriageWorkflow(
     inputArtifactHashes: [prepared.promptArtifact.manifest.inputArtifactHash, invocation.outputArtifactHash],
     outputArtifactHashes: Object.values(artifactHashes)
   });
-  const completed = await appendSpecialistCompletion({
-    ledger: input.ledger,
-    actor: input.actor,
-    now: input.now,
-    runId: input.runId,
-    summary: output.requestProviderParseApproval
-      ? "Evidence triage local artifacts are complete; provider parse remains blocked until an executable provider service contract is available."
-      : "Evidence triage local artifacts are complete and ready for review.",
-    outputArtifactHashes: Object.values(artifactHashes),
-    relatedEventIds: [step.id]
-  });
-
   const nextSafeActions = localReviewNextActions(input, output);
   const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
@@ -147,11 +141,71 @@ export async function runEvidenceTriageWorkflow(
     approvalRequirements: [],
     nextSafeActions
   });
-
+  const publication = await publishEvidenceTriageDurableHandoff(input, prepared, handoff, {
+    sourceEventIds: previews.sourceBindings.relatedEventIds,
+    relatedEventIds: [...invocation.eventIds, step.id, ...previews.sourceBindings.relatedEventIds]
+  });
   return Object.freeze({
     handoff,
-    eventIds: Object.freeze([...invocation.eventIds, step.id, completed.id])
+    eventIds: Object.freeze([
+      ...invocation.eventIds,
+      step.id,
+      publication.finalOutput.id,
+      publication.recorded.prepared.id,
+      publication.recorded.recorded.id,
+      publication.finalized.terminal.id
+    ])
   });
+}
+
+async function publishEvidenceTriageDurableHandoff(
+  input: RunEvidenceTriageWorkflowInput,
+  prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
+  handoff: LegacySpecialistWorkflowHandoffDto,
+  refs: {
+    readonly sourceEventIds: readonly string[];
+    readonly relatedEventIds: readonly string[];
+  }
+) {
+  const handoffStore = evidenceTriageHandoffStore(input.derivativeStore);
+  await seedEvidenceTriageHandoffReferences(handoffStore, prepared, handoff.outputArtifacts);
+  const handoffMaterial = buildSpecialistHandoffMaterial({
+    status: handoff.status,
+    safeSummary: handoff.safeSummary,
+    contextPackRefs: prepared.contextPackRefs,
+    promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash as `sha256:${string}`,
+    outputArtifacts: handoff.outputArtifacts,
+    toolRequestIds: handoff.toolRequestIds,
+    approvalRequirements: handoff.approvalRequirements,
+    nextSafeActions: handoff.nextSafeActions,
+    ...(handoff.failure === undefined ? {} : { failure: handoff.failure }),
+    sourceEventIds: refs.sourceEventIds,
+    relatedEventIds: refs.relatedEventIds
+  });
+  const finalOutput = await appendSpecialistFinalOutputStep({
+    ledger: input.ledger,
+    materialStore: handoffStore,
+    actor: input.actor,
+    now: input.now,
+    runId: input.runId,
+    taskId: input.taskId,
+    handoffMaterial
+  });
+  const recorded = await recordSpecialistHandoff({
+    ledger: input.ledger,
+    manifestStore: handoffStore,
+    actor: input.actor,
+    now: input.now,
+    runId: input.runId,
+    taskId: input.taskId
+  });
+  const finalized = await finalizeSpecialistRunAfterHandoff({
+    ledger: input.ledger,
+    actor: input.actor,
+    now: input.now,
+    recorded
+  });
+  return Object.freeze({ finalOutput, recorded, finalized });
 }
 
 function parseModelOutput(outputText: string) {
@@ -164,6 +218,80 @@ function parseModelOutput(outputText: string) {
   } catch {
     return undefined;
   }
+}
+
+function evidenceTriageHandoffStore(store: SpecialistDerivativeArtifactStore | undefined): SpecialistHandoffManifestStore {
+  const candidate = store as unknown;
+  if (
+    typeof candidate === "object" &&
+    candidate !== null &&
+    typeof (candidate as { readonly put?: unknown }).put === "function" &&
+    typeof (candidate as { readonly get?: unknown }).get === "function"
+  ) {
+    return candidate as SpecialistHandoffManifestStore;
+  }
+  throw new Error("Evidence triage durable handoff requires content-addressed artifact readback.");
+}
+
+async function seedEvidenceTriageHandoffReferences(
+  store: SpecialistHandoffManifestStore,
+  prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
+  outputArtifacts: readonly { readonly artifactHash: `sha256:${string}` }[]
+): Promise<void> {
+  const resolvedContextPacks = prepared.promptArtifact.resolvedContextPacks ?? [];
+  const resolvedByHash = new Map(resolvedContextPacks.map((resolved) => [resolved.ref.contentHash, resolved]));
+  for (const ref of prepared.contextPackRefs) {
+    const resolved = resolvedByHash.get(ref.contentHash);
+    if (resolved === undefined) {
+      throw new Error("Evidence triage durable handoff requires resolved context payload bytes for every context ref.");
+    }
+    const payloadBytes = Buffer.from(serializeContextPackPayload(resolved.payload));
+    await assertStoreBindsHash(store, ref.contentHash as `sha256:${string}`, payloadBytes, "context pack payload");
+  }
+
+  await assertStoreBindsHash(
+    store,
+    prepared.promptArtifact.manifest.inputArtifactHash as `sha256:${string}`,
+    promptArtifactReferenceBytes(prepared.promptArtifact),
+    "prompt artifact"
+  );
+
+  for (const artifact of outputArtifacts) {
+    const bytes = await store.get(artifact.artifactHash);
+    if (!Buffer.isBuffer(bytes) || hashBytes(bytes) !== artifact.artifactHash) {
+      throw new Error("Evidence triage durable handoff output artifact readback failed.");
+    }
+  }
+}
+
+async function assertStoreBindsHash(
+  store: SpecialistHandoffManifestStore,
+  contentHash: `sha256:${string}`,
+  bytes: Buffer,
+  label: string
+): Promise<void> {
+  const stored = await store.put(bytes);
+  if (stored.contentHash !== contentHash || stored.sizeBytes !== bytes.byteLength) {
+    throw new Error(`Evidence triage durable handoff ${label} bytes do not match their content hash.`);
+  }
+  const readback = await store.get(contentHash);
+  if (!Buffer.isBuffer(readback) || !readback.equals(bytes)) {
+    throw new Error(`Evidence triage durable handoff ${label} readback failed.`);
+  }
+}
+
+function promptArtifactReferenceBytes(
+  promptArtifact: Awaited<ReturnType<typeof prepareSpecialistRun>>["promptArtifact"]
+): Buffer {
+  const { inputArtifactHash: _inputArtifactHash, ...manifestWithoutHash } = promptArtifact.manifest;
+  return Buffer.from(serializeContextPackPayload({
+    manifest: manifestWithoutHash,
+    text: promptArtifact.text
+  }));
+}
+
+function hashBytes(bytes: Buffer): `sha256:${string}` {
+  return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
 
 function assertApprovalPreviewsAvailable(
@@ -704,17 +832,6 @@ async function failedModelOutputResult(
   prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
   invocationEventIds: readonly string[]
 ): Promise<RunEvidenceTriageWorkflowResult> {
-  const failed = await appendSpecialistFailure({
-    ledger: input.ledger,
-    actor: input.actor,
-    now: input.now,
-    runId: input.runId,
-    category: "model-output-invalid",
-    message: "Evidence triage model output did not match the required structured schema.",
-    retryable: true,
-    allowedActions: ["retry with a provider that returns the approved evidence triage schema"],
-    ...(invocationEventIds.at(-1) === undefined ? {} : { causationId: invocationEventIds.at(-1) })
-  });
   const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
     runType: "evidence-triage",
@@ -742,7 +859,20 @@ async function failedModelOutputResult(
       retryable: true
     }
   });
-  return Object.freeze({ handoff, eventIds: Object.freeze([...invocationEventIds, failed.id]) });
+  const publication = await publishEvidenceTriageDurableHandoff(input, prepared, handoff, {
+    sourceEventIds: invocationEventIds,
+    relatedEventIds: invocationEventIds
+  });
+  return Object.freeze({
+    handoff,
+    eventIds: Object.freeze([
+      ...invocationEventIds,
+      publication.finalOutput.id,
+      publication.recorded.prepared.id,
+      publication.recorded.recorded.id,
+      publication.finalized.terminal.id
+    ])
+  });
 }
 
 async function failedDerivativeArtifactResult(
@@ -750,17 +880,6 @@ async function failedDerivativeArtifactResult(
   prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
   invocationEventIds: readonly string[]
 ): Promise<RunEvidenceTriageWorkflowResult> {
-  const failed = await appendSpecialistFailure({
-    ledger: input.ledger,
-    actor: input.actor,
-    now: input.now,
-    runId: input.runId,
-    category: "external-effect-failed",
-    message: "Evidence triage derivative artifact storage failed before ledger publication.",
-    retryable: true,
-    allowedActions: ["inspect local derivative artifact storage and retry evidence triage"],
-    ...(invocationEventIds.at(-1) === undefined ? {} : { causationId: invocationEventIds.at(-1) })
-  });
   const handoff = parseLegacySpecialistWorkflowHandoff({
     schemaVersion: "agent-specialist-handoff.v1",
     runType: "evidence-triage",
@@ -788,7 +907,20 @@ async function failedDerivativeArtifactResult(
       retryable: true
     }
   });
-  return Object.freeze({ handoff, eventIds: Object.freeze([...invocationEventIds, failed.id]) });
+  const publication = await publishEvidenceTriageDurableHandoff(input, prepared, handoff, {
+    sourceEventIds: invocationEventIds,
+    relatedEventIds: invocationEventIds
+  });
+  return Object.freeze({
+    handoff,
+    eventIds: Object.freeze([
+      ...invocationEventIds,
+      publication.finalOutput.id,
+      publication.recorded.prepared.id,
+      publication.recorded.recorded.id,
+      publication.finalized.terminal.id
+    ])
+  });
 }
 
 function blockedHandoff(

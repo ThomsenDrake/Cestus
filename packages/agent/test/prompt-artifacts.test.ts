@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   assertResolvedContextPacksForExecution,
   buildContextPackRef,
-  createContextPackRegistry
+  createContextPackRegistry,
+  registerContextPackPayloadParserAuthority
 } from "../src/context-packs.js";
 import type { AgentContextPackJsonValue, ContextPackRef } from "../src/context-packs.js";
 import {
@@ -16,6 +17,11 @@ import {
   serializePromptArtifactEnvelope
 } from "../src/prompt-artifacts.js";
 import { productionSpecialistPromptRegistrationFor } from "../src/production-specialist-prompts.js";
+import {
+  assembleTaskOrchestratorContext,
+  assertTaskOrchestratorContextHasNoPayloadBytes
+} from "../src/task-orchestrator-context.js";
+import { specialistWorkflowDescriptorFor } from "../src/specialist-workflows.js";
 
 const contextPackRef = buildContextPackRef({
   contextPackId: "task-run-history.v1",
@@ -93,6 +99,20 @@ for (const contextPackId of [
 }
 
 describe("resident agent prompt artifacts", () => {
+  it("does not include resolved payload bytes in approval preview or logs", async () => {
+    const assembled = await assembleTaskOrchestratorContext({
+      taskId: "task_task4_prompt_leakage",
+      runType: "evidence-triage",
+      scope: { kind: "workspace", refs: ["ws_case_001"] },
+      workflow: specialistWorkflowDescriptorFor("evidence-triage"),
+      contextRegistry: contextPackRegistry
+    });
+
+    assertTaskOrchestratorContextHasNoPayloadBytes(
+      [assembled.approvalPreview, assembled.logRecord],
+      assembled.resolvedContextPacks
+    );
+  });
   it("binds durable prompt envelopes to context pack refs and audit metadata", () => {
     const envelope = buildPromptArtifact({
       promptTemplateId: "resident-agent-context-pack.v1",
@@ -740,6 +760,7 @@ function permissiveProductionShapedParser(contextPackId: string) {
     writable: false,
     configurable: false
   });
+  registerContextPackPayloadParserAuthority(parser);
   return parser;
 }
 
