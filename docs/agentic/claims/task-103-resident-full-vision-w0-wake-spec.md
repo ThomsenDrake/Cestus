@@ -10,7 +10,7 @@
 - Base commit: `bb41ee02d7061f838917d378bccf17a6a6ad9e80`
 - Claimed at: `2026-07-12T19:55:14Z`
 - Model configuration: GPT-5.6 Terra / Extra High
-- Status: claimed
+- Status: ready-for-review
 
 ## Ownership
 
@@ -51,6 +51,42 @@ Task 110, Task 111, or any implementation work.
   after the specification and claim are complete.
 - Review: a fresh coordinator spec review and written W-spec approval after
   the committed lane specification.
+
+## Documentation RED Evidence
+
+- Command: `node --input-type=module -e '<specification-presence audit>'`
+- Observed result: exited 1 with `RED: Task 103 wake and portable lifecycle
+  specification is absent.` before the specification file was created.
+- Baseline documentation checks: `git diff --check` exited 0 with no output
+  and `npm run factory:check` reported `factory-readiness passed`.
+
+## Documentation GREEN Evidence
+
+- Command: `node --input-type=module -e '<Task 103 required-heading and
+  coverage audit>'`
+- Observed result: `GREEN: Task 103 wake specification coverage audit passed.`
+- Follow-up checks: `git diff --check` exited 0 with no output and `npm run
+  factory:check` reported `factory-readiness passed`.
+- Self-review: confirmed scope is restricted to this specification and claim;
+  no unfinished markers or existing implementation interface collisions were
+  found; proposed ownership preserves W/R/U/T/L/P/A boundaries; and the design
+  requires append-only evidence, provenance, durable readback, and no fallback
+  storage.
+
+## Final Verification Evidence
+
+- `git diff --check` exited 0 with no output.
+- `npm run factory:check` reported `factory-readiness passed`.
+- `npm run verify` exited 0 after the isolated worktree's lockfile-pinned
+  dependencies were restored; the verification chain includes typecheck,
+  deterministic tests, UI build, and factory readiness.
+
+## Handoff
+
+The specification is ready for a fresh coordinator spec review and written
+W-spec approval. Task 103 is complete at this gate only; Task 109, Task 110,
+Task 111, all production work, dispatch, and merge into `neo` remain outside
+this task.
 
 ## Stop And Escalation Conditions
 
