@@ -52,19 +52,20 @@ Task 110, Task 111, or any implementation work.
 - Review: a fresh coordinator spec review and written W-spec approval after
   the committed lane specification.
 
-## Documentation RED Evidence
+## Original Documentation Evidence (Preserved)
 
-- Command: `node --input-type=module -e '<specification-presence audit>'`
-- Observed result: exited 1 with `RED: Task 103 wake and portable lifecycle
-  specification is absent.` before the specification file was created.
+The original Task 103 factual outcomes remain preserved below. Its abbreviated
+inline audit notation is superseded by the complete executable review-repair
+audit recorded at the end of this claim.
+
+- RED observed result: before the specification was created, the absence audit
+  exited 1 with `RED: Task 103 wake and portable lifecycle specification is
+  absent.`
 - Baseline documentation checks: `git diff --check` exited 0 with no output
   and `npm run factory:check` reported `factory-readiness passed`.
-
-## Documentation GREEN Evidence
-
-- Command: `node --input-type=module -e '<Task 103 required-heading and
-  coverage audit>'`
-- Observed result: `GREEN: Task 103 wake specification coverage audit passed.`
+- GREEN observed result: after the original specification was complete, the
+  required-heading and coverage audit reported `GREEN: Task 103 wake
+  specification coverage audit passed.`
 - Follow-up checks: `git diff --check` exited 0 with no output and `npm run
   factory:check` reported `factory-readiness passed`.
 - Self-review: confirmed scope is restricted to this specification and claim;
@@ -94,3 +95,97 @@ Stop for data-loss or fallback-storage risk; an event, DTO, interface, or file
 ownership conflict; unavailable dependency; verifier failure after two focused
 repairs; portable-workspace identity mismatch needing a policy decision; or a
 required expansion beyond Task 103.
+
+## Review Repair Record — Durable Wake Claim Reconciliation
+
+Recorded at: 2026-07-12T21:57:27Z
+
+This append-only repair responds to fresh review of the committed Task 103
+specification. It preserves the original Task 103 outcomes above, replaces the
+abbreviated audit notation with the executable audit below, and changes only
+the two Task 103-owned documentation files. It does not create Task 111,
+production contracts, implementation code, a fallback store, or a merge into
+`neo`.
+
+### Documentation RED/GREEN Audit Command
+
+The same command is the focused documentation contract test. Before this
+repair, it exited 1 because the W supervision and portable-authority families
+were present but the durable active-claim reconciliation contract and complete
+audit evidence were absent. After this repair, it must exit 0.
+
+```bash
+node --input-type=module <<'NODE'
+import { readFileSync } from "node:fs";
+
+const spec = readFileSync("docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md", "utf8");
+const claim = readFileSync("docs/agentic/claims/task-103-resident-full-vision-w0-wake-spec.md", "utf8");
+const families = {
+  supervision: [
+    "## Process And Scheduler Ownership",
+    "## Wake, Pause, Resume, And Recovery",
+    "## Lifecycle Command And Route Boundaries"
+  ],
+  portable: [
+    "## Portable Workspace Authority",
+    "### Revalidation Contract",
+    "### No Fallback Storage"
+  ],
+  reconciliation: [
+    "## Review Repair: Durable Active-Claim Reconciliation After Reconnect",
+    "No fallback append occurs while the mount is unavailable.",
+    "workspace-unavailable checkpoint",
+    "claimId",
+    "attemptId",
+    "outageObservedAt",
+    "causation ID",
+    "authority evidence",
+    "high-water",
+    "policy version/digest",
+    "lock-state digest",
+    "normal claim recovery",
+    "readback"
+  ]
+};
+const missing = Object.entries(families).flatMap(([family, markers]) =>
+  markers.filter((marker) => !spec.includes(marker)).map((marker) => `${family}:${marker}`)
+);
+const legacyCommandPrefix = "node --input" + "-type=module -e '";
+const legacyAuditSuffix = "a" + "udit>";
+if (claim.includes(legacyCommandPrefix) && claim.includes("<") && claim.includes(legacyAuditSuffix)) {
+  missing.push("claim:abbreviated documentation audit command");
+}
+
+if (missing.length > 0) {
+  console.error(`RED: Task 103 W documentation repair audit failed as expected: ${missing.join(" | ")}`);
+  process.exit(1);
+}
+
+console.log("GREEN: Task 103 W documentation repair audit passed: supervision, portable authority, durable reconciliation, and executable evidence are present.");
+NODE
+```
+
+### Observed Documentation Evidence
+
+- RED command: the audit above exited 1 before the repair with
+  `RED: Task 103 W documentation repair audit failed as expected:` followed by
+  missing reconciliation requirements and `claim:abbreviated documentation
+  audit command`.
+- GREEN command: the same audit was rerun after the repair and reported
+  `GREEN: Task 103 W documentation repair audit passed: supervision, portable
+  authority, durable reconciliation, and executable evidence are present.`
+- Repair acceptance added to the W design requires no fallback append during
+  outage; same-identity revalidation followed by exact active-claim
+  release/checkpoint append and readback; idempotent duplicate recovery; and
+  normal claim recovery without reusing pre-outage execution state.
+
+### Repair Verification Evidence
+
+- `git diff --check` exited 0 with no output.
+- `npm run factory:check` reported `factory-readiness passed`.
+- The isolated worktree initially lacked its lockfile-installed dependencies,
+  so `npm run verify` stopped before typecheck with `tsc: command not found`.
+  `npm ci` restored the lockfile-defined local environment without tracked-file
+  changes. The subsequent `npm run verify` exited 0 with `typecheck passed`,
+  189 passed and 3 skipped test files, 2228 passed and 5 skipped tests, a
+  successful Vite build, and `factory-readiness passed`.
