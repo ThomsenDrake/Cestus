@@ -89,3 +89,100 @@ model configuration, or repeated verifier failure.
 - Stop disposition: fresh coordinator R-spec review and written lane approval
   remain required. This author does not self-approve, create an implementation
   plan, dispatch a worker, or merge into `neo`.
+
+## Review Repair 1 — Invocation Readiness And Handoff Store Typing
+
+The coordinator-authorized repair scope is limited to the two confirmed Lane R
+review findings: structural readiness was conflated with provider invocation
+readiness, and material/manifest persistence was conflated under one manifest
+store type. The repair preserves H as the handoff-contract owner and R as
+compositor/consumer. The supplied original reviewer task ID was not retrievable
+through the task reader, so this repair relies only on the two confirmed
+findings reproduced in the scoped coordinator authorization.
+
+### Focused Documentation RED
+
+Exact command form:
+
+```bash
+node --input-type=module <<'NODE'
+import { readFileSync } from "node:fs";
+const text = readFileSync("docs/superpowers/specs/2026-07-12-resident-agent-runtime-composition-design.md", "utf8");
+const failures = [];
+if (!/structuralStatus:/.test(text) || !/providerInvocation:/.test(text) || !/ready-to-invoke/.test(text)) failures.push("readiness does not separate structural and provider-invocation state");
+if (!/safeReason:/.test(text) || !/requirements:/.test(text) || !/executable:/.test(text)) failures.push("provider invocation state lacks safe reason, requirements, or derived executable relation");
+if (/handoffMaterialStore: SpecialistHandoffManifestStore/.test(text) || /handoffManifestStore: SpecialistHandoffManifestStore/.test(text)) failures.push("material and manifest persistence still share SpecialistHandoffManifestStore");
+if (!/MountedHandoffMaterialStore/.test(text) || !/MountedHandoffManifestStore/.test(text)) failures.push("distinct material and manifest store capability names are absent");
+if (!/material-before-manifest/.test(text) || !/manifest-before-recorded/.test(text)) failures.push("handoff persistence ordering assertions are absent");
+if (failures.length === 0) process.exitCode = 2;
+else { console.error(`RED: ${failures.join("; ")}`); process.exitCode = 1; }
+NODE
+```
+
+Observed result: exit 1 with all five assertions failing: no structural versus
+invocation state, no safe reason/requirements/executable relation, conflated
+`SpecialistHandoffManifestStore` material/manifest fields, no distinct store
+capabilities, and no material-before-manifest/manifest-before-recorded proof.
+
+### Focused Documentation GREEN
+
+Exact command form:
+
+```bash
+node --input-type=module <<'NODE'
+import { readFileSync } from "node:fs";
+const text = readFileSync("docs/superpowers/specs/2026-07-12-resident-agent-runtime-composition-design.md", "utf8");
+const required = [
+  /structuralStatus: "ready" \| "not-ready" \| "blocked" \| "unavailable"/,
+  /providerInvocation: ProviderInvocationReadiness/,
+  /"ready-to-invoke"/,
+  /"waiting-for-human-approval"/,
+  /readonly safeReason: string/,
+  /readonly requirements: ProviderInvocationRequirements/,
+  /executable is true only when structuralStatus is ready[\s\S]*providerInvocation\.state is ready-to-invoke/,
+  /waiting-for-human-approval"` is explicitly\nnon-executable/,
+  /rejects every state except\n`ready-to-invoke`/,
+  /interface MountedHandoffMaterialStore/,
+  /interface MountedHandoffManifestStore/,
+  /writeMaterial\(/,
+  /writeManifest\(/,
+  /interface MountedHandoffMaterialReceipt/,
+  /interface MountedHandoffManifestReceipt/,
+  /material-before-manifest proof/,
+  /manifest-before-recorded proof/,
+  /manifest readback binds the prior verified material hash/,
+  /Lane H remains\nthe owner of material\/manifest\/handoff contracts/
+];
+const conflated = ["handoffMaterialStore: SpecialistHandoffManifestStore", "handoffManifestStore: SpecialistHandoffManifestStore"].filter((value) => text.includes(value));
+if (required.some((pattern) => !pattern.test(text)) || conflated.length) process.exitCode = 1;
+else console.log("GREEN: readiness is structurally and invocation distinct; handoff material/manifest persistence is type-distinct and order-verified");
+NODE
+```
+
+Observed result: exit 0 with the printed GREEN result. The assertions prove
+that structural `ready` is not an invocation grant; a human-approval wait is
+non-executable; consumer dispatch requires `ready-to-invoke`; material and
+manifest use distinct typed operations and hashes; and material-before-manifest
+plus manifest-before-recorded are explicit verified ordering conditions.
+
+### Repair Invariants
+
+- `structuralStatus: "ready"` means only that mounted non-provider composition
+  is sound. It is never a provider-call or runner-dispatch grant.
+- `executable` is derived only when structural status is ready and the complete
+  provider-invocation state is `ready-to-invoke` with current satisfied
+  feasibility, approval, budget, and lock requirements.
+- A `waiting-for-human-approval`, unavailable, or blocked provider state is
+  non-executable and cannot be consumed as an execution capability.
+- Material and manifest persistence have distinct capability types, operations,
+  receipts, hashes, and exact readbacks. A verified material readback is
+  required before manifest persistence, and a verified manifest readback that
+  binds that material hash is required before the recorded event.
+
+### Repair Gate
+
+`git diff --check` exited 0 with no output and `npm run factory:check` exited
+0 with `factory-readiness passed` after the focused GREEN command. The fresh
+`npm run verify` completed after the repair documentation audit and factory
+gate. The final verifier is rerun after this ready-for-review evidence update
+and before the forward-only repair commit.

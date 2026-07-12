@@ -297,22 +297,23 @@ credential-reference posture, selected capability versions, model limits,
 structured-output and tool support, data-handling posture, request budgets,
 prompt size, and required approval class. It returns one of these outcomes:
 
-- `ready`: an exact provider/model capability is feasible and its safe readiness
-  contract, budget, policy, and approval requirement are current;
+- `invocation-ready`: an exact provider/model capability is feasible and its
+  safe readiness contract, budget, policy, and approval requirement are
+  current and satisfied;
 - `waiting-for-approval`: capability is feasible but an exact current approval
   is required before byte transfer;
 - `unavailable`: no policy-permitted capability satisfies the run;
 - `blocked`: a lock, workspace authority, stale binding, malformed capability,
   or policy violation prevents use.
 
-Only `ready` can produce a remote invocation posture. `waiting-for-approval`
-may create or observe a bounded approval request but cannot invoke a provider.
-`unavailable` and `blocked` are durable, safe outcomes, not reasons to choose a
-fake provider, local model, credential, provider family, endpoint, or storage
-path that the policy did not select. An official harness feasibility failure is
-reported as provider limitation evidence under Lane P's contract; it must not
-block a separately ready approved provider such as Nous, and it must not be
-hidden by a synthetic pass.
+Only `invocation-ready` can produce a remote invocation posture.
+`waiting-for-approval` may create or observe a bounded approval request but
+cannot invoke a provider. `unavailable` and `blocked` are durable, safe
+outcomes, not reasons to choose a fake provider, local model, credential,
+provider family, endpoint, or storage path that the policy did not select. An
+official harness feasibility failure is reported as provider limitation evidence
+under Lane P's contract; it must not block a separately invocation-ready
+approved provider such as Nous, and it must not be hidden by a synthetic pass.
 
 ## Specialist-Runner Registry
 
@@ -376,25 +377,97 @@ interface MountedAgentArtifactStores {
   readonly workspaceId: string;
   readonly mountInstanceId: string;
   readonly derivativeStore: SpecialistDerivativeArtifactStore;
-  readonly handoffMaterialStore: SpecialistHandoffManifestStore;
-  readonly handoffManifestStore: SpecialistHandoffManifestStore;
+  readonly handoffMaterialStore: MountedHandoffMaterialStore;
+  readonly handoffManifestStore: MountedHandoffManifestStore;
   verifyBinding(input: VerifyMountedStoreBindingInput):
     Promise<MountedStoreBindingReadback>;
+}
+
+interface MountedHandoffMaterialStore {
+  readonly storeKind: "mounted-handoff-material-store.v1";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  writeMaterial(input: WriteMountedHandoffMaterialInput):
+    Promise<MountedHandoffMaterialReceipt>;
+  readMaterialExact(input: ReadMountedHandoffMaterialInput):
+    Promise<VerifiedMountedHandoffMaterialReadback>;
+}
+
+interface MountedHandoffManifestStore {
+  readonly storeKind: "mounted-handoff-manifest-store.v1";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  writeManifest(input: WriteMountedHandoffManifestInput):
+    Promise<MountedHandoffManifestReceipt>;
+  readManifestExact(input: ReadMountedHandoffManifestInput):
+    Promise<VerifiedMountedHandoffManifestReadback>;
+}
+
+interface MountedHandoffMaterialReceipt {
+  readonly materialHash: `sha256:${string}`;
+  readonly sizeBytes: number;
+  readonly authorityHash: `sha256:${string}`;
+}
+
+interface VerifiedMountedHandoffMaterialReadback
+  extends MountedHandoffMaterialReceipt {
+  readonly materialSchemaVersion: "agent-specialist-handoff-material.v1";
+}
+
+interface MountedHandoffManifestReceipt {
+  readonly manifestHash: `sha256:${string}`;
+  readonly sizeBytes: number;
+  readonly materialHash: `sha256:${string}`;
+  readonly authorityHash: `sha256:${string}`;
+}
+
+interface VerifiedMountedHandoffManifestReadback
+  extends MountedHandoffManifestReceipt {
+  readonly manifestSchemaVersion: "agent-specialist-handoff-manifest.v1";
 }
 ```
 
 Before accepting the stores, composition proves that every store is writable
 only through the mounted workspace, identifies the same workspace and mount
-instance, and has the frozen capability/schema version. For each write, the
-future store adapter normalizes the boundary object before an `await`, validates
-canonical bytes and hashes, then reads back the exact stored material. A
-returned hash or event-shaped object is a claim until readback verifies it.
+instance, and has the frozen capability/schema version. Material and manifest
+persistence are distinct typed capabilities, not two references to
+`SpecialistHandoffManifestStore`. Any CF-1 migration from the existing
+compatibility store must adapt these operations explicitly; it must not alias a
+generic blob store, filesystem handle, or one store object as proof that both
+artifact kinds are interchangeable.
 
-The handoff sequence remains ordered: final output step, material artifact
-write/readback, manifest write/readback, ledger handoff binding/readback, then
-specialist and orchestration completion. Failure at any stage cannot create a
-terminal-looking task result. It produces a typed blocked, failed, or resumable
-state with source event IDs, artifact hashes, and safe repair action metadata.
+For each write, the future store adapter normalizes the boundary object before
+an `await`, validates canonical bytes and the type-specific expected hash, then
+performs the corresponding exact readback. A material receipt is a claim until
+`readMaterialExact` verifies its material hash, size, authority, and material
+schema. A manifest receipt is a claim until `readManifestExact` verifies its
+manifest hash, size, authority, manifest schema, and the exact material hash it
+binds. A returned hash or event-shaped object is never completion evidence.
+
+The persistence permit is ordered and typed:
+
+1. The material store writes canonical `agent-specialist-handoff-material.v1`
+   bytes and `readMaterialExact` verifies the expected material hash and mounted
+   authority.
+2. The final-output step records that verified material hash with the run,
+   task, resident, provenance, and output bindings.
+3. The manifest store receives the verified material readback, writes a manifest
+   that binds that same material hash, and `readManifestExact` verifies both
+   hashes and authority.
+4. Only that verified manifest readback may authorize the prepared/recorded
+   ledger binding; the recorded event cites the exact manifest and material
+   hashes.
+
+This is a required material-before-manifest proof and a required
+manifest-before-recorded proof. A manifest writer presented with an unverified,
+swapped, stale, cross-run, or authority-mismatched material receipt rejects it.
+The recorded append rejects absent or mismatched manifest readback even if a
+manifest write returned a plausible hash. The sequence then continues to
+specialist and orchestration completion only after the existing ledger handoff
+readback succeeds. Failure at any stage cannot create a terminal-looking task
+result. It produces a typed blocked, failed, or resumable state with source
+event IDs, the separately typed artifact hashes, and safe repair action
+metadata.
 
 On a disconnect, write error, changed mount identity, or readback mismatch, the
 store capability rejects work before an internal copy is attempted. The future
@@ -414,15 +487,39 @@ interface ProductionRuntimeReadiness {
   readonly schemaVersion: "agent-runtime-composition-readiness.v1";
   readonly workspaceId?: string;
   readonly residentAgentId: "agent_default";
-  readonly status: "ready" | "not-ready" | "blocked" | "unavailable";
+  readonly structuralStatus: "ready" | "not-ready" | "blocked" | "unavailable";
+  readonly providerInvocation: ProviderInvocationReadiness;
+  readonly executable: boolean;
   readonly authority: RuntimeReadinessAuthority;
   readonly components: readonly RuntimeReadinessComponent[];
   readonly safeDiagnostics: readonly RuntimeCompositionDiagnostic[];
   readonly generatedAt: string;
 }
+
+interface ProviderInvocationReadiness {
+  readonly state:
+    | "ready-to-invoke"
+    | "waiting-for-human-approval"
+    | "provider-unavailable"
+    | "provider-blocked";
+  readonly safeReason: string;
+  readonly requirements: ProviderInvocationRequirements;
+}
+
+interface ProviderInvocationRequirements {
+  readonly selectionPolicyVersion: string;
+  readonly providerFeasibility: "invocation-ready" | "waiting-for-approval" | "unavailable" | "blocked";
+  readonly providerReadiness: "ready" | "not-ready" | "blocked" | "unavailable";
+  readonly approvalRequirementId?: string;
+  readonly approvalState: "not-required" | "current" | "missing" | "stale" | "denied";
+  readonly budgetState: "available" | "exhausted";
+  readonly lockState: "clear" | "blocked";
+}
 ```
 
-`ready` requires all of these facts at once:
+`structuralStatus` describes whether the mounted runtime can safely assemble its
+non-provider capabilities. It is intentionally not an invocation grant.
+Structural `ready` requires all of these facts at once:
 
 1. one mounted workspace authority and a ready resident identity bound to it;
 2. an exact current policy, lock, and ledger-high-water binding;
@@ -431,12 +528,31 @@ interface ProductionRuntimeReadiness {
    authority;
 4. a production renderer whose template and output/handoff schemas match the
    intended workflow and whose input can bind verified resolved packs;
-5. an exact policy-feasible provider posture or an explicit approval-wait state
-   that is not misreported as ready for invocation;
-6. a readiness-validated runner registration with every required adapter and
+5. a readiness-validated runner registration with every required adapter and
    declared budget;
-7. mounted derivative, material, and manifest stores that pass binding and
+6. mounted derivative, material, and manifest stores that pass binding and
    readback checks.
+
+`providerInvocation` separately projects the exact result of provider-policy
+evaluation. Its `safeReason` is mandatory and secret-safe for every state; its
+`requirements` make the policy, feasibility, approval, budget, and lock
+relationship inspectable without exposing a credential or prompt. The factory
+derives `executable` rather than accepting it from a caller:
+
+```text
+executable is true only when structuralStatus is ready
+and providerInvocation.state is ready-to-invoke
+and every ProviderInvocationRequirements field is current and satisfied.
+```
+
+Consequently, a runtime with `structuralStatus: "ready"` and
+`providerInvocation.state: "waiting-for-human-approval"` is explicitly
+non-executable. It must not be passed to runner dispatch, provider invocation,
+or any consumer that expects execution capability. That consumer requires the
+complete provider-invocation object and rejects every state except
+`ready-to-invoke`; it may not infer executability from structural readiness or a
+top-level boolean alone. Missing, stale, denied, or mismatched approval keeps
+the state non-executable even if the provider capability itself is feasible.
 
 The readiness DTO may expose stable component IDs, versions, hashes, safe
 categories, counts, status, and allowed repair actions. It never exposes prompt
@@ -459,7 +575,7 @@ available, and allowed repair actions. Raw caught errors are not propagated.
 | `authority-stale-or-unverified` | Ledger high-water, policy, lock, source, selection, or provenance binding changed or could not be proved. | Revalidate before reuse; otherwise return a safe blocked or resumable outcome. |
 | `context-capability-invalid` | Registry, descriptor, parser authority, selection, boundedness, payload hash, or pack provenance is invalid. | Reject the context set before prompt construction. |
 | `prompt-binding-invalid` | Exact run, template, renderer, schema, context, safety, or production binding is absent or mismatched. | Do not create a placeholder or transfer text. |
-| `provider-policy-unready` | Capability feasibility, credential-reference posture, approval, budget, or provider readiness is not exact. | Report unavailable or wait-for-approval; do not choose another backend implicitly. |
+| `provider-policy-unready` | Capability feasibility, credential-reference posture, approval, budget, or provider readiness is not exact. | Set an explicit non-`ready-to-invoke` provider invocation state with its safe reason and requirements; do not choose another backend implicitly. |
 | `runner-registration-invalid` | A required runner, workflow, adapter family, readiness proof, budget, or descriptor binding is absent or mismatched. | Do not dispatch or emit a lifecycle-only success. |
 | `mounted-store-unavailable` | Derivative/material/manifest store is absent, not mounted, rejects a boundary value, or cannot read back exact bytes. | Stop before an internal copy; record only durable failure/resumption evidence when the ledger remains authoritative. |
 | `handoff-readback-failed` | Material, manifest, ledger binding, or final lifecycle readback does not exactly match the run. | Never complete the task; return blocked, failed, or resumable handoff state. |
@@ -548,7 +664,7 @@ only safe identifiers, hashes, event IDs, counts, categories, and markers.
 | Authoritative context binding | Required package-owned context packs parse and verify against the mounted workspace. | Swapped workspace, parser, ref, payload hash, source posture, selection manifest, or high-water mark rejects before prompt rendering. |
 | Exact prompt/provider binding | A production prompt artifact binds one approved task attempt, provider posture, template, renderer, context set, and policy. | Stale or cross-run artifact, unapproved transfer, placeholder renderer, and raw prompt logging fail closed. |
 | Runner readiness and dispatch | A registered production runner dispatches only after exact readiness and returns the durable handoff sequence inputs. | Missing adapter, provider, context, lock clearance, approval, budget, or registration cannot become a lifecycle-only success. |
-| Mounted store readback | Derivative material and handoff manifest writes are canonical, mounted, and read back before completion. | Store absence, write failure, forged result, hash mismatch, mount switch, or readback failure produces no internal fallback and no terminal task. |
+| Mounted store readback | Derivative writes plus distinct material and manifest writes are canonical, mounted, and exactly read back before completion; manifest readback binds the prior verified material hash. | Store absence, type confusion, material/manifest order violation, forged result, hash mismatch, mount switch, or readback failure produces no internal fallback and no terminal task. |
 | Runtime readiness | Readiness is complete only when every required capability/version/provenance binding matches. | Partial registration, provider-family inference, stale policy, or a prior-mount object never yields `ready`. |
 | Real Nous portable evidence triage | The merged system uses the approved real Nous path only if policy selects it and records safe durable evidence. | Provider outage, stale approval, denial, exhausted budget, or readback failure becomes blocked or resumable without secret leakage. |
 | Disconnect and reconnect | A mount loss stops composition and later re-verifies the same workspace, high-water, policy, and locks. | No ledger, projection, artifact, derivative, prompt, or handoff fallback write occurs during absence or identity mismatch. |
@@ -563,7 +679,8 @@ paper over.
 
 Only Lane R may change the default factory after all dependencies are merged.
 Lane P remains the only owner of shared provider configuration; Lane H remains
-the owner of handoff contracts; Lane W remains the owner of lifecycle behavior;
+the owner of material/manifest/handoff contracts and their compatibility
+migration; Lane W remains the owner of lifecycle behavior;
 Lane U consumes merged routes and DTOs; Lane A tests integration rather than
 repairing upstream production code without a separately authorized range.
 
