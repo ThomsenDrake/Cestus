@@ -69,7 +69,7 @@ describe("agent task orchestrator runtime routes", () => {
 
   it("http route fails closed before task claim when orchestrator capabilities are not registered", async () => {
     const config = portableConfig("ws_task_orchestrator_missing_caps");
-    const handler = testHandler(config);
+    const handler = testHandler(config, agentRuntimeFactoryWithoutTaskOrchestratorCapabilities());
     await handler({
       method: "POST",
       url: "/api/agent/tasks",
@@ -85,6 +85,31 @@ describe("agent task orchestrator runtime routes", () => {
     try {
       expect(response.status).toBe(500);
       expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.task.orchestration.claimed");
+    } finally {
+      ledger.close();
+    }
+  });
+
+  it("default local runtime factory injects task orchestrator capabilities before task claim", async () => {
+    const config = portableConfig("ws_task_orchestrator_default_caps");
+    const handler = testHandler(config);
+    await handler({
+      method: "POST",
+      url: "/api/agent/tasks",
+      body: JSON.stringify({
+        taskId: "task_route_default_orchestrator_caps",
+        title: "Route default orchestrator capabilities",
+        priority: "urgent"
+      })
+    });
+
+    const response = await handler({ method: "POST", url: "/api/agent/task-orchestrator/tick" });
+    const ledger = new SQLiteEventLedger(config.storage.sqlitePath);
+    try {
+      expect(response.status).toBe(200);
+      expect(response.body).not.toContain("capabilities are not registered");
+      const eventTypes = (await ledger.readAll()).map((event) => event.type);
+      expect(eventTypes).toContain("agent.task.orchestration.claimed");
     } finally {
       ledger.close();
     }
@@ -133,6 +158,17 @@ function testHandler(
   });
   handlers.push(handler);
   return handler;
+}
+
+function agentRuntimeFactoryWithoutTaskOrchestratorCapabilities(): LocalAgentRuntimeFactory {
+  return (input) => createAgentRuntime({
+    ledger: input.handle.ledger,
+    actor: input.actor,
+    now: input.now,
+    identityLifecycle: () => input.handle.residentIdentity.lifecycle(),
+    identityLifecycleReady: () => input.handle.residentIdentity.ready(),
+    approvedToolExecutors: input.approvedToolExecutors ?? []
+  });
 }
 
 function taskOrchestratorAgentRuntimeFactory(): LocalAgentRuntimeFactory {

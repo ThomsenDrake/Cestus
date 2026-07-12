@@ -1,8 +1,13 @@
 import {
   createAgentRuntime,
-  type AgentApprovedToolExecutorDescriptor
+  createContextPackRegistry,
+  specialistWorkflowDescriptorFor,
+  type AgentApprovedToolExecutorDescriptor,
+  type AgentTaskOrchestratorRuntimeCapabilities
 } from "../../agent/src/index.js";
 import type { ActorRef } from "../../ontology/src/contracts.js";
+import { createTaskOrchestratorProviderApprovalAdapter } from "../../agent/src/task-orchestrator-approval.js";
+import { createTaskOrchestratorHandoffCapability } from "../../agent/src/task-orchestrator.js";
 import { createLocalAgentProviderConfiguration } from "./agent-provider-readiness.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
@@ -30,6 +35,30 @@ export const defaultLocalAgentRuntimeFactory: LocalAgentRuntimeFactory = (input)
     identityLifecycle: () => input.handle.residentIdentity.lifecycle(),
     identityLifecycleReady: () => input.handle.residentIdentity.ready(),
     providers: configuredProviders.providers,
-    approvedToolExecutors: input.approvedToolExecutors ?? []
+    approvedToolExecutors: input.approvedToolExecutors ?? [],
+    taskOrchestratorCapabilities: createLocalTaskOrchestratorCapabilities(configuredProviders)
   });
 };
+
+function createLocalTaskOrchestratorCapabilities(
+  configuredProviders: ReturnType<typeof createLocalAgentProviderConfiguration>
+): AgentTaskOrchestratorRuntimeCapabilities {
+  return Object.freeze({
+    schemaVersion: "agent-task-orchestrator-runtime-capabilities.v1",
+    workflowRegistry: { require: specialistWorkflowDescriptorFor },
+    contextRegistry: createContextPackRegistry(),
+    promptRendererRegistry: {
+      render() {
+        throw new Error("Local task orchestrator prompt rendering requires an approved provider run binding.");
+      }
+    },
+    providerRegistry: configuredProviders.readinessRegistry,
+    approvalReader: createTaskOrchestratorProviderApprovalAdapter(),
+    runnerRegistry: {
+      async dispatch() {
+        throw new Error("Local task orchestrator specialist runner is not configured for autonomous dispatch.");
+      }
+    },
+    handoffCapability: createTaskOrchestratorHandoffCapability()
+  });
+}

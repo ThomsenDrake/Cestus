@@ -2,7 +2,7 @@
 
 ## Status
 
-complete-coordinator-commit-pending
+complete
 
 ## Task
 
@@ -136,3 +136,14 @@ handoff kernel's exact artifact readback checks. Task completion is not
 projected until canonical handoff readback is verified, specialist run terminal
 is appended, orchestration completion is appended, and the task terminal status
 causally references orchestration completion.
+
+## Coordinator Closure
+
+- Final status: complete.
+- Coordinator commit: `fd83d7be020d180ce8ceeb48c2c8a1735a19184c` (`fd83d7be feat: add resident task orchestrator`).
+- Commit packaging: coordinator preserved the exact reviewed Tasks 1-9 packet in one commit because the child sandbox could not safely reconstruct per-task Git history.
+- Unrestricted coordinator `npm run factory:check`: PASS.
+- Unrestricted coordinator `npm run verify`: PASS.
+- Full verify counts: 189 passed / 3 skipped files; 2,227 passed / 5 skipped tests.
+- Typecheck, production UI build, and factory readiness passed.
+- Final vertical acceptance: Task 9 real Nous gate remains 3/3 consecutive GREEN.

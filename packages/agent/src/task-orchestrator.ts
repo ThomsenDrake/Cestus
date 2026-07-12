@@ -37,6 +37,8 @@ import {
   appendSpecialistFinalOutputStep,
   finalizeSpecialistRunAfterHandoff,
   recordSpecialistHandoff,
+  type AppendSpecialistFinalOutputStepInput,
+  type RecordSpecialistHandoffInput,
   type RecordSpecialistHandoffResult,
   type SpecialistHandoffManifestStore
 } from "./specialist-runner-kernel.js";
@@ -146,6 +148,7 @@ export interface SequenceTaskOrchestratorHandoffInput {
   readonly manifestStore: SpecialistHandoffManifestStore;
   readonly handoffMaterial: SpecialistHandoffMaterial;
   readonly appendTaskStatus?: boolean;
+  readonly handoffCapability?: TaskOrchestratorHandoffCapability | undefined;
 }
 
 export interface TaskOrchestratorHandoffSequenceResult {
@@ -155,6 +158,21 @@ export interface TaskOrchestratorHandoffSequenceResult {
   readonly specialistRunCompletedEventId?: string;
   readonly orchestrationCompletedEventId?: string;
   readonly taskStatusEventId?: string;
+}
+
+export type TaskOrchestratorHandoffPrepareInput = AppendSpecialistFinalOutputStepInput;
+export type TaskOrchestratorHandoffBindInput = RecordSpecialistHandoffInput;
+
+export interface TaskOrchestratorHandoffReadbackInput {
+  readonly claim: ClaimEvent;
+  readonly recorded: RecordSpecialistHandoffResult;
+  readonly expectedRunId?: string | undefined;
+}
+
+export interface TaskOrchestratorHandoffCapability {
+  prepare(input: TaskOrchestratorHandoffPrepareInput): Promise<KnowledgeEventOf<"agent.specialist-run.step.recorded">> | KnowledgeEventOf<"agent.specialist-run.step.recorded">;
+  bind(input: TaskOrchestratorHandoffBindInput): Promise<RecordSpecialistHandoffResult> | RecordSpecialistHandoffResult;
+  readback(input: TaskOrchestratorHandoffReadbackInput): Promise<RecordSpecialistHandoffResult> | RecordSpecialistHandoffResult;
 }
 
 export interface TaskOrchestrator {
@@ -183,7 +201,8 @@ export async function sequenceTaskOrchestratorHandoff(
   input: SequenceTaskOrchestratorHandoffInput
 ): Promise<TaskOrchestratorHandoffSequenceResult> {
   const taskId = input.taskId ?? input.claim.payload.taskId;
-  const finalOutput = await appendSpecialistFinalOutputStep({
+  const handoffCapability = input.handoffCapability ?? createTaskOrchestratorHandoffCapability();
+  const finalOutput = await handoffCapability.prepare({
     ledger: input.ledger,
     materialStore: input.materialStore,
     actor: input.actor,
@@ -192,13 +211,18 @@ export async function sequenceTaskOrchestratorHandoff(
     taskId,
     handoffMaterial: input.handoffMaterial
   });
-  const recorded = await recordSpecialistHandoff({
+  const bound = await handoffCapability.bind({
     ledger: input.ledger,
     manifestStore: input.manifestStore,
     actor: input.actor,
     now: input.now,
     runId: input.runId,
     taskId
+  });
+  const recorded = await handoffCapability.readback({
+    claim: input.claim,
+    recorded: bound,
+    ...(input.expectedRunId === undefined ? {} : { expectedRunId: input.expectedRunId })
   });
   const completed = await completeTaskOrchestrationAfterHandoff({
     ledger: input.ledger,
@@ -222,6 +246,26 @@ export async function sequenceTaskOrchestratorHandoff(
     ...(completed.taskStatusEventId === undefined ? {} : {
       taskStatusEventId: completed.taskStatusEventId
     })
+  });
+}
+
+export function createTaskOrchestratorHandoffCapability(): TaskOrchestratorHandoffCapability {
+  return Object.freeze({
+    async prepare(input: TaskOrchestratorHandoffPrepareInput) {
+      return await appendSpecialistFinalOutputStep(input);
+    },
+    async bind(input: TaskOrchestratorHandoffBindInput) {
+      return await recordSpecialistHandoff(input);
+    },
+    async readback(input: TaskOrchestratorHandoffReadbackInput) {
+      const expectedRunId = input.expectedRunId ?? input.recorded.recorded.payload.runId;
+      if (input.recorded.recorded.payload.runId !== expectedRunId) {
+        throw new Error("Durable specialist handoff readback runId does not match the approved run.");
+      }
+      const manifestHash = input.recorded.recorded.payload.handoffManifestHash as `sha256:${string}`;
+      await input.recorded.manifestStore.get(manifestHash);
+      return input.recorded;
+    }
   });
 }
 
@@ -334,7 +378,6 @@ const priorityRank: Record<Priority, number> = {
 
 export function createTaskOrchestrator(input: CreateTaskOrchestratorInput): TaskOrchestrator {
   void input.providerRegistry;
-  void input.handoffCapability;
 
   return {
     async tick(): Promise<TaskOrchestratorTickSummary> {
@@ -548,7 +591,10 @@ async function handleCancellationRaces(
     }
 
     const latestCheckpoint = attempt.checkpoints.at(-1);
-    if (latestCheckpoint?.event.payload.checkpointKind === "handoff-pending") {
+    if (
+      latestCheckpoint?.event.payload.checkpointKind === "handoff-pending" ||
+      latestCheckpoint?.event.payload.checkpointKind === "runner-dispatching"
+    ) {
       const blocked = await appendBlockedCheckpoint(input, {
         taskId: attempt.taskId,
         runType: attempt.runType,
@@ -958,7 +1004,10 @@ async function dispatchApprovedRunner(
     await blockClaimForMissingContext(input, claim, summary, normalizeNow(input.now()));
     return;
   }
-  await appendRunnerDispatchingCheckpoint(input, claim, contextReady.event, providerPolicy, normalizeNow(input.now()));
+  const dispatchCheckpoint = await appendRunnerDispatchingCheckpoint(input, claim, contextReady.event, providerPolicy, normalizeNow(input.now()));
+  if (!dispatchCheckpoint.appended) {
+    return;
+  }
   const dispatchResult = await dispatchVerifiedTaskRunner({
     registry: registry as TaskOrchestratorRunnerRegistry,
     verifiedProviderApproval: true,
@@ -984,7 +1033,8 @@ async function dispatchApprovedRunner(
       ...(durableHandoff.taskId === undefined ? {} : { taskId: durableHandoff.taskId }),
       materialStore: durableHandoff.materialStore,
       manifestStore: durableHandoff.manifestStore,
-      handoffMaterial: durableHandoff.handoffMaterial
+      handoffMaterial: durableHandoff.handoffMaterial,
+      handoffCapability: taskOrchestratorHandoffCapability(input.handoffCapability)
     });
     summary.sideEffectsScheduled.push(`runner-handoff-completed:${claim.payload.taskId}:${durableHandoff.runId}`);
   }
@@ -1218,14 +1268,15 @@ async function appendRunnerDispatchingCheckpoint(
 ): Promise<{ readonly appended: boolean; readonly event?: CheckpointEvent | undefined }> {
   const streamId = taskOrchestrationStreamId(claim.payload.taskId, claim.payload.runType);
   const stream = await input.ledger.readStream(streamId);
-  if (stream.some((event) =>
+  const existing = stream.find((event) =>
     event.type === "agent.task.orchestration.checkpointed" &&
     event.payload.attemptId === claim.payload.attemptId &&
     event.payload.retryGeneration === claim.payload.retryGeneration &&
     event.payload.checkpointKind === "runner-dispatching" &&
-    stream.findIndex((candidate) => candidate.id === event.id) > stream.findIndex((candidate) => candidate.id === claim.id)
-  )) {
-    return { appended: false };
+    event.payload.runId === providerPolicy.approval.runId
+  );
+  if (existing !== undefined) {
+    return { appended: false, event: existing as CheckpointEvent };
   }
   const promptArtifactHash = taskOrchestratorApprovalPromptArtifactHash(providerPolicy.approval);
   const event: AppendableKnowledgeEvent<"agent.task.orchestration.checkpointed"> = {
@@ -1280,6 +1331,18 @@ function providerApprovalAdapter(input: CreateTaskOrchestratorInput): ReturnType
     typeof candidate.inspect === "function"
     ? candidate as ReturnType<typeof createTaskOrchestratorProviderApprovalAdapter>
     : undefined;
+}
+
+function taskOrchestratorHandoffCapability(value: unknown): TaskOrchestratorHandoffCapability {
+  if (
+    typeof value === "object" && value !== null &&
+    "prepare" in value && typeof value.prepare === "function" &&
+    "bind" in value && typeof value.bind === "function" &&
+    "readback" in value && typeof value.readback === "function"
+  ) {
+    return value as TaskOrchestratorHandoffCapability;
+  }
+  throw new Error("Task orchestrator durable handoff capability is not registered.");
 }
 
 function contextAssemblyCapabilities(input: CreateTaskOrchestratorInput): {
@@ -1766,7 +1829,8 @@ function staleClaimSupersededByDurableState(
     checkpoint.order > claim.order &&
     (
       checkpoint.event.payload.checkpointKind === "approval-wait" ||
-      checkpoint.event.payload.checkpointKind === "handoff-pending"
+      checkpoint.event.payload.checkpointKind === "handoff-pending" ||
+      checkpoint.event.payload.checkpointKind === "runner-dispatching"
     )
   );
   if (supersedingCheckpoint) {

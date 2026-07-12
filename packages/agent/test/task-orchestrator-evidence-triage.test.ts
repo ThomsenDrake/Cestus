@@ -21,7 +21,11 @@ import {
   type SpecialistHandoffManifestStore
 } from "../src/specialist-runner-kernel.js";
 import { createAgentToolGateway, hashAgentToolPreview } from "../src/tool-gateway.js";
-import { createTaskOrchestrator, type TaskOrchestratorRunnerRegistry } from "../src/task-orchestrator.js";
+import {
+  createTaskOrchestrator,
+  createTaskOrchestratorHandoffCapability,
+  type TaskOrchestratorRunnerRegistry
+} from "../src/task-orchestrator.js";
 import { createTaskOrchestratorProviderApprovalAdapter, type TaskOrchestratorProviderApprovalProof } from "../src/task-orchestrator-approval.js";
 import { buildTaskOrchestratorProjection } from "../src/task-orchestrator-projection.js";
 import { specialistWorkflowDescriptorFor } from "../src/specialist-workflows.js";
@@ -330,11 +334,7 @@ async function prepareEvidenceTriageVertical(options: {
     providerRegistry: createProviderRegistry.withDefaultsForTest(),
     approvalReader,
     runnerRegistry,
-    handoffCapability: {
-      prepare() { throw new Error("Task 8 test handoff adapter should not be called directly."); },
-      bind() { throw new Error("Task 8 test handoff adapter should not be called directly."); },
-      readback() { throw new Error("Task 8 test handoff adapter should not be called directly."); }
-    }
+    handoffCapability: createTaskOrchestratorHandoffCapability()
   });
 
   return {

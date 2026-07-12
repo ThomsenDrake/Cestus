@@ -2,7 +2,7 @@
 
 ## Status
 
-complete-coordinator-commit-pending
+complete
 
 ## Task
 
@@ -251,3 +251,14 @@ Concern: full `npm run verify` needs an unrestricted coordinator rerun because t
 ## Stop Conditions
 
 Stop on any pressure to merge queued-task orchestration with approved-tool execution claims, self-approve, call provider dispatch before Task 5, synthesize handoffs, retry without a durable retry generation input, or mutate old source/domain truth outside append-only domain services.
+
+## Coordinator Closure
+
+- Final status: complete.
+- Coordinator commit: `fd83d7be020d180ce8ceeb48c2c8a1735a19184c` (`fd83d7be feat: add resident task orchestrator`).
+- Commit packaging: coordinator preserved the exact reviewed Tasks 1-9 packet in one commit because the child sandbox could not safely reconstruct per-task Git history.
+- Unrestricted coordinator `npm run factory:check`: PASS.
+- Unrestricted coordinator `npm run verify`: PASS.
+- Full verify counts: 189 passed / 3 skipped files; 2,227 passed / 5 skipped tests.
+- Typecheck, production UI build, and factory readiness passed.
+- Final vertical acceptance: Task 9 real Nous gate remains 3/3 consecutive GREEN.
