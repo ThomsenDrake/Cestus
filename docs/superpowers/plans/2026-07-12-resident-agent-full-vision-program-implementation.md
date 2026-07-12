@@ -145,7 +145,12 @@ Every approved implementation plan contains these executable steps:
 7. A repair requires a new scoped authorization message issued and recorded by
    the coordinator under standing delegation (or supplied by the user); it does
    not require a new user prompt. After two focused repair attempts without
-   verifier recovery, mark blocked and escalate.
+   verifier recovery, stop and preserve that child, append a root-cause
+   checkpoint, replace the implementer or reviewer or materially change the
+   counterfactual verification tactic, issue a new bounded authorization, and
+   continue. Escalate to the user only if root-cause analysis proves the
+   approved contract cannot be satisfied without a new product, scope, safety,
+   data-loss, credential, or external-behavior decision.
 
 Every lane plan includes actual test code, the RED command and expected failure, the implementation change, focused GREEN command, exact commit scope, fresh review command, and live-provider gate. Program command vocabulary:
 
@@ -435,7 +440,7 @@ The coordinator alone decides merge, push, cleanup, and archive after registry f
 1. Shared plan/observation/wake/trigger contracts merge before consumers. Durable workflow migrations merge before mounted store, runner, and runtime composition. Runtime routes merge before cockpit consumers. Cockpit and cross-domain bridges merge after domain/runtime producers.
 2. After each contract-changing merge, the coordinator records its SHA, rebases every dependent worktree, reruns the dependency's cross-lane command, and records the rebase in claim and registry. A stale branch is not reviewed or merged.
 3. The coordinator never merges a child branch into neo without an explicit integration instruction. Children never self-merge.
-4. Stop a lane for data-loss risk, hidden fallback storage, schema/DTO/event/file-owner conflict, synthetic handoff, placeholder prompt, unbound or stale artifact/source, self-approval, stale approval consumption, workspace identity mismatch, unofficial token extraction, missing required model configuration, unavailable mandatory provider/dependency, or more than two focused repair attempts without verifier recovery.
+4. Stop a child and return structured evidence to the coordinator for data-loss risk, hidden fallback storage, schema/DTO/event/file-owner conflict, synthetic handoff, placeholder prompt, unbound or stale artifact/source, self-approval, stale approval consumption, workspace identity mismatch, unofficial token extraction, missing required model configuration, unavailable mandatory provider/dependency, or more than two focused repair attempts without verifier recovery. Repair-count exhaustion is an internal coordinator recovery checkpoint, not a user gate. Stop the program for user input only when root-cause analysis proves that continuing requires a genuine product, scope, safety, data-loss, credential, or external-behavior decision under the governing specification.
 5. Archive only when final answer, claim, clean worktree, branch ancestry, verification evidence, review verdict, and coordinator merge state agree.
 
 ## Plan Self-Review Checklist
