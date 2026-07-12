@@ -13,6 +13,16 @@ import type {
 } from "../src/projection-types.js";
 import type { AgentStatusDto } from "../src/runtime-types.js";
 import type { SpecialistWorkflowHandoffDto } from "../src/specialist-handoffs.js";
+import {
+  assembleTaskOrchestratorContext,
+  assertTaskOrchestratorContextHasNoPayloadBytes
+} from "../src/task-orchestrator-context.js";
+import {
+  createContextPackRegistry,
+  registerContextPackPayloadParserAuthority,
+  type AgentContextPackJsonValue
+} from "../src/context-packs.js";
+import { specialistWorkflowDescriptorFor } from "../src/specialist-workflows.js";
 
 const hashA = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const hashB = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -21,6 +31,45 @@ const hashD = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
 const hashE = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 describe("agent cockpit dto", () => {
+  it("does not expose resolved payload bytes in cockpit projection", async () => {
+    const workflow = specialistWorkflowDescriptorFor("evidence-triage");
+    const registry = createContextPackRegistry();
+    for (const requirement of workflow.contextPacks) {
+      registry.register({
+        descriptor: {
+          contextPackId: requirement.contextPackId,
+          version: 1,
+          label: `Cockpit ${requirement.contextPackId}`,
+          maxBytes: 16_384,
+          requiredProvenanceKinds: ["event-id"],
+          redactionPolicy: "safe-summary",
+          sourceProjection: "agent.projection"
+        },
+        build: () => ({
+          contextPackId: requirement.contextPackId,
+          version: 1,
+          generatedAt: "2026-07-12T05:00:00.000Z",
+          payload: { secretPayloadMarker: "cockpit-must-not-see-this" },
+          safeSummary: `Safe ${requirement.contextPackId} metadata.`,
+          provenanceRefs: ["evt_cockpit_context"]
+        }),
+        parsePayload: productionParser(requirement.contextPackId)
+      });
+    }
+    const assembled = await assembleTaskOrchestratorContext({
+      taskId: "task_task4_cockpit_leakage",
+      runType: "evidence-triage",
+      scope: { kind: "workspace", refs: ["ws_case_001"] },
+      workflow,
+      contextRegistry: registry
+    });
+    const cockpit = buildAgentCockpit({ status: statusFixture(), selectedRunId: "run_provider_review" });
+
+    assertTaskOrchestratorContextHasNoPayloadBytes(
+      [cockpit, assembled.cockpitContext],
+      assembled.resolvedContextPacks
+    );
+  });
   it("surfaces resident identity lifecycle as the first cockpit need when blocked", () => {
     const cockpit = buildAgentCockpit({
       status: {
@@ -706,4 +755,16 @@ function statusFixture(options: {
     activeLockCount: 1,
     diagnostics: []
   };
+}
+
+function productionParser(contextPackId: string) {
+  const parser = (payload: AgentContextPackJsonValue) => payload;
+  Object.defineProperty(parser, "cestusContextPackParserId", {
+    value: contextPackId,
+    enumerable: false,
+    writable: false,
+    configurable: false
+  });
+  registerContextPackPayloadParserAuthority(parser);
+  return parser;
 }

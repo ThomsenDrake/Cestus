@@ -27,6 +27,7 @@ import {
   type ContextPackRegistry
 } from "./context-packs.js";
 import type { AgentFailureCategory } from "./projection-types.js";
+import type { AgentApprovedToolPreviewResult } from "./scheduler-types.js";
 import { specialistWorkflowDescriptorFor, type SpecialistWorkflowDescriptor } from "./specialist-workflows.js";
 import type { AgentSpecialistRunType } from "./specialists.js";
 import {
@@ -71,6 +72,21 @@ export type SpecialistRunnerProviderReadiness =
 export interface SpecialistRunnerProviderTransferApprovalProof {
   readonly currentPreviewInput: RebuildProviderByteTransferCurrentPreviewInput;
   readonly approvedPreviewHash: `sha256:${string}`;
+}
+
+export interface AssertSelectedSpecialistProviderByteTransferApprovalInput {
+  readonly ledger: EventLedger;
+  readonly runId: string;
+  readonly taskId: string;
+  readonly providerId: string;
+  readonly modelFamily: string;
+  readonly credentialRef: CredentialReference;
+  readonly providerReadiness: SpecialistRunnerProviderReadiness;
+  readonly providerTransferApproval: SpecialistRunnerProviderTransferApprovalProof;
+  readonly promptArtifact: PromptArtifactEnvelope;
+  readonly rebuildCurrentPreview?: ((
+    input: RebuildProviderByteTransferCurrentPreviewInput
+  ) => Promise<AgentApprovedToolPreviewResult>) | undefined;
 }
 
 export interface SpecialistDerivativeArtifactStore {
@@ -123,6 +139,7 @@ export interface FinalizeSpecialistRunAfterHandoffInput {
   readonly actor: ActorRef;
   readonly now: () => string;
   readonly recorded: RecordSpecialistHandoffResult;
+  readonly appendTaskStatus?: false;
 }
 
 export interface FinalizeSpecialistRunAfterHandoffResult {
@@ -289,17 +306,18 @@ export async function invokeSpecialistModel(
   });
 }
 
-async function assertProviderReadinessAllowsInvocation(
-  input: SpecialistRunnerBaseInput,
-  promptArtifact: PromptArtifactEnvelope
+/**
+ * Rechecks a selected remote specialist invocation's existing approval proof.
+ * This is assertion-only: it grants no invocation authority and never calls a provider.
+ */
+export async function assertSelectedSpecialistProviderByteTransferApproval(
+  input: AssertSelectedSpecialistProviderByteTransferApprovalInput
 ): Promise<void> {
+  const promptArtifact = input.promptArtifact;
   assertPromptArtifactCanTransferToRemoteProvider(promptArtifact);
   const card = providerReadinessCards(input.providerReadiness).find((candidate) => candidate.providerId === input.providerId);
   if (card === undefined) {
     throw new Error("Selected provider readiness is unavailable for specialist invocation.");
-  }
-  if (card.state === "ready" || card.state === "works-locally") {
-    return;
   }
   if (
     card.state === "requires-byte-transfer-approval" &&
@@ -311,11 +329,47 @@ async function assertProviderReadinessAllowsInvocation(
     await assertProviderByteTransferApproved(input, card, promptArtifact);
     return;
   }
-  throw new Error("Selected provider readiness is not ready for specialist invocation.");
+  throw new Error("Selected provider readiness is not ready for provider byte-transfer approval.");
+}
+
+async function assertProviderReadinessAllowsInvocation(
+  input: SpecialistRunnerBaseInput,
+  promptArtifact: PromptArtifactEnvelope
+): Promise<void> {
+  const card = providerReadinessCards(input.providerReadiness).find((candidate) => candidate.providerId === input.providerId);
+  if (card === undefined) {
+    throw new Error("Selected provider readiness is unavailable for specialist invocation.");
+  }
+  if (card.state === "ready" || card.state === "works-locally") {
+    return;
+  }
+  if (
+    card.state !== "requires-byte-transfer-approval" ||
+    card.requiredApprovalClass !== "provider-byte-transfer" ||
+    card.credentialHealth !== "local-binding-healthy" ||
+    promptArtifact.manifest.safetyClass !== "provider-approved" ||
+    promptArtifact.manifest.transferApprovalClass !== "provider-byte-transfer"
+  ) {
+    throw new Error("Selected provider readiness is not ready for specialist invocation.");
+  }
+  if (input.providerTransferApproval === undefined) {
+    throw new Error("Provider byte-transfer approval is required before remote specialist invocation.");
+  }
+  await assertSelectedSpecialistProviderByteTransferApproval({
+    ledger: input.ledger,
+    runId: input.runId,
+    taskId: input.taskId,
+    providerId: input.providerId,
+    modelFamily: input.modelFamily,
+    credentialRef: input.credentialRef,
+    providerReadiness: input.providerReadiness,
+    providerTransferApproval: input.providerTransferApproval,
+    promptArtifact
+  });
 }
 
 async function assertProviderByteTransferApproved(
-  input: SpecialistRunnerBaseInput,
+  input: AssertSelectedSpecialistProviderByteTransferApprovalInput,
   currentCard: ProviderSetupCard,
   promptArtifact: PromptArtifactEnvelope
 ): Promise<void> {
@@ -324,11 +378,13 @@ async function assertProviderByteTransferApproved(
     throw new Error("Provider byte-transfer approval is required before remote specialist invocation.");
   }
   const promptAudit = promptArtifactAuditMetadata(promptArtifact);
-  const current = await rebuildProviderByteTransferCurrentPreview(proof.currentPreviewInput);
+  const current = await (input.rebuildCurrentPreview ?? rebuildProviderByteTransferCurrentPreview)(proof.currentPreviewInput);
   if (current.activeLocks.length > 0) {
     throw new Error("Provider byte-transfer approval proof includes active locks.");
   }
-  const preview = current.preview;
+  const preview = current.preview as Record<string, unknown>;
+  const previewModelFamily = previewModelFamilyFor(preview);
+  const approvedProviderCapability = proof.currentPreviewInput.approvedProviderCapability;
   const previewHash = hashAgentToolPreview(current.preview);
   if (previewHash !== proof.approvedPreviewHash) {
     throw new Error("Provider byte-transfer approval preview hash does not match the current preview.");
@@ -338,6 +394,9 @@ async function assertProviderByteTransferApproved(
     preview.taskId !== input.taskId ||
     preview.residentAgentId !== "agent_default" ||
     preview.providerId !== input.providerId ||
+    (previewModelFamily !== undefined && previewModelFamily !== input.modelFamily) ||
+    approvedProviderCapability.providerId !== input.providerId ||
+    !approvedProviderCapability.modelFamilies.includes(input.modelFamily) ||
     proof.currentPreviewInput.credentialRefId !== input.credentialRef.credentialRefId ||
     proof.currentPreviewInput.approvedProviderReadiness.providerId !== currentCard.providerId ||
     proof.currentPreviewInput.approvedProviderReadiness.credentialRefId !== currentCard.credentialRefId ||
@@ -376,6 +435,10 @@ async function assertProviderByteTransferApproved(
     approved === undefined ||
     latest?.type !== "agent.tool.approved" ||
     approved.context.actor.kind !== "human" ||
+    approved.context.actor.id !== approved.payload.approvedBy ||
+    approved.context.causationId !== requested.id ||
+    approved.context.actor.id === requested.payload.requestedBy ||
+    approved.context.actor.id === requested.context.actor.id ||
     approved.payload.approvalClass !== "provider-byte-transfer" ||
     approved.payload.approvedBy !== proof.currentPreviewInput.reviewer.id ||
     approved.payload.approvedPreviewHash !== proof.approvedPreviewHash
@@ -391,6 +454,7 @@ async function assertProviderByteTransferApproved(
   if (
     providerApproval === undefined ||
     providerApproval.context.actor.kind !== "human" ||
+    providerApproval.context.actor.id !== providerApproval.payload.approvedBy ||
     providerApproval.payload.approvedBy !== proof.currentPreviewInput.reviewer.id ||
     providerApproval.payload.providerJobId !== proof.currentPreviewInput.providerJobId ||
     providerApproval.payload.sourceCollectionId !== proof.currentPreviewInput.sourceCollectionId ||
@@ -400,6 +464,15 @@ async function assertProviderByteTransferApproved(
   ) {
     throw new Error("Provider byte-transfer domain approval event is missing or stale.");
   }
+}
+
+function previewModelFamilyFor(preview: Record<string, unknown>): string | undefined {
+  const modelId = preview.modelId;
+  if (typeof modelId === "string") {
+    return modelId;
+  }
+  const modelFamily = preview.modelFamily;
+  return typeof modelFamily === "string" ? modelFamily : undefined;
 }
 
 function providerReadinessCards(
@@ -668,8 +741,7 @@ export async function finalizeSpecialistRunAfterHandoff(
 
   const runStream = await input.ledger.readStream(`agent_run_${manifest.runId}`);
   const terminal = await appendOrReuseTerminalRun(input, manifest, recorded, runStream);
-  const taskStatus = await appendOrReuseTaskStatus(input, manifest, terminal);
-  return Object.freeze({ terminal, ...(taskStatus === undefined ? {} : { taskStatus }) });
+  return Object.freeze({ terminal });
 }
 
 export async function assertSpecialistStepNotRecorded(
@@ -830,7 +902,7 @@ function snapshotRecordHandoffInput(input: RecordSpecialistHandoffInput): Record
 }
 
 function snapshotFinalizeHandoffInput(input: FinalizeSpecialistRunAfterHandoffInput): FinalizeSpecialistRunAfterHandoffInput {
-  const values = handoffInputValues(input, "Finalize specialist handoff input", ["ledger", "actor", "now", "recorded"]);
+  const values = handoffInputValues(input, "Finalize specialist handoff input", ["ledger", "actor", "now", "recorded", "appendTaskStatus"]);
   const resultValues = handoffInputValues(values.recorded as RecordSpecialistHandoffResult, "Recorded specialist handoff result", [
     "manifest", "handoff", "prepared", "recorded", "manifestStore"
   ]);
@@ -845,6 +917,7 @@ function snapshotFinalizeHandoffInput(input: FinalizeSpecialistRunAfterHandoffIn
     ledger: values.ledger as EventLedger,
     now: values.now as () => string,
     actor: normalized.actor as ActorRef,
+    ...(values.appendTaskStatus === false ? { appendTaskStatus: false } : {}),
     recorded: Object.freeze({
       manifest: normalized.manifest as SpecialistHandoffManifest,
       handoff: normalized.handoff as SpecialistWorkflowHandoffDto,
@@ -1658,79 +1731,6 @@ function assertNoConflictingTerminal(
     !terminalMatchesRecordedHandoff(event, manifest, recorded)
   )) {
     throw new Error("Conflicting terminal specialist run event exists on the run stream.");
-  }
-}
-
-async function appendOrReuseTaskStatus(
-  input: FinalizeSpecialistRunAfterHandoffInput,
-  manifest: SpecialistHandoffManifest,
-  terminal: KnowledgeEventOf<"agent.specialist-run.completed"> | KnowledgeEventOf<"agent.specialist-run.failed">
-): Promise<KnowledgeEventOf<"agent.task.status.changed"> | undefined> {
-  if (manifest.taskId === undefined) return undefined;
-  const status = taskStatusForHandoff(manifest.status);
-  const stream = await input.ledger.readStream(`agent_task_${manifest.taskId}`);
-  const taskStatuses = stream.filter((event): event is KnowledgeEventOf<"agent.task.status.changed"> => event.type === "agent.task.status.changed");
-  const terminalStatuses = new Set(["completed", "waiting-for-approval", "blocked", "failed"]);
-  for (const candidate of taskStatuses) {
-    if (terminalStatuses.has(candidate.payload.status) &&
-      (candidate.payload.runId !== manifest.runId || candidate.context.causationId !== terminal.id)) {
-      throw new Error("Conflicting task status event exists for the durable specialist handoff.");
-    }
-  }
-  const runStatuses = taskStatuses.filter((event) => event.payload.runId === manifest.runId && event.context.causationId === terminal.id);
-  if (runStatuses.length > 0) {
-    const exact = runStatuses.find((event) => event.payload.status === status);
-    if (exact !== undefined && runStatuses.length === 1) return exact;
-    throw new Error("Conflicting task status event exists for the durable specialist handoff.");
-  }
-  const event: AppendableKnowledgeEvent<"agent.task.status.changed"> = {
-    type: "agent.task.status.changed",
-    version: 1,
-    streamId: `agent_task_${manifest.taskId}`,
-    context: {
-      actor: input.actor,
-      occurredAt: input.now(),
-      causationId: terminal.id,
-      correlationId: `corr_${manifest.runId}_task_status`,
-      coreVersion: agentCoreVersion,
-      packVersions: agentPackVersions
-    },
-    payload: {
-      taskId: manifest.taskId,
-      status,
-      changedBy: input.actor.id,
-      reason: `Task transitioned to ${status} after verified specialist handoff.`,
-      runId: manifest.runId
-    }
-  };
-  return await appendWithExactRaceRecovery({
-    ledger: input.ledger,
-    streamId: `agent_task_${manifest.taskId}`,
-    expectedNextSequence: expectedNextSequenceFromStream(stream),
-    event,
-    findExact: (events) => events.find((candidate): candidate is KnowledgeEventOf<"agent.task.status.changed"> =>
-      candidate.type === "agent.task.status.changed" &&
-      candidate.payload.runId === manifest.runId &&
-      candidate.payload.status === status &&
-      candidate.context.causationId === terminal.id
-    ),
-    validateReread: (events) => {
-      const terminalStatuses = new Set(["completed", "waiting-for-approval", "blocked", "failed"]);
-      if (events.some((candidate) => candidate.type === "agent.task.status.changed" && terminalStatuses.has(candidate.payload.status) &&
-        (candidate.payload.runId !== manifest.runId || candidate.payload.status !== status || candidate.context.causationId !== terminal.id))) {
-        throw new Error("Conflicting task status event exists for the durable specialist handoff.");
-      }
-    },
-    conflictMessage: "Conflicting task status event exists for the durable specialist handoff."
-  });
-}
-
-function taskStatusForHandoff(status: SpecialistWorkflowHandoffDto["status"]): "completed" | "waiting-for-approval" | "blocked" | "failed" {
-  switch (status) {
-    case "ready-for-review": return "completed";
-    case "waiting-for-approval": return "waiting-for-approval";
-    case "blocked": return "blocked";
-    case "failed": return "failed";
   }
 }
 

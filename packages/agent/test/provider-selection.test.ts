@@ -3,6 +3,36 @@ import { createProviderRegistry } from "../src/provider-registry.js";
 import { selectProviderForTask } from "../src/provider-selection.js";
 
 describe("provider selection policy", () => {
+  it("selects provider and model from policy and capability registry", () => {
+    const selected = selectProviderForTask({
+      registry: createProviderRegistry.withDefaultsForTest(),
+      task: {
+        modality: "text",
+        structuredOutputRequired: true,
+        sensitivity: "workspace-safe",
+        requiresRemoteHarness: false
+      },
+      readinessByProviderId: {
+        provider_fake_remote: "requires-byte-transfer-approval"
+      },
+      policy: {
+        allowRemoteByteTransfer: true,
+        preferredCostPolicy: "metered-api"
+      }
+    });
+
+    expect(selected).toMatchObject({
+      ok: true,
+      providerId: "provider_fake_remote",
+      modelId: "fake-remote",
+      capabilityIds: [
+        "capability_provider_provider_fake_remote",
+        "capability_model_fake-remote",
+        "capability_adapter_agent-provider-auth.v1"
+      ]
+    });
+  });
+
   it("prefers local providers for sensitive evidence when capable", () => {
     const selected = selectProviderForTask({
       registry: createProviderRegistry.withDefaultsForTest(),
