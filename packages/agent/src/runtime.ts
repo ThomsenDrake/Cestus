@@ -30,6 +30,8 @@ import type {
   AgentMemoryMutationResult,
   AgentRuntimeDiagnosticDto,
   AgentRuntimeResult,
+  AgentRuntimeWakeResultDto,
+  AgentTaskOrchestratorRuntimeCapabilities,
   AgentStatusDto,
   RecordAgentMemoryInput,
   RetractAgentMemoryInput,
@@ -48,6 +50,13 @@ import {
   notMountedResidentIdentityLifecycle,
   type ResidentIdentityLifecycleDto
 } from "./identity-bootstrap.js";
+import {
+  createTaskOrchestrator,
+  type TaskOrchestratorBudgets,
+  type TaskOrchestratorConcurrencyPolicy,
+  type TaskOrchestratorPolicy
+} from "./task-orchestrator.js";
+import type { TaskOrchestratorTickSummary } from "./task-orchestrator-types.js";
 
 const agentCoreVersion = "0.1.0";
 const agentPackVersions = { core: "0.1.0", agent: "0.1.0" } as const;
@@ -56,6 +65,22 @@ const defaultResidentLabel = "Cestus Agent";
 const defaultPolicyId = "agent_policy_default";
 const defaultMemoryProjectionVersion = "0.1.0";
 const defaultAllowedRunTypes = approvedAgentSpecialistRunTypes;
+const defaultTaskOrchestratorPolicy: TaskOrchestratorPolicy = {
+  defaultRunType: "evidence-triage",
+  leaseDurationMs: 600_000
+};
+const defaultTaskOrchestratorConcurrency: TaskOrchestratorConcurrencyPolicy = {
+  globalMaxActiveAttempts: 1,
+  perRunTypeMaxActiveAttempts: { "evidence-triage": 1 }
+};
+const defaultTaskOrchestratorBudgets: TaskOrchestratorBudgets = {
+  maxProviderInvocations: 1,
+  remainingProviderInvocations: 1,
+  contextByteBudget: 32_768,
+  promptByteBudget: 32_768,
+  derivativeArtifactByteBudget: 65_536,
+  wallClockBudgetMs: 120_000
+};
 
 export interface CreateAgentRuntimeInput {
   readonly ledger: EventLedger;
@@ -65,6 +90,7 @@ export interface CreateAgentRuntimeInput {
   readonly identityLifecycleReady?: () => Promise<ResidentIdentityLifecycleDto>;
   readonly providers?: readonly ModelProviderAdapter[];
   readonly approvedToolExecutors?: readonly AgentApprovedToolExecutorDescriptor[];
+  readonly taskOrchestratorCapabilities?: AgentTaskOrchestratorRuntimeCapabilities | undefined;
 }
 
 export interface InitializeDefaultIdentityInput {
@@ -146,8 +172,43 @@ export function createAgentRuntime(input: CreateAgentRuntimeInput) {
     now: input.now,
     descriptors: input.approvedToolExecutors ?? []
   });
+  const tickTaskOrchestrator = async (): Promise<TaskOrchestratorTickSummary> => {
+    await assertResidentIdentityReadyForTaskOrchestration(input);
+    const capabilities = assertTaskOrchestratorRuntimeCapabilities(input.taskOrchestratorCapabilities);
+    return await createTaskOrchestrator({
+      ledger: input.ledger,
+      actor: input.actor,
+      now: input.now,
+      policy: {
+        ...defaultTaskOrchestratorPolicy,
+        ...(capabilities.providerPolicy === undefined ? {} : { providerPolicy: capabilities.providerPolicy })
+      },
+      concurrency: defaultTaskOrchestratorConcurrency,
+      budgets: defaultTaskOrchestratorBudgets,
+      workflowRegistry: capabilities.workflowRegistry,
+      contextRegistry: capabilities.contextRegistry,
+      promptRendererRegistry: capabilities.promptRendererRegistry,
+      providerRegistry: capabilities.providerRegistry,
+      approvalReader: capabilities.approvalReader,
+      runnerRegistry: capabilities.runnerRegistry,
+      handoffCapability: capabilities.handoffCapability
+    }).tick();
+  };
+  const wakeResidentAgent = async (): Promise<AgentRuntimeWakeResultDto> => {
+    const taskOrchestrator = await tickTaskOrchestrator();
+    const approvedToolScheduler = await scheduler.wake();
+    return Object.freeze({
+      schemaVersion: "agent-runtime-wake-result.v1",
+      generatedAt: input.now(),
+      taskOrchestrator,
+      approvedToolScheduler
+    });
+  };
 
   return {
+    tickTaskOrchestrator,
+    wakeResidentAgent,
+
     async status(): Promise<AgentStatusDto> {
       let configuredLifecycle = configuredIdentityLifecycle(input.identityLifecycle);
       let projection: ReturnType<typeof buildAgentProjection>;
@@ -745,6 +806,63 @@ function currentIdentityLifecycle(
     safeMessage: "Resident identity is ready.",
     allowedRepairActions: Object.freeze([])
   });
+}
+
+async function assertResidentIdentityReadyForTaskOrchestration(input: CreateAgentRuntimeInput): Promise<void> {
+  const lifecycle = input.identityLifecycleReady === undefined
+    ? currentIdentityLifecycle(
+      configuredIdentityLifecycle(input.identityLifecycle),
+      buildAgentProjection(await input.ledger.readAll()).identity
+    )
+    : await input.identityLifecycleReady();
+  if (lifecycle.state !== "ready") {
+    throw new Error("Resident identity is not ready for task orchestration.");
+  }
+}
+
+function assertTaskOrchestratorRuntimeCapabilities(
+  capabilities: AgentTaskOrchestratorRuntimeCapabilities | undefined
+): AgentTaskOrchestratorRuntimeCapabilities {
+  if (capabilities === undefined) {
+    throw new Error("Task orchestrator runtime capabilities are not registered.");
+  }
+  if (capabilities.schemaVersion !== "agent-task-orchestrator-runtime-capabilities.v1") {
+    throw new Error("Task orchestrator runtime capabilities have an unsupported schema version.");
+  }
+  if (typeof capabilities.workflowRegistry?.require !== "function") {
+    throw new Error("Task orchestrator workflow registry is not registered.");
+  }
+  if (
+    typeof capabilities.contextRegistry?.buildResolved !== "function" ||
+    typeof capabilities.contextRegistry.getDescriptor !== "function" ||
+    typeof capabilities.contextRegistry.snapshot !== "function"
+  ) {
+    throw new Error("Task orchestrator context registry is not registered.");
+  }
+  if (typeof capabilities.promptRendererRegistry?.render !== "function") {
+    throw new Error("Task orchestrator prompt renderer registry is not registered.");
+  }
+  if (
+    typeof capabilities.providerRegistry?.list !== "function" ||
+    typeof capabilities.providerRegistry.require !== "function" ||
+    capabilities.providerRegistry.list().length === 0
+  ) {
+    throw new Error("Task orchestrator provider registry is not registered.");
+  }
+  if (typeof capabilities.approvalReader?.inspect !== "function") {
+    throw new Error("Task orchestrator approval reader is not registered.");
+  }
+  if (typeof capabilities.runnerRegistry?.dispatch !== "function") {
+    throw new Error("Task orchestrator runner registry is not registered.");
+  }
+  if (
+    typeof capabilities.handoffCapability?.prepare !== "function" ||
+    typeof capabilities.handoffCapability.bind !== "function" ||
+    typeof capabilities.handoffCapability.readback !== "function"
+  ) {
+    throw new Error("Task orchestrator durable handoff capability is not registered.");
+  }
+  return capabilities;
 }
 
 function configuredIdentityLifecycle(

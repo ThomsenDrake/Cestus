@@ -8,7 +8,25 @@ import type {
 } from "./memory.js";
 import type { AgentMemoryKind, AgentMemoryScope, AgentMemoryState, AgentProjectionDto } from "./projection-types.js";
 import type { ProviderDescriptor } from "./provider.js";
+import type { ProviderCapabilityRegistry } from "./provider-registry.js";
 import type { ProviderReadinessDto } from "./provider-readiness.js";
+import type { AgentSchedulerWakeResultDto } from "./scheduler-types.js";
+import type { SpecialistWorkflowDescriptor } from "./specialist-workflows.js";
+import type {
+  TaskOrchestratorRunnerRegistry
+} from "./task-orchestrator.js";
+import type {
+  TaskOrchestratorContextRenderInput,
+  TaskOrchestratorProviderPolicy,
+  TaskOrchestratorRunType
+} from "./task-orchestrator-types.js";
+import type { ContextPackRegistry } from "./context-packs.js";
+import type { PromptArtifactEnvelope } from "./prompt-artifacts.js";
+import type {
+  InspectTaskOrchestratorProviderApprovalInput,
+  TaskOrchestratorProviderApprovalInspection
+} from "./task-orchestrator-approval.js";
+import type { TaskOrchestratorTickSummary } from "./task-orchestrator-types.js";
 
 export interface AgentRuntimeDiagnosticDto {
   readonly diagnosticId?: string;
@@ -32,6 +50,43 @@ export interface AgentStatusDto extends AgentProjectionDto {
 
 export interface AgentProviderReadinessEnvelope {
   readonly providerReadiness: ProviderReadinessDto;
+}
+
+export interface AgentRuntimeWakeResultDto {
+  readonly schemaVersion: "agent-runtime-wake-result.v1";
+  readonly generatedAt: string;
+  readonly taskOrchestrator: TaskOrchestratorTickSummary;
+  readonly approvedToolScheduler: AgentSchedulerWakeResultDto;
+}
+
+export interface AgentTaskOrchestratorWorkflowRegistry {
+  require(runType: TaskOrchestratorRunType): SpecialistWorkflowDescriptor;
+}
+
+export interface AgentTaskOrchestratorPromptRendererRegistry {
+  render(input: TaskOrchestratorContextRenderInput): PromptArtifactEnvelope | Promise<PromptArtifactEnvelope>;
+}
+
+export interface AgentTaskOrchestratorApprovalReader {
+  inspect(input: InspectTaskOrchestratorProviderApprovalInput): Promise<TaskOrchestratorProviderApprovalInspection>;
+}
+
+export interface AgentTaskOrchestratorHandoffCapability {
+  prepare(input: unknown): Promise<unknown> | unknown;
+  bind(input: unknown): Promise<unknown> | unknown;
+  readback(input: unknown): Promise<unknown> | unknown;
+}
+
+export interface AgentTaskOrchestratorRuntimeCapabilities {
+  readonly schemaVersion: "agent-task-orchestrator-runtime-capabilities.v1";
+  readonly workflowRegistry: AgentTaskOrchestratorWorkflowRegistry;
+  readonly contextRegistry: ContextPackRegistry;
+  readonly promptRendererRegistry: AgentTaskOrchestratorPromptRendererRegistry;
+  readonly providerRegistry: ProviderCapabilityRegistry;
+  readonly approvalReader: AgentTaskOrchestratorApprovalReader;
+  readonly runnerRegistry: TaskOrchestratorRunnerRegistry;
+  readonly handoffCapability: AgentTaskOrchestratorHandoffCapability;
+  readonly providerPolicy?: TaskOrchestratorProviderPolicy | undefined;
 }
 
 export interface RecordAgentMemoryInput {

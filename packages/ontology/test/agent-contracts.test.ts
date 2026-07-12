@@ -17,6 +17,8 @@ const humanContext = {
 const hash111 = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
 const hash222 = "sha256:2222222222222222222222222222222222222222222222222222222222222222";
 const hash333 = "sha256:3333333333333333333333333333333333333333333333333333333333333333";
+const orchestratorAttemptId = "attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const orchestratorStreamId = "agent_task_orchestration_task_001_evidence-triage";
 const adapterFailureCategories = [
   "approval-required",
   "approval-denied",
@@ -52,6 +54,191 @@ function agentEvent(id: string, type: string, streamId: string, payload: Record<
 }
 
 describe("resident agent event contracts", () => {
+  it("accepts agent.task.orchestration.claimed with stable attempt and lease generation", () => {
+    expect(
+      validateKnowledgeEvent(
+        agentEvent(
+          "evt_agent_task_orchestration_claimed",
+          "agent.task.orchestration.claimed",
+          orchestratorStreamId,
+          taskOrchestrationClaimedPayload()
+        )
+      ).success
+    ).toBe(true);
+  });
+
+  it("accepts agent.task.orchestration.checkpointed without raw context payload", () => {
+    const checkpointed = agentEvent(
+      "evt_agent_task_orchestration_checkpointed",
+      "agent.task.orchestration.checkpointed",
+      orchestratorStreamId,
+      taskOrchestrationCheckpointedPayload()
+    );
+
+    expect(validateKnowledgeEvent(checkpointed).success).toBe(true);
+    expect(
+      validateKnowledgeEvent({
+        ...checkpointed,
+        id: "evt_agent_task_orchestration_checkpointed_provider_capabilities",
+        payload: {
+          ...checkpointed.payload,
+          providerPosture: {
+            ...(checkpointed.payload.providerPosture as Record<string, unknown>),
+            capabilityIds: [
+              "capability_provider_provider_nous_portal",
+              "capability_model_tencent-hy3-free",
+              "capability_adapter_0.1.0"
+            ]
+          }
+        }
+      }).success
+    ).toBe(true);
+    expect(
+      validateKnowledgeEvent({
+        ...checkpointed,
+        id: "evt_agent_task_orchestration_checkpointed_raw_payload",
+        payload: {
+          ...checkpointed.payload,
+          contextPayload: { raw: "resolved context payload must stay transient" }
+        }
+      }).success
+    ).toBe(false);
+
+    for (const [id, field] of [
+      ["evt_agent_task_orchestration_checkpointed_missing_run", "runId"],
+      ["evt_agent_task_orchestration_checkpointed_missing_tools", "toolRequestIds"],
+      ["evt_agent_task_orchestration_checkpointed_missing_provider", "providerPosture"],
+      ["evt_agent_task_orchestration_checkpointed_missing_prompt", "promptArtifactHash"],
+      ["evt_agent_task_orchestration_checkpointed_missing_locks", "lockSnapshot"],
+      ["evt_agent_task_orchestration_checkpointed_missing_sources", "sourceEventIds"],
+      ["evt_agent_task_orchestration_checkpointed_missing_inputs", "inputArtifactHashes"]
+    ] as const) {
+      const payload = { ...checkpointed.payload };
+      delete payload[field];
+      expect(
+        validateKnowledgeEvent({
+          ...checkpointed,
+          id,
+          payload
+        }).success
+      ).toBe(false);
+    }
+
+    expect(
+      validateKnowledgeEvent({
+        ...checkpointed,
+        id: "evt_agent_task_orchestration_checkpointed_empty_context",
+        payload: { ...checkpointed.payload, contextBindings: [] }
+      }).success
+    ).toBe(false);
+
+    expect(
+      validateKnowledgeEvent({
+        ...checkpointed,
+        id: "evt_agent_task_orchestration_checkpointed_empty_tools",
+        payload: { ...checkpointed.payload, toolRequestIds: [] }
+      }).success
+    ).toBe(false);
+  });
+
+  it("accepts agent.task.orchestration.released for approval suspension and stale claim recovery", () => {
+    for (const [id, releaseReason] of [
+      ["evt_agent_task_orchestration_released_approval", "approval-suspended"],
+      ["evt_agent_task_orchestration_released_stale", "stale-recovered"]
+    ] as const) {
+      expect(
+        validateKnowledgeEvent(
+          agentEvent(
+            id,
+            "agent.task.orchestration.released",
+            orchestratorStreamId,
+            taskOrchestrationReleasedPayload(releaseReason)
+          )
+        ).success
+      ).toBe(true);
+    }
+
+    const approvalRelease = agentEvent(
+      "evt_agent_task_orchestration_released_approval_missing_checkpoint",
+      "agent.task.orchestration.released",
+      orchestratorStreamId,
+      taskOrchestrationReleasedPayload("approval-suspended")
+    );
+    const { checkpointEventId: _checkpointEventId, ...withoutCheckpoint } = approvalRelease.payload;
+    expect(
+      validateKnowledgeEvent({
+        ...approvalRelease,
+        payload: withoutCheckpoint
+      }).success
+    ).toBe(false);
+  });
+
+  it("accepts agent.task.orchestration.completed only with preceding handoff readback reference", () => {
+    const completed = agentEvent(
+      "evt_agent_task_orchestration_completed",
+      "agent.task.orchestration.completed",
+      orchestratorStreamId,
+      taskOrchestrationCompletedPayload()
+    );
+
+    expect(validateKnowledgeEvent(completed).success).toBe(true);
+    const { handoffReadback, ...withoutReadback } = completed.payload;
+    expect(
+      validateKnowledgeEvent({
+        ...completed,
+        id: "evt_agent_task_orchestration_completed_no_readback",
+        payload: withoutReadback
+      }).success
+    ).toBe(false);
+
+    expect(
+      validateKnowledgeEvent({
+        ...completed,
+        id: "evt_agent_task_orchestration_completed_mismatched_handoff_readback",
+        payload: {
+          ...completed.payload,
+          handoffReadback: {
+            ...(completed.payload.handoffReadback as Record<string, unknown>),
+            handoffRecordedEventId: "evt_handoff_recorded_other"
+          }
+        }
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects orchestration events that include payload, domainProof, approvalByAgent, or missing retryGeneration", () => {
+    const validClaimed = agentEvent(
+      "evt_agent_task_orchestration_claimed_valid_for_negative_controls",
+      "agent.task.orchestration.claimed",
+      orchestratorStreamId,
+      taskOrchestrationClaimedPayload()
+    );
+    expect(validateKnowledgeEvent(validClaimed).success).toBe(true);
+
+    for (const [id, patch] of [
+      ["evt_agent_task_orchestration_claimed_raw_payload", { payload: { raw: "context bytes" } }],
+      ["evt_agent_task_orchestration_claimed_domain_proof", { domainProof: "synthetic-domain-proof" }],
+      ["evt_agent_task_orchestration_claimed_self_approval", { approvalByAgent: "agent_default" }]
+    ] as const) {
+      expect(
+        validateKnowledgeEvent({
+          ...validClaimed,
+          id,
+          payload: { ...validClaimed.payload, ...patch }
+        }).success
+      ).toBe(false);
+    }
+
+    const { retryGeneration: _retryGeneration, ...missingRetryGeneration } = validClaimed.payload;
+    expect(
+      validateKnowledgeEvent({
+        ...validClaimed,
+        id: "evt_agent_task_orchestration_claimed_missing_retry_generation",
+        payload: missingRetryGeneration
+      }).success
+    ).toBe(false);
+  });
+
   it("accepts final-output specialist steps while keeping ordinary steps valid", () => {
     const finalOutput = agentEvent(
       "evt_final_output",
@@ -870,4 +1057,128 @@ function unsafePrivateKeyMarker(): string {
 
 function unsafeCredentialSettingName(): string {
   return ["OPEN", "AI", "_", "API", "_", "KEY"].join("");
+}
+
+function taskOrchestrationClaimedPayload(): Record<string, unknown> {
+  return {
+    taskId: "task_001",
+    runType: "evidence-triage",
+    attemptId: orchestratorAttemptId,
+    retryGeneration: 0,
+    leaseClaimGeneration: 1,
+    workerId: "actor_task_orchestrator_worker",
+    claimedAt: "2026-07-10T14:00:00.000Z",
+    leaseExpiresAt: "2026-07-10T14:05:00.000Z",
+    idempotencyKey: `task-orchestrator:task_001:evidence-triage:0:${orchestratorAttemptId}:claim`,
+    selectedOrderingPosition: {
+      priorityRank: 1,
+      queuedAt: "2026-07-10T13:59:00.000Z",
+      taskId: "task_001",
+      runType: "evidence-triage",
+      retryGeneration: 0
+    },
+    activeBudgetSnapshot: {
+      maxProviderInvocations: 1,
+      remainingProviderInvocations: 1,
+      contextByteBudget: 16384,
+      promptByteBudget: 8192,
+      derivativeArtifactByteBudget: 65536,
+      wallClockBudgetMs: 300000
+    },
+    causationEventId: "evt_agent_task_created"
+  };
+}
+
+function taskOrchestrationCheckpointedPayload(): Record<string, unknown> {
+  return {
+    taskId: "task_001",
+    runType: "evidence-triage",
+    attemptId: orchestratorAttemptId,
+    retryGeneration: 0,
+    leaseClaimGeneration: 1,
+    checkpointKind: "approval-wait",
+    checkpointedAt: "2026-07-10T14:01:00.000Z",
+    runId: "run_001",
+    resumeIdempotencyKey: `task-orchestrator:task_001:evidence-triage:0:${orchestratorAttemptId}:resume-approval-wait`,
+    toolRequestIds: ["toolreq_provider_transfer"],
+    approvalRequirement: {
+      approvalClass: "provider-byte-transfer",
+      previewHash: hash333,
+      approvalRequestEventId: "evt_agent_tool_requested_provider_transfer"
+    },
+    providerPosture: {
+      providerId: "provider_nous_portal",
+      modelFamily: "tencent-hy3-free",
+      adapterVersion: "0.1.0",
+      capabilityIds: [
+        "capability_provider_provider_nous_portal",
+        "capability_model_tencent-hy3-free",
+        "capability_adapter_0.1.0"
+      ],
+      credentialRefId: "agent_credref_local",
+      credentialKind: "local-no-secret",
+      readinessState: "ready",
+      approvalProfile: "provider-byte-transfer",
+      dataHandlingPosture: "remote-provider-approved",
+      selectionPolicyVersion: "agent-provider-policy-v1",
+      sensitivityClass: "provider-approved",
+      requiredApprovalClass: "provider-byte-transfer"
+    },
+    contextBindings: [
+      {
+        contextPackId: "task-run-history.v1",
+        contentHash: hash222,
+        sizeBytes: 512,
+        schemaId: "task-run-history.v1",
+        provenanceEventIds: ["evt_agent_task_created"],
+        projectionHighWaterMark: 42,
+        stalenessInputCount: 1
+      }
+    ],
+    sourceEventIds: ["evt_agent_task_created"],
+    inputArtifactHashes: [hash111],
+    promptArtifactHash: hash111,
+    lockSnapshot: {
+      activeLockIds: [],
+      highWaterMark: 42
+    },
+    safeNextActions: ["wait for exact provider byte transfer approval"]
+  };
+}
+
+function taskOrchestrationReleasedPayload(releaseReason: string): Record<string, unknown> {
+  return {
+    taskId: "task_001",
+    runType: "evidence-triage",
+    attemptId: orchestratorAttemptId,
+    retryGeneration: 0,
+    leaseClaimGeneration: releaseReason === "stale-recovered" ? 2 : 1,
+    releasedBy: "actor_task_orchestrator_worker",
+    releasedAt: "2026-07-10T14:02:00.000Z",
+    releaseReason,
+    claimEventId: "evt_agent_task_orchestration_claimed",
+    checkpointEventId: "evt_agent_task_orchestration_checkpointed",
+    safeNextActions: ["reclaim after exact durable proof is current"]
+  };
+}
+
+function taskOrchestrationCompletedPayload(): Record<string, unknown> {
+  return {
+    taskId: "task_001",
+    runType: "evidence-triage",
+    attemptId: orchestratorAttemptId,
+    retryGeneration: 0,
+    runId: "run_001",
+    completedAt: "2026-07-10T14:10:00.000Z",
+    specialistRunCompletedEventId: "evt_agent_specialist_run_completed",
+    finalOutputStepEventId: "evt_final_output",
+    handoffPreparedEventId: "evt_handoff_prepared",
+    handoffRecordedEventId: "evt_handoff_recorded",
+    handoffReadback: {
+      handoffId: "handoff_run_001_0123456789abcdef",
+      handoffManifestHash: hash222,
+      handoffRecordedEventId: "evt_handoff_recorded",
+      verifiedAt: "2026-07-10T14:09:00.000Z"
+    }
+  };
 }

@@ -428,6 +428,243 @@ const agentTaskStatusChangedPayloadSchema = z.object({
   runId: agentRunIdSchema.optional()
 }).strict();
 
+const agentTaskOrchestrationAttemptIdSchema = agentSecretSafeIdSchema(/^attempt_[a-f0-9]{64}$/);
+
+const agentTaskOrchestrationOrderingPositionSchema = z.object({
+  priorityRank: z.number().int().nonnegative(),
+  queuedAt: z.string().datetime(),
+  taskId: agentTaskIdSchema,
+  runType: agentSpecialistRunTypeSchema,
+  retryGeneration: z.number().int().nonnegative()
+}).strict();
+
+const agentTaskOrchestrationBudgetSnapshotSchema = z.object({
+  maxProviderInvocations: z.number().int().nonnegative(),
+  remainingProviderInvocations: z.number().int().nonnegative(),
+  contextByteBudget: z.number().int().nonnegative(),
+  promptByteBudget: z.number().int().nonnegative(),
+  derivativeArtifactByteBudget: z.number().int().nonnegative(),
+  wallClockBudgetMs: z.number().int().positive()
+}).strict().superRefine((budget, ctx) => {
+  if (budget.remainingProviderInvocations > budget.maxProviderInvocations) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["remainingProviderInvocations"],
+      message: "remainingProviderInvocations cannot exceed maxProviderInvocations"
+    });
+  }
+});
+
+const agentTaskOrchestrationClaimedPayloadSchema = z.object({
+  taskId: agentTaskIdSchema,
+  runType: agentSpecialistRunTypeSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  retryGeneration: z.number().int().nonnegative(),
+  leaseClaimGeneration: z.number().int().positive(),
+  workerId: actorIdSchema,
+  claimedAt: z.string().datetime(),
+  leaseExpiresAt: z.string().datetime(),
+  idempotencyKey: secretSafeStringSchema.min(1),
+  selectedOrderingPosition: agentTaskOrchestrationOrderingPositionSchema,
+  activeBudgetSnapshot: agentTaskOrchestrationBudgetSnapshotSchema,
+  causationEventId: eventIdSchema
+}).strict().superRefine((claim, ctx) => {
+  if (Date.parse(claim.leaseExpiresAt) <= Date.parse(claim.claimedAt)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["leaseExpiresAt"],
+      message: "leaseExpiresAt must be after claimedAt"
+    });
+  }
+  if (
+    claim.selectedOrderingPosition.taskId !== claim.taskId ||
+    claim.selectedOrderingPosition.runType !== claim.runType ||
+    claim.selectedOrderingPosition.retryGeneration !== claim.retryGeneration
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["selectedOrderingPosition"],
+      message: "selectedOrderingPosition must bind the same task, run type, and retry generation"
+    });
+  }
+});
+
+const agentTaskOrchestrationContextBindingSchema = z.object({
+  contextPackId: secretSafeStringSchema.min(1),
+  contentHash: contentHashSchema,
+  sizeBytes: z.number().int().nonnegative(),
+  schemaId: secretSafeStringSchema.min(1),
+  provenanceEventIds: z.array(eventIdSchema).min(1),
+  projectionHighWaterMark: z.number().int().nonnegative().optional(),
+  stalenessInputCount: z.number().int().nonnegative().optional()
+}).strict();
+
+const agentTaskOrchestrationProviderPostureSchema = z.object({
+  providerId: agentProviderIdSchema,
+  modelFamily: secretSafeStringSchema.min(1),
+  adapterVersion: secretSafeStringSchema.min(1),
+  capabilityIds: z.array(secretSafeStringSchema.min(1)).min(1),
+  credentialRefId: agentCredentialRefIdSchema.optional(),
+  credentialKind: agentCredentialKindSchema.optional(),
+  readinessState: z.enum(["ready", "degraded", "blocked", "unavailable", "approval-required"]),
+  approvalProfile: agentToolApprovalClassSchema,
+  dataHandlingPosture: secretSafeStringSchema.min(1),
+  selectionPolicyVersion: secretSafeStringSchema.min(1),
+  sensitivityClass: secretSafeStringSchema.min(1),
+  requiredApprovalClass: agentToolApprovalClassSchema
+}).strict();
+
+const agentTaskOrchestrationApprovalRequirementSchema = z.object({
+  approvalClass: agentToolApprovalClassSchema,
+  previewHash: contentHashSchema,
+  approvalRequestEventId: eventIdSchema
+}).strict();
+
+const agentTaskOrchestrationLockSnapshotSchema = z.object({
+  activeLockIds: z.array(agentLockIdSchema),
+  highWaterMark: z.number().int().nonnegative()
+}).strict();
+
+const agentTaskOrchestrationCheckpointKindSchema = z.enum([
+  "planning",
+  "context-ready",
+  "prompt-ready",
+  "approval-wait",
+  "runner-dispatching",
+  "handoff-pending",
+  "blocked"
+]);
+
+const agentTaskOrchestrationCheckpointedPayloadSchema = z.object({
+  taskId: agentTaskIdSchema,
+  runType: agentSpecialistRunTypeSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  retryGeneration: z.number().int().nonnegative(),
+  leaseClaimGeneration: z.number().int().positive(),
+  checkpointKind: agentTaskOrchestrationCheckpointKindSchema,
+  checkpointedAt: z.string().datetime(),
+  runId: agentRunIdSchema.optional(),
+  resumeIdempotencyKey: secretSafeStringSchema.min(1),
+  toolRequestIds: z.array(agentToolRequestIdSchema).optional(),
+  approvalRequirement: agentTaskOrchestrationApprovalRequirementSchema.optional(),
+  providerPosture: agentTaskOrchestrationProviderPostureSchema.optional(),
+  contextBindings: z.array(agentTaskOrchestrationContextBindingSchema),
+  sourceEventIds: agentSourceEventIdsSchema.optional(),
+  inputArtifactHashes: agentArtifactHashesSchema.optional(),
+  promptArtifactHash: contentHashSchema.optional(),
+  lockSnapshot: agentTaskOrchestrationLockSnapshotSchema.optional(),
+  safeNextActions: agentSafeActionsSchema
+}).strict().superRefine((checkpoint, ctx) => {
+  if (checkpoint.checkpointKind !== "approval-wait") {
+    return;
+  }
+
+  for (const [field, value] of [
+    ["runId", checkpoint.runId],
+    ["approvalRequirement", checkpoint.approvalRequirement],
+    ["providerPosture", checkpoint.providerPosture],
+    ["promptArtifactHash", checkpoint.promptArtifactHash],
+    ["lockSnapshot", checkpoint.lockSnapshot]
+  ] as const) {
+    if (value === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: [field],
+        message: `approval-wait checkpoints require ${field}`
+      });
+    }
+  }
+
+  for (const [field, value] of [
+    ["toolRequestIds", checkpoint.toolRequestIds],
+    ["contextBindings", checkpoint.contextBindings],
+    ["sourceEventIds", checkpoint.sourceEventIds],
+    ["inputArtifactHashes", checkpoint.inputArtifactHashes]
+  ] as const) {
+    if (value === undefined || value.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: [field],
+        message: `approval-wait checkpoints require at least one ${field} entry`
+      });
+    }
+  }
+});
+
+const agentTaskOrchestrationReleaseReasonSchema = z.enum([
+  "approval-suspended",
+  "stale-recovered",
+  "budget-blocked",
+  "canceled-before-dispatch",
+  "handoff-pending",
+  "worker-shutdown"
+]);
+
+const agentTaskOrchestrationReleasedPayloadSchema = z.object({
+  taskId: agentTaskIdSchema,
+  runType: agentSpecialistRunTypeSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  retryGeneration: z.number().int().nonnegative(),
+  leaseClaimGeneration: z.number().int().positive(),
+  releasedBy: actorIdSchema,
+  releasedAt: z.string().datetime(),
+  releaseReason: agentTaskOrchestrationReleaseReasonSchema,
+  claimEventId: eventIdSchema,
+  checkpointEventId: eventIdSchema.optional(),
+  safeNextActions: agentSafeActionsSchema
+}).strict().superRefine((release, ctx) => {
+  if (release.releaseReason === "approval-suspended" && release.checkpointEventId === undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["checkpointEventId"],
+      message: "approval-suspended releases require the suspended checkpoint event ID"
+    });
+  }
+});
+
+const agentTaskOrchestrationHandoffReadbackSchema = z.object({
+  handoffId: z.string().regex(/^handoff_[a-zA-Z0-9_-]+_[a-f0-9]{16}$/),
+  handoffManifestHash: contentHashSchema,
+  handoffRecordedEventId: eventIdSchema,
+  verifiedAt: z.string().datetime()
+}).strict();
+
+const agentTaskOrchestrationCompletedPayloadSchema = z.object({
+  taskId: agentTaskIdSchema,
+  runType: agentSpecialistRunTypeSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  retryGeneration: z.number().int().nonnegative(),
+  runId: agentRunIdSchema,
+  completedAt: z.string().datetime(),
+  specialistRunCompletedEventId: eventIdSchema,
+  finalOutputStepEventId: eventIdSchema,
+  handoffPreparedEventId: eventIdSchema,
+  handoffRecordedEventId: eventIdSchema,
+  handoffReadback: agentTaskOrchestrationHandoffReadbackSchema
+}).strict().superRefine((completion, ctx) => {
+  if (completion.handoffReadback.handoffRecordedEventId !== completion.handoffRecordedEventId) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["handoffReadback", "handoffRecordedEventId"],
+      message: "handoff readback must reference the same recorded event as orchestration completion"
+    });
+  }
+});
+
+const agentTaskOrchestrationFailedPayloadSchema = z.object({
+  taskId: agentTaskIdSchema,
+  runType: agentSpecialistRunTypeSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  retryGeneration: z.number().int().nonnegative(),
+  failedAt: z.string().datetime(),
+  category: agentFailureCategorySchema,
+  message: secretSafeTextSchema,
+  retryable: z.boolean(),
+  allowedActions: agentSafeActionsSchema,
+  runId: agentRunIdSchema.optional(),
+  relatedEventIds: agentSourceEventIdsSchema.optional()
+}).strict();
+
 const agentSpecialistRunStartedPayloadSchema = z.object({
   runId: agentRunIdSchema,
   residentAgentId: residentAgentIdSchema,
@@ -1304,6 +1541,11 @@ export const payloadSchemas = {
   "agent.policy.installed": agentPolicyInstalledPayloadSchema,
   "agent.task.created": agentTaskCreatedPayloadSchema,
   "agent.task.status.changed": agentTaskStatusChangedPayloadSchema,
+  "agent.task.orchestration.claimed": agentTaskOrchestrationClaimedPayloadSchema,
+  "agent.task.orchestration.checkpointed": agentTaskOrchestrationCheckpointedPayloadSchema,
+  "agent.task.orchestration.released": agentTaskOrchestrationReleasedPayloadSchema,
+  "agent.task.orchestration.completed": agentTaskOrchestrationCompletedPayloadSchema,
+  "agent.task.orchestration.failed": agentTaskOrchestrationFailedPayloadSchema,
   "agent.specialist-run.started": agentSpecialistRunStartedPayloadSchema,
   "agent.specialist-run.step.recorded": agentSpecialistRunStepRecordedPayloadSchema,
   "agent.specialist-run.completed": agentSpecialistRunCompletedPayloadSchema,
@@ -1495,6 +1737,66 @@ export const eventContracts = {
     description: "Records an append-only status transition for a resident-agent task.",
     agentGuidance: "Required provenance fields: taskId, status, changedBy, and optional runId when a run caused the transition. Forbidden autonomous effects: status changes must not stand in for approvals or domain events.",
     invariants: ["taskId must route the stream", "status must use the agent task status set", "terminal status does not delete task history"]
+  },
+  "agent.task.orchestration.claimed": {
+    type: "agent.task.orchestration.claimed",
+    version: 1,
+    description: "Records a lease-backed claim on one resident task and specialist run-type boundary.",
+    agentGuidance: "Required provenance fields: taskId, runType, stable attemptId, retryGeneration, leaseClaimGeneration, workerId, lease bounds, selected ordering position, active budget snapshot, and causationEventId. This is distinct from agent.tool.execution.claimed and must not execute approved tools or domain effects.",
+    invariants: [
+      "task orchestration claims route to agent_task_orchestration_<taskId>_<runType>",
+      "retryGeneration is required",
+      "leaseExpiresAt must be after claimedAt",
+      "claim events do not approve provider transfer or domain execution"
+    ]
+  },
+  "agent.task.orchestration.checkpointed": {
+    type: "agent.task.orchestration.checkpointed",
+    version: 1,
+    description: "Records restart-safe orchestration progress, including approval waits and recoverable handoff boundaries.",
+    agentGuidance: "Bind refs, content hashes, schema IDs, byte counts, provenance event IDs, source event IDs, input artifact hashes, provider posture, prompt artifact hashes, approval request IDs, lock snapshots, and safe next actions only. Never store resolved context payload bytes, rendered prompt text, synthetic approval proof, domainProof, or raw provider material.",
+    invariants: [
+      "retryGeneration is required",
+      "approval-wait checkpoints require exact run, tool request, approval, context, source, input artifact, prompt, provider, and lock metadata",
+      "context bindings are refs and hashes only",
+      "checkpoint events do not hold the worker lease indefinitely"
+    ]
+  },
+  "agent.task.orchestration.released": {
+    type: "agent.task.orchestration.released",
+    version: 1,
+    description: "Records release of a task orchestration lease for approval suspension, stale recovery, budget blocking, handoff pending, cancellation, or worker shutdown.",
+    agentGuidance: "Use after an approval-wait checkpoint or when recovery makes the current lease inactive. Releasing a task orchestration claim does not release or claim any approved-tool execution request.",
+    invariants: [
+      "retryGeneration is required",
+      "claimEventId is required",
+      "releaseReason must be explicit",
+      "task orchestration release is separate from tool execution claims"
+    ]
+  },
+  "agent.task.orchestration.completed": {
+    type: "agent.task.orchestration.completed",
+    version: 1,
+    description: "Records that the orchestrator observed final output, durable handoff preparation, handoff recording, verified readback, and terminal run completion for an attempt.",
+    agentGuidance: "Append only after the durable handoff lane records and reads back the canonical handoff and the specialist run has a terminal completion event. Completion must precede a causally linked agent.task.status.changed terminal event and must not be inferred from output hashes alone.",
+    invariants: [
+      "retryGeneration is required",
+      "handoffReadback is required",
+      "specialistRunCompletedEventId is required",
+      "completion does not execute PRR send, export, legal escalation, repair, or accepted graph review"
+    ]
+  },
+  "agent.task.orchestration.failed": {
+    type: "agent.task.orchestration.failed",
+    version: 1,
+    description: "Records a terminal or operator-repairable safe failure for one resident task orchestration attempt.",
+    agentGuidance: "Use when retry, provider, context, handoff, policy, lock, or projection conditions block the attempt. Failure diagnostics must be secret-safe and must not fabricate provider proof, approvals, handoffs, or domain effects.",
+    invariants: [
+      "retryGeneration is required",
+      "message must be secret-safe",
+      "allowedActions must be explicit",
+      "failed attempts remain replayable"
+    ]
   },
   "agent.specialist-run.started": {
     type: "agent.specialist-run.started",
@@ -2088,6 +2390,10 @@ function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): stri
 
   if (type === "agent.policy.installed") {
     return `agent_policy_${agentPayload.policyId}`;
+  }
+
+  if (type.startsWith("agent.task.orchestration.")) {
+    return `agent_task_orchestration_${agentPayload.taskId}_${agentPayload.runType}`;
   }
 
   if (type.startsWith("agent.task.")) {

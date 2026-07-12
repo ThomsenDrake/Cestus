@@ -3,6 +3,7 @@ import {
   buildAgentCockpit,
   buildAgentApprovalCockpit,
   buildAgentProjection,
+  buildTaskOrchestratorProjection,
   createResidentAgentDomainAdapterRegistry,
   createAgentToolGateway,
   isAgentSecretSafeText,
@@ -299,6 +300,37 @@ export async function handleAgentHttpRoute(
       }
     }
 
+    if (input.request.method === "POST" && path === "/api/agent/task-orchestrator/tick") {
+      if (input.request.body !== undefined && input.request.body.trim().length > 0) {
+        const payload = parseJsonObjectBody(input.request.body, invalidTaskOrchestratorTickBodyDiagnostic);
+        if (!payload.ok || Object.keys(payload.value).length > 0) {
+          return json(400, invalidTaskOrchestratorTickBodyDiagnostic());
+        }
+      }
+
+      if (!await requireResidentIdentityReady(input)) {
+        return json(409, residentIdentityNotReadyDiagnostic());
+      }
+
+      const summary = await runtime.tickTaskOrchestrator();
+      return json(200, await taskOrchestratorTickResponse(input, summary));
+    }
+
+    if (input.request.method === "POST" && path === "/api/agent/wake") {
+      if (input.request.body !== undefined && input.request.body.trim().length > 0) {
+        const payload = parseJsonObjectBody(input.request.body, invalidRuntimeWakeBodyDiagnostic);
+        if (!payload.ok || Object.keys(payload.value).length > 0) {
+          return json(400, invalidRuntimeWakeBodyDiagnostic());
+        }
+      }
+
+      if (!await requireResidentIdentityReady(input)) {
+        return json(409, residentIdentityNotReadyDiagnostic());
+      }
+
+      return json(200, await runtime.wakeResidentAgent());
+    }
+
     if (input.request.method === "POST" && path === "/api/agent/scheduler/wake") {
       if (input.request.body !== undefined && input.request.body.trim().length > 0) {
         const payload = parseJsonObjectBody(input.request.body, invalidSchedulerWakeBodyDiagnostic);
@@ -381,6 +413,18 @@ async function statusWithProviderReadiness(
     })
   ]);
   return { ...status, providerReadiness };
+}
+
+async function taskOrchestratorTickResponse(
+  input: HandleAgentHttpRouteInput,
+  summary: Awaited<ReturnType<LocalAgentRuntime["tickTaskOrchestrator"]>>
+) {
+  return {
+    schemaVersion: "agent-task-orchestrator-tick-result.v1" as const,
+    generatedAt: input.now(),
+    taskOrchestrator: summary,
+    projection: buildTaskOrchestratorProjection(await input.handle.ledger.readAll(), { now: input.now() }).toDto()
+  };
 }
 
 function taskInputFromBody(value: Record<string, unknown>): {
@@ -557,6 +601,32 @@ function invalidSchedulerWakeBodyDiagnostic(): {
 } {
   return diagnostic("Agent scheduler wake does not accept tool input.", [
     "send an empty POST body to wake the scheduler",
+    "use approval routes to append human decisions"
+  ]);
+}
+
+function invalidTaskOrchestratorTickBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent task orchestrator tick does not accept tool input.", [
+    "send an empty POST body to tick queued-task orchestration",
+    "use approval routes to append human decisions"
+  ]);
+}
+
+function invalidRuntimeWakeBodyDiagnostic(): {
+  readonly ok: false;
+  readonly diagnostic: {
+    readonly message: string;
+    readonly allowedRepairActions: readonly string[];
+  };
+} {
+  return diagnostic("Agent runtime wake does not accept tool input.", [
+    "send an empty POST body to wake task orchestration and approved-tool scheduling",
     "use approval routes to append human decisions"
   ]);
 }
