@@ -63,7 +63,9 @@ const requiredFiles = [
   "docs/superpowers/specs/2026-07-10-resident-lifecycle-bootstrap-design.md",
   "docs/superpowers/plans/2026-07-10-resident-lifecycle-bootstrap-implementation.md",
   "docs/superpowers/specs/2026-07-10-durable-specialist-handoff-production-design.md",
-  "docs/superpowers/plans/2026-07-10-durable-specialist-handoff-production-implementation.md"
+  "docs/superpowers/plans/2026-07-10-durable-specialist-handoff-production-implementation.md",
+  "docs/superpowers/specs/2026-07-10-prr-jurisdiction-context-packs-design.md",
+  "docs/superpowers/plans/2026-07-10-prr-jurisdiction-context-packs-implementation.md"
 ];
 const forbiddenSkillLocations = [
   ".factory/skills/cestus-software-factory/SKILL.md",
