@@ -96,12 +96,17 @@ checks identity, canonical bytes, and hash. Existing
 defines a versioned migration; it must not be silently aliased to an unverified
 filesystem store.
 
-`SpecialistHandoffManifest` remains the canonical artifact contract. CF-1 must
-retain its existing versioned schema name and add the authority binding without
-making the browser DTO the persisted source of truth:
+### Versioned manifest family and legacy replay
+
+`agent-specialist-handoff-manifest.v1` is immutable historical contract data.
+It cannot gain a required field. CF-1 therefore retains the strict v1 parser
+unchanged and introduces the separately versioned
+`agent-specialist-handoff-manifest.v2` for authority-bound manifests. The
+proposed stable family is a discriminated union; it does not silently interpret
+a v1 byte sequence as a v2 manifest.
 
 ```ts
-interface SpecialistHandoffManifest {
+interface LegacySpecialistHandoffManifestV1 {
   readonly schemaVersion: "agent-specialist-handoff-manifest.v1";
   readonly handoffId: string;
   readonly handoffRevision: number;
@@ -111,14 +116,81 @@ interface SpecialistHandoffManifest {
   readonly runType: string;
   readonly residentAgentId: "agent_default";
   readonly status: "ready-for-review" | "waiting-for-approval" | "blocked" | "failed";
+  readonly safeSummary: string;
   readonly stateKind: "completed" | "failed" | "resumable";
+  readonly finalOutputStepId: string;
   readonly finalOutputEventId: string;
   readonly handoffMaterialArtifactHash: `sha256:${string}`;
-  readonly authorityBinding: HandoffAuthorityBinding;
+  readonly contextPackRefs: readonly ContextPackRef[];
+  readonly promptArtifactHash?: `sha256:${string}`;
+  readonly outputArtifacts: readonly SpecialistWorkflowOutputArtifactDto[];
+  readonly toolRequestIds: readonly string[];
+  readonly approvalRequirements: readonly SpecialistWorkflowApprovalRequirementDto[];
+  readonly nextSafeActions: readonly SpecialistWorkflowNextSafeActionDto[];
+  readonly failure?: SpecialistWorkflowFailureDto;
   readonly sourceEventIds: readonly string[];
   readonly relatedEventIds: readonly string[];
+  readonly supersedesHandoffId?: string;
+  readonly supersedesEventId?: string;
+  readonly handoff: SpecialistWorkflowHandoffDto;
 }
+
+interface AuthorityBoundSpecialistHandoffManifestV2 {
+  readonly schemaVersion: "agent-specialist-handoff-manifest.v2";
+  readonly handoffId: string;
+  readonly handoffRevision: number;
+  readonly handoffDtoHash: `sha256:${string}`;
+  readonly runId: string;
+  readonly taskId?: string;
+  readonly runType: string;
+  readonly residentAgentId: "agent_default";
+  readonly status: "ready-for-review" | "waiting-for-approval" | "blocked" | "failed";
+  readonly safeSummary: string;
+  readonly stateKind: "completed" | "failed" | "resumable";
+  readonly finalOutputStepId: string;
+  readonly finalOutputEventId: string;
+  readonly handoffMaterialArtifactHash: `sha256:${string}`;
+  readonly contextPackRefs: readonly ContextPackRef[];
+  readonly promptArtifactHash?: `sha256:${string}`;
+  readonly outputArtifacts: readonly SpecialistWorkflowOutputArtifactDto[];
+  readonly toolRequestIds: readonly string[];
+  readonly approvalRequirements: readonly SpecialistWorkflowApprovalRequirementDto[];
+  readonly nextSafeActions: readonly SpecialistWorkflowNextSafeActionDto[];
+  readonly failure?: SpecialistWorkflowFailureDto;
+  readonly sourceEventIds: readonly string[];
+  readonly relatedEventIds: readonly string[];
+  readonly supersedesHandoffId?: string;
+  readonly supersedesEventId?: string;
+  readonly handoff: SpecialistWorkflowHandoffDto;
+  readonly authorityBinding: HandoffAuthorityBinding;
+}
+
+type SpecialistHandoffManifest =
+  | LegacySpecialistHandoffManifestV1
+  | AuthorityBoundSpecialistHandoffManifestV2;
 ```
+
+V2 is an additive superset: it retains every v1 field and all v1 constraints,
+then adds `authorityBinding`. CF-1 must keep the existing strict plain-own-data
+canonical serialization, sorted keys, declared array order, UTF-8 SHA-256
+hashing, deterministic handoff ID, `handoffDtoHash` verification, state/failure
+coupling, supersession-anchor pairing, and exact agreement between the manifest
+and canonical `handoff` DTO. It retains the v1 ban on raw prompts, evidence or
+provider bodies, credentials, paths, commands, and accepted-state claims.
+
+V2 prepared and recorded event payload schemas are version 2 and carry both
+`manifestSchemaVersion: "agent-specialist-handoff-manifest.v2"` and the exact
+`authorityBinding`; their event names remain the existing handoff lifecycle
+names. A v2 parser rejects a v1 manifest or a missing/mismatched binding.
+
+The legacy-v1 parser remains strict and replayable for historical inspection.
+It projects a successfully verified v1 record only as `legacy-unbound`: it is
+non-executable, fail closed, has no resume/send/approval action, cannot yield
+`verified`, `terminal-consistent`, or `task-completed`, and cannot be mounted as
+current production authority. A future migration must reverify the currently
+mounted identity, ledger high-water, policy, locks, sources, and artifacts, then
+append a new v2 prepared/recorded pair causally linked to the legacy recorded
+event. It never rewrites v1 bytes, v1 events, or prior projections.
 
 ## Append, Readback, and Recovery Protocol
 
@@ -153,12 +225,18 @@ ownership and compatibility.
 
 ```ts
 interface HandoffReadback {
-  readonly outcome: "verified" | "resumable" | "unavailable" | "inconsistent";
+  readonly outcome: "verified" | "resumable" | "legacy-unbound" | "unavailable" | "inconsistent";
   readonly runId: string;
   readonly taskId?: string;
   readonly handoffId?: string;
+  readonly manifestSchemaVersion?: "agent-specialist-handoff-manifest.v1" | "agent-specialist-handoff-manifest.v2";
   readonly manifestHash?: `sha256:${string}`;
+  readonly finalOutputStepId?: string;
+  readonly finalOutputEventId?: string;
+  readonly preparedEventId?: string;
   readonly recordedEventId?: string;
+  readonly terminalRunEventId?: string;
+  readonly taskStatusEventId?: string;
   readonly authorityBinding?: HandoffAuthorityBinding;
   readonly diagnostics: readonly HandoffDiagnosticDto[];
 }
@@ -169,6 +247,8 @@ type HandoffLifecycle =
   | "handoff-pending"
   | "handoff-recorded"
   | "terminal-consistent"
+  | "task-completed"
+  | "legacy-unbound"
   | "unavailable"
   | "inconsistent";
 
@@ -181,9 +261,7 @@ interface SpecialistHandoffProjection {
 
 The projection reads the run stream, linked task stream, and exact mounted
 manifest bytes. It keeps prior valid history and never replaces it with a late
-conflict. `task-completed` is stronger than `terminal-consistent`: it requires a
-causally valid actual task completion after a verified handoff. Waiting for
-approval and blocked states never project as task-completed.
+conflict.
 
 | Lifecycle | Meaning | Classification |
 | --- | --- | --- |
@@ -192,13 +270,36 @@ approval and blocked states never project as task-completed.
 | `handoff-pending` | Prepared binding exists but no verified recorded event exists. | Resumable. |
 | `handoff-recorded` | All manifest, artifact, provenance, and authority readback agrees. | Durable; not automatically task-complete. |
 | `terminal-consistent` | Compatible terminal run event follows recorded readback. | Terminal only if its task mapping permits it. |
+| `task-completed` | Verified recorded handoff, compatible terminal run, and linked completed task transition all replay with exact causation. | Completed task, not merely a completed run. |
+| `legacy-unbound` | Strict legacy-v1 manifest parses but has no v2 authority binding. | Historical, non-executable, fail closed until append-only migration. |
 | `unavailable` | Mounted authority/store cannot be read exactly. | Resumable and fail closed. |
 | `inconsistent` | Hash, provenance, ordering, supersession, source, or identity conflict. | Non-executable; repair/review required. |
 
-A `failed` handoff becomes terminal only after recorded readback. An
-infrastructure failure before final output may append an ordinary run failure
-without inventing a handoff. Manifest persistence failure after final output is
-resumable, never terminal success.
+### Verified task-completion rule
+
+`task-completed` is stronger than `terminal-consistent` and requires all of the
+following on one exact run/task path: (1) a v2 `handoff-recorded` readback whose
+manifest, artifacts, authority, and provenance match; (2) a compatible terminal
+run event after that recorded event whose `causationId` is the recorded event
+ID; (3) a linked `agent.task.status.changed` event with `status: "completed"`
+after that terminal event, on the same task stream, whose `causationId` is the
+terminal run event ID; and (4) status `ready-for-review` with
+`stateKind: "completed"`. A task event merely adjacent in time, a completed-run
+hash, or a status copied from another run cannot satisfy this rule.
+
+## Terminal, Resumable, and Task Status Mapping
+
+| Handoff status/state kind | Required readback and run state | Linked task projection | Result |
+| --- | --- | --- | --- |
+| `ready-for-review` / `completed` | Verified v2 recorded handoff; a compatible completed run can be `terminal-consistent`. | Becomes `task-completed` only through the verified task-completion rule. | Reviewable completion; no external effect. |
+| `waiting-for-approval` / `resumable` | Verified v2 recorded handoff; a locally complete run can be `terminal-consistent` only when the approved run contract allows it. | Remains `waiting-for-approval`; never task-completed. | Resumable after independent approval revalidation. |
+| `blocked` / `resumable` | Verified v2 recorded handoff; local run terminality does not make its task terminal. | Remains `blocked`; never task-completed. | Resumable after its safe repair/remount/review action. |
+| `failed` / `failed` | Verified v2 recorded failed handoff before a matching failed run may be `terminal-consistent`. | May become failed only through a causally linked task failure transition; never task-completed. | Terminal failed result with safe next actions. |
+| Pre-output infrastructure failure | No final output and no handoff. | Ordinary run failure only. | Never a handoff or task-completed result. |
+| `output-persisted`, `handoff-pending`, `unavailable`, or `legacy-unbound` | No verified v2 terminal path. | No completion transition. | Explicitly resumable/unavailable/historical and fail closed. |
+
+Manifest persistence failure after final output is resumable, never terminal
+success. A failed handoff becomes terminal only after recorded readback.
 
 ## Three Workflow Migrations
 
@@ -235,6 +336,7 @@ interface ResidentHandoffDto {
   readonly status?: "ready-for-review" | "waiting-for-approval" | "blocked" | "failed";
   readonly stateKind?: "completed" | "failed" | "resumable";
   readonly safeSummary?: string;
+  readonly provenance?: ResidentHandoffProvenanceDto;
   readonly artifactRefs: readonly SafeHandoffArtifactRef[];
   readonly sourceEventIds: readonly string[];
   readonly relatedEventIds: readonly string[];
@@ -251,11 +353,23 @@ interface HandoffDiagnosticDto {
   readonly artifactHashes: readonly `sha256:${string}`[];
 }
 
+interface ResidentHandoffProvenanceDto {
+  readonly manifestSchemaVersion: "agent-specialist-handoff-manifest.v2";
+  readonly handoffManifestHash: `sha256:${string}`;
+  readonly finalOutputStepId: string;
+  readonly finalOutputEventId: string;
+  readonly preparedEventId: string;
+  readonly recordedEventId: string;
+  readonly terminalRunEventId?: string;
+  readonly taskStatusEventId?: string;
+}
+
 type HandoffDiagnosticCategory =
   | "workspace-unavailable"
   | "mount-identity-mismatch"
   | "mount-store-identity-mismatch"
   | "mount-authority-stale"
+  | "legacy-manifest-unbound"
   | "manifest-missing"
   | "manifest-hash-mismatch"
   | "manifest-content-mismatch"
@@ -301,18 +415,22 @@ interface SafeNextAction {
 ```
 
 The parser is strict, freezes plain own-data values, and tests a production
-route shape. It rejects unknown or raw fields. DTOs/diagnostics may expose safe
-IDs, hashes, categories, counts, statuses, and safe summaries only. They must
-exclude raw prompt/model/provider text, credentials and references, headers,
-source/evidence bodies, correspondence, command lines, paths, stack traces, and
-mount details. React does not reconstruct, start, send, or approve a handoff.
+route shape. `provenance` is emitted only from verified v2 readback; a
+`legacy-unbound`, unavailable, or inconsistent value omits it rather than
+inventing a binding. DTOs/diagnostics may expose safe IDs, hashes, categories,
+counts, statuses, safe summaries, and the compact provenance object only. They
+must exclude raw prompt/model/provider text, credentials and references,
+headers, source/evidence bodies, correspondence, command lines, paths, stack
+traces, and mount details. React does not reconstruct, start, send, or approve
+a handoff.
 
 ## Failure Categories and Handling
 
 `HandoffDiagnosticCategory` is a proposed closed versioned enum:
 
 - Mount: `workspace-unavailable`, `mount-identity-mismatch`,
-  `mount-store-identity-mismatch`, `mount-authority-stale`.
+  `mount-store-identity-mismatch`, `mount-authority-stale`,
+  `legacy-manifest-unbound`.
 - Artifact: `manifest-missing`, `manifest-hash-mismatch`,
   `manifest-content-mismatch`, `artifact-missing`, `artifact-hash-mismatch`.
 - Provenance: `source-missing`, `source-stale`, `source-swapped`,
@@ -342,6 +460,7 @@ reruns it against the integrated runtime and returns defects to owners.
 | Missing, swapped, or corrupt manifest/artifact | `inconsistent` with safe hash-bound diagnostic. | Alternate bytes/store or success. |
 | Stale/swapped source/context/output ref | Provenance category before terminal append. | New manifest/artifact write. |
 | Disconnect/remount/identity-store swap | `unavailable` or mount diagnostic with no append, provider call, artifact write, or copy. | Fallback persistence. |
+| Historical v1 manifest | Strict legacy parse, `legacy-unbound`, no provenance DTO or executable action until append-only v2 migration. | Treating v1 as authority-bound or task-completed. |
 | Duplicate run identity or cross-run DTO | Exact rejection with lifecycle/boundary category. | Arbitrary run selection or partial parse. |
 | Exact versus conflicting sequence race | Exact reuse; conflict remains non-executable. | Duplicate `verifiedAt` or terminal success. |
 | Terminal before recorded | `terminal-before-readback`, no success DTO. | Retroactive success projection. |

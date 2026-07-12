@@ -71,3 +71,114 @@ Every other tracked file is forbidden.
 - Review and stop: fresh coordinator H-spec review and written H-spec approval
   are pending. This author does not self-approve, create Task 110, dispatch, or
   merge.
+
+## Repair Correction RC-102-01 — Review Findings, Base-Provenance, and Documentation Audit
+
+This forward-only correction preserves the historical initial claim above,
+including its invalid base field. It supersedes that field and the prior
+non-reproducible audit description only; it does not rewrite initial evidence.
+
+- Repair authorization: coordinator-issued Task 102 Lane H specification
+  review-repair only, from task thread `019f56d2-eb3b-7293-b7b9-bf0329f604b9`.
+  It authorizes one verified repair commit followed by fresh model-pinned
+  re-review, with no Task 110, implementation plan, production work, dispatch,
+  or merge.
+- Review trigger: `needs-changes` from fresh review thread
+  `019f57ee-1504-7a73-b713-1265baacab25`.
+- Worker identity: Codex, Task 102 Lane H specification repairer, on the
+  coordinator/user-assigned GPT-5.6 Terra / Extra High configuration.
+- Repair claimed-at: 2026-07-12T20:16:26Z.
+- Initial claim commit: `d761060c67e7fb9325fb5960601eebbcd8919a14`
+  (`docs: claim resident durable handoff specification`), committed at
+  2026-07-12T19:56:18Z.
+- Corrected base: `bb41ee02d7061f838917d378bccf17a6a6ad9e80`.
+- Repair status: repairing; this correction supersedes the prior
+  `ready-for-review` status until the repair's verification is recorded.
+
+### Object/ancestry check
+
+```bash
+git cat-file -e bb41ee02d7061f838917d378bccf17a6a6ad9e80^{commit}
+git merge-base --is-ancestor bb41ee02d7061f838917d378bccf17a6a6ad9e80 da822d3820cd25dc10b930d86e4e83fbf48e5272
+```
+
+Observed before repair: `git cat-file -t` printed `commit`; both commands
+exited 0. The corrected base is therefore an existing commit and an ancestor of
+the reviewed Task 102 specification commit.
+
+### Reproducible repair audit
+
+The following exact documentation audit is the repair's RED/GREEN command. It
+asserts claim correction/base/worker evidence, separately versioned
+authority-bound manifests, strict legacy-v1 fail-closed replay, the additive
+canonical manifest field set, task-completed lifecycle and causation rule,
+terminal/resumable status mapping, browser-safe provenance, and durable audit
+evidence. It reads only the two owned files.
+
+```bash
+node --input-type=module --eval '
+import fs from "node:fs";
+const specPath = "docs/superpowers/specs/2026-07-12-resident-agent-durable-handoffs-design.md";
+const claimPath = "docs/agentic/claims/task-102-resident-full-vision-w0-handoff-spec.md";
+const spec = fs.readFileSync(specPath, "utf8");
+const claim = fs.readFileSync(claimPath, "utf8");
+const manifestStart = spec.indexOf("interface AuthorityBoundSpecialistHandoffManifestV2");
+const manifestEnd = spec.indexOf("## Append, Readback, and Recovery Protocol", manifestStart);
+const manifest = manifestStart < 0 ? "" : spec.slice(manifestStart, manifestEnd);
+const lifecycle = spec.slice(spec.indexOf("type HandoffLifecycle"), spec.indexOf("interface SpecialistHandoffProjection"));
+const assertions = [
+  ["append-only claim correction", claim.includes("## Repair Correction RC-102-01")],
+  ["corrected base and ancestry evidence", claim.includes("bb41ee02d7061f838917d378bccf17a6a6ad9e80") && claim.includes("Object/ancestry check") && claim.includes("exit 0")],
+  ["worker identity and UTC repair claim", claim.includes("Worker identity:") && /Repair claimed-at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/.test(claim)],
+  ["authority-bound manifest v2", spec.includes("agent-specialist-handoff-manifest.v2")],
+  ["strict legacy-v1 non-executable replay", spec.includes("legacy-v1") && spec.includes("non-executable") && spec.includes("fail closed")],
+  ["additive canonical v2 manifest", ["safeSummary", "finalOutputStepId", "contextPackRefs", "promptArtifactHash", "outputArtifacts", "toolRequestIds", "approvalRequirements", "nextSafeActions", "failure", "supersedesHandoffId", "supersedesEventId", "handoff"].every((field) => manifest.includes(field))],
+  ["task-completed lifecycle member", lifecycle.includes("\"task-completed\"")],
+  ["verified recorded task-completion rule", spec.includes("Verified task-completion rule") && spec.includes("causationId")],
+  ["explicit status mapping", spec.includes("Terminal, Resumable, and Task Status Mapping") && ["ready-for-review", "waiting-for-approval", "blocked", "failed"].every((status) => spec.includes(status))],
+  ["browser-safe provenance projection", spec.includes("ResidentHandoffProvenanceDto") && ["handoffManifestHash", "finalOutputEventId", "preparedEventId", "recordedEventId", "terminalRunEventId", "taskStatusEventId"].every((field) => spec.includes(field))],
+  ["repaired deterministic audit evidence", claim.includes("Reproducible repair audit") && claim.includes("GREEN: Task 102 repair audit passed")]
+];
+const missing = assertions.filter(([, ok]) => !ok).map(([name]) => name);
+if (missing.length > 0) {
+  console.error(`RED: Task 102 repair audit missing: ${missing.join(", ")}`);
+  process.exit(1);
+}
+console.log(`GREEN: Task 102 repair audit passed (${assertions.length} assertions).`);
+'
+```
+
+RED evidence before this repair: exit 1 with
+`RED: Task 102 repair audit missing: append-only claim correction, corrected
+base and ancestry evidence, worker identity and UTC repair claim,
+authority-bound manifest v2, strict legacy-v1 non-executable replay, additive
+canonical v2 manifest, task-completed lifecycle member, verified recorded
+task-completion rule, explicit status mapping, browser-safe provenance
+projection, repaired deterministic audit evidence`.
+
+GREEN evidence and full verification are pending the repaired-spec audit and
+the required fresh `git diff --check`, `npm run factory:check`, and
+`npm run verify` commands. No live-provider gate applies to this
+documentation-only repair.
+
+### Repair verification and re-review gate
+
+- GREEN audit: the exact command above exited 0 with
+  `GREEN: Task 102 repair audit passed (11 assertions).`
+- Whitespace: staged `git diff --check` exited 0 with no output.
+- Factory readiness: `npm run factory:check` exited 0 with
+  `factory-readiness passed`.
+- Full verification: `npm run verify` exited 0; its recorded output includes
+  `typecheck passed` and the deterministic test runner start. The repair makes
+  no provider change, so the live-provider gate remains not-applicable.
+- Repair self-review: RC-102-01 preserves the historical invalid base rather
+  than rewriting it; v2 is an additive manifest superset; strict v1 replay is
+  historical/non-executable; task completion requires recorded/run/task
+  causation; browser provenance is compact and v2-readback-only; and the audit
+  covers every repaired reviewer invariant. No placeholder, ownership, append-
+  only, provenance, fallback, secret-safety, production, or team-mode scope
+  drift remains in the two-file repair diff.
+- Repair status: ready-for-review. This supersedes the `repairing` state only.
+  Fresh model-pinned re-review is required before any coordinator approval or
+  other task; this repairer does not self-approve, create Task 110, dispatch,
+  or merge.
