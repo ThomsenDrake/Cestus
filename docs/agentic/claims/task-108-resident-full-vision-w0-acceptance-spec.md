@@ -177,3 +177,178 @@ factory-readiness passed. No provider was invoked.
 - Review and stop: a fresh independent Task 108 review remains mandatory. This
   author does not self-approve, create an implementation plan, dispatch an
   implementation worker, invoke Nous, merge into `neo`, or begin Task 116.
+
+## Repair RC-108-01 — Browser Acceptance Audit Strengthening
+
+- Repair authorization: coordinator-issued Task 108 acceptance-specification
+  audit-strengthening repair only. It permits documentation RED/GREEN, fresh
+  review, and verification-before-completion, but prohibits Task 116,
+  production work, provider invocation, and a merge into `neo`.
+- Recorded at: `2026-07-12T22:20:00Z`.
+- Status: `repairing`; this forward-only record supersedes the prior
+  ready-for-review status only while the scoped repair is verified and
+  independently re-reviewed.
+- Repair scope: preserve the acceptance architecture and strengthen only this
+  claim's audit evidence. No shared contract, fixture, browser, runtime, or
+  production ownership changes are introduced.
+
+### Browser Audit RED
+
+The legacy audit checked document-global tokens. Its browser heading remained
+present after this counterfactual removed the complete browser-section body, so
+all old tokens still matched elsewhere in the document. The following
+reproduction exited `1` before this repair because the old audit accepted that
+loss of browser acceptance behavior:
+
+```bash
+node --input-type=module - <<'NODE'
+import { readFileSync } from "node:fs";
+const specPath = "docs/superpowers/specs/2026-07-12-resident-agent-acceptance-design.md";
+const text = readFileSync(specPath, "utf8");
+const legacyRequired = [
+  "# Resident Agent Acceptance Architecture Design",
+  "## Scope, Non-Goals, And Pre-CF-1 Boundary",
+  "## Acceptance Evidence Model",
+  "## Mounted Workspace And Fresh-Process Restart Acceptance",
+  "## Failure-Injection Architecture",
+  "## Coordinator-Only Real Nous Provider Gate",
+  "## Durable Handoff And Provenance Readback",
+  "## Browser DTO, Browser-Closed, And Tailnet Acceptance",
+  "## Secret-Safe Evidence And Diagnostics",
+  "## Acceptance Ownership, Defect Routing, And CF-1 Inputs",
+  "## Sequencing, Review Gate, And Stop Point",
+  "agent_default", "no internal fallback", "credential-free",
+  "real approved Nous", "served checkout", "fresh child process",
+  "independent human approval", "append-only", "rebuildable",
+  "newsroom/team", "A-01", "A-10",
+  "same workspace identity, ledger high-water mark, mounted artifact store, policy, and active locks",
+  "instrumented internal fallback sentinel",
+  "no raw prompt text, source bytes, provider bodies, credentials, or secrets",
+  "defects return to the owning lane", "does not freeze shared contracts"
+];
+const heading = "## Browser DTO, Browser-Closed, And Tailnet Acceptance";
+const start = text.indexOf(heading);
+const bodyStart = text.indexOf("\n", start) + 1;
+const next = text.indexOf("\n## ", bodyStart);
+if (start < 0 || bodyStart <= start || next < 0) throw new Error("browser section is not extractable");
+const browserBodyDeleted = text.slice(0, bodyStart) + "\n" + text.slice(next);
+const missing = legacyRequired.filter((needle) => !browserBodyDeleted.includes(needle));
+if (missing.length === 0) {
+  console.error("RED: legacy document-global audit accepts a browser-section body deletion.");
+  process.exit(1);
+}
+console.error(`RED setup invalid: legacy audit already rejects deletion: ${missing.join(" | ")}`);
+process.exit(2);
+NODE
+```
+
+Observed result: `RED: legacy document-global audit accepts a browser-section
+body deletion.` The failure demonstrates the audit defect; it is not a
+specification-architecture failure.
+
+### Browser Section Boundary Audit
+
+This exact audit extracts the browser section and requires its local contract.
+It rejects a body deletion and five independent weakenings: production DTO
+parity, supported-command truthfulness, no-effect control truthfulness,
+browser-closed supervision, and served-checkout/tailnet verification.
+
+```bash
+node --input-type=module - <<'NODE'
+import { readFileSync } from "node:fs";
+const path = "docs/superpowers/specs/2026-07-12-resident-agent-acceptance-design.md";
+const text = readFileSync(path, "utf8");
+const heading = "## Browser DTO, Browser-Closed, And Tailnet Acceptance";
+const sectionRange = (document) => {
+  const start = document.indexOf(heading);
+  if (start < 0) return undefined;
+  const bodyStart = document.indexOf("\n", start) + 1;
+  const next = document.indexOf("\n## ", bodyStart);
+  if (bodyStart <= start || next < 0) return undefined;
+  return { start, bodyStart, end: next };
+};
+const browserSection = (document) => {
+  const range = sectionRange(document);
+  return range ? document.slice(range.start, range.end) : "";
+};
+const replaceBrowser = (document, from, to) => {
+  const range = sectionRange(document);
+  if (!range) return document;
+  const section = document.slice(range.start, range.end);
+  return document.slice(0, range.start) + section.replace(from, to) + document.slice(range.end);
+};
+const required = [
+  ["production-shaped DTO parity", /production-shaped runtime route payloads,\s+not reduced fixtures/],
+  ["runtime-projection and adversarial DTO rejection", /derive from the runtime projection, preserve run\/task association, and reject\s+stale, forged, absent, secret-bearing, and cross-run values/],
+  ["supported-command truthfulness", /Every\s+visible\s+control\s+invokes\s+only\s+a\s+route\s+command\s+actually\s+supported\s+by\s+the\s+merged\s+runtime/],
+  ["exact effect labels", /labels must name the exact effect/],
+  ["no-effect control truthfulness", /may not present an approval request or lifecycle append as an\s+executing operation/],
+  ["browser-closed supervision", /closing the browser must not end the W-owned supervised resident/],
+  ["browser-closed readback", /safe runtime projection\/readback proves whether it remains running, paused, or\s+resumable/],
+  ["served-checkout source", /Tailnet inspection runs from the served checkout, not a source checkout or a\s+development server/],
+  ["served commit rebuild", /rebuilds the exact commit that is served/],
+  ["served commit evidence", /records that served commit in safe evidence/],
+  ["desktop mobile tailnet inspection", /inspects desktop and mobile\s+views plus tailnet route behavior/],
+  ["tailnet parity and safe availability", /route\/DTO parity, supported\s+control semantics, workspace-unavailable visibility, no secret\/mount leakage/],
+  ["truthful deployment failure", /A stale build, a different served SHA, an unavailable route, or\s+a DTO parser fallback is a blocked\/failing deployment gate, not a visual pass/]
+];
+const inspect = (document) => {
+  const section = browserSection(document);
+  const missing = [];
+  if (!section) return ["browser section missing or not extractable"];
+  for (const [name, pattern] of required) if (!pattern.test(section)) missing.push(name);
+  return missing;
+};
+const range = sectionRange(text);
+if (!range) throw new Error("browser section is not extractable");
+const bodyDeleted = text.slice(0, range.bodyStart) + "\n" + text.slice(range.end);
+const counterfactuals = [
+  ["browser-section body deletion", bodyDeleted],
+  ["reduced DTO fixture", replaceBrowser(text, /production-shaped runtime route payloads,\s+not reduced fixtures/, "reduced fixture route payloads")],
+  ["unsupported control command", replaceBrowser(text, /Every\s+visible\s+control\s+invokes\s+only\s+a\s+route\s+command\s+actually\s+supported\s+by\s+the\s+merged\s+runtime/, "Every visible control may invoke an unrelated route command")],
+  ["truthless lifecycle control", replaceBrowser(text, /may not present an approval request or lifecycle append as an\s+executing operation/, "may present an approval request or lifecycle append as an executing operation")],
+  ["browser-closes-supervisor", replaceBrowser(text, /closing the browser must not end the W-owned supervised resident/, "closing the browser may end the W-owned supervised resident")],
+  ["source-checkout tailnet", replaceBrowser(text, /Tailnet inspection runs from the served checkout, not a source checkout or a\s+development server/, "Tailnet inspection may run from a source checkout or a development server")]
+];
+const actual = inspect(text);
+const missed = counterfactuals.filter(([, candidate]) => inspect(candidate).length === 0).map(([name]) => name);
+if (actual.length > 0 || missed.length > 0) {
+  console.error(`RED: browser-section boundary audit missing: ${[...actual, ...missed.map((name) => `counterfactual:${name}`)].join(", ")}`);
+  process.exit(1);
+}
+console.log(`GREEN: browser-section boundary audit passed (${required.length} local boundaries; ${counterfactuals.length} counterfactuals rejected).`);
+NODE
+```
+
+The exact audit must be run after this repair. Its GREEN result is valid only
+when the actual browser section satisfies all local boundaries and every
+in-memory counterfactual above fails inspection. It does not authorize browser
+or acceptance-test implementation.
+
+### Browser Audit GREEN
+
+The exact section-boundary audit exited `0` and printed `GREEN:
+browser-section boundary audit passed (13 local boundaries; 6 counterfactuals
+rejected).` The actual extracted section satisfies production-shaped DTO parity
+and adversarial rejection; runtime-projection/run binding; supported-command,
+exact-label, and no-effect control semantics; browser-closed supervision and
+readback; and rebuilt served-checkout desktop/mobile/tailnet requirements. The
+audit rejects body deletion plus reduced DTO, unsupported-command, truthless
+lifecycle-control, browser-closes-supervisor, and source-checkout-tailnet
+counterfactuals in memory.
+
+`git diff --check` exited `0` with no output. `npm run factory:check` exited
+`0` and printed `factory-readiness passed`. Fresh full verification is required
+before the repair commit; no provider was invoked by this documentation repair.
+
+### Repair Verification and Re-Review Handoff
+
+- Full verification: `npm run verify` exited `0` after typecheck passed; 189
+  test files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite
+  built with its existing chunk-size warning; and factory-readiness passed.
+- Status: `ready-for-review`; this supersedes `repairing` only for the scoped
+  repair. It is not lane approval, merge readiness, or authority for Task 116.
+- Review stop: a fresh model-pinned Task 108 re-review must inspect the
+  section-local extractor, all 13 local requirements, and the six
+  counterfactuals. No implementation, provider invocation, or merge may begin
+  before the coordinator records a fresh A-spec approval.
