@@ -64,6 +64,8 @@ const providerSelectionSafeReasonSchema = z.enum([
 export const providerSelectionSuccessSchema = z.object({
   ok: z.literal(true),
   providerId: providerIdSchema,
+  modelId: safeTextSchema,
+  capabilityIds: z.array(safeTextSchema).min(1),
   approvalClass: providerSelectionApprovalClassSchema,
   safeReason: providerSelectionSafeReasonSchema
 }).strict();
@@ -178,6 +180,8 @@ export function selectProviderForTask(input: SelectProviderForTaskInput): Provid
     return freezeProviderSelectionResult(providerSelectionSuccessSchema.parse({
       ok: true,
       providerId: selected.descriptor.providerId,
+      modelId: selectedModelId(selected.descriptor),
+      capabilityIds: capabilityIdsFor(selected.descriptor),
       approvalClass: selected.approvalClass,
       safeReason: selected.safeReason
     }));
@@ -377,6 +381,22 @@ function isLocalProvider(descriptor: ProviderCapabilityDescriptor): boolean {
     descriptor.backendKind === "local-engine";
 }
 
+function selectedModelId(descriptor: ProviderCapabilityDescriptor): string {
+  const modelId = [...descriptor.modelFamilies].sort(compareProviderIds).at(0);
+  if (modelId === undefined) {
+    throw new Error("Selected provider has no registered model family.");
+  }
+  return modelId;
+}
+
+function capabilityIdsFor(descriptor: ProviderCapabilityDescriptor): readonly string[] {
+  return Object.freeze([
+    `capability_provider_${descriptor.providerId}`,
+    `capability_model_${selectedModelId(descriptor)}`,
+    `capability_adapter_${descriptor.adapterVersion}`
+  ]);
+}
+
 function sensitivityPrefersLocalProvider(sensitivity: ProviderTaskSensitivity): boolean {
   return sensitivity === "sensitive-evidence" ||
     sensitivity === "sensitive-local-only";
@@ -419,5 +439,8 @@ function freezeProviderSelectionResult(result: ProviderSelectionResult): Provide
     }) as ProviderSelectionResult;
   }
 
-  return Object.freeze({ ...result }) as ProviderSelectionResult;
+  return Object.freeze({
+    ...result,
+    capabilityIds: Object.freeze([...result.capabilityIds])
+  }) as ProviderSelectionResult;
 }

@@ -266,7 +266,7 @@ describe("durable specialist handoff runner lifecycle", () => {
     ])).toBe(8);
   });
 
-  it("records final-output, prepared, recorded, terminal run, and task status in order", async () => {
+  it("records final-output, prepared, recorded, and terminal run without task status", async () => {
     const fixture = await durableHandoffFixture();
     const finalOutput = await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
     const recorded = await recordSpecialistHandoff(recordInput(fixture));
@@ -277,28 +277,30 @@ describe("durable specialist handoff runner lifecycle", () => {
       recorded
     });
 
-    expect(finalized.taskStatus?.payload.status).toBe("completed");
+    expect(finalized.taskStatus).toBeUndefined();
     expect((await fixture.ledger.readAll()).map((event) => event.type)).toEqual(expect.arrayContaining([
       "agent.specialist-run.step.recorded",
       "agent.specialist-handoff.prepared",
       "agent.specialist-handoff.recorded",
-      "agent.specialist-run.completed",
-      "agent.task.status.changed"
+      "agent.specialist-run.completed"
     ]));
     const lifecycleEvents = (await fixture.ledger.readAll()).filter((event) =>
       event.type === "agent.specialist-run.step.recorded" ||
       event.type === "agent.specialist-handoff.prepared" ||
       event.type === "agent.specialist-handoff.recorded" ||
-      event.type === "agent.specialist-run.completed" ||
-      (event.type === "agent.task.status.changed" && event.payload.runId === fixture.runId && event.payload.status !== "running")
+      event.type === "agent.specialist-run.completed"
     );
     expect(lifecycleEvents.map((event) => event.type)).toEqual([
       "agent.specialist-run.step.recorded",
       "agent.specialist-handoff.prepared",
       "agent.specialist-handoff.recorded",
-      "agent.specialist-run.completed",
-      "agent.task.status.changed"
+      "agent.specialist-run.completed"
     ]);
+    expect((await fixture.ledger.readAll()).some((event) =>
+      event.type === "agent.task.status.changed" &&
+      event.payload.runId === fixture.runId &&
+      event.payload.status !== "running"
+    )).toBe(false);
     expect(finalOutput.payload.stepKind).toBe("final-output");
     expect(finalOutput.payload.handoffMaterialArtifactHash).toBe(hashBytes(canonicalMaterialBytes(fixture)));
   });
@@ -476,7 +478,7 @@ describe("durable specialist handoff runner lifecycle", () => {
     )).toBe(false);
   });
 
-  it("stops on conflicting final-output, prepared, recorded, terminal, or task status events", async () => {
+  it("stops on conflicting final-output, prepared, recorded, or terminal run events", async () => {
     const fixture = await durableHandoffFixture();
     await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
     const conflictingOutputBytes = Buffer.from("conflicting final output");
@@ -518,18 +520,6 @@ describe("durable specialist handoff runner lifecycle", () => {
       now: terminalFixture.clock.now,
       recorded: terminalRecorded
     })).rejects.toThrow(/terminal/i);
-
-    const taskFixture = await durableHandoffFixture({ runId: "run_conflicting_task_001", taskId: "task_conflicting_task_001" });
-    await appendSpecialistFinalOutputStep(finalOutputInput(taskFixture));
-    const taskRecorded = await recordSpecialistHandoff(recordInput(taskFixture));
-    const terminal = await appendSpecialistCompletionForTest(taskFixture, taskRecorded.recorded.id, taskRecorded.manifest.safeSummary);
-    await taskFixture.ledger.append(taskStatusAppendable(taskFixture, "blocked", terminal.id));
-    await expect(finalizeSpecialistRunAfterHandoff({
-      ledger: taskFixture.ledger,
-      actor: taskFixture.actor,
-      now: taskFixture.clock.now,
-      recorded: taskRecorded
-    })).rejects.toThrow(/task status/i);
   });
 
   it("does not append terminal success when manifest persistence fails after final-output", async () => {
@@ -571,14 +561,14 @@ describe("durable specialist handoff runner lifecycle", () => {
     expect(finalized.terminal.type).toBe("agent.specialist-run.failed");
   });
 
-  it("maps ready-for-review, waiting-for-approval, blocked, and failed handoffs to exact task transitions", async () => {
+  it("maps ready-for-review, waiting-for-approval, blocked, and failed handoffs to exact run terminals", async () => {
     const expected = {
-      "ready-for-review": "completed",
-      "waiting-for-approval": "waiting-for-approval",
-      blocked: "blocked",
-      failed: "failed"
+      "ready-for-review": "agent.specialist-run.completed",
+      "waiting-for-approval": "agent.specialist-run.completed",
+      blocked: "agent.specialist-run.completed",
+      failed: "agent.specialist-run.failed"
     } as const;
-    for (const [status, taskStatus] of Object.entries(expected)) {
+    for (const [status, terminalType] of Object.entries(expected)) {
       const fixture = await durableHandoffFixture({
         runId: `run_transition_${status.replaceAll("-", "_")}`,
         taskId: `task_transition_${status.replaceAll("-", "_")}`,
@@ -587,7 +577,8 @@ describe("durable specialist handoff runner lifecycle", () => {
       await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
       const recorded = await recordSpecialistHandoff(recordInput(fixture));
       const finalized = await finalizeSpecialistRunAfterHandoff({ ledger: fixture.ledger, actor: fixture.actor, now: fixture.clock.now, recorded });
-      expect(finalized.taskStatus?.payload.status).toBe(taskStatus);
+      expect(finalized.terminal.type).toBe(terminalType);
+      expect(finalized.taskStatus).toBeUndefined();
     }
   });
 
@@ -794,29 +785,33 @@ describe("durable specialist handoff runner lifecycle", () => {
     })).rejects.toThrow(/conflicting[- ]recorded/i);
   });
 
-  it("fails closed on an exact-plus-conflicting task-status race companion", async () => {
-    const fixture = await durableHandoffFixture({ runId: "run_task_race_001", taskId: "task_task_race_001" });
-    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
-    const recorded = await recordSpecialistHandoff(recordInput(fixture));
-    await expect(finalizeSpecialistRunAfterHandoff({
-      ledger: new TargetedCompanionRaceLedger(fixture.ledger, "agent.task.status.changed", (event) => ({
-        ...event, payload: { ...(event.payload as any), status: "blocked" } as any
-      })), actor: fixture.actor, now: fixture.clock.now, recorded
-    })).rejects.toThrow(/conflicting task status/i);
-  });
-
-  it("rejects task terminal statuses from another or unverified run causation", async () => {
+  it("does not treat existing task terminal statuses as runner finalization authority", async () => {
     const fixture = await durableHandoffFixture();
     await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
     const recorded = await recordSpecialistHandoff(recordInput(fixture));
-    await fixture.ledger.append(taskStatusAppendable(fixture, "blocked", "evt_unverified_task_status"));
+    await fixture.ledger.append({
+      type: "agent.task.status.changed",
+      version: 1,
+      streamId: `agent_task_${fixture.taskId}`,
+      context: lifecycleContext(fixture, "evt_unverified_task_status"),
+      payload: {
+        taskId: fixture.taskId,
+        status: "blocked",
+        changedBy: fixture.actor.id,
+        reason: "Preexisting task status does not authorize runner finalization.",
+        runId: fixture.runId
+      }
+    });
 
-    await expect(finalizeSpecialistRunAfterHandoff({
+    const finalized = await finalizeSpecialistRunAfterHandoff({
       ledger: fixture.ledger,
       actor: fixture.actor,
       now: fixture.clock.now,
       recorded
-    })).rejects.toThrow(/task status/i);
+    });
+
+    expect(finalized.taskStatus).toBeUndefined();
+    expect(finalized.terminal.context.causationId).toBe(recorded.recorded.id);
   });
 
   it("appends a revision-two supersession with prepared causation bound to the prior recorded handoff", async () => {

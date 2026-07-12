@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildAgentCockpit } from "../src/cockpit.js";
 import { buildAgentProjection } from "../src/projection.js";
+import { buildTaskAttemptId, taskOrchestrationStreamId } from "../src/task-orchestrator-events.js";
 import type { AgentStatusDto } from "../src/runtime-types.js";
 import { goldenAgentLedgerEvents } from "./fixtures/golden-agent-ledger.js";
 
@@ -19,6 +20,29 @@ describe("buildAgentProjection", () => {
     expect(projection.activeMemory.map((memory) => memory.memoryId)).toEqual(["mem_workspace_policy"]);
     expect(projection.permissions.get("perm_read_workspace")?.state).toBe("granted");
     expect(projection.locks.get("lock_legal_escalation")?.state).toBe("active");
+  });
+
+  it("exposes task orchestration projection without changing task status source", () => {
+    const dto = buildAgentProjection(taskOrchestratorProjectionEvents()).toDto();
+
+    expect(dto.tasks.find((task) => task.taskId === "task_projection_integration")?.status).toBe("queued");
+    expect(dto.taskOrchestrator?.tasks).toContainEqual(expect.objectContaining({
+      taskId: "task_projection_integration",
+      taskStatus: "queued",
+      state: "queued",
+      statusEventId: "evt_agent_projection_integration_status_queued"
+    }));
+  });
+
+  it("passes deterministic time into embedded task orchestration projection", () => {
+    const projection = buildAgentProjection(taskOrchestratorClaimedEvents(), {
+      now: "2026-07-10T14:05:00.000Z"
+    });
+
+    expect(projection.toDto().taskOrchestrator?.tasks).toContainEqual(expect.objectContaining({
+      taskId: "task_projection_integration",
+      state: "claimed"
+    }));
   });
 
   it("is deterministic across replay and preserves memory history after retraction", () => {
@@ -336,6 +360,101 @@ function modelInvocationAuditEvents(): Parameters<typeof buildAgentProjection>[0
         completedAt: "2026-07-08T12:02:00.000Z",
         modelFamily: "remote-safe",
         usage: { inputTokens: 10, outputTokens: 12, totalTokens: 22 }
+      }
+    }
+  ] as Parameters<typeof buildAgentProjection>[0];
+}
+
+function taskOrchestratorProjectionEvents(): Parameters<typeof buildAgentProjection>[0] {
+  return [
+    {
+      id: "evt_agent_projection_integration_task_created",
+      type: "agent.task.created",
+      version: 1,
+      streamId: "agent_task_task_projection_integration",
+      sequence: 1,
+      context: agentContext("2026-07-10T14:00:00.000Z"),
+      payload: {
+        taskId: "task_projection_integration",
+        residentAgentId: "agent_default",
+        title: "Projection integration task",
+        requestedBy: "actor_case_owner",
+        priority: "normal",
+        sourceEventIds: ["evt_agent_projection_integration_source"],
+        inputArtifactHashes: [hash111]
+      }
+    },
+    {
+      id: "evt_agent_projection_integration_status_queued",
+      type: "agent.task.status.changed",
+      version: 1,
+      streamId: "agent_task_task_projection_integration",
+      sequence: 2,
+      context: {
+        ...agentContext("2026-07-10T14:00:01.000Z"),
+        causationId: "evt_agent_projection_integration_task_created"
+      },
+      payload: {
+        taskId: "task_projection_integration",
+        status: "queued",
+        changedBy: "actor_cestus_agent",
+        reason: "Queued for orchestration projection."
+      }
+    }
+  ] as Parameters<typeof buildAgentProjection>[0];
+}
+
+function taskOrchestratorClaimedEvents(): Parameters<typeof buildAgentProjection>[0] {
+  const taskId = "task_projection_integration";
+  const runType = "evidence-triage";
+  const attemptId = buildTaskAttemptId({ taskId, runType, retryGeneration: 0 });
+  return [
+    ...taskOrchestratorProjectionEvents().map((event) => event.id === "evt_agent_projection_integration_status_queued"
+      ? {
+        ...event,
+        payload: {
+          ...event.payload,
+          status: "running",
+          runId: "run_projection_integration"
+        }
+      }
+      : event),
+    {
+      id: "evt_agent_projection_integration_claimed",
+      type: "agent.task.orchestration.claimed",
+      version: 1,
+      streamId: taskOrchestrationStreamId(taskId, runType),
+      sequence: 1,
+      context: {
+        ...agentContext("2026-07-10T14:01:00.000Z"),
+        causationId: "evt_agent_projection_integration_status_queued"
+      },
+      payload: {
+        taskId,
+        runType,
+        attemptId,
+        retryGeneration: 0,
+        leaseClaimGeneration: 1,
+        workerId: "actor_task_orchestrator_worker",
+        claimedAt: "2026-07-10T14:01:00.000Z",
+        leaseExpiresAt: "2026-07-10T14:10:00.000Z",
+        idempotencyKey: `task-orchestrator:${taskId}:${runType}:0:${attemptId}:claim`,
+        selectedOrderingPosition: {
+          priorityRank: 2,
+          queuedAt: "2026-07-10T14:00:01.000Z",
+          taskId,
+          runType,
+          retryGeneration: 0
+        },
+        activeBudgetSnapshot: {
+          maxProviderInvocations: 1,
+          remainingProviderInvocations: 1,
+          contextByteBudget: 16384,
+          promptByteBudget: 8192,
+          derivativeArtifactByteBudget: 65536,
+          wallClockBudgetMs: 300000
+        },
+        causationEventId: "evt_agent_projection_integration_status_queued"
       }
     }
   ] as Parameters<typeof buildAgentProjection>[0];

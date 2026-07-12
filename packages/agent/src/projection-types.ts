@@ -30,6 +30,16 @@ export type SpecialistHandoffProjectionState =
   | "handoff-recorded"
   | "task-completed"
   | "inconsistent";
+export type TaskOrchestratorProjectionState =
+  | "queued"
+  | "claimed"
+  | "approval-suspended"
+  | "stale-claim-recoverable"
+  | "handoff-pending"
+  | "completed"
+  | "failed"
+  | "canceled"
+  | "blocked";
 export type AgentSpecialistRunType =
   | "ontology-bootstrap"
   | "prr-negotiation"
@@ -332,9 +342,74 @@ export interface ProjectedAgentLock extends ProjectedAgentProvenance {
   readonly clearRelatedEventIds: readonly string[];
 }
 
+export interface TaskOrchestratorLeaseProjection {
+  readonly claimEventId: string;
+  readonly leaseClaimGeneration: number;
+  readonly workerId: string;
+  readonly claimedAt: string;
+  readonly leaseExpiresAt: string;
+  readonly expired: boolean;
+}
+
+export interface TaskOrchestratorSuspendedCheckpointProjection {
+  readonly checkpointEventId: string;
+  readonly checkpointKind: string;
+  readonly checkpointedAt: string;
+  readonly releaseEventId?: string | undefined;
+  readonly runId?: string | undefined;
+  readonly toolRequestIds: readonly string[];
+  readonly safeNextActions: readonly string[];
+}
+
+export interface TaskOrchestratorHandoffReadbackProjection {
+  readonly handoffId: string;
+  readonly handoffManifestHash: string;
+  readonly handoffRecordedEventId: string;
+  readonly verifiedAt: string;
+}
+
+export interface TaskOrchestratorAttemptProjection extends ProjectedAgentProvenance {
+  readonly attemptKey: string;
+  readonly taskId: string;
+  readonly runType: AgentSpecialistRunType;
+  readonly attemptId: string;
+  readonly retryGeneration: number;
+  readonly state: TaskOrchestratorProjectionState;
+  readonly recoverable: boolean;
+  readonly leaseClaimGeneration?: number | undefined;
+  readonly runId?: string | undefined;
+  readonly activeLease?: TaskOrchestratorLeaseProjection | undefined;
+  readonly suspendedCheckpoint?: TaskOrchestratorSuspendedCheckpointProjection | undefined;
+  readonly finalOutputStepEventId?: string | undefined;
+  readonly handoffPreparedEventId?: string | undefined;
+  readonly handoffRecordedEventId?: string | undefined;
+  readonly handoffReadback?: TaskOrchestratorHandoffReadbackProjection | undefined;
+  readonly specialistRunCompletedEventId?: string | undefined;
+  readonly orchestrationCompletedEventId?: string | undefined;
+  readonly orchestrationFailedEventId?: string | undefined;
+  readonly diagnosticReason?: string | undefined;
+}
+
+export interface ProjectedTaskOrchestratorTask extends ProjectedAgentProvenance {
+  readonly taskId: string;
+  readonly taskStatus: AgentTaskStatus;
+  readonly state: TaskOrchestratorProjectionState;
+  readonly statusEventId: string;
+  readonly statusChangedAt: string;
+  readonly activeAttemptKey?: string | undefined;
+  readonly runId?: string | undefined;
+  readonly diagnosticReason?: string | undefined;
+}
+
+export interface TaskOrchestratorProjectionDto {
+  readonly tasks: readonly ProjectedTaskOrchestratorTask[];
+  readonly attempts: readonly TaskOrchestratorAttemptProjection[];
+}
+
 export interface AgentProjectionDto {
   readonly residentAgentId?: string;
   readonly tasks: readonly ProjectedAgentTask[];
+  readonly taskOrchestrator?: TaskOrchestratorProjectionDto | undefined;
   readonly runs: readonly ProjectedAgentRun[];
   readonly modelInvocations?: readonly ProjectedAgentModelInvocation[];
   readonly toolRequests: readonly ProjectedAgentToolRequest[];

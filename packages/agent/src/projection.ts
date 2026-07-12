@@ -1,4 +1,5 @@
 import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
+import { buildTaskOrchestratorProjection, type TaskOrchestratorProjection } from "./task-orchestrator-projection.js";
 import type {
   AgentProjectionDto,
   ProjectedAgentContextPackRef,
@@ -28,6 +29,7 @@ export interface AgentProjectionIdentity {
 export interface AgentProjection {
   readonly identity?: AgentProjectionIdentity | undefined;
   readonly tasks: ReadonlyMap<string, ProjectedAgentTask>;
+  readonly taskOrchestrator: TaskOrchestratorProjection;
   readonly runs: ReadonlyMap<string, ProjectedAgentRun>;
   readonly modelInvocations: ReadonlyMap<string, ProjectedAgentModelInvocation>;
   readonly toolRequests: ReadonlyMap<string, ProjectedAgentToolRequest>;
@@ -38,8 +40,13 @@ export interface AgentProjection {
   toDto(): AgentProjectionDto;
 }
 
-export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentProjection {
+export interface BuildAgentProjectionOptions {
+  readonly now?: string | Date | undefined;
+}
+
+export function buildAgentProjection(events: readonly KnowledgeEvent[], options: BuildAgentProjectionOptions = {}): AgentProjection {
   let identity: AgentProjectionIdentity | undefined;
+  const taskOrchestrator = buildTaskOrchestratorProjection(events, { now: options.now });
   const tasks = new Map<string, ProjectedAgentTask>();
   const runs = new Map<string, ProjectedAgentRun>();
   const modelInvocations = new Map<string, ProjectedAgentModelInvocation>();
@@ -593,6 +600,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
   const projection: AgentProjection = {
     identity,
     tasks: taskSnapshot,
+    taskOrchestrator,
     runs: runSnapshot,
     modelInvocations: modelInvocationSnapshot,
     toolRequests: toolRequestSnapshot,
@@ -604,6 +612,7 @@ export function buildAgentProjection(events: readonly KnowledgeEvent[]): AgentPr
       return freezeProjected({
         ...(identity === undefined ? {} : { residentAgentId: identity.residentAgentId }),
         tasks: sortedById([...taskSnapshot.values()], (task) => task.taskId),
+        taskOrchestrator: taskOrchestrator.toDto(),
         runs: sortedById([...runSnapshot.values()], (run) => run.runId),
         modelInvocations: sortedById([...modelInvocationSnapshot.values()], (invocation) => invocation.invocationId),
         toolRequests: sortedById([...toolRequestSnapshot.values()], (toolRequest) => toolRequest.toolRequestId),
