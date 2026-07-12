@@ -568,3 +568,55 @@ explicit implementation authorization.
 - Rebase record: initial isolated worktree is clean at e3fd8533aa92a09a588d0b08f555bdcc8bbc5d26; no rebase applies before independent Lane U specification work.
 - Merge readiness: not-ready; Task 107 cannot create Task 115, production work, or merge into neo.
 - Archive check: provisioned worker has no final answer, commit, verification, review, or merge state.
+
+## RV-0-T-004 — Task 105 repeated-repair escalation hold
+
+- Recorded at: 2026-07-12T21:51:25Z
+- Role: coordinator
+- Lane and wave: T / 0A
+- Task ID and claim: task-105-resident-full-vision-w0-trigger-spec / docs/agentic/claims/task-105-resident-full-vision-w0-trigger-spec.md
+- Task thread ID: /root/task105_trigger_spec (author and two repair attempts); /root/review_task105_spec, /root/review_task105_repair, and /root/review_task105_final (fresh reviews)
+- Branch and worktree: codex/task-105-resident-full-vision-w0-trigger-spec / /home/drake/.codex/worktrees/task-105-resident-full-vision-w0-trigger-spec
+- Base commit and required head: ffb3a52a / no additional Task 105 repair is authorized pending user decision
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for author, repair, and fresh review sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md; docs/agentic/claims/task-105-resident-full-vision-w0-trigger-spec.md
+- Forbidden files: every other task file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 105 specification 19a2cef6; first repair b6361ea6; second repair ffb3a52a; final fresh re-review finding below
+- Approval record: Task 105's scoped author and two focused repair authorizations are exhausted. The Standing Coordinator Delegation requires escalation after more than two focused repair attempts without recovery; no third repair or merge is authorized by this record.
+- Claim status: escalation-hold; the task branch and all evidence are preserved unchanged.
+- RED command and observed failure: final reviewer demonstrated the focused scope-derivation audit still passes after in-memory deletion of `cooldownScopeSelector`, `budgetScopeSelector`, or `policySubjectScope` from `ProposedTriggerAdmissionScopeV1`, because it checks global text rather than the extracted scope section.
+- GREEN command and observed result: the second repair's declared GREEN audit, git diff --check, npm run factory:check, and npm run verify passed, but fresh review found that audit insufficient to prove the required persisted/reconstructable selector contract.
+- Full verification: the second repair reported npm run verify / exit 0 with typecheck, deterministic tests, Vite build, and factory readiness; no new verification is used to override the fresh review defect.
+- Live-provider gate: not-applicable; this documentation-only lane invokes no provider.
+- Review verdict: needs-changes / final independent reviewer /root/review_task105_final found the final audit does not assert exact non-optional `cooldownScopeSelector`, `budgetScopeSelector`, and policy-subject/subject-reference binding within the persisted `ProposedTriggerAdmissionScopeV1` section, so candidate scope reconstruction is still not proven.
+- Rebase record: no rebase applies; branch remains preserved at ffb3a52a pending user decision.
+- Merge readiness: blocked by genuine repeated-repair escalation; no coordinator approval or merge may occur.
+- Archive check: no archive action; author/reviewer handoffs, clean worktree, ancestry, and this escalation evidence are retained for the user decision.
+- Supersession: this record supersedes RV-0-T-003 only for current task status. All Task 105 dispatch, review, and repair evidence remains immutable history.
+
+## RV-0-W-002 — Task 103 lifecycle-and-audit review repair dispatch
+
+- Recorded at: 2026-07-12T21:53:25Z
+- Role: coordinator
+- Lane and wave: W / 0A
+- Task ID and claim: task-103-resident-full-vision-w0-wake-spec / docs/agentic/claims/task-103-resident-full-vision-w0-wake-spec.md
+- Task thread ID: 019f57e0-a36d-7970-b766-5388149c673d (original author); /root/review_task103_spec (fresh reviewer); /root/task103_wake_repair (scoped repairer)
+- Branch and worktree: codex/task-103-resident-full-vision-w0-wake-spec-repair / /home/drake/.codex/worktrees/task-103-resident-full-vision-w0-wake-spec-repair
+- Base commit and required head: 9581c04d / one Task 103 owned-file repair commit, followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for author, repair, and fresh review sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md; docs/agentic/claims/task-103-resident-full-vision-w0-wake-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 103 original claim daf5db5e and specification 9581c04d; fresh review findings below; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued scoped repair authorization under the Standing Coordinator Delegation names governing spec @811458d2, plan @68fe8e87, Task 103 lifecycle-and-audit repair only, and the Wave 0A re-review stop; it explicitly authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibits Task 111, production work, and a merge into neo.
+- Claim status: repairing; the repairer must append the claim forward-only and stop after a verified repair commit for fresh review.
+- RED command and observed failure: pending repair-owned executable audit which must fail without same-identity post-reconnect durable active-claim release/checkpoint/readback and without complete executable W RED/GREEN coverage commands.
+- GREEN command and observed result: pending repair-owned executable audit, git diff --check, and npm run factory:check after lifecycle and reproducible-audit requirements are complete.
+- Full verification: pending repair-owned npm run verify before the repair commit.
+- Live-provider gate: not-applicable; this documentation-only repair invokes no provider and changes no provider behavior.
+- Review verdict: needs-changes / fresh reviewer /root/review_task103_spec found that the W spec lacks the mandated same-identity post-reconnect durable release/checkpoint of active claims into resumable `workspace-unavailable` state and that its claim records only placeholder RED/GREEN commands. The reviewer’s alleged missing RV-0-W-001 dispatch record is rejected: authoritative coordinator registry entry RV-0-W-001 exists in program commit 82669edec0b36c5b73f5d462f4bf77c3a554c059 after the Task 103 base; no historical registry rewrite is required.
+- Rebase record: no rebase applies; the scoped repair starts from reviewed head 9581c04d in a separate repair worktree, preserving the original author worktree unchanged.
+- Merge readiness: not-ready; no coordinator lane approval or merge may occur until fresh re-review approves the repair.
+- Archive check: original specification and review evidence remain preserved; repair handoff, re-review, integration, and current clean-worktree confirmation remain required.
+- Supersession: this record supersedes RV-0-W-001 only for current review and repair status. The original dispatch remains immutable history.
