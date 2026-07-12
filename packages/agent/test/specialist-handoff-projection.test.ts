@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import {
   buildSpecialistHandoffManifest,
+  buildSpecialistHandoffMaterial,
   canonicalSpecialistHandoffJson,
+  canonicalSpecialistHandoffMaterialBytes,
   computeSpecialistHandoffId,
   hashSpecialistHandoffManifest,
+  hashSpecialistHandoffMaterial,
+  type SpecialistHandoffMaterial,
   type BuildSpecialistHandoffManifestInput,
   type SpecialistHandoffManifest
 } from "../src/specialist-handoff-manifest.js";
@@ -54,7 +58,10 @@ describe("specialist handoff projection", () => {
   it("projects output-persisted after exact final-output step only", async () => {
     const fixture = handoffFixture();
 
-    const projection = await project([startedEvent(fixture), finalOutputStepEvent(fixture)], new ManifestMap());
+    const projection = await project(
+      [startedEvent(fixture), finalOutputStepEvent(fixture)],
+      new ManifestMap().putFixture(fixture)
+    );
 
     expect(projection.state).toBe("output-persisted");
     expect(projection.handoffs).toEqual([]);
@@ -66,6 +73,41 @@ describe("specialist handoff projection", () => {
     }));
   });
 
+  it("fails closed when output-persisted material is missing or schema authority is forged", async () => {
+    const fixture = handoffFixture();
+    await expectInconsistent(
+      [startedEvent(fixture), finalOutputStepEvent(fixture)],
+      new ManifestMap(),
+      "handoff-material-missing"
+    );
+
+    const forgedSchema = {
+      ...finalOutputStepEvent(fixture),
+      payload: {
+        ...finalOutputStepEvent(fixture).payload,
+        stepSchemaId: "caller-forged-final-output.v1"
+      }
+    } as KnowledgeEvent;
+    await expectInconsistent(
+      [startedEvent(fixture), forgedSchema],
+      new ManifestMap().putFixture(fixture),
+      "final-output-mismatch"
+    );
+
+    const forgedIdempotency = {
+      ...finalOutputStepEvent(fixture),
+      payload: {
+        ...finalOutputStepEvent(fixture).payload,
+        idempotencyKey: "specialist-final-output:forged"
+      }
+    } as KnowledgeEvent;
+    await expectInconsistent(
+      [startedEvent(fixture), forgedIdempotency],
+      new ManifestMap().putFixture(fixture),
+      "idempotency-key-mismatch"
+    );
+  });
+
   it("fails closed on conflicting final-output events for the same run task and type", async () => {
     const fixture = handoffFixture();
     const conflictingFinalOutput = specialistStepEvent(fixture, {
@@ -74,8 +116,9 @@ describe("specialist handoff projection", () => {
       payload: {
         summary: "Conflicting final durable output artifacts were persisted.",
         stepKind: "final-output",
-        stepSchemaId: "evidence-triage-final-output.v1",
+        stepSchemaId: "evidence-triage-handoff.v1",
         idempotencyKey: "specialist-final-output:run_handoff_001:task_handoff_001:evidence-triage:ready-for-review:conflict",
+        handoffMaterialArtifactHash: fixture.materialHash,
         outputArtifactHashes: [hash333]
       }
     });
@@ -83,7 +126,7 @@ describe("specialist handoff projection", () => {
     const projection = await project([
       ...validRecordedEvents(fixture),
       conflictingFinalOutput
-    ], new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)));
+    ], new ManifestMap().putFixture(fixture));
 
     expect(projection.state).toBe("inconsistent");
     expect(projection.diagnostics).toContainEqual(expect.objectContaining({
@@ -91,9 +134,104 @@ describe("specialist handoff projection", () => {
     }));
   });
 
+  it("fails closed when final-output material binding or idempotency changes with the same output hashes", async () => {
+    const fixture = handoffFixture();
+    const ambiguousFinalOutput = {
+      ...finalOutputStepEvent(fixture),
+      id: "evt_final_output_ambiguous_material",
+      payload: {
+        ...finalOutputStepEvent(fixture).payload,
+        idempotencyKey: "specialist-final-output:run_handoff_001:task_handoff_001:evidence-triage:ready-for-review:ambiguous",
+        handoffMaterialArtifactHash: hash555
+      }
+    } as KnowledgeEvent;
+
+    await expectInconsistent(
+      [...validRecordedEvents(fixture), ambiguousFinalOutput],
+      new ManifestMap().putFixture(fixture),
+      "conflicting-final-output"
+    );
+  });
+
+  it("rejects replayed handoffs whose final-output schema does not match production authority", async () => {
+    const fixture = handoffFixture();
+    const forgedSchema = {
+      ...finalOutputStepEvent(fixture),
+      payload: {
+        ...finalOutputStepEvent(fixture).payload,
+        stepSchemaId: "caller-forged-final-output.v1"
+      }
+    } as KnowledgeEvent;
+
+    await expectInconsistent(
+      [startedEvent(fixture), forgedSchema, preparedEvent(fixture), recordedEvent(fixture)],
+      new ManifestMap().putFixture(fixture),
+      "final-output-mismatch"
+    );
+  });
+
+  it("rejects replayed handoffs without exactly one ledger-bound run identity", async () => {
+    const fixture = handoffFixture();
+    const withoutStarted = validRecordedEvents(fixture).filter((event) => event.type !== "agent.specialist-run.started");
+    await expectInconsistent(withoutStarted, new ManifestMap().putFixture(fixture), "run-identity-mismatch");
+
+    const duplicateStarted = {
+      ...startedEvent(fixture),
+      id: "evt_started_duplicate_run_handoff_001",
+      payload: { ...startedEvent(fixture).payload, runType: "investigation-planner" }
+    } as KnowledgeEvent;
+    await expectInconsistent(
+      [startedEvent(fixture), duplicateStarted, finalOutputStepEvent(fixture), preparedEvent(fixture), recordedEvent(fixture)],
+      new ManifestMap().putFixture(fixture),
+      "run-identity-mismatch"
+    );
+  });
+
+  it("rejects nested tool refs that are absent from the top-level same-run tool request set", async () => {
+    const nestedTool = "toolreq_nested_projection";
+    const fixture = handoffFixture({
+      approvalRequirements: [{
+        approvalClass: "human-review",
+        reason: "Nested review tool is required.",
+        toolRequestId: nestedTool
+      }],
+      nextSafeActions: [{
+        actionId: "action_nested_tool",
+        label: "Review nested tool request",
+        kind: "review",
+        effect: "request-approval",
+        toolRequestId: nestedTool
+      }]
+    });
+
+    await expectInconsistent(
+      validRecordedEvents(fixture),
+      new ManifestMap().putFixture(fixture),
+      "tool-request-mismatch"
+    );
+
+    const failed = handoffFixture({
+      runId: "run_nested_failure_tool_001",
+      taskId: "task_nested_failure_tool_001",
+      status: "failed",
+      failure: {
+        category: "model-output-invalid",
+        code: "model-output-invalid",
+        safeSummary: "Nested failed tool request was not ledger-bound.",
+        retryable: true,
+        toolRequestId: "toolreq_nested_failure"
+      }
+    });
+    await expectInconsistent(
+      validRecordedEvents(failed),
+      new ManifestMap().putFixture(failed),
+      "tool-request-mismatch"
+    );
+  });
+
   it("projects handoff-pending after prepared when manifest is bound but not recorded", async () => {
     const fixture = handoffFixture();
-    const manifests = new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest));
+    const manifests = new ManifestMap().putFixture(fixture);
 
     const projection = await project([
       startedEvent(fixture),
@@ -130,14 +268,14 @@ describe("specialist handoff projection", () => {
     await expectInconsistent([
       startedEvent(missingOutput),
       preparedEvent(missingOutput)
-    ], new ManifestMap().put(missingOutput.manifestHash, canonicalSpecialistHandoffJson(missingOutput.manifest)), "final-output-mismatch");
+    ], new ManifestMap().putFixture(missingOutput), "final-output-mismatch");
 
     const wrongCausation = handoffFixture({ runId: "run_prepared_wrong_causation" });
     await expectInconsistent([
       startedEvent(wrongCausation),
       finalOutputStepEvent(wrongCausation),
       preparedEvent(wrongCausation, "evt_unrelated_final_output")
-    ], new ManifestMap().put(wrongCausation.manifestHash, canonicalSpecialistHandoffJson(wrongCausation.manifest)), "handoff-causation-mismatch");
+    ], new ManifestMap().putFixture(wrongCausation), "handoff-causation-mismatch");
   });
 
   it("fails closed on nondeterministic handoff idempotency keys", async () => {
@@ -148,18 +286,18 @@ describe("specialist handoff projection", () => {
 
     await expectInconsistent(
       validRecordedEvents(fixture),
-      new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)),
+      new ManifestMap().putFixture(fixture),
       "idempotency-key-mismatch"
     );
   });
 
   it("projects handoff-recorded only after manifest readback verifies", async () => {
     const fixture = handoffFixture();
-    const manifests = new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest));
+    const manifests = new ManifestMap().putFixture(fixture);
 
     const projection = await project(validRecordedEvents(fixture), manifests);
 
-    expect(projection.state).toBe("handoff-recorded");
+    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("handoff-recorded");
     expect(projection.selectedHandoff).toEqual(fixture.manifest.handoff);
     expect(projection.handoffs).toEqual([fixture.manifest.handoff]);
     expect(projection.history).toContainEqual(expect.objectContaining({
@@ -171,11 +309,52 @@ describe("specialist handoff projection", () => {
     const withoutTask = handoffFixture({ runId: "run_without_task_001", taskId: null });
     const taskScopedProjection = await project(
       validRecordedEvents(withoutTask),
-      new ManifestMap().put(withoutTask.manifestHash, canonicalSpecialistHandoffJson(withoutTask.manifest)),
+      new ManifestMap().putFixture(withoutTask),
       { runId: withoutTask.runId, taskId: "task_handoff_001" }
     );
     expect(taskScopedProjection.state).toBe("no-output");
     expect(taskScopedProjection.handoffs).toEqual([]);
+  });
+
+  it("rejects missing, swapped, stale, or byte-mismatched ledger-bound handoff material", async () => {
+    const fixture = handoffFixture();
+    const wrong = handoffFixture({ runId: "run_wrong_material_001", safeSummary: "Different swapped material." });
+    const base = new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest));
+
+    await expectInconsistent(validRecordedEvents(fixture), base, "handoff-material-missing");
+    await expectInconsistent(
+      validRecordedEvents(fixture),
+      new ManifestMap()
+        .putFixture(fixture)
+        .put(fixture.materialHash, canonicalSpecialistHandoffMaterialBytes(wrong.material)),
+      "handoff-material-hash-mismatch"
+    );
+    await expectInconsistent(
+      validRecordedEvents(fixtureWithPreparedOverride({ handoffMaterialArtifactHash: hash555 })),
+      materializedStore(fixture),
+      "handoff-material-missing"
+    );
+    await expectInconsistent(
+      validRecordedEvents(fixture),
+      new ManifestMap()
+        .putFixture(fixture)
+        .put(fixture.materialHash, Buffer.from("{}", "utf8")),
+      "handoff-material-hash-mismatch"
+    );
+  });
+
+  it("rejects material output hashes that differ from the final-output event", async () => {
+    const fixture = handoffFixture();
+    const mismatched = {
+      ...finalOutputStepEvent(fixture),
+      payload: { ...finalOutputStepEvent(fixture).payload, outputArtifactHashes: [hash333] }
+    } as KnowledgeEvent;
+
+    await expectInconsistent(
+      [startedEvent(fixture), mismatched, preparedEvent(fixture), recordedEvent(fixture)],
+      materializedStore(fixture),
+      "final-output-mismatch"
+    );
   });
 
   it("dedupes exact recorded retries and fails closed on changed recorded timestamps", async () => {
@@ -187,7 +366,7 @@ describe("specialist handoff projection", () => {
     const exactRetryProjection = await project([
       ...validRecordedEvents(fixture),
       exactRetry
-    ], new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)));
+    ], new ManifestMap().putFixture(fixture));
 
     expect(exactRetryProjection.state).toBe("handoff-recorded");
     expect(exactRetryProjection.handoffs).toEqual([fixture.manifest.handoff]);
@@ -205,7 +384,7 @@ describe("specialist handoff projection", () => {
       changedTimestamp,
       completedRunEvent(fixture, { causationId: "evt_handoff_recorded_changed_timestamp" }),
       taskStatusEvent(fixture, "completed", { causationId: "evt_run_completed" })
-    ], new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)));
+    ], new ManifestMap().putFixture(fixture));
 
     expect(conflictingRetryProjection.state).toBe("inconsistent");
     expect(conflictingRetryProjection.diagnostics).toContainEqual(expect.objectContaining({
@@ -227,25 +406,25 @@ describe("specialist handoff projection", () => {
     const firstCorrection = handoffFixture({
       runId: first.runId,
       taskId: first.taskId!,
-      finalOutputEventId: first.finalOutputEventId,
       handoffRevision: 2,
       supersedesHandoffId: first.manifest.handoffId,
       supersedesEventId: first.recordedEventId,
       safeSummary: "Corrected safe presentation for the first multi-run handoff."
     });
     const manifests = new ManifestMap()
-      .put(first.manifestHash, canonicalSpecialistHandoffJson(first.manifest))
-      .put(firstCorrection.manifestHash, canonicalSpecialistHandoffJson(firstCorrection.manifest))
-      .put(second.manifestHash, canonicalSpecialistHandoffJson(second.manifest));
+      .putFixture(first)
+      .putFixture(firstCorrection)
+      .putFixture(second);
 
     const projection = await project([
       ...validRecordedEvents(first),
+      finalOutputStepEvent(firstCorrection),
       preparedEvent(firstCorrection),
       recordedEvent(firstCorrection),
       ...validRecordedEvents(second)
     ], manifests);
 
-    expect(projection.state).toBe("handoff-recorded");
+    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("handoff-recorded");
     expect(projection.diagnostics).toEqual([]);
     expect(projection.handoffs.map((handoff) => handoff.handoffId)).toEqual([
       first.manifest.handoffId,
@@ -262,7 +441,7 @@ describe("specialist handoff projection", () => {
 
   it("projects task-completed only after an actual completed task event follows the verified handoff", async () => {
     const fixture = handoffFixture();
-    const manifests = new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest));
+    const manifests = new ManifestMap().putFixture(fixture);
 
     const beforeTask = await project([
       ...validRecordedEvents(fixture),
@@ -303,7 +482,7 @@ describe("specialist handoff projection", () => {
       const fixture = handoffFixture();
       const projection = await project(
         events,
-        new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest))
+        new ManifestMap().putFixture(fixture)
       );
 
       expect(projection.state, label).toBe("inconsistent");
@@ -334,7 +513,7 @@ describe("specialist handoff projection", () => {
       const fixture = handoffFixture();
       const projection = await project(
         events,
-        new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest))
+        new ManifestMap().putFixture(fixture)
       );
 
       expect(projection.state, label).toBe("handoff-recorded");
@@ -381,7 +560,7 @@ describe("specialist handoff projection", () => {
     });
     await expectInconsistent(
       validRecordedEvents(dtoMismatch),
-      new ManifestMap().put(dtoMismatch.manifestHash, canonicalSpecialistHandoffJson(dtoMismatch.manifest)),
+      new ManifestMap().putFixture(dtoMismatch),
       "manifest-dto-mismatch"
     );
   });
@@ -401,7 +580,7 @@ describe("specialist handoff projection", () => {
     for (const [label, fixture] of cases) {
       const projection = await project(
         validRecordedEvents(fixture),
-        new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest))
+        new ManifestMap().putFixture(fixture)
       );
 
       expect(projection.state, label).toBe("inconsistent");
@@ -420,7 +599,7 @@ describe("specialist handoff projection", () => {
       completedRunEvent(fixture),
       preparedEvent(fixture),
       recordedEvent(fixture)
-    ], new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)));
+    ], new ManifestMap().putFixture(fixture));
 
     expect(projection.state).toBe("inconsistent");
     expect(projection.diagnostics).toContainEqual(expect.objectContaining({
@@ -444,7 +623,7 @@ describe("specialist handoff projection", () => {
         ...validRecordedEvents(fixture),
         terminal,
         { ...taskEvent, payload: { ...taskEvent.payload, taskId: fixture.taskId!, runId: fixture.runId } } as KnowledgeEvent
-      ], new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)));
+      ], new ManifestMap().putFixture(fixture));
 
       expect(projection.state, status).toBe("handoff-recorded");
       expect(projection.selectedHandoff?.status, status).toBe(status);
@@ -460,16 +639,17 @@ describe("specialist handoff projection", () => {
       safeSummary: "Corrected safe presentation summary."
     });
     const manifests = new ManifestMap()
-      .put(first.manifestHash, canonicalSpecialistHandoffJson(first.manifest))
-      .put(correction.manifestHash, canonicalSpecialistHandoffJson(correction.manifest));
+      .putFixture(first)
+      .putFixture(correction);
 
     const projection = await project([
       ...validRecordedEvents(first),
+      finalOutputStepEvent(correction),
       preparedEvent(correction),
       recordedEvent(correction)
     ], manifests);
 
-    expect(projection.state).toBe("handoff-recorded");
+    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("handoff-recorded");
     expect(projection.handoffs.map((handoff) => handoff.handoffId)).toEqual([
       first.manifest.handoffId,
       correction.manifest.handoffId
@@ -496,12 +676,12 @@ describe("specialist handoff projection", () => {
       preparedEvent(sameRevisionChange),
       recordedEvent(sameRevisionChange)
     ], new ManifestMap()
-      .put(first.manifestHash, canonicalSpecialistHandoffJson(first.manifest))
-      .put(sameRevisionChange.manifestHash, canonicalSpecialistHandoffJson(sameRevisionChange.manifest)));
+      .putFixture(first)
+      .putFixture(sameRevisionChange));
 
     expect(projection.state).toBe("inconsistent");
     expect(projection.diagnostics).toContainEqual(expect.objectContaining({
-      code: "same-revision-manifest-change"
+      code: "conflicting-prepared"
     }));
   });
 
@@ -521,8 +701,8 @@ describe("specialist handoff projection", () => {
       preparedEvent(first),
       preparedEvent(conflictingPrepared)
     ], new ManifestMap()
-      .put(first.manifestHash, canonicalSpecialistHandoffJson(first.manifest))
-      .put(conflictingPrepared.manifestHash, canonicalSpecialistHandoffJson(conflictingPrepared.manifest)));
+      .putFixture(first)
+      .putFixture(conflictingPrepared));
 
     expect(projection.state).toBe("inconsistent");
     expect(projection.selectedHandoff).toBeUndefined();
@@ -543,11 +723,12 @@ describe("specialist handoff projection", () => {
 
     const projection = await project([
       ...validRecordedEvents(first),
+      finalOutputStepEvent(correction),
       preparedEvent(correction),
       recordedEvent(correction)
     ], new ManifestMap()
-      .put(first.manifestHash, canonicalSpecialistHandoffJson(first.manifest))
-      .put(correction.manifestHash, canonicalSpecialistHandoffJson(correction.manifest)));
+      .putFixture(first)
+      .putFixture(correction));
 
     expect(correction.manifest.handoffId).not.toBe(first.manifest.handoffId);
     expect(projection.state).toBe("handoff-recorded");
@@ -564,13 +745,15 @@ describe("specialist handoff projection", () => {
       safeSummary: "Corrected safe presentation after task completion."
     });
     const manifests = new ManifestMap()
-      .put(first.manifestHash, canonicalSpecialistHandoffJson(first.manifest))
-      .put(correction.manifestHash, canonicalSpecialistHandoffJson(correction.manifest));
+      .putFixture(first)
+      .putFixture(correction);
 
     const projection = await project([
       ...validRecordedEvents(first),
+      finalOutputStepEvent(correction),
       completedRunEvent(first, { causationId: first.recordedEventId }),
       taskStatusEvent(first, "completed", { causationId: "evt_run_completed" }),
+      finalOutputStepEvent(correction),
       preparedEvent(correction),
       recordedEvent(correction)
     ], manifests);
@@ -591,6 +774,36 @@ describe("specialist handoff projection", () => {
       state: "task-completed",
       handoffId: correction.manifest.handoffId
     }));
+  });
+
+  it("keeps a post-terminal supersession final-output restartable when a crash occurs before prepared", async () => {
+    const first = handoffFixture();
+    const correction = handoffFixture({
+      handoffRevision: 2,
+      supersedesHandoffId: first.manifest.handoffId,
+      supersedesEventId: first.recordedEventId,
+      safeSummary: "Corrected safe presentation persisted before prepared."
+    });
+
+    const projection = await project([
+      ...validRecordedEvents(first),
+      completedRunEvent(first, { causationId: first.recordedEventId }),
+      taskStatusEvent(first, "completed", { causationId: "evt_run_completed" }),
+      finalOutputStepEvent(correction)
+    ], new ManifestMap()
+      .putFixture(first)
+      .putFixture(correction));
+
+    expect(projection.state, JSON.stringify(projection.diagnostics)).toBe("task-completed");
+    expect(projection.selectedHandoff).toEqual(first.manifest.handoff);
+    expect(projection.diagnostics).toEqual([]);
+    expect(projection.history).toContainEqual(expect.objectContaining({
+      state: "output-persisted",
+      runId: correction.runId,
+      finalOutputEventId: correction.finalOutputEventId,
+      artifactHashes: correction.manifest.outputArtifacts.map((artifact) => artifact.artifactHash)
+    }));
+    expect(projection.handoffs.map((handoff) => handoff.handoffId)).toEqual([first.manifest.handoffId]);
   });
 
   it("rejects handoff causation and revision supersession violations", async () => {
@@ -616,6 +829,7 @@ describe("specialist handoff projection", () => {
       ], [first], "handoff-causation-mismatch"],
       ["wrong supersession prepared causation", [
         ...validRecordedEvents(first),
+        finalOutputStepEvent(correction),
         preparedEvent(correction, "evt_unrelated_recorded"),
         recordedEvent(correction)
       ], [first, correction], "handoff-causation-mismatch"],
@@ -636,7 +850,7 @@ describe("specialist handoff projection", () => {
     for (const [label, events, fixtures, code] of cases) {
       const manifests = new ManifestMap();
       for (const fixture of fixtures) {
-        manifests.put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest));
+        manifests.putFixture(fixture);
       }
 
       const projection = await project(events, manifests);
@@ -686,6 +900,21 @@ describe("specialist handoff projection", () => {
       preparedEvent(changedOutput),
       recordedEvent(changedOutput)
     ], [first, changedOutput]);
+
+    const changedOutputDescriptor = handoffFixture({
+      handoffRevision: 2,
+      outputArtifacts: [{ ...outputArtifact(first.manifest.outputArtifacts[0]!.artifactHash), artifactKind: "changed-output-kind" }],
+      supersedesHandoffId: first.manifest.handoffId,
+      supersedesEventId: first.recordedEventId,
+      preparedEventId: "evt_handoff_prepared_changed_output_descriptor",
+      recordedEventId: "evt_handoff_recorded_changed_output_descriptor"
+    });
+    await expectSupersessionViolation([
+      ...validRecordedEvents(first),
+      finalOutputStepEvent(changedOutputDescriptor),
+      preparedEvent(changedOutputDescriptor),
+      recordedEvent(changedOutputDescriptor)
+    ], [first, changedOutputDescriptor]);
 
     const changedPrompt = handoffFixture({
       handoffRevision: 2,
@@ -746,6 +975,12 @@ class ManifestMap implements SpecialistHandoffManifestReader {
     return this;
   }
 
+  putFixture(fixture: HandoffFixture): ManifestMap {
+    return this
+      .put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest))
+      .put(fixture.materialHash, canonicalSpecialistHandoffMaterialBytes(fixture.material));
+  }
+
   async get(contentHash: `sha256:${string}`): Promise<Buffer> {
     const manifest = this.manifests.get(contentHash);
     if (manifest === undefined) {
@@ -753,6 +988,12 @@ class ManifestMap implements SpecialistHandoffManifestReader {
     }
     return Buffer.from(manifest);
   }
+}
+
+function materializedStore(fixture: HandoffFixture): ManifestMap {
+  return new ManifestMap()
+    .putFixture(fixture)
+    .put(fixture.materialHash, canonicalSpecialistHandoffMaterialBytes(fixture.material));
 }
 
 interface HandoffFixture {
@@ -766,6 +1007,8 @@ interface HandoffFixture {
   readonly recordedEventId: string;
   readonly manifest: SpecialistHandoffManifest;
   readonly manifestHash: `sha256:${string}`;
+  readonly material: SpecialistHandoffMaterial;
+  readonly materialHash: `sha256:${string}`;
   readonly preparedPayload: KnowledgeEventOf<"agent.specialist-handoff.prepared">["payload"];
   readonly recordedPayload: KnowledgeEventOf<"agent.specialist-handoff.recorded">["payload"];
 }
@@ -793,7 +1036,7 @@ async function expectInconsistent(
 async function expectSupersessionViolation(extraEvents: readonly KnowledgeEvent[], fixtures: readonly HandoffFixture[]): Promise<void> {
   const manifests = new ManifestMap();
   for (const fixture of fixtures) {
-    manifests.put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest));
+    manifests.putFixture(fixture);
   }
   const projection = await project([
     startedEvent(fixtures[0]!),
@@ -825,6 +1068,10 @@ function handoffFixture(options: {
   readonly handoffRevision?: number;
   readonly outputArtifacts?: readonly BuildSpecialistHandoffManifestInput["outputArtifacts"][number][];
   readonly contextPackRefs?: readonly BuildSpecialistHandoffManifestInput["contextPackRefs"][number][];
+  readonly toolRequestIds?: readonly string[];
+  readonly approvalRequirements?: readonly BuildSpecialistHandoffManifestInput["approvalRequirements"][number][];
+  readonly nextSafeActions?: readonly BuildSpecialistHandoffManifestInput["nextSafeActions"][number][];
+  readonly failure?: BuildSpecialistHandoffManifestInput["failure"];
   readonly promptArtifactHash?: `sha256:${string}`;
   readonly supersedesHandoffId?: string;
   readonly supersedesEventId?: string;
@@ -838,9 +1085,11 @@ function handoffFixture(options: {
   const taskId = options.taskId === null ? undefined : options.taskId ?? "task_handoff_001";
   const runType = "evidence-triage" as const;
   const status = options.status ?? "ready-for-review";
-  const finalOutputEventId = options.finalOutputEventId ?? "evt_final_output";
-  const outputArtifacts = options.outputArtifacts ?? [outputArtifact(hash222)];
+  const sourceEventId = `evt_started_${runId}`;
   const handoffRevision = options.handoffRevision ?? 1;
+  const finalOutputEventId = options.finalOutputEventId ?? (handoffRevision === 1 ? "evt_final_output" : `evt_final_output_revision_${handoffRevision}`);
+  const outputArtifacts = options.outputArtifacts ?? [outputArtifact(hash222)];
+  const contextPackRefs = options.contextPackRefs ?? [contextPackRef(hash444, sourceEventId)];
   const seed = {
     runId,
     ...(taskId === undefined ? {} : { taskId }),
@@ -852,6 +1101,24 @@ function handoffFixture(options: {
     ...(options.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: options.supersedesHandoffId })
   } as const;
   const handoffId = options.handoffId ?? computeSpecialistHandoffId(seed);
+  const material = buildSpecialistHandoffMaterial({
+    status,
+    safeSummary: options.safeSummary ?? safeSummaryFor(status),
+    contextPackRefs,
+    promptArtifactHash: options.promptArtifactHash ?? hash111,
+    outputArtifacts,
+    toolRequestIds: options.toolRequestIds ?? [],
+    approvalRequirements: options.approvalRequirements ?? (status === "waiting-for-approval" ? [{ approvalClass: "provider-byte-transfer", reason: "Human approval is required before the next safe action." }] : []),
+    nextSafeActions: options.nextSafeActions ?? [{ actionId: "action_review_handoff", label: "Review durable handoff", kind: "review", effect: status === "waiting-for-approval" ? "request-approval" : "none", artifactId: outputArtifacts[0]!.artifactId }],
+    ...(options.failure === undefined
+      ? (status === "failed" ? { failure: { category: "model-output-invalid", code: "model-output-invalid", safeSummary: "Model output could not be converted into a durable handoff.", retryable: true } } : {})
+      : { failure: options.failure }),
+    sourceEventIds: [sourceEventId],
+    relatedEventIds: [sourceEventId],
+    ...(options.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: options.supersedesHandoffId }),
+    ...(options.supersedesEventId === undefined ? {} : { supersedesEventId: options.supersedesEventId })
+  });
+  const materialHash = hashSpecialistHandoffMaterial(material);
   const manifestInput: BuildSpecialistHandoffManifestInput = {
     handoffId,
     handoffRevision,
@@ -865,25 +1132,26 @@ function handoffFixture(options: {
     stateKind: status === "failed" ? "failed" : status === "ready-for-review" ? "completed" : "resumable",
     finalOutputStepId: "step_run_handoff_001_final_output",
     finalOutputEventId,
-    contextPackRefs: options.contextPackRefs ?? [contextPackRef()],
+    handoffMaterialArtifactHash: materialHash,
+    contextPackRefs,
     promptArtifactHash: options.promptArtifactHash ?? hash111,
     outputArtifacts,
-    toolRequestIds: ["toolreq_handoff_review"],
-    approvalRequirements: status === "waiting-for-approval"
+    toolRequestIds: options.toolRequestIds ?? [],
+    approvalRequirements: options.approvalRequirements ?? (status === "waiting-for-approval"
       ? [{
         approvalClass: "provider-byte-transfer",
         reason: "Human approval is required before the next safe action.",
-        toolRequestId: "toolreq_handoff_review"
       }]
-      : [],
-    nextSafeActions: [{
+      : []),
+    nextSafeActions: options.nextSafeActions ?? [{
       actionId: "action_review_handoff",
       label: "Review durable handoff",
       kind: "review",
       effect: status === "waiting-for-approval" ? "request-approval" : "none",
       artifactId: outputArtifacts[0]!.artifactId
     }],
-    ...(status === "failed"
+    ...(options.failure === undefined
+      ? (status === "failed"
       ? {
         failure: {
           category: "model-output-invalid",
@@ -892,9 +1160,10 @@ function handoffFixture(options: {
           retryable: true
         }
       }
-      : {}),
-    sourceEventIds: ["evt_source_001"],
-    relatedEventIds: [finalOutputEventId],
+      : {})
+      : { failure: options.failure }),
+    sourceEventIds: [sourceEventId],
+    relatedEventIds: [sourceEventId],
     ...(options.supersedesHandoffId === undefined ? {} : { supersedesHandoffId: options.supersedesHandoffId }),
     ...(options.supersedesEventId === undefined ? {} : { supersedesEventId: options.supersedesEventId })
   };
@@ -925,6 +1194,8 @@ function handoffFixture(options: {
     recordedEventId,
     manifest,
     manifestHash,
+    material,
+    materialHash,
     preparedPayload,
     recordedPayload
   };
@@ -975,6 +1246,7 @@ function compactBinding(
     handoffRevision: manifest.handoffRevision,
     idempotencyKey: `specialist-handoff:${manifest.runId}:${manifest.taskId ?? "none"}:${manifest.runType}:${manifest.status}:${handoffManifestHash}`,
     handoffManifestHash,
+    handoffMaterialArtifactHash: manifest.handoffMaterialArtifactHash,
     handoffDtoHash: manifest.handoffDtoHash,
     runId: manifest.runId,
     ...(manifest.taskId === undefined ? {} : { taskId: manifest.taskId }),
@@ -1014,9 +1286,10 @@ function finalOutputStepEvent(fixture: HandoffFixture): KnowledgeEventOf<"agent.
     payload: {
       summary: "Final durable output artifacts are persisted.",
       stepKind: "final-output",
-      stepSchemaId: "evidence-triage-final-output.v1",
-      idempotencyKey: `specialist-final-output:${fixture.runId}:${fixture.taskId ?? "none"}:${fixture.runType}:${fixture.status}:${fixture.manifest.outputArtifacts.map((artifact) => artifact.artifactHash).join(",")}`,
-      inputArtifactHashes: [hash111],
+      stepSchemaId: "evidence-triage-handoff.v1",
+      idempotencyKey: `specialist-final-output:${fixture.runId}:${fixture.taskId ?? "none"}:${fixture.runType}:${fixture.status}:${fixture.materialHash}`,
+      handoffMaterialArtifactHash: fixture.materialHash,
+      inputArtifactHashes: [...new Set([...fixture.manifest.contextPackRefs.flatMap((ref) => [ref.contentHash, ...(ref.artifactHashes ?? [])]), ...(fixture.manifest.promptArtifactHash === undefined ? [] : [fixture.manifest.promptArtifactHash])])],
       outputArtifactHashes: fixture.manifest.outputArtifacts.map((artifact) => artifact.artifactHash)
     }
   });
@@ -1037,6 +1310,7 @@ function specialistStepEvent(
     ...(input.payload.stepKind === undefined ? {} : { stepKind: input.payload.stepKind }),
     ...(input.payload.stepSchemaId === undefined ? {} : { stepSchemaId: input.payload.stepSchemaId }),
     ...(input.payload.idempotencyKey === undefined ? {} : { idempotencyKey: input.payload.idempotencyKey }),
+    ...(input.payload.handoffMaterialArtifactHash === undefined ? {} : { handoffMaterialArtifactHash: input.payload.handoffMaterialArtifactHash }),
     ...(input.payload.sourceEventIds === undefined ? {} : { sourceEventIds: input.payload.sourceEventIds }),
     ...(input.payload.inputArtifactHashes === undefined ? {} : { inputArtifactHashes: input.payload.inputArtifactHashes }),
     ...(input.payload.outputArtifactHashes === undefined ? {} : { outputArtifactHashes: input.payload.outputArtifactHashes }),
@@ -1140,7 +1414,7 @@ function streamIdFor(type: KnowledgeEvent["type"], payload: unknown): string {
   return `agent_${type.replace(/\./g, "_")}`;
 }
 
-function contextPackRef(contentHash: `sha256:${string}` = hash444) {
+function contextPackRef(contentHash: `sha256:${string}` = hash444, sourceEventId = "evt_source_001") {
   return {
     contextPackId: "task-run-history.v1",
     version: 1,
@@ -1148,8 +1422,8 @@ function contextPackRef(contentHash: `sha256:${string}` = hash444) {
     sizeBytes: 256,
     generatedAt: "2026-07-10T14:55:00.000Z",
     safeSummary: "Prior task and run history.",
-    provenanceRefs: ["evt_source_001"],
-    sourceEventIds: ["evt_source_001"],
+    provenanceRefs: [sourceEventId],
+    sourceEventIds: [sourceEventId],
     artifactHashes: [hash111]
   };
 }
