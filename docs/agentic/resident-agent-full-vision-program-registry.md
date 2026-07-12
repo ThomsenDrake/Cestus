@@ -543,3 +543,28 @@ explicit implementation authorization.
 - Merge readiness: merged / coordinator integration commit 0db0522d0476c75d15d587374d32463b321d296d; no merge into neo occurred.
 - Archive check: task branch ancestry reaches the coordinator integration branch and the author worktree is clean; retain author and reviewers until final handoffs and durable evidence are reconciled.
 - Supersession: this record supersedes RV-0-L-001 through RV-0-L-003 only for Task 104 review, lane-approval, verification, and merge status; all prior dispatch and repair evidence remains immutable history.
+
+## RV-0-U-001 — Task 107 cockpit specification dispatch
+
+- Recorded at: 2026-07-12T21:41:00Z
+- Role: coordinator
+- Lane and wave: U / 0A
+- Task ID and claim: task-107-resident-full-vision-w0-cockpit-spec / docs/agentic/claims/task-107-resident-full-vision-w0-cockpit-spec.md
+- Task thread ID: /root/task107_cockpit_spec
+- Branch and worktree: codex/task-107-resident-full-vision-w0-cockpit-spec / /home/drake/.codex/worktrees/task-107-resident-full-vision-w0-cockpit-spec
+- Base commit and required head: e3fd8533aa92a09a588d0b08f555bdcc8bbc5d26 / one Task 107 owned-file commit from this base, pending fresh review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-cockpit-design.md; docs/agentic/claims/task-107-resident-full-vision-w0-cockpit-spec.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task 100 program controls and approved Lane R, H, P, and L records at e3fd8533aa92a09a588d0b08f555bdcc8bbc5d26; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued authorization under the Standing Coordinator Delegation names governing spec @811458d2, plan @68fe8e87, Task 107 only, and the Wave 0A lane-spec stop; it explicitly authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion; it prohibits Task 115, production work, and a merge into neo.
+- Claim status: dispatched; the worker must commit its claim before editing its specification.
+- RED command and observed failure: pending worker-owned focused documentation audit before the Lane U specification exists.
+- GREEN command and observed result: pending worker-owned focused documentation audit, git diff --check, and npm run factory:check after the specification is complete.
+- Full verification: pending worker-owned npm run verify before the task commit.
+- Live-provider gate: not-applicable for this specification-only task; its design must define later cockpit/provider acceptance and safe served-checkout evidence where relevant.
+- Review verdict: pending / fresh Task 107 spec review after its commit.
+- Rebase record: initial isolated worktree is clean at e3fd8533aa92a09a588d0b08f555bdcc8bbc5d26; no rebase applies before independent Lane U specification work.
+- Merge readiness: not-ready; Task 107 cannot create Task 115, production work, or merge into neo.
+- Archive check: provisioned worker has no final answer, commit, verification, review, or merge state.
