@@ -491,3 +491,29 @@ explicit implementation authorization.
 - Merge readiness: not-ready; no coordinator lane approval or merge may occur until fresh re-review approves the final focused repair.
 - Archive check: two repair attempts are now tracked; final repair handoff, re-review, integration, and current clean-worktree confirmation remain required.
 - Supersession: this record supersedes RV-0-T-002 only for current repair status. The original dispatch and first repair evidence remain immutable history.
+
+## RV-0-P-003 — Task 106 provider-and-credentials specification fresh review, lane approval, and integration
+
+- Recorded at: 2026-07-12T21:29:31Z
+- Role: coordinator
+- Lane and wave: P / 0A
+- Task ID and claim: task-106-resident-full-vision-w0-provider-spec / docs/agentic/claims/task-106-resident-full-vision-w0-provider-spec.md
+- Task thread ID: /root/task106_provider_spec (original claim author); /root/task106_provider_recovery (replacement author); /root/review_task106_spec (fresh reviewer)
+- Branch and worktree: codex/task-106-resident-full-vision-w0-provider-spec-recovery / /home/drake/.codex/worktrees/task-106-resident-full-vision-w0-provider-spec-recovery; integrated on codex/resident-agent-full-vision-program-plan / /home/drake/.codex/worktrees/664b/Cestus
+- Base commit and required head: 6fb76fb1969fc074066ea5f5fbeb4e101bb3ced5 / 285657a7879cdc47e321152c2bc5feb0ebe6088f
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for the original author, replacement author, and fresh review sessions
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@811458d2094dc166b10b9255d1829eae73f2d08e; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@68fe8e87c9e6cd05e8e711fa9afd3e8e3c6cfaab
+- Owned files: docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md; docs/agentic/claims/task-106-resident-full-vision-w0-provider-spec.md
+- Forbidden files: every other task file, including production, test, runtime, UI, shared-contract, program-plan, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: original preserved claim commit 6fb76fb1969fc074066ea5f5fbeb4e101bb3ced5; Task 100 controls; Lane P recovery head 285657a7879cdc47e321152c2bc5feb0ebe6088f; no shared contract was frozen and no production dependency applied
+- Approval record: coordinator-issued replacement authorization under the Standing Coordinator Delegation named governing spec @811458d2, plan @68fe8e87, Task 106 only, and the Wave 0A lane-spec stop; it explicitly authorized superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibited Task 114, production work, provider invocation, and a merge into neo. This record approves only the completed written Lane P specification.
+- Claim status: merged
+- RED command and observed failure: the replacement coverage audit exited 1 before the provider specification existed, reporting the 22 required provider/credential architecture assertions untestable.
+- GREEN command and observed result: the same replacement audit exited 0 with `GREEN provider-spec coverage audit: 22 required assertions present.`; git diff --check and npm run factory:check exited 0.
+- Full verification: NODE_NO_WARNINGS=1 npm run verify / exit 0 on the integrated checkout: typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite built with its existing chunk-size warning; factory-readiness passed.
+- Live-provider gate: not-applicable for this specification-only lane; the Lane P specification requires later real approved Nous acceptance under coordinator control but did not invoke a provider here.
+- Review verdict: approved / independent fresh reviewer /root/review_task106_spec approved replacement commit 285657a7879cdc47e321152c2bc5feb0ebe6088f after checking BYOK, OS-secret, local-model, Nous, Codex, xAI, official-only subscription feasibility, audited prompts, secret safety, and credential-free deterministic posture.
+- Rebase record: no rebase was needed; replacement started from the original claim-only commit, and conflict-free merge commit 541718453155158ffe2189e9b53bf10416970de1 integrated the reviewed branch after current coordinator records.
+- Merge readiness: merged / coordinator integration commit 541718453155158ffe2189e9b53bf10416970de1; no merge into neo occurred.
+- Archive check: recovery branch ancestry reaches the coordinator integration branch and its worktree is clean; retain original/replacement threads and worktrees until their final handoffs, clean state, and durable evidence are reconciled.
+- Supersession: this record supersedes RV-0-P-001 and RV-0-P-002 only for Task 106 review, lane-approval, verification, and merge status; earlier dispatch and replacement evidence remain immutable history.
