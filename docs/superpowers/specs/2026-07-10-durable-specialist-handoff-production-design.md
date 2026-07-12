@@ -118,6 +118,31 @@ claiming any prior durable specialist result.
 
 ## Handoff Manifest Artifact
 
+Before a final-output event is appended, the runner persists a strict canonical
+`agent-specialist-handoff-material.v1` artifact and reads back its exact bytes by
+content hash. This pre-manifest material contains only the status, safe summary,
+context-pack refs, optional prompt artifact hash, output artifact descriptors,
+tool request IDs, approval requirements, safe next actions, optional failure,
+source and related event IDs, and optional prior supersession anchors. It cannot
+contain the new handoff ID or revision, manifest/DTO hashes, raw prompts,
+evidence or provider output, credentials, paths, commands, or accepted-state
+claims.
+
+The final-output step stores `handoffMaterialArtifactHash`. Historical and
+ordinary step parsing remains compatible when the field is absent, but new
+final-output appends and durable handoff projection require it. The same hash is
+carried unchanged through the manifest and prepared/recorded compact bindings.
+The projector reads material only by this ledger hash, verifies exact canonical
+bytes, and rejects missing, stale, swapped, or mismatched material. Orphaned
+material written before a crash is harmless and is never discovered by scan.
+
+`recordSpecialistHandoff` derives the manifest from the unique eligible
+ledger-bound final-output event, its verified material, and the run-started
+identity. Its caller supplies only ledger/store capabilities, actor, clock,
+run ID, and optional task ID. The final-output schema comes from the landed
+production registration and matching workflow descriptor for that ledger run
+type; caller metadata is not schema or provenance authority.
+
 The handoff manifest artifact schema is
 `agent-specialist-handoff-manifest.v1`. It is stored in the mounted workspace's
 content-addressed artifact store.
@@ -133,6 +158,7 @@ The manifest contains:
 - `safeSummary`.
 - `stateKind`: `completed`, `failed`, or `resumable`.
 - `finalOutputStepId` and final-output step event ID.
+- `handoffMaterialArtifactHash` matching the final-output event.
 - `contextPackRefs`.
 - `promptArtifactHash` when present.
 - `outputArtifacts`.

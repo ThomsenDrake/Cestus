@@ -2,13 +2,20 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   buildContextPackRef,
+  buildSpecialistHandoffMaterial,
   buildPromptArtifact,
+  computeSpecialistHandoffId,
   createAgentRuntime,
+  appendSpecialistFinalOutputStep,
+  appendSpecialistFailure,
+  expectedNextSequenceFromStream,
+  finalizeSpecialistRunAfterHandoff,
   createContextPackRegistry,
   invokeSpecialistModel,
   prepareSpecialistRun,
   productionSpecialistPromptRegistrationFor,
   productionSpecialistPromptRegistrations,
+  recordSpecialistHandoff,
   serializeSpecialistLocalArtifact,
   type AgentContextPackJsonValue,
   type ContextPackRegistry,
@@ -16,7 +23,8 @@ import {
   writeSpecialistDerivativeArtifact
 } from "../src/index.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { ConcurrencyConflictError, InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
+import type { KnowledgeEvent } from "../../ontology/src/contracts.js";
 
 describe("specialist runner artifact serialization", () => {
   it("serializes plain JSON deterministically with sorted object keys", () => {
@@ -247,6 +255,995 @@ describe("production specialist run preparation", () => {
   });
 });
 
+describe("durable specialist handoff runner lifecycle", () => {
+  it("uses last stream sequence plus one for expected append sequencing", async () => {
+    const eventA = lifecycleEvent("evt_sequence_a", 1);
+    const eventB = lifecycleEvent("evt_sequence_b", 1);
+
+    expect(expectedNextSequenceFromStream([
+      { ...eventA, sequence: 2 },
+      { ...eventB, sequence: 7 }
+    ])).toBe(8);
+  });
+
+  it("records final-output, prepared, recorded, terminal run, and task status in order", async () => {
+    const fixture = await durableHandoffFixture();
+    const finalOutput = await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const recorded = await recordSpecialistHandoff(recordInput(fixture));
+    const finalized = await finalizeSpecialistRunAfterHandoff({
+      ledger: fixture.ledger,
+      actor: fixture.actor,
+      now: fixture.clock.now,
+      recorded
+    });
+
+    expect(finalized.taskStatus?.payload.status).toBe("completed");
+    expect((await fixture.ledger.readAll()).map((event) => event.type)).toEqual(expect.arrayContaining([
+      "agent.specialist-run.step.recorded",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed",
+      "agent.task.status.changed"
+    ]));
+    const lifecycleEvents = (await fixture.ledger.readAll()).filter((event) =>
+      event.type === "agent.specialist-run.step.recorded" ||
+      event.type === "agent.specialist-handoff.prepared" ||
+      event.type === "agent.specialist-handoff.recorded" ||
+      event.type === "agent.specialist-run.completed" ||
+      (event.type === "agent.task.status.changed" && event.payload.runId === fixture.runId && event.payload.status !== "running")
+    );
+    expect(lifecycleEvents.map((event) => event.type)).toEqual([
+      "agent.specialist-run.step.recorded",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed",
+      "agent.task.status.changed"
+    ]);
+    expect(finalOutput.payload.stepKind).toBe("final-output");
+    expect(finalOutput.payload.handoffMaterialArtifactHash).toBe(hashBytes(canonicalMaterialBytes(fixture)));
+  });
+
+  it("binds context-pack artifact hashes into the final-output input hash set", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_context_artifacts_001", taskId: "task_context_artifacts_001" });
+    const contextArtifactBytes = Buffer.from("context artifact source");
+    const contextArtifactHash = hashBytes(contextArtifactBytes);
+    fixture.manifestStore.seed(contextArtifactHash, contextArtifactBytes);
+    const finalOutput = await appendSpecialistFinalOutputStep(finalOutputInput(fixture, {
+      contextPackRefs: [{
+        ...handoffMaterialInput(fixture).contextPackRefs[0]!,
+        artifactHashes: [contextArtifactHash]
+      }]
+    }));
+
+    expect(finalOutput.payload.inputArtifactHashes).toContain(contextArtifactHash);
+    await expect(recordSpecialistHandoff(recordInput(fixture))).resolves.toMatchObject({
+      handoff: expect.objectContaining({ runId: fixture.runId })
+    });
+  });
+
+  it("rejects handoff material tool requests that belong to another run", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_foreign_tool_001", taskId: "task_foreign_tool_001" });
+    await fixture.ledger.append({
+      type: "agent.tool.requested",
+      version: 1,
+      streamId: "agent_tool_request_toolreq_foreign_handoff",
+      context: lifecycleContext(fixture, fixture.runStartedEventId),
+      payload: {
+        toolRequestId: "toolreq_foreign_handoff",
+        runId: "run_other_handoff_001",
+        toolId: "provider-byte-transfer",
+        toolVersion: "1",
+        requestedBy: "agent_default",
+        sideEffectClass: "external-byte-transfer",
+        requiredApprovalClass: "provider-byte-transfer",
+        previewHash: runnerHash,
+        scope: "Foreign run provider preview.",
+        estimatedEffect: "Would transfer bytes for a different run."
+      }
+    });
+
+    await expect(appendSpecialistFinalOutputStep(finalOutputInput(fixture, {
+      toolRequestIds: ["toolreq_foreign_handoff"]
+    }))).rejects.toThrow(/provenance|ledger-bound/i);
+    expect((await fixture.ledger.readStream(`agent_run_${fixture.runId}`)).filter((event) =>
+      event.type === "agent.specialist-run.step.recorded"
+    )).toHaveLength(0);
+  });
+
+  it("rejects nested handoff material tool refs missing from the top-level same-run request set", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_nested_tool_001", taskId: "task_nested_tool_001" });
+    await expect(appendSpecialistFinalOutputStep(finalOutputInput(fixture, {
+      approvalRequirements: [{
+        approvalClass: "human-review",
+        reason: "Nested approval tool is required.",
+        toolRequestId: "toolreq_nested_missing"
+      }],
+      nextSafeActions: [{
+        actionId: "action_nested_tool",
+        label: "Review nested tool",
+        kind: "review",
+        effect: "request-approval",
+        toolRequestId: "toolreq_nested_missing"
+      }]
+    }))).rejects.toThrow(/tool request|provenance|ledger-bound/i);
+    expect((await fixture.ledger.readStream(`agent_run_${fixture.runId}`)).filter((event) =>
+      event.type === "agent.specialist-run.step.recorded"
+    )).toHaveLength(0);
+
+    const failed = await durableHandoffFixture({
+      runId: "run_nested_failure_tool_001",
+      taskId: "task_nested_failure_tool_001",
+      status: "failed"
+    });
+    await expect(appendSpecialistFinalOutputStep(finalOutputInput(failed, {
+      failure: {
+        category: "model-output-invalid",
+        code: "model-output-invalid",
+        safeSummary: "Nested failure tool request is missing.",
+        retryable: true,
+        toolRequestId: "toolreq_nested_failure_missing"
+      }
+    }))).rejects.toThrow(/tool request|provenance|ledger-bound/i);
+  });
+
+  it("rejects missing or hash-mismatched referenced artifacts before final-output append", async () => {
+    const missing = await durableHandoffFixture({
+      runId: "run_missing_handoff_artifact_001",
+      taskId: "task_missing_handoff_artifact_001",
+      seedReferencedArtifacts: false
+    });
+    await expect(appendSpecialistFinalOutputStep(finalOutputInput(missing)))
+      .rejects.toThrow(/referenced artifact|content-addressed/i);
+    expect((await missing.ledger.readStream(`agent_run_${missing.runId}`)).filter((event) =>
+      event.type === "agent.specialist-run.step.recorded"
+    )).toHaveLength(0);
+
+    const mismatched = await durableHandoffFixture({
+      runId: "run_mismatched_handoff_artifact_001",
+      taskId: "task_mismatched_handoff_artifact_001",
+      seedReferencedArtifacts: false
+    });
+    mismatched.manifestStore.seed(mismatched.outputArtifact.artifactHash, Buffer.from("wrong output bytes"));
+    await expect(appendSpecialistFinalOutputStep(finalOutputInput(mismatched)))
+      .rejects.toThrow(/referenced artifact|content-addressed/i);
+  });
+
+  it("reuses an exact recorded conflict with the original verifiedAt", async () => {
+    const fixture = await durableHandoffFixture({ clockValues: ["2026-07-10T15:00:00.000Z", "2026-07-10T16:00:00.000Z"] });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const first = await recordSpecialistHandoff(recordInput(fixture));
+    const result = await recordSpecialistHandoff(recordInput(fixture));
+
+    expect(result.recorded.id).toBe(first.recorded.id);
+    expect(result.recorded.payload.verifiedAt).toBe("2026-07-10T15:00:00.000Z");
+    expect(fixture.clock.calls).toBe(1);
+  });
+
+  it("rejects duplicate run identities before persisting a handoff manifest", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_duplicate_record_identity_001", taskId: "task_duplicate_record_identity_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    await fixture.ledger.append({
+      type: "agent.specialist-run.started",
+      version: 1,
+      streamId: `agent_run_${fixture.runId}`,
+      context: lifecycleContext(fixture, fixture.runStartedEventId),
+      payload: {
+        runId: fixture.runId,
+        residentAgentId: "agent_default",
+        runType: "evidence-triage",
+        startedBy: fixture.actor.id,
+        taskId: "task_duplicate_record_identity_other"
+      }
+    });
+
+    await expect(recordSpecialistHandoff(recordInput(fixture))).rejects.toThrow(/one ledger-bound run identity/i);
+    expect((await fixture.ledger.readStream(`agent_run_${fixture.runId}`)).some((event) =>
+      event.type === "agent.specialist-handoff.prepared" ||
+      event.type === "agent.specialist-handoff.recorded"
+    )).toBe(false);
+  });
+
+  it("rejects restart recording from a final-output with forged idempotency", async () => {
+    const fixture = await durableHandoffFixture({
+      runId: "run_forged_final_output_idempotency_001",
+      taskId: "task_forged_final_output_idempotency_001"
+    });
+    const materialBytes = canonicalMaterialBytes(fixture);
+    const materialHash = hashBytes(materialBytes);
+    fixture.manifestStore.seed(materialHash, materialBytes);
+    await fixture.ledger.append({
+      type: "agent.specialist-run.step.recorded",
+      version: 1,
+      streamId: `agent_run_${fixture.runId}`,
+      context: lifecycleContext(fixture, fixture.runStartedEventId),
+      payload: {
+        runId: fixture.runId,
+        stepId: `step_${fixture.runId}_final_output`,
+        summary: "Forged final-output idempotency should not be recordable.",
+        stepKind: "final-output",
+        stepSchemaId: "evidence-triage-handoff.v1",
+        idempotencyKey: "specialist-final-output:forged",
+        handoffMaterialArtifactHash: materialHash,
+        inputArtifactHashes: [fixture.contextPackContentHash, fixture.promptArtifactHash],
+        outputArtifactHashes: [fixture.outputArtifact.artifactHash]
+      }
+    });
+
+    await expect(recordSpecialistHandoff(recordInput(fixture))).rejects.toThrow(/idempotency|final-output/i);
+    expect((await fixture.ledger.readStream(`agent_run_${fixture.runId}`)).some((event) =>
+      event.type === "agent.specialist-handoff.prepared" ||
+      event.type === "agent.specialist-handoff.recorded"
+    )).toBe(false);
+  });
+
+  it("stops on conflicting final-output, prepared, recorded, terminal, or task status events", async () => {
+    const fixture = await durableHandoffFixture();
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const conflictingOutputBytes = Buffer.from("conflicting final output");
+    const conflictingOutputHash = hashBytes(conflictingOutputBytes);
+    fixture.manifestStore.seed(conflictingOutputHash, conflictingOutputBytes);
+    await expect(appendSpecialistFinalOutputStep({
+      ...finalOutputInput(fixture, { outputArtifacts: [{ ...fixture.outputArtifact, artifactHash: conflictingOutputHash }] })
+    })).rejects.toThrow(/conflicting final-output/i);
+
+    await fixture.ledger.append({
+      ...preparedAppendable(fixture, hashBytes(Buffer.from("conflicting manifest"))),
+      context: lifecycleContext(fixture, "evt_final_conflict")
+    });
+    await expect(recordSpecialistHandoff(recordInput(fixture))).rejects.toThrow(/conflicting prepared/i);
+
+    const recordedFixture = await durableHandoffFixture({ runId: "run_conflicting_recorded_001", taskId: "task_conflicting_recorded_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(recordedFixture));
+    const recorded = await recordSpecialistHandoff(recordInput(recordedFixture));
+    await recordedFixture.ledger.append({
+      ...recorded.recorded,
+      id: "evt_handoff_recorded_conflict",
+      payload: { ...recorded.recorded.payload, verifiedAt: "2026-07-10T15:30:00.000Z" },
+      sequence: undefined
+    } as never);
+    await expect(finalizeSpecialistRunAfterHandoff({
+      ledger: recordedFixture.ledger,
+      actor: recordedFixture.actor,
+      now: recordedFixture.clock.now,
+      recorded
+    })).rejects.toThrow(/conflicting[- ]recorded/i);
+
+    const terminalFixture = await durableHandoffFixture({ runId: "run_conflicting_terminal_001", taskId: "task_conflicting_terminal_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(terminalFixture));
+    const terminalRecorded = await recordSpecialistHandoff(recordInput(terminalFixture));
+    await appendSpecialistCompletionForTest(terminalFixture, terminalRecorded.recorded.id);
+    await expect(finalizeSpecialistRunAfterHandoff({
+      ledger: terminalFixture.ledger,
+      actor: terminalFixture.actor,
+      now: terminalFixture.clock.now,
+      recorded: terminalRecorded
+    })).rejects.toThrow(/terminal/i);
+
+    const taskFixture = await durableHandoffFixture({ runId: "run_conflicting_task_001", taskId: "task_conflicting_task_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(taskFixture));
+    const taskRecorded = await recordSpecialistHandoff(recordInput(taskFixture));
+    const terminal = await appendSpecialistCompletionForTest(taskFixture, taskRecorded.recorded.id, taskRecorded.manifest.safeSummary);
+    await taskFixture.ledger.append(taskStatusAppendable(taskFixture, "blocked", terminal.id));
+    await expect(finalizeSpecialistRunAfterHandoff({
+      ledger: taskFixture.ledger,
+      actor: taskFixture.actor,
+      now: taskFixture.clock.now,
+      recorded: taskRecorded
+    })).rejects.toThrow(/task status/i);
+  });
+
+  it("does not append terminal success when manifest persistence fails after final-output", async () => {
+    const fixture = await durableHandoffFixture({ manifestStore: new FailAfterMaterialStore() });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+
+    await expect(recordSpecialistHandoff(recordInput(fixture))).rejects.toThrow(/manifest persistence unavailable/i);
+    expect((await fixture.ledger.readAll()).some((event) => event.type === "agent.specialist-run.completed")).toBe(false);
+  });
+
+  it("allows pre-output infrastructure failure to terminally fail without a handoff", async () => {
+    const fixture = await durableHandoffFixture();
+
+    await appendSpecialistFailure({
+      ledger: fixture.ledger,
+      actor: fixture.actor,
+      now: fixture.clock.now,
+      runId: fixture.runId,
+      category: "provider-unavailable",
+      message: "Provider infrastructure was unavailable before output persistence.",
+      retryable: true,
+      allowedActions: ["retry-provider"]
+    });
+    expect((await fixture.ledger.readAll()).map((event) => event.type)).not.toContain("agent.specialist-handoff.recorded");
+  });
+
+  it("requires a verified failed handoff before terminal run failure for a specialist failed result", async () => {
+    const fixture = await durableHandoffFixture({ status: "failed" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    await expect(finalizeSpecialistRunAfterHandoff({
+      ledger: fixture.ledger,
+      actor: fixture.actor,
+      now: fixture.clock.now,
+      recorded: { recorded: undefined } as never
+    })).rejects.toThrow(/verified failed handoff/i);
+
+    const recorded = await recordSpecialistHandoff(recordInput(fixture));
+    const finalized = await finalizeSpecialistRunAfterHandoff({ ledger: fixture.ledger, actor: fixture.actor, now: fixture.clock.now, recorded });
+    expect(finalized.terminal.type).toBe("agent.specialist-run.failed");
+  });
+
+  it("maps ready-for-review, waiting-for-approval, blocked, and failed handoffs to exact task transitions", async () => {
+    const expected = {
+      "ready-for-review": "completed",
+      "waiting-for-approval": "waiting-for-approval",
+      blocked: "blocked",
+      failed: "failed"
+    } as const;
+    for (const [status, taskStatus] of Object.entries(expected)) {
+      const fixture = await durableHandoffFixture({
+        runId: `run_transition_${status.replaceAll("-", "_")}`,
+        taskId: `task_transition_${status.replaceAll("-", "_")}`,
+        status: status as keyof typeof expected
+      });
+      await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+      const recorded = await recordSpecialistHandoff(recordInput(fixture));
+      const finalized = await finalizeSpecialistRunAfterHandoff({ ledger: fixture.ledger, actor: fixture.actor, now: fixture.clock.now, recorded });
+      expect(finalized.taskStatus?.payload.status).toBe(taskStatus);
+    }
+  });
+
+  it("rejects a forged recorded result whose canonical manifest or handoff differs from ledger readback", async () => {
+    const fixture = await durableHandoffFixture();
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const recorded = await recordSpecialistHandoff(recordInput(fixture));
+    const forged = {
+      ...recorded,
+      manifest: { ...recorded.manifest, safeSummary: "Forged durable handoff summary." },
+      handoff: { ...recorded.handoff, safeSummary: "Forged durable handoff summary." }
+    };
+
+    await expect(finalizeSpecialistRunAfterHandoff({
+      ledger: fixture.ledger,
+      actor: fixture.actor,
+      now: fixture.clock.now,
+      recorded: forged
+    })).rejects.toThrow(/ledger readback|canonical/i);
+  });
+
+  it("snapshots handoff values before awaits and rejects accessor-backed arrays and objects without invoking getters", async () => {
+    const fixture = await durableHandoffFixture();
+    const materialInput = handoffMaterialInput(fixture);
+    const outputArtifacts = materialInput.outputArtifacts.map((item) => ({ ...item }));
+    const mutatingLedger = new MutatingReadLedger(fixture.ledger, () => { outputArtifacts[0]!.safeSummary = "Late mutation."; });
+
+    const finalOutput = await appendSpecialistFinalOutputStep({
+      ...finalOutputInput(fixture),
+      ledger: mutatingLedger,
+      handoffMaterial: { ...buildSpecialistHandoffMaterial(materialInput), outputArtifacts } as never
+    });
+    expect(finalOutput.payload.outputArtifactHashes).toEqual([fixture.outputArtifact.artifactHash]);
+    const recorded = await recordSpecialistHandoff(recordInput(fixture));
+    expect(recorded.manifest.outputArtifacts[0]?.safeSummary).toBe(fixture.outputArtifact.safeSummary);
+
+    let getterCalls = 0;
+    const accessorArray: unknown[] = [];
+    Object.defineProperty(accessorArray, "0", {
+      enumerable: true,
+      get() {
+        getterCalls += 1;
+        return runnerHash;
+      }
+    });
+    accessorArray.length = 1;
+    await expect(appendSpecialistFinalOutputStep({
+      ...finalOutputInput(await durableHandoffFixture({ runId: "run_accessor_handoff_001", taskId: "task_accessor_handoff_001" })),
+      handoffMaterial: { ...buildSpecialistHandoffMaterial(handoffMaterialInput(await durableHandoffFixture({ runId: "run_accessor_handoff_002", taskId: "task_accessor_handoff_002" }))), contextPackRefs: accessorArray } as never
+    })).rejects.toThrow(/data properties/i);
+    expect(getterCalls).toBe(0);
+
+    const objectFixture = await durableHandoffFixture({ runId: "run_accessor_object_001", taskId: "task_accessor_object_001" });
+    let objectGetterCalls = 0;
+    const accessorArtifact = { ...objectFixture.outputArtifact } as Record<string, unknown>;
+    Object.defineProperty(accessorArtifact, "safeSummary", {
+      enumerable: true,
+      get() {
+        objectGetterCalls += 1;
+        return objectFixture.outputArtifact.safeSummary;
+      }
+    });
+    await expect(appendSpecialistFinalOutputStep({
+      ...finalOutputInput(objectFixture),
+      handoffMaterial: { ...buildSpecialistHandoffMaterial(handoffMaterialInput(objectFixture)), outputArtifacts: [accessorArtifact] } as never
+    })).rejects.toThrow(/data properties|DTO-safe/i);
+    expect(objectGetterCalls).toBe(0);
+  });
+
+  it("derives final-output schema authority before writing and rejects unavailable authority", async () => {
+    const fixture = await durableHandoffFixture();
+    const appended = await appendSpecialistFinalOutputStep({
+      ...finalOutputInput(fixture),
+      stepSchemaId: "caller-controlled-schema.v1"
+    } as never);
+    expect(appended.payload.stepSchemaId).toBe("evidence-triage-handoff.v1");
+
+    const unavailable = await durableHandoffFixture({ runId: "run_unavailable_schema_001", taskId: "task_unavailable_schema_001" });
+    const streamBefore = await unavailable.ledger.readStream(`agent_run_${unavailable.runId}`);
+    await unavailable.ledger.append({
+      type: "agent.specialist-run.started",
+      version: 1,
+      streamId: "agent_run_run_ontology_authority_001",
+      context: lifecycleContext(unavailable, unavailable.runStartedEventId),
+      payload: { runId: "run_ontology_authority_001", residentAgentId: "agent_default", runType: "ontology-bootstrap", startedBy: unavailable.actor.id, taskId: unavailable.taskId }
+    });
+    await expect(appendSpecialistFinalOutputStep({
+      ...finalOutputInput(unavailable),
+      runId: "run_ontology_authority_001"
+    })).rejects.toThrow(/authority|unavailable|ontology-bootstrap/i);
+    expect((await unavailable.ledger.readStream("agent_run_run_ontology_authority_001")).filter((event) => event.type === "agent.specialist-run.step.recorded")).toHaveLength(0);
+    expect(streamBefore.length).toBeGreaterThan(0);
+  });
+
+  it("rereads and reuses an exact final-output event after an append-time concurrency conflict", async () => {
+    const fixture = await durableHandoffFixture();
+    const racingLedger = new ExactAppendRaceLedger(fixture.ledger);
+
+    const finalOutput = await appendSpecialistFinalOutputStep({ ...finalOutputInput(fixture), ledger: racingLedger });
+    expect(finalOutput.payload.stepKind).toBe("final-output");
+    expect((await fixture.ledger.readStream(`agent_run_${fixture.runId}`)).filter((event) => event.type === "agent.specialist-run.step.recorded")).toHaveLength(1);
+  });
+
+  it("fails closed when a final-output race reread contains an exact event and a conflicting companion", async () => {
+    const fixture = await durableHandoffFixture();
+    const racingLedger = new CompanionRaceLedger(fixture.ledger, (event) => ({
+      ...event,
+      payload: { ...(event.payload as any), outputArtifactHashes: [hashBytes(Buffer.from("conflicting race output"))] } as any
+    }));
+
+    await expect(appendSpecialistFinalOutputStep({ ...finalOutputInput(fixture), ledger: racingLedger }))
+      .rejects.toThrow(/conflicting final-output/i);
+  });
+
+  it("fails closed when final-output retry or race sees a different material companion", async () => {
+    const fixture = await durableHandoffFixture({
+      runId: "run_final_output_material_conflict_001",
+      taskId: "task_final_output_material_conflict_001"
+    });
+    const exact = await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    await fixture.ledger.append({
+      ...exact,
+      id: "evt_final_output_material_conflict",
+      payload: {
+        ...exact.payload,
+        idempotencyKey: `${exact.payload.idempotencyKey}:conflicting-material`,
+        handoffMaterialArtifactHash: hashBytes(Buffer.from("different handoff material"))
+      },
+      sequence: undefined
+    } as never);
+    await expect(appendSpecialistFinalOutputStep(finalOutputInput(fixture)))
+      .rejects.toThrow(/conflicting final-output/i);
+
+    const raceFixture = await durableHandoffFixture({
+      runId: "run_final_output_material_race_001",
+      taskId: "task_final_output_material_race_001"
+    });
+    const racingLedger = new CompanionRaceLedger(raceFixture.ledger, (event) => ({
+      ...event,
+      payload: {
+        ...(event.payload as any),
+        idempotencyKey: `${(event.payload as any).idempotencyKey}:conflicting-material`,
+        handoffMaterialArtifactHash: hashBytes(Buffer.from("raced different handoff material"))
+      } as any
+    }));
+    await expect(appendSpecialistFinalOutputStep({ ...finalOutputInput(raceFixture), ledger: racingLedger }))
+      .rejects.toThrow(/conflicting final-output/i);
+  });
+
+  it("fails closed when supersession prior final-output companion has a forged idempotency", async () => {
+    const fixture = await durableHandoffFixture({
+      runId: "run_supersession_prior_idempotency_001",
+      taskId: "task_supersession_prior_idempotency_001"
+    });
+    const firstFinalOutput = await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const first = await recordSpecialistHandoff(recordInput(fixture));
+    await fixture.ledger.append({
+      ...firstFinalOutput,
+      id: "evt_forged_prior_final_output_idempotency",
+      payload: {
+        ...firstFinalOutput.payload,
+        idempotencyKey: `${firstFinalOutput.payload.idempotencyKey}:forged`
+      },
+      sequence: undefined
+    } as never);
+
+    await expect(appendSpecialistFinalOutputStep(finalOutputInput(fixture, {
+      safeSummary: "Corrected durable specialist handoff is available for review.",
+      supersedesHandoffId: first.handoff.handoffId,
+      supersedesEventId: first.recorded.id
+    }))).rejects.toThrow(/conflicting final-output/i);
+  });
+
+  it("fails closed when a terminal race reread contains an exact event and a conflicting companion", async () => {
+    const fixture = await durableHandoffFixture();
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const recorded = await recordSpecialistHandoff(recordInput(fixture));
+    const racingLedger = new CompanionRaceLedger(fixture.ledger, (event) => ({
+      ...event,
+      payload: { ...(event.payload as any), summary: "Conflicting terminal race summary." } as any
+    }));
+
+    await expect(finalizeSpecialistRunAfterHandoff({ ledger: racingLedger, actor: fixture.actor, now: fixture.clock.now, recorded }))
+      .rejects.toThrow(/conflicting terminal/i);
+  });
+
+  it("fails closed on prepared and recorded exact-plus-conflicting race companions", async () => {
+    const preparedFixture = await durableHandoffFixture({ runId: "run_prepared_race_001", taskId: "task_prepared_race_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(preparedFixture));
+    await expect(recordSpecialistHandoff({
+      ...recordInput(preparedFixture),
+      ledger: new TargetedCompanionRaceLedger(preparedFixture.ledger, "agent.specialist-handoff.prepared", (event) => ({
+        ...event, payload: { ...(event.payload as any), safeSummary: "Conflicting prepared race." } as any
+      }))
+    })).rejects.toThrow(/prepared/i);
+
+    const recordedFixture = await durableHandoffFixture({ runId: "run_recorded_race_001", taskId: "task_recorded_race_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(recordedFixture));
+    await expect(recordSpecialistHandoff({
+      ...recordInput(recordedFixture),
+      ledger: new TargetedCompanionRaceLedger(recordedFixture.ledger, "agent.specialist-handoff.recorded", (event) => ({
+        ...event, payload: { ...(event.payload as any), verifiedAt: "2026-07-10T15:30:00.000Z" } as any
+      }))
+    })).rejects.toThrow(/conflicting[- ]recorded/i);
+  });
+
+  it("fails closed on an exact-plus-conflicting task-status race companion", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_task_race_001", taskId: "task_task_race_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const recorded = await recordSpecialistHandoff(recordInput(fixture));
+    await expect(finalizeSpecialistRunAfterHandoff({
+      ledger: new TargetedCompanionRaceLedger(fixture.ledger, "agent.task.status.changed", (event) => ({
+        ...event, payload: { ...(event.payload as any), status: "blocked" } as any
+      })), actor: fixture.actor, now: fixture.clock.now, recorded
+    })).rejects.toThrow(/conflicting task status/i);
+  });
+
+  it("rejects task terminal statuses from another or unverified run causation", async () => {
+    const fixture = await durableHandoffFixture();
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const recorded = await recordSpecialistHandoff(recordInput(fixture));
+    await fixture.ledger.append(taskStatusAppendable(fixture, "blocked", "evt_unverified_task_status"));
+
+    await expect(finalizeSpecialistRunAfterHandoff({
+      ledger: fixture.ledger,
+      actor: fixture.actor,
+      now: fixture.clock.now,
+      recorded
+    })).rejects.toThrow(/task status/i);
+  });
+
+  it("appends a revision-two supersession with prepared causation bound to the prior recorded handoff", async () => {
+    const fixture = await durableHandoffFixture({
+      clockValues: [
+        "2026-07-10T15:00:00.000Z",
+        "2026-07-10T16:00:00.000Z",
+        "2026-07-10T17:00:00.000Z"
+      ]
+    });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const first = await recordSpecialistHandoff(recordInput(fixture));
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture, {
+      safeSummary: "Corrected durable specialist handoff is available for review.",
+      supersedesHandoffId: first.handoff.handoffId,
+      supersedesEventId: first.recorded.id
+    }));
+    const second = await recordSpecialistHandoff(recordInput(fixture));
+    const retry = await recordSpecialistHandoff(recordInput(fixture));
+
+    expect(second.handoff.handoffId).not.toBe(first.handoff.handoffId);
+    expect(second.prepared.context.causationId).toBe(first.recorded.id);
+    expect(second.recorded.context.causationId).toBe(second.prepared.id);
+    expect(retry.handoff.handoffRevision).toBe(2);
+    expect(retry.recorded.id).toBe(second.recorded.id);
+    expect(retry.recorded.payload.verifiedAt).toBe(second.recorded.payload.verifiedAt);
+    expect(fixture.clock.calls).toBe(2);
+  });
+
+  it("rejects supersession material that changes non-presentation anchors", async () => {
+    const fixture = await durableHandoffFixture({ runId: "run_supersession_anchor_001", taskId: "task_supersession_anchor_001" });
+    await appendSpecialistFinalOutputStep(finalOutputInput(fixture));
+    const first = await recordSpecialistHandoff(recordInput(fixture));
+
+    await expect(appendSpecialistFinalOutputStep(finalOutputInput(fixture, {
+      safeSummary: "Corrected durable specialist handoff is available for review.",
+      approvalRequirements: [{ approvalClass: "ledger-review", reason: "Changed approval contract." }],
+      supersedesHandoffId: first.handoff.handoffId,
+      supersedesEventId: first.recorded.id
+    }))).rejects.toThrow(/supersession.*anchor/i);
+    expect((await fixture.ledger.readStream(`agent_run_${fixture.runId}`)).filter((event) =>
+      event.type === "agent.specialist-run.step.recorded"
+    )).toHaveLength(1);
+  });
+});
+
+type DurableHandoffStatus = "ready-for-review" | "waiting-for-approval" | "blocked" | "failed";
+
+interface DurableHandoffFixture {
+  readonly ledger: InMemoryEventLedger;
+  readonly actor: { readonly id: string; readonly kind: "agent"; readonly label: string };
+  readonly clock: { readonly now: () => string; readonly calls: number };
+  readonly runId: string;
+  readonly taskId: string;
+  readonly status: DurableHandoffStatus;
+  readonly runStartedEventId: string;
+  readonly manifestStore: MemoryManifestStore;
+  readonly contextPackContentHash: `sha256:${string}`;
+  readonly promptArtifactHash: `sha256:${string}`;
+  readonly outputArtifact: {
+    readonly artifactId: string;
+    readonly artifactKind: string;
+    readonly schemaId: string;
+    readonly artifactHash: `sha256:${string}`;
+    readonly safeSummary: string;
+  };
+}
+
+async function durableHandoffFixture(options: {
+  readonly runId?: string;
+  readonly taskId?: string;
+  readonly status?: DurableHandoffStatus;
+  readonly clockValues?: readonly string[];
+  readonly manifestStore?: MemoryManifestStore;
+  readonly seedReferencedArtifacts?: boolean;
+} = {}): Promise<DurableHandoffFixture> {
+  const ledger = new InMemoryEventLedger();
+  const actor = { id: "actor_durable_handoff", kind: "agent" as const, label: "Durable Handoff Test" };
+  const runId = options.runId ?? "run_durable_handoff_001";
+  const taskId = options.taskId ?? "task_durable_handoff_001";
+  const status = options.status ?? "ready-for-review";
+  const clock = steppedClock(options.clockValues ?? ["2026-07-10T15:00:00.000Z"]);
+  const lifecycle = createAgentRuntime({ ledger, actor, now: () => "2026-07-10T14:00:00.000Z", providers: [] });
+  await lifecycle.initializeDefaultIdentity({ workspaceId: "ws_durable_handoff" });
+  await lifecycle.createTask({ taskId, title: "Record durable handoff", requestedBy: actor.id, priority: "normal" });
+  const started = await lifecycle.startRun({ runId, taskId, runType: "evidence-triage", scope: { kind: "workspace", refs: ["ws_durable_handoff"] } });
+  if (!started.ok) throw new Error("Unable to start durable handoff fixture run.");
+  const manifestStore = options.manifestStore ?? new MemoryManifestStore();
+  const contextBytes = Buffer.from(`durable context pack ${runId}`);
+  const promptBytes = Buffer.from(`durable prompt artifact ${runId}`);
+  const outputBytes = Buffer.from(`durable output ${runId}`);
+  const contextPackContentHash = hashBytes(contextBytes);
+  const promptArtifactHash = hashBytes(promptBytes);
+  const outputArtifactHash = hashBytes(outputBytes);
+  if (options.seedReferencedArtifacts !== false) {
+    manifestStore.seed(contextPackContentHash, contextBytes);
+    manifestStore.seed(promptArtifactHash, promptBytes);
+    manifestStore.seed(outputArtifactHash, outputBytes);
+  }
+  return {
+    ledger,
+    actor,
+    clock,
+    runId,
+    taskId,
+    status,
+    runStartedEventId: started.eventIds[0]!,
+    manifestStore,
+    contextPackContentHash,
+    promptArtifactHash,
+    outputArtifact: {
+      artifactId: `artifact_${runId}`,
+      artifactKind: "specialist-output",
+      schemaId: "evidence-triage-output.v1",
+      artifactHash: outputArtifactHash,
+      safeSummary: "Durable specialist output is available for review."
+    }
+  };
+}
+
+function finalOutputInput(fixture: DurableHandoffFixture, materialPatch: Record<string, unknown> = {}) {
+  const material = buildSpecialistHandoffMaterial({
+    ...handoffMaterialInput(fixture),
+    ...materialPatch
+  } as never);
+  return {
+    ledger: fixture.ledger,
+    materialStore: fixture.manifestStore,
+    actor: fixture.actor,
+    now: () => "2026-07-10T14:30:00.000Z",
+    runId: fixture.runId,
+    taskId: fixture.taskId,
+    handoffMaterial: material
+  };
+}
+
+function recordInput(fixture: DurableHandoffFixture) {
+  return {
+    ledger: fixture.ledger,
+    manifestStore: fixture.manifestStore,
+    actor: fixture.actor,
+    now: fixture.clock.now,
+    runId: fixture.runId,
+    taskId: fixture.taskId,
+  };
+}
+
+function handoffMaterialInput(fixture: DurableHandoffFixture) {
+  return {
+    status: fixture.status,
+    safeSummary: fixture.status === "failed"
+      ? "Specialist output failed validation and is available for retry review."
+      : "Durable specialist handoff is available for review.",
+    contextPackRefs: [{
+      contextPackId: "durable-handoff-test-pack.v1",
+      version: 1,
+      contentHash: fixture.contextPackContentHash,
+      sizeBytes: 1,
+      generatedAt: "2026-07-10T14:00:00.000Z",
+      safeSummary: "Durable handoff test context.",
+      provenanceRefs: [fixture.runStartedEventId],
+      sourceEventIds: [fixture.runStartedEventId]
+    }],
+    promptArtifactHash: fixture.promptArtifactHash,
+    outputArtifacts: [fixture.outputArtifact],
+    toolRequestIds: [],
+    approvalRequirements: fixture.status === "waiting-for-approval"
+      ? [{ approvalClass: "human-review" as const, reason: "Human review is required before continuation." }]
+      : [],
+    nextSafeActions: [{
+      actionId: "review-durable-handoff",
+      label: "Review durable handoff",
+      kind: "review" as const,
+      effect: fixture.status === "waiting-for-approval" ? "request-approval" as const : "none" as const,
+      artifactId: fixture.outputArtifact.artifactId
+    }],
+    ...(fixture.status === "failed" ? {
+      failure: {
+        category: "model-output-invalid" as const,
+        code: "model-output-invalid",
+        safeSummary: "Specialist output failed validation and can be retried.",
+        retryable: true
+      }
+    } : {}),
+    sourceEventIds: [fixture.runStartedEventId],
+    relatedEventIds: [fixture.runStartedEventId]
+  };
+}
+
+function canonicalMaterialBytes(fixture: DurableHandoffFixture): Buffer {
+  return serializeSpecialistLocalArtifact(buildSpecialistHandoffMaterial(handoffMaterialInput(fixture)));
+}
+
+function lifecycleEvent(id: string, sequence: number): KnowledgeEvent {
+  return {
+    id,
+    type: "agent.specialist-run.step.recorded",
+    version: 1,
+    streamId: "agent_run_sequence_fixture",
+    sequence,
+    context: {
+      actor: { id: "actor_durable_handoff", kind: "agent", label: "Durable Handoff Test" },
+      occurredAt: "2026-07-10T14:00:00.000Z",
+      correlationId: "corr_sequence_fixture",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      runId: "run_sequence_fixture",
+      stepId: "step_sequence_fixture",
+      summary: "Sequence fixture specialist step."
+    }
+  } as KnowledgeEvent;
+}
+
+function lifecycleContext(fixture: DurableHandoffFixture, causationId: string) {
+  return {
+    actor: fixture.actor,
+    occurredAt: "2026-07-10T15:00:00.000Z",
+    causationId,
+    correlationId: `corr_${fixture.runId}_handoff`,
+    coreVersion: "0.1.0",
+    packVersions: { core: "0.1.0", agent: "0.1.0" }
+  };
+}
+
+function preparedAppendable(fixture: DurableHandoffFixture, handoffManifestHash: `sha256:${string}`) {
+  const finalOutputEventId = "evt_final_conflict";
+  const handoffId = computeSpecialistHandoffId({
+    runId: fixture.runId,
+    taskId: fixture.taskId,
+    runType: "evidence-triage",
+    status: fixture.status,
+    finalOutputEventId,
+    outputArtifactHashes: [fixture.outputArtifact.artifactHash],
+    handoffRevision: 1
+  });
+  return {
+    type: "agent.specialist-handoff.prepared" as const,
+    version: 1 as const,
+    streamId: `agent_run_${fixture.runId}`,
+    context: lifecycleContext(fixture, finalOutputEventId),
+    payload: {
+      handoffId,
+      handoffRevision: 1,
+      idempotencyKey: `specialist-handoff:${fixture.runId}:${fixture.taskId}:evidence-triage:${fixture.status}:${handoffManifestHash}`,
+      handoffManifestHash,
+      handoffDtoHash: runnerHash,
+      handoffMaterialArtifactHash: runnerHash,
+      runId: fixture.runId,
+      taskId: fixture.taskId,
+      runType: "evidence-triage" as const,
+      residentAgentId: "agent_default" as const,
+      status: fixture.status,
+      safeSummary: "Conflicting prepared handoff binding.",
+      finalOutputStepId: `step_${fixture.runId}_final_output`,
+      finalOutputEventId,
+      contextPackHashes: [runnerHash],
+      promptArtifactHash: runnerHash,
+      outputArtifactHashes: [fixture.outputArtifact.artifactHash],
+      toolRequestIds: [],
+      sourceEventIds: ["evt_source_001"],
+      relatedEventIds: ["evt_source_001"]
+    }
+  };
+}
+
+async function appendSpecialistCompletionForTest(
+  fixture: DurableHandoffFixture,
+  causationId: string,
+  summary = "Terminal run was appended for conflict testing."
+): Promise<KnowledgeEvent> {
+  return await fixture.ledger.append({
+    type: "agent.specialist-run.completed",
+    version: 1,
+    streamId: `agent_run_${fixture.runId}`,
+    context: lifecycleContext(fixture, causationId),
+    payload: {
+      runId: fixture.runId,
+      completedAt: "2026-07-10T15:00:00.000Z",
+      outputArtifactHashes: [fixture.outputArtifact.artifactHash],
+      relatedEventIds: [causationId],
+      summary
+    }
+  });
+}
+
+function taskStatusAppendable(
+  fixture: DurableHandoffFixture,
+  status: "blocked" | "completed" | "failed" | "waiting-for-approval",
+  causationId: string
+) {
+  return {
+    type: "agent.task.status.changed" as const,
+    version: 1 as const,
+    streamId: `agent_task_${fixture.taskId}`,
+    context: lifecycleContext(fixture, causationId),
+    payload: {
+      taskId: fixture.taskId,
+      status,
+      changedBy: fixture.actor.id,
+      reason: `Task status moved to ${status} for conflict testing.`,
+      runId: fixture.runId
+    }
+  };
+}
+
+function steppedClock(values: readonly string[]) {
+  let calls = 0;
+  return {
+    now: () => values[calls++] ?? values.at(-1)!,
+    get calls() { return calls; }
+  };
+}
+
+class MutatingReadLedger implements EventLedger {
+  constructor(
+    private readonly delegate: EventLedger,
+    private readonly mutate: () => void
+  ) {}
+
+  async append(event: Parameters<EventLedger["append"]>[0], options?: Parameters<EventLedger["append"]>[1]) {
+    return await this.delegate.append(event, options);
+  }
+
+  async readStream(streamId: string) {
+    const events = await this.delegate.readStream(streamId);
+    this.mutate();
+    return events;
+  }
+
+  async readAll() {
+    return await this.delegate.readAll();
+  }
+}
+
+class ExactAppendRaceLedger implements EventLedger {
+  private injected = false;
+
+  constructor(private readonly delegate: EventLedger) {}
+
+  async append(event: Parameters<EventLedger["append"]>[0], options?: Parameters<EventLedger["append"]>[1]) {
+    if (!this.injected) {
+      this.injected = true;
+      await this.delegate.append(event);
+      throw new ConcurrencyConflictError("Injected exact append race.");
+    }
+    return await this.delegate.append(event, options);
+  }
+
+  async readStream(streamId: string) {
+    return await this.delegate.readStream(streamId);
+  }
+
+  async readAll() {
+    return await this.delegate.readAll();
+  }
+}
+
+class CompanionRaceLedger implements EventLedger {
+  private injected = false;
+
+  constructor(
+    private readonly delegate: EventLedger,
+    private readonly companion: (event: Parameters<EventLedger["append"]>[0]) => Parameters<EventLedger["append"]>[0]
+  ) {}
+
+  async append(event: Parameters<EventLedger["append"]>[0], options?: Parameters<EventLedger["append"]>[1]) {
+    if (!this.injected) {
+      this.injected = true;
+      await this.delegate.append(event);
+      await this.delegate.append(this.companion(event));
+      throw new ConcurrencyConflictError("Injected exact and conflicting append race.");
+    }
+    return await this.delegate.append(event, options);
+  }
+
+  async readStream(streamId: string) { return await this.delegate.readStream(streamId); }
+  async readAll() { return await this.delegate.readAll(); }
+}
+
+class TargetedCompanionRaceLedger implements EventLedger {
+  private injected = false;
+  constructor(private readonly delegate: EventLedger, private readonly type: string, private readonly companion: (event: Parameters<EventLedger["append"]>[0]) => Parameters<EventLedger["append"]>[0]) {}
+  async append(event: Parameters<EventLedger["append"]>[0], options?: Parameters<EventLedger["append"]>[1]) {
+    if (!this.injected && event.type === this.type) {
+      this.injected = true;
+      await this.delegate.append(event);
+      await this.delegate.append(this.companion(event));
+      throw new ConcurrencyConflictError("Injected targeted companion race.");
+    }
+    return await this.delegate.append(event, options);
+  }
+  async readStream(streamId: string) { return await this.delegate.readStream(streamId); }
+  async readAll() { return await this.delegate.readAll(); }
+}
+
+class MemoryManifestStore {
+  private readonly contents = new Map<`sha256:${string}`, Buffer>();
+
+  seed(contentHash: `sha256:${string}`, content: Buffer): void {
+    this.contents.set(contentHash, Buffer.from(content));
+  }
+
+  async put(content: Buffer): Promise<{ readonly contentHash: `sha256:${string}`; readonly sizeBytes: number }> {
+    const contentHash = hashBytes(content);
+    this.contents.set(contentHash, Buffer.from(content));
+    return { contentHash, sizeBytes: content.byteLength };
+  }
+
+  async get(contentHash: `sha256:${string}`): Promise<Buffer> {
+    const content = this.contents.get(contentHash);
+    if (content === undefined) throw new Error(`Manifest ${contentHash} is unavailable.`);
+    return Buffer.from(content);
+  }
+}
+
+class FailAfterMaterialStore extends MemoryManifestStore {
+  private writes = 0;
+
+  override async put(content: Buffer) {
+    this.writes += 1;
+    if (this.writes > 1) throw new Error("manifest persistence unavailable");
+    return await super.put(content);
+  }
+}
+
 const runnerContextPackIds = [
   "accepted-graph-projection.v1",
   "evidence-summary.v1",
@@ -388,7 +1385,7 @@ function runnerParserIdentity(contextPackId: typeof runnerContextPackIds[number]
   return contextPackId;
 }
 
-const runnerHash = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
+const runnerHash: `sha256:${string}` = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
 
 function runnerPayload(contextPackId: typeof runnerContextPackIds[number]): Record<string, unknown> {
   switch (contextPackId) {
