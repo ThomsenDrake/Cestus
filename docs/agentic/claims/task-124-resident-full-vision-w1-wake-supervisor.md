@@ -129,3 +129,43 @@ the coordinator as a recovery checkpoint.
 
 Status: in-progress only in this complete-contract repair; the prior partial
 candidate remains preserved and unintegrated.
+
+## Complete-Contract Repair RED/GREEN Evidence — 2026-07-13
+
+- Fresh replacement author worked only in this isolated repair worktree at
+  authorization `8dae042eebe5cb913f342a9c9fc04c42fa9b9f81`; no Relay B,
+  prerequisite, or `neo` file was touched.
+- Initial focused invocation was dependency-blocked before discovery with
+  `sh: 1: vitest: command not found`. The standard isolated recovery
+  `npm ci --ignore-scripts` restored only ignored dependencies and left tracked
+  files unchanged. The actual RED command
+  `npm test -- packages/agent/test/wake-supervisor.test.ts packages/agent/test/scheduler.test.ts`
+  then failed with `TypeError: supervisor.start is not a function` (one failed,
+  seventeen passing tests), proving the missing public lifecycle boundary.
+- The expanded deterministic RED/GREEN matrix drives versioned `start`,
+  `pause`, `resume`, `recover`, and terminal `stop`; one immutable authority
+  admission plus full lease/policy-lock/high-water tuple; typed active-claim
+  reconciliation lookup/append/readback; swapped provenance rejection with zero
+  runtime/reconciliation effect; competing-lease no-effect; exact recovery
+  exhaustion; abort/no-later-effect stop behavior; and hostile/omitted/unknown/
+  sparse public DTO rejection without getter execution.
+- GREEN: the exact focused command exited `0`: 2 files and 28 tests passed.
+  `npm run typecheck` printed `typecheck passed`; `git diff --check` was empty;
+  and `npm run factory:check` printed `factory-readiness passed`. No full
+  verifier was started until the coordinator released the serialized slot.
+- The replacement still owns only this claim, `packages/agent/src/wake-supervisor.ts`,
+  and `packages/agent/test/wake-supervisor.test.ts`. A single retained full
+  verification run and fresh independent review remain required before any
+  coordinator integration.
+
+## Complete-Contract Repair Full Verification — 2026-07-13
+
+- Coordinator released the serialized verifier slot after Relay B Task120's
+  clean checkpoint `43eb9642cc08f1646b1c1defe5a15e8aab5c2149`; this repair
+  then ran exactly one retained `npm run verify` in its isolated worktree.
+- Exit `0`: typecheck passed; 191 test files passed with 3 skipped; 2,266
+  tests passed with 5 skipped; Vite production build passed; and
+  `factory-readiness passed`. The Vite chunk-size advisory was non-failing
+  build output and does not alter this task's owned boundary.
+- The candidate is ready only for a fresh independent read-only review. This
+  author will not self-review, self-integrate, or merge `neo`.
