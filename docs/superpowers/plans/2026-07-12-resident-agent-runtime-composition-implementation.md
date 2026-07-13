@@ -120,7 +120,7 @@ interface ProductionMountedRunnerHandoffBinding {
   readonly workspaceId: string;
   readonly mountInstanceId: string;
   readonly artifactStores: MountedAgentArtifactStores;
-  dispatch(input: VerifiedMountedRunnerHandoffDispatchInput): Promise<TaskOrchestratorRunnerDispatchResult>;
+  dispatch(input: TaskOrchestratorRunnerDispatchInput): Promise<TaskOrchestratorRunnerDispatchResult | void>;
 }
 
 interface ProductionRuntimeReadiness {
@@ -159,9 +159,9 @@ CF-1 additionally freezes `MountedContextCapability`,
 `ProductionPromptCapability`, `ProductionSpecialistRunnerCapability`,
 `ExactRunPromptBinding`, `SpecialistRunnerRegistrationBinding`,
 `MountedHandoffMaterialStore`, `MountedHandoffManifestStore`, and the exact
-canonical hash/parser helpers. It also freezes
-`VerifiedMountedRunnerHandoffDispatchInput`, the exact parser and version for
-`ProductionMountedRunnerHandoffBinding`, and R's
+canonical hash/parser helpers. It also freezes the exact parser and version for
+`ProductionMountedRunnerHandoffBinding`, the internal
+`VerifiedMountedRunnerHandoffDispatchInput` parser, and R's
 `ProductionRuntimeReadinessCapability` accessor. R owns that capability and
 its source projection; W consumes its zero-argument safe accessor for
 supervision, while U owns the exact parser and route implementation for
@@ -169,6 +169,52 @@ supervision, while U owns the exact parser and route implementation for
 composition input, prompt text, secret, storage path, or caught error. If
 CF-1 assigns an identifier, owner, or parser differently, stop before RED and
 request a coordinator freeze/rebase correction.
+
+### CF-1 Public Dispatch Conformance
+
+CF-1 consumes the existing `TaskOrchestratorRunnerDispatchInput` and
+`TaskOrchestratorRunnerRegistry` directly from
+`packages/agent/src/task-orchestrator.ts`; Lane R must not copy, widen, or
+shadow either shared type. `ProductionMountedRunnerHandoffBinding.dispatch`
+is the production `TaskOrchestratorRunnerRegistry["dispatch"]` implementation.
+Its public caller shape is exactly the established
+`TaskOrchestratorRunnerDispatchInput`: `taskId`, `runType`, `attemptId`, and
+`approvedRunId`. It takes no caller-supplied workspace authority, mounted
+store, runner registration, material/manifest receipt, H handoff capability,
+provider, prompt, or closure object.
+
+The binding factory closes over one validated
+`MountedWorkspaceRuntimeAuthority`, `MountedAgentArtifactStores`,
+`ProductionSpecialistRunnerCapability`, and
+`TaskOrchestratorHandoffCapability`. CF-1's internal
+`VerifiedMountedRunnerHandoffDispatchInput` parser may combine the normalized
+public four-field input with that factory-composed closure, but the parser
+output is never a caller-facing dispatch type and cannot be assembled from
+caller objects. It proves the same workspace ID, mount instance ID, authority
+hash, registration provenance, store object identity, and H capability before
+Task 134 dispatch. An unconstrained `(input: unknown)`/variadic dispatch or a
+dispatch that accepts caller-supplied stores is non-conformant.
+
+Task 135 must write a focused CF-1 type-and-behavior test using the existing
+orchestrator caller surface, not a surrogate fixture:
+
+```ts
+const publicDispatch: TaskOrchestratorRunnerRegistry["dispatch"] =
+  binding.dispatch.bind(binding);
+
+await publicDispatch({
+  taskId: "task_runtime",
+  runType: "evidence-triage",
+  attemptId: "attempt_runtime",
+  approvedRunId: "run_runtime"
+});
+```
+
+That test must prove the internal Task 134 call received the same
+factory-closed authority, stores, registration, and H handoff capability; it
+must also prove an extra own `artifactStores` key is rejected before runner or
+H activity. This is a CF-1 compatibility rule only. It does not freeze a new
+shared production type in Task 109.
 
 ## File Ownership and Merge Order
 
@@ -415,7 +461,12 @@ This task performs no remote call and does not modify P configuration.
 
 **Consumes:** verified authority/context/prompt/provider readiness,
 `AgentTaskOrchestratorApprovalReader`, H's handoff capability, L's run-bound
-budget/terminal policy, and frozen runner registrations. **Produces:**
+budget/terminal policy, and frozen runner registrations. Its
+`VerifiedSpecialistDispatchInput` is emitted only by the factory-composed
+mounted closure from Task 135: it binds the same
+`MountedWorkspaceRuntimeAuthority`, `MountedAgentArtifactStores`, and
+`TaskOrchestratorHandoffCapability` that the factory validated. Task 134 does
+not accept a caller-created authority/store/handoff tuple. **Produces:**
 
 ```ts
 export function createProductionSpecialistRunnerCapability(input: {
@@ -448,6 +499,36 @@ it("does not dispatch when one required adapter family is absent", async () => {
   await expect(runners.dispatch(verifiedDispatch({ adapterFamilies: ["handoff.v1"] })))
     .rejects.toMatchObject({ code: "runner-registration-invalid" });
   expect(dispatchVerified).not.toHaveBeenCalled();
+});
+
+it("accepts authority, mounted stores, and H handoff only from the factory-composed mounted closure", async () => {
+  const authority = mountedAuthority();
+  const artifactStores = mountedStores({ authority });
+  const handoffCapability = handoffCapabilityFor(authority);
+  const dispatchVerified = vi.fn(async () => durableRunnerResult());
+  const runners = createProductionSpecialistRunnerCapability({
+    authority,
+    registrations: [runnerRegistration()],
+    dispatchVerified
+  });
+  const closure = verifiedMountedRunnerHandoffClosure({
+    authority,
+    artifactStores,
+    handoffCapability
+  });
+
+  await runners.dispatch(verifiedDispatchFromFactory({
+    publicDispatch: orchestratorDispatchInput(),
+    closure
+  }));
+  expect(dispatchVerified).toHaveBeenCalledWith(expect.objectContaining({
+    authority,
+    artifactStores,
+    handoffCapability
+  }));
+  await expect(runners.dispatch(verifiedDispatchWithCallerStores({ authority })))
+    .rejects.toMatchObject({ code: "runner-registration-invalid" });
+  expect(dispatchVerified).toHaveBeenCalledTimes(1);
 });
 ```
 
@@ -489,6 +570,11 @@ export function createProductionSpecialistRunnerCapability(input: {
 `verifySpecialistDispatchReadiness` stops before a delegate call.
 `verifyDurableRunnerResult` requires H's typed material, manifest, ledger, and
 lifecycle readback. Both normalize before await and expose frozen safe codes.
+The Task 134 test helper accepts a verified dispatch only from Task 135's
+factory-composed mounted closure. It compares the exact authority, mounted
+store object, registration provenance, and H handoff capability before it
+calls `dispatchVerified`; a caller-created closure or caller-supplied store is
+rejected as `runner-registration-invalid` before the delegate or H path.
 
 - [ ] **Step 4: Run the focused GREEN command.**
 
@@ -560,6 +646,18 @@ hash, H ledger/lifecycle readback, and the original workspace/mount tuple.
 There is no generic runner-returned store fallback, local copy, cache, or
 second handoff path.
 
+### Public orchestrator dispatch and closure binding
+
+The binding is the `TaskOrchestratorRunnerRegistry` exposed to existing
+orchestrator callers. Its `dispatch` accepts only
+`TaskOrchestratorRunnerDispatchInput`; it normalizes that exact four-field
+public object and rejects unexpected own fields, including caller-supplied
+`artifactStores`. It derives the internal
+`VerifiedMountedRunnerHandoffDispatchInput` from the factory-closed authority,
+stores, registration, and H handoff capability. A caller cannot replace or
+augment that closure. The public dispatch never accepts a generic store,
+receipt, authority, provider, renderer, prompt, or handoff argument.
+
 - [ ] **Step 1: Write failing persistence-order and no-fallback tests.**
 
 ```ts
@@ -586,6 +684,46 @@ same store object and authority tuple to the runner, and that the only accepted
 handoff is H's path after material then manifest readback. A swapped mounted
 store, returned generic `store`, or authority mismatch must reject before the
 runner/H spies and leave every fallback-store spy uncalled.
+
+Add the CF-1 dispatch-conformance test below. It assigns the binding method to
+the established orchestrator registry type, then proves the binding derives
+the internal verified dispatch from its closure rather than from a widened
+caller object:
+
+```ts
+it("keeps the public orchestrator dispatch shape while closure-binding stores and H handoff", async () => {
+  const binding = createProductionMountedRunnerHandoffBinding({
+    authority,
+    artifactStores,
+    runnerCapability,
+    handoffCapability
+  });
+  const publicDispatch: TaskOrchestratorRunnerRegistry["dispatch"] = binding.dispatch.bind(binding);
+  const dispatchInput: TaskOrchestratorRunnerDispatchInput = {
+    taskId: "task_runtime",
+    runType: "evidence-triage",
+    attemptId: "attempt_runtime",
+    approvedRunId: "run_runtime"
+  };
+
+  await publicDispatch(dispatchInput);
+  expect(runnerCapability.dispatch).toHaveBeenCalledWith(expect.objectContaining({
+    publicDispatch: dispatchInput,
+    authority,
+    artifactStores,
+    handoffCapability
+  }));
+  const callerAttempt = { ...dispatchInput, artifactStores: forgedStores };
+  await expect(publicDispatch(callerAttempt as unknown as TaskOrchestratorRunnerDispatchInput))
+    .rejects.toMatchObject({ code: "runner-registration-invalid" });
+  expect(handoffCapability.prepare).toHaveBeenCalledTimes(1);
+});
+```
+
+The test's caller-supplied artifactStores counterfactual must fail before the
+Task 134 delegate or H handoff. Replacing the typed assignment with an
+unconstrained dispatch or forwarding the forged store is a failed CF-1
+conformance result, not a compatibility shim.
 
 - [ ] **Step 2: Run the focused RED command.**
 
@@ -623,13 +761,16 @@ material evidence; manifest requires it and verifies the same material hash.
 No error path writes elsewhere.
 
 Implement `createProductionMountedRunnerHandoffBinding` in the same R-owned
-module. Normalize the dispatch input before await; compare the binding's store
-object identity and authority tuple with the CF-1 frozen values; invoke only
-`runnerCapability.dispatch` with the verified mounted-store/H-handoff binding;
-then verify the returned H evidence through `artifactStores` and the supplied
-`handoffCapability`. Reject any result that tries to introduce a generic store
-reference or replacement backend. The wrapper may not construct or select a
-store, renderer, runner, provider, or handoff fallback.
+module. Normalize the public `TaskOrchestratorRunnerDispatchInput` before
+await, reject unexpected own fields, and derive the internal verified dispatch
+only from the binding's closed authority/store/registration/H tuple. Compare
+the binding's store object identity and authority tuple with the CF-1 frozen
+values; invoke only `runnerCapability.dispatch` with that internal verified
+mounted-store/H-handoff binding; then verify the returned H evidence through
+`artifactStores` and the supplied `handoffCapability`. Reject any result that
+tries to introduce a generic store reference, caller-supplied store, or
+replacement backend. The wrapper may not construct or select a store, renderer,
+runner, provider, or handoff fallback.
 
 - [ ] **Step 4: Run the focused GREEN command.**
 
@@ -735,6 +876,20 @@ it("keeps structural-ready waiting-for-approval non-executable without fallback"
   expect(readiness.providerInvocation.state).toBe("waiting-for-human-approval");
   expect(readiness.executable).toBe(false);
 });
+
+it("injects the same readiness accessor into W and gives U only its safe projection", () => {
+  const composition = createProductionAgentRuntimeComposition(compositionInput());
+  const wakeRuntime = wakeSupervisorRuntimeForTest({
+    runtimeReadiness: composition.readiness
+  });
+  expect(wakeRuntime.runtimeReadiness).toBe(composition.readiness);
+  const routeDto: ProductionRuntimeReadinessRouteDto =
+    toProductionRuntimeReadinessRouteDto(composition.readiness.getReadiness());
+  expect(routeDto).not.toHaveProperty("prompt");
+  expect(routeDto).not.toHaveProperty("secret");
+  expect(routeDto).not.toHaveProperty("path");
+  expect(routeDto).not.toHaveProperty("rawError");
+});
 ```
 
 Add failure injection for absent mount, identity mismatch/not-ready, stale
@@ -747,10 +902,13 @@ factory/write/constructor call. Add a dispatch test proving the runner receives
 the exact Task 135 binding and that H's handoff path receives only its verified
 material/manifest readback. A mismatched binding or runner-returned generic
 store must fail closed before either final handoff or a fallback constructor.
-Add safe-readiness consumer tests: W receives the same
-`composition.readiness.getReadiness` accessor, and U's route fixture receives
-only `ProductionRuntimeReadinessRouteDto` projected from that accessor, never
-raw composition input or a prompt/secret/path/error field.
+Add safe-readiness consumer tests: W's `WakeSupervisorRuntime` receives the
+same `composition.readiness` capability object and calls only
+`composition.readiness.getReadiness()`; it never receives a readiness snapshot
+or raw composition input. U's `toProductionRuntimeReadinessRouteDto` receives
+only the value from `composition.readiness.getReadiness()` and returns the
+frozen `ProductionRuntimeReadinessRouteDto`, never raw composition input or a
+prompt/secret/path/error field.
 
 - [ ] **Step 2: Run the focused RED command.**
 
@@ -805,14 +963,16 @@ provider invocation readiness; it is used only by the R-owned
 `ProductionRuntimeReadinessCapability.getReadiness` accessor, not left as an
 unconsumed helper. `executable` is true only with structural `ready` plus
 current `ready-to-invoke` requirements. The default factory exposes that
-accessor on the production composition and injects the same accessor into W's
-`WakeSupervisorRuntime` observation boundary. U later consumes only the
-CF-1-frozen `ProductionRuntimeReadinessRouteDto` projection from that
-accessor at its route boundary; it neither reconstructs readiness nor imports
-server/runtime dependencies. The accessor and DTO exclude raw prompts,
-secrets, paths, response bytes, and caught errors. The default factory gets
-P/W capabilities through their reviewed APIs and preserves fail-closed
-diagnostics when preconditions are unavailable.
+accessor on the production composition and injects the same
+`composition.readiness` object into W's `WakeSupervisorRuntime` observation
+boundary. W calls only `composition.readiness.getReadiness()` and receives no
+raw composition input. U's `toProductionRuntimeReadinessRouteDto` is called
+only with `composition.readiness.getReadiness()` at its route boundary; it
+returns the CF-1-frozen `ProductionRuntimeReadinessRouteDto`, neither
+reconstructs readiness nor imports server/runtime dependencies. The accessor
+and DTO exclude raw prompts, secrets, paths, response bytes, and caught errors.
+The default factory gets P/W capabilities through their reviewed APIs and
+preserves fail-closed diagnostics when preconditions are unavailable.
 
 - [ ] **Step 4: Run the focused GREEN command.**
 

@@ -267,3 +267,177 @@ NODE
 - Repair status: ready for a fresh independent Task 109 plan re-review. This
   record supersedes only the historical loose-audit and incomplete
   runtime-wiring evidence; it preserves all earlier claim entries verbatim.
+
+## Repair R2: Dispatch Conformance and Semantic-Audit Recovery
+
+- Repair worker and branch: `/root/task109_runtime_plan_repair_2` on
+  `codex/task-109-resident-full-vision-w0-runtime-plan-repair-2`, based on
+  `048d43b00df1de0d71f2eab1a6b994abd77c06d1`.
+- Scoped authorization: the coordinator authorized only Task 109
+  dispatch-conformance and semantic-audit repair against Lane R specification
+  `05e85392367964a3869a55832703f504dd0fe3da` and governing plan
+  `0b5726ec975bdc0aae97e540472ef3be4379b358`. The wave stop is one verified
+  repair commit and fresh re-review. It explicitly authorizes
+  `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD,
+  fresh review, and verification-before-completion; it forbids Tasks 132–140,
+  CF-1 implementation, production work, provider invocation, and a merge into
+  `neo` or an integration branch.
+- Status: in-progress.
+- Root cause: R1's audit limited searches to Markdown sections, but still used
+  independent token-presence assertions. It could accept prose that mentioned
+  the Task 135 readback nouns without proving their ordered chain, Task 134's
+  authority/store/H closure without proving it was factory-derived, or Task
+  140's W/U names without proving accessor-only injection. It also left
+  `ProductionMountedRunnerHandoffBinding.dispatch` narrower than the existing
+  public `TaskOrchestratorRunnerDispatchInput` contract and did not reject a
+  caller-supplied store attempt.
+- Required recovery: preserve the public orchestrator dispatch shape exactly;
+  bind validated registration, mounted stores, authority tuple, and H handoff
+  only in the factory-composed closure; add section-local, ordered, and
+  counterfactual documentation evidence. No shared production contract changes
+  in this documentation-only task.
+- RED: before this repair, the new section-local semantic audit exited 1 with
+  `RED: missing CF-1 public TaskOrchestratorRunnerDispatchInput conformance`.
+- GREEN, full verification, self-review, and review evidence are recorded only
+  after this repair's fresh commands complete. This append-only record
+  supersedes no historical claim evidence while it remains in progress.
+
+### R2 Documentation RED/GREEN Audit
+
+The RED command above used this audit before the plan change and failed at the
+new CF-1 public-dispatch requirement. After the repair, the exact command
+below exited 0 with `GREEN: Task 109 semantic section-local audit passed (8
+actual-clause counterfactuals rejected).` It extracts named sections and the
+specific Task 134, 135, and 140 test fences; it does not let another section's
+prose satisfy a local requirement. Each in-memory mutation deletes or replaces
+the clause that establishes the stated relationship, then must make the audit
+fail.
+
+```bash
+node --input-type=module <<'NODE'
+import fs from "node:fs";
+
+const plan = fs.readFileSync(
+  "docs/superpowers/plans/2026-07-12-resident-agent-runtime-composition-implementation.md",
+  "utf8"
+);
+const section = (source, start, end) => {
+  const from = source.indexOf(start);
+  const to = source.indexOf(end, from + start.length);
+  if (from < 0 || to < 0) throw new Error(`missing section boundary: ${start} -> ${end}`);
+  return source.slice(from, to);
+};
+const codeFenceContaining = (source, needle) => {
+  const needleAt = source.indexOf(needle);
+  const start = source.lastIndexOf("```ts", needleAt);
+  const end = source.indexOf("```", needleAt);
+  if (needleAt < 0 || start < 0 || end < 0) throw new Error(`missing code fence for ${needle}`);
+  return source.slice(start, end + 3);
+};
+const normalize = (source) => source.replace(/\s+/g, " ");
+const requireMatch = (source, expression, label) => {
+  if (!expression.test(source)) throw new Error(`missing ${label}`);
+};
+const requireOrdered = (source, phrases, label) => {
+  let cursor = 0;
+  for (const phrase of phrases) {
+    const next = source.indexOf(phrase, cursor);
+    if (next < 0) throw new Error(`missing ${label}: ${phrase}`);
+    cursor = next + phrase.length;
+  }
+};
+const replaceSection = (source, start, end, mutate) => {
+  const from = source.indexOf(start);
+  const to = source.indexOf(end, from + start.length);
+  if (from < 0 || to < 0) throw new Error(`cannot mutate section: ${start}`);
+  return source.slice(0, from) + mutate(source.slice(from, to)) + source.slice(to);
+};
+const audit = (source) => {
+  const contracts = section(source, "## CF-1 Consumed Contracts", "## File Ownership and Merge Order");
+  const task134 = section(source, "## Task 134:", "## Task 135:");
+  const task135 = section(source, "## Task 135:", "## Task 140:");
+  const task140 = section(source, "## Task 140:", "## Failure, Rollback, and Real Nous Gate");
+  const task134ClosureTest = codeFenceContaining(task134, "accepts authority, mounted stores, and H handoff only");
+  const task135ConformanceTest = codeFenceContaining(task135, "keeps the public orchestrator dispatch shape");
+  const task140ReadinessTest = codeFenceContaining(task140, "injects the same readiness accessor into W");
+
+  requireMatch(contracts, /interface ProductionMountedRunnerHandoffBinding[\s\S]*?dispatch\(input: TaskOrchestratorRunnerDispatchInput\): Promise<TaskOrchestratorRunnerDispatchResult \| void>;/, "CF-1 public TaskOrchestratorRunnerDispatchInput conformance");
+  requireOrdered(normalize(contracts), [
+    'ProductionMountedRunnerHandoffBinding.dispatch` is the production `TaskOrchestratorRunnerRegistry["dispatch"]` implementation.',
+    "TaskOrchestratorRunnerDispatchInput`: `taskId`, `runType`, `attemptId`, and `approvedRunId`.",
+    "It takes no caller-supplied workspace authority, mounted store, runner registration, material/manifest receipt, H handoff capability"
+  ], "CF-1 exact public dispatch scope");
+  requireMatch(task134, /factory-composed\s+mounted closure[\s\S]*?MountedWorkspaceRuntimeAuthority[\s\S]*?MountedAgentArtifactStores[\s\S]*?TaskOrchestratorHandoffCapability/, "Task 134 authority/store/H closure rule");
+  requireMatch(task134ClosureTest, /const closure = verifiedMountedRunnerHandoffClosure\([\s\S]*?authority,[\s\S]*?artifactStores,[\s\S]*?handoffCapability[\s\S]*?verifiedDispatchFromFactory[\s\S]*?publicDispatch: orchestratorDispatchInput\(\)[\s\S]*?expect\(dispatchVerified\)\.toHaveBeenCalledWith[\s\S]*?authority,[\s\S]*?artifactStores,[\s\S]*?handoffCapability/, "Task 134 closure identity test");
+  requireMatch(task134ClosureTest, /verifiedDispatchWithCallerStores[\s\S]*?runner-registration-invalid[\s\S]*?toHaveBeenCalledTimes\(1\)/, "Task 134 caller-store rejection before delegate reuse");
+  requireOrdered(normalize(task135), ["derivative readback", "material readback", "manifest readback bound to the verified material hash", "H ledger/lifecycle readback", "original workspace/mount tuple"], "Task 135 exact durable readback chain");
+  requireMatch(task135ConformanceTest, /const publicDispatch:\s*TaskOrchestratorRunnerRegistry\["dispatch"\]\s*=\s*binding\.dispatch\.bind\s*\(binding\);[\s\S]*?const dispatchInput: TaskOrchestratorRunnerDispatchInput[\s\S]*?await publicDispatch\(dispatchInput\);[\s\S]*?publicDispatch: dispatchInput,[\s\S]*?authority,[\s\S]*?artifactStores,[\s\S]*?handoffCapability/, "Task 135 typed public dispatch and sealed closure test");
+  requireMatch(task135ConformanceTest, /const callerAttempt = \{ \.\.\.dispatchInput, artifactStores: forgedStores \};[\s\S]*?publicDispatch\(callerAttempt as unknown as TaskOrchestratorRunnerDispatchInput\)[\s\S]*?runner-registration-invalid/, "Task 135 caller-supplied store rejection test");
+  requireMatch(task140ReadinessTest, /runtimeReadiness:\s*composition\.readiness\s*[,\n}][\s\S]*?wakeRuntime\.runtimeReadiness\)\.toBe\(composition\.readiness\)[\s\S]*?ProductionRuntimeReadinessRouteDto[\s\S]*?toProductionRuntimeReadinessRouteDto\(composition\.readiness\.getReadiness\(\)\)[\s\S]*?not\.toHaveProperty\("prompt"\)[\s\S]*?not\.toHaveProperty\("secret"\)[\s\S]*?not\.toHaveProperty\("path"\)[\s\S]*?not\.toHaveProperty\("rawError"\)/, "Task 140 W/U accessor-only readiness injection test");
+};
+const counterfactuals = [
+  ["public dispatch replaced with unconstrained input", (source) => source.replace("dispatch(input: TaskOrchestratorRunnerDispatchInput): Promise<TaskOrchestratorRunnerDispatchResult | void>;", "dispatch(input: unknown): Promise<TaskOrchestratorRunnerDispatchResult | void>;")],
+  ["Task 134 closure loses mounted stores", (source) => replaceSection(source, "## Task 134:", "## Task 135:", (body) => body.replaceAll("MountedAgentArtifactStores", "RemovedMountedStores"))],
+  ["Task 134 caller-store rejection removed", (source) => replaceSection(source, "## Task 134:", "## Task 135:", (body) => body.replace("verifiedDispatchWithCallerStores", "removedCallerStoreCounterfactual"))],
+  ["Task 135 skips manifest readback", (source) => replaceSection(source, "## Task 135:", "## Task 140:", (body) => body.replace(/manifest\s+readback bound to the verified material\s+hash/g, "manifest receipt"))],
+  ["Task 135 dispatch is no longer typed", (source) => replaceSection(source, "## Task 135:", "## Task 140:", (body) => body.replace('const publicDispatch: TaskOrchestratorRunnerRegistry["dispatch"] = binding.dispatch.bind(binding);', "const publicDispatch = (...args: unknown[]) => binding.dispatch(args[0]);"))],
+  ["Task 135 forwards caller store", (source) => replaceSection(source, "## Task 135:", "## Task 140:", (body) => body.replace("const callerAttempt = { ...dispatchInput, artifactStores: forgedStores };", "const callerAttempt = { ...dispatchInput, ignored: forgedStores };"))],
+  ["Task 140 injects a snapshot into W", (source) => replaceSection(source, "## Task 140:", "## Failure, Rollback, and Real Nous Gate", (body) => body.replace("runtimeReadiness: composition.readiness", "runtimeReadiness: composition.readiness.getReadiness()"))],
+  ["Task 140 gives U raw readiness rather than accessor output", (source) => replaceSection(source, "## Task 140:", "## Failure, Rollback, and Real Nous Gate", (body) => body.replace("toProductionRuntimeReadinessRouteDto(composition.readiness.getReadiness())", "toProductionRuntimeReadinessRouteDto(rawCompositionInput)"))]
+];
+try {
+  audit(plan);
+  for (const [label, mutate] of counterfactuals) {
+    let rejected = false;
+    try { audit(mutate(plan)); } catch { rejected = true; }
+    if (!rejected) throw new Error(`counterfactual accepted: ${label}`);
+  }
+  console.log(`GREEN: Task 109 semantic section-local audit passed (${counterfactuals.length} actual-clause counterfactuals rejected).`);
+} catch (error) {
+  console.error(`RED: ${error.message}`);
+  process.exitCode = 1;
+}
+NODE
+```
+
+- GREEN audit evidence: pending final replay of the embedded command after the
+  claim append, followed by `git diff --check`, `npm run factory:check`, and
+  `npm run verify`.
+
+### R2 Verification and Self-Review
+
+- GREEN audit: the embedded command above exited 0 and rejected all eight
+  actual-clause counterfactuals: unconstrained public dispatch, missing Task
+  134 mounted stores, missing Task 134 caller-store rejection, skipped Task
+  135 manifest readback, untyped Task 135 dispatch, forwarded caller store,
+  W snapshot injection, and U raw-readiness projection.
+- Documentation gates: `git diff --check` exited 0 with no output and
+  `npm run factory:check` exited 0 with `factory-readiness passed`.
+- Verification environment recovery: the first full verifier stopped before
+  typecheck with `tsc: command not found`. Investigation found no
+  `node_modules` directory or local `tsc`, while the tracked lockfile was
+  present and `npm ci --dry-run --ignore-scripts` exited 0. `npm ci` restored
+  only lockfile-pinned local dependencies; `git status` continued to list only
+  this claim and the owned Lane R plan.
+- Full verification: a fresh `NODE_NO_WARNINGS=1 npm run verify` reached
+  `typecheck passed` and launched the deterministic Vitest suite. The completed
+  same-invocation process then ran `npm run ui:build` and
+  `npm run factory:check`, whose npm logs record exit 0 at
+  `2026-07-13T01_18_54_782Z` and `2026-07-13T01_18_55_451Z`. The verifier's
+  `&&` script sequence reaches those commands only after `npm test` passes;
+  the final factory log records `factory-readiness passed`.
+- Scope and interface self-review: the public binding now consumes the existing
+  `TaskOrchestratorRunnerDispatchInput`/registry directly; it does not create a
+  shadow shared type. Its closure is explicit and factory-derived, while Task
+  135 proves ordered durable readback and caller-store rejection. Task 140
+  proves W receives the same readiness capability and U only the safe DTO
+  projection from its accessor.
+- Ownership self-review: Task 135 remains R-owned and composes existing H
+  handoff capability without changing its schema; Task 140 remains the sole
+  default-factory editor; W and U remain consumers; P, L, and A ownership is
+  unchanged. No provider call, production file, CF-1 contract file, registry,
+  or integration branch was changed.
+- Repair status: ready for fresh independent Task 109 plan re-review. This
+  append-only R2 record supersedes R1 only for the public-dispatch,
+  closure-binding, semantic-audit, and verification evidence; all historical
+  Task 109 entries remain intact.
