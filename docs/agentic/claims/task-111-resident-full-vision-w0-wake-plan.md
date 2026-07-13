@@ -115,6 +115,17 @@ NODE
   189 test files passed with 3 skipped, 2,228 tests passed with 5 skipped, a
   successful Vite production build with the existing chunk-size warning, and
   `factory-readiness passed`.
+- Forward-only plan correction after commit `487641717d8060816eb3a2da275a001e0a255bae`:
+  the lease-race example incorrectly projected a valid competing lease as
+  `workspace-unavailable`. The approved W specification defines that state
+  only for unavailable authority and instead requires a valid competing lease
+  to report `supervisor-lease-held` without waking. The correction preserves
+  available workspace state and asserts the fixed diagnostic category. Its
+  focused documentation audit exited 0 with the 12 coverage assertions plus
+  lease-race semantics; `git diff --check` and `npm run factory:check` exited
+  0; and `npm run verify` exited 0 with typecheck passed, 189 passing test
+  files with 3 skipped, 2,228 passing tests with 5 skipped, a successful Vite
+  build with the existing chunk-size warning, and factory readiness passed.
 - Required full gates before commit: `git diff --check`, `npm run factory:check`, and `npm run verify`.
 
 ## Stop And Review Gate
