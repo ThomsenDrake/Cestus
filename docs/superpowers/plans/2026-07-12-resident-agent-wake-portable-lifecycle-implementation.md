@@ -256,7 +256,11 @@ plain deterministic authority fake that exposes no storage path or write API.
     expect(harness.lease.readBackClaimedEpochs).toHaveLength(1);
     expect(harness.runtime.wakeCalls).toHaveLength(1);
     expect(harness.runtime.wakeCalls[0]?.signal.source).toBe("event");
-    expect(harness.status(second).supervisorState).toBe("workspace-unavailable");
+    const losingStatus = await harness.status(second);
+    expect(losingStatus.workspaceState).toBe("available");
+    expect(losingStatus.diagnostics).toContainEqual(
+      expect.objectContaining({ category: "supervisor-lease-held" })
+    );
   });
 
   it("does not call the wake port after pause closes intake until mounted pause readback", async () => {
