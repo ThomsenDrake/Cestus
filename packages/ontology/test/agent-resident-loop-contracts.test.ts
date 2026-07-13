@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { eventContracts, validateKnowledgeEvent } from "../src/contracts.js";
+import { eventContracts, validateKnowledgeEvent, validateResidentLoopEventSequence, type AppendableKnowledgeEvent } from "../src/contracts.js";
+import { InMemoryEventLedger } from "../src/event-ledger.js";
 
 const hash = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
 const context = {
@@ -11,13 +12,13 @@ const context = {
   packVersions: { core: "0.1.0", agent: "0.1.0" }
 };
 
-function event(id: string, type: string, payload: Record<string, unknown>) {
+function event(id: string, type: string, payload: Record<string, unknown>, sequence: number) {
   return {
     id,
     type,
     version: 1,
     streamId: "agent_resident_loop_task_001_attempt_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_run_001",
-    sequence: 1,
+    sequence,
     context,
     payload
   };
@@ -45,8 +46,7 @@ const resultEventId = "evt_resident_result_task_001_attempt_aaaaaaaaaaaaaaaaaaaa
 const plan = {
   ...identity,
   planRevision: 1,
-  descriptorHash: hash,
-  planRecordEventId: planEventId
+  descriptorHash: hash
 };
 
 const planReadback = {
@@ -58,14 +58,14 @@ const planReadback = {
 
 function fixtureEvents() {
   return [
-    event(planEventId, "agent.resident-plan.recorded.v1", plan),
+    event(planEventId, "agent.resident-plan.recorded.v1", plan, 1),
     event("evt_resident_observation_001", "agent.resident-observation.recorded.v1", {
       ...identity,
       planReadback,
       observationOrdinal: 1,
       category: "context-ready",
       observationHash: hash
-    }),
+    }, 2),
     event("evt_resident_step_001", "agent.resident-tool-step.recorded.v1", {
       ...identity,
       planReadback,
@@ -75,7 +75,7 @@ function fixtureEvents() {
       toolVersion: "1.0.0",
       previewHash: hash,
       toolEventId: "evt_tool_requested_001"
-    }),
+    }, 3),
     event("evt_resident_suspended_001", "agent.resident-loop.suspended.v1", {
       ...identity,
       planReadback,
@@ -87,7 +87,7 @@ function fixtureEvents() {
       },
       suspensionCategory: "budget-exhausted",
       resumeIdempotencyKey: "resident-loop:run_001:resume"
-    }),
+    }, 4),
     event(resultEventId, "agent.resident-loop.result.recorded.v1", {
       ...identity,
       planReadback,
@@ -100,12 +100,12 @@ function fixtureEvents() {
       outcome: "completed",
       resultHash: hash,
       terminalReadback: {
-        resultEventId,
+        finalObservationEventId: "evt_resident_observation_001",
         taskId: identity.taskId,
         attemptId: identity.attemptId,
         runId: identity.runId
       }
-    })
+    }, 5)
   ] as const;
 }
 
@@ -172,10 +172,6 @@ describe("resident loop ontology contracts", () => {
   it("rejects forged plan readback, cross-run identity, unsafe own-data, and a terminal-looking result without readback", () => {
     const [planEvent, observation, step, suspended, result] = fixtureEvents();
     expect(validateKnowledgeEvent({
-      ...observation,
-      payload: { ...observation.payload, planReadback: { ...planReadback, planRecordEventId: "evt_forged_plan_001" } }
-    }).success).toBe(false);
-    expect(validateKnowledgeEvent({
       ...step,
       payload: { ...step.payload, planReadback: { ...planReadback, runId: "run_other" } }
     }).success).toBe(false);
@@ -184,5 +180,59 @@ describe("resident loop ontology contracts", () => {
     const { terminalReadback: _terminalReadback, ...withoutTerminalReadback } = result.payload;
     expect(validateKnowledgeEvent({ ...result, payload: withoutTerminalReadback }).success).toBe(false);
     expectValid(suspended);
+  });
+
+  it("appends and replays the ordered five-event fixture through the ledger", async () => {
+    const ledger = new InMemoryEventLedger();
+    const [planFixture, observationFixture, stepFixture, suspendedFixture, resultFixture] = fixtureEvents();
+    const appendable = (candidate: ReturnType<typeof fixtureEvents>[number]) => {
+      const { id: _id, sequence: _sequence, ...rest } = candidate;
+      return rest as unknown as AppendableKnowledgeEvent;
+    };
+    const planEvent = await ledger.append(appendable(planFixture));
+    const observationEvent = await ledger.append(appendable({
+      ...observationFixture,
+      payload: { ...observationFixture.payload, planReadback: { ...planReadback, planRecordEventId: planEvent.id } }
+    }));
+    const stepEvent = await ledger.append(appendable({
+      ...stepFixture,
+      payload: { ...stepFixture.payload, planReadback: { ...planReadback, planRecordEventId: planEvent.id } }
+    }));
+    const suspendedEvent = await ledger.append(appendable({
+      ...suspendedFixture,
+      payload: {
+        ...suspendedFixture.payload,
+        planReadback: { ...planReadback, planRecordEventId: planEvent.id },
+        finalObservationReadback: {
+          ...(suspendedFixture.payload.finalObservationReadback as Record<string, unknown>),
+          observationEventId: observationEvent.id
+        }
+      }
+    }));
+    const resultEvent = await ledger.append(appendable({
+      ...resultFixture,
+      payload: {
+        ...resultFixture.payload,
+        planReadback: { ...planReadback, planRecordEventId: planEvent.id },
+        finalObservationReadback: {
+          ...(resultFixture.payload.finalObservationReadback as Record<string, unknown>),
+          observationEventId: observationEvent.id
+        },
+        terminalReadback: {
+          ...(resultFixture.payload.terminalReadback as Record<string, unknown>),
+          finalObservationEventId: observationEvent.id
+        }
+      }
+    }));
+
+    const replay = await ledger.readStream(planEvent.streamId);
+    expect(replay.map((event) => event.sequence)).toEqual([1, 2, 3, 4, 5]);
+    expect(replay.map((event) => event.id)).toEqual([planEvent.id, observationEvent.id, stepEvent.id, suspendedEvent.id, resultEvent.id]);
+    expect(validateResidentLoopEventSequence(replay).success).toBe(true);
+    expect(validateResidentLoopEventSequence([
+      ...replay.slice(0, 1),
+      { ...replay[1]!, payload: { ...replay[1]!.payload, planReadback: { ...planReadback, planRecordEventId: "evt_forged_plan" } } },
+      ...replay.slice(2)
+    ] as unknown as typeof replay).success).toBe(false);
   });
 });

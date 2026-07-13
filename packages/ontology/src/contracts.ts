@@ -708,7 +708,7 @@ const residentFinalObservationReadbackSchema = z.object({
 }).strict();
 
 const residentTerminalReadbackSchema = z.object({
-  resultEventId: eventIdSchema,
+  finalObservationEventId: eventIdSchema,
   taskId: agentTaskIdSchema,
   attemptId: agentTaskOrchestrationAttemptIdSchema,
   runId: agentRunIdSchema
@@ -729,31 +729,12 @@ function addResidentReadbackIdentityIssues(
       });
     }
   }
-  if (
-    "planRecordEventId" in readback &&
-    readback.planRecordEventId !== `evt_resident_plan_${value.taskId}_${value.attemptId}_${value.runId}`
-  ) {
-    ctx.addIssue({
-      code: "custom",
-      path: [path, "planRecordEventId"],
-      message: "plan readback must use the canonical task-attempt-run plan event ID"
-    });
-  }
 }
 
 const agentResidentPlanRecordedPayloadSchema = residentLoopIdentitySchema.extend({
   planRevision: z.number().int().positive(),
-  descriptorHash: contentHashSchema,
-  planRecordEventId: eventIdSchema
-}).strict().superRefine((value, ctx) => {
-  if (value.planRecordEventId !== `evt_resident_plan_${value.taskId}_${value.attemptId}_${value.runId}`) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["planRecordEventId"],
-      message: "plan record must use the canonical task-attempt-run event ID"
-    });
-  }
-});
+  descriptorHash: contentHashSchema
+}).strict();
 
 const agentResidentObservationRecordedPayloadSchema = residentLoopIdentitySchema.extend({
   planReadback: residentPlanReadbackSchema,
@@ -2785,27 +2766,83 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
           path: ["context", "correlationId"]
         });
       }
-      if (event.type === "agent.resident-plan.recorded.v1" && residentPayload.planRecordEventId !== event.id) {
-        ctx.addIssue({
-          code: "custom",
-          message: "plan record must read back its own event ID",
-          path: ["payload", "planRecordEventId"]
-        });
-      }
-      if (event.type === "agent.resident-loop.result.recorded.v1") {
-        const terminalReadback = residentPayload.terminalReadback as Record<string, unknown>;
-        if (terminalReadback.resultEventId !== event.id) {
-          ctx.addIssue({
-            code: "custom",
-            message: "terminal result must read back its own event ID",
-            path: ["payload", "terminalReadback", "resultEventId"]
-          });
-        }
-      }
     }
   })
   .transform((event): KnowledgeEvent => event as KnowledgeEvent);
 
 export function validateKnowledgeEvent(event: unknown) {
   return knowledgeEventSchema.safeParse(event);
+}
+
+export type ResidentLoopSequenceValidation =
+  | { readonly success: true }
+  | { readonly success: false; readonly issues: readonly string[] };
+
+/**
+ * Validates the replayable resident-loop five-event fixture after ledger
+ * readback. Individual payload parsing cannot prove that a supplied event ID
+ * is a real prior event; this pure parser binds every readback to the ordered
+ * append-only stream without executing a store, provider, tool, or domain
+ * effect.
+ */
+export function validateResidentLoopEventSequence(events: readonly KnowledgeEvent[]): ResidentLoopSequenceValidation {
+  const expectedTypes = [
+    "agent.resident-plan.recorded.v1",
+    "agent.resident-observation.recorded.v1",
+    "agent.resident-tool-step.recorded.v1",
+    "agent.resident-loop.suspended.v1",
+    "agent.resident-loop.result.recorded.v1"
+  ] as const;
+  const issues: string[] = [];
+
+  if (events.length !== expectedTypes.length) {
+    return { success: false, issues: ["resident-loop replay must contain exactly five events"] };
+  }
+  const [plan, observation, step, suspended, result] = events;
+  if (plan === undefined || observation === undefined || step === undefined || suspended === undefined || result === undefined) {
+    return { success: false, issues: ["resident-loop replay is incomplete"] };
+  }
+  for (const [index, expectedType] of expectedTypes.entries()) {
+    const event = events[index]!;
+    if (event.type !== expectedType) issues.push(`event ${index + 1} must be ${expectedType}`);
+    if (event.sequence !== index + 1) issues.push(`event ${index + 1} must have sequence ${index + 1}`);
+    if (event.streamId !== plan.streamId) issues.push(`event ${index + 1} must use the plan stream`);
+  }
+
+  const identity = plan.payload as Record<string, unknown>;
+  const sameIdentity = (payload: Record<string, unknown>, label: string) => {
+    for (const field of ["residentAgentId", "taskId", "attemptId", "runId", "policyId", "policyHash", "authorityHash", "causationEventId", "correlationId"] as const) {
+      if (payload[field] !== identity[field]) issues.push(`${label} must preserve ${field}`);
+    }
+  };
+  const planReadbackMatches = (payload: Record<string, unknown>, label: string) => {
+    const readback = payload.planReadback as Record<string, unknown> | undefined;
+    if (readback?.planRecordEventId !== plan.id) issues.push(`${label} must read back the exact plan event`);
+    for (const field of ["taskId", "attemptId", "runId"] as const) {
+      if (readback?.[field] !== identity[field]) issues.push(`${label} plan readback must preserve ${field}`);
+    }
+  };
+  const observationReadbackMatches = (payload: Record<string, unknown>, label: string) => {
+    const readback = payload.finalObservationReadback as Record<string, unknown> | undefined;
+    if (readback?.observationEventId !== observation.id) issues.push(`${label} must read back the exact final observation`);
+    for (const field of ["taskId", "attemptId", "runId"] as const) {
+      if (readback?.[field] !== identity[field]) issues.push(`${label} observation readback must preserve ${field}`);
+    }
+  };
+
+  for (const [event, label] of [[observation, "observation"], [step, "step"], [suspended, "suspension"], [result, "result"]] as const) {
+    const payload = event.payload as Record<string, unknown>;
+    sameIdentity(payload, label);
+    planReadbackMatches(payload, label);
+  }
+  observationReadbackMatches(suspended.payload as Record<string, unknown>, "suspension");
+  observationReadbackMatches(result.payload as Record<string, unknown>, "result");
+  const terminalReadback = (result.payload as Record<string, unknown>).terminalReadback as Record<string, unknown> | undefined;
+  if (terminalReadback?.finalObservationEventId !== observation.id) {
+    issues.push("result must read back the exact final observation before terminal output");
+  }
+  for (const field of ["taskId", "attemptId", "runId"] as const) {
+    if (terminalReadback?.[field] !== identity[field]) issues.push(`terminal readback must preserve ${field}`);
+  }
+  return issues.length === 0 ? { success: true } : { success: false, issues };
 }
