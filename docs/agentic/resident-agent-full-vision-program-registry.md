@@ -1658,3 +1658,29 @@ explicit implementation authorization.
 - Queued plan lanes: RV-0-U-004 provisioned Task115 at `/tmp/cestus-task115-cockpit-plan` from clean `7c60e376`; its worker stopped before any claim or edit during this handoff. RV-0-A-010 provisioned Task116 at `/tmp/cestus-task116-acceptance-plan` from clean `7c60e376`; no worker has started. Do not infer task completion from provisioned branches or registry dispatch records.
 - Verification environment: all reviewed documentation repairs passed their focused structural audits and `git diff --check`; host `npm run factory:check` remains blocked by sandbox `spawnSync git EPERM`, and `npm run verify` remains blocked before typecheck by missing `tsc`. These host limits are not product passes, waivers, or a reason to alter check scripts.
 - Exact next action: after confirming the visible successor has advanced to this handoff commit, dispatch the prepared independent fresh reviews RV-0-T-014 and RV-0-L-011; act on their verdicts, integrate only approved child work into the writable successor lineage, then resume Task115 and start Task116 under their recorded scope. Keep CF-1 and all production/provider/live work stopped until every Wave0B plan is approved and merged.
+
+## RV-0-C-004 — Visible successor coordinator ownership acceptance
+
+- Recorded at: 2026-07-13T13:31:31Z
+- Role: coordinator
+- Lane and wave: C / 0B (program-continuity coordination)
+- Task ID and claim: coordinator-continuity acceptance / docs/agentic/resident-agent-full-vision-program-registry.md
+- Task thread ID: 019f5ba8-cba1-7dd1-b137-2c3bd4edb970
+- Branch and worktree: codex/resident-agent-full-vision-program-visible-coordinator-2 / /home/drake/.codex/worktrees/95de/Cestus
+- Base commit and required head: d8bf6c4dd26ac763ec786f920545e21e61369a40 / this acceptance record's coordinator commit after fresh verification
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/agentic/resident-agent-full-vision-program-registry.md
+- Forbidden files: every production, test, runtime, UI, provider, shared-contract, specification, implementation-plan, template, acceptance-matrix, and child-claim file
+- Dependencies and required merged commits: RV-0-C-003 at d8bf6c4dd26ac763ec786f920545e21e61369a40; Task111 W and Task114 P plan integrations; Task112 and Task113 remain review-pending and unmerged
+- Approval record: final visible-coordinator delegation recorded 2026-07-13 authorizes sole coordinator ownership through Wave 5 under the governing spec and plan, explicitly permitting superpowers:subagent-driven-development where relevant, TDD or documentation RED/GREEN, fresh review, verification-before-completion, coordinator-controlled recovery, and no merge into neo
+- Claim status: in-progress / visible successor accepts sole integration ownership after exact-head verification
+- RED command and observed failure: node --input-type=module --eval '<registry ownership-acceptance presence audit>' / exit 1 with `RED: visible-successor ownership acceptance is absent` before this append
+- GREEN command and observed result: the same ownership-presence audit exited 0 with `GREEN: visible-successor ownership acceptance is present`; git diff --check exited 0 and npm run factory:check reported `factory-readiness passed`
+- Full verification: initial npm run verify exited 127 because this isolated checkout lacked `tsc`; npm ci restored lockfile-pinned dependencies, after which fresh npm run verify completed with exit 0
+- Live-provider gate: not-applicable; this continuity record invokes no provider
+- Review verdict: not-applicable; the user-issued transfer is the ownership gate, while all child code and plan work retains fresh-review requirements
+- Rebase record: visible stale snapshot 7c60e376e671010bcbb0cc09952a65944c1100f3 fast-forwarded to exact handoff d8bf6c4dd26ac763ec786f920545e21e61369a40 before ownership acceptance
+- Merge readiness: not-ready; Task112 and Task113 await independent reviews, Task115 and Task116 are unstarted, CF-1 and all production/provider/live work remain stopped
+- Archive check: visible successor task is titled and pinned; d8bf6c4 ancestry, clean pre-append checkout, focused GREEN, factory readiness, and full verification were independently confirmed; coordinator acceptance commit remains pending
+- Supersession: this record accepts ownership from RV-0-C-003 without revising its evidence; no child gains self-merge or neo-merge authority.
