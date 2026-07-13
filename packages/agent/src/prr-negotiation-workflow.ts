@@ -13,7 +13,8 @@ import { validateProductionSpecialistProviderOutput } from "./production-special
 import { createAgentToolGateway } from "./tool-gateway.js";
 import {
   parseLegacySpecialistWorkflowHandoff,
-  type LegacySpecialistWorkflowHandoffDto
+  type LegacySpecialistWorkflowHandoffDto,
+  type SpecialistWorkflowHandoffDto
 } from "./specialist-handoffs.js";
 import {
   appendSpecialistCompletion,
@@ -66,6 +67,8 @@ interface PrrNegotiationFollowUpApprovalPreflight {
 export async function runPrrNegotiationWorkflow(
   input: RunPrrNegotiationWorkflowInput
 ): Promise<RunPrrNegotiationWorkflowResult> {
+  const resumed = await resumePrrNegotiationDraftHandoff(input);
+  if (resumed !== undefined) return resumed;
   await assertSpecialistStepNotRecorded(input.ledger, input.runId, "step_prr_negotiation_draft");
   const toolRequestId = `toolreq_${input.runId}_followup`;
   const followUpPreflight = preflightFollowUpApprovalPreview(input, toolRequestId);
@@ -153,16 +156,40 @@ export async function runPrrNegotiationWorkflow(
       ])
     });
   }
-  let publication: Awaited<ReturnType<typeof publishPrrNegotiationDraftHandoff>>;
+  let publication: Awaited<ReturnType<typeof appendPrrNegotiationDraftFinalOutput>>;
   try {
-    publication = await publishPrrNegotiationDraftHandoff(input, prepared, handoff, {
+    publication = await appendPrrNegotiationDraftFinalOutput(input, prepared, handoff, {
       sourceEventIds: [draftStep.id, ...invocation.eventIds],
       relatedEventIds: [...invocation.eventIds, draftStep.id]
     });
   } catch {
-    return blockedDraftHandoffAfterReadbackFailure(input, prepared, handoff, [
+    return await failedDraftHandoffStorageResult(input, prepared, [
       ...invocation.eventIds,
       draftStep.id
+    ]);
+  }
+  let recorded: Awaited<ReturnType<typeof recordSpecialistHandoff>>;
+  let finalized: Awaited<ReturnType<typeof finalizeSpecialistRunAfterHandoff>>;
+  try {
+    recorded = await recordSpecialistHandoff({
+      ledger: input.ledger,
+      manifestStore: publication.handoffStore,
+      actor: input.actor,
+      now: input.now,
+      runId: input.runId,
+      taskId: input.taskId
+    });
+    finalized = await finalizeSpecialistRunAfterHandoff({
+      ledger: input.ledger,
+      actor: input.actor,
+      now: input.now,
+      recorded
+    });
+  } catch {
+    return blockedDraftHandoffAfterRecordFailure(input, prepared, handoff, [
+      ...invocation.eventIds,
+      draftStep.id,
+      publication.finalOutput.id
     ]);
   }
   return Object.freeze({
@@ -171,14 +198,88 @@ export async function runPrrNegotiationWorkflow(
       ...invocation.eventIds,
       draftStep.id,
       publication.finalOutput.id,
-      publication.recorded.prepared.id,
-      publication.recorded.recorded.id,
-      publication.finalized.terminal.id
+      recorded.prepared.id,
+      recorded.recorded.id,
+      finalized.terminal.id
     ])
   });
 }
 
-function blockedDraftHandoffAfterReadbackFailure(
+async function resumePrrNegotiationDraftHandoff(
+  input: RunPrrNegotiationWorkflowInput
+): Promise<RunPrrNegotiationWorkflowResult | undefined> {
+  const stream = await input.ledger.readStream(`agent_run_${input.runId}`);
+  const finalOutput = stream.findLast((event) =>
+    event.type === "agent.specialist-run.step.recorded" &&
+    event.payload.runId === input.runId &&
+    event.payload.stepKind === "final-output" &&
+    event.payload.stepId === `step_${input.runId}_final_output`
+  );
+  if (finalOutput === undefined) return undefined;
+  try {
+    const recorded = await recordSpecialistHandoff({
+      ledger: input.ledger,
+      manifestStore: prrNegotiationHandoffStore(input.derivativeStore),
+      actor: input.actor,
+      now: input.now,
+      runId: input.runId,
+      taskId: input.taskId
+    });
+    const finalized = await finalizeSpecialistRunAfterHandoff({
+      ledger: input.ledger,
+      actor: input.actor,
+      now: input.now,
+      recorded
+    });
+    return Object.freeze({
+      handoff: legacyHandoffFromRecordedHandoff(recorded.handoff),
+      eventIds: Object.freeze([
+        finalOutput.id,
+        recorded.prepared.id,
+        recorded.recorded.id,
+        finalized.terminal.id
+      ])
+    });
+  } catch {
+    return resumableDraftHandoffFromFinalOutput(input, finalOutput.id);
+  }
+}
+
+function legacyHandoffFromRecordedHandoff(
+  handoff: SpecialistWorkflowHandoffDto
+): LegacySpecialistWorkflowHandoffDto {
+  const { handoffId: _handoffId, handoffRevision: _handoffRevision, ...legacy } = handoff;
+  return parseLegacySpecialistWorkflowHandoff(legacy);
+}
+
+function resumableDraftHandoffFromFinalOutput(
+  input: RunPrrNegotiationWorkflowInput,
+  finalOutputEventId: string
+): RunPrrNegotiationWorkflowResult {
+  const blocked = parseLegacySpecialistWorkflowHandoff({
+    schemaVersion: "agent-specialist-handoff.v1",
+    runType: "prr-negotiation",
+    runId: input.runId,
+    taskId: input.taskId,
+    residentAgentId: "agent_default",
+    generatedAt: input.now(),
+    status: "blocked",
+    safeSummary: "A durable PRR final output awaits verified handoff recording before review.",
+    contextPackRefs: [],
+    outputArtifacts: [],
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [{
+      actionId: `action_${input.runId}_resume_handoff_recording`,
+      label: "Repair PRR handoff storage and resume verified handoff recording",
+      kind: "retry",
+      effect: "none"
+    }]
+  });
+  return Object.freeze({ handoff: blocked, eventIds: Object.freeze([finalOutputEventId]) });
+}
+
+function blockedDraftHandoffAfterRecordFailure(
   input: RunPrrNegotiationWorkflowInput,
   prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
   handoff: LegacySpecialistWorkflowHandoffDto,
@@ -200,7 +301,7 @@ function blockedDraftHandoffAfterReadbackFailure(
     approvalRequirements: [],
     nextSafeActions: [{
       actionId: `action_${input.runId}_repair_handoff_storage`,
-      label: "Repair PRR handoff storage and read back the local draft before review",
+      label: "Repair PRR handoff storage and resume verified handoff recording",
       kind: "retry",
       effect: "none",
       artifactId: `artifact_${input.runId}_draft`
@@ -209,7 +310,53 @@ function blockedDraftHandoffAfterReadbackFailure(
   return Object.freeze({ handoff: blocked, eventIds: Object.freeze([...eventIds]) });
 }
 
-async function publishPrrNegotiationDraftHandoff(
+async function failedDraftHandoffStorageResult(
+  input: RunPrrNegotiationWorkflowInput,
+  prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
+  eventIds: readonly string[]
+): Promise<RunPrrNegotiationWorkflowResult> {
+  const failure = await appendSpecialistFailure({
+    ledger: input.ledger,
+    actor: input.actor,
+    now: input.now,
+    runId: input.runId,
+    category: "external-effect-failed",
+    message: "PRR negotiation handoff storage could not be verified before review.",
+    retryable: true,
+    allowedActions: ["inspect local PRR handoff storage and start a new draft run"],
+    ...(eventIds.at(-1) === undefined ? {} : { causationId: eventIds.at(-1) })
+  });
+  const handoff = parseLegacySpecialistWorkflowHandoff({
+    schemaVersion: "agent-specialist-handoff.v1",
+    runType: "prr-negotiation",
+    runId: input.runId,
+    taskId: input.taskId,
+    residentAgentId: "agent_default",
+    generatedAt: input.now(),
+    status: "failed",
+    safeSummary: "PRR negotiation could not verify local handoff storage before review.",
+    contextPackRefs: prepared.contextPackRefs,
+    promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash,
+    outputArtifacts: [],
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [{
+      actionId: `action_${input.runId}_inspect_handoff_storage`,
+      label: "Inspect local PRR handoff storage before starting a new draft run",
+      kind: "inspect",
+      effect: "none"
+    }],
+    failure: {
+      category: "external-effect-failed",
+      code: "prr-negotiation-handoff-storage-failed",
+      safeSummary: "PRR negotiation handoff storage could not be verified before review.",
+      retryable: true
+    }
+  });
+  return Object.freeze({ handoff, eventIds: Object.freeze([...eventIds, failure.id]) });
+}
+
+async function appendPrrNegotiationDraftFinalOutput(
   input: RunPrrNegotiationWorkflowInput,
   prepared: Awaited<ReturnType<typeof prepareSpecialistRun>>,
   handoff: LegacySpecialistWorkflowHandoffDto,
@@ -242,21 +389,7 @@ async function publishPrrNegotiationDraftHandoff(
     taskId: input.taskId,
     handoffMaterial
   });
-  const recorded = await recordSpecialistHandoff({
-    ledger: input.ledger,
-    manifestStore: handoffStore,
-    actor: input.actor,
-    now: input.now,
-    runId: input.runId,
-    taskId: input.taskId
-  });
-  const finalized = await finalizeSpecialistRunAfterHandoff({
-    ledger: input.ledger,
-    actor: input.actor,
-    now: input.now,
-    recorded
-  });
-  return Object.freeze({ finalOutput, recorded, finalized });
+  return Object.freeze({ handoffStore, finalOutput });
 }
 
 function prrNegotiationHandoffStore(store: SpecialistDerivativeArtifactStore | undefined): SpecialistHandoffManifestStore {

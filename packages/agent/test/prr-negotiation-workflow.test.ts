@@ -323,7 +323,7 @@ describe("PRR negotiation workflow", () => {
     });
   });
 
-  it("blocks the draft handoff without a fallback terminal result when readback is unavailable", async () => {
+  it("records a secret-safe terminal storage failure when readback is unavailable before final output", async () => {
     const ledger = new InMemoryEventLedger();
     const provider = new FakeModelProvider({
       providerId: "provider_fake_local",
@@ -389,18 +389,142 @@ describe("PRR negotiation workflow", () => {
     });
 
     expect(result.handoff).toMatchObject({
-      status: "blocked",
-      nextSafeActions: [expect.objectContaining({ kind: "retry", effect: "none" })]
+      status: "failed",
+      failure: {
+        category: "external-effect-failed",
+        code: "prr-negotiation-handoff-storage-failed",
+        retryable: true
+      }
     });
     expect(JSON.stringify(result.handoff)).not.toContain("private mounted store readback failure");
     const eventTypes = (await ledger.readAll()).map((event) => event.type);
     expect(eventTypes).toContain("agent.specialist-run.step.recorded");
     expect(eventTypes).not.toEqual(expect.arrayContaining([
+      "agent.specialist-run.completed",
       "agent.specialist-handoff.prepared",
       "agent.specialist-handoff.recorded",
-      "agent.specialist-run.completed",
       "prr.request.sent",
       "prr.followup.sent"
+    ]));
+    expect(eventTypes).toContain("agent.specialist-run.failed");
+  });
+
+  it("resumes a durable final-output PRR handoff after manifest recording fails without rerunning the provider or draft", async () => {
+    const ledger = new InMemoryEventLedger();
+    const fakeProvider = new FakeModelProvider({
+      providerId: "provider_fake_local",
+      modelFamilies: ["fake-local"],
+      responseText: JSON.stringify({
+        draftSummary: "Private case narrative for investigator review only.",
+        requestFollowUpApproval: false,
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
+      })
+    });
+    let providerCalls = 0;
+    const provider = {
+      describe: () => fakeProvider.describe(),
+      invoke: async (request: ModelInvocationRequest) => {
+        providerCalls += 1;
+        return await fakeProvider.invoke(request);
+      }
+    };
+    const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_prr" });
+    await runtime.createTask({
+      taskId: "task_prr_001",
+      title: "Review PRR deadline",
+      requestedBy: "actor_investigator",
+      priority: "normal"
+    });
+    await runtime.startRun({
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      runType: "prr-negotiation",
+      scope: { kind: "workspace", refs: ["ws_prr"] }
+    });
+
+    const backingStore = createDerivativeStore();
+    let failManifestWrite = true;
+    const recordFailingStore = {
+      put: async (content: Buffer) => {
+        if (failManifestWrite && content.toString("utf8").includes("agent-specialist-handoff-manifest.v1")) {
+          failManifestWrite = false;
+          throw new Error("private handoff manifest write failure");
+        }
+        return await backingStore.put(content);
+      },
+      get: backingStore.get
+    };
+    const input = {
+      ledger,
+      actor,
+      now,
+      contextPacks: createWorkflowContextPacks([
+        "prr-read-model.v1",
+        "jurisdiction-pack-summary.v1",
+        "governance-locks.v1",
+        "evidence-summary.v1",
+        "agent-memory-summary.v1",
+        "task-run-history.v1",
+        "workspace-runtime-status.v1"
+      ], [], undefined, { omitLedgerBoundRefs: true }),
+      runtime,
+      providerReadiness: providerReadinessDto("works-locally"),
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret" as const
+      },
+      prrRequestId: "prr_req_001",
+      correspondenceId: "corr_prr_001",
+      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      followUpApprovalPreview: followUpApprovalPreview()
+    };
+
+    const blocked = await runPrrNegotiationWorkflow({ ...input, derivativeStore: recordFailingStore });
+
+    expect(blocked.handoff).toMatchObject({
+      status: "blocked",
+      nextSafeActions: [expect.objectContaining({ kind: "retry", effect: "none" })]
+    });
+    expect(JSON.stringify(blocked.handoff)).not.toContain("private handoff manifest write failure");
+    const beforeResume = await ledger.readAll();
+    expect(beforeResume.filter((event) => event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output")).toHaveLength(1);
+    expect(beforeResume.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed"
+    ]));
+
+    const resumed = await runPrrNegotiationWorkflow({ ...input, derivativeStore: backingStore });
+
+    expect(resumed.handoff.status).toBe("ready-for-review");
+    expect(providerCalls).toBe(1);
+    const events = await ledger.readAll();
+    expect(events.filter((event) => event.type === "agent.model-invocation.requested")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.specialist-run.step.recorded" && event.payload.stepId === "step_prr_negotiation_draft")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.specialist-handoff.prepared")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.specialist-handoff.recorded")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent.specialist-run.completed")).toHaveLength(1);
+    expect(await buildSpecialistHandoffProjection({
+      events,
+      manifestReader: backingStore,
+      runId: "run_prr_001",
+      taskId: "task_prr_001"
+    })).toMatchObject({
+      state: "handoff-recorded",
+      selectedHandoff: expect.objectContaining({ status: "ready-for-review" })
+    });
+    expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "prr.request.sent", "prr.followup.sent", "prr.legal-escalation.confirmed"
     ]));
   });
 
