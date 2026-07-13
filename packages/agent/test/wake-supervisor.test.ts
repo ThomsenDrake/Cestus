@@ -250,6 +250,43 @@ describe("bounded wake supervisor", () => {
     expect(renewed.runtimeCalls).toHaveLength(1);
   });
 
+  it.each([
+    ["workspace identity", withStoredWorkspaceIdentityMarker],
+    ["mount marker", withStoredMountMarker],
+    ["policy facts", withStoredPolicyFacts],
+    ["lock facts", withStoredLockFacts]
+  ] as const)("rejects a self-consistent forged stored %s tuple before append or wake", async (_label, rewrite) => {
+    const shared = createSharedReconciliationStore();
+    const first = createP1Harness({ activeClaim: true, reconciliationPort: shared.port });
+    await expect(first.supervisor.recover(command("recover_stored_tuple_first"))).resolves.toMatchObject({ outcome: "accepted" });
+
+    shared.replaceStored(rewrite(shared.snapshot()));
+    const retry = createP1Harness({ activeClaim: true, reconciliationPort: shared.port });
+
+    await expect(retry.supervisor.recover(command("recover_stored_tuple_retry"))).resolves.toMatchObject({
+      outcome: "blocked",
+      blocked: { category: "workspace-readback-failed" }
+    });
+    expect(shared.appendInputs).toHaveLength(1);
+    expect(retry.runtimeCalls).toHaveLength(0);
+  });
+
+  it("rejects a colluding stored and current outage high-water that is not bound to the historical tuple", async () => {
+    const shared = createSharedReconciliationStore();
+    const first = createP1Harness({ activeClaim: true, reconciliationPort: shared.port });
+    await expect(first.supervisor.recover(command("recover_historical_high_water_first"))).resolves.toMatchObject({ outcome: "accepted" });
+
+    shared.replaceStored(withStoredOutageHighWater(shared.snapshot(), "event:forged"));
+    const retry = createP1Harness({ activeClaim: true, reconciliationPort: shared.port, outageHighWaterBefore: "event:forged" });
+
+    await expect(retry.supervisor.recover(command("recover_historical_high_water_retry"))).resolves.toMatchObject({
+      outcome: "blocked",
+      blocked: { category: "workspace-readback-failed" }
+    });
+    expect(shared.appendInputs).toHaveLength(1);
+    expect(retry.runtimeCalls).toHaveLength(0);
+  });
+
   it("rejects an unrelated outage high-water before reconciliation append", async () => {
     const harness = createP1Harness({ activeClaim: true, outageHighWaterBefore: "event:unrelated" });
 
@@ -469,5 +506,78 @@ function createSharedReconciliationStore() {
       return stored;
     }
   };
-  return { port, lookupInputs, appendInputs };
+  return {
+    port,
+    lookupInputs,
+    appendInputs,
+    snapshot() {
+      if (stored === undefined) throw new Error("expected a stored reconciliation record.");
+      return stored;
+    },
+    replaceStored(next: ClaimReconciliationReadback) {
+      stored = next;
+    }
+  };
+}
+
+function withStoredWorkspaceIdentityMarker(readback: ClaimReconciliationReadback): ClaimReconciliationReadback {
+  const workspaceIdentityEventId = "evt_identity_foreign";
+  return {
+    ...readback,
+    record: { ...readback.record, revalidatedAuthority: { ...readback.record.revalidatedAuthority, identityEventId: workspaceIdentityEventId } },
+    admission: {
+      ...readback.admission,
+      authorityIdentityAndMount: { ...readback.admission.authorityIdentityAndMount, workspaceIdentityEventId },
+      verifiedLease: { ...readback.admission.verifiedLease, workspaceIdentityEventId }
+    }
+  };
+}
+
+function withStoredMountMarker(readback: ClaimReconciliationReadback): ClaimReconciliationReadback {
+  const mountEvidenceId = "evt_mount_foreign";
+  return {
+    ...readback,
+    record: { ...readback.record, revalidatedAuthority: { ...readback.record.revalidatedAuthority, mountEvidenceId } },
+    admission: {
+      ...readback.admission,
+      authorityIdentityAndMount: { ...readback.admission.authorityIdentityAndMount, mountEvidenceId },
+      verifiedLease: { ...readback.admission.verifiedLease, mountEvidenceId },
+      policyAndLock: { ...readback.admission.policyAndLock, mountEvidenceId },
+      highWater: { ...readback.admission.highWater, mountEvidenceId }
+    }
+  };
+}
+
+function withStoredPolicyFacts(readback: ClaimReconciliationReadback): ClaimReconciliationReadback {
+  const policyVersion = "policy.foreign";
+  const policyDigest = "sha256:policy_foreign";
+  return {
+    ...readback,
+    record: { ...readback.record, revalidatedAuthority: { ...readback.record.revalidatedAuthority, policyVersion, policyDigest } },
+    admission: {
+      ...readback.admission,
+      verifiedLease: { ...readback.admission.verifiedLease, policyVersion, policyDigest },
+      policyAndLock: { ...readback.admission.policyAndLock, policyVersion, policyDigest }
+    }
+  };
+}
+
+function withStoredLockFacts(readback: ClaimReconciliationReadback): ClaimReconciliationReadback {
+  const lockStateDigest = "sha256:lock_foreign";
+  return {
+    ...readback,
+    record: { ...readback.record, revalidatedAuthority: { ...readback.record.revalidatedAuthority, lockStateDigest } },
+    admission: {
+      ...readback.admission,
+      verifiedLease: { ...readback.admission.verifiedLease, lockStateDigest },
+      policyAndLock: { ...readback.admission.policyAndLock, lockStateDigest }
+    }
+  };
+}
+
+function withStoredOutageHighWater(readback: ClaimReconciliationReadback, highWaterBeforeOutage: string): ClaimReconciliationReadback {
+  return {
+    ...readback,
+    record: { ...readback.record, outageObservation: { ...readback.record.outageObservation, highWaterBeforeOutage } }
+  };
 }

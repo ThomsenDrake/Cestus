@@ -329,3 +329,94 @@ candidate remains preserved and unintegrated.
   `packages/agent/src/wake-supervisor.ts`, and
   `packages/agent/test/wake-supervisor.test.ts`. A fresh distinct re-review is
   required; author integration and any `neo` change remain forbidden.
+
+## Root-Cause Reconciliation Checkpoint — 2026-07-13
+
+- Fresh root-cause tracing at `6d81423b3a120e194ecf71132d6bd49149dc4225`
+  found that the existing-record path rebuilt an expected record from
+  `safeExisting.admission`. That untrusted historical tuple therefore supplied
+  both sides of the identity, mount, policy, lock, lease, and high-water
+  comparison. It also checked `highWaterBeforeOutage` only for a new append.
+  A self-consistent foreign stored tuple, or a changed stored outage observation
+  paired with its record, could reach `WakeRuntimePort.wakeOnce()`.
+- The canonical stable facts independently derived for every retry or recovery
+  admission are: workspace ID, resident ID, supervisor epoch, workspace
+  identity-event ID, mount-evidence ID, authority-evidence ID, policy version,
+  policy digest, and lock-state digest. The active-claim/outage causal facts
+  are also stable for a canonical key: claim ID, attempt ID, prior claim event
+  and lease IDs, active-claim causation/correlation, safe observation ID,
+  observation time/category, and prior authority evidence ID. The stored V1
+  record must bind those facts to the fresh admission and must internally bind
+  its revalidated-authority fields to its own historical tuple.
+- The intentionally renewable facts are only the verified supervisor lease
+  event/readback/expiry references and the high-water/readback values. A
+  renewed current lease or high-water may reuse a record only after fresh
+  admission validation; its historical lease and high-water must remain
+  internally consistent. In particular, the record's exact outage observation
+  must equal the fresh outage observation and its
+  `highWaterBeforeOutage` must equal the stored historical tuple high-water.
+  This preserves stable-key idempotent retry while rejecting forged historical
+  high-water paired with a colluding current outage observation. Explicit
+  recovery after external repair still creates a fresh admission and resets its
+  bounded attempt count only after a verified wake.
+
+## Root-Cause Reconciliation RED/GREEN — 2026-07-13
+
+- Baseline: the exact focused suite
+  `npm test -- packages/agent/test/wake-supervisor.test.ts packages/agent/test/scheduler.test.ts`
+  exited `0` with 2 files and 42 tests passing.
+- RED: five new causal counterfactuals failed under the previous stored-tuple
+  self-comparison. Self-consistent foreign workspace-identity, mount-marker,
+  policy, and lock tuples, plus a stored/current colluding outage high-water
+  pair, each reached `outcome: "accepted"` instead of failing closed. The
+  focused command exited `1` with 5 failed and 42 passed tests. Each rejection
+  test asserts zero retry runtime calls and no second reconciliation append.
+- GREEN: reuse now passes through one explicit canonical stored-reconciliation
+  predicate. It normalizes the stored readback once, proves the historical
+  tuple internally, binds its stable identity/mount/policy/lock facts and
+  record facts to a fresh admission, and binds the stored tuple's high-water
+  to the exact outage observation. It never builds an expected record from the
+  stored tuple. The existing shared-store lease/high-water renewal control
+  still reuses the record with one append and a wake per fresh admission.
+- GREEN focused evidence: the exact focused command exited `0` with 2 files
+  and 47 tests passing. `npm run verify` has not been started; coordinator
+  clearance remains required before the single serialized full gate.
+
+## Root-Cause Reconciliation Pre-Full Checkpoint — 2026-07-13
+
+- The final exact focused command exited `0` with 2 files and 47 tests
+  passing. `npm run typecheck` exited `0` and printed `typecheck passed`.
+  During this checkpoint, the compiler exposed a pre-existing command-result
+  helper type mismatch at the current head: its mutable status transition could
+  be `"none"` while the public command result requires a concrete lifecycle
+  transition. The owned source now passes the already-known operation transition
+  explicitly at each accepted/completed result call site; the focused suite and
+  typecheck were rerun successfully after that supporting correction.
+- `git diff --check` exited `0`; `npm run factory:check` exited `0` and printed
+  `factory-readiness passed`; and the asserted three-file audit exited `0` with
+  only this claim, `packages/agent/src/wake-supervisor.ts`, and
+  `packages/agent/test/wake-supervisor.test.ts` changed from HEAD.
+- This is pre-full GREEN only. The worker has not invoked `npm run verify`, has
+  not committed, and is waiting for the coordinator's serialized full-verifier
+  clearance before creating the one forward repair commit and handing off to a
+  distinct fresh reviewer.
+
+## Root-Cause Reconciliation Retained Full Verification — 2026-07-13
+
+- The coordinator granted this Task124 worktree the serialized full-verifier
+  slot after Task123 released its passing slot and confirmed no competing
+  `npm run verify`, Vitest, TypeScript, or Vite process was active. The worker
+  ran exactly one `npm run verify` in this isolated worktree.
+- Exit `0`: `typecheck passed`; Vitest reported 191 passed test files with 3
+  skipped and 2,285 passed tests with 5 skipped; the Vite production build
+  completed; and `factory-readiness passed`. SQLite experimental warnings and
+  Vite's non-failing chunk-size advisory appeared in the command output but do
+  not alter this Task124 scope or verdict.
+- The recorded root cause is the former self-derived stored reconciliation
+  comparison; RED was the five forged stable-tuple/high-water counterfactuals
+  failing against the 42-test baseline; GREEN is the 47-test focused suite,
+  canonical stored-readback predicate, stable fresh-fact binding, renewable
+  lease/high-water reuse, and explicit command-result transition binding.
+- Post-full work remains only final diff/factory/scope validation and one
+  forward candidate commit in this three-file scope. This author does not
+  self-review, integrate, or merge `neo`; a distinct fresh review is required.
