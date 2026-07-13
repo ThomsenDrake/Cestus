@@ -439,7 +439,8 @@ describe("investigation planner workflow", () => {
 
   it("rejects a released orchestration attempt before preparation or provider effects", async () => {
     const { ledger, runtime, attemptBinding } = await preparedRuntime();
-    await appendAttemptRelease(ledger, attemptBinding);
+    expect(attemptBinding).toBeDefined();
+    await appendAttemptRelease(ledger, attemptBinding!);
     const backingStore = createDerivativeStore();
     let putCalls = 0;
     const handoffStore = {
@@ -455,6 +456,56 @@ describe("investigation planner workflow", () => {
 
     expect(rejected.handoff).toMatchObject({ status: "blocked", lifecycle: "no-output" });
     expect(rejected.handoff.safeSummary).toMatch(/attempt|orchestration/i);
+    expect(putCalls).toBe(0);
+    expect(await ledger.readAll()).toEqual(before);
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
+  });
+
+  it("rejects a released attempt even when a forged later dispatch checkpoint names the same causal line", async () => {
+    const { ledger, runtime } = await preparedRuntime("investigation-planner", false);
+    const backingStore = createDerivativeStore();
+    const claim = await appendAttemptClaim(ledger, { runId: "run_investigation_001" });
+    await appendSpecialistFinalOutputStep({
+      ledger,
+      materialStore: backingStore,
+      actor,
+      now,
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      handoffMaterial: buildSpecialistHandoffMaterial({
+        status: "ready-for-review",
+        safeSummary: "Persisted investigation planner output is waiting for recovery.",
+        contextPackRefs: [],
+        outputArtifacts: [],
+        toolRequestIds: [],
+        approvalRequirements: [],
+        nextSafeActions: [{ actionId: "action_investigation_recovery", label: "Review recovered investigation output", kind: "review", effect: "none" }],
+        sourceEventIds: [],
+        relatedEventIds: []
+      })
+    });
+    await appendAttemptRelease(ledger, { claim });
+    await appendRunnerDispatchingCheckpoint(ledger, claim, "run_investigation_001");
+
+    let getCalls = 0;
+    let putCalls = 0;
+    const handoffStore = {
+      get: async (hash: `sha256:${string}`) => {
+        getCalls += 1;
+        return await backingStore.get(hash);
+      },
+      put: async (content: Buffer) => {
+        putCalls += 1;
+        return await backingStore.put(content);
+      }
+    };
+    const before = await ledger.readAll();
+
+    const rejected = await runInvestigationPlannerWorkflow(plannerWorkflowInput({ ledger, runtime, handoffStore }));
+
+    expect(rejected.handoff).toMatchObject({ status: "blocked", lifecycle: "no-output" });
+    expect(rejected.handoff.safeSummary).toMatch(/attempt|orchestration/i);
+    expect(getCalls).toBe(0);
     expect(putCalls).toBe(0);
     expect(await ledger.readAll()).toEqual(before);
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
@@ -757,7 +808,10 @@ describe("investigation planner workflow", () => {
   });
 });
 
-async function preparedRuntime(runType: "investigation-planner" | "evidence-triage" = "investigation-planner") {
+async function preparedRuntime(
+  runType: "investigation-planner" | "evidence-triage" = "investigation-planner",
+  bindAttempt = true
+) {
   const ledger = new InMemoryEventLedger();
   const provider = new FakeModelProvider({
     providerId: "provider_fake_local",
@@ -795,7 +849,9 @@ async function preparedRuntime(runType: "investigation-planner" | "evidence-tria
     runType,
     scope: { kind: "investigation", refs: ["inv_scope_001"] }
   });
-  const attemptBinding = await appendAttemptBinding(ledger, { runType, runId: "run_investigation_001" });
+  const attemptBinding = bindAttempt
+    ? await appendAttemptBinding(ledger, { runType, runId: "run_investigation_001" })
+    : undefined;
   return { ledger, runtime, provider, attemptBinding };
 }
 
@@ -828,6 +884,19 @@ function plannerWorkflowInput(input: {
 }
 
 async function appendAttemptBinding(
+  ledger: InMemoryEventLedger,
+  input: {
+    readonly runType?: "investigation-planner" | "evidence-triage";
+    readonly attemptId?: `attempt_${string}`;
+    readonly runId: string;
+  }
+) {
+  const claim = await appendAttemptClaim(ledger, input);
+  const checkpoint = await appendRunnerDispatchingCheckpoint(ledger, claim, input.runId);
+  return { claim, checkpoint };
+}
+
+async function appendAttemptClaim(
   ledger: InMemoryEventLedger,
   input: {
     readonly runType?: "investigation-planner" | "evidence-triage";
@@ -877,6 +946,16 @@ async function appendAttemptBinding(
       causationEventId: taskStream.at(-1)!.id
     }
   }, { expectedNextSequence: claimStream.length + 1 }) as KnowledgeEventOf<"agent.task.orchestration.claimed">;
+  return claim;
+}
+
+async function appendRunnerDispatchingCheckpoint(
+  ledger: InMemoryEventLedger,
+  claim: KnowledgeEventOf<"agent.task.orchestration.claimed">,
+  runId: string
+) {
+  const { taskId, runType, attemptId, retryGeneration, leaseClaimGeneration } = claim.payload;
+  const streamId = taskOrchestrationStreamId(taskId, runType);
   const checkpointStream = await ledger.readStream(streamId);
   const checkpoint = await ledger.append({
     type: "agent.task.orchestration.checkpointed",
@@ -898,18 +977,21 @@ async function appendAttemptBinding(
       leaseClaimGeneration,
       checkpointKind: "runner-dispatching",
       checkpointedAt: now(),
-      runId: input.runId,
+      runId,
       resumeIdempotencyKey: `task-orchestrator:${taskId}:${runType}:${retryGeneration}:${attemptId}:runner-dispatching`,
       contextBindings: [],
       safeNextActions: ["wait for durable specialist handoff readback"]
     }
   }, { expectedNextSequence: checkpointStream.length + 1 }) as KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
-  return { claim, checkpoint };
+  return checkpoint;
 }
 
 async function appendAttemptRelease(
   ledger: InMemoryEventLedger,
-  binding: Awaited<ReturnType<typeof appendAttemptBinding>>
+  binding: {
+    readonly claim: KnowledgeEventOf<"agent.task.orchestration.claimed">;
+    readonly checkpoint?: KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
+  }
 ) {
   const claim = binding.claim;
   const streamId = taskOrchestrationStreamId(claim.payload.taskId, claim.payload.runType);
@@ -921,7 +1003,7 @@ async function appendAttemptRelease(
     context: {
       actor,
       occurredAt: now(),
-      causationId: binding.checkpoint.id,
+      causationId: binding.checkpoint?.id ?? claim.id,
       correlationId: `corr_${claim.payload.taskId}_${claim.payload.runType}`,
       coreVersion: "0.1.0",
       packVersions: { core: "0.1.0", agent: "0.1.0" }
@@ -936,7 +1018,7 @@ async function appendAttemptRelease(
       releasedAt: now(),
       releaseReason: "worker-shutdown",
       claimEventId: claim.id,
-      checkpointEventId: binding.checkpoint.id,
+      ...(binding.checkpoint === undefined ? {} : { checkpointEventId: binding.checkpoint.id }),
       safeNextActions: ["reclaim the task through a new orchestration attempt"]
     }
   }, { expectedNextSequence: stream.length + 1 });

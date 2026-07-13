@@ -338,3 +338,55 @@ Task122 candidates remain preserved, rejected, and unintegrated.
   only the three authorized paths and stop for a reviewer who is neither this
   author nor either prior Task122 reviewer. No self-review, self-integration,
   `neo` merge, PRR/graph/provider/external effect, or scope expansion occurred.
+
+## Release-Line Recovery RED / GREEN Evidence
+
+- Root cause: the preserved `1cc46fb5` guard ignored a matching authoritative
+  release unless its sequence followed the selected `runner-dispatching`
+  checkpoint. A forged checkpoint appended after a release of the exact claim,
+  attempt, retry, and lease could therefore make the released line appear
+  admissible and reach recovery storage.
+- Isolated dependency setup: this dedicated worktree initially lacked ignored
+  `node_modules/.bin/vitest`; `npm ci --ignore-scripts` restored lockfile-pinned
+  dependencies without tracked-file churn.
+- RED: the exact focused command exited `1` (2 files / 47 passing tests / 1
+  expected failure). The new counterfactual appended one authoritative claim,
+  persisted a final output, released that exact claim, then appended a forged
+  later matching `runner-dispatching` checkpoint. The preserved candidate
+  reached a manifest read, producing the wrong durable-output summary instead
+  of the required attempt rejection.
+- GREEN: `npm test -- packages/agent/test/investigation-planner-workflow.test.ts
+  packages/agent/test/specialist-handoff-projection.test.ts` exited `0` with 2
+  files and 48 tests passed. The guard now invalidates the exact causal line on
+  any matching release, regardless of checkpoint ordering. The counterfactual
+  proves rejection before manifest get/put, ledger append, preparation/model,
+  draft/artifact, PRR, graph, provider, or external effects; existing valid,
+  swapped, missing/duplicate/stale, cross-specialist, repeated-unavailable,
+  reconstruction, and restored-ordering coverage remains green.
+- Pre-full gates: `git diff --check` and `npm run factory:check` exited `0`.
+  One retained no-overlap `npm run verify` is the remaining gate. The scoped
+  commit will include only this append-only claim, the Task122 workflow, and
+  its focused test, then stop for a fresh reviewer with no prior Task122 role.
+
+## Release-Line Verification Recovery
+
+- The first retained full gate exited `2` at typecheck before tests because a
+  pre-existing released-attempt test passed the now-optional test setup binding
+  without an explicit narrow. The correction adds only the test assertion and
+  non-null narrow for that default setup path; recovery semantics are
+  unchanged.
+- Post-correction focused verification, `git diff --check`, and factory
+  readiness all exit `0` (2 files / 48 tests). A single retained replacement
+  full verification is next; no overlapping verifier is running.
+
+## Release-Line Candidate Verification And Handoff
+
+- The single retained replacement `npm run verify` exited `0`: typecheck
+  passed; 189 test files passed with 3 skipped; 2,237 tests passed with 5
+  skipped; the Vite production build passed (existing chunk-size warning only);
+  and factory readiness passed.
+- Final scope is exactly the Task122 workflow, focused workflow test, and this
+  append-only claim. This second and final bounded release-line repair is ready
+  for a fresh independent reviewer with no prior Task122 author or reviewer
+  role. It remains unintegrated; no self-review, self-integration, `neo` merge,
+  PRR, graph, provider, tool, external, or fallback-store effect occurred.
