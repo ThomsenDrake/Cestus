@@ -50,3 +50,47 @@ Before the single forward candidate commit, run the focused GREEN command,
 `git diff --check`, `npm run factory:check`, and exactly one coordinator-cleared
 `npm run verify`. Then stop for a distinct fresh review with the candidate SHA,
 clean status, and append-only RED/GREEN/full-verification evidence.
+
+## RED/GREEN Evidence
+
+- Dependency recovery: the first exact focused command found this isolated
+  worktree missing ignored lockfile-pinned dependencies (`vitest: command not
+  found`). `npm ci --ignore-scripts` restored those dependencies without
+  tracked dependency or lockfile changes.
+- RED: `npm test -- packages/ontology/test/agent-trigger-contracts.test.ts
+  packages/agent/test/proactive-triggers.test.ts
+  packages/agent/test/trigger-projection.test.ts` failed before production
+  modules existed: the trigger event contract was unregistered and both trigger
+  modules could not be imported. This followed the committed in-progress
+  claim and preceded any production edit.
+- GREEN: the same exact focused command passed with 3 files and 18 tests. It
+  covers canonical `agent.trigger.requested.v1` validation, verified mounted
+  authority, deterministic source-order-independent identities, conditional
+  append and exact readback, duplicate/cooldown/budget behavior, a concurrent
+  losing-promise re-read, stale/swap authority facts, no-effect rejected input
+  shapes, secret-safe decisions, and pure replayed high-water projection.
+- Follow-up gates: `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check` passed. The one retained `npm run verify` is pending
+  the coordinator's serialized verifier-slot clearance.
+
+## Green Supersession
+
+- A final narrow TDD cycle added the Lane T plan's two descriptor constructors
+  for pre-verified `evidence-gap-contradiction` and `workspace-recovery`
+  metadata. Its focused RED failed because the constructors were absent.
+- The refreshed exact focused GREEN passed with 3 files and 19 tests; the
+  refreshed `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check` also passed. Full verification remains unstarted and
+  reserved for the coordinator-cleared serialized slot.
+
+## Retained Full Verification
+
+- Coordinator-cleared serialized W1-118 verifier: the single retained
+  `npm run verify` exited `0`. Its exact script is
+  `npm run typecheck && npm test && echo 'tests passed' && npm run ui:build &&
+  npm run factory:check`; therefore typecheck, the complete deterministic test
+  suite, UI build, and factory readiness all completed successfully in this
+  isolated worktree. The command emitted no aggregate count lines to retain.
+- No overlapping or repeated full verifier was started. Final scope and diff
+  hygiene remain limited to the seven authorized Task118 paths before the
+  forward candidate commit and distinct fresh review.

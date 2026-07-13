@@ -775,6 +775,132 @@ const agentResidentLoopResultRecordedPayloadSchema = residentLoopIdentitySchema.
   addResidentReadbackIdentityIssues(value, value.terminalReadback, "terminalReadback", ctx);
 });
 
+const triggerIdSchema = agentSecretSafeIdSchema(/^trigger_[a-zA-Z0-9_-]+$/);
+const triggerRequestIdSchema = agentSecretSafeIdSchema(/^trq_[a-zA-Z0-9_-]+$/);
+const triggerSubjectRefSchema = z.object({
+  kind: secretSafeStringSchema.min(1),
+  id: secretSafeStringSchema.min(1)
+}).strict();
+const triggerSourceRefSchema = z.object({
+  sourceEventId: eventIdSchema,
+  sourceStreamId: secretSafeStringSchema.min(1),
+  sourceSequence: z.number().int().positive(),
+  sourceKind: secretSafeStringSchema.min(1),
+  contentHash: contentHashSchema.optional(),
+  observedAt: z.string().datetime()
+}).strict();
+const triggerHighWaterMarkSchema = z.object({
+  workspaceId: agentWorkspaceIdSchema,
+  triggerId: triggerIdSchema,
+  policyVersion: secretSafeStringSchema.min(1),
+  sourcePartition: secretSafeStringSchema.min(1),
+  sourceStreamId: secretSafeStringSchema.min(1),
+  sourceSequence: z.number().int().positive(),
+  sourceEventId: eventIdSchema
+}).strict();
+const triggerAdmissionScopeSchema = z.object({
+  admissionScopeVersion: z.literal("resident-trigger-admission-scope.v1"),
+  workspaceId: agentWorkspaceIdSchema,
+  residentAgentId: z.literal("agent_default"),
+  triggerId: triggerIdSchema,
+  policyVersion: secretSafeStringSchema.min(1),
+  policyArtifactHash: contentHashSchema,
+  cooldownScopeSelector: z.enum(["workspace-trigger", "workspace-trigger-subject"]),
+  budgetScopeSelector: z.enum(["workspace-trigger", "workspace-trigger-subject"]),
+  policySubjectScope: z.enum(["none", "subject-ref"]),
+  scopedSubjectRef: triggerSubjectRefSchema.optional(),
+  policySourcePartition: secretSafeStringSchema.min(1)
+}).strict().superRefine((scope, ctx) => {
+  if (scope.cooldownScopeSelector !== scope.budgetScopeSelector) {
+    ctx.addIssue({ code: "custom", path: ["budgetScopeSelector"], message: "trigger cooldown and budget selectors must be equal" });
+  }
+  if (scope.cooldownScopeSelector === "workspace-trigger" && (scope.policySubjectScope !== "none" || scope.scopedSubjectRef !== undefined)) {
+    ctx.addIssue({ code: "custom", path: ["scopedSubjectRef"], message: "workspace-trigger scope cannot carry a subject reference" });
+  }
+  if (scope.cooldownScopeSelector === "workspace-trigger-subject" && (scope.policySubjectScope !== "subject-ref" || scope.scopedSubjectRef === undefined)) {
+    ctx.addIssue({ code: "custom", path: ["scopedSubjectRef"], message: "workspace-trigger-subject scope requires a subject reference" });
+  }
+});
+const triggerRequestProvenanceSchema = z.object({
+  descriptorRevision: secretSafeStringSchema.min(1),
+  policyVersion: secretSafeStringSchema.min(1),
+  policyArtifactHash: contentHashSchema,
+  workspaceIdentityEventId: eventIdSchema,
+  mountInstanceId: secretSafeStringSchema.min(1),
+  mountHash: contentHashSchema,
+  lockHash: contentHashSchema,
+  evaluationSourceEventIds: z.array(eventIdSchema).min(1),
+  causationId: eventIdSchema,
+  correlationId: triggerRequestIdSchema
+}).strict();
+
+const agentTriggerRequestedPayloadSchema = z.object({
+  requestId: triggerRequestIdSchema,
+  dedupeKey: contentHashSchema,
+  requestFingerprint: contentHashSchema,
+  admissionScope: triggerAdmissionScopeSchema,
+  triggerGateKey: contentHashSchema,
+  residentAgentId: z.literal("agent_default"),
+  workspaceId: agentWorkspaceIdSchema,
+  triggerId: triggerIdSchema,
+  triggerFamily: z.enum([
+    "prr-monitoring",
+    "ingestion-production",
+    "evidence-gap-contradiction",
+    "investigation-cadence",
+    "workspace-recovery"
+  ]),
+  policyVersion: secretSafeStringSchema.min(1),
+  policyArtifactHash: contentHashSchema,
+  subjectRef: triggerSubjectRefSchema,
+  sourceRefs: z.array(triggerSourceRefSchema).min(1),
+  sourceHighWaterMark: triggerHighWaterMarkSchema,
+  requestedRunType: secretSafeStringSchema.min(1),
+  provenance: triggerRequestProvenanceSchema
+}).strict().superRefine((request, ctx) => {
+  const ordered = [...request.sourceRefs].sort((left, right) =>
+    left.sourceStreamId.localeCompare(right.sourceStreamId) ||
+    left.sourceSequence - right.sourceSequence ||
+    left.sourceEventId.localeCompare(right.sourceEventId)
+  );
+  if (ordered.some((source, index) => source !== request.sourceRefs[index])) {
+    ctx.addIssue({ code: "custom", path: ["sourceRefs"], message: "trigger source refs must be canonically sorted" });
+  }
+  const high = ordered[ordered.length - 1]!;
+  if (
+    request.sourceHighWaterMark.workspaceId !== request.workspaceId ||
+    request.sourceHighWaterMark.triggerId !== request.triggerId ||
+    request.sourceHighWaterMark.policyVersion !== request.policyVersion ||
+    request.sourceHighWaterMark.sourcePartition !== request.admissionScope.policySourcePartition ||
+    request.sourceHighWaterMark.sourceStreamId !== high.sourceStreamId ||
+    request.sourceHighWaterMark.sourceSequence !== high.sourceSequence ||
+    request.sourceHighWaterMark.sourceEventId !== high.sourceEventId
+  ) {
+    ctx.addIssue({ code: "custom", path: ["sourceHighWaterMark"], message: "trigger high-water must bind the canonical final source ref" });
+  }
+  const scope = request.admissionScope;
+  if (
+    scope.workspaceId !== request.workspaceId ||
+    scope.residentAgentId !== request.residentAgentId ||
+    scope.triggerId !== request.triggerId ||
+    scope.policyVersion !== request.policyVersion ||
+    scope.policyArtifactHash !== request.policyArtifactHash ||
+    (scope.scopedSubjectRef !== undefined && (scope.scopedSubjectRef.kind !== request.subjectRef.kind || scope.scopedSubjectRef.id !== request.subjectRef.id))
+  ) {
+    ctx.addIssue({ code: "custom", path: ["admissionScope"], message: "trigger admission scope must bind the request identity" });
+  }
+  if (
+    request.provenance.policyVersion !== request.policyVersion ||
+    request.provenance.policyArtifactHash !== request.policyArtifactHash ||
+    request.provenance.correlationId !== request.requestId ||
+    request.provenance.causationId !== request.sourceRefs[0]!.sourceEventId ||
+    request.provenance.evaluationSourceEventIds.length !== request.sourceRefs.length ||
+    request.provenance.evaluationSourceEventIds.some((eventId, index) => eventId !== request.sourceRefs[index]!.sourceEventId)
+  ) {
+    ctx.addIssue({ code: "custom", path: ["provenance"], message: "trigger provenance must bind the canonical source set" });
+  }
+});
+
 const agentSpecialistRunStartedPayloadSchema = z.object({
   runId: agentRunIdSchema,
   residentAgentId: residentAgentIdSchema,
@@ -1661,6 +1787,7 @@ export const payloadSchemas = {
   "agent.resident-tool-step.recorded.v1": agentResidentToolStepRecordedPayloadSchema,
   "agent.resident-loop.suspended.v1": agentResidentLoopSuspendedPayloadSchema,
   "agent.resident-loop.result.recorded.v1": agentResidentLoopResultRecordedPayloadSchema,
+  "agent.trigger.requested.v1": agentTriggerRequestedPayloadSchema,
   "agent.specialist-run.started": agentSpecialistRunStartedPayloadSchema,
   "agent.specialist-run.step.recorded": agentSpecialistRunStepRecordedPayloadSchema,
   "agent.specialist-run.completed": agentSpecialistRunCompletedPayloadSchema,
@@ -1947,6 +2074,13 @@ export const eventContracts = {
     description: "Records a terminal resident-loop result only with exact plan, final-observation, and terminal readbacks.",
     agentGuidance: "Bind task/attempt/run, policy, authority, budget, source, context, causation, correlation, plan and final-observation readbacks, result hash, and terminal readback. Never emit terminal-looking completion without its required readback; this record does not send PRRs, execute tools, or accept graph state.",
     invariants: ["all readback identities must match", "terminalReadback is required", "resultHash is content-addressed", "result records do not authorize an effect"]
+  },
+  "agent.trigger.requested.v1": {
+    type: "agent.trigger.requested.v1",
+    version: 1,
+    description: "Records one provenance-bound demand for the default resident to consider an eligible authoritative workspace fact.",
+    agentGuidance: "Append only through mounted conditional admission and exact event readback. Persist canonical fingerprint, deterministic request ID, dedupe key, admission scope, gate key, sources, high-water, policy, mount, lock, and causation bindings. This request is demand only: it does not create a prompt, provider invocation, approval, task claim, handoff, artifact, scheduler action, parser action, or graph mutation.",
+    invariants: ["residentAgentId is agent_default", "source refs and high-water are canonical", "admission scope is persisted", "request records are append-only and replayable"]
   },
   "agent.specialist-run.started": {
     type: "agent.specialist-run.started",
@@ -2552,6 +2686,10 @@ function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): stri
     return `agent_resident_loop_${agentPayload.taskId}_${agentPayload.attemptId}_${agentPayload.runId}`;
   }
 
+  if (type === "agent.trigger.requested.v1") {
+    return `agent_trigger_${agentPayload.workspaceId}_${agentPayload.triggerId}`;
+  }
+
   if (type.startsWith("agent.task.orchestration.")) {
     return `agent_task_orchestration_${agentPayload.taskId}_${agentPayload.runType}`;
   }
@@ -2673,6 +2811,10 @@ function isResidentLoopEventType(type: KnowledgeEventType): boolean {
     type === "agent.resident-loop.result.recorded.v1";
 }
 
+function isTriggerEventType(type: KnowledgeEventType): boolean {
+  return type === "agent.trigger.requested.v1";
+}
+
 function serializableIssue(issue: z.ZodIssue): Record<string, unknown> {
   return JSON.parse(JSON.stringify(issue)) as Record<string, unknown>;
 }
@@ -2698,10 +2840,10 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
   .superRefine((event, ctx) => {
     const payloadSchema = payloadSchemas[event.type] as z.ZodType<unknown>;
 
-    if (isResidentLoopEventType(event.type) && !isPlainOwnData(event.payload)) {
+    if ((isResidentLoopEventType(event.type) || isTriggerEventType(event.type)) && !isPlainOwnData(event.payload)) {
       ctx.addIssue({
         code: "custom",
-        message: "resident-loop payload must be plain own-data only",
+        message: "resident-agent payload must be plain own-data only",
         path: ["payload"]
       });
       return;
@@ -2807,6 +2949,16 @@ const rawKnowledgeEventSchema = knowledgeEventBaseSchema
           message: "resident-loop correlation must match the event context",
           path: ["context", "correlationId"]
         });
+      }
+    }
+
+    if (isTriggerEventType(event.type)) {
+      const triggerPayload = payload.data as PayloadByEventType["agent.trigger.requested.v1"];
+      if (event.context.causationId !== triggerPayload.provenance.causationId) {
+        ctx.addIssue({ code: "custom", message: "trigger causation must match the event context", path: ["context", "causationId"] });
+      }
+      if (event.context.correlationId !== triggerPayload.provenance.correlationId) {
+        ctx.addIssue({ code: "custom", message: "trigger correlation must match the event context", path: ["context", "correlationId"] });
       }
     }
   })
