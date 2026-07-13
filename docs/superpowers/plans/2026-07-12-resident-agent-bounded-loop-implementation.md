@@ -90,6 +90,61 @@ export interface ResidentLoopBudgetUsage {
   readonly approvalSuspensionMs: number;
 }
 
+/** CF-1 re-parses port output as frozen plain own-data; it is not prompt text or authority. */
+export interface ResidentVerifiedProviderPostureRef {
+  readonly providerCapabilityId: string;
+  readonly providerCapabilityVersion: string;
+  readonly providerPostureHash: `sha256:${string}`;
+  readonly modelId: string;
+}
+
+export interface ResidentPlanCandidateBinding {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly residentAgentId: "agent_default";
+  readonly runMode: ResidentRunMode;
+  readonly workflowDescriptor: ResidentWorkflowDescriptorBinding;
+  readonly policyVersion: string;
+  readonly policyHash: `sha256:${string}`;
+  readonly authority: ResidentLoopAuthorityBinding;
+  readonly sourceEventIds: readonly string[];
+  readonly contextPackRefs: readonly {
+    readonly contextPackId: string; readonly contentHash: `sha256:${string}`;
+  }[];
+  readonly budget: { readonly consumed: ResidentLoopBudgetUsage; readonly remaining: ResidentLoopBudgetUsage };
+  readonly providerPosture?: ResidentVerifiedProviderPostureRef;
+  readonly causationId: string;
+  readonly correlationId: string;
+}
+
+export interface ResidentInitialPlanCandidate extends ResidentPlanCandidateBinding {
+  readonly schemaVersion: "resident-initial-plan-candidate.v1";
+  readonly planId: string;
+  readonly planRevision: 0;
+  readonly steps: readonly ResidentPlannedStep[];
+}
+
+export interface ResidentReplanCandidate extends ResidentPlanCandidateBinding {
+  readonly schemaVersion: "resident-replan-candidate.v1";
+  readonly planId: string;
+  readonly planRevision: number;
+  readonly supersedesPlanRecordEventId: string;
+  readonly steps: readonly ResidentPlannedStep[];
+}
+
+export interface ResidentInitialPlanPlannerPort {
+  createInitialCandidate(input: ResidentPlanCandidateBinding): Promise<ResidentInitialPlanCandidate>;
+}
+
+export interface ResidentPlanReplannerPort {
+  createReplanCandidate(input: {
+    readonly priorPlan: ResidentPlanReadback;
+    readonly observation: ResidentObservationRecord;
+    readonly binding: ResidentPlanCandidateBinding;
+  }): Promise<ResidentReplanCandidate>;
+}
+
 export interface ResidentPlannedStep {
   readonly ordinal: number;
   readonly purpose: string;
@@ -119,9 +174,88 @@ export interface ResidentPlanObservationStore {
     readonly eventId: string; readonly record: ResidentLoopTerminalOrResumableResult;
   }>;
   readPlan(input: { readonly planRecordEventId: string }): Promise<ResidentPlanReadback | undefined>;
+  readObservation(input: { readonly observationEventId: string }): Promise<ResidentObservationRecord | undefined>;
+  readToolStep(input: { readonly toolStepEventId: string }): Promise<ResidentToolStepRecord | undefined>;
+  readResult(input: { readonly resultEventId: string }): Promise<ResidentLoopTerminalOrResumableResult | undefined>;
+}
+
+export interface ResidentLoopCheckpointReadback {
+  readonly checkpointEventId: string;
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly planRecordEventId: string;
+  readonly requestEventId: string;
+  readonly policyHash: `sha256:${string}`;
+  readonly authority: ResidentLoopAuthorityBinding;
+  readonly sourceEventIds: readonly string[];
+  readonly contextPackRefs: readonly { readonly contextPackId: string; readonly contentHash: `sha256:${string}` }[];
+  readonly budget: { readonly consumed: ResidentLoopBudgetUsage; readonly remaining: ResidentLoopBudgetUsage };
+  readonly causationId: string;
+  readonly correlationId: string;
+}
+
+export interface ResidentLoopCheckpointPort {
+  suspendAndReadback(input: ResidentLoopCheckpointReadback): Promise<ResidentLoopCheckpointReadback>;
+  readCheckpoint(input: { readonly checkpointEventId: string }): Promise<ResidentLoopCheckpointReadback | undefined>;
+}
+
+export interface ResidentLoopApprovalReadback {
+  readonly approvalEventId: string;
+  readonly requestEventId: string;
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly previewHash: `sha256:${string}`;
+  readonly approvalClass: ResidentApprovalClass;
+  readonly approvingActorId: string;
+  readonly causationId: string;
+  readonly policyHash: `sha256:${string}`;
+  readonly authority: ResidentLoopAuthorityBinding;
+}
+
+export interface ResidentLoopApprovalPort {
+  readApproval(input: { readonly approvalEventId: string }): Promise<ResidentLoopApprovalReadback | undefined>;
+  consumeApproval(input: ResidentLoopApprovalReadback): Promise<ResidentLoopApprovalReadback>;
+}
+
+export interface ResidentLoopGatewayReadback {
+  readonly requestEventId: string;
+  readonly decisionEventId?: string;
+  readonly resultEventId?: string;
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runId: string;
+  readonly planRecordEventId: string;
+  readonly toolId: string;
+  readonly toolVersion: string;
+  readonly previewHash?: `sha256:${string}`;
+  readonly policyHash: `sha256:${string}`;
+  readonly authority: ResidentLoopAuthorityBinding;
+  readonly sourceEventIds: readonly string[];
+  readonly contextPackRefs: readonly { readonly contextPackId: string; readonly contentHash: `sha256:${string}` }[];
+  readonly budget: { readonly consumed: ResidentLoopBudgetUsage; readonly remaining: ResidentLoopBudgetUsage };
+  readonly causationId: string;
+  readonly correlationId: string;
+}
+
+export interface ResidentLoopToolGateway {
+  requestAndReadback(input: ResidentLoopGatewayReadback): Promise<ResidentLoopGatewayReadback>;
+  readRequest(input: { readonly requestEventId: string }): Promise<ResidentLoopGatewayReadback | undefined>;
+  readDecision(input: { readonly requestEventId: string }): Promise<ResidentLoopGatewayReadback | undefined>;
+  executeAndReadback(input: ResidentLoopGatewayReadback): Promise<ResidentLoopGatewayReadback>;
+  readResult(input: { readonly requestEventId: string }): Promise<ResidentLoopGatewayReadback | undefined>;
+}
+
+export interface ResidentLoopMountedAuthorityPort {
+  suspendAndRelease(input: ResidentLoopCheckpointReadback): Promise<ResidentLoopCheckpointReadback | undefined>;
+  reclaimAndReverify(input: ResidentLoopCheckpointReadback): Promise<ResidentLoopAuthorityBinding | undefined>;
+  reverifyAfterAwait(input: ResidentPlanCandidateBinding): Promise<ResidentLoopAuthorityBinding | undefined>;
 }
 
 export function parseResidentPlanPolicy(input: unknown): ResidentPlanPolicy;
+export function parseResidentInitialPlanCandidate(input: unknown): ResidentInitialPlanCandidate;
+export function parseResidentReplanCandidate(input: unknown): ResidentReplanCandidate;
 export function parseResidentPlanRecord(input: unknown): ResidentPlanRecord;
 export function parseResidentObservationRecord(input: unknown): ResidentObservationRecord;
 export function parseResidentToolStepRecord(input: unknown): ResidentToolStepRecord;
@@ -137,11 +271,33 @@ The frozen policy retains all ten ceilings: maxPlanRevisions,
 maxObservationRecords, maxToolSteps, maxProviderInvocations,
 maxProviderRequestBytes, maxProviderResponseBytes, maxContextBytes,
 maxDerivativeArtifactBytes, maxActiveExecutionMs, and approvalTtlMs. Each
-dependent record carries planRecordEventId. The store reads the exact plan and
-requires exact task/attempt/run/resident/run-mode, descriptor ID/version/hash,
-policy version/hash, source events, context refs, consumed/remaining budget,
-authority, causation, correlation, and plan ID equality before append or
-projection.
+dependent record carries planRecordEventId. **The plan equality tuple is exact:**
+taskId, attemptId, runId, residentAgentId, runMode, workflowDescriptor ID,
+workflowDescriptor version, workflowDescriptor hash, policyVersion, policyHash,
+sourceEventIds, contextPackRefs, consumed budget, remaining budget,
+workspaceIdentityHash, mountGeneration, ledgerStoreIdentity,
+artifactStoreIdentity, ledgerHighWaterEventId, activeLocksHash, causationId,
+correlationId, and planId. The store reads the exact plan and rejects any
+dependent append or projection when any equality-tuple item differs.
+
+An initial candidate has `planRevision: 0`, a fresh planId, and no superseded
+plan. A replan has a fresh planId, the next integer planRevision, and the exact
+prior plan event ID in supersedesPlanRecordEventId. CF-1 validates each returned
+candidate as plain own-data and requires its binding to equal the frozen policy
+and mounted authority exactly. Candidate steps are a finite subset of the
+policy's exact allowlist and cannot widen a tool, version, side effect, approval
+class, source/context, budget, automatic action, or output class. If a step
+needs a provider, its providerCapabilityId, providerCapabilityVersion,
+providerPostureHash, and modelId must exactly equal P's verified posture; the
+planner/replanner cannot choose, substitute, or widen a provider/model.
+
+The checkpoint, approval, gateway, and W mounted-authority ports are the only
+resume path. Task 136 reads a checkpoint, exact plan, gateway request/decision/
+result, and approval only from their durable readback ports; it consumes an
+approval only through consumeApproval after exact revalidation. W alone
+suspends/releases, reclaims/reverifies, and reports mount loss. If W cannot
+return mounted authority, Lane L performs no append, effect, projection
+substitute, cached continuation, local write, or fallback write.
 
 ~~~ts
 export interface ResidentPlanObservationProjection {
@@ -235,6 +391,14 @@ it("does not project a cross-run completed result or mutate accepted graph state
 });
 ~~~
 
+It also enumerates every frozen counter directly. The counterfactual suite
+attempts the next action at its ceiling for planRevisions, observationRecords,
+toolSteps, providerInvocations, providerRequestBytes, providerResponseBytes,
+contextBytes, derivativeArtifactBytes, activeExecutionMs, and
+approvalSuspensionMs; every case rejects before append/effect and reads the
+unchanged durable counter back. This includes a provider response whose received
+byte count would exceed maxProviderResponseBytes before parsing.
+
 - [ ] **Step 2: Run the focused RED command.**
 
 Run:
@@ -326,7 +490,11 @@ export interface ResidentLoopAdvanceInput {
 
 export interface CreateBoundedAgentLoopInput {
   readonly planObservationStore: ResidentPlanObservationStore;
-  readonly readClaimAndAuthority: (input: ResidentLoopAdvanceInput) => Promise<ResidentLoopAuthorityBinding | undefined>;
+  readonly initialPlanPlanner: ResidentInitialPlanPlannerPort;
+  readonly planReplanner: ResidentPlanReplannerPort;
+  readonly checkpointPort: ResidentLoopCheckpointPort;
+  readonly approvalPort: ResidentLoopApprovalPort;
+  readonly mountedAuthorityPort: ResidentLoopMountedAuthorityPort;
   readonly readProviderPosture: (input: ResidentLoopAdvanceInput) => Promise<VerifiedProviderPosture | undefined>;
   readonly toolGateway: ResidentLoopToolGateway;
   readonly readHandoff: (input: {
@@ -346,10 +514,16 @@ export function createBoundedAgentLoop(input: CreateBoundedAgentLoopInput): Boun
 ~~~
 
 ResidentLoopToolGateway is a CF-1 adapter over the existing gateway. It accepts
-only a parsed allowlist entry and returns durable request/decision/result IDs;
-it has no raw shell, credential, provider-body, source-byte, arbitrary-tool, or
-arbitrary-provider API. VerifiedProviderPosture remains P-owned and cannot be
-chosen, widened, or substituted by L.
+only a parsed allowlist entry and returns durable request/decision/result
+readbacks; it has no raw shell, credential, provider-body, source-byte,
+arbitrary-tool, or arbitrary-provider API. Task 136 must call requestAndReadback
+then readRequest/readDecision, and executeAndReadback then readResult; it must
+not treat a returned gateway-shaped object as a durable fact. VerifiedProvider-
+Posture remains P-owned and cannot be chosen, widened, or substituted by L.
+InitialPlanPlannerPort and PlanReplannerPort return typed own-data candidates
+that CF-1 parses again before append. CheckpointPort, ApprovalPort,
+and MountedAuthorityPort make resume ledger-only: an unknown, foreign-task,
+foreign-run, or stale checkpoint/approval cannot select a memory recovery path.
 
 - [ ] **Step 1: Write failing bounded-loop tests.**
 
@@ -387,6 +561,32 @@ it("cannot report completed until exact H handoff readback exists", async () => 
   expect(result).not.toMatchObject({ outcome: "completed" });
   expect(result.category).toBe("persistence-unconfirmed");
 });
+
+it.each(["unknown checkpoint", "foreign-task checkpoint", "foreign-run checkpoint"])(
+  "does not resume from a %s", async (label) => {
+    const fixture = loopInput({ resumeCheckpoint: checkpointFor(label) });
+    const result = await createBoundedAgentLoop(fixture).resume(resumeInput());
+    expect(result).toMatchObject({ outcome: "resumable", category: "persistence-unconfirmed" });
+    expect(fixture.toolGateway.executeAndReadback).not.toHaveBeenCalled();
+  }
+);
+
+it("releases through W without a Lane L write when mount reverify fails", async () => {
+  const fixture = loopInput({ mountedAuthorityPort: unavailableAfterSuspend() });
+  const result = await createBoundedAgentLoop(fixture).advance(inputFor());
+  expect(result).toMatchObject({ outcome: "resumable", category: "workspace-unavailable" });
+  expect(fixture.mountedAuthorityPort.suspendAndRelease).toHaveBeenCalledOnce();
+  expect(fixture.planObservationStore.appendObservation).not.toHaveBeenCalled();
+  expect(fixture.toolGateway.requestAndReadback).not.toHaveBeenCalled();
+});
+
+it("rejects a stale approval at consume readback before gateway execution", async () => {
+  const fixture = loopInput({ approval: staleApprovalForCurrentRequest() });
+  const result = await createBoundedAgentLoop(fixture).resume(resumeInput());
+  expect(result).toMatchObject({ outcome: "resumable", category: "approval-stale" });
+  expect(fixture.approvalPort.consumeApproval).not.toHaveBeenCalled();
+  expect(fixture.toolGateway.executeAndReadback).not.toHaveBeenCalled();
+});
 ~~~
 
 - [ ] **Step 2: Run the focused RED command.**
@@ -403,29 +603,42 @@ files merely to compile.
 
 - [ ] **Step 3: Implement the finite state machine.**
 
-Implement only bounded-agent-loop.ts. At initial plan and before every step or
-post-await continuation, read W claim/authority and require exact task, attempt,
-run, resident, workspace, mount generation, ledger/artifact identity,
-high-water, policy hash, and active-lock hash. Recheck source/context, policy,
-P posture, exact tool/version/side-effect/approval, context packs, and every
-reservation before effect.
+Implement only bounded-agent-loop.ts. At initial plan, before every step, and
+after every await before any append/effect/return continuation, call W's
+reverifyAfterAwait and require exact task, attempt, run, resident, workspace,
+mount generation, ledger/artifact identity, high-water, policy hash, and
+active-lock hash. After every await, re-read and compare sourceEventIds,
+contextPackRefs, their artifact hashes, policy, and P posture before selecting
+the next step. Recheck exact tool/version/side-effect/approval, context packs,
+and every reservation before effect.
 
-Advance only: append/readback initial plan; append/readback context observation;
-request one parsed allowlisted action; execute through current gateway decision;
-append/readback outcome observation; then append a narrower/equivalent replan,
-terminal result, or resumable checkpoint. Replan follows only durable
-observation and cannot add a
+Advance only: validate a typed own-data initial candidate through
+InitialPlanPlannerPort and the CF-1 parser, append/readback initial plan,
+append/readback context observation, request one parsed allowlisted action via
+requestAndReadback/readRequest, and consume gateway approval only after
+ApprovalPort readApproval/consumeApproval exact readback. Execute only through
+executeAndReadback/readResult, append/readback outcome observation, then validate
+a typed own-data replan through PlanReplannerPort or append a terminal result
+or resumable checkpoint. Replan follows only durable observation and cannot add a
 tool, tool version, provider/model posture, source/context, approval class,
 automatic action, byte budget, or side effect. It references the old plan and
-never restores consumed budget.
+never restores consumed budget. Initial/replan IDs, revisions, supersedes link,
+policy equality tuple, exact policy subset, and provider posture must all be
+read back before append.
 
 For denial, tool failure, stale source/policy/mount/claim, provider outage,
 readback uncertainty, crash boundary, or exhaustion, append a safe result only
 while mounted authority remains valid and return matching failed/resumable
-category. Mount loss writes no local substitute. Resume begins only from the
-durable resumeAnchor, replays Task 120/gateway/H records, rechecks all bindings,
-and never scans artifacts or trusts in-memory counters. Exact H handoff plus
-causal run/task proof alone permits completed.
+category. For approval suspension, CheckpointPort first appends/reads back the
+checkpoint, then W suspendAndRelease releases the claim. Resume starts only
+after readCheckpoint finds the exact durable resumeAnchor, W
+reclaimAndReverify returns current mounted authority, and every plan/gateway/
+approval readback is equal. Unknown/foreign checkpoints, stale approvals, and
+mount loss fail closed; mount loss releases through W and writes no Lane L
+observation, result, projection substitute, local write, or fallback write.
+Resume replays Task 120/gateway/H records and never scans artifacts or trusts
+in-memory counters. Exact H handoff plus causal run/task proof alone permits
+completed.
 
 - [ ] **Step 4: Run the focused GREEN command.**
 
@@ -459,11 +672,11 @@ gaps before coordinator merge.
 
 | ID | Owner | Required deterministic proof | Fail-closed result |
 | --- | --- | --- | --- |
-| L-01 | 120/136 | Next plan, observation, tool, provider, request/response/context/derivative byte, time, or approval-TTL action exceeds ceiling. | No effect; durable counters read back; policy selects terminal/resumable budget result. |
+| L-01 | 120/136 | Next plan revision, observation, tool, provider invocation, provider request bytes, provider response bytes, context bytes, derivative artifact bytes, active execution ms, or approval suspension ms action exceeds its named ceiling. | No effect; every named durable counter reads back unchanged; policy selects terminal/resumable budget result. |
 | L-02 | 120/136 | Unknown, prefix, alias, wrong-version, relabelled-side-effect, missing-context, or over-call-count tool. | No gateway execution; validation failure. |
 | L-03 | 120/136 | Replan adds tool/provider/model/source/context/approval/automatic-action/budget/effect. | Old plan immutable; visible conflict; no effect. |
-| L-04 | 136 | Forged, self, denied, expired, cross-run, changed-preview/source/context/policy/lock/mount approval. | No effect; exact request readback and stale/denied resumable result. |
-| L-05 | 136 | Claim loss, mount replacement/disconnect, provider outage, crash between request/checkpoint. | W release/reverify and durable non-success; no internal fallback write. |
+| L-04 | 136 | Unknown, foreign-task, foreign-run, forged, self, denied, expired, cross-run, changed-preview/source/context/policy/lock/mount checkpoint or approval. | No effect; exact checkpoint/request/approval readback and stale/denied/persistence-unconfirmed resumable result. |
+| L-05 | 136 | Claim loss, mount replacement/disconnect, provider outage, crash between request/checkpoint, or post-await source/context drift. | W suspend/release/reclaim/reverify and durable non-success where mounted; mount loss performs no Lane L write or internal fallback write. |
 | L-06 | 120/136 | Orphan bytes, caller result, cached counter, blob scan, or adjacent-task event after restart. | No resume except ledger/H records from resumeAnchor. |
 | L-07 | 120 | Accessor, inherited/symbol/unknown key, sparse array, secret/raw text reaches parser/diagnostic. | Reject before append/effect; primary safe durable outcome remains visible. |
 | L-08 | 120/136 | Tool/model success, copied task status, or mismatched H manifest claims completion. | Never completed; exact H handoff and causal readback only. |
@@ -505,7 +718,8 @@ before an effect and returns to CF-1 correction/rebase.
 ## Documentation Audit and Self-Review
 
 Run this audit before the Task 112 documentation commit. It scopes checks to the
-relevant section and rejects concrete counterfactuals.
+relevant section and rejects concrete counterfactuals, including deletion of a
+single equality-tuple item, budget counter, recovery port, or post-await guard.
 
 ~~~bash
 node --input-type=module <<'NODE'
@@ -529,38 +743,57 @@ const audit = (value) => {
   const operations = part(value, "## Rebase, Review, and Coordinator-Only Live Gate", "## Rollback and Acceptance Mapping");
   const rollback = part(value, "## Rollback and Acceptance Mapping", "## Documentation Audit and Self-Review");
   const need = (scope, text) => { if (!scope.includes(text)) throw new Error("missing " + text); };
-  for (const text of [
+  const needAll = (scope, texts) => texts.forEach(text => need(scope, text));
+  needAll(global, [
     "agent_default remains the sole resident identity",
     "fallback store",
     "Exact tool ID + exact toolVersion",
     "revalidates the exact request, preview, actor, causation",
     "Only the coordinator may run the"
-  ]) need(global, text);
-  for (const text of [
+  ]);
+  needAll(contracts, [
     "ResidentLoopBudgetUsage",
-    "maxDerivativeArtifactBytes",
-    "planRecordEventId",
-    "projectResidentPlanObservationEvents",
-    "completed / handoff-recorded"
-  ]) need(contracts, text);
-  for (const text of [
-    "plan-observation-contracts.ts",
-    "plan-observation-projection.ts",
-    "**Step 2: Run the focused RED command.**",
-    "**Step 4: Run the focused GREEN command.**",
-    "exact allowlist entry",
-    "completed / handoff-recorded requires H exact handoff"
-  ]) need(t120, text);
-  for (const text of [
-    "bounded-agent-loop.ts",
-    "createBoundedAgentLoop",
-    "**Step 2: Run the focused RED command.**",
-    "**Step 4: Run the focused GREEN command.**",
-    "releases through W",
-    "durable resumeAnchor",
-    "cannot add a\ntool, tool version, provider/model posture"
-  ]) need(t136, text);
-  for (const text of ["L-01", "L-02", "L-03", "L-04", "L-05", "L-06", "L-07", "L-08"]) need(matrix, text);
+    "maxPlanRevisions", "maxObservationRecords", "maxToolSteps",
+    "maxProviderInvocations", "maxProviderRequestBytes", "maxProviderResponseBytes",
+    "maxContextBytes", "maxDerivativeArtifactBytes", "maxActiveExecutionMs", "approvalTtlMs",
+    "planRecordEventId", "projectResidentPlanObservationEvents", "completed / handoff-recorded",
+    "The plan equality tuple is exact:",
+    "taskId, attemptId, runId, residentAgentId, runMode, workflowDescriptor ID,",
+    "workflowDescriptor version, workflowDescriptor hash, policyVersion, policyHash,",
+    "sourceEventIds, contextPackRefs, consumed budget, remaining budget,",
+    "workspaceIdentityHash, mountGeneration, ledgerStoreIdentity,",
+    "artifactStoreIdentity, ledgerHighWaterEventId, activeLocksHash, causationId,",
+    "correlationId, and planId.",
+    "ResidentInitialPlanPlannerPort", "createInitialCandidate",
+    "ResidentPlanReplannerPort", "createReplanCandidate",
+    "readObservation", "readToolStep", "readResult",
+    "ResidentLoopCheckpointPort", "readCheckpoint",
+    "ResidentLoopApprovalPort", "consumeApproval",
+    "ResidentLoopToolGateway", "requestAndReadback",
+    "ResidentLoopMountedAuthorityPort", "suspendAndRelease", "reclaimAndReverify", "reverifyAfterAwait",
+    "providerCapabilityId, providerCapabilityVersion,",
+    "providerPostureHash, and modelId",
+    "substitute, cached continuation, local write, or fallback write"
+  ]);
+  needAll(t120, [
+    "plan-observation-contracts.ts", "plan-observation-projection.ts",
+    "**Step 2: Run the focused RED command.**", "**Step 4: Run the focused GREEN command.**",
+    "exact allowlist entry", "completed / handoff-recorded requires H exact handoff",
+    "providerResponseBytes", "maxProviderResponseBytes"
+  ]);
+  needAll(t136, [
+    "bounded-agent-loop.ts", "createBoundedAgentLoop",
+    "**Step 2: Run the focused RED command.**", "**Step 4: Run the focused GREEN command.**",
+    "releases through W", "durable resumeAnchor", "unknown checkpoint", "foreign-task checkpoint",
+    "stale approval", "after every await before any append/effect/return continuation",
+    "After every await, re-read and compare sourceEventIds,",
+    "mount loss releases through W and writes no Lane L",
+    "observation, result, projection substitute, local write, or fallback write"
+  ]);
+  needAll(matrix, [
+    "L-01", "L-02", "L-03", "L-04", "L-05", "L-06", "L-07", "L-08",
+    "provider response bytes", "post-await source/context drift"
+  ]);
   need(operations, "coordinator\n   alone may run npm run agent:nous:smoke");
   need(rollback, "Rollback is forward-only");
   need(rollback, "A-10");
@@ -575,7 +808,17 @@ const cases = [
   ["restart", value => value.replaceAll("durable resumeAnchor", "memory cache")],
   ["matrix", value => value.replace("| L-08", "| OMITTED")],
   ["Nous", value => value.replaceAll("coordinator\n   alone may run npm run agent:nous:smoke", "worker may run provider")],
-  ["rollback", value => value.replace("Rollback is forward-only", "Rollback is unspecified")]
+  ["rollback", value => value.replace("Rollback is forward-only", "Rollback is unspecified")],
+  ["equality tuple", value => value.replace("correlationId, and planId.", "correlationId.")],
+  ["response-byte counter", value => value.replaceAll("maxProviderResponseBytes", "removedProviderResponseCounter")],
+  ["initial candidate port", value => value.replaceAll("createInitialCandidate", "removedInitialCandidatePort")],
+  ["replan candidate port", value => value.replaceAll("createReplanCandidate", "removedReplanCandidatePort")],
+  ["checkpoint port", value => value.replaceAll("readCheckpoint", "removedCheckpointReadback")],
+  ["approval consume port", value => value.replaceAll("consumeApproval", "removedApprovalConsume")],
+  ["gateway readback port", value => value.replaceAll("requestAndReadback", "removedGatewayReadback")],
+  ["W authority port", value => value.replaceAll("reclaimAndReverify", "removedWReverify")],
+  ["W no-write", value => value.replace("mount loss releases through W and writes no Lane L", "mount loss may write locally")],
+  ["post-await source/context", value => value.replace("After every await, re-read and compare sourceEventIds,", "After await, use cached source/context")]
 ];
 for (const [label, mutate] of cases) {
   let rejected = false;
