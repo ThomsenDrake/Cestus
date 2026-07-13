@@ -2244,3 +2244,21 @@ explicit implementation authorization.
   for W1-118 and Task136. No store, projection, runtime, provider, tool,
   domain, browser, credential, Nous, tailnet, or live effect is authorized by
   this documentation integration.
+
+## RV-1-C-026 — Coordinator integration: approved Task121 durable PRR recovery
+
+- Candidate and lineage: independent repair `ea716cae40a7fbc4dd630ea88a74a7fd27c3da15`
+  is reviewed from rejected Task121 lineage `210cc178` and remains a descendant
+  of CF-1 `48c9cbcd`. Relay B merged it only after a fresh independent approval.
+- Scope and repaired invariant: the exact allowed Task121 workflow, focused
+  test, and append-only claim repair the post-final-output persistence window.
+  A retry now reads the exact durable final-output and records/finalizes it
+  without rebuilding context, re-running the draft step, or invoking a provider;
+  pre-final unreadable storage records a secret-safe durable terminal failure.
+  The reviewer independently confirmed stale-evidence rejection, ordered
+  final-output -> prepared -> recorded -> terminal readback, and no PRR send,
+  graph mutation, tool execution, or external effect.
+- Review and gates: focused review evidence is 2 files / 47 tests, clean diff
+  and factory gates, and author full verification of 189 files passed / 3
+  skipped, 2,230 tests passed / 5 skipped, Vite, and factory readiness. The
+  coordinator runs the merged-checkout gate before completing this integration.
