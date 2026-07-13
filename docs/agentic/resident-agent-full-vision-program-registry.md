@@ -2617,3 +2617,17 @@ explicit implementation authorization.
   bounded production GREEN repair in the canonical lane. The failure proof is
   causal and must be preserved through the candidate, fresh review, and any
   later merged-checkout integration; no full verifier is granted yet.
+
+## RV-1-C-042 — Task124 root-cause recovery authorization
+
+- Fresh review rejected `6d81423b`: existing-record reuse rebuilt admission
+  expectation from `safeExisting.admission`, accepting forged/swapped
+  resident, mount, policy, or lock facts; `highWaterBeforeOutage` was bound
+  only for new append rather than reuse. The candidate is preserved and not
+  integrated.
+- After bounded repair exhaustion, fresh root-cause worker
+  `019f5d72-e7ee-7790-adf8-280feffb40cc` starts from clean `6d81423b`.
+  It must trace stable versus renewable fields, establish forged/swapped REDs
+  with zero runtime or append effect, and implement one independently derived
+  canonical reconciliation predicate. No full verifier or integration is
+  authorized before focused GREEN and a new independent review.
