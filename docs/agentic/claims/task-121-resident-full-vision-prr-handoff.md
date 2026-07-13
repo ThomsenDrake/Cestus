@@ -25,3 +25,7 @@ The task consumes CF-1's frozen handoff contract and produces only a provenance-
 
 - Initial claim committed before task-file edits. RED evidence, in-progress status, GREEN evidence, verification, and review handoff will be appended without rewriting this record.
 - Status changed to `in-progress` before Task121 source or test edits.
+- RED (durable readback): `npm test -- packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/specialist-handoff-projection.test.ts` exited 1 on 2026-07-13 because the local draft path had no `agent.specialist-handoff.recorded` event. The regression was added before workflow production changes.
+- RED (readback failure): the same command exited 1 after the failure-injection regression exposed the raw unreadable-store error. The required result is a secret-safe blocked handoff with no prepared, recorded, or terminal fallback event.
+- GREEN: the exact targeted command exited 0 with 2 test files and 46 tests passing after the PRR workflow recorded the local draft through final-output, prepared/recorded readback, and terminal causation, while the unreadable-store path remained nonterminal and no PRR send event was appended.
+- Full verification: `git diff --check && npm run verify` exited 0 on 2026-07-13: typecheck passed; 192 test files passed with 3 skipped; 2,229 tests passed with 5 skipped; Vite built with its existing chunk-size warning; factory-readiness passed.

@@ -14,6 +14,7 @@ import {
 } from "../../prr/src/index.js";
 import {
   buildAgentProjection,
+  buildSpecialistHandoffProjection,
   buildPrrCorrespondenceApprovalPreview,
   buildPromptArtifact,
   assertResolvedContextPacksForExecution,
@@ -256,6 +257,7 @@ describe("PRR negotiation workflow", () => {
       scope: { kind: "workspace", refs: ["ws_prr"] }
     });
 
+    const derivativeStore = createDerivativeStore();
     const result = await runPrrNegotiationWorkflow({
       ledger,
       actor,
@@ -268,7 +270,7 @@ describe("PRR negotiation workflow", () => {
         "agent-memory-summary.v1",
         "task-run-history.v1",
         "workspace-runtime-status.v1"
-      ], []),
+      ], [], undefined, { omitLedgerBoundRefs: true }),
       runtime,
       providerReadiness: providerReadinessDto("works-locally"),
       runId: "run_prr_001",
@@ -280,7 +282,7 @@ describe("PRR negotiation workflow", () => {
         providerId: "provider_fake_local",
         kind: "local-no-secret"
       },
-      derivativeStore: createDerivativeStore(),
+      derivativeStore,
       prrRequestId: "prr_req_001",
       correspondenceId: "corr_prr_001",
       jurisdictionRuleRefs: ["rule_foia_deadline_001"],
@@ -290,16 +292,116 @@ describe("PRR negotiation workflow", () => {
     expect(result.handoff.status).toBe("ready-for-review");
     expect(result.handoff.toolRequestIds).toEqual([]);
     const events = await ledger.readAll();
-    const step = events.find((event) => event.type === "agent.specialist-run.step.recorded");
+    const recorded = events.find((event): event is Extract<typeof events[number], { type: "agent.specialist-handoff.recorded" }> =>
+      event.type === "agent.specialist-handoff.recorded"
+    );
     const completed = events.find((event): event is Extract<typeof events[number], { type: "agent.specialist-run.completed" }> =>
       event.type === "agent.specialist-run.completed"
     );
-    expect(completed?.payload.relatedEventIds).toEqual([step?.id]);
+    expect(completed?.context.causationId).toBe(recorded?.id);
+    expect(completed?.payload.relatedEventIds).toEqual([recorded?.id]);
     expect(events.map((event) => event.type)).not.toContain("agent.tool.requested");
+    expect(events.map((event) => event.type)).toContain("agent.specialist-handoff.recorded");
+    expect(await buildSpecialistHandoffProjection({
+      events,
+      manifestReader: derivativeStore,
+      runId: "run_prr_001",
+      taskId: "task_prr_001"
+    })).toMatchObject({
+      state: "handoff-recorded",
+      selectedHandoff: expect.objectContaining({
+        runType: "prr-negotiation",
+        status: "ready-for-review"
+      })
+    });
+    expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "prr.request.sent", "prr.followup.sent", "prr.legal-escalation.confirmed"
+    ]));
     expect(buildAgentProjection(events).runs.get("run_prr_001")).toMatchObject({
       state: "completed",
       toolRequestIds: []
     });
+  });
+
+  it("blocks the draft handoff without a fallback terminal result when readback is unavailable", async () => {
+    const ledger = new InMemoryEventLedger();
+    const provider = new FakeModelProvider({
+      providerId: "provider_fake_local",
+      modelFamilies: ["fake-local"],
+      responseText: JSON.stringify({
+        draftSummary: "Private case narrative for investigator review only.",
+        requestFollowUpApproval: false,
+        citedRuleRefs: ["rule_foia_deadline_001"],
+        deadlineNotes: [],
+        feeOrStallingSignals: [],
+        unresolvedQuestions: []
+      })
+    });
+    const runtime = createAgentRuntime({ ledger, actor, now, providers: [provider] });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_prr" });
+    await runtime.createTask({
+      taskId: "task_prr_001",
+      title: "Review PRR deadline",
+      requestedBy: "actor_investigator",
+      priority: "normal"
+    });
+    await runtime.startRun({
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      runType: "prr-negotiation",
+      scope: { kind: "workspace", refs: ["ws_prr"] }
+    });
+    const backingStore = createDerivativeStore();
+    const unreadableStore = {
+      put: backingStore.put,
+      get: async () => { throw new Error("private mounted store readback failure"); }
+    };
+
+    const result = await runPrrNegotiationWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createWorkflowContextPacks([
+        "prr-read-model.v1",
+        "jurisdiction-pack-summary.v1",
+        "governance-locks.v1",
+        "evidence-summary.v1",
+        "agent-memory-summary.v1",
+        "task-run-history.v1",
+        "workspace-runtime-status.v1"
+      ], [], undefined, { omitLedgerBoundRefs: true }),
+      runtime,
+      providerReadiness: providerReadinessDto("works-locally"),
+      runId: "run_prr_001",
+      taskId: "task_prr_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret"
+      },
+      derivativeStore: unreadableStore,
+      prrRequestId: "prr_req_001",
+      correspondenceId: "corr_prr_001",
+      jurisdictionRuleRefs: ["rule_foia_deadline_001"],
+      followUpApprovalPreview: followUpApprovalPreview()
+    });
+
+    expect(result.handoff).toMatchObject({
+      status: "blocked",
+      nextSafeActions: [expect.objectContaining({ kind: "retry", effect: "none" })]
+    });
+    expect(JSON.stringify(result.handoff)).not.toContain("private mounted store readback failure");
+    const eventTypes = (await ledger.readAll()).map((event) => event.type);
+    expect(eventTypes).toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).not.toEqual(expect.arrayContaining([
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed",
+      "prr.request.sent",
+      "prr.followup.sent"
+    ]));
   });
 
   it("records PRR follow-up requests with exact rebuildable correspondence adapter bindings", async () => {
@@ -1074,7 +1176,8 @@ function createWorkflowContextPacks(
   remoteRefs: RemotePromptEvidenceRefs = {
     evidenceEventId: remoteEvidenceEventId,
     linkEventId: remoteLinkEventId
-  }
+  },
+  options: { readonly omitLedgerBoundRefs?: boolean } = {}
 ) {
   const registry = createContextPackRegistry();
   for (const contextPackId of ids) {
@@ -1098,8 +1201,10 @@ function createWorkflowContextPacks(
           payload: workflowContextPayload(contextPackId),
           safeSummary: `${contextPackId} is safe for planning.`,
           provenanceRefs: ["event:evt_context_001", remoteEvidenceId, remoteRefs.evidenceEventId, remoteEvidenceHash],
-          sourceEventIds: ["evt_context_001", remoteRefs.evidenceEventId, remoteRefs.linkEventId],
-          artifactHashes: [remoteEvidenceHash],
+          ...(options.omitLedgerBoundRefs ? {} : {
+            sourceEventIds: ["evt_context_001", remoteRefs.evidenceEventId, remoteRefs.linkEventId],
+            artifactHashes: [remoteEvidenceHash]
+          }),
           ...(contextPackId === "prr-read-model.v1" ? { scope: { kind: "prr-request", id: "prr_req_001" } } : {}),
           sizeBudgetBytes: 16_384
         };
