@@ -145,3 +145,30 @@ clean status, and append-only RED/GREEN/full-verification evidence.
   or overlapping W1-118 repair verifier was started. Final commit scope remains
   the seven authorized Task118 paths, and the candidate must stop for fresh
   re-review without self-integration or `neo` mutation.
+
+## Replacement Full-Envelope Readback Repair
+
+- Fresh replacement review identified that `readbackPayload` discarded the
+  returned event envelope before readback, so it did not prove the requested
+  event ID or bind the returned resident actor, causation, and correlation.
+- RED: before the production edit, the exact focused command
+  `npm test -- packages/ontology/test/agent-trigger-contracts.test.ts packages/agent/test/proactive-triggers.test.ts packages/agent/test/trigger-projection.test.ts`
+  exited `1` with 3 files, 4 failures, and 23 passes. The four causal cases
+  returned an otherwise matching payload under a different event ID, a
+  non-resident actor, unrelated causation, and unrelated correlation; each
+  incorrectly produced `requested`.
+- Repair: `readbackTriggerDecision` now passes the complete returned value to
+  `validateKnowledgeEvent`, requires the requested event ID and the
+  `agent_default` agent context, then retains the existing canonical payload,
+  causation, identity, and scope reconstruction checks. It does not duplicate
+  or weaken ontology validation.
+- GREEN: the same focused command exited `0` with 3 files and 27/27 tests
+  passing. `npm run typecheck` emitted `typecheck passed`; `git diff --check`
+  exited `0`; and `npm run factory:check` emitted `factory-readiness passed`.
+- Coordinator granted the serialized full-verifier slot. The one replacement
+  `npm run verify` exited `0`: typecheck passed; Vitest reported 195 passed and
+  3 skipped test files (198 total), with 2,290 passed and 5 skipped tests
+  (2,295 total); Vite transformed 164 modules and completed the production
+  build; the final factory gate emitted `factory-readiness passed`. The command
+  retained existing SQLite experimental warnings and Vite's non-fatal
+  chunk-size warning. No additional full verifier was started.
