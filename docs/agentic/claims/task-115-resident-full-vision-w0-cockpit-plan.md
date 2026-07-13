@@ -13,9 +13,11 @@
 - Base commit: beff02c05d3472cc79e7ccf411f77c33b7b64342.
 - Restart authorization: RV-0-U-005 supersedes only RV-0-U-004 stopped-before-edit execution.
 - Model configuration: user-confirmed host-reported GPT-5 satisfies required GPT-5.6 Terra / Extra High.
-- Status: ready-for-review. The scoped plan, documentation audit, whitespace,
-  factory, and full verification gates are complete; a different fresh review
-  and the coordinator's integration decision remain required.
+- Status: repair-ready-for-review. The prior scoped plan, documentation audit,
+  whitespace, factory, and full verification gates remain historical evidence;
+  the RV-0-U-007 ownership-and-label repair now has its own GREEN and repository
+  evidence and awaits a different fresh review and the coordinator's integration
+  decision.
 
 ## Ownership And Stop
 
@@ -85,3 +87,40 @@ On passing documentation GREEN and repository gates, commit only the two owned
 files and stop for a different fresh reviewer. The author neither self-reviews
 nor merges; the visible coordinator alone records review and integration state,
 and never integrates this child into neo without explicit instruction.
+
+## RV-0-U-007 Ownership And Label Repair
+
+- Repair authorization/base: RV-0-U-007 / `df5b27cb131f42752eec5c4e6e1eceff58658b95`.
+- Repair branch/worktree: `codex/task115-labels-repair` /
+  `/home/drake/.codex/worktrees/task-115-resident-full-vision-w0-cockpit-plan-labels-repair`.
+- Scope: this repair changes only this claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-cockpit-implementation.md`;
+  it does not authorize CF-1, Task 117, Task 131, Task 141, production, tests,
+  UI, routes, provider/browser/tailnet work, a rebase, integration, or a merge
+  into `neo`.
+- Documentation RED: the ownership-and-label audit exited 1 before this repair
+  with three missing requirements: Task 117 assignment of
+  `packages/local-runtime/test/agent-supervision-routes.test.ts` before Task
+  141 dispatch, the six exact command labels, and Task 141 rejection of `Run
+  retry`, `Cancelled`, and `Start the agent` while acknowledgments remain
+  requested/pending until durable projection/readback.
+- Documentation GREEN: the repaired embedded Task 115 audit exited 0 and
+  printed `GREEN: Task 115 cockpit plan audit passed (40 direct local mutations
+  rejected).` It removes every contract row and directly mutates `Queue retry`,
+  `Request cancellation`, and `Resume eligible wake processing` to the three
+  rejected labels; each mutation fails closed.
+- Repair outcome: Task 141 no longer preclaims the local-runtime route test.
+  Task 117 CF-1 reconciliation must record its owner before Task 141 dispatch;
+  the plan freezes all six label/code pairs through CF-1 and makes Task 141 RED
+  and GREEN prove exact labels plus pending/readback truth.
+- Verification: `git diff --check` exited 0 with no output; `npm run
+  factory:check` exited 0 with `factory-readiness passed`. The first `npm run
+  verify` correctly stopped at `tsc: command not found` because this fresh
+  worktree had no ignored dependencies; `npm ci` restored the lockfile-pinned
+  dependencies without tracked-file changes. The rerun exited 0: typecheck
+  passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5
+  skipped; Vite built with its existing chunk-size warning; and factory
+  readiness passed.
+- Next gate: one repair commit containing only these two Task 115 files, then a
+  different fresh review. No self-review, self-integration, rebase, or merge
+  into `neo` is authorized.
