@@ -2641,3 +2641,15 @@ explicit implementation authorization.
 - Worker `019f5d6f-ee9f-75a2-9032-a28689298f43` alone holds the serialized
   `npm run verify` slot. Task123 and Task124 remain focused-only until it
   releases; a fresh reviewer is still mandatory before any W1-118 integration.
+
+## RV-1-C-044 — W1-118 candidate and Task123 serialized gate
+
+- W1-118 repair candidate `5e93c3a74075357913c57944bc8d261f8487af46` is
+  clean atop `b18c7ec9`, with 27/27 focused tests and retained full
+  verification: 195 pass + 3 skipped files, 2,290 pass + 5 skipped tests,
+  typecheck, build, and factory. Fresh independent Terra reviewer
+  `019f5d78-8c37-7573-909c-9c8d38b41f49` owns its review; no integration.
+- Authoritative Task123 reached causal and route-resumability GREEN at 3 files
+  / 55 tests with typecheck, diff, factory, and exact five-file scope. Worker
+  `019f5d45-9016-7932-b893-2f94021e1ef0` alone holds the serialized full slot;
+  Task124 remains focused-only until release.
