@@ -1144,6 +1144,32 @@ explicit implementation authorization.
 - Root-cause checkpoint: the first recovery proved schema completeness but not semantic relation completeness and omitted one spec-level lease-policy invariant. The approved contract remains satisfiable without a product/scope/safety/truth change. The new recovery changes method to relation-graph assertions tied directly to the spec and complete self-review evidence rather than adding sampled tokens or asking the user.
 - Supersession: this record supersedes RV-0-W-008 only for current recovery status and authorization. It preserves all preceding Task 111 evidence as immutable history.
 
+## RV-0-R-008 — Task 109 recovery approval, Lane R plan approval, and integration
+
+- Recorded at: 2026-07-13T02:11:51Z
+- Role: coordinator
+- Lane and wave: R / 0B
+- Task ID and claim: task-109-resident-full-vision-w0-runtime-plan / docs/agentic/claims/task-109-resident-full-vision-w0-runtime-plan.md
+- Task thread ID: original author and repairs preserved in RV-0-R-003 through RV-0-R-007; /root/task109_runtime_plan_recovery_2 (second recovery implementer); /root/review_task109_plan_recovery_2 (fresh approving reviewer)
+- Branch and worktree: codex/task-109-resident-full-vision-w0-runtime-plan-recovery-2 / /home/drake/.codex/worktrees/task-109-resident-full-vision-w0-runtime-plan-recovery-2; integrated on codex/resident-agent-full-vision-program-plan / /home/drake/.codex/worktrees/664b/Cestus
+- Base commit and required head: 1cdcf99098943049ff2e673607b35b676020466a / a936955460c5b1da53ae156538d826dd37cd7774
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for author, repairer, and reviewer sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-runtime-composition-design.md@05e85392367964a3869a55832703f504dd0fe3da; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-runtime-composition-implementation.md; docs/agentic/claims/task-109-resident-full-vision-w0-runtime-plan.md
+- Forbidden files: every other task file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: preserved Task109 plan/repair/recovery chain through a9369554; CF-1 remains shared-contract freeze owner; no production work has begun
+- Approval record: coordinator-issued Task109 repairs and recovery authorizations under Standing Coordinator Delegation named governing spec @05e85392 and plan @0b5726ec, Task109 only, and the Wave 0B re-review stops. Each explicitly authorized superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibited Tasks132–140, CF-1 implementation dispatch, production/provider work, and merge into neo. This record approves only the completed written Lane R implementation plan.
+- Claim status: merged
+- RED command and observed failure: the recovery checkpoint preserved the earlier failures: lexical audit drift, actual-caller omission, closure/provenance omission, reject-after-activity risk, and ambiguous Task134/135 fixture dependency.
+- GREEN command and observed result: second recovery GREEN structurally parsed the exact CF-1 fixture, Task134/135/140 trace matrices, cases, counters, ordered zero expectations, and owner/order entries; it rejected 99 row/counter/zero/owner/order mutations. `git diff --check` and `npm run factory:check` passed.
+- Full verification: NODE_NO_WARNINGS=1 npm run verify / exit 0 after coordinator integration commit b2b0a80a: typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite built with its existing chunk-size warning; factory-readiness passed.
+- Live-provider gate: plan-only; no provider invocation occurred. The approved plan retains coordinator-only later real-Nous gates and safe evidence capture.
+- Review verdict: approved / fresh reviewer /root/review_task109_plan_recovery_2 independently confirmed non-cyclic CF-1 -> Task134 test-only fixture -> Task135 actual binding -> Task140 order, real `dispatchVerifiedTaskRunner` coverage, complete reject-before-activity zero counters, scope, and structural 99-mutation audit.
+- Rebase record: no rebase was needed; Task109 owned files were additive on the integration branch. Coordinator merge commit b2b0a80a496a7500c68fa3544dae3033180a7368 integrated the approved branch without merge into neo.
+- Merge readiness: merged / coordinator integration commit b2b0a80a496a7500c68fa3544dae3033180a7368; no merge into neo occurred.
+- Archive check: recovery implementer and reviewer final handoffs exist, recovery worktree is clean, branch ancestry reaches the integration branch, full coordinator verification is green, and merge state is recorded; archival remains coordinator-administered after durable registry reconciliation.
+- Supersession: this record supersedes RV-0-R-003 through RV-0-R-007 only for Task109 plan approval, recovery, review, and merge status. Every preceding author, reviewer, repair, and root-cause entry remains immutable.
+
 ## RV-0-H-003 — Task 110 durable-handoffs implementation-plan dispatch
 
 - Recorded at: 2026-07-13T00:16:43Z
