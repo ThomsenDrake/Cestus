@@ -749,32 +749,35 @@ const expectCheckpointMutationFailsClosed = async (
   expectNoCheckpointMismatchEffects(fixture);
 };
 
-const checkpointBindingMutations = [
-  ["task", (checkpoint) => ({ ...checkpoint, taskId: "checkpoint_task_other" })],
-  ["attempt", (checkpoint) => ({ ...checkpoint, attemptId: "checkpoint_attempt_other" })],
-  ["run", (checkpoint) => ({ ...checkpoint, runId: "checkpoint_run_other" })],
-  ["resident", (checkpoint) => ({ ...checkpoint, residentAgentId: "agent_other" as "agent_default" })],
-  ["run-mode", (checkpoint) => ({ ...checkpoint, runMode: "memory-curation" })],
-  ["descriptor", (checkpoint) => ({ ...checkpoint, workflowDescriptor: { ...checkpoint.workflowDescriptor, workflowDescriptorHash: hash("checkpoint_descriptor_other") } })],
-  ["plan", (checkpoint) => ({ ...checkpoint, planId: "checkpoint_plan_other" })],
-  ["plan-record", (checkpoint) => ({ ...checkpoint, planRecordEventId: "checkpoint_plan_record_other" })],
-  ["step", (checkpoint) => ({ ...checkpoint, stepOrdinal: checkpoint.stepOrdinal + 1 })],
-  ["request", (checkpoint) => ({ ...checkpoint, requestEventId: "checkpoint_request_other" })],
-  ["tool", (checkpoint) => ({ ...checkpoint, toolId: "checkpoint_tool_other" })],
-  ["tool-version", (checkpoint) => ({ ...checkpoint, toolVersion: "9.9.9" })],
-  ["allowlist", (checkpoint) => ({ ...checkpoint, allowlistEntryHash: hash("checkpoint_allowlist_other") })],
-  ["side-effect", (checkpoint) => ({ ...checkpoint, sideEffectClass: "external-byte-transfer" })],
-  ["approval", (checkpoint) => ({ ...checkpoint, requiredApprovalClass: "human-review" })],
-  ["preview", (checkpoint) => ({ ...checkpoint, previewHash: hash("checkpoint_preview_other") })],
-  ["artifact", (checkpoint) => ({ ...checkpoint, inputArtifactHashes: [hash("checkpoint_artifact_other")] })],
-  ["deadline", (checkpoint) => ({ ...checkpoint, resumptionDeadlineAt: "2099-01-01T00:00:00.000Z" })],
-  ["policy", (checkpoint) => ({ ...checkpoint, policyHash: hash("checkpoint_policy_other") })],
-  ["authority", (checkpoint) => ({ ...checkpoint, authority: { ...checkpoint.authority, activeLocksHash: hash("checkpoint_locks_other") } })],
-  ["source", (checkpoint) => ({ ...checkpoint, sourceEventIds: ["checkpoint_source_other"] })],
-  ["context", (checkpoint) => ({ ...checkpoint, contextPackRefs: [{ contextPackId: "checkpoint_context_other", contentHash: hash("checkpoint_context_hash_other") }] })],
-  ["budget", (checkpoint) => ({ ...checkpoint, budget: { ...checkpoint.budget, consumed: { ...checkpoint.budget.consumed, toolSteps: checkpoint.budget.consumed.toolSteps + 1 } } })],
-  ["causation", (checkpoint) => ({ ...checkpoint, causationId: "checkpoint_causation_other" })],
-  ["correlation", (checkpoint) => ({ ...checkpoint, correlationId: "checkpoint_correlation_other" })]
+const checkpointBindingMutations: readonly (readonly [
+  string,
+  (checkpoint: ResidentLoopCheckpointReadback) => ResidentLoopCheckpointReadback
+])[] = [
+  ["task", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, taskId: "checkpoint_task_other" })],
+  ["attempt", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, attemptId: "checkpoint_attempt_other" })],
+  ["run", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, runId: "checkpoint_run_other" })],
+  ["resident", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, residentAgentId: "agent_other" as "agent_default" })],
+  ["run-mode", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, runMode: "memory-curation" })],
+  ["descriptor", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, workflowDescriptor: { ...checkpoint.workflowDescriptor, workflowDescriptorHash: hash("checkpoint_descriptor_other") } })],
+  ["plan", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, planId: "checkpoint_plan_other" })],
+  ["plan-record", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, planRecordEventId: "checkpoint_plan_record_other" })],
+  ["step", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, stepOrdinal: checkpoint.stepOrdinal + 1 })],
+  ["request", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, requestEventId: "checkpoint_request_other" })],
+  ["tool", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, toolId: "checkpoint_tool_other" })],
+  ["tool-version", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, toolVersion: "9.9.9" })],
+  ["allowlist", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, allowlistEntryHash: hash("checkpoint_allowlist_other") })],
+  ["side-effect", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, sideEffectClass: "external-byte-transfer" })],
+  ["approval", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, requiredApprovalClass: "human-review" })],
+  ["preview", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, previewHash: hash("checkpoint_preview_other") })],
+  ["artifact", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, inputArtifactHashes: [hash("checkpoint_artifact_other")] })],
+  ["deadline", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, resumptionDeadlineAt: "2099-01-01T00:00:00.000Z" })],
+  ["policy", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, policyHash: hash("checkpoint_policy_other") })],
+  ["authority", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, authority: { ...checkpoint.authority, activeLocksHash: hash("checkpoint_locks_other") } })],
+  ["source", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, sourceEventIds: ["checkpoint_source_other"] })],
+  ["context", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, contextPackRefs: [{ contextPackId: "checkpoint_context_other", contentHash: hash("checkpoint_context_hash_other") }] })],
+  ["budget", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, budget: { ...checkpoint.budget, consumed: { ...checkpoint.budget.consumed, toolSteps: checkpoint.budget.consumed.toolSteps + 1 } } })],
+  ["causation", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, causationId: "checkpoint_causation_other" })],
+  ["correlation", (checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback => ({ ...checkpoint, correlationId: "checkpoint_correlation_other" })]
 ] as const;
 
 it.each(checkpointBindingMutations)(
@@ -962,6 +965,7 @@ single equality-tuple item, budget counter, recovery port, or post-await guard.
 ~~~bash
 node --input-type=module <<'NODE'
 import fs from "node:fs";
+import ts from "typescript";
 const source = fs.readFileSync(
   "docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md",
   "utf8"
@@ -1003,6 +1007,56 @@ const nonCompletedHandoffLifecycleValues = [
   "no-output", "output-persisted", "handoff-pending", "handoff-recorded",
   "terminal-consistent", "legacy-unbound", "unavailable", "inconsistent"
 ];
+const checkpointMutationCallbackSignature =
+  "(checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback =>";
+const checkpointMutationVirtualPreamble = `
+interface Array<T> { length: number; [index: number]: T; }
+interface ReadonlyArray<T> { readonly length: number; readonly [index: number]: T; }
+interface Boolean {}
+interface CallableFunction extends Function {}
+interface Function {}
+interface IArguments {}
+interface NewableFunction extends Function {}
+interface Number {}
+interface Object {}
+interface RegExp {}
+interface String {}
+type ResidentLoopCheckpointReadback = {
+  readonly taskId: string; readonly attemptId: string; readonly runId: string;
+  readonly residentAgentId: "agent_default"; readonly runMode: string;
+  readonly workflowDescriptor: { readonly workflowDescriptorHash: string };
+  readonly planId: string; readonly planRecordEventId: string; readonly stepOrdinal: number;
+  readonly requestEventId: string; readonly toolId: string; readonly toolVersion: string;
+  readonly allowlistEntryHash: string; readonly sideEffectClass: string;
+  readonly requiredApprovalClass: string; readonly previewHash: string;
+  readonly inputArtifactHashes: readonly string[]; readonly resumptionDeadlineAt: string;
+  readonly policyHash: string; readonly authority: { readonly activeLocksHash: string };
+  readonly sourceEventIds: readonly string[];
+  readonly contextPackRefs: readonly { readonly contextPackId: string; readonly contentHash: string }[];
+  readonly budget: { readonly consumed: { readonly toolSteps: number } };
+  readonly causationId: string; readonly correlationId: string;
+};
+declare const hash: (value: string) => string;
+`;
+const checkpointMutationCompilerDiagnostics = checkpointMutations => {
+  const fileName = "virtual-checkpoint-mutations.ts";
+  const compilerOptions = {
+    strict: true,
+    noLib: true,
+    types: [],
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext
+  };
+  const virtualSource = checkpointMutationVirtualPreamble + checkpointMutations;
+  const host = ts.createCompilerHost(compilerOptions);
+  host.getSourceFile = (name, languageVersion) =>
+    name === fileName ? ts.createSourceFile(name, virtualSource, languageVersion, true) : undefined;
+  host.readFile = name => name === fileName ? virtualSource : undefined;
+  host.fileExists = name => name === fileName;
+  host.getDefaultLibFileName = () => "";
+  host.writeFile = () => undefined;
+  return ts.getPreEmitDiagnostics(ts.createProgram([fileName], compilerOptions, host));
+};
 const audit = (value) => {
   const global = part(value, "## Global Constraints", "## CF-1 Consumed Contract Surface");
   const contracts = part(value, "## CF-1 Consumed Contract Surface", "## File Ownership and Merge Order");
@@ -1023,7 +1077,7 @@ const audit = (value) => {
   );
   const checkpointMutations = part(
     t136,
-    "const checkpointBindingMutations = [",
+    "const checkpointBindingMutations: readonly (readonly [",
     "it.each(checkpointBindingMutations)"
   );
   const staleGatewaySpellings = [
@@ -1090,9 +1144,13 @@ const audit = (value) => {
     throw new Error("labels-only checkpoint coverage in Task 136");
   }
   for (const [label, fieldMutation] of checkpointMutationContracts) {
-    need(checkpointMutations, `["${label}", (checkpoint) =>`);
+    need(checkpointMutations, `["${label}", ${checkpointMutationCallbackSignature}`);
     need(checkpointMutations, fieldMutation);
   }
+  needAll(checkpointMutations, [
+    "const checkpointBindingMutations: readonly (readonly [",
+    "(checkpoint: ResidentLoopCheckpointReadback) => ResidentLoopCheckpointReadback"
+  ]);
   needAll(t120, [
     "plan-observation-contracts.ts", "plan-observation-projection.ts",
     "**Step 2: Run the focused RED command.**", "**Step 4: Run the focused GREEN command.**",
@@ -1123,7 +1181,7 @@ const audit = (value) => {
     "fixture.fallbackLedger.write).not.toHaveBeenCalled()",
     "fixture.localWrite).not.toHaveBeenCalled()",
     "const expectCheckpointMutationFailsClosed = async",
-    "const checkpointBindingMutations = [",
+    "const checkpointBindingMutations: readonly (readonly [",
     "await expectCheckpointMutationFailsClosed(mutateCheckpoint);",
     "Promise<HandoffReadback | undefined>",
     "Promise<SpecialistHandoffProjection | undefined>",
@@ -1161,6 +1219,17 @@ const audit = (value) => {
   need(rollback, "A-10");
 };
 audit(source);
+const checkpointMutationCompilerErrors = checkpointMutationCompilerDiagnostics(part(
+  source,
+  "const checkpointBindingMutations: readonly (readonly [",
+  "it.each(checkpointBindingMutations)"
+));
+if (checkpointMutationCompilerErrors.length > 0) {
+  throw new Error(
+    "strict virtual checkpoint compiler diagnostics " +
+      checkpointMutationCompilerErrors.map(diagnostic => "TS" + diagnostic.code).join(", ")
+  );
+}
 const replaceInCheckpoint = (value, from, to) => {
   const start = value.indexOf("export interface ResidentLoopCheckpointReadback");
   const end = value.indexOf("export interface ResidentLoopCheckpointPort", start);
@@ -1201,6 +1270,19 @@ const cases = [
   ["checkpoint deadline binding", value => replaceInCheckpoint(value, "readonly resumptionDeadlineAt: string;", "readonly removedDeadlineBinding: string;")],
   ["checkpoint mutation helper", value => replaceInTask136(value, "const expectCheckpointMutationFailsClosed = async", "const removedCheckpointMutationHelper = async")],
   ["checkpoint mutation caller", value => replaceInTask136(value, "await expectCheckpointMutationFailsClosed(mutateCheckpoint);", "await removedCheckpointMutationHelper(mutateCheckpoint);")],
+  ["checkpoint mutation strict type", value => replaceInTask136(
+    value,
+    "const checkpointBindingMutations: readonly (readonly [\n  string,\n  (checkpoint: ResidentLoopCheckpointReadback) => ResidentLoopCheckpointReadback\n])[] = [",
+    "const checkpointBindingMutations = ["
+  )],
+  ...checkpointMutationContracts.map(([label]) => [
+    "checkpoint " + label + " explicit callback typing",
+    value => replaceInTask136(
+      value,
+      `["${label}", ${checkpointMutationCallbackSignature}`,
+      `["${label}", (checkpoint) =>`
+    )
+  ]),
   ...checkpointMutationContracts.map(([label, fieldMutation]) => [
     "checkpoint " + label + " direct field mutation",
     value => replaceInTask136(value, fieldMutation, "removedCheckpointMutation")
