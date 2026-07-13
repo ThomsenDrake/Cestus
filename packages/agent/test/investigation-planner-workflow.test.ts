@@ -20,10 +20,83 @@ const now = () => "2026-07-10T01:00:00.000Z";
 const actor = { id: "actor_agent", kind: "agent" as const, label: "Cestus Agent" };
 
 describe("investigation planner workflow", () => {
+  it("rejects stale evidence before recording the advisory plan handoff", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+
+    const result = await runInvestigationPlannerWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createPlannerContextPacks(false, true),
+      runtime,
+      providerReadiness: providerReadinessDto(),
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret" as const
+      },
+      derivativeStore: createDerivativeStore(),
+      investigationId: "inv_scope_001"
+    });
+
+    expect((result.handoff as { readonly lifecycle?: string }).lifecycle).not.toBe("handoff-recorded");
+    expect((result as { readonly diagnostics?: readonly { readonly category: string }[] }).diagnostics)
+      .toContainEqual(expect.objectContaining({ category: "source-stale" }));
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.specialist-handoff.recorded");
+  });
+
+  it("records the advisory plan through exact durable handoff readback", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+    const handoffStore = createDerivativeStore();
+    const sourceEventIds = (await ledger.readAll()).map((event) => event.id);
+    const input = {
+      ledger,
+      actor,
+      now,
+      contextPacks: createPlannerContextPacks(false, false, sourceEventIds),
+      runtime,
+      providerReadiness: providerReadinessDto(),
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret" as const
+      },
+      derivativeStore: handoffStore,
+      handoffStore,
+      investigationId: "inv_scope_001"
+    };
+
+    const result = await runInvestigationPlannerWorkflow(input);
+
+    expect((result.handoff as { readonly lifecycle?: string }).lifecycle).toBe("handoff-recorded");
+    expect("handoffId" in result.handoff).toBe(true);
+    expect(result.handoff.status).toBe("ready-for-review");
+    expect(result.diagnostics).toEqual([]);
+    const events = await ledger.readAll();
+    expect(events.map((event) => event.type)).toEqual(expect.arrayContaining([
+      "agent.specialist-run.step.recorded",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed"
+    ]));
+    expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "agent.tool.requested", "prr.request.sent", "prr.followup.sent"
+    ]));
+  });
+
   it("permits bounded instructional narrative while producing only local task and PRR draft candidates", async () => {
     const { ledger, runtime } = await preparedRuntime();
-    const contextPacks = createPlannerContextPacks();
-    const derivativeStore = createDerivativeStore();
+    const handoffStore = createDerivativeStore();
+    const contextPacks = createPlannerContextPacks(false, false, (await ledger.readAll()).map((event) => event.id));
 
     const result = await runInvestigationPlannerWorkflow({
       ledger,
@@ -41,17 +114,19 @@ describe("investigation planner workflow", () => {
         providerId: "provider_fake_local",
         kind: "local-no-secret"
       },
-      derivativeStore,
+      derivativeStore: handoffStore,
+      handoffStore,
       investigationId: "inv_scope_001"
     });
 
     expect(result.handoff.runType).toBe("investigation-planner");
     expect(result.handoff.status).toBe("ready-for-review");
+    expect((result.handoff as { readonly lifecycle?: string }).lifecycle).toBe("handoff-recorded");
     expect(result.handoff.outputArtifacts.map((artifact) => artifact.artifactKind)).toEqual(expect.arrayContaining([
       "investigation-plan-artifact", "task-suggestion-bundle", "draft-prr-candidate-bundle"
     ]));
     for (const artifact of result.handoff.outputArtifacts) {
-      await expect(derivativeStore.get(artifact.artifactHash)).resolves.toBeInstanceOf(Buffer);
+      await expect(handoffStore.get(artifact.artifactHash)).resolves.toBeInstanceOf(Buffer);
     }
     expect(JSON.stringify(result.handoff)).not.toContain("Private witness timeline note");
     const events = await ledger.readAll();
@@ -114,7 +189,7 @@ describe("investigation planner workflow", () => {
         kind: "local-no-secret"
       },
       investigationId: "inv_scope_001"
-    })).rejects.toThrow(/derivative artifact store/i);
+    })).rejects.toThrow(/handoff store/i);
 
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
   });
@@ -123,12 +198,22 @@ describe("investigation planner workflow", () => {
     const { ledger, runtime } = await preparedRuntime();
     const backingStore = createDerivativeStore();
     let writeCount = 0;
+    const handoffStore = {
+      put: async (content: Buffer) => {
+        writeCount += 1;
+        if (writeCount === 12) {
+          throw new Error("private investigation storage failure");
+        }
+        return await backingStore.put(content);
+      },
+      get: backingStore.get
+    };
 
     const result = await runInvestigationPlannerWorkflow({
       ledger,
       actor,
       now,
-      contextPacks: createPlannerContextPacks(),
+      contextPacks: createPlannerContextPacks(false, false, (await ledger.readAll()).map((event) => event.id)),
       runtime,
       providerReadiness: providerReadinessDto(),
       runId: "run_investigation_001",
@@ -140,19 +225,12 @@ describe("investigation planner workflow", () => {
         providerId: "provider_fake_local",
         kind: "local-no-secret"
       },
-      derivativeStore: {
-        put: async (content) => {
-          writeCount += 1;
-          if (writeCount === 2) {
-            throw new Error("private investigation storage failure");
-          }
-          return await backingStore.put(content);
-        }
-      },
+      derivativeStore: handoffStore,
+      handoffStore,
       investigationId: "inv_scope_001"
     });
 
-    expect(writeCount).toBe(2);
+    expect(writeCount).toBeGreaterThanOrEqual(12);
     expect(result.handoff).toMatchObject({
       status: "failed",
       failure: {
@@ -163,12 +241,15 @@ describe("investigation planner workflow", () => {
       outputArtifacts: [],
       toolRequestIds: []
     });
+    expect((result.handoff as { readonly lifecycle?: string }).lifecycle).toBe("handoff-recorded");
     expect(JSON.stringify(result.handoff)).not.toContain("private investigation storage failure");
     const events = await ledger.readAll();
     const eventTypes = events.map((event) => event.type);
     expect(eventTypes).toContain("agent.model-invocation.completed");
     expect(eventTypes).toContain("agent.specialist-run.failed");
-    expect(eventTypes).not.toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).toContain("agent.specialist-handoff.prepared");
+    expect(eventTypes).toContain("agent.specialist-handoff.recorded");
     expect(eventTypes).not.toContain("agent.specialist-run.completed");
     expect(eventTypes).not.toContain("agent.tool.requested");
     expect(buildAgentProjection(events).runs.get("run_investigation_001")?.state).toBe("failed");
@@ -212,12 +293,13 @@ describe("investigation planner workflow", () => {
       runType: "investigation-planner",
       scope: { kind: "investigation", refs: ["inv_scope_001"] }
     });
+    const handoffStore = createDerivativeStore();
 
     const result = await runInvestigationPlannerWorkflow({
       ledger,
       actor,
       now,
-      contextPacks: createPlannerContextPacks(),
+      contextPacks: createPlannerContextPacks(false, false, (await ledger.readAll()).map((event) => event.id)),
       runtime,
       providerReadiness: providerReadinessDto(),
       runId: "run_investigation_001",
@@ -229,7 +311,8 @@ describe("investigation planner workflow", () => {
         providerId: "provider_fake_local",
         kind: "local-no-secret"
       },
-      derivativeStore: createDerivativeStore(),
+      derivativeStore: handoffStore,
+      handoffStore,
       investigationId: "inv_scope_001"
     });
 
@@ -237,10 +320,13 @@ describe("investigation planner workflow", () => {
       status: "failed",
       failure: { category: "model-output-invalid", retryable: true }
     });
+    expect((result.handoff as { readonly lifecycle?: string }).lifecycle).toBe("handoff-recorded");
     const eventTypes = (await ledger.readAll()).map((event) => event.type);
     expect(eventTypes).toContain("agent.model-invocation.completed");
     expect(eventTypes).toContain("agent.specialist-run.failed");
-    expect(eventTypes).not.toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).toContain("agent.specialist-handoff.prepared");
+    expect(eventTypes).toContain("agent.specialist-handoff.recorded");
     expect(eventTypes).not.toContain("agent.specialist-run.completed");
     expect(eventTypes).not.toContain("agent.tool.requested");
   });
@@ -287,7 +373,11 @@ async function preparedRuntime() {
   return { ledger, runtime, provider };
 }
 
-function createPlannerContextPacks(governanceLocked = false) {
+function createPlannerContextPacks(
+  governanceLocked = false,
+  staleEvidence = false,
+  sourceEventIds: readonly string[] = ["evt_context_001"]
+) {
   const registry = createContextPackRegistry();
   for (const contextPackId of [
     "accepted-graph-projection.v1", "evidence-summary.v1", "prr-read-model.v1",
@@ -314,10 +404,12 @@ function createPlannerContextPacks(governanceLocked = false) {
           ? "Quarantine hold present."
           : `${contextPackId} is safe for planning.`,
         provenanceRefs: ["event:evt_context_001"],
-        sourceEventIds: ["evt_context_001"],
+        sourceEventIds,
         ...(contextPackId === "governance-locks.v1" && governanceLocked
           ? { stalenessInputs: [{ kind: "quarantine-lock-active", ref: "lock_quarantine_001", value: "quarantine" }] }
-          : {}),
+          : contextPackId === "evidence-summary.v1" && staleEvidence
+            ? { stalenessInputs: [{ kind: "source-stale", ref: "evidence-summary.v1", value: "stale" }] }
+            : {}),
         sizeBudgetBytes: 16_384
       })
     });
