@@ -958,6 +958,32 @@ explicit implementation authorization.
 - Archive check: original author handoff, claim, review package, and reviewer findings are retained; repair handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
 - Supersession: this record supersedes RV-0-W-005 only for current repair status. Original Task 111 dispatch and plan evidence remain immutable.
 
+## RV-0-R-005 — Task 109 dispatch-conformance and semantic-audit repair dispatch
+
+- Recorded at: 2026-07-13T00:52:00Z
+- Role: coordinator
+- Lane and wave: R / 0B
+- Task ID and claim: task-109-resident-full-vision-w0-runtime-plan / docs/agentic/claims/task-109-resident-full-vision-w0-runtime-plan.md
+- Task thread ID: /root/task109_runtime_plan_repair (first repairer); /root/review_task109_plan_repair (fresh re-reviewer); /root/task109_runtime_plan_repair_2 (second scoped repairer)
+- Branch and worktree: codex/task-109-resident-full-vision-w0-runtime-plan-repair-2 / /home/drake/.codex/worktrees/task-109-resident-full-vision-w0-runtime-plan-repair-2
+- Base commit and required head: 048d43b00df1de0d71f2eab1a6b994abd77c06d1 / one forward-only owned-file repair commit followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-runtime-composition-design.md@05e85392367964a3869a55832703f504dd0fe3da; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-runtime-composition-implementation.md; docs/agentic/claims/task-109-resident-full-vision-w0-runtime-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: original Task 109 plan 0ac9a37e; first repair 048d43b0; fresh re-review defects below; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued scoped authorization under Standing Coordinator Delegation authorizes Task 109 dispatch-conformance and semantic-audit repair only. Allowed range is one verified documentation repair commit plus fresh re-review; wave stop is before Tasks 132–140, CF-1 implementation dispatch, production work, provider invocation, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: repairing; repairer must append its evidence and preserve every author, review, and first-repair record.
+- RED command and observed failure: fresh re-review showed the first repair's audit still accepts deletion of the actual Task 135 readback chain, exact store/authority tuple comparison, verified runner/H argument, W readiness injection, and U accessor-only projection. It also showed the typed runner/H dispatch binding is assigned to the existing orchestration registry without CF-1-defined compatibility or closure-bound collaborators.
+- GREEN command and observed result: pending a semantic section-local audit that extracts and verifies the exact Task 135/134/140/W/U bridge clauses with counterfactual deletion/substitution, plus a CF-1 conformance rule and test that accepts the established `TaskOrchestratorRunnerDispatchInput` while keeping runner/store/handoff capabilities closure-bound and fail-closed.
+- Full verification: pending repair-owned npm run verify. Earlier author/repair verification remains evidence but cannot override fresh review defects.
+- Live-provider gate: not-applicable; this plan-only repair invokes no provider and retains the coordinator-only later real-Nous gate.
+- Review verdict: needs-changes / fresh re-reviewer /root/review_task109_plan_repair found incomplete semantic audit proof and runner dispatch-interface underspecification; fresh re-review required after repair.
+- Rebase record: second repair branch begins at reviewed first-repair head 048d43b0 in a distinct worktree; no cross-lane rebase applies before repair.
+- Merge readiness: not-ready; repairer cannot self-approve or merge into neo.
+- Archive check: original author, first repair, both reviews, and their evidence remain retained; second repair handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
+- Supersession: this record supersedes RV-0-R-004 only for current repair status. Original Task 109 dispatch, first repair, and review evidence remain immutable.
+
 ## RV-0-H-003 — Task 110 durable-handoffs implementation-plan dispatch
 
 - Recorded at: 2026-07-13T00:16:43Z
