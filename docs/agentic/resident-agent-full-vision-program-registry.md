@@ -1010,6 +1010,32 @@ explicit implementation authorization.
 - Archive check: repairer and reviewer final handoffs exist, repair worktree is clean, branch ancestry reaches the integration branch, and merge state is recorded; coordinator verification and durable registry reconciliation are the remaining archival evidence.
 - Supersession: this record supersedes RV-0-H-003 and RV-0-H-004 only for Task 110 plan approval, review, and merge status. Every prior author, reviewer, and repair record remains immutable.
 
+## RV-0-W-007 — Task 111 admission-order and reconciliation-provenance repair dispatch
+
+- Recorded at: 2026-07-13T01:12:00Z
+- Role: coordinator
+- Lane and wave: W / 0B
+- Task ID and claim: task-111-resident-full-vision-w0-wake-plan / docs/agentic/claims/task-111-resident-full-vision-w0-wake-plan.md
+- Task thread ID: /root/task111_wake_plan_repair (first repairer); /root/review_task111_plan_repair (fresh re-reviewer); /root/task111_wake_plan_repair_2 (second scoped repairer)
+- Branch and worktree: codex/task-111-resident-full-vision-w0-wake-plan-repair-2 / /home/drake/.codex/worktrees/task-111-resident-full-vision-w0-wake-plan-repair-2
+- Base commit and required head: b53ccb529aac5f9782e315bbf9bc376016e09c40 / one forward-only owned-file repair commit followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md; docs/agentic/claims/task-111-resident-full-vision-w0-wake-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: original Task 111 plan 9083a51d; first repair b53ccb52; fresh re-review defects below; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued scoped authorization under Standing Coordinator Delegation authorizes Task 111 admission-order and reconciliation-provenance repair only. Allowed range is one verified documentation repair commit plus fresh re-review; wave stop is before Tasks 124/125/137, CF-1 implementation dispatch, production work, provider invocation, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: repairing; repairer must append its evidence and preserve all author, review, and first-repair records.
+- RED command and observed failure: fresh re-review found a contradictory second `authority.revalidate()` after lease/policy/high-water while every revalidation itself acquires a lease; reconciliation append/readback omit the authority identity, lease, policy/lock, and high-water evidence they claim to bind; and the audit accepts replacement of the task-local revalidation with unsafe reuse of stale authority.
+- GREEN command and observed result: pending a task-local semantic audit and explicit one-pass admission state machine proving exactly one revalidation/readback admission sequence, reconciliation append and readback bind the complete authority/lease/policy/lock/high-water tuple, and each unsafe ordering/provenance mutation is rejected.
+- Full verification: pending repair-owned npm run verify. Earlier author/repair verification remains evidence but cannot override fresh review defects.
+- Live-provider gate: not-applicable; this plan-only repair invokes no provider and retains coordinator-only later live posture.
+- Review verdict: needs-changes / fresh re-reviewer /root/review_task111_plan_repair found contradictory admission order, missing reconciliation provenance, and an audit false negative; fresh re-review required after repair.
+- Rebase record: second repair branch begins at reviewed first-repair head b53ccb52 in a distinct worktree; no cross-lane rebase applies before repair.
+- Merge readiness: not-ready; repairer cannot self-approve or merge into neo.
+- Archive check: original author, first repair, both reviews, and their evidence remain retained; second repair handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
+- Supersession: this record supersedes RV-0-W-006 only for current repair status. Original Task 111 dispatch, first repair, and review evidence remain immutable.
+
 ## RV-0-H-003 — Task 110 durable-handoffs implementation-plan dispatch
 
 - Recorded at: 2026-07-13T00:16:43Z
