@@ -420,3 +420,59 @@ self-approve or merge.
   integration, dispatch, or `neo` merge action occurred. Rerun the
   claim-affected gates before committing, then stop for a different fresh
   reviewer; this recovery worker does not self-review or self-merge.
+
+## Append-Only Compiler-Evidence Correction Record
+
+- Recorded at: 2026-07-13T14:34:02Z.
+- Status: in-progress under RV-0-L-014's bounded Task 112 compiler-evidence
+  correction authority, based at
+  `669e7b58c8b299f570a41b603bf23bfc927f5eba`. This forward correction leaves
+  every historical claim record, including its false outer-only statement,
+  unchanged.
+- Scope: only this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md`.
+  Tasks 120/136, CF-1, production/provider work, child dispatch, integration,
+  registry changes, and a merge into `neo` remain forbidden.
+- Root cause: fresh review established that the prior claim's statement that
+  removing only the outer readonly tuple yields 25 TS7006 diagnostics is false.
+  Direct callback signatures, not the outer tuple, provide the compiler-visible
+  parameter types for the 25 literal callbacks.
+- Documentation RED: a no-write strict TypeScript-API virtual compiler proof
+  measured the current direct-typed matrix as total=0/TS7006=0, outer-only
+  removal as total=0/TS7006=0, and removal of both the outer tuple plus all 25
+  direct callback signatures as total=25/TS7006=25. It exited nonzero because
+  the historical outer-only assertion was contradicted.
+- Repair target: make the embedded Task 112 audit prove and counterfactually
+  enforce those three exact states, retain all 25 direct callback signatures
+  and the 111 structural counterfactual cases, then append verified GREEN and
+  required gate evidence before this task commit.
+
+## Append-Only Compiler-Evidence Correction GREEN Record
+
+- Recorded at: 2026-07-13T14:37:35Z.
+- Documentation GREEN: the focused strict TypeScript-API virtual compiler
+  proof observed current direct-typed matrix total=0/TS7006=0, outer-only
+  removal total=0/TS7006=0, and outer-plus-all-direct-signatures removal
+  total=25/TS7006=25. The embedded audit now independently emits the same
+  three-state proof and rejects an absent outer tuple, any count other than 25
+  direct signatures, a nonzero current or outer-only state, or a non-25
+  TS7006 result after both removals.
+- Structural GREEN: the unchanged embedded section-local audit printed
+  `GREEN: Task 112 section-local bounded-loop plan audit passed (111
+  counterfactual omissions rejected).` The repair adds compiler evidence
+  without changing that structural counterfactual matrix or the 25 direct
+  callback signatures.
+- Whitespace: `git diff --check` exited 0 with no output.
+- Factory: `npm run factory:check` exited 0 and printed
+  `factory-readiness passed`.
+- Full verification: `npm run verify` exited 0 after `typecheck passed`; 189
+  test files passed with 3 skipped; 2,228 tests passed with 5 skipped; the Vite
+  build succeeded with its existing chunk-size warning; and factory readiness
+  passed. No provider or credential action occurred.
+- Scope/self-review: the diff changes exactly the authorized plan and
+  append-only claim. It corrects evidence only; it does not alter the approved
+  Lane L design, any Task 120/136 production/test scope, CF-1, provider work,
+  registry, dispatch, integration, or `neo` merge state.
+- Handoff: ready for a different fresh Task 112 reviewer after this repair
+  commit. The repair worker does not self-review, dispatch, integrate, rebase,
+  or merge.
