@@ -2048,6 +2048,24 @@ explicit implementation authorization.
 - Merge readiness: not-ready; only Relay A may integrate a fresh independently approved Task117 commit into its visible coordinator branch, never into neo
 - Archive check: retain the source documents, table audit counterfactual evidence, exact scope, author verification, fresh review, coordinator integration, and every subsequent Wave1 rebase record
 
+## RV-0-C-010a — Task117 CF-1 author work started (historical rejected-branch evidence)
+
+- Recorded at: 2026-07-13T16:22:07Z
+- Role and scope: isolated Task117 documentation author under RV-0-C-009, starting at `c996b197bde35aecff3be5120b654e7cc761f145`; only the CF-1 freeze, Task117 claim, and this forward-only author evidence are writable.
+- Status: in-progress. The author is reconciling the eight approved Wave0B design/implementation inputs into the required shared event, DTO, capability, ownership, source-binding, approval, idempotency, targeted-test, and rebase matrix.
+- RED evidence: the focused absent-freeze audit exited 1 and printed `RED: CF-1 contract-freeze artifact is absent; no shared contract/owner/rebase matrix can dispatch Wave 1.`
+- Authority boundary: no production, provider, credential, browser, Nous, live, tailnet, Wave1 dispatch, self-review, self-integration, or `neo` merge is authorized. A different fresh reviewer remains required before Relay A may make any integration decision.
+
+## RV-0-C-011 — Task117 CF-1 author result ready for fresh review (rejected)
+
+- Recorded at: 2026-07-13T16:38:05Z
+- Role and result: the isolated Task117 author completed the documentation-only CF-1 freeze from `c996b197bde35aecff3be5120b654e7cc761f145`; its three-file scope is the new contract freeze, Task117 claim, and these append-only author records.
+- Contract result: a 53-row table freezes all shared event/DTO/capability/file-owner/consumer/source-binding/approval/idempotency/targeted-test/rebase facts for Waves1-5. R is the only default factory writer, P is the only shared provider-configuration writer, and Task117 is the sole shared-event/DTO/capability writer. Every future worker requires the exact coordinator `CF1-INTEGRATION-SHA`, not an author or pre-freeze SHA.
+- Documentation RED/GREEN: the absent-freeze RED audit exited 1 as required. The final embedded matrix audit exited 0 and printed `GREEN: CF-1 matrix audit passed (479 direct counterfactual mutations rejected, including missing/conflicting ownership).`
+- Verification: `git diff --check` had no output; `npm run factory:check` printed `factory-readiness passed`; after lockfile-pinned ignored dependencies were restored for a missing isolated-worktree `tsc`, a fresh `npm run verify` exited 0 with typecheck, 189 passing test files/3 skipped, 2,228 passing tests/5 skipped, Vite build, and factory readiness. Existing Vite chunk-size and SQLite experimental warnings did not fail the gate.
+- Live-provider gate: prohibited and not invoked. No provider, credential, Nous, browser, tailnet, desktop, production, Wave1 dispatch, self-review, self-integration, or `neo` action occurred.
+- Review and merge readiness: reviewed NEEDS-CHANGES and not integrated. Relay A preserves this author evidence but dispatches repair under RV-0-C-010; Wave1 remains stopped.
+
 ## RV-0-C-010 — Task117 CF-1 semantic-and-coverage repair dispatch
 
 - Recorded at: 2026-07-13T16:45:00Z
@@ -2055,7 +2073,7 @@ explicit implementation authorization.
 - Lane and wave: CF-1 / Wave 0 completion gate
 - Task ID and claim: task-117-resident-full-vision-contract-freeze / docs/agentic/claims/task-117-resident-full-vision-contract-freeze.md
 - Rejected author head and review: `8577f645c6bb81288547ef45df139e4cfea31641` from base `c996b197bde35aecff3be5120b654e7cc761f145` is not integrated. Different fresh reviewer `/root/review_task117_contract_freeze` returned NEEDS-CHANGES after confirming exact three-file scope, clean ancestry/diff, and an audit exit 0 that is insufficient for acceptance.
-- Required repair branch and worktree: codex/task-117-resident-full-vision-contract-freeze-repair / /home/drake/.codex/worktrees/task-117-resident-full-vision-contract-freeze-repair. Relay A will stage the rejected documentation baseline with this dispatch record solely in that repair worktree; the new repair author then makes one forward-only repair commit and stops for another different fresh review.
+- Required repair branch and worktree: codex/task-117-resident-full-vision-contract-freeze-repair / /home/drake/.codex/worktrees/task-117-resident-full-vision-contract-freeze-repair. Relay A staged the rejected documentation baseline with this dispatch record solely in that repair worktree; the new repair author makes one forward-only repair commit and stops for another different fresh review.
 - Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
 - Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358; the Task112–116 lane plans consumed by CF-1, especially the proactive-trigger and cockpit plans
 - Owned files: docs/agentic/resident-agent-full-vision-contract-freeze.md; docs/agentic/claims/task-117-resident-full-vision-contract-freeze.md; docs/agentic/resident-agent-full-vision-program-registry.md
@@ -2070,6 +2088,6 @@ explicit implementation authorization.
 - GREEN command and observed result: the repaired embedded audit must reject each direct semantic counterfactual even after recomputing any integrity hash, reject removal or conflict of all newly required rows/owners, and report exact rejection count; then run `git diff --check`, `npm run factory:check`, and `npm run verify`.
 - Full verification: repair-author full verification is required before its one commit; the new reviewer must independently run the semantic mutation proof, scope/ancestry check, cross-document spot checks, and feasible clean-worktree gates before any coordinator integration.
 - Review verdict: NEEDS-CHANGES; no part of `8577f645` is approved or integrated. A different fresh repair author and a different fresh re-reviewer are required.
-- Rebase record: repair begins from a coordinator-staged descendant containing this dispatch and the rejected baseline; it must preserve append-only history and may not treat the rejected audit hash as authorization. Wave1 workers remain non-dispatchable until a later Relay A coordinator integration supplies `CF1-INTEGRATION-SHA`.
+- Rebase record: repair begins from this coordinator-staged descendant containing the dispatch and rejected baseline; it must preserve append-only history and may not treat the rejected audit hash as authorization. Wave1 workers remain non-dispatchable until a later Relay A coordinator integration supplies `CF1-INTEGRATION-SHA`.
 - Merge readiness: not-ready; only Relay A may integrate a repaired, independently approved head into its visible coordinator branch, never neo
 - Root-cause checkpoint: the first freeze audit conflated content-integrity detection with contract-semantic validation, while the author source inventory omitted interfaces and task-level ownership only explicit in the program and lane plans. The repair tactic is a fresh author with reviewer-provided coverage inventory, semantic mutation proofs that survive recomputed integrity hashes, and a different fresh re-review.
