@@ -2463,3 +2463,38 @@ explicit implementation authorization.
   set is satisfied; all of Task136's remaining wake/provider prerequisites
   remain mandatory. Task123 restart and Task124 repair continue independently;
   `neo` remains untouched.
+
+## RV-1-C-036 — Active W1 recovery ledger: Task123, Task124, and W1-118
+
+- Task123 restart candidate `de4e8edf76eef8d44f40389a1c337f59a0e39eda` is
+  clean in `/home/drake/.codex/worktrees/task-123-resident-full-vision-ontology-bootstrap-restart`
+  on `codex/task-123-resident-full-vision-bootstrap-restart`. It preserves the
+  claim-only block history, adapts the workflow to the canonical merged H
+  selector rather than the rejected shadow lifecycle, records RED 1/44 and
+  focused GREEN 46 tests, and has retained a coordinator-cleared full gate
+  exit 0. Fresh read-only reviewer `/root/task123_restart_review` is its only
+  active review gate; no self-integration or `neo` action is authorized.
+- W1-118 serialized T lane author `/root/task118_triggers` works only in
+  `/home/drake/.codex/worktrees/task-118-resident-full-vision-triggers` on
+  `codex/task-118-resident-full-vision-triggers`, based at verified Task120
+  record `43eb9642cc08f1646b1c1defe5a15e8aab5c2149`. Its claim
+  `c8e393168b3671d10fe961346262c053783b7714` and focused RED preserve the
+  missing `agent.trigger.requested.v1` registration failure. It must complete
+  the frozen W1-118 contracts/evaluator/projection TDD and receive fresh review
+  before integration; it receives no provider, tool, graph, or external effect.
+- Fresh Task124 review rejected candidate
+  `9d5632b93943df44b3af14110f1bdf42cb2d23c2` as unintegrated P1 work:
+  reconciliation omitted canonical outage-observation/revalidated-authority
+  and complete idempotency bindings; pause/stop could cross pre-wake awaits;
+  admission/readback DTOs were not strict descriptor-safe exact snapshots; and
+  lifecycle evidence did not bind requested transition plus complete authority
+  facts. The candidate and full-gate evidence are preserved.
+- Bounded second Task124 repair authorization is committed at
+  `c3bcbbcc2515ad33e2306c702afb93d13d999367` in isolated branch
+  `codex/task-124-resident-full-vision-wake-supervisor-repair-2`; fresh author
+  `/root/task124_reconciliation_repair` owns only the Task124 source, test,
+  and append-only claim. It must RED/GREEN all four named counterfactual
+  families, wait for one serialized full gate, and receive a reviewer distinct
+  from every Task124 author/reviewer. A further material finding is a
+  root-cause recovery checkpoint. Standing SDD/TDD/fresh-review/
+  verification-before-completion/no-self-integration/no-`neo` authority applies.
