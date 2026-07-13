@@ -1400,3 +1400,49 @@ explicit implementation authorization.
 - Merge readiness: not-ready; no self-merge into neo.
 - Archive check: author/reviewer evidence preserved; repair handoff, verification, review, integration required.
 - Supersession: status only for RV-0-L-005; original evidence remains immutable.
+
+## RV-0-W-012 — Task 111 source-semantics audit recovery dispatch
+
+- Recorded at: 2026-07-13T12:09:48Z
+- Role/lane/wave: coordinator recovery checkpoint / W / 0B
+- Task, branch, worktree, base: Task111 source-semantics documentation audit repair; `codex/task-111-resident-full-vision-w0-wake-plan-source-audit-repair`; fresh `/tmp` isolated worktree; `03721330e009bd8e305c1343eb54dfa1b20afa1d`.
+- Model: GPT-5.6 Terra / Extra High, user-confirmed; host-reported GPT-5 satisfies the requested configuration.
+- Governing authority: umbrella `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`; program plan `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`; W design `@2620e51e4888a0884fb6d3eb4766e92736688efb`.
+- Ownership: only the W implementation plan and forward-only Task111 claim history; all production, tests, runtime, UI, provider, shared contract, specification, template, acceptance, and registry files are forbidden.
+- Scoped approval: Standing Coordinator Delegation explicitly authorizes `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD, fresh review, and verification-before-completion for this repair only. Stop after verified commit plus fresh review, before Tasks124/125/137, CF-1, production/provider work, child dispatch, or merge. Never merge into `neo`.
+- RED finding: Task124 source audit accepts unrelated replacement data, `validate()` checks truthiness instead of exact semantics, and Task124/125 omit source semantics plus append/readback edges. GREEN must make source replacement/missing/swapped inputs and each edge counterfactual fail.
+- Verification/review/live/merge: focused audit, `git diff --check`, `npm run factory:check`, and `npm run verify` are required; no live provider; fresh reviewer required; not merge-ready.
+- Root cause and supersession: previous recovery reconciled record fields but not audit-source identity/edge completeness. This forward record supersedes only RV-0-W-011 status; history is immutable.
+
+## RV-0-L-007 — Task 112 authoritative-ABI audit recovery dispatch
+
+- Recorded at: 2026-07-13T12:09:48Z
+- Role/lane/wave: coordinator recovery checkpoint / L / 0B
+- Task, branch, worktree, base: Task112 authoritative-ABI documentation audit repair; `codex/task-112-resident-full-vision-w0-loop-plan-authoritative-abi-repair`; fresh `/tmp` isolated worktree; `7035a85c4f16df8e6189e360bc663297c426b025`.
+- Model: GPT-5.6 Terra / Extra High, user-confirmed; host-reported GPT-5 satisfies the requested configuration.
+- Governing authority: umbrella `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`; program plan `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`; L design `@baa980e04f126ce06f41398fc45169f112321e39`.
+- Ownership: only the L implementation plan and forward-only Task112 claim history; all production, tests, runtime, UI, provider, shared contract, specification, template, acceptance, and registry files are forbidden.
+- Scoped approval: Standing Coordinator Delegation explicitly authorizes `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD, fresh review, and verification-before-completion for this repair only. Stop after verified commit plus fresh review, before Tasks120/136, CF-1, production/provider work, child dispatch, or merge. Never merge into `neo`.
+- RED finding: Task136 names obsolete gateway methods; checkpoint readback lacks resident/descriptor/step/tool/approval/preview/artifact/deadline bindings; and handoff completion narrows authoritative `HandoffReadback`. GREEN must bind actual `requestAndReadback`/`executeAndReadback`, every checkpoint equality, and full H lifecycle/authority shape.
+- Verification/review/live/merge: focused audit, `git diff --check`, `npm run factory:check`, and `npm run verify` are required; no live provider; fresh reviewer required; not merge-ready.
+- Root cause and supersession: prior audit strengthened ports but retained provisional ABI spellings and reduced readbacks. This forward record supersedes only RV-0-L-006 status; history is immutable.
+
+## RV-0-T-010 — Task 113 same-call concurrency and exhaustive-boundary recovery dispatch
+
+- Recorded at: 2026-07-13T12:09:48Z
+- Role/lane/wave: coordinator recovery checkpoint / T / 0B
+- Task, branch, worktree, base: Task113 same-call concurrency/exhaustive no-effect documentation repair; `codex/task-113-resident-full-vision-w0-trigger-plan-same-call-repair`; fresh `/tmp` isolated worktree; `6da8aecc2731aa881fbf9443559e62f4a4192d59`.
+- Model: GPT-5.6 Terra / Extra High, user-confirmed; host-reported GPT-5 satisfies the requested configuration.
+- Governing authority: umbrella `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`; program plan `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`; T design `@9a571f628bef9c53725e20263cb687ec44dd9cd8`.
+- Ownership: only the T implementation plan and forward-only Task113 claim history; all production, tests, runtime, UI, provider, shared contract, specification, template, acceptance, and registry files are forbidden.
+- Scoped approval: Standing Coordinator Delegation explicitly authorizes `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD, fresh review, and verification-before-completion for this repair only. Stop after verified commit plus fresh review, before Tasks149–151, CF-1, production/provider work, child dispatch, or merge. Never merge into `neo`.
+- RED finding: concurrent loser coverage invokes a separate later evaluation rather than proving its original promise re-reads/re-evaluates under the same gate key; no-effect coverage omits prompt artifact/resolver, model message/invocation, provider, subscription/API-key/credential, harness, specialist, and domain-service shapes. GREEN must prove same-call behavior and exhaustively mutate each prohibited input/effect family.
+- Verification/review/live/merge: focused audit, `git diff --check`, `npm run factory:check`, and `npm run verify` are required; no live provider; fresh reviewer required; not merge-ready.
+- Root cause and supersession: prior repair checked an analogous second call and broad categories, not the original promise or exhaustive boundary. This forward record supersedes only RV-0-T-009 status; history is immutable.
+
+## RV-0-C-001 — Coordinator continuity fallback checkpoint
+
+- Recorded at: 2026-07-13T12:09:48Z
+- Coordinator branch/worktree: `codex/resident-agent-full-vision-program-plan-continuity` / `/tmp/cestus-resident-program-coordinator`, based on `53f1da293d336b08992947fc6e5183681065a6d7`.
+- Cause: the host-mounted coordinator worktree cannot create Git refs, index locks, or Node-spawned `git` processes because `/home/drake/Projects/Cestus/.git` is read-only. Three independently retried repair worktree provisions failed before any child edit.
+- Recovery: continue in this isolated clone with its own writable Git database; preserve the original coordinator checkout untouched except for its uncommitted mirror record. Active next actions are fresh Task111/W, Task112/L, and Task113/T repair workers from the bases stated above, followed by fresh reviews and coordinator merges into this continuity branch. The constraint is an environment recovery record, not a product, safety, scope, data-loss, credential, or external-behavior decision.
