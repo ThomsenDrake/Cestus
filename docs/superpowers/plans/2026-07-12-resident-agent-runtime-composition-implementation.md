@@ -114,6 +114,15 @@ interface MountedAgentArtifactStores {
   verifyBinding(input: VerifyMountedStoreBindingInput): Promise<MountedStoreBindingReadback>;
 }
 
+/** R-owned composed boundary; its input and result parsers are frozen by CF-1. */
+interface ProductionMountedRunnerHandoffBinding {
+  readonly bindingVersion: "production-mounted-runner-handoff.v1";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  readonly artifactStores: MountedAgentArtifactStores;
+  dispatch(input: VerifiedMountedRunnerHandoffDispatchInput): Promise<TaskOrchestratorRunnerDispatchResult>;
+}
+
 interface ProductionRuntimeReadiness {
   readonly schemaVersion: "agent-runtime-composition-readiness.v1";
   readonly residentAgentId: "agent_default";
@@ -125,14 +134,41 @@ interface ProductionRuntimeReadiness {
   readonly safeDiagnostics: readonly RuntimeCompositionDiagnostic[];
   readonly generatedAt: string;
 }
+
+/** R is the sole producer; this accessor has no prompt, secret, path, or raw-error field. */
+interface ProductionRuntimeReadinessCapability {
+  readonly capabilityVersion: "production-runtime-readiness.v1";
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+  getReadiness(): ProductionRuntimeReadiness;
+}
+
+/** U owns the parser/route implementation for this safe projection, not R's source capability. */
+interface ProductionRuntimeReadinessRouteDto {
+  readonly schemaVersion: "production-runtime-readiness-route.v1";
+  readonly residentAgentId: "agent_default";
+  readonly structuralStatus: ProductionRuntimeReadiness["structuralStatus"];
+  readonly providerInvocationState: string;
+  readonly executable: boolean;
+  readonly componentCodes: readonly string[];
+  readonly safeDiagnostics: readonly RuntimeCompositionDiagnostic[];
+}
 ```
 
 CF-1 additionally freezes `MountedContextCapability`,
 `ProductionPromptCapability`, `ProductionSpecialistRunnerCapability`,
 `ExactRunPromptBinding`, `SpecialistRunnerRegistrationBinding`,
 `MountedHandoffMaterialStore`, `MountedHandoffManifestStore`, and the exact
-canonical hash/parser helpers. If it assigns an identifier differently, stop
-before RED and request a coordinator freeze/rebase correction.
+canonical hash/parser helpers. It also freezes
+`VerifiedMountedRunnerHandoffDispatchInput`, the exact parser and version for
+`ProductionMountedRunnerHandoffBinding`, and R's
+`ProductionRuntimeReadinessCapability` accessor. R owns that capability and
+its source projection; W consumes its zero-argument safe accessor for
+supervision, while U owns the exact parser and route implementation for
+`ProductionRuntimeReadinessRouteDto`. Neither consumer may receive the raw
+composition input, prompt text, secret, storage path, or caught error. If
+CF-1 assigns an identifier, owner, or parser differently, stop before RED and
+request a coordinator freeze/rebase correction.
 
 ## File Ownership and Merge Order
 
@@ -141,7 +177,7 @@ before RED and request a coordinator freeze/rebase correction.
 | 132 | Create `packages/local-runtime/src/agent-runtime-context-packs.ts`; create `packages/local-runtime/test/agent-runtime-context-packs.test.ts` | Mounted authoritative context registry. | 120, 125, CF-1 |
 | 133 | Create `packages/local-runtime/src/agent-runtime-prompt-renderer.ts`; create `packages/local-runtime/test/agent-runtime-prompt-renderer.test.ts` | Exact prompt and provider-posture binding. | 120, 126–130, CF-1 |
 | 134 | Create `packages/local-runtime/src/agent-runtime-specialist-runners.ts`; create `packages/local-runtime/test/agent-runtime-specialist-runners.test.ts` | Readiness-validated specialist runner registry. | 121–124, CF-1 |
-| 135 | Create `packages/local-runtime/src/mounted-agent-artifact-stores.ts`; create `packages/local-runtime/test/mounted-agent-artifact-stores.test.ts` | Mounted derivative/material/manifest stores and readback. | 121–123, 125, CF-1 |
+| 135 | Create `packages/local-runtime/src/mounted-agent-artifact-stores.ts`; create `packages/local-runtime/test/mounted-agent-artifact-stores.test.ts` | Mounted derivative/material/manifest stores plus the typed runner-to-H mounted-store binding. | 121–125, 134, CF-1 |
 | 140 | Modify `packages/local-runtime/src/agent-runtime-factory.ts`; create `packages/local-runtime/test/agent-runtime-composition.test.ts` | Sole default production factory and derived readiness. | 132–139, CF-1 |
 
 `packages/local-runtime/src/agent-provider-configuration.ts` belongs only to
@@ -482,9 +518,11 @@ Do not modify H schemas or W lifecycle code.
   `packages/agent/src/specialist-handoff-manifest.ts`.
 
 **Consumes:** one `MountedWorkspaceRuntimeAuthority`, mounted derivative
-authority, and H's canonical material/manifest parsers and hashes. It never
-receives a filesystem path, temporary directory, cache, or generic blob-store
-fallback. **Produces:**
+authority, H's canonical material/manifest parsers and hashes, reviewed Task
+134's `ProductionSpecialistRunnerCapability`, and H's
+`TaskOrchestratorHandoffCapability`. It never receives a filesystem path,
+temporary directory, cache, generic blob-store fallback, or a generic
+runner-returned store. **Produces:**
 
 ```ts
 export function createMountedAgentArtifactStores(input: {
@@ -493,6 +531,13 @@ export function createMountedAgentArtifactStores(input: {
   readonly materialBackend: MountedHandoffMaterialBackend;
   readonly manifestBackend: MountedHandoffManifestBackend;
 }): MountedAgentArtifactStores;
+
+export function createProductionMountedRunnerHandoffBinding(input: {
+  readonly authority: MountedWorkspaceRuntimeAuthority;
+  readonly artifactStores: MountedAgentArtifactStores;
+  readonly runnerCapability: ProductionSpecialistRunnerCapability;
+  readonly handoffCapability: TaskOrchestratorHandoffCapability;
+}): ProductionMountedRunnerHandoffBinding;
 ```
 
 The stores expose separate `writeMaterial`/`readMaterialExact` and
@@ -500,6 +545,20 @@ The stores expose separate `writeMaterial`/`readMaterialExact` and
 size, and authority hash. Manifest write accepts only verified material
 readback for the same run/authority; terminal handoff accepts only verified
 manifest readback bound to that exact material hash.
+
+`createProductionMountedRunnerHandoffBinding` is the concrete R-owned bridge
+between Task 135's mounted derivative/material/manifest stores, Task 134's
+runner dispatch, and H's durable handoff path. It first verifies one exact
+workspace ID, mount instance ID, authority hash, and CF-1 version tuple across
+all four collaborators. A mismatch is `workspace-identity-mismatch` or
+`mounted-store-unavailable`, blocks before runner dispatch and H handoff, and
+never substitutes a store returned by a runner result. Its `dispatch` passes
+only the verified mounted-store binding and H handoff capability to the Task
+134 runner. It accepts a result only after the same binding proves derivative
+readback, material readback, manifest readback bound to the verified material
+hash, H ledger/lifecycle readback, and the original workspace/mount tuple.
+There is no generic runner-returned store fallback, local copy, cache, or
+second handoff path.
 
 - [ ] **Step 1: Write failing persistence-order and no-fallback tests.**
 
@@ -520,6 +579,13 @@ Cover canonical-byte/hash mismatch, swapped receipt, cross-run/mount switch,
 absent schema, derivative write without exact readback, backend failure, stale
 authority, and plausible returned hash without readback. Every result remains
 typed blocked/failed/resumable evidence, never terminal completion.
+
+Add a binding test with an identity-preserving `artifactStores`, Task 134
+runner spy, and H handoff spy. It must prove that binding dispatch provides the
+same store object and authority tuple to the runner, and that the only accepted
+handoff is H's path after material then manifest readback. A swapped mounted
+store, returned generic `store`, or authority mismatch must reject before the
+runner/H spies and leave every fallback-store spy uncalled.
 
 - [ ] **Step 2: Run the focused RED command.**
 
@@ -555,6 +621,15 @@ canonical bytes and expected type-specific hash, writes only to mounted
 backend, and performs exact readback. The material adapter creates verified
 material evidence; manifest requires it and verifies the same material hash.
 No error path writes elsewhere.
+
+Implement `createProductionMountedRunnerHandoffBinding` in the same R-owned
+module. Normalize the dispatch input before await; compare the binding's store
+object identity and authority tuple with the CF-1 frozen values; invoke only
+`runnerCapability.dispatch` with the verified mounted-store/H-handoff binding;
+then verify the returned H evidence through `artifactStores` and the supplied
+`handoffCapability`. Reject any result that tries to introduce a generic store
+reference or replacement backend. The wrapper may not construct or select a
+store, renderer, runner, provider, or handoff fallback.
 
 - [ ] **Step 4: Run the focused GREEN command.**
 
@@ -606,29 +681,52 @@ export interface ProductionAgentRuntimeCompositionInput {
 export function createProductionAgentRuntimeCapabilities(
   input: ProductionAgentRuntimeCompositionInput
 ): AgentTaskOrchestratorRuntimeCapabilities;
+
+export interface ProductionAgentRuntimeComposition {
+  readonly runtimeCapabilities: AgentTaskOrchestratorRuntimeCapabilities;
+  readonly runnerHandoffBinding: ProductionMountedRunnerHandoffBinding;
+  readonly readiness: ProductionRuntimeReadinessCapability;
+}
+
+export function createProductionAgentRuntimeComposition(
+  input: ProductionAgentRuntimeCompositionInput
+): ProductionAgentRuntimeComposition;
 ```
 
-`defaultLocalAgentRuntimeFactory` calls this only after portable workspace
-mount and `residentIdentity.ready()` prove exact ready `agent_default` for the
-same workspace. It validates/freezes all inputs and returns the existing
-`agent-task-orchestrator-runtime-capabilities.v1` structure with real mounted
-registries. It never constructs SQLite, memory, temporary-file, alternate-
-workspace, no-op renderer, or no-op runner fallback capabilities.
+`defaultLocalAgentRuntimeFactory` calls
+`createProductionAgentRuntimeComposition` only after portable workspace mount
+and `residentIdentity.ready()` prove exact ready `agent_default` for the same
+workspace. The composition validates/freezes all inputs, creates exactly one
+`ProductionMountedRunnerHandoffBinding` from the supplied Task 134 runner,
+Task 135 stores, and H handoff capability, then returns the existing
+`agent-task-orchestrator-runtime-capabilities.v1` structure with those same
+mounted collaborator instances. It never constructs SQLite, memory,
+temporary-file, alternate-workspace, no-op renderer, or no-op runner fallback
+capabilities.
 
 - [ ] **Step 1: Write failing composition and readiness tests.**
 
 ```ts
 it("constructs the sole production factory only from matching mounted capabilities", () => {
-  const capabilities = createProductionAgentRuntimeCapabilities(compositionInput({
+  const input = compositionInput({
     mountedAuthority: mountedAuthority({ workspaceId: "ws_a", mountInstanceId: "mount_a" }),
     residentIdentity: readyIdentity({ workspaceId: "ws_a" }),
     contextCapability: mountedContext({ workspaceId: "ws_a", mountInstanceId: "mount_a" }),
     promptCapability: productionPrompt({ workspaceId: "ws_a", mountInstanceId: "mount_a" }),
     runnerCapability: productionRunners({ workspaceId: "ws_a", mountInstanceId: "mount_a" }),
     artifactStores: mountedStores({ workspaceId: "ws_a", mountInstanceId: "mount_a" })
-  }));
+  });
+  const fallbackConstructors = installFailingFallbackConstructorSpies();
+  const composition = createProductionAgentRuntimeComposition(input);
+  const capabilities = composition.runtimeCapabilities;
   expect(capabilities.schemaVersion).toBe("agent-task-orchestrator-runtime-capabilities.v1");
-  expect(capabilities.contextRegistry).not.toBe(createContextPackRegistry());
+  expect(capabilities.contextRegistry).toBe(input.contextCapability.registry);
+  expect(capabilities.providerRegistry).toBe(input.providerPolicyCapability.providerRegistry);
+  expect(composition.runnerHandoffBinding.artifactStores).toBe(input.artifactStores);
+  expect(fallbackConstructors.createContextPackRegistry).not.toHaveBeenCalled();
+  expect(fallbackConstructors.createInMemoryStore).not.toHaveBeenCalled();
+  expect(fallbackConstructors.createNoopRenderer).not.toHaveBeenCalled();
+  expect(fallbackConstructors.createNoopRunner).not.toHaveBeenCalled();
 });
 
 it("keeps structural-ready waiting-for-approval non-executable without fallback", () => {
@@ -644,7 +742,15 @@ high-water/policy/lock, invalid context/prompt, unready/blocked/unavailable
 provider policy, missing runner registration, mounted-store unavailable,
 handoff readback failure, version conflict, and hostile thrown object. Each
 test asserts a specification safe category, absence of raw prompt/secret/path/
-error data, and no fallback factory/write call.
+error data, supplied collaborator identity/equivalence, and no fallback
+factory/write/constructor call. Add a dispatch test proving the runner receives
+the exact Task 135 binding and that H's handoff path receives only its verified
+material/manifest readback. A mismatched binding or runner-returned generic
+store must fail closed before either final handoff or a fallback constructor.
+Add safe-readiness consumer tests: W receives the same
+`composition.readiness.getReadiness` accessor, and U's route fixture receives
+only `ProductionRuntimeReadinessRouteDto` projected from that accessor, never
+raw composition input or a prompt/secret/path/error field.
 
 - [ ] **Step 2: Run the focused RED command.**
 
@@ -661,8 +767,21 @@ route tests preserve development fail-closed behavior until implementation.
 export function createProductionAgentRuntimeCapabilities(
   input: ProductionAgentRuntimeCompositionInput
 ): AgentTaskOrchestratorRuntimeCapabilities {
+  return createProductionAgentRuntimeComposition(input).runtimeCapabilities;
+}
+
+export function createProductionAgentRuntimeComposition(
+  input: ProductionAgentRuntimeCompositionInput
+): ProductionAgentRuntimeComposition {
   const verified = verifyProductionCompositionInput(input);
-  return Object.freeze({
+  const runnerHandoffBinding = createProductionMountedRunnerHandoffBinding({
+    authority: verified.mountedAuthority,
+    artifactStores: verified.artifactStores,
+    runnerCapability: verified.runnerCapability,
+    handoffCapability: verified.handoffCapability
+  });
+  const readiness = createProductionRuntimeReadinessCapability(verified, runnerHandoffBinding);
+  const runtimeCapabilities = Object.freeze({
     schemaVersion: "agent-task-orchestrator-runtime-capabilities.v1",
     workflowRegistry: verified.workflowRegistry,
     contextRegistry: verified.contextCapability.registry,
@@ -670,9 +789,10 @@ export function createProductionAgentRuntimeCapabilities(
     providerRegistry: verified.providerPolicyCapability.providerRegistry,
     providerPolicy: createRunScopedProviderPolicy(verified),
     approvalReader: verified.approvalReader,
-    runnerRegistry: { dispatch: verified.runnerCapability.dispatch },
+    runnerRegistry: { dispatch: runnerHandoffBinding.dispatch },
     handoffCapability: verified.handoffCapability
   });
+  return Object.freeze({ runtimeCapabilities, runnerHandoffBinding, readiness });
 }
 ```
 
@@ -681,8 +801,16 @@ workspace/mount, ready identity, policy/lock/high-water, capability/schema
 versions, and registration provenance. It freezes normalized data and maps
 failures to the approved safe categories. The adjacent internal
 `projectProductionRuntimeReadiness` recomputes structural/component facts and
-provider invocation readiness; `executable` is true only with structural
-`ready` plus current `ready-to-invoke` requirements. The default factory gets
+provider invocation readiness; it is used only by the R-owned
+`ProductionRuntimeReadinessCapability.getReadiness` accessor, not left as an
+unconsumed helper. `executable` is true only with structural `ready` plus
+current `ready-to-invoke` requirements. The default factory exposes that
+accessor on the production composition and injects the same accessor into W's
+`WakeSupervisorRuntime` observation boundary. U later consumes only the
+CF-1-frozen `ProductionRuntimeReadinessRouteDto` projection from that
+accessor at its route boundary; it neither reconstructs readiness nor imports
+server/runtime dependencies. The accessor and DTO exclude raw prompts,
+secrets, paths, response bytes, and caught errors. The default factory gets
 P/W capabilities through their reviewed APIs and preserves fail-closed
 diagnostics when preconditions are unavailable.
 
