@@ -94,3 +94,54 @@ clean status, and append-only RED/GREEN/full-verification evidence.
 - No overlapping or repeated full verifier was started. Final scope and diff
   hygiene remain limited to the seven authorized Task118 paths before the
   forward candidate commit and distinct fresh review.
+
+## Fresh-Review Repair Evidence
+
+- Fresh review of candidate `bdd2e0114863c1be1123c4a001b78f2c8e255dbb`
+  returned `NEEDS-CHANGES` for mounted-policy partition binding, canonical
+  multi-source causation, exact authority readback, and forged deterministic
+  identities. The repair preserves that candidate and its parent history and
+  is being prepared as a separate forward commit.
+- Retained repair RED: the exact focused command exited `1` with 3 files, 23
+  tests, 4 failures, and 19 passes. The four causal failures were `persists the
+  verified mounted policy partition instead of a source kind`, `preserves
+  canonical first-source causation through multi-source append and replay`,
+  `rejects persisted mount, lock, identity, and high-water swaps during exact
+  readback`, and `rejects forged deterministic request fingerprints, request
+  IDs, and dedupe keys`. No production file had been edited for this repair
+  before that RED run.
+- Repair implementation derives the persisted high-water partition from the
+  verified mounted policy, keeps the canonical first source as causation while
+  retaining the canonical final source as high-water, compares persisted
+  mount/lock/workspace/source facts to the verified request during readback,
+  and independently recomputes fingerprint, request ID, and dedupe key in the
+  event contract and replay projection before high-water is trusted.
+- Refreshed exact focused GREEN: the same command exits `0` with 3 files and
+  23/23 tests passing.
+- Compiler-evidence correction: a clean temporary archive of
+  `bdd2e0114863c1be1123c4a001b78f2c8e255dbb` reproduced `npm run typecheck`
+  failure (`exit 2`) in the Task118 trigger files, so the earlier claim that
+  the candidate typecheck passed is superseded as non-retained/inaccurate
+  command evidence. The bounded repair tightened trigger-specific validated
+  hash outputs and the affected local boundaries; the refreshed
+  `npm run typecheck` now exits `0` with `typecheck passed`.
+- Refreshed pre-verifier hygiene: `git diff --check` exits `0`, and
+  `npm run factory:check` exits `0` with `factory-readiness passed`. The diff
+  remains limited to the seven authorized Task118 paths, including this claim.
+- A new serialized full-verifier slot is pending coordinator clearance. No
+  repair `npm run verify` has started, and no integration or `neo` mutation is
+  authorized.
+
+## Retained Repair Full Verification
+
+- Relay A granted the serialized verifier slot after the preceding pending
+  checkpoint. The one retained repair `npm run verify` exited `0` in the
+  isolated W1-118 worktree.
+- Exact aggregates: typecheck emitted `typecheck passed`; Vitest reported 195
+  passed and 3 skipped test files (198 total), with 2,286 passed and 5 skipped
+  tests (2,291 total); Vite transformed 164 modules and completed the
+  production build; the final factory gate emitted `factory-readiness passed`.
+- The Vite build retained its existing non-fatal chunk-size warning. No second
+  or overlapping W1-118 repair verifier was started. Final commit scope remains
+  the seven authorized Task118 paths, and the candidate must stop for fresh
+  re-review without self-integration or `neo` mutation.
