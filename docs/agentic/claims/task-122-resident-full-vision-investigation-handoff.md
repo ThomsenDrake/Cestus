@@ -254,3 +254,58 @@ two candidates remain rejected and unintegrated.
 
 Status: in-progress in this bounded root-lane repair; `ea26c00e` remains
 rejected and unintegrated.
+
+## Attempt-Binding Repair RED / GREEN Evidence
+
+- Root cause: the preserved recovery candidate trusted the specialist-started
+  event but had no authoritative orchestration attempt-to-run join. A second
+  claim/checkpoint could name the same resident/task/run/type with a swapped
+  attempt identity and recovery would still write its handoff manifest.
+- RED: the exact focused command exited `1` after a valid planner claim and
+  `runner-dispatching` checkpoint had produced durable output, then a second
+  causally valid claim/checkpoint with a swapped `attemptId` for that same run
+  was appended. The prior candidate returned `output-persisted` instead of
+  fail-closing before recovery work.
+- GREEN: the same command exits `0` (2 files / 47 tests). Recovery and normal
+  preparation now require exactly one matching `agent_default` planner start,
+  exactly one explicit `runner-dispatching` checkpoint naming the run, and
+  exactly one prior causally linked claimed attempt with equal task/run type,
+  attempt, retry, and lease generations. Missing, duplicate, swapped, or
+  released causal evidence returns a safe blocked handoff before store reads or
+  writes, ledger appends, preparation, model/provider calls, drafts, artifacts,
+  PRR, graph, or external effects.
+- The counterfactuals retain cross-specialist rejection, two unavailable-store
+  `output-persisted` retries with no added durable effect, reconstruction, and
+  exact restored final-output -> prepared -> recorded -> terminal ordering.
+  They also prove a released attempt cannot enter preparation or invoke the
+  provider.
+- Pending pre-commit gates: `git diff --check`, `npm run factory:check`, then
+  one retained no-overlap `npm run verify` only after the coordinator confirms
+  the global full-verifier slot is clear. This repair remains limited to the
+  three authorized Task122 paths and requires a new reviewer distinct from this
+  author and both earlier Task122 reviewers.
+
+## Attempt-Binding Verification Recovery
+
+- The first retained full gate exited `2` at typecheck before tests because the
+  test-only helper returned the generic ledger event union for its claimed and
+  checkpointed append results. The repair narrows those existing append results
+  to their already authoritative event types; no contract or production
+  behavior changed.
+- Post-correction `npm run typecheck` exits `0` and the exact focused command
+  exits `0` (2 files / 47 tests). A single replacement retained full gate is
+  pending with no overlapping verifier.
+
+## Attempt-Binding Candidate Verification And Handoff
+
+- Final scoped hygiene: `git diff --check` and `npm run factory:check` exit
+  `0`; the only intended tracked files remain this claim, the Task122 workflow,
+  and its focused test.
+- Retained replacement full verification: `npm run verify` exits `0` after
+  typecheck, with 189 test files passed and 3 skipped, 2,236 tests passed and
+  5 skipped, the Vite production build passed (existing chunk-size warning
+  only), and factory readiness passed.
+- Status: ready-for-review. The fresh attempt-binding repair author will commit
+  only the three authorized paths and stop for a reviewer who is neither this
+  author nor either prior Task122 reviewer. No self-review, self-integration,
+  `neo` merge, PRR/graph/provider/external effect, or scope expansion occurred.

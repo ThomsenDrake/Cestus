@@ -28,6 +28,7 @@ import {
   type SpecialistHandoffManifestStore,
   type SpecialistRunnerBaseInput
 } from "./specialist-runner-kernel.js";
+import { taskOrchestrationStreamId } from "./task-orchestrator-events.js";
 
 export interface RunInvestigationPlannerWorkflowInput extends SpecialistRunnerBaseInput {
   readonly investigationId?: string;
@@ -55,6 +56,12 @@ export async function runInvestigationPlannerWorkflow(
 ): Promise<RunInvestigationPlannerWorkflowResult> {
   if (input.investigationId === undefined) {
     return blockedHandoff(input, "Investigation scope is required before planning can begin.");
+  }
+  if (!(await hasAuthoritativeInvestigationPlannerAttempt(input))) {
+    return blockedHandoff(
+      input,
+      "Investigation planner orchestration attempt is missing, stale, or does not bind the exact resident task and run."
+    );
   }
   if (input.handoffStore !== undefined) {
     const resumed = await resumeDurableFinalOutput(input, input.handoffStore);
@@ -203,6 +210,67 @@ export async function runInvestigationPlannerWorkflow(
     relatedEventIds: [...invocation.eventIds]
   });
   return await recordDurableHandoff({ input, handoffStore, material, eventIds: invocation.eventIds });
+}
+
+async function hasAuthoritativeInvestigationPlannerAttempt(
+  input: RunInvestigationPlannerWorkflowInput
+): Promise<boolean> {
+  const runStream = await input.ledger.readStream(`agent_run_${input.runId}`);
+  const started = runStream.filter((event): event is KnowledgeEventOf<"agent.specialist-run.started"> =>
+    event.type === "agent.specialist-run.started" &&
+    event.payload.runId === input.runId &&
+    event.payload.residentAgentId === "agent_default"
+  );
+  if (
+    started.length !== 1 ||
+    started[0]!.payload.runType !== "investigation-planner" ||
+    started[0]!.payload.taskId !== input.taskId
+  ) {
+    return false;
+  }
+
+  const orchestration = await input.ledger.readStream(
+    taskOrchestrationStreamId(input.taskId, "investigation-planner")
+  );
+  const checkpoints = orchestration.filter((event): event is KnowledgeEventOf<"agent.task.orchestration.checkpointed"> =>
+    event.type === "agent.task.orchestration.checkpointed" &&
+    event.payload.taskId === input.taskId &&
+    event.payload.runType === "investigation-planner" &&
+    event.payload.checkpointKind === "runner-dispatching" &&
+    event.payload.runId === input.runId &&
+    event.payload.attemptId.length > 0 &&
+    Number.isInteger(event.payload.retryGeneration) &&
+    event.payload.retryGeneration >= 0 &&
+    Number.isInteger(event.payload.leaseClaimGeneration) &&
+    event.payload.leaseClaimGeneration > 0
+  );
+  if (checkpoints.length !== 1) return false;
+  const checkpoint = checkpoints[0]!;
+  const claims = orchestration.filter((event): event is KnowledgeEventOf<"agent.task.orchestration.claimed"> =>
+    event.type === "agent.task.orchestration.claimed" &&
+    event.payload.taskId === input.taskId &&
+    event.payload.runType === "investigation-planner" &&
+    event.payload.attemptId === checkpoint.payload.attemptId &&
+    event.payload.retryGeneration === checkpoint.payload.retryGeneration &&
+    event.payload.leaseClaimGeneration === checkpoint.payload.leaseClaimGeneration
+  );
+  if (
+    claims.length !== 1 ||
+    checkpoint.context.causationId !== claims[0]!.id ||
+    claims[0]!.sequence >= checkpoint.sequence
+  ) {
+    return false;
+  }
+  return !orchestration.some((event): event is KnowledgeEventOf<"agent.task.orchestration.released"> =>
+    event.type === "agent.task.orchestration.released" &&
+    event.payload.taskId === input.taskId &&
+    event.payload.runType === "investigation-planner" &&
+    event.payload.attemptId === checkpoint.payload.attemptId &&
+    event.payload.retryGeneration === checkpoint.payload.retryGeneration &&
+    event.payload.leaseClaimGeneration === checkpoint.payload.leaseClaimGeneration &&
+    event.payload.claimEventId === claims[0]!.id &&
+    event.sequence > checkpoint.sequence
+  );
 }
 
 async function resumeDurableFinalOutput(
