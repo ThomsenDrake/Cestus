@@ -226,3 +226,75 @@ coordinator recovery checkpoint, not a user gate.
 - No provider or Nous call was made. This remains a documentation-only Task 113
   repair and stops before CF-1, Task 118, Tasks 149--151, production, dispatch,
   or any merge into `neo`.
+
+## RC-113-05 — Same-call concurrency and exhaustive no-effect repair started
+
+- Recorded at: 2026-07-13T12:20:13Z.
+- Status: in-progress; this is a forward-only repair record. RC-113-01 through
+  RC-113-04 and their commits remain unmodified historical evidence.
+- Recovery worker/branch/worktree:
+  `codex/task-113-resident-full-vision-w0-trigger-plan-same-call-repair` /
+  `/tmp/cestus-task113-same-call`, based at
+  `6da8aecc2731aa881fbf9443559e62f4a4192d59`.
+- Scoped authority: Task 113 same-call concurrency/exhaustive no-effect
+  documentation repair only under the approved Lane T design
+  `@9a571f628bef9c53725e20263cb687ec44dd9cd8` and governing program plan
+  `@0b5726ec975bdc0aae97e540472ef3be4379b358`. Stop after one verified
+  forward repair commit and fresh review; do not begin Tasks 149--151, CF-1,
+  production/provider work, child dispatch, or a merge into `neo`.
+- Owned files remain only this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md`.
+- Documentation RED: the section-local same-call/no-effect Node audit against
+  the `6da8aecc` baseline failed at `Task 118: Trigger Core, Request Event,
+  And Rebuildable Projection: missing losingPromise`. The baseline test made a
+  later independent evaluator call and omitted the required prompt,
+  model/provider, subscription/API-key/credential, harness/specialist/domain-
+  service, projection, and graph boundary shapes.
+
+## RC-113-06 — Same-call repair verification and fresh-review handoff
+
+- Recorded at: 2026-07-13T12:33:51Z.
+- Status: ready for fresh re-review; this appends completion evidence without
+  modifying RC-113-05 or any earlier record. The repair remains limited to the
+  Task 113 plan and this claim; no production, test, provider, registry,
+  specification, acceptance-matrix, or runtime file changed.
+- Repair: Task 118 now holds both original evaluator calls in a synchronized
+  race fixture, selects the original losing `losingPromise`, proves its second
+  source-keyed authority read and `budget-exhausted` result within the same
+  call, and proves all conditional append attempts used one gate key. It makes
+  no later independent `evaluateResidentTrigger` call. The strict negative
+  fixture and acceptance matrix now cover prompt artifacts/resolvers, model
+  messages/invocations, provider requests, subscription/API-key/credential
+  shapes, harnesses, specialists, domain services, scheduler/tool/parser/
+  approval/task/handoff/artifact/projection/graph shapes, and raw bytes.
+- Documentation RED: the final same-call/no-effect audit against the untouched
+  `6da8aecc` baseline failed with the expected missing `losingPromise` local
+  requirement.
+- Documentation GREEN: the original audit printed `GREEN: Task 113
+  section-local plan audit passed (8 section checks; 10 counterfactuals
+  rejected).`; the prior recovery audit printed `GREEN: Task 113 recovery
+  audit passed (2 section checks; 25 counterfactuals rejected).`; and the new
+  focused audit printed `GREEN: Task 113 same-call/no-effect audit passed (39
+  counterfactuals rejected).` Every selected requirement is removed from its
+  own section before the audit confirms that variant fails.
+- Independent checks: `git diff --check` exited 0 before this append and the
+  plan was manually re-read against the Lane T append-only, source-provenance,
+  no-fallback, and no-effect constraints.
+- Required verifier attempts and exact sandbox blockers: after
+  `npm ci --ignore-scripts` restored lockfile-defined dependencies,
+  `npm run factory:check` failed because
+  `scripts/check-agent-readiness.mjs` received `spawnSync git EPERM` at
+  `git ls-files`. `npm run verify` reached `typecheck passed` but the full
+  suite had 19 environment failures: the sandbox denied `listen` with
+  `EPERM` for local-runtime HTTP tests and tsx IPC sockets. The direct full
+  test result was `186 passed`, `3 skipped`, `3 failed` test files and
+  `2,209 passed`, `5 skipped`, `19 failed` tests; its failures are outside
+  the owned documents. No check script or sandbox configuration was changed
+  to bypass either denial.
+- Fresh-review handoff: review the final forward commit from
+  `6da8aecc2731aa881fbf9443559e62f4a4192d59` against the approved Lane T
+  design and program plan. Lead with the same-call promise identity and
+  gate-key proof, complete forbidden-boundary coverage, audit fail polarity,
+  ownership, append-only/provenance/no-fallback preservation, and the recorded
+  sandbox-only verifier blockers. This worker does not self-approve, dispatch,
+  start CF-1 or Tasks 149--151, use a provider, or merge into `neo`.
