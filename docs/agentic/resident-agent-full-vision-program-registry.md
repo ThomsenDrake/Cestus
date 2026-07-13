@@ -2424,3 +2424,42 @@ explicit implementation authorization.
 - Dependency consequence: only after the clean verified coordinator descendant
   may Task123 rebase/restart its preserved blocked claim and diagnostic
   checkpoint. The old prototype remains unintegrated; `neo` remains untouched.
+
+## RV-1-C-034 — Coordinator integration: approved Task120 plan/observation repair
+
+- Relay B merged independently approved Task120 repair
+  `a92531c5bc0d0b54d86024060632ed1b112f356e` forward at coordinator head
+  `49c3490a262162bd1d7146994390a2a6b5052394`. The rejected initial candidate
+  `d03729d1` and bounded repair authorization `0ebd377b` remain preserved
+  forward-only evidence; this is not a `neo` merge.
+- The independently fresh reviewer confirmed the exact five-file Task120
+  scope and complete durable plan/observation equality through store and
+  projection readback: transformed revision, descriptor hash, ordinal,
+  category, observation hash, identity, policy, authority, source, context,
+  budget, causation, and correlation values fail closed. Both append-time and
+  replay-time stale/superseded-plan observations are rejected; ordered
+  append-only/provenance semantics remain, with no accepted-graph, provider,
+  tool, PRR, or external effect.
+- Review gates passed `git diff --check`, the two-file focused suite with 9
+  tests, and factory readiness. Retained author verification exited 0 with
+  typecheck; 195 test files passed / 3 skipped; 2,253 tests passed / 5
+  skipped; Vite; and factory readiness. Coordinator merged-checkout focused
+  and full verification are required before the dependency release is final.
+- Pending that coordinator record, the verified Task120 merged descendant is
+  the hard prerequisite that may unblock W1-118 and Task136. Task123 restart
+  and Task124 repair remain independent; `neo` remains untouched.
+
+## RV-1-C-035 — Task120 merged-checkout verification and dependency release
+
+- At Relay B merge head `49c3490a262162bd1d7146994390a2a6b5052394`, the
+  coordinator reran the exact Task120 focused command successfully: 2 files /
+  9 tests. `git diff --check` and `npm run factory:check` both passed.
+- The single retained coordinator `npm run verify` exited 0: typecheck passed;
+  192 test files passed / 3 skipped; 2,263 tests passed / 5 skipped; Vite
+  production build passed; and factory readiness passed. Existing SQLite
+  experimental and Vite chunk-size warnings were non-failing.
+- Task120 is integrated and verified. W1-118 may now be dispatched in its
+  frozen serialized order, and the Task120 portion of Task136's prerequisite
+  set is satisfied; all of Task136's remaining wake/provider prerequisites
+  remain mandatory. Task123 restart and Task124 repair continue independently;
+  `neo` remains untouched.
