@@ -1,7 +1,7 @@
 # Task 121 Claim: PRR Negotiation Draft Handoff Migration
 
 - Task and lane: Task 121 / H / Wave 1.
-- Status: claimed.
+- Status: in-progress.
 - Worker: `/root/wave1_task121`.
 - Branch: `codex/task-121-resident-full-vision-prr-handoff`.
 - Worktree: `/home/drake/.codex/worktrees/383d/Cestus`.
@@ -24,3 +24,4 @@ The task consumes CF-1's frozen handoff contract and produces only a provenance-
 ## Execution Record
 
 - Initial claim committed before task-file edits. RED evidence, in-progress status, GREEN evidence, verification, and review handoff will be appended without rewriting this record.
+- Status changed to `in-progress` before Task121 source or test edits.
