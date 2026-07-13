@@ -1351,9 +1351,9 @@ function sameCompletionAnchor(prior: VerifiedHandoffRecord, next: VerifiedHandof
     sameStringArray(prior.manifest.relatedEventIds, next.manifest.relatedEventIds);
 }
 
-function authoritativeFinalOutputStepSchemaId(runType: string): string | undefined {
+export function authoritativeFinalOutputStepSchemaId(runType: string): string | undefined {
   if (runType === "ontology-bootstrap") {
-    return undefined;
+    return "ontology-bootstrap-handoff.v1";
   }
   try {
     const typedRunType = runType as Exclude<AgentSpecialistRunType, "ontology-bootstrap">;

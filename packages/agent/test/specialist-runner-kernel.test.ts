@@ -648,7 +648,7 @@ describe("durable specialist handoff runner lifecycle", () => {
     expect(objectGetterCalls).toBe(0);
   });
 
-  it("derives final-output schema authority before writing and rejects unavailable authority", async () => {
+  it("derives final-output schema authority before writing and records ontology bootstrap through the same handoff lifecycle", async () => {
     const fixture = await durableHandoffFixture();
     const appended = await appendSpecialistFinalOutputStep({
       ...finalOutputInput(fixture),
@@ -656,21 +656,27 @@ describe("durable specialist handoff runner lifecycle", () => {
     } as never);
     expect(appended.payload.stepSchemaId).toBe("evidence-triage-handoff.v1");
 
-    const unavailable = await durableHandoffFixture({ runId: "run_unavailable_schema_001", taskId: "task_unavailable_schema_001" });
-    const streamBefore = await unavailable.ledger.readStream(`agent_run_${unavailable.runId}`);
-    await unavailable.ledger.append({
-      type: "agent.specialist-run.started",
-      version: 1,
-      streamId: "agent_run_run_ontology_authority_001",
-      context: lifecycleContext(unavailable, unavailable.runStartedEventId),
-      payload: { runId: "run_ontology_authority_001", residentAgentId: "agent_default", runType: "ontology-bootstrap", startedBy: unavailable.actor.id, taskId: unavailable.taskId }
+    const bootstrap = await durableHandoffFixture({
+      runId: "run_ontology_authority_001",
+      taskId: "task_ontology_authority_001",
+      runType: "ontology-bootstrap"
     });
-    await expect(appendSpecialistFinalOutputStep({
-      ...finalOutputInput(unavailable),
-      runId: "run_ontology_authority_001"
-    })).rejects.toThrow(/authority|unavailable|ontology-bootstrap/i);
-    expect((await unavailable.ledger.readStream("agent_run_run_ontology_authority_001")).filter((event) => event.type === "agent.specialist-run.step.recorded")).toHaveLength(0);
-    expect(streamBefore.length).toBeGreaterThan(0);
+    const bootstrapFinalOutput = await appendSpecialistFinalOutputStep(finalOutputInput(bootstrap));
+    expect(bootstrapFinalOutput.payload.stepSchemaId).toBe("ontology-bootstrap-handoff.v1");
+
+    const recorded = await recordSpecialistHandoff(recordInput(bootstrap));
+    await finalizeSpecialistRunAfterHandoff({
+      ledger: bootstrap.ledger,
+      actor: bootstrap.actor,
+      now: bootstrap.clock.now,
+      recorded
+    });
+    expect((await bootstrap.ledger.readStream(`agent_run_${bootstrap.runId}`)).map((event) => event.type)).toEqual(expect.arrayContaining([
+      "agent.specialist-run.step.recorded",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed"
+    ]));
   });
 
   it("rereads and reuses an exact final-output event after an append-time concurrency conflict", async () => {
@@ -883,6 +889,7 @@ interface DurableHandoffFixture {
 async function durableHandoffFixture(options: {
   readonly runId?: string;
   readonly taskId?: string;
+  readonly runType?: "evidence-triage" | "ontology-bootstrap";
   readonly status?: DurableHandoffStatus;
   readonly clockValues?: readonly string[];
   readonly manifestStore?: MemoryManifestStore;
@@ -897,7 +904,12 @@ async function durableHandoffFixture(options: {
   const lifecycle = createAgentRuntime({ ledger, actor, now: () => "2026-07-10T14:00:00.000Z", providers: [] });
   await lifecycle.initializeDefaultIdentity({ workspaceId: "ws_durable_handoff" });
   await lifecycle.createTask({ taskId, title: "Record durable handoff", requestedBy: actor.id, priority: "normal" });
-  const started = await lifecycle.startRun({ runId, taskId, runType: "evidence-triage", scope: { kind: "workspace", refs: ["ws_durable_handoff"] } });
+  const started = await lifecycle.startRun({
+    runId,
+    taskId,
+    runType: options.runType ?? "evidence-triage",
+    scope: { kind: "workspace", refs: ["ws_durable_handoff"] }
+  });
   if (!started.ok) throw new Error("Unable to start durable handoff fixture run.");
   const manifestStore = options.manifestStore ?? new MemoryManifestStore();
   const contextBytes = Buffer.from(`durable context pack ${runId}`);
