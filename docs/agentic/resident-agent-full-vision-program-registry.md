@@ -1881,3 +1881,31 @@ explicit implementation authorization.
 - Merge readiness: coordinator ownership accepted; Task115 and Task116 remain author-owned and unreviewed, CF-1 and every Wave 1 task remain stopped, and no child may self-integrate or merge neo
 - Archive check: the outgoing transfer record, exact-head ancestry, clean successor readiness checkout, clean canonical coordinator worktree, and this forward acceptance record are preserved; a normal visible successor with task ID, title, pin, active state, canonical branch, and exact clean head will be recorded before this coordinator's continuity threshold
 - Supersession: this record accepts and supersedes RV-0-C-005 only for integration ownership; all transfer, child, review, and merge evidence remains append-only and unchanged.
+
+## RV-0-U-006 — Task115 uncommitted-draft provenance recovery dispatch
+
+- Recorded at: 2026-07-13T15:13:23Z
+- Role: coordinator recovery dispatch
+- Lane and wave: U / 0B
+- Task ID and claim: task-115-resident-full-vision-w0-cockpit-plan / docs/agentic/claims/task-115-resident-full-vision-w0-cockpit-plan.md
+- Task thread ID: incoming audit `/root/task115_cockpit_plan` stopped; a different fresh recovery author must commit only the verified preserved draft, then stop for a different fresh reviewer
+- Branch and worktree: codex/task-115-resident-full-vision-w0-cockpit-plan / /home/drake/.codex/worktrees/task-115-resident-full-vision-w0-cockpit-plan
+- Base commit and required head: beff02c05d3472cc79e7ccf411f77c33b7b64342 / one forward-only two-file Task115 documentation commit from the preserved exact draft
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358; docs/superpowers/specs/2026-07-12-resident-agent-cockpit-design.md@754f89466a8321f853b60f4465a989e3bff03d89
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-cockpit-implementation.md; docs/agentic/claims/task-115-resident-full-vision-w0-cockpit-plan.md
+- Forbidden files: every other tracked file, including the registry, production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and every other claim
+- Dependencies and required merged commits: RV-0-U-005 authorization; RV-0-C-006 coordinator acceptance at 161f2f265d00d9010844fe11cd568b14e5057ac0; no shared contract is frozen, so Task115 remains pre-CF-1 and has no production dependency
+- Approval record: the governing spec and plan are approved. Allowed task range: Task115 uncommitted-draft provenance recovery only. Wave stop: independently hash-audit the two preserved files, rerun documentation RED/GREEN and all required verification, make one two-file commit, then stop for a different fresh review before Task131/141, CF-1, production/provider/live work, further dispatch, rebase, or merge. This recovery explicitly authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. Do not merge into neo.
+- Claim status: recovery-dispatched; no content is trusted merely because an untracked writer left it in the worktree
+- Preserved-draft provenance: no process remained after the audit, but the exact writer is unproven. The only untracked files are the two owned files, stable at plan SHA-256 `454c160a71a89fce53c360c87543566c16883000e1241f94a89963f64eaf977f` and claim SHA-256 `003338fbd3cfd7f539b21253beb33459748c17daab3e3065cef73369289a7b2d`. The recovery author must stop without a commit if either hash, scope, or worktree stability check differs.
+- RED command and observed failure: the stopped audit replaced exact local row T115-CF1-ONLY in memory and the embedded section-local audit failed as required; the original pre-write file-absence audit also exited 1
+- GREEN command and observed result: the stopped audit restored the exact row and the embedded audit reported 36 direct local mutations rejected; this recovery dispatch's hash-bound registry audit exited 0, git diff --check exited 0 with no output, and npm run factory:check reported `factory-readiness passed`; fresh recovery-owned hash, scope, RED/GREEN, and gates remain required before the child commit
+- Full verification: coordinator npm run verify after this recovery dispatch exited 0: typecheck passed; 189 test files / 2,228 tests passed with 3 / 5 skipped; Vite built with the existing chunk-size warning; factory readiness passed. Prior uncommitted-draft evidence is still not adopted as recovery completion; the recovery author must run its own npm run verify
+- Live-provider gate: not-applicable; Task115 remains documentation-only and may not invoke providers, credentials, browser, tailnet, desktop setup, or Nous
+- Review verdict: recovery required; no author verdict exists until a fresh recovery author commits the exact audited two-file draft, after which a different fresh reviewer must assess it
+- Rebase record: no contract-changing coordinator merge applies to this documentation-only task; recovery stays at beff02c05d3472cc79e7ccf411f77c33b7b64342 and must not rebase
+- Merge readiness: not-ready; coordinator alone may integrate an approved commit into the visible branch, never neo
+- Archive check: preserve the stopped audit's hashes, timestamps, counterfactual evidence, and observed verifier log; require the fresh recovery author final answer, clean worktree, reviewed ancestry, verification evidence, and coordinator integration record before archival
+- Root-cause checkpoint: a predecessor process replaced the in-progress claim and plan during the re-dispatched author's audit without durable commit provenance. The new tactic pins exact hashes and scope before a fresh author creates the first durable Task115 commit; it neither rewrites nor treats the untracked draft as self-authenticating.
+- Supersession: this record supersedes RV-0-U-005 only for the uncommitted-draft recovery disposition; the original authorization, work scope, and all stopped-worker evidence remain immutable.
