@@ -665,6 +665,116 @@ const agentTaskOrchestrationFailedPayloadSchema = z.object({
   relatedEventIds: agentSourceEventIdsSchema.optional()
 }).strict();
 
+const residentLoopIdentitySchema = z.object({
+  residentAgentId: z.literal("agent_default"),
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema,
+  policyId: agentPolicyIdSchema,
+  policyVersion: secretSafeStringSchema.min(1),
+  policyHash: contentHashSchema,
+  authorityHash: contentHashSchema,
+  sourceEventIds: agentSourceEventIdsSchema.min(1),
+  contextArtifactHashes: agentArtifactHashesSchema.min(1),
+  budget: z.object({
+    maxSteps: z.number().int().positive(),
+    remainingSteps: z.number().int().nonnegative(),
+    contextBytes: z.number().int().nonnegative()
+  }).strict(),
+  causationEventId: eventIdSchema,
+  correlationId: secretSafeStringSchema.min(3)
+}).strict().superRefine((value, ctx) => {
+  if (value.budget.remainingSteps > value.budget.maxSteps) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["budget", "remainingSteps"],
+      message: "remainingSteps cannot exceed maxSteps"
+    });
+  }
+});
+
+const residentPlanReadbackSchema = z.object({
+  planRecordEventId: eventIdSchema,
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema
+}).strict();
+
+const residentFinalObservationReadbackSchema = z.object({
+  observationEventId: eventIdSchema,
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema
+}).strict();
+
+const residentTerminalReadbackSchema = z.object({
+  finalObservationEventId: eventIdSchema,
+  taskId: agentTaskIdSchema,
+  attemptId: agentTaskOrchestrationAttemptIdSchema,
+  runId: agentRunIdSchema
+}).strict();
+
+function addResidentReadbackIdentityIssues(
+  value: z.infer<typeof residentLoopIdentitySchema>,
+  readback: z.infer<typeof residentPlanReadbackSchema> | z.infer<typeof residentFinalObservationReadbackSchema> | z.infer<typeof residentTerminalReadbackSchema>,
+  path: string,
+  ctx: z.RefinementCtx
+): void {
+  for (const field of ["taskId", "attemptId", "runId"] as const) {
+    if (readback[field] !== value[field]) {
+      ctx.addIssue({
+        code: "custom",
+        path: [path, field],
+        message: `${path} must bind the same task, attempt, and run identity`
+      });
+    }
+  }
+}
+
+const agentResidentPlanRecordedPayloadSchema = residentLoopIdentitySchema.extend({
+  planRevision: z.number().int().positive(),
+  descriptorHash: contentHashSchema
+}).strict();
+
+const agentResidentObservationRecordedPayloadSchema = residentLoopIdentitySchema.extend({
+  planReadback: residentPlanReadbackSchema,
+  observationOrdinal: z.number().int().positive(),
+  category: secretSafeStringSchema.min(1),
+  observationHash: contentHashSchema
+}).strict().superRefine((value, ctx) => addResidentReadbackIdentityIssues(value, value.planReadback, "planReadback", ctx));
+
+const agentResidentToolStepRecordedPayloadSchema = residentLoopIdentitySchema.extend({
+  planReadback: residentPlanReadbackSchema,
+  stepOrdinal: z.number().int().positive(),
+  toolRequestId: agentToolRequestIdSchema,
+  toolId: secretSafeStringSchema.min(3),
+  toolVersion: secretSafeStringSchema.min(1),
+  previewHash: contentHashSchema,
+  toolEventId: eventIdSchema
+}).strict().superRefine((value, ctx) => addResidentReadbackIdentityIssues(value, value.planReadback, "planReadback", ctx));
+
+const agentResidentLoopSuspendedPayloadSchema = residentLoopIdentitySchema.extend({
+  planReadback: residentPlanReadbackSchema,
+  finalObservationReadback: residentFinalObservationReadbackSchema,
+  suspensionCategory: z.enum(["budget-exhausted", "approval-required", "authority-stale", "context-stale", "provider-unavailable"]),
+  resumeIdempotencyKey: secretSafeStringSchema.min(1)
+}).strict().superRefine((value, ctx) => {
+  addResidentReadbackIdentityIssues(value, value.planReadback, "planReadback", ctx);
+  addResidentReadbackIdentityIssues(value, value.finalObservationReadback, "finalObservationReadback", ctx);
+});
+
+const agentResidentLoopResultRecordedPayloadSchema = residentLoopIdentitySchema.extend({
+  planReadback: residentPlanReadbackSchema,
+  finalObservationReadback: residentFinalObservationReadbackSchema,
+  outcome: z.enum(["completed", "failed"]),
+  resultHash: contentHashSchema,
+  terminalReadback: residentTerminalReadbackSchema
+}).strict().superRefine((value, ctx) => {
+  addResidentReadbackIdentityIssues(value, value.planReadback, "planReadback", ctx);
+  addResidentReadbackIdentityIssues(value, value.finalObservationReadback, "finalObservationReadback", ctx);
+  addResidentReadbackIdentityIssues(value, value.terminalReadback, "terminalReadback", ctx);
+});
+
 const agentSpecialistRunStartedPayloadSchema = z.object({
   runId: agentRunIdSchema,
   residentAgentId: residentAgentIdSchema,
@@ -1546,6 +1656,11 @@ export const payloadSchemas = {
   "agent.task.orchestration.released": agentTaskOrchestrationReleasedPayloadSchema,
   "agent.task.orchestration.completed": agentTaskOrchestrationCompletedPayloadSchema,
   "agent.task.orchestration.failed": agentTaskOrchestrationFailedPayloadSchema,
+  "agent.resident-plan.recorded.v1": agentResidentPlanRecordedPayloadSchema,
+  "agent.resident-observation.recorded.v1": agentResidentObservationRecordedPayloadSchema,
+  "agent.resident-tool-step.recorded.v1": agentResidentToolStepRecordedPayloadSchema,
+  "agent.resident-loop.suspended.v1": agentResidentLoopSuspendedPayloadSchema,
+  "agent.resident-loop.result.recorded.v1": agentResidentLoopResultRecordedPayloadSchema,
   "agent.specialist-run.started": agentSpecialistRunStartedPayloadSchema,
   "agent.specialist-run.step.recorded": agentSpecialistRunStepRecordedPayloadSchema,
   "agent.specialist-run.completed": agentSpecialistRunCompletedPayloadSchema,
@@ -1797,6 +1912,41 @@ export const eventContracts = {
       "allowedActions must be explicit",
       "failed attempts remain replayable"
     ]
+  },
+  "agent.resident-plan.recorded.v1": {
+    type: "agent.resident-plan.recorded.v1",
+    version: 1,
+    description: "Records the immutable resident-loop plan admission for one task, attempt, and run.",
+    agentGuidance: "Bind the resident identity, task/attempt/run, policy, authority, source and context hashes, budget, causation, correlation, and descriptor hash. Append the plan before later records read back its assigned event ID. This is a schema record only and does not authorize a provider, tool, scheduler, store, projection, or domain effect.",
+    invariants: ["residentAgentId is agent_default", "task/attempt/run identity is explicit", "policy and authority hashes are content-addressed", "plan records remain replayable"]
+  },
+  "agent.resident-observation.recorded.v1": {
+    type: "agent.resident-observation.recorded.v1",
+    version: 1,
+    description: "Records one resident-loop observation bound to an exact resident plan readback.",
+    agentGuidance: "Carry the same resident identity, policy, authority, source, context, budget, causation, and correlation bindings as the plan. The plan readback task, attempt, and run must match this record; do not treat an observation as tool approval or execution.",
+    invariants: ["plan readback identity must match", "observation ordinal is positive", "unknown fields and unsafe object shapes are rejected"]
+  },
+  "agent.resident-tool-step.recorded.v1": {
+    type: "agent.resident-tool-step.recorded.v1",
+    version: 1,
+    description: "Records a resident-loop tool-step fact bound to its plan readback and gateway references.",
+    agentGuidance: "Bind the exact plan readback, tool request/event IDs, tool version, preview hash, policy, authority, budget, source, context, causation, and correlation. This record is not a tool approval or execution.",
+    invariants: ["plan readback identity must match", "previewHash is content-addressed", "tool step records do not grant an effect"]
+  },
+  "agent.resident-loop.suspended.v1": {
+    type: "agent.resident-loop.suspended.v1",
+    version: 1,
+    description: "Records an explicitly resumable resident-loop suspension with plan and final-observation readbacks.",
+    agentGuidance: "Use only with exact task/attempt/run-matching plan and observation readbacks, an explicit safe suspension category, and a resume idempotency key. Suspension does not bypass any later tool or provider gate.",
+    invariants: ["both readbacks must match the resident identity", "suspension category is explicit", "resume key is required"]
+  },
+  "agent.resident-loop.result.recorded.v1": {
+    type: "agent.resident-loop.result.recorded.v1",
+    version: 1,
+    description: "Records a terminal resident-loop result only with exact plan, final-observation, and terminal readbacks.",
+    agentGuidance: "Bind task/attempt/run, policy, authority, budget, source, context, causation, correlation, plan and final-observation readbacks, result hash, and terminal readback. Never emit terminal-looking completion without its required readback; this record does not send PRRs, execute tools, or accept graph state.",
+    invariants: ["all readback identities must match", "terminalReadback is required", "resultHash is content-addressed", "result records do not authorize an effect"]
   },
   "agent.specialist-run.started": {
     type: "agent.specialist-run.started",
@@ -2392,6 +2542,16 @@ function expectedAgentStreamId(type: KnowledgeEventType, payload: unknown): stri
     return `agent_policy_${agentPayload.policyId}`;
   }
 
+  if (
+    type === "agent.resident-plan.recorded.v1" ||
+    type === "agent.resident-observation.recorded.v1" ||
+    type === "agent.resident-tool-step.recorded.v1" ||
+    type === "agent.resident-loop.suspended.v1" ||
+    type === "agent.resident-loop.result.recorded.v1"
+  ) {
+    return `agent_resident_loop_${agentPayload.taskId}_${agentPayload.attemptId}_${agentPayload.runId}`;
+  }
+
   if (type.startsWith("agent.task.orchestration.")) {
     return `agent_task_orchestration_${agentPayload.taskId}_${agentPayload.runType}`;
   }
@@ -2441,6 +2601,78 @@ const knowledgeEventBaseSchema = z.object({
   payload: z.record(z.string(), z.unknown())
 }).strict();
 
+type PlainOwnDataNormalization =
+  | { readonly success: true; readonly data: unknown }
+  | { readonly success: false };
+
+/**
+ * Copies untrusted boundary data through property descriptors before the
+ * event parser reads it. Accessor-, proxy-, symbol-, sparse-, hidden-, and
+ * custom-prototype shapes are invalid input, never values for Zod to inspect.
+ */
+function normalizePlainOwnData(value: unknown): PlainOwnDataNormalization {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean" || typeof value === "undefined") {
+    return { success: true, data: value };
+  }
+  if (typeof value !== "object") return { success: false };
+
+  try {
+    const keys = Reflect.ownKeys(value);
+    if (keys.some((key) => typeof key === "symbol")) return { success: false };
+
+    if (Array.isArray(value)) {
+      if (Object.getPrototypeOf(value) !== Array.prototype) return { success: false };
+      const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+      if (lengthDescriptor === undefined || !("value" in lengthDescriptor) ||
+        typeof lengthDescriptor.value !== "number" || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0 ||
+        keys.length !== lengthDescriptor.value + 1) return { success: false };
+
+      const normalized: unknown[] = [];
+      for (let index = 0; index < lengthDescriptor.value; index += 1) {
+        const key = String(index);
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) return { success: false };
+        const child = normalizePlainOwnData(descriptor.value);
+        if (!child.success) return child;
+        normalized.push(child.data);
+      }
+      return { success: true, data: Object.freeze(normalized) };
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return { success: false };
+    const normalized: Record<string, unknown> = {};
+    for (const key of keys) {
+      if (typeof key !== "string" || key.length === 0) return { success: false };
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) return { success: false };
+      const child = normalizePlainOwnData(descriptor.value);
+      if (!child.success) return child;
+      Object.defineProperty(normalized, key, {
+        value: child.data,
+        enumerable: true,
+        writable: false,
+        configurable: false
+      });
+    }
+    return { success: true, data: Object.freeze(normalized) };
+  } catch {
+    return { success: false };
+  }
+}
+
+function isPlainOwnData(value: unknown): boolean {
+  return normalizePlainOwnData(value).success;
+}
+
+function isResidentLoopEventType(type: KnowledgeEventType): boolean {
+  return type === "agent.resident-plan.recorded.v1" ||
+    type === "agent.resident-observation.recorded.v1" ||
+    type === "agent.resident-tool-step.recorded.v1" ||
+    type === "agent.resident-loop.suspended.v1" ||
+    type === "agent.resident-loop.result.recorded.v1";
+}
+
 function serializableIssue(issue: z.ZodIssue): Record<string, unknown> {
   return JSON.parse(JSON.stringify(issue)) as Record<string, unknown>;
 }
@@ -2462,9 +2694,18 @@ function payloadIssueParams(issue: z.ZodIssue): Record<string, unknown> {
   return params;
 }
 
-export const knowledgeEventSchema = knowledgeEventBaseSchema
+const rawKnowledgeEventSchema = knowledgeEventBaseSchema
   .superRefine((event, ctx) => {
     const payloadSchema = payloadSchemas[event.type] as z.ZodType<unknown>;
+
+    if (isResidentLoopEventType(event.type) && !isPlainOwnData(event.payload)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "resident-loop payload must be plain own-data only",
+        path: ["payload"]
+      });
+      return;
+    }
     const payload = payloadSchema.safeParse(event.payload);
 
     if (!payload.success) {
@@ -2550,9 +2791,110 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
         });
       }
     }
+
+    if (isResidentLoopEventType(event.type)) {
+      const residentPayload = payload.data as Record<string, unknown>;
+      if (event.context.causationId !== residentPayload.causationEventId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "resident-loop causation must match the event context",
+          path: ["context", "causationId"]
+        });
+      }
+      if (event.context.correlationId !== residentPayload.correlationId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "resident-loop correlation must match the event context",
+          path: ["context", "correlationId"]
+        });
+      }
+    }
   })
   .transform((event): KnowledgeEvent => event as KnowledgeEvent);
 
+/**
+ * The public event parser never exposes the raw Zod object to caller-owned
+ * values. Its preprocess boundary supplies the one descriptor-copied,
+ * immutable snapshot that every later parse and refinement consumes.
+ */
+export const knowledgeEventSchema = z.preprocess((event) => {
+  const normalized = normalizePlainOwnData(event);
+  return normalized.success ? normalized.data : undefined;
+}, rawKnowledgeEventSchema);
+
 export function validateKnowledgeEvent(event: unknown) {
   return knowledgeEventSchema.safeParse(event);
+}
+
+export type ResidentLoopSequenceValidation =
+  | { readonly success: true }
+  | { readonly success: false; readonly issues: readonly string[] };
+
+/**
+ * Validates the replayable resident-loop five-event fixture after ledger
+ * readback. Individual payload parsing cannot prove that a supplied event ID
+ * is a real prior event; this pure parser binds every readback to the ordered
+ * append-only stream without executing a store, provider, tool, or domain
+ * effect.
+ */
+export function validateResidentLoopEventSequence(events: readonly KnowledgeEvent[]): ResidentLoopSequenceValidation {
+  const expectedTypes = [
+    "agent.resident-plan.recorded.v1",
+    "agent.resident-observation.recorded.v1",
+    "agent.resident-tool-step.recorded.v1",
+    "agent.resident-loop.suspended.v1",
+    "agent.resident-loop.result.recorded.v1"
+  ] as const;
+  const issues: string[] = [];
+
+  if (events.length !== expectedTypes.length) {
+    return { success: false, issues: ["resident-loop replay must contain exactly five events"] };
+  }
+  const [plan, observation, step, suspended, result] = events;
+  if (plan === undefined || observation === undefined || step === undefined || suspended === undefined || result === undefined) {
+    return { success: false, issues: ["resident-loop replay is incomplete"] };
+  }
+  for (const [index, expectedType] of expectedTypes.entries()) {
+    const event = events[index]!;
+    if (event.type !== expectedType) issues.push(`event ${index + 1} must be ${expectedType}`);
+    if (event.sequence !== index + 1) issues.push(`event ${index + 1} must have sequence ${index + 1}`);
+    if (event.streamId !== plan.streamId) issues.push(`event ${index + 1} must use the plan stream`);
+  }
+
+  const identity = plan.payload as Record<string, unknown>;
+  const sameIdentity = (payload: Record<string, unknown>, label: string) => {
+    for (const field of ["residentAgentId", "taskId", "attemptId", "runId", "policyId", "policyHash", "authorityHash", "causationEventId", "correlationId"] as const) {
+      if (payload[field] !== identity[field]) issues.push(`${label} must preserve ${field}`);
+    }
+  };
+  const planReadbackMatches = (payload: Record<string, unknown>, label: string) => {
+    const readback = payload.planReadback as Record<string, unknown> | undefined;
+    if (readback?.planRecordEventId !== plan.id) issues.push(`${label} must read back the exact plan event`);
+    for (const field of ["taskId", "attemptId", "runId"] as const) {
+      if (readback?.[field] !== identity[field]) issues.push(`${label} plan readback must preserve ${field}`);
+    }
+  };
+  const observationReadbackMatches = (payload: Record<string, unknown>, label: string) => {
+    const readback = payload.finalObservationReadback as Record<string, unknown> | undefined;
+    if (readback?.observationEventId !== observation.id) issues.push(`${label} must read back the exact final observation`);
+    for (const field of ["taskId", "attemptId", "runId"] as const) {
+      if (readback?.[field] !== identity[field]) issues.push(`${label} observation readback must preserve ${field}`);
+    }
+  };
+
+  for (const [event, label] of [[observation, "observation"], [step, "step"], [suspended, "suspension"], [result, "result"]] as const) {
+    const payload = event.payload as Record<string, unknown>;
+    sameIdentity(payload, label);
+    planReadbackMatches(payload, label);
+  }
+  observationReadbackMatches(suspended.payload as Record<string, unknown>, "suspension");
+  observationReadbackMatches(result.payload as Record<string, unknown>, "result");
+  const terminalReadback = (result.payload as Record<string, unknown>).terminalReadback as Record<string, unknown> | undefined;
+  if (terminalReadback?.finalObservationEventId !== observation.id) {
+    issues.push("result must read back the exact final observation before terminal output");
+  }
+  for (const field of ["taskId", "attemptId", "runId"] as const) {
+    if (terminalReadback?.[field] !== identity[field]) issues.push(`terminal readback must preserve ${field}`);
+  }
+  return issues.length === 0 ? { success: true } : { success: false, issues };
 }
