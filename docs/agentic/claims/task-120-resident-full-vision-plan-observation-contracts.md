@@ -167,3 +167,35 @@ unintegrated.
 Status: `ready-for-fresh-independent-review`; this is author evidence only.
 No self-review, self-integration, W1-118/Task136 dispatch, or `neo` merge is
 authorized.
+
+## Bounded Readback/Revision Repair Evidence
+
+- Focused RED extended the Task120 suites with a transforming ledger and a
+  two-revision replay. It exited `1` with the expected three failures: a
+  transformed plan/observation readback resolved, an observation bound to
+  revision 1 after durable revision 2 resolved, and the replay projection
+  incorrectly returned `ready` for that superseded binding.
+- GREEN makes `readBackPlan` compare the complete `samePlan` input and
+  `readBackObservation` compare the complete `sameObservation` input, not only
+  event ID/type/shared identity. The focused transform cases independently
+  alter plan revision, descriptor hash, observation ordinal, category, and
+  observation hash; each is rejected without a successful readback result.
+- Before append, the store now rejects an exact referenced plan when a higher
+  same-identity revision is already durable. The pure replay projection checks
+  every accepted observation against the full plan replay and blocks with
+  `observation-plan-superseded` when a later same-identity revision supersedes
+  its bound plan. Valid current-revision readback, append ordering, provenance,
+  rebuildability, no graph mutation, and no provider/tool/PRR/external effect
+  remain unchanged.
+- Final focused GREEN:
+  `npm test -- packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts`
+  exited `0`: 2 files and 9 tests passed. `npm run typecheck` printed
+  `typecheck passed`; `git diff --check` exited `0`; and `npm run factory:check`
+  printed `factory-readiness passed`.
+- One retained non-overlapping full `npm run verify` exited `0`: typecheck
+  passed; 195 test files passed and 3 skipped; 2,253 tests passed and 5
+  skipped; Vite production build passed; and factory readiness passed. SQLite
+  experimental and Vite chunk-size warnings were non-failing.
+
+Status: `ready-for-distinct-fresh-rereview`; this bounded repair does not
+self-review, self-integrate, dispatch W1-118/Task136, or merge `neo`.

@@ -69,12 +69,22 @@ export function createResidentPlanObservationStore(
       }
 
       const appended = await appendPlan(options, input, existing.length + 1);
-      return Object.freeze({ event: await readBackPlan(options.ledger, appended, input.identity) });
+      return Object.freeze({ event: await readBackPlan(options.ledger, appended, input) });
     },
 
     async recordObservation(input: RecordResidentObservationInput): Promise<ResidentObservationRecord> {
       const streamId = residentLoopStreamId(input.identity);
       const existing = await options.ledger.readStream(streamId);
+      const referencedPlan = existing.find((event): event is ResidentPlanEvent =>
+        event.id === input.planRecordEventId && event.type === "agent.resident-plan.recorded.v1"
+      );
+      if (
+        referencedPlan !== undefined &&
+        sameIdentity(referencedPlan.payload, input.identity) &&
+        isSupersededPlan(referencedPlan, existing)
+      ) {
+        throw new Error("Resident observation cannot bind a superseded plan revision.");
+      }
       const plan = findPlanReadback(existing, input.planRecordEventId, input.identity);
       if (plan === undefined) {
         throw new Error("Resident observation requires an exact prior plan readback.");
@@ -93,7 +103,7 @@ export function createResidentPlanObservationStore(
       }
 
       const appended = await appendObservation(options, input, existing.length + 1);
-      return Object.freeze({ event: await readBackObservation(options.ledger, appended, input.identity, plan.id) });
+      return Object.freeze({ event: await readBackObservation(options.ledger, appended, input) });
     }
   });
 }
@@ -169,13 +179,13 @@ function eventContext(options: CreateResidentPlanObservationStoreInput, identity
 async function readBackPlan(
   ledger: EventLedger,
   appended: KnowledgeEvent,
-  identity: ResidentLoopIdentity
+  input: RecordResidentPlanInput
 ): Promise<ResidentPlanEvent> {
-  const readback = await ledger.readStream(residentLoopStreamId(identity));
+  const readback = await ledger.readStream(residentLoopStreamId(input.identity));
   const plan = readback.find((event): event is ResidentPlanEvent =>
     event.id === appended.id && event.type === "agent.resident-plan.recorded.v1"
   );
-  if (plan === undefined || !sameIdentity(plan.payload, identity)) {
+  if (plan === undefined || !samePlan(plan, input)) {
     throw new Error("Resident plan append did not produce an exact durable readback.");
   }
   return plan;
@@ -184,18 +194,13 @@ async function readBackPlan(
 async function readBackObservation(
   ledger: EventLedger,
   appended: KnowledgeEvent,
-  identity: ResidentLoopIdentity,
-  planRecordEventId: string
+  input: RecordResidentObservationInput
 ): Promise<ResidentObservationEvent> {
-  const readback = await ledger.readStream(residentLoopStreamId(identity));
+  const readback = await ledger.readStream(residentLoopStreamId(input.identity));
   const observation = readback.find((event): event is ResidentObservationEvent =>
     event.id === appended.id && event.type === "agent.resident-observation.recorded.v1"
   );
-  if (
-    observation === undefined ||
-    !sameIdentity(observation.payload, identity) ||
-    observation.payload.planReadback.planRecordEventId !== planRecordEventId
-  ) {
+  if (observation === undefined || !sameObservation(observation, input)) {
     throw new Error("Resident observation append did not produce an exact durable readback.");
   }
   return observation;
@@ -209,7 +214,18 @@ function findPlanReadback(
   const plan = events.find((event): event is ResidentPlanEvent =>
     event.id === eventId && event.type === "agent.resident-plan.recorded.v1"
   );
-  return plan !== undefined && sameIdentity(plan.payload, identity) ? plan : undefined;
+  return plan !== undefined && sameIdentity(plan.payload, identity) && !isSupersededPlan(plan, events)
+    ? plan
+    : undefined;
+}
+
+function isSupersededPlan(plan: ResidentPlanEvent, events: readonly KnowledgeEvent[]): boolean {
+  return events.some((event): boolean =>
+    event.type === "agent.resident-plan.recorded.v1" &&
+    event.id !== plan.id &&
+    sameIdentity(event.payload, plan.payload) &&
+    event.payload.planRevision > plan.payload.planRevision
+  );
 }
 
 function samePlan(event: ResidentPlanEvent, input: RecordResidentPlanInput): boolean {
