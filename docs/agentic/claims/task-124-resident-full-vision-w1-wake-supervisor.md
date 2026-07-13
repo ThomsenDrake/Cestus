@@ -202,3 +202,43 @@ candidate remains preserved and unintegrated.
   three-file scope, and stop for a reviewer distinct from every Task124 author
   and reviewer. A further material review finding is a root-cause recovery
   checkpoint, not another routine repair loop.
+
+## Second Repair RED/GREEN Evidence — 2026-07-13
+
+- Fresh repair author worked only in
+  `codex/task-124-resident-full-vision-wake-supervisor-repair-2` at clean
+  authorization `c3bcbbcc2515ad33e2306c702afb93d13d999367`; the rejected
+  `9d5632b93943df44b3af14110f1bdf42cb2d23c2` candidate remains preserved.
+- The first exact focused invocation was dependency-blocked because this
+  isolated worktree lacked `vitest`. `npm ci --ignore-scripts` restored only
+  lockfile-pinned ignored dependencies. The actual RED then failed with nine
+  intended regressions: reduced reconciliation record/key provenance,
+  pause/stop continuation through authority/lease/reconciliation awaits,
+  empty/stale/getter/proxy lease readbacks, and terminal lifecycle transition
+  plus high-water/status binding.
+- GREEN snapshots every port return as descriptor-safe own data before any
+  property read; validates exact nonempty lease, policy, lock, causation,
+  correlation, and expected high-water fields; makes closure terminal for the
+  epoch across all admission awaits; and publishes strict transition-bound
+  workspace/epoch/lock/high-water lifecycle status and command result facts.
+  Canonical reconciliation records and their keys now bind workspace, epoch,
+  safe outage observation, prior claim/lease, claim, attempt, verified lease,
+  and revalidated authority evidence.
+- GREEN evidence: `npm test -- packages/agent/test/wake-supervisor.test.ts
+  packages/agent/test/scheduler.test.ts` exited `0` with 2 files and 37 tests
+  passing. `git diff --check` was empty and `npm run factory:check` printed
+  `factory-readiness passed`. The serialized `npm run verify` slot was
+  requested from the coordinator and has not been started.
+
+## Second Repair Retained Full Verification — 2026-07-13
+
+- The coordinator granted the Task124-only serialized verifier slot. Exactly
+  one retained `npm run verify` then completed in this isolated worktree with
+  exit `0`: typecheck passed; 191 test files passed with 3 skipped; 2,275
+  tests passed with 5 skipped; the Vite production build passed; and
+  `factory-readiness passed`.
+- Final handoff remains restricted to this claim,
+  `packages/agent/src/wake-supervisor.ts`, and
+  `packages/agent/test/wake-supervisor.test.ts`. The author does not
+  self-integrate or merge `neo`; a reviewer distinct from every prior Task124
+  author and reviewer is required next.
