@@ -120,3 +120,63 @@ self-approve or merge.
 - Current status: ready-for-review. Fresh independent review and coordinator
   lane-plan approval remain required; this record does not self-approve or
   authorize Task 120, Task 136, provider work, or a merge.
+
+## Append-Only ABI-and-Audit Repair Checkpoint
+
+- Coordinator authorization: Lane L design at
+  `baa980e04f126ce06f41398fc45169f112321e39`; governing program plan at
+  `0b5726ec975bdc0aae97e540472ef3be4379b358`; Task 112 ABI-and-audit repair
+  only. The stop is one verified repair commit plus fresh review. It explicitly
+  authorizes superpowers:subagent-driven-development, documentation RED/GREEN,
+  fresh review, and verification-before-completion; it forbids Tasks 120/136,
+  CF-1 implementation, provider work, dispatch, integration, and merging into
+  `neo`.
+- Worker/worktree for this forward-only repair: Codex Task 112 repairer /
+  `/root/task112_loop_plan_repair` on
+  `codex/task-112-resident-full-vision-w0-loop-plan-repair`, based at
+  `5abd6852`. Model configuration remains GPT-5.6 Terra / Extra High,
+  user-confirmed; reported GPT-5 satisfies that configuration.
+- Root cause: the prior audit proved only broad phrase presence. It could pass
+  while an equality binding, response-byte ceiling, recovery port, or post-await
+  source/context guard was removed from the operative Lane L section.
+- Documentation RED: the new section-local prospective audit exited 1 with:
+
+  ~~~text
+  RED: bounded audit lacks section-local proof for planId, supersedesPlanRecordEventId, provider response bytes, unknown checkpoint, foreign checkpoint, mount loss
+  ~~~
+
+- Repair target: define CF-1 candidate/planner/replanner, checkpoint, approval,
+  gateway, and W mounted-authority ports; bind candidate plan IDs/revisions/
+  supersedes, exact policy subset/equality and P posture; require ledger-only
+  readback/consume, W suspension/release/reclaim/reverify, all ten counters,
+  direct unknown/foreign checkpoint, stale approval, mount-loss, and post-await
+  source/context tests; then make the audit reject their scoped removal.
+
+## Append-Only ABI-and-Audit Repair GREEN and Verification Record
+
+- Documentation GREEN: the revised audit exited 0 and printed
+  `GREEN: Task 112 section-local bounded-loop plan audit passed (19
+  counterfactual omissions rejected).` It rejects a removed equality-tuple item,
+  provider-response ceiling, initial planner/replanner/checkpoint/approval/
+  gateway/W recovery port, W no-write rule, and post-await source/context
+  recheck, as well as the original contract omissions.
+- Whitespace and factory: `git diff --check` exited 0 with no output and
+  `npm run factory:check` exited 0 with `factory-readiness passed`.
+- Verification environment recovery: the first `npm run verify` failed before
+  typecheck with `tsc: command not found`. Root-cause checks found no executable
+  `node_modules/.bin/tsc`, the tracked lockfile present, and
+  `npm ci --dry-run --ignore-scripts` successful. `npm ci --ignore-scripts`
+  restored only lockfile-pinned ignored dependencies; it made no tracked-file
+  change.
+- Full verification: the unchanged rerun of `npm run verify` completed with exit
+  status 0 after dependency provisioning. No provider call occurred.
+- Scope/self-review: the only changed tracked files are this append-only claim
+  and the Lane L implementation plan. The plan now gives Task 136 typed
+  initial-plan/planner/replanner ports, a fresh plan ID/revision/supersedes link,
+  exact policy/equality/subset and P posture limits, complete ledger readback
+  ports, W-owned suspend/release/reclaim/reverify, direct resume failure tests,
+  all ten counter proofs, and section-local counterfactual enforcement. It does
+  not alter the approved Lane L design or authorize CF-1, Task 120, Task 136,
+  provider, dispatch, integration, or `neo` merge work.
+- Repair status: ready-for-fresh-review. This forward record supersedes no
+  historical claim bytes and is not self-approval.
