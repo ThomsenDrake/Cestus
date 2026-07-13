@@ -2140,3 +2140,28 @@ explicit implementation authorization.
 - Task120 blocked claim `bb2c2059` is preserved and not integrated as production. CF-1 amendment must add serialized W1-119, L shared-contract registrar, before Task120 and W1-118.
 - W1-119 owns only `packages/ontology/src/contracts.ts`, `packages/ontology/test/agent-resident-loop-contracts.test.ts`, and claim; events are agent.resident-plan.recorded.v1, agent.resident-observation.recorded.v1, agent.resident-tool-step.recorded.v1, agent.resident-loop.suspended.v1, agent.resident-loop.result.recorded.v1.
 - Amendment/review and W1-119 require SDD, TDD, fresh review, verification, no self-merge/no neo. W1-119 merged SHA gates restarted Task120; Task120 then gates W1-118 and Task136. No shadow store/effects.
+
+## RV-1-C-022 — CF-1 serialized W1-119 amendment author start
+
+- Scope and base: a fresh documentation amendment author begins from Relay B
+  recovery `f1006d5ae19ce851772e2e68c261f0e4b66d91e4` under RV-1-C-021. The
+  sole writable tracked files are the CF-1 freeze, Task117 claim, and this
+  append-only registry; Task119 production/test work and all other production,
+  runtime, UI, provider, browser, credential, Nous, tailnet, live, dispatch,
+  self-review, self-integration, and `neo` work remain forbidden.
+- RED evidence: the focused prerequisite probe exited `1` because the accepted
+  freeze lacked a W1-119 row, exclusive contracts/test ownership, negative
+  parser/replayable-fixture contract, focused command, and the W1-119 ->
+  Task120 -> W1-118/Task136 gate chain.
+- Required amendment: add one literal-audited W1-119 row for L's serialized
+  `packages/ontology/src/contracts.ts` and
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts` ownership
+  plus only its future claim. The row must register exactly
+  `agent.resident-plan.recorded.v1`, `agent.resident-observation.recorded.v1`,
+  `agent.resident-tool-step.recorded.v1`,
+  `agent.resident-loop.suspended.v1`, and
+  `agent.resident-loop.result.recorded.v1`; require strict own-data negative
+  parsing and a replayable all-five-event fixture; name
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts`;
+  and preserve no shadow store/effect. Its reviewed merged SHA gates restarted
+  Task120, whose reviewed merged SHA gates W1-118 and Task136.

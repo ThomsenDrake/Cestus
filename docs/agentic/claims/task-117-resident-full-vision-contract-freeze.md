@@ -117,3 +117,40 @@ integrate an approved result, never into `neo`.
 - Final gates: the full-row audit exited `0` with 814 rejected direct recomputed-hash counterfactuals; `git diff --check` exited `0` with no output; `npm run factory:check` exited `0` with `factory-readiness passed`; and captured fresh `npm run verify` exit `0` reported typecheck passed, 189 passing test files with 3 skipped, 2,228 passing tests with 5 skipped, Vite build success, and factory readiness passed. SQLite experimental and existing Vite chunk-size warnings were non-failing.
 - Exact scope: only this append-only claim, `docs/agentic/resident-agent-full-vision-contract-freeze.md`, and append-only Task117 registry evidence are changed from `90fecb86258f9d8f9d0f898e737a97718bbc30e2`.
 - Review stop: stop after one forward-only documentation commit for a fourth fresh reviewer. The reviewer must prove literal-oracle independence from candidate rows, exact equality for all ten cells in every row, W1-118 completeness, all named recomputed-hash counterfactuals, Task141 six-label preservation, exact three-file scope, and feasible clean-worktree gates. No author self-review or integration is permitted.
+
+## RV-1-C-022 CF-1 Amendment Author Record: Serialized W1-119 Prerequisite
+
+- Base and authority: this narrowly scoped, forward-only amendment starts from
+  Relay B recovery `f1006d5ae19ce851772e2e68c261f0e4b66d91e4` under
+  `RV-1-C-021`. It changes only this Task117 claim,
+  `docs/agentic/resident-agent-full-vision-contract-freeze.md`, and the
+  append-only program registry evidence. It is not a Task119 claim,
+  implementation, production/test/runtime/UI/provider change, dispatch,
+  self-review, self-integration, or `neo` merge.
+- Status: in-progress documentation amendment. SDD, documentation RED/GREEN as
+  TDD, fresh independent review, `git diff --check`, `npm run factory:check`,
+  `npm run verify`, one forward-only commit, and a stop for review are
+  required. No shadow store or effect is authorized.
+- Documentation RED: before the amendment, the focused in-memory W1-119
+  prerequisite probe exited `1` with `RED: CF-1 lacks serialized W1-119
+  ownership row; W1-119 contracts and focused test ownership; W1-119 negative
+  parser and fixture contract; W1-119 focused command; W1-119 gates Task120,
+  W1-118, and Task136`. The probe required the five named resident-loop events,
+  the exclusive `contracts.ts` and `agent-resident-loop-contracts.test.ts`
+  owner, strict negative parser/replayable-fixture wording, its focused command,
+  and the serialized gate chain; it failed because the freeze had none.
+- Amendment contract: W1-119 is L's only shared-event-contract registrar for
+  `packages/ontology/src/contracts.ts`,
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`, and its own
+  future Task119 claim. It freezes exactly the five resident-loop events, the
+  strict own-data negative parser and replayable fixture requirements, and
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts`.
+  Its reviewed merged SHA gates restarted Task120; Task120's reviewed merged
+  SHA then gates W1-118 and Task136. W1-119 has no ledger/store/provider/tool/
+  scheduler/task/graph effect and cannot self-merge or merge `neo`.
+- Required review focus: a fresh reviewer must run the literal full-row audit,
+  inspect direct W1-119 parser/fixture counterfactuals and each W1-119 owner,
+  event, command, and gate cell, verify Task120 -> W1-118/Task136 ordering,
+  confirm this exact three-file scope and clean ancestry, and rerun feasible
+  documentation/full verification gates. The author must stop after the one
+  amendment commit.
