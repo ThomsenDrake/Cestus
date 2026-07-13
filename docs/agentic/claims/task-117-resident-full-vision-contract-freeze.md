@@ -81,3 +81,20 @@ integrate an approved result, never into `neo`.
 - Stop point: hand this exact one-commit documentation result to a different
   fresh reviewer. Relay A alone may act on an approve verdict and must repeat
   cross-boundary/full verification before any coordinator integration.
+
+## RV-0-C-010 Repair Author Record
+
+- Repair branch and baseline: `codex/task-117-resident-full-vision-contract-freeze-repair` at coordinator-staged `5e1a25e4d12bc8928b954491e55d1cbbb01c36f0`; this is forward-only repair evidence and does not alter the rejected historical result above.
+- Status: repairing documentation audit and coverage only. Wave1, provider, credential, Nous, browser, tailnet, production, self-review, self-integration, and `neo` merge remain prohibited.
+- Reproduced RED: a direct in-memory mutation of `ResidentPlanRecord.v1` to `CounterfactualPlanRecord.v9` retained every old structural row and, after the old matrix integrity value was recomputed to `9f129a3579c6c12e57d45af2e20159839c1a6fd0175d2eadfc06f77a4355fa8d`, exited `1` with `RED: former audit's integrity oracle accepts CounterfactualPlanRecord.v9 when its expected hash is recomputed; semantic mismatch is not independently checked.`
+- Repair GREEN: the embedded section-local semantic audit exited `0` and printed `GREEN: CF-1 semantic contract audit passed (895 direct counterfactual mutations rejected, including recomputed-hash semantic, required-interface, owner, trigger-rebase, and cockpit-label failures).` Its static canonical expectations reject the PlanRecord mutation even with a recomputed integrity hash; integrity is additional tamper evidence only.
+- Coverage repaired: the freeze now gives singular source/owner/schema/parser/fixture/compatibility and rebase facts to `ResidentPlanPolicy`, `WakeSupervisor`, `TriggerEvaluationInput`, `TriggerHighWaterMark`, `MountedHandoffStore`, `OsSecretStore`, `ProviderInvocationPreparation`, `ProductionRuntimeReadinessCapability`, `ResidentRuntimeStatusDto`, `ResidentWakeDto`, `ResidentHandoffDto`, and supported runtime/wake command DTOs. It also freezes provider canonical schema/error/fixture/compatibility evidence, Task118's core event/evaluator/append/projection ownership and exact Task118 rebase for 149–151, and Task141's route-test ownership plus all six labels/no-effect constraints.
+- Preliminary scoped gates: `git diff --check` exited `0` with no output and `npm run factory:check` exited `0` with `factory-readiness passed`. A fresh final `npm run verify` will be run after this forward-only evidence record and recorded in a later append before the one repair commit.
+
+## RV-0-C-010 Repair Verification And Review Stop
+
+- Status: `ready-for-fresh-review` for the repair only; this is not review approval, coordinator integration, Wave1 authorization, or `neo` permission.
+- Final repair verification: a fresh PTY `npm run verify` exited `0`: typecheck passed; 189 test files passed and 3 skipped; 2,228 tests passed and 5 skipped; Vite built successfully; and factory readiness passed. The observed SQLite experimental warnings and existing Vite chunk-size warning did not fail the command.
+- Final documentation gates: the embedded semantic audit exited `0` with 895 direct counterfactual rejections, `git diff --check` exited `0` with no output, and `npm run factory:check` exited `0` with `factory-readiness passed`.
+- Exact changed-file boundary: only this Task117 claim, `docs/agentic/resident-agent-full-vision-contract-freeze.md`, and the append-only Task117 repair registry evidence are modified from coordinator-staged baseline `5e1a25e4d12bc8928b954491e55d1cbbb01c36f0`.
+- Stop point: make one forward-only repair commit only after a final post-record verification pass, then stop for a different fresh reviewer. The reviewer must rerun the recomputed-integrity semantic mutation, coverage/Task118/Task141 removals, scope/ancestry review, and feasible clean-worktree gates.
