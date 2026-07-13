@@ -2581,3 +2581,25 @@ explicit implementation authorization.
 - RED command and observed failure: the `RV-1-C-039` duplicate-lane presence
   audit exited 1 with `RED: RV-1-C-039 duplicate-lane correction is absent`
   before this append.
+
+## RV-1-C-040 — Active repair-and-review ledger
+
+- W1-118 candidate `b18c7ec927be17815b0d82cff3298884685c9ebb` is rejected,
+  not integrated: readback did not prove exact returned event ID plus
+  actor/causation/correlation. Fresh replacement author
+  `019f5d6f-ee9f-75a2-9032-a28689298f43` owns its adversarial RED/GREEN repair
+  only in the existing isolated W1-118 worktree; no full gate is granted yet.
+- Task123 authoritative candidate `6397f885577c0823ca10b7520716dcb5a333724d`
+  is under focused repair for terminal-finalization conflicts and forged
+  evidence/source bindings. The frozen repair-2 worktree remains a preserved
+  non-target. No full gate is granted until the original canonical lane reports
+  focused, typecheck, diff, and factory evidence.
+- Task124 candidate `6d81423b3a120e194ecf71132d6bd49149dc4225`, based on
+  `9389892a`, is in fresh read-only review by
+  `019f5d6f-8b3c-71a1-9258-3b7acd8204c3`; retained focused/full evidence is
+  review input only, not integration authority. Full verification remains one
+  serialized coordinator resource; all candidates require fresh approval,
+  merged-checkout verification, and append-only evidence before integration.
+- Relay A remains the sole coordinator at `77c29988`; Relay B remains frozen,
+  `neo` remains untouched, and all children retain SDD/TDD/fresh-review/
+  verification-before-completion/no-self-integration authority.
