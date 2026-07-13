@@ -180,3 +180,56 @@ self-approve or merge.
   provider, dispatch, integration, or `neo` merge work.
 - Repair status: ready-for-fresh-review. This forward record supersedes no
   historical claim bytes and is not self-approval.
+
+## Append-Only Authoritative ABI Repair Record
+
+- Coordinator authorization: Task 112 authoritative-ABI documentation audit
+  repair only on
+  `codex/task-112-resident-full-vision-w0-loop-plan-authoritative-abi-repair`,
+  based at `7035a85c4f16df8e6189e360bc663297c426b025`. It preserves the
+  approved Lane L design and program-plan SHAs already recorded above, changes
+  only this claim and the Lane L implementation plan, and does not authorize
+  Task 120, Task 136, CF-1, provider work, dispatch, integration, or a merge
+  into `neo`.
+- Root cause: the previous section-local audit checked broad phrase presence.
+  Task 136's concrete tests still called stale `gateway.request` and
+  `toolGateway.execute`; `ResidentLoopCheckpointReadback` omitted resident,
+  descriptor, plan/step/tool/approval/preview/artifact/deadline bindings; and
+  `readHandoff` narrowed the H-owned readback to three output fields.
+- Documentation RED: the prospective authoritative-ABI audit exited 1 and
+  reported the missing checkpoint bindings, missing
+  `requestAndReadback`/`executeAndReadback` test proofs, missing direct
+  `HandoffReadback`/verified lifecycle/authority proof, and both stale gateway
+  methods. This was a baseline-only audit; no production or test file changed.
+- Repair: Task 136 now names only
+  `requestAndReadback`/`readRequest`/`readDecision` and
+  `executeAndReadback`/`readResult`; `ResidentLoopCheckpointReadback` binds
+  resident, descriptor, plan, step, tool, approval class, preview, input
+  artifacts, deadline, policy, and existing provenance/authority fields; each
+  named mismatch is a fail-closed test case. `readHandoff` now returns the
+  authoritative `HandoffReadback` directly and completion requires its
+  verified outcome, exact task/run, lifecycle event proof, and exact H
+  authority binding without a narrowed L shape.
+- Documentation GREEN: the plan's exact executable section-local audit exited
+  0 and printed `GREEN: Task 112 section-local bounded-loop plan audit passed
+  (32 counterfactual omissions rejected).` The added cases reject removed
+  gateway execution readback, each checkpoint binding and mismatch proof, and
+  the authoritative HandoffReadback/verified-outcome/authority proof, in
+  addition to prior bounded-loop omissions.
+- Verification environment: this fresh `/tmp` worktree initially lacked
+  `node_modules/.bin/tsc`; `npm ci --dry-run --ignore-scripts` then
+  `npm ci --ignore-scripts` restored only ignored lockfile-pinned dependencies
+  and made no tracked-file change. `npm run typecheck` printed `typecheck
+  passed`; `git diff --check` had no output. The plan audit remained green.
+- Sandbox-limited gates: `npm run factory:check` reaches
+  `scripts/check-agent-readiness.mjs` but fails at `spawnSync git EPERM` for
+  `git ls-files`. The full `npm test` run reports 186 passed, 3 skipped, and
+  19 failures caused by sandbox `listen EPERM` for loopback, wildcard, and
+  `/tmp/tsx-1000/*.pipe` listeners; these are unrelated local-runtime and
+  workspace-ops tests, not Task 112 files. `npm run verify` cannot become green
+  here because it includes those tests and then the same factory gate. No
+  infrastructure or source workaround was attempted.
+- Handoff: ready for a fresh coordinator-arranged Task 112 re-review plus gate
+  rerun in an environment that permits listener creation and Node child-process
+  `git`. This forward record is not self-approval and does not mark any
+  implementation task authorized or merged.
