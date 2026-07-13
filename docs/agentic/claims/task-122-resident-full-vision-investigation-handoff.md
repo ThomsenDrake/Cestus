@@ -128,3 +128,39 @@ self-review, self-integrate, or merge into `neo`.
   was active, the retained replacement `npm run verify` exited `0`:
   typecheck passed; 189 test files passed, 3 skipped; 2,233 tests passed, 5
   skipped; Vite built; and factory readiness passed.
+
+## Coordinator Root-Cause Recovery Authorization
+
+- The second repair candidate `e9aa4a1b87d5ae8c4dd5a67e06554259d9a0b6dc`
+  is preserved but rejected after two focused repair attempts. Its independent
+  reviewer found two P1 defects: recovery accepted another specialist type
+  because it bypassed the normal `investigation-planner` binding before
+  `recordSpecialistHandoff`; and an unavailable manifest store still threw on
+  a retry rather than returning the existing explicit `output-persisted`
+  resumable result.
+- No routine third repair is authorized on either prior author branch. A fresh
+  author owns a changed-counterfactual recovery only on
+  `codex/task-122-resident-full-vision-investigation-handoff-recovery` in
+  `/home/drake/.codex/worktrees/task-122-resident-full-vision-investigation-handoff-recovery`,
+  rooted at the preserved rejected head above. The only mutable paths remain
+  this claim, `packages/agent/src/investigation-planner-workflow.ts`, and
+  `packages/agent/test/investigation-planner-workflow.test.ts`.
+- Before every recovery manifest or ledger write, bind the existing started
+  run to `investigation-planner` and the exact resident, task, run, and attempt
+  identity. A cross-specialist input must return the safe rejection with zero
+  writes, model/provider invocation, draft work, or other effect. A still
+  unavailable manifest store must return the same `output-persisted` resumable
+  DTO, throw nothing, avoid preparation/model invocation and duplicate
+  artifact/final events, and retain the prior durable material.
+- The fresh RED/GREEN suite must prove cross-specialist substitution plus at
+  least two persistent-unavailable retries with zero additional
+  model/draft/artifact/manifest/ledger effects, followed by restored-storage
+  preservation of the exact final-output -> prepared -> recorded -> terminal
+  order. The author has standing `superpowers:subagent-driven-development` and
+  TDD authority, must run the focused command, diff/factory, then a single
+  full verification, commit, and stop for a distinct fresh independent review.
+  No self-review, self-integration, `neo` merge, PRR send, graph effect, or
+  scope expansion is authorized.
+
+Status: in-progress only in the isolated root-cause recovery lane; the prior
+two candidates remain rejected and unintegrated.
