@@ -2021,3 +2021,29 @@ explicit implementation authorization.
 - Archive check: author repair, different fresh review, scope/ancestry, clean integration, verification evidence, and this forward-only record are preserved before archival
 - C008 completion correction: the C008 focused ownership audit, `git diff --check`, `npm run factory:check`, and full `npm run verify` all passed before its commit `506ebc8f`; the pending phrasing in C008 is historical pre-commit text and is superseded only by this factual completion note.
 - Next gate: all Wave0B lane plans are integrated. Dispatch Task117 CF-1 contract freeze under a new exact coordinator authorization; all Wave1 production, provider, and live work remains stopped until Task117 is independently reviewed and integrated.
+
+## RV-0-C-009 — Task117 CF-1 contract-freeze dispatch
+
+- Recorded at: 2026-07-13T16:16:00Z
+- Role: Relay A coordinator dispatch / contract-freeze gatekeeper
+- Lane and wave: CF-1 / Wave 0 completion gate
+- Task ID and claim: task-117-resident-full-vision-contract-freeze / docs/agentic/claims/task-117-resident-full-vision-contract-freeze.md
+- Required branch and worktree: codex/task-117-resident-full-vision-contract-freeze / /home/drake/.codex/worktrees/task-117-resident-full-vision-contract-freeze, created from this authorization commit only
+- Base commit and required head: `416c69085c185e3da0fa9f620d1202fb4de96917` / one forward-only, documentation-only Task117 commit followed by a different fresh review; the author may not integrate it
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358; consume the eight approved Wave0B design/implementation pairs for runtime composition, durable handoffs, wake/portable lifecycle, bounded loop, proactive triggers, provider credentials, cockpit, and acceptance
+- Owned files: docs/agentic/resident-agent-full-vision-contract-freeze.md; docs/agentic/claims/task-117-resident-full-vision-contract-freeze.md; docs/agentic/resident-agent-full-vision-program-registry.md
+- Forbidden files: every other tracked file, including all production, test, runtime, UI, provider, template, implementation-plan, specification, acceptance-matrix, and non-Task117 claim files
+- Dependencies and required merged commits: Wave0B Task109–116 plans are approved/integrated, including Task115 at `61c4de658f92fe4eeb0eeefdcab65ea70b30ab78` and Task116 at Relay A integration `c8e1097c`; the historical pre-repair heads `df5b27cb` and `eecc5298` are not review or integration targets
+- Approval record: the governing umbrella plan authorizes CF-1 only to freeze shared events, DTOs, capability keys, file ownership, consumer bindings, idempotency keys, targeted tests, and Waves1–5 merge/rebase authority. It authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. It does not authorize production, provider, browser, credential, Nous, live, or neo-merge work.
+- Required artifact and audit: build a table-driven freeze that contains every shared event, DTO, capability, file, owner, consumer, source-event binding, approval class, idempotency key, targeted test, and required rebase SHA/cross-lane command. The section-local audit must reject direct counterfactual mutation of each entry and reject a missing or conflicted owner as non-dispatchable.
+- Authority partition: Task R is the only default factory writer; Task P is the only shared provider-configuration writer; the named contract task is the only shared-event writer. CF-1 must state the required rebase SHAs and cross-lane commands before any Wave1 authorization; all workers must rebase only after CF-1 is independently reviewed and coordinator-integrated.
+- Claim status: dispatched; all Wave1 production/provider/live tasks remain stopped pending an approved coordinator integration of this freeze
+- RED command and observed failure: before authoring, run a focused absence or missing-field audit that fails for the absent Task117 freeze or for an incomplete ownership/event/DTO/capability/rebase row
+- GREEN command and observed result: after authoring, run the table's embedded direct-counterfactual audit, `git diff --check`, `npm run factory:check`, and `npm run verify`; record exact output and scope in the Task117 claim
+- Full verification: author-owned full verification is required before the one Task117 commit; coordinator will repeat cross-boundary/full verification before any integration
+- Live-provider gate: prohibited; the documentation freeze may neither invoke nor validate providers, credentials, browsers, tailnet, desktop setup, Nous, or production behavior
+- Review verdict: pending a different fresh reviewer who did not author or prepare the freeze; no approval is implied by this dispatch
+- Rebase record: author starts at this dispatch commit; no Wave1 branch may start before an approved CF-1 integration, and every later Wave1 author must record rebase from the integrated CF-1 SHA
+- Merge readiness: not-ready; only Relay A may integrate a fresh independently approved Task117 commit into its visible coordinator branch, never into neo
+- Archive check: retain the source documents, table audit counterfactual evidence, exact scope, author verification, fresh review, coordinator integration, and every subsequent Wave1 rebase record
