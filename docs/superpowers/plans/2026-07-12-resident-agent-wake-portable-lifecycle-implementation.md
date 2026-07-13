@@ -528,8 +528,9 @@ traces, never a storage path or write API.
     ]);
     expect(harness.authority.revalidationOperations).toEqual(["resume"]);
     expect(harness.lease.readOrAcquireCalls).toHaveLength(1);
-    expect(harness.reconciliation.appendInputs[0]?.admission)
-      .toEqual(harness.reconciliation.readbacks[0]?.admission);
+    const canonicalAdmission = harness.canonicalAdmissionTuple();
+    expect(harness.reconciliation.appendInputs[0]?.admission).toEqual(canonicalAdmission);
+    expect(harness.reconciliation.readbacks[0]?.admission).toEqual(canonicalAdmission);
     expect(harness.runtime.wakeCalls).toHaveLength(1);
   });
   ```
@@ -910,13 +911,9 @@ object, or execution lease.
     ]);
     expect(fixture.authority.revalidationOperations).toEqual(["resume"]);
     expect(fixture.lease.readOrAcquireCalls).toHaveLength(1);
-    expect(result.reconciliation.admission).toEqual(fixture.reconciliation.appendInputs[0]?.admission);
-    expect(result.reconciliation.admission).toMatchObject({
-      authorityIdentityAndMount: { workspaceIdentityEventId: expect.any(String), mountEvidenceId: expect.any(String) },
-      verifiedLease: { leaseEventId: expect.any(String), readbackEventId: expect.any(String) },
-      policyAndLock: { policyDigest: expect.any(String), lockStateDigest: expect.any(String) },
-      highWater: { highWaterMark: expect.any(String), readbackEventId: expect.any(String) }
-    });
+    const canonicalAdmission = fixture.canonicalAdmissionTuple();
+    expect(fixture.reconciliation.appendInputs[0]?.admission).toEqual(canonicalAdmission);
+    expect(result.reconciliation.admission).toEqual(canonicalAdmission);
   });
   ```
 
@@ -1378,6 +1375,62 @@ function ordered(text, label, needles) {
   }
 }
 
+// This is the complete proposed pre-CF-1 admission schema, copied from the
+// declared authority, lease, policy/lock, and high-water interfaces above.
+// Keeping this map explicit prevents a mutant from shrinking both the
+// interface and a dynamically-derived expectation at the same time.
+const canonicalAdmissionSchema = Object.freeze({
+  RevalidatedAuthorityIdentityAndMountEvidence: Object.freeze({
+    workspaceId: "string",
+    residentId: '"agent_default"',
+    supervisorEpoch: "string",
+    workspaceIdentityEventId: "string",
+    mountEvidenceId: "string",
+    authorityEvidenceId: "string"
+  }),
+  SupervisorLeaseReadbackEvidence: Object.freeze({
+    schemaVersion: '"resident-supervisor-lease-readback.v1"',
+    workspaceId: "string",
+    residentId: '"agent_default"',
+    supervisorEpoch: "string",
+    authorityEvidenceId: "string",
+    mountEvidenceId: "string",
+    leaseEventId: "string",
+    readbackEventId: "string",
+    expiresAt: "string",
+    causation: "CausationCorrelationEvidence"
+  }),
+  PolicyAndLockReadbackEvidence: Object.freeze({
+    authorityEvidenceId: "string",
+    mountEvidenceId: "string",
+    leaseReadbackEventId: "string",
+    policyVersion: "string",
+    policyDigest: "string",
+    lockStateDigest: "string",
+    readbackEventId: "string"
+  }),
+  HighWaterReadbackEvidence: Object.freeze({
+    authorityEvidenceId: "string",
+    mountEvidenceId: "string",
+    leaseReadbackEventId: "string",
+    highWaterMark: "string",
+    readbackEventId: "string"
+  })
+});
+
+function assertExactReadonlyFields(block, label, expected) {
+  const actual = Object.fromEntries(
+    [...block.matchAll(/^\s+readonly\s+(\w+):\s*([^;]+);$/gm)].map(([, name, type]) => [name, type.trim()])
+  );
+  const expectedEntries = Object.entries(expected);
+  if (Object.keys(actual).length !== expectedEntries.length) {
+    throw new Error(`${label}: expected ${expectedEntries.length} fields, found ${Object.keys(actual).length}`);
+  }
+  for (const [field, type] of expectedEntries) {
+    if (actual[field] !== type) throw new Error(`${label}: missing or changed ${field}: ${type}`);
+  }
+}
+
 function validate(plan) {
   const frozen = section(plan, "### Planned Post-Freeze W Contract Surface");
   const lifecycle = section(plan, "### CF-1-Frozen Lifecycle Admission And Stop Sequence");
@@ -1395,10 +1448,6 @@ function validate(plan) {
   const reconciliationReadback = interfaceBlock(frozen, "ClaimReconciliationReadback");
   const snapshot = interfaceBlock(frozen, "WorkspaceAdmissionSnapshot");
   const tuple = interfaceBlock(frozen, "ClaimReconciliationAdmissionTuple");
-  const identityAndMount = interfaceBlock(frozen, "RevalidatedAuthorityIdentityAndMountEvidence");
-  const verifiedLease = interfaceBlock(frozen, "SupervisorLeaseReadbackEvidence");
-  const policyAndLock = interfaceBlock(frozen, "PolicyAndLockReadbackEvidence");
-  const highWater = interfaceBlock(frozen, "HighWaterReadbackEvidence");
   const task124AdmissionTest = fencedBlockContaining(task124, "it(\"admits resume with one immutable snapshot");
   const task125AdmissionTest = fencedBlockContaining(task125, "it(\"uses one immutable admission tuple");
   requireText(lease, "lease port", "readOrAcquire(input: SupervisorLeaseAdmissionInput)");
@@ -1409,19 +1458,14 @@ function validate(plan) {
   requireText(snapshot, "admission snapshot", "readonly identityAndMount: RevalidatedAuthorityIdentityAndMountEvidence;");
   requireText(reconciliationAppend, "reconciliation append", "readonly admission: ClaimReconciliationAdmissionTuple;");
   requireText(reconciliationReadback, "reconciliation readback", "readonly admission: ClaimReconciliationAdmissionTuple;");
+  for (const [name, fields] of Object.entries(canonicalAdmissionSchema)) {
+    assertExactReadonlyFields(interfaceBlock(frozen, name), `canonical admission ${name}`, fields);
+  }
   for (const [label, text, needle] of [
     ["tuple authority", tuple, "readonly authorityIdentityAndMount: RevalidatedAuthorityIdentityAndMountEvidence;"],
     ["tuple lease", tuple, "readonly verifiedLease: SupervisorLeaseReadbackEvidence;"],
     ["tuple policy/lock", tuple, "readonly policyAndLock: PolicyAndLockReadbackEvidence;"],
-    ["tuple high-water", tuple, "readonly highWater: HighWaterReadbackEvidence;"],
-    ["authority identity", identityAndMount, "readonly workspaceIdentityEventId: string;"],
-    ["authority mount", identityAndMount, "readonly mountEvidenceId: string;"],
-    ["authority evidence", identityAndMount, "readonly authorityEvidenceId: string;"],
-    ["verified lease", verifiedLease, "readonly leaseEventId: string;"],
-    ["verified lease binding", verifiedLease, "readonly mountEvidenceId: string;"],
-    ["policy hash", policyAndLock, "readonly policyDigest: string;"],
-    ["lock hash", policyAndLock, "readonly lockStateDigest: string;"],
-    ["high-water", highWater, "readonly highWaterMark: string;"]
+    ["tuple high-water", tuple, "readonly highWater: HighWaterReadbackEvidence;"]
   ]) requireText(text, label, needle);
   rejectText(lease, "lease port", /readonly\\s+(raw)?ledger\\s*:/i);
   rejectText(reconciliation, "reconciliation port", /readonly\\s+(raw)?(ledger|claim)\\s*:/i);
@@ -1452,6 +1496,9 @@ function validate(plan) {
   ]);
   requireText(task124AdmissionTest, "Task 124 concrete admission test", "revalidationOperations).toEqual([\"resume\"])");
   requireText(task124AdmissionTest, "Task 124 concrete admission test", "readOrAcquireCalls).toHaveLength(1)");
+  requireText(task124AdmissionTest, "Task 124 complete tuple freeze", "const canonicalAdmission = harness.canonicalAdmissionTuple();");
+  requireText(task124AdmissionTest, "Task 124 complete tuple append", "appendInputs[0]?.admission).toEqual(canonicalAdmission)");
+  requireText(task124AdmissionTest, "Task 124 complete tuple readback", "readbacks[0]?.admission).toEqual(canonicalAdmission)");
   ordered(task125AdmissionTest, "Task 125 concrete admission test", [
     "authority.revalidate:resume",
     "lease.readOrAcquire:acquired-and-read-back",
@@ -1460,7 +1507,9 @@ function validate(plan) {
     "reconciliation.appendAndReadBack",
     "runtime.wakeOnce:recovery"
   ]);
-  requireText(task125AdmissionTest, "Task 125 concrete tuple test", "result.reconciliation.admission).toEqual(fixture.reconciliation.appendInputs[0]?.admission)");
+  requireText(task125AdmissionTest, "Task 125 complete tuple freeze", "const canonicalAdmission = fixture.canonicalAdmissionTuple();");
+  requireText(task125AdmissionTest, "Task 125 complete tuple append", "appendInputs[0]?.admission).toEqual(canonicalAdmission)");
+  requireText(task125AdmissionTest, "Task 125 complete tuple readback", "result.reconciliation.admission).toEqual(canonicalAdmission)");
   requireText(task125, "Task 125 tuple validation", "the readback must validate the identical");
   requireText(task125, "Task 125 restart", "never late-revalidate, reacquire/rebind a");
 
@@ -1485,30 +1534,39 @@ function mustRejectCounterfactual(label, mutate) {
   throw new Error(`counterfactual passed unexpectedly: ${label}`);
 }
 
-validate(source);
-for (const [label, mutate] of [
+const counterfactuals = [
   ["remove immutable admission snapshot", text => text.replace("export interface WorkspaceAdmissionSnapshot {", "export interface RemovedAdmissionSnapshot {")],
   ["remove lease port", text => text.replace("export interface DurableSupervisorLeasePort {", "export interface RemovedLeasePort {")],
   ["remove lease admission snapshot input", text => replaceFirstInInterface(text, "SupervisorLeaseAdmissionInput", "readonly admission: WorkspaceAdmissionSnapshot;", "readonly authority: VerifiedWorkspaceAuthority;")],
   ["remove reconciliation append/readback", text => text.replace("appendAndReadBack", "appendWithoutReadback")],
-  ["remove tuple authority identity", text => replaceFirstInInterface(text, "RevalidatedAuthorityIdentityAndMountEvidence", "readonly workspaceIdentityEventId: string;", "readonly removedIdentity: string;")],
-  ["remove tuple mount", text => replaceFirstInInterface(text, "RevalidatedAuthorityIdentityAndMountEvidence", "readonly mountEvidenceId: string;", "readonly removedMount: string;")],
-  ["remove tuple verified lease", text => replaceFirstInInterface(text, "SupervisorLeaseReadbackEvidence", "readonly leaseEventId: string;", "readonly removedLease: string;")],
-  ["remove tuple policy hash", text => replaceFirstInInterface(text, "PolicyAndLockReadbackEvidence", "readonly policyDigest: string;", "readonly removedPolicy: string;")],
-  ["remove tuple lock hash", text => replaceFirstInInterface(text, "PolicyAndLockReadbackEvidence", "readonly lockStateDigest: string;", "readonly removedLock: string;")],
-  ["remove tuple high-water", text => replaceFirstInInterface(text, "HighWaterReadbackEvidence", "readonly highWaterMark: string;", "readonly removedHighWater: string;")],
+];
+
+for (const [interfaceName, fields] of Object.entries(canonicalAdmissionSchema)) {
+  for (const [field, type] of Object.entries(fields)) {
+    counterfactuals.push([
+      `remove canonical ${interfaceName}.${field}`,
+      text => replaceFirstInInterface(text, interfaceName, `readonly ${field}: ${type};`, `readonly removed${field[0].toUpperCase()}${field.slice(1)}: ${type};`)
+    ]);
+  }
+}
+
+counterfactuals.push(
   ["reverse admission order", text => text.replace("1. call `authority.revalidate()` exactly once", "1. issue a recovery wake before mounted revalidation")],
   ["introduce late revalidation", text => text.replace("It may not call `authority.revalidate()`", "then call `authority.revalidate({ operation: \"wake\", ... })`")],
   ["permit stale snapshot reuse", text => text.replace("discards the complete snapshot and restarts at step 1", "retains the previous snapshot for reuse")],
   ["reorder concrete reconciliation", text => text.replace('"authority.validate:policy-lock-high-water",\n      "reconciliation.readByIdempotencyKey"', '"reconciliation.readByIdempotencyKey",\n      "authority.validate:policy-lock-high-water"')],
+  ["weaken Task 124 complete tuple readback equality", text => text.replace("readbacks[0]?.admission).toEqual(canonicalAdmission)", "readbacks[0]?.admission).toMatchObject(canonicalAdmission)")],
+  ["weaken Task 125 complete tuple readback equality", text => text.replace("result.reconciliation.admission).toEqual(canonicalAdmission)", "result.reconciliation.admission).toMatchObject(canonicalAdmission)")],
   ["erase lease-held availability distinction", text => text.replace("preserves `WorkspaceAvailabilityState` as `available`", "sets workspace state unavailable")],
   ["erase stop counterfactual", text => text.replace("it(\"stops intake", "it(\"stops later")],
   ["erase mount mismatch proof", text => text.replace("mount mismatch", "mount changed")],
   ["erase no-fallback proof", text => text.replace("### No-Fallback Counterfactual Proof", "### Removed Proof")],
   ["erase Task 137 ownership/gate", text => text.replace("## Task 137: Wake Supervisor Runtime Assembly", "## Removed Task 137")]
-]) mustRejectCounterfactual(label, mutate);
+);
 
-console.log("GREEN: Task 111 section-local lifecycle audit passed (19 counterfactuals rejected).");
+validate(source);
+for (const [label, mutate] of counterfactuals) mustRejectCounterfactual(label, mutate);
+console.log(`GREEN: Task 111 section-local lifecycle audit passed (${counterfactuals.length} counterfactuals rejected).`);
 NODE
 ```
 
