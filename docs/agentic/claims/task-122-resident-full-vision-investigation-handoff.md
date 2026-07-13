@@ -224,3 +224,33 @@ two candidates remain rejected and unintegrated.
   append-only claim plus the authorized workflow and focused test, then stop
   for a new independent review. No self-review, self-integration, `neo` merge,
   PRR send, graph effect, provider effect, or scope expansion occurred.
+
+## Coordinator Bounded Attempt-Binding Repair
+
+- Independent review rejected `ea26c00e2ac67759602bd03afcfdf75cef8a0e82`:
+  recovery checks resident/task/run/type but never binds an orchestration
+  `attemptId` before its first recovery manifest write. The existing
+  specialist-run.started event has no attempt field, so this repair must fail
+  closed on verified authoritative task-orchestration attempt-to-run evidence;
+  it must not invent an attempt, accept a missing/stale relation, or widen the
+  contract/write set.
+- This is the first bounded repair of the changed-tactic root lane, not a
+  return to either rejected pre-root-cause attempt. The current root-lane
+  author may alter only the same workflow, focused test, and this claim. Before
+  any recovery read that can lead to a manifest/ledger write, preparation, or
+  model call, it must bind exact resident, task, run, specialist type, and
+  attempt using existing authoritative evidence. A swapped attempt with the
+  same resident/task/run/type must reject with zero manifest, ledger, model,
+  draft, artifact, PRR, graph, provider, or external effect.
+- Preserve the two repeated-unavailable retry result (`output-persisted` with
+  no extra effects), cross-specialist rejection, exact reconstruction, and
+  restored final-output -> prepared -> recorded -> terminal order. Add focused
+  RED then GREEN counterfactuals, run diff/factory and one retained full gate,
+  commit scoped work, and stop for a new fresh reviewer who is neither the
+  author nor any prior Task122 reviewer. Standing
+  `superpowers:subagent-driven-development`, TDD, and
+  verification-before-completion authority applies; self-integration and
+  `neo` remain forbidden.
+
+Status: in-progress in this bounded root-lane repair; `ea26c00e` remains
+rejected and unintegrated.
