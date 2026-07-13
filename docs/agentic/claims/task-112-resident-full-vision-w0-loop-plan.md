@@ -305,3 +305,51 @@ self-approve or merge.
   provenance mismatch coverage, append-only claim evidence, and the separately
   recorded sandbox/dependency verifier blocks. Do not authorize or merge
   Tasks 120/136, CF-1, production/provider work, dispatch, or `neo` integration.
+
+## Append-Only Handoff Lifecycle and Per-Binding Mutation Repair Evidence
+
+- Recorded at: 2026-07-13T13:18:51Z.
+- Status: ready for fresh re-review after this one bounded documentation repair;
+  this record is additive and leaves all earlier Task 112 evidence unchanged.
+- Repair worker/branch/worktree:
+  `codex/task-112-resident-full-vision-w0-loop-lifecycle-repair` /
+  `/tmp/cestus-task112-lifecycle-repair`, based at
+  `673453e4dea7066e903b071da6ff794d747cdea6`.
+- Scoped authority: Task 112 repair only under the approved Lane L design at
+  `baa980e04f126ce06f41398fc45169f112321e39`, durable-handoff design, and
+  governing program plan at `0b5726ec975bdc0aae97e540472ef3be4379b358`.
+  Stop after one documentation repair commit and fresh review, before Tasks
+  120/136, CF-1, production/provider work, child dispatch, integration, or a
+  merge into `neo`.
+- Documentation RED: while `673453e4dea7066e903b071da6ff794d747cdea6` was the
+  untouched current base, the focused lifecycle/mutation audit exited 1. It
+  reported no H-owned `SpecialistHandoffProjection` readback port, no exact
+  `lifecycle === "task-completed"` completion rule, no direct non-completed
+  lifecycle fixtures, and a labels-only checkpoint matrix with no per-binding
+  mutation helper.
+- Repair: Task 136 now consumes the full H-owned `HandoffReadback` plus an
+  H-owned `SpecialistHandoffProjection`; completion requires the projection to
+  select that exact readback and have lifecycle `task-completed`. Every other H
+  lifecycle is directly injected into `handoffProjection({ lifecycle,
+  selectedReadback: handoff })` and must return
+  `persistence-unconfirmed`, never completed. The checkpoint matrix now has 25
+  named concrete field mutations, each passed through
+  `expectCheckpointMutationFailsClosed`, which proves zero L append,
+  gateway/provider/tool/approval, fallback-ledger, and local-write effects.
+- Documentation GREEN: the embedded section-local audit exited 0 and printed
+  `GREEN: Task 112 section-local bounded-loop plan audit passed (85
+  counterfactual omissions rejected).` It removes each direct checkpoint field
+  mutation, the common zero-effect helper/caller, each non-completed H
+  lifecycle, the H projection ABI, and the exact task-completed lifecycle rule;
+  all counterfactuals fail the audit.
+- Required verification: `git diff --check` exited 0. `npm run factory:check`
+  reached `scripts/check-agent-readiness.mjs` but failed at `spawnSync git
+  EPERM` for `git ls-files`. `npm run verify` stopped before typecheck with
+  `tsc: command not found`. These are host/dependency blocks; no dependency,
+  source, or infrastructure workaround was attempted.
+- Scope and handoff: only this append-only claim and the Lane L implementation
+  plan are changed. No provider, credential, production, Task 120/136, CF-1,
+  registry, dispatch, integration, or merge action occurred. A fresh reviewer
+  must check H lifecycle authority, all 25 concrete checkpoint mutations and
+  their zero-effect helper path, audit fail polarity, append-only scope, and
+  the recorded host blocks before any coordinator action.

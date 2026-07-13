@@ -355,8 +355,9 @@ planner/replanner cannot choose, substitute, or widen a provider/model.
 
 The checkpoint, approval, gateway, and W mounted-authority ports are the only
 resume path. Task 136 reads a checkpoint, exact plan, gateway request/decision/
-result, and approval only from their durable readback ports; it consumes an
-approval only through consumeApproval after exact revalidation. W alone
+result, approval, complete HandoffReadback, and SpecialistHandoffProjection
+only from their durable readback ports; it consumes an approval only through
+consumeApproval after exact revalidation. W alone
 suspends/releases, reclaims/reverifies, and reports mount loss. If W cannot
 return mounted authority, Lane L performs no append, effect, projection
 substitute, cached continuation, local write, or fallback write.
@@ -580,6 +581,10 @@ export interface CreateBoundedAgentLoopInput {
     readonly taskId: string; readonly attemptId: string; readonly runId: string;
     readonly authority: ResidentLoopAuthorityBinding;
   }) => Promise<HandoffReadback | undefined>;
+  readonly readHandoffProjection: (input: {
+    readonly taskId: string; readonly attemptId: string; readonly runId: string;
+    readonly authority: ResidentLoopAuthorityBinding;
+  }) => Promise<SpecialistHandoffProjection | undefined>;
   readonly nowMonotonicMs: () => number;
 }
 
@@ -604,14 +609,19 @@ InitialPlanPlannerPort and PlanReplannerPort return typed own-data candidates
 that CF-1 parses again before append. CheckpointPort, ApprovalPort,
 and MountedAuthorityPort make resume ledger-only: an unknown, foreign-task,
 foreign-run, or stale checkpoint/approval cannot select a memory recovery path.
-H owns `HandoffReadback`; Task 136 consumes that full authoritative type and
-does not reconstruct a three-field handoff shape. Completion requires
+H owns both `HandoffReadback` and `SpecialistHandoffProjection`; Task 136
+consumes the complete authoritative HandoffReadback verbatim and separately
+reads H's projection rather than reconstructing a three-field handoff shape or
+inferring lifecycle from result fields. Completion requires
 `handoffReadback.outcome === "verified"`, exact task/run identity, causal
-`recordedEventId`, `terminalRunEventId`, and `taskStatusEventId`, and an
-`authorityBinding` exactly equal to current mounted authority. These fields
-preserve H's lifecycle and authority proof; missing, resumable, unavailable,
-inconsistent, cross-run, or authority-mismatched HandoffReadback fails closed
-as `persistence-unconfirmed`, never `completed`.
+`recordedEventId`, `terminalRunEventId`, and `taskStatusEventId`, an
+`authorityBinding` exactly equal to current mounted authority, and the
+projection's `selectedReadback` to be that exact HandoffReadback with
+`lifecycle === "task-completed"`. These H-owned facts preserve the stronger
+task lifecycle and authority proof; a missing, resumable, unavailable,
+inconsistent, cross-run, authority-mismatched, non-`task-completed`, or
+selected-readback-mismatched handoff/projection fails closed as
+`persistence-unconfirmed`, never `completed`.
 
 - [ ] **Step 1: Write failing bounded-loop tests.**
 
@@ -647,11 +657,36 @@ it("suspends, releases through W, and revalidates a changed preview before any e
 
 it("carries the full authoritative HandoffReadback verbatim on completion", async () => {
   const handoff = handoffReadback();
-  const result = await createBoundedAgentLoop(loopInput({ handoffReadback: handoff })).advance(inputFor());
+  const result = await createBoundedAgentLoop(loopInput({
+    handoffReadback: handoff,
+    handoffProjection: handoffProjection({
+      lifecycle: "task-completed",
+      selectedReadback: handoff
+    })
+  })).advance(inputFor());
 
   expect(result).toMatchObject({ outcome: "completed", category: "handoff-recorded" });
   expect(result.handoffReadback).toBe(handoff);
 });
+
+const nonCompletedHandoffLifecycles = [
+  "no-output", "output-persisted", "handoff-pending", "handoff-recorded",
+  "terminal-consistent", "legacy-unbound", "unavailable", "inconsistent"
+] as const;
+
+it.each(nonCompletedHandoffLifecycles)(
+  "cannot report completed when H projects lifecycle %s",
+  async (lifecycle) => {
+    const handoff = handoffReadback();
+    const result = await createBoundedAgentLoop(loopInput({
+      handoffReadback: handoff,
+      handoffProjection: handoffProjection({ lifecycle, selectedReadback: handoff })
+    })).advance(inputFor());
+
+    expect(result).not.toMatchObject({ outcome: "completed" });
+    expect(result.category).toBe("persistence-unconfirmed");
+  }
+);
 
 it.each([
   ["missing HandoffReadback", undefined],
@@ -702,20 +737,52 @@ const expectNoCheckpointMismatchEffects = (fixture: ReturnType<typeof loopInput>
 // `loopInput` exposes provider/tool/fallback sentinels only through its frozen
 // W/P/gateway fakes. They are not Lane L capabilities: any invocation is a
 // test failure, rather than an alternate persistence or execution path.
-const checkpointMismatchBindings = [
-  "task", "attempt", "run", "resident", "run-mode", "descriptor", "plan",
-  "plan-record", "step", "request", "tool", "tool-version", "allowlist",
-  "side-effect", "approval", "preview", "artifact", "deadline", "policy",
-  "authority", "source", "context", "budget", "causation", "correlation"
-] as const;
-
-it.each(checkpointMismatchBindings)("fails closed before every gateway method on a checkpoint %s mismatch", async (binding) => {
-  const fixture = loopInput({ resumeCheckpoint: checkpointFor(`${binding} mismatch`) });
+const expectCheckpointMutationFailsClosed = async (
+  mutateCheckpoint: (checkpoint: ResidentLoopCheckpointReadback) => ResidentLoopCheckpointReadback
+) => {
+  const fixture = loopInput({
+    resumeCheckpoint: mutateCheckpoint(checkpointForCurrentResume())
+  });
   const result = await createBoundedAgentLoop(fixture).resume(resumeInput());
 
   expect(result).toMatchObject({ outcome: "resumable", category: "persistence-unconfirmed" });
   expectNoCheckpointMismatchEffects(fixture);
-});
+};
+
+const checkpointBindingMutations = [
+  ["task", (checkpoint) => ({ ...checkpoint, taskId: "checkpoint_task_other" })],
+  ["attempt", (checkpoint) => ({ ...checkpoint, attemptId: "checkpoint_attempt_other" })],
+  ["run", (checkpoint) => ({ ...checkpoint, runId: "checkpoint_run_other" })],
+  ["resident", (checkpoint) => ({ ...checkpoint, residentAgentId: "agent_other" as "agent_default" })],
+  ["run-mode", (checkpoint) => ({ ...checkpoint, runMode: "memory-curation" })],
+  ["descriptor", (checkpoint) => ({ ...checkpoint, workflowDescriptor: { ...checkpoint.workflowDescriptor, workflowDescriptorHash: hash("checkpoint_descriptor_other") } })],
+  ["plan", (checkpoint) => ({ ...checkpoint, planId: "checkpoint_plan_other" })],
+  ["plan-record", (checkpoint) => ({ ...checkpoint, planRecordEventId: "checkpoint_plan_record_other" })],
+  ["step", (checkpoint) => ({ ...checkpoint, stepOrdinal: checkpoint.stepOrdinal + 1 })],
+  ["request", (checkpoint) => ({ ...checkpoint, requestEventId: "checkpoint_request_other" })],
+  ["tool", (checkpoint) => ({ ...checkpoint, toolId: "checkpoint_tool_other" })],
+  ["tool-version", (checkpoint) => ({ ...checkpoint, toolVersion: "9.9.9" })],
+  ["allowlist", (checkpoint) => ({ ...checkpoint, allowlistEntryHash: hash("checkpoint_allowlist_other") })],
+  ["side-effect", (checkpoint) => ({ ...checkpoint, sideEffectClass: "external-byte-transfer" })],
+  ["approval", (checkpoint) => ({ ...checkpoint, requiredApprovalClass: "human-review" })],
+  ["preview", (checkpoint) => ({ ...checkpoint, previewHash: hash("checkpoint_preview_other") })],
+  ["artifact", (checkpoint) => ({ ...checkpoint, inputArtifactHashes: [hash("checkpoint_artifact_other")] })],
+  ["deadline", (checkpoint) => ({ ...checkpoint, resumptionDeadlineAt: "2099-01-01T00:00:00.000Z" })],
+  ["policy", (checkpoint) => ({ ...checkpoint, policyHash: hash("checkpoint_policy_other") })],
+  ["authority", (checkpoint) => ({ ...checkpoint, authority: { ...checkpoint.authority, activeLocksHash: hash("checkpoint_locks_other") } })],
+  ["source", (checkpoint) => ({ ...checkpoint, sourceEventIds: ["checkpoint_source_other"] })],
+  ["context", (checkpoint) => ({ ...checkpoint, contextPackRefs: [{ contextPackId: "checkpoint_context_other", contentHash: hash("checkpoint_context_hash_other") }] })],
+  ["budget", (checkpoint) => ({ ...checkpoint, budget: { ...checkpoint.budget, consumed: { ...checkpoint.budget.consumed, toolSteps: checkpoint.budget.consumed.toolSteps + 1 } } })],
+  ["causation", (checkpoint) => ({ ...checkpoint, causationId: "checkpoint_causation_other" })],
+  ["correlation", (checkpoint) => ({ ...checkpoint, correlationId: "checkpoint_correlation_other" })]
+] as const;
+
+it.each(checkpointBindingMutations)(
+  "fails closed before every gateway method on a checkpoint %s mutation",
+  async (_binding, mutateCheckpoint) => {
+    await expectCheckpointMutationFailsClosed(mutateCheckpoint);
+  }
+);
 
 it("releases through W without a Lane L write when mount reverify fails", async () => {
   const fixture = loopInput({ mountedAuthorityPort: unavailableAfterSuspend() });
@@ -798,13 +865,15 @@ fallback-ledger append/write or local-write activity. Unknown/foreign
 checkpoints, stale approvals, and mount loss fail closed; mount loss releases through W and writes no Lane L
 observation, result, projection substitute, local write, or fallback write.
 Resume replays Task 120/gateway/H records and never scans artifacts or trusts
-in-memory counters. Exact `HandoffReadback` plus causal run/task/lifecycle and
-authority proof alone permits completed; Task 136 retains and checks the full
-H-owned readback rather than narrowing it to manifest/output fields. A
-completed L result carries that exact `HandoffReadback` value verbatim and
-fails closed for task ID, recorded event, terminal-run event, task-status
-event, lifecycle, authority, manifest hash, prepared event, or final-output
-provenance mismatch.
+in-memory counters. Exact `HandoffReadback` plus the H-owned
+`SpecialistHandoffProjection` lifecycle, causal run/task proof, and authority
+proof alone permits completed: the projection must select that exact full
+readback and have `lifecycle === "task-completed"`. Task 136 retains and checks
+the full H-owned readback rather than narrowing it to manifest/output fields.
+A completed L result carries that exact `HandoffReadback` value verbatim and
+fails closed for task ID, recorded event, terminal-run event, task-status event,
+projection lifecycle/selected-readback, authority, manifest hash, prepared
+event, or final-output provenance mismatch.
 
 - [ ] **Step 4: Run the focused GREEN command.**
 
@@ -903,6 +972,37 @@ const part = (value, start, end) => {
   if (from < 0 || to < 0) throw new Error("missing section " + start);
   return value.slice(from, to);
 };
+const checkpointMutationContracts = [
+  ["task", 'taskId: "checkpoint_task_other"'],
+  ["attempt", 'attemptId: "checkpoint_attempt_other"'],
+  ["run", 'runId: "checkpoint_run_other"'],
+  ["resident", 'residentAgentId: "agent_other" as "agent_default"'],
+  ["run-mode", 'runMode: "memory-curation"'],
+  ["descriptor", 'workflowDescriptorHash: hash("checkpoint_descriptor_other")'],
+  ["plan", 'planId: "checkpoint_plan_other"'],
+  ["plan-record", 'planRecordEventId: "checkpoint_plan_record_other"'],
+  ["step", "stepOrdinal: checkpoint.stepOrdinal + 1"],
+  ["request", 'requestEventId: "checkpoint_request_other"'],
+  ["tool", 'toolId: "checkpoint_tool_other"'],
+  ["tool-version", 'toolVersion: "9.9.9"'],
+  ["allowlist", 'allowlistEntryHash: hash("checkpoint_allowlist_other")'],
+  ["side-effect", 'sideEffectClass: "external-byte-transfer"'],
+  ["approval", 'requiredApprovalClass: "human-review"'],
+  ["preview", 'previewHash: hash("checkpoint_preview_other")'],
+  ["artifact", 'inputArtifactHashes: [hash("checkpoint_artifact_other")]'],
+  ["deadline", 'resumptionDeadlineAt: "2099-01-01T00:00:00.000Z"'],
+  ["policy", 'policyHash: hash("checkpoint_policy_other")'],
+  ["authority", 'activeLocksHash: hash("checkpoint_locks_other")'],
+  ["source", 'sourceEventIds: ["checkpoint_source_other"]'],
+  ["context", 'contextPackId: "checkpoint_context_other"'],
+  ["budget", "toolSteps: checkpoint.budget.consumed.toolSteps + 1"],
+  ["causation", 'causationId: "checkpoint_causation_other"'],
+  ["correlation", 'correlationId: "checkpoint_correlation_other"']
+];
+const nonCompletedHandoffLifecycleValues = [
+  "no-output", "output-persisted", "handoff-pending", "handoff-recorded",
+  "terminal-consistent", "legacy-unbound", "unavailable", "inconsistent"
+];
 const audit = (value) => {
   const global = part(value, "## Global Constraints", "## CF-1 Consumed Contract Surface");
   const contracts = part(value, "## CF-1 Consumed Contract Surface", "## File Ownership and Merge Order");
@@ -920,6 +1020,11 @@ const audit = (value) => {
     contracts,
     "export interface ResidentLoopTerminalOrResumableResult",
     "export interface ResidentLoopMountedAuthorityPort"
+  );
+  const checkpointMutations = part(
+    t136,
+    "const checkpointBindingMutations = [",
+    "it.each(checkpointBindingMutations)"
   );
   const staleGatewaySpellings = [
     ["gateway", "request"].join("."),
@@ -981,6 +1086,13 @@ const audit = (value) => {
   if (result.includes("handoffReadback?: {")) {
     throw new Error("narrowed handoff readback in completed result");
   }
+  if (t136.includes("const checkpointMismatchBindings = [")) {
+    throw new Error("labels-only checkpoint coverage in Task 136");
+  }
+  for (const [label, fieldMutation] of checkpointMutationContracts) {
+    need(checkpointMutations, `["${label}", (checkpoint) =>`);
+    need(checkpointMutations, fieldMutation);
+  }
   needAll(t120, [
     "plan-observation-contracts.ts", "plan-observation-projection.ts",
     "**Step 2: Run the focused RED command.**", "**Step 4: Run the focused GREEN command.**",
@@ -1010,17 +1122,25 @@ const audit = (value) => {
     "fixture.fallbackLedger.append).not.toHaveBeenCalled()",
     "fixture.fallbackLedger.write).not.toHaveBeenCalled()",
     "fixture.localWrite).not.toHaveBeenCalled()",
-    "Every task/attempt/run/resident/run-mode/descriptor/plan/plan-record/step/",
-    "is an individual `it.each` case",
+    "const expectCheckpointMutationFailsClosed = async",
+    "const checkpointBindingMutations = [",
+    "await expectCheckpointMutationFailsClosed(mutateCheckpoint);",
     "Promise<HandoffReadback | undefined>",
-    "H owns `HandoffReadback`; Task 136 consumes that full authoritative type",
+    "Promise<SpecialistHandoffProjection | undefined>",
+    "H owns both `HandoffReadback` and `SpecialistHandoffProjection`",
     "handoffReadback.outcome === \"verified\"", "recordedEventId",
     "terminalRunEventId", "taskStatusEventId", "authorityBinding",
     "`authorityBinding` exactly equal to current mounted authority",
+    "lifecycle === \"task-completed\"",
     "carries the full authoritative HandoffReadback verbatim on completion",
     "result.handoffReadback).toBe(handoff)",
+    "nonCompletedHandoffLifecycles",
+    "handoffProjection({ lifecycle, selectedReadback: handoff })",
+    "cannot report completed when H projects lifecycle %s",
+    ...nonCompletedHandoffLifecycleValues.map(lifecycle => `"${lifecycle}"`),
     "HandoffReadback with changed taskId",
     "HandoffReadback with changed recordedEventId",
+    "HandoffReadback with changed terminalRunEventId",
     "HandoffReadback with changed taskStatusEventId",
     "HandoffReadback with changed provenance manifestHash",
     "HandoffReadback with changed provenance preparedEventId",
@@ -1079,7 +1199,12 @@ const cases = [
   ["checkpoint preview binding", value => replaceInCheckpoint(value, "readonly previewHash: `sha256:${string}`;", "readonly removedPreviewBinding: string;")],
   ["checkpoint artifact binding", value => replaceInCheckpoint(value, "readonly inputArtifactHashes: readonly `sha256:${string}`[];", "readonly removedArtifactBinding: readonly string[];")],
   ["checkpoint deadline binding", value => replaceInCheckpoint(value, "readonly resumptionDeadlineAt: string;", "readonly removedDeadlineBinding: string;")],
-  ["checkpoint mismatch test", value => value.replace("is an individual `it.each` case", "may continue as a generic case")],
+  ["checkpoint mutation helper", value => replaceInTask136(value, "const expectCheckpointMutationFailsClosed = async", "const removedCheckpointMutationHelper = async")],
+  ["checkpoint mutation caller", value => replaceInTask136(value, "await expectCheckpointMutationFailsClosed(mutateCheckpoint);", "await removedCheckpointMutationHelper(mutateCheckpoint);")],
+  ...checkpointMutationContracts.map(([label, fieldMutation]) => [
+    "checkpoint " + label + " direct field mutation",
+    value => replaceInTask136(value, fieldMutation, "removedCheckpointMutation")
+  ]),
   ["checkpoint no observation append", value => value.replaceAll("fixture.planObservationStore.appendObservation).not.toHaveBeenCalled()", "fixture.planObservationStore.removedAppendObservation).not.toHaveBeenCalled()")],
   ["checkpoint no tool-step append", value => value.replaceAll("fixture.planObservationStore.appendToolStep).not.toHaveBeenCalled()", "fixture.planObservationStore.removedAppendToolStep).not.toHaveBeenCalled()")],
   ["checkpoint no result append", value => value.replaceAll("fixture.planObservationStore.appendResult).not.toHaveBeenCalled()", "fixture.planObservationStore.removedAppendResult).not.toHaveBeenCalled()")],
@@ -1089,8 +1214,16 @@ const cases = [
   ["handoff ABI", value => value.replaceAll("HandoffReadback", "NarrowedHandoffShape")],
   ["handoff result ABI", value => value.replace("readonly handoffReadback?: HandoffReadback;", "readonly handoffReadback?: { readonly recordedEventId: string; };")],
   ["handoff verified outcome", value => value.replace("handoffReadback.outcome === \"verified\"", "handoffReadback.outcome is ignored")],
+  ["handoff projection ABI", value => value.replaceAll("SpecialistHandoffProjection", "NarrowedHandoffProjection")],
+  ["handoff projection lifecycle", value => value.replaceAll("lifecycle === \"task-completed\"", "lifecycle is ignored")],
+  ["handoff projection direct lifecycle fixture", value => replaceInTask136(value, "handoffProjection({ lifecycle, selectedReadback: handoff })", "handoffProjection({ selectedReadback: handoff })")],
+  ...nonCompletedHandoffLifecycleValues.map(lifecycle => [
+    "handoff projection " + lifecycle + " lifecycle mutation",
+    value => value.replaceAll(`\"${lifecycle}\"`, "removedHandoffLifecycle")
+  ]),
   ["handoff task proof", value => value.replace("HandoffReadback with changed taskId", "HandoffReadback task proof removed")],
   ["handoff recorded proof", value => value.replace("HandoffReadback with changed recordedEventId", "HandoffReadback recorded proof removed")],
+  ["handoff terminal-run proof", value => value.replace("HandoffReadback with changed terminalRunEventId", "HandoffReadback terminal-run proof removed")],
   ["handoff task-status proof", value => value.replace("HandoffReadback with changed taskStatusEventId", "HandoffReadback task-status proof removed")],
   ["handoff manifest provenance proof", value => value.replace("HandoffReadback with changed provenance manifestHash", "HandoffReadback manifest proof removed")],
   ["handoff prepared provenance proof", value => value.replace("HandoffReadback with changed provenance preparedEventId", "HandoffReadback prepared proof removed")],
