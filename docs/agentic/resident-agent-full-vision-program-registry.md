@@ -1792,3 +1792,23 @@ explicit implementation authorization.
 - Archive check: prior author and review evidence remains preserved; a fresh repair, verification, re-review, and coordinator integration remain required
 - Root-cause checkpoint: this is the second failed Task112 recovery attempt. The failure is evidence semantics, not TypeScript support: the prior tactic confused a matrix with already explicit parameter annotations with its fully untyped baseline. The new tactic separately compiles all three states and makes that distinction counterfactually auditable.
 - Supersession: this record supersedes only RV-0-L-013's ready-for-review disposition; all earlier Task112 evidence, including the false assertion, remains immutable and must be corrected only forward.
+
+## RV-0-L-015 — Task 112 bounded-loop plan approved and integrated
+
+- Recorded at: 2026-07-13T14:46:27Z
+- Role: visible coordinator integration
+- Lane and wave: L / 0B
+- Task ID and claim: task-112-resident-full-vision-w0-loop-plan / docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Task thread ID: author chain `/root/repair_task112_per_callback` -> `/root/repair_task112_compiler_evidence`; final different fresh reviewer `/root/review_task112_compiler_evidence`
+- Branch and worktree: imported approved head `4e1ea856b8c46145a48e7d97a2eb8f026aee3858` from `codex/task-112-resident-full-vision-w0-evidence-repair`; visible coordinator branch `codex/resident-agent-full-vision-program-visible-coordinator-2`
+- Base commit and reviewed head: `686f56e53cf54e7dd2ccb498e7d151aa89a8b02b` / `4e1ea856b8c46145a48e7d97a2eb8f026aee3858`, including forward recovery commits `669e7b58c8b299f570a41b603bf23bfc927f5eba` and `4e1ea856b8c46145a48e7d97a2eb8f026aee3858`
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358; docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md@baa980e04f126ce06f41398fc45169f112321e39
+- Owned/integrated files: docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md; docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Review verdict: approved. The different fresh reviewer independently reproduced strict/noLib/types=[] compiler results of current `0/0`, outer-only `0/0`, and no-outer/no-direct-signatures `25/25` TS7006; confirmed all 25 exact direct callback signatures, the immutable false historic claim plus its truthful forward correction, and 111 counterfactual rejections.
+- Verification: reviewer `git diff --check` and `npm run factory:check` passed; after isolated lockfile-pinned dependency restore, reviewer `npm run verify` exited 0 with typecheck, 189 test files / 2,228 tests (3 / 5 skipped), Vite build, and factory readiness. The coordinator then merged with `--no-ff --no-commit`, reran `npm run factory:check`, `npm run verify`, and `git diff --check`, all passing before commit.
+- Live-provider gate: not-applicable; this Task112 documentation plan invokes no provider
+- Rebase record: no contract-changing commit applied between reviewed head and integration; the coordinator merge was clean
+- Merge readiness: merged / coordinator integration commit `573bff19`; it contains only the two approved Task112 documentation files. No merge into neo occurred.
+- Archive check: author and final reviewer evidence, clean worktrees, reviewed ancestry, integration verification, and this append-only integration record are preserved before archival
+- Supersession: this record supersedes only RV-0-L-014's pending fresh-review disposition; all earlier Task112 evidence remains immutable.
