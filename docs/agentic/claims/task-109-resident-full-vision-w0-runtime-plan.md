@@ -657,3 +657,221 @@ NODE
   This completion record supersedes R2 only for the actual-public-caller and
   factory-closed-tuple audit gap; every historical Task 109 claim record
   remains immutable evidence.
+
+## Recovery R4: Reject-Before-Activity Execution-Order Audit
+
+- Recovery worker and branch: `/root/task109_runtime_plan_recovery_2` on
+  `codex/task-109-resident-full-vision-w0-runtime-plan-recovery-2`, based on
+  `1cdcf99098943049ff2e673607b35b676020466a`.
+- Exact approved lane specification:
+  `docs/superpowers/specs/2026-07-12-resident-agent-runtime-composition-design.md`
+  at `05e85392367964a3869a55832703f504dd0fe3da`.
+- Exact governing implementation plan:
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md`
+  at `0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Allowed task range: Task 109 append-only documentation-only
+  reject-before-activity recovery. The wave stop is one verified recovery
+  commit and a separately fresh re-review. Tasks 132–140, CF-1
+  implementation, production/provider work, child dispatch, and every merge
+  are forbidden.
+- Scoped authorization: the coordinator explicitly authorizes
+  `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD,
+  fresh review, and verification-before-completion under the user-confirmed
+  GPT-5.6 Terra / Extra High configuration. This worker may not merge into
+  `neo` or an integration branch.
+- Root cause checkpoint: R3 proved names and tuple membership, but its actual
+  caller tests did not assert that rejection left delegate, H prepare/readback,
+  mounted material/manifest, and fallback-write activity at zero. It also
+  described Task 134's closure as supplied by Task 135 even though Task 135
+  depends on Task 134. The approved contract needs no product, safety, truth,
+  provider, or scope change. This recovery replaces the membership audit with
+  CF-1's test-only closure fixture, a non-cyclic owner/dependency table, and
+  structural table parsing of the exact negative-path traces.
+- RED: before the plan change, the proposed structural table gate exited 1
+  with `RED: missing structural table: Fixture contract / CF-1 frozen owner /
+  Task 134 test-only use / Task 135 actual-binding use / Dependency order`.
+  That failure proves the historical plan had neither a frozen test-only
+  closure-fixture owner nor the required non-cyclic dependency order.
+- GREEN, full verification, self-review, and fresh-review evidence are
+  appended only after their corresponding commands complete. This R4 record
+  supersedes no historical evidence while it is in progress.
+
+### R4 Documentation RED/GREEN Audit
+
+The audit below extracts Markdown tables from the CF-1 fixture and the exact
+Task 134, 135, and 140 sections. It compares parsed rows and column order; it
+does not satisfy requirements through document-wide or prose token searches.
+It counterfactually deletes every fixture/case/trace row and changes every
+fixture field, probe order, counter, and zero expectation. Any changed fixture
+owner or dependency order is a fixture-cell mutation and must fail.
+
+```bash
+node --input-type=module <<'NODE'
+import fs from "node:fs";
+
+const plan = fs.readFileSync(
+  "docs/superpowers/plans/2026-07-12-resident-agent-runtime-composition-implementation.md",
+  "utf8"
+);
+const sectionRange = (source, startHeading, endHeading) => {
+  const start = source.indexOf(startHeading);
+  const end = source.indexOf(endHeading, start + startHeading.length);
+  if (start < 0 || end < 0) throw new Error(`missing section boundary: ${startHeading}`);
+  return { start, end };
+};
+const cells = (line) => line.trim().split("|").slice(1, -1).map((cell) => cell.trim());
+const headerLine = (headers) => `| ${headers.join(" | ")} |`;
+const locateTable = (source, range, headers) => {
+  const body = source.slice(range.start, range.end);
+  const lines = body.split("\n");
+  const headerAt = lines.indexOf(headerLine(headers));
+  if (headerAt < 0) throw new Error(`missing table header: ${headers.join(" / ")}`);
+  if (!/^\|\s*(?:-+\s*\|\s*)+-+\s*\|$/.test(lines[headerAt + 1] ?? "")) {
+    throw new Error(`missing delimiter for table: ${headers.join(" / ")}`);
+  }
+  const rows = [];
+  let at = headerAt + 2;
+  while ((lines[at] ?? "").startsWith("|")) {
+    rows.push(cells(lines[at]));
+    at += 1;
+  }
+  return { lines, headerAt, rowStart: headerAt + 2, rows };
+};
+const expectRows = (actual, expected, label) => {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(`${label} rows differ: ${JSON.stringify(actual)}`);
+  }
+};
+const fixtureHeaders = ["Fixture contract", "CF-1 frozen owner", "Task 134 test-only use", "Task 135 actual-binding use", "Dependency order"];
+const caseHeaders = ["Case ID", "Route", "Expected safe code"];
+const traceHeaders = ["Probe order", "Counter", "Expected count"];
+const fixtureRows = [[
+  "Task134FactoryClosedDispatchFixtureV1",
+  "CF-1 test-fixture contract and builder",
+  "Builds a test registry to reject before delegate or H activity",
+  "Consumes the closed tuple only to test createProductionMountedRunnerHandoffBinding; Task 135 owns that production binding",
+  "CF-1 -> Task 134 test-only proof -> Task 135 actual binding -> Task 140 composition"
+]];
+const caseRows = [
+  ["forged-caller-stores", "direct-registry-dispatch", "runner-registration-invalid"],
+  ["unregistered-runner", "dispatchVerifiedTaskRunner", "runner-registration-invalid"],
+  ["swapped-authority-mount-store-tuple", "fixture-construction", "workspace-identity-mismatch"],
+  ["incompatible-task-id", "dispatchVerifiedTaskRunner", "runner-registration-invalid"],
+  ["incompatible-run-type", "dispatchVerifiedTaskRunner", "runner-registration-invalid"],
+  ["incompatible-attempt-id", "dispatchVerifiedTaskRunner", "runner-registration-invalid"],
+  ["incompatible-approved-run-id", "dispatchVerifiedTaskRunner", "runner-registration-invalid"]
+];
+const traceRows = [
+  ["1", "delegate", "0"],
+  ["2", "handoff-prepare", "0"],
+  ["3", "handoff-readback", "0"],
+  ["4", "mounted-material-trace", "0"],
+  ["5", "mounted-manifest-trace", "0"],
+  ["6", "fallback-write", "0"]
+];
+const taskRanges = [
+  ["Task 134", "## Task 134:", "## Task 135:", "fixture-construction"],
+  ["Task 135", "## Task 135:", "## Task 140:", "binding-construction"],
+  ["Task 140", "## Task 140:", "## Failure, Rollback, and Real Nous Gate", "composition-construction"]
+];
+const rowsFor = (task) => caseRows.map((row) => row[0] === "swapped-authority-mount-store-tuple" ? [row[0], task[3], row[2]] : row);
+const audit = (source) => {
+  const cf1 = sectionRange(source, "### CF-1 Test-Only Task 134 Closure Fixture And Reject-Before-Activity Contract", "## File Ownership and Merge Order");
+  expectRows(locateTable(source, cf1, fixtureHeaders).rows, fixtureRows, "fixture");
+  for (const task of taskRanges) {
+    const range = sectionRange(source, task[1], task[2]);
+    expectRows(locateTable(source, range, caseHeaders).rows, rowsFor(task), `${task[0]} cases`);
+    expectRows(locateTable(source, range, traceHeaders).rows, traceRows, `${task[0]} trace`);
+  }
+};
+const replaceCell = (source, startHeading, endHeading, headers, rowIndex, columnIndex, replacement) => {
+  const range = sectionRange(source, startHeading, endHeading);
+  const before = source.slice(0, range.start);
+  const body = source.slice(range.start, range.end);
+  const after = source.slice(range.end);
+  const table = locateTable(source, range, headers);
+  const lineIndex = table.rowStart + rowIndex;
+  const row = cells(table.lines[lineIndex]);
+  if (row[columnIndex] === undefined) throw new Error("missing mutable table cell");
+  row[columnIndex] = replacement;
+  table.lines[lineIndex] = `| ${row.join(" | ")} |`;
+  return before + table.lines.join("\n") + after;
+};
+const deleteRow = (source, startHeading, endHeading, headers, rowIndex) => {
+  const range = sectionRange(source, startHeading, endHeading);
+  const before = source.slice(0, range.start);
+  const body = source.slice(range.start, range.end);
+  const after = source.slice(range.end);
+  const table = locateTable(source, range, headers);
+  table.lines.splice(table.rowStart + rowIndex, 1);
+  return before + table.lines.join("\n") + after;
+};
+const counterfactuals = [
+  ["fixture row deletion", (source) => deleteRow(source, "### CF-1 Test-Only Task 134 Closure Fixture And Reject-Before-Activity Contract", "## File Ownership and Merge Order", fixtureHeaders, 0)],
+  ...fixtureHeaders.map((_, column) => [`fixture column ${column}`, (source) => replaceCell(source, "### CF-1 Test-Only Task 134 Closure Fixture And Reject-Before-Activity Contract", "## File Ownership and Merge Order", fixtureHeaders, 0, column, "removed")]),
+  ...taskRanges.flatMap((task) => [
+    ...caseRows.map((_, row) => [`${task[0]} case row ${row}`, (source) => deleteRow(source, task[1], task[2], caseHeaders, row)]),
+    ...traceRows.flatMap((_, row) => [
+      [`${task[0]} trace row ${row}`, (source) => deleteRow(source, task[1], task[2], traceHeaders, row)],
+      [`${task[0]} trace counter ${row}`, (source) => replaceCell(source, task[1], task[2], traceHeaders, row, 1, "removed-counter")],
+      [`${task[0]} trace zero ${row}`, (source) => replaceCell(source, task[1], task[2], traceHeaders, row, 2, "1")],
+      [`${task[0]} trace order ${row}`, (source) => replaceCell(source, task[1], task[2], traceHeaders, row, 0, "99")]
+    ])
+  ])
+];
+try {
+  audit(plan);
+  for (const [label, mutate] of counterfactuals) {
+    let rejected = false;
+    try { audit(mutate(plan)); } catch { rejected = true; }
+    if (!rejected) throw new Error(`counterfactual accepted: ${label}`);
+  }
+  console.log(`GREEN: Task 109 structural reject-before-activity audit passed (${counterfactuals.length} table mutations rejected).`);
+} catch (error) {
+  console.error(`RED: ${error.message}`);
+  process.exitCode = 1;
+}
+NODE
+```
+
+- GREEN audit evidence: pending final replay of the embedded command after
+  this claim append, followed by `git diff --check`, `npm run factory:check`,
+  `npm run verify`, scope self-review, and fresh independent re-review.
+
+### R4 Verification And Self-Review
+
+- GREEN audit: the exact embedded structural table audit exited 0 with
+  `GREEN: Task 109 structural reject-before-activity audit passed (99 table
+  mutations rejected).` It rejected deletion of the CF-1 fixture row, every
+  case row, and every trace row; it also rejected every fixture field change,
+  including owner and dependency order, and every trace counter, zero, and
+  probe-order change across Tasks 134, 135, and 140.
+- Documentation gates: `git diff --check` exited 0 with no output and
+  `npm run factory:check` exited 0 with `factory-readiness passed` after the
+  GREEN audit.
+- Verification environment checkpoint: the first
+  `NODE_NO_WARNINGS=1 npm run verify` stopped before typecheck with `tsc:
+  command not found`. `package-lock.json` was present, `node_modules/.bin/tsc`
+  was absent, and `npm ci --dry-run --ignore-scripts` accepted the pinned
+  dependency graph. `npm ci` restored only ignored, lockfile-pinned local
+  dependencies; `git status` retained only the two owned documentation files.
+- Full verification: the rerun `NODE_NO_WARNINGS=1 npm run verify` exited 0
+  with `typecheck passed`; 189 test files passed with 3 skipped; 2,228 tests
+  passed with 5 skipped; Vite built successfully with only its existing
+  chunk-size advisory; and `factory-readiness passed`.
+- Scope self-review: `git diff --name-only` lists only this append-only claim
+  and the owned Lane R implementation plan. No source, test, shared contract,
+  registry, specification, provider, or integration file changed.
+- Interface and ownership self-review: CF-1 freezes the explicitly test-only
+  fixture and its registration/authority/store/H tuple; Task 134 consumes it
+  only to prove early rejection; Task 135 remains the sole owner of the actual
+  mounted runner/handoff binding; and Task 140 consumes the reviewed actual
+  binding through the sole default factory. The complete dependency sequence is
+  non-cyclic. Every negative row requires exact ordered zero counters for
+  delegate, H prepare/readback, mounted material/manifest trace, and fallback
+  writes. Existing actual-caller, no-fallback, CF-1-only, real-Nous,
+  rollback, W/U safe-readiness, and append-only boundaries remain intact.
+- Recovery status: ready for one separately fresh independent Task 109
+  re-review. This R4 completion record supersedes R3 only for the
+  reject-before-activity, swapped-tuple, and non-cyclic fixture-proof gap;
+  every earlier Task 109 claim record remains immutable evidence.
