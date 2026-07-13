@@ -123,3 +123,90 @@ dispatch, integration, or `neo` merge authority follows from this claim.
   gaps before any coordinator plan approval or Task A-FIXTURE/A-01 through
   A-10 authorization. This author does not self-approve, integrate, rebase,
   dispatch, or merge into `neo`.
+
+## RV-0-A-012 Scoped Repair Record — In Progress
+
+- Recorded at: `2026-07-13T15:29:47Z`.
+- Worker and branch: fresh Task 116 repair author on
+  `codex/task-116-resident-full-vision-w0-acceptance-plan-repair` in
+  `/home/drake/.codex/worktrees/task-116-resident-full-vision-w0-acceptance-plan-repair`,
+  from exact base `eecc5298608f8a1014f56d8002f4a104a4ee77fd`.
+- Status: `in-progress`; this forward-only repair record supersedes the prior
+  ready-for-review status only while the RV-0-A-012 repair is evaluated. It is
+  not implementation, CF-1, provider, browser/tailnet, production, review, or
+  integration authority.
+- Scope: modify only this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-acceptance-implementation.md`.
+  No registry, matrix, specification, production, runtime, UI, provider,
+  shared-contract, credential, browser, tailnet, or `neo` action is allowed.
+- Reviewer findings to repair: add safe `commandIdentity`, retry posture, and
+  fixed next-action evidence fields; pair A-01 through A-09 candidate tests
+  with executable producer commands; make A-04/A-06 Nous gates conditional;
+  require approved A-07 local compatibility and separate official A-08
+  Codex/xAI-or-safe-unavailable gates; replace the whole-DTO token check with
+  boundary-specific unsafe-material checks; assign A-FIXTURE/A-01 through A-10
+  durable claim paths, statuses, and commit scopes; and counterfactually audit
+  every repair control.
+- Documentation RED: the exact repair audit exited `1` before editing and
+  printed `RED: Task 116 repair controls missing (11): readonly commandIdentity:,
+  readonly retryPosture:, readonly nextActionMarker:, ## Producer Precondition
+  Commands, A116-A04-CONDITIONAL-NOUS, A116-A06-CONDITIONAL-NOUS,
+  A116-A07-APPROVED-LOCAL-COMPATIBILITY,
+  A116-A08-OFFICIAL-CODEX-XAI-GATES, ## Durable Acceptance Work Orders,
+  A116-EVIDENCE-BOUNDARY-MATERIAL, boundary-specific evidence check`.
+- Next evidence: run the strengthened plan-local audit, `git diff --check`,
+  `npm run factory:check`, and `npm run verify`; append only their actual
+  results, commit the two-file repair once, and stop for a different fresh
+  re-review.
+
+## RV-0-A-012 Scoped Repair Record — Ready For Fresh Review
+
+- Recorded at: `2026-07-13T15:33:14Z`.
+- Status: `ready-for-review`; this is repair completion evidence only. It does
+  not approve the plan, authorize CF-1/A-FIXTURE/A-01 through A-10, invoke a
+  provider, or permit integration, rebase, child dispatch, or a merge into
+  `neo`.
+- Repair GREEN: the exact strengthened section-local audit exited `0` and
+  printed `GREEN: Task 116 section-local acceptance-plan audit passed (146
+  direct local counterfactual mutations rejected).` It validates the original
+  contract rows plus the exact evidence fields, A-01 through A-09 producer
+  commands, A-04/A-06 conditional Nous gates, A-07 local compatibility,
+  A-08 official Codex/xAI gates, boundary-specific material checks, and every
+  A-FIXTURE/A-01 through A-10 work-order row in their owning plan sections.
+- Whitespace: `git diff --check` exited `0` with no output before this record.
+- Factory: `npm run factory:check` exited `0` and printed
+  `factory-readiness passed`.
+- Dependency recovery: the first required `npm run verify` attempt exited
+  before typecheck with `sh: line 1: tsc: command not found`; this isolated
+  repair worktree lacked `node_modules/.bin/tsc`. `npm ci --ignore-scripts`
+  restored lockfile-pinned ignored dependencies and left tracked-file scope
+  unchanged.
+- Full verification: the clean non-overlapping rerun of `npm run verify` exited
+  `0`: `typecheck passed`; 189 test files passed with 3 skipped; 2,228 tests
+  passed with 5 skipped; Vite built with the existing chunk-size warning; and
+  `factory-readiness passed`. SQLite experimental warnings were emitted by test
+  workers only. No provider, credential, browser, tailnet, or live command was
+  invoked.
+- Scope and handoff: only this append-only claim and the Task 116 acceptance
+  plan are changed. A different fresh reviewer must now lead with defects,
+  missing tests, spec drift, unsafe evidence, claim/ownership conflicts, and
+  verification gaps. This repair author does not self-review, integrate,
+  rebase, dispatch, or merge.
+
+## RV-0-A-012 Final Verification Addendum
+
+- Recorded at: `2026-07-13T15:35:22Z`.
+- Final checkout verification: the final non-overlapping `npm run verify`
+  process exited `0` after the ready-for-review record. It printed `typecheck
+  passed`; 189 test files passed with 3 skipped; 2,228 tests passed with 5
+  skipped; `tests passed`; a successful Vite build with its existing
+  chunk-size warning; and `factory-readiness passed`. SQLite experimental
+  warnings were emitted by test workers only.
+- Final documentation checks: the exact plan-local audit still printed
+  `GREEN: Task 116 section-local acceptance-plan audit passed (146 direct local
+  counterfactual mutations rejected).`; `git diff --check` exited `0`; and
+  `npm run factory:check` printed `factory-readiness passed`.
+- Commit/stop: make one commit containing exactly the two owned documentation
+  files, preserve the task-scoped branch and harness-owned worktree for a
+  different fresh reviewer, and stop. No merge, push, rebase, cleanup, or
+  `neo` action is authorized.
