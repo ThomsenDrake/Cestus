@@ -1509,3 +1509,27 @@ explicit implementation authorization.
 - Required GREEN: use one named section-local provider-plan contract map/structural parser with explicit required clauses and direct mutation-based fail polarity for each owned implementation task, secret/no-plaintext/no-fallback boundary, official subscription posture, deterministic/live split, rollback, acceptance, ownership, and merge/rebase conditions. Do not rely on incidental words elsewhere in the file.
 - Verification/review/live/merge: audit/direct mutations, `git diff --check`, factory/verify where host permits; no live provider; fresh reviewer required; not merge-ready.
 - Supersession: status only for RV-0-P-006; historical authorization and draft evidence remain immutable.
+
+## RV-0-T-012 — Task 113 unsafe-shape fixture-matrix recovery pending handoff
+
+- Recorded at: 2026-07-13T13:00:00Z
+- Fresh review verdict: Task113 original-promise race proof is now structural, but the claimed exhaustive forbidden-boundary audit accepts deletion of actual `unsafeShapes` entries `inputText`, `provider`, and `model`; it matches broad tokens rather than the strict fixture matrix.
+- Required next recovery: issue a fresh exact Task113 authorization from `0b3b88f2` for a section-local `unsafeShapes` parser/map that requires every exact key and direct local deletion/mutation counterfactual for every entry, while retaining the approved race-proof repair. No Task149–151/CF-1/production/provider work/child dispatch/merge, and never `neo`.
+- Status: not merge-ready; review evidence and host factory/verify blocks are preserved, not waived. This supersedes only RV-0-T-011 status.
+
+## RV-0-L-009 — Task 112 concrete-mutation and H-lifecycle recovery pending handoff
+
+- Recorded at: 2026-07-13T13:00:00Z
+- Fresh review verdict: stale-port and zero-effect proofs improved, but Task136 does not require H-owned `SpecialistHandoffProjection.lifecycle === "task-completed"` before L completes, and its checkpoint cases use labels instead of concrete per-binding mutations.
+- Required next recovery: issue a fresh exact Task112 authorization from `673453e4dea7066e903b071da6ff794d747cdea6` for full HandoffReadback plus H projection/lifecycle readback, direct non-`task-completed` lifecycle mutants, and one actual checkpoint mutation for each named binding through the zero-effect helper. No Task120/136/CF-1/production/provider work/child dispatch/merge, and never `neo`.
+- Status: not merge-ready; review evidence and host factory/verify blocks are preserved, not waived. This supersedes only RV-0-L-008 status.
+
+## RV-0-C-002 — Successor coordinator lease handoff
+
+- Recorded at: 2026-07-13T13:00:00Z
+- Outgoing coordinator checkpoint: clean continuity integration branch `codex/resident-agent-full-vision-program-plan-continuity` was at `19da8e581943c979d038cbf39f76d7933c5093a4` before this handoff record; no child branch was merged after Task111.
+- Successor task/branch/worktree: task ID `/root/review_task113_original_promise_tmp` reassigned as successor coordinator lease; `codex/resident-agent-full-vision-program-plan-successor-1`; `/tmp/cestus-resident-program-coordinator-successor-1`; initial clean head `19da8e581943c979d038cbf39f76d7933c5093a4`. It is waiting without edits and must rebase/advance to this record's commit before ownership begins.
+- Standing authority to be delivered after commit: umbrella `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`; program plan `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`; autonomous coordination through Wave5; every child still needs its own exact scoped coordinator authorization, `superpowers:subagent-driven-development` permission, documentation/code TDD as relevant, fresh review, verification-before-completion, model configuration, and no-`neo` rule.
+- Active child state at handoff: `/root/task114_provider_structural_recovery_tmp` is authoring Task114 only in `/tmp/cestus-task114-provider-structural` from `aa06cb47`; `/root/review_task112_fail_closed_tmp` returned the L-009 defects above (no merge); Task113 review returned T-012 defects above (no merge). No other live child may integrate or self-merge.
+- Exact next actions: deliver successor authority; rebase successor to this handoff commit; append/commit exact scoped recovery records for Task112 L-009 and Task113 T-012; use fresh implementers/reviewers or materially different structural audits; monitor/repair Task114; fresh-review and merge only approved lanes into the successor integration branch; dispatch Task115/U and Task116/A when capacity permits; complete Wave0B, then Task117 CF-1 and Waves1–5 under the standing delegation.
+- Environment continuity: original coordinator worktree Git metadata remains read-only and Node cannot spawn `git`; use the writable `/tmp/cestus-resident-program-coordinator` clone as integration source, record host verification limits truthfully, and never treat that host restriction as a product decision.
