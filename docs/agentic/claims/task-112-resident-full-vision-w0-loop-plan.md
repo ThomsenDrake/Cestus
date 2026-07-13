@@ -233,3 +233,28 @@ self-approve or merge.
   rerun in an environment that permits listener creation and Node child-process
   `git`. This forward record is not self-approval and does not mark any
   implementation task authorized or merged.
+
+## Append-Only Fail-Closed Checkpoint and Handoff Repair Started
+
+- Recorded at: 2026-07-13T12:47:33Z.
+- Status: in-progress under a fresh bounded coordinator authorization. Earlier
+  Task 112 records remain immutable historical evidence.
+- Repair worker/branch/worktree:
+  `codex/task-112-resident-full-vision-w0-loop-plan-fail-closed-repair` /
+  `/tmp/cestus-task112-fail-closed`, based at
+  `4e780c7e06a52dc89bbf64fd0fd4b2b312f860d7`.
+- Scoped authority: Task 112 fail-closed checkpoint/handoff documentation
+  repair only under Lane L
+  `docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md@baa980e04f126ce06f41398fc45169f112321e39`,
+  the durable-handoff design, and the governing program plan
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+  Stop after one verified repair commit and fresh review; do not begin Tasks
+  120 or 136, CF-1, production/provider work, child dispatch, or a merge into
+  `neo`.
+- Allowed files: this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md`.
+  No registry, specification, production, test, provider, or shared-contract
+  file may change.
+- Root cause and documentation RED are recorded after the prospective
+  structural audit demonstrates the baseline can admit a stale gateway spelling,
+  incomplete checkpoint no-effect proof, or narrowed H handoff result.
