@@ -155,3 +155,74 @@ coordinator recovery checkpoint, not a user gate.
   unsafe merge order, and any missing deterministic/no-effect counterfactual.
   No production work, Task 118, Task 149, Task 150, Task 151, provider use,
   dispatch, or merge into `neo` is authorized by this record.
+
+## RC-113-03 — Section-local no-effect and adoption recovery
+
+- Recorded at: 2026-07-13T03:12:31Z.
+- Status: ready-for-fresh-review after verification; this is a forward-only
+  repair record. RC-113-01 and RC-113-02, their source commits, and their
+  review evidence remain historical and unmodified.
+- Recovery worker/branch/worktree:
+  `codex/task-113-resident-full-vision-w0-trigger-plan-repair` /
+  `/home/drake/.codex/worktrees/task-113-resident-full-vision-w0-trigger-plan-repair`,
+  based at `4ff79542cd5e23e3c277285e79997e4f9da3efd5`.
+- Scoped coordinator authority: approved Lane T design
+  `docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md@9a571f628bef9c53725e20263cb687ec44dd9cd8`;
+  governing plan
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`;
+  Task 113 trigger-semantics/no-effect repair only; stop after one verified
+  repair plus fresh review, before Tasks 149--151, CF-1, production, provider
+  work, dispatch, or merge. It explicitly authorizes
+  `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD,
+  fresh review, and verification-before-completion; no self-merge into `neo`.
+- Allowed files: only
+  `docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md`
+  and this append-only claim. No production, test, spec, registry, provider,
+  or acceptance-matrix file changed.
+- Root cause and changed tactic: the prior plan asserted canonical source
+  sorting, equal-scope serialization, and a no-effect posture, but it did not
+  make the requested subclauses locally falsifiable. The repair adds focused
+  Task 118 RED/GREEN examples for reversed `sourceRefs`, equal-policy-scope
+  candidates, loser fresh read/evaluation, and every prohibited effect-shaped
+  input. A second, delimiter-safe section-local audit validates these exact
+  clauses and rejects 25 local counterfactuals, including the independently
+  owned Task 136 adoption-and-approval-revalidation proof.
+- Documentation RED: against the pre-repair `4ff79542` bytes, the recovery
+  audit command exited nonzero with `RED: missing reversed sourceRefs`. This
+  proves the former plan could not satisfy the new semantic-identity clause.
+- Documentation GREEN: the original section-local audit printed
+  `GREEN: Task 113 section-local plan audit passed (8 section checks; 10
+  counterfactuals rejected).` The added recovery audit printed
+  `GREEN: Task 113 recovery audit passed (2 section checks; 25
+  counterfactuals rejected).` Both audits fail if their selected local tokens
+  are removed and accept no counterfactual.
+- Local verification: `git diff --check` exited 0 and
+  `npm run factory:check` printed `factory-readiness passed`. `npm run verify`
+  evidence is recorded with the completed repair commit.
+- Dependency recovery: this isolated worktree initially lacked
+  `node_modules/.bin/tsc`, so `npm run verify` exited 127 before typecheck.
+  The coordinator authorized `npm ci --ignore-scripts` only in this worktree
+  to restore lockfile-defined dependencies; it may not create tracked
+  dependency changes and is followed by a fresh full verification run.
+- Fresh-review handoff: review the diff from
+  `4ff79542cd5e23e3c277285e79997e4f9da3efd5` to this repair commit. Lead with
+  append-only claim history, exact ownership, Task 118 semantic identity,
+  same-scope gate sharing and fresh-loser evaluation, no-effect field coverage,
+  Task 136 ownership/independent approval revalidation, audit section bounds
+  and counterfactual fail polarity, verification evidence, CF-1 stop boundary,
+  and the prohibition on a merge into `neo`.
+
+## RC-113-04 — Verification completion
+
+- Recorded at: 2026-07-13T03:16:00Z.
+- Status: verified and ready for a fresh review; this appends the final
+  verification evidence to RC-113-03 without rewriting that recovery record.
+- The coordinator-authorized `npm ci --ignore-scripts` restored only
+  lockfile-defined dependencies in this isolated worktree. `git status --short`
+  remained limited to the two Task 113 documents.
+- `npm run verify` exited 0: `typecheck passed`; 189 test files passed with 3
+  skipped; 2,228 tests passed with 5 skipped; the Vite build succeeded with its
+  existing chunk-size warning; and `factory-readiness passed`.
+- No provider or Nous call was made. This remains a documentation-only Task 113
+  repair and stops before CF-1, Task 118, Tasks 149--151, production, dispatch,
+  or any merge into `neo`.
