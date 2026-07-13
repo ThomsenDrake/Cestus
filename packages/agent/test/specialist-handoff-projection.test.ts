@@ -73,6 +73,64 @@ describe("specialist handoff projection", () => {
     }));
   });
 
+  it("projects ontology-bootstrap through the canonical lifecycle and fails closed on mismatched, cross-run, missing-artifact, or missing-provenance output", async () => {
+    const fixture = handoffFixture({
+      runId: "run_ontology_bootstrap_handoff_001",
+      taskId: "task_ontology_bootstrap_handoff_001",
+      runType: "ontology-bootstrap"
+    });
+    const terminal = completedRunEvent(fixture, { causationId: fixture.recordedEventId });
+    const projection = await project([
+      ...validRecordedEvents(fixture),
+      terminal,
+      taskStatusEvent(fixture, "completed", { causationId: terminal.id })
+    ], materializedStore(fixture));
+    expect(projection.state).toBe("task-completed");
+    expect(projection.selectedHandoff).toEqual(expect.objectContaining({
+      runId: fixture.runId,
+      taskId: fixture.taskId,
+      runType: "ontology-bootstrap"
+    }));
+
+    const mismatchedSchema = {
+      ...finalOutputStepEvent(fixture),
+      payload: { ...finalOutputStepEvent(fixture).payload, stepSchemaId: "evidence-triage-handoff.v1" }
+    } as KnowledgeEvent;
+    await expectInconsistent(
+      [startedEvent(fixture), mismatchedSchema, preparedEvent(fixture), recordedEvent(fixture)],
+      materializedStore(fixture),
+      "final-output-mismatch"
+    );
+
+    const crossRun = {
+      ...finalOutputStepEvent(fixture),
+      payload: { ...finalOutputStepEvent(fixture).payload, runId: "run_ontology_bootstrap_cross_run_001" }
+    } as KnowledgeEvent;
+    await expectInconsistent(
+      [startedEvent(fixture), crossRun, preparedEvent(fixture), recordedEvent(fixture)],
+      materializedStore(fixture),
+      "final-output-mismatch"
+    );
+
+    await expectInconsistent(
+      validRecordedEvents(fixture),
+      new ManifestMap().put(fixture.manifestHash, canonicalSpecialistHandoffJson(fixture.manifest)),
+      "handoff-material-missing"
+    );
+
+    const missingProvenance = handoffFixture({
+      runId: "run_ontology_bootstrap_missing_provenance_001",
+      taskId: "task_ontology_bootstrap_missing_provenance_001",
+      runType: "ontology-bootstrap",
+      contextPackRefs: [contextPackRef(hash444, "evt_missing_bootstrap_provenance")]
+    });
+    await expectInconsistent(
+      validRecordedEvents(missingProvenance),
+      materializedStore(missingProvenance),
+      "final-output-mismatch"
+    );
+  });
+
   it("fails closed when output-persisted material is missing or schema authority is forged", async () => {
     const fixture = handoffFixture();
     await expectInconsistent(
@@ -999,7 +1057,7 @@ function materializedStore(fixture: HandoffFixture): ManifestMap {
 interface HandoffFixture {
   readonly runId: string;
   readonly taskId?: string;
-  readonly runType: "evidence-triage";
+  readonly runType: "evidence-triage" | "ontology-bootstrap";
   readonly status: BuildSpecialistHandoffManifestInput["status"];
   readonly finalOutputEventId: string;
   readonly finalOutputStepId: string;
@@ -1062,6 +1120,7 @@ function validRecordedEvents(fixture: HandoffFixture): readonly KnowledgeEvent[]
 function handoffFixture(options: {
   readonly runId?: string;
   readonly taskId?: string | null;
+  readonly runType?: HandoffFixture["runType"];
   readonly status?: BuildSpecialistHandoffManifestInput["status"];
   readonly safeSummary?: string;
   readonly handoffId?: string;
@@ -1083,7 +1142,7 @@ function handoffFixture(options: {
 } = {}): HandoffFixture {
   const runId = options.runId ?? "run_handoff_001";
   const taskId = options.taskId === null ? undefined : options.taskId ?? "task_handoff_001";
-  const runType = "evidence-triage" as const;
+  const runType = options.runType ?? "evidence-triage";
   const status = options.status ?? "ready-for-review";
   const sourceEventId = `evt_started_${runId}`;
   const handoffRevision = options.handoffRevision ?? 1;
@@ -1250,7 +1309,7 @@ function compactBinding(
     handoffDtoHash: manifest.handoffDtoHash,
     runId: manifest.runId,
     ...(manifest.taskId === undefined ? {} : { taskId: manifest.taskId }),
-    runType: manifest.runType as "evidence-triage",
+    runType: manifest.runType as HandoffFixture["runType"],
     residentAgentId: manifest.residentAgentId,
     status: manifest.status,
     safeSummary: manifest.safeSummary,
@@ -1286,7 +1345,9 @@ function finalOutputStepEvent(fixture: HandoffFixture): KnowledgeEventOf<"agent.
     payload: {
       summary: "Final durable output artifacts are persisted.",
       stepKind: "final-output",
-      stepSchemaId: "evidence-triage-handoff.v1",
+      stepSchemaId: fixture.runType === "ontology-bootstrap"
+        ? "ontology-bootstrap-handoff.v1"
+        : "evidence-triage-handoff.v1",
       idempotencyKey: `specialist-final-output:${fixture.runId}:${fixture.taskId ?? "none"}:${fixture.runType}:${fixture.status}:${fixture.materialHash}`,
       handoffMaterialArtifactHash: fixture.materialHash,
       inputArtifactHashes: [...new Set([...fixture.manifest.contextPackRefs.flatMap((ref) => [ref.contentHash, ...(ref.artifactHashes ?? [])]), ...(fixture.manifest.promptArtifactHash === undefined ? [] : [fixture.manifest.promptArtifactHash])])],
