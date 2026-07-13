@@ -373,3 +373,78 @@ coordinator recovery checkpoint, not a user gate.
   polarity, exhaustive forbidden-boundary preservation, ownership, and the
   recorded host verifier blockers. Do not begin dependent tasks or merge into
   `neo`.
+
+## RC-113-09 — Concrete unsafeShapes fixture-matrix repair started
+
+- Recorded at: 2026-07-13T13:15:00Z.
+- Status: in-progress; this is a forward-only Task 113 documentation repair.
+  RC-113-01 through RC-113-08 and their claims, commits, and verifier evidence
+  remain immutable.
+- Recovery worker/branch/worktree:
+  `codex/task-113-resident-full-vision-w0-trigger-plan-fixture-matrix-repair` /
+  `/tmp/cestus-task113-fixture-matrix-repair`, based at
+  `0b3b88f21c06ce8c577da858fed2777e21c8e3e4`.
+- Scoped authority: Task 113 fixture-matrix documentation repair only under
+  approved Lane T design
+  `docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md@9a571f628bef9c53725e20263cb687ec44dd9cd8`
+  and governing program plan
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+  Stop after one documentation repair commit and fresh review, before
+  Tasks 149--151, CF-1, production/provider work, child dispatch, or a merge
+  into `neo`. The user-confirmed reported GPT-5 satisfies the required GPT-5.6
+  Terra / Extra High configuration; no fallback was selected or inspected.
+- Allowed files remain only this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md`.
+  Every production, test, runtime, UI, provider, shared-contract,
+  specification, registry, template, and acceptance file remains forbidden.
+- Documentation RED against base `0b3b88f21c06ce8c577da858fed2777e21c8e3e4`:
+  the prospective fixture-matrix audit exited nonzero with
+  `original-promise audit missing fixture-local requirement: const unsafeShapeEntries = new Map([`.
+  The base audit accepted removal of concrete strict-fixture fields because it
+  checked broad Task 118 tokens rather than the `unsafeShapes` map itself.
+- Repair and GREEN/verifier evidence are appended only after the fixture-local
+  parser/map, all direct field counterfactuals, and required host gates run.
+
+## RC-113-10 — Concrete unsafeShapes fixture-matrix repair verified
+
+- Recorded at: 2026-07-13T13:20:00Z.
+- Status: ready for fresh review. This appends completion evidence for the one
+  authorized Task 113 documentation repair and does not self-approve, dispatch,
+  start CF-1 or Tasks 149--151, invoke a provider, or merge into `neo`.
+- Repair: the original-promise audit now extracts exactly one concrete
+  `unsafeShapes` object from the Task 118 section, parses its own map of all 27
+  exact entries, and requires exact key/value matches. The map explicitly
+  includes `inputText`, `provider`, and `model`; another token in Task 118 or
+  plan prose cannot satisfy a missing fixture entry. Its direct local
+  counterfactuals delete and change every entry, including the final
+  no-trailing-comma `rawBytes` entry. One focused prospective GREEN attempt
+  first failed because the parser incorrectly required that final comma; the
+  corrected parser recognizes the real fixture's delimiter rule before the
+  final GREEN run.
+- Documentation GREEN: the established section-local audit printed `GREEN:
+  Task 113 section-local plan audit passed (8 section checks; 10
+  counterfactuals rejected).`; the recovery audit printed `GREEN: Task 113
+  recovery audit passed (2 section checks; 25 counterfactuals rejected).`; and
+  the repaired original-promise structural audit printed `GREEN: Task 113
+  original-promise structural audit passed (94 counterfactuals rejected).`
+  The latter total contains all 40 prior structural/matrix cases plus two
+  fail-polarity cases for each of the 27 concrete `unsafeShapes` entries.
+- Independent direct mutation evidence: a separate Node command parsed only
+  the concrete Task 118 fixture and rejected all 54 direct deletion/value-change
+  variants: `GREEN: independent concrete unsafeShapes mutations rejected (54
+  variants).`
+- Required gates: `git diff --check` exited 0. `npm run factory:check` reached
+  `scripts/check-agent-readiness.mjs` but failed only because the sandbox denied
+  `spawnSync git EPERM` at `git ls-files`. `npm run verify` exited 127 before
+  typecheck because this worktree has no `node_modules/.bin/tsc` (`sh: tsc:
+  command not found`). No dependency, check-script, sandbox, or tracked
+  workaround was changed; these are recorded host/provisioning blocks.
+- Scope: before the final claim append, the worktree status contained only this
+  claim and the authorized proactive-trigger implementation plan. No provider
+  or Nous call was made.
+- Fresh-review handoff: review the one forward commit from
+  `0b3b88f21c06ce8c577da858fed2777e21c8e3e4` for fixture-local parsing, exact
+  27-key coverage, deletion/mutation fail polarity, resistance to prose or
+  unrelated Task 118 tokens, prior original-Promise proof preservation,
+  ownership, and the recorded host verifier blocks. Do not self-approve or
+  merge, and do not begin any dependent task.

@@ -97,7 +97,11 @@ later-evaluator, and prose/count-only variants. It also preserves the exhaustive
 forbidden input/effect matrix: prompt artifact/resolver, model
 messages/invocations, provider requests, subscription/API-key/credential
 shapes, harnesses, specialists, domain services, and the scheduler/tool/
-parser/approval/task/handoff/artifact/projection/graph boundaries.
+parser/approval/task/handoff/artifact/projection/graph boundaries. The audit
+parses the sole concrete Task 118 `unsafeShapes` fixture itself, requiring each
+exact key/value entry there; prose or another occurrence elsewhere in Task 118
+cannot satisfy a fixture field. It directly deletes and mutates each concrete
+entry with fail polarity.
 
 ```bash
 node --input-type=module <<'NODE'
@@ -161,6 +165,88 @@ const matrixTokens = [
   "provider requests", "subscription/API-key/credential", "harnesses", "specialists", "domain services",
   "scheduler, tool, parser, approval, task, handoff, artifact, projection, and graph"
 ];
+const unsafeShapeEntries = new Map([
+  ["inputText", '"unsafe prompt"'],
+  ["promptArtifact", '{ text: "unsafe prompt artifact" }'],
+  ["promptResolver", "{ resolve: sink }"],
+  ["promptArtifactResolver", "{ resolve: sink }"],
+  ["provider", "{ invoke: sink }"],
+  ["providerRequest", "{ execute: sink }"],
+  ["model", "{ invoke: sink }"],
+  ["modelMessages", '[{ role: "user", content: "unsafe model message" }]'],
+  ["modelInvocation", "{ invoke: sink }"],
+  ["subscription", "{ authorize: sink }"],
+  ["apiKey", '"unsafe-api-key"'],
+  ["credential", "{ reveal: sink }"],
+  ["credentialRef", "{ resolve: sink }"],
+  ["harness", "{ run: sink }"],
+  ["specialist", "{ start: sink }"],
+  ["domainService", "{ execute: sink }"],
+  ["tool", "{ execute: sink }"],
+  ["parser", "{ parse: sink }"],
+  ["approval", "{ consume: sink }"],
+  ["handoff", "{ append: sink }"],
+  ["artifactStore", "{ put: sink }"],
+  ["projection", "{ mutate: sink }"],
+  ["graph", "{ accept: sink }"],
+  ["task", "{ claim: sink }"],
+  ["scheduler", "{ enqueue: sink }"],
+  ["sourceBytes", "new Uint8Array([1])"],
+  ["rawBytes", "new Uint8Array([2])"]
+]);
+const unsafeShapesFixture = (doc) => {
+  const task = section(doc, task118Heading);
+  const marker = "    const unsafeShapes = {\n";
+  if (count(task, /^    const unsafeShapes = \{$/gm) !== 1) {
+    throw new Error("unsafeShapes fixture: expected exactly one concrete fixture");
+  }
+  const start = task.indexOf(marker);
+  const end = task.indexOf("\n    };", start);
+  if (start < 0 || end < 0) throw new Error("unsafeShapes fixture: missing concrete fixture");
+  const fixture = task.slice(start, end + "\n    };".length);
+  return { task, fixture, body: task.slice(start + marker.length, end) };
+};
+const unsafeShapesMap = (doc) => {
+  const { body } = unsafeShapesFixture(doc);
+  const actual = new Map();
+  const lines = body.split("\n");
+  for (const [index, line] of lines.entries()) {
+    const match = /^      ([A-Za-z][A-Za-z0-9]*): /.exec(line);
+    if (!match) throw new Error(`unsafeShapes fixture: malformed entry ${line}`);
+    const [, key] = match;
+    const requiresTrailingComma = index < lines.length - 1;
+    if (line.endsWith(",") !== requiresTrailingComma) {
+      throw new Error(`unsafeShapes fixture: malformed delimiter for ${key}`);
+    }
+    const value = line.slice(match[0].length, requiresTrailingComma ? -1 : undefined);
+    if (actual.has(key)) throw new Error(`unsafeShapes fixture: duplicate key ${key}`);
+    actual.set(key, value);
+  }
+  return actual;
+};
+const validateUnsafeShapesFixture = (doc) => {
+  const actual = unsafeShapesMap(doc);
+  if (actual.size !== unsafeShapeEntries.size) {
+    throw new Error(`unsafeShapes fixture: expected ${unsafeShapeEntries.size} entries, got ${actual.size}`);
+  }
+  for (const [key, value] of unsafeShapeEntries) {
+    if (actual.get(key) !== value) throw new Error(`unsafeShapes fixture: missing or changed ${key}`);
+  }
+};
+const replaceUnsafeShapeEntry = (doc, key, replacement) => {
+  const expected = unsafeShapeEntries.get(key);
+  if (!expected) throw new Error(`unsafeShapes fixture: unknown expected key ${key}`);
+  const { fixture } = unsafeShapesFixture(doc);
+  const entry = `      ${key}: ${expected}${key === "rawBytes" ? "" : ","}`;
+  if (fixture.split(entry).length !== 2) {
+    throw new Error(`unsafeShapes fixture: counterfactual setup failed for ${key}`);
+  }
+  const changed = fixture.replace(entry, replacement);
+  const task = section(doc, task118Heading);
+  const taskStart = doc.indexOf(task);
+  const fixtureStart = task.indexOf(fixture);
+  return doc.slice(0, taskStart + fixtureStart) + changed + doc.slice(taskStart + fixtureStart + fixture.length);
+};
 const validate = (doc) => {
   const task = section(doc, task118Heading);
   const matrix = section(doc, matrixHeading);
@@ -170,6 +256,7 @@ const validate = (doc) => {
   for (const token of matrixTokens) {
     if (!matrix.includes(token)) throw new Error(`matrix: missing ${token}`);
   }
+  validateUnsafeShapesFixture(doc);
   const race = withoutComments(raceBlock(doc));
   requireMatch(race, /^\s*const winningPromise = evaluateResidentTrigger\(winningInput\);\s*$/m, "winningPromise binding");
   requireMatch(race, /^\s*const losingPromise = evaluateResidentTrigger\(losingInput\);\s*$/m, "losingPromise binding");
@@ -216,6 +303,10 @@ const variants = [
   ...matrixTokens.map((token) => [
     `matrix ${token}`,
     (doc) => replaceSection(doc, matrixHeading, token)
+  ]),
+  ...[...unsafeShapeEntries].flatMap(([key]) => [
+    [`unsafeShapes fixture removal ${key}`, (doc) => replaceUnsafeShapeEntry(doc, key, "")],
+    [`unsafeShapes fixture mutation ${key}`, (doc) => replaceUnsafeShapeEntry(doc, key, `      ${key}: undefined,`)]
   ])
 ];
 for (const [label, mutate] of variants) {
