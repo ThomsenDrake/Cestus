@@ -313,3 +313,72 @@ RUNNER
   Task 111 plan. No production, test, provider, registry, specification, or
   CF-1 file was modified. This repairer stops at the required fresh re-review
   gate and does not dispatch, implement, or merge any child work.
+
+## Autonomous Schema-Complete Tuple Recovery — 2026-07-12
+
+- Recovery authorization: the assigned coordinator issued a new Task 111-only,
+  documentation-only recovery authorization under Lane W specification
+  `docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb`
+  and governing program plan
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+  It stops after one verified recovery commit and a separately fresh re-review;
+  it explicitly authorizes `superpowers:subagent-driven-development`,
+  documentation RED/GREEN as TDD, fresh review, and
+  verification-before-completion. Tasks 124/125/137, CF-1 implementation,
+  production/provider work, dispatch, and any merge are prohibited. No merge
+  into `neo` or an integration branch is authorized. The user-confirmed host
+  configuration is GPT-5.6 Terra / Extra High.
+- Scope remains only this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md`.
+  All earlier Task 111 claims, plans, repair attempts, reviews, and registry
+  entries remain immutable historical evidence.
+- Root-cause checkpoint: the second repair's section-local audit sampled a
+  hand-picked subset of the immutable admission tuple. It therefore accepted a
+  mutant that removed `SupervisorLeaseReadbackEvidence.authorityEvidenceId`,
+  despite the required authority-to-lease binding. Sampling cannot prove that
+  the persisted scope contract retains every authority, lease, policy/lock,
+  high-water, workspace/resident/epoch, and cross-evidence binding.
+
+### Schema-Complete Documentation RED/GREEN
+
+- RED: the stored prior audit was run against an in-memory mutant that renamed
+  `SupervisorLeaseReadbackEvidence.authorityEvidenceId`. It still printed
+  `GREEN: Task 111 section-local lifecycle audit passed (19 counterfactuals
+  rejected).`; the recovery harness then exited 1 with `RED FAILURE: prior
+  audit accepted a removed verified-lease authorityEvidenceId binding`.
+- GREEN: the superseding stored audit enumerates the complete declared
+  authority identity/mount, verified lease, policy/lock, and high-water field
+  maps with exact field names and types. It requires Task 124 and Task 125's
+  concrete operations to freeze one canonical tuple and compare both mounted
+  append and readback values to it before a recovery wake. Its generated
+  counterfactual matrix removes every canonical field/binding one at a time and
+  also weakens each concrete tuple equality check; the exact audit now reports
+  `GREEN: Task 111 section-local lifecycle audit passed (43 counterfactuals
+  rejected).`
+- Pending before commit: owned-file review, `git diff --check`, factory gate,
+  full verifier, clean-worktree check, and a fresh independent reviewer. This
+  recovery worker will not approve, dispatch, integrate, or merge its own work.
+
+### Schema-Complete Recovery Verification And Handoff
+
+- The focused RED mutation was rejected with `canonical admission
+  SupervisorLeaseReadbackEvidence: missing or changed authorityEvidenceId:
+  string`; the unmutated stored audit passed and rejected all 43 generated
+  canonical-field, binding, ordering, equality, no-fallback, stop, and
+  ownership counterfactuals.
+- `git diff --check` exited 0 with no output and `npm run factory:check` exited
+  0 with `factory-readiness passed`.
+- Initial full verification stopped before typecheck with `sh: line 1: tsc:
+  command not found`. Root-cause inspection identified an unpopulated ignored
+  dependency tree in this isolated worktree, not a documentation or source
+  defect. `npm ci --ignore-scripts` restored the existing lockfile-pinned
+  dependencies without tracked changes; `npm ls typescript --depth=0` then
+  reported `typescript@5.9.3`.
+- Fresh full verification: `CI=1 npm run verify` exited 0 with typecheck
+  passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5
+  skipped; Vite built successfully (its existing chunk-size warning only); and
+  factory readiness passed.
+- Handoff status: ready for the required fresh, independent Task 111 recovery
+  review. The recovery commit is documentation-only and will contain only the
+  two authorized files. This worker does not self-approve, dispatch, integrate,
+  or merge it.
