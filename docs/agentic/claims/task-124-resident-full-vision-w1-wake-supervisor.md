@@ -242,3 +242,47 @@ candidate remains preserved and unintegrated.
   `packages/agent/test/wake-supervisor.test.ts`. The author does not
   self-integrate or merge `neo`; a reviewer distinct from every prior Task124
   author and reviewer is required next.
+
+## Fresh Review Rejection And Bounded Forward Repair — 2026-07-13
+
+- Fresh review returned `NEEDS-CHANGES` for candidate
+  `22784e301f98b866d27171b518830538f67cecf3`. The candidate remains preserved
+  in forward history. The coordinator authorized one bounded repair in the
+  same three-file scope; no reset, rebase, self-integration, or `neo` change is
+  authorized.
+- Correction to the preceding second-repair evidence: “makes closure terminal
+  for the epoch” applies to `stop()` and to the already-cancelled admission
+  revision, not to a successfully completed pause. A paused supervisor must
+  admit a later fresh `resume` or `recover` cycle through new authority, lease,
+  and reconciliation validation. Conversely, `stop()` while
+  `pauseAndReadBack()` is pending must prevent paused evidence or a completed
+  result from being published.
+- RED: the exact focused command failed four intended tests. It proved the
+  candidate blocked valid post-pause resume, published completed paused
+  evidence after stop won a pending readback, left repeated invalid recovery
+  reconciliation at zero attempts, and rejected or re-keyed the same outage
+  after lease/high-water renewal while recording new-command causation.
+- GREEN: admission cancellation now uses a monotonic closure revision so a
+  completed pause can start a fresh revalidated resume/recovery cycle without
+  reviving the cancelled cycle. Recovery readback/reconciliation rejection
+  consumes the exact durable attempt budget and becomes
+  `recovery-exhausted`. Reconciliation identity uses only the frozen
+  workspace/epoch/claim/attempt/safe-observation/prior-claim tuple, and the
+  durable record uses revalidated active-claim causation.
+- GREEN evidence: `npm test -- packages/agent/test/wake-supervisor.test.ts
+  packages/agent/test/scheduler.test.ts` exited `0` with 2 files and 40 tests
+  passing. `git diff --check` was empty and `npm run factory:check` printed
+  `factory-readiness passed`. The serialized full-verifier slot has been
+  requested and `npm run verify` has not started for this repair.
+
+## Bounded Forward Repair Retained Full Verification — 2026-07-13
+
+- The coordinator granted the Task124-repair-only serialized verifier slot.
+  Exactly one retained `npm run verify` then exited `0` in this isolated
+  worktree: typecheck passed; 191 test files passed with 3 skipped; 2,278 tests
+  passed with 5 skipped; the Vite production build passed; and
+  `factory-readiness passed`.
+- The repair remains limited to this append-only claim,
+  `packages/agent/src/wake-supervisor.ts`, and
+  `packages/agent/test/wake-supervisor.test.ts`. It requires a fresh reviewer
+  and is not authorized for author integration or any `neo` merge.

@@ -13,17 +13,17 @@ import {
 } from "../src/wake-supervisor.js";
 
 describe("bounded wake supervisor", () => {
-  it("runs start and pause through typed immutable lifecycle boundaries, then requires a fresh epoch after closure", async () => {
+  it("allows fresh resume and recovery admission after a completed pause", async () => {
     const harness = createHarness();
     const supervisor = createWakeSupervisor(harness.input);
 
     await expect(supervisor.start()).resolves.toMatchObject({ schemaVersion: "resident-wake-command-result.v1", outcome: "accepted" });
     await expect(supervisor.pause(command("pause_1"))).resolves.toMatchObject({ outcome: "completed", evidence: [{ schemaVersion: "resident-wake-evidence.v1", transition: "paused" }] });
-    await expect(supervisor.resume(command("resume_1"))).resolves.toMatchObject({ outcome: "blocked" });
-    await expect(supervisor.recover(command("recover_1"))).resolves.toMatchObject({ outcome: "blocked" });
+    await expect(supervisor.resume(command("resume_1"))).resolves.toMatchObject({ outcome: "accepted" });
+    await expect(supervisor.recover(command("recover_1"))).resolves.toMatchObject({ outcome: "accepted" });
     await expect(supervisor.stop()).resolves.toBeUndefined();
 
-    expect(harness.operations).toEqual(["wake"]);
+    expect(harness.operations).toEqual(["wake", "resume", "recovery"]);
     expect(harness.traces).toContain("authority.invalidate:shutdown");
     await expect(supervisor.signal(signal("late"))).resolves.toMatchObject({ outcome: "blocked", blocked: { category: "workspace-unavailable" } });
   });
@@ -138,8 +138,9 @@ describe("bounded wake supervisor", () => {
       expect(harness.reconciliationAppendInputs, `${close}/${pendingAt} reconciliation append`).toHaveLength(0);
       if (pendingAt === "authority") expect(harness.leaseInputs, `${close}/${pendingAt} lease`).toHaveLength(0);
       if (close === "pause") {
-        await expect(harness.supervisor.resume(command(`late_resume_${pendingAt}`))).resolves.toMatchObject({ outcome: "blocked" });
-        await expect(harness.supervisor.recover(command(`late_recover_${pendingAt}`))).resolves.toMatchObject({ outcome: "blocked" });
+        await expect(harness.supervisor.resume(command(`late_resume_${pendingAt}`))).resolves.toMatchObject({ outcome: "accepted" });
+        await expect(harness.supervisor.recover(command(`late_recover_${pendingAt}`))).resolves.toMatchObject({ outcome: "accepted" });
+        expect(harness.runtimeCalls, `${close}/${pendingAt} fresh runtime`).toHaveLength(2);
       }
     }
   });
@@ -175,6 +176,54 @@ describe("bounded wake supervisor", () => {
       },
       evidence: [{ transition: "resumed", workspaceId: "workspace_a", supervisorEpoch: "epoch_a", lockStateDigest: "sha256:lock_a", highWaterMark: "event:42" }]
     });
+  });
+
+  it("does not publish paused or completed when stop wins a pending pause readback", async () => {
+    const harness = createP1Harness({ pendingAt: "pause-readback" });
+    const pausing = harness.supervisor.pause(command("pause_before_stop"));
+    await harness.waitUntilPending();
+
+    await harness.supervisor.stop();
+    harness.releasePending();
+
+    await expect(pausing).resolves.toMatchObject({
+      outcome: "blocked",
+      evidence: [],
+      status: { lifecycleEvidence: [] },
+      blocked: { category: "supervisor-stopped" }
+    });
+  });
+
+  it("consumes the recovery budget for repeated invalid reconciliation readbacks", async () => {
+    const harness = createP1Harness({ activeClaim: true, invalidReconciliationReadback: true, maximumRecoveryAttempts: 2 });
+
+    await expect(harness.supervisor.recover(command("recover_invalid_one"))).resolves.toMatchObject({
+      outcome: "blocked",
+      status: { recoveryAttempts: 1 },
+      blocked: { category: "workspace-readback-failed" }
+    });
+    await expect(harness.supervisor.recover(command("recover_invalid_two"))).resolves.toMatchObject({
+      outcome: "blocked",
+      status: { recoveryAttempts: 2, supervisorState: "unrecoverable" },
+      blocked: { category: "recovery-exhausted" }
+    });
+    expect(harness.runtimeCalls).toHaveLength(0);
+  });
+
+  it("keeps the canonical reconciliation key stable across lease/high-water renewal and uses active-claim causation", async () => {
+    const first = createP1Harness({ activeClaim: true, leaseEventId: "evt_lease_first", highWaterMark: "event:42" });
+    const renewed = createP1Harness({ activeClaim: true, leaseEventId: "evt_lease_renewed", highWaterMark: "event:43" });
+
+    await expect(first.supervisor.recover(command("recover_first_lease"))).resolves.toMatchObject({ outcome: "accepted" });
+    await expect(renewed.supervisor.recover(command("recover_renewed_lease"))).resolves.toMatchObject({ outcome: "accepted" });
+
+    const firstRecord = first.reconciliationAppendInputs[0]?.record;
+    const renewedRecord = renewed.reconciliationAppendInputs[0]?.record;
+    const canonicalKey = `wake-reconcile:${JSON.stringify(["workspace_a", "epoch_a", "claim_a", "attempt_a", "obs_outage", "evt_claim"])}`;
+    expect(firstRecord?.reconciliationIdempotencyKey).toBe(canonicalKey);
+    expect(renewedRecord?.reconciliationIdempotencyKey).toBe(canonicalKey);
+    expect(firstRecord?.causation).toEqual({ causationId: "cause:prior", correlationId: "corr:prior" });
+    expect(renewedRecord?.causation).toEqual({ causationId: "cause:prior", correlationId: "corr:prior" });
   });
 });
 
@@ -252,7 +301,7 @@ function createHarness(options: { activeClaim?: boolean; heldLease?: boolean; mu
   return { input, traces, operations, leaseInputs, runtimeCalls, reconciliationLookupInputs, reconciliationAppendInputs };
 }
 
-type P1PendingAt = "authority" | "lease" | "reconciliation";
+type P1PendingAt = "authority" | "lease" | "reconciliation" | "pause-readback";
 type P1ReadbackKind = "empty-high-water" | "stale-high-water" | "getter" | "proxy-getter";
 
 function createP1Harness(options: {
@@ -261,6 +310,10 @@ function createP1Harness(options: {
   readonly priorClaimEventId?: string;
   readonly pendingAt?: P1PendingAt;
   readonly readbackKind?: P1ReadbackKind;
+  readonly invalidReconciliationReadback?: boolean;
+  readonly maximumRecoveryAttempts?: number;
+  readonly leaseEventId?: string;
+  readonly highWaterMark?: string;
   readonly completedRuntimeEvidence?: { readonly transition: WakeLifecycleEvidenceDto["transition"]; readonly highWaterMark: string };
 } = {}) {
   const epoch = "epoch_a";
@@ -271,6 +324,8 @@ function createP1Harness(options: {
   let pendingResolve: (() => void) | undefined;
   let pendingReached = false;
   const pending = new Promise<void>((resolve) => { pendingResolve = resolve; });
+  const expectedHighWaterMark = options.highWaterMark ?? "event:42";
+  const leaseEventId = options.leaseEventId ?? "evt_lease_a";
   const identity = { workspaceId: "workspace_a", residentId: "agent_default" as const, supervisorEpoch: epoch, workspaceIdentityEventId: "evt_identity_a", mountEvidenceId: "evt_mount_a", authorityEvidenceId: "evt_authority_a" };
   const activeClaim = {
     workspaceId: "workspace_a", residentId: "agent_default" as const, supervisorEpoch: epoch,
@@ -282,7 +337,7 @@ function createP1Harness(options: {
     category: "workspace-unavailable" as const, priorClaimEventId: activeClaim.priorClaimEventId, priorClaimLeaseId: activeClaim.priorClaimLeaseId, priorAuthorityEvidenceId: "evt_authority_a", highWaterBeforeOutage: "event:42"
   };
   const input: CreateWakeSupervisorInput = {
-    residentId: "agent_default", supervisorEpoch: epoch, workspaceId: "workspace_a", policyVersion: "policy.v1", policyDigest: "sha256:policy_a", lockStateDigest: "sha256:lock_a", expectedHighWaterMark: "event:42",
+    residentId: "agent_default", supervisorEpoch: epoch, workspaceId: "workspace_a", policyVersion: "policy.v1", policyDigest: "sha256:policy_a", lockStateDigest: "sha256:lock_a", expectedHighWaterMark,
     authority: {
       async revalidate() {
         if (options.pendingAt === "authority") { pendingReached = true; await pending; }
@@ -295,12 +350,12 @@ function createP1Harness(options: {
       async readOrAcquire(admission) {
         leaseInputs.push(admission);
         if (options.pendingAt === "lease") { pendingReached = true; await pending; }
-        const mark = options.readbackKind === "empty-high-water" ? "" : options.readbackKind === "stale-high-water" ? "event:41" : "event:42";
+        const mark = options.readbackKind === "empty-high-water" ? "" : options.readbackKind === "stale-high-water" ? "event:41" : expectedHighWaterMark;
         const readback: SupervisorLeaseReadbackEvidence = {
           schemaVersion: "resident-supervisor-lease-readback.v1", ...identity, policyVersion: "policy.v1", policyDigest: "sha256:policy_a", lockStateDigest: "sha256:lock_a", highWaterMark: mark,
-          leaseEventId: "evt_lease_a", readbackEventId: "evt_lease_readback_a", expiresAt: "2026-07-12T01:00:00.000Z", causation: { causationId: admission.causationId, correlationId: admission.correlationId },
-          policyAndLock: { authorityEvidenceId: "evt_authority_a", mountEvidenceId: "evt_mount_a", leaseEventId: "evt_lease_a", leaseReadbackEventId: "evt_lease_readback_a", policyVersion: "policy.v1", policyDigest: "sha256:policy_a", lockStateDigest: "sha256:lock_a", readbackEventId: "evt_policy_lock_readback" },
-          highWater: { authorityEvidenceId: "evt_authority_a", mountEvidenceId: "evt_mount_a", leaseEventId: "evt_lease_a", leaseReadbackEventId: "evt_lease_readback_a", highWaterMark: mark, readbackEventId: "evt_high_water_readback" }
+          leaseEventId, readbackEventId: `readback:${leaseEventId}`, expiresAt: "2026-07-12T01:00:00.000Z", causation: { causationId: admission.causationId, correlationId: admission.correlationId },
+          policyAndLock: { authorityEvidenceId: "evt_authority_a", mountEvidenceId: "evt_mount_a", leaseEventId, leaseReadbackEventId: `readback:${leaseEventId}`, policyVersion: "policy.v1", policyDigest: "sha256:policy_a", lockStateDigest: "sha256:lock_a", readbackEventId: "evt_policy_lock_readback" },
+          highWater: { authorityEvidenceId: "evt_authority_a", mountEvidenceId: "evt_mount_a", leaseEventId, leaseReadbackEventId: `readback:${leaseEventId}`, highWaterMark: mark, readbackEventId: "evt_high_water_readback" }
         };
         if (options.readbackKind === "getter") Object.defineProperty(readback, "workspaceId", { enumerable: true, get() { getterReads += 1; return "workspace_a"; } });
         if (options.readbackKind === "proxy-getter") return { outcome: "acquired-and-read-back" as const, readback: new Proxy(readback, { get(target, property, receiver) { getterReads += 1; return Reflect.get(target, property, receiver); }, getOwnPropertyDescriptor(target, property) { if (property === "workspaceId") return { enumerable: true, configurable: true, get() { getterReads += 1; return "workspace_a"; } }; return Reflect.getOwnPropertyDescriptor(target, property); } }) };
@@ -314,7 +369,7 @@ function createP1Harness(options: {
       },
       async appendAndReadBack(reconciliationInput) {
         reconciliationAppendInputs.push(reconciliationInput);
-        return { record: reconciliationInput.record, reconciliationEventId: "evt_reconciliation", readbackEventId: "evt_reconciliation_readback", admission: reconciliationInput.admission };
+        return { record: options.invalidReconciliationReadback ? { ...reconciliationInput.record, claimId: "claim_mismatch" } : reconciliationInput.record, reconciliationEventId: "evt_reconciliation", readbackEventId: "evt_reconciliation_readback", admission: reconciliationInput.admission };
       }
     },
     runtime: {
@@ -339,7 +394,8 @@ function createP1Harness(options: {
         };
       }
     },
-    lifecycle: { async pauseAndReadBack({ command: pauseCommand }) { return { ok: true as const, evidence: lifecycleEvidence({ command: pauseCommand, epoch }) }; } },
+    lifecycle: { async pauseAndReadBack({ command: pauseCommand }) { if (options.pendingAt === "pause-readback") { pendingReached = true; await pending; } return { ok: true as const, evidence: lifecycleEvidence({ command: pauseCommand, epoch }) }; } },
+    ...(options.maximumRecoveryAttempts === undefined ? {} : { maximumRecoveryAttempts: options.maximumRecoveryAttempts }),
     now: () => "2026-07-12T00:00:00.000Z"
   };
   const supervisor = createWakeSupervisor(input);
