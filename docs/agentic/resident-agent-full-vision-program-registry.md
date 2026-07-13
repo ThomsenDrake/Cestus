@@ -932,6 +932,32 @@ explicit implementation authorization.
 - Archive check: original author handoff, claim, review package, and reviewer findings are retained; repair handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
 - Supersession: this record supersedes RV-0-R-003 only for current repair status. Original Task 109 dispatch and plan evidence remain immutable.
 
+## RV-0-W-006 — Task 111 lifecycle-seam and audit-strengthening repair dispatch
+
+- Recorded at: 2026-07-13T00:44:00Z
+- Role: coordinator
+- Lane and wave: W / 0B
+- Task ID and claim: task-111-resident-full-vision-w0-wake-plan / docs/agentic/claims/task-111-resident-full-vision-w0-wake-plan.md
+- Task thread ID: /root/task111_wake_plan (original author); /root/review_task111_plan (fresh reviewer); /root/task111_wake_plan_repair (scoped fresh repairer)
+- Branch and worktree: codex/task-111-resident-full-vision-w0-wake-plan-repair / /home/drake/.codex/worktrees/task-111-resident-full-vision-w0-wake-plan-repair
+- Base commit and required head: 9083a51d8e84a4a57197f6e287405b62e28dc82e / one forward-only owned-file repair commit followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md; docs/agentic/claims/task-111-resident-full-vision-w0-wake-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: reviewed Task 111 plan 9083a51d; approved Lane W specification 2620e51e; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued scoped authorization under Standing Coordinator Delegation authorizes Task 111 lifecycle-seam and audit-strengthening repair only. Allowed range is one verified documentation repair commit plus fresh re-review; wave stop is before Tasks 124/125/137, CF-1 implementation dispatch, production work, provider invocation, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: repairing; repairer must append its evidence and preserve prior author/review records.
+- RED command and observed failure: fresh review proved the claim audit passes when reconciliation shape and readback rules are removed, found Task 124 uses a durable supervisor lease without declaring a typed lease port, found Task 125 leaves claim reconciliation port/signature undefined, and found no deterministic `stop()` counterfactual covering intake/timer/watcher closure, authority invalidation, and no post-stop wake.
+- GREEN command and observed result: pending a section-local audit that rejects absent typed lease/reconciliation ports and ordering, missing start/stop invalidation proof, unsafe workspace-unavailable versus lease-held classification, and removal/substitution of required lifecycle RED/GREEN, no-fallback, ownership, live-gate, and rollback obligations.
+- Full verification: pending repair-owned npm run verify. Original author verification remains evidence but cannot override fresh review defects.
+- Live-provider gate: not-applicable; this plan-only repair invokes no provider and must retain later coordinator-only live posture.
+- Review verdict: needs-changes / fresh reviewer /root/review_task111_plan found undefined required seams, missing measurable stop behavior, and insufficient audit sensitivity; fresh re-review required after repair.
+- Rebase record: repair branch begins at reviewed head 9083a51d in a distinct worktree; no cross-lane rebase applies before repair.
+- Merge readiness: not-ready; repairer cannot self-approve or merge into neo.
+- Archive check: original author handoff, claim, review package, and reviewer findings are retained; repair handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
+- Supersession: this record supersedes RV-0-W-005 only for current repair status. Original Task 111 dispatch and plan evidence remain immutable.
+
 ## RV-0-H-003 — Task 110 durable-handoffs implementation-plan dispatch
 
 - Recorded at: 2026-07-13T00:16:43Z
