@@ -1576,3 +1576,12 @@ explicit implementation authorization.
 - Recorded at: 2026-07-13T13:16:00Z
 - Correction: RV-0-P-008 abbreviated the Task114 head correctly but expanded it to an incorrect full SHA. The authoritative review scope is `aa06cb4792b5afdfec11bd5e520c787f2f654aa9..304ac9af829cfed48fe1c9200c7d0351d9b6efaa`; the detached review worktree must be at `304ac9af829cfed48fe1c9200c7d0351d9b6efaa`.
 - All other RV-0-P-008 authority, allowed review files, requirements, host-blocker posture, and no-`neo` rule remain unchanged. This append-only correction supersedes only its erroneous full-SHA field.
+
+## RV-0-T-014 — Task 113 fixture-matrix fresh-review dispatch
+
+- Recorded at: 2026-07-13T13:18:00Z
+- Role/lane/wave/task: coordinator fresh-review dispatch / T / 0B / Task113 proactive-trigger implementation plan.
+- Review scope and worktree: `0b3b88f21c06ce8c577da858fed2777e21c8e3e4..03b11c4e97d57c9fb1349da3b9a5e15a8a78cdc5`; detached `/tmp/cestus-task113-fixture-matrix-review` at the exact head.
+- Model configuration and authority: GPT-5.6 Terra / Extra High, satisfied by user-confirmed host-reported GPT-5; umbrella `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`; program plan `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`; T design `docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md@9a571f628bef9c53725e20263cb687ec44dd9cd8`.
+- Review authorization and files: inspect only `docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md` and `docs/agentic/claims/task-113-resident-full-vision-w0-trigger-plan.md`; do not edit any file, dispatch, or merge. Confirm the original-promise race proof remains structurally isolated, the new actual `unsafeShapes` section-local map covers every exact entry (including `inputText`, `provider`, and `model`), every local deletion/mutation fails, exhaustive forbidden boundaries remain correct, and ownership/RED-GREEN/host verification evidence are truthful.
+- Required verdict: approved, needs-changes, or blocked. An approval permits only later coordinator integration into the writable successor integration lineage; never `neo`. Host `spawnSync git EPERM` and missing `tsc` remain verification blockers, not a waived requirement.
