@@ -268,8 +268,7 @@ async function hasAuthoritativeInvestigationPlannerAttempt(
     event.payload.attemptId === checkpoint.payload.attemptId &&
     event.payload.retryGeneration === checkpoint.payload.retryGeneration &&
     event.payload.leaseClaimGeneration === checkpoint.payload.leaseClaimGeneration &&
-    event.payload.claimEventId === claims[0]!.id &&
-    event.sequence > checkpoint.sequence
+    event.payload.claimEventId === claims[0]!.id
   );
 }
 
