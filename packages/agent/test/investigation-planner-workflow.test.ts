@@ -335,6 +335,76 @@ describe("investigation planner workflow", () => {
     });
   });
 
+  it("recovers an exact durable final output without repeating model preparation or artifact writes", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+    const backingStore = createDerivativeStore();
+    let writeCount = 0;
+    let manifestStoreAvailable = false;
+    const recoveryWrites: Buffer[] = [];
+    const handoffStore = {
+      put: async (content: Buffer) => {
+        writeCount += 1;
+        if (!manifestStoreAvailable && writeCount >= 14) {
+          throw new Error("private manifest store interruption");
+        }
+        if (manifestStoreAvailable) recoveryWrites.push(Buffer.from(content));
+        return await backingStore.put(content);
+      },
+      get: backingStore.get
+    };
+    const input = {
+      ledger,
+      actor,
+      now,
+      contextPacks: createPlannerContextPacks(false, false, (await ledger.readAll()).map((event) => event.id)),
+      runtime,
+      providerReadiness: providerReadinessDto(),
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret" as const
+      },
+      derivativeStore: handoffStore,
+      handoffStore,
+      investigationId: "inv_scope_001"
+    };
+
+    const interrupted = await runInvestigationPlannerWorkflow(input);
+    expect(interrupted.handoff).toMatchObject({ lifecycle: "output-persisted", status: "blocked" });
+    const beforeRecovery = await ledger.readAll();
+    const priorOutputArtifacts = interrupted.handoff.outputArtifacts;
+    const priorModelInvocations = beforeRecovery.filter((event) => event.type === "agent.model-invocation.requested");
+    expect(beforeRecovery.filter((event) =>
+      event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output"
+    )).toHaveLength(1);
+
+    manifestStoreAvailable = true;
+    const recovered = await runInvestigationPlannerWorkflow(input);
+
+    expect(recovered.handoff).toMatchObject({ lifecycle: "handoff-recorded", status: "ready-for-review" });
+    expect(recovered.handoff.outputArtifacts).toEqual(priorOutputArtifacts);
+    // Recovery writes only the handoff manifest; it must not recreate context,
+    // prompt, model, derivative, or final-material artifacts.
+    expect(recoveryWrites).toHaveLength(1);
+    const afterRecovery = await ledger.readAll();
+    expect(afterRecovery.filter((event) => event.type === "agent.model-invocation.requested")).toHaveLength(priorModelInvocations.length);
+    expect(afterRecovery.filter((event) =>
+      event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output"
+    )).toHaveLength(1);
+    expect(afterRecovery.slice(beforeRecovery.length).map((event) => event.type)).toEqual([
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed"
+    ]);
+    expect(afterRecovery.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "agent.tool.requested", "prr.request.sent", "prr.followup.sent"
+    ]));
+  });
+
   it("keeps a persistent post-provider manifest-store failure durably resumable without fallback effects", async () => {
     const { ledger, runtime } = await preparedRuntime();
     const backingStore = createDerivativeStore();
