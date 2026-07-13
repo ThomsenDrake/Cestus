@@ -216,3 +216,30 @@ Task119 candidates remain preserved, rejected, and unintegrated.
 
 Status: in-progress in this bounded public-boundary repair; `28b09362` remains
 rejected and unintegrated.
+
+## Public-Boundary RED/GREEN Evidence
+
+- RED: the exact focused command exited 1 with 1 failed and 73 passed tests.
+  Direct `knowledgeEventSchema.safeParse` invoked the enumerable top-level
+  `payload` getter and threw `exported schema payload accessor must not run`.
+  This proved that the wrapper-only normalization did not secure the exported
+  public parser.
+- GREEN: the raw Zod event parser is now private. Exported
+  `knowledgeEventSchema` normalizes through its preprocess boundary, and
+  `validateKnowledgeEvent` delegates to that same public boundary. Direct
+  schema tests prove zero calls for top-level and nested getters plus a
+  structured-invalid result for a reflective `ownKeys` trap. The focused
+  command passed 2 files / 74 tests; `git diff --check` and
+  `npm run factory:check` passed. Full verification remains pending the
+  coordinator-controlled verifier slot.
+
+## Public-Boundary Full Gate And Review Handoff
+
+- Retained full verification: the coordinator-cleared single `npm run verify`
+  exited 0 with typecheck passed; 190 test files passed (3 skipped); 2,242
+  tests passed (5 skipped); Vite production build passed; and
+  factory-readiness passed. No overlapping full verifier ran.
+- Status: ready-for-review. This bounded public-boundary repair remains
+  limited to the authorized claim, contract, and focused test. A reviewer
+  distinct from this author and the reviewer that rejected `28b09362` must
+  review before any integration.

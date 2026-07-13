@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventContracts, validateKnowledgeEvent, validateResidentLoopEventSequence, type AppendableKnowledgeEvent } from "../src/contracts.js";
+import { eventContracts, knowledgeEventSchema, validateKnowledgeEvent, validateResidentLoopEventSequence, type AppendableKnowledgeEvent } from "../src/contracts.js";
 import { InMemoryEventLedger } from "../src/event-ledger.js";
 
 const hash = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
@@ -277,6 +277,55 @@ describe("resident loop ontology contracts", () => {
     });
     expect(nestedAccessorResult.success).toBe(false);
     expect(nestedAccessorCalls).toBe(0);
+  });
+
+  it("makes the exported schema reject untrusted payload shapes without executing them", () => {
+    const [planEvent] = fixtureEvents();
+    let topLevelAccessorCalls = 0;
+    const eventWithThrowingPayloadAccessor = { ...planEvent } as Record<string, unknown>;
+    Object.defineProperty(eventWithThrowingPayloadAccessor, "payload", {
+      enumerable: true,
+      get: () => {
+        topLevelAccessorCalls += 1;
+        throw new Error("exported schema payload accessor must not run");
+      }
+    });
+    let topLevelResult: ReturnType<typeof knowledgeEventSchema.safeParse> | undefined;
+    expect(() => {
+      topLevelResult = knowledgeEventSchema.safeParse(eventWithThrowingPayloadAccessor);
+    }).not.toThrow();
+    expect(topLevelResult?.success).toBe(false);
+    expect(topLevelAccessorCalls).toBe(0);
+
+    let nestedAccessorCalls = 0;
+    const budgetWithThrowingAccessor = { ...identity.budget };
+    Object.defineProperty(budgetWithThrowingAccessor, "remainingSteps", {
+      enumerable: true,
+      get: () => {
+        nestedAccessorCalls += 1;
+        throw new Error("exported schema nested accessor must not run");
+      }
+    });
+    let nestedResult: ReturnType<typeof knowledgeEventSchema.safeParse> | undefined;
+    expect(() => {
+      nestedResult = knowledgeEventSchema.safeParse({
+        ...planEvent,
+        payload: { ...planEvent.payload, budget: budgetWithThrowingAccessor }
+      });
+    }).not.toThrow();
+    expect(nestedResult?.success).toBe(false);
+    expect(nestedAccessorCalls).toBe(0);
+
+    const payloadWithReflectiveTrap = new Proxy({ ...planEvent.payload }, {
+      ownKeys: () => {
+        throw new Error("exported schema reflection trap must not escape");
+      }
+    });
+    let reflectiveResult: ReturnType<typeof knowledgeEventSchema.safeParse> | undefined;
+    expect(() => {
+      reflectiveResult = knowledgeEventSchema.safeParse({ ...planEvent, payload: payloadWithReflectiveTrap });
+    }).not.toThrow();
+    expect(reflectiveResult?.success).toBe(false);
   });
 
   it("appends and replays the ordered five-event fixture through the ledger", async () => {
