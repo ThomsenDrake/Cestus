@@ -2694,7 +2694,7 @@ function payloadIssueParams(issue: z.ZodIssue): Record<string, unknown> {
   return params;
 }
 
-export const knowledgeEventSchema = knowledgeEventBaseSchema
+const rawKnowledgeEventSchema = knowledgeEventBaseSchema
   .superRefine((event, ctx) => {
     const payloadSchema = payloadSchemas[event.type] as z.ZodType<unknown>;
 
@@ -2812,12 +2812,18 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
   })
   .transform((event): KnowledgeEvent => event as KnowledgeEvent);
 
-export function validateKnowledgeEvent(event: unknown) {
+/**
+ * The public event parser never exposes the raw Zod object to caller-owned
+ * values. Its preprocess boundary supplies the one descriptor-copied,
+ * immutable snapshot that every later parse and refinement consumes.
+ */
+export const knowledgeEventSchema = z.preprocess((event) => {
   const normalized = normalizePlainOwnData(event);
-  // The parser only receives one immutable snapshot, never the caller-owned
-  // object. An untrusted reflective trap is a structured parse failure.
-  if (!normalized.success) return knowledgeEventSchema.safeParse(undefined);
-  return knowledgeEventSchema.safeParse(normalized.data);
+  return normalized.success ? normalized.data : undefined;
+}, rawKnowledgeEventSchema);
+
+export function validateKnowledgeEvent(event: unknown) {
+  return knowledgeEventSchema.safeParse(event);
 }
 
 export type ResidentLoopSequenceValidation =
