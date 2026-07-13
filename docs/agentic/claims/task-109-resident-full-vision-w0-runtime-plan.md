@@ -441,3 +441,219 @@ NODE
   append-only R2 record supersedes R1 only for the public-dispatch,
   closure-binding, semantic-audit, and verification evidence; all historical
   Task 109 entries remain intact.
+
+## Recovery R3: Actual-Caller Factory-Closed Tuple Audit
+
+- Recovery worker and branch: `/root/task109_runtime_plan_recovery` on
+  `codex/task-109-resident-full-vision-w0-runtime-plan-recovery`, based on
+  `df8d5103d8f5e1ced773d1e5ca376224e326c6e0`.
+- Exact approved lane specification:
+  `docs/superpowers/specs/2026-07-12-resident-agent-runtime-composition-design.md`
+  at `05e85392367964a3869a55832703f504dd0fe3da`.
+- Exact governing implementation plan:
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md`
+  at `0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Allowed task range: Task 109 append-only documentation-only call-path
+  recovery. The wave stop is one verified recovery commit and a separately
+  fresh re-review. Tasks 132–140, CF-1 implementation, production/provider
+  work, child dispatch, and every merge are forbidden.
+- Scoped authorization: the coordinator explicitly authorizes
+  `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD,
+  fresh review, and verification-before-completion under the user-confirmed
+  GPT-5.6 Terra / Extra High configuration. This worker may not merge into
+  `neo` or an integration branch.
+- Root cause checkpoint: R2's section-local audit proved a direct binding
+  invocation but not the actual public caller at
+  `packages/agent/src/task-orchestrator.ts`:
+  `dispatchVerifiedTaskRunner`. The direct positive fixture could therefore
+  pass without proving that the caller's verified approval/context gate creates
+  the exact four-field registry input, preserves the factory-closed tuple
+  downstream, or keeps forged/unregistered/swapped inputs out before activity.
+  This recovery changes only plan/claim evidence; it introduces no production
+  type, shared-contract, provider, or CF-1 ownership change.
+- Required recovery outcome: Tasks 134, 135, and 140 each invoke the real
+  `dispatchVerifiedTaskRunner` caller in a focused planned test. The Task 135
+  and Task 140 path proves frozen registration provenance, authority workspace
+  and mount identity, mounted derivative/material/manifest readbacks, and H
+  handoff downstream. A direct forged-store registry input, an unregistered
+  runner, and a swapped mounted tuple stop before further activity. W receives
+  the same readiness capability and U projects only its accessor result.
+- RED: before this recovery, the focused audit below exited 1 with
+  `RED: missing Task 134 actual dispatchVerifiedTaskRunner caller test` because
+  the plan's Task 134/135/140 tests called binding helpers directly instead of
+  the exported public caller.
+
+### R3 Documentation RED/GREEN Audit
+
+The following audit extracts the exact Task 134, Task 135, Task 140, and W/U
+test blocks. It evaluates anchored clauses inside those blocks; no document
+global token can satisfy a local contract. Each in-memory counterfactual
+deletes or changes the actual tuple comparison, registration provenance,
+verified caller binding, readback chain, forged/swap rejection, actual caller,
+W capability injection, or U accessor-only projection and must fail.
+
+```bash
+node --input-type=module <<'NODE'
+import fs from "node:fs";
+
+const plan = fs.readFileSync(
+  "docs/superpowers/plans/2026-07-12-resident-agent-runtime-composition-implementation.md",
+  "utf8"
+);
+const section = (source, start, end) => {
+  const from = source.indexOf(start);
+  const to = source.indexOf(end, from + start.length);
+  if (from < 0 || to < 0) throw new Error(`missing section boundary: ${start} -> ${end}`);
+  return source.slice(from, to);
+};
+const fence = (source, needle) => {
+  const at = source.indexOf(needle);
+  const from = source.lastIndexOf("```ts", at);
+  const to = source.indexOf("```", at);
+  if (at < 0 || from < 0 || to < 0) throw new Error(`missing test fence: ${needle}`);
+  return source.slice(from, to + 3);
+};
+const requireText = (source, text, label) => {
+  if (!source.includes(text)) throw new Error(`missing ${label}: ${text}`);
+};
+const requireMatch = (source, expression, label) => {
+  if (!expression.test(source)) throw new Error(`missing ${label}`);
+};
+const replaceSection = (source, start, end, mutate) => {
+  const from = source.indexOf(start);
+  const to = source.indexOf(end, from + start.length);
+  if (from < 0 || to < 0) throw new Error(`cannot mutate section: ${start}`);
+  return source.slice(0, from) + mutate(source.slice(from, to)) + source.slice(to);
+};
+const assertActualCaller = (body, title, label) => {
+  const test = fence(body, title);
+  requireMatch(
+    test,
+    /await dispatchVerifiedTaskRunner\(\{[\s\S]*?registry:[\s\S]*?verifiedProviderApproval: true,[\s\S]*?verifiedContextBindings: true,[\s\S]*?\.\.\.(caller|dispatchInput)/,
+    `${label} exported caller invocation`
+  );
+  return test;
+};
+const audit = (source) => {
+  const task134 = section(source, "## Task 134:", "## Task 135:");
+  const task135 = section(source, "## Task 135:", "## Task 140:");
+  const task140 = section(source, "## Task 140:", "## Failure, Rollback, and Real Nous Gate");
+  const actual134 = assertActualCaller(task134, "invokes dispatchVerifiedTaskRunner through the Task 134 factory-closed registry", "Task 134");
+  const actual135 = assertActualCaller(task135, "uses dispatchVerifiedTaskRunner to preserve the factory-closed mounted tuple", "Task 135");
+  const actual140 = assertActualCaller(task140, "invokes dispatchVerifiedTaskRunner through composition with the same frozen tuple", "Task 140");
+  const readiness = fence(task140, "injects the same readiness accessor into W");
+
+  for (const [text, label] of [
+    ["expect(verifiedDispatch.authority).toBe(authority);", "Task 134 authority identity comparison"],
+    ["expect(verifiedDispatch.authority.mountInstanceId).toBe(\"mount_runtime\");", "Task 134 mount comparison"],
+    ["expect(verifiedDispatch.artifactStores).toBe(artifactStores);", "Task 134 mounted-store identity comparison"],
+    ["expect(verifiedDispatch.registrationProvenance).toBe(frozenRegistrationProvenance);", "Task 134 frozen registration provenance comparison"],
+    ["expect(verifiedDispatch.handoffCapability).toBe(handoffCapability);", "Task 134 H handoff identity comparison"],
+    ["registry.dispatch({ ...caller, artifactStores: forgedStores }", "Task 134 direct forged-store rejection"],
+    ["unregisteredRunnerRegistration()", "Task 134 unregistered-runner counterfactual"],
+    ["expect(readbackTrace).toEqual([\"derivative-readback\", \"material-readback\", \"manifest-readback\"]);", "Task 134 mounted readback trace"],
+    ["expect(handoffCapability.readback).toHaveBeenCalledTimes(1);", "Task 134 H readback"]
+  ]) requireText(actual134, text, label);
+
+  for (const [text, label] of [
+    ["registry: { dispatch: publicDispatch },\n    verifiedProviderApproval: true,\n    verifiedContextBindings: true,", "Task 135 verified public binding"],
+    ["registration: frozenRegistration,", "Task 135 frozen registration binding"],
+    ["registrationProvenance: frozenRegistrationProvenance,", "Task 135 frozen registration provenance binding"],
+    ["expect(readbackTrace).toEqual([\"derivative-readback\", \"material-readback\", \"manifest-readback\"]);", "Task 135 mounted readback trace"],
+    ["expect(handoffCapability.readback).toHaveBeenCalledTimes(1);", "Task 135 H readback"],
+    ["const callerAttempt = { ...dispatchInput, artifactStores: forgedStores };", "Task 135 direct forged-store rejection"],
+    ["unregisteredRunnerBinding().dispatch", "Task 135 unregistered-runner rejection"],
+    ["swappedMountedStores({ workspaceId: \"ws_runtime\", mountInstanceId: \"mount_swapped\" })", "Task 135 swapped mounted tuple rejection"]
+  ]) requireText(actual135, text, label);
+
+  for (const [text, label] of [
+    ["registry: composition.runtimeCapabilities.runnerRegistry", "Task 140 composed registry"],
+    ["authority: input.mountedAuthority,", "Task 140 authority binding"],
+    ["artifactStores: input.artifactStores,", "Task 140 mounted-store binding"],
+    ["registration: frozenRunnerRegistration(),", "Task 140 frozen registration binding"],
+    ["registrationProvenance: frozenRunnerRegistrationProvenance(),", "Task 140 registration provenance binding"],
+    ["handoffCapability: input.handoffCapability", "Task 140 H handoff binding"],
+    ["expect(input.mountedAuthority.mountInstanceId).toBe(\"mount_runtime\");", "Task 140 mount comparison"],
+    ["expect(readbackTrace).toEqual([\"derivative-readback\", \"material-readback\", \"manifest-readback\"]);", "Task 140 mounted readback trace"],
+    ["expect(input.handoffCapability.readback).toHaveBeenCalledTimes(1);", "Task 140 H readback"],
+    ["composition.runtimeCapabilities.runnerRegistry.dispatch({ ...caller, artifactStores: forgedStores }", "Task 140 direct forged-store rejection"],
+    ["unregisteredProductionRunners()", "Task 140 unregistered-runner rejection"],
+    ["swappedMountedStores({ workspaceId: \"ws_runtime\", mountInstanceId: \"mount_swapped\" })", "Task 140 swapped mounted tuple rejection"]
+  ]) requireText(actual140, text, label);
+  for (const [text, label] of [
+    ["runtimeReadiness: composition.readiness\n", "W capability injection"],
+    ["expect(wakeRuntime.runtimeReadiness).toBe(composition.readiness);", "W injected capability identity"],
+    ["toProductionRuntimeReadinessRouteDto(composition.readiness.getReadiness())", "U accessor-only route projection"],
+    ["expect(routeDto).not.toHaveProperty(\"prompt\");", "U safe DTO prompt exclusion"],
+    ["expect(routeDto).not.toHaveProperty(\"rawError\");", "U safe DTO error exclusion"]
+  ]) requireText(readiness, text, label);
+};
+const counterfactuals = [
+  ["Task 134 authority tuple comparison", (s) => replaceSection(s, "## Task 134:", "## Task 135:", (b) => b.replace("expect(verifiedDispatch.authority).toBe(authority);", "expect(verifiedDispatch.authority).toBeUndefined();"))],
+  ["Task 134 registration provenance", (s) => replaceSection(s, "## Task 134:", "## Task 135:", (b) => b.replace("expect(verifiedDispatch.registrationProvenance).toBe(frozenRegistrationProvenance);", "expect(verifiedDispatch.registrationProvenance).toBeUndefined();"))],
+  ["Task 134 real caller", (s) => replaceSection(s, "## Task 134:", "## Task 135:", (b) => b.replace("dispatchVerifiedTaskRunner({", "removedActualCaller({"))],
+  ["Task 135 verified caller binding", (s) => replaceSection(s, "## Task 135:", "## Task 140:", (b) => b.replace("registry: { dispatch: publicDispatch },\n    verifiedProviderApproval: true,\n    verifiedContextBindings: true,", "registry: { dispatch: publicDispatch },\n    verifiedProviderApproval: true,\n    verifiedContextBindings: false,"))],
+  ["Task 135 mounted readback trace", (s) => replaceSection(s, "## Task 135:", "## Task 140:", (b) => b.replace("\"derivative-readback\", \"material-readback\", \"manifest-readback\"", "\"derivative-readback\""))],
+  ["Task 135 forged store rejection", (s) => replaceSection(s, "## Task 135:", "## Task 140:", (b) => b.replace("const callerAttempt = { ...dispatchInput, artifactStores: forgedStores };", "const callerAttempt = dispatchInput;"))],
+  ["Task 135 swapped tuple rejection", (s) => replaceSection(s, "## Task 135:", "## Task 140:", (b) => b.replace("mountInstanceId: \"mount_swapped\"", "mountInstanceId: \"mount_runtime\""))],
+  ["Task 140 real caller", (s) => replaceSection(s, "## Task 140:", "## Failure, Rollback, and Real Nous Gate", (b) => b.replace("dispatchVerifiedTaskRunner({", "removedActualCaller({"))],
+  ["Task 140 registration provenance", (s) => replaceSection(s, "## Task 140:", "## Failure, Rollback, and Real Nous Gate", (b) => b.replace("registrationProvenance: frozenRunnerRegistrationProvenance(),", "registrationProvenance: undefined,"))],
+  ["Task 140 W injection", (s) => replaceSection(s, "## Task 140:", "## Failure, Rollback, and Real Nous Gate", (b) => b.replace("runtimeReadiness: composition.readiness\n", "runtimeReadiness: composition.readiness.getReadiness()\n"))],
+  ["Task 140 U accessor-only projection", (s) => replaceSection(s, "## Task 140:", "## Failure, Rollback, and Real Nous Gate", (b) => b.replace("toProductionRuntimeReadinessRouteDto(composition.readiness.getReadiness())", "toProductionRuntimeReadinessRouteDto(rawCompositionInput)"))]
+];
+try {
+  audit(plan);
+  for (const [label, mutate] of counterfactuals) {
+    let rejected = false;
+    try { audit(mutate(plan)); } catch { rejected = true; }
+    if (!rejected) throw new Error(`counterfactual accepted: ${label}`);
+  }
+  console.log(`GREEN: Task 109 actual-caller factory-closed audit passed (${counterfactuals.length} anchored counterfactuals rejected).`);
+} catch (error) {
+  console.error(`RED: ${error.message}`);
+  process.exitCode = 1;
+}
+NODE
+```
+
+- GREEN audit, full verification, self-review, and fresh-review evidence are
+  appended below only after their corresponding commands complete. This R3
+  entry supersedes no historical record while it is in progress.
+
+### R3 Verification and Self-Review
+
+- GREEN audit: the exact embedded command above exited 0 with `GREEN: Task 109
+  actual-caller factory-closed audit passed (11 anchored counterfactuals
+  rejected).` It rejected deletion or replacement of the Task 134 authority
+  comparison, registration provenance, or real caller; the Task 135 verified
+  caller, mounted-readback, forged-store, or swapped-tuple proof; and the Task
+  140 real caller, registration provenance, W injection, or U accessor-only
+  proof.
+- Documentation gates: `git diff --check` exited 0 with no output and
+  `npm run factory:check` exited 0 with `factory-readiness passed`.
+- Verification environment checkpoint: the first `NODE_NO_WARNINGS=1 npm run
+  verify` stopped before typecheck with `tsc: command not found`. The tracked
+  lockfile existed while both `node_modules` and `node_modules/.bin/tsc` were
+  absent; `npm ci --dry-run --ignore-scripts` accepted the pinned graph. The
+  coordinator-approved dependency restoration `npm ci` changed no tracked
+  file, and the fresh verifier then completed.
+- Full verification: `NODE_NO_WARNINGS=1 npm run verify` exited 0 with
+  `typecheck passed`; 189 test files passed with 3 skipped; 2,228 tests passed
+  with 5 skipped; Vite built successfully (only its existing chunk-size
+  advisory); and `factory-readiness passed`.
+- Scope self-review: `git diff --name-only` lists only this append-only claim
+  and the owned Lane R implementation plan. No source, test, shared contract,
+  spec, registry, provider, or integration file changed.
+- Interface and ownership self-review: the plan consumes the existing
+  `TaskOrchestratorRunnerDispatchInput` and real
+  `dispatchVerifiedTaskRunner` caller without changing either shared contract.
+  CF-1 remains the sole shared-type freeze owner; Task 135 retains the
+  R-owned factory closure; Task 140 remains the sole default-factory editor;
+  H owns durable-handoff meaning; W receives the capability object only; and U
+  owns the safe route DTO parser/projection. The new tests keep real Nous
+  coordinator-only, preserve no-fallback and rollback gates, and do not
+  authorize a provider call.
+- Recovery status: ready for one fresh independent Task 109 plan re-review.
+  This completion record supersedes R2 only for the actual-public-caller and
+  factory-closed-tuple audit gap; every historical Task 109 claim record
+  remains immutable evidence.
