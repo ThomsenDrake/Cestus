@@ -961,6 +961,12 @@ before an effect and returns to CF-1 correction/rebase.
 Run this audit before the Task 112 documentation commit. It scopes checks to the
 relevant section and rejects concrete counterfactuals, including deletion of a
 single equality-tuple item, budget counter, recovery port, or post-await guard.
+Its compiler proof distinguishes the current fully direct-typed matrix from an
+outer-tuple-only removal: both must compile with zero diagnostics. Exactly 25
+implicit-`any` diagnostics are expected only when the outer tuple and all 25
+direct callback signatures are removed together. That distinction is
+counterfactual evidence that every callback carries its own compiler-visible
+type, not a claim that the outer tuple contextually types the callback literals.
 
 ~~~bash
 node --input-type=module <<'NODE'
@@ -1009,6 +1015,10 @@ const nonCompletedHandoffLifecycleValues = [
 ];
 const checkpointMutationCallbackSignature =
   "(checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback =>";
+const checkpointMutationOuterTupleAnnotation = `const checkpointBindingMutations: readonly (readonly [
+  string,
+  (checkpoint: ResidentLoopCheckpointReadback) => ResidentLoopCheckpointReadback
+])[] = [`;
 const checkpointMutationVirtualPreamble = `
 interface Array<T> { length: number; [index: number]: T; }
 interface ReadonlyArray<T> { readonly length: number; readonly [index: number]: T; }
@@ -1056,6 +1066,60 @@ const checkpointMutationCompilerDiagnostics = checkpointMutations => {
   host.getDefaultLibFileName = () => "";
   host.writeFile = () => undefined;
   return ts.getPreEmitDiagnostics(ts.createProgram([fileName], compilerOptions, host));
+};
+const checkpointMutationCompilerProof = value => {
+  const checkpointMutations = part(
+    value,
+    "const checkpointBindingMutations: readonly (readonly [",
+    "it.each(checkpointBindingMutations)"
+  );
+  const directSignatureCount = checkpointMutations
+    .split(checkpointMutationCallbackSignature).length - 1;
+  if (!checkpointMutations.includes(checkpointMutationOuterTupleAnnotation)) {
+    throw new Error("missing outer tuple annotation in checkpoint mutation matrix");
+  }
+  if (directSignatureCount !== checkpointMutationContracts.length) {
+    throw new Error(
+      "expected " + checkpointMutationContracts.length +
+        " direct checkpoint callback signatures, found " + directSignatureCount
+    );
+  }
+  const outerOnlyRemoved = checkpointMutations.replace(
+    checkpointMutationOuterTupleAnnotation,
+    "const checkpointBindingMutations = ["
+  );
+  const outerAndDirectSignaturesRemoved = outerOnlyRemoved.replaceAll(
+    checkpointMutationCallbackSignature,
+    "(checkpoint) =>"
+  );
+  const measure = matrix => {
+    const diagnostics = checkpointMutationCompilerDiagnostics(matrix);
+    return {
+      total: diagnostics.length,
+      ts7006: diagnostics.filter(diagnostic => diagnostic.code === 7006).length
+    };
+  };
+  const current = measure(checkpointMutations);
+  const outerOnly = measure(outerOnlyRemoved);
+  const outerAndDirect = measure(outerAndDirectSignaturesRemoved);
+  const requireCounts = (label, actual, expectedTotal, expectedTs7006) => {
+    if (actual.total !== expectedTotal || actual.ts7006 !== expectedTs7006) {
+      throw new Error(
+        "three-state checkpoint compiler proof " + label + " expected total=" +
+          expectedTotal + " TS7006=" + expectedTs7006 + " but saw total=" +
+          actual.total + " TS7006=" + actual.ts7006
+      );
+    }
+  };
+  requireCounts("current direct-typed matrix", current, 0, 0);
+  requireCounts("outer-only removal", outerOnly, 0, 0);
+  requireCounts(
+    "outer-and-all-direct-signatures removal",
+    outerAndDirect,
+    checkpointMutationContracts.length,
+    checkpointMutationContracts.length
+  );
+  return { current, outerOnly, outerAndDirect };
 };
 const audit = (value) => {
   const global = part(value, "## Global Constraints", "## CF-1 Consumed Contract Surface");
@@ -1219,17 +1283,16 @@ const audit = (value) => {
   need(rollback, "A-10");
 };
 audit(source);
-const checkpointMutationCompilerErrors = checkpointMutationCompilerDiagnostics(part(
-  source,
-  "const checkpointBindingMutations: readonly (readonly [",
-  "it.each(checkpointBindingMutations)"
-));
-if (checkpointMutationCompilerErrors.length > 0) {
-  throw new Error(
-    "strict virtual checkpoint compiler diagnostics " +
-      checkpointMutationCompilerErrors.map(diagnostic => "TS" + diagnostic.code).join(", ")
-  );
-}
+const checkpointMutationCompilerEvidence = checkpointMutationCompilerProof(source);
+console.log(
+  "GREEN: Task 112 three-state checkpoint compiler proof passed (current total=" +
+    checkpointMutationCompilerEvidence.current.total + " TS7006=" +
+    checkpointMutationCompilerEvidence.current.ts7006 + "; outer-only total=" +
+    checkpointMutationCompilerEvidence.outerOnly.total + " TS7006=" +
+    checkpointMutationCompilerEvidence.outerOnly.ts7006 + "; outer-and-direct total=" +
+    checkpointMutationCompilerEvidence.outerAndDirect.total + " TS7006=" +
+    checkpointMutationCompilerEvidence.outerAndDirect.ts7006 + ")."
+);
 const replaceInCheckpoint = (value, from, to) => {
   const start = value.indexOf("export interface ResidentLoopCheckpointReadback");
   const end = value.indexOf("export interface ResidentLoopCheckpointPort", start);
