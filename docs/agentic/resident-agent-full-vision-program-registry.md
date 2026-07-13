@@ -2498,3 +2498,39 @@ explicit implementation authorization.
   from every Task124 author/reviewer. A further material finding is a
   root-cause recovery checkpoint. Standing SDD/TDD/fresh-review/
   verification-before-completion/no-self-integration/no-`neo` authority applies.
+
+## RV-1-C-037 — Relay A watchdog recovery ownership acceptance
+
+- Incoming coordinator: Relay A task `019f5ba8-cba1-7dd1-b137-2c3bd4edb970`
+  accepts sole forward-only integration ownership from exact clean Relay B
+  head `da1abbb3059a4fa6ea402cdcba38a1715fff2168` on
+  `codex/resident-agent-full-vision-program-relay-b`. Relay B has frozen its
+  children and must stop; no history is rewritten, no existing worktree is
+  reset or discarded, and `neo` remains untouched.
+- Recovery trigger and preservation audit: Relay B made no new coordinator
+  commit, verifier start, repair dispatch, or child filesystem checkpoint
+  during the bounded watchdog interval after `RV-1-C-036`. The incoming Relay
+  A branch `codex/resident-agent-full-vision-program-watchdog-recovery` starts
+  directly from that preserved clean head. Earlier Relay A history remains
+  preserved on its existing branch rather than rewritten.
+- Preserved active child ledger: W1-118 author
+  `019f5d38-0a4e-7121-bdca-26cd11041516` remains isolated in
+  `/home/drake/.codex/worktrees/task-118-resident-full-vision-triggers`, with
+  RED evidence and scoped `contracts.ts`/`proactive-triggers.ts` production
+  work. Task123 fail-closed repair author
+  `019f5d45-9016-7932-b893-2f94021e1ef0` remains isolated in
+  `/home/drake/.codex/worktrees/task-123-resident-full-vision-ontology-bootstrap-restart`
+  to repair `de4e8edf`'s durable-handoff-storage P1. Task124 replacement
+  author `019f5d45-cc5b-7c00-9a90-c9ea044baaa2` remains isolated in
+  `/home/drake/.codex/worktrees/task-124-resident-full-vision-wake-supervisor-repair-2`
+  at authorization `c3bcbbcc`, beginning RED coverage for its four P1 classes.
+- Authority and next action: all three preserved children retain their exact
+  coordinator-scoped `superpowers:subagent-driven-development`, TDD,
+  fresh-review, verification-before-completion, and no-child-self-integration/
+  no-`neo` authorizations. Relay A must resume each by exact worktree, require
+  fresh independent review before any integration, record every integration
+  append-only, and continue the approved Wave 1–5 program without waiting for
+  routine recovery authorization.
+- RED command and observed failure: the `RV-1-C-037` ownership-presence audit
+  exited 1 with `RED: RV-1-C-037 watchdog recovery ownership acceptance is
+  absent` before this append.
