@@ -1323,3 +1323,56 @@ explicit implementation authorization.
 - Archive check: original uncommitted plan draft and worker state are preserved; recovery handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
 - Root-cause checkpoint: failures were documentation-harness construction defects, not approved Trigger contract defects. The recovery changes both worker and test harness form; no user decision is needed.
 - Supersession: this record supersedes RV-0-T-007 only for Task113 recovery status. The original dispatch and preserved draft evidence remain immutable.
+
+## RV-0-W-011 — Task 111 canonical-record completeness recovery dispatch
+
+- Recorded at: 2026-07-13T02:43:00Z
+- Role: coordinator recovery checkpoint
+- Lane and wave: W / 0B
+- Task ID and claim: task-111-resident-full-vision-w0-wake-plan / docs/agentic/claims/task-111-resident-full-vision-w0-wake-plan.md
+- Task thread ID: /root/task111_wake_plan_recovery_3 (third recovery); /root/review_task111_plan_recovery_3 (fresh reviewer); /root/task111_wake_plan_recovery_4 (fresh recovery implementer)
+- Branch and worktree: codex/task-111-resident-full-vision-w0-wake-plan-recovery-4 / /home/drake/.codex/worktrees/task-111-resident-full-vision-w0-wake-plan-recovery-4
+- Base commit and required head: 70adac19fc794f1ce5a7bfec02b1a3bb5c6bc717 / one forward-only recovery commit plus fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md; docs/agentic/claims/task-111-resident-full-vision-w0-wake-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: preserved Task111 history through third recovery 70adac19; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator authorizes Task111 canonical-record completeness recovery only under Standing Coordinator Delegation. Stop after one verified recovery commit and fresh re-review before Tasks124/125/137, CF-1 implementation, production/provider work, dispatch, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo.
+- Claim status: recovery-dispatched; append-only evidence required.
+- RED command and observed failure: fresh review found the canonical reconciliation readback/port omits outcome, prior claim/lease, pre-outage high-water, schemaVersion, claimDisposition, and resumable fields required by the W spec; its matrix also omits per-field mismatch fail-closed tests.
+- GREEN command and observed result: pending a canonical V1-record field-to-source matrix covering all lane-spec outcome/state/provenance and per-field mismatch zero-append/effect/fallback proof.
+- Full verification: pending recovery-owned npm run verify.
+- Live-provider gate: not-applicable; plan-only.
+- Review verdict: needs-changes / fresh reviewer /root/review_task111_plan_recovery_3; fresh re-review required.
+- Rebase record: recovery starts at 70adac19 in a distinct worktree.
+- Merge readiness: not-ready; no self-merge into neo.
+- Archive check: all prior evidence is preserved; recovery handoff, verification, review, and integration required.
+- Root-cause checkpoint: relation completeness was expanded before the canonical V1 record itself was reconciled against every W-spec-required field. New tactic starts from the complete record shape, then maps every field to source/readback and per-field fail-closed proof.
+- Supersession: status only for RV-0-W-010; all historic evidence remains immutable.
+
+## RV-0-L-006 — Task 112 ABI-and-audit repair dispatch
+
+- Recorded at: 2026-07-13T02:43:00Z
+- Role: coordinator
+- Lane and wave: L / 0B
+- Task ID and claim: task-112-resident-full-vision-w0-loop-plan / docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Task thread ID: /root/task112_loop_plan (author); /root/review_task112_plan (fresh reviewer); /root/task112_loop_plan_repair (fresh repairer)
+- Branch and worktree: codex/task-112-resident-full-vision-w0-loop-plan-repair / /home/drake/.codex/worktrees/task-112-resident-full-vision-w0-loop-plan-repair
+- Base commit and required head: 5abd6852582ca6650c2504b7aa9e92a8d130c861 / one forward-only repair commit plus fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md@baa980e04f126ce06f41398fc45169f112321e39; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md; docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: reviewed Task112 plan 5abd6852; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator authorizes Task112 ABI-and-audit repair only. Stop after one verified repair commit and fresh re-review before Tasks120/136, CF-1 implementation, production/provider work, dispatch, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo.
+- Claim status: repairing; append repair evidence only.
+- RED command and observed failure: review found no typed initial/replan candidate port, insufficient plan-observation/checkpoint/approval/W release/reverify store ports, and audit false-GREEN for equality tuple, provider response budget, no-fallback release, and post-await rechecks.
+- GREEN command and observed result: pending concrete CF-1-consumed candidate/replanner/store/gateway/W ports with exact direct tests, and section-local counterfactual proof for every equality/budget/release/recheck invariant.
+- Full verification: pending repair-owned npm run verify.
+- Live-provider gate: plan-only; no provider invocation.
+- Review verdict: needs-changes / fresh reviewer /root/review_task112_plan; fresh re-review required.
+- Rebase record: repair starts at 5abd6852 in distinct worktree.
+- Merge readiness: not-ready; no self-merge into neo.
+- Archive check: author/reviewer evidence preserved; repair handoff, verification, review, integration required.
+- Supersession: status only for RV-0-L-005; original evidence remains immutable.
