@@ -2631,3 +2631,13 @@ explicit implementation authorization.
   with zero runtime or append effect, and implement one independently derived
   canonical reconciliation predicate. No full verifier or integration is
   authorized before focused GREEN and a new independent review.
+
+## RV-1-C-043 — W1-118 serialized full-gate authorization
+
+- Fresh W1-118 repair established four adversarial RED failures over the prior
+  23 passes, then 27/27 focused GREEN. The repair validates the full returned
+  event, exact event ID, and resident-agent context binding; typecheck, diff,
+  and factory passed in its source/test-only scope.
+- Worker `019f5d6f-ee9f-75a2-9032-a28689298f43` alone holds the serialized
+  `npm run verify` slot. Task123 and Task124 remain focused-only until it
+  releases; a fresh reviewer is still mandatory before any W1-118 integration.
