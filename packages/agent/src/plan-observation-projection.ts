@@ -25,7 +25,7 @@ export interface ResidentObservationProjectionRecord {
 }
 
 export interface ResidentPlanObservationProjectionDiagnostic {
-  readonly code: "duplicate-plan-idempotency-key" | "observation-plan-readback-invalid" | "duplicate-observation-idempotency-key";
+  readonly code: "duplicate-plan-idempotency-key" | "observation-plan-readback-invalid" | "observation-plan-superseded" | "duplicate-observation-idempotency-key";
 }
 
 export interface ResidentPlanObservationProjection {
@@ -72,6 +72,13 @@ export function buildResidentPlanObservationProjection(
         observations.set(key, event);
         projectedObservations.push(freezeObservation(event));
       }
+    }
+  }
+
+  for (const observation of observations.values()) {
+    const plan = plansByEventId.get(observation.payload.planReadback.planRecordEventId);
+    if (plan !== undefined && isSupersededPlan(plan, plansByEventId.values())) {
+      diagnostics.push(Object.freeze({ code: "observation-plan-superseded" }));
     }
   }
 
@@ -144,6 +151,19 @@ function sameIdentityPayload(
     left.budget.maxSteps === right.budget.maxSteps &&
     left.budget.remainingSteps === right.budget.remainingSteps &&
     left.budget.contextBytes === right.budget.contextBytes;
+}
+
+function isSupersededPlan(plan: ResidentPlanEvent, candidates: Iterable<ResidentPlanEvent>): boolean {
+  for (const candidate of candidates) {
+    if (
+      candidate.id !== plan.id &&
+      sameIdentityPayload(candidate.payload, plan.payload) &&
+      candidate.payload.planRevision > plan.payload.planRevision
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function sameArray(left: readonly string[], right: readonly string[]): boolean {

@@ -115,4 +115,50 @@ describe("resident plan/observation projection", () => {
     expect(projection.state).toBe("blocked");
     expect(projection.diagnostics.map((diagnostic) => diagnostic.code)).toContain("observation-plan-readback-invalid");
   });
+
+  it("fails closed when replay binds an observation to a superseded same-identity plan revision", async () => {
+    const ledger = new InMemoryEventLedger();
+    const store = createResidentPlanObservationStore({ ledger, actor, now });
+    const firstPlan = await store.recordPlan({
+      identity,
+      planRevision: 1,
+      descriptorHash: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+    });
+    await store.recordPlan({
+      identity,
+      planRevision: 2,
+      descriptorHash: "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    });
+    const staleObservation = await ledger.append({
+      type: "agent.resident-observation.recorded.v1",
+      version: 1,
+      streamId: firstPlan.event.streamId,
+      context: {
+        actor,
+        occurredAt: now(),
+        causationId: identity.causationEventId,
+        correlationId: identity.correlationId,
+        coreVersion: "0.1.0",
+        packVersions: { core: "0.1.0", agent: "0.1.0" }
+      },
+      payload: {
+        ...identity,
+        planReadback: {
+          planRecordEventId: firstPlan.event.id,
+          taskId: identity.taskId,
+          attemptId: identity.attemptId,
+          runId: identity.runId
+        },
+        observationOrdinal: 1,
+        category: "source-high-water",
+        observationHash: "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      }
+    });
+
+    const projection = buildResidentPlanObservationProjection(await ledger.readAll());
+
+    expect(staleObservation.type).toBe("agent.resident-observation.recorded.v1");
+    expect(projection.state).toBe("blocked");
+    expect(projection.diagnostics.map((diagnostic) => diagnostic.code)).toContain("observation-plan-superseded");
+  });
 });
