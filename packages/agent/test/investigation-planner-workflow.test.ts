@@ -15,6 +15,8 @@ import {
 } from "../src/index.js";
 import type { ProviderReadinessDto } from "../src/index.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
+import { buildSpecialistHandoffMaterial } from "../src/specialist-handoff-manifest.js";
+import { appendSpecialistFinalOutputStep } from "../src/specialist-runner-kernel.js";
 import type { AgentContextPackJsonValue } from "../src/index.js";
 
 const now = () => "2026-07-10T01:00:00.000Z";
@@ -133,7 +135,7 @@ describe("investigation planner workflow", () => {
       credentialRef: {
         credentialRefId: "agent_credref_fake_local",
         providerId: "provider_fake_local",
-        kind: "local-no-secret"
+        kind: "local-no-secret" as const
       },
       derivativeStore: handoffStore,
       handoffStore,
@@ -211,7 +213,7 @@ describe("investigation planner workflow", () => {
       credentialRef: {
         credentialRefId: "agent_credref_fake_local",
         providerId: "provider_fake_local",
-        kind: "local-no-secret"
+        kind: "local-no-secret" as const
       },
       derivativeStore: createDerivativeStore(),
       ...(investigationId === undefined ? {} : { investigationId })
@@ -335,6 +337,67 @@ describe("investigation planner workflow", () => {
     });
   });
 
+  it("rejects a recovered final output from another specialist before any recovery write or provider effect", async () => {
+    const { ledger, runtime } = await preparedRuntime("evidence-triage");
+    const backingStore = createDerivativeStore();
+    let putCalls = 0;
+    const handoffStore = {
+      put: async (content: Buffer) => {
+        putCalls += 1;
+        return await backingStore.put(content);
+      },
+      get: backingStore.get
+    };
+    await appendSpecialistFinalOutputStep({
+      ledger,
+      materialStore: handoffStore,
+      actor,
+      now,
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      handoffMaterial: buildSpecialistHandoffMaterial({
+        status: "blocked",
+        safeSummary: "Evidence triage final output is awaiting local review.",
+        contextPackRefs: [],
+        outputArtifacts: [],
+        toolRequestIds: [],
+        approvalRequirements: [],
+        nextSafeActions: [{ actionId: "action_evidence_triage_review", label: "Review evidence triage output", kind: "review", effect: "none" }],
+        sourceEventIds: [],
+        relatedEventIds: []
+      })
+    });
+    const before = await ledger.readAll();
+    const beforePuts = putCalls;
+
+    const result = await runInvestigationPlannerWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createPlannerContextPacks(),
+      runtime,
+      providerReadiness: providerReadinessDto(),
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret"
+      },
+      derivativeStore: handoffStore,
+      handoffStore,
+      investigationId: "inv_scope_001"
+    });
+
+    expect(result.handoff).toMatchObject({ status: "blocked", lifecycle: "no-output" });
+    expect(result.handoff.safeSummary).toMatch(/specialist type|investigation planner/i);
+    expect(putCalls).toBe(beforePuts);
+    expect(await ledger.readAll()).toEqual(before);
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
+  });
+
   it("recovers an exact durable final output without repeating model preparation or artifact writes", async () => {
     const { ledger, runtime } = await preparedRuntime();
     const backingStore = createDerivativeStore();
@@ -408,17 +471,19 @@ describe("investigation planner workflow", () => {
   it("keeps a persistent post-provider manifest-store failure durably resumable without fallback effects", async () => {
     const { ledger, runtime } = await preparedRuntime();
     const backingStore = createDerivativeStore();
-    let writeCount = 0;
+    let putAttempts = 0;
+    let durableWrites = 0;
     const handoffStore = {
       put: async (content: Buffer) => {
-        writeCount += 1;
-        if (writeCount >= 14) throw new Error("private persistent manifest store failure");
+        putAttempts += 1;
+        if (putAttempts >= 14) throw new Error("private persistent manifest store failure");
+        durableWrites += 1;
         return await backingStore.put(content);
       },
       get: backingStore.get
     };
 
-    const result = await runInvestigationPlannerWorkflow({
+    const input = {
       ledger,
       actor,
       now,
@@ -432,14 +497,15 @@ describe("investigation planner workflow", () => {
       credentialRef: {
         credentialRefId: "agent_credref_fake_local",
         providerId: "provider_fake_local",
-        kind: "local-no-secret"
+        kind: "local-no-secret" as const
       },
       derivativeStore: handoffStore,
       handoffStore,
       investigationId: "inv_scope_001"
-    });
+    };
+    const result = await runInvestigationPlannerWorkflow(input);
 
-    expect(writeCount).toBe(14);
+    expect(putAttempts).toBe(14);
     expect(result.handoff).toMatchObject({
       status: "blocked",
       lifecycle: "output-persisted",
@@ -470,6 +536,18 @@ describe("investigation planner workflow", () => {
       runId: "run_investigation_001",
       taskId: "task_investigation_001"
     })).resolves.toMatchObject({ state: "output-persisted" });
+
+    const beforeRetryEvents = await ledger.readAll();
+    const beforeRetryDurableWrites = durableWrites;
+    const firstRetry = await runInvestigationPlannerWorkflow(input);
+    const secondRetry = await runInvestigationPlannerWorkflow(input);
+
+    expect(firstRetry).toMatchObject({ handoff: { status: "blocked", lifecycle: "output-persisted" } });
+    expect(secondRetry).toMatchObject({ handoff: { status: "blocked", lifecycle: "output-persisted" } });
+    expect(firstRetry.handoff).toEqual(result.handoff);
+    expect(secondRetry.handoff).toEqual(result.handoff);
+    expect(durableWrites).toBe(beforeRetryDurableWrites);
+    expect(await ledger.readAll()).toEqual(beforeRetryEvents);
   });
 
   it("records a secret-safe terminal failure when final handoff material cannot persist", async () => {
@@ -616,7 +694,7 @@ describe("investigation planner workflow", () => {
   });
 });
 
-async function preparedRuntime() {
+async function preparedRuntime(runType: "investigation-planner" | "evidence-triage" = "investigation-planner") {
   const ledger = new InMemoryEventLedger();
   const provider = new FakeModelProvider({
     providerId: "provider_fake_local",
@@ -651,7 +729,7 @@ async function preparedRuntime() {
   await runtime.startRun({
     runId: "run_investigation_001",
     taskId: "task_investigation_001",
-    runType: "investigation-planner",
+    runType,
     scope: { kind: "investigation", refs: ["inv_scope_001"] }
   });
   return { ledger, runtime, provider };

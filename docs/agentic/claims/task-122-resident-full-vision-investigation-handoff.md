@@ -164,3 +164,63 @@ self-review, self-integrate, or merge into `neo`.
 
 Status: in-progress only in the isolated root-cause recovery lane; the prior
 two candidates remain rejected and unintegrated.
+
+## Root-Cause Recovery RED / GREEN Evidence (Fresh Author)
+
+- Root cause established before code changes: the prior recovery path entered
+  `resumeDurableFinalOutput` before the normal
+  `prepareSpecialistRun(..., "investigation-planner")` admission check. It
+  therefore passed a recovered final-output event to the generic handoff
+  recorder without first binding that event to the exact
+  `agent_default`/task/run specialist start. Its manifest-store exception also
+  escaped directly from recovery, causing a persistent unavailable retry to
+  throw rather than return the existing resumable DTO.
+- RED (after isolated `npm ci --ignore-scripts` restored ignored dependencies
+  without tracked lockfile changes):
+  `npm test -- packages/agent/test/investigation-planner-workflow.test.ts
+  packages/agent/test/specialist-handoff-projection.test.ts` exited `1` with
+  the two intended failures. A ledger-bound `evidence-triage` final output was
+  incorrectly recorded as an investigation-planner handoff, and the first
+  persistent manifest-store retry threw from `recordSpecialistHandoff`.
+- GREEN: the same exact command exited `0` (2 files / 45 tests). The new
+  counterfactuals prove that a cross-specialist final output is safely blocked
+  before any recovery put, ledger append, model/provider invocation, draft, or
+  artifact effect; and that two persistent unavailable-store retries return
+  the identical `output-persisted` DTO without a new durable manifest write,
+  ledger event, model invocation, draft, or artifact. Restored storage retains
+  the existing exact final-output -> prepared -> recorded -> terminal order.
+- The implementation is limited to recovery admission: it reads the existing
+  final-output material, checks the unique `agent_default` started run has the
+  exact investigation-planner type plus matching task/run identity and final
+  binding, and only then invokes the generic recorder. A pre-record manifest
+  storage failure returns the already durable `output-persisted` material
+  rather than re-entering preparation or model work. No PRR, graph, external,
+  tool, or provider effect is introduced.
+- Pending pre-commit gates: `git diff --check`, `npm run factory:check`, and
+  the single coordinator-cleared `npm run verify`; then this fresh author will
+  commit only the three authorized Task122 paths and stop for a distinct fresh
+  reviewer.
+
+## Verification Recovery
+
+- The first coordinator-cleared full gate reached typecheck and exited `2`
+  before tests because the recovery final-output filter lacked an explicit
+  TypeScript event predicate and the new reused persistent-retry input widened
+  its credential kind. Both corrections are limited to the authorized
+  workflow/test paths; no behavior changed beyond the RED contract.
+- Post-correction `npm run typecheck` exited `0`, then the exact focused command
+  exited `0` (2 files / 45 tests). A replacement full verification is pending
+  the same single-slot/no-overlap rule.
+
+## Recovery Candidate Verification And Handoff
+
+- Final scoped hygiene: `git diff --check` and `npm run factory:check` exited
+  `0` on the three authorized paths only.
+- Retained replacement full verification: `npm run verify` exited `0` after
+  typecheck. It recorded 189 test files passed with 3 skipped, 2,234 tests
+  passed with 5 skipped, the Vite production build passed (existing chunk-size
+  warning only), and factory readiness passed.
+- Status: ready-for-review. This fresh recovery author will commit only this
+  append-only claim plus the authorized workflow and focused test, then stop
+  for a new independent review. No self-review, self-integration, `neo` merge,
+  PRR send, graph effect, provider effect, or scope expansion occurred.

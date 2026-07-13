@@ -3,8 +3,10 @@ import { createHash } from "node:crypto";
 import { serializeContextPackPayload, type ContextPackRef } from "./context-packs.js";
 import {
   buildSpecialistHandoffMaterial,
+  parseSpecialistHandoffMaterial,
   type SpecialistHandoffMaterial
 } from "./specialist-handoff-manifest.js";
+import type { KnowledgeEvent, KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import { validateProductionSpecialistProviderOutput } from "./production-specialist-output-contracts.js";
 import type { PromptArtifactEnvelope } from "./prompt-artifacts.js";
 import {
@@ -208,26 +210,41 @@ async function resumeDurableFinalOutput(
   handoffStore: SpecialistHandoffManifestStore
 ): Promise<RunInvestigationPlannerWorkflowResult | undefined> {
   const stream = await input.ledger.readStream(`agent_run_${input.runId}`);
-  const finalOutputs = stream.filter((event) =>
+  const finalOutputs = stream.filter((event): event is KnowledgeEventOf<"agent.specialist-run.step.recorded"> =>
     event.type === "agent.specialist-run.step.recorded" &&
     event.payload.runId === input.runId &&
     event.payload.stepKind === "final-output"
   );
   if (finalOutputs.length === 0) return undefined;
   if (finalOutputs.length !== 1) {
-    throw new Error("A unique durable final-output step is required before investigation handoff recovery.");
+    return blockedHandoff(input, "A unique durable final-output step is required before investigation handoff recovery.");
   }
   const finalOutput = finalOutputs[0]!;
-  const recorded = await recordSpecialistHandoff({
-    ledger: input.ledger,
-    manifestStore: handoffStore,
-    actor: input.actor,
-    now: input.now,
-    runId: input.runId,
-    taskId: input.taskId
-  });
+  if (!isExactInvestigationPlannerRecovery(stream, input)) {
+    return blockedHandoff(
+      input,
+      "Recovered final output does not belong to the exact investigation planner specialist run."
+    );
+  }
+  const persisted = await readOutputPersistedRecovery(input, handoffStore, finalOutput);
+  if (persisted === undefined) {
+    return blockedHandoff(input, "Recovered final output cannot be read back as a durable investigation planner handoff.");
+  }
+  let recorded: Awaited<ReturnType<typeof recordSpecialistHandoff>>;
+  try {
+    recorded = await recordSpecialistHandoff({
+      ledger: input.ledger,
+      manifestStore: handoffStore,
+      actor: input.actor,
+      now: input.now,
+      runId: input.runId,
+      taskId: input.taskId
+    });
+  } catch {
+    return persisted;
+  }
   if (recorded.manifest.finalOutputEventId !== finalOutput.id) {
-    throw new Error("Recovered investigation handoff did not read back the exact durable final-output event.");
+    return blockedHandoff(input, "Recovered investigation handoff did not read back the exact durable final-output event.");
   }
   try {
     const finalized = await finalizeSpecialistRunAfterHandoff({
@@ -250,6 +267,51 @@ async function resumeDurableFinalOutput(
       })]),
       eventIds: Object.freeze([finalOutput.id, recorded.prepared.id, recorded.recorded.id])
     });
+  }
+}
+
+function isExactInvestigationPlannerRecovery(
+  stream: readonly KnowledgeEvent[],
+  input: RunInvestigationPlannerWorkflowInput
+): boolean {
+  const started = stream.filter((event): event is KnowledgeEventOf<"agent.specialist-run.started"> =>
+    event.type === "agent.specialist-run.started" &&
+    event.payload.runId === input.runId &&
+    event.payload.residentAgentId === "agent_default"
+  );
+  return started.length === 1 &&
+    started[0]!.payload.runType === "investigation-planner" &&
+    started[0]!.payload.taskId === input.taskId;
+}
+
+async function readOutputPersistedRecovery(
+  input: RunInvestigationPlannerWorkflowInput,
+  handoffStore: SpecialistHandoffManifestStore,
+  finalOutput: KnowledgeEventOf<"agent.specialist-run.step.recorded">
+): Promise<RunInvestigationPlannerWorkflowResult | undefined> {
+  const materialHash = finalOutput.payload.handoffMaterialArtifactHash;
+  if (materialHash === undefined) return undefined;
+  try {
+    const bytes = await handoffStore.get(materialHash as `sha256:${string}`);
+    if (!Buffer.isBuffer(bytes) || hashBytes(bytes) !== materialHash) return undefined;
+    const material = parseSpecialistHandoffMaterial(JSON.parse(bytes.toString("utf8")));
+    if (
+      finalOutput.payload.stepId !== `step_${input.runId}_final_output` ||
+      finalOutput.payload.stepKind !== "final-output" ||
+      finalOutput.payload.stepSchemaId !== "investigation-planner-handoff.v1" ||
+      finalOutput.payload.idempotencyKey !==
+        `specialist-final-output:${input.runId}:${input.taskId}:investigation-planner:${material.status}:${materialHash}`
+    ) {
+      return undefined;
+    }
+    return outputPersistedResult({
+      input,
+      handoffStore,
+      material,
+      eventIds: material.relatedEventIds
+    }, finalOutput.id);
+  } catch {
+    return undefined;
   }
 }
 
