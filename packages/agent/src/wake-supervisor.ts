@@ -370,7 +370,6 @@ export function createWakeSupervisor(input: CreateWakeSupervisorInput): WakeSupe
   async function runAdmission(operation: WakeOperation, signal: WakeSignal, command: WakeCommandInput | undefined): Promise<WakeSupervisorCommandResultDto> {
     const resumesPausedSupervisor = intakeClosed && supervisorState === "paused" && (operation === "resume" || operation === "recovery");
     if (stopped || (intakeClosed && !resumesPausedSupervisor)) return blocked("supervisor-stopped", operation, false);
-    if (operation === "recovery" && recoveryAttempts >= maximumRecoveryAttempts) return recoveryExhausted(operation);
     if (activeCycle) return blocked("scheduler-unavailable", operation, true);
     activeCycle = true;
     const admissionRevision = closureRevision;
@@ -416,7 +415,7 @@ export function createWakeSupervisor(input: CreateWakeSupervisorInput): WakeSupe
         recoveryAttempts = 0;
         return completed([runtimeResult.evidence]);
       }
-      recoveryAttempts = operation === "recovery" ? recoveryAttempts + 1 : recoveryAttempts;
+      if (operation === "recovery") recoveryAttempts = 0;
       return accepted();
     } catch (error) {
       if (stopped) return blocked("supervisor-stopped", operation, false);
@@ -447,8 +446,14 @@ export function createWakeSupervisor(input: CreateWakeSupervisorInput): WakeSupe
     const lookup = Object.freeze({ admission: tuple, reconciliationIdempotencyKey, workspaceId: input.workspaceId, residentId: input.residentId, supervisorEpoch: input.supervisorEpoch });
     const existing = await input.reconciliation!.readByIdempotencyKey(lookup);
     if (cancelledRevision(admissionRevision)) return "closed";
+    if (existing !== undefined) {
+      const safeExisting = freezeReconciliationReadback(existing);
+      const expectedExistingRecord = reconciliationRecord(safeClaim, safeOutage, safeClaim.causation, safeExisting.admission, reconciliationIdempotencyKey);
+      return matchesReconciliationReadback(safeExisting, safeExisting.admission, expectedExistingRecord) ? "ok" : "invalid";
+    }
+    if (safeOutage.highWaterBeforeOutage !== tuple.highWater.highWaterMark) return "invalid";
     const record = reconciliationRecord(safeClaim, safeOutage, safeClaim.causation, tuple, reconciliationIdempotencyKey);
-    const rawReadback = existing ?? await input.reconciliation!.appendAndReadBack(Object.freeze({ ...lookup, record, observedActiveClaim: safeClaim, outage: safeOutage }));
+    const rawReadback = await input.reconciliation!.appendAndReadBack(Object.freeze({ ...lookup, record, observedActiveClaim: safeClaim, outage: safeOutage }));
     if (cancelledRevision(admissionRevision)) return "closed";
     return matchesReconciliationReadback(freezeReconciliationReadback(rawReadback), tuple, record) ? "ok" : "invalid";
   }

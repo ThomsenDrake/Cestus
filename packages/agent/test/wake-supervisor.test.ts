@@ -4,6 +4,7 @@ import {
   parseWakeHealthDiagnostic,
   parseWakeSignal,
   type ActiveClaimReconciliationPort,
+  type ClaimReconciliationReadback,
   type CreateWakeSupervisorInput,
   type SupervisorLeaseReadbackEvidence,
   type SupervisorLeaseAdmissionInput,
@@ -208,11 +209,19 @@ describe("bounded wake supervisor", () => {
       blocked: { category: "recovery-exhausted" }
     });
     expect(harness.runtimeCalls).toHaveLength(0);
+
+    harness.repairReconciliation();
+    await expect(harness.supervisor.recover(command("recover_after_repair"))).resolves.toMatchObject({
+      outcome: "accepted",
+      status: { recoveryAttempts: 0, supervisorState: "running" }
+    });
+    expect(harness.revalidationCalls).toBe(3);
+    expect(harness.runtimeCalls).toHaveLength(1);
   });
 
-  it("keeps the canonical reconciliation key stable across lease/high-water renewal and uses active-claim causation", async () => {
+  it("keeps lease/high-water facts out of the canonical key and uses active-claim causation", async () => {
     const first = createP1Harness({ activeClaim: true, leaseEventId: "evt_lease_first", highWaterMark: "event:42" });
-    const renewed = createP1Harness({ activeClaim: true, leaseEventId: "evt_lease_renewed", highWaterMark: "event:43" });
+    const renewed = createP1Harness({ activeClaim: true, leaseEventId: "evt_lease_renewed", highWaterMark: "event:43", outageHighWaterBefore: "event:43" });
 
     await expect(first.supervisor.recover(command("recover_first_lease"))).resolves.toMatchObject({ outcome: "accepted" });
     await expect(renewed.supervisor.recover(command("recover_renewed_lease"))).resolves.toMatchObject({ outcome: "accepted" });
@@ -224,6 +233,32 @@ describe("bounded wake supervisor", () => {
     expect(renewedRecord?.reconciliationIdempotencyKey).toBe(canonicalKey);
     expect(firstRecord?.causation).toEqual({ causationId: "cause:prior", correlationId: "corr:prior" });
     expect(renewedRecord?.causation).toEqual({ causationId: "cause:prior", correlationId: "corr:prior" });
+  });
+
+  it("reuses one shared-store reconciliation across lease and high-water renewal", async () => {
+    const shared = createSharedReconciliationStore();
+    const first = createP1Harness({ activeClaim: true, leaseEventId: "evt_lease_first", highWaterMark: "event:42", reconciliationPort: shared.port });
+    const renewed = createP1Harness({ activeClaim: true, leaseEventId: "evt_lease_renewed", highWaterMark: "event:43", reconciliationPort: shared.port });
+
+    await expect(first.supervisor.recover(command("recover_shared_first"))).resolves.toMatchObject({ outcome: "accepted" });
+    await expect(renewed.supervisor.recover(command("recover_shared_renewed"))).resolves.toMatchObject({ outcome: "accepted" });
+
+    expect(shared.lookupInputs).toHaveLength(2);
+    expect(shared.appendInputs).toHaveLength(1);
+    expect(shared.lookupInputs[0]?.reconciliationIdempotencyKey).toBe(shared.lookupInputs[1]?.reconciliationIdempotencyKey);
+    expect(first.runtimeCalls).toHaveLength(1);
+    expect(renewed.runtimeCalls).toHaveLength(1);
+  });
+
+  it("rejects an unrelated outage high-water before reconciliation append", async () => {
+    const harness = createP1Harness({ activeClaim: true, outageHighWaterBefore: "event:unrelated" });
+
+    await expect(harness.supervisor.recover(command("recover_unrelated_outage_high_water"))).resolves.toMatchObject({
+      outcome: "blocked",
+      blocked: { category: "workspace-readback-failed" }
+    });
+    expect(harness.reconciliationAppendInputs).toHaveLength(0);
+    expect(harness.runtimeCalls).toHaveLength(0);
   });
 });
 
@@ -314,6 +349,8 @@ function createP1Harness(options: {
   readonly maximumRecoveryAttempts?: number;
   readonly leaseEventId?: string;
   readonly highWaterMark?: string;
+  readonly outageHighWaterBefore?: string;
+  readonly reconciliationPort?: ActiveClaimReconciliationPort;
   readonly completedRuntimeEvidence?: { readonly transition: WakeLifecycleEvidenceDto["transition"]; readonly highWaterMark: string };
 } = {}) {
   const epoch = "epoch_a";
@@ -321,6 +358,8 @@ function createP1Harness(options: {
   const runtimeCalls: string[] = [];
   const reconciliationAppendInputs: Array<Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]> = [];
   let getterReads = 0;
+  let invalidReconciliationReadback = options.invalidReconciliationReadback ?? false;
+  let revalidationCalls = 0;
   let pendingResolve: (() => void) | undefined;
   let pendingReached = false;
   const pending = new Promise<void>((resolve) => { pendingResolve = resolve; });
@@ -334,12 +373,13 @@ function createP1Harness(options: {
   };
   const outage = {
     safeObservationId: options.outageObservationId ?? "obs_outage", outageObservedAt: "2026-07-12T00:00:00.000Z",
-    category: "workspace-unavailable" as const, priorClaimEventId: activeClaim.priorClaimEventId, priorClaimLeaseId: activeClaim.priorClaimLeaseId, priorAuthorityEvidenceId: "evt_authority_a", highWaterBeforeOutage: "event:42"
+    category: "workspace-unavailable" as const, priorClaimEventId: activeClaim.priorClaimEventId, priorClaimLeaseId: activeClaim.priorClaimLeaseId, priorAuthorityEvidenceId: "evt_authority_a", highWaterBeforeOutage: options.outageHighWaterBefore ?? "event:42"
   };
   const input: CreateWakeSupervisorInput = {
     residentId: "agent_default", supervisorEpoch: epoch, workspaceId: "workspace_a", policyVersion: "policy.v1", policyDigest: "sha256:policy_a", lockStateDigest: "sha256:lock_a", expectedHighWaterMark,
     authority: {
       async revalidate() {
+        revalidationCalls += 1;
         if (options.pendingAt === "authority") { pendingReached = true; await pending; }
         if (options.activeClaim) return { ok: true as const, admission: { identityAndMount: identity }, observedActiveClaim: activeClaim, outage };
         return { ok: true as const, admission: { identityAndMount: identity } };
@@ -362,14 +402,14 @@ function createP1Harness(options: {
         return { outcome: "acquired-and-read-back" as const, readback };
       }
     },
-    reconciliation: {
+    reconciliation: options.reconciliationPort ?? {
       async readByIdempotencyKey() {
         if (options.pendingAt === "reconciliation") { pendingReached = true; await pending; }
         return undefined;
       },
       async appendAndReadBack(reconciliationInput) {
         reconciliationAppendInputs.push(reconciliationInput);
-        return { record: options.invalidReconciliationReadback ? { ...reconciliationInput.record, claimId: "claim_mismatch" } : reconciliationInput.record, reconciliationEventId: "evt_reconciliation", readbackEventId: "evt_reconciliation_readback", admission: reconciliationInput.admission };
+        return { record: invalidReconciliationReadback ? { ...reconciliationInput.record, claimId: "claim_mismatch" } : reconciliationInput.record, reconciliationEventId: "evt_reconciliation", readbackEventId: "evt_reconciliation_readback", admission: reconciliationInput.admission };
       }
     },
     runtime: {
@@ -404,10 +444,30 @@ function createP1Harness(options: {
     leaseInputs,
     runtimeCalls,
     reconciliationAppendInputs,
+    get revalidationCalls() { return revalidationCalls; },
     get getterReads() { return getterReads; },
     releasePending() { pendingResolve?.(); },
+    repairReconciliation() { invalidReconciliationReadback = false; },
     async waitUntilPending() {
       await waitFor(() => pendingReached);
     }
   };
+}
+
+function createSharedReconciliationStore() {
+  let stored: ClaimReconciliationReadback | undefined;
+  const lookupInputs: Array<Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0]> = [];
+  const appendInputs: Array<Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]> = [];
+  const port: ActiveClaimReconciliationPort = {
+    async readByIdempotencyKey(input) {
+      lookupInputs.push(input);
+      return stored?.record.reconciliationIdempotencyKey === input.reconciliationIdempotencyKey ? stored : undefined;
+    },
+    async appendAndReadBack(input) {
+      appendInputs.push(input);
+      stored = { record: input.record, reconciliationEventId: "evt_shared_reconciliation", readbackEventId: "evt_shared_reconciliation_readback", admission: input.admission };
+      return stored;
+    }
+  };
+  return { port, lookupInputs, appendInputs };
 }

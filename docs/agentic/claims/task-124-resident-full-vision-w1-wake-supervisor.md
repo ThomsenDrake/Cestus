@@ -286,3 +286,46 @@ candidate remains preserved and unintegrated.
   `packages/agent/src/wake-supervisor.ts`, and
   `packages/agent/test/wake-supervisor.test.ts`. It requires a fresh reviewer
   and is not authorized for author integration or any `neo` merge.
+
+## Shared-Retry And Explicit-Recovery Review Repair — 2026-07-13
+
+- Fresh re-review returned `NEEDS-CHANGES` for
+  `9389892a4a862dfeaec403825b9f06d79abe7d44`. That commit remains preserved in
+  forward history. The coordinator authorized this bounded repair in the same
+  claim/source/test scope with no reset, rebase, self-integration, or `neo`
+  change.
+- Correction to the preceding recovery evidence: exhaustion bounds repeated
+  failed recovery attempts, but it does not permanently disable the explicit
+  recovery command. A later explicit recover must revalidate authority, lease,
+  outage, and reconciliation after the external condition is repaired, and a
+  successful verified wake resets the bounded attempt count.
+- RED: the exact focused command failed three intended counterfactuals. A
+  shared mounted reconciliation store returned the canonical prior record
+  after lease/high-water renewal but the supervisor compared it to the renewed
+  full tuple and blocked; an explicit repaired recovery remained permanently
+  blocked after exhaustion; and an unrelated nonempty
+  `highWaterBeforeOutage` reached reconciliation and runtime instead of
+  failing before append.
+- GREEN: a canonical-key hit now validates the stored record against its own
+  exact historical admission tuple plus the unchanged outage/claim causal
+  facts, then reuses it without a second append. First-time reconciliation
+  still requires exact equality between the frozen outage pre-high-water and
+  the revalidated admission high-water. Explicit recovery always performs a
+  fresh validation attempt after exhaustion and resets the counter only after
+  the repaired path reaches a verified wake.
+- GREEN evidence: `npm test -- packages/agent/test/wake-supervisor.test.ts
+  packages/agent/test/scheduler.test.ts` exited `0` with 2 files and 42 tests
+  passing. `git diff --check` was empty and `npm run factory:check` printed
+  `factory-readiness passed`. The serialized verifier slot is requested and no
+  `npm run verify` has started for this repair.
+
+## Shared-Retry Repair Retained Full Verification — 2026-07-13
+
+- The coordinator granted the Task124-repair-only serialized verifier slot.
+  Exactly one retained `npm run verify` exited `0`: typecheck passed; 191 test
+  files passed with 3 skipped; 2,280 tests passed with 5 skipped; the Vite
+  production build passed; and `factory-readiness passed`.
+- Final scope remains exactly this append-only claim,
+  `packages/agent/src/wake-supervisor.ts`, and
+  `packages/agent/test/wake-supervisor.test.ts`. A fresh distinct re-review is
+  required; author integration and any `neo` change remain forbidden.
