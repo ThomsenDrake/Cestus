@@ -216,6 +216,28 @@ must also prove an extra own `artifactStores` key is rejected before runner or
 H activity. This is a CF-1 compatibility rule only. It does not freeze a new
 shared production type in Task 109.
 
+### Actual public caller and factory-closed tuple
+
+`dispatchVerifiedTaskRunner` in `packages/agent/src/task-orchestrator.ts` is
+the actual public caller of the registry. After it checks verified provider
+approval and context bindings, it constructs a fresh four-field
+`TaskOrchestratorRunnerDispatchInput` for `registry.dispatch`; it does not
+forward arbitrary caller object fields. Tasks 134, 135, and 140 must each
+include a focused test that invokes this exported caller rather than calling a
+binding helper as the only positive path.
+
+Those tests must observe the same factory-closed tuple downstream: frozen
+runner-registration provenance (runner ID, version, and descriptor hash), the
+exact authority workspace ID and mount instance ID, the exact mounted
+derivative/material/manifest stores, and H's handoff capability. The real
+caller intentionally strips a forged extra field before it reaches the
+registry; the binding itself must reject a direct raw caller object carrying
+that field. An unregistered runner or a swapped authority/mount/store tuple
+must reject before derivative/material/manifest activity, Task 134 delegation,
+or H handoff activity. This specifies use of the existing public caller and
+CF-1-owned types only; it does not add a production type or change the shared
+orchestrator contract.
+
 ## File Ownership and Merge Order
 
 | Task | Exact Lane R files | Purpose | Required merged predecessors |
@@ -530,6 +552,55 @@ it("accepts authority, mounted stores, and H handoff only from the factory-compo
     .rejects.toMatchObject({ code: "runner-registration-invalid" });
   expect(dispatchVerified).toHaveBeenCalledTimes(1);
 });
+
+it("invokes dispatchVerifiedTaskRunner through the Task 134 factory-closed registry", async () => {
+  const authority = mountedAuthority({ workspaceId: "ws_runtime", mountInstanceId: "mount_runtime" });
+  const artifactStores = mountedStores({ authority, readbackTrace });
+  const handoffCapability = handoffCapabilityFor(authority);
+  const frozenRegistration = runnerRegistration();
+  const frozenRegistrationProvenance = registrationProvenance(frozenRegistration);
+  const dispatchVerified = vi.fn(async (verifiedDispatch) => durableRunnerResult({
+    verifiedDispatch,
+    artifactStores,
+    handoffCapability
+  }));
+  const registry = factoryClosedTask134Registry({
+    authority,
+    artifactStores,
+    frozenRegistration,
+    frozenRegistrationProvenance,
+    handoffCapability,
+    dispatchVerified
+  });
+  const caller = orchestratorDispatchInput();
+
+  await dispatchVerifiedTaskRunner({
+    registry,
+    verifiedProviderApproval: true,
+    verifiedContextBindings: true,
+    ...caller
+  });
+  const verifiedDispatch = dispatchVerified.mock.calls[0]?.[0];
+  expect(verifiedDispatch.authority).toBe(authority);
+  expect(verifiedDispatch.authority.workspaceId).toBe("ws_runtime");
+  expect(verifiedDispatch.authority.mountInstanceId).toBe("mount_runtime");
+  expect(verifiedDispatch.artifactStores).toBe(artifactStores);
+  expect(verifiedDispatch.registration).toBe(frozenRegistration);
+  expect(verifiedDispatch.registrationProvenance).toBe(frozenRegistrationProvenance);
+  expect(verifiedDispatch.handoffCapability).toBe(handoffCapability);
+
+  await expect(registry.dispatch({ ...caller, artifactStores: forgedStores } as unknown as TaskOrchestratorRunnerDispatchInput))
+    .rejects.toMatchObject({ code: "runner-registration-invalid" });
+  await expect(dispatchVerifiedTaskRunner({
+    registry: factoryClosedTask134Registry({ authority, artifactStores, frozenRegistration: unregisteredRunnerRegistration(), frozenRegistrationProvenance, handoffCapability, dispatchVerified }),
+    verifiedProviderApproval: true,
+    verifiedContextBindings: true,
+    ...caller
+  })).rejects.toMatchObject({ code: "runner-registration-invalid" });
+  expect(readbackTrace).toEqual(["derivative-readback", "material-readback", "manifest-readback"]);
+  expect(handoffCapability.readback).toHaveBeenCalledTimes(1);
+  expect(dispatchVerified).toHaveBeenCalledTimes(1);
+});
 ```
 
 Add separate failures for stale mount/high-water, altered descriptor/context/
@@ -573,8 +644,11 @@ lifecycle readback. Both normalize before await and expose frozen safe codes.
 The Task 134 test helper accepts a verified dispatch only from Task 135's
 factory-composed mounted closure. It compares the exact authority, mounted
 store object, registration provenance, and H handoff capability before it
-calls `dispatchVerified`; a caller-created closure or caller-supplied store is
-rejected as `runner-registration-invalid` before the delegate or H path.
+calls `dispatchVerified`. Its actual-caller test invokes
+`dispatchVerifiedTaskRunner`, observes derivative/material/manifest readback
+plus H readback through that frozen tuple, and proves that a raw forged-store
+call or unregistered registration is rejected before delegate reuse or another
+handoff activity.
 
 - [ ] **Step 4: Run the focused GREEN command.**
 
@@ -691,7 +765,12 @@ the internal verified dispatch from its closure rather than from a widened
 caller object:
 
 ```ts
-it("keeps the public orchestrator dispatch shape while closure-binding stores and H handoff", async () => {
+it("uses dispatchVerifiedTaskRunner to preserve the factory-closed mounted tuple", async () => {
+  const authority = mountedAuthority({ workspaceId: "ws_runtime", mountInstanceId: "mount_runtime" });
+  const artifactStores = mountedStores({ authority, readbackTrace });
+  const handoffCapability = handoffCapabilityFor(authority);
+  const frozenRegistration = runnerRegistration();
+  const frozenRegistrationProvenance = registrationProvenance(frozenRegistration);
   const binding = createProductionMountedRunnerHandoffBinding({
     authority,
     artifactStores,
@@ -706,16 +785,37 @@ it("keeps the public orchestrator dispatch shape while closure-binding stores an
     approvedRunId: "run_runtime"
   };
 
-  await publicDispatch(dispatchInput);
+  await dispatchVerifiedTaskRunner({
+    registry: { dispatch: publicDispatch },
+    verifiedProviderApproval: true,
+    verifiedContextBindings: true,
+    ...dispatchInput
+  });
   expect(runnerCapability.dispatch).toHaveBeenCalledWith(expect.objectContaining({
     publicDispatch: dispatchInput,
     authority,
     artifactStores,
+    registration: frozenRegistration,
+    registrationProvenance: frozenRegistrationProvenance,
     handoffCapability
   }));
+  expect(readbackTrace).toEqual(["derivative-readback", "material-readback", "manifest-readback"]);
+  expect(handoffCapability.readback).toHaveBeenCalledTimes(1);
   const callerAttempt = { ...dispatchInput, artifactStores: forgedStores };
   await expect(publicDispatch(callerAttempt as unknown as TaskOrchestratorRunnerDispatchInput))
     .rejects.toMatchObject({ code: "runner-registration-invalid" });
+  await expect(dispatchVerifiedTaskRunner({
+    registry: { dispatch: unregisteredRunnerBinding().dispatch },
+    verifiedProviderApproval: true,
+    verifiedContextBindings: true,
+    ...dispatchInput
+  })).rejects.toMatchObject({ code: "runner-registration-invalid" });
+  expect(() => createProductionMountedRunnerHandoffBinding({
+    authority,
+    artifactStores: swappedMountedStores({ workspaceId: "ws_runtime", mountInstanceId: "mount_swapped" }),
+    runnerCapability,
+    handoffCapability
+  })).toThrowObject({ code: "workspace-identity-mismatch" });
   expect(handoffCapability.prepare).toHaveBeenCalledTimes(1);
 });
 ```
@@ -723,7 +823,12 @@ it("keeps the public orchestrator dispatch shape while closure-binding stores an
 The test's caller-supplied artifactStores counterfactual must fail before the
 Task 134 delegate or H handoff. Replacing the typed assignment with an
 unconstrained dispatch or forwarding the forged store is a failed CF-1
-conformance result, not a compatibility shim.
+conformance result, not a compatibility shim. The exported actual caller is
+also required here: it must dispatch through the factory-closed registry while
+the test observes frozen registration provenance, the exact authority/mount,
+all three mounted readbacks, and H handoff. The unregistered-runner and
+swapped-store counterfactuals must stop before any extra readback, runner, or
+handoff activity.
 
 - [ ] **Step 2: Run the focused RED command.**
 
@@ -877,6 +982,45 @@ it("keeps structural-ready waiting-for-approval non-executable without fallback"
   expect(readiness.executable).toBe(false);
 });
 
+it("invokes dispatchVerifiedTaskRunner through composition with the same frozen tuple", async () => {
+  const input = compositionInput({
+    mountedAuthority: mountedAuthority({ workspaceId: "ws_runtime", mountInstanceId: "mount_runtime" }),
+    artifactStores: mountedStores({ workspaceId: "ws_runtime", mountInstanceId: "mount_runtime", readbackTrace }),
+    runnerCapability: productionRunners({ registration: frozenRunnerRegistration(), registrationProvenance: frozenRunnerRegistrationProvenance() })
+  });
+  const composition = createProductionAgentRuntimeComposition(input);
+  const caller = orchestratorDispatchInput();
+
+  await dispatchVerifiedTaskRunner({
+    registry: composition.runtimeCapabilities.runnerRegistry,
+    verifiedProviderApproval: true,
+    verifiedContextBindings: true,
+    ...caller
+  });
+  expect(input.runnerCapability.dispatch).toHaveBeenCalledWith(expect.objectContaining({
+    authority: input.mountedAuthority,
+    artifactStores: input.artifactStores,
+    registration: frozenRunnerRegistration(),
+    registrationProvenance: frozenRunnerRegistrationProvenance(),
+    handoffCapability: input.handoffCapability
+  }));
+  expect(input.mountedAuthority.mountInstanceId).toBe("mount_runtime");
+  expect(readbackTrace).toEqual(["derivative-readback", "material-readback", "manifest-readback"]);
+  expect(input.handoffCapability.readback).toHaveBeenCalledTimes(1);
+  await expect(composition.runtimeCapabilities.runnerRegistry.dispatch({ ...caller, artifactStores: forgedStores } as unknown as TaskOrchestratorRunnerDispatchInput))
+    .rejects.toMatchObject({ code: "runner-registration-invalid" });
+  await expect(dispatchVerifiedTaskRunner({
+    registry: createProductionAgentRuntimeComposition(compositionInput({ runnerCapability: unregisteredProductionRunners() })).runtimeCapabilities.runnerRegistry,
+    verifiedProviderApproval: true,
+    verifiedContextBindings: true,
+    ...caller
+  })).rejects.toMatchObject({ code: "runner-registration-invalid" });
+  expect(() => createProductionAgentRuntimeComposition({
+    ...input,
+    artifactStores: swappedMountedStores({ workspaceId: "ws_runtime", mountInstanceId: "mount_swapped" })
+  })).toThrowObject({ code: "workspace-identity-mismatch" });
+});
+
 it("injects the same readiness accessor into W and gives U only its safe projection", () => {
   const composition = createProductionAgentRuntimeComposition(compositionInput());
   const wakeRuntime = wakeSupervisorRuntimeForTest({
@@ -898,10 +1042,16 @@ provider policy, missing runner registration, mounted-store unavailable,
 handoff readback failure, version conflict, and hostile thrown object. Each
 test asserts a specification safe category, absence of raw prompt/secret/path/
 error data, supplied collaborator identity/equivalence, and no fallback
-factory/write/constructor call. Add a dispatch test proving the runner receives
-the exact Task 135 binding and that H's handoff path receives only its verified
-material/manifest readback. A mismatched binding or runner-returned generic
-store must fail closed before either final handoff or a fallback constructor.
+factory/write/constructor call. Add the actual-caller composition test above:
+it invokes `dispatchVerifiedTaskRunner` with the composed registry and proves
+the exact frozen registration provenance, authority/mount, mounted derivative/
+material/manifest stores, and H handoff capability reach the downstream
+binding. A direct forged-store call, unregistered runner, or swapped mounted
+tuple must fail closed before any activity. Add a dispatch test proving the
+runner receives the exact Task 135 binding and that H's handoff path receives
+only its verified material/manifest readback. A mismatched binding or
+runner-returned generic store must fail closed before either final handoff or a
+fallback constructor.
 Add safe-readiness consumer tests: W's `WakeSupervisorRuntime` receives the
 same `composition.readiness` capability object and calls only
 `composition.readiness.getReadiness()`; it never receives a readiness snapshot
