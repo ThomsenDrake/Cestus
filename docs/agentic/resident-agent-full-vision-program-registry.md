@@ -1063,6 +1063,33 @@ explicit implementation authorization.
 - Root-cause checkpoint: both prior repair audits were locally stronger but still artifact-text tests; neither made the audit consume the actual orchestrator caller shape nor prove the entire factory-closed tuple. The approved contract is satisfiable without a product/scope/safety/truth change. Recovery therefore changes both implementer and verification method to call-path/tuple evidence rather than requesting a user decision.
 - Supersession: this record supersedes RV-0-R-005 only for recovery status and authorization. It preserves every preceding Task 109 dispatch, repair, and review entry as immutable evidence.
 
+## RV-0-W-008 — Task 111 autonomous root-cause checkpoint and schema-complete tuple recovery dispatch
+
+- Recorded at: 2026-07-13T01:31:00Z
+- Role: coordinator recovery checkpoint
+- Lane and wave: W / 0B
+- Task ID and claim: task-111-resident-full-vision-w0-wake-plan / docs/agentic/claims/task-111-resident-full-vision-w0-wake-plan.md
+- Task thread ID: /root/task111_wake_plan_repair (first repair); /root/task111_wake_plan_repair_2 (second repair); /root/review_task111_plan_repair_2 (fresh re-reviewer); /root/task111_wake_plan_recovery (fresh recovery implementer)
+- Branch and worktree: codex/task-111-resident-full-vision-w0-wake-plan-recovery / /home/drake/.codex/worktrees/task-111-resident-full-vision-w0-wake-plan-recovery
+- Base commit and required head: 913fb13de1a105d777b8012acca4f1a21e5ba976 / one forward-only owned-file recovery commit followed by separately fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md; docs/agentic/claims/task-111-resident-full-vision-w0-wake-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: original plan 9083a51d; first repair b53ccb52; second repair 913fb13d; two preserved fresh re-review defect records; no shared contract is frozen and no production dependency applies
+- Approval record: under Standing Coordinator Delegation the coordinator records repair-count exhaustion as an internal recovery checkpoint and authorizes Task 111 append-only documentation-only schema-complete tuple recovery only. Allowed range is one verified recovery commit plus separately fresh re-review; wave stop is before Tasks124/125/137, CF-1 implementation dispatch, production work, provider invocation, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: recovery-dispatched; fresh recovery worker must append, not revise, claim history.
+- RED command and observed failure: final re-review showed that the second repair's 19-mutant audit still accepts removal of `workspaceId`, `residentId`, `supervisorEpoch`, authority/lease evidence IDs, and lease bindings from policy/high-water evidence; therefore the claimed full admission tuple is not actually proven.
+- GREEN command and observed result: pending materially different recovery evidence. It must extract complete declared evidence interfaces, derive an explicit canonical required-field/binding set from them, assert equality/readback at the concrete Task124/125 boundary, and counterfactually delete every field/binding in that set so every mutation fails.
+- Full verification: pending recovery-owned npm run verify. Prior verification history remains immutable evidence but cannot override fresh review defects.
+- Live-provider gate: not-applicable; this plan-only recovery invokes no provider and retains coordinator-only later live posture.
+- Review verdict: needs-changes / fresh re-reviewer /root/review_task111_plan_repair_2 found only the schema-completeness audit gap after confirming the repaired admission model, ordering, stop/no-fallback, ownership, and scope boundaries; fresh reviewer required after recovery.
+- Rebase record: recovery branch starts from preserved head 913fb13d in a distinct worktree; no cross-lane rebase applies before review.
+- Merge readiness: not-ready; recovery worker cannot self-approve or merge into neo.
+- Archive check: all author, repair, review, and root-cause evidence is retained; recovery handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
+- Root-cause checkpoint: the second repair improved sequence semantics but treated a long provenance structure as selected sample tokens. The approved contract needs no product/scope/safety/truth change. Recovery therefore changes both implementer and audit method to extract the interfaces and generate canonical full-field mutations rather than adding further prose clauses or requesting a user decision.
+- Supersession: this record supersedes RV-0-W-007 only for recovery status and authorization. It preserves every preceding Task 111 dispatch, repair, and review entry as immutable evidence.
+
 ## RV-0-H-003 — Task 110 durable-handoffs implementation-plan dispatch
 
 - Recorded at: 2026-07-13T00:16:43Z
