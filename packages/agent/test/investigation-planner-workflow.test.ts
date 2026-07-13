@@ -6,6 +6,7 @@ import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import {
   buildAgentProjection,
+  buildSpecialistHandoffProjection,
   createAgentRuntime,
   createContextPackRegistry,
   createSpecialistDerivativeArtifactStore,
@@ -91,12 +92,32 @@ describe("investigation planner workflow", () => {
     expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
       "agent.tool.requested", "prr.request.sent", "prr.followup.sent"
     ]));
+    const finalOutputIndex = events.findIndex((event) =>
+      event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output"
+    );
+    const preparedIndex = events.findIndex((event) => event.type === "agent.specialist-handoff.prepared");
+    const recordedIndex = events.findIndex((event) => event.type === "agent.specialist-handoff.recorded");
+    const terminalIndex = events.findIndex((event) => event.type === "agent.specialist-run.completed");
+    expect(finalOutputIndex).toBeGreaterThanOrEqual(0);
+    expect(finalOutputIndex).toBeLessThan(preparedIndex);
+    expect(preparedIndex).toBeLessThan(recordedIndex);
+    expect(recordedIndex).toBeLessThan(terminalIndex);
+    expect(events.map((event) => event.type)).not.toEqual(expect.arrayContaining([
+      "assertion.accepted",
+      "entity.resolved",
+      "relationship.accepted",
+      "agent.tool.completed",
+      "agent.tool.execution.claimed",
+      "prr.request.sent",
+      "prr.followup.sent"
+    ]));
   });
 
   it("permits bounded instructional narrative while producing only local task and PRR draft candidates", async () => {
     const { ledger, runtime } = await preparedRuntime();
     const handoffStore = createDerivativeStore();
-    const contextPacks = createPlannerContextPacks(false, false, (await ledger.readAll()).map((event) => event.id));
+    const sourceEventIds = (await ledger.readAll()).map((event) => event.id);
+    const contextPacks = createPlannerContextPacks(false, false, sourceEventIds);
 
     const result = await runInvestigationPlannerWorkflow({
       ledger,
@@ -128,6 +149,38 @@ describe("investigation planner workflow", () => {
     for (const artifact of result.handoff.outputArtifacts) {
       await expect(handoffStore.get(artifact.artifactHash)).resolves.toBeInstanceOf(Buffer);
     }
+    const planArtifact = result.handoff.outputArtifacts.find((artifact) => artifact.artifactKind === "investigation-plan-artifact");
+    const taskArtifact = result.handoff.outputArtifacts.find((artifact) => artifact.artifactKind === "task-suggestion-bundle");
+    expect(planArtifact).toBeDefined();
+    expect(taskArtifact).toBeDefined();
+    const expectedArtifactPayload = {
+      schemaVersion: "investigation-planner-handoff.v1",
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      investigationId: "inv_scope_001",
+      objectiveRefs: ["objective_procurement_001"],
+      gapIds: ["gap_contract_amendments_001"],
+      taskCandidates: [{
+        taskId: "task_investigation_candidate_001",
+        summary: "Review procurement timeline.",
+        priorityRationale: "Review the available evidence.",
+        linkedRefs: ["ev_planner_001", "gap_contract_amendments_001"],
+        approvalRequirements: ["human-review"]
+      }],
+      prrDraftCandidates: ["Draft a request for contract amendments."],
+      sourceEventIds: [...sourceEventIds].sort(),
+      contextPackRefs: result.handoff.contextPackRefs,
+      promptArtifactHash: result.handoff.promptArtifactHash,
+      planSummary: "Public instructions say investigators should review the timeline before creating local drafts."
+    };
+    expect(JSON.parse((await handoffStore.get(planArtifact!.artifactHash)).toString("utf8"))).toEqual({
+      ...expectedArtifactPayload,
+      artifactKind: "investigation-plan-artifact"
+    });
+    expect(JSON.parse((await handoffStore.get(taskArtifact!.artifactHash)).toString("utf8"))).toEqual({
+      ...expectedArtifactPayload,
+      artifactKind: "task-suggestion-bundle"
+    });
     expect(JSON.stringify(result.handoff)).not.toContain("Private witness timeline note");
     const events = await ledger.readAll();
     expect(events.map((event) => event.type)).toEqual(expect.arrayContaining([
@@ -197,6 +250,7 @@ describe("investigation planner workflow", () => {
   it("records a safe failed handoff when a later derivative write fails after model invocation", async () => {
     const { ledger, runtime } = await preparedRuntime();
     const backingStore = createDerivativeStore();
+    const sourceEventIds = (await ledger.readAll()).map((event) => event.id);
     let writeCount = 0;
     const handoffStore = {
       put: async (content: Buffer) => {
@@ -204,6 +258,91 @@ describe("investigation planner workflow", () => {
         if (writeCount === 12) {
           throw new Error("private investigation storage failure");
         }
+        return await backingStore.put(content);
+      },
+      get: backingStore.get
+    };
+
+    const result = await runInvestigationPlannerWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createPlannerContextPacks(false, false, sourceEventIds),
+      runtime,
+      providerReadiness: providerReadinessDto(),
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret"
+      },
+      derivativeStore: handoffStore,
+      handoffStore,
+      investigationId: "inv_scope_001"
+    });
+
+    expect(writeCount).toBeGreaterThanOrEqual(12);
+    expect(result.handoff).toMatchObject({
+      status: "failed",
+      failure: {
+        category: "external-effect-failed",
+        code: "investigation-planner-derivative-storage-failed",
+        retryable: true
+      },
+      outputArtifacts: [
+        expect.objectContaining({ artifactKind: "investigation-plan-artifact" }),
+        expect.objectContaining({ artifactKind: "task-suggestion-bundle" })
+      ],
+      toolRequestIds: []
+    });
+    expect((result.handoff as { readonly lifecycle?: string }).lifecycle).toBe("handoff-recorded");
+    expect(JSON.stringify(result.handoff)).not.toContain("private investigation storage failure");
+    const events = await ledger.readAll();
+    const eventTypes = events.map((event) => event.type);
+    expect(eventTypes).toContain("agent.model-invocation.completed");
+    expect(eventTypes).toContain("agent.specialist-run.failed");
+    expect(eventTypes).toContain("agent.specialist-run.step.recorded");
+    expect(eventTypes).toContain("agent.specialist-handoff.prepared");
+    expect(eventTypes).toContain("agent.specialist-handoff.recorded");
+    expect(eventTypes).not.toContain("agent.specialist-run.completed");
+    expect(eventTypes).not.toContain("agent.tool.requested");
+    expect(buildAgentProjection(events).runs.get("run_investigation_001")?.state).toBe("failed");
+    const failurePlanArtifact = result.handoff.outputArtifacts.find((artifact) => artifact.artifactKind === "investigation-plan-artifact");
+    expect(failurePlanArtifact).toBeDefined();
+    expect(JSON.parse((await backingStore.get(failurePlanArtifact!.artifactHash)).toString("utf8"))).toEqual({
+      schemaVersion: "investigation-planner-handoff.v1",
+      artifactKind: "investigation-plan-artifact",
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      investigationId: "inv_scope_001",
+      objectiveRefs: ["objective_procurement_001"],
+      gapIds: ["gap_contract_amendments_001"],
+      taskCandidates: [{
+        taskId: "task_investigation_candidate_001",
+        summary: "Review procurement timeline.",
+        priorityRationale: "Review the available evidence.",
+        linkedRefs: ["ev_planner_001", "gap_contract_amendments_001"],
+        approvalRequirements: ["human-review"]
+      }],
+      prrDraftCandidates: ["Draft a request for contract amendments."],
+      sourceEventIds: [...sourceEventIds].sort(),
+      contextPackRefs: result.handoff.contextPackRefs,
+      promptArtifactHash: result.handoff.promptArtifactHash,
+      planSummary: "Public instructions say investigators should review the timeline before creating local drafts."
+    });
+  });
+
+  it("keeps a persistent post-provider manifest-store failure durably resumable without fallback effects", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+    const backingStore = createDerivativeStore();
+    let writeCount = 0;
+    const handoffStore = {
+      put: async (content: Buffer) => {
+        writeCount += 1;
+        if (writeCount >= 14) throw new Error("private persistent manifest store failure");
         return await backingStore.put(content);
       },
       get: backingStore.get
@@ -230,28 +369,103 @@ describe("investigation planner workflow", () => {
       investigationId: "inv_scope_001"
     });
 
-    expect(writeCount).toBeGreaterThanOrEqual(12);
+    expect(writeCount).toBe(14);
     expect(result.handoff).toMatchObject({
-      status: "failed",
-      failure: {
-        category: "external-effect-failed",
-        code: "investigation-planner-derivative-storage-failed",
-        retryable: true
-      },
-      outputArtifacts: [],
-      toolRequestIds: []
+      status: "blocked",
+      lifecycle: "output-persisted",
+      outputArtifacts: [
+        expect.objectContaining({ artifactKind: "investigation-plan-artifact" }),
+        expect.objectContaining({ artifactKind: "task-suggestion-bundle" }),
+        expect.objectContaining({ artifactKind: "draft-prr-candidate-bundle" })
+      ]
     });
-    expect((result.handoff as { readonly lifecycle?: string }).lifecycle).toBe("handoff-recorded");
-    expect(JSON.stringify(result.handoff)).not.toContain("private investigation storage failure");
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({ category: "artifact-missing" }));
+    expect(JSON.stringify(result)).not.toContain("private persistent manifest store failure");
+
     const events = await ledger.readAll();
     const eventTypes = events.map((event) => event.type);
-    expect(eventTypes).toContain("agent.model-invocation.completed");
-    expect(eventTypes).toContain("agent.specialist-run.failed");
     expect(eventTypes).toContain("agent.specialist-run.step.recorded");
-    expect(eventTypes).toContain("agent.specialist-handoff.prepared");
-    expect(eventTypes).toContain("agent.specialist-handoff.recorded");
-    expect(eventTypes).not.toContain("agent.specialist-run.completed");
-    expect(eventTypes).not.toContain("agent.tool.requested");
+    expect(eventTypes).not.toEqual(expect.arrayContaining([
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed",
+      "agent.specialist-run.failed",
+      "agent.tool.requested",
+      "prr.request.sent",
+      "prr.followup.sent"
+    ]));
+    await expect(buildSpecialistHandoffProjection({
+      events,
+      manifestReader: backingStore,
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001"
+    })).resolves.toMatchObject({ state: "output-persisted" });
+  });
+
+  it("records a secret-safe terminal failure when final handoff material cannot persist", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+    const backingStore = createDerivativeStore();
+    let writeCount = 0;
+    const handoffStore = {
+      put: async (content: Buffer) => {
+        writeCount += 1;
+        if (writeCount >= 13) throw new Error("private persistent final material store failure");
+        return await backingStore.put(content);
+      },
+      get: backingStore.get
+    };
+
+    const result = await runInvestigationPlannerWorkflow({
+      ledger,
+      actor,
+      now,
+      contextPacks: createPlannerContextPacks(false, false, (await ledger.readAll()).map((event) => event.id)),
+      runtime,
+      providerReadiness: providerReadinessDto(),
+      runId: "run_investigation_001",
+      taskId: "task_investigation_001",
+      providerId: "provider_fake_local",
+      modelFamily: "fake-local",
+      credentialRef: {
+        credentialRefId: "agent_credref_fake_local",
+        providerId: "provider_fake_local",
+        kind: "local-no-secret"
+      },
+      derivativeStore: handoffStore,
+      handoffStore,
+      investigationId: "inv_scope_001"
+    });
+
+    expect(writeCount).toBe(13);
+    expect(result.handoff).toMatchObject({
+      status: "failed",
+      lifecycle: "no-output",
+      failure: {
+        category: "external-effect-failed",
+        code: "investigation-planner-final-output-storage-failed",
+        retryable: true
+      },
+      outputArtifacts: [
+        expect.objectContaining({ artifactKind: "investigation-plan-artifact" }),
+        expect.objectContaining({ artifactKind: "task-suggestion-bundle" }),
+        expect.objectContaining({ artifactKind: "draft-prr-candidate-bundle" })
+      ],
+      toolRequestIds: []
+    });
+    expect(JSON.stringify(result)).not.toContain("private persistent final material store failure");
+
+    const events = await ledger.readAll();
+    const eventTypes = events.map((event) => event.type);
+    expect(eventTypes).toContain("agent.specialist-run.failed");
+    expect(eventTypes).not.toEqual(expect.arrayContaining([
+      "agent.specialist-run.step.recorded",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed",
+      "agent.tool.requested",
+      "prr.request.sent",
+      "prr.followup.sent"
+    ]));
     expect(buildAgentProjection(events).runs.get("run_investigation_001")?.state).toBe("failed");
   });
 
@@ -339,14 +553,14 @@ async function preparedRuntime() {
     modelFamilies: ["fake-local"],
     responseText: JSON.stringify({
       planSummary: "Public instructions say investigators should review the timeline before creating local drafts.",
-      objectiveRefs: [],
-      gapIds: [],
+      objectiveRefs: ["objective_procurement_001"],
+      gapIds: ["gap_contract_amendments_001"],
       taskCandidates: [{
         taskId: "task_investigation_candidate_001",
         summary: "Review procurement timeline.",
         priorityRationale: "Review the available evidence.",
-        linkedRefs: [],
-        approvalRequirements: []
+        linkedRefs: ["ev_planner_001", "gap_contract_amendments_001"],
+        approvalRequirements: ["human-review"]
       }],
       prrDraftCandidates: ["Draft a request for contract amendments."]
     })

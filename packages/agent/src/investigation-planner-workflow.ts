@@ -10,9 +10,11 @@ import type { PromptArtifactEnvelope } from "./prompt-artifacts.js";
 import {
   parseLegacySpecialistWorkflowHandoff,
   type LegacySpecialistWorkflowHandoffDto,
-  type SpecialistWorkflowHandoffDto
+  type SpecialistWorkflowHandoffDto,
+  type SpecialistWorkflowOutputArtifactDto
 } from "./specialist-handoffs.js";
 import {
+  appendSpecialistFailure,
   appendSpecialistFinalOutputStep,
   finalizeSpecialistRunAfterHandoff,
   governanceLockIsActive,
@@ -37,7 +39,7 @@ export interface InvestigationPlannerWorkflowDiagnostic {
 }
 
 export type InvestigationPlannerWorkflowHandoff =
-  | (LegacySpecialistWorkflowHandoffDto & { readonly lifecycle: "no-output" })
+  | (LegacySpecialistWorkflowHandoffDto & { readonly lifecycle: "no-output" | "output-persisted" })
   | (SpecialistWorkflowHandoffDto & { readonly lifecycle: "handoff-recorded" });
 
 export interface RunInvestigationPlannerWorkflowResult {
@@ -100,7 +102,26 @@ export async function runInvestigationPlannerWorkflow(
   if (output === undefined) {
     return await failedModelOutputResult(input, prepared, handoffStore, sourceEventIds, invocation.eventIds);
   }
-  const taskSuggestions = output.taskCandidates.map((candidate) => candidate.summary);
+  const artifactPayload = {
+    schemaVersion: "investigation-planner-handoff.v1",
+    runId: input.runId,
+    taskId: input.taskId,
+    investigationId: input.investigationId,
+    objectiveRefs: [...output.objectiveRefs],
+    gapIds: [...output.gapIds],
+    taskCandidates: output.taskCandidates.map((candidate) => ({
+      taskId: candidate.taskId,
+      summary: candidate.summary,
+      priorityRationale: candidate.priorityRationale,
+      linkedRefs: [...candidate.linkedRefs],
+      approvalRequirements: [...candidate.approvalRequirements]
+    })),
+    prrDraftCandidates: [...output.prrDraftCandidates],
+    sourceEventIds: [...sourceEventIds],
+    contextPackRefs: prepared.contextPackRefs,
+    promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash
+  };
+  const outputArtifacts: SpecialistWorkflowOutputArtifactDto[] = [];
   let planArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
   let tasksArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
   let draftsArtifact: Awaited<ReturnType<typeof writeSpecialistDerivativeArtifact>>;
@@ -109,45 +130,54 @@ export async function runInvestigationPlannerWorkflow(
       derivativeStore: handoffStore,
       artifactKind: "investigation-plan-artifact",
       payload: {
-        schemaVersion: "investigation-planner-handoff.v1",
+        ...artifactPayload,
         artifactKind: "investigation-plan-artifact",
-        runId: input.runId,
-        taskId: input.taskId,
-        investigationId: input.investigationId,
         planSummary: output.planSummary
       }
     });
+    outputArtifacts.push(investigationOutputArtifact(
+      input.runId,
+      "investigation-plan-artifact",
+      planArtifact.artifactHash
+    ));
     tasksArtifact = await writeSpecialistDerivativeArtifact({
       derivativeStore: handoffStore,
       artifactKind: "task-suggestion-bundle",
       payload: {
-        schemaVersion: "investigation-planner-handoff.v1",
+        ...artifactPayload,
         artifactKind: "task-suggestion-bundle",
-        runId: input.runId,
-        taskId: input.taskId,
-        investigationId: input.investigationId,
-        taskSuggestions
+        planSummary: output.planSummary
       }
     });
+    outputArtifacts.push(investigationOutputArtifact(
+      input.runId,
+      "task-suggestion-bundle",
+      tasksArtifact.artifactHash
+    ));
     draftsArtifact = await writeSpecialistDerivativeArtifact({
       derivativeStore: handoffStore,
       artifactKind: "draft-prr-candidate-bundle",
       payload: {
-        schemaVersion: "investigation-planner-handoff.v1",
+        ...artifactPayload,
         artifactKind: "draft-prr-candidate-bundle",
-        runId: input.runId,
-        taskId: input.taskId,
-        investigationId: input.investigationId,
-        prrDraftCandidates: [...output.prrDraftCandidates]
+        planSummary: output.planSummary
       }
     });
+    outputArtifacts.push(investigationOutputArtifact(
+      input.runId,
+      "draft-prr-candidate-bundle",
+      draftsArtifact.artifactHash
+    ));
   } catch {
-    return await failedDerivativeArtifactResult(input, prepared, handoffStore, sourceEventIds, invocation.eventIds);
+    return await failedDerivativeArtifactResult(
+      input,
+      prepared,
+      handoffStore,
+      sourceEventIds,
+      invocation.eventIds,
+      outputArtifacts
+    );
   }
-  const planHash = planArtifact.artifactHash;
-  const tasksHash = tasksArtifact.artifactHash;
-  const draftsHash = draftsArtifact.artifactHash;
-  const outputArtifacts = investigationOutputArtifacts(input.runId, planHash, tasksHash, draftsHash);
   const material = buildSpecialistHandoffMaterial({
     status: "ready-for-review",
     safeSummary: "Investigation plan, local task suggestions, and PRR draft candidates are ready for review.",
@@ -194,10 +224,11 @@ function hasStaleEvidence(contextPackRefs: readonly import("./context-packs.js")
 function resultWithLegacyHandoff(
   handoff: LegacySpecialistWorkflowHandoffDto,
   eventIds: readonly string[],
-  diagnostics: readonly InvestigationPlannerWorkflowDiagnostic[] = []
+  diagnostics: readonly InvestigationPlannerWorkflowDiagnostic[] = [],
+  lifecycle: "no-output" | "output-persisted" = "no-output"
 ): RunInvestigationPlannerWorkflowResult {
   return Object.freeze({
-    handoff: Object.freeze({ ...handoff, lifecycle: "no-output" as const }),
+    handoff: Object.freeze({ ...handoff, lifecycle }),
     diagnostics: Object.freeze(diagnostics.map((diagnostic) => Object.freeze({ ...diagnostic }))),
     eventIds: Object.freeze([...eventIds])
   });
@@ -283,17 +314,22 @@ function uniqueStrings(values: readonly string[]): readonly string[] {
   return Object.freeze([...new Set(values)].sort());
 }
 
-function investigationOutputArtifacts(
+function investigationOutputArtifact(
   runId: string,
-  planHash: `sha256:${string}`,
-  tasksHash: `sha256:${string}`,
-  draftsHash: `sha256:${string}`
-) {
-  return Object.freeze([
-    Object.freeze({ artifactId: `artifact_${runId}_plan`, artifactKind: "investigation-plan-artifact", schemaId: "investigation-planner-handoff.v1", artifactHash: planHash, safeSummary: "Local investigation plan artifact hash is ready for review." }),
-    Object.freeze({ artifactId: `artifact_${runId}_tasks`, artifactKind: "task-suggestion-bundle", schemaId: "investigation-planner-handoff.v1", artifactHash: tasksHash, safeSummary: "Local task suggestions require investigator review." }),
-    Object.freeze({ artifactId: `artifact_${runId}_prr_drafts`, artifactKind: "draft-prr-candidate-bundle", schemaId: "investigation-planner-handoff.v1", artifactHash: draftsHash, safeSummary: "Local PRR draft candidates have not been sent." })
-  ]);
+  artifactKind: "investigation-plan-artifact" | "task-suggestion-bundle" | "draft-prr-candidate-bundle",
+  artifactHash: `sha256:${string}`
+): SpecialistWorkflowOutputArtifactDto {
+  const details = artifactKind === "investigation-plan-artifact"
+    ? { artifactId: `artifact_${runId}_plan`, safeSummary: "Local investigation plan artifact hash is ready for review." }
+    : artifactKind === "task-suggestion-bundle"
+      ? { artifactId: `artifact_${runId}_tasks`, safeSummary: "Local task suggestions require investigator review." }
+      : { artifactId: `artifact_${runId}_prr_drafts`, safeSummary: "Local PRR draft candidates have not been sent." };
+  return Object.freeze({
+    ...details,
+    artifactKind,
+    schemaId: "investigation-planner-handoff.v1",
+    artifactHash
+  });
 }
 
 async function recordDurableHandoff(input: {
@@ -302,34 +338,155 @@ async function recordDurableHandoff(input: {
   readonly material: SpecialistHandoffMaterial;
   readonly eventIds: readonly string[];
 }): Promise<RunInvestigationPlannerWorkflowResult> {
-  const finalOutput = await appendSpecialistFinalOutputStep({
-    ledger: input.input.ledger,
-    materialStore: input.handoffStore,
-    actor: input.input.actor,
-    now: input.input.now,
+  let finalOutput: Awaited<ReturnType<typeof appendSpecialistFinalOutputStep>>;
+  try {
+    finalOutput = await appendSpecialistFinalOutputStep({
+      ledger: input.input.ledger,
+      materialStore: input.handoffStore,
+      actor: input.input.actor,
+      now: input.input.now,
+      runId: input.input.runId,
+      taskId: input.input.taskId,
+      handoffMaterial: input.material
+    });
+  } catch {
+    return await finalOutputStorageFailureResult(input);
+  }
+  let recorded: Awaited<ReturnType<typeof recordSpecialistHandoff>>;
+  try {
+    recorded = await recordSpecialistHandoff({
+      ledger: input.input.ledger,
+      manifestStore: input.handoffStore,
+      actor: input.input.actor,
+      now: input.input.now,
+      runId: input.input.runId,
+      taskId: input.input.taskId
+    });
+  } catch {
+    return outputPersistedResult(input, finalOutput.id);
+  }
+  try {
+    const finalized = await finalizeSpecialistRunAfterHandoff({
+      ledger: input.input.ledger,
+      actor: input.input.actor,
+      now: input.input.now,
+      recorded
+    });
+    return Object.freeze({
+      handoff: Object.freeze({ ...recorded.handoff, lifecycle: "handoff-recorded" as const }),
+      diagnostics: Object.freeze([]),
+      eventIds: Object.freeze([...input.eventIds, finalOutput.id, recorded.prepared.id, recorded.recorded.id, finalized.terminal.id])
+    });
+  } catch {
+    return Object.freeze({
+      handoff: Object.freeze({ ...recorded.handoff, lifecycle: "handoff-recorded" as const }),
+      diagnostics: Object.freeze([Object.freeze({
+        category: "artifact-missing" as const,
+        safeSummary: "The durable handoff was recorded, but terminal run finalization must be retried."
+      })]),
+      eventIds: Object.freeze([...input.eventIds, finalOutput.id, recorded.prepared.id, recorded.recorded.id])
+    });
+  }
+}
+
+async function finalOutputStorageFailureResult(input: {
+  readonly input: RunInvestigationPlannerWorkflowInput;
+  readonly handoffStore: SpecialistHandoffManifestStore;
+  readonly material: SpecialistHandoffMaterial;
+  readonly eventIds: readonly string[];
+}): Promise<RunInvestigationPlannerWorkflowResult> {
+  let failureEventId: string | undefined;
+  try {
+    const failure = await appendSpecialistFailure({
+      ledger: input.input.ledger,
+      actor: input.input.actor,
+      now: input.input.now,
+      runId: input.input.runId,
+      category: "external-effect-failed",
+      message: "Investigation planner handoff material could not be persisted.",
+      retryable: true,
+      allowedActions: ["repair durable investigation handoff storage and retry"],
+      ...(input.eventIds.at(-1) === undefined ? {} : { causationId: input.eventIds.at(-1) })
+    });
+    failureEventId = failure.id;
+  } catch {
+    // The returned handoff remains secret-safe even when the ledger is unavailable.
+  }
+  const handoff = parseLegacySpecialistWorkflowHandoff({
+    schemaVersion: "agent-specialist-handoff.v1",
+    runType: "investigation-planner",
     runId: input.input.runId,
     taskId: input.input.taskId,
-    handoffMaterial: input.material
+    residentAgentId: "agent_default",
+    generatedAt: input.input.now(),
+    status: "failed",
+    safeSummary: "Investigation planning could not persist its durable handoff material.",
+    contextPackRefs: input.material.contextPackRefs,
+    promptArtifactHash: input.material.promptArtifactHash,
+    outputArtifacts: input.material.outputArtifacts,
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [{
+      actionId: `action_${input.input.runId}_repair_handoff_storage`,
+      label: "Repair durable investigation handoff storage and retry",
+      kind: "retry",
+      effect: "none",
+      ...(input.material.outputArtifacts[0] === undefined ? {} : { artifactId: input.material.outputArtifacts[0].artifactId })
+    }],
+    failure: {
+      category: "external-effect-failed",
+      code: "investigation-planner-final-output-storage-failed",
+      safeSummary: "Durable handoff material storage failed after safe model invocation.",
+      retryable: true
+    }
   });
-  const recorded = await recordSpecialistHandoff({
-    ledger: input.input.ledger,
-    manifestStore: input.handoffStore,
-    actor: input.input.actor,
-    now: input.input.now,
+  return resultWithLegacyHandoff(
+    handoff,
+    [...input.eventIds, ...(failureEventId === undefined ? [] : [failureEventId])],
+    [{
+      category: "artifact-missing",
+      safeSummary: "Durable handoff material storage was unavailable after safe model invocation."
+    }]
+  );
+}
+
+function outputPersistedResult(input: {
+  readonly input: RunInvestigationPlannerWorkflowInput;
+  readonly handoffStore: SpecialistHandoffManifestStore;
+  readonly material: SpecialistHandoffMaterial;
+  readonly eventIds: readonly string[];
+}, finalOutputEventId: string): RunInvestigationPlannerWorkflowResult {
+  const handoff = parseLegacySpecialistWorkflowHandoff({
+    schemaVersion: "agent-specialist-handoff.v1",
+    runType: "investigation-planner",
     runId: input.input.runId,
-    taskId: input.input.taskId
+    taskId: input.input.taskId,
+    residentAgentId: "agent_default",
+    generatedAt: input.input.now(),
+    status: "blocked",
+    safeSummary: "Investigation output is persisted, but durable handoff recording must resume after storage is restored.",
+    contextPackRefs: input.material.contextPackRefs,
+    promptArtifactHash: input.material.promptArtifactHash,
+    outputArtifacts: input.material.outputArtifacts,
+    toolRequestIds: [],
+    approvalRequirements: [],
+    nextSafeActions: [{
+      actionId: `action_${input.input.runId}_resume_handoff_recording`,
+      label: "Restore durable handoff storage and resume recording",
+      kind: "retry",
+      effect: "none",
+      ...(input.material.outputArtifacts[0] === undefined ? {} : { artifactId: input.material.outputArtifacts[0].artifactId })
+    }]
   });
-  const finalized = await finalizeSpecialistRunAfterHandoff({
-    ledger: input.input.ledger,
-    actor: input.input.actor,
-    now: input.input.now,
-    recorded
-  });
-  return Object.freeze({
-    handoff: Object.freeze({ ...recorded.handoff, lifecycle: "handoff-recorded" as const }),
-    diagnostics: Object.freeze([]),
-    eventIds: Object.freeze([...input.eventIds, finalOutput.id, recorded.prepared.id, recorded.recorded.id, finalized.terminal.id])
-  });
+  return resultWithLegacyHandoff(
+    handoff,
+    [...input.eventIds, finalOutputEventId],
+    [{
+      category: "artifact-missing",
+      safeSummary: "Final output is ledger-bound, but durable handoff manifest recording must be resumed."
+    }],
+    "output-persisted"
+  );
 }
 
 function parseModelOutput(outputText: string) {
@@ -387,14 +544,15 @@ async function failedDerivativeArtifactResult(
   prepared: PreparedSpecialistRun,
   handoffStore: SpecialistHandoffManifestStore,
   sourceEventIds: readonly string[],
-  invocationEventIds: readonly string[]
+  invocationEventIds: readonly string[],
+  outputArtifacts: readonly SpecialistWorkflowOutputArtifactDto[]
 ): Promise<RunInvestigationPlannerWorkflowResult> {
   const material = buildSpecialistHandoffMaterial({
     status: "failed",
     safeSummary: "Investigation planning could not publish local derivative artifacts.",
     contextPackRefs: prepared.contextPackRefs,
     promptArtifactHash: prepared.promptArtifact.manifest.inputArtifactHash as `sha256:${string}`,
-    outputArtifacts: [],
+    outputArtifacts,
     toolRequestIds: [],
     approvalRequirements: [],
     nextSafeActions: [{
@@ -406,7 +564,7 @@ async function failedDerivativeArtifactResult(
     failure: {
       category: "external-effect-failed",
       code: "investigation-planner-derivative-storage-failed",
-      safeSummary: "Derivative artifact storage failed before any specialist step or tool request was recorded.",
+      safeSummary: "Derivative artifact storage failed before the investigation handoff could complete.",
       retryable: true
     },
     sourceEventIds,
