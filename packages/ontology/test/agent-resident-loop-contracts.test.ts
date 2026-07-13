@@ -207,6 +207,15 @@ describe("resident loop ontology contracts", () => {
       ...planEvent,
       payload: { ...planEvent.payload, sourceEventIds: sourceEventIdsWithCustomPrototype }
     }).success).toBe(false);
+    const payloadWithThrowingAccessor = { ...planEvent.payload };
+    Object.defineProperty(payloadWithThrowingAccessor, "unexpected", {
+      enumerable: true,
+      get: () => {
+        throw new Error("payload accessor must not run");
+      }
+    });
+    expect(() => validateKnowledgeEvent({ ...planEvent, payload: payloadWithThrowingAccessor })).not.toThrow();
+    expect(validateKnowledgeEvent({ ...planEvent, payload: payloadWithThrowingAccessor }).success).toBe(false);
     const { terminalReadback: _terminalReadback, ...withoutTerminalReadback } = result.payload;
     expect(validateKnowledgeEvent({ ...result, payload: withoutTerminalReadback }).success).toBe(false);
     expectValid(suspended);
