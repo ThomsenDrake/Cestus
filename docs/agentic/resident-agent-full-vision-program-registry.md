@@ -2668,3 +2668,27 @@ explicit implementation authorization.
 - W1-118 is integrated and verified. Task123 remains under fresh root-cause
   repair and Task124's approved candidate remains queued for a separate
   serialized integration gate.
+
+## RV-1-C-046 — User-requested graceful program pause
+
+- Pause head: Relay A is clean at `41d15c3218c3fed0abb102b11ca57d396185c84a`
+  before this checkpoint. W1-118 `5e93c3a` was independently approved, merged
+  at `10e42fb4`, and verified on the merged checkout: focused 27/27;
+  typecheck; 195 passed + 3 skipped files; 2,290 passed + 5 skipped tests;
+  Vite; and factory readiness.
+- First resume action: integrate independently approved, clean Task124
+  `cd65a7bb350da45fcab0fbda2b601b4316df2996` from its exact three-file scope,
+  append evidence, run its focused/factory and one serialized merged full gate,
+  then commit. It is intentionally unintegrated during this pause.
+- Task123 `404ac711dbd51cdbb7ae1fcf10c4f69b5d632977` is rejected and
+  unintegrated. A fresh root-cause worker stopped clean with no changes after
+  proving a prerequisite: ingestion must export a canonical staged-report
+  artifact decoder/reader. `legacy.import.report.generated` is canonical, but
+  serialization alone is public while `resolveStoredReport` remains private.
+  Resume by implementing, reviewing, and integrating that ingestion prerequisite,
+  then rebase/restart Task123 for report-event and terminal
+  actor/correlation/type/chain RED/GREEN.
+- Relay B remains frozen/read-only at `da1abbb3`; all referenced candidate
+  worktrees are clean. The serialized full-verifier slot is free. No `neo`
+  merge, dispatch, Task124 integration, capacity refill, or new verifier is
+  authorized until the user resumes the program.
