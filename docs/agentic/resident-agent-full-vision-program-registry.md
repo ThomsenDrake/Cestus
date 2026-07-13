@@ -2165,3 +2165,59 @@ explicit implementation authorization.
   `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts`;
   and preserve no shadow store/effect. Its reviewed merged SHA gates restarted
   Task120, whose reviewed merged SHA gates W1-118 and Task136.
+
+## RV-1-C-023 — W1-119 amendment correction / fresh-review stop
+
+- Recorded at: 2026-07-13T18:39:57Z
+- Role, branch, and scope: fresh documentation-only amendment author on
+  `codex/cf1-w119-amendment` in
+  `/home/drake/.codex/worktrees/cf1-w119-amendment`, descended from Relay B
+  recovery `f1006d5ae19ce851772e2e68c261f0e4b66d91e4` through preservation
+  checkpoint `3ce2c79b3b6a0d137abdbc8f5adb0073acfe1c9b`. The only tracked
+  files are this append-only registry, the Task117 claim, and the CF-1 freeze.
+- RED evidence: the literal W1-119 prerequisite probe exited `1`, proving the
+  checkpoint was missing the exact paired focused command; missing
+  identity/policy/authority/source/context/budget/causation/correlation
+  negative cases; forged plan-readback linkage; cross-run identity; unsafe
+  own-data shapes; and the terminal-looking-result-without-readback ban.
+- GREEN evidence: the complete literal `canonicalRows` oracle is independent
+  of candidate parsing and exact-compares every one of all ten governed cells
+  in canonical order, rejecting missing, duplicate, unknown, additive, alias,
+  reordered-owner, and substituted rows after integrity recomputation. The
+  audit exited `0` with 837 rejected direct recomputed-hash mutations,
+  including every cell of every governed row and every W1-119
+  event/schema/parser/fixture/command/gate term.
+- Frozen W1-119: L is the sole serialized registrar of
+  `packages/ontology/src/contracts.ts`,
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`, and only its
+  future claim. It freezes exactly the five resident-loop events, strict
+  canonical schemas/parsers/fixtures, all named negative classes, the exact
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts`
+  command, no store/projection/runtime/provider/tool/domain effect, and the
+  reviewed W1-119 -> Task120 -> W1-118/Task136 SHA gates.
+- Stop: this is not production Task119 authorization, review approval,
+  integration, a Task120 restart, a W1-118 dispatch, or any `neo` merge. The
+  author must run the remaining documentation/full gates, commit once, and
+  stop for a distinct fresh reviewer.
+
+## RV-1-C-024 — W1-119 amendment verification / review handoff
+
+- Recorded at: 2026-07-13T18:42:33Z
+- Dependency recovery: the dedicated amendment worktree initially lacked the
+  ignored `tsc` executable, so its first full verifier exited `127` before
+  typecheck. The coordinator explicitly authorized `npm ci --ignore-scripts`
+  only there; it restored lockfile-pinned ignored dependencies and changed no
+  tracked package or lockfile state.
+- Final author verification: fresh `npm run verify` exited `0`: typecheck
+  passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5
+  skipped; the Vite production build passed; and factory readiness passed.
+  The SQLite experimental and existing Vite chunk-size warnings were
+  non-failing. The literal oracle audit passed with 837 rejected direct
+  recomputed-hash counterfactual mutations; `git diff --check` and
+  `npm run factory:check` also passed before this forward-only evidence.
+- Review stop: the amendment is a verified candidate only. A distinct fresh
+  reviewer must independently inspect exact three-file scope/ancestry, the
+  literal-oracle source independence and all-ten-cell mutation loop, each
+  W1-119 exact event, strict negative, paired command, no-effect, and SHA-gate
+  fact, and final clean-worktree gates. No reviewer self-integration, Wave1
+  production, Task120 restart, W1-118 dispatch, or `neo` merge is allowed.

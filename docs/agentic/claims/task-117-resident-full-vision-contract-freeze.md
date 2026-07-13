@@ -154,3 +154,39 @@ integrate an approved result, never into `neo`.
   confirm this exact three-file scope and clean ancestry, and rerun feasible
   documentation/full verification gates. The author must stop after the one
   amendment commit.
+
+## RV-1-C-023 W1-119 Amendment Completion / Fresh-Review Stop
+
+- This forward-only completion supersedes no history: it retains the isolated
+  checkpoint `3ce2c79b3b6a0d137abdbc8f5adb0073acfe1c9b` and corrects the
+  incomplete W1-119 wording recorded at RV-1-C-022 without changing any
+  production, test, runtime, provider, UI, or `neo` file.
+- Documentation RED: a focused literal-requirement probe exited `1` with
+  `RED: W1-119 amendment is incomplete`, naming the missing paired focused
+  command; missing identity/policy/authority/source/context/budget/causation/
+  correlation requirements; forged plan-readback linkage; cross-run identity;
+  unsafe own-data shapes; and the terminal-looking-result readback ban.
+- Documentation GREEN: the independent literal `canonicalRows` audit exited
+  `0` after exact equality, count/order, and integrity checks. It rejected 837
+  direct recomputed-hash counterfactual mutations, including every governed
+  cell and each W1-119 event/schema/parser/fixture/command/gate term.
+- Frozen correction: W1-119 exclusively reserves `contracts.ts`, the dedicated
+  resident-loop contract test, and only its future claim; it names the exact
+  five events, strict schemas/parsers/fixtures, every required negative class,
+  the paired `agent-resident-loop-contracts` plus `agent-contracts` command,
+  no-effect boundary, and reviewed SHA gate chain W1-119 -> Task120 ->
+  W1-118/Task136.
+- Status: ready-for-fresh-review only after `git diff --check`,
+  `npm run factory:check`, and fresh `npm run verify` complete. A different
+  reviewer must validate the exact three-file scope, literal-oracle
+  independence, all-ten-cell and focused W1-119 mutations, and all standing
+  no-self-integration/no-`neo` constraints.
+- Verification completion: coordinator-authorized `npm ci --ignore-scripts`
+  restored only ignored, lockfile-pinned dependencies in this dedicated
+  worktree with no tracked setup churn. Fresh `npm run verify` then exited `0`:
+  typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed
+  with 5 skipped; Vite production build passed; and factory readiness passed.
+  Existing SQLite experimental and Vite chunk-size warnings were non-failing.
+- Review status: ready-for-fresh-review. This author stops after the scoped
+  forward commit; no production Task119 claim, implementation, integration,
+  Task120 restart, W1-118 dispatch, or `neo` action is authorized.
