@@ -2534,3 +2534,29 @@ explicit implementation authorization.
 - RED command and observed failure: the `RV-1-C-037` ownership-presence audit
   exited 1 with `RED: RV-1-C-037 watchdog recovery ownership acceptance is
   absent` before this append.
+
+## RV-1-C-038 — Relay B freeze-ledger correction and exact Task123 preservation
+
+- Relay B's post-freeze handoff confirms that `da1abbb3059a4fa6ea402cdcba38a1715fff2168`
+  is the clean final Relay B head and that no Relay B mutation, integration, or
+  dispatch followed the freeze. It is a descendant of verified Task120 record
+  `43eb9642`; `neo` remains untouched.
+- Correction to the incoming child ledger only: the active Task123 repair is
+  the fresh canonical-handoff lane `/root/task123_canonical_handoff_repair` on
+  `codex/task-123-resident-full-vision-bootstrap-repair` at clean preservation
+  head `faf910a7d99c491e7bcc6b85220ea4e21b2c8eed`, not an uncommitted change
+  on the older restart worktree. It repairs rejected candidate `de4e8edf`'s
+  P1 optional-`handoffStore` direct-terminal bypass of the canonical
+  final-output -> prepared -> recorded -> terminal lifecycle. No candidate
+  repair edit or review exists yet.
+- Unchanged preserved lanes: W1-118 remains at `c8e393168b3671d10fe961346262c053783b7714`
+  with its named uncommitted scoped source/test paths and no candidate review;
+  Task124 remains at its clean second-repair authorization
+  `c3bcbbcc2515ad33e2306c702afb93d13d999367`, preserving the rejected
+  `9d5632b9` four-P1 finding set. This correction supersedes only the
+  Task123-path detail in `RV-1-C-037`; all acceptance, isolation, review,
+  verification, append-only, and no-`neo` constraints remain unchanged.
+- Relay A will resume the exact preserved author branches under their existing
+  SDD/TDD/fresh-review/no-self-integration authorizations and records the
+  previously addressed restart worktree as historical evidence, not a new
+  integration target.
