@@ -1997,3 +1997,27 @@ explicit implementation authorization.
 - Merge readiness: Task115 is merged in source; Task116 is ready for coordinator-only integration after the stated independent checks. CF-1 and every Wave1 production task remain stopped.
 - Archive check: preserve Relay B source history, Task115 final review/integration, Task116 author/reviewer evidence, and this recovery acceptance. Before this lease boundary Relay A must commit a clean handoff to Relay B, wake it directly, and wait for an explicit clean descendant acceptance.
 - Supersession: this record supersedes RV-0-C-007 only for active coordinator ownership after Relay B's failed handoff. It preserves all prior records and does not grant a child any integration or neo-merge authority.
+
+## RV-0-A-014 — Task116 acceptance audit repair approved and integrated
+
+- Recorded at: 2026-07-13T16:13:14Z
+- Role: Relay A coordinator integration
+- Lane and wave: A / 0B
+- Task ID and claim: task-116-resident-full-vision-w0-acceptance-plan / docs/agentic/claims/task-116-resident-full-vision-w0-acceptance-plan.md
+- Author and reviewer: approved repair `9eb6a5220dca1b986a488223900d5607dc0dc64f` on `codex/task-116-resident-full-vision-w0-acceptance-audit-repair`; different fresh reviewer task `019f5c36-130d-7f91-a036-07d49530c289` returned APPROVE
+- Branch and worktree: integrated by Relay A from the exact approved repair into `codex/resident-agent-full-vision-program-relay-a` / `/home/drake/.codex/worktrees/95de/Cestus`
+- Base commit and reviewed head: `eecc5298608f8a1014f56d8002f4a104a4ee77fd` / `9eb6a5220dca1b986a488223900d5607dc0dc64f`; reviewed repair is a forward-only descendant and changes exactly the Task116 plan and append-only claim
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358; docs/superpowers/specs/2026-07-12-resident-agent-acceptance-design.md@eda08b6ca64ea48e405cc5ed83213630f8769d94
+- Owned/integrated files: docs/superpowers/plans/2026-07-12-resident-agent-acceptance-implementation.md; docs/agentic/claims/task-116-resident-full-vision-w0-acceptance-plan.md
+- Approval record: Task116 repair authority RV-0-A-013 and the parent recovery handoff authorize this coordinator-only integration after different fresh approval. No child self-integration or merge into neo is authorized.
+- Claim status: merged / approved Task116 plan is now a Wave0B CF-1 input only
+- Review verdict: approved. The fresh reviewer verified the exact two-document scope, embedded audit rejection of 168 direct counterfactuals, and full verifier evidence.
+- Cross-boundary verification: Relay A independently confirmed repair ancestry and two-file diff, ran `git diff --check` on the repair, staged a no-ff merge, then ran the Task116 embedded section-local audit. It printed `GREEN: Task 116 section-local acceptance-plan audit passed (168 direct local counterfactual mutations rejected).`
+- Full verification: on the staged coordinator merge, `npm run factory:check` passed, `npm run verify` completed after typecheck and deterministic tests, Vite build, and factory readiness, and both working-tree and staged `git diff --check` passed before commit.
+- Live-provider gate: not-applicable; this documentation plan/repair invoked no Nous, credential, browser, tailnet, provider, or production behavior
+- Rebase record: no contract-changing commit applied between the reviewed head and Relay A integration; the no-ff merge was clean
+- Merge readiness: merged / Relay A coordinator integration commit `c8e1097c` contains only the two approved Task116 documents. No merge into neo occurred.
+- Archive check: author repair, different fresh review, scope/ancestry, clean integration, verification evidence, and this forward-only record are preserved before archival
+- C008 completion correction: the C008 focused ownership audit, `git diff --check`, `npm run factory:check`, and full `npm run verify` all passed before its commit `506ebc8f`; the pending phrasing in C008 is historical pre-commit text and is superseded only by this factual completion note.
+- Next gate: all Wave0B lane plans are integrated. Dispatch Task117 CF-1 contract freeze under a new exact coordinator authorization; all Wave1 production, provider, and live work remains stopped until Task117 is independently reviewed and integrated.
