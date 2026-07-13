@@ -2398,3 +2398,29 @@ explicit implementation authorization.
   at authorization `8dae042eebe5cb913f342a9c9fc04c42fa9b9f81`. It owns only
   Task124's source/test/claim and must begin RED-first with SDD/TDD/fresh
   review/full verification/no-self-merge/no-`neo` authority.
+
+## RV-1-C-033 — Coordinator integration: approved Task123 Lane H schema prerequisite
+
+- Integrated candidate: independently approved serialized H prerequisite
+  `4746c29ae7727c0b6e296746889727f54b1798fb` merged at coordinator head
+  `0f2743f7e28d74f09edf06d1bbf5f6b3e62cd025`. It changes only the H-owned
+  runner kernel, H handoff projection, their focused tests, and its append-only
+  claim; no Task123 workflow/prototype, shared ontology schema, PRR, provider,
+  graph, or external path changed.
+- Contract result: kernel and projection share one canonical
+  `ontology-bootstrap-handoff.v1` final-output selector. Ontology-bootstrap
+  now uses the existing validated final-output -> prepared -> recorded ->
+  terminal readback lifecycle, with strict run/task/type/schema/idempotency,
+  material/artifact, and provenance guards; no second handoff lifecycle exists.
+- Independent review approved the exact five-file scope, single-selector
+  boundary, mismatch/cross-run/missing-material/missing-provenance
+  counterfactuals, focused 2 files / 72 tests, diff/factory, and retained
+  author full verification: typecheck; 190 files/3 skipped; 2,254 tests/5
+  skipped; Vite; factory readiness. The coordinator then reran the focused H
+  suite (2 files / 72 tests), factory readiness, and the merged full gate:
+  typecheck; 190 files passed / 3 skipped; 2,254 tests passed / 5 skipped;
+  Vite production build; factory readiness. All commands exited 0 before this
+  record was committed.
+- Dependency consequence: only after the clean verified coordinator descendant
+  may Task123 rebase/restart its preserved blocked claim and diagnostic
+  checkpoint. The old prototype remains unintegrated; `neo` remains untouched.
