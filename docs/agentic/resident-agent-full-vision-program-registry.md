@@ -2305,3 +2305,39 @@ explicit implementation authorization.
   this record, preserving blocked claim `bb2c2059` as forward-only evidence.
   W1-118 and Task136 remain stopped pending Task120's independently reviewed
   merged SHA; `neo` remains untouched.
+
+## RV-1-C-029 — Coordinator integration: approved Task122 release-safe handoff recovery
+
+- Integrated candidate: Relay B merged independently approved Task122 final
+  recovery `0b2b3f6671d448e7100f43e9f5a4faed42e6ea08` at coordinator merge
+  head `9839fbf8c9010425f8585a4eb5edd8879c738eba`. Earlier Task122 candidates
+  and two root-cause recoveries are preserved as rejected forward ancestry;
+  no history rewrite or `neo` merge occurred.
+- Final invariant: before any recovery store/model/ledger or material effect,
+  the workflow proves one exact `agent_default` investigation-planner start
+  and an authoritative claimed -> runner-dispatching attempt chain. Any
+  matching release invalidates that causal line regardless of whether a later
+  forged checkpoint appears. It retains cross-specialist rejection, swapped,
+  missing, duplicate, stale, and released-chain fail-closed behavior plus two
+  persistent-unavailable `output-persisted` retries with no duplicate effects.
+- Independent approval: the final Task122-uninvolved reviewer approved exact
+  range `a2a25f65..0b2b3f66`, clean three-file scope, release-order
+  counterfactual, valid unreleased recovery, zero effects on rejection,
+  focused 2 files / 48 tests, diff/factory gates, and retained author full
+  verification: typecheck; 189 files/3 skipped; 2,237 tests/5 skipped; Vite;
+  factory readiness. Coordinator targeted and merged verification are required
+  next before this integration is complete.
+
+## RV-1-C-030 — Task122 post-merge coordinator verification
+
+- Coordinator merged-checkout focused gate for Task122 passed 2 files / 48
+  tests, with `git diff --check` and factory readiness both passing at merge
+  head `9839fbf8c9010425f8585a4eb5edd8879c738eba` plus this forward record.
+- The single retained coordinator `npm run verify` exited 0: typecheck passed;
+  190 test files passed (3 skipped); 2,253 tests passed (5 skipped); Vite
+  production build passed; and factory-readiness passed. Existing SQLite
+  experimental and Vite chunk-size warnings were non-failing.
+- Task122 is integrated and verified. Its author and reviewer are closed from
+  the active pool. Task120 and Task123 remain independent active Wave 1 lanes;
+  no W1-118 or Task136 consumer starts until Task120 is independently reviewed,
+  merged, and recorded. `neo` remains untouched.
