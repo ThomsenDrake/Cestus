@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import { validateKnowledgeEvent, type KnowledgeEventOf } from "../../ontology/src/contracts.js";
 
 export type TriggerFamily =
   | "prr-monitoring"
@@ -360,8 +360,9 @@ export async function readbackTriggerDecision(
   } catch {
     return safeDecision("readback-failed");
   }
-  const parsed = readbackPayload(event);
-  if (parsed === undefined) return safeDecision("readback-failed");
+  const persistedEvent = readbackEvent(event, eventId);
+  if (persistedEvent === undefined) return safeDecision("readback-failed");
+  const parsed = persistedEvent.payload;
   let persistedRequest: VerifiedTriggerRequestFields;
   let reconstructed: ProposedTriggerAdmissionScopeV1;
   let persistedIdentity: TriggerRequestIdentity;
@@ -597,15 +598,16 @@ function readInputFor(input: NormalizedEvaluation): TriggerAuthorityReadInput {
   return freeze({ descriptor: input.descriptor, candidate: input.candidate });
 }
 
-function readbackPayload(value: unknown): ProposedTriggerRequest | undefined {
-  try {
-    const event = normalizeData(value) as { readonly type?: unknown; readonly payload?: unknown };
-    if (event.type !== "agent.trigger.requested.v1") return undefined;
-    const payload = normalizeData(event.payload) as ProposedTriggerRequest;
-    return isRecord(payload) ? payload : undefined;
-  } catch {
-    return undefined;
-  }
+function readbackEvent(value: unknown, expectedEventId: string): KnowledgeEventOf<"agent.trigger.requested.v1"> | undefined {
+  const parsed = validateKnowledgeEvent(value);
+  if (
+    !parsed.success ||
+    parsed.data.type !== "agent.trigger.requested.v1" ||
+    parsed.data.id !== expectedEventId ||
+    parsed.data.context.actor.kind !== "agent" ||
+    parsed.data.context.actor.id !== "agent_default"
+  ) return undefined;
+  return parsed.data;
 }
 
 function safeDecision(kind: TriggerDecisionKind, notBefore?: string): TriggerDecision {

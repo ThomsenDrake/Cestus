@@ -256,24 +256,44 @@ describe("resident proactive trigger evaluation", () => {
 
   it("rejects persisted mount, lock, identity, and high-water swaps during exact readback", async () => {
     const transforms = [
-      (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, mountInstanceId: "mount_swapped" } } }),
-      (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, mountHash: hash("9") } } }),
-      (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, lockHash: hash("8") } } }),
-      (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, workspaceIdentityEventId: "evt_workspace_identity_swapped" } } }),
-      (event: any) => ({
-        ...event,
-        payload: {
-          ...event.payload,
-          sourceHighWaterMark: { ...event.payload.sourceHighWaterMark, sourceEventId: "evt_source_swapped" }
-        }
-      })
+      { description: "mount instance", expected: "invalid-scope", readbackTransform: (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, mountInstanceId: "mount_swapped" } } }) },
+      { description: "mount hash", expected: "invalid-scope", readbackTransform: (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, mountHash: hash("9") } } }) },
+      { description: "lock hash", expected: "invalid-scope", readbackTransform: (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, lockHash: hash("8") } } }) },
+      { description: "workspace identity", expected: "readback-failed", readbackTransform: (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, workspaceIdentityEventId: "evt_workspace_identity_swapped" } } }) },
+      {
+        description: "source high-water",
+        expected: "readback-failed",
+        readbackTransform: (event: any) => ({
+          ...event,
+          payload: {
+            ...event.payload,
+            sourceHighWaterMark: { ...event.payload.sourceHighWaterMark, sourceEventId: "evt_source_swapped" }
+          }
+        })
+      }
     ];
-    for (const readbackTransform of transforms) {
+    for (const { description, expected, readbackTransform } of transforms) {
       const authority = new MountedAuthorityFixture({ readbackTransform });
-      expect((await evaluateResidentTrigger(evaluation({ authority }))).kind).toBe("invalid-scope");
+      expect((await evaluateResidentTrigger(evaluation({ authority }))).kind, description).toBe(expected);
       expect(authority.appendCount()).toBe(1);
     }
   });
+
+  for (const [description, readbackTransform] of [
+    ["a different event ID", (event: any) => ({ ...event, id: "evt_other" })],
+    ["a non-resident actor", (event: any) => ({ ...event, context: { ...event.context, actor: { ...event.context.actor, id: "agent_other" } } })],
+    ["an unrelated causation ID", (event: any) => ({ ...event, context: { ...event.context, causationId: "evt_unrelated" } })],
+    ["an unrelated correlation ID", (event: any) => ({ ...event, context: { ...event.context, correlationId: "trq_unrelated" } })]
+  ] as const) {
+    it(`fails closed when exact readback returns ${description}`, async () => {
+      const authority = new MountedAuthorityFixture({ readbackTransform });
+      const result = await evaluateResidentTrigger(evaluation({ authority }));
+
+      expect(result).toMatchObject({ kind: "readback-failed" });
+      expect(result).not.toHaveProperty("eventId");
+      expect(authority.appendCount()).toBe(1);
+    });
+  }
 
   it("canonicalizes reversed sourceRefs to one fingerprint, request ID, and dedupe key", () => {
     const authority = new MountedAuthorityFixture();
