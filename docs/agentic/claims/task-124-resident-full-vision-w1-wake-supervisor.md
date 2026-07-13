@@ -169,3 +169,36 @@ candidate remains preserved and unintegrated.
   build output and does not alter this task's owned boundary.
 - The candidate is ready only for a fresh independent read-only review. This
   author will not self-review, self-integrate, or merge `neo`.
+
+## Coordinator Second Repair Authorization — Reconciliation and Admission Boundary
+
+- Fresh review rejected clean candidate `9d5632b93943df44b3af14110f1bdf42cb2d23c2`.
+  It remains preserved and unintegrated. This bounded second repair starts on
+  branch `codex/task-124-resident-full-vision-wake-supervisor-repair-2` from
+  that exact candidate and may change only this claim,
+  `packages/agent/src/wake-supervisor.ts`, and
+  `packages/agent/test/wake-supervisor.test.ts`.
+- Before source edits, write focused RED coverage for every finding: (1) the
+  canonical reconciliation record and idempotency key must bind workspace,
+  epoch, safe outage-observation ID, prior-claim event, claim, attempt, lease,
+  and revalidated authority rather than a reduced outage shape; (2) pause or
+  stop during every pre-wake await must prevent later lease, reconciliation,
+  wake, or intake reopening; (3) public/port readbacks must be descriptor-safe
+  plain own-data snapshots with nonempty, non-regressed exact
+  lease/readback/high-water and full policy/lock/causation/correlation checks;
+  and (4) versioned public lifecycle status/result/evidence must bind the
+  requested transition and exact workspace/epoch/lock/high-water facts.
+- Required counterfactuals include changed outage observation or prior claim
+  under the same claim/attempt/lease; pause while authority, lease, or
+  reconciliation is pending; stopped/paused resume or recovery attempting a
+  later wake; empty/stale/getter-backed lease/readback; and a completed result
+  with a mismatched transition or stale high-water. Every rejection must be
+  fail-closed with zero later runtime/reconciliation/provider/tool/artifact/
+  graph/external effect and a safe diagnostic.
+- Authority is explicit Cestus factory workflow, `superpowers:subagent-driven-development`
+  where relevant, TDD, verification-before-completion, fresh independent
+  review, no self-integration, and no `neo` merge. Run the exact focused
+  command, diff/factory, one serialized retained full verification, commit the
+  three-file scope, and stop for a reviewer distinct from every Task124 author
+  and reviewer. A further material review finding is a root-cause recovery
+  checkpoint, not another routine repair loop.
