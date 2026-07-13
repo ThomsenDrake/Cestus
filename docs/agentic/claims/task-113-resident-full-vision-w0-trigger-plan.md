@@ -298,3 +298,78 @@ coordinator recovery checkpoint, not a user gate.
   ownership, append-only/provenance/no-fallback preservation, and the recorded
   sandbox-only verifier blockers. This worker does not self-approve, dispatch,
   start CF-1 or Tasks 149--151, use a provider, or merge into `neo`.
+
+## RC-113-07 — Original-promise structural-audit repair started
+
+- Recorded at: 2026-07-13T12:47:55Z.
+- Status: in-progress. This is a forward-only Task 113 repair record; all
+  prior claim entries and their verification evidence remain immutable.
+- Recovery worker/branch/worktree:
+  `codex/task-113-resident-full-vision-w0-trigger-plan-original-promise-repair` /
+  `/tmp/cestus-task113-original-promise`, based at
+  `2ebc4f4f29e9e1467794b4ade2372fc43a5907b4`.
+- Scoped coordinator authority: the approved Lane T design at
+  `docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md@9a571f628bef9c53725e20263cb687ec44dd9cd8`,
+  governing program plan at
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`,
+  and Task 113 original-promise documentation repair only. Stop after one
+  verified repair commit and fresh review before CF-1, Tasks 149--151,
+  production/provider work, child dispatch, or a merge into `neo`.
+- Owned files remain only this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md`.
+  No production, test, specification, registry, acceptance-matrix, or runtime
+  file is authorized.
+- Root cause: the prior same-call audit accepted a test that first awaited all
+  in-flight calls, then only declared and re-awaited a resolved `losingPromise`.
+  Its broad token checks did not prove that the original losing Promise itself
+  was awaited for its result, that its re-read/evaluation used the same gate, or
+  that a later evaluator call could not replace it.
+- Documentation RED and GREEN evidence, host verifier outcomes, and fresh
+  review handoff will be appended only after the structural repair is tested.
+
+## RC-113-08 — Original-promise structural-audit repair verified
+
+- Recorded at: 2026-07-13T12:52:19Z.
+- Status: ready-for-fresh-review. This completes only the authorized Task 113
+  documentation repair; it does not self-approve or authorize CF-1, Task 118,
+  Tasks 149--151, production/provider work, child dispatch, or a merge.
+- Documentation RED: the prospective structural audit, run against untouched
+  `2ebc4f4f29e9e1467794b4ade2372fc43a5907b4` plan bytes, exited nonzero with
+  `race test: missing original-promise test block`. The baseline used
+  `Promise.all(inFlight)` before selecting the loser, so it could not meet the
+  new original-Promise invariant.
+- Repair: the isolated Task 118 race test now starts the two named original
+  promises before any await, deterministically binds the source-5
+  `losingPromise` to the direct evaluator call, assigns `loser` from
+  `await losingPromise`, proves the exact requested/budget-exhausted outcomes,
+  source-keyed second read, three fresh reads, and two equal gate-key append
+  attempts. The plan's audit now strips comments, structurally validates only
+  that test block, allows exactly two evaluator calls, and directly rejects
+  await replacement, declaration-only promise, later evaluator call, and
+  prose/count-only Promise-token variants while retaining the exhaustive
+  forbidden-boundary matrix.
+- Documentation GREEN: the original audit printed `GREEN: Task 113
+  section-local plan audit passed (8 section checks; 10 counterfactuals
+  rejected).`; the recovery audit printed `GREEN: Task 113 recovery audit
+  passed (2 section checks; 25 counterfactuals rejected).`; and the new audit
+  printed `GREEN: Task 113 original-promise structural audit passed (40
+  counterfactuals rejected).` The new audit's 40 cases include all four direct
+  original-Promise counterfactuals plus every selected Task 118 and matrix
+  forbidden-boundary removal.
+- Verification: `git diff --check` exited 0. The direct `npm run
+  factory:check` reached `scripts/check-agent-readiness.mjs` but failed only at
+  sandbox-denied `spawnSync git EPERM` for `git ls-files`. `npm run verify`
+  then exited 127 before typecheck because this fresh worktree has no
+  `node_modules/.bin/tsc`; no dependency, check-script, sandbox, or tracked
+  workaround was changed. These are host/provisioning blockers, not evidence of
+  a plan-test failure.
+- Scope/self-review: `git status --short` is limited to this append-only claim
+  and the authorized proactive-trigger implementation plan. The repair keeps
+  the Lane T append-only ledger, authoritative mounted readback, provenance,
+  no-effect, no-fallback, no-provider, and CF-1 ownership boundaries unchanged.
+- Fresh-review handoff: review the one forward commit from
+  `2ebc4f4f29e9e1467794b4ade2372fc43a5907b4` for executable original-Promise
+  identity, same-gate and in-promise re-read proof, structural audit fail
+  polarity, exhaustive forbidden-boundary preservation, ownership, and the
+  recorded host verifier blockers. Do not begin dependent tasks or merge into
+  `neo`.
