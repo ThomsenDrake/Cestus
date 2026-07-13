@@ -658,3 +658,77 @@ RUNNER
   final `CI=1 npm run verify` completed successfully after this field closure.
   Fresh independent review remains required before this documentation recovery
   is handed off.
+
+## Autonomous Authoritative-Mounted-Source Audit Repair — 2026-07-13
+
+- Repair authorization: the assigned coordinator issued this fresh,
+  forward-only Task 111 documentation repair under Lane W specification
+  `docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb`, the umbrella specification
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`, and governing program plan
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`. The allowed range is only the
+  Task 111 source-semantics documentation audit repair from
+  `03721330e009bd8e305c1343eb54dfa1b20afa1d`, with a stop after one verified
+  forward-only repair commit and a fresh re-review. Tasks 124, 125, and 137,
+  CF-1, production/provider work, dispatch, and every merge remain prohibited;
+  no merge into `neo` is authorized. The coordinator explicitly permits
+  `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD,
+  fresh review, and verification-before-completion. The user-confirmed host
+  configuration is GPT-5.6 Terra / Extra High.
+- Scope remains only this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md`; every prior Task 111 claim, review, repair, registry, and
+  plan record remains immutable evidence.
+- Root cause: the canonical-record audit required a truthy mounted-source
+  expression, not its exact authoritative semantics. Therefore a Task 124 row
+  could replace `canonicalAdmission.authorityIdentityAndMount.workspaceId`
+  with an unrelated value while retaining the expected append/readback paths.
+  Its counterfactual matrix also covered only one append edge and one readback
+  edge per field across the two owners, leaving the complementary Task 124
+  readback and Task 125 append edges unmutated.
+
+### Authoritative-Mounted-Source Documentation RED/GREEN
+
+- RED: an in-memory direct counterfactual changed only Task 124's canonical
+  `workspaceId` source to `unrelatedMountedSourceValue`. The prior stored
+  canonical-record audit still printed `GREEN: Task 111 canonical
+  reconciliation record audit passed (178 counterfactuals rejected).`; the
+  wrapper then exited 1 with `RED: prior canonical-record audit accepted an
+  unrelated Task 124 authoritative mounted workspace source`.
+- GREEN: the stored audit now declares an independent complete
+  `canonicalRecordMountedSourceSemantics` map. It checks every Task 124 and
+  Task 125 field's exact authoritative mounted source, append edge, and
+  readback edge, rather than truthiness or substring presence. Its generated
+  counterfactuals apply explicit reject polarity to every owner/field/source,
+  append, and readback edge for missing, swapped, and unrelated values, while
+  retaining source-map removal, declared-field rename/delete, mismatch-loop,
+  and wrong-record-type mutations.
+- GREEN evidence: the exact stored canonical-record audit exited 0 with
+  `GREEN: Task 111 canonical reconciliation record audit passed (642
+  counterfactuals rejected).` The direct post-repair Task 124 workspace-source
+  mutant was rejected with `Task 124: authoritative mounted source mismatch
+  for workspaceId`, and its wrapper exited 0 with `GREEN: exact-source
+  counterfactual rejected unrelated Task 124 mounted workspace source.`
+
+### Authoritative-Mounted-Source Repair Verification And Handoff
+
+- The exact stored canonical-record audit reran after the documentation record
+  and exited 0 with its 642-counterfactual GREEN result. The direct
+  Task 124 source mutant still rejected with the exact authoritative-source
+  mismatch message, and `git diff --check` exited 0 with no output.
+- The initial exact `CI=1 npm run verify` could not start typecheck because
+  the isolated worktree had no ignored dependency tree and printed `sh: line
+  1: tsc: command not found`. `npm ci --ignore-scripts` restored the existing
+  lockfile-pinned dependencies without tracked-file changes, and `npm ls
+  typescript --depth=0` reported `typescript@5.9.3`. The independent
+  `CI=1 npm run typecheck && CI=1 npm test` then completed with `typecheck
+  passed` and a successful Vitest run.
+- `npm run factory:check` and the factory phase of the post-install full
+  verifier remain host-blocked, not document-blocked: Node's readiness script
+  received `Error: spawnSync git EPERM` at `trackedTextFiles` while executing
+  `git ls-files`. The direct shell `git diff --check` and all focused audit,
+  typecheck, and test evidence above remain independently executable in this
+  worktree. This repair does not alter readiness infrastructure to mask that
+  sandbox restriction.
+- Final scope and clean-worktree checks, the one forward-only commit, and the
+  required fresh independent Task 111 source-semantics re-review remain next.
+  This worker does not self-approve, dispatch, implement Tasks 124/125/137,
+  integrate, or merge.
