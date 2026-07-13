@@ -984,6 +984,32 @@ explicit implementation authorization.
 - Archive check: original author, first repair, both reviews, and their evidence remain retained; second repair handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
 - Supersession: this record supersedes RV-0-R-004 only for current repair status. Original Task 109 dispatch, first repair, and review evidence remain immutable.
 
+## RV-0-H-005 — Task 110 repair approval, Lane H plan approval, and integration
+
+- Recorded at: 2026-07-13T01:06:36Z
+- Role: coordinator
+- Lane and wave: H / 0B
+- Task ID and claim: task-110-resident-full-vision-w0-handoff-plan / docs/agentic/claims/task-110-resident-full-vision-w0-handoff-plan.md
+- Task thread ID: /root/task110_handoff_plan (author); /root/review_task110_plan (initial review); /root/task110_handoff_plan_repair (fresh repairer); /root/review_task110_plan_repair (fresh re-reviewer)
+- Branch and worktree: codex/task-110-resident-full-vision-w0-handoff-plan-repair / /home/drake/.codex/worktrees/task-110-resident-full-vision-w0-handoff-plan-repair; integrated on codex/resident-agent-full-vision-program-plan / /home/drake/.codex/worktrees/664b/Cestus
+- Base commit and required head: e6349810405640a8379a02e63f51ebf79541dd31 / 7bdae10d646fb94c117b4d32bd563f4291373927
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for author, repairer, and reviewer sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-durable-handoffs-design.md@5a80480c93920a37df45bd606ea12e0fe57e1e2d; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-durable-handoffs-implementation.md; docs/agentic/claims/task-110-resident-full-vision-w0-handoff-plan.md
+- Forbidden files: every other task file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: original Task 110 plan e6349810; repair 7bdae10d; governing CF-1 remains the sole shared-contract freeze authority
+- Approval record: coordinator-issued Task 110 repair authorization under Standing Coordinator Delegation named governing spec @5a80480c and plan @0b5726ec, Task 110 only, and the Wave 0B re-review stop. It explicitly authorized superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion, and prohibited Task 119, Tasks 121–123/138, CF-1 implementation dispatch, production/provider work, and merge into neo. This record approves only the completed written Lane H implementation plan.
+- Claim status: merged
+- RED command and observed failure: repair RED against e6349810 exited 1 and reported 19 defects covering the invented Task 119 graph, CF-1 order, missing approved DTO/readback fields, unapproved projection member, and insufficient documentation-proof sections.
+- GREEN command and observed result: repair GREEN rejected eight section-local counterfactual omissions; `git diff --check` and `npm run factory:check` passed. The plan now has no Task 119, makes 121–123 direct CF-1 consumers, makes 138 consume 121–123 plus R135, and keeps shared contracts CF-1-owned.
+- Full verification: NODE_NO_WARNINGS=1 npm run verify / exit 0 after coordinator integration commit b97da760: typecheck passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite built with its existing chunk-size warning; factory-readiness passed. The re-reviewer appropriately did not mutate its read-only checkout to restore missing `tsc`.
+- Live-provider gate: plan-only; no provider invoked. The approved plan retains the coordinator-only later real-Nous gate and safe evidence posture.
+- Review verdict: approved / fresh re-reviewer /root/review_task110_plan_repair independently confirmed HandoffReadback, SpecialistHandoffProjection, ResidentHandoffDto, support-type parity, Task 119 removal, CF-1 graph ordering, and the section-local eight-counterfactual audit.
+- Rebase record: no rebase was needed; the repair's two owned files were additive on the program integration branch. Coordinator merge commit b97da760bed4a8c8e523b319abb5ff0347a5b882 integrated the approved branch without merge into neo.
+- Merge readiness: merged / coordinator integration commit b97da760bed4a8c8e523b319abb5ff0347a5b882; no merge into neo occurred.
+- Archive check: repairer and reviewer final handoffs exist, repair worktree is clean, branch ancestry reaches the integration branch, and merge state is recorded; coordinator verification and durable registry reconciliation are the remaining archival evidence.
+- Supersession: this record supersedes RV-0-H-003 and RV-0-H-004 only for Task 110 plan approval, review, and merge status. Every prior author, reviewer, and repair record remains immutable.
+
 ## RV-0-H-003 — Task 110 durable-handoffs implementation-plan dispatch
 
 - Recorded at: 2026-07-13T00:16:43Z
