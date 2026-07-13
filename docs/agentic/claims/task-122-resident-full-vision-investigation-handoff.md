@@ -255,6 +255,35 @@ two candidates remain rejected and unintegrated.
 Status: in-progress in this bounded root-lane repair; `ea26c00e` remains
 rejected and unintegrated.
 
+## Coordinator Release-Line Root-Lane Recovery
+
+- Independent final review rejected
+  `1cc46fb5905a5db5dd35e4039e7f8fe52659fb77`: its authoritative-attempt
+  guard only treats a release as stale when the release sequence follows the
+  runner-dispatching checkpoint. A released exact claim/attempt/lease followed
+  by a forged later checkpoint can therefore re-enter recovery and reach
+  effects. The candidate is preserved, rejected, and unintegrated.
+- A fresh author works only on
+  `codex/task-122-resident-full-vision-release-recovery` in
+  `/home/drake/.codex/worktrees/task-122-resident-full-vision-release-recovery`,
+  rooted at that preserved candidate. The same three-file scope applies. With
+  the one-matching-claim invariant, any authoritative release of the matched
+  exact claim/attempt/retry/lease must fail closed before every recovery store
+  read/write, ledger append, preparation, model, draft, artifact, PRR, graph,
+  provider, or external effect—regardless of whether a later forged checkpoint
+  exists. Do not broaden contracts or invent a new active lease.
+- RED/GREEN must append a valid release then a forged matching
+  runner-dispatching checkpoint and prove safe rejection plus zero effects.
+  Retain all attempt-chain, swapped/duplicate/missing/stale, cross-specialist,
+  repeated-unavailable, reconstruction, and restored ordering tests. Standing
+  SDD/TDD/verification-before-completion authority applies; run focused,
+  diff/factory, one retained full gate, scoped commit, and a fresh reviewer
+  with no prior Task122 author/reviewer role. No self-integration or `neo`
+  merge is authorized.
+
+Status: in-progress only in this fresh release-line recovery; all earlier
+Task122 candidates remain preserved, rejected, and unintegrated.
+
 ## Attempt-Binding Repair RED / GREEN Evidence
 
 - Root cause: the preserved recovery candidate trusted the specialist-started
