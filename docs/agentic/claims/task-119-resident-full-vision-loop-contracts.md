@@ -42,3 +42,32 @@ npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts package
 Before the one scoped forward candidate commit, run `git diff --check`,
 `npm run factory:check`, and `npm run verify`. Stop for a distinct fresh review
 after the commit.
+
+## Recovery Record
+
+- Recovery authorized at the preserved claim checkpoint
+  `464dd184bdac498618b37ec851ae9920b4620e19`.
+- The prior W1-119 author was interrupted after two bounded intervals with only
+  this scope-correct claim committed. No production or test edits, RED/GREEN
+  checkpoint, or verifier was run.
+- Replacement author `/root/wave1_task121_recovery` starts from this clean
+  checkpoint and retains the original frozen scope and verification contract.
+
+## Direct Coordinator Recovery Execution
+
+- After the replacement also missed the required focused RED checkpoint, the
+  coordinator interrupted it without discarding this append-only claim and
+  completed the already-frozen narrow contract lane only in this dedicated
+  Task119 worktree. Fresh independent review remains mandatory; this recovery
+  does not self-review, self-integrate, restart Task120, or authorize `neo`.
+- Environment recovery: this isolated worktree initially lacked ignored Node
+  dependencies (`vitest: command not found`). `npm ci --ignore-scripts` restored
+  lockfile-pinned ignored dependencies without tracked package or lockfile
+  changes.
+- RED: the exact focused command initially failed because the five W1-119
+  resident-loop event registrations were absent. The subsequent GREEN loop
+  exposed and closed a forged plan-readback gap by requiring the canonical
+  task-attempt-run plan event ID. Final focused GREEN: 2 test files and 71
+  tests passed, including the replayable five-event fixture, unknown/missing
+  bindings, forged readback, cross-run, unsafe own-data, and terminal-readback
+  counterfactuals.
