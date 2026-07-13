@@ -124,3 +124,40 @@ after the commit.
   passed (5 skipped); Vite production build passed; and factory-readiness
   passed. A reviewer distinct from both prior Task119 reviewers and this
   coordinator repair author is required before any integration.
+
+## Coordinator Root-Cause Recovery Authorization
+
+- Two focused Task119 repairs are preserved and rejected: `9f40e31b` fixed
+  replayability and `0f2dcda7` tightened array own-data checks and plan
+  guidance. A second fresh review then found a P1 boundary defect: the base
+  Zod record reads an enumerable throwing top-level payload accessor before
+  the own-data guard runs, so validation throws instead of returning a
+  structured invalid result.
+- The exact uncommitted 13-line accessor experiment is preserved forward-only
+  as checkpoint `7ae16b81278ee5f9cf3052f622df8ae7333bcce9`; it is evidence, not
+  an accepted third repair. This fresh recovery branch
+  `codex/task-119-resident-full-vision-contracts-recovery` starts from that
+  checkpoint, whose ancestry retains `0f2dcda7`; no prior Task119 branch was
+  reset, rewritten, or discarded.
+- A fresh author owns a changed boundary-normalization strategy in this
+  recovery worktree only. Before any property read or Zod parsing, normalize
+  or reject the untrusted event and payload into one plain own-data snapshot,
+  then parse only that snapshot without rereading caller objects. RED/GREEN
+  must prove a throwing top-level payload accessor does not run and produces a
+  structured invalid result; reject accessors, symbols, sparse arrays, hidden
+  own keys, custom prototypes, boxed values, and nested variants without
+  invoking getters. Preserve the five frozen schemas, ordered 1..5 ledger
+  replay, and pure prior-event linkage parser; introduce no runtime, provider,
+  store, projection, tool, domain, or external effect.
+- The author has standing `superpowers:subagent-driven-development`, TDD, and
+  verification-before-completion authority. It may edit only
+  `packages/ontology/src/contracts.ts`,
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`, and this
+  append-only claim; it must run the focused RED/GREEN command, diff/factory,
+  one captured full verification, commit, and stop. A fresh reviewer who has
+  held no Task119 author or reviewer role must review before integration. No
+  self-review, self-integration, Task120 restart, W1-118/Task136 work, or
+  `neo` merge is authorized.
+
+Status: in-progress only in this isolated root-cause recovery lane; prior
+Task119 candidates remain preserved, rejected, and unintegrated.
