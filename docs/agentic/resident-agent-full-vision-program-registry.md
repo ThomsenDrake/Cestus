@@ -880,6 +880,32 @@ explicit implementation authorization.
 - Merge readiness: not-ready; worker cannot implement, dispatch a child, or merge into neo.
 - Archive check: final handoff, clean worktree, verification, review, and coordinator integration remain required.
 
+## RV-0-H-004 — Task 110 contract-alignment and audit-strengthening repair dispatch
+
+- Recorded at: 2026-07-13T00:36:17Z
+- Role: coordinator
+- Lane and wave: H / 0B
+- Task ID and claim: task-110-resident-full-vision-w0-handoff-plan / docs/agentic/claims/task-110-resident-full-vision-w0-handoff-plan.md
+- Task thread ID: /root/task110_handoff_plan (original author); /root/review_task110_plan (fresh reviewer); /root/task110_handoff_plan_repair (scoped fresh repairer)
+- Branch and worktree: codex/task-110-resident-full-vision-w0-handoff-plan-repair / /home/drake/.codex/worktrees/task-110-resident-full-vision-w0-handoff-plan-repair
+- Base commit and required head: e6349810405640a8379a02e63f51ebf79541dd31 / one forward-only owned-file repair commit followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-durable-handoffs-design.md@5a80480c93920a37df45bd606ea12e0fe57e1e2d; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-durable-handoffs-implementation.md; docs/agentic/claims/task-110-resident-full-vision-w0-handoff-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: reviewed Task 110 plan e6349810; approved Lane H specification 5a80480c; governing Wave 1 table begins at Task 120; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued scoped authorization under Standing Coordinator Delegation authorizes Task 110 contract-alignment and audit-strengthening repair only. Allowed range is one verified documentation repair commit plus fresh re-review; wave stop is before Task 119, Tasks 121–123, Task 138, CF-1 implementation dispatch, production work, provider invocation, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: repairing; repairer must append its evidence and preserve prior author/review records.
+- RED command and observed failure: fresh review found that a plan-owned Task 119 does not exist in the governing Wave 1 dispatch graph; its consumers 121–123 are governed to start directly after CF-1. It also found the plan's `ResidentHandoffDto` and projection assertions drift from the approved H specification, and its audit accepts deletion of substantive migration/failure/ownership sections.
+- GREEN command and observed result: pending a section-local plan audit that rejects an invented Task 119 dependency, asserts the approved complete DTO/readback fields and no unapproved projection member, and rejects removal of each migration's RED/GREEN, failure-injection, live-gate, rollback, and dependency requirements.
+- Full verification: pending repair-owned npm run verify. Original author verification remains evidence but cannot override fresh review defects.
+- Live-provider gate: not-applicable; this plan-only repair invokes no provider and must retain the coordinator-only later real-Nous gate.
+- Review verdict: needs-changes / fresh reviewer /root/review_task110_plan found governed-dispatch drift, interface inconsistency, and insufficient audit sensitivity; fresh re-review required after repair.
+- Rebase record: repair branch begins at reviewed head e6349810 in a distinct worktree; no cross-lane rebase applies before repair.
+- Merge readiness: not-ready; repairer cannot self-approve or merge into neo.
+- Archive check: original author handoff, claim, review package, and reviewer findings are retained; repair handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
+- Supersession: this record supersedes RV-0-H-003 only for current repair status. Original Task 110 dispatch and plan evidence remain immutable.
+
 ## RV-0-H-003 — Task 110 durable-handoffs implementation-plan dispatch
 
 - Recorded at: 2026-07-13T00:16:43Z
