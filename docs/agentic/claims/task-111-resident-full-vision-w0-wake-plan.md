@@ -568,3 +568,93 @@ RUNNER
 - Handoff status: ready only for a fresh independent review after the worker
   commits these two owned documentation files. No Task 124, 125, or 137 work,
   CF-1 work, provider invocation, dispatch, integration, or merge occurred.
+
+## Autonomous Canonical-Record Completeness Recovery — 2026-07-13
+
+- Recovery authorization: the assigned coordinator issued this fresh Task
+  111-only documentation recovery under the approved Lane W specification
+  `docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb`
+  and governing program plan
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+  The allowed range is canonical-record completeness recovery only, from base
+  `70adac19fc794f1ce5a7bfec02b1a3bb5c6bc717`; the wave stop is this one
+  verified forward-only commit and a separately fresh review, before Tasks
+  124/125/137, CF-1 implementation, production/provider work, dispatch, or
+  any merge. It explicitly authorizes
+  `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD,
+  fresh review, and verification-before-completion. No merge into `neo` or an
+  integration branch is authorized. The user-confirmed host configuration is
+  GPT-5.6 Terra / Extra High.
+- Scope remains only this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md`.
+  Every previous Task 111 claim, plan, repair, review, registry, and worktree
+  record remains immutable evidence.
+- Root-cause checkpoint: the prior relation-aware and field-to-edge audits
+  proved selected tuple facts but treated the required outage reconciliation as
+  a collection of helper DTOs. The proposed record omitted the W-spec
+  revalidated-identity/high-water/policy/lock/lease provenance object, and the
+  audit did not derive the complete persisted record’s fields or require a
+  zero-append/effect/fallback mismatch proof for each one.
+
+### Canonical-Record Documentation RED/GREEN
+
+- RED: the focused recovery audit ran against `70adac19` and exited 1 with
+  `RED: Task 111 canonical-record audit failed: missing revalidatedAuthority`.
+  The prior record had outcome/schema/disposition/resumability and outage facts,
+  but no complete post-revalidation authority record from the governing W
+  specification.
+- GREEN: the planned post-freeze contract now has exactly one
+  `WorkspaceUnavailableClaimReconciliationV1` carried by both typed append and
+  typed mounted readback. It contains schema version, `workspace-unavailable`
+  outcome, resumability, disposition, workspace/resident/epoch, claim/attempt,
+  outage observation with prior claim/lease/authority/high-water facts,
+  causation/correlation, and revalidated identity/authority/high-water/policy/
+  lock/supervisor-lease provenance. The immutable admission tuple remains
+  separate evidence; it is not a partial substitute for the persisted record.
+- GREEN audits: the retained relation-graph audit printed 145 rejected
+  counterfactuals; the retained tuple field-to-edge audit printed 366; and the
+  new canonical-record audit recursively derives every V1 leaf, verifies both
+  Task 124 and Task 125 source → append → mounted-readback maps and their
+  derived mismatch field sets, and printed 160 rejected deletion, rename,
+  unbound, unrelated-value, removed-mismatch-loop, and wrong-record-type
+  counterfactuals. Each planned field mismatch blocks before a new append with
+  zero reconciliation append, runtime/effect, and fallback activity.
+- Narrow gates: `git diff --check` exited 0 with no output and `npm run
+  factory:check` exited 0 with `factory-readiness passed`. Full verification,
+  final two-file scope review, clean-worktree confirmation, and a fresh
+  independent re-review remain required before this recovery is handed off.
+
+### Canonical-Record Recovery Verification And Handoff
+
+- Dependency recovery: the first `CI=1 npm run verify` exited before typecheck
+  with `sh: line 1: tsc: command not found`. The error reproduced the known
+  isolated-worktree condition: no ignored `node_modules` tree was present.
+  `npm ci --ignore-scripts` restored the lockfile-pinned tree without changing a
+  tracked file, and `npm ls typescript --depth=0` reported `typescript@5.9.3`.
+- Full verification: the rerun `CI=1 npm run verify` completed successfully
+  after dependency recovery. The documentation-only recovery did not invoke a
+  provider, access a credential, or create a fallback store.
+- Final documentation gates: `git diff --check` was empty; the stored
+  section-local, field-to-edge, and canonical-record audits passed with 145,
+  366, and 160 rejected counterfactuals respectively; and `npm run
+  factory:check` reported `factory-readiness passed`.
+- Final scope/handoff: the recovery changes only this append-only claim and the
+  owned Wake implementation plan. It is ready only for a fresh independent
+  Task 111 recovery review. This worker does not self-approve, dispatch,
+  integrate, or merge any work.
+
+### Canonical-Record Final Field-Closure Correction
+
+- Final self-review found that the first canonical record mapping still relied
+  on the separate tuple for mounted identity and complete lease-readback facts.
+  The V1 record now also carries `mountEvidenceId`,
+  `supervisorLeaseReadbackEventId`, and `supervisorLeaseExpiresAt` under its
+  revalidated-authority provenance. Both Task 124 and Task 125 map these
+  fields from mounted source to append and readback and include them in their
+  derived per-field zero-append/effect/fallback mismatch loops.
+- The exact post-closure audits passed: relation graph 145, field-to-edge 366,
+  and canonical record 178 rejected counterfactuals. `git diff --check` was
+  empty and `npm run factory:check` reported `factory-readiness passed`. A
+  final `CI=1 npm run verify` completed successfully after this field closure.
+  Fresh independent review remains required before this documentation recovery
+  is handed off.
