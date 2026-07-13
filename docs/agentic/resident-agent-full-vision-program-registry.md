@@ -1495,3 +1495,17 @@ explicit implementation authorization.
 - Required GREEN: section-local audit must independently reject every stale port identifier/spelling; every checkpoint mismatch must prove zero of all Lane L appends/effects/fallback writes; CF-1 completion record must preserve full HandoffReadback verbatim with direct mismatches for task and required H event IDs plus lifecycle/authority/provenance fields. It must mutate each asserted guarantee with fail polarity.
 - Verification/review/live/merge: focused audit/direct mutations, `git diff --check`, `npm run factory:check`, and `npm run verify`; no live provider; a different fresh reviewer is required; not merge-ready.
 - Root cause/supersession: previous repair improved nominal ABI text but audit assertions were incomplete/non-structural and the H boundary was not carried through the completion result. This supersedes only RV-0-L-007 status; historical evidence remains immutable.
+
+## RV-0-P-007 — Task 114 structural-audit recovery dispatch
+
+- Recorded at: 2026-07-13T12:52:00Z
+- Role/lane/wave/task: coordinator root-cause checkpoint / P / 0B / Task114 plan-only recovery.
+- Preserved evidence: initial Task114 worker stopped with only the owned uncommitted plan/claim draft in `/tmp/cestus-task114-provider-plan`; its expected missing-plan RED passed, then a literal-format audit failed on `.env`, plaintext-fallback, and rollback locality probes. No out-of-scope edit, provider call, commit, or merge occurred.
+- Root cause: the author used fragile line/literal locality probes before a stable section-local plan schema existed. This is a documentation-harness construction failure, not a provider-boundary or product defect.
+- Branch/worktree/base: `codex/task-114-resident-full-vision-w0-provider-plan-structural-recovery` / fresh isolated `/tmp` worktree / `aa06cb4792b5afdfec11bd5e520c787f2f654aa9`; the fresh worker may inspect the preserved draft but must create forward work only in its own worktree.
+- Model/authority: GPT-5.6 Terra / Extra High user-confirmed and satisfied by reported GPT-5; umbrella `@c7dc10b9dd351fc76df083df8f2222252ba73d89`, program plan `@0b5726ec975bdc0aae97e540472ef3be4379b358`, P design `@285657a7879cdc47e321152c2bc5feb0ebe6088f`.
+- Ownership: Task114 provider implementation plan and Task114 claim only; registry/production/test/runtime/UI/shared-contract/spec/template/acceptance files remain forbidden.
+- Scoped approval: Standing Coordinator Delegation explicitly authorizes one Task114 structural documentation recovery plus fresh review using `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. Stop before Tasks126–130/133/139, CF-1, production/provider work, child dispatch, or merge. Never merge into `neo`.
+- Required GREEN: use one named section-local provider-plan contract map/structural parser with explicit required clauses and direct mutation-based fail polarity for each owned implementation task, secret/no-plaintext/no-fallback boundary, official subscription posture, deterministic/live split, rollback, acceptance, ownership, and merge/rebase conditions. Do not rely on incidental words elsewhere in the file.
+- Verification/review/live/merge: audit/direct mutations, `git diff --check`, factory/verify where host permits; no live provider; fresh reviewer required; not merge-ready.
+- Supersession: status only for RV-0-P-006; historical authorization and draft evidence remain immutable.
