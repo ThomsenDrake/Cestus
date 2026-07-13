@@ -83,19 +83,148 @@ removed exits nonzero.
 node --input-type=module --eval 'import { readFileSync } from "node:fs"; const plan=readFileSync("docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md","utf8"); const section=(doc,heading)=>{const start=doc.indexOf(`## ${heading}`);if(start<0)throw new Error(`missing section: ${heading}`);const end=doc.indexOf("\n## ",start+4);return doc.slice(start,end<0?doc.length:end)}; const requirements=[ ["Task 118: Trigger Core, Request Event, And Rebuildable Projection",["reversed sourceRefs","requestFingerprint: forward.requestFingerprint","requestId: forward.requestId","dedupeKey: forward.dedupeKey","expect(secondScope).toEqual(firstScope)","buildTriggerGateKey(secondScope)","freshReadCount()","modelId","approvalId","handoffId","taskId","schedulerId","sourceBytes","rawBytes","model:","approval:","handoff:","task:","scheduler:"]], ["Failure Injection, Acceptance, And Live-Gate Matrix",["Task 136 (L)","packages/agent/test/bounded-agent-loop.test.ts","packages/agent/test/execution-loop.test.ts","independently revalidate the required approval","exact preview hash","effect boundary"]] ]; const validate=(doc)=>{for(const [heading,tokens] of requirements){const block=section(doc,heading);for(const token of tokens)if(!block.includes(token))throw new Error(`${heading}: missing ${token}`)}}; const mutate=(doc,heading,token)=>{const block=section(doc,heading);const changed=block.split(token).join("removed");if(changed===block)throw new Error(`counterfactual setup failed: ${heading} / ${token}`);return doc.replace(block,changed)}; validate(plan); let rejected=0; for(const [heading,tokens] of requirements)for(const token of tokens){let failed=false;try{validate(mutate(plan,heading,token))}catch{failed=true}if(!failed)throw new Error(`counterfactual accepted: ${heading} / ${token}`);rejected++} console.log(`GREEN: Task 113 recovery audit passed (2 section checks; ${rejected} counterfactuals rejected).`)'
 ```
 
-Run this same-call/exhaustive-no-effect audit in addition to the two audits
-above. It is deliberately limited to Task 118 and the acceptance matrix: the
-same original losing concurrent Promise must make a second authoritative read
-and produce its no-append decision within that evaluator call, under the same
-trigger gate key. A later independent `evaluateResidentTrigger` call is not
-accepted. It also treats every forbidden input/effect family as independently
-removable coverage, including prompt artifact/resolver, model
+Run this original-promise/exhaustive-no-effect audit in addition to the two
+audits above. It deliberately isolates the executable Task 118 concurrent-race
+test body rather than accepting phrases from its surrounding prose. The test
+must bind the original `losingPromise` directly to one of its two original
+evaluator calls, await that exact value for `loser`, prove its in-promise
+source-keyed re-read and no-append result, and prove that both conditional
+append attempts use the same evaluator gate key. The isolated body contains
+exactly two `evaluateResidentTrigger` calls, so a later independent evaluator
+call cannot satisfy the losing path. The audit strips comments before its
+line-anchored checks, then directly mutates the await, declaration-only,
+later-evaluator, and prose/count-only variants. It also preserves the exhaustive
+forbidden input/effect matrix: prompt artifact/resolver, model
 messages/invocations, provider requests, subscription/API-key/credential
 shapes, harnesses, specialists, domain services, and the scheduler/tool/
 parser/approval/task/handoff/artifact/projection/graph boundaries.
 
 ```bash
-node --input-type=module --eval 'import { readFileSync } from "node:fs"; const plan=readFileSync("docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md","utf8"); const section=(doc,heading)=>{const start=doc.indexOf(`## ${heading}`);if(start<0)throw new Error(`missing section: ${heading}`);const end=doc.indexOf("\n## ",start+4);return doc.slice(start,end<0?doc.length:end)}; const requirements=[["Task 118: Trigger Core, Request Event, And Rebuildable Projection",["losingPromise","same original concurrent Promise","There is deliberately no later independent evaluateResidentTrigger call","readSnapshotCountFor(losingSource!.sourceEventId)","appendGateKeys()","promptArtifact","promptResolver","promptArtifactResolver","modelMessages","modelInvocation","providerRequest","subscription","apiKey","credential","credentialRef","harness","specialist","domainService","scheduler","tool","parser","approval","task","handoff","artifactStore","projection","graph","sourceBytes","rawBytes"]],["Failure Injection, Acceptance, And Live-Gate Matrix",["original losing concurrent evaluator promise","same evaluator call","same triggerGateKey","prompt artifact/resolver","model messages/invocations","provider requests","subscription/API-key/credential","harnesses","specialists","domain services"]]]; const validate=(doc)=>{for(const [heading,tokens] of requirements){const block=section(doc,heading);for(const token of tokens)if(!block.includes(token))throw new Error(`${heading}: missing ${token}`)}}; validate(plan); let rejected=0; for(const [heading,tokens] of requirements)for(const token of tokens){const block=section(plan,heading);const changed=block.split(token).join("removed");if(changed===block)throw new Error(`counterfactual setup failed: ${heading} / ${token}`);const variant=plan.replace(block,changed);let failed=false;try{validate(variant)}catch{failed=true}if(!failed)throw new Error(`counterfactual accepted: ${heading} / ${token}`);rejected++} console.log(`GREEN: Task 113 same-call/no-effect audit passed (${rejected} counterfactuals rejected).`)'
+node --input-type=module <<'NODE'
+import { readFileSync } from "node:fs";
+
+const plan = readFileSync(
+  "docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md",
+  "utf8"
+);
+const task118Heading = "Task 118: Trigger Core, Request Event, And Rebuildable Projection";
+const matrixHeading = "Failure Injection, Acceptance, And Live-Gate Matrix";
+const raceMarker = '  it("awaits the original losing concurrent Promise rather than starting a retry", async () => {';
+const section = (doc, heading) => {
+  const start = doc.indexOf(`## ${heading}`);
+  if (start < 0) throw new Error(`missing section: ${heading}`);
+  const end = doc.indexOf("\n## ", start + 4);
+  return doc.slice(start, end < 0 ? doc.length : end);
+};
+const raceRange = (doc) => {
+  const task = section(doc, task118Heading);
+  const taskStart = doc.indexOf(task);
+  const start = task.indexOf(raceMarker);
+  if (start < 0) throw new Error("race test: missing original-promise test block");
+  const end = task.indexOf("\n  });", start);
+  if (end < 0) throw new Error("race test: unterminated original-promise test block");
+  return { start: taskStart + start, end: taskStart + end + "\n  });".length };
+};
+const raceBlock = (doc) => {
+  const { start, end } = raceRange(doc);
+  return doc.slice(start, end);
+};
+const replaceRace = (doc, mutate) => {
+  const { start, end } = raceRange(doc);
+  const before = doc.slice(start, end);
+  const after = mutate(before);
+  if (after === before) throw new Error("counterfactual setup failed");
+  return doc.slice(0, start) + after + doc.slice(end);
+};
+const replaceSection = (doc, heading, token) => {
+  const before = section(doc, heading);
+  const after = before.split(token).join("");
+  if (after === before) throw new Error(`counterfactual setup failed: ${heading} / ${token}`);
+  return doc.replace(before, after);
+};
+const withoutComments = (value) => value
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/\/\/.*$/gm, "");
+const count = (value, expression) => [...value.matchAll(expression)].length;
+const requireMatch = (value, expression, label) => {
+  if (!expression.test(value)) throw new Error(`race test: missing executable ${label}`);
+};
+const triggerBoundaryTokens = [
+  "promptArtifact", "promptResolver", "promptArtifactResolver", "modelMessages", "modelInvocation",
+  "providerRequest", "subscription", "apiKey", "credential", "credentialRef", "harness", "specialist",
+  "domainService", "scheduler", "tool", "parser", "approval", "task", "handoff", "artifactStore",
+  "projection", "graph", "sourceBytes", "rawBytes"
+];
+const matrixTokens = [
+  "original losing concurrent evaluator promise", "same evaluator call", "same triggerGateKey",
+  "Forbidden trigger input or effect boundary", "prompt artifact/resolver", "model messages/invocations",
+  "provider requests", "subscription/API-key/credential", "harnesses", "specialists", "domain services",
+  "scheduler, tool, parser, approval, task, handoff, artifact, projection, and graph"
+];
+const validate = (doc) => {
+  const task = section(doc, task118Heading);
+  const matrix = section(doc, matrixHeading);
+  for (const token of triggerBoundaryTokens) {
+    if (!task.includes(token)) throw new Error(`Task 118: missing ${token}`);
+  }
+  for (const token of matrixTokens) {
+    if (!matrix.includes(token)) throw new Error(`matrix: missing ${token}`);
+  }
+  const race = withoutComments(raceBlock(doc));
+  requireMatch(race, /^\s*const winningPromise = evaluateResidentTrigger\(winningInput\);\s*$/m, "winningPromise binding");
+  requireMatch(race, /^\s*const losingPromise = evaluateResidentTrigger\(losingInput\);\s*$/m, "losingPromise binding");
+  requireMatch(race, /^\s*const loser = await losingPromise;\s*$/m, "losingPromise await");
+  requireMatch(race, /^\s*const winner = await winningPromise;\s*$/m, "winningPromise await");
+  requireMatch(race, /expect\(winner\)\.toMatchObject\(\{ kind: "requested" \}\);/, "winning result");
+  requireMatch(race, /expect\(loser\)\.toMatchObject\(\{ kind: "budget-exhausted" \}\);/, "losing result");
+  requireMatch(race, /expect\(winningGateKey\)\.toBe\(losingGateKey\);/, "same gate derivation");
+  requireMatch(race, /expect\(authority\.appendGateKeys\(\)\)\.toEqual\(\[winningGateKey, losingGateKey\]\);/, "same gate append attempts");
+  requireMatch(race, /expect\(authority\.readSnapshotCountFor\(losingSource!\.sourceEventId\)\)\.toBe\(2\);/, "losing in-promise reread");
+  requireMatch(race, /expect\(authority\.freshReadCount\(\)\)\.toBe\(3\);/, "exact fresh reads");
+  if (count(race, /\bevaluateResidentTrigger\(/g) !== 2) {
+    throw new Error("race test: must contain exactly the two original evaluator calls");
+  }
+  const firstAwait = race.indexOf("await losingPromise");
+  if (
+    race.indexOf("const winningPromise = evaluateResidentTrigger(winningInput);") > firstAwait ||
+    race.indexOf("const losingPromise = evaluateResidentTrigger(losingInput);") > firstAwait
+  ) {
+    throw new Error("race test: both original promises must start before awaiting the losing promise");
+  }
+};
+
+validate(plan);
+const variants = [
+  ["await replacement", (doc) => replaceRace(doc, (race) => race.replace(
+    "const loser = await losingPromise;", "const loser = await winningPromise;"
+  ))],
+  ["declaration-only losing promise", (doc) => replaceRace(doc, (race) => race.replace(
+    "const loser = await losingPromise;", 'const loser = { kind: "budget-exhausted" };'
+  ))],
+  ["later evaluator call", (doc) => replaceRace(doc, (race) => race.replace(
+    "const loser = await losingPromise;",
+    "const loser = await losingPromise;\n    const retry = await evaluateResidentTrigger(losingInput);"
+  ))],
+  ["prose/count-only tokens", (doc) => replaceRace(doc, (race) => race.replace(
+    "const losingPromise = evaluateResidentTrigger(losingInput);",
+    'const retriedPromise = evaluateResidentTrigger(losingInput);\n    // const losingPromise = evaluateResidentTrigger(losingInput);\n    const proofTokens = "losingPromise await losingPromise";'
+  ))],
+  ...triggerBoundaryTokens.map((token) => [
+    `Task 118 boundary ${token}`,
+    (doc) => replaceSection(doc, task118Heading, token)
+  ]),
+  ...matrixTokens.map((token) => [
+    `matrix ${token}`,
+    (doc) => replaceSection(doc, matrixHeading, token)
+  ])
+];
+for (const [label, mutate] of variants) {
+  let rejected = false;
+  try { validate(mutate(plan)); } catch { rejected = true; }
+  if (!rejected) throw new Error(`counterfactual accepted: ${label}`);
+}
+console.log(`GREEN: Task 113 original-promise structural audit passed (${variants.length} counterfactuals rejected).`);
+NODE
 ```
 
 The original Task 113 RED result is the `ENOENT` failure while this plan is
@@ -335,43 +464,56 @@ constructors. A requested decision is returned only after exact readback.
     expect(authority.appendCount()).toBe(0);
   });
 
-  it("re-evaluates the original losing concurrent promise in the same evaluator call", async () => {
-    const authority = mountedAuthority({ maxRequests: 1, synchronizeInitialReads: true });
-    const candidates = [4, 5].map((sourceSequence) =>
-      verifiedEvaluation({ authority, candidate: verifiedCandidate({ sourceSequence }) }));
-    const [firstScope, secondScope] = candidates.map((input) =>
-      deriveAdmissionScope(authority.policy(), verifiedRequestFields(input)));
+  it("awaits the original losing concurrent Promise rather than starting a retry", async () => {
+    const authority = mountedAuthority({
+      maxRequests: 1,
+      synchronizeInitialReads: true,
+      winningSourceSequence: 4
+    });
+    const winningInput = verifiedEvaluation({
+      authority,
+      candidate: verifiedCandidate({ sourceSequence: 4 })
+    });
+    const losingInput = verifiedEvaluation({
+      authority,
+      candidate: verifiedCandidate({ sourceSequence: 5 })
+    });
+    const winningScope = deriveAdmissionScope(authority.policy(), verifiedRequestFields(winningInput));
+    const losingScope = deriveAdmissionScope(authority.policy(), verifiedRequestFields(losingInput));
+    const firstScope = winningScope;
+    const secondScope = losingScope;
     expect(secondScope).toEqual(firstScope);
     expect(buildTriggerGateKey(secondScope)).toBe(buildTriggerGateKey(firstScope));
-    const inFlight = candidates.map((input) => evaluateResidentTrigger(input));
-    const decisions = await Promise.all(inFlight);
-    expect(decisions.filter(({ kind }) => kind === "requested")).toHaveLength(1);
-    expect(authority.appendCount()).toBe(1);
-    const losingIndex = decisions.findIndex(({ kind }) => kind !== "requested");
-    const losingPromise = inFlight[losingIndex]!;
-    const losingInput = candidates[losingIndex]!;
+    const winningGateKey = buildTriggerGateKey(winningScope);
+    const losingGateKey = buildTriggerGateKey(losingScope);
+    expect(winningGateKey).toBe(losingGateKey);
+    const winningPromise = evaluateResidentTrigger(winningInput);
+    const losingPromise = evaluateResidentTrigger(losingInput);
     const [losingSource] = losingInput.candidate.sourceRefs;
     expect(losingSource).toBeDefined();
-    // There is deliberately no later independent evaluateResidentTrigger call.
     const loser = await losingPromise;
+    const winner = await winningPromise;
+    expect(winner).toMatchObject({ kind: "requested" });
     expect(loser).toMatchObject({ kind: "budget-exhausted" });
     expect(authority.readSnapshotCountFor(losingSource!.sourceEventId)).toBe(2);
-    expect(authority.freshReadCount()).toBeGreaterThan(2);
-    expect(authority.appendGateKeys()).toHaveLength(2);
-    expect(new Set(authority.appendGateKeys())).toEqual(
-      new Set([buildTriggerGateKey(firstScope)])
-    );
+    expect(authority.freshReadCount()).toBe(3);
+    expect(authority.appendGateKeys()).toEqual([winningGateKey, losingGateKey]);
     expect(authority.appendCount()).toBe(1);
   });
   ```
 
   The synchronized authority fixture holds both first reads until both original
-  calls are in flight, records every conditional-append gate key, and records
-  reads by the original source identity. The selected `losingPromise` is one
-  of those same original concurrent Promise values: its second source-keyed
-  read plus `budget-exhausted` decision proves the losing call discarded its
-  stale snapshot and re-evaluated from authority. The test makes no later
-  independent evaluator call, so a separate retry cannot satisfy this proof.
+  calls are in flight and deterministically grants source sequence 4 the one
+  request slot. It records every conditional-append gate key and reads by the
+  original source identity. `losingPromise` is directly assigned from source
+  sequence 5's original `evaluateResidentTrigger(losingInput)` call, and
+  `loser` is directly assigned from `await losingPromise` before the winner is
+  awaited. Its second source-keyed read, exact three fresh reads, same two gate
+  keys, and `budget-exhausted` result prove that this same in-flight Promise
+  discarded its stale snapshot and re-evaluated from authority. The executable
+  test body contains exactly the two original evaluator calls; a later retry,
+  a declaration-only Promise, or prose that merely names the Promise cannot
+  satisfy the proof.
 
   In `trigger-projection.test.ts`, write cases for exact requested and
   duplicate readback, cooldown-active and budget-exhausted no append, stale
@@ -760,7 +902,7 @@ candidate for advisory planning only.
 | --- | --- | --- | --- |
 | same semantics at different append times | Task 118 | `proactive-triggers.test.ts` | One stable fingerprint, request ID, and dedupe key; exact duplicate readback. |
 | same dedupe key, different fingerprint | Task 118 | collision fixture | `dedupe-conflict`, no append, safe diagnostic. |
-| Equal scope, different source high-water | Task 118 and Task 151 | synchronized concurrent evaluator fixture using the original losing concurrent evaluator promise | Both calls derive the same triggerGateKey; one conditional append is allowed, then the original losing concurrent evaluator promise re-reads and re-evaluates to a no-append decision within the same evaluator call. |
+| Equal scope, different source high-water | Task 118 and Task 151 | synchronized concurrent evaluator fixture using the original losing concurrent evaluator promise | Both original calls derive the same triggerGateKey. One conditional append is allowed; the original `losingPromise`, not a later evaluator call, is awaited for its `budget-exhausted` no-append result after its source-keyed re-read and re-evaluation within the same evaluator call. |
 | Candidate-selected scope, selector, or key | Task 118 | normalization counterfactual | `invalid-scope`, no append, no high-water movement. |
 | Altered persisted scope, gate, source, policy, mount, or lock | Task 118 | projection/readback counterfactual | Exact reconstruction fails closed and excludes the record. |
 | Cooldown or request budget | Task 118 and Task 151 | policy-window fixture | No append; high-water unchanged; `notBefore` only for cooldown. |
