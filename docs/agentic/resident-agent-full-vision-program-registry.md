@@ -2221,3 +2221,26 @@ explicit implementation authorization.
   W1-119 exact event, strict negative, paired command, no-effect, and SHA-gate
   fact, and final clean-worktree gates. No reviewer self-integration, Wave1
   production, Task120 restart, W1-118 dispatch, or `neo` merge is allowed.
+
+## RV-1-C-025 — Coordinator integration: approved CF-1 W1-119 amendment
+
+- Integrated head: Relay B fast-forwarded from recovery
+  `f1006d5ae19ce851772e2e68c261f0e4b66d91e4` through preservation checkpoint
+  `3ce2c79b3b6a0d137abdbc8f5adb0073acfe1c9b` to approved amendment
+  `573de0ee390f43987f46cff46f044a4fd21c16e8`; this record is the required
+  coordinator-owned integration evidence.
+- Independent fresh reviews: two distinct reviewers approved the exact
+  `f1006d5a..573de0ee` range. Both confirmed the exact three-document scope,
+  clean ancestry, additive CF-1 semantics, 68 ordered literal-oracle rows / 680
+  exact governed cells, and the 837 direct recomputed-hash counterfactual
+  audit. They independently reran the literal audit, `git diff --check`, and
+  `npm run factory:check`; author full verification remains recorded in
+  RV-1-C-024.
+- Frozen consequence: W1-119 production may now be authorized only in a fresh
+  isolated lane for its exact `contracts.ts`, dedicated contract test, and
+  Task119 claim scope, under SDD/TDD/fresh-review/verification/no-self-merge/
+  no-`neo` authority. Its reviewed merged SHA is a hard prerequisite for the
+  restarted Task120. Task120's reviewed merged SHA remains a hard prerequisite
+  for W1-118 and Task136. No store, projection, runtime, provider, tool,
+  domain, browser, credential, Nous, tailnet, or live effect is authorized by
+  this documentation integration.
