@@ -87,6 +87,53 @@ success DTO. A test that cannot invoke the production boundary through its
 frozen interface is blocked and assigned to the boundary owner rather than
 replacing that boundary with an in-memory fake.
 
+## Producer Precondition Commands
+
+The candidate acceptance tests below are new A-owned tests, not substitutes for
+producer proof. After CF-1 records the producer SHA and the A worktree rebases
+to it, run the exact producer command first and record its result in the case
+claim. Only a passing producer precondition permits the candidate test to enter
+its RED/GREEN loop. A producer failure is a defect report to the named owner;
+Lane A does not weaken the acceptance test or repair that producer.
+
+| Local marker | Acceptance case | Candidate A-owned test command | Required producer command before candidate test |
+| --- | --- | --- | --- |
+| A116-PRODUCER-FIXTURE | A-FIXTURE | `npm test -- packages/local-runtime/test/fixtures/resident-acceptance-fixture.ts packages/agent/test/fixtures/resident-acceptance-evidence.ts` | `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts` |
+| A116-PRODUCER-A01 | A-01 | `npm test -- packages/local-runtime/test/resident-acceptance-mounted-restart.test.ts` | `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts` |
+| A116-PRODUCER-A02 | A-02 | `npm test -- packages/local-runtime/test/resident-acceptance-disconnect-reconnect.test.ts` | `npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts` |
+| A116-PRODUCER-A03 | A-03 | `npm test -- packages/agent/test/resident-acceptance-nous-and-legacy.test.ts` | `npm test -- packages/agent/test/evidence-triage-bounded-loop.test.ts` |
+| A116-PRODUCER-A04 | A-04 | `npm test -- packages/agent/test/resident-acceptance-nous-and-legacy.test.ts` | `npm test -- packages/agent/test/legacy-to-ontology-bootstrap.test.ts` |
+| A116-PRODUCER-A05 | A-05 | `npm test -- packages/agent/test/resident-acceptance-trigger-and-planning.test.ts` | `npm test -- packages/agent/test/prr-proactive-trigger.test.ts packages/agent/test/prr-negotiation-draft-only.test.ts` |
+| A116-PRODUCER-A06 | A-06 | `npm test -- packages/agent/test/resident-acceptance-trigger-and-planning.test.ts` | `npm test -- packages/agent/test/investigation-planner-bounded-loop.test.ts packages/agent/test/contradiction-finder-workflow.test.ts` |
+| A116-PRODUCER-A07 | A-07 | `npm test -- packages/agent/test/resident-acceptance-provider-feasibility.test.ts` | `npm test -- packages/agent/test/byok-provider.test.ts packages/agent/test/local-model-provider.test.ts` |
+| A116-PRODUCER-A08 | A-08 | `npm test -- packages/agent/test/resident-acceptance-provider-feasibility.test.ts` | `npm test -- packages/agent/test/codex-subscription-harness.test.ts packages/agent/test/xai-subscription-harness.test.ts` |
+| A116-PRODUCER-A09 | A-09 | `npm test -- packages/ui/test/resident-acceptance-cockpit-tailnet.test.tsx` | `npm test -- packages/ui/test/resident-supervision-panel.test.tsx packages/ui/test/resident-runtime-adapter.test.ts` |
+| A116-PRODUCER-A10 | A-10 | `npm test -- packages/agent/test/resident-acceptance-adversarial.test.ts` | `npm test -- packages/agent/test/plan-observation-projection.test.ts packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/specialist-handoff-projection.test.ts` |
+
+## Durable Acceptance Work Orders
+
+CF-1 reserves the following durable task claims alongside the candidate test
+paths. A claim starts `claimed`, appends `in-progress` before an owned edit,
+then appends either `ready-for-review`, `blocked`, or `released`; the
+coordinator alone records accepted work as `merged`. The record is forward-only
+and every task commit includes exactly its named claim. Shared candidate files
+do not permit concurrent ownership: A-03/A-04, A-05/A-06, and A-07/A-08 run in
+that listed order and each task changes only its own cases in the shared file.
+
+| Local marker | Case | Durable claim path | Required status at review handoff | Exact commit scope |
+| --- | --- | --- | --- | --- |
+| A116-WORKORDER-FIXTURE | A-FIXTURE | `docs/agentic/claims/task-154-resident-acceptance-fixture.md` | `ready-for-review` | The two CF-1 fixture files and this claim only. |
+| A116-WORKORDER-A01 | A-01 | `docs/agentic/claims/task-155-resident-acceptance-mounted-restart.md` | `ready-for-review` | A-01 restart test, CF-1-assigned fixture deltas, and this claim only. |
+| A116-WORKORDER-A02 | A-02 | `docs/agentic/claims/task-156-resident-acceptance-disconnect-reconnect.md` | `ready-for-review` | A-02 disconnect/reconnect test, CF-1-assigned fixture deltas, and this claim only. |
+| A116-WORKORDER-A03 | A-03 | `docs/agentic/claims/task-157-resident-acceptance-nous.md` | `ready-for-review` | Only A-03 cases in the shared Nous/legacy test, CF-1 fixture/evidence deltas, and this claim. |
+| A116-WORKORDER-A04 | A-04 | `docs/agentic/claims/task-158-resident-acceptance-legacy-proposal.md` | `ready-for-review` | Only A-04 cases in the shared Nous/legacy test, CF-1 fixture/evidence deltas, and this claim. |
+| A116-WORKORDER-A05 | A-05 | `docs/agentic/claims/task-159-resident-acceptance-trigger-draft.md` | `ready-for-review` | Only A-05 cases in the shared trigger/planning test and this claim. |
+| A116-WORKORDER-A06 | A-06 | `docs/agentic/claims/task-160-resident-acceptance-planning-contradiction.md` | `ready-for-review` | Only A-06 cases in the shared trigger/planning test and this claim. |
+| A116-WORKORDER-A07 | A-07 | `docs/agentic/claims/task-161-resident-acceptance-provider-parity.md` | `ready-for-review` | Only A-07 cases in the shared provider-feasibility test and this claim. |
+| A116-WORKORDER-A08 | A-08 | `docs/agentic/claims/task-162-resident-acceptance-subscription-feasibility.md` | `ready-for-review` | Only A-08 cases in the shared provider-feasibility test and this claim. |
+| A116-WORKORDER-A09 | A-09 | `docs/agentic/claims/task-163-resident-acceptance-cockpit-tailnet.md` | `ready-for-review` | A-09 cockpit/tailnet test and this claim only. |
+| A116-WORKORDER-A10 | A-10 | `docs/agentic/claims/task-164-resident-acceptance-adversarial.md` | `ready-for-review` | A-10 adversarial test, CF-1-assigned fixture/evidence deltas, and this claim only. |
+
 ## Required CF-1 Interfaces And Fixture Shape
 
 CF-1 must publish compatible names for the following semantic ports before an
@@ -97,6 +144,30 @@ they do not redefine producer interfaces.
 type AcceptanceId =
   | "A-01" | "A-02" | "A-03" | "A-04" | "A-05"
   | "A-06" | "A-07" | "A-08" | "A-09" | "A-10";
+
+type AcceptanceCommandIdentity =
+  | `acceptance-${Lowercase<AcceptanceId>}-producer`
+  | `acceptance-${Lowercase<AcceptanceId>}-deterministic`
+  | "acceptance-coordinator-nous"
+  | "acceptance-coordinator-local-compatibility"
+  | "acceptance-coordinator-official-codex"
+  | "acceptance-coordinator-official-xai"
+  | "acceptance-coordinator-served-checkout";
+
+type AcceptanceRetryPosture =
+  | "no-retry-required"
+  | "retry-after-mounted-authority-reverify"
+  | "retry-after-independent-approval-recheck"
+  | "resumable-after-durable-readback"
+  | "blocked-without-substitute";
+
+type AcceptanceNextActionMarker =
+  | "acceptance-readback-verified"
+  | "acceptance-reverify-mounted-authority"
+  | "acceptance-recheck-independent-approval"
+  | "acceptance-route-defect-to-owner"
+  | "acceptance-record-safe-unavailable"
+  | "acceptance-rebuild-served-checkout";
 
 interface MountedAuthorityAnchor {
   readonly workspaceIdentityHash: `sha256:${string}`;
@@ -111,6 +182,12 @@ interface ResidentAcceptanceEvidence {
   readonly acceptanceId: AcceptanceId;
   readonly verdict: "pass" | "blocked" | "failed";
   readonly executionClass: "deterministic" | "coordinator-live" | "served-checkout";
+  /** Opaque allowlisted identity, never raw argv or command text. */
+  readonly commandIdentity: AcceptanceCommandIdentity;
+  /** Fixed retry/resume posture, not a free-form diagnostic. */
+  readonly retryPosture: AcceptanceRetryPosture;
+  /** Fixed operator/coordinator next-action marker. */
+  readonly nextActionMarker: AcceptanceNextActionMarker;
   readonly residentAgentId: "agent_default";
   readonly authority: MountedAuthorityAnchor;
   readonly taskId?: string;
@@ -146,9 +223,14 @@ type AcceptanceInjectionBoundary =
 `readEvidence` reads the CF-1-approved safe report/projection only after the
 production path supplies its mounted ledger/artifact readback. It cannot invent
 event IDs, artifact hashes, counts, a lifecycle state, or a completion verdict.
-The fixture fails if it sees a key or value containing prompt/source/output
-bytes, credential references, endpoints, headers, command text, mount paths,
-raw errors, or getter-backed values.
+It validates an allowlisted opaque `commandIdentity`, fixed `retryPosture`, and
+fixed `nextActionMarker` before retention; the command identity is never raw
+argv or command text. Boundary-specific safety checks inspect value-bearing
+evidence fields and reject raw prompt/source/provider-output bytes, credential
+reference values, endpoint/header/path values, raw errors, command text, and
+getter-backed values before retention. They separately allow schema labels such
+as provider readiness or approval status when their values are safe; a
+whole-DTO token scan is not a secret-safety proof.
 
 ## Acceptance Case Contract Map
 
@@ -171,30 +253,40 @@ prove; it is not a heading-only checklist.
 | A116-A03-HONEST-BLOCK | A-03 records outage, unavailable OS binding, denied/stale approval, mount loss, budget exhaustion, or failed readback as safe blocked/unavailable/resumable evidence without alternate provider, credential, or false pass. |
 | A116-A04-EVIDENCE-FIRST | A-04 proves legacy input stays evidence-first with exact source/content hash and mounted artifact bindings before any proposal is emitted. |
 | A116-A04-PROPOSAL-ONLY | A-04 proves ontology-bootstrap output remains proposal-only and a handoff cannot create accepted ontology truth, synthetic readiness, or an unbound completion. |
+| A116-A04-CONDITIONAL-NOUS | A-04 runs coordinator Nous only when its frozen policy selects Nous; otherwise it records fixed `not-selected` evidence with `acceptance-record-safe-unavailable` next action and never substitutes a provider. |
 | A116-A05-TRIGGER-IDEMPOTENT | A-05 proves a PRR deadline/stalling trigger appends one provenance-bound task request for a dedupe key, honors cooldown, budget, and source high-water, and never prompts or performs a domain effect. |
 | A116-A05-DRAFT-NO-SEND | A-05 proves the resulting PRR artifact is a reviewed local draft with exact H readback and no send, follow-up, escalation, publication, export, or provider fallback. |
 | A116-A06-BOUNDED-ADVISORY | A-06 proves investigation planning and contradiction discovery bind plans, observations, source/context, tool allowlist, approval state, and all ceilings while outputs remain advisory and cannot mutate accepted graph truth. |
 | A116-A06-REPLAN-READBACK | A-06 proves budget exhaustion, stale approval, mount loss, or crash ends in the exact bounded terminal/resumable state and requires replayable H handoff readback rather than return-value completion. |
+| A116-A06-CONDITIONAL-NOUS | A-06 runs coordinator Nous only when its frozen policy selects Nous; an unavailable or unselected provider records fixed `acceptance-record-safe-unavailable` next action with no substitute backend. |
 | A116-A07-PARITY-NO-SECRET | A-07 proves BYOK and local-model capabilities expose the frozen readiness/feasibility contract using secret-free references, credential-free deterministic tests, and no implicit provider/model/credential fallback. |
+| A116-A07-APPROVED-LOCAL-COMPATIBILITY | A-07 requires a coordinator-recorded approved local-engine/model/capability/budget compatibility posture before its local smoke; stopped, incompatible, or policy-blocked local capability records a safe unavailable result and never becomes an implicit fallback. |
 | A116-A08-OFFICIAL-ONLY | A-08 proves Codex and xAI acceptance uses an official supported flow or durable safe unavailable feasibility evidence, never subscription-token extraction, browser scraping, or fabricated availability. |
+| A116-A08-OFFICIAL-CODEX-XAI-GATES | A-08 evaluates Codex and xAI separately through their CF-1-recorded official harness gates; each unsupported official flow records `official-flow-unavailable` with a fixed next action and never uses token, cookie, session, CLI-store, or alternate-provider fallback. |
 | A116-HANDOFF-PROVENANCE | A-01/A-03/A-04/A-05/A-06 require exact mounted derivative/output readback, material readback, final-output ledger binding, manifest readback, prepared and recorded handoff replay/readback, then causally compatible run/task transition. |
 | A116-HANDOFF-CROSS-RUN | A-10 rejects missing, corrupt, swapped, stale, sequence-conflicted, terminal-before-recorded, historical-unbound, and cross-run artifact/DTO facts without choosing substitute bytes or a different run. |
 | A116-APPROVAL-RACE | A-10 rejects forged/self, expired, revoked, stale, cross-run/provider, preview/context/source/policy/lock/mount-changed approvals before provider transfer or any external effect. |
-| A116-BOUNDARY-SAFETY | A-10 rejects accessor, prototype, symbol, sparse-array, secret-shaped key/value, and raw-provider-text inputs before append/write/call and reports only a fixed safe category. |
+| A116-BOUNDARY-SAFETY | A-10 rejects accessor, prototype, symbol, sparse-array, and unsafe value-bearing material (raw provider text, prompt/source bytes, credential-reference values, endpoint/header/path values, raw errors, or command text) before append/write/call and reports only a fixed safe category. |
 | A116-A09-PRODUCTION-DTO | A-09 feeds the U parser a production-shaped runtime route payload whose task/run/claim, mount, provider readiness, plan/observation, trigger, and handoff facts remain associated; stale, forged, absent, secret-bearing, and cross-run values reject or mark unavailable. |
 | A116-A09-BROWSER-CLOSED | A-09 closes the browser and proves the W-owned supervisor remains independently running, paused, or resumable through subsequent safe runtime projection/readback rather than browser state. |
 | A116-A09-SERVED-TAILNET | A-09 rebuilds the exact served commit, records that SHA, inspects desktop/mobile/tailnet route behavior, proves supported control semantics and workspace-unavailable visibility, and rejects stale builds, parser fallback, secret/mount leakage, or a browser-hosted resident. |
+| A116-EVIDENCE-COMMAND-IDENTITY | Every A evidence record contains an allowlisted opaque `commandIdentity`, never raw argv or command text. |
+| A116-EVIDENCE-RETRY-POSTURE | Every A evidence record contains a fixed `retryPosture` that distinguishes no retry, authority/approval recheck, resumable readback, and blocked-without-substitute outcomes. |
+| A116-EVIDENCE-NEXT-ACTION | Every A evidence record contains a fixed `nextActionMarker` rather than a free-form repair instruction. |
+| A116-EVIDENCE-BOUNDARY-MATERIAL | Safe evidence validates value-bearing material at each output/diagnostic boundary; legal schema labels are not treated as secret values and a whole-DTO token scan is forbidden. |
 | A116-EVIDENCE-SECRET-SAFE | Every A case asserts safe evidence keys and values contain only opaque IDs, hashes, bounded counts, fixed categories/markers, and permitted served SHA; a leak fails before retaining the unsafe subject. |
+| A116-PRODUCER-PRECONDITIONS | A-FIXTURE and A-01 through A-10 run their recorded producer command before their candidate acceptance command after the recorded CF-1 rebase. |
+| A116-DURABLE-WORKORDER | A-FIXTURE and A-01 through A-10 each use the reserved claim path, append-only claim status, and exact test/fixture/claim-only commit scope. |
 | A116-CF1-REBASE-OWNER | Every A task waits for CF-1 plus named producer merges, rebases to recorded SHAs before review, and sends a defect with acceptance ID, command, safe anchors, and owner instead of changing producer code. |
 | A116-ROLLBACK-REVIEW | Every A task records reversible test-only rollback, removes only disposable fixture roots during cleanup, stops after two focused verifier failures for coordinator root-cause recovery, and requires a fresh reviewer before integration. |
 
 ## Section-Local Documentation Audit
 
 Run this exact audit from the repository root before committing Task 116. It
-extracts only the contract map above, validates every direct safety row, then
-deletes both the marker and its semantic clause for each row. It therefore
-rejects 58 direct local counterfactual mutations rather than treating section
-headings or incidental wording elsewhere in this plan as evidence.
+validates the contract map plus the exact evidence interface, producer-command
+table, durable-work-order table, and live/local/official gate procedure. It
+mutates every required marker and semantic token inside its owning section, so
+repair controls cannot be satisfied by a duplicate heading or incidental prose.
 
 ```bash
 node --input-type=module <<'NODE'
@@ -202,55 +294,115 @@ import { readFileSync } from "node:fs";
 
 const path = "docs/superpowers/plans/2026-07-12-resident-agent-acceptance-implementation.md";
 const text = readFileSync(path, "utf8");
-const startHeading = "## Acceptance Case Contract Map";
-const endHeading = "## Section-Local Documentation Audit";
-const start = text.indexOf(startHeading);
-const end = text.indexOf(endHeading);
-if (start < 0 || end < 0 || end <= start) throw new Error("acceptance contract map is not extractable");
-const section = text.slice(start, end);
-const required = new Map([
-  ["A116-A01-MOUNTED-RESTART", "writes only through the selected mounted ledger, artifact, derivative, and handoff authorities"],
-  ["A116-A01-FRESH-PROCESS", "fresh child process reconstruct task, claim, context, plan/observation, handoff lifecycle, and terminal-or-resumable posture from mounted disk"],
-  ["A116-A01-NO-FALLBACK", "requires zero fallback writes"],
-  ["A116-A01-REJECT-SYNTHETIC", "rejects an in-memory continuation, orphaned bytes, caller-supplied result, copied cross-run status, and unbound legacy handoff"],
-  ["A116-A02-INJECT-BOUNDARIES", "before claim, provider transfer, tool execution, derivative, material, manifest, recorded-handoff, and resume boundaries"],
-  ["A116-A02-REVERIFY", "same workspace identity, ledger high-water, mounted store, policy, and active locks are reverified"],
-  ["A116-A02-RELEASE-NO-CACHE", "cached authority cannot resume, and the fallback sentinel remains zero"],
-  ["A116-A03-DETERMINISTIC-CREDENTIAL-FREE", "denied, stale, missing, or unapproved transfer has no provider call or fallback backend"],
-  ["A116-A03-COORDINATOR-NOUS", "reserves `npm run agent:nous:smoke` to a coordinator-controlled environment"],
-  ["A116-A03-SAFE-LIVE-OUTPUT", "permits live output only fixed markers, Nous provider/model IDs"],
-  ["A116-A03-HONEST-BLOCK", "without alternate provider, credential, or false pass"],
-  ["A116-A04-EVIDENCE-FIRST", "stays evidence-first with exact source/content hash and mounted artifact bindings"],
-  ["A116-A04-PROPOSAL-ONLY", "cannot create accepted ontology truth, synthetic readiness, or an unbound completion"],
-  ["A116-A05-TRIGGER-IDEMPOTENT", "honors cooldown, budget, and source high-water, and never prompts or performs a domain effect"],
-  ["A116-A05-DRAFT-NO-SEND", "no send, follow-up, escalation, publication, export, or provider fallback"],
-  ["A116-A06-BOUNDED-ADVISORY", "outputs remain advisory and cannot mutate accepted graph truth"],
-  ["A116-A06-REPLAN-READBACK", "requires replayable H handoff readback rather than return-value completion"],
-  ["A116-A07-PARITY-NO-SECRET", "no implicit provider/model/credential fallback"],
-  ["A116-A08-OFFICIAL-ONLY", "never subscription-token extraction, browser scraping, or fabricated availability"],
-  ["A116-HANDOFF-PROVENANCE", "prepared and recorded handoff replay/readback, then causally compatible run/task transition"],
-  ["A116-HANDOFF-CROSS-RUN", "without choosing substitute bytes or a different run"],
-  ["A116-APPROVAL-RACE", "before provider transfer or any external effect"],
-  ["A116-BOUNDARY-SAFETY", "reports only a fixed safe category"],
-  ["A116-A09-PRODUCTION-DTO", "stale, forged, absent, secret-bearing, and cross-run values reject or mark unavailable"],
-  ["A116-A09-BROWSER-CLOSED", "rather than browser state"],
-  ["A116-A09-SERVED-TAILNET", "rejects stale builds, parser fallback, secret/mount leakage, or a browser-hosted resident"],
-  ["A116-EVIDENCE-SECRET-SAFE", "a leak fails before retaining the unsafe subject"],
-  ["A116-CF1-REBASE-OWNER", "instead of changing producer code"],
-  ["A116-ROLLBACK-REVIEW", "requires a fresh reviewer before integration"]
-]);
-const validate = (candidate) => [...required].filter(([marker, clause]) =>
-  !candidate.includes(marker) || !candidate.includes(clause)
-);
-const missing = validate(section);
+const region = (candidate, startHeading, endHeading, name) => {
+  const start = candidate.indexOf(startHeading);
+  const end = candidate.indexOf(endHeading, start + startHeading.length);
+  if (start < 0 || end < 0 || end <= start) throw new Error(`${name} is not extractable`);
+  return { start, end, text: candidate.slice(start, end) };
+};
+const lastRegion = (candidate, startHeading, endHeading, name) => {
+  const start = candidate.lastIndexOf(startHeading);
+  const end = candidate.indexOf(endHeading, start + startHeading.length);
+  if (start < 0 || end < 0 || end <= start) throw new Error(`${name} is not extractable`);
+  return { start, end, text: candidate.slice(start, end) };
+};
+const regions = (candidate) => ({
+  evidence: region(candidate, "interface ResidentAcceptanceEvidence {", "interface MountedAcceptanceFixture {", "evidence interface"),
+  contract: region(candidate, "## Acceptance Case Contract Map", "## Section-Local Documentation Audit", "acceptance contract map"),
+  producer: region(candidate, "## Producer Precondition Commands", "## Durable Acceptance Work Orders", "producer preconditions"),
+  workOrder: region(candidate, "## Durable Acceptance Work Orders", "## Required CF-1 Interfaces And Fixture Shape", "durable work orders"),
+  providerTask: region(candidate, "### Task A-07 and A-08: Provider parity and official feasibility", "### Task A-09: Production DTO, browser-closed, and served-checkout evidence", "provider-feasibility task"),
+  gates: lastRegion(candidate, "## Coordinator-Only Live, Local, Official, And Served-Checkout Gates", "## Review, Rebase, Rollback, and Defect Routing", "coordinator gates")
+});
+const required = [
+  ["contract", "A116-A01-MOUNTED-RESTART", "writes only through the selected mounted ledger, artifact, derivative, and handoff authorities"],
+  ["contract", "A116-A01-FRESH-PROCESS", "fresh child process reconstruct task, claim, context, plan/observation, handoff lifecycle, and terminal-or-resumable posture from mounted disk"],
+  ["contract", "A116-A01-NO-FALLBACK", "requires zero fallback writes"],
+  ["contract", "A116-A01-REJECT-SYNTHETIC", "rejects an in-memory continuation, orphaned bytes, caller-supplied result, copied cross-run status, and unbound legacy handoff"],
+  ["contract", "A116-A02-INJECT-BOUNDARIES", "before claim, provider transfer, tool execution, derivative, material, manifest, recorded-handoff, and resume boundaries"],
+  ["contract", "A116-A02-REVERIFY", "same workspace identity, ledger high-water, mounted store, policy, and active locks are reverified"],
+  ["contract", "A116-A02-RELEASE-NO-CACHE", "cached authority cannot resume, and the fallback sentinel remains zero"],
+  ["contract", "A116-A03-DETERMINISTIC-CREDENTIAL-FREE", "denied, stale, missing, or unapproved transfer has no provider call or fallback backend"],
+  ["contract", "A116-A03-COORDINATOR-NOUS", "reserves `npm run agent:nous:smoke` to a coordinator-controlled environment"],
+  ["contract", "A116-A03-SAFE-LIVE-OUTPUT", "permits live output only fixed markers, Nous provider/model IDs"],
+  ["contract", "A116-A03-HONEST-BLOCK", "without alternate provider, credential, or false pass"],
+  ["contract", "A116-A04-EVIDENCE-FIRST", "stays evidence-first with exact source/content hash and mounted artifact bindings"],
+  ["contract", "A116-A04-PROPOSAL-ONLY", "cannot create accepted ontology truth, synthetic readiness, or an unbound completion"],
+  ["contract", "A116-A04-CONDITIONAL-NOUS", "A-04 runs coordinator Nous only when its frozen policy selects Nous"],
+  ["contract", "A116-A05-TRIGGER-IDEMPOTENT", "honors cooldown, budget, and source high-water, and never prompts or performs a domain effect"],
+  ["contract", "A116-A05-DRAFT-NO-SEND", "no send, follow-up, escalation, publication, export, or provider fallback"],
+  ["contract", "A116-A06-BOUNDED-ADVISORY", "outputs remain advisory and cannot mutate accepted graph truth"],
+  ["contract", "A116-A06-REPLAN-READBACK", "requires replayable H handoff readback rather than return-value completion"],
+  ["contract", "A116-A06-CONDITIONAL-NOUS", "A-06 runs coordinator Nous only when its frozen policy selects Nous"],
+  ["contract", "A116-A07-PARITY-NO-SECRET", "no implicit provider/model/credential fallback"],
+  ["contract", "A116-A07-APPROVED-LOCAL-COMPATIBILITY", "coordinator-recorded approved local-engine/model/capability/budget compatibility posture"],
+  ["contract", "A116-A08-OFFICIAL-ONLY", "never subscription-token extraction, browser scraping, or fabricated availability"],
+  ["contract", "A116-A08-OFFICIAL-CODEX-XAI-GATES", "Codex and xAI separately through their CF-1-recorded official harness gates"],
+  ["contract", "A116-HANDOFF-PROVENANCE", "prepared and recorded handoff replay/readback, then causally compatible run/task transition"],
+  ["contract", "A116-HANDOFF-CROSS-RUN", "without choosing substitute bytes or a different run"],
+  ["contract", "A116-APPROVAL-RACE", "before provider transfer or any external effect"],
+  ["contract", "A116-BOUNDARY-SAFETY", "unsafe value-bearing material"],
+  ["contract", "A116-A09-PRODUCTION-DTO", "stale, forged, absent, secret-bearing, and cross-run values reject or mark unavailable"],
+  ["contract", "A116-A09-BROWSER-CLOSED", "rather than browser state"],
+  ["contract", "A116-A09-SERVED-TAILNET", "rejects stale builds, parser fallback, secret/mount leakage, or a browser-hosted resident"],
+  ["contract", "A116-EVIDENCE-COMMAND-IDENTITY", "allowlisted opaque `commandIdentity`, never raw argv or command text"],
+  ["contract", "A116-EVIDENCE-RETRY-POSTURE", "fixed `retryPosture`"],
+  ["contract", "A116-EVIDENCE-NEXT-ACTION", "fixed `nextActionMarker`"],
+  ["contract", "A116-EVIDENCE-BOUNDARY-MATERIAL", "whole-DTO token scan is forbidden"],
+  ["contract", "A116-EVIDENCE-SECRET-SAFE", "a leak fails before retaining the unsafe subject"],
+  ["contract", "A116-PRODUCER-PRECONDITIONS", "run their recorded producer command before their candidate acceptance command"],
+  ["contract", "A116-DURABLE-WORKORDER", "reserved claim path, append-only claim status, and exact test/fixture/claim-only commit scope"],
+  ["contract", "A116-CF1-REBASE-OWNER", "instead of changing producer code"],
+  ["contract", "A116-ROLLBACK-REVIEW", "requires a fresh reviewer before integration"],
+  ["evidence", "readonly commandIdentity: AcceptanceCommandIdentity;", "Opaque allowlisted identity, never raw argv or command text."],
+  ["evidence", "readonly retryPosture: AcceptanceRetryPosture;", "Fixed retry/resume posture, not a free-form diagnostic."],
+  ["evidence", "readonly nextActionMarker: AcceptanceNextActionMarker;", "Fixed operator/coordinator next-action marker."],
+  ["producer", "A116-PRODUCER-A01", "| A116-PRODUCER-A01 | A-01 | `npm test -- packages/local-runtime/test/resident-acceptance-mounted-restart.test.ts` | `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts` |"],
+  ["producer", "A116-PRODUCER-A02", "| A116-PRODUCER-A02 | A-02 | `npm test -- packages/local-runtime/test/resident-acceptance-disconnect-reconnect.test.ts` | `npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/wake-supervisor-runtime.test.ts` |"],
+  ["producer", "A116-PRODUCER-A03", "| A116-PRODUCER-A03 | A-03 | `npm test -- packages/agent/test/resident-acceptance-nous-and-legacy.test.ts` | `npm test -- packages/agent/test/evidence-triage-bounded-loop.test.ts` |"],
+  ["producer", "A116-PRODUCER-A04", "| A116-PRODUCER-A04 | A-04 | `npm test -- packages/agent/test/resident-acceptance-nous-and-legacy.test.ts` | `npm test -- packages/agent/test/legacy-to-ontology-bootstrap.test.ts` |"],
+  ["producer", "A116-PRODUCER-A05", "| A116-PRODUCER-A05 | A-05 | `npm test -- packages/agent/test/resident-acceptance-trigger-and-planning.test.ts` | `npm test -- packages/agent/test/prr-proactive-trigger.test.ts packages/agent/test/prr-negotiation-draft-only.test.ts` |"],
+  ["producer", "A116-PRODUCER-A06", "| A116-PRODUCER-A06 | A-06 | `npm test -- packages/agent/test/resident-acceptance-trigger-and-planning.test.ts` | `npm test -- packages/agent/test/investigation-planner-bounded-loop.test.ts packages/agent/test/contradiction-finder-workflow.test.ts` |"],
+  ["producer", "A116-PRODUCER-A07", "| A116-PRODUCER-A07 | A-07 | `npm test -- packages/agent/test/resident-acceptance-provider-feasibility.test.ts` | `npm test -- packages/agent/test/byok-provider.test.ts packages/agent/test/local-model-provider.test.ts` |"],
+  ["producer", "A116-PRODUCER-A08", "| A116-PRODUCER-A08 | A-08 | `npm test -- packages/agent/test/resident-acceptance-provider-feasibility.test.ts` | `npm test -- packages/agent/test/codex-subscription-harness.test.ts packages/agent/test/xai-subscription-harness.test.ts` |"],
+  ["producer", "A116-PRODUCER-A09", "| A116-PRODUCER-A09 | A-09 | `npm test -- packages/ui/test/resident-acceptance-cockpit-tailnet.test.tsx` | `npm test -- packages/ui/test/resident-supervision-panel.test.tsx packages/ui/test/resident-runtime-adapter.test.ts` |"],
+  ["workOrder", "A116-WORKORDER-FIXTURE", "task-154-resident-acceptance-fixture.md", "The two CF-1 fixture files and this claim only."],
+  ["workOrder", "A116-WORKORDER-A01", "task-155-resident-acceptance-mounted-restart.md", "A-01 restart test, CF-1-assigned fixture deltas, and this claim only."],
+  ["workOrder", "A116-WORKORDER-A02", "task-156-resident-acceptance-disconnect-reconnect.md", "A-02 disconnect/reconnect test, CF-1-assigned fixture deltas, and this claim only."],
+  ["workOrder", "A116-WORKORDER-A03", "task-157-resident-acceptance-nous.md", "Only A-03 cases in the shared Nous/legacy test"],
+  ["workOrder", "A116-WORKORDER-A04", "task-158-resident-acceptance-legacy-proposal.md", "Only A-04 cases in the shared Nous/legacy test"],
+  ["workOrder", "A116-WORKORDER-A05", "task-159-resident-acceptance-trigger-draft.md", "Only A-05 cases in the shared trigger/planning test"],
+  ["workOrder", "A116-WORKORDER-A06", "task-160-resident-acceptance-planning-contradiction.md", "Only A-06 cases in the shared trigger/planning test"],
+  ["workOrder", "A116-WORKORDER-A07", "task-161-resident-acceptance-provider-parity.md", "Only A-07 cases in the shared provider-feasibility test"],
+  ["workOrder", "A116-WORKORDER-A08", "task-162-resident-acceptance-subscription-feasibility.md", "Only A-08 cases in the shared provider-feasibility test"],
+  ["workOrder", "A116-WORKORDER-A09", "task-163-resident-acceptance-cockpit-tailnet.md", "A-09 cockpit/tailnet test and this claim only."],
+  ["workOrder", "A116-WORKORDER-A10", "task-164-resident-acceptance-adversarial.md", "A-10 adversarial test, CF-1-assigned fixture/evidence deltas, and this claim only."],
+  ["gates", "A-04 conditional Nous:", "**A-04 conditional Nous:** when the frozen policy selects Nous, run that"],
+  ["gates", "A-06 conditional Nous:", "**A-06 conditional Nous:** when the frozen policy selects Nous, run that"],
+  ["gates", "A-07 approved local compatibility", "approved local-engine/model/capability/budget posture", "acceptance-coordinator-local-compatibility"],
+  ["gates", "A-08, evaluate Codex and xAI independently.", "acceptance-coordinator-official-codex", "acceptance-coordinator-official-xai", "official-flow-unavailable"]
+];
+const staleWholeDtoCheck = "expect(JSON.stringify([byok, local])).not.toMatch(/credential|endpoint|secret/i);";
+const validate = (candidate) => {
+  const current = regions(candidate);
+  const missing = required.filter(([regionName, ...needles]) =>
+    needles.some((needle) => !current[regionName].text.includes(needle))
+  ).map(([, marker]) => marker);
+  if (current.providerTask.text.includes(staleWholeDtoCheck)) missing.push("stale-whole-dto-token-scan");
+  return missing;
+};
+const missing = validate(text);
 if (missing.length > 0) {
-  console.error(`RED: Task 116 contract map misses ${missing.length} local control(s): ${missing.map(([marker]) => marker).join(", ")}`);
+  console.error(`RED: Task 116 acceptance controls missing (${missing.length}): ${missing.join(", ")}`);
   process.exit(1);
 }
 let mutations = 0;
-for (const [marker, clause] of required) {
-  for (const needle of [marker, clause]) {
-    const mutated = section.replace(needle, `removed-${mutations}`);
+for (const [regionName, marker, ...needles] of required) {
+  for (const needle of [marker, ...needles]) {
+    const current = regions(text)[regionName];
+    const index = current.text.indexOf(needle);
+    if (index < 0) throw new Error(`required token unexpectedly absent: ${marker} / ${needle}`);
+    const mutated = `${text.slice(0, current.start)}${current.text.slice(0, index)}removed-${mutations}${current.text.slice(index + needle.length)}${text.slice(current.end)}`;
     if (validate(mutated).length === 0) throw new Error(`counterfactual escaped: ${marker} / ${needle}`);
     mutations += 1;
   }
@@ -287,8 +439,13 @@ it("rejects a fixture that can write a non-mounted fallback", async () => {
   });
 });
 
-it("rejects secret-bearing evidence keys and values before retention", () => {
-  expect(() => assertSafeAcceptanceEvidence({ acceptanceId: "A-01", endpoint: "unsafe" }))
+it("allows safe schema labels but rejects unsafe material at its owning evidence boundary", () => {
+  expect(() => assertSafeEvidenceSchemaLabel("providerReadiness")).not.toThrow();
+  expect(() => assertSafeEvidenceField("providerOutput", "raw provider response"))
+    .toThrow("secret-safety-rejection");
+  expect(() => assertSafeEvidenceField("endpoint", "https://unsafe.example"))
+    .toThrow("secret-safety-rejection");
+  expect(() => assertSafeEvidenceField("diagnostic", new Error("raw error")))
     .toThrow("secret-safety-rejection");
 });
 ```
@@ -475,6 +632,17 @@ Expected: PASS credential-free. Record the coordinator-only `npm run
 agent:nous:smoke` procedure: verify mounted authority and approval first; emit
 only the permitted safe fields; treat any outage as an honest blocked result.
 
+- [ ] **Step 4a: Preserve the A-04 conditional Nous gate**
+
+If the frozen A-04 policy selects Nous, the coordinator (never this
+deterministic child) performs the exact approved `npm run agent:nous:smoke`
+preflight and records `acceptance-coordinator-nous` evidence with the same
+authority, approval, safe-output, retry, and durable-readback requirements as
+A-03. If the policy does not select Nous, no provider command runs; the
+evidence records the fixed not-selected marker and
+`acceptance-record-safe-unavailable` next action. Neither case permits an
+alternate provider or changes evidence-first/proposal-only semantics.
+
 - [ ] **Step 5: Commit and review**
 
 Fresh P/R/L/H review confirms deterministic tests do not smuggle a credential,
@@ -529,6 +697,17 @@ Run: `npm test -- packages/agent/test/resident-acceptance-trigger-and-planning.t
 Expected: PASS with no accepted graph mutation, external effect, or substitute
 provider selection.
 
+- [ ] **Step 4a: Preserve the A-06 conditional Nous gate**
+
+If the frozen A-06 policy selects Nous, the coordinator (never this
+deterministic child) performs the exact approved `npm run agent:nous:smoke`
+preflight and records `acceptance-coordinator-nous` evidence with the same
+authority, approval, safe-output, retry, and durable-readback requirements as
+A-03. If the policy does not select Nous, no provider command runs; the
+evidence records the fixed not-selected marker and
+`acceptance-record-safe-unavailable` next action. A provider outage or missing
+binding remains safe blocked/unavailable evidence and never selects a fallback.
+
 - [ ] **Step 5: Commit and review**
 
 Fresh T/L/H/P review verifies that Lane A asserts outcomes but changes no
@@ -551,12 +730,17 @@ feasibility evidence.
 it("A-07 projects BYOK and local-model readiness through the same secret-safe contract", async () => {
   const [byok, local] = await readProviderReadinessPair();
   expect(byok.contractVersion).toBe(local.contractVersion);
-  expect(JSON.stringify([byok, local])).not.toMatch(/credential|endpoint|secret/i);
+  expect(() => assertNoUnsafeProviderReadinessMaterial(byok)).not.toThrow();
+  expect(() => assertNoUnsafeProviderReadinessMaterial(local)).not.toThrow();
+  expect(() => assertNoUnsafeProviderReadinessMaterial({
+    providerReadiness: "available",
+    endpoint: "https://unsafe.example"
+  })).toThrow("secret-safety-rejection");
 });
 
-it("A-08 reports unavailable official subscriptions without token extraction or fallback", async () => {
-  const result = await assessOfficialSubscriptionFeasibility("xai");
-  expect(result).toMatchObject({ verdict: "unavailable", tokenExtractionAttempts: 0, fallbackSelections: 0 });
+it.each(["codex", "xai"])("A-08 reports %s official-flow unavailability without extraction or fallback", async (provider) => {
+  const result = await assessOfficialSubscriptionFeasibility(provider);
+  expect(result).toMatchObject({ category: "official-flow-unavailable", tokenExtractionAttempts: 0, fallbackSelections: 0 });
 });
 ```
 
@@ -571,8 +755,14 @@ available to acceptance.
 
 Assert secret-free references, strict capability/ref/model equality, no
 implicit backend substitution, approved local compatibility posture, and
-official Codex/xAI success-or-safe-unavailable behavior. Do not access an OS
-secret facility or attempt a subscription flow from deterministic tests.
+official Codex/xAI success-or-safe-unavailable behavior. A-07 waits for the
+coordinator to record an approved local-engine/model/capability/budget posture
+and its CF-1-assigned compatibility command; no unapproved local engine or
+implicit fallback may stand in for it. A-08 holds one separate official Codex
+gate and one separate official xAI gate: each is either a CF-1-recorded
+official command pass or durable `official-flow-unavailable` evidence. Do not
+access an OS secret facility or attempt a local/subscription flow from
+deterministic tests.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -705,29 +895,58 @@ Fresh cross-lane review leads with defects, coverage gaps, ownership drift, and
 unsafe evidence. Lane A commits only acceptance tests/fixtures and never a
 producer repair.
 
-## Coordinator-Only Live and Served-Checkout Gates
+## Coordinator-Only Live, Local, Official, And Served-Checkout Gates
 
 These gates are not executable by a Task 116 implementation child. After all
 deterministic A tasks are reviewed, merged, and rerun from their recorded
 rebased SHAs, the coordinator performs the following in its controlled
 environment.
 
-1. Verify the current mounted workspace identity/generation, mounted ledger and
+1. Every retained evidence envelope uses its allowlisted opaque command
+   identity, fixed retry posture, and fixed next-action marker. It never
+   serializes raw command text; a blocked result names only the safe action such
+   as `acceptance-reverify-mounted-authority`,
+   `acceptance-recheck-independent-approval`,
+   `acceptance-route-defect-to-owner`, or
+   `acceptance-record-safe-unavailable`.
+2. Verify the current mounted workspace identity/generation, mounted ledger and
    stores, high-water, policy, locks, exact `agent_default` task/attempt/run,
    selected Nous provider/model/capability, typed OS-secret reference, prompt
    artifact/input binding, sources/context hashes, budgets, and independent
    byte-transfer approval. A mismatch stops before network I/O.
-2. Run `npm run agent:nous:smoke` only then. Preserve safe markers, provider
-   and model IDs, allowed hashes, event IDs, context-pack IDs, counts,
-   categories, and durable-readback marker. Do not persist or report prompt,
-   source, output, credential, ref value, endpoint, header, raw response,
-   command text, stack trace, or raw error.
-3. Rebuild the exact checkout to be served, record its commit SHA, and inspect
+3. Run `npm run agent:nous:smoke` only then for mandatory A-03. Preserve safe
+   markers, provider and model IDs, allowed hashes, event IDs, context-pack
+   IDs, counts, categories, and durable-readback marker. Do not persist or
+   report prompt, source, output, credential, ref value, endpoint, header, raw
+   response, command text, stack trace, or raw error.
+   - **A-04 conditional Nous:** when the frozen policy selects Nous, run that
+     same coordinator gate; when it does not, record a safe not-selected result
+     with `acceptance-record-safe-unavailable` and do not run a substitute.
+   - **A-06 conditional Nous:** when the frozen policy selects Nous, run that
+     same coordinator gate; when it does not, record a safe not-selected result
+     with `acceptance-record-safe-unavailable` and do not run a substitute.
+   A Nous outage, unavailable OS binding, denial, mount loss, or failed
+   readback is likewise an honest blocked/resumable result.
+4. For A-07 approved local compatibility, require the coordinator to record
+   the approved local-engine/model/capability/budget posture and the exact
+   CF-1-assigned compatibility command before invocation. Its evidence uses
+   `acceptance-coordinator-local-compatibility`. A missing, stopped,
+   incompatible, or policy-blocked engine is safe unavailable evidence; it
+   never becomes an implicit provider fallback. No Task 116 child invokes this
+   gate.
+5. For A-08, evaluate Codex and xAI independently. The coordinator may run an
+   `acceptance-coordinator-official-codex` or
+   `acceptance-coordinator-official-xai` command only when CF-1 records that
+   provider's official supported flow. If either official flow is unavailable,
+   append durable `official-flow-unavailable` evidence with its fixed next
+   action. Never inspect or extract subscription tokens, cookies, sessions,
+   browser state, CLI stores, or use Nous/BYOK/local as a substitute result.
+6. Rebuild the exact checkout to be served, record its commit SHA, and inspect
    the served tailnet route at desktop and mobile sizes. Confirm production DTO
    parity, supported control effects, browser-closed supervision,
    workspace-unavailable visibility, and no secret/mount leakage. A different
    SHA, stale build, unavailable route, or parser fallback is a blocked gate.
-4. Append only safe live/deployment evidence to the coordinator-owned
+7. Append only safe live/deployment evidence to the coordinator-owned
    acceptance matrix and registry. An outage, unavailable credential binding,
    approval denial, mount loss, or failed readback is an honest blocked or
    resumable verdict, never a deterministic pass or substitute backend.
@@ -773,16 +992,24 @@ environment.
 ## Plan Self-Review Checklist
 
 - [ ] A-01 through A-10 each have an owner boundary, deterministic fixture or
-  command, direct failure cases, safe evidence, review, and defect route.
+  command, executable producer precondition, direct failure cases, safe
+  evidence, review, and defect route.
 - [ ] Mounted restart/reconstruction/no-fallback, disconnect/reverify, durable
   handoff/provenance readback, approval races, secret safety, browser/tailnet,
   and coordinator-only Nous gates remain fail-closed and testable.
 - [ ] Deterministic tests remain credential-free and Lane A neither invokes a
   provider nor creates a replacement store, runtime, DTO, or shared contract.
+- [ ] Every evidence envelope has an opaque command identity, fixed retry
+  posture, fixed next-action marker, and boundary-specific unsafe-material
+  checks; legal schema labels do not trigger a whole-DTO token scan.
+- [ ] A-04/A-06 preserve conditional Nous gates, A-07 requires approved local
+  compatibility, and A-08 records separate official Codex/xAI or safe-
+  unavailable outcomes without fallback or extraction.
 - [ ] Candidate test paths await CF-1 confirmation; a conflict blocks dispatch
   instead of silently moving ownership into a producer lane.
 - [ ] Every task names a RED command, focused GREEN command, review boundary,
-  rollback, rebase requirement, and no-`neo` integration rule.
+  rollback, rebase requirement, durable claim path/status/commit scope, and
+  no-`neo` integration rule.
 - [ ] The section-local audit rejects every marker and semantic-clause removal,
   not merely a section heading deletion.
 
