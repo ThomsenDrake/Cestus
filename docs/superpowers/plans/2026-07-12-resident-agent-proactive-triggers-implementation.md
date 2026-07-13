@@ -83,10 +83,27 @@ removed exits nonzero.
 node --input-type=module --eval 'import { readFileSync } from "node:fs"; const plan=readFileSync("docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md","utf8"); const section=(doc,heading)=>{const start=doc.indexOf(`## ${heading}`);if(start<0)throw new Error(`missing section: ${heading}`);const end=doc.indexOf("\n## ",start+4);return doc.slice(start,end<0?doc.length:end)}; const requirements=[ ["Task 118: Trigger Core, Request Event, And Rebuildable Projection",["reversed sourceRefs","requestFingerprint: forward.requestFingerprint","requestId: forward.requestId","dedupeKey: forward.dedupeKey","expect(secondScope).toEqual(firstScope)","buildTriggerGateKey(secondScope)","freshReadCount()","modelId","approvalId","handoffId","taskId","schedulerId","sourceBytes","rawBytes","model:","approval:","handoff:","task:","scheduler:"]], ["Failure Injection, Acceptance, And Live-Gate Matrix",["Task 136 (L)","packages/agent/test/bounded-agent-loop.test.ts","packages/agent/test/execution-loop.test.ts","independently revalidate the required approval","exact preview hash","effect boundary"]] ]; const validate=(doc)=>{for(const [heading,tokens] of requirements){const block=section(doc,heading);for(const token of tokens)if(!block.includes(token))throw new Error(`${heading}: missing ${token}`)}}; const mutate=(doc,heading,token)=>{const block=section(doc,heading);const changed=block.split(token).join("removed");if(changed===block)throw new Error(`counterfactual setup failed: ${heading} / ${token}`);return doc.replace(block,changed)}; validate(plan); let rejected=0; for(const [heading,tokens] of requirements)for(const token of tokens){let failed=false;try{validate(mutate(plan,heading,token))}catch{failed=true}if(!failed)throw new Error(`counterfactual accepted: ${heading} / ${token}`);rejected++} console.log(`GREEN: Task 113 recovery audit passed (2 section checks; ${rejected} counterfactuals rejected).`)'
 ```
 
-The Task 113 RED result is the `ENOENT` failure while this plan is absent, and
-this recovery audit must fail before the repaired local requirements exist. The
-Task 113 GREEN result is both success markers, followed by `git diff --check`,
-`npm run factory:check`, and `npm run verify`.
+Run this same-call/exhaustive-no-effect audit in addition to the two audits
+above. It is deliberately limited to Task 118 and the acceptance matrix: the
+same original losing concurrent Promise must make a second authoritative read
+and produce its no-append decision within that evaluator call, under the same
+trigger gate key. A later independent `evaluateResidentTrigger` call is not
+accepted. It also treats every forbidden input/effect family as independently
+removable coverage, including prompt artifact/resolver, model
+messages/invocations, provider requests, subscription/API-key/credential
+shapes, harnesses, specialists, domain services, and the scheduler/tool/
+parser/approval/task/handoff/artifact/projection/graph boundaries.
+
+```bash
+node --input-type=module --eval 'import { readFileSync } from "node:fs"; const plan=readFileSync("docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md","utf8"); const section=(doc,heading)=>{const start=doc.indexOf(`## ${heading}`);if(start<0)throw new Error(`missing section: ${heading}`);const end=doc.indexOf("\n## ",start+4);return doc.slice(start,end<0?doc.length:end)}; const requirements=[["Task 118: Trigger Core, Request Event, And Rebuildable Projection",["losingPromise","same original concurrent Promise","There is deliberately no later independent evaluateResidentTrigger call","readSnapshotCountFor(losingSource!.sourceEventId)","appendGateKeys()","promptArtifact","promptResolver","promptArtifactResolver","modelMessages","modelInvocation","providerRequest","subscription","apiKey","credential","credentialRef","harness","specialist","domainService","scheduler","tool","parser","approval","task","handoff","artifactStore","projection","graph","sourceBytes","rawBytes"]],["Failure Injection, Acceptance, And Live-Gate Matrix",["original losing concurrent evaluator promise","same evaluator call","same triggerGateKey","prompt artifact/resolver","model messages/invocations","provider requests","subscription/API-key/credential","harnesses","specialists","domain services"]]]; const validate=(doc)=>{for(const [heading,tokens] of requirements){const block=section(doc,heading);for(const token of tokens)if(!block.includes(token))throw new Error(`${heading}: missing ${token}`)}}; validate(plan); let rejected=0; for(const [heading,tokens] of requirements)for(const token of tokens){const block=section(plan,heading);const changed=block.split(token).join("removed");if(changed===block)throw new Error(`counterfactual setup failed: ${heading} / ${token}`);const variant=plan.replace(block,changed);let failed=false;try{validate(variant)}catch{failed=true}if(!failed)throw new Error(`counterfactual accepted: ${heading} / ${token}`);rejected++} console.log(`GREEN: Task 113 same-call/no-effect audit passed (${rejected} counterfactuals rejected).`)'
+```
+
+The original Task 113 RED result is the `ENOENT` failure while this plan is
+absent. Each forward documentation repair must also run the relevant
+section-local audit against its baseline and record the expected missing local
+requirement before adding it. The Task 113 GREEN result is all applicable
+success markers, followed by `git diff --check`, `npm run factory:check`, and
+`npm run verify`.
 
 ## CF-1 Contract Gate And Conflict Resolution
 
@@ -318,24 +335,43 @@ constructors. A requested decision is returned only after exact readback.
     expect(authority.appendCount()).toBe(0);
   });
 
-  it("serializes equal policy scopes with different high-water candidates", async () => {
-    const authority = mountedAuthority({ maxRequests: 1 });
+  it("re-evaluates the original losing concurrent promise in the same evaluator call", async () => {
+    const authority = mountedAuthority({ maxRequests: 1, synchronizeInitialReads: true });
     const candidates = [4, 5].map((sourceSequence) =>
       verifiedEvaluation({ authority, candidate: verifiedCandidate({ sourceSequence }) }));
     const [firstScope, secondScope] = candidates.map((input) =>
       deriveAdmissionScope(authority.policy(), verifiedRequestFields(input)));
     expect(secondScope).toEqual(firstScope);
     expect(buildTriggerGateKey(secondScope)).toBe(buildTriggerGateKey(firstScope));
-    const decisions = await Promise.all(candidates.map(evaluateResidentTrigger));
+    const inFlight = candidates.map((input) => evaluateResidentTrigger(input));
+    const decisions = await Promise.all(inFlight);
     expect(decisions.filter(({ kind }) => kind === "requested")).toHaveLength(1);
     expect(authority.appendCount()).toBe(1);
-    const losingCandidate = candidates[decisions.findIndex(({ kind }) => kind !== "requested")];
-    const loser = await evaluateResidentTrigger(losingCandidate);
-    expect(authority.freshReadCount()).toBeGreaterThan(1);
-    expect(["cooldown-active", "budget-exhausted", "duplicate"]).toContain(loser.kind);
+    const losingIndex = decisions.findIndex(({ kind }) => kind !== "requested");
+    const losingPromise = inFlight[losingIndex]!;
+    const losingInput = candidates[losingIndex]!;
+    const [losingSource] = losingInput.candidate.sourceRefs;
+    expect(losingSource).toBeDefined();
+    // There is deliberately no later independent evaluateResidentTrigger call.
+    const loser = await losingPromise;
+    expect(loser).toMatchObject({ kind: "budget-exhausted" });
+    expect(authority.readSnapshotCountFor(losingSource!.sourceEventId)).toBe(2);
+    expect(authority.freshReadCount()).toBeGreaterThan(2);
+    expect(authority.appendGateKeys()).toHaveLength(2);
+    expect(new Set(authority.appendGateKeys())).toEqual(
+      new Set([buildTriggerGateKey(firstScope)])
+    );
     expect(authority.appendCount()).toBe(1);
   });
   ```
+
+  The synchronized authority fixture holds both first reads until both original
+  calls are in flight, records every conditional-append gate key, and records
+  reads by the original source identity. The selected `losingPromise` is one
+  of those same original concurrent Promise values: its second source-keyed
+  read plus `budget-exhausted` decision proves the losing call discarded its
+  stale snapshot and re-evaluated from authority. The test makes no later
+  independent evaluator call, so a separate retry cannot satisfy this proof.
 
   In `trigger-projection.test.ts`, write cases for exact requested and
   duplicate readback, cooldown-active and budget-exhausted no append, stale
@@ -382,11 +418,14 @@ constructors. A requested decision is returned only after exact readback.
   ```
 
   `normalizeTriggerEvaluationInput` rejects unknown values before the first
-  `await`, including `inputText`, provider, model, parser, tool, approval,
-  handoff, artifact, task, scheduler, `sourceBytes`, and `rawBytes` shapes.
-  The evaluator has no provider capability and no effect capability. The
-  focused fixture must prove that each rejected shape performs neither a
-  mounted append nor an effect-sink invocation. `fingerprintInput` excludes
+  `await`, including `inputText`, prompt artifact/resolver and
+  `promptArtifactResolver`, provider requests, model messages/invocations,
+  subscription/API-key/credential shapes, harnesses, specialists, domain
+  services, parser, tool, approval, handoff, artifact, projection, graph,
+  task, scheduler, `sourceBytes`, and `rawBytes` shapes. The evaluator has no provider
+  capability and no effect capability. The focused fixture must prove
+  that each rejected shape performs neither a mounted append nor an
+  effect-sink invocation. `fingerprintInput` excludes
   append ID/sequence, requested-at, not-before, correlation ID, and request
   ID; source refs sort by stream ID, sequence, then event ID; request IDs use
   `trq_${base32(fingerprint)}`; dedupe uses canonical JSON of its version and
@@ -424,18 +463,33 @@ constructors. A requested decision is returned only after exact readback.
   Add this negative test to `proactive-triggers.test.ts`:
 
   ```ts
-  it("rejects every effect-shaped input before append or an effect sink", async () => {
+  it("rejects every forbidden input or effect shape before append or an effect sink", async () => {
     const authority = mountedAuthority();
     const sink = vi.fn();
     const unsafeShapes = {
       inputText: "unsafe prompt",
+      promptArtifact: { text: "unsafe prompt artifact" },
+      promptResolver: { resolve: sink },
+      promptArtifactResolver: { resolve: sink },
       provider: { invoke: sink },
+      providerRequest: { execute: sink },
       model: { invoke: sink },
+      modelMessages: [{ role: "user", content: "unsafe model message" }],
+      modelInvocation: { invoke: sink },
+      subscription: { authorize: sink },
+      apiKey: "unsafe-api-key",
+      credential: { reveal: sink },
+      credentialRef: { resolve: sink },
+      harness: { run: sink },
+      specialist: { start: sink },
+      domainService: { execute: sink },
       tool: { execute: sink },
       parser: { parse: sink },
       approval: { consume: sink },
       handoff: { append: sink },
       artifactStore: { put: sink },
+      projection: { mutate: sink },
+      graph: { accept: sink },
       task: { claim: sink },
       scheduler: { enqueue: sink },
       sourceBytes: new Uint8Array([1]),
@@ -706,12 +760,13 @@ candidate for advisory planning only.
 | --- | --- | --- | --- |
 | same semantics at different append times | Task 118 | `proactive-triggers.test.ts` | One stable fingerprint, request ID, and dedupe key; exact duplicate readback. |
 | same dedupe key, different fingerprint | Task 118 | collision fixture | `dedupe-conflict`, no append, safe diagnostic. |
-| Equal scope, different source high-water | Task 118 and Task 151 | concurrent evaluator fixtures | One gate key, at most one conditional append, then fresh losing evaluation. |
+| Equal scope, different source high-water | Task 118 and Task 151 | synchronized concurrent evaluator fixture using the original losing concurrent evaluator promise | Both calls derive the same triggerGateKey; one conditional append is allowed, then the original losing concurrent evaluator promise re-reads and re-evaluates to a no-append decision within the same evaluator call. |
 | Candidate-selected scope, selector, or key | Task 118 | normalization counterfactual | `invalid-scope`, no append, no high-water movement. |
 | Altered persisted scope, gate, source, policy, mount, or lock | Task 118 | projection/readback counterfactual | Exact reconstruction fails closed and excludes the record. |
 | Cooldown or request budget | Task 118 and Task 151 | policy-window fixture | No append; high-water unchanged; `notBefore` only for cooldown. |
 | Stale PRR or ingestion source | Task 149 and Task 150 | swapped event/hash fixture | No request and no send/parse/provider/graph action. |
 | Disconnect, unreadable policy, swapped mount | Task 118 | mounted-authority fake | Safe unavailable/stale category, no fallback write. |
+| Forbidden trigger input or effect boundary | Task 118 | strict public-boundary fixture with one counterfactual per shape | Reject prompt artifact/resolver, model messages/invocations, provider requests, subscription/API-key/credential shapes, harnesses, specialists, domain services, scheduler, tool, parser, approval, task, handoff, artifact, projection, and graph shapes before append or any sink invocation. |
 | Adoption after truth changes | Task 136 (L), exclusively `packages/agent/test/bounded-agent-loop.test.ts` | `npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/execution-loop.test.ts` | Re-read the mounted request and reject identity/policy/source/high-water/lock mismatch; independently revalidate the effect-specific approval before consuming it. |
 
 Lane A A-05 runs:
