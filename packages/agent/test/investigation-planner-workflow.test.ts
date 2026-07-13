@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
 import {
   buildAgentProjection,
   buildSpecialistHandoffProjection,
@@ -17,6 +18,7 @@ import type { ProviderReadinessDto } from "../src/index.js";
 import { registerContextPackPayloadParserAuthority } from "../src/context-packs.js";
 import { buildSpecialistHandoffMaterial } from "../src/specialist-handoff-manifest.js";
 import { appendSpecialistFinalOutputStep } from "../src/specialist-runner-kernel.js";
+import { buildTaskAttemptId, taskOrchestrationStreamId } from "../src/task-orchestrator-events.js";
 import type { AgentContextPackJsonValue } from "../src/index.js";
 
 const now = () => "2026-07-10T01:00:00.000Z";
@@ -398,6 +400,66 @@ describe("investigation planner workflow", () => {
     expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
   });
 
+  it("rejects a swapped orchestration attempt before recovery writes or reruns the planner", async () => {
+    const { ledger, runtime } = await preparedRuntime();
+    const backingStore = createDerivativeStore();
+    let putAttempts = 0;
+    const handoffStore = {
+      put: async (content: Buffer) => {
+        putAttempts += 1;
+        if (putAttempts >= 14) throw new Error("private manifest store interruption");
+        return await backingStore.put(content);
+      },
+      get: backingStore.get
+    };
+    const input = plannerWorkflowInput({
+      ledger,
+      runtime,
+      handoffStore,
+      sourceEventIds: (await ledger.readAll()).map((event) => event.id)
+    });
+    const interrupted = await runInvestigationPlannerWorkflow(input);
+    expect(interrupted.handoff).toMatchObject({ status: "blocked", lifecycle: "output-persisted" });
+
+    await appendAttemptBinding(ledger, {
+      attemptId: buildTaskAttemptId({ taskId: "task_swapped_attempt_001", runType: "investigation-planner", retryGeneration: 0 }),
+      runId: "run_investigation_001"
+    });
+    const before = await ledger.readAll();
+    const beforePuts = putAttempts;
+
+    const rejected = await runInvestigationPlannerWorkflow(input);
+
+    expect(rejected.handoff).toMatchObject({ status: "blocked", lifecycle: "no-output" });
+    expect(rejected.handoff.safeSummary).toMatch(/attempt|orchestration/i);
+    expect(putAttempts).toBe(beforePuts);
+    expect(await ledger.readAll()).toEqual(before);
+    expect((await ledger.readAll()).filter((event) => event.type === "agent.model-invocation.requested")).toHaveLength(1);
+  });
+
+  it("rejects a released orchestration attempt before preparation or provider effects", async () => {
+    const { ledger, runtime, attemptBinding } = await preparedRuntime();
+    await appendAttemptRelease(ledger, attemptBinding);
+    const backingStore = createDerivativeStore();
+    let putCalls = 0;
+    const handoffStore = {
+      put: async (content: Buffer) => {
+        putCalls += 1;
+        return await backingStore.put(content);
+      },
+      get: backingStore.get
+    };
+    const before = await ledger.readAll();
+
+    const rejected = await runInvestigationPlannerWorkflow(plannerWorkflowInput({ ledger, runtime, handoffStore }));
+
+    expect(rejected.handoff).toMatchObject({ status: "blocked", lifecycle: "no-output" });
+    expect(rejected.handoff.safeSummary).toMatch(/attempt|orchestration/i);
+    expect(putCalls).toBe(0);
+    expect(await ledger.readAll()).toEqual(before);
+    expect((await ledger.readAll()).map((event) => event.type)).not.toContain("agent.model-invocation.requested");
+  });
+
   it("recovers an exact durable final output without repeating model preparation or artifact writes", async () => {
     const { ledger, runtime } = await preparedRuntime();
     const backingStore = createDerivativeStore();
@@ -655,6 +717,7 @@ describe("investigation planner workflow", () => {
       runType: "investigation-planner",
       scope: { kind: "investigation", refs: ["inv_scope_001"] }
     });
+    await appendAttemptBinding(ledger, { runId: "run_investigation_001" });
     const handoffStore = createDerivativeStore();
 
     const result = await runInvestigationPlannerWorkflow({
@@ -732,7 +795,151 @@ async function preparedRuntime(runType: "investigation-planner" | "evidence-tria
     runType,
     scope: { kind: "investigation", refs: ["inv_scope_001"] }
   });
-  return { ledger, runtime, provider };
+  const attemptBinding = await appendAttemptBinding(ledger, { runType, runId: "run_investigation_001" });
+  return { ledger, runtime, provider, attemptBinding };
+}
+
+function plannerWorkflowInput(input: {
+  readonly ledger: InMemoryEventLedger;
+  readonly runtime: Awaited<ReturnType<typeof preparedRuntime>>["runtime"];
+  readonly handoffStore: ReturnType<typeof createDerivativeStore>;
+  readonly sourceEventIds?: readonly string[];
+}) {
+  return {
+    ledger: input.ledger,
+    actor,
+    now,
+    contextPacks: createPlannerContextPacks(false, false, input.sourceEventIds ?? []),
+    runtime: input.runtime,
+    providerReadiness: providerReadinessDto(),
+    runId: "run_investigation_001",
+    taskId: "task_investigation_001",
+    providerId: "provider_fake_local",
+    modelFamily: "fake-local",
+    credentialRef: {
+      credentialRefId: "agent_credref_fake_local",
+      providerId: "provider_fake_local",
+      kind: "local-no-secret" as const
+    },
+    derivativeStore: input.handoffStore,
+    handoffStore: input.handoffStore,
+    investigationId: "inv_scope_001"
+  };
+}
+
+async function appendAttemptBinding(
+  ledger: InMemoryEventLedger,
+  input: {
+    readonly runType?: "investigation-planner" | "evidence-triage";
+    readonly attemptId?: `attempt_${string}`;
+    readonly runId: string;
+  }
+) {
+  const taskId = "task_investigation_001";
+  const runType = input.runType ?? "investigation-planner";
+  const retryGeneration = 0;
+  const leaseClaimGeneration = 1;
+  const attemptId = input.attemptId ?? buildTaskAttemptId({ taskId, runType, retryGeneration });
+  const streamId = taskOrchestrationStreamId(taskId, runType);
+  const claimStream = await ledger.readStream(streamId);
+  const taskStream = await ledger.readStream(`agent_task_${taskId}`);
+  const claim = await ledger.append({
+    type: "agent.task.orchestration.claimed",
+    version: 1,
+    streamId,
+    context: {
+      actor,
+      occurredAt: now(),
+      correlationId: `corr_${taskId}_${runType}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" },
+      causationId: taskStream.at(-1)!.id
+    },
+    payload: {
+      taskId,
+      runType,
+      attemptId,
+      retryGeneration,
+      leaseClaimGeneration,
+      workerId: actor.id,
+      claimedAt: now(),
+      leaseExpiresAt: "2026-07-10T02:00:00.000Z",
+      idempotencyKey: `task-orchestrator:${taskId}:${runType}:${retryGeneration}:${attemptId}:claim`,
+      selectedOrderingPosition: { priorityRank: 0, queuedAt: now(), taskId, runType, retryGeneration },
+      activeBudgetSnapshot: {
+        maxProviderInvocations: 1,
+        remainingProviderInvocations: 1,
+        contextByteBudget: 65_536,
+        promptByteBudget: 65_536,
+        derivativeArtifactByteBudget: 65_536,
+        wallClockBudgetMs: 120_000
+      },
+      causationEventId: taskStream.at(-1)!.id
+    }
+  }, { expectedNextSequence: claimStream.length + 1 }) as KnowledgeEventOf<"agent.task.orchestration.claimed">;
+  const checkpointStream = await ledger.readStream(streamId);
+  const checkpoint = await ledger.append({
+    type: "agent.task.orchestration.checkpointed",
+    version: 1,
+    streamId,
+    context: {
+      actor,
+      occurredAt: now(),
+      causationId: claim.id,
+      correlationId: `corr_${taskId}_${runType}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId,
+      runType,
+      attemptId,
+      retryGeneration,
+      leaseClaimGeneration,
+      checkpointKind: "runner-dispatching",
+      checkpointedAt: now(),
+      runId: input.runId,
+      resumeIdempotencyKey: `task-orchestrator:${taskId}:${runType}:${retryGeneration}:${attemptId}:runner-dispatching`,
+      contextBindings: [],
+      safeNextActions: ["wait for durable specialist handoff readback"]
+    }
+  }, { expectedNextSequence: checkpointStream.length + 1 }) as KnowledgeEventOf<"agent.task.orchestration.checkpointed">;
+  return { claim, checkpoint };
+}
+
+async function appendAttemptRelease(
+  ledger: InMemoryEventLedger,
+  binding: Awaited<ReturnType<typeof appendAttemptBinding>>
+) {
+  const claim = binding.claim;
+  const streamId = taskOrchestrationStreamId(claim.payload.taskId, claim.payload.runType);
+  const stream = await ledger.readStream(streamId);
+  return await ledger.append({
+    type: "agent.task.orchestration.released",
+    version: 1,
+    streamId,
+    context: {
+      actor,
+      occurredAt: now(),
+      causationId: binding.checkpoint.id,
+      correlationId: `corr_${claim.payload.taskId}_${claim.payload.runType}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", agent: "0.1.0" }
+    },
+    payload: {
+      taskId: claim.payload.taskId,
+      runType: claim.payload.runType,
+      attemptId: claim.payload.attemptId,
+      retryGeneration: claim.payload.retryGeneration,
+      leaseClaimGeneration: claim.payload.leaseClaimGeneration,
+      releasedBy: actor.id,
+      releasedAt: now(),
+      releaseReason: "worker-shutdown",
+      claimEventId: claim.id,
+      checkpointEventId: binding.checkpoint.id,
+      safeNextActions: ["reclaim the task through a new orchestration attempt"]
+    }
+  }, { expectedNextSequence: stream.length + 1 });
 }
 
 function createPlannerContextPacks(
