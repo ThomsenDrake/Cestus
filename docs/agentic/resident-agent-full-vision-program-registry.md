@@ -1964,3 +1964,9 @@ explicit implementation authorization.
 - Role/claim: coordinator repair dispatch / Task115 claim; repair starts at df5b27cb131f42752eec5c4e6e1eceff58658b95 in a fresh isolated branch/worktree and may modify only the Task115 plan and claim.
 - Approval record: governing spec/plan are approved. Allowed range is Task115 ownership-and-label repair. Use documentation RED/GREEN, fresh review, verification-before-completion, and no self-merge into neo; stop after one verified repair commit and different fresh review.
 - Required RED/GREEN: remove premature ownership of `packages/local-runtime/test/agent-supervision-routes.test.ts` and make its owner a Task117 CF-1 reconciliation/dispatch precondition; require exact frozen labels for all six commands and reject `Run retry`, `Cancelled`, and `Start the agent` alongside pending/readback assertions. Preserve accepted substantive content; run diff check, factory check, and full verify.
+
+## RV-0-U-008 — Task115 repair approved and integrated
+
+- Reviewed head: 44717a28510ee84bfc6fbf9895dfb6aa0fc53f7b; direct child of df5b27cb131f42752eec5c4e6e1eceff58658b95; only the Task115 plan and claim changed.
+- Fresh review: approved with no defects. CF-1 now owns route-test reconciliation before Task141 dispatch; six exact labels and three forbidden-label counterfactuals are present.
+- Coordinator merge: no-ff staged into Relay B; full verification and commit required before this record becomes integrated evidence. No neo merge.
