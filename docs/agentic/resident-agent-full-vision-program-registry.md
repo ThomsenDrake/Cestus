@@ -1036,6 +1036,33 @@ explicit implementation authorization.
 - Archive check: original author, first repair, both reviews, and their evidence remain retained; second repair handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
 - Supersession: this record supersedes RV-0-W-006 only for current repair status. Original Task 111 dispatch, first repair, and review evidence remain immutable.
 
+## RV-0-R-006 — Task 109 autonomous root-cause checkpoint and call-path recovery dispatch
+
+- Recorded at: 2026-07-13T01:21:00Z
+- Role: coordinator recovery checkpoint
+- Lane and wave: R / 0B
+- Task ID and claim: task-109-resident-full-vision-w0-runtime-plan / docs/agentic/claims/task-109-resident-full-vision-w0-runtime-plan.md
+- Task thread ID: /root/task109_runtime_plan_repair (first repair); /root/task109_runtime_plan_repair_2 (second repair); /root/review_task109_plan_repair_2 (fresh final re-review); /root/task109_runtime_plan_recovery (fresh recovery implementer)
+- Branch and worktree: codex/task-109-resident-full-vision-w0-runtime-plan-recovery / /home/drake/.codex/worktrees/task-109-resident-full-vision-w0-runtime-plan-recovery
+- Base commit and required head: df8d5103d8f5e1ced773d1e5ca376224e326c6e0 / one forward-only owned-file recovery commit followed by a separately fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-runtime-composition-design.md@05e85392367964a3869a55832703f504dd0fe3da; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-runtime-composition-implementation.md; docs/agentic/claims/task-109-resident-full-vision-w0-runtime-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: original plan 0ac9a37e; first repair 048d43b0; second repair df8d5103; two preserved fresh re-review defect records; no shared contract is frozen and no production dependency applies
+- Approval record: under Standing Coordinator Delegation the coordinator records repair-count exhaustion as an internal recovery checkpoint and authorizes Task 109 append-only documentation-only call-path recovery only. Allowed range is one verified recovery commit plus separately fresh re-review; wave stop is before Tasks 132–140, CF-1 implementation dispatch, production work, provider invocation, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: recovery-dispatched; fresh recovery worker must append, not revise, claim history.
+- RED command and observed failure: final re-review demonstrated that the R2 audit accepts removal of Task 135 authority/store tuple comparison, closed registration provenance, and verified input type; it further showed the proposed compatibility test bypasses the actual `dispatchVerifiedTaskRunner` caller and therefore does not prove the canonical four-field dispatch path.
+- GREEN command and observed result: pending materially different recovery evidence. It must trace the actual `TaskOrchestratorRunnerDispatchInput` construction in `packages/agent/src/task-orchestrator.ts`, model the factory-closed registration/authority/stores/H capability tuple as non-caller input, and use extracted Task 134/135/140 blocks plus counterfactual AST/line-anchored mutations that independently reject each tuple/provenance/caller-path invariant.
+- Full verification: pending recovery-owned npm run verify. Prior worker verification remains immutable evidence but cannot override fresh review defects.
+- Live-provider gate: not-applicable; this plan-only recovery invokes no provider and retains coordinator-only later real-Nous gate.
+- Review verdict: needs-changes / fresh re-reviewer /root/review_task109_plan_repair_2 found still-missing semantic invariants and actual caller coverage after two focused repairs; a fresh reviewer is required after recovery.
+- Rebase record: recovery branch starts from preserved head df8d5103 in a distinct worktree; no cross-lane rebase applies before review.
+- Merge readiness: not-ready; recovery worker cannot self-approve or merge into neo.
+- Archive check: all author, repair, review, and root-cause evidence is retained; recovery handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
+- Root-cause checkpoint: both prior repair audits were locally stronger but still artifact-text tests; neither made the audit consume the actual orchestrator caller shape nor prove the entire factory-closed tuple. The approved contract is satisfiable without a product/scope/safety/truth change. Recovery therefore changes both implementer and verification method to call-path/tuple evidence rather than requesting a user decision.
+- Supersession: this record supersedes RV-0-R-005 only for recovery status and authorization. It preserves every preceding Task 109 dispatch, repair, and review entry as immutable evidence.
+
 ## RV-0-H-003 — Task 110 durable-handoffs implementation-plan dispatch
 
 - Recorded at: 2026-07-13T00:16:43Z
