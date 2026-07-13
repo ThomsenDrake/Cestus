@@ -50,3 +50,53 @@ effect.
 Any schema conflict, untyped/raw-storage pressure, external behavior,
 credential requirement, or repeated focused verifier failure is returned to
 the coordinator as a recovery checkpoint.
+
+## Initial TDD checkpoint — 2026-07-13
+
+- The first exact focused command initially exited `127` because this isolated
+  worktree did not have ignored dependencies (`vitest: command not found`).
+  `npm ci --ignore-scripts` restored the lockfile-pinned tree without tracked
+  changes. The rerun then exited `1` for the intended RED cause:
+  `Cannot find module '../src/wake-supervisor.js'`; the unchanged scheduler
+  suite passed 15 tests.
+- The first bounded GREEN implementation defines only the owned typed supervisor
+  boundary: finite plain-data signal normalization, frozen mailbox snapshots,
+  source/idempotency coalescing, one authority revalidation, one typed lease
+  readback, immutable admission matching, a narrow runtime `wakeOnce` port,
+  and closed diagnostic/status DTO parsing. It neither imports nor accepts any
+  local-runtime, storage-path, provider, tool, artifact, browser, raw ledger,
+  raw claim, graph, or external-effect capability.
+- GREEN evidence: `npm test -- packages/agent/test/wake-supervisor.test.ts
+  packages/agent/test/scheduler.test.ts` exited `0` with 2 files and 16 tests
+  passing. `git diff --check` was empty and `npm run factory:check` printed
+  `factory-readiness passed`.
+- Remaining work in this same authorized slice is the planned pause/stop,
+  resume/recovery, reconciliation-readback, recovery-limit, and adversarial
+  boundary coverage. No full verifier, commit, review, integration, or merge
+  has been attempted; full verification remains serialized under coordinator
+  control.
+
+## Pause-transition TDD checkpoint — 2026-07-13
+
+- RED: after adding the typed pause/readback expectation, the exact focused
+  command exited `1` with `TypeError: supervisor.pause is not a function`.
+- GREEN: the supervisor now closes intake before the typed pause seam, reports
+  `pause-pending` while the seam is unresolved, and exposes `paused` only when
+  `pauseAndReadBack` succeeds. Later signals are blocked and cannot invoke the
+  runtime port. The narrow seam receives only a parsed command ID plus the
+  frozen resident/epoch identifiers; it has no storage or effect capability.
+- GREEN evidence: the exact focused command exited `0` with 2 files and 17
+  tests passing; `git diff --check` was empty and `npm run factory:check`
+  printed `factory-readiness passed`. Full verification remains unstarted.
+
+## Retained full verification — 2026-07-13
+
+- Coordinator-cleared single full gate: `npm run verify` exited `0` in this
+  Task124 worktree. It reported `typecheck passed`; 191 test files passed with
+  3 skipped; 2,255 tests passed with 5 skipped; the Vite production build
+  passed; and `factory-readiness passed`. The Vite chunk-size advisory is
+  pre-existing build output and does not alter this task's scope.
+- Final local scope check is limited to this claim plus
+  `packages/agent/src/wake-supervisor.ts` and
+  `packages/agent/test/wake-supervisor.test.ts`. This worker now stops for a
+  fresh independent review and does not self-integrate or merge.
