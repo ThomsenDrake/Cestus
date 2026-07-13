@@ -906,6 +906,32 @@ explicit implementation authorization.
 - Archive check: original author handoff, claim, review package, and reviewer findings are retained; repair handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
 - Supersession: this record supersedes RV-0-H-003 only for current repair status. Original Task 110 dispatch and plan evidence remain immutable.
 
+## RV-0-R-004 — Task 109 runtime-wiring and audit-strengthening repair dispatch
+
+- Recorded at: 2026-07-13T00:38:29Z
+- Role: coordinator
+- Lane and wave: R / 0B
+- Task ID and claim: task-109-resident-full-vision-w0-runtime-plan / docs/agentic/claims/task-109-resident-full-vision-w0-runtime-plan.md
+- Task thread ID: /root/task109_runtime_plan (original author); /root/review_task109_plan (fresh reviewer); /root/task109_runtime_plan_repair (scoped fresh repairer)
+- Branch and worktree: codex/task-109-resident-full-vision-w0-runtime-plan-repair / /home/drake/.codex/worktrees/task-109-resident-full-vision-w0-runtime-plan-repair
+- Base commit and required head: 0ac9a37e1251567b8a8818ade4245a03e314bc5f / one forward-only owned-file repair commit followed by fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-runtime-composition-design.md@05e85392367964a3869a55832703f504dd0fe3da; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-runtime-composition-implementation.md; docs/agentic/claims/task-109-resident-full-vision-w0-runtime-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: reviewed Task 109 plan 0ac9a37e; approved Lane R specification 05e85392; no shared contract is frozen and no production dependency applies
+- Approval record: coordinator-issued scoped authorization under Standing Coordinator Delegation authorizes Task 109 runtime-wiring and audit-strengthening repair only. Allowed range is one verified documentation repair commit plus fresh re-review; wave stop is before Tasks 132–140, CF-1 implementation dispatch, production work, provider invocation, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: repairing; repairer must append its evidence and preserve prior author/review records.
+- RED command and observed failure: fresh review found that Task 135 mounted stores were not concretely bound into runner/handoff dispatch, runtime readiness had no specified output/consumer contract, the factory identity test could pass using a fresh fallback registry, and the claim lacked a self-contained counterfactual audit.
+- GREEN command and observed result: pending a section-local audit that rejects missing mounted-store binding, absent readiness capability/accessor or W/U consumer proof, fallback collaborator construction, and deletion/substitution of each Task 132–140 gate and ownership rule.
+- Full verification: pending repair-owned npm run verify. Original author verification remains evidence but cannot override fresh review defects.
+- Live-provider gate: not-applicable; this plan-only repair invokes no provider and must retain the coordinator-only later real-Nous gate.
+- Review verdict: needs-changes / fresh reviewer /root/review_task109_plan found mounted-store and readiness-consumer omissions, a vacuous positive factory test, and insufficient durable audit evidence; fresh re-review required after repair.
+- Rebase record: repair branch begins at reviewed head 0ac9a37e in a distinct worktree; no cross-lane rebase applies before repair.
+- Merge readiness: not-ready; repairer cannot self-approve or merge into neo.
+- Archive check: original author handoff, claim, review package, and reviewer findings are retained; repair handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
+- Supersession: this record supersedes RV-0-R-003 only for current repair status. Original Task 109 dispatch and plan evidence remain immutable.
+
 ## RV-0-H-003 — Task 110 durable-handoffs implementation-plan dispatch
 
 - Recorded at: 2026-07-13T00:16:43Z
