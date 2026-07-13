@@ -88,6 +88,31 @@ it does not release, repair, or redefine the shared contract.
 Status: `in-progress` only in this fresh isolated restart; the earlier blocked
 claim remains durable evidence and is not production authorization.
 
+## Coordinator Bounded Readback/Revision Repair
+
+- Independent review rejected `d03729d1e5d3bd145f2c80fa258d570484464d81`:
+  its readback helpers checked only event ID/type/shared identity, so a
+  transforming ledger could alter plan revision/descriptor hash or observation
+  ordinal/category/hash and still return success; and it accepted observations
+  bound to a superseded plan revision.
+- This repair branch is cleanly rooted at that preserved rejected candidate.
+  The prior author is authorized only for these two fixes in the same five-file
+  Task120 scope: compare complete durable payloads using `samePlan` and
+  `sameObservation`, with a transforming-ledger negative; fail closed in store
+  and replay projection when an observation references any plan superseded by a
+  newer same-identity revision. Preserve valid current-plan readback,
+  append-only order, exact provenance, rebuildability, no accepted graph
+  mutation, and no provider/tool/PRR/external effect.
+- Standing `superpowers:subagent-driven-development`, TDD and
+  verification-before-completion authority applies. The author must run
+  focused RED/GREEN, diff/factory, wait for the serialized full slot, record
+  exact evidence and commit only scope. A distinct fresh reviewer must
+  re-review; no self-review, self-integration, W1-118/Task136 dispatch, or
+  `neo` merge is authorized.
+
+Status: `in-progress` in this bounded repair; `d03729d1` remains rejected and
+unintegrated.
+
 ## Restart RED Evidence
 
 - The restart author re-read the W1-119 canonical resident-loop registrations,
