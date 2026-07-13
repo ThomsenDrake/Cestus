@@ -100,3 +100,32 @@ the coordinator as a recovery checkpoint.
   `packages/agent/src/wake-supervisor.ts` and
   `packages/agent/test/wake-supervisor.test.ts`. This worker now stops for a
   fresh independent review and does not self-integrate or merge.
+
+## Coordinator Full-Contract Repair Authorization
+
+- Independent review rejected `06ceea5b3281baf8f26beab5b74f529f0b2c9e13` as
+  a partial supervisor. It lacks `start`, `resume`, `recover`, and `stop`; an
+  active-claim reconciliation/readback port; complete immutable authority,
+  high-water, policy/lock, causation, and correlation snapshot bindings;
+  strict lease/readback tuple provenance; versioned public lifecycle DTOs;
+  one-active-cycle/abort/stop/fresh-epoch behavior; and the corresponding
+  adversarial coverage. The candidate is preserved, rejected, and unintegrated.
+- A fresh repair author owns only this same Task124 source, test, and claim
+  worktree/branch. Implement the complete frozen W lifecycle rather than a
+  compatibility shim: exact one-revalidation admission, typed lease and active
+  claim reconciliation ports, full tuple/readback validation, immutable
+  snapshot discard/restart, finite backoff/recovery, pause/resume/stop with
+  in-flight/timer cancellation and no later signal/effect, fresh-epoch restart,
+  strict hostile-DTO rejection, and safe versioned status/result evidence. No
+  raw storage, local-runtime, provider, tool, artifact, graph, browser, or
+  external dependency/effect is allowed.
+- RED/GREEN must cover held/stale/substituted lease/readback, complete
+  provenance tuple, reconciliation, recovery limit, concurrent distinct
+  signal, disconnect/unavailable authority, pause/stop no-effect, fresh epoch,
+  and safe diagnostics. Standing SDD/TDD/verification authority applies;
+  focused/diff/factory, one serialized full gate, scoped commit, and a fresh
+  reviewer distinct from author and this reviewer are mandatory. No
+  self-integration or `neo` merge is authorized.
+
+Status: in-progress only in this complete-contract repair; the prior partial
+candidate remains preserved and unintegrated.
