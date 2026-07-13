@@ -56,3 +56,34 @@ canonical event parser/fixture surface (or explicitly revises Task 120's
 allowed shared-schema ownership), integrate it, record the new frozen SHA, and
 authorize a fresh Task 120 rebase. This claim preserves the blocked evidence;
 it does not release, repair, or redefine the shared contract.
+
+## Coordinator Restart Authorization
+
+- The blocked claim above is preserved only as claim evidence from
+  `bb2c205975601e4aaffc0ea14466ef6ece28c48c`; no blocked-branch production is
+  reused. This fresh restart branch
+  `codex/task-120-resident-full-vision-plan-observation-restart` starts from
+  clean Relay B post-record head `494de844ec7c0f37d173ca4e6ad10b2d5bfcf352`,
+  which contains reviewed W1-119 at merge `804c04b4855083127f8ee27b1186442c9f684161`
+  and its coordinator verification record.
+- The W1-119 canonical schemas/parsers and replay fixture now satisfy the
+  former shared-contract prerequisite. This worker alone owns only
+  `packages/agent/src/plan-observation-contracts.ts`,
+  `packages/agent/src/plan-observation-projection.ts`,
+  `packages/agent/test/plan-observation-contracts.test.ts`,
+  `packages/agent/test/plan-observation-projection.test.ts`, and this claim.
+  It must consume—not modify or shadow—the five frozen ontology events and
+  their validated append/readback surface.
+- Authorization: `superpowers:subagent-driven-development`, TDD RED/GREEN,
+  exact focused command
+  `npm test -- packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts`,
+  `git diff --check`, factory readiness, one captured full verification, and a
+  fresh independent review before coordinator integration. Preserve exact
+  task/attempt/run plus source/context/authority bindings, append-only
+  readback/rebuildability, and no provider/tool/PRR/graph/external effect.
+  No self-review, self-integration, W1-118/Task136 dispatch, or `neo` merge is
+  authorized. The reviewed merged Task120 SHA remains the hard prerequisite
+  for W1-118 and Task136.
+
+Status: `in-progress` only in this fresh isolated restart; the earlier blocked
+claim remains durable evidence and is not production authorization.
