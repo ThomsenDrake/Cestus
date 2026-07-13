@@ -177,6 +177,36 @@ describe("resident loop ontology contracts", () => {
     }).success).toBe(false);
     const inherited = Object.create(planEvent.payload) as Record<string, unknown>;
     expect(validateKnowledgeEvent({ ...planEvent, payload: inherited }).success).toBe(false);
+    const sourceEventIdsWithHiddenField = [...identity.sourceEventIds];
+    Object.defineProperty(sourceEventIdsWithHiddenField, "hidden", {
+      value: "unexpected",
+      enumerable: false
+    });
+    expect(validateKnowledgeEvent({
+      ...planEvent,
+      payload: { ...planEvent.payload, sourceEventIds: sourceEventIdsWithHiddenField }
+    }).success).toBe(false);
+    const sourceEventIdsWithSymbol = [...identity.sourceEventIds];
+    Object.defineProperty(sourceEventIdsWithSymbol, Symbol("hidden"), { value: "unexpected" });
+    expect(validateKnowledgeEvent({
+      ...planEvent,
+      payload: { ...planEvent.payload, sourceEventIds: sourceEventIdsWithSymbol }
+    }).success).toBe(false);
+    const sourceEventIdsWithAccessor = [...identity.sourceEventIds];
+    Object.defineProperty(sourceEventIdsWithAccessor, "unexpected", {
+      enumerable: true,
+      get: () => "unexpected"
+    });
+    expect(validateKnowledgeEvent({
+      ...planEvent,
+      payload: { ...planEvent.payload, sourceEventIds: sourceEventIdsWithAccessor }
+    }).success).toBe(false);
+    const sourceEventIdsWithCustomPrototype = [...identity.sourceEventIds];
+    Object.setPrototypeOf(sourceEventIdsWithCustomPrototype, { unexpected: true });
+    expect(validateKnowledgeEvent({
+      ...planEvent,
+      payload: { ...planEvent.payload, sourceEventIds: sourceEventIdsWithCustomPrototype }
+    }).success).toBe(false);
     const { terminalReadback: _terminalReadback, ...withoutTerminalReadback } = result.payload;
     expect(validateKnowledgeEvent({ ...result, payload: withoutTerminalReadback }).success).toBe(false);
     expectValid(suspended);

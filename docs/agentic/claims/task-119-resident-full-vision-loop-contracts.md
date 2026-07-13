@@ -102,3 +102,25 @@ after the commit.
   the two authorized ontology files plus this claim. It is now ready for a
   distinct fresh review; the prior rejecting reviewer may not review this
   repair, and no integration is authorized from this task worktree.
+
+## Second Fresh-Review Repair
+
+- The first fresh review rejected `9f40e31b0b23cc4f1efcfbf8e7181bcf8246ba74`:
+  arrays with a hidden non-enumerable own property passed the plain-own-data
+  guard, and the plan contract guidance still requested an impossible
+  self-assigned plan event ID. This forward repair preserves that rejected
+  candidate and closes both findings.
+- RED: a valid plan payload with `sourceEventIds` carrying an own hidden field
+  initially parsed successfully. GREEN rejects that field and additionally
+  proves rejection of symbol-bearing arrays, enumerable accessor extra keys,
+  and custom array prototypes. Array validation now examines all own names
+  (while allowing only the standard `length` and enumerable value indices),
+  without evaluating an accessor. Plan guidance now directs later records to
+  read back the ID assigned after the plan append rather than inventing a
+  self-ID.
+- The focused command passed (2 files / 72 tests), as did `git diff --check`
+  and `npm run factory:check`. The single retained full `npm run verify` then
+  exited 0: typecheck passed; 190 test files passed (3 skipped); 2,240 tests
+  passed (5 skipped); Vite production build passed; and factory-readiness
+  passed. A reviewer distinct from both prior Task119 reviewers and this
+  coordinator repair author is required before any integration.

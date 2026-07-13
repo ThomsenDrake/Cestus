@@ -1917,7 +1917,7 @@ export const eventContracts = {
     type: "agent.resident-plan.recorded.v1",
     version: 1,
     description: "Records the immutable resident-loop plan admission for one task, attempt, and run.",
-    agentGuidance: "Bind the resident identity, task/attempt/run, policy, authority, source and context hashes, budget, causation, correlation, descriptor hash, and plan record event ID. This is a schema record only and does not authorize a provider, tool, scheduler, store, projection, or domain effect.",
+    agentGuidance: "Bind the resident identity, task/attempt/run, policy, authority, source and context hashes, budget, causation, correlation, and descriptor hash. Append the plan before later records read back its assigned event ID. This is a schema record only and does not authorize a provider, tool, scheduler, store, projection, or domain effect.",
     invariants: ["residentAgentId is agent_default", "task/attempt/run identity is explicit", "policy and authority hashes are content-addressed", "plan records remain replayable"]
   },
   "agent.resident-observation.recorded.v1": {
@@ -2611,7 +2611,11 @@ function isPlainOwnData(value: unknown): boolean {
       const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
       if (descriptor === undefined || !("value" in descriptor) || !isPlainOwnData(descriptor.value)) return false;
     }
-    return Object.keys(value).every((key) => /^(0|[1-9]\d*)$/.test(key));
+    return Object.getOwnPropertyNames(value).every((key) => {
+      if (key === "length") return true;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      return /^(0|[1-9]\d*)$/.test(key) && descriptor !== undefined && descriptor.enumerable && "value" in descriptor;
+    });
   }
 
   const prototype = Object.getPrototypeOf(value);
