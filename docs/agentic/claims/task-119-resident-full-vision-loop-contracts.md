@@ -71,3 +71,34 @@ after the commit.
   tests passed, including the replayable five-event fixture, unknown/missing
   bindings, forged readback, cross-run, unsafe own-data, and terminal-readback
   counterfactuals.
+
+## Forward Repair And Review Status
+
+- Forward correction to the prior recovery note: a ledger assigns event IDs at
+  append time, so a plan/result payload cannot truthfully self-reference its
+  future assigned ID. The replay contract now binds prior plan/final-observation
+  readbacks through a pure ordered-sequence parser after ledger readback rather
+  than requiring an impossible deterministic self-ID.
+- RED/GREEN repair: the fresh reviewer proved that five same-stream
+  `sequence: 1` fixtures were not replayable. A new actual `InMemoryEventLedger`
+  fixture appends exactly plan, observation, step, suspension, and result at
+  sequences 1 through 5; the pure parser rejects a forged plan readback. The
+  focused GREEN command now reports 2 files and 72 tests passing, with
+  `git diff --check` and `npm run factory:check` also passing.
+- Status: ready-for-review pending the single retained full verifier below.
+  This is a forward-only status supersession of the initial in-progress claim;
+  no coordinator or author self-review, self-integration, Task120 restart,
+  W1-118/Task136 work, or `neo` action is authorized.
+
+## Retained Full Verification And Candidate Repair
+
+- The single retained replacement `npm run verify` completed with exit 0 after
+  the ordered-ledger repair: typecheck passed; 190 test files passed (3
+  skipped); 2,240 tests passed (5 skipped); Vite production build passed; and
+  factory-readiness passed. No overlapping full verifier ran.
+- This forward repair replaces the non-replayable same-sequence fixture with a
+  real five-append ledger replay at sequences 1 through 5, moves prior-event
+  linkage into the pure replay-sequence parser, and keeps the lane limited to
+  the two authorized ontology files plus this claim. It is now ready for a
+  distinct fresh review; the prior rejecting reviewer may not review this
+  repair, and no integration is authorized from this task worktree.
