@@ -52,7 +52,10 @@ import {
   type SpecialistHandoffManifest,
   type SpecialistHandoffMaterial
 } from "./specialist-handoff-manifest.js";
-import { buildSpecialistHandoffProjection } from "./specialist-handoff-projection.js";
+import {
+  authoritativeFinalOutputStepSchemaId as authoritativeProjectedFinalOutputStepSchemaId,
+  buildSpecialistHandoffProjection
+} from "./specialist-handoff-projection.js";
 import type {
   SpecialistWorkflowHandoffDto
 } from "./specialist-handoffs.js";
@@ -1126,15 +1129,11 @@ function assertFinalOutputCandidateAuthority(
 }
 
 function authoritativeFinalOutputStepSchemaId(runType: AgentSpecialistRunType): string {
-  if (runType === "ontology-bootstrap") {
-    throw new Error("Ontology-bootstrap final-output schema authority is unavailable in the Task 4 runner kernel.");
+  const schemaId = authoritativeProjectedFinalOutputStepSchemaId(runType);
+  if (schemaId === undefined) {
+    throw new Error("Specialist final-output schema authority is unavailable for this run type.");
   }
-  const descriptor = specialistWorkflowDescriptorFor(runType);
-  const registration = productionSpecialistPromptRegistrationFor(runType);
-  if (descriptor.promptTemplate.handoffSchemaId !== registration.handoffSchemaId) {
-    throw new Error("Specialist workflow descriptor and production registration disagree on handoff schema authority.");
-  }
-  return registration.handoffSchemaId;
+  return schemaId;
 }
 
 function assertSupersessionCanRecord(
