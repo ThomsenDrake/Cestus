@@ -338,7 +338,7 @@ export function createWakeSupervisor(input: CreateWakeSupervisorInput): WakeSupe
         supervisorState = "paused";
         workspaceState = "available";
         diagnostics = Object.freeze([]);
-        return completed([result.evidence]);
+        return completed("paused", [result.evidence]);
       } catch { return blocked("workspace-readback-failed", "pause", true); }
     },
     async resume(rawCommand) {
@@ -413,10 +413,10 @@ export function createWakeSupervisor(input: CreateWakeSupervisorInput): WakeSupe
         if (runtimeResult.evidence === undefined || !matchesLifecycleEvidence(runtimeResult.evidence, input, causation, transitionFor(operation), highWaterMark)) return unavailable("workspace-readback-failed", operation);
         lifecycleEvidence = Object.freeze([...lifecycleEvidence, freezeLifecycleEvidence(runtimeResult.evidence)]);
         recoveryAttempts = 0;
-        return completed([runtimeResult.evidence]);
+        return completed(transitionFor(operation), [runtimeResult.evidence]);
       }
       if (operation === "recovery") recoveryAttempts = 0;
-      return accepted();
+      return accepted(transitionFor(operation));
     } catch (error) {
       if (stopped) return blocked("supervisor-stopped", operation, false);
       if (error instanceof WorkspaceReadbackFailure) return unavailable("workspace-readback-failed", operation);
@@ -448,8 +448,7 @@ export function createWakeSupervisor(input: CreateWakeSupervisorInput): WakeSupe
     if (cancelledRevision(admissionRevision)) return "closed";
     if (existing !== undefined) {
       const safeExisting = freezeReconciliationReadback(existing);
-      const expectedExistingRecord = reconciliationRecord(safeClaim, safeOutage, safeClaim.causation, safeExisting.admission, reconciliationIdempotencyKey);
-      return matchesReconciliationReadback(safeExisting, safeExisting.admission, expectedExistingRecord) ? "ok" : "invalid";
+      return matchesCanonicalStoredReconciliation(safeExisting, tuple, safeClaim, safeOutage, reconciliationIdempotencyKey) ? "ok" : "invalid";
     }
     if (safeOutage.highWaterBeforeOutage !== tuple.highWater.highWaterMark) return "invalid";
     const record = reconciliationRecord(safeClaim, safeOutage, safeClaim.causation, tuple, reconciliationIdempotencyKey);
@@ -462,8 +461,8 @@ export function createWakeSupervisor(input: CreateWakeSupervisorInput): WakeSupe
   function commandSignal(command: WakeCommandInput, source: "command" | "recovery"): WakeSignal { return Object.freeze({ schemaVersion: "resident-wake-signal.v1", source, idempotencyKey: command.commandId, sourceEventIds: command.sourceEventIds, requestedAt: command.requestedAt }); }
   function now(): string { return input.now?.() ?? "1970-01-01T00:00:00.000Z"; }
   function currentStatus(): WakeStatusDto { return Object.freeze({ schemaVersion: "resident-wake-status.v1", workspaceId: input.workspaceId, residentId: input.residentId, supervisorEpoch: input.supervisorEpoch, observedAt: now(), supervisorState, workspaceState, policyVersion: input.policyVersion, policyDigest: input.policyDigest, lockStateDigest: input.lockStateDigest, highWaterMark, transition, recoveryAttempts, maximumRecoveryAttempts, activeCycle, diagnostics, lifecycleEvidence }); }
-  function accepted(): WakeSupervisorCommandResultDto { return Object.freeze({ schemaVersion: "resident-wake-command-result.v1", requestedTransition: transition, outcome: "accepted", status: currentStatus(), evidence: Object.freeze([]) }); }
-  function completed(evidence: readonly WakeLifecycleEvidenceDto[]): WakeSupervisorCommandResultDto { return Object.freeze({ schemaVersion: "resident-wake-command-result.v1", requestedTransition: transition, outcome: "completed", status: currentStatus(), evidence: Object.freeze(evidence.map(freezeLifecycleEvidence)) }); }
+  function accepted(requestedTransition: WakeLifecycleTransition): WakeSupervisorCommandResultDto { return Object.freeze({ schemaVersion: "resident-wake-command-result.v1", requestedTransition, outcome: "accepted", status: currentStatus(), evidence: Object.freeze([]) }); }
+  function completed(requestedTransition: WakeLifecycleTransition, evidence: readonly WakeLifecycleEvidenceDto[]): WakeSupervisorCommandResultDto { return Object.freeze({ schemaVersion: "resident-wake-command-result.v1", requestedTransition, outcome: "completed", status: currentStatus(), evidence: Object.freeze(evidence.map(freezeLifecycleEvidence)) }); }
   function blocked(category: WakeDiagnosticCategory, operation: WakeOperation, retryable: boolean): WakeSupervisorCommandResultDto { const unavailable = Object.freeze({ schemaVersion: "workspace-unavailable-result.v1" as const, category, retryable, operation, safeDiagnosticId: `wake:${category}`, durable: category === "supervisor-lease-held" || category === "recovery-exhausted", allowedCommandIds: Object.freeze(retryable ? ["resume", "recover"] : []) }); return Object.freeze({ schemaVersion: "resident-wake-command-result.v1", requestedTransition: transitionFor(operation), outcome: "blocked", status: currentStatus(), evidence: Object.freeze([]), blocked: unavailable }); }
   function unavailable(category: "workspace-unavailable" | "workspace-identity-mismatch" | "workspace-readback-failed" | "active-lock", operation: WakeOperation): WakeSupervisorCommandResultDto { input.authority.invalidate?.(category === "workspace-identity-mismatch" ? "authority-loss" : "admission-mismatch"); if (operation === "recovery") { recoveryAttempts += 1; if (recoveryAttempts >= maximumRecoveryAttempts) return recoveryExhausted(operation); } supervisorState = "workspace-unavailable"; workspaceState = category === "workspace-identity-mismatch" ? "identity-mismatch" : category === "active-lock" ? "lock-blocked" : "unavailable"; diagnostics = Object.freeze([diagnostic(category, false)]); return blocked(category, operation, true); }
   function recoveryExhausted(operation: WakeOperation): WakeSupervisorCommandResultDto { supervisorState = "unrecoverable"; workspaceState = "unrecoverable"; diagnostics = Object.freeze([diagnostic("recovery-exhausted", true)]); return blocked("recovery-exhausted", operation, false); }
@@ -496,6 +495,106 @@ function matchesOutage(value: WorkspaceOutageObservation, active: RevalidatedAct
 function reconciliationKey(tuple: ClaimReconciliationAdmissionTuple, active: RevalidatedActiveClaimEvidence, outage: WorkspaceOutageObservation): string { return `wake-reconcile:${JSON.stringify([tuple.authorityIdentityAndMount.workspaceId, tuple.authorityIdentityAndMount.supervisorEpoch, active.claimId, active.attemptId, outage.safeObservationId, outage.priorClaimEventId])}`; }
 function reconciliationRecord(active: RevalidatedActiveClaimEvidence, outage: WorkspaceOutageObservation, causation: CausationCorrelationEvidence, tuple: ClaimReconciliationAdmissionTuple, reconciliationIdempotencyKey: string): WorkspaceUnavailableClaimReconciliationV1 { const lease = tuple.verifiedLease; return Object.freeze({ schemaVersion: "resident-wake-workspace-unavailable.v1", outcome: "workspace-unavailable", resumable: true, claimDisposition: "checkpointed", workspaceId: active.workspaceId, residentId: active.residentId, supervisorEpoch: active.supervisorEpoch, claimId: active.claimId, attemptId: active.attemptId, outageObservation: Object.freeze({ ...outage }), causation: Object.freeze({ ...causation }), revalidatedAuthority: Object.freeze({ identityEventId: tuple.authorityIdentityAndMount.workspaceIdentityEventId, mountEvidenceId: lease.mountEvidenceId, authorityEvidenceId: lease.authorityEvidenceId, highWaterAfterRevalidation: tuple.highWater.highWaterMark, policyVersion: tuple.policyAndLock.policyVersion, policyDigest: tuple.policyAndLock.policyDigest, lockStateDigest: tuple.policyAndLock.lockStateDigest, supervisorLeaseEventId: lease.leaseEventId, supervisorLeaseReadbackEventId: lease.readbackEventId, supervisorLeaseExpiresAt: lease.expiresAt }), reconciliationIdempotencyKey }); }
 function matchesReconciliationReadback(readback: ClaimReconciliationReadback, tuple: ClaimReconciliationAdmissionTuple, record: WorkspaceUnavailableClaimReconciliationV1): boolean { return sameTuple(readback.admission, tuple) && sameRecord(readback.record, record) && nonEmptyString(readback.reconciliationEventId) && nonEmptyString(readback.readbackEventId); }
+function matchesCanonicalStoredReconciliation(stored: ClaimReconciliationReadback, freshTuple: ClaimReconciliationAdmissionTuple, active: RevalidatedActiveClaimEvidence, outage: WorkspaceOutageObservation, reconciliationIdempotencyKey: string): boolean {
+  const facts = canonicalReconciliationFacts(freshTuple, active, outage, reconciliationIdempotencyKey);
+  return matchesHistoricalAdmissionTuple(stored.admission)
+    && matchesStableAdmissionFacts(stored.admission, facts)
+    && matchesStoredRecordAgainstFreshFacts(stored.record, facts)
+    && matchesStoredRecordAgainstHistoricalTuple(stored.record, stored.admission)
+    && nonEmptyString(stored.reconciliationEventId)
+    && nonEmptyString(stored.readbackEventId);
+}
+function canonicalReconciliationFacts(tuple: ClaimReconciliationAdmissionTuple, active: RevalidatedActiveClaimEvidence, outage: WorkspaceOutageObservation, reconciliationIdempotencyKey: string) {
+  return Object.freeze({
+    identityAndMount: tuple.authorityIdentityAndMount,
+    policyVersion: tuple.policyAndLock.policyVersion,
+    policyDigest: tuple.policyAndLock.policyDigest,
+    lockStateDigest: tuple.policyAndLock.lockStateDigest,
+    active,
+    outage,
+    reconciliationIdempotencyKey
+  });
+}
+function matchesHistoricalAdmissionTuple(tuple: ClaimReconciliationAdmissionTuple): boolean {
+  const identity = tuple.authorityIdentityAndMount;
+  const lease = tuple.verifiedLease;
+  const policyAndLock = tuple.policyAndLock;
+  const highWater = tuple.highWater;
+  return lease.schemaVersion === "resident-supervisor-lease-readback.v1"
+    && lease.workspaceId === identity.workspaceId
+    && lease.residentId === identity.residentId
+    && lease.supervisorEpoch === identity.supervisorEpoch
+    && lease.workspaceIdentityEventId === identity.workspaceIdentityEventId
+    && lease.mountEvidenceId === identity.mountEvidenceId
+    && lease.authorityEvidenceId === identity.authorityEvidenceId
+    && nonEmptyString(lease.leaseEventId)
+    && nonEmptyString(lease.readbackEventId)
+    && nonEmptyString(lease.expiresAt)
+    && nonEmptyString(lease.causation.causationId)
+    && nonEmptyString(lease.causation.correlationId)
+    && policyAndLock.authorityEvidenceId === lease.authorityEvidenceId
+    && policyAndLock.mountEvidenceId === lease.mountEvidenceId
+    && policyAndLock.leaseEventId === lease.leaseEventId
+    && policyAndLock.leaseReadbackEventId === lease.readbackEventId
+    && policyAndLock.policyVersion === lease.policyVersion
+    && policyAndLock.policyDigest === lease.policyDigest
+    && policyAndLock.lockStateDigest === lease.lockStateDigest
+    && nonEmptyString(policyAndLock.readbackEventId)
+    && highWater.authorityEvidenceId === lease.authorityEvidenceId
+    && highWater.mountEvidenceId === lease.mountEvidenceId
+    && highWater.leaseEventId === lease.leaseEventId
+    && highWater.leaseReadbackEventId === lease.readbackEventId
+    && highWater.highWaterMark === lease.highWaterMark
+    && nonEmptyString(highWater.readbackEventId);
+}
+function matchesStableAdmissionFacts(stored: ClaimReconciliationAdmissionTuple, facts: ReturnType<typeof canonicalReconciliationFacts>): boolean {
+  const storedIdentity = stored.authorityIdentityAndMount;
+  const currentIdentity = facts.identityAndMount;
+  return storedIdentity.workspaceId === currentIdentity.workspaceId
+    && storedIdentity.residentId === currentIdentity.residentId
+    && storedIdentity.supervisorEpoch === currentIdentity.supervisorEpoch
+    && storedIdentity.workspaceIdentityEventId === currentIdentity.workspaceIdentityEventId
+    && storedIdentity.mountEvidenceId === currentIdentity.mountEvidenceId
+    && storedIdentity.authorityEvidenceId === currentIdentity.authorityEvidenceId
+    && stored.policyAndLock.policyVersion === facts.policyVersion
+    && stored.policyAndLock.policyDigest === facts.policyDigest
+    && stored.policyAndLock.lockStateDigest === facts.lockStateDigest;
+}
+function matchesStoredRecordAgainstFreshFacts(record: WorkspaceUnavailableClaimReconciliationV1, facts: ReturnType<typeof canonicalReconciliationFacts>): boolean {
+  const identity = facts.identityAndMount;
+  const authority = record.revalidatedAuthority;
+  return record.workspaceId === identity.workspaceId
+    && record.residentId === identity.residentId
+    && record.supervisorEpoch === identity.supervisorEpoch
+    && record.claimId === facts.active.claimId
+    && record.attemptId === facts.active.attemptId
+    && sameOutageObservation(record.outageObservation, facts.outage)
+    && sameCausation(record.causation, facts.active.causation)
+    && authority.identityEventId === identity.workspaceIdentityEventId
+    && authority.mountEvidenceId === identity.mountEvidenceId
+    && authority.authorityEvidenceId === identity.authorityEvidenceId
+    && authority.policyVersion === facts.policyVersion
+    && authority.policyDigest === facts.policyDigest
+    && authority.lockStateDigest === facts.lockStateDigest
+    && record.reconciliationIdempotencyKey === facts.reconciliationIdempotencyKey;
+}
+function matchesStoredRecordAgainstHistoricalTuple(record: WorkspaceUnavailableClaimReconciliationV1, tuple: ClaimReconciliationAdmissionTuple): boolean {
+  const lease = tuple.verifiedLease;
+  const authority = record.revalidatedAuthority;
+  return authority.identityEventId === tuple.authorityIdentityAndMount.workspaceIdentityEventId
+    && authority.mountEvidenceId === lease.mountEvidenceId
+    && authority.authorityEvidenceId === lease.authorityEvidenceId
+    && authority.highWaterAfterRevalidation === tuple.highWater.highWaterMark
+    && authority.policyVersion === tuple.policyAndLock.policyVersion
+    && authority.policyDigest === tuple.policyAndLock.policyDigest
+    && authority.lockStateDigest === tuple.policyAndLock.lockStateDigest
+    && authority.supervisorLeaseEventId === lease.leaseEventId
+    && authority.supervisorLeaseReadbackEventId === lease.readbackEventId
+    && authority.supervisorLeaseExpiresAt === lease.expiresAt
+    && record.outageObservation.highWaterBeforeOutage === tuple.highWater.highWaterMark;
+}
+function sameOutageObservation(a: WorkspaceOutageObservation, b: WorkspaceOutageObservation): boolean { return a.safeObservationId === b.safeObservationId && a.outageObservedAt === b.outageObservedAt && a.category === b.category && a.priorClaimEventId === b.priorClaimEventId && a.priorClaimLeaseId === b.priorClaimLeaseId && a.priorAuthorityEvidenceId === b.priorAuthorityEvidenceId && a.highWaterBeforeOutage === b.highWaterBeforeOutage; }
+function sameCausation(a: CausationCorrelationEvidence, b: CausationCorrelationEvidence): boolean { return a.causationId === b.causationId && a.correlationId === b.correlationId; }
 function sameTuple(a: ClaimReconciliationAdmissionTuple, b: ClaimReconciliationAdmissionTuple): boolean { return JSON.stringify(a) === JSON.stringify(b); }
 function sameRecord(a: WorkspaceUnavailableClaimReconciliationV1, b: WorkspaceUnavailableClaimReconciliationV1): boolean { return JSON.stringify(a) === JSON.stringify(b); }
 function matchesLifecycleEvidence(value: WakeLifecycleEvidenceDto, input: CreateWakeSupervisorInput, causation: CausationCorrelationEvidence, expectedTransition: WakeLifecycleTransition, expectedHighWaterMark: string): boolean { return value.schemaVersion === "resident-wake-evidence.v1" && value.transition === expectedTransition && value.workspaceId === input.workspaceId && value.residentId === input.residentId && value.supervisorEpoch === input.supervisorEpoch && value.policyVersion === input.policyVersion && value.policyDigest === input.policyDigest && value.lockStateDigest === input.lockStateDigest && value.highWaterMark === expectedHighWaterMark && value.causation.causationId === causation.causationId && value.causation.correlationId === causation.correlationId && nonEmptyString(value.lifecycleEventId) && nonEmptyString(value.readbackEventId); }
