@@ -194,7 +194,9 @@ export interface ClaimReconciliationLookup {
 }
 
 export interface ClaimReconciliationAppend extends ClaimReconciliationLookup {
-  /** The same immutable tuple must appear unchanged in its readback. */
+  /** The CF-1 record is the one canonical persisted reconciliation shape. */
+  readonly record: WorkspaceUnavailableClaimReconciliationV1;
+  /** The same immutable tuple and record must appear unchanged in readback. */
   readonly admission: ClaimReconciliationAdmissionTuple;
   readonly observedActiveClaim: RevalidatedActiveClaimEvidence;
   readonly outage: WorkspaceOutageObservation;
@@ -285,29 +287,70 @@ export interface RevalidatedActiveClaimEvidence {
 
 export interface WorkspaceOutageObservation {
   readonly safeObservationId: string;
-  readonly observedAt: string;
+  readonly outageObservedAt: string;
   readonly category:
     | "workspace-unavailable"
     | "workspace-identity-mismatch"
     | "workspace-readback-failed";
   readonly priorAuthorityEvidenceId: string;
+  readonly highWaterBeforeOutage: string;
 }
 
-export interface ClaimReconciliationReadback {
+/**
+ * This is the one proposed persisted record and readback payload for an
+ * active-claim reconciliation. CF-1 may select a compatibility name, but it
+ * may not split, omit, or weaken these fields without an append-only decision.
+ */
+export interface WorkspaceUnavailableOutageObservationV1 {
+  readonly safeObservationId: string;
+  readonly outageObservedAt: string;
+  readonly category:
+    | "workspace-unavailable"
+    | "workspace-identity-mismatch"
+    | "workspace-readback-failed";
+  readonly priorClaimEventId: string;
+  readonly priorClaimLeaseId: string;
+  readonly priorAuthorityEvidenceId: string;
+  readonly highWaterBeforeOutage: string;
+}
+
+export interface RevalidatedWorkspaceAuthorityV1 {
+  readonly identityEventId: string;
+  readonly authorityEvidenceId: string;
+  readonly mountEvidenceId: string;
+  readonly highWaterAfterRevalidation: string;
+  readonly policyVersion: string;
+  readonly policyDigest: string;
+  readonly lockStateDigest: string;
+  readonly supervisorLeaseEventId: string;
+  readonly supervisorLeaseReadbackEventId: string;
+  readonly supervisorLeaseExpiresAt: string;
+}
+
+export interface WorkspaceUnavailableClaimReconciliationV1 {
   readonly schemaVersion: "resident-wake-workspace-unavailable.v1";
+  readonly outcome: "workspace-unavailable";
+  readonly resumable: true;
+  readonly claimDisposition: "released" | "checkpointed";
   readonly workspaceId: string;
   readonly residentId: "agent_default";
   readonly supervisorEpoch: string;
   readonly claimId: string;
   readonly attemptId: string;
-  readonly claimDisposition: "released" | "checkpointed";
-  readonly resumable: true;
+  readonly outageObservation: WorkspaceUnavailableOutageObservationV1;
+  readonly causation: CausationCorrelationEvidence;
+  readonly revalidatedAuthority: RevalidatedWorkspaceAuthorityV1;
   readonly reconciliationIdempotencyKey: string;
+}
+
+export interface ClaimReconciliationReadback {
+  /** The exact canonical persisted record returned from mounted readback. */
+  readonly record: WorkspaceUnavailableClaimReconciliationV1;
+  /** Readback identity is additional evidence, never a substitute for record fields. */
   readonly reconciliationEventId: string;
   readonly readbackEventId: string;
   /** Must equal the append's complete immutable admission tuple. */
   readonly admission: ClaimReconciliationAdmissionTuple;
-  readonly causation: CausationCorrelationEvidence;
 }
 
 export interface WorkspaceAvailabilityAuthority {
@@ -360,9 +403,10 @@ identity/mount node (`workspaceId`, `residentId`, `supervisorEpoch`,
 equal the corresponding lease-readback node. The lease's authority/mount,
 `leaseEventId`, `readbackEventId`, policy version, and policy digest must in
 turn equal the named policy/lock evidence bindings; both lease event IDs must
-also equal the named high-water evidence bindings. The complete tuple is the
-only append input and the mounted reconciliation readback must equal that exact
-append tuple, not a structurally similar or recomputed substitute.
+also equal the named high-water evidence bindings. The complete tuple and the
+one canonical `WorkspaceUnavailableClaimReconciliationV1` record are the only
+typed reconciliation append input; the mounted readback must return both exact
+values, not structurally similar or recomputed substitutes.
 
 Tasks 124 and 125 must make every edge explicit in their deterministic
 fixtures. A missing field, swapped evidence ID, changed policy version/digest,
@@ -492,8 +536,9 @@ traces, never a storage path or write API.
   for CF-1.
 - Produces: `createWakeSupervisor(input): WakeSupervisor`, strict DTO parse
   functions, exactly one revalidation and one typed lease/readback per
-  admission, exact same-tuple reconciliation readback before a resumed/recovery
-  wake, one active wake cycle, and no more than one active recovery cycle.
+  admission, exact canonical-record and same-tuple reconciliation readback
+  before a resumed/recovery wake, one active wake cycle, and no more than one
+  active recovery cycle.
 - Does not produce: a daemon task queue, a provider/tool/ledger API, a route,
   a task/approval/handoff synthesizer, a filesystem fallback, or changes to
   `scheduler.ts`, `runtime.ts`, `runtime-types.ts`, or the default factory.
@@ -596,25 +641,25 @@ traces, never a storage path or write API.
       ["tuple verified lease -> reconciliation append", canonicalAdmission.verifiedLease, appendedReconciliation?.admission.verifiedLease],
       ["tuple policy/lock -> reconciliation append", canonicalAdmission.policyAndLock, appendedReconciliation?.admission.policyAndLock],
       ["tuple high-water -> reconciliation append", canonicalAdmission.highWater, appendedReconciliation?.admission.highWater],
-      ["append workspace -> reconciliation readback", appendedReconciliation?.workspaceId, readbackReconciliation?.workspaceId],
-      ["append resident -> reconciliation readback", appendedReconciliation?.residentId, readbackReconciliation?.residentId],
-      ["append epoch -> reconciliation readback", appendedReconciliation?.supervisorEpoch, readbackReconciliation?.supervisorEpoch],
-      ["append idempotency key -> reconciliation readback", appendedReconciliation?.reconciliationIdempotencyKey, readbackReconciliation?.reconciliationIdempotencyKey],
+      ["append workspace -> reconciliation readback", appendedReconciliation?.workspaceId, readbackReconciliation?.record.workspaceId],
+      ["append resident -> reconciliation readback", appendedReconciliation?.residentId, readbackReconciliation?.record.residentId],
+      ["append epoch -> reconciliation readback", appendedReconciliation?.supervisorEpoch, readbackReconciliation?.record.supervisorEpoch],
+      ["append idempotency key -> reconciliation readback", appendedReconciliation?.reconciliationIdempotencyKey, readbackReconciliation?.record.reconciliationIdempotencyKey],
       ["revalidated active claim -> reconciliation append", appendedReconciliation?.observedActiveClaim, harness.activeClaimReadback],
       ["active claim workspace -> reconciliation append", appendedReconciliation?.observedActiveClaim.workspaceId, appendedReconciliation?.workspaceId],
       ["active claim resident -> reconciliation append", appendedReconciliation?.observedActiveClaim.residentId, appendedReconciliation?.residentId],
       ["active claim epoch -> reconciliation append", appendedReconciliation?.observedActiveClaim.supervisorEpoch, appendedReconciliation?.supervisorEpoch],
-      ["active claim id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.claimId, readbackReconciliation?.claimId],
-      ["active attempt id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.attemptId, readbackReconciliation?.attemptId],
-      ["active claim causation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.causationId, readbackReconciliation?.causation.causationId],
-      ["active claim correlation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.correlationId, readbackReconciliation?.causation.correlationId],
+      ["active claim id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.claimId, readbackReconciliation?.record.claimId],
+      ["active attempt id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.attemptId, readbackReconciliation?.record.attemptId],
+      ["active claim causation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.causationId, readbackReconciliation?.record.causation.causationId],
+      ["active claim correlation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.correlationId, readbackReconciliation?.record.causation.correlationId],
       ["prior claim event -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.priorClaimEventId, harness.activeClaimReadback.priorClaimEventId],
       ["prior claim lease -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.priorClaimLeaseId, harness.activeClaimReadback.priorClaimLeaseId],
       ["active-claim readback event -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.readbackEventId, harness.activeClaimReadback.readbackEventId],
       ["outage authority evidence -> admission authority", appendedReconciliation?.outage.priorAuthorityEvidenceId, canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId],
       ["outage observation -> reconciliation append", appendedReconciliation?.outage, harness.outage],
       ["outage observation -> mounted outage source", appendedReconciliation?.outage.safeObservationId, harness.outage.safeObservationId],
-      ["outage timestamp -> mounted outage source", appendedReconciliation?.outage.observedAt, harness.outage.observedAt],
+      ["outage timestamp -> mounted outage source", appendedReconciliation?.outage.outageObservedAt, harness.outage.outageObservedAt],
       ["outage category -> mounted outage source", appendedReconciliation?.outage.category, harness.outage.category],
       ["append tuple -> readback tuple", appendedReconciliation?.admission, readbackReconciliation?.admission],
       ["reconciliation event -> mounted append source", readbackReconciliation?.reconciliationEventId, harness.reconciliation.appendedEventId],
@@ -622,6 +667,41 @@ traces, never a storage path or write API.
     ] as const;
     for (const [label, actual, expected] of fieldToEdgeAssertions) {
       expect(actual, label).toEqual(expected);
+    }
+    const canonicalRecordFieldSources = [
+      ["schemaVersion", "resident-wake-workspace-unavailable.v1", appendedReconciliation?.record.schemaVersion, readbackReconciliation?.record.schemaVersion],
+      ["outcome", "workspace-unavailable", appendedReconciliation?.record.outcome, readbackReconciliation?.record.outcome],
+      ["resumable", true, appendedReconciliation?.record.resumable, readbackReconciliation?.record.resumable],
+      ["claimDisposition", harness.reconciliation.expectedClaimDisposition, appendedReconciliation?.record.claimDisposition, readbackReconciliation?.record.claimDisposition],
+      ["workspaceId", canonicalAdmission.authorityIdentityAndMount.workspaceId, appendedReconciliation?.record.workspaceId, readbackReconciliation?.record.workspaceId],
+      ["residentId", canonicalAdmission.authorityIdentityAndMount.residentId, appendedReconciliation?.record.residentId, readbackReconciliation?.record.residentId],
+      ["supervisorEpoch", canonicalAdmission.authorityIdentityAndMount.supervisorEpoch, appendedReconciliation?.record.supervisorEpoch, readbackReconciliation?.record.supervisorEpoch],
+      ["claimId", harness.activeClaimReadback.claimId, appendedReconciliation?.record.claimId, readbackReconciliation?.record.claimId],
+      ["attemptId", harness.activeClaimReadback.attemptId, appendedReconciliation?.record.attemptId, readbackReconciliation?.record.attemptId],
+      ["outageObservation.safeObservationId", harness.outage.safeObservationId, appendedReconciliation?.record.outageObservation.safeObservationId, readbackReconciliation?.record.outageObservation.safeObservationId],
+      ["outageObservation.outageObservedAt", harness.outage.outageObservedAt, appendedReconciliation?.record.outageObservation.outageObservedAt, readbackReconciliation?.record.outageObservation.outageObservedAt],
+      ["outageObservation.category", harness.outage.category, appendedReconciliation?.record.outageObservation.category, readbackReconciliation?.record.outageObservation.category],
+      ["outageObservation.priorClaimEventId", harness.activeClaimReadback.priorClaimEventId, appendedReconciliation?.record.outageObservation.priorClaimEventId, readbackReconciliation?.record.outageObservation.priorClaimEventId],
+      ["outageObservation.priorClaimLeaseId", harness.activeClaimReadback.priorClaimLeaseId, appendedReconciliation?.record.outageObservation.priorClaimLeaseId, readbackReconciliation?.record.outageObservation.priorClaimLeaseId],
+      ["outageObservation.priorAuthorityEvidenceId", harness.outage.priorAuthorityEvidenceId, appendedReconciliation?.record.outageObservation.priorAuthorityEvidenceId, readbackReconciliation?.record.outageObservation.priorAuthorityEvidenceId],
+      ["outageObservation.highWaterBeforeOutage", harness.outage.highWaterBeforeOutage, appendedReconciliation?.record.outageObservation.highWaterBeforeOutage, readbackReconciliation?.record.outageObservation.highWaterBeforeOutage],
+      ["causation.causationId", harness.activeClaimReadback.causation.causationId, appendedReconciliation?.record.causation.causationId, readbackReconciliation?.record.causation.causationId],
+      ["causation.correlationId", harness.activeClaimReadback.causation.correlationId, appendedReconciliation?.record.causation.correlationId, readbackReconciliation?.record.causation.correlationId],
+      ["revalidatedAuthority.identityEventId", canonicalAdmission.authorityIdentityAndMount.workspaceIdentityEventId, appendedReconciliation?.record.revalidatedAuthority.identityEventId, readbackReconciliation?.record.revalidatedAuthority.identityEventId],
+      ["revalidatedAuthority.authorityEvidenceId", canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId, appendedReconciliation?.record.revalidatedAuthority.authorityEvidenceId, readbackReconciliation?.record.revalidatedAuthority.authorityEvidenceId],
+      ["revalidatedAuthority.mountEvidenceId", canonicalAdmission.authorityIdentityAndMount.mountEvidenceId, appendedReconciliation?.record.revalidatedAuthority.mountEvidenceId, readbackReconciliation?.record.revalidatedAuthority.mountEvidenceId],
+      ["revalidatedAuthority.highWaterAfterRevalidation", canonicalAdmission.highWater.highWaterMark, appendedReconciliation?.record.revalidatedAuthority.highWaterAfterRevalidation, readbackReconciliation?.record.revalidatedAuthority.highWaterAfterRevalidation],
+      ["revalidatedAuthority.policyVersion", canonicalAdmission.policyAndLock.policyVersion, appendedReconciliation?.record.revalidatedAuthority.policyVersion, readbackReconciliation?.record.revalidatedAuthority.policyVersion],
+      ["revalidatedAuthority.policyDigest", canonicalAdmission.policyAndLock.policyDigest, appendedReconciliation?.record.revalidatedAuthority.policyDigest, readbackReconciliation?.record.revalidatedAuthority.policyDigest],
+      ["revalidatedAuthority.lockStateDigest", canonicalAdmission.policyAndLock.lockStateDigest, appendedReconciliation?.record.revalidatedAuthority.lockStateDigest, readbackReconciliation?.record.revalidatedAuthority.lockStateDigest],
+      ["revalidatedAuthority.supervisorLeaseEventId", canonicalAdmission.verifiedLease.leaseEventId, appendedReconciliation?.record.revalidatedAuthority.supervisorLeaseEventId, readbackReconciliation?.record.revalidatedAuthority.supervisorLeaseEventId],
+      ["revalidatedAuthority.supervisorLeaseReadbackEventId", canonicalAdmission.verifiedLease.readbackEventId, appendedReconciliation?.record.revalidatedAuthority.supervisorLeaseReadbackEventId, readbackReconciliation?.record.revalidatedAuthority.supervisorLeaseReadbackEventId],
+      ["revalidatedAuthority.supervisorLeaseExpiresAt", canonicalAdmission.verifiedLease.expiresAt, appendedReconciliation?.record.revalidatedAuthority.supervisorLeaseExpiresAt, readbackReconciliation?.record.revalidatedAuthority.supervisorLeaseExpiresAt],
+      ["reconciliationIdempotencyKey", harness.reconciliation.keyFor({ workspaceId: canonicalAdmission.authorityIdentityAndMount.workspaceId, supervisorEpoch: canonicalAdmission.authorityIdentityAndMount.supervisorEpoch, claimId: harness.activeClaimReadback.claimId, attemptId: harness.activeClaimReadback.attemptId, safeObservationId: harness.outage.safeObservationId, priorClaimEventId: harness.activeClaimReadback.priorClaimEventId }), appendedReconciliation?.record.reconciliationIdempotencyKey, readbackReconciliation?.record.reconciliationIdempotencyKey]
+    ] as const;
+    for (const [field, mountedSource, appendedField, readbackField] of canonicalRecordFieldSources) {
+      expect(appendedField, `canonical record ${field} -> append`).toEqual(mountedSource);
+      expect(readbackField, `canonical record ${field} -> mounted readback`).toEqual(appendedField);
     }
     const appendedAdmission = appendedReconciliation?.admission;
     const readbackAdmission = readbackReconciliation?.admission;
@@ -646,7 +726,7 @@ traces, never a storage path or write API.
     expect(canonicalAdmission.highWater.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);
     expect(appendedAdmission).toEqual(canonicalAdmission);
     expect(readbackAdmission).toEqual(appendedAdmission);
-    expect(readbackReconciliation?.reconciliationIdempotencyKey).toBe(
+    expect(readbackReconciliation?.record.reconciliationIdempotencyKey).toBe(
       harness.reconciliation.keyFor({
         workspaceId: appendedReconciliation?.workspaceId,
         supervisorEpoch: appendedReconciliation?.supervisorEpoch,
@@ -700,8 +780,10 @@ traces, never a storage path or write API.
      readback before resume/recovery. It may first read a matching idempotency
      key; the append input and readback must carry the identical immutable
      identity/mount, verified-lease, policy/lock, and high-water tuple. It may
-     append only after same-identity revalidation, and it must not receive or
-     retain a raw ledger, event, claim object, or general append API;
+  append only after same-identity revalidation. Its append and mounted readback
+  must carry the complete canonical V1 outcome/state/provenance record and it
+  must not receive or retain a raw ledger, event, claim object, or general
+  append API;
   6. call only `runtimePort.wakeOnce({ admission, signal, cancellation })`;
      do not expose a scheduler, provider, tool, path, or mutable ledger object
      in the port input;
@@ -811,6 +893,28 @@ traces, never a storage path or write API.
     expect(harness.failedAdmission.leaseRecord).not.toBe(harness.restartAdmission.leaseRecord);
     expect(harness.failedAdmission.snapshot).not.toBe(harness.restartAdmission.snapshot);
   });
+
+  const canonicalReconciliationRecordFieldPaths = [
+    "schemaVersion", "outcome", "resumable", "claimDisposition", "workspaceId", "residentId", "supervisorEpoch", "claimId", "attemptId",
+    "outageObservation.safeObservationId", "outageObservation.outageObservedAt", "outageObservation.category", "outageObservation.priorClaimEventId", "outageObservation.priorClaimLeaseId", "outageObservation.priorAuthorityEvidenceId", "outageObservation.highWaterBeforeOutage",
+    "causation.causationId", "causation.correlationId",
+    "revalidatedAuthority.identityEventId", "revalidatedAuthority.authorityEvidenceId", "revalidatedAuthority.mountEvidenceId", "revalidatedAuthority.highWaterAfterRevalidation", "revalidatedAuthority.policyVersion", "revalidatedAuthority.policyDigest", "revalidatedAuthority.lockStateDigest", "revalidatedAuthority.supervisorLeaseEventId", "revalidatedAuthority.supervisorLeaseReadbackEventId", "revalidatedAuthority.supervisorLeaseExpiresAt",
+    "reconciliationIdempotencyKey"
+  ] as const;
+
+  it.each(canonicalReconciliationRecordFieldPaths)("fails closed with zero append, effect, and fallback activity when canonical reconciliation %s mismatches", async (field) => {
+    const harness = createWakeSupervisorHarness({ outageObservedActiveClaim: true });
+    const supervisor = harness.createSupervisor("epoch_record_mismatch");
+    harness.reconciliation.mismatchCandidateOrMountedReadbackField(field);
+
+    await expect(supervisor.resume(harness.command("resume_record_mismatch"))).resolves.toMatchObject({ outcome: "blocked" });
+    expect(harness.reconciliation.appendInputs).toEqual([]);
+    expect(harness.runtime.wakeCalls).toEqual([]);
+    expect(harness.provider.allCalls()).toEqual([]);
+    expect(harness.tool.allCalls()).toEqual([]);
+    expect(harness.artifact.allCalls()).toEqual([]);
+    expect(harness.fallback.allWriteCalls()).toEqual([]);
+  });
   ```
 
   Run:
@@ -842,9 +946,9 @@ traces, never a storage path or write API.
   ```
 
   A fresh reviewer must inspect one-revalidation/one-lease admission semantics,
-  immutable snapshot discard/restart behavior, exact same-tuple reconciliation
-  readback, the typed lease/reconciliation-only seams and five-step order, lease
-  exclusivity and available-versus-unavailable distinction, all state
+  immutable snapshot discard/restart behavior, exact canonical-record and
+  same-tuple reconciliation readback, the typed lease/reconciliation-only seams
+  and five-step order, lease exclusivity and available-versus-unavailable distinction, all state
   transitions, stop cancellation/invalidation, signal boundedness, pause labels,
   recovery limits, diagnostics, and absence of provider/tool/fallback access.
 
@@ -931,34 +1035,12 @@ water readback may append and read back exactly one idempotent claim
 reconciliation. The append receives one immutable
 `ClaimReconciliationAdmissionTuple`; the readback must validate the identical
 tuple field-for-field before Task 124 resumes or recovers. CF-1 freezes the
-final event name and the actual shared port types later, but its payload must
-preserve this proposed shape and semantics:
-
-```ts
-export interface WorkspaceUnavailableClaimReconciliationV1 {
-  readonly schemaVersion: "resident-wake-workspace-unavailable.v1";
-  readonly outcome: "workspace-unavailable";
-  readonly resumable: true;
-  readonly claimDisposition: "released" | "checkpointed";
-  readonly workspaceId: string;
-  readonly residentId: "agent_default";
-  readonly supervisorEpoch: string;
-  readonly claimId: string;
-  readonly attemptId: string;
-  readonly outageObservation: {
-    readonly safeObservationId: string;
-    readonly outageObservedAt: string;
-    readonly category: "workspace-unavailable" | "workspace-identity-mismatch" | "workspace-readback-failed";
-    readonly priorClaimEventId: string;
-    readonly priorClaimLeaseId: string;
-    readonly priorAuthorityEvidenceId: string;
-    readonly highWaterBeforeOutage: string;
-  };
-  readonly causation: { readonly causationId: string; readonly correlationId: string; };
-  readonly admission: ClaimReconciliationAdmissionTuple;
-  readonly reconciliationIdempotencyKey: string;
-}
-```
+final event name and actual shared port types later. Its one canonical
+`WorkspaceUnavailableClaimReconciliationV1` record is defined in the planned
+post-freeze W contract surface above. The append and mounted readback both
+carry that exact complete record, plus the separate immutable admission tuple
+and mounted reconciliation/readback event evidence; they may not create an
+alternate partial reconciliation shape.
 
 The idempotency key derives from workspace ID, supervisor epoch, claim ID,
 attempt ID, safe observation ID, and prior claim event. A duplicate reconnect
@@ -1073,25 +1155,25 @@ object, or execution lease.
       ["tuple verified lease -> reconciliation append", canonicalAdmission.verifiedLease, appendedReconciliation?.admission.verifiedLease],
       ["tuple policy/lock -> reconciliation append", canonicalAdmission.policyAndLock, appendedReconciliation?.admission.policyAndLock],
       ["tuple high-water -> reconciliation append", canonicalAdmission.highWater, appendedReconciliation?.admission.highWater],
-      ["append workspace -> reconciliation readback", appendedReconciliation?.workspaceId, readbackReconciliation?.workspaceId],
-      ["append resident -> reconciliation readback", appendedReconciliation?.residentId, readbackReconciliation?.residentId],
-      ["append epoch -> reconciliation readback", appendedReconciliation?.supervisorEpoch, readbackReconciliation?.supervisorEpoch],
-      ["append idempotency key -> reconciliation readback", appendedReconciliation?.reconciliationIdempotencyKey, readbackReconciliation?.reconciliationIdempotencyKey],
+      ["append workspace -> reconciliation readback", appendedReconciliation?.workspaceId, readbackReconciliation?.record.workspaceId],
+      ["append resident -> reconciliation readback", appendedReconciliation?.residentId, readbackReconciliation?.record.residentId],
+      ["append epoch -> reconciliation readback", appendedReconciliation?.supervisorEpoch, readbackReconciliation?.record.supervisorEpoch],
+      ["append idempotency key -> reconciliation readback", appendedReconciliation?.reconciliationIdempotencyKey, readbackReconciliation?.record.reconciliationIdempotencyKey],
       ["revalidated active claim -> reconciliation append", appendedReconciliation?.observedActiveClaim, fixture.activeClaimReadback],
       ["active claim workspace -> reconciliation append", appendedReconciliation?.observedActiveClaim.workspaceId, appendedReconciliation?.workspaceId],
       ["active claim resident -> reconciliation append", appendedReconciliation?.observedActiveClaim.residentId, appendedReconciliation?.residentId],
       ["active claim epoch -> reconciliation append", appendedReconciliation?.observedActiveClaim.supervisorEpoch, appendedReconciliation?.supervisorEpoch],
-      ["active claim id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.claimId, readbackReconciliation?.claimId],
-      ["active attempt id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.attemptId, readbackReconciliation?.attemptId],
-      ["active claim causation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.causationId, readbackReconciliation?.causation.causationId],
-      ["active claim correlation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.correlationId, readbackReconciliation?.causation.correlationId],
+      ["active claim id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.claimId, readbackReconciliation?.record.claimId],
+      ["active attempt id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.attemptId, readbackReconciliation?.record.attemptId],
+      ["active claim causation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.causationId, readbackReconciliation?.record.causation.causationId],
+      ["active claim correlation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.correlationId, readbackReconciliation?.record.causation.correlationId],
       ["prior claim event -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.priorClaimEventId, fixture.activeClaimReadback.priorClaimEventId],
       ["prior claim lease -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.priorClaimLeaseId, fixture.activeClaimReadback.priorClaimLeaseId],
       ["active-claim readback event -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.readbackEventId, fixture.activeClaimReadback.readbackEventId],
       ["outage authority evidence -> admission authority", appendedReconciliation?.outage.priorAuthorityEvidenceId, canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId],
       ["outage observation -> reconciliation append", appendedReconciliation?.outage, fixture.outage],
       ["outage observation -> mounted outage source", appendedReconciliation?.outage.safeObservationId, fixture.outage.safeObservationId],
-      ["outage timestamp -> mounted outage source", appendedReconciliation?.outage.observedAt, fixture.outage.observedAt],
+      ["outage timestamp -> mounted outage source", appendedReconciliation?.outage.outageObservedAt, fixture.outage.outageObservedAt],
       ["outage category -> mounted outage source", appendedReconciliation?.outage.category, fixture.outage.category],
       ["append tuple -> readback tuple", appendedReconciliation?.admission, readbackReconciliation?.admission],
       ["reconciliation event -> mounted append source", readbackReconciliation?.reconciliationEventId, fixture.reconciliation.appendedEventId],
@@ -1099,6 +1181,41 @@ object, or execution lease.
     ] as const;
     for (const [label, actual, expected] of fieldToEdgeAssertions) {
       expect(actual, label).toEqual(expected);
+    }
+    const canonicalRecordFieldSources = [
+      ["schemaVersion", "resident-wake-workspace-unavailable.v1", appendedReconciliation?.record.schemaVersion, readbackReconciliation?.record.schemaVersion],
+      ["outcome", "workspace-unavailable", appendedReconciliation?.record.outcome, readbackReconciliation?.record.outcome],
+      ["resumable", true, appendedReconciliation?.record.resumable, readbackReconciliation?.record.resumable],
+      ["claimDisposition", fixture.reconciliation.expectedClaimDisposition, appendedReconciliation?.record.claimDisposition, readbackReconciliation?.record.claimDisposition],
+      ["workspaceId", canonicalAdmission.authorityIdentityAndMount.workspaceId, appendedReconciliation?.record.workspaceId, readbackReconciliation?.record.workspaceId],
+      ["residentId", canonicalAdmission.authorityIdentityAndMount.residentId, appendedReconciliation?.record.residentId, readbackReconciliation?.record.residentId],
+      ["supervisorEpoch", canonicalAdmission.authorityIdentityAndMount.supervisorEpoch, appendedReconciliation?.record.supervisorEpoch, readbackReconciliation?.record.supervisorEpoch],
+      ["claimId", fixture.activeClaimReadback.claimId, appendedReconciliation?.record.claimId, readbackReconciliation?.record.claimId],
+      ["attemptId", fixture.activeClaimReadback.attemptId, appendedReconciliation?.record.attemptId, readbackReconciliation?.record.attemptId],
+      ["outageObservation.safeObservationId", fixture.outage.safeObservationId, appendedReconciliation?.record.outageObservation.safeObservationId, readbackReconciliation?.record.outageObservation.safeObservationId],
+      ["outageObservation.outageObservedAt", fixture.outage.outageObservedAt, appendedReconciliation?.record.outageObservation.outageObservedAt, readbackReconciliation?.record.outageObservation.outageObservedAt],
+      ["outageObservation.category", fixture.outage.category, appendedReconciliation?.record.outageObservation.category, readbackReconciliation?.record.outageObservation.category],
+      ["outageObservation.priorClaimEventId", fixture.activeClaimReadback.priorClaimEventId, appendedReconciliation?.record.outageObservation.priorClaimEventId, readbackReconciliation?.record.outageObservation.priorClaimEventId],
+      ["outageObservation.priorClaimLeaseId", fixture.activeClaimReadback.priorClaimLeaseId, appendedReconciliation?.record.outageObservation.priorClaimLeaseId, readbackReconciliation?.record.outageObservation.priorClaimLeaseId],
+      ["outageObservation.priorAuthorityEvidenceId", fixture.outage.priorAuthorityEvidenceId, appendedReconciliation?.record.outageObservation.priorAuthorityEvidenceId, readbackReconciliation?.record.outageObservation.priorAuthorityEvidenceId],
+      ["outageObservation.highWaterBeforeOutage", fixture.outage.highWaterBeforeOutage, appendedReconciliation?.record.outageObservation.highWaterBeforeOutage, readbackReconciliation?.record.outageObservation.highWaterBeforeOutage],
+      ["causation.causationId", fixture.activeClaimReadback.causation.causationId, appendedReconciliation?.record.causation.causationId, readbackReconciliation?.record.causation.causationId],
+      ["causation.correlationId", fixture.activeClaimReadback.causation.correlationId, appendedReconciliation?.record.causation.correlationId, readbackReconciliation?.record.causation.correlationId],
+      ["revalidatedAuthority.identityEventId", canonicalAdmission.authorityIdentityAndMount.workspaceIdentityEventId, appendedReconciliation?.record.revalidatedAuthority.identityEventId, readbackReconciliation?.record.revalidatedAuthority.identityEventId],
+      ["revalidatedAuthority.authorityEvidenceId", canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId, appendedReconciliation?.record.revalidatedAuthority.authorityEvidenceId, readbackReconciliation?.record.revalidatedAuthority.authorityEvidenceId],
+      ["revalidatedAuthority.mountEvidenceId", canonicalAdmission.authorityIdentityAndMount.mountEvidenceId, appendedReconciliation?.record.revalidatedAuthority.mountEvidenceId, readbackReconciliation?.record.revalidatedAuthority.mountEvidenceId],
+      ["revalidatedAuthority.highWaterAfterRevalidation", canonicalAdmission.highWater.highWaterMark, appendedReconciliation?.record.revalidatedAuthority.highWaterAfterRevalidation, readbackReconciliation?.record.revalidatedAuthority.highWaterAfterRevalidation],
+      ["revalidatedAuthority.policyVersion", canonicalAdmission.policyAndLock.policyVersion, appendedReconciliation?.record.revalidatedAuthority.policyVersion, readbackReconciliation?.record.revalidatedAuthority.policyVersion],
+      ["revalidatedAuthority.policyDigest", canonicalAdmission.policyAndLock.policyDigest, appendedReconciliation?.record.revalidatedAuthority.policyDigest, readbackReconciliation?.record.revalidatedAuthority.policyDigest],
+      ["revalidatedAuthority.lockStateDigest", canonicalAdmission.policyAndLock.lockStateDigest, appendedReconciliation?.record.revalidatedAuthority.lockStateDigest, readbackReconciliation?.record.revalidatedAuthority.lockStateDigest],
+      ["revalidatedAuthority.supervisorLeaseEventId", canonicalAdmission.verifiedLease.leaseEventId, appendedReconciliation?.record.revalidatedAuthority.supervisorLeaseEventId, readbackReconciliation?.record.revalidatedAuthority.supervisorLeaseEventId],
+      ["revalidatedAuthority.supervisorLeaseReadbackEventId", canonicalAdmission.verifiedLease.readbackEventId, appendedReconciliation?.record.revalidatedAuthority.supervisorLeaseReadbackEventId, readbackReconciliation?.record.revalidatedAuthority.supervisorLeaseReadbackEventId],
+      ["revalidatedAuthority.supervisorLeaseExpiresAt", canonicalAdmission.verifiedLease.expiresAt, appendedReconciliation?.record.revalidatedAuthority.supervisorLeaseExpiresAt, readbackReconciliation?.record.revalidatedAuthority.supervisorLeaseExpiresAt],
+      ["reconciliationIdempotencyKey", fixture.reconciliation.keyFor({ workspaceId: canonicalAdmission.authorityIdentityAndMount.workspaceId, supervisorEpoch: canonicalAdmission.authorityIdentityAndMount.supervisorEpoch, claimId: fixture.activeClaimReadback.claimId, attemptId: fixture.activeClaimReadback.attemptId, safeObservationId: fixture.outage.safeObservationId, priorClaimEventId: fixture.activeClaimReadback.priorClaimEventId }), appendedReconciliation?.record.reconciliationIdempotencyKey, readbackReconciliation?.record.reconciliationIdempotencyKey]
+    ] as const;
+    for (const [field, mountedSource, appendedField, readbackField] of canonicalRecordFieldSources) {
+      expect(appendedField, `canonical record ${field} -> append`).toEqual(mountedSource);
+      expect(readbackField, `canonical record ${field} -> mounted readback`).toEqual(appendedField);
     }
     const appendedAdmission = appendedReconciliation?.admission;
     const readbackAdmission = readbackReconciliation?.admission;
@@ -1123,7 +1240,7 @@ object, or execution lease.
     expect(canonicalAdmission.highWater.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);
     expect(appendedAdmission).toEqual(canonicalAdmission);
     expect(readbackAdmission).toEqual(appendedAdmission);
-    expect(readbackReconciliation?.reconciliationIdempotencyKey).toBe(
+    expect(readbackReconciliation?.record.reconciliationIdempotencyKey).toBe(
       fixture.reconciliation.keyFor({
         workspaceId: appendedReconciliation?.workspaceId,
         supervisorEpoch: appendedReconciliation?.supervisorEpoch,
@@ -1265,6 +1382,27 @@ is zero; the sentinel is an observer and cannot synthesize or mask state.
   is only resumable through later mounted reconciliation. Add a hostile
   accessor/symbol/custom-array diagnostic input and assert no getter runs.
 
+  ```ts
+  const canonicalReconciliationRecordFieldPaths = [
+    "schemaVersion", "outcome", "resumable", "claimDisposition", "workspaceId", "residentId", "supervisorEpoch", "claimId", "attemptId",
+    "outageObservation.safeObservationId", "outageObservation.outageObservedAt", "outageObservation.category", "outageObservation.priorClaimEventId", "outageObservation.priorClaimLeaseId", "outageObservation.priorAuthorityEvidenceId", "outageObservation.highWaterBeforeOutage",
+    "causation.causationId", "causation.correlationId",
+    "revalidatedAuthority.identityEventId", "revalidatedAuthority.authorityEvidenceId", "revalidatedAuthority.mountEvidenceId", "revalidatedAuthority.highWaterAfterRevalidation", "revalidatedAuthority.policyVersion", "revalidatedAuthority.policyDigest", "revalidatedAuthority.lockStateDigest", "revalidatedAuthority.supervisorLeaseEventId", "revalidatedAuthority.supervisorLeaseReadbackEventId", "revalidatedAuthority.supervisorLeaseExpiresAt",
+    "reconciliationIdempotencyKey"
+  ] as const;
+
+  it.each(canonicalReconciliationRecordFieldPaths)("fails closed with zero append, effect, and fallback activity when canonical reconciliation %s mismatches", async (field) => {
+    const fixture = await createMountedLifecycleFixture({ activeClaim: true, outageObserved: true });
+    fixture.reconciliation.mismatchCandidateOrMountedReadbackField(field);
+
+    await expect(fixture.resumeAfterReconnect()).resolves.toMatchObject({ ok: false });
+    expect(fixture.ledger.reconciliationAppendCalls).toEqual([]);
+    expect(fixture.effects.allCalls()).toEqual([]);
+    expect(fixture.runtime.wakeCalls).toEqual([]);
+    expect(fixture.fallback.allWriteCalls()).toEqual([]);
+  });
+  ```
+
 - [ ] **Step 5: Run the focused GREEN command and full gates**
 
   Run:
@@ -1291,8 +1429,8 @@ is zero; the sentinel is an observer and cannot synthesize or mask state.
   capability or snapshot reuse, a late revalidation/rebound lease, raw-ledger/
   raw-claim seam, lease without exact mounted readback, an unavailable-versus-
   lease-held collapse, append without an identical authority-identity/mount,
-  verified-lease, policy/lock, and high-water reconciliation readback tuple,
-  duplicate idempotency append, fallback write, altered identity behavior,
+  verified-lease, policy/lock, and high-water reconciliation readback tuple or
+  canonical V1 record field, duplicate idempotency append, fallback write, altered identity behavior,
   diagnostic leakage, or source ownership drift.
 
 ## Task 137: Wake Supervisor Runtime Assembly
@@ -1516,8 +1654,8 @@ port, or that exposes an unsafe diagnostic property.
 
 | Task | RED assertion and command | GREEN command | Required full evidence before commit |
 | --- | --- | --- | --- |
-| 124 | Import/contract tests for `createWakeSupervisor`, `DurableSupervisorLeasePort`, and `ActiveClaimReconciliationPort` fail before the module exists: `npm test -- packages/agent/test/wake-supervisor.test.ts packages/agent/test/scheduler.test.ts` | Same command passes typed-port admission order: one immutable admission snapshot, exactly one revalidation and lease readback per admission, tuple-matching recovery, lease-held/available distinction, state/lease/coalescing/pause/recovery/stop/diagnostic cases. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
-| 125 | Import/contract tests for `createPortableWorkspaceAvailabilityAuthority` and `PortableWorkspaceLifecyclePorts` fail before the module exists: `npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts` | Same command passes immutable-snapshot mount/identity/high-water/store/policy/lock/typed-reconciliation/idempotent-replay/no-fallback cases, including mount mismatch with no lease/reconcile/recovery call and exact append/readback admission-tuple equality. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
+| 124 | Import/contract tests for `createWakeSupervisor`, `DurableSupervisorLeasePort`, and `ActiveClaimReconciliationPort` fail before the module exists: `npm test -- packages/agent/test/wake-supervisor.test.ts packages/agent/test/scheduler.test.ts` | Same command passes typed-port admission order: one immutable admission snapshot, exactly one revalidation and lease readback per admission, complete canonical-record plus tuple-matching recovery, per-field mismatch with zero append/effect/fallback, lease-held/available distinction, state/lease/coalescing/pause/recovery/stop/diagnostic cases. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
+| 125 | Import/contract tests for `createPortableWorkspaceAvailabilityAuthority` and `PortableWorkspaceLifecyclePorts` fail before the module exists: `npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts` | Same command passes immutable-snapshot mount/identity/high-water/store/policy/lock/typed-reconciliation/idempotent-replay/no-fallback cases, including mount mismatch with no lease/reconcile/recovery call, exact append/readback admission-tuple equality, and every canonical V1 record field’s mounted source/append/readback mismatch gate. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
 | 137 | Import/contract tests for `createWakeSupervisorRuntime` fail before the module exists: `npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/agent/test/wake-supervisor.test.ts` | `npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/agent/test/wake-supervisor.test.ts` passes typed admission, restart, and stop cancellation/invalidation cases. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
 | 141 / U | Strict route/control parser fails on missing module or unsafe envelopes: `npm test -- packages/ui/test/resident-supervision-panel.test.tsx packages/local-runtime/test/agent-supervision-routes.test.ts` | Same command passes status/command labels and rejection cases. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh U review and W semantic review. |
 
@@ -2039,25 +2177,25 @@ const fieldToEdgeMatrix = Object.freeze([
   edge("tuple verified lease -> reconciliation append", "canonicalAdmission.verifiedLease", "appendedReconciliation?.admission.verifiedLease"),
   edge("tuple policy/lock -> reconciliation append", "canonicalAdmission.policyAndLock", "appendedReconciliation?.admission.policyAndLock"),
   edge("tuple high-water -> reconciliation append", "canonicalAdmission.highWater", "appendedReconciliation?.admission.highWater"),
-  edge("append workspace -> reconciliation readback", "appendedReconciliation?.workspaceId", "readbackReconciliation?.workspaceId"),
-  edge("append resident -> reconciliation readback", "appendedReconciliation?.residentId", "readbackReconciliation?.residentId"),
-  edge("append epoch -> reconciliation readback", "appendedReconciliation?.supervisorEpoch", "readbackReconciliation?.supervisorEpoch"),
-  edge("append idempotency key -> reconciliation readback", "appendedReconciliation?.reconciliationIdempotencyKey", "readbackReconciliation?.reconciliationIdempotencyKey"),
+  edge("append workspace -> reconciliation readback", "appendedReconciliation?.workspaceId", "readbackReconciliation?.record.workspaceId"),
+  edge("append resident -> reconciliation readback", "appendedReconciliation?.residentId", "readbackReconciliation?.record.residentId"),
+  edge("append epoch -> reconciliation readback", "appendedReconciliation?.supervisorEpoch", "readbackReconciliation?.record.supervisorEpoch"),
+  edge("append idempotency key -> reconciliation readback", "appendedReconciliation?.reconciliationIdempotencyKey", "readbackReconciliation?.record.reconciliationIdempotencyKey"),
   edge("revalidated active claim -> reconciliation append", "appendedReconciliation?.observedActiveClaim", "HARNESS.activeClaimReadback"),
   edge("active claim workspace -> reconciliation append", "appendedReconciliation?.observedActiveClaim.workspaceId", "appendedReconciliation?.workspaceId"),
   edge("active claim resident -> reconciliation append", "appendedReconciliation?.observedActiveClaim.residentId", "appendedReconciliation?.residentId"),
   edge("active claim epoch -> reconciliation append", "appendedReconciliation?.observedActiveClaim.supervisorEpoch", "appendedReconciliation?.supervisorEpoch"),
-  edge("active claim id -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.claimId", "readbackReconciliation?.claimId"),
-  edge("active attempt id -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.attemptId", "readbackReconciliation?.attemptId"),
-  edge("active claim causation -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.causation.causationId", "readbackReconciliation?.causation.causationId"),
-  edge("active claim correlation -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.causation.correlationId", "readbackReconciliation?.causation.correlationId"),
+  edge("active claim id -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.claimId", "readbackReconciliation?.record.claimId"),
+  edge("active attempt id -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.attemptId", "readbackReconciliation?.record.attemptId"),
+  edge("active claim causation -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.causation.causationId", "readbackReconciliation?.record.causation.causationId"),
+  edge("active claim correlation -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.causation.correlationId", "readbackReconciliation?.record.causation.correlationId"),
   edge("prior claim event -> mounted active-claim source", "appendedReconciliation?.observedActiveClaim.priorClaimEventId", "HARNESS.activeClaimReadback.priorClaimEventId"),
   edge("prior claim lease -> mounted active-claim source", "appendedReconciliation?.observedActiveClaim.priorClaimLeaseId", "HARNESS.activeClaimReadback.priorClaimLeaseId"),
   edge("active-claim readback event -> mounted active-claim source", "appendedReconciliation?.observedActiveClaim.readbackEventId", "HARNESS.activeClaimReadback.readbackEventId"),
   edge("outage authority evidence -> admission authority", "appendedReconciliation?.outage.priorAuthorityEvidenceId", "canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId"),
   edge("outage observation -> reconciliation append", "appendedReconciliation?.outage", "HARNESS.outage"),
   edge("outage observation -> mounted outage source", "appendedReconciliation?.outage.safeObservationId", "HARNESS.outage.safeObservationId"),
-  edge("outage timestamp -> mounted outage source", "appendedReconciliation?.outage.observedAt", "HARNESS.outage.observedAt"),
+  edge("outage timestamp -> mounted outage source", "appendedReconciliation?.outage.outageObservedAt", "HARNESS.outage.outageObservedAt"),
   edge("outage category -> mounted outage source", "appendedReconciliation?.outage.category", "HARNESS.outage.category"),
   edge("append tuple -> readback tuple", "appendedReconciliation?.admission", "readbackReconciliation?.admission"),
   edge("reconciliation event -> mounted append source", "readbackReconciliation?.reconciliationEventId", "HARNESS.reconciliation.appendedEventId"),
@@ -2076,8 +2214,8 @@ const requiredInterfaceFields = Object.freeze({
   ClaimReconciliationLookup: ["admission", "reconciliationIdempotencyKey", "workspaceId", "residentId", "supervisorEpoch"],
   ClaimReconciliationAppend: ["admission", "observedActiveClaim", "outage"],
   RevalidatedActiveClaimEvidence: ["workspaceId", "residentId", "supervisorEpoch", "claimId", "attemptId", "priorClaimEventId", "priorClaimLeaseId", "readbackEventId", "causation"],
-  WorkspaceOutageObservation: ["safeObservationId", "observedAt", "category", "priorAuthorityEvidenceId"],
-  ClaimReconciliationReadback: ["workspaceId", "residentId", "supervisorEpoch", "claimId", "attemptId", "reconciliationIdempotencyKey", "reconciliationEventId", "readbackEventId", "admission", "causation"]
+  WorkspaceOutageObservation: ["safeObservationId", "outageObservedAt", "category", "priorAuthorityEvidenceId"],
+  ClaimReconciliationReadback: ["record", "reconciliationEventId", "readbackEventId", "admission"]
 });
 
 function expectedExpression(expression, harnessName) {
@@ -2182,6 +2320,201 @@ console.log(`GREEN: Task 111 field-to-edge completeness audit passed (${counterf
 NODE
 ```
 
+### Canonical Reconciliation Record Recovery Audit
+
+The earlier audits preserve tuple and relation evidence. This recovery audit
+starts instead with the one declared `WorkspaceUnavailableClaimReconciliationV1`
+record, recursively derives every persisted leaf field from that declared
+shape, and requires both Task 124 and Task 125 to map every leaf from a
+mounted source through the append record to the mounted readback record. The
+same derived field set must drive each owner’s per-field mismatch test. A
+candidate or prior mounted-readback mismatch is blocked before a new append and
+therefore has zero reconciliation append, effect, and fallback activity. This
+does not authorize a general ledger API: the record still travels only through
+the typed reconciliation port and its exact mounted readback.
+
+```bash
+node --input-type=module <<'NODE'
+import { readFileSync } from "node:fs";
+
+const path = "docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md";
+const source = readFileSync(path, "utf8");
+
+function bounds(text, heading) {
+  const start = text.indexOf(heading);
+  if (start < 0) throw new Error(`missing heading: ${heading}`);
+  const level = heading.match(/^(#+)/)?.[1].length ?? 0;
+  const rest = text.slice(start + heading.length);
+  const next = rest.search(new RegExp(`\\n#{1,${level}} `));
+  return [start, next < 0 ? text.length : start + heading.length + next];
+}
+
+function section(text, heading) {
+  const [start, end] = bounds(text, heading);
+  return text.slice(start, end);
+}
+
+function replaceInSection(text, heading, from, to) {
+  const [start, end] = bounds(text, heading);
+  const scoped = text.slice(start, end);
+  const offset = scoped.indexOf(from);
+  if (offset < 0) throw new Error(`${heading}: cannot mutate ${from}`);
+  return text.slice(0, start) + scoped.slice(0, offset) + to + scoped.slice(offset + from.length) + text.slice(end);
+}
+
+function replaceInCanonicalSourceMap(text, heading, from, to) {
+  const [start, end] = bounds(text, heading);
+  const scoped = text.slice(start, end);
+  const mapStart = scoped.indexOf("const canonicalRecordFieldSources = [");
+  const mapEnd = scoped.indexOf("\n    ] as const;", mapStart);
+  if (mapStart < 0 || mapEnd < 0) throw new Error(`${heading}: missing canonical source map`);
+  const map = scoped.slice(mapStart, mapEnd);
+  const offset = map.indexOf(from);
+  if (offset < 0) throw new Error(`${heading}: cannot mutate canonical source map ${from}`);
+  return text.slice(0, start) + scoped.slice(0, mapStart) + map.slice(0, offset) + to + map.slice(offset + from.length) + scoped.slice(mapEnd) + text.slice(end);
+}
+
+function interfaceBlock(text, name) {
+  const match = new RegExp(`export interface ${name}(?: extends [^{]+)? \\{`).exec(text);
+  if (!match || match.index === undefined) throw new Error(`missing interface: ${name}`);
+  const end = text.indexOf("\n}", match.index);
+  if (end < 0) throw new Error(`unterminated interface: ${name}`);
+  return text.slice(match.index, end + 2);
+}
+
+function fields(block) {
+  return new Map([...block.matchAll(/^\s+readonly\s+(\w+):\s*([^;]+);$/gm)].map(([, name, type]) => [name, type.trim()]));
+}
+
+function canonicalRecordLeafLocations(text) {
+  const frozen = section(text, "### Planned Post-Freeze W Contract Surface");
+  const result = [];
+  const visiting = new Set();
+  function visit(interfaceName, prefix) {
+    if (visiting.has(interfaceName)) throw new Error(`recursive canonical record type: ${interfaceName}`);
+    visiting.add(interfaceName);
+    for (const [name, type] of fields(interfaceBlock(frozen, interfaceName))) {
+      const path = prefix ? `${prefix}.${name}` : name;
+      if (/^[A-Za-z_]\w*$/.test(type) && frozen.includes(`export interface ${type}`)) {
+        visit(type, path);
+      } else {
+        result.push({ path, interfaceName, field: name });
+      }
+    }
+    visiting.delete(interfaceName);
+  }
+  visit("WorkspaceUnavailableClaimReconciliationV1", "");
+  return result.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function canonicalRecordLeafPaths(text) {
+  return canonicalRecordLeafLocations(text).map(({ path }) => path);
+}
+
+function parseRows(scoped, declaration) {
+  const match = new RegExp(`const ${declaration} = \\\[\\n([\\s\\S]*?)\\n    \\\] as const;`).exec(scoped);
+  if (!match) throw new Error(`missing ${declaration}`);
+  const rows = new Map();
+  for (const [, field, mountedSource, appendedField, readbackField] of match[1].matchAll(/^\s*\["([^"]+)", (.*), (.*), (.*)\],?$/gm)) {
+    if (rows.has(field)) throw new Error(`${declaration}: duplicate ${field}`);
+    rows.set(field, { mountedSource, appendedField, readbackField });
+  }
+  return rows;
+}
+
+function parsePaths(scoped) {
+  const match = /const canonicalReconciliationRecordFieldPaths = \[\n([\s\S]*?)\n  \] as const;/.exec(scoped);
+  if (!match) throw new Error("missing canonicalReconciliationRecordFieldPaths");
+  return [...match[1].matchAll(/"([^"]+)"/g)].map(([, path]) => path).sort();
+}
+
+function sameSet(actual, expected, label) {
+  if (actual.length !== expected.length || actual.some((value, index) => value !== expected[index])) {
+    throw new Error(`${label}: expected exactly ${expected.join(", ")}, received ${actual.join(", ")}`);
+  }
+}
+
+function validate(text) {
+  const expected = canonicalRecordLeafPaths(text);
+  const frozen = section(text, "### Planned Post-Freeze W Contract Surface");
+  const append = fields(interfaceBlock(frozen, "ClaimReconciliationAppend"));
+  const readback = fields(interfaceBlock(frozen, "ClaimReconciliationReadback"));
+  if (append.get("record") !== "WorkspaceUnavailableClaimReconciliationV1" || readback.get("record") !== "WorkspaceUnavailableClaimReconciliationV1") {
+    throw new Error("typed reconciliation append/readback must carry the one canonical V1 record");
+  }
+  for (const heading of ["## Task 124: Wake Supervisor", "## Task 125: Portable Workspace Availability And Claim Reconciliation"]) {
+    const scoped = section(text, heading);
+    const rows = parseRows(scoped, "canonicalRecordFieldSources");
+    sameSet([...rows.keys()].sort(), expected, `${heading} canonical source map`);
+    sameSet(parsePaths(scoped), expected, `${heading} mismatch test field set`);
+    if (!scoped.includes("it.each(canonicalReconciliationRecordFieldPaths)(\"fails closed with zero append, effect, and fallback activity when canonical reconciliation %s mismatches\"")) {
+      throw new Error(`${heading}: no derived per-field mismatch test`);
+    }
+    for (const field of expected) {
+      const row = rows.get(field);
+      if (!row || !row.mountedSource || !row.appendedField.includes(`appendedReconciliation?.record.${field}`) || !row.readbackField.includes(`readbackReconciliation?.record.${field}`)) {
+        throw new Error(`${heading}: unbound source/append/readback field ${field}`);
+      }
+    }
+    for (const required of ["mismatchCandidateOrMountedReadbackField(field)", "toEqual([])", "fallback.allWriteCalls()"]) {
+      if (!scoped.includes(required)) throw new Error(`${heading}: mismatch test lacks ${required}`);
+    }
+  }
+}
+
+function replaceFirstInInterface(text, name, from, to) {
+  const start = text.indexOf(`export interface ${name}`);
+  const end = text.indexOf("\n}", start);
+  if (start < 0 || end < 0) throw new Error(`cannot mutate interface ${name}`);
+  return text.slice(0, start) + text.slice(start, end + 2).replace(from, to) + text.slice(end + 2);
+}
+
+function deleteFieldInInterface(text, name, field) {
+  const start = text.indexOf(`export interface ${name}`);
+  const end = text.indexOf("\n}", start);
+  if (start < 0 || end < 0) throw new Error(`cannot mutate interface ${name}`);
+  const block = text.slice(start, end + 2);
+  const changed = block.replace(new RegExp(`\\n\\s+readonly ${field}:\\s*[\\s\\S]*?;`), "\n");
+  if (changed === block) throw new Error(`cannot delete ${name}.${field}`);
+  return text.slice(0, start) + changed + text.slice(end + 2);
+}
+
+function mustReject(label, mutate) {
+  try {
+    validate(mutate(source));
+  } catch {
+    return;
+  }
+  throw new Error(`counterfactual passed unexpectedly: ${label}`);
+}
+
+const expected = canonicalRecordLeafPaths(source);
+const counterfactuals = [];
+for (const { path: field, interfaceName, field: interfaceField } of canonicalRecordLeafLocations(source)) {
+  counterfactuals.push(
+    [`remove Task 124 source map ${field}`, text => replaceInCanonicalSourceMap(text, "## Task 124: Wake Supervisor", `["${field}",`, `["removed-${field}",`)],
+    [`mismatch Task 124 append ${field}`, text => replaceInCanonicalSourceMap(text, "## Task 124: Wake Supervisor", `appendedReconciliation?.record.${field}`, "unrelatedCanonicalRecordValue")],
+    [`remove Task 125 source map ${field}`, text => replaceInCanonicalSourceMap(text, "## Task 125: Portable Workspace Availability And Claim Reconciliation", `["${field}",`, `["removed-${field}",`)],
+    [`mismatch Task 125 readback ${field}`, text => replaceInCanonicalSourceMap(text, "## Task 125: Portable Workspace Availability And Claim Reconciliation", `readbackReconciliation?.record.${field}`, "unrelatedCanonicalRecordValue")]
+  );
+  counterfactuals.push(
+    [`rename canonical record field ${field}`, text => replaceFirstInInterface(text, interfaceName, `readonly ${interfaceField}:`, `readonly removed${interfaceField[0].toUpperCase()}${interfaceField.slice(1)}:`)],
+    [`delete canonical record field ${field}`, text => deleteFieldInInterface(text, interfaceName, interfaceField)]
+  );
+}
+counterfactuals.push(
+  ["remove Task 124 mismatch loop", text => replaceInSection(text, "## Task 124: Wake Supervisor", "it.each(canonicalReconciliationRecordFieldPaths)", "it.each([])")],
+  ["remove Task 125 mismatch loop", text => replaceInSection(text, "## Task 125: Portable Workspace Availability And Claim Reconciliation", "it.each(canonicalReconciliationRecordFieldPaths)", "it.each([])")],
+  ["replace append record with unrelated type", text => replaceFirstInInterface(text, "ClaimReconciliationAppend", "readonly record: WorkspaceUnavailableClaimReconciliationV1;", "readonly record: UnrelatedRecord;")],
+  ["replace readback record with unrelated type", text => replaceFirstInInterface(text, "ClaimReconciliationReadback", "readonly record: WorkspaceUnavailableClaimReconciliationV1;", "readonly record: UnrelatedRecord;")]
+);
+
+validate(source);
+for (const [label, mutate] of counterfactuals) mustReject(label, mutate);
+console.log(`GREEN: Task 111 canonical reconciliation record audit passed (${counterfactuals.length} counterfactuals rejected).`);
+NODE
+```
+
 ## Fresh Review, Rebase, And Merge Gates
 
 1. Before dispatch, the coordinator checks the exact CF-1 revision is an
@@ -2262,7 +2595,7 @@ a provider, model, credential, or claim of live success.
 | W-08 | Bounded failure exhaustion is unrecoverable; explicit recovery still revalidates. | 124 recovery-limit test and 137 control-port test. |
 | W-09 | Hostile diagnostic objects remain secret-safe and no getter runs. | 124/125 hostile-object parser tests and U 141 DTO/route parser tests. |
 | W-10 | Routes reject execution selectors/force fields and label actual effects. | U 141 tests against only `SupervisionControlPort`. |
-| W-11 | Every paused/recovered/reconciled completion has exact mounted event/readback evidence; reconciliation append and readback carry one identical authority-identity/mount, verified-lease, policy/lock, and high-water tuple. | 124 one-admission and tuple-equality tests, 125 idempotent reconciliation mismatch matrix, and 137 service test. |
+| W-11 | Every paused/recovered/reconciled completion has exact mounted event/readback evidence; reconciliation append and readback carry one identical authority-identity/mount, verified-lease, policy/lock, high-water tuple and the complete canonical V1 outcome/state/provenance record. | 124/125 derived per-field source→append→readback and zero-append/effect/fallback mismatch tests, plus 137 service test. |
 | W-12 | Stop closes intake, cancels timer/watcher work, invalidates authority, preserves only mounted resumable state, and causes no later wake/provider/tool/artifact/ledger activity. | 124 deterministic stop counterfactual and 137 service-epoch restart test; second epoch requires fresh typed admission. |
 | A-01 | Mounted workspace survives fresh-process restart with zero fallback writes. | A acceptance fixture consumes reviewed 125/137 behavior. |
 | A-02 | Browser closure, restart, disconnect/reconnect, same-identity revalidation, and resumable claim recovery all hold in the served composition. | Coordinator-run A-02 after all dependency merges; safe evidence only. |
@@ -2285,18 +2618,19 @@ a provider, model, credential, or claim of live success.
   `DurableSupervisorLeasePort` and `ActiveClaimReconciliationPort` are the
   only lifecycle ledger-adjacent seams and expose only typed readback DTOs;
   `SupervisionControlPort` is the sole route seam. One revalidation and one
-  lease readback per admission, same-tuple reconciliation equality, snapshot
-  discard/restart, and available-versus-lease-held versus unavailable are named
-  in Tasks 124, 125, 137, the matrix, and the audit. CF-1, not this plan,
+  lease readback per admission, same-tuple plus complete canonical-record
+  reconciliation equality, snapshot discard/restart, and available-versus-
+  lease-held versus unavailable are named in Tasks 124, 125, 137, the matrix,
+  and the audit. CF-1, not this plan,
   freezes the resulting shared types.
 - **Verification completeness:** Every executable task specifies an actual
   failing import/contract test, focused GREEN command, cross-lane command where
   needed, `git diff --check`, factory check, full verifier, commit scope, and
-  fresh review. The section-local structural relation-graph audit rejects 145
-  concrete node, unrelated-edge, deleted-edge, order, late-revalidation,
-  stale-snapshot, append/readback-equality, stop, lease-state, no-fallback,
-  and ownership counterfactuals instead of accepting global heading presence or
-  a disconnected field-only schema.
+  fresh review. The bounded audits reject 145 relation-graph, 366 field-to-edge,
+  and 160 canonical-record deletion/rename/unbound/mismatch counterfactuals.
+  The last audit derives every V1 record field from its declared type, requires
+  both owner maps and per-field zero-append/effect/fallback cases, and rejects
+  global heading presence or a disconnected field-only schema.
 - **Scope and safety:** The plan contains no production change, no shared
   contract freeze, no live provider call, no newsroom/team expansion, and no
   fallback storage or self-merge path.
