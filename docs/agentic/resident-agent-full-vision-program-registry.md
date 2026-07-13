@@ -2341,3 +2341,33 @@ explicit implementation authorization.
   the active pool. Task120 and Task123 remain independent active Wave 1 lanes;
   no W1-118 or Task136 consumer starts until Task120 is independently reviewed,
   merged, and recorded. `neo` remains untouched.
+
+## RV-1-C-031 — Wave 1 active-child ledger and Task123 contract recovery
+
+- Task120 candidate `d03729d1e5d3bd145f2c80fa258d570484464d81` is awaiting
+  fresh read-only review by child `/root/task120_review` in its isolated
+  restart worktree. It remains unintegrated; Task120's merged SHA still gates
+  W1-118 and Task136.
+- Task123 claim/block evidence is preserved at
+  `c8dc484ee15d5b87fb6019064d464041b3f969d5` and
+  `12d90f83`, with its useful but non-integrable workflow/test diagnostic
+  checkpoint preserved forward-only at `70eb4ad71c3e3e469161383c88c4e09911e03f48`
+  on `codex/task-123-resident-full-vision-bootstrap-blocked-prototype` in
+  `/home/drake/.codex/worktrees/task-123-resident-full-vision-ontology-bootstrap`.
+  It is blocked, not merged, and its source/test delta must rebase only after
+  the serialized prerequisite lands.
+- The exact active shared prerequisite child is
+  `/root/task123_handoff_schema_prereq`, branch
+  `codex/task-123-resident-full-vision-handoff-schema-prereq`, worktree
+  `/home/drake/.codex/worktrees/task-123-resident-full-vision-handoff-schema-prereq`,
+  based at `3aa4df963633c16d9fb95e79fa30f5fc59e833a7`. It alone may edit the
+  H-owned runner kernel, kernel test, and its claim to add ontology-bootstrap
+  to the canonical final-output -> prepared -> recorded -> terminal lifecycle;
+  it has SDD/TDD/fresh-review/full-verification/no-self-merge/no-`neo`
+  authority. Its reviewed coordinator merged SHA is a hard prerequisite for
+  Task123 restart.
+- Task124 continues independently on
+  `/root/task124_wake_supervisor` in
+  `/home/drake/.codex/worktrees/task-124-resident-full-vision-wake-supervisor`;
+  no production/provider/live lane or `neo` action is authorized by this
+  active-child record.
