@@ -1737,3 +1737,30 @@ explicit implementation authorization.
 - Merge readiness: merged / coordinator integration commit bcc8391ce13033aa1ef9b0686d5cacdaf7b71910 contains only the two approved Task113 files; no merge into neo occurred
 - Archive check: author and reviewer evidence is retained; clean child worktree, ancestry, integrated verification, and this append-only coordinator record are required before archival
 - Supersession: this record supersedes only RV-0-T-014's pending-review status; all prior Task113 repair and review evidence remains immutable.
+
+## RV-0-L-013 — Task 112 per-callback typing recovery dispatch
+
+- Recorded at: 2026-07-13T14:08:55Z
+- Role: coordinator root-cause recovery dispatch
+- Lane and wave: L / 0B
+- Task ID and claim: task-112-resident-full-vision-w0-loop-plan / docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Task thread ID: /root/repair_task112_strict_typing and /root/finalize_task112_strict_typing preserved their bounded evidence; a new fresh repair implementer is required
+- Branch and worktree: codex/task-112-resident-full-vision-w0-loop-strict-typing-repair / /home/drake/.codex/worktrees/task-112-resident-full-vision-w0-loop-strict-typing-repair; reuse its cleanly scoped uncommitted patch after audit
+- Base commit and required head: 686f56e53cf54e7dd2ccb498e7d151aa89a8b02b / one forward-only recovery commit plus a different fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358; docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md@baa980e04f126ce06f41398fc45169f112321e39
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md; docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Forbidden files: every other tracked file, including registry, production, test, runtime, UI, provider, shared-contract, specification, template, and acceptance files
+- Dependencies and required merged commits: RV-0-L-012; Task112 remains unmerged, no shared contract is frozen, and CF-1 is stopped
+- Approval record: the governing spec and plan are approved. Allowed task range: Task112 per-callback typing recovery only. Wave stop: one documentation recovery commit and a different fresh review before Tasks120/136, CF-1, production/provider work, child dispatch, or merge. This recovery explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. Do not merge into neo.
+- Claim status: recovering
+- RED command and observed failure: independent TypeScript-API virtual compiler with strict/noLib/types=[] emitted exactly 25 TS7006 implicit-any diagnostics for the unannotated tuple callback parameters despite the outer tuple annotation
+- GREEN command and observed result: pending; each of the exact 25 callbacks must explicitly declare `(checkpoint: ResidentLoopCheckpointReadback): ResidentLoopCheckpointReadback =>`, after which the same virtual compiler must exit 0; preserve the 86-counterfactual structural audit
+- Full verification: pending recovery-owned npm run typecheck, git diff --check, npm run factory:check, and npm run verify
+- Live-provider gate: not-applicable; documentation-only recovery invokes no provider
+- Review verdict: recovery required / fresh finalizer proved the outer readonly-tuple annotation does not contextually type the callback parameters under strict TypeScript
+- Rebase record: no contract merge applies; recovery reuses only the audited two-file patch at the exact Task112 repair worktree
+- Merge readiness: not-ready; only the visible coordinator may later integrate an approved recovery into its own branch, never neo
+- Archive check: both stopped workers' evidence is preserved; fresh recovery, verification, review, and integration remain required
+- Root-cause checkpoint: two focused attempts tested outer tuple typing rather than compiler-visible parameter typing. The new tactic mutates and typechecks every concrete callback declaration, not the container annotation.
+- Supersession: this record supersedes only RV-0-L-012 status; all previous Task112 evidence remains immutable.
