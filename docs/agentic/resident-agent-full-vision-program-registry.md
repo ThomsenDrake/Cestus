@@ -2653,3 +2653,18 @@ explicit implementation authorization.
   / 55 tests with typecheck, diff, factory, and exact five-file scope. Worker
   `019f5d45-9016-7932-b893-2f94021e1ef0` alone holds the serialized full slot;
   Task124 remains focused-only until release.
+
+## RV-1-C-045 — Coordinator integration: approved W1-118 repair
+
+- Relay A integrated independently approved W1-118 candidate
+  `5e93c3a74075357913c57944bc8d261f8487af46` by no-ff merge at
+  `10e42fb4`; `neo` remains untouched. The review confirmed exact scope,
+  full-event readback validation, exact event ID, actor, causation, and
+  correlation binding across four adversarial counterfactuals.
+- On the merged Relay A checkout, the three-file focused suite passed 27/27;
+  `git diff --check` and factory readiness passed. Retained merged
+  `npm run verify` passed typecheck; 195 passed + 3 skipped test files; 2,290
+  passed + 5 skipped tests; Vite production build; and factory readiness.
+- W1-118 is integrated and verified. Task123 remains under fresh root-cause
+  repair and Task124's approved candidate remains queued for a separate
+  serialized integration gate.
