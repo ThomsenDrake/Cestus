@@ -258,3 +258,50 @@ self-approve or merge.
 - Root cause and documentation RED are recorded after the prospective
   structural audit demonstrates the baseline can admit a stale gateway spelling,
   incomplete checkpoint no-effect proof, or narrowed H handoff result.
+
+## Append-Only Fail-Closed Checkpoint and Handoff Repair Evidence
+
+- Recorded at: 2026-07-13T12:54:00Z.
+- Status: ready for fresh re-review after the bounded documentation repair;
+  this appends evidence without modifying the start record or earlier claim
+  history.
+- Documentation RED: the prospective fail-closed audit against the untouched
+  `4e780c7e06a52dc89bbf64fd0fd4b2b312f860d7` plan exited nonzero with
+  `RED: missing readonly handoffReadback?: HandoffReadback;`. The same baseline
+  also lacked the checkpoint no-effect helper, direct stale-fixture mutation
+  cases, and the task/recorded/task-status/provenance HandoffReadback mismatch
+  cases required by this repair.
+- Repair: CF-1 now carries the H-owned `HandoffReadback` verbatim in the L
+  terminal/resumable result and states that completed results retain its full
+  task, lifecycle, authority, provenance, and diagnostic evidence. Task 136
+  proves reference-preserving completed handoff output and fail-closed
+  task-ID, recorded-event, terminal-run, task-status, lifecycle, authority,
+  manifest, prepared-event, and final-output mismatch cases. Each individual
+  checkpoint binding mismatch now proves zero observation/tool-step/result
+  appends, zero gateway/provider/tool/approval effects, and zero fallback or
+  local write activity.
+- Structural GREEN: the exact embedded section-local audit printed
+  `GREEN: Task 112 section-local bounded-loop plan audit passed (47
+  counterfactual omissions rejected).` Its direct stale-fixture mutations
+  replace a `fixture.toolGateway.requestAndReadback` spelling with the stale
+  request spelling and a `fixture.toolGateway.executeAndReadback` spelling with
+  the stale execute spelling; each fails the boundary-aware stale API check.
+  It also rejects each new no-effect and handoff-proof removal. A separate
+  prospective audit printed `GREEN: prospective Task 112 fail-closed audit
+  passed`.
+- Local verification: `git diff --check` exited 0. No provider, credential,
+  production, task-120/task-136, CF-1, registry, or child-dispatch action
+  occurred.
+- Required verifier attempts and host blocks: `npm run factory:check` reached
+  `scripts/check-agent-readiness.mjs` but failed at `spawnSync git EPERM` for
+  `git ls-files`. This fresh worktree has no `node_modules/.bin/tsc`, so
+  `npm run verify` stopped before typecheck with `tsc: command not found`.
+  No dependency installation or source/infrastructure workaround was attempted.
+- Fresh-review handoff: review the forward repair from
+  `4e780c7e06a52dc89bbf64fd0fd4b2b312f860d7` after its repair commit against
+  the approved L and H designs. Lead with stale gateway spellings, direct
+  fixture-mutation fail polarity, every checkpoint mismatch's zero-effect
+  proof, verbatim HandoffReadback/result typing, all lifecycle/authority/
+  provenance mismatch coverage, append-only claim evidence, and the separately
+  recorded sandbox/dependency verifier blocks. Do not authorize or merge
+  Tasks 120/136, CF-1, production/provider work, dispatch, or `neo` integration.
