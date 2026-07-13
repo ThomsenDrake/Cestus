@@ -74,3 +74,29 @@ GREEN: Task 114 structural provider-plan contract passed (33 direct local mutati
 After one documentation commit, stop before Tasks 126--130, 133, or 139. A
 fresh reviewer must lead with defects, missing tests, spec drift, and
 verification gaps; the author cannot self-approve or self-merge.
+
+## RV-0-P-010 Structural Repair
+
+- Repair status: in-progress under the coordinator's new scoped repair
+  authorization.
+- Finding: fresh review P1 found that Task 139's configuration prose lacked
+  exact local RED, GREEN, and fresh-review entries in the structural contract.
+- Focused RED: a section-only Node validator required
+  `T114-139-RED`, `T114-139-GREEN`, and `T114-139-REVIEW` rows and exited
+  1 with `missing local contract row T114-139-RED` at commit
+  `304ac9af829cfed48fe1c9200c7d0351d9b6efaa`.
+- Repair scope: add those three rows to the exact Task 133/139 table and its
+  keyed structural map, so the existing direct-mutation loop rejects deletion
+  of every one.
+- Focused GREEN: PASS — the section-only validator found all three exact local
+  rows, then the plan's full structural audit reported
+  `GREEN: Task 114 structural provider-plan contract passed (36 direct local mutations rejected).`
+- Repair factory gate: BLOCKED — `npm run factory:check` again exits 1 before
+  plan evaluation because this sandbox denies Node `spawnSync git` with
+  `EPERM`.
+- Repair full-verification gate: BLOCKED — `npm run verify` again exits 127
+  because `tsc` and `node_modules/.bin/tsc` are absent. No dependency,
+  production, or configuration repair is authorized.
+- Repair cached whitespace check: PASS after staging only the two authorized
+  documentation files. One documentation-only commit and a different fresh
+  review remain required.

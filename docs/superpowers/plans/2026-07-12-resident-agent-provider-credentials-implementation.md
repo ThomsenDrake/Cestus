@@ -88,7 +88,7 @@ validator to reject that mutated document.
 | `local-model` | `Task 128: Explicit Local-Model Provider` | `T114-128-RED`, `T114-128-GREEN`, `T114-128-REVIEW`, `T114-128-NO-FALLBACK` |
 | `codex` | `Task 129: Official Codex Subscription Harness` | `T114-129-RED`, `T114-129-GREEN`, `T114-129-REVIEW`, `T114-129-OFFICIAL` |
 | `xai` | `Task 130: Official xAI Subscription Harness` | `T114-130-RED`, `T114-130-GREEN`, `T114-130-REVIEW`, `T114-130-OFFICIAL` |
-| `renderer-config` | `Task 133 Provider Boundary Consumption And Task 139 Configuration` | `T114-133-R-OWNER`, `T114-139-P-OWNER`, `T114-139-REBASE` |
+| `renderer-config` | `Task 133 Provider Boundary Consumption And Task 139 Configuration` | `T114-133-R-OWNER`, `T114-139-P-OWNER`, `T114-139-RED`, `T114-139-GREEN`, `T114-139-REVIEW`, `T114-139-REBASE` |
 | `acceptance` | `Deterministic, Live Nous, And Secret-Safety Acceptance` | `T114-ACCEPT-DETERMINISTIC`, `T114-ACCEPT-LIVE-NOUS` |
 | `rollback-stop` | `Merge, Rebase, Rollback, And Stop Conditions` | `T114-ROLLBACK-APPEND-ONLY`, `T114-STOP-ESCALATE` |
 
@@ -146,6 +146,9 @@ const contract = new Map([
   ["renderer-config", { heading: "Task 133 Provider Boundary Consumption And Task 139 Configuration", rows: [
     ["T114-133-R-OWNER", "R alone owns Task 133 prompt rendering; P does not edit the renderer or consume approval, resolve a secret, or invoke a provider there."],
     ["T114-139-P-OWNER", "Task 139 is P's one provider-configuration owner and does not edit the default runtime factory."],
+    ["T114-139-RED", "RED runs the named Task 139 configuration command before agent-provider-configuration.ts exists and rejects stale, duplicate, secret-bearing, or fallback configuration."],
+    ["T114-139-GREEN", "GREEN runs the named Task 139 configuration command, git diff --check, npm run factory:check, and npm run verify after the minimal sole-owner configuration change."],
+    ["T114-139-REVIEW", "A fresh reviewer verifies the sole configuration owner, predecessor rebase evidence, feasibility provenance, and no default-factory edit before the Task 139 merge gate."],
     ["T114-139-REBASE", "Task 139 starts only after Tasks 126 through 130 and Task 133 are reviewed and merged, then rebases to every recorded predecessor SHA before review."],
   ] }],
   ["acceptance", { heading: "Deterministic, Live Nous, And Secret-Safety Acceptance", rows: [
@@ -661,6 +664,9 @@ feasibility, no token extraction, and no fallback.
 | --- | --- |
 | `T114-133-R-OWNER` | R alone owns Task 133 prompt rendering; P does not edit the renderer or consume approval, resolve a secret, or invoke a provider there. |
 | `T114-139-P-OWNER` | Task 139 is P's one provider-configuration owner and does not edit the default runtime factory. |
+| `T114-139-RED` | RED runs the named Task 139 configuration command before agent-provider-configuration.ts exists and rejects stale, duplicate, secret-bearing, or fallback configuration. |
+| `T114-139-GREEN` | GREEN runs the named Task 139 configuration command, git diff --check, npm run factory:check, and npm run verify after the minimal sole-owner configuration change. |
+| `T114-139-REVIEW` | A fresh reviewer verifies the sole configuration owner, predecessor rebase evidence, feasibility provenance, and no default-factory edit before the Task 139 merge gate. |
 | `T114-139-REBASE` | Task 139 starts only after Tasks 126 through 130 and Task 133 are reviewed and merged, then rebases to every recorded predecessor SHA before review. |
 
 Task 133 is R-owned. R owns
