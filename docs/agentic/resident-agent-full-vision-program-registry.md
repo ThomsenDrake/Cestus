@@ -1909,3 +1909,30 @@ explicit implementation authorization.
 - Archive check: preserve the stopped audit's hashes, timestamps, counterfactual evidence, and observed verifier log; require the fresh recovery author final answer, clean worktree, reviewed ancestry, verification evidence, and coordinator integration record before archival
 - Root-cause checkpoint: a predecessor process replaced the in-progress claim and plan during the re-dispatched author's audit without durable commit provenance. The new tactic pins exact hashes and scope before a fresh author creates the first durable Task115 commit; it neither rewrites nor treats the untracked draft as self-authenticating.
 - Supersession: this record supersedes RV-0-U-005 only for the uncommitted-draft recovery disposition; the original authorization, work scope, and all stopped-worker evidence remain immutable.
+
+## RV-0-A-012 — Task116 acceptance-plan repair dispatch
+
+- Recorded at: 2026-07-13T15:15:52Z
+- Role: coordinator repair dispatch
+- Lane and wave: A / 0B
+- Task ID and claim: task-116-resident-full-vision-w0-acceptance-plan / docs/agentic/claims/task-116-resident-full-vision-w0-acceptance-plan.md
+- Task thread ID: original author `/root/task116_acceptance_plan`; different fresh reviewer `/root/review_task116_acceptance_plan` returned needs-changes; a different fresh repair author is required
+- Branch and worktree: codex/task-116-resident-full-vision-w0-acceptance-plan-repair / create a fresh isolated worktree from exact reviewed head eecc5298608f8a1014f56d8002f4a104a4ee77fd
+- Base commit and required head: eecc5298608f8a1014f56d8002f4a104a4ee77fd / one forward-only two-file repair commit plus a different fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358; docs/superpowers/specs/2026-07-12-resident-agent-acceptance-design.md@eda08b6ca64ea48e405cc5ed83213630f8769d94
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-acceptance-implementation.md; docs/agentic/claims/task-116-resident-full-vision-w0-acceptance-plan.md
+- Forbidden files: every other tracked file, including the registry, production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and every other claim
+- Dependencies and required merged commits: RV-0-A-011 authorization; reviewed child head eecc5298608f8a1014f56d8002f4a104a4ee77fd; no shared contract is frozen and no production dependency applies
+- Approval record: the governing spec and plan are approved. Allowed task range: Task116 acceptance-plan repair only. Wave stop: one verified repair commit and a different fresh review before A-01 through A-10 implementation, CF-1, production/provider/live work, further dispatch, rebase, or merge. This repair explicitly authorizes superpowers:subagent-driven-development where relevant, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. Do not merge into neo.
+- Claim status: repairing; append the reviewer finding and repair evidence without erasing original author evidence
+- RED command and observed failure: fresh review found (1) missing commandIdentity, retry posture, and fixed next-action marker in acceptance evidence; (2) no exact producer commands for A-01 through A-09; (3) omitted conditional A-04/A-06 Nous, A-07 local compatibility, and A-08 official-flow/safe-unavailable gates; (4) a false secret test that rejects safe schema labels; and (5) no durable claim path/status/commit scope for A-FIXTURE and A-01 through A-10
+- GREEN command and observed result: extend the plan's local audit with an exact row and direct counterfactual for every review finding; require exact producer commands and every conditional gate, boundary-specific secret checks, durable per-task claim lifecycle, command identity, retry posture, and fixed next-action marker; then run the embedded audit, git diff --check, npm run factory:check, and npm run verify
+- Full verification: fresh repair-owned npm run verify required; the original clean-head verification is evidence only and does not waive repair verification
+- Live-provider gate: plan-only; the repair defines but may not invoke Nous, local compatibility, Codex/xAI, credentials, browsers, tailnet, or production acceptance
+- Review verdict: needs-changes / `/root/review_task116_acceptance_plan`; a different fresh reviewer must re-review the repair head without self-approval
+- Rebase record: repair starts from exact reviewed child head eecc5298608f8a1014f56d8002f4a104a4ee77fd in a new isolated branch/worktree; no contract-changing merge applies and the repair must not rebase
+- Merge readiness: not-ready; only the visible coordinator may later integrate a freshly approved repair into its own branch, never neo
+- Archive check: preserve original author commit, full verification, and reviewer findings; require repair final answer, clean recovery worktree, reviewed ancestry, fresh verification, re-review, and coordinator integration record before archival
+- Root-cause checkpoint: the original section-local audit validated only its selected candidate command coverage and therefore could pass while the approved design's evidence metadata, producer-command, conditional live-gate, secret-boundary, and durable-claim requirements remained absent. The repair expands direct counterfactual audit coverage to the reviewer findings rather than weakening the acceptance contract.
+- Supersession: this record supersedes RV-0-A-011 only for Task116 repair status. The original author commit, verification evidence, and fresh-review findings remain immutable.
