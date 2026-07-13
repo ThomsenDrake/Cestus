@@ -1458,3 +1458,14 @@ explicit implementation authorization.
 - Verification/live: author recorded typecheck/Vitest after dependency setup; factory readiness and `npm run verify` factory phase are host-blocked by Node `spawnSync git EPERM`, and the reviewer worktree lacked ignored dependencies for a redundant full run. This environment limitation is recorded separately in RV-0-C-001 and does not conceal a plan defect. No live provider applies to this plan-only task.
 - Rebase/merge/archive: no dependent production worktree exists before CF-1; merge is into the continuity coordinator branch only, never `neo`. Worker/reviewer handed off clean worktrees; Task111 is approved for Wave0B contract-freeze input, while Wave0B remains incomplete pending L, T, P, U, and A plans.
 - Supersession: this truthful completion supersedes RV-0-W-012 status only; all historical review and repair evidence remains immutable.
+
+## RV-0-P-006 — Task 114 provider-plan dispatch
+
+- Recorded at: 2026-07-13T12:38:00Z
+- Role/lane/wave/task: coordinator / P / 0B / Task114 provider-credentials implementation plan.
+- Branch/worktree/base: `codex/task-114-resident-full-vision-w0-provider-plan` / fresh isolated `/tmp` worktree / coordinator head `cdceda63a62af0be30bf19b84fbb1706c5febd2a`.
+- Model/authority: GPT-5.6 Terra / Extra High, user-confirmed and satisfied by host-reported GPT-5; umbrella `@c7dc10b9dd351fc76df083df8f2222252ba73d89`, program plan `@0b5726ec975bdc0aae97e540472ef3be4379b358`, P design `docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md@285657a7879cdc47e321152c2bc5feb0ebe6088f`.
+- Ownership: create only `docs/superpowers/plans/2026-07-12-resident-agent-provider-credentials-implementation.md` and `docs/agentic/claims/task-114-resident-full-vision-w0-provider-plan.md`. All production, test, runtime, UI, shared-contract, specification, template, acceptance, and registry files are forbidden.
+- Scoped approval: Standing Coordinator Delegation explicitly authorizes Task114 plan/claim creation only with `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. Stop after one verified plan commit and fresh review, before Tasks126–130/133/139, CF-1 implementation, provider invocation, production work, child dispatch, or merge. Never merge into `neo`.
+- Required coverage: adapter and credential-reference boundaries; BYOK/OS-secret/local/Nous/Codex/xAI feasibility; official-only subscription posture; no token extraction; deterministic credential-free tests; real-Nous acceptance gate later; exact files/signatures/ownership/RED-GREEN/review/rollback/acceptance matrix.
+- Verification/review/live/merge: documentation audit, `git diff --check`, `npm run factory:check`, and `npm run verify` required; no provider call in this plan task; fresh reviewer required; not merge-ready.
