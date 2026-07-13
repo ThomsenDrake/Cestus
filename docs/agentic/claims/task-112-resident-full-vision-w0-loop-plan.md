@@ -353,3 +353,70 @@ self-approve or merge.
   must check H lifecycle authority, all 25 concrete checkpoint mutations and
   their zero-effect helper path, audit fail polarity, append-only scope, and
   the recorded host blocks before any coordinator action.
+
+## Append-Only Strict-Checkpoint Typing Repair Started
+
+- Recorded at: 2026-07-13T13:58:24Z.
+- Status: in-progress under RV-0-L-012's bounded Task112 strict-checkpoint
+  typing-repair authority, from exact base
+  `686f56e53cf54e7dd2ccb498e7d151aa89a8b02b`. This forward record preserves
+  all earlier Task112 claim evidence unchanged.
+- Scope: only this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md`.
+  Tasks120/136, CF-1, production/provider work, child dispatch, integration,
+  registry edits, and a merge into `neo` remain forbidden.
+- Dependency recovery: the isolated worktree initially lacked
+  `node_modules/.bin/tsc`; `npm ci` restored lockfile-pinned ignored
+  dependencies without a tracked-file change.
+- Documentation RED: after dependency recovery, repository `npm run typecheck`
+  exited 0 because its tracked TypeScript project does not include Markdown
+  code fences. The compiler-backed focused documentation check extracted this
+  exact Task136 `checkpointBindingMutations` matrix into a strict virtual
+  TypeScript source and exited 1 with 25 TS7006 implicit-`any` diagnostics, one
+  for every untyped `checkpoint` callback parameter. This is the required
+  defect proof without changing the repository TypeScript project or any
+  non-owned file.
+- Repair target: contextually type the readonly mutation tuple array so every
+  callback explicitly accepts and returns `ResidentLoopCheckpointReadback`, and
+  extend the existing section-local audit with a direct counterfactual that
+  removes that strict callback signature.
+
+## Append-Only Per-Callback Strict-Checkpoint Typing Recovery Evidence
+
+- Recorded at: 2026-07-13T14:19:58Z.
+- Status: ready for a different fresh Task112 reviewer under RV-0-L-013. This
+  forward-only record preserves all prior Task112 claim evidence, including the
+  failed outer-tuple recovery, without revising it.
+- Root cause and RED: the TypeScript-API virtual compiler extracted the exact
+  Task136 `checkpointBindingMutations` matrix, temporarily removed only the
+  outer tuple annotation in memory, and compiled a strict/noLib/types=[]
+  virtual source. It exited 1 with exactly 25 diagnostics, all TS7006
+  implicit-any `checkpoint` parameters. The failure proves the outer tuple
+  annotation is not compiler-visible contextual typing for these literals.
+- Recovery: all 25 concrete matrix callbacks now declare exactly
+  `(checkpoint: ResidentLoopCheckpointReadback):
+  ResidentLoopCheckpointReadback =>`. The outer readonly tuple annotation and
+  every existing field mutation, zero-effect helper path, full HandoffReadback,
+  H-owned `SpecialistHandoffProjection` lifecycle
+  `=== "task-completed"`, direct non-completed-lifecycle failures, provenance,
+  approval, append-only, and no-fallback proof remain intact.
+- Compiler GREEN: the same TypeScript-API virtual compiler, without the
+  temporary transform, exited 0 with `virtual compiler diagnostics=0;
+  TS7006=0`.
+- Structural GREEN: the embedded section-local audit now requires the exact
+  explicit signature on every named callback and counterfactually removes each
+  concrete annotation. It exited 0 with `GREEN: Task 112 section-local
+  bounded-loop plan audit passed (111 counterfactual omissions rejected).`
+  This retains the prior 86 counterfactuals and adds 25 per-callback typing
+  counterfactuals.
+- Verification before this append: `npm run typecheck` printed `typecheck
+  passed`; `git diff --check` exited 0 with no output; `npm run factory:check`
+  printed `factory-readiness passed`; and `npm run verify` exited 0 with 189
+  test files passed, 3 skipped, 2,228 tests passed, 5 skipped, a successful
+  Vite build with its existing chunk-size warning, and
+  `factory-readiness passed`.
+- Scope and handoff: only this append-only claim and the Lane L implementation
+  plan changed. No Task120/136, CF-1, production, provider, registry,
+  integration, dispatch, or `neo` merge action occurred. Rerun the
+  claim-affected gates before committing, then stop for a different fresh
+  reviewer; this recovery worker does not self-review or self-merge.
