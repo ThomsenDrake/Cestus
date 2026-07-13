@@ -2603,3 +2603,17 @@ explicit implementation authorization.
 - Relay A remains the sole coordinator at `77c29988`; Relay B remains frozen,
   `neo` remains untouched, and all children retain SDD/TDD/fresh-review/
   verification-before-completion/no-self-integration authority.
+
+## RV-1-C-041 — Task123 causal repair RED evidence
+
+- On authoritative Task123 baseline `6397f885`, command
+  `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts -t
+  "fails closed before bootstrap effects for|keeps a recorded handoff resumable"`
+  exited 1 with 5 failed and 14 skipped tests. The direct workflow incorrectly
+  returned `ok:true` for forged evidence ID, unrelated existing source event,
+  missing evidence-link provenance, terminal append conflict, and terminal
+  missing-readback paths.
+- Original worker `019f5d45-9016-7932-b893-2f94021e1ef0` is performing the
+  bounded production GREEN repair in the canonical lane. The failure proof is
+  causal and must be preserved through the candidate, fresh review, and any
+  later merged-checkout integration; no full verifier is granted yet.
