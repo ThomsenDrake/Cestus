@@ -77,3 +77,29 @@ This claim was recorded before the Task122 test or production-file edit.
 
 Status: ready for the final scoped commit and fresh independent review. The
 worker must not self-review, self-integrate, or merge into `neo`.
+
+## Repair Addendum: Durable Post-Provider Storage Failure
+
+- Repair base: `26871a1dc72889353675574d79ba55299a65c35c`.
+- RED: the exact targeted command exited `1` with four expected failures
+  (2 files / 39 passed tests): planner artifacts lost objective, gap, candidate,
+  source, context, and prompt bindings; a later derivative failure omitted the
+  persisted artifacts; a persistent manifest write threw after final-output;
+  and a persistent final-material write threw before a durable terminal state.
+- GREEN: the same exact targeted command exited `0` (2 files / 43 tests). It
+  proves exact readback equality for success and partial-failure artifacts,
+  retains every structured candidate field and source/context/prompt bindings,
+  records a secret-safe `external-effect-failed` terminal when final material
+  cannot persist, and returns an `output-persisted` resumable ledger state
+  without fallback writes when manifest recording fails after final-output.
+  The successful path also asserts final-output → prepared → recorded → terminal
+  ordering and excludes graph, tool, and PRR effects.
+- Verification: `git diff --check`, `npm run typecheck`, and
+  `npm run factory:check` exited `0`; `npm run verify` exited `0` with 189 test
+  files passed, 3 skipped, 2,232 tests passed, 5 skipped, plus the UI build and
+  factory readiness check.
+- Scope: only the two Task122 workflow/test files and this append-only claim
+  are changed. No integration, merge, or `neo` mutation occurred.
+
+Status: ready for the scoped repair commit and fresh independent review. Do not
+self-review, self-integrate, or merge into `neo`.
