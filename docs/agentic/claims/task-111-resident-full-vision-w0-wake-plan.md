@@ -231,3 +231,85 @@ RUNNER
 - Repair status: ready for the coordinator to obtain the required fresh,
   independent re-review after this one forward-only repair commit. No Task
   124/125/137 or other production task was started.
+
+## Second Forward-Only Admission And Reconciliation Repair — 2026-07-13
+
+- Repair authorization: the coordinator issued this fresh bounded repair under
+  the approved Lane W specification
+  `docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb`
+  and governing program plan
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+  It authorizes Task 111 admission-order and reconciliation-provenance repair
+  only, stopping after one verified repair commit and fresh model-pinned
+  re-review. It explicitly authorizes
+  `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD,
+  fresh review, and verification-before-completion. It prohibits Tasks 124,
+  125, and 137, CF-1 implementation, production/provider work, dispatch, and
+  any merge into `neo` or the integration branch. Host configuration is
+  GPT-5.6 Terra / Extra High; the user confirmed that a reported GPT-5 child
+  session satisfies this requirement.
+- Scope: only this claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md`
+  may change. All earlier Task 111 claim records, reviews, and registry history
+  remain immutable append-only evidence.
+- Root cause checkpoint: the previous repair still placed an
+  `authority.revalidate()` call after lease readback in Task 124, contradicting
+  its own five-step admission sequence and allowing a later call to replace or
+  rebind a lease. `ClaimReconciliationAppend` and
+  `ClaimReconciliationReadback` also carried independently named facts rather
+  than one equality-checked provenance tuple, so the audit could not prove that
+  the readback bound the exact authority identity/mount, verified lease,
+  policy/lock hashes, and high-water evidence received by the append.
+- Repair contract: the plan now defines a proposed, pre-CF-1 immutable
+  `WorkspaceAdmissionSnapshot` and a
+  `ClaimReconciliationAdmissionTuple`. Each admission calls
+  `authority.revalidate()` once, acquires/reads back one lease once, validates
+  policy/lock/high-water against that snapshot and lease, and then requires
+  identical append/readback tuples before resume or recovery wake. Any loss or
+  mismatch discards the complete snapshot and restarts at revalidation without
+  stale-authority, stale-lease, or stale-tuple reuse. CF-1 remains the only
+  shared-type freeze point.
+
+### Second Repair Documentation RED/GREEN
+
+- RED: `2026-07-13T01:23:28Z`; the focused section-local recovery audit exited
+  1 against the prior repair head with `RED: Task 111 admission/reconciliation
+  recovery audit failed: admission snapshot: missing export interface
+  WorkspaceAdmissionSnapshot`. Its intended checks also rejected the existing
+  post-lease `authority.revalidate()` instruction and absent tuple binding.
+- GREEN: the superseding stored `## Section-Local Documentation Audit Contract`
+  now derives bounded Task 124/125 sections and concrete fenced test blocks. It
+  exited 0 with `GREEN: Task 111 section-local lifecycle audit passed (19
+  counterfactuals rejected).` The counterfactuals reject a late revalidation,
+  stale snapshot reuse, absent lease snapshot input, every required tuple
+  evidence field, and reconciliation ordered before policy/lock/high-water, in
+  addition to the preserved lease-held, stop/no-effect, mount-mismatch,
+  no-fallback, and ownership checks.
+- Narrow verification so far: `git diff --check` exited 0 and `npm run
+  factory:check` exited 0 with `factory-readiness passed`; only the authorized
+  plan was modified before this append-only claim record. Full `npm run verify`,
+  final owned-file review, commit, and fresh independent re-review remain
+  required before this repair can be considered ready for integration.
+
+### Second Repair Verification And Handoff
+
+- Dependency recovery: the first full-verifier invocation stopped at
+  `sh: line 1: tsc: command not found`, matching the prior isolated-worktree
+  dependency condition rather than a plan defect. `npm ci --ignore-scripts`
+  restored the lockfile-pinned ignored dependency tree without changing tracked
+  files, and `npm ls typescript --depth=0` reported `typescript@5.9.3`.
+- Final documentation gates: after that recovery, `git diff --check` exited 0
+  with no output; the exact stored section-local audit exited 0 with `GREEN:
+  Task 111 section-local lifecycle audit passed (19 counterfactuals rejected).`;
+  and `npm run factory:check` exited 0 with `factory-readiness passed`.
+- Full verifier invocation: `CI=1 npm run verify` was rerun after dependency
+  recovery. Its observed safe output included `typecheck passed` and the full
+  Vitest runner start; the local terminal transport detached before forwarding
+  its final summary, while the resulting `npm run verify`, Vitest, and Vite
+  processes all completed. The coordinator and fresh reviewer must independently
+  rerun and record the integrating-checkout full verifier before merge; this
+  repair makes no claim of coordinator integration or self-approval.
+- Final scope review: `git status --short` lists only this claim and the owned
+  Task 111 plan. No production, test, provider, registry, specification, or
+  CF-1 file was modified. This repairer stops at the required fresh re-review
+  gate and does not dispatch, implement, or merge any child work.
