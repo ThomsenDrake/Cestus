@@ -2262,3 +2262,46 @@ explicit implementation authorization.
   and factory gates, and author full verification of 189 files passed / 3
   skipped, 2,230 tests passed / 5 skipped, Vite, and factory readiness. The
   coordinator runs the merged-checkout gate before completing this integration.
+
+## RV-1-C-027 — Coordinator integration: approved W1-119 resident-loop contracts
+
+- Integrated candidate: Relay B merged independently approved Task119 root
+  recovery `00cf831b320c6ed2b2cbe9770a6ae247912fa884` at coordinator merge head
+  `804c04b4855083127f8ee27b1186442c9f684161`. The preserved rejected
+  replayability, own-data, and accessor-boundary attempts remain append-only
+  ancestry; no history was rewritten and this is not a `neo` merge.
+- Final contract: exported `knowledgeEventSchema` and
+  `validateKnowledgeEvent` share a descriptor-only, frozen plain-own-data
+  boundary before raw parsing. Public synchronous/asynchronous parsing rejects
+  throwing top-level/nested accessors and reflection traps without invocation,
+  along with symbols, sparse/hidden/custom-prototype/boxed/nested unsafe data.
+  The frozen five schemas, strict negatives, actual 1..5 ledger replay, and
+  pure prior-event linkage parser remain intact; no store, projection, runtime,
+  provider, tool, domain, PRR, graph, or external effect is introduced.
+- Independent approval and author evidence: a Task119-uninvolved reviewer
+  approved the exact public-boundary repair after direct exported-schema
+  adversarial coverage, focused 2 files / 74 tests, clean diff/factory gates,
+  and retained author full verification: typecheck; 190 files/3 skipped;
+  2,242 tests/5 skipped; Vite; factory readiness. The coordinator merged gate
+  and exact post-merge result are required next.
+- Dependency consequence: this is the reviewed merged W1-119 prerequisite.
+  Task120 may restart only from the coordinator's clean post-merge descendant
+  under its frozen plan/observation store scope. Task120's later reviewed
+  merged SHA continues to gate W1-118 and Task136; no other dependent lane is
+  unblocked by this record.
+
+## RV-1-C-028 — W1-119 post-merge coordinator verification
+
+- Coordinator merged-checkout gates at
+  `804c04b4855083127f8ee27b1186442c9f684161`: the exact resident-loop focused
+  command passed 2 files / 74 tests; `git diff --check` passed; and
+  `npm run factory:check` passed.
+- The single retained coordinator `npm run verify` exited 0: typecheck passed;
+  190 test files passed (3 skipped); 2,244 tests passed (5 skipped); Vite
+  production build passed; and factory-readiness passed. SQLite experimental
+  and existing Vite chunk-size warnings were non-failing.
+- W1-119 is now integrated and verified. The next permitted dependent action
+  is a fresh isolated Task120 restart from the clean coordinator descendant of
+  this record, preserving blocked claim `bb2c2059` as forward-only evidence.
+  W1-118 and Task136 remain stopped pending Task120's independently reviewed
+  merged SHA; `neo` remains untouched.
