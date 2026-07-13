@@ -136,3 +136,98 @@ plan, and Cestus invariants. The current status is `ready-for-review` pending
 that fresh review. This author does not self-approve, dispatch a production
 worker, change shared contracts, run a provider, merge into `neo`, or advance
 through CF-1.
+
+## Forward-Only Lifecycle-Seam And Audit Repair — 2026-07-13
+
+- Repair authorization: the coordinator-issued authorization recorded in
+  `RV-0-W-006` permits Task 111 lifecycle-seam and audit-strengthening repair
+  only, from plan head `9083a51d8e84a4a57197f6e287405b62e28dc82e`, under the
+  approved Lane W spec `2620e51e4888a0884fb6d3eb4766e92736688efb` and governing
+  plan `0b5726ec975bdc0aae97e540472ef3be4379b358`. It explicitly permits
+  `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD,
+  fresh review, and verification-before-completion; it stops before Tasks
+  124/125/137, CF-1 implementation, production work, provider invocation, or
+  any merge. No merge into `neo` is authorized.
+- Scope: only this claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md`
+  changed. Historical Task 111 claim evidence and the `RV-0-W-006` review
+  record remain immutable.
+- Root cause: the original plan described lease and reconciliation semantics
+  without narrow typed ports or a single auditable admission order. Its
+  heading-only audit could therefore pass after removal/substitution of those
+  seams, reconciliation readback, stop behavior, the lease-held versus
+  unavailable distinction, or task-local RED/GREEN obligations.
+- Repair contract: the plan now proposes CF-1-frozen
+  `DurableSupervisorLeasePort` and `ActiveClaimReconciliationPort` interfaces
+  with safe typed readback DTOs and no raw ledger/general append boundary. It
+  freezes the documented admission order: mounted authority/identity
+  revalidation → lease read/acquire/readback → policy/lock/high-water
+  validation → active-claim release/checkpoint append/readback → resume or
+  bounded recovery wake. A valid competing lease preserves workspace
+  `available` and reports only `supervisor-lease-held`; unavailable authority
+  permits no fallback, takeover, append, or wake.
+- Required Task 124/125/137 evidence added: deterministic typed-port ordering,
+  idempotent reconnect/replay, mount-mismatch fail-closed, and `stop()` /
+  service-epoch counterfactuals. The latter requires intake closure,
+  timer/watcher cancellation, authority invalidation, durable/resumable current
+  state, zero post-stop wake/provider/tool/artifact/ledger/fallback activity,
+  and restart only through fresh authority/reconciliation admission.
+
+### Repair Documentation RED/GREEN
+
+The superseding audit is the exact script in the plan's
+`## Section-Local Documentation Audit Contract`; it derives bounded sections,
+examines the actual port interfaces, and runs eight in-memory counterfactuals.
+This wrapper executes that stored script verbatim rather than reintroducing a
+claim-local heading/global-presence scan:
+
+```bash
+node --input-type=module <<'RUNNER'
+import { readFileSync } from "node:fs";
+const plan = readFileSync("docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md", "utf8");
+const marker = "node --input-type=module <<'NODE'\n";
+const start = plan.indexOf(marker, plan.indexOf("## Section-Local Documentation Audit Contract"));
+const end = plan.indexOf("\nNODE\n```", start + marker.length);
+if (start < 0 || end < 0) throw new Error("stored audit block missing");
+await import(`data:text/javascript,${encodeURIComponent(plan.slice(start + marker.length, end))}`);
+RUNNER
+```
+
+- RED: before this repair, the same required seam audit exited 1 with
+  `RED: Task 111 lifecycle seam audit failed: typed lease seam: missing export interface DurableSupervisorLeasePort`.
+- GREEN: the stored section-local audit exited 0 with
+  `GREEN: Task 111 section-local lifecycle audit passed (8 counterfactuals rejected).`
+  It rejects removal/substitution of the lease port, reconciliation
+  append/readback, admission order, lease-held availability distinction, stop
+  test, mount-mismatch proof, no-fallback proof, and Task 137 gate.
+- Pending before repair commit: `git diff --check`, `npm run factory:check`,
+  `npm run verify`, narrow owned-file/self-review, then fresh independent
+  re-review. This repairer will not self-approve.
+
+### Repair Verification Evidence
+
+- Dependency recovery: the first fresh `npm run verify` exited 127 before
+  typecheck with `sh: line 1: tsc: command not found`. Root-cause inspection
+  showed this isolated worktree had no installed root TypeScript dependency;
+  the lockfile still declares it. `npm ci --ignore-scripts` restored the
+  ignored, lockfile-pinned dependency tree without changing tracked files, and
+  `npm ls typescript --depth=0` then reported `typescript@5.9.3`.
+- GREEN audit rerun: the exact plan audit and the claim wrapper each exited 0
+  with `GREEN: Task 111 section-local lifecycle audit passed (8
+  counterfactuals rejected).`
+- Full gates: `git diff --check` exited 0 with no output; `npm run
+  factory:check` exited 0 with `factory-readiness passed`; and the repaired
+  checkout's `CI=1 npm run verify` exited 0 with typecheck passed, 189 test
+  files passed with 3 skipped, 2,228 tests passed with 5 skipped, a successful
+  Vite build with its existing chunk-size warning, and factory readiness
+  passed. The Node SQLite experimental warnings were emitted by test workers
+  only; no verification failure occurred.
+- Narrow self-review: the only modified files are the two authorized
+  documentation files. The new evidence DTOs are all declared; the lease and
+  reconciliation interfaces expose typed readback methods only; the audit is
+  section-local and rejects the eight named counterfactuals; Task 124/125/137
+  retain exclusive file ownership, later live-provider limits, rollback,
+  no-fallback, and no-self-merge rules.
+- Repair status: ready for the coordinator to obtain the required fresh,
+  independent re-review after this one forward-only repair commit. No Task
+  124/125/137 or other production task was started.

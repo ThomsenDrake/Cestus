@@ -134,6 +134,133 @@ export interface WakeRuntimePort {
   }): Promise<AgentRuntimeWakeResultDto>;
 }
 
+/**
+ * CF-1 freezes this as the only supervisor-to-mounted-ledger lease seam.
+ * It deliberately exposes evidence DTOs, never a ledger, append function,
+ * workspace path, or mutable lease record.
+ */
+export interface DurableSupervisorLeasePort {
+  readOrAcquire(input: SupervisorLeaseAdmissionInput): Promise<SupervisorLeaseAdmission>;
+}
+
+export interface SupervisorLeaseAdmissionInput {
+  readonly authority: VerifiedWorkspaceAuthority;
+  readonly residentId: "agent_default";
+  readonly supervisorEpoch: string;
+  readonly causationId: string;
+  readonly correlationId: string;
+}
+
+export type SupervisorLeaseAdmission =
+  | {
+      readonly outcome: "acquired-and-read-back";
+      readonly readback: SupervisorLeaseReadbackEvidence;
+    }
+  | {
+      readonly outcome: "supervisor-lease-held";
+      readonly readback: SupervisorLeaseHeldEvidence;
+    };
+
+/**
+ * CF-1 freezes this as the only reconciliation seam. It cannot expose raw
+ * events or a general-purpose ledger append API; it accepts only a verified
+ * outage fact and returns only exact reconciliation readback evidence.
+ */
+export interface ActiveClaimReconciliationPort {
+  readByIdempotencyKey(input: ClaimReconciliationLookup): Promise<ClaimReconciliationReadback | undefined>;
+  appendAndReadBack(input: ClaimReconciliationAppend): Promise<ClaimReconciliationReadback>;
+}
+
+export interface ClaimReconciliationLookup {
+  readonly authority: VerifiedWorkspaceAuthority;
+  readonly reconciliationIdempotencyKey: string;
+  readonly workspaceId: string;
+  readonly residentId: "agent_default";
+  readonly supervisorEpoch: string;
+}
+
+export interface ClaimReconciliationAppend extends ClaimReconciliationLookup {
+  readonly observedActiveClaim: RevalidatedActiveClaimEvidence;
+  readonly outage: WorkspaceOutageObservation;
+  readonly policyAndLock: PolicyAndLockReadbackEvidence;
+  readonly highWater: HighWaterReadbackEvidence;
+}
+
+export interface CausationCorrelationEvidence {
+  readonly causationId: string;
+  readonly correlationId: string;
+}
+
+export interface SupervisorLeaseReadbackEvidence {
+  readonly schemaVersion: "resident-supervisor-lease-readback.v1";
+  readonly workspaceId: string;
+  readonly residentId: "agent_default";
+  readonly supervisorEpoch: string;
+  readonly leaseEventId: string;
+  readonly readbackEventId: string;
+  readonly expiresAt: string;
+  readonly causation: CausationCorrelationEvidence;
+}
+
+export interface SupervisorLeaseHeldEvidence {
+  readonly schemaVersion: "resident-supervisor-lease-held.v1";
+  readonly workspaceId: string;
+  readonly residentId: "agent_default";
+  readonly holderEpoch: string;
+  readonly leaseEventId: string;
+  readonly readbackEventId: string;
+  readonly expiresAt: string;
+}
+
+export interface PolicyAndLockReadbackEvidence {
+  readonly policyVersion: string;
+  readonly policyDigest: string;
+  readonly lockStateDigest: string;
+  readonly readbackEventId: string;
+}
+
+export interface HighWaterReadbackEvidence {
+  readonly highWaterMark: string;
+  readonly readbackEventId: string;
+}
+
+export interface RevalidatedActiveClaimEvidence {
+  readonly workspaceId: string;
+  readonly residentId: "agent_default";
+  readonly supervisorEpoch: string;
+  readonly claimId: string;
+  readonly attemptId: string;
+  readonly priorClaimEventId: string;
+  readonly priorClaimLeaseId: string;
+  readonly readbackEventId: string;
+  readonly causation: CausationCorrelationEvidence;
+}
+
+export interface WorkspaceOutageObservation {
+  readonly safeObservationId: string;
+  readonly observedAt: string;
+  readonly category:
+    | "workspace-unavailable"
+    | "workspace-identity-mismatch"
+    | "workspace-readback-failed";
+  readonly priorAuthorityEvidenceId: string;
+}
+
+export interface ClaimReconciliationReadback {
+  readonly schemaVersion: "resident-wake-workspace-unavailable.v1";
+  readonly workspaceId: string;
+  readonly residentId: "agent_default";
+  readonly supervisorEpoch: string;
+  readonly claimId: string;
+  readonly attemptId: string;
+  readonly claimDisposition: "released" | "checkpointed";
+  readonly resumable: true;
+  readonly reconciliationIdempotencyKey: string;
+  readonly reconciliationEventId: string;
+  readonly readbackEventId: string;
+  readonly causation: CausationCorrelationEvidence;
+}
+
 export interface WorkspaceAvailabilityAuthority {
   readonly contractVersion: "workspace-availability-authority.v1";
   inspect(): Promise<WorkspaceAvailabilityDto>;
@@ -162,6 +289,46 @@ export interface WakeSupervisor {
   stop(): Promise<void>;
 }
 ```
+
+The evidence types above are CF-1-owned strict, safe, opaque-reference DTOs.
+They bind the workspace, resident, epoch, policy version/digest, lock digest,
+causation, correlation, and mounted ledger high-water; they contain no raw
+ledger, event payload, workspace path, mutable claim object, provider/tool
+object, or serializable authority. CF-1 may give these names versioned aliases
+only by an append-only compatibility record that preserves their exact input,
+readback, and non-general-purpose boundaries.
+
+### CF-1-Frozen Lifecycle Admission And Stop Sequence
+
+For `start`, `resume`, and `recover`, Tasks 124 and 125 must record and test
+this exact order; no return value, cached authority, or prior process object
+may skip a step:
+
+1. revalidate mounted authority and manifest/workspace/resident identity;
+2. call `DurableSupervisorLeasePort.readOrAcquire()` and require its mounted
+   lease readback;
+3. validate the named operation's policy version/digest, active-lock digest,
+   and non-regressed mounted high-water from the same authority epoch;
+4. if an outage observation names an active claim, use only
+   `ActiveClaimReconciliationPort.readByIdempotencyKey()` or
+   `appendAndReadBack()` to release/checkpoint and read back that exact claim;
+5. only then may a resume or one bounded recovery wake enter `WakeRuntimePort`.
+
+`supervisor-lease-held` is a valid competing lease result, not unavailable
+authority: it preserves `WorkspaceAvailabilityState` as `available`, exposes
+only that fixed safe diagnostic, performs no wake or reconciliation append,
+and creates no fallback state. `workspace-unavailable` is reserved for failed
+authority/readback; it invalidates the authority and performs neither a lease
+takeover nor a reconciliation append until a later same-identity revalidation.
+
+`stop()` is terminal for the current in-memory service epoch: it closes intake,
+cancels timer and watcher registrations, aborts an in-flight wake before its
+next effect boundary, invalidates authority, and leaves only already-mounted
+durable/resumable state. It emits no wake, provider, tool, artifact, ledger,
+or fallback write after the stop boundary. A later service starts with a new
+epoch and fresh authority, lease, policy/lock/high-water, and reconciliation
+readbacks; it never revives a stopped authority, timer, watcher, prompt,
+runtime result, claim object, or callback.
 
 `VerifiedWorkspaceAuthority` is opaque, short-lived, monotonic, and
 non-serializable. `WakeStatusDto`, `WorkspaceAvailabilityDto`,
@@ -217,18 +384,22 @@ CF-1 W/R contract freeze merged
 - Create: `docs/agentic/claims/task-124-resident-full-vision-w1-wake-supervisor.md`
 
 **Dependencies:** Reviewed, merged CF-1 W contract; no direct local-runtime,
-filesystem, provider, tool-gateway, or browser dependency. Task 125 supplies a
-structurally conforming authority implementation later; Task 124 tests use a
-plain deterministic authority fake that exposes no storage path or write API.
+filesystem, provider, tool-gateway, browser, raw ledger, or raw claim
+dependency. Task 125 supplies structurally conforming authority, durable-lease,
+and active-claim-reconciliation ports later; Task 124 tests use plain
+deterministic fakes that expose only typed inputs, safe readback DTOs, and call
+traces, never a storage path or write API.
 
 **Interfaces:**
 
-- Consumes: `WakeRuntimePort`, `WorkspaceAvailabilityAuthority`, opaque
+- Consumes: `WakeRuntimePort`, `WorkspaceAvailabilityAuthority`,
+  `DurableSupervisorLeasePort`, `ActiveClaimReconciliationPort`, opaque
   `VerifiedWorkspaceAuthority`, injected `Clock`, `WakeTimer`, and bounded
   `WakeSignalSource` ports frozen by CF-1.
 - Produces: `createWakeSupervisor(input): WakeSupervisor`, strict DTO parse
-  functions, one lease/readback request per epoch, one active wake cycle, and
-  no more than one active recovery cycle.
+  functions, one typed lease/readback admission per epoch, exact
+  reconciliation readback before a resumed/recovery wake, one active wake
+  cycle, and no more than one active recovery cycle.
 - Does not produce: a daemon task queue, a provider/tool/ledger API, a route,
   a task/approval/handoff synthesizer, a filesystem fallback, or changes to
   `scheduler.ts`, `runtime.ts`, `runtime-types.ts`, or the default factory.
@@ -238,8 +409,9 @@ plain deterministic authority fake that exposes no storage path or write API.
   Create the task claim with status `in-progress`, CF-1 SHA, precise owned and
   forbidden files, fresh authorization, model record, and stop point. Add the
   focused test file with deterministic fakes for clock, timer, authority,
-  lease/readback recorder, and `WakeRuntimePort`. The fakes must expose call
-  counts rather than an implicit execution side effect.
+  `DurableSupervisorLeasePort`, `ActiveClaimReconciliationPort`, and
+  `WakeRuntimePort`. The fakes must expose typed call traces and counts rather
+  than an implicit execution side effect.
 
   ```ts
   it("coalesces burst signals and lets exactly one lease holder wake", async () => {
@@ -276,6 +448,23 @@ plain deterministic authority fake that exposes no storage path or write API.
     expect(harness.runtime.wakeCalls).toHaveLength(1);
     await expect(supervisor.status()).resolves.toMatchObject({ supervisorState: "paused" });
   });
+
+  it("admits resume only in the revalidate, lease-readback, validate, reconcile-readback, wake order", async () => {
+    const harness = createWakeSupervisorHarness({ outageObservedActiveClaim: true });
+    const supervisor = harness.createSupervisor("epoch_resume");
+
+    await supervisor.resume(harness.command("resume_1"));
+
+    expect(harness.trace).toEqual([
+      "authority.revalidate:resume",
+      "lease.readOrAcquire:acquired-and-read-back",
+      "authority.validate:policy-lock-high-water",
+      "reconciliation.readByIdempotencyKey",
+      "reconciliation.appendAndReadBack",
+      "runtime.wakeOnce:recovery"
+    ]);
+    expect(harness.runtime.wakeCalls).toHaveLength(1);
+  });
   ```
 
 - [ ] **Step 2: Run the focused RED command**
@@ -299,26 +488,35 @@ plain deterministic authority fake that exposes no storage path or write API.
   1. normalize and freeze a plain-data signal before storing it in the bounded
      mailbox; coalesce equal source/idempotency keys and reject a mailbox above
      the CF-1 finite maximum;
-  2. acquire or observe a mounted durable supervisor lease and require exact
-     mounted readback before `running`; another unexpired valid lease emits
-     only the fixed `supervisor-lease-held` diagnostic and never calls
-     `WakeRuntimePort`;
-  3. call `authority.revalidate({ operation: "wake", ... })` immediately
-     before a wake and again at the post-wake readback boundary; a failed grant
-     transitions to `workspace-unavailable` and clears the pending token;
-  4. call only `runtimePort.wakeOnce({ authority, signal, cancellation })`;
+  2. call only `DurableSupervisorLeasePort.readOrAcquire()` with a verified
+     authority and require exact mounted lease readback before `running`; an
+     unexpired valid competing lease yields only `supervisor-lease-held`, keeps
+     workspace state `available`, performs no reconciliation append, and never
+     calls `WakeRuntimePort`;
+  3. after lease readback, validate the exact policy version/digest, active-lock
+     digest, and non-regressed mounted high-water for the named operation;
+     then call `authority.revalidate({ operation: "wake", ... })` immediately
+     before a wake and again at the post-wake readback boundary. A failed grant
+     transitions to `workspace-unavailable`, clears the pending token, and
+     never treats a lease-held result as unavailable;
+  4. when an outage observation names an active claim, call only the typed
+     `ActiveClaimReconciliationPort` and require exact mounted release/checkpoint
+     readback before resume/recovery. It may first read a matching idempotency
+     key; it may append only after same-identity revalidation, and it must not
+     receive or retain a raw ledger, event, claim object, or general append API;
+  5. call only `runtimePort.wakeOnce({ authority, signal, cancellation })`;
      do not expose a scheduler, provider, tool, path, or mutable ledger object
      in the port input;
-  5. represent pause as `accepted` then `pause-pending`; close intake before a
+  6. represent pause as `accepted` then `pause-pending`; close intake before a
      new claim/effect boundary; publish `paused` only after a mounted paused
      event/readback; and preserve a blocked ephemeral diagnostic when the
      mount fails during quiescence;
-  6. make resume/recover fully revalidate, reconstruct only from mounted
-     state, renew/read back the lease, and issue at most one recovery wake;
-  7. bound recovery attempts by the frozen epoch/policy count and time window;
+  7. make resume/recover follow the frozen five-step admission sequence,
+     reconstruct only from mounted state, and issue at most one recovery wake;
+  8. bound recovery attempts by the frozen epoch/policy count and time window;
      transition to `unrecoverable` when exhausted and require an explicit
      supported recover command plus successful revalidation before leaving it;
-  8. convert every error path to one closed `WakeHealthDiagnosticDto` category
+  9. convert every error path to one closed `WakeHealthDiagnosticDto` category
      before an `await`, log, DTO projection, or append. No raw `Error` or
      unbounded error object reaches a public return value.
 
@@ -356,6 +554,38 @@ plain deterministic authority fake that exposes no storage path or write API.
     expect(() => parseWakeHealthDiagnostic(hostile)).toThrow();
     expect(getterCalls).toBe(0);
   });
+
+  it("stops intake and all local activity until a fresh authority and reconciliation admit a new epoch", async () => {
+    const harness = createWakeSupervisorHarness({ activeWake: "blocked-until-cancel" });
+    const first = harness.createSupervisor("epoch_stop_1");
+    await first.signal(harness.signal("event", "before_stop"));
+
+    await first.stop();
+    await first.signal(harness.signal("event", "after_stop"));
+    await harness.flush();
+
+    const stopStart = harness.trace.indexOf("intake.close");
+    expect(harness.trace.slice(stopStart)).toEqual([
+      "intake.close", "timer.cancel", "watcher.cancel", "authority.invalidate:shutdown", "wake.abort"
+    ]);
+    expect(harness.runtime.callsAfter("authority.invalidate:shutdown")).toEqual([]);
+    expect(harness.provider.callsAfterStop).toEqual([]);
+    expect(harness.tool.callsAfterStop).toEqual([]);
+    expect(harness.artifact.callsAfterStop).toEqual([]);
+    expect(harness.ledger.callsAfterStop).toEqual([]);
+    expect(harness.fallback.allWriteCalls()).toEqual([]);
+    expect(harness.currentState()).toMatchObject({ resumable: true, durable: true });
+
+    const second = harness.createFreshSupervisor("epoch_stop_2");
+    await second.resume(harness.command("resume_after_stop"));
+    expect(harness.secondEpoch.trace).toEqual([
+      "authority.revalidate:resume",
+      "lease.readOrAcquire:acquired-and-read-back",
+      "authority.validate:policy-lock-high-water",
+      "reconciliation.readByIdempotencyKey",
+      "runtime.wakeOnce:recovery"
+    ]);
+  });
   ```
 
   Run:
@@ -365,7 +595,9 @@ plain deterministic authority fake that exposes no storage path or write API.
   ```
 
   Expected: both focused files pass. The scheduler suite proves the supervisor
-  did not change its bounded approval-consuming behavior.
+  did not change its bounded approval-consuming behavior; the deterministic
+  order and stop cases prove no resume/recovery skips typed readback and no
+  stopped epoch emits later wake/provider/tool/artifact/ledger activity.
 
 - [ ] **Step 5: Run full gates, commit, and request a fresh review**
 
@@ -384,9 +616,11 @@ plain deterministic authority fake that exposes no storage path or write API.
   git commit -m "feat: add bounded wake supervisor"
   ```
 
-  A fresh reviewer must inspect authority-before-wake/readback-after-wake,
-  lease exclusivity, all state transitions, signal boundedness, pause labels,
-  recovery limits, diagnostics, and absence of provider/tool/fallback access.
+  A fresh reviewer must inspect authority-before-wake/readback-after-wake, the
+  typed lease/reconciliation-only seams and five-step order, lease exclusivity
+  and available-versus-unavailable distinction, all state transitions, stop
+  cancellation/invalidation, signal boundedness, pause labels, recovery limits,
+  diagnostics, and absence of provider/tool/fallback access.
 
 ## Task 125: Portable Workspace Availability And Claim Reconciliation
 
@@ -405,17 +639,39 @@ event-contract file outside CF-1's W assignment.
 
 **Interfaces:**
 
-- Consumes: `WorkspaceAvailabilityAuthority` from the CF-1 W contract,
+- Consumes: `WorkspaceAvailabilityAuthority` and the CF-1-frozen
+  `DurableSupervisorLeasePort` / `ActiveClaimReconciliationPort` contracts,
   `WorkspaceRevalidationInput`, layout and mounted-store readers, identity
-  reader, authoritative policy/lock reader, mounted ledger readback/append
-  port, and the frozen claim-reconciliation port.
-- Produces: `createPortableWorkspaceAvailabilityAuthority(input)`, a
-  `WorkspaceUnavailableResult` with closed safe categories, opaque authority
-  issuance/invalidation, bounded ephemeral outage observations, and exact
+  reader, authoritative policy/lock/high-water readers, and only narrow typed
+  mounted lease/reconciliation evidence adapters. It consumes no raw ledger,
+  generic append function, raw event, mutable claim, or workspace path port.
+- Produces: `createPortableWorkspaceAvailabilityAuthority(input)` together
+  with `PortableWorkspaceLifecyclePorts` containing the authority, durable
+  supervisor-lease port, and active-claim-reconciliation port; a
+  `WorkspaceUnavailableResult` with closed safe categories; opaque authority
+  issuance/invalidation; bounded ephemeral outage observations; and exact
   active-claim reconciliation readback.
 - Does not produce: internal storage, a cached authority resurrection,
   identity bootstrap/mutation, task creation, provider/tool invocation, claim
   reacquisition, synthetic completion, or a local recovery journal.
+
+```ts
+export interface PortableWorkspaceLifecyclePorts {
+  readonly authority: WorkspaceAvailabilityAuthority;
+  readonly supervisorLease: DurableSupervisorLeasePort;
+  readonly activeClaimReconciliation: ActiveClaimReconciliationPort;
+}
+
+export function createPortableWorkspaceLifecyclePorts(
+  input: PortableWorkspaceLifecycleInput
+): PortableWorkspaceLifecyclePorts;
+```
+
+`createPortableWorkspaceAvailabilityAuthority` may be the factory that builds
+this facade or CF-1 may select a compatibility-named facade, but Task 125 must
+not expose a raw mounted ledger or a general append capability to Task 124,
+Task 137, a route, or a browser consumer. Only these narrow ports cross the
+W-local lifecycle boundary.
 
 ### Same-Identity Revalidation And Active-Claim Reconciliation
 
@@ -426,17 +682,22 @@ claim, attempt, prior claim event/lease, prior authority evidence, high-water,
 policy, lock, causation, and correlation facts came from mounted readback.
 It makes zero append/write calls while unavailable.
 
-After reconnect, `revalidate()` must verify the same workspace identity,
-resident binding, mounted ledger/artifact identity, non-regressed high-water,
-policy version/digest, lock digest, supervisor lease, and the exact active
-claim/attempt before any release, checkpoint, wake, provider, tool, or artifact
-action. A changed identity, unreadable mount, missing claim/attempt, changed
-policy/locks, swapped artifact root, regressed high-water, or failed readback
-returns a specific safe blocked/unavailable result and makes no append.
+After reconnect, the supervised admission path must perform this exact ordered
+sequence: (1) `revalidate()` proves the same mounted workspace and resident
+identity; (2) `DurableSupervisorLeasePort.readOrAcquire()` reads/acquires and
+reads back the lease; (3) typed readers validate non-regressed high-water,
+policy version/digest, and lock digest for that lease/authority epoch; (4)
+`ActiveClaimReconciliationPort` reads an exact idempotency key or appends and
+reads back one release/checkpoint; and (5) only then can Task 124 resume or
+issue one recovery wake. A changed identity, unreadable mount, missing
+claim/attempt, changed policy/locks, swapped artifact root, regressed
+high-water, failed lease readback, or failed reconciliation readback returns a
+specific safe blocked/unavailable result and makes no append.
 
-Only successful same-identity revalidation may append and read back exactly one
-idempotent claim reconciliation. CF-1 freezes the final event name, but its
-payload must preserve this shape and semantics:
+Only successful same-identity revalidation and typed lease/policy/lock/high-
+water readback may append and read back exactly one idempotent claim
+reconciliation. CF-1 freezes the final event name, but its payload must
+preserve this shape and semantics:
 
 ```ts
 export interface WorkspaceUnavailableClaimReconciliationV1 {
@@ -510,6 +771,25 @@ execution lease.
     expect(reconciliation).toMatchObject({ claimId: fixture.claimId, attemptId: fixture.attemptId, outcome: "workspace-unavailable", resumable: true });
     expect(fixture.ledger.readBackByIdempotencyKey(reconciliation.reconciliationIdempotencyKey)).toEqual(reconciliation);
   });
+
+  it("fails closed on a mount mismatch and replays only a matching typed reconciliation readback", async () => {
+    const fixture = await createMountedLifecycleFixture({ activeClaim: true, outageObserved: true });
+    const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
+    fixture.mount.reconnectWrongIdentity();
+
+    await expect(ports.authority.revalidate(fixture.revalidate("resume"))).resolves.toMatchObject({ ok: false });
+    expect(fixture.trace).toEqual(["authority.revalidate:resume", "mount.identity-mismatch"]);
+    expect(fixture.lease.calls).toEqual([]);
+    expect(fixture.reconciliation.calls).toEqual([]);
+    expect(fixture.fallback.allWriteCalls()).toEqual([]);
+
+    fixture.mount.reconnectSameIdentity();
+    await fixture.completeAdmissionThroughPolicyLockAndHighWater(ports);
+    const first = await ports.activeClaimReconciliation.appendAndReadBack(fixture.reconciliationAppend());
+    const replay = await ports.activeClaimReconciliation.readByIdempotencyKey(fixture.reconciliationLookup());
+    expect(replay).toEqual(first);
+    expect(fixture.reconciliation.appendCalls).toHaveLength(1);
+  });
   ```
 
 - [ ] **Step 2: Run the focused RED command**
@@ -540,10 +820,17 @@ execution lease.
      have the expected identity; no alternative root is eligible;
   5. policy version/digest and rebuilt active lock digest satisfy the named
      operation; and
-  6. the supervisor lease is a separate mutual-exclusion fact and an active
-     conflicting lease blocks rather than clears or replaces it.
+  6. `DurableSupervisorLeasePort.readOrAcquire()` returns an exact mounted
+     lease readback. An active competing lease yields only
+     `supervisor-lease-held`, preserves workspace availability, causes no
+     reconciliation append or wake, and neither clears nor replaces that lease.
 
-  Grant only an opaque short-lived authority after all six facts succeed.
+  Grant only an opaque short-lived authority after the mount/identity facts
+  succeed. The supervision path then obtains lease readback and validates
+  high-water, policy, and locks before it uses either typed reconciliation
+  operation or a wake. An unavailable authority is distinct from
+  `supervisor-lease-held`: the former invalidates authority and permits no
+  lease takeover, append, wake, or fallback write.
   Invalidate it monotonically on mount watcher loss, layout/manifest change,
   read/write error, failed post-operation readback, lease loss, high-water
   contradiction, policy/lock change, or shutdown. An invalidated token can
@@ -593,6 +880,17 @@ is zero; the sentinel is an observer and cannot synthesize or mask state.
     expect(second).toEqual(first);
     expect(fixture.ledger.reconciliationAppendCalls).toHaveLength(1);
   });
+
+  it("does not attempt lease, reconciliation, or recovery when mounted identity mismatches", async () => {
+    const fixture = await createMountedLifecycleFixture({ activeClaim: true, outageObserved: true });
+    fixture.mount.reconnectWrongIdentity();
+
+    await expect(fixture.resumeAfterReconnect()).resolves.toMatchObject({ ok: false, unavailable: { category: "workspace-identity-mismatch" } });
+    expect(fixture.lease.readOrAcquireCalls).toEqual([]);
+    expect(fixture.reconciliation.allCalls()).toEqual([]);
+    expect(fixture.runtime.wakeCalls).toEqual([]);
+    expect(fixture.fallback.allWriteCalls()).toEqual([]);
+  });
   ```
 
   Also test disconnect before a wake, during a simulated provider/tool boundary,
@@ -624,9 +922,11 @@ is zero; the sentinel is an observer and cannot synthesize or mask state.
   ```
 
   A fresh reviewer must lead with any path-based authority shortcut, cached
-  capability reuse, append without exact mounted readback, incomplete
-  reconciliation binding, duplicate idempotency append, fallback write,
-  altered identity behavior, diagnostic leakage, or source ownership drift.
+  capability reuse, raw-ledger/raw-claim seam, lease without exact mounted
+  readback, an unavailable-versus-lease-held collapse, append without exact
+  mounted reconciliation readback, incomplete reconciliation binding, duplicate
+  idempotency append, fallback write, altered identity behavior, diagnostic
+  leakage, or source ownership drift.
 
 ## Task 137: Wake Supervisor Runtime Assembly
 
@@ -643,12 +943,14 @@ handoff contracts, P's configuration, L's policy, or the scheduler.
 
 **Interfaces:**
 
-- Consumes: the Task 124 supervisor, Task 125 authority adapter, and R's actual
-  mounted context/prompt/runner/artifact capabilities.
+- Consumes: the Task 124 supervisor, Task 125 authority/typed lease/typed
+  reconciliation ports, and R's actual mounted context/prompt/runner/artifact
+  capabilities.
 - Produces: `createWakeSupervisorRuntime(input): WakeSupervisorRuntime` and a
   narrow `SupervisionControlPort` that implements status, signal, pause,
   resume, recover, and service shutdown without accepting raw scheduler input,
-  workspace paths, tools, providers, policies, approvals, or force flags.
+  ledger/claim object, workspace paths, tools, providers, policies, approvals,
+  or force flags.
 - Does not produce: default runtime composition, browser transport, a provider
   call, a fresh workspace, or an in-memory recovery source.
 
@@ -704,11 +1006,12 @@ export interface SupervisionControlPort {
 
   Implement the runtime assembly so it creates one supervisor for the verified
   mounted workspace epoch, supplies a `WakeRuntimePort` that invokes the
-  existing composed wake only after authority grant, starts bounded polling and
-  watcher wiring, and forwards service lifecycle into the control port. Each
-  process restart constructs new supervisor/authority/runtime objects and
-  rebuilds claims/handoffs only from mounted durable state. A browser close is
-  not an input to `stop()`.
+  existing composed wake only after the frozen authority → typed lease
+  readback → policy/lock/high-water validation → typed reconciliation readback
+  admission sequence, starts bounded polling and watcher wiring, and forwards
+  service lifecycle into the control port. Each process restart constructs new
+  supervisor/authority/runtime objects and rebuilds claims/handoffs only from
+  mounted durable state. A browser close is not an input to `stop()`.
 
   A disconnect invalidates authority, stops intake, cancels work before an
   uncommitted effect boundary, preserves only the bounded ephemeral outage
@@ -731,6 +1034,29 @@ export interface SupervisionControlPort {
 
     await expect(runtime.control.status()).resolves.toMatchObject({ supervisorState: "paused" });
   });
+
+  it("stops the service epoch with no later local activity and permits restart only through fresh admission", async () => {
+    const fixture = await createMountedWakeRuntimeFixture({ activeWake: "blocked-until-cancel" });
+    const first = createWakeSupervisorRuntime(fixture.firstProcessInput());
+    await first.start();
+    await first.control.signal(fixture.signal("event", "before_stop"));
+
+    await first.stop();
+    await fixture.flush();
+
+    expect(fixture.firstProcess.stopTrace()).toEqual([
+      "intake.close", "timer.cancel", "watcher.cancel", "authority.invalidate:shutdown", "wake.abort"
+    ]);
+    expect(fixture.firstProcess.afterStopCalls()).toEqual({ wake: [], provider: [], tool: [], artifact: [], ledger: [] });
+    expect(fixture.fallback.allWriteCalls()).toEqual([]);
+
+    const second = createWakeSupervisorRuntime(fixture.freshProcessInput());
+    await second.start();
+    expect(fixture.secondProcess.admissionTrace()).toEqual([
+      "authority.revalidate", "lease.readOrAcquire:acquired-and-read-back",
+      "validate:policy-lock-high-water", "reconciliation.readByIdempotencyKey"
+    ]);
+  });
   ```
 
   Run:
@@ -741,8 +1067,9 @@ export interface SupervisionControlPort {
   ```
 
   Expected: focused and cross-lane suites pass, proving fresh-process recovery,
-  browser independence, mounted-only state, reconciliation-before-recovery,
-  status/readback truth, and no duplicated wake/claim path.
+  browser independence, mounted-only state, lease/policy/reconciliation-before-
+  recovery, status/readback truth, stop cancellation/invalidation, and no
+  duplicated wake/claim path.
 
 - [ ] **Step 5: Run full gates, commit, and request fresh review**
 
@@ -755,9 +1082,9 @@ export interface SupervisionControlPort {
   ```
 
   The fresh reviewer verifies that construction uses actual R-provided mounted
-  capabilities, no factory file changed, stop ownership remains service-side,
-  all recovery comes from readback, and the control port cannot smuggle an
-  execution primitive.
+  capabilities, no factory file changed, stop ownership remains service-side
+  and emits no later local activity, all recovery comes from fresh readback,
+  and the control port cannot smuggle an execution primitive.
 
 ## Task 141: U-Owned Supervision Routes And Panel
 
@@ -820,15 +1147,133 @@ port, or that exposes an unsafe diagnostic property.
 
 | Task | RED assertion and command | GREEN command | Required full evidence before commit |
 | --- | --- | --- | --- |
-| 124 | Import/contract tests for `createWakeSupervisor` fail before the module exists: `npm test -- packages/agent/test/wake-supervisor.test.ts packages/agent/test/scheduler.test.ts` | Same command passes state/lease/coalescing/pause/recovery/diagnostic cases. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
-| 125 | Import/contract tests for `createPortableWorkspaceAvailabilityAuthority` fail before the module exists: `npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts` | Same command passes mount/identity/high-water/store/policy/lock/reconciliation/no-fallback cases. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
-| 137 | Import/contract tests for `createWakeSupervisorRuntime` fail before the module exists: `npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/agent/test/wake-supervisor.test.ts` | `npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/agent/test/wake-supervisor.test.ts` passes. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
+| 124 | Import/contract tests for `createWakeSupervisor`, `DurableSupervisorLeasePort`, and `ActiveClaimReconciliationPort` fail before the module exists: `npm test -- packages/agent/test/wake-supervisor.test.ts packages/agent/test/scheduler.test.ts` | Same command passes typed-port admission order, lease-held/available distinction, state/lease/coalescing/pause/recovery/stop/diagnostic cases. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
+| 125 | Import/contract tests for `createPortableWorkspaceAvailabilityAuthority` and `PortableWorkspaceLifecyclePorts` fail before the module exists: `npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts` | Same command passes mount/identity/high-water/store/policy/lock/typed-reconciliation/idempotent-replay/no-fallback cases, including mount mismatch with no lease/reconcile/recovery call. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
+| 137 | Import/contract tests for `createWakeSupervisorRuntime` fail before the module exists: `npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/agent/test/wake-supervisor.test.ts` | `npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/agent/test/wake-supervisor.test.ts` passes typed admission, restart, and stop cancellation/invalidation cases. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh review. |
 | 141 / U | Strict route/control parser fails on missing module or unsafe envelopes: `npm test -- packages/ui/test/resident-supervision-panel.test.tsx packages/local-runtime/test/agent-supervision-routes.test.ts` | Same command passes status/command labels and rejection cases. | `git diff --check`; `npm run factory:check`; `npm run verify`; fresh U review and W semantic review. |
 
 Each claim records the actual exit code, safe concise result, committed SHA,
 rebase SHA, fresh reviewer task ID/verdict, and clean-worktree state. A task
 cannot replace RED with a non-failing smoke check, omit the named cross-lane
 suite, or commit before full evidence.
+
+## Section-Local Documentation Audit Contract
+
+Before the Task 111 documentation-only commit, run this exact audit from the
+repository root. It examines bounded sections rather than allowing a global
+heading match to satisfy an unrelated obligation. Its counterfactuals must all
+be rejected; changing the audit to a global `includes()`-only scan is a failed
+Task 111 contract.
+
+```bash
+node --input-type=module <<'NODE'
+import { readFileSync } from "node:fs";
+
+const path = "docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md";
+const source = readFileSync(path, "utf8");
+
+function section(text, heading) {
+  const start = text.indexOf(heading);
+  if (start < 0) throw new Error(`missing heading: ${heading}`);
+  const level = heading.match(/^(#+)/)?.[1].length ?? 0;
+  const rest = text.slice(start + heading.length);
+  const next = rest.search(new RegExp(`\\n#{1,${level}} `));
+  return text.slice(start, next < 0 ? undefined : start + heading.length + next);
+}
+
+function interfaceBlock(text, name) {
+  const marker = `export interface ${name} {`;
+  const start = text.indexOf(marker);
+  if (start < 0) throw new Error(`missing interface: ${name}`);
+  const end = text.indexOf("\n}", start);
+  if (end < 0) throw new Error(`unterminated interface: ${name}`);
+  return text.slice(start, end + 2);
+}
+
+function requireText(text, label, needle) {
+  if (!text.includes(needle)) throw new Error(`${label}: missing ${needle}`);
+}
+
+function rejectText(text, label, pattern) {
+  if (pattern.test(text)) throw new Error(`${label}: forbidden ${pattern}`);
+}
+
+function ordered(text, label, needles) {
+  let cursor = -1;
+  for (const needle of needles) {
+    const next = text.indexOf(needle, cursor + 1);
+    if (next < 0) throw new Error(`${label}: missing ${needle}`);
+    if (next < cursor) throw new Error(`${label}: wrong order at ${needle}`);
+    cursor = next;
+  }
+}
+
+function validate(plan) {
+  const frozen = section(plan, "### Planned Post-Freeze W Contract Surface");
+  const lifecycle = section(plan, "### CF-1-Frozen Lifecycle Admission And Stop Sequence");
+  const task124 = section(plan, "## Task 124: Wake Supervisor");
+  const task125 = section(plan, "## Task 125: Portable Workspace Availability And Claim Reconciliation");
+  const task137 = section(plan, "## Task 137: Wake Supervisor Runtime Assembly");
+  const matrix = section(plan, "## RED/GREEN Command Matrix");
+  const live = section(plan, "## Coordinator-Only Live Acceptance Posture");
+  const rollback = section(plan, "## Rollback And Stop Conditions");
+
+  const lease = interfaceBlock(frozen, "DurableSupervisorLeasePort");
+  const reconciliation = interfaceBlock(frozen, "ActiveClaimReconciliationPort");
+  requireText(lease, "lease port", "readOrAcquire(input: SupervisorLeaseAdmissionInput)");
+  requireText(reconciliation, "reconciliation port", "readByIdempotencyKey");
+  requireText(reconciliation, "reconciliation port", "appendAndReadBack");
+  rejectText(lease, "lease port", /readonly\\s+(raw)?ledger\\s*:/i);
+  rejectText(reconciliation, "reconciliation port", /readonly\\s+(raw)?(ledger|claim)\\s*:/i);
+  ordered(lifecycle, "frozen admission order", [
+    "1. revalidate mounted authority and manifest/workspace/resident identity;",
+    "2. call `DurableSupervisorLeasePort.readOrAcquire()`",
+    "3. validate the named operation's policy version/digest, active-lock digest,",
+    "4. if an outage observation names an active claim",
+    "5. only then may a resume or one bounded recovery wake enter `WakeRuntimePort`."
+  ]);
+  requireText(lifecycle, "lease-held distinction", "preserves `WorkspaceAvailabilityState` as `available`");
+  requireText(lifecycle, "lease-held distinction", "performs no wake or reconciliation append");
+  ordered(lifecycle, "unavailable distinction", ["`workspace-unavailable` is reserved for failed", "authority/readback; it invalidates the authority"]);
+  ordered(lifecycle, "stop boundary", ["it closes intake,", "cancels timer and watcher registrations"]);
+  requireText(lifecycle, "stop boundary", "no wake, provider, tool, artifact, ledger,");
+
+  for (const [label, text, needles] of [
+    ["Task 124", task124, ["DurableSupervisorLeasePort", "ActiveClaimReconciliationPort", "it(\"admits resume only", "it(\"stops intake", "npm test -- packages/agent/test/wake-supervisor.test.ts packages/agent/test/scheduler.test.ts"]],
+    ["Task 125", task125, ["PortableWorkspaceLifecyclePorts", "mount mismatch", "appendAndReadBack", "reads a matching prior reconciliation", "npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts"]],
+    ["Task 137", task137, ["typed lease/typed", "reconciliation readback", "it(\"stops the service epoch", "npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/agent/test/wake-supervisor.test.ts"]]
+  ]) for (const needle of needles) requireText(text, label, needle);
+
+  for (const needle of ["| 124 |", "typed-port admission order", "| 125 |", "idempotent-replay", "| 137 |", "stop cancellation/invalidation"]) requireText(matrix, "RED/GREEN matrix", needle);
+  requireText(task125, "no-fallback proof", "### No-Fallback Counterfactual Proof");
+  requireText(live, "live gate", "No Task 124, 125, 137, or 141 invocation calls a provider");
+  requireText(rollback, "rollback", "no fallback storage");
+}
+
+function mustRejectCounterfactual(label, mutate) {
+  try {
+    validate(mutate(source));
+  } catch {
+    return;
+  }
+  throw new Error(`counterfactual passed unexpectedly: ${label}`);
+}
+
+validate(source);
+for (const [label, mutate] of [
+  ["remove lease port", text => text.replace("export interface DurableSupervisorLeasePort {", "export interface RemovedLeasePort {")],
+  ["remove reconciliation append/readback", text => text.replace("appendAndReadBack", "appendWithoutReadback")],
+  ["reverse admission order", text => text.replace("1. revalidate mounted authority and manifest/workspace/resident identity;", "1. issue a recovery wake before mounted revalidation;")],
+  ["erase lease-held availability distinction", text => text.replace("preserves `WorkspaceAvailabilityState` as `available`", "sets workspace state unavailable")],
+  ["erase stop counterfactual", text => text.replace("it(\"stops intake", "it(\"stops later")],
+  ["erase mount mismatch proof", text => text.replace("mount mismatch", "mount changed")],
+  ["erase no-fallback proof", text => text.replace("### No-Fallback Counterfactual Proof", "### Removed Proof")],
+  ["erase Task 137 ownership/gate", text => text.replace("## Task 137: Wake Supervisor Runtime Assembly", "## Removed Task 137")]
+]) mustRejectCounterfactual(label, mutate);
+
+console.log("GREEN: Task 111 section-local lifecycle audit passed (8 counterfactuals rejected).");
+NODE
+```
 
 ## Fresh Review, Rebase, And Merge Gates
 
@@ -911,6 +1356,7 @@ a provider, model, credential, or claim of live success.
 | W-09 | Hostile diagnostic objects remain secret-safe and no getter runs. | 124/125 hostile-object parser tests and U 141 DTO/route parser tests. |
 | W-10 | Routes reject execution selectors/force fields and label actual effects. | U 141 tests against only `SupervisionControlPort`. |
 | W-11 | Every paused/recovered/reconciled completion has exact mounted event/readback evidence. | 124 lease/lifecycle tests, 125 idempotent reconciliation tests, and 137 service test. |
+| W-12 | Stop closes intake, cancels timer/watcher work, invalidates authority, preserves only mounted resumable state, and causes no later wake/provider/tool/artifact/ledger activity. | 124 deterministic stop counterfactual and 137 service-epoch restart test; second epoch requires fresh typed admission. |
 | A-01 | Mounted workspace survives fresh-process restart with zero fallback writes. | A acceptance fixture consumes reviewed 125/137 behavior. |
 | A-02 | Browser closure, restart, disconnect/reconnect, same-identity revalidation, and resumable claim recovery all hold in the served composition. | Coordinator-run A-02 after all dependency merges; safe evidence only. |
 
@@ -928,12 +1374,18 @@ a provider, model, credential, or claim of live success.
   documented rebases after contract changes.
 - **Interface consistency:** `WakeRuntimePort` is the sole supervisor-to-
   runtime execution seam; `WorkspaceAvailabilityAuthority` is the sole
-  authority seam; `SupervisionControlPort` is the sole route seam. The same
-  status, command, authority, and reconciliation names are used throughout.
+  authority seam; `DurableSupervisorLeasePort` and
+  `ActiveClaimReconciliationPort` are the only lifecycle ledger-adjacent seams
+  and expose only typed readback DTOs; `SupervisionControlPort` is the sole
+  route seam. The frozen admission order and available-versus-lease-held versus
+  unavailable distinction are named in Tasks 124, 125, 137, the matrix, and
+  the audit.
 - **Verification completeness:** Every executable task specifies an actual
   failing import/contract test, focused GREEN command, cross-lane command where
   needed, `git diff --check`, factory check, full verifier, commit scope, and
-  fresh review.
+  fresh review. The section-local audit rejects eight port/order/readback/stop/
+  lease-state/no-fallback/ownership counterfactuals instead of accepting global
+  heading presence.
 - **Scope and safety:** The plan contains no production change, no shared
   contract freeze, no live provider call, no newsroom/team expansion, and no
   fallback storage or self-merge path.
