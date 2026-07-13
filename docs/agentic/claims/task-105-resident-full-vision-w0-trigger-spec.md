@@ -343,3 +343,164 @@ console.log("GREEN: Task 105 final scope-derivation audit passed (" + required.l
   required. This repairer does not self-approve, begin Task 113 or production
   work, create an implementation plan, dispatch work, or merge into `neo` or
   an integration branch.
+
+## Coordinator Recovery RC-105-03 — Section-Local Admission-Scope Audit
+
+This forward-only recovery preserves every original Task 105 claim, review,
+and repair record. The earlier phrase that RC-105-02 was the final focused
+repair remains historical evidence. Under the later standing coordinator
+delegation, repair-count exhaustion is an internal recovery checkpoint rather
+than a user gate; this record supersedes only the prior `ready-for-review`
+status while the evidence defect is repaired.
+
+- Governing specification: `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9`.
+- Governing plan: `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec`.
+- Recovery authorization: coordinator-issued Task 105 append-only
+  documentation-only registry-history recovery. The allowed range is this one
+  verified recovery commit and a separately fresh model-pinned re-review. The
+  wave stop is before Task 113, Wave 0B, provider use, production work, and any
+  merge.
+- Process authorization: this recovery is explicitly authorized to use
+  `superpowers:subagent-driven-development`, documentation RED/GREEN, fresh
+  review, and verification-before-completion. The worker does not self-approve
+  or merge into `neo` or an integration branch.
+- Recovery worker: fresh Codex Lane T documentation recovery implementer,
+  using the coordinator/user-confirmed GPT-5.6 Terra / Extra High
+  configuration.
+- Recovery base: `ffb3a52abfbae1595a321c43b948961fa603d961`.
+- Owned files: this claim and
+  `docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md`.
+  Every other tracked file remains forbidden.
+- Root cause: RC-105-02 extracted `ProposedTriggerAdmissionScopeV1` but did
+  not use that extraction. Its selector and subject-binding assertions searched
+  the complete document, so prose outside the interface let its audit accept a
+  counterfactual that removed persisted selector fields from the interface.
+- Contract assessment: the existing specification already has the required
+  persisted non-optional `cooldownScopeSelector`, `budgetScopeSelector`, and
+  `policySubjectScope`, the conditional `scopedSubjectRef`, and the finite
+  external selector type. This recovery changes no product contract; it repairs
+  only the evidence gate that proves those facts section-locally.
+
+### Documentation RED
+
+Before this record's section-local audit existed, the following in-memory
+counterfactual deleted the three persisted selector/binding fields from only
+the fenced `ProposedTriggerAdmissionScopeV1` interface. The reproduced
+RC-105-02 style checks still accepted the weakened document because those words
+remained elsewhere in the specification.
+
+```bash
+node --input-type=module --eval '
+import fs from "node:fs";
+const path = "docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md";
+const spec = fs.readFileSync(path, "utf8");
+const interfaceStart = spec.indexOf("interface ProposedTriggerAdmissionScopeV1");
+const interfaceEnd = spec.indexOf("\n}", interfaceStart) + 2;
+const weakened = spec.slice(0, interfaceStart) + spec.slice(interfaceStart, interfaceEnd)
+  .replace("  cooldownScopeSelector: ProposedTriggerAdmissionScopeSelectorV1;\n", "")
+  .replace("  budgetScopeSelector: ProposedTriggerAdmissionScopeSelectorV1;\n", "")
+  .replace("  policySubjectScope: \"none\" | \"subject-ref\";\n", "")
+  + spec.slice(interfaceEnd);
+const priorAuditStillPasses = [
+  weakened.includes("admissionScope: ProposedTriggerAdmissionScopeV1"),
+  weakened.includes("type ProposedTriggerAdmissionScopeSelectorV1"),
+  weakened.includes("deriveAdmissionScope") && weakened.includes("authoritative policy") && weakened.includes("verified request"),
+  weakened.includes("cooldownScopeSelector") && weakened.includes("budgetScopeSelector"),
+  weakened.includes("must be equal") && weakened.includes("policy is invalid"),
+  /reconstruct the admission\s+scope/.test(weakened) && weakened.includes("exactly equal")
+].every(Boolean);
+if (priorAuditStillPasses) {
+  console.error("RED: RC-105-02 global-text audit accepts a ProposedTriggerAdmissionScopeV1 counterfactual with persisted cooldown, budget, and policy-subject selectors removed.");
+  process.exit(1);
+}
+console.log("Unexpected pass: historical audit rejected the weakened interface.");
+'
+```
+
+- Observed RED result: exit 1 with
+  `RED: RC-105-02 global-text audit accepts a ProposedTriggerAdmissionScopeV1 counterfactual with persisted cooldown, budget, and policy-subject selectors removed.`
+
+### Reproducible Section-Local GREEN Audit
+
+The replacement audit extracts the TypeScript fence that contains
+`ProposedTriggerAdmissionScopeV1`, then asserts exact field signatures inside
+that interface. It tests the finite selector type only in the surrounding
+fenced contract and requires the interface to reference that exact type rather
+than declare or widen it. The two global probes are limited to the separate
+derivation and readback-reconstruction clauses. Each in-memory counterfactual
+must fail the precise local assertion it violates.
+
+```bash
+node --input-type=module --eval '
+import fs from "node:fs";
+const spec = fs.readFileSync("docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md", "utf8");
+function extractScopeContract(candidate) {
+  const blocks = [...candidate.matchAll(/```ts\n([\s\S]*?)```/g)].map(([, block]) => block);
+  const contract = blocks.find((block) => /\binterface ProposedTriggerAdmissionScopeV1\s*\{/.test(block)) ?? "";
+  const scope = contract.match(/interface ProposedTriggerAdmissionScopeV1\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+  return { contract, scope };
+}
+function audit(candidate) {
+  const { contract, scope } = extractScopeContract(candidate);
+  const has = (name, signature) => new RegExp(`^\\s*${name}${signature}$`, "m").test(scope);
+  const subjectRelation = /`workspace-trigger` requires policy\s+`subjectScope: "none"` and stores no `scopedSubjectRef`\.\s+`workspace-trigger-subject` requires `subjectScope: "subject-ref"` and stores\s+the exact normalized request subject reference/.test(candidate);
+  return [
+    ["fenced admission-scope interface", Boolean(scope)],
+    ["finite external selector type", /(?:^|\n)type ProposedTriggerAdmissionScopeSelectorV1\s*=\s*\n\s*\| "workspace-trigger"\s*\n\s*\| "workspace-trigger-subject";/.test(contract) && !scope.includes("type ProposedTriggerAdmissionScopeSelectorV1")],
+    ["non-optional cooldown selector in scope", has("cooldownScopeSelector", ": ProposedTriggerAdmissionScopeSelectorV1;")],
+    ["non-optional budget selector in scope", has("budgetScopeSelector", ": ProposedTriggerAdmissionScopeSelectorV1;")],
+    ["non-optional policy subject binding in scope", has("policySubjectScope", String.raw`: "none" \| "subject-ref";`)],
+    ["conditional scoped subject reference", has("scopedSubjectRef", String.raw`\?: TriggerSubjectRef;`) && subjectRelation],
+    ["derivation clause", candidate.includes("`deriveAdmissionScope` uses only the verified request") && candidate.includes("mounted authoritative policy") && candidate.includes("candidate-selected or unknown field")],
+    ["reconstruction clause", candidate.includes("persisted in the request and also deterministically\nreconstructed at append and readback") && candidate.includes("persisted scope must be\nexactly equal")]
+  ].filter(([, ok]) => !ok).map(([name]) => name);
+}
+const required = audit(spec);
+const exactSelector = `type ProposedTriggerAdmissionScopeSelectorV1 =
+  | "workspace-trigger"
+  | "workspace-trigger-subject";`;
+const variants = [
+  ["delete cooldown selector", (candidate) => candidate.replace("  cooldownScopeSelector: ProposedTriggerAdmissionScopeSelectorV1;\n", ""), "non-optional cooldown selector in scope"],
+  ["optional cooldown selector", (candidate) => candidate.replace("  cooldownScopeSelector:", "  cooldownScopeSelector?:"), "non-optional cooldown selector in scope"],
+  ["delete budget selector", (candidate) => candidate.replace("  budgetScopeSelector: ProposedTriggerAdmissionScopeSelectorV1;\n", ""), "non-optional budget selector in scope"],
+  ["optional budget selector", (candidate) => candidate.replace("  budgetScopeSelector:", "  budgetScopeSelector?:"), "non-optional budget selector in scope"],
+  ["delete policy subject binding", (candidate) => candidate.replace("  policySubjectScope: \"none\" | \"subject-ref\";\n", ""), "non-optional policy subject binding in scope"],
+  ["optional policy subject binding", (candidate) => candidate.replace("  policySubjectScope:", "  policySubjectScope?:"), "non-optional policy subject binding in scope"],
+  ["delete conditional subject reference", (candidate) => candidate.replace("  scopedSubjectRef?: TriggerSubjectRef;\n", ""), "conditional scoped subject reference"],
+  ["make subject reference unconditional", (candidate) => candidate.replace("  scopedSubjectRef?:", "  scopedSubjectRef:"), "conditional scoped subject reference"],
+  ["widen selector type", (candidate) => candidate.replace(exactSelector, "type ProposedTriggerAdmissionScopeSelectorV1 = string;"), "finite external selector type"]
+];
+const counterfactualFailures = variants.filter(([, mutate, expected]) => !audit(mutate(spec)).includes(expected)).map(([name]) => name);
+if (required.length || counterfactualFailures.length) {
+  console.error(`RED: section-local admission-scope audit missing: ${[...required, ...counterfactualFailures.map((name) => `counterfactual rejected: ${name}`)].join(", ")}`);
+  process.exit(1);
+}
+console.log(`GREEN: section-local admission-scope audit passed (8 direct assertions; ${variants.length} counterfactuals rejected).`);
+'
+```
+
+- GREEN result: exit 0 with
+  `GREEN: section-local admission-scope audit passed (8 direct assertions; 9 counterfactuals rejected).`
+- Dependency restoration: this isolated worktree initially lacked its
+  lockfile-pinned `tsc` binary. `npm ci --ignore-scripts` restored dependencies
+  without changing tracked files; it is not a product or contract change.
+- Whitespace: `git diff --check` exited 0 with no output.
+- Factory readiness: `npm run factory:check` exited 0 with
+  `factory-readiness passed`.
+- Full verification: `npm run verify` exited 0 with typecheck passed, 189 test
+  files passed with 3 skipped, 2,228 tests passed with 5 skipped, a successful
+  Vite production build (with the existing chunk-size warning), and
+  `factory-readiness passed`.
+- Live-provider gate: not applicable. The trigger specification forbids model
+  and provider invocation; this recovery makes no provider call.
+- Recovery self-review: the audit now proves all persisted selectors from the
+  extracted interface rather than document-global prose. It rejects deletion
+  and optionalization of each non-optional selector/binding, deletion or
+  unconditionalization of the conditional subject reference, and a widened
+  selector type. It does not modify the existing contract or weaken the
+  append-only, provenance, reconstruction, no-effect, no-fallback, approval,
+  handoff, secret-safe, ownership, or out-of-scope team invariants.
+- Recovery status: ready-for-review. A separately fresh model-pinned reviewer
+  must review this commit. This recovery does not self-approve, start Task 113
+  or Wave 0B, implement production work, invoke a provider, or merge into
+  `neo` or an integration branch.
