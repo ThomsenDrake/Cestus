@@ -87,3 +87,58 @@ it does not release, repair, or redefine the shared contract.
 
 Status: `in-progress` only in this fresh isolated restart; the earlier blocked
 claim remains durable evidence and is not production authorization.
+
+## Restart RED Evidence
+
+- The restart author re-read the W1-119 canonical resident-loop registrations,
+  parser/readback fixture, CF-1 `CF1-L-PLAN`, `CF1-L-OBS`, `CF1-L-STEP`, and
+  `CF1-L-POLICY` rows, the governing program spec/plan, and this preserved
+  blocked claim before writing a new test.
+- The first focused RED adds Task120-only contract and projection tests that
+  require a canonical plan append/readback, an observation that is bound to
+  that exact plan event, idempotent plan records, rejection of forged or
+  cross-run plan provenance before append, and a ledger-rebuilt projection.
+  The exact focused command follows immediately; no production source exists
+  yet and no shared ontology contract, shadow store, provider, tool, PRR,
+  graph, or external effect is authorized.
+- Environment recovery: this isolated worktree initially had no ignored
+  `node_modules/.bin/vitest`; `npm ci --ignore-scripts` restored only
+  lockfile-pinned ignored dependencies and left every tracked dependency file
+  unchanged.
+- Focused RED (after environment recovery):
+  `npm test -- packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts`
+  exited `1` because both suites could not import the absent
+  `../src/plan-observation-contracts.js`. This is the expected missing-Task120
+  implementation failure, before any production source was written.
+
+## Restart GREEN And Verification Evidence
+
+- GREEN implementation adds only the two Task120 source files. The store
+  derives the canonical W1-119 resident-loop stream; it appends only
+  `agent.resident-plan.recorded.v1` and
+  `agent.resident-observation.recorded.v1`, asks the ledger to validate those
+  frozen contracts, and returns only exact durable stream readbacks. It rejects
+  forged/cross-run/authority/source-mismatched plan provenance before an
+  observation append and returns an exact plan idempotency readback without a
+  duplicate event.
+- The projection is pure and rebuilds only plan/observation facts from supplied
+  ledger events. Its direct stale-order RED initially returned `ready` for an
+  observation preceding its plan. The minimal repair processes the replay in
+  durable order and admits an observation only after its exact already-read
+  plan event; forged, stale-order, duplicate, or mismatched provenance blocks
+  the whole projection. It never appends an event or mutates accepted graph
+  state.
+- Final focused GREEN:
+  `npm test -- packages/agent/test/plan-observation-contracts.test.ts packages/agent/test/plan-observation-projection.test.ts`
+  exited `0`: 2 test files and 6 tests passed. `git diff --check` exited `0`,
+  `npm run typecheck` printed `typecheck passed`, and `npm run factory:check`
+  printed `factory-readiness passed`.
+- One retained non-overlapping `npm run verify` completed with exit `0`:
+  typecheck passed; 192 test files passed and 3 skipped; 2,250 tests passed and
+  5 skipped; Vite production build passed; and factory readiness passed. The
+  observed SQLite experimental and existing Vite chunk-size warnings were
+  non-failing. No other Task120 full verifier was running.
+
+Status: `ready-for-fresh-independent-review`; this is author evidence only.
+No self-review, self-integration, W1-118/Task136 dispatch, or `neo` merge is
+authorized.
