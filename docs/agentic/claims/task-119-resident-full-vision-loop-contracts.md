@@ -190,3 +190,29 @@ Task119 candidates remain preserved, rejected, and unintegrated.
 - Status: ready-for-review. This root-cause candidate is limited to the three
   authorized files and requires a reviewer with no prior Task119 author or
   reviewer role before any coordinator integration.
+
+## Coordinator Bounded Public-Boundary Repair
+
+- Independent review rejected `28b09362eaa219dedd9abcefd6a001ad973534fc`:
+  the `validateKnowledgeEvent` wrapper normalizes safely, but exported public
+  `knowledgeEventSchema.safeParse` still exposes the raw Zod object and reads
+  a throwing `payload` getter. That violates the same strict public-boundary
+  contract and must not be treated as an acceptable wrapper-only fix.
+- This is the first bounded repair within the changed-tactic root lane. The
+  root-lane author may repair only the existing three paths. Make the exported
+  schema itself normalize/reject before any raw event/payload property read or
+  internal Zod traversal (for example by keeping an internal raw parser
+  private and exporting only the normalized boundary). Parsing must consume
+  the one normalized snapshot and never reread caller-owned objects.
+- Add direct `knowledgeEventSchema.safeParse` RED/GREEN counterfactuals for a
+  top-level payload getter, a nested getter, and a reflective `ownKeys` trap;
+  each must return structured invalid without a getter/trap escape. Preserve
+  all existing snapshot, five-schema, ordered ledger replay, prior-event
+  linkage, and no-effect guarantees. Run focused/diff/factory and one retained
+  full verification, commit scoped work, then stop for a fresh reviewer who
+  has held no prior Task119 author or reviewer role. Standing SDD, TDD, and
+  verification-before-completion authority applies; self-integration and
+  `neo` remain forbidden.
+
+Status: in-progress in this bounded public-boundary repair; `28b09362` remains
+rejected and unintegrated.
