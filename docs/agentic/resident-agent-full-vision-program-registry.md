@@ -1324,6 +1324,30 @@ explicit implementation authorization.
 - Root-cause checkpoint: failures were documentation-harness construction defects, not approved Trigger contract defects. The recovery changes both worker and test harness form; no user decision is needed.
 - Supersession: this record supersedes RV-0-T-007 only for Task113 recovery status. The original dispatch and preserved draft evidence remain immutable.
 
+## RV-0-T-009 — Task 113 trigger-semantics and no-effect repair dispatch
+
+- Recorded at: 2026-07-13T02:52:00Z
+- Role: coordinator
+- Lane and wave: T / 0B
+- Task ID and claim: task-113-resident-full-vision-w0-trigger-plan / docs/agentic/claims/task-113-resident-full-vision-w0-trigger-plan.md
+- Task thread ID: /root/task113_trigger_plan_recovery (recovery author); /root/review_task113_plan_recovery (fresh reviewer); /root/task113_trigger_plan_repair (fresh repairer)
+- Branch and worktree: codex/task-113-resident-full-vision-w0-trigger-plan-repair / /home/drake/.codex/worktrees/task-113-resident-full-vision-w0-trigger-plan-repair
+- Base commit and required head: 4ff79542 / one forward-only repair commit plus fresh review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed; reported GPT-5 satisfies it per user direction
+- Governing spec and plan: Trigger design @9a571f628bef9c53725e20263cb687ec44dd9cd8; program plan @0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: proactive-trigger implementation plan; Task113 claim. Forbidden: every other tracked file.
+- Approval record: coordinator authorizes Task113 trigger-semantics/no-effect repair only, explicitly using superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. Stop after one verified repair and fresh re-review before Tasks149–151, CF1 implementation, production/provider work, dispatch, or merge. No merge into neo.
+- Claim status: repairing; append evidence only.
+- RED command and observed failure: review found plan lacks order-invariant sourceRefs fingerprint proof, equal admissionScope/gateKey plus losing-candidate fresh re-evaluation proof, and complete reject-before-activity/adoption-revalidation coverage for all forbidden trigger inputs.
+- GREEN command and observed result: pending section-local repair audit that mutates each exact clause and named owner/command.
+- Full verification: pending repair-owned npm run verify.
+- Live-provider gate: plan-only; no provider invocation.
+- Review verdict: needs-changes / fresh reviewer /root/review_task113_plan_recovery; fresh re-review required.
+- Rebase record: repair starts from 4ff79542 in distinct worktree.
+- Merge readiness: not-ready; no self-merge into neo.
+- Archive check: original/recovery evidence preserved; repair verification/review/integration required.
+- Supersession: status only for RV-0-T-008; all prior evidence immutable.
+
 ## RV-0-W-011 — Task 111 canonical-record completeness recovery dispatch
 
 - Recorded at: 2026-07-13T02:43:00Z
