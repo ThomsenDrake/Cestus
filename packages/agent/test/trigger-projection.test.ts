@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { buildTriggerGateKey, deriveAdmissionScope } from "../src/proactive-triggers.js";
+import type { KnowledgeEventOf } from "../../ontology/src/contracts.js";
+import {
+  buildTriggerGateKey,
+  deriveAdmissionScope,
+  deriveTriggerRequestIdentity,
+  type MountedTriggerPolicy
+} from "../src/proactive-triggers.js";
 import { buildTriggerRequestProjection, type TriggerPolicyReadback } from "../src/trigger-projection.js";
 
 const hash = (letter: string): `sha256:${string}` => `sha256:${letter.repeat(64)}`;
 
-const policy = {
+const policy: MountedTriggerPolicy = {
   policyVersion: "1",
   policyArtifactHash: hash("c"),
   cooldownMs: 0,
@@ -16,7 +22,10 @@ const policy = {
   budgetScopeSelector: "workspace-trigger"
 };
 
-function requestEvent(sequence = 4, overrides: Record<string, unknown> = {}) {
+function requestEvent(
+  sequence = 4,
+  overrides: Record<string, unknown> = {}
+): KnowledgeEventOf<"agent.trigger.requested.v1"> {
   const source = {
     sourceEventId: `evt_projection_source_${sequence}`,
     sourceStreamId: "projection_source_stream",
@@ -44,12 +53,30 @@ function requestEvent(sequence = 4, overrides: Record<string, unknown> = {}) {
     sourceRefs: [source],
     requestedRunType: "prr-negotiation"
   };
-  const admissionScope = deriveAdmissionScope(policy, request);
-  const requestFingerprint = hash(sequence === 4 ? "a" : "b");
+  const sourceHighWaterMark = {
+    workspaceId: "ws_trigger_projection",
+    triggerId: "trigger_prr_monitor",
+    policyVersion: "1",
+    sourcePartition: "prr",
+    sourceStreamId: source.sourceStreamId,
+    sourceSequence: source.sourceSequence,
+    sourceEventId: source.sourceEventId
+  };
+  const verifiedRequest = {
+    ...request,
+    sourceHighWaterMark,
+    workspaceIdentityEventId: "evt_workspace_identity",
+    mountInstanceId: "mount_projection",
+    mountHash: hash("9"),
+    lockHash: hash("0"),
+    causationId: source.sourceEventId
+  };
+  const admissionScope = deriveAdmissionScope(policy, verifiedRequest);
+  const identity = deriveTriggerRequestIdentity(verifiedRequest);
   const payload = {
-    requestId: `trq_projection_${sequence}`,
-    dedupeKey: hash(sequence === 4 ? "1" : "2"),
-    requestFingerprint,
+    requestId: identity.requestId,
+    dedupeKey: identity.dedupeKey,
+    requestFingerprint: identity.requestFingerprint,
     admissionScope,
     triggerGateKey: buildTriggerGateKey(admissionScope),
     residentAgentId: "agent_default",
@@ -60,15 +87,7 @@ function requestEvent(sequence = 4, overrides: Record<string, unknown> = {}) {
     policyArtifactHash: hash("c"),
     subjectRef: request.subjectRef,
     sourceRefs: [source],
-    sourceHighWaterMark: {
-      workspaceId: "ws_trigger_projection",
-      triggerId: "trigger_prr_monitor",
-      policyVersion: "1",
-      sourcePartition: "prr",
-      sourceStreamId: source.sourceStreamId,
-      sourceSequence: source.sourceSequence,
-      sourceEventId: source.sourceEventId
-    },
+    sourceHighWaterMark,
     requestedRunType: "prr-negotiation",
     provenance: {
       descriptorRevision: "1",
@@ -80,7 +99,7 @@ function requestEvent(sequence = 4, overrides: Record<string, unknown> = {}) {
       lockHash: hash("0"),
       evaluationSourceEventIds: [source.sourceEventId],
       causationId: source.sourceEventId,
-      correlationId: `trq_projection_${sequence}`
+      correlationId: identity.requestId
     }
   };
   const event = {
@@ -93,13 +112,17 @@ function requestEvent(sequence = 4, overrides: Record<string, unknown> = {}) {
       actor: { id: "agent_default", kind: "agent", label: "Resident" },
       occurredAt: "2026-07-13T00:00:00.000Z",
       causationId: source.sourceEventId,
-      correlationId: `trq_projection_${sequence}`,
+      correlationId: identity.requestId,
       coreVersion: "0.1.0",
       packVersions: { core: "0.1.0", agent: "0.1.0" }
     },
     payload
   };
-  return { ...event, ...overrides, payload: { ...payload, ...(overrides.payload as Record<string, unknown> | undefined) } };
+  return {
+    ...event,
+    ...overrides,
+    payload: { ...payload, ...(overrides.payload as Record<string, unknown> | undefined) }
+  } as KnowledgeEventOf<"agent.trigger.requested.v1">;
 }
 
 function policyReadback(overrides: Record<string, unknown> = {}): TriggerPolicyReadback {

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { validateKnowledgeEvent } from "../../ontology/src/contracts.js";
 import {
   buildTriggerGateKey,
   canonicalTriggerIdentity,
@@ -8,8 +9,10 @@ import {
   evaluateResidentTrigger,
   verifiedRequestFields,
   type MountedTriggerAuthority,
+  type MountedTriggerPolicy,
   type TriggerEvaluationInput
 } from "../src/proactive-triggers.js";
+import { buildTriggerRequestProjection } from "../src/trigger-projection.js";
 
 const hash = (letter: string): `sha256:${string}` => `sha256:${letter.repeat(64)}`;
 
@@ -64,7 +67,7 @@ function candidate(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function policy(overrides: Record<string, unknown> = {}) {
+function policy(overrides: Record<string, unknown> = {}): MountedTriggerPolicy {
   return {
     policyVersion: "1",
     policyArtifactHash: hash("c"),
@@ -76,7 +79,7 @@ function policy(overrides: Record<string, unknown> = {}) {
     cooldownScopeSelector: "workspace-trigger",
     budgetScopeSelector: "workspace-trigger",
     ...overrides
-  };
+  } as MountedTriggerPolicy;
 }
 
 class MountedAuthorityFixture {
@@ -175,7 +178,11 @@ class MountedAuthorityFixture {
   }
 
   async readEventById(input: { readonly eventId: string }): Promise<unknown> {
-    return this.events.find((event) => event.id === input.eventId);
+    const event = this.events.find((candidate) => candidate.id === input.eventId);
+    const transform = this.options.readbackTransform;
+    return typeof transform === "function"
+      ? (transform as (value: unknown) => unknown)(JSON.parse(JSON.stringify(event)))
+      : event;
   }
 
   seed(event: any) { this.events.push(event); this.revision += 1; }
@@ -218,6 +225,54 @@ describe("resident proactive trigger evaluation", () => {
     expect(first).toMatchObject({ kind: "requested" });
     expect(second).toMatchObject({ kind: "duplicate", requestId: first.requestId, requestFingerprint: first.requestFingerprint });
     expect(authority.appendCount()).toBe(1);
+  });
+
+  it("persists the verified mounted policy partition instead of a source kind", async () => {
+    const authority = new MountedAuthorityFixture({ policy: { sourcePartition: "mounted-prr-policy" } });
+    const result = await evaluateResidentTrigger(evaluation({ authority }));
+    expect(result.kind).toBe("requested");
+    expect(authority.events[0]?.payload.sourceHighWaterMark.sourcePartition).toBe("mounted-prr-policy");
+    expect(authority.events[0]?.payload.admissionScope.policySourcePartition).toBe("mounted-prr-policy");
+  });
+
+  it("preserves canonical first-source causation through multi-source append and replay", async () => {
+    const authority = new MountedAuthorityFixture();
+    const result = await evaluateResidentTrigger(evaluation({
+      authority,
+      candidate: candidate({ sourceRefs: [source(5), source(4)] })
+    }));
+    const event = authority.events[0];
+    expect(result.kind).toBe("requested");
+    expect(event.payload.sourceRefs.map((item: ReturnType<typeof source>) => item.sourceEventId)).toEqual(["evt_source_4", "evt_source_5"]);
+    expect(event.payload.provenance.causationId).toBe("evt_source_4");
+    expect(event.payload.sourceHighWaterMark.sourceEventId).toBe("evt_source_5");
+    expect(validateKnowledgeEvent(event)).toMatchObject({ success: true });
+    expect(buildTriggerRequestProjection([event], {
+      readPolicy: () => authority.policy(),
+      verifyAuthority: () => true,
+      verifySource: () => true
+    })).toMatchObject({ state: "ready", records: [{ eventId: event.id }] });
+  });
+
+  it("rejects persisted mount, lock, identity, and high-water swaps during exact readback", async () => {
+    const transforms = [
+      (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, mountInstanceId: "mount_swapped" } } }),
+      (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, mountHash: hash("9") } } }),
+      (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, lockHash: hash("8") } } }),
+      (event: any) => ({ ...event, payload: { ...event.payload, provenance: { ...event.payload.provenance, workspaceIdentityEventId: "evt_workspace_identity_swapped" } } }),
+      (event: any) => ({
+        ...event,
+        payload: {
+          ...event.payload,
+          sourceHighWaterMark: { ...event.payload.sourceHighWaterMark, sourceEventId: "evt_source_swapped" }
+        }
+      })
+    ];
+    for (const readbackTransform of transforms) {
+      const authority = new MountedAuthorityFixture({ readbackTransform });
+      expect((await evaluateResidentTrigger(evaluation({ authority }))).kind).toBe("invalid-scope");
+      expect(authority.appendCount()).toBe(1);
+    }
   });
 
   it("canonicalizes reversed sourceRefs to one fingerprint, request ID, and dedupe key", () => {

@@ -5,6 +5,7 @@ import {
 } from "../../ontology/src/contracts.js";
 import {
   buildTriggerGateKey,
+  deriveTriggerRequestIdentity,
   deriveAdmissionScope,
   type MountedTriggerPolicy,
   type ProposedTriggerAdmissionScopeV1,
@@ -122,14 +123,20 @@ export function buildTriggerRequestProjection(
 
 function reconstructsExactly(event: TriggerRequestEvent, policy: MountedTriggerPolicy): boolean {
   const payload = event.payload;
+  const request = requestFields(payload);
   let scope: ProposedTriggerAdmissionScopeV1;
+  let identity: ReturnType<typeof deriveTriggerRequestIdentity>;
   try {
-    scope = deriveAdmissionScope(policy, requestFields(payload));
+    scope = deriveAdmissionScope(policy, request);
+    identity = deriveTriggerRequestIdentity(request);
   } catch {
     return false;
   }
   return sameScope(scope, payload.admissionScope) &&
     payload.triggerGateKey === buildTriggerGateKey(scope) &&
+    payload.requestFingerprint === identity.requestFingerprint &&
+    payload.requestId === identity.requestId &&
+    payload.dedupeKey === identity.dedupeKey &&
     payload.sourceHighWaterMark.workspaceId === payload.workspaceId &&
     payload.sourceHighWaterMark.triggerId === payload.triggerId &&
     payload.sourceHighWaterMark.policyVersion === payload.policyVersion &&

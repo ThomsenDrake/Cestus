@@ -181,6 +181,12 @@ export type TriggerDecision = Readonly<{
   readonly diagnostic: TriggerSafeDiagnostic;
 }>;
 
+export type TriggerRequestIdentity = Readonly<{
+  requestFingerprint: `sha256:${string}`;
+  requestId: string;
+  dedupeKey: `sha256:${string}`;
+}>;
+
 type NormalizedEvaluation = Readonly<{
   descriptor: ResidentTriggerDescriptor;
   candidate: VerifiedTriggerCandidate;
@@ -198,7 +204,7 @@ const candidateKeys = new Set([
 
 export function verifiedRequestFields(input: TriggerEvaluationInput): VerifiedTriggerRequestFields {
   const normalized = normalizeTriggerEvaluationInput(input);
-  return requestFields(normalized.descriptor, normalized.candidate);
+  return requestFields(normalized.descriptor, normalized.candidate, normalized.candidate.sourceHighWaterMark.sourcePartition);
 }
 
 export function deriveAdmissionScope(
@@ -259,7 +265,11 @@ export function canonicalTriggerIdentity(input: TriggerEvaluationInput): Readonl
   dedupeKey: `sha256:${string}`;
 }> {
   const normalized = normalizeTriggerEvaluationInput(input);
-  const request = requestFields(normalized.descriptor, normalized.candidate);
+  const request = requestFields(normalized.descriptor, normalized.candidate, normalized.candidate.sourceHighWaterMark.sourcePartition);
+  return deriveTriggerRequestIdentity(request);
+}
+
+export function deriveTriggerRequestIdentity(request: VerifiedTriggerRequestFields): TriggerRequestIdentity {
   const requestFingerprint = buildTriggerRequestFingerprint(fingerprintInput(request));
   return freeze({
     requestFingerprint,
@@ -307,7 +317,10 @@ export async function evaluateResidentTrigger(input: TriggerEvaluationInput): Pr
     const identity = identityFor(verified.request);
     const existing = inspectExisting(snapshot.requests, scope, identity, normalized.attemptedAt, snapshot.policy!);
     if (existing !== undefined) {
-      if (existing.kind === "duplicate") return await readbackTriggerDecision(normalized.authority, snapshot.policy!, existing.eventId, identity, scope, "duplicate");
+      if (existing.kind === "duplicate") {
+        if (existing.eventId === undefined) return safeDecision("readback-failed");
+        return await readbackTriggerDecision(normalized.authority, snapshot.policy!, existing.eventId, verified.request, identity, scope, "duplicate");
+      }
       return safeDecision(existing.kind, existing.notBefore);
     }
 
@@ -325,9 +338,9 @@ export async function evaluateResidentTrigger(input: TriggerEvaluationInput): Pr
     }
     if (appended.kind === "conflict") continue;
     if (appended.kind === "appended" || appended.kind === "duplicate") {
-      return await readbackTriggerDecision(normalized.authority, snapshot.policy!, appended.eventId, identity, scope, appended.kind === "appended" ? "requested" : "duplicate");
+      return await readbackTriggerDecision(normalized.authority, snapshot.policy!, appended.eventId, verified.request, identity, scope, appended.kind === "appended" ? "requested" : "duplicate");
     }
-    return safeDecision(appended.kind, appended.notBefore);
+    return safeDecision(appended.kind, "notBefore" in appended ? appended.notBefore : undefined);
   }
   return safeDecision("readback-failed");
 }
@@ -336,7 +349,8 @@ export async function readbackTriggerDecision(
   authority: MountedTriggerAuthority,
   policy: MountedTriggerPolicy,
   eventId: string,
-  identity: Readonly<{ requestFingerprint: `sha256:${string}`; requestId: string; dedupeKey: `sha256:${string}` }>,
+  expectedRequest: VerifiedTriggerRequestFields,
+  identity: TriggerRequestIdentity,
   expectedScope: ProposedTriggerAdmissionScopeV1,
   kind: "requested" | "duplicate"
 ): Promise<TriggerDecision> {
@@ -348,19 +362,27 @@ export async function readbackTriggerDecision(
   }
   const parsed = readbackPayload(event);
   if (parsed === undefined) return safeDecision("readback-failed");
+  let persistedRequest: VerifiedTriggerRequestFields;
   let reconstructed: ProposedTriggerAdmissionScopeV1;
+  let persistedIdentity: TriggerRequestIdentity;
   try {
-    reconstructed = deriveAdmissionScope(policy, requestFieldsFromPayload(parsed));
+    persistedRequest = requestFieldsFromPayload(parsed);
+    reconstructed = deriveAdmissionScope(policy, persistedRequest);
+    persistedIdentity = deriveTriggerRequestIdentity(persistedRequest);
   } catch {
     return safeDecision("invalid-scope");
   }
   if (
+    !sameVerifiedRequestFacts(persistedRequest, expectedRequest) ||
     !sameScope(parsed.admissionScope, expectedScope) ||
     !sameScope(parsed.admissionScope, reconstructed) ||
     parsed.triggerGateKey !== buildTriggerGateKey(reconstructed) ||
     parsed.requestFingerprint !== identity.requestFingerprint ||
     parsed.requestId !== identity.requestId ||
     parsed.dedupeKey !== identity.dedupeKey ||
+    parsed.requestFingerprint !== persistedIdentity.requestFingerprint ||
+    parsed.requestId !== persistedIdentity.requestId ||
+    parsed.dedupeKey !== persistedIdentity.dedupeKey ||
     parsed.residentAgentId !== "agent_default"
   ) return safeDecision("invalid-scope");
   return freeze({
@@ -416,7 +438,7 @@ function verifyMountedCandidate(normalized: NormalizedEvaluation, snapshot: Trig
   | { readonly ok: true; readonly request: VerifiedTriggerRequestFields }
   | { readonly ok: false; readonly kind: TriggerDecisionKind } {
   if (!snapshot.available || snapshot.policy === undefined) return { ok: false, kind: "workspace-unavailable" };
-  const request = requestFields(normalized.descriptor, normalized.candidate);
+  const request = requestFields(normalized.descriptor, normalized.candidate, snapshot.policy.sourcePartition);
   if (snapshot.lockActive) return { ok: false, kind: "ineligible" };
   if (
     snapshot.workspaceId !== request.workspaceId ||
@@ -435,7 +457,11 @@ function verifyMountedCandidate(normalized: NormalizedEvaluation, snapshot: Trig
   return { ok: true, request };
 }
 
-function requestFields(descriptor: ResidentTriggerDescriptor, candidate: VerifiedTriggerCandidate): VerifiedTriggerRequestFields {
+function requestFields(
+  descriptor: ResidentTriggerDescriptor,
+  candidate: VerifiedTriggerCandidate,
+  sourcePartition: string
+): VerifiedTriggerRequestFields {
   const sourceRefs = canonicalSources(candidate.sourceRefs);
   const high = sourceRefs[sourceRefs.length - 1];
   if (high === undefined) throw new Error("missing trigger sources");
@@ -443,7 +469,7 @@ function requestFields(descriptor: ResidentTriggerDescriptor, candidate: Verifie
     workspaceId: candidate.workspaceId,
     triggerId: descriptor.triggerId,
     policyVersion: descriptor.policyRef.policyVersion,
-    sourcePartition: sourceRefs[0]!.sourceKind,
+    sourcePartition,
     sourceStreamId: high.sourceStreamId,
     sourceSequence: high.sourceSequence,
     sourceEventId: high.sourceEventId
@@ -459,7 +485,7 @@ function requestFields(descriptor: ResidentTriggerDescriptor, candidate: Verifie
     mountInstanceId: candidate.mountInstanceId,
     mountHash: candidate.mountHash,
     lockHash: candidate.lockHash,
-    causationId: high.sourceEventId
+    causationId: sourceRefs[0]!.sourceEventId
   });
 }
 
@@ -488,14 +514,7 @@ function requestFieldsFromPayload(payload: ProposedTriggerRequest): VerifiedTrig
   });
 }
 
-function identityFor(request: VerifiedTriggerRequestFields) {
-  const requestFingerprint = buildTriggerRequestFingerprint(fingerprintInput(request));
-  return freeze({
-    requestFingerprint,
-    requestId: requestIdFor(requestFingerprint),
-    dedupeKey: sha256(canonicalJson({ dedupeVersion: "resident-trigger-dedupe.v1", requestFingerprint }))
-  });
-}
+const identityFor = deriveTriggerRequestIdentity;
 
 function fingerprintInput(request: VerifiedTriggerRequestFields): Record<string, unknown> {
   return {
@@ -534,7 +553,7 @@ function buildProposedTriggerRequest(
     policyVersion: request.descriptor.policyRef.policyVersion,
     policyArtifactHash: request.descriptor.policyRef.policyArtifactHash,
     subjectRef: request.subjectRef,
-    sourceRefs: request.sourceRefs,
+    sourceRefs: freeze(request.sourceRefs.map((source) => freeze({ ...source }))),
     sourceHighWaterMark: request.sourceHighWaterMark,
     requestedRunType: request.descriptor.requestedRunType,
     provenance: freeze({
@@ -660,6 +679,13 @@ function sameScope(left: ProposedTriggerAdmissionScopeV1, right: ProposedTrigger
   return canonicalJson(left as unknown as Record<string, unknown>) === canonicalJson(right as unknown as Record<string, unknown>);
 }
 
+function sameVerifiedRequestFacts(left: VerifiedTriggerRequestFields, right: VerifiedTriggerRequestFields): boolean {
+  return canonicalJson(fingerprintInput(left)) === canonicalJson(fingerprintInput(right)) &&
+    left.mountInstanceId === right.mountInstanceId &&
+    left.mountHash === right.mountHash &&
+    left.lockHash === right.lockHash;
+}
+
 function isSubject(value: unknown): value is TriggerSubjectRef {
   return isRecord(value) && typeof value.kind === "string" && typeof value.id === "string";
 }
@@ -693,7 +719,7 @@ function ownDataRecord(value: unknown, allowed: Set<string>, deep: boolean): Rec
   const keys = Reflect.ownKeys(value);
   if (keys.some((key) => typeof key !== "string" || !allowed.has(key))) throw new Error("unknown trigger field");
   const result: Record<string, unknown> = {};
-  for (const key of keys) {
+  for (const key of keys as string[]) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) throw new Error("unsafe trigger field");
     result[key] = deep ? normalizeData(descriptor.value) : descriptor.value;
@@ -718,7 +744,7 @@ function normalizeData(value: unknown): unknown {
   }
   if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new Error("unsafe object");
   const output: Record<string, unknown> = {};
-  for (const key of keys) {
+  for (const key of keys as string[]) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) throw new Error("unsafe object field");
     output[key] = normalizeData(descriptor.value);
