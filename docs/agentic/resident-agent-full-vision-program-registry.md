@@ -1246,3 +1246,53 @@ explicit implementation authorization.
 - Archive check: all author, repair, review, and root-cause evidence is retained; recovery handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
 - Root-cause checkpoint: the second recovery built a relation graph but did not establish a bijection between every admitted field and a tested relation edge. The approved contract remains satisfiable without a product/scope/safety/truth change. Recovery now changes tactic to a field-to-edge completeness matrix with generated relation mutations, not another partial hand-written graph or a user decision.
 - Supersession: this record supersedes RV-0-W-009 only for current recovery status and authorization. It preserves all preceding Task111 evidence as immutable history.
+
+## RV-0-L-005 — Task 112 bounded-loop implementation-plan dispatch
+
+- Recorded at: 2026-07-13T02:25:00Z
+- Role: coordinator
+- Lane and wave: L / 0B
+- Task ID and claim: task-112-resident-full-vision-w0-loop-plan / docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Task thread ID: /root/task112_loop_plan
+- Branch and worktree: codex/task-112-resident-full-vision-w0-loop-plan / /home/drake/.codex/worktrees/task-112-resident-full-vision-w0-loop-plan
+- Base commit and required head: a10cdcfc886709b9bb9c8ccbd66b6f7476260225 / one Task112 plan-and-claim commit from the coordinator dispatch-record branch head, followed by fresh review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md@baa980e04f126ce06f41398fc45169f112321e39; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md; docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: approved Lane L specification baa980e0; complete Wave0A; no CF-1 shared contract or production dependency applies
+- Approval record: coordinator-issued scoped authorization under Standing Coordinator Delegation authorizes Task112 only to produce its implementation plan and claim. Wave stop is verified plan commit plus fresh plan review and coordinator lane-plan approval, before Task120/136, CF-1 implementation dispatch, production/provider work, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: dispatched; worker must commit claim before editing plan.
+- RED command and observed failure: pending focused documentation audit for versioned plan/observation contracts, bounded steps/budgets/tool allowlists, approval suspension, terminal/resumable recovery, exact files/signatures/RED-GREEN/review/live/rollback/acceptance coverage.
+- GREEN command and observed result: pending focused audit, git diff --check, npm run factory:check, and npm run verify.
+- Full verification: pending worker-owned npm run verify before task commit.
+- Live-provider gate: plan-only; no provider invocation is authorized.
+- Review verdict: pending fresh Task112 plan review.
+- Rebase record: initial worktree starts at coordinator dispatch record; no cross-lane rebase before independent plan work.
+- Merge readiness: not-ready; worker cannot implement, dispatch child, or merge into neo.
+- Archive check: final handoff, clean worktree, verification, review, and coordinator integration remain required.
+
+## RV-0-T-007 — Task 113 proactive-trigger implementation-plan dispatch
+
+- Recorded at: 2026-07-13T02:25:00Z
+- Role: coordinator
+- Lane and wave: T / 0B
+- Task ID and claim: task-113-resident-full-vision-w0-trigger-plan / docs/agentic/claims/task-113-resident-full-vision-w0-trigger-plan.md
+- Task thread ID: /root/task113_trigger_plan
+- Branch and worktree: codex/task-113-resident-full-vision-w0-trigger-plan / /home/drake/.codex/worktrees/task-113-resident-full-vision-w0-trigger-plan
+- Base commit and required head: a10cdcfc886709b9bb9c8ccbd66b6f7476260225 / one Task113 plan-and-claim commit from the coordinator dispatch-record branch head, followed by fresh review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md@9a571f628bef9c53725e20263cb687ec44dd9cd8; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md; docs/agentic/claims/task-113-resident-full-vision-w0-trigger-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: approved Lane T specification 9a571f62; complete Wave0A; no CF-1 shared contract or production dependency applies
+- Approval record: coordinator-issued scoped authorization under Standing Coordinator Delegation authorizes Task113 only to produce its implementation plan and claim. Wave stop is verified plan commit plus fresh plan review and coordinator lane-plan approval, before Tasks149–151, CF-1 implementation dispatch, production/provider work, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: dispatched; worker must commit claim before editing plan.
+- RED command and observed failure: pending focused documentation audit for descriptors, deterministic admission/dedupe/cooldown/high-water, trigger families, no-effect boundary, exact files/signatures/RED-GREEN/review/live/rollback/acceptance coverage.
+- GREEN command and observed result: pending focused audit, git diff --check, npm run factory:check, and npm run verify.
+- Full verification: pending worker-owned npm run verify before task commit.
+- Live-provider gate: plan-only; it must define later safe real-Nous posture but invoke none.
+- Review verdict: pending fresh Task113 plan review.
+- Rebase record: initial worktree starts at coordinator dispatch record; no cross-lane rebase before independent plan work.
+- Merge readiness: not-ready; worker cannot implement, dispatch child, or merge into neo.
+- Archive check: final handoff, clean worktree, verification, review, and coordinator integration remain required.
