@@ -2047,3 +2047,21 @@ explicit implementation authorization.
 - Rebase record: author starts at this dispatch commit; no Wave1 branch may start before an approved CF-1 integration, and every later Wave1 author must record rebase from the integrated CF-1 SHA
 - Merge readiness: not-ready; only Relay A may integrate a fresh independently approved Task117 commit into its visible coordinator branch, never into neo
 - Archive check: retain the source documents, table audit counterfactual evidence, exact scope, author verification, fresh review, coordinator integration, and every subsequent Wave1 rebase record
+
+## RV-0-C-010 — Task117 CF-1 author work started
+
+- Recorded at: 2026-07-13T16:22:07Z
+- Role and scope: isolated Task117 documentation author under RV-0-C-009, starting at `c996b197bde35aecff3be5120b654e7cc761f145`; only the CF-1 freeze, Task117 claim, and this forward-only author evidence are writable.
+- Status: in-progress. The author is reconciling the eight approved Wave0B design/implementation inputs into the required shared event, DTO, capability, ownership, source-binding, approval, idempotency, targeted-test, and rebase matrix.
+- RED evidence: the focused absent-freeze audit exited 1 and printed `RED: CF-1 contract-freeze artifact is absent; no shared contract/owner/rebase matrix can dispatch Wave 1.`
+- Authority boundary: no production, provider, credential, browser, Nous, live, tailnet, Wave1 dispatch, self-review, self-integration, or `neo` merge is authorized. A different fresh reviewer remains required before Relay A may make any integration decision.
+
+## RV-0-C-011 — Task117 CF-1 author result ready for fresh review
+
+- Recorded at: 2026-07-13T16:38:05Z
+- Role and result: the isolated Task117 author completed the documentation-only CF-1 freeze from `c996b197bde35aecff3be5120b654e7cc761f145`; its three-file scope is the new contract freeze, Task117 claim, and these append-only author records.
+- Contract result: a 53-row table freezes all shared event/DTO/capability/file-owner/consumer/source-binding/approval/idempotency/targeted-test/rebase facts for Waves1-5. R is the only default factory writer, P is the only shared provider-configuration writer, and Task117 is the sole shared-event/DTO/capability writer. Every future worker requires the exact coordinator `CF1-INTEGRATION-SHA`, not an author or pre-freeze SHA.
+- Documentation RED/GREEN: the absent-freeze RED audit exited 1 as required. The final embedded matrix audit exited 0 and printed `GREEN: CF-1 matrix audit passed (479 direct counterfactual mutations rejected, including missing/conflicting ownership).`
+- Verification: `git diff --check` had no output; `npm run factory:check` printed `factory-readiness passed`; after lockfile-pinned ignored dependencies were restored for a missing isolated-worktree `tsc`, a fresh `npm run verify` exited 0 with typecheck, 189 passing test files/3 skipped, 2,228 passing tests/5 skipped, Vite build, and factory readiness. Existing Vite chunk-size and SQLite experimental warnings did not fail the gate.
+- Live-provider gate: prohibited and not invoked. No provider, credential, Nous, browser, tailnet, desktop, production, Wave1 dispatch, self-review, self-integration, or `neo` action occurred.
+- Review and merge readiness: ready for a different fresh reviewer only; not approved and not integrated. Relay A must verify the exact commit, scope, audit, and final checkout before an integration decision. Wave1 remains stopped.
