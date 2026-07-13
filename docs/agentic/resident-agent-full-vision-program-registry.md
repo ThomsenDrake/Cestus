@@ -1711,3 +1711,29 @@ explicit implementation authorization.
 - Archive check: prior author and reviewer evidence remains preserved; fresh repair, verification, review, and integration are required
 - Root-cause checkpoint: the plan's structural audit proved mutation coverage but did not typecheck the mutation helper under the repository's strict compiler settings. The new tactic uses a compiler-backed RED/GREEN before re-review.
 - Supersession: this record supersedes only RV-0-L-011 status; its review evidence remains immutable.
+
+## RV-0-T-015 — Task 113 fixture-matrix repair approved and integrated
+
+- Recorded at: 2026-07-13T13:41:45Z
+- Role: coordinator integration
+- Lane and wave: T / 0B
+- Task ID and claim: task-113-resident-full-vision-w0-trigger-plan / docs/agentic/claims/task-113-resident-full-vision-w0-trigger-plan.md
+- Task thread ID: 019f5b94-2f0e-7461-a3cb-36e49779ce6f (repair author); /root/review_task113_fixture (environment-blocked review); /root/rereview_task113_fixture_verified (fresh approving reviewer)
+- Branch and worktree: codex/task-113-resident-full-vision-w0-trigger-plan-fixture-reviewed / /tmp/cestus-task113-fixture-matrix-review; integrated on codex/resident-agent-full-vision-program-visible-coordinator-2 / /home/drake/.codex/worktrees/95de/Cestus
+- Base commit and required head: 0b3b88f21c06ce8c577da858fed2777e21c8e3e4 / 03b11c4e97d57c9fb1349da3b9a5e15a8a78cdc5
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358; docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md@9a571f628bef9c53725e20263cb687ec44dd9cd8
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md; docs/agentic/claims/task-113-resident-full-vision-w0-trigger-plan.md
+- Forbidden files: every other child task file; the coordinator adds only this append-only registry integration record
+- Dependencies and required merged commits: RV-0-T-014 review scope 0b3b88f2..03b11c4e; RV-0-C-004 ownership acceptance at 9ce7361c; no shared contract is frozen and CF-1 remains stopped
+- Approval record: the standing delegation and RV-0-T-013 authorize the bounded Task113 repair; its fresh review is approved; coordinator-only integration is authorized under the governing spec and plan with no merge into neo
+- Claim status: merged
+- RED command and observed failure: the repair's fresh RED against 0b3b88f2 established missing fixture-local audit components; earlier broad-token audit omissions remained preserved as historical failure evidence
+- GREEN command and observed result: all three documented audits passed with 10, 25, and 94 rejected counterfactuals; the concrete 27-entry unsafeShapes map rejected all 54 local deletion/value variants; git diff --check passed
+- Full verification: fresh reviewer ran npm run factory:check and npm run verify / exit 0: typecheck, 189 test files, 2,228 tests, Vite build, and factory readiness passed
+- Live-provider gate: not-applicable; Task113 is documentation-only and invokes no provider
+- Review verdict: approved / independently re-reviewed by /root/rereview_task113_fixture_verified; no secret, provider, approval, fallback, provenance, append-only, ownership, or merge-boundary defect remained
+- Rebase record: no contract-changing merge applied between the reviewed head and coordinator integration; the child commit was imported from its prepared detached review worktree into the canonical repository before this no-commit coordinator merge
+- Merge readiness: merged / coordinator integration commit bcc8391ce13033aa1ef9b0686d5cacdaf7b71910 contains only the two approved Task113 files; no merge into neo occurred
+- Archive check: author and reviewer evidence is retained; clean child worktree, ancestry, integrated verification, and this append-only coordinator record are required before archival
+- Supersession: this record supersedes only RV-0-T-014's pending-review status; all prior Task113 repair and review evidence remains immutable.
