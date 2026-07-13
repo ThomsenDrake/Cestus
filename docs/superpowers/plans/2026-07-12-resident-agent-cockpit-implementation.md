@@ -61,7 +61,7 @@ satisfy safety, provenance, no-secret, or no-effect requirements.
 | Contract key | Required local statement |
 | --- | --- |
 | T115-CF1-ONLY | CF-1 alone freezes shared DTO versions, schemas, event bindings, route ownership, compatibility, and idempotency semantics; Task 115 proposes requirements only. |
-| T115-U-FILES | Task 131 owns resident-runtime-types.ts, resident-runtime-adapter.ts, and resident-runtime-adapter.test.ts; Task 141 owns agent-supervision-routes.ts, agent-supervision-routes.test.ts, ResidentSupervisionPanel.tsx, and resident-supervision-panel.test.ts plus their claims. |
+| T115-U-FILES | Task 131 owns resident-runtime-types.ts, resident-runtime-adapter.ts, and resident-runtime-adapter.test.ts; Task 141 owns agent-supervision-routes.ts, ResidentSupervisionPanel.tsx, and resident-supervision-panel.test.ts plus its claim; Task 117 CF-1 reconciliation assigns the owner of packages/local-runtime/test/agent-supervision-routes.test.ts before Task 141 dispatch. |
 | T115-SNAPSHOT-TRUTH | The cockpit renders one immutable projection snapshot and never treats browser memory, a transport acknowledgement, a runner result, or a cache as durable truth. |
 | T115-PLAIN-OWN-DATA | The parser accepts only normalized plain own-data objects and ordinary dense arrays, rejecting inherited values, accessors, symbols, sparse arrays, custom array properties, cycles, boxed values, and non-plain prototypes before field reads. |
 | T115-STRICT-SCHEMA | Every DTO and command boundary is a versioned discriminated union with unknown keys rejected and explicit IDs, hashes, timestamps, counts, unavailable branches, and safe categories. |
@@ -73,6 +73,7 @@ satisfy safety, provenance, no-secret, or no-effect requirements.
 | T115-COMMAND-NARROW | Each command includes a server-validated idempotency key, expected snapshot ID, and only frozen exact workspace/task/attempt/run/policy/projection identifiers; extra keys and authority overrides are rejected. |
 | T115-COMMAND-NO-EFFECT | No U command invokes a provider or tool, transfers provider bytes, sends, approves, exports, publishes, escalates, repairs destructively, or mutates accepted graph state. |
 | T115-TRUTHFUL-LABELS | Transport success is requested or pending only; paused, resumed, queued, cancellation-confirmed, setup-ready, and terminal labels require their next durable projection or readback. |
+| T115-FROZEN-LABELS | Task 117 CF-1 freezes the exact command-label mapping: workspace.recheck → Recheck mounted workspace; wake.pause → Pause new wake claims; wake.resume → Resume eligible wake processing; task.retry.request → Queue retry; task.cancel.request → Request cancellation; provider.setup.open → Open local provider setup. |
 | T115-PROVIDER-VIEW | Provider cards expose only P-owned capability/model labels, structural and invocation readiness categories, safe requirements, and safe projection evidence, not secret material or provider configuration. |
 | T115-LOCAL-SETUP | provider.setup.open is local-desktop-only after local-origin, operator-presence, and P-owned capability checks; it opens a P-owned platform flow and never accepts a secret in the browser. |
 | T115-REMOTE-SETUP-OFF | Provider setup is disabled on mobile and tailnet, and no form, URL, storage record, logger, telemetry payload, clipboard, or accessibility label can receive unsafe provider material. |
@@ -88,11 +89,11 @@ satisfy safety, provenance, no-secret, or no-effect requirements.
 | T115-BROWSER-INDEPENDENT | Browser close, crash, refresh, focus, route opening, polling, and network loss submit no command and do not stop supervisor, release claims, schedule work, or create alternate storage. |
 | T115-131-RED | Task 131 RED runs resident-runtime-adapter tests before implementation and proves absent, stale, forged, accessor-backed, prototype-swapped, sparse, extra-key, secret-bearing, and cross-run DTOs fail closed. |
 | T115-131-GREEN | Task 131 GREEN runs adapter tests, git diff --check, npm run factory:check, and npm run verify after the smallest CF-1-compatible parser and adapter change. |
-| T115-141-RED | Task 141 RED runs supervision-panel and supervision-route tests before implementation and proves unsupported, stale, mismatched, extra-key, provider-setting, prompt, tool-argument, approval-result, and authority-override commands are rejected. |
-| T115-141-GREEN | Task 141 GREEN runs panel and route tests, git diff --check, npm run factory:check, and npm run verify after truthful controls and route parsing are implemented. |
+| T115-141-RED | Task 141 RED runs the panel test and only the route test assigned to Task 141 by Task 117 CF-1 reconciliation before implementation; it proves unsupported, stale, mismatched, extra-key, provider-setting, prompt, tool-argument, approval-result, and authority-override commands are rejected; it rejects Run retry, Cancelled, and Start the agent while transport acknowledgments remain requested/pending until durable projection/readback. |
+| T115-141-GREEN | Task 141 GREEN runs the panel test and only the Task 117-assigned route test, git diff --check, npm run factory:check, and npm run verify after truthful controls and route parsing implement all six frozen labels and reject Run retry, Cancelled, and Start the agent. |
 | T115-DETERMINISTIC | U deterministic tests use credential-free plain data and test fakes only; real provider acceptance is deferred to P/R/A coordinator-controlled approved Nous evidence. |
 | T115-ACCEPTANCE | Lane U maps U-01 through U-07 to strict parser, truthful command, workspace reconnect, provider-safe setup, handoff readback, responsive accessibility, and served-checkout tailnet acceptance. |
-| T115-REBASE | Task 131 starts only after CF-1; Task 141 starts only after reviewed merged Task 131 and Tasks 137 through 140, then rebases to every recorded predecessor SHA before review. |
+| T115-REBASE | Task 131 starts only after CF-1; Task 141 starts only after Task 117 CF-1 reconciliation assigns route-test ownership plus reviewed merged Task 131 and Tasks 137 through 140, then rebases to every recorded predecessor SHA before review. |
 | T115-REVIEW | Each future U task stops after one scoped commit for a different fresh reviewer, who leads with defects, missing tests, spec drift, ownership, provenance, no-secret, and no-effect failures. |
 | T115-ROLLBACK | Rollback is forward-only: append a correction or superseding projection/command state, rebuild projections, and never delete evidence, fabricate completion, or restore fallback storage. |
 | T115-STOP | Stop and return structured evidence to the coordinator for data-loss or fallback risk, shared-owner/schema conflict, secret exposure, external-effect expansion, mandatory dependency failure, or two focused verifier failures. |
@@ -110,7 +111,7 @@ const plan = readFileSync(file, "utf8");
 const heading = "Task 115 Section-Local Documentation Contract";
 const contract = [
   ["T115-CF1-ONLY", "CF-1 alone freezes shared DTO versions, schemas, event bindings, route ownership, compatibility, and idempotency semantics; Task 115 proposes requirements only."],
-  ["T115-U-FILES", "Task 131 owns resident-runtime-types.ts, resident-runtime-adapter.ts, and resident-runtime-adapter.test.ts; Task 141 owns agent-supervision-routes.ts, agent-supervision-routes.test.ts, ResidentSupervisionPanel.tsx, and resident-supervision-panel.test.ts plus their claims."],
+  ["T115-U-FILES", "Task 131 owns resident-runtime-types.ts, resident-runtime-adapter.ts, and resident-runtime-adapter.test.ts; Task 141 owns agent-supervision-routes.ts, ResidentSupervisionPanel.tsx, and resident-supervision-panel.test.ts plus its claim; Task 117 CF-1 reconciliation assigns the owner of packages/local-runtime/test/agent-supervision-routes.test.ts before Task 141 dispatch."],
   ["T115-SNAPSHOT-TRUTH", "The cockpit renders one immutable projection snapshot and never treats browser memory, a transport acknowledgement, a runner result, or a cache as durable truth."],
   ["T115-PLAIN-OWN-DATA", "The parser accepts only normalized plain own-data objects and ordinary dense arrays, rejecting inherited values, accessors, symbols, sparse arrays, custom array properties, cycles, boxed values, and non-plain prototypes before field reads."],
   ["T115-STRICT-SCHEMA", "Every DTO and command boundary is a versioned discriminated union with unknown keys rejected and explicit IDs, hashes, timestamps, counts, unavailable branches, and safe categories."],
@@ -122,6 +123,7 @@ const contract = [
   ["T115-COMMAND-NARROW", "Each command includes a server-validated idempotency key, expected snapshot ID, and only frozen exact workspace/task/attempt/run/policy/projection identifiers; extra keys and authority overrides are rejected."],
   ["T115-COMMAND-NO-EFFECT", "No U command invokes a provider or tool, transfers provider bytes, sends, approves, exports, publishes, escalates, repairs destructively, or mutates accepted graph state."],
   ["T115-TRUTHFUL-LABELS", "Transport success is requested or pending only; paused, resumed, queued, cancellation-confirmed, setup-ready, and terminal labels require their next durable projection or readback."],
+  ["T115-FROZEN-LABELS", "Task 117 CF-1 freezes the exact command-label mapping: workspace.recheck → Recheck mounted workspace; wake.pause → Pause new wake claims; wake.resume → Resume eligible wake processing; task.retry.request → Queue retry; task.cancel.request → Request cancellation; provider.setup.open → Open local provider setup."],
   ["T115-PROVIDER-VIEW", "Provider cards expose only P-owned capability/model labels, structural and invocation readiness categories, safe requirements, and safe projection evidence, not secret material or provider configuration."],
   ["T115-LOCAL-SETUP", "provider.setup.open is local-desktop-only after local-origin, operator-presence, and P-owned capability checks; it opens a P-owned platform flow and never accepts a secret in the browser."],
   ["T115-REMOTE-SETUP-OFF", "Provider setup is disabled on mobile and tailnet, and no form, URL, storage record, logger, telemetry payload, clipboard, or accessibility label can receive unsafe provider material."],
@@ -137,11 +139,11 @@ const contract = [
   ["T115-BROWSER-INDEPENDENT", "Browser close, crash, refresh, focus, route opening, polling, and network loss submit no command and do not stop supervisor, release claims, schedule work, or create alternate storage."],
   ["T115-131-RED", "Task 131 RED runs resident-runtime-adapter tests before implementation and proves absent, stale, forged, accessor-backed, prototype-swapped, sparse, extra-key, secret-bearing, and cross-run DTOs fail closed."],
   ["T115-131-GREEN", "Task 131 GREEN runs adapter tests, git diff --check, npm run factory:check, and npm run verify after the smallest CF-1-compatible parser and adapter change."],
-  ["T115-141-RED", "Task 141 RED runs supervision-panel and supervision-route tests before implementation and proves unsupported, stale, mismatched, extra-key, provider-setting, prompt, tool-argument, approval-result, and authority-override commands are rejected."],
-  ["T115-141-GREEN", "Task 141 GREEN runs panel and route tests, git diff --check, npm run factory:check, and npm run verify after truthful controls and route parsing are implemented."],
+  ["T115-141-RED", "Task 141 RED runs the panel test and only the route test assigned to Task 141 by Task 117 CF-1 reconciliation before implementation; it proves unsupported, stale, mismatched, extra-key, provider-setting, prompt, tool-argument, approval-result, and authority-override commands are rejected; it rejects Run retry, Cancelled, and Start the agent while transport acknowledgments remain requested/pending until durable projection/readback."],
+  ["T115-141-GREEN", "Task 141 GREEN runs the panel test and only the Task 117-assigned route test, git diff --check, npm run factory:check, and npm run verify after truthful controls and route parsing implement all six frozen labels and reject Run retry, Cancelled, and Start the agent."],
   ["T115-DETERMINISTIC", "U deterministic tests use credential-free plain data and test fakes only; real provider acceptance is deferred to P/R/A coordinator-controlled approved Nous evidence."],
   ["T115-ACCEPTANCE", "Lane U maps U-01 through U-07 to strict parser, truthful command, workspace reconnect, provider-safe setup, handoff readback, responsive accessibility, and served-checkout tailnet acceptance."],
-  ["T115-REBASE", "Task 131 starts only after CF-1; Task 141 starts only after reviewed merged Task 131 and Tasks 137 through 140, then rebases to every recorded predecessor SHA before review."],
+  ["T115-REBASE", "Task 131 starts only after CF-1; Task 141 starts only after Task 117 CF-1 reconciliation assigns route-test ownership plus reviewed merged Task 131 and Tasks 137 through 140, then rebases to every recorded predecessor SHA before review."],
   ["T115-REVIEW", "Each future U task stops after one scoped commit for a different fresh reviewer, who leads with defects, missing tests, spec drift, ownership, provenance, no-secret, and no-effect failures."],
   ["T115-ROLLBACK", "Rollback is forward-only: append a correction or superseding projection/command state, rebuild projections, and never delete evidence, fabricate completion, or restore fallback storage."],
   ["T115-STOP", "Stop and return structured evidence to the coordinator for data-loss or fallback risk, shared-owner/schema conflict, secret exposure, external-effect expansion, mandatory dependency failure, or two focused verifier failures."],
@@ -179,6 +181,20 @@ for (const entry of contract) {
     failedClosed = true;
   }
   if (!failedClosed) throw new Error("accepted direct mutation of " + entry[0]);
+  rejected += 1;
+}
+for (const [expected, rejectedLabel] of [
+  ["task.retry.request → Queue retry", "task.retry.request → Run retry"],
+  ["task.cancel.request → Request cancellation", "task.cancel.request → Cancelled"],
+  ["wake.resume → Resume eligible wake processing", "wake.resume → Start the agent"],
+]) {
+  let failedClosed = false;
+  try {
+    validate(replaceOne(plan, expected, rejectedLabel));
+  } catch {
+    failedClosed = true;
+  }
+  if (!failedClosed) throw new Error("accepted rejected frozen label " + rejectedLabel);
   rejected += 1;
 }
 console.log("GREEN: Task 115 cockpit plan audit passed (" + rejected + " direct local mutations rejected).");
@@ -230,7 +246,7 @@ and forbids every other tracked file.
 | Task | U-owned files | Required predecessor state |
 | --- | --- | --- |
 | 131 / Wave 1 | packages/ui/src/agent/resident-runtime-types.ts; packages/ui/src/agent/resident-runtime-adapter.ts; packages/ui/test/resident-runtime-adapter.test.ts; docs/agentic/claims/task-131-resident-full-vision-w1-runtime-adapter.md | CF-1 cockpit DTO/parser, owner, producer and compatibility record |
-| 141 / Wave 2 | packages/local-runtime/src/agent-supervision-routes.ts; packages/local-runtime/test/agent-supervision-routes.test.ts; packages/ui/src/agent/ResidentSupervisionPanel.tsx; packages/ui/test/resident-supervision-panel.test.tsx; docs/agentic/claims/task-141-resident-full-vision-w2-supervision-panel.md | reviewed merged 131 and 137 through 140 plus CF-1 command/route rules |
+| 141 / Wave 2 | packages/local-runtime/src/agent-supervision-routes.ts; packages/ui/src/agent/ResidentSupervisionPanel.tsx; packages/ui/test/resident-supervision-panel.test.tsx; docs/agentic/claims/task-141-resident-full-vision-w2-supervision-panel.md | Task 117 CF-1 records command/route rules and reconciles the owner of packages/local-runtime/test/agent-supervision-routes.test.ts before Task 141 dispatch, then reviewed merged 131 and 137 through 140 |
 
 Task 131 does not own a shared event, provider configuration, runtime factory,
 mount, lifecycle, trigger, handoff contract, route, panel, or acceptance matrix.
@@ -285,11 +301,14 @@ provisional schema is never a substitute.
 
 ## Task 141: Truthful Supervision Routes And Cockpit Panel
 
-**Preconditions:** the coordinator has reviewed and merged 131 and 137 through
-140, recorded all required SHAs and cross-lane commands, and rebased Task 141.
-CF-1 names route parser, transport/session posture, command vocabulary,
-idempotency, and durable producer/readback effects. Frozen terms supersede this
-proposal while preserving every safety condition.
+**Preconditions:** Task 117 CF-1 has reconciled and recorded the owner of
+`packages/local-runtime/test/agent-supervision-routes.test.ts`; Task 141 cannot
+claim or run that route test unless CF-1 assigns it to Task 141. The coordinator
+has also reviewed and merged 131 and 137 through 140, recorded all required
+SHAs and cross-lane commands, and rebased Task 141. CF-1 names route parser,
+transport/session posture, command vocabulary, idempotency, durable
+producer/readback effects, and the following exact command labels. Frozen terms
+supersede this proposal while preserving every safety condition.
 
 The only future command forms are workspace.recheck, wake.pause, wake.resume,
 task.retry.request, task.cancel.request, and provider.setup.open. Navigation,
@@ -299,10 +318,19 @@ or await, validates exact supported-command binding, then rechecks mounted
 identity, locks, policy, source/artifact state, budgets, and approval posture
 at consumption; stale or swapped input fails closed.
 
+| Command code | Exact frozen label |
+| --- | --- |
+| `workspace.recheck` | Recheck mounted workspace |
+| `wake.pause` | Pause new wake claims |
+| `wake.resume` | Resume eligible wake processing |
+| `task.retry.request` | Queue retry |
+| `task.cancel.request` | Request cancellation |
+| `provider.setup.open` | Open local provider setup |
+
 - [ ] **Claim and RED.**
 
   ~~~bash
-  npm test -- packages/ui/test/resident-supervision-panel.test.tsx packages/local-runtime/test/agent-supervision-routes.test.ts
+  npm test -- packages/ui/test/resident-supervision-panel.test.tsx <Task-117-assigned-route-test-if-Task-141-owns-it>
   ~~~
 
   Before implementation, tests prove the absent panel/routes cannot render the
@@ -310,14 +338,17 @@ at consumption; stale or swapped input fails closed.
   arbitrary action, stale snapshot, other-run ID, workspace/policy mismatch,
   forged supported command, client approval result, provider setting, path,
   prompt, tool argument, authority override, and acknowledgment rendered as
-  completed pause/resume/retry/cancel/setup/handoff effect.
+  completed pause/resume/retry/cancel/setup/handoff effect. For all six command
+  codes, RED requires the exact frozen label table above and rejects `Run
+  retry`, `Cancelled`, and `Start the agent`; a transport acknowledgment stays
+  requested/pending until the matching durable projection/readback.
 
 - [ ] **Implement narrow route and read-only panel.** The route accepts exact
   DTOs only and returns a safe requested/pending receipt until subsequent
   durable projection/readback. It never calls provider/tool gateway or consumes
   approval. The panel consumes Task 131 parsed snapshot, renders a control only
-  if supportedCommands includes it, uses labels such as Queue retry and Request
-  cancellation, and shows safe denial reasons rather than raw errors. It has no
+  if supportedCommands includes it, uses only the exact frozen labels in the
+  table above, and shows safe denial reasons rather than raw errors. It has no
   generic command, approval, handoff send/retry, or browser scheduler.
 
 - [ ] **Implement local-only provider setup and responsive/tailnet safety.**
@@ -334,17 +365,20 @@ at consumption; stale or swapped input fails closed.
 - [ ] **GREEN and review.**
 
   ~~~bash
-  npm test -- packages/ui/test/resident-supervision-panel.test.tsx packages/local-runtime/test/agent-supervision-routes.test.ts
+  npm test -- packages/ui/test/resident-supervision-panel.test.tsx <Task-117-assigned-route-test-if-Task-141-owns-it>
   git diff --check
   npm run factory:check
   npm run verify
   ~~~
 
-  GREEN covers truthful labels/readback, stale/forged/cross-run failure,
-  keyboard/narrow-width behavior, local-only setup, reconnect reparse, no
-  browser effect, and browser-safe imports. Commit only Task 141 files and
-  claim. A different reviewer independently mutates command/snapshot bindings,
-  runs focused and full gates, and verifies ownership before coordinator merge.
+  GREEN covers all six exact frozen labels, rejection of `Run retry`,
+  `Cancelled`, and `Start the agent`, truthful requested/pending-to-readback
+  transitions, stale/forged/cross-run failure, keyboard/narrow-width behavior,
+  local-only setup, reconnect reparse, no browser effect, and browser-safe
+  imports. Commit only Task 141 files and claim. A different reviewer
+  independently mutates command/snapshot bindings and the label mapping, runs
+  focused and full gates, and verifies CF-1 route-test ownership before
+  coordinator merge.
 
 ## Dependencies, Acceptance, Rollback, And Stop
 
