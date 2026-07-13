@@ -103,3 +103,28 @@ worker must not self-review, self-integrate, or merge into `neo`.
 
 Status: ready for the scoped repair commit and fresh independent review. Do not
 self-review, self-integrate, or merge into `neo`.
+
+## Second Repair Recovery
+
+- Fresh second-repair author `/root/wave1_task121_recovery` started from the
+  coordinator-preserved clean checkpoint
+  `2c8d41c3c5f48b74cd24ef817b37efb1c2715417`.
+- RED: `npm test -- packages/agent/test/investigation-planner-workflow.test.ts
+  packages/agent/test/specialist-handoff-projection.test.ts` exited `1` with
+  the new restored-store regression failing as expected: the prior workflow
+  re-entered `prepareSpecialistRun` and then safely rejected duplicate provider
+  invocation (`Configured provider invocation failed safely`). The projection
+  suite remained green (1 failed / 43 passed tests overall).
+- GREEN: the same focused command exited `0` (2 files / 44 tests). The repair
+  reads the unique ledger-bound final-output before preparation, strictly binds
+  recovery through `recordSpecialistHandoff`, and finalizes only that readback.
+  The restored-store case proves one manifest write only, no second provider
+  invocation or final-output, exact prior artifact reuse, and the append order
+  final-output -> prepared -> recorded -> terminal without tool or PRR effects.
+- Diff hygiene and factory readiness: `git diff --check` and
+  `npm run factory:check` exited `0`. Full verification remains pending the
+  coordinator's global-verifier confirmation.
+- Coordinated full verification: after confirmation that no global verifier
+  was active, the retained replacement `npm run verify` exited `0`:
+  typecheck passed; 189 test files passed, 3 skipped; 2,233 tests passed, 5
+  skipped; Vite built; and factory readiness passed.
