@@ -216,9 +216,67 @@ describe("resident loop ontology contracts", () => {
     });
     expect(() => validateKnowledgeEvent({ ...planEvent, payload: payloadWithThrowingAccessor })).not.toThrow();
     expect(validateKnowledgeEvent({ ...planEvent, payload: payloadWithThrowingAccessor }).success).toBe(false);
+    let payloadAccessorCalls = 0;
+    const eventWithThrowingPayloadAccessor = { ...planEvent } as Record<string, unknown>;
+    Object.defineProperty(eventWithThrowingPayloadAccessor, "payload", {
+      enumerable: true,
+      get: () => {
+        payloadAccessorCalls += 1;
+        throw new Error("top-level payload accessor must not run");
+      }
+    });
+    const accessorResult = validateKnowledgeEvent(eventWithThrowingPayloadAccessor);
+    expect(accessorResult.success).toBe(false);
+    expect(payloadAccessorCalls).toBe(0);
+
+    const payloadWithReflectiveTrap = new Proxy({ ...planEvent.payload }, {
+      ownKeys: () => {
+        throw new Error("payload reflection must not escape validation");
+      }
+    });
+    expect(() => validateKnowledgeEvent({ ...planEvent, payload: payloadWithReflectiveTrap })).not.toThrow();
+    expect(validateKnowledgeEvent({ ...planEvent, payload: payloadWithReflectiveTrap }).success).toBe(false);
     const { terminalReadback: _terminalReadback, ...withoutTerminalReadback } = result.payload;
     expect(validateKnowledgeEvent({ ...result, payload: withoutTerminalReadback }).success).toBe(false);
     expectValid(suspended);
+  });
+
+  it("rejects sparse, boxed, custom-prototype, and nested accessor data without reading getters", () => {
+    const [planEvent] = fixtureEvents();
+    const sparseSourceEventIds = new Array(2) as string[];
+    sparseSourceEventIds[0] = identity.sourceEventIds[0]!;
+    expect(validateKnowledgeEvent({
+      ...planEvent,
+      payload: { ...planEvent.payload, sourceEventIds: sparseSourceEventIds }
+    }).success).toBe(false);
+
+    expect(validateKnowledgeEvent({
+      ...planEvent,
+      payload: { ...planEvent.payload, policyHash: new String(identity.policyHash) }
+    }).success).toBe(false);
+
+    const budgetWithCustomPrototype = { ...identity.budget };
+    Object.setPrototypeOf(budgetWithCustomPrototype, { inherited: true });
+    expect(validateKnowledgeEvent({
+      ...planEvent,
+      payload: { ...planEvent.payload, budget: budgetWithCustomPrototype }
+    }).success).toBe(false);
+
+    let nestedAccessorCalls = 0;
+    const budgetWithThrowingAccessor = { ...identity.budget };
+    Object.defineProperty(budgetWithThrowingAccessor, "remainingSteps", {
+      enumerable: true,
+      get: () => {
+        nestedAccessorCalls += 1;
+        throw new Error("nested payload accessor must not run");
+      }
+    });
+    const nestedAccessorResult = validateKnowledgeEvent({
+      ...planEvent,
+      payload: { ...planEvent.payload, budget: budgetWithThrowingAccessor }
+    });
+    expect(nestedAccessorResult.success).toBe(false);
+    expect(nestedAccessorCalls).toBe(0);
   });
 
   it("appends and replays the ordered five-event fixture through the ledger", async () => {

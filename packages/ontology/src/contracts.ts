@@ -2601,30 +2601,68 @@ const knowledgeEventBaseSchema = z.object({
   payload: z.record(z.string(), z.unknown())
 }).strict();
 
-function isPlainOwnData(value: unknown): boolean {
-  if (value === null || typeof value !== "object") return true;
-  if (Object.getOwnPropertySymbols(value).length > 0) return false;
+type PlainOwnDataNormalization =
+  | { readonly success: true; readonly data: unknown }
+  | { readonly success: false };
 
-  if (Array.isArray(value)) {
-    if (Object.getPrototypeOf(value) !== Array.prototype) return false;
-    for (let index = 0; index < value.length; index += 1) {
-      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
-      if (descriptor === undefined || !("value" in descriptor) || !isPlainOwnData(descriptor.value)) return false;
+/**
+ * Copies untrusted boundary data through property descriptors before the
+ * event parser reads it. Accessor-, proxy-, symbol-, sparse-, hidden-, and
+ * custom-prototype shapes are invalid input, never values for Zod to inspect.
+ */
+function normalizePlainOwnData(value: unknown): PlainOwnDataNormalization {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean" || typeof value === "undefined") {
+    return { success: true, data: value };
+  }
+  if (typeof value !== "object") return { success: false };
+
+  try {
+    const keys = Reflect.ownKeys(value);
+    if (keys.some((key) => typeof key === "symbol")) return { success: false };
+
+    if (Array.isArray(value)) {
+      if (Object.getPrototypeOf(value) !== Array.prototype) return { success: false };
+      const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+      if (lengthDescriptor === undefined || !("value" in lengthDescriptor) ||
+        typeof lengthDescriptor.value !== "number" || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0 ||
+        keys.length !== lengthDescriptor.value + 1) return { success: false };
+
+      const normalized: unknown[] = [];
+      for (let index = 0; index < lengthDescriptor.value; index += 1) {
+        const key = String(index);
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) return { success: false };
+        const child = normalizePlainOwnData(descriptor.value);
+        if (!child.success) return child;
+        normalized.push(child.data);
+      }
+      return { success: true, data: Object.freeze(normalized) };
     }
-    return Object.getOwnPropertyNames(value).every((key) => {
-      if (key === "length") return true;
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      return /^(0|[1-9]\d*)$/.test(key) && descriptor !== undefined && descriptor.enumerable && "value" in descriptor;
-    });
-  }
 
-  const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) return false;
-  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
-    if (!descriptor.enumerable || !("value" in descriptor) || !isPlainOwnData(descriptor.value)) return false;
-    if (key.length === 0) return false;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return { success: false };
+    const normalized: Record<string, unknown> = {};
+    for (const key of keys) {
+      if (typeof key !== "string" || key.length === 0) return { success: false };
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) return { success: false };
+      const child = normalizePlainOwnData(descriptor.value);
+      if (!child.success) return child;
+      Object.defineProperty(normalized, key, {
+        value: child.data,
+        enumerable: true,
+        writable: false,
+        configurable: false
+      });
+    }
+    return { success: true, data: Object.freeze(normalized) };
+  } catch {
+    return { success: false };
   }
-  return true;
+}
+
+function isPlainOwnData(value: unknown): boolean {
+  return normalizePlainOwnData(value).success;
 }
 
 function isResidentLoopEventType(type: KnowledgeEventType): boolean {
@@ -2775,11 +2813,11 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
   .transform((event): KnowledgeEvent => event as KnowledgeEvent);
 
 export function validateKnowledgeEvent(event: unknown) {
-  // Validate raw object ownership before Zod reads any payload member. This
-  // makes accessor-bearing or otherwise unsafe inputs a normal parse failure
-  // instead of allowing an untrusted getter to run during schema traversal.
-  if (!isPlainOwnData(event)) return knowledgeEventSchema.safeParse(undefined);
-  return knowledgeEventSchema.safeParse(event);
+  const normalized = normalizePlainOwnData(event);
+  // The parser only receives one immutable snapshot, never the caller-owned
+  // object. An untrusted reflective trap is a structured parse failure.
+  if (!normalized.success) return knowledgeEventSchema.safeParse(undefined);
+  return knowledgeEventSchema.safeParse(normalized.data);
 }
 
 export type ResidentLoopSequenceValidation =
