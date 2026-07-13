@@ -1970,3 +1970,30 @@ explicit implementation authorization.
 - Reviewed head: 44717a28510ee84bfc6fbf9895dfb6aa0fc53f7b; direct child of df5b27cb131f42752eec5c4e6e1eceff58658b95; only the Task115 plan and claim changed.
 - Fresh review: approved with no defects. CF-1 now owns route-test reconciliation before Task141 dispatch; six exact labels and three forbidden-label counterfactuals are present.
 - Coordinator merge: no-ff staged into Relay B; full verification and commit required before this record becomes integrated evidence. No neo merge.
+
+## RV-0-C-008 — Relay A recovery ownership acceptance after Relay B handoff failure
+
+- Recorded at: 2026-07-13T16:08:54Z
+- Role: Relay A active coordinator and sole integration owner / recovery continuation
+- Lane and wave: C / 0B through Wave 5
+- Task ID and claim: Relay A `019f5ba8-cba1-7dd1-b137-2c3bd4edb970` / docs/agentic/resident-agent-full-vision-program-registry.md
+- Relay state: Relay B `019f5bf7-971a-7411-ae6f-0ecb721deff7` ended idle without performing the relay protocol's required handoff. The parent coordinator explicitly transferred sole active ownership to Relay A; Relay B is standby only and must not be awaited for this recovery.
+- Branch and worktree: `codex/resident-agent-full-vision-program-relay-a` / `/home/drake/.codex/worktrees/95de/Cestus`, created cleanly from exact Relay B source `codex/resident-agent-full-vision-program-relay-b@61c4de658f92fe4eeb0eeefdcab65ea70b30ab78`
+- Base commit and required head: `61c4de658f92fe4eeb0eeefdcab65ea70b30ab78` / this forward-only recovery ownership commit after required verification
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/agentic/resident-agent-full-vision-program-registry.md
+- Forbidden files: every production, test, runtime, UI, provider, shared-contract, specification, implementation-plan, template, acceptance-matrix, and child-claim file
+- Dependencies and required merged commits: source `61c4de65` already integrates final Task115 repair `44717a28510ee84bfc6fbf9895dfb6aa0fc53f7b`; stale pre-repair author heads `df5b27cb` and `eecc5298` remain historical evidence only and must not be reviewed or integrated again
+- Approval record: the parent recovery handoff authorizes Relay A as sole coordinator through Wave5 under the governing spec and plan. It explicitly authorizes superpowers:subagent-driven-development where relevant, documentation/code TDD, fresh review, verification-before-completion, recovery, and no child self-merge. Never merge into neo without explicit user instruction.
+- Claim status: accepted / Relay A assumes active integration ownership after source-head verification
+- RED command and observed failure: node --input-type=module -e '<RV-0-C-008 presence audit>' exited 1 with `RED: Relay A recovery ownership acceptance is absent` before this append
+- GREEN command and observed result: pending the same ownership-presence audit after this append, plus git diff --check and npm run factory:check
+- Full verification: pending recovery-owned npm run verify before commit
+- Live-provider gate: not-applicable; this ownership record invokes no provider, credential, browser, tailnet, or live acceptance
+- Review verdict: not-applicable; the parent recovery handoff is the ownership gate, while every child repair and integration retains its own fresh-review gate
+- Pending Task116 gate: exact approved repair commit `9eb6a5220dca1b986a488223900d5607dc0dc64f` on `codex/task-116-resident-full-vision-w0-acceptance-audit-repair`, independently approved by reviewer task `019f5c36-130d-7f91-a036-07d49530c289`; it changes exactly the Task116 plan and append-only claim, rejects 168 audit counterfactuals, and records git diff check plus full verification. Relay A must independently verify ancestry/scope, integrate it without a neo merge, append integration evidence, and run cross-boundary/full verification.
+- Rebase record: Relay A begins at the exact Relay B clean head; no history is rewritten and no stale author branch is adopted
+- Merge readiness: Task115 is merged in source; Task116 is ready for coordinator-only integration after the stated independent checks. CF-1 and every Wave1 production task remain stopped.
+- Archive check: preserve Relay B source history, Task115 final review/integration, Task116 author/reviewer evidence, and this recovery acceptance. Before this lease boundary Relay A must commit a clean handoff to Relay B, wake it directly, and wait for an explicit clean descendant acceptance.
+- Supersession: this record supersedes RV-0-C-007 only for active coordinator ownership after Relay B's failed handoff. It preserves all prior records and does not grant a child any integration or neo-merge authority.
