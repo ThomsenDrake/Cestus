@@ -1952,3 +1952,15 @@ explicit implementation authorization.
 - Relay rule: each lease is at most 45 minutes. Ten minutes before lease end, stop launching children, finish only the atomic Git operation, append/commit an exact handoff with outgoing branch/head, incoming relay task, governing SHAs, active/completed child IDs/status/head/worktree, unresolved findings, verification state, and next actions; then wake the other relay through the Codex thread message tool. The receiver fast-forwards or merges its own branch, commits ownership acceptance, and continues the same protocol. The current owner continues until the receiver proves a clean descendant acceptance; if wake/acceptance fails, it retains ownership and retries. Neither relay may leave both tasks idle.
 - Active child state: Task116 repair head ae8ecd0dfb2633a5ddce446c48e05084225d90e4 needs a second audit-only repair for fixed identity unions, ready-for-review statuses, positive boundary safety calls, and conditional/local fallback clauses; Task115 head df5b27cb131f42752eec5c4e6e1eceff58658b95 needs an audit/ownership-label repair. Neither is integrated; CF-1 and all Wave 1 production work remain stopped.
 - Merge readiness: not-ready; never merge neo without explicit instruction.
+
+## RV-0-A-013 — Task116 audit-only repair authorization
+
+- Role/claim: coordinator repair dispatch / Task116 claim; repair starts at ae8ecd0dfb2633a5ddce446c48e05084225d90e4 in a fresh isolated branch/worktree and may modify only the Task116 plan and claim.
+- Approval record: governing spec/plan are approved. Allowed range is Task116 audit-only repair. Use documentation RED/GREEN, fresh review, verification-before-completion, and no self-merge into neo; stop after one verified repair commit and different fresh review.
+- Required RED/GREEN: the local audit must reject widened `AcceptanceCommandIdentity = string`, changed work-order `ready-for-review` statuses, removal of both positive `assertNoUnsafeProviderReadinessMaterial` calls, weakened A-04/A-06 unselected/no-substitute clauses, and any A-07 fallback permission. Preserve accepted substantive content; run diff check, factory check, and full verify.
+
+## RV-0-U-007 — Task115 ownership-and-label repair authorization
+
+- Role/claim: coordinator repair dispatch / Task115 claim; repair starts at df5b27cb131f42752eec5c4e6e1eceff58658b95 in a fresh isolated branch/worktree and may modify only the Task115 plan and claim.
+- Approval record: governing spec/plan are approved. Allowed range is Task115 ownership-and-label repair. Use documentation RED/GREEN, fresh review, verification-before-completion, and no self-merge into neo; stop after one verified repair commit and different fresh review.
+- Required RED/GREEN: remove premature ownership of `packages/local-runtime/test/agent-supervision-routes.test.ts` and make its owner a Task117 CF-1 reconciliation/dispatch precondition; require exact frozen labels for all six commands and reject `Run retry`, `Cancelled`, and `Start the agent` alongside pending/readback assertions. Preserve accepted substantive content; run diff check, factory check, and full verify.
