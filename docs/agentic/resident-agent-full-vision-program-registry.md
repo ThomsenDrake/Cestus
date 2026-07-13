@@ -1446,3 +1446,15 @@ explicit implementation authorization.
 - Coordinator branch/worktree: `codex/resident-agent-full-vision-program-plan-continuity` / `/tmp/cestus-resident-program-coordinator`, based on `53f1da293d336b08992947fc6e5183681065a6d7`.
 - Cause: the host-mounted coordinator worktree cannot create Git refs, index locks, or Node-spawned `git` processes because `/home/drake/Projects/Cestus/.git` is read-only. Three independently retried repair worktree provisions failed before any child edit.
 - Recovery: continue in this isolated clone with its own writable Git database; preserve the original coordinator checkout untouched except for its uncommitted mirror record. Active next actions are fresh Task111/W, Task112/L, and Task113/T repair workers from the bases stated above, followed by fresh reviews and coordinator merges into this continuity branch. The constraint is an environment recovery record, not a product, safety, scope, data-loss, credential, or external-behavior decision.
+
+## RV-0-W-013 — Task 111 repair approved and integrated
+
+- Recorded at: 2026-07-13T12:36:00Z
+- Role/lane/wave: coordinator integration / W / 0B; Task111 source-semantics audit recovery.
+- Worker/reviewer/branch/worktree: `/root/task111_source_audit_repair_tmp`; `/root/review_task111_source_audit_tmp`; `codex/task-111-resident-full-vision-w0-wake-plan-source-audit-repair`; `/tmp/cestus-task111-source-audit`.
+- Base/head/merge: `03721330e009bd8e305c1343eb54dfa1b20afa1d` -> `38cfc7c3` -> coordinator merge `0e673b5a` on `codex/resident-agent-full-vision-program-plan-continuity`.
+- Authority/model/ownership: the exact W recovery authorization in RV-0-W-012; GPT-5.6 Terra / Extra High user-confirmed; only the Task111 plan and append-only claim history changed. No self-merge into `neo` occurred.
+- Evidence: author RED demonstrated the prior Task124 audit accepted an unrelated source; coordinator reran the canonical section-local audit at the repair head and observed `GREEN` with 642 rejected counterfactuals; `git diff --check` passed; fresh reviewer approved after independently testing missing/swapped/unrelated source, all Task124/125 source/append/readback edges, one resident identity, mounted authority, and no-fallback posture.
+- Verification/live: author recorded typecheck/Vitest after dependency setup; factory readiness and `npm run verify` factory phase are host-blocked by Node `spawnSync git EPERM`, and the reviewer worktree lacked ignored dependencies for a redundant full run. This environment limitation is recorded separately in RV-0-C-001 and does not conceal a plan defect. No live provider applies to this plan-only task.
+- Rebase/merge/archive: no dependent production worktree exists before CF-1; merge is into the continuity coordinator branch only, never `neo`. Worker/reviewer handed off clean worktrees; Task111 is approved for Wave0B contract-freeze input, while Wave0B remains incomplete pending L, T, P, U, and A plans.
+- Supersession: this truthful completion supersedes RV-0-W-012 status only; all historical review and repair evidence remains immutable.
