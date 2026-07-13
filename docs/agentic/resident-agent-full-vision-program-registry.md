@@ -1219,3 +1219,30 @@ explicit implementation authorization.
 - Rebase record: initial worktree must start at the coordinator dispatch-record SHA; no cross-lane rebase applies before independent plan work.
 - Merge readiness: not-ready; worker cannot implement, dispatch a child, or merge into neo.
 - Archive check: final handoff, clean worktree, verification, review, and coordinator integration remain required.
+
+## RV-0-W-010 — Task 111 third root-cause checkpoint and field-to-edge completeness recovery dispatch
+
+- Recorded at: 2026-07-13T02:22:00Z
+- Role: coordinator recovery checkpoint
+- Lane and wave: W / 0B
+- Task ID and claim: task-111-resident-full-vision-w0-wake-plan / docs/agentic/claims/task-111-resident-full-vision-w0-wake-plan.md
+- Task thread ID: /root/task111_wake_plan_recovery_2 (second recovery); /root/review_task111_plan_recovery_2 (fresh recovery reviewer); /root/task111_wake_plan_recovery_3 (fresh third recovery implementer)
+- Branch and worktree: codex/task-111-resident-full-vision-w0-wake-plan-recovery-3 / /home/drake/.codex/worktrees/task-111-resident-full-vision-w0-wake-plan-recovery-3
+- Base commit and required head: 14885ddf73c44d04ef720dd82cae5c8dc23240cd / one forward-only owned-file recovery commit followed by separately fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md; docs/agentic/claims/task-111-resident-full-vision-w0-wake-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: preserved Task111 work through second recovery 14885ddf; fresh reviewer defects below; no shared contract is frozen and no production dependency applies
+- Approval record: under Standing Coordinator Delegation the coordinator records a third internal root-cause checkpoint and authorizes Task111 append-only documentation-only field-to-edge completeness recovery only. Allowed range is one verified recovery commit plus separately fresh re-review; wave stop is before Tasks124/125/137, CF-1 implementation dispatch, production work, provider invocation, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: recovery-dispatched; fresh recovery worker must append, not revise, claim history.
+- RED command and observed failure: recovery review showed the relation graph accepts renamed/mismatched reconciliation `claimId` and idempotency key, omits append-to-readback attempt/workspace/resident/epoch/causation/correlation equality, and lacks edges for lease-input resident/epoch/causation/correlation and lock-state digest; its snapshot edge is attached to tuple rather than lease-input boundary.
+- GREEN command and observed result: pending a mechanically complete field-to-edge matrix. It must enumerate every provenance, identity, policy, lock, lease-input, high-water, append, and readback field that participates in admission/reconciliation; map each to its exact source, equality/reference edge, and concrete Task124/125 assertion; and automatically mutate each field/edge so every missing, renamed, or unrelated relation fails.
+- Full verification: pending recovery-owned npm run verify. Prior verification history remains immutable evidence but cannot override fresh review defects.
+- Live-provider gate: not-applicable; this plan-only recovery invokes no provider and retains coordinator-only later live posture.
+- Review verdict: needs-changes / fresh recovery reviewer /root/review_task111_plan_recovery_2 found incomplete reconciliation identity/provenance equality and incomplete lease-input/lock relation coverage; fresh reviewer required after recovery.
+- Rebase record: third recovery branch starts from preserved head 14885ddf in a distinct worktree; no cross-lane rebase applies before review.
+- Merge readiness: not-ready; recovery worker cannot self-approve or merge into neo.
+- Archive check: all author, repair, review, and root-cause evidence is retained; recovery handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
+- Root-cause checkpoint: the second recovery built a relation graph but did not establish a bijection between every admitted field and a tested relation edge. The approved contract remains satisfiable without a product/scope/safety/truth change. Recovery now changes tactic to a field-to-edge completeness matrix with generated relation mutations, not another partial hand-written graph or a user decision.
+- Supersession: this record supersedes RV-0-W-009 only for current recovery status and authorization. It preserves all preceding Task111 evidence as immutable history.
