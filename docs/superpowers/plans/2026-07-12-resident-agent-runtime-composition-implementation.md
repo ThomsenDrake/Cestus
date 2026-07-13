@@ -238,6 +238,55 @@ or H handoff activity. This specifies use of the existing public caller and
 CF-1-owned types only; it does not add a production type or change the shared
 orchestrator contract.
 
+### CF-1 Test-Only Task 134 Closure Fixture And Reject-Before-Activity Contract
+
+CF-1 freezes the following **test-only** closure fixture. It is a fixture
+contract, not a production binding, a public caller surface, or a new shared
+runtime type. Its sole purpose is to let Task 134 prove early rejection with a
+complete factory-shaped tuple before Task 135 exists. Task 135 alone owns the
+actual `createProductionMountedRunnerHandoffBinding` implementation and later
+consumes this fixture contract in its test to prove that the actual binding
+uses the same closed tuple. Task 134 must not import, create, or wait for that
+actual binding; therefore it cannot create a Task-134-from-Task-135 cycle.
+
+```ts
+interface Task134FrozenRegistrationProvenanceV1 {
+  readonly runnerId: string;
+  readonly runnerVersion: number;
+  readonly workflowDescriptorHash: `sha256:${string}`;
+}
+
+interface Task134FactoryClosedDispatchFixtureV1 {
+  readonly fixtureVersion: "task-134-factory-closed-dispatch-fixture.v1";
+  readonly authority: MountedWorkspaceRuntimeAuthority;
+  readonly artifactStores: MountedAgentArtifactStores;
+  readonly registration: SpecialistRunnerRegistrationBinding;
+  readonly registrationProvenance: Task134FrozenRegistrationProvenanceV1;
+  readonly handoffCapability: TaskOrchestratorHandoffCapability;
+  createRegistry(input: {
+    readonly dispatchVerified: (input: VerifiedSpecialistDispatchInput) => Promise<TaskOrchestratorRunnerDispatchResult>;
+  }): TaskOrchestratorRunnerRegistry;
+}
+
+declare function createTask134FactoryClosedDispatchFixture(input: {
+  readonly authority: MountedWorkspaceRuntimeAuthority;
+  readonly artifactStores: MountedAgentArtifactStores;
+  readonly registration: SpecialistRunnerRegistrationBinding;
+  readonly registrationProvenance: Task134FrozenRegistrationProvenanceV1;
+  readonly handoffCapability: TaskOrchestratorHandoffCapability;
+}): Task134FactoryClosedDispatchFixtureV1;
+```
+
+| Fixture contract | CF-1 frozen owner | Task 134 test-only use | Task 135 actual-binding use | Dependency order |
+| --- | --- | --- | --- | --- |
+| Task134FactoryClosedDispatchFixtureV1 | CF-1 test-fixture contract and builder | Builds a test registry to reject before delegate or H activity | Consumes the closed tuple only to test createProductionMountedRunnerHandoffBinding; Task 135 owns that production binding | CF-1 -> Task 134 test-only proof -> Task 135 actual binding -> Task 140 composition |
+
+The following trace names and order are immutable for the three planned
+negative-path tests. Every rejected row starts from a fresh fixture or composed
+runtime, so a preceding successful caller route cannot mask a later activity
+count. The table rows, not prose, are the proof source for the Task 109
+documentation audit below.
+
 ## File Ownership and Merge Order
 
 | Task | Exact Lane R files | Purpose | Required merged predecessors |
@@ -253,6 +302,13 @@ Task 139/P; `packages/local-runtime/src/wake-supervisor-runtime.ts` belongs
 only to Task 137/W. Task 140 consumes their reviewed APIs and edits neither.
 The existing fail-closed collaborators in `agent-runtime-factory.ts` remain
 unchanged until Task 140; no earlier task may make them permissive.
+
+The only permitted execution order for the test fixture and actual production
+binding is `CF-1 -> Task 134 test-only proof -> Task 135 actual binding ->
+Task 140 composition`. The fixture does not make Task 134 an owner of Task
+135's binding; Task 135 consumes its tuple contract after Task 134's
+independent runner-registry proof, and Task 140 consumes the reviewed actual
+binding after both are integrated.
 
 ### Fresh review gate and rebase protocol
 
@@ -483,12 +539,15 @@ This task performs no remote call and does not modify P configuration.
 
 **Consumes:** verified authority/context/prompt/provider readiness,
 `AgentTaskOrchestratorApprovalReader`, H's handoff capability, L's run-bound
-budget/terminal policy, and frozen runner registrations. Its
-`VerifiedSpecialistDispatchInput` is emitted only by the factory-composed
-mounted closure from Task 135: it binds the same
-`MountedWorkspaceRuntimeAuthority`, `MountedAgentArtifactStores`, and
-`TaskOrchestratorHandoffCapability` that the factory validated. Task 134 does
-not accept a caller-created authority/store/handoff tuple. **Produces:**
+budget/terminal policy, and frozen runner registrations. In production its
+`VerifiedSpecialistDispatchInput` is passed by Task 135's actual
+factory-composed binding, but Task 134 has no dependency on that later source
+file. For Task 134's independent early-rejection tests, CF-1's
+`Task134FactoryClosedDispatchFixtureV1` supplies the same authority, mounted
+stores, registration/provenance, and H capability through a test-only closure.
+That fixture is not the Task 135 binding and cannot be shipped or selected at
+runtime. Task 134 does not accept a caller-created authority/store/handoff
+tuple. **Produces:**
 
 ```ts
 export function createProductionSpecialistRunnerCapability(input: {
@@ -564,14 +623,14 @@ it("invokes dispatchVerifiedTaskRunner through the Task 134 factory-closed regis
     artifactStores,
     handoffCapability
   }));
-  const registry = factoryClosedTask134Registry({
+  const closureFixture = createTask134FactoryClosedDispatchFixture({
     authority,
     artifactStores,
-    frozenRegistration,
-    frozenRegistrationProvenance,
-    handoffCapability,
-    dispatchVerified
+    registration: frozenRegistration,
+    registrationProvenance: frozenRegistrationProvenance,
+    handoffCapability
   });
+  const registry = closureFixture.createRegistry({ dispatchVerified });
   const caller = orchestratorDispatchInput();
 
   await dispatchVerifiedTaskRunner({
@@ -592,7 +651,13 @@ it("invokes dispatchVerifiedTaskRunner through the Task 134 factory-closed regis
   await expect(registry.dispatch({ ...caller, artifactStores: forgedStores } as unknown as TaskOrchestratorRunnerDispatchInput))
     .rejects.toMatchObject({ code: "runner-registration-invalid" });
   await expect(dispatchVerifiedTaskRunner({
-    registry: factoryClosedTask134Registry({ authority, artifactStores, frozenRegistration: unregisteredRunnerRegistration(), frozenRegistrationProvenance, handoffCapability, dispatchVerified }),
+    registry: createTask134FactoryClosedDispatchFixture({
+      authority,
+      artifactStores,
+      registration: unregisteredRunnerRegistration(),
+      registrationProvenance: frozenRegistrationProvenance,
+      handoffCapability
+    }).createRegistry({ dispatchVerified }),
     verifiedProviderApproval: true,
     verifiedContextBindings: true,
     ...caller
@@ -602,6 +667,53 @@ it("invokes dispatchVerifiedTaskRunner through the Task 134 factory-closed regis
   expect(dispatchVerified).toHaveBeenCalledTimes(1);
 });
 ```
+
+### Task 134 Reject-Before-Activity Trace Matrix
+
+The positive route above continues to invoke the exported
+`dispatchVerifiedTaskRunner`. The table-driven negative test below uses the
+CF-1 test-only fixture, never Task 135's actual binding. Each row obtains a
+new fixture and verifies the counters in the exact order shown after rejection.
+
+| Case ID | Route | Expected safe code |
+| --- | --- | --- |
+| forged-caller-stores | direct-registry-dispatch | runner-registration-invalid |
+| unregistered-runner | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| swapped-authority-mount-store-tuple | fixture-construction | workspace-identity-mismatch |
+| incompatible-task-id | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| incompatible-run-type | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| incompatible-attempt-id | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| incompatible-approved-run-id | dispatchVerifiedTaskRunner | runner-registration-invalid |
+
+| Probe order | Counter | Expected count |
+| --- | --- | --- |
+| 1 | delegate | 0 |
+| 2 | handoff-prepare | 0 |
+| 3 | handoff-readback | 0 |
+| 4 | mounted-material-trace | 0 |
+| 5 | mounted-manifest-trace | 0 |
+| 6 | fallback-write | 0 |
+
+```ts
+it.each(rejectBeforeActivityCases)("rejects $id before Task 134 activity", async ({ id, invoke, code }) => {
+  const fixture = createTask134RejectBeforeActivityFixture();
+  await expect(invoke(fixture)).rejects.toMatchObject({ code });
+  expect(fixture.readRejectBeforeActivityCounters()).toEqual([
+    ["delegate", 0],
+    ["handoff-prepare", 0],
+    ["handoff-readback", 0],
+    ["mounted-material-trace", 0],
+    ["mounted-manifest-trace", 0],
+    ["fallback-write", 0]
+  ]);
+});
+```
+
+`forged-caller-stores` calls the public registry directly so the binding can
+reject its unexpected own field; the actual caller deliberately strips that
+field. The unregistered and four incompatible public-input rows call
+`dispatchVerifiedTaskRunner`, while the swapped tuple fails at fixture
+construction. All are required to leave the six ordered counters at zero.
 
 Add separate failures for stale mount/high-water, altered descriptor/context/
 prompt, missing approval, exhausted budget, active lock, unready provider,
@@ -820,6 +932,54 @@ it("uses dispatchVerifiedTaskRunner to preserve the factory-closed mounted tuple
 });
 ```
 
+### Task 135 Reject-Before-Activity Trace Matrix
+
+Task 135 owns the actual `createProductionMountedRunnerHandoffBinding`; its
+test consumes CF-1's fixture tuple only to construct comparable inputs, never
+as a production substitute. The table-driven rows exercise the actual binding
+or its factory boundary. Each row starts from a new binding fixture and checks
+the same ordered counters immediately after the rejection.
+
+| Case ID | Route | Expected safe code |
+| --- | --- | --- |
+| forged-caller-stores | direct-registry-dispatch | runner-registration-invalid |
+| unregistered-runner | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| swapped-authority-mount-store-tuple | binding-construction | workspace-identity-mismatch |
+| incompatible-task-id | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| incompatible-run-type | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| incompatible-attempt-id | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| incompatible-approved-run-id | dispatchVerifiedTaskRunner | runner-registration-invalid |
+
+| Probe order | Counter | Expected count |
+| --- | --- | --- |
+| 1 | delegate | 0 |
+| 2 | handoff-prepare | 0 |
+| 3 | handoff-readback | 0 |
+| 4 | mounted-material-trace | 0 |
+| 5 | mounted-manifest-trace | 0 |
+| 6 | fallback-write | 0 |
+
+```ts
+it.each(rejectBeforeActivityCases)("rejects $id before Task 135 activity", async ({ id, invoke, code }) => {
+  const fixture = createTask135ActualBindingRejectBeforeActivityFixture();
+  await expect(invoke(fixture)).rejects.toMatchObject({ code });
+  expect(fixture.readRejectBeforeActivityCounters()).toEqual([
+    ["delegate", 0],
+    ["handoff-prepare", 0],
+    ["handoff-readback", 0],
+    ["mounted-material-trace", 0],
+    ["mounted-manifest-trace", 0],
+    ["fallback-write", 0]
+  ]);
+});
+```
+
+The forged-store row calls the actual binding directly to prove it rejects an
+unexpected public own field. Unregistered and incompatible public-input rows
+use the exported `dispatchVerifiedTaskRunner` route; the swapped tuple is
+rejected by actual-binding construction. None may reach Task 134 delegation,
+H prepare/readback, mounted material/manifest readback, or a fallback write.
+
 The test's caller-supplied artifactStores counterfactual must fail before the
 Task 134 delegate or H handoff. Replacing the typed assignment with an
 unconstrained dispatch or forwarding the forged store is a failed CF-1
@@ -1035,6 +1195,55 @@ it("injects the same readiness accessor into W and gives U only its safe project
   expect(routeDto).not.toHaveProperty("rawError");
 });
 ```
+
+### Task 140 Reject-Before-Activity Trace Matrix
+
+Task 140 uses the reviewed Task 135 actual binding through the sole composed
+factory. It retains the positive `dispatchVerifiedTaskRunner` route above and
+adds this table-driven negative path. Each row creates a fresh composition so
+the assertions prove the rejected input did not reuse a prior dispatch,
+readback, or fallback activity.
+
+| Case ID | Route | Expected safe code |
+| --- | --- | --- |
+| forged-caller-stores | direct-registry-dispatch | runner-registration-invalid |
+| unregistered-runner | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| swapped-authority-mount-store-tuple | composition-construction | workspace-identity-mismatch |
+| incompatible-task-id | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| incompatible-run-type | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| incompatible-attempt-id | dispatchVerifiedTaskRunner | runner-registration-invalid |
+| incompatible-approved-run-id | dispatchVerifiedTaskRunner | runner-registration-invalid |
+
+| Probe order | Counter | Expected count |
+| --- | --- | --- |
+| 1 | delegate | 0 |
+| 2 | handoff-prepare | 0 |
+| 3 | handoff-readback | 0 |
+| 4 | mounted-material-trace | 0 |
+| 5 | mounted-manifest-trace | 0 |
+| 6 | fallback-write | 0 |
+
+```ts
+it.each(rejectBeforeActivityCases)("rejects $id before composed runtime activity", async ({ id, invoke, code }) => {
+  const fixture = createTask140CompositionRejectBeforeActivityFixture();
+  await expect(invoke(fixture)).rejects.toMatchObject({ code });
+  expect(fixture.readRejectBeforeActivityCounters()).toEqual([
+    ["delegate", 0],
+    ["handoff-prepare", 0],
+    ["handoff-readback", 0],
+    ["mounted-material-trace", 0],
+    ["mounted-manifest-trace", 0],
+    ["fallback-write", 0]
+  ]);
+});
+```
+
+The forged-store row directly invokes the composed registry because the real
+caller strips forged extras by design. The unregistered and incompatible-input
+rows use `dispatchVerifiedTaskRunner`; the swapped tuple must throw while the
+composition is assembled. The zero trace proves the rejected path cannot
+delegate, prepare/read H, read mounted material/manifest, or construct/write a
+fallback before it fails closed.
 
 Add failure injection for absent mount, identity mismatch/not-ready, stale
 high-water/policy/lock, invalid context/prompt, unready/blocked/unavailable
