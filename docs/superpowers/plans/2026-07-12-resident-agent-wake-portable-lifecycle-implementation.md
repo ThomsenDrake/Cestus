@@ -158,6 +158,9 @@ export interface SupervisorLeaseAdmissionInput {
   readonly admission: WorkspaceAdmissionSnapshot;
   readonly residentId: "agent_default";
   readonly supervisorEpoch: string;
+  /** The declared policy binding must match the mounted lease readback. */
+  readonly policyVersion: string;
+  readonly policyDigest: string;
   readonly causationId: string;
   readonly correlationId: string;
 }
@@ -207,8 +210,11 @@ export interface SupervisorLeaseReadbackEvidence {
   readonly workspaceId: string;
   readonly residentId: "agent_default";
   readonly supervisorEpoch: string;
+  readonly workspaceIdentityEventId: string;
   readonly authorityEvidenceId: string;
   readonly mountEvidenceId: string;
+  readonly policyVersion: string;
+  readonly policyDigest: string;
   readonly leaseEventId: string;
   readonly readbackEventId: string;
   readonly expiresAt: string;
@@ -228,6 +234,7 @@ export interface SupervisorLeaseHeldEvidence {
 export interface PolicyAndLockReadbackEvidence {
   readonly authorityEvidenceId: string;
   readonly mountEvidenceId: string;
+  readonly leaseEventId: string;
   readonly leaseReadbackEventId: string;
   readonly policyVersion: string;
   readonly policyDigest: string;
@@ -238,6 +245,7 @@ export interface PolicyAndLockReadbackEvidence {
 export interface HighWaterReadbackEvidence {
   readonly authorityEvidenceId: string;
   readonly mountEvidenceId: string;
+  readonly leaseEventId: string;
   readonly leaseReadbackEventId: string;
   readonly highWaterMark: string;
   readonly readbackEventId: string;
@@ -340,6 +348,29 @@ serializable authority. This plan does not freeze production shared types:
 CF-1 may freeze these ports or give them versioned aliases only by an
 append-only compatibility record that preserves their exact input, readback,
 and non-general-purpose boundaries.
+
+### Canonical Admission Relation Graph
+
+The proposed types form one fail-closed relation graph; their identically named
+`string` fields are not merely independently shaped values. The one lease
+admission input carries the frozen `WorkspaceAdmissionSnapshot` and the named
+policy version/digest that the mounted lease must read back. The authority
+identity/mount node (`workspaceId`, `residentId`, `supervisorEpoch`,
+`workspaceIdentityEventId`, `authorityEvidenceId`, and `mountEvidenceId`) must
+equal the corresponding lease-readback node. The lease's authority/mount,
+`leaseEventId`, `readbackEventId`, policy version, and policy digest must in
+turn equal the named policy/lock evidence bindings; both lease event IDs must
+also equal the named high-water evidence bindings. The complete tuple is the
+only append input and the mounted reconciliation readback must equal that exact
+append tuple, not a structurally similar or recomputed substitute.
+
+Tasks 124 and 125 must make every edge explicit in their deterministic
+fixtures. A missing field, swapped evidence ID, changed policy version/digest,
+unrelated edge value, or non-identical append/readback tuple invalidates and
+discards the entire admission before a wake, reconciliation release/checkpoint,
+provider, tool, artifact, ledger, or fallback effect. A later attempt begins
+again at mounted revalidation; it cannot retain a partial relation graph,
+rebind a lease, or infer a missing edge from another value.
 
 ### CF-1-Frozen Lifecycle Admission And Stop Sequence
 
@@ -529,8 +560,30 @@ traces, never a storage path or write API.
     expect(harness.authority.revalidationOperations).toEqual(["resume"]);
     expect(harness.lease.readOrAcquireCalls).toHaveLength(1);
     const canonicalAdmission = harness.canonicalAdmissionTuple();
-    expect(harness.reconciliation.appendInputs[0]?.admission).toEqual(canonicalAdmission);
-    expect(harness.reconciliation.readbacks[0]?.admission).toEqual(canonicalAdmission);
+    const leaseInput = harness.lease.readOrAcquireInputs[0];
+    const appendedAdmission = harness.reconciliation.appendInputs[0]?.admission;
+    const readbackAdmission = harness.reconciliation.readbacks[0]?.admission;
+    expect(leaseInput?.admission.identityAndMount).toEqual(canonicalAdmission.authorityIdentityAndMount);
+    expect(leaseInput?.policyVersion).toBe(canonicalAdmission.verifiedLease.policyVersion);
+    expect(leaseInput?.policyDigest).toBe(canonicalAdmission.verifiedLease.policyDigest);
+    expect(canonicalAdmission.verifiedLease.workspaceId).toBe(canonicalAdmission.authorityIdentityAndMount.workspaceId);
+    expect(canonicalAdmission.verifiedLease.residentId).toBe(canonicalAdmission.authorityIdentityAndMount.residentId);
+    expect(canonicalAdmission.verifiedLease.supervisorEpoch).toBe(canonicalAdmission.authorityIdentityAndMount.supervisorEpoch);
+    expect(canonicalAdmission.verifiedLease.workspaceIdentityEventId).toBe(canonicalAdmission.authorityIdentityAndMount.workspaceIdentityEventId);
+    expect(canonicalAdmission.verifiedLease.authorityEvidenceId).toBe(canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId);
+    expect(canonicalAdmission.verifiedLease.mountEvidenceId).toBe(canonicalAdmission.authorityIdentityAndMount.mountEvidenceId);
+    expect(canonicalAdmission.policyAndLock.authorityEvidenceId).toBe(canonicalAdmission.verifiedLease.authorityEvidenceId);
+    expect(canonicalAdmission.policyAndLock.mountEvidenceId).toBe(canonicalAdmission.verifiedLease.mountEvidenceId);
+    expect(canonicalAdmission.policyAndLock.leaseEventId).toBe(canonicalAdmission.verifiedLease.leaseEventId);
+    expect(canonicalAdmission.policyAndLock.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);
+    expect(canonicalAdmission.policyAndLock.policyVersion).toBe(canonicalAdmission.verifiedLease.policyVersion);
+    expect(canonicalAdmission.policyAndLock.policyDigest).toBe(canonicalAdmission.verifiedLease.policyDigest);
+    expect(canonicalAdmission.highWater.authorityEvidenceId).toBe(canonicalAdmission.verifiedLease.authorityEvidenceId);
+    expect(canonicalAdmission.highWater.mountEvidenceId).toBe(canonicalAdmission.verifiedLease.mountEvidenceId);
+    expect(canonicalAdmission.highWater.leaseEventId).toBe(canonicalAdmission.verifiedLease.leaseEventId);
+    expect(canonicalAdmission.highWater.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);
+    expect(appendedAdmission).toEqual(canonicalAdmission);
+    expect(readbackAdmission).toEqual(appendedAdmission);
     expect(harness.runtime.wakeCalls).toHaveLength(1);
   });
   ```
@@ -912,8 +965,30 @@ object, or execution lease.
     expect(fixture.authority.revalidationOperations).toEqual(["resume"]);
     expect(fixture.lease.readOrAcquireCalls).toHaveLength(1);
     const canonicalAdmission = fixture.canonicalAdmissionTuple();
-    expect(fixture.reconciliation.appendInputs[0]?.admission).toEqual(canonicalAdmission);
-    expect(result.reconciliation.admission).toEqual(canonicalAdmission);
+    const leaseInput = fixture.lease.readOrAcquireInputs[0];
+    const appendedAdmission = fixture.reconciliation.appendInputs[0]?.admission;
+    const readbackAdmission = result.reconciliation.admission;
+    expect(leaseInput?.admission.identityAndMount).toEqual(canonicalAdmission.authorityIdentityAndMount);
+    expect(leaseInput?.policyVersion).toBe(canonicalAdmission.verifiedLease.policyVersion);
+    expect(leaseInput?.policyDigest).toBe(canonicalAdmission.verifiedLease.policyDigest);
+    expect(canonicalAdmission.verifiedLease.workspaceId).toBe(canonicalAdmission.authorityIdentityAndMount.workspaceId);
+    expect(canonicalAdmission.verifiedLease.residentId).toBe(canonicalAdmission.authorityIdentityAndMount.residentId);
+    expect(canonicalAdmission.verifiedLease.supervisorEpoch).toBe(canonicalAdmission.authorityIdentityAndMount.supervisorEpoch);
+    expect(canonicalAdmission.verifiedLease.workspaceIdentityEventId).toBe(canonicalAdmission.authorityIdentityAndMount.workspaceIdentityEventId);
+    expect(canonicalAdmission.verifiedLease.authorityEvidenceId).toBe(canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId);
+    expect(canonicalAdmission.verifiedLease.mountEvidenceId).toBe(canonicalAdmission.authorityIdentityAndMount.mountEvidenceId);
+    expect(canonicalAdmission.policyAndLock.authorityEvidenceId).toBe(canonicalAdmission.verifiedLease.authorityEvidenceId);
+    expect(canonicalAdmission.policyAndLock.mountEvidenceId).toBe(canonicalAdmission.verifiedLease.mountEvidenceId);
+    expect(canonicalAdmission.policyAndLock.leaseEventId).toBe(canonicalAdmission.verifiedLease.leaseEventId);
+    expect(canonicalAdmission.policyAndLock.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);
+    expect(canonicalAdmission.policyAndLock.policyVersion).toBe(canonicalAdmission.verifiedLease.policyVersion);
+    expect(canonicalAdmission.policyAndLock.policyDigest).toBe(canonicalAdmission.verifiedLease.policyDigest);
+    expect(canonicalAdmission.highWater.authorityEvidenceId).toBe(canonicalAdmission.verifiedLease.authorityEvidenceId);
+    expect(canonicalAdmission.highWater.mountEvidenceId).toBe(canonicalAdmission.verifiedLease.mountEvidenceId);
+    expect(canonicalAdmission.highWater.leaseEventId).toBe(canonicalAdmission.verifiedLease.leaseEventId);
+    expect(canonicalAdmission.highWater.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);
+    expect(appendedAdmission).toEqual(canonicalAdmission);
+    expect(readbackAdmission).toEqual(appendedAdmission);
   });
   ```
 
@@ -1375,59 +1450,191 @@ function ordered(text, label, needles) {
   }
 }
 
-// This is the complete proposed pre-CF-1 admission schema, copied from the
-// declared authority, lease, policy/lock, and high-water interfaces above.
-// Keeping this map explicit prevents a mutant from shrinking both the
-// interface and a dynamically-derived expectation at the same time.
-const canonicalAdmissionSchema = Object.freeze({
-  RevalidatedAuthorityIdentityAndMountEvidence: Object.freeze({
-    workspaceId: "string",
-    residentId: '"agent_default"',
-    supervisorEpoch: "string",
-    workspaceIdentityEventId: "string",
-    mountEvidenceId: "string",
-    authorityEvidenceId: "string"
+// This graph deliberately binds fields and concrete Task 124/125 assertions
+// together. A disconnected field map is insufficient: every node must exist,
+// every edge must retain equal types, and both implementation boundaries must
+// make the exact value relation explicit.
+function relation(id, from, to, assertions) {
+  return Object.freeze({ id, from, to, assertions: Object.freeze(assertions) });
+}
+
+function assertion(scope, text, unrelated) {
+  return Object.freeze({ scope, text, unrelated });
+}
+
+const canonicalAdmissionRelationGraph = Object.freeze({
+  nodes: Object.freeze({
+    "WorkspaceAdmissionSnapshot.authority": "VerifiedWorkspaceAuthority",
+    "WorkspaceAdmissionSnapshot.identityAndMount": "RevalidatedAuthorityIdentityAndMountEvidence",
+    "SupervisorLeaseAdmissionInput.admission": "WorkspaceAdmissionSnapshot",
+    "SupervisorLeaseAdmissionInput.residentId": '"agent_default"',
+    "SupervisorLeaseAdmissionInput.supervisorEpoch": "string",
+    "SupervisorLeaseAdmissionInput.policyVersion": "string",
+    "SupervisorLeaseAdmissionInput.policyDigest": "string",
+    "SupervisorLeaseAdmissionInput.causationId": "string",
+    "SupervisorLeaseAdmissionInput.correlationId": "string",
+    "RevalidatedAuthorityIdentityAndMountEvidence.workspaceId": "string",
+    "RevalidatedAuthorityIdentityAndMountEvidence.residentId": '"agent_default"',
+    "RevalidatedAuthorityIdentityAndMountEvidence.supervisorEpoch": "string",
+    "RevalidatedAuthorityIdentityAndMountEvidence.workspaceIdentityEventId": "string",
+    "RevalidatedAuthorityIdentityAndMountEvidence.mountEvidenceId": "string",
+    "RevalidatedAuthorityIdentityAndMountEvidence.authorityEvidenceId": "string",
+    "SupervisorLeaseReadbackEvidence.schemaVersion": '"resident-supervisor-lease-readback.v1"',
+    "SupervisorLeaseReadbackEvidence.workspaceId": "string",
+    "SupervisorLeaseReadbackEvidence.residentId": '"agent_default"',
+    "SupervisorLeaseReadbackEvidence.supervisorEpoch": "string",
+    "SupervisorLeaseReadbackEvidence.workspaceIdentityEventId": "string",
+    "SupervisorLeaseReadbackEvidence.authorityEvidenceId": "string",
+    "SupervisorLeaseReadbackEvidence.mountEvidenceId": "string",
+    "SupervisorLeaseReadbackEvidence.policyVersion": "string",
+    "SupervisorLeaseReadbackEvidence.policyDigest": "string",
+    "SupervisorLeaseReadbackEvidence.leaseEventId": "string",
+    "SupervisorLeaseReadbackEvidence.readbackEventId": "string",
+    "SupervisorLeaseReadbackEvidence.expiresAt": "string",
+    "SupervisorLeaseReadbackEvidence.causation": "CausationCorrelationEvidence",
+    "PolicyAndLockReadbackEvidence.authorityEvidenceId": "string",
+    "PolicyAndLockReadbackEvidence.mountEvidenceId": "string",
+    "PolicyAndLockReadbackEvidence.leaseEventId": "string",
+    "PolicyAndLockReadbackEvidence.leaseReadbackEventId": "string",
+    "PolicyAndLockReadbackEvidence.policyVersion": "string",
+    "PolicyAndLockReadbackEvidence.policyDigest": "string",
+    "PolicyAndLockReadbackEvidence.lockStateDigest": "string",
+    "PolicyAndLockReadbackEvidence.readbackEventId": "string",
+    "HighWaterReadbackEvidence.authorityEvidenceId": "string",
+    "HighWaterReadbackEvidence.mountEvidenceId": "string",
+    "HighWaterReadbackEvidence.leaseEventId": "string",
+    "HighWaterReadbackEvidence.leaseReadbackEventId": "string",
+    "HighWaterReadbackEvidence.highWaterMark": "string",
+    "HighWaterReadbackEvidence.readbackEventId": "string",
+    "ClaimReconciliationAdmissionTuple.authorityIdentityAndMount": "RevalidatedAuthorityIdentityAndMountEvidence",
+    "ClaimReconciliationAdmissionTuple.verifiedLease": "SupervisorLeaseReadbackEvidence",
+    "ClaimReconciliationAdmissionTuple.policyAndLock": "PolicyAndLockReadbackEvidence",
+    "ClaimReconciliationAdmissionTuple.highWater": "HighWaterReadbackEvidence",
+    "ClaimReconciliationAppend.admission": "ClaimReconciliationAdmissionTuple",
+    "ClaimReconciliationReadback.admission": "ClaimReconciliationAdmissionTuple"
   }),
-  SupervisorLeaseReadbackEvidence: Object.freeze({
-    schemaVersion: '"resident-supervisor-lease-readback.v1"',
-    workspaceId: "string",
-    residentId: '"agent_default"',
-    supervisorEpoch: "string",
-    authorityEvidenceId: "string",
-    mountEvidenceId: "string",
-    leaseEventId: "string",
-    readbackEventId: "string",
-    expiresAt: "string",
-    causation: "CausationCorrelationEvidence"
-  }),
-  PolicyAndLockReadbackEvidence: Object.freeze({
-    authorityEvidenceId: "string",
-    mountEvidenceId: "string",
-    leaseReadbackEventId: "string",
-    policyVersion: "string",
-    policyDigest: "string",
-    lockStateDigest: "string",
-    readbackEventId: "string"
-  }),
-  HighWaterReadbackEvidence: Object.freeze({
-    authorityEvidenceId: "string",
-    mountEvidenceId: "string",
-    leaseReadbackEventId: "string",
-    highWaterMark: "string",
-    readbackEventId: "string"
-  })
+  edges: Object.freeze([
+    relation("frozen snapshot identity enters lease input", "WorkspaceAdmissionSnapshot.identityAndMount", "ClaimReconciliationAdmissionTuple.authorityIdentityAndMount", [
+      assertion("task124", "expect(leaseInput?.admission.identityAndMount).toEqual(canonicalAdmission.authorityIdentityAndMount);", "expect(leaseInput?.admission.identityAndMount).toEqual(unrelatedAdmission.identityAndMount);"),
+      assertion("task125", "expect(leaseInput?.admission.identityAndMount).toEqual(canonicalAdmission.authorityIdentityAndMount);", "expect(leaseInput?.admission.identityAndMount).toEqual(unrelatedAdmission.identityAndMount);")
+    ]),
+    relation("lease input policy version is read back", "SupervisorLeaseAdmissionInput.policyVersion", "SupervisorLeaseReadbackEvidence.policyVersion", [
+      assertion("task124", "expect(leaseInput?.policyVersion).toBe(canonicalAdmission.verifiedLease.policyVersion);", "expect(leaseInput?.policyVersion).toBe(unrelatedPolicyVersion);"),
+      assertion("task125", "expect(leaseInput?.policyVersion).toBe(canonicalAdmission.verifiedLease.policyVersion);", "expect(leaseInput?.policyVersion).toBe(unrelatedPolicyVersion);")
+    ]),
+    relation("lease input policy digest is read back", "SupervisorLeaseAdmissionInput.policyDigest", "SupervisorLeaseReadbackEvidence.policyDigest", [
+      assertion("task124", "expect(leaseInput?.policyDigest).toBe(canonicalAdmission.verifiedLease.policyDigest);", "expect(leaseInput?.policyDigest).toBe(unrelatedPolicyDigest);"),
+      assertion("task125", "expect(leaseInput?.policyDigest).toBe(canonicalAdmission.verifiedLease.policyDigest);", "expect(leaseInput?.policyDigest).toBe(unrelatedPolicyDigest);")
+    ]),
+    relation("authority workspace binds lease", "RevalidatedAuthorityIdentityAndMountEvidence.workspaceId", "SupervisorLeaseReadbackEvidence.workspaceId", [
+      assertion("task124", "expect(canonicalAdmission.verifiedLease.workspaceId).toBe(canonicalAdmission.authorityIdentityAndMount.workspaceId);", "expect(canonicalAdmission.verifiedLease.workspaceId).toBe(unrelatedWorkspaceId);"),
+      assertion("task125", "expect(canonicalAdmission.verifiedLease.workspaceId).toBe(canonicalAdmission.authorityIdentityAndMount.workspaceId);", "expect(canonicalAdmission.verifiedLease.workspaceId).toBe(unrelatedWorkspaceId);")
+    ]),
+    relation("authority resident binds lease", "RevalidatedAuthorityIdentityAndMountEvidence.residentId", "SupervisorLeaseReadbackEvidence.residentId", [
+      assertion("task124", "expect(canonicalAdmission.verifiedLease.residentId).toBe(canonicalAdmission.authorityIdentityAndMount.residentId);", "expect(canonicalAdmission.verifiedLease.residentId).toBe(unrelatedResidentId);"),
+      assertion("task125", "expect(canonicalAdmission.verifiedLease.residentId).toBe(canonicalAdmission.authorityIdentityAndMount.residentId);", "expect(canonicalAdmission.verifiedLease.residentId).toBe(unrelatedResidentId);")
+    ]),
+    relation("authority epoch binds lease", "RevalidatedAuthorityIdentityAndMountEvidence.supervisorEpoch", "SupervisorLeaseReadbackEvidence.supervisorEpoch", [
+      assertion("task124", "expect(canonicalAdmission.verifiedLease.supervisorEpoch).toBe(canonicalAdmission.authorityIdentityAndMount.supervisorEpoch);", "expect(canonicalAdmission.verifiedLease.supervisorEpoch).toBe(unrelatedSupervisorEpoch);"),
+      assertion("task125", "expect(canonicalAdmission.verifiedLease.supervisorEpoch).toBe(canonicalAdmission.authorityIdentityAndMount.supervisorEpoch);", "expect(canonicalAdmission.verifiedLease.supervisorEpoch).toBe(unrelatedSupervisorEpoch);")
+    ]),
+    relation("authority identity-event binds lease", "RevalidatedAuthorityIdentityAndMountEvidence.workspaceIdentityEventId", "SupervisorLeaseReadbackEvidence.workspaceIdentityEventId", [
+      assertion("task124", "expect(canonicalAdmission.verifiedLease.workspaceIdentityEventId).toBe(canonicalAdmission.authorityIdentityAndMount.workspaceIdentityEventId);", "expect(canonicalAdmission.verifiedLease.workspaceIdentityEventId).toBe(unrelatedWorkspaceIdentityEventId);"),
+      assertion("task125", "expect(canonicalAdmission.verifiedLease.workspaceIdentityEventId).toBe(canonicalAdmission.authorityIdentityAndMount.workspaceIdentityEventId);", "expect(canonicalAdmission.verifiedLease.workspaceIdentityEventId).toBe(unrelatedWorkspaceIdentityEventId);")
+    ]),
+    relation("authority evidence binds lease", "RevalidatedAuthorityIdentityAndMountEvidence.authorityEvidenceId", "SupervisorLeaseReadbackEvidence.authorityEvidenceId", [
+      assertion("task124", "expect(canonicalAdmission.verifiedLease.authorityEvidenceId).toBe(canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId);", "expect(canonicalAdmission.verifiedLease.authorityEvidenceId).toBe(unrelatedAuthorityEvidenceId);"),
+      assertion("task125", "expect(canonicalAdmission.verifiedLease.authorityEvidenceId).toBe(canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId);", "expect(canonicalAdmission.verifiedLease.authorityEvidenceId).toBe(unrelatedAuthorityEvidenceId);")
+    ]),
+    relation("authority mount binds lease", "RevalidatedAuthorityIdentityAndMountEvidence.mountEvidenceId", "SupervisorLeaseReadbackEvidence.mountEvidenceId", [
+      assertion("task124", "expect(canonicalAdmission.verifiedLease.mountEvidenceId).toBe(canonicalAdmission.authorityIdentityAndMount.mountEvidenceId);", "expect(canonicalAdmission.verifiedLease.mountEvidenceId).toBe(unrelatedMountEvidenceId);"),
+      assertion("task125", "expect(canonicalAdmission.verifiedLease.mountEvidenceId).toBe(canonicalAdmission.authorityIdentityAndMount.mountEvidenceId);", "expect(canonicalAdmission.verifiedLease.mountEvidenceId).toBe(unrelatedMountEvidenceId);")
+    ]),
+    relation("lease authority evidence binds policy/lock", "SupervisorLeaseReadbackEvidence.authorityEvidenceId", "PolicyAndLockReadbackEvidence.authorityEvidenceId", [
+      assertion("task124", "expect(canonicalAdmission.policyAndLock.authorityEvidenceId).toBe(canonicalAdmission.verifiedLease.authorityEvidenceId);", "expect(canonicalAdmission.policyAndLock.authorityEvidenceId).toBe(unrelatedAuthorityEvidenceId);"),
+      assertion("task125", "expect(canonicalAdmission.policyAndLock.authorityEvidenceId).toBe(canonicalAdmission.verifiedLease.authorityEvidenceId);", "expect(canonicalAdmission.policyAndLock.authorityEvidenceId).toBe(unrelatedAuthorityEvidenceId);")
+    ]),
+    relation("lease mount evidence binds policy/lock", "SupervisorLeaseReadbackEvidence.mountEvidenceId", "PolicyAndLockReadbackEvidence.mountEvidenceId", [
+      assertion("task124", "expect(canonicalAdmission.policyAndLock.mountEvidenceId).toBe(canonicalAdmission.verifiedLease.mountEvidenceId);", "expect(canonicalAdmission.policyAndLock.mountEvidenceId).toBe(unrelatedMountEvidenceId);"),
+      assertion("task125", "expect(canonicalAdmission.policyAndLock.mountEvidenceId).toBe(canonicalAdmission.verifiedLease.mountEvidenceId);", "expect(canonicalAdmission.policyAndLock.mountEvidenceId).toBe(unrelatedMountEvidenceId);")
+    ]),
+    relation("lease event binds policy/lock", "SupervisorLeaseReadbackEvidence.leaseEventId", "PolicyAndLockReadbackEvidence.leaseEventId", [
+      assertion("task124", "expect(canonicalAdmission.policyAndLock.leaseEventId).toBe(canonicalAdmission.verifiedLease.leaseEventId);", "expect(canonicalAdmission.policyAndLock.leaseEventId).toBe(unrelatedLeaseEventId);"),
+      assertion("task125", "expect(canonicalAdmission.policyAndLock.leaseEventId).toBe(canonicalAdmission.verifiedLease.leaseEventId);", "expect(canonicalAdmission.policyAndLock.leaseEventId).toBe(unrelatedLeaseEventId);")
+    ]),
+    relation("lease readback event binds policy/lock", "SupervisorLeaseReadbackEvidence.readbackEventId", "PolicyAndLockReadbackEvidence.leaseReadbackEventId", [
+      assertion("task124", "expect(canonicalAdmission.policyAndLock.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);", "expect(canonicalAdmission.policyAndLock.leaseReadbackEventId).toBe(unrelatedLeaseReadbackEventId);"),
+      assertion("task125", "expect(canonicalAdmission.policyAndLock.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);", "expect(canonicalAdmission.policyAndLock.leaseReadbackEventId).toBe(unrelatedLeaseReadbackEventId);")
+    ]),
+    relation("lease policy version binds policy/lock", "SupervisorLeaseReadbackEvidence.policyVersion", "PolicyAndLockReadbackEvidence.policyVersion", [
+      assertion("task124", "expect(canonicalAdmission.policyAndLock.policyVersion).toBe(canonicalAdmission.verifiedLease.policyVersion);", "expect(canonicalAdmission.policyAndLock.policyVersion).toBe(unrelatedPolicyVersion);"),
+      assertion("task125", "expect(canonicalAdmission.policyAndLock.policyVersion).toBe(canonicalAdmission.verifiedLease.policyVersion);", "expect(canonicalAdmission.policyAndLock.policyVersion).toBe(unrelatedPolicyVersion);")
+    ]),
+    relation("lease policy digest binds policy/lock", "SupervisorLeaseReadbackEvidence.policyDigest", "PolicyAndLockReadbackEvidence.policyDigest", [
+      assertion("task124", "expect(canonicalAdmission.policyAndLock.policyDigest).toBe(canonicalAdmission.verifiedLease.policyDigest);", "expect(canonicalAdmission.policyAndLock.policyDigest).toBe(unrelatedPolicyDigest);"),
+      assertion("task125", "expect(canonicalAdmission.policyAndLock.policyDigest).toBe(canonicalAdmission.verifiedLease.policyDigest);", "expect(canonicalAdmission.policyAndLock.policyDigest).toBe(unrelatedPolicyDigest);")
+    ]),
+    relation("lease authority evidence binds high-water", "SupervisorLeaseReadbackEvidence.authorityEvidenceId", "HighWaterReadbackEvidence.authorityEvidenceId", [
+      assertion("task124", "expect(canonicalAdmission.highWater.authorityEvidenceId).toBe(canonicalAdmission.verifiedLease.authorityEvidenceId);", "expect(canonicalAdmission.highWater.authorityEvidenceId).toBe(unrelatedAuthorityEvidenceId);"),
+      assertion("task125", "expect(canonicalAdmission.highWater.authorityEvidenceId).toBe(canonicalAdmission.verifiedLease.authorityEvidenceId);", "expect(canonicalAdmission.highWater.authorityEvidenceId).toBe(unrelatedAuthorityEvidenceId);")
+    ]),
+    relation("lease mount evidence binds high-water", "SupervisorLeaseReadbackEvidence.mountEvidenceId", "HighWaterReadbackEvidence.mountEvidenceId", [
+      assertion("task124", "expect(canonicalAdmission.highWater.mountEvidenceId).toBe(canonicalAdmission.verifiedLease.mountEvidenceId);", "expect(canonicalAdmission.highWater.mountEvidenceId).toBe(unrelatedMountEvidenceId);"),
+      assertion("task125", "expect(canonicalAdmission.highWater.mountEvidenceId).toBe(canonicalAdmission.verifiedLease.mountEvidenceId);", "expect(canonicalAdmission.highWater.mountEvidenceId).toBe(unrelatedMountEvidenceId);")
+    ]),
+    relation("lease event binds high-water", "SupervisorLeaseReadbackEvidence.leaseEventId", "HighWaterReadbackEvidence.leaseEventId", [
+      assertion("task124", "expect(canonicalAdmission.highWater.leaseEventId).toBe(canonicalAdmission.verifiedLease.leaseEventId);", "expect(canonicalAdmission.highWater.leaseEventId).toBe(unrelatedLeaseEventId);"),
+      assertion("task125", "expect(canonicalAdmission.highWater.leaseEventId).toBe(canonicalAdmission.verifiedLease.leaseEventId);", "expect(canonicalAdmission.highWater.leaseEventId).toBe(unrelatedLeaseEventId);")
+    ]),
+    relation("lease readback event binds high-water", "SupervisorLeaseReadbackEvidence.readbackEventId", "HighWaterReadbackEvidence.leaseReadbackEventId", [
+      assertion("task124", "expect(canonicalAdmission.highWater.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);", "expect(canonicalAdmission.highWater.leaseReadbackEventId).toBe(unrelatedLeaseReadbackEventId);"),
+      assertion("task125", "expect(canonicalAdmission.highWater.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);", "expect(canonicalAdmission.highWater.leaseReadbackEventId).toBe(unrelatedLeaseReadbackEventId);")
+    ]),
+    relation("complete tuple enters reconciliation append and exact append reaches readback", "ClaimReconciliationAppend.admission", "ClaimReconciliationReadback.admission", [
+      assertion("task124", "expect(appendedAdmission).toEqual(canonicalAdmission);", "expect(appendedAdmission).toEqual(unrelatedAdmission);"),
+      assertion("task124", "expect(readbackAdmission).toEqual(appendedAdmission);", "expect(readbackAdmission).toEqual(unrelatedAdmission);"),
+      assertion("task125", "expect(appendedAdmission).toEqual(canonicalAdmission);", "expect(appendedAdmission).toEqual(unrelatedAdmission);"),
+      assertion("task125", "expect(readbackAdmission).toEqual(appendedAdmission);", "expect(readbackAdmission).toEqual(unrelatedAdmission);")
+    ])
+  ])
 });
 
-function assertExactReadonlyFields(block, label, expected) {
-  const actual = Object.fromEntries(
-    [...block.matchAll(/^\s+readonly\s+(\w+):\s*([^;]+);$/gm)].map(([, name, type]) => [name, type.trim()])
-  );
-  const expectedEntries = Object.entries(expected);
-  if (Object.keys(actual).length !== expectedEntries.length) {
-    throw new Error(`${label}: expected ${expectedEntries.length} fields, found ${Object.keys(actual).length}`);
+function parseReadonlyFields(block, label) {
+  const pairs = [...block.matchAll(/^\s+readonly\s+(\w+):\s*([^;]+);$/gm)]
+    .map(([, name, type]) => [name, type.trim()]);
+  const fields = Object.create(null);
+  for (const [name, type] of pairs) {
+    if (Object.hasOwn(fields, name)) throw new Error(`${label}: duplicate readonly field ${name}`);
+    fields[name] = type;
   }
-  for (const [field, type] of expectedEntries) {
-    if (actual[field] !== type) throw new Error(`${label}: missing or changed ${field}: ${type}`);
+  return fields;
+}
+
+function validateRelationGraph(frozen, task124AdmissionTest, task125AdmissionTest) {
+  const parsedInterfaces = new Map();
+  const getNodeType = node => {
+    const separator = node.lastIndexOf(".");
+    const interfaceName = node.slice(0, separator);
+    const field = node.slice(separator + 1);
+    if (!parsedInterfaces.has(interfaceName)) {
+      parsedInterfaces.set(interfaceName, parseReadonlyFields(interfaceBlock(frozen, interfaceName), interfaceName));
+    }
+    const type = parsedInterfaces.get(interfaceName)[field];
+    if (!type) throw new Error(`relation graph: missing node ${node}`);
+    return type;
+  };
+  for (const [node, expectedType] of Object.entries(canonicalAdmissionRelationGraph.nodes)) {
+    const actualType = getNodeType(node);
+    if (actualType !== expectedType) throw new Error(`relation graph: ${node} must be ${expectedType}, found ${actualType}`);
+  }
+  const scopes = { task124: task124AdmissionTest, task125: task125AdmissionTest };
+  for (const edge of canonicalAdmissionRelationGraph.edges) {
+    const fromType = getNodeType(edge.from);
+    const toType = getNodeType(edge.to);
+    if (fromType !== toType) throw new Error(`relation graph: ${edge.id} has incompatible ${fromType} and ${toType}`);
+    for (const edgeAssertion of edge.assertions) {
+      requireText(scopes[edgeAssertion.scope], `relation graph ${edge.id} (${edgeAssertion.scope})`, edgeAssertion.text);
+    }
   }
 }
 
@@ -1458,15 +1665,7 @@ function validate(plan) {
   requireText(snapshot, "admission snapshot", "readonly identityAndMount: RevalidatedAuthorityIdentityAndMountEvidence;");
   requireText(reconciliationAppend, "reconciliation append", "readonly admission: ClaimReconciliationAdmissionTuple;");
   requireText(reconciliationReadback, "reconciliation readback", "readonly admission: ClaimReconciliationAdmissionTuple;");
-  for (const [name, fields] of Object.entries(canonicalAdmissionSchema)) {
-    assertExactReadonlyFields(interfaceBlock(frozen, name), `canonical admission ${name}`, fields);
-  }
-  for (const [label, text, needle] of [
-    ["tuple authority", tuple, "readonly authorityIdentityAndMount: RevalidatedAuthorityIdentityAndMountEvidence;"],
-    ["tuple lease", tuple, "readonly verifiedLease: SupervisorLeaseReadbackEvidence;"],
-    ["tuple policy/lock", tuple, "readonly policyAndLock: PolicyAndLockReadbackEvidence;"],
-    ["tuple high-water", tuple, "readonly highWater: HighWaterReadbackEvidence;"]
-  ]) requireText(text, label, needle);
+  validateRelationGraph(frozen, task124AdmissionTest, task125AdmissionTest);
   rejectText(lease, "lease port", /readonly\\s+(raw)?ledger\\s*:/i);
   rejectText(reconciliation, "reconciliation port", /readonly\\s+(raw)?(ledger|claim)\\s*:/i);
   ordered(lifecycle, "frozen admission order", [
@@ -1497,8 +1696,6 @@ function validate(plan) {
   requireText(task124AdmissionTest, "Task 124 concrete admission test", "revalidationOperations).toEqual([\"resume\"])");
   requireText(task124AdmissionTest, "Task 124 concrete admission test", "readOrAcquireCalls).toHaveLength(1)");
   requireText(task124AdmissionTest, "Task 124 complete tuple freeze", "const canonicalAdmission = harness.canonicalAdmissionTuple();");
-  requireText(task124AdmissionTest, "Task 124 complete tuple append", "appendInputs[0]?.admission).toEqual(canonicalAdmission)");
-  requireText(task124AdmissionTest, "Task 124 complete tuple readback", "readbacks[0]?.admission).toEqual(canonicalAdmission)");
   ordered(task125AdmissionTest, "Task 125 concrete admission test", [
     "authority.revalidate:resume",
     "lease.readOrAcquire:acquired-and-read-back",
@@ -1508,8 +1705,6 @@ function validate(plan) {
     "runtime.wakeOnce:recovery"
   ]);
   requireText(task125AdmissionTest, "Task 125 complete tuple freeze", "const canonicalAdmission = fixture.canonicalAdmissionTuple();");
-  requireText(task125AdmissionTest, "Task 125 complete tuple append", "appendInputs[0]?.admission).toEqual(canonicalAdmission)");
-  requireText(task125AdmissionTest, "Task 125 complete tuple readback", "result.reconciliation.admission).toEqual(canonicalAdmission)");
   requireText(task125, "Task 125 tuple validation", "the readback must validate the identical");
   requireText(task125, "Task 125 restart", "never late-revalidate, reacquire/rebind a");
 
@@ -1541,12 +1736,22 @@ const counterfactuals = [
   ["remove reconciliation append/readback", text => text.replace("appendAndReadBack", "appendWithoutReadback")],
 ];
 
-for (const [interfaceName, fields] of Object.entries(canonicalAdmissionSchema)) {
-  for (const [field, type] of Object.entries(fields)) {
-    counterfactuals.push([
-      `remove canonical ${interfaceName}.${field}`,
-      text => replaceFirstInInterface(text, interfaceName, `readonly ${field}: ${type};`, `readonly removed${field[0].toUpperCase()}${field.slice(1)}: ${type};`)
-    ]);
+for (const [node, type] of Object.entries(canonicalAdmissionRelationGraph.nodes)) {
+  const separator = node.lastIndexOf(".");
+  const interfaceName = node.slice(0, separator);
+  const field = node.slice(separator + 1);
+  counterfactuals.push([
+    `remove relation-graph node ${node}`,
+    text => replaceFirstInInterface(text, interfaceName, `readonly ${field}: ${type};`, `readonly removed${field[0].toUpperCase()}${field.slice(1)}: ${type};`)
+  ]);
+}
+
+for (const edge of canonicalAdmissionRelationGraph.edges) {
+  for (const edgeAssertion of edge.assertions) {
+    counterfactuals.push(
+      [`replace relation ${edge.id} (${edgeAssertion.scope}) with an unrelated value`, text => text.replace(edgeAssertion.text, edgeAssertion.unrelated)],
+      [`delete relation ${edge.id} (${edgeAssertion.scope})`, text => text.replace(edgeAssertion.text, "expect(true).toBe(true);")]
+    );
   }
 }
 
@@ -1555,8 +1760,6 @@ counterfactuals.push(
   ["introduce late revalidation", text => text.replace("It may not call `authority.revalidate()`", "then call `authority.revalidate({ operation: \"wake\", ... })`")],
   ["permit stale snapshot reuse", text => text.replace("discards the complete snapshot and restarts at step 1", "retains the previous snapshot for reuse")],
   ["reorder concrete reconciliation", text => text.replace('"authority.validate:policy-lock-high-water",\n      "reconciliation.readByIdempotencyKey"', '"reconciliation.readByIdempotencyKey",\n      "authority.validate:policy-lock-high-water"')],
-  ["weaken Task 124 complete tuple readback equality", text => text.replace("readbacks[0]?.admission).toEqual(canonicalAdmission)", "readbacks[0]?.admission).toMatchObject(canonicalAdmission)")],
-  ["weaken Task 125 complete tuple readback equality", text => text.replace("result.reconciliation.admission).toEqual(canonicalAdmission)", "result.reconciliation.admission).toMatchObject(canonicalAdmission)")],
   ["erase lease-held availability distinction", text => text.replace("preserves `WorkspaceAvailabilityState` as `available`", "sets workspace state unavailable")],
   ["erase stop counterfactual", text => text.replace("it(\"stops intake", "it(\"stops later")],
   ["erase mount mismatch proof", text => text.replace("mount mismatch", "mount changed")],
@@ -1680,9 +1883,11 @@ a provider, model, credential, or claim of live success.
 - **Verification completeness:** Every executable task specifies an actual
   failing import/contract test, focused GREEN command, cross-lane command where
   needed, `git diff --check`, factory check, full verifier, commit scope, and
-  fresh review. The section-local audit rejects 19 concrete port/order/
-  late-revalidation/stale-snapshot/provenance-tuple/stop/lease-state/no-fallback/
-  ownership counterfactuals instead of accepting global heading presence.
+  fresh review. The section-local structural relation-graph audit rejects 145
+  concrete node, unrelated-edge, deleted-edge, order, late-revalidation,
+  stale-snapshot, append/readback-equality, stop, lease-state, no-fallback,
+  and ownership counterfactuals instead of accepting global heading presence or
+  a disconnected field-only schema.
 - **Scope and safety:** The plan contains no production change, no shared
   contract freeze, no live provider call, no newsroom/team expansion, and no
   fallback storage or self-merge path.

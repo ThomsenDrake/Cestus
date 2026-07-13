@@ -382,3 +382,105 @@ RUNNER
   review. The recovery commit is documentation-only and will contain only the
   two authorized files. This worker does not self-approve, dispatch, integrate,
   or merge it.
+
+## Autonomous Relation-Aware Tuple Recovery — 2026-07-13
+
+- Recovery authorization: the assigned coordinator issued this Task 111-only,
+  append-only documentation recovery under the approved Lane W specification
+  `docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb`
+  and governing program plan
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+  The allowed range is Task 111 relation-aware tuple recovery only. It stops
+  after this verified recovery commit and a separately fresh re-review; Tasks
+  124, 125, and 137, CF-1 implementation, production/provider work, dispatch,
+  and every merge are prohibited. It explicitly authorizes
+  `superpowers:subagent-driven-development`, documentation RED/GREEN as TDD,
+  fresh review, and verification-before-completion. No merge into `neo` or an
+  integration branch is authorized. The user-confirmed host configuration is
+  GPT-5.6 Terra / Extra High.
+- Scope remains only this forward-added claim record and
+  `docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md`.
+  All prior Task 111 records, review findings, repair attempts, and registry
+  entries remain immutable evidence; this record supersedes none of them.
+- Root-cause checkpoint: the prior schema-complete recovery verified that each
+  selected field existed, but it did not prove the value relations between
+  authority identity/mount/epoch and lease readback, the declared and read-back
+  lease policy version/digest, policy/lock evidence, high-water evidence, and
+  the reconciliation append/readback. A field can remain present while being
+  bound to an unrelated value, so a field-only audit could not establish the
+  Lane W provenance invariant.
+
+### Relation-Aware Documentation RED/GREEN
+
+- RED: `2026-07-13T02:07:34Z`; the focused relation-contract check exited 1
+  before this recovery with `RED: Task 111 relation graph missing
+  SupervisorLeaseAdmissionInput.policyVersion: string`. The prior declared
+  lease admission input had no policy version/digest binding, while the Lane W
+  design requires the durable lease to bind policy version and the coordinator
+  requires policy digest/hash evidence as well.
+- GREEN: the stored `## Section-Local Documentation Audit Contract` now parses
+  48 named relation nodes and 20 cross-evidence edges from the bounded CF-1
+  contract section plus the concrete Task 124 and Task 125 admission tests. It
+  requires the lease input and readback policy version/digest; authority
+  workspace/resident/epoch/identity/mount equality with the lease; lease
+  authority/policy and both event-ID equality with policy/lock and high-water;
+  and exact canonical tuple → append → readback equality. Each of 42 concrete
+  Task 124/125 relation assertions is mutated both to an unrelated value and
+  to a deleted reference; every mutant fails. With 48 node removals and the
+  retained lifecycle/fallback/ownership mutants, the exact stored audit prints
+  `GREEN: Task 111 section-local lifecycle audit passed (145 counterfactuals
+  rejected).`
+- The plan now states that every missing, swapped, unrelated, or non-identical
+  edge fails closed: it discards the complete admission and restarts at mounted
+  revalidation before a wake, reconciliation, provider, tool, artifact, ledger,
+  or fallback effect. It retains the approved admission order, lease-held versus
+  unavailable distinction, stop/no-effect rule, CF-1-only type freeze,
+  coordinator-only live gate, rollback, ownership, and no-self-merge bounds.
+
+### Relation-Aware Verification And Handoff
+
+- The exact stored audit exited 0 and printed its 145-counterfactual GREEN
+  result. The prior RED is preserved above rather than rewritten.
+- Pending before commit: owned-file/diff review, `npm run factory:check`, full
+  `CI=1 npm run verify`, clean-worktree confirmation, commit of only the two
+  authorized documents, and a fresh independent recovery review. This worker
+  does not self-approve, dispatch, integrate, or merge this work.
+
+### Relation-Aware Final Verification And Handoff
+
+- The stored relation-graph audit reran after the final plan/claim edits and
+  exited 0 with `GREEN: Task 111 section-local lifecycle audit passed (145
+  counterfactuals rejected).` `npm run factory:check` exited 0 with
+  `factory-readiness passed`, and `git diff --check` exited 0 with no output.
+- The first `CI=1 npm run verify` in this fresh worktree exited 127 before
+  typecheck with `sh: line 1: tsc: command not found`. The root cause was the
+  known unpopulated ignored dependency tree, not a plan or source failure.
+  `npm ci --ignore-scripts` restored lockfile-pinned ignored dependencies
+  without tracked changes; `npm ls typescript --depth=0` reported
+  `typescript@5.9.3`.
+- The post-recovery `CI=1 npm run verify` exited 0: typecheck passed; 189 test
+  files passed with 3 skipped; 2,228 tests passed with 5 skipped; Vite built
+  successfully with only its existing chunk-size warning; and factory
+  readiness passed. Node SQLite experimental warnings were emitted by test
+  workers only and did not affect the exit code.
+- Final scope review is pending one last post-evidence audit, factory/full
+  verification rerun, clean-worktree check, and commit. The intended commit
+  contains only this append-only claim and the Task 111 plan. It is ready only
+  for the coordinator's required fresh independent review, never self-approval,
+  dispatch, integration, or merge.
+
+### Final Scoped Evidence — 2026-07-13T02:10:39Z
+
+- The final post-evidence `CI=1 npm run verify` exited 0 with typecheck
+  passed, 189 passing test files and 3 skipped, 2,228 passing tests and 5
+  skipped, a successful Vite build with only its established chunk-size
+  warning, and factory readiness passed. The stored relation-graph audit and
+  `npm run factory:check` remained green; `git diff --check` remained empty.
+- `git diff --name-only` and `git status --short` show only this claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md`.
+  No production, test, provider, registry, specification, CF-1, shared
+  contract, acceptance, or runtime file changed.
+- Handoff status: ready for the coordinator to obtain a new independent Task
+  111 relation-aware recovery review of the single forthcoming documentation
+  commit. This worker stops at that review gate and will not self-approve,
+  dispatch, integrate, or merge it.
