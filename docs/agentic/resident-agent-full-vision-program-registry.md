@@ -2560,3 +2560,24 @@ explicit implementation authorization.
   SDD/TDD/fresh-review/no-self-integration authorizations and records the
   previously addressed restart worktree as historical evidence, not a new
   integration target.
+
+## RV-1-C-039 — Task123 duplicate-lane correction
+
+- The temporary Task123 replacement lane
+  `codex/task-123-resident-full-vision-bootstrap-repair-2` is frozen and
+  preserved uncommitted. Its `mountedWorkspace.blobStore` approach is not an
+  integration target and must not be reviewed or merged.
+- The authoritative Task123 repair remains original worker
+  `019f5d45-9016-7932-b893-2f94021e1ef0` in the canonical repair worktree. It
+  uses canonical `derivativeStore`, validates staging-report bytes before any
+  effect, and derives richer ledger-bound source references. Its causal RED
+  tests and focused/typecheck work remain the only active Task123 path.
+- W1-118 original worker `019f5d38-0a4e-7121-bdca-26cd11041516` continues its
+  four reviewed replay/forgery counterfactual repairs. Task124 original worker
+  `019f5d45-cc5b-7c00-9a90-c9ea044baaa2` continues the three reviewed pause,
+  exhaustion, and canonical idempotency/causation repairs atop `22784e30`.
+  All candidates remain unintegrated pending serialized verification and a
+  distinct fresh review; `neo` remains untouched.
+- RED command and observed failure: the `RV-1-C-039` duplicate-lane presence
+  audit exited 1 with `RED: RV-1-C-039 duplicate-lane correction is absent`
+  before this append.
