@@ -2130,3 +2130,8 @@ explicit implementation authorization.
 
 - Preserves Relay A handoff `7d39a19dea8aceecfbe4b6f1da7c96b34dc11047`, Relay B acceptance `b2e3cc45ee4659a54ac5f092aabd6ed62a371d51`, and Task117 authorization `a16152c87569ecbf3f0aadd45dac0428c354fc71` alongside candidate records C-017/C-018.
 - Fourth fresh review approved `d0571fb258e725d660bbe39bf64a896db90c7e53`; coordinator integration is pending full gate/commit. Wave1 remains stopped and neo is untouched.
+## RV-0-C-020 — CF-1 integration completion and verified post-merge gate
+
+- Relay B integration head `a321955d84eb700722e08eaa835ddb076fda62b2` contains approved Task117 freeze `d0571fb258e725d660bbe39bf64a896db90c7e53` plus forward registry reconciliation.
+- Exact post-merge `npm run verify` in `/home/drake/.codex/worktrees/383d/Cestus` exited 0: typecheck; 189 test files/3 skipped; 2,228 tests/5 skipped; Vite production build; factory readiness.
+- CF-1 is complete. Wave 1 may dispatch only frozen rows with exact scoped authority, TDD, fresh review, verification-before-completion, no child self-integration, and no neo merge. Dependent consumers remain stopped pending recorded merged predecessor SHAs.
