@@ -2371,3 +2371,30 @@ explicit implementation authorization.
   `/home/drake/.codex/worktrees/task-124-resident-full-vision-wake-supervisor`;
   no production/provider/live lane or `neo` action is authorized by this
   active-child record.
+
+## RV-1-C-032 — Active repair ledger: Task120, H prerequisite, and Task124
+
+- Task120 initial candidate `d03729d1` is rejected on independent P1 review
+  for incomplete durable payload equality and superseded-plan provenance. Its
+  bounded repair child is `/root/task120_restart` in
+  `/home/drake/.codex/worktrees/task-120-resident-full-vision-plan-observation-repair`,
+  branch `codex/task-120-resident-full-vision-plan-observation-repair`, at
+  coordinator authorization `0ebd377b2ab72f0a0222cb87cee08bf9cbafe634`.
+  It must pass fresh review before any Task120 integration; W1-118 and Task136
+  remain stopped.
+- Task123's serialized Lane H prerequisite child is
+  `/root/task123_handoff_schema_prereq` in
+  `/home/drake/.codex/worktrees/task-123-resident-full-vision-handoff-schema-prereq`.
+  Its claim begins at `639b6a76`; the coordinator expanded its same-owner
+  atomic scope to kernel/projection plus their focused tests after RED proved
+  both selectors must agree. It is the only active writer of that prerequisite
+  and must receive fresh review and coordinator merged verification before the
+  preserved Task123 checkpoint rebase/restart.
+- Task124 partial candidate `06ceea5b` is rejected for complete frozen W
+  lifecycle omissions. The exact fresh repair child is
+  `/root/task124_full_contract_repair`, branch
+  `codex/task-124-resident-full-vision-wake-supervisor-repair`, worktree
+  `/home/drake/.codex/worktrees/task-124-resident-full-vision-wake-supervisor-repair`,
+  at authorization `8dae042eebe5cb913f342a9c9fc04c42fa9b9f81`. It owns only
+  Task124's source/test/claim and must begin RED-first with SDD/TDD/fresh
+  review/full verification/no-self-merge/no-`neo` authority.
