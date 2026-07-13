@@ -63,3 +63,95 @@ verification, self-review, and review handoff. A repeated verifier failure,
 schema/file-owner conflict, fallback-storage risk, credential need, or data
 loss risk is returned to the coordinator; repair-count exhaustion is a
 coordinator recovery checkpoint, not a user gate.
+
+## RC-113-01 — Fresh documentation-audit recovery started
+
+- Recorded at: 2026-07-13T02:50:06Z.
+- Status: in-progress; this is a forward-only recovery record. The initial
+  `claimed` record above and the untracked initial draft in
+  `/home/drake/.codex/worktrees/task-113-resident-full-vision-w0-trigger-plan`
+  remain preserved and unmodified.
+- Recovery worker and branch:
+  `codex/task-113-resident-full-vision-w0-trigger-plan-recovery` /
+  `/home/drake/.codex/worktrees/task-113-resident-full-vision-w0-trigger-plan-recovery`,
+  based at `3f7b03012c1d2cfa33330f7f7f09c7069ec4632d`.
+- Scoped authority: the coordinator's fresh authorization names Lane T design
+  `@9a571f628bef9c53725e20263cb687ec44dd9cd8`, program plan
+  `@0b5726ec975bdc0aae97e540472ef3be4379b358`, Task 113 only, one verified
+  recovery commit plus fresh review, and the stop before Tasks 149--151,
+  CF-1 implementation, production/provider work, dispatch, or a merge. It
+  explicitly authorizes `superpowers:subagent-driven-development`,
+  documentation RED/GREEN, fresh review, and verification-before-completion;
+  no merge into `neo` is permitted.
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed through the
+  coordinator's GPT-5 reporting instruction.
+- Owned files: this claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md`.
+  Every other tracked file remains forbidden.
+- Root cause: the prior documentation proof depended on fragile shell/escaping
+  behavior and did not provide a durable section-local, counterfactual plan
+  audit. The recovery uses one direct `node --input-type=module --eval`
+  command with no nested command substitution. It extracts named sections,
+  verifies local requirements, removes every occurrence of selected coverage
+  tokens within the selected section, and treats any accepted counterfactual as
+  a failure.
+- RED command and observed failure:
+  `node --input-type=module --eval <documented Task 113 audit>` exited nonzero
+  before plan creation with `ENOENT` for
+  `docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md`.
+- GREEN command and observed result: pending final documentation audit after
+  plan self-review and forward claim evidence.
+- Initial local checks: `git diff --check` exited 0 and
+  `npm run factory:check` printed `factory-readiness passed`.
+- Live-provider gate: not-applicable; Task 113 is documentation-only and the
+  planned Lane T evaluator has no provider/model invocation boundary.
+- Review and merge: pending a separately fresh reviewer. This worker does not
+  self-approve, dispatch implementation, or merge into an integration branch.
+
+## RC-113-02 — Recovery plan ready for fresh review
+
+- Recorded at: 2026-07-13T02:53:06Z.
+- Status: ready-for-review; this supersedes RC-113-01 only for recovery
+  completion status. The initial claim, untracked preserved draft, and the
+  recovery-start record remain immutable evidence.
+- Files changed: only the Task 113 owned plan and this append-only claim.
+  `git status --short` showed no production, test, runtime, UI, provider,
+  specification, registry, template, or acceptance-matrix change.
+- Documentation RED: the documented direct Node audit exited nonzero before
+  plan creation with the expected `ENOENT`. It therefore proved the required
+  plan had not been present.
+- Documentation GREEN: the same direct Node audit printed
+  `GREEN: Task 113 section-local plan audit passed (8 section checks; 10
+  counterfactuals rejected).` It checks CF-1, exact Task 118 ownership and
+  capability boundary, admission/readback/dedupe/cooldown/high-water/no-effect
+  rules, Tasks 149--151, failure-injection/live posture, and rollback. Its ten
+  scoped counterfactuals remove every matching token in the selected section;
+  any variant that validates causes a nonzero result.
+- Recovery detail: the first forward audit attempt exposed a case-sensitive
+  live-posture token mismatch. The next attempt proved that a first-occurrence
+  replacement was insufficient; the following attempt proved that a replacement
+  marker retaining the token substring was insufficient. The final audit
+  removes every occurrence entirely and then rejects all ten variants. These
+  are bounded documentation-audit repairs, not product-contract changes.
+- Plan self-review: no unfinished-placeholder or vague-error-handling marker
+  was found. The plan's Task 118 and adapter file ownership, CF-1 gate,
+  interface names, test commands, no-provider posture, rebase order, and
+  append-only rollback agree with the approved Lane T design and program plan.
+- Environment recovery: the first `npm run verify` was blocked only because
+  this fresh isolated worktree lacked `tsc` (`exit 127`). The coordinator
+  authorized `npm ci --ignore-scripts`; it restored only lockfile-defined
+  dependencies and left tracked status limited to the two owned documents.
+- Verification evidence: after that recovery, the documented Node GREEN audit,
+  `git diff --check`, and `npm run factory:check` passed; `npm run verify`
+  reported `typecheck passed`, 189 passing test files with 3 skipped, 2,228
+  passing tests with 5 skipped, a successful Vite build with its existing
+  chunk-size warning, and `factory-readiness passed`.
+- Live-provider gate: not-applicable; no provider, model, prompt, or Nous call
+  is planned or invoked by this documentation-only work order.
+- Fresh-review handoff: review the diff from
+  `3f7b03012c1d2cfa33330f7f7f09c7069ec4632d` to the forthcoming recovery
+  commit against the approved design and program plan. Lead with ownership,
+  CF-1 boundary, type/interface drift, audit fail polarity, TDD evidence,
+  unsafe merge order, and any missing deterministic/no-effect counterfactual.
+  No production work, Task 118, Task 149, Task 150, Task 151, provider use,
+  dispatch, or merge into `neo` is authorized by this record.
