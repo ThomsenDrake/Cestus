@@ -2775,6 +2775,10 @@ export const knowledgeEventSchema = knowledgeEventBaseSchema
   .transform((event): KnowledgeEvent => event as KnowledgeEvent);
 
 export function validateKnowledgeEvent(event: unknown) {
+  // Validate raw object ownership before Zod reads any payload member. This
+  // makes accessor-bearing or otherwise unsafe inputs a normal parse failure
+  // instead of allowing an untrusted getter to run during schema traversal.
+  if (!isPlainOwnData(event)) return knowledgeEventSchema.safeParse(undefined);
   return knowledgeEventSchema.safeParse(event);
 }
 
