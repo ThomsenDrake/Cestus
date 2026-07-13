@@ -1296,3 +1296,30 @@ explicit implementation authorization.
 - Rebase record: initial worktree starts at coordinator dispatch record; no cross-lane rebase before independent plan work.
 - Merge readiness: not-ready; worker cannot implement, dispatch child, or merge into neo.
 - Archive check: final handoff, clean worktree, verification, review, and coordinator integration remain required.
+
+## RV-0-T-008 — Task 113 documentation-audit recovery checkpoint and fresh dispatch
+
+- Recorded at: 2026-07-13T02:36:52Z
+- Role: coordinator recovery checkpoint
+- Lane and wave: T / 0B
+- Task ID and claim: task-113-resident-full-vision-w0-trigger-plan / docs/agentic/claims/task-113-resident-full-vision-w0-trigger-plan.md
+- Task thread ID: /root/task113_trigger_plan (preserved initial worker); /root/task113_trigger_plan_recovery (fresh recovery implementer)
+- Branch and worktree: codex/task-113-resident-full-vision-w0-trigger-plan-recovery / /home/drake/.codex/worktrees/task-113-resident-full-vision-w0-trigger-plan-recovery
+- Base commit and required head: 3f7b03012c1d2cfa33330f7f7f09c7069ec4632d / one forward-only owned-file recovery commit followed by fresh review
+- Model configuration: GPT-5.6 Terra / Extra High, user-confirmed for child sessions; reported GPT-5 is treated as satisfying that configuration as directed by the user
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-proactive-triggers-design.md@9a571f628bef9c53725e20263cb687ec44dd9cd8; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md; docs/agentic/claims/task-113-resident-full-vision-w0-trigger-plan.md
+- Forbidden files: every other tracked file, including production, test, runtime, UI, provider, shared-contract, specification, template, acceptance-matrix, and registry files
+- Dependencies and required merged commits: Task113 claim 3f7b0301; approved Lane T specification 9a571f62; original uncommitted plan draft/worktree is preserved; no shared contract is frozen and no production dependency applies
+- Approval record: under Standing Coordinator Delegation the coordinator records a documentation-audit recovery checkpoint and authorizes Task113 documentation-audit recovery only. Allowed range is one verified plan-and-claim recovery commit plus fresh review; wave stop is before Tasks149–151, CF-1 implementation dispatch, production work, provider invocation, or merge. It explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. No merge into neo is authorized.
+- Claim status: recovery-dispatched; fresh worker must append, not revise, claim history.
+- RED command and observed failure: initial worker's plan audit suffered two harness-only failures—brittle wrapped-line probes/inverted counterfactual polarity, then shell/JavaScript escaping syntax failure—without a product/schema defect or file-scope breach. The worker was stopped and its uncommitted plan draft preserved.
+- GREEN command and observed result: pending a fresh simpler executable audit with a committed Node module or delimiter-safe `node --input-type=module` command, explicit expected-failure polarity, section-local extraction, and in-memory trigger-plan counterfactuals.
+- Full verification: pending recovery-owned npm run verify.
+- Live-provider gate: plan-only; no provider invocation is authorized.
+- Review verdict: recovery pending; fresh reviewer required after recovery.
+- Rebase record: recovery branch starts at preserved claim head 3f7b0301 in a distinct worktree; no cross-lane rebase before review.
+- Merge readiness: not-ready; recovery worker cannot self-approve or merge into neo.
+- Archive check: original uncommitted plan draft and worker state are preserved; recovery handoff, clean worktree, verification, fresh review, and coordinator integration remain required.
+- Root-cause checkpoint: failures were documentation-harness construction defects, not approved Trigger contract defects. The recovery changes both worker and test harness form; no user decision is needed.
+- Supersession: this record supersedes RV-0-T-007 only for Task113 recovery status. The original dispatch and preserved draft evidence remain immutable.
