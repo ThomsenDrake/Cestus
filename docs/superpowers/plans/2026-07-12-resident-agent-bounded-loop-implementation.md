@@ -184,8 +184,22 @@ export interface ResidentLoopCheckpointReadback {
   readonly taskId: string;
   readonly attemptId: string;
   readonly runId: string;
+  readonly residentAgentId: "agent_default";
+  readonly runMode: ResidentRunMode;
+  readonly workflowDescriptor: ResidentWorkflowDescriptorBinding;
+  readonly planId: string;
   readonly planRecordEventId: string;
+  readonly stepOrdinal: number;
   readonly requestEventId: string;
+  readonly toolId: string;
+  readonly toolVersion: string;
+  readonly allowlistEntryHash: `sha256:${string}`;
+  readonly sideEffectClass: ResidentToolSideEffectClass;
+  readonly requiredApprovalClass: ResidentApprovalClass;
+  readonly previewHash: `sha256:${string}`;
+  readonly inputArtifactHashes: readonly `sha256:${string}`[];
+  readonly resumptionDeadlineAt: string;
+  readonly policyVersion: string;
   readonly policyHash: `sha256:${string}`;
   readonly authority: ResidentLoopAuthorityBinding;
   readonly sourceEventIds: readonly string[];
@@ -299,6 +313,16 @@ suspends/releases, reclaims/reverifies, and reports mount loss. If W cannot
 return mounted authority, Lane L performs no append, effect, projection
 substitute, cached continuation, local write, or fallback write.
 
+`ResidentLoopCheckpointReadback` binds the exact resident, descriptor, plan,
+step, tool, required approval class, preview, input-artifact hashes, and
+resumption deadline in addition to its task/attempt/run, request, policy,
+authority, source/context, budget, causation, and correlation bindings. Resume
+compares every one of those fields to the authoritative plan, gateway request,
+approval, and current mounted authority before append, request, execution, or
+continuation. Every resident/descriptor/step/tool/approval/preview/artifact/
+deadline mismatch fails closed with no Lane L append, gateway request, or
+gateway execution.
+
 ~~~ts
 export interface ResidentPlanObservationProjection {
   readonly plansByEventId: ReadonlyMap<string, ResidentPlanRecord>;
@@ -318,8 +342,11 @@ malformed, stale, cross-plan, or unbound record invalid without a fallback
 write, blob scan, service-return trust, or accepted-graph mutation. Idempotent
 replay returns the same event; changed policy, revision, scope, source/context,
 tool/version, budget, preview, authority, or causation is a visible conflict.
-A completed / handoff-recorded result requires exact H handoff readback, not
-tool or model success.
+A completed / handoff-recorded result requires the authoritative H
+`HandoffReadback` verbatim, not a narrowed L-shaped selection, tool/model
+success, or copied task status. Its verified outcome, recorded/terminal/task
+lifecycle event IDs, and exact H authority binding remain available for the
+completion decision.
 
 ## File Ownership and Merge Order
 
@@ -499,7 +526,8 @@ export interface CreateBoundedAgentLoopInput {
   readonly toolGateway: ResidentLoopToolGateway;
   readonly readHandoff: (input: {
     readonly taskId: string; readonly attemptId: string; readonly runId: string;
-  }) => Promise<ResidentLoopTerminalOrResumableResult["handoffReadback"] | undefined>;
+    readonly authority: ResidentLoopAuthorityBinding;
+  }) => Promise<HandoffReadback | undefined>;
   readonly nowMonotonicMs: () => number;
 }
 
@@ -524,6 +552,14 @@ InitialPlanPlannerPort and PlanReplannerPort return typed own-data candidates
 that CF-1 parses again before append. CheckpointPort, ApprovalPort,
 and MountedAuthorityPort make resume ledger-only: an unknown, foreign-task,
 foreign-run, or stale checkpoint/approval cannot select a memory recovery path.
+H owns `HandoffReadback`; Task 136 consumes that full authoritative type and
+does not reconstruct a three-field handoff shape. Completion requires
+`handoffReadback.outcome === "verified"`, exact task/run identity, causal
+`recordedEventId`, `terminalRunEventId`, and `taskStatusEventId`, and an
+`authorityBinding` exactly equal to current mounted authority. These fields
+preserve H's lifecycle and authority proof; missing, resumable, unavailable,
+inconsistent, cross-run, or authority-mismatched HandoffReadback fails closed
+as `persistence-unconfirmed`, never `completed`.
 
 - [ ] **Step 1: Write failing bounded-loop tests.**
 
@@ -531,16 +567,17 @@ Create one test file with frozen Task 120/W/P/H fakes. It covers every matrix
 row, beginning with these direct behavior tests:
 
 ~~~ts
-it("fails before an unlisted prefix tool reaches the gateway", async () => {
-  const gateway = { request: vi.fn() };
-  const loop = createBoundedAgentLoop(loopInput({ toolGateway: gateway }));
+it("fails before an unlisted prefix tool reaches authoritative gateway readback", async () => {
+  const fixture = loopInput();
+  const loop = createBoundedAgentLoop(fixture);
 
   const result = await loop.advance(inputFor({
     policy: policyWithStep({ toolId: "local.inspect.extra", toolVersion: "1.0.0" })
   }));
 
   expect(result).toMatchObject({ outcome: "failed", category: "validation-failed" });
-  expect(gateway.request).not.toHaveBeenCalled();
+  expect(fixture.toolGateway.requestAndReadback).not.toHaveBeenCalled();
+  expect(fixture.toolGateway.executeAndReadback).not.toHaveBeenCalled();
 });
 
 it("suspends, releases through W, and revalidates a changed preview before any effect", async () => {
@@ -553,11 +590,17 @@ it("suspends, releases through W, and revalidates a changed preview before any e
   }).resume({ ...inputFor(), resumeCheckpointEventId: waiting.resumeAnchor!.checkpointEventId });
 
   expect(resumed).toMatchObject({ outcome: "resumable", category: "approval-stale" });
-  expect(fixture.toolGateway.execute).not.toHaveBeenCalled();
+  expect(fixture.toolGateway.executeAndReadback).not.toHaveBeenCalled();
 });
 
-it("cannot report completed until exact H handoff readback exists", async () => {
-  const result = await createBoundedAgentLoop(loopInput({ handoffReadback: undefined })).advance(inputFor());
+it.each([
+  ["missing HandoffReadback", undefined],
+  ["resumable HandoffReadback", handoffReadback({ outcome: "resumable" })],
+  ["cross-run HandoffReadback", handoffReadback({ runId: "run_other" })],
+  ["HandoffReadback with changed authorityBinding", handoffReadback({ authorityBinding: otherAuthority() })],
+  ["HandoffReadback without terminal lifecycle proof", handoffReadback({ terminalRunEventId: undefined })]
+])("cannot report completed with %s", async (_label, handoffReadback) => {
+  const result = await createBoundedAgentLoop(loopInput({ handoffReadback })).advance(inputFor());
   expect(result).not.toMatchObject({ outcome: "completed" });
   expect(result.category).toBe("persistence-unconfirmed");
 });
@@ -570,6 +613,18 @@ it.each(["unknown checkpoint", "foreign-task checkpoint", "foreign-run checkpoin
     expect(fixture.toolGateway.executeAndReadback).not.toHaveBeenCalled();
   }
 );
+
+it.each([
+  "resident", "descriptor", "step", "tool", "approval", "preview", "artifact", "deadline"
+])("fails closed before every gateway method on a checkpoint %s mismatch", async (binding) => {
+  const fixture = loopInput({ resumeCheckpoint: checkpointFor(`${binding} mismatch`) });
+  const result = await createBoundedAgentLoop(fixture).resume(resumeInput());
+
+  expect(result).toMatchObject({ outcome: "resumable", category: "persistence-unconfirmed" });
+  expect(fixture.planObservationStore.appendObservation).not.toHaveBeenCalled();
+  expect(fixture.toolGateway.requestAndReadback).not.toHaveBeenCalled();
+  expect(fixture.toolGateway.executeAndReadback).not.toHaveBeenCalled();
+});
 
 it("releases through W without a Lane L write when mount reverify fails", async () => {
   const fixture = loopInput({ mountedAuthorityPort: unavailableAfterSuspend() });
@@ -588,6 +643,11 @@ it("rejects a stale approval at consume readback before gateway execution", asyn
   expect(fixture.toolGateway.executeAndReadback).not.toHaveBeenCalled();
 });
 ~~~
+
+Every resident/descriptor/step/tool/approval/preview/artifact/deadline mismatch
+is an individual `it.each` case, not a generic checkpoint test: each must
+return the safe resumable category before any append, requestAndReadback, or
+executeAndReadback.
 
 - [ ] **Step 2: Run the focused RED command.**
 
@@ -633,12 +693,18 @@ category. For approval suspension, CheckpointPort first appends/reads back the
 checkpoint, then W suspendAndRelease releases the claim. Resume starts only
 after readCheckpoint finds the exact durable resumeAnchor, W
 reclaimAndReverify returns current mounted authority, and every plan/gateway/
-approval readback is equal. Unknown/foreign checkpoints, stale approvals, and
-mount loss fail closed; mount loss releases through W and writes no Lane L
+approval readback is equal. In particular, the checkpoint's resident,
+workflowDescriptor, plan/step, tool/version/allowlist/side effect, required
+approval class, preview, input-artifact hashes, and resumption deadline must
+equal the authoritative plan/gateway/approval facts; each individual mismatch
+fails closed before a Lane L append, requestAndReadback, or
+executeAndReadback. Unknown/foreign checkpoints, stale approvals, and mount
+loss fail closed; mount loss releases through W and writes no Lane L
 observation, result, projection substitute, local write, or fallback write.
 Resume replays Task 120/gateway/H records and never scans artifacts or trusts
-in-memory counters. Exact H handoff plus causal run/task proof alone permits
-completed.
+in-memory counters. Exact `HandoffReadback` plus causal run/task/lifecycle and
+authority proof alone permits completed; Task 136 retains and checks the full
+H-owned readback rather than narrowing it to manifest/output fields.
 
 - [ ] **Step 4: Run the focused GREEN command.**
 
@@ -675,14 +741,17 @@ gaps before coordinator merge.
 | L-01 | 120/136 | Next plan revision, observation, tool, provider invocation, provider request bytes, provider response bytes, context bytes, derivative artifact bytes, active execution ms, or approval suspension ms action exceeds its named ceiling. | No effect; every named durable counter reads back unchanged; policy selects terminal/resumable budget result. |
 | L-02 | 120/136 | Unknown, prefix, alias, wrong-version, relabelled-side-effect, missing-context, or over-call-count tool. | No gateway execution; validation failure. |
 | L-03 | 120/136 | Replan adds tool/provider/model/source/context/approval/automatic-action/budget/effect. | Old plan immutable; visible conflict; no effect. |
-| L-04 | 136 | Unknown, foreign-task, foreign-run, forged, self, denied, expired, cross-run, changed-preview/source/context/policy/lock/mount checkpoint or approval. | No effect; exact checkpoint/request/approval readback and stale/denied/persistence-unconfirmed resumable result. |
+| L-04 | 136 | Unknown, foreign-task, foreign-run, forged, self, denied, expired, cross-run, or changed resident/descriptor/step/tool/approval/preview/artifact/deadline/source/context/policy/lock/mount checkpoint or approval. | No effect; exact checkpoint/request/approval readback and stale/denied/persistence-unconfirmed resumable result. |
 | L-05 | 136 | Claim loss, mount replacement/disconnect, provider outage, crash between request/checkpoint, or post-await source/context drift. | W suspend/release/reclaim/reverify and durable non-success where mounted; mount loss performs no Lane L write or internal fallback write. |
 | L-06 | 120/136 | Orphan bytes, caller result, cached counter, blob scan, or adjacent-task event after restart. | No resume except ledger/H records from resumeAnchor. |
 | L-07 | 120 | Accessor, inherited/symbol/unknown key, sparse array, secret/raw text reaches parser/diagnostic. | Reject before append/effect; primary safe durable outcome remains visible. |
 | L-08 | 120/136 | Tool/model success, copied task status, or mismatched H manifest claims completion. | Never completed; exact H handoff and causal readback only. |
 
 Task 120 additionally proves projection never calls an accepted-graph service.
-Task 136 uses capability-shaped fakes and no real provider.
+Task 136 uses capability-shaped fakes and no real provider. Its gateway fakes
+expose only `requestAndReadback`/`readRequest`/`readDecision` and
+`executeAndReadback`/`readResult`; no stale `gateway.request` or
+`toolGateway.execute` expectation is a valid proof of an effect boundary.
 
 ## Rebase, Review, and Coordinator-Only Live Gate
 
@@ -742,6 +811,11 @@ const audit = (value) => {
   const matrix = part(value, "## Deterministic Failure-Injection Matrix", "## Rebase, Review, and Coordinator-Only Live Gate");
   const operations = part(value, "## Rebase, Review, and Coordinator-Only Live Gate", "## Rollback and Acceptance Mapping");
   const rollback = part(value, "## Rollback and Acceptance Mapping", "## Documentation Audit and Self-Review");
+  const checkpoint = part(
+    contracts,
+    "export interface ResidentLoopCheckpointReadback",
+    "export interface ResidentLoopCheckpointPort"
+  );
   const need = (scope, text) => { if (!scope.includes(text)) throw new Error("missing " + text); };
   const needAll = (scope, texts) => texts.forEach(text => need(scope, text));
   needAll(global, [
@@ -775,6 +849,12 @@ const audit = (value) => {
     "providerPostureHash, and modelId",
     "substitute, cached continuation, local write, or fallback write"
   ]);
+  needAll(checkpoint, [
+    "residentAgentId", "workflowDescriptor", "planId", "stepOrdinal",
+    "toolId", "toolVersion", "allowlistEntryHash", "sideEffectClass",
+    "requiredApprovalClass", "previewHash", "inputArtifactHashes",
+    "resumptionDeadlineAt", "policyVersion"
+  ]);
   needAll(t120, [
     "plan-observation-contracts.ts", "plan-observation-projection.ts",
     "**Step 2: Run the focused RED command.**", "**Step 4: Run the focused GREEN command.**",
@@ -788,8 +868,25 @@ const audit = (value) => {
     "stale approval", "after every await before any append/effect/return continuation",
     "After every await, re-read and compare sourceEventIds,",
     "mount loss releases through W and writes no Lane L",
-    "observation, result, projection substitute, local write, or fallback write"
+    "observation, result, projection substitute, local write, or fallback write",
+    "fixture.toolGateway.requestAndReadback).not.toHaveBeenCalled()",
+    "fixture.toolGateway.executeAndReadback).not.toHaveBeenCalled()",
+    "Every resident/descriptor/step/tool/approval/preview/artifact/",
+    "is an individual `it.each` case",
+    "Promise<HandoffReadback | undefined>",
+    "H owns `HandoffReadback`; Task 136 consumes that full authoritative type",
+    "handoffReadback.outcome === \"verified\"", "recordedEventId",
+    "terminalRunEventId", "taskStatusEventId", "authorityBinding",
+    "`authorityBinding` exactly equal to current mounted authority",
+    "HandoffReadback with changed authorityBinding",
+    "HandoffReadback without terminal lifecycle proof"
   ]);
+  if (t136.includes("gateway.request).") || t136.includes("toolGateway.execute).")) {
+    throw new Error("stale gateway API in Task 136 test proof");
+  }
+  if (t136.includes("ResidentLoopTerminalOrResumableResult[\"handoffReadback\"]")) {
+    throw new Error("narrowed handoff readback in Task 136");
+  }
   needAll(matrix, [
     "L-01", "L-02", "L-03", "L-04", "L-05", "L-06", "L-07", "L-08",
     "provider response bytes", "post-await source/context drift"
@@ -799,6 +896,11 @@ const audit = (value) => {
   need(rollback, "A-10");
 };
 audit(source);
+const replaceInCheckpoint = (value, from, to) => {
+  const start = value.indexOf("export interface ResidentLoopCheckpointReadback");
+  const end = value.indexOf("export interface ResidentLoopCheckpointPort", start);
+  return value.slice(0, start) + value.slice(start, end).replace(from, to) + value.slice(end);
+};
 const cases = [
   ["tool exactness", value => value.replaceAll("Exact tool ID + exact toolVersion", "tool family")],
   ["plan readback", value => value.replaceAll("planRecordEventId", "removedPlanRecordEventId")],
@@ -816,6 +918,19 @@ const cases = [
   ["checkpoint port", value => value.replaceAll("readCheckpoint", "removedCheckpointReadback")],
   ["approval consume port", value => value.replaceAll("consumeApproval", "removedApprovalConsume")],
   ["gateway readback port", value => value.replaceAll("requestAndReadback", "removedGatewayReadback")],
+  ["gateway execution readback port", value => value.replaceAll("executeAndReadback", "removedGatewayExecutionReadback")],
+  ["checkpoint resident binding", value => replaceInCheckpoint(value, "readonly residentAgentId: \"agent_default\";", "readonly removedResidentBinding: string;")],
+  ["checkpoint descriptor binding", value => replaceInCheckpoint(value, "readonly workflowDescriptor: ResidentWorkflowDescriptorBinding;", "readonly removedDescriptorBinding: string;")],
+  ["checkpoint step binding", value => replaceInCheckpoint(value, "readonly stepOrdinal: number;", "readonly removedStepBinding: number;")],
+  ["checkpoint tool binding", value => replaceInCheckpoint(value, "readonly allowlistEntryHash: `sha256:${string}`;", "readonly removedToolBinding: string;")],
+  ["checkpoint approval binding", value => replaceInCheckpoint(value, "readonly requiredApprovalClass: ResidentApprovalClass;", "readonly removedApprovalBinding: string;")],
+  ["checkpoint preview binding", value => replaceInCheckpoint(value, "readonly previewHash: `sha256:${string}`;", "readonly removedPreviewBinding: string;")],
+  ["checkpoint artifact binding", value => replaceInCheckpoint(value, "readonly inputArtifactHashes: readonly `sha256:${string}`[];", "readonly removedArtifactBinding: readonly string[];")],
+  ["checkpoint deadline binding", value => replaceInCheckpoint(value, "readonly resumptionDeadlineAt: string;", "readonly removedDeadlineBinding: string;")],
+  ["checkpoint mismatch test", value => value.replace("is an individual `it.each` case", "may continue as a generic case")],
+  ["handoff ABI", value => value.replaceAll("HandoffReadback", "NarrowedHandoffShape")],
+  ["handoff verified outcome", value => value.replace("handoffReadback.outcome === \"verified\"", "handoffReadback.outcome is ignored")],
+  ["handoff authority proof", value => value.replace("`authorityBinding` exactly equal to current mounted authority", "authorityBinding is ignored")],
   ["W authority port", value => value.replaceAll("reclaimAndReverify", "removedWReverify")],
   ["W no-write", value => value.replace("mount loss releases through W and writes no Lane L", "mount loss may write locally")],
   ["post-await source/context", value => value.replace("After every await, re-read and compare sourceEventIds,", "After await, use cached source/context")]
