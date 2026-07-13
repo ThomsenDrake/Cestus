@@ -2135,3 +2135,8 @@ explicit implementation authorization.
 - Relay B integration head `a321955d84eb700722e08eaa835ddb076fda62b2` contains approved Task117 freeze `d0571fb258e725d660bbe39bf64a896db90c7e53` plus forward registry reconciliation.
 - Exact post-merge `npm run verify` in `/home/drake/.codex/worktrees/383d/Cestus` exited 0: typecheck; 189 test files/3 skipped; 2,228 tests/5 skipped; Vite production build; factory readiness.
 - CF-1 is complete. Wave 1 may dispatch only frozen rows with exact scoped authority, TDD, fresh review, verification-before-completion, no child self-integration, and no neo merge. Dependent consumers remain stopped pending recorded merged predecessor SHAs.
+## RV-1-C-021 — Task120 CF-1 contract-gap recovery
+
+- Task120 blocked claim `bb2c2059` is preserved and not integrated as production. CF-1 amendment must add serialized W1-119, L shared-contract registrar, before Task120 and W1-118.
+- W1-119 owns only `packages/ontology/src/contracts.ts`, `packages/ontology/test/agent-resident-loop-contracts.test.ts`, and claim; events are agent.resident-plan.recorded.v1, agent.resident-observation.recorded.v1, agent.resident-tool-step.recorded.v1, agent.resident-loop.suspended.v1, agent.resident-loop.result.recorded.v1.
+- Amendment/review and W1-119 require SDD, TDD, fresh review, verification, no self-merge/no neo. W1-119 merged SHA gates restarted Task120; Task120 then gates W1-118 and Task136. No shadow store/effects.
