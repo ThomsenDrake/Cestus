@@ -1684,3 +1684,30 @@ explicit implementation authorization.
 - Merge readiness: not-ready; Task112 and Task113 await independent reviews, Task115 and Task116 are unstarted, CF-1 and all production/provider/live work remain stopped
 - Archive check: visible successor task is titled and pinned; d8bf6c4 ancestry, clean pre-append checkout, focused GREEN, factory readiness, and full verification were independently confirmed; coordinator acceptance commit remains pending
 - Supersession: this record accepts ownership from RV-0-C-003 without revising its evidence; no child gains self-merge or neo-merge authority.
+
+## RV-0-L-012 — Task 112 strict-checkpoint typing repair dispatch
+
+- Recorded at: 2026-07-13T13:41:45Z
+- Role: coordinator recovery dispatch
+- Lane and wave: L / 0B
+- Task ID and claim: task-112-resident-full-vision-w0-loop-plan / docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Task thread ID: fresh repair implementer pending coordinator dispatch; prior author 019f5b99-f637-7b50-8ab1-dd435d858bca and fresh reviewer /root/review_task112_lifecycle remain historical evidence only
+- Branch and worktree: codex/task-112-resident-full-vision-w0-loop-strict-typing-repair / coordinator-provisioned isolated worktree based on 686f56e53cf54e7dd2ccb498e7d151aa89a8b02b
+- Base commit and required head: 686f56e53cf54e7dd2ccb498e7d151aa89a8b02b / one forward-only repair commit plus a different fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358; docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md@baa980e04f126ce06f41398fc45169f112321e39
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md; docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Forbidden files: every other tracked file, including registry, production, test, runtime, UI, provider, shared-contract, specification, template, and acceptance files
+- Dependencies and required merged commits: RV-0-L-011 review of 686f56e53cf54e7dd2ccb498e7d151aa89a8b02b; Task112 remains unmerged and CF-1 is still stopped
+- Approval record: the governing spec and plan are approved. Allowed task range: Task112 strict-checkpoint typing repair only. Wave stop: one documentation repair commit and a different fresh review before Tasks120/136, CF-1, production/provider work, child dispatch, or merge. This repair explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. Do not merge into neo.
+- Claim status: repairing
+- RED command and observed failure: npm run typecheck on the repaired Task112 plan must fail before the fix with implicit-any diagnostics for each checkpoint mutation callback, after lockfile-pinned dependencies are restored in the isolated worktree
+- GREEN command and observed result: the coordinator authorization-presence audit exited 0; git diff --check exited 0; npm run factory:check reported `factory-readiness passed`; the fresh repair still must prove explicit `ResidentLoopCheckpointReadback` input/output typing, its structural audit, and compiler-backed GREEN
+- Full verification: the coordinator's fresh npm run verify exited 0 after npm ci restored lockfile-pinned dependencies; repair-owned verification remains independently required and the prior missing-tsc block is not waived
+- Live-provider gate: not-applicable; this documentation-only repair invokes no provider
+- Review verdict: needs-changes / fresh reviewer /root/review_task112_lifecycle found that the 25 mutation callbacks leave checkpoint implicitly any under strict TypeScript
+- Rebase record: repair begins at the reviewed exact head 686f56e53cf54e7dd2ccb498e7d151aa89a8b02b; no contract merge applies
+- Merge readiness: not-ready; only the visible coordinator may later integrate an approved repair into its own branch, never neo
+- Archive check: prior author and reviewer evidence remains preserved; fresh repair, verification, review, and integration are required
+- Root-cause checkpoint: the plan's structural audit proved mutation coverage but did not typecheck the mutation helper under the repository's strict compiler settings. The new tactic uses a compiler-backed RED/GREEN before re-review.
+- Supersession: this record supersedes only RV-0-L-011 status; its review evidence remains immutable.
