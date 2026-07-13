@@ -1764,3 +1764,31 @@ explicit implementation authorization.
 - Archive check: both stopped workers' evidence is preserved; fresh recovery, verification, review, and integration remain required
 - Root-cause checkpoint: two focused attempts tested outer tuple typing rather than compiler-visible parameter typing. The new tactic mutates and typechecks every concrete callback declaration, not the container annotation.
 - Supersession: this record supersedes only RV-0-L-012 status; all previous Task112 evidence remains immutable.
+
+## RV-0-L-014 — Task 112 compiler-evidence correction recovery dispatch
+
+- Recorded at: 2026-07-13T14:28:01Z
+- Role: coordinator root-cause recovery dispatch after fresh review
+- Lane and wave: L / 0B
+- Task ID and claim: task-112-resident-full-vision-w0-loop-plan / docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Task thread ID: fresh review `/root/review_task112_per_callback` blocked child head `669e7b58c8b299f570a41b603bf23bfc927f5eba`; a different fresh repair implementer is required
+- Branch and worktree: create a fresh task-scoped branch and isolated worktree from exact child head `669e7b58c8b299f570a41b603bf23bfc927f5eba`; do not alter the prior repair or its read-only review checkout
+- Base commit and required head: `669e7b58c8b299f570a41b603bf23bfc927f5eba` / one forward-only evidence-correction commit plus a different fresh re-review
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358; docs/superpowers/specs/2026-07-12-resident-agent-bounded-loop-design.md@baa980e04f126ce06f41398fc45169f112321e39
+- Owned files: docs/superpowers/plans/2026-07-12-resident-agent-bounded-loop-implementation.md; docs/agentic/claims/task-112-resident-full-vision-w0-loop-plan.md
+- Forbidden files: every other tracked file, including the registry, production, test, runtime, UI, provider, shared-contract, specification, template, and acceptance files
+- Dependencies and required merged commits: RV-0-L-013 and unintegrated child head `669e7b58c8b299f570a41b603bf23bfc927f5eba`; Task112 remains unmerged, no shared contract is frozen, and CF-1 is stopped
+- Approval record: the governing spec and plan are approved. Allowed task range: Task112 compiler-evidence correction only. Wave stop: one documentation correction commit and a different fresh review before Tasks120/136, CF-1, production/provider work, child dispatch, or merge. This recovery explicitly authorizes superpowers:subagent-driven-development, documentation RED/GREEN as TDD, fresh review, and verification-before-completion. Do not merge into neo.
+- Claim status: recovering
+- Root-cause evidence: the coordinator independently reproduced the review finding with the same strict/noLib/types=[] TypeScript API virtual source. The current 25 directly annotated callbacks produce `total=0; TS7006=0`; removing only the outer tuple annotation also produces `total=0; TS7006=0`; removing both that outer annotation and all 25 direct callback signatures produces `total=25; TS7006=25`. Therefore the immutable `669e7b58` claim's assertion that an outer-only removal caused 25 TS7006 diagnostics is false.
+- RED command and observed failure: use the exact extracted matrix, remove both the outer tuple annotation and all exact direct callback signatures in memory, and require exactly 25 TS7006 diagnostics. The documentation audit must fail if either the truthful baseline or the direct-signature/outer-removal distinction is absent or inverted.
+- GREEN command and observed result: extend the embedded Task112 TypeScript-API audit so it asserts current matrix zero diagnostics, outer-only removal zero diagnostics, and the no-outer/no-direct-signatures baseline exactly 25 TS7006 diagnostics; append a truthful forward correction to the claim without revising historical text; retain all 111 structural counterfactuals and all L/H/no-fallback/provenance/approval invariants.
+- Full verification: rerun the focused compiler RED/GREEN proof, the section-local 111-counterfactual audit, git diff --check, npm run factory:check, and npm run verify after the final append
+- Live-provider gate: not-applicable; this documentation-only recovery invokes no provider
+- Review verdict: needs-changes / the different fresh reviewer found false append-only compiler evidence; no defect was found in the 25 direct callback signatures themselves
+- Rebase record: no contract merge applies; the new repair must start at `669e7b58c8b299f570a41b603bf23bfc927f5eba` and preserve the earlier documents as immutable history
+- Merge readiness: not-ready; only the visible coordinator may later integrate a freshly approved correction into its own branch, never neo
+- Archive check: prior author and review evidence remains preserved; a fresh repair, verification, re-review, and coordinator integration remain required
+- Root-cause checkpoint: this is the second failed Task112 recovery attempt. The failure is evidence semantics, not TypeScript support: the prior tactic confused a matrix with already explicit parameter annotations with its fully untyped baseline. The new tactic separately compiles all three states and makes that distinction counterfactually auditable.
+- Supersession: this record supersedes only RV-0-L-013's ready-for-review disposition; all earlier Task112 evidence, including the false assertion, remains immutable and must be corrected only forward.
