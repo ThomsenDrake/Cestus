@@ -561,8 +561,70 @@ traces, never a storage path or write API.
     expect(harness.lease.readOrAcquireCalls).toHaveLength(1);
     const canonicalAdmission = harness.canonicalAdmissionTuple();
     const leaseInput = harness.lease.readOrAcquireInputs[0];
-    const appendedAdmission = harness.reconciliation.appendInputs[0]?.admission;
-    const readbackAdmission = harness.reconciliation.readbacks[0]?.admission;
+    const appendedReconciliation = harness.reconciliation.appendInputs[0];
+    const readbackReconciliation = harness.reconciliation.readbacks[0];
+    const fieldToEdgeAssertions = [
+      ["snapshot identity/mount -> lease input", leaseInput?.admission.identityAndMount, canonicalAdmission.authorityIdentityAndMount],
+      ["lease input resident -> verified lease resident", leaseInput?.residentId, canonicalAdmission.verifiedLease.residentId],
+      ["lease input epoch -> verified lease epoch", leaseInput?.supervisorEpoch, canonicalAdmission.verifiedLease.supervisorEpoch],
+      ["lease input policy version -> verified lease policy version", leaseInput?.policyVersion, canonicalAdmission.verifiedLease.policyVersion],
+      ["lease input policy digest -> verified lease policy digest", leaseInput?.policyDigest, canonicalAdmission.verifiedLease.policyDigest],
+      ["lease input causation -> verified lease causation", leaseInput?.causationId, canonicalAdmission.verifiedLease.causation.causationId],
+      ["lease input correlation -> verified lease correlation", leaseInput?.correlationId, canonicalAdmission.verifiedLease.causation.correlationId],
+      ["authority workspace -> verified lease workspace", canonicalAdmission.authorityIdentityAndMount.workspaceId, canonicalAdmission.verifiedLease.workspaceId],
+      ["authority resident -> verified lease resident", canonicalAdmission.authorityIdentityAndMount.residentId, canonicalAdmission.verifiedLease.residentId],
+      ["authority epoch -> verified lease epoch", canonicalAdmission.authorityIdentityAndMount.supervisorEpoch, canonicalAdmission.verifiedLease.supervisorEpoch],
+      ["authority identity event -> verified lease identity event", canonicalAdmission.authorityIdentityAndMount.workspaceIdentityEventId, canonicalAdmission.verifiedLease.workspaceIdentityEventId],
+      ["authority evidence -> verified lease authority evidence", canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId, canonicalAdmission.verifiedLease.authorityEvidenceId],
+      ["mount evidence -> verified lease mount evidence", canonicalAdmission.authorityIdentityAndMount.mountEvidenceId, canonicalAdmission.verifiedLease.mountEvidenceId],
+      ["verified lease authority evidence -> policy/lock", canonicalAdmission.verifiedLease.authorityEvidenceId, canonicalAdmission.policyAndLock.authorityEvidenceId],
+      ["verified lease mount evidence -> policy/lock", canonicalAdmission.verifiedLease.mountEvidenceId, canonicalAdmission.policyAndLock.mountEvidenceId],
+      ["verified lease event -> policy/lock", canonicalAdmission.verifiedLease.leaseEventId, canonicalAdmission.policyAndLock.leaseEventId],
+      ["verified lease readback event -> policy/lock", canonicalAdmission.verifiedLease.readbackEventId, canonicalAdmission.policyAndLock.leaseReadbackEventId],
+      ["verified lease policy version -> policy/lock", canonicalAdmission.verifiedLease.policyVersion, canonicalAdmission.policyAndLock.policyVersion],
+      ["verified lease policy digest -> policy/lock", canonicalAdmission.verifiedLease.policyDigest, canonicalAdmission.policyAndLock.policyDigest],
+      ["policy/lock digest -> mounted policy/lock source", canonicalAdmission.policyAndLock.lockStateDigest, harness.policyAndLock.expectedLockStateDigest],
+      ["policy/lock readback event -> mounted policy/lock source", canonicalAdmission.policyAndLock.readbackEventId, harness.policyAndLock.mountedReadbackEventId],
+      ["verified lease authority evidence -> high-water", canonicalAdmission.verifiedLease.authorityEvidenceId, canonicalAdmission.highWater.authorityEvidenceId],
+      ["verified lease mount evidence -> high-water", canonicalAdmission.verifiedLease.mountEvidenceId, canonicalAdmission.highWater.mountEvidenceId],
+      ["verified lease event -> high-water", canonicalAdmission.verifiedLease.leaseEventId, canonicalAdmission.highWater.leaseEventId],
+      ["verified lease readback event -> high-water", canonicalAdmission.verifiedLease.readbackEventId, canonicalAdmission.highWater.leaseReadbackEventId],
+      ["high-water mark -> mounted high-water source", canonicalAdmission.highWater.highWaterMark, harness.highWater.expectedMark],
+      ["high-water readback event -> mounted high-water source", canonicalAdmission.highWater.readbackEventId, harness.highWater.mountedReadbackEventId],
+      ["verified lease expiry -> mounted lease source", canonicalAdmission.verifiedLease.expiresAt, harness.lease.expectedExpiresAt],
+      ["tuple identity/mount -> reconciliation append", canonicalAdmission.authorityIdentityAndMount, appendedReconciliation?.admission.authorityIdentityAndMount],
+      ["tuple verified lease -> reconciliation append", canonicalAdmission.verifiedLease, appendedReconciliation?.admission.verifiedLease],
+      ["tuple policy/lock -> reconciliation append", canonicalAdmission.policyAndLock, appendedReconciliation?.admission.policyAndLock],
+      ["tuple high-water -> reconciliation append", canonicalAdmission.highWater, appendedReconciliation?.admission.highWater],
+      ["append workspace -> reconciliation readback", appendedReconciliation?.workspaceId, readbackReconciliation?.workspaceId],
+      ["append resident -> reconciliation readback", appendedReconciliation?.residentId, readbackReconciliation?.residentId],
+      ["append epoch -> reconciliation readback", appendedReconciliation?.supervisorEpoch, readbackReconciliation?.supervisorEpoch],
+      ["append idempotency key -> reconciliation readback", appendedReconciliation?.reconciliationIdempotencyKey, readbackReconciliation?.reconciliationIdempotencyKey],
+      ["revalidated active claim -> reconciliation append", appendedReconciliation?.observedActiveClaim, harness.activeClaimReadback],
+      ["active claim workspace -> reconciliation append", appendedReconciliation?.observedActiveClaim.workspaceId, appendedReconciliation?.workspaceId],
+      ["active claim resident -> reconciliation append", appendedReconciliation?.observedActiveClaim.residentId, appendedReconciliation?.residentId],
+      ["active claim epoch -> reconciliation append", appendedReconciliation?.observedActiveClaim.supervisorEpoch, appendedReconciliation?.supervisorEpoch],
+      ["active claim id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.claimId, readbackReconciliation?.claimId],
+      ["active attempt id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.attemptId, readbackReconciliation?.attemptId],
+      ["active claim causation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.causationId, readbackReconciliation?.causation.causationId],
+      ["active claim correlation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.correlationId, readbackReconciliation?.causation.correlationId],
+      ["prior claim event -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.priorClaimEventId, harness.activeClaimReadback.priorClaimEventId],
+      ["prior claim lease -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.priorClaimLeaseId, harness.activeClaimReadback.priorClaimLeaseId],
+      ["active-claim readback event -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.readbackEventId, harness.activeClaimReadback.readbackEventId],
+      ["outage authority evidence -> admission authority", appendedReconciliation?.outage.priorAuthorityEvidenceId, canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId],
+      ["outage observation -> reconciliation append", appendedReconciliation?.outage, harness.outage],
+      ["outage observation -> mounted outage source", appendedReconciliation?.outage.safeObservationId, harness.outage.safeObservationId],
+      ["outage timestamp -> mounted outage source", appendedReconciliation?.outage.observedAt, harness.outage.observedAt],
+      ["outage category -> mounted outage source", appendedReconciliation?.outage.category, harness.outage.category],
+      ["append tuple -> readback tuple", appendedReconciliation?.admission, readbackReconciliation?.admission],
+      ["reconciliation event -> mounted append source", readbackReconciliation?.reconciliationEventId, harness.reconciliation.appendedEventId],
+      ["reconciliation readback event -> mounted readback source", readbackReconciliation?.readbackEventId, harness.reconciliation.mountedReadbackEventId]
+    ] as const;
+    for (const [label, actual, expected] of fieldToEdgeAssertions) {
+      expect(actual, label).toEqual(expected);
+    }
+    const appendedAdmission = appendedReconciliation?.admission;
+    const readbackAdmission = readbackReconciliation?.admission;
     expect(leaseInput?.admission.identityAndMount).toEqual(canonicalAdmission.authorityIdentityAndMount);
     expect(leaseInput?.policyVersion).toBe(canonicalAdmission.verifiedLease.policyVersion);
     expect(leaseInput?.policyDigest).toBe(canonicalAdmission.verifiedLease.policyDigest);
@@ -584,6 +646,16 @@ traces, never a storage path or write API.
     expect(canonicalAdmission.highWater.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);
     expect(appendedAdmission).toEqual(canonicalAdmission);
     expect(readbackAdmission).toEqual(appendedAdmission);
+    expect(readbackReconciliation?.reconciliationIdempotencyKey).toBe(
+      harness.reconciliation.keyFor({
+        workspaceId: appendedReconciliation?.workspaceId,
+        supervisorEpoch: appendedReconciliation?.supervisorEpoch,
+        claimId: appendedReconciliation?.observedActiveClaim.claimId,
+        attemptId: appendedReconciliation?.observedActiveClaim.attemptId,
+        safeObservationId: appendedReconciliation?.outage.safeObservationId,
+        priorClaimEventId: appendedReconciliation?.observedActiveClaim.priorClaimEventId
+      })
+    );
     expect(harness.runtime.wakeCalls).toHaveLength(1);
   });
   ```
@@ -966,8 +1038,70 @@ object, or execution lease.
     expect(fixture.lease.readOrAcquireCalls).toHaveLength(1);
     const canonicalAdmission = fixture.canonicalAdmissionTuple();
     const leaseInput = fixture.lease.readOrAcquireInputs[0];
-    const appendedAdmission = fixture.reconciliation.appendInputs[0]?.admission;
-    const readbackAdmission = result.reconciliation.admission;
+    const appendedReconciliation = fixture.reconciliation.appendInputs[0];
+    const readbackReconciliation = result.reconciliation;
+    const fieldToEdgeAssertions = [
+      ["snapshot identity/mount -> lease input", leaseInput?.admission.identityAndMount, canonicalAdmission.authorityIdentityAndMount],
+      ["lease input resident -> verified lease resident", leaseInput?.residentId, canonicalAdmission.verifiedLease.residentId],
+      ["lease input epoch -> verified lease epoch", leaseInput?.supervisorEpoch, canonicalAdmission.verifiedLease.supervisorEpoch],
+      ["lease input policy version -> verified lease policy version", leaseInput?.policyVersion, canonicalAdmission.verifiedLease.policyVersion],
+      ["lease input policy digest -> verified lease policy digest", leaseInput?.policyDigest, canonicalAdmission.verifiedLease.policyDigest],
+      ["lease input causation -> verified lease causation", leaseInput?.causationId, canonicalAdmission.verifiedLease.causation.causationId],
+      ["lease input correlation -> verified lease correlation", leaseInput?.correlationId, canonicalAdmission.verifiedLease.causation.correlationId],
+      ["authority workspace -> verified lease workspace", canonicalAdmission.authorityIdentityAndMount.workspaceId, canonicalAdmission.verifiedLease.workspaceId],
+      ["authority resident -> verified lease resident", canonicalAdmission.authorityIdentityAndMount.residentId, canonicalAdmission.verifiedLease.residentId],
+      ["authority epoch -> verified lease epoch", canonicalAdmission.authorityIdentityAndMount.supervisorEpoch, canonicalAdmission.verifiedLease.supervisorEpoch],
+      ["authority identity event -> verified lease identity event", canonicalAdmission.authorityIdentityAndMount.workspaceIdentityEventId, canonicalAdmission.verifiedLease.workspaceIdentityEventId],
+      ["authority evidence -> verified lease authority evidence", canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId, canonicalAdmission.verifiedLease.authorityEvidenceId],
+      ["mount evidence -> verified lease mount evidence", canonicalAdmission.authorityIdentityAndMount.mountEvidenceId, canonicalAdmission.verifiedLease.mountEvidenceId],
+      ["verified lease authority evidence -> policy/lock", canonicalAdmission.verifiedLease.authorityEvidenceId, canonicalAdmission.policyAndLock.authorityEvidenceId],
+      ["verified lease mount evidence -> policy/lock", canonicalAdmission.verifiedLease.mountEvidenceId, canonicalAdmission.policyAndLock.mountEvidenceId],
+      ["verified lease event -> policy/lock", canonicalAdmission.verifiedLease.leaseEventId, canonicalAdmission.policyAndLock.leaseEventId],
+      ["verified lease readback event -> policy/lock", canonicalAdmission.verifiedLease.readbackEventId, canonicalAdmission.policyAndLock.leaseReadbackEventId],
+      ["verified lease policy version -> policy/lock", canonicalAdmission.verifiedLease.policyVersion, canonicalAdmission.policyAndLock.policyVersion],
+      ["verified lease policy digest -> policy/lock", canonicalAdmission.verifiedLease.policyDigest, canonicalAdmission.policyAndLock.policyDigest],
+      ["policy/lock digest -> mounted policy/lock source", canonicalAdmission.policyAndLock.lockStateDigest, fixture.policyAndLock.expectedLockStateDigest],
+      ["policy/lock readback event -> mounted policy/lock source", canonicalAdmission.policyAndLock.readbackEventId, fixture.policyAndLock.mountedReadbackEventId],
+      ["verified lease authority evidence -> high-water", canonicalAdmission.verifiedLease.authorityEvidenceId, canonicalAdmission.highWater.authorityEvidenceId],
+      ["verified lease mount evidence -> high-water", canonicalAdmission.verifiedLease.mountEvidenceId, canonicalAdmission.highWater.mountEvidenceId],
+      ["verified lease event -> high-water", canonicalAdmission.verifiedLease.leaseEventId, canonicalAdmission.highWater.leaseEventId],
+      ["verified lease readback event -> high-water", canonicalAdmission.verifiedLease.readbackEventId, canonicalAdmission.highWater.leaseReadbackEventId],
+      ["high-water mark -> mounted high-water source", canonicalAdmission.highWater.highWaterMark, fixture.highWater.expectedMark],
+      ["high-water readback event -> mounted high-water source", canonicalAdmission.highWater.readbackEventId, fixture.highWater.mountedReadbackEventId],
+      ["verified lease expiry -> mounted lease source", canonicalAdmission.verifiedLease.expiresAt, fixture.lease.expectedExpiresAt],
+      ["tuple identity/mount -> reconciliation append", canonicalAdmission.authorityIdentityAndMount, appendedReconciliation?.admission.authorityIdentityAndMount],
+      ["tuple verified lease -> reconciliation append", canonicalAdmission.verifiedLease, appendedReconciliation?.admission.verifiedLease],
+      ["tuple policy/lock -> reconciliation append", canonicalAdmission.policyAndLock, appendedReconciliation?.admission.policyAndLock],
+      ["tuple high-water -> reconciliation append", canonicalAdmission.highWater, appendedReconciliation?.admission.highWater],
+      ["append workspace -> reconciliation readback", appendedReconciliation?.workspaceId, readbackReconciliation?.workspaceId],
+      ["append resident -> reconciliation readback", appendedReconciliation?.residentId, readbackReconciliation?.residentId],
+      ["append epoch -> reconciliation readback", appendedReconciliation?.supervisorEpoch, readbackReconciliation?.supervisorEpoch],
+      ["append idempotency key -> reconciliation readback", appendedReconciliation?.reconciliationIdempotencyKey, readbackReconciliation?.reconciliationIdempotencyKey],
+      ["revalidated active claim -> reconciliation append", appendedReconciliation?.observedActiveClaim, fixture.activeClaimReadback],
+      ["active claim workspace -> reconciliation append", appendedReconciliation?.observedActiveClaim.workspaceId, appendedReconciliation?.workspaceId],
+      ["active claim resident -> reconciliation append", appendedReconciliation?.observedActiveClaim.residentId, appendedReconciliation?.residentId],
+      ["active claim epoch -> reconciliation append", appendedReconciliation?.observedActiveClaim.supervisorEpoch, appendedReconciliation?.supervisorEpoch],
+      ["active claim id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.claimId, readbackReconciliation?.claimId],
+      ["active attempt id -> reconciliation readback", appendedReconciliation?.observedActiveClaim.attemptId, readbackReconciliation?.attemptId],
+      ["active claim causation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.causationId, readbackReconciliation?.causation.causationId],
+      ["active claim correlation -> reconciliation readback", appendedReconciliation?.observedActiveClaim.causation.correlationId, readbackReconciliation?.causation.correlationId],
+      ["prior claim event -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.priorClaimEventId, fixture.activeClaimReadback.priorClaimEventId],
+      ["prior claim lease -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.priorClaimLeaseId, fixture.activeClaimReadback.priorClaimLeaseId],
+      ["active-claim readback event -> mounted active-claim source", appendedReconciliation?.observedActiveClaim.readbackEventId, fixture.activeClaimReadback.readbackEventId],
+      ["outage authority evidence -> admission authority", appendedReconciliation?.outage.priorAuthorityEvidenceId, canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId],
+      ["outage observation -> reconciliation append", appendedReconciliation?.outage, fixture.outage],
+      ["outage observation -> mounted outage source", appendedReconciliation?.outage.safeObservationId, fixture.outage.safeObservationId],
+      ["outage timestamp -> mounted outage source", appendedReconciliation?.outage.observedAt, fixture.outage.observedAt],
+      ["outage category -> mounted outage source", appendedReconciliation?.outage.category, fixture.outage.category],
+      ["append tuple -> readback tuple", appendedReconciliation?.admission, readbackReconciliation?.admission],
+      ["reconciliation event -> mounted append source", readbackReconciliation?.reconciliationEventId, fixture.reconciliation.appendedEventId],
+      ["reconciliation readback event -> mounted readback source", readbackReconciliation?.readbackEventId, fixture.reconciliation.mountedReadbackEventId]
+    ] as const;
+    for (const [label, actual, expected] of fieldToEdgeAssertions) {
+      expect(actual, label).toEqual(expected);
+    }
+    const appendedAdmission = appendedReconciliation?.admission;
+    const readbackAdmission = readbackReconciliation?.admission;
     expect(leaseInput?.admission.identityAndMount).toEqual(canonicalAdmission.authorityIdentityAndMount);
     expect(leaseInput?.policyVersion).toBe(canonicalAdmission.verifiedLease.policyVersion);
     expect(leaseInput?.policyDigest).toBe(canonicalAdmission.verifiedLease.policyDigest);
@@ -989,6 +1123,16 @@ object, or execution lease.
     expect(canonicalAdmission.highWater.leaseReadbackEventId).toBe(canonicalAdmission.verifiedLease.readbackEventId);
     expect(appendedAdmission).toEqual(canonicalAdmission);
     expect(readbackAdmission).toEqual(appendedAdmission);
+    expect(readbackReconciliation?.reconciliationIdempotencyKey).toBe(
+      fixture.reconciliation.keyFor({
+        workspaceId: appendedReconciliation?.workspaceId,
+        supervisorEpoch: appendedReconciliation?.supervisorEpoch,
+        claimId: appendedReconciliation?.observedActiveClaim.claimId,
+        attemptId: appendedReconciliation?.observedActiveClaim.attemptId,
+        safeObservationId: appendedReconciliation?.outage.safeObservationId,
+        priorClaimEventId: appendedReconciliation?.observedActiveClaim.priorClaimEventId
+      })
+    );
   });
   ```
 
@@ -1440,6 +1584,17 @@ function replaceFirstInInterface(text, name, from, to) {
   return text.slice(0, start) + text.slice(start, end + 2).replace(from, to) + text.slice(end + 2);
 }
 
+function deleteReadonlyField(text, name, field) {
+  const start = text.indexOf("export interface " + name);
+  if (start < 0) throw new Error("cannot mutate missing interface: " + name);
+  const end = text.indexOf("\n}", start);
+  if (end < 0) throw new Error("cannot mutate unterminated interface: " + name);
+  const block = text.slice(start, end + 2);
+  const changed = block.replace(new RegExp("\\n\\s+readonly " + field + ":\\s*[\\s\\S]*?;"), "\n");
+  if (changed === block) throw new Error("delete counterfactual did not mutate " + name + "." + field);
+  return text.slice(0, start) + changed + text.slice(end + 2);
+}
+
 function ordered(text, label, needles) {
   let cursor = -1;
   for (const needle of needles) {
@@ -1770,6 +1925,260 @@ counterfactuals.push(
 validate(source);
 for (const [label, mutate] of counterfactuals) mustRejectCounterfactual(label, mutate);
 console.log(`GREEN: Task 111 section-local lifecycle audit passed (${counterfactuals.length} counterfactuals rejected).`);
+NODE
+```
+
+### Field-To-Edge Completeness Recovery Audit
+
+The preceding structural audit remains historical evidence. This superseding
+audit proves the stronger recovery condition: the concrete Task 124 and Task
+125 test plans each carry the complete persisted identity/provenance/policy/
+lock/lease/high-water/append/readback field-to-edge matrix. It parses the
+declared interfaces, rejects a missing or renamed participating field, requires
+both task-local matrices to contain the same exact source-to-target equality,
+and counterfactually removes or unrelates every field, row, and equality loop.
+The reconciliation proof therefore binds workspace/resident/epoch, claim and
+attempt, idempotency, causation/correlation, all named evidence/event IDs,
+policy version/digest, lock digest, and high-water evidence in addition to the
+complete admission tuple.
+
+```bash
+node --input-type=module <<'NODE'
+import { readFileSync } from "node:fs";
+
+const path = "docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md";
+const source = readFileSync(path, "utf8");
+
+function bounds(text, heading) {
+  const start = text.indexOf(heading);
+  if (start < 0) throw new Error(`missing heading: ${heading}`);
+  const level = heading.match(/^(#+)/)?.[1].length ?? 0;
+  const rest = text.slice(start + heading.length);
+  const next = rest.search(new RegExp(`\\n#{1,${level}} `));
+  return [start, next < 0 ? text.length : start + heading.length + next];
+}
+
+function section(text, heading) {
+  const [start, end] = bounds(text, heading);
+  return text.slice(start, end);
+}
+
+function replaceInSection(text, heading, from, to) {
+  const [start, end] = bounds(text, heading);
+  const scoped = text.slice(start, end);
+  const offset = scoped.indexOf(from);
+  if (offset < 0) throw new Error(`cannot mutate ${heading}: ${from}`);
+  return text.slice(0, start) + scoped.slice(0, offset) + to + scoped.slice(offset + from.length) + text.slice(end);
+}
+
+function interfaceBlock(text, name) {
+  const match = new RegExp(`export interface ${name}(?: extends [^{]+)? \\{`).exec(text);
+  if (!match || match.index === undefined) throw new Error(`missing interface: ${name}`);
+  const end = text.indexOf("\n}", match.index);
+  if (end < 0) throw new Error(`unterminated interface: ${name}`);
+  return text.slice(match.index, end + 2);
+}
+
+function fields(block) {
+  return new Map([...block.matchAll(/^\s+readonly\s+(\w+):\s*([^;]+);$/gm)].map(([, name, type]) => [name, type.trim()]));
+}
+
+function parseTaskMatrix(text, heading) {
+  const scoped = section(text, heading);
+  const match = /const fieldToEdgeAssertions = \[\n([\s\S]*?)\n    \] as const;/.exec(scoped);
+  if (!match) throw new Error(`${heading}: missing fieldToEdgeAssertions matrix`);
+  const rows = new Map();
+  for (const [, label, actual, expected] of match[1].matchAll(/^\s*\["([^"]+)", (.+), (.+)\],?$/gm)) {
+    if (rows.has(label)) throw new Error(`${heading}: duplicate matrix label ${label}`);
+    rows.set(label, { actual, expected });
+  }
+  if (rows.size === 0) throw new Error(`${heading}: empty field-to-edge matrix`);
+  if (!scoped.includes("expect(actual, label).toEqual(expected);")) {
+    throw new Error(`${heading}: field-to-edge rows lack equality assertion`);
+  }
+  return rows;
+}
+
+function edge(label, actual, expected) {
+  return Object.freeze({ label, actual, expected });
+}
+
+// `HARNESS` is deliberately expanded independently for the two concrete task
+// fixtures, so a copied label with a missing, swapped, or unrelated value is
+// not sufficient evidence in either owner’s test plan.
+const fieldToEdgeMatrix = Object.freeze([
+  edge("snapshot identity/mount -> lease input", "leaseInput?.admission.identityAndMount", "canonicalAdmission.authorityIdentityAndMount"),
+  edge("lease input resident -> verified lease resident", "leaseInput?.residentId", "canonicalAdmission.verifiedLease.residentId"),
+  edge("lease input epoch -> verified lease epoch", "leaseInput?.supervisorEpoch", "canonicalAdmission.verifiedLease.supervisorEpoch"),
+  edge("lease input policy version -> verified lease policy version", "leaseInput?.policyVersion", "canonicalAdmission.verifiedLease.policyVersion"),
+  edge("lease input policy digest -> verified lease policy digest", "leaseInput?.policyDigest", "canonicalAdmission.verifiedLease.policyDigest"),
+  edge("lease input causation -> verified lease causation", "leaseInput?.causationId", "canonicalAdmission.verifiedLease.causation.causationId"),
+  edge("lease input correlation -> verified lease correlation", "leaseInput?.correlationId", "canonicalAdmission.verifiedLease.causation.correlationId"),
+  edge("authority workspace -> verified lease workspace", "canonicalAdmission.authorityIdentityAndMount.workspaceId", "canonicalAdmission.verifiedLease.workspaceId"),
+  edge("authority resident -> verified lease resident", "canonicalAdmission.authorityIdentityAndMount.residentId", "canonicalAdmission.verifiedLease.residentId"),
+  edge("authority epoch -> verified lease epoch", "canonicalAdmission.authorityIdentityAndMount.supervisorEpoch", "canonicalAdmission.verifiedLease.supervisorEpoch"),
+  edge("authority identity event -> verified lease identity event", "canonicalAdmission.authorityIdentityAndMount.workspaceIdentityEventId", "canonicalAdmission.verifiedLease.workspaceIdentityEventId"),
+  edge("authority evidence -> verified lease authority evidence", "canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId", "canonicalAdmission.verifiedLease.authorityEvidenceId"),
+  edge("mount evidence -> verified lease mount evidence", "canonicalAdmission.authorityIdentityAndMount.mountEvidenceId", "canonicalAdmission.verifiedLease.mountEvidenceId"),
+  edge("verified lease authority evidence -> policy/lock", "canonicalAdmission.verifiedLease.authorityEvidenceId", "canonicalAdmission.policyAndLock.authorityEvidenceId"),
+  edge("verified lease mount evidence -> policy/lock", "canonicalAdmission.verifiedLease.mountEvidenceId", "canonicalAdmission.policyAndLock.mountEvidenceId"),
+  edge("verified lease event -> policy/lock", "canonicalAdmission.verifiedLease.leaseEventId", "canonicalAdmission.policyAndLock.leaseEventId"),
+  edge("verified lease readback event -> policy/lock", "canonicalAdmission.verifiedLease.readbackEventId", "canonicalAdmission.policyAndLock.leaseReadbackEventId"),
+  edge("verified lease policy version -> policy/lock", "canonicalAdmission.verifiedLease.policyVersion", "canonicalAdmission.policyAndLock.policyVersion"),
+  edge("verified lease policy digest -> policy/lock", "canonicalAdmission.verifiedLease.policyDigest", "canonicalAdmission.policyAndLock.policyDigest"),
+  edge("policy/lock digest -> mounted policy/lock source", "canonicalAdmission.policyAndLock.lockStateDigest", "HARNESS.policyAndLock.expectedLockStateDigest"),
+  edge("policy/lock readback event -> mounted policy/lock source", "canonicalAdmission.policyAndLock.readbackEventId", "HARNESS.policyAndLock.mountedReadbackEventId"),
+  edge("verified lease authority evidence -> high-water", "canonicalAdmission.verifiedLease.authorityEvidenceId", "canonicalAdmission.highWater.authorityEvidenceId"),
+  edge("verified lease mount evidence -> high-water", "canonicalAdmission.verifiedLease.mountEvidenceId", "canonicalAdmission.highWater.mountEvidenceId"),
+  edge("verified lease event -> high-water", "canonicalAdmission.verifiedLease.leaseEventId", "canonicalAdmission.highWater.leaseEventId"),
+  edge("verified lease readback event -> high-water", "canonicalAdmission.verifiedLease.readbackEventId", "canonicalAdmission.highWater.leaseReadbackEventId"),
+  edge("high-water mark -> mounted high-water source", "canonicalAdmission.highWater.highWaterMark", "HARNESS.highWater.expectedMark"),
+  edge("high-water readback event -> mounted high-water source", "canonicalAdmission.highWater.readbackEventId", "HARNESS.highWater.mountedReadbackEventId"),
+  edge("verified lease expiry -> mounted lease source", "canonicalAdmission.verifiedLease.expiresAt", "HARNESS.lease.expectedExpiresAt"),
+  edge("tuple identity/mount -> reconciliation append", "canonicalAdmission.authorityIdentityAndMount", "appendedReconciliation?.admission.authorityIdentityAndMount"),
+  edge("tuple verified lease -> reconciliation append", "canonicalAdmission.verifiedLease", "appendedReconciliation?.admission.verifiedLease"),
+  edge("tuple policy/lock -> reconciliation append", "canonicalAdmission.policyAndLock", "appendedReconciliation?.admission.policyAndLock"),
+  edge("tuple high-water -> reconciliation append", "canonicalAdmission.highWater", "appendedReconciliation?.admission.highWater"),
+  edge("append workspace -> reconciliation readback", "appendedReconciliation?.workspaceId", "readbackReconciliation?.workspaceId"),
+  edge("append resident -> reconciliation readback", "appendedReconciliation?.residentId", "readbackReconciliation?.residentId"),
+  edge("append epoch -> reconciliation readback", "appendedReconciliation?.supervisorEpoch", "readbackReconciliation?.supervisorEpoch"),
+  edge("append idempotency key -> reconciliation readback", "appendedReconciliation?.reconciliationIdempotencyKey", "readbackReconciliation?.reconciliationIdempotencyKey"),
+  edge("revalidated active claim -> reconciliation append", "appendedReconciliation?.observedActiveClaim", "HARNESS.activeClaimReadback"),
+  edge("active claim workspace -> reconciliation append", "appendedReconciliation?.observedActiveClaim.workspaceId", "appendedReconciliation?.workspaceId"),
+  edge("active claim resident -> reconciliation append", "appendedReconciliation?.observedActiveClaim.residentId", "appendedReconciliation?.residentId"),
+  edge("active claim epoch -> reconciliation append", "appendedReconciliation?.observedActiveClaim.supervisorEpoch", "appendedReconciliation?.supervisorEpoch"),
+  edge("active claim id -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.claimId", "readbackReconciliation?.claimId"),
+  edge("active attempt id -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.attemptId", "readbackReconciliation?.attemptId"),
+  edge("active claim causation -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.causation.causationId", "readbackReconciliation?.causation.causationId"),
+  edge("active claim correlation -> reconciliation readback", "appendedReconciliation?.observedActiveClaim.causation.correlationId", "readbackReconciliation?.causation.correlationId"),
+  edge("prior claim event -> mounted active-claim source", "appendedReconciliation?.observedActiveClaim.priorClaimEventId", "HARNESS.activeClaimReadback.priorClaimEventId"),
+  edge("prior claim lease -> mounted active-claim source", "appendedReconciliation?.observedActiveClaim.priorClaimLeaseId", "HARNESS.activeClaimReadback.priorClaimLeaseId"),
+  edge("active-claim readback event -> mounted active-claim source", "appendedReconciliation?.observedActiveClaim.readbackEventId", "HARNESS.activeClaimReadback.readbackEventId"),
+  edge("outage authority evidence -> admission authority", "appendedReconciliation?.outage.priorAuthorityEvidenceId", "canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId"),
+  edge("outage observation -> reconciliation append", "appendedReconciliation?.outage", "HARNESS.outage"),
+  edge("outage observation -> mounted outage source", "appendedReconciliation?.outage.safeObservationId", "HARNESS.outage.safeObservationId"),
+  edge("outage timestamp -> mounted outage source", "appendedReconciliation?.outage.observedAt", "HARNESS.outage.observedAt"),
+  edge("outage category -> mounted outage source", "appendedReconciliation?.outage.category", "HARNESS.outage.category"),
+  edge("append tuple -> readback tuple", "appendedReconciliation?.admission", "readbackReconciliation?.admission"),
+  edge("reconciliation event -> mounted append source", "readbackReconciliation?.reconciliationEventId", "HARNESS.reconciliation.appendedEventId"),
+  edge("reconciliation readback event -> mounted readback source", "readbackReconciliation?.readbackEventId", "HARNESS.reconciliation.mountedReadbackEventId")
+]);
+
+const requiredInterfaceFields = Object.freeze({
+  WorkspaceAdmissionSnapshot: ["identityAndMount"],
+  SupervisorLeaseAdmissionInput: ["admission", "residentId", "supervisorEpoch", "policyVersion", "policyDigest", "causationId", "correlationId"],
+  RevalidatedAuthorityIdentityAndMountEvidence: ["workspaceId", "residentId", "supervisorEpoch", "workspaceIdentityEventId", "mountEvidenceId", "authorityEvidenceId"],
+  CausationCorrelationEvidence: ["causationId", "correlationId"],
+  SupervisorLeaseReadbackEvidence: ["workspaceId", "residentId", "supervisorEpoch", "workspaceIdentityEventId", "authorityEvidenceId", "mountEvidenceId", "policyVersion", "policyDigest", "leaseEventId", "readbackEventId", "expiresAt", "causation"],
+  PolicyAndLockReadbackEvidence: ["authorityEvidenceId", "mountEvidenceId", "leaseEventId", "leaseReadbackEventId", "policyVersion", "policyDigest", "lockStateDigest", "readbackEventId"],
+  HighWaterReadbackEvidence: ["authorityEvidenceId", "mountEvidenceId", "leaseEventId", "leaseReadbackEventId", "highWaterMark", "readbackEventId"],
+  ClaimReconciliationAdmissionTuple: ["authorityIdentityAndMount", "verifiedLease", "policyAndLock", "highWater"],
+  ClaimReconciliationLookup: ["admission", "reconciliationIdempotencyKey", "workspaceId", "residentId", "supervisorEpoch"],
+  ClaimReconciliationAppend: ["admission", "observedActiveClaim", "outage"],
+  RevalidatedActiveClaimEvidence: ["workspaceId", "residentId", "supervisorEpoch", "claimId", "attemptId", "priorClaimEventId", "priorClaimLeaseId", "readbackEventId", "causation"],
+  WorkspaceOutageObservation: ["safeObservationId", "observedAt", "category", "priorAuthorityEvidenceId"],
+  ClaimReconciliationReadback: ["workspaceId", "residentId", "supervisorEpoch", "claimId", "attemptId", "reconciliationIdempotencyKey", "reconciliationEventId", "readbackEventId", "admission", "causation"]
+});
+
+function expectedExpression(expression, harnessName) {
+  return expression.replaceAll("HARNESS", harnessName);
+}
+
+function validate(text) {
+  const frozen = section(text, "### Planned Post-Freeze W Contract Surface");
+  const task124Rows = parseTaskMatrix(text, "## Task 124: Wake Supervisor");
+  const task125Rows = parseTaskMatrix(text, "## Task 125: Portable Workspace Availability And Claim Reconciliation");
+  const allRows = [...task124Rows.values(), ...task125Rows.values()];
+
+  for (const [interfaceName, names] of Object.entries(requiredInterfaceFields)) {
+    const declared = fields(interfaceBlock(frozen, interfaceName));
+    for (const name of names) {
+      if (!declared.has(name)) throw new Error(`declared field missing or renamed: ${interfaceName}.${name}`);
+      if (!allRows.some(row => row.actual.includes(name) || row.expected.includes(name))) {
+        throw new Error(`field-to-edge coverage missing: ${interfaceName}.${name}`);
+      }
+    }
+  }
+
+  for (const matrixRow of fieldToEdgeMatrix) {
+    for (const [task, rows, harnessName] of [
+      ["Task 124", task124Rows, "harness"],
+      ["Task 125", task125Rows, "fixture"]
+    ]) {
+      const actual = rows.get(matrixRow.label);
+      if (!actual) throw new Error(`${task}: removed field-to-edge row ${matrixRow.label}`);
+      if (actual.actual !== expectedExpression(matrixRow.actual, harnessName)) {
+        throw new Error(`${task}: unrelated source for ${matrixRow.label}`);
+      }
+      if (actual.expected !== expectedExpression(matrixRow.expected, harnessName)) {
+        throw new Error(`${task}: unrelated target for ${matrixRow.label}`);
+      }
+    }
+  }
+
+  if (task124Rows.size !== fieldToEdgeMatrix.length || task125Rows.size !== fieldToEdgeMatrix.length) {
+    throw new Error("Task 124/125 field-to-edge matrices must contain every and only canonical relation row");
+  }
+
+  const task124 = section(text, "## Task 124: Wake Supervisor");
+  const task125 = section(text, "## Task 125: Portable Workspace Availability And Claim Reconciliation");
+  for (const [label, task] of [["Task 124", task124], ["Task 125", task125]]) {
+    if (!task.includes("reconciliation.keyFor({") || !task.includes("safeObservationId: appendedReconciliation?.outage.safeObservationId") || !task.includes("priorClaimEventId: appendedReconciliation?.observedActiveClaim.priorClaimEventId")) {
+      throw new Error(`${label}: idempotency derivation is not bound to the active claim and outage provenance`);
+    }
+  }
+}
+
+function replaceFirstInInterface(text, name, from, to) {
+  const start = text.indexOf(`export interface ${name}`);
+  if (start < 0) throw new Error(`cannot mutate missing interface: ${name}`);
+  const end = text.indexOf("\n}", start);
+  if (end < 0) throw new Error(`cannot mutate unterminated interface: ${name}`);
+  return text.slice(0, start) + text.slice(start, end + 2).replace(from, to) + text.slice(end + 2);
+}
+
+function mustReject(label, mutate) {
+  try {
+    validate(mutate(source));
+  } catch {
+    return;
+  }
+  throw new Error(`counterfactual passed unexpectedly: ${label}`);
+}
+
+const counterfactuals = [];
+for (const [interfaceName, names] of Object.entries(requiredInterfaceFields)) {
+  for (const name of names) {
+    const type = fields(interfaceBlock(source, interfaceName)).get(name);
+    if (!type) throw new Error("counterfactual fixture missing " + interfaceName + "." + name);
+    counterfactuals.push([
+      "rename declared field " + interfaceName + "." + name,
+      text => replaceFirstInInterface(text, interfaceName, "readonly " + name + ":", "readonly removed" + name[0].toUpperCase() + name.slice(1) + ":")
+    ], [
+      "delete declared field " + interfaceName + "." + name,
+      text => deleteReadonlyField(text, interfaceName, name)
+    ]);
+  }
+}
+for (const matrixRow of fieldToEdgeMatrix) {
+  for (const [heading, harnessName] of [["## Task 124: Wake Supervisor", "harness"], ["## Task 125: Portable Workspace Availability And Claim Reconciliation", "fixture"]]) {
+    const row = `["${matrixRow.label}", ${expectedExpression(matrixRow.actual, harnessName)}, ${expectedExpression(matrixRow.expected, harnessName)}]`;
+    counterfactuals.push(
+      [`remove relation ${heading} ${matrixRow.label}`, text => replaceInSection(text, heading, row, `["removed ${matrixRow.label}", ${expectedExpression(matrixRow.actual, harnessName)}, ${expectedExpression(matrixRow.expected, harnessName)}]`)],
+      [`unrelate relation ${heading} ${matrixRow.label}`, text => replaceInSection(text, heading, row, `["${matrixRow.label}", ${expectedExpression(matrixRow.actual, harnessName)}, unrelatedRelationValue]`)]
+    );
+  }
+}
+for (const heading of ["## Task 124: Wake Supervisor", "## Task 125: Portable Workspace Availability And Claim Reconciliation"]) {
+  counterfactuals.push(
+    [`remove equality assertion ${heading}`, text => replaceInSection(text, heading, "expect(actual, label).toEqual(expected);", "expect(actual, label).toEqual(unrelatedRelationValue);")],
+    [`unrelate idempotency derivation ${heading}`, text => replaceInSection(text, heading, "priorClaimEventId: appendedReconciliation?.observedActiveClaim.priorClaimEventId", "priorClaimEventId: unrelatedRelationValue")]
+  );
+}
+
+validate(source);
+for (const [label, mutate] of counterfactuals) mustReject(label, mutate);
+console.log(`GREEN: Task 111 field-to-edge completeness audit passed (${counterfactuals.length} counterfactuals rejected).`);
 NODE
 ```
 

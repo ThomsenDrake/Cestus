@@ -484,3 +484,87 @@ RUNNER
   111 relation-aware recovery review of the single forthcoming documentation
   commit. This worker stops at that review gate and will not self-approve,
   dispatch, integrate, or merge it.
+
+## Autonomous Field-To-Edge Completeness Recovery — 2026-07-13
+
+- Recovery authorization: the coordinator issued this fresh, bounded Task 111
+  append-only documentation-only recovery under the approved Lane W
+  specification
+  "docs/superpowers/specs/2026-07-12-resident-agent-wake-portable-lifecycle-design.md@2620e51e4888a0884fb6d3eb4766e92736688efb"
+  and governing program plan
+  "docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358".
+  Allowed range is Task 111 field-to-edge completeness recovery only, from
+  base "14885ddf73c44d04ef720dd82cae5c8dc23240cd". The wave stop is one
+  verified recovery commit and separately fresh re-review. It explicitly
+  authorizes superpowers:subagent-driven-development, documentation RED/GREEN
+  as TDD, fresh review, and verification-before-completion. Tasks 124, 125,
+  and 137, CF-1 implementation, production/provider work, dispatch, and every
+  merge are prohibited; no merge into neo or an integration branch is
+  authorized. The user-confirmed host configuration is GPT-5.6 Terra / Extra
+  High.
+- Scope remains only this append-only claim and
+  "docs/superpowers/plans/2026-07-12-resident-agent-wake-portable-lifecycle-implementation.md";
+  every preceding Task 111 claim, repair, review, registry, and plan record
+  remains immutable historical evidence.
+- Root-cause checkpoint: the relation-aware recovery proved selected tuple
+  edges but did not require claimId, attemptId, the reconciliation idempotency
+  key, direct append/readback workspace/resident/epoch,
+  causation/correlation, lease-input resident/epoch/causation/correlation,
+  lock digest, every mounted evidence/event ID, or the complete
+  identity/provenance reconciliation record. The prior audit therefore
+  accepted an in-memory mutant renaming ClaimReconciliationReadback.claimId;
+  it printed its 145-counterfactual GREEN result before the recovery harness
+  exited 1 with "RED FAILURE: prior audit accepted a renamed
+  ClaimReconciliationReadback.claimId".
+
+### Field-To-Edge Documentation RED/GREEN
+
+- RED: the focused in-memory mutant above reproduced the blind spot without
+  editing a historical document. The old section-local audit exited 0 while
+  the recovery wrapper exited 1, proving that a present admission object alone
+  did not prove complete reconciliation readback identity/provenance.
+- GREEN: the plan now gives both Task 124 and Task 125 an exact
+  fieldToEdgeAssertions matrix and a superseding
+  "### Field-To-Edge Completeness Recovery Audit". The audit parses all
+  participating declared interfaces, requires matrix coverage for the complete
+  field set, checks both owner matrices against the same exact source/target
+  edges, and rejects renamed fields, deleted rows, unrelated values, removed
+  equality assertions, and a severed idempotency derivation. It requires
+  whole-tuple equality and direct append-to-readback equality for
+  workspace/resident/epoch, claim/attempt, idempotency, causation/correlation,
+  and reconciliation event/readback provenance.
+- GREEN evidence: the retained section-local audit exited 0 with
+  "GREEN: Task 111 section-local lifecycle audit passed (145 counterfactuals
+  rejected)."; the superseding audit exited 0 with
+  "GREEN: Task 111 field-to-edge completeness audit passed (301
+  counterfactuals rejected)." The final all-field deletion pass extends that
+  same audit to 378 rejected counterfactuals, including both rename and
+  actual-delete mutations for every declared participating field; git diff
+  --check exited 0 with no output; and
+  npm run factory:check exited 0 with factory-readiness passed.
+- Pending before commit: run the fresh full verifier, confirm the two-file
+  scope and clean worktree, append final verification evidence, commit only
+  the owned plan and claim, then stop for a separately fresh reviewer. This
+  recovery worker does not self-approve, dispatch, implement production work,
+  integrate, or merge.
+
+### Field-To-Edge Recovery Verification And Handoff
+
+- Dependency recovery: the first fresh verifier preflight reported an empty
+  TypeScript dependency tree. This was the known isolated-worktree condition,
+  not a plan defect. "npm ci --ignore-scripts" restored the lockfile-pinned
+  ignored dependency tree without modifying tracked dependencies, and
+  "npm ls typescript --depth=0" then reported "typescript@5.9.3".
+- Fresh full verification: "CI=1 npm run verify" exited 0 with typecheck
+  passed; 189 test files passed with 3 skipped; 2,228 tests passed with 5
+  skipped; Vite built successfully with its established chunk-size warning
+  only; and factory readiness passed. Node SQLite experimental warnings were
+  emitted by test workers only and did not affect the exit code.
+- Final planned-document gates before commit: both stored audits passed after
+  the recovery edits (145 section-local counterfactuals and 378 field-to-edge
+  counterfactuals), git diff --check had no output, and the factory gate
+  passed. The final narrow scope and clean-worktree check remains immediately
+  before commit.
+- Handoff status: ready only for a fresh independent review after the worker
+  commits these two owned documentation files. No Task 124, 125, or 137 work,
+  CF-1 work, provider invocation, dispatch, integration, or merge occurred.
