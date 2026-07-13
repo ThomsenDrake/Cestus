@@ -73,9 +73,20 @@ a failing audit, not a GREEN result.
 node --input-type=module --eval 'import { readFileSync } from "node:fs"; const file="docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md"; const plan=readFileSync(file,"utf8"); const section=(doc,heading)=>{const start=doc.indexOf(`## ${heading}`);if(start<0)throw new Error(`missing section: ${heading}`);const end=doc.indexOf("\n## ",start+4);return doc.slice(start,end<0?doc.length:end)}; const need=(doc,heading,tokens)=>{const block=section(doc,heading);for(const token of tokens)if(!block.includes(token))throw new Error(`${heading}: missing ${token}`)}; const mutate=(doc,heading,token)=>{const block=section(doc,heading);const changed=block.split(token).join("removed");if(changed===block)throw new Error(`counterfactual setup failed: ${token}`);return doc.replace(block,changed)}; const validate=(doc)=>{need(doc,"CF-1 Contract Gate And Conflict Resolution",["CF-1","Task 118","invalid-scope","contracts.ts","rebase"]);need(doc,"File Ownership And Dependency Order",["Task 118","Task 149","Task 150","Task 151","packages/agent/src/proactive-triggers.ts","packages/agent/src/trigger-projection.ts","packages/agent/src/prr-proactive-trigger.ts","packages/agent/src/ingestion-proactive-trigger.ts","packages/agent/src/investigation-proactive-trigger.ts"]);need(doc,"Task 118: Trigger Core, Request Event, And Rebuildable Projection",["appendRequestedIfCurrent","deriveAdmissionScope","buildTriggerRequestFingerprint","buildTriggerGateKey","readbackTriggerDecision","cooldown-active","high-water","inputText","no provider","no append"]);need(doc,"Task 149: PRR Deadline, Fee, Correspondence, And Stalling Trigger",["prr-proactive-trigger.ts","no send","dedupe","cooldown"]);need(doc,"Task 150: Ingestion New-Production And Evidence-Readiness Trigger",["ingestion-proactive-trigger.ts","no parse/provider/graph","no provider"]);need(doc,"Task 151: Investigation-Cadence Trigger",["investigation-proactive-trigger.ts","high-water","cooldown","budget"]);need(doc,"Failure Injection, Acceptance, And Live-Gate Matrix",["same semantics at different append times","same dedupe key, different fingerprint","Equal scope, different source high-water","not-applicable","no provider or Nous call"]);need(doc,"Merge, Rebase, Rollback, And Stop Conditions",["CF-1","Task 118","append-only","forward source commit","provider"])}; validate(plan); for(const [heading,token] of [["CF-1 Contract Gate And Conflict Resolution","invalid-scope"],["File Ownership And Dependency Order","packages/agent/src/trigger-projection.ts"],["Task 118: Trigger Core, Request Event, And Rebuildable Projection","appendRequestedIfCurrent"],["Task 118: Trigger Core, Request Event, And Rebuildable Projection","readbackTriggerDecision"],["Task 118: Trigger Core, Request Event, And Rebuildable Projection","inputText"],["Task 149: PRR Deadline, Fee, Correspondence, And Stalling Trigger","no send"],["Task 150: Ingestion New-Production And Evidence-Readiness Trigger","no parse/provider/graph"],["Task 151: Investigation-Cadence Trigger","high-water"],["Failure Injection, Acceptance, And Live-Gate Matrix","not-applicable"],["Merge, Rebase, Rollback, And Stop Conditions","forward source commit"]]){let rejected=false;try{validate(mutate(plan,heading,token))}catch{rejected=true}if(!rejected)throw new Error(`counterfactual accepted: ${heading} / ${token}`)} console.log("GREEN: Task 113 section-local plan audit passed (8 section checks; 10 counterfactuals rejected).")'
 ```
 
-The Task 113 RED result is the `ENOENT` failure while this plan is absent. The
-Task 113 GREEN result is exactly the success marker printed above, followed by
-`git diff --check`, `npm run factory:check`, and `npm run verify`.
+Run this additional recovery-specific audit with the audit above. It guards the
+semantic-identity, equal-scope loser-retry, complete no-effect, and independently
+approved adoption clauses introduced by this repair. Its counterfactual loop has
+the same fail polarity: accepting a variant with any selected local requirement
+removed exits nonzero.
+
+```bash
+node --input-type=module --eval 'import { readFileSync } from "node:fs"; const plan=readFileSync("docs/superpowers/plans/2026-07-12-resident-agent-proactive-triggers-implementation.md","utf8"); const section=(doc,heading)=>{const start=doc.indexOf(`## ${heading}`);if(start<0)throw new Error(`missing section: ${heading}`);const end=doc.indexOf("\n## ",start+4);return doc.slice(start,end<0?doc.length:end)}; const requirements=[ ["Task 118: Trigger Core, Request Event, And Rebuildable Projection",["reversed sourceRefs","requestFingerprint: forward.requestFingerprint","requestId: forward.requestId","dedupeKey: forward.dedupeKey","expect(secondScope).toEqual(firstScope)","buildTriggerGateKey(secondScope)","freshReadCount()","modelId","approvalId","handoffId","taskId","schedulerId","sourceBytes","rawBytes","model:","approval:","handoff:","task:","scheduler:"]], ["Failure Injection, Acceptance, And Live-Gate Matrix",["Task 136 (L)","packages/agent/test/bounded-agent-loop.test.ts","packages/agent/test/execution-loop.test.ts","independently revalidate the required approval","exact preview hash","effect boundary"]] ]; const validate=(doc)=>{for(const [heading,tokens] of requirements){const block=section(doc,heading);for(const token of tokens)if(!block.includes(token))throw new Error(`${heading}: missing ${token}`)}}; const mutate=(doc,heading,token)=>{const block=section(doc,heading);const changed=block.split(token).join("removed");if(changed===block)throw new Error(`counterfactual setup failed: ${heading} / ${token}`);return doc.replace(block,changed)}; validate(plan); let rejected=0; for(const [heading,tokens] of requirements)for(const token of tokens){let failed=false;try{validate(mutate(plan,heading,token))}catch{failed=true}if(!failed)throw new Error(`counterfactual accepted: ${heading} / ${token}`);rejected++} console.log(`GREEN: Task 113 recovery audit passed (2 section checks; ${rejected} counterfactuals rejected).`)'
+```
+
+The Task 113 RED result is the `ENOENT` failure while this plan is absent, and
+this recovery audit must fail before the repaired local requirements exist. The
+Task 113 GREEN result is both success markers, followed by `git diff --check`,
+`npm run factory:check`, and `npm run verify`.
 
 ## CF-1 Contract Gate And Conflict Resolution
 
@@ -261,7 +272,7 @@ constructors. A requested decision is returned only after exact readback.
     expect(validateKnowledgeEvent(triggerRequestedEvent({
       payload: { ...triggerRequestedEvent().payload, residentAgentId: "agent_other" }
     }))).toMatchObject({ success: false });
-    for (const field of ["inputText", "providerId", "approvalId", "taskId", "sourceBytes"]) {
+    for (const field of ["inputText", "providerId", "modelId", "approvalId", "handoffId", "taskId", "schedulerId", "sourceBytes", "rawBytes"]) {
       expect(validateKnowledgeEvent(triggerRequestedEvent({
         payload: { ...triggerRequestedEvent().payload, [field]: "unsafe" }
       }))).toMatchObject({ success: false });
@@ -282,6 +293,21 @@ constructors. A requested decision is returned only after exact readback.
     expect(authority.appendCount()).toBe(1);
   });
 
+  it("canonicalizes reversed sourceRefs to one fingerprint, request ID, and dedupe key", async () => {
+    const forward = canonicalTriggerIdentity(verifiedEvaluation({
+      candidate: verifiedCandidate({ sourceRefs: verifiedSourceRefs([4, 5]) })
+    }));
+    const reversed = canonicalTriggerIdentity(verifiedEvaluation({
+      candidate: verifiedCandidate({ sourceRefs: verifiedSourceRefs([5, 4]) })
+    }));
+    expect(reversed).toEqual(forward);
+    expect(reversed).toMatchObject({
+      requestFingerprint: forward.requestFingerprint,
+      requestId: forward.requestId,
+      dedupeKey: forward.dedupeKey
+    });
+  });
+
   it("rejects candidate-selected scope before append", async () => {
     const authority = mountedAuthority();
     const result = await evaluateResidentTrigger(verifiedEvaluation({
@@ -294,9 +320,19 @@ constructors. A requested decision is returned only after exact readback.
 
   it("serializes equal policy scopes with different high-water candidates", async () => {
     const authority = mountedAuthority({ maxRequests: 1 });
-    const decisions = await Promise.all([4, 5].map((sourceSequence) =>
-      evaluateResidentTrigger(verifiedEvaluation({ authority, candidate: verifiedCandidate({ sourceSequence }) }))));
+    const candidates = [4, 5].map((sourceSequence) =>
+      verifiedEvaluation({ authority, candidate: verifiedCandidate({ sourceSequence }) }));
+    const [firstScope, secondScope] = candidates.map((input) =>
+      deriveAdmissionScope(authority.policy(), verifiedRequestFields(input)));
+    expect(secondScope).toEqual(firstScope);
+    expect(buildTriggerGateKey(secondScope)).toBe(buildTriggerGateKey(firstScope));
+    const decisions = await Promise.all(candidates.map(evaluateResidentTrigger));
     expect(decisions.filter(({ kind }) => kind === "requested")).toHaveLength(1);
+    expect(authority.appendCount()).toBe(1);
+    const losingCandidate = candidates[decisions.findIndex(({ kind }) => kind !== "requested")];
+    const loser = await evaluateResidentTrigger(losingCandidate);
+    expect(authority.freshReadCount()).toBeGreaterThan(1);
+    expect(["cooldown-active", "budget-exhausted", "duplicate"]).toContain(loser.kind);
     expect(authority.appendCount()).toBe(1);
   });
   ```
@@ -347,8 +383,10 @@ constructors. A requested decision is returned only after exact readback.
 
   `normalizeTriggerEvaluationInput` rejects unknown values before the first
   `await`, including `inputText`, provider, model, parser, tool, approval,
-  handoff, artifact, task, scheduler, and raw-byte shapes. The evaluator has
-  no provider capability and no effect capability. `fingerprintInput` excludes
+  handoff, artifact, task, scheduler, `sourceBytes`, and `rawBytes` shapes.
+  The evaluator has no provider capability and no effect capability. The
+  focused fixture must prove that each rejected shape performs neither a
+  mounted append nor an effect-sink invocation. `fingerprintInput` excludes
   append ID/sequence, requested-at, not-before, correlation ID, and request
   ID; source refs sort by stream ID, sequence, then event ID; request IDs use
   `trq_${base32(fingerprint)}`; dedupe uses canonical JSON of its version and
@@ -386,18 +424,30 @@ constructors. A requested decision is returned only after exact readback.
   Add this negative test to `proactive-triggers.test.ts`:
 
   ```ts
-  it("rejects effect-shaped input before append or an effect sink", async () => {
+  it("rejects every effect-shaped input before append or an effect sink", async () => {
     const authority = mountedAuthority();
     const sink = vi.fn();
-    const result = await evaluateResidentTrigger({
-      ...verifiedEvaluation({ authority }),
+    const unsafeShapes = {
       inputText: "unsafe prompt",
       provider: { invoke: sink },
+      model: { invoke: sink },
       tool: { execute: sink },
       parser: { parse: sink },
-      artifactStore: { put: sink }
-    } as unknown as TriggerEvaluationInput);
-    expect(result).toMatchObject({ kind: "invalid-scope" });
+      approval: { consume: sink },
+      handoff: { append: sink },
+      artifactStore: { put: sink },
+      task: { claim: sink },
+      scheduler: { enqueue: sink },
+      sourceBytes: new Uint8Array([1]),
+      rawBytes: new Uint8Array([2])
+    };
+    for (const [field, value] of Object.entries(unsafeShapes)) {
+      const result = await evaluateResidentTrigger({
+        ...verifiedEvaluation({ authority }),
+        [field]: value
+      } as unknown as TriggerEvaluationInput);
+      expect(result).toMatchObject({ kind: "invalid-scope" });
+    }
     expect(authority.appendCount()).toBe(0);
     expect(sink).not.toHaveBeenCalled();
   });
@@ -662,7 +712,7 @@ candidate for advisory planning only.
 | Cooldown or request budget | Task 118 and Task 151 | policy-window fixture | No append; high-water unchanged; `notBefore` only for cooldown. |
 | Stale PRR or ingestion source | Task 149 and Task 150 | swapped event/hash fixture | No request and no send/parse/provider/graph action. |
 | Disconnect, unreadable policy, swapped mount | Task 118 | mounted-authority fake | Safe unavailable/stale category, no fallback write. |
-| Adoption after truth changes | later L/W/H integration | A-05 and adoption suite | Reject identity/policy/source/lock mismatch; trigger is neither approval nor completion. |
+| Adoption after truth changes | Task 136 (L), exclusively `packages/agent/test/bounded-agent-loop.test.ts` | `npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/execution-loop.test.ts` | Re-read the mounted request and reject identity/policy/source/high-water/lock mismatch; independently revalidate the effect-specific approval before consuming it. |
 
 Lane A A-05 runs:
 
@@ -675,6 +725,24 @@ no provider or Nous call is applicable to Tasks 118, 149, 150, or 151. The
 coordinator records `not-applicable`, not a provider skip. Any future model
 invocation needs a different approved plan, explicit provider authorization,
 and a coordinator-only real Nous gate.
+
+Trigger adoption is separately owned by Task 136 (L), not by Task 118 or the
+metadata adapters. Its exact owned test is
+`packages/agent/test/bounded-agent-loop.test.ts`, run with:
+
+```bash
+npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/execution-loop.test.ts
+```
+
+That test must read the pending request back from mounted storage and revalidate
+the current resident identity, policy version/hash, source availability and
+high-water, active locks, bounded-loop descriptor/tool/budget constraints, and
+the request provenance before adoption. For every later gated effect it must
+also independently revalidate the required approval: actor/class, exact preview hash,
+causation/provenance, current locks, and source hashes at the
+effect boundary before consuming that approval. A trigger request cannot
+satisfy, request, or consume an approval, and a failed revalidation produces no
+run, effect, handoff, or projection mutation.
 
 ## Merge, Rebase, Rollback, And Stop Conditions
 
