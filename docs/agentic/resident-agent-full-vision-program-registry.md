@@ -1936,3 +1936,19 @@ explicit implementation authorization.
 - Archive check: preserve original author commit, full verification, and reviewer findings; require repair final answer, clean recovery worktree, reviewed ancestry, fresh verification, re-review, and coordinator integration record before archival
 - Root-cause checkpoint: the original section-local audit validated only its selected candidate command coverage and therefore could pass while the approved design's evidence metadata, producer-command, conditional live-gate, secret-boundary, and durable-claim requirements remained absent. The repair expands direct counterfactual audit coverage to the reviewer findings rather than weakening the acceptance contract.
 - Supersession: this record supersedes RV-0-A-011 only for Task116 repair status. The original author commit, verification evidence, and fresh-review findings remain immutable.
+
+## RV-0-C-007 — Permanent visible two-task relay protocol
+
+- Recorded at: 2026-07-13T15:44:07Z
+- Role: Relay B active coordinator / sole integration owner for this lease
+- Lane and wave: C / 0B through Wave 5
+- Task ID and claim: Relay B `019f5bf7-971a-7411-ae6f-0ecb721deff7` / docs/agentic/resident-agent-full-vision-program-registry.md
+- Relay pair: Relay A standby `019f5ba8-cba1-7dd1-b137-2c3bd4edb970` at `/home/drake/.codex/worktrees/95de/Cestus` on `codex/resident-agent-full-vision-program-visible-coordinator-2`; Relay B active at `/home/drake/.codex/worktrees/383d/Cestus` on `codex/resident-agent-full-vision-program-relay-b`. Both are pinned, titled user-visible tasks; no further coordinator task may be created and Relay A remains read-only while B owns the lease.
+- Base commit and required head: a4959d0dd752e92dc24195f3f1ea315663de8b00 / this relay-protocol commit
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/agentic/resident-agent-full-vision-program-registry.md
+- Approval record: user delegation authorizes Relay B through Wave 5 using superpowers:subagent-driven-development where relevant, TDD or documentation RED/GREEN, fresh review, verification-before-completion, coordinator recovery, and no child self-merge into neo.
+- Relay rule: each lease is at most 45 minutes. Ten minutes before lease end, stop launching children, finish only the atomic Git operation, append/commit an exact handoff with outgoing branch/head, incoming relay task, governing SHAs, active/completed child IDs/status/head/worktree, unresolved findings, verification state, and next actions; then wake the other relay through the Codex thread message tool. The receiver fast-forwards or merges its own branch, commits ownership acceptance, and continues the same protocol. The current owner continues until the receiver proves a clean descendant acceptance; if wake/acceptance fails, it retains ownership and retries. Neither relay may leave both tasks idle.
+- Active child state: Task116 repair head ae8ecd0dfb2633a5ddce446c48e05084225d90e4 needs a second audit-only repair for fixed identity unions, ready-for-review statuses, positive boundary safety calls, and conditional/local fallback clauses; Task115 head df5b27cb131f42752eec5c4e6e1eceff58658b95 needs an audit/ownership-label repair. Neither is integrated; CF-1 and all Wave 1 production work remain stopped.
+- Merge readiness: not-ready; never merge neo without explicit instruction.
