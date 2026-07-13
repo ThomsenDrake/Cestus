@@ -210,3 +210,64 @@ dispatch, integration, or `neo` merge authority follows from this claim.
   files, preserve the task-scoped branch and harness-owned worktree for a
   different fresh reviewer, and stop. No merge, push, rebase, cleanup, or
   `neo` action is authorized.
+
+## RV-0-A-013 Audit-Only Repair Record — In Progress
+
+- Recorded at: `2026-07-13T15:48:36Z`.
+- Worker and branch: fresh Task 116 audit-only repair author on
+  `codex/task-116-resident-full-vision-w0-acceptance-audit-repair` in
+  `/home/drake/.codex/worktrees/task-116-resident-full-vision-w0-acceptance-audit-repair`,
+  from exact base `ae8ecd0dfb2633a5ddce446c48e05084225d90e4`.
+- Status: `in-progress`; this forward-only audit record supersedes the prior
+  ready-for-review status only while the RV-0-A-013 repair is evaluated. It is
+  not implementation, CF-1, provider, browser/tailnet, production, review, or
+  integration authority.
+- Scope: modify only this append-only claim and
+  `docs/superpowers/plans/2026-07-12-resident-agent-acceptance-implementation.md`.
+  No registry, matrix, specification, production, runtime, UI, provider,
+  shared-contract, credential, browser, tailnet, dispatch, rebase, or `neo`
+  action is allowed.
+- Required audit repair: preserve accepted substantive content while making the
+  plan-local audit reject a widened `AcceptanceCommandIdentity = string`, a
+  changed work-order `ready-for-review` status, removal of both positive
+  `assertNoUnsafeProviderReadinessMaterial` calls, weakened A-04/A-06
+  unselected/no-substitute clauses, and any A-07 fallback permission.
+
+## RV-0-A-013 Audit-Only Repair Record — Ready For Fresh Review
+
+- Recorded at: `2026-07-13T15:59:27Z`.
+- Status: `ready-for-review`; this is audit-only repair completion evidence. It
+  does not approve the plan, authorize CF-1/A-FIXTURE/A-01 through A-10,
+  invoke a provider, or permit integration, rebase, child dispatch, or a merge
+  into `neo`.
+- Documentation RED: before the repair, the exact mutation harness ran the
+  embedded plan audit against six in-memory counterfactuals and exited `1` with
+  `RED: Task 116 audit let 6 required counterfactuals escape:` followed by
+  widened command identity, changed A-01 review status, both positive provider
+  boundary calls removed, weakened A-04, weakened A-06, and A-07 fallback
+  permission.
+- Documentation GREEN: the repaired embedded audit exited `0` and printed
+  `GREEN: Task 116 section-local acceptance-plan audit passed (168 direct local
+  counterfactual mutations rejected).` The same external mutation harness then
+  exited `0` and printed `GREEN: Task 116 audit rejects every RV-0-A-013
+  counterfactual.` The audit now extracts the real A-07/A-08 task section,
+  locks the exact command-identity union and every work-order review status,
+  preserves both positive readiness-boundary calls, and rejects each required
+  A-04/A-06/A-07 weakening directly.
+- Whitespace: `git diff --check` exited `0` with no output before this record.
+- Factory: `npm run factory:check` exited `0` and printed
+  `factory-readiness passed`.
+- Dependency recovery: the first fresh `npm run verify` stopped before
+  typecheck with `sh: line 1: tsc: command not found` because this isolated
+  worktree lacked ignored dependencies. `npm ci --ignore-scripts` restored the
+  lockfile-pinned dependencies with no tracked-file changes.
+- Full verification: the post-recovery `npm run verify` exited `0`:
+  `typecheck passed`; 189 test files passed with 3 skipped; 2,228 tests passed
+  with 5 skipped; Vite built with the existing chunk-size warning; and
+  `factory-readiness passed`. No provider, credential, browser, tailnet, or
+  live command was invoked.
+- Scope and handoff: only this append-only claim and the Task 116 acceptance
+  plan are changed. A different fresh reviewer must now lead with defects,
+  missing tests, spec drift, unsafe audit gaps, claim/ownership conflicts, and
+  verification gaps. This audit author does not self-review, integrate, rebase,
+  dispatch, or merge.

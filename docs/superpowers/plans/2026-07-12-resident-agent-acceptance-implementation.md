@@ -283,10 +283,12 @@ prove; it is not a heading-only checklist.
 ## Section-Local Documentation Audit
 
 Run this exact audit from the repository root before committing Task 116. It
-validates the contract map plus the exact evidence interface, producer-command
-table, durable-work-order table, and live/local/official gate procedure. It
-mutates every required marker and semantic token inside its owning section, so
-repair controls cannot be satisfied by a duplicate heading or incidental prose.
+validates the contract map plus the fixed command-identity union, exact evidence
+interface, producer-command table, ready-for-review work-order statuses,
+positive provider-readiness boundary calls, durable-work-order table, and
+live/local/official gate procedure. It mutates every required marker and
+semantic token inside its owning section, so repair controls cannot be satisfied
+by a duplicate heading or incidental prose.
 
 ```bash
 node --input-type=module <<'NODE'
@@ -307,13 +309,24 @@ const lastRegion = (candidate, startHeading, endHeading, name) => {
   return { start, end, text: candidate.slice(start, end) };
 };
 const regions = (candidate) => ({
+  identity: region(candidate, "type AcceptanceCommandIdentity =", "type AcceptanceRetryPosture =", "command identity union"),
   evidence: region(candidate, "interface ResidentAcceptanceEvidence {", "interface MountedAcceptanceFixture {", "evidence interface"),
   contract: region(candidate, "## Acceptance Case Contract Map", "## Section-Local Documentation Audit", "acceptance contract map"),
   producer: region(candidate, "## Producer Precondition Commands", "## Durable Acceptance Work Orders", "producer preconditions"),
   workOrder: region(candidate, "## Durable Acceptance Work Orders", "## Required CF-1 Interfaces And Fixture Shape", "durable work orders"),
-  providerTask: region(candidate, "### Task A-07 and A-08: Provider parity and official feasibility", "### Task A-09: Production DTO, browser-closed, and served-checkout evidence", "provider-feasibility task"),
+  providerTask: lastRegion(candidate, "### Task A-07 and A-08: Provider parity and official feasibility", "### Task A-09: Production DTO, browser-closed, and served-checkout evidence", "provider-feasibility task"),
   gates: lastRegion(candidate, "## Coordinator-Only Live, Local, Official, And Served-Checkout Gates", "## Review, Rebase, Rollback, and Defect Routing", "coordinator gates")
 });
+const exactCommandIdentity = [
+  "type AcceptanceCommandIdentity =",
+  "  | `acceptance-${Lowercase<AcceptanceId>}-producer`",
+  "  | `acceptance-${Lowercase<AcceptanceId>}-deterministic`",
+  "  | \"acceptance-coordinator-nous\"",
+  "  | \"acceptance-coordinator-local-compatibility\"",
+  "  | \"acceptance-coordinator-official-codex\"",
+  "  | \"acceptance-coordinator-official-xai\"",
+  "  | \"acceptance-coordinator-served-checkout\";"
+].join("\n");
 const required = [
   ["contract", "A116-A01-MOUNTED-RESTART", "writes only through the selected mounted ledger, artifact, derivative, and handoff authorities"],
   ["contract", "A116-A01-FRESH-PROCESS", "fresh child process reconstruct task, claim, context, plan/observation, handoff lifecycle, and terminal-or-resumable posture from mounted disk"],
@@ -328,14 +341,14 @@ const required = [
   ["contract", "A116-A03-HONEST-BLOCK", "without alternate provider, credential, or false pass"],
   ["contract", "A116-A04-EVIDENCE-FIRST", "stays evidence-first with exact source/content hash and mounted artifact bindings"],
   ["contract", "A116-A04-PROPOSAL-ONLY", "cannot create accepted ontology truth, synthetic readiness, or an unbound completion"],
-  ["contract", "A116-A04-CONDITIONAL-NOUS", "A-04 runs coordinator Nous only when its frozen policy selects Nous"],
+  ["contract", "A116-A04-CONDITIONAL-NOUS", "A-04 runs coordinator Nous only when its frozen policy selects Nous", "otherwise it records fixed `not-selected` evidence with `acceptance-record-safe-unavailable` next action and never substitutes a provider."],
   ["contract", "A116-A05-TRIGGER-IDEMPOTENT", "honors cooldown, budget, and source high-water, and never prompts or performs a domain effect"],
   ["contract", "A116-A05-DRAFT-NO-SEND", "no send, follow-up, escalation, publication, export, or provider fallback"],
   ["contract", "A116-A06-BOUNDED-ADVISORY", "outputs remain advisory and cannot mutate accepted graph truth"],
   ["contract", "A116-A06-REPLAN-READBACK", "requires replayable H handoff readback rather than return-value completion"],
-  ["contract", "A116-A06-CONDITIONAL-NOUS", "A-06 runs coordinator Nous only when its frozen policy selects Nous"],
+  ["contract", "A116-A06-CONDITIONAL-NOUS", "A-06 runs coordinator Nous only when its frozen policy selects Nous", "an unavailable or unselected provider records fixed `acceptance-record-safe-unavailable` next action with no substitute backend."],
   ["contract", "A116-A07-PARITY-NO-SECRET", "no implicit provider/model/credential fallback"],
-  ["contract", "A116-A07-APPROVED-LOCAL-COMPATIBILITY", "coordinator-recorded approved local-engine/model/capability/budget compatibility posture"],
+  ["contract", "A116-A07-APPROVED-LOCAL-COMPATIBILITY", "coordinator-recorded approved local-engine/model/capability/budget compatibility posture", "stopped, incompatible, or policy-blocked local capability records a safe unavailable result and never becomes an implicit fallback."],
   ["contract", "A116-A08-OFFICIAL-ONLY", "never subscription-token extraction, browser scraping, or fabricated availability"],
   ["contract", "A116-A08-OFFICIAL-CODEX-XAI-GATES", "Codex and xAI separately through their CF-1-recorded official harness gates"],
   ["contract", "A116-HANDOFF-PROVENANCE", "prepared and recorded handoff replay/readback, then causally compatible run/task transition"],
@@ -377,17 +390,41 @@ const required = [
   ["workOrder", "A116-WORKORDER-A08", "task-162-resident-acceptance-subscription-feasibility.md", "Only A-08 cases in the shared provider-feasibility test"],
   ["workOrder", "A116-WORKORDER-A09", "task-163-resident-acceptance-cockpit-tailnet.md", "A-09 cockpit/tailnet test and this claim only."],
   ["workOrder", "A116-WORKORDER-A10", "task-164-resident-acceptance-adversarial.md", "A-10 adversarial test, CF-1-assigned fixture/evidence deltas, and this claim only."],
-  ["gates", "A-04 conditional Nous:", "**A-04 conditional Nous:** when the frozen policy selects Nous, run that"],
-  ["gates", "A-06 conditional Nous:", "**A-06 conditional Nous:** when the frozen policy selects Nous, run that"],
-  ["gates", "A-07 approved local compatibility", "approved local-engine/model/capability/budget posture", "acceptance-coordinator-local-compatibility"],
+  ["gates", "**A-04 conditional Nous:** when the frozen policy selects Nous, run that\n     same coordinator gate; when it does not, record a safe not-selected result\n     with `acceptance-record-safe-unavailable` and do not run a substitute."],
+  ["gates", "**A-06 conditional Nous:** when the frozen policy selects Nous, run that\n     same coordinator gate; when it does not, record a safe not-selected result\n     with `acceptance-record-safe-unavailable` and do not run a substitute."],
+  ["gates", "A-07 approved local compatibility", "approved local-engine/model/capability/budget posture", "acceptance-coordinator-local-compatibility", "never becomes an implicit provider fallback."],
   ["gates", "A-08, evaluate Codex and xAI independently.", "acceptance-coordinator-official-codex", "acceptance-coordinator-official-xai", "official-flow-unavailable"]
+];
+const readyForReviewRows = [
+  "| A116-WORKORDER-FIXTURE | A-FIXTURE | `docs/agentic/claims/task-154-resident-acceptance-fixture.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A01 | A-01 | `docs/agentic/claims/task-155-resident-acceptance-mounted-restart.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A02 | A-02 | `docs/agentic/claims/task-156-resident-acceptance-disconnect-reconnect.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A03 | A-03 | `docs/agentic/claims/task-157-resident-acceptance-nous.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A04 | A-04 | `docs/agentic/claims/task-158-resident-acceptance-legacy-proposal.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A05 | A-05 | `docs/agentic/claims/task-159-resident-acceptance-trigger-draft.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A06 | A-06 | `docs/agentic/claims/task-160-resident-acceptance-planning-contradiction.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A07 | A-07 | `docs/agentic/claims/task-161-resident-acceptance-provider-parity.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A08 | A-08 | `docs/agentic/claims/task-162-resident-acceptance-subscription-feasibility.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A09 | A-09 | `docs/agentic/claims/task-163-resident-acceptance-cockpit-tailnet.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A10 | A-10 | `docs/agentic/claims/task-164-resident-acceptance-adversarial.md` | `ready-for-review` |"
+];
+const positiveProviderReadinessBoundaryCalls = [
+  "expect(() => assertNoUnsafeProviderReadinessMaterial(byok)).not.toThrow();",
+  "expect(() => assertNoUnsafeProviderReadinessMaterial(local)).not.toThrow();"
+];
+const auditRequirements = [
+  ...required,
+  ["identity", exactCommandIdentity],
+  ...readyForReviewRows.map((row) => ["workOrder", row]),
+  ...positiveProviderReadinessBoundaryCalls.map((call) => ["providerTask", call])
 ];
 const staleWholeDtoCheck = "expect(JSON.stringify([byok, local])).not.toMatch(/credential|endpoint|secret/i);";
 const validate = (candidate) => {
   const current = regions(candidate);
-  const missing = required.filter(([regionName, ...needles]) =>
+  const missing = auditRequirements.filter(([regionName, ...needles]) =>
     needles.some((needle) => !current[regionName].text.includes(needle))
   ).map(([, marker]) => marker);
+  if (current.identity.text.trim() !== exactCommandIdentity) missing.push("fixed-command-identity-union");
   if (current.providerTask.text.includes(staleWholeDtoCheck)) missing.push("stale-whole-dto-token-scan");
   return missing;
 };
@@ -397,7 +434,7 @@ if (missing.length > 0) {
   process.exit(1);
 }
 let mutations = 0;
-for (const [regionName, marker, ...needles] of required) {
+for (const [regionName, marker, ...needles] of auditRequirements) {
   for (const needle of [marker, ...needles]) {
     const current = regions(text)[regionName];
     const index = current.text.indexOf(needle);
@@ -407,6 +444,34 @@ for (const [regionName, marker, ...needles] of required) {
     mutations += 1;
   }
 }
+const requireRejected = (name, mutate) => {
+  if (validate(mutate(text)).length === 0) throw new Error(`counterfactual escaped: ${name}`);
+  mutations += 1;
+};
+requireRejected("widened-command-identity", (candidate) => candidate.replace(
+  /type AcceptanceCommandIdentity =[^]*?\n\ntype AcceptanceRetryPosture =/,
+  "type AcceptanceCommandIdentity = string;\n\ntype AcceptanceRetryPosture ="
+));
+requireRejected("changed-work-order-ready-for-review-status", (candidate) => candidate.replace(
+  "| A116-WORKORDER-A01 | A-01 | `docs/agentic/claims/task-155-resident-acceptance-mounted-restart.md` | `ready-for-review` |",
+  "| A116-WORKORDER-A01 | A-01 | `docs/agentic/claims/task-155-resident-acceptance-mounted-restart.md` | `blocked` |"
+));
+requireRejected("both-positive-provider-readiness-boundary-calls-removed", (candidate) => candidate
+  .replace("  expect(() => assertNoUnsafeProviderReadinessMaterial(byok)).not.toThrow();\n", "")
+  .replace("  expect(() => assertNoUnsafeProviderReadinessMaterial(local)).not.toThrow();\n", "")
+);
+requireRejected("weakened-a04-unselected-no-substitute", (candidate) => candidate.replace(
+  "and never substitutes a provider.",
+  "and may substitute a provider."
+));
+requireRejected("weakened-a06-unselected-no-substitute", (candidate) => candidate.replace(
+  "with no substitute backend.",
+  "with a substitute backend."
+));
+requireRejected("a07-fallback-permission", (candidate) => candidate.replace(
+  "and never becomes an implicit fallback.",
+  "and may become an implicit fallback."
+));
 console.log(`GREEN: Task 116 section-local acceptance-plan audit passed (${mutations} direct local counterfactual mutations rejected).`);
 NODE
 ```
