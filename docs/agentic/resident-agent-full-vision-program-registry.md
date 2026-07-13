@@ -1855,3 +1855,29 @@ explicit implementation authorization.
 - Immediate successor procedure: inspect both active child worktrees/branches; receive their commits; dispatch different fresh reviewers; repair/re-review as needed; merge only approved two-file plan changes into the visible coordinator branch; append each integration record; keep all Wave0B plan lanes stopped until approvals/integrations are complete. Then run Task117 CF-1 contract freeze/review before any Wave1 work. All production/provider/live work remains stopped before CF-1; use real Nous only for provider-bearing acceptance and credential-free deterministic tests otherwise.
 - Verification posture: outgoing coordinator's clean committed head before this handoff is `beff02c05d3472cc79e7ccf411f77c33b7b64342`; its full factory/readiness and verification run passed before the U/A restart commit. This forward-only registry record itself must complete `git diff --check`, `npm run factory:check`, and `npm run verify` before the outgoing coordinator sends the exact final head.
 - No-neo and archive rule: no active child may merge, rebase into, or touch neo. Preserve all append-only author/reviewer/integration evidence. The successor must record any next continuity transfer with a real visible task ID, title, pin, active state, canonical branch, and exact clean head before its own lease limit.
+
+## RV-0-C-006 — Incoming coordinator ownership acceptance
+
+- Recorded at: 2026-07-13T14:58:07Z
+- Role: incoming visible coordinator and sole integration owner
+- Lane and wave: C / 0B (program-continuity coordination)
+- Task ID and claim: coordinator-continuity acceptance / docs/agentic/resident-agent-full-vision-program-registry.md
+- Task thread ID: 019f5bf7-971a-7411-ae6f-0ecb721deff7
+- Branch and worktree: codex/resident-agent-full-vision-program-visible-coordinator-2 / /home/drake/.codex/worktrees/95de/Cestus; successor readiness checkout: /home/drake/.codex/worktrees/383d/Cestus
+- Base commit and required head: ad73f6f5c0155b13085359c0a0c7e87eba69cfba / this forward-only coordinator-acceptance commit
+- Model configuration: GPT-5.6 Terra / Extra High, satisfied by the user-confirmed host-reported GPT-5 posture
+- Governing spec and plan: docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89; docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358
+- Owned files: docs/agentic/resident-agent-full-vision-program-registry.md
+- Forbidden files: every production, test, runtime, UI, provider, shared-contract, specification, implementation-plan, template, acceptance-matrix, and child-claim file
+- Dependencies and required merged commits: RV-0-C-005 at ad73f6f5c0155b13085359c0a0c7e87eba69cfba; Task111 W integrated before transfer; Task114 P plan at 6cd942074d95a7c11d1538ad0fa8b456d7b1baab; Task113 T at bcc8391ce13033aa1ef9b0686d5cacdaf7b71910; Task112 L at 573bff19
+- Approval record: the user-supplied formal coordinator transfer in task 019f5bf7-971a-7411-ae6f-0ecb721deff7 authorizes sole integration ownership only after exact-head and clean-worktree verification, authorizes the append-only acceptance record, confirms the standing Wave 5 delegation and exact child controls, and prohibits any merge into neo
+- Claim status: accepted; sole integration ownership is active after this committed record
+- RED command and observed failure: node --input-type=module --eval '<RV-0-C-006 ownership-presence audit>' / exit 1 with `RED: RV-0-C-006 ownership acceptance is absent` before this append
+- GREEN command and observed result: the ownership-presence audit exited 0 with `GREEN: RV-0-C-006 ownership acceptance is present and bound to the exact handoff head`; git diff --check exited 0 with no output; npm run factory:check exited 0 with `factory-readiness passed`
+- Full verification: npm run verify exited 0 after typecheck, deterministic tests, Vite build, and factory readiness
+- Live-provider gate: not-applicable; this coordinator continuity record invokes no provider, credential, browser, tailnet, or live acceptance
+- Review verdict: not-applicable; the formal user transfer is the ownership gate, while every child author, repair, review, and integration retains its recorded fresh-review gate
+- Rebase record: successor readiness checkout fast-forwarded from beff02c05d3472cc79e7ccf411f77c33b7b64342 to exact outgoing head ad73f6f5c0155b13085359c0a0c7e87eba69cfba before this acceptance; Task115 and Task116 remain at their authorized clean bases pending author commits
+- Merge readiness: coordinator ownership accepted; Task115 and Task116 remain author-owned and unreviewed, CF-1 and every Wave 1 task remain stopped, and no child may self-integrate or merge neo
+- Archive check: the outgoing transfer record, exact-head ancestry, clean successor readiness checkout, clean canonical coordinator worktree, and this forward acceptance record are preserved; a normal visible successor with task ID, title, pin, active state, canonical branch, and exact clean head will be recorded before this coordinator's continuity threshold
+- Supersession: this record accepts and supersedes RV-0-C-005 only for integration ownership; all transfer, child, review, and merge evidence remains append-only and unchanged.
