@@ -161,3 +161,32 @@ after the commit.
 
 Status: in-progress only in this isolated root-cause recovery lane; prior
 Task119 candidates remain preserved, rejected, and unintegrated.
+
+## Root-Cause RED/GREEN Evidence
+
+- Isolated environment setup: `npm ci --ignore-scripts` restored only
+  lockfile-pinned ignored dependencies after the initial focused command found
+  `vitest: command not found`; it did not modify tracked dependency files.
+- RED: `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts` exited 1 with 1 failed and
+  71 passed tests. A reflective `ownKeys` trap on an otherwise valid payload
+  escaped `validateKnowledgeEvent` as `payload reflection must not escape
+  validation`, proving that the old boolean ownership guard was not a safe
+  boundary normalization.
+- GREEN: `validateKnowledgeEvent` now descriptor-copies and deeply freezes one
+  plain-own-data snapshot before Zod parsing. It rejects reflection failures,
+  accessors (including the top-level `payload` accessor with zero getter
+  invocations), symbols, sparse arrays, hidden keys, custom prototypes, boxed
+  values, and nested unsafe variants without rereading caller-owned objects.
+  The focused command then passed 2 files / 73 tests; `git diff --check` and
+  `npm run factory:check` passed. The one full verification gate is pending
+  the coordinator's global verifier-slot confirmation.
+
+## Root-Cause Full Gate And Review Handoff
+
+- Retained full verification: the coordinator-cleared single `npm run verify`
+  exited 0 with typecheck passed; 190 test files passed (3 skipped); 2,241
+  tests passed (5 skipped); Vite production build passed; and
+  factory-readiness passed. No overlapping full verifier ran.
+- Status: ready-for-review. This root-cause candidate is limited to the three
+  authorized files and requires a reviewer with no prior Task119 author or
+  reviewer role before any coordinator integration.
