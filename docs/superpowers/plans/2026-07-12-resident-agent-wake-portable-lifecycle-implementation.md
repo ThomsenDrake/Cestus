@@ -2327,11 +2327,15 @@ starts instead with the one declared `WorkspaceUnavailableClaimReconciliationV1`
 record, recursively derives every persisted leaf field from that declared
 shape, and requires both Task 124 and Task 125 to map every leaf from a
 mounted source through the append record to the mounted readback record. The
-same derived field set must drive each owner’s per-field mismatch test. A
-candidate or prior mounted-readback mismatch is blocked before a new append and
-therefore has zero reconciliation append, effect, and fallback activity. This
-does not authorize a general ledger API: the record still travels only through
-the typed reconciliation port and its exact mounted readback.
+audit carries an independent, exact source-semantics map for that authoritative
+mounted source: a present source expression is insufficient, and an unrelated,
+swapped, or missing source fails just as a severed append or readback edge
+fails. The same derived field set must drive each owner’s per-field mismatch
+test. A candidate or prior mounted-readback mismatch is blocked before a new
+append and therefore has zero reconciliation append, effect, and fallback
+activity. This does not authorize a general ledger API: the record still
+travels only through the typed reconciliation port and its exact mounted
+readback.
 
 ```bash
 node --input-type=module <<'NODE'
@@ -2374,6 +2378,19 @@ function replaceInCanonicalSourceMap(text, heading, from, to) {
   return text.slice(0, start) + scoped.slice(0, mapStart) + map.slice(0, offset) + to + map.slice(offset + from.length) + scoped.slice(mapEnd) + text.slice(end);
 }
 
+function replaceCanonicalRecordEdge(text, heading, field, sourceExpression, appendedExpression, readbackExpression, edge, replacement) {
+  if (edge === "source") {
+    return replaceInCanonicalSourceMap(text, heading, `["${field}", ${sourceExpression},`, `["${field}", ${replacement},`);
+  }
+  if (edge === "append") {
+    return replaceInCanonicalSourceMap(text, heading, `["${field}", ${sourceExpression}, ${appendedExpression},`, `["${field}", ${sourceExpression}, ${replacement},`);
+  }
+  if (edge === "readback") {
+    return replaceInCanonicalSourceMap(text, heading, `["${field}", ${sourceExpression}, ${appendedExpression}, ${readbackExpression}]`, `["${field}", ${sourceExpression}, ${appendedExpression}, ${replacement}]`);
+  }
+  throw new Error(`unknown canonical-record edge: ${edge}`);
+}
+
 function interfaceBlock(text, name) {
   const match = new RegExp(`export interface ${name}(?: extends [^{]+)? \\{`).exec(text);
   if (!match || match.index === undefined) throw new Error(`missing interface: ${name}`);
@@ -2411,13 +2428,54 @@ function canonicalRecordLeafPaths(text) {
   return canonicalRecordLeafLocations(text).map(({ path }) => path);
 }
 
+const canonicalRecordMountedSourceSemantics = new Map([
+  ["schemaVersion", '"resident-wake-workspace-unavailable.v1"'],
+  ["outcome", '"workspace-unavailable"'],
+  ["resumable", "true"],
+  ["claimDisposition", "HARNESS.reconciliation.expectedClaimDisposition"],
+  ["workspaceId", "canonicalAdmission.authorityIdentityAndMount.workspaceId"],
+  ["residentId", "canonicalAdmission.authorityIdentityAndMount.residentId"],
+  ["supervisorEpoch", "canonicalAdmission.authorityIdentityAndMount.supervisorEpoch"],
+  ["claimId", "HARNESS.activeClaimReadback.claimId"],
+  ["attemptId", "HARNESS.activeClaimReadback.attemptId"],
+  ["outageObservation.safeObservationId", "HARNESS.outage.safeObservationId"],
+  ["outageObservation.outageObservedAt", "HARNESS.outage.outageObservedAt"],
+  ["outageObservation.category", "HARNESS.outage.category"],
+  ["outageObservation.priorClaimEventId", "HARNESS.activeClaimReadback.priorClaimEventId"],
+  ["outageObservation.priorClaimLeaseId", "HARNESS.activeClaimReadback.priorClaimLeaseId"],
+  ["outageObservation.priorAuthorityEvidenceId", "HARNESS.outage.priorAuthorityEvidenceId"],
+  ["outageObservation.highWaterBeforeOutage", "HARNESS.outage.highWaterBeforeOutage"],
+  ["causation.causationId", "HARNESS.activeClaimReadback.causation.causationId"],
+  ["causation.correlationId", "HARNESS.activeClaimReadback.causation.correlationId"],
+  ["revalidatedAuthority.identityEventId", "canonicalAdmission.authorityIdentityAndMount.workspaceIdentityEventId"],
+  ["revalidatedAuthority.authorityEvidenceId", "canonicalAdmission.authorityIdentityAndMount.authorityEvidenceId"],
+  ["revalidatedAuthority.mountEvidenceId", "canonicalAdmission.authorityIdentityAndMount.mountEvidenceId"],
+  ["revalidatedAuthority.highWaterAfterRevalidation", "canonicalAdmission.highWater.highWaterMark"],
+  ["revalidatedAuthority.policyVersion", "canonicalAdmission.policyAndLock.policyVersion"],
+  ["revalidatedAuthority.policyDigest", "canonicalAdmission.policyAndLock.policyDigest"],
+  ["revalidatedAuthority.lockStateDigest", "canonicalAdmission.policyAndLock.lockStateDigest"],
+  ["revalidatedAuthority.supervisorLeaseEventId", "canonicalAdmission.verifiedLease.leaseEventId"],
+  ["revalidatedAuthority.supervisorLeaseReadbackEventId", "canonicalAdmission.verifiedLease.readbackEventId"],
+  ["revalidatedAuthority.supervisorLeaseExpiresAt", "canonicalAdmission.verifiedLease.expiresAt"],
+  ["reconciliationIdempotencyKey", "HARNESS.reconciliation.keyFor({ workspaceId: canonicalAdmission.authorityIdentityAndMount.workspaceId, supervisorEpoch: canonicalAdmission.authorityIdentityAndMount.supervisorEpoch, claimId: HARNESS.activeClaimReadback.claimId, attemptId: HARNESS.activeClaimReadback.attemptId, safeObservationId: HARNESS.outage.safeObservationId, priorClaimEventId: HARNESS.activeClaimReadback.priorClaimEventId })"]
+]);
+
+const reconciliationTaskSections = [
+  ["Task 124", "## Task 124: Wake Supervisor", "harness"],
+  ["Task 125", "## Task 125: Portable Workspace Availability And Claim Reconciliation", "fixture"]
+];
+
+function expectedMountedSourceExpression(expression, harnessName) {
+  return expression.replaceAll("HARNESS", harnessName);
+}
+
 function parseRows(scoped, declaration) {
   const match = new RegExp(`const ${declaration} = \\\[\\n([\\s\\S]*?)\\n    \\\] as const;`).exec(scoped);
   if (!match) throw new Error(`missing ${declaration}`);
   const rows = new Map();
   for (const [, field, mountedSource, appendedField, readbackField] of match[1].matchAll(/^\s*\["([^"]+)", (.*), (.*), (.*)\],?$/gm)) {
     if (rows.has(field)) throw new Error(`${declaration}: duplicate ${field}`);
-    rows.set(field, { mountedSource, appendedField, readbackField });
+    rows.set(field, { mountedSource: mountedSource.trim(), appendedField: appendedField.trim(), readbackField: readbackField.trim() });
   }
   return rows;
 }
@@ -2436,13 +2494,14 @@ function sameSet(actual, expected, label) {
 
 function validate(text) {
   const expected = canonicalRecordLeafPaths(text);
+  sameSet([...canonicalRecordMountedSourceSemantics.keys()].sort(), expected, "canonical authoritative mounted-source semantics");
   const frozen = section(text, "### Planned Post-Freeze W Contract Surface");
   const append = fields(interfaceBlock(frozen, "ClaimReconciliationAppend"));
   const readback = fields(interfaceBlock(frozen, "ClaimReconciliationReadback"));
   if (append.get("record") !== "WorkspaceUnavailableClaimReconciliationV1" || readback.get("record") !== "WorkspaceUnavailableClaimReconciliationV1") {
     throw new Error("typed reconciliation append/readback must carry the one canonical V1 record");
   }
-  for (const heading of ["## Task 124: Wake Supervisor", "## Task 125: Portable Workspace Availability And Claim Reconciliation"]) {
+  for (const [task, heading, harnessName] of reconciliationTaskSections) {
     const scoped = section(text, heading);
     const rows = parseRows(scoped, "canonicalRecordFieldSources");
     sameSet([...rows.keys()].sort(), expected, `${heading} canonical source map`);
@@ -2452,9 +2511,14 @@ function validate(text) {
     }
     for (const field of expected) {
       const row = rows.get(field);
-      if (!row || !row.mountedSource || !row.appendedField.includes(`appendedReconciliation?.record.${field}`) || !row.readbackField.includes(`readbackReconciliation?.record.${field}`)) {
-        throw new Error(`${heading}: unbound source/append/readback field ${field}`);
-      }
+      const semantics = canonicalRecordMountedSourceSemantics.get(field);
+      if (!row || !semantics) throw new Error(`${task}: missing canonical source/append/readback field ${field}`);
+      const mountedSource = expectedMountedSourceExpression(semantics, harnessName);
+      const appendedField = `appendedReconciliation?.record.${field}`;
+      const readbackField = `readbackReconciliation?.record.${field}`;
+      if (row.mountedSource !== mountedSource) throw new Error(`${task}: authoritative mounted source mismatch for ${field}`);
+      if (row.appendedField !== appendedField) throw new Error(`${task}: canonical append edge mismatch for ${field}`);
+      if (row.readbackField !== readbackField) throw new Error(`${task}: canonical readback edge mismatch for ${field}`);
     }
     for (const required of ["mismatchCandidateOrMountedReadbackField(field)", "toEqual([])", "fallback.allWriteCalls()"]) {
       if (!scoped.includes(required)) throw new Error(`${heading}: mismatch test lacks ${required}`);
@@ -2490,13 +2554,33 @@ function mustReject(label, mutate) {
 
 const expected = canonicalRecordLeafPaths(source);
 const counterfactuals = [];
-for (const { path: field, interfaceName, field: interfaceField } of canonicalRecordLeafLocations(source)) {
-  counterfactuals.push(
-    [`remove Task 124 source map ${field}`, text => replaceInCanonicalSourceMap(text, "## Task 124: Wake Supervisor", `["${field}",`, `["removed-${field}",`)],
-    [`mismatch Task 124 append ${field}`, text => replaceInCanonicalSourceMap(text, "## Task 124: Wake Supervisor", `appendedReconciliation?.record.${field}`, "unrelatedCanonicalRecordValue")],
-    [`remove Task 125 source map ${field}`, text => replaceInCanonicalSourceMap(text, "## Task 125: Portable Workspace Availability And Claim Reconciliation", `["${field}",`, `["removed-${field}",`)],
-    [`mismatch Task 125 readback ${field}`, text => replaceInCanonicalSourceMap(text, "## Task 125: Portable Workspace Availability And Claim Reconciliation", `readbackReconciliation?.record.${field}`, "unrelatedCanonicalRecordValue")]
-  );
+const locations = canonicalRecordLeafLocations(source);
+for (const [index, { path: field, interfaceName, field: interfaceField }] of locations.entries()) {
+  const swappedField = locations[(index + 1) % locations.length]?.path;
+  if (!swappedField) throw new Error(`missing swap field for ${field}`);
+  for (const [task, heading, harnessName] of reconciliationTaskSections) {
+    const semantics = canonicalRecordMountedSourceSemantics.get(field);
+    const swappedSemantics = canonicalRecordMountedSourceSemantics.get(swappedField);
+    if (!semantics || !swappedSemantics) throw new Error(`missing mounted-source semantics for ${field}`);
+    const mountedSource = expectedMountedSourceExpression(semantics, harnessName);
+    const swappedMountedSource = expectedMountedSourceExpression(swappedSemantics, harnessName);
+    const appendedField = `appendedReconciliation?.record.${field}`;
+    const readbackField = `readbackReconciliation?.record.${field}`;
+    const swappedAppendedField = `appendedReconciliation?.record.${swappedField}`;
+    const swappedReadbackField = `readbackReconciliation?.record.${swappedField}`;
+    counterfactuals.push(
+      [`remove ${task} source map ${field}`, text => replaceInCanonicalSourceMap(text, heading, `["${field}",`, `["removed-${field}",`)],
+      [`missing ${task} mounted source ${field}`, text => replaceCanonicalRecordEdge(text, heading, field, mountedSource, appendedField, readbackField, "source", "undefined")],
+      [`swap ${task} mounted source ${field}`, text => replaceCanonicalRecordEdge(text, heading, field, mountedSource, appendedField, readbackField, "source", swappedMountedSource)],
+      [`unrelate ${task} mounted source ${field}`, text => replaceCanonicalRecordEdge(text, heading, field, mountedSource, appendedField, readbackField, "source", "unrelatedMountedSourceValue")],
+      [`missing ${task} append edge ${field}`, text => replaceCanonicalRecordEdge(text, heading, field, mountedSource, appendedField, readbackField, "append", "undefined")],
+      [`swap ${task} append edge ${field}`, text => replaceCanonicalRecordEdge(text, heading, field, mountedSource, appendedField, readbackField, "append", swappedAppendedField)],
+      [`unrelate ${task} append edge ${field}`, text => replaceCanonicalRecordEdge(text, heading, field, mountedSource, appendedField, readbackField, "append", "unrelatedCanonicalRecordValue")],
+      [`missing ${task} readback edge ${field}`, text => replaceCanonicalRecordEdge(text, heading, field, mountedSource, appendedField, readbackField, "readback", "undefined")],
+      [`swap ${task} readback edge ${field}`, text => replaceCanonicalRecordEdge(text, heading, field, mountedSource, appendedField, readbackField, "readback", swappedReadbackField)],
+      [`unrelate ${task} readback edge ${field}`, text => replaceCanonicalRecordEdge(text, heading, field, mountedSource, appendedField, readbackField, "readback", "unrelatedCanonicalRecordValue")]
+    );
+  }
   counterfactuals.push(
     [`rename canonical record field ${field}`, text => replaceFirstInInterface(text, interfaceName, `readonly ${interfaceField}:`, `readonly removed${interfaceField[0].toUpperCase()}${interfaceField.slice(1)}:`)],
     [`delete canonical record field ${field}`, text => deleteFieldInInterface(text, interfaceName, interfaceField)]
