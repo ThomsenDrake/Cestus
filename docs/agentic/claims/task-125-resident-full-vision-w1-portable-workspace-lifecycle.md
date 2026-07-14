@@ -1,6 +1,6 @@
 # Task 125 — Portable Workspace Lifecycle Authority
 
-- Status: in-progress
+- Status: ready-for-review
 - Coordinator ledger: `RV-1-C-137`
 - Worker: `/root/task125_authority_repair`
 - Branch: `codex/task-125-resident-full-vision-portable-workspace-lifecycle-admission-restart`
@@ -28,6 +28,31 @@ journal write is permitted while unavailable or for a revoked admission.
   causal RED. Scope remains this claim, the portable lifecycle source, and its
   focused test only; the full verifier, provider/network actions, integration,
   registry edits, and `neo` remain out of scope.
+
+- RV-1-E-170 root-cause/TDD evidence: the pending outage retained only the
+  prior claim's event and lease fields, while `requireCurrentAppendInput`
+  independently compared the caller claim with the later mounted claim. A
+  compatible later mounted claim could therefore pair with an outage recorded
+  for a different earlier claim. The causal RED mutates only the fixture's
+  mounted `observedActiveClaim` after an authority-loss invalidation records
+  the outage. With the exact focused command and a temporary local
+  `node_modules` symlink, it exited `1`: 1 failed / 17 passed, because the
+  mounted reconciliation call count was `1` instead of the required `0`.
+  The first no-symlink invocation stopped at `vitest: command not found` and
+  was treated only as dependency setup, not as RED evidence.
+- RV-1-E-170 GREEN: the façade now keeps the canonical frozen active-claim
+  fact that formed the pending outage and requires the current mounted claim
+  to be exactly the same fact before any reconciliation append. It clears that
+  bound fact only with the pending outage after an exact canonical
+  append/readback. The same exact focused command exited `0` with 2 files and
+  18 tests passing. `npm run typecheck` exited `0`; `git diff --check` exited
+  `0`; and `npm run factory:check` exited `0` with `factory-readiness passed`.
+  The temporary dependency symlink was removed. Self-review found the change
+  remains an internal fail-closed cross-bind, preserves canonical own-data and
+  frozen readback behavior, does not expand ports or persistence, and leaves
+  pending state intact on rejection. No `npm run verify`, provider/network or
+  credential action, registry edit, integration, merge, or `neo` action
+  occurred. Fresh independent review is now required.
 
 - RV-1-D-164 second bounded repair: in progress from clean
   `251834159ffd72c5e7293a7cfaf0a0ed210201cb`. Root-cause investigation
