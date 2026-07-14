@@ -4222,3 +4222,16 @@ explicit implementation authorization.
   passing focused tests) and continues only in its separate wake-supervisor
   contract scope. Task128 remains separate. No full verifier or integration is
   active.
+
+## RV-1-C-121 — Task126 bounded stale-worker replacement
+
+- `/root/task126_authority_root_repair` was stopped clean after its final
+  immediate checkpoint still produced no claim/test delta, command result, or
+  structured blocker. No work was lost and no candidate exists from that lane.
+- Fresh authenticated local `/status` immediately before replacement reports
+  **99% weekly remaining**, Spark 100%, five reset credits untouched. Fresh
+  replacement `/root/task126_authority_red_recovery` owns the same clean exact
+  Task126 worktree at rejected `dc9bcce0`, with a first-command all-self-
+  consistent forged-tuple RED requirement. It must implement only an actual
+  independent canonical source/brand or return a schema/file-owner blocker;
+  no blacklists, full verifier, integration, or `neo` action is permitted.
