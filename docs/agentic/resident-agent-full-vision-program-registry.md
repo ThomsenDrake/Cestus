@@ -5458,6 +5458,37 @@ explicit implementation authorization.
   No credential, network/provider action, full verifier, self-integration, or
   `neo` action is authorized.
 
+## RV-1-C-152 — Task126 precedence repair sealed for fresh review
+
+- Recorded at: 2026-07-14T22:35:00Z by the sole Relay C coordinator.
+- Usage gate: authenticated `/status` immediately before review dispatch reports
+  **93% weekly remaining**, Spark 100%, and five untouched reset credits.
+  Normal mode remains active; DRAIN <=10% and HARD PAUSE <=7% are unchanged.
+- Candidate: clean exact range
+  `512a169af3caad7e0c2d270040f24c36443913ec..03c36b2f60669124a38bd4d73bcab973a4f2c5a9`
+  on `codex/task-126-resident-full-vision-byok-provider-reader-failclosed-recovery`.
+  Scope is exactly the Task126 claim, `byok-provider.ts`, and
+  `byok-provider.test.ts`; ancestry and clean status were independently
+  inspected.
+- Causal evidence: with a temporary dependency link removed before commit, the
+  exact focused command first produced **2 expected failures / 18 passes**:
+  malformed requested use paired with absent or forged reader returned safe
+  unavailable instead of the required public-input `blocked/unsafe-input`.
+  Green passed **2 files / 20 tests** after public use normalization moved ahead
+  of reader inspection. Typecheck, diff, and factory readiness passed. No full
+  verifier, credential/provider/network effect, integration, or `neo` action
+  ran.
+- Authorization: one fresh independent read-only defects-first reviewer may
+  inspect the exact range. It must test precedence of malformed public input
+  over reader state, zero reader/effect invocation on malformed input,
+  valid-input absent/forged-reader unavailable semantics, hostile reader
+  fail-closed behavior, source/capability/ref/policy/mount/run binding, secret-
+  safe diagnostics, and exact scope. It may inspect, diff-check, and rerun the
+  focused command only if its worktree has dependencies; it may not edit,
+  self-integrate, full-verify, use credentials/network, alter Task139 ownership,
+  or touch `neo`. A fresh authenticated gate is required before any later full
+  verifier or integration.
+
 ## RV-1-C-151 — Final Task128 closure and Relay D handoff
 
 - Recorded in append order after `RV-1-C-150` by the sole Relay C coordinator.
