@@ -3627,3 +3627,31 @@ explicit implementation authorization.
   focused suite. No full verifier, repair, integration, downstream dispatch,
   self-integration, credential/provider use, or `neo` change is authorized by
   this verdict.
+
+## RV-1-C-091 — Usage-gate fail-closed checkpoint
+
+- Task127's coordinator-owned repair sealed clean candidate
+  `15ed426be42cd57bec692a3c37b1c71fdab2fd1d` on
+  `codex/task-127-resident-full-vision-os-secret-store`, descending from the
+  rejected `395319fbdfe5351653572fdfdc6e04c00ef794fb`. Its exact three-file
+  scope is the Task127 claim, `packages/agent/src/os-secret-store.ts`, and
+  `packages/agent/test/os-secret-store.test.ts`. Causal RED reproduced runtime
+  construction, released-material reuse, and direct proxy acceptance; the
+  repaired focused command is green at **17/17**, with `npm run typecheck`,
+  `git diff --check`, and `npm run factory:check` passing. No full verifier
+  ran. The candidate is ready only for a fresh independent review after an
+  authenticated usage gate.
+- Task125 candidate `7da9e29feaa58440ab44c5e9b737da53a3487c1e` remains clean,
+  unreviewed, and ready for its independent review on exact range
+  `ceae7ca74d161196fd109d04c946976021bb8412..7da9e29feaa58440ab44c5e9b737da53a3487c1e`.
+  Task131 candidate `e2f1626d8615a7e1a206a02b9c7f3b068e4139a5` remains rejected
+  and unmodified; its required four-P1 repair has not been dispatched.
+- The required authenticated local `codex --no-alt-screen` `/status` check was
+  attempted twice immediately before the pending review/repair dispatches. In
+  both attempts the CLI reached its unauthenticated sign-in screen after the
+  update chooser rather than a normal prompt, so no Weekly percentage could be
+  captured. Per the durable usage guard, the coordinator fails closed: no new
+  worker, reviewer, full verifier, integration, or downstream lane may start
+  until a fresh authenticated `/status` result is available. Existing sealed
+  worktrees are preserved; no child is active, no full verifier is active, and
+  `neo` remains untouched.
