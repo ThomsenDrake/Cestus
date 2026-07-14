@@ -4191,3 +4191,24 @@ explicit implementation authorization.
 - Task128 implementer remains active in its separate local-model scope. The
   three live lanes have disjoint writes or read-only review; no full verifier,
   integration, or `neo` action is active.
+
+## RV-1-C-119 — Task126 authoritative-source root-cause recovery
+
+- Fresh Task126 review rejected `dc9bcce06f95a1d4773150e769a4d1e08991dd04`;
+  it remains unintegrated. Its P1 is causal: the evaluator accepts a fully
+  self-consistent attacker-controlled `selection`, capability evidence, and
+  preparation tuple because it compares caller copies with one another. The
+  new tests only mutate selected copies and leave a caller-provided selection
+  as an implicit oracle. Freezing normalized unknown input does not establish
+  CF-1 authority.
+- Repair-count exhaustion requires a fresh root-cause lane. It retains Task126's
+  exact claim/source/test scope atop `dc9bcce0`, first adds the all-self-
+  consistent forged-tuple RED, and then traces a real independently derived
+  canonical source/brand or returns a structured schema/file-owner blocker.
+  It must not add a blacklist, static fixture special case, fake caller
+  attestation, or claim authority from TypeScript-only shape validation. If a
+  valid local source exists, it must preserve credential-free, safe diagnostics,
+  no network/provider/secret/fallback behavior and causal Green before review.
+- The fresh 99% authenticated gate remains above all thresholds for this
+  bounded recovery. No full verifier, integration, or `neo` action is
+  authorized; Task124 and Task128 remain independently active.
