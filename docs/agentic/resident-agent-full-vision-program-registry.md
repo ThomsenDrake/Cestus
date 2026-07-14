@@ -3521,3 +3521,43 @@ explicit implementation authorization.
   ownership, and all verification evidence. It must return APPROVE or
   NEEDS-CHANGES; no full verifier, integration, downstream dispatch,
   self-integration, or `neo` change is authorized pending that verdict.
+
+## RV-1-C-087 — Task125 root-cause recovery and Task131 fresh review
+
+- Task125's first recovery worker was stopped after the preserved causal test
+  and claim evidence remained unchanged through its explicit immediate
+  checkpoint. A coordinator read-only audit confirms no schema, dependency, or
+  frozen-port conflict: the test is a self-contained façade contract over the
+  already-exported W ports, and the missing production module is the sole RED
+  cause. This is execution stalling on a large fixture, not a product blocker.
+  The next bounded recovery therefore changes tactic: it must read the exact
+  fixture and W port type definitions, create the typed fail-closed façade
+  first, run the same focused RED/GREEN command at once, and then add only the
+  minimal exact readback logic needed by the existing counterfactuals. The
+  two stale workers, their claim, and the causal test are preserved as
+  forward-only evidence; no candidate, review, full verification, integration,
+  or `neo` change occurred.
+- Task131 sealed clean candidate
+  `e2f1626d8615a7e1a206a02b9c7f3b068e4139a5` on
+  `codex/task-131-resident-full-vision-runtime-adapter`, descending from
+  `ceae7ca7`, in exactly its Task131 claim, two new browser-only adapter/type
+  files, and test. It retained missing-module and null-prototype causal REDs,
+  then recorded focused GREEN **2 files / 18 tests**, direct `npm run
+  typecheck`, diff check, and factory readiness. The temporary dependency link
+  was removed before commit. No full verifier, integration, server-registry
+  import, provider/live effect, or `neo` change occurred.
+- Fresh authenticated Codex `/status` immediately before these dispatches
+  reports Weekly **27% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  weekly remains 100% left. No `/usage`, reset, or redemption occurred. Above
+  the 10% drain guard, one fresh Task125 recovery implementer and one fresh
+  independent Task131 read-only defects-first reviewer are authorized. Task125
+  retains C-084's exact three-file scope and all its TDD/no-full/no-self-
+  integration/no-`neo` restrictions; `superpowers:subagent-driven-development`
+  is approved where relevant, together with systematic debugging,
+  test-driven-development, and verification-before-completion. The Task131
+  reviewer must inspect exact range `ceae7ca7..e2f1626d`, leading with P1/P2
+  defects in one-shot normalization/freeze, strict own-data/prototype/getter/
+  sparse/extra-key/secret/cross-run rejection, browser-only dependency
+  boundaries, TDD evidence, and scope. Neither authorization grants a full
+  verifier, integration, child dispatch, credential/provider use, or `neo`
+  change.
