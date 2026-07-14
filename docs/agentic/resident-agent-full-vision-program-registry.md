@@ -5133,3 +5133,35 @@ explicit implementation authorization.
 - Holds: a new authenticated gate is required before any changed Task128
   candidate may consume a full-verifier or integration slot. Task126 remains
   separately non-full and Task125 remains deferred.
+
+## RV-1-C-143 — Task126 fail-closed recovery review authorization
+
+- Recorded at: 2026-07-14T23:10:00Z by the sole Relay C coordinator.
+- Candidate: clean recovery range
+  `27a99b137dcb2508132441879764b6c46f59fa14..512a169af3caad7e0c2d270040f24c36443913ec`
+  in `/home/drake/.codex/worktrees/task-126-resident-full-vision-byok-provider`
+  on `codex/task-126-resident-full-vision-byok-provider-reader-failclosed-recovery`.
+  The range changes only the existing Task126 claim, `byok-provider.ts`, and
+  `byok-provider.test.ts`. The separate historical `...reader-restart` ref at
+  `27a99b1` is preserved; no ref was moved or rewritten.
+- Repair evidence: causal RED observed the prior
+  `blocked/provider-capability-mismatch`; exact focused Green passed 2 files /
+  18 tests after reader-derived inconsistencies became safe
+  `unavailable/authority-reader-unavailable` and hostile reader-output cases
+  were added. Typecheck, diff, and factory passed; no full verifier or effect
+  path ran. An untracked temporary dependency symlink was removed during
+  coordinator hygiene before this clean head was accepted.
+- Authorization: a fresh independent Terra-attested, read-only, defects-first
+  reviewer may inspect the exact recovery range, the prior reviewer findings,
+  all reader-derived classification paths, hostile reader output, no-getter/
+  no-effect behavior, exact binding/provenance, diagnostics, and ownership.
+  It may use inspection, `git diff --check`, and the exact focused Task126
+  command only; no source edit, full verifier, integration, Task125 action,
+  provider/credential/network action, reset-credit use, or `neo` action.
+- Context rule: candidate files and claim come from the recovery worktree;
+  current authorization records come from the canonical coordinator registry
+  path in `RV-1-C-137`. The fresh normal-mode usage evidence remains adequate
+  for this non-full review only; a later full/integration boundary requires a
+  new authenticated gate.
+- Holds: Task126 stays unintegrated pending this review; Task128's independent
+  recovery review is active; Task125 stays deferred.
