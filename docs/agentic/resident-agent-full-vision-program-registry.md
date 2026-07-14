@@ -3250,3 +3250,22 @@ explicit implementation authorization.
   downstream dispatch, self-integration, and `neo` change remain closed.
 - Relay A is clean at this checkpoint. Relay B remains frozen/read-only at
   `da1abbb3`; no reset or usage redemption occurred.
+
+## RV-1-C-076 — Task123 coordinator-owned RED/GREEN recovery
+
+- The coordinator performed the authorized bounded recovery in the isolated
+  five-file worktree rather than widening the previously stalled worker loop.
+  It added two causal workflow tests first. The retained focused RED command
+  proved that a forged `legacy.import.report.generated` event reference
+  currently returns `ok: true`, and that the only lifecycle record is the
+  dossier step rather than the exact final-output -> prepared -> recorded ->
+  terminal chain.
+- The isolated worktree lacked a local dependency tree, so its standard
+  non-source `node_modules` linkage was restored to the verified coordinator
+  checkout. No source or lockfile changed for that environment repair.
+- Fresh authenticated Codex `/status` immediately before the bounded Green
+  recovery reports Weekly **30% left**, resetting 15:00 on 19 Jul; Spark weekly
+  remains 100%. No `/usage`, reset, or redemption occurred. It authorizes one
+  exact-scope Green recovery only, from these retained tests, with no full
+  verifier, review, integration, downstream lane, self-integration, or `neo`
+  change. The rejected `404ac711` remains read-only conceptual evidence.
