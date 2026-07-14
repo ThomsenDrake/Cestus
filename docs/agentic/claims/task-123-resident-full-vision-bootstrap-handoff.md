@@ -43,3 +43,28 @@ Status: `ready-for-review`
 - `npm run typecheck`, `git diff --check`, and `npm run factory:check` exited
   `0`. The temporary untracked dependency symlink used to execute focused
   gates was removed before this claim/candidate is committed.
+
+## Three-P1 Canonical-Authority Follow-up
+
+- Fresh defects-first review rejected the prior candidate because the exported
+  workflow still accepted omitted canonical identity and caller report bytes,
+  run start provenance did not bind the exact generated-report event plus both
+  report hashes, and production lifecycle readback did not enforce exact
+  final-output -> prepared -> recorded -> terminal correlations.
+- RED was observed in
+  `packages/agent/test/ontology-bootstrap-workflow.test.ts`: omitted reader
+  identity returned `ok: true`; a run with a different source event and only a
+  candidate-set hash returned `ok: true`; and a faulting ledger that changed
+  the terminal correlation returned `ok: true`.
+- GREEN makes `stagedReport`, `reportEventId`, and the derivative store
+  mandatory public workflow inputs. The workflow reads bytes only through the
+  ingestion-owned canonical reader, validates the run's exact source event and
+  both canonical report/candidate hashes before effects, persists every
+  successful path through the durable handoff kernel, and rereads exact actor,
+  correlation, event-type, causation, and order bindings. The route starts or
+  reuses only a run with the same canonical provenance.
+- Latest non-full verification: `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+  exited `0` (3 files, 50 tests); `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check` exited `0`. No candidate full verifier, integration,
+  self-integration, or `neo` change is authorized. The temporary untracked
+  `node_modules` symlink must be removed before the sealed candidate commit.

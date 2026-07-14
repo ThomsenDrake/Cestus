@@ -22,7 +22,7 @@ import {
   reportArtifactJson,
   type LegacyMigrationReport
 } from "../../ingestion/src/legacy-report.js";
-import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
+import { InMemoryEventLedger, type EventLedger } from "../../ontology/src/event-ledger.js";
 import { buildAgentProjection } from "../src/projection.js";
 import { createAgentRuntime } from "../src/runtime.js";
 
@@ -235,6 +235,128 @@ describe("ontology bootstrap resident-agent review bundle", () => {
 });
 
 describe("runOntologyBootstrapResidentWorkflow", () => {
+  it("fails closed before effects when the canonical reader identity is omitted", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    await runtime.startRun({
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      runType: "ontology-bootstrap",
+      scope: { kind: "workspace", refs: ["ws_case_001"] }
+    });
+    const before = (await ledger.readAll()).length;
+
+    const result = await runOntologyBootstrapResidentWorkflow({
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: "src_old_cestus",
+      report: bootstrapReportFixture,
+      review: bootstrapReviewFixture,
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      now
+    } as never);
+
+    expect(result).toMatchObject({ ok: false, category: "provenance-missing" });
+    expect((await ledger.readAll()).slice(before).map((event) => event.type)).toEqual([
+      "agent.specialist-run.failed"
+    ]);
+  });
+
+  it("fails closed before effects when the run omits the exact canonical report event and hash", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    const canonical = await canonicalBootstrapInput(ledger);
+    await runtime.startRun({
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      runType: "ontology-bootstrap",
+      scope: { kind: "workspace", refs: ["ws_case_001"] },
+      sourceEventIds: ["evt_other_report"],
+      inputArtifactHashes: [canonical.report.candidateSetHash]
+    });
+    const before = (await ledger.readAll()).length;
+
+    const result = await runOntologyBootstrapResidentWorkflow({
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      now
+    } as never);
+
+    expect(result).toMatchObject({ ok: false, category: "provenance-missing" });
+    expect((await ledger.readAll()).slice(before).map((event) => event.type)).toEqual([
+      "agent.specialist-run.failed"
+    ]);
+  });
+
+  it("fails when terminal lifecycle readback has a mismatched correlation", async () => {
+    const backing = new InMemoryEventLedger();
+    const ledger = terminalCorrelationFaultLedger(backing);
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    const canonical = await canonicalBootstrapInput(ledger);
+    await runtime.startRun({
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      runType: "ontology-bootstrap",
+      scope: { kind: "workspace", refs: ["ws_case_001"] },
+      sourceEventIds: [canonical.reportEventId],
+      inputArtifactHashes: [canonical.report.reportHash, canonical.report.candidateSetHash]
+    });
+
+    const result = await runOntologyBootstrapResidentWorkflow({
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      now
+    } as never);
+
+    expect(result).toMatchObject({ ok: false, category: "external-effect-failed" });
+    expect((await backing.readAll()).map((event) => event.type)).toContain("agent.specialist-run.failed");
+  });
+
   it("fails closed before bootstrap effects for a forged canonical report-event binding", async () => {
     const ledger = new InMemoryEventLedger();
     const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
@@ -273,7 +395,7 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       runId: "run_ontology_bootstrap_001",
       taskId: "task_ontology_bootstrap_001",
       sourceCollectionId: "src_old_cestus",
-      report: canonical.report,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
       review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
@@ -314,7 +436,7 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       runId: "run_ontology_bootstrap_001",
       taskId: "task_ontology_bootstrap_001",
       sourceCollectionId: "src_old_cestus",
-      report: canonical.report,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
       review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
@@ -377,12 +499,7 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       requestedBy: humanActor.id,
       priority: "normal"
     });
-    await runtime.startRun({
-      runId: "run_ontology_bootstrap_001",
-      taskId: "task_ontology_bootstrap_001",
-      runType: "ontology-bootstrap",
-      scope: { kind: "workspace", refs: ["ws_case_001"] }
-    });
+    const canonical = await startCanonicalWorkflowRun(ledger, runtime);
 
     const result = await runOntologyBootstrapResidentWorkflow({
       ledger,
@@ -390,9 +507,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       residentAgentId: "agent_default",
       runId: "run_ontology_bootstrap_001",
       taskId: "task_ontology_bootstrap_001",
-      sourceCollectionId: "src_old_cestus",
-      report: bootstrapReportFixture,
-      review: bootstrapReviewFixture,
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
       maxCandidatesPerBundle: 50,
@@ -418,12 +537,7 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       requestedBy: humanActor.id,
       priority: "normal"
     });
-    await runtime.startRun({
-      runId: "run_ontology_bootstrap_001",
-      taskId: "task_ontology_bootstrap_001",
-      runType: "ontology-bootstrap",
-      scope: { kind: "workspace", refs: ["ws_case_001"] }
-    });
+    const canonical = await startCanonicalWorkflowRun(ledger, runtime);
 
     const memo = validateOntologyBootstrapNousMemo(
       "Review note: prioritize eligible agency name candidates and inspect the malformed quarantine group."
@@ -434,9 +548,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       residentAgentId: "agent_default",
       runId: "run_ontology_bootstrap_001",
       taskId: "task_ontology_bootstrap_001",
-      sourceCollectionId: "src_old_cestus",
-      report: bootstrapReportFixture,
-      review: bootstrapReviewFixture,
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
       nousMemo: {
@@ -465,12 +581,7 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       requestedBy: humanActor.id,
       priority: "normal"
     });
-    await runtime.startRun({
-      runId: "run_ontology_bootstrap_001",
-      taskId: "task_ontology_bootstrap_001",
-      runType: "ontology-bootstrap",
-      scope: { kind: "workspace", refs: ["ws_case_001"] }
-    });
+    const canonical = await startCanonicalWorkflowRun(ledger, runtime);
 
     const input = {
       ledger,
@@ -478,9 +589,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       residentAgentId: "agent_default",
       runId: "run_ontology_bootstrap_001",
       taskId: "task_ontology_bootstrap_001",
-      sourceCollectionId: "src_old_cestus",
-      report: bootstrapReportFixture,
-      review: bootstrapReviewFixture,
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
       maxCandidatesPerBundle: 1,
@@ -509,12 +622,7 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       requestedBy: humanActor.id,
       priority: "normal"
     });
-    await runtime.startRun({
-      runId: "run_ontology_bootstrap_001",
-      taskId: "task_ontology_bootstrap_001",
-      runType: "ontology-bootstrap",
-      scope: { kind: "workspace", refs: ["ws_case_001"] }
-    });
+    const canonical = await startCanonicalWorkflowRun(ledger, runtime);
 
     const input = {
       ledger,
@@ -522,9 +630,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       residentAgentId: "agent_default",
       runId: "run_ontology_bootstrap_001",
       taskId: "task_ontology_bootstrap_001",
-      sourceCollectionId: "src_old_cestus",
-      report: bootstrapReportFixture,
-      review: bootstrapReviewFixture,
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
       now
@@ -571,7 +681,7 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       evidenceLinks: [],
       selectedCandidateIds: [],
       now
-    });
+    } as never);
 
     const projection = buildAgentProjection(await ledger.readAll());
     expect(result.ok).toBe(false);
@@ -581,7 +691,7 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
   });
 });
 
-async function canonicalBootstrapInput(ledger: InMemoryEventLedger): Promise<{
+async function canonicalBootstrapInput(ledger: EventLedger): Promise<{
   readonly report: LegacyMigrationReport;
   readonly reportEventId: string;
   readonly derivativeStore: {
@@ -633,4 +743,47 @@ async function canonicalBootstrapInput(ledger: InMemoryEventLedger): Promise<{
     reportEventId: reportEvent.id,
     derivativeStore
   });
+}
+
+function canonicalStagedReportIdentity(report: LegacyMigrationReport) {
+  return Object.freeze({
+    sourceCollectionId: report.sourceCollectionId,
+    scanBatchId: report.scanBatchId,
+    legacyReportId: report.legacyReportId,
+    reportHash: report.reportHash
+  });
+}
+
+async function startCanonicalWorkflowRun(
+  ledger: EventLedger,
+  runtime: Pick<ReturnType<typeof createAgentRuntime>, "startRun">
+) {
+  const canonical = await canonicalBootstrapInput(ledger);
+  await runtime.startRun({
+    runId: "run_ontology_bootstrap_001",
+    taskId: "task_ontology_bootstrap_001",
+    runType: "ontology-bootstrap",
+    scope: { kind: "workspace", refs: ["ws_case_001"] },
+    sourceEventIds: [canonical.reportEventId],
+    inputArtifactHashes: [canonical.report.reportHash, canonical.report.candidateSetHash]
+  });
+  return canonical;
+}
+
+function terminalCorrelationFaultLedger(delegate: EventLedger): EventLedger {
+  return {
+    append: async (event, options) => await delegate.append(event, options),
+    readAll: async () => await delegate.readAll(),
+    readStream: async (streamId) => (await delegate.readStream(streamId)).map((event) =>
+      event.type === "agent.specialist-run.completed"
+        ? {
+            ...event,
+            context: {
+              ...event.context,
+              correlationId: "corr_forged_terminal"
+            }
+          }
+        : event
+    )
+  };
 }
