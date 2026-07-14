@@ -497,14 +497,11 @@ function matchesCanonicalReportEvent(
 }
 
 function copyCanonicalArtifactBytes(artifact: unknown): Buffer | undefined {
-  if (!Buffer.isBuffer(artifact)) {
-    return undefined;
-  }
   try {
-    // A canonical Buffer exposes only native byte-index own data properties
-    // and the native Buffer prototype. Inspect those descriptors without
-    // reading dynamic values, then copy through the typed-array iterator's
-    // internal slots so TypedArray species construction cannot run.
+    // The native iterator is the first operation: it proves native typed-array
+    // internal slots without walking Proxy or subclass shape. Only then
+    // inspect the canonical Buffer's direct prototype and own byte indices.
+    const valuesIterator = Uint8Array.prototype.values.call(artifact);
     if (Object.getPrototypeOf(artifact) !== Buffer.prototype) {
       return undefined;
     }
@@ -512,7 +509,7 @@ function copyCanonicalArtifactBytes(artifact: unknown): Buffer | undefined {
     if (ownKeys.some((key) => typeof key !== "string" || !isCanonicalBufferByteIndex(key))) {
       return undefined;
     }
-    const values = Array.from(Uint8Array.prototype.values.call(artifact));
+    const values = Array.from(valuesIterator);
     if (ownKeys.length !== values.length) {
       return undefined;
     }

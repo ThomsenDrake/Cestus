@@ -395,6 +395,67 @@ describe("legacy migration report", () => {
     expect(speciesRead).toBe(false);
   });
 
+  it("fails closed for a Proxy-wrapped Buffer without its getPrototypeOf trap", async () => {
+    const stored = await recordedReport();
+    let getPrototypeOfCalls = 0;
+    const hostile = new Proxy(Buffer.from(await stored.reportStore.get(stored.report.reportHash)), {
+      getPrototypeOf() {
+        getPrototypeOfCalls += 1;
+        throw new Error("Proxy getPrototypeOf trap must not run");
+      }
+    });
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(getPrototypeOfCalls).toBe(0);
+  });
+
+  it("fails closed for a Buffer with a proxied direct prototype without its getPrototypeOf trap", async () => {
+    const stored = await recordedReport();
+    let getPrototypeOfCalls = 0;
+    const hostile = Buffer.from(await stored.reportStore.get(stored.report.reportHash));
+    Object.setPrototypeOf(hostile, new Proxy(Object.getPrototypeOf(hostile), {
+      getPrototypeOf() {
+        getPrototypeOfCalls += 1;
+        throw new Error("proxied direct prototype getPrototypeOf trap must not run");
+      }
+    }));
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(getPrototypeOfCalls).toBe(0);
+  });
+
+  it("fails closed for a Proxy-wrapped Buffer without its ownKeys trap", async () => {
+    const stored = await recordedReport();
+    let ownKeysCalls = 0;
+    const hostile = new Proxy(Buffer.from(await stored.reportStore.get(stored.report.reportHash)), {
+      ownKeys() {
+        ownKeysCalls += 1;
+        throw new Error("Proxy ownKeys trap must not run");
+      }
+    });
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(ownKeysCalls).toBe(0);
+  });
+
   it("fails closed for an accessor-bearing ledger readback without invoking it", async () => {
     const stored = await recordedReport();
     let accessorRead = false;
