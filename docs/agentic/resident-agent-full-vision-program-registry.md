@@ -5614,3 +5614,25 @@ explicit implementation authorization.
   `f88ced73be1e64660d95874394a324bd317fc20a` in
   `/home/drake/Projects/Cestus`; it is untouched and no `neo` action is
   authorized. No child may self-integrate.
+
+## RV-1-D-154 — Task126 verifier-origin recovery and grant revocation
+
+- After `RV-1-D-153` accepted sole ownership, clean canonical history advanced
+  to `7176733c5031d51b7fd4755e60a48e7f4d8d7ce7` with an append-only
+  `RV-1-C-153` Task126 candidate-full grant. That record and its claimed
+  review evidence are preserved as historical input; its Relay C attribution
+  postdates the accepted ownership and is not a Relay D launch or Terra-host
+  attestation.
+- Relay D's process audit then found one Task126-worktree `npm run verify`
+  wrapper (PID `2422880`, child PID `2422888`) with its typecheck descendants.
+  No Relay D full-verifier launch record existed. The process was interrupted
+  at roughly 33 seconds, before a result was read; its temporary ignored
+  `node_modules` link was absent after termination. The partial process,
+  termination, and any output are **not** candidate-verification evidence and
+  do not establish a passing, failing, or waived gate.
+- Recovery decision: revoke `RV-1-C-153`'s candidate-full execution grant
+  forward-only. The serialized slot is closed. A new fresh Terra/xhigh
+  read-only review, a fresh authenticated usage gate, and an explicit Relay D
+  serialized grant are required before any later Task126 candidate full
+  verifier. Task125 and Task129 remain non-full, no integration is opened, and
+  `neo` remains untouched.
