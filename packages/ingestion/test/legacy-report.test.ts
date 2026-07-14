@@ -4,7 +4,13 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FileBlobStore } from "../../ontology/src/blob-store.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
-import { LegacyMigrationReportService, buildLegacyMigrationReport } from "../src/legacy-report.js";
+import {
+  LegacyMigrationReportService,
+  buildLegacyMigrationReport,
+  readCanonicalStagedLegacyReport,
+  reportArtifactJson,
+  sha256
+} from "../src/legacy-report.js";
 import type { LegacyInspectedFile } from "../src/legacy-inspector.js";
 import {
   assertLegacyConfidence,
@@ -172,7 +178,413 @@ describe("legacy migration report", () => {
     expect(events).toHaveLength(2);
     expect([firstEvent.payload.reportHash, secondEvent.payload.reportHash]).toEqual([first.reportHash, second.reportHash]);
   });
+
+  it("reads only an exact event-bound canonical staged report without append or derivative writes", async () => {
+    const stored = await recordedReport();
+    let appendAttempts = 0;
+    let derivativeWriteAttempts = 0;
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: {
+        readAll: () => stored.ledger.readAll(),
+        readStream: (streamId) => stored.ledger.readStream(streamId),
+        append: async () => {
+          appendAttempts += 1;
+          throw new Error("reader must not append");
+        }
+      },
+      derivativeStore: {
+        get: (contentHash) => stored.reportStore.get(contentHash),
+        put: async () => {
+          derivativeWriteAttempts += 1;
+          throw new Error("reader must not write derivatives");
+        }
+      },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      report: stored.report,
+      reportEvent: stored.event
+    });
+    expect(appendAttempts).toBe(0);
+    expect(derivativeWriteAttempts).toBe(0);
+  });
+
+  it.each([
+    {
+      label: "a forged report hash",
+      override: { reportHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const }
+    },
+    {
+      label: "a forged report event ID",
+      override: { reportEventId: "evt_forged_report_event" }
+    },
+    {
+      label: "a swapped source identity",
+      override: { sourceCollectionId: "src_swapped" }
+    },
+    {
+      label: "a swapped scan identity",
+      override: { scanBatchId: "scan_swapped" }
+    },
+    {
+      label: "a swapped report identity",
+      override: { legacyReportId: "legacy_report_swapped" }
+    }
+  ])("fails closed without derivative reads for $label", async ({ override }) => {
+    const stored = await recordedReport();
+    let derivativeReadAttempts = 0;
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: {
+        get: async (contentHash) => {
+          derivativeReadAttempts += 1;
+          return stored.reportStore.get(contentHash);
+        }
+      },
+      ...reportReference(stored),
+      ...override
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_EVENT_MISMATCH" });
+    expect(derivativeReadAttempts).toBe(0);
+  });
+
+  it("fails closed for forged stored report bytes even when the store is callable", async () => {
+    const stored = await recordedReport();
+    let derivativeWriteAttempts = 0;
+    const forgedBytes = Buffer.from(reportArtifactJson({
+      ...stored.report,
+      candidateSetHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }), "utf8");
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: {
+        get: async () => forgedBytes,
+        put: async () => {
+          derivativeWriteAttempts += 1;
+          throw new Error("reader must not write derivatives");
+        }
+      },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(derivativeWriteAttempts).toBe(0);
+  });
+
+  it.each([
+    {
+      label: "generatedAt",
+      eventOverrides: { generatedAt: "2026-07-14T15:00:00.000Z" }
+    },
+    {
+      label: "generator",
+      eventOverrides: { generator: { name: "legacy-cestus-inspector", version: "0.1.1" } }
+    },
+    {
+      label: "totals",
+      eventOverrides: {
+        totals: {
+          inspectedFiles: 99,
+          candidateMetadataFiles: 1,
+          proposedAssertionCandidates: 1,
+          quarantineEntries: 0,
+          unresolvedReferences: 0
+        }
+      }
+    }
+  ])("fails closed for an event with forged $label after canonical artifact readback", async ({ eventOverrides }) => {
+    const stored = await recordedReport();
+    const event = await appendReportEvent({
+      ledger: new InMemoryEventLedger(),
+      report: stored.report,
+      reportHash: stored.report.reportHash,
+      eventOverrides
+    });
+    let derivativeReadAttempts = 0;
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: event.ledger,
+      derivativeStore: {
+        get: async (contentHash) => {
+          derivativeReadAttempts += 1;
+          return stored.reportStore.get(contentHash);
+        }
+      },
+      reportEventId: event.reportEvent.id,
+      sourceCollectionId: stored.report.sourceCollectionId,
+      scanBatchId: stored.report.scanBatchId,
+      legacyReportId: stored.report.legacyReportId,
+      reportHash: stored.report.reportHash
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_EVENT_MISMATCH" });
+    expect(derivativeReadAttempts).toBe(1);
+  });
+
+  it.each(["toString", "valueOf", "length"] as const)("fails closed for a hostile real Buffer %s accessor without invoking it", async (property) => {
+    const stored = await recordedReport();
+    const hostile = Buffer.from(await stored.reportStore.get(stored.report.reportHash));
+    let accessorRead = false;
+    Object.defineProperty(hostile, property, {
+      enumerable: true,
+      get() {
+        accessorRead = true;
+        throw new Error(`hostile Buffer ${property} accessor must not run`);
+      }
+    });
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(accessorRead).toBe(false);
+  });
+
+  it("fails closed for a hostile real Buffer own constructor without invoking it", async () => {
+    const stored = await recordedReport();
+    const hostile = Buffer.from(await stored.reportStore.get(stored.report.reportHash));
+    let constructorRead = false;
+    Object.defineProperty(hostile, "constructor", {
+      get() {
+        constructorRead = true;
+        throw new Error("hostile Buffer constructor getter must not run");
+      }
+    });
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(constructorRead).toBe(false);
+  });
+
+  it("fails closed for a hostile real Buffer prototype species without invoking it", async () => {
+    const stored = await recordedReport();
+    const hostile = Buffer.from(await stored.reportStore.get(stored.report.reportHash));
+    let speciesRead = false;
+    const hostileConstructor = {};
+    Object.defineProperty(hostileConstructor, Symbol.species, {
+      get() {
+        speciesRead = true;
+        throw new Error("hostile Buffer species getter must not run");
+      }
+    });
+    Object.setPrototypeOf(hostile, Object.create(Object.getPrototypeOf(hostile), {
+      constructor: { value: hostileConstructor }
+    }));
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(speciesRead).toBe(false);
+  });
+
+  it("fails closed for a Proxy-wrapped Buffer without its getPrototypeOf trap", async () => {
+    const stored = await recordedReport();
+    let getPrototypeOfCalls = 0;
+    const hostile = new Proxy(Buffer.from(await stored.reportStore.get(stored.report.reportHash)), {
+      getPrototypeOf() {
+        getPrototypeOfCalls += 1;
+        throw new Error("Proxy getPrototypeOf trap must not run");
+      }
+    });
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(getPrototypeOfCalls).toBe(0);
+  });
+
+  it("fails closed for a Buffer with a proxied direct prototype without its getPrototypeOf trap", async () => {
+    const stored = await recordedReport();
+    let getPrototypeOfCalls = 0;
+    const hostile = Buffer.from(await stored.reportStore.get(stored.report.reportHash));
+    Object.setPrototypeOf(hostile, new Proxy(Object.getPrototypeOf(hostile), {
+      getPrototypeOf() {
+        getPrototypeOfCalls += 1;
+        throw new Error("proxied direct prototype getPrototypeOf trap must not run");
+      }
+    }));
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(getPrototypeOfCalls).toBe(0);
+  });
+
+  it("fails closed for a Proxy-wrapped Buffer without its ownKeys trap", async () => {
+    const stored = await recordedReport();
+    let ownKeysCalls = 0;
+    const hostile = new Proxy(Buffer.from(await stored.reportStore.get(stored.report.reportHash)), {
+      ownKeys() {
+        ownKeysCalls += 1;
+        throw new Error("Proxy ownKeys trap must not run");
+      }
+    });
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(ownKeysCalls).toBe(0);
+  });
+
+  it("fails closed for an accessor-bearing ledger readback without invoking it", async () => {
+    const stored = await recordedReport();
+    let accessorRead = false;
+    let derivativeReadAttempts = 0;
+    const accessorEvent = {};
+    Object.defineProperty(accessorEvent, "id", {
+      enumerable: true,
+      get() {
+        accessorRead = true;
+        throw new Error("accessor must not run");
+      }
+    });
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: {
+        readAll: async () => [accessorEvent] as never[],
+        readStream: () => stored.ledger.readStream(stored.event.streamId),
+        append: stored.ledger.append.bind(stored.ledger)
+      },
+      derivativeStore: {
+        get: async () => {
+          derivativeReadAttempts += 1;
+          return stored.reportStore.get(stored.report.reportHash);
+        }
+      },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_EVENT_MISMATCH" });
+    expect(accessorRead).toBe(false);
+    expect(derivativeReadAttempts).toBe(0);
+  });
+
+  it("fails closed for a hash-matched stored artifact with an extra malformed field", async () => {
+    const stored = await recordedReport();
+    const malformedBytes = Buffer.from(JSON.stringify({
+      ...JSON.parse(reportArtifactJson(stored.report)),
+      unexpected: true
+    }), "utf8");
+    const malformedHash = sha256(malformedBytes.toString("utf8"));
+    const event = await appendReportEvent({
+      ledger: new InMemoryEventLedger(),
+      report: stored.report,
+      reportHash: malformedHash
+    });
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: event.ledger,
+      derivativeStore: { get: async () => malformedBytes },
+      reportEventId: event.reportEvent.id,
+      sourceCollectionId: stored.report.sourceCollectionId,
+      scanBatchId: stored.report.scanBatchId,
+      legacyReportId: stored.report.legacyReportId,
+      reportHash: malformedHash
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+  });
 });
+
+async function recordedReport() {
+  const ledger = new InMemoryEventLedger();
+  const reportStore = new FileBlobStore(dir);
+  const report = buildLegacyMigrationReport({
+    sourceCollectionId: "src_old_cestus",
+    scanBatchId: "scan_old_cestus_001",
+    files: [claimFile()],
+    detections: [claimDetection()],
+    proposedAssertionCandidates: [legacyCandidate("legacy_candidate_001")],
+    quarantineEntries: []
+  });
+  const event = await new LegacyMigrationReportService({
+    ledger,
+    reportStore,
+    actor: { id: "actor_system", kind: "system", label: "Legacy reporter" }
+  }).recordReport(report);
+  return { ledger, reportStore, report, event };
+}
+
+function reportReference(stored: Awaited<ReturnType<typeof recordedReport>>) {
+  return {
+    reportEventId: stored.event.id,
+    sourceCollectionId: stored.report.sourceCollectionId,
+    scanBatchId: stored.report.scanBatchId,
+    legacyReportId: stored.report.legacyReportId,
+    reportHash: stored.report.reportHash
+  };
+}
+
+async function appendReportEvent(input: {
+  ledger: InMemoryEventLedger;
+  report: ReturnType<typeof buildLegacyMigrationReport>;
+  reportHash: `sha256:${string}`;
+  eventOverrides?: {
+    generatedAt?: string;
+    generator?: { name: string; version: string };
+    totals?: {
+      inspectedFiles: number;
+      candidateMetadataFiles: number;
+      proposedAssertionCandidates: number;
+      quarantineEntries: number;
+      unresolvedReferences: number;
+    };
+  };
+}) {
+  const reportEvent = await input.ledger.append({
+    type: "legacy.import.report.generated",
+    version: 1,
+    streamId: `legacy_report_${input.report.sourceCollectionId}_${input.report.scanBatchId}_${input.report.legacyReportId}`,
+    context: {
+      actor: { id: "actor_system", kind: "system", label: "Legacy reporter" },
+      occurredAt: "2026-07-14T14:00:00.000Z",
+      correlationId: `corr_${input.report.legacyReportId}`,
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0", legacy: "0.1.0" }
+    },
+    payload: {
+      legacyReportId: input.report.legacyReportId,
+      sourceCollectionId: input.report.sourceCollectionId,
+      scanBatchId: input.report.scanBatchId,
+      reportHash: input.reportHash,
+      candidateSetHash: input.report.candidateSetHash,
+      generatedAt: input.eventOverrides?.generatedAt ?? input.report.generatedAt,
+      generator: input.eventOverrides?.generator ?? input.report.generator,
+      totals: input.eventOverrides?.totals ?? input.report.totals
+    }
+  });
+  return { ledger: input.ledger, reportEvent };
+}
 
 function rawFile(): LegacyInspectedFile {
   return {
