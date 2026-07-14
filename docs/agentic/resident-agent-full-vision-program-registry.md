@@ -5510,6 +5510,25 @@ explicit implementation authorization.
   and serialized full verification, then append integration evidence. Task125
   and Task129 remain non-full; no `neo` action is authorized.
 
+## RV-1-C-154 — Task126 candidate verifier host termination
+
+- Recorded at: 2026-07-14T22:45:00Z by the sole Relay C coordinator.
+- Result: the exact `npm run verify` authorized by `RV-1-C-153` in the clean
+  Task126 candidate worktree terminated with host exit **143** before emitting
+  typecheck or test output. No product failure, test diagnostic, full-verifier
+  success claim, merge, or integration is inferred from this termination.
+- Root-cause evidence: after exit, no verifier or child process remained; the
+  temporary candidate `node_modules` link had been removed by its cleanup trap;
+  the candidate and coordinator worktrees were clean; and the accessible recent
+  journal contained no OOM or Node/Vitest termination entry. The observable
+  cause is therefore an external SIGTERM/host interruption, not a reproduced
+  code failure.
+- Recovery: retain the approved unchanged `03c36b2f` candidate and its review;
+  do not alter source or dispatch a repair. A retry requires a new authenticated
+  usage gate and a new one-at-a-time verifier grant, using direct retained
+  process polling rather than the interrupted monitor path. Task126 remains
+  unintegrated; Task125 and Task129 remain non-full; `neo` is untouched.
+
 ## RV-1-C-151 — Final Task128 closure and Relay D handoff
 
 - Recorded in append order after `RV-1-C-150` by the sole Relay C coordinator.
