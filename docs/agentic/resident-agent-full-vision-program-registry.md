@@ -3796,3 +3796,21 @@ explicit implementation authorization.
   or candidate and has no integration significance.
 - These three child lanes have disjoint write sets. No candidate review, full
   verifier, integration, or `neo` slot is active.
+
+## RV-1-C-099 — Task131 dependency deferral and plan correction
+
+- Task131 root-cause repair preserved its causal RED and committed the
+  claim-only deferred checkpoint
+  `6ed2deb5261ddc57078d48ce2506f18880b5f873` on its rejected branch. It
+  restored the rejected adapter candidate with no source/test delta, removed
+  its temporary dependency link, and left the worktree clean. The claim proves
+  the current canonical `resident-wake-status.v1` producer has no `attemptId`
+  or `leaseEventId`; browser code cannot invent those provenance facts.
+- The coordinator corrects the governing plan forward-only: Task131 is
+  deferred, not cancelled, until Tasks137 and 140 provide the authoritative
+  local-runtime status projection/route. It must then rebase and return before
+  Task141. Tasks132–140 have no Task131 predecessor and may proceed once their
+  own Wave 1 dependencies integrate. This is an internal contract-order
+  correction, not a product or user blocker. The rejected `e2f1626d` remains
+  evidence only; no adapter source, full verifier, integration, or `neo`
+  change is authorized by this record.
