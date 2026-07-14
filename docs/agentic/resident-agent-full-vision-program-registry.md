@@ -5933,3 +5933,29 @@ explicit implementation authorization.
   authenticated usage guard remains `usedPercent=9` / **91% weekly remaining**;
   reset credits remain untouched, DRAIN/HARD-PAUSE thresholds remain in force,
   and the full-verifier slot remains **CLOSED**.
+
+## RV-1-E-169 — Terra/xhigh configuration correction and lane resumption
+
+- **Forward-only correction.** RV-1-E-168 is preserved as historical
+  coordinator reasoning, but its unavailable-model conclusion was false. The
+  two child session records carry authoritative `turn_context` metadata:
+  `019f62ce-1383-74f2-8eac-24c04f449b36` and
+  `019f62ce-4602-71a0-a21f-99ddcb9805b0` each identify
+  `model=gpt-5.6-terra` and `effort=xhigh`. Their generic base-instruction
+  wording that an agent is "based on GPT-5" is a family label, not runtime
+  model authority; the children must not infer their model from it.
+- The failed Task125 and Task129 stops therefore consume no repair or review
+  attempt. Re-dispatch/follow-up is authorized for exactly Task125's bounded
+  RV-1-D-164 append/readback TDD repair and Task129's fresh independent review
+  of `0bad3c24f563f8fdc60328cfed29a1161f381b94..bacc742938b1b35a2aa07ab6ef34f4753e7b523f`.
+  These lanes may execute with `superpowers:subagent-driven-development`,
+  systematic debugging where repairing, test-driven development, fresh review,
+  and verification-before-completion; their turn-context metadata is the
+  controlling model evidence.
+- All prior scope and safety controls remain unchanged: Task125 owns only its
+  claim, portable-workspace lifecycle source, and test; Task129 review remains
+  read-only; neither may self-integrate, use credentials or provider/network
+  actions, run `npm run verify`, open the full-verifier slot, or touch `neo`.
+  Usage remains `usedPercent=9` / **91% weekly remaining**, reset credits are
+  untouched, DRAIN/HARD-PAUSE controls remain active, and the full verifier is
+  **CLOSED**.
