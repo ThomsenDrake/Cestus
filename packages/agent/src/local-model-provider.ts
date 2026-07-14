@@ -190,16 +190,30 @@ export function createLocalModelProvider(input: unknown): LocalModelProvider {
       }
 
       activeInvocations += 1;
+      let reservationRetainedUntilEngineSettles = false;
+      let reservationReleased = false;
+      const releaseReservation = (): void => {
+        if (!reservationReleased) {
+          reservationReleased = true;
+          activeInvocations -= 1;
+        }
+      };
+      const retainReservationUntilSettled = (work: Promise<unknown>): void => {
+        reservationRetainedUntilEngineSettles = true;
+        void work.then(releaseReservation, releaseReservation);
+      };
       const controller = new AbortController();
       const deadline = Date.now() + configured.selectedPolicy.maxExecutionMilliseconds;
 
       try {
+        const inspectionWork = Promise.resolve().then(() => configured.engine.inspect(controller.signal));
         const inspectionOutcome = await settleBeforeDeadline(
-          Promise.resolve().then(() => configured.engine.inspect(controller.signal)),
+          inspectionWork,
           controller,
           deadline
         );
         if (inspectionOutcome.kind === "timeout") {
+          retainReservationUntilSettled(inspectionWork);
           return failureForConfiguration(configured, "blocked", "local-time-budget-exhausted");
         }
         if (inspectionOutcome.kind === "failed") {
@@ -214,12 +228,17 @@ export function createLocalModelProvider(input: unknown): LocalModelProvider {
           return failureForConfiguration(configured, "unavailable", "local-capability-unsupported");
         }
 
+        const executionWork = Promise.resolve().then(() => configured.engine.execute(
+          toEngineInvocation(preparation),
+          controller.signal
+        ));
         const executionOutcome = await settleBeforeDeadline(
-          Promise.resolve().then(() => configured.engine.execute(toEngineInvocation(preparation), controller.signal)),
+          executionWork,
           controller,
           deadline
         );
         if (executionOutcome.kind === "timeout") {
+          retainReservationUntilSettled(executionWork);
           return failureForConfiguration(configured, "blocked", "local-time-budget-exhausted");
         }
         if (executionOutcome.kind === "failed") {
@@ -238,7 +257,9 @@ export function createLocalModelProvider(input: unknown): LocalModelProvider {
 
         return executionReceipt(configured.selectedCapability, usage);
       } finally {
-        activeInvocations -= 1;
+        if (!reservationRetainedUntilEngineSettles) {
+          releaseReservation();
+        }
       }
     }
   });
@@ -658,13 +679,22 @@ function plainDataArray(value: unknown): readonly unknown[] | undefined {
       return undefined;
     }
     const descriptors = Object.getOwnPropertyDescriptors(value);
-    const expectedKeys = new Set(["length", ...value.map((_, index) => String(index))]);
+    const lengthDescriptor = descriptors.length;
+    if (lengthDescriptor === undefined || !("value" in lengthDescriptor) ||
+        lengthDescriptor.get !== undefined || lengthDescriptor.set !== undefined ||
+        !isNonnegativeInteger(lengthDescriptor.value)) {
+      return undefined;
+    }
+    const expectedKeys = new Set(["length"]);
+    for (let index = 0; index < lengthDescriptor.value; index += 1) {
+      expectedKeys.add(String(index));
+    }
     if (Object.keys(descriptors).length !== expectedKeys.size ||
         Object.keys(descriptors).some((key) => !expectedKeys.has(key))) {
       return undefined;
     }
     const snapshot: unknown[] = [];
-    for (let index = 0; index < value.length; index += 1) {
+    for (let index = 0; index < lengthDescriptor.value; index += 1) {
       const descriptor = descriptors[String(index)];
       if (descriptor === undefined || !("value" in descriptor) || descriptor.get !== undefined || descriptor.set !== undefined) {
         return undefined;
