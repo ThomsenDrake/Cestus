@@ -5536,6 +5536,17 @@ explicit implementation authorization.
   reviewed Task126 candidate may consume one replacement serialized full gate;
   direct process polling is required. No other full gate or `neo` action opens.
 
+## RV-1-C-156 — Task126 candidate compiler failure and bounded recovery
+
+- The retained verifier reached typecheck and failed without tests: two object
+  guard errors at `byok-provider.ts:202,222`, an array-descriptor error at 433,
+  and a test fixture optional-reference error at `byok-provider.test.ts:133`.
+  No merge or integration occurred. The candidate is clean after cleanup.
+- A same-scope compile-first recovery is resumed with only type-safe guards,
+  direct length-descriptor lookup, and type-valid missing-reference fixture
+  construction; it must rerun focused/typecheck/diff/factory, commit, and stop
+  for a fresh review. The failed full gate is not evidence of a pass.
+
 ## RV-1-C-151 — Final Task128 closure and Relay D handoff
 
 - Recorded in append order after `RV-1-C-150` by the sole Relay C coordinator.
