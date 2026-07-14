@@ -103,6 +103,43 @@ describe("OS-backed exact-use secret store", () => {
     );
   });
 
+  it("expires a backend-retained issuer after its valid resolution settles", async () => {
+    let retainedIssuer: OsSecretMaterialIssuer | undefined;
+    const store = createOsSecretStore({
+      currentUse: exactUseRequest(),
+      backend: {
+        async resolve(_request, issueMaterial) {
+          retainedIssuer = issueMaterial;
+          return resolvedCredentialFreeTestMaterial(issueMaterial);
+        }
+      }
+    });
+
+    await expect(store.resolveForExactUse(exactUseRequest())).resolves.toMatchObject({
+      kind: "resolved",
+      health: "healthy"
+    });
+    expect(retainedIssuer).toBeDefined();
+
+    const materialMintedAfterSettlement = retainedIssuer?.();
+    expect(materialMintedAfterSettlement).toBeUndefined();
+
+    const replayStore = createOsSecretStore({
+      currentUse: exactUseRequest(),
+      backend: {
+        async resolve() {
+          return { kind: "resolved" as const, material: materialMintedAfterSettlement as OpaqueSecretMaterial };
+        }
+      }
+    });
+
+    await expect(replayStore.resolveForExactUse(exactUseRequest())).resolves.toEqual({
+      kind: "unavailable",
+      health: "unverified",
+      safeDiagnosticCodes: ["os-secret-facility-unavailable"]
+    });
+  });
+
   it("makes runtime construction unable to mint accepted material", () => {
     expect("createCredentialFreeTestOpaqueSecretMaterial" in osSecretStore).toBe(false);
     const runtimeConstructor = OpaqueSecretMaterial as unknown as Function;
