@@ -5959,3 +5959,40 @@ explicit implementation authorization.
   Usage remains `usedPercent=9` / **91% weekly remaining**, reset credits are
   untouched, DRAIN/HARD-PAUSE controls remain active, and the full verifier is
   **CLOSED**.
+
+## RV-1-E-170 — Task125 second-repair review rejection and root-cause recovery
+
+- Fresh independent review of exact Task125 range
+  `251834159ffd72c5e7293a7cfaf0a0ed210201cb..82db6628a842a03cdd36e6bb05ebe36715260494`
+  returned **NEEDS-CHANGES**. P1 at
+  `packages/local-runtime/src/portable-workspace-lifecycle.ts:252` is concrete:
+  the candidate separately binds caller claim to the newly observed mounted
+  claim and caller outage to `pendingOutage`, but fails to bind those two
+  authoritative facts to one another. A pending outage formed under claim A
+  can be reconciled under later mounted claim B when
+  `compatibleWithPriorReadback` permits the later claim, reaching mounted
+  append with mismatched provenance. Existing coverage swaps caller claim only,
+  not the authoritative mounted claim after the outage was recorded.
+- This is Task125's second focused repair result. The author is stopped at clean
+  `82db6628`; no merge, integration, full verifier, or `neo` action is
+  permitted. The reviewer's `git diff --check` passed, but its reported worker
+  focused/typecheck/factory results remain task evidence rather than a new full
+  verification result. Task129's approved material-before-kind candidate also
+  remains unintegrated while the serialized full-verifier slot is **CLOSED**.
+- A **fresh** Task125 root-cause implementer is authorized from clean
+  `82db6628`, owning only the Task125 claim,
+  `packages/local-runtime/src/portable-workspace-lifecycle.ts`, and
+  `packages/local-runtime/test/portable-workspace-lifecycle.test.ts`. It may
+  execute this exact recovery with `superpowers:subagent-driven-development`,
+  systematic debugging, test-driven development, fresh review, and
+  verification-before-completion. First derive the canonical semantic binding
+  between pending outage and current observed active claim, then add a causal
+  RED where mounted claim changes after the outage is formed and prove **zero**
+  mounted reconciliation appends. GREEN may make only the smallest exact
+  fail-closed cross-bind and matching readback checks.
+- Run only Task125's focused command, `npm run typecheck`, `git diff --check`,
+  and `npm run factory:check`; do not run `npm run verify`, use credentials or
+  provider/network actions, self-integrate, merge, modify the central registry,
+  or touch `neo`. Usage remains `usedPercent=9` / **91% weekly remaining**,
+  reset credits are untouched, and DRAIN/HARD-PAUSE/full-verifier controls stay
+  in force.
