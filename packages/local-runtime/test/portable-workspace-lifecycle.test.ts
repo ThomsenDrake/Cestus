@@ -134,6 +134,116 @@ describe("portable workspace lifecycle authority", () => {
     expect(rejected).toEqual([]);
   });
 
+  it("rejects an invented reconciliation when no mounted outage is pending before the reconciliation mount is called", async () => {
+    const fixture = createFixture({ issueLeaseReadback: true, observedActiveClaim: canonicalObservedActiveClaim() });
+    const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
+    const grant = await ports.authority.revalidate(revalidate("wake"));
+    if (!grant.ok) throw new Error("fixture must issue an admission");
+    const lease = await ports.supervisorLease.readOrAcquire(leaseInput(grant.admission));
+    if (lease.outcome !== "acquired-and-read-back") throw new Error("fixture must issue a mounted lease readback");
+    fixture.calls.lease = 0;
+
+    await ports.activeClaimReconciliation.appendAndReadBack(
+      reconciliationAppendInput(grant.admission, reconciliationAdmission(grant.admission, lease.readback))
+    ).catch(() => undefined);
+
+    expect(fixture.calls).toEqual({
+      lease: 0,
+      reconciliation: 0,
+      runtime: 0,
+      provider: 0,
+      tool: 0,
+      artifact: 0,
+      fallback: 0
+    });
+  });
+
+  it("rejects a reconciliation whose active claim is swapped from the mounted outage before the reconciliation mount is called", async () => {
+    const fixture = createFixture({ issueLeaseReadback: true, observedActiveClaim: canonicalObservedActiveClaim() });
+    const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
+    await ports.authority.revalidate(revalidate("wake"));
+    ports.authority.invalidate("authority-loss");
+    const grant = await ports.authority.revalidate(revalidate("resume"));
+    if (!grant.ok || grant.observedActiveClaim === undefined || grant.outage === undefined) {
+      throw new Error("fixture must issue a reconciled admission");
+    }
+    const lease = await ports.supervisorLease.readOrAcquire(leaseInput(grant.admission));
+    if (lease.outcome !== "acquired-and-read-back") throw new Error("fixture must issue a mounted lease readback");
+    fixture.calls.lease = 0;
+    const swappedClaim = { ...grant.observedActiveClaim, claimId: "claim_swapped" };
+
+    await ports.activeClaimReconciliation.appendAndReadBack(
+      reconciliationAppendInput(
+        grant.admission,
+        reconciliationAdmission(grant.admission, lease.readback),
+        swappedClaim,
+        grant.outage
+      )
+    ).catch(() => undefined);
+
+    expect(fixture.calls).toEqual({
+      lease: 0,
+      reconciliation: 0,
+      runtime: 0,
+      provider: 0,
+      tool: 0,
+      artifact: 0,
+      fallback: 0
+    });
+  });
+
+  it("rejects hostile and swapped reconciliation readbacks while returning only canonical immutable evidence", async () => {
+    for (const readbackKind of ["hostile", "swapped", "canonical"] as const) {
+      const fixture = createFixture({ issueLeaseReadback: true, observedActiveClaim: canonicalObservedActiveClaim() });
+      const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
+      await ports.authority.revalidate(revalidate("wake"));
+      ports.authority.invalidate("authority-loss");
+      const grant = await ports.authority.revalidate(revalidate("resume"));
+      if (!grant.ok || grant.observedActiveClaim === undefined || grant.outage === undefined) {
+        throw new Error("fixture must issue a reconciled admission");
+      }
+      const lease = await ports.supervisorLease.readOrAcquire(leaseInput(grant.admission));
+      if (lease.outcome !== "acquired-and-read-back") throw new Error("fixture must issue a mounted lease readback");
+      const appendInput = reconciliationAppendInput(
+        grant.admission,
+        reconciliationAdmission(grant.admission, lease.readback),
+        grant.observedActiveClaim,
+        grant.outage
+      );
+      const canonicalReadback = {
+        record: appendInput.record,
+        reconciliationEventId: "evt_reconciliation",
+        readbackEventId: "evt_reconciliation_readback",
+        admission: appendInput.admission
+      };
+      if (readbackKind === "hostile") {
+        Object.defineProperty(canonicalReadback, "record", {
+          enumerable: true,
+          get() { throw new Error("hostile reconciliation readback getter must not execute"); }
+        });
+      } else if (readbackKind === "swapped") {
+        canonicalReadback.record = { ...appendInput.record, claimId: "claim_swapped" };
+      }
+      fixture.setReconciliationReadback(canonicalReadback);
+
+      if (readbackKind === "canonical") {
+        const result = await ports.activeClaimReconciliation.appendAndReadBack(appendInput);
+        expect(Object.isFrozen(result)).toBe(true);
+        expect(Object.isFrozen(result.record)).toBe(true);
+        expect(Object.isFrozen(result.record.outageObservation)).toBe(true);
+        expect(Object.isFrozen(result.record.causation)).toBe(true);
+        expect(Object.isFrozen(result.record.revalidatedAuthority)).toBe(true);
+        expect(Object.isFrozen(result.admission)).toBe(true);
+        expect(Object.isFrozen(result.admission.authorityIdentityAndMount)).toBe(true);
+        expect(Object.isFrozen(result.admission.admissionGeneration)).toBe(true);
+        expect(Object.isFrozen(result.admission.verifiedLease)).toBe(true);
+      } else {
+        await expect(ports.activeClaimReconciliation.appendAndReadBack(appendInput)).rejects.toThrow();
+      }
+      expect(fixture.calls.reconciliation, readbackKind).toBe(1);
+    }
+  });
+
   it("does not revive an invalidated admission when the same mounted identity revalidates", async () => {
     const fixture = createFixture();
     const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
@@ -338,8 +448,8 @@ function canonicalLeaseReadback(): SupervisorLeaseReadbackEvidence {
   };
 }
 
-function reconciliationAppendInput(admission: WorkspaceAdmissionSnapshot, tuple: ClaimReconciliationAdmissionTuple) {
-  const observedActiveClaim: RevalidatedActiveClaimEvidence = {
+function canonicalObservedActiveClaim(): RevalidatedActiveClaimEvidence {
+  return {
     workspaceId: "ws_portable_lifecycle",
     residentId: "agent_default",
     supervisorEpoch: "epoch_portable",
@@ -350,7 +460,21 @@ function reconciliationAppendInput(admission: WorkspaceAdmissionSnapshot, tuple:
     readbackEventId: "evt_claim_readback",
     causation: { causationId: "cause_portable", correlationId: "correlation_portable" }
   };
-  const outage = {
+}
+
+function reconciliationAppendInput(
+  admission: WorkspaceAdmissionSnapshot,
+  tuple: ClaimReconciliationAdmissionTuple,
+  observedActiveClaim = canonicalObservedActiveClaim(),
+  outage: {
+    readonly safeObservationId: string;
+    readonly outageObservedAt: string;
+    readonly category: "workspace-unavailable" | "workspace-identity-mismatch" | "workspace-readback-failed";
+    readonly priorClaimEventId: string;
+    readonly priorClaimLeaseId: string;
+    readonly priorAuthorityEvidenceId: string;
+    readonly highWaterBeforeOutage: string;
+  } = {
     safeObservationId: "outage:portable",
     outageObservedAt: "2026-07-14T17:30:00.000Z",
     category: "workspace-unavailable" as const,
@@ -358,7 +482,8 @@ function reconciliationAppendInput(admission: WorkspaceAdmissionSnapshot, tuple:
     priorClaimLeaseId: observedActiveClaim.priorClaimLeaseId,
     priorAuthorityEvidenceId: tuple.authorityIdentityAndMount.authorityEvidenceId,
     highWaterBeforeOutage: tuple.highWater.highWaterMark
-  };
+  }
+) {
   return {
     admission: tuple,
     reconciliationIdempotencyKey: "reconcile:append-authority-repair",
@@ -472,7 +597,10 @@ const forwardedReconciliationEvidencePaths = [
   }
 ] as const;
 
-function createFixture(options: { readonly issueLeaseReadback?: boolean } = {}) {
+function createFixture(options: {
+  readonly issueLeaseReadback?: boolean;
+  readonly observedActiveClaim?: RevalidatedActiveClaimEvidence;
+} = {}) {
   const calls = {
     lease: 0,
     reconciliation: 0,
@@ -521,9 +649,13 @@ function createFixture(options: { readonly issueLeaseReadback?: boolean } = {}) 
     },
     async appendAndReadBack() {
       calls.reconciliation += 1;
+      if (reconciliationReadback !== undefined) {
+        return reconciliationReadback as Awaited<ReturnType<ActiveClaimReconciliationPort["appendAndReadBack"]>>;
+      }
       throw new Error("revoked admission reached mounted reconciliation");
     }
   };
+  let reconciliationReadback: unknown;
   const input: PortableWorkspaceLifecycleInput = {
     workspaceId,
     residentId: "agent_default",
@@ -539,7 +671,8 @@ function createFixture(options: { readonly issueLeaseReadback?: boolean } = {}) 
             ledgerStoreEvidenceId: "evidence_ledger",
             artifactStoreEvidenceId: "evidence_artifact",
             derivativeStoreEvidenceId: "evidence_derivative",
-            highWaterOrdinal: 5
+            highWaterOrdinal: 5,
+            ...(options.observedActiveClaim === undefined ? {} : { observedActiveClaim: options.observedActiveClaim })
           }
         };
       }
@@ -549,5 +682,13 @@ function createFixture(options: { readonly issueLeaseReadback?: boolean } = {}) 
     now: () => "2026-07-14T17:30:00.000Z",
     createSafeOutageObservationId: () => "outage:1"
   };
-  return { input, calls, workspaceId, supervisorEpoch, mountedIdentity, mountedReadback };
+  return {
+    input,
+    calls,
+    workspaceId,
+    supervisorEpoch,
+    mountedIdentity,
+    mountedReadback,
+    setReconciliationReadback(value: unknown) { reconciliationReadback = value; }
+  };
 }

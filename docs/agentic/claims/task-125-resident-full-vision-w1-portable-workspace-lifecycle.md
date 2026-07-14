@@ -1,6 +1,6 @@
 # Task 125 — Portable Workspace Lifecycle Authority
 
-- Status: in-progress
+- Status: ready-for-review
 - Coordinator ledger: `RV-1-C-137`
 - Worker: `/root/task125_authority_repair`
 - Branch: `codex/task-125-resident-full-vision-portable-workspace-lifecycle-admission-restart`
@@ -32,6 +32,30 @@ journal write is permitted while unavailable or for a revoked admission.
   diff, and factory evidence will be appended below before the three-file
   handoff commit. No full verifier, provider/network action, integration, or
   `neo` action is authorized in this repair.
+
+- RV-1-D-164 causal RED (exact focused command, with a temporary ignored
+  symlink only to the coordinator checkout's `node_modules`, removed after the
+  run): `npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts
+  packages/local-runtime/test/resident-identity-bootstrap.test.ts` exited `1`.
+  The focused lifecycle file had 3 failing new tests and the identity file
+  passed: invented/no-outage and swapped-active-claim/outage reconciliations
+  each reached the mounted port once (expected zero), and a hostile mounted
+  readback getter executed instead of rejecting at the boundary.
+- RV-1-D-164 GREEN (same exact command, same temporary dependency symlink
+  removed immediately after): exited `0` with 2 files and 17 tests passing.
+  The façade now requires the currently mounted active claim and the pending
+  mounted outage before append, validates canonical reconciliation readbacks
+  against the exact tuple, record, identity, idempotency key, and required
+  event IDs, returns only frozen own-data evidence, invalidates a failed
+  readback admission, and clears the bounded pending outage only after an
+  exact successful append/readback.
+- Post-GREEN allowed gates: `npm run typecheck` exited `0` with no output;
+  `git diff --check` exited `0` with no output; and `npm run factory:check`
+  exited `0` with no output. No `npm run verify`, credentials, provider or
+  network action, registry edit, integration, merge, or `neo` action occurred.
+- Stop point: the next action is a fresh independent defects-first review of
+  this bounded three-file candidate. The temporary `node_modules` symlink was
+  removed after each command and is absent from this worktree.
 
 
 - Authority-repair RED (exact focused command): with only a temporary
