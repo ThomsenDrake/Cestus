@@ -4700,3 +4700,46 @@ explicit implementation authorization.
 - Merge readiness: Task124 is integrated and verified only as recorded above;
   Task128 is not review-ready; Task126 is not review-ready; Task125 remains
   deferred.
+
+## RV-1-C-133 — Replacement Task128 review and Task126 review authorization
+
+- Recorded at: 2026-07-14T22:15:00Z by the sole Relay C coordinator.
+- Role: coordinator / independent-review dispatcher.
+- Lane and wave: P / 1.
+- Governing spec and plan:
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`
+  and
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Usage gate: this is a narrow continuation under the authenticated normal-mode
+  97% weekly / Spark 100% / five-credit-untouched reading recorded immediately
+  before `RV-1-C-131`. It authorizes two disjoint, read-only reviews only; it
+  does not open a full verifier, integration, Task125 restart, reset-credit,
+  child-dispatch, or `neo` action.
+- Task128 replacement review: `RV-1-C-132`'s reviewer stopped before any
+  substantive review because the candidate was mutable. The isolated worktree
+  has since returned clean at the exact unchanged sealed candidate
+  `21f7690250a004c5174bb4f784ce9bd60472ccfe`, range
+  `e1fa208245ba3032747be9375b7e552196a20ecf..21f7690250a004c5174bb4f784ce9bd60472ccfe`,
+  with only its claim, `local-model-provider.ts`, and
+  `local-model-provider.test.ts` changed. A different fresh defects-first
+  reviewer may now review that exact immutable range; its required P1/P2
+  boundary focus remains `RV-1-C-131`'s complete list.
+- Task126 review: clean candidate
+  `27a99b137dcb2508132441879764b6c46f59fa14`, range
+  `82cf9cedc590939e8769c58016df051813b10c0e..27a99b137dcb2508132441879764b6c46f59fa14`,
+  changes exactly its frozen claim, `byok-provider.ts`, and
+  `byok-provider.test.ts`. A fresh independent defects-first reviewer may
+  validate the injected `ByokProviderAuthorityReader.v1` boundary, unknown
+  requested-use-only input, absent/malformed/throwing reader fail-closed
+  behavior before every effect, exact authority/provenance bindings, hostile
+  own-data handling, secret-safe diagnostics, and preservation of Task139's
+  later sole configuration ownership.
+- Review protocol: each reviewer must use GPT-5.6 Terra / Extra High, read the
+  named governing documents and exact child claim, remain read-only, verify
+  worktree cleanliness before reviewing, lead with defects, and return
+  APPROVE, NEEDS-CHANGES, or BLOCKED. They may use inspection, `git diff
+  --check`, and their exact focused test only; no full verifier or source edit.
+- Concurrent-state protection: the two reviews have separate files and may run
+  in parallel. Neither review authorizes source mutation, self-review,
+  self-integration, integration, any provider/credential/network action,
+  Task125 rebase/restart, or `neo` mutation.
