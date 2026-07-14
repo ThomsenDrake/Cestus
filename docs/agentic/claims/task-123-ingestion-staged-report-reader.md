@@ -91,3 +91,55 @@ Status: `ready-for-review`
   The focused command exits `0` with 19 passing tests and proves no hostile
   accessor executes. A third distinct fresh review is required; no full gate
   is authorized or started.
+
+## Third Fresh-Review Root-Cause Repair — 2026-07-14
+
+- Worker: `/root/task123_ingestion_reader_species_root_cause`
+- Branch: `codex/task-123-ingestion-staged-report-byte-copy-root-cause`
+- Worktree: `/home/drake/.codex/worktrees/task-123-ingestion-staged-report-byte-copy-root-cause`
+- Base: `f5f53dd65deb7e2f5396f4494b82600610a171ab`
+- Status: `in-progress`
+- Fresh review found that `Uint8Array.prototype.slice.call(artifact)` performs
+  TypedArray species construction and can invoke an own `constructor` getter
+  or a prototype-provided `constructor[Symbol.species]` hook while
+  `Buffer.isBuffer(artifact)` remains true. This repair replaces the byte-copy
+  primitive after focused causal RED evidence; it does not widen the dynamic
+  property blacklist.
+
+## Third Fresh-Review Dependency Blocker — 2026-07-14
+
+- The required RED command, `npm test -- packages/ingestion/test/legacy-report.test.ts`, exited `127` before Vitest test discovery because this isolated clean worktree has no `vitest` executable (`sh: 1: vitest: command not found`).
+- The two new causal tests remain uncommitted and have not produced valid RED
+  evidence yet. No production change has been made.
+- Status: `blocked` pending coordinator-authorized dependency recovery.
+
+## Third Fresh-Review RED Evidence — 2026-07-14
+
+- The coordinator authorized `npm ci --ignore-scripts` only in this isolated
+  worktree. It completed with no tracked manifest or lockfile delta.
+- After recovery, `npm test -- packages/ingestion/test/legacy-report.test.ts`
+  exited `1`: 19 tests passed and 2 new causal tests failed. An own throwing
+  `constructor` getter and a prototype `constructor[Symbol.species]` getter
+  each ran before the reader returned its existing artifact-mismatch result.
+- The direct counterfactual confirmed the root cause: the old
+  `Uint8Array.prototype.slice.call(artifact)` dispatches TypedArray species.
+  `Uint8Array.prototype.values.call(artifact)` followed by copying its native
+  iterator values does not invoke either hook.
+- Status: `in-progress`.
+
+## Third Fresh-Review GREEN Evidence — 2026-07-14
+
+- The reader now requires the genuine Buffer's direct native prototype and a
+  complete own-data byte-index shape before extraction. It copies only values
+  yielded by `Uint8Array.prototype.values.call(artifact)` into a fresh Buffer,
+  so it uses typed-array internal slots without TypedArray species dispatch or
+  dynamic artifact property reads.
+- `npm test -- packages/ingestion/test/legacy-report.test.ts` exited `0` with
+  1 file and 21 tests passing. The exact existing report-event/artifact/hash/
+  identity bindings and no-append/no-write tests remain intact; both new own-
+  constructor and prototype-species counterfactuals fail closed with zero
+  hostile invocation.
+- Pre-commit gates: `npm run typecheck` exited `0`; `git diff --check` exited
+  `0`; `npm run factory:check` exited `0` (`factory-readiness passed`). The
+  coordinator-controlled full verifier was not run.
+- Status: `ready-for-review` pending a distinct fresh reviewer.
