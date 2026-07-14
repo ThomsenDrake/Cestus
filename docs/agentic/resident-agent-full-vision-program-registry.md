@@ -6131,3 +6131,34 @@ explicit implementation authorization.
   continues at 89% remaining; DRAIN begins at <=10% remaining and HARD PAUSE
   at <=7% remaining. The serialized full verifier remains **CLOSED** and
   `neo` remains untouched.
+
+## RV-1-E-176 — Task132 bounded mounted-context-packs authorization
+
+- Task132 is authorized as the independent, unblocked Wave 2 Lane R slice
+  from clean coordinator head `6bbaaf39`. Its recorded predecessors are the
+  verified Task120 integration `49c3490a262162bd1d7146994390a2a6b5052394`
+  with release record `43eb9642`, and corrected Task125 integration
+  `2e5c35ab`. Task133, Task136, and Task139 remain blocked on Task130; this
+  authorization does not alter those dependency edges.
+- One fresh Terra/xhigh worker may use
+  `superpowers:subagent-driven-development`, systematic debugging, test-driven
+  development, fresh independent review, and verification-before-completion
+  for only new
+  `docs/agentic/claims/task-132-resident-full-vision-runtime-context-packs.md`,
+  `packages/local-runtime/src/agent-runtime-context-packs.ts`, and
+  `packages/local-runtime/test/agent-runtime-context-packs.test.ts` in a new
+  task-scoped worktree from this head. The worker must treat `turn_context`
+  metadata—not generic model-family prose—as authoritative runtime evidence.
+- RED/GREEN must prove a mounted authoritative registry validates exact
+  context-pack payloads and fails closed on workspace-identity mismatch; no
+  fallback registry, mutable browser state, provider/credential/network action,
+  secret resolution, shared-contract/configuration change, or `neo` action is
+  permitted. First write and run a causal RED, then make the smallest scoped
+  implementation and run the table-focused command. Before committing, run
+  exactly `npm test -- packages/local-runtime/test/agent-runtime-context-packs.test.ts packages/agent/test/context-packs.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain.
+- The full verifier is **CLOSED**: `npm run verify` is forbidden. The child may
+  not self-review, self-integrate, merge, or claim integration readiness; a
+  fresh independent Terra/xhigh review and coordinator-only merge are required.
+  Current primary usage is `usedPercent=11` / **89% remaining**, reset credits
+  remain untouched, DRAIN/HARD PAUSE controls remain in force, and `neo`
+  remains untouched.
