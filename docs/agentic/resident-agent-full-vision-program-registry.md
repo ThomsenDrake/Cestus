@@ -3423,3 +3423,47 @@ explicit implementation authorization.
   redemption occurred. `neo` remains untouched. The serialized full-verifier
   slot is free; follow-on work still requires a fresh usage gate before any
   worker, reviewer, or full-verifier dispatch.
+
+## RV-1-C-084 — Wave 1 independent foundation dispatches
+
+- Fresh authenticated Codex `/status` after Task123's completed merged gate is
+  Weekly **28% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark remains
+  100% left. No `/usage`, reset, or redemption occurred. CF-1
+  `48c9cbcdcf723bcc74868f782bc2375bae565ae6` and all completed Wave 1
+  predecessors are ancestors of clean coordinator head
+  `53d3f68d84f392bffe8598006828ec9d7ab83164`.
+- **Task125 / W** is authorized only for
+  `packages/local-runtime/src/portable-workspace-lifecycle.ts`,
+  `packages/local-runtime/test/portable-workspace-lifecycle.test.ts`, and
+  `docs/agentic/claims/task-125-resident-full-vision-w1-portable-workspace-lifecycle.md`.
+  It consumes the frozen W authority/lease/reconciliation ports and must prove
+  fresh mounted identity/policy/lock/high-water revalidation, same-identity
+  reconciliation readback, and zero fallback writes. It must not touch the
+  runtime factory, routes, scheduler, provider, shared contract, or UI.
+- **Task127 / P** is authorized only for
+  `packages/agent/src/os-secret-store.ts`,
+  `packages/agent/test/os-secret-store.test.ts`, and
+  `docs/agentic/claims/task-127-resident-full-vision-os-secret-store.md`.
+  It must implement only CF-1-selected exact-use, opaque OS-secret resolution
+  with credential-free fake coverage; no `.env`, plaintext, browser, CLI-auth,
+  cache, portable-state, or fallback path is permitted.
+- **Task131 / U** is authorized only for
+  `packages/ui/src/agent/resident-runtime-types.ts`,
+  `packages/ui/src/agent/resident-runtime-adapter.ts`,
+  `packages/ui/test/resident-runtime-adapter.test.ts`, and
+  `docs/agentic/claims/task-131-resident-full-vision-runtime-adapter.md`.
+  It must normalize/freeze own-data once, parse only strict CF-1 DTOs, and
+  reject stale/forged/cross-run/secret-bearing values without importing server
+  registries or adding route/panel/runtime-factory behavior.
+- The governing umbrella design `c7dc10b9`, program plan `0b5726ec`, and each
+  task's approved lane design/plan are approved. Each worker is explicitly
+  authorized to use `superpowers:subagent-driven-development` where relevant,
+  test-driven development, fresh independent review, and
+  verification-before-completion under GPT-5.6 Terra / Extra High. Each starts
+  from this coordinator SHA in an isolated worktree, commits a claim before
+  production edits, writes causal RED first, runs its exact focused command,
+  typecheck/diff/factory gates, and stops clean for review. No child may
+  self-integrate, merge `neo`, start a full verifier, dispatch a child, use a
+  credential/provider, or alter another lane. Coordinator retains registry and
+  integration ownership. Wave stop: reviewed candidate only; no Wave 2 or live
+  provider work is authorized by this record.
