@@ -3045,3 +3045,28 @@ explicit implementation authorization.
   diff hygiene, and factory readiness. It must commit clean and stop for a
   fresh reviewer. No full verifier, self-integration, child dispatch, or
   `neo` change is authorized.
+
+## RV-1-C-065 — Ingestion reader assertion-repair re-review gate
+
+- Fresh authenticated Codex `/status` immediately before this reviewer dispatch
+  reports Weekly **32% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  weekly remains 100% left. No `/usage`, reset, or redemption occurred. The
+  guard is above 10%, authorizing this review only; full verification,
+  integration, and downstream work remain forbidden.
+- Fresh root-cause candidate
+  `f7ad54f2..6dc975c282305c7c7d145a49d791143d8cd06d3e` is clean in the
+  isolated reader worktree. Its causal RED retained 24 passing tests and one
+  failure: generic descriptor binding read hostile callable `bind` accessors,
+  returning a terminal mismatch rather than a valid canonical report. The
+  repair replaces the content-hash cast with a runtime-validating typed schema
+  and the generic conditional-method cast with separately typed `readAll`/
+  `get` closures using intrinsic apply dispatch. The worker reports focused
+  25/25, target typecheck, diff hygiene, and factory readiness; those reports
+  are review inputs, not integration authority.
+- A fresh independent reviewer must inspect all three commits for no source
+  assertions/evasive types, exact hash validation, descriptor/proxy/own-data
+  safety, correct receiver and hash argument binding, preserved writer
+  tripwires and public read-only capability boundaries, exact claim/source/
+  test scope, and any Cestus provenance or fail-closed regression. It must
+  issue an explicit defects-first verdict. No full verifier, self-integration,
+  downstream dispatch, or `neo` change is authorized.
