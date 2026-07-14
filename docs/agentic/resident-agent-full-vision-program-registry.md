@@ -3357,3 +3357,31 @@ explicit implementation authorization.
   and restart-safe handoff reuse before making the smallest repair. No new
   worker, full verifier, integration, downstream dispatch, self-integration,
   or `neo` change is authorized by this record.
+
+## RV-1-C-081 — Task123 exact-provenance/replay repair sealed for review
+
+- Coordinator-owned TDD recovery candidate
+  `1644b9fc2cc7b31ed66c095547ab3c081963c185` is clean on
+  `codex/task-123-resident-full-vision-bootstrap-reader-restart`, descending
+  from the Task123 prerequisite integration `e7a1d5b6`. It supersedes the
+  rejected, unintegrated `5744a67a` and changes only the existing Task123
+  claim, workflow/test, and local-runtime route/test files.
+- Causal RED proved that a run with the valid canonical report plus an extra
+  source-event ID or artifact hash was accepted, and that replay at a later
+  `now()` failed with conflicting durable final-output material. GREEN now
+  requires duplicate-free exact source and hash sets in workflow and route
+  reuse, and derives dossier, review-bundle, and context-pack timestamps from
+  the immutable run-start event for durable replay. Focused verification
+  passed **3 files / 52 tests**; `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check` passed. The temporary dependency link was removed
+  before the clean commit. No candidate full verifier or integration ran.
+- Fresh authenticated Codex `/status` immediately before review authorization
+  reports Weekly **28% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  remains 100% left. No `/usage`, reset, or redemption occurred. Above the
+  10% guard, exactly one fresh independent read-only defects-first review of
+  `e7a1d5b6..1644b9fc` is authorized. It must assess both former P1s, exact
+  no-effects-before-admission behavior, duplicate/extra/swapped provenance,
+  later-clock replay, and the complete final-output -> prepared -> recorded ->
+  terminal actor/correlation/event-type/causation readback. No full verifier,
+  integration, downstream dispatch, self-integration, or `neo` change is
+  authorized pending an APPROVE verdict.
