@@ -3096,3 +3096,17 @@ explicit implementation authorization.
   100% left. No `/usage`, reset, or redemption occurred. This records the
   replacement reviewer gate durably. DRAIN remains mandatory at or below 10%,
   hard pause at or below 7%, and `neo` remains untouched.
+
+## RV-1-C-068 — Final sealed-range review authorization
+
+- The second stale replacement reviewer also produced no verdict after its
+  immediate bounded prompt and was stopped with no candidate mutation. The
+  clean `40dca32f..6dc975c2` range remains the sole review target; no full
+  verifier, integration, or downstream work has started.
+- Fresh authenticated Codex `/status` immediately before the next dispatch
+  reports Weekly **31% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  weekly remains 100% left. No `/usage`, reset, or redemption occurred. This
+  authorizes exactly one fresh independent, read-only sealed-range verdict
+  review. It must return defects-first within a bounded interval. DRAIN is
+  mandatory at or below 10%, hard pause at or below 7%, and `neo` remains
+  untouched.
