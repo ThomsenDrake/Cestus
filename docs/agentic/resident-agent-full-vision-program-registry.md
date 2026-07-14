@@ -5345,3 +5345,38 @@ explicit implementation authorization.
   verifier remains exclusive; Task125 stays in its separately owned non-full
   TDD recovery, and Task126 remains unintegrated following its fresh-review
   correction. No `neo` action is authorized.
+
+## RV-1-C-149 — Task128 integration, Task126 correction, and Task125 seal
+
+- Recorded at: 2026-07-14T22:20:00Z by the sole Relay C coordinator.
+- Task128 candidate verification: the authorized exact recovery
+  `21f7690250a004c5174bb4f784ce9bd60472ccfe..0c7eb37f5fd0d5844c6fa849ccd62ea3da8f6f2a`
+  was clean before and after its one serialized candidate `npm run verify`.
+  It passed typecheck, **198 passing + 3 skipped files**, **2,394 passing + 5
+  skipped tests**, Vite build, and factory readiness. The temporary dependency
+  link was removed after the gate.
+- Task128 integration: a fresh authenticated `/status` immediately before the
+  no-ff boundary reported **94% weekly remaining**, Spark 100%, five reset
+  credits untouched. Relay C no-ff merged the approved candidate at
+  `ba43f007c371229ca5ad96844f4b3bc08584702b`. Its merged targeted command
+  `npm test -- packages/agent/test/local-model-provider.test.ts packages/agent/test/provider-readiness.test.ts`
+  passed **2 files / 42 tests**, and diff/factory passed. A second fresh 94%
+  gate then opened one merged `npm run verify`, which passed typecheck, **198
+  passing + 3 skipped files**, **2,398 passing + 5 skipped tests**, Vite, and
+  factory readiness. Task128 is integrated; no `neo` ref changed.
+- Task126 correction: `RV-1-C-145` is superseded as a verdict record by the
+  subsequently delivered fresh-review finding on the exact same recovery
+  range. `byok-provider.ts` checks reader trust before public requested-use
+  normalization, so malformed requested use with an absent or forged reader
+  incorrectly returns `unavailable/authority-reader-unavailable` instead of
+  `blocked/unsafe-input`. The candidate remains unintegrated; the next repair
+  must add the absent/forged-reader malformed-input causal RED and normalize
+  public input before reader inspection. This correction does not revive the
+  rejected reader-factory theory or change Task139 ownership.
+- Task125 non-full checkpoint: fresh root-cause recovery sealed clean at
+  `482361a5` on
+  `codex/task-125-resident-full-vision-portable-workspace-lifecycle-admission-restart`.
+  It records a missing-facade causal RED, then focused Green **2 files / 10
+  tests**, typecheck, diff, and factory readiness; its temporary dependency
+  link was removed and no full verifier ran. It requires fresh independent
+  defects-first review before any full gate or integration.
