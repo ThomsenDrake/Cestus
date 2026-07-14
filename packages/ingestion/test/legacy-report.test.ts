@@ -327,15 +327,15 @@ describe("legacy migration report", () => {
     expect(derivativeReadAttempts).toBe(1);
   });
 
-  it("fails closed for a hostile real Buffer toString accessor without invoking it", async () => {
+  it.each(["toString", "valueOf", "length"] as const)("fails closed for a hostile real Buffer %s accessor without invoking it", async (property) => {
     const stored = await recordedReport();
     const hostile = Buffer.from(await stored.reportStore.get(stored.report.reportHash));
     let accessorRead = false;
-    Object.defineProperty(hostile, "toString", {
+    Object.defineProperty(hostile, property, {
       enumerable: true,
       get() {
         accessorRead = true;
-        throw new Error("hostile Buffer accessor must not run");
+        throw new Error(`hostile Buffer ${property} accessor must not run`);
       }
     });
 
