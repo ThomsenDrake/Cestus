@@ -4045,3 +4045,20 @@ explicit implementation authorization.
   deferred Task131 consumes that DTO directly, and Task141 remains the sole
   HTTP/transport route and UI-composition owner. It may not authorize Task131
   source work, a full verifier, integration, or `neo` action.
+
+## RV-1-C-112 — Active child ledger
+
+- Task125 monotonic-revocation/TDD implementer:
+  `/root/task125_monotonic_repair`, isolated in
+  `/home/drake/.codex/worktrees/task-125-resident-full-vision-portable-workspace-lifecycle`
+  at `9ea55cbabb34c1d0f6fd55f22331685fd289e238`.
+- Task126 authoritative-posture/TDD implementer:
+  `/root/task126_posture_repair`, isolated in
+  `/home/drake/.codex/worktrees/task-126-resident-full-vision-byok-provider`
+  at `15549bbb1b9bd93863d8fc6066ce54e9aae1a212`.
+- Task131 corrected dependency-plan, fresh independent read-only reviewer:
+  `/root/task131_corrected_plan_review`, reviewing
+  `fc2ae4f1^..fc2ae4f1` from the coordinator checkout.
+- The three live lanes have disjoint write sets; Task131 is read-only. No full
+  verifier, integration, `neo`, or downstream lane is active. The coordinator
+  retains sole integration and registry ownership.
