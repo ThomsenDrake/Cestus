@@ -2748,3 +2748,13 @@ explicit implementation authorization.
 - Before its reviewer or any full verifier, obtain another live `/status` gate.
   The worker is TDD/focused-only until separately granted the serialized full
   slot; no `neo` change or child self-integration is authorized.
+
+## RV-1-C-051 — Pre-review authenticated usage gate
+
+- Fresh local authenticated `/status` reports Weekly limit **35% left**,
+  resetting 15:00 on 19 Jul; Spark weekly is 100% left. No reset or redemption
+  occurred. The exact PTY procedure skipped the update chooser, entered
+  `/status`, captured the result, and exited with Ctrl-C.
+- This gate authorizes only fresh review of ingestion reader candidate
+  `3f78a74dbfe7c62ec71acd0299ad37412bb1e156`. No full verifier is authorized
+  until another authenticated usage check.
