@@ -13,7 +13,7 @@
   `docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md@285657a7879cdc47e321152c2bc5feb0ebe6088f`;
   `docs/superpowers/plans/2026-07-12-resident-agent-provider-credentials-implementation.md` Task 129.
 - Claimed at: `2026-07-14T22:08:56Z`.
-- Status: ready-for-review (bounded RV-1-D-163 repair commit pending fresh independent review).
+- Status: in-progress (RV-1-E-173 merged-typecheck forward repair).
 
 ## Exclusive Scope
 
@@ -105,3 +105,14 @@ review after the one clean owned-files commit.
 - Dependency cleanup: the temporary untracked `node_modules` symlink used
   only for the focused test and local gates was removed. `npm run verify` was
   not run, as this repair authorization prohibits it.
+
+## RV-1-E-173 Merged-Typecheck Forward Repair
+
+- Repair authorization: bounded Task129 ownership only from program head
+  `fce05da4e5e18c78b4b7609426e86910c41ce8ca`; this claim, the Codex harness
+  source, and its focused test are the only permitted files.
+- Status transition: `in-progress` before source or test edits. The repair
+  first reproduces the lane-owned merged `TS2322` and `TS7006` diagnostics
+  under fail-fast command semantics, then records causal RED/GREEN evidence.
+- Full verification remains closed. No provider, credential, network, merge,
+  self-integration, registry, or `neo` action is permitted in this repair.
