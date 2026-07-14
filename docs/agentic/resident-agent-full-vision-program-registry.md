@@ -5107,3 +5107,29 @@ explicit implementation authorization.
   candidate; a later integration boundary requires a new authenticated gate.
 - Holds: Task128 integration, Task125, all full verifiers, reset-credit use,
   and `neo` remain stopped. Task126 continues its separate non-full repair.
+
+## RV-1-C-142 — Task128 typecheck-recovery fresh-review authorization
+
+- Recorded at: 2026-07-14T23:05:00Z by the sole Relay C coordinator.
+- Candidate: clean exact recovery
+  `21f7690250a004c5174bb4f784ce9bd60472ccfe..0c7eb37f5fd0d5844c6fa849ccd62ea3da8f6f2a`
+  on `codex/task-128-resident-full-vision-local-model-provider-typecheck-recovery`.
+  It changes only the Task128 claim and `local-model-provider.ts`; its full
+  Task128 lineage retains the previously approved focused tests.
+- Repair evidence: causal locked compiler RED reported the failed/timeout
+  union narrowing and descriptor-map length type errors; source-only compiler
+  Green, focused 42-test Green, project typecheck, diff, and factory gates are
+  recorded in the append-only child claim. The temporary dependency symlink was
+  removed before the clean commit. No full verifier ran.
+- Authorization: a fresh independent, Terra-attested, read-only defects-first
+  reviewer may inspect the recovery delta, its parent approved range, the
+  compiler diagnostic, descriptor-only hostile-boundary preservation, and the
+  complete current local-model behavior. It may use inspection, `git diff
+  --check`, and the exact focused Task128 command only; no source edit, full
+  verifier, integration, reset credit, Task125 action, or `neo` action.
+- Review source rule: the reviewer reads candidate code/claim in its isolated
+  worktree and current coordination evidence from the canonical coordinator
+  registry path specified in `RV-1-C-137`.
+- Holds: a new authenticated gate is required before any changed Task128
+  candidate may consume a full-verifier or integration slot. Task126 remains
+  separately non-full and Task125 remains deferred.
