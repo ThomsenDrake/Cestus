@@ -3110,3 +3110,23 @@ explicit implementation authorization.
   review. It must return defects-first within a bounded interval. DRAIN is
   mandatory at or below 10%, hard pause at or below 7%, and `neo` remains
   untouched.
+
+## RV-1-C-069 — Sealed reader approval and SHA correction
+
+- Independent fresh review returned **APPROVE** with no P1/P2 finding for the
+  actual one-commit sealed range
+  `40dca32fd6de55283b0393a1555318a70e0e671a..6dc975c2210044fb97305592fbb4fd393bd1dc3c`.
+  It confirmed the typed runtime hash validator, absence of the two prohibited
+  assertion paths, intrinsic apply dispatch without hostile `bind` access,
+  preserved receiver/hash binding, unchanged strict capability inputs, and
+  retained provenance/fail-closed/write-tripwire boundaries. The reviewer did
+  not rerun focused/typecheck under its immediate verdict constraint; a new
+  candidate full gate remains required before integration.
+- Earlier `RV-1-C-065` used a mistyped full SHA ending
+  `...2305c7c7d145a49d791143d8cd06d3e`; that object does not resolve. The
+  actual `6dc975c2` object above is verified clean and descends from
+  `40dca32f`. This correction preserves earlier evidence without rewriting it.
+- No full verifier, integration, or downstream work is granted by this record.
+  Before the one serialized candidate `npm run verify` is started, obtain a
+  fresh authenticated usage gate; DRAIN remains mandatory at or below 10%,
+  hard pause at or below 7%, and `neo` remains untouched.
