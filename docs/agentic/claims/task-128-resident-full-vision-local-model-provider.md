@@ -9,7 +9,7 @@
 - Required freeze: `48c9cbcdcf723bcc74868f782bc2375bae565ae6` /
   `CF1-P-LOCAL-MODEL`.
 - Claimed at: `2026-07-14T20:45:00Z`.
-- Status: in-progress.
+- Status: ready-for-review.
 
 ## Scope And Authority
 
@@ -142,3 +142,57 @@ SHA.
   candidate commit. The candidate must then stop for a fresh independent
   defects-first review; no self-review, integration, merge, push, or `neo`
   action is authorized.
+
+## Fresh Typecheck Recovery Evidence
+
+- Recovery branch and base: this isolated recovery branch starts at
+  `21f7690250a004c5174bb4f784ce9bd60472ccfe`; the P1/P2 evidence above remains
+  intact, and no prior branch or commit was rewritten, cherry-picked, or
+  integrated. This repair changes only this claim and
+  `packages/agent/src/local-model-provider.ts`.
+- Required source-only RED, run against the coordinator's locked compiler and
+  types before this repair, exited `2`:
+
+  ```text
+  packages/agent/src/local-model-provider.ts(223,66): error TS2339: Property 'value' does not exist on type '{ readonly kind: "failed" | "timeout"; } | { readonly kind: "value"; readonly value: unknown; }'.
+    Property 'value' does not exist on type '{ readonly kind: "failed" | "timeout"; }'.
+  packages/agent/src/local-model-provider.ts(248,55): error TS2339: Property 'value' does not exist on type '{ readonly kind: "failed" | "timeout"; } | { readonly kind: "value"; readonly value: unknown; }'.
+    Property 'value' does not exist on type '{ readonly kind: "failed" | "timeout"; }'.
+  packages/agent/src/local-model-provider.ts(684,56): error TS2322: Type 'number' is not assignable to type 'object'.
+  packages/agent/src/local-model-provider.ts(685,26): error TS2339: Property 'get' does not exist on type 'number & Record<"value", unknown>'.
+  packages/agent/src/local-model-provider.ts(685,64): error TS2339: Property 'set' does not exist on type 'number & Record<"value", unknown>'.
+  ```
+
+- Root cause: `settleBeforeDeadline` grouped `failed` and `timeout` in one
+  union member, so separate equality checks could not narrow that member to
+  the value shape. Separately, `.length` selected the structural array length
+  of `Object.getOwnPropertyDescriptors(value)` rather than the array's own
+  descriptor. Neither condition changes timeout reservation retention,
+  failure mapping, or normalized-array acceptance semantics.
+- Narrow repair: the result type now has separate `failed` and `timeout`
+  discriminant members, and normalization obtains the own `"length"`
+  descriptor with `Object.getOwnPropertyDescriptor(value, "length")`. The
+  latter remains descriptor-only and does not read an array getter or method.
+  Existing adversarial own-accessor, proxy, and prototype tests are the causal
+  normalized-array behavior coverage; no behavior-changing regression test was
+  needed for this compiler-only correction.
+- Required source-only GREEN: the exact locked compiler command exited `0`
+  with no diagnostics after the narrow repair.
+- Focused GREEN: `npm test -- packages/agent/test/local-model-provider.test.ts
+  packages/agent/test/provider-readiness.test.ts` exited `0` with 2 test files
+  and 42 tests passing.
+- Authoritative project typecheck: with a temporary ignored symlink from this
+  worktree's `node_modules` to the coordinator's lockfile-pinned local
+  dependencies, `npm run typecheck` exited `0` and printed `typecheck passed`.
+  `git diff --check` also exited `0` with no output. A pre-existing ignored
+  `node_modules/.vite` cache was removed before that temporary setup; the
+  symlink and any resulting cache artifacts will be removed before commit.
+- Final clean-worktree gates after removing the temporary symlink: the exact
+  locked source-only compiler exited `0`, `git diff --check` exited `0` with
+  no output, and `npm run factory:check` exited `0` with
+  `factory-readiness passed`. This worktree has no local `node_modules` link
+  or cache artifact. `npm run verify` was not run and remains prohibited for
+  this recovery lane.
+- Status: ready-for-review. Stop for a fresh independent defects-first review
+  of this compiler recovery before integration, rebase, merge, push, or `neo`
+  action.
