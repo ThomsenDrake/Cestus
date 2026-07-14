@@ -4827,3 +4827,28 @@ explicit implementation authorization.
 - Task125, all full verifiers, all integrations, provider/credential/network
   actions, reset-credit use, and `neo` remain stopped until valid Terra review
   verdicts return.
+
+## RV-1-C-136 — Terra-attestation correction and fresh reviewer redispatch
+
+- Recorded at: 2026-07-14T22:30:00Z by the sole Relay C coordinator.
+- Prior self-introspection stops: the no-history explicit Task128 and Task126
+  reviewer spawns were accepted with `model: gpt-5.6-terra` and
+  `reasoning_effort: xhigh`, but their children stopped because runtime model
+  metadata is not introspectable from a child. Those stops are preserved as
+  process evidence only; neither child inspected, tested, or changed a
+  candidate, so neither is a review verdict.
+- Authoritative host attestation: the coordinator records the accepted
+  no-history spawn configuration itself as conclusive assignment evidence for
+  GPT-5.6 Terra / Extra High. Fresh replacements must receive this attestation
+  in the first line of their work order and proceed without model
+  introspection. This correction does not permit a fallback model.
+- Redispatch scope: Task128 remains the exact clean range
+  `e1fa208245ba3032747be9375b7e552196a20ecf..21f7690250a004c5174bb4f784ce9bd60472ccfe`;
+  Task126 remains the exact clean range
+  `82cf9cedc590939e8769c58016df051813b10c0e..27a99b137dcb2508132441879764b6c46f59fa14`.
+  Each replacement is fresh, independent, defects-first, and read-only under
+  `RV-1-C-133`'s complete boundary and command constraints.
+- Holds: Task125, all full verifiers, all integrations, provider/credential/
+  network actions, reset-credit use, downstream dispatch, and `neo` remain
+  stopped until valid independent review verdicts are returned and separately
+  recorded.
