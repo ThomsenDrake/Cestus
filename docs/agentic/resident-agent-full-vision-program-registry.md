@@ -4384,6 +4384,46 @@ explicit implementation authorization.
   full verifier, self-review, integration, child dispatch, reset-credit, or
   `neo` action is authorized for either worker.
 
+## RV-1-C-127 — Relay A final checkpoint for Relay C
+
+- Relay A stopped after committing `2fa04bc68205aee281a0b507dbd054f256675c6f`
+  on `codex/resident-agent-full-vision-program-watchdog-recovery`. The
+  coordinator worktree is clean. Relay C
+  `019f6276-d8a3-7453-ae5c-8776ad6fe9e8` has completed its read-only audit and
+  reported `READY FOR FINAL HANDOFF`; it has not yet claimed ownership.
+- Fresh authenticated `account/rateLimits/read` at this checkpoint reports
+  **3% used / 97% weekly remaining**, Spark Weekly **0% used / 100%
+  remaining**, and all five reset credits available and untouched. No reset
+  credit was redeemed. The serialized full-verifier slot remains closed until
+  Relay C takes a fresh gate at an integration boundary.
+- Task124 repair `aaca7d88ff4d4c12e8c8c67ac3d3b173edbe4fca` received fresh
+  independent **APPROVE**. Its branch/worktree is
+  `codex/task-124-resident-full-vision-wake-supervisor-admission-recovery` at
+  `/home/drake/.codex/worktrees/task-124-resident-full-vision-wake-supervisor-admission-recovery`.
+  No full verifier or integration has run. Task125 remains deferred until the
+  approved Task124 candidate is verified and integrated by the coordinator.
+- Task128 candidate `e1fa208245ba3032747be9375b7e552196a20ecf` remains rejected and
+  unintegrated. Fresh bounded repair task
+  `019f627f-d71c-7910-bca8-b5b6a8f43ae5`, agent path
+  `/root/task128_proxy_record_repair`, is active in
+  `/home/drake/.codex/worktrees/task-128-resident-full-vision-local-model-provider`.
+  Its only authorized repair is the revoked-array-Proxy containment plus
+  null-prototype or explicit `__proto__` rejection with causal tests.
+- Task126's authority-port contract at
+  `964a2d41729def6fcebe4700c5b1bd7fe298d556` received fresh independent
+  **APPROVE**. Fresh implementation task
+  `019f627f-9f31-7400-8b70-c9ab5890c0a1`, agent path
+  `/root/task126_canonical_reader_restart`, is active on
+  `codex/task-126-resident-full-vision-byok-provider-reader-restart` in
+  `/home/drake/.codex/worktrees/task-126-resident-full-vision-byok-provider`,
+  based at `82cf9cedc590939e8769c58016df051813b10c0e`. It owns only the frozen
+  Task126 claim/source/test boundary and cannot self-integrate.
+- The Task124, Task128, and Task126 reviewers are complete. There is no other
+  active Wave 1 child known at this checkpoint. `neo` remains untouched. Relay
+  C must accept this exact clean head before dispatching, integrating, or
+  opening the full-verifier slot, then continue the authorized Wave 1 through
+  Wave 5 program without user babysitting.
+
 ## RV-1-C-127 — Task124 approval and active source-recovery ledger
 
 - Fresh independent Task124 review of
