@@ -5679,3 +5679,26 @@ explicit implementation authorization.
 - This independently corroborates `RV-1-C-151`. The authorized Task125
   authority repair remains the only active next step; no Task125 full verifier,
   integration, rebase, reset-credit action, or `neo` action is opened.
+
+## RV-1-D-158 — Predecessor-writer recovery and current verifier hold
+
+- The post-transfer `RV-1-C-153`, `RV-1-C-154`, `RV-1-C-155`, and
+  `RV-1-C-156` records are preserved forward-only as historical, unowned
+  predecessor inputs. They do not grant Relay D a verifier, review, merge, or
+  integration action. The predecessor has been directed to stop canonical
+  writes, gates, integrations, and dispatches; Relay D is the sole coordinator
+  of record from this checkpoint.
+- Usage correction: the latest authenticated event is `usedPercent=8`, hence
+  **92% weekly remaining**, with reset credits untouched. Normal mode applies
+  above 10%; DRAIN begins at <=10%, HARD PAUSE at <=7%, and no reset credit may
+  be redeemed.
+- The serialized full-verifier slot is **closed**. Task126
+  `093b54efd2b9ebd670973d4676b101433d88e233` is only a clean candidate; it
+  awaits Relay D's fresh independent Terra/xhigh review. No partial or
+  predecessor-launched verifier output is accepted as evidence.
+- Preserved child ledger: `/root/task125_authority_repair` owns the Task125
+  dirty claim and RED-test delta only; `/root/task129_official_harness` owns
+  Task129's claim/source/test candidate and its reported focused green, with
+  sealing gates still pending. Their results may be consumed only after Relay D
+  independently verifies clean scope, evidence, review, usage, and serialized
+  gate conditions. `neo` remains untouched.
