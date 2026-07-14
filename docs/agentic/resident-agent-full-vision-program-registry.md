@@ -4625,6 +4625,37 @@ explicit implementation authorization.
   test, and temporary dependency link; it has no authority to self-review,
   self-integrate, start a full verifier, or touch `neo`.
 
+## RV-1-C-132 — Task126 canonical-reader review authorization
+
+- Recorded at: 2026-07-14T22:05:00Z by the sole Relay C coordinator.
+- Fresh authenticated local Codex `/status` immediately before dispatch reports
+  96% weekly remaining (reset 16:37 on 21 Jul), Spark Weekly 100%, and five
+  reset credits untouched. No credit was redeemed. Normal mode authorizes this
+  one fresh, independent read-only review; full verification, integration,
+  downstream dispatch, `neo`, and reset-credit use remain closed.
+- Candidate: `27a99b137dcb2508132441879764b6c46f59fa14`, clean in
+  `codex/task-126-resident-full-vision-byok-provider-reader-restart` atop
+  `82cf9cedc590939e8769c58016df051813b10c0e`. Exact scope is the Task126
+  claim, `packages/agent/src/byok-provider.ts`, and
+  `packages/agent/test/byok-provider.test.ts`; the temporary dependency link
+  was removed before the commit.
+- Candidate evidence: the exact focused command
+  `npm test -- packages/agent/test/byok-provider.test.ts
+  packages/agent/test/openai-compatible-provider.test.ts` first failed only
+  because the scoped BYOK provider module was absent, then passed 2 files / 16
+  tests after the minimal capability-created reader implementation. Typecheck,
+  `git diff --check`, and factory readiness passed. No credential, provider,
+  network, portable write, full verifier, self-review, integration, or `neo`
+  action occurred.
+- Review requirements: verify `ByokProviderAuthorityReader.v1` is
+  capability-created and owns canonical selection/capability/credential,
+  endpoint policy, preparation, and exact bindings; public unknown provides
+  requested-use facts only; missing, malformed, throwing, stale, forged, or
+  self-consistent caller posture fails unavailable before any effect; strict
+  own-data and secret-safe diagnostics remain intact; and the Task139 mounting
+  dependency plus Task141 route ownership remain unaltered. Return an explicit
+  APPROVE or NEEDS-CHANGES; no full verifier may start on silence.
+
 ## RV-1-C-132 — Task124 verifier ordering evidence and Task128 mutable-review block
 
 - Recorded at: 2026-07-14T22:10:00Z by the sole Relay C coordinator.
