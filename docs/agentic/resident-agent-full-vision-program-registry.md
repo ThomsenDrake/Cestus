@@ -3070,3 +3070,16 @@ explicit implementation authorization.
   test scope, and any Cestus provenance or fail-closed regression. It must
   issue an explicit defects-first verdict. No full verifier, self-integration,
   downstream dispatch, or `neo` change is authorized.
+
+## RV-1-C-066 — Independent review usage-gate bridge
+
+- Parent-authenticated Codex `/status` immediately before the independent
+  review records Weekly **32% left**, resetting 15:00 on 19 Jul;
+  GPT-5.3-Codex-Spark weekly remains 100% left. No `/usage`, reset, or
+  redemption occurred. This independently corroborates the local 32% gate in
+  `RV-1-C-065` and authorizes the already-dispatched read-only review of
+  `6dc975c2` only.
+- Keep the serialized full verifier, all integration, and every downstream
+  lane closed until that reviewer returns an explicit approval and a new live
+  usage gate is obtained. At or below 10% enter DRAIN; at or below 7% commit
+  the graceful hard-pause checkpoint. `neo` remains untouched.
