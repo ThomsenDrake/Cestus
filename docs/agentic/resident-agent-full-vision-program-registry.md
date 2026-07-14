@@ -3727,3 +3727,56 @@ explicit implementation authorization.
   `e2f1626d8615a7e1a206a02b9c7f3b068e4139a5`; it owns only the exact four
   documents authorized in C-094. No child has a full-verifier or integration
   slot, and the serialized full-verifier slot is idle.
+
+## RV-1-C-096 — Task125 and Task127 fresh-review rejections
+
+- Fresh Task125 review of `ceae7ca7..7da9e29f` returned **NEEDS-CHANGES** for
+  spec compliance and code quality. The candidate is rejected and
+  unintegrated. P1: an identity/policy/lock/store mismatch returns unavailable
+  directly instead of preserving an outage needed to release an active claim
+  when the original mount returns. P1: accepted mounted facts are retained by
+  mutable reference, allowing future fact changes to corrupt the baseline.
+  P2: facts lack schema/own-data/canonical-freeze and distinct mount-instance
+  validation; the reconciliation test bypasses the wake-supervisor’s exact
+  readback contract. The reviewer confirms exact three-file scope and clean
+  diff but could not run focused Vitest after the temporary dependency link was
+  removed. No full verifier or integration is authorized.
+- Fresh Task127 review of the full `ceae7ca7..15ed426b` range returned
+  **NEEDS-CHANGES** for spec compliance and code quality. The candidate is
+  rejected and unintegrated. P1: the exported test-only issuer still mints an
+  accepted global-WeakSet material; P1: material is not bound to its exact
+  credential/capability/workspace/mount/run/purpose use; P1: an exported,
+  mutable class prototype can bypass release; P1: the creation boundary
+  dereferences hostile factory input before normalization. Missing
+  counterfactuals cover public issuer use, cross-use replay, prototype-tampered
+  release, and hostile factory/backend construction input. Exact three-file
+  scope and clean diff were confirmed; reviewer-local Vitest was unavailable.
+  No full verifier or integration is authorized.
+
+## RV-1-C-097 — Root-cause repair authorization under authenticated usage gate
+
+- The C-093 read-only authenticated app-server rate-limit result remains the
+  live coordinator gate for these immediate bounded dispatches: primary weekly
+  `75%` used / `25%` remaining, no reset credit consumed, above drain and hard
+  pause thresholds. Task125 and Task127 each move to a fresh root-cause TDD
+  repair in their preserved worktrees; Task131's first repair child is stopped
+  after repeated bounded intervals produced no test delta, command, or
+  structured blocker.
+- Task125 repair remains exactly its existing claim, portable lifecycle source,
+  and lifecycle test. It must RED-test mutable/hostile mounted facts,
+  mount-instance/schema/own-data coherence, mismatch-to-restoration durable
+  outage and exactly-once supervisor reconciliation/readback, then Green with
+  the smallest fail-closed snapshot/revalidation repair. Task127 repair remains
+  exactly its claim, OS-secret source, and test; it must RED-test public issuer
+  misuse, cross-use material replay, prototype release tampering, and hostile
+  create-store input before replacing the material boundary with a
+  module-private, exact-use-bound, release-resistant design. Task131 replacement
+  must begin with its four previously authorized causal REDs and return a
+  focused command result within its first bounded interval.
+- All three repairs explicitly approve `superpowers:subagent-driven-development`
+  where relevant, systematic debugging, test-driven development, fresh
+  independent review, and verification-before-completion. Each may run only
+  its focused command, typecheck, diff check, and factory readiness, update its
+  claim, remove any dependency link, and stop clean for fresh review. No full
+  verifier, child dispatch, self-integration, credential/provider use, or `neo`
+  change is authorized.
