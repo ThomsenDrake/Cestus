@@ -3671,3 +3671,16 @@ explicit implementation authorization.
   Resume only after an operator refreshes Codex authentication and a new
   authenticated `/status` reading proves the program is above the 10% drain
   threshold. The 7% hard-pause guard remains unchanged.
+
+## RV-1-C-093 — Authenticated usage gate reopened
+
+- The operator refreshed Codex authentication. A read-only
+  `account/rateLimits/read` request through the installed Codex app-server now
+  succeeds and reports the primary weekly window at `75%` used (`25%`
+  remaining), above the `10%` drain threshold and the `7%` hard-pause guard.
+- The program is reopened from the C-091/C-092 fail-closed checkpoint. No usage
+  reset credit was consumed. Resume the sealed Wave 1 work in parallel: fresh
+  independent reviews for Task 125 at `7da9e29f` and Task 127 at `15ed426b`,
+  plus the four-finding TDD repair for Task 131 at `e2f1626d`. Keep full
+  verification serialized, recheck authenticated usage at every integration
+  boundary, and leave `neo` untouched without explicit operator authorization.
