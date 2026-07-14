@@ -2,7 +2,7 @@
 
 ## Claim
 
-- Status: in-progress
+- Status: ready-for-review
 - Branch: `codex/task-126-resident-full-vision-byok-provider-reader-failclosed-recovery`
 - Base: `27a99b137dcb2508132441879764b6c46f59fa14`
 - Owned files:
