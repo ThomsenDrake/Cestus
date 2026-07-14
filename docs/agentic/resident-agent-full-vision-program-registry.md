@@ -3293,3 +3293,16 @@ explicit implementation authorization.
   actor/correlation/event-type/full-causation terminal readback. No full
   verifier, integration, downstream dispatch, self-integration, or `neo`
   change is granted.
+
+## RV-1-C-078 — Task123 stale-review replacement
+
+- The C-077 reviewer returned no inspection, defect, or verdict after its
+  immediate verdict prompt and one bounded interval. It was stopped without
+  touching the sealed candidate, which remains clean at `adbdde9f`.
+- Fresh authenticated Codex `/status` immediately before this replacement
+  reports Weekly **29% left**, resetting 15:00 on 19 Jul; Spark weekly remains
+  100%. No `/usage`, reset, or redemption occurred. Above the 10% guard,
+  exactly one replacement fresh independent read-only verdict review of
+  `e7a1d5b6..adbdde9f` is authorized. It must inspect the sealed diff and
+  return defects-first immediately; full verification, integration,
+  downstream dispatch, self-integration, and `neo` remain closed.
