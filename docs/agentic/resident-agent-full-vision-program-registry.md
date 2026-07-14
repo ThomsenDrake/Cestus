@@ -4624,3 +4624,48 @@ explicit implementation authorization.
   and unintegrated. Its dirty, task-scoped worktree includes its claim, source,
   test, and temporary dependency link; it has no authority to self-review,
   self-integrate, start a full verifier, or touch `neo`.
+
+## RV-1-C-132 — Task124 verifier ordering evidence and Task128 mutable-review block
+
+- Recorded at: 2026-07-14T22:10:00Z by the sole Relay C coordinator.
+- Role: coordinator / verifier and review-state recorder.
+- Lane and wave: W and P / 1.
+- Governing spec and plan:
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`
+  and
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Task124 ordering exception: no-ff merge
+  `73003f60441b531d95bcb80755a6fc90148e09fe` already existed before the
+  candidate verifier sequence. The first candidate `npm run verify` stopped
+  before tests because `tsc` was absent in the isolated worktree. A temporary,
+  ignored symlink to the coordinator's dependency-complete `node_modules` was
+  then used for the exact candidate command and removed immediately afterward.
+  A later overlapping raw candidate process was terminated and is explicitly
+  excluded as verification evidence; the user identified the earlier wrapped
+  process as the sole authoritative candidate run. No source, claim, or
+  dependency-lockfile data was changed by this environment correction.
+- Definitive Task124 integration evidence: the coordinator treats the merged
+  checkout result in `RV-1-C-130` as the integration gate: the exact
+  coordinator branch descendant of `73003f60` passed targeted verification,
+  `git diff --check`, factory readiness, and serialized `npm run verify`.
+  This supersedes only the former pending wording, never the immutable order
+  of merge and candidate-verifier events. Task125 remains stopped until a new
+  usage gate explicitly authorizes its rebase/restart.
+- Task128 review result: fresh independent reviewer
+  `/root/review_task128_proxy` returned **BLOCKED** before substantive review.
+  The Task128 worktree was not clean: its claim, `local-model-provider.ts`,
+  and `local-model-provider.test.ts` had uncommitted changes. `git diff
+  --check` passed, but the reviewer ran no focused test and no full verifier,
+  changed no files, and correctly refused to assess a moving candidate.
+- Active ledger: Task128 remains in its existing exact repair scope and must
+  first produce a clean committed head before a different fresh independent
+  read-only review. Task126 remains independently active in its exact
+  canonical-reader claim/source/test scope. Neither task has full-verifier,
+  integration, child-dispatch, reset-credit, or `neo` authority.
+- Usage guard: the fresh 97% weekly / Spark 100% / five-credit-untouched gate
+  recorded in `RV-1-C-131` continues to authorize only that completed
+  read-only review attempt. It does not authorize Task125, a new full
+  verifier, or an integration.
+- Merge readiness: Task124 is integrated and verified only as recorded above;
+  Task128 is not review-ready; Task126 is not review-ready; Task125 remains
+  deferred.
