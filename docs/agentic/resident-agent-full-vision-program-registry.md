@@ -4179,3 +4179,15 @@ explicit implementation authorization.
   read-only review is authorized. Fresh local `/status` immediately before
   these dispatches reports **99% weekly remaining**, Spark 100%, and five reset
   credits untouched; normal mode applies and the full slot stays closed.
+
+## RV-1-C-118 — Active contract-recovery and provider-review ledger
+
+- Task124 admission/cancellation contract implementer:
+  `/root/task124_admission_contract_repair`, isolated at
+  `codex/task-124-resident-full-vision-wake-supervisor-admission-recovery`
+  from `1a69f73f06c70d510e0137441937f3d4d6667018`.
+- Task126 fresh independent reviewer: `/root/task126_final_repair_review`,
+  read-only on `15549bbb1b9bd93863d8fc6066ce54e9aae1a212..dc9bcce06f95a1d4773150e769a4d1e08991dd04`.
+- Task128 implementer remains active in its separate local-model scope. The
+  three live lanes have disjoint writes or read-only review; no full verifier,
+  integration, or `neo` action is active.
