@@ -3164,3 +3164,28 @@ explicit implementation authorization.
   report reader prerequisite. Reopen the rejected Task123 ontology-bootstrap
   route/workflow repair only after a fresh authenticated usage gate and a new
   exact scope from this merged head. No `neo` merge is authorized.
+
+## RV-1-C-072 — Task123 canonical-reader restart authorization
+
+- Fresh authenticated Codex `/status` after the verified reader integration
+  reports Weekly **31% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  weekly remains 100% left. No `/usage`, reset, or redemption occurred. The
+  guard is above 10% and authorizes one fresh isolated Task123 worker only; no
+  reviewer or full verifier is authorized.
+- Fresh worktree
+  `/home/drake/.codex/worktrees/task-123-resident-full-vision-bootstrap-reader-restart`
+  is clean at current Relay A head `e7a1d5b6` on branch
+  `codex/task-123-resident-full-vision-bootstrap-reader-restart`. It owns only
+  the existing Task123 bootstrap claim, `ontology-bootstrap-workflow.ts`, its
+  workflow test, `agent-ontology-bootstrap-routes.ts`, and its route test.
+- The worker must use the verified ingestion-owned `readCanonicalStagedLegacyReport`
+  reader rather than caller-supplied bytes or optional storage. It must first
+  establish adversarial RED coverage for forged/missing/swapped report-event
+  evidence and for the exact terminal lifecycle chain—final output, prepared,
+  recorded, terminal—with actor, correlation, event types, causation, and
+  terminal readback all bound. Then make the smallest route/workflow repair;
+  preserve resumable fail-closed behavior, no effects before admission, and
+  every prior canonical lifecycle invariant. It may run focused tests,
+  typecheck, diff hygiene, and factory readiness only, then commit clean and
+  stop for a fresh review. No `npm run verify`, self-integration, child
+  dispatch, or `neo` change is authorized.
