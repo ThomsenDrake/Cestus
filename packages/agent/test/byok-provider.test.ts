@@ -60,7 +60,7 @@ describe("CF-1 BYOK authority-reader boundary", () => {
     expect(JSON.stringify(result)).not.toMatch(/forged|authorization|bearer|api[ _-]?key|https?:\/\//i);
   });
 
-  it("binds the requested workspace, mount, task, attempt, run, prompt, preview, and policy to reader-derived current preparation", () => {
+  it("fails closed when requested workspace, mount, task, attempt, run, prompt, preview, or policy differs from reader-derived current preparation", () => {
     const boundary = createByokProviderBoundary(createByokProviderAuthorityReader(() => authority()));
 
     for (const [field, value] of [
@@ -73,11 +73,7 @@ describe("CF-1 BYOK authority-reader boundary", () => {
       ["approvalPreviewHash", hashes.forgedCapability],
       ["policyVersion", "policy_other_v1"]
     ] as const) {
-      expect(boundary.evaluate({ ...requestedUse(), [field]: value })).toEqual({
-        kind: "blocked",
-        category: "preparation-stale",
-        safeActionId: "action_refresh_provider_preparation"
-      });
+      expect(boundary.evaluate({ ...requestedUse(), [field]: value })).toEqual(authorityReaderUnavailable());
     }
   });
 
@@ -126,7 +122,7 @@ describe("CF-1 BYOK authority-reader boundary", () => {
       });
   });
 
-  it("rejects malformed or generic OpenAI-compatible canonical posture instead of falling back to generic readiness", () => {
+  it("fails closed for malformed or generic OpenAI-compatible reader posture instead of falling back to generic readiness", () => {
     const capabilityMismatch = authority();
     capabilityMismatch.capabilityEvidence = {
       ...capabilityMismatch.capabilityEvidence,
@@ -140,11 +136,131 @@ describe("CF-1 BYOK authority-reader boundary", () => {
 
     for (const canonical of [capabilityMismatch, genericFallback]) {
       expect(createByokProviderBoundary(createByokProviderAuthorityReader(() => canonical)).evaluate(requestedUse()))
-        .toEqual({
-          kind: "blocked",
-          category: "provider-capability-mismatch",
-          safeActionId: "action_review_byok_provider"
-        });
+        .toEqual(authorityReaderUnavailable());
+    }
+  });
+
+  it("fails closed as authority-reader-unavailable when reader-derived authority facts are swapped or stale", () => {
+    const swappedCapability = authority();
+    swappedCapability.capability = {
+      ...swappedCapability.capability,
+      providerId: "provider_swapped_byok"
+    };
+
+    const swappedEndpointPolicy = authority();
+    swappedEndpointPolicy.endpointPolicy = {
+      ...swappedEndpointPolicy.endpointPolicy,
+      endpointPolicyId: "endpoint_policy_swapped"
+    };
+
+    const swappedCapabilityEvidence = [
+      ["capabilityHash", hashes.forgedCapability],
+      ["capabilitySourceEventId", "evt_capability_swapped"],
+      ["capabilityRevision", "revision_swapped_v1"]
+    ] as const;
+    const staleCurrentUse = [
+      ["workspaceId", "workspace_stale"],
+      ["mountInstanceId", "mount_stale"],
+      ["taskId", "task_stale"],
+      ["attemptId", "attempt_stale"],
+      ["runId", "run_stale"],
+      ["promptArtifactHash", hashes.forgedPrompt],
+      ["approvalPreviewHash", hashes.forgedCapability],
+      ["policyVersion", "policy_stale_v1"]
+    ] as const;
+    const readerAuthorities = [swappedCapability, swappedEndpointPolicy];
+
+    for (const [field, value] of swappedCapabilityEvidence) {
+      const readerAuthority = authority();
+      readerAuthority.capabilityEvidence = {
+        ...readerAuthority.capabilityEvidence,
+        [field]: value
+      };
+      readerAuthorities.push(readerAuthority);
+    }
+    for (const [field, value] of staleCurrentUse) {
+      const stalePreparation = authority();
+      stalePreparation.preparation = {
+        ...stalePreparation.preparation,
+        [field]: value
+      };
+      readerAuthorities.push(stalePreparation);
+
+      const staleCurrent = authority();
+      staleCurrent.current = {
+        ...staleCurrent.current,
+        [field]: value
+      };
+      readerAuthorities.push(staleCurrent);
+    }
+
+    for (const credentialReference of [
+      {
+        credentialRefId: "agent_credref_swapped_byok"
+      },
+      {
+        sourceEventIds: ["evt_ref_swapped"]
+      }
+    ]) {
+      const swappedCredentialReference = authority();
+      swappedCredentialReference.credentialReference = {
+        ...swappedCredentialReference.credentialReference!,
+        ...credentialReference
+      };
+      readerAuthorities.push(swappedCredentialReference);
+    }
+
+    for (const readerAuthority of readerAuthorities) {
+      expect(createByokProviderBoundary(createByokProviderAuthorityReader(() => readerAuthority)).evaluate(requestedUse()))
+        .toEqual(authorityReaderUnavailable());
+    }
+  });
+
+  it("rejects hostile accessor, symbol, and non-plain authority outputs without invoking forbidden effects", () => {
+    const accessorEffects = forbiddenEffects();
+    const accessorAuthority = Object.defineProperty({}, "selection", {
+      enumerable: true,
+      get() {
+        recordForbiddenEffects(accessorEffects);
+        return authority().selection;
+      }
+    });
+
+    const symbolEffects = forbiddenEffects();
+    const symbolAuthority = Object.defineProperty(authority(), Symbol("hostile-reader-output"), {
+      enumerable: true,
+      get() {
+        recordForbiddenEffects(symbolEffects);
+        return authority();
+      }
+    });
+
+    const inheritedEffects = forbiddenEffects();
+    const inheritedAuthority = Object.create(Object.defineProperty({}, "selection", {
+      enumerable: true,
+      get() {
+        recordForbiddenEffects(inheritedEffects);
+        return authority().selection;
+      }
+    }));
+
+    for (const [readerAuthority, effects] of [
+      [accessorAuthority, accessorEffects],
+      [symbolAuthority, symbolEffects],
+      [inheritedAuthority, inheritedEffects]
+    ] as const) {
+      const result = createByokProviderBoundary(createByokProviderAuthorityReader(() => readerAuthority))
+        .evaluate(requestedUse());
+
+      expect(result).toEqual(authorityReaderUnavailable());
+      expect(effects).toEqual({
+        secretResolutions: 0,
+        providerCalls: 0,
+        networkCalls: 0,
+        ledgerAppends: 0,
+        portableWrites: 0
+      });
+      expect(JSON.stringify(result)).not.toMatch(/authorization|bearer|api[ _-]?key|https?:\/\//i);
     }
   });
 
@@ -284,4 +400,30 @@ function authority(prefix = "vendor") {
       promptArtifactHash: use.promptArtifactHash
     }
   };
+}
+
+function authorityReaderUnavailable() {
+  return {
+    kind: "unavailable" as const,
+    category: "authority-reader-unavailable" as const,
+    safeActionId: "action_check_provider_health" as const
+  };
+}
+
+function forbiddenEffects() {
+  return {
+    secretResolutions: 0,
+    providerCalls: 0,
+    networkCalls: 0,
+    ledgerAppends: 0,
+    portableWrites: 0
+  };
+}
+
+function recordForbiddenEffects(effects: ReturnType<typeof forbiddenEffects>) {
+  effects.secretResolutions += 1;
+  effects.providerCalls += 1;
+  effects.networkCalls += 1;
+  effects.ledgerAppends += 1;
+  effects.portableWrites += 1;
 }

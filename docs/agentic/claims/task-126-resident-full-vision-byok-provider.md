@@ -2,9 +2,9 @@
 
 ## Claim
 
-- Status: ready-for-review
-- Branch: `codex/task-126-resident-full-vision-byok-provider-reader-restart`
-- Base: `82cf9cedc590939e8769c58016df051813b10c0e`
+- Status: in-progress
+- Branch: `codex/task-126-resident-full-vision-byok-provider-reader-failclosed-recovery`
+- Base: `27a99b137dcb2508132441879764b6c46f59fa14`
 - Owned files:
   - `docs/agentic/claims/task-126-resident-full-vision-byok-provider.md`
   - `packages/agent/src/byok-provider.ts`
@@ -30,13 +30,36 @@ read-only evidence only and is not a candidate for integration.
 ## Verification evidence
 
 - RED: `npm test -- packages/agent/test/byok-provider.test.ts packages/agent/test/openai-compatible-provider.test.ts`
-  failed on the fresh restart exactly because `../src/byok-provider.js` did not
-  exist; the unrelated OpenAI-compatible suite passed (9 tests).
-- GREEN: the same exact focused command passed **2 files / 16 tests** after
-  creating the reader capability and boundary.
+  failed with the causal reader-authority regression: a swapped capability
+  returned `blocked/provider-capability-mismatch` instead of
+  `unavailable/authority-reader-unavailable`; the companion OpenAI-compatible
+  suite passed.
+- GREEN: the same exact focused command passed **2 files / 18 tests** after
+  reclassifying all reader-derived inconsistency paths as safe authority-reader
+  unavailability and adding hostile accessor, symbol, and prototype output
+  coverage with no forbidden-effect invocation.
 - `npm run typecheck` passed.
 - `git diff --check` passed.
 - `npm run factory:check` passed.
 
 No full verifier is authorized in this task. A fresh independent review is
 required after the scoped candidate is sealed.
+
+## Fail-closed recovery record
+
+- This fresh recovery starts from `27a99b137dcb2508132441879764b6c46f59fa14`.
+  The prior candidate remains preserved and unintegrated.
+- Cause: a factory-created reader was normalized and parsed safely, but its
+  post-reader capability, evidence, endpoint-policy, preparation, and
+  credential-binding consistency checks returned public `blocked` categories.
+  Those facts are reader-derived authority, not public requested-use input.
+- Repair: all malformed, stale, swapped, forged, or internally inconsistent
+  reader authority now returns the existing safe
+  `unavailable/authority-reader-unavailable` result before any effect. Public
+  strict requested-use normalization still returns `blocked/unsafe-input`
+  before reader invocation; healthy, missing, revoked, expired, and otherwise
+  unavailable credential-reference outcomes remain unchanged.
+- Scope remains exactly this claim, `packages/agent/src/byok-provider.ts`, and
+  `packages/agent/test/byok-provider.test.ts`. The next step is a fresh
+  defects-first review; no self-review, integration, `neo` action, provider,
+  network, credential, or external-reader work is authorized.
