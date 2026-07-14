@@ -567,7 +567,7 @@ async function settleBeforeDeadline<T>(
   work: Promise<T>,
   controller: AbortController,
   deadline: number
-): Promise<{ readonly kind: "value"; readonly value: T } | { readonly kind: "failed" | "timeout" }> {
+): Promise<{ readonly kind: "value"; readonly value: T } | { readonly kind: "failed" } | { readonly kind: "timeout" }> {
   const remainingMilliseconds = deadline - Date.now();
   if (remainingMilliseconds <= 0) {
     controller.abort();
@@ -680,7 +680,7 @@ function plainDataArray(value: unknown): readonly unknown[] | undefined {
       return undefined;
     }
     const descriptors = Object.getOwnPropertyDescriptors(value);
-    const lengthDescriptor = descriptors.length;
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
     if (lengthDescriptor === undefined || !("value" in lengthDescriptor) ||
         lengthDescriptor.get !== undefined || lengthDescriptor.set !== undefined ||
         !isNonnegativeInteger(lengthDescriptor.value)) {
