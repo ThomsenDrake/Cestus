@@ -124,7 +124,14 @@ async function launchOntologyBootstrapRun(
     return json(500, legacyFailureDiagnostic(report.error.message, report.error.allowedRepairActions));
   }
 
-  const runReady = await ensureRun(input, launchInput, report);
+  const reportEventId = await canonicalReportEventId(input.handle.ledger, report);
+  if (reportEventId === undefined) {
+    return json(500, diagnostic("Ontology bootstrap requires one exact canonical staged report ledger binding.", [
+      "rerun legacy inspection and verify the staged report event"
+    ]));
+  }
+
+  const runReady = await ensureRun(input, launchInput, report, reportEventId);
   if (!runReady.ok) {
     return json(500, runReady.body);
   }
@@ -138,7 +145,14 @@ async function launchOntologyBootstrapRun(
     runId: launchInput.runId,
     taskId: launchInput.taskId,
     sourceCollectionId: launchInput.sourceCollectionId,
-    report: report.report,
+    stagedReport: {
+      sourceCollectionId: report.report.sourceCollectionId,
+      scanBatchId: report.report.scanBatchId,
+      legacyReportId: report.report.legacyReportId,
+      reportHash: report.report.reportHash
+    },
+    reportEventId,
+    derivativeStore: mountedWorkspace.derivativeStore,
     review: report.review,
     evidenceLinks,
     selectedCandidateIds,
@@ -164,6 +178,21 @@ async function launchOntologyBootstrapRun(
     requestedCandidateIds: launchInput.selectedCandidateIds,
     selectedCandidateIds
   }));
+}
+
+async function canonicalReportEventId(
+  ledger: EventLedger,
+  report: LegacyReportData
+): Promise<string | undefined> {
+  const matches = (await ledger.readAll()).filter((event) =>
+    event.type === "legacy.import.report.generated" &&
+    event.payload.legacyReportId === report.report.legacyReportId &&
+    event.payload.sourceCollectionId === report.report.sourceCollectionId &&
+    event.payload.scanBatchId === report.report.scanBatchId &&
+    event.payload.reportHash === report.report.reportHash &&
+    event.payload.candidateSetHash === report.report.candidateSetHash
+  );
+  return matches.length === 1 ? matches[0]?.id : undefined;
 }
 
 async function readOntologyBootstrapRun(
@@ -264,10 +293,26 @@ async function ensureTask(
 async function ensureRun(
   input: HandleAgentOntologyBootstrapRouteInput,
   launchInput: LaunchInput,
-  report: LegacyReportData
+  report: LegacyReportData,
+  reportEventId: string
 ): Promise<{ readonly ok: true } | { readonly ok: false; readonly body: unknown }> {
   const status = await input.runtime.status();
-  if (status.runs.some((run) => run.runId === launchInput.runId)) {
+  const existing = status.runs.find((run) => run.runId === launchInput.runId);
+  if (existing !== undefined) {
+    if (existing.runType !== "ontology-bootstrap" || !isExactOntologyBootstrapRunProvenance({
+      sourceEventIds: existing.sourceEventIds,
+      inputArtifactHashes: existing.inputArtifactHashes,
+      reportEventId,
+      reportHash: report.reportHash,
+      candidateSetHash: report.candidateSetHash
+    })) {
+      return {
+        ok: false,
+        body: diagnostic("Existing ontology bootstrap run is not bound to the exact canonical staged report.", [
+          "start a new run with the current canonical staged report"
+        ])
+      };
+    }
     return { ok: true };
   }
 
@@ -279,6 +324,7 @@ async function ensureRun(
       kind: "workspace",
       refs: [input.handle.mountedWorkspace?.workspaceId ?? "ws_local_runtime"]
     },
+    sourceEventIds: [reportEventId],
     inputArtifactHashes: [report.reportHash, report.candidateSetHash]
   });
   if (started.ok) {
@@ -288,6 +334,23 @@ async function ensureRun(
     ok: false,
     body: diagnostic("Ontology bootstrap run could not be started.", ["inspect agent diagnostics"])
   };
+}
+
+export function isExactOntologyBootstrapRunProvenance(input: {
+  readonly sourceEventIds: readonly string[];
+  readonly inputArtifactHashes: readonly string[];
+  readonly reportEventId: string;
+  readonly reportHash: string;
+  readonly candidateSetHash: string;
+}): boolean {
+  return sameExactStringSet(input.sourceEventIds, [input.reportEventId]) &&
+    sameExactStringSet(input.inputArtifactHashes, [input.reportHash, input.candidateSetHash]);
+}
+
+function sameExactStringSet(actual: readonly string[], expected: readonly string[]): boolean {
+  return actual.length === expected.length &&
+    new Set(actual).size === actual.length &&
+    actual.every((value) => expected.includes(value));
 }
 
 function mountedWorkspaceFromHandle(handle: LocalRuntimeHandle): MountedWorkspace | undefined {
