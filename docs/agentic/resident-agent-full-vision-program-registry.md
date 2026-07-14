@@ -3385,3 +3385,22 @@ explicit implementation authorization.
   terminal actor/correlation/event-type/causation readback. No full verifier,
   integration, downstream dispatch, self-integration, or `neo` change is
   authorized pending an APPROVE verdict.
+
+## RV-1-C-082 — Task123 exact-provenance/replay review approval and full-gate grant
+
+- Fresh independent reviewer approved
+  `e7a1d5b6..1644b9fc2cc7b31ed66c095547ab3c081963c185` with no P1/P2
+  findings. It confirmed exact duplicate-free workflow and route provenance,
+  mandatory reader/store authority, replay reuse of the existing durable
+  terminal handoff, and the exact final-output -> prepared -> recorded ->
+  terminal actor/correlation/event-type/causation/order readback. Its
+  read-only checkout intentionally had no `node_modules`, so it did not rerun
+  the retained focused suite; this is an environmental non-approval limitation
+  only, and no source mutation or full verification occurred.
+- Fresh authenticated Codex `/status` immediately before the candidate full
+  gate reports Weekly **28% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-
+  Spark remains 100% left. No `/usage`, reset, or redemption occurred. Above
+  the 10% guard, one exclusive candidate `npm run verify` is granted on clean
+  `1644b9fc` only. No concurrent full verifier, integration, downstream
+  dispatch, self-integration, or `neo` change is authorized until its retained
+  result and a subsequent coordinator decision are recorded.
