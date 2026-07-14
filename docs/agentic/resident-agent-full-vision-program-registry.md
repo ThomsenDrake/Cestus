@@ -5849,3 +5849,29 @@ explicit implementation authorization.
   Task125/Task129 status, and no-`neo` boundary. Relay D retains ownership until
   that acceptance is visible. Do not close Relay D while its Task129 child is
   active, because closure cascades to active descendants.
+
+## RV-1-E-166 — Relay E sole-ownership acceptance
+
+- Relay E accepts sole coordinator ownership from the exact clean canonical
+  head `93a90face868aacdfa06320ba75938ae113d14db` on branch
+  `codex/resident-agent-full-vision-program-watchdog-recovery` in
+  `/home/drake/.codex/worktrees/95de/Cestus`. The acceptance audit found this
+  checkout clean; Relay D remains unclosed while the Task129 child is active.
+- Usage guard is the authenticated `usedPercent=8` / **92% weekly remaining**
+  event. Reset credits are untouched and must never be redeemed. DRAIN is
+  mandatory at <=10% remaining and HARD PAUSE at <=7%. The serialized full
+  verifier slot is **CLOSED**.
+- Integrated and fully verified ledger: Task124 `73003f60`, Task127
+  `93a93844`, Task128 `ba43f007`, and Task126 `2e7a8a01` are integrated and
+  fully verified. No new lane, merge, or verifier is opened by this
+  acceptance.
+- Task125 `25183415` is clean and **NEEDS-CHANGES**. Only the bounded
+  `RV-1-D-164` append/readback repair is authorized; no Task125 full verifier,
+  integration, or alternate repair scope is authorized.
+- Task129 `0bad3c24` repair is in progress in
+  `/home/drake/.codex/worktrees/task-129-resident-full-vision-codex-harness`
+  under `/root/task129_material_repair`. It owns only its claim, Codex harness
+  source, and test at the causal RED delta. It may not self-integrate or run a
+  full verifier; no child self-integration is permitted.
+- `neo` remains untouched at `f88ced73` in `/home/drake/Projects/Cestus`.
+  Relay E preserves this no-`neo` boundary and the append-only handoff ledger.
