@@ -4446,3 +4446,58 @@ explicit implementation authorization.
   TDD/focused/typecheck/diff/factory only and require a fresh independent
   review. No full verifier, integration, self-integration, or `neo` action is
   authorized for either source lane.
+
+## RV-1-C-128 — Relay C ownership acceptance and recovery ledger
+
+- Recorded at: 2026-07-14T21:25:00Z.
+- Role: coordinator / sole integration owner.
+- Lane and wave: coordinator / 1.
+- Task ID and claim: Relay C `019f6276-d8a3-7453-ae5c-8776ad6fe9e8` /
+  `docs/agentic/resident-agent-full-vision-program-registry.md`.
+- Branch and worktree:
+  `codex/resident-agent-full-vision-program-watchdog-recovery` /
+  `/home/drake/.codex/worktrees/95de/Cestus`.
+- Base commit and required head:
+  `bc88090e0a27ae329c8b26a634f62c626134023d` /
+  `bc88090e0a27ae329c8b26a634f62c626134023d` before this forward-only
+  acceptance commit. `git status --porcelain=v1` was empty at acceptance.
+- Model configuration: GPT-5.6 Terra / Extra High remains mandatory for every
+  implementation, repair, and review child; no fallback is permitted.
+- Governing spec and plan:
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9`
+  and
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@c7dc10b9`.
+- Owned files: this registry entry only. Forbidden files: every production,
+  test, provider, runtime, UI, claim, and shared-contract file unless a later
+  scoped work order explicitly assigns it.
+- Dependencies and required merged commits: Relay A final checkpoint
+  `RV-1-C-127`; Task124 fresh review approval for
+  `aaca7d88ff4d4c12e8c8c67ac3d3b173edbe4fca`; Task126 authority-port contract
+  approval for `964a2d41729def6fcebe4700c5b1bd7fe298d556`.
+- Approval record: the user explicitly transferred sole coordinator ownership
+  to Relay C through Wave 5, authorizing coordinator-issued scoped work
+  orders with `superpowers:subagent-driven-development`, systematic debugging,
+  TDD, verification-before-completion, fresh independent review, and no child
+  self-integration. `neo` remains untouched without separate user instruction.
+- Claim status: in-progress as coordinator continuity owner.
+- Usage and verifier gate: authenticated handoff reports 3% used / **97%
+  weekly remaining**, Spark 0% used / **100% remaining**, and all five reset
+  credits untouched. Normal mode applies above 10%; DRAIN begins at or below
+  10% and a durable hard pause at or below 7%. The serialized full-verifier
+  slot remains closed pending a new integration-boundary usage gate.
+- Active ledger: Task124 is approved but not yet full-verified or integrated;
+  Task125 remains deferred until that integration and rebase. Task128
+  `/root/task128_proxy_record_repair` owns only the revoked-array-Proxy and
+  own-data `__proto__` repair in its preserved isolated worktree. Task126
+  `/root/task126_canonical_reader_restart` owns only its frozen claim,
+  `byok-provider` source, and focused test in its fresh isolated branch.
+- Review verdict: Task124 approved; Task128 repair and Task126 implementation
+  remain pending their own fresh independent reviews.
+- Rebase record: Task125 has no rebase authorization until Relay C integrates
+  an independently approved and freshly verified Task124 descendant.
+- Merge readiness: Task124 is pending coordinator usage gate and serialized
+  candidate verification; Task126 and Task128 are not merge-ready. No full
+  verifier, integration, or `neo` action is active at acceptance.
+- Archive check: Relay A is stopped; the handoff HEAD, worktree cleanliness,
+  active-worker identities, review state, usage guard, and no-`neo` boundary
+  are recorded above. Relay C now holds sole forward-only coordination.
