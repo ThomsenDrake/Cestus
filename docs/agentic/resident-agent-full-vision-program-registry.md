@@ -3684,3 +3684,30 @@ explicit implementation authorization.
   plus the four-finding TDD repair for Task 131 at `e2f1626d`. Keep full
   verification serialized, recheck authenticated usage at every integration
   boundary, and leave `neo` untouched without explicit operator authorization.
+
+## RV-1-C-094 — Wave 1 parallel review and repair authorization
+
+- From clean coordinator head `35e04603072b3f9b8db950602a93547b1b63793b`, the
+  authenticated `25%` remaining usage gate authorizes three isolated,
+  disjoint, non-full lanes: a fresh read-only Task125 review of
+  `ceae7ca7..7da9e29f`; a fresh read-only Task127 review of the full
+  `ceae7ca7..15ed426b` rejected-plus-repair range; and a Task131 TDD repair
+  beginning at rejected `e2f1626d`. Each must return an explicit
+  defects-first APPROVE or NEEDS-CHANGES verdict, or a structured blocker.
+- Task131 owns only its existing claim,
+  `packages/ui/src/agent/resident-runtime-types.ts`,
+  `packages/ui/src/agent/resident-runtime-adapter.ts`, and
+  `packages/ui/test/resident-runtime-adapter.test.ts`. It must first write and
+  run causal RED coverage for the authoritative `resident-wake-status.v1`
+  loop/trigger/provider/approval/unavailable DTO families; attempt and
+  lease-event provenance equality; enumerable own `__proto__`; and token,
+  private-key, and environment-value diagnostics. It then makes the smallest
+  browser-only Green repair and runs its named focused suite, typecheck, diff
+  check, and factory readiness before one scoped commit.
+- `superpowers:subagent-driven-development` is expressly approved where
+  relevant, together with test-driven development, systematic debugging,
+  fresh independent review, and verification-before-completion. No child may
+  self-review, self-integrate, merge/rebase/push `neo`, alter another lane,
+  use a credential or provider, start `npm run verify`, or dispatch a child.
+  The coordinator alone retains registry, serialized full-verifier, and
+  integration ownership.
