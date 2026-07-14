@@ -3855,3 +3855,23 @@ explicit implementation authorization.
 - The Task131 plan-correction review remains pending until a child slot opens.
   Task125 root-cause repair remains active. No full verifier or `neo` action is
   active.
+
+## RV-1-C-102 — Task127 re-review P2 and bounded regression repair
+
+- Fresh re-review of `15ed426b..4c3a0a65` returned **NEEDS-CHANGES** for spec
+  compliance and code quality solely because the suite does not causally prove
+  issuer expiration after `resolveForExactUse` settles. The reviewer found no
+  P1: no public issuer remains, full exact-use binding is private, release is
+  an immutable own closure, hostile boundaries are normalized before use, and
+  scope/diagnostics stay compliant. Still, removing `issuer.close()` would
+  leave the retained 20 tests green, so the candidate remains unintegrated.
+- One fresh bounded Task127 test-first repair is authorized at
+  `4c3a0a6528a181432b667c123bce8f75aeae699e` in the same exact three-file
+  scope. It must capture the backend issuer during a valid resolution and prove
+  that after settlement it returns `undefined` and cannot mint accepted
+  material, then make only the smallest repair if the causal RED requires one.
+  It must rerun the named focused suite, typecheck, diff check, and factory
+  readiness; update its claim, remove a temporary dependency link, commit
+  clean, and stop for another fresh review. The retained authenticated `25%`
+  usage gate is above drain; no full verifier, integration, child dispatch,
+  credential/provider use, self-integration, or `neo` change is authorized.
