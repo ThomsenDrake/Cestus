@@ -5301,3 +5301,26 @@ explicit implementation authorization.
   descendant, append an explicit sole-ownership acceptance with exact head and
   ledger, and prove it is active before Relay C stops. This checkpoint alone
   does not transfer or relinquish ownership.
+
+## RV-1-C-147 — Fresh usage-gate authentication failure
+
+- Recorded at: 2026-07-14T21:58:00Z by the sole Relay C coordinator.
+- Required read attempt: the coordinator discovered the local Codex app-server
+  `account/rateLimits/read` protocol and attempted the read-only gate through
+  its control socket. It returned no usable rate-limit snapshot because the
+  local app-server log reports ChatGPT backend `401 Unauthorized` and an
+  expired refresh token.
+- Root cause and boundary: the current local credential cannot refresh. The
+  coordinator did not call login, logout, token refresh mutation, reset-credit
+  consumption, or any other credential-changing operation. This is a failed
+  authentication source, not evidence that the previously recorded 95% gate
+  remains fresh across changed candidates.
+- Effect: Task126 `512a169a` and Task128 `0c7eb37f` remain clean and
+  review-approved but cannot consume a serialized candidate full verifier or
+  integration slot without a new authenticated usage gate. Task125 remains
+  deferred; all full verifiers, integrations, provider/credential/network
+  actions, reset credits, and `neo` remain stopped.
+- Recovery: resume the two integration sequences only after an authenticated
+  rate-limit source is restored or the parent supplies a new authenticated
+  gate. Reauthenticating the expired local account is a credential-state action
+  outside this coordinator's inferred authority.
