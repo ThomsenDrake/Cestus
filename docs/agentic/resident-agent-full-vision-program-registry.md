@@ -5057,3 +5057,27 @@ explicit implementation authorization.
   exact-scope fresh Terra/xhigh repair authorization.
 - Holds: Task126 repair remains non-full and isolated; Task125, all unrelated
   full verifiers/integrations, reset-credit use, and `neo` remain untouched.
+
+## RV-1-C-141 — Task128 mutable typecheck-recovery preflight stop
+
+- Recorded at: 2026-07-14T23:00:00Z by the sole Relay C coordinator.
+- Preflight result: before the `RV-1-C-140` candidate full verifier could
+  start, the Task128 worktree was no longer clean and its branch identified
+  itself as `codex/task-128-resident-full-vision-local-model-provider-typecheck-recovery`.
+  The reviewed candidate head remains `21f7690250a004c5174bb4f784ce9bd60472ccfe`;
+  no `npm run verify` process, merge, or integration was started from the
+  mutable worktree.
+- Preserved exact delta: only `local-model-provider.ts` is modified, changing
+  the `settleBeforeDeadline` discriminated-union spelling and replacing direct
+  descriptor-map length access with `Object.getOwnPropertyDescriptor`. An
+  ignored temporary `node_modules` path is also present. This is compatible
+  with an exact-scope compiler/typecheck recovery, but it is not a clean
+  candidate, review, or verification result.
+- Recovery posture: do not reset, discard, integrate, or full-verify this
+  mutable state. The active scope may first produce a committed exact Task128
+  recovery with causal compiler/descriptor evidence, focused Green, typecheck,
+  diff, and factory proof, then receive a new fresh independent Terra-attested
+  review. The `RV-1-C-140` full-verifier grant is not transferred to a changed
+  candidate; a later integration boundary requires a new authenticated gate.
+- Holds: Task128 integration, Task125, all full verifiers, reset-credit use,
+  and `neo` remain stopped. Task126 continues its separate non-full repair.
