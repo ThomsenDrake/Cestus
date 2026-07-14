@@ -4330,3 +4330,18 @@ explicit implementation authorization.
   sole HTTP/transport and UI composition ownership. No reviewer may change
   files, start a full verifier, integrate, dispatch a child, redeem a credit,
   or touch `neo`.
+
+## RV-1-C-125 — Active fresh-review child ledger
+
+- Task124 fresh independent defects-first reviewer:
+  `/root/task124_generation_rereview`, read-only on
+  `1a69f73f06c70d510e0137441937f3d4d6667018..aaca7d88ff4d4c12e8c8c67ac3d3b173edbe4fca`.
+- Task128 fresh independent defects-first reviewer:
+  `/root/task128_timeout_boundary_rereview`, read-only on
+  `c71fde1e2d64bb953f36ed92a631c11eec79914a..e1fa208245ba3032747be9375b7e552196a20ecf`.
+- Task126 authority-source documentation reviewer:
+  `/root/task126_authority_contract_review`, read-only on
+  `76199148d3d0b6f8ce1d3cbb3b0e0da50012da3a..964a2d41729def6fcebe4700c5b1bd7fe298d556`.
+- These are three isolated read-only reviews. No candidate or merged full
+  verifier is active; no integration, source lane, successor, reset-credit, or
+  `neo` action is authorized while their verdicts are pending.
