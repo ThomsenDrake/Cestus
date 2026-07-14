@@ -2725,3 +2725,16 @@ explicit implementation authorization.
   integrate it, run focused/factory and exactly one serialized merged full
   verifier, then append evidence. Before any later dispatch, retry the exact
   authenticated PTY `/status` procedure; if unavailable, fail closed again.
+
+## RV-1-C-049 — Coordinator integration: approved Task124 root-cause repair
+
+- Relay A integrated independently approved Task124 candidate
+  `cd65a7bb350da45fcab0fbda2b601b4316df2996` by no-ff merge at `0ed67e16`;
+  its exact claim/source/test scope is preserved and `neo` remains untouched.
+- The claim-required merged focused suite passed 47/47; factory readiness and
+  diff hygiene passed. The single retained merged `npm run verify` passed
+  typecheck; 196 passed + 3 skipped test files; 2,322 passed + 5 skipped
+  tests; Vite production build; and factory readiness.
+- Task124 is integrated and verified. Before any new dispatch, the coordinator
+  must obtain the next authenticated `/status` gate; rejected Task123 remains
+  blocked on its ingestion-owned staged-report reader prerequisite.
