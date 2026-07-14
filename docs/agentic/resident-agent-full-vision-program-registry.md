@@ -5702,3 +5702,24 @@ explicit implementation authorization.
   sealing gates still pending. Their results may be consumed only after Relay D
   independently verifies clean scope, evidence, review, usage, and serialized
   gate conditions. `neo` remains untouched.
+
+## RV-1-D-159 — Task126 Relay D review approval and candidate-full grant
+
+- Fresh independent Relay D review was dispatched in an accepted
+  `gpt-5.6-terra` / `xhigh` no-history spawn for exact clean range
+  `512a169af3caad7e0c2d270040f24c36443913ec..093b54efd2b9ebd670973d4676b101433d88e233`.
+  Verdict: **APPROVE**. It found no P1/P2 defect or spec drift; public input
+  normalization precedes reader invocation, malformed input has zero reader
+  calls and returns `blocked/unsafe-input`, valid absent/forged readers remain
+  `unavailable/authority-reader-unavailable`, hostile shapes fail closed, and
+  no secret/portable/provider/network or Task139 path was introduced. Exact
+  scope and `git diff --check` passed. The reviewer ran no tests or verifier.
+- Authenticated Relay D boundary gate is `usedPercent=8` / **92% weekly
+  remaining**, with reset credits untouched. Normal mode applies; no credit is
+  redeemed.
+- Grant: after clean-worktree and process inspection, exactly one serialized
+  coordinator-controlled `npm run verify` may run for Task126 candidate
+  `093b54efd2b9ebd670973d4676b101433d88e233`. Its output must be captured;
+  temporary dependency setup must be removed; and any result is recorded
+  forward-only. No Task125 or Task129 full verification, no integration, and
+  no `neo` action is opened by this grant.
