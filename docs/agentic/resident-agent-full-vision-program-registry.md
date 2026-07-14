@@ -3495,3 +3495,29 @@ explicit implementation authorization.
   self-integrate, dispatch another child, start `npm run verify`, touch another
   lane, use a credential/provider, or merge `neo`; it must remove any
   temporary dependency link and stop clean for fresh independent review.
+
+## RV-1-C-086 — Task127 candidate sealed and fresh review authorization
+
+- Task127 sealed clean candidate
+  `395319fbdfe5351653572fdfdc6e04c00ef794fb` on
+  `codex/task-127-resident-full-vision-os-secret-store`, descending from
+  `ceae7ca7`. Coordinator inspection confirms the exact authorized scope:
+  Task127 claim, `packages/agent/src/os-secret-store.ts`, and
+  `packages/agent/test/os-secret-store.test.ts`; `git diff --check` is clean.
+  The worker retained causal module-absence RED evidence, then reported the
+  named focused command green (the absent legacy filter left **1 file / 10
+  tests** selected), plus `npm run typecheck`, diff check, and factory
+  readiness. Its temporary dependency link was removed before commit. No
+  candidate full verifier, integration, downstream dispatch, self-integration,
+  credential/provider use, or `neo` change occurred.
+- Fresh authenticated Codex `/status` immediately before the review dispatch
+  reports Weekly **27% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  weekly remains 100% left. No `/usage`, reset, or redemption occurred. Above
+  the 10% drain guard, exactly one fresh independent read-only defects-first
+  review of `ceae7ca7..395319fbdfe5351653572fdfdc6e04c00ef794fb` is authorized.
+  It must inspect the CF-1-selected exact-use secret capability, hostile
+  object/prototype/getter behavior, no plaintext/fallback/cache/browser/CLI
+  path, opaque identifiers and secret-safe diagnostics, fake-only tests,
+  ownership, and all verification evidence. It must return APPROVE or
+  NEEDS-CHANGES; no full verifier, integration, downstream dispatch,
+  self-integration, or `neo` change is authorized pending that verdict.
