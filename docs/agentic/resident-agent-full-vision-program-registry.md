@@ -5787,3 +5787,29 @@ explicit implementation authorization.
   prohibited `material` is never accessed, then classify the safe own-data
   kind before any full normalization/copy. No full verifier, credentials,
   network/provider action, self-integration, or `neo` action is authorized.
+
+## RV-1-D-164 — Task125 Terra review findings and second bounded repair
+
+- Fresh independent accepted `gpt-5.6-terra` / `xhigh` review of exact Task125
+  range `482361a5ac0dbe04ae9826caecddf9466e8f400f..251834159ffd72c5e7293a7cfaf0a0ed210201cb`
+  returned **NEEDS-CHANGES**. `git diff --check` passed; no test or verifier
+  was run.
+- P1: `appendAndReadBack` validates caller tuple consistency but does not
+  require a pending outage or bind it to `current.facts.observedActiveClaim`.
+  A current capability can therefore submit a valid-looking invented
+  reconciliation with forged claim/evidence/record material and reach the
+  mounted append port. P2: reconciliation readbacks are returned raw without
+  canonical own-data parsing, immutability, or exact record/admission/event-ID
+  validation.
+- Repair authorization: a fresh isolated Task125 worker may continue from
+  clean `251834159ffd72c5e7293a7cfaf0a0ed210201cb` owning only its existing
+  claim, `packages/local-runtime/src/portable-workspace-lifecycle.ts`, and
+  `packages/local-runtime/test/portable-workspace-lifecycle.test.ts`.
+  `superpowers:subagent-driven-development`, systematic debugging,
+  test-driven development, verification-before-completion, and later fresh
+  independent review are explicitly authorized. First causal RED must prove
+  invented/no-outage and swapped-active-claim/outage inputs make zero mounted
+  reconciliation calls, and hostile/swapped readbacks reject. Green must bind
+  append to canonical mounted outage/active-claim facts and canonicalize
+  readbacks. No full verifier, self-integration, credentials/network/provider
+  action, or `neo` action is authorized.
