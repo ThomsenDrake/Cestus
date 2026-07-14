@@ -4808,6 +4808,38 @@ explicit implementation authorization.
   authorized. Full verification, integration, self-review, provider action,
   and `neo` remain closed.
 
+## RV-1-C-138 — Fresh provider recovery review batch
+
+- Recorded at: 2026-07-14T22:43:00Z by the sole Relay C coordinator.
+- Fresh authenticated local Codex `/status` immediately before these dispatches
+  reports 95% weekly remaining (reset 16:37 on 21 Jul), Spark Weekly 100%,
+  and five reset credits untouched. No reset credit was used. This normal-mode
+  gate opens exactly two independent read-only reviews; no candidate or merged
+  full verifier, integration, downstream lane, or `neo` action is authorized.
+- Task128 candidate `0c7eb37f5fd0d5844c6fa849ccd62ea3da8f6f2a`, range
+  `21f7690250a004c5174bb4f784ce9bd60472ccfe..0c7eb37f5fd0d5844c6fa849ccd62ea3da8f6f2a`,
+  is clean on its typecheck-recovery branch. It changes only the Task128 claim
+  and local-model source. Evidence: locked source compiler five-error RED to
+  no-diagnostic Green; focused 2 files / 42 tests; project typecheck using
+  temporary coordinator-pinned dependencies; diff and factory passed; setup
+  removed. Review must prove the discriminated result and descriptor-map
+  fixes, retain revoked-Proxy and own-data `__proto__` safety, timeout
+  reservation behavior, no secret/provider/network/fallback effect, and exact
+  scope. The earlier candidate has no independent full authorization.
+- Task126 candidate `512a169a5fd3cad50ffcc9ba5917bd8df890fdc8`, range
+  `27a99b137dcb2508132441879764b6c46f59fa14..512a169a5fd3cad50ffcc9ba5917bd8df890fdc8`,
+  is clean on its failclosed-recovery branch. It changes only the Task126
+  claim/source/test. Evidence: swapped/inconsistent reader authority RED
+  (1 fail / 17 pass) to focused 2 files / 18 tests Green, typecheck, diff, and
+  factory; setup removed. Review must verify invalid reader-derived authority
+  fails unavailable, hostile reader output cannot trigger getters/effects, and
+  the frozen Task139 source-mount seam is preserved without inventing a second
+  verifier. The reviewer must distinguish public requested-use unsafe input
+  (blocked before reader) from post-reader authority failure (unavailable).
+- Each reviewer is read-only, defects-first, and must return explicit APPROVE
+  or NEEDS-CHANGES. Neither may run `npm run verify`, edit, dispatch, use a
+  provider/credential, self-integrate, or touch `neo`.
+
 ## RV-1-C-132 — Task124 verifier ordering evidence and Task128 mutable-review block
 
 - Recorded at: 2026-07-14T22:10:00Z by the sole Relay C coordinator.
