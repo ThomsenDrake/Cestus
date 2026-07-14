@@ -4778,3 +4778,34 @@ explicit implementation authorization.
   in parallel. Neither review authorizes source mutation, self-review,
   self-integration, integration, any provider/credential/network action,
   Task125 rebase/restart, or `neo` mutation.
+
+## RV-1-C-134 — Required reviewer-host configuration unavailable
+
+- Recorded at: 2026-07-14T22:20:00Z by the sole Relay C coordinator.
+- Role: coordinator / configuration stop-condition recorder.
+- Lane and wave: P / 1.
+- Governing spec and plan:
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`
+  and
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Stop condition: both newly dispatched, otherwise independent reviewers
+  reported that their host is GPT-5 rather than the mandatory GPT-5.6 Terra
+  with Extra High reasoning. Per the exact child work orders and governing
+  program, they performed no candidate inspection, tests, edits, full
+  verification, integration, dispatch, provider/credential/network action,
+  reset-credit use, or `neo` action. No fallback model was selected.
+- Affected gates: Task128 candidate
+  `21f7690250a004c5174bb4f784ce9bd60472ccfe` and Task126 candidate
+  `27a99b137dcb2508132441879764b6c46f59fa14` remain clean, unreviewed, and
+  unintegrated. Their prior review authorizations are preserved but cannot be
+  consumed without the exact required host configuration.
+- Dependency protection: Task125 remains stopped despite verified Task124;
+  no new full verifier, integration, Task125 rebase/restart, downstream lane,
+  or `neo` action may proceed on the unavailable host.
+- Usage posture: the recorded 97% weekly / Spark 100% / five-credit-untouched
+  gate remains normal-mode evidence, but it cannot waive the mandated model
+  configuration. No reset credit was redeemed.
+- Recovery: resume only by dispatching new fresh independent reviewers on an
+  available GPT-5.6 Terra / Extra High host under a fresh scoped authorization
+  and usage gate. Proceeding on a different host requires a user decision; the
+  coordinator must not infer that authority.
