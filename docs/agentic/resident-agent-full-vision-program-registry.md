@@ -5910,3 +5910,26 @@ explicit implementation authorization.
   16/16 passing and typecheck, diff, and factory gates passed; no full verifier
   ran. It now awaits a fresh independent `gpt-5.6-terra` / `xhigh` review of
   the authorized range before any integration decision.
+
+## RV-1-E-168 — Terra/xhigh configuration gate
+
+- The visible coordinator issued the authorized bounded Task125 repair and
+  fresh independent Task129 review under the governing design and plan. Both
+  fresh routes stopped before task action because their available runtime
+  identified as GPT-5 rather than the exact required `gpt-5.6-terra` /
+  Extra High configuration. This is a required fail-closed configuration gate,
+  not a repair attempt, review verdict, or evidence of task completion.
+- Coordinator readback found both task worktrees clean with `git diff --check`
+  clean after those stops: Task125 remains exactly
+  `251834159ffd72c5e7293a7cfaf0a0ed210201cb` and **NEEDS-CHANGES** under
+  RV-1-D-164; Task129 remains exactly
+  `bacc742938b1b35a2aa07ab6ef34f4753e7b523f` and awaits its required fresh
+  independent review. No child wrote a claim, source, test, registry, or
+  integration change.
+- Do not substitute this unavailable configuration with a lower or different
+  model, rerun the same blocked route, open the full-verifier slot, or change
+  `neo`. Resume these lanes only from a normal user-visible coordinator session
+  that can provide the exact required Terra/xhigh task configuration. The last
+  authenticated usage guard remains `usedPercent=9` / **91% weekly remaining**;
+  reset credits remain untouched, DRAIN/HARD-PAUSE thresholds remain in force,
+  and the full-verifier slot remains **CLOSED**.
