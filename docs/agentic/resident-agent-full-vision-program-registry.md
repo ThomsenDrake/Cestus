@@ -3911,3 +3911,25 @@ explicit implementation authorization.
   reviewing `7da9e29f..9ea55cba`. Task126 and Task127 issuer-regression
   implementation lanes remain active and disjoint. No full-verifier,
   integration, or `neo` action is active.
+
+## RV-1-C-106 — Task125 re-review rejection and Task126 candidate review
+
+- Task125 re-review returned **NEEDS-CHANGES**. Candidate `9ea55cba` remains
+  rejected and unintegrated. P1: `authority.invalidate()` is a no-op, so an
+  already-issued admission remains usable after watcher loss and no outage is
+  retained; this violates monotonic revocation/stale-token invalidation. P1:
+  the lifecycle test still names dropped `SupervisorLeaseReadbackEvidence` and
+  `WorkspaceOutageObservation` types, making its claimed typecheck evidence
+  non-authoritative until rerun. The next repair must causal-RED an
+  already-issued admission across invalidate/disconnect and then ensure exact
+  compilation before review. No full or integration is authorized.
+- Task126 sealed clean candidate
+  `15549bbb1b9bd93863d8fc6066ce54e9aae1a212` on
+  `codex/task-126-resident-full-vision-byok-provider`, descending from
+  `bff99bba`. Its exact scope is the Task126 claim, BYOK source, and BYOK test.
+  It recorded module-absence RED and focused GREEN **2 files / 15 tests**,
+  typecheck, diff check, and factory readiness; its temporary dependency link
+  was removed. No full verifier, provider call, credential, integration, or
+  `neo` change occurred. Under the retained authenticated `25%` gate, one
+  fresh independent read-only review is authorized before any candidate full
+  request.
