@@ -4140,3 +4140,42 @@ explicit implementation authorization.
   clean coordinator head `c71fde1e2d64bb953f36ed92a631c11eec79914a`, within
   its exact claim/source/test non-full scope. The serialized full-verifier slot
   remains closed; no child may self-integrate or touch `neo`.
+
+## RV-1-C-117 — Task125 contract-owner recovery and Task126 review gate
+
+- Fresh Task125 review rejected `7b8430c9a7bd2550ae3b656ffc8dbc12ee0fb058`;
+  it remains unintegrated evidence. P1: same-identity revalidation can make a
+  stale admission valid again because the frozen `WorkspaceAdmissionSnapshot`
+  carries only public identity/mount fields. P1: external authority invalidation
+  has no callback into the wake supervisor's active controller, so an already
+  running effect can continue. The reviewer verified the required in-flight and
+  reconnect counterfactuals are missing.
+- Coordinator root-cause tracing confirms this cannot be repaired in Task125's
+  exact three-file scope: `wake-supervisor.ts` strict-clones its admission and
+  owns the active `AbortController`; the lifecycle façade cannot preserve an
+  opaque generation through that clone or abort an in-flight runtime. This is a
+  Task124 contract/file-owner recovery, not a product or user decision.
+- A fresh Task124 admission/cancellation repair is authorized from the current
+  coordinator head. It owns only
+  `docs/agentic/claims/task-124-resident-full-vision-wake-supervisor-admission-recovery.md`,
+  `packages/agent/src/wake-supervisor.ts`, and
+  `packages/agent/test/wake-supervisor.test.ts`. It must TDD-prove an opaque
+  per-revalidation admission generation survives strict boundary freezing and
+  rejects old same-identity lease/reconciliation input, and an optional
+  authority invalidation subscription aborts a genuinely in-flight runtime and
+  returns the durable cancelled path before further effects. It must preserve
+  all exact provenance, append/readback, pause/stop/recovery and fail-closed
+  behavior. Its focused command is `npm test -- packages/agent/test/wake-supervisor.test.ts
+  packages/agent/test/scheduler.test.ts`; no full verifier is authorized.
+- Task124 expressly approves `superpowers:subagent-driven-development` where
+  relevant, systematic debugging, TDD, verification-before-completion, and
+  fresh independent review. No child self-review/integration/dispatch, shared
+  fallback, `neo` action, or scope expansion is authorized. Task125 will rebase
+  and resume only after an approved Task124 repair merges.
+- Task126 repair sealed clean candidate
+  `dc9bcce06f95a1d4773150e769a4d1e08991dd04` with causal RED (elapsed expiry,
+  forged bindings, URL-shaped inputs), exact focused Green **2 files / 19
+  tests**, typecheck/diff/factory, and no full verifier. One fresh independent
+  read-only review is authorized. Fresh local `/status` immediately before
+  these dispatches reports **99% weekly remaining**, Spark 100%, and five reset
+  credits untouched; normal mode applies and the full slot stays closed.
