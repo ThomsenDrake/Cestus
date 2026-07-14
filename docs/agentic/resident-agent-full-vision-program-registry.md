@@ -6062,3 +6062,33 @@ explicit implementation authorization.
   secret/plaintext fallback, unofficial token route, data-loss risk, shared
   contract conflict, unavailable dependency, or repeated focused verifier
   failure and return structured evidence to the coordinator.
+
+## RV-1-E-173 — Correction: merged Task125 and Task129 typecheck failure
+
+- **Forward-only correction of RV-1-E-171.** Its claim that merged
+  `npm run typecheck` passed is factually wrong. The coordinator used
+  newline-separated commands, allowing later factory/status commands to mask
+  the nonzero typecheck result. Merged typecheck emitted Task129 `TS2322` and
+  `TS7006` errors, and Task125 `TS7006`, `TS2322`, `TS18046`, `TS2304`, and
+  `TS2722` errors. Future verifier gates whose exit code matters must use
+  fail-fast `&&`, never newline-separated masking.
+- Preserve no-ff merges `84d162ee` (Task125) and `96257965` (Task129) as
+  provisional append-only program history. Neither task is **integrated-ready**
+  or a valid Wave 1 dependency while the merged program typecheck is red; the
+  focused-suite/factory observations in RV-1-E-171 do not supersede this
+  failing typecheck evidence.
+- Two disjoint fresh root-cause repair lanes are authorized from the current
+  program branch: Task125 owns only its existing claim,
+  `packages/local-runtime/src/portable-workspace-lifecycle.ts`, and its test;
+  Task129 owns only its existing claim,
+  `packages/agent/src/codex-subscription-harness.ts`, and its test. Each may
+  use `superpowers:subagent-driven-development`, systematic debugging,
+  test-driven development, fresh independent review, and
+  verification-before-completion. First reproduce its own typecheck errors
+  under fail-fast semantics, then make the smallest scoped tests/fixes, run its
+  focused suite, and run exactly `npm run typecheck && git diff --check && npm
+  run factory:check` before its repair commit. No child self-integration is
+  allowed; only the coordinator may later merge an approved repair.
+- Task130 remains a disjoint implementation lane only. It may not integrate or
+  become ready while program typecheck remains red. The full verifier remains
+  **CLOSED**, reset credits remain untouched, and `neo` remains untouched.
