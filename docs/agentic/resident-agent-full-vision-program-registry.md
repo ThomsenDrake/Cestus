@@ -3130,3 +3130,17 @@ explicit implementation authorization.
   Before the one serialized candidate `npm run verify` is started, obtain a
   fresh authenticated usage gate; DRAIN remains mandatory at or below 10%,
   hard pause at or below 7%, and `neo` remains untouched.
+
+## RV-1-C-070 — Reader candidate serialized full-verifier grant
+
+- Fresh authenticated Codex `/status` immediately before this grant reports
+  Weekly **31% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly
+  remains 100% left. No `/usage`, reset, or redemption occurred. The guard is
+  above 10% and permits exactly one serialized candidate-checkout full gate.
+- Approved clean candidate
+  `6dc975c2210044fb97305592fbb4fd393bd1dc3c` alone may run `npm run verify`
+  in `/home/drake/.codex/worktrees/task-123-ingestion-reader-typecheck-recovery`.
+  It must retain complete output and exact exit status, leave the candidate
+  clean, and stop. No other full verifier, integration, downstream dispatch,
+  self-integration, or `neo` change is authorized. A new post-verifier usage
+  gate is mandatory before any integration decision.
