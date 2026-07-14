@@ -3144,3 +3144,23 @@ explicit implementation authorization.
   clean, and stop. No other full verifier, integration, downstream dispatch,
   self-integration, or `neo` change is authorized. A new post-verifier usage
   gate is mandatory before any integration decision.
+
+## RV-1-C-071 — Staged report reader integration verified
+
+- Relay A integrated independently approved candidate
+  `6dc975c2210044fb97305592fbb4fd393bd1dc3c` by no-ff merge
+  `af12da0e`; `neo` remains untouched. Candidate full verification exited 0:
+  typecheck passed; 196 test files passed with 3 skipped; 2,343 tests passed
+  with 5 skipped; Vite and factory readiness passed. Complete retained output
+  is `/tmp/cestus-task123-reader-candidate-verify.log`.
+- The merged checkout then passed its focused reader suite (25/25), diff
+  hygiene, and factory readiness. Its separate serialized merged
+  `npm run verify` exited 0: typecheck passed; 196 test files passed with 3
+  skipped; 2,343 tests passed with 5 skipped; Vite and factory readiness
+  passed. Complete retained output is
+  `/tmp/cestus-task123-reader-merged-verify-2.log`. Existing SQLite
+  experimental warnings and the Vite chunk-size advisory were non-failing.
+- The integrated reader is now a verified ingestion-owned canonical staged
+  report reader prerequisite. Reopen the rejected Task123 ontology-bootstrap
+  route/workflow repair only after a fresh authenticated usage gate and a new
+  exact scope from this merged head. No `neo` merge is authorized.
