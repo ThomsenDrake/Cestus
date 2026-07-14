@@ -2793,3 +2793,27 @@ explicit implementation authorization.
   are review inputs, not integration evidence. A third reviewer distinct from
   both prior reviewers must assess the full `f7778aa7..f5f53dd6` repair range;
   the author cannot self-integrate and `neo` remains untouched.
+
+## RV-1-C-054 — Ingestion reader species root-cause recovery
+
+- Immediately after the completed third review, fresh authenticated Codex
+  `/status` reports Weekly **34% left**, resetting 15:00 on 19 Jul;
+  GPT-5.3-Codex-Spark weekly remains 100% left. No `/usage`, reset, or
+  redemption occurred. The guard remains above the 10% drain threshold; it
+  authorizes one fresh, bounded root-cause repair worker only. No full verifier
+  is authorized.
+- Third independent review rejected `f5f53dd65deb7e2f5396f4494b82600610a171ab`:
+  `Uint8Array.prototype.slice.call(artifact)` performs typed-array species
+  creation, reading a hostile real Buffer's own `constructor` getter or a
+  constructor/species hook through an injected Buffer prototype. The coordinator
+  reproduced both paths: each getter threw before the previous catch could
+  return its fail-closed result, while `Buffer.isBuffer` still returned true.
+- This is repair-count exhaustion for the prior byte-copy tactic. Preserve
+  `f5f53dd6` as rejected evidence and start a fresh root-cause worker from it.
+  The worker must establish causal constructor/species REDs with zero invoked
+  hostile accessor, derive a native typed-array internal-slot copy that avoids
+  species dispatch rather than enlarging a property blacklist, retain exact
+  canonical event/artifact binding, and stop after focused/typecheck/diff/factory
+  evidence for a new independent review. Scope remains exactly the reader,
+  its tests, and its append-only claim; no full verifier, self-integration, or
+  `neo` change is authorized.
