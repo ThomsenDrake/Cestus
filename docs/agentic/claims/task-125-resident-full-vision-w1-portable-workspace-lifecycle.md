@@ -2,7 +2,7 @@
 
 - Status: ready-for-review
 - Coordinator ledger: `RV-1-C-137`
-- Worker: `/root/task125_facade_rootcause_recovery`
+- Worker: `/root/task125_authority_repair`
 - Branch: `codex/task-125-resident-full-vision-portable-workspace-lifecycle-admission-restart`
 - Worktree: `/home/drake/.codex/worktrees/task-125-resident-full-vision-portable-workspace-lifecycle`
 - Claimed at: 2026-07-14T00:00:00Z
@@ -21,6 +21,26 @@ journal write is permitted while unavailable or for a revoked admission.
 
 ## Evidence
 
+- Authority-repair RED (exact focused command): with only a temporary
+  `node_modules` symlink to the coordinator checkout, the command exited `1`
+  with 2 files, 4 failed tests, and 10 passed tests. A freshly constructed
+  matching admission made one mounted lease and one mounted reconciliation
+  call; policy/lock swaps reached the mounted lease; lease/readback swaps
+  reached mounted reconciliation; and all 40 accessor/custom-prototype/
+  sparse-array/extra-key variants across the forwarded tuple and record
+  evidence paths reached mounted reconciliation. The temporary symlink was
+  removed after every command.
+- Authority-repair GREEN (same exact focused command): exited `0` with 2 test
+  files and 14 tests passing. The façade now issues a closure-bound opaque
+  identity/generation capability, canonicalizes and freezes lease, tuple,
+  policy/lock, high-water, record, and embedded evidence values, binds them to
+  the current mounted facts and mounted lease readback, and revalidates both
+  before and after every awaited mounted call.
+- `npm run typecheck` exited `0` with no output. `git diff --check` exited
+  `0` with no output. `npm run factory:check` exited `0` with
+  `factory-readiness passed`. No `npm run verify` was run because this repair
+  authorization explicitly forbids it. Stop at a fresh independent
+  defects-first review; no merge or `neo` change occurred.
 - Read-only root-cause evidence: rejected `7b8430c9` compared admissions by
   identity/mount only, so a later same-identity admission could authorize an
   earlier revoked admission.
