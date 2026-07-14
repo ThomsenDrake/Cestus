@@ -216,6 +216,47 @@ describe("legacy migration report", () => {
     expect(derivativeWriteAttempts).toBe(0);
   });
 
+  it("reads through separately shaped capabilities without consulting callable bind properties", async () => {
+    const stored = await recordedReport();
+    let readAllBindRead = false;
+    let getBindRead = false;
+    let receivedHash: `sha256:${string}` | undefined;
+    const readAll = () => stored.ledger.readAll();
+    const get = (contentHash: `sha256:${string}`) => {
+      receivedHash = contentHash;
+      return stored.reportStore.get(contentHash);
+    };
+    Object.defineProperty(readAll, "bind", {
+      get() {
+        readAllBindRead = true;
+        throw new Error("reader must not consult readAll.bind");
+      }
+    });
+    Object.defineProperty(get, "bind", {
+      get() {
+        getBindRead = true;
+        throw new Error("reader must not consult get.bind");
+      }
+    });
+    const ledger: Pick<EventLedger, "readAll"> = { readAll };
+    const derivativeStore: Pick<WorkspaceBlobStore, "get"> = { get };
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger,
+      derivativeStore,
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      report: stored.report,
+      reportEvent: stored.event
+    });
+    expect(receivedHash).toBe(stored.report.reportHash);
+    expect(readAllBindRead).toBe(false);
+    expect(getBindRead).toBe(false);
+  });
+
   it.each([
     {
       label: "a forged report hash",

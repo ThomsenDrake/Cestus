@@ -255,3 +255,65 @@ Status: `ready-for-review`
 - No `npm run verify`, self-review/integration, merge, dispatch, or `neo`
   change was started. Status: `ready-for-review` pending another fresh
   independent reviewer.
+
+## Assertion Root-Cause Repair — 2026-07-14
+
+- Worker: `/root/task123_ingestion_reader_assertion_root_cause`
+- Branch: `codex/task-123-ingestion-reader-typecheck-recovery`
+- Base candidate: `40dca32fd6de55283b0393a1555318a70e0e671a`
+- Fresh review `RV-1-C-064` rejected the prior typecheck repair because it
+  used two source assertions forbidden by the frozen strict-typing authority.
+  The earlier regex-valid `z.string()` output remained `string`, so its
+  transform asserted the narrower `CanonicalContentHash` type instead of
+  producing that type from validation. Separately, a generic descriptor
+  lookup could prove only that its discovered value was callable; its type
+  parameter could not prove a runtime key-to-method correlation, so casting a
+  dynamically bound function to `StagedReportReadCapabilities[TKey]` masked
+  the gap.
+
+### Causal RED
+
+- Before production edits, the focused command
+  `npm test -- packages/ingestion/test/legacy-report.test.ts` exited `1` with
+  24 passing and 1 failing test. The new counterfactual supplied the exact
+  public `Pick<EventLedger, "readAll">` and `Pick<WorkspaceBlobStore, "get">`
+  capabilities, placed throwing own `bind` accessors on both callable values,
+  and required the reader to retain each receiver and pass the exact canonical
+  report hash to `get`.
+- The old generic binder consulted `readAll.bind`, then returned the standard
+  event mismatch before reaching a valid canonical read. This demonstrates
+  that a dynamically bound unknown function is not the typed read capability
+  contract the reader needs, rather than merely scanning source text for a
+  removed assertion.
+
+### Green
+
+- The report hash schema is now a typed `z.custom<CanonicalContentHash>`
+  validator backed by the same exact `sha256:` hexadecimal regex. Its inferred
+  output satisfies the frozen canonical reference without a transform cast.
+- Capability discovery still checks an own-data method descriptor through the
+  existing prototype walk, but separate `readAll` and `get` wrappers expose
+  their concrete signatures and invoke the discovered callable with
+  `Reflect.apply`, without dynamic `.bind`, a conditional method assertion,
+  `any`, or a broad `Function` type.
+- `npm test -- packages/ingestion/test/legacy-report.test.ts` exited `0` with
+  1 file and 25 tests passing; the new test proves both hostile `bind`
+  accessors remain unread, `get` receives the exact report hash, and all
+  existing writer-tripwire, proxy, artifact, event, hash, and fail-closed
+  counterfactuals remain green.
+- `npm run typecheck` exited `0`, proving the typed Zod output reaches the
+  frozen `CanonicalStagedReportReference` and the concrete capability wrappers
+  typecheck without either rejected assertion. No `npm run verify`, merge,
+  self-review/integration, child dispatch, or `neo` change was started.
+- Status: `in-progress` pending diff hygiene, factory readiness, scoped commit,
+  and a fresh independent review.
+
+### Final Scoped Gates
+
+- `git diff --check` exited `0`.
+- `npm run factory:check` exited `0` with `factory-readiness passed`.
+- The candidate remains exactly within its three authorized files. It is ready
+  for a fresh independent review after the scoped commit; no full verifier or
+  integration is authorized.
+
+Status: `ready-for-review`.
