@@ -30,6 +30,14 @@
   `unavailable/authority-reader-unavailable`; hostile reader-output tests
   remain unchanged and fail closed before effects.
 - `npm run typecheck` passed.
+- Compiler recovery: the post-review compiler report identified that the two
+  key checks accepted normalized primitives, the array length descriptor was
+  read through a typed descriptor map, and the missing-credential fixture
+  assigned `undefined` to an inferred required field. This repair adds object
+  guards before both key checks, reads the length descriptor directly, and
+  constructs the missing-credential authority with that field omitted at the
+  unknown reader boundary. The focused command again passed 2 files and 20
+  tests, and `npm run typecheck` again passed.
 
 ## Handoff
 

@@ -199,7 +199,12 @@ export function evaluateByokProviderBoundary(
   input: unknown
 ): ByokProviderBoundaryResult {
   const normalizedUse = normalizePlainOwnData(input);
-  if (normalizedUse === undefined || !hasExactKeys(normalizedUse, requestedUseKeys)) {
+  if (
+    typeof normalizedUse !== "object" ||
+    normalizedUse === null ||
+    Array.isArray(normalizedUse) ||
+    !hasExactKeys(normalizedUse, requestedUseKeys)
+  ) {
     return blocked("unsafe-input", "action_review_byok_provider");
   }
   const parsedUse = requestedUseSchema.safeParse(normalizedUse);
@@ -219,7 +224,12 @@ export function evaluateByokProviderBoundary(
     return unavailable("authority-reader-unavailable", "action_check_provider_health");
   }
   const normalizedAuthority = normalizePlainOwnData(rawAuthority);
-  if (normalizedAuthority === undefined || !hasExactKeys(normalizedAuthority, authorityKeys)) {
+  if (
+    typeof normalizedAuthority !== "object" ||
+    normalizedAuthority === null ||
+    Array.isArray(normalizedAuthority) ||
+    !hasExactKeys(normalizedAuthority, authorityKeys)
+  ) {
     return unavailable("authority-reader-unavailable", "action_check_provider_health");
   }
   const authority = authoritySchema.safeParse(normalizedAuthority);
@@ -427,7 +437,7 @@ function normalize(value: unknown): Record<string, unknown> | readonly unknown[]
       throw new Error("unsafe array");
     }
     const descriptors = Object.getOwnPropertyDescriptors(value);
-    const lengthDescriptor = descriptors.length;
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
     if (
       lengthDescriptor === undefined ||
       !("value" in lengthDescriptor) ||
