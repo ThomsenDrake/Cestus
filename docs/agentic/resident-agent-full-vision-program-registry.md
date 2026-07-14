@@ -4235,3 +4235,22 @@ explicit implementation authorization.
   consistent forged-tuple RED requirement. It must implement only an actual
   independent canonical source/brand or return a schema/file-owner blocker;
   no blacklists, full verifier, integration, or `neo` action is permitted.
+
+## RV-1-C-122 — Fresh Task124/Task128 review gate
+
+- Fresh authenticated local `/status` immediately before review dispatch reports
+  **98% weekly remaining**, Spark 100%, five reset credits untouched. This is
+  above normal-mode thresholds; it authorizes the following read-only reviews,
+  but no full verifier.
+- Task124 candidate `2248ee8d205670ac29763d31c6c2d79efaac65d9` is clean after
+  causal subscription/generation REDs, focused **2 files / 49 tests** Green,
+  typecheck/diff/factory. Fresh reviewer
+  `/root/task124_admission_contract_review` is read-only on
+  `1a69f73f06c70d510e0137441937f3d4d6667018..2248ee8d205670ac29763d31c6c2d79efaac65d9`.
+- Task128 candidate `06ceeba0` is clean after causal module-absence RED,
+  focused **2 files / 35 tests** Green, typecheck/diff/factory. Fresh reviewer
+  `/root/task128_local_model_review` is read-only on its full task range from
+  `c71fde1e2d64bb953f36ed92a631c11eec79914a` through `06ceeba0`.
+- Task126's final bounded root-cause recovery remains the sole implementation
+  lane. No candidate full, merged full, integration, or `neo` action overlaps
+  these reviews.
