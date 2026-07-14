@@ -2713,3 +2713,15 @@ explicit implementation authorization.
   stays clean and first on resume; rejected Task123 `404ac711` remains evidence
   only pending its ingestion-owned staged-report reader prerequisite. Relay B
   remains frozen at `da1abbb3`; `neo` remains untouched.
+
+## RV-1-C-048 — Parent-authenticated usage-gate bridge
+
+- The parent coordinator completed the required authenticated Codex `/status`
+  gate after `RV-1-C-047`: Weekly limit is **36% left**, resetting 15:00 on
+  19 Jul; GPT-5.3-Codex-Spark weekly is 100% left. No usage reset or redemption
+  occurred. This fresh gate supersedes only the local PTY capture failure.
+- At 36%, normal bounded work is authorized under the durable guard. The next
+  action is approved Task124 `cd65a7bb350da45fcab0fbda2b601b4316df2996`:
+  integrate it, run focused/factory and exactly one serialized merged full
+  verifier, then append evidence. Before any later dispatch, retry the exact
+  authenticated PTY `/status` procedure; if unavailable, fail closed again.
