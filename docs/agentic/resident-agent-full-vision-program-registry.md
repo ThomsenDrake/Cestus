@@ -2909,3 +2909,26 @@ explicit implementation authorization.
   capture the full result, leave the worktree clean, and stop. No integration
   is authorized until a post-verifier usage gate and merged-checkout evidence;
   no other full verifier, self-integration, or `neo` change is permitted.
+
+## RV-1-C-059 — Ingestion reader merged-gate typecheck recovery
+
+- Relay A merged independently approved candidate `98b27659` by no-ff merge
+  `c3a4c76106ce932c0a63c1cc663ab24960d3d689`; `neo` remains untouched. On the
+  merged checkout, the focused reader suite passed 24/24 and diff hygiene plus
+  factory readiness passed.
+- The sole retained candidate `npm run verify` was reported exit 0 but emitted
+  no step output. The required merged `npm run verify` then failed at
+  TypeScript before tests/build: `legacy-report.ts` has invalid typed
+  `Object.freeze`/Zod-reference capability construction and an un-narrowed
+  `unknown` passed to `Object.getPrototypeOf`; reader tests retain excess
+  `readStream`/`put` fixture properties and implicit callback parameters after
+  the reader API narrows to `readAll`/`get`. The exact errors are retained in
+  `/tmp/cestus-task123-reader-merged-verify.log`. No later full verifier is
+  started.
+- This disproves the candidate typecheck evidence in the target checkout. The
+  merge is preserved as forward history but is not verified or integration-
+  complete. After a fresh authenticated usage gate, use a new root-cause worker
+  from `c3a4c761` to repair only the reader source, its tests, and its claim
+  against the target TypeScript contract; establish focused typecheck RED first,
+  then TDD GREEN and a new fresh review. Full verification remains forbidden
+  until that new candidate is approved.
