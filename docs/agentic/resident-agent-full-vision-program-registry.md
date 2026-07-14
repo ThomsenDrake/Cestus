@@ -3884,3 +3884,22 @@ explicit implementation authorization.
   Task127 claim/source/test scope and no full/integration slot. Task125 and
   Task126 implementation lanes remain active with disjoint scopes; the Task131
   plan-correction review waits for the next open child slot.
+
+## RV-1-C-104 — Task125 root-cause candidate sealed and fresh review
+
+- Task125 root-cause repair sealed clean candidate
+  `9ea55cbabb34c1d0f6fd55f22331685fd289e238` on
+  `codex/task-125-resident-full-vision-portable-workspace-lifecycle`, atop
+  rejected `7da9e29f`. Scope is exactly the Task125 claim, portable lifecycle
+  source, and lifecycle test. Causal RED reproduced six lifecycle failures;
+  focused GREEN is **2 files / 27 tests**, with typecheck, diff check, and
+  factory readiness passing. The temporary dependency link was removed; no full
+  verifier, integration, provider/credential, or `neo` action occurred.
+- The authenticated `25%` gate remains above drain. One fresh independent,
+  read-only defects-first review of
+  `7da9e29feaa58440ab44c5e9b737da53a3487c1e..9ea55cbabb34c1d0f6fd55f22331685fd289e238`
+  is authorized. It must recheck mutable/hostile mounted-facts defense,
+  schema/mount/identity/authority/store/policy/lock/high-water binding,
+  incompatibility-to-restoration claim release, real wake-supervisor exact
+  reconciliation/readback, zero fallback writes, TDD evidence, and exact scope.
+  No full verifier or integration is authorized pending APPROVE.
