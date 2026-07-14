@@ -6024,3 +6024,41 @@ explicit implementation authorization.
   untouched, DRAIN/HARD-PAUSE controls stay in force, and `neo` remains
   untouched. Downstream consumers remain gated by their full predecessor sets;
   no later-wave task is opened by this integration record alone.
+
+## RV-1-E-172 — Task130 bounded official-xAI harness authorization
+
+- Task130 is authorized as the next independent Wave 1 Lane P slice from this
+  canonical program branch. It implements only an official, non-extractive xAI
+  subscription feasibility boundary under governing design `c7dc10b9` and
+  implementation plan `0b5726ec975bdc0aae97e540472ef3be4379b358`, using
+  `superpowers:subagent-driven-development`, systematic debugging, test-driven
+  development, fresh review, and verification-before-completion. The assigned
+  Terra/xhigh task runtime must use `turn_context` metadata—not generic model
+  family prose—as model authority.
+- Exclusive ownership is exactly new
+  `docs/agentic/claims/task-130-resident-full-vision-xai-harness.md`, new
+  `packages/agent/src/xai-subscription-harness.ts`, and new
+  `packages/agent/test/xai-subscription-harness.test.ts`, from a fresh
+  task-scoped worktree/branch based on this commit. No other Lane P adapter,
+  shared provider contract/configuration, default runtime factory, central
+  registry, or `neo` file may change.
+- RED must reject cookies, browser/session storage, token caches, CLI-auth
+  stores, intercepted headers, undocumented endpoints, reverse-engineered
+  grants, environment tokens, and subscription-to-API-key conversion; it must
+  prove missing official flow yields only mounted-authority-bound,
+  secret-safe append-only `official-flow-unavailable` feasibility evidence with
+  no secret resolution, alternate provider, or material read. GREEN keeps xAI
+  semantics separate from Codex and validates exact policy/capability/ref,
+  workspace/mount/run/approval posture before any permitted harness outcome.
+- The child may run only `npm test --
+  packages/agent/test/xai-subscription-harness.test.ts`, `npm run typecheck`,
+  `git diff --check`, and `npm run factory:check`; record RED/GREEN and commit
+  its owned files, then stop for fresh independent review. The serialized full
+  verifier is **CLOSED**, so `npm run verify` and any integration are outside
+  this child authorization. No credentials, provider/network action,
+  self-integration, merge, or `neo` action is authorized.
+- Usage remains `usedPercent=9` / **91% weekly remaining**; reset credits are
+  untouched and DRAIN/HARD-PAUSE controls remain in force. Stop immediately on
+  secret/plaintext fallback, unofficial token route, data-loss risk, shared
+  contract conflict, unavailable dependency, or repeated focused verifier
+  failure and return structured evidence to the coordinator.
