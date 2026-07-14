@@ -129,8 +129,7 @@ describe("CF-1 BYOK authority-reader boundary", () => {
   });
 
   it("returns secret-safe credential unavailable outcomes from reader-derived references only", () => {
-    const missingAuthority = authority();
-    missingAuthority.credentialReference = undefined;
+    const missingAuthority = { ...authority(), credentialReference: undefined };
     const revokedAuthority = authority();
     revokedAuthority.credentialReference = {
       ...revokedAuthority.credentialReference!,
