@@ -4254,3 +4254,48 @@ explicit implementation authorization.
 - Task126's final bounded root-cause recovery remains the sole implementation
   lane. No candidate full, merged full, integration, or `neo` action overlaps
   these reviews.
+
+## RV-1-C-123 — Provider authority-source correction and repair ledger
+
+- The authenticated usage sequence remains safely in normal mode: two stable
+  read-only account readings recorded **100% weekly remaining** with all five
+  reset credits untouched, followed by the fresh local `/status` gate recorded
+  above at **98%**. No credit was redeemed. This authorizes bounded non-full
+  repairs only; the serialized full-verifier slot remains closed.
+- Task126's root-cause diagnostic is preserved clean at
+  `36c26ba5c49f09cb9903bd3eeb426923bc515ee7` on
+  `codex/task-126-resident-full-vision-byok-provider`. Its all-self-consistent
+  forged tuple demonstrates that public `unknown` input can otherwise become
+  its own authority. The commit is nonintegrable blocker evidence, not an
+  accepted candidate: it changes only the Task126 claim and a diagnostic test,
+  makes no provider, credential, network, or portable write, and leaves the
+  BYOK claim blocked pending the canonical reader contract.
+- The forward contract correction freezes `ByokProviderAuthorityReader.v1` as
+  a capability-injected Task126 port. The public request may describe a
+  requested use but cannot supply selection, capability, credential,
+  endpoint-policy, or preparation authority. The boundary fails closed when
+  no reader is injected; Task139 later, after its existing predecessors,
+  mounts the real authoritative runtime/configuration implementation. This is
+  not a Task139-before-Task126 dependency and does not transfer Task141's route
+  ownership. A fresh independent documentation review is required before a
+  new Task126 implementation lane starts.
+- Fresh review rejected Task124 candidate
+  `2248ee8d205670ac29763d31c6c2d79efaac65d9`: persisted reconciliation did
+  not bind the opaque revalidation generation, so a stale or forged generation
+  could pass same-identity recovery. Fresh repair worker
+  `/root/task124_reconciliation_generation_repair` is active from that exact
+  rejected candidate in the Task124 worktree. Its exact scope is the existing
+  Task124 claim, wake supervisor source, and focused wake test; it must add
+  persisted old-generation and forged-generation REDs before a minimal
+  reconciliation-key/readback repair. No full verifier, integration, child
+  self-review, or `neo` action is authorized.
+- Fresh review rejected Task128 candidate
+  `06ceeba06830d952165875650cb53fce230e275f`: a timeout released its
+  concurrency reservation while an abort-ignoring engine still ran, and a
+  hostile array `map` getter could run before descriptor validation. Fresh
+  repair worker `/root/task128_timeout_boundary_repair` is active from that
+  exact rejected candidate in the Task128 worktree. It owns only its existing
+  claim, local-model provider source, and focused test; it must TDD-prove both
+  counterfactuals before retaining the reservation through underlying
+  settlement and normalizing without attacker-controlled array reads. No full
+  verifier, integration, child self-review, or `neo` action is authorized.

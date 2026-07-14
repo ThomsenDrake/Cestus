@@ -328,7 +328,7 @@ Wave 1 starts only when CF-1 is merged into the coordinator integration branch a
 | 123 | H: packages/agent/src/ontology-bootstrap-workflow.ts; packages/agent/test/ontology-bootstrap-workflow.test.ts | CF-1 | npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-projection.test.ts | Proposal-only bootstrap with persisted/reconstructed handoff. |
 | 124 | W: packages/agent/src/wake-supervisor.ts; packages/agent/test/wake-supervisor.test.ts | CF-1 | npm test -- packages/agent/test/wake-supervisor.test.ts packages/agent/test/scheduler.test.ts | Browser-independent bounded wake state. |
 | 125 | W: packages/local-runtime/src/portable-workspace-lifecycle.ts; packages/local-runtime/test/portable-workspace-lifecycle.test.ts | CF-1 | npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/resident-identity-bootstrap.test.ts | Disconnect releases claims and blocks provider/tool/artifact work without fallback writes. |
-| 126 | P: packages/agent/src/byok-provider.ts; packages/agent/test/byok-provider.test.ts | CF-1 | npm test -- packages/agent/test/byok-provider.test.ts packages/agent/test/openai-compatible-provider.test.ts | BYOK validates references and never writes secret values to portable state. |
+| 126 | P: packages/agent/src/byok-provider.ts; packages/agent/test/byok-provider.test.ts | CF-1 | npm test -- packages/agent/test/byok-provider.test.ts packages/agent/test/openai-compatible-provider.test.ts | BYOK consumes an injected canonical current-posture reader; untrusted input cannot supply capability, credential, endpoint, or preparation authority; absent authority fails closed without secret or portable writes. |
 | 127 | P: packages/agent/src/os-secret-store.ts; packages/agent/test/os-secret-store.test.ts | CF-1 | npm test -- packages/agent/test/os-secret-store.test.ts packages/agent/test/secret-store.test.ts | Safe references and secret-safe unavailable diagnostics. |
 | 128 | P: packages/agent/src/local-model-provider.ts; packages/agent/test/local-model-provider.test.ts | CF-1 | npm test -- packages/agent/test/local-model-provider.test.ts packages/agent/test/provider-readiness.test.ts | Explicit, budgeted local capability with credential-free parity tests. |
 | 129 | P: packages/agent/src/codex-subscription-harness.ts; packages/agent/test/codex-subscription-harness.test.ts | CF-1 | npm test -- packages/agent/test/codex-subscription-harness.test.ts | Official capability or durable unavailable feasibility record; no token extraction. |
@@ -336,6 +336,19 @@ Wave 1 starts only when CF-1 is merged into the coordinator integration branch a
 | 131 | U: packages/ui/src/agent/resident-runtime-types.ts; packages/ui/src/agent/resident-runtime-adapter.ts; packages/ui/test/resident-runtime-adapter.test.ts | CF-1; deferred until 137 and 140 expose the authoritative local-runtime wake-status DTO producer and composed-runtime contract | npm test -- packages/ui/test/resident-runtime-adapter.test.ts packages/ui/test/agent-adapter.test.ts | Consume and parse that frozen DTO directly; reject stale, absent, forged, and cross-run values without inventing browser-owned attempt or lease facts. Task141 remains the sole HTTP/transport route owner. |
 
 After every row: npm run verify, git diff --check, fresh review, registry update, and coordinator merge gate. Tasks 121–123 do not alter shared handoff contracts; a needed contract revision returns to a new CF-1 revision.
+
+**Task126 authority-source correction.** Task126 defines the
+`ByokProviderAuthorityReader.v1` capability port and a credential-free boundary
+that evaluates an untrusted requested use only against facts read through that
+injected port. The request must never carry selection, capability,
+credential-reference, endpoint-policy, or invocation-preparation authority;
+without the port, Task126 returns a safe unavailable result before any secret,
+provider, network, ledger, or portable-workspace action. Task139 is the later
+sole configuration owner that mounts the real current-posture reader from
+authoritative runtime/configuration state after Tasks126–130 and 133 merge.
+That later implementation does not make Task139 a predecessor of Task126: the
+Wave 1 task freezes the port and closed boundary, while Task139 supplies its
+production capability implementation.
 
 ## Wave 2: Runtime Integration
 
@@ -350,7 +363,7 @@ Wave 2 begins after required Wave 1 commits merge and dependent worktrees rebase
 | 136 | L: packages/agent/src/bounded-agent-loop.ts; packages/agent/test/bounded-agent-loop.test.ts | 120, 124, 126–130 | npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/execution-loop.test.ts | Policy prevents permission/tool/provider/budget/approval escalation; exhaustion is terminal or resumable. |
 | 137 | W: packages/local-runtime/src/wake-supervisor-runtime.ts; packages/local-runtime/test/wake-supervisor-runtime.test.ts | 124, 125, 132–135 | npm test -- packages/local-runtime/test/wake-supervisor-runtime.test.ts packages/agent/test/wake-supervisor.test.ts | Browser-independent claim, pause, resume, and recovery through durable state. |
 | 138 | H: packages/local-runtime/src/agent-handoff-projection.ts; packages/local-runtime/test/agent-handoff-projection.test.ts | 121–123, 135 | npm test -- packages/local-runtime/test/agent-handoff-projection.test.ts packages/agent/test/specialist-handoff-projection.test.ts | Browser-safe runtime diagnostics from durable handoff state. |
-| 139 | P: packages/local-runtime/src/agent-provider-configuration.ts; packages/local-runtime/test/agent-provider-configuration.test.ts | 126–130, 133 | npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts packages/agent/test/provider-registry.test.ts | One configuration owner registers capabilities and feasibility records. |
+| 139 | P: packages/local-runtime/src/agent-provider-configuration.ts; packages/local-runtime/test/agent-provider-configuration.test.ts | 126–130, 133 | npm test -- packages/local-runtime/test/agent-provider-configuration.test.ts packages/agent/test/provider-registry.test.ts | One configuration owner registers capabilities and feasibility records, and mounts the canonical current-posture reader consumed by Task126. |
 | 140 | R: packages/local-runtime/src/agent-runtime-factory.ts; packages/local-runtime/test/agent-runtime-composition.test.ts | 132–139 | npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts | Default factory composes actual mounted contexts, renderer, runners, stores, provider policy, and supervision. |
 | 141 | U: packages/local-runtime/src/agent-supervision-routes.ts; packages/ui/src/agent/ResidentSupervisionPanel.tsx; packages/ui/test/resident-supervision-panel.test.tsx | 131, 137–140 | npm test -- packages/ui/test/resident-supervision-panel.test.tsx packages/local-runtime/test/agent-supervision-routes.test.ts | Labels match pause/resume/retry/cancel effects and parse production DTOs. |
 
