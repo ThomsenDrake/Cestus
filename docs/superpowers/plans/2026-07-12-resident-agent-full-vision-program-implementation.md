@@ -339,7 +339,7 @@ After every row: npm run verify, git diff --check, fresh review, registry update
 
 ## Wave 2: Runtime Integration
 
-Wave 2 begins after required Wave 1 commits merge and dependent worktrees rebase. Only R changes packages/local-runtime/src/agent-runtime-factory.ts. Only P changes shared provider configuration. Browser work starts after routes and DTOs merge.
+Wave 2 begins after required Wave 1 commits merge and dependent worktrees rebase. Only R changes packages/local-runtime/src/agent-runtime-factory.ts. Only P changes shared provider configuration. Browser work that consumes HTTP/transport routes starts after routes and DTOs merge. The deferred Task131 adapter is the explicit narrow exception: after Tasks137/140 merge the authoritative local-runtime wake-status DTO producer and composed-runtime contract, Task131 parses that DTO directly before Task141; Task141 alone owns the HTTP/transport route and UI composition.
 
 | Task | Owner and exclusive files | Required predecessors | Focused command | Required result |
 | --- | --- | --- | --- | --- |
@@ -437,7 +437,7 @@ The coordinator alone decides merge, push, cleanup, and archive after registry f
 
 ## Merge, Rebase, And Stop Rules
 
-1. Shared plan/observation/wake/trigger contracts merge before consumers. Durable workflow migrations merge before mounted store, runner, and runtime composition. Runtime routes merge before cockpit consumers. Cockpit and cross-domain bridges merge after domain/runtime producers.
+1. Shared plan/observation/wake/trigger contracts merge before consumers. Durable workflow migrations merge before mounted store, runner, and runtime composition. Runtime routes merge before cockpit consumers, except deferred Task131: it is a DTO-only parser that consumes the merged Tasks137/140 authoritative producer/composed-runtime contract directly before Task141. Task141 alone owns the subsequent HTTP/transport route and UI composition. Cockpit and cross-domain bridges merge after domain/runtime producers.
 2. After each contract-changing merge, the coordinator records its SHA, rebases every dependent worktree, reruns the dependency's cross-lane command, and records the rebase in claim and registry. A stale branch is not reviewed or merged.
 3. The coordinator never merges a child branch into neo without an explicit integration instruction. Children never self-merge.
 4. Stop a child and return structured evidence to the coordinator for data-loss risk, hidden fallback storage, schema/DTO/event/file-owner conflict, synthetic handoff, placeholder prompt, unbound or stale artifact/source, self-approval, stale approval consumption, workspace identity mismatch, unofficial token extraction, missing required model configuration, unavailable mandatory provider/dependency, or more than two focused repair attempts without verifier recovery. Repair-count exhaustion is an internal coordinator recovery checkpoint, not a user gate. Stop the program for user input only when root-cause analysis proves that continuing requires a genuine product, scope, safety, data-loss, credential, or external-behavior decision under the governing specification.
