@@ -5263,3 +5263,41 @@ explicit implementation authorization.
   verifier before coordinator integration. Task128 has the same gate
   requirement for its changed approved recovery. Task125 remains deferred;
   no full verifier, integration, reset-credit use, or `neo` action is opened.
+
+## RV-1-C-146 — Relay C proactive successor handoff checkpoint
+
+- Recorded at: 2026-07-14T21:55:00Z by Relay C, which remains the sole active
+  coordinator until a successor visibly accepts sole ownership.
+- Coordinator branch and worktree:
+  `codex/resident-agent-full-vision-program-watchdog-recovery` /
+  `/home/drake/.codex/worktrees/95de/Cestus`.
+- Exact clean pre-handoff checkpoint head:
+  `2a4162a8f28c8030e69ab560b618c6eb805bd3a7`; this forward-only record is
+  committed immediately after it. `git status --porcelain=v1` was empty.
+- Governing spec and plan:
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`
+  and
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Active-child ledger: no live implementation or reviewer child remains.
+  Task126 recovery `512a169af3caad7e0c2d270040f24c36443913ec` is clean and
+  fresh-review approved; Task128 recovery
+  `0c7eb37f5fd0d5844c6fa849ccd62ea3da8f6f2a` is clean and fresh-review
+  approved. Prior child reviewers are complete. Their candidate worktrees are
+  preserved; no child self-integrated.
+- Usage guard: fresh authenticated app-server evidence is 5% used / **95%
+  weekly remaining**, normal mode, with no reset credit consumed. Continue
+  normal above 10%, DRAIN at or below 10%, and durable hard pause at or below
+  7%; never redeem a reset credit.
+- Serialized verifier state: closed and idle. Task128's prior gate was revoked
+  before start when its candidate changed; Task124 is already merged and
+  verified at `73003f60`/`RV-1-C-130`. Each changed approved Task126/Task128
+  recovery needs a new authenticated integration-boundary gate and exactly one
+  serialized candidate full verifier before any integration.
+- Dependency state: Task125 remains deferred and may not rebase/restart until
+  its new required gate and the approved dependency sequence are recorded.
+  `neo` is untouched and requires explicit user instruction for any change.
+- Successor protocol: Relay C remains active and continues monitoring. A
+  parent-created user-visible pinned successor must start from this clean
+  descendant, append an explicit sole-ownership acceptance with exact head and
+  ledger, and prove it is active before Relay C stops. This checkpoint alone
+  does not transfer or relinquish ownership.
