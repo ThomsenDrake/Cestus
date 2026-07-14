@@ -3339,3 +3339,21 @@ explicit implementation authorization.
   `e7a1d5b6..5744a67a` is authorized. It must assess all three P1s, the exact
   durable lifecycle readback/replay chain, and fail-closed behavior before any
   full-verifier or integration decision.
+
+## RV-1-C-080 — Task123 replay/provenance review rejection and recovery gate
+
+- Fresh independent reviewer returned NEEDS-CHANGES on `e7a1d5b6..5744a67a`.
+  P1: the workflow and route only test whether expected report provenance is a
+  subset, so unrelated extra source event IDs or artifact hashes are accepted
+  during execution or route reuse. P1: retrying a previously recorded run can
+  rebuild a `now()`-varying review bundle and conflict with the durable
+  final-output material, turning an otherwise valid replay into a failed run.
+  The candidate remains unintegrated; no full verifier ran.
+- Fresh authenticated Codex `/status` after that completed review reports
+  Weekly **28% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark remains
+  100% left. No `/usage`, reset, or redemption occurred. Above the 10% guard,
+  coordinator-owned bounded TDD repair is authorized only in the existing
+  Task123 claim/workflow-test/route scope: prove exact—not subset—provenance
+  and restart-safe handoff reuse before making the smallest repair. No new
+  worker, full verifier, integration, downstream dispatch, self-integration,
+  or `neo` change is authorized by this record.
