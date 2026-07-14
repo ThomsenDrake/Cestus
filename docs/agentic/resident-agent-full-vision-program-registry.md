@@ -2692,3 +2692,24 @@ explicit implementation authorization.
   worktrees are clean. The serialized full-verifier slot is free. No `neo`
   merge, dispatch, Task124 integration, capacity refill, or new verifier is
   authorized until the user resumes the program.
+
+## RV-1-C-047 — Resume usage-guard failure-closed checkpoint
+
+- Resume was requested from clean pause head
+  `4f6fb88fef20aa11c276a25e0581e85a96f20720`. The durable guard requires
+  authenticated Codex `/status` weekly remaining percentage before dispatch,
+  full verification, integration, or handoff; normal work is above 10%, drain
+  begins at or below 10%, and hard pause begins at or below 7%.
+- The coordinator attempted the required authenticated PTY command
+  `codex --no-alt-screen` twice. The first terminal exposed the compatibility
+  prompt but no writable session handle; the single retry reached Codex's
+  update screen after `TERM=xterm-256color`, again without a writable session
+  for `/status`. No `/usage`, redemption, or reset was used. Both local CLI
+  processes were stopped after the failed check.
+- Because authenticated weekly percentage could not be obtained after the
+  required retry, this checkpoint fails closed: no Task124 integration, new
+  worker/reviewer, serialized full verifier, capacity refill, successor, or
+  handoff is started. Approved Task124 `cd65a7bb350da45fcab0fbda2b601b4316df2996`
+  stays clean and first on resume; rejected Task123 `404ac711` remains evidence
+  only pending its ingestion-owned staged-report reader prerequisite. Relay B
+  remains frozen at `da1abbb3`; `neo` remains untouched.
