@@ -85,6 +85,44 @@ describe("official Codex subscription harness", () => {
     expect(JSON.stringify(result)).not.toContain(rawCookieMaterial);
   });
 
+  it("classifies a prohibited browser-cookie kind before inspecting accessor-backed material", async () => {
+    const appended: CodexOfficialFlowUnavailableEvidence[] = [];
+    const harness = createHarness({ appended });
+    let materialDescriptorReads = 0;
+    let materialValueReads = 0;
+    const officialFlow = new Proxy(
+      Object.defineProperty({ kind: "browser-cookie" }, "material", {
+        enumerable: true,
+        get() {
+          materialValueReads += 1;
+          throw new Error("prohibited material must not be read");
+        }
+      }),
+      {
+        getOwnPropertyDescriptor(target, property) {
+          if (property === "material") {
+            materialDescriptorReads += 1;
+          }
+          return Reflect.getOwnPropertyDescriptor(target, property);
+        }
+      }
+    );
+
+    const result = await harness.assess({
+      posture: currentPosture(),
+      officialFlow
+    });
+
+    expect(materialDescriptorReads).toBe(0);
+    expect(materialValueReads).toBe(0);
+    expect(result).toMatchObject({
+      kind: "blocked",
+      category: "prohibited-credential-source",
+      safeDiagnosticCodes: ["prohibited-credential-source"]
+    });
+    expect(appended).toEqual([]);
+  });
+
   it("appends only secret-safe official-flow-unavailable evidence when no official route is approved", async () => {
     const appended: CodexOfficialFlowUnavailableEvidence[] = [];
     const harness = createHarness({ appended });

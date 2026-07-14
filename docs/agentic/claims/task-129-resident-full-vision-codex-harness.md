@@ -13,7 +13,7 @@
   `docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md@285657a7879cdc47e321152c2bc5feb0ebe6088f`;
   `docs/superpowers/plans/2026-07-12-resident-agent-provider-credentials-implementation.md` Task 129.
 - Claimed at: `2026-07-14T22:08:56Z`.
-- Status: ready-for-review.
+- Status: ready-for-review (bounded RV-1-D-163 repair commit pending fresh independent review).
 
 ## Exclusive Scope
 
@@ -85,3 +85,23 @@ review after the one clean owned-files commit.
   after the final proxy repair.
 - Full verification: not run. This task authorization prohibits `npm run
   verify` until a later fresh review and usage-gated coordinator grant.
+
+## RV-1-D-163 Repair Evidence
+
+- Causal RED: a `browser-cookie` official-flow proxy exposed a safe own-data
+  `kind` while its accessor-backed `material` counted descriptor inspection and
+  threw if its value was read. The exact focused command exited `1`: the old
+  `normalizeOfficialFlow` inspected the material descriptor once before it
+  could classify the prohibited kind (and returned `unsafe-input`).
+- Repair: `normalizeOfficialFlow` now classifies a safe own-data prohibited
+  `kind` before full object normalization. It never reads or copies material
+  for that terminal prohibited result; no append is possible on that path.
+- GREEN: `npm test -- packages/agent/test/codex-subscription-harness.test.ts`
+  exited `0` with one test file and 16 tests passing. The regression proved
+  zero material-descriptor inspections, zero material getter reads, the
+  `prohibited-credential-source` result, and no feasibility append.
+- Follow-up gates: `npm run typecheck` exited `0`; `git diff --check` exited
+  `0`; `npm run factory:check` exited `0` with `factory-readiness passed`.
+- Dependency cleanup: the temporary untracked `node_modules` symlink used
+  only for the focused test and local gates was removed. `npm run verify` was
+  not run, as this repair authorization prohibits it.
