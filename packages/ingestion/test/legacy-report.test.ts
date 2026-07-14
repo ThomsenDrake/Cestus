@@ -181,24 +181,13 @@ describe("legacy migration report", () => {
 
   it("reads only an exact event-bound canonical staged report without append or derivative writes", async () => {
     const stored = await recordedReport();
-    let appendAttempts = 0;
-    let derivativeWriteAttempts = 0;
 
     const result = await readCanonicalStagedLegacyReport({
       ledger: {
-        readAll: () => stored.ledger.readAll(),
-        readStream: (streamId) => stored.ledger.readStream(streamId),
-        append: async () => {
-          appendAttempts += 1;
-          throw new Error("reader must not append");
-        }
+        readAll: () => stored.ledger.readAll()
       },
       derivativeStore: {
-        get: (contentHash) => stored.reportStore.get(contentHash),
-        put: async () => {
-          derivativeWriteAttempts += 1;
-          throw new Error("reader must not write derivatives");
-        }
+        get: (contentHash) => stored.reportStore.get(contentHash)
       },
       ...reportReference(stored)
     });
@@ -208,8 +197,6 @@ describe("legacy migration report", () => {
       report: stored.report,
       reportEvent: stored.event
     });
-    expect(appendAttempts).toBe(0);
-    expect(derivativeWriteAttempts).toBe(0);
   });
 
   it.each([
@@ -255,7 +242,6 @@ describe("legacy migration report", () => {
 
   it("fails closed for forged stored report bytes even when the store is callable", async () => {
     const stored = await recordedReport();
-    let derivativeWriteAttempts = 0;
     const forgedBytes = Buffer.from(reportArtifactJson({
       ...stored.report,
       candidateSetHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
@@ -264,17 +250,12 @@ describe("legacy migration report", () => {
     const result = await readCanonicalStagedLegacyReport({
       ledger: stored.ledger,
       derivativeStore: {
-        get: async () => forgedBytes,
-        put: async () => {
-          derivativeWriteAttempts += 1;
-          throw new Error("reader must not write derivatives");
-        }
+        get: async () => forgedBytes
       },
       ...reportReference(stored)
     });
 
     expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
-    expect(derivativeWriteAttempts).toBe(0);
   });
 
   it.each([
@@ -471,9 +452,7 @@ describe("legacy migration report", () => {
 
     const result = await readCanonicalStagedLegacyReport({
       ledger: {
-        readAll: async () => [accessorEvent] as never[],
-        readStream: () => stored.ledger.readStream(stored.event.streamId),
-        append: stored.ledger.append.bind(stored.ledger)
+        readAll: async () => [accessorEvent] as never[]
       },
       derivativeStore: {
         get: async () => {
