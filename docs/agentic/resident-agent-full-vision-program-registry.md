@@ -4656,6 +4656,41 @@ explicit implementation authorization.
   dependency plus Task141 route ownership remain unaltered. Return an explicit
   APPROVE or NEEDS-CHANGES; no full verifier may start on silence.
 
+## RV-1-C-133 — Task125 post-Task124 restart authorization
+
+- Recorded at: 2026-07-14T22:10:00Z by the sole Relay C coordinator.
+- Fresh authenticated local Codex `/status` immediately before this restart
+  reports 96% weekly remaining (reset 16:37 on 21 Jul), Spark Weekly 100%,
+  and five reset credits untouched. No reset credit was redeemed. This is
+  normal mode and authorizes exactly one non-full Task125 worker; no full
+  verifier, integration, child self-approval, provider activity, or `neo`
+  change is opened.
+- Branch/worktree: the previous rejected Task125 history is preserved at
+  `codex/task-125-resident-full-vision-portable-workspace-lifecycle@7b8430c9`.
+  A new isolated restart branch
+  `codex/task-125-resident-full-vision-portable-workspace-lifecycle-admission-restart`
+  begins clean at current verified coordinator head
+  `4dca422de61db8ccab6d420960cb4d3abcfd249d`. It may use rejected history for
+  conceptual diagnosis only; it must not cherry-pick or replay it.
+- Exact owned files: `docs/agentic/claims/task-125-resident-full-vision-w1-portable-workspace-lifecycle.md`,
+  `packages/local-runtime/src/portable-workspace-lifecycle.ts`, and
+  `packages/local-runtime/test/portable-workspace-lifecycle.test.ts`. All
+  runtime factory, routes, scheduler, provider, shared contracts, UI, registry,
+  and `neo` files are forbidden.
+- Required causal contract: build a strict portable-workspace façade over the
+  now-integrated Task124 admission-generation/invalidation contract. Prove
+  RED first that same-identity stale revalidation cannot revive a revoked
+  admission, and that invalidation blocks supervisor lease, reconciliation,
+  provider/tool/artifact/runtime effects without fallback writes. Green must
+  preserve mounted identity, policy, lock, high-water, exact readback and
+  generation binding, retain only canonical outage evidence for recovery, and
+  remain fail-closed on hostile/malformed mounted facts. The exact focused
+  command is `npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts
+  packages/local-runtime/test/resident-identity-bootstrap.test.ts`; then
+  typecheck, diff, and factory readiness. Remove any temporary dependency link
+  before a clean commit. Fresh review is mandatory; no full verifier until a
+  separately fresh usage gate after approval.
+
 ## RV-1-C-132 — Task124 verifier ordering evidence and Task128 mutable-review block
 
 - Recorded at: 2026-07-14T22:10:00Z by the sole Relay C coordinator.
