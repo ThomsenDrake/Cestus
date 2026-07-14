@@ -515,8 +515,8 @@ function plainSafeStringArray(value: unknown, itemPattern: RegExp): readonly str
     if (Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length > 0) {
       return undefined;
     }
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
     const descriptors = Object.getOwnPropertyDescriptors(value);
-    const lengthDescriptor = descriptors.length;
     if (lengthDescriptor === undefined || !("value" in lengthDescriptor) ||
         typeof lengthDescriptor.value !== "number" ||
         lengthDescriptor.value < 1 || !Number.isSafeInteger(lengthDescriptor.value)) {
