@@ -192,6 +192,41 @@ describe("portable workspace lifecycle authority", () => {
     });
   });
 
+  it("rejects reconciliation when the mounted active claim changed after the pending outage formed", async () => {
+    const outageClaim = canonicalObservedActiveClaim();
+    const fixture = createFixture({ issueLeaseReadback: true, observedActiveClaim: outageClaim });
+    const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
+    await ports.authority.revalidate(revalidate("wake"));
+    ports.authority.invalidate("authority-loss");
+    fixture.setMountedObservedActiveClaim({ ...outageClaim, claimId: "claim_later" });
+    const grant = await ports.authority.revalidate(revalidate("resume"));
+    if (!grant.ok || grant.observedActiveClaim === undefined || grant.outage === undefined) {
+      throw new Error("fixture must issue a later-claim reconciled admission");
+    }
+    const lease = await ports.supervisorLease.readOrAcquire(leaseInput(grant.admission));
+    if (lease.outcome !== "acquired-and-read-back") throw new Error("fixture must issue a mounted lease readback");
+    fixture.calls.lease = 0;
+
+    await ports.activeClaimReconciliation.appendAndReadBack(
+      reconciliationAppendInput(
+        grant.admission,
+        reconciliationAdmission(grant.admission, lease.readback),
+        grant.observedActiveClaim,
+        grant.outage
+      )
+    ).catch(() => undefined);
+
+    expect(fixture.calls).toEqual({
+      lease: 0,
+      reconciliation: 0,
+      runtime: 0,
+      provider: 0,
+      tool: 0,
+      artifact: 0,
+      fallback: 0
+    });
+  });
+
   it("rejects hostile and swapped reconciliation readbacks while returning only canonical immutable evidence", async () => {
     for (const readbackKind of ["hostile", "swapped", "canonical"] as const) {
       const fixture = createFixture({ issueLeaseReadback: true, observedActiveClaim: canonicalObservedActiveClaim() });
@@ -601,6 +636,7 @@ function createFixture(options: {
   readonly issueLeaseReadback?: boolean;
   readonly observedActiveClaim?: RevalidatedActiveClaimEvidence;
 } = {}) {
+  let mountedObservedActiveClaim = options.observedActiveClaim;
   const calls = {
     lease: 0,
     reconciliation: 0,
@@ -672,7 +708,7 @@ function createFixture(options: {
             artifactStoreEvidenceId: "evidence_artifact",
             derivativeStoreEvidenceId: "evidence_derivative",
             highWaterOrdinal: 5,
-            ...(options.observedActiveClaim === undefined ? {} : { observedActiveClaim: options.observedActiveClaim })
+            ...(mountedObservedActiveClaim === undefined ? {} : { observedActiveClaim: mountedObservedActiveClaim })
           }
         };
       }
@@ -689,6 +725,7 @@ function createFixture(options: {
     supervisorEpoch,
     mountedIdentity,
     mountedReadback,
-    setReconciliationReadback(value: unknown) { reconciliationReadback = value; }
+    setReconciliationReadback(value: unknown) { reconciliationReadback = value; },
+    setMountedObservedActiveClaim(value: RevalidatedActiveClaimEvidence | undefined) { mountedObservedActiveClaim = value; }
   };
 }

@@ -90,6 +90,7 @@ export function createPortableWorkspaceLifecyclePorts(
   let active: ActiveAdmission | undefined;
   let lastAccepted: PortableWorkspaceMountedFacts | undefined;
   let pendingOutage: WorkspaceOutageObservation | undefined;
+  let pendingOutageClaim: RevalidatedActiveClaimEvidence | undefined;
   const issuedAdmissionIdentities = new WeakSet<object>();
   const issuedAdmissionGenerations = new WeakSet<object>();
   const invalidationListeners = new Set<(reason: "authority-loss" | "admission-mismatch") => void>();
@@ -193,6 +194,7 @@ export function createPortableWorkspaceLifecyclePorts(
         const result = canonicalReconciliationReadback(rawResult);
         requireExactReconciliationReadback(result, reconciliationInput, reconciliationInput.record);
         pendingOutage = undefined;
+        pendingOutageClaim = undefined;
         return result;
       } catch (error) {
         active = undefined;
@@ -250,7 +252,8 @@ export function createPortableWorkspaceLifecyclePorts(
     const tuple = input.admission;
     const record = input.record;
     const mountedActiveClaim = current.facts.observedActiveClaim;
-    if (pendingOutage === undefined || mountedActiveClaim === undefined
+    if (pendingOutage === undefined || pendingOutageClaim === undefined || mountedActiveClaim === undefined
+      || !sameActiveClaim(mountedActiveClaim, pendingOutageClaim)
       || !sameActiveClaim(input.observedActiveClaim, mountedActiveClaim)
       || !sameOutage(input.outage, pendingOutage)
       || input.observedActiveClaim.workspaceId !== input.workspaceId || input.observedActiveClaim.residentId !== input.residentId
@@ -287,6 +290,7 @@ export function createPortableWorkspaceLifecyclePorts(
     try {
       const safeObservationId = requiredText(createSafeOutageObservationId());
       const outageObservedAt = requiredText(now());
+      pendingOutageClaim = claim;
       pendingOutage = Object.freeze({
         safeObservationId,
         outageObservedAt,
@@ -298,6 +302,7 @@ export function createPortableWorkspaceLifecyclePorts(
       });
     } catch {
       pendingOutage = undefined;
+      pendingOutageClaim = undefined;
     }
   }
 }
