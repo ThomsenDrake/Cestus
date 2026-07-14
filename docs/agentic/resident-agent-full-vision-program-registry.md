@@ -4939,3 +4939,46 @@ explicit implementation authorization.
 - Holds: no source change, full verifier, integration, Task125 restart,
   provider/credential/network action, reset-credit use, or `neo` mutation is
   authorized by this context correction.
+
+## RV-1-C-138 — Task126 authority-unavailable repair authorization
+
+- Recorded at: 2026-07-14T22:45:00Z by the sole Relay C coordinator.
+- Role: coordinator / review receipt and scoped repair dispatcher.
+- Lane and wave: P / 1.
+- Governing spec and plan:
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`
+  and
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Review receipt: fresh independent Terra-attested review returned
+  **NEEDS-CHANGES** on
+  `82cf9cedc590939e8769c58016df051813b10c0e..27a99b137dcb2508132441879764b6c46f59fa14`.
+  Reader-derived swapped/stale capability, evidence, endpoint-policy,
+  preparation/current-use, and credential-reference facts return `blocked`
+  instead of safe `authority-reader-unavailable`; adversarial reader-output
+  tests omit accessors, symbols, and non-plain prototypes plus no-getter/
+  no-effect proofs. No ownership leak, provider/network call, ledger append,
+  portable write, or fallback path was found. The focused reviewer command was
+  environment-blocked by absent `vitest`; this is not a product pass.
+- Approval record: the referenced spec and plan are approved. Allowed range is
+  Task126 authority-reader classification and hostile-reader-output repair
+  only, within its existing claim, `packages/agent/src/byok-provider.ts`, and
+  `packages/agent/test/byok-provider.test.ts`. Wave stop is before any full
+  verifier, integration, Task125 action, Task139 configuration work,
+  provider/credential/network use, reset-credit use, or `neo` action. The
+  repair worker is explicitly authorized to use
+  `superpowers:subagent-driven-development` where relevant, systematic
+  debugging, test-driven development, verification-before-completion, and a
+  fresh independent review. It must not self-review or self-integrate.
+- Required repair proof: first add causal RED cases for every reader-derived
+  mismatch and malicious reader output; then minimally normalize/reject before
+  getter/effect use and return secret-safe `authority-reader-unavailable`
+  before every prohibited effect. Focused Green is
+  `npm test -- packages/agent/test/byok-provider.test.ts packages/agent/test/openai-compatible-provider.test.ts`,
+  followed by typecheck, diff, factory, clean commit, and fresh review only.
+- Model configuration: worker and later reviewer must be fresh no-history
+  spawns accepted with `model: gpt-5.6-terra` and `reasoning_effort: xhigh`;
+  the accepted spawn configuration is authoritative, no fallback permitted.
+- Usage and holds: the recorded normal-mode 97% weekly / Spark 100% /
+  five-credit-untouched posture permits this bounded non-full repair. Task126
+  remains unintegrated; Task128 review remains independent; Task125, all full
+  verifiers, all integrations, and `neo` remain stopped.
