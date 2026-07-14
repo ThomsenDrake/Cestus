@@ -3581,3 +3581,29 @@ explicit implementation authorization.
   independently rerun the retained focused/typecheck evidence. No candidate
   full verifier, repair, integration, downstream dispatch, credential/provider
   use, self-integration, or `neo` change is authorized by this verdict.
+
+## RV-1-C-089 — Task127 exact-use capability repair authorization
+
+- Fresh authenticated Codex `/status` immediately before this repair dispatch
+  reports Weekly **26% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  weekly remains 100% left. No `/usage`, reset, or redemption occurred. Above
+  the 10% drain guard, one fresh TDD repair implementer is authorized only on
+  the existing Task127 branch and its exact claim/source/test scope.
+- It must first add causal REDs proving that a runtime/untyped construction
+  cannot mint an accepted material and a released handle cannot be accepted by
+  backend-resolution normalization; then cover exact mismatches for mount,
+  run, provider capability hash, and credential-reference identity, plus a
+  direct hostile proxy boundary and safe result/error/DTO exposure. The
+  smallest repair must use an unforgeable module-private issuance path and
+  reject inactive/released material before it can enter a resolved result;
+  it may not add plaintext, environment, browser, CLI-auth, cache,
+  portable-state, provider, or fallback behavior. It must update the claim to
+  truthful progress/ready-for-review state.
+- `superpowers:subagent-driven-development` is explicitly approved where
+  relevant, together with systematic debugging, test-driven development,
+  fresh independent review, and verification-before-completion. Required
+  non-full gates are the named Task127 focused command, `npm run typecheck`,
+  `git diff --check`, and `npm run factory:check`; remove any temporary
+  dependency link and stop clean after one scoped commit. It may not run
+  `npm run verify`, self-review, self-integrate, dispatch a child, use a live
+  credential/provider, touch another lane, or merge `neo`.
