@@ -2840,3 +2840,31 @@ explicit implementation authorization.
   prototype strictness, canonical byte preservation, and fail-closed behavior.
   The candidate remains unintegrated; no full verifier, self-integration, or
   `neo` change is authorized.
+
+## RV-1-C-056 — Ingestion reader proxy-boundary resolution
+
+- Fresh authenticated Codex `/status` before any repair action reports Weekly
+  **34% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly remains
+  100% left. No `/usage`, reset, or redemption occurred. The serialized full
+  verifier remains forbidden.
+- Review rejected `2e08dffd` because `Buffer.isBuffer`, prototype traversal,
+  and `Reflect.ownKeys` could invoke hostile proxy traps before the reader
+  rejected an artifact. The coordinator reproduced `Buffer.isBuffer` invoking
+  `getPrototypeOf` on both a proxy-wrapped Buffer and a Buffer with a proxied
+  injected prototype.
+- The requested trap-free alternative was experimentally verified before a
+  repair dispatch: `Uint8Array.prototype.values.call(artifact)` first rejects a
+  proxy-wrapped Buffer with `TypeError` and zero `getPrototypeOf`/`ownKeys`
+  calls. For a genuine Buffer with a proxied injected prototype, the intrinsic
+  values iterator succeeds, `Object.getPrototypeOf(artifact)` returns the proxy
+  object without invoking its trap, and identity comparison with
+  `Buffer.prototype` rejects it with zero trap calls. This proves the frozen
+  zero-hook requirement is implementable without relaxing the schema contract:
+  remove `Buffer.isBuffer`/`instanceof`, establish the intrinsic iterator first,
+  then perform the direct-prototype identity and own-key checks only after that
+  non-Proxy brand proof.
+- The existing fresh root-cause worker may make one bounded TDD repair atop
+  `2e08dffd`: add the three proxy causal REDs, apply that validated ordering,
+  retain exact canonical bytes/event bindings, and stop for another distinct
+  fresh review. It may not run a full verifier, self-integrate, or change
+  `neo`.
