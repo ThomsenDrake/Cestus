@@ -6119,3 +6119,15 @@ explicit implementation authorization.
   rebase and seek its own fresh review only after it is verified against this
   corrected program head; it remains unintegrated unless its own gates and
   fresh review succeed.
+
+## RV-1-E-175 — Forward correction: authenticated usage guard
+
+- **Forward-only correction of RV-1-E-174's usage figure.** The latest
+  authenticated app-server usage event is primary and reports
+  `usedPercent=11`, or **89% weekly remaining**. RV-1-E-174's `9` / 91%
+  figure is preserved as stale historical evidence and is not a current usage
+  claim.
+- Reset credits remain untouched and must never be redeemed. Normal operation
+  continues at 89% remaining; DRAIN begins at <=10% remaining and HARD PAUSE
+  at <=7% remaining. The serialized full verifier remains **CLOSED** and
+  `neo` remains untouched.
