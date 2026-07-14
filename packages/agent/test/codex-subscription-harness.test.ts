@@ -51,7 +51,7 @@ function createHarness(input: {
   return createCodexSubscriptionHarness({
     currentPosture: currentPosture(),
     feasibilityAuthority: {
-      appendOfficialFlowUnavailable: async (evidence) => {
+      appendOfficialFlowUnavailable: async (evidence: CodexOfficialFlowUnavailableEvidence) => {
         input.appended.push(evidence);
         return input.append?.(evidence) ?? { kind: "appended" as const };
       }
