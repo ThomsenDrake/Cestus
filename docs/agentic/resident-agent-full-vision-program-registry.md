@@ -5489,6 +5489,27 @@ explicit implementation authorization.
   or touch `neo`. A fresh authenticated gate is required before any later full
   verifier or integration.
 
+## RV-1-C-153 — Task126 review approval and serialized candidate-full gate
+
+- Recorded at: 2026-07-14T22:40:00Z by the sole Relay C coordinator.
+- Fresh independent review verdict: **APPROVE** for clean
+  `512a169af3caad7e0c2d270040f24c36443913ec..03c36b2f60669124a38bd4d73bcab973a4f2c5a9`.
+  It found no P1/P2 defect: public requested-use normalization now precedes
+  reader inspection, malformed input has zero reader invocation and returns
+  `blocked/unsafe-input`, valid absent/forged reader remains safe unavailable,
+  and hostile reader/binding/no-fallback contracts are preserved. Scope and
+  ancestry are exact. Reviewer diff-check passed; its local focused rerun was
+  environment-blocked by absent dependencies and is not treated as a waiver.
+- Usage gate: authenticated `/status` immediately before this full grant reports
+  **93% weekly remaining**, Spark 100%, and five untouched reset credits.
+  Normal mode is active; no reset credit was redeemed.
+- Grant: exactly one serialized Task126 candidate `npm run verify` is now
+  authorized in the clean candidate worktree. The full slot is exclusive. Only
+  after a passing candidate gate and another fresh authenticated integration
+  gate may Relay C no-ff merge this candidate, run its merged focused/factory
+  and serialized full verification, then append integration evidence. Task125
+  and Task129 remain non-full; no `neo` action is authorized.
+
 ## RV-1-C-151 — Final Task128 closure and Relay D handoff
 
 - Recorded in append order after `RV-1-C-150` by the sole Relay C coordinator.
