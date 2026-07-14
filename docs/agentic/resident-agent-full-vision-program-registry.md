@@ -5723,3 +5723,18 @@ explicit implementation authorization.
   temporary dependency setup must be removed; and any result is recorded
   forward-only. No Task125 or Task129 full verification, no integration, and
   no `neo` action is opened by this grant.
+
+## RV-1-D-160 — Task126 candidate verifier pass and integration boundary
+
+- The sole Relay D-controlled candidate `npm run verify` for clean
+  `093b54efd2b9ebd670973d4676b101433d88e233` exited `0`: typecheck passed;
+  **198 passed / 3 skipped files** and **2,382 passed / 5 skipped tests**;
+  Vite build and factory readiness passed. Its temporary ignored dependency
+  link was removed, and candidate status remained clean. This supersedes no
+  historical result and does not treat predecessor partial output as evidence.
+- At this immediate integration boundary, the current parent-authenticated
+  `usedPercent=8` / **92% remaining** event remains the active normal-mode
+  guard; reset credits remain untouched. Relay D may now no-ff merge this
+  exact reviewed candidate only. The full-verifier slot closes while the merge
+  and merged focused/factory evidence are collected; a separate fresh usage
+  gate is required before any merged full verifier.
