@@ -3875,3 +3875,12 @@ explicit implementation authorization.
   clean, and stop for another fresh review. The retained authenticated `25%`
   usage gate is above drain; no full verifier, integration, child dispatch,
   credential/provider use, self-integration, or `neo` change is authorized.
+
+## RV-1-C-103 — Active Task127 issuer-regression child
+
+- Fresh Task127 issuer-regression implementer: child
+  `/root/task127_issuer_repair`, isolated on the preserved Task127 branch at
+  `4c3a0a6528a181432b667c123bce8f75aeae699e`. It owns only the existing
+  Task127 claim/source/test scope and no full/integration slot. Task125 and
+  Task126 implementation lanes remain active with disjoint scopes; the Task131
+  plan-correction review waits for the next open child slot.
