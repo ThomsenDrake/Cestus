@@ -3814,3 +3814,28 @@ explicit implementation authorization.
   correction, not a product or user blocker. The rejected `e2f1626d` remains
   evidence only; no adapter source, full verifier, integration, or `neo`
   change is authorized by this record.
+
+## RV-1-C-100 — Task126 provider-foundation authorization
+
+- The authenticated C-093 usage reading remains `25%` weekly remaining, above
+  the drain and hard-pause thresholds. While Task125 and Task127 seal their
+  disjoint root-cause repairs, one isolated Task126 provider-foundation lane is
+  authorized from coordinator head `461831da5436dff3cca92ff02ae4233deeb13bd7`.
+  It owns only `docs/agentic/claims/task-126-resident-full-vision-byok-provider.md`,
+  `packages/agent/src/byok-provider.ts`, and
+  `packages/agent/test/byok-provider.test.ts`; its focused command is
+  `npm test -- packages/agent/test/byok-provider.test.ts packages/agent/test/openai-compatible-provider.test.ts`.
+- Task126 must create a credential-free, exact-reference BYOK provider boundary
+  that validates references and capability posture without ever writing secret
+  values to portable state. It must preserve Nous/reference-provider separation,
+  prompt-artifact and safe diagnostics rules; it must not call a provider,
+  discover credentials, write fallback state, alter shared provider
+  configuration, or infer readiness from a generic OpenAI-compatible client.
+  `superpowers:subagent-driven-development` is expressly approved where
+  relevant with systematic debugging, TDD, fresh independent review, and
+  verification-before-completion. It must causal-RED first, then focused Green,
+  typecheck/diff/factory, one scoped clean commit and stop for review. No full
+  verifier, self-review, self-integration, child dispatch, credential/provider
+  use, or `neo` change is authorized.
+- The C-099 plan correction awaits a fresh read-only documentation review; it
+  does not broaden any source/task ownership or authorize Task131 source work.
