@@ -183,3 +183,137 @@ Status: `ready-for-review`
   coordinator-controlled full verifier was run.
 - Status: `ready-for-review` pending a fresh reviewer distinct from the prior
   reviewer.
+
+## Target-Checkout Typecheck Recovery — 2026-07-14
+
+- Worker: `/root/task123_ingestion_reader_typecheck_recovery`
+- Branch: `codex/task-123-ingestion-reader-typecheck-recovery`
+- Worktree: `/home/drake/.codex/worktrees/task-123-ingestion-reader-typecheck-recovery`
+- Base: `f7ad54f207826e19eb554a13401b380c3715195d`, a forward descendant of
+  the preserved failed merge `c3a4c76106ce932c0a63c1cc663ab24960d3d689`.
+- Scope remains exactly this claim, `packages/ingestion/src/legacy-report.ts`,
+  and `packages/ingestion/test/legacy-report.test.ts`. The prior candidate's
+  reported typecheck/full-verifier result remains non-authoritative discrepancy
+  evidence; it is not overwritten or treated as merged-checkout verification.
+
+### Dependency Recovery And Target RED
+
+- Before coordinator-authorized dependency recovery, `npm run typecheck` could
+  not start because `tsc` was absent. The coordinator authorized only
+  `npm ci --ignore-scripts` in this isolated worktree; it completed without a
+  tracked manifest or lockfile delta.
+- The resulting target-checkout `npm run typecheck` exited `1` with the C-059
+  diagnostics: Zod's regex-valid staged-report `reportHash` remained typed as
+  `string` for the typed `Object.freeze` reference; the untyped capability
+  callback selected the `Function` overload and left `contentHash` implicit
+  `any`; `Reflect.ownKeys(artifact)` received post-intrinsic `unknown`; and
+  reader fixtures supplied excess `readStream`, `append`, and `put` members to
+  the intentionally narrowed `readAll`/`get` capabilities (including the
+  former implicit `readStream` callback parameter).
+
+### Scoped Green
+
+- Test-first fixture repair passes only the declared read-only `readAll` and
+  `get` capabilities. The 24 existing causal runtime tests remain present,
+  including forged event/artifact bindings, hostile accessors, direct
+  prototype/species rejection, and zero-invocation Proxy traps.
+- The source change preserves the exact runtime regex and artifact validation
+  sequence while carrying the validated content-hash type through the frozen
+  reference, retaining distinct typed capability callbacks, and narrowing the
+  artifact to a non-null object only after the native typed-array intrinsic has
+  succeeded and before reflection.
+- Focused GREEN: `npm test -- packages/ingestion/test/legacy-report.test.ts`
+  exited `0` with 1 file and 24 tests passing.
+- Target typecheck GREEN: `npm run typecheck` exited `0` with `typecheck
+  passed`.
+- No `npm run verify`, merge, `neo` change, or self-review/integration was
+  started. Status: `ready-for-review` pending a fresh independent review.
+
+## Target-Typecheck Fresh-Review P1 Test Recovery — 2026-07-14
+
+- Fresh independent review of `f7ad54f2..3c35b865` returned
+  `NEEDS-CHANGES` P1: the prior type-fixture narrowing removed the existing
+  throwing `append`/`put` tripwires and their zero-attempt assertions. That
+  weakened the required no-side-effect proof even though the reader's runtime
+  artifact, event, hash, proxy, and capability checks were unchanged.
+- Review RED is the missing causal boundary coverage: the prior 24-test Green
+  could no longer fail if a success or failure path attempted an injected
+  ledger append or derivative write. No production repair is needed or
+  authorized for that test-only regression.
+- The repair predeclares structurally compatible extended fixture objects with
+  throwing runtime `append` or `put` methods, then assigns those same objects
+  to `Pick<EventLedger, "readAll">` or `Pick<WorkspaceBlobStore, "get">`
+  before calling the reader. This preserves the runtime writer tripwires while
+  respecting the reader's narrowed public capability types without casts,
+  `any`, or broader interfaces.
+- It restores zero-attempt assertions for both writers on the successful read,
+  for `put` on the forged-artifact failure path, and for `append` on the
+  accessor-bearing ledger-readback failure path.
+- Focused GREEN: `npm test -- packages/ingestion/test/legacy-report.test.ts`
+  exited `0` with 1 file and 24 tests passing. Target typecheck GREEN:
+  `npm run typecheck` exited `0` with `typecheck passed`.
+- No `npm run verify`, self-review/integration, merge, dispatch, or `neo`
+  change was started. Status: `ready-for-review` pending another fresh
+  independent reviewer.
+
+## Assertion Root-Cause Repair — 2026-07-14
+
+- Worker: `/root/task123_ingestion_reader_assertion_root_cause`
+- Branch: `codex/task-123-ingestion-reader-typecheck-recovery`
+- Base candidate: `40dca32fd6de55283b0393a1555318a70e0e671a`
+- Fresh review `RV-1-C-064` rejected the prior typecheck repair because it
+  used two source assertions forbidden by the frozen strict-typing authority.
+  The earlier regex-valid `z.string()` output remained `string`, so its
+  transform asserted the narrower `CanonicalContentHash` type instead of
+  producing that type from validation. Separately, a generic descriptor
+  lookup could prove only that its discovered value was callable; its type
+  parameter could not prove a runtime key-to-method correlation, so casting a
+  dynamically bound function to `StagedReportReadCapabilities[TKey]` masked
+  the gap.
+
+### Causal RED
+
+- Before production edits, the focused command
+  `npm test -- packages/ingestion/test/legacy-report.test.ts` exited `1` with
+  24 passing and 1 failing test. The new counterfactual supplied the exact
+  public `Pick<EventLedger, "readAll">` and `Pick<WorkspaceBlobStore, "get">`
+  capabilities, placed throwing own `bind` accessors on both callable values,
+  and required the reader to retain each receiver and pass the exact canonical
+  report hash to `get`.
+- The old generic binder consulted `readAll.bind`, then returned the standard
+  event mismatch before reaching a valid canonical read. This demonstrates
+  that a dynamically bound unknown function is not the typed read capability
+  contract the reader needs, rather than merely scanning source text for a
+  removed assertion.
+
+### Green
+
+- The report hash schema is now a typed `z.custom<CanonicalContentHash>`
+  validator backed by the same exact `sha256:` hexadecimal regex. Its inferred
+  output satisfies the frozen canonical reference without a transform cast.
+- Capability discovery still checks an own-data method descriptor through the
+  existing prototype walk, but separate `readAll` and `get` wrappers expose
+  their concrete signatures and invoke the discovered callable with
+  `Reflect.apply`, without dynamic `.bind`, a conditional method assertion,
+  `any`, or a broad `Function` type.
+- `npm test -- packages/ingestion/test/legacy-report.test.ts` exited `0` with
+  1 file and 25 tests passing; the new test proves both hostile `bind`
+  accessors remain unread, `get` receives the exact report hash, and all
+  existing writer-tripwire, proxy, artifact, event, hash, and fail-closed
+  counterfactuals remain green.
+- `npm run typecheck` exited `0`, proving the typed Zod output reaches the
+  frozen `CanonicalStagedReportReference` and the concrete capability wrappers
+  typecheck without either rejected assertion. No `npm run verify`, merge,
+  self-review/integration, child dispatch, or `neo` change was started.
+- Status: `in-progress` pending diff hygiene, factory readiness, scoped commit,
+  and a fresh independent review.
+
+### Final Scoped Gates
+
+- `git diff --check` exited `0`.
+- `npm run factory:check` exited `0` with `factory-readiness passed`.
+- The candidate remains exactly within its three authorized files. It is ready
+  for a fresh independent review after the scoped commit; no full verifier or
+  integration is authorized.
+
+Status: `ready-for-review`.
