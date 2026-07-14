@@ -2818,6 +2818,30 @@ explicit implementation authorization.
   its tests, and its append-only claim; no full verifier, self-integration, or
   `neo` change is authorized.
 
+## RV-1-C-062 — Ingestion reader typecheck review recovery
+
+- Fresh authenticated Codex `/status` immediately before this recovery records
+  Weekly **33% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly
+  remains 100% left. No `/usage`, reset, or redemption occurred. The guard is
+  above 10%, so it authorizes one bounded repair worker only; a full verifier,
+  downstream lane, integration, and `neo` change remain forbidden.
+- Fresh independent review of
+  `f7ad54f2..3c35b865` returned **NEEDS-CHANGES** P1. The TypeScript fixture
+  narrowing deleted the pre-existing `append`/`put` throwing tripwires and
+  zero-attempt assertions from both success and failure paths. That weakens
+  the reader's required no-side-effect boundary even though the production
+  type repairs otherwise retain the artifact, event, proxy, hash, and
+  capability checks.
+- The existing recovery worker receives one bounded TDD repair on its clean
+  `3c35b865` candidate: first restore the writer-tripwire counterfactuals as
+  causal RED coverage using predeclared structurally compatible objects, then
+  project them to the reader's `readAll`/`get` input capabilities without
+  casts or broader public interfaces. It owns only the existing reader source,
+  reader test, and Task123 reader claim; it must run the focused suite,
+  target typecheck, diff hygiene, and factory readiness, commit clean, and
+  stop for a new reviewer. It may not run `npm run verify`, self-integrate,
+  dispatch work, or change `neo`.
+
 ## RV-1-C-055 — Ingestion reader root-cause candidate review gate
 
 - Fresh authenticated Codex `/status` immediately before review reports Weekly
