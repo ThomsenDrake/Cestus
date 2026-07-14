@@ -145,18 +145,8 @@ export type ByokProviderBoundaryResult =
   }
   | {
     readonly kind: "blocked";
-    readonly category:
-      | "unsafe-input"
-      | "credential-reference-invalid"
-      | "credential-reference-mismatch"
-      | "provider-capability-mismatch"
-      | "endpoint-policy-invalid"
-      | "preparation-mismatch"
-      | "preparation-stale";
-    readonly safeActionId:
-      | "action_review_byok_provider"
-      | "action_review_byok_endpoint_policy"
-      | "action_refresh_provider_preparation";
+    readonly category: "unsafe-input";
+    readonly safeActionId: "action_review_byok_provider";
   };
 
 export interface ByokProviderBoundarySelection {
@@ -238,26 +228,26 @@ export function evaluateByokProviderBoundary(
   }
 
   if (!hasExactByokCapability(authority.data.capability, authority.data.selection)) {
-    return blocked("provider-capability-mismatch", "action_review_byok_provider");
+    return authorityReaderUnavailable();
   }
   if (!hasExactCapabilityEvidence(authority.data.capabilityEvidence, authority.data.selection, authority.data.preparation)) {
-    return blocked("provider-capability-mismatch", "action_review_byok_provider");
+    return authorityReaderUnavailable();
   }
   if (!hasExactEndpointPolicy(authority.data.endpointPolicy, authority.data.selection, authority.data.preparation)) {
-    return blocked("endpoint-policy-invalid", "action_review_byok_endpoint_policy");
+    return authorityReaderUnavailable();
   }
   if (!hasMatchingSelection(authority.data.preparation, authority.data.selection)) {
-    return blocked("preparation-mismatch", "action_review_byok_provider");
+    return authorityReaderUnavailable();
   }
   if (!hasCurrentPreparation(authority.data.preparation, authority.data.current, authority.data.selection, requestedUse)) {
-    return blocked("preparation-stale", "action_refresh_provider_preparation");
+    return authorityReaderUnavailable();
   }
 
   if (authority.data.credentialReference === undefined) {
     return unavailable("credential-reference-missing", "action_link_provider_credential");
   }
   if (!hasExactCredentialReference(authority.data.credentialReference, authority.data.selection, authority.data.preparation)) {
-    return blocked("credential-reference-mismatch", "action_review_byok_provider");
+    return authorityReaderUnavailable();
   }
   if (isElapsedCredentialReference(authority.data.credentialReference)) {
     return unavailable("credential-reference-expired", "action_rotate_provider_credential");
@@ -495,6 +485,10 @@ function unavailable(
   safeActionId: UnavailableResult["safeActionId"]
 ): UnavailableResult {
   return Object.freeze({ kind: "unavailable", category, safeActionId });
+}
+
+function authorityReaderUnavailable(): UnavailableResult {
+  return unavailable("authority-reader-unavailable", "action_check_provider_health");
 }
 
 function blocked(
