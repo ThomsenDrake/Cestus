@@ -143,3 +143,43 @@ Status: `ready-for-review`
   `0`; `npm run factory:check` exited `0` (`factory-readiness passed`). The
   coordinator-controlled full verifier was not run.
 - Status: `ready-for-review` pending a distinct fresh reviewer.
+
+## Fourth Fresh-Review Ordering Repair — 2026-07-14
+
+- Base candidate: `2e08dffd42168ae860773a7b1ace28506f73402b`.
+- Fresh review P1 found that the pre-brand `Buffer.isBuffer(artifact)` check
+  may traverse hostile Proxy shape before the intrinsic TypedArray validator
+  gets a chance to reject it. This bounded repair makes the native values
+  iterator the first protected operation, then validates only a successfully
+  branded real Buffer's direct prototype and canonical own-data byte indices.
+- Status: `in-progress`.
+
+## Fourth Fresh-Review RED Evidence — 2026-07-14
+
+- `npm test -- packages/ingestion/test/legacy-report.test.ts` exited `1` with
+  21 tests passing and 3 new causal tests failing. The pre-brand
+  `Buffer.isBuffer` check invoked `getPrototypeOf` on both a Proxy-wrapped
+  Buffer and a Buffer with a proxied direct prototype; after that check, the
+  current own-key inspection invoked `ownKeys` on a Proxy-wrapped Buffer.
+- The required result remains the standard
+  `LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH` with zero traps. The root-cause
+  evidence establishes that the native TypedArray values iterator is the only
+  safe first brand check for this boundary.
+
+## Fourth Fresh-Review GREEN Evidence — 2026-07-14
+
+- `copyCanonicalArtifactBytes` no longer calls `Buffer.isBuffer` or any
+  `instanceof`-style pre-brand check. Its first protected operation is
+  `Uint8Array.prototype.values.call(artifact)`; the retained native iterator
+  supplies the eventual copy only after direct-prototype and own-byte-shape
+  validation succeeds.
+- `npm test -- packages/ingestion/test/legacy-report.test.ts` exited `0` with
+  1 file and 24 tests passing. The three new Proxy counterfactuals return the
+  standard artifact mismatch and record zero `getPrototypeOf` or `ownKeys`
+  trap calls; all prior event/artifact/hash/identity and no-side-effect tests
+  remain green.
+- Pre-commit gates: `npm run typecheck` exited `0`; `git diff --check` exited
+  `0`; `npm run factory:check` exited `0` (`factory-readiness passed`). No
+  coordinator-controlled full verifier was run.
+- Status: `ready-for-review` pending a fresh reviewer distinct from the prior
+  reviewer.
