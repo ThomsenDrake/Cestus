@@ -50,5 +50,29 @@ commit.
 
 ## RED/GREEN Evidence
 
-- Pending: add the first exact-use counterfactual before production code and
-  retain the command result here.
+- Dependency recovery: this isolated worktree initially lacked ignored
+  lockfile-pinned dependencies (`vitest: command not found`). A temporary,
+  untracked `node_modules` symlink to the coordinator worktree restored the
+  pinned test runner without changing a tracked dependency or lockfile; it is
+  removed before the candidate commit.
+- RED: after the in-scope counterfactual suite was added and before
+  `os-secret-store.ts` existed, the exact focused command exited `1` with one
+  failed suite and zero tests because
+  `../src/os-secret-store.js` could not be imported. The causal suite names a
+  swapped workspace, a current successful exact use, current-reference health
+  states, a purpose swap, hostile accessor/prototype/symbol/sparse-array input,
+  and a locked/throwing facility. The named legacy `secret-store.test.ts` path
+  is absent in this predecessor but Vitest accepted the explicit nonexistent
+  filter; no forbidden compatibility test file was created.
+- GREEN: the same exact focused command exited `0` with one test file and
+  ten tests. The new boundary snapshots plain own-data input before an await,
+  compares the whole typed credential reference and capability/workspace/mount/
+  run/purpose tuple to the frozen current use, returns only bounded health and
+  diagnostic codes, and exposes any resolved credential-free fake as a
+  non-enumerable opaque handle. It performs no portable write, fallback, or
+  facility discovery.
+- Follow-up gates: `npm run typecheck` completed successfully; `git diff
+  --check` exited `0` with no output; and `npm run factory:check` exited `0`
+  with `factory-readiness passed`.
+- Full verification: not run. The coordinator has not granted a serialized
+  `npm run verify` slot for this candidate.
