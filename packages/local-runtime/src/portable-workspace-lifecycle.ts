@@ -65,6 +65,8 @@ export interface PortableWorkspaceLifecyclePorts {
 interface ActiveAdmission {
   readonly revision: number;
   readonly snapshot: WorkspaceAdmissionSnapshot;
+  readonly facts: PortableWorkspaceMountedFacts;
+  readonly verifiedLease?: ClaimReconciliationAdmissionTuple["verifiedLease"];
 }
 
 /**
@@ -88,6 +90,8 @@ export function createPortableWorkspaceLifecyclePorts(
   let active: ActiveAdmission | undefined;
   let lastAccepted: PortableWorkspaceMountedFacts | undefined;
   let pendingOutage: WorkspaceOutageObservation | undefined;
+  const issuedAdmissionIdentities = new WeakSet<object>();
+  const issuedAdmissionGenerations = new WeakSet<object>();
   const invalidationListeners = new Set<(reason: "authority-loss" | "admission-mismatch") => void>();
 
   const authority: WorkspaceAvailabilityAuthority = Object.freeze({
@@ -111,8 +115,14 @@ export function createPortableWorkspaceLifecyclePorts(
       }
 
       lastAccepted = mounted.facts;
-      const snapshot = freezeAdmission(mounted.facts, supervisorEpoch, ++nextGeneration);
-      active = Object.freeze({ revision: admissionRevision, snapshot });
+      const snapshot = freezeAdmission(
+        mounted.facts,
+        supervisorEpoch,
+        ++nextGeneration,
+        issuedAdmissionIdentities,
+        issuedAdmissionGenerations
+      );
+      active = Object.freeze({ revision: admissionRevision, snapshot, facts: mounted.facts });
       if (pendingOutage === undefined) return Object.freeze({ ok: true as const, admission: snapshot });
       if (mounted.facts.observedActiveClaim === undefined) {
         active = undefined;
@@ -143,45 +153,105 @@ export function createPortableWorkspaceLifecyclePorts(
 
   const supervisorLease: DurableSupervisorLeasePort = Object.freeze({
     async readOrAcquire(rawInput) {
-      const leaseInput = canonicalLeaseInput(rawInput);
-      requireCurrentAdmission(leaseInput.admission);
-      const result = await mountedLease.readOrAcquire(leaseInput);
-      requireCurrentAdmission(leaseInput.admission);
+      const leaseInput = canonicalLeaseInput(rawInput, issuedAdmissionIdentities, issuedAdmissionGenerations);
+      requireCurrentLeaseInput(leaseInput);
+      const result = canonicalLeaseResult(await mountedLease.readOrAcquire(leaseInput));
+      const current = requireCurrentLeaseInput(leaseInput);
+      if (result.outcome === "acquired-and-read-back") {
+        requireLeaseReadback(result.readback, current);
+        if (current.verifiedLease !== undefined && !sameLeaseReadback(current.verifiedLease, result.readback)) {
+          throw new Error("workspace admission is no longer current");
+        }
+        active = Object.freeze({ ...current, verifiedLease: result.readback });
+      }
       return result;
     }
   });
 
   const activeClaimReconciliation: ActiveClaimReconciliationPort = Object.freeze({
     async readByIdempotencyKey(rawInput) {
-      const reconciliationInput = canonicalReconciliationReadInput(rawInput);
-      requireCurrentTuple(reconciliationInput.admission);
+      const reconciliationInput = canonicalReconciliationReadInput(rawInput, issuedAdmissionIdentities, issuedAdmissionGenerations);
+      requireCurrentReconciliationInput(reconciliationInput);
       const result = await mountedReconciliation.readByIdempotencyKey(reconciliationInput);
-      requireCurrentTuple(reconciliationInput.admission);
+      requireCurrentReconciliationInput(reconciliationInput);
       return result;
     },
     async appendAndReadBack(rawInput) {
-      const reconciliationInput = canonicalReconciliationAppendInput(rawInput);
-      requireCurrentTuple(reconciliationInput.admission);
+      const reconciliationInput = canonicalReconciliationAppendInput(rawInput, issuedAdmissionIdentities, issuedAdmissionGenerations);
+      requireCurrentAppendInput(reconciliationInput);
       const result = await mountedReconciliation.appendAndReadBack(reconciliationInput);
-      requireCurrentTuple(reconciliationInput.admission);
+      requireCurrentAppendInput(reconciliationInput);
       return result;
     }
   });
 
   return Object.freeze({ authority, supervisorLease, activeClaimReconciliation });
 
-  function requireCurrentAdmission(admission: WorkspaceAdmissionSnapshot): void {
+  function requireCurrentAdmission(admission: WorkspaceAdmissionSnapshot): ActiveAdmission {
     const current = active;
     if (current === undefined || current.revision !== revision || !sameAdmission(admission, current.snapshot)) {
       throw new Error("workspace admission is no longer current");
     }
+    return current;
   }
 
-  function requireCurrentTuple(tuple: ClaimReconciliationAdmissionTuple): void {
-    requireCurrentAdmission(Object.freeze({
+  function requireCurrentLeaseInput(leaseInput: SupervisorLeaseAdmissionInput): ActiveAdmission {
+    const current = requireCurrentAdmission(leaseInput.admission);
+    const identity = current.snapshot.identityAndMount;
+    const facts = current.facts;
+    if (leaseInput.residentId !== identity.residentId || leaseInput.supervisorEpoch !== identity.supervisorEpoch
+      || leaseInput.policyVersion !== facts.policyVersion || leaseInput.policyDigest !== facts.policyDigest
+      || leaseInput.lockStateDigest !== facts.lockStateDigest) {
+      throw new Error("workspace admission is no longer current");
+    }
+    return current;
+  }
+
+  function requireCurrentTuple(tuple: ClaimReconciliationAdmissionTuple): ActiveAdmission {
+    const current = requireCurrentAdmission(Object.freeze({
       identityAndMount: tuple.authorityIdentityAndMount,
       admissionGeneration: tuple.admissionGeneration
     }));
+    if (current.verifiedLease === undefined || !sameLeaseReadback(tuple.verifiedLease, current.verifiedLease)
+      || !samePolicyAndLock(tuple.policyAndLock, current.verifiedLease.policyAndLock)
+      || !sameHighWater(tuple.highWater, current.verifiedLease.highWater)) {
+      throw new Error("workspace admission is no longer current");
+    }
+    return current;
+  }
+
+  function requireCurrentReconciliationInput(input: Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0]): ActiveAdmission {
+    const current = requireCurrentTuple(input.admission);
+    const identity = current.snapshot.identityAndMount;
+    if (input.workspaceId !== identity.workspaceId || input.residentId !== identity.residentId || input.supervisorEpoch !== identity.supervisorEpoch) {
+      throw new Error("workspace admission is no longer current");
+    }
+    return current;
+  }
+
+  function requireCurrentAppendInput(input: Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]): ActiveAdmission {
+    const current = requireCurrentReconciliationInput(input);
+    const tuple = input.admission;
+    const record = input.record;
+    if (input.observedActiveClaim.workspaceId !== input.workspaceId || input.observedActiveClaim.residentId !== input.residentId
+      || input.observedActiveClaim.supervisorEpoch !== input.supervisorEpoch || record.workspaceId !== input.workspaceId
+      || record.residentId !== input.residentId || record.supervisorEpoch !== input.supervisorEpoch
+      || record.claimId !== input.observedActiveClaim.claimId || record.attemptId !== input.observedActiveClaim.attemptId
+      || !sameOutage(record.outageObservation, input.outage) || !sameCausation(record.causation, input.observedActiveClaim.causation)
+      || record.reconciliationIdempotencyKey !== input.reconciliationIdempotencyKey
+      || record.revalidatedAuthority.identityEventId !== tuple.authorityIdentityAndMount.workspaceIdentityEventId
+      || record.revalidatedAuthority.mountEvidenceId !== tuple.authorityIdentityAndMount.mountEvidenceId
+      || record.revalidatedAuthority.authorityEvidenceId !== tuple.authorityIdentityAndMount.authorityEvidenceId
+      || record.revalidatedAuthority.highWaterAfterRevalidation !== tuple.highWater.highWaterMark
+      || record.revalidatedAuthority.policyVersion !== tuple.policyAndLock.policyVersion
+      || record.revalidatedAuthority.policyDigest !== tuple.policyAndLock.policyDigest
+      || record.revalidatedAuthority.lockStateDigest !== tuple.policyAndLock.lockStateDigest
+      || record.revalidatedAuthority.supervisorLeaseEventId !== tuple.verifiedLease.leaseEventId
+      || record.revalidatedAuthority.supervisorLeaseReadbackEventId !== tuple.verifiedLease.readbackEventId
+      || record.revalidatedAuthority.supervisorLeaseExpiresAt !== tuple.verifiedLease.expiresAt) {
+      throw new Error("workspace admission is no longer current");
+    }
+    return current;
   }
 
   function fail(category: AvailabilityCategory): AvailabilityFailure {
@@ -288,7 +358,13 @@ function canonicalActiveClaim(value: unknown): RevalidatedActiveClaimEvidence {
   });
 }
 
-function freezeAdmission(facts: PortableWorkspaceMountedFacts, supervisorEpoch: string, sequence: number): WorkspaceAdmissionSnapshot {
+function freezeAdmission(
+  facts: PortableWorkspaceMountedFacts,
+  supervisorEpoch: string,
+  sequence: number,
+  issuedIdentities: WeakSet<object>,
+  issuedGenerations: WeakSet<object>
+): WorkspaceAdmissionSnapshot {
   const identityAndMount = Object.freeze({
     workspaceId: facts.workspaceId, residentId: facts.residentId, supervisorEpoch,
     workspaceIdentityEventId: facts.workspaceIdentityEventId, mountEvidenceId: facts.mountEvidenceId,
@@ -298,38 +374,56 @@ function freezeAdmission(facts: PortableWorkspaceMountedFacts, supervisorEpoch: 
     schemaVersion: "resident-wake-admission-generation.v1",
     generationId: `admission:${sequence}`
   });
+  issuedIdentities.add(identityAndMount);
+  issuedGenerations.add(admissionGeneration);
   return Object.freeze({ identityAndMount, admissionGeneration });
 }
 
-function canonicalLeaseInput(value: unknown): SupervisorLeaseAdmissionInput {
+function canonicalLeaseInput(
+  value: unknown,
+  issuedIdentities: WeakSet<object>,
+  issuedGenerations: WeakSet<object>
+): SupervisorLeaseAdmissionInput {
   const record = ownDataRecord(value, "supervisor lease admission");
   requireKeys(record, ["admission", "residentId", "supervisorEpoch", "policyVersion", "policyDigest", "lockStateDigest", "causationId", "correlationId"], "supervisor lease admission");
   if (record.residentId !== "agent_default") throw new Error("supervisor lease admission is invalid");
   return Object.freeze({
-    admission: canonicalAdmission(record.admission), residentId: record.residentId, supervisorEpoch: requiredText(record.supervisorEpoch),
+    admission: canonicalIssuedAdmission(record.admission, issuedIdentities, issuedGenerations), residentId: record.residentId, supervisorEpoch: requiredText(record.supervisorEpoch),
     policyVersion: requiredText(record.policyVersion), policyDigest: requiredText(record.policyDigest), lockStateDigest: requiredText(record.lockStateDigest),
     causationId: requiredText(record.causationId), correlationId: requiredText(record.correlationId)
   });
 }
 
-function canonicalReconciliationReadInput(value: unknown): Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0] {
+function canonicalReconciliationReadInput(
+  value: unknown,
+  issuedIdentities: WeakSet<object>,
+  issuedGenerations: WeakSet<object>
+): Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0] {
   const record = ownDataRecord(value, "reconciliation read");
   requireKeys(record, ["admission", "reconciliationIdempotencyKey", "workspaceId", "residentId", "supervisorEpoch"], "reconciliation read");
   if (record.residentId !== "agent_default") throw new Error("reconciliation read is invalid");
-  return Object.freeze({ admission: canonicalTuple(record.admission), reconciliationIdempotencyKey: requiredText(record.reconciliationIdempotencyKey), workspaceId: requiredText(record.workspaceId), residentId: record.residentId, supervisorEpoch: requiredText(record.supervisorEpoch) });
+  return Object.freeze({ admission: canonicalTuple(record.admission, issuedIdentities, issuedGenerations), reconciliationIdempotencyKey: requiredText(record.reconciliationIdempotencyKey), workspaceId: requiredText(record.workspaceId), residentId: record.residentId, supervisorEpoch: requiredText(record.supervisorEpoch) });
 }
 
-function canonicalReconciliationAppendInput(value: unknown): Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0] {
+function canonicalReconciliationAppendInput(
+  value: unknown,
+  issuedIdentities: WeakSet<object>,
+  issuedGenerations: WeakSet<object>
+): Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0] {
   const record = ownDataRecord(value, "reconciliation append");
   requireKeys(record, ["admission", "reconciliationIdempotencyKey", "workspaceId", "residentId", "supervisorEpoch", "record", "observedActiveClaim", "outage"], "reconciliation append");
   if (record.residentId !== "agent_default") throw new Error("reconciliation append is invalid");
   return Object.freeze({
-    admission: canonicalTuple(record.admission), reconciliationIdempotencyKey: requiredText(record.reconciliationIdempotencyKey), workspaceId: requiredText(record.workspaceId), residentId: record.residentId, supervisorEpoch: requiredText(record.supervisorEpoch),
-    record: record.record as Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]["record"], observedActiveClaim: canonicalActiveClaim(record.observedActiveClaim), outage: canonicalOutage(record.outage)
+    admission: canonicalTuple(record.admission, issuedIdentities, issuedGenerations), reconciliationIdempotencyKey: requiredText(record.reconciliationIdempotencyKey), workspaceId: requiredText(record.workspaceId), residentId: record.residentId, supervisorEpoch: requiredText(record.supervisorEpoch),
+    record: canonicalReconciliationRecord(record.record), observedActiveClaim: canonicalActiveClaim(record.observedActiveClaim), outage: canonicalOutage(record.outage)
   });
 }
 
-function canonicalAdmission(value: unknown): WorkspaceAdmissionSnapshot {
+function canonicalIssuedAdmission(
+  value: unknown,
+  issuedIdentities: WeakSet<object>,
+  issuedGenerations: WeakSet<object>
+): WorkspaceAdmissionSnapshot {
   const record = ownDataRecord(value, "workspace admission");
   requireKeys(record, ["identityAndMount", "admissionGeneration"], "workspace admission");
   const identity = ownDataRecord(record.identityAndMount, "workspace admission identity");
@@ -338,22 +432,152 @@ function canonicalAdmission(value: unknown): WorkspaceAdmissionSnapshot {
   const generation = ownDataRecord(record.admissionGeneration, "workspace admission generation");
   requireKeys(generation, ["schemaVersion", "generationId"], "workspace admission generation");
   if (generation.schemaVersion !== "resident-wake-admission-generation.v1") throw new Error("workspace admission generation is invalid");
+  if (!issuedIdentities.has(record.identityAndMount as object) || !issuedGenerations.has(record.admissionGeneration as object)) {
+    throw new Error("workspace admission is no longer current");
+  }
   return Object.freeze({
     identityAndMount: Object.freeze({ workspaceId: requiredText(identity.workspaceId), residentId: identity.residentId, supervisorEpoch: requiredText(identity.supervisorEpoch), workspaceIdentityEventId: requiredText(identity.workspaceIdentityEventId), mountEvidenceId: requiredText(identity.mountEvidenceId), authorityEvidenceId: requiredText(identity.authorityEvidenceId) }),
     admissionGeneration: Object.freeze({ schemaVersion: generation.schemaVersion, generationId: requiredText(generation.generationId) })
   });
 }
 
-function canonicalTuple(value: unknown): ClaimReconciliationAdmissionTuple {
+function canonicalTuple(
+  value: unknown,
+  issuedIdentities: WeakSet<object>,
+  issuedGenerations: WeakSet<object>
+): ClaimReconciliationAdmissionTuple {
   const record = ownDataRecord(value, "reconciliation admission");
   requireKeys(record, ["authorityIdentityAndMount", "admissionGeneration", "verifiedLease", "policyAndLock", "highWater"], "reconciliation admission");
-  const admission = canonicalAdmission({ identityAndMount: record.authorityIdentityAndMount, admissionGeneration: record.admissionGeneration });
+  const admission = canonicalIssuedAdmission({ identityAndMount: record.authorityIdentityAndMount, admissionGeneration: record.admissionGeneration }, issuedIdentities, issuedGenerations);
+  const verifiedLease = canonicalLeaseReadback(record.verifiedLease);
+  const policyAndLock = canonicalPolicyAndLock(record.policyAndLock);
+  const highWater = canonicalHighWater(record.highWater);
   return Object.freeze({
     authorityIdentityAndMount: admission.identityAndMount,
     admissionGeneration: admission.admissionGeneration,
-    verifiedLease: record.verifiedLease as ClaimReconciliationAdmissionTuple["verifiedLease"],
-    policyAndLock: record.policyAndLock as ClaimReconciliationAdmissionTuple["policyAndLock"],
-    highWater: record.highWater as ClaimReconciliationAdmissionTuple["highWater"]
+    verifiedLease,
+    policyAndLock,
+    highWater
+  });
+}
+
+function canonicalLeaseResult(value: unknown): Awaited<ReturnType<DurableSupervisorLeasePort["readOrAcquire"]>> {
+  const record = ownDataRecord(value, "supervisor lease result");
+  if (record.outcome === "acquired-and-read-back") {
+    requireKeys(record, ["outcome", "readback"], "supervisor lease result");
+    return Object.freeze({ outcome: "acquired-and-read-back" as const, readback: canonicalLeaseReadback(record.readback) });
+  }
+  if (record.outcome === "supervisor-lease-held") {
+    requireKeys(record, ["outcome", "readback"], "supervisor lease result");
+    const readback = ownDataRecord(record.readback, "supervisor lease held readback");
+    requireKeys(readback, ["schemaVersion", "workspaceId", "residentId", "holderEpoch", "leaseEventId", "readbackEventId", "expiresAt"], "supervisor lease held readback");
+    if (readback.schemaVersion !== "resident-supervisor-lease-held.v1" || readback.residentId !== "agent_default") throw new Error("supervisor lease held readback is invalid");
+    return Object.freeze({
+      outcome: "supervisor-lease-held" as const,
+      readback: Object.freeze({
+        schemaVersion: readback.schemaVersion,
+        workspaceId: requiredText(readback.workspaceId),
+        residentId: readback.residentId,
+        holderEpoch: requiredText(readback.holderEpoch),
+        leaseEventId: requiredText(readback.leaseEventId),
+        readbackEventId: requiredText(readback.readbackEventId),
+        expiresAt: requiredText(readback.expiresAt)
+      })
+    });
+  }
+  throw new Error("supervisor lease result is invalid");
+}
+
+function canonicalLeaseReadback(value: unknown): ClaimReconciliationAdmissionTuple["verifiedLease"] {
+  const record = ownDataRecord(value, "supervisor lease readback");
+  requireKeys(record, ["schemaVersion", "workspaceId", "residentId", "supervisorEpoch", "workspaceIdentityEventId", "mountEvidenceId", "authorityEvidenceId", "policyVersion", "policyDigest", "lockStateDigest", "highWaterMark", "leaseEventId", "readbackEventId", "expiresAt", "causation", "policyAndLock", "highWater"], "supervisor lease readback");
+  if (record.schemaVersion !== "resident-supervisor-lease-readback.v1" || record.residentId !== "agent_default") throw new Error("supervisor lease readback is invalid");
+  return Object.freeze({
+    schemaVersion: record.schemaVersion,
+    workspaceId: requiredText(record.workspaceId),
+    residentId: record.residentId,
+    supervisorEpoch: requiredText(record.supervisorEpoch),
+    workspaceIdentityEventId: requiredText(record.workspaceIdentityEventId),
+    mountEvidenceId: requiredText(record.mountEvidenceId),
+    authorityEvidenceId: requiredText(record.authorityEvidenceId),
+    policyVersion: requiredText(record.policyVersion),
+    policyDigest: requiredText(record.policyDigest),
+    lockStateDigest: requiredText(record.lockStateDigest),
+    highWaterMark: requiredText(record.highWaterMark),
+    leaseEventId: requiredText(record.leaseEventId),
+    readbackEventId: requiredText(record.readbackEventId),
+    expiresAt: requiredText(record.expiresAt),
+    causation: canonicalCausation(record.causation, "supervisor lease causation"),
+    policyAndLock: canonicalPolicyAndLock(record.policyAndLock),
+    highWater: canonicalHighWater(record.highWater)
+  });
+}
+
+function canonicalPolicyAndLock(value: unknown): ClaimReconciliationAdmissionTuple["policyAndLock"] {
+  const record = ownDataRecord(value, "policy and lock readback");
+  requireKeys(record, ["authorityEvidenceId", "mountEvidenceId", "leaseEventId", "leaseReadbackEventId", "policyVersion", "policyDigest", "lockStateDigest", "readbackEventId"], "policy and lock readback");
+  return Object.freeze({
+    authorityEvidenceId: requiredText(record.authorityEvidenceId),
+    mountEvidenceId: requiredText(record.mountEvidenceId),
+    leaseEventId: requiredText(record.leaseEventId),
+    leaseReadbackEventId: requiredText(record.leaseReadbackEventId),
+    policyVersion: requiredText(record.policyVersion),
+    policyDigest: requiredText(record.policyDigest),
+    lockStateDigest: requiredText(record.lockStateDigest),
+    readbackEventId: requiredText(record.readbackEventId)
+  });
+}
+
+function canonicalHighWater(value: unknown): ClaimReconciliationAdmissionTuple["highWater"] {
+  const record = ownDataRecord(value, "high-water readback");
+  requireKeys(record, ["authorityEvidenceId", "mountEvidenceId", "leaseEventId", "leaseReadbackEventId", "highWaterMark", "readbackEventId"], "high-water readback");
+  return Object.freeze({
+    authorityEvidenceId: requiredText(record.authorityEvidenceId),
+    mountEvidenceId: requiredText(record.mountEvidenceId),
+    leaseEventId: requiredText(record.leaseEventId),
+    leaseReadbackEventId: requiredText(record.leaseReadbackEventId),
+    highWaterMark: requiredText(record.highWaterMark),
+    readbackEventId: requiredText(record.readbackEventId)
+  });
+}
+
+function canonicalCausation(value: unknown, label: string): ClaimReconciliationAdmissionTuple["verifiedLease"]["causation"] {
+  const record = ownDataRecord(value, label);
+  requireKeys(record, ["causationId", "correlationId"], label);
+  return Object.freeze({ causationId: requiredText(record.causationId), correlationId: requiredText(record.correlationId) });
+}
+
+function canonicalReconciliationRecord(value: unknown): Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]["record"] {
+  const record = ownDataRecord(value, "workspace-unavailable reconciliation record");
+  requireKeys(record, ["schemaVersion", "outcome", "resumable", "claimDisposition", "workspaceId", "residentId", "supervisorEpoch", "claimId", "attemptId", "outageObservation", "causation", "revalidatedAuthority", "reconciliationIdempotencyKey"], "workspace-unavailable reconciliation record");
+  if (record.schemaVersion !== "resident-wake-workspace-unavailable.v1" || record.outcome !== "workspace-unavailable" || record.resumable !== true || (record.claimDisposition !== "released" && record.claimDisposition !== "checkpointed") || record.residentId !== "agent_default") throw new Error("workspace-unavailable reconciliation record is invalid");
+  const authority = ownDataRecord(record.revalidatedAuthority, "revalidated authority");
+  requireKeys(authority, ["identityEventId", "mountEvidenceId", "authorityEvidenceId", "highWaterAfterRevalidation", "policyVersion", "policyDigest", "lockStateDigest", "supervisorLeaseEventId", "supervisorLeaseReadbackEventId", "supervisorLeaseExpiresAt"], "revalidated authority");
+  return Object.freeze({
+    schemaVersion: record.schemaVersion,
+    outcome: record.outcome,
+    resumable: true,
+    claimDisposition: record.claimDisposition,
+    workspaceId: requiredText(record.workspaceId),
+    residentId: record.residentId,
+    supervisorEpoch: requiredText(record.supervisorEpoch),
+    claimId: requiredText(record.claimId),
+    attemptId: requiredText(record.attemptId),
+    outageObservation: canonicalOutage(record.outageObservation),
+    causation: canonicalCausation(record.causation, "reconciliation causation"),
+    revalidatedAuthority: Object.freeze({
+      identityEventId: requiredText(authority.identityEventId),
+      mountEvidenceId: requiredText(authority.mountEvidenceId),
+      authorityEvidenceId: requiredText(authority.authorityEvidenceId),
+      highWaterAfterRevalidation: requiredText(authority.highWaterAfterRevalidation),
+      policyVersion: requiredText(authority.policyVersion),
+      policyDigest: requiredText(authority.policyDigest),
+      lockStateDigest: requiredText(authority.lockStateDigest),
+      supervisorLeaseEventId: requiredText(authority.supervisorLeaseEventId),
+      supervisorLeaseReadbackEventId: requiredText(authority.supervisorLeaseReadbackEventId),
+      supervisorLeaseExpiresAt: requiredText(authority.supervisorLeaseExpiresAt)
+    }),
+    reconciliationIdempotencyKey: requiredText(record.reconciliationIdempotencyKey)
   });
 }
 
@@ -364,6 +588,62 @@ function canonicalOutage(value: unknown): WorkspaceOutageObservation {
     safeObservationId: requiredText(record.safeObservationId), outageObservedAt: requiredText(record.outageObservedAt), category: availabilityCategory(record.category),
     priorClaimEventId: requiredText(record.priorClaimEventId), priorClaimLeaseId: requiredText(record.priorClaimLeaseId), priorAuthorityEvidenceId: requiredText(record.priorAuthorityEvidenceId), highWaterBeforeOutage: requiredText(record.highWaterBeforeOutage)
   });
+}
+
+function requireLeaseReadback(lease: ClaimReconciliationAdmissionTuple["verifiedLease"], current: ActiveAdmission): void {
+  const identity = current.snapshot.identityAndMount;
+  const facts = current.facts;
+  const policyAndLock = lease.policyAndLock;
+  const highWater = lease.highWater;
+  if (lease.workspaceId !== identity.workspaceId || lease.residentId !== identity.residentId || lease.supervisorEpoch !== identity.supervisorEpoch
+    || lease.workspaceIdentityEventId !== identity.workspaceIdentityEventId || lease.mountEvidenceId !== identity.mountEvidenceId
+    || lease.authorityEvidenceId !== identity.authorityEvidenceId || lease.policyVersion !== facts.policyVersion
+    || lease.policyDigest !== facts.policyDigest || lease.lockStateDigest !== facts.lockStateDigest || lease.highWaterMark !== facts.highWaterMark
+    || policyAndLock.authorityEvidenceId !== identity.authorityEvidenceId || policyAndLock.mountEvidenceId !== identity.mountEvidenceId
+    || policyAndLock.leaseEventId !== lease.leaseEventId || policyAndLock.leaseReadbackEventId !== lease.readbackEventId
+    || policyAndLock.policyVersion !== facts.policyVersion || policyAndLock.policyDigest !== facts.policyDigest
+    || policyAndLock.lockStateDigest !== facts.lockStateDigest || policyAndLock.readbackEventId !== facts.policyAndLockReadbackEventId
+    || highWater.authorityEvidenceId !== identity.authorityEvidenceId || highWater.mountEvidenceId !== identity.mountEvidenceId
+    || highWater.leaseEventId !== lease.leaseEventId || highWater.leaseReadbackEventId !== lease.readbackEventId
+    || highWater.highWaterMark !== facts.highWaterMark || highWater.readbackEventId !== facts.highWaterReadbackEventId) {
+    throw new Error("workspace admission is no longer current");
+  }
+}
+
+function sameLeaseReadback(left: ClaimReconciliationAdmissionTuple["verifiedLease"], right: ClaimReconciliationAdmissionTuple["verifiedLease"]): boolean {
+  return left.schemaVersion === right.schemaVersion && left.workspaceId === right.workspaceId && left.residentId === right.residentId
+    && left.supervisorEpoch === right.supervisorEpoch && left.workspaceIdentityEventId === right.workspaceIdentityEventId
+    && left.mountEvidenceId === right.mountEvidenceId && left.authorityEvidenceId === right.authorityEvidenceId
+    && left.policyVersion === right.policyVersion && left.policyDigest === right.policyDigest && left.lockStateDigest === right.lockStateDigest
+    && left.highWaterMark === right.highWaterMark && left.leaseEventId === right.leaseEventId && left.readbackEventId === right.readbackEventId
+    && left.expiresAt === right.expiresAt && sameCausation(left.causation, right.causation)
+    && samePolicyAndLock(left.policyAndLock, right.policyAndLock) && sameHighWater(left.highWater, right.highWater);
+}
+
+function samePolicyAndLock(left: ClaimReconciliationAdmissionTuple["policyAndLock"], right: ClaimReconciliationAdmissionTuple["policyAndLock"]): boolean {
+  return left.authorityEvidenceId === right.authorityEvidenceId && left.mountEvidenceId === right.mountEvidenceId
+    && left.leaseEventId === right.leaseEventId && left.leaseReadbackEventId === right.leaseReadbackEventId
+    && left.policyVersion === right.policyVersion && left.policyDigest === right.policyDigest
+    && left.lockStateDigest === right.lockStateDigest && left.readbackEventId === right.readbackEventId;
+}
+
+function sameHighWater(left: ClaimReconciliationAdmissionTuple["highWater"], right: ClaimReconciliationAdmissionTuple["highWater"]): boolean {
+  return left.authorityEvidenceId === right.authorityEvidenceId && left.mountEvidenceId === right.mountEvidenceId
+    && left.leaseEventId === right.leaseEventId && left.leaseReadbackEventId === right.leaseReadbackEventId
+    && left.highWaterMark === right.highWaterMark && left.readbackEventId === right.readbackEventId;
+}
+
+function sameCausation(
+  left: ClaimReconciliationAdmissionTuple["verifiedLease"]["causation"],
+  right: ClaimReconciliationAdmissionTuple["verifiedLease"]["causation"]
+): boolean {
+  return left.causationId === right.causationId && left.correlationId === right.correlationId;
+}
+
+function sameOutage(left: WorkspaceOutageObservation, right: WorkspaceOutageObservation): boolean {
+  return left.safeObservationId === right.safeObservationId && left.outageObservedAt === right.outageObservedAt && left.category === right.category
+    && left.priorClaimEventId === right.priorClaimEventId && left.priorClaimLeaseId === right.priorClaimLeaseId
+    && left.priorAuthorityEvidenceId === right.priorAuthorityEvidenceId && left.highWaterBeforeOutage === right.highWaterBeforeOutage;
 }
 
 function sameAdmission(left: WorkspaceAdmissionSnapshot, right: WorkspaceAdmissionSnapshot): boolean {
