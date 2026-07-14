@@ -2771,3 +2771,25 @@ explicit implementation authorization.
   The original worker must add causal REDs, bind every event-declared report
   field, and reject/extract hostile buffers without accessor invocation, then
   stop for a reviewer distinct from the rejecting reviewer.
+
+## RV-1-C-053 — Ingestion reader second-repair review gate
+
+- Fresh local authenticated Codex `/status` immediately before the next review
+  reports Weekly **35% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  weekly remains 100% left. No `/usage`, reset, or redemption occurred. The
+  gate is above the 10% drain threshold and authorizes this review only; no
+  serialized full verifier is granted.
+- The second independent review rejected `f7778aa758d417927f827b243d74c85ddafff362`:
+  after rejecting an own `toString` descriptor, `Buffer.from` could still
+  invoke hostile own `valueOf` or `length` accessors. The causal RED ran with
+  17 passing and 2 failing tests; both hostile real Buffers invoked their
+  accessor before the prior implementation failed closed.
+- Original worker `/root/task123_ingestion_reader` repaired the exact
+  three-file prerequisite scope at
+  `f5f53dd65deb7e2f5396f4494b82600610a171ab`. It rejects own `toString`,
+  `valueOf`, and `length` descriptors before using
+  `Uint8Array.prototype.slice.call` for an internal-slot byte copy. Its focused
+  suite reports 19/19, typecheck, diff hygiene, and factory readiness; these
+  are review inputs, not integration evidence. A third reviewer distinct from
+  both prior reviewers must assess the full `f7778aa7..f5f53dd6` repair range;
+  the author cannot self-integrate and `neo` remains untouched.
