@@ -4782,6 +4782,32 @@ explicit implementation authorization.
   synthetic second reader verifier, route, shared contract, provider action,
   full verifier, self-integration, or `neo` change.
 
+## RV-1-C-137 — Task125 façade-first root-cause recovery
+
+- Recorded at: 2026-07-14T22:36:00Z by the sole Relay C coordinator.
+- Fresh authenticated local Codex `/status` immediately before this dispatch
+  reports 95% weekly remaining (reset 16:37 on 21 Jul), Spark Weekly 100%,
+  and five reset credits untouched. No reset credit was used. Normal mode
+  authorizes this one isolated non-full repair only.
+- The first post-Task124 Task125 worker was stopped clean after it produced no
+  claimed file, source, test, or focused-command checkpoint. This is preserved
+  as a bounded execution stall, not a task or product blocker.
+- The replacement begins in the preserved restart worktree at
+  `codex/task-125-resident-full-vision-portable-workspace-lifecycle-admission-restart@4dca422de61db8ccab6d420960cb4d3abcfd249d`.
+  It owns only the exact Task125 claim, portable-workspace lifecycle source,
+  and focused test. The old rejected `7b8430c9` source/test are conceptual
+  evidence only, never a cherry-pick target.
+- Changed tactic and immediate checkpoint: read the frozen Task124
+  `WorkspaceAvailabilityAuthority` / `WorkspaceAdmissionSnapshot` types and
+  the old test fixture, then create only the typed strict façade skeleton plus
+  the first stale-generation/revocation test and run the exact focused RED.
+  The Green must compare the complete opaque admission/generation and exact
+  mounted identity, policy, lock, high-water, readback/outage facts; it may not
+  revive same-identity stale admissions, leak an invalidation through lease or
+  reconciliation, or create fallback writes. No generic setup-only interval is
+  authorized. Full verification, integration, self-review, provider action,
+  and `neo` remain closed.
+
 ## RV-1-C-132 — Task124 verifier ordering evidence and Task128 mutable-review block
 
 - Recorded at: 2026-07-14T22:10:00Z by the sole Relay C coordinator.
