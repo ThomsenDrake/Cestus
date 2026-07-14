@@ -3189,3 +3189,19 @@ explicit implementation authorization.
   typecheck, diff hygiene, and factory readiness only, then commit clean and
   stop for a fresh review. No `npm run verify`, self-integration, child
   dispatch, or `neo` change is authorized.
+
+## RV-1-C-073 — Task123 restart stale-worker replacement
+
+- The first fresh Task123 restart worker produced no worktree delta, RED
+  result, verifier activity, or structured blocker after its bounded prompt.
+  It was stopped without mutation; the isolated restart branch remains clean
+  at `e7a1d5b6`. This is a worker-staleness recovery, not evidence that the
+  five-file route/workflow scope or the verified ingestion-reader prerequisite
+  is invalid.
+- Fresh authenticated Codex `/status` immediately before the replacement
+  dispatch reports Weekly **31% left**, resetting 15:00 on 19 Jul;
+  GPT-5.3-Codex-Spark weekly remains 100% left. No `/usage`, reset, or
+  redemption occurred. A new independent worker may use the same clean
+  isolated worktree under the exact C-072 scope and must report its causal RED
+  checkpoint immediately. Full verification, self-integration, downstream
+  dispatch, and `neo` change remain forbidden.
