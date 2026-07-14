@@ -5765,3 +5765,25 @@ explicit implementation authorization.
   candidate review, candidate full verification, merged focused/factory, and
   merged full verification all recorded. The serialized slot is closed. Task125
   and Task129 remain separately owned non-full work; no `neo` action occurred.
+
+## RV-1-D-163 — Task129 Terra review finding and bounded repair
+
+- Fresh independent accepted `gpt-5.6-terra` / `xhigh` review of exact Task129
+  range `20e49b2c68c69d3676808a69d7ed9e4bf1dac41a..0bad3c24f563f8fdc60328cfed29a1161f381b94`
+  returned **NEEDS-CHANGES**. `git diff --check` passed; no test or verifier
+  was run.
+- P2: `normalizeOfficialFlow` normalizes/copies the entire own-data object
+  before it classifies a prohibited flow kind. Consequently a browser-cookie
+  or token-cache `material` descriptor is copied into harness-owned memory
+  before rejection. Existing tests assert only output/append state and do not
+  prove that prohibited material is never read.
+- Repair authorization: a fresh isolated Task129 worker may own only
+  `docs/agentic/claims/task-129-resident-full-vision-codex-harness.md`,
+  `packages/agent/src/codex-subscription-harness.ts`, and
+  `packages/agent/test/codex-subscription-harness.test.ts` from clean
+  `0bad3c24`. `superpowers:subagent-driven-development`, systematic debugging,
+  test-driven development, verification-before-completion, and later fresh
+  independent review are explicitly authorized. First add causal RED proving
+  prohibited `material` is never accessed, then classify the safe own-data
+  kind before any full normalization/copy. No full verifier, credentials,
+  network/provider action, self-integration, or `neo` action is authorized.
