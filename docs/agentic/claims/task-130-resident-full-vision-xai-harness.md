@@ -51,3 +51,39 @@ by `npm run typecheck`, `git diff --check`, and `npm run factory:check`.
 action, merge, integration, canonical registry edit, or `neo` action is
 authorized. Stop after the owned-files candidate commit for a fresh
 independent review.
+
+## RED/GREEN And Gate Evidence
+
+- Root-cause/pattern investigation: `codex-subscription-harness.ts` was read
+  as a complete non-network, non-secret feasibility pattern, but Task130 uses
+  a separate xAI provider ID, `xai-` official-flow namespace,
+  `allowOfficialXaiHarness` policy field, `xai-harness` semantics, and
+  `actualXaiFeasibility` result. It imports no Codex credential or flow
+  contract.
+- Dependency recovery: the first named RED was blocked only because this
+  isolated worktree lacked ignored `node_modules` (`vitest: command not
+  found`). A temporary untracked symlink to the coordinator worktree's
+  lockfile-pinned dependencies enabled the authorized focused command and is
+  removed before the candidate commit.
+- Causal RED: with that test runner available, `npm test --
+  packages/agent/test/xai-subscription-harness.test.ts` exited `1` because
+  `../src/xai-subscription-harness.js` was absent. No test body executed.
+- GREEN investigation: the first implementation run had 13 passing tests and
+  one failed capability-swap counterfactual. The test changed the outer
+  capability hash while leaving the nested policy hash stale, so the intended
+  contract correctly returned `unsafe-input` before it could compare the
+  frozen posture. The test now changes both bound capability facts and proves
+  the intended `posture-mismatch` outcome.
+- GREEN: the exact focused command exited `0` with **1 file / 14 tests**. It
+  rejects all listed unofficial source kinds before material inspection,
+  rejects unknown secret/alternate-provider ports, validates policy,
+  capability, credential reference, workspace, mount, run, and approval
+  bindings, appends only secret-safe mounted unavailable evidence for absent
+  official support, and treats the sole test route as non-feasible interface
+  evidence.
+- Fail-fast follow-up gates: `npm run typecheck && git diff --check && npm run
+  factory:check` exited `0`; no full verification ran. The coordinator's
+  later `RV-1-E-173` notice reports a separate merged-program typecheck
+  regression, so this isolated candidate remains in progress and must not be
+  declared ready or integrated until that program-level correction and fresh
+  independent review are complete.
