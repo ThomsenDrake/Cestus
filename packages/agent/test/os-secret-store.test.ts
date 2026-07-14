@@ -3,6 +3,7 @@ import { createCredentialReference } from "../src/credential-reference.js";
 import {
   createCredentialFreeTestOpaqueSecretMaterial,
   createOsSecretStore,
+  OpaqueSecretMaterial,
   type OsSecretResolutionRequest
 } from "../src/os-secret-store.js";
 
@@ -14,7 +15,7 @@ function currentReference() {
 
 function currentReferenceWith(input: {
   readonly status?: "linked" | "missing-binding" | "healthy" | "expired" | "revoked" | "insufficient-scope" | "unverified";
-  readonly capabilityScopes?: readonly ("model-inference" | "provider-health" | "provider-parse" | "harness-execution")[];
+  readonly capabilityScopes?: ("model-inference" | "provider-health" | "provider-parse" | "harness-execution")[];
 }) {
   return createCredentialReference({
     credentialRefId: "agent_credref_nous_primary",
@@ -89,6 +90,86 @@ describe("OS-backed exact-use secret store", () => {
     expect(JSON.stringify(result)).toBe(
       JSON.stringify({ kind: "resolved", health: "healthy", safeDiagnosticCodes: [] })
     );
+  });
+
+  it("makes runtime construction unable to mint accepted material", () => {
+    const runtimeConstructor = OpaqueSecretMaterial as unknown as Function;
+    expect(() => Reflect.construct(runtimeConstructor, [])).toThrow();
+  });
+
+  it("rejects a released material before a resolved result", async () => {
+    const released = createCredentialFreeTestOpaqueSecretMaterial();
+    released.releaseAfterImmediateUse();
+    const store = createOsSecretStore({
+      currentUse: exactUseRequest(),
+      backend: {
+        async resolve() {
+          return { kind: "resolved", material: released };
+        }
+      }
+    });
+
+    await expect(store.resolveForExactUse(exactUseRequest())).resolves.toEqual({
+      kind: "unavailable",
+      health: "unverified",
+      safeDiagnosticCodes: ["os-secret-facility-unavailable"]
+    });
+  });
+
+  it.each([
+    ["mount", { mountInstanceId: "mount_swapped" }],
+    ["run", { runId: "run_swapped" }],
+    ["provider capability", { providerCapabilityHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }],
+    ["credential reference", { credentialRef: createCredentialReference({
+      ...currentReference(),
+      credentialRefId: "agent_credref_nous_swapped"
+    }) }]
+  ] as const)("rejects a swapped %s before the OS facility observes the request", async (_label, mutation) => {
+    let backendCalls = 0;
+    const store = createOsSecretStore({
+      currentUse: exactUseRequest(),
+      backend: {
+        async resolve() {
+          backendCalls += 1;
+          return { kind: "resolved", material: createCredentialFreeTestOpaqueSecretMaterial() };
+        }
+      }
+    });
+
+    await expect(store.resolveForExactUse({ ...exactUseRequest(), ...mutation })).resolves.toEqual({
+      kind: "blocked",
+      health: "unverified",
+      safeDiagnosticCodes: ["exact-use-mismatch"]
+    });
+    expect(backendCalls).toBe(0);
+  });
+
+  it("rejects a direct hostile proxy before it can reach the OS facility", async () => {
+    let backendCalls = 0;
+    let getterCalls = 0;
+    const store = createOsSecretStore({
+      currentUse: exactUseRequest(),
+      backend: {
+        async resolve() {
+          backendCalls += 1;
+          return { kind: "resolved", material: createCredentialFreeTestOpaqueSecretMaterial() };
+        }
+      }
+    });
+    const proxied = new Proxy(exactUseRequest(), {
+      get() {
+        getterCalls += 1;
+        throw new Error("hostile getter must not run");
+      }
+    });
+
+    await expect(store.resolveForExactUse(proxied as OsSecretResolutionRequest)).resolves.toEqual({
+      kind: "blocked",
+      health: "unverified",
+      safeDiagnosticCodes: ["secret-safety-rejection"]
+    });
+    expect(getterCalls).toBe(0);
+    expect(backendCalls).toBe(0);
   });
 
   it.each([
@@ -168,7 +249,7 @@ describe("OS-backed exact-use secret store", () => {
     });
     const prototypeRequest = Object.assign(Object.create({ inherited: true }), exactUseRequest());
     const symbolRequest = Object.assign(exactUseRequest(), { [Symbol("unexpected")]: true });
-    const sparseCapabilityScopes = ["model-inference"] as string[];
+    const sparseCapabilityScopes: ("model-inference" | "provider-health" | "provider-parse" | "harness-execution")[] = ["model-inference"];
     sparseCapabilityScopes.length = 2;
     const sparseRequest = exactUseRequest({
       credentialRef: {

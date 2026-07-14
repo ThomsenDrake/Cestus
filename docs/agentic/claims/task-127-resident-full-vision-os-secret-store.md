@@ -9,7 +9,7 @@
 - Required freeze: `48c9cbcdcf723bcc74868f782bc2375bae565ae6` /
   `CF1-P-OS-SECRET`.
 - Claimed at: `2026-07-14T00:00:00Z`.
-- Status: in-progress.
+- Status: ready-for-review.
 
 ## Scope And Authority
 
@@ -76,3 +76,19 @@ commit.
   with `factory-readiness passed`.
 - Full verification: not run. The coordinator has not granted a serialized
   `npm run verify` slot for this candidate.
+- Fresh-review repair RED: the exact focused command exited `1` with **17
+  tests**, of which three failed while fourteen prior cases passed. A runtime
+  `Reflect.construct` of `OpaqueSecretMaterial` minted a handle instead of
+  failing, a released handle returned by the injected backend was accepted as
+  healthy, and a direct proxy request reached a successful resolution. The
+  added counterfactuals also cover mount, run, provider-capability-hash, and
+  credential-reference swaps with zero backend calls.
+- Fresh-review repair GREEN: issuance now requires a module-private runtime
+  token, released material is removed from the issuance set before a result can
+  normalize as resolved, and direct proxy input is rejected before any request
+  property or backend access. The exact focused command is green at **17/17**;
+  `npm run typecheck`, `git diff --check`, and `npm run factory:check` all pass.
+  This repair is scoped to the claimed source and test documents. The temporary
+  untracked dependency link is removed before this handoff commit. Full
+  verification remains prohibited pending a fresh independent review and a
+  separate usage gate.

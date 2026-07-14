@@ -3,6 +3,7 @@ import {
   isCredentialReferenceSecretSafeText,
   type CredentialReference
 } from "./credential-reference.js";
+import { types as nodeTypes } from "node:util";
 
 const capabilityHashPattern = /^sha256:[a-f0-9]{64}$/;
 const workspaceIdPattern = /^workspace_[a-zA-Z0-9_-]+$/;
@@ -79,17 +80,22 @@ interface NormalizedExactUse extends OsSecretBackendRequest {
 }
 
 const opaqueMaterials = new WeakSet<object>();
+const opaqueMaterialConstructionToken = Symbol("opaque-secret-material-construction");
 
 /** Process-local material has no enumerable state and cannot serialize itself. */
 export class OpaqueSecretMaterial {
   #released = false;
 
-  private constructor() {
+  constructor(token: symbol) {
+    if (token !== opaqueMaterialConstructionToken) {
+      throw new TypeError("Opaque secret material must be minted by the selected OS facility.");
+    }
     opaqueMaterials.add(this);
   }
 
   releaseAfterImmediateUse(): void {
     this.#released = true;
+    opaqueMaterials.delete(this);
   }
 
   get released(): boolean {
@@ -104,14 +110,11 @@ export class OpaqueSecretMaterial {
     return "[OpaqueSecretMaterial]";
   }
 
-  static createCredentialFreeTestHandle(): OpaqueSecretMaterial {
-    return Object.freeze(new OpaqueSecretMaterial());
-  }
 }
 
 /** This creates a no-value handle for credential-free deterministic tests only. */
 export function createCredentialFreeTestOpaqueSecretMaterial(): OpaqueSecretMaterial {
-  return OpaqueSecretMaterial.createCredentialFreeTestHandle();
+  return Object.freeze(new OpaqueSecretMaterial(opaqueMaterialConstructionToken)) as unknown as OpaqueSecretMaterial;
 }
 
 export function createOsSecretStore(input: CreateOsSecretStoreInput): OsSecretStore {
@@ -291,7 +294,7 @@ function safeResolution(
       configurable: false
     });
   }
-  return Object.freeze(resolution) as OsSecretResolution;
+  return Object.freeze(resolution) as unknown as OsSecretResolution;
 }
 
 function plainOwnDataRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
@@ -299,11 +302,12 @@ function plainOwnDataRecord(value: unknown): Readonly<Record<string, unknown>> |
     return undefined;
   }
   try {
-    if (Object.getPrototypeOf(value) !== Object.prototype || Object.getOwnPropertySymbols(value).length > 0) {
+    if (nodeTypes.isProxy(value) ||
+        Object.getPrototypeOf(value) !== Object.prototype || Object.getOwnPropertySymbols(value).length > 0) {
       return undefined;
     }
     const descriptors = Object.getOwnPropertyDescriptors(value);
-    const snapshot: Record<string, unknown> = {};
+    const snapshot: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
     for (const [key, descriptor] of Object.entries(descriptors)) {
       if (!("value" in descriptor) || !descriptor.enumerable) {
         return undefined;
@@ -317,7 +321,7 @@ function plainOwnDataRecord(value: unknown): Readonly<Record<string, unknown>> |
 }
 
 function plainStringArray(value: unknown): readonly string[] | undefined {
-  if (!Array.isArray(value)) {
+  if (typeof value !== "object" || value === null || nodeTypes.isProxy(value) || !Array.isArray(value)) {
     return undefined;
   }
   try {
@@ -367,5 +371,8 @@ function isDiagnosticCode(value: unknown): value is OsSecretDiagnosticCode {
 }
 
 function isOpaqueMaterial(value: unknown): value is OpaqueSecretMaterial {
-  return typeof value === "object" && value !== null && opaqueMaterials.has(value);
+  if (typeof value !== "object" || value === null || !opaqueMaterials.has(value)) {
+    return false;
+  }
+  return !(value as OpaqueSecretMaterial).released;
 }
