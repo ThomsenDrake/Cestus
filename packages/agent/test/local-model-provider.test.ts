@@ -481,6 +481,164 @@ describe("explicit local-model provider", () => {
     expect(executionCalls).toBe(0);
   });
 
+  it("fails closed for a revoked configured modalities proxy before engine access", async () => {
+    let inspectionCalls = 0;
+    let executionCalls = 0;
+    const { proxy: revokedModalities, revoke } = Proxy.revocable(["text"], {});
+    revoke();
+    const provider = createLocalModelProvider({
+      selectedCapability: { ...selectedCapability(), modalities: revokedModalities },
+      selectedPolicy: selectedPolicy(),
+      currentPreparation: currentPreparation(),
+      engine: {
+        async inspect() {
+          inspectionCalls += 1;
+          return {
+            kind: "available" as const,
+            modelIds: ["local-text-model"],
+            modalities: ["text"],
+            structuredOutputSupport: "unsupported" as const,
+            toolSupport: "none" as const
+          };
+        },
+        async execute() {
+          executionCalls += 1;
+          return { inputUnits: 12, outputUnits: 1 };
+        }
+      }
+    });
+
+    await expect(provider.invoke(currentPreparation())).resolves.toMatchObject({
+      kind: "blocked",
+      category: "local-selection-mismatch",
+      safeDiagnosticCodes: ["local-selection-mismatch"]
+    });
+    expect(inspectionCalls).toBe(0);
+    expect(executionCalls).toBe(0);
+  });
+
+  it("fails closed for a revoked inspection modalities proxy before execution", async () => {
+    let inspectionCalls = 0;
+    let executionCalls = 0;
+    const { proxy: revokedModalities, revoke } = Proxy.revocable(["text"], {});
+    revoke();
+    const provider = createLocalModelProvider({
+      selectedCapability: selectedCapability(),
+      selectedPolicy: selectedPolicy(),
+      currentPreparation: currentPreparation(),
+      engine: {
+        async inspect() {
+          inspectionCalls += 1;
+          return {
+            kind: "available" as const,
+            modelIds: ["local-text-model"],
+            modalities: revokedModalities,
+            structuredOutputSupport: "unsupported" as const,
+            toolSupport: "none" as const
+          };
+        },
+        async execute() {
+          executionCalls += 1;
+          return { inputUnits: 12, outputUnits: 1 };
+        }
+      }
+    });
+
+    await expect(provider.invoke(currentPreparation())).resolves.toMatchObject({
+      kind: "unavailable",
+      category: "local-engine-unavailable",
+      safeDiagnosticCodes: ["local-engine-unavailable"]
+    });
+    expect(inspectionCalls).toBe(1);
+    expect(executionCalls).toBe(0);
+  });
+
+  it("rejects an own enumerable __proto__ capability field without engine access", async () => {
+    let inspectionCalls = 0;
+    let executionCalls = 0;
+    const hostileCapability = selectedCapability();
+    const directPrototype = Object.getPrototypeOf(hostileCapability);
+    Object.defineProperty(hostileCapability, "__proto__", {
+      configurable: true,
+      enumerable: true,
+      value: { forged: true },
+      writable: true
+    });
+    const provider = createLocalModelProvider({
+      selectedCapability: hostileCapability,
+      selectedPolicy: selectedPolicy(),
+      currentPreparation: currentPreparation(),
+      engine: {
+        async inspect() {
+          inspectionCalls += 1;
+          return {
+            kind: "available" as const,
+            modelIds: ["local-text-model"],
+            modalities: ["text"],
+            structuredOutputSupport: "unsupported" as const,
+            toolSupport: "none" as const
+          };
+        },
+        async execute() {
+          executionCalls += 1;
+          return { inputUnits: 12, outputUnits: 1 };
+        }
+      }
+    });
+
+    await expect(provider.invoke(currentPreparation())).resolves.toMatchObject({
+      kind: "blocked",
+      category: "local-selection-mismatch",
+      safeDiagnosticCodes: ["local-selection-mismatch"]
+    });
+    expect(Object.getPrototypeOf(hostileCapability)).toBe(directPrototype);
+    expect(inspectionCalls).toBe(0);
+    expect(executionCalls).toBe(0);
+  });
+
+  it("rejects an own enumerable __proto__ inspection field before execution", async () => {
+    let inspectionCalls = 0;
+    let executionCalls = 0;
+    const hostileInspection = {
+      kind: "available" as const,
+      modelIds: ["local-text-model"],
+      modalities: ["text"],
+      structuredOutputSupport: "unsupported" as const,
+      toolSupport: "none" as const
+    };
+    const directPrototype = Object.getPrototypeOf(hostileInspection);
+    Object.defineProperty(hostileInspection, "__proto__", {
+      configurable: true,
+      enumerable: true,
+      value: { forged: true },
+      writable: true
+    });
+    const provider = createLocalModelProvider({
+      selectedCapability: selectedCapability(),
+      selectedPolicy: selectedPolicy(),
+      currentPreparation: currentPreparation(),
+      engine: {
+        async inspect() {
+          inspectionCalls += 1;
+          return hostileInspection;
+        },
+        async execute() {
+          executionCalls += 1;
+          return { inputUnits: 12, outputUnits: 1 };
+        }
+      }
+    });
+
+    await expect(provider.invoke(currentPreparation())).resolves.toMatchObject({
+      kind: "unavailable",
+      category: "local-engine-unavailable",
+      safeDiagnosticCodes: ["local-engine-unavailable"]
+    });
+    expect(Object.getPrototypeOf(hostileInspection)).toBe(directPrototype);
+    expect(inspectionCalls).toBe(1);
+    expect(executionCalls).toBe(0);
+  });
+
   it("reserves the configured concurrency budget before a second engine execution", async () => {
     let releaseFirst: (() => void) | undefined;
     let executions = 0;
