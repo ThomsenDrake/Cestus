@@ -239,15 +239,19 @@ export function buildLegacyMigrationReport(input: BuildLegacyMigrationReportInpu
   };
 }
 
+type CanonicalContentHash = `sha256:${string}`;
+
 type CanonicalStagedReportReference = {
   readonly reportEventId: string;
   readonly sourceCollectionId: string;
   readonly scanBatchId: string;
   readonly legacyReportId: string;
-  readonly reportHash: `sha256:${string}`;
+  readonly reportHash: CanonicalContentHash;
 };
 
-const contentHashSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+const contentHashSchema = z.string()
+  .regex(/^sha256:[a-f0-9]{64}$/)
+  .transform((value): CanonicalContentHash => value as CanonicalContentHash);
 const stagedReportReferenceSchema = z.object({
   reportEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
   sourceCollectionId: z.string().regex(/^src_[a-zA-Z0-9_-]+$/),
@@ -378,17 +382,26 @@ function normalizeStagedReportReadInput(input: ReadCanonicalStagedLegacyReportIn
     if (!reference.success || readAll === undefined || get === undefined) {
       return undefined;
     }
+    const canonicalReference: CanonicalStagedReportReference = Object.freeze(reference.data);
     return Object.freeze({
-      reference: Object.freeze(reference.data),
-      readAll: () => Promise.resolve(readAll()),
-      get: (contentHash) => Promise.resolve(get(contentHash))
+      reference: canonicalReference,
+      readAll: (): Promise<unknown> => Promise.resolve(readAll()),
+      get: (contentHash: CanonicalContentHash): Promise<unknown> => Promise.resolve(get(contentHash))
     });
   } catch {
     return undefined;
   }
 }
 
-function readCapabilityMethod(value: unknown, key: "readAll" | "get"): ((...args: readonly unknown[]) => unknown) | undefined {
+type StagedReportReadCapabilities = {
+  readonly readAll: () => unknown;
+  readonly get: (contentHash: CanonicalContentHash) => unknown;
+};
+
+function readCapabilityMethod<TKey extends keyof StagedReportReadCapabilities>(
+  value: unknown,
+  key: TKey
+): StagedReportReadCapabilities[TKey] | undefined {
   if (typeof value !== "object" || value === null) {
     return undefined;
   }
@@ -396,9 +409,10 @@ function readCapabilityMethod(value: unknown, key: "readAll" | "get"): ((...args
   while (prototype !== null) {
     const descriptor = Object.getOwnPropertyDescriptor(prototype, key);
     if (descriptor !== undefined) {
-      return "value" in descriptor && typeof descriptor.value === "function"
-        ? descriptor.value.bind(value)
-        : undefined;
+      if (!("value" in descriptor) || typeof descriptor.value !== "function") {
+        return undefined;
+      }
+      return descriptor.value.bind(value) as StagedReportReadCapabilities[TKey];
     }
     prototype = Object.getPrototypeOf(prototype);
   }
@@ -502,6 +516,9 @@ function copyCanonicalArtifactBytes(artifact: unknown): Buffer | undefined {
     // internal slots without walking Proxy or subclass shape. Only then
     // inspect the canonical Buffer's direct prototype and own byte indices.
     const valuesIterator = Uint8Array.prototype.values.call(artifact);
+    if (typeof artifact !== "object" || artifact === null) {
+      return undefined;
+    }
     if (Object.getPrototypeOf(artifact) !== Buffer.prototype) {
       return undefined;
     }

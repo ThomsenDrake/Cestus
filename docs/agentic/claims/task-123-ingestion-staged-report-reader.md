@@ -183,3 +183,48 @@ Status: `ready-for-review`
   coordinator-controlled full verifier was run.
 - Status: `ready-for-review` pending a fresh reviewer distinct from the prior
   reviewer.
+
+## Target-Checkout Typecheck Recovery — 2026-07-14
+
+- Worker: `/root/task123_ingestion_reader_typecheck_recovery`
+- Branch: `codex/task-123-ingestion-reader-typecheck-recovery`
+- Worktree: `/home/drake/.codex/worktrees/task-123-ingestion-reader-typecheck-recovery`
+- Base: `f7ad54f207826e19eb554a13401b380c3715195d`, a forward descendant of
+  the preserved failed merge `c3a4c76106ce932c0a63c1cc663ab24960d3d689`.
+- Scope remains exactly this claim, `packages/ingestion/src/legacy-report.ts`,
+  and `packages/ingestion/test/legacy-report.test.ts`. The prior candidate's
+  reported typecheck/full-verifier result remains non-authoritative discrepancy
+  evidence; it is not overwritten or treated as merged-checkout verification.
+
+### Dependency Recovery And Target RED
+
+- Before coordinator-authorized dependency recovery, `npm run typecheck` could
+  not start because `tsc` was absent. The coordinator authorized only
+  `npm ci --ignore-scripts` in this isolated worktree; it completed without a
+  tracked manifest or lockfile delta.
+- The resulting target-checkout `npm run typecheck` exited `1` with the C-059
+  diagnostics: Zod's regex-valid staged-report `reportHash` remained typed as
+  `string` for the typed `Object.freeze` reference; the untyped capability
+  callback selected the `Function` overload and left `contentHash` implicit
+  `any`; `Reflect.ownKeys(artifact)` received post-intrinsic `unknown`; and
+  reader fixtures supplied excess `readStream`, `append`, and `put` members to
+  the intentionally narrowed `readAll`/`get` capabilities (including the
+  former implicit `readStream` callback parameter).
+
+### Scoped Green
+
+- Test-first fixture repair passes only the declared read-only `readAll` and
+  `get` capabilities. The 24 existing causal runtime tests remain present,
+  including forged event/artifact bindings, hostile accessors, direct
+  prototype/species rejection, and zero-invocation Proxy traps.
+- The source change preserves the exact runtime regex and artifact validation
+  sequence while carrying the validated content-hash type through the frozen
+  reference, retaining distinct typed capability callbacks, and narrowing the
+  artifact to a non-null object only after the native typed-array intrinsic has
+  succeeded and before reflection.
+- Focused GREEN: `npm test -- packages/ingestion/test/legacy-report.test.ts`
+  exited `0` with 1 file and 24 tests passing.
+- Target typecheck GREEN: `npm run typecheck` exited `0` with `typecheck
+  passed`.
+- No `npm run verify`, merge, `neo` change, or self-review/integration was
+  started. Status: `ready-for-review` pending a fresh independent review.
