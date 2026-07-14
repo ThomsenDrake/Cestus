@@ -5738,3 +5738,18 @@ explicit implementation authorization.
   exact reviewed candidate only. The full-verifier slot closes while the merge
   and merged focused/factory evidence are collected; a separate fresh usage
   gate is required before any merged full verifier.
+
+## RV-1-D-161 — Task126 no-ff integration and merged-full grant
+
+- Relay D no-ff merged the exact reviewed Task126 candidate at
+  `2e7a8a011ada9828f2978129ddc9f47719c33655`. Its required merged command
+  `npm test -- packages/agent/test/byok-provider.test.ts packages/agent/test/openai-compatible-provider.test.ts`
+  passed **2 files / 20 tests**; `git diff --check` and factory readiness also
+  passed.
+- A current authenticated app-server `account/rateLimits/updated` event at the
+  merged boundary reports `usedPercent=8`, hence **92% weekly remaining**;
+  reset credits remain untouched. Normal mode applies.
+- Grant: after no-active-verifier process inspection, exactly one serialized
+  merged `npm run verify` may run in the canonical Relay D worktree. It is the
+  only open full-verifier action. Task125 and Task129 remain non-full,
+  unintegrated, and `neo` remains untouched.
