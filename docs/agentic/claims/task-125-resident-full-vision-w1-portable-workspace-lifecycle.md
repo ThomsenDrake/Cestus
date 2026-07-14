@@ -1,10 +1,10 @@
 # Task 125 — Portable Workspace Lifecycle Authority
 
-- Status: ready-for-review
-- Coordinator ledger: `RV-1-C-137`
-- Worker: `/root/task125_authority_repair`
-- Branch: `codex/task-125-resident-full-vision-portable-workspace-lifecycle-admission-restart`
-- Worktree: `/home/drake/.codex/worktrees/task-125-resident-full-vision-portable-workspace-lifecycle`
+- Status: in-progress
+- Coordinator ledger: `RV-1-E-173`
+- Worker: `/root/task125_merged_typecheck_repair`
+- Branch: `codex/task-125-merged-typecheck-repair`
+- Worktree: `/home/drake/.codex/worktrees/task-125-merged-typecheck-repair`
 - Claimed at: 2026-07-14T00:00:00Z
 - Base / CF-1 and Task 124 integration SHA: `73003f60441b531d95bcb80755a6fc90148e09fe`
 - Scope: `packages/local-runtime/src/portable-workspace-lifecycle.ts`, `packages/local-runtime/test/portable-workspace-lifecycle.test.ts`, and this claim only.
@@ -20,6 +20,16 @@ runtime, provider, tool, artifact, fallback, ledger, projection, cache, or
 journal write is permitted while unavailable or for a revoked admission.
 
 ## Evidence
+
+- RV-1-E-173 forward repair: claimed in progress at 2026-07-14T23:24:09Z
+  from canonical program head `fce05da4e5e18c78b4b7609426e86910c41ce8ca`
+  after the forward-only correction that provisional Task125 merge `84d162ee`
+  is not integrated-ready. This worker owns only this claim,
+  `packages/local-runtime/src/portable-workspace-lifecycle.ts`, and
+  `packages/local-runtime/test/portable-workspace-lifecycle.test.ts`. It will
+  reproduce and repair only Task125's merged TypeScript diagnostics with
+  fail-fast gates, without full verification, integration, registry edits,
+  provider/network or credential action, or any `neo` change.
 
 - RV-1-E-170 root-cause recovery: in progress from rejected clean
   `82db6628a842a03cdd36e6bb05ebe36715260494`. This fresh worker is tracing the

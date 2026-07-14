@@ -16,6 +16,7 @@ type AvailabilityFailure = Extract<
 >;
 
 type AvailabilityCategory = AvailabilityFailure["category"];
+type OutageCategory = WorkspaceOutageObservation["category"];
 
 export interface PortableWorkspaceMountedFacts {
   readonly schemaVersion: "portable-workspace-mounted-facts.v1";
@@ -96,7 +97,7 @@ export function createPortableWorkspaceLifecyclePorts(
   const invalidationListeners = new Set<(reason: "authority-loss" | "admission-mismatch") => void>();
 
   const authority: WorkspaceAvailabilityAuthority = Object.freeze({
-    async revalidate(rawRequest) {
+    async revalidate(rawRequest: Parameters<WorkspaceAvailabilityAuthority["revalidate"]>[0]) {
       const request = canonicalRevalidationRequest(rawRequest);
       if (request.expectedWorkspaceId !== workspaceId) return unavailable("workspace-identity-mismatch");
       const admissionRevision = revision;
@@ -136,7 +137,7 @@ export function createPortableWorkspaceLifecyclePorts(
         outage: pendingOutage
       });
     },
-    invalidate(reason) {
+    invalidate(reason: "shutdown" | "authority-loss" | "admission-mismatch") {
       revision += 1;
       active = undefined;
       recordOutage(invalidationCategory(reason));
@@ -146,14 +147,14 @@ export function createPortableWorkspaceLifecyclePorts(
         }
       }
     },
-    subscribeInvalidation(listener) {
+    subscribeInvalidation(listener: (reason: "authority-loss" | "admission-mismatch") => void) {
       invalidationListeners.add(listener);
       return () => { invalidationListeners.delete(listener); };
     }
   });
 
   const supervisorLease: DurableSupervisorLeasePort = Object.freeze({
-    async readOrAcquire(rawInput) {
+    async readOrAcquire(rawInput: SupervisorLeaseAdmissionInput) {
       const leaseInput = canonicalLeaseInput(rawInput, issuedAdmissionIdentities, issuedAdmissionGenerations);
       requireCurrentLeaseInput(leaseInput);
       const result = canonicalLeaseResult(await mountedLease.readOrAcquire(leaseInput));
@@ -170,7 +171,7 @@ export function createPortableWorkspaceLifecyclePorts(
   });
 
   const activeClaimReconciliation: ActiveClaimReconciliationPort = Object.freeze({
-    async readByIdempotencyKey(rawInput) {
+    async readByIdempotencyKey(rawInput: Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0]) {
       const reconciliationInput = canonicalReconciliationReadInput(rawInput, issuedAdmissionIdentities, issuedAdmissionGenerations);
       requireCurrentReconciliationInput(reconciliationInput);
       const rawResult = await mountedReconciliation.readByIdempotencyKey(reconciliationInput);
@@ -185,7 +186,7 @@ export function createPortableWorkspaceLifecyclePorts(
         throw error;
       }
     },
-    async appendAndReadBack(rawInput) {
+    async appendAndReadBack(rawInput: Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]) {
       const reconciliationInput = canonicalReconciliationAppendInput(rawInput, issuedAdmissionIdentities, issuedAdmissionGenerations);
       requireCurrentAppendInput(reconciliationInput);
       const rawResult = await mountedReconciliation.appendAndReadBack(reconciliationInput);
@@ -279,11 +280,11 @@ export function createPortableWorkspaceLifecyclePorts(
 
   function fail(category: AvailabilityCategory): AvailabilityFailure {
     active = undefined;
-    recordOutage(category);
+    if (isOutageCategory(category)) recordOutage(category);
     return unavailable(category);
   }
 
-  function recordOutage(category: AvailabilityCategory): void {
+  function recordOutage(category: OutageCategory): void {
     const facts = lastAccepted;
     const claim = facts?.observedActiveClaim;
     if (pendingOutage !== undefined || facts === undefined || claim === undefined) return;
@@ -344,7 +345,7 @@ function canonicalMountedFacts(value: unknown): PortableWorkspaceMountedFacts {
   const baseKeys = ["schemaVersion", "workspaceId", "residentId", "workspaceIdentityEventId", "mountInstanceId", "mountEvidenceId", "authorityEvidenceId", "ledgerStoreEvidenceId", "artifactStoreEvidenceId", "derivativeStoreEvidenceId", "policyVersion", "policyDigest", "lockStateDigest", "policyAndLockReadbackEventId", "highWaterMark", "highWaterReadbackEventId", "highWaterOrdinal"];
   const includesClaim = Object.prototype.hasOwnProperty.call(record, "observedActiveClaim");
   requireKeys(record, includesClaim ? [...baseKeys, "observedActiveClaim"] : baseKeys, "mounted workspace facts");
-  if (record.schemaVersion !== "portable-workspace-mounted-facts.v1" || record.residentId !== "agent_default" || !Number.isSafeInteger(record.highWaterOrdinal) || record.highWaterOrdinal < 0) {
+  if (record.schemaVersion !== "portable-workspace-mounted-facts.v1" || record.residentId !== "agent_default" || typeof record.highWaterOrdinal !== "number" || !Number.isSafeInteger(record.highWaterOrdinal) || record.highWaterOrdinal < 0) {
     throw new Error("mounted workspace facts are invalid");
   }
   const facts = {
@@ -650,8 +651,10 @@ function canonicalReconciliationRecord(value: unknown): Parameters<ActiveClaimRe
 function canonicalOutage(value: unknown): WorkspaceOutageObservation {
   const record = ownDataRecord(value, "workspace outage observation");
   requireKeys(record, ["safeObservationId", "outageObservedAt", "category", "priorClaimEventId", "priorClaimLeaseId", "priorAuthorityEvidenceId", "highWaterBeforeOutage"], "workspace outage observation");
+  const category = availabilityCategory(record.category);
+  if (!isOutageCategory(category)) throw new Error("workspace outage observation is invalid");
   return Object.freeze({
-    safeObservationId: requiredText(record.safeObservationId), outageObservedAt: requiredText(record.outageObservedAt), category: availabilityCategory(record.category),
+    safeObservationId: requiredText(record.safeObservationId), outageObservedAt: requiredText(record.outageObservedAt), category,
     priorClaimEventId: requiredText(record.priorClaimEventId), priorClaimLeaseId: requiredText(record.priorClaimLeaseId), priorAuthorityEvidenceId: requiredText(record.priorAuthorityEvidenceId), highWaterBeforeOutage: requiredText(record.highWaterBeforeOutage)
   });
 }
@@ -667,7 +670,6 @@ function requireExactReconciliationReadback(
     || readback.record.supervisorEpoch !== input.supervisorEpoch
     || readback.record.reconciliationIdempotencyKey !== input.reconciliationIdempotencyKey
     || (expectedRecord !== undefined && !sameReconciliationRecord(readback.record, expectedRecord))) {
-    active = undefined;
     throw new Error("workspace admission is no longer current");
   }
 }
@@ -789,7 +791,7 @@ function compatibleWithPriorReadback(next: PortableWorkspaceMountedFacts, prior:
     && (next.highWaterOrdinal !== prior.highWaterOrdinal || (next.highWaterMark === prior.highWaterMark && next.highWaterReadbackEventId === prior.highWaterReadbackEventId));
 }
 
-function invalidationCategory(reason: "shutdown" | "authority-loss" | "admission-mismatch"): AvailabilityCategory {
+function invalidationCategory(reason: "shutdown" | "authority-loss" | "admission-mismatch"): OutageCategory {
   return reason === "admission-mismatch" ? "workspace-readback-failed" : "workspace-unavailable";
 }
 
@@ -798,6 +800,10 @@ function unavailable(category: AvailabilityCategory): AvailabilityFailure { retu
 function availabilityCategory(value: unknown): AvailabilityCategory {
   if (value === "workspace-unavailable" || value === "workspace-identity-mismatch" || value === "workspace-readback-failed" || value === "active-lock") return value;
   throw new Error("workspace availability category is invalid");
+}
+
+function isOutageCategory(category: AvailabilityCategory): category is OutageCategory {
+  return category !== "active-lock";
 }
 
 function ownDataRecord(value: unknown, label: string): Record<string, unknown> {
