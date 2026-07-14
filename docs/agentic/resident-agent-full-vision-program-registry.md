@@ -4887,3 +4887,24 @@ explicit implementation authorization.
   network actions, reset-credit use, downstream dispatch, and `neo` remain
   stopped until valid independent review verdicts are returned and separately
   recorded.
+
+## RV-1-C-137 — Review-context source correction
+
+- Recorded at: 2026-07-14T22:35:00Z by the sole Relay C coordinator.
+- Context fact: Task126 and Task128 candidate worktrees were branched from
+  earlier coordinator heads and therefore carry their historical registry
+  snapshots. The latest coordination entries `RV-1-C-126` onward reside only
+  in the canonical coordinator checkout at
+  `/home/drake/.codex/worktrees/95de/Cestus/docs/agentic/resident-agent-full-vision-program-registry.md`.
+- Reviewer instruction correction: candidate claims, source, tests, and diffs
+  remain read from the isolated candidate worktree; current authorization,
+  usage, review, and no-fallback records must be read from the canonical
+  coordinator registry path. This split is expected append-only branch
+  history, not an unavailable dependency or candidate scope defect.
+- Recovery: the preflight-only Task128 reviewer that stopped on the missing
+  newer entries made no substantive finding, test run, or change. A fresh
+  Terra-attested reviewer will receive the explicit canonical registry path.
+  The live Task126 reviewer receives the same path correction before verdict.
+- Holds: no source change, full verifier, integration, Task125 restart,
+  provider/credential/network action, reset-credit use, or `neo` mutation is
+  authorized by this context correction.
