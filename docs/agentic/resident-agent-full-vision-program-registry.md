@@ -4383,3 +4383,26 @@ explicit implementation authorization.
   brand check and use a null-prototype snapshot or explicit rejection. No
   full verifier, self-review, integration, child dispatch, reset-credit, or
   `neo` action is authorized for either worker.
+
+## RV-1-C-127 — Task124 approval and active source-recovery ledger
+
+- Fresh independent Task124 review of
+  `1a69f73f06c70d510e0137441937f3d4d6667018..aaca7d88ff4d4c12e8c8c67ac3d3b173edbe4fca`
+  returned **APPROVE**. It verified exact persisted `generationId` parsing,
+  freezing, reconciliation-key inclusion, and readback comparison; stale
+  Gen-1 revalidates through Gen-2 and forged stored generation fails before
+  append or `wakeOnce`. It also verified authority invalidation aborts a
+  genuine in-flight runtime into the durable workspace-unavailable path and
+  that pause/stop/recovery/provenance/idempotency/strict-own-data behavior
+  remains intact. Diff and factory checks passed. The candidate is now eligible
+  only for a freshly usage-gated, serialized candidate full verifier.
+- Task128 reviewer returned **NEEDS-CHANGES** on
+  `e1fa208245ba3032747be9375b7e552196a20ecf`; its exact P1/P2 recovery is
+  assigned to `/root/task128_proxy_record_repair` in the preserved Task128
+  worktree. Task126 canonical-reader restart is assigned to
+  `/root/task126_canonical_reader_restart` in the fresh
+  `codex/task-126-resident-full-vision-byok-provider-reader-restart` branch at
+  `82cf9cedc590939e8769c58016df051813b10c0e`. Both authorizations are
+  TDD/focused/typecheck/diff/factory only and require a fresh independent
+  review. No full verifier, integration, self-integration, or `neo` action is
+  authorized for either source lane.
