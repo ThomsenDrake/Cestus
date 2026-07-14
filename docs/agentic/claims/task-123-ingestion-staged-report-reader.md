@@ -228,3 +228,30 @@ Status: `ready-for-review`
   passed`.
 - No `npm run verify`, merge, `neo` change, or self-review/integration was
   started. Status: `ready-for-review` pending a fresh independent review.
+
+## Target-Typecheck Fresh-Review P1 Test Recovery — 2026-07-14
+
+- Fresh independent review of `f7ad54f2..3c35b865` returned
+  `NEEDS-CHANGES` P1: the prior type-fixture narrowing removed the existing
+  throwing `append`/`put` tripwires and their zero-attempt assertions. That
+  weakened the required no-side-effect proof even though the reader's runtime
+  artifact, event, hash, proxy, and capability checks were unchanged.
+- Review RED is the missing causal boundary coverage: the prior 24-test Green
+  could no longer fail if a success or failure path attempted an injected
+  ledger append or derivative write. No production repair is needed or
+  authorized for that test-only regression.
+- The repair predeclares structurally compatible extended fixture objects with
+  throwing runtime `append` or `put` methods, then assigns those same objects
+  to `Pick<EventLedger, "readAll">` or `Pick<WorkspaceBlobStore, "get">`
+  before calling the reader. This preserves the runtime writer tripwires while
+  respecting the reader's narrowed public capability types without casts,
+  `any`, or broader interfaces.
+- It restores zero-attempt assertions for both writers on the successful read,
+  for `put` on the forged-artifact failure path, and for `append` on the
+  accessor-bearing ledger-readback failure path.
+- Focused GREEN: `npm test -- packages/ingestion/test/legacy-report.test.ts`
+  exited `0` with 1 file and 24 tests passing. Target typecheck GREEN:
+  `npm run typecheck` exited `0` with `typecheck passed`.
+- No `npm run verify`, self-review/integration, merge, dispatch, or `neo`
+  change was started. Status: `ready-for-review` pending another fresh
+  independent reviewer.
