@@ -189,9 +189,13 @@ export async function readCanonicalStagedLegacyReport(
   }
 
   const report = parseCanonicalStagedReportArtifact(artifact, normalized.reference, reportEvent);
-  return report === undefined
-    ? stagedReportReadFailure("LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH")
-    : Object.freeze({ ok: true, report, reportEvent });
+  if (report === undefined) {
+    return stagedReportReadFailure("LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH");
+  }
+  if (!matchesCanonicalReportEvent(report, reportEvent)) {
+    return stagedReportReadFailure("LEGACY_STAGED_REPORT_EVENT_MISMATCH");
+  }
+  return Object.freeze({ ok: true, report, reportEvent });
 }
 
 export function buildLegacyMigrationReport(input: BuildLegacyMigrationReportInput): LegacyMigrationReport {
@@ -417,11 +421,12 @@ function parseCanonicalStagedReportArtifact(
   reference: CanonicalStagedReportReference,
   reportEvent: KnowledgeEventOf<"legacy.import.report.generated">
 ): LegacyMigrationReport | undefined {
-  if (!Buffer.isBuffer(artifact)) {
+  const bytes = copyCanonicalArtifactBytes(artifact);
+  if (bytes === undefined) {
     return undefined;
   }
-  const text = artifact.toString("utf8");
-  if (!Buffer.from(text, "utf8").equals(artifact) || sha256(text) !== reference.reportHash) {
+  const text = bytes.toString("utf8");
+  if (!Buffer.from(text, "utf8").equals(bytes) || sha256(text) !== reference.reportHash) {
     return undefined;
   }
 
@@ -468,6 +473,43 @@ function parseCanonicalStagedReportArtifact(
     reportArtifactJson(report) === text
     ? report
     : undefined;
+}
+
+function matchesCanonicalReportEvent(
+  report: LegacyMigrationReport,
+  event: KnowledgeEventOf<"legacy.import.report.generated">
+): boolean {
+  const totals = event.payload.totals;
+  return event.streamId === legacyReportStreamId(report) &&
+    event.payload.legacyReportId === report.legacyReportId &&
+    event.payload.sourceCollectionId === report.sourceCollectionId &&
+    event.payload.scanBatchId === report.scanBatchId &&
+    event.payload.reportHash === report.reportHash &&
+    event.payload.candidateSetHash === report.candidateSetHash &&
+    event.payload.generatedAt === report.generatedAt &&
+    event.payload.generator.name === report.generator.name &&
+    event.payload.generator.version === report.generator.version &&
+    totals.inspectedFiles === report.totals.inspectedFiles &&
+    totals.candidateMetadataFiles === report.totals.candidateMetadataFiles &&
+    totals.proposedAssertionCandidates === report.totals.proposedAssertionCandidates &&
+    totals.quarantineEntries === report.totals.quarantineEntries &&
+    totals.unresolvedReferences === report.totals.unresolvedReferences;
+}
+
+function copyCanonicalArtifactBytes(artifact: unknown): Buffer | undefined {
+  if (!Buffer.isBuffer(artifact)) {
+    return undefined;
+  }
+  try {
+    // A hostile own override changes the extraction boundary. Reject it before
+    // any property access and decode only an independent native Buffer copy.
+    if (Object.getOwnPropertyDescriptor(artifact, "toString") !== undefined) {
+      return undefined;
+    }
+    return Buffer.from(artifact);
+  } catch {
+    return undefined;
+  }
 }
 
 function stagedReportReadFailure(
