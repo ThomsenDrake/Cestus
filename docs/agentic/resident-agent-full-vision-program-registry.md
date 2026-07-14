@@ -3933,3 +3933,15 @@ explicit implementation authorization.
   `neo` change occurred. Under the retained authenticated `25%` gate, one
   fresh independent read-only review is authorized before any candidate full
   request.
+
+## RV-1-C-107 — Active candidate and documentation review ledger
+
+- Fresh Task126 reviewer: child `/root/task126_review`, read-only on candidate
+  `15549bbb1b9bd93863d8fc6066ce54e9aae1a212`.
+- Fresh Task127 final reviewer: child `/root/task127_final_review`, read-only
+  on candidate `087821c3b3a98c5c92c91d6ea3f63ee644f1b72d` with full lineage
+  context.
+- Fresh Task131 dependency-plan reviewer: child `/root/task131_plan_review`,
+  read-only on documentation correction `461831da`. Task125’s monotonic
+  invalidation repair is queued behind these review gates. No full verifier,
+  integration, or `neo` action is active.
