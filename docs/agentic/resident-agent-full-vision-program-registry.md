@@ -2992,3 +2992,29 @@ explicit implementation authorization.
   of the target type contract without weakened runtime provenance, artifact,
   proxy, or side-effect boundaries. No full verifier, self-integration, or
   `neo` change is authorized.
+
+## RV-1-C-063 — Forward-only registry-order correction and tripwire re-review
+
+- `RV-1-C-062` was committed at nonterminal file position because a repeated
+  patch context matched an older entry. Its evidence and authorization remain
+  valid; this record corrects the ordering without rewriting or deleting that
+  durable history. All subsequent coordinator records are appended at this
+  true file end.
+- Fresh authenticated Codex `/status` immediately before this reviewer dispatch
+  reports Weekly **32% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  weekly remains 100% left. No `/usage`, reset, or redemption occurred. The
+  guard is above 10%, authorizing this review only; full verification and
+  downstream work remain forbidden.
+- The bounded P1 repair is clean at
+  `f7ad54f2..40dca32fd6de55283b0393a1555318a70e0e671a` on the isolated
+  recovery branch. It restores runtime throwing `append`/`put` fixtures and
+  zero-attempt assertions, then structurally projects those fixtures to the
+  narrow `readAll`/`get` reader capabilities. The worker reports focused
+  24/24, target typecheck, diff hygiene, and factory readiness; those reports
+  are review inputs, not integration authority.
+- A new independent read-only reviewer must assess the full two-commit range
+  for retained no-side-effect coverage, strict canonical artifact/event/hash/
+  proxy validation, type-sound fixture projections, exact three-file scope,
+  and any regression introduced by the target TypeScript repair. It must issue
+  an explicit defects-first verdict. No full verifier, self-integration,
+  downstream dispatch, or `neo` change is authorized.
