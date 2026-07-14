@@ -2817,3 +2817,26 @@ explicit implementation authorization.
   evidence for a new independent review. Scope remains exactly the reader,
   its tests, and its append-only claim; no full verifier, self-integration, or
   `neo` change is authorized.
+
+## RV-1-C-055 — Ingestion reader root-cause candidate review gate
+
+- Fresh authenticated Codex `/status` immediately before review reports Weekly
+  **34% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly remains
+  100% left. No `/usage`, reset, or redemption occurred. The guard permits this
+  one fresh review only; no serialized full verifier is granted.
+- The fresh root-cause worktree initially lacked `vitest`. Under coordinator
+  recovery authority it ran `npm ci --ignore-scripts`; no tracked manifest or
+  lockfile delta resulted. Its focused RED then exited 1 with 19 passing and 2
+  failing tests: a real Buffer own `constructor` getter and a constructor/
+  `Symbol.species` getter through an injected Buffer prototype were both
+  invoked by typed-array slice.
+- Candidate `2e08dffd42168ae860773a7b1ace28506f73402b` is a clean,
+  exact-three-file root-cause repair atop rejected `f5f53dd6`. It establishes
+  direct canonical Buffer shape validation and uses the typed-array values
+  path rather than species construction; focused GREEN is 21/21 and typecheck,
+  diff hygiene, and factory readiness passed. These are review inputs only.
+  A fresh reviewer distinct from every prior reader reviewer must verify the
+  `f5f53dd6..2e08dffd` range, especially constructor/species no-invocation,
+  prototype strictness, canonical byte preservation, and fail-closed behavior.
+  The candidate remains unintegrated; no full verifier, self-integration, or
+  `neo` change is authorized.
