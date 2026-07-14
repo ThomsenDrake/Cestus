@@ -349,6 +349,52 @@ describe("legacy migration report", () => {
     expect(accessorRead).toBe(false);
   });
 
+  it("fails closed for a hostile real Buffer own constructor without invoking it", async () => {
+    const stored = await recordedReport();
+    const hostile = Buffer.from(await stored.reportStore.get(stored.report.reportHash));
+    let constructorRead = false;
+    Object.defineProperty(hostile, "constructor", {
+      get() {
+        constructorRead = true;
+        throw new Error("hostile Buffer constructor getter must not run");
+      }
+    });
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(constructorRead).toBe(false);
+  });
+
+  it("fails closed for a hostile real Buffer prototype species without invoking it", async () => {
+    const stored = await recordedReport();
+    const hostile = Buffer.from(await stored.reportStore.get(stored.report.reportHash));
+    let speciesRead = false;
+    const hostileConstructor = {};
+    Object.defineProperty(hostileConstructor, Symbol.species, {
+      get() {
+        speciesRead = true;
+        throw new Error("hostile Buffer species getter must not run");
+      }
+    });
+    Object.setPrototypeOf(hostile, Object.create(Object.getPrototypeOf(hostile), {
+      constructor: { value: hostileConstructor }
+    }));
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(speciesRead).toBe(false);
+  });
+
   it("fails closed for an accessor-bearing ledger readback without invoking it", async () => {
     const stored = await recordedReport();
     let accessorRead = false;

@@ -501,18 +501,35 @@ function copyCanonicalArtifactBytes(artifact: unknown): Buffer | undefined {
     return undefined;
   }
   try {
-    // A hostile own override changes the extraction boundary. Reject these
-    // dynamic Buffer hooks before any property access, then copy directly from
-    // the native typed-array internal slots rather than Buffer.from(...).
-    if (["toString", "valueOf", "length"].some((key) =>
-      Object.getOwnPropertyDescriptor(artifact, key) !== undefined
-    )) {
+    // A canonical Buffer exposes only native byte-index own data properties
+    // and the native Buffer prototype. Inspect those descriptors without
+    // reading dynamic values, then copy through the typed-array iterator's
+    // internal slots so TypedArray species construction cannot run.
+    if (Object.getPrototypeOf(artifact) !== Buffer.prototype) {
       return undefined;
     }
-    return Uint8Array.prototype.slice.call(artifact);
+    const ownKeys = Reflect.ownKeys(artifact);
+    if (ownKeys.some((key) => typeof key !== "string" || !isCanonicalBufferByteIndex(key))) {
+      return undefined;
+    }
+    const values = Array.from(Uint8Array.prototype.values.call(artifact));
+    if (ownKeys.length !== values.length) {
+      return undefined;
+    }
+    for (let index = 0; index < values.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(artifact, String(index));
+      if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) {
+        return undefined;
+      }
+    }
+    return Buffer.from(values);
   } catch {
     return undefined;
   }
+}
+
+function isCanonicalBufferByteIndex(key: string): boolean {
+  return key === "0" || /^[1-9][0-9]*$/.test(key);
 }
 
 function stagedReportReadFailure(
