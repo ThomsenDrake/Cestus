@@ -2758,3 +2758,16 @@ explicit implementation authorization.
 - This gate authorizes only fresh review of ingestion reader candidate
   `3f78a74dbfe7c62ec71acd0299ad37412bb1e156`. No full verifier is authorized
   until another authenticated usage check.
+
+## RV-1-C-052 — Ingestion reader review and bounded repair gate
+
+- Fresh authenticated `/status` after review remains Weekly **35% left**;
+  no reset or redemption occurred. This authorizes the original implementer's
+  bounded repair only, not a full verifier.
+- Fresh review rejected `3f78a74d` because event binding omitted
+  `generatedAt`, `generator`, and `totals`, permitting forged event payload
+  facts against a valid artifact; and because a real Buffer with an own
+  `toString` accessor could invoke/throw before fail-closed normalization.
+  The original worker must add causal REDs, bind every event-declared report
+  field, and reject/extract hostile buffers without accessor invocation, then
+  stop for a reviewer distinct from the rejecting reviewer.
