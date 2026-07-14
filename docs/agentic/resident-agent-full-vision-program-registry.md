@@ -4559,3 +4559,42 @@ explicit implementation authorization.
   `0b5726ec975bdc0aae97e540472ef3be4379b358`.
 - Archive check: not applicable while Task124 awaits the coordinator verifier;
   Task126 and Task128 remain separately active and unintegrated.
+
+## RV-1-C-130 — Task124 integration verification correction
+
+- Recorded at: 2026-07-14T21:56:00Z.
+- Role: Relay C coordinator / sole integration owner.
+- Lane and wave: W / 1, Task124 admission-generation recovery.
+- Correction: RV-1-C-129 was committed after Task124 had already been
+  forward-integrated. Its pending language is superseded only by this
+  append-only record; no history is rewritten.
+- Approved candidate and review: fresh independent approval covered
+  `1a69f73f06c70d510e0137441937f3d4d6667018..aaca7d88ff4d4c12e8c8c67ac3d3b173edbe4fca`.
+  The reviewed three-file candidate preserves strict admission-generation
+  parsing and readback binding, stale-generation rejection, and durable
+  invalidation cancellation.
+- Integration: coordinator branch
+  `codex/resident-agent-full-vision-program-watchdog-recovery` contains the
+  no-ff merge `73003f60441b531d95bcb80755a6fc90148e09fe`
+  (`merge: integrate task124 admission generation`). The candidate is an
+  ancestor of this coordinator head; no `neo` merge, rewrite, push, or child
+  self-integration occurred.
+- Merged targeted gate: `npm test -- packages/agent/test/wake-supervisor.test.ts
+  packages/agent/test/scheduler.test.ts` passed: 2 files, 51 tests. `git diff
+  --check` and `npm run factory:check` passed before the merged full gate.
+- Serialized merged full verification: `npm run verify` ran alone in the
+  coordinator worktree and passed typecheck; 197 passing + 3 skipped files;
+  2,375 passing + 5 skipped tests; Vite production build; and factory
+  readiness. The Vite chunk-size advisory is non-failing and no scope or
+  security exception was accepted.
+- Usage guard: the user supplied repeated authenticated normal-mode gates
+  before the Task128 dispatch; the immediately preceding local authenticated
+  `/status` gate was 97% weekly remaining with Spark 100% and five reset
+  credits untouched. No reset credit was used. A fresh authenticated gate is
+  required before Task128 review, any Task125 restart, any new full verifier,
+  or any further integration.
+- Active ledger: Task128 `21f7690250a004c5174bb4f784ce9bd60472ccfe` is sealed
+  clean and awaits a fresh independent review; Task126 canonical-reader
+  implementation remains independently active and unintegrated. Task125 may
+  only restart from this verified coordinator ancestry after a fresh usage
+  gate and available isolated capacity. Relay B remains frozen at `da1abbb3`.
