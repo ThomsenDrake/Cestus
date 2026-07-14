@@ -4691,6 +4691,41 @@ explicit implementation authorization.
   before a clean commit. Fresh review is mandatory; no full verifier until a
   separately fresh usage gate after approval.
 
+## RV-1-C-134 — Task126 review verdict and Task125 bounded-stall recovery
+
+- Recorded at: 2026-07-14T22:16:00Z by the sole Relay C coordinator.
+- Task126 review verdict: **NEEDS-CHANGES** for
+  `82cf9cedc590939e8769c58016df051813b10c0e..27a99b137dcb2508132441879764b6c46f59fa14`.
+  The candidate remains unintegrated and no full verifier is authorized.
+- Accepted repair findings: reader-derived authority mismatches (capability,
+  endpoint, preparation, credential, stale/swap) must yield safe
+  `authority-reader-unavailable` before effects rather than a `blocked`
+  result; tests must exercise accessor/symbol/prototype reader outputs and
+  swapped authoritative facts, asserting zero getter/effect invocation and
+  secret-safe unavailable diagnostics.
+- Authority-source boundary ruling: the review's request to make a resolver
+  passed through `createByokProviderAuthorityReader` cryptographically or
+  semantically distinguishable from every other resolver is not implementable
+  within Task126's frozen three-file port. The factory's private WeakSet already
+  rejects public unknown reader objects; the caller of the capability factory
+  is the trusted injection boundary. The approved plan and CF-1 explicitly
+  reserve real canonical reader mounting/source provenance to Task139. Task126
+  must not invent a second runtime source verifier or make Task139 a
+  predecessor. A fresh repair/review must confirm this separation while fixing
+  the valid fail-unavailable and hostile-output defects.
+- Review verification caveat: the reviewer's isolated checkout lacked Vitest,
+  so its attempted focused rerun reported `vitest: command not found`; the
+  candidate's recorded targeted 16-test/typecheck/diff/factory evidence is not
+  a full-verification substitute.
+- Task125 stall: the initial fresh restart worker produced no claim/test/source
+  delta and no focused process through its immediate RED checkpoint. It was
+  stopped without deleting its clean isolated worktree or the preserved
+  rejected evidence. This is an execution stall, not a schema or product
+  blocker. The coordinator will inspect the old fixture and current Task124
+  types, then issue one narrower root-cause work order with an exact first test
+  command; no generic retry, full verifier, integration, or `neo` action is
+  authorized by this record.
+
 ## RV-1-C-132 — Task124 verifier ordering evidence and Task128 mutable-review block
 
 - Recorded at: 2026-07-14T22:10:00Z by the sole Relay C coordinator.
