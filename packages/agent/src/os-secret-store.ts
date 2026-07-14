@@ -46,8 +46,18 @@ export interface OsSecretBackendRequest {
   readonly purpose: OsSecretPurpose;
 }
 
+/**
+ * This issuer is scoped to one in-flight backend resolution and its exact use.
+ * It is supplied only to the selected facility; it cannot mint handles after
+ * that resolution returns.
+ */
+export type OsSecretMaterialIssuer = () => OpaqueSecretMaterial | undefined;
+
 export interface OsSecretBackend {
-  resolve(input: OsSecretBackendRequest): Promise<OsSecretBackendResolution>;
+  resolve(
+    input: OsSecretBackendRequest,
+    issueMaterial: OsSecretMaterialIssuer
+  ): Promise<OsSecretBackendResolution>;
 }
 
 export type OsSecretBackendResolution =
@@ -77,49 +87,61 @@ export interface CreateOsSecretStoreInput {
 interface NormalizedExactUse extends OsSecretBackendRequest {
   readonly credentialRef: CredentialReference;
   readonly credentialRefIdentity: string;
+  readonly exactUseIdentity: string;
 }
 
-const opaqueMaterials = new WeakSet<object>();
+interface OpaqueMaterialState {
+  readonly exactUseIdentity: string;
+}
+
+const opaqueMaterials = new WeakMap<object, OpaqueMaterialState>();
 const opaqueMaterialConstructionToken = Symbol("opaque-secret-material-construction");
 
 /** Process-local material has no enumerable state and cannot serialize itself. */
 export class OpaqueSecretMaterial {
-  #released = false;
+  declare readonly releaseAfterImmediateUse: () => void;
+  declare readonly released: boolean;
+  declare readonly toJSON: () => Record<string, never>;
+  declare readonly toString: () => string;
 
-  constructor(token: symbol) {
+  constructor(token: symbol, exactUseIdentity: string) {
     if (token !== opaqueMaterialConstructionToken) {
       throw new TypeError("Opaque secret material must be minted by the selected OS facility.");
     }
-    opaqueMaterials.add(this);
+    opaqueMaterials.set(this, Object.freeze({ exactUseIdentity }));
+    Object.defineProperties(this, {
+      releaseAfterImmediateUse: {
+        value: () => opaqueMaterials.delete(this),
+        enumerable: false,
+        writable: false,
+        configurable: false
+      },
+      released: {
+        get: () => !opaqueMaterials.has(this),
+        enumerable: false,
+        configurable: false
+      },
+      toJSON: {
+        value: () => ({}),
+        enumerable: false,
+        writable: false,
+        configurable: false
+      },
+      toString: {
+        value: () => "[OpaqueSecretMaterial]",
+        enumerable: false,
+        writable: false,
+        configurable: false
+      }
+    });
+    Object.freeze(this);
   }
-
-  releaseAfterImmediateUse(): void {
-    this.#released = true;
-    opaqueMaterials.delete(this);
-  }
-
-  get released(): boolean {
-    return this.#released;
-  }
-
-  toJSON(): Record<string, never> {
-    return {};
-  }
-
-  toString(): string {
-    return "[OpaqueSecretMaterial]";
-  }
-
-}
-
-/** This creates a no-value handle for credential-free deterministic tests only. */
-export function createCredentialFreeTestOpaqueSecretMaterial(): OpaqueSecretMaterial {
-  return Object.freeze(new OpaqueSecretMaterial(opaqueMaterialConstructionToken)) as unknown as OpaqueSecretMaterial;
 }
 
 export function createOsSecretStore(input: CreateOsSecretStoreInput): OsSecretStore {
-  const currentUse = normalizeExactUse(input.currentUse);
-  const backend = normalizeBackend(input.backend);
+  const normalizedInput = normalizeCreateOsSecretStoreInput(input);
+  const currentUse = normalizedInput?.currentUse;
+  const backend = normalizedInput?.backend;
 
   return Object.freeze({
     async resolveForExactUse(request: OsSecretResolutionRequest): Promise<OsSecretResolution> {
@@ -134,12 +156,34 @@ export function createOsSecretStore(input: CreateOsSecretStoreInput): OsSecretSt
       }
 
       try {
-        return normalizeBackendResolution(await backend.resolve(toBackendRequest(normalizedRequest)));
+        const issuer = createExactUseIssuer(normalizedRequest.exactUseIdentity);
+        try {
+          const resolution = await backend.resolve(toBackendRequest(normalizedRequest), issuer.issueMaterial);
+          return normalizeBackendResolution(resolution, normalizedRequest.exactUseIdentity);
+        } finally {
+          issuer.close();
+        }
       } catch {
         return safeResolution("unavailable", "unverified", ["os-secret-facility-unavailable"]);
       }
     }
   });
+}
+
+function normalizeCreateOsSecretStoreInput(value: unknown): {
+  readonly currentUse: NormalizedExactUse;
+  readonly backend: OsSecretBackend;
+} | undefined {
+  const record = plainOwnDataRecord(value);
+  if (record === undefined || !hasExactKeys(record, ["currentUse", "backend"])) {
+    return undefined;
+  }
+  const currentUse = normalizeExactUse(record.currentUse);
+  const backend = normalizeBackend(record.backend);
+  if (currentUse === undefined || backend === undefined) {
+    return undefined;
+  }
+  return Object.freeze({ currentUse, backend });
 }
 
 function validateCurrentExactUse(
@@ -202,6 +246,14 @@ function normalizeExactUse(value: unknown): NormalizedExactUse | undefined {
   return Object.freeze({
     credentialRef,
     credentialRefIdentity: JSON.stringify(credentialRef),
+    exactUseIdentity: JSON.stringify({
+      credentialRefIdentity: JSON.stringify(credentialRef),
+      providerCapabilityHash: record.providerCapabilityHash,
+      workspaceId: record.workspaceId,
+      mountInstanceId: record.mountInstanceId,
+      runId: record.runId,
+      purpose: record.purpose
+    }),
     credentialRefId: credentialRef.credentialRefId,
     providerId: credentialRef.providerId,
     providerCapabilityHash: record.providerCapabilityHash,
@@ -237,12 +289,14 @@ function normalizeCredentialReference(value: unknown): CredentialReference | und
   }) as CredentialReference;
 }
 
-function normalizeBackendResolution(value: unknown): OsSecretResolution {
+function normalizeBackendResolution(value: unknown, exactUseIdentity: string): OsSecretResolution {
   const record = plainOwnDataRecord(value);
   if (record === undefined || typeof record.kind !== "string") {
     return safeResolution("unavailable", "unverified", ["os-secret-facility-unavailable"]);
   }
-  if (record.kind === "resolved" && hasExactKeys(record, ["kind", "material"]) && isOpaqueMaterial(record.material)) {
+  if (record.kind === "resolved" &&
+      hasExactKeys(record, ["kind", "material"]) &&
+      isOpaqueMaterialForExactUse(record.material, exactUseIdentity)) {
     return safeResolution("resolved", "healthy", [], record.material);
   }
   if (record.kind === "unavailable" &&
@@ -370,9 +424,24 @@ function isDiagnosticCode(value: unknown): value is OsSecretDiagnosticCode {
   return typeof value === "string" && (diagnosticCodes as readonly string[]).includes(value);
 }
 
-function isOpaqueMaterial(value: unknown): value is OpaqueSecretMaterial {
-  if (typeof value !== "object" || value === null || !opaqueMaterials.has(value)) {
+function createExactUseIssuer(exactUseIdentity: string): {
+  readonly issueMaterial: OsSecretMaterialIssuer;
+  readonly close: () => void;
+} {
+  let open = true;
+  return Object.freeze({
+    issueMaterial: () => open
+      ? new OpaqueSecretMaterial(opaqueMaterialConstructionToken, exactUseIdentity)
+      : undefined,
+    close: () => {
+      open = false;
+    }
+  });
+}
+
+function isOpaqueMaterialForExactUse(value: unknown, exactUseIdentity: string): value is OpaqueSecretMaterial {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
-  return !(value as OpaqueSecretMaterial).released;
+  return opaqueMaterials.get(value)?.exactUseIdentity === exactUseIdentity;
 }
