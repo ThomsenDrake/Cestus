@@ -3780,3 +3780,19 @@ explicit implementation authorization.
   claim, remove any dependency link, and stop clean for fresh review. No full
   verifier, child dispatch, self-integration, credential/provider use, or `neo`
   change is authorized.
+
+## RV-1-C-098 — Active root-cause recovery ledger
+
+- Task125 root-cause implementer: child `/root/task125_root_repair`, preserved
+  Task125 worktree/branch at rejected `7da9e29f`; it owns the portable
+  lifecycle claim, source, and test only.
+- Task127 root-cause implementer: child `/root/task127_root_repair`, preserved
+  Task127 worktree/branch at rejected `15ed426b`; it owns the OS-secret claim,
+  source, and test only.
+- Task131 replacement root-cause implementer: child `/root/task131_root_repair`,
+  preserved Task131 worktree/branch at rejected `e2f1626d`; it owns the
+  Task131 claim and three UI source/test files only. The original
+  `/root/task131_repair` was interrupted clean before any delta, claim, gate,
+  or candidate and has no integration significance.
+- These three child lanes have disjoint write sets. No candidate review, full
+  verifier, integration, or `neo` slot is active.
