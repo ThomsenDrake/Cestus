@@ -131,3 +131,34 @@ commit.
 - Full verification: not run, as explicitly prohibited by the repair
   authorization. Latest status: `ready-for-review`; stop for a fresh
   independent review before any integration.
+
+## Issuer-Expiration Regression Repair (2026-07-14)
+
+- Repairer: `/root/task127_issuer_repair`, starting at
+  `4c3a0a6528a181432b667c123bce8f75aeae699e`.
+- Status: `in-progress`. This bounded C102 repair owns only this append-only
+  claim and the existing OS-secret-store source/test pair. It will add the
+  missing causal proof that a backend-retained issuer expires after its valid
+  `resolveForExactUse` call settles; no provider, credential, full verifier,
+  integration, child dispatch, or `neo` action is authorized.
+- Dependency recovery: the first focused invocation was blocked only because
+  this isolated worktree lacked ignored `node_modules` (`vitest: command not
+  found`). An untracked symlink to the coordinator worktree's lockfile-pinned
+  runner enabled the authorized focused suite and is removed before commit.
+- Baseline: after adding the retained-issuer counterfactual, the exact focused
+  command exited `0` with **21/21** tests, confirming that the existing
+  `finally` close already supplies the requested behavior.
+- Causal RED: temporarily neutralizing only `issuer.close()` in that `finally`
+  made the same command exit `1` with **one failure and twenty passes**. The
+  new test received an `OpaqueSecretMaterial` where it required `undefined`
+  after `resolveForExactUse` settled. The close was immediately restored;
+  production design is otherwise unchanged.
+- GREEN: with the close restored, `npm test --
+  packages/agent/test/os-secret-store.test.ts
+  packages/agent/test/secret-store.test.ts` exited `0` with **21/21** tests.
+  The counterfactual also feeds any post-settlement mint attempt into a valid
+  exact-use resolution and proves it cannot become accepted material.
+- Follow-up gates: `npm run typecheck`, `git diff --check`, and `npm run
+  factory:check` each exited `0`; no full verification was run, as prohibited.
+- Status: `ready-for-review`. Stop for a fresh independent re-review before
+  any integration.
