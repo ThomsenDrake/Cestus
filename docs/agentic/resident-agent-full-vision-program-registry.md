@@ -4079,3 +4079,12 @@ explicit implementation authorization.
   and domain/runtime sequencing remains intact. Documentation RED/GREEN uses a
   direct rule-presence audit plus `git diff --check` and factory readiness; a
   new fresh independent review is required before accepting the correction.
+
+## RV-1-C-114 — Task131 route-order re-review ledger
+
+- Fresh independent read-only reviewer `/root/task131_route_order_rereview` is
+  reviewing the sealed repair
+  `ea725803f5679a99ccc07a432b214a465e773433..057496c53d54676ecc9661f36f2c39086b9826ec`.
+  It has no source, full-verifier, integration, child-dispatch, or `neo`
+  authority. Task125 and Task126 retain their disjoint focused TDD repairs;
+  no serialized full verifier is active.
