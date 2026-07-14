@@ -6197,3 +6197,36 @@ explicit implementation authorization.
   read, child self-integration, merge, or `neo` change is authorized. Current
   primary usage is `usedPercent=11` / **89% remaining**; reset credits remain
   untouched and DRAIN/HARD PAUSE controls remain in force.
+
+## RV-1-E-178 — Task134 bounded production specialist-runner authorization
+
+- Task134 is independently unblocked from clean coordinator head `544bebaa`.
+  Its required predecessors are integrated ancestors: Task121 `1a92a2c2`,
+  Task122 `9839fbf8`, Task123 `87f5d940`, and Task124 `73003f60`. It remains
+  independent of active Task130 repair and Task132 implementation; this record
+  opens no Task135 or other dependent row.
+- One fresh Terra/xhigh Lane R worker may use
+  `superpowers:subagent-driven-development`, systematic debugging, test-driven
+  development, fresh independent review, and verification-before-completion in
+  a task-scoped worktree from this head. Exclusive files are new
+  `docs/agentic/claims/task-134-resident-runtime-specialist-runners.md`,
+  `packages/local-runtime/src/agent-runtime-specialist-runners.ts`, and
+  `packages/local-runtime/test/agent-runtime-specialist-runners.test.ts`.
+  `turn_context` metadata is authoritative runtime evidence; generic
+  model-family prose is not.
+- RED/GREEN must build a readiness-validated, factory-closed specialist-runner
+  capability using the frozen Task134 test-only closure fixture. It must reject
+  unregistered/incompatible/swapped authority or store/provenance/handoff
+  tuples **before** delegate, derivative/material/manifest, handoff, or
+  fallback-write activity, then require durable H readback rather than
+  lifecycle-only success. Task134 may not import/create Task135's actual
+  binding, edit H schemas or W lifecycle code, accept a caller-created
+  authority/store/handoff tuple, invoke a provider, or add a fallback.
+- Write/run causal RED first, then the exact focused suite. Before one scoped
+  commit, run `npm test -- packages/local-runtime/test/agent-runtime-specialist-runners.test.ts packages/agent/test/specialist-runner-kernel.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain. The full
+  verifier is **CLOSED**, so `npm run verify` is forbidden. The child must stop
+  for a fresh independent Terra/xhigh review and may not self-review,
+  self-integrate, merge, or touch `neo`.
+- Primary usage remains `usedPercent=11` / **89% remaining**, reset credits
+  untouched; DRAIN/HARD PAUSE controls remain in force. No credential, network,
+  provider, or Nous action is authorized by this local runtime slice.
