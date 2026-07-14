@@ -13,7 +13,7 @@
   `docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md@285657a7879cdc47e321152c2bc5feb0ebe6088f`;
   `docs/superpowers/plans/2026-07-12-resident-agent-provider-credentials-implementation.md` Task 129.
 - Claimed at: `2026-07-14T22:08:56Z`.
-- Status: in-progress (RV-1-E-173 merged-typecheck forward repair).
+- Status: merged (coordinator non-full typecheck repair integration at `d362d1a7`).
 
 ## Exclusive Scope
 

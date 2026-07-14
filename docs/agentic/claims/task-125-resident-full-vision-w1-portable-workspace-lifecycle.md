@@ -1,6 +1,6 @@
 # Task 125 — Portable Workspace Lifecycle Authority
 
-- Status: in-progress
+- Status: merged (coordinator non-full typecheck repair integration at `2e5c35ab`)
 - Coordinator ledger: `RV-1-E-173`
 - Worker: `/root/task125_merged_typecheck_repair`
 - Branch: `codex/task-125-merged-typecheck-repair`

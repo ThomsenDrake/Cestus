@@ -6092,3 +6092,30 @@ explicit implementation authorization.
 - Task130 remains a disjoint implementation lane only. It may not integrate or
   become ready while program typecheck remains red. The full verifier remains
   **CLOSED**, reset credits remain untouched, and `neo` remains untouched.
+
+## RV-1-E-174 — Corrected Task125/Task129 repair integration and fail-fast gate
+
+- Fresh independent review approved Task125 repair
+  `fce05da4e5e18c78b4b7609426e86910c41ce8ca..b66909b4` and Task129 repair
+  `fce05da4e5e18c78b4b7609426e86910c41ce8ca..a022d7a6`, with no findings.
+  The reviews preserve Task125's mounted/outage/reconciliation fail-closed
+  contracts and Task129's official-flow-only, material-before-kind, secret-safe
+  contract; neither review opened the full verifier.
+- Before child commits, the coordinator applied only both scoped source/test
+  diffs to a disposable worktree from `fce05da4` and ran exactly
+  `npm run typecheck && git diff --check && npm run factory:check` successfully.
+  After fresh review, the coordinator alone no-ff merged Task125 repair
+  `b66909b4` as `2e5c35ab` and Task129 repair `a022d7a6` as `d362d1a7`, then
+  reran that exact fail-fast program-head gate successfully. No newline
+  masking was used for either exit-sensitive gate.
+- The original provisional merges `84d162ee` and `96257965` remain preserved
+  history; their corrected follow-up merges restore Task125 and Task129 as
+  typecheck-clean, non-full-verified Wave 1 integration heads. Their claims
+  are marked `merged` only for this coordinator integration state; the
+  serialized full verifier remains **CLOSED** and no full verification claim is
+  made.
+- `neo` remains untouched, reset credits remain untouched, and the last usage
+  guard remains `usedPercent=9` / **91% weekly remaining**. Task130 may now
+  rebase and seek its own fresh review only after it is verified against this
+  corrected program head; it remains unintegrated unless its own gates and
+  fresh review succeed.
