@@ -2868,3 +2868,25 @@ explicit implementation authorization.
   retain exact canonical bytes/event bindings, and stop for another distinct
   fresh review. It may not run a full verifier, self-integrate, or change
   `neo`.
+
+## RV-1-C-057 — Ingestion reader intrinsic-order candidate review gate
+
+- Fresh authenticated Codex `/status` immediately before review reports Weekly
+  **33% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly remains
+  100% left. No `/usage`, reset, or redemption occurred. This authorizes a
+  fresh review only; the serialized full verifier remains forbidden.
+- The repaired candidate
+  `98b276596a65ff7dcd14fdc86ad6076f6b405490` is clean atop rejected
+  `2e08dffd`. Its causal RED exits 1 with 21 passing and 3 failing tests:
+  pre-brand `Buffer.isBuffer` invoked `getPrototypeOf` for the proxy-wrapped
+  and injected-prototype cases, then own-key validation invoked the proxy
+  `ownKeys` trap. The implementation instead obtains the typed-array values
+  iterator first inside the protected boundary, then performs direct-prototype
+  identity and own-data checks only after that non-Proxy intrinsic proof.
+- The exact three-file candidate reports focused GREEN 24/24, typecheck, diff
+  hygiene, and factory readiness. Those are review inputs, not integration
+  authority. A new reviewer distinct from all prior reader reviewers must
+  assess `2e08dffd..98b27659`, including zero proxy-hook invocation, direct
+  prototype rejection, strict canonical byte copying, canonical event/artifact
+  binding, and all Cestus provenance/side-effect invariants. No full verifier,
+  self-integration, or `neo` change is authorized.
