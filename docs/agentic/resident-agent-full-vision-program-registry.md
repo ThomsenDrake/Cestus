@@ -3205,3 +3205,30 @@ explicit implementation authorization.
   isolated worktree under the exact C-072 scope and must report its causal RED
   checkpoint immediately. Full verification, self-integration, downstream
   dispatch, and `neo` change remain forbidden.
+
+## RV-1-C-074 — Task123 repeated-stall diagnosis and final bounded retry
+
+- The C-073 replacement also remained clean with no causal test delta, command
+  result, verifier activity, or structured blocker through its immediate
+  checkpoint plus one bounded interval. It was stopped without mutation. The
+  two consecutive no-op turns were execution stalls, not a code, schema, or
+  reader-prerequisite failure.
+- Coordinator inspection locates the exact starting surfaces: the existing
+  `runOntologyBootstrapResidentWorkflow` block in
+  `packages/agent/src/ontology-bootstrap-workflow.ts`, its
+  `describe("runOntologyBootstrapResidentWorkflow")` tests beginning in
+  `packages/agent/test/ontology-bootstrap-workflow.test.ts`, and the launch
+  route/tests in the corresponding local-runtime files. Rejected
+  `404ac711` is conceptual evidence only: it may be read with `git diff` but
+  never cherry-picked, merged, or copied wholesale. Its relevant concepts are
+  a forged/missing/swapped report-event failure before effects and terminal
+  final-output -> prepared -> recorded -> terminal chain readback.
+- A fresh authenticated Codex `/status` immediately before this recovery
+  records Weekly **31% left**, resetting 15:00 on 19 Jul; Spark weekly remains
+  100%. No `/usage`, reset, or redemption occurred. Above the 10% guard,
+  exactly one final narrowly prompted worker may add the first causal
+  report-event and terminal-chain tests in the C-072 five-file scope. It must
+  run that focused RED command immediately. If it produces no causal test
+  delta after one bounded interval, record a genuine execution blocker rather
+  than cycling further. Full verification, review, integration, downstream
+  dispatch, self-integration, and `neo` change remain closed.
