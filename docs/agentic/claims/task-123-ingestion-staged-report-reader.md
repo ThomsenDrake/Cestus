@@ -56,3 +56,23 @@ Status: `in-progress`
   review and must not self-integrate or merge `neo`.
 
 Status: `ready-for-review`
+
+## Fresh-Review Repair — 2026-07-14
+
+- The first fresh review returned NEEDS-CHANGES because the reader did not bind
+  `generatedAt`, `generator`, and every total from the
+  `legacy.import.report.generated` event to reconstructed canonical report
+  bytes, and because an own `Buffer.toString` accessor could execute before
+  rejection.
+- Repair RED: the focused command exited `1` with 13 passing and 4 failing
+  tests. Three forged valid ledger events changed one of generated-at,
+  generator, or totals while retaining the canonical artifact; a hostile real
+  Buffer owned a throwing `toString` accessor. The prior reader accepted the
+  forged events and invoked the hostile accessor.
+- Repair GREEN: reconstruct-and-compare now binds every event-declared report
+  field, including all totals, and the byte path rejects an own `toString`
+  descriptor before copying into an independent Buffer for decoding. The
+  focused command exits `0` with 17 passing tests and proves the hostile
+  accessor is never read.
+- A distinct fresh review remains required after the repair commit. No full
+  verifier is authorized or started.

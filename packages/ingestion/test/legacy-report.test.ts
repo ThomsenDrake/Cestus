@@ -277,6 +277,78 @@ describe("legacy migration report", () => {
     expect(derivativeWriteAttempts).toBe(0);
   });
 
+  it.each([
+    {
+      label: "generatedAt",
+      eventOverrides: { generatedAt: "2026-07-14T15:00:00.000Z" }
+    },
+    {
+      label: "generator",
+      eventOverrides: { generator: { name: "legacy-cestus-inspector", version: "0.1.1" } }
+    },
+    {
+      label: "totals",
+      eventOverrides: {
+        totals: {
+          inspectedFiles: 99,
+          candidateMetadataFiles: 1,
+          proposedAssertionCandidates: 1,
+          quarantineEntries: 0,
+          unresolvedReferences: 0
+        }
+      }
+    }
+  ])("fails closed for an event with forged $label after canonical artifact readback", async ({ eventOverrides }) => {
+    const stored = await recordedReport();
+    const event = await appendReportEvent({
+      ledger: new InMemoryEventLedger(),
+      report: stored.report,
+      reportHash: stored.report.reportHash,
+      eventOverrides
+    });
+    let derivativeReadAttempts = 0;
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: event.ledger,
+      derivativeStore: {
+        get: async (contentHash) => {
+          derivativeReadAttempts += 1;
+          return stored.reportStore.get(contentHash);
+        }
+      },
+      reportEventId: event.reportEvent.id,
+      sourceCollectionId: stored.report.sourceCollectionId,
+      scanBatchId: stored.report.scanBatchId,
+      legacyReportId: stored.report.legacyReportId,
+      reportHash: stored.report.reportHash
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_EVENT_MISMATCH" });
+    expect(derivativeReadAttempts).toBe(1);
+  });
+
+  it("fails closed for a hostile real Buffer toString accessor without invoking it", async () => {
+    const stored = await recordedReport();
+    const hostile = Buffer.from(await stored.reportStore.get(stored.report.reportHash));
+    let accessorRead = false;
+    Object.defineProperty(hostile, "toString", {
+      enumerable: true,
+      get() {
+        accessorRead = true;
+        throw new Error("hostile Buffer accessor must not run");
+      }
+    });
+
+    const result = await readCanonicalStagedLegacyReport({
+      ledger: stored.ledger,
+      derivativeStore: { get: async () => hostile },
+      ...reportReference(stored)
+    });
+
+    expect(result).toEqual({ ok: false, code: "LEGACY_STAGED_REPORT_ARTIFACT_MISMATCH" });
+    expect(accessorRead).toBe(false);
+  });
+
   it("fails closed for an accessor-bearing ledger readback without invoking it", async () => {
     const stored = await recordedReport();
     let accessorRead = false;
@@ -370,6 +442,17 @@ async function appendReportEvent(input: {
   ledger: InMemoryEventLedger;
   report: ReturnType<typeof buildLegacyMigrationReport>;
   reportHash: `sha256:${string}`;
+  eventOverrides?: {
+    generatedAt?: string;
+    generator?: { name: string; version: string };
+    totals?: {
+      inspectedFiles: number;
+      candidateMetadataFiles: number;
+      proposedAssertionCandidates: number;
+      quarantineEntries: number;
+      unresolvedReferences: number;
+    };
+  };
 }) {
   const reportEvent = await input.ledger.append({
     type: "legacy.import.report.generated",
@@ -388,9 +471,9 @@ async function appendReportEvent(input: {
       scanBatchId: input.report.scanBatchId,
       reportHash: input.reportHash,
       candidateSetHash: input.report.candidateSetHash,
-      generatedAt: input.report.generatedAt,
-      generator: input.report.generator,
-      totals: input.report.totals
+      generatedAt: input.eventOverrides?.generatedAt ?? input.report.generatedAt,
+      generator: input.eventOverrides?.generator ?? input.report.generator,
+      totals: input.eventOverrides?.totals ?? input.report.totals
     }
   });
   return { ledger: input.ledger, reportEvent };
