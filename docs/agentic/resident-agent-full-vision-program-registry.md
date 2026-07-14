@@ -4088,3 +4088,35 @@ explicit implementation authorization.
   It has no source, full-verifier, integration, child-dispatch, or `neo`
   authority. Task125 and Task126 retain their disjoint focused TDD repairs;
   no serialized full verifier is active.
+
+## RV-1-C-115 — Task131 approval, fresh usage gate, and Task128 authorization
+
+- Fresh independent re-review of
+  `ea725803f5679a99ccc07a432b214a465e773433..057496c53d54676ecc9661f36f2c39086b9826ec`
+  returned **APPROVE** with no P1/P2/minor findings. It confirms that the
+  DTO-only Task131 exception is confined to the merged Tasks137/140 producer
+  and composed-runtime contract, Task141 remains sole HTTP/transport and UI
+  owner, and no source work was reopened.
+- Fresh authenticated local Codex `/status` reports primary Weekly **100% left**
+  (reset 16:37 on 21 Jul) and Spark Weekly **100% left**. Five reset credits
+  remain available and untouched; none was redeemed. This is above the 10%
+  DRAIN and 7% HARD-PAUSE thresholds and authorizes one new bounded worker, but
+  no full verifier.
+- With Task125 and Task126 still in their isolated non-full repair gates,
+  Task128 is authorized from the current clean coordinator head. It owns only
+  `docs/agentic/claims/task-128-resident-full-vision-local-model-provider.md`,
+  `packages/agent/src/local-model-provider.ts`, and
+  `packages/agent/test/local-model-provider.test.ts`. Its focused RED/GREEN
+  command is `npm test -- packages/agent/test/local-model-provider.test.ts
+  packages/agent/test/provider-readiness.test.ts`. It must implement a
+  credential-free, explicit, budgeted local-model capability with parity tests;
+  it must not treat a local model as Nous or a provider fallback, infer readiness
+  from generic client presence, make provider/credential/network calls, or
+  write unsafe diagnostics/state.
+- Task128 explicitly approves `superpowers:subagent-driven-development` where
+  relevant, plus systematic debugging, TDD, verification-before-completion,
+  and fresh independent review. The worker must claim, causal-RED, focused
+  Green, typecheck/diff/factory, clean-commit its exact scope, and stop for
+  review. No child self-review, self-integration, child dispatch, full
+  `npm run verify`, integration, `neo` action, or reset-credit use is
+  authorized.
