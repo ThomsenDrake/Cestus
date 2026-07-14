@@ -3,7 +3,7 @@
 ## Claim
 
 - **Status:** ready-for-review (fresh independent defects-first review required).
-- **Worker:** `/root/task124_admission_contract_repair`.
+- **Worker:** `/root/task124_reconciliation_generation_repair`.
 - **Branch / base:**
   `codex/task-124-resident-full-vision-wake-supervisor-admission-recovery`
   from `1a69f73f06c70d510e0137441937f3d4d6667018`.
@@ -86,3 +86,37 @@
   and `packages/agent/test/wake-supervisor.test.ts`; verify the branch is
   clean; then hand off for fresh independent review without self-review,
   integration, or Task125 edits.
+
+## Reconciliation Generation Root-Cause Repair — 2026-07-14
+
+- Root cause: `admissionGeneration` was strict-parsed and retained in the
+  reconciliation tuple, but neither `reconciliationKey()` nor the canonical
+  stored-readback predicate bound it to the fresh admission. A persisted
+  generation-1 reconciliation therefore had the same canonical key as a later
+  same-identity generation-2 admission, and any nonempty forged stored
+  generation passed the historical tuple check before `WakeRuntimePort.wakeOnce()`.
+- RED: the exact focused command was first dependency-blocked with
+  `vitest: command not found`. An ignored temporary `node_modules` directory
+  was installed only with `npm ci --ignore-scripts`; the exact command then
+  exited `1` with the two new causal generation tests failing and 49 tests
+  passing. The persisted generation-1 reconciliation reused the generation-2
+  key, and a forged stored generation returned as a generation-2 readback
+  reached `outcome: "accepted"`.
+- GREEN: reconciliation identity now includes the exact frozen
+  `admissionGeneration.generationId`; canonical fresh facts retain that value,
+  and stored readback requires equal schema version and generation ID, not only
+  a nonempty generation. The persisted-old-generation reconnect appends a new
+  generation-2 reconciliation before its one wake; an adversarial port that
+  returns a forged persisted generation for generation-2 fails closed with zero
+  append and zero `wakeOnce` calls. Existing lease/high-water renewal continues
+  to share a reconciliation only when it retains the same admission generation.
+- Green evidence: `npm test -- packages/agent/test/wake-supervisor.test.ts
+  packages/agent/test/scheduler.test.ts` exited `0` with 2 files and 51 tests
+  passing. `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check` each exited `0` (`factory-readiness passed`). The
+  temporary ignored `node_modules` directory was removed. Per authorization,
+  no full verifier, integration, self-review, Task125 edit, or `neo` action was
+  performed.
+- Stop point: commit only this claim and the two owned wake-supervisor files,
+  verify a clean worktree, then stop for a fresh independent defects-first
+  review.

@@ -331,7 +331,7 @@ describe("bounded wake supervisor", () => {
 
     const firstRecord = first.reconciliationAppendInputs[0]?.record;
     const renewedRecord = renewed.reconciliationAppendInputs[0]?.record;
-    const canonicalKey = `wake-reconcile:${JSON.stringify(["workspace_a", "epoch_a", "claim_a", "attempt_a", "obs_outage", "evt_claim"])}`;
+    const canonicalKey = `wake-reconcile:${JSON.stringify(["workspace_a", "epoch_a", "claim_a", "attempt_a", "obs_outage", "evt_claim", "admission-generation:p1"])}`;
     expect(firstRecord?.reconciliationIdempotencyKey).toBe(canonicalKey);
     expect(renewedRecord?.reconciliationIdempotencyKey).toBe(canonicalKey);
     expect(firstRecord?.causation).toEqual({ causationId: "cause:prior", correlationId: "corr:prior" });
@@ -351,6 +351,53 @@ describe("bounded wake supervisor", () => {
     expect(shared.lookupInputs[0]?.reconciliationIdempotencyKey).toBe(shared.lookupInputs[1]?.reconciliationIdempotencyKey);
     expect(first.runtimeCalls).toHaveLength(1);
     expect(renewed.runtimeCalls).toHaveLength(1);
+  });
+
+  it("appends a fresh reconciliation for a later same-identity admission generation instead of reusing the persisted older generation", async () => {
+    const shared = createSharedReconciliationStore();
+    const first = createP1Harness({ activeClaim: true, admissionGenerationId: "admission-generation:1", reconciliationPort: shared.port });
+    await expect(first.supervisor.recover(command("recover_generation_one"))).resolves.toMatchObject({ outcome: "accepted" });
+
+    const later = createP1Harness({ activeClaim: true, admissionGenerationId: "admission-generation:2", reconciliationPort: shared.port });
+    await expect(later.supervisor.recover(command("recover_generation_two"))).resolves.toMatchObject({ outcome: "accepted" });
+
+    expect(shared.lookupInputs).toHaveLength(2);
+    expect(shared.lookupInputs[0]?.admission.admissionGeneration.generationId).toBe("admission-generation:1");
+    expect(shared.lookupInputs[1]?.admission.admissionGeneration.generationId).toBe("admission-generation:2");
+    expect(shared.lookupInputs[0]?.reconciliationIdempotencyKey).not.toBe(shared.lookupInputs[1]?.reconciliationIdempotencyKey);
+    expect(shared.appendInputs).toHaveLength(2);
+    expect(shared.snapshot().admission.admissionGeneration.generationId).toBe("admission-generation:2");
+    expect(later.runtimeCalls).toHaveLength(1);
+  });
+
+  it("rejects a forged persisted reconciliation generation returned for a later same-identity admission before wake", async () => {
+    const shared = createSharedReconciliationStore();
+    const first = createP1Harness({ activeClaim: true, admissionGenerationId: "admission-generation:1", reconciliationPort: shared.port });
+    await expect(first.supervisor.recover(command("recover_forged_generation_one"))).resolves.toMatchObject({ outcome: "accepted" });
+
+    const forged = withStoredAdmissionGeneration(shared.snapshot(), "admission-generation:forged");
+    const lookupInputs: Array<Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0]> = [];
+    const appendInputs: Array<Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]> = [];
+    const forgedPort: ActiveClaimReconciliationPort = {
+      async readByIdempotencyKey(input) {
+        lookupInputs.push(input);
+        return forged;
+      },
+      async appendAndReadBack(input) {
+        appendInputs.push(input);
+        return { record: input.record, reconciliationEventId: "evt_unexpected_append", readbackEventId: "evt_unexpected_append_readback", admission: input.admission };
+      }
+    };
+    const later = createP1Harness({ activeClaim: true, admissionGenerationId: "admission-generation:2", reconciliationPort: forgedPort });
+
+    await expect(later.supervisor.recover(command("recover_forged_generation_two"))).resolves.toMatchObject({
+      outcome: "blocked",
+      blocked: { category: "workspace-readback-failed" }
+    });
+    expect(lookupInputs).toHaveLength(1);
+    expect(lookupInputs[0]?.admission.admissionGeneration.generationId).toBe("admission-generation:2");
+    expect(appendInputs).toHaveLength(0);
+    expect(later.runtimeCalls).toHaveLength(0);
   });
 
   it.each([
@@ -491,6 +538,7 @@ function createP1Harness(options: {
   readonly leaseEventId?: string;
   readonly highWaterMark?: string;
   readonly outageHighWaterBefore?: string;
+  readonly admissionGenerationId?: string;
   readonly reconciliationPort?: ActiveClaimReconciliationPort;
   readonly completedRuntimeEvidence?: { readonly transition: WakeLifecycleEvidenceDto["transition"]; readonly highWaterMark: string };
 } = {}) {
@@ -507,7 +555,7 @@ function createP1Harness(options: {
   const expectedHighWaterMark = options.highWaterMark ?? "event:42";
   const leaseEventId = options.leaseEventId ?? "evt_lease_a";
   const identity = { workspaceId: "workspace_a", residentId: "agent_default" as const, supervisorEpoch: epoch, workspaceIdentityEventId: "evt_identity_a", mountEvidenceId: "evt_mount_a", authorityEvidenceId: "evt_authority_a" };
-  const admissionGeneration = { schemaVersion: "resident-wake-admission-generation.v1" as const, generationId: "admission-generation:p1" };
+  const admissionGeneration = { schemaVersion: "resident-wake-admission-generation.v1" as const, generationId: options.admissionGenerationId ?? "admission-generation:p1" };
   const activeClaim = {
     workspaceId: "workspace_a", residentId: "agent_default" as const, supervisorEpoch: epoch,
     claimId: "claim_a", attemptId: "attempt_a", priorClaimEventId: options.priorClaimEventId ?? "evt_claim",
@@ -684,5 +732,18 @@ function withStoredOutageHighWater(readback: ClaimReconciliationReadback, highWa
   return {
     ...readback,
     record: { ...readback.record, outageObservation: { ...readback.record.outageObservation, highWaterBeforeOutage } }
+  };
+}
+
+function withStoredAdmissionGeneration(readback: ClaimReconciliationReadback, generationId: string): ClaimReconciliationReadback {
+  return {
+    ...readback,
+    admission: {
+      ...readback.admission,
+      admissionGeneration: {
+        schemaVersion: "resident-wake-admission-generation.v1",
+        generationId
+      }
+    }
   };
 }
