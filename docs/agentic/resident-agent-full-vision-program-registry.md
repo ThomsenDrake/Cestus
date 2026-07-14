@@ -5529,6 +5529,13 @@ explicit implementation authorization.
   process polling rather than the interrupted monitor path. Task126 remains
   unintegrated; Task125 and Task129 remain non-full; `neo` is untouched.
 
+## RV-1-C-155 — Task126 retained verifier retry gate
+
+- A fresh authenticated `/status` immediately before retry reports **93% weekly
+  remaining**, Spark 100%, with five reset credits untouched. The unchanged
+  reviewed Task126 candidate may consume one replacement serialized full gate;
+  direct process polling is required. No other full gate or `neo` action opens.
+
 ## RV-1-C-151 — Final Task128 closure and Relay D handoff
 
 - Recorded in append order after `RV-1-C-150` by the sole Relay C coordinator.
