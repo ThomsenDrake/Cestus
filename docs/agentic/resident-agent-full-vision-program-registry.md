@@ -3945,3 +3945,34 @@ explicit implementation authorization.
   read-only on documentation correction `461831da`. Task125’s monotonic
   invalidation repair is queued behind these review gates. No full verifier,
   integration, or `neo` action is active.
+
+## RV-1-C-108 — Task127 approval and serialized candidate-full grant
+
+- Fresh final Task127 review of
+  `ceae7ca7..087821c3b3a98c5c92c91d6ea3f63ee644f1b72d` returned **APPROVE**
+  for spec compliance and code quality. It confirms the issuer-expiration
+  regression is causal: neutralizing `issuer.close()` makes the retained issuer
+  test fail, and restored close makes it return `undefined`. The candidate is
+  still unintegrated pending its candidate and merged gates.
+- Fresh authenticated local Codex `/status` immediately before this grant
+  reports primary Weekly **23% left**, resetting 15:00 on 19 Jul; the
+  read-only app-server rate limit also reports `usedPercent=77`. Spark is 100%
+  left; five reset credits remain unused and no reset/redeem occurred. This is
+  above the 10% drain and 7% hard-pause guards. Exactly one serialized
+  `npm run verify` is granted to Task127 candidate `087821c3`; every other full
+  verifier remains closed until this slot releases.
+
+## RV-1-C-109 — Task131 plan-review correction
+
+- Fresh review rejected the prior C-099 wording because Tasks137/140 do not own
+  the Task141 HTTP supervision route. The coordinator corrects it narrowly:
+  Tasks137 and 140 must supply the authoritative wake-status DTO producer and
+  composed-runtime contract only; deferred Task131 consumes/parses that frozen
+  DTO directly after those merges; Task141 remains the sole HTTP/transport
+  route and UI-composition owner and follows Task131. No pre-131 route is
+  created or inferred.
+- This is an append-only dependency-order correction. The rejected Task131
+  adapter remains evidence only, no source work is reopened, and a fresh
+  documentation review of this corrected plan text is required before the
+  deferral is accepted. No full verifier, integration, or `neo` action is
+  authorized by this correction.
