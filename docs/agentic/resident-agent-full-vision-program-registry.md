@@ -5416,6 +5416,48 @@ explicit implementation authorization.
   and stop for fresh review. No full verifier, integration, network/provider
   effect, reset-credit use, or downstream lane is granted.
 
+## RV-1-C-151 — Task125 authority repair and Task129 official-flow lane
+
+- Recorded at: 2026-07-14T22:30:00Z by the sole Relay C coordinator under the
+  fresh 94% weekly / Spark 100% / five-credit-untouched gate in `RV-1-C-150`.
+  The lane count remains bounded and the serialized full-verifier slot is
+  closed.
+- Task125 review verdict: **NEEDS-CHANGES** for
+  `4dca422de61db8ccab6d420960cb4d3abcfd249d..482361a5`. The façade trusts
+  caller-supplied policy/lock/high-water/readback tuple facts, exposes a
+  predictable forgeable generation, and forwards uncanonicalized nested
+  reconciliation evidence. No port may be reached with forged or
+  prototype/accessor-backed evidence. The candidate is evidence only and is
+  not integrated.
+- Task125 repair authorization: a fresh isolated worker may continue from
+  `482361a5` in the existing Task125 worktree, owning only its claim,
+  `portable-workspace-lifecycle.ts`, and its lifecycle test.
+  `superpowers:subagent-driven-development` is explicitly approved where
+  relevant, as are systematic debugging, test-driven development,
+  verification-before-completion, and a mandatory later fresh review. It must
+  first add causal REDs for forged current-generation construction; every
+  swapped policy/lock/high-water/readback/lease fact; and hostile nested own-
+  data shapes, proving zero mounted-port effects. Green must derive an opaque
+  authority-issued capability and strict canonical immutable tuple before and
+  after await. No self-integration, full verifier, reset-credit use, or `neo`
+  change is authorized.
+- Task129 authorization: a fresh isolated P-lane may start from this clean
+  coordinator commit and own only
+  `docs/agentic/claims/task-129-resident-full-vision-codex-harness.md`,
+  `packages/agent/src/codex-subscription-harness.ts`, and
+  `packages/agent/test/codex-subscription-harness.test.ts`. It explicitly
+  approves `superpowers:subagent-driven-development` where relevant, TDD,
+  verification-before-completion, and later fresh review. The worker must
+  prove credential-free RED/GREEN for an official-flow-only capability boundary:
+  reject cookies, browser/session storage, token caches, CLI-auth-store data,
+  environment tokens, intercepted headers, undocumented/reverse-engineered
+  grants, and subscription-token-as-API-key paths; absent official support
+  records only safe `official-flow-unavailable` with no secret resolution,
+  request, provider substitution, or material in diagnostics/records. A fake
+  official route may test interface behavior but cannot establish feasibility.
+  No credential, network/provider action, full verifier, self-integration, or
+  `neo` action is authorized.
+
 ## RV-1-C-151 — Final Task128 closure and Relay D handoff
 
 - Recorded in append order after `RV-1-C-150` by the sole Relay C coordinator.
