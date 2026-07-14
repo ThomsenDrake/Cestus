@@ -3404,3 +3404,22 @@ explicit implementation authorization.
   `1644b9fc` only. No concurrent full verifier, integration, downstream
   dispatch, self-integration, or `neo` change is authorized until its retained
   result and a subsequent coordinator decision are recorded.
+
+## RV-1-C-083 — Task123 canonical-bootstrap replay repair integrated
+
+- Fresh review approved `e7a1d5b6..1644b9fc2cc7b31ed66c095547ab3c081963c185`
+  with no P1/P2 findings. The candidate full gate passed typecheck, **196 pass
+  / 3 skipped test files** and **2,350 pass / 5 skipped tests**, Vite build,
+  and factory readiness. Candidate worktree was clean and its temporary
+  dependency link was removed before integration.
+- Coordinator integrated the exact approved candidate by explicit no-ff merge
+  `87f5d940a4476fdcb0040c4554d5a7a2172d0c4b` on
+  `codex/resident-agent-full-vision-program-watchdog-recovery`. The merged
+  cross-boundary focused suite passed **3 files / 52 tests**, and the exclusive
+  merged `npm run verify` passed typecheck, **196 pass / 3 skipped test files**
+  and **2,350 pass / 5 skipped tests**, Vite build, and factory readiness.
+- Authenticated post-integration `/status` remained Weekly **28% left**,
+  resetting 15:00 on 19 Jul; Spark weekly remains 100%. No `/usage`, reset, or
+  redemption occurred. `neo` remains untouched. The serialized full-verifier
+  slot is free; follow-on work still requires a fresh usage gate before any
+  worker, reviewer, or full-verifier dispatch.
