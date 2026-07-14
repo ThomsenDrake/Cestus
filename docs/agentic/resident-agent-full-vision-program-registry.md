@@ -3306,3 +3306,36 @@ explicit implementation authorization.
   `e7a1d5b6..adbdde9f` is authorized. It must inspect the sealed diff and
   return defects-first immediately; full verification, integration,
   downstream dispatch, self-integration, and `neo` remain closed.
+
+## RV-1-C-079 — Task123 three-P1 recovery sealed for fresh review
+
+- The C-078 replacement review completed NEEDS-CHANGES. It identified three
+  P1s in `adbdde9f`: optional canonical input permitted caller report bytes
+  and the legacy completion path; an existing or new run was not bound to the
+  exact staged-report event plus report/candidate hashes; and production
+  terminal readback omitted exact correlation-ID checks. The rejected commit
+  remains evidence only and is not an integration target.
+- Coordinator-owned TDD repair is clean at
+  `5744a67a0293ae04b0f70773451871e7cc8054c` on
+  `codex/task-123-resident-full-vision-bootstrap-reader-restart`, descending
+  from `e7a1d5b6`. It changed only the existing Task123 claim, workflow,
+  workflow test, and route. New counterfactuals first failed for omitted
+  canonical identity, swapped/missing run provenance, and a forged terminal
+  correlation; they are now green. The workflow requires staged identity,
+  report event, and derivative store; reads bytes only through the public
+  ingestion reader; validates exact run provenance before effects; and
+  requires the durable final-output -> prepared -> recorded -> terminal chain
+  to read back exact actor, correlation, event type, causation, and order.
+- Non-full gates retained: focused workflow/handoff-projection/route suite
+  passed **3 files / 50 tests**; `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check` passed. The temporary untracked `node_modules` link
+  was removed before commit; the candidate worktree is clean. No candidate
+  full verifier, integration, downstream dispatch, self-integration, or
+  `neo` change occurred.
+- Fresh authenticated Codex `/status` immediately before the next dispatch
+  reports Weekly **29% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  remains 100% left. No `/usage`, reset, or redemption occurred. Above the
+  10% guard, one fresh independent read-only defects-first review of
+  `e7a1d5b6..5744a67a` is authorized. It must assess all three P1s, the exact
+  durable lifecycle readback/replay chain, and fail-closed behavior before any
+  full-verifier or integration decision.
