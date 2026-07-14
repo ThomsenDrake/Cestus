@@ -4598,3 +4598,29 @@ explicit implementation authorization.
   implementation remains independently active and unintegrated. Task125 may
   only restart from this verified coordinator ancestry after a fresh usage
   gate and available isolated capacity. Relay B remains frozen at `da1abbb3`.
+
+## RV-1-C-131 — Task128 proxy-boundary review authorization
+
+- Recorded at: 2026-07-14T22:00:00Z by the sole Relay C coordinator.
+- Authenticated local Codex `/status` immediately before dispatch reports
+  97% weekly remaining (reset 16:37 on 21 Jul), Spark Weekly 100%, and five
+  reset credits untouched. No reset credit was redeemed. This is normal mode
+  (>10%), permits this fresh read-only review only, and does not open a full
+  verifier, integration, `neo`, or downstream lane.
+- Candidate: `21f7690250a004c5174bb4f784ce9bd60472ccfe`, exact range
+  `e1fa208245ba3032747be9375b7e552196a20ecf..21f7690250a004c5174bb4f784ce9bd60472ccfe`,
+  on `codex/task-128-resident-full-vision-local-model-provider` in its
+  isolated worktree. The worktree is clean and changes exactly the Task128
+  claim, `local-model-provider.ts`, and `local-model-provider.test.ts`.
+- Required review focus: revoked Proxy containment around every `Array.isArray`
+  path; zero underlying-engine invocation on configured and inspection
+  failures; enumerable own-data `__proto__` rejection and null-prototype
+  snapshots; strict own-data/descriptor handling; reservation/timeout safety;
+  secret-safe diagnostics; provider readiness; and preservation of the
+  credential-free/no-network/no-fallback boundary. Review is defects-first,
+  independent, and read-only. It must return APPROVE or NEEDS-CHANGES before
+  any full verifier or integration can be considered.
+- Concurrent state: Task126's isolated canonical-reader worker remains active
+  and unintegrated. Its dirty, task-scoped worktree includes its claim, source,
+  test, and temporary dependency link; it has no authority to self-review,
+  self-integrate, start a full verifier, or touch `neo`.
