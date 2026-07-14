@@ -5813,3 +5813,39 @@ explicit implementation authorization.
   append to canonical mounted outage/active-claim facts and canonicalize
   readbacks. No full verifier, self-integration, credentials/network/provider
   action, or `neo` action is authorized.
+
+## RV-1-D-165 — Relay D durable successor handoff checkpoint
+
+- Relay D remains sole coordinator pending explicit successor acceptance. Exact
+  clean checkpoint before this handoff append: branch
+  `codex/resident-agent-full-vision-program-watchdog-recovery`, worktree
+  `/home/drake/.codex/worktrees/95de/Cestus`, head
+  `a7aaf73609884806476247c8434ee1bccbc440fc`; `git status --porcelain=v1` was
+  empty. Governing design/plan remain `c7dc10b9dd351fc76df083df8f2222252ba73d89`
+  and `0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Usage guard is the current authenticated `usedPercent=8` / **92% weekly
+  remaining** event, with reset credits untouched. Normal mode is active;
+  DRAIN <=10%, HARD PAUSE <=7%, and no reset credit may be redeemed. The
+  serialized full-verifier slot is **closed**.
+- Integrated evidence: Task124 `73003f60`, Task127 `93a93844`, Task128
+  `ba43f007`, and Task126 no-ff merge `2e7a8a011ada9828f2978129ddc9f47719c33655`
+  are integrated. Task126's Relay D candidate and merged full verifiers passed
+  as recorded in `RV-1-D-160` through `RV-1-D-162`.
+- Active/non-full ledger: Task125 candidate
+  `251834159ffd72c5e7293a7cfaf0a0ed210201cb` is clean but NEEDS-CHANGES under
+  `RV-1-D-164`; its exact next step is the authorized append/readback TDD
+  repair, not a full gate. Task129 initial candidate `0bad3c24f563f8fdc60328cfed29a1161f381b94`
+  is NEEDS-CHANGES under `RV-1-D-163`; active Terra/xhigh repair
+  `/root/task129_material_repair` owns only its claim, Codex harness source,
+  and test in `/home/drake/.codex/worktrees/task-129-resident-full-vision-codex-harness`,
+  currently at the causal RED delta. It may not full-verify or self-integrate.
+- `neo` remains at `f88ced73be1e64660d95874394a324bd317fc20a` in
+  `/home/drake/Projects/Cestus` and is untouched. No child self-integration is
+  permitted. Predecessor canonical authority is stopped; its historical records
+  remain preserved as corrected inputs.
+- Successor protocol: a fresh user-visible Relay E successor must start from
+  this clean descendant, append and commit explicit sole-ownership acceptance
+  with its exact observed head, the ledger above, usage guard, verifier hold,
+  Task125/Task129 status, and no-`neo` boundary. Relay D retains ownership until
+  that acceptance is visible. Do not close Relay D while its Task129 child is
+  active, because closure cascades to active descendants.
