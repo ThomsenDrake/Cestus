@@ -3655,3 +3655,19 @@ explicit implementation authorization.
   until a fresh authenticated `/status` result is available. Existing sealed
   worktrees are preserved; no child is active, no full verifier is active, and
   `neo` remains untouched.
+
+## RV-1-C-092 — Usage-gate authentication root cause
+
+- A parent-side retry confirmed that interactive `/status` still redirects to
+  sign-in even though `codex login status` reports ChatGPT login. A direct,
+  read-only `account/rateLimits/read` attempt through the installed Codex
+  app-server then returned `401 Unauthorized` with
+  `code: refresh_token_expired` and the instruction to sign in again. This
+  establishes an expired external ChatGPT refresh token as the usage-gate
+  blocker; it is not a Cestus source, schema, verifier, or worktree failure.
+- The C-091 fail-closed checkpoint remains authoritative. No reset credit,
+  usage redemption, logout, credential mutation, worker, reviewer, full
+  verifier, integration, downstream dispatch, or `neo` change was attempted.
+  Resume only after an operator refreshes Codex authentication and a new
+  authenticated `/status` reading proves the program is above the 10% drain
+  threshold. The 7% hard-pause guard remains unchanged.
