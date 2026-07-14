@@ -4212,3 +4212,13 @@ explicit implementation authorization.
 - The fresh 99% authenticated gate remains above all thresholds for this
   bounded recovery. No full verifier, integration, or `neo` action is
   authorized; Task124 and Task128 remain independently active.
+
+## RV-1-C-120 — Active Task126 root-cause child
+
+- Task126 authoritative-source root-cause implementer:
+  `/root/task126_authority_root_repair`, isolated on the preserved Task126
+  branch at `dc9bcce06f95a1d4773150e769a4d1e08991dd04`. Task124 has now
+  reproduced the complementary in-flight invalidation RED (one failure over 47
+  passing focused tests) and continues only in its separate wake-supervisor
+  contract scope. Task128 remains separate. No full verifier or integration is
+  active.
