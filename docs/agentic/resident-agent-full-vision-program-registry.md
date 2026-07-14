@@ -4809,3 +4809,21 @@ explicit implementation authorization.
   available GPT-5.6 Terra / Extra High host under a fresh scoped authorization
   and usage gate. Proceeding on a different host requires a user decision; the
   coordinator must not infer that authority.
+
+## RV-1-C-135 — Explicit Terra reviewer-dispatch tooling correction
+
+- Recorded at: 2026-07-14T22:25:00Z by the sole Relay C coordinator.
+- The first explicit `gpt-5.6-terra` / `xhigh` Task128 reviewer spawn used a
+  full-history fork and was rejected by the multi-agent tool before a child
+  existed: `Full-history forked agents inherit the parent agent type, model,
+  and reasoning effort; omit agent_type, model, and reasoning_effort, or spawn
+  without a full-history fork.` This is a dispatch-tool constraint, not a
+  model-availability pass and not reviewer evidence.
+- Recovery authorization: per the user-issued reviewer-host recovery, Relay C
+  will use self-contained no-history multi-agent work orders that explicitly
+  set model `gpt-5.6-terra` and reasoning effort `xhigh`. Each remains a fresh
+  read-only review under the exact scopes and no-fallback constraints in
+  `RV-1-C-133`; no GPT-5 review is valid.
+- Task125, all full verifiers, all integrations, provider/credential/network
+  actions, reset-credit use, and `neo` remain stopped until valid Terra review
+  verdicts return.
