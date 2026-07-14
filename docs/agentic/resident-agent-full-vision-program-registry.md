@@ -4757,6 +4757,31 @@ explicit implementation authorization.
   alter provider/network/secret behavior, self-integrate, start a full verifier,
   or touch `neo`.
 
+## RV-1-C-136 — Provider-boundary recovery worker ledger
+
+- Recorded at: 2026-07-14T22:29:00Z by the sole Relay C coordinator.
+- Fresh authenticated local Codex `/status` immediately before this recovery
+  batch reports 95% weekly remaining (reset 16:37 on 21 Jul), Spark Weekly
+  100%, and all five reset credits untouched. No reset credit was used.
+  Normal mode permits the two exact non-full recoveries below; no full verifier,
+  integration, new provider behavior, or `neo` action is authorized.
+- Task128 compiler recovery child: `/root/task128_typecheck_recovery`, isolated
+  at `codex/task-128-resident-full-vision-local-model-provider-typecheck-recovery`
+  on `21f7690250a004c5174bb4f784ce9bd60472ccfe`. It owns the existing exact
+  Task128 claim/source/test slice only. It must fix the discriminated deadline
+  outcome and descriptor-map typing root causes without modifying the reviewed
+  proxy/`__proto__`/reservation behavior; it must re-prove targeted, compiler,
+  diff, factory, clean claim/commit, and stop for fresh review. It cannot run
+  full verification or integrate.
+- Task126 fail-unavailable recovery will start from a preserved new branch at
+  `27a99b137dcb2508132441879764b6c46f59fa14`, using the exact Task126
+  claim/source/test scope. It may map invalid reader-derived values to safe
+  unavailable and add hostile reader-output RED/GREEN. It must retain the
+  frozen port seam: the capability factory rejects untrusted public reader
+  objects; Task139 later mounts the actual canonical source. It must not add a
+  synthetic second reader verifier, route, shared contract, provider action,
+  full verifier, self-integration, or `neo` change.
+
 ## RV-1-C-132 — Task124 verifier ordering evidence and Task128 mutable-review block
 
 - Recorded at: 2026-07-14T22:10:00Z by the sole Relay C coordinator.
