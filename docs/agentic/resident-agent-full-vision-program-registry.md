@@ -5034,3 +5034,26 @@ explicit implementation authorization.
 - Concurrent state: Task126 is in its separately authorized authority-reader
   repair; no Task128 source mutation is authorized unless a later fresh repair
   record is issued.
+
+## RV-1-C-140 — Task128 serialized candidate-full verifier gate
+
+- Recorded at: 2026-07-14T22:55:00Z by the sole Relay C coordinator.
+- Role: coordinator / serialized verification gate owner.
+- Lane and wave: P / 1.
+- Usage gate: fresh authenticated app-server rate-limit evidence reports 5%
+  weekly used / **95% remaining**, normal mode, with no reset credits consumed.
+  This opens exactly one coordinator-controlled serialized candidate full
+  verifier for Task128 only.
+- Candidate: clean sealed
+  `e1fa208245ba3032747be9375b7e552196a20ecf..21f7690250a004c5174bb4f784ce9bd60472ccfe`
+  in `/home/drake/.codex/worktrees/task-128-resident-full-vision-local-model-provider`.
+  Fresh Terra-attested independent review approved the exact range in
+  `RV-1-C-139`.
+- Authorized sequence: run exactly one `npm run verify` in the exact Task128
+  candidate worktree. Only if it passes may Relay C no-ff integrate Task128,
+  run its merged targeted suite and one serialized merged `npm run verify`,
+  then record exact evidence. If a compiler discrepancy or any candidate gate
+  failure appears, stop integration, preserve evidence, and issue only an
+  exact-scope fresh Terra/xhigh repair authorization.
+- Holds: Task126 repair remains non-full and isolated; Task125, all unrelated
+  full verifiers/integrations, reset-credit use, and `neo` remain untouched.
