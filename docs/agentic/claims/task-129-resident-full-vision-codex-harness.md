@@ -13,7 +13,7 @@
   `docs/superpowers/specs/2026-07-12-resident-agent-provider-credentials-design.md@285657a7879cdc47e321152c2bc5feb0ebe6088f`;
   `docs/superpowers/plans/2026-07-12-resident-agent-provider-credentials-implementation.md` Task 129.
 - Claimed at: `2026-07-14T22:08:56Z`.
-- Status: claimed.
+- Status: ready-for-review.
 
 ## Exclusive Scope
 
@@ -50,3 +50,38 @@ by `npm run typecheck`, `git diff --check`, and `npm run factory:check`. Do not
 run `npm run verify`, use credentials, invoke a provider/network, self-review,
 self-integrate, or touch `neo`. Stop for a fresh independent defects-first
 review after the one clean owned-files commit.
+
+## RED/GREEN Evidence
+
+- Dependency setup: this isolated worktree initially had no ignored
+  `node_modules`, so the first named RED reported `vitest: command not found`.
+  A temporary untracked symlink to the coordinator's lockfile-pinned
+  `node_modules` enabled only the authorized focused checks; it was removed
+  before this candidate commit.
+- Initial RED: `npm test --
+  packages/agent/test/codex-subscription-harness.test.ts` exited `1` with one
+  failed suite and zero tests because
+  `../src/codex-subscription-harness.js` was absent. The new causal tests cover
+  a browser-cookie source and no-official-flow evidence before production code
+  existed.
+- Binding RED: the focused suite later exited `1` with 14 tests, 12 passing,
+  and two expected failures: swapped approval binding and switched
+  subscription/device credential kind both reached unavailable evidence instead
+  of `posture-mismatch`. The repair adds both facts to the immutable snapshot
+  before any feasibility append.
+- Proxy-input RED: the focused suite exited `1` with 15 tests, 14 passing, and
+  one expected failure because a revoked proxy used as credential scopes threw
+  from `Array.isArray` instead of producing a bounded result. The repair moves
+  all proxy-observable type checks inside the existing fail-closed boundary.
+- GREEN: the exact focused command exited `0` with one test file and 15 tests
+  passing. It rejects cookie, browser/session storage, token-cache,
+  CLI-auth-store, environment-token, intercepted-header, undocumented API,
+  reverse-engineered grant, and subscription-token-as-API-key shapes without
+  an append or unsafe diagnostic. It appends only the fixed
+  `official-flow-unavailable` evidence when no official route exists and can
+  demonstrate a fake route only as non-feasible interface behavior.
+- Follow-up gates: `npm run typecheck` exited `0`; `git diff --check` exited
+  `0`; and `npm run factory:check` exited `0` with `factory-readiness passed`
+  after the final proxy repair.
+- Full verification: not run. This task authorization prohibits `npm run
+  verify` until a later fresh review and usage-gated coordinator grant.
