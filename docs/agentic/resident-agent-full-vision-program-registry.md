@@ -5533,3 +5533,44 @@ explicit implementation authorization.
   handoff checkpoint. Relay C retains sole ownership through this commit and
   now stops cleanly; Relay D must make its own explicit sole-ownership
   acceptance from this clean descendant before opening any new lane.
+
+## RV-1-D-153 — Relay D sole-ownership acceptance
+
+- Recorded by Relay D after the parent supplied FINAL TRANSFER. Relay D accepts
+  sole coordinator ownership of the Resident Agent Full-Vision Program on
+  branch `codex/resident-agent-full-vision-program-watchdog-recovery` in
+  `/home/drake/.codex/worktrees/95de/Cestus` from the actual clean descendant
+  `1c5437661648f3b585fe5addc2016b37ea3cc881`; `git status --porcelain=v1` was
+  empty immediately before this append. The parent initially named
+  `f480835441cadf07cffd7f3e426a5f74ac06739a`; the later append-only
+  authorizations `82e03063224ea4f079c231fad109a268c6750b8c` and
+  `1c5437661648f3b585fe5addc2016b37ea3cc881` are preserved and are the
+  authoritative current ledger, not rewritten or discarded.
+- Governing sources remain
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`
+  and
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Usage guard: the supplied authenticated event is `usedPercent=6`, therefore
+  **94% weekly remaining**, with all reset credits untouched. This is normal
+  mode; DRAIN begins at <=10% remaining, HARD PAUSE at <=7%, and reset credits
+  must never be redeemed.
+- Integrated ledger: Task124 is merged at `73003f60`; Task127 is merged at
+  `93a93844`; Task128 candidate `0c7eb37f5fd0d5844c6fa849ccd62ea3da8f6f2a`
+  is verified and no-ff merged at `ba43f007c371229ca5ad96844f4b3bc08584702b`
+  under the serialized evidence in `RV-1-C-149`/`RV-1-C-151`. No verifier is
+  active or granted by this acceptance.
+- Active holds: Task125 remains unintegrated at
+  `482361a5ac0dbe04ae9826caecddf9466e8f400f`; its subsequent fresh review in
+  `RV-1-C-151` is NEEDS-CHANGES, so its authorized next state is the bounded
+  authority repair rather than a duplicate review or full verifier. Task126's
+  precedence repair is sealed at
+  `03c36b2f60669124a38bd4d73bcab973a4f2c5a9` by `RV-1-C-152` and awaits the
+  independently authorized fresh review. Task129 remains only an authorized
+  non-full lane. Candidate full verification, coordinator integration, and
+  dependent rebases remain closed until their exact clean candidate, fresh
+  Terra/xhigh APPROVE, authenticated boundary gate, and serialized registry
+  grant exist.
+- The full-verifier slot is serialized and currently closed. `neo` remains at
+  `f88ced73be1e64660d95874394a324bd317fc20a` in
+  `/home/drake/Projects/Cestus`; it is untouched and no `neo` action is
+  authorized. No child may self-integrate.
