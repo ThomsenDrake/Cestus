@@ -4501,3 +4501,61 @@ explicit implementation authorization.
 - Archive check: Relay A is stopped; the handoff HEAD, worktree cleanliness,
   active-worker identities, review state, usage guard, and no-`neo` boundary
   are recorded above. Relay C now holds sole forward-only coordination.
+
+## RV-1-C-129 — Task124 serialized verifier gate and registry corrections
+
+- Recorded at: 2026-07-14T21:30:00Z.
+- Role: coordinator / sole integration owner.
+- Lane and wave: W / 1.
+- Task ID and claim: Task124 admission/cancellation recovery /
+  `docs/agentic/claims/task-124-resident-full-vision-w1-wake-supervisor.md`
+  on its isolated child branch.
+- Branch and worktree:
+  `codex/task-124-resident-full-vision-wake-supervisor-admission-recovery` /
+  `/home/drake/.codex/worktrees/task-124-resident-full-vision-wake-supervisor-admission-recovery`.
+- Base commit and required head:
+  `1a69f73f06c70d510e0137441937f3d4d6667018` /
+  `aaca7d88ff4d4c12e8c8c67ac3d3b173edbe4fca`.
+- Model configuration: the existing Task124 work order and independent review
+  retain the required GPT-5.6 Terra / Extra High posture; no fallback applies.
+- Governing spec and plan:
+  `docs/superpowers/specs/2026-07-12-resident-agent-full-vision-program-design.md@c7dc10b9dd351fc76df083df8f2222252ba73d89`
+  and
+  `docs/superpowers/plans/2026-07-12-resident-agent-full-vision-program-implementation.md@0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Owned files: coordinator registry gate only; Task124 production ownership
+  remains confined to its approved child claim/source/test scope. Forbidden
+  files: all other production, test, provider, runtime, UI, and `neo` files.
+- Dependencies and required merged commits: `RV-1-C-127` Task124 fresh
+  approval, the current coordinator ownership acceptance `4b31d2af`, and the
+  user-supplied fresh authenticated boundary reading.
+- Approval record: the user transferred sole coordinator authority through
+  Wave 5 and expressly requires a fresh usage gate before Task124 verification
+  and integration. The received gate is **3% used / 97% weekly remaining**,
+  Spark **0% used / 100% remaining**, with all five reset credits untouched;
+  it is above the 10% DRAIN and 7% hard-pause thresholds. This record opens one
+  serialized Task124 candidate full-verifier slot only. It does not authorize
+  any child full verifier, Task126/Task128 integration, reset-credit use, or
+  `neo` action.
+- Claim status: ready-for-coordinator verification.
+- RED command and observed failure: preserved in Task124's approved candidate
+  evidence; persisted stale and forged generation counterfactuals failed
+  before the repair.
+- GREEN command and observed result: preserved focused Task124 suites passed
+  51 tests, with typecheck, diff, factory, and fresh independent APPROVE
+  recorded before this serialized full gate.
+- Full verification: pending coordinator execution of `npm run verify` from
+  the exact clean Task124 candidate worktree.
+- Live-provider gate: not applicable; deterministic credential-free boundary.
+- Review verdict: approved by fresh independent Task124 review.
+- Rebase record: Task124 has not been rebased; after successful verification,
+  Relay C alone may integrate it forward into the coordinator branch. Task125
+  remains deferred pending that integrated head and its own rebase.
+- Merge readiness: pending the serialized candidate verifier and post-verifier
+  coordinator inspection.
+- Registry correction: Relay A appended an `RV-1-C-127` immediately before the
+  parent handoff reused that identifier. Both remain immutable evidence; this
+  registry uses the next unique sequence. `RV-1-C-128` named the wrong plan
+  SHA (`c7dc10b9`); this record corrects the governing plan SHA forward-only to
+  `0b5726ec975bdc0aae97e540472ef3be4379b358`.
+- Archive check: not applicable while Task124 awaits the coordinator verifier;
+  Task126 and Task128 remain separately active and unintegrated.
