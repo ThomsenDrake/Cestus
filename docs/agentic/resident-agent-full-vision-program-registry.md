@@ -3018,3 +3018,30 @@ explicit implementation authorization.
   and any regression introduced by the target TypeScript repair. It must issue
   an explicit defects-first verdict. No full verifier, self-integration,
   downstream dispatch, or `neo` change is authorized.
+
+## RV-1-C-064 — Ingestion reader assertion root-cause recovery
+
+- Fresh authenticated Codex `/status` immediately before this recovery records
+  Weekly **32% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly
+  remains 100% left. No `/usage`, reset, or redemption occurred. The guard is
+  above 10%, authorizing one fresh root-cause worker only; full verification,
+  integration, and downstream dispatch remain forbidden.
+- The fresh re-review of `f7ad54f2..40dca32f` is **NEEDS-CHANGES**. It
+  confirms that the writer-tripwire P1 is repaired, but identifies two source
+  assertions in the original target-TypeScript repair: the validated content
+  hash transform uses `value as CanonicalContentHash`, and generic capability
+  discovery asserts a bound unknown function as a conditional method type.
+  Both violate the frozen no-cast strict-typing authority and mask the exact
+  relationship the repair is intended to prove.
+- This is the second bounded repair cycle on the candidate, so a new worker
+  must trace the Zod output and descriptor-to-capability data flow before
+  editing. It owns only `legacy-report.ts`, `legacy-report.test.ts`, and the
+  existing Task123 reader claim. It must add or retain a causal type/runtime
+  RED first, replace the assertions with validated typed schema output and
+  separately typed capability readers (or another demonstrably sound narrow
+  alternative), preserve public `Pick<EventLedger, "readAll">` and
+  `Pick<WorkspaceBlobStore, "get">` inputs plus every side-effect/proxy/
+  artifact/event/hash invariant, then run focused tests, target typecheck,
+  diff hygiene, and factory readiness. It must commit clean and stop for a
+  fresh reviewer. No full verifier, self-integration, child dispatch, or
+  `neo` change is authorized.
