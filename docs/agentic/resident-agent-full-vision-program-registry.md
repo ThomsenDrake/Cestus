@@ -2932,3 +2932,19 @@ explicit implementation authorization.
   against the target TypeScript contract; establish focused typecheck RED first,
   then TDD GREEN and a new fresh review. Full verification remains forbidden
   until that new candidate is approved.
+
+## RV-1-C-060 — Ingestion reader target-typecheck recovery authorization
+
+- Fresh authenticated Codex `/status` before dispatch reports Weekly **33%
+  left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly remains 100%
+  left. No `/usage`, reset, or redemption occurred. The guard authorizes one
+  fresh bounded recovery worker; no reviewer or full verifier is authorized.
+- The new worker must start from current Relay A head `2c7bf0dd`, which
+  preserves the failed no-ff merge and records the actual target-checkout
+  typecheck errors. It owns only `legacy-report.ts`, `legacy-report.test.ts`,
+  and the existing Task123 reader claim. It must first reproduce the exact
+  target `npm run typecheck` RED, reconcile the Zod/template-literal reference,
+  capability callback, post-intrinsic object narrowing, and test-fixture types
+  without weakening runtime strictness, then run focused TDD GREEN and stop for
+  fresh review. It may not rewrite history, run `npm run verify`, self-integrate,
+  touch `neo`, or change unrelated files.
