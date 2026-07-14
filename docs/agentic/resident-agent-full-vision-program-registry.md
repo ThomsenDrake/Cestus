@@ -3467,3 +3467,31 @@ explicit implementation authorization.
   credential/provider, or alter another lane. Coordinator retains registry and
   integration ownership. Wave stop: reviewed candidate only; no Wave 2 or live
   provider work is authorized by this record.
+
+## RV-1-C-085 — Task125 bounded stale-worker recovery
+
+- The original Task125 implementer committed its durable claim
+  `4d746267`, added the authorized causal lifecycle test, and recorded the
+  expected module-absence RED (the lifecycle suite failed only because
+  `portable-workspace-lifecycle.js` did not yet exist while the paired
+  identity-bootstrap suite passed). It then produced no owned production
+  delta, focused gate, or structured blocker through the subsequent bounded
+  progress interval after an explicit implementation prompt. The coordinator
+  stopped that worker without deleting its isolated worktree, claim, or causal
+  test evidence; no candidate, review, full verification, integration, or
+  `neo` change resulted.
+- Fresh authenticated Codex `/status` immediately before recovery reports
+  Weekly **27% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly
+  remains 100% left. No `/usage`, reset, or redemption occurred. This is above
+  the 10% drain guard. One fresh recovery implementer is authorized only in
+  the preserved Task125 worktree and exact three-file scope recorded in
+  C-084. It must retain the existing causal RED, read the frozen W ports and
+  the exact test before implementation, implement the smallest authority/
+  identity/policy/lock/high-water revalidation and same-identity reconciliation
+  readback with zero fallback writes, then run the named focused suite,
+  typecheck, diff check, and factory readiness. It may use
+  `superpowers:subagent-driven-development` where relevant, systematic
+  debugging, TDD, and verification-before-completion. It may not self-review,
+  self-integrate, dispatch another child, start `npm run verify`, touch another
+  lane, use a credential/provider, or merge `neo`; it must remove any
+  temporary dependency link and stop clean for fresh independent review.
