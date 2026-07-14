@@ -109,3 +109,36 @@ SHA.
   `npm run factory:check` exited `0` with `factory-readiness passed`.
 - Status: ready-for-review. The candidate must stop for a fresh independent
   review before any integration, rebase, merge, push, or `neo` action.
+
+## Fresh Proxy And Prototype P1 Repair Evidence
+
+- Repair baseline: rejected `e1fa208245ba3032747be9375b7e552196a20ecf`. This
+  repair changes only this claim, `packages/agent/src/local-model-provider.ts`,
+  and `packages/agent/test/local-model-provider.test.ts`.
+- Causal RED: after restoring only the ignored, lockfile-pinned temporary
+  `node_modules` symlink, the exact focused command exited `1` with four new
+  failures over the previous 38 passing tests. A revoked configured modalities
+  proxy escaped synchronously from `Array.isArray`; a revoked inspection
+  modalities proxy rejected `invoke()` instead of returning its bounded safe
+  unavailable result. Own enumerable data `__proto__` fields on both a
+  configured capability and an engine inspection were copied into `{}` and
+  silently changed the temporary snapshot's prototype, allowing both hostile
+  records to reach execution.
+- Root-cause repair: `plainDataArray` now performs its brand check inside the
+  existing fail-closed boundary. `plainOwnDataRecord` rejects an own
+  `__proto__` descriptor before copying and snapshots only into a
+  null-prototype record. The repair preserves descriptor-first normalization,
+  direct-prototype checks, timeout reservation behavior, safe diagnostics, and
+  the credential-free in-process-only boundary.
+- Scoped GREEN: the exact focused command exited `0` with **2 files / 42
+  tests**. New configured and inspected revoked-proxy tests resolve to bounded
+  safe results with zero execution; new own-data `__proto__` capability and
+  inspection tests fail closed with no engine execution while preserving the
+  input records' direct prototypes.
+- Follow-up gates: `npm run typecheck` exited `0`; `git diff --check` exited
+  `0` with no output; `npm run factory:check` exited `0` with
+  `factory-readiness passed`. No full verifier ran or is authorized.
+- The temporary untracked `node_modules` symlink was removed before the sealed
+  candidate commit. The candidate must then stop for a fresh independent
+  defects-first review; no self-review, integration, merge, push, or `neo`
+  action is authorized.

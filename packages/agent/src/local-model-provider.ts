@@ -637,9 +637,10 @@ function plainOwnDataRecord(value: unknown): Readonly<Record<string, unknown>> |
       return undefined;
     }
     const descriptors = Object.getOwnPropertyDescriptors(value);
-    const snapshot: Record<string, unknown> = {};
+    const snapshot = Object.create(null) as Record<string, unknown>;
     for (const [key, descriptor] of Object.entries(descriptors)) {
-      if (!("value" in descriptor) || descriptor.get !== undefined || descriptor.set !== undefined) {
+      if (key === "__proto__" || !("value" in descriptor) ||
+          descriptor.get !== undefined || descriptor.set !== undefined) {
         return undefined;
       }
       snapshot[key] = descriptor.value;
@@ -670,10 +671,10 @@ function normalizeEnumArray<T extends string>(
 }
 
 function plainDataArray(value: unknown): readonly unknown[] | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
   try {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
     if (nodeTypes.isProxy(value) || Object.getPrototypeOf(value) !== Array.prototype ||
         Object.getOwnPropertySymbols(value).length > 0) {
       return undefined;
