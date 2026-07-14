@@ -76,3 +76,18 @@ Status: `ready-for-review`
   accessor is never read.
 - A distinct fresh review remains required after the repair commit. No full
   verifier is authorized or started.
+
+## Second Fresh-Review Repair — 2026-07-14
+
+- The second fresh review found that `Buffer.from` can consult hostile own
+  `valueOf` or `length` accessors despite the existing `toString` descriptor
+  guard. The byte-extraction boundary therefore needed an internal-slot copy,
+  not another dynamic Buffer helper.
+- Repair RED: the focused command exited `1` with 17 passing and 2 failing
+  tests. Real Buffers with own throwing `valueOf` and `length` accessors both
+  produced a fail-closed result only after invoking the accessor.
+- Repair GREEN: the reader now rejects own `toString`, `valueOf`, and `length`
+  descriptors before a `Uint8Array.prototype.slice.call` internal-slot copy.
+  The focused command exits `0` with 19 passing tests and proves no hostile
+  accessor executes. A third distinct fresh review is required; no full gate
+  is authorized or started.

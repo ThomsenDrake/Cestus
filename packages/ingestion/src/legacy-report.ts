@@ -501,12 +501,15 @@ function copyCanonicalArtifactBytes(artifact: unknown): Buffer | undefined {
     return undefined;
   }
   try {
-    // A hostile own override changes the extraction boundary. Reject it before
-    // any property access and decode only an independent native Buffer copy.
-    if (Object.getOwnPropertyDescriptor(artifact, "toString") !== undefined) {
+    // A hostile own override changes the extraction boundary. Reject these
+    // dynamic Buffer hooks before any property access, then copy directly from
+    // the native typed-array internal slots rather than Buffer.from(...).
+    if (["toString", "valueOf", "length"].some((key) =>
+      Object.getOwnPropertyDescriptor(artifact, key) !== undefined
+    )) {
       return undefined;
     }
-    return Buffer.from(artifact);
+    return Uint8Array.prototype.slice.call(artifact);
   } catch {
     return undefined;
   }
