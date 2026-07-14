@@ -5753,3 +5753,15 @@ explicit implementation authorization.
   merged `npm run verify` may run in the canonical Relay D worktree. It is the
   only open full-verifier action. Task125 and Task129 remain non-full,
   unintegrated, and `neo` remains untouched.
+
+## RV-1-D-162 — Task126 integrated and fully verified
+
+- The sole Relay D-controlled merged `npm run verify` for
+  `2e7a8a011ada9828f2978129ddc9f47719c33655` exited `0`: typecheck passed;
+  **199 passed / 3 skipped files** and **2,409 passed / 5 skipped tests**;
+  Vite build and factory readiness passed. The known Vite chunk-size advisory
+  was non-fatal and no verifier process remained afterward.
+- Task126 is integrated at `2e7a8a011ada9828f2978129ddc9f47719c33655` with
+  candidate review, candidate full verification, merged focused/factory, and
+  merged full verification all recorded. The serialized slot is closed. Task125
+  and Task129 remain separately owned non-full work; no `neo` action occurred.
