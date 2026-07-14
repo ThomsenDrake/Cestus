@@ -5654,3 +5654,28 @@ explicit implementation authorization.
   serialized grant are required before any later Task126 candidate full
   verifier. Task125 and Task129 remain non-full, no integration is opened, and
   `neo` remains untouched.
+
+## RV-1-D-157 — Task125 fresh Terra review: needs changes
+
+- Fresh independent read-only review was dispatched by Relay D through an
+  accepted `gpt-5.6-terra` / `xhigh` no-history spawn and inspected only the
+  committed Task125 range
+  `4dca422de61db8ccab6d420960cb4d3abcfd249d..482361a5ac0dbe04ae9826caecddf9466e8f400f`.
+  Verdict: **NEEDS-CHANGES**. `git diff --check` passed; no tests were run and
+  no dirty follow-up worktree files were read or changed.
+- P1: the predictable `admission:${sequence}` generation and reconstructed
+  value equality make current admission forgeable, allowing a cloned current
+  snapshot toward mounted lease/reconciliation ports. P1: policy, lock,
+  high-water, lease, reconciliation tuple, and record fields remain
+  caller-controlled or unchecked-cast; swapped valid values and nested
+  accessor/prototype-backed shapes can reach mounted effects. The public
+  boundary also returns mounted lease/reconciliation results without canonical
+  readback validation after await.
+- Missing causal coverage includes forged current-generation construction,
+  swapped policy/lock/high-water/lease/reconciliation facts, hostile nested
+  shapes, forged/mismatched mounted readbacks, and before/after-await
+  invalidation with zero mounted-port effects. Existing fixture counters do
+  not themselves establish the required no-effect/no-fallback matrix.
+- This independently corroborates `RV-1-C-151`. The authorized Task125
+  authority repair remains the only active next step; no Task125 full verifier,
+  integration, rebase, reset-credit action, or `neo` action is opened.
