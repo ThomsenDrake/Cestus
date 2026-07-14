@@ -2890,3 +2890,22 @@ explicit implementation authorization.
   prototype rejection, strict canonical byte copying, canonical event/artifact
   binding, and all Cestus provenance/side-effect invariants. No full verifier,
   self-integration, or `neo` change is authorized.
+
+## RV-1-C-058 — Ingestion reader approval and serialized candidate gate
+
+- Fresh authenticated Codex `/status` immediately before the serialized gate
+  reports Weekly **33% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark
+  weekly remains 100% left. No `/usage`, reset, or redemption occurred. The
+  guard is above 10% and grants exactly one candidate-checkout full verifier.
+- Fresh independent review approved
+  `2e08dffd42168ae860773a7b1ace28506f73402b..98b276596a65ff7dcd14fdc86ad6076f6b405490`
+  with no P1/P2 findings. It confirmed intrinsic brand-first proxy rejection,
+  strict direct-prototype identity, species-free retained iterator copying,
+  zero-invocation proxy counterfactuals, unchanged canonical event/hash/
+  read-only bindings, and exact three-file scope. Focused 24/24, typecheck,
+  diff hygiene, and factory readiness are retained review evidence.
+- Worker `/root/task123_ingestion_reader_species_root_cause` alone receives
+  the serialized `npm run verify` slot on clean candidate `98b27659`. It must
+  capture the full result, leave the worktree clean, and stop. No integration
+  is authorized until a post-verifier usage gate and merged-checkout evidence;
+  no other full verifier, self-integration, or `neo` change is permitted.
