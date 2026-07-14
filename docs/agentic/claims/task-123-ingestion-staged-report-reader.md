@@ -30,3 +30,29 @@ Status: `in-progress`
 - RED/GREEN: `npm test -- packages/ingestion/test/legacy-report.test.ts`.
 - Before candidate commit: `git diff --check`, `npm run typecheck`, and `npm run factory:check`.
 - Stop after a scoped candidate commit for fresh independent review; do not self-integrate.
+
+## RED Evidence — 2026-07-14
+
+- After the coordinator-authorized isolated `npm ci --ignore-scripts` recovery,
+  `npm test -- packages/ingestion/test/legacy-report.test.ts` exited `1` with
+  4 existing tests passing and 9 new causal counterfactuals failing because
+  `readCanonicalStagedLegacyReport` did not exist. The failing cases cover
+  forged event/hash/source/scan/report identity, forged stored bytes,
+  accessor-bearing ledger readback, and an extra malformed artifact field.
+- The initial missing-`vitest` result was an unavailable local dependency,
+  recovered without tracked dependency or lockfile changes under the
+  coordinator's scoped authorization.
+
+## GREEN Evidence — 2026-07-14
+
+- The focused command now exits `0`: 1 file and 13 tests pass. The reader
+  accepts only a ledger-bound canonical derivative artifact, returns no raw
+  permissive decode, rejects every RED counterfactual, and proves no append or
+  derivative write occurs on the successful read.
+- `npm run typecheck`, `git diff --check`, and `npm run factory:check` each
+  exit `0` in this worktree.
+- The serialized full verifier was intentionally not started; it remains a
+  coordinator-controlled later gate. Candidate is ready for fresh independent
+  review and must not self-integrate or merge `neo`.
+
+Status: `ready-for-review`
