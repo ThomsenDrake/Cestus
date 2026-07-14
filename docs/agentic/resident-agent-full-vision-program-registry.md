@@ -4726,6 +4726,37 @@ explicit implementation authorization.
   command; no generic retry, full verifier, integration, or `neo` action is
   authorized by this record.
 
+## RV-1-C-135 — Task128 review verdict and compiler root-cause checkpoint
+
+- Recorded at: 2026-07-14T22:22:00Z by the sole Relay C coordinator.
+- Task128 review verdict: **NEEDS-CHANGES** for
+  `e1fa208245ba3032747be9375b7e552196a20ecf..21f7690250a004c5174bb4f784ce9bd60472ccfe`.
+  The candidate remains unintegrated and full verification is closed.
+- The reviewer confirmed the proxy/own-data repair hunk itself: configured and
+  inspection revoked-array Proxy plus enumerable own-data `__proto__` probes
+  return safe results with zero unexpected engine invocation; prior hostile map
+  accessor and abort-ignoring timeout/reservation counterfactuals remain safe;
+  scope and diff/factory checks are clean. Its isolated focused rerun lacked
+  Vitest after intentional dependency cleanup, so it is not independent Green
+  evidence.
+- Compiler root cause: a strict source compile pinpoints five inherited errors
+  in `local-model-provider.ts`, also present at base `e1fa`: the
+  `settleBeforeDeadline` result combines `failed | timeout` in one union arm,
+  preventing TypeScript from proving `value` after two equality guards; and
+  `Object.getOwnPropertyDescriptors(array).length` collides with the typed
+  array shape instead of the descriptor map's own `"length"` descriptor. A
+  project-level audit of the candidate checkout also lacked its dependency tree
+  after cleanup; a PATH-only rerun proved that configuration non-authoritative
+  by failing unrelated module resolution. These are environmental evidence,
+  not an excuse to waive the compiler gate.
+- Recovery direction: a fresh exact-scope repair must add causal compiler/behavior
+  coverage as feasible, use an explicit non-value outcome guard and an
+  unambiguous descriptor lookup, preserve all reviewed proxy/`__proto__` and
+  timeout semantics, then rerun the focused tests, project typecheck with a
+  clean coordinator-owned dependency setup, diff, and factory. It may not
+  alter provider/network/secret behavior, self-integrate, start a full verifier,
+  or touch `neo`.
+
 ## RV-1-C-132 — Task124 verifier ordering evidence and Task128 mutable-review block
 
 - Recorded at: 2026-07-14T22:10:00Z by the sole Relay C coordinator.
