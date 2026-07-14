@@ -5236,3 +5236,30 @@ explicit implementation authorization.
   use, or `neo` action is opened here.
 - Concurrent state: Task126 fail-closed recovery remains in its separate
   fresh-review gate; Task125 stays deferred.
+
+## RV-1-C-145 — Task126 fail-closed recovery review approval
+
+- Recorded at: 2026-07-14T23:55:00Z by the sole Relay C coordinator.
+- Fresh Terra-attested independent review verdict: **APPROVE** for clean range
+  `27a99b137dcb2508132441879764b6c46f59fa14..512a169af3caad7e0c2d270040f24c36443913ec`.
+  The recovery ref remains distinct from the historical reader-restart ref;
+  neither was moved or rewritten. Scope is exactly the Task126 claim, BYOK
+  source, and BYOK test.
+- Review conclusions: all malformed, stale, swapped, forged, and internally
+  inconsistent reader authority now returns secret-safe
+  `unavailable/authority-reader-unavailable`; malformed public requested-use
+  remains `blocked/unsafe-input` before reader invocation. Exact capability,
+  evidence, endpoint, preparation/current-use, and credential binding checks
+  hold. Hostile accessor, symbol, and non-plain-prototype reader outputs reject
+  without getter or effect invocation; no fallback or Task139 ownership leak
+  was found.
+- Verification evidence: reviewer `git diff --check` passed. Its independent
+  focused rerun was environment-blocked by missing Vitest in the clean
+  worktree; it made no dependency change. Candidate-focused Green, typecheck,
+  diff, and factory evidence remain recorded in the claim. This is not a full
+  verification pass or waiver.
+- Merge readiness: not-ready. Task126 requires a new authenticated
+  integration-boundary usage gate and exactly one serialized candidate full
+  verifier before coordinator integration. Task128 has the same gate
+  requirement for its changed approved recovery. Task125 remains deferred;
+  no full verifier, integration, reset-credit use, or `neo` action is opened.
