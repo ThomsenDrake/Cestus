@@ -1,6 +1,6 @@
 # Task 125 — Portable Workspace Lifecycle Authority
 
-- Status: ready-for-review
+- Status: in-progress
 - Coordinator ledger: `RV-1-C-137`
 - Worker: `/root/task125_authority_repair`
 - Branch: `codex/task-125-resident-full-vision-portable-workspace-lifecycle-admission-restart`
@@ -20,6 +20,14 @@ runtime, provider, tool, artifact, fallback, ledger, projection, cache, or
 journal write is permitted while unavailable or for a revoked admission.
 
 ## Evidence
+
+- RV-1-E-170 root-cause recovery: in progress from rejected clean
+  `82db6628a842a03cdd36e6bb05ebe36715260494`. This fresh worker is tracing the
+  missing canonical relationship between the pending outage and the currently
+  observed mounted active claim before adding the required mounted-claim-swap
+  causal RED. Scope remains this claim, the portable lifecycle source, and its
+  focused test only; the full verifier, provider/network actions, integration,
+  registry edits, and `neo` remain out of scope.
 
 - RV-1-D-164 second bounded repair: in progress from clean
   `251834159ffd72c5e7293a7cfaf0a0ed210201cb`. Root-cause investigation
