@@ -416,7 +416,10 @@ export async function runOntologyBootstrapResidentWorkflow(
     });
   }
 
-  const bootstrap = safeRunBootstrapSpecialist(canonicalInput);
+  const bootstrap = safeRunBootstrapSpecialist({
+    ...canonicalInput,
+    now: () => run.startedAt
+  });
   if (!bootstrap.ok) {
     return await appendRunFailure(input, failureForBootstrapResult(bootstrap));
   }
@@ -429,7 +432,7 @@ export async function runOntologyBootstrapResidentWorkflow(
   const reviewBundle = buildOntologyBootstrapAgentReviewBundle({
     runId: canonicalInput.runId,
     ...(taskId === undefined ? {} : { taskId }),
-    generatedAt: canonicalInput.now(),
+    generatedAt: run.startedAt,
     dossier: bootstrap.dossier,
     toolPreviews: bootstrap.toolPreviews,
     ...(input.maxCandidatesPerBundle === undefined ? {} : {
@@ -438,7 +441,7 @@ export async function runOntologyBootstrapResidentWorkflow(
   });
   const reviewBundleHash = hashOntologyBootstrapReviewBundle(reviewBundle);
   const contextPack = buildOntologyBootstrapDossierContextPack({
-    generatedAt: canonicalInput.now(),
+    generatedAt: run.startedAt,
     dossier: bootstrap.dossier,
     reviewBundleHash,
     selectedCandidateIds: reviewBundle.stagingReview.selectedCandidateIds
@@ -599,18 +602,36 @@ async function canonicalizeOntologyBootstrapInput(
       return undefined;
     }
     const run = buildAgentProjection(await input.ledger.readAll()).runs.get(input.runId);
-    if (run === undefined ||
-      run.runType !== "ontology-bootstrap" ||
-      !run.sourceEventIds.includes(input.reportEventId) ||
-      !run.inputArtifactHashes.includes(canonical.report.reportHash) ||
-      !run.inputArtifactHashes.includes(canonical.report.candidateSetHash)
-    ) {
+    if (run === undefined || run.runType !== "ontology-bootstrap" || !hasExactCanonicalRunProvenance({
+      sourceEventIds: run.sourceEventIds,
+      inputArtifactHashes: run.inputArtifactHashes,
+      reportEventId: input.reportEventId,
+      reportHash: canonical.report.reportHash,
+      candidateSetHash: canonical.report.candidateSetHash
+    })) {
       return undefined;
     }
     return Object.freeze({ ...input, report: canonical.report });
   } catch {
     return undefined;
   }
+}
+
+function hasExactCanonicalRunProvenance(input: {
+  readonly sourceEventIds: readonly string[];
+  readonly inputArtifactHashes: readonly string[];
+  readonly reportEventId: string;
+  readonly reportHash: string;
+  readonly candidateSetHash: string;
+}): boolean {
+  return sameExactStringSet(input.sourceEventIds, [input.reportEventId]) &&
+    sameExactStringSet(input.inputArtifactHashes, [input.reportHash, input.candidateSetHash]);
+}
+
+function sameExactStringSet(actual: readonly string[], expected: readonly string[]): boolean {
+  return actual.length === expected.length &&
+    new Set(actual).size === actual.length &&
+    actual.every((value) => expected.includes(value));
 }
 
 function isCanonicalStagedReportIdentity(value: unknown): value is CanonicalStagedReportIdentity {

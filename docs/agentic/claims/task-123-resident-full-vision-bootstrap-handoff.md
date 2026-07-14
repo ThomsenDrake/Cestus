@@ -68,3 +68,21 @@ Status: `ready-for-review`
   `npm run factory:check` exited `0`. No candidate full verifier, integration,
   self-integration, or `neo` change is authorized. The temporary untracked
   `node_modules` symlink must be removed before the sealed candidate commit.
+
+## Exact-Provenance and Replay Follow-up
+
+- A second fresh defects-first review rejected `5744a67a` because provenance
+  used subset membership and a later-clock replay rebuilt conflicting handoff
+  material. The repair adds causal RED coverage for an otherwise-correct run
+  containing an extra source event or artifact hash, the route reuse predicate
+  under the same condition, and a completed run replayed with a later `now()`.
+- The initial focused RED command exited `1`: extra provenance was accepted
+  and the later-clock replay returned `external-effect-failed`. Green requires
+  exact duplicate-free source and artifact sets in both workflow and route,
+  while all review/dossier/context-pack material is derived from the durable
+  run-start timestamp rather than retry time.
+- Latest non-full verification: `npm test -- packages/agent/test/ontology-bootstrap-workflow.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/local-runtime/test/agent-ontology-bootstrap-routes.test.ts`
+  exited `0` (3 files, 52 tests); `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check` exited `0`. No candidate full verifier,
+  self-integration, integration, or `neo` change is authorized; this sealed
+  follow-up requires a fresh independent defects-first review.

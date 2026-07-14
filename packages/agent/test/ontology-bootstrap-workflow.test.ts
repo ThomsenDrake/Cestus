@@ -316,6 +316,53 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
     ]);
   });
 
+  it("fails closed before effects when a run includes extra canonical-looking provenance", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    const canonical = await canonicalBootstrapInput(ledger);
+    await runtime.startRun({
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      runType: "ontology-bootstrap",
+      scope: { kind: "workspace", refs: ["ws_case_001"] },
+      sourceEventIds: [canonical.reportEventId, "evt_unrelated_report"],
+      inputArtifactHashes: [
+        canonical.report.reportHash,
+        canonical.report.candidateSetHash,
+        "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      ]
+    });
+    const before = (await ledger.readAll()).length;
+
+    const result = await runOntologyBootstrapResidentWorkflow({
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      stagedReport: canonicalStagedReportIdentity(canonical.report),
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      now
+    } as never);
+
+    expect(result).toMatchObject({ ok: false, category: "provenance-missing" });
+    expect((await ledger.readAll()).slice(before).map((event) => event.type)).toEqual([
+      "agent.specialist-run.failed"
+    ]);
+  });
+
   it("fails when terminal lifecycle readback has a mismatched correlation", async () => {
     const backing = new InMemoryEventLedger();
     const ledger = terminalCorrelationFaultLedger(backing);
@@ -571,9 +618,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
     expect(JSON.stringify(await ledger.readAll())).not.toMatch(/assertion\.accepted|entity\.resolved|relationship\.accepted/i);
   });
 
-  it("resumes without duplicating pending ontology bootstrap tool requests", async () => {
+  it("reuses the durable terminal handoff when replay runs at a later time", async () => {
     const ledger = new InMemoryEventLedger();
-    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    let currentNow = "2026-07-08T14:00:00.000Z";
+    const replayNow = () => currentNow;
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now: replayNow });
     await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
     await runtime.createTask({
       taskId: "task_ontology_bootstrap_001",
@@ -597,10 +646,11 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
       evidenceLinks: bootstrapEvidenceLinksFixture,
       selectedCandidateIds: ["legacy_candidate_001"],
       maxCandidatesPerBundle: 1,
-      now
+      now: replayNow
     };
 
     const first = await runOntologyBootstrapResidentWorkflow(input);
+    currentNow = "2026-07-08T14:05:00.000Z";
     const second = await runOntologyBootstrapResidentWorkflow(input);
 
     expect(first.ok).toBe(true);
@@ -610,6 +660,8 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
     expect(first.ok && second.ok ? second.reviewBundleHash : undefined).toBe(
       first.ok && second.ok ? first.reviewBundleHash : undefined
     );
+    expect((await ledger.readAll()).filter((event) => event.type === "agent.specialist-handoff.recorded")).toHaveLength(1);
+    expect((await ledger.readAll()).filter((event) => event.type === "agent.specialist-run.completed")).toHaveLength(1);
   });
 
   it("fails closed when a pending bootstrap approval preview changes on resume", async () => {

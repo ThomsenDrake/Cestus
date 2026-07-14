@@ -6,6 +6,7 @@ import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { writeLegacyCestusFixture } from "../../ingestion/test/fixtures/legacy-cestus-fixtures.js";
 import { resolveLocalRuntimeConfig, type ResolvedLocalRuntimeConfig } from "../src/config.js";
+import { isExactOntologyBootstrapRunProvenance } from "../src/agent-ontology-bootstrap-routes.js";
 import { createLocalRuntimeHttpHandler, type LocalRuntimeHttpHandler } from "../src/http-handler.js";
 
 let cwd: string;
@@ -101,6 +102,34 @@ describe("ontology-bootstrap agent routes", () => {
       "assertion.proposed",
       "assertion.accepted"
     ]));
+  });
+
+  it("requires exact canonical provenance before reusing a run", () => {
+    const reportEventId = "evt_canonical_report";
+    const reportHash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const candidateSetHash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+    expect(isExactOntologyBootstrapRunProvenance({
+      sourceEventIds: [reportEventId],
+      inputArtifactHashes: [reportHash, candidateSetHash],
+      reportEventId,
+      reportHash,
+      candidateSetHash
+    })).toBe(true);
+    expect(isExactOntologyBootstrapRunProvenance({
+      sourceEventIds: [reportEventId, "evt_unrelated_report"],
+      inputArtifactHashes: [reportHash, candidateSetHash],
+      reportEventId,
+      reportHash,
+      candidateSetHash
+    })).toBe(false);
+    expect(isExactOntologyBootstrapRunProvenance({
+      sourceEventIds: [reportEventId],
+      inputArtifactHashes: [reportHash, candidateSetHash, "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"],
+      reportEventId,
+      reportHash,
+      candidateSetHash
+    })).toBe(false);
   });
 });
 
