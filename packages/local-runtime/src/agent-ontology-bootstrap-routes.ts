@@ -299,11 +299,13 @@ async function ensureRun(
   const status = await input.runtime.status();
   const existing = status.runs.find((run) => run.runId === launchInput.runId);
   if (existing !== undefined) {
-    if (existing.runType !== "ontology-bootstrap" ||
-      !existing.sourceEventIds.includes(reportEventId) ||
-      !existing.inputArtifactHashes.includes(report.reportHash) ||
-      !existing.inputArtifactHashes.includes(report.candidateSetHash)
-    ) {
+    if (existing.runType !== "ontology-bootstrap" || !isExactOntologyBootstrapRunProvenance({
+      sourceEventIds: existing.sourceEventIds,
+      inputArtifactHashes: existing.inputArtifactHashes,
+      reportEventId,
+      reportHash: report.reportHash,
+      candidateSetHash: report.candidateSetHash
+    })) {
       return {
         ok: false,
         body: diagnostic("Existing ontology bootstrap run is not bound to the exact canonical staged report.", [
@@ -332,6 +334,23 @@ async function ensureRun(
     ok: false,
     body: diagnostic("Ontology bootstrap run could not be started.", ["inspect agent diagnostics"])
   };
+}
+
+export function isExactOntologyBootstrapRunProvenance(input: {
+  readonly sourceEventIds: readonly string[];
+  readonly inputArtifactHashes: readonly string[];
+  readonly reportEventId: string;
+  readonly reportHash: string;
+  readonly candidateSetHash: string;
+}): boolean {
+  return sameExactStringSet(input.sourceEventIds, [input.reportEventId]) &&
+    sameExactStringSet(input.inputArtifactHashes, [input.reportHash, input.candidateSetHash]);
+}
+
+function sameExactStringSet(actual: readonly string[], expected: readonly string[]): boolean {
+  return actual.length === expected.length &&
+    new Set(actual).size === actual.length &&
+    actual.every((value) => expected.includes(value));
 }
 
 function mountedWorkspaceFromHandle(handle: LocalRuntimeHandle): MountedWorkspace | undefined {
