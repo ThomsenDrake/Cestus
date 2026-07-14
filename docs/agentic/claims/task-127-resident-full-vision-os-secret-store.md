@@ -92,3 +92,42 @@ commit.
   untracked dependency link is removed before this handoff commit. Full
   verification remains prohibited pending a fresh independent review and a
   separate usage gate.
+
+## Fresh Root-Cause Repair Evidence (2026-07-14)
+
+- Repairer: `/root/task127_root_repair`, starting from rejected repair
+  `15ed426be42cd57bec692a3c37b1c71fdab2fd1d`. This repair changes only the
+  claimed source, test, and this append-only claim; no provider, credential,
+  runtime, fallback, or `neo` action occurred.
+- Dependency recovery: the initial named RED could not start because this
+  isolated worktree had no ignored `node_modules` (`vitest: command not
+  found`). A temporary untracked symlink to an existing lockfile-pinned
+  worktree runner enabled the focused suite. It is removed before the repair
+  commit.
+- Causal RED: `npm test -- packages/agent/test/os-secret-store.test.ts
+  packages/agent/test/secret-store.test.ts` exited `1` with **20 tests**, four
+  failures, and no credential/provider use. The public module namespace still
+  exported the credential-free material issuer; the backend had no scoped
+  issuer for deterministic material; replacing the exported material
+  prototype's release method left the material valid; and
+  `createOsSecretStore` invoked a hostile factory getter before normalization.
+  The factory/backend counterfactual asserted safe `blocked` output with zero
+  proxy or getter traps.
+- Root-cause refinement: after the first minimal GREEN attempt, the same
+  command left exactly the cross-use test failing. Material was bound only to a
+  credential-reference identity, not the complete capability/workspace/mount/
+  run/purpose tuple. The repair therefore derives one immutable full exact-use
+  identity and binds every issued handle to it.
+- GREEN: the named focused command exited `0` with **20/20** tests. The public
+  test issuer is absent; only an in-flight backend callback can issue a handle,
+  and it closes after that resolution returns. A private `WeakMap` records the
+  immutable full exact-use identity; release is a frozen own closure rather
+  than a mutable prototype method; factory, request, backend, and backend
+  result shapes normalize before field access or await. Invalid shapes produce
+  bounded secret-safe outcomes, with no fallback or persistence path.
+- Follow-up gates: `npm run typecheck` exited `0`; `git diff --check` exited
+  `0` with no output; `npm run factory:check` exited `0` with
+  `factory-readiness passed`.
+- Full verification: not run, as explicitly prohibited by the repair
+  authorization. Latest status: `ready-for-review`; stop for a fresh
+  independent review before any integration.

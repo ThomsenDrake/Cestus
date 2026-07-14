@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createCredentialReference } from "../src/credential-reference.js";
+import * as osSecretStore from "../src/os-secret-store.js";
 import {
-  createCredentialFreeTestOpaqueSecretMaterial,
   createOsSecretStore,
   OpaqueSecretMaterial,
+  type OsSecretMaterialIssuer,
   type OsSecretResolutionRequest
 } from "../src/os-secret-store.js";
 
@@ -44,15 +45,23 @@ function exactUseRequest(input: Partial<OsSecretResolutionRequest> = {}): OsSecr
   };
 }
 
+function resolvedCredentialFreeTestMaterial(issueMaterial: OsSecretMaterialIssuer) {
+  const material = issueMaterial();
+  if (material === undefined) {
+    throw new Error("in-flight test issuer was unexpectedly unavailable");
+  }
+  return { kind: "resolved" as const, material };
+}
+
 describe("OS-backed exact-use secret store", () => {
   it("rejects a swapped workspace before the OS facility observes the request", async () => {
     let backendCalls = 0;
     const store = createOsSecretStore({
       currentUse: exactUseRequest(),
       backend: {
-        async resolve() {
+        async resolve(_request, issueMaterial) {
           backendCalls += 1;
-          return { kind: "resolved", material: createCredentialFreeTestOpaqueSecretMaterial() };
+          return resolvedCredentialFreeTestMaterial(issueMaterial);
         }
       }
     });
@@ -71,12 +80,14 @@ describe("OS-backed exact-use secret store", () => {
   });
 
   it("resolves a current exact use through an opaque credential-free test handle only", async () => {
-    const material = createCredentialFreeTestOpaqueSecretMaterial();
+    let material: OpaqueSecretMaterial | undefined;
     const store = createOsSecretStore({
       currentUse: exactUseRequest(),
       backend: {
-        async resolve() {
-          return { kind: "resolved", material };
+        async resolve(_request, issueMaterial) {
+          const resolution = resolvedCredentialFreeTestMaterial(issueMaterial);
+          material = resolution.material;
+          return resolution;
         }
       }
     });
@@ -93,17 +104,93 @@ describe("OS-backed exact-use secret store", () => {
   });
 
   it("makes runtime construction unable to mint accepted material", () => {
+    expect("createCredentialFreeTestOpaqueSecretMaterial" in osSecretStore).toBe(false);
     const runtimeConstructor = OpaqueSecretMaterial as unknown as Function;
     expect(() => Reflect.construct(runtimeConstructor, [])).toThrow();
   });
 
-  it("rejects a released material before a resolved result", async () => {
-    const released = createCredentialFreeTestOpaqueSecretMaterial();
-    released.releaseAfterImmediateUse();
+  it("does not accept active material issued for a different exact use", async () => {
+    let issuedForPrimary: OpaqueSecretMaterial | undefined;
+    const primaryStore = createOsSecretStore({
+      currentUse: exactUseRequest(),
+      backend: {
+        async resolve(_request, issueMaterial) {
+          issuedForPrimary = issueMaterial();
+          if (issuedForPrimary === undefined) {
+            throw new Error("test issuer was unexpectedly unavailable");
+          }
+          return { kind: "resolved", material: issuedForPrimary };
+        }
+      }
+    });
+
+    await expect(primaryStore.resolveForExactUse(exactUseRequest())).resolves.toMatchObject({
+      kind: "resolved",
+      health: "healthy"
+    });
+    expect(issuedForPrimary).toBeDefined();
+
+    const otherUse = exactUseRequest({ runId: "run_other" });
+    const otherStore = createOsSecretStore({
+      currentUse: otherUse,
+      backend: {
+        async resolve() {
+          return { kind: "resolved", material: issuedForPrimary as OpaqueSecretMaterial };
+        }
+      }
+    });
+
+    await expect(otherStore.resolveForExactUse(otherUse)).resolves.toEqual({
+      kind: "unavailable",
+      health: "unverified",
+      safeDiagnosticCodes: ["os-secret-facility-unavailable"]
+    });
+  });
+
+  it("cannot bypass release by replacing the exported prototype method", async () => {
+    let material: OpaqueSecretMaterial | undefined;
     const store = createOsSecretStore({
       currentUse: exactUseRequest(),
       backend: {
-        async resolve() {
+        async resolve(_request, issueMaterial) {
+          if (material === undefined) {
+            material = resolvedCredentialFreeTestMaterial(issueMaterial).material;
+          }
+          return { kind: "resolved" as const, material };
+        }
+      }
+    });
+    const firstResult = await store.resolveForExactUse(exactUseRequest());
+    expect(firstResult.material).toBeDefined();
+    const prototype = OpaqueSecretMaterial.prototype as {
+      releaseAfterImmediateUse?: () => void;
+    };
+    const original = prototype.releaseAfterImmediateUse;
+    prototype.releaseAfterImmediateUse = () => undefined;
+    try {
+      firstResult.material?.releaseAfterImmediateUse();
+    } finally {
+      if (original === undefined) {
+        delete prototype.releaseAfterImmediateUse;
+      } else {
+        prototype.releaseAfterImmediateUse = original;
+      }
+    }
+
+    await expect(store.resolveForExactUse(exactUseRequest())).resolves.toEqual({
+      kind: "unavailable",
+      health: "unverified",
+      safeDiagnosticCodes: ["os-secret-facility-unavailable"]
+    });
+  });
+
+  it("rejects a released material before a resolved result", async () => {
+    const store = createOsSecretStore({
+      currentUse: exactUseRequest(),
+      backend: {
+        async resolve(_request, issueMaterial) {
+          const released = resolvedCredentialFreeTestMaterial(issueMaterial).material;
+          released.releaseAfterImmediateUse();
           return { kind: "resolved", material: released };
         }
       }
@@ -129,9 +216,9 @@ describe("OS-backed exact-use secret store", () => {
     const store = createOsSecretStore({
       currentUse: exactUseRequest(),
       backend: {
-        async resolve() {
+        async resolve(_request, issueMaterial) {
           backendCalls += 1;
-          return { kind: "resolved", material: createCredentialFreeTestOpaqueSecretMaterial() };
+          return resolvedCredentialFreeTestMaterial(issueMaterial);
         }
       }
     });
@@ -150,9 +237,9 @@ describe("OS-backed exact-use secret store", () => {
     const store = createOsSecretStore({
       currentUse: exactUseRequest(),
       backend: {
-        async resolve() {
+        async resolve(_request, issueMaterial) {
           backendCalls += 1;
-          return { kind: "resolved", material: createCredentialFreeTestOpaqueSecretMaterial() };
+          return resolvedCredentialFreeTestMaterial(issueMaterial);
         }
       }
     });
@@ -172,6 +259,60 @@ describe("OS-backed exact-use secret store", () => {
     expect(backendCalls).toBe(0);
   });
 
+  it("normalizes hostile factory and backend inputs before any traps or effects", async () => {
+    let traps = 0;
+    const hostileFactory = new Proxy({}, {
+      get() {
+        traps += 1;
+        throw new Error("hostile factory getter must not run");
+      },
+      ownKeys() {
+        traps += 1;
+        throw new Error("hostile factory keys must not run");
+      }
+    });
+    const factoryWithGetter = Object.defineProperty({}, "currentUse", {
+      enumerable: true,
+      get() {
+        traps += 1;
+        throw new Error("hostile factory accessor must not run");
+      }
+    });
+    const hostileBackend = new Proxy({}, {
+      get() {
+        traps += 1;
+        throw new Error("hostile backend getter must not run");
+      },
+      ownKeys() {
+        traps += 1;
+        throw new Error("hostile backend keys must not run");
+      }
+    });
+    const backendWithGetter = Object.defineProperty({}, "resolve", {
+      enumerable: true,
+      get() {
+        traps += 1;
+        throw new Error("hostile backend accessor must not run");
+      }
+    });
+    const inputs = [
+      hostileFactory,
+      factoryWithGetter,
+      { currentUse: exactUseRequest(), backend: hostileBackend },
+      { currentUse: exactUseRequest(), backend: backendWithGetter }
+    ];
+
+    for (const input of inputs) {
+      const store = createOsSecretStore(input as Parameters<typeof createOsSecretStore>[0]);
+      await expect(store.resolveForExactUse(exactUseRequest())).resolves.toEqual({
+        kind: "blocked",
+        health: "unverified",
+        safeDiagnosticCodes: ["secret-safety-rejection"]
+      });
+    }
+    expect(traps).toBe(0);
+  });
+
   it.each([
     ["missing-binding", "unavailable", "missing-binding", "credential-binding-missing"],
     ["expired", "blocked", "expired", "credential-expired"],
@@ -189,9 +330,9 @@ describe("OS-backed exact-use secret store", () => {
     const store = createOsSecretStore({
       currentUse: request,
       backend: {
-        async resolve() {
+        async resolve(_request, issueMaterial) {
           backendCalls += 1;
-          return { kind: "resolved", material: createCredentialFreeTestOpaqueSecretMaterial() };
+          return resolvedCredentialFreeTestMaterial(issueMaterial);
         }
       }
     });
@@ -212,9 +353,9 @@ describe("OS-backed exact-use secret store", () => {
     const store = createOsSecretStore({
       currentUse,
       backend: {
-        async resolve() {
+        async resolve(_request, issueMaterial) {
           backendCalls += 1;
-          return { kind: "resolved", material: createCredentialFreeTestOpaqueSecretMaterial() };
+          return resolvedCredentialFreeTestMaterial(issueMaterial);
         }
       }
     });
@@ -233,9 +374,9 @@ describe("OS-backed exact-use secret store", () => {
     const store = createOsSecretStore({
       currentUse: exactUseRequest(),
       backend: {
-        async resolve() {
+        async resolve(_request, issueMaterial) {
           backendCalls += 1;
-          return { kind: "resolved", material: createCredentialFreeTestOpaqueSecretMaterial() };
+          return resolvedCredentialFreeTestMaterial(issueMaterial);
         }
       }
     });
