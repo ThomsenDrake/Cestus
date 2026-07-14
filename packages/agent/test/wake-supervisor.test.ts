@@ -8,6 +8,7 @@ import {
   type CreateWakeSupervisorInput,
   type SupervisorLeaseReadbackEvidence,
   type SupervisorLeaseAdmissionInput,
+  type WorkspaceAvailabilityAuthority,
   type WakeCommandInput,
   type WakeLifecycleEvidenceDto,
   type WakeSignal
@@ -81,6 +82,108 @@ describe("bounded wake supervisor", () => {
     await expect(running).resolves.toMatchObject({ outcome: "blocked" });
     await expect(supervisor.signal(signal("after_stop"))).resolves.toMatchObject({ outcome: "blocked" });
     expect(harness.traces).toEqual(expect.arrayContaining(["timer.cancel", "signal.cancel", "authority.invalidate:shutdown", "runtime.abort"]));
+    expect(harness.runtimeCalls).toHaveLength(1);
+  });
+
+  it("cancels an in-flight wake when the authority invalidates without publishing a later effect", async () => {
+    const harness = createHarness({ hangingRuntime: true });
+    let notifyInvalidation: ((reason: "authority-loss") => void) | undefined;
+    (
+      harness.input.authority as WorkspaceAvailabilityAuthority & {
+        subscribeInvalidation?: (listener: (reason: "authority-loss") => void) => () => void;
+      }
+    ).subscribeInvalidation = (listener) => {
+      notifyInvalidation = listener;
+      return () => { notifyInvalidation = undefined; };
+    };
+    const supervisor = createWakeSupervisor(harness.input);
+    const running = supervisor.signal(signal("authority_invalidates_running_wake"));
+    await waitFor(() => harness.runtimeCalls.length === 1);
+
+    expect(notifyInvalidation).toEqual(expect.any(Function));
+    notifyInvalidation?.("authority-loss");
+
+    await expect(running).resolves.toMatchObject({
+      outcome: "blocked",
+      evidence: [],
+      blocked: { category: "workspace-unavailable", operation: "wake" },
+      status: { supervisorState: "workspace-unavailable", lifecycleEvidence: [] }
+    });
+    expect(harness.traces).toContain("runtime.abort");
+    expect(harness.runtimeCalls).toHaveLength(1);
+  });
+
+  it("rejects an old same-identity admission generation before lease, reconciliation, or wake after later revalidation", async () => {
+    const harness = createHarness({ activeClaim: true });
+    const baseAuthority = harness.input.authority;
+    const baseLease = harness.input.lease;
+    let currentGeneration = "admission-generation:0";
+    let firstLeaseReached = false;
+    let releaseFirstLease: (() => void) | undefined;
+    const firstLease = new Promise<void>((resolve) => { releaseFirstLease = resolve; });
+    const leaseAdmissions: unknown[] = [];
+    (
+      harness.input as unknown as { authority: WorkspaceAvailabilityAuthority }
+    ).authority = {
+      ...baseAuthority,
+      async revalidate(request) {
+        const result = await baseAuthority.revalidate(request);
+        if (!result.ok) return result;
+        currentGeneration = `admission-generation:${Number(currentGeneration.split(":")[1]) + 1}`;
+        return {
+          ...result,
+          admission: {
+            identityAndMount: result.admission.identityAndMount,
+            admissionGeneration: {
+              schemaVersion: "resident-wake-admission-generation.v1",
+              generationId: currentGeneration
+            }
+          }
+        };
+      }
+    };
+    (
+      harness.input as unknown as { lease: CreateWakeSupervisorInput["lease"] }
+    ).lease = {
+      async readOrAcquire(input) {
+        leaseAdmissions.push(input.admission);
+        if (!firstLeaseReached) {
+          firstLeaseReached = true;
+          await firstLease;
+        }
+        const generation = (input.admission as unknown as {
+          admissionGeneration?: { generationId?: string };
+        }).admissionGeneration?.generationId;
+        if (generation !== currentGeneration) throw new Error("stale admission generation");
+        return baseLease.readOrAcquire(input);
+      }
+    };
+    const supervisor = createWakeSupervisor(harness.input);
+    const staleWake = supervisor.signal(signal("same_identity_before_revalidation"));
+    await waitFor(() => firstLeaseReached);
+
+    const later = await harness.input.authority.revalidate({
+      operation: "resume",
+      expectedWorkspaceId: "workspace_a",
+      requiredCapabilities: ["wake", "lifecycle"]
+    });
+    expect(later).toMatchObject({
+      ok: true,
+      admission: { admissionGeneration: { generationId: "admission-generation:2" } }
+    });
+    releaseFirstLease?.();
+
+    await expect(staleWake).resolves.toMatchObject({ outcome: "blocked", evidence: [] });
+    expect(leaseAdmissions[0]).toMatchObject({
+      admissionGeneration: { schemaVersion: "resident-wake-admission-generation.v1", generationId: "admission-generation:1" }
+    });
+    expect(harness.reconciliationAppendInputs).toHaveLength(0);
+    expect(harness.runtimeCalls).toHaveLength(0);
+
+    await expect(supervisor.resume(command("same_identity_after_revalidation"))).resolves.toMatchObject({ outcome: "accepted" });
+    expect(harness.reconciliationAppendInputs[0]?.admission as unknown).toMatchObject({
+      admissionGeneration: { schemaVersion: "resident-wake-admission-generation.v1", generationId: "admission-generation:3" }
+    });
     expect(harness.runtimeCalls).toHaveLength(1);
   });
 
@@ -328,6 +431,7 @@ function createHarness(options: { activeClaim?: boolean; heldLease?: boolean; mu
   const reconciliationLookupInputs: Array<Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0]> = [];
   const reconciliationAppendInputs: Array<Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]> = [];
   const identity = { workspaceId: "workspace_a", residentId: "agent_default" as const, supervisorEpoch: epoch, workspaceIdentityEventId: "evt_identity_a", mountEvidenceId: "evt_mount_a", authorityEvidenceId: "evt_authority_a" };
+  const admissionGeneration = { schemaVersion: "resident-wake-admission-generation.v1" as const, generationId: "admission-generation:default" };
 
   const reconciliation: ActiveClaimReconciliationPort = {
     async readByIdempotencyKey(input) { reconciliationLookupInputs.push(input); return undefined; },
@@ -341,8 +445,8 @@ function createHarness(options: { activeClaim?: boolean; heldLease?: boolean; mu
         operations.push(request.operation);
         const activeClaim = options.activeClaim ? { workspaceId: "workspace_a", residentId: "agent_default" as const, supervisorEpoch: epoch, claimId: "claim_a", attemptId: "attempt_a", priorClaimEventId: "evt_claim", priorClaimLeaseId: "lease_claim", readbackEventId: "evt_claim_readback", causation: { causationId: "cause:prior", correlationId: "corr:prior" } } : undefined;
         const outage = options.activeClaim ? { safeObservationId: "obs_outage", outageObservedAt: "2026-07-12T00:00:00.000Z", category: "workspace-unavailable" as const, priorClaimEventId: "evt_claim", priorClaimLeaseId: "lease_claim", priorAuthorityEvidenceId: "evt_authority_a", highWaterBeforeOutage: "event:42" } : undefined;
-        if (activeClaim === undefined || outage === undefined) return { ok: true as const, admission: { identityAndMount: identity } };
-        return { ok: true as const, admission: { identityAndMount: identity }, observedActiveClaim: activeClaim, outage };
+        if (activeClaim === undefined || outage === undefined) return { ok: true as const, admission: { identityAndMount: identity, admissionGeneration } };
+        return { ok: true as const, admission: { identityAndMount: identity, admissionGeneration }, observedActiveClaim: activeClaim, outage };
       },
       invalidate(reason) { traces.push(`authority.invalidate:${reason}`); }
     },
@@ -403,6 +507,7 @@ function createP1Harness(options: {
   const expectedHighWaterMark = options.highWaterMark ?? "event:42";
   const leaseEventId = options.leaseEventId ?? "evt_lease_a";
   const identity = { workspaceId: "workspace_a", residentId: "agent_default" as const, supervisorEpoch: epoch, workspaceIdentityEventId: "evt_identity_a", mountEvidenceId: "evt_mount_a", authorityEvidenceId: "evt_authority_a" };
+  const admissionGeneration = { schemaVersion: "resident-wake-admission-generation.v1" as const, generationId: "admission-generation:p1" };
   const activeClaim = {
     workspaceId: "workspace_a", residentId: "agent_default" as const, supervisorEpoch: epoch,
     claimId: "claim_a", attemptId: "attempt_a", priorClaimEventId: options.priorClaimEventId ?? "evt_claim",
@@ -418,8 +523,8 @@ function createP1Harness(options: {
       async revalidate() {
         revalidationCalls += 1;
         if (options.pendingAt === "authority") { pendingReached = true; await pending; }
-        if (options.activeClaim) return { ok: true as const, admission: { identityAndMount: identity }, observedActiveClaim: activeClaim, outage };
-        return { ok: true as const, admission: { identityAndMount: identity } };
+        if (options.activeClaim) return { ok: true as const, admission: { identityAndMount: identity, admissionGeneration }, observedActiveClaim: activeClaim, outage };
+        return { ok: true as const, admission: { identityAndMount: identity, admissionGeneration } };
       },
       invalidate() {}
     },
