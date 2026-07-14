@@ -3711,3 +3711,19 @@ explicit implementation authorization.
   use a credential or provider, start `npm run verify`, or dispatch a child.
   The coordinator alone retains registry, serialized full-verifier, and
   integration ownership.
+
+## RV-1-C-095 — Active child ledger
+
+- Fresh independent Task125 reviewer: child `/root/task125_review`, read-only
+  in `codex/task-125-resident-full-vision-portable-workspace-lifecycle` at
+  `7da9e29feaa58440ab44c5e9b737da53a3487c1e`, reviewing
+  `ceae7ca7..7da9e29f`.
+- Fresh independent Task127 reviewer: child `/root/task127_review`, read-only
+  in `codex/task-127-resident-full-vision-os-secret-store` at
+  `15ed426be42cd57bec692a3c37b1c71fdab2fd1d`, reviewing the full
+  `ceae7ca7..15ed426b` rejected-plus-repair range.
+- Task131 TDD repair implementer: child `/root/task131_repair`, isolated in
+  `codex/task-131-resident-full-vision-runtime-adapter` at rejected
+  `e2f1626d8615a7e1a206a02b9c7f3b068e4139a5`; it owns only the exact four
+  documents authorized in C-094. No child has a full-verifier or integration
+  slot, and the serialized full-verifier slot is idle.
