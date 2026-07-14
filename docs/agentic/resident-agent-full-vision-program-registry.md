@@ -4345,3 +4345,41 @@ explicit implementation authorization.
 - These are three isolated read-only reviews. No candidate or merged full
   verifier is active; no integration, source lane, successor, reset-credit, or
   `neo` action is authorized while their verdicts are pending.
+
+## RV-1-C-126 — Task126 restart and Task128 hostile-boundary recovery
+
+- Fresh independent documentation review of
+  `76199148569bbe5790d84941f5bacea732b73864..964a2d41729def6fcebe4700c5b1bd7fe298d556`
+  returned **APPROVE**. It found the plan, CF-1 table, and embedded matrix
+  coherent: Task126 freezes `ByokProviderAuthorityReader.v1`, public unknown
+  input has no posture authority, absent injection is safe unavailable, Task139
+  later mounts the capability without becoming a predecessor, and Task141
+  retains HTTP/transport and UI ownership. Its diff and factory checks passed;
+  no source or integration action occurred.
+- Fresh authenticated local Codex `/status` immediately before the following
+  worker dispatches again reports **97% weekly remaining**, Spark Weekly
+  **100%**, and five reset credits untouched. No credit was redeemed. This is
+  normal mode; full verification remains closed.
+- Task126 restarts in a fresh task-scoped branch from coordinator head
+  `82cf9cedc590939e8769c58016df051813b10c0e`, preserving blocker evidence
+  `36c26ba5c49f09cb9903bd3eeb426923bc515ee7` on its old branch. It owns only
+  `docs/agentic/claims/task-126-resident-full-vision-byok-provider.md`,
+  `packages/agent/src/byok-provider.ts`, and
+  `packages/agent/test/byok-provider.test.ts`. It must turn the forged-tuple
+  diagnostic into causal RED/GREEN for a capability-injected canonical reader:
+  unknown requests carry only requested-use facts, cannot provide posture
+  authority, and no reader fails safely before every effect. It must preserve
+  exact source/hash/event and task/attempt/run/mount/policy/preview binding,
+  credential-free/no-fallback/no-network/no-portable-write behavior, strict
+  hostile-input handling, and Task139's later configuration ownership.
+- Task128 candidate `e1fa208245ba3032747be9375b7e552196a20ecf` is rejected
+  and remains unintegrated. Fresh review reproduced P1: `Array.isArray` is
+  outside the protected boundary, so a revoked-array Proxy throws instead of
+  producing a safe unavailable result. It also found P2: copying an enumerable
+  own-data `__proto__` into `{}` mutates the snapshot prototype and bypasses
+  exact-key validation. A fresh bounded repair owns Task128's exact existing
+  claim/source/test scope atop `e1fa`; it must first add configured and
+  inspection revoked-Proxy plus own-data-`__proto__` REDs, then contain the
+  brand check and use a null-prototype snapshot or explicit rejection. No
+  full verifier, self-review, integration, child dispatch, reset-credit, or
+  `neo` action is authorized for either worker.
