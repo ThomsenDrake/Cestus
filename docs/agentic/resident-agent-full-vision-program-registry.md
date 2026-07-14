@@ -2948,3 +2948,23 @@ explicit implementation authorization.
   without weakening runtime strictness, then run focused TDD GREEN and stop for
   fresh review. It may not rewrite history, run `npm run verify`, self-integrate,
   touch `neo`, or change unrelated files.
+
+## RV-1-C-061 — Ingestion reader target-typecheck candidate review gate
+
+- Fresh authenticated Codex `/status` immediately before review reports Weekly
+  **33% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly remains
+  100% left. No `/usage`, reset, or redemption occurred. This authorizes one
+  fresh review only; no full verifier is authorized.
+- Fresh recovery candidate
+  `3c35b865` is clean atop current-target base `f7ad54f2`. Its isolated
+  `npm ci --ignore-scripts` made no tracked dependency delta; the claim records
+  the actual target TypeScript RED. The repair preserves runtime validation
+  while typing the regex-validated content hash, capability callbacks, and
+  post-intrinsic object narrowing, and updates tests to pass only the narrowed
+  `readAll`/`get` capabilities.
+- Focused reader suite is 24/24; target typecheck, diff hygiene, and factory
+  readiness passed. These are review inputs only. A reviewer distinct from all
+  prior reader reviewers must assess `f7ad54f2..3c35b865` for faithful repair
+  of the target type contract without weakened runtime provenance, artifact,
+  proxy, or side-effect boundaries. No full verifier, self-integration, or
+  `neo` change is authorized.
