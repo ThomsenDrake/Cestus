@@ -3607,3 +3607,23 @@ explicit implementation authorization.
   dependency link and stop clean after one scoped commit. It may not run
   `npm run verify`, self-review, self-integrate, dispatch a child, use a live
   credential/provider, touch another lane, or merge `neo`.
+
+## RV-1-C-090 — Task131 review rejection preserved
+
+- Fresh independent review of
+  `ceae7ca7..e2f1626d8615a7e1a206a02b9c7f3b068e4139a5` returned
+  **NEEDS-CHANGES**. The candidate remains rejected and unintegrated. P1: its
+  parser invents/reduces the snapshot to `wake-status.v1` instead of accepting
+  the authoritative production-shaped `resident-wake-status.v1` and required
+  loop/trigger/provider/approval/unavailable branches. P1: forged attempt ID
+  and wake lease-event ID are parsed but not included in the cross-run
+  provenance equality checks. P1: copying normalized records into `{}` lets an
+  enumerable own `__proto__` data property trigger the inherited setter and
+  evade unknown-key rejection. P1: the safe-summary text filter accepts common
+  credential material such as `X_API_TOKEN=...`; its claim also overstates
+  raw-provider-diagnostic/workspace-mismatch test coverage.
+- Scope is exact and reviewer worktree remained clean. It ran diff check; its
+  isolated checkout lacked `vitest`, so it could not independently rerun the
+  focused suite. No full verifier, repair, integration, downstream dispatch,
+  self-integration, credential/provider use, or `neo` change is authorized by
+  this verdict.
