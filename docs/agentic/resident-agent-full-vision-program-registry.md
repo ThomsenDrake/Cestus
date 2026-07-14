@@ -4062,3 +4062,20 @@ explicit implementation authorization.
 - The three live lanes have disjoint write sets; Task131 is read-only. No full
   verifier, integration, `neo`, or downstream lane is active. The coordinator
   retains sole integration and registry ownership.
+
+## RV-1-C-113 — Task131 route-order review repair
+
+- Fresh independent review of `fc2ae4f1^..fc2ae4f1` returned
+  **NEEDS-CHANGES**: generic plan and design rules still said browser/cockpit
+  work waits for runtime routes, contradicting the approved pre-Task141
+  DTO-only Task131 order. The finding is correct after direct inspection; it
+  would otherwise either require a prohibited pre-131 route or block Task131
+  behind Task141.
+- This forward-only documentation repair narrowly qualifies those generic
+  rules. After Tasks137/140 merge the authoritative local-runtime wake-status
+  DTO producer and composed-runtime contract, Task131 alone may consume/parse
+  that DTO directly before Task141. Task141 remains the sole
+  HTTP/transport-route and UI-composition owner. All other route-before-browser
+  and domain/runtime sequencing remains intact. Documentation RED/GREEN uses a
+  direct rule-presence audit plus `git diff --check` and factory readiness; a
+  new fresh independent review is required before accepting the correction.

@@ -453,7 +453,11 @@ the stated wave boundary and do not merge into neo.
 
 - Merge shared event and DTO contracts before their consumers.
 - Merge domain workflows before default runtime composition.
-- Merge runtime routes before browser consumers.
+- Merge runtime routes before browser consumers, except the deferred Task131
+  DTO-only parser: after Tasks137/140 merge the authoritative local-runtime
+  wake-status DTO producer and composed-runtime contract, Task131 consumes that
+  DTO directly before Task141. Task141 remains the sole HTTP/transport route
+  and UI-composition owner.
 - Merge cockpit and cross-domain bridge tasks last.
 - Run targeted cross-lane suites after every dependent merge pair.
 - Rebase every downstream worktree after a contract-changing merge.
