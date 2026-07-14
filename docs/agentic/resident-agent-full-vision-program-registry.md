@@ -3839,3 +3839,19 @@ explicit implementation authorization.
   use, or `neo` change is authorized.
 - The C-099 plan correction awaits a fresh read-only documentation review; it
   does not broaden any source/task ownership or authorize Task131 source work.
+
+## RV-1-C-101 — Active Task126 and Task127 review ledger
+
+- Task126 provider-foundation implementer: child `/root/task126_byok`, isolated
+  at `codex/task-126-resident-full-vision-byok-provider` from
+  `bff99bbabd8a0c30f4ba887d8ec287026d1f4d35`. It owns its new claim,
+  BYOK-provider source, and BYOK-provider test only.
+- Fresh Task127 re-reviewer: child `/root/task127_rereview`, read-only on
+  `codex/task-127-resident-full-vision-os-secret-store` at candidate
+  `4c3a0a6528a181432b667c123bce8f75aeae699e`, reviewing its repair range
+  from `15ed426b` with full rejected-range context. Its retained non-full
+  evidence is focused **20/20**, typecheck, diff check, and factory readiness;
+  it has no full-verifier or integration authorization.
+- The Task131 plan-correction review remains pending until a child slot opens.
+  Task125 root-cause repair remains active. No full verifier or `neo` action is
+  active.
