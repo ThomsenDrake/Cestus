@@ -348,6 +348,139 @@ describe("explicit local-model provider", () => {
     expect(aborted).toBe(true);
   });
 
+  it("keeps an abort-ignoring timed-out execution reserved until the engine settles", async () => {
+    let releaseFirstExecution: (() => void) | undefined;
+    let firstExecutionStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      firstExecutionStarted = resolve;
+    });
+    let executions = 0;
+    const provider = createLocalModelProvider({
+      selectedCapability: selectedCapability(),
+      selectedPolicy: { ...selectedPolicy(), maxExecutionMilliseconds: 10 },
+      currentPreparation: currentPreparation(),
+      engine: availableEngine({
+        execution: async () => {
+          executions += 1;
+          if (executions === 1) {
+            firstExecutionStarted?.();
+            return new Promise((resolve) => {
+              releaseFirstExecution = () => resolve({ inputUnits: 12, outputUnits: 1 });
+            });
+          }
+          return { inputUnits: 12, outputUnits: 1 };
+        }
+      })
+    });
+
+    const first = provider.invoke(currentPreparation());
+    await started;
+    await expect(first).resolves.toMatchObject({
+      kind: "blocked",
+      category: "local-time-budget-exhausted",
+      safeDiagnosticCodes: ["local-time-budget-exhausted"]
+    });
+    await expect(provider.invoke(currentPreparation())).resolves.toMatchObject({
+      kind: "blocked",
+      category: "local-concurrency-exhausted",
+      safeDiagnosticCodes: ["local-concurrency-exhausted"]
+    });
+    expect(executions).toBe(1);
+
+    releaseFirstExecution?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await expect(provider.invoke(currentPreparation())).resolves.toMatchObject({ kind: "executed" });
+    expect(executions).toBe(2);
+  });
+
+  it("rejects an own map accessor in configured modalities before it can run an engine", async () => {
+    let mapAccessorReads = 0;
+    let inspectionCalls = 0;
+    let executionCalls = 0;
+    const hostileModalities = ["text"];
+    Object.defineProperty(hostileModalities, "map", {
+      configurable: true,
+      get() {
+        mapAccessorReads += 1;
+        throw new Error("hostile map accessor must not run");
+      }
+    });
+    const provider = createLocalModelProvider({
+      selectedCapability: { ...selectedCapability(), modalities: hostileModalities },
+      selectedPolicy: selectedPolicy(),
+      currentPreparation: currentPreparation(),
+      engine: {
+        async inspect() {
+          inspectionCalls += 1;
+          return {
+            kind: "available" as const,
+            modelIds: ["local-text-model"],
+            modalities: ["text"],
+            structuredOutputSupport: "unsupported" as const,
+            toolSupport: "none" as const
+          };
+        },
+        async execute() {
+          executionCalls += 1;
+          return { inputUnits: 12, outputUnits: 1 };
+        }
+      }
+    });
+
+    await expect(provider.invoke(currentPreparation())).resolves.toMatchObject({
+      kind: "blocked",
+      category: "local-selection-mismatch",
+      safeDiagnosticCodes: ["local-selection-mismatch"]
+    });
+    expect(mapAccessorReads).toBe(0);
+    expect(inspectionCalls).toBe(0);
+    expect(executionCalls).toBe(0);
+  });
+
+  it("rejects an own map accessor in an inspection array before executing", async () => {
+    let mapAccessorReads = 0;
+    let inspectionCalls = 0;
+    let executionCalls = 0;
+    const hostileModalities = ["text"];
+    Object.defineProperty(hostileModalities, "map", {
+      configurable: true,
+      get() {
+        mapAccessorReads += 1;
+        throw new Error("hostile map accessor must not run");
+      }
+    });
+    const provider = createLocalModelProvider({
+      selectedCapability: selectedCapability(),
+      selectedPolicy: selectedPolicy(),
+      currentPreparation: currentPreparation(),
+      engine: {
+        async inspect() {
+          inspectionCalls += 1;
+          return {
+            kind: "available" as const,
+            modelIds: ["local-text-model"],
+            modalities: hostileModalities,
+            structuredOutputSupport: "unsupported" as const,
+            toolSupport: "none" as const
+          };
+        },
+        async execute() {
+          executionCalls += 1;
+          return { inputUnits: 12, outputUnits: 1 };
+        }
+      }
+    });
+
+    await expect(provider.invoke(currentPreparation())).resolves.toMatchObject({
+      kind: "unavailable",
+      category: "local-engine-unavailable",
+      safeDiagnosticCodes: ["local-engine-unavailable"]
+    });
+    expect(mapAccessorReads).toBe(0);
+    expect(inspectionCalls).toBe(1);
+    expect(executionCalls).toBe(0);
+  });
+
   it("reserves the configured concurrency budget before a second engine execution", async () => {
     let releaseFirst: (() => void) | undefined;
     let executions = 0;

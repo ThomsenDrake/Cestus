@@ -82,3 +82,30 @@ SHA.
   verify` for this task.
 - Status: ready-for-review. Stop for a fresh independent review before any
   integration, rebase, merge, push, or `neo` action.
+
+## Fresh P1 Repair Evidence
+
+- Repair baseline: rejected candidate `06ceeba0`; this fresh author changes
+  only this claim, `packages/agent/src/local-model-provider.ts`, and
+  `packages/agent/test/local-model-provider.test.ts`.
+- Causal RED: the exact focused command exited `1` with three new failures.
+  An abort-ignoring execution timed out and incorrectly admitted a second
+  execution before its original promise settled. Configured and inspected
+  arrays with an own `map` accessor each incremented the accessor counter,
+  proving that array normalization read an attacker-controlled instance method.
+- Scoped GREEN: the provider retains its concurrency reservation until a timed
+  out inspection or execution promise settles, and array normalization checks
+  own descriptors and indexed values without reading `map` or another instance
+  method. The exact focused command exited `0` with 38 tests passing across
+  the local-provider and readiness suites. The new tests prove no second engine
+  execution while the timed-out one remains pending, and zero hostile getter
+  reads with zero engine calls for malformed configured modalities and zero
+  execution calls for malformed inspection arrays.
+- Follow-up gate: `npm run typecheck` exited `0`. Full verification remains
+  prohibited. Pending `git diff --check` and `npm run factory:check`, then a
+  fresh independent review; no integration, rebase, merge, push, or `neo`
+  action is authorized.
+- Completed follow-up gates: `git diff --check` exited `0` with no output and
+  `npm run factory:check` exited `0` with `factory-readiness passed`.
+- Status: ready-for-review. The candidate must stop for a fresh independent
+  review before any integration, rebase, merge, push, or `neo` action.
