@@ -3269,3 +3269,27 @@ explicit implementation authorization.
   exact-scope Green recovery only, from these retained tests, with no full
   verifier, review, integration, downstream lane, self-integration, or `neo`
   change. The rejected `404ac711` remains read-only conceptual evidence.
+
+## RV-1-C-077 — Task123 canonical-bootstrap candidate review grant
+
+- Coordinator-owned recovery candidate
+  `adbdde9f273de9e62be939ef225039d4a7934d2e` is clean on
+  `codex/task-123-resident-full-vision-bootstrap-reader-restart`, descending
+  from `e7a1d5b6`. Its exact four-file scope is the Task123 claim,
+  ontology-bootstrap workflow/test, and local-runtime route; no other tracked
+  file changed and the temporary `node_modules` symlink was removed before the
+  commit.
+- Retained evidence: causal forged-report and exact lifecycle REDs turned
+  green; focused workflow plus route tests passed 2 files/13 tests; typecheck,
+  diff hygiene, and factory readiness passed. The candidate has not run a full
+  verifier. It is not integrated, and rejected `404ac711` remains evidence
+  only.
+- Fresh authenticated Codex `/status` immediately before independent review
+  reports Weekly **30% left**, resetting 15:00 on 19 Jul; Spark weekly remains
+  100%. No `/usage`, reset, or redemption occurred. Above the 10% guard,
+  exactly one fresh independent read-only review of `e7a1d5b6..adbdde9f` is
+  authorized. It must lead with P1/P2 defects, especially canonical reader
+  authority, no-effects-before-admission, report identity/event binding, and
+  actor/correlation/event-type/full-causation terminal readback. No full
+  verifier, integration, downstream dispatch, self-integration, or `neo`
+  change is granted.
