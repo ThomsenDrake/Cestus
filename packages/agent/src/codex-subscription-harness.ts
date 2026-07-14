@@ -255,12 +255,12 @@ function normalizeOfficialFlow(value: unknown): NormalizedOfficialFlow {
   if (value === undefined) {
     return Object.freeze({ kind: "absent" });
   }
+  if (hasProhibitedOfficialFlowKind(value)) {
+    return Object.freeze({ kind: "prohibited" });
+  }
   const record = plainOwnDataRecord(value);
   if (record === undefined || typeof record.kind !== "string") {
     return Object.freeze({ kind: "invalid" });
-  }
-  if (forbiddenOfficialFlowKinds.has(record.kind)) {
-    return Object.freeze({ kind: "prohibited" });
   }
   if (!hasExactKeys(record, ["kind", "officialFlowId", "documentationHash", "interfaceOnly"]) ||
       record.kind !== "test-official-codex-route" ||
@@ -274,6 +274,23 @@ function normalizeOfficialFlow(value: unknown): NormalizedOfficialFlow {
     officialFlowId: record.officialFlowId,
     documentationHash: record.documentationHash
   });
+}
+
+function hasProhibitedOfficialFlowKind(value: unknown): boolean {
+  try {
+    if (value === null || typeof value !== "object") {
+      return false;
+    }
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      return false;
+    }
+    const kind = Object.getOwnPropertyDescriptor(value, "kind");
+    return kind !== undefined && "value" in kind &&
+      typeof kind.value === "string" && forbiddenOfficialFlowKinds.has(kind.value);
+  } catch {
+    return false;
+  }
 }
 
 function normalizePosture(value: unknown): NormalizedPosture | undefined {
