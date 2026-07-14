@@ -172,16 +172,32 @@ export function createPortableWorkspaceLifecyclePorts(
     async readByIdempotencyKey(rawInput) {
       const reconciliationInput = canonicalReconciliationReadInput(rawInput, issuedAdmissionIdentities, issuedAdmissionGenerations);
       requireCurrentReconciliationInput(reconciliationInput);
-      const result = await mountedReconciliation.readByIdempotencyKey(reconciliationInput);
+      const rawResult = await mountedReconciliation.readByIdempotencyKey(reconciliationInput);
       requireCurrentReconciliationInput(reconciliationInput);
-      return result;
+      if (rawResult === undefined) return undefined;
+      try {
+        const result = canonicalReconciliationReadback(rawResult);
+        requireExactReconciliationReadback(result, reconciliationInput);
+        return result;
+      } catch (error) {
+        active = undefined;
+        throw error;
+      }
     },
     async appendAndReadBack(rawInput) {
       const reconciliationInput = canonicalReconciliationAppendInput(rawInput, issuedAdmissionIdentities, issuedAdmissionGenerations);
       requireCurrentAppendInput(reconciliationInput);
-      const result = await mountedReconciliation.appendAndReadBack(reconciliationInput);
+      const rawResult = await mountedReconciliation.appendAndReadBack(reconciliationInput);
       requireCurrentAppendInput(reconciliationInput);
-      return result;
+      try {
+        const result = canonicalReconciliationReadback(rawResult);
+        requireExactReconciliationReadback(result, reconciliationInput, reconciliationInput.record);
+        pendingOutage = undefined;
+        return result;
+      } catch (error) {
+        active = undefined;
+        throw error;
+      }
     }
   });
 
@@ -233,7 +249,11 @@ export function createPortableWorkspaceLifecyclePorts(
     const current = requireCurrentReconciliationInput(input);
     const tuple = input.admission;
     const record = input.record;
-    if (input.observedActiveClaim.workspaceId !== input.workspaceId || input.observedActiveClaim.residentId !== input.residentId
+    const mountedActiveClaim = current.facts.observedActiveClaim;
+    if (pendingOutage === undefined || mountedActiveClaim === undefined
+      || !sameActiveClaim(input.observedActiveClaim, mountedActiveClaim)
+      || !sameOutage(input.outage, pendingOutage)
+      || input.observedActiveClaim.workspaceId !== input.workspaceId || input.observedActiveClaim.residentId !== input.residentId
       || input.observedActiveClaim.supervisorEpoch !== input.supervisorEpoch || record.workspaceId !== input.workspaceId
       || record.residentId !== input.residentId || record.supervisorEpoch !== input.supervisorEpoch
       || record.claimId !== input.observedActiveClaim.claimId || record.attemptId !== input.observedActiveClaim.attemptId
@@ -419,6 +439,19 @@ function canonicalReconciliationAppendInput(
   });
 }
 
+function canonicalReconciliationReadback(
+  value: unknown
+): Awaited<ReturnType<ActiveClaimReconciliationPort["appendAndReadBack"]>> {
+  const record = ownDataRecord(value, "reconciliation readback");
+  requireKeys(record, ["record", "reconciliationEventId", "readbackEventId", "admission"], "reconciliation readback");
+  return Object.freeze({
+    record: canonicalReconciliationRecord(record.record),
+    reconciliationEventId: requiredText(record.reconciliationEventId),
+    readbackEventId: requiredText(record.readbackEventId),
+    admission: canonicalReadbackTuple(record.admission)
+  });
+}
+
 function canonicalIssuedAdmission(
   value: unknown,
   issuedIdentities: WeakSet<object>,
@@ -458,6 +491,34 @@ function canonicalTuple(
     verifiedLease,
     policyAndLock,
     highWater
+  });
+}
+
+function canonicalReadbackTuple(value: unknown): ClaimReconciliationAdmissionTuple {
+  const record = ownDataRecord(value, "reconciliation readback admission");
+  requireKeys(record, ["authorityIdentityAndMount", "admissionGeneration", "verifiedLease", "policyAndLock", "highWater"], "reconciliation readback admission");
+  const identity = ownDataRecord(record.authorityIdentityAndMount, "reconciliation readback authority identity");
+  requireKeys(identity, ["workspaceId", "residentId", "supervisorEpoch", "workspaceIdentityEventId", "mountEvidenceId", "authorityEvidenceId"], "reconciliation readback authority identity");
+  if (identity.residentId !== "agent_default") throw new Error("reconciliation readback admission is invalid");
+  const generation = ownDataRecord(record.admissionGeneration, "reconciliation readback admission generation");
+  requireKeys(generation, ["schemaVersion", "generationId"], "reconciliation readback admission generation");
+  if (generation.schemaVersion !== "resident-wake-admission-generation.v1") throw new Error("reconciliation readback admission generation is invalid");
+  return Object.freeze({
+    authorityIdentityAndMount: Object.freeze({
+      workspaceId: requiredText(identity.workspaceId),
+      residentId: identity.residentId,
+      supervisorEpoch: requiredText(identity.supervisorEpoch),
+      workspaceIdentityEventId: requiredText(identity.workspaceIdentityEventId),
+      mountEvidenceId: requiredText(identity.mountEvidenceId),
+      authorityEvidenceId: requiredText(identity.authorityEvidenceId)
+    }),
+    admissionGeneration: Object.freeze({
+      schemaVersion: generation.schemaVersion,
+      generationId: requiredText(generation.generationId)
+    }),
+    verifiedLease: canonicalLeaseReadback(record.verifiedLease),
+    policyAndLock: canonicalPolicyAndLock(record.policyAndLock),
+    highWater: canonicalHighWater(record.highWater)
   });
 }
 
@@ -590,6 +651,22 @@ function canonicalOutage(value: unknown): WorkspaceOutageObservation {
   });
 }
 
+function requireExactReconciliationReadback(
+  readback: Awaited<ReturnType<ActiveClaimReconciliationPort["appendAndReadBack"]>>,
+  input: Parameters<ActiveClaimReconciliationPort["readByIdempotencyKey"]>[0],
+  expectedRecord?: Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]["record"]
+): void {
+  if (!sameTuple(readback.admission, input.admission)
+    || readback.record.workspaceId !== input.workspaceId
+    || readback.record.residentId !== input.residentId
+    || readback.record.supervisorEpoch !== input.supervisorEpoch
+    || readback.record.reconciliationIdempotencyKey !== input.reconciliationIdempotencyKey
+    || (expectedRecord !== undefined && !sameReconciliationRecord(readback.record, expectedRecord))) {
+    active = undefined;
+    throw new Error("workspace admission is no longer current");
+  }
+}
+
 function requireLeaseReadback(lease: ClaimReconciliationAdmissionTuple["verifiedLease"], current: ActiveAdmission): void {
   const identity = current.snapshot.identityAndMount;
   const facts = current.facts;
@@ -638,6 +715,43 @@ function sameCausation(
   right: ClaimReconciliationAdmissionTuple["verifiedLease"]["causation"]
 ): boolean {
   return left.causationId === right.causationId && left.correlationId === right.correlationId;
+}
+
+function sameActiveClaim(left: RevalidatedActiveClaimEvidence, right: RevalidatedActiveClaimEvidence): boolean {
+  return left.workspaceId === right.workspaceId && left.residentId === right.residentId && left.supervisorEpoch === right.supervisorEpoch
+    && left.claimId === right.claimId && left.attemptId === right.attemptId && left.priorClaimEventId === right.priorClaimEventId
+    && left.priorClaimLeaseId === right.priorClaimLeaseId && left.readbackEventId === right.readbackEventId
+    && sameCausation(left.causation, right.causation);
+}
+
+function sameTuple(left: ClaimReconciliationAdmissionTuple, right: ClaimReconciliationAdmissionTuple): boolean {
+  return sameAdmission(
+    Object.freeze({ identityAndMount: left.authorityIdentityAndMount, admissionGeneration: left.admissionGeneration }),
+    Object.freeze({ identityAndMount: right.authorityIdentityAndMount, admissionGeneration: right.admissionGeneration })
+  ) && sameLeaseReadback(left.verifiedLease, right.verifiedLease)
+    && samePolicyAndLock(left.policyAndLock, right.policyAndLock)
+    && sameHighWater(left.highWater, right.highWater);
+}
+
+function sameReconciliationRecord(
+  left: Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]["record"],
+  right: Parameters<ActiveClaimReconciliationPort["appendAndReadBack"]>[0]["record"]
+): boolean {
+  return left.schemaVersion === right.schemaVersion && left.outcome === right.outcome && left.resumable === right.resumable
+    && left.claimDisposition === right.claimDisposition && left.workspaceId === right.workspaceId && left.residentId === right.residentId
+    && left.supervisorEpoch === right.supervisorEpoch && left.claimId === right.claimId && left.attemptId === right.attemptId
+    && sameOutage(left.outageObservation, right.outageObservation) && sameCausation(left.causation, right.causation)
+    && left.revalidatedAuthority.identityEventId === right.revalidatedAuthority.identityEventId
+    && left.revalidatedAuthority.mountEvidenceId === right.revalidatedAuthority.mountEvidenceId
+    && left.revalidatedAuthority.authorityEvidenceId === right.revalidatedAuthority.authorityEvidenceId
+    && left.revalidatedAuthority.highWaterAfterRevalidation === right.revalidatedAuthority.highWaterAfterRevalidation
+    && left.revalidatedAuthority.policyVersion === right.revalidatedAuthority.policyVersion
+    && left.revalidatedAuthority.policyDigest === right.revalidatedAuthority.policyDigest
+    && left.revalidatedAuthority.lockStateDigest === right.revalidatedAuthority.lockStateDigest
+    && left.revalidatedAuthority.supervisorLeaseEventId === right.revalidatedAuthority.supervisorLeaseEventId
+    && left.revalidatedAuthority.supervisorLeaseReadbackEventId === right.revalidatedAuthority.supervisorLeaseReadbackEventId
+    && left.revalidatedAuthority.supervisorLeaseExpiresAt === right.revalidatedAuthority.supervisorLeaseExpiresAt
+    && left.reconciliationIdempotencyKey === right.reconciliationIdempotencyKey;
 }
 
 function sameOutage(left: WorkspaceOutageObservation, right: WorkspaceOutageObservation): boolean {
