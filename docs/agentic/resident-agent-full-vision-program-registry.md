@@ -3232,3 +3232,21 @@ explicit implementation authorization.
   delta after one bounded interval, record a genuine execution blocker rather
   than cycling further. Full verification, review, integration, downstream
   dispatch, self-integration, and `neo` change remain closed.
+
+## RV-1-C-075 — Task123 execution-blocker checkpoint
+
+- The final command-first Task123 retry was given the exact existing workflow
+  test block, exact command, and a two-test first checkpoint. Its isolated
+  worktree remained clean at `e7a1d5b6` after the required bounded interval:
+  no test delta, focused command, production edit, verifier process, or
+  structured source/schema blocker was produced. The worker was stopped
+  without mutation.
+- This is now a genuine **execution-blocker checkpoint** for the bounded
+  Task123 restart, rather than a license for another replacement loop. The
+  verified public staged-report reader remains integrated; rejected
+  `404ac711` remains evidence only; and the unmodified exact five-file
+  workflow/route repair cannot proceed until a coordinator-authorized recovery
+  tactic is selected. Full verification, fresh review, integration, all
+  downstream dispatch, self-integration, and `neo` change remain closed.
+- Relay A is clean at this checkpoint. Relay B remains frozen/read-only at
+  `da1abbb3`; no reset or usage redemption occurred.
