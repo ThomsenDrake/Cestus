@@ -249,9 +249,11 @@ type CanonicalStagedReportReference = {
   readonly reportHash: CanonicalContentHash;
 };
 
-const contentHashSchema = z.string()
-  .regex(/^sha256:[a-f0-9]{64}$/)
-  .transform((value): CanonicalContentHash => value as CanonicalContentHash);
+function isCanonicalContentHash(value: unknown): value is CanonicalContentHash {
+  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+}
+
+const contentHashSchema = z.custom<CanonicalContentHash>(isCanonicalContentHash);
 const stagedReportReferenceSchema = z.object({
   reportEventId: z.string().regex(/^evt_[a-zA-Z0-9_-]+$/),
   sourceCollectionId: z.string().regex(/^src_[a-zA-Z0-9_-]+$/),
@@ -377,8 +379,8 @@ function normalizeStagedReportReadInput(input: ReadCanonicalStagedLegacyReportIn
       legacyReportId: values.legacyReportId,
       reportHash: values.reportHash
     });
-    const readAll = readCapabilityMethod(values.ledger, "readAll");
-    const get = readCapabilityMethod(values.derivativeStore, "get");
+    const readAll = readAllCapability(values.ledger);
+    const get = getCapability(values.derivativeStore);
     if (!reference.success || readAll === undefined || get === undefined) {
       return undefined;
     }
@@ -393,15 +395,27 @@ function normalizeStagedReportReadInput(input: ReadCanonicalStagedLegacyReportIn
   }
 }
 
-type StagedReportReadCapabilities = {
-  readonly readAll: () => unknown;
-  readonly get: (contentHash: CanonicalContentHash) => unknown;
-};
+type UntrustedReadCapability = (...arguments_: readonly unknown[]) => unknown;
 
-function readCapabilityMethod<TKey extends keyof StagedReportReadCapabilities>(
-  value: unknown,
-  key: TKey
-): StagedReportReadCapabilities[TKey] | undefined {
+function isUntrustedReadCapability(value: unknown): value is UntrustedReadCapability {
+  return typeof value === "function";
+}
+
+function readAllCapability(value: unknown): (() => unknown) | undefined {
+  const capability = readCapabilityMethod(value, "readAll");
+  return capability === undefined
+    ? undefined
+    : () => Reflect.apply(capability, value, []);
+}
+
+function getCapability(value: unknown): ((contentHash: CanonicalContentHash) => unknown) | undefined {
+  const capability = readCapabilityMethod(value, "get");
+  return capability === undefined
+    ? undefined
+    : (contentHash) => Reflect.apply(capability, value, [contentHash]);
+}
+
+function readCapabilityMethod(value: unknown, key: "readAll" | "get"): UntrustedReadCapability | undefined {
   if (typeof value !== "object" || value === null) {
     return undefined;
   }
@@ -409,10 +423,11 @@ function readCapabilityMethod<TKey extends keyof StagedReportReadCapabilities>(
   while (prototype !== null) {
     const descriptor = Object.getOwnPropertyDescriptor(prototype, key);
     if (descriptor !== undefined) {
-      if (!("value" in descriptor) || typeof descriptor.value !== "function") {
+      if (!("value" in descriptor)) {
         return undefined;
       }
-      return descriptor.value.bind(value) as StagedReportReadCapabilities[TKey];
+      const candidate: unknown = descriptor.value;
+      return isUntrustedReadCapability(candidate) ? candidate : undefined;
     }
     prototype = Object.getPrototypeOf(prototype);
   }
