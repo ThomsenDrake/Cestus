@@ -1,6 +1,6 @@
 # Task 125 — Portable Workspace Lifecycle Authority
 
-- Status: ready-for-review
+- Status: in-progress
 - Coordinator ledger: `RV-1-C-137`
 - Worker: `/root/task125_authority_repair`
 - Branch: `codex/task-125-resident-full-vision-portable-workspace-lifecycle-admission-restart`
@@ -20,6 +20,19 @@ runtime, provider, tool, artifact, fallback, ledger, projection, cache, or
 journal write is permitted while unavailable or for a revoked admission.
 
 ## Evidence
+
+- RV-1-D-164 second bounded repair: in progress from clean
+  `251834159ffd72c5e7293a7cfaf0a0ed210201cb`. Root-cause investigation
+  confirmed that `appendAndReadBack` accepts caller-consistent
+  `observedActiveClaim` and outage data without requiring the façade's pending
+  mounted outage or binding the claim to `current.facts.observedActiveClaim`.
+  It also returns the mounted reconciliation result without canonical
+  own-data parsing, freezing, or exact request/record/event-ID readback
+  binding. Causal RED, minimal fail-closed repair, focused GREEN, typecheck,
+  diff, and factory evidence will be appended below before the three-file
+  handoff commit. No full verifier, provider/network action, integration, or
+  `neo` action is authorized in this repair.
+
 
 - Authority-repair RED (exact focused command): with only a temporary
   `node_modules` symlink to the coordinator checkout, the command exited `1`
