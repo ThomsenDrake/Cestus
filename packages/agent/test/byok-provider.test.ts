@@ -60,6 +60,35 @@ describe("CF-1 BYOK authority-reader boundary", () => {
     expect(JSON.stringify(result)).not.toMatch(/forged|authorization|bearer|api[ _-]?key|https?:\/\//i);
   });
 
+  it("blocks malformed public requested use when the authority reader is absent", () => {
+    const boundary = createByokProviderBoundary(undefined);
+
+    expect(boundary.evaluate({ ...requestedUse(), policyVersion: "https://forged.example.invalid" })).toEqual({
+      kind: "blocked",
+      category: "unsafe-input",
+      safeActionId: "action_review_byok_provider"
+    });
+  });
+
+  it("blocks malformed public requested use without invoking a forged authority reader", () => {
+    let forgedReaderCalls = 0;
+    const forgedReader = {
+      version: "ByokProviderAuthorityReader.v1" as const,
+      readCurrentByokProviderAuthority: () => {
+        forgedReaderCalls += 1;
+        return authority();
+      }
+    };
+    const boundary = createByokProviderBoundary(forgedReader);
+
+    expect(boundary.evaluate({ ...requestedUse(), policyVersion: "https://forged.example.invalid" })).toEqual({
+      kind: "blocked",
+      category: "unsafe-input",
+      safeActionId: "action_review_byok_provider"
+    });
+    expect(forgedReaderCalls).toBe(0);
+  });
+
   it("fails closed when requested workspace, mount, task, attempt, run, prompt, preview, or policy differs from reader-derived current preparation", () => {
     const boundary = createByokProviderBoundary(createByokProviderAuthorityReader(() => authority()));
 

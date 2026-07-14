@@ -198,10 +198,6 @@ export function evaluateByokProviderBoundary(
   reader: unknown,
   input: unknown
 ): ByokProviderBoundaryResult {
-  if (!isTrustedAuthorityReader(reader)) {
-    return unavailable("authority-reader-unavailable", "action_check_provider_health");
-  }
-
   const normalizedUse = normalizePlainOwnData(input);
   if (normalizedUse === undefined || !hasExactKeys(normalizedUse, requestedUseKeys)) {
     return blocked("unsafe-input", "action_review_byok_provider");
@@ -211,6 +207,10 @@ export function evaluateByokProviderBoundary(
     return blocked("unsafe-input", "action_review_byok_provider");
   }
   const requestedUse = Object.freeze({ ...parsedUse.data }) as ByokProviderRequestedUse;
+
+  if (!isTrustedAuthorityReader(reader)) {
+    return unavailable("authority-reader-unavailable", "action_check_provider_health");
+  }
 
   let rawAuthority: unknown;
   try {
