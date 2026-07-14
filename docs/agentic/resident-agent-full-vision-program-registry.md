@@ -4982,3 +4982,30 @@ explicit implementation authorization.
   five-credit-untouched posture permits this bounded non-full repair. Task126
   remains unintegrated; Task128 review remains independent; Task125, all full
   verifiers, all integrations, and `neo` remain stopped.
+
+## RV-1-C-139 — Task128 proxy-boundary review approval and full-gate hold
+
+- Recorded at: 2026-07-14T22:50:00Z by the sole Relay C coordinator.
+- Role: coordinator / independent review receipt.
+- Lane and wave: P / 1.
+- Fresh Terra-attested review verdict: **APPROVE** for exact sealed range
+  `e1fa208245ba3032747be9375b7e552196a20ecf..21f7690250a004c5174bb4f784ce9bd60472ccfe`.
+  The worktree was clean and changed exactly the authorized Task128 claim,
+  local-model provider source, and focused test. The reviewer found revoked
+  array brand checks inside the fail-closed boundary, zero engine invocation
+  on configured/inspection failure, own `__proto__` rejection with
+  null-prototype snapshots, descriptor-first no-getter handling, retained
+  timeout reservation, secret-safe diagnostics, and preserved credential-free/
+  no-network/no-fallback behavior.
+- Verification evidence: reviewer `git diff --check` passed. Its independent
+  focused test rerun was environment-blocked before execution by missing
+  `vitest` in the candidate checkout; this is recorded as an environment
+  limitation, not a product pass or waiver. The candidate claim preserves the
+  author's focused 42-test Green evidence.
+- Merge readiness: not-ready. Task128 requires a fresh authenticated usage
+  gate and one serialized candidate full verifier before any coordinator
+  integration. No full verifier, integration, Task125 action, downstream
+  dispatch, reset-credit use, or `neo` action is opened by this approval.
+- Concurrent state: Task126 is in its separately authorized authority-reader
+  repair; no Task128 source mutation is authorized unless a later fresh repair
+  record is issued.
