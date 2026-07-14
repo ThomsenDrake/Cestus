@@ -5875,3 +5875,38 @@ explicit implementation authorization.
   full verifier; no child self-integration is permitted.
 - `neo` remains untouched at `f88ced73` in `/home/drake/Projects/Cestus`.
   Relay E preserves this no-`neo` boundary and the append-only handoff ledger.
+
+## RV-1-E-167 — Visible Relay E correction and sole-ownership acceptance
+
+- **Forward-only correction.** RV-1-E-166 in canonical commit
+  `f7971a44f594acb1abccf86843239ab0d57f565b` was written by the ineligible
+  internal subagent `/root/relay_e_successor` (thread
+  `019f62c4-bec2-7bb3-89bf-9bfb7cf1c056`), rather than the required normal
+  user-visible successor. Its purported ownership transfer is invalid. This
+  record preserves that commit as historical input without reset, rewrite, or
+  removal.
+- Relay D has completed FINAL TRANSFER and relinquished coordination. The
+  normal user-visible Relay E coordinator (thread
+  `019f62c8-4212-7023-8d53-0e53686e5a0c`) accepts sole ownership from the
+  exact clean canonical head
+  `f7971a44f594acb1abccf86843239ab0d57f565b` on branch
+  `codex/resident-agent-full-vision-program-watchdog-recovery` in
+  `/home/drake/.codex/worktrees/95de/Cestus`; `git status --porcelain=v1` was
+  empty before this forward append.
+- The current authenticated usage event is `usedPercent=9` / **91% weekly
+  remaining**. Reset credits are untouched and must never be redeemed. DRAIN
+  is mandatory at <=10% remaining, HARD PAUSE is mandatory at <=7%, and the
+  serialized full-verifier slot remains **CLOSED**.
+- Integrated evidence remains Task124 `73003f60`, Task127 `93a93844`, Task128
+  `ba43f007`, and fully verified Task126 no-ff merge `2e7a8a01`. `neo` remains
+  untouched at `f88ced73be1e64660d95874394a324bd317fc20a` in
+  `/home/drake/Projects/Cestus`; no child may self-integrate and no integration
+  may target `neo`.
+- Task125 `251834159ffd72c5e7293a7cfaf0a0ed210201cb` remains
+  **NEEDS-CHANGES** and awaits only its bounded second append/readback TDD
+  repair under RV-1-D-164. The full verifier stays unavailable to that lane.
+- Task129's bounded material-before-kind repair is complete and clean at
+  `bacc742938b1b35a2aa07ab6ef34f4753e7b523f`: its focused suite reports
+  16/16 passing and typecheck, diff, and factory gates passed; no full verifier
+  ran. It now awaits a fresh independent `gpt-5.6-terra` / `xhigh` review of
+  the authorized range before any integration decision.
