@@ -162,7 +162,7 @@ describe("portable workspace lifecycle authority", () => {
     const fixture = createFixture({ issueLeaseReadback: true, observedActiveClaim: canonicalObservedActiveClaim() });
     const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
     await ports.authority.revalidate(revalidate("wake"));
-    ports.authority.invalidate("authority-loss");
+    ports.authority.invalidate!("authority-loss");
     const grant = await ports.authority.revalidate(revalidate("resume"));
     if (!grant.ok || grant.observedActiveClaim === undefined || grant.outage === undefined) {
       throw new Error("fixture must issue a reconciled admission");
@@ -197,7 +197,7 @@ describe("portable workspace lifecycle authority", () => {
     const fixture = createFixture({ issueLeaseReadback: true, observedActiveClaim: outageClaim });
     const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
     await ports.authority.revalidate(revalidate("wake"));
-    ports.authority.invalidate("authority-loss");
+    ports.authority.invalidate!("authority-loss");
     fixture.setMountedObservedActiveClaim({ ...outageClaim, claimId: "claim_later" });
     const grant = await ports.authority.revalidate(revalidate("resume"));
     if (!grant.ok || grant.observedActiveClaim === undefined || grant.outage === undefined) {
@@ -227,12 +227,31 @@ describe("portable workspace lifecycle authority", () => {
     });
   });
 
+  it("does not turn an active lock into a workspace-unavailable outage", async () => {
+    const fixture = createFixture({ observedActiveClaim: canonicalObservedActiveClaim() });
+    const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
+    const firstGrant = await ports.authority.revalidate(revalidate("wake"));
+    if (!firstGrant.ok) throw new Error("fixture must issue an admission");
+
+    fixture.setMountedFailureCategory("active-lock");
+    await expect(ports.authority.revalidate(revalidate("resume"))).resolves.toEqual({
+      ok: false,
+      category: "active-lock"
+    });
+
+    fixture.setMountedFailureCategory(undefined);
+    const laterGrant = await ports.authority.revalidate(revalidate("resume"));
+    if (!laterGrant.ok) throw new Error("fixture must issue a later admission");
+    expect(laterGrant.outage).toBeUndefined();
+    expect(laterGrant.observedActiveClaim).toBeUndefined();
+  });
+
   it("rejects hostile and swapped reconciliation readbacks while returning only canonical immutable evidence", async () => {
     for (const readbackKind of ["hostile", "swapped", "canonical"] as const) {
       const fixture = createFixture({ issueLeaseReadback: true, observedActiveClaim: canonicalObservedActiveClaim() });
       const ports = createPortableWorkspaceLifecyclePorts(fixture.input);
       await ports.authority.revalidate(revalidate("wake"));
-      ports.authority.invalidate("authority-loss");
+      ports.authority.invalidate!("authority-loss");
       const grant = await ports.authority.revalidate(revalidate("resume"));
       if (!grant.ok || grant.observedActiveClaim === undefined || grant.outage === undefined) {
         throw new Error("fixture must issue a reconciled admission");
@@ -306,7 +325,7 @@ describe("portable workspace lifecycle authority", () => {
       highWaterReadbackEventId: "evt_high_water_readback"
     });
 
-    ports.authority.invalidate("authority-loss");
+    ports.authority.invalidate!("authority-loss");
     const laterSameIdentityGrant = await ports.authority.revalidate(revalidate("resume"));
     if (!laterSameIdentityGrant.ok) throw new Error("fixture must issue a fresh admission");
     expect(laterSameIdentityGrant.admission.identityAndMount).toEqual(firstGrant.admission.identityAndMount);
@@ -637,6 +656,7 @@ function createFixture(options: {
   readonly observedActiveClaim?: RevalidatedActiveClaimEvidence;
 } = {}) {
   let mountedObservedActiveClaim = options.observedActiveClaim;
+  let mountedFailureCategory: "active-lock" | undefined;
   const calls = {
     lease: 0,
     reconciliation: 0,
@@ -698,6 +718,9 @@ function createFixture(options: {
     supervisorEpoch,
     mountedFacts: {
       async read() {
+        if (mountedFailureCategory !== undefined) {
+          return { ok: false as const, category: mountedFailureCategory };
+        }
         return {
           ok: true as const,
           facts: {
@@ -726,6 +749,7 @@ function createFixture(options: {
     mountedIdentity,
     mountedReadback,
     setReconciliationReadback(value: unknown) { reconciliationReadback = value; },
+    setMountedFailureCategory(value: "active-lock" | undefined) { mountedFailureCategory = value; },
     setMountedObservedActiveClaim(value: RevalidatedActiveClaimEvidence | undefined) { mountedObservedActiveClaim = value; }
   };
 }
