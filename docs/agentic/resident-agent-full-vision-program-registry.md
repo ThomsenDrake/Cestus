@@ -5415,3 +5415,48 @@ explicit implementation authorization.
   factory gates, remove temporary setup, update the claim, seal a clean commit,
   and stop for fresh review. No full verifier, integration, network/provider
   effect, reset-credit use, or downstream lane is granted.
+
+## RV-1-C-151 — Final Task128 closure and Relay D handoff
+
+- Recorded in append order after `RV-1-C-150` by the sole Relay C coordinator.
+  The coordinator's environment clock read `2026-07-14T22:03:03Z`; this record
+  deliberately preserves append order rather than rewriting the earlier
+  registry timestamps.
+- Usage correction: the latest parent-authenticated app-server event reports
+  `usedPercent=6`, therefore **94% weekly remaining**, with no reset credit
+  consumed. This forward-only correction supersedes the `0`/100% usage claim in
+  `RV-1-C-148`; it is consistent with, but does not relabel, the historical 94%
+  snapshots recorded in `RV-1-C-149` and `RV-1-C-150`. Normal mode remains
+  above 10%; DRAIN remains mandatory at <=10%, HARD PAUSE at <=7%, and reset
+  credits must never be redeemed.
+- Exact clean coordinator checkpoint before this handoff commit:
+  branch `codex/resident-agent-full-vision-program-watchdog-recovery`, worktree
+  `/home/drake/.codex/worktrees/95de/Cestus`, head
+  `ea53fa8cc3059635ebb038e029ce9e864ef30ab2`; `git status --porcelain=v1` was
+  empty. The final process audit found no running `npm run verify`, `npm run
+  typecheck`, or targeted-test process. Any already-running Task125
+  tsc/targeted process has therefore terminated; its result was not consumed as
+  authorization, and Task125 was not advanced.
+- Task128 verification debt is closed from the exact evidence already recorded
+  in `RV-1-C-149`: candidate
+  `21f7690250a004c5174bb4f784ce9bd60472ccfe..0c7eb37f5fd0d5844c6fa849ccd62ea3da8f6f2a`
+  passed its serialized `npm run verify`; the provisional no-ff merge is
+  `ba43f007c371229ca5ad96844f4b3bc08584702b`; merged targeted verification
+  passed 2 files / 42 tests; and the serialized merged `npm run verify` passed
+  typecheck, 198 passing + 3 skipped files, 2,398 passing + 5 skipped tests,
+  Vite build, and factory readiness. No new verifier or integration was opened
+  for this handoff.
+- Candidate and dependency ledger: Task125 remains the sealed, unintegrated
+  `482361a5ac0dbe04ae9826caecddf9466e8f400f` candidate; no new Task125 lane,
+  full verifier, rebase, or integration is authorized. Task126 remains the
+  unintegrated `512a169af3caad7e0c2d270040f24c36443913ec` candidate with the
+  `RV-1-C-149` precedence defect unresolved; no Task126 integration or repair
+  is opened by this record. No downstream work is opened.
+- `neo` boundary: `neo` remains at its separately checked-out
+  `/home/drake/Projects/Cestus` worktree and was not touched by Relay C. No
+  `neo` ref, worktree, commit, integration, or verifier action is authorized.
+- Transfer: Relay D `019f62a2-4bd7-7532-b1a6-26b41c4f4101` is visibly READY
+  following its read-only audit at `ba43f007`. This is the exact final Relay C
+  handoff checkpoint. Relay C retains sole ownership through this commit and
+  now stops cleanly; Relay D must make its own explicit sole-ownership
+  acceptance from this clean descendant before opening any new lane.
