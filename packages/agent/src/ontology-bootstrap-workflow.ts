@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
@@ -6,7 +7,11 @@ import {
   type KnowledgeEvent
 } from "../../ontology/src/contracts.js";
 import type { EventLedger } from "../../ontology/src/event-ledger.js";
-import type { LegacyMigrationReport } from "../../ingestion/src/legacy-report.js";
+import {
+  readCanonicalStagedLegacyReport,
+  stableJson,
+  type LegacyMigrationReport
+} from "../../ingestion/src/legacy-report.js";
 import type { LegacyMigrationReviewDto } from "../../ingestion/src/legacy-read-api.js";
 import {
   ontologyBootstrapDossierSchema,
@@ -25,6 +30,13 @@ import { buildContextPackRef, type ContextPackRef } from "./context-packs.js";
 import type { OntologyBootstrapNousMemo } from "./ontology-bootstrap-nous.js";
 import { buildAgentProjection } from "./projection.js";
 import type { AgentFailureCategory, AgentToolSideEffectClass } from "./projection-types.js";
+import { buildSpecialistHandoffMaterial } from "./specialist-handoff-manifest.js";
+import {
+  appendSpecialistFinalOutputStep,
+  finalizeSpecialistRunAfterHandoff,
+  recordSpecialistHandoff,
+  type SpecialistHandoffManifestStore
+} from "./specialist-runner-kernel.js";
 import { createAgentToolGateway } from "./tool-gateway.js";
 import type { AgentToolPreview } from "./tool-gateway.js";
 
@@ -150,6 +162,9 @@ export interface RunOntologyBootstrapResidentWorkflowInput {
   readonly taskId?: string;
   readonly sourceCollectionId: string;
   readonly report?: LegacyMigrationReport;
+  /** Canonical staged-report identity; the workflow never consumes report bytes from this caller. */
+  readonly reportEventId?: string;
+  readonly derivativeStore?: SpecialistHandoffManifestStore;
   readonly review: LegacyMigrationReviewDto;
   readonly evidenceLinks: readonly OntologyBootstrapEvidenceLink[];
   readonly selectedCandidateIds: readonly string[];
@@ -381,7 +396,17 @@ export async function runOntologyBootstrapResidentWorkflow(
     });
   }
 
-  const bootstrap = safeRunBootstrapSpecialist(input);
+  const canonicalInput = await canonicalizeOntologyBootstrapInput(input);
+  if (canonicalInput === undefined) {
+    return await appendRunFailure(input, {
+      category: "provenance-missing",
+      message: "Ontology bootstrap requires one exact canonical staged-report event and artifact readback before effects.",
+      retryable: false,
+      allowedActions: ["repair the staged legacy report event and derivative artifact binding"]
+    });
+  }
+
+  const bootstrap = safeRunBootstrapSpecialist(canonicalInput);
   if (!bootstrap.ok) {
     return await appendRunFailure(input, failureForBootstrapResult(bootstrap));
   }
@@ -392,9 +417,9 @@ export async function runOntologyBootstrapResidentWorkflow(
   }
 
   const reviewBundle = buildOntologyBootstrapAgentReviewBundle({
-    runId: input.runId,
+    runId: canonicalInput.runId,
     ...(taskId === undefined ? {} : { taskId }),
-    generatedAt: input.now(),
+    generatedAt: canonicalInput.now(),
     dossier: bootstrap.dossier,
     toolPreviews: bootstrap.toolPreviews,
     ...(input.maxCandidatesPerBundle === undefined ? {} : {
@@ -403,7 +428,7 @@ export async function runOntologyBootstrapResidentWorkflow(
   });
   const reviewBundleHash = hashOntologyBootstrapReviewBundle(reviewBundle);
   const contextPack = buildOntologyBootstrapDossierContextPack({
-    generatedAt: input.now(),
+    generatedAt: canonicalInput.now(),
     dossier: bootstrap.dossier,
     reviewBundleHash,
     selectedCandidateIds: reviewBundle.stagingReview.selectedCandidateIds
@@ -412,10 +437,10 @@ export async function runOntologyBootstrapResidentWorkflow(
     (bundle) => bundle.bundleHash as `sha256:${string}`
   );
 
-  const projectionBeforeSteps = buildAgentProjection(await input.ledger.readAll());
-  const runCausationId = lastValue(projectionBeforeSteps.runs.get(input.runId)?.eventIds ?? []);
-  const stepEvent = await appendDossierStepIfNeeded(input, {
-    projectionStepIds: projectionBeforeSteps.runs.get(input.runId)?.stepIds ?? [],
+  const projectionBeforeSteps = buildAgentProjection(await canonicalInput.ledger.readAll());
+  const runCausationId = lastValue(projectionBeforeSteps.runs.get(canonicalInput.runId)?.eventIds ?? []);
+  const stepEvent = await appendDossierStepIfNeeded(canonicalInput, {
+    projectionStepIds: projectionBeforeSteps.runs.get(canonicalInput.runId)?.stepIds ?? [],
     ...(runCausationId === undefined ? {} : { runCausationId }),
     reviewBundleHash,
     contextPackHash: contextPack.contentHash as `sha256:${string}`,
@@ -425,9 +450,9 @@ export async function runOntologyBootstrapResidentWorkflow(
     eventIds.push(stepEvent.id);
   }
 
-  const nousStepEvent = await appendNousMemoStepIfNeeded(input, {
+  const nousStepEvent = await appendNousMemoStepIfNeeded(canonicalInput, {
     reviewBundleHash,
-    projectionStepIds: buildAgentProjection(await input.ledger.readAll()).runs.get(input.runId)?.stepIds ?? []
+    projectionStepIds: buildAgentProjection(await canonicalInput.ledger.readAll()).runs.get(canonicalInput.runId)?.stepIds ?? []
   });
   if (nousStepEvent !== undefined) {
     eventIds.push(nousStepEvent.id);
@@ -440,7 +465,7 @@ export async function runOntologyBootstrapResidentWorkflow(
       continue;
     }
     if (taskId === undefined) {
-      return await appendRunFailure(input, {
+      return await appendRunFailure(canonicalInput, {
         category: "approval-required",
         message: "Ontology bootstrap approval requests require a linked agent task.",
         retryable: false,
@@ -450,11 +475,11 @@ export async function runOntologyBootstrapResidentWorkflow(
 
     const toolRequestId = toolRequestIdForBootstrapPreview(preview);
     pendingApprovalToolRequestIds.push(toolRequestId);
-    const currentProjection = buildAgentProjection(await input.ledger.readAll());
+    const currentProjection = buildAgentProjection(await canonicalInput.ledger.readAll());
     const existingToolRequest = currentProjection.toolRequests.get(toolRequestId);
     if (existingToolRequest !== undefined) {
       if (!existingToolRequest.inputArtifactHashes.includes(preview.previewHash)) {
-        return await appendRunFailure(input, {
+        return await appendRunFailure(canonicalInput, {
           category: "approval-stale",
           message: "Ontology bootstrap approval preview changed after the existing tool request.",
           retryable: false,
@@ -465,9 +490,9 @@ export async function runOntologyBootstrapResidentWorkflow(
     }
 
     const gateway = createAgentToolGateway({
-      ledger: input.ledger,
-      actor: input.actor,
-      now: input.now
+      ledger: canonicalInput.ledger,
+      actor: canonicalInput.actor,
+      now: canonicalInput.now
     });
     const agentPreview = toAgentOntologyBootstrapToolPreview(preview);
     const toolScope = agentPreview.scope ?? agentPreview.summary;
@@ -475,9 +500,9 @@ export async function runOntologyBootstrapResidentWorkflow(
     const inputArtifactHashes = agentPreview.artifactHashes ?? [];
     const requested = await gateway.requestTool({
       toolRequestId,
-      residentAgentId: input.residentAgentId,
+      residentAgentId: canonicalInput.residentAgentId,
       taskId,
-      runId: input.runId,
+      runId: canonicalInput.runId,
       toolId: preview.toolId,
       sideEffectClass: sideEffectClassForBootstrapPreview(preview),
       requiredApprovalClass: "ledger-review",
@@ -492,7 +517,7 @@ export async function runOntologyBootstrapResidentWorkflow(
 
   if (taskId !== undefined && pendingApprovalToolRequestIds.length > 0) {
     const statusCausationId = lastValue(toolRequestEventIds);
-    const statusEvent = await appendWaitingForApprovalIfNeeded(input, {
+    const statusEvent = await appendWaitingForApprovalIfNeeded(canonicalInput, {
       taskId,
       ...(statusCausationId === undefined ? {} : { causationId: statusCausationId })
     });
@@ -501,16 +526,33 @@ export async function runOntologyBootstrapResidentWorkflow(
     }
   }
 
-  if (pendingApprovalToolRequestIds.length === 0) {
-    const completed = await appendCompletionIfNeeded(input, {
+  if (canonicalInput.derivativeStore !== undefined) {
+    try {
+      const terminal = await persistCanonicalOntologyBootstrapHandoff({
+        input: canonicalInput,
+        taskId,
+        reviewBundle,
+        reviewBundleHash,
+        pendingApprovalToolRequestIds,
+        relatedEventIds: eventIds
+      });
+      eventIds.push(...terminal);
+    } catch {
+      return await appendRunFailure(canonicalInput, {
+        category: "external-effect-failed",
+        message: "Ontology bootstrap handoff could not complete an exact durable lifecycle readback.",
+        retryable: true,
+        allowedActions: ["inspect canonical ontology bootstrap handoff storage and retry"]
+      });
+    }
+  } else if (pendingApprovalToolRequestIds.length === 0) {
+    const completed = await appendCompletionIfNeeded(canonicalInput, {
       reviewBundleHash,
       contextPackHash: contextPack.contentHash as `sha256:${string}`,
       candidateBundleHashes,
       relatedEventIds: eventIds
     });
-    if (completed !== undefined) {
-      eventIds.push(completed.id);
-    }
+    if (completed !== undefined) eventIds.push(completed.id);
   }
 
   return {
@@ -523,6 +565,141 @@ export async function runOntologyBootstrapResidentWorkflow(
     pendingApprovalToolRequestIds,
     eventIds: Object.freeze(eventIds)
   };
+}
+
+async function canonicalizeOntologyBootstrapInput(
+  input: RunOntologyBootstrapResidentWorkflowInput
+): Promise<RunOntologyBootstrapResidentWorkflowInput | undefined> {
+  if (input.reportEventId === undefined && input.derivativeStore === undefined) {
+    return input;
+  }
+  if (input.reportEventId === undefined || input.derivativeStore === undefined || input.report === undefined) {
+    return undefined;
+  }
+  const canonical = await readCanonicalStagedLegacyReport({
+    ledger: input.ledger,
+    derivativeStore: input.derivativeStore,
+    reportEventId: input.reportEventId,
+    sourceCollectionId: input.sourceCollectionId,
+    scanBatchId: input.report.scanBatchId,
+    legacyReportId: input.report.legacyReportId,
+    reportHash: input.report.reportHash
+  });
+  if (!canonical.ok) return undefined;
+  return Object.freeze({ ...input, report: canonical.report });
+}
+
+async function persistCanonicalOntologyBootstrapHandoff(input: {
+  readonly input: RunOntologyBootstrapResidentWorkflowInput;
+  readonly taskId: string | undefined;
+  readonly reviewBundle: OntologyBootstrapAgentReviewBundle;
+  readonly reviewBundleHash: `sha256:${string}`;
+  readonly pendingApprovalToolRequestIds: readonly string[];
+  readonly relatedEventIds: readonly string[];
+}): Promise<readonly string[]> {
+  const store = input.input.derivativeStore;
+  if (store === undefined) throw new Error("Canonical ontology bootstrap handoff requires a derivative read/write capability.");
+  const reviewBytes = Buffer.from(stableJson(input.reviewBundle), "utf8");
+  const reviewStored = await store.put(reviewBytes);
+  if (reviewStored.contentHash !== input.reviewBundleHash || reviewStored.sizeBytes !== reviewBytes.byteLength) {
+    throw new Error("Canonical ontology bootstrap review artifact hash mismatch.");
+  }
+  const reviewReadback = await store.get(input.reviewBundleHash);
+  if (!Buffer.isBuffer(reviewReadback) || !reviewReadback.equals(reviewBytes)) {
+    throw new Error("Canonical ontology bootstrap review artifact readback mismatch.");
+  }
+  const artifactId = `artifact_${input.input.runId}_ontology_bootstrap_review_bundle`;
+  const handoffMaterial = buildSpecialistHandoffMaterial({
+    status: input.pendingApprovalToolRequestIds.length === 0 ? "ready-for-review" : "waiting-for-approval",
+    safeSummary: "Canonical ontology bootstrap review material is durable and remains proposal-only.",
+    contextPackRefs: [],
+    outputArtifacts: [{
+      artifactId,
+      artifactKind: "ontology-bootstrap-review-bundle",
+      schemaId: agentBootstrapReviewSchemaVersion,
+      artifactHash: input.reviewBundleHash,
+      safeSummary: "Evidence-first ontology bootstrap review bundle; no ontology truth is established."
+    }],
+    toolRequestIds: [...input.pendingApprovalToolRequestIds],
+    approvalRequirements: input.pendingApprovalToolRequestIds.map((toolRequestId) => ({
+      approvalClass: "ledger-review" as const,
+      reason: "Human staging review is required before any later proposal work.",
+      toolRequestId
+    })),
+    nextSafeActions: [{
+      actionId: `action_${input.input.runId}_review_ontology_bootstrap_bundle`,
+      label: "Review proposal-only ontology bootstrap evidence bundle",
+      kind: "review" as const,
+      effect: "none" as const,
+      artifactId
+    }],
+    sourceEventIds: input.input.reportEventId === undefined ? [] : [input.input.reportEventId],
+    relatedEventIds: [...input.relatedEventIds]
+  });
+  const finalOutput = await appendSpecialistFinalOutputStep({
+    ledger: input.input.ledger,
+    materialStore: store,
+    actor: input.input.actor,
+    now: input.input.now,
+    runId: input.input.runId,
+    ...(input.taskId === undefined ? {} : { taskId: input.taskId }),
+    handoffMaterial
+  });
+  const recorded = await recordSpecialistHandoff({
+    ledger: input.input.ledger,
+    manifestStore: store,
+    actor: input.input.actor,
+    now: input.input.now,
+    runId: input.input.runId,
+    ...(input.taskId === undefined ? {} : { taskId: input.taskId })
+  });
+  const finalized = await finalizeSpecialistRunAfterHandoff({
+    ledger: input.input.ledger,
+    actor: input.input.actor,
+    now: input.input.now,
+    recorded
+  });
+  await assertCanonicalOntologyBootstrapTerminalReadback({
+    ledger: input.input.ledger,
+    runId: input.input.runId,
+    actorId: input.input.actor.id,
+    finalOutput,
+    prepared: recorded.prepared,
+    recorded: recorded.recorded,
+    terminal: finalized.terminal
+  });
+  return Object.freeze([finalOutput.id, recorded.prepared.id, recorded.recorded.id, finalized.terminal.id]);
+}
+
+async function assertCanonicalOntologyBootstrapTerminalReadback(input: {
+  readonly ledger: EventLedger;
+  readonly runId: string;
+  readonly actorId: string;
+  readonly finalOutput: KnowledgeEvent;
+  readonly prepared: KnowledgeEvent;
+  readonly recorded: KnowledgeEvent;
+  readonly terminal: KnowledgeEvent;
+}): Promise<void> {
+  const stream = await input.ledger.readStream(runStreamId(input.runId));
+  const chain = [input.finalOutput, input.prepared, input.recorded, input.terminal].map((event) =>
+    stream.find((candidate) => candidate.id === event.id)
+  );
+  if (chain.some((event) => event === undefined)) throw new Error("Canonical ontology bootstrap lifecycle readback is incomplete.");
+  const [finalOutput, prepared, recorded, terminal] = chain as KnowledgeEvent[];
+  if (
+    finalOutput.type !== "agent.specialist-run.step.recorded" ||
+    finalOutput.payload.stepKind !== "final-output" ||
+    prepared.type !== "agent.specialist-handoff.prepared" ||
+    recorded.type !== "agent.specialist-handoff.recorded" ||
+    (terminal.type !== "agent.specialist-run.completed" && terminal.type !== "agent.specialist-run.failed") ||
+    ![finalOutput, prepared, recorded, terminal].every((event) => event.context.actor.id === input.actorId) ||
+    prepared.context.causationId !== finalOutput.id ||
+    recorded.context.causationId !== prepared.id ||
+    terminal.context.causationId !== recorded.id ||
+    !(finalOutput.sequence < prepared.sequence && prepared.sequence < recorded.sequence && recorded.sequence < terminal.sequence)
+  ) {
+    throw new Error("Canonical ontology bootstrap lifecycle actor, event type, causation, or order readback failed.");
+  }
 }
 
 function buildCandidateBundleItem(input: {

@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   buildOntologyBootstrapAgentReviewBundle,
@@ -13,7 +15,13 @@ import {
   bootstrapReviewFixture
 } from "../../ontology-bootstrap/test/fixtures/bootstrap-fixtures.js";
 import { runFakeOntologyBootstrapSpecialist } from "../../ontology-bootstrap/src/fake-runtime.js";
-import type { LegacyMigrationReport } from "../../ingestion/src/legacy-report.js";
+import {
+  buildLegacyMigrationReport,
+  legacyReportStreamId,
+  readCanonicalStagedLegacyReport,
+  reportArtifactJson,
+  type LegacyMigrationReport
+} from "../../ingestion/src/legacy-report.js";
 import { InMemoryEventLedger } from "../../ontology/src/event-ledger.js";
 import { buildAgentProjection } from "../src/projection.js";
 import { createAgentRuntime } from "../src/runtime.js";
@@ -21,6 +29,14 @@ import { createAgentRuntime } from "../src/runtime.js";
 const now = () => "2026-07-08T14:00:00.000Z";
 const humanActor = { id: "actor_case_owner", kind: "human" as const, label: "Case Owner" };
 const agentActor = { id: "actor_cestus_agent", kind: "agent" as const, label: "Cestus Agent" };
+const canonicalBootstrapReportFixture = buildLegacyMigrationReport({
+  sourceCollectionId: bootstrapReportFixture.sourceCollectionId,
+  scanBatchId: bootstrapReportFixture.scanBatchId,
+  files: bootstrapReportFixture.files,
+  detections: bootstrapReportFixture.detections,
+  proposedAssertionCandidates: bootstrapReportFixture.proposedAssertionCandidates,
+  quarantineEntries: bootstrapReportFixture.quarantineEntries
+}) satisfies LegacyMigrationReport;
 
 describe("ontology bootstrap resident-agent review bundle", () => {
   it("builds a stable review bundle from an evidence-tied bootstrap dossier", () => {
@@ -219,6 +235,138 @@ describe("ontology bootstrap resident-agent review bundle", () => {
 });
 
 describe("runOntologyBootstrapResidentWorkflow", () => {
+  it("fails closed before bootstrap effects for a forged canonical report-event binding", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    const canonical = await canonicalBootstrapInput(ledger);
+    const reader = await readCanonicalStagedLegacyReport({
+      ledger,
+      derivativeStore: canonical.derivativeStore,
+      reportEventId: canonical.reportEventId,
+      sourceCollectionId: canonical.report.sourceCollectionId,
+      scanBatchId: canonical.report.scanBatchId,
+      legacyReportId: canonical.report.legacyReportId,
+      reportHash: canonical.report.reportHash
+    });
+    if (!reader.ok) throw new Error(reader.code);
+    await runtime.startRun({
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      runType: "ontology-bootstrap",
+      scope: { kind: "workspace", refs: ["ws_case_001"] },
+      sourceEventIds: [canonical.reportEventId],
+      inputArtifactHashes: [canonical.report.reportHash, canonical.report.candidateSetHash]
+    });
+    const before = (await ledger.readAll()).length;
+
+    const result = await runOntologyBootstrapResidentWorkflow({
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: "src_old_cestus",
+      report: canonical.report,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      reportEventId: "evt_forged_report_binding",
+      derivativeStore: canonical.derivativeStore,
+      now
+    } as never);
+
+    expect(result).toMatchObject({ ok: false, category: "provenance-missing" });
+    const workflowEvents = (await ledger.readAll()).slice(before);
+    expect(workflowEvents.map((event) => event.type)).toEqual(["agent.specialist-run.failed"]);
+  });
+
+  it("binds the exact final-output to prepared, recorded, and terminal lifecycle chain", async () => {
+    const ledger = new InMemoryEventLedger();
+    const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
+    await runtime.initializeDefaultIdentity({ workspaceId: "ws_case_001" });
+    await runtime.createTask({
+      taskId: "task_ontology_bootstrap_001",
+      title: "Bootstrap old Cestus archive",
+      requestedBy: humanActor.id,
+      priority: "normal"
+    });
+    const canonical = await canonicalBootstrapInput(ledger);
+    await runtime.startRun({
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      runType: "ontology-bootstrap",
+      scope: { kind: "workspace", refs: ["ws_case_001"] },
+      sourceEventIds: [canonical.reportEventId],
+      inputArtifactHashes: [canonical.report.reportHash, canonical.report.candidateSetHash]
+    });
+
+    const result = await runOntologyBootstrapResidentWorkflow({
+      ledger,
+      actor: agentActor,
+      residentAgentId: "agent_default",
+      runId: "run_ontology_bootstrap_001",
+      taskId: "task_ontology_bootstrap_001",
+      sourceCollectionId: "src_old_cestus",
+      report: canonical.report,
+      review: { ...bootstrapReviewFixture, latestReportId: canonical.report.legacyReportId },
+      evidenceLinks: bootstrapEvidenceLinksFixture,
+      selectedCandidateIds: ["legacy_candidate_001"],
+      reportEventId: canonical.reportEventId,
+      derivativeStore: canonical.derivativeStore,
+      now
+    } as never);
+
+    if (!result.ok) throw new Error(result.message);
+    expect(result).toMatchObject({ ok: true });
+    const events = await ledger.readAll();
+    const chain = events.filter((event) => [
+      "agent.specialist-run.step.recorded",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed"
+    ].includes(event.type));
+    expect(chain.map((event) => event.type)).toEqual(expect.arrayContaining([
+      "agent.specialist-run.step.recorded",
+      "agent.specialist-handoff.prepared",
+      "agent.specialist-handoff.recorded",
+      "agent.specialist-run.completed"
+    ]));
+    const finalOutput = events.find((event) =>
+      event.type === "agent.specialist-run.step.recorded" && event.payload.stepKind === "final-output"
+    );
+    const prepared = events.find((event) => event.type === "agent.specialist-handoff.prepared");
+    const recorded = events.find((event) => event.type === "agent.specialist-handoff.recorded");
+    const terminal = events.find((event) => event.type === "agent.specialist-run.completed");
+    expect(finalOutput).toBeDefined();
+    expect(prepared).toBeDefined();
+    expect(recorded).toBeDefined();
+    expect(terminal).toBeDefined();
+    if (finalOutput === undefined || prepared === undefined || recorded === undefined || terminal === undefined) return;
+    expect([finalOutput, prepared, recorded, terminal].map((event) => event.context.actor.id)).toEqual([
+      agentActor.id,
+      agentActor.id,
+      agentActor.id,
+      agentActor.id
+    ]);
+    expect(finalOutput.context.correlationId).toBe("corr_run_ontology_bootstrap_001_final_output");
+    expect(prepared.context.correlationId).toBe("corr_run_ontology_bootstrap_001_handoff_prepared");
+    expect(recorded.context.correlationId).toBe("corr_run_ontology_bootstrap_001_handoff_recorded");
+    expect(terminal.context.correlationId).toBe("corr_run_ontology_bootstrap_001_completed");
+    expect(prepared.context.causationId).toBe(finalOutput.id);
+    expect(recorded.context.causationId).toBe(prepared.id);
+    expect(terminal.context.causationId).toBe(recorded.id);
+    expect(finalOutput.sequence).toBeLessThan(prepared.sequence);
+    expect(prepared.sequence).toBeLessThan(recorded.sequence);
+    expect(recorded.sequence).toBeLessThan(terminal.sequence);
+  });
+
   it("records dossier review steps and pauses on human staging approval request", async () => {
     const ledger = new InMemoryEventLedger();
     const runtime = createAgentRuntime({ ledger, actor: humanActor, now });
@@ -432,3 +580,57 @@ describe("runOntologyBootstrapResidentWorkflow", () => {
     expect(projection.toolRequests.size).toBe(0);
   });
 });
+
+async function canonicalBootstrapInput(ledger: InMemoryEventLedger): Promise<{
+  readonly report: LegacyMigrationReport;
+  readonly reportEventId: string;
+  readonly derivativeStore: {
+    readonly get: (contentHash: `sha256:${string}`) => Promise<Buffer>;
+    readonly put: (content: Buffer) => Promise<{ readonly contentHash: `sha256:${string}`; readonly sizeBytes: number }>;
+  };
+}> {
+  const artifacts = new Map<string, Buffer>();
+  const derivativeStore = Object.freeze({
+    async get(contentHash: `sha256:${string}`): Promise<Buffer> {
+      const artifact = artifacts.get(contentHash);
+      if (artifact === undefined) throw new Error("Missing canonical test artifact.");
+      return Buffer.from(artifact);
+    },
+    async put(content: Buffer): Promise<{ readonly contentHash: `sha256:${string}`; readonly sizeBytes: number }> {
+      const contentHash = `sha256:${createHash("sha256").update(content).digest("hex")}` as const;
+      artifacts.set(contentHash, Buffer.from(content));
+      return Object.freeze({ contentHash, sizeBytes: content.length });
+    }
+  });
+  const storedReport = await derivativeStore.put(Buffer.from(reportArtifactJson(canonicalBootstrapReportFixture), "utf8"));
+  if (storedReport.contentHash !== canonicalBootstrapReportFixture.reportHash) {
+    throw new Error(`Canonical test report hash mismatch: ${storedReport.contentHash} != ${canonicalBootstrapReportFixture.reportHash}`);
+  }
+  const reportEvent = await ledger.append({
+    type: "legacy.import.report.generated",
+    version: 1,
+    streamId: legacyReportStreamId(canonicalBootstrapReportFixture),
+    context: {
+      actor: humanActor,
+      occurredAt: now(),
+      correlationId: "corr_legacy_report_001",
+      coreVersion: "0.1.0",
+      packVersions: { core: "0.1.0", ingestion: "0.1.0", legacy: "0.1.0" }
+    },
+    payload: {
+      legacyReportId: canonicalBootstrapReportFixture.legacyReportId,
+      sourceCollectionId: canonicalBootstrapReportFixture.sourceCollectionId,
+      scanBatchId: canonicalBootstrapReportFixture.scanBatchId,
+      reportHash: canonicalBootstrapReportFixture.reportHash,
+      candidateSetHash: canonicalBootstrapReportFixture.candidateSetHash,
+      generatedAt: canonicalBootstrapReportFixture.generatedAt,
+      generator: canonicalBootstrapReportFixture.generator,
+      totals: canonicalBootstrapReportFixture.totals
+    }
+  });
+  return Object.freeze({
+    report: canonicalBootstrapReportFixture,
+    reportEventId: reportEvent.id,
+    derivativeStore
+  });
+}

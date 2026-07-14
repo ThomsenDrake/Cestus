@@ -124,6 +124,13 @@ async function launchOntologyBootstrapRun(
     return json(500, legacyFailureDiagnostic(report.error.message, report.error.allowedRepairActions));
   }
 
+  const reportEventId = await canonicalReportEventId(input.handle.ledger, report);
+  if (reportEventId === undefined) {
+    return json(500, diagnostic("Ontology bootstrap requires one exact canonical staged report ledger binding.", [
+      "rerun legacy inspection and verify the staged report event"
+    ]));
+  }
+
   const runReady = await ensureRun(input, launchInput, report);
   if (!runReady.ok) {
     return json(500, runReady.body);
@@ -139,6 +146,8 @@ async function launchOntologyBootstrapRun(
     taskId: launchInput.taskId,
     sourceCollectionId: launchInput.sourceCollectionId,
     report: report.report,
+    reportEventId,
+    derivativeStore: mountedWorkspace.derivativeStore,
     review: report.review,
     evidenceLinks,
     selectedCandidateIds,
@@ -164,6 +173,21 @@ async function launchOntologyBootstrapRun(
     requestedCandidateIds: launchInput.selectedCandidateIds,
     selectedCandidateIds
   }));
+}
+
+async function canonicalReportEventId(
+  ledger: EventLedger,
+  report: LegacyReportData
+): Promise<string | undefined> {
+  const matches = (await ledger.readAll()).filter((event) =>
+    event.type === "legacy.import.report.generated" &&
+    event.payload.legacyReportId === report.report.legacyReportId &&
+    event.payload.sourceCollectionId === report.report.sourceCollectionId &&
+    event.payload.scanBatchId === report.report.scanBatchId &&
+    event.payload.reportHash === report.report.reportHash &&
+    event.payload.candidateSetHash === report.report.candidateSetHash
+  );
+  return matches.length === 1 ? matches[0]?.id : undefined;
 }
 
 async function readOntologyBootstrapRun(
