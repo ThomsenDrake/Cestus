@@ -5996,3 +5996,31 @@ explicit implementation authorization.
   or touch `neo`. Usage remains `usedPercent=9` / **91% weekly remaining**,
   reset credits are untouched, and DRAIN/HARD-PAUSE/full-verifier controls stay
   in force.
+
+## RV-1-E-171 — Coordinator integration: Task125 root-cause repair and Task129 harness
+
+- Fresh independent review approved Task125 root-cause range
+  `82db6628a842a03cdd36e6bb05ebe36715260494..5aaf4dde6165aded0258d424d3be05d88871df43`
+  with no defects. It verified the retained canonical outage-forming claim,
+  fail-closed A-to-B active-claim cross-bind before mounted append, causal zero
+  append regression, immutable readback behavior, and exact three-file scope.
+  Task129's separate fresh independent review approved exact range
+  `0bad3c24f563f8fdc60328cfed29a1161f381b94..bacc742938b1b35a2aa07ab6ef34f4753e7b523f`
+  with no defects, preserving material-before-kind classification and zero
+  prohibited-material reads or appends.
+- The visible coordinator alone integrated reviewed Task125 as no-ff merge
+  `84d162ee` and reviewed Task129 as no-ff merge `96257965` on canonical
+  `codex/resident-agent-full-vision-program-watchdog-recovery`. No child
+  self-integrated, no integration targeted `neo`, and the only net files are
+  each task's owned claim, source, and focused test.
+- Fresh merged non-full evidence: `npm test --
+  packages/local-runtime/test/portable-workspace-lifecycle.test.ts
+  packages/local-runtime/test/resident-identity-bootstrap.test.ts
+  packages/agent/test/codex-subscription-harness.test.ts` passed **3 files /
+  34 tests**. Fresh `npm run typecheck`, `git diff --check`, and
+  `npm run factory:check` also passed. `npm run verify` was not run: the
+  serialized full-verifier slot remains **CLOSED**.
+- Usage remains `usedPercent=9` / **91% weekly remaining**, reset credits are
+  untouched, DRAIN/HARD-PAUSE controls stay in force, and `neo` remains
+  untouched. Downstream consumers remain gated by their full predecessor sets;
+  no later-wave task is opened by this integration record alone.
