@@ -4840,6 +4840,22 @@ explicit implementation authorization.
   or NEEDS-CHANGES. Neither may run `npm run verify`, edit, dispatch, use a
   provider/credential, self-integrate, or touch `neo`.
 
+## RV-1-C-139 — Task126 review-range SHA correction
+
+- Recorded at: 2026-07-14T22:48:00Z by the sole Relay C coordinator.
+- Correction: RV-1-C-138 transcribed the Task126 candidate as
+  `512a169a5fd3cad50ffcc9ba5917bd8df890fdc8`, which does not resolve.
+  The clean canonical branch audit proves the actual sealed head is
+  `512a169af3caad7e0c2d270040f24c36443913ec`, with parent
+  `deadc41e08ab314f34197acc67ca04c815dd786a`, which in turn parents to the
+  authorized base `27a99b137dcb2508132441879764b6c46f59fa14`. The base is an
+  ancestor and the worktree is clean.
+- The fresh read-only reviewer has been supplied the corrected exact range
+  `27a99b137dcb2508132441879764b6c46f59fa14..512a169af3caad7e0c2d270040f24c36443913ec`.
+  It must continue from that range only. No prior or implicit approval is
+  valid; no full verifier, integration, source edit, or `neo` action is
+  authorized by this correction.
+
 ## RV-1-C-132 — Task124 verifier ordering evidence and Task128 mutable-review block
 
 - Recorded at: 2026-07-14T22:10:00Z by the sole Relay C coordinator.
