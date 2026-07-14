@@ -3083,3 +3083,16 @@ explicit implementation authorization.
   lane closed until that reviewer returns an explicit approval and a new live
   usage gate is obtained. At or below 10% enter DRAIN; at or below 7% commit
   the graceful hard-pause checkpoint. `neo` remains untouched.
+
+## RV-1-C-067 — Stale-review replacement usage correction
+
+- The first assertion-repair reviewer produced no visible verdict after the
+  bounded stale-review prompt and was stopped without candidate mutation. A
+  fresh independent replacement now reviews only the sealed
+  `40dca32f..6dc975c2` range; no implementation, full verification,
+  integration, or downstream lane was opened.
+- The immediately following authenticated Codex `/status` reports Weekly
+  **32% left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly remains
+  100% left. No `/usage`, reset, or redemption occurred. This records the
+  replacement reviewer gate durably. DRAIN remains mandatory at or below 10%,
+  hard pause at or below 7%, and `neo` remains untouched.
