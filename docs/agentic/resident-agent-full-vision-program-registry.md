@@ -4120,3 +4120,23 @@ explicit implementation authorization.
   review. No child self-review, self-integration, child dispatch, full
   `npm run verify`, integration, `neo` action, or reset-credit use is
   authorized.
+
+## RV-1-C-116 — Stable 100% gate and active Task125/126/128 ledger
+
+- A second authenticated read-only rate-limit reading confirms primary
+  `usedPercent=0` / **100% weekly remaining**, `resetsAt=1784666236`, and all
+  five reset credits still available and untouched. This corroborates the
+  local `/status` 100% gate; normal mode continues, with the 10% DRAIN and 7%
+  HARD-PAUSE guard unchanged.
+- Fresh Task125 reviewer `/root/task125_final_repair_review` is read-only on
+  `ceae7ca74d161196fd109d04c946976021bb8412..7b8430c9a7bd2550ae3b656ffc8dbc12ee0fb058`.
+  It has no full-verifier, integration, or `neo` authority.
+- Task126 root-cause implementer `/root/task126_posture_repair` remains active
+  only in `/home/drake/.codex/worktrees/task-126-resident-full-vision-byok-provider`
+  from rejected `15549bbb1b9bd93863d8fc6066ce54e9aae1a212`, inside its exact
+  three-file non-full scope.
+- Task128 local-model implementer `/root/task128_local_model_provider` is
+  isolated on `codex/task-128-resident-full-vision-local-model-provider` from
+  clean coordinator head `c71fde1e2d64bb953f36ed92a631c11eec79914a`, within
+  its exact claim/source/test non-full scope. The serialized full-verifier slot
+  remains closed; no child may self-integrate or touch `neo`.
