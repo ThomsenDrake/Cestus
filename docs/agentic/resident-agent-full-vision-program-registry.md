@@ -3903,3 +3903,11 @@ explicit implementation authorization.
   incompatibility-to-restoration claim release, real wake-supervisor exact
   reconciliation/readback, zero fallback writes, TDD evidence, and exact scope.
   No full verifier or integration is authorized pending APPROVE.
+
+## RV-1-C-105 — Active Task125 re-review child
+
+- Fresh Task125 re-reviewer: child `/root/task125_rereview`, read-only on the
+  preserved Task125 worktree at `9ea55cbabb34c1d0f6fd55f22331685fd289e238`,
+  reviewing `7da9e29f..9ea55cba`. Task126 and Task127 issuer-regression
+  implementation lanes remain active and disjoint. No full-verifier,
+  integration, or `neo` action is active.
