@@ -5324,3 +5324,24 @@ explicit implementation authorization.
   rate-limit source is restored or the parent supplies a new authenticated
   gate. Reauthenticating the expired local account is a credential-state action
   outside this coordinator's inferred authority.
+
+## RV-1-C-148 — Parent-authenticated usage restoration and Task128 gate
+
+- Recorded at: 2026-07-14T22:05:00Z by the sole Relay C coordinator.
+- Usage correction: the parent supplied two stable, authenticated read-only
+  `account/rateLimits/read` results: primary weekly `usedPercent=0`, therefore
+  **100% remaining**, `resetsAt=1784666236`, and all five reset credits remain
+  available and untouched. This supersedes only the unavailable local-auth
+  source in `RV-1-C-147`; it does not redeem, reset, or mutate account state.
+  The program is in normal mode (>10%); DRAIN remains mandatory at <=10% and
+  HARD PAUSE at <=7%.
+- Task128 status correction: a duplicate implementation dispatch is neither
+  necessary nor authorized. The exact clean independently approved recovery is
+  `21f7690250a004c5174bb4f784ce9bd60472ccfe..0c7eb37f5fd0d5844c6fa849ccd62ea3da8f6f2a`
+  on `codex/task-128-resident-full-vision-local-model-provider-typecheck-recovery`.
+  It is the next serialized verifier consumer, not a new non-full worker lane.
+- Grant: after process and clean-worktree inspection, the coordinator may run
+  exactly one candidate `npm run verify` in that Task128 worktree. The full
+  verifier remains exclusive; Task125 stays in its separately owned non-full
+  TDD recovery, and Task126 remains unintegrated following its fresh-review
+  correction. No `neo` action is authorized.
