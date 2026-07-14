@@ -6162,3 +6162,38 @@ explicit implementation authorization.
   Current primary usage is `usedPercent=11` / **89% remaining**, reset credits
   remain untouched, DRAIN/HARD PAUSE controls remain in force, and `neo`
   remains untouched.
+
+## RV-1-E-177 — Task130 fresh-review findings and bounded forward repair
+
+- Fresh independent Terra/xhigh read-only review of the rebased Task130 range
+  `475d00dc..64f11e2c` returned **NEEDS-CHANGES** with three Important
+  findings. It ran `git diff --check` only (passed), no tests or full verifier.
+  The candidate remains unintegrated.
+- The coordinator independently checked the findings against the Task130 plan
+  and implementation. `provider_*` acceptance permits a self-consistent Codex
+  posture, violating xAI-specific capability semantics; the public
+  `test-official-xai-route` input lets callers avoid the required unavailable
+  path; and an arbitrary resolving append callback has no verified, exact
+  mounted append readback, so it cannot establish the mandated durable
+  unavailable evidence. These are accepted bounded repair requirements, not a
+  shared-contract expansion.
+- `/root/task130_xai_harness` is authorized for one forward repair commit on
+  its existing task branch, owning only its existing Task130 claim, source,
+  and focused test. Preserve candidate `64f11e2c` and make no program merge.
+  Add causal RED tests that reject a self-consistent non-xAI provider posture,
+  reject or otherwise fail closed for a caller-supplied test-route rather than
+  exposing it through the production `assess` API, and reject no-op or
+  wrong-workspace/mount append readbacks. Then enforce an xAI provider
+  identity/capability constraint, make absent official support reach only the
+  mounted, exact-bound, secret-safe unavailable path, and require a safe
+  append readback whose workspace/mount/run/provider/model/capability/policy
+  bindings match the evidence before returning `unavailable`.
+- This repair may use `superpowers:subagent-driven-development`, systematic
+  debugging, test-driven development, and verification-before-completion.
+  It must run the focused suite, then exactly `npm run typecheck && git diff
+  --check && npm run factory:check` as a single fail-fast chain before commit,
+  and stop for another fresh independent Terra/xhigh review. `npm run verify`
+  remains forbidden; no provider/network/credential action, fallback, material
+  read, child self-integration, merge, or `neo` change is authorized. Current
+  primary usage is `usedPercent=11` / **89% remaining**; reset credits remain
+  untouched and DRAIN/HARD PAUSE controls remain in force.
