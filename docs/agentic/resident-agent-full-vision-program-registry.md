@@ -3976,3 +3976,72 @@ explicit implementation authorization.
   documentation review of this corrected plan text is required before the
   deferral is accepted. No full verifier, integration, or `neo` action is
   authorized by this correction.
+
+## RV-1-C-110 — Task127 no-ff integration and merged verification
+
+- Approved Task127 candidate
+  `087821c3b3a98c5c92c91d6ea3f63ee644f1b72d` was verified as an ancestor and
+  integrated without history rewrite through no-ff merge
+  `93a93844a18343a3d49933a4bf9fb92190224aa5` into
+  `codex/resident-agent-full-vision-program-watchdog-recovery`. `neo` remains
+  untouched. The merge contains only the approved Task127 claim,
+  `packages/agent/src/os-secret-store.ts`, and
+  `packages/agent/test/os-secret-store.test.ts` scope.
+- Candidate verification had one non-authoritative isolated-worktree attempt
+  blocked by absent `tsc`; with the temporary dependency link restored only
+  for that test checkout and removed afterward, candidate `npm run verify`
+  passed typecheck, build, factory readiness, **197 passing + 3 skipped files**
+  and **2,371 passing + 5 skipped tests**. The coordinator then reran the
+  merged targeted command `npm test -- packages/agent/test/os-secret-store.test.ts
+  packages/agent/test/secret-store.test.ts` (**1 file / 21 tests passing**),
+  `git diff --check`, and `npm run factory:check`, followed by the sole merged
+  serialized `npm run verify`: typecheck, build, factory readiness,
+  **197 passing + 3 skipped files**, and **2,371 passing + 5 skipped tests**.
+  No source delta followed the merged gate.
+- The authenticated post-integration rate-limit reading remains
+  `usedPercent=77` / **23% weekly remaining**; all five reset credits remain
+  available and untouched. This is above the 10% DRAIN and 7% HARD-PAUSE
+  thresholds. The serialized full-verifier slot is now closed and idle until a
+  later reviewed candidate receives a new authenticated grant.
+
+## RV-1-C-111 — Authorized disjoint Wave 1 recovery and documentation review
+
+- Under the fresh 23% usage gate, Task125 restarts from rejected,
+  unintegrated `9ea55cbabb34c1d0f6fd55f22331685fd289e238` in its preserved
+  worktree. It owns only
+  `docs/agentic/claims/task-125-resident-full-vision-w1-portable-workspace-lifecycle.md`,
+  `packages/local-runtime/src/portable-workspace-lifecycle.ts`, and
+  `packages/local-runtime/test/portable-workspace-lifecycle.test.ts`.
+  It must TDD-prove that `authority.invalidate()` or disconnect immediately
+  revokes an issued admission, records the required outage, and prevents stale
+  admission use or continuing supervisor/reconciliation/runtime effects; it
+  must also resolve the removed test-type imports. Its exact focused command is
+  `npm test -- packages/local-runtime/test/portable-workspace-lifecycle.test.ts
+  packages/local-runtime/test/resident-identity-bootstrap.test.ts`.
+- Task126 restarts from rejected, unintegrated
+  `15549bbb1b9bd93863d8fc6066ce54e9aae1a212` in its preserved worktree. It
+  owns only `docs/agentic/claims/task-126-resident-full-vision-byok-provider.md`,
+  `packages/agent/src/byok-provider.ts`, and
+  `packages/agent/test/byok-provider.test.ts`. It must causal-RED then
+  fail-closed Green for elapsed `expiresAt`, authoritative exact bindings for
+  capability hash/version/source/revision, credential provenance, endpoint
+  policy ID, workspace/policy/task/attempt/approval-preview facts, and
+  URL-shaped raw model/adapter/policy input. It must preserve credential-free
+  BYOK posture, Nous/reference-provider separation, no secret or fallback
+  writes, and no generic OpenAI readiness inference. Its exact focused command
+  is `npm test -- packages/agent/test/byok-provider.test.ts
+  packages/agent/test/openai-compatible-provider.test.ts`.
+- Both implementers are expressly approved to use
+  `superpowers:subagent-driven-development` where relevant, plus systematic
+  debugging, test-driven development, verification-before-completion, and a
+  fresh independent defects-first review. They may run only focused,
+  typecheck, diff, and factory gates; they must remove temporary dependency
+  links, commit only their exact three-file scope, and stop for review. No
+  child self-review, child dispatch, full `npm run verify`, integration,
+  credential/provider use, fallback, or `neo` action is authorized.
+- A fresh independent, read-only documentation reviewer is authorized for the
+  corrected Task131 plan/registry commit `fc2ae4f1`. It must verdict whether
+  Tasks137/140 provide only the authoritative producer/composed runtime DTO,
+  deferred Task131 consumes that DTO directly, and Task141 remains the sole
+  HTTP/transport route and UI-composition owner. It may not authorize Task131
+  source work, a full verifier, integration, or `neo` action.
