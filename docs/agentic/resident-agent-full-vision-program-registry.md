@@ -2738,3 +2738,13 @@ explicit implementation authorization.
 - Task124 is integrated and verified. Before any new dispatch, the coordinator
   must obtain the next authenticated `/status` gate; rejected Task123 remains
   blocked on its ingestion-owned staged-report reader prerequisite.
+
+## RV-1-C-050 — Post-Task124 authenticated usage gate
+
+- Authenticated `/status` after Task124 integration reports Weekly limit **35%
+  left**, resetting 15:00 on 19 Jul; GPT-5.3-Codex-Spark weekly remains 100%
+  left. No reset or redemption occurred. This permits only one bounded
+  ingestion-owned staged-report reader prerequisite worker at this checkpoint.
+- Before its reviewer or any full verifier, obtain another live `/status` gate.
+  The worker is TDD/focused-only until separately granted the serialized full
+  slot; no `neo` change or child self-integration is authorized.
