@@ -5380,3 +5380,38 @@ explicit implementation authorization.
   tests**, typecheck, diff, and factory readiness; its temporary dependency
   link was removed and no full verifier ran. It requires fresh independent
   defects-first review before any full gate or integration.
+
+## RV-1-C-150 — Task125 review and Task126 precedence-repair authorization
+
+- Recorded at: 2026-07-14T22:25:00Z by the sole Relay C coordinator.
+- Usage gate: authenticated `/status` immediately before dispatch reported
+  **94% weekly remaining**, Spark 100%, and five untouched reset credits.
+  This is normal mode; the verifier slot remains closed and no full gate is
+  granted by this record.
+- Task125 review authorization: one fresh independent, read-only,
+  defects-first reviewer may inspect exact candidate
+  `4dca422de61db8ccab6d420960cb4d3abcfd249d..482361a5` in
+  `/home/drake/.codex/worktrees/task-125-resident-full-vision-portable-workspace-lifecycle`.
+  It must lead with P1/P2 findings and inspect strict own-data admission,
+  opaque generation/readback binding, monotonic invalidation, before/after
+  await guards, outage classification, and no fallback effects. It may run
+  inspection, `git diff --check`, and the recorded focused Task125 command
+  only; it may not edit, self-integrate, launch full verification, or touch
+  `neo`.
+- Task126 repair authorization: a fresh isolated worker may continue from
+  clean `512a169af3caad7e0c2d270040f24c36443913ec` in
+  `/home/drake/.codex/worktrees/task-126-resident-full-vision-byok-provider`.
+  `superpowers:subagent-driven-development` is explicitly approved where
+  relevant, together with systematic debugging, test-driven development,
+  verification-before-completion, and later fresh independent review. Its
+  exact owned files are the existing Task126 claim, `byok-provider.ts`, and
+  `byok-provider.test.ts`; no child may self-integrate or alter `neo`.
+- Task126 required sequence: first add and run causal RED coverage proving
+  malformed public requested use yields `blocked/unsafe-input` without reader
+  invocation even when the reader is absent or forged; preserve valid-input
+  absent/forged-reader `unavailable/authority-reader-unavailable` and hostile
+  reader fail-closed behavior. Then make the smallest normalization-before-
+  reader-inspection repair, run the exact focused suite, typecheck, diff, and
+  factory gates, remove temporary setup, update the claim, seal a clean commit,
+  and stop for fresh review. No full verifier, integration, network/provider
+  effect, reset-credit use, or downstream lane is granted.
