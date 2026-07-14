@@ -3561,3 +3561,23 @@ explicit implementation authorization.
   boundaries, TDD evidence, and scope. Neither authorization grants a full
   verifier, integration, child dispatch, credential/provider use, or `neo`
   change.
+
+## RV-1-C-088 — Task127 review rejection preserved
+
+- Fresh independent review of
+  `ceae7ca7..395319fbdfe5351653572fdfdc6e04c00ef794fb` returned
+  **NEEDS-CHANGES**. The candidate is rejected and remains unintegrated.
+  P1: its TypeScript-private `OpaqueSecretMaterial` constructor is public at
+  JavaScript runtime, registers forged instances in the accepted `WeakSet`,
+  and `isOpaqueMaterial` does not reject a released handle. A runtime-shaped
+  reproduction accepted both a forged constructor instance and a released
+  instance, violating non-forgeable, non-reusable exact-use capability
+  semantics. P2: causal coverage does not swap mount/run/capability-hash/
+  credential-reference bindings, does not directly exercise hostile proxy
+  input, and does not prove full safe-output/error/DTO/log boundary behavior.
+  P2: claim status remained `in-progress` at review handoff.
+- Review confirmed exact three-document scope, clean worktree, diff check and
+  factory readiness. Its environment lacked `vitest`/`tsc`, so it did not
+  independently rerun the retained focused/typecheck evidence. No candidate
+  full verifier, repair, integration, downstream dispatch, credential/provider
+  use, self-integration, or `neo` change is authorized by this verdict.
