@@ -4299,3 +4299,34 @@ explicit implementation authorization.
   counterfactuals before retaining the reservation through underlying
   settlement and normalizing without attacker-controlled array reads. No full
   verifier, integration, child self-review, or `neo` action is authorized.
+
+## RV-1-C-124 — Fresh review batch after sealed non-full repairs
+
+- Authenticated local Codex `/status` immediately before this batch reports
+  **97% weekly remaining** (reset 16:37 on 21 Jul), Spark Weekly **100%**,
+  and five reset credits available and untouched. No reset credit was used.
+  This is above normal-mode thresholds and authorizes the three read-only
+  reviews below; no full verifier or integration is authorized.
+- Task124 repair candidate
+  `aaca7d88ff4d4c12e8c8c67ac3d3b173edbe4fca` is clean atop rejected
+  `2248ee8d205670ac29763d31c6c2d79efaac65d9`: causal RED then focused
+  **51-test** Green, typecheck, diff, and factory passed, with no full run.
+  Fresh independent review must cover the original in-flight cancellation
+  contract plus persisted old-generation, forged-generation, stable identity,
+  reconciliation-key/readback, causation, and fail-closed recovery behavior.
+- Task128 repair candidate
+  `e1fa208245ba3032747be9375b7e552196a20ecf` is clean atop rejected
+  `06ceeba06830d952165875650cb53fce230e275f`: causal timeout-reservation and
+  hostile-array REDs then focused **38-test** Green, typecheck, diff, and
+  factory passed, with no full run. Fresh independent review must cover
+  abort-ignoring underlying work, every concurrency release path, own-data
+  array/descriptor handling before attacker-controlled reads, diagnostics, and
+  the credential-free/no-fallback provider boundary.
+- Fresh independent documentation review must cover
+  `76199148d3d0b6f8ce1d3cbb3b0e0da50012da3a..964a2d41729def6fcebe4700c5b1bd7fe298d556`:
+  Task126's injected reader is a capability port, unknown requests carry no
+  authority, absent injection is safe unavailable, Task139 later mounts the
+  implementation without becoming a Task126 predecessor, and Task141 retains
+  sole HTTP/transport and UI composition ownership. No reviewer may change
+  files, start a full verifier, integrate, dispatch a child, redeem a credit,
+  or touch `neo`.
