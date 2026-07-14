@@ -48,3 +48,37 @@ the smallest scoped repair, rerun that exact command, `npm run typecheck`,
 prohibited unless the coordinator grants a separate fresh gate. Stop for a
 fresh independent review with the exact RED/GREEN/gate evidence and candidate
 SHA.
+
+## RED/GREEN Evidence
+
+- Dependency recovery: the first named RED could not start because this
+  isolated worktree lacked ignored `node_modules` (`vitest: command not
+  found`). A temporary untracked symlink to the coordinator worktree's
+  lockfile-pinned runner was used only for the authorized focused commands and
+  removed before the candidate commit.
+- RED: `npm test -- packages/agent/test/local-model-provider.test.ts
+  packages/agent/test/provider-readiness.test.ts` exited `1` with the new
+  local suite failing at import because `../src/local-model-provider.js` was
+  absent. The unchanged readiness parity suite passed 19 tests. No provider,
+  network, credential, or fallback path was available or called.
+- Focused repair: the first implementation run exposed one classification
+  failure: a valid unavailable local-engine inspection was parsed as an
+  unsupported capability. The root cause was the inspection normalizer
+  collapsing its `unavailable` shape into `undefined`; the narrow repair
+  preserves that shape and maps it to the fixed safe
+  `local-engine-unavailable` category without copying an engine diagnostic.
+- GREEN: the exact named focused command exited `0` with two test files and
+  35 tests passing. The new counterfactuals cover absent/unavailable explicit
+  local capability; unsupported model, modality, tool, and structured-output
+  requirements; stale/swapped capability, policy, approval, and context
+  bindings; local budget, timeout/abort, and concurrency exhaustion; hostile
+  proxy input; and URL/secret-shaped engine errors. They prove no execution on
+  rejected inputs and no remote substitute, credential lookup, or fallback
+  state.
+- Follow-up gates: `npm run typecheck` exited `0`; `git diff --check` exited
+  `0` with no output; `npm run factory:check` exited `0` with
+  `factory-readiness passed`.
+- Full verification: not run; the coordinator explicitly prohibited `npm run
+  verify` for this task.
+- Status: ready-for-review. Stop for a fresh independent review before any
+  integration, rebase, merge, push, or `neo` action.
