@@ -6369,3 +6369,23 @@ explicit implementation authorization.
 - The repair may use `superpowers:subagent-driven-development`, systematic
   debugging, test-driven development, and verification-before-completion. It
   must run exactly `npm test -- packages/local-runtime/test/agent-runtime-specialist-runners.test.ts packages/agent/test/specialist-runner-kernel.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain before one forward commit, then stop for fresh independent review. Full verification remains **CLOSED**; no provider/network/credential action, self-review, self-integration, merge, or `neo` action is authorized. Current primary usage is `usedPercent=13` / **87% remaining**, reset credits untouched, and DRAIN/HARD PAUSE controls remain in force.
+
+## RV-1-E-184 — Task130 authentic-readback recovery integration
+
+- Fresh independent Terra/xhigh review approved exact recovery range
+  `75e61f92..87b43c41` with no findings. It confirmed the raw
+  authority/readback/equality/unavailable path is gone, forged callbacks are
+  rejected without invocation, xAI-only posture and prohibited-source
+  protections remain fail-closed, and Task139 remains the sole future real
+  mounting owner.
+- The coordinator alone no-ff merged `87b43c41` as `78f45626` on the program
+  branch. At that merged head, `npm test -- packages/agent/test/xai-subscription-harness.test.ts && npm run typecheck && git diff --check && npm run factory:check` completed successfully as one fail-fast chain (18 focused tests). No full verification ran.
+- Task130 is merged, typecheck-clean, and **non-full-verified**. Its present
+  behavior is intentionally blocked/no-append/no-unavailable until a future
+  Task139 real mounted authority; that safe limitation is not a provider
+  feasibility claim. Task133, Task136, and Task139 now have their Task130
+  predecessor only; their other required dependency/authorization controls
+  remain unchanged.
+- Primary usage remains `usedPercent=13` / **87% remaining**, reset credits
+  untouched; DRAIN/HARD PAUSE controls apply, the full verifier remains
+  **CLOSED**, and `neo` remains untouched.
