@@ -74,7 +74,7 @@ export async function createMountedPromptArtifactStore(input: {
   remount();
 
   return Object.freeze({
-    async put(envelope) {
+    async put(envelope: PromptArtifactEnvelope) {
       const bytes = Buffer.from(serializePromptArtifactEnvelope(envelope));
       const parsed = parsePromptArtifactEnvelope(bytes, envelope.resolvedContextPacks === undefined
         ? undefined
@@ -101,7 +101,7 @@ export async function createMountedPromptArtifactStore(input: {
       return Object.freeze({ inputArtifactHash });
     },
 
-    async read(readInput) {
+    async read(readInput: MountedPromptArtifactReadInput) {
       const before = remount();
       const bytes = await readFile(artifactPath(before.blobRoot, readInput.inputArtifactHash));
       const parsed = parsePromptArtifactEnvelope(bytes, readInput.authoritativeResolvedContextPacks === undefined
@@ -124,6 +124,9 @@ export async function createMountedPromptArtifactStore(input: {
         readInput.generatedAt === undefined || readInput.scope === undefined
       ) {
         throw new Error("Mounted production prompt readback requires the captured Task133.5 render tuple.");
+      }
+      if (readInput.runType === "ontology-bootstrap") {
+        throw new Error("Mounted production prompt readback does not support ontology-bootstrap.");
       }
       const witness = registerMountedProductionPromptReadback({
         envelope: parsed,
