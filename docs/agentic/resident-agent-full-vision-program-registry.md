@@ -10395,3 +10395,19 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Task133 source work remains frozen pending a reviewed plan correction. Full
   verification, providers, reset credits, integration, push, and every `neo`
   action remain closed.
+
+## RV-1-E-366 — Task133 authority-split plan correction dispatched
+
+- Docs-only Terra/xhigh author `019f66c3-08b5-7040-b204-a8f3b0ce8161`
+  started from exact program checkpoint
+  `dcb863e2` to write one terminal append-only correction in the active plan and
+  a new durable plan-amendment claim.
+- The author must reconcile Task133's fail-closed pre-P/R0 boundary with the
+  existing opaque Task140P admission and factory-private Task140R0 authority,
+  preserve strict schema/binder/durable semantics, repair receipt retention and
+  replay tests, and provide exact TDD commands, ownership, dependencies, and
+  review boundaries. Future implementation messages must explicitly approve
+  subagent-driven development where relevant.
+- Source, full verification, providers, reset credits, integration, push, and
+  every `neo` action remain closed. Two fresh independent plan approvals are
+  required before coordinator-only plan integration or renewed Task133 source.
