@@ -5,7 +5,7 @@
 - Branch: `codex/task-135c-prerequisite-checker`.
 - Worktree: `/home/drake/.codex/worktrees/c734/Cestus`.
 - Claimed at: 2026-07-15T00:00:00Z.
-- Status: blocked.
+- Status: in-progress.
 
 ## Coordinator Authorization And Frozen Prerequisites
 
@@ -128,3 +128,15 @@ terminated after their direct worker PIDs were identified; no unrelated process
 was touched. Per the coordinator's stop condition, no follow-up code repair,
 static audit, factory gate, full verification, or closed action is attempted.
 The scoped work is preserved for the next coordinator recovery checkpoint.
+
+## RV-1-E-339 EOF Recovery (2026-07-15)
+
+The coordinator recorded the EOF root cause as `RV-1-E-339`, preserved WIP
+`48b2abce8e91072a10e698cb0482e35e8f03f987`, and moved this clean worktree to
+`codex/task-135c-prerequisite-checker-review-repair-eof` at that exact
+checkpoint. The sole authorized production repair is an explicit
+`this.index < this.source.length` guard before matching the current character
+against only U+0020, U+0009, U+000A, and U+000D. Raw blobs, replacement-ref
+rejection, NBSP/BOM rejection, malformed retained payloads, terminal-runner
+fixtures, C-tree hash binding, and all closed-action prohibitions remain
+unchanged.
