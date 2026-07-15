@@ -439,3 +439,34 @@ Status: gate-passing and pending one scoped forward commit plus a distinct
 fresh Terra/xhigh review. No self-review, self-integration, merge, Task120
 restart, Task136 work, provider/network/credential/Nous action, or `neo`
 action is authorized.
+
+## CF-1R2 Replay-State Typecheck Recovery Evidence
+
+- Runtime metadata: authoritative session metadata at
+  `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T21-45-31-019f6373-58ab-74d3-993f-ff6841209d38.jsonl:8`
+  records `gpt-5.6-terra` with `xhigh` reasoning effort.
+- Required initial reproduction is the coordinator's standalone `npm run
+  typecheck` on this exact `f4ed276d` worktree: exit `2`, with TS4104 at
+  `packages/ontology/src/contracts.ts:936` and `:939`. No setup, provider,
+  network, credential, or Nous action was performed for this correction.
+- Root-cause hypothesis, confirmed against Zod's local `addIssue` declaration:
+  `addResidentLoopV2OrderedUniqueIssues` correctly exposes its incoming path
+  as readonly, but `z.RefinementCtx.addIssue` requires mutable
+  `PropertyKey[]`. Copying the path at the two issue construction sites gives
+  Zod an independently mutable array without widening the helper input or
+  changing any path values, parser behavior, event names, H proof, replay
+  budget/anchor/category repair, or runtime effect.
+- The compiler diagnostic is the type-only RED; no behavior-preserving test
+  change is necessary because the correction changes neither accepted input
+  nor emitted issue content. The focused suite then passed **2 files / 129
+  tests**.
+- The sole authorized non-full fail-fast command exited `0`:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It reported **2 files / 129 tests passing**; typecheck, diff check, and
+  factory readiness reached their successful completion stages. Full
+  verification was not run and remains closed.
+
+Status: gate-passing pending one scoped forward commit and a distinct fresh
+Terra/xhigh review. No self-review, self-integration, merge, Task120 restart,
+Task136 work, provider/network/credential/Nous action, or `neo` action is
+authorized.
