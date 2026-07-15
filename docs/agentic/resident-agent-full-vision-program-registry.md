@@ -7508,3 +7508,20 @@ explicit implementation authorization.
   exits 0, coordinator-only no-ff integration, and the same gate reruns on the
   actual program branch. Task135A remains blocked until that record; all
   closed gates remain in force.
+
+## RV-1-E-234 — Task134A coordinator integration and Task135A release
+
+- Coordinator-only no-ff integration is merge
+  `83a301d541e7fec5d0b29e6f2003566c06336158` on the program branch. The
+  coordinator reran the exact Task134A non-full fail-fast `&&` gate on that
+  actual merged checkout; 4 focused files / 46 tests, typecheck, whitespace,
+  and factory readiness again exited 0. This is the only integration of the
+  reviewed complete range beginning at `049de5bf` and including `6aaa5438`.
+- CF-1R5 now releases Task135A mounted preparation stores on a fresh isolated
+  worktree with claim, causal RED, exact non-full gate, and fresh independent
+  complete-range review. It consumes only Task134A's normalized untrusted
+  preparation and must not create H, factory registration, provider, durable,
+  or terminal behavior. Task140P/R0/H/R1 remain blocked on their full graph;
+  Task133 remains separately gated by its plan-review repair.
+- Full verification, provider/network/credential/Nous action, reset-credit
+  use, `neo`, and child self-integration remain **CLOSED**.
