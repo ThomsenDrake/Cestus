@@ -6389,3 +6389,31 @@ explicit implementation authorization.
 - Primary usage remains `usedPercent=13` / **87% remaining**, reset credits
   untouched; DRAIN/HARD PAUSE controls apply, the full verifier remains
   **CLOSED**, and `neo` remains untouched.
+
+## RV-1-E-185 — Task136 bounded-loop authorization
+
+- Task136 is independently unblocked from clean coordinator head `c377ece3`.
+  Recorded merged prerequisites are Task120 `49c3490a` (its required
+  coordinator prerequisite suite just passed **2 files / 9 tests**), Task124
+  `73003f60`, Task126 `2e7a8a01`, Task127 `93a93844`, Task128 `ba43f007`,
+  Task129 `d362d1a7`, and Task130 `78f45626`. Task136 opens no dependent row.
+- One fresh Terra/xhigh Lane L worker may use
+  `superpowers:subagent-driven-development`, systematic debugging, test-driven
+  development, fresh independent review, and verification-before-completion in
+  a new task worktree from this head. Exclusive files are new
+  `docs/agentic/claims/task-136-resident-full-vision-bounded-loop.md`,
+  `packages/agent/src/bounded-agent-loop.ts`, and
+  `packages/agent/test/bounded-agent-loop.test.ts`; `turn_context` metadata is
+  authoritative runtime evidence, not generic model-family prose.
+- The finite loop consumes—not replaces—Task120 durable plan/observation
+  readbacks, W authority/claim revalidation, exact P posture, the existing
+  gateway's request/decision/result readbacks, approval consumption, and H's
+  complete handoff readback/projection. It must reject stale/foreign/forged
+  state and reverify after every await before append/effect/continuation; it may
+  never select provider/model/tool/permission/budget, use raw shell/provider
+  bytes/credentials, create a memory recovery/fallback, change shared schemas,
+  mounts/factory/routes/UI, or invoke a real provider.
+- Write/run causal RED then the table-focused suite. Before one scoped commit,
+  run exactly `npm test -- packages/agent/test/bounded-agent-loop.test.ts packages/agent/test/execution-loop.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain. The full verifier remains **CLOSED** (`npm run verify` forbidden); no self-review, self-integration, merge, or `neo` action is allowed. Stop for a fresh independent Terra/xhigh review.
+- Primary usage remains `usedPercent=13` / **87% remaining**, reset credits
+  untouched, and DRAIN/HARD PAUSE controls remain in force.
