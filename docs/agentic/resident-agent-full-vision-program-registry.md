@@ -12694,3 +12694,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   exact-SHA reviews. Full verification, live/provider/network/credential/Nous
   activity, reset credits, push, child self-integration, program merge without
   coordinator review, and every `neo` action remain closed.
+
+## RV-1-E-466 — Task137A corrected candidate rejected by both reviews
+
+- Mounted-authority/lifecycle reviewer
+  `019f680c-7e0b-7112-8c60-90422bdb1354` and adversarial TypeScript semantic-
+  policy/compiler reviewer `019f680c-7fff-7381-84fc-785a765fc17e` returned
+  **NEEDS-CHANGES** for exact candidate
+  `b767abb1335428934abfbc7aeb4a2e6c8b02bf25` after the literal 78-test gate,
+  standalone typecheck, static, diff, and factory checks passed.
+- Loader policy misses aliased/bound `module.require`, variable protected
+  specifiers, and computed `createRequire` access. Taint flow misses object/
+  array destructuring assignments, property writes, and default parameters,
+  while name-only fallbacks reject harmless metadata and ordinary calls.
+- Candidate `b767abb1335428934abfbc7aeb4a2e6c8b02bf25` must not be integrated.
+  The coordinator-owned ignored dependency link was removed.
+
+## RV-1-E-467 — Task137A Recovery-4 owner dispatched
+
+- Fresh Terra/xhigh recovery owner
+  `019f681b-d1c0-7570-a742-2e1dc51924b4`, worktree
+  `/home/drake/.codex/worktrees/294f/Cestus`, starts from the rejected candidate
+  and must create
+  `codex/task-137a-mounted-artifact-authority-operation-recovery-4`.
+- The coordinator explicitly approves task-scoped subagent-driven development
+  with exactly one production writer. The owner must replace syntax-by-syntax
+  patches with a principled semantic loader and protected-value export policy,
+  preserve the liveness repair, and add mutation-oriented counterfactuals.
+- Any replacement requires fresh coordinator admission and two new independent
+  exact-SHA reviews. Full verification, live/provider/network/credential/Nous
+  activity, reset credits, push, child self-integration, program merge without
+  coordinator review, and every `neo` action remain closed.
