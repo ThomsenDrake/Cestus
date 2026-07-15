@@ -7266,3 +7266,21 @@ explicit implementation authorization.
   and reset credits must not be redeemed. All full-verifier, `neo`, provider/
   network/credential/Nous, child self-integration, and downstream-task closures
   remain in force.
+
+## RV-1-E-221 — Task132A true-lineage review approval
+
+- Fresh independent Terra/xhigh reviewer
+  `019f6406-85f3-7f92-b847-7261c1139f2b` reviewed the only admissible complete
+  three-commit range
+  `6d4839865166df9e17ca219b856abf1b81b18fc8..812e5899f339eda84bf187033e08c44ff7ba945f`
+  and returned **APPROVED**. It confirmed exact eight-file scope, no public
+  capture/consume/mint route, lexical unexported factory verifier, default
+  fail-closed composition, retained real registrar evidence/public ordinary
+  `buildResolved`, truthful retired-test boundaries, Task140R0 deferral of all
+  six live checks, and no H/orchestrator/provider/durable/terminal scope drift.
+- Candidate `812e5899f339eda84bf187033e08c44ff7ba945f` is eligible only for a
+  coordinator-only no-ff merge after a fresh post-review exact non-full gate
+  exits 0. The coordinator must rerun that same gate again on the actual
+  program branch after merging. Tasks133/134 remain blocked until that result;
+  full verify, `neo`, provider/network/credential/Nous action, reset-credit use,
+  and child self-integration remain **CLOSED**.
