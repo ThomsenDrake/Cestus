@@ -11267,3 +11267,18 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Task133 reviewed bytes remain the isolated cherry-picked commit. Full
   verification, providers, network, credentials, Nous, reset credits, push,
   and every `neo` action remain closed.
+
+## RV-1-E-412 — Task135C integration compiler guard approved
+
+- Independent read-only reviewer
+  `019f6732-d227-7693-b93a-0c0186fdbfb5` returned unqualified **APPROVED**
+  for exact supporting commit
+  `1590a7ba1a5c63aa5967b4cbdf776e1289c862a9`.
+- The reviewer confirmed the explicit `cf1` guard fails closed before
+  `git replace`, preserves the replacement-ref rejection witness, and changes
+  exactly the Task135C focused test plus registry evidence in one direct-parent
+  non-merge commit.
+- Fresh review verification passed the Task135C focused suite at 18/18,
+  `npm run typecheck`, commit diff checking, and factory readiness. No defects
+  were found; full/live/provider/credential/Nous/reset-credit/push/`neo`
+  actions remain closed.
