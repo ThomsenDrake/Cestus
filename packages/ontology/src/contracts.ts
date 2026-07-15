@@ -933,10 +933,10 @@ function addResidentLoopV2OrderedUniqueIssues(
 ): void {
   const expected = [...values].sort((left, right) => left.localeCompare(right));
   if (expected.some((value, index) => value !== values[index])) {
-    ctx.addIssue({ code: "custom", path, message: `${label} must be canonically ordered` });
+    ctx.addIssue({ code: "custom", path: [...path], message: `${label} must be canonically ordered` });
   }
   if (new Set(values).size !== values.length) {
-    ctx.addIssue({ code: "custom", path, message: `${label} must not contain duplicates` });
+    ctx.addIssue({ code: "custom", path: [...path], message: `${label} must not contain duplicates` });
   }
 }
 
