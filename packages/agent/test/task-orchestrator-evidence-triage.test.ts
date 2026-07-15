@@ -337,6 +337,10 @@ async function prepareEvidenceTriageVertical(options: {
           throw new Error("Task 8 prompt renderer did not receive resolved payload sentinel.");
         }
         return promptArtifact;
+      },
+      readback(_input: unknown, rendered: unknown) {
+        if (rendered !== promptArtifact) throw new Error("Expected exact rendered prompt artifact.");
+        return promptArtifact.manifest.inputArtifactHash;
       }
     },
     providerRegistry: createProviderRegistry.withDefaultsForTest(),

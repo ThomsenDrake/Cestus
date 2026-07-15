@@ -1,5 +1,4 @@
 import { open, mkdir, readFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
   parsePromptArtifactEnvelope,
@@ -7,12 +6,11 @@ import {
   type PromptArtifactEnvelope
 } from "../../agent/src/prompt-artifacts.js";
 import {
-  registerMountedProductionPromptReadback,
+  createMountedProductionPromptReadbackAuthority,
+  issueMountedProductionPromptReadback,
   type MountedProductionPromptReadbackWitness
 } from "../../agent/src/production-prompt-readback.js";
 import type { VerifiedResolvedContextPack } from "../../agent/src/context-packs.js";
-import type { ProductionRunScope } from "../../agent/src/production-specialist-registration-metadata.js";
-import type { TaskOrchestratorRunType } from "../../agent/src/task-orchestrator-types.js";
 import { mountPortableWorkspace, type MountedPortableWorkspace } from "../../workspace/src/index.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 
@@ -24,11 +22,6 @@ export interface MountedPromptArtifactStore {
 export interface MountedPromptArtifactReadInput {
   readonly inputArtifactHash: `sha256:${string}`;
   readonly authoritativeResolvedContextPacks?: readonly VerifiedResolvedContextPack[] | undefined;
-  readonly taskId?: string | undefined;
-  readonly attemptId?: string | undefined;
-  readonly runType?: TaskOrchestratorRunType | undefined;
-  readonly generatedAt?: string | undefined;
-  readonly scope?: ProductionRunScope | undefined;
 }
 
 export interface MountedPromptArtifactReadResult {
@@ -60,7 +53,6 @@ export async function createMountedPromptArtifactStore(input: {
   ) {
     throw new Error("Portable prompt artifact store configuration does not match the mounted workspace.");
   }
-  const mountInstanceId = `mounted-prompt-readback-process-${randomUUID()}`;
   const remount = (): PortableTuple => {
     const mounted = mountPortableWorkspace({ rootDir: captured.rootDir, expectedWorkspaceId: captured.workspaceId });
     if (!mounted.ok) throw new Error("Portable prompt artifact store mount is unavailable.");
@@ -72,6 +64,34 @@ export async function createMountedPromptArtifactStore(input: {
   };
   // Establish the initial current tuple before returning an object capable of I/O.
   remount();
+  const authority = createMountedProductionPromptReadbackAuthority({ currentMount: remount });
+  const mountedAwait = async <T>(operation: () => Promise<T>): Promise<T> => {
+    remount();
+    try {
+      return await operation();
+    } finally {
+      remount();
+    }
+  };
+  const readCanonical = async (
+    inputArtifactHash: `sha256:${string}`,
+    authoritativeResolvedContextPacks: readonly VerifiedResolvedContextPack[] | undefined
+  ): Promise<{ readonly envelope: PromptArtifactEnvelope; readonly canonical: Uint8Array }> => {
+    const before = remount();
+    const bytes = await mountedAwait(async () => await readFile(artifactPath(before.blobRoot, inputArtifactHash)));
+    const parsed = parsePromptArtifactEnvelope(bytes, authoritativeResolvedContextPacks === undefined
+      ? undefined
+      : { authoritativeResolvedContextPacks });
+    if (parsed.manifest.inputArtifactHash !== inputArtifactHash) {
+      throw new Error("Portable prompt artifact readback hash does not match the requested artifact.");
+    }
+    const canonical = Buffer.from(serializePromptArtifactEnvelope(parsed));
+    if (!canonical.equals(Buffer.from(bytes))) {
+      throw new Error("Portable prompt artifact readback bytes are not canonical.");
+    }
+    remount();
+    return Object.freeze({ envelope: parsed, canonical });
+  };
 
   return Object.freeze({
     async put(envelope: PromptArtifactEnvelope) {
@@ -82,17 +102,17 @@ export async function createMountedPromptArtifactStore(input: {
       const inputArtifactHash = parsed.manifest.inputArtifactHash as `sha256:${string}`;
       const before = remount();
       const path = artifactPath(before.blobRoot, inputArtifactHash);
-      await mkdir(join(before.blobRoot, "agent-prompt-artifacts", "sha256", digestFor(inputArtifactHash).slice(0, 2)), { recursive: true });
+      await mountedAwait(async () => await mkdir(join(before.blobRoot, "agent-prompt-artifacts", "sha256", digestFor(inputArtifactHash).slice(0, 2)), { recursive: true }));
       try {
-        const file = await open(path, "wx");
+        const file = await mountedAwait(async () => await open(path, "wx"));
         try {
-          await file.writeFile(bytes);
+          await mountedAwait(async () => await file.writeFile(bytes));
         } finally {
-          await file.close();
+          await mountedAwait(async () => await file.close());
         }
       } catch (error) {
         if (!isAlreadyExists(error)) throw error;
-        const existing = await readFile(path);
+        const existing = await mountedAwait(async () => await readFile(path));
         if (!Buffer.from(existing).equals(bytes)) {
           throw new Error("Portable prompt artifact store EEXIST bytes differ from the canonical envelope.");
         }
@@ -102,52 +122,71 @@ export async function createMountedPromptArtifactStore(input: {
     },
 
     async read(readInput: MountedPromptArtifactReadInput) {
-      const before = remount();
-      const bytes = await readFile(artifactPath(before.blobRoot, readInput.inputArtifactHash));
-      const parsed = parsePromptArtifactEnvelope(bytes, readInput.authoritativeResolvedContextPacks === undefined
-        ? undefined
-        : { authoritativeResolvedContextPacks: readInput.authoritativeResolvedContextPacks });
-      if (parsed.manifest.inputArtifactHash !== readInput.inputArtifactHash) {
-        throw new Error("Portable prompt artifact readback hash does not match the requested artifact.");
-      }
-      const canonical = Buffer.from(serializePromptArtifactEnvelope(parsed));
-      if (!canonical.equals(Buffer.from(bytes))) {
-        throw new Error("Portable prompt artifact readback bytes are not canonical.");
-      }
-      const after = remount();
-      const production = parsed.manifest.production;
+      const { inputArtifactHash, authoritativeResolvedContextPacks } = normalizeReadInput(readInput);
+      const readback = await readCanonical(inputArtifactHash, authoritativeResolvedContextPacks);
+      const production = readback.envelope.manifest.production;
       if (production?.schemaVersion !== "agent-production-prompt-binding.v1") {
-        return Object.freeze({ envelope: parsed });
+        return Object.freeze({ envelope: readback.envelope });
       }
-      if (
-        readInput.taskId === undefined || readInput.attemptId === undefined || readInput.runType === undefined ||
-        readInput.generatedAt === undefined || readInput.scope === undefined
-      ) {
-        throw new Error("Mounted production prompt readback requires the captured Task133.5 render tuple.");
-      }
-      if (readInput.runType === "ontology-bootstrap") {
-        throw new Error("Mounted production prompt readback does not support ontology-bootstrap.");
-      }
-      const witness = registerMountedProductionPromptReadback({
-        envelope: parsed,
-        serializedEnvelope: canonical,
-        ...(readInput.authoritativeResolvedContextPacks === undefined ? {} : {
-          authoritativeResolvedContextPacks: readInput.authoritativeResolvedContextPacks
+      const witness = await issueMountedProductionPromptReadback({
+        serializedEnvelope: readback.canonical,
+        ...(authoritativeResolvedContextPacks === undefined ? {} : {
+          authoritativeResolvedContextPacks
         }),
-        workspaceId: after.workspaceId,
-        rootDir: after.rootDir,
-        blobRoot: after.blobRoot,
-        taskId: readInput.taskId,
-        runId: readInput.attemptId,
-        runType: readInput.runType,
-        generatedAt: readInput.generatedAt,
-        scope: readInput.scope,
-        contextPackRefs: parsed.manifest.contextPackRefs,
-        mountInstanceId
+        authority,
+        rereadCanonicalBytes: async () => (await readCanonical(inputArtifactHash, authoritativeResolvedContextPacks)).canonical
       });
-      return Object.freeze({ envelope: parsed, witness });
+      return Object.freeze({ envelope: readback.envelope, witness });
     }
   });
+}
+
+function normalizeReadInput(value: unknown): {
+  readonly inputArtifactHash: `sha256:${string}`;
+  readonly authoritativeResolvedContextPacks: readonly VerifiedResolvedContextPack[] | undefined;
+} {
+  if (typeof value !== "object" || value === null || Object.getPrototypeOf(value) !== Object.prototype || Object.getOwnPropertySymbols(value).length !== 0) {
+    throw new Error("Portable prompt artifact read input must be a plain data object.");
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Object.keys(descriptors);
+  if (
+    !keys.every((key) => key === "inputArtifactHash" || key === "authoritativeResolvedContextPacks") ||
+    !Object.prototype.hasOwnProperty.call(descriptors, "inputArtifactHash")
+  ) {
+    throw new Error("Portable prompt artifact read input has unexpected fields.");
+  }
+  const hash = descriptors.inputArtifactHash;
+  if (hash === undefined || !("value" in hash) || typeof hash.value !== "string" || !/^sha256:[a-f0-9]{64}$/.test(hash.value)) {
+    throw new Error("Portable prompt artifact read input requires a canonical inputArtifactHash data field.");
+  }
+  const packs = descriptors.authoritativeResolvedContextPacks;
+  if (packs === undefined) return Object.freeze({ inputArtifactHash: hash.value as `sha256:${string}`, authoritativeResolvedContextPacks: undefined });
+  if (!("value" in packs)) throw new Error("Portable prompt artifact read input context packs must be data-only.");
+  return Object.freeze({
+    inputArtifactHash: hash.value as `sha256:${string}`,
+    authoritativeResolvedContextPacks: normalizeContextPackArray(packs.value)
+  });
+}
+
+function normalizeContextPackArray(value: unknown): readonly VerifiedResolvedContextPack[] {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length !== 0) {
+    throw new Error("Portable prompt artifact read input context packs must be a plain dense array.");
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const expected = new Set(["length", ...Array.from({ length: value.length }, (_, index) => String(index))]);
+  if (Object.keys(descriptors).length !== expected.size || !Object.keys(descriptors).every((key) => expected.has(key))) {
+    throw new Error("Portable prompt artifact read input context packs must be dense without extra properties.");
+  }
+  const packs: VerifiedResolvedContextPack[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (descriptor === undefined || !("value" in descriptor)) {
+      throw new Error("Portable prompt artifact read input context packs must be data-only.");
+    }
+    packs.push(descriptor.value as VerifiedResolvedContextPack);
+  }
+  return Object.freeze(packs);
 }
 
 function tupleFor(workspace: MountedPortableWorkspace): PortableTuple {

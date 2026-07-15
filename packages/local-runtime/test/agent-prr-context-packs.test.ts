@@ -62,12 +62,7 @@ describe("local runtime selected PRR context pack registration", () => {
       await store.put(prompt);
       const readback = await store.read({
         inputArtifactHash: prompt.manifest.inputArtifactHash as `sha256:${string}`,
-        authoritativeResolvedContextPacks: resolved,
-        taskId: "task_prr_preapproval",
-        attemptId: "attempt_prr_preapproval",
-        runType: "prr-negotiation",
-        generatedAt: now(),
-        scope: selectedPrrRunScope("prr_req_selected")
+        authoritativeResolvedContextPacks: resolved
       });
       if (readback.witness === undefined) throw new Error("Expected mounted PRR prompt readback witness.");
       expect(readback.witness.inputArtifactHash).toBe(prompt.manifest.inputArtifactHash);
@@ -403,12 +398,7 @@ async function mountedPrrReadbackWitness(input: {
   await store.put(prompt);
   const readback = await store.read({
     inputArtifactHash: prompt.manifest.inputArtifactHash as `sha256:${string}`,
-    authoritativeResolvedContextPacks: resolvedContextPacks,
-    taskId: input.taskId,
-    attemptId: input.runId,
-    runType: "prr-negotiation",
-    generatedAt: now(),
-    scope: input.scope
+    authoritativeResolvedContextPacks: resolvedContextPacks
   });
   if (readback.witness === undefined) throw new Error("Expected mounted PRR prompt readback witness.");
   return readback.witness;
