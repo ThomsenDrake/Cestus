@@ -111,6 +111,16 @@ describe("mounted preparation stores", () => {
     expect(stores.calls).toEqual({ materialPut: 0, materialGet: 0, manifestPut: 0, manifestGet: 0 });
   });
 
+  it.each(mountedStoreMutations)("rejects a changed captured artifactStores %s before any store activity", (field, replacementFor) => {
+    const stores = storesFor();
+    const binder = binderFor(stores);
+
+    stores.stores[field] = replacementFor(stores) as never;
+
+    expect(() => binder.prepare(preparationFor())).toThrow(/binding-invalid/i);
+    expect(stores.calls).toEqual({ materialPut: 0, materialGet: 0, manifestPut: 0, manifestGet: 0 });
+  });
+
   it("rejects mismatched stores before it creates a binder", () => {
     const stores = storesFor();
     expect(() => createMountedSpecialistHandoffPreparationBinder({
@@ -156,9 +166,19 @@ type MutableMountedPreparationAuthority = Omit<MountedPreparationAuthority,
   sourceHighWaterMark: number;
 };
 
+type StoreCalls = { materialPut: number; materialGet: number; manifestPut: number; manifestGet: number };
+
+type MutableMountedAgentArtifactStores = Omit<MountedAgentArtifactStores,
+  "workspaceId" | "mountInstanceId" | "materialStore" | "manifestStore"> & {
+  workspaceId: string;
+  mountInstanceId: string;
+  materialStore: MountedAgentArtifactStores["materialStore"];
+  manifestStore: MountedAgentArtifactStores["manifestStore"];
+};
+
 function storesFor(): {
-  readonly stores: MountedAgentArtifactStores;
-  readonly calls: { materialPut: number; materialGet: number; manifestPut: number; manifestGet: number };
+  readonly stores: MutableMountedAgentArtifactStores;
+  readonly calls: StoreCalls;
 } {
   const calls = { materialPut: 0, materialGet: 0, manifestPut: 0, manifestGet: 0 };
   return {
@@ -187,6 +207,40 @@ function storesFor(): {
           return Buffer.from("manifest");
         }
       }
+    }
+  };
+}
+
+const mountedStoreMutations: readonly (readonly [
+  "workspaceId" | "mountInstanceId" | "materialStore" | "manifestStore",
+  (stores: ReturnType<typeof storesFor>) => unknown
+])[] = [
+  ["workspaceId", () => "workspace_swapped_after_capture"],
+  ["mountInstanceId", () => "mount_swapped_after_capture"],
+  ["materialStore", (stores) => replacementStoreFor(stores.calls, "material")],
+  ["manifestStore", (stores) => replacementStoreFor(stores.calls, "manifest")]
+];
+
+function replacementStoreFor(
+  calls: StoreCalls,
+  role: "material" | "manifest"
+): MountedAgentArtifactStores["materialStore"] {
+  return {
+    async put() {
+      if (role === "material") {
+        calls.materialPut += 1;
+      } else {
+        calls.manifestPut += 1;
+      }
+      return { contentHash: hash(role === "material" ? "x" : "y"), sizeBytes: 1 };
+    },
+    async get() {
+      if (role === "material") {
+        calls.materialGet += 1;
+      } else {
+        calls.manifestGet += 1;
+      }
+      return Buffer.from(role);
     }
   };
 }
