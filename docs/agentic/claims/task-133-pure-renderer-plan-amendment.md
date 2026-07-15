@@ -13,8 +13,10 @@
 
 The sole executable contract is the latest appended correction in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`,
-read backward only for sections it explicitly preserves. CF-1R18 owns the
-coordinator CF-1 ownership revision, R-owned factory capture, exact Task137A
+read backward only for sections it explicitly preserves. CF-1R19 owns the
+exact immutable Task117A/Task135D prerequisite inventory, fail-closed Task117A
+audit extraction, and machine-enforced Task137A six-file lineage gate. CF-1R18
+owns the coordinator CF-1 ownership revision, R-owned factory capture, exact Task137A
 scope, Task135B component boundary, private WeakMap H guard, Task140H full-
 progression integration, and every affected-task command. CF-1R17 owns only
 the remaining run-bound cursor/high-water progression semantics that CF-1R18
@@ -72,8 +74,8 @@ Task120 `49c3490a262162bd1d7146994390a2a6b5052394`, Task126
 Task134A `83a301d541e7fec5d0b29e6f2003566c06336158`, and reviewed/coordinator-
 integrated Task135A `ac3f91901da0c9b23722a046be73d95746f691da`. Before Task140P,
 its strict machine-checked manifest must additionally record the exact
-reviewed/coordinator-integrated Task135B/135C and Task136-139 full SHAs and
-prove its base descends from every required predecessor; no branch name,
+reviewed/coordinator-integrated Task117A, Task135B/135C/135D, and Task136-139
+full SHAs and prove its base descends from every required predecessor; no branch name,
 placeholder, or candidate SHA is sufficient. R0 and H repeat that manifest
 inventory plus each preceding Task140 SHA. The
 implementation claim must
@@ -626,6 +628,26 @@ serialized task.
   appears on any binding or controller. Task140P's H port stores the factory
   closure in a private WeakMap keyed by the exact resolved binding; only
   Task140H brackets real H appends and owns the named full-progression test.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.
+
+## Forward Correction — Fail-Closed Dispatch And Exact File Ceiling
+
+- Status remains **plan-repair candidate only**. Fresh lifecycle reviewer
+  `019f6591-ad58-7152-9db4-ad24f44a0c16` and authority reviewer
+  `019f6591-e651-7440-a1a7-43678150c94b` rejected `85660558` because the
+  immutable P/R0/H prerequisite inventory omitted Task117A/Task135D, the
+  Task117A audit extractor could succeed with no selected oracle block, and
+  Task137A's six-file ceiling had no changed-path equality gate.
+- CF-1R19 adds literal `task117a` and `task135d` keys to every applicable
+  immutable manifest and causal negative tests for their absence. Task117A's
+  extractor now requires exactly one nonempty canonical audit block before
+  executing it. Task137A records an immutable exact dispatch base in its
+  claim-only first commit and compares its complete committed/uncommitted task
+  lineage to the exact six permitted paths before GREEN review can pass.
 - Source implementation, full verification, provider/network/credential/Nous
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed. Exactly two fresh independent unqualified Terra/xhigh

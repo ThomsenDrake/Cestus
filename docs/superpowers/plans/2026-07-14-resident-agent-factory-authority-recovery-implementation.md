@@ -5650,3 +5650,103 @@ commands, and all preserved CF-1R17/R16 safety requirements. Exactly two
 unqualified approvals permit coordinator-only plan integration. Source,
 full/live/provider/credential/Nous/reset-credit/`neo`/self-integration/merge
 remain closed.
+
+## CF-1R19 Fail-Closed Dispatch And File-Ceiling Enforcement
+
+**Status:** This append-only correction supersedes CF-1R18 only where its
+immutable prerequisite inventory omitted Task117A/Task135D, its Task117A audit
+extractor could select no block and still succeed, and its Task137A six-file
+ceiling lacked a machine-enforced changed-path equality gate. Every other
+CF-1R18 ownership, lifecycle, authority, component/integration split, command,
+and restriction remains current. Source remains frozen pending two fresh
+independent approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`.
+
+### Exact immutable prerequisite inventory
+
+Task135C's exact `task140p` prerequisite-map keys are now:
+
+```text
+cf1, task117a, task120, task121, task122, task123, task124, task125, task126,
+task127, task128, task129, task130, task132a, task133, task134a, task135a,
+task135b, task135c, task135d, task136, task137a, task137b, task138, task139
+```
+
+`task140r0` requires that exact set plus `task140p`; `task140h` requires the P
+set plus `task140p` and `task140r0`. The checker rejects missing, duplicate,
+aliased, generic-range, symbolic, abbreviated, or extra keys. The Task135C test
+must include separate exact-title cases `rejects task140p without task117a`,
+`rejects task140p without task135d`, `rejects task140r0 without task117a or
+task135d`, and `rejects task140h without task117a or task135d`, in addition to
+all previously required v2 manifest, immutable-claim, exact-SHA, ancestry,
+parent, task, and dispatch-bundle cases. Its owned files and complete commands
+remain CF-1R18/CF-1R16.
+
+Every P/R0/H manifest records the exact reviewed/coordinator-integrated
+Task117A and Task135D commit SHAs. `sourceBaseSha` must descend from both. A
+manifest generated before either integration is invalid and cannot be repaired
+by changing its bytes or immutable claim block.
+
+### Fail-closed Task117A oracle extraction
+
+Task117A's exact GREEN/review command is replaced by this command:
+
+```bash
+audit_tmp="$(mktemp)" && trap 'rm -f "$audit_tmp"' EXIT && awk '/^```bash$/{inside=1; block=""; next} inside && /^```$/{if (block ~ /CF-1 full-row canonicalRows audit/) {matches++; selected=block} inside=0; next} inside{block=block $0 ORS} END{if (matches != 1 || selected == "") exit 41; printf "%s", selected}' docs/agentic/resident-agent-full-vision-contract-freeze.md > "$audit_tmp" && test -s "$audit_tmp" && bash "$audit_tmp" && git diff --check && npm run factory:check
+```
+
+The extractor must select exactly one nonempty bash block containing the
+canonical audit marker. Zero matches, duplicate matches, an empty selection,
+or malformed extracted shell exits nonzero before `factory:check`. Task117A's
+review repeats this exact command from its committed candidate.
+
+### Machine-enforced Task137A six-file ceiling
+
+The Task137A claim must contain exactly one coordinator/worker-visible immutable
+line of this form, written before any test or source edit and committed alone
+on the clean dispatch base:
+
+```text
+<!-- task-137a-dispatch-base-sha: 0123456789012345678901234567890123456789 -->
+```
+
+The literal value is the exact lowercase 40-character dispatch-base commit,
+not a branch, tag, abbreviation, placeholder, or later commit. The claim-add
+commit's parent must equal that value, and that commit may add only
+`docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md`.
+Review requires the final claim's marker to equal the marker at that original
+claim-add commit.
+
+Task137A's focused RED command is:
+
+```bash
+npm test -- packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/agent/test/wake-supervisor.test.ts
+```
+
+After GREEN and during every fresh review, Task137A runs this complete gate:
+
+```bash
+task137a_claim='docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md' && task137a_base_lines="$(sed -n 's/^<!-- task-137a-dispatch-base-sha: \([0-9a-f]\{40\}\) -->$/\1/p' "$task137a_claim")" && test "$(printf '%s\n' "$task137a_base_lines" | sed '/^$/d' | wc -l)" -eq 1 && task137a_base="$task137a_base_lines" && test "$(git rev-parse "${task137a_base}^{commit}")" = "$task137a_base" && task137a_claim_commit="$(git log --diff-filter=A --format=%H -- "$task137a_claim" | tail -n 1)" && test -n "$task137a_claim_commit" && test "$(git rev-parse "${task137a_claim_commit}^")" = "$task137a_base" && test "$(git diff --name-only "${task137a_claim_commit}^..${task137a_claim_commit}")" = "$task137a_claim" && test "$(git show "${task137a_claim_commit}:${task137a_claim}" | sed -n 's/^<!-- task-137a-dispatch-base-sha: \([0-9a-f]\{40\}\) -->$/\1/p')" = "$task137a_base" && task137a_actual="$( { git diff --name-only "${task137a_base}..HEAD"; git diff --name-only; git diff --name-only --cached; git ls-files --others --exclude-standard; } | LC_ALL=C sort -u)" && task137a_expected="$(printf '%s\n' docs/agentic/claims/task-137a-mounted-artifact-authority-operation.md packages/local-runtime/src/mounted-artifact-authority-operation.ts packages/local-runtime/src/portable-workspace-lifecycle.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts | LC_ALL=C sort -u)" && test "$task137a_actual" = "$task137a_expected" && npm test -- packages/local-runtime/test/mounted-artifact-authority-operation.test.ts packages/local-runtime/test/mounted-artifact-authority-operation-imports.test.ts packages/local-runtime/test/portable-workspace-lifecycle.test.ts packages/local-runtime/test/runtime-handle-mounted-authority.test.ts packages/local-runtime/test/runtime-handle-mounted-authority-imports.test.ts packages/agent/test/wake-supervisor.test.ts && npm run typecheck && test ! -e packages/local-runtime/src/index.ts && ! rg -n 'mounted-artifact-authority-operation|FactoryIssuedMountedRuntimeCapture' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+The tracked task lineage plus staged, unstaged, and untracked work must equal
+the same six paths byte-for-byte after sorting. A seventh path, an omitted path,
+a rewritten dispatch marker, a non-claim file in the claim commit, or a base
+that is not the claim commit's exact parent rejects before tests can authorize
+review or integration.
+
+### CF-1R19 dispatch and review rule
+
+The CF-1R18 serialized dependency chain is unchanged. No source lane starts
+before reviewed/coordinator-integrated Task117A. Every P/R0/H dispatch waits for
+and names reviewed/coordinator-integrated Task117A and Task135D in its immutable
+manifest. Every implementation message must specifically state that the
+coordinator approves use of `superpowers:subagent-driven-development` for that
+exact task.
+
+Two fresh independent Terra/xhigh reviewers inspect exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. Approval requires explicit
+proof of the exact prerequisite sets, fail-closed single-oracle extraction, and
+Task137A lineage-wide six-path equality gate in addition to every preserved
+CF-1R18 requirement. Exactly two unqualified approvals permit coordinator-only
+plan integration. Source, full/live/provider/credential/Nous/reset-credit/
+`neo`/self-integration/merge remain closed.
