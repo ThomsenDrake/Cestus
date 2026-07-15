@@ -9893,3 +9893,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   replacement commit from the original base. No quarantined history may be
   inspected or reused. Full verification, provider activity, reset credits,
   integration, and every `neo` action remain closed.
+
+## RV-1-E-339 — Task135C EOF-loop recovery reissued
+
+- Review-repair WIP checkpoint
+  `48b2abce8e91072a10e698cb0482e35e8f03f987` is preserved cleanly with the exact
+  three-path/no-merge range. Its review RED isolated 3/16 expected failures for
+  invalid JSON whitespace, UTF-8 blob re-encoding, and replacement-ref
+  acceptance.
+- The attempted whitespace repair introduced a new EOF loop because
+  `" \\t\\n\\r".includes("")` is true. Two task-owned orphaned focused-test
+  process trees were terminated; no unrelated process or source was touched.
+- Fresh forward branch
+  `codex/task-135c-prerequisite-checker-review-repair-eof` starts at the WIP
+  checkpoint. The sole newly authorized production correction is an explicit
+  source-length guard before testing the current character against JSON's four
+  legal whitespace bytes. The same checker/test/claim ceiling and all previous
+  review requirements remain in force.
+- Any further substantive failure stops. Final review still covers original
+  base `197c3ca528e9b666c02b9b87695bf900efa195b1` through candidate. Full verify,
+  providers, reset credits, integration, and every `neo` action remain closed.
+
+## RV-1-E-340 — Task135D candidate rejected by coordinator typecheck
+
+- Recovery candidate `f6c6150c0b59261a6d1a61766f55b19384d1cde3`
+  independently passed the exact four-path/no-merge audit and all 19 focused
+  tests. Coordinator typecheck then failed at the nested-config mutation witness
+  because two test assignments target readonly properties.
+- The production runtime seam is not admitted to review yet. A bounded forward
+  test-only repair on the existing recovery branch may express the same hostile
+  post-capture mutation through a type-safe reflective or explicit mutable-test
+  boundary, without weakening the assertion or changing production code.
+- The parent must rerun the complete focused command, typecheck, no-index,
+  original-base range diff, factory readiness, exact path audit, and clean-state
+  check before reporting a replacement candidate. Any production change or new
+  failure stops. Full verify, providers, reset credits, integration, and every
+  `neo` action remain closed.
