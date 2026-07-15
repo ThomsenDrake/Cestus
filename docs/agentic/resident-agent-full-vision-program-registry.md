@@ -12234,3 +12234,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-447 — Task133.5 second recovery rejected by compiler admission
+
+- Task133.5 candidate `04dcad1b97c07a3582bfc0732b2407e756d4d782`
+  on `codex/task-133-5-preapproval-prompt-store-recovery-2` passed the fresh
+  exact 8-file focused suite at 86 tests, but standalone coordinator typecheck
+  exited `2`; it is not admissible to external review.
+- Compiler errors are two structurally forged unbranded witness arguments, an
+  event fixture using an actor kind outside the current ledger contract, an
+  unnarrowed recovery-result union in the runtime factory, and a stale `.ref`
+  assumption against the current context-pack resolution shape. The child-
+  reported typecheck success is superseded by this exact evidence.
+- Recovery owner `019f67bb-8d6d-7d80-92c7-c2f8a7c33965` is authorized for one
+  bounded same-scope repair. The coordinator explicitly approves task-scoped
+  `superpowers:subagent-driven-development`, receiving-code-review, systematic
+  debugging, TDD, and verification-before-completion with one production
+  writer.
+- Repair must preserve private witness branding, use a real unknown-input
+  rejection or mounted issuer in tests, retain the existing ledger actor
+  contract, discriminate the recovery result before use, and consume the real
+  context-pack resolution ABI without casts or obsolete fields.
+- Exact candidate `04dcad1b97c07a3582bfc0732b2407e756d4d782` must not be
+  reviewed or integrated. Any replacement requires fresh coordinator admission
+  and two new independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
