@@ -8995,3 +8995,29 @@ explicit implementation authorization.
   integration actions remain closed pending a committed docs-only repair and
   two fresh independent unqualified approvals. No prior verdict or reviewer
   identity carries forward.
+
+## RV-1-E-301 — Attested whole-freeze candidate
+
+- The sole plan writer committed CF-1R21 candidate
+  `f275ce6fa0113885945199255f8068f35711ef46`. Task117A now pins both the
+  complete intended freeze and extracted audit hashes before changing the
+  freeze; Task117A/Task137A reject ignored authority files and hidden index
+  flags; every affected Git authority gate rejects grafts and shallow history;
+  and Task117A/Task135C consume a literal coordinator-issued registry
+  attestation SHA repeated in worker and reviewer commands.
+- CF-1R21 also replaces Task135B's contradictory binding-only return with one
+  exact source-private producer result containing separate data/store binding
+  and opaque non-callable controller identities. Only the lexical runtime
+  factory consumes the pair and transfers its private closure through R0 into
+  the H-port WeakMap.
+- The materialized Task117A gate passed in an isolated Git fixture with a
+  sibling program-registry attestation commit. All four CF-1R21 bash blocks
+  pass `bash -n`; `git diff --check` and `npm run factory:check` pass; the plan
+  worktree is clean. The exact review lineage is the 26-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..f275ce6fa0113885945199255f8068f35711ef46`;
+  canonical program/source checkpoint remains
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviews are authorized read-only. Exactly two unqualified **APPROVED**
+  verdicts are required. Source dispatch, plan integration, live/provider/full/
+  credential/Nous/reset-credit/`neo` actions remain closed.
