@@ -10870,3 +10870,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   readiness, exact four-path union, no-merge topology, and clean status.
 - Candidate remains review-only and unintegrated. Full verification,
   providers, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-397 — Task135D complete AST reviews dispatched
+
+- Fresh Terra/xhigh private-authority/lifecycle reviewer
+  `019f6700-9cdc-7193-9204-ee6dfa2dc8c7` re-audits factory identity,
+  snapshots, mutation/currentness, close behavior, non-leakage, production
+  invariants, public APIs, and exact scope.
+- Fresh Terra/xhigh exhaustive AST reviewer
+  `019f6700-a01d-73b2-8362-cacccbdcb849` audits production `src`/`bin`
+  inventory, every import and loader family, ImportTypeNode and transparent
+  wrappers, root-bound identity, negatives, allowlist, and performance.
+- Both reviewers are read-only and pinned at exact candidate
+  `1a132365a075fd7893f5b026e0609729f97961f8`. Two unqualified approvals are
+  required before coordinator-only integration.
