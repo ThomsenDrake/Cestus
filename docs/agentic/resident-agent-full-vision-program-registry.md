@@ -11976,3 +11976,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-438 — Task133.5 replacement admitted to exact-SHA review
+
+- Task133.5 replacement candidate
+  `c96db07b8a9e19939fa3e6801b31d82e5c96b13c` on
+  `codex/task-133-5-preapproval-prompt-store-recovery` is a clean, linear
+  four-commit range from exact base
+  `140bfd3a0552bcba9ce599bdffe01036a8d2d060` and remains within the complete
+  claimed Task133.5 path set.
+- Fresh coordinator admission passed the exact CF-1R11/R12 focused command at
+  8 files / 84 tests, a separate standalone typecheck, all three negative
+  production-export/render searches, exact-range diff checking, and factory
+  readiness. The ignored dependency link was removed and the checkout is
+  clean.
+- Fresh mounted-authority/lifecycle reviewer
+  `019f67b3-640d-7fb2-8569-9261d2745d92` and fresh adversarial implementation/
+  compiler/test reviewer `019f67b3-71f6-7d01-80f0-af3838059113` are pinned and
+  read-only on the exact candidate. Both must return unqualified **APPROVED**
+  verdicts before coordinator integration.
+- Reviews must prove canonical serialized prompt bytes, current mounted/run/
+  attempt authority across awaits, create-only portable storage, one-use
+  private witness and restart reissuance, exact lexical factory handoff, no
+  fallback or prompt leakage, compiler-contract preservation, and hostile-
+  boundary fail-closed behavior.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
