@@ -5,7 +5,7 @@
 - Branch: `codex/task-135a-mounted-preparation-stores`.
 - Worktree: `/home/drake/.codex/worktrees/task-135a-mounted-preparation-stores`.
 - Claimed at: 2026-07-15T05:12:00Z.
-- Status: claimed.
+- Status: in-progress.
 
 ## Frozen Ancestry Gate
 
@@ -34,3 +34,28 @@ run, and run type; and perform no material/manifest write or readback, H
 activity, terminal state, task-status completion, default-factory, index, or
 public capability/tuple/fallback work. Full `npm run verify` is closed; the
 authorized final gate is the Task135A non-full fail-fast chain.
+
+## Forward compiler-repair migration
+
+- The original `7fd10a7f` base is preserved above as historical dispatch
+  evidence. Coordinator-controlled preservation stashed the dirty exclusive
+  source/test/claim lane, then no-ff merge `9e624531ae8e87af57a2e7f0a18a20ed171c143f`
+  moved this branch forward through reviewed compiler-repair integration
+  `271406fca811d49ee9ebb7ff31f58b0b870ac1d7`; the preserved work was restored
+  afterward without reset, rebase, or child integration.
+- The repaired program ancestry supplies
+  `52bb8e5e22ffadbb21a72d95fe054630700abbeb` (the two-file TS2677/TS2322
+  correction) and the actual post-merge single-compiler gate exit `0` recorded
+  at program checkpoint `c2be6e89f840cf20d2c3f2bdc9eeb4d87a6fb68c`. This lane
+  owns no part of that repair and may not alter either repaired file.
+- Before review, this restored lane must rerun exactly:
+  `npm test -- packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  The coordinator must obtain the single actual `tsc` exit after a no-live-
+  compiler guard; full verification, provider/network/credential/Nous,
+  reset-credit, neo, self-integration, and merge remain closed.
+- Coordinator rerun after restoration used one detached shell and recorded exit
+  `0`: 3 focused files / 52 tests passed, followed by `typecheck passed`,
+  `git diff --check`, and `factory-readiness passed`; no `tsc` or npm process
+  remained. This makes the three-file lane a candidate for fresh independent
+  review only. It is not integrated, executable, durable-terminal, or H
+  completion evidence.
