@@ -257,3 +257,38 @@ The next reviewer must inspect exact full lineage
 `APPROVED` before coordinator-only integration. A later implementation message
 must specifically approve `superpowers:subagent-driven-development` for every
 serialized task.
+
+## Forward Correction — H-Private Data-Only Model Invocation
+
+- Status remains **plan-repair candidate only**. Authority review
+  `019f64cb-a277-7c60-b6e4-8b20720c754a` confirmed the H proof test/gate and
+  kernel-mint repair but found that exported `InvokeAgentModelInput` still
+  carried `promptArtifact` bytes and `productionInvocationProof`. Moving the
+  mint alone would therefore leave a caller-facing authority carrier.
+- `CF-1R7 H-Private Model Invocation Command Correction` removes both fields
+  from the public command and requires strict rejection of those and all token,
+  admission, text, callback, resolver, and lookalike keys before any effect.
+  Public commands and DTOs contain only secret-safe IDs, hashes, credential
+  references, and options.
+- A new non-index-exported internal module owns a single-use WeakMap from one
+  exact frozen data-only command object to the mounted v2 envelope and proof.
+  The production factory imports its internal bridge by explicit source path;
+  only that bridge can create membership from an exact private consumed
+  admission. Runtime validates and freezes that same object in place, so
+  structural or spread-copied commands cannot reach provider bytes.
+- Runtime performs a non-consuming identity lookup before its first await,
+  validates the hidden v2 and every binding, then atomically claims the mapping
+  and consumes proof before appending the deterministic invocation request.
+  Invalid v2 does not burn the proof; the exact command/proof succeeds at most
+  once. A direct public remote-provider command always fails closed.
+- Task140H removes the direct prompt-bearing Nous smoke call and routes the
+  smoke through the resident orchestrator/H vertical. Its complete expanded
+  source/test ownership and exact non-live gate include private-admission,
+  runtime, kernel, all three production workflow controls, factory composition,
+  routes, and deterministic smoke coverage. Live tests remain excluded until
+  the separate provider acceptance gate.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exact review range remains
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`; two fresh unqualified
+  Terra/xhigh approvals are required before coordinator integration.
