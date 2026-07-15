@@ -303,6 +303,14 @@ or weakening terminal durability.
    integration composes the factory and executes the exact H readback/terminal
    proof. It consumes the preparation/store contracts; it does not recreate
    them.
+5. `packages/agent/src/specialist-handoff-preparation.ts` is the one pure,
+   dependency-safe owner of the untrusted preparation and mounted-preparation
+   readback parser/normalizer/hash contracts. Task134 creates only its frozen
+   untrusted data, Task135 returns only its parsed, hash-recomputed data
+   readback after mounted checks, and Task140H imports the same codec before
+   sole H sequencing. The codec has no capability, authority, store object,
+   provenance, recorded/lifecycle/terminal field, or public mint route; a
+   parseable/hash-valid object remains untrusted until the H owner rebinds it.
 
 The bounded amendment at
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`

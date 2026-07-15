@@ -6662,3 +6662,34 @@ explicit implementation authorization.
   exact non-full `&&` gate and fresh independent review are mandatory before
   integration. Full verification remains **CLOSED**; no self-review,
   self-integration, merge, provider/network/credential/Nous, or `neo` action.
+
+## RV-1-E-195 — CF-1R5 codec and recovery-base correction
+
+- Fresh Terra/xhigh review of the CF-1R5 amendment returned
+  **NEEDS-CHANGES** on one concrete cross-lane defect: an
+  `UntrustedSpecialistHandoffPreparationV1` consumer in Task135A/Task140H had
+  no canonical parser, normalizer, or hash owner, so importing local-runtime
+  would reverse dependencies and recreating its shape in task-orchestrator
+  would create the prohibited shadow contract. The reviewer otherwise
+  confirmed the terminal-H supersession, H/R writer order, acyclic graph, and
+  non-full controls. No source/test, verification, merge, or external action
+  occurred in review.
+- The coordinator independently confirmed the plan also assumed three absent
+  program-branch files: `HEAD:packages/local-runtime/src/agent-runtime-
+  context-packs.ts`, `HEAD:packages/local-runtime/src/agent-runtime-
+  specialist-runners.ts`, and `HEAD:packages/local-runtime/src/mounted-agent-
+  artifact-stores.ts` are absent (`git cat-file` exit `128`); the first two
+  exist only in preserved rejected `70f70375` and `b5d07b93`. CF-1R5 is
+  corrected forward—not by integrating either rejected candidate—to stage
+  Task132/Task134 source/tests only on isolated recovery bases, create Task135
+  stores, and require a complete staged-range review.
+- `packages/agent/src/specialist-handoff-preparation.ts` is now the sole pure
+  parser/normalizer/hash owner for untrusted preparation and data-only mounted
+  preparation readback. Task134A owns creation/export/test of that codec;
+  Task135A and Task140H import and recompute it rather than defining a local
+  variant. It carries no capability or durable/terminal assertion. Fresh plan
+  review is required before Task132A/Task134A/Task135A implementation dispatch.
+  Full verification remains **CLOSED**, `neo` untouched, no provider/network/
+  credential/Nous action, no self-review/integration, and authenticated use
+  remains `usedPercent=13` / **87% remaining, reset credits untouched, DRAIN
+  <=10%, HARD PAUSE <=7%.
