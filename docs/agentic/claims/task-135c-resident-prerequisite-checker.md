@@ -5,7 +5,7 @@
 - Branch: `codex/task-135c-prerequisite-checker`.
 - Worktree: `/home/drake/.codex/worktrees/c734/Cestus`.
 - Claimed at: 2026-07-15T00:00:00Z.
-- Status: ready-for-review.
+- Status: in-progress.
 
 ## Coordinator Authorization And Frozen Prerequisites
 
@@ -105,3 +105,14 @@ lookahead without PCRE2 (`plain-rg-status=2`), so the equivalent explicit audit
 used `rg -P` for the import-specifier clause; it found no violations, `git diff
 --check` passed, and `npm run factory:check` reported `factory-readiness
 passed`. Full verification and every closed action remain unperformed.
+
+## RV-1-E-337 Review Repair (2026-07-15)
+
+Both fresh reviews returned `NEEDS-CHANGES`; rejected candidate
+`5e3645f62d5f384ad6902883fa7112c0eaa59d26` is preserved and not integrated.
+The coordinator recorded the recovery as `RV-1-E-337` and moved this clean
+worktree to `codex/task-135c-prerequisite-checker-review-repair` at that exact
+commit. Authorized scope is limited to strict ASCII JSON whitespace, raw Git
+blob bytes, explicit replacement-ref rejection, and retained-payload terminal
+counterfactual fixtures. The existing C-tree checker-hash binding remains
+required; no new implementer or closed action is authorized.
