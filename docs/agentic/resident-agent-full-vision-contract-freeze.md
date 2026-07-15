@@ -205,6 +205,44 @@ their respective producer-owned corrections; Task136 remains blocked until all
 of those reviewed integrations and rebases are recorded. This revision grants
 no provider, credential, network, Nous, browser, factory, or `neo` action.
 
+## CF-1R3 — Pre-Task135 Factory-Closure Cycle Recovery
+
+Task134's rejected candidates establish a forward graph correction. Task135
+requires a reviewed Task134 production runner capability, but Task134 cannot
+make its closure non-forgeable inside its original three-file boundary: the
+only real private H/mounted-authority composition point is
+`agent-runtime-factory.ts`. Deferring that seam to the existing Task140 creates
+an invalid cycle because Task140 waits for Task135 through Task139. The
+preserved `b5d07b93` candidate remains rejected history; it does not satisfy
+this correction.
+
+One new, narrow R-owned pre-Task135 factory-closure recovery is therefore the
+sole writer of `packages/local-runtime/src/agent-runtime-factory.ts` until it
+has received fresh review and a coordinator-only integration. Its minimum
+Task134 seam is `packages/local-runtime/src/agent-runtime-specialist-runners.ts`,
+`packages/local-runtime/test/agent-runtime-specialist-runners.test.ts`, and a
+new dedicated factory-closure test; it may not edit Task135 stores, Task140's
+composition test, H/W/P/L/shared schemas, provider configuration, routes, or
+UI. It must rebase after the reviewed/coordinator-integrated Task132 recovery
+and record that exact integration SHA before RED.
+
+The recovery must move production capability construction behind the actual
+factory-owned mounted authority and H capability. Public runner dispatch may
+receive only its narrow orchestration request; no public construction path may
+accept a caller-provided authority/store/registration/provenance/readiness/H
+tuple or opaque lookalike. It must prove structural forgery fails before
+delegate/H activity and prove a delegate-supplied handoff/readback cannot be
+promoted by an H echo: durable success requires the factory-owned exact H
+readback bound to the approved task/attempt/run and mounted authority. Missing
+Task135 stores remain fail-closed; this correction does not make the default
+factory permissive or authorize a provider/effect.
+
+After fresh independent review and coordinator-only integration, Task135 may
+rebase to the closure SHA and consume its explicit closed seam. Task140 then
+consumes—not recreates—the reviewed closure after its original 132–139
+dependencies. This correction grants no full verification, `neo`, provider,
+credential, network, Nous, browser, or self-integration action.
+
 ## Section-Local Documentation Audit
 
 Run this exact command from the repository root:

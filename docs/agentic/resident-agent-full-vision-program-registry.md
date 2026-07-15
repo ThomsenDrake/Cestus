@@ -6525,3 +6525,29 @@ explicit implementation authorization.
   exist. Full verification remains **CLOSED**, `neo` untouched, current
   authenticated use remains `usedPercent=13` / **87% remaining**, and reset
   credits remain untouched.
+
+## RV-1-E-190 — Task134/135/140 cycle correction and factory-closure recovery
+
+- The fresh Task134 recovery author completed source-backed causal REDs and
+  returned **BLOCKED** without a patch or commit. A direct structural
+  `FactoryClosedSpecialistRunnerBinding` still constructs a capability, and a
+  delegate-fabricated handoff/readback succeeds when a structural H capability
+  echoes it. The original Task134 three-file boundary cannot create a runtime-
+  enforced closure because `agent-runtime-factory.ts` is the only real private
+  mounted-authority/H construction point.
+- This exposes a concrete dependency cycle: Task135 requires reviewed Task134
+  production closure; the existing Task140 owns the factory seam but waits for
+  Task135 through Task139. Deferring the defect to Task140 would therefore
+  keep Task135 permanently blocked. Preserve `435602f3` and `b5d07b93` as
+  rejected historical candidates; neither is review-ready or integrated.
+- CF-1R3 authorizes one fresh Terra/xhigh, narrow pre-Task135 R-owned factory-
+  closure recovery after reviewed coordinator integration of Task132. It is
+  the sole temporary writer of `agent-runtime-factory.ts`, plus the smallest
+  Task134 source/test seam and a dedicated closure test. It must create no
+  shadow contract, public structural tuple, factory permissiveness, Task135
+  store, or Task140 composition substitute. Causal RED must prove structural
+  forgery and delegate/H-echo readback failure before activity; any candidate
+  must pass the recorded exact `&&` gate before fresh independent review.
+- Full verification remains **CLOSED**, `neo` untouched, no provider/network/
+  credential/Nous action is authorized, authenticated use is `usedPercent=13`
+  / **87% remaining**, reset credits untouched, DRAIN <=10%, HARD PAUSE <=7%.
