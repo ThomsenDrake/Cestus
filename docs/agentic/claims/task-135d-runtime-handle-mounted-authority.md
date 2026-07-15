@@ -1,6 +1,6 @@
 # Task135D recovery: R-owned factory-issued mounted handle capture
 
-- Status: ready-for-review
+- Status: in-progress
 - Owner: `/root`
 - Branch: `codex/task-135d-runtime-handle-capture-import-review-repair`
 - Worktree: `/home/drake/.codex/worktrees/8ca0/Cestus`
@@ -398,3 +398,27 @@ self-integration, and program-registry edits remain closed.
 - Claim status remains `ready-for-review`. No full verification,
   live/provider/network/credential/Nous action, reset, `neo`, merge, rebase,
   push, self-integration, or program-registry edit was performed.
+
+## RV-1-E-409 class-expression and ambient-binding review repair
+
+- Durable coordinator authority: `RV-1-E-409`. Candidate
+  `cba50ab1de0477ff9e2e85f321567f544884a889` is preserved and rejected after
+  both final reviewers found valid AST scanner gaps. This bounded forward
+  repair changes only the import-policy test and this claim; production
+  `runtime-factory.ts` bytes remain unchanged.
+- Causal RED: fixtures added before scanner changes cover named class
+  expressions named `require` and `module`, plus erased ambient `declare`
+  `const`, `var`, `function`, `class`, and `enum` declarations across both
+  loader names. The exact focused suite exited `1` only in the import-policy
+  test (1 failed, 20 passed): it expected 69 protected importers and received
+  66, omitting all five ambient fixtures while incorrectly counting the two
+  class-expression fixtures.
+- The repair gives a named class expression's `require`/`module` self-binding
+  only to its class body; type parameters and heritage clauses retain the
+  surrounding scope. Runtime-shadow collection now excludes statements and
+  hoisted `var` lists with a `declare` modifier, while preserving runtime
+  lexical declarations, type-only import exclusion, hoisted `var`, and named
+  function-expression behavior.
+- Focused GREEN: the prescribed three-file command exited `0` with 21 tests
+  passed. The remaining permitted committed-candidate gates are pending at
+  this claim checkpoint.
