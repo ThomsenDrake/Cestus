@@ -12492,3 +12492,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, source implementation, live/provider/network/credential/
   Nous activity, reset credits, push, child self-integration, program merge
   without coordinator review, and every `neo` action remain closed.
+
+## RV-1-E-456 — Task137A candidate rejected by coordinator typecheck
+
+- Task137A recovery candidate
+  `b79fa2eac0bde066850e58e933a92dc7ea1d1686` passed its six focused files at
+  77 tests during fresh coordinator admission, but the same literal terminal
+  command then failed standalone TypeScript compilation.
+- `mounted-artifact-authority-operation-imports.test.ts:508` reads `.name` from
+  a TypeScript `ArrayBindingElement` without excluding `OmittedExpression`,
+  producing two `TS2339` errors. The child-reported clean-shell/typecheck result
+  is therefore not accepted as evidence for the committed bytes.
+- Candidate `b79fa2eac0bde066850e58e933a92dc7ea1d1686` must not enter external review
+  or integration. The existing recovery owner has the exact compiler evidence
+  and must produce a new clean descendant with compile-safe AST narrowing,
+  amended claim evidence, and a fresh literal terminal run.
+- Task-scoped subagent-driven development remains approved with exactly one
+  production writer and no scope expansion. Full verification, live/provider/
+  network/credential/Nous activity, reset credits, push, child
+  self-integration, program merge without coordinator review, and every `neo`
+  action remain closed.
