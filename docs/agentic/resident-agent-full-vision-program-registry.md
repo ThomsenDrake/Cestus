@@ -7432,3 +7432,20 @@ explicit implementation authorization.
   focused RED, and record the exact failure. The removal mapping and those
   results belong in the Task134A claim. No default factory, H, store,
   provider/network, or terminal scope is authorized.
+
+## RV-1-E-229 — Task133 amendment-author replacement
+
+- Plan author `019f6414-dcfa-7293-8ca0-ee5e938cd04c` was interrupted after a
+  bounded immediate amendment-or-blocker checkpoint elapsed with no durable
+  plan/claim edit and no blocker. Its worktree was clean; no work was discarded.
+- Sole replacement `/root/task133_pure_renderer_plan_replacement`, session
+  `019f6419-f55c-7c71-976d-52509cfad451`, reuses the same exact clean
+  `codex/task-133-pure-renderer-plan-amendment` worktree/branch from
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8`; it must not create a second
+  branch/worktree. Its own authoritative
+  `rollout-2026-07-15T00-47-30-019f6419-f55c-7c71-976d-52509cfad451.jsonl:8`
+  records `model=gpt-5.6-terra`, `reasoning_effort=xhigh`, and `effort=xhigh`.
+- The replacement retains the two-doc-only amendment scope, immediate
+  amendment/claim checkpoint, non-full documentation gate, and distinct fresh
+  defects-first plan review requirement. Task134A remains independently active;
+  all established closures remain in force.
