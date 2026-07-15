@@ -37,6 +37,10 @@ type Fixture = {
   readonly coordinatorAttestation: string;
   readonly prerequisiteShas: Record<string, string>;
 };
+type FixtureOptions = {
+  readonly manifestPrefix?: string;
+  readonly checkerSuffix?: Uint8Array;
+};
 
 afterEach(() => {
   for (const directory of temporaryRepositories.splice(0)) rmSync(directory, { force: true, recursive: true });
@@ -146,18 +150,18 @@ function attestation(task: TaskName, dispatchCommit: string, sourceBaseSha: stri
   ].join("\n");
 }
 
-function createFixture(task: TaskName = "task140p"): Fixture {
+function createFixture(task: TaskName = "task140p", options: FixtureOptions = {}): Fixture {
   const directory = mkdtempSync(join(tmpdir(), "cestus-task135c-"));
   temporaryRepositories.push(directory);
   git(directory, ["init", "--quiet"]);
   git(directory, ["config", "user.email", "task135c@example.test"]);
   git(directory, ["config", "user.name", "Task135C fixture"]);
   write(directory, registryPath, "# Resident registry\n");
-  write(
-    directory,
-    "scripts/check-resident-task-prerequisites.mjs",
-    existsSync(checkerPath) ? readFileSync(checkerPath) : "// checker absent during RED\n"
-  );
+  const fixtureChecker = Buffer.concat([
+    existsSync(checkerPath) ? readFileSync(checkerPath) : Buffer.from("// checker absent during RED\n"),
+    options.checkerSuffix ?? Buffer.alloc(0)
+  ]);
+  write(directory, "scripts/check-resident-task-prerequisites.mjs", fixtureChecker);
   git(directory, ["add", "."]);
   git(directory, ["commit", "--quiet", "-m", "fixture root"]);
 
@@ -167,7 +171,7 @@ function createFixture(task: TaskName = "task140p"): Fixture {
     prerequisiteShas[key] = git(directory, ["rev-parse", "HEAD"]);
   }
   const sourceBaseSha = git(directory, ["rev-parse", "HEAD"]);
-  const manifest = `${JSON.stringify({
+  const manifest = `${options.manifestPrefix ?? ""}${JSON.stringify({
     schemaVersion: "resident-task-prerequisites.v2",
     task,
     sourceBaseSha,
@@ -223,6 +227,22 @@ describe("check-resident-task-prerequisites", () => {
       expect(runChecker(fixture, "preflight").status).toBe(0);
       expect(runRetainedPayload(fixture, "preflight").status).toBe(0);
     }
+  });
+
+  it("accepts only JSON's four ASCII whitespace bytes and rejects NBSP or BOM", () => {
+    const asciiWhitespace = createFixture("task140p", { manifestPrefix: " \t\n\r" });
+    expect(runChecker(asciiWhitespace, "preflight").status).toBe(0);
+    for (const prefix of ["\u00a0", "\ufeff"]) {
+      const fixture = createFixture("task140p", { manifestPrefix: prefix });
+      expectRejected(runChecker(fixture, "preflight"));
+    }
+  });
+
+  it("hashes immutable git show blobs as raw bytes, including a non-UTF8 executable comment", () => {
+    const fixture = createFixture("task140p", {
+      checkerSuffix: Buffer.from([0x0a, 0x2f, 0x2f, 0xff, 0x0a])
+    });
+    expect(runChecker(fixture, "preflight").status).toBe(0);
   });
 
   it("rejects task140p without task117a", () => {
@@ -317,6 +337,9 @@ describe("check-resident-task-prerequisites", () => {
     appendFileSync(join(ignoredFixture.directory, ".git", "info", "exclude"), "\nscripts/hidden-authority\n");
     write(ignoredFixture.directory, "scripts/hidden-authority", "hidden\n");
     expectRejected(runChecker(ignoredFixture, "preflight"));
+    const replacementFixture = createFixture();
+    git(replacementFixture.directory, ["replace", replacementFixture.sourceBaseSha, replacementFixture.prerequisiteShas.cf1]);
+    expectRejected(runChecker(replacementFixture, "preflight"));
   });
 
   it("rejects later-touch, replacement, rename, delete-readd, merge, wrong-parent, and extra-M-file dispatch bypasses", () => {
@@ -383,10 +406,20 @@ describe("check-resident-task-prerequisites", () => {
     const alteredPayload = `${payload.slice(0, -4)}AAAA`;
     const result = runAuthenticatedPayload(fixture, "preflight", alteredPayload, hash(Buffer.from(payload, "base64")));
     expectRejected(result);
+    const malformed = runAuthenticatedPayload(fixture, "preflight", "not-base64$", hash(Buffer.from(payload, "base64")));
+    expectRejected(malformed);
     const pathReplacement = createFixture();
     const capturedPayload = Buffer.from(readFileSync(checkerPath)).toString("base64");
     write(pathReplacement.directory, "scripts/check-resident-task-prerequisites.mjs", "process.exit(99);\n");
     const preservedBytes = runAuthenticatedPayload(pathReplacement, "preflight", capturedPayload, hash(readFileSync(checkerPath)));
     expect(preservedBytes.status, `${preservedBytes.stdout}\n${preservedBytes.stderr}`).toBe(0);
+    const terminalRunner = createFixture();
+    const terminalPayload = Buffer.from(readFileSync(checkerPath)).toString("base64");
+    const terminalHash = hash(readFileSync(checkerPath));
+    expect(runAuthenticatedPayload(terminalRunner, "preflight", terminalPayload, terminalHash).status).toBe(0);
+    write(terminalRunner.directory, "scripts/check-resident-task-prerequisites.mjs", "process.exit(99);\n");
+    expect(runAuthenticatedPayload(terminalRunner, "review", terminalPayload, terminalHash).status).toBe(0);
+    write(terminalRunner.directory, "scripts/check-resident-task-prerequisites.mjs", readFileSync(checkerPath));
+    expect(runAuthenticatedPayload(terminalRunner, "review", terminalPayload, terminalHash).status).toBe(0);
   });
 });

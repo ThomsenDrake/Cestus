@@ -35,10 +35,10 @@ function assertGitEnvironment() {
   if (names.length !== 0) fail("Git environment authority is not clean");
 }
 
-function gitResult(args) {
+function gitResult(args, raw = false) {
   const result = spawnSync("git", args, {
     cwd: process.cwd(),
-    encoding: "utf8",
+    ...(raw ? {} : { encoding: "utf8" }),
     env: { ...process.env, GIT_NO_REPLACE_OBJECTS: "1" }
   });
   if (result.error) fail(`Git invocation failed: ${result.error.message}`);
@@ -52,9 +52,10 @@ function git(args) {
 }
 
 function gitBytes(args) {
-  const result = gitResult(args);
+  const result = gitResult(args, true);
   if (result.status !== 0) fail(`Git rejected ${args[0] ?? "operation"}`);
-  return Buffer.from(result.stdout, "utf8");
+  if (!Buffer.isBuffer(result.stdout)) fail("Git did not return raw blob bytes");
+  return result.stdout;
 }
 
 function splitLines(value) {
@@ -77,6 +78,9 @@ function assertNoHiddenGitAuthority() {
   }
   if (git(["ls-files", "--others", "--ignored", "--exclude-standard", "--", "packages", "scripts", "docs/agentic/claims"]) !== "") {
     fail("Ignored authority path is present");
+  }
+  if (git(["for-each-ref", "--format=%(refname)", "refs/replace/"]) !== "") {
+    fail("Git replacement refs are present");
   }
 }
 
@@ -136,7 +140,7 @@ class StrictJson {
   }
 
   space() {
-    while (/\s/.test(this.source[this.index] ?? "")) this.index += 1;
+    while (" \t\n\r".includes(this.source[this.index] ?? "")) this.index += 1;
   }
 
   value() {
