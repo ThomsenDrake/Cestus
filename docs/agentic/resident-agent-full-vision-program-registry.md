@@ -10790,3 +10790,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both reviewers are read-only and pinned at exact candidate
   `b80b28abc2ca19eedef6f7a8f9e13def7019303d`. Two unqualified approvals are
   required before coordinator-only integration.
+
+## RV-1-E-392 — Task133 candidate held on coordinator typecheck
+
+- Existing author `019f6660-2912-7622-a99a-0def4e19e051` produced atomic
+  candidate `1fc698286edfda2a67bf4ed18e79fc708a9e22f0` with exactly 28
+  authorized paths, one non-merge commit over the source base, and a clean
+  worktree.
+- Coordinator-independent focused suites passed 131/131, 78/78, and 137/137,
+  but `npm run typecheck` failed: two blocked-boundary hash fields widened to
+  `string` instead of the canonical `sha256:${string}` type, and two projection
+  assertions dereference an optional prompt-binding receipt without narrowing.
+- Candidate `1fc698286edfda2a67bf4ed18e79fc708a9e22f0` is rejected before
+  review. The existing author is authorized for one bounded in-scope type
+  repair, preserving behavior and exact tests, and must replace the candidate
+  by amending the sole atomic commit before rerunning every permitted gate.
+- Full verification, providers, reset credits, integration, push, and every
+  `neo` action remain closed.
