@@ -10685,3 +10685,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   the program branch. Source remains frozen until that merge and its focused
   documentation gate complete. Full verification, providers, reset credits,
   push, and every `neo` action remain closed.
+
+## RV-1-E-385 — Task133 authority-split plan integrated
+
+- Coordinator-only merge `03c74856e45ca16779e1af2338a4ed4c63cc02e2`
+  integrated approved candidate
+  `f186e703a22e20c6936b25c846451e60ee687cb9` into the program branch.
+- Post-merge `git diff --check` and `npm run factory:check` passed. The
+  integrated terminal plan preserves strict schema/binder/durable semantics,
+  makes Task133 pure and fail-closed, assigns opaque admission to P and first
+  complete current-authority transfer to R0, and restores receipt replay.
+- Full verification, providers, reset credits, push, and every `neo` action
+  remain closed.
+
+## RV-1-E-386 — Task133 atomic source repair resumed
+
+- Existing author `019f6660-2912-7622-a99a-0def4e19e051` retains sole ownership
+  of branch `codex/task-133-atomic-prompt-binding-review-recovery-2` at exact
+  source base `197c3ca528e9b666c02b9b87695bf900efa195b1`, with the rejected
+  candidate replayed as exactly 28 staged authorized paths and no replacement
+  commit.
+- The coordinator explicitly authorizes `superpowers:subagent-driven-development`
+  where relevant, plus test-driven development, receiving-code-review,
+  systematic debugging, and verification-before-completion for the integrated
+  CF-1R27/R28 repair. No new implementer is authorized.
+- The author must add the causal Task133.2 zero-effect blocked-boundary tests
+  before production repair, pass its exact GREEN, rerun the complete Task133.1
+  suite before any Task133.3 work, then add and pass receipt-retention/replay
+  RED/GREEN. The final replacement remains one atomic 28-path commit.
+- Full verification, providers, reset credits, merge, rebase, push,
+  self-integration, registry edits, and every `neo` action remain closed. Two
+  fresh code-review approvals are required before coordinator integration.
