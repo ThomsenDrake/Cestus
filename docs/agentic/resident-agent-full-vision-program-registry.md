@@ -11880,3 +11880,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-435 — Task139 candidate rejected at root-cause checkpoint
+
+- Provider-authority reviewer `019f67a1-5cab-70d3-825b-db5d0cbc36a2` and
+  hostile-input/secret-safety reviewer
+  `019f67a1-6d99-74e0-95e3-5f0ac28f14c8` independently returned
+  **NEEDS-CHANGES** for exact candidate
+  `2592e18e0ed37dc90c5059adf397b439f4a530fa`. Both reproduced 20 focused
+  tests, typecheck, diff checking, and factory readiness; the failures are
+  uncovered admission and secret-boundary defects.
+- Raw URL-shaped descriptor text can enter and escape the mounted registry. A
+  near-BYOK `openai-compatible-api` descriptor can also omit one marker to
+  avoid canonical Task126 posture admission, while a descriptor may advertise
+  extra model families for which no feasibility record exists.
+- The original Task139 author exhausted its bounded repair budget and is
+  stopped read-only. Fresh Terra/xhigh recovery owner
+  `019f67a7-72d8-7363-b6be-b04abfd8bbdb`, worktree
+  `/home/drake/.codex/worktrees/83ba/Cestus`, starts from the rejected candidate
+  on a new task-scoped branch and owns only the same three Task139 paths. The
+  coordinator explicitly approves task-scoped
+  `superpowers:subagent-driven-development`, receiving-code-review, systematic
+  debugging, TDD, and verification-before-completion with one production
+  writer.
+- Recovery must reject URL/secret material recursively before registration,
+  classify every remote/OpenAI-compatible/API-key lane fail-closed into the
+  canonical Task126 reader path unless it is an explicit local or official
+  harness lane, and require exactly the assessed configured model scope.
+- Exact candidate `2592e18e0ed37dc90c5059adf397b439f4a530fa` must not be
+  integrated. Any recovery candidate requires fresh coordinator admission and
+  two new independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
