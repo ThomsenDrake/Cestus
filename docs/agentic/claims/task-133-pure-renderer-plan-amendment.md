@@ -13,9 +13,12 @@
 
 The sole executable contract is the latest appended correction in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`,
-read backward only for sections it explicitly preserves. CF-1R14 owns the
-consume-time admission transport, exact import allowlist, canonical handoff
-gates, and thin smoke boundary; CF-1R12 owns fresh
+read backward only for sections it explicitly preserves. CF-1R15A owns the
+portable mounted authority/store producer, selected test paths, exact
+prerequisite inventories, Task137 invalidation gate, and self-contained P/R0/H
+commands; CF-1R15 owns the remaining deep pre-await snapshot, three dispatch
+rows, and per-live-file resident assertions; CF-1R14 owns the remaining consume-time transport, exact
+import allowlist, canonical handoff gates, and thin smoke boundary; CF-1R12 owns fresh
 witness reissuance, all live fixture migration, and the complete Task133 gate;
 CF-1R11 owns nested
 approval/readback authority, production-local admission, and resident live
@@ -63,10 +66,11 @@ Task120 `49c3490a262162bd1d7146994390a2a6b5052394`, Task126
 `7ec1eb6885716ac7324839c578677366fe1bb244`, reviewed/coordinator-integrated
 Task134A `83a301d541e7fec5d0b29e6f2003566c06336158`, and reviewed/coordinator-
 integrated Task135A `ac3f91901da0c9b23722a046be73d95746f691da`. Before Task140P,
-its claim must additionally record the exact reviewed/coordinator-integrated
-full SHAs for Tasks136-139 and prove its base descends from every 132-139
-prerequisite; no branch name, placeholder, or candidate SHA is sufficient.
-R0 and H repeat that inventory plus each preceding Task140 SHA. The
+its strict machine-checked manifest must additionally record the exact
+reviewed/coordinator-integrated Task135B/135C and Task136-139 full SHAs and
+prove its base descends from every required predecessor; no branch name,
+placeholder, or candidate SHA is sufficient. R0 and H repeat that manifest
+inventory plus each preceding Task140 SHA. The
 implementation claim must
 also record the integrated amendment SHA, exact program base, all frozen files,
 the causal RED evidence, and the required explicit coordinator approval and
@@ -480,4 +484,57 @@ serialized task.
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed. Exactly two fresh unqualified Terra/xhigh approvals of
   `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required before
+  coordinator-only integration.
+
+## Forward Correction — Portable Producer And Executable Gate
+
+- Status remains **plan-repair candidate only**. Both fresh reviewers rejected
+  `94182e9a`: no production owner could construct Task135A authority/stores;
+  the three dispatch call sites shared one RED; future SHA ancestry had no
+  executable preflight; proof/envelope/preview were not all snapshotted before
+  await; and live fixtures lacked per-file positive harness/direct-runtime
+  construction checks.
+- CF-1R15 adds serialized Task135B before 137/138/140. It produces only two
+  distinct portable remount- and authority-revalidated handoff stores plus the
+  canonical Task135A binder, with path hiding, fresh-process readback, no
+  fallback, and no H/ledger/terminal authority. R0 later supplies exact lexical
+  handle/authority input and is the sole production importer.
+- Disjoint Task135C adds a strict prerequisite-manifest CLI. Coordinator-created
+  literal manifests make P/R0/H dispatch-base and every predecessor ancestry
+  check executable before RED and reviewable afterward.
+- Approval binding deep-clones facts, proof, prompt envelope, readiness,
+  credential reference, and current preview before the first await. Separate
+  causal tests cover newly approved, resumed-active, and reclaimed-suspended
+  dispatch. Every live fixture must positively call resident acceptance and
+  statically reject direct runtime/orchestrator/factory/model construction.
+- After plan integration, Task133.1-.3, Task135B, and Task135C may start in
+  parallel. Source implementation, full verification, provider/network/
+  credential/Nous activity, reset credits, `neo`, self-review, self-integration,
+  and merge remain closed. Exactly two fresh unqualified Terra/xhigh approvals
+  of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required before
+  coordinator-only integration.
+
+## Forward Correction — Executable Producer And Self-Contained Gates
+
+- Status remains **plan-repair candidate only**. Pre-review inspection found
+  that CF-1R15 named a nonexistent local-runtime index, placed Task135C's test
+  outside Vitest's configured include path, accepted rather than produced the
+  Task135A authority, used an ambiguous prerequisite inventory, and left P/R0/H
+  implementers to reconstruct parts of their gates from older overlays.
+- CF-1R15A makes Task135B the production owner that derives
+  `MountedPreparationAuthority` only from the exact factory-held lifecycle
+  authority plus mounted-facts readback, creates distinct portable stores, and
+  permits only the later local agent runtime factory to import it. It names no
+  package index and has a future-stable production-import allowlist test.
+- Task135C's test now lives under `packages/local-runtime/test`, and its exact
+  P/R0/H key sets, uncommitted preflight semantics, postcommit review semantics,
+  and literal Git ancestry checks are fully enumerated.
+- Task137 has an exact producer invalidation test and cross-lane command. P, R0,
+  and H each have complete preflight, focused/aggregate, typecheck, static,
+  diff, and factory-readiness commands in the latest overlay. No worker must
+  reconstruct a command from historical prose.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh approvals
+  of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required before
   coordinator-only integration.
