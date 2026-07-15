@@ -8909,3 +8909,30 @@ explicit implementation authorization.
   carry forward any earlier verdict. Source dispatch and plan integration
   remain closed until both return explicit unqualified **APPROVED** verdicts
   and those verdicts are durably recorded.
+
+## RV-1-E-297 — Fail-closed dispatch candidate rejected; bounded CF-1R20
+
+- Lifecycle/executability reviewer
+  `019f659e-a6a7-7b12-8d5d-8ba23cd8fd79` returned **APPROVED**, but independent
+  authority/import/bypass reviewer
+  `019f659e-a6df-72e2-960d-2253cec57217` returned **NEEDS-CHANGES** on exact
+  24-commit range `0481c1e0^..dd52fa4d`. One approval cannot authorize plan
+  integration and does not carry forward.
+- The authority review proved three fail-open boundaries: Task117A authenticates
+  only the presence of a marker-bearing audit block and therefore accepts a
+  marker-bearing no-op; Task135C rediscovers dispatch commit `M` as the latest
+  manifest touch, so a later replacement bundle can move the claimed dispatch
+  base; and Task137A compares only a net diff, so reverted intermediate paths,
+  rename-dependent concealment, and ignored authority-path files escape its
+  claimed lineage-wide ceiling.
+- The sole plan writer is authorized only for CF-1R20: pin Task117A's intended
+  post-amendment audit digest in an immutable coordinator-only claim-add commit
+  before the freeze changes; discover every dispatch commit through one unique
+  original add with replacement objects disabled; and make Task137A enumerate
+  every non-merge lineage commit with rename detection disabled while rejecting
+  ignored files under production, test, script, and claim authority paths.
+- All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
+  integration actions remain closed pending a committed docs-only repair and
+  two fresh independent unqualified approvals. No prior verdict or reviewer
+  identity carries forward. Latest authenticated usage reports 41% used / 59%
+  weekly remaining, with no reset credits.
