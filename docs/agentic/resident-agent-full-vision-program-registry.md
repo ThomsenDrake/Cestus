@@ -10300,3 +10300,51 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both unqualified approvals are required before a coordinator-controlled
   detached merge preview. Full verification, integration, reset credits, push,
   and every `neo` action remain closed.
+
+## RV-1-E-361 — Task133 replacement held for binding and replay repair
+
+- Schema/binder/approval-safety reviewer
+  `019f66b4-5ce6-73d2-82cb-fd441639eab4` returned **NEEDS-CHANGES**. The
+  approval-transfer assertion still compares caller-supplied exact-run and
+  proof data against an incomplete independent tuple; it omits attempt and
+  approved-run identities, workspace/mount and policy facts, posture capability
+  and selection-policy versions, and readiness. A coherent stale exact-run plus
+  matching caller proof can therefore survive when those current facts change.
+- Durable event/projection/rebuild reviewer
+  `019f66b4-5e68-7c22-b7a2-34e75b55d993` returned **NEEDS-CHANGES**. The task
+  projection reads a receipt only from the latest checkpoint, so a valid
+  `prompt-bound` receipt disappears after the normal later
+  `runner-dispatching` checkpoint; existing tests do not replay that sequence.
+- Candidate `b3bec172205b39880e46b3e820b3f518ab990f1f` remains rejected and
+  preserved. A new atomic replacement must add causal zero-effect tests for a
+  coherent stale exact-run/proof across every omitted current fact, derive the
+  complete comparison from independent current selection/approval authority,
+  retain the latest valid prompt-bound receipt across later checkpoints, and
+  prove exact ledger replay after runner dispatch.
+- The replacement must preserve the exact original-base 28-path ceiling and
+  one-commit/no-merge atomic topology, then rerun all three focused suites and
+  the typecheck/static/diff/factory/clean gates before two fresh reviews. Full
+  verification, providers, reset credits, integration, push, and every `neo`
+  action remain closed.
+
+## RV-1-E-362 — Task135D held for parser-complete import authority
+
+- Private-authority/lifecycle reviewer
+  `019f66b6-d18c-73c2-bf17-e88cab3fb100` returned unqualified **APPROVED**
+  after reproducing the complete permitted gate and auditing identity,
+  snapshots, hostile mutation, close behavior, and non-leakage.
+- Import-ownership/grammar reviewer
+  `019f66b6-d37e-7dc0-a9b9-17938a329f63` returned **NEEDS-CHANGES**. The
+  regex scanner misses valid TypeScript comments between import/export tokens,
+  comments in dynamic imports, Unicode-escaped runtime-factory module
+  specifiers, and Unicode-escaped protected export names.
+- Candidate `f121af369d2281b515fda07bb15ae4948404062b` remains rejected and
+  preserved. A test-only forward repair must add causal fixtures for all
+  reproduced forms and replace ad hoc lexical matching with TypeScript AST-
+  based import/export/call inspection that compares decoded module specifiers
+  and protected names while preserving scanner roots and allowlist semantics.
+- The replacement must preserve the exact four-path original-base union and
+  merge-free topology, then rerun the complete 20-test/typecheck/no-index/diff/
+  factory/clean gate before both fresh review lenses. Full verification,
+  providers, reset credits, integration, push, and every `neo` action remain
+  closed.
