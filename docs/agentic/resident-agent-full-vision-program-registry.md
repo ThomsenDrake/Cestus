@@ -7131,3 +7131,28 @@ explicit implementation authorization.
   Task132A retask. The frozen uncommitted Task132A work remains non-candidate
   evidence; all prior closure candidates remain unintegrated. Downstream and
   closed-gate restrictions from RV-1-E-213 remain in force.
+
+## RV-1-E-215 — CF-1R5 observability amendment approved and Task132A reset
+
+- Fresh Terra/xhigh rereview
+  `019f63e6-eed4-7493-9c14-263d064f8a32` returned **APPROVED** for exact plan
+  repair `4d745e0c..655e428f`. It verified that original Task132A Steps 1–5 are
+  expressly retired, public registries keep ordinary `buildResolved` behavior
+  without factory-held minting, and Task140R0's one Task140P `WeakMap` resolver
+  has the exact unexported factory-captured six-binding verifier bridge before
+  Task135A, H, or terminal work.
+- The interrupted uncommitted Task132A factory-closure worktree is preserved
+  untouched as non-candidate exploratory evidence; it is neither discarded nor
+  eligible for a gate, review, or merge. A fresh Terra/xhigh author is
+  authorized from preserved `c7f36114`, in a separate isolated worktree and
+  only within Task132A's existing eight-file ceiling. It has explicit
+  `superpowers:subagent-driven-development`, TDD, systematic debugging, and
+  verification-before-completion authority to implement the approved replacement
+  boundary: lexical private closure, public-mint absence, real registrar
+  read-only/foreign/manual/default-fail-closed evidence, and no H/orchestrator/
+  durable/terminal claim. It must defer all six live-path swaps to Task140R0,
+  run the exact Task132A non-full `&&` gate, commit, remove temporary
+  dependencies, and stop for fresh complete staged-base review.
+- Tasks133/134 and Task140 remain blocked; full verify, `neo`, provider/network/
+  credential/Nous action, reset-credit use, and child self-integration remain
+  **CLOSED**.
