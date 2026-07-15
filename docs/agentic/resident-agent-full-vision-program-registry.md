@@ -11173,3 +11173,24 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Candidate remains review-only and unintegrated. Full verification,
   providers, network, credentials, Nous, reset credits, push, and every
   `neo` action remain closed.
+
+## RV-1-E-408 — Task133 final replacement reviews dispatched
+
+- New same-directory forks preserve the prior independent Terra/xhigh Task133
+  reviewer configurations after the post-reboot project worktree creator
+  rejected all new task targets. Both forks are rebound to exact immutable
+  candidate `5d2fdc6baf9afd6ef446eb2be3101bccbc253f64`; historical verdicts do not
+  carry forward.
+- Final prompt-authority/security reviewer
+  `019f6732-c56f-7b72-86d7-a132d32fea7a` audits absence of production receipt
+  minting seams, byte preservation, zero-effect transfer blocking, strict
+  hash ownership, rehashed identity transplants, strict receipt schema, and
+  secret/authority exclusion.
+- Final durable-replay/factory reviewer
+  `019f6732-d227-7693-b93a-0c0186fdbfb5` audits canonical event parsing,
+  receipt/checkpoint identity, direct projection, real ledger replay/rebuild,
+  malicious counterfactuals, strict schema negatives, claims, and exact atomic
+  topology.
+- Both review tasks are pinned and read-only. Two unqualified approvals of the
+  exact SHA remain required before coordinator-only integration; all full/
+  live/provider/credential/Nous/reset-credit/push/`neo` actions remain closed.
