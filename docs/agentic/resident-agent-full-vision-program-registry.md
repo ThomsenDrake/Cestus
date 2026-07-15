@@ -9254,3 +9254,43 @@ explicit implementation authorization.
   carry forward any earlier verdict. Source dispatch and plan integration
   remain closed until both return explicit unqualified **APPROVED** verdicts
   and those verdicts are durably recorded.
+
+## RV-1-E-312 — Exact-checkout candidate rejected; bounded CF-1R25
+
+- Lifecycle/executability reviewer
+  `019f6604-eeae-7c43-94fc-f2403790fa49` and authority/import/bypass reviewer
+  `019f6604-efbe-72f0-b8ef-aae20c51773f` both returned
+  **NEEDS-CHANGES** on exact 29-commit range `0481c1e0^..6bd6c03f`. No prior
+  approval or reviewer identity carries forward.
+- Three demonstrated defects are accepted. The checkout snapshot enumerates
+  only regular files and symlinks, so an ignored FIFO/socket/device is absent
+  and its unsupported-type branch is unreachable. The exact commands inherit
+  shell functions, `PATH`, and `BASH_ENV`, so exported command replacements can
+  bypass the Git/tool and outside-repository cleanup authority. The P/R0/H
+  gates execute the current prerequisite checker before authenticating its own
+  bytes, so a stable preexisting replacement can approve itself twice.
+- Two contradictory ancestry/mutability suggestions are rejected under the
+  existing contract. Literal coordinator-issued C is deliberately an external
+  sibling trust root whose attested fields bind M/source/paths/hashes; requiring
+  `C^` to equal either M or source would replace that trust model, and the two
+  reviewers proposed different parents. Likewise, Task117A and P/R0/H claims
+  explicitly permit evidence after their immutable dispatch blocks; only the
+  block must equal M, while CF-1R24's before/after snapshot prevents evidence
+  changes during a gate. Full current-claim equality to M would forbid the
+  required evidence lifecycle.
+- The sole plan writer is authorized only for CF-1R25: execute every affected
+  Task117A, Task137A, and P/R0/H preflight/review command inside a literal
+  absolute-path clean-shell envelope that inherits no functions, PATH,
+  `BASH_ENV`, Git controls, Node options, or npm configuration; make the
+  checkout snapshot enumerate directories and every non-`.git` path, record a
+  `node_modules` symlink identity while pruning only real dependency-directory
+  contents, reject unsupported special entries, and propagate every
+  find/sort/read/hash failure without emitting an authorizing digest; and bind
+  every P/R0/H checker invocation to a literal coordinator-issued SHA-256 of
+  the exact checker bytes before the first and terminal calls.
+- CF-1R25 must state the external-C and mutable-evidence-suffix boundaries
+  explicitly so fresh reviewers do not infer an ancestry or whole-claim rule.
+  Preserve every other CF-1R18 through CF-1R24 contract. Source implementation,
+  full verification, provider/network/credential/Nous activity, reset credits,
+  `neo`, self-review, plan integration, and merge remain closed pending a
+  committed docs-only candidate and two fresh unqualified Terra/xhigh approvals.
