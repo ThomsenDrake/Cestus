@@ -8835,3 +8835,20 @@ explicit implementation authorization.
   **APPROVED** verdicts are required; every prior verdict is non-authorizing.
 - All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
   integration actions remain closed pending both fresh approvals.
+
+## RV-1-E-293 — Ownership-separated reviewer identities after reboot
+
+- Lifecycle/executability reviewer
+  `019f6591-ad58-7152-9db4-ad24f44a0c16` and authority/import/bypass reviewer
+  `019f6591-e651-7440-a1a7-43678150c94b` are active read-only on the exact
+  candidate, lineage, and canonical checkpoint in RV-1-E-292. Both use
+  `gpt-5.6-terra` at `xhigh` in fresh isolated worktrees and are pinned under
+  distinct CF-1R18 review titles.
+- The machine reboot did not alter the canonical candidate or reviewer scope.
+  Neither reviewer may edit, run full/live/provider/credential gates, touch
+  `neo`, or carry forward any earlier verdict. Source dispatch and plan
+  integration remain closed until both return explicit unqualified
+  **APPROVED** verdicts and those verdicts are durably recorded.
+- Latest authenticated usage reports 40% used / 60% weekly remaining, with no
+  reset credits. The DRAIN threshold remains at 10% remaining and the hard
+  pause threshold remains at 7%; reset credits must never be redeemed.
