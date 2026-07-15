@@ -8198,3 +8198,26 @@ explicit implementation authorization.
   test/gate. Task140P/R0/H/R1 remain blocked. Full verification,
   provider/network/credential/Nous action, reset credits, `neo`, worker
   self-review, self-integration, and merge remain closed.
+
+## RV-1-E-260 — Task133 replayable-lifecycle repair and dual review dispatch
+
+- The sole plan-worktree writer committed forward documentation candidate
+  `b3b455d7` after preserving every rejected amendment in exact review range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..b3b455d7`.
+  `git diff --check && npm run factory:check` exited `0`. The correction adds a
+  strict hash-only `prompt-bound` receipt, approval-event-derived v2 time,
+  portable-only prompt-store remount checks before and after every I/O,
+  two-phase prepared-binding/receipt/admission authority, explicit
+  `runner-dispatching` recovery, deterministic invocation-state handling, and
+  Task140H ownership of the live kernel/proof/runtime consumer path.
+- Fresh independent Terra/xhigh persistence/lifecycle reviewer
+  `019f64c1-3d87-7423-85ce-1ae237dbc492` and authority/consumer reviewer
+  `019f64c1-4108-7533-bbbb-fcb81d2db1a8` are dispatched read-only against the
+  complete range and current canonical source. Both must return unqualified
+  **APPROVED** before coordinator-only plan integration. Either rejection
+  requires another forward correction; source dispatch remains frozen.
+- Latest authenticated token-count event reports `used_percent=33`, therefore
+  67% weekly remaining. DRAIN remains at <=10% remaining and HARD PAUSE at
+  <=7%; reset credits remain untouched. Full verification,
+  provider/network/credential/Nous activity, `neo`, worker self-review,
+  self-integration, and merge remain closed.
