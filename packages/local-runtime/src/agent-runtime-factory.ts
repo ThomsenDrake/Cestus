@@ -172,7 +172,7 @@ function createLocalTaskOrchestratorCapabilities(
         // never ask a kernel to render a replacement prompt.
         const key = `${input.taskId}:${input.attemptId}`;
         const retained = mountedReadbacks.get(key);
-        const witness = retained?.witness ?? await recoverMountedContextReadyWitness({
+        const readback = retained ?? await recoverMountedContextReadyWitness({
           handle,
           contextRegistry,
           store: await storeForRender(),
@@ -180,10 +180,10 @@ function createLocalTaskOrchestratorCapabilities(
           runType: input.runType,
           attemptId: input.attemptId
         });
-        if (retained === undefined) mountedReadbacks.set(key, witness);
+        if (retained === undefined) mountedReadbacks.set(key, readback);
         // Keep the exact one-use witness lexical until the later owned
         // admission runner receives it. Do not serialize or reconstruct it.
-        void witness.witness;
+        void readback.witness;
         throw new Error("Local task orchestrator specialist runner is not configured for autonomous dispatch.");
       }
     },
@@ -210,13 +210,25 @@ async function recoverMountedContextReadyWitness(input: {
   if (checkpoint === undefined || checkpoint.type !== "agent.task.orchestration.checkpointed") {
     throw new Error("Local task orchestrator requires a durable context-ready mounted prompt checkpoint.");
   }
-  const contextPackIds = checkpoint.payload.contextBindings.map((binding) => binding.ref.contextPackId);
+  const durableContextBindings = checkpoint.payload.contextBindings;
+  const contextPackIds = durableContextBindings.map((binding) => binding.contextPackId);
   if (contextPackIds.length === 0 || new Set(contextPackIds).size !== contextPackIds.length) {
     throw new Error("Local task orchestrator context-ready checkpoint has invalid context bindings.");
   }
   const authoritativeResolvedContextPacks = await Promise.all(
     contextPackIds.map(async (contextPackId) => await input.contextRegistry.buildResolved(contextPackId))
   );
+  for (const [index, resolved] of authoritativeResolvedContextPacks.entries()) {
+    const durable = durableContextBindings[index];
+    if (
+      durable === undefined ||
+      resolved.ref.contextPackId !== durable.contextPackId ||
+      resolved.ref.contentHash !== durable.contentHash ||
+      resolved.ref.sizeBytes !== durable.sizeBytes
+    ) {
+      throw new Error("Local task orchestrator context-ready checkpoint no longer matches current canonical context pack readback.");
+    }
+  }
   const readback = await input.store.read({
     inputArtifactHash: checkpoint.payload.promptArtifactHash as `sha256:${string}`,
     authoritativeResolvedContextPacks

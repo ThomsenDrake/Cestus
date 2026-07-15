@@ -10,9 +10,9 @@ describe("mounted production prompt readback authority", () => {
       mountInstanceId: "process_readback_test"
     } as const;
 
-    await expect(consumeMountedProductionPromptReadbackWitness(structural, {} as never))
+    await expect(consumeMountedProductionPromptReadbackWitness(structural))
       .rejects.toThrow(/mounted.*prompt.*readback|required/i);
-    await expect(consumeMountedProductionPromptReadbackWitness({ ...structural }, {} as never))
+    await expect(consumeMountedProductionPromptReadbackWitness({ ...structural }))
       .rejects.toThrow(/mounted.*prompt.*readback|required/i);
   });
 });

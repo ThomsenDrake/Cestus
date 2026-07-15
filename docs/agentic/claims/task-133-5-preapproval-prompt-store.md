@@ -121,3 +121,27 @@ text boundary. No provider, network, credentials, Nous, full verification,
   gates, `git diff --check`, and `npm run factory:check` passed.
 - Full verification, provider/network/credential/Nous/reset-credit/`neo`,
   merge/rebase/push, and self-integration were not run.
+
+## Coordinator admission rejection and bounded forward repair — 2026-07-15
+
+Candidate `04dcad1b97c07a3582bfc0732b2407e756d4d782` is rejected before external
+review. Although its focused suite reported 86 passing tests, the
+coordinator's fresh standalone typecheck exited `2` with six diagnostics:
+
+- structural-forgery tests supplied unbranded objects to a typed private
+  consumer;
+- the mounted kernel fixture used the obsolete `agent` actor kind;
+- factory dispatch conflated a retained witness with a recovered readback
+  record; and
+- restart recovery read a nonexistent durable binding `.ref` instead of the
+  current resolved pack's canonical ref.
+
+The authorized forward repair keeps the private brand intact: the consumer
+first accepts `unknown` solely to reject non-member objects, then requires
+private WeakMap membership before checking real expectations. Tests therefore
+need no cast or forged brand. Factory recovery now retains an explicit
+`{ witness, envelope }` record and compares each current resolved pack's real
+`ref` fields to durable binding metadata before mounted artifact readback.
+The replacement must repeat the exact focused suite, fresh standalone
+typecheck, three static gates, diff/factory gates, dependency-link removal,
+and two new external reviews.
