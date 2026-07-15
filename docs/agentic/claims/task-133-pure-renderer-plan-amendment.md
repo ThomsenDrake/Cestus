@@ -1,10 +1,14 @@
-# Task133 discriminated-binding plan-amendment claim
+# Task133 discriminated-binding and Task140R0 plan-repair claim
 
-- Status: ready-for-review pending the documentation gate and a fresh
-  independent defects-first plan review.
+- Status: forward-repaired candidate pending the documentation gate and a fresh
+  independent defects-first plan review. The fresh review of full lineage
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..d91f28a3f6434490246daaa97e399a905c902761`
+  returned `NEEDS-CHANGES` on two P1 plan defects; this child repair addresses
+  both without authorizing implementation.
 - Coordinator-owned forward repair on
-  `codex/task-133-pure-renderer-plan-amendment`, rooted at exact base
-  `ffc2dc81c189af3163ec7b573b4f6f4767660de7`. Only this claim and the active
+  `codex/task-133-pure-renderer-plan-amendment`, resumed from clean candidate
+  `d91f28a3f6434490246daaa97e399a905c902761`; the full amendment lineage begins
+  at `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8`. Only this claim and the active
   recovery plan are changed by this documentation task.
 
 ## Current Executable Contract
@@ -12,9 +16,10 @@
 The current contract is the appended `CF-1R5 Task133 Discriminated Binding
 Migration And Exact Renderer Amendment` in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`.
-It is the sole Task133 dispatch authority. Earlier local-only and five-file
-amendments are rejected Git history and must not be used as implementation
-instructions.
+Its corrected `Task140R0 V2-Only Composition Replacement` is the sole future
+R0 execution overlay. Together they are the current executable contract.
+Earlier local-only, five-file, and incomplete R0 prose remains rejected Git
+history and must not be used as implementation instructions.
 
 - `packages/agent/src/prompt-artifacts.ts` is the canonical data owner. It
   must expose an explicit legacy production-binding v1 and strict exact v2;
@@ -34,6 +39,13 @@ instructions.
   and capabilities remain private and out of Task133 scope. Task140R0 is the
   sole future v2 consumer after its existing private prerequisites; it rejects
   legacy and direct artifacts before any effect.
+- Task140R0 modifies its factory and route test, creates the previously absent
+  `packages/local-runtime/test/agent-runtime-composition.test.ts`, and creates
+  its claim. Its actual RED/GREEN steps and focused command now cover a valid
+  captured v2 control; legacy-v1 and direct-v2 artifacts; caller binding and
+  derived-hash injection; every one-field exact-run, provider-posture, and six
+  context swap; and zero renderer/provider/ledger/runner/H/store/terminal
+  activity for every rejection.
 
 ## Frozen Prerequisites And Scope
 
@@ -64,8 +76,10 @@ Run only:
 git diff --check && npm run factory:check
 ```
 
-The fresh review range is
-`ffc2dc81c189af3163ec7b573b4f6f4767660de7..HEAD`, where `HEAD` is this
-single clean documentation commit. Stop after a fresh independent Terra/xhigh
-review; only the coordinator may integrate an approved amendment or dispatch
-the later Task133 implementation.
+The fresh full-lineage review range is
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`, where `HEAD` is the clean
+child documentation repair commit. The reviewer must inspect the complete
+range, including the preserved rejected amendments and this superseding
+contract. Stop after a fresh independent Terra/xhigh review; only the
+coordinator may integrate an approved amendment or explicitly approve and
+invoke `superpowers:subagent-driven-development` for later implementation.

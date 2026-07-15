@@ -408,7 +408,7 @@ SHA or “original prerequisites” is insufficient.
 **Files:**
 
 - Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
-- Modify: `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Create: `packages/local-runtime/test/agent-runtime-composition.test.ts`
 - Modify: `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
 - Claim: new Task140R0 claim.
 
@@ -418,18 +418,27 @@ CF-1 integration `48c9cbcdcf723bcc74868f782bc2375bae565ae6`. This is the sole
 factory registration: it captures reviewed Task134A normalization and the
 Task135A binder/stores, then registers the H-owned `WeakMap` resolver against
 the exact runner registry. It accepts no public structural tuple and remains
-blocked on any missing captured collaborator.
+blocked on any missing captured collaborator. Before edits, the coordinator
+must explicitly approve and invoke `superpowers:subagent-driven-development`
+and record that approval in the Task140R0 claim.
 
 - [ ] **Step 1: Write causal RED tests.**
 
-  Prove a public tuple/lookalike cannot construct or register the closure;
-  a swapped registry/preparation/readback/store cannot resolve; and the valid
-  factory-captured registration admits dispatch but cannot itself append H or
-  terminal state.
+  Create the isolated composition suite. Prove a public tuple/lookalike cannot
+  construct or register the closure; legacy-v1 and direct/caller-supplied
+  exact-v2 artifacts are rejected; caller-supplied production bindings,
+  `providerPostureHash`, and `exactRunBindingHash` are rejected; and each
+  exact-run, provider-posture, and six private context value can be swapped one
+  at a time only to fail closed. Every negative case must assert zero renderer,
+  provider-adapter, ledger-append, runner-dispatch, H prepare/bind/readback,
+  store, and terminal activity. A valid factory-captured control alone reaches
+  exactly one exact-v2 renderer call and still performs none of those later
+  effects in R0. Provider activity means readiness lookup, adapter invocation,
+  or network call; ledger activity means any read, write, or append.
 
 - [ ] **Step 2: Run focused RED.**
 
-  Run `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts` and record the missing factory registration failure.
+  Run `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts` and record the missing private registration/exact renderer path and every incorrectly admitted direct, injected, or swapped case.
 
 - [ ] **Step 3: Implement private registration only.**
 
@@ -437,14 +446,22 @@ blocked on any missing captured collaborator.
   bind it through Task140P's non-indexed registration seam. Its `resolve` must
   reparse/hash the Task134A preparation, call the captured Task135A binder,
   reparse/hash its readback, then return only the captured stores plus matching
-  frozen data. It exposes only the existing narrow orchestration route; it does
-  not accept caller capability arguments or duplicate H prepare/bind/readback.
+  frozen data. Before invoking the exact renderer, it strictly compares every
+  captured exact-run, provider-posture, and context value. It exposes only the
+  existing narrow orchestration route; it does not accept a caller artifact,
+  binding, derived hash, capability argument, or duplicate H
+  prepare/bind/readback.
   The old public `handoffCapability` remains temporarily inert for Task140H to
   remove functionally; Task140R1 removes its shape after H is reviewed.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
   `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+  GREEN requires the valid captured control to invoke
+  `renderExactlyBoundProductionSpecialistPrompt` exactly once and return a
+  recomputed matching v2 binding, while every negative RED above rejects with
+  all effect counters still at zero.
 
 - [ ] **Step 5: Commit and fresh review.**
 
@@ -644,8 +661,11 @@ constructor.
 
 ### Task140R0 added live-path registrar-integrity acceptance
 
-**Files:** retain Task140R0's existing files and claim. Its tests may add only
-the named Task140R0 test paths already in this plan; no Task132A public API or
+**Files:** modify
+`packages/local-runtime/src/agent-runtime-factory.ts`, create
+`packages/local-runtime/test/agent-runtime-composition.test.ts`, modify
+`packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`, and
+create the Task140R0 claim. No other test path, Task132A public API, or
 test-only constructor may be introduced.
 
 **Consumes:** reviewed/coordinator-integrated Task132A lexical closure,
@@ -681,15 +701,23 @@ append; a missing factory capture makes the port unavailable.
   six independent counterfactuals that swap exactly one of: content hash,
   source high-water, selection manifest, scope, policy, or provenance. Each
   counterfactual must reach the live admission/resolve boundary and reject
-  before H prepare, H readback, or terminal append. Keep separate REDs proving
-  a public tuple/lookalike cannot construct or register the closure.
+  before renderer, provider readiness/adapter/network, any ledger, runner-dispatch, H
+  prepare/bind/readback, store, or terminal activity. Keep separate REDs
+  proving a public tuple/lookalike cannot construct or register the closure;
+  legacy-v1 and direct/caller-supplied exact-v2 artifacts cannot enter; caller
+  production bindings or derived hashes cannot be injected; and every
+  exact-run and provider-posture value swapped one at a time rejects at the
+  same zero-effect boundary. The valid captured control alone may invoke the
+  exact renderer once.
 
 - [ ] **Step 2: Run Task140R0 focused RED.**
 
   Run exactly:
   `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts`
 
-  Record the missing registration or incorrectly accepted swapped binding.
+  Record the missing registration/exact renderer path or each incorrectly
+  accepted legacy, direct-v2, injected-hash, exact-run, posture, or context
+  counterfactual.
 
 - [ ] **Step 3: Implement only private R0 registration and live rechecks.**
 
@@ -699,7 +727,9 @@ append; a missing factory capture makes the port unavailable.
   rebuild the actual pack through the captured registry, and reject each exact
   mismatch of content hash, source high-water, selection manifest/proof, scope,
   policy version, or provenance before it calls Task135A's `prepare`. It then
-  performs the existing preparation/readback reparse/hash and binder checks.
+  checks every captured exact-run and provider-posture value before rendering,
+  performs the existing preparation/readback reparse/hash and binder checks,
+  and invokes the exact-v2 renderer once only for the valid control.
   Register only that closed resolver through Task140P's non-indexed
   runner-registry `WeakMap`; no caller may pass a closure/capability/tuple, and
   the resolver does not return a context capability or verified binding set.
@@ -711,9 +741,12 @@ append; a missing factory capture makes the port unavailable.
 
   `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
 
-  The Task140R0 claim must enumerate successful control plus all six live-path
-  swaps and public tuple rejection. Full verification remains closed; a fresh
-  independent complete-range review is required before coordinator integration.
+  GREEN and the Task140R0 claim must enumerate the successful exact-v2 control;
+  legacy-v1, direct-v2, binding/hash-injection, every exact-run/posture swap,
+  all six live-path context swaps, and public tuple rejection; and zero activity
+  for every named effect in each negative case. Full verification remains
+  closed; a fresh independent complete-range review is required before
+  coordinator integration.
 
 **Revised release order:** fresh plan review approves this amendment; then a
 fresh bounded Task132A author may implement only the replacement Task132A
@@ -855,10 +888,10 @@ caller-supplied verifier. Data flows one way from private R0 verification to
 pure Task133 data to the private renderer call. Task133 does not import R0;
 R0 depends on reviewed/integrated Task133, so no cycle arises.
 
-Task140R0's existing exact files
-`packages/local-runtime/src/agent-runtime-factory.ts`,
-`packages/local-runtime/test/agent-runtime-composition.test.ts`, and
-`packages/local-runtime/test/agent-task-orchestrator-routes.test.ts` must add
+Task140R0 modifies
+`packages/local-runtime/src/agent-runtime-factory.ts`, creates
+`packages/local-runtime/test/agent-runtime-composition.test.ts`, and modifies
+`packages/local-runtime/test/agent-task-orchestrator-routes.test.ts` to add
 causal tests that forged, stale, or each swapped normalized field cannot reach
 the renderer, and that a direct Task133 local-only envelope is neither port
 registration input nor executable/readiness evidence. Its focused RED/GREEN
@@ -1430,33 +1463,100 @@ npm test -- packages/agent/test/prompt-artifacts.test.ts packages/agent/test/pro
 `npm run verify` remains closed. Do not run provider/network/credential/Nous
 actions, reset credits, `neo`, implementation in this planning worktree,
 self-review, self-integration, merge, or any live test. The fresh plan-review
-range is `ffc2dc81c189af3163ec7b573b4f6f4767660de7..HEAD`, where `HEAD` must
-be the clean single child documentation commit containing this amendment. A
-fresh independent Terra/xhigh reviewer must return an approval before the
-coordinator alone integrates it. Rejection requires another forward amendment;
-neither this branch nor a child implementation branch may merge itself.
+range is `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`; the reviewer must
+read that complete amendment lineage, and `HEAD` must be the clean child
+documentation repair commit. A fresh independent Terra/xhigh reviewer must
+return an approval before the coordinator alone integrates it. Rejection
+requires another forward amendment; neither this branch nor a child
+implementation branch may merge itself.
 
 ### Task140R0 V2-Only Composition Replacement
 
-This paragraph supersedes the preceding Task140R0 renderer-composition wording
-only. After all existing Task140P/R0 prerequisites, Task133 implementation
-integration, the six private context checks, and captured provider-policy
-checks succeed, the private factory resolver constructs exactly one
-`RenderExactlyBoundProductionSpecialistPromptInput` from captured task,
-attempt, approved-run, run, resident, workspace, mount, workflow descriptor,
-policy, and ready provider-posture facts. It calls
-`renderExactlyBoundProductionSpecialistPrompt` once, requires v2, and compares
-the returned exact binding and both recomputed hashes to those captured facts
-before its existing private route proceeds.
+This subsection supersedes the preceding Task140R0 file contract and Steps
+1–4 in full. It preserves Task140R0's original private-registration ownership,
+all prerequisites, Step 5 fresh-review/coordinator-integration gate, and the six
+live context checks. It adds no Task140 authorization.
 
-Task140R0 must reject a legacy v1 artifact, any direct v2 artifact, a
-caller-supplied binding/hash, and every swapped exact-run/posture/context value
-before renderer invocation, provider activity, ledger append, runner dispatch,
-H, store, or terminal activity. It cannot upgrade a v1 artifact or render text
-itself. Its file ceiling remains only
-`packages/local-runtime/src/agent-runtime-factory.ts`,
-`packages/local-runtime/test/agent-runtime-composition.test.ts`, and
-`packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`; no
-Task133 factory surface is created. This adds no Task140 authorization and does
-not change its independent prerequisite, review, or coordinator-integration
-gates.
+**Files:**
+
+- Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
+- Create: `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Modify: `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
+- Create: `docs/agentic/claims/task-140-r0-r-owned-factory-port-registration.md`
+
+The new composition test is the isolated production-factory integration
+witness. The existing route test is the public/direct-input rejection witness.
+The two agent tests in the focused command are read-only Task140P/dispatch
+regression witnesses. No other source, test, or claim file is permitted.
+
+**Prerequisites:** all original Task140P/R0 prerequisites plus reviewed and
+coordinator-integrated Task133 implementation. Before edits, the coordinator
+must explicitly approve and invoke `superpowers:subagent-driven-development`
+and record that approval, every prerequisite full SHA, the clean base, and the
+frozen file list in the new Task140R0 claim. The six private context checks and
+captured provider-policy checks must exist before the exact renderer path.
+
+- [ ] **Step 1: Create exhaustive causal Task140R0 REDs.**
+
+  In `agent-runtime-composition.test.ts`, drive the real factory-created,
+  Task140P-registered resolver. Add one valid captured control and table-driven
+  counterfactuals that swap exactly one captured value at a time:
+  `taskId`, `attemptId`, `approvedRunId`, `runId`, `runType`,
+  `residentAgentId`, `workspaceId`, `mountInstanceId`, workflow descriptor,
+  `policyVersion`; provider `providerId`, `modelId`, `capabilityIds`,
+  `selectionPolicyVersion`, `readinessState`, `approvalRequirementId`; and
+  context content hash, source high-water, selection manifest/proof, scope,
+  policy version, and provenance. Each counterfactual must fail before renderer
+  invocation.
+
+  In `agent-task-orchestrator-routes.test.ts`, add separate real-route REDs for
+  a legacy-v1 artifact, a direct/caller-supplied exact-v2 artifact, a
+  caller-supplied production binding, injected `workflowDescriptorHash`,
+  injected `providerPostureHash`, and injected `exactRunBindingHash`. Do not
+  test an exported helper or add a test-only constructor. For every negative
+  test, install counters/spies and
+  assert zero renderer calls, provider readiness/adapter/network calls, ledger
+  reads/writes/appends, runner dispatches, H prepare/bind/readback calls, store
+  reads/writes, and terminal activity. The valid captured control must be the
+  only case expected to reach one renderer call, and R0 itself still records
+  zero later effects.
+
+- [ ] **Step 2: Run the exact focused RED.**
+
+  ```bash
+  npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts
+  ```
+
+  Record causal failures for the absent private exact-v2 composition path and
+  for every legacy/direct/injected/swapped case that is not yet rejected at the
+  required zero-effect boundary. A missing test file is not acceptable RED
+  evidence: create the suite before running this command.
+
+- [ ] **Step 3: Implement private exact-v2 composition only.**
+
+  After all private context and provider-policy comparisons succeed, construct
+  exactly one `RenderExactlyBoundProductionSpecialistPromptInput` from captured
+  task, attempt, approved-run, run, resident, workspace, mount, workflow,
+  policy, and ready provider-posture facts. Call
+  `renderExactlyBoundProductionSpecialistPrompt` exactly once, require an
+  explicit v2 artifact, recompute and compare the provider-posture and exact-run
+  hashes, and only then allow the existing private route to proceed. Reject all
+  direct artifacts, caller bindings/hashes, and one-field swaps before that
+  renderer call. Do not upgrade v1, render text locally, add a Task133 factory
+  surface, mint a capability, invoke a provider, append a ledger event, dispatch
+  a runner, or perform H, store, or terminal work.
+
+- [ ] **Step 4: Run GREEN and the exact non-full gate.**
+
+  ```bash
+  npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check
+  ```
+
+  GREEN requires the valid captured control to call the canonical exact
+  renderer exactly once and return an explicit v2 artifact whose exact binding
+  and both recomputed hashes match the captured facts. Every legacy-v1,
+  direct-v2, binding/hash injection, exact-run swap, provider-posture swap, and
+  context swap must reject with every named effect counter at zero. The claim
+  records each case and command result. `npm run verify`, provider/network/
+  credential/Nous activity, reset credits, `neo`, H/store/terminal work,
+  self-integration, and merge remain closed.
