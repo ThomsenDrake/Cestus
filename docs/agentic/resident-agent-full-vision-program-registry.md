@@ -9817,3 +9817,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   diff checking, factory readiness, and clean-state verification. This opens
   only Task135D recovery-base preparation. Full verification, provider activity,
   reset credits, all other integration, and every `neo` action remain closed.
+
+## RV-1-E-336 — Task135D recovery branch prepared
+
+- The blocked attempt remains preserved on
+  `codex/task-135d-runtime-handle-capture` through clean WIP test commit
+  `5c44ba4374289a32696110a06a92b34a7d433c07`; no history was rewritten.
+- Fresh forward branch `codex/task-135d-runtime-handle-capture-recovery` starts
+  from exact post-Task135E program checkpoint
+  `e532c35fd1b3a829dfbbd4f87d752f42304419f9`. Coordinator replay commit
+  `3643a5cb968542ddd9fb866f673de393badd866e` carries only the two preserved
+  Task135D RED tests onto that base.
+- The linked worktree is clean. Its source-base-through-current range contains
+  exactly the two authorized test paths, no merge commits, and the repaired
+  resident-identity companion baseline. The existing Task135D parent may resume
+  directly, create a fresh recovery claim, require missing-capture causal RED
+  with the companion suite green, implement `runtime-factory.ts`, and run only
+  the prescribed focused/typecheck/diff/factory gates.
+- No new implementer is authorized. The final recovery candidate must retain
+  the exact four-path ceiling from source base
+  `e532c35fd1b3a829dfbbd4f87d752f42304419f9`, stop for fresh ownership and
+  authority review, and cannot integrate itself. Full verification, provider
+  activity, reset credits, and every `neo` action remain closed.
