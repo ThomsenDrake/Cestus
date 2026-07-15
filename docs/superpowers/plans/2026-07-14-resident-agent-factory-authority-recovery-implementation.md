@@ -4004,3 +4004,183 @@ the module is not index-exported, copied/reused tokens fail, and smoke source
 both positively delegates and has no bypass. Exactly two unqualified
 Terra/xhigh approvals permit coordinator-only plan integration. Source/full/
 live/credential/reset-credit/`neo`/self-integration/merge remain closed.
+
+## CF-1R14 Consume-Time Transport, Import Allowlist, And Canonical Handoff Gate
+
+**Status:** This section supersedes CF-1R13's admission-construction API,
+P/R0 test ownership and commands, and final H command. It also supersedes any
+earlier wording that lets smoke build a prompt directly or leaves the
+Task134A/135A preparation boundary implicit. All other latest-overlay
+architecture remains current. Source stays frozen pending two fresh approvals
+of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`.
+
+### Consume-time inspection and exact private transport
+
+The ordinary approval `inspect` remains status-only and never mints an
+admission. Add a package-internal `inspectForPromptBinding` operation to the
+existing approval adapter. Its input adds one exact-key-normalized
+`ResolveApprovedPromptBindingFacts` object. The adapter snapshots and freezes
+those facts before its first `await`, reruns the complete current approval and
+preview inspection, checks every proof-derived diagnostic against the facts,
+and only then calls:
+
+```ts
+export function createTaskOrchestratorApprovalAdmission(input: {
+  readonly facts: ResolveApprovedPromptBindingFacts;
+  readonly proof: TaskOrchestratorProviderApprovalProof;
+}): TaskOrchestratorApprovalAdmission;
+```
+
+The module-private WeakMap binding contains the normalized full fact record,
+the exact proof, and its current-preview input. `consume` first obtains the
+binding and deletes the WeakMap entry, then compares every expected field:
+task, attempt, run type, scope, approval event ID, prompt hash, ordered context
+hashes, provider-posture hash, and credential-reference ID. Thus every consume
+attempt burns an exact identity. A mismatch returns `undefined` without proof
+exposure, and retrying that same object with corrected facts also fails. A new
+admission requires a new consume-time current approval inspection.
+
+All three existing execution paths—newly approved claim, resumed active claim,
+and newly reclaimed suspended claim—converge on `dispatchApprovedRunner`.
+After exact context-ready readback and before prompt-bound or runner-dispatching
+append, that function derives the fact record from the current claim, approved
+run, context checkpoint, scope, provider posture, and credential reference;
+calls `inspectForPromptBinding`; and passes the returned exact
+`approvalAdmission` directly as a private positional argument to Task140P's
+`prepare(facts, admission)`. The registered R0 resolver consumes it immediately.
+No caller stores it in policy, summary, checkpoint, projection, route result,
+DTO, diagnostic, log, or serialized recovery state. Recovery repeats the same
+flow and obtains a fresh object; the outer status-only inspection never creates
+an abandoned token.
+
+Add exact-title P REDs:
+
+- `status inspection never mints prompt binding admission`
+- `binding inspection mints only after current approval and normalized fact capture`
+- `normal and resumed dispatch forward one exact admission after context readback`
+- `one field mismatch burns exact admission before proof exposure`
+- `copied structural swapped and reused admission never reaches resolver`
+
+The P-owned `task-orchestrator-approval-admission.test.ts` tests module
+creation/consumption only; it does not assert that the later R0 factory imports
+the consumer. Task140P's identical RED and GREEN command is:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts
+```
+
+Expected RED: exit `1` because there is no consume-time binding inspection,
+normal/resume dispatch does not carry an exact object, or mismatch does not burn
+identity. Throwing signatures do not satisfy the valid controls. Expected
+GREEN: exit `0`, followed by:
+
+```bash
+npm run typecheck && ! rg -n 'task-orchestrator-approval-admission' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+### R0 import allowlist and canonical preparation binder
+
+Task140R0 additionally creates
+`packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts`.
+That test walks production TypeScript imports and enforces this exact symbol
+allowlist:
+
+- the internal module defines both operations;
+- only `packages/agent/src/task-orchestrator-approval.ts` imports
+  `createTaskOrchestratorApprovalAdmission`;
+- only `packages/local-runtime/src/agent-runtime-factory.ts` imports
+  `consumeTaskOrchestratorApprovalAdmission`;
+- type-only transport may mention `TaskOrchestratorApprovalAdmission` only in
+  the internal module, approval adapter, handoff port, orchestrator, and runtime
+  factory; and
+- no package index, route, DTO, projection, status/summary, logger,
+  serializer, or other production source imports the module or symbols.
+
+Add exact-title R0 REDs
+`r0 alone imports the internal approval consumer`,
+`route dto log and serializer sources cannot import approval admission`, and
+`r0 consumes full proof only after exact single use fact match`. These tests
+are R0-owned and cannot appear in P's command.
+
+The current program already contains reviewed/coordinator-integrated Task134A
+merge `83a301d541e7fec5d0b29e6f2003566c06336158` and Task135A merge
+`ac3f91901da0c9b23722a046be73d95746f691da`. Before Task140P starts, its claim
+must also list the then-current reviewed/coordinator-integrated full SHAs for
+Tasks136, 137, 138, and 139 and prove its base descends from every 132-139 SHA;
+those future SHAs may not be replaced by a branch name, placeholder, or
+candidate. R0 and H repeat that full prerequisite inventory plus each preceding
+Task140 SHA.
+
+R0 imports and captures
+`createMountedSpecialistHandoffPreparationBinder` from the reviewed Task135A
+module while constructing the factory-private runner closure. Prompt-binding
+preparation does not call this handoff binder. After a registered runner later
+returns the exact Task134A `UntrustedSpecialistHandoffPreparationV1`, the same
+closed runner path invokes this one captured binder, reparses/recomputes its
+`MountedSpecialistHandoffPreparationReadbackV1`, and makes only that data-only
+readback available to H. No route or caller can supply a binder, store, or
+readback; R0 creates no second codec/binder and performs no material/manifest
+I/O or terminal append. H later consumes this exact closure and does not create
+another binder.
+
+Add exact-title R0 controls
+`factory captures reviewed mounted preparation binder without public exposure`,
+`registered runner path invokes canonical binder only for exact task134a preparation`,
+and `lookalike stale or swapped preparation binder and readback fail before h`.
+The valid control records one canonical binder call, canonical data-only
+readback, and zero material/manifest/provider/H/terminal effects.
+
+Task140R0's identical RED and GREEN command is:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-approval-admission.test.ts packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/local-runtime/test/agent-handoff-projection.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts
+```
+
+Expected RED: exit `1` on the absent sole-consumer import/allowlist, missing
+factory-captured binder path, or valid exact admission control. Expected GREEN:
+exit `0`, followed by:
+
+```bash
+npm run typecheck && ! rg -n 'task-orchestrator-approval-admission' packages/agent/src/index.ts && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/local-runtime packages/agent/src packages/agent/test && git diff --check && npm run factory:check
+```
+
+### Thin smoke and complete H non-live gate
+
+`agent-nous-smoke.ts` becomes a thin CLI adapter over
+`runResidentSpecialistAcceptance`. Remove its imports and calls of
+`buildLocalRuntimeStatusPromptArtifact`, `createSqlitePrrRuntime`,
+`defaultLocalAgentRuntimeFactory`, and every direct runtime model/workflow/
+renderer/kernel operation. It may allocate an explicit temporary portable root
+and perform provider-settings preflight, but resident acceptance alone creates,
+mounts, approves under the explicit acceptance fixture, and executes. No
+`.cestus/local/prompt-artifacts` path or internal-disk fallback is reachable.
+
+Add exact-title smoke RED
+`smoke delegates once to resident acceptance without status prompt builder or fallback`.
+The deterministic test injects one resident-acceptance spy, asserts exactly one
+call with the explicit portable root, and asserts zero direct runtime factory,
+prompt-builder, provider, and internal-path activity. Mount/approval failure
+controls remain fail-closed.
+
+This command replaces every earlier Task140H non-live command:
+
+```bash
+npm test -- packages/agent/test/production-model-invocation-admission.test.ts packages/agent/test/production-specialist-invocation-proof.test.ts packages/agent/test/task-orchestrator-approval-admission.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-approval.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/agent/test/runtime.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/specialist-handoff-projection.test.ts packages/local-runtime/test/task-orchestrator-approval-admission-imports.test.ts packages/local-runtime/test/mounted-agent-artifact-stores.test.ts packages/local-runtime/test/agent-handoff-projection.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/local-runtime/test/resident-specialist-acceptance.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts && npm run typecheck && ! rg -n 'runEvidenceTriageWorkflow|runPrrNegotiationWorkflow|prepareSpecialistRun|invokeSpecialistModel|runtime\.invokeModel|renderProductionSpecialistPrompt' packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts && rg -n 'runResidentSpecialistAcceptance' packages/local-runtime/src/agent-nous-smoke.ts && ! rg -n 'runtime\.invokeModel|renderProductionSpecialistPrompt|prepareSpecialistRun|invokeSpecialistModel|runEvidenceTriageWorkflow|runPrrNegotiationWorkflow|buildLocalRuntimeStatusPromptArtifact|createSqlitePrrRuntime|defaultLocalAgentRuntimeFactory|\.cestus/local/prompt-artifacts' packages/local-runtime/src/agent-nous-smoke.ts && ! rg -n 'production-model-invocation-admission|production-prompt-readback|task-orchestrator-approval-admission' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+Expected: exit `0`; the canonical preparation/binder/projection chain is in the
+aggregate, smoke delegates only to resident acceptance, all live tests remain
+excluded, and no provider/network/credential activity occurs.
+
+### CF-1R14 review gate
+
+Two fresh independent Terra/xhigh reviewers inspect exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. They must explicitly
+confirm P's GREEN has no R0 dependency; normalized facts are captured before
+await and mismatch burns identity; all normal/resume paths converge on one
+consume-time inspection; imports are exactly allowlisted; future 136-139 SHAs
+are hard dispatch prerequisites; R0/H cover and use the reviewed canonical
+Task134A/135A preparation boundary; and smoke has no builder/fallback bypass.
+Exactly two unqualified approvals permit coordinator-only plan integration.
+Source/full/live/credential/reset-credit/`neo`/self-integration/merge remain
+closed.
