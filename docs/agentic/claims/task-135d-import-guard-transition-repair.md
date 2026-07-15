@@ -1,6 +1,6 @@
 # Task135D import-guard transition repair
 
-- Status: in-progress
+- Status: ready-for-review
 - Owner: `/root`
 - Branch: `codex/task-135d-import-guard-transition-repair`
 - Worktree: `/home/drake/.codex/worktrees/88b6/Cestus`
@@ -35,3 +35,26 @@ precondition. Final non-full checks are `npm run typecheck`, `git diff --check`,
 and `npm run factory:check`. Full verification, production edits, network,
 provider, credential, Nous, reset-credit, `neo`, merge, rebase, push, and
 program-registry activity are out of scope.
+
+## Causal transition evidence
+
+- This fresh isolated worktree initially lacked `vitest`; after confirming the
+  identical lockfile in a local worktree cache, `npm ci --offline
+  --ignore-scripts` installed only ignored local dependencies without network
+  activity or tracked dependency changes.
+- RED: with a temporary exact
+  `packages/local-runtime/src/mounted-artifact-authority-operation.ts` that
+  imports `captureFactoryIssuedMountedRuntime` from `./runtime-factory.js`, the
+  focused import test exited `1`: one test failed and two passed. The scanner
+  returned the permitted mounted-operation path, while the workspace-root
+  assertion at line 741 still expected `[]`; the dynamic allowlist assertion
+  passed.
+- GREEN: after changing only that workspace-root expectation to the same
+  existence-based one-path-or-zero transition, recreating the identical
+  temporary module made the focused import test exit `0` with all three tests
+  passing.
+- Zero-importer proof: after removing the temporary module, the identical
+  focused import test again exited `0` with all three tests passing. No
+  `mounted-artifact-authority-operation.ts` remains in the checkout.
+- Final non-full gates each exited `0`: `npm run typecheck`, `git diff --check`,
+  and `npm run factory:check` (`factory-readiness passed`).
