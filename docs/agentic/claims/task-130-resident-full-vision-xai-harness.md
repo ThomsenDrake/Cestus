@@ -189,3 +189,14 @@ independent review.
 - Status: ready for a new fresh independent Terra/xhigh review only. No
   integration, merge, provider/network/credential/material action, fallback,
   registry edit, or `neo` action occurred.
+
+## Coordinator Integration Record
+
+- Fresh independent Terra/xhigh review approved the exact forward recovery
+  `75e61f92..87b43c41` with no Critical, Important, or Minor findings. It
+  confirmed the raw authority/readback/unavailable path is removed and the
+  harness fails closed until Task139 can mount a real authority.
+- Coordinator alone integrated `87b43c41` as no-ff merge `78f45626` on the
+  program branch, then ran `npm test -- packages/agent/test/xai-subscription-harness.test.ts && npm run typecheck && git diff --check && npm run factory:check` as one fail-fast chain successfully (18 focused tests). The full verifier remains closed.
+- Status: merged, non-full-verified. No child self-integration, provider,
+  credential, network, material, fallback, or `neo` action occurred.
