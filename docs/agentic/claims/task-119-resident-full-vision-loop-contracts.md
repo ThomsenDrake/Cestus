@@ -470,3 +470,51 @@ Status: gate-passing pending one scoped forward commit and a distinct fresh
 Terra/xhigh review. No self-review, self-integration, merge, Task120 restart,
 Task136 work, provider/network/credential/Nous action, or `neo` action is
 authorized.
+
+## RV-1-E-198 Semantic Repair RED/GREEN
+
+- Fresh semantic-repair author: `/root/task119_semantic_repair` on
+  `codex/task-119-resident-full-vision-cf1r2-semantic-repair`, starting from
+  preserved unintegrated `00ded92b75b6030b3c58581babf5ac93aa6d6111`.
+  Authoritative runtime evidence is
+  `/home/drake/.codex/sessions/2026/07/14/rollout-2026-07-14T22-08-23-019f6388-47fc-7d73-8745-4cbee294f702.jsonl:8`,
+  whose `turn_context` records `model=gpt-5.6-terra` and `effort=xhigh`.
+- Root cause: v2 charged the initial plan to `planRevisions`, thereby treating
+  the four-slot value as four replans instead of three revisions after initial
+  planning; its replay accepted the inherited plan ID and had no observation
+  readback binding on a replan; and prerequisite ordinals were parsed as static
+  metadata without recording causally prior executed tool steps.
+- Causal RED: `npm test --
+  packages/ontology/test/agent-resident-loop-contracts.test.ts
+  packages/ontology/test/agent-contracts.test.ts` exited `1` with **4 failed
+  and 129 passed tests**. The four expected failures proved acceptance of a
+  fourth replan budget slot, a reused predecessor plan ID, a replan after the
+  preceding observation was removed while counters remained replayable, and a
+  declared step whose prerequisite had not executed.
+- GREEN: the same focused command exited `0` with **2 files / 133 tests
+  passing**. The initial plan now consumes zero replan slots while each replan
+  consumes exactly one against the three-replan ceiling; replans require a
+  fresh plan ID plus an exact prior-plan and prior-observation readback; and
+  replay admits a declared prerequisite only after its matching prior tool step
+  reached `executed`. The repair preserves v1, the exact five v2 event names,
+  strict own-data, complete H proof, prior budget/anchor/category behavior,
+  append-only provenance, and no-effect scope.
+
+Status: in-progress pending the one authorized post-claim fail-fast gate, one
+scoped forward commit, and a fresh complete-range independent Terra/xhigh
+review. Full verification remains closed; no self-review, self-integration,
+merge, Task120 restart, Task136 work, provider/network/credential/Nous action,
+or `neo` action is authorized.
+
+## RV-1-E-198 Semantic Repair Fail-Fast Gate
+
+- The sole authorized post-repair command exited `0` as one fail-fast chain:
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`.
+  It reported **2 files / 133 tests passing**; typecheck, diff check, and
+  factory readiness completed without a failing stage. Full verification was
+  not run and remains closed.
+
+Status: ready for one fresh independent complete-range Terra/xhigh review after
+the scoped forward commit. No self-review, self-integration, merge, Task120
+restart, Task136 work, provider/network/credential/Nous action, or `neo` action
+is authorized.

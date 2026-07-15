@@ -844,7 +844,7 @@ const residentLoopV2BudgetUsageSchema = z.object({
 }).strict();
 
 const residentLoopV2HardMaximums = {
-  planRevisions: 4,
+  planRevisions: 3,
   observationRecords: 16,
   toolSteps: 12,
   providerInvocations: 3,
@@ -1050,6 +1050,7 @@ const agentResidentPlanRecordedV2PayloadSchema = residentLoopV2BindingSchema.ext
   planId: agentSecretSafeIdSchema(/^plan_[a-zA-Z0-9_-]+$/),
   planRevision: z.number().int().nonnegative(),
   priorPlanReadback: residentLoopV2PriorPlanReadbackSchema.nullable(),
+  replanObservationReadback: residentLoopV2FinalObservationReadbackSchema.nullable(),
   steps: z.array(residentLoopV2PlannedStepSchema).min(1)
 }).strict().superRefine((value, ctx) => {
   if ((value.planRevision === 0) !== (value.priorPlanReadback === null)) {
@@ -1057,6 +1058,28 @@ const agentResidentPlanRecordedV2PayloadSchema = residentLoopV2BindingSchema.ext
       code: "custom",
       path: ["priorPlanReadback"],
       message: "initial plans require null prior readback and replans require an exact prior readback"
+    });
+  }
+  if ((value.planRevision === 0) !== (value.replanObservationReadback === null)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["replanObservationReadback"],
+      message: "initial plans require null replan observation readback and replans require an exact preceding observation"
+    });
+  }
+  if (value.planRevision > residentLoopV2HardMaximums.planRevisions) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["planRevision"],
+      message: "replans may not exceed the three-replan maximum after the initial plan"
+    });
+  }
+  const expectedPlanRevisionConsumption = value.planRevision === 0 ? 0 : 1;
+  if (value.budget.actionConsumption.planRevisions !== expectedPlanRevisionConsumption) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["budget", "actionConsumption", "planRevisions"],
+      message: "only replans may consume exactly one plan-revision budget slot"
     });
   }
   if (value.priorPlanReadback !== null) {
@@ -1067,6 +1090,20 @@ const agentResidentPlanRecordedV2PayloadSchema = residentLoopV2BindingSchema.ext
     }
     if (value.priorPlanReadback.planRevision + 1 !== value.planRevision) {
       ctx.addIssue({ code: "custom", path: ["priorPlanReadback", "planRevision"], message: "replans must increment the exact prior plan revision" });
+    }
+    if (value.priorPlanReadback.planId === value.planId) {
+      ctx.addIssue({ code: "custom", path: ["planId"], message: "replans require a fresh plan ID" });
+    }
+    if (value.replanObservationReadback !== null) {
+      for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+        if (value.replanObservationReadback[field] !== value.priorPlanReadback[field]) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["replanObservationReadback", field],
+            message: "replan observation readback must preserve the exact preceding plan binding"
+          });
+        }
+      }
     }
   }
   const ordinals = value.steps.map((step) => step.ordinal);
@@ -3793,7 +3830,6 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
     "approvalSuspensionMs"
   ] as const;
   const budgetActionByType = {
-    "agent.resident-plan.recorded.v2": "planRevisions",
     "agent.resident-observation.recorded.v2": "observationRecords",
     "agent.resident-tool-step.recorded.v2": "toolSteps",
     "agent.resident-loop.suspended.v2": "approvalSuspensionMs",
@@ -3806,6 +3842,7 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
   let suspension: KnowledgeEvent | undefined;
   let result: KnowledgeEvent | undefined;
   const plans: KnowledgeEvent[] = [];
+  const executedStepOrdinals = new Set<number>();
 
   for (const [index, event] of events.entries()) {
     const payload = event.payload as Record<string, unknown>;
@@ -3850,10 +3887,13 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
     if (event.type === "agent.resident-plan.recorded.v2") {
       const priorPlan = plans.at(-1);
       const priorPlanReadback = payload.priorPlanReadback as Record<string, unknown> | null | undefined;
+      const replanObservationReadback = payload.replanObservationReadback as Record<string, unknown> | null | undefined;
       if (plans.length >= 4) issues.push("resident-loop v2 replay permits at most four plan records");
       if (payload.planRevision !== plans.length) issues.push("plan records must progress through contiguous revisions starting at zero");
       if (priorPlan === undefined) {
         if (priorPlanReadback !== null) issues.push("initial plan must not carry a prior plan readback");
+        if (replanObservationReadback !== null) issues.push("initial plan must not carry a replan observation readback");
+        if (actionConsumption?.planRevisions !== 0) issues.push("initial plan must not consume a replan budget slot");
       } else {
         const priorPlanPayload = priorPlan.payload as Record<string, unknown>;
         if (priorPlanReadback?.planRecordEventId !== priorPlan.id || priorPlanReadback.priorPlanRecordEventId !== priorPlan.id) {
@@ -3864,9 +3904,20 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
             issues.push(`replan prior readback must preserve preceding ${field}`);
           }
         }
+        if (payload.planId === priorPlanPayload.planId) issues.push("replans require a fresh plan ID");
+        if (finalObservation === undefined || replanObservationReadback?.observationEventId !== finalObservation.id) {
+          issues.push("replan must bind the exact preceding durable observation event");
+        }
+        for (const field of ["workspaceId", "residentAgentId", "taskId", "attemptId", "runId", "planId", "planRevision"] as const) {
+          if (replanObservationReadback?.[field] !== priorPlanPayload[field]) {
+            issues.push(`replan observation readback must preserve preceding ${field}`);
+          }
+        }
+        if (actionConsumption?.planRevisions !== 1) issues.push("each replan must consume exactly one plan-revision budget slot");
       }
       plans.push(event);
       activePlan = event;
+      executedStepOrdinals.clear();
       continue;
     }
 
@@ -3896,6 +3947,15 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
             issues.push(`tool step must preserve the declared ${field}`);
           }
         }
+        const prerequisiteStepOrdinals = Array.isArray(declaredToolStep.prerequisiteStepOrdinals)
+          ? declaredToolStep.prerequisiteStepOrdinals
+          : [];
+        for (const prerequisiteStepOrdinal of prerequisiteStepOrdinals) {
+          if (!executedStepOrdinals.has(prerequisiteStepOrdinal as number)) {
+            issues.push("tool step prerequisites must have causally prior executed tool steps");
+          }
+        }
+        if (payload.state === "executed") executedStepOrdinals.add(payload.stepOrdinal as number);
       }
       continue;
     }
