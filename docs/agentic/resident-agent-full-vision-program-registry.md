@@ -7822,3 +7822,30 @@ explicit implementation authorization.
   concerns plus the former five-file ceiling/call-site/audit-projection defect,
   the exact v1/v2 discrimination, no optional/defaulted exact-v2 fields,
   no shadow authority or duplicate renderer, and the one-way Task140R0 seam.
+
+## RV-1-E-245 — Task135A fresh-review correction and bounded identity-test repair
+
+- Fresh independent Terra/xhigh review session
+  `019f644d-5a7a-7b80-9904-221c823b8699` returned **NEEDS-CHANGES** for the
+  complete candidate range
+  `271406fca811d49ee9ebb7ff31f58b0b870ac1d7..d04c560ad1a863098f0051b8dfeffe1c148a0c30`.
+  The sole finding is causal test coverage: the implementation has
+  post-capture mounted-store identity/replacement guards, but its test mutates
+  only a pre-construction `workspaceId`; it does not mutate captured
+  `artifactStores.workspaceId`, `artifactStores.mountInstanceId`, or either
+  store reference after binder creation and prove zero I/O rejection. The
+  reviewer's `turn_context` at
+  `rollout-2026-07-15T01-43-38-019f644d-5a7a-7b80-9904-221c823b8699.jsonl:8`
+  records Terra/xhigh.
+- Candidate `d04c560a` is preserved as unintegrated history. A single fresh
+  Terra/xhigh repair author may change only the Task135A claim and
+  `packages/local-runtime/test/mounted-agent-artifact-stores.test.ts`: first
+  add causal RED cases for each post-capture store identity/reference mutation,
+  each asserting the binder rejects before material or manifest store I/O;
+  then make only a source change if the existing guard genuinely fails. It must
+  run the focused test and the exact Task135A non-full `&&` gate with one actual
+  compiler exit, commit, and stop for a new independent review. Standing
+  authorization: `superpowers:subagent-driven-development`, TDD, systematic
+  debugging, and verification-before-completion. Full verifier, provider/
+  network/credential/Nous, reset credits, neo, self-integration, and merge
+  remain closed.
