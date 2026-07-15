@@ -7156,3 +7156,20 @@ explicit implementation authorization.
 - Tasks133/134 and Task140 remain blocked; full verify, `neo`, provider/network/
   credential/Nous action, reset-credit use, and child self-integration remain
   **CLOSED**.
+
+## RV-1-E-216 — Task132A coordinator reawakening after internal-child input rejection
+
+- Direct app-server input cannot wake internal multi-agent-v2 child
+  `019f63ec-9d8e-7a30-a288-299871bd7119`; the coordinator has therefore
+  reawakened that exact existing child from this turn. It remains the sole
+  Task132A implementation lane in
+  `/home/drake/.codex/worktrees/task-132a-boundary-reset-recovery`, clean at
+  preserved `c7f36114973857019a2d25735790489b406189f5` except its temporary
+  untracked lockfile-compatible dependency link. No replacement worktree or
+  duplicate child was created, and no preserved lane was discarded.
+- Wake authorization repeats the approved CF-1R5 replacement boundary,
+  explicit `superpowers:subagent-driven-development`, TDD, systematic debugging,
+  verification-before-completion, and the exact Task132A non-full `&&` gate.
+  It must commit only its eight-file scope, remove the temporary dependency
+  link, and stop for fresh complete staged-base review. The authoritative wake
+  thread ID is recorded here before any continued coordination.
