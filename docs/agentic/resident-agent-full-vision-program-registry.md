@@ -7823,6 +7823,37 @@ explicit implementation authorization.
   the exact v1/v2 discrimination, no optional/defaulted exact-v2 fields,
   no shadow authority or duplicate renderer, and the one-way Task140R0 seam.
 
+## RV-1-E-245 — Task133 review repair and Task135A candidate review
+
+- Fresh Task133 full-lineage reviewer
+  `019f6449-b800-7af3-b5a1-7abcddc20dd1` returned **NEEDS-CHANGES** on exact
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..d91f28a3f6434490246daaa97e399a905c902761`.
+  The latest amendment successfully retires the local-only/five-file contract,
+  but its frozen Task140R0 command names nonexistent
+  `packages/local-runtime/test/agent-runtime-composition.test.ts` as a modified
+  file, and the mandatory legacy-v1/direct-v2/derived-hash/exact-field swap
+  rejections are not yet causal RED/GREEN steps in Task140R0. Task133 plan
+  integration and implementation remain blocked. Original repair author
+  `019f643c-5584-7b72-bcb2-39deb302d85a` has been resumed under
+  `superpowers:receiving-code-review` for one narrow two-doc forward repair,
+  docs-safe validation, commit, and another fresh review.
+- Task135A candidate
+  `d04c560ad1a863098f0051b8dfeffe1c148a0c30` is clean on its preserved branch.
+  Its true merge base against current program history is compiler integration
+  `271406fca811d49ee9ebb7ff31f58b0b870ac1d7`; the complete candidate range
+  changes exactly its claim, mounted preparation store source, and focused
+  test. The coordinator independently reran the exact non-full fail-fast gate
+  with no overlapping compiler: 3 files / 52 tests passed and the same actual
+  session exited `0` after typecheck, whitespace, and factory readiness. The
+  temporary dependency link was removed.
+- Fresh independent read-only Terra/xhigh reviewer
+  `/root/task135a_mounted_preparation_stores_review`, session
+  `019f6454-42c5-7ca3-a919-0f01451a1b44`, is bound to exact
+  `271406fca811d49ee9ebb7ff31f58b0b870ac1d7..d04c560ad1a863098f0051b8dfeffe1c148a0c30`.
+  It must verify full authority/task/run binding, hostile-shape normalization,
+  zero store/H/terminal activity, no shadow codec/public authority, and claim
+  truth before any coordinator-only merge. Task140 remains blocked.
+
 ## RV-1-E-245 — Task135A fresh-review correction and bounded identity-test repair
 
 - Fresh independent Terra/xhigh review session
