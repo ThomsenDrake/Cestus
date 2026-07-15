@@ -7485,3 +7485,11 @@ explicit implementation authorization.
   including staging `6aaa5438a880bc4c211fe4790ffa196e030ab3c9`. Its own
   `turn_context` records Terra/xhigh. Integration remains coordinator-only and
   conditional on an unqualified **APPROVED** verdict.
+
+## RV-1-E-232 — Authenticated usage monitor update
+
+- The latest authenticated app-server rate-limit event reports
+  `primary.used_percent=26.0`: **74% weekly remaining**. This supersedes the
+  prior 25%/75% observation forward-only. Five reset credits remain untouched;
+  DRAIN is <=10% remaining, HARD PAUSE <=7%, and no reset credits may be
+  redeemed.
