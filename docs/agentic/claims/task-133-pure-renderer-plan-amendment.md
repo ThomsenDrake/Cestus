@@ -713,3 +713,25 @@ serialized task.
   remain closed. Exactly two fresh independent unqualified Terra/xhigh
   approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
   before coordinator-only plan integration.
+
+## Forward Correction — Physical Checkout And Materialized Commands
+
+- Status remains **plan-repair candidate only**. Authority reviewer
+  `019f65c6-991f-7a91-ae17-a21f57f76b79` corrected its initial sibling-
+  ancestry objection and approved `f275ce6f`; lifecycle reviewer
+  `019f65c6-4ca7-72c0-aa73-428a58c9a536` rejected it after reproducing an
+  alternate `GIT_WORK_TREE`/`GIT_INDEX_FILE` escape and finding that the
+  Task137A hidden-state augmentation and P/R0/H attestation invocations were
+  not published as final executable commands. The single approval is
+  non-authorizing and does not carry forward.
+- CF-1R22 rejects every authority-affecting `GIT_*` variable, accepts and
+  immediately unsets only a lone execution-harness `GIT_PAGER=cat`, binds Git
+  to the physical checkout root before and after each affected gate, and adds causal
+  counterfactuals to Task135C. It publishes one complete final Task117A gate,
+  one complete final Task137A gate, and exact separate P/R0/H preflight and
+  review commands with the coordinator-issued attestation SHA materialized.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.
