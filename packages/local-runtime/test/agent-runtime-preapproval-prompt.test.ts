@@ -15,7 +15,7 @@ import { createAgentRuntime } from "../../agent/src/runtime.js";
 import { createTaskOrchestratorHandoffCapability, createTaskOrchestrator } from "../../agent/src/task-orchestrator.js";
 import { createTaskOrchestratorProviderApprovalAdapter } from "../../agent/src/task-orchestrator-approval.js";
 import { specialistWorkflowDescriptorFor } from "../../agent/src/specialist-workflows.js";
-import type { AgentTaskOrchestratorRuntimeCapabilities } from "../../agent/src/task-orchestrator-types.js";
+import type { TaskOrchestratorContextRenderInput } from "../../agent/src/task-orchestrator-types.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import { createSqlitePrrRuntime, type LocalRuntimeHandle } from "../src/runtime-factory.js";
@@ -28,6 +28,7 @@ const actor = { id: "actor_preapproval_test", kind: "human" as const, label: "Pr
 
 afterEach(() => {
   vi.doUnmock("../../agent/src/index.js");
+  vi.doUnmock("../src/mounted-prompt-artifact-store.js");
   vi.resetModules();
   for (const handle of handles.splice(0)) handle.close();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
@@ -63,9 +64,7 @@ describe("local runtime portable pre-approval prompt", () => {
       inputArtifactHash: prompt.manifest.inputArtifactHash as `sha256:${string}`,
       authoritativeResolvedContextPacks: prompt.resolvedContextPacks
     });
-    const revalidateCurrent = (readback as unknown as {
-      readonly revalidateCurrent?: () => Promise<void>;
-    }).revalidateCurrent;
+    const revalidateCurrent = readback.revalidateCurrent;
     if (revalidateCurrent === undefined) {
       throw new Error("Mounted readback did not issue a lexical currentness validator.");
     }
@@ -104,7 +103,11 @@ describe("local runtime portable pre-approval prompt", () => {
 
     vi.resetModules();
     const context = await productionContextFromFreshModules();
-    let captured: { readonly taskOrchestratorCapabilities?: AgentTaskOrchestratorRuntimeCapabilities } | undefined;
+    if (handle.config.storage.strategy !== "portable-workspace") {
+      throw new Error("Expected a portable workspace runtime.");
+    }
+    const driftRoot = handle.config.storage.workspaceRoot;
+    let driftedAfterStoreRead = false;
     vi.doMock("../../agent/src/index.js", async () => {
       const actual = await vi.importActual<typeof import("../../agent/src/index.js")>("../../agent/src/index.js");
       const registrarEvidence = Object.freeze({
@@ -118,63 +121,45 @@ describe("local runtime portable pre-approval prompt", () => {
         createContextPackRegistry: () => context.registry,
         lookupPrrContextPackRegistrarEvidence: () => registrarEvidence,
         lookupOperationalContextPackRegistrarEvidence: () => undefined,
-        lookupInvestigativeContextPackRegistrarEvidence: () => undefined,
-        createAgentRuntime: (input: { readonly taskOrchestratorCapabilities?: AgentTaskOrchestratorRuntimeCapabilities }) => {
-          captured = input;
-          return Object.freeze({});
+        lookupInvestigativeContextPackRegistrarEvidence: () => undefined
+      };
+    });
+    vi.doMock("../src/mounted-prompt-artifact-store.js", async () => {
+      const actual = await vi.importActual<typeof import("../src/mounted-prompt-artifact-store.js")>("../src/mounted-prompt-artifact-store.js");
+      return {
+        ...actual,
+        createMountedPromptArtifactStore: async (
+          input: Parameters<typeof actual.createMountedPromptArtifactStore>[0]
+        ) => {
+          const store = await actual.createMountedPromptArtifactStore(input);
+          return Object.freeze({
+            put: store.put,
+            async read(readInput: Parameters<typeof store.read>[0]) {
+              const readback = await store.read(readInput);
+              if (!driftedAfterStoreRead) {
+                driftedAfterStoreRead = true;
+                writeFileSync(join(driftRoot, "cestus-workspace.json"), JSON.stringify({
+                  version: 1,
+                  layoutVersion: 1,
+                  workspaceId: "ws_preapproval_factory_replacement",
+                  label: "Replaced workspace",
+                  createdAt: now(),
+                  createdBy: actor.id,
+                  coreVersion: "0.1.0"
+                }));
+              }
+              return readback;
+            }
+          });
         }
       };
     });
     const { defaultLocalAgentRuntimeFactory } = await import("../src/agent-runtime-factory.js");
-    defaultLocalAgentRuntimeFactory({ handle, actor, now });
-    const capabilities = captured?.taskOrchestratorCapabilities;
-    if (capabilities === undefined || handle.config.storage.strategy !== "portable-workspace") {
-      throw new Error("Expected captured local task-orchestrator capabilities.");
-    }
-    const { createTaskOrchestrator: createFreshOrchestrator, createTaskOrchestratorHandoffCapability: createFreshHandoff } = await import("../../agent/src/task-orchestrator.js");
-    const { createTaskOrchestratorProviderApprovalAdapter: createFreshApprovalReader } = await import("../../agent/src/task-orchestrator-approval.js");
-    const driftRoot = handle.config.storage.workspaceRoot;
-    const orchestrator = createFreshOrchestrator({
-      ledger: handle.ledger,
-      actor,
-      now,
-      policy: { defaultRunType: "evidence-triage", leaseDurationMs: 60_000, scope: { kind: "workspace", refs: [workspaceId] } },
-      concurrency: { globalMaxActiveAttempts: 1, perRunTypeMaxActiveAttempts: { "evidence-triage": 1 } },
-      budgets: {
-        maxProviderInvocations: 1,
-        remainingProviderInvocations: 1,
-        contextByteBudget: 65_536,
-        promptByteBudget: 65_536,
-        derivativeArtifactByteBudget: 65_536,
-        wallClockBudgetMs: 60_000
-      },
-      workflowRegistry: capabilities.workflowRegistry,
-      contextRegistry: capabilities.contextRegistry,
-      promptRendererRegistry: {
-        async render(input) {
-          const rendered = await capabilities.promptRendererRegistry.render(input);
-          writeFileSync(join(driftRoot, "cestus-workspace.json"), JSON.stringify({
-            version: 1,
-            layoutVersion: 1,
-            workspaceId: "ws_preapproval_factory_replacement",
-            label: "Replaced workspace",
-            createdAt: now(),
-            createdBy: actor.id,
-            coreVersion: "0.1.0"
-          }));
-          return rendered;
-        },
-        readback: capabilities.promptRendererRegistry.readback
-      },
-      providerRegistry: capabilities.providerRegistry,
-      approvalReader: createFreshApprovalReader(),
-      runnerRegistry: capabilities.runnerRegistry,
-      handoffCapability: createFreshHandoff()
-    });
-
-    await orchestrator.tick();
+    const runtime = defaultLocalAgentRuntimeFactory({ handle, actor, now });
+    await runtime.tickTaskOrchestrator();
     const checkpoints = (await handle.ledger.readStream("agent_task_orchestration_task_preapproval_factory_drift_evidence-triage"))
       .filter((event) => event.type === "agent.task.orchestration.checkpointed");
+    expect(driftedAfterStoreRead).toBe(true);
     expect(checkpoints.filter((event) => event.payload.checkpointKind === "context-ready")).toHaveLength(0);
   });
 
@@ -182,7 +167,7 @@ describe("local runtime portable pre-approval prompt", () => {
     const workspaceId = "ws_preapproval_restart";
     const root = portableRoot(workspaceId);
     const first = portableHandle(workspaceId, root);
-    const context = await productionContext(workspaceId);
+    const context = await productionContext();
     const firstStore = await createMountedPromptArtifactStore({ handle: first });
     const firstRuntime = createAgentRuntime({ ledger: first.ledger, actor, now, providers: [] });
     await firstRuntime.initializeDefaultIdentity({ workspaceId });
@@ -210,7 +195,10 @@ describe("local runtime portable pre-approval prompt", () => {
       workflowRegistry: { require: specialistWorkflowDescriptorFor },
       contextRegistry: context.registry,
       promptRendererRegistry: {
-        async render(input) {
+        async render(input: TaskOrchestratorContextRenderInput) {
+          if (input.runType === "ontology-bootstrap") {
+            throw new Error("Recovery fixture does not render ontology-bootstrap.");
+          }
           const artifact = renderProductionSpecialistPrompt({
             taskId: input.taskId,
             runId: input.attemptId,
@@ -226,7 +214,7 @@ describe("local runtime portable pre-approval prompt", () => {
           });
           return firstReadback.envelope;
         },
-        readback(_input, candidate) {
+        readback(_input: TaskOrchestratorContextRenderInput, candidate: unknown) {
           if (firstReadback === undefined || candidate !== firstReadback.envelope) {
             throw new Error("Expected the exact mounted context-ready prompt readback.");
           }
@@ -371,7 +359,7 @@ async function productionContextFromFreshModules(options: { readonly changeEvide
   const registration = prompts.productionSpecialistPromptRegistrationFor("evidence-triage");
   for (const requirement of registration.contextRequirements) {
     if (requirement.requirementMode !== "always") continue;
-    const parser = (payload: unknown) => payload as never;
+    const parser = (payload: AgentContextPackJsonValue) => payload;
     Object.defineProperty(parser, "cestusContextPackParserId", { value: requirement.contextPackId });
     contextPacks.registerContextPackPayloadParserAuthority(parser);
     registry.register({
@@ -389,8 +377,8 @@ async function productionContextFromFreshModules(options: { readonly changeEvide
         contextPackId: requirement.contextPackId,
         version: 1,
         generatedAt: now(),
-        payload: options.changeEvidenceBytes && requirement.contextPackId === "evidence-summary.v1"
-          ? { ...usefulPayload(requirement.contextPackId), recoveryChangedBytes: true }
+        payload: options.changeEvidenceBytes
+          ? changedUsefulPayload(requirement.contextPackId)
           : usefulPayload(requirement.contextPackId),
         safeSummary: `Preapproval ${requirement.contextPackId}.`,
         provenanceRefs: ["evt_preapproval_fixture"]
@@ -426,4 +414,16 @@ function usefulPayload(contextPackId: string): AgentContextPackJsonValue {
     case "workspace-runtime-status.v1": return { runtime: { runtimeHighWaterMark: 1, workspaceMounted: true, storageStrategy: "portable-workspace", bindPosture: "bound", authPosture: "none", projectionHighWaterMarks: { agent: 1 }, omissionCodes: [] } };
     default: throw new Error(`Unexpected fixture context ${contextPackId}`);
   }
+}
+
+function changedUsefulPayload(contextPackId: string): AgentContextPackJsonValue {
+  if (contextPackId !== "evidence-summary.v1") return usefulPayload(contextPackId);
+  return {
+    items: [{
+      evidenceId: "ev_001",
+      ingestionEventId: "evt_ingested_001",
+      contentHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      safeNarrative: "Evidence changed after durable recovery."
+    }]
+  };
 }

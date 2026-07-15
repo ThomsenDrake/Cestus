@@ -147,13 +147,15 @@ function createLocalTaskOrchestratorCapabilities(
           inputArtifactHash: artifact.manifest.inputArtifactHash as `sha256:${string}`,
           authoritativeResolvedContextPacks: input.resolvedContextPacks
         });
-        if (readback.witness === undefined || readback.revalidateCurrent === undefined) {
+        const witness = readback.witness;
+        const revalidateCurrent = readback.revalidateCurrent;
+        if (witness === undefined || revalidateCurrent === undefined) {
           throw new Error("Local task orchestrator requires mounted v1 prompt readback authority.");
         }
         mountedReadbacks.set(`${input.taskId}:${input.attemptId}`, {
-          witness: readback.witness,
+          witness,
           envelope: readback.envelope,
-          revalidateCurrent: readback.revalidateCurrent
+          revalidateCurrent
         });
         return readback.envelope;
       },
@@ -224,12 +226,18 @@ async function recoverMountedContextReadyWitness(input: {
   );
   for (const [index, resolved] of authoritativeResolvedContextPacks.entries()) {
     const durable = durableContextBindings[index];
+    const authoritativeProvenanceEventIds = (resolved.ref.sourceEventIds ?? resolved.ref.provenanceRefs)
+      .filter((value) => value.startsWith("evt_"));
     if (
       durable === undefined ||
       resolved.ref.contextPackId !== durable.contextPackId ||
       resolved.ref.contentHash !== durable.contentHash ||
       resolved.ref.sizeBytes !== durable.sizeBytes ||
-      JSON.stringify(resolved.ref) !== JSON.stringify(durable.ref)
+      resolved.ref.contextPackId !== durable.schemaId ||
+      authoritativeProvenanceEventIds.length !== durable.provenanceEventIds.length ||
+      authoritativeProvenanceEventIds.some((eventId, provenanceIndex) =>
+        eventId !== durable.provenanceEventIds[provenanceIndex]
+      )
     ) {
       throw new Error("Local task orchestrator context-ready checkpoint no longer matches current canonical context pack readback.");
     }
