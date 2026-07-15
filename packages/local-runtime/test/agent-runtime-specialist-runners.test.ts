@@ -87,7 +87,12 @@ describe("untrusted specialist runner", () => {
       await blocked;
       return preparationFor(input);
     });
-    const mutableDispatch = { ...dispatch };
+    const mutableDispatch: {
+      taskId: string;
+      runType: "evidence-triage";
+      attemptId: string;
+      approvedRunId: string;
+    } = { ...dispatch };
 
     const pending = runner.dispatch(mutableDispatch);
     await started;
