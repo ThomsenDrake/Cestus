@@ -10237,3 +10237,21 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - No new implementer or integration is authorized. Both fresh review lenses
   remain mandatory. Full verification, providers, reset credits, and every
   `neo` action remain closed.
+
+## RV-1-E-357 — Task133 atomic review recovery admitted
+
+- Replacement candidate `b3bec172205b39880e46b3e820b3f518ab990f1f`
+  is exactly one non-merge commit over original base
+  `197c3ca528e9b666c02b9b87695bf900efa195b1`; its complete base-to-candidate
+  union is exactly the authorized 28 Task133 paths and the worktree is clean.
+- Coordinator reproduction from the committed candidate passed Task133.1 at
+  131 tests, Task133.2 at 77 tests, and Task133.3 at 135 tests. Typecheck,
+  forbidden-renderer audit, original-base diff checking, and factory readiness
+  also passed.
+- Two fresh read-only reviews are now required: schema/binder/approval safety,
+  including exact-run cross-binding and zero effects on rejection; and durable
+  event/projection/rebuild safety, including canonical receipt-hash
+  recomputation and checkpoint-kind enforcement. Both unqualified approvals
+  are required before any merge preview.
+- Full verification, live/provider/network/credential actions, reset credits,
+  integration, push, and every `neo` action remain closed.
