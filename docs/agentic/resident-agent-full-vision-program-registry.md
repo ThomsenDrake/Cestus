@@ -9560,3 +9560,14 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Task117A integration and all downstream source fan-out remain closed until
   both independent verdicts are explicit, unqualified approvals and are
   durably recorded.
+
+## RV-1-E-324 — Task117A reviewer role mapping corrected
+
+- The app resolved the two queued worktree creations in the opposite order from
+  their client-side queue IDs. The prompts were not changed: reviewer
+  `019f6656-d9f1-7c12-903d-2ab9f8b44ae7` owns the authority/import/bypass lens,
+  and reviewer `019f6656-d952-7883-ace8-b992631a2e08` owns the lifecycle and
+  executability lens. Their visible titles now match those prompt-bound roles.
+- Both remain clean, read-only, and detached at exact candidate
+  `f28e7be5399d9f266b34b6eab4342a99ea5d22b5`. This mapping correction changes
+  no candidate bytes, review authority, or closed gate.
