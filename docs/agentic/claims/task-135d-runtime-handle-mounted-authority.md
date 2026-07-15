@@ -1,6 +1,6 @@
 # Task135D recovery: R-owned factory-issued mounted handle capture
 
-- Status: in-progress
+- Status: ready-for-review
 - Owner: `/root`
 - Branch: `codex/task-135d-runtime-handle-capture-import-review-repair`
 - Worktree: `/home/drake/.codex/worktrees/8ca0/Cestus`
@@ -420,5 +420,11 @@ self-integration, and program-registry edits remain closed.
   lexical declarations, type-only import exclusion, hoisted `var`, and named
   function-expression behavior.
 - Focused GREEN: the prescribed three-file command exited `0` with 21 tests
-  passed. The remaining permitted committed-candidate gates are pending at
-  this claim checkpoint.
+  passed. The permitted pre-commit gates also exited `0`: `npm run typecheck`,
+  the no-index assertion, `git diff --check`, and `npm run factory:check`.
+- The first immutable forward candidate
+  `4379238e490d4ba2940d083c1ebbad8fd17cf592` then passed the same focused,
+  typecheck, no-index, original-base diff-check, and factory gates. Its
+  original-base path union was exactly the four authorized paths with no merge
+  commits and a clean worktree. This claim-closeout commit returns the lane to
+  `ready-for-review`; the final candidate receives the same required gates.
