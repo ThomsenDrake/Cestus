@@ -10165,3 +10165,20 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   its distinct review lens. Both approvals are required before any merge
   preview. Full verification, integration, reset credits, and every `neo`
   action remain closed.
+
+## RV-1-E-353 — Task135C history repair fully approved
+
+- Static/execution reviewer `019f66a5-5d2b-74b0-9437-b00a4bdb7034`
+  returned unqualified **APPROVED** after reproducing all 18 focused tests,
+  forbidden-runtime and static-`node:` import audits, retained-payload and raw-
+  byte checks, complete-range diff checking, factory readiness, exact scope,
+  topology, ancestry, and clean state.
+- Git-authority/history reviewer `019f66a5-5ecf-7b63-bfeb-bae1f15b09f1`
+  returned unqualified **APPROVED** after verifying the unique original M,
+  immutable manifest/claim bytes, external registry-only sibling C, no post-M
+  path history, and all rename/delete/restoration/attestation bypass fixtures.
+- Candidate `9776594bc07a7eb2f3764a65c9d41c7219ae1885` is now eligible only
+  for a coordinator-controlled detached merge preview against the current
+  program head. The preview must reproduce the focused/static/range/factory/
+  topology gates before any no-ff program merge. Full verification, providers,
+  reset credits, and every `neo` action remain closed.
