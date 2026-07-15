@@ -11795,3 +11795,36 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-432 — Task137A authority candidate rejected for bounded repair
+
+- Architecture/authority reviewer `019f6794-592f-7992-8edd-60746202ab9d`
+  and adversarial implementation/test reviewer
+  `019f6794-6e58-7b52-9bed-dc45abf2a531` independently returned
+  **NEEDS-CHANGES** for exact Task137A candidate
+  `e0ab720e05791defd6de646a39c0090231972e93`. Both reproduced the terminal
+  command at 6 files / 66 tests, typecheck, static boundaries, factory
+  readiness, and clean topology; the rejection is an uncovered authority-flow
+  defect.
+- The factory capture is minted and stored but has no private inspector/handoff
+  capable of supplying Task135B's exact ledger/path authority within its file
+  ceiling. Registration also rereads an unnormalized caller object, permitting
+  accessor-driven wake-runtime or lifecycle-bundle swaps between validation and
+  `WeakMap` registration.
+- The import guard scans a partial directory set with text matching and allows
+  every private symbol from every allowlisted file. It does not enforce the
+  plan's registrar/issuer/private-inspector roles or prove that lifecycle and
+  capture inspectors cannot become public authority.
+- Recovery owner `019f6785-5c6b-7de3-8a06-2e0f01d42f2b` is authorized for one
+  bounded same-six-path repair. The coordinator explicitly approves task-scoped
+  `superpowers:subagent-driven-development`, receiving-code-review, systematic
+  debugging, TDD, and verification-before-completion. The repair must add the
+  private Task135B capture seam, normalize once before effects, and enforce a
+  semantic role-specific all-production-source import policy with causal
+  counterfactuals.
+- Exact candidate `e0ab720e05791defd6de646a39c0090231972e93` must not be
+  integrated. Any replacement requires fresh coordinator admission and two new
+  independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
