@@ -9508,3 +9508,35 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   candidate commit, and stop without merge or self-integration.
 - Source implementation, full verification, live/provider/network/credential/
   Nous activity, reset credits, and every `neo` action remain closed.
+
+## RV-1-E-322 — Task117A candidate independently admitted to review
+
+- Task117A author `019f664a-40b4-7450-84db-76cc847b80c9` produced clean
+  candidate `f28e7be5399d9f266b34b6eab4342a99ea5d22b5` on exact range
+  `f7652acecb25431ead8954e03f990b4e4d23f10f..f28e7be5399d9f266b34b6eab4342a99ea5d22b5`.
+  The range has no merge commits and changes exactly the Task117A claim plus
+  `docs/agentic/resident-agent-full-vision-contract-freeze.md`.
+- The author's internal implementer
+  `019f664d-3e32-7681-938c-9e3d691ab1e5` did not advance after one bounded
+  re-prompt and was stopped. The visible author completed the already authorized
+  two-file task directly; no replacement implementer or widened ownership was
+  admitted.
+- Coordinator reconstruction extracted the sole active
+  `CESTUS_CF1R25_TASK117A` envelope, replaced only its one attestation token with
+  sibling attestation `1cde7adb1a3b9fb1621b75410c203eec631a45ba`,
+  passed `bash -n`, and reproduced command SHA-256
+  `f15730c33db21bc427eec991820eda0d25be17cbf85ae29e1563c94b9802199e`.
+  The committed-candidate run exited zero, rejected all 863 direct
+  recomputed-hash counterfactual mutations, and passed factory readiness plus
+  terminal authority revalidation.
+- The immutable `task-117a-dispatch-v3` block is byte-identical to dispatch
+  commit `d29cf3bb1a74a97f210bb63cd5e0d08d7267a773`. The complete freeze SHA-256 is
+  `63bc52aa306f3da6bc58b9e91047c4a945111b25f5cc55eb1642241a3ba5e807`,
+  and the authenticated audit SHA-256 remains
+  `85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba`.
+- The candidate is admitted only to two fresh independent read-only reviews.
+  Integration into the program branch remains closed pending two explicit
+  unqualified **APPROVED** verdicts. Source fan-out, full verification,
+  live/provider/network/credential/Nous activity, reset credits, and every
+  `neo` action remain closed. Last authenticated usage remains 45% used / 55%
+  weekly remaining with no reset credits.
