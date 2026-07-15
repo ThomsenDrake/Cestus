@@ -10076,3 +10076,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   factory, exact four-path/no-merge, and clean-state gates before fresh reviews.
   Full verification, providers, reset credits, integration, and every `neo`
   action remain closed.
+
+## RV-1-E-348 — Task133 atomic review recovery prepared
+
+- Rejected replacement `7b306de04a91c2377f992273b4845f85ae1af2e2`
+  remains preserved unchanged. Fresh branch
+  `codex/task-133-atomic-prompt-binding-review-recovery` starts at exact
+  original base `197c3ca528e9b666c02b9b87695bf900efa195b1`.
+- The coordinator reapplied the rejected candidate with `cherry-pick
+  --no-commit`. `HEAD` remains the original base and the index contains exactly
+  the authorized 28-path patch, allowing the review repairs and all three
+  claims to be committed as one replacement non-merge commit.
+- The existing Task133 parent may resume with explicit approval for
+  subagent-driven development where useful, but must actively bound any
+  implementer and take over instead of waiting or spawning relays. Causal tests
+  must cover stale/swapped exact-run cross-binding, zero effects on rejection,
+  receipt-hash recomputation, and receipt rejection outside `prompt-bound`
+  checkpoints before production repair.
+- Fresh schema/binder and durable-rebuild reviews remain mandatory after all
+  focused/typecheck/static/range/factory/topology gates pass. Full verification,
+  providers, reset credits, integration, and every `neo` action remain closed.
