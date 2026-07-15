@@ -12089,3 +12089,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-442 — Task139 rejected pending mounted-authority contract repair
+
+- Provider-authority reviewer `019f67b7-5751-72b2-ba4e-488a1fc9aac6` and
+  hostile-input/secret-safety reviewer
+  `019f67b7-6797-7cc1-a36e-12e8a17eeab6` independently returned
+  **NEEDS-CHANGES** for exact candidate
+  `fae87a3c3de21c89e5094b178946dfc86e1160a9`. Both reproduced 2 focused files
+  / 23 tests, standalone typecheck, exact-range diff checking, and factory
+  readiness; the rejection is an uncovered authority-classification defect.
+- Official-harness classification can be forged without exact subscription/
+  device OAuth, harness scope, approval, and cost semantics. The local-engine
+  exemption permits extra secret-backed credential kinds, and array
+  normalization can silently drop numeric-looking out-of-range own properties.
+- More fundamentally, public caller snapshots mint the branded Task126 reader
+  after self-consistency checks only. A forged complete capability/reference/
+  feasibility/posture tuple can therefore become trusted “mounted” authority,
+  while the current Task139-P2 plan assumes the P1 object is authoritative by
+  identity.
+- Recovery owner `019f67a7-72d8-7363-b6be-b04abfd8bbdb` is held read-only at
+  the rejected SHA and preserves one bounded repair allowance. No code repair
+  may start until the active Task136 plan review supplies a real mounted issuer
+  dependency or explicitly makes P1 data-only and moves branded reader minting
+  behind that issuer.
+- Exact candidate `fae87a3c3de21c89e5094b178946dfc86e1160a9` must not be
+  integrated. Any replacement requires fresh coordinator admission and two new
+  independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
