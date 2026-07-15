@@ -10829,3 +10829,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   factory/topology gate before two fresh reviews.
 - Full verification, providers, reset credits, integration, push, and every
   `neo` action remain closed.
+
+## RV-1-E-394 — Task133 amended candidate admitted
+
+- Existing author `019f6660-2912-7622-a99a-0def4e19e051` replaced the rejected
+  candidate with atomic SHA
+  `11cadcf59829e1cb7b709adbcb48e5b567523828`, adding runtime-checked SHA-256
+  narrowing at the blocked-boundary edge and explicit receipt-presence
+  assertions without changing the terminal authority split.
+- Coordinator-independent verification passed the exact Task133.1 131/131,
+  Task133.2 78/78, and Task133.3 137/137 focused suites, `npm run typecheck`,
+  forbidden-renderer scan, diff check, factory readiness, exact 28-path scope,
+  one non-merge commit over the source base, and clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, reset credits, push, and every `neo` action remain closed.
