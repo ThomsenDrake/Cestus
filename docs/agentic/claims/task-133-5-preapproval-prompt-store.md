@@ -6,7 +6,7 @@
 - Worktree: `/home/drake/.codex/worktrees/67b2/Cestus`.
 - Source base: `140bfd3a0552bcba9ce599bdffe01036a8d2d060`.
 - Claimed at (UTC): `2026-07-15T20:35:57Z`.
-- Status: `ready-for-review`.
+- Status: `in-progress`.
 
 ## Scope
 
@@ -47,5 +47,25 @@ verification, `neo`, merge, rebase, push, or self-integration activity.
 ## Candidate Evidence
 
 - Focused CF-1R11/R12 command: 8 files passed, 84 tests passed.
-- `npm run typecheck`, the three required negative `rg` checks, `git diff --check`, and `npm run factory:check` passed on the candidate worktree.
+- The earlier `npm run typecheck` entry is superseded by the coordinator-admission correction below.
 - Full verification, provider/network/credential/Nous activity, `neo`, merge/rebase/push, and self-integration remain excluded.
+
+## Coordinator admission correction — 2026-07-15
+
+Candidate `6e62b9420fa1776554e573df59d8033a6d750443` is rejected before external
+review.  A fresh canonical-link `npm run typecheck` exited `2`; this recovery
+reproduced the same diagnostic set before repair:
+
+- `production-prompt-readback.test.ts` forges a structural witness without the
+  private `MountedProductionPromptReadbackWitness` brand.
+- `agent-runtime-factory.ts` and `mounted-prompt-artifact-store.ts` leave the
+  exact store/factory callback inputs implicit `any`.
+- PRR and mounted-store fixtures widen canonical `sha256:` template values to
+  `string`, and the PRR test dereferences an optional witness without a real
+  narrowing assertion.
+
+The replacement remains constrained to the claimed Task133.5 paths.  It must
+obtain any tested witness through the real issuer/readback path (or exercise
+structural rejection without fabricating a branded value), retain exact
+template-literal hashes, and rerun the focused eight-file suite plus a
+standalone typecheck before becoming a new candidate.
