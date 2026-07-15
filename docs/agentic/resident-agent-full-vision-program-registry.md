@@ -8368,3 +8368,26 @@ explicit implementation authorization.
   head `8e30bbe0`. Silence, timeout, or capacity remains non-authorizing; two
   unqualified **APPROVED** verdicts are still required.
 - Every source/live/full/credential/`neo` action remains closed under RV-1-E-266.
+
+## RV-1-E-268 — Full-lineage Task133 execution-contract rejection
+
+- Persistence/lifecycle replacement reviewer
+  `019f64f6-55c0-79c2-a4ca-e6cdf1fdffe9` inspected all twelve commits in exact
+  lineage `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..7c536e21` and returned
+  **NEEDS-CHANGES**. Task133.2-.5 still name suites or final gates without
+  executable causal RED evidence, identical GREEN reruns, and per-task
+  typecheck/diff/factory gates. The opening claim also labels an older
+  pre-approval `renderExactlyBoundProductionSpecialistPrompt` route current,
+  conflicting with the later durable render-v1-once/bind-v2-without-rerender
+  lifecycle.
+- Authority replacement `019f64f6-5bef-7bc0-9dc5-f83bac7de640` ended on Terra
+  capacity without a verdict and is closed. It contributes no approval
+  evidence. Canonical typecheck and candidate factory readiness passed during
+  review, but neither authorizes source.
+- The sole plan writer is authorized only to append a Task133 executable
+  RED/GREEN overlay for Tasks133.2, 133.3, and 133.5; retire Task133.4 as a
+  non-causal standalone task by moving its compatibility witnesses into the
+  Task133.1 atomic RED/GREEN command; and replace the claim's conflicting
+  opening with the latest sole lifecycle contract. Run docs-only validation,
+  commit, and obtain two fresh full-lineage approvals. All source/live/full/
+  credential/reset-credit/`neo`/integration actions remain closed.
