@@ -10411,3 +10411,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Source, full verification, providers, reset credits, integration, push, and
   every `neo` action remain closed. Two fresh independent plan approvals are
   required before coordinator-only plan integration or renewed Task133 source.
+
+## RV-1-E-367 — Task135D AST candidate held on independent typecheck
+
+- Reboot recovery produced clean forward candidate
+  `bdb0ab744ef32d99e2cccc2ca4bbe33034a6d379` on
+  `codex/task-135d-runtime-handle-capture-ast-import-review-repair`.
+- Coordinator-independent verification reproduced 20/20 focused tests,
+  no-index, original-base diff, factory, exact four-path, no-merge, and clean
+  gates, but `npm run typecheck` exited `2`. The AST test scanner used
+  `getScriptKindFromFileName` and `SourceFile.parseDiagnostics`, which are not
+  in the repository's public TypeScript typings, and used runtime `ts` as a
+  type namespace.
+- Candidate `bdb0ab744ef32d99e2cccc2ca4bbe33034a6d379` is rejected and
+  preserved. The existing author is authorized for one two-path forward repair
+  using public compiler APIs and `TypeScript.*` type names, followed by the
+  complete focused/typecheck/no-index/original-base-diff/factory/topology gate.
+- Full verification, providers, reset credits, integration, push, and every
+  `neo` action remain closed. Two fresh independent review approvals are still
+  required after a replacement candidate passes coordinator verification.
