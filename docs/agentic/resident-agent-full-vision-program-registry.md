@@ -11695,3 +11695,29 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-428 — Task136 replacement admitted to fresh independent review
+
+- Replacement documentation candidate
+  `3e7b1aa829299e6b8001dce300adffd1d2073475` on
+  `codex/task-136-interface-reconciliation` changes exactly the owned plan and
+  Task136 claim paths from base
+  `288bdb56b520a58501cb7f270dc6018711a8041f`. Coordinator admission passed
+  exact-range diff checking and factory readiness; no source implementation is
+  authorized by this candidate.
+- Fresh architecture/invariant reviewer
+  `019f678a-34a7-7ec1-83e0-e2511afcdcbd` and fresh plan-executability/API
+  reviewer `019f678a-43fc-7a11-bb34-a57cee0d67b6` are pinned and read-only.
+  Both must return unqualified **APPROVED** verdicts for the exact SHA before
+  integration.
+- Reviews must validate the corrected producer graph and every active path
+  reservation. In particular, CF1-HR may not claim
+  `specialist-runner-kernel.ts` or its test until active Task133.5 has integrated
+  and released those paths; a Task123-only prerequisite is insufficient.
+- The previously rejected candidate
+  `be03f5f680dbbebe9ff651fe03e755ed02eb52df` remains non-integrable. Any
+  replacement after review findings requires a new immutable SHA and two fresh
+  exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
