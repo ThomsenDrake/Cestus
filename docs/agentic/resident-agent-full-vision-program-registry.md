@@ -8280,3 +8280,29 @@ explicit implementation authorization.
   resident H path. The repair must enumerate all source/test ownership and an
   exact non-live gate, run docs validation, commit, and stop for two fresh
   full-lineage reviews. Source work and all other closed actions remain closed.
+
+## RV-1-E-264 — Post-reboot Task140H private-command candidate and review dispatch
+
+- Reboot reconciliation preserved the sole plan writer cleanly through prior
+  endpoint `4da19bc2`; the rejected Task133.1 worktree remains isolated and
+  dirty historical input only. The coordinator appended and committed forward
+  documentation candidate `d9d9155954421c0a747ef4bdb6b5c0f8b96b0154`.
+  Its CF-1R7 correction removes prompt bytes and proof authority from exported
+  `InvokeAgentModelInput`, freezes and validates the exact command object in
+  place, and binds one private factory-created command identity to mounted v2
+  and proof through a non-index-exported internal bridge. Validation precedes
+  atomic mapping claim and proof consumption; the direct Nous smoke bypass is
+  migrated to the resident H path. `git diff --check && npm run factory:check`
+  exited `0` before commit.
+- Fresh independent Terra/xhigh persistence/lifecycle reviewer
+  `019f64db-cac6-7b70-8c0d-a34b16e7b642` and authority/consumer reviewer
+  `019f64db-ceaa-7c03-a884-3b664bd66df6` are dispatched read-only against exact
+  range `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..d9d91559` and canonical
+  source head `16c0429b`. Both must return unqualified **APPROVED** before any
+  coordinator-only plan integration; either rejection requires another
+  append-only forward correction.
+- Latest authenticated token-count event reports `used_percent=34`, therefore
+  66% weekly remaining. DRAIN remains at <=10% remaining and HARD PAUSE at
+  <=7%; reset credits remain untouched. Task133/Task140 source implementation,
+  full verification, provider/network/credential/Nous activity, `neo`, worker
+  self-review, self-integration, and merge remain closed.
