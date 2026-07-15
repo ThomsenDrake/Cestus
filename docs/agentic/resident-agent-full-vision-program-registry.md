@@ -12558,3 +12558,39 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-459 — Task136 Recovery-5 admitted to exact-SHA review
+
+- Documentation candidate
+  `288d5cba519e1a008c07241fb57dacbd18e56073` is one clean commit from rejected
+  `14f2799a9ab1d7c633eacc8eb16c5eab9d77d2fa` and changes exactly the bounded-
+  loop plan, provider-credentials plan, and Task136 claim.
+- Fresh coordinator admission passed single-parent topology, exact three-path
+  scope, exact-range diff checking, and factory readiness. The candidate's
+  literal no-input checker also failed closed at the intended complete-v4-
+  record check because the registry is deliberately unreleased.
+- App worktree/fork handoffs remained unavailable at dispatch time, so fresh
+  independent read-only Terra/xhigh subagents review the immutable checkout:
+  release-graph/mounted-authority reviewer
+  `019f680e-32e1-7ee3-882e-0e2e21e37caf` and API/autonomous-dispatch reviewer
+  `019f680e-37b5-7300-ab38-aad7f582b49c`.
+- Both reviewers must return unqualified **APPROVED** verdicts before
+  coordinator integration or Task139 resume. They must prove the release
+  checker, factory order, provider lineage, private ABIs, reader-mint closure,
+  scheduler completion, locator-only reread, ownership transfers, and
+  historical fencing are mechanically complete.
+- Full verification, source implementation, live/provider/network/credential/
+  Nous activity, reset credits, push, child self-integration, program merge
+  without coordinator review, and every `neo` action remain closed.
+
+## RV-1-E-460 — Coordinator worktree restored after reboot cleanup
+
+- The app removed the former coordinator worktree
+  `/home/drake/.codex/worktrees/95de/Cestus` while preserving branch
+  `codex/resident-agent-full-vision-program-watchdog-recovery` and every commit
+  through `07b1a656c16a95d70b92eef830b842fb13fa3199`.
+- Fresh Git inspection proved the branch ref and registry history intact. The
+  branch is now checked out cleanly at
+  `/home/drake/.codex/worktrees/program-coordinator-recovery/Cestus`.
+- This is a coordination-state recovery only. No feature candidate, source
+  branch, program integration, remote, or `neo` state changed.
