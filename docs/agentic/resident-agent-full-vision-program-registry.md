@@ -9372,3 +9372,34 @@ explicit implementation authorization.
   activity, reset credits, `neo`, self-review, plan integration, and merge
   remain closed pending a committed docs-only candidate and two fresh
   unqualified Terra/xhigh approvals.
+
+## RV-1-E-316 — Same-payload checker candidate
+
+- The sole plan writer committed CF-1R26 candidate
+  `3c55c676c078d68c917649d1a90b936bf1ed2abd`. All six P/R0/H
+  checker-bearing commands now capture the checker once, hash the decoded
+  retained payload against C, and execute only that payload through Node's
+  module-mode stdin for both first and terminal calls. No active checker block
+  asks Node to reopen the mutable checkout path.
+- Task135C is explicitly constrained to a standalone stdin-compatible ES
+  module with `process.argv.slice(2)` semantics, only static `node:` imports,
+  and no stdin-data, `import.meta.url`, relative/package/dynamic/CommonJS
+  dependency. Its implementation and review tests must use the exact retained-
+  payload runner and reject incompatible source.
+- All eight active heredocs pass `bash -n`, cardinality, direct-path absence,
+  and terminal-operation checks. Fresh fixtures prove first-call and terminal
+  path swaps, in-place rewrites, CLI argument parity, wrong hashes, malformed
+  payloads, retained-payload rehashing, and the clean-shell boundary. The full
+  CF-1R25 dependency-pruning, mode/symlink, special-entry, and injected-
+  producer-failure snapshot matrix also passes. `git diff --check` and
+  `npm run factory:check` pass; full verification remains closed.
+- The exact review lineage is the 31-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..3c55c676c078d68c917649d1a90b936bf1ed2abd`;
+  canonical program/source checkpoint remains
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`. Latest authenticated usage
+  reports 45% used / 55% weekly remaining, with no reset credits.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviews are authorized read-only. Exactly two unqualified **APPROVED**
+  verdicts are required; no earlier verdict or reviewer identity carries.
+  Source dispatch, plan integration, live/provider/full/credential/Nous/
+  reset-credit/`neo` actions remain closed.
