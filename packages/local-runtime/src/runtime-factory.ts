@@ -104,6 +104,7 @@ interface FactoryIssuedMountedRuntimeHandleState {
 
 interface FactoryIssuedMountedRuntimeCaptureState {
   readonly handleState: FactoryIssuedMountedRuntimeHandleState;
+  consumed: boolean;
   closed: boolean;
 }
 
@@ -205,7 +206,11 @@ export function captureFactoryIssuedMountedRuntime(handle: LocalRuntimeHandle): 
 
   const capture = Object.freeze({}) as FactoryIssuedMountedRuntimeCapture;
   handleState.captures.add(capture);
-  factoryIssuedMountedRuntimeCaptures.set(capture, { handleState, closed: false });
+  factoryIssuedMountedRuntimeCaptures.set(capture, {
+    handleState,
+    consumed: false,
+    closed: false
+  });
   return capture;
 }
 
@@ -220,6 +225,11 @@ export function inspectFactoryIssuedMountedRuntimeCapture(
   if (captureState.closed || handleState.closed) {
     throw new Error("factory-issued mounted runtime capture is closed");
   }
+  if (captureState.consumed) {
+    throw new Error("factory-issued mounted runtime capture is consumed");
+  }
+  captureState.consumed = true;
+  handleState.captures.delete(capture);
   if (
     factoryIssuedMountedRuntimeHandles.get(handleState.handle) !== handleState
     || handleState.handle.ledger !== handleState.ledger

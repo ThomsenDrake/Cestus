@@ -235,13 +235,17 @@ function importTypeReferencesFactoryCapture(
   );
 }
 
-function isStandardModuleRequireCall(expression: TypeScript.Expression): boolean {
+function isStandardModuleRequireCall(
+  expression: TypeScript.Expression,
+  shadowedLoaderNames: ReadonlySet<string>,
+): boolean {
   const callee = unwrapTransparentExpression(expression);
   if (ts.isPropertyAccessExpression(callee)) {
     const receiver = unwrapTransparentExpression(callee.expression);
     return (
       ts.isIdentifier(receiver) &&
       receiver.text === "module" &&
+      !shadowedLoaderNames.has("module") &&
       callee.name.text === "require"
     );
   }
@@ -255,6 +259,7 @@ function isStandardModuleRequireCall(expression: TypeScript.Expression): boolean
   return (
     ts.isIdentifier(receiver) &&
     receiver.text === "module" &&
+    !shadowedLoaderNames.has("module") &&
     ts.isStringLiteralLike(elementKey) &&
     elementKey.text === "require"
   );
@@ -302,15 +307,199 @@ function staticModuleSpecifier(
     : undefined;
 }
 
-function isStandardLoaderCall(call: TypeScript.CallExpression): boolean {
+function addShadowedLoaderBinding(
+  shadowedLoaderNames: Set<string>,
+  bindingName: TypeScript.BindingName,
+): void {
+  if (ts.isIdentifier(bindingName)) {
+    if (bindingName.text === "require" || bindingName.text === "module") {
+      shadowedLoaderNames.add(bindingName.text);
+    }
+    return;
+  }
+
+  for (const element of bindingName.elements) {
+    if (ts.isBindingElement(element)) {
+      addShadowedLoaderBinding(shadowedLoaderNames, element.name);
+    }
+  }
+}
+
+function addShadowedLoaderVariableDeclarations(
+  shadowedLoaderNames: Set<string>,
+  declarations: readonly TypeScript.VariableDeclaration[],
+): void {
+  for (const declaration of declarations) {
+    addShadowedLoaderBinding(shadowedLoaderNames, declaration.name);
+  }
+}
+
+function isBlockScopedVariableDeclarationList(
+  declarationList: TypeScript.VariableDeclarationList,
+): boolean {
+  return (declarationList.flags & ts.NodeFlags.BlockScoped) !== 0;
+}
+
+function addHoistedVarShadowedLoaderNames(
+  shadowedLoaderNames: Set<string>,
+  scope: TypeScript.SourceFile | TypeScript.SignatureDeclaration | TypeScript.ModuleBlock,
+): void {
+  const visit = (node: TypeScript.Node, isScopeRoot: boolean): void => {
+    if (
+      !isScopeRoot &&
+      (ts.isFunctionLike(node) || ts.isModuleBlock(node))
+    ) {
+      return;
+    }
+    if (
+      ts.isVariableDeclarationList(node) &&
+      !isBlockScopedVariableDeclarationList(node)
+    ) {
+      addShadowedLoaderVariableDeclarations(
+        shadowedLoaderNames,
+        node.declarations,
+      );
+    }
+    ts.forEachChild(node, (child) => visit(child, false));
+  };
+
+  visit(scope, true);
+}
+
+function addShadowedLoaderImportDeclaration(
+  shadowedLoaderNames: Set<string>,
+  declaration: TypeScript.ImportDeclaration,
+): void {
+  const importClause = declaration.importClause;
+  if (importClause === undefined || importClause.isTypeOnly) {
+    return;
+  }
+
+  if (importClause.name !== undefined) {
+    addShadowedLoaderBinding(shadowedLoaderNames, importClause.name);
+  }
+  const bindings = importClause.namedBindings;
+  if (bindings === undefined) {
+    return;
+  }
+  if (ts.isNamespaceImport(bindings)) {
+    addShadowedLoaderBinding(shadowedLoaderNames, bindings.name);
+    return;
+  }
+  for (const element of bindings.elements) {
+    if (!element.isTypeOnly) {
+      addShadowedLoaderBinding(shadowedLoaderNames, element.name);
+    }
+  }
+}
+
+function addShadowedLoaderStatement(
+  shadowedLoaderNames: Set<string>,
+  statement: TypeScript.Statement,
+): void {
+  if (ts.isVariableStatement(statement)) {
+    if (isBlockScopedVariableDeclarationList(statement.declarationList)) {
+      addShadowedLoaderVariableDeclarations(
+        shadowedLoaderNames,
+        statement.declarationList.declarations,
+      );
+    }
+    return;
+  }
+  if (ts.isFunctionDeclaration(statement) && statement.name !== undefined) {
+    addShadowedLoaderBinding(shadowedLoaderNames, statement.name);
+    return;
+  }
+  if (ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement)) {
+    addShadowedLoaderBinding(shadowedLoaderNames, statement.name);
+    return;
+  }
+  if (ts.isImportDeclaration(statement)) {
+    addShadowedLoaderImportDeclaration(shadowedLoaderNames, statement);
+    return;
+  }
+  if (ts.isImportEqualsDeclaration(statement) && !statement.isTypeOnly) {
+    addShadowedLoaderBinding(shadowedLoaderNames, statement.name);
+  }
+}
+
+function shadowedLoaderNamesForScope(node: TypeScript.Node): ReadonlySet<string> {
+  const shadowedLoaderNames = new Set<string>();
+  if (
+    ts.isSourceFile(node) ||
+    ts.isBlock(node) ||
+    ts.isModuleBlock(node)
+  ) {
+    for (const statement of node.statements) {
+      addShadowedLoaderStatement(shadowedLoaderNames, statement);
+    }
+  }
+  if (
+    ts.isSourceFile(node) ||
+    ts.isFunctionLike(node) ||
+    ts.isModuleBlock(node)
+  ) {
+    addHoistedVarShadowedLoaderNames(shadowedLoaderNames, node);
+  }
+  if (ts.isFunctionLike(node)) {
+    for (const parameter of node.parameters) {
+      addShadowedLoaderBinding(shadowedLoaderNames, parameter.name);
+    }
+    if (ts.isFunctionExpression(node) && node.name !== undefined) {
+      addShadowedLoaderBinding(shadowedLoaderNames, node.name);
+    }
+  }
+  if (ts.isCatchClause(node) && node.variableDeclaration !== undefined) {
+    addShadowedLoaderBinding(shadowedLoaderNames, node.variableDeclaration.name);
+  }
+  if (
+    ts.isForStatement(node) &&
+    node.initializer !== undefined &&
+    ts.isVariableDeclarationList(node.initializer) &&
+    isBlockScopedVariableDeclarationList(node.initializer)
+  ) {
+    addShadowedLoaderVariableDeclarations(
+      shadowedLoaderNames,
+      node.initializer.declarations,
+    );
+  }
+  if (
+    (ts.isForInStatement(node) || ts.isForOfStatement(node)) &&
+    ts.isVariableDeclarationList(node.initializer) &&
+    isBlockScopedVariableDeclarationList(node.initializer)
+  ) {
+    addShadowedLoaderVariableDeclarations(
+      shadowedLoaderNames,
+      node.initializer.declarations,
+    );
+  }
+  return shadowedLoaderNames;
+}
+
+function scopeShadowedLoaderNames(
+  inheritedShadowedLoaderNames: ReadonlySet<string>,
+  node: TypeScript.Node,
+): ReadonlySet<string> {
+  const scopeShadowedLoaderNames = shadowedLoaderNamesForScope(node);
+  return scopeShadowedLoaderNames.size === 0
+    ? inheritedShadowedLoaderNames
+    : new Set([...inheritedShadowedLoaderNames, ...scopeShadowedLoaderNames]);
+}
+
+function isStandardLoaderCall(
+  call: TypeScript.CallExpression,
+  shadowedLoaderNames: ReadonlySet<string>,
+): boolean {
   if (call.expression.kind === ts.SyntaxKind.ImportKeyword) {
     return true;
   }
 
   const callee = unwrapTransparentExpression(call.expression);
   return (
-    (ts.isIdentifier(callee) && callee.text === "require") ||
-    isStandardModuleRequireCall(callee)
+    (ts.isIdentifier(callee) &&
+      callee.text === "require" &&
+      !shadowedLoaderNames.has("require")) ||
+    isStandardModuleRequireCall(callee, shadowedLoaderNames)
   );
 }
 
@@ -318,8 +507,9 @@ function callReferencesFactoryCapture(
   root: string,
   sourcePath: string,
   call: TypeScript.CallExpression,
+  shadowedLoaderNames: ReadonlySet<string>,
 ): boolean {
-  if (!isStandardLoaderCall(call)) {
+  if (!isStandardLoaderCall(call, shadowedLoaderNames)) {
     return false;
   }
 
@@ -338,7 +528,14 @@ function sourceImportsFactoryCaptureSeam(
   const sourceFile = sourceFileFor(sourcePath, source);
   let capturesFactoryAuthority = false;
 
-  const visit = (node: TypeScript.Node): void => {
+  const visit = (
+    node: TypeScript.Node,
+    inheritedShadowedLoaderNames: ReadonlySet<string>,
+  ): void => {
+    const shadowedLoaderNames = scopeShadowedLoaderNames(
+      inheritedShadowedLoaderNames,
+      node,
+    );
     if (
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
       declarationReferencesFactoryCapture(root, sourcePath, node)
@@ -365,16 +562,16 @@ function sourceImportsFactoryCaptureSeam(
 
     if (
       ts.isCallExpression(node) &&
-      callReferencesFactoryCapture(root, sourcePath, node)
+      callReferencesFactoryCapture(root, sourcePath, node, shadowedLoaderNames)
     ) {
       capturesFactoryAuthority = true;
       return;
     }
 
-    ts.forEachChild(node, visit);
+    ts.forEachChild(node, (child) => visit(child, shadowedLoaderNames));
   };
 
-  visit(sourceFile);
+  visit(sourceFile, new Set());
   return capturesFactoryAuthority;
 }
 
@@ -610,6 +807,38 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "computed-unrelated-receiver.cts": {
         moduleSpecifier: deepImport,
         source: `const target = "${deepImport}";\nvoid loader.require(target);\n`,
+      },
+      "shadowed-local-module.cts": {
+        moduleSpecifier: deepImport,
+        source: `const module = { require: (_target: string) => undefined };\nconst target = "${deepImport}";\nvoid module.require(target);\n`,
+      },
+      "shadowed-local-require.cts": {
+        moduleSpecifier: deepImport,
+        source: `const require = (_target: string) => undefined;\nconst target = "${deepImport}";\nvoid require(target);\n`,
+      },
+      "shadowed-nested-var-module.cts": {
+        moduleSpecifier: deepImport,
+        source: `function load() { const target = "${deepImport}"; void module.require(target); { var module = { require: (_target: string) => undefined }; } }\n`,
+      },
+      "shadowed-nested-var-require.cts": {
+        moduleSpecifier: deepImport,
+        source: `function load() { const target = "${deepImport}"; void require(target); { var require = (_target: string) => undefined; } }\n`,
+      },
+      "shadowed-parameter-module.cts": {
+        moduleSpecifier: deepImport,
+        source: `function load(module: { require(target: string): unknown }) { const target = "${deepImport}"; void module.require(target); }\n`,
+      },
+      "shadowed-parameter-require.cts": {
+        moduleSpecifier: deepImport,
+        source: `function load(require: (target: string) => unknown) { const target = "${deepImport}"; void require(target); }\n`,
+      },
+      "shadowed-function-expression-module.cts": {
+        moduleSpecifier: deepImport,
+        source: `const load = function module() { const target = "${deepImport}"; void module.require(target); };\nvoid load;\n`,
+      },
+      "shadowed-function-expression-require.cts": {
+        moduleSpecifier: deepImport,
+        source: `const load = function require() { const target = "${deepImport}"; void require(target); };\nvoid load;\n`,
       },
     };
     const ignoredPackageRootSources = {

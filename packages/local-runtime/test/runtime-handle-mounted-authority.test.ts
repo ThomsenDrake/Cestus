@@ -52,10 +52,28 @@ describe("factory-issued mounted runtime capture", () => {
     expect(Reflect.set(storage, "workspaceRoot", join(workspaceRoot, "swapped-root"))).toBe(true);
     expect(Reflect.set(storage, "sqlitePath", join(workspaceRoot, "swapped-ledger.sqlite"))).toBe(true);
 
-    const after = inspectFactoryIssuedMountedRuntimeCapture(capture);
+    const after = inspectFactoryIssuedMountedRuntimeCapture(
+      captureFactoryIssuedMountedRuntime(handle),
+    );
     expect(after.portableStorage).toEqual(before.portableStorage);
     expect(after.mountedWorkspace).toBe(handle.mountedWorkspace);
     expect(Object.isFrozen(after.portableStorage)).toBe(true);
+  });
+
+  it("factory issued mounted runtime capture consumes reuse before ledger io", () => {
+    const { handle } = portableRuntime("ws_capture_one_shot");
+    let readAllCalls = 0;
+    expect(
+      Reflect.set(handle.ledger, "readAll", () => {
+        readAllCalls += 1;
+        throw new Error("capture inspection must not read the ledger");
+      }),
+    ).toBe(true);
+    const capture = captureFactoryIssuedMountedRuntime(handle);
+
+    expect(inspectFactoryIssuedMountedRuntimeCapture(capture).runtimeHandle).toBe(handle);
+    expect(() => inspectFactoryIssuedMountedRuntimeCapture(capture)).toThrow(/consumed/i);
+    expect(readAllCalls).toBe(0);
   });
 
   it("factory issued mounted runtime capture rejects nonportable handles before io", () => {

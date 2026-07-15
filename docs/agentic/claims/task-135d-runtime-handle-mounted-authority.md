@@ -330,3 +330,51 @@ self-integration, and program-registry edits remain closed.
   verification, live/provider/network/credential/Nous action, reset, `neo`,
   merge, rebase, push, self-integration, or program-registry edit was
   performed.
+
+## Final one-shot capture and lexical loader review repair
+
+- Durable coordinator authority: `RV-1-E-404`, inspected at append-only
+  registry commit `68f68c47cc1ef49188c4210e7035ccb9b9c66c35`. Candidate
+  `9c783c495cff27bb6d17c80fc314eb25db8b7b19` is preserved and held after the
+  private-lifecycle and exhaustive-AST reviewers found complementary P1 gaps.
+- Causal RED: the focused command exited `1` with only two intended failures
+  (2 failed, 19 passed). A successful inspection permitted reuse, and the
+  import scanner counted all four local/parameter-shadowed `require` and
+  `module.require` calls with computed targets. After capture consumption was
+  implemented, only the four shadowing cases remained (1 failed, 20 passed).
+- A capture is now consumed before currentness inspection and removed from its
+  handle's pending-capture set. Reuse throws `consumed` before ledger I/O; the
+  test retains nested snapshot, hostile mutation, identity/currentness, close,
+  and non-leakage coverage. Close still burns every unconsumed derived capture.
+- The AST scanner now collects runtime bindings per source, block, function,
+  catch, and loop scope. It recognizes bare `require` or `module.require`
+  (including the existing element form) only when their lexical identifiers
+  are unshadowed; computed targets of genuine standard loaders remain
+  fail-closed, while unrelated/local/parameter-shadowed loaders are excluded.
+  Root-bound identity, transparent normalization, NodeNext equivalence,
+  lookalike rejection, and the sole allowlist are unchanged.
+- Focused GREEN: the prescribed command exited `0` with 3 test files and 21
+  tests passed.
+
+### RV-1-E-404 pre-GREEN var-hoist correction
+
+- Coordinator audit identified that the first lexical collector assigned every
+  declaration to its immediate block, although JavaScript `var` is hoisted to
+  the nearest function/source scope. It also required named function-expression
+  self-bindings to be treated as function-local runtime identities.
+- Causal RED: nested-block `var require`/`var module` declarations before their
+  lexical blocks, plus named function-expression `require`/`module` bindings,
+  were each counted as genuine computed standard loaders (1 failed, 20 passed;
+  expected 64 importers and received 68).
+- Block scanning now records only block-scoped declarations. A separate public
+  AST walk assigns `var` declarations to the nearest source, function, or
+  module scope while excluding nested function/module scopes; named function
+  expressions add only their own local binding. Runtime import bindings remain
+  included, while type-only imports remain outside runtime shadowing.
+- Corrected focused GREEN: the prescribed command exited `0` with 3 test files
+  and 21 tests passed.
+- The authorized pre-commit non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- Claim status is `ready-for-review`. No full verification,
+  live/provider/network/credential/Nous action, reset, `neo`, merge, rebase,
+  push, self-integration, or program-registry edit was performed.
