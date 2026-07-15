@@ -12261,3 +12261,34 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-448 — Task136 mounted-authority redesign rejected for terminal contract correction
+
+- Mounted-authority architecture/dependency reviewer
+  `019f67d0-ccef-79f0-a9c8-c26f5f3f2e52` and plan-executability/release-
+  record/API reviewer `019f67d0-dc80-7930-9598-068f83167bea` independently
+  returned **NEEDS-CHANGES** for exact candidate
+  `f1fe209caa2ddc27bcc5d4cc4b00f1054c958f2c`. The candidate passed its
+  documentation admission gates, but its authority and release contracts are
+  not executable without implementer invention.
+- The release checker trusts caller-supplied inventory and does not prove exact
+  candidate-to-integration path-blob equality or ordered integration-before-
+  release ancestry. Task126 still publicly exposes a branded-reader minter,
+  P1 refers to incomplete/private schemas, W and PM conflict over the sole
+  mounted inspector, H and P2 lack a private factory-bound authority route,
+  and G has no named durable result-completion owner.
+- Recovery owner `019f67c4-d51b-7602-b76d-849d471f4aeb` is authorized for one
+  bounded correction on the same three documentation paths. This is docs-only;
+  `superpowers:subagent-driven-development` is not relevant or authorized.
+- The correction must embed a canonical qualified dependency graph and exact
+  ordered release-record inventory, add a Task126 reader-minting repair, define
+  complete P1 schemas, preserve Task137A as the sole inspector, and specify one
+  private factory-composition owner that binds W, PM, H, and P2 capabilities.
+  It must also name the scheduler/executor completion adapter that durably
+  rereads G results before append.
+- Exact candidate `f1fe209caa2ddc27bcc5d4cc4b00f1054c958f2c` must not be
+  integrated. Any replacement requires fresh coordinator admission and two new
+  independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
