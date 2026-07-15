@@ -157,7 +157,8 @@ function isProtectedModuleSpecifier(
 function namedSpecifierReferencesCapture(
   specifier: TypeScript.ImportSpecifier | TypeScript.ExportSpecifier,
 ): boolean {
-  return factoryCaptureExportNames.has((specifier.propertyName ?? specifier.name).text);
+  const sourceName = (specifier.propertyName ?? specifier.name).text;
+  return sourceName === "default" || factoryCaptureExportNames.has(sourceName);
 }
 
 function declarationReferencesFactoryCapture(
@@ -407,6 +408,10 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "fragment-namespace-reexport.ts": `export * as runtimeFactory from "${fragmentRuntimeFactoryImport}";\n`,
       "module-element-require.cjs": `void module["require"]("${deepImport}");\n`,
       "module-require.cjs": `void module.require("${deepImport}");\n`,
+      "named-default-import.ts": `import { default as runtimeFactory } from "${deepImport}";\nvoid runtimeFactory;\n`,
+      "named-default-reexport.ts": `export { default as runtimeFactory } from "${deepImport}";\n`,
+      "named-default-type-import.ts": `import type { default as runtimeFactory } from "${deepImport}";\n`,
+      "named-default-type-reexport.ts": `export type { default as runtimeFactory } from "${deepImport}";\n`,
       "query-named-import.ts": `import { captureFactoryIssuedMountedRuntime } from "${queryRuntimeFactoryImport}";\n`,
       "query-named-reexport.ts": `export { inspectFactoryIssuedMountedRuntimeCapture } from "${queryRuntimeFactoryImport}";\n`,
       "query-require.cjs": `void require("${queryRuntimeFactoryImport}");\n`,
@@ -435,6 +440,10 @@ describe("factory-issued mounted runtime capture production imports", () => {
         "ast-commented-named-reexport.ts",
         "captureFactoryIssuedMountedRuntime",
       ],
+      ["named-default-import.ts", "default"],
+      ["named-default-reexport.ts", "default"],
+      ["named-default-type-import.ts", "default"],
+      ["named-default-type-reexport.ts", "default"],
       ["query-named-import.ts", "captureFactoryIssuedMountedRuntime"],
       [
         "query-named-reexport.ts",
@@ -524,6 +533,10 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/fragment-namespace-reexport.ts",
       "packages/agent-runtime/src/deep/module-element-require.cjs",
       "packages/agent-runtime/src/deep/module-require.cjs",
+      "packages/agent-runtime/src/deep/named-default-import.ts",
+      "packages/agent-runtime/src/deep/named-default-reexport.ts",
+      "packages/agent-runtime/src/deep/named-default-type-import.ts",
+      "packages/agent-runtime/src/deep/named-default-type-reexport.ts",
       "packages/agent-runtime/src/deep/query-named-import.ts",
       "packages/agent-runtime/src/deep/query-named-reexport.ts",
       "packages/agent-runtime/src/deep/query-require.cjs",
