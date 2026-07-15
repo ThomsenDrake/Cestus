@@ -85,6 +85,7 @@ export * from "./specialist-workflows.js";
 export * from "./specialist-handoffs.js";
 export * from "./specialist-handoff-hash.js";
 export * from "./specialist-handoff-manifest.js";
+export * from "./specialist-handoff-preparation.js";
 export * from "./specialist-handoff-projection.js";
 export * from "./specialist-readiness.js";
 export * from "./specialist-runner-kernel.js";
