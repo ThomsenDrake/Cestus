@@ -9592,3 +9592,25 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Source fan-out, full verification, live/provider/network/credential/Nous
   activity, reset credits, and every `neo` action remain closed until the
   program integration is freshly previewed, verified, committed, and recorded.
+
+## RV-1-E-326 — Task117A integrated into the program branch
+
+- A coordinator read-only merge preview from program checkpoint
+  `650580112a9df7f6bbd766d496259c95634720e5` and exact approved candidate
+  `f28e7be5399d9f266b34b6eab4342a99ea5d22b5` produced tree
+  `0418e8fc1ac249a951a33a92e476c9e2eac2624f`. Its first-parent delta was
+  exactly the Task117A claim and CF-1 freeze. The preview reran the complete
+  863-counterfactual audit, `git diff --check`, and factory readiness cleanly.
+- The coordinator then created no-ff program merge
+  `2ad417356afc00b26ff00fa763977e2469463d72`. Its first parent is
+  `650580112a9df7f6bbd766d496259c95634720e5`; its second parent is exact approved
+  candidate `f28e7be5399d9f266b34b6eab4342a99ea5d22b5`; its first-parent diff contains
+  exactly the same two approved paths.
+- Fresh post-merge verification reran the full-row audit with all 863 direct
+  recomputed-hash mutations rejected, `git diff --check HEAD^1 HEAD`, and
+  `npm run factory:check`. The program worktree was clean at that boundary.
+- Task117A is now the reviewed and coordinator-integrated ownership freeze for
+  downstream prerequisite manifests. This authorizes only the next plan-defined
+  source-dispatch preparation on task branches. Full verification,
+  live/provider/network/credential/Nous activity, reset credits, and every
+  `neo` action remain closed until a later explicit gate.
