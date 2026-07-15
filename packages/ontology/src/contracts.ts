@@ -3919,6 +3919,7 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
       }
       plans.push(event);
       activePlan = event;
+      finalObservation = undefined;
       executedStepOrdinals.clear();
       continue;
     }

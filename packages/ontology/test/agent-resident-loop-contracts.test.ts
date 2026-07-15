@@ -876,6 +876,51 @@ describe("resident loop ontology contracts v2", () => {
     expect(validateResidentLoopEventSequence(recounted as never).success).toBe(false);
   });
 
+  it("rejects a third plan that carries forward an observation from before the intervening plan", () => {
+    const replay = v2ReplayWithPlanRecords(3);
+    const firstObservation = replay.find((candidate) =>
+      candidate.type === "agent.resident-observation.recorded.v2" && candidate.payload.planRevision === 0
+    )!;
+    const intermediateObservation = replay.find((candidate) =>
+      candidate.type === "agent.resident-observation.recorded.v2" && candidate.payload.planRevision === 1
+    )!;
+    const intermediatePlan = replay.find((candidate) =>
+      candidate.type === "agent.resident-plan.recorded.v2" && candidate.payload.planRevision === 1
+    )!;
+    const thirdPlan = replay.find((candidate) =>
+      candidate.type === "agent.resident-plan.recorded.v2" && candidate.payload.planRevision === 2
+    )!;
+    const staleObservationReplay = replay
+      .filter((candidate) => candidate.id !== intermediateObservation.id)
+      .map((candidate) => candidate.id === thirdPlan.id
+        ? {
+            ...candidate,
+            payload: {
+              ...candidate.payload,
+              replanObservationReadback: {
+                ...(candidate.payload.replanObservationReadback as Record<string, unknown>),
+                observationEventId: firstObservation.id,
+                planId: intermediatePlan.payload.planId,
+                planRevision: intermediatePlan.payload.planRevision
+              }
+            }
+          }
+        : candidate);
+    let consumed = v2BudgetUsage();
+    const recounted = staleObservationReplay.map((candidate, index) => {
+      const actionConsumption = (candidate.payload.budget as { actionConsumption: V2BudgetUsage }).actionConsumption;
+      consumed = advanceV2Budget(consumed, actionConsumption);
+      return {
+        ...candidate,
+        sequence: index + 1,
+        payload: { ...candidate.payload, budget: v2BudgetSnapshot(consumed, actionConsumption) }
+      };
+    });
+
+    for (const candidate of recounted) expectValid(candidate);
+    expect(validateResidentLoopEventSequence(recounted as never).success).toBe(false);
+  });
+
   it("rejects a declared step when its prerequisite was never executed", () => {
     const replay = v2FixtureEvents();
     const toolStep = replay[2]!;
