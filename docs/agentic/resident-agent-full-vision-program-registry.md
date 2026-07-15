@@ -10594,3 +10594,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both reviewers are read-only and pinned at exact candidate
   `b1a74ab7e96fef9a1c7dd5496261d90fcc3e9eb0`. Two unqualified approvals are
   required before coordinator-only integration.
+
+## RV-1-E-379 — Task133 immutable-range candidate admitted
+
+- Existing docs author `019f66c3-08b5-7040-b204-a8f3b0ce8161` produced clean
+  forward candidate `f186e703a22e20c6936b25c846451e60ee687cb9`, changing only
+  the four mutable review-range references in the two authorized docs to the
+  exact endpoint required by RV-1-E-376.
+- Coordinator-independent checks passed both forward and original-parent
+  `git diff --check` ranges, `npm run factory:check`, exact two-path scope,
+  merge-free topology, and clean status.
+- The candidate remains review-only and unintegrated. Source, full
+  verification, providers, reset credits, push, and every `neo` action remain
+  closed.
+
+## RV-1-E-380 — Task133 immutable-range reviews dispatched
+
+- Fresh Terra/xhigh authority/security reviewer
+  `019f66dc-9ee8-74b0-925e-93418ec8f638` revalidates Task133 purity,
+  zero-effect fail-closed behavior, non-authoritative caller proof, P/R0
+  authority separation, and receipt semantics.
+- Fresh Terra/xhigh factory-plan reviewer
+  `019f66dc-d31c-72b2-924a-ec0c713a24ad` revalidates ownership,
+  dependencies, phase gates, immutable review commands, replay coverage, and
+  future explicit subagent-driven-development authorization.
+- Both reviewers are read-only and pinned at exact candidate
+  `f186e703a22e20c6936b25c846451e60ee687cb9`. Two unqualified approvals are
+  required before coordinator-only plan integration or renewed Task133 source.
