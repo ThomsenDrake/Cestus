@@ -7906,3 +7906,42 @@ explicit implementation authorization.
   and stop for another true full-lineage independent review. Full verifier,
   provider/network/credential/Nous, reset credits, neo, child integration,
   and merge remain closed.
+
+## RV-1-E-247 — Task133 repaired full-lineage/hash-boundary candidate
+
+- Fresh documentation-only repair candidate
+  `8169fc7f344ce40b0bbd91e60a66dab697d4446d` is clean and changes only the
+  recovery plan and Task133 amendment claim. Coordinator inspection confirms
+  the actual candidate lineage is now
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..8169fc7f344ce40b0bbd91e60a66dab697d4446d`,
+  containing `38c2456f`, `ffc2dc81`, `d91f28a3`, `6f399c4d`, and `8169fc7f`.
+  `git diff --check` and `npm run factory:check` passed; source implementation
+  and integration remain closed.
+- The repair removes every derived hash from the v2 build input, requires the
+  canonical artifact owner to derive rendered-text, posture, and exact-binding
+  hashes, and requires supplied derived-hash lookalikes to fail before builder
+  acceptance. It also corrects every review/final-gate reference in both plan
+  and claim to the true full lineage. A fresh independent Terra/xhigh reviewer
+  must inspect that entire five-commit range, including the Task140R0 causal
+  composition amendment, before any Task133 plan integration or implementation
+  dispatch.
+
+## RV-1-E-248 — Task135A post-handoff dirty-input integrity freeze
+
+- Candidate `72830758` is not review-ready despite its clean author handoff.
+  The bounded author attested that its final exact gate preceded the later
+  dirty changes: its commit was created at local 02:01:35, while an
+  uncommitted test edit appeared at 02:01:59, a different temporary
+  `node_modules` link at 02:02:12, and an appended claim edit at 02:03:04.
+  The author made none of those changes, had already reported clean, and its
+  link target was the canonical worktree rather than the later
+  `/home/drake/Projects/Cestus/node_modules` target.
+- Preserve the unknown post-handoff test/claim diff forward without reset,
+  checkout, commit, review, or integration. It is unverified input and was not
+  included in `72830758`'s actual 56-test/typecheck/factory gate. Freeze the
+  Task135A lane; first perform a source-backed ownership/scope audit of that
+  exact dirty diff and either retain it under a newly authorized bounded repair
+  with a new RED/GREEN/gate or isolate it as rejected historical input. No
+  candidate readiness may be inferred from its extra assertions. Full verifier,
+  provider/network/credential/Nous, reset credits, neo, self-integration, and
+  merge remain closed.
