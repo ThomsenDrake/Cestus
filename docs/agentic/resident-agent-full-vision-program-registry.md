@@ -8573,3 +8573,25 @@ explicit implementation authorization.
   consumption, non-export boundaries, all live fixtures, and smoke bypasses.
 - Source dispatch and plan integration remain closed until both verdicts are
   unqualified **APPROVED** and recorded in a later append-only registry entry.
+
+## RV-1-E-279 — Explicit-consumer candidate rejected; bounded CF-1R14 repair
+
+- Both fresh reviewers returned **NEEDS-CHANGES** on exact 18-commit range
+  `0481c1e0^..550fb053`. Authority reviewer
+  `019f6537-7fc7-71d2-bc70-f5e2ede9b7f8` found P's GREEN incorrectly depends
+  on later R0 source, admission creation does not privately capture every
+  expected fact, source imports are not allowlisted, and mismatch consumption
+  has no one-shot semantic. Lifecycle reviewer
+  `019f6537-7be8-73e1-b99b-68ab0deee332` found no specified admission transport
+  across normal/resume dispatch, missing Task134A/135A and 136-139 prerequisite
+  and handoff-store gates, and a smoke prompt-builder/internal-disk bypass.
+- The sole plan writer is authorized only for CF-1R14: split P module tests from
+  R0 import tests; add a consume-time binding inspection that privately captures
+  normalized full facts and converges normal/resume paths; burn identity on any
+  consume attempt; add an exact source-import allowlist; freeze Task134A merge
+  `83a301d541e7fec5d0b29e6f2003566c06336158`, Task135A merge
+  `ac3f91901da0c9b23722a046be73d95746f691da`, and future exact reviewed 136-139
+  SHAs; cover the canonical preparation/binder/projection suites; and remove
+  smoke's direct status-prompt builder/fallback path.
+- All source/live/full/credential/reset-credit/`neo`/plan-integration actions
+  remain closed pending docs validation, commit, and two fresh approvals.
