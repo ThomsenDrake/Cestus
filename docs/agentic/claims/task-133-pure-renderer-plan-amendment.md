@@ -5,14 +5,17 @@
   implementation or integration is authorized.
 - Coordinator-owned forward repair on
   `codex/task-133-pure-renderer-plan-amendment`; the exact amendment lineage
-  begins at `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8` and ends at current
-  `HEAD`. Only this claim and the active recovery plan may change in this lane.
+  includes base commit `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8` and ends
+  at current `HEAD`. That historic base commit changes the program registry;
+  current forward repairs modify only this claim and the active recovery plan.
 
 ## Current Executable Contract
 
 The sole executable contract is the latest appended correction in
 `docs/superpowers/plans/2026-07-14-resident-agent-factory-authority-recovery-implementation.md`,
-read backward only for sections it explicitly preserves. CF-1R10 owns the
+read backward only for sections it explicitly preserves. CF-1R11 owns nested
+approval/readback authority, production-local admission, and resident live
+acceptance; CF-1R10 owns the
 Task133.5 fallback removal and complete Task140P/R0 execution; CF-1R9 owns the
 remaining Task133 RED/GREEN sequence; CF-1R8 owns Task140H execution; CF-1R7 owns the
 private data-only model command; CF-1R6 owns receipt/recovery/proof ordering;
@@ -74,12 +77,13 @@ git diff --check && npm run factory:check
 ```
 
 The fresh plan-review and final-gate review range is exactly
-`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`. That Git range is the sole
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`. That Git range is the sole
 lineage inventory; this claim deliberately does not duplicate a commit list
 that can become stale after another forward correction. The reviewer must use
-`git rev-list --reverse` and inspect every commit in the exact range. Stop after
-a fresh independent Terra/xhigh review; only the coordinator may integrate an
-approved amendment or explicitly approve and invoke
+`git rev-list --reverse` and inspect every commit in the exact range, including
+the base registry commit. Stop after two fresh independent Terra/xhigh reviews;
+only two unqualified approvals permit coordinator integration. Only the
+coordinator may explicitly approve and invoke
 `superpowers:subagent-driven-development` for later implementation.
 
 ## Forward Correction — Full-Lineage Review And Owner-Derived V2 Hashes
@@ -364,3 +368,29 @@ serialized task.
   remain closed. Exact review range remains
   `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8..HEAD`; two fresh unqualified
   Terra/xhigh approvals are required before coordinator integration.
+
+## Forward Correction — Opaque Nested Authority And Resident Acceptance
+
+- Status remains **plan-repair candidate only**. Reviewers
+  `019f6511-eca9-7223-8b74-d686ad2497af` and
+  `019f6511-f063-7ff3-9a65-98c404c858b7` rejected `fadbc03d`: P nested prompt
+  bytes in its proof, Task133.5 lacked mounted-readback identity, production
+  local engines could bypass H, live Nous and smoke paths bypassed portable
+  resident orchestration, and the review gate/range was stale.
+- CF-1R11 adds one non-index-exported mounted-v1 WeakMap witness consumed by the
+  kernel, and one hash-only approval-admission token whose private binding is
+  opened only by R0. P receives no proof, envelope, text, preview, or time.
+- Every production specialist run requires hidden H admission regardless of
+  provider endpoint. Only non-production local-engine runs retain a data-only
+  exception after run classification.
+- Both live Nous tests and smoke migrate to one resident specialist acceptance
+  harness that creates/mounts a portable workspace, obtains exact context-ready
+  v1, requires existing human approval, and invokes through P/R0/H. Non-live
+  gates use deterministic fakes and never contact providers.
+- The sole review range is now
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`, which includes the
+  historic registry base commit. Exactly two fresh independent unqualified
+  Terra/xhigh approvals are required before coordinator-only integration.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed.

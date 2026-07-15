@@ -3581,3 +3581,213 @@ P/R0 RED has an identical GREEN, and all final gates exclude live/provider
 activity. Two unqualified Terra/xhigh approvals are required before
 coordinator-only plan integration. Source/full/live/credential/reset-credit/
 `neo`/self-integration/merge remain closed.
+
+## CF-1R11 Nested Authority, Production-Local Admission, And Resident Acceptance
+
+**Status:** This section supersedes CF-1R10 only where P carries a nested full
+approval proof, Task133.5 lacks mounted-readback identity, and CF-1R8 permits a
+provider-ID-only local exception or leaves live callers outside the resident
+path. It also supersedes every earlier review range. All source remains frozen
+pending two fresh approvals of exact range
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`.
+
+### Task133.5 opaque mounted-v1 readback authority
+
+Add to Task133.5 ownership:
+
+- Create `packages/agent/src/production-prompt-readback.ts`
+- Create `packages/agent/test/production-prompt-readback.test.ts`
+- Read only `packages/agent/src/index.ts`; the new module must not be exported
+
+The package-internal module owns a private WeakMap and this hash-only witness:
+
+```ts
+export interface MountedProductionPromptReadbackWitness {
+  readonly schemaVersion: "agent-mounted-production-prompt-readback.v1";
+  readonly inputArtifactHash: `sha256:${string}`;
+  readonly workspaceId: string;
+  readonly mountInstanceId: string;
+}
+```
+
+The mounted store imports the internal registrar by explicit source path and
+may mint a witness only after canonical-byte/hash validation and the post-I/O
+mount tuple check succeed. Its private binding contains the exact parsed v1
+envelope and captured workspace/root/blob tuple. The context-ready checkpoint
+stores only diagnostics/hash; the factory runner keeps the exact witness in a
+lexical closure. `prepareSpecialistRun` accepts that witness instead of public
+`promptArtifact`, consumes exact membership once, reparses/recomputes v1, and
+requires task/run/context/checkpoint/hash equality. A direct envelope,
+structural/copied/forged/reused witness, pre-post mount swap, v2, or readback
+from another workspace rejects before ledger append/provider/H/handoff/
+terminal effects. The internal registrar/consumer is absent from routes,
+results, logs, serialization, and `index.ts`.
+
+Add exact-title REDs
+`rejects structurally valid v1 without mounted readback membership`,
+`rejects copied swapped and reused mounted readback witness`, and
+`consumes one exact post-mount-check v1 witness without rendering`. Replace
+Task133.5's CF-1R10 command with:
+
+```bash
+npm test -- packages/agent/test/task-orchestrator-context.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/production-prompt-readback.test.ts packages/agent/test/specialist-runner-kernel.test.ts packages/local-runtime/test/agent-prr-context-packs.test.ts packages/local-runtime/test/agent-prompt-artifacts.test.ts packages/local-runtime/test/mounted-prompt-artifact-store.test.ts packages/local-runtime/test/agent-runtime-preapproval-prompt.test.ts
+```
+
+Expected RED: exit `1` because the internal witness module is absent and the
+kernel accepts a structurally valid direct envelope. After adding signature
+skeletons that throw `blocked.mounted-prompt-readback-required`, rerun the
+identical command; valid mounted-witness controls must still fail. Expected
+GREEN: exit `0`, followed by:
+
+```bash
+npm run typecheck && ! rg -n 'production-prompt-readback' packages/agent/src/index.ts && ! rg -n 'renderProductionSpecialistPrompt\(' packages/agent/src/specialist-runner-kernel.ts && ! rg -n 'renderExactlyBoundProductionSpecialistPrompt' packages/agent/src packages/agent/test && git diff --check && npm run factory:check
+```
+
+The Task133.5 commit/review boundary includes every CF-1R9/R10/R11 file.
+
+### Task140P hash facts plus opaque approval admission
+
+Add `packages/agent/src/task-orchestrator-approval.ts` to P source ownership.
+Approval inspection, after exact current proof validation, creates one opaque
+`TaskOrchestratorApprovalAdmission` with hash-only diagnostics and a private
+WeakMap binding to the full proof/envelope/current preview. The exact object is
+single-use, non-serializable, absent from routes/results, and never reconstructed.
+
+P's resolver call has two separate parameters: strict data-only facts and the
+exact opaque admission. Replace CF-1R10's interface with:
+
+```ts
+interface ResolveApprovedPromptBindingFacts {
+  readonly taskId: string;
+  readonly attemptId: string;
+  readonly runType: TaskOrchestratorRunType;
+  readonly scope: ProductionRunScope;
+  readonly approvalEventId: string;
+  readonly promptArtifactHash: `sha256:${string}`;
+  readonly contextBindingHashes: readonly `sha256:${string}`[];
+  readonly providerPostureHash: `sha256:${string}`;
+  readonly credentialRefId: string;
+}
+
+prepare(
+  facts: ResolveApprovedPromptBindingFacts,
+  approvalAdmission: TaskOrchestratorApprovalAdmission
+): Promise<PreparedPromptBinding>;
+```
+
+`approvalProof`, `promptArtifact`, `text`, `currentPreviewInput`, provider
+readiness objects, caller time/v2, and all nested/lookalike keys are forbidden
+in `facts`. Exact-key validation occurs before await. P verifies diagnostic
+equality but does not open the token; it passes exact identity only to the
+registered private resolver. R0 consumes membership, retrieves the full proof
+privately, rereads mounted v1 by the hash-only fact, and performs CF-1R10 checks.
+Recovery reruns approval inspection and receives a fresh admission; no token is
+restored.
+
+Add exact-title P REDs
+`facts reject nested approval proof prompt artifact text and current preview`,
+`copied approval admission cannot prepare binding`, and
+`recovery obtains fresh approval admission from current inspection`. Use the
+same P RED/GREEN command from CF-1R10. Expected RED includes the current nested
+proof reaching the resolver; expected GREEN is exit `0` plus its existing
+typecheck/diff/factory gate. P's one commit includes approval source and all
+CF-1R10 P files, then stops for review.
+
+### Task140R0 private approval-token consumption
+
+R0's private resolver consumes the exact approval admission once to obtain the
+full proof and prompt envelope; it never receives those values structurally.
+It compares the envelope hash to hash-only facts, rereads exact mounted v1 by
+that hash, and then executes CF-1R10 event-time/currentness/binder/store logic.
+Add exact-title R0 REDs
+`consumes full approval proof only behind exact opaque admission` and
+`rejects structural proof envelope and copied admission before durable read`.
+Use the identical R0 RED/GREEN command and gate from CF-1R10. Its file ownership
+is unchanged; the full proof remains inside agent-private WeakMap consumption.
+
+### Task140H production-local admission overlay
+
+The local-engine provider-ID set is only an early remote/local classifier. It
+is never sufficient authority. Replace the CF-1R7/R8 exception with this exact
+rule after the run is read:
+
+```text
+requiresProductionPromptAudit(run.runType) => hidden H admission required,
+regardless of provider endpoint kind
+
+!requiresProductionPromptAudit(run.runType) && provider is local-engine
+  => data-only unadmitted local execution may continue
+```
+
+An unadmitted nonlocal command still rejects before ledger/provider lookup.
+An unadmitted local command may read the run solely to classify its run type;
+if production, it rejects with zero ledger append, provider invocation,
+artifact write, H, handoff, or terminal effect. Add exact-title H.1 REDs
+`rejects unadmitted production local-engine run after classification` and
+`permits unadmitted local-engine only for non-production run type`. Include
+them in H.1's identical RED/GREEN runtime/admission command.
+
+### Resident portable specialist acceptance harness
+
+Add to the atomic H.1/H.2 ABI migration ownership:
+
+- Create `packages/local-runtime/src/resident-specialist-acceptance.ts`
+- Create `packages/local-runtime/test/resident-specialist-acceptance.test.ts`
+- Modify `packages/agent/test/evidence-triage-nous-live.test.ts`
+- Modify `packages/agent/test/prr-negotiation-nous-live.test.ts`
+- Modify `packages/local-runtime/src/agent-nous-smoke.ts`
+- Modify `packages/local-runtime/test/agent-nous-smoke.test.ts`
+
+`runResidentSpecialistAcceptance` is the sole live/smoke entry for
+`evidence-triage` and `prr-negotiation`. It requires an explicit portable root,
+uses existing `createPortableWorkspace` then `mountPortableWorkspace`, verifies
+the exact returned workspace/root/blob tuple, starts the resident task, obtains
+Task133.5 mounted v1/witness and context-ready readback, consumes an existing
+human approval event through P/R0, and invokes only through H. It has no direct
+workflow/runtime model call, internal-storage fallback, or auto-approval API.
+
+The deterministic harness test injects an already approved ledger fixture;
+real live tests may create their test-human approval only under the existing
+explicit live acceptance switch and later coordinator-authorized live gate.
+Normal smoke without current approval returns secret-safe `approval-required`.
+Mount creation/failure occurs before approval/provider activity.
+
+Add exact-title REDs
+`creates and verifies portable workspace before context-ready v1`,
+`blocks no-mount with zero approval and provider effects`,
+`requires existing human approval and never auto approves`,
+`routes evidence triage through resident P R0 H`, and
+`routes prr negotiation through resident P R0 H`. The smoke tests add
+`smoke delegates only to portable resident acceptance` and
+`smoke blocks mount failure before provider`.
+
+Replace H.2's non-live command with:
+
+```bash
+npm test -- packages/agent/test/specialist-runner-kernel.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts packages/agent/test/evidence-triage-workflow.test.ts packages/agent/test/prr-negotiation-workflow.test.ts packages/agent/test/investigation-planner-workflow.test.ts packages/local-runtime/test/resident-specialist-acceptance.test.ts packages/local-runtime/test/agent-nous-smoke.test.ts
+```
+
+Expected RED: current smoke explicit-path/direct runtime and both direct live
+workflow shapes lack the resident portable harness; deterministic mounted/
+approval controls fail. The live files are compile-only and never selected by
+this command. Expected GREEN: exit `0`, followed by:
+
+```bash
+npm run typecheck && ! rg -n 'runEvidenceTriageWorkflow|runPrrNegotiationWorkflow|runtime\.invokeModel' packages/agent/test/evidence-triage-nous-live.test.ts packages/agent/test/prr-negotiation-nous-live.test.ts && ! rg -n 'production-model-invocation-admission' packages/agent/src/index.ts && git diff --check && npm run factory:check
+```
+
+The later live provider gate must run both migrated live files through this
+harness on a verified portable workspace. It remains closed now.
+
+### CF-1R11 review gate
+
+The sole full-lineage range is
+`0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD`, including the historic
+base registry commit. Exactly two fresh independent unqualified Terra/xhigh
+approvals permit coordinator-only plan integration. A single approval, timeout,
+capacity error, or silence never authorizes integration or source. Reviewers
+must confirm mounted-v1 and approval-proof bytes cross only opaque identity
+maps, production local engines require H, live/smoke callers use the portable
+resident harness, every RED/GREEN is identical, and no non-live gate contacts a
+provider. Full/source/live/credential/reset-credit/`neo`/self-integration/merge
+remain closed.
