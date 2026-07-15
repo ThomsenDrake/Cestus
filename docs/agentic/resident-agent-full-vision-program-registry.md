@@ -9763,3 +9763,22 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   context fail-closed boundary intact. It is admitted only to fresh independent
   test-isolation review. Neither candidate is authorized for integration,
   full verification, provider activity, reset credits, or any `neo` action.
+
+## RV-1-E-333 — Task135C and Task135E independent reviews dispatched
+
+- Task135C static-ABI/retained-execution reviewer
+  `019f6679-5457-7703-a944-ed2c5f0cee26` and Git-authority/bypass reviewer
+  `019f6679-5457-7703-a944-ed4b7f6c18b9` are active, pinned, and read-only in
+  separate detached worktrees at exact candidate
+  `5e3645f62d5f384ad6902883fa7112c0eaa59d26`.
+- Task135E test-isolation reviewer
+  `019f6679-589e-7f13-803f-581fac30c06f` is active, pinned, and read-only in a
+  separate detached worktree at exact candidate
+  `4e3510ff00380a5fa5c5d3cd4502c2c946fd3f9d`.
+- All three use Terra/xhigh with reboot-recovered ignored dependency wiring.
+  They must reproduce exact ranges, paths, focused gates, and their distinct
+  review lenses, then return an explicit unqualified **APPROVED** or concrete
+  **NEEDS-CHANGES** verdict. They cannot edit, delegate, commit, integrate, run
+  full verification, invoke providers, use reset credits, or touch `neo`.
+- Both Task135C approvals and the Task135E approval are required before any
+  coordinator merge preview. All integrations remain closed.
