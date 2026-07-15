@@ -12,7 +12,6 @@ const eventIdPattern = /^evt_[a-zA-Z0-9_-]+$/;
 const modelIdPattern = /^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$/;
 const policyVersionPattern = /^policy_[a-zA-Z0-9_.-]+$/;
 const officialFlowIdPattern = /^xai-[a-z0-9][a-z0-9.-]{0,127}$/;
-const idempotencyKeyPattern = /^[a-zA-Z0-9_.|:-]+$/;
 
 const prohibitedOfficialFlowKinds = new Set([
   "browser-cookie",
@@ -27,38 +26,12 @@ const prohibitedOfficialFlowKinds = new Set([
   "subscription-to-api-key-conversion"
 ]);
 
-export interface XaiOfficialFlowUnavailableEvidence {
-  readonly recordVersion: "agent-provider-feasibility.v1";
-  readonly providerId: string;
-  readonly modelId: string;
-  readonly capabilityHash: string;
-  readonly credentialRefId: string;
-  readonly posture: "unavailable";
-  readonly category: "official-flow-unavailable";
-  readonly policyVersion: string;
-  readonly workspaceId: string;
-  readonly mountInstanceId: string;
-  readonly runId: string;
-  readonly approvalClass: "provider-byte-transfer";
-  readonly sourceEventIds: readonly string[];
-  readonly documentationHash: string | undefined;
-  readonly idempotencyKey: string;
-}
-
 export interface XaiSubscriptionHarness {
   assess(input: unknown): Promise<XaiSubscriptionHarnessResult>;
 }
 
 export type XaiSubscriptionHarnessResult =
-  | {
-    readonly kind: "unavailable";
-    readonly category: "official-flow-unavailable";
-    readonly providerId: string;
-    readonly modelId: string;
-    readonly capabilityHash: string;
-    readonly safeDiagnosticCodes: readonly ["official-flow-unavailable"];
-  }
-  | {
+  {
     readonly kind: "blocked";
     readonly category:
       | "unsafe-input"
@@ -72,18 +45,6 @@ export type XaiSubscriptionHarnessResult =
       "unsafe-input" | "posture-mismatch" | "prohibited-credential-source" | "feasibility-append-unavailable"
     ];
   };
-
-export interface XaiFeasibilityAuthority {
-  appendOfficialFlowUnavailable(
-    evidence: XaiOfficialFlowUnavailableEvidence
-  ): Promise<XaiOfficialFlowUnavailableAppendReadback>;
-}
-
-export interface XaiOfficialFlowUnavailableAppendReadback {
-  readonly record: XaiOfficialFlowUnavailableEvidence;
-  readonly feasibilityEventId: string;
-  readonly readbackEventId: string;
-}
 
 export interface XaiSubscriptionHarnessPosture {
   readonly residentAgentId: "agent_default";
@@ -126,7 +87,6 @@ export interface XaiHarnessApproval {
 
 interface NormalizedCreateInput {
   readonly currentPosture: NormalizedPosture;
-  readonly feasibilityAuthority: XaiFeasibilityAuthority;
 }
 
 interface NormalizedPosture {
@@ -158,8 +118,9 @@ const unavailableModelId = "xai-unavailable";
 const unavailableHash = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
 /**
- * xAI feasibility is intentionally limited to a supplied mounted append port.
- * It has no secret, network, token, API-key, or alternate-provider port.
+ * xAI feasibility has no secret, network, token, API-key, alternate-provider,
+ * or caller-supplied append/readback port. The future mounting owner must
+ * supply a non-forgeable authority before this boundary can report unavailable.
  */
 export function createXaiSubscriptionHarness(input: unknown): XaiSubscriptionHarness {
   const configured = normalizeCreateInput(input);
@@ -182,41 +143,18 @@ export function createXaiSubscriptionHarness(input: unknown): XaiSubscriptionHar
       if (assessment.officialFlow.kind === "invalid") {
         return blocked("unsafe-input", configured.currentPosture);
       }
-      const evidence = unavailableEvidence(configured.currentPosture);
-      try {
-        const readback = await configured.feasibilityAuthority.appendOfficialFlowUnavailable(evidence);
-        if (!isExactMountedAppendReadback(readback, evidence)) {
-          return blocked("feasibility-append-unavailable", configured.currentPosture);
-        }
-      } catch {
-        return blocked("feasibility-append-unavailable", configured.currentPosture);
-      }
-      return unavailable(configured.currentPosture);
+      return blocked("feasibility-append-unavailable", configured.currentPosture);
     }
   });
 }
 
 function normalizeCreateInput(value: unknown): NormalizedCreateInput | undefined {
   const record = plainOwnDataRecord(value);
-  if (record === undefined || !hasExactKeys(record, ["currentPosture", "feasibilityAuthority"])) {
+  if (record === undefined || !hasExactKeys(record, ["currentPosture"])) {
     return undefined;
   }
   const currentPosture = normalizePosture(record.currentPosture);
-  const feasibilityAuthority = normalizeFeasibilityAuthority(record.feasibilityAuthority);
-  return currentPosture === undefined || feasibilityAuthority === undefined
-    ? undefined
-    : Object.freeze({ currentPosture, feasibilityAuthority });
-}
-
-function normalizeFeasibilityAuthority(value: unknown): XaiFeasibilityAuthority | undefined {
-  const record = plainOwnDataRecord(value);
-  if (record === undefined || !hasExactKeys(record, ["appendOfficialFlowUnavailable"]) ||
-      typeof record.appendOfficialFlowUnavailable !== "function") {
-    return undefined;
-  }
-  return Object.freeze({
-    appendOfficialFlowUnavailable: record.appendOfficialFlowUnavailable as XaiFeasibilityAuthority["appendOfficialFlowUnavailable"]
-  });
+  return currentPosture === undefined ? undefined : Object.freeze({ currentPosture });
 }
 
 function normalizeAssessment(value: unknown): NormalizedAssessment | undefined {
@@ -364,103 +302,6 @@ function normalizeApproval(value: unknown): { readonly approvalClass: "provider-
     return undefined;
   }
   return Object.freeze({ approvalClass: "provider-byte-transfer", bindingHash: record.bindingHash });
-}
-
-function unavailableEvidence(posture: NormalizedPosture): XaiOfficialFlowUnavailableEvidence {
-  return Object.freeze({
-    recordVersion: "agent-provider-feasibility.v1",
-    providerId: posture.providerId,
-    modelId: posture.modelId,
-    capabilityHash: posture.capabilityHash,
-    credentialRefId: posture.credentialRefId,
-    posture: "unavailable",
-    category: "official-flow-unavailable",
-    policyVersion: posture.policyVersion,
-    workspaceId: posture.workspaceId,
-    mountInstanceId: posture.mountInstanceId,
-    runId: posture.runId,
-    approvalClass: "provider-byte-transfer",
-    sourceEventIds: Object.freeze([...posture.sourceEventIds]),
-    documentationHash: undefined,
-    idempotencyKey: [posture.providerId, posture.officialFlowId, posture.policyVersion, posture.mountInstanceId].join("|")
-  });
-}
-
-function isExactMountedAppendReadback(value: unknown, expected: XaiOfficialFlowUnavailableEvidence): boolean {
-  const readback = plainOwnDataRecord(value);
-  if (readback === undefined || !hasExactKeys(readback, ["record", "feasibilityEventId", "readbackEventId"]) ||
-      !isSafeId(readback.feasibilityEventId, eventIdPattern) || !isSafeId(readback.readbackEventId, eventIdPattern) ||
-      readback.feasibilityEventId === readback.readbackEventId) {
-    return false;
-  }
-  const evidence = normalizeOfficialFlowUnavailableEvidence(readback.record);
-  return evidence !== undefined && sameUnavailableEvidence(evidence, expected);
-}
-
-function normalizeOfficialFlowUnavailableEvidence(value: unknown): XaiOfficialFlowUnavailableEvidence | undefined {
-  const record = plainOwnDataRecord(value);
-  if (record === undefined || !hasExactKeys(record, [
-    "recordVersion", "providerId", "modelId", "capabilityHash", "credentialRefId", "posture", "category", "policyVersion",
-    "workspaceId", "mountInstanceId", "runId", "approvalClass", "sourceEventIds", "documentationHash", "idempotencyKey"
-  ]) || record.recordVersion !== "agent-provider-feasibility.v1" ||
-      !isSafeId(record.providerId, xaiProviderIdPattern) || !isSafeId(record.modelId, modelIdPattern) ||
-      !isSafeHash(record.capabilityHash) || !isSafeId(record.credentialRefId, credentialRefIdPattern) ||
-      record.posture !== "unavailable" || record.category !== "official-flow-unavailable" ||
-      !isSafeId(record.policyVersion, policyVersionPattern) || !isSafeId(record.workspaceId, workspaceIdPattern) ||
-      !isSafeId(record.mountInstanceId, mountInstanceIdPattern) || !isSafeId(record.runId, runIdPattern) ||
-      record.approvalClass !== "provider-byte-transfer" || record.documentationHash !== undefined ||
-      !isSafeId(record.idempotencyKey, idempotencyKeyPattern)) {
-    return undefined;
-  }
-  const sourceEventIds = plainSafeStringArray(record.sourceEventIds, eventIdPattern);
-  if (sourceEventIds === undefined) {
-    return undefined;
-  }
-  return Object.freeze({
-    recordVersion: "agent-provider-feasibility.v1",
-    providerId: record.providerId,
-    modelId: record.modelId,
-    capabilityHash: record.capabilityHash,
-    credentialRefId: record.credentialRefId,
-    posture: "unavailable",
-    category: "official-flow-unavailable",
-    policyVersion: record.policyVersion,
-    workspaceId: record.workspaceId,
-    mountInstanceId: record.mountInstanceId,
-    runId: record.runId,
-    approvalClass: "provider-byte-transfer",
-    sourceEventIds,
-    documentationHash: undefined,
-    idempotencyKey: record.idempotencyKey
-  });
-}
-
-function sameUnavailableEvidence(
-  actual: XaiOfficialFlowUnavailableEvidence,
-  expected: XaiOfficialFlowUnavailableEvidence
-): boolean {
-  return actual.recordVersion === expected.recordVersion &&
-    actual.providerId === expected.providerId && actual.modelId === expected.modelId &&
-    actual.capabilityHash === expected.capabilityHash && actual.credentialRefId === expected.credentialRefId &&
-    actual.posture === expected.posture && actual.category === expected.category && actual.policyVersion === expected.policyVersion &&
-    actual.workspaceId === expected.workspaceId && actual.mountInstanceId === expected.mountInstanceId && actual.runId === expected.runId &&
-    actual.approvalClass === expected.approvalClass && actual.documentationHash === expected.documentationHash &&
-    actual.idempotencyKey === expected.idempotencyKey && sameStrings(actual.sourceEventIds, expected.sourceEventIds);
-}
-
-function sameStrings(actual: readonly string[], expected: readonly string[]): boolean {
-  return actual.length === expected.length && actual.every((value, index) => value === expected[index]);
-}
-
-function unavailable(posture: NormalizedPosture): XaiSubscriptionHarnessResult {
-  return Object.freeze({
-    kind: "unavailable",
-    category: "official-flow-unavailable",
-    providerId: posture.providerId,
-    modelId: posture.modelId,
-    capabilityHash: posture.capabilityHash,
-    safeDiagnosticCodes: Object.freeze(["official-flow-unavailable"] as const)
-  });
 }
 
 function blocked(
