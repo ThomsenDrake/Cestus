@@ -10348,3 +10348,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   factory/clean gate before both fresh review lenses. Full verification,
   providers, reset credits, integration, push, and every `neo` action remain
   closed.
+
+## RV-1-E-363 — Task133 second atomic review recovery prepared
+
+- Rejected candidate `b3bec172205b39880e46b3e820b3f518ab990f1f`
+  remains preserved. Fresh branch
+  `codex/task-133-atomic-prompt-binding-review-recovery-2` starts at exact
+  original base `197c3ca528e9b666c02b9b87695bf900efa195b1` with the rejected
+  candidate reapplied by `cherry-pick --no-commit`; HEAD remains the original
+  base and exactly 28 authorized paths are staged.
+- The existing author must add the complete RV-1-E-361 causal tests before
+  production repairs, preserve one final atomic replacement commit, and rerun
+  every permitted suite/static/topology gate. No new implementer is authorized.
+- Full verification, providers, reset credits, integration, push, and every
+  `neo` action remain closed.
+
+## RV-1-E-364 — Task135D AST import recovery prepared
+
+- Rejected candidate `f121af369d2281b515fda07bb15ae4948404062b`
+  remains preserved. Fresh forward branch
+  `codex/task-135d-runtime-handle-capture-ast-import-review-repair` starts at
+  that exact candidate in the existing clean Task135D worktree.
+- The existing author must add the complete RV-1-E-362 causal fixtures before
+  replacing only the test scanner's lexical grammar with TypeScript AST-based
+  inspection, preserve scanner roots and allowlist semantics, and rerun every
+  permitted focused/static/topology gate. No new implementer is authorized.
+- Full verification, providers, reset credits, integration, push, and every
+  `neo` action remain closed.
