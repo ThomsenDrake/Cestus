@@ -8970,3 +8970,28 @@ explicit implementation authorization.
   carry forward any earlier verdict. Source dispatch and plan integration
   remain closed until both return explicit unqualified **APPROVED** verdicts
   and those verdicts are durably recorded.
+
+## RV-1-E-300 — Authenticated lineage candidate rejected; bounded CF-1R21
+
+- Both fresh reviewers returned **NEEDS-CHANGES** on exact 25-commit range
+  `0481c1e0^..d4233240`. Lifecycle reviewer
+  `019f65b0-fed3-7f00-9f15-fecb992da288` found that Task117A pins only its
+  audit block rather than the complete intended freeze and omits ignored
+  authority-path rejection. Authority reviewer
+  `019f65b1-482d-7cb1-8c57-c23d1459a334` additionally proved that
+  assume-unchanged/skip-worktree flags can hide tracked changes, coordinator-
+  only dispatch is asserted without a durable pinned attestation, and
+  Task135B's older binding-only return conflicts with its later two-value
+  controller transport.
+- The sole plan writer is authorized only for CF-1R21: pin and verify both the
+  whole-freeze and extracted-audit SHA-256 values before Task117A changes;
+  reject ignored authority paths, hidden index flags, grafts, and shallow
+  history in every affected Git authority gate; bind Task117A and Task135C
+  dispatch commits to exact coordinator-issued registry attestation SHAs named
+  verbatim in dispatch/review commands; and define one exact source-private
+  Task135B producer-result type carrying separate binding and opaque controller
+  values into the lexical factory closure.
+- All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
+  integration actions remain closed pending a committed docs-only repair and
+  two fresh independent unqualified approvals. No prior verdict or reviewer
+  identity carries forward.
