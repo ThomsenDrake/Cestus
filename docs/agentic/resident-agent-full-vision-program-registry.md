@@ -8627,3 +8627,24 @@ explicit implementation authorization.
   one-shot authority, exact import ownership, leakage, live routes, and smoke.
 - No verdict from an older reviewer can carry forward. Source dispatch and plan
   integration remain closed until both new reviewers explicitly approve.
+
+## RV-1-E-282 — Producer/snapshot/live-fixture rejection; bounded CF-1R15
+
+- Both fresh reviewers returned **NEEDS-CHANGES** on exact 19-commit range
+  `0481c1e0^..94182e9a`. Lifecycle reviewer
+  `019f6544-5aaf-72c2-b6d3-98d37604ee0b` found no production owner that can
+  construct Task135A's mounted authority and distinct stores, one aggregate RED
+  instead of three causal dispatch-path rows, and no executable future-SHA
+  ancestry preflight. Authority reviewer
+  `019f6544-5f3a-7602-9c63-e4f41248276b` found proof/envelope/preview are not
+  deep-snapshotted before await and the final gate neither positively requires
+  resident acceptance in each live fixture nor bans direct runtime creation.
+- The sole plan writer is authorized only for CF-1R15: add a serialized
+  pre-Task137 portable mounted handoff-store producer with remount/authority
+  checks and no fallback; add a reusable strict prerequisite-manifest checker;
+  give each of the three dispatch call sites its own causal RED; deep-normalize
+  facts/proof/envelope/preview before the first await and test mutation during
+  await; and add per-live-file positive harness plus direct-runtime-construction
+  negative assertions.
+- All source/live/full/credential/reset-credit/`neo`/plan-integration actions
+  remain closed pending docs validation, commit, and two fresh approvals.
