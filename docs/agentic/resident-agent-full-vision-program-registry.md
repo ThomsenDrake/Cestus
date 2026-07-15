@@ -9973,3 +9973,44 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   or touch `neo`.
 - Both approvals per candidate are required before any coordinator merge
   preview. All integrations remain closed.
+
+## RV-1-E-343 — Task135C and Task135D held for review repair
+
+- Task135C static/execution reviewer
+  `019f668f-0a9f-73d1-9c69-30e19d248901` returned unqualified **APPROVED**.
+  Git-authority reviewer `019f668f-12cb-7623-b1a8-ebd2d85223fb` returned
+  **NEEDS-CHANGES** because the combined dispatch-history and C-attestation
+  tests do not actually exercise every bypass named by the terminal contract.
+- Task135C must add causal rename, delete/readd, restored later-touch,
+  symbolic-C, non-registry-C, merge-C, wrong-M/source/task, and changed-manifest
+  fixtures. If restored later touches remain accepted, the checker must require
+  the manifest and claim to have no history after original M. Candidate
+  `efff6e025ac922bf0fcaf42696a24043489588ec` remains rejected.
+- Task135D private-authority/lifecycle reviewer
+  `019f668f-0a9c-7f51-96fd-f0510596466c` returned unqualified **APPROVED**.
+  Ownership/import reviewer `019f668f-0fd8-7b93-948a-54401379b56c` returned
+  **NEEDS-CHANGES** because the import test scans only
+  `packages/local-runtime/src`, leaving other production packages able to deep-
+  import the private capture seam.
+- Task135D must expand the existing import test across every `packages/*/src`
+  production source file while retaining the sole future allowlist entry for
+  `packages/local-runtime/src/mounted-artifact-authority-operation.ts`.
+  Candidate `4e6542a462b428ce5c0d0c278410fba81ecff6a7` remains rejected.
+- Both repairs remain inside their existing three- and four-path ceilings on
+  fresh forward branches and require fresh complete reviews. Full verification,
+  providers, reset credits, integration, and every `neo` action remain closed.
+
+## RV-1-E-344 — Task133 replacement admitted to review
+
+- Replacement `7b306de04a91c2377f992273b4845f85ae1af2e2` is a
+  clean one-commit, no-merge candidate from exact original base
+  `197c3ca528e9b666c02b9b87695bf900efa195b1` with exactly the authorized 28
+  paths. Rejected predecessor `95964de22e92ad8397c1d2fe5bbac3fa6f51e2cc`
+  remains preserved and is not under review.
+- Independent coordinator verification passed Task133.1's 131 tests,
+  Task133.2's 76 tests, Task133.3's 133 tests, typecheck, forbidden-renderer
+  absence, complete-range diff checking, factory readiness, and clean state.
+- The replacement is admitted only to fresh schema/binder/approval-safety and
+  durable-event/projection/rebuild reviews. Both must approve before a merge
+  preview. Full verification, providers, reset credits, integration, and every
+  `neo` action remain closed.
