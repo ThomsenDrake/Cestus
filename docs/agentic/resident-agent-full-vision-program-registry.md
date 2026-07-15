@@ -11603,3 +11603,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-425 — Guard repair integrated; Task136 repair and Task139 reviews active
+
+- Task135D guard reviewer `019f677e-4cf4-7fb3-9ef5-5b9ea610770a` returned an
+  unqualified **APPROVED** verdict for exact candidate
+  `fbcdc9d7de82f371fc312b9c206e84edd59946ae`. It independently passed both the
+  ephemeral one-importer and restored zero-importer states, typecheck, diff
+  checking, factory readiness, and clean exact-SHA status.
+- Coordinator no-commit preview on first parent
+  `65a7888c1e42745e68c777ebd0ba1e066b985252` had exactly the repair claim and
+  Task135D import test as its staged delta. Focused tests passed 3/3, typecheck
+  passed, and factory readiness passed before commit.
+- Program merge `9d07837177859132179b6f9186562f4e73938dde` has exact first parent
+  `65a7888c1e42745e68c777ebd0ba1e066b985252` and exact second parent
+  `fbcdc9d7de82f371fc312b9c206e84edd59946ae`. The same 3/3 focused suite,
+  typecheck, first-parent diff check, factory readiness, exact two-path delta,
+  and clean status passed after merge. Task137A may now be reconstructed from a
+  fresh corrected program checkpoint; its stopped old branch remains read-only.
+- Both Task136 reviewers rejected exact candidate
+  `be03f5f680dbbebe9ff651fe03e755ed02eb52df`. Required repairs include explicit
+  active-claim release/reopen rules, a separate executable CF-1 H correction,
+  Task138 dependencies on Task135B/Task137B-W, a `T120-R -> G136-R` edge, T120-
+  sourced non-gateway authority facts, the current Task137B authority command,
+  and an exact versioned provider-posture ABI. The original author is running
+  one bounded append-only two-doc repair; the rejected SHA is not integrable.
+- Task139 replacement candidate
+  `20637b58798b93a2d94f85dda96e589291904e3d` passed fresh coordinator
+  admission at 14/14 focused tests, typecheck, exact three-path diff checking,
+  and factory readiness. Contract reviewer
+  `019f6781-9954-7443-a672-aca81bb4e27c` and hostile-input/secret-safety
+  reviewer `019f6781-9bac-77e2-841a-f73b2996004e` are pinned, read-only, and
+  require unqualified exact-SHA approvals before integration.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
