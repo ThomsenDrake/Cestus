@@ -12054,3 +12054,38 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-441 — Task133.5 rejected at authority/restart root-cause checkpoint
+
+- Mounted-authority reviewer `019f67b3-640d-7fb2-8569-9261d2745d92` and
+  adversarial implementation/compiler reviewer
+  `019f67b3-71f6-7d01-80f0-af3838059113` independently returned
+  **NEEDS-CHANGES** for exact candidate
+  `c96db07b8a9e19939fa3e6801b31d82e5c96b13c`. Both reproduced 8 focused files
+  / 84 tests, standalone typecheck, negative source gates, diff checking, and
+  factory readiness; the rejection is an uncovered authority/restart defect.
+- Readback can rebind durable V1 bytes to caller-supplied task/run/scope and
+  mounted facts because the registrar validates only the artifact hash. Kernel
+  consumption does not revalidate the current mount/root/blob/process tuple,
+  and the store does not bracket all I/O with current-mounted authority.
+- A fresh process has no composed durable reread/reissue path, delayed approval
+  compares the stored generated time with a new clock read, context-ready can
+  still use renderer/approval-hash fallback, and the claimed restart/mount-
+  drift tests are placeholders rather than causal mounted-workspace tests.
+- The first recovery owner `019f677b-0c0a-7040-8e52-24bac253dda4` exhausted its
+  bounded candidate/repair budget and is stopped read-only. Fresh Terra/xhigh
+  owner `019f67bb-8d6d-7d80-92c7-c2f8a7c33965`, worktree
+  `/home/drake/.codex/worktrees/2f54/Cestus`, starts from the rejected candidate
+  and must create `codex/task-133-5-preapproval-prompt-store-recovery-2`.
+- The coordinator explicitly approves task-scoped
+  `superpowers:subagent-driven-development`, receiving-code-review, systematic
+  debugging, TDD, and verification-before-completion with one production
+  writer. Recovery remains within the complete existing Task133.5 claim scope
+  and must derive authority from durable bytes plus current mounted/orchestrator
+  readbacks, implement real restart reissuance, and replace placeholder tests.
+- Exact candidate `c96db07b8a9e19939fa3e6801b31d82e5c96b13c` must not be
+  integrated. Any replacement requires fresh coordinator admission and two new
+  independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
