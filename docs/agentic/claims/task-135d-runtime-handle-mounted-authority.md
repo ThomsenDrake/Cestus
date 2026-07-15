@@ -95,3 +95,21 @@ self-integration, and program-registry edits remain closed.
 - No full verification, live/provider/network/credential/Nous action, reset,
   `neo`, merge, rebase, push, self-integration, or program-registry edit was
   performed.
+
+## RV-1-E-347 typecheck repair
+
+- The coordinator independently rejected
+  `b8a0c19ba500fb1e0c4780c9a3e16a535500916f` before review because the
+  no-unchecked-indexed-access typecheck reports only this import test's three
+  `match[1]` reads (lines 78, 84, and 90). The regexes structurally require
+  their first capture; this forward repair is limited to non-null assertions
+  at those exact reads and must not change scanner semantics, fixture coverage,
+  or production code.
+
+- Focused GREEN: the prescribed command exited `0` with 3 test files and 20
+  tests passed after the assertion-only repair.
+- Authorized pre-commit non-full gate exited `0`:
+  `npm run typecheck && test ! -e packages/local-runtime/src/index.ts && git diff --check && npm run factory:check`.
+- No full verification, live/provider/network/credential/Nous action, reset,
+  `neo`, merge, rebase, push, self-integration, or program-registry edit was
+  performed.
