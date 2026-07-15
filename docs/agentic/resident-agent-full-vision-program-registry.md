@@ -6742,3 +6742,59 @@ explicit implementation authorization.
   verification remains **CLOSED**, neo untouched, no external/provider action,
   and authenticated use is `usedPercent=13` / **87% remaining, reset credits
   untouched, DRAIN <=10%, HARD PAUSE <=7%.
+
+## RV-1-E-198 — Task119 complete recovery-review correction
+
+- Fresh independent Terra/xhigh review of the complete recovery range
+  `5bf4c2895e6bd0121d58fd8b8f1ab4b18abbde9a..00ded92b75b6030b3c58581babf5ac93aa6d6111`
+  returned **NEEDS-CHANGES**. Preserve both `f4ed276d` and `00ded92b` as
+  unintegrated forward history; the attempted no-ff coordinator merge was
+  aborted before any merge commit because its first review had covered only the
+  readonly type delta, not the cumulative replay recovery. The coordinator's
+  standalone typecheck and exact focused/typecheck/diff/factory `&&` gate at
+  `00ded92b` remain exit-0 evidence only, not semantic acceptance.
+- The full review accepted the exact suspension-anchor equality and exclusive
+  new category/outcome pairs, but found three P1 replay defects. The plan
+  budget permits four replans rather than the governing initial-plus-three
+  maximum; a replan may reuse its predecessor plan ID and occur without the
+  required preceding durable observation; and a declared prerequisite is
+  checked only as static plan metadata rather than as a causally prior executed
+  tool step. Existing four-plan fixture reuse is contrary to the governing
+  bounded-loop design/plan.
+- One fresh Terra/xhigh bounded semantic-repair author is authorized only for
+  this Task119 claim, `packages/ontology/src/contracts.ts`, and
+  `packages/ontology/test/agent-resident-loop-contracts.test.ts`. It must first
+  verify its own `turn_context`/`thread_settings_applied` metadata, then write
+  and run causal REDs for an over-three replan stream, reused replan ID, absent
+  preceding durable observation, and an unexecuted otherwise-valid prerequisite.
+  The smallest repair must preserve v1, the exact five v2 event names, full H
+  proof, strict own-data, budget/anchor/category repairs, provenance, and
+  no-effect scope. It must run the focused suite then exactly
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+  once with exit `0`, commit, and stop for a fresh complete-range independent
+  review. Full verification remains **CLOSED**; no self-review,
+  self-integration, merge, provider/network/credential/Nous, or `neo` action.
+
+## RV-1-E-199 — CF-1R5 admission/transport/matrix correction
+
+- Fresh independent Terra/xhigh review of `be1ceae7..17ecdee6` returned
+  **NEEDS-CHANGES**. Source verification confirmed that a caller-supplied public
+  `runnerRegistry` is forwarded through runtime and can dispatch before the
+  originally planned post-dispatch `WeakMap` lookup; the prior plan therefore
+  did not prevent delegate/provider or dispatch-ledger effects. It also left no
+  exact ABI joining Task134 preparation, Task135 readback, and Task140H, and
+  conflicted with the literal canonical matrix that still assigned Task135
+  material/manifest readbacks.
+- The forward CF-1R5 correction now requires: Task134's frozen
+  `TaskOrchestratorRunnerDispatchResult.preparation` ABI; Task135's non-indexed
+  factory-captured preparation binder; Task140P private `WeakMap` admission
+  before runner-dispatch checkpoint/effects; Task140R0 factory registration;
+  Task140H-only durable H sequencing; and Task140R1 serialized removal of the
+  inert public H injection shape. The contract-freeze governed rows and their
+  literal `canonicalRows` oracle replace—not merely annotate—the superseded
+  Task135 material/manifest path.
+- A fresh independent plan review is mandatory before Task132A, Task134A,
+  Task135A, or any Task140 sublane dispatch. Full verification remains
+  **CLOSED**, `neo` untouched, no provider/network/credential/Nous action, and
+  authenticated use remains `usedPercent=13` / **87% remaining**, reset credits
+  untouched, DRAIN <=10%, HARD PAUSE <=7%.

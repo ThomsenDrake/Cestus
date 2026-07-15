@@ -9,9 +9,11 @@ their actual source-of-truth owners.
 **Architecture:** The default factory remains blocked until it has actual
 registrar or store inputs. Task132 first captures real package-registrar facts
 inside a factory-held context closure. Task134 next normalizes a runner result
-as an explicitly untrusted, nonterminal preparation input; Task135 validates
-mounted material/manifest preparation; the later H-owned orchestrator/factory
-integration alone performs prepare, bind, readback, and terminal completion.
+as an explicitly untrusted, nonterminal preparation input; Task135 constructs
+only a mounted preparation-binder closure. After all prerequisites, Task140P
+adds private pre-dispatch admission, Task140R0 registers the factory-held
+closure, Task140H alone performs prepare, bind, readback, and terminal
+completion, and Task140R1 removes the now-inert public H injection surface.
 
 **Tech Stack:** TypeScript, strict Zod contracts, Vitest, existing Cestus
 event ledger and task orchestrator.
@@ -27,6 +29,10 @@ event ledger and task orchestrator.
 - Task134 cannot call H readback or claim recorded/completed/terminal success.
   Task135 cannot manufacture H completion. Task orchestrator remains the sole
   H sequence/readback/terminal writer.
+- A registry without an exact factory-private admission registration must fail
+  before `appendRunnerDispatchingCheckpoint`, delegate/provider activity, or
+  any runner-specific ledger append. A public registry, callback, capability,
+  store, tuple, or lookalike never supplies admission or a factory closure.
 - Full verification is **CLOSED**: do not run `npm run verify`. Do not touch
   `neo`, use provider/network/credential/Nous actions, self-review,
   self-integrate, or merge.
@@ -39,7 +45,7 @@ event ledger and task orchestrator.
 | --- | --- |
 | Runtime-composition Task134 Step 3's `verifyDurableRunnerResult` and H readback | Task134A has no H capability/readback or durable/terminal return. It emits only `UntrustedSpecialistHandoffPreparationV1`; a shaped delegate value is never durable evidence. |
 | Runtime-composition Task135's `createProductionMountedRunnerHandoffBinding` passing H and accepting lifecycle readback | Task135A receives only an untrusted preparation input, revalidates it against mounted stores, and returns preparation readback. It cannot call H or append/claim any terminal event. |
-| Runtime-composition Task140 factory-only writer | Task140H owns the H/orchestrator commit first; Task140R owns the subsequent factory wiring commit. The final reviewer reads both commits as one range. |
+| Runtime-composition Task140 factory-only writer | Task140P owns private pre-dispatch admission; Task140R0 registers the factory closure after all prerequisites; Task140H alone performs terminal H sequencing through that registration; Task140R1 removes the obsolete public H injection surface. A final reviewer reads the complete P/R0/H/R1 range. |
 | An ad hoc local-runtime preparation shape, parser, or hash | `packages/agent/src/specialist-handoff-preparation.ts` is the single canonical pure codec owner. Task134A creates normalized untrusted data with it; Task135A and Task140H import its parser and hash and may not reproduce a local variant. |
 
 `packages/agent/src/specialist-handoff-preparation.ts` is the canonical,
@@ -74,6 +80,34 @@ export function parseMountedSpecialistHandoffPreparationReadback(value: unknown)
 export function hashMountedSpecialistHandoffPreparationReadback(value: Omit<MountedSpecialistHandoffPreparationReadbackV1, "readbackHash">): `sha256:${string}`;
 ```
 
+`packages/agent/src/task-orchestrator.ts` owns the one transport ABI from a
+runner to H. Task134A adds, and the local runner returns, only this frozen
+field; the existing `durableHandoff` field is legacy input and is never H
+authority after Task140H:
+
+```ts
+export interface TaskOrchestratorRunnerPreparationResult {
+  readonly schemaVersion: "agent.task-orchestrator.runner-preparation.v1";
+  readonly preparation: UntrustedSpecialistHandoffPreparationV1;
+}
+
+export interface TaskOrchestratorRunnerDispatchResult {
+  readonly preparation?: TaskOrchestratorRunnerPreparationResult;
+  readonly durableHandoff?: TaskOrchestratorRunnerDurableHandoffResult;
+}
+```
+
+Task135A does not mutate this public dispatch result. It exports only a
+non-indexed local factory constructor whose captured mounted stores expose an
+opaque `prepare(preparation)` closure. Task140R0 captures that closure and
+registers it privately. The H port's exact resolver signature is
+`resolve({ runnerRegistry, taskId, attemptId, approvedRunId, runType,
+preparation })`; it reparses and hashes the dispatch preparation, invokes the
+captured Task135A binder, reparses and hashes the returned readback, and returns
+only factory-captured material/manifest stores plus the matching frozen
+preparation/readback. Neither Task135A's readback nor a store crosses a public
+runtime input or structural dispatch tuple.
+
 The codec imports and reparses `SpecialistHandoffMaterial` only through its
 existing canonical parser/hash; that material is frozen **untrusted data**, not
 a durable final output or store receipt. Both parsers reject non-plain/
@@ -90,13 +124,19 @@ writes material, manifest, H readback, and terminal state in order.
 execution-port module. It holds a module-private `WeakMap` keyed by the exact
 runner-registry object. Its non-indexed factory-only registration function may
 be imported directly by `agent-runtime-factory.ts` but is never re-exported
-from `packages/agent/src/index.ts` or accepted by a public runtime input. The
-map value is a closure that rechecks task/attempt/approved-run/hash and returns
-only the factory-captured material store, manifest store, and reparsed material
-candidate. A shaped dispatch result, structural port, stores, material,
-readback, or H capability cannot populate this map. Missing, swapped, stale,
-or mismatched lookup fails before H prepare or a terminal append. Task140R
-alone installs this closure after every prerequisite is integrated.
+from `packages/agent/src/index.ts` or accepted by a public runtime input. It
+has two exact phases: `requireRegisteredTaskOrchestratorHandoffPort(registry)`
+performs admission before the runner dispatch checkpoint, and
+`port.resolve({ runnerRegistry, taskId, attemptId, approvedRunId, runType,
+preparation })` performs the post-dispatch preparation/readback/store lookup.
+The map value is a closure that rechecks task/attempt/approved-run/hash and
+returns only the factory-captured material store, manifest store, reparsed
+preparation, and Task135A readback. A shaped dispatch result, structural port,
+stores, material, readback, or H capability cannot populate this map. Missing,
+swapped, stale, or mismatched admission fails before runner-specific ledger,
+delegate, or provider activity; a post-dispatch mismatch fails before H prepare
+or a terminal append. Task140R0 alone installs this closure after every
+prerequisite is integrated.
 
 ## Dependency Graph
 
@@ -105,7 +145,13 @@ Task132A registrar attestation ──> Task133
            │
            └─> Task134A canonical-codec + nonterminal preparation ──> Task135A mounted stores
                                                         │
-Task133 + Task135A + original 136–139 prerequisites ──┴─> Task140H terminal integration
+Task133 + Task135A + original 136–139 prerequisites ──┴─> Task140P admission
+                                                              │
+                                                       Task140R0 registration
+                                                              │
+                                                       Task140H terminal H
+                                                              │
+                                                   Task140R1 injection removal
 ```
 
 ## Task 132A: Factory-Held Registrar Attestation
@@ -197,6 +243,8 @@ a registrar tuple. Default composition blocked on a missing lookup is correct.
   `packages/local-runtime/test/agent-runtime-specialist-runners.test.ts`
 - Create: `packages/local-runtime/test/agent-runtime-runner-preparation.test.ts`
 - Create: `packages/agent/src/specialist-handoff-preparation.ts`
+- Modify (type-only transport ABI, no dispatch or H sequencing):
+  `packages/agent/src/task-orchestrator.ts`
 - Modify: `packages/agent/src/index.ts`
 - Create: `packages/agent/test/specialist-handoff-preparation.test.ts`
 - Claim: new Task134A recovery claim.
@@ -222,10 +270,14 @@ SHA, Task132A integration SHA, current program-base SHA, and staged-base SHA.
 **Consumes:** Task132A's reviewed factory closure as a rebase prerequisite and
 the existing public four-field runner dispatch request. **Produces:** the
 single canonical codec plus only normalized
-`UntrustedSpecialistHandoffPreparationV1` data. It has no executable
-capability constructor: before Task140R the default factory keeps its existing
-blocked runner registry, and Task135A consumes/revalidates data rather than a
-factory capability. It produces no recorded/terminal success.
+`UntrustedSpecialistHandoffPreparationV1` data in
+`TaskOrchestratorRunnerDispatchResult.preparation` with schema version
+`agent.task-orchestrator.runner-preparation.v1`. The Task134A type-only
+`task-orchestrator.ts` edit must not alter dispatch, append, H, or terminal
+behavior. It has no executable capability constructor: before Task140R0 the
+default factory keeps its existing blocked runner registry, and Task135A
+receives only the data through the private future closure, never a factory
+capability. It produces no recorded/terminal success.
 
 - [ ] **Step 1: Write causal RED tests.**
 
@@ -234,8 +286,8 @@ factory capability. It produces no recorded/terminal success.
   reject. In the runner tests, prove a caller-supplied
   authority/store/registration/provenance/readiness/H tuple rejects before
   delegate/H activity; mutable input cannot cross an await; and a delegate
-  event-shaped/durable-looking response is classified as preparation only,
-  never a durable or terminal result.
+  event-shaped/durable-looking response is classified as the exact
+  `preparation` dispatch field only, never a durable or terminal result.
 
 - [ ] **Step 2: Run focused RED.**
 
@@ -245,13 +297,13 @@ factory capability. It produces no recorded/terminal success.
 
   First implement the agent-owned canonical parser/normalizer/hash functions
   and export them through `packages/agent/src/index.ts`; they must be pure and
-  have no H or store import. The runner then normalizes once before await and
-  returns only that parsed `UntrustedSpecialistHandoffPreparationV1`, with no
-  H readback, recorded, manifest object, lifecycle, store, authority, or
-  terminal assertion. Delete/refuse any public production-capability
-  constructor or closed tuple path. The default factory remains blocked; the
-  only future executable closure is Task140R's private composition after
-  Task135A.
+  have no H or store import. Add only the declared `preparation` dispatch ABI
+  to `task-orchestrator.ts`. The runner then normalizes once before await and
+  returns only that parsed preparation under this ABI, with no H readback,
+  recorded, manifest object, lifecycle, store, authority, or terminal
+  assertion. Delete/refuse any public production-capability constructor or
+  closed tuple path. The default factory remains blocked; the only future
+  executable closure is Task140R0's private composition after Task135A.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
@@ -272,18 +324,25 @@ factory capability. It produces no recorded/terminal success.
 - Create: `packages/local-runtime/test/mounted-agent-artifact-stores.test.ts`
 - Claim: new Task135A recovery claim.
 
-**Consumes:** a parsed-but-untrusted Task134A preparation input. **Produces:**
-the canonical `MountedSpecialistHandoffPreparationReadbackV1` after exact
-mounted material then manifest preparation for later H sequencing. These files
-do not exist on the program branch, so this task creates them rather than
-silently assuming they landed. It never appends H recorded, terminal, or
-task-status completion itself and does not receive an H capability.
+**Consumes:** a parsed-but-untrusted Task134A
+`TaskOrchestratorRunnerDispatchResult.preparation` value. **Produces:** a
+non-indexed, factory-direct mounted preparation-binder closure: its only
+operation accepts that canonical preparation, verifies exact mounted
+authority/task/attempt/run, and returns the canonical
+`MountedSpecialistHandoffPreparationReadbackV1`. It captures actual material
+and manifest stores but exposes neither through public runtime input or the
+dispatch result. Task140R0 alone captures this closure and Task140P's private
+port invokes it during `resolve`. These files do not exist on the program
+branch, so this task creates them rather than silently assuming they landed. It
+never writes material or manifest bytes, appends H recorded/terminal/task-status
+completion, or receives an H capability.
 
 - [ ] **Step 1: Write causal RED tests.**
 
   Prove forged/nonterminal delegate preparation, codec parser/hash divergence,
-  material-after-manifest, manifest-before-material, mismatched authority, and
-  a terminal-looking substitute all reject before a store or H activity.
+  structural binder lookalike, mismatched authority, and a terminal-looking
+  substitute all reject before a binder/store/H activity. Prove no material or
+  manifest write/readback can occur in this lane.
 
 - [ ] **Step 2: Run focused RED.**
 
@@ -291,13 +350,16 @@ task-status completion itself and does not receive an H capability.
 
 - [ ] **Step 3: Implement mounted preparation readback only.**
 
-  Parse the Task134A input only with the agent-owned codec, recheck mounted
-  authority plus task/attempt/run, and create canonical data-only material- and
-  manifest-store binding hashes. Do **not** put material, create a manifest,
-  append H, or claim a material/manifest artifact hash: Task140H alone does
-  those terminal-sequence operations through its private factory lookup.
-  Return preparation evidence, not completion; no temporary/local/fallback
-  copy or local parser/hash implementation is permitted.
+  Parse the Task134A preparation only with the agent-owned codec, recheck
+  mounted authority plus task/attempt/run, and construct the captured binder
+  that creates canonical data-only material- and manifest-store binding hashes.
+  Do **not** put material, create a manifest, append H, or claim a
+  material/manifest artifact hash: Task140H alone does those terminal-sequence
+  operations through Task140P's private factory lookup. The binder is imported
+  directly by Task140R0 and is never accepted as an input, re-exported through
+  an index, or returned in a public result. Return preparation evidence, not
+  completion; no temporary/local/fallback copy or local parser/hash
+  implementation is permitted.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
@@ -306,7 +368,7 @@ task-status completion itself and does not receive an H capability.
 - [ ] **Step 5: Commit and fresh review.**
 
   Commit only the listed files and Task135A claim. Coordinator integration
-  records the SHA for Task140H; it never marks a handoff terminal.
+  records the SHA for Task140P/R0/H; it never marks a handoff terminal.
 
 **Frozen rebase gate:** Task135A begins only after reviewed/coordinator-
 integrated Task134A and a base descendant of CF-1 integration
@@ -317,21 +379,15 @@ integrated Task134A and a base descendant of CF-1 integration
 `2e5c35ab7bca33df9f1a0c482c496fbb93350086`. Its claim records all full SHAs,
 Task134A integration SHA, and exact program-base SHA.
 
-## Task 140H: H-Owned Exact H Finalization
+## Task 140P: H-Owned Private Port Admission
 
 **Files:**
 
-- Modify: `packages/agent/src/task-orchestrator.ts`
 - Create: `packages/agent/src/task-orchestrator-handoff-port.ts`
-- Modify: `packages/agent/src/runtime.ts`
-- Modify: `packages/agent/src/runtime-types.ts`
-- Modify: `packages/agent/test/task-orchestrator-dispatch.test.ts`
-- Modify supporting H tests only as required by removal of public runtime
-  injection: `packages/agent/test/task-orchestrator-recovery.test.ts`,
-  `packages/agent/test/task-orchestrator-evidence-triage.test.ts`, and
-  `packages/agent/test/task-orchestrator-evidence-triage-live.test.ts`
+- Modify only for pre-dispatch admission: `packages/agent/src/task-orchestrator.ts`
 - Create: `packages/agent/test/task-orchestrator-handoff-port.test.ts`
-- Claim: new Task140H claim.
+- Modify: `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Claim: new Task140P claim.
 
 **Prerequisites:** reviewed/coordinator-integrated Task132A, Task133, Task134A,
 Task135A, Task136–139, and their recorded rebases. Its claim enumerates every
@@ -341,31 +397,127 @@ SHA or “original prerequisites” is insufficient.
 
 - [ ] **Step 1: Write causal RED tests.**
 
-  Prove preparation cannot be terminal without the exact registry-keyed
-  factory port plus orchestrator-owned H prepare/bind/readback; a structural
-  port, supplied H capability, swapped material candidate/store binding/
-  authority/readback, or delegate/H echo rejects before terminal/status append.
-  Prove public `handoffCapability` is no longer forwarded or used—even a
-  throwing or echoing object cannot affect H—and a runner without `WeakMap`
-  registration fails closed. Only the valid registered port may produce the
-  ordered material -> manifest -> readback -> terminal sequence.
+  Prove a public runtime registry with no exact private `WeakMap` registration
+  cannot reach `appendRunnerDispatchingCheckpoint`, delegate/runner dispatch,
+  provider activity, runner-specific ledger append, H, or terminal state. A
+  forged registry/port/callback/tuple must have the same zero-effect result;
+  only a factory-only direct registration of the exact registry admits dispatch.
 
 - [ ] **Step 2: Run focused RED.**
 
-  Run `npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts packages/agent/test/specialist-runner-kernel.test.ts` and record missing-port and public-injection failures.
+  Run `npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts` and record the absent-admission failure before any delegate/provider/ledger effect.
+
+- [ ] **Step 3: Implement the minimal admission seam.**
+
+  Create the non-indexed H-owned module with a module-private `WeakMap`, direct
+  factory registration, and `requireRegisteredTaskOrchestratorHandoffPort`.
+  In `dispatchApprovedRunner`, require the exact registry admission before any
+  runner dispatch checkpoint or delegate call; this task does not parse a
+  preparation, resolve stores, change H sequencing, or accept a public
+  capability. A missing port fails closed. The future resolver interface is
+  declared here but cannot be populated by structural input.
+
+- [ ] **Step 4: Run GREEN and exact gate.**
+
+  `npm test -- packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+- [ ] **Step 5: Commit and fresh review.**
+
+  Commit only the listed files and Task140P claim. A fresh reviewer must verify
+  the zero-effect hostile-registry test and that no H/terminal behavior changed.
+  Coordinator integration intentionally leaves production dispatch fail-closed
+  until Task140R0 is reviewed and integrated.
+
+## Task 140R0: R-Owned Factory Port Registration
+
+**Files:**
+
+- Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
+- Modify: `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Modify: `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
+- Claim: new Task140R0 claim.
+
+**Prerequisites:** reviewed/coordinator-integrated Task140P plus every Task140P
+prerequisite. Its claim repeats the exact 132–139 full SHAs, Task140P SHA, and
+CF-1 integration `48c9cbcdcf723bcc74868f782bc2375bae565ae6`. This is the sole
+factory registration: it captures reviewed Task134A normalization and the
+Task135A binder/stores, then registers the H-owned `WeakMap` resolver against
+the exact runner registry. It accepts no public structural tuple and remains
+blocked on any missing captured collaborator.
+
+- [ ] **Step 1: Write causal RED tests.**
+
+  Prove a public tuple/lookalike cannot construct or register the closure;
+  a swapped registry/preparation/readback/store cannot resolve; and the valid
+  factory-captured registration admits dispatch but cannot itself append H or
+  terminal state.
+
+- [ ] **Step 2: Run focused RED.**
+
+  Run `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts` and record the missing factory registration failure.
+
+- [ ] **Step 3: Implement private registration only.**
+
+  Construct the resolver inside the factory from reviewed collaborators and
+  bind it through Task140P's non-indexed registration seam. Its `resolve` must
+  reparse/hash the Task134A preparation, call the captured Task135A binder,
+  reparse/hash its readback, then return only the captured stores plus matching
+  frozen data. It exposes only the existing narrow orchestration route; it does
+  not accept caller capability arguments or duplicate H prepare/bind/readback.
+  The old public `handoffCapability` remains temporarily inert for Task140H to
+  remove functionally; Task140R1 removes its shape after H is reviewed.
+
+- [ ] **Step 4: Run GREEN and exact gate.**
+
+  `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+- [ ] **Step 5: Commit and fresh review.**
+
+  Commit only the listed files and Task140R0 claim. A fresh reviewer verifies
+  closure capture, exact registry identity, and the absence of H/terminal work.
+
+## Task 140H: H-Owned Exact H Finalization
+
+**Files:**
+
+- Modify: `packages/agent/src/task-orchestrator.ts`
+- Modify: `packages/agent/src/runtime.ts`
+- Modify: `packages/agent/src/runtime-types.ts`
+- Modify: `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Modify supporting H tests only as required by removal of functional public
+  runtime injection: `packages/agent/test/task-orchestrator-recovery.test.ts`,
+  `packages/agent/test/task-orchestrator-evidence-triage.test.ts`, and
+  `packages/agent/test/task-orchestrator-evidence-triage-live.test.ts`
+- Modify: `packages/agent/test/task-orchestrator-handoff-port.test.ts`
+- Claim: new Task140H claim.
+
+**Prerequisites:** reviewed/coordinator-integrated Task140R0 and every Task140P
+prerequisite. Its claim repeats all exact 132–139 and Task140P/R0 SHAs.
+
+- [ ] **Step 1: Write causal RED tests.**
+
+  Prove a registered runner's `preparation` is insufficient without an exact
+  resolving port; a structural port, legacy `durableHandoff`, supplied H
+  capability, swapped preparation/store binding/authority/readback, or
+  delegate/H echo rejects before terminal/status append. Prove even a throwing
+  public `handoffCapability` has no effect. Only the valid registered resolver
+  may produce material -> manifest -> readback -> terminal ordering.
+
+- [ ] **Step 2: Run focused RED.**
+
+  Run `npm test -- packages/agent/test/specialist-handoff-preparation.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-recovery.test.ts packages/agent/test/task-orchestrator-evidence-triage.test.ts packages/agent/test/task-orchestrator-evidence-triage-live.test.ts packages/agent/test/specialist-runner-kernel.test.ts` and record resolver, legacy-handoff, and public-injection failures.
 
 - [ ] **Step 3: Implement exact orchestration.**
 
-  Import the agent-owned preparation codec; do not create a task-orchestrator
-  parser/hash/shape. Reparse its material candidate and Task135A's data-only
-  store-binding readback, recompute every hash, and use only the `WeakMap`-
-  registered factory port to relookup real stores. Have task-orchestrator then
-  execute H prepare/bind/readback and terminal/task-status sequencing. Remove
-  functional use of public structural `handoffCapability` injection from
-  runtime creation and H sequence; it can remain inert only until Task140R
-  removes it from local factory composition. Require exact mounted
-  authority/task/attempt/run/material/manifest binding at every step. This is
-  the only commit that changes H sequencing.
+  Import the agent-owned codec; do not create a task-orchestrator parser/hash
+  or local shape. Consume only the declared dispatch `preparation`, reject a
+  `durableHandoff` as H authority, and invoke the private port resolver.
+  Recompute preparation/readback hashes and require exact mounted
+  authority/task/attempt/run/material/manifest binding before task-orchestrator
+  alone executes H prepare/bind/readback and terminal/task-status sequencing.
+  Remove every functional use/forwarding of public `handoffCapability`; it may
+  remain type-compatible but inert only until Task140R1 performs the serialized
+  compile-safe shape removal. This is the only task that changes H sequencing.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
@@ -374,60 +526,60 @@ SHA or “original prerequisites” is insufficient.
 - [ ] **Step 5: Commit and fresh review.**
 
   Commit only the listed files and Task140H claim. H review approves this
-  commit before the serialized R wiring claim starts.
+  commit before the serialized injection-removal claim starts.
 
-## Task 140R: R-Owned Factory Wiring
+## Task 140R1: Serialized Public-H Injection Removal
 
 **Files:**
 
 - Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
 - Modify: `packages/local-runtime/test/agent-runtime-composition.test.ts`
 - Modify: `packages/local-runtime/test/agent-task-orchestrator-routes.test.ts`
-- Claim: new Task140R claim.
+- Modify only to remove the obsolete public field: `packages/agent/src/runtime-types.ts`,
+  `packages/agent/src/runtime.ts`, and `packages/agent/src/task-orchestrator.ts`
+- Modify: `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Claim: new Task140R1 claim.
 
-**Prerequisites:** reviewed/coordinator-integrated Task140H plus every Task140H
-prerequisite. Its claim repeats the exact 132–139 full SHAs, Task140H SHA, and
-CF-1 integration `48c9cbcdcf723bcc74868f782bc2375bae565ae6`. This is the sole
-executable-capability mint: its private closure captures reviewed Task134A
-normalization and Task135A store binding, then registers the H-owned `WeakMap`
-execution closure against the exact runner registry. It removes obsolete local
-factory `handoffCapability` injection. It accepts no public structural tuple
-and remains blocked on any missing captured collaborator.
+**Prerequisites:** reviewed/coordinator-integrated Task140H plus every prior
+Task140 prerequisite. Its claim repeats every exact 132–139, P, R0, and H SHA.
+This serialized cleanup removes the public `handoffCapability` property and
+factory construction in one typecheck-valid commit; it does not alter the
+private port, binder, H order, or any terminal behavior.
 
 - [ ] **Step 1: Write causal RED tests.**
 
-  Prove a public tuple/lookalike cannot construct or register the closure;
-  forged preparation/store/H readback and caller-supplied `handoffCapability`
-  block before terminal action; and the actual captured closure delegates
-  terminal sequencing only to Task140H.
+  Prove no public runtime capability shape can carry `handoffCapability`, the
+  production factory constructs no such object, and valid private-port H
+  execution remains reachable only through the registered resolver.
 
 - [ ] **Step 2: Run focused RED.**
 
-  Run `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts` and record the missing private wiring failure.
+  Run `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts` and record the obsolete public-field failure.
 
-- [ ] **Step 3: Implement private wiring only.**
+- [ ] **Step 3: Remove only the obsolete structural route.**
 
-  Construct the closure inside the factory from reviewed collaborators, bind it
-  through the H-owned non-indexed `WeakMap` registration seam, and expose only
-  the existing narrow orchestration route. Remove old local
-  `handoffCapability` construction; do not duplicate H prepare/bind/readback
-  or accept caller capability arguments.
+  Remove `handoffCapability` from runtime capability types, forwarding,
+  task-orchestrator inputs, and the local factory; retain the reviewed private
+  port registration/resolver unchanged. Do not introduce a replacement tuple,
+  brand, callback, public registration function, or H implementation change.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
-  `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+  `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/local-runtime/test/agent-task-orchestrator-routes.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/task-orchestrator-handoff-port.test.ts && npm run typecheck && git diff --check && npm run factory:check`
 
 - [ ] **Step 5: Commit and complete-range review.**
 
-  Commit only the listed files and Task140R claim. A reviewer distinct from
-  both authors reads the complete Task140H base through Task140R head and
-  approves the H/R interaction before coordinator-only integration.
+  Commit only the listed files and Task140R1 claim. A reviewer distinct from
+  all Task140 authors reads the complete Task140P base through Task140R1 head
+  and approves admission, factory capture, terminal H, and removal interaction
+  before coordinator-only integration.
 
 ## Review And Dispatch Order
 
 The coordinator first obtains a fresh plan review for this amendment. It then
 dispatches Task132A; after review/integration, Task133 and serialized Task134A
-may start. Task135A starts only after Task134A integration. Task140H remains
+may start. Task135A starts only after Task134A integration. Task140P remains
 blocked until Task133, Task135A, and all original 136–139 prerequisites are
-reviewed/integrated; Task140R follows reviewed Task140H. Each rejected
-candidate is repaired forward with a fresh review; no child self-integrates.
+reviewed/integrated; reviewed integration then serializes Task140R0, Task140H,
+and Task140R1. Each rejected candidate is repaired forward with a fresh review;
+no child self-integrates.
