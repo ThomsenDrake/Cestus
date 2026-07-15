@@ -12145,3 +12145,37 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-444 — Task136 terminal plan rejected and mounted-authority redesign dispatched
+
+- Architecture/authority reviewer
+  `019f67b9-4006-7561-81ca-29a61bcb8875` and plan-executability/API reviewer
+  `019f67b9-4e71-7022-b07a-aaed2bd655bd` independently returned
+  **NEEDS-CHANGES** for exact candidate
+  `7296007c08af71df404152a3da9e4de062aa11c7`. Diff checking and factory
+  readiness passed; the rejection is an executable authority-contract defect.
+- Task136 still supplies structural authority where H requires W's opaque
+  capability; W issuance/inspection remains caller-tuple based; T120-R and
+  CF1-HR release gates do not parse exact reviewed integration records; G136-R
+  accepts caller result data; and P2 names feasibility fields P1 cannot supply.
+- Task139's parallel reviews additionally prove P1 cannot mint a branded
+  “mounted” reader from public self-consistent snapshots. P1 must become data-
+  only, and a new disjoint PM adapter must derive current provider authority
+  from an actual mounted issuer before P2 consumes it.
+- The previous Task136 recovery owner exhausted two candidates and is stopped
+  read-only. Fresh Terra/xhigh documentation owner
+  `019f67c4-d51b-7602-b76d-849d471f4aeb`, worktree
+  `/home/drake/.codex/worktrees/eb9a/Cestus`, starts from the rejected candidate
+  and must create `codex/task-136-interface-reconciliation-recovery-3`.
+- Recovery owns only the bounded-loop plan, provider-credentials plan, and
+  Task136 claim. Source implementation and
+  `superpowers:subagent-driven-development` are not relevant or authorized.
+  It must specify exact disjoint ABIs, causal commands, release records, and an
+  acyclic P1-data -> mounted-PM -> P2 authority chain with no caller-copy,
+  shadow state, or fallback.
+- Exact candidate `7296007c08af71df404152a3da9e4de062aa11c7` must not be
+  integrated. Any replacement requires fresh coordinator admission and two new
+  independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
