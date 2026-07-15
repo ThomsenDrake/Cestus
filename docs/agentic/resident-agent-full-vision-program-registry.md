@@ -10223,3 +10223,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   original-base diff, factory, exact four-path/no-merge, and clean-state gates,
   then receive both fresh review lenses. Full verification, providers, reset
   credits, integration, and every `neo` action remain closed.
+
+## RV-1-E-356 — Task135D type-only import recovery prepared
+
+- Rejected candidate `dc0d01f76d8a0c4073033b86e27157a205ef5209`
+  remains preserved unchanged. Fresh forward branch
+  `codex/task-135d-runtime-handle-capture-type-namespace-review-repair` starts
+  at that exact commit in the existing clean Task135D worktree.
+- The existing parent resumed directly. It must add causal fixtures for all
+  three legal type-only namespace/re-export forms before minimally extending
+  the current grammar, then rerun every focused/typecheck/no-index/range/
+  factory/topology gate and commit only test and claim changes.
+- No new implementer or integration is authorized. Both fresh review lenses
+  remain mandatory. Full verification, providers, reset credits, and every
+  `neo` action remain closed.
