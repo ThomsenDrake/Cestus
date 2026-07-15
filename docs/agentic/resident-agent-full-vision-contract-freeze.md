@@ -311,6 +311,12 @@ reviews and coordinator-only integration. No shadow brand, public structural
 mint route, fallback, full verification, `neo`, provider, credential, network,
 Nous, browser, or self-integration is authorized by this correction.
 
+| Preserved prior instruction | CF-1R5 authoritative replacement |
+| --- | --- |
+| Runtime-composition plan Task134 Step 3 (durable H readback in the runner) | Task134A emits only untrusted normalized preparation. It has no H capability, material/manifest store, recorded ID, lifecycle readback, or terminal result. |
+| Runtime-composition plan Task135 `createProductionMountedRunnerHandoffBinding` (passes H and accepts H lifecycle readback) | Task135A validates mounted material/manifest preparation only. It cannot invoke H or append/claim recorded, terminal, orchestration, or task-status completion. |
+| Runtime-composition plan Task140 factory-only integration | Task140H (H) first changes task-orchestrator's sole H sequence after all prerequisites; Task140R (R) then wires its reviewed callback into the factory. A complete-range review gates coordinator integration. |
+
 ## Section-Local Documentation Audit
 
 Run this exact command from the repository root:
