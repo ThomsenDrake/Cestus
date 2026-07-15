@@ -8815,3 +8815,23 @@ explicit implementation authorization.
 - All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
   integration actions remain closed pending a committed docs-only repair and
   two fresh independent unqualified approvals. No prior verdict carries.
+
+## RV-1-E-292 — Ownership-separated progression candidate
+
+- The sole plan writer committed CF-1R18 candidate
+  `8566055815f2a9357507889e1b3d04d8ece79d17`. It makes a coordinator-only
+  integrity-checked CF-1 amendment the first task, assigns default runtime-
+  factory capture to new R-owned Task135D, restores Task137A's exact six-file
+  W ceiling, limits Task135B to component behavior, keeps all callable guard
+  state in the H-port's private WeakMap, and assigns the named full-progression
+  integration test solely to Task140H. Every affected task now has a complete
+  command. The current embedded CF-1 audit, `git diff --check`, and
+  `npm run factory:check` passed before commit.
+- Fresh independent Terra/xhigh lifecycle/executability and authority/bypass
+  reviewers are authorized read-only against exact 23-commit range
+  `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..8566055815f2a9357507889e1b3d04d8ece79d17`
+  and canonical program/source checkpoint
+  `a541e7a6607ee9cd965ad209c68b5fd7899c7803`. Exactly two unqualified
+  **APPROVED** verdicts are required; every prior verdict is non-authorizing.
+- All source/live/full/provider/credential/Nous/reset-credit/`neo`/plan-
+  integration actions remain closed pending both fresh approvals.
