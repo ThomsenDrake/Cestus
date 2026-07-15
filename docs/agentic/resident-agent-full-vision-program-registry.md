@@ -9336,3 +9336,39 @@ explicit implementation authorization.
   credential gates, touch `neo`, or carry forward an earlier verdict. Source
   dispatch and plan integration remain closed until both return explicit
   unqualified **APPROVED** verdicts and those verdicts are durably recorded.
+
+## RV-1-E-315 — Checker-path candidate rejected; bounded CF-1R26
+
+- Lifecycle/executability reviewer
+  `019f6629-4676-7b83-9e05-b7e73463fdb0` returned unqualified
+  **APPROVED**. Authority/import/bypass reviewer
+  `019f6629-87b7-75e0-80ba-f244952728b7` returned **NEEDS-CHANGES** on exact
+  30-commit range `0481c1e0^..3b263632`. No approval or reviewer identity
+  carries to the next candidate.
+- The blocking defect is accepted and independently reproduced. Each P/R0/H
+  command authenticates the checker path, then asks Node to reopen that mutable
+  path. A same-user background process can replace the checker after hashing,
+  execute substituted bytes, and restore the approved bytes before a later
+  snapshot. The coordinator fixture executed the substituted script under the
+  current pattern.
+- The sole plan writer is authorized only for CF-1R26. Inside each existing
+  clean-shell envelope, capture the checker bytes exactly once into a shell-safe
+  immutable payload representation, hash the decoded payload against C's
+  coordinator-issued checker SHA, and execute that same decoded payload for
+  both first and terminal invocations without reopening the checkout path.
+  Task135C must be specified and tested as a standalone stdin-compatible ES
+  module with unchanged CLI argument semantics, no stdin data dependency, and
+  no relative-import dependency.
+- CF-1R26 fixtures must replace and rewrite the checker path after payload
+  capture and before each invocation, prove that only the approved captured
+  bytes execute, reject wrong or malformed payloads without execution, preserve
+  terminal checkout authority, and rerun every CF-1R25 clean-envelope/snapshot
+  counterfactual. A prototype using one-time base64 capture plus
+  `node --input-type=module -` preserved the approved bytes after deterministic
+  path substitution.
+- Preserve every other CF-1R18 through CF-1R25 contract. Latest authenticated
+  usage reports 45% used / 55% weekly remaining, with no reset credits. Source
+  implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, plan integration, and merge
+  remain closed pending a committed docs-only candidate and two fresh
+  unqualified Terra/xhigh approvals.
