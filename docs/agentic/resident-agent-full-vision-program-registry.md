@@ -8724,3 +8724,16 @@ explicit implementation authorization.
 - Latest authenticated usage reports 38% used / 62% weekly remaining, with no
   reset credits. All source/live/full/provider/credential/Nous/reset-credit/
   `neo`/plan-integration actions remain closed pending both fresh approvals.
+
+## RV-1-E-287 — Opaque admission reviewer identities
+
+- Lifecycle/restart/executability reviewer
+  `019f6573-bf32-7543-9946-ca4df9bc97de` and authority/import/bypass reviewer
+  `019f6574-0227-7fb1-a401-1df91a4ccff4` are active read-only on the exact
+  candidate, lineage, and canonical source checkpoint recorded in RV-1-E-286.
+  Both use `gpt-5.6-terra` at `xhigh` in fresh isolated worktrees and are
+  pinned under distinct review titles.
+- Neither may edit, run full/live/provider/credential gates, or carry forward
+  any prior verdict. Source dispatch and plan integration remain closed until
+  both return explicit unqualified **APPROVED** verdicts and those verdicts are
+  durably recorded.
