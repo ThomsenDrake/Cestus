@@ -8508,3 +8508,19 @@ explicit implementation authorization.
   later live provider gate.
 - All source/live/full/credential/reset-credit/`neo`/integration actions remain
   closed pending docs validation, commit, and two fresh approvals.
+
+## RV-1-E-275 — Fresh-witness and complete-gate candidate review
+
+- The sole plan writer committed CF-1R12 candidate
+  `d4f290adea459b681ba766e2f980ee2c972c57e0`. It specifies fresh-process
+  mounted-witness reissuance from durable context-ready hash, migrates the third
+  live orchestrator fixture, and replaces every integrated Task133/H command
+  with complete aggregate gates including all current suites and static/non-
+  export assertions. Post-commit docs validation passed.
+- Fresh independent Terra/xhigh persistence/lifecycle reviewer
+  `019f652c-7c12-7872-b22c-fd8b46603d06` and authority/consumer reviewer
+  `019f652c-76c9-7281-93c3-6d8da9f7b6d1` are dispatched read-only against exact
+  range `0481c1e0^..d4f290ad` and canonical source head `91773589`. Exactly two
+  unqualified **APPROVED** verdicts remain required.
+- Latest authenticated usage remains 36% used / 64% weekly remaining. All
+  source/live/full/credential/reset-credit/`neo`/integration actions remain closed.
