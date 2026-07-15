@@ -9,9 +9,9 @@ their actual source-of-truth owners.
 **Architecture:** The default factory remains blocked until it has actual
 registrar or store inputs. Task132 first captures real package-registrar facts
 inside a factory-held context closure. Task134 next normalizes a runner result
-as nonterminal preparation only; Task135 persists mounted material/manifest
-preparation; the later H-owned orchestrator/factory integration alone performs
-prepare, bind, readback, and terminal completion.
+as an explicitly untrusted, nonterminal preparation input; Task135 validates
+mounted material/manifest preparation; the later H-owned orchestrator/factory
+integration alone performs prepare, bind, readback, and terminal completion.
 
 **Tech Stack:** TypeScript, strict Zod contracts, Vitest, existing Cestus
 event ledger and task orchestrator.
@@ -32,6 +32,24 @@ event ledger and task orchestrator.
   self-integrate, or merge.
 - Every exit-sensitive gate is one `&&` chain and must exit `0`; every task
   stops for a fresh independent Terra/xhigh review and coordinator-only merge.
+
+## CF-1R5 Supersession Table
+
+| Preserved prior plan requirement | Authoritative CF-1R5 behavior |
+| --- | --- |
+| Runtime-composition Task134 Step 3's `verifyDurableRunnerResult` and H readback | Task134A has no H capability/readback or durable/terminal return. It emits only `UntrustedSpecialistHandoffPreparationV1`; a shaped delegate value is never durable evidence. |
+| Runtime-composition Task135's `createProductionMountedRunnerHandoffBinding` passing H and accepting lifecycle readback | Task135A receives only an untrusted preparation input, revalidates it against mounted stores, and returns preparation readback. It cannot call H or append/claim any terminal event. |
+| Runtime-composition Task140 factory-only writer | Task140H owns the H/orchestrator commit first; Task140R owns the subsequent factory wiring commit. The final reviewer reads both commits as one range. |
+
+`UntrustedSpecialistHandoffPreparationV1` is a normalized data input, not a
+capability, authority, receipt, or mint token. It contains only task, attempt,
+approved run, run type, safe final-output/material intent, and a deterministic
+preparation hash. It has no authority, store, registration, provenance, H,
+recorded, manifest, lifecycle, or terminal field. Anyone can present a shaped
+value, so Task135A and Task140H must parse and rebind it independently; only
+the private Task140R factory closure may connect a reviewed runner normalizer,
+Task135A stores, and Task140H orchestration. This is the sole mint/consume
+path for executable runtime capability, and it does not exist before Task140R.
 
 ## Dependency Graph
 
@@ -59,9 +77,12 @@ Task133 + Task135A + original 136–139 prerequisites ──┴─> Task140H ter
 
 **Consumes:** actual package-owned registrar records and mounted authority.
 **Produces:** a factory-held context-attestation closure that can create a
-verified context capability only from the actual registry it captured. It does
-not grant a caller construction API and leaves default composition blocked if
-real registrations are unavailable.
+verified context capability only from the actual registry it captured. Each
+producer module keeps its existing `WeakMap` private and exports only a
+read-only registry lookup; no producer exports a record/mint operation. The
+factory calls all three lookups against its own captured registry, and the
+context capability repeats those lookups rather than accepting identity text or
+a registrar tuple. Default composition blocked on a missing lookup is correct.
 
 - [ ] **Step 1: Write causal RED tests.**
 
@@ -78,12 +99,17 @@ real registrations are unavailable.
 
 - [ ] **Step 3: Implement the minimal registrar readback and closure.**
 
-  Preserve each package registrar's own descriptor/parser/producer/
-  registration fact in a non-forgeable registry-associated readback. The
-  factory captures that exact readback with its registry and mounted authority;
-  the context capability compares every identity to the captured facts before
-  resolution. Do not equate producer to source projection or accept generic
-  registration strings.
+  Add one read-only accessor in each producer module over its existing private
+  `WeakMap`; it returns no writable registry callback and returns `undefined`
+  for a manually registered or foreign registry. The factory captures only
+  accessors' immutable snapshots for its own registry. The context capability
+  calls the same accessors on that captured registry and compares descriptor,
+  parser, producer, and registration identity before resolution. The focused
+  test uses actual `registerPrrContextPackBuilders`,
+  `registerOperationalContextPackBuilders`, and
+  `registerInvestigativeContextPacks` calls; the factory test asserts the
+  default empty registry blocks. Do not equate producer to source projection or
+  accept an identity tuple/callback from callers.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
@@ -99,16 +125,18 @@ real registrations are unavailable.
 
 **Files:**
 
-- Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
 - Modify: `packages/local-runtime/src/agent-runtime-specialist-runners.ts`
 - Modify: `packages/local-runtime/test/agent-runtime-specialist-runners.test.ts`
 - Create: `packages/local-runtime/test/agent-runtime-runner-preparation.test.ts`
 - Claim: new Task134A recovery claim.
 
-**Consumes:** Task132A's reviewed factory closure and the existing public
-four-field runner dispatch request. **Produces:** normalized, frozen handoff
-preparation input whose delegate output is untrusted until the orchestrator
-later performs H sequencing. It produces no recorded/terminal success.
+**Consumes:** Task132A's reviewed factory closure as a rebase prerequisite and
+the existing public four-field runner dispatch request. **Produces:** only the
+normalized `UntrustedSpecialistHandoffPreparationV1` data input described
+above. It has no executable capability constructor: before Task140R the
+default factory keeps its existing blocked runner registry, and Task135A
+consumes/revalidates data rather than a factory capability. It produces no
+recorded/terminal success.
 
 - [ ] **Step 1: Write causal RED tests.**
 
@@ -123,10 +151,12 @@ later performs H sequencing. It produces no recorded/terminal success.
 
 - [ ] **Step 3: Implement the minimal nonterminal boundary.**
 
-  The factory alone closes over registered runner/mounted authority and
-  exposes narrow public dispatch. Normalize once before await; return only a
-  typed preparation candidate with no H readback/recorded/terminal assertion.
-  The default factory remains blocked when it cannot make the closed binding.
+  Normalize once before await; return only
+  `UntrustedSpecialistHandoffPreparationV1` with no H readback, recorded,
+  manifest, lifecycle, store, authority, or terminal assertion. Delete/refuse
+  any public production-capability constructor or closed tuple path. The
+  default factory remains blocked; the only future executable closure is
+  Task140R's private composition after Task135A.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
@@ -145,9 +175,10 @@ later performs H sequencing. It produces no recorded/terminal success.
 - Modify: `packages/local-runtime/test/mounted-agent-artifact-stores.test.ts`
 - Claim: new Task135A recovery claim.
 
-**Consumes:** reviewed Task134A preparation candidate. **Produces:** exact
-mounted material and manifest preparation readbacks for later H sequencing;
-it never appends H recorded, terminal, or task-status completion itself.
+**Consumes:** a parsed-but-untrusted Task134A preparation input. **Produces:**
+exact mounted material and manifest preparation readbacks for later H
+sequencing; it never appends H recorded, terminal, or task-status completion
+itself and does not receive an H capability.
 
 - [ ] **Step 1: Write causal RED tests.**
 
@@ -174,15 +205,13 @@ it never appends H recorded, terminal, or task-status completion itself.
   Commit only the listed files and Task135A claim. Coordinator integration
   records the SHA for Task140H; it never marks a handoff terminal.
 
-## Task 140H: Orchestrator-Owned Exact H Finalization
+## Task 140H: H-Owned Exact H Finalization
 
 **Files:**
 
-- Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
 - Modify: `packages/agent/src/task-orchestrator.ts`
-- Modify: `packages/agent/test/task-orchestrator.test.ts`
-- Modify: `packages/local-runtime/test/agent-runtime-composition.test.ts`
-- Claim: new Task140H integration claim.
+- Modify: `packages/agent/test/task-orchestrator-dispatch.test.ts`
+- Claim: new Task140H claim.
 
 **Prerequisites:** reviewed/coordinator-integrated Task132A, Task133, Task134A,
 Task135A, Task136–139, and their recorded rebases.
@@ -197,24 +226,63 @@ Task135A, Task136–139, and their recorded rebases.
 
 - [ ] **Step 2: Run focused RED.**
 
-  Run `npm test -- packages/agent/test/task-orchestrator.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts` and record the absent exact-finalization path.
+  Run `npm test -- packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/specialist-runner-kernel.test.ts` and record the absent exact-finalization path.
 
 - [ ] **Step 3: Implement exact orchestration.**
 
   Consume Task135A preparation readback, have task-orchestrator execute H
   prepare/bind/readback and terminal/task-status sequencing, and require the
   exact mounted authority/task/attempt/run/material/manifest binding at every
-  step. The factory wires only reviewed closures and stays blocked on a missing
-  prerequisite.
+  step. It is the only commit that changes H sequencing.
 
 - [ ] **Step 4: Run GREEN and exact gate.**
 
-  `npm test -- packages/agent/test/task-orchestrator.test.ts packages/local-runtime/test/agent-runtime-composition.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+  `npm test -- packages/agent/test/task-orchestrator-dispatch.test.ts packages/agent/test/specialist-runner-kernel.test.ts && npm run typecheck && git diff --check && npm run factory:check`
 
 - [ ] **Step 5: Commit and fresh review.**
 
-  Commit only the listed files and Task140H claim. A fresh H/R review must
-  approve the complete finalization range before coordinator-only integration.
+  Commit only the listed files and Task140H claim. H review approves this
+  commit before the serialized R wiring claim starts.
+
+## Task 140R: R-Owned Factory Wiring
+
+**Files:**
+
+- Modify: `packages/local-runtime/src/agent-runtime-factory.ts`
+- Modify: `packages/local-runtime/test/agent-runtime-composition.test.ts`
+- Claim: new Task140R claim.
+
+**Prerequisites:** reviewed/coordinator-integrated Task140H plus every Task140H
+prerequisite. This is the sole executable-capability mint: its private closure
+connects reviewed Task134A normalization, Task135A preparation stores, and
+Task140H orchestration. It accepts no public structural tuple and remains
+blocked on any missing captured collaborator.
+
+- [ ] **Step 1: Write causal RED tests.**
+
+  Prove a public tuple/lookalike cannot construct the closure; forged
+  preparation/store/H readback blocks before terminal action; and the actual
+  closure delegates terminal sequencing only to Task140H.
+
+- [ ] **Step 2: Run focused RED.**
+
+  Run `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts` and record the missing private wiring failure.
+
+- [ ] **Step 3: Implement private wiring only.**
+
+  Construct the closure inside the factory from reviewed collaborators and
+  expose only the existing narrow orchestration route. Do not duplicate H
+  prepare/bind/readback or accept caller capability arguments.
+
+- [ ] **Step 4: Run GREEN and exact gate.**
+
+  `npm test -- packages/local-runtime/test/agent-runtime-composition.test.ts packages/agent/test/task-orchestrator-dispatch.test.ts && npm run typecheck && git diff --check && npm run factory:check`
+
+- [ ] **Step 5: Commit and complete-range review.**
+
+  Commit only the listed files and Task140R claim. A reviewer distinct from
+  both authors reads the complete Task140H base through Task140R head and
+  approves the H/R interaction before coordinator-only integration.
 
 ## Review And Dispatch Order
 
@@ -222,5 +290,5 @@ The coordinator first obtains a fresh plan review for this amendment. It then
 dispatches Task132A; after review/integration, Task133 and serialized Task134A
 may start. Task135A starts only after Task134A integration. Task140H remains
 blocked until Task133, Task135A, and all original 136–139 prerequisites are
-reviewed/integrated. Each rejected candidate is repaired forward with a fresh
-review; no child self-integrates.
+reviewed/integrated; Task140R follows reviewed Task140H. Each rejected
+candidate is repaired forward with a fresh review; no child self-integrates.
