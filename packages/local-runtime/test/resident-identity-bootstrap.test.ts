@@ -4,12 +4,14 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  createAgentRuntime,
   defaultResidentIdentityStreamId,
   ensureDefaultResidentIdentity
 } from "../../agent/src/index.js";
 import { SQLiteEventLedger } from "../../ontology/src/sqlite-event-ledger.js";
 import { createPortableWorkspace } from "../../workspace/src/index.js";
 import { runLocalRuntimeCli } from "../src/cli.js";
+import type { LocalAgentRuntimeFactory } from "../src/agent-runtime-factory.js";
 import { resolveLocalRuntimeConfig } from "../src/config.js";
 import {
   createLocalRuntimeHttpHandler,
@@ -283,6 +285,15 @@ describe("local runtime resident identity bootstrap", () => {
         })
       }
     );
+    const retryHandler = testHandler(
+      resolveLocalRuntimeConfig({
+        cwd,
+        env: {
+          CESTUS_LOCAL_STORAGE: "portable-workspace",
+          CESTUS_WORKSPACE_ROOT: workspaceRoot
+        }
+      })
+    );
     const retry = await runLocalRuntimeCli(
       ["agent-create-task", "--task-id", "task_retry_after_create_failure", "--title", "Retry after create failure"],
       {
@@ -292,7 +303,18 @@ describe("local runtime resident identity bootstrap", () => {
           CESTUS_WORKSPACE_ROOT: workspaceRoot
         },
         stdout: (line) => stdout.push(line),
-        stderr: (line) => stderr.push(line)
+        stderr: (line) => stderr.push(line),
+        agentCreateTask: async (input) => {
+          const response = await retryHandler({
+            method: "POST",
+            url: "/api/agent/tasks",
+            body: JSON.stringify(input)
+          });
+          if (response.status >= 400) {
+            throw new Error(response.body);
+          }
+          return JSON.parse(response.body);
+        }
       }
     );
 
@@ -353,12 +375,28 @@ describe("local runtime resident identity bootstrap", () => {
 
 function testHandler(
   config: ReturnType<typeof resolveLocalRuntimeConfig>,
-  dependencies: Pick<CreateLocalRuntimeHttpHandlerInput, "residentIdentityBootstrapForTest"> = {}
+  dependencies: Pick<CreateLocalRuntimeHttpHandlerInput, "agentRuntimeFactory" | "residentIdentityBootstrapForTest"> = {}
 ) {
-  const handler = createLocalRuntimeHttpHandler({ config, actor, now, ...dependencies });
+  const handler = createLocalRuntimeHttpHandler({
+    config,
+    actor,
+    now,
+    agentRuntimeFactory: residentIdentityAgentRuntimeFactory,
+    ...dependencies
+  });
   handlers.push(handler);
   return handler;
 }
+
+const residentIdentityAgentRuntimeFactory: LocalAgentRuntimeFactory = (input) =>
+  createAgentRuntime({
+    ledger: input.handle.ledger,
+    actor: input.actor,
+    now: input.now,
+    identityLifecycle: () => input.handle.residentIdentity.lifecycle(),
+    identityLifecycleReady: () => input.handle.residentIdentity.ready(),
+    approvedToolExecutors: input.approvedToolExecutors ?? []
+  });
 
 function portableHandler(workspaceId: string, cwd = tempDir()) {
   const workspaceRoot = join(cwd, workspaceId);
