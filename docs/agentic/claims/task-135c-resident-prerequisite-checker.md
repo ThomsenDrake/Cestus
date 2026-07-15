@@ -5,7 +5,7 @@
 - Branch: `codex/task-135c-prerequisite-checker`.
 - Worktree: `/home/drake/.codex/worktrees/c734/Cestus`.
 - Claimed at: 2026-07-15T00:00:00Z.
-- Status: blocked.
+- Status: in-progress.
 
 ## Coordinator Authorization And Frozen Prerequisites
 
@@ -52,3 +52,12 @@ only accepted checker-absence RED. Per the Task135C stop condition, no package
 installation, production checker implementation, or substitute verifier was
 attempted. The new uncommitted causal test file remains available for a
 coordinator-provided dependency recovery and subsequent valid RED/GREEN cycle.
+
+## Coordinator Dependency Recovery (2026-07-15)
+
+The coordinator restored this worktree's ignored `.env` symlink and its
+`node_modules` symlink to the program installation. The executable
+`node_modules/.bin/vitest` is available again. This direct worker resumes the
+preserved test-only lane without a new implementer and must rerun the exact
+focused command, accepting only checker absence as the causal RED before
+creating the checker production file.
