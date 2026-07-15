@@ -9465,3 +9465,26 @@ explicit implementation authorization.
   reset credits. Source dispatch, full verification, live/provider/network/
   credential/Nous activity, reset credits, and every `neo` action remain
   closed pending the integrated plan's next explicit gate.
+
+## RV-1-E-320 — Task117A immutable dispatch attestation
+
+<!-- resident-dispatch-attestation-v1:start task117a d29cf3bb1a74a97f210bb63cd5e0d08d7267a773 -->
+task=task117a
+dispatchCommitSha=d29cf3bb1a74a97f210bb63cd5e0d08d7267a773
+sourceBaseSha=f7652acecb25431ead8954e03f990b4e4d23f10f
+manifestPath=none
+manifestSha256=none
+checkerPath=none
+checkerSha256=none
+claimPath=docs/agentic/claims/task-117a-runtime-handle-capture-freeze.md
+claimSha256=e74a916b1c1f32a81051afe20e0a64fdabfc8e3142650ed039c1f8a1ad8bf696
+freezePath=docs/agentic/resident-agent-full-vision-contract-freeze.md
+intendedFreezeSha256=63bc52aa306f3da6bc58b9e91047c4a945111b25f5cc55eb1642241a3ba5e807
+auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
+<!-- resident-dispatch-attestation-v1:end task117a d29cf3bb1a74a97f210bb63cd5e0d08d7267a773 -->
+
+- This block is the coordinator-issued sibling trust root for Task117A. It
+  binds the claim-only dispatch commit, source base, complete intended freeze,
+  and exact authenticated audit bytes. It grants no authority to any symbolic
+  ref, author identity, worker-created attestation, source implementation,
+  provider, credential, live, full-verification, reset-credit, or `neo` action.
