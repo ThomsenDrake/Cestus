@@ -5,7 +5,7 @@
 - Branch: `codex/task-135c-prerequisite-checker`.
 - Worktree: `/home/drake/.codex/worktrees/c734/Cestus`.
 - Claimed at: 2026-07-15T00:00:00Z.
-- Status: ready-for-review.
+- Status: in-progress.
 
 ## Coordinator Authorization And Frozen Prerequisites
 
@@ -153,3 +153,16 @@ dynamic/CommonJS, or non-`node:` import usage; as previously recorded, the
 lookahead import clause uses explicit `rg -P`. `git diff --check` and
 `npm run factory:check` both exited `0` (`factory-readiness passed`). No full
 verification or closed action was performed.
+
+## RV-1-E-343 Git-History Review Repair (2026-07-15)
+
+The coordinator recorded the complete review set as `RV-1-E-343`. The
+static/execution review approved the prior candidate, but Git-authority review
+rejected it; `efff6e025ac922bf0fcaf42696a24043489588ec` remains preserved and
+unintegrated. This clean worktree now uses
+`codex/task-135c-prerequisite-checker-history-review-repair` at that exact
+commit. The review narrows the dispatch witness: after original M, both literal
+manifest and claim paths must have empty history at reviewer HEAD. Causal
+fixtures must cover every listed rename/restore, delete/readd, restoration,
+symbolic-C, non-registry/merge-C, M/source/task, and manifest hash/content
+bypass. No new implementer or closed action is authorized.
