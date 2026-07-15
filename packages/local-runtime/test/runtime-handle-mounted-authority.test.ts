@@ -49,8 +49,8 @@ describe("factory-issued mounted runtime capture", () => {
     const before = inspectFactoryIssuedMountedRuntimeCapture(capture);
     const storage = config.storage as Extract<ResolvedLocalRuntimeConfig["storage"], { strategy: "portable-workspace" }>;
 
-    storage.workspaceRoot = join(workspaceRoot, "swapped-root");
-    storage.sqlitePath = join(workspaceRoot, "swapped-ledger.sqlite");
+    expect(Reflect.set(storage, "workspaceRoot", join(workspaceRoot, "swapped-root"))).toBe(true);
+    expect(Reflect.set(storage, "sqlitePath", join(workspaceRoot, "swapped-ledger.sqlite"))).toBe(true);
 
     const after = inspectFactoryIssuedMountedRuntimeCapture(capture);
     expect(after.portableStorage).toEqual(before.portableStorage);
