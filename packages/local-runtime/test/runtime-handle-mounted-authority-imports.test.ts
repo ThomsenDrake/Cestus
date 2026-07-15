@@ -36,7 +36,6 @@ const factoryCaptureExportNames = new Set([
   "captureFactoryIssuedMountedRuntime",
   "inspectFactoryIssuedMountedRuntimeCapture",
 ]);
-const runtimeFactoryFileName = "runtime-factory";
 const temporaryFixtureRoots: string[] = [];
 const require = createRequire(import.meta.url);
 const ts = require("typescript") as typeof import("typescript");
@@ -115,28 +114,43 @@ function syntacticDiagnosticsFor(
   );
 }
 
-function isRuntimeFactoryModuleSpecifier(moduleSpecifier: string): boolean {
-  const pathParts = moduleSpecifier.split("/");
-  const fileName = pathParts[pathParts.length - 1];
-  if (fileName === undefined) {
-    return false;
-  }
+function moduleSpecifierWithoutSuffix(moduleSpecifier: string): string {
+  const queryStart = moduleSpecifier.indexOf("?");
+  const fragmentStart = moduleSpecifier.indexOf("#");
+  const suffixStart = [queryStart, fragmentStart]
+    .filter((index) => index >= 0)
+    .reduce((first, index) => Math.min(first, index), moduleSpecifier.length);
 
-  const extension = extname(fileName);
-  const baseName = extension === "" ? fileName : fileName.slice(0, -extension.length);
-  return (
-    baseName === runtimeFactoryFileName &&
-    (extension === "" || productionSourceExtensions.has(extension))
-  );
+  return moduleSpecifier.slice(0, suffixStart);
+}
+
+function extensionlessSourceTarget(sourcePath: string): string {
+  const extension = extname(sourcePath);
+  return productionSourceExtensions.has(extension)
+    ? sourcePath.slice(0, -extension.length)
+    : sourcePath;
 }
 
 function isProtectedModuleSpecifier(
+  root: string,
+  sourcePath: string,
   moduleSpecifier: TypeScript.Expression | undefined,
 ): boolean {
+  if (moduleSpecifier === undefined || !ts.isStringLiteralLike(moduleSpecifier)) {
+    return false;
+  }
+
+  const suffixlessSpecifier = moduleSpecifierWithoutSuffix(moduleSpecifier.text);
+  if (
+    !suffixlessSpecifier.startsWith("./") &&
+    !suffixlessSpecifier.startsWith("../")
+  ) {
+    return false;
+  }
+
   return (
-    moduleSpecifier !== undefined &&
-    ts.isStringLiteralLike(moduleSpecifier) &&
-    isRuntimeFactoryModuleSpecifier(moduleSpecifier.text)
+    extensionlessSourceTarget(resolve(dirname(sourcePath), suffixlessSpecifier)) ===
+    join(root, "packages", "local-runtime", "src", "runtime-factory")
   );
 }
 
@@ -147,9 +161,11 @@ function namedSpecifierReferencesCapture(
 }
 
 function declarationReferencesFactoryCapture(
+  root: string,
+  sourcePath: string,
   declaration: TypeScript.ImportDeclaration | TypeScript.ExportDeclaration,
 ): boolean {
-  if (!isProtectedModuleSpecifier(declaration.moduleSpecifier)) {
+  if (!isProtectedModuleSpecifier(root, sourcePath, declaration.moduleSpecifier)) {
     return false;
   }
 
@@ -178,17 +194,27 @@ function declarationReferencesFactoryCapture(
 }
 
 function importEqualsReferencesFactoryCapture(
+  root: string,
+  sourcePath: string,
   declaration: TypeScript.ImportEqualsDeclaration,
 ): boolean {
   return (
     ts.isExternalModuleReference(declaration.moduleReference) &&
-    isProtectedModuleSpecifier(declaration.moduleReference.expression)
+    isProtectedModuleSpecifier(
+      root,
+      sourcePath,
+      declaration.moduleReference.expression,
+    )
   );
 }
 
-function callReferencesFactoryCapture(call: TypeScript.CallExpression): boolean {
+function callReferencesFactoryCapture(
+  root: string,
+  sourcePath: string,
+  call: TypeScript.CallExpression,
+): boolean {
   const argument = call.arguments[0];
-  if (!isProtectedModuleSpecifier(argument)) {
+  if (!isProtectedModuleSpecifier(root, sourcePath, argument)) {
     return false;
   }
 
@@ -198,14 +224,18 @@ function callReferencesFactoryCapture(call: TypeScript.CallExpression): boolean 
   );
 }
 
-function sourceImportsFactoryCaptureSeam(sourcePath: string, source: string): boolean {
+function sourceImportsFactoryCaptureSeam(
+  root: string,
+  sourcePath: string,
+  source: string,
+): boolean {
   const sourceFile = sourceFileFor(sourcePath, source);
   let capturesFactoryAuthority = false;
 
   const visit = (node: TypeScript.Node): void => {
     if (
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-      declarationReferencesFactoryCapture(node)
+      declarationReferencesFactoryCapture(root, sourcePath, node)
     ) {
       capturesFactoryAuthority = true;
       return;
@@ -213,13 +243,16 @@ function sourceImportsFactoryCaptureSeam(sourcePath: string, source: string): bo
 
     if (
       ts.isImportEqualsDeclaration(node) &&
-      importEqualsReferencesFactoryCapture(node)
+      importEqualsReferencesFactoryCapture(root, sourcePath, node)
     ) {
       capturesFactoryAuthority = true;
       return;
     }
 
-    if (ts.isCallExpression(node) && callReferencesFactoryCapture(node)) {
+    if (
+      ts.isCallExpression(node) &&
+      callReferencesFactoryCapture(root, sourcePath, node)
+    ) {
       capturesFactoryAuthority = true;
       return;
     }
@@ -234,7 +267,11 @@ function sourceImportsFactoryCaptureSeam(sourcePath: string, source: string): bo
 function captureSeamImporters(root: string): string[] {
   return productionSourceFiles(root)
     .filter((sourcePath) =>
-      sourceImportsFactoryCaptureSeam(sourcePath, readFileSync(sourcePath, "utf8")),
+      sourceImportsFactoryCaptureSeam(
+        root,
+        sourcePath,
+        readFileSync(sourcePath, "utf8"),
+      ),
     )
     .map((sourcePath) => relative(root, sourcePath).split(sep).join("/"))
     .sort();
@@ -314,6 +351,8 @@ describe("factory-issued mounted runtime capture production imports", () => {
   it("rejects deep cross-package imports and re-exports across every production source extension", () => {
     const fixtureRoot = createFixtureWorkspace();
     const deepImport = "../../../local-runtime/src/runtime-factory.js";
+    const fragmentRuntimeFactoryImport = `${deepImport}#fragment`;
+    const queryRuntimeFactoryImport = `${deepImport}?nonce`;
     const escapedRuntimeFactoryImport =
       "../../../local-runtime/src/\\u0072untime-factory.js";
     const fixtureSources = {
@@ -332,10 +371,55 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "capture.mts": `export { inspectFactoryIssuedMountedRuntimeCapture } from "${deepImport}";\n`,
       "capture.ts": `import { captureFactoryIssuedMountedRuntime } from "${deepImport}";\n`,
       "capture.tsx": `export type { FactoryIssuedMountedRuntimeCapture } from "${deepImport}";\n`,
+      "fragment-dynamic-import.ts": `void import("${fragmentRuntimeFactoryImport}");\n`,
+      "fragment-import-equals.ts": `import runtimeFactory = require("${fragmentRuntimeFactoryImport}");\nvoid runtimeFactory;\n`,
+      "fragment-namespace-import.ts": `import * as runtimeFactory from "${fragmentRuntimeFactoryImport}";\nvoid runtimeFactory;\n`,
+      "fragment-namespace-reexport.ts": `export * as runtimeFactory from "${fragmentRuntimeFactoryImport}";\n`,
+      "query-named-import.ts": `import { captureFactoryIssuedMountedRuntime } from "${queryRuntimeFactoryImport}";\n`,
+      "query-named-reexport.ts": `export { inspectFactoryIssuedMountedRuntimeCapture } from "${queryRuntimeFactoryImport}";\n`,
+      "query-require.cjs": `void require("${queryRuntimeFactoryImport}");\n`,
+      "query-star-reexport.ts": `export * from "${queryRuntimeFactoryImport}";\n`,
       "star-reexport.mjs": `export * from "${deepImport}";\n`,
       "type-namespace-import.ts": `import type * as runtimeFactory from "${deepImport}";\nvoid runtimeFactory;\n`,
       "type-namespace-reexport.ts": `export type * as runtimeFactory from "${deepImport}";\n`,
       "type-star-reexport.ts": `export type * from "${deepImport}";\n`,
+    };
+    const decodedFixtureModuleSpecifiers = new Map<string, string>([
+      ["fragment-dynamic-import.ts", fragmentRuntimeFactoryImport],
+      ["fragment-import-equals.ts", fragmentRuntimeFactoryImport],
+      ["fragment-namespace-import.ts", fragmentRuntimeFactoryImport],
+      ["fragment-namespace-reexport.ts", fragmentRuntimeFactoryImport],
+      ["query-named-import.ts", queryRuntimeFactoryImport],
+      ["query-named-reexport.ts", queryRuntimeFactoryImport],
+      ["query-require.cjs", queryRuntimeFactoryImport],
+      ["query-star-reexport.ts", queryRuntimeFactoryImport],
+    ]);
+    const decodedFixtureProtectedNames = new Map<string, string>([
+      [
+        "ast-commented-named-import.ts",
+        "captureFactoryIssuedMountedRuntime",
+      ],
+      [
+        "ast-commented-named-reexport.ts",
+        "captureFactoryIssuedMountedRuntime",
+      ],
+      ["query-named-import.ts", "captureFactoryIssuedMountedRuntime"],
+      [
+        "query-named-reexport.ts",
+        "inspectFactoryIssuedMountedRuntimeCapture",
+      ],
+    ]);
+    const lookalikeFixtureSources = {
+      "lookalike-bare-query.ts": {
+        moduleSpecifier: "@lookalike/runtime-factory.js?nonce",
+        source:
+          'import { captureFactoryIssuedMountedRuntime } from "@lookalike/runtime-factory.js?nonce";\n',
+      },
+      "lookalike-relative-fragment.ts": {
+        moduleSpecifier: "../../../unrelated/src/runtime-factory.js#fragment",
+        source:
+          'void import("../../../unrelated/src/runtime-factory.js#fragment");\n',
+      },
     };
 
     for (const [fileName, source] of Object.entries(fixtureSources)) {
@@ -347,12 +431,25 @@ describe("factory-issued mounted runtime capture production imports", () => {
 
       const decodedTokens = decodedAstTokens(fileName, source);
       expect(syntacticDiagnosticsFor(fileName, source)).toEqual([]);
-      expect(decodedTokens.stringLiterals).toContain(deepImport);
-      if (fileName.includes("named-")) {
-        expect(decodedTokens.identifiers).toContain(
-          "captureFactoryIssuedMountedRuntime",
-        );
+      expect(decodedTokens.stringLiterals).toContain(
+        decodedFixtureModuleSpecifiers.get(fileName) ?? deepImport,
+      );
+      const protectedName = decodedFixtureProtectedNames.get(fileName);
+      if (protectedName !== undefined) {
+        expect(decodedTokens.identifiers).toContain(protectedName);
       }
+    }
+
+    for (const [fileName, fixture] of Object.entries(lookalikeFixtureSources)) {
+      writeFixtureSource(
+        fixtureRoot,
+        `packages/agent-runtime/src/deep/${fileName}`,
+        fixture.source,
+      );
+
+      const decodedTokens = decodedAstTokens(fileName, fixture.source);
+      expect(syntacticDiagnosticsFor(fileName, fixture.source)).toEqual([]);
+      expect(decodedTokens.stringLiterals).toContain(fixture.moduleSpecifier);
     }
 
     expect(captureSeamImporters(fixtureRoot)).toEqual([
@@ -371,6 +468,14 @@ describe("factory-issued mounted runtime capture production imports", () => {
       "packages/agent-runtime/src/deep/capture.mts",
       "packages/agent-runtime/src/deep/capture.ts",
       "packages/agent-runtime/src/deep/capture.tsx",
+      "packages/agent-runtime/src/deep/fragment-dynamic-import.ts",
+      "packages/agent-runtime/src/deep/fragment-import-equals.ts",
+      "packages/agent-runtime/src/deep/fragment-namespace-import.ts",
+      "packages/agent-runtime/src/deep/fragment-namespace-reexport.ts",
+      "packages/agent-runtime/src/deep/query-named-import.ts",
+      "packages/agent-runtime/src/deep/query-named-reexport.ts",
+      "packages/agent-runtime/src/deep/query-require.cjs",
+      "packages/agent-runtime/src/deep/query-star-reexport.ts",
       "packages/agent-runtime/src/deep/star-reexport.mjs",
       "packages/agent-runtime/src/deep/type-namespace-import.ts",
       "packages/agent-runtime/src/deep/type-namespace-reexport.ts",
