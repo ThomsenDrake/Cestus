@@ -9442,3 +9442,26 @@ explicit implementation authorization.
   authorized after a fresh merge preview and docs gates. Source dispatch,
   full/live/provider/network/credential/Nous/reset-credit activity and all
   `neo` actions remain closed until the integrated plan's next explicit gate.
+
+## RV-1-E-319 — Authority-recovery plan integrated
+
+- The coordinator merged the approved CF-1R26 candidate into the program
+  branch with no-ff merge commit
+  `3a4b139368ba6b0cbb59cd4ccd05b9548fa90123`. Its first parent is approval
+  checkpoint `bf543e93ebe3358abbb0b2ca7795d136bf813050`; its second parent is the
+  exact approved candidate
+  `3c55c676c078d68c917649d1a90b936bf1ed2abd`.
+- The merge's first-parent diff contains exactly the approved Task133 claim and
+  authority-recovery plan. No agent or local-runtime source blob changed, and
+  both `neo` and `origin/neo` remain untouched at
+  `f88ced73be1e64660d95874394a324bd317fc20a`.
+- Fresh post-merge verification extracted all eight active clean-shell command
+  envelopes from the integrated plan and passed `bash -n` on each. Each of the
+  six Task140 P/R0/H checker-bearing commands captures one base64 payload and
+  invokes Node only through module-mode stdin. `git diff --check HEAD^1 HEAD`
+  and `npm run factory:check` pass, and the program worktree was clean at the
+  verification boundary.
+- Latest authenticated usage reports 45% used / 55% weekly remaining, with no
+  reset credits. Source dispatch, full verification, live/provider/network/
+  credential/Nous activity, reset credits, and every `neo` action remain
+  closed pending the integrated plan's next explicit gate.
