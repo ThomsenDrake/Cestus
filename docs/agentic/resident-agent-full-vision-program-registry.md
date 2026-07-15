@@ -10518,3 +10518,33 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   rerun the complete focused/typecheck/no-index/diff/factory/topology gate
   before two fresh reviews. Full verification, providers, reset credits,
   integration, push, and every `neo` action remain closed.
+
+## RV-1-E-374 — Task133 dependency-repair candidate admitted
+
+- Existing docs author `019f66c3-08b5-7040-b204-a8f3b0ce8161`
+  produced clean replacement candidate
+  `7cadeaed3c26f59a36e28ea34afcdff33af5e591` from exact original parent
+  `dcb863e2bf258205308cdb35955f10ef71fdc501`.
+- Coordinator-independent checks passed `git diff --check` across both the
+  rejected-candidate forward range and exact original-parent range, plus
+  `npm run factory:check`; the merge-free candidate changes exactly the active
+  authority-recovery plan and Task133 authority-split amendment claim.
+- The candidate remains review-only and unintegrated. Source, full
+  verification, providers, reset credits, push, and every `neo` action remain
+  closed.
+
+## RV-1-E-375 — Task133 replacement plan reviews dispatched
+
+- Fresh Terra/xhigh authority/security reviewer
+  `019f66d5-e796-7cd1-9e73-c96a94399afc` reviews Task133 purity and
+  zero-effect behavior, non-authoritative caller proof, opaque zero-transfer
+  Task140P admission, and Task140R0 as the first complete current-authority
+  transfer.
+- Fresh Terra/xhigh factory-plan reviewer
+  `019f66d5-e8f3-7091-a8b9-a056906f9a45` reviews dependency and ownership
+  executability, the mandatory Task133.1 rerun, exact candidate ranges,
+  commands and replay tests, and future explicit subagent-driven-development
+  authorization.
+- Both reviewers are read-only and pinned at exact candidate
+  `7cadeaed3c26f59a36e28ea34afcdff33af5e591`. Two unqualified approvals are
+  required before coordinator-only plan integration or renewed Task133 source.
