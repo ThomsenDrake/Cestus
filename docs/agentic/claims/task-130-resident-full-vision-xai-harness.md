@@ -152,3 +152,40 @@ independent review.
 - Status: ready-for-review. Stop for a new fresh independent Terra/xhigh
   review; no integration, merge, provider/network/credential/material action,
   fallback, or `neo` action occurred.
+
+## RV-1-E-180 Forward Authentic-Readback Recovery
+
+- Forward correction: `75e61f92` repaired the prior compiler errors but its
+  ready-for-review claim is superseded by canonical `RV-1-E-180`. Its public
+  raw `feasibilityAuthority` callback could return a copied exact evidence
+  record with fake patterned event IDs, and the adapter would return
+  `unavailable`. Structural equality cannot authenticate a mounted ledger
+  append; the preserved commit is not integration-ready.
+- Fresh root-cause conclusion: no genuinely non-forgeable authenticated mounted
+  readback capability is available within Task130's three owned paths. Creating
+  one would require the future real mounting/configuration owner and shared
+  contracts, which remain outside this task. The safe Task130 behavior is
+  therefore to reject every raw authority input and fail closed without an
+  append or `unavailable` result until that later owner establishes authentic
+  mounted authority.
+- Causal RED: after adding no-op, mismatched-readback, throwing-readback, and
+  copied-exact-forged-readback counterfactuals, `npm test --
+  packages/agent/test/xai-subscription-harness.test.ts` exited `1` with **1
+  file / 18 tests: 14 failed, 4 passed**. The forged exact callback was invoked
+  and produced `unavailable`; the no-op, mismatch, and throw callbacks were
+  likewise invoked by the old raw-authority path.
+- Narrow recovery: remove the public feasibility authority, unavailable
+  evidence/readback types, and all append/readback equality logic. The
+  constructor now accepts only the normalized current posture; absent official
+  support yields bounded `feasibility-append-unavailable` without append or
+  unavailable. The four raw-authority counterfactuals must return
+  `unsafe-input` with zero callback invocations.
+- GREEN: the same focused command exited `0` with **1 file / 18 tests**. The
+  exact fail-fast chain `npm test --
+  packages/agent/test/xai-subscription-harness.test.ts && npm run typecheck &&
+  git diff --check && npm run factory:check` exited `0`; no full verifier ran.
+  The temporary ignored `node_modules` symlink used only for these local gates
+  is removed before commit.
+- Status: ready for a new fresh independent Terra/xhigh review only. No
+  integration, merge, provider/network/credential/material action, fallback,
+  registry edit, or `neo` action occurred.
