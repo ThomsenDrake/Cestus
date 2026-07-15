@@ -8122,3 +8122,20 @@ explicit implementation authorization.
   plan integration and post-merge documentation validation are authorized;
   Task133 source stays closed until this integration and a current-head
   prerequisite gate are durably recorded.
+
+## RV-1-E-257 — Task133 bridge repair plan integration
+
+- Coordinator-only no-ff merge
+  `ba98cd1a43640de2f399e972edd204bfd0060798` integrates the approved
+  Task133 bridge-repair endpoint
+  `ceb255ddafc0714cd26b901570c2192d1708c6e1` onto program parent
+  `7d6086ddf0a0ab2a2eedbbc6fa1d8dfa52ddd903`. The actual merged checkout
+  passed `git diff --check && npm run factory:check` with exit `0`.
+- This integration reopens only the frozen dispatch precondition. Before any
+  Task133.1 source edit, the coordinator must create one isolated branch from
+  the later clean program head, record the exact prerequisite SHA ancestry,
+  current program base, worker session, frozen file ceiling, and SDD/TDD/
+  debugging/verification authorization in the new implementation claim, then
+  obtain a single-process current-head exact non-full baseline. Full verifier,
+  provider/network/credential/Nous, reset credits, neo, source self-review,
+  and self-integration remain closed.
