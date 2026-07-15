@@ -6551,3 +6551,33 @@ explicit implementation authorization.
 - Full verification remains **CLOSED**, `neo` untouched, no provider/network/
   credential/Nous action is authorized, authenticated use is `usedPercent=13`
   / **87% remaining**, reset credits untouched, DRAIN <=10%, HARD PAUSE <=7%.
+
+## RV-1-E-191 — Task132 factory-attestation finding and combined graph recovery
+
+- Fresh independent Terra/xhigh review of `500900f5..70f70375` returned
+  **NEEDS-CHANGES**. Preserve `70f70375`; do not merge it. The coordinator
+  independently required standalone typecheck followed by its exact focused /
+  typecheck / diff / factory `&&` chain at this clean commit, and that command
+  exited `0`; green gates do not supersede the provenance finding.
+- `assertExactFactoryRegistry` binds descriptor fields but not producer,
+  registration, or registrar provenance; `verifyMountedResolvedPack` then
+  emits those input strings as verified. The new test accepts a swapped
+  producer. PRR `prr-request`, operational no-manifest, and investigative
+  plural-high-water handling remain correct, but distinct identity without
+  attestation is not a verified binding.
+- This joins the Task134 rejection in one late-Task140 cycle: Task133 waits on
+  Task132, Task135 waits on Task134, and Task140 waits on 133–139. CF-1R4
+  replaces the conditional CF-1R3 start with one narrowly scoped pre-Task133/
+  135 R composition-authority foundation. It packages preserved candidates
+  only on an isolated recovery branch, makes the runtime-factory lane the sole
+  writer, closes registrar attestation and exact H readback through factory-
+  owned construction, and forbids shadow brands/public structural mint paths.
+  Task133 and Task135 remain blocked until fresh review and coordinator-only
+  integration of the complete recovery range.
+- The foundation has standing `superpowers:subagent-driven-development`, TDD,
+  systematic debugging, and verification-before-completion authority. It must
+  prove swapped producer/registration/parser and forged H/tuple REDs, run its
+  exact fail-fast `&&` gate, and stop for a fresh independent Terra/xhigh
+  review. Full verification remains **CLOSED**, `neo` untouched, no provider/
+  network/credential/Nous action is authorized, and usage remains 13% used /
+  87% remaining with reset credits untouched.
