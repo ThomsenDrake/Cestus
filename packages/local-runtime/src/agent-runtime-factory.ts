@@ -17,6 +17,7 @@ import { createLocalAgentProviderConfiguration } from "./agent-provider-readines
 import { createMountedPromptArtifactStore } from "./mounted-prompt-artifact-store.js";
 import type { LocalRuntimeHandle } from "./runtime-factory.js";
 import type { MountedProductionPromptReadbackWitness } from "../../agent/src/production-prompt-readback.js";
+import type { PromptArtifactEnvelope } from "../../agent/src/prompt-artifacts.js";
 
 export interface LocalAgentRuntimeFactoryInput {
   readonly handle: LocalRuntimeHandle;
@@ -118,7 +119,10 @@ function createLocalTaskOrchestratorCapabilities(
   };
   // This remains lexical to the local factory. Later runner composition can
   // consume only an exact witness placed here by the post-readback renderer.
-  const mountedReadbacks = new Map<string, MountedProductionPromptReadbackWitness>();
+  const mountedReadbacks = new Map<string, {
+    readonly witness: MountedProductionPromptReadbackWitness;
+    readonly envelope: PromptArtifactEnvelope;
+  }>();
   return Object.freeze({
     schemaVersion: "agent-task-orchestrator-runtime-capabilities.v1",
     workflowRegistry: { require: specialistWorkflowDescriptorFor },
@@ -140,18 +144,23 @@ function createLocalTaskOrchestratorCapabilities(
         await store.put(artifact);
         const readback = await store.read({
           inputArtifactHash: artifact.manifest.inputArtifactHash as `sha256:${string}`,
-          authoritativeResolvedContextPacks: input.resolvedContextPacks,
-          taskId: input.taskId,
-          attemptId: input.attemptId,
-          runType: input.runType,
-          generatedAt: input.generatedAt,
-          scope: input.scope
+          authoritativeResolvedContextPacks: input.resolvedContextPacks
         });
         if (readback.witness === undefined) {
           throw new Error("Local task orchestrator requires mounted v1 prompt readback authority.");
         }
-        mountedReadbacks.set(`${input.taskId}:${input.attemptId}`, readback.witness);
+        mountedReadbacks.set(`${input.taskId}:${input.attemptId}`, {
+          witness: readback.witness,
+          envelope: readback.envelope
+        });
         return readback.envelope;
+      },
+      async readback(input: { readonly taskId: string; readonly attemptId: string }, rendered: unknown) {
+        const readback = mountedReadbacks.get(`${input.taskId}:${input.attemptId}`);
+        if (readback === undefined || readback.envelope !== rendered) {
+          throw new Error("Local task orchestrator requires exact mounted prompt readback before context-ready.");
+        }
+        return readback.envelope.manifest.inputArtifactHash;
       }
     },
     providerRegistry: configuredProviders.readinessRegistry,
@@ -161,16 +170,59 @@ function createLocalTaskOrchestratorCapabilities(
         // Task133.5 stops at the pre-approval mounted readback boundary. The
         // later owned admission runner consumes the lexical witness; it must
         // never ask a kernel to render a replacement prompt.
-        const witness = mountedReadbacks.get(`${input.taskId}:${input.attemptId}`);
-        if (witness === undefined) {
-          throw new Error("Local task orchestrator requires the exact mounted context-ready prompt readback.");
-        }
+        const key = `${input.taskId}:${input.attemptId}`;
+        const retained = mountedReadbacks.get(key);
+        const witness = retained?.witness ?? await recoverMountedContextReadyWitness({
+          handle,
+          contextRegistry,
+          store: await storeForRender(),
+          taskId: input.taskId,
+          runType: input.runType,
+          attemptId: input.attemptId
+        });
+        if (retained === undefined) mountedReadbacks.set(key, witness);
         // Keep the exact one-use witness lexical until the later owned
         // admission runner receives it. Do not serialize or reconstruct it.
-        void witness;
+        void witness.witness;
         throw new Error("Local task orchestrator specialist runner is not configured for autonomous dispatch.");
       }
     },
     handoffCapability: createTaskOrchestratorHandoffCapability()
   });
+}
+
+async function recoverMountedContextReadyWitness(input: {
+  readonly handle: LocalRuntimeHandle;
+  readonly contextRegistry: ContextPackRegistry;
+  readonly store: Awaited<ReturnType<typeof createMountedPromptArtifactStore>>;
+  readonly taskId: string;
+  readonly runType: string;
+  readonly attemptId: string;
+}): Promise<{ readonly witness: MountedProductionPromptReadbackWitness; readonly envelope: PromptArtifactEnvelope }> {
+  const events = await input.handle.ledger.readStream(`agent_task_orchestration_${input.taskId}_${input.runType}`);
+  const checkpoint = events.findLast((event) => {
+    if (event.type !== "agent.task.orchestration.checkpointed") return false;
+    const payload = event.payload;
+    return payload.checkpointKind === "context-ready" &&
+      payload.taskId === input.taskId && payload.runType === input.runType &&
+      payload.attemptId === input.attemptId && typeof payload.promptArtifactHash === "string";
+  });
+  if (checkpoint === undefined || checkpoint.type !== "agent.task.orchestration.checkpointed") {
+    throw new Error("Local task orchestrator requires a durable context-ready mounted prompt checkpoint.");
+  }
+  const contextPackIds = checkpoint.payload.contextBindings.map((binding) => binding.ref.contextPackId);
+  if (contextPackIds.length === 0 || new Set(contextPackIds).size !== contextPackIds.length) {
+    throw new Error("Local task orchestrator context-ready checkpoint has invalid context bindings.");
+  }
+  const authoritativeResolvedContextPacks = await Promise.all(
+    contextPackIds.map(async (contextPackId) => await input.contextRegistry.buildResolved(contextPackId))
+  );
+  const readback = await input.store.read({
+    inputArtifactHash: checkpoint.payload.promptArtifactHash as `sha256:${string}`,
+    authoritativeResolvedContextPacks
+  });
+  if (readback.witness === undefined) {
+    throw new Error("Local task orchestrator durable context-ready artifact is not a mounted V1 prompt.");
+  }
+  return Object.freeze({ witness: readback.witness, envelope: readback.envelope });
 }

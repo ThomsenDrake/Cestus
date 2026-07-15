@@ -98,3 +98,26 @@ boundary. It preserves portable-only canonical-byte storage, lexical
 one-use/private witness authority, exact template hashes, and the no-prompt
 text boundary. No provider, network, credentials, Nous, full verification,
 `neo`, merge, rebase, push, or integration action is authorized.
+
+## Second recovery candidate evidence — 2026-07-15
+
+- Production readback derives task/run/run type from the canonical V1 `Run:`
+  line and scope applicability from parsed production metadata. It does not
+  accept caller task/run/scope/root/blob/process facts.
+- The opaque authority captures the mounted workspace/root/blob tuple and a
+  process-local mount instance. Consumption rereads canonical mounted bytes and
+  revalidates the current tuple before use; a fresh mounted-store authority
+  invalidates a prior-process witness.
+- The kernel retains the artifact's authoritative `generatedAt`, revalidates
+  around every awaited pre-consumption operation, and compares a recomputed
+  current scope hash only to reject a stale or swapped artifact.
+- Context-ready has no renderer or approval-hash fallback: it requires the
+  mounted-readback hash to equal the rendered canonical artifact hash. A fresh
+  local factory can locate the durable context-ready checkpoint, reconstruct
+  authoritative pack readbacks, reread the V1 by hash, and issue a new lexical
+  witness without rerendering.
+- Focused CF-1R11/R12 eight-file command passed: 8 files, 86 tests.
+- Standalone `npm run typecheck` passed. The three required negative `rg`
+  gates, `git diff --check`, and `npm run factory:check` passed.
+- Full verification, provider/network/credential/Nous/reset-credit/`neo`,
+  merge/rebase/push, and self-integration were not run.
