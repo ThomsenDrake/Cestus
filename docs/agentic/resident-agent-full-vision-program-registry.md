@@ -6693,3 +6693,24 @@ explicit implementation authorization.
   credential/Nous action, no self-review/integration, and authenticated use
   remains `usedPercent=13` / **87% remaining, reset credits untouched, DRAIN
   <=10%, HARD PAUSE <=7%.
+
+## RV-1-E-196 — Task119 false-green typecheck correction
+
+- The fresh Task119 replay-state candidate `f4ed276d` is **not** review-ready
+  or integration-ready. Coordinator evidence is primary: its exact
+  `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts
+  packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git
+  diff --check && npm run factory:check` chain ran 129 focused tests green, then
+  exited `2` in typecheck with TS4104 at `contracts.ts:936` and `:939` because
+  readonly `(string | number)[]` values were passed to mutable `PropertyKey[]`
+  parameters. The later stages did not run. This corrects the candidate
+  author's false exit-0 claim forward without rewriting it.
+- A fresh Terra/xhigh author is authorized only for a smallest type-only
+  forward repair from `f4ed276d`: the Task119 claim, `contracts.ts`, and the
+  existing focused test only if needed to preserve behavior. It must first
+  reproduce the standalone diagnostics, preserve all replay-state semantics,
+  then demonstrate the exact non-full `&&` chain exits `0` before a fresh
+  independent review. Full verification stays **CLOSED**; no self-review,
+  integration, merge, provider/network/credential/Nous, or `neo` action is
+  authorized. Usage guard remains `usedPercent=13` / **87% remaining**, reset
+  credits untouched, DRAIN <=10%, HARD PAUSE <=7%.

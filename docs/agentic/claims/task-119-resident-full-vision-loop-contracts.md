@@ -312,3 +312,26 @@ coordinator-only merge.
   proof, strict own-data, declared-step/prerequisite checks, and no-effect
   scope.
 - Before one forward commit run exactly `npm test -- packages/ontology/test/agent-resident-loop-contracts.test.ts packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git diff --check && npm run factory:check`; exit `0` is required. Full verification remains **CLOSED**. Stop for fresh independent Terra/xhigh review; no self-review, self-integration, merge, provider/network/credential/Nous, or `neo` action.
+
+## CF-1R2 Replay-State Typecheck Correction
+
+- Preserve `f4ed276d093da6cb0e90df04ded7f4eca7062dff` as unreviewed,
+  unintegrated forward history. Its focused suite passed 129 tests, but the
+  coordinator's exact fail-fast chain stopped at `npm run typecheck` with exit
+  `2`: TS4104 at `packages/ontology/src/contracts.ts:936` and `:939` rejects
+  a readonly `(string | number)[]` passed where `PropertyKey[]` is mutable.
+  The later diff/factory stages did not run; no review or integration is
+  authorized from the false green claim.
+- One fresh Terra/xhigh type-correction author may start from `f4ed276d` and
+  edit only this claim, `packages/ontology/src/contracts.ts`, and its existing
+  focused loop-contract test if a behavior-preserving regression assertion is
+  necessary. First reproduce the two standalone TS4104 diagnostics and record
+  their exit. Make the smallest readonly-safe type-only repair; do not alter
+  replay semantics, v1/v2 event names, H proof, budget/anchor/category repair,
+  or task scope. Run the focused suite, then exactly `npm test --
+  packages/ontology/test/agent-resident-loop-contracts.test.ts
+  packages/ontology/test/agent-contracts.test.ts && npm run typecheck && git
+  diff --check && npm run factory:check` as one fail-fast chain. It must exit
+  `0` before one forward commit and fresh independent review.
+- Full verification is **CLOSED**. No self-review, self-integration, merge,
+  provider/network/credential/Nous, or `neo` action is authorized.
