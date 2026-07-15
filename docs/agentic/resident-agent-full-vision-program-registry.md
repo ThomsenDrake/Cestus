@@ -11768,3 +11768,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-431 — Task133.5 candidate rejected by fresh compiler admission
+
+- Task133.5 candidate `6e62b9420fa1776554e573df59d8033a6d750443`
+  on `codex/task-133-5-preapproval-prompt-store-recovery` is a clean two-commit
+  range from exact base `140bfd3a0552bcba9ce599bdffe01036a8d2d060`
+  and changes only its claimed prompt-store/runtime paths. Its focused CF-1R11/
+  R12 suite passed 8 files / 84 tests during fresh coordinator admission.
+- A standalone fresh `npm run typecheck` exited `2`, so the candidate is not
+  admissible to external review. Errors include a structurally forged witness
+  missing the private brand, four implicit-`any` callback inputs, three fixture
+  hash template-type mismatches, and one possibly undefined witness access.
+  The child claim that typecheck was clean is superseded by this exact compiler
+  evidence.
+- Recovery owner `019f677b-0c0a-7040-8e52-24bac253dda4` is authorized for one
+  bounded same-owned-path forward repair. The coordinator explicitly approves
+  task-scoped `superpowers:subagent-driven-development`, receiving-code-review,
+  systematic debugging, TDD, and verification-before-completion. The repair
+  must preserve private witness branding, use exact interface input types,
+  narrow optional values through control flow, and retain template-literal hash
+  types rather than weakening the contracts with casts.
+- Exact candidate `6e62b9420fa1776554e573df59d8033a6d750443` must not be
+  reviewed or integrated. Any replacement requires fresh coordinator admission
+  and two independent exact-SHA reviews.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
