@@ -11828,3 +11828,28 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Full verification, live/provider/network/credential/Nous activity, reset
   credits, push, child self-integration, program merge without coordinator
   review, and every `neo` action remain closed.
+
+## RV-1-E-433 — Task139 replacement admitted to fresh exact-SHA review
+
+- Task139 replacement candidate
+  `2592e18e0ed37dc90c5059adf397b439f4a530fa` on
+  `codex/task-139-resident-provider-configuration` is a clean linear range from
+  exact base `288bdb56b520a58501cb7f270dc6018711a8041f` and changes exactly
+  the three authorized configuration, test, and claim paths.
+- Fresh coordinator admission passed 2 focused files / 20 tests, standalone
+  typecheck, exact-range diff checking, and factory readiness. The ignored
+  dependency link was removed and the candidate worktree is clean. No provider,
+  network, credential resolution, or secret-backend action occurred.
+- Fresh provider-authority contract reviewer
+  `019f67a1-5cab-70d3-825b-db5d0cbc36a2` and fresh hostile-input/secret-safety
+  reviewer `019f67a1-6d99-74e0-95e3-5f0ac28f14c8` are pinned and read-only.
+  Both must return unqualified **APPROVED** verdicts for the exact candidate SHA
+  before coordinator integration.
+- The reviewers must prove canonical Task126 posture-reader and exact endpoint-
+  policy consumption, deterministic current feasibility for every capability,
+  eligible credential posture, immutable own-data snapshots, zero secret or
+  provider effects, and fail-closed hostile-input behavior. Green tests alone
+  do not override an authority-contract defect.
+- Full verification, live/provider/network/credential/Nous activity, reset
+  credits, push, child self-integration, program merge without coordinator
+  review, and every `neo` action remain closed.
