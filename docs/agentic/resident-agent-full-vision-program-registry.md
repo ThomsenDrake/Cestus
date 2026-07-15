@@ -8896,3 +8896,16 @@ explicit implementation authorization.
   credential/Nous/reset-credit/`neo` actions remain closed.
 - Latest authenticated usage reports 40% used / 60% weekly remaining, with no
   reset credits. DRAIN and hard-pause thresholds remain unchanged.
+
+## RV-1-E-296 — Fail-closed dispatch reviewer identities
+
+- Lifecycle/executability reviewer
+  `019f659e-a6a7-7b12-8d5d-8ba23cd8fd79` and authority/import/bypass reviewer
+  `019f659e-a6df-72e2-960d-2253cec57217` are active read-only on the exact
+  candidate, lineage, and canonical checkpoint in RV-1-E-295. Both use
+  `gpt-5.6-terra` at `xhigh` in fresh isolated worktrees and are pinned under
+  distinct CF-1R19 review titles.
+- Neither may edit, run full/live/provider/credential gates, touch `neo`, or
+  carry forward any earlier verdict. Source dispatch and plan integration
+  remain closed until both return explicit unqualified **APPROVED** verdicts
+  and those verdicts are durably recorded.
