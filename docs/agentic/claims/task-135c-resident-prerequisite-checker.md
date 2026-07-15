@@ -5,7 +5,7 @@
 - Branch: `codex/task-135c-prerequisite-checker`.
 - Worktree: `/home/drake/.codex/worktrees/c734/Cestus`.
 - Claimed at: 2026-07-15T00:00:00Z.
-- Status: in-progress.
+- Status: ready-for-review.
 
 ## Coordinator Authorization And Frozen Prerequisites
 
@@ -88,3 +88,20 @@ the external C `checkerSha256` field to the SHA-256 of the immutable
 `C:scripts/check-resident-task-prerequisites.mjs` blob. It must retain the
 existing retained-payload hash-and-execute protection and must not reopen a
 mutable checker path. No new implementer is authorized.
+
+## RV-1-E-331 Repair Evidence (2026-07-15)
+
+The exact focused recovery RED exited `1` with 13/14 tests passing. Its sole
+failure proved that a one-parent registry-only C whose declared
+`checkerSha256` was valid lowercase hex but did not match
+`C:scripts/check-resident-task-prerequisites.mjs` was incorrectly accepted.
+The authorized repair now reads that immutable C blob through the existing
+`GIT_NO_REPLACE_OBJECTS=1` Git boundary, hashes its bytes, and requires exact
+equality with C's declared hash; it does not read a mutable checker path.
+
+The exact focused GREEN command exited `0` with 14/14 tests passing. The
+required static/diff/factory gate also exited `0`: the installed ripgrep rejects
+lookahead without PCRE2 (`plain-rg-status=2`), so the equivalent explicit audit
+used `rg -P` for the import-specifier clause; it found no violations, `git diff
+--check` passed, and `npm run factory:check` reported `factory-readiness
+passed`. Full verification and every closed action remain unperformed.
