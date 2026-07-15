@@ -11282,3 +11282,27 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   `npm run typecheck`, commit diff checking, and factory readiness. No defects
   were found; full/live/provider/credential/Nous/reset-credit/push/`neo`
   actions remain closed.
+
+## RV-1-E-413 — Task135D complete lexical-scope replacement admitted
+
+- Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` produced clean
+  replacement candidate `100ce68487148453894f74965cf1d59008f79e1f` over
+  exact original base `e532c35fd1b3a829dfbbd4f87d752f42304419f9`.
+- In addition to one-shot capture consumption before currentness or I/O, the
+  public-AST import policy now distinguishes genuine standard CommonJS
+  loaders from local, parameter, hoisted `var`, named function-expression,
+  named class-expression, class heritage/decorator, switch-case lexical, and
+  runtime namespace bindings. Explicit and ambient `declare` forms remain
+  erased and cannot hide the real standard loaders.
+- Positive causal fixtures retain detection through class-expression
+  decorators with unrelated class names, unshadowed computed targets,
+  transparent wrappers, every supported import/loader family, and exact
+  protected module identity. Negative fixtures cover the corresponding
+  lexical and lookalike boundaries.
+- Coordinator-independent verification passed the exact 3-file focused suite
+  at 21/21 tests, `npm run typecheck`, no-index assertion, original-base diff
+  check, factory readiness, exact four-path union, 22 linear commits with no
+  merges, and clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, network, credentials, Nous, reset credits, push, and every
+  `neo` action remain closed.
