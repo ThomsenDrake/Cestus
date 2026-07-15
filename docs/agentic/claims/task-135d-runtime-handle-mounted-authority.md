@@ -1,6 +1,6 @@
 # Task135D recovery: R-owned factory-issued mounted handle capture
 
-- Status: ready-for-review
+- Status: in-progress
 - Owner: `/root`
 - Branch: `codex/task-135d-runtime-handle-capture-ast-import-review-repair`
 - Worktree: `/home/drake/.codex/worktrees/8ca0/Cestus`
@@ -507,3 +507,28 @@ self-integration, and program-registry edits remain closed.
 - Focused GREEN: the prescribed three-file command exited `0` with 21 tests
   passed. The remaining permitted candidate gates are pending at this claim
   checkpoint.
+
+## RV-1-E-415 const-enum and class-static-block scope repair
+
+- Durable coordinator authority: `RV-1-E-415`. Final-doc candidate
+  `100ce68487148453894f74965cf1d59008f79e1f` is preserved and rejected after
+  both reviewers found valid scanner-scope gaps. This forward repair changes
+  only the import-policy test and this claim; production capture bytes remain
+  unchanged.
+- Causal RED: non-ambient `const enum require`/`const enum module` fixtures
+  plus static-block `var require`/`var module` outside-loader witnesses were
+  added before collector changes. The exact focused suite exited `1` only in
+  the import-policy test (1 failed, 20 passed), receiving 74 importers instead
+  of the expected 78 and omitting exactly those four genuine standard-loader
+  fixtures. Paired inside-static-block `var` calls and ordinary emitted-enum
+  shadows remained negative; ambient `declare const enum` remained positive.
+- Runtime-shadow collection now excludes erased `const enum` declarations
+  while retaining emitted ordinary enums and `declare` behavior. Hoisted-var
+  collection stops at `ClassStaticBlockDeclaration`, and each static block
+  receives its own public-AST hoisted-var scope. This preserves both outside
+  genuine loader detection and inside local-shadow exclusion without a
+  TypeChecker/program-wide rewrite.
+- Focused GREEN: the prescribed three-file command exited `0` with 21 tests
+  passed. The expected importer array was kept in the scanner's sorted order
+  (`star-…` before `static-…`) after the repair; the remaining permitted
+  candidate gates are pending at this claim checkpoint.
