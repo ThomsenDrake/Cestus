@@ -10567,3 +10567,30 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   Two fresh plan approvals remain required on the replacement bytes.
 - Full verification, source, providers, reset credits, integration, push, and
   every `neo` action remain closed.
+
+## RV-1-E-377 — Task135D exact-source candidate admitted
+
+- Existing author `019f6660-25a4-7941-9dfe-acf8db99555e` produced clean
+  forward candidate `b1a74ab7e96fef9a1c7dd5496261d90fcc3e9eb0` after adding
+  causal query/fragment and lookalike fixtures and replacing basename matching
+  with importer-relative, workspace-root-bound exact source resolution.
+- Coordinator-independent verification passed the exact 20/20 focused suite,
+  `npm run typecheck`, no-index assertion, original-base diff, factory
+  readiness, exact four-path union, no-merge topology, and clean status.
+- Candidate remains review-only and unintegrated. Full verification,
+  providers, reset credits, push, and every `neo` action remain closed.
+
+## RV-1-E-378 — Task135D exact-source reviews dispatched
+
+- Fresh Terra/xhigh private-authority/lifecycle reviewer
+  `019f66db-10f6-7431-8e79-74ba0b63743e` audits factory identity,
+  snapshots, hostile mutation, close behavior, non-leakage, currentness, and
+  unchanged production semantics.
+- Fresh Terra/xhigh AST import-authority reviewer
+  `019f66db-3b87-75f2-8f96-325bfca28fd6` audits complete decoded AST forms,
+  suffix handling, exact importer-relative target resolution, NodeNext source
+  equivalence, lookalike rejection, roots, extensions, allowlist, public APIs,
+  and performance.
+- Both reviewers are read-only and pinned at exact candidate
+  `b1a74ab7e96fef9a1c7dd5496261d90fcc3e9eb0`. Two unqualified approvals are
+  required before coordinator-only integration.
