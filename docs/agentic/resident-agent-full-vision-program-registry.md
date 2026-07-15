@@ -10621,3 +10621,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
 - Both reviewers are read-only and pinned at exact candidate
   `f186e703a22e20c6936b25c846451e60ee687cb9`. Two unqualified approvals are
   required before coordinator-only plan integration or renewed Task133 source.
+
+## RV-1-E-381 — Task135D held for default and CommonJS import forms
+
+- AST import-authority reviewer `019f66db-3b87-75f2-8f96-325bfca28fd6`
+  returned **NEEDS-CHANGES** because the scanner ignores
+  `ImportClause.name`, allowing default imports of the protected module to
+  evade the sole-importer check.
+- Private-authority/lifecycle reviewer
+  `019f66db-10f6-7431-8e79-74ba0b63743e` returned **NEEDS-CHANGES** because
+  direct standard `module.require(...)` calls use a property-access callee and
+  evade the identifier-only `require(...)` check. Neither review identified a
+  defect in the private mounted-runtime capture implementation itself.
+- Candidate `b1a74ab7e96fef9a1c7dd5496261d90fcc3e9eb0` is rejected and
+  preserved. The existing author is authorized for one two-path forward TDD
+  repair adding causal default-import and direct CommonJS-loader fixtures and
+  exact AST recognition without weakening root-bound source identity.
+- The replacement must preserve the exact four-path original-base union and
+  rerun the complete focused/typecheck/no-index/diff/factory/topology gate
+  before two fresh reviews. Full verification, providers, reset credits,
+  integration, push, and every `neo` action remain closed.
