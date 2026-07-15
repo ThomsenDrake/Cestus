@@ -726,10 +726,28 @@ serialized task.
   non-authorizing and does not carry forward.
 - CF-1R22 rejects every authority-affecting `GIT_*` variable, accepts and
   immediately unsets only a lone execution-harness `GIT_PAGER=cat`, binds Git
-  to the physical checkout root before and after each affected gate, and adds causal
-  counterfactuals to Task135C. It publishes one complete final Task117A gate,
-  one complete final Task137A gate, and exact separate P/R0/H preflight and
+  to the physical checkout root before and after each affected gate, and adds
+  causal counterfactuals to Task135C. It publishes one complete final Task117A
+  gate, one complete final Task137A gate, and exact separate P/R0/H preflight and
   review commands with the coordinator-issued attestation SHA materialized.
+- Source implementation, full verification, provider/network/credential/Nous
+  activity, reset credits, `neo`, self-review, self-integration, and merge
+  remain closed. Exactly two fresh independent unqualified Terra/xhigh
+  approvals of `0481c1e0b921ff03e2f286ccf8e356f6fbf0cda8^..HEAD` are required
+  before coordinator-only plan integration.
+
+## Forward Correction — Final Post-Command Revalidation
+
+- Status remains **plan-repair candidate only**. Authority reviewer
+  `019f65de-b9c4-7243-a300-e5ce79e2e074` approved `784efede`, but lifecycle
+  reviewer `019f65de-badd-74f3-9d20-a6406c091aa9` rejected it after
+  reproducing a seventh Task137A path created after the pre-test ceiling and a
+  Task117A whole-freeze mutation created after the pre-audit hash check. The
+  single approval is non-authorizing and does not carry forward.
+- CF-1R23 publishes complete final Task117A and Task137A commands. Each factors
+  every authority-relevant repository, history, hidden-state, path, and hash
+  check into one reusable assertion, runs it before work, runs every focused
+  and readiness command, and invokes the assertion as the final operation.
 - Source implementation, full verification, provider/network/credential/Nous
   activity, reset credits, `neo`, self-review, self-integration, and merge
   remain closed. Exactly two fresh independent unqualified Terra/xhigh
