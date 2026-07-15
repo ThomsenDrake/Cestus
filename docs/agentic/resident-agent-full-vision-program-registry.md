@@ -9797,3 +9797,23 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   coordinator-only integration into the program branch. It is not authorized
   for `neo`; full verification, provider activity, and reset credits remain
   closed.
+
+## RV-1-E-335 — Task135E integrated into the program branch
+
+- A coordinator read-only merge preview from program checkpoint
+  `41a3011ebd327a3b23fee384046dd463a30ac843` and exact approved candidate
+  `4e3510ff00380a5fa5c5d3cd4502c2c946fd3f9d` produced tree
+  `5680cce311b257d2aa5aa3a202a20335c3a94a81` and temporary preview commit
+  `b483422e9967a6594c054e4cb96f78350af131e5`. Its first-parent delta contained
+  exactly the Task135E claim and resident-identity test.
+- The isolated preview passed all 9 focused lifecycle tests, typecheck, range
+  diff checking, factory readiness, and clean-state verification.
+- Coordinator-only no-ff merge
+  `9480ca97dbc017cfe6dd2db68b1fbbc21eb0727d` has first parent
+  `41a3011ebd327a3b23fee384046dd463a30ac843` and exact candidate second parent
+  `4e3510ff00380a5fa5c5d3cd4502c2c946fd3f9d`. Its first-parent path delta is
+  identical to the preview.
+- Post-merge verification again passed all 9 focused tests, typecheck, merge
+  diff checking, factory readiness, and clean-state verification. This opens
+  only Task135D recovery-base preparation. Full verification, provider activity,
+  reset credits, all other integration, and every `neo` action remain closed.
