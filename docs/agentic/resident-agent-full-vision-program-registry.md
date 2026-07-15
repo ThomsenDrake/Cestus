@@ -7965,3 +7965,28 @@ explicit implementation authorization.
   post-merge documentation validation are now authorized; Task133 source
   implementation remains blocked until that integration is recorded and its
   frozen prerequisite gate is re-established.
+
+## RV-1-E-250 — Task133 plan integration and Task135A retained successor
+
+- Coordinator-only no-ff merge `43ead55364ec2093fabeba9dd56f9491090d575e`
+  integrates reviewed Task133 plan lineage endpoint
+  `8169fc7f344ce40b0bbd91e60a66dab697d4446d` on the program branch. The
+  post-merge documentation gate `git diff --check && npm run factory:check`
+  exited `0`; no source implementation, provider/network/credential/Nous
+  action, full verifier, reset-credit, neo, or child integration occurred.
+  Task133 source work may be dispatched only after its frozen prerequisite
+  baseline and exact program base are durably recorded.
+- Independent Task135A dirty-input audit session
+  `019f6461-a227-7523-a139-401fc34970c0` returned
+  **RETAIN-AS-BOUNDED-REPAIR** for successor `0c42f5e982f71ffae76b34f522803b0ad961b553`.
+  Its `turn_context` records Terra/xhigh. The successor is scoped only to the
+  existing claim and allowed test; the production source blob is unchanged
+  across `d04c560a`, `72830758`, and `0c42f5e9`. Its separate replacement-store
+  counters strengthen the post-capture zero-I/O proof, and its temporary RED
+  removes only the currentness comparisons before restoring them byte-for-byte.
+  No hostile, authority, codec, task/run, terminal, or authority-surface
+  coverage was narrowed. The different dependency link is environment-only and
+  must not enter a commit.
+- `0c42f5e9` remains unintegrated pending an independent coordinator exact
+  non-full gate with one actual compiler exit and a fresh complete-range review
+  of `271406fca811d49ee9ebb7ff31f58b0b870ac1d7..0c42f5e982f71ffae76b34f522803b0ad961b553`.
