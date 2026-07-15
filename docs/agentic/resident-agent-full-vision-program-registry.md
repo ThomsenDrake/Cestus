@@ -10286,3 +10286,17 @@ auditSha256=85f4ca5f2cd1c1397eeebf36bf29b93db36d1c326578be33086cc7cf217958ba
   required before any merge preview.
 - Full verification, live/provider/network/credential actions, reset credits,
   integration, push, and every `neo` action remain closed.
+
+## RV-1-E-360 — Task135D replacement reviews dispatched
+
+- Private-authority/lifecycle reviewer
+  `019f66b6-d18c-73c2-bf17-e88cab3fb100` and import-ownership/grammar reviewer
+  `019f66b6-d37e-7dc0-a9b9-17938a329f63` started from exact detached candidate
+  `f121af369d2281b515fda07bb15ae4948404062b` using Terra at xhigh.
+- Review worktree dependency and secret-local environment symlinks were restored
+  after creation; this authorizes no provider, credential, network, or live
+  action. Both reviewers remain read-only and must reproduce the full permitted
+  focused/typecheck/no-index/diff/factory/topology gate.
+- Both unqualified approvals are required before a coordinator-controlled
+  detached merge preview. Full verification, integration, reset credits, push,
+  and every `neo` action remain closed.
