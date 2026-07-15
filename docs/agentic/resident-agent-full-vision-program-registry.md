@@ -8489,3 +8489,22 @@ explicit implementation authorization.
   unqualified **APPROVED** verdicts remain required.
 - Latest authenticated usage reports 36% used / 64% weekly remaining. All
   source/live/full/credential/reset-credit/`neo`/integration actions remain closed.
+
+## RV-1-E-274 — Final aggregate and witness-reissue review repair
+
+- Both reviewers returned **NEEDS-CHANGES** on exact sixteen-commit range
+  `0481c1e0^..db701238`. Authority reviewer
+  `019f6523-58d5-77e0-8a98-2ade6041e99d` found the third live orchestrator
+  evidence-triage fixture still bypasses resident acceptance and both final
+  aggregate commands omit newly added suites. Persistence reviewer
+  `019f6523-5444-76e1-ac79-b0efac9882f8` independently confirmed both aggregate
+  omissions and found no explicit fresh-runtime mounted-readback-witness
+  reissuance path.
+- The sole plan writer is authorized only for CF-1R12: on restart reread the
+  durable context-ready hash through the remount-validating store and mint a
+  fresh current-process witness; migrate the third live fixture; replace the
+  integrated Task133 and H non-live commands with complete aggregate gates and
+  required non-export/static assertions; reserve all three live files for the
+  later live provider gate.
+- All source/live/full/credential/reset-credit/`neo`/integration actions remain
+  closed pending docs validation, commit, and two fresh approvals.
