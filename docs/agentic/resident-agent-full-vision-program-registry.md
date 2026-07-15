@@ -7669,3 +7669,35 @@ explicit implementation authorization.
   verification-before-completion; it excludes full verify, provider/network/
   credential/Nous action, reset credits, `neo`, child self-integration, and
   out-of-scope repair.
+
+## RV-1-E-240 — Reboot recovery and Task133 third forward-repair dispatch
+
+- After the host reboot, the canonical program checkout is clean on
+  `codex/resident-agent-full-vision-program-watchdog-recovery` at
+  `25690a6553556fa21454d86cc69be5b7923e3aa2`. `neo` remains untouched and
+  every full-verifier, provider/network/credential/Nous, reset-credit, and
+  child self-integration gate remains closed.
+- Task135A remains frozen with only its intended dirty claim, source, and test
+  in `/home/drake/.codex/worktrees/task-135a-mounted-preparation-stores`.
+  Task133's plan worktree remains clean at rejected forward candidate
+  `ffc2dc81c189af3163ec7b573b4f6f4767660de7`. The bounded compiler repair
+  worktree remains clean at its assigned base while its original author owns
+  the two-file prerequisite repair. One actual `npm run typecheck` process was
+  observed in that worktree after recovery; it terminated before any later
+  compiler process was permitted. Its result is not treated as green evidence
+  without the author's captured exit and final gate record.
+- Fresh Task133 forward plan-repair author
+  `/root/task133_v2_compatibility_plan_repair`, session
+  `019f643c-5584-7b72-bcb2-39deb302d85a`, is the sole writer in
+  `/home/drake/.codex/worktrees/task-133-pure-renderer-plan-amendment`. Its
+  standing contract requires an explicit discriminated legacy-v1/exact-v2
+  compatibility migration, strict required exact-v2 fields and computed
+  hashes, one canonical text-rendering path, exhaustive provider/runtime/
+  projection/ontology/rebuild preservation tests, removal of the obsolete
+  local-only claim contract, exact file ownership and non-full gates, and a
+  fresh independent review before implementation. The eventual implementation
+  plan must explicitly authorize `superpowers:subagent-driven-development`;
+  implementation itself is not authorized by this dispatch.
+- The last authenticated usage observation remains 27% used / 73% weekly
+  remaining. No reset credit is consumed or authorized. DRAIN remains at
+  <=10% remaining and HARD PAUSE at <=7%.
