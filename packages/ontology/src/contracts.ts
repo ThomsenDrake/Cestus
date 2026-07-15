@@ -838,6 +838,19 @@ const residentLoopV2BudgetUsageSchema = z.object({
   approvalSuspensionMs: z.number().int().nonnegative()
 }).strict();
 
+const residentLoopV2HardMaximums = {
+  planRevisions: 3,
+  observationRecords: 16,
+  toolSteps: 12,
+  providerInvocations: 3,
+  providerRequestBytes: 1048576,
+  providerResponseBytes: 1048576,
+  contextBytes: 1048576,
+  derivativeArtifactBytes: 16777216,
+  activeExecutionMs: 900000,
+  approvalSuspensionMs: 86400000
+} as const;
+
 const residentLoopV2BudgetSchema = z.object({
   ceilings: residentLoopV2BudgetUsageSchema,
   consumed: residentLoopV2BudgetUsageSchema,
@@ -855,6 +868,13 @@ const residentLoopV2BudgetSchema = z.object({
     "activeExecutionMs",
     "approvalSuspensionMs"
   ] as const) {
+    if (value.ceilings[field] > residentLoopV2HardMaximums[field]) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ceilings", field],
+        message: `${field} ceiling must not exceed its approved hard maximum`
+      });
+    }
     if (value.consumed[field] + value.remaining[field] !== value.ceilings[field]) {
       ctx.addIssue({
         code: "custom",
@@ -1043,6 +1063,34 @@ const agentResidentPlanRecordedV2PayloadSchema = residentLoopV2BindingSchema.ext
   if (ordinals.some((ordinal, index) => index > 0 && ordinal <= ordinals[index - 1]!)) {
     ctx.addIssue({ code: "custom", path: ["steps"], message: "planned steps must be ordered by ordinal" });
   }
+  const declaredOrdinals = new Set(ordinals);
+  for (const [stepIndex, step] of value.steps.entries()) {
+    const prerequisites = new Set<number>();
+    for (const [prerequisiteIndex, prerequisite] of step.prerequisiteStepOrdinals.entries()) {
+      if (!declaredOrdinals.has(prerequisite)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["steps", stepIndex, "prerequisiteStepOrdinals", prerequisiteIndex],
+          message: "planned-step prerequisites must reference a declared step ordinal"
+        });
+      }
+      if (prerequisite >= step.ordinal) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["steps", stepIndex, "prerequisiteStepOrdinals", prerequisiteIndex],
+          message: "planned-step prerequisites must precede their dependent step"
+        });
+      }
+      if (prerequisites.has(prerequisite)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["steps", stepIndex, "prerequisiteStepOrdinals", prerequisiteIndex],
+          message: "planned-step prerequisites must not repeat an ordinal"
+        });
+      }
+      prerequisites.add(prerequisite);
+    }
+  }
 });
 
 const agentResidentObservationRecordedV2PayloadSchema = residentLoopV2BindingSchema.extend({
@@ -1105,23 +1153,64 @@ const agentResidentLoopSuspendedV2PayloadSchema = residentLoopV2BindingSchema.ex
   addResidentLoopV2FinalObservationReadbackIssues(value, value.finalObservationReadback, "finalObservationReadback", ctx);
 });
 
+const residentLoopV2HandoffDiagnosticCategorySchema = z.enum([
+  "workspace-unavailable",
+  "mount-identity-mismatch",
+  "mount-store-identity-mismatch",
+  "mount-authority-stale",
+  "legacy-manifest-unbound",
+  "manifest-missing",
+  "manifest-hash-mismatch",
+  "manifest-content-mismatch",
+  "artifact-missing",
+  "artifact-hash-mismatch",
+  "source-missing",
+  "source-stale",
+  "source-swapped",
+  "provenance-missing",
+  "provenance-cross-run",
+  "run-identity-missing",
+  "run-identity-duplicate",
+  "task-binding-conflict",
+  "final-output-conflict",
+  "expected-sequence-conflict",
+  "terminal-before-readback",
+  "terminal-status-conflict",
+  "supersession-conflict",
+  "dto-invalid",
+  "dto-cross-run",
+  "unsafe-boundary-value",
+  "secret-safety-rejection"
+]);
+
+const residentLoopV2HandoffDiagnosticSchema = z.object({
+  category: residentLoopV2HandoffDiagnosticCategorySchema,
+  retry: z.enum(["none", "after-remount", "after-repair", "after-review"]),
+  safeMessage: secretSafeTextSchema,
+  eventIds: z.array(eventIdSchema),
+  artifactHashes: z.array(contentHashSchema)
+}).strict();
+
+/**
+ * CF-1 carries the H-owned readback verbatim for the completed result. This
+ * schema is the approved HandoffReadback.v1 surface; L neither selects a
+ * reduced view nor supplies a local lifecycle substitute.
+ */
 const residentLoopV2HandoffReadbackSchema = z.object({
   outcome: z.literal("verified"),
-  handoffId: z.string().regex(/^handoff_[a-zA-Z0-9_-]+_[a-f0-9]{16}$/),
-  taskId: agentTaskIdSchema,
-  attemptId: agentTaskOrchestrationAttemptIdSchema,
   runId: agentRunIdSchema,
+  taskId: agentTaskIdSchema,
+  handoffId: secretSafeStringSchema.min(1),
+  manifestSchemaVersion: z.literal("agent-specialist-handoff-manifest.v2"),
   manifestHash: contentHashSchema,
+  finalOutputStepId: secretSafeStringSchema.min(1),
   finalOutputEventId: eventIdSchema,
   preparedEventId: eventIdSchema,
   recordedEventId: eventIdSchema,
   terminalRunEventId: eventIdSchema,
   taskStatusEventId: eventIdSchema,
   authorityBinding: residentLoopV2AuthoritySchema,
-  safeDiagnostics: z.array(z.object({
-    category: residentLoopV2ResultCategorySchema,
-    nextSafeAction: secretSafeStringSchema.min(1)
-  }).strict()).min(1)
+  diagnostics: z.array(residentLoopV2HandoffDiagnosticSchema)
 }).strict();
 
 const residentLoopV2ResumeAnchorSchema = z.object({
@@ -1129,6 +1218,24 @@ const residentLoopV2ResumeAnchorSchema = z.object({
   nextSafeAction: secretSafeStringSchema.min(1),
   resumptionDeadlineAt: z.string().datetime()
 }).strict();
+
+const residentLoopV2ResultCategoriesByOutcome = {
+  completed: ["handoff-recorded"],
+  failed: ["validation-failed", "budget-exhausted", "approval-denied", "tool-failed"],
+  resumable: [
+    "budget-exhausted",
+    "approval-required",
+    "approval-denied",
+    "approval-stale",
+    "workspace-unavailable",
+    "provider-unavailable",
+    "source-stale",
+    "policy-changed",
+    "claim-conflict",
+    "persistence-unconfirmed",
+    "tool-failed"
+  ]
+} as const;
 
 const agentResidentLoopResultRecordedV2PayloadSchema = residentLoopV2BindingSchema.extend({
   schemaVersion: z.literal("resident-loop-result.v2"),
@@ -1144,6 +1251,14 @@ const agentResidentLoopResultRecordedV2PayloadSchema = residentLoopV2BindingSche
 }).strict().superRefine((value, ctx) => {
   addResidentLoopV2PlanReadbackIssues(value, value.planReadback, "planReadback", ctx);
   addResidentLoopV2FinalObservationReadbackIssues(value, value.finalObservationReadback, "finalObservationReadback", ctx);
+  const permittedCategories = residentLoopV2ResultCategoriesByOutcome[value.outcome] as readonly string[];
+  if (!permittedCategories.includes(value.category)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["category"],
+      message: `${value.outcome} results require a category with the governing terminal or resumable semantics`
+    });
+  }
   if (value.outcome === "completed") {
     if (value.category !== "handoff-recorded") {
       ctx.addIssue({ code: "custom", path: ["category"], message: "completed results require handoff-recorded category" });
@@ -1151,7 +1266,7 @@ const agentResidentLoopResultRecordedV2PayloadSchema = residentLoopV2BindingSche
     if (value.handoffReadback === undefined) {
       ctx.addIssue({ code: "custom", path: ["handoffReadback"], message: "completed results require complete H handoff readback proof" });
     } else {
-      for (const field of ["taskId", "attemptId", "runId"] as const) {
+      for (const field of ["taskId", "runId"] as const) {
         if (value.handoffReadback[field] !== value[field]) {
           ctx.addIssue({ code: "custom", path: ["handoffReadback", field], message: "H handoff readback must preserve result identity" });
         }
@@ -3641,6 +3756,23 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
   observationReadbackMatches(suspended.payload as Record<string, unknown>, "suspension");
   observationReadbackMatches(result.payload as Record<string, unknown>, "result");
 
+  const plannedSteps = Array.isArray(planPayload.steps) ? planPayload.steps : [];
+  const toolStepPayload = step.payload as Record<string, unknown>;
+  const declaredToolStep = plannedSteps.find((candidate) =>
+    typeof candidate === "object" &&
+    candidate !== null &&
+    (candidate as Record<string, unknown>).ordinal === toolStepPayload.stepOrdinal
+  ) as Record<string, unknown> | undefined;
+  if (declaredToolStep === undefined) {
+    issues.push("tool step must reference a declared plan step ordinal");
+  } else {
+    for (const field of ["toolId", "toolVersion", "allowlistEntryHash"] as const) {
+      if (toolStepPayload[field] !== declaredToolStep[field]) {
+        issues.push(`tool step must preserve the declared ${field}`);
+      }
+    }
+  }
+
   const checkpoint = (suspended.payload as Record<string, unknown>).checkpoint as Record<string, unknown> | undefined;
   if (checkpoint?.checkpointEventId !== suspended.id) issues.push("suspension must read back its exact durable checkpoint event");
 
@@ -3648,7 +3780,7 @@ function validateResidentLoopV2EventSequence(events: readonly KnowledgeEvent[]):
   if (resultPayload.outcome === "completed") {
     const handoff = resultPayload.handoffReadback as Record<string, unknown> | undefined;
     if (handoff?.outcome !== "verified") issues.push("completed result requires verified H readback");
-    for (const field of ["taskId", "attemptId", "runId"] as const) {
+    for (const field of ["taskId", "runId"] as const) {
       if (handoff?.[field] !== planPayload[field]) issues.push(`H handoff readback must preserve ${field}`);
     }
     if (JSON.stringify(handoff?.authorityBinding) !== JSON.stringify(planPayload.authority)) {
